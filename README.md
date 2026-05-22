@@ -180,6 +180,9 @@ crates/
 The old Python implementation is archived under `docs/bpfix-py/` for reference.
 It is not the active development surface.
 
+The maintained project status, benchmark snapshot, and near-term roadmap live
+in `docs/research-plan.md`.
+
 The `bpfanalysis` crate imports analysis code from the `bpfopt` project and
 uses `libbpf-sys` for BPF instruction and program-type constants. The libbpf
 source is tracked as a submodule in `vendor/libbpf`.
@@ -254,6 +257,7 @@ cargo run -p bpfix -- bpfix-bench/raw/so/stackoverflow-60053570.yaml --format bo
 bpfix-bench/       replayable verifier-failure corpus and raw examples
 crates/bpfanalysis Rust analysis library
 crates/bpfix       user-facing CLI
+docs/research-plan.md current project status and roadmap
 docs/evaluation/   benchmark and metric notes
 docs/bpfix-py/     archived Python prototype, without generated Python caches
 vendor/libbpf/     libbpf submodule
