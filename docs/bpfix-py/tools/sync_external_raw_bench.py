@@ -17,13 +17,14 @@ from typing import Any
 
 import yaml
 
-ROOT = Path(__file__).resolve().parents[1]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
+ARCHIVE_ROOT = Path(__file__).resolve().parents[1]
+PROJECT_ROOT = ARCHIVE_ROOT.parents[1]
+if str(ARCHIVE_ROOT) not in sys.path:
+    sys.path.insert(0, str(ARCHIVE_ROOT))
 
 from tools.replay_case import parse_verifier_log
 
-DEFAULT_BENCH_ROOT = ROOT / "bpfix-bench"
+DEFAULT_BENCH_ROOT = PROJECT_ROOT / "bpfix-bench"
 DEFAULT_SO_ROOTS: list[Path] = []
 DEFAULT_GH_ROOTS: list[Path] = []
 VERIFIED_ROOTS: list[Path] = []
@@ -541,7 +542,7 @@ def dump_yaml(data: dict[str, Any]) -> str:
 
 def relpath(path: Path) -> str:
     try:
-        return str(path.resolve().relative_to(ROOT))
+        return str(path.resolve().relative_to(PROJECT_ROOT))
     except ValueError:
         return str(path)
 

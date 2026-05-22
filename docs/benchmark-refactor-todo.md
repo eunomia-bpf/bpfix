@@ -10,7 +10,7 @@ bpfix-bench/manifest.yaml
 ```
 
 A primary diagnostic-evaluation case is eligible only if
-`tools/validate_benchmark.py --replay bpfix-bench` can rebuild it, load it,
+`docs/bpfix-py/tools/validate_benchmark.py --replay bpfix-bench` can rebuild it, load it,
 recapture the verifier rejection, and parse the resulting log locally.
 
 ## Current Result
@@ -52,7 +52,7 @@ manifest-count change.
 - Each listed case has `case.yaml`, source, and replay commands.
 - The validator rejects cases that build but do not reproduce a verifier
   rejection.
-- `tools/evaluate_benchmark.py --benchmark bpfix-bench` consumes the same
+- `docs/bpfix-py/tools/evaluate_benchmark.py --benchmark bpfix-bench` consumes the same
   manifest and uses freshly replayed verifier logs.
 - Non-primary raw material remains under `bpfix-bench/raw/`.
 

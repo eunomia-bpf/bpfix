@@ -2,13 +2,10 @@
 
 SHELL := /bin/bash
 CURDIR := $(shell pwd)
-
-PYTHON := python3
-PYTEST := $(PYTHON) -m pytest
-
+CARGO := cargo
 BENCH_DIR := $(CURDIR)/bpfix-bench
 PAPER_DIR := $(CURDIR)/docs/paper
-TMP_DIR := $(CURDIR)/docs/tmp
+CASE ?= bpfix-bench/raw/so/stackoverflow-60053570.yaml
 
 .DEFAULT_GOAL := help
 
@@ -18,14 +15,13 @@ help:
 	@echo "BPFix"
 	@echo "====="
 	@echo ""
-	@echo "Testing"
-	@echo "  make test              Run the full pytest suite"
-	@echo "  make test-quick        Run pytest quietly"
-	@echo ""
-	@echo "Benchmark"
-	@echo "  make bench-validate    Replay and validate all bpfix-bench cases"
-	@echo "  make bench-eval        Replay cases, then run BPFix/baseline/ablation eval"
-	@echo "  make bench-raw-audit   Regenerate raw external audit index"
+	@echo "Rust"
+	@echo "  make check             Run cargo check for the workspace"
+	@echo "  make test              Run cargo test for the workspace"
+	@echo "  make test-quick        Run bpfix CLI tests"
+	@echo "  make fmt               Format Rust code"
+	@echo "  make cli CASE=...      Run bpfix against a log or raw YAML"
+	@echo "  make bench-smoke       Run the CLI against one benchmark case"
 	@echo ""
 	@echo "Paper"
 	@echo "  make paper             Compile LaTeX paper once"
@@ -33,35 +29,38 @@ help:
 	@echo "  make paper-clean       Remove LaTeX build artifacts"
 	@echo ""
 	@echo "Utilities"
-	@echo "  make lint              Run flake8 on active Python code"
-	@echo "  make loc               Count lines of code in active Python modules"
-	@echo "  make clean             Remove generated benchmark and paper artifacts"
+	@echo "  make clean             Remove generated Rust and benchmark artifacts"
 	@echo ""
+
+.PHONY: check
+check:
+	@echo "[check] Running cargo check..."
+	cd $(CURDIR) && $(CARGO) check --workspace
 
 .PHONY: test
 test:
-	@echo "[test] Running full pytest suite..."
-	cd $(CURDIR) && $(PYTEST) tests/ -v
+	@echo "[test] Running cargo test..."
+	cd $(CURDIR) && $(CARGO) test --workspace
 
 .PHONY: test-quick
 test-quick:
-	@echo "[test-quick] Running pytest..."
-	cd $(CURDIR) && $(PYTEST) tests/ -q
+	@echo "[test-quick] Running bpfix tests..."
+	cd $(CURDIR) && $(CARGO) test -p bpfix
 
-.PHONY: bench-validate
-bench-validate:
-	@echo "[bench-validate] Replaying bpfix-bench..."
-	cd $(CURDIR) && $(PYTHON) tools/validate_benchmark.py --replay bpfix-bench --timeout-sec 60
+.PHONY: fmt
+fmt:
+	@echo "[fmt] Formatting Rust code..."
+	cd $(CURDIR) && $(CARGO) fmt --all
 
-.PHONY: bench-raw-audit
-bench-raw-audit:
-	@echo "[bench-raw-audit] Regenerating raw external audit index..."
-	cd $(CURDIR) && $(PYTHON) tools/sync_external_raw_bench.py --apply
+.PHONY: cli
+cli:
+	@echo "[cli] Running bpfix on $(CASE)..."
+	cd $(CURDIR) && $(CARGO) run -p bpfix -- $(CASE) --format both
 
-.PHONY: bench-eval
-bench-eval:
-	@echo "[bench-eval] Replaying bpfix-bench and running diagnostic eval..."
-	cd $(CURDIR) && $(PYTHON) tools/evaluate_benchmark.py --benchmark bpfix-bench --timeout-sec 60
+.PHONY: bench-smoke
+bench-smoke:
+	@echo "[bench-smoke] Running bpfix benchmark smoke case..."
+	cd $(CURDIR) && $(CARGO) run -q -p bpfix -- bpfix-bench/raw/so/stackoverflow-60053570.yaml --format json
 
 .PHONY: paper
 paper:
@@ -83,22 +82,10 @@ paper-clean:
 	@echo "[paper-clean] Removing LaTeX build artifacts..."
 	cd $(PAPER_DIR) && rm -f *.aux *.bbl *.blg *.log *.out *.toc *.fls *.fdb_latexmk *.synctex.gz
 
-.PHONY: lint
-lint:
-	@echo "[lint] Running flake8 on active Python code..."
-	$(PYTHON) -m flake8 \
-		--max-line-length=120 \
-		--extend-ignore=E203,W503 \
-		$(CURDIR)/bpfix/ $(CURDIR)/tools/ $(CURDIR)/tests/
-
-.PHONY: loc
-loc:
-	@echo "[loc] Active Python modules:"
-	@find bpfix tools tests -name '*.py' -print0 | xargs -0 wc -l | sort -rn | tail -1
-
 .PHONY: clean
 clean: paper-clean
-	@echo "[clean] Removing generated benchmark artifacts..."
+	@echo "[clean] Removing Rust and benchmark build artifacts..."
+	cd $(CURDIR) && $(CARGO) clean
 	@rm -f $(BENCH_DIR)/replay-report.json
 	@find $(BENCH_DIR)/cases -type f \( \
 		-name '*.o' -o \
@@ -108,5 +95,4 @@ clean: paper-clean
 		-name 'verifier_load_result.json' -o \
 		-name 'replay_load_result.json' \
 	\) -delete
-	@rm -f $(TMP_DIR)/*.md
 	@echo "[clean] Done."

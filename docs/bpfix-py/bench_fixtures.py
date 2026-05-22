@@ -9,7 +9,8 @@ from typing import Any
 import yaml
 
 
-ROOT = Path(__file__).resolve().parent
+ARCHIVE_ROOT = Path(__file__).resolve().parent
+ROOT = ARCHIVE_ROOT.parents[1]
 RAW_EXTERNAL_PARTS = ("bpfix-bench", "raw")
 
 

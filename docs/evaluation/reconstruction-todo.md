@@ -37,7 +37,7 @@ bpfix-bench/cases/<case_id>/
 and must pass local replay:
 
 ```bash
-python3 tools/validate_benchmark.py --replay bpfix-bench --timeout-sec 60
+python3 docs/bpfix-py/tools/validate_benchmark.py --replay bpfix-bench --timeout-sec 60
 ```
 
 During case development, the individual case should also build and replay with

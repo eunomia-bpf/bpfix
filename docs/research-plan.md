@@ -2,54 +2,49 @@
 
 Last updated: 2026-05-22
 
-BPFix is currently scoped as a userspace diagnostic tool for eBPF verifier
-failures. The maintained product goal is: take existing verifier logs and return
+BPFix is scoped as a Rust userspace diagnostic tool for eBPF verifier failures.
+The maintained product goal is: take existing verifier logs and return
 Rust-style diagnostics that are stable enough for developers, CI systems, and
 other tools to consume.
 
 Repair synthesis, verifier-oracle patch loops, and paper-only experiments are
 not part of the active product scope in this repository pass. Historical notes
-under `docs/tmp/` are intentionally non-canonical.
+under `docs/tmp/` are intentionally non-canonical. The previous Python
+implementation is archived under `docs/bpfix-py/`.
 
 ## Current Thesis
 
 The eBPF verifier already emits useful proof-attempt evidence in verbose logs:
 per-instruction abstract register state, scalar bounds, pointer provenance,
 offset/range facts, BTF source annotations, and backtracking notes. The last
-verifier error line is often only the symptom. BPFix parses the full trace and
-turns that evidence into:
+verifier error line is often only the symptom. BPFix parses the trace and turns
+that evidence into:
 
 - a stable error ID
 - a primary failure class
 - the missing verifier proof obligation
-- proof establishment/loss evidence when present
 - source or bytecode spans suitable for Rust-style diagnostics
 - JSON output for downstream tooling
 
 ## Active Capabilities
 
-Code lives under the `bpfix/` package.
+The active project is a Cargo workspace.
 
 | area | status | canonical path |
 | --- | --- | --- |
-| CLI | active | `bpfix/cli.py`, `python -m bpfix` |
-| Python API | active | `bpfix/api/__init__.py` |
-| diagnostic pipeline | active | `bpfix/extractor/pipeline.py` |
-| LOG_LEVEL2 trace parsing | active | `bpfix/extractor/trace_parser.py` |
-| source correlation | active | `bpfix/extractor/source_correlator.py` |
-| Rust-style renderer | active | `bpfix/extractor/renderer.py` |
-| CFG/dataflow/slicing | active | `bpfix/extractor/engine/` |
-| proof-carrier lifecycle analysis | active | `bpfix/extractor/engine/monitor.py` |
-| opcode/safety-schema inference | active | `bpfix/extractor/engine/opcode_safety.py` |
-| stable error catalog | active | `bpfix/catalogs/error_catalog.yaml` |
-| obligation catalog | active | `bpfix/catalogs/obligation_catalog.yaml` |
-| structured schema | active | `bpfix/schema/diagnostic.json` |
-| regex baseline | active | `bpfix/baseline/` |
-| replay validator | active | `tools/validate_benchmark.py` |
-| diagnostic evaluation | active | `tools/evaluate_benchmark.py` |
+| Rust CLI | active | `crates/bpfix`, `cargo run -p bpfix -- ...` |
+| verifier-log summary parser | active | `crates/bpfanalysis/src/verifier_log.rs` |
+| CFG/lift/lower analysis | active | `crates/bpfanalysis/src/analysis/` |
+| BPF instruction model | active | `crates/bpfanalysis/src/insn.rs` |
+| pass context/support types | active | `crates/bpfanalysis/src/pass.rs` |
+| libbpf source reference | active | `vendor/libbpf` submodule |
+| benchmark corpus | active | `bpfix-bench/` |
+| legacy Python implementation | archived | `docs/bpfix-py/` |
+| legacy replay/evaluation tools | archived | `docs/bpfix-py/tools/` |
 
-The old `interface.*` namespace is kept only as a compatibility alias. New code
-should import from `bpfix.*`.
+The `bpfanalysis` crate imports the analysis implementation from the `bpfopt`
+analysis module and keeps the dependent instruction, verifier-log, and
+pass-context modules needed to compile that analysis as a standalone library.
 
 ## Benchmark Snapshot
 
@@ -95,21 +90,35 @@ Current raw reproduction statuses:
 | `not_reconstructable_from_diff` | 45 |
 | `out_of_scope_non_verifier` | 262 |
 
-## Maintained Evaluation Commands
+## Maintained Commands
 
-Unit tests:
-
-```bash
-python -m pytest tests/ -q
-```
-
-Replay all admitted benchmark cases:
+Run the active Rust tests:
 
 ```bash
-python3 tools/validate_benchmark.py --replay bpfix-bench --timeout-sec 60
+cargo test --workspace
 ```
 
-Latest local result on this checkout:
+Check the workspace:
+
+```bash
+cargo check --workspace
+```
+
+Quick diagnostic smoke:
+
+```bash
+cargo run -p bpfix -- bpfix-bench/raw/so/stackoverflow-60053570.yaml --format both
+```
+
+Legacy Python replay/evaluation tools remain available only as archived
+reference:
+
+```bash
+python3 docs/bpfix-py/tools/validate_benchmark.py --replay bpfix-bench --timeout-sec 60
+python3 docs/bpfix-py/tools/evaluate_benchmark.py --benchmark bpfix-bench --timeout-sec 60
+```
+
+Latest local result before the Rust migration:
 
 ```text
 passed: 150
@@ -121,35 +130,17 @@ All failures were `kernel_selftest` cases whose build failed because the host
 linker could not find `-lbpf`. Stack Overflow, GitHub issue, and GitHub commit
 cases replayed successfully locally.
 
-Run diagnostic evaluation on freshly replayed logs:
-
-```bash
-python3 tools/evaluate_benchmark.py --benchmark bpfix-bench --timeout-sec 60
-```
-
-Quick diagnostic smoke:
-
-```bash
-python3 tools/evaluate_benchmark.py \
-  --benchmark bpfix-bench \
-  --limit 5 \
-  --methods bpfix,baseline \
-  --results-path /tmp/bpfix-eval-smoke.json \
-  --timeout-sec 30
-```
-
 ## Near-Term Roadmap
 
-1. Keep the project usable as an open-source userspace tool: stable CLI,
-   stable Python API, clear package layout, and maintained docs.
+1. Keep the project usable as an open-source Rust userspace tool: stable CLI,
+   clear crate layout, and maintained docs.
 2. Treat `bpfix-bench/manifest.yaml` and `bpfix-bench/raw/index.yaml` as the
    source of benchmark facts.
-3. Improve diagnostic quality on the 235 replayable cases before expanding
-   product scope.
-4. Keep taxonomy labels mutually exclusive and preserve secondary mechanisms as
-   label metadata rather than new primary classes.
-5. Improve source correlation and proof-event precision for trace-rich logs.
-6. Keep repair synthesis out of the active API until it is implemented,
+3. Expand `crates/bpfix` classification coverage from the archived Python
+   catalogs while keeping JSON output stable.
+4. Expose more typed analysis from `bpfanalysis` instead of relying on final
+   verifier-message matching.
+5. Keep repair synthesis out of the active API until it is implemented,
    validated, and documented as a separate capability.
 
 ## Non-Goals For This Pass

@@ -16,6 +16,9 @@ build/
 dist/
 *.egg-info/
 
+# Rust
+target/
+
 # Local outputs and artifacts
 out/
 .cache/

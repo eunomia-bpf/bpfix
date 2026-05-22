@@ -50,7 +50,7 @@ The raw directory also contains 201 kernel-selftest raw log fixtures under
 Run the validator before treating this checkout as a valid local benchmark:
 
 ```bash
-python3 tools/validate_benchmark.py --replay bpfix-bench --timeout-sec 60
+python3 docs/bpfix-py/tools/validate_benchmark.py --replay bpfix-bench --timeout-sec 60
 ```
 
 Expected result on a fully provisioned pinned environment:
@@ -79,7 +79,7 @@ issue, and GitHub commit cases replayed successfully on this host.
 Regenerate the raw external audit index with:
 
 ```bash
-python3 tools/sync_external_raw_bench.py --apply
+python3 docs/bpfix-py/tools/sync_external_raw_bench.py --bench-root bpfix-bench --apply
 ```
 
 `raw/index.yaml` records reproduction status for external raw material, including

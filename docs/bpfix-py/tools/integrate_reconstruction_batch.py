@@ -12,9 +12,10 @@ from typing import Any
 
 import yaml
 
-ROOT = Path(__file__).resolve().parents[1]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
+ARCHIVE_ROOT = Path(__file__).resolve().parents[1]
+PROJECT_ROOT = ARCHIVE_ROOT.parents[1]
+if str(ARCHIVE_ROOT) not in sys.path:
+    sys.path.insert(0, str(ARCHIVE_ROOT))
 
 from tools.sync_external_raw_bench import dump_yaml, raw_bucket
 
@@ -45,7 +46,7 @@ class BatchRow:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("report", type=Path, help="docs/tmp/reconstruction-batch-XX.md")
-    parser.add_argument("--bench-root", type=Path, default=ROOT / "bpfix-bench")
+    parser.add_argument("--bench-root", type=Path, default=PROJECT_ROOT / "bpfix-bench")
     parser.add_argument("--apply", action="store_true", help="write metadata updates")
     args = parser.parse_args(argv)
 
@@ -146,7 +147,7 @@ def integrate_batch(bench_root: Path, rows: list[BatchRow], apply: bool) -> dict
             raw = load_yaml(raw_path)
             update_reproduction(raw, row)
             raw_updates[raw_path] = raw
-            summary["updated_raw"].append(str(raw_path.relative_to(ROOT)))
+            summary["updated_raw"].append(str(raw_path.relative_to(PROJECT_ROOT)))
         else:
             summary["missing_raw"].append(row.raw_id)
 

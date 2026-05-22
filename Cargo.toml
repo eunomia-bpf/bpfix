@@ -1,0 +1,19 @@
+[workspace]
+members = [
+    "crates/bpfanalysis",
+    "crates/bpfix",
+]
+resolver = "2"
+
+[workspace.package]
+edition = "2021"
+license = "MIT"
+repository = "https://github.com/yunwei37/ebpf-verifier-agent"
+
+[workspace.dependencies]
+anyhow = "1"
+clap = { version = "4", features = ["derive"] }
+libbpf-sys = "1.7.0"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+serde_yaml = "0.9"

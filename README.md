@@ -1,191 +1,221 @@
 # BPFix
 
-BPFix is a userspace diagnostic tool for eBPF verifier failures. It turns verbose
-verifier logs into Rust-style diagnostics: a stable error ID, a failure class,
-the verifier obligation that was not proven, source or bytecode spans when they
-are available, and repair-oriented hints.
+**BPFix makes eBPF verifier errors feel closer to Rust compiler errors.**
 
-BPFix does not patch the kernel and does not replace the verifier. It consumes
-the verifier output that developers already get from `bpftool`, libbpf, Aya,
-BCC, or project-specific loaders.
+The Linux eBPF verifier is powerful, but its failure logs are hard to read. A
+developer usually sees a long `bpftool`, libbpf, Aya, or BCC log and then has to
+guess which safety proof the verifier could not establish.
 
-## Current Scope
+BPFix is a userspace diagnostic layer for that problem. It reads verifier logs
+from your existing workflow and turns them into:
 
-Active scope:
+- a stable `BPFIX-*` error ID
+- a short explanation of what the verifier could not prove
+- the nearest instruction or source location when the log contains one
+- practical repair hints
+- JSON output for editors, CI, and other tools
 
-- parse raw verifier logs, including LOG_LEVEL2 per-instruction state traces
-- classify failures with a stable error catalog
-- infer verifier proof obligations from bytecode and abstract state
-- reconstruct proof/loss evidence with CFG, dataflow, slicing, and carrier
-  lifecycle analysis
-- render human-readable diagnostics and schema-valid JSON
-- replay and evaluate the curated `bpfix-bench` verifier-failure corpus
+BPFix does not replace Aya, libbpf-rs, `bpftool`, or the kernel verifier. It
+sits next to them and explains verifier failures after they happen.
 
-Out of scope for the current tool:
+## Motivating Example
 
-- automatic source patch synthesis
-- semantic correctness or runtime behavior validation
-- kernel patches or verifier instrumentation
-- paper-only experiments under `docs/tmp/`
+Here is a real verifier failure from `bpfix-bench`
+(`stackoverflow-70750259`). The source has packet bounds checks, but the value
+used to advance the packet cursor is assembled from packet bytes, byte-swapped,
+stored to the stack, and reloaded as a signed scalar:
 
-## Install
+```c
+if (data_end < data + sizeof(struct extension))
+    return XDP_DROP;
+
+struct extension *ext = (void *)data;
+volatile int ext_len = __bpf_htons(ext->len);
+
+if (ext_len < 0)
+    return XDP_DROP;
+
+data += ext_len;
+```
+
+The raw verifier log is technically accurate, but it is hard to turn into a
+repair:
+
+```text
+; volatile int ext_len = __bpf_htons(ext->len); @ prog.c:274
+22: (4f) r0 |= r6
+23: (dc) r0 = be16 r0
+24: (63) *(u32 *)(r10 -4) = r0
+
+; data += ext_len; @ prog.c:280
+30: (61) r0 = *(u32 *)(r10 -4)
+31: (67) r0 <<= 32
+32: (c7) r0 s>>= 32
+33: (0f) r5 += r0
+value -2147483648 makes pkt pointer be out of bounds
+```
+
+The final line points at `data += ext_len`, but the useful diagnostic is the
+missing proof: the verifier needs a bounded, non-negative scalar at the packet
+pointer addition. BPFix turns that into a Rust-style diagnostic:
+
+```text
+BPFIX-E005 [lowering_artifact]
+message: scalar range proof is missing: value -2147483648 makes pkt pointer be out of bounds
+missing obligation: bound the scalar value tightly enough for the verifier to prove the memory access range
+span: prog.c:280 pc=33
+evidence:
+  - terminal_verifier_error at log line 121: value -2147483648 makes pkt pointer be out of bounds
+  - instruction_pc at log line 121: nearest verifier instruction pc 33
+  - verifier_trace: parsed 30 per-instruction verifier state snapshots
+candidate repairs:
+  - Clamp the index or length with explicit upper and lower bounds.
+  - Keep the bounded scalar in the same SSA value used for pointer arithmetic or helper length.
+```
+
+This is the kind of failure that motivates the project: the program is not
+missing a generic "add a bounds check" hint. The developer needs to understand
+which verifier proof was lost and where to make that proof visible again.
+
+## Quick Start
+
+Build the workspace:
 
 ```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -e .[dev]
+git submodule update --init --recursive
+cargo build --workspace
 ```
 
-For runtime dependencies without editable packaging metadata:
+Run BPFix on a verifier log:
 
 ```bash
-pip install -r requirements.txt
+cargo run -p bpfix -- verifier.log
 ```
 
-## CLI Usage
-
-Generate a human-readable diagnostic from a verifier log:
+Pipe a failing load command into BPFix:
 
 ```bash
-python -m bpfix path/to/verifier.log
+sudo bpftool prog load xdp.o /sys/fs/bpf/xdp 2>&1 | cargo run -p bpfix --
 ```
 
-Generate JSON:
+Run it on a benchmark YAML record:
 
 ```bash
-python -m bpfix path/to/verifier.log --format json
+cargo run -p bpfix -- bpfix-bench/raw/so/stackoverflow-60053570.yaml
 ```
 
-Print both:
+Get JSON for CI or editor integration:
 
 ```bash
-python -m bpfix path/to/verifier.log --format both
+cargo run -p bpfix -- verifier.log --format json
 ```
 
-The CLI can also read a raw benchmark YAML record and extract its embedded
-verifier log:
+## Best Workflow
+
+The best user experience is to keep your current BPF workflow and let BPFix
+explain failures.
+
+Today, BPFix works as a log post-processor:
 
 ```bash
-python -m bpfix bpfix-bench/raw/so/stackoverflow-60053570.yaml --format both
+bpftool ... 2>&1 | bpfix
+cargo run -p bpfix -- verifier.log
 ```
 
-Pipe a log over stdin:
+The intended next CLI shape is:
 
 ```bash
-cat verifier.log | python -m bpfix --format json
+bpfix check -- <your existing command>
 ```
 
-If you have `bpftool prog dump xlated linum` output, pass it to improve source
-correlation:
+For example:
 
 ```bash
-python -m bpfix verifier.log --bpftool-xlated xlated-linum.txt
+bpfix check -- cargo test
+bpfix check -- make load
+bpfix check -- sudo bpftool prog load xdp.o /sys/fs/bpf/xdp
 ```
 
-## Python API
+That mode should run the command normally, capture verifier output, and print a
+Rust-style diagnostic only when the load fails.
 
-```python
-from pathlib import Path
+## Project Status
 
-from bpfix import build_diagnostic, generate_diagnostic
+This repository is currently a Rust rewrite of the original Python prototype.
+The active code is the Rust workspace:
 
-raw_log = Path("verifier.log").read_text()
-
-schema_valid_payload = build_diagnostic(raw_log, case_id="demo-case")
-rich_output = generate_diagnostic(raw_log)
-
-print(rich_output.text)
-print(schema_valid_payload["error_id"])
+```text
+crates/
+  bpfix/        command-line diagnostic tool
+  bpfanalysis/  verifier-log and BPF bytecode analysis primitives
 ```
 
-The structured output schema is [bpfix/schema/diagnostic.json](bpfix/schema/diagnostic.json).
+The old Python implementation is archived under `docs/bpfix-py/` for reference.
+It is not the active development surface.
 
-The old `interface.*` import namespace is kept as a compatibility alias, but new
-code should import from `bpfix.*`.
+The `bpfanalysis` crate imports analysis code from the `bpfopt` project and
+uses `libbpf-sys` for BPF instruction and program-type constants. The libbpf
+source is tracked as a submodule in `vendor/libbpf`.
+
+## What BPFix Handles
+
+Current diagnostics focus on common verifier failures:
+
+- packet bounds checks
+- nullable map value pointers
+- uninitialized stack reads
+- reference lifetime leaks
+- scalar range and variable-offset problems
+- pointer type/provenance loss
+- verifier complexity and loop limits
+- missing kernel/helper/program-type support
+- dynptr lifetime and bounds issues
+
+## Non-Goals
+
+BPFix is not:
+
+- a kernel patch
+- a verifier replacement
+- an automatic source-code repair tool
+- a semantic correctness checker for accepted BPF programs
+
+It explains why the verifier rejected a program and what proof the developer
+probably needs to make explicit.
+
+## Development
+
+Run tests:
+
+```bash
+cargo test --workspace
+```
+
+Check the workspace:
+
+```bash
+cargo check --workspace
+```
+
+Format code:
+
+```bash
+cargo fmt --all
+```
+
+Run a smoke test:
+
+```bash
+cargo run -p bpfix -- bpfix-bench/raw/so/stackoverflow-60053570.yaml --format both
+```
 
 ## Repository Layout
 
 ```text
-bpfix/
-  cli.py             Command-line interface
-  api/               Public Python helpers
-  extractor/         Parser, analysis pipeline, source correlation, renderer
-  extractor/engine/  CFG, dataflow, slicing, monitor, opcode safety
-  baseline/          Regex baseline used by evaluation
-  catalogs/          Stable error and obligation catalogs
-  schema/            JSON schema for diagnostic output
-interface/
-  __init__.py        Compatibility alias for old imports
-bpfix-bench/
-  manifest.yaml      Single entry point for replayable verifier-reject cases
-  cases/             Self-contained local reproducers admitted to the benchmark
-  raw/               External SO/GH/commit audit material
-tools/
-  validate_benchmark.py  Rebuild/load replay validator
-  evaluate_benchmark.py  Fresh-replay diagnostic evaluation runner
-  sync_external_raw_bench.py Raw external audit/index generator
-tests/
-  test_*.py          Unit, schema, CLI, parser, and evaluation smoke tests
-docs/
-  research-plan.md   Current project status and roadmap
-  evaluation/        Benchmark and metric documentation
-  tmp/               Historical working notes; not the source of current facts
+bpfix-bench/       replayable verifier-failure corpus and raw examples
+crates/bpfanalysis Rust analysis library
+crates/bpfix       user-facing CLI
+docs/evaluation/   benchmark and metric notes
+docs/bpfix-py/     archived Python prototype
+vendor/libbpf/     libbpf submodule
 ```
-
-## Current Benchmark Snapshot
-
-`bpfix-bench/manifest.yaml` currently lists 235 replayable verifier-reject
-cases:
-
-| source kind | cases |
-| --- | ---: |
-| GitHub issue | 18 |
-| GitHub commit | 46 |
-| kernel selftest | 85 |
-| Stack Overflow | 86 |
-| **total** | **235** |
-
-Current primary taxonomy labels:
-
-| class | cases |
-| --- | ---: |
-| `source_bug` | 187 |
-| `lowering_artifact` | 24 |
-| `environment_or_configuration` | 11 |
-| `verifier_false_positive` | 9 |
-| `verifier_limit` | 4 |
-
-## Development
-
-Run the unit test suite:
-
-```bash
-python -m pytest tests/ -q
-```
-
-Inspect the CLI:
-
-```bash
-python -m bpfix --help
-```
-
-Replay the benchmark:
-
-```bash
-python3 tools/validate_benchmark.py --replay bpfix-bench --timeout-sec 60
-```
-
-Full benchmark replay requires the pinned kernel/compiler/libbpf/BTF
-environment. On this host, the latest full replay passed the 150 non-selftest
-cases and failed the 85 kernel selftest cases at build time because `-lbpf` was
-not available to the linker.
-
-Run diagnostic evaluation on freshly replayed logs:
-
-```bash
-python3 tools/evaluate_benchmark.py --benchmark bpfix-bench --timeout-sec 60
-```
-
-`docs/tmp/` is intentionally not treated as canonical project state. Use
-`README.md`, `docs/research-plan.md`, and `docs/evaluation/` for maintained
-facts.

@@ -42,7 +42,7 @@ If replay produces no verifier rejection log, the case is marked
 `replay_invalid` for that run and no diagnostic method is scored on it. The
 replay failure must be reported in the artifact-validity table. A final paper
 run should have zero `replay_invalid` cases after running
-`tools/validate_benchmark.py --replay bpfix-bench`; otherwise the diagnostic
+`docs/bpfix-py/tools/validate_benchmark.py --replay bpfix-bench`; otherwise the diagnostic
 denominator is smaller and the missing cases must be explained explicitly.
 
 ## Compared Methods

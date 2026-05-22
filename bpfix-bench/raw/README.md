@@ -69,5 +69,5 @@ Policy:
 Regenerate:
 
 ```bash
-python3 tools/sync_external_raw_bench.py --apply
+python3 docs/bpfix-py/tools/sync_external_raw_bench.py --bench-root bpfix-bench --apply
 ```

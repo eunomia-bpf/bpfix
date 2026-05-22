@@ -63,7 +63,7 @@ print("raw index counts", idx["counts"])
 PY
 ```
 
-Error names were joined from `bpfix/catalogs/error_catalog.yaml`:
+Error names were joined from `docs/bpfix-py/bpfix/catalogs/error_catalog.yaml`:
 
 ```bash
 python - <<'PY'
@@ -72,7 +72,7 @@ from collections import Counter, defaultdict
 import yaml
 
 root = Path("bpfix-bench")
-catalog = yaml.safe_load(Path("bpfix/catalogs/error_catalog.yaml").read_text())
+catalog = yaml.safe_load(Path("docs/bpfix-py/bpfix/catalogs/error_catalog.yaml").read_text())
 names = {e["error_id"]: e["short_name"] for e in catalog["error_types"]}
 manifest = yaml.safe_load((root / "manifest.yaml").read_text())
 case_docs = [
@@ -139,7 +139,7 @@ Breakdown by source:
 
 ## Error Categories
 
-Error IDs are defined in `bpfix/catalogs/error_catalog.yaml`.
+Error IDs are defined in `docs/bpfix-py/bpfix/catalogs/error_catalog.yaml`.
 
 | error_id | short_name | case-label taxonomy_class | cases |
 |---|---|---|---:|
@@ -166,7 +166,7 @@ Error IDs are defined in `bpfix/catalogs/error_catalog.yaml`.
 | BPFIX-UNKNOWN | <missing> | environment_or_configuration 1, source_bug 2 | 3 |
 
 The taxonomy column above uses the labels in each `case.yaml`, not only the
-default taxonomy in `bpfix/catalogs/error_catalog.yaml`. For `BPFIX-E005`,
+default taxonomy in `docs/bpfix-py/bpfix/catalogs/error_catalog.yaml`. For `BPFIX-E005`,
 13 cases are labelled `source_bug`, 11 are labelled `lowering_artifact`, and 9
 are labelled `verifier_false_positive`.
 

@@ -1,0 +1,19 @@
+[package]
+name = "bpfix"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Userspace eBPF verifier failure diagnostic CLI"
+
+[[bin]]
+name = "bpfix"
+path = "src/main.rs"
+
+[dependencies]
+anyhow.workspace = true
+bpfanalysis = { path = "../bpfanalysis" }
+clap.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+serde_yaml.workspace = true

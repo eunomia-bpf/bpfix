@@ -15,9 +15,10 @@ from typing import Any, Callable
 
 import yaml
 
-ROOT = Path(__file__).resolve().parents[1]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
+ARCHIVE_ROOT = Path(__file__).resolve().parents[1]
+PROJECT_ROOT = ARCHIVE_ROOT.parents[1]
+if str(ARCHIVE_ROOT) not in sys.path:
+    sys.path.insert(0, str(ARCHIVE_ROOT))
 
 from bpfix.baseline import generate_baseline_diagnostic
 from bpfix.extractor.engine.cfg_builder import build_cfg
@@ -48,8 +49,8 @@ from bpfix.extractor.trace_parser import parse_trace
 from tools.replay_case import replay_case
 
 
-DEFAULT_BENCHMARK_ROOT = ROOT / "bpfix-bench"
-DEFAULT_RESULTS_PATH = ROOT / "docs" / "tmp" / "benchmark-eval-results.json"
+DEFAULT_BENCHMARK_ROOT = PROJECT_ROOT / "bpfix-bench"
+DEFAULT_RESULTS_PATH = PROJECT_ROOT / "docs" / "tmp" / "benchmark-eval-results.json"
 METHOD_KEYS = ("bpfix", "baseline", "ablation_a", "ablation_b", "ablation_c")
 GENERATED_ARTIFACT_NAMES = {
     "prog.o",
@@ -539,7 +540,7 @@ def evaluate_entry(
     row: dict[str, Any] = {
         "case_id": case_id,
         "source_kind": str(entry.get("source_kind") or ""),
-        "case_path": str(case_dir.relative_to(ROOT)),
+        "case_path": str(case_dir.relative_to(PROJECT_ROOT)),
         "replay": {},
     }
     try:
