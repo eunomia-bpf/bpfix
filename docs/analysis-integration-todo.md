@@ -33,6 +33,11 @@ trace.
       `; source @ file:line` annotations.
 - [x] Refactor `crates/bpfix` so multi-span diagnostics come from
       `bpfanalysis`, not CLI-local source scanning.
+- [x] Make the runtime log path independent from `case.yaml`; benchmark YAML is
+      used only when the YAML file is passed as input.
+- [x] Extract the verifier region from full libbpf/build logs before analysis.
+- [x] Accept and validate an optional `--object prog.o` argument and expose it in
+      diagnostic metadata.
 - [x] Cover the branch-merge provenance example
       `stackoverflow-53136145` in analysis and CLI tests.
 - [x] Preserve benchmark metadata support so replay cases can still supply
@@ -40,9 +45,8 @@ trace.
 
 ## Next
 
-- [ ] Add an optional object input, for example `bpfix --object prog.o
-      verifier.log`, so BPFix can correlate logs with BTF and instruction
-      metadata even when source comments are sparse.
+- [ ] Use `--object prog.o` for real BTF/ELF source correlation when source
+      comments are sparse or missing.
 - [ ] Build a `ProgramCFG` from object instructions and connect verifier states
       to `InsnSite` instead of only raw PCs.
 - [ ] Move source correlation from log comments to BTF line records when an
@@ -57,19 +61,18 @@ trace.
       terminal error class.
 - [ ] Add golden tests for at least one representative case per obligation
       class.
-- [ ] Add `bpfix check -- <command>` to run a user's existing load/test command,
-      capture verifier output, and print diagnostics only on failure.
 - [ ] Keep JSON stable enough for editors and CI integrations.
 
 ## Current Limitations
 
-- The first public API is log-driven. It does not yet require source code or an
-  object file, but object/BTF input will improve precision.
-- Source spans require verifier logs with source comments unless a future object
-  input is provided.
+- The first public API is log-driven. It does not require source code, YAML, or
+  an object file.
+- `--object` is accepted and validated, but BTF/CFG-backed source correlation is
+  still future work.
+- Source spans require verifier logs with source comments until object-backed
+  correlation is implemented.
 - The proof-lost engine is strongest today for pointer provenance and branch
   merge failures. Other obligation classes still need deeper value-lineage
   tracking.
-- Benchmark `case.yaml` metadata is used only as supplemental truth for replay
-  cases. Real user logs still rely on the analysis output and terminal verifier
-  message.
+- Benchmark `case.yaml` metadata is used only when a YAML record is passed as
+  input. It is the evaluation oracle, not a runtime dependency for normal logs.

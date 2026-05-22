@@ -11,6 +11,9 @@ use serde_yaml::Value as YamlValue;
 struct Cli {
     /// Verifier log or bpfix-bench raw YAML. Reads stdin when omitted or '-'.
     input: Option<PathBuf>,
+    /// Optional compiled BPF object. Used for validation now and source/BTF correlation later.
+    #[arg(long)]
+    object: Option<PathBuf>,
     /// Output format.
     #[arg(short, long, value_enum, default_value_t = OutputFormat::Text)]
     format: OutputFormat,
@@ -31,6 +34,7 @@ struct LoadedInput {
     log: String,
     case_id: Option<String>,
     input_kind: &'static str,
+    object_path_hint: Option<String>,
     case_metadata: Option<CaseMetadata>,
 }
 
@@ -106,6 +110,7 @@ struct Evidence {
 struct Metadata {
     case_id: Option<String>,
     input_kind: &'static str,
+    object_path: Option<String>,
     trace_state_count: usize,
     analysis_error: Option<String>,
 }
@@ -113,6 +118,10 @@ struct Metadata {
 fn main() -> Result<()> {
     let cli = Cli::parse();
     let loaded = load_input(cli.input.as_deref())?;
+    let object_path = match cli.object.as_deref() {
+        Some(path) => Some(validate_object_path(path)?),
+        None => loaded.object_path_hint.clone(),
+    };
     let case_id = cli
         .case_id
         .or_else(|| {
@@ -127,15 +136,16 @@ fn main() -> Result<()> {
         case_id,
         loaded.input_kind,
         loaded.case_metadata.as_ref(),
+        object_path,
     );
 
     match cli.format {
         OutputFormat::Text => println!("{}", render_text(&diagnostic)),
-        OutputFormat::Json => println!("{}", serde_json::to_string_pretty(&diagnostic)?),
+        OutputFormat::Json => println!("{}", render_json(&diagnostic)?),
         OutputFormat::Both => {
             println!("{}", render_text(&diagnostic));
             println!();
-            println!("{}", serde_json::to_string_pretty(&diagnostic)?);
+            println!("{}", render_json(&diagnostic)?);
         }
     }
 
@@ -149,27 +159,30 @@ fn load_input(path: Option<&Path>) -> Result<LoadedInput> {
         Some(path) => std::fs::read_to_string(path)
             .with_context(|| format!("failed to read {}", path.display()))?,
     };
-    let sibling_metadata = path.and_then(load_sibling_case_metadata);
-
+    let object_path_hint = detect_object_path(&raw);
     if let Ok(yaml) = serde_yaml::from_str::<YamlValue>(&raw) {
         if let Some(log) = extract_verifier_log(&yaml) {
+            let (log, input_kind) = normalize_verifier_log(log, "bpfix-bench-yaml");
             return Ok(LoadedInput {
                 log,
                 case_id: extract_case_id(&yaml),
-                input_kind: "bpfix-bench-yaml",
-                case_metadata: extract_case_metadata(&yaml).or(sibling_metadata),
+                input_kind,
+                object_path_hint,
+                case_metadata: extract_case_metadata(&yaml),
             });
         }
     }
 
+    let (log, input_kind) = normalize_verifier_log(raw, "verifier-log");
     Ok(LoadedInput {
-        log: raw,
+        log,
         case_id: path
             .and_then(Path::file_stem)
             .and_then(|stem| stem.to_str())
             .map(ToOwned::to_owned),
-        input_kind: "verifier-log",
-        case_metadata: sibling_metadata,
+        input_kind,
+        object_path_hint,
+        case_metadata: None,
     })
 }
 
@@ -182,11 +195,90 @@ fn read_stdin() -> Result<String> {
     Ok(raw)
 }
 
+fn validate_object_path(path: &Path) -> Result<String> {
+    let metadata = std::fs::metadata(path)
+        .with_context(|| format!("failed to read object path {}", path.display()))?;
+    if !metadata.is_file() {
+        anyhow::bail!("object path {} is not a file", path.display());
+    }
+    Ok(path.display().to_string())
+}
+
+fn normalize_verifier_log(raw: String, base_kind: &'static str) -> (String, &'static str) {
+    match extract_verifier_log_region(&raw) {
+        Some(region) => {
+            let kind = match base_kind {
+                "bpfix-bench-yaml" => "bpfix-bench-yaml-region",
+                _ => "verifier-log-region",
+            };
+            (region, kind)
+        }
+        None => (raw, base_kind),
+    }
+}
+
+fn extract_verifier_log_region(raw: &str) -> Option<String> {
+    let lines = raw.lines().collect::<Vec<_>>();
+    if lines.is_empty() {
+        return None;
+    }
+
+    if let Some(begin) = lines
+        .iter()
+        .position(|line| line.contains("-- BEGIN PROG LOAD LOG --"))
+    {
+        let end = lines
+            .iter()
+            .enumerate()
+            .skip(begin + 1)
+            .find_map(|(idx, line)| line.contains("-- END PROG LOAD LOG --").then_some(idx))
+            .unwrap_or(lines.len());
+        if begin + 1 < end {
+            return Some(join_lines(&lines[begin + 1..end]));
+        }
+    }
+
+    let terminal = lines
+        .iter()
+        .rposition(|line| is_verifier_error_line(line.trim()))?;
+    let start = lines
+        .iter()
+        .take(terminal + 1)
+        .position(|line| is_verifier_region_start(line.trim()))?;
+    Some(join_lines(&lines[start..=terminal]))
+}
+
+fn join_lines(lines: &[&str]) -> String {
+    let mut joined = lines.join("\n");
+    if !joined.ends_with('\n') {
+        joined.push('\n');
+    }
+    joined
+}
+
+fn is_verifier_region_start(line: &str) -> bool {
+    line.starts_with("func#")
+        || line == "Live regs before insn:"
+        || parse_source_comment(line).is_some()
+        || parse_instruction_pc(line).is_some()
+        || line.starts_with("from ")
+}
+
+fn detect_object_path(raw: &str) -> Option<String> {
+    raw.lines().find_map(|line| {
+        line.trim()
+            .strip_prefix("libbpf: loading object from ")
+            .map(|path| path.trim().to_string())
+            .filter(|path| !path.is_empty())
+    })
+}
+
 fn build_diagnostic(
     log: &str,
     case_id: Option<String>,
     input_kind: &'static str,
     case_metadata: Option<&CaseMetadata>,
+    object_path: Option<String>,
 ) -> Diagnostic {
     let terminal = find_terminal_error(log).unwrap_or_else(|| TerminalError {
         line: log.lines().count().max(1),
@@ -207,15 +299,15 @@ fn build_diagnostic(
         class.error_id
     }
     .to_string();
-    let failure_class = case_metadata
-        .and_then(|metadata| metadata.taxonomy_class.as_deref())
-        .unwrap_or(class.failure_class)
-        .to_string();
     let (trace_state_count, analysis_error, proof_events) =
         match bpfanalysis::analyze_verifier_log(log, terminal.pc, &terminal.message) {
             Ok(analysis) => (analysis.state_count, None, analysis.events),
             Err(err) => (0, Some(err.to_string()), Vec::new()),
         };
+    let failure_class = case_metadata
+        .and_then(|metadata| metadata.taxonomy_class.as_deref())
+        .unwrap_or_else(|| inferred_failure_class(&class, &proof_events))
+        .to_string();
 
     let mut evidence = Vec::new();
     evidence.push(Evidence {
@@ -271,6 +363,7 @@ fn build_diagnostic(
         .iter()
         .map(|repair| (*repair).to_string())
         .collect::<Vec<_>>();
+    add_proof_event_repairs(&mut candidate_repairs, &proof_events);
     if let Some(fix_direction) = case_metadata.and_then(|metadata| {
         metadata
             .fix_direction
@@ -294,6 +387,7 @@ fn build_diagnostic(
         metadata: Metadata {
             case_id,
             input_kind,
+            object_path,
             trace_state_count,
             analysis_error,
         },
@@ -449,6 +543,43 @@ fn related_spans_from_proof_events(events: &[bpfanalysis::ProofEvent]) -> Vec<Re
     spans
 }
 
+fn add_proof_event_repairs(repairs: &mut Vec<String>, events: &[bpfanalysis::ProofEvent]) {
+    for event in events {
+        if event.role != ProofEventRole::ProofLost {
+            continue;
+        }
+        if event.detail.contains("branch-specific pointers") {
+            insert_repair(
+                repairs,
+                "Keep branch-specific pointer derivations in separate verifier-visible branches, or rederive the pointer from a checked base immediately before dereferencing it.",
+            );
+        }
+    }
+}
+
+fn insert_repair(repairs: &mut Vec<String>, repair: &str) {
+    if repairs.iter().any(|existing| existing == repair) {
+        return;
+    }
+    repairs.insert(0, repair.to_string());
+}
+
+fn inferred_failure_class(
+    class: &Classification,
+    proof_events: &[bpfanalysis::ProofEvent],
+) -> &'static str {
+    if proof_events
+        .iter()
+        .any(|event| event.role == ProofEventRole::ProofLost)
+    {
+        return "lowering_artifact";
+    }
+    match class.error_id {
+        "BPFIX-E005" | "BPFIX-E006" => "source_bug",
+        _ => class.failure_class,
+    }
+}
+
 fn classify(message: &str) -> Classification {
     let lower = message.to_ascii_lowercase();
     if lower.contains("invalid access to packet") || lower.contains("outside of the packet") {
@@ -593,6 +724,10 @@ fn classify(message: &str) -> Classification {
     }
 }
 
+fn render_json(diagnostic: &Diagnostic) -> Result<String> {
+    serde_json::to_string_pretty(diagnostic).context("failed to render diagnostic JSON")
+}
+
 fn render_text(diagnostic: &Diagnostic) -> String {
     let mut out = String::new();
     let title = diagnostic
@@ -714,13 +849,6 @@ fn source_label(error_id: &str) -> &'static str {
         "BPFIX-E018" => "verifier analysis budget or loop proof is exhausted here",
         _ => "verifier proof obligation is missing here",
     }
-}
-
-fn load_sibling_case_metadata(path: &Path) -> Option<CaseMetadata> {
-    let case_yaml = path.parent()?.join("case.yaml");
-    let raw = std::fs::read_to_string(case_yaml).ok()?;
-    let yaml = serde_yaml::from_str::<YamlValue>(&raw).ok()?;
-    extract_case_metadata(&yaml)
 }
 
 fn extract_case_metadata(yaml: &YamlValue) -> Option<CaseMetadata> {

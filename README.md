@@ -80,11 +80,11 @@ error[BPFIX-E006]: pointer type proof is missing
 270 | dst_port = __constant_ntohs(((struct udphdr *)udph)->dest);
     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ rejected here: verifier sees a scalar where a pointer is required
    |
-   = verifier[282]: R5 invalid mem access 'scalar'
+   = verifier[229]: R5 invalid mem access 'scalar'
    = note: nearest BPF instruction pc 37
    = note: parsed 60 verifier state snapshots
    = obligation: preserve a verifier-recognized pointer type at the operation that requires a pointer
-help: Keep the IPv4 and IPv6 UDP-pointer derivations in separate verifier-visible branches, or rederive the UDP pointer from a checked base immediately before dereferencing it.
+help: Keep branch-specific pointer derivations in separate verifier-visible branches, or rederive the pointer from a checked base immediately before dereferencing it.
 help: Avoid integer casts or arithmetic that turn the pointer into a scalar before the access.
 help: Recompute the pointer from a verifier-tracked base after scalar manipulation.
 ```
@@ -116,10 +116,18 @@ Pipe a failing load command into BPFix:
 sudo bpftool prog load xdp.o /sys/fs/bpf/xdp 2>&1 | cargo run -p bpfix --
 ```
 
-Run it on a benchmark YAML record:
+Pass a full libbpf or build log directly; BPFix extracts the verifier region
+when the log contains surrounding build output:
 
 ```bash
-cargo run -p bpfix -- bpfix-bench/raw/so/stackoverflow-60053570.yaml
+cargo run -p bpfix -- build-or-load.log
+```
+
+Optionally pass the BPF object. Today this records and validates the object
+input; BTF/CFG-backed source correlation will build on the same CLI shape:
+
+```bash
+cargo run -p bpfix -- --object xdp.o verifier.log
 ```
 
 Get JSON for CI or editor integration:
@@ -128,34 +136,32 @@ Get JSON for CI or editor integration:
 cargo run -p bpfix -- verifier.log --format json
 ```
 
+Run it on a benchmark YAML record when evaluating BPFix against the bundled
+corpus:
+
+```bash
+cargo run -p bpfix -- bpfix-bench/raw/so/stackoverflow-60053570.yaml
+```
+
 ## Best Workflow
 
 The best user experience is to keep your current BPF workflow and let BPFix
-explain failures.
-
-Today, BPFix works as a log post-processor:
+explain the verifier log it already produces:
 
 ```bash
-bpftool ... 2>&1 | bpfix
-cargo run -p bpfix -- verifier.log
+make load 2>&1 | tee verifier.log
+bpfix verifier.log
 ```
 
-The intended next CLI shape is:
+or:
 
 ```bash
-bpfix check -- <your existing command>
+sudo bpftool prog load xdp.o /sys/fs/bpf/xdp 2> verifier.log
+bpfix --object xdp.o verifier.log
 ```
 
-For example:
-
-```bash
-bpfix check -- cargo test
-bpfix check -- make load
-bpfix check -- sudo bpftool prog load xdp.o /sys/fs/bpf/xdp
-```
-
-That mode should run the command normally, capture verifier output, and print a
-Rust-style diagnostic only when the load fails.
+BPFix does not need `case.yaml` for normal use. YAML records are for the bundled
+benchmark and later accuracy evaluation.
 
 ## Project Status
 
@@ -178,9 +184,10 @@ source is tracked as a submodule in `vendor/libbpf`.
 The current user-facing pipeline is log-first: `bpfix` calls
 `bpfanalysis::analyze_verifier_log`, which parses verifier state snapshots,
 infers the missing proof obligation, extracts proof lifecycle events, and maps
-them back to source comments when the log contains BTF/source annotations. Full
-object-file CFG and BTF correlation are the next analysis layer, not a runtime
-requirement for the basic CLI.
+them back to source comments when the log contains BTF/source annotations. The
+CLI accepts an optional `--object prog.o` today so object-aware workflows have a
+stable entry point; full object-file CFG and BTF correlation are the next
+analysis layer, not a runtime requirement for the basic CLI.
 
 ## What BPFix Handles
 
