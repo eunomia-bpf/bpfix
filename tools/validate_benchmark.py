@@ -27,7 +27,7 @@ VALID_TAXONOMY_CLASSES = {
     "lowering_artifact",
     "environment_or_configuration",
     "verifier_limit",
-    "verifier_bug",
+    "verifier_false_positive",
 }
 
 

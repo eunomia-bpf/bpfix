@@ -159,14 +159,16 @@ def _helper_unavailable_details() -> DiagnosticDetails:
     )
 
 
-def _verifier_bug_details() -> DiagnosticDetails:
+def _verifier_false_positive_details() -> DiagnosticDetails:
     return DiagnosticDetails(
-        summary="Verifier or JIT appears to hit an internal bug or regression",
+        summary="Verifier appears to reject a safe program conservatively or incorrectly",
         explanation=(
-            "The log indicates an internal verifier failure rather than a stable program-side contract violation."
+            "The log indicates a verifier-side false positive or internal verifier failure "
+            "rather than a stable program-side contract violation."
         ),
         suggestion=(
-            "Minimize the reproducer, test across nearby kernel versions, and bisect or report the kernel bug."
+            "Minimize the reproducer, test across nearby kernel versions, and record whether "
+            "the evidence is a precision false positive or an upstream-confirmed verifier bug."
         ),
     )
 
@@ -403,7 +405,7 @@ def _details_for_pattern(
     if error_id == "BPFIX-E009":
         return _helper_unavailable_details()
     if error_id == "BPFIX-E010":
-        return _verifier_bug_details()
+        return _verifier_false_positive_details()
     if error_id == "BPFIX-E011":
         return _scalar_pointer_details()
     if error_id == "BPFIX-E012":

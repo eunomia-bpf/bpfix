@@ -3,11 +3,11 @@
 This document records the pre-migration `bpfix-bench` root-cause label audit
 that motivated the orthogonal taxonomy cleanup. It covers the 235 replayable
 cases under
-`bpfix-bench/cases/*/case.yaml` and the current taxonomy inputs:
+`bpfix-bench/cases/*/case.yaml` and the current taxonomy/catalog inputs:
 
-- `taxonomy/taxonomy.yaml`
-- `taxonomy/error_catalog.yaml`
-- `taxonomy/obligation_catalog.yaml`
+- `bpfix-bench/taxonomy.yaml`
+- `interface/catalogs/error_catalog.yaml`
+- `interface/catalogs/obligation_catalog.yaml`
 - `docs/evaluation/metrics.md`
 - `docs/evaluation/baselines.md`
 
@@ -22,11 +22,11 @@ primary classes:
 
 | active primary class | cases |
 | --- | ---: |
-| `source_bug` | 175 |
-| `lowering_artifact` | 46 |
-| `environment_or_configuration` | 10 |
+| `source_bug` | 187 |
+| `lowering_artifact` | 24 |
+| `environment_or_configuration` | 11 |
+| `verifier_false_positive` | 9 |
 | `verifier_limit` | 4 |
-| `verifier_bug` | 0 |
 | **total** | **235** |
 
 Historical references below to `env_mismatch`, `stack_safety`, and
@@ -58,7 +58,7 @@ Use exactly one primary value per case in `label.taxonomy_class`:
 | `lowering_artifact` | The source-level proof or intended invariant is present, but compilation/lowering produces verifier-hostile bytecode that loses or obscures the proof. | Source rewrite, compiler flag, or lowering-aware idiom may repair it, but the root cause is the source-to-bytecode translation. |
 | `environment_or_configuration` | The program assumes a kernel, BTF, loader, attach type, helper/kfunc availability, map relocation, build option, or deployment configuration that is not present in the replay environment. | Fix the environment/configuration or target a compatible feature set; do not score as an ordinary memory-safety source bug. |
 | `verifier_limit` | The program is plausibly safe for the intended environment, but the verifier's bounded analysis, state exploration, loop proof, or stack-budget model cannot prove it. | Refactor for verifier tractability; do not treat as missing safety precondition. |
-| `verifier_bug` | The verifier behavior is incorrect or inconsistent, supported by an upstream verifier fix, minimized regression, or cross-version evidence with unchanged source intent. | Kernel/verifier fix or version-aware workaround. |
+| `verifier_false_positive` | The bytecode is semantically safe, but the verifier rejects it conservatively or incorrectly. Stronger evidence may identify an upstream verifier bug. | Kernel/verifier fix or verifier-friendly semantic-preserving workaround. |
 
 `unknown` should remain an adjudication status, not a primary class for final
 paper metrics.
@@ -86,15 +86,18 @@ easy to overclaim.
 Apply these rules in order after confirming that the local replay rejection
 matches the intended case.
 
-### 1. `verifier_bug`
+### 1. `verifier_false_positive`
 
-Use `verifier_bug` only with strong independent evidence:
+Use `verifier_false_positive` only with independent evidence that the rejected
+program is semantically safe:
 
 - an upstream kernel/verifier patch accepts the same intended program without a
   source or environment change;
 - a minimized reproducer isolates a verifier regression across kernel versions;
 - the log or kernel report shows an internal verifier inconsistency, warning,
   crash, or demonstrably incorrect state transition.
+- the verifier rejects a range, relation, or state merge that can be manually
+  proved safe without adding a new semantic precondition.
 
 Do not use this class when a source rewrite, build configuration change, helper
 selection change, or verifier-friendly refactor is the only evidence.
@@ -230,9 +233,10 @@ Other audit facts:
 - `external_match.status` counts are `not_applicable` 131, `exact` 42,
   `semantic` 37, and `partial` 25.
 - `repair.eligible` is false for 203 cases and true for 32 cases.
-- `taxonomy/taxonomy.yaml` defined `verifier_bug`, but no case used it.
+- `bpfix-bench/taxonomy.yaml` now defines `verifier_false_positive`; the first
+  lowering-candidate audit moved 9 replayable cases into that class.
 - `stack_safety` and `build_configuration` were case labels but were not
-  top-level classes in `taxonomy/taxonomy.yaml`.
+  top-level classes in `bpfix-bench/taxonomy.yaml`.
 
 If only the two off-axis labels are normalized, the provisional class counts
 would be:
@@ -243,7 +247,7 @@ would be:
 | `lowering_artifact` | 47 | Existing `lowering_artifact`, pending strict evidence audit. |
 | `environment_or_configuration` | 14 | Existing `env_mismatch` plus one pre-migration `build_configuration` case. |
 | `verifier_limit` | 4 | Existing `verifier_limit`, pending manual confirmation. |
-| `verifier_bug` | 0 | No active cases. |
+| `verifier_false_positive` | 0 | No pre-migration primary label; introduced by the later lowering-candidate audit. |
 
 These provisional counts should not be used as final paper counts until the
 manual review queue below is resolved.
@@ -369,7 +373,7 @@ taxonomy cleanup. The metadata migration should be small:
 
 1. Restrict `label.taxonomy_class` to the primary classes:
    `source_bug`, `lowering_artifact`, `environment_or_configuration`,
-   `verifier_limit`, `verifier_bug`.
+   `verifier_limit`, `verifier_false_positive`.
 2. Rename pre-migration `env_mismatch` labels to `environment_or_configuration`
    after manual review.
 3. Replace pre-migration `stack_safety` primary labels with `source_bug` or
@@ -385,7 +389,7 @@ taxonomy cleanup. The metadata migration should be small:
    the obligation catalog. Multiple obligations should be allowed.
 7. Add `label.evidence_tags` or `label.classification_evidence` for every
    `lowering_artifact`, `verifier_limit`, `environment_or_configuration`, and
-   future `verifier_bug` case.
+   future `verifier_false_positive` case.
 8. Preserve `label.error_id`, `label.fix_type`, `label.fix_direction`,
    `label.confidence`, and localization fields.
 
@@ -444,9 +448,9 @@ Unsafe blind changes:
 Representative commands used for this audit:
 
 ```bash
-sed -n '1,240p' taxonomy/taxonomy.yaml
-sed -n '1,620p' taxonomy/error_catalog.yaml
-sed -n '1,520p' taxonomy/obligation_catalog.yaml
+sed -n '1,240p' bpfix-bench/taxonomy.yaml
+sed -n '1,620p' interface/catalogs/error_catalog.yaml
+sed -n '1,520p' interface/catalogs/obligation_catalog.yaml
 sed -n '1,520p' docs/evaluation/metrics.md
 sed -n '1,520p' docs/evaluation/baselines.md
 find bpfix-bench/cases -mindepth 2 -maxdepth 2 -name case.yaml | wc -l

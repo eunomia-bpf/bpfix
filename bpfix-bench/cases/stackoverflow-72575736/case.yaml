@@ -41,12 +41,20 @@ external_match:
     verifier rejection.
 label:
   capture_id: stackoverflow-72575736__kernel-6.15.11-clang-18-log2
-  taxonomy_class: lowering_artifact
+  taxonomy_class: verifier_false_positive
+  mechanism_tags:
+  - packet_bounds
+  - verifier_range_precision
+  evidence_tags:
+  - source_check_present
+  - upstream_verifier_fix_missing
+  - cross_kernel_acceptance_delta
   error_id: BPFIX-E005
   confidence: medium
   label_source: external_replay_reconstruction
-  root_cause_description: Dynamic packet cursor update loses the packet bounds proof
-    before the byte load on some verifier/toolchain combinations.
+  root_cause_description: The same packet cursor pattern is accepted on kernels
+    with the relevant verifier fix, but older 5.10-family verifier behavior loses
+    the packet-bounds proof before the byte load.
   rejected_insn_idx: 18
   legacy_rejected_insn_idx: null
   root_cause_insn_idx: null

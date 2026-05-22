@@ -19,7 +19,7 @@
 ## 0. 当前快照（2026-03-20）
 
 - **Ground truth**: `case_study/ground_truth.yaml` — 138 cases（136 non-quarantined），独立双 LLM 标注 + adjudication（κ=0.737，18/18 manual calibration match）
-- **分布**: source_bug 100, lowering_artifact 19, env_mismatch 15, verifier_limit 4, quarantined 2
+- **分布**: source_bug 100, lowering_artifact 19, environment_or_configuration 15, verifier_limit 4, quarantined 2
 - **编译验证**: selftest 85/85 compiled+rejected; SO/GH 37/51 compiled, 30 rejected; cilium 43/50 compiled (0 loaded, libbpf legacy map issue); eval_commits bcc 1 confirmed cross-kernel on 5.10
 - **Taxonomy (rebuilt baseline)**: BPFix 80.1% vs Regex Baseline 80.9%（all 136）; selftest BPFix 领先; external BPFix 54.9% vs Baseline 62.7%
 - **Localization**: proof_lost coverage 8.8% (12/136); accuracy when present within-5 66.7%
@@ -49,7 +49,7 @@
 > BPFix 从 BPF ISA specification（opcode byte）推断 rejection 处的 safety condition（register-parametric schema，不绑定具体 register），
 > 然后通过 **(1) 在 proof-compatible carriers 上监控 proof lifecycle（establishment + loss）** 和 **(2) 从 rejection 点的 backward slice** 交叉比较，分类 failure mode：
 >
-> 前置过滤：structural classes（env_mismatch, verifier_limit, verifier_bug）由 error_id 直接分类，不进入 cross-analysis。
+> 前置过滤：structural classes（environment_or_configuration, verifier_limit, verifier_false_positive）由 error_id 直接分类，不进入 cross-analysis。
 >
 > Cross-analysis（仅对 proof-obligation failures）：
 > - 存在 on-chain establishment **且** 存在 later on-chain loss → **established_then_lost**
@@ -197,7 +197,7 @@ Layer 2: ANALYSIS（纯结构化，零 regex）
     实现: opcode_safety.py + helper_signatures.py
 
   Step A': Structural class filtering
-    error_id 直接分类 env_mismatch / verifier_limit / verifier_bug
+    error_id 直接分类 environment_or_configuration / verifier_limit / verifier_false_positive
     只有 proof-obligation failures 进入 Step B-D
 
   Step B: Proof-carrier-aware monitoring (与 C 并行)
@@ -258,14 +258,14 @@ Layer 4: REPAIR（待实现 #66-#68）
 | `source_bug` | 源码真缺 bounds/null/refcount check | "invalid access to packet", "invalid mem access" | **88.1%** (266/302 heuristic) |
 | `lowering_artifact` | LLVM 生成 verifier-unfriendly bytecode | "unbounded min value" after spill/reload | **4.0%** (12/302) |
 | `verifier_limit` | 程序安全但超了分析能力 | "too many states", "loop not bounded" | **1.3%** (4/302) |
-| `env_mismatch` | helper/kfunc/BTF/attach target 不匹配 | "unknown func", "helper not allowed" | **6.3%** (19/302) |
-| `verifier_bug` | verifier 自己的 bug | regression across versions | **0.3%** (1/302) |
+| `environment_or_configuration` | helper/kfunc/BTF/attach target 不匹配 | "unknown func", "helper not allowed" | **6.3%** (19/302) |
+| `verifier_false_positive` | verifier 自己的 bug | regression across versions | **0.3%** (1/302) |
 
 **人工验证**：30 cases labeled，heuristic agreement 76.7%（κ=0.652）。Lowering artifacts 系统性被误分类为 source_bug（4/6）。
 
-**决策顺序**（消歧义时）：verifier_bug → env_mismatch → lowering_artifact → verifier_limit → source_bug
+**决策顺序**（消歧义时）：verifier_false_positive → environment_or_configuration → lowering_artifact → verifier_limit → source_bug
 
-**完整定义**：`taxonomy/taxonomy.yaml`
+**完整定义**：`bpfix-bench/taxonomy.yaml`
 
 ### 3.2 Error Catalog
 
@@ -281,19 +281,19 @@ Layer 4: REPAIR（待实现 #66-#68）
 | E006 | provenance_lost_across_spill | lowering_artifact | 0 | "expected pointer type, got scalar" |
 | E007 | verifier_state_explosion | verifier_limit | 1 | "too many states" |
 | E008 | bounded_loop_not_proved | verifier_limit | 1 | "loop is not bounded" |
-| E009 | helper_or_kfunc_unavailable | env_mismatch | 3 | "unknown func" |
-| E010 | verifier_regression_or_internal_bug | verifier_bug | 1 | "kernel BUG at" |
+| E009 | helper_or_kfunc_unavailable | environment_or_configuration | 3 | "unknown func" |
+| E010 | verifier_false_positive_or_regression | verifier_false_positive | 1 | "kernel BUG at" |
 | E011 | scalar_pointer_dereference | source_bug | 38 | "invalid mem access 'scalar'" |
 | E012 | dynptr_protocol_violation | source_bug | 22 | "Expected an initialized dynptr" |
 | E013 | execution_context_discipline | source_bug | 19 | "cannot restore irq state" |
 | E014 | iterator_state_protocol | source_bug | 10 | "expected an initialized iter_num" |
 | E015 | trusted_arg_nullability | source_bug | 8 | "Possibly NULL pointer passed" |
-| E016 | helper_kfunc_context_restriction | env_mismatch | 12 | "cannot be called from callback" |
+| E016 | helper_kfunc_context_restriction | environment_or_configuration | 12 | "cannot be called from callback" |
 | E017 | map_value_bounds_violation | source_bug | 1 | "invalid access to map value" |
 | E018 | verifier_analysis_budget_limit | verifier_limit | 2 | "combined stack size" |
 | E019-E023 | (round 2 expansion) | mixed | 59 | various |
 
-**完整定义**：`taxonomy/error_catalog.yaml`
+**完整定义**：`interface/catalogs/error_catalog.yaml`
 
 ### 3.3 Verifier state trace 包含什么
 
@@ -403,7 +403,7 @@ regs=41 stack=0 before 21: (67) r0 <<= 8       ← R0+R6 (bits 0,6)
 | lowering_artifact | 249 |
 | source_bug | 220 |
 | verifier_limit | 50 |
-| env_mismatch | 16 |
+| environment_or_configuration | 16 |
 
 **Total eval corpus**: 241 有 log + 535 synthetic = **776 cases**。`docs/tmp/synthetic-cases-report.md`
 
@@ -516,9 +516,9 @@ regs=41 stack=0 before 21: (67) r0 <<= 8       ← R0+R6 (bits 0,6)
 |---|------|:---:|------|
 | 1 | Repo scaffold + CLAUDE.md | ✅ | `CLAUDE.md` |
 | 2 | 文献综述 | ✅ | `docs/tmp/literature-survey.md` |
-| 3 | Taxonomy 定义（5 classes） | ✅ | `taxonomy/taxonomy.yaml` |
-| 4 | Error catalog（23 IDs, 两轮扩展） | ✅ | BPFIX-E001~E023, 87.1% coverage. `taxonomy/error_catalog.yaml`, `docs/tmp/catalog-expansion-round2-report.md` |
-| 5 | Obligation catalog | ✅ | BPFIX-O001~O023. `taxonomy/obligation_catalog.yaml` |
+| 3 | Taxonomy 定义（5 classes） | ✅ | `bpfix-bench/taxonomy.yaml` |
+| 4 | Error catalog（23 IDs, 两轮扩展） | ✅ | BPFIX-E001~E023, 87.1% coverage. `interface/catalogs/error_catalog.yaml`, `docs/tmp/catalog-expansion-round2-report.md` |
+| 5 | Obligation catalog | ✅ | BPFIX-O001~O023. `interface/catalogs/obligation_catalog.yaml` |
 | 6 | 诊断 JSON schema | ✅ | `interface/schema/diagnostic.json` |
 | 7 | Log parser | ✅ | catalog-backed error line selection. `interface/extractor/log_parser.py` |
 | 8 | Case collectors（3 scripts） | ✅ | `case_study/collect_{stackoverflow,kernel_selftests,github_issues}.py` |

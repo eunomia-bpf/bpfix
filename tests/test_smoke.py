@@ -17,7 +17,7 @@ def test_expected_files_exist() -> None:
         ROOT / "pyproject.toml",
         ROOT / "bpfix-bench" / "manifest.yaml",
         ROOT / "bpfix-bench" / "raw" / "index.yaml",
-        ROOT / "taxonomy" / "taxonomy.yaml",
+        ROOT / "bpfix-bench" / "taxonomy.yaml",
         ROOT / "interface" / "schema" / "diagnostic.json",
         ROOT / "tools" / "validate_benchmark.py",
         ROOT / "tools" / "evaluate_benchmark.py",
@@ -55,7 +55,7 @@ def test_replayable_case_manifest_has_expected_fields() -> None:
 
 
 def test_taxonomy_defines_all_five_classes() -> None:
-    payload = yaml.safe_load((ROOT / "taxonomy" / "taxonomy.yaml").read_text(encoding="utf-8"))
+    payload = yaml.safe_load((ROOT / "bpfix-bench" / "taxonomy.yaml").read_text(encoding="utf-8"))
     classes = payload["classes"]
     assert len(classes) == 5
     assert {entry["id"] for entry in classes} == {
@@ -63,7 +63,7 @@ def test_taxonomy_defines_all_five_classes() -> None:
         "lowering_artifact",
         "verifier_limit",
         "environment_or_configuration",
-        "verifier_bug",
+        "verifier_false_positive",
     }
 
 

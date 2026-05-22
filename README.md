@@ -21,10 +21,10 @@ If you only want the raw dependencies without packaging metadata, `pip install -
 ```text
 bpfix-bench/
   manifest.yaml      Single entry point for replayable verifier-reject cases
+  taxonomy.yaml      Five-class benchmark failure taxonomy
   cases/             Self-contained local reproducers admitted to the benchmark
   raw/               Collected SO/GH/commit material, including unreproduced records
-taxonomy/
-  taxonomy.yaml      Five-class failure taxonomy
+interface/catalogs/
   error_catalog.yaml Stable verifier error catalog
   obligation_catalog.yaml Repair-oriented obligation templates
 interface/extractor/

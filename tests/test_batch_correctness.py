@@ -26,7 +26,7 @@ SO_CASES_DIR = ROOT / "bpfix-bench" / "raw" / "so"
 
 VALID_PROOF_STATUSES = {"never_established", "established_then_lost", "established_but_insufficient", "proof_satisfied", "unknown"}
 VALID_TAXONOMY_CLASSES = {
-    "source_bug", "lowering_artifact", "verifier_limit", "environment_or_configuration", "verifier_bug", "unknown",
+    "source_bug", "lowering_artifact", "verifier_limit", "environment_or_configuration", "verifier_false_positive", "unknown",
 }
 ERROR_ID_PATTERN = re.compile(r"^BPFIX-E\d{3}$|^BPFIX-UNKNOWN$")
 

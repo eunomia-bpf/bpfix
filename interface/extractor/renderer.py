@@ -13,7 +13,7 @@ VALID_FAILURE_CLASSES = {
     "lowering_artifact",
     "verifier_limit",
     "environment_or_configuration",
-    "verifier_bug",
+    "verifier_false_positive",
 }
 
 
@@ -472,8 +472,8 @@ def _repair_action_for(
     if failure_class == "environment_or_configuration":
         return "GATE_BY_KERNEL_CAPABILITY"
 
-    if failure_class == "verifier_bug":
-        return "INVESTIGATE_VERIFIER_BUG"
+    if failure_class == "verifier_false_positive":
+        return "INVESTIGATE_VERIFIER_FALSE_POSITIVE"
 
     return "UNKNOWN"
 

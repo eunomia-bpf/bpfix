@@ -26,7 +26,7 @@ ENVIRONMENT_OR_CONFIGURATION_RE = re.compile(
     r"unrecognized arg#\d+ type",
     flags=re.IGNORECASE,
 )
-VERIFIER_BUG_RE = re.compile(
+VERIFIER_FALSE_POSITIVE_RE = re.compile(
     r"kernel BUG at kernel/bpf/verifier\.c|WARNING:.*verifier|invalid state transition",
     flags=re.IGNORECASE,
 )
@@ -38,8 +38,8 @@ def classify_failure_class(
 ) -> str:
     if matched_pattern is not None:
         return matched_pattern.pattern.failure_class
-    if VERIFIER_BUG_RE.search(error_message):
-        return "verifier_bug"
+    if VERIFIER_FALSE_POSITIVE_RE.search(error_message):
+        return "verifier_false_positive"
     if VERIFIER_LIMIT_RE.search(error_message):
         return "verifier_limit"
     if ENVIRONMENT_OR_CONFIGURATION_RE.search(error_message):

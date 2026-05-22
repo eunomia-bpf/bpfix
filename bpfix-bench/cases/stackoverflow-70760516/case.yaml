@@ -40,12 +40,19 @@ external_match:
     SO/GH artifact.
 label:
   capture_id: stackoverflow-70760516__kernel-6.15.11-clang-18-log2
-  taxonomy_class: lowering_artifact
+  taxonomy_class: verifier_false_positive
+  mechanism_tags:
+  - packet_bounds
+  - verifier_range_precision
+  evidence_tags:
+  - source_check_present
+  - verifier_max_packet_offset_corner_case
   error_id: BPFIX-E005
   confidence: medium
   label_source: external_replay_reconstruction
-  root_cause_description: TLS/XDP packet parser reaches a byte load beyond the verifier-proven
-    packet range.
+  root_cause_description: The TLS/XDP parser bounds each extension length, but
+    the verifier accumulates packet-offset maxima across loop iterations and no
+    longer preserves the intended range at the later byte load.
   rejected_insn_idx: 16
   legacy_rejected_insn_idx: null
   root_cause_insn_idx: null

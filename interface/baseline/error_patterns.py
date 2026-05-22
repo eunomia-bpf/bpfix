@@ -9,7 +9,7 @@ import re
 
 import yaml
 
-DEFAULT_CATALOG_PATH = Path(__file__).resolve().parents[2] / "taxonomy" / "error_catalog.yaml"
+DEFAULT_CATALOG_PATH = Path(__file__).resolve().parents[1] / "catalogs" / "error_catalog.yaml"
 TAIL_SCAN_LINES = 80
 
 INSTRUCTION_RE = re.compile(r"^(?P<idx>\d+):\s+\([0-9a-f]{2}\)", flags=re.IGNORECASE)

@@ -40,7 +40,14 @@ external_match:
     SO/GH artifact.
 label:
   capture_id: stackoverflow-72560675__kernel-6.15.11-clang-18-log2
-  taxonomy_class: lowering_artifact
+  taxonomy_class: verifier_false_positive
+  mechanism_tags:
+  - map_value_bounds
+  - verifier_range_precision
+  evidence_tags:
+  - source_check_present
+  - older_verifier_precision_loss
+  - semantic_preserving_clamp_workaround
   error_id: BPFIX-E005
   confidence: medium
   label_source: adjudicated

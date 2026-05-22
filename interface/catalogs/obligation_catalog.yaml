@@ -123,7 +123,7 @@ templates:
       - BPFIX-E009
 
   - obligation_id: BPFIX-O010
-    taxonomy_class: verifier_bug
+    taxonomy_class: verifier_false_positive
     title: Equivalent programs should produce stable verifier behavior across kernel versions
     expected_state: The verifier rejects or accepts consistently and without internal warnings.
     observed_state: A regression or bug causes inconsistent diagnostics or internal faults.

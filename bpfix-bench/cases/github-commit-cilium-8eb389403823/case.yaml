@@ -42,7 +42,7 @@ external_match:
     argument validation caused by a void * ctx parameter.
 label:
   capture_id: github-commit-cilium-8eb389403823__kernel-6.15.11-clang-18-log2
-  taxonomy_class: lowering_artifact
+  taxonomy_class: source_bug
   error_id: BPFIX-E006
   confidence: high
   label_source: external_replay_reconstruction

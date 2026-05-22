@@ -46,15 +46,13 @@ ebpf-verifier-agent/
 ├── README.md                    # Project overview
 ├── bpfix-bench/                 # Unified benchmark and raw external corpus
 │   ├── manifest.yaml            # Single entry point for replayable cases
+│   ├── taxonomy.yaml            # The 5-class benchmark failure taxonomy
 │   ├── cases/                   # Self-contained local reproducers
 │   └── raw/                     # SO/GH/commit records, reproduced and unreproduced
-├── taxonomy/                    # Failure taxonomy and error classification
-│   ├── taxonomy.yaml            # The 5-class failure taxonomy
-│   ├── error_catalog.yaml       # Enumerated verifier error types with stable IDs
-│   └── obligation_catalog.yaml  # Proof obligation templates
 ├── interface/                   # Proof trace analysis tools
 │   ├── api/                     # Public Python API
 │   ├── baseline/                # Baseline diagnostic implementations
+│   ├── catalogs/                # Error and obligation catalogs used by diagnostics
 │   ├── extractor/               # Extract structured diagnostics from verifier output
 │   │   ├── pipeline.py          # Main diagnostic pipeline
 │   │   ├── trace_parser.py      # Public trace parser entry point

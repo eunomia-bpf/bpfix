@@ -143,7 +143,7 @@ class VerifierLogParser:
 
     def __init__(self, catalog_path: Path | None = None) -> None:
         self.catalog_path = catalog_path or (
-            Path(__file__).resolve().parents[2] / "taxonomy" / "error_catalog.yaml"
+            Path(__file__).resolve().parents[1] / "catalogs" / "error_catalog.yaml"
         )
         self._catalog = self._load_catalog()
 

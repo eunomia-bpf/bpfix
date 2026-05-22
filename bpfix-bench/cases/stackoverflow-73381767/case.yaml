@@ -40,7 +40,7 @@ external_match:
     verifier rejection.
 label:
   capture_id: stackoverflow-73381767__kernel-6.15.11-clang-18-log2
-  taxonomy_class: lowering_artifact
+  taxonomy_class: source_bug
   error_id: BPFIX-E005
   confidence: medium
   label_source: external_replay_reconstruction

@@ -55,7 +55,7 @@ _STRUCTURAL_TAXONOMY_BY_ERROR_ID = {
     "BPFIX-E007": "verifier_limit",
     "BPFIX-E008": "verifier_limit",
     "BPFIX-E009": "environment_or_configuration",
-    "BPFIX-E010": "verifier_bug",
+    "BPFIX-E010": "verifier_false_positive",
     "BPFIX-E016": "environment_or_configuration",
     "BPFIX-E018": "verifier_limit",
     "BPFIX-E021": "environment_or_configuration",
@@ -1066,7 +1066,7 @@ def _build_help_text(
         if specific_help is not None:
             return specific_help
 
-    catalog_path = Path(__file__).resolve().parents[2] / "taxonomy" / "obligation_catalog.yaml"
+    catalog_path = Path(__file__).resolve().parents[1] / "catalogs" / "obligation_catalog.yaml"
     templates = _load_obligation_templates(str(catalog_path.resolve()))
 
     error_id = parsed_log.error_id

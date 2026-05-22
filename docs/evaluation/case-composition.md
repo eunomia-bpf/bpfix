@@ -63,7 +63,7 @@ print("raw index counts", idx["counts"])
 PY
 ```
 
-Error names were joined from `taxonomy/error_catalog.yaml`:
+Error names were joined from `interface/catalogs/error_catalog.yaml`:
 
 ```bash
 python - <<'PY'
@@ -72,7 +72,7 @@ from collections import Counter, defaultdict
 import yaml
 
 root = Path("bpfix-bench")
-catalog = yaml.safe_load(Path("taxonomy/error_catalog.yaml").read_text())
+catalog = yaml.safe_load(Path("interface/catalogs/error_catalog.yaml").read_text())
 names = {e["error_id"]: e["short_name"] for e in catalog["error_types"]}
 manifest = yaml.safe_load((root / "manifest.yaml").read_text())
 case_docs = [
@@ -122,23 +122,24 @@ Every replayable case has `label.taxonomy_class`, `label.error_id`, and
 
 | taxonomy_class | cases |
 |---|---:|
-| source_bug | 175 |
-| lowering_artifact | 46 |
-| environment_or_configuration | 10 |
+| source_bug | 187 |
+| lowering_artifact | 24 |
+| environment_or_configuration | 11 |
+| verifier_false_positive | 9 |
 | verifier_limit | 4 |
 
 Breakdown by source:
 
-| source_kind | environment_or_configuration | lowering_artifact | source_bug | verifier_limit | total |
-|---|---:|---:|---:|---:|---:|
-| github_commit | 1 | 18 | 27 | 0 | 46 |
-| github_issue | 2 | 3 | 13 | 0 | 18 |
-| kernel_selftest | 3 | 0 | 80 | 2 | 85 |
-| stackoverflow | 4 | 25 | 55 | 2 | 86 |
+| source_kind | environment_or_configuration | lowering_artifact | source_bug | verifier_false_positive | verifier_limit | total |
+|---|---:|---:|---:|---:|---:|---:|
+| github_commit | 2 | 16 | 28 | 0 | 0 | 46 |
+| github_issue | 2 | 2 | 14 | 0 | 0 | 18 |
+| kernel_selftest | 3 | 0 | 80 | 0 | 2 | 85 |
+| stackoverflow | 4 | 6 | 65 | 9 | 2 | 86 |
 
 ## Error Categories
 
-Error IDs are defined in `taxonomy/error_catalog.yaml`.
+Error IDs are defined in `interface/catalogs/error_catalog.yaml`.
 
 | error_id | short_name | case-label taxonomy_class | cases |
 |---|---|---|---:|
@@ -146,10 +147,10 @@ Error IDs are defined in `taxonomy/error_catalog.yaml`.
 | BPFIX-E002 | nullable_map_value_dereference | source_bug | 10 |
 | BPFIX-E003 | uninitialized_stack_read | source_bug | 4 |
 | BPFIX-E004 | reference_lifetime_violation | lowering_artifact 1, source_bug 3 | 4 |
-| BPFIX-E005 | scalar_range_too_wide_after_lowering | lowering_artifact 31, source_bug 2 | 33 |
-| BPFIX-E006 | provenance_lost_across_spill | lowering_artifact 14, source_bug 3 | 17 |
+| BPFIX-E005 | scalar_range_too_wide_after_lowering | lowering_artifact 11, source_bug 13, verifier_false_positive 9 | 33 |
+| BPFIX-E006 | provenance_lost_across_spill | environment_or_configuration 1, lowering_artifact 12, source_bug 4 | 17 |
 | BPFIX-E009 | helper_or_kfunc_unavailable | environment_or_configuration | 1 |
-| BPFIX-E010 | verifier_regression_or_internal_bug | source_bug | 1 |
+| BPFIX-E010 | verifier_false_positive_or_regression | source_bug | 1 |
 | BPFIX-E011 | scalar_pointer_dereference | source_bug | 59 |
 | BPFIX-E012 | dynptr_protocol_violation | source_bug | 8 |
 | BPFIX-E013 | execution_context_discipline_violation | source_bug | 13 |
@@ -165,8 +166,9 @@ Error IDs are defined in `taxonomy/error_catalog.yaml`.
 | BPFIX-UNKNOWN | <missing> | environment_or_configuration 1, source_bug 2 | 3 |
 
 The taxonomy column above uses the labels in each `case.yaml`, not only the
-default taxonomy in `taxonomy/error_catalog.yaml`. Two `BPFIX-E005` cases are
-labelled `source_bug`; the other 31 are labelled `lowering_artifact`.
+default taxonomy in `interface/catalogs/error_catalog.yaml`. For `BPFIX-E005`,
+13 cases are labelled `source_bug`, 11 are labelled `lowering_artifact`, and 9
+are labelled `verifier_false_positive`.
 
 Notable concentration: `BPFIX-E011` accounts for 59 of 235 replayable cases,
 and `BPFIX-E005` accounts for 33. Together they make up 92 cases, or 39.1% of
@@ -209,9 +211,9 @@ metadata. The replayable kernel selftest count is therefore taken from
 
 ## Gaps and Biases
 
-The replayable corpus is dominated by `source_bug` labels: 175 of 235 cases
-(74.5%). `verifier_limit` has only 4 cases, and no replayable case is labeled
-`verifier_bug`.
+The replayable corpus is dominated by `source_bug` labels: 187 of 235 cases
+(79.6%). `lowering_artifact` has 24 cases after the first manual audit,
+`verifier_false_positive` has 9, and `verifier_limit` has only 4.
 
 Kernel selftests are strongly represented in the admitted corpus: 85 of 235
 cases. They are useful because they are reproducible and trace-rich, but they

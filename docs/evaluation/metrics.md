@@ -55,7 +55,7 @@ the corresponding metrics.
   unavailable helper, verifier complexity limit, or frontend lowering artifact
 - `taxonomy_class`: one of the benchmark taxonomy classes, for example
   `source_bug`, `lowering_artifact`, `verifier_limit`, `environment_or_configuration`, or
-  `verifier_bug`
+  `verifier_false_positive`
 - `verifier_error_class`: normalized verifier error family extracted from the
   replayed log
 - `required_preconditions`: facts that must be mentioned for a correct

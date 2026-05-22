@@ -40,12 +40,19 @@ external_match:
     verifier rejection.
 label:
   capture_id: stackoverflow-79095876__kernel-6.15.11-clang-18-log2
-  taxonomy_class: lowering_artifact
+  taxonomy_class: verifier_false_positive
+  mechanism_tags:
+  - map_value_bounds
+  - cross_variable_relation
+  evidence_tags:
+  - source_check_present
+  - verifier_relation_tracking_limit
   error_id: BPFIX-E005
   confidence: medium
   label_source: external_replay_reconstruction
-  root_cause_description: A map value access is formed with an offset and size beyond
-    the declared value size.
+  root_cause_description: The verifier cannot preserve the relation between
+    `total_len`, `to_read`, and the destination map-value capacity, so a
+    semantically bounded helper copy still appears able to exceed the map value.
   rejected_insn_idx: 24
   legacy_rejected_insn_idx: null
   root_cause_insn_idx: null

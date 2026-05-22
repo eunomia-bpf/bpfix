@@ -40,7 +40,13 @@ external_match:
     log matching is required.
 label:
   capture_id: github-commit-cilium-4bb6b56b5c22__kernel-6.15.11-clang-18-log2
-  taxonomy_class: lowering_artifact
+  taxonomy_class: environment_or_configuration
+  mechanism_tags:
+  - context_access
+  - target_abi_mismatch
+  evidence_tags:
+  - uapi_header_target_mismatch
+  - unsupported_context_wide_access
   error_id: BPFIX-E006
   confidence: medium
   label_source: manual_reconstruction

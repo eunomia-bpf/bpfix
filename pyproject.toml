@@ -25,11 +25,11 @@ include-package-data = true
 py-modules = ["bpfix"]
 
 [tool.setuptools.packages.find]
-include = ["interface*", "taxonomy*"]
+include = ["interface*"]
 
 [tool.setuptools.package-data]
 "interface.schema" = ["diagnostic.json"]
-"taxonomy" = ["*.yaml"]
+"interface.catalogs" = ["*.yaml"]
 
 [tool.pytest.ini_options]
 pythonpath = ["."]

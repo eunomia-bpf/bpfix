@@ -121,9 +121,9 @@ error_types:
       - GATE_ON_KERNEL_FEATURE
 
   - error_id: BPFIX-E010
-    short_name: verifier_regression_or_internal_bug
-    taxonomy_class: verifier_bug
-    title: Internal verifier defect or version-dependent regression
+    short_name: verifier_false_positive_or_regression
+    taxonomy_class: verifier_false_positive
+    title: Verifier false positive, internal defect, or version-dependent regression
     verifier_messages:
       - "kernel BUG at kernel/bpf/verifier.c"
       - "WARNING:.*verifier"
