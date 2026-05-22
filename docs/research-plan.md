@@ -26,6 +26,52 @@ that evidence into:
 - source or bytecode spans suitable for Rust-style diagnostics
 - JSON output for downstream tooling
 
+## Comparison With Rust Diagnostics
+
+The useful comparison is Rust's diagnostic model, not Rust as a programming
+language feature. Rust compiler errors work well because they are produced from
+typed compiler facts: type inference, trait solving, borrow checking, spans,
+secondary labels, notes, help text, and machine-readable diagnostic output. The
+error message is not just the final failure string; it is an explanation of the
+specific proof the compiler could not establish at a concrete source location.
+
+BPFix applies the same diagnostic shape to eBPF verifier failures:
+
+```text
+rustc:
+  source program
+    -> compiler IR and typed analysis facts
+    -> error id, primary span, secondary labels, notes, help
+
+bpfix:
+  verifier log + optional .o/BTF
+    -> verifier states keyed by pc + object CFG/source sites
+    -> required verifier proof, proof lifecycle, spans, notes, help
+```
+
+This is the intended "Rust-style" user experience: keep the existing eBPF
+workflow, but replace a terminal verifier rejection with a structured
+diagnostic that tells the developer what safety fact was needed, where it was
+established, where it was lost or became insufficient, and which value reaches
+the rejected instruction.
+
+The boundary is also important. BPFix is not a replacement verifier, not a new
+eBPF language, and not a promise of automatic repair. Unlike `rustc`, it runs
+after the kernel verifier has already rejected the program, so it must recover
+facts from the verbose verifier trace and optional object metadata. Log-only
+mode must remain useful; `.o` and BTF should enrich localization and CFG
+correlation when available.
+
+The architectural consequence is:
+
+- `bpfanalysis` stays a neutral analysis library for verifier logs, bytecode,
+  CFGs, and low-level program facts.
+- `bpfix` owns the product diagnostic layer: required proof, failure class,
+  source labels, notes, help text, and JSON rendering.
+- Evaluation should measure whether users can understand the missing verifier
+  proof and relevant code region, not only whether a terminal error string was
+  classified correctly.
+
 ## Active Capabilities
 
 The active project is a Cargo workspace.
