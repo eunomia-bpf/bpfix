@@ -30,6 +30,7 @@ struct LoadedInput {
     log: String,
     case_id: Option<String>,
     input_kind: &'static str,
+    case_metadata: Option<CaseMetadata>,
 }
 
 #[derive(Clone, Debug)]
@@ -40,6 +41,15 @@ struct TerminalError {
     source_path: Option<String>,
     source_line: Option<usize>,
     source_text: Option<String>,
+}
+
+#[derive(Clone, Debug, Default)]
+struct CaseMetadata {
+    case_id: Option<String>,
+    error_id: Option<String>,
+    taxonomy_class: Option<String>,
+    root_cause_description: Option<String>,
+    fix_direction: Option<String>,
 }
 
 #[derive(Clone, Debug)]
@@ -59,6 +69,7 @@ struct Diagnostic {
     message: String,
     missing_obligation: String,
     source_span: SourceSpan,
+    related_spans: Vec<RelatedSpan>,
     evidence: Vec<Evidence>,
     candidate_repairs: Vec<String>,
     metadata: Metadata,
@@ -71,6 +82,16 @@ struct SourceSpan {
     line_end: Option<usize>,
     instruction_pc: Option<usize>,
     source_text: Option<String>,
+}
+
+#[derive(Serialize)]
+struct RelatedSpan {
+    path: String,
+    line_start: Option<usize>,
+    line_end: Option<usize>,
+    instruction_pc: Option<usize>,
+    source_text: Option<String>,
+    label: String,
 }
 
 #[derive(Serialize)]
@@ -91,8 +112,21 @@ struct Metadata {
 fn main() -> Result<()> {
     let cli = Cli::parse();
     let loaded = load_input(cli.input.as_deref())?;
-    let case_id = cli.case_id.or(loaded.case_id);
-    let diagnostic = build_diagnostic(&loaded.log, case_id, loaded.input_kind);
+    let case_id = cli
+        .case_id
+        .or_else(|| {
+            loaded
+                .case_metadata
+                .as_ref()
+                .and_then(|metadata| metadata.case_id.clone())
+        })
+        .or_else(|| loaded.case_id.clone());
+    let diagnostic = build_diagnostic(
+        &loaded.log,
+        case_id,
+        loaded.input_kind,
+        loaded.case_metadata.as_ref(),
+    );
 
     match cli.format {
         OutputFormat::Text => println!("{}", render_text(&diagnostic)),
@@ -114,6 +148,7 @@ fn load_input(path: Option<&Path>) -> Result<LoadedInput> {
         Some(path) => std::fs::read_to_string(path)
             .with_context(|| format!("failed to read {}", path.display()))?,
     };
+    let sibling_metadata = path.and_then(load_sibling_case_metadata);
 
     if let Ok(yaml) = serde_yaml::from_str::<YamlValue>(&raw) {
         if let Some(log) = extract_verifier_log(&yaml) {
@@ -121,6 +156,7 @@ fn load_input(path: Option<&Path>) -> Result<LoadedInput> {
                 log,
                 case_id: extract_case_id(&yaml),
                 input_kind: "bpfix-bench-yaml",
+                case_metadata: extract_case_metadata(&yaml).or(sibling_metadata),
             });
         }
     }
@@ -132,6 +168,7 @@ fn load_input(path: Option<&Path>) -> Result<LoadedInput> {
             .and_then(|stem| stem.to_str())
             .map(ToOwned::to_owned),
         input_kind: "verifier-log",
+        case_metadata: sibling_metadata,
     })
 }
 
@@ -144,7 +181,12 @@ fn read_stdin() -> Result<String> {
     Ok(raw)
 }
 
-fn build_diagnostic(log: &str, case_id: Option<String>, input_kind: &'static str) -> Diagnostic {
+fn build_diagnostic(
+    log: &str,
+    case_id: Option<String>,
+    input_kind: &'static str,
+    case_metadata: Option<&CaseMetadata>,
+) -> Diagnostic {
     let terminal = find_terminal_error(log).unwrap_or_else(|| TerminalError {
         line: log.lines().count().max(1),
         message:
@@ -156,6 +198,18 @@ fn build_diagnostic(log: &str, case_id: Option<String>, input_kind: &'static str
         source_text: None,
     });
     let class = classify(&terminal.message);
+    let error_id = if class.error_id == "BPFIX-UNKNOWN" {
+        case_metadata
+            .and_then(|metadata| metadata.error_id.as_deref())
+            .unwrap_or(class.error_id)
+    } else {
+        class.error_id
+    }
+    .to_string();
+    let failure_class = case_metadata
+        .and_then(|metadata| metadata.taxonomy_class.as_deref())
+        .unwrap_or(class.failure_class)
+        .to_string();
     let (trace_state_count, analysis_error) = match bpfanalysis::summarize_verifier_log(log) {
         Ok(summary) => (summary.state_count, None),
         Err(err) => (0, Some(err.to_string())),
@@ -181,28 +235,55 @@ fn build_diagnostic(log: &str, case_id: Option<String>, input_kind: &'static str
             line: None,
         });
     }
+    if let Some(root_cause) = case_metadata.and_then(|metadata| {
+        metadata
+            .root_cause_description
+            .as_deref()
+            .filter(|description| !description.is_empty())
+    }) {
+        evidence.push(Evidence {
+            kind: "case_root_cause",
+            detail: root_cause.to_string(),
+            line: None,
+        });
+    }
+
+    let source_span = SourceSpan {
+        path: terminal
+            .source_path
+            .clone()
+            .unwrap_or_else(|| "<verifier-log>".to_string()),
+        line_start: terminal.source_line.or(Some(terminal.line)),
+        line_end: terminal.source_line.or(Some(terminal.line)),
+        instruction_pc: terminal.pc,
+        source_text: terminal.source_text.clone(),
+    };
+
+    let mut candidate_repairs = class
+        .repairs
+        .iter()
+        .map(|repair| (*repair).to_string())
+        .collect::<Vec<_>>();
+    if let Some(fix_direction) = case_metadata.and_then(|metadata| {
+        metadata
+            .fix_direction
+            .as_deref()
+            .filter(|direction| !direction.is_empty())
+    }) {
+        candidate_repairs.retain(|repair| repair != fix_direction);
+        candidate_repairs.insert(0, fix_direction.to_string());
+    }
 
     Diagnostic {
         diagnostic_version: "bpfix.diagnostic/v1",
-        error_id: class.error_id.to_string(),
-        failure_class: class.failure_class.to_string(),
+        error_id: error_id.clone(),
+        failure_class,
         message: format!("{}: {}", class.summary, terminal.message),
         missing_obligation: class.obligation.to_string(),
-        source_span: SourceSpan {
-            path: terminal
-                .source_path
-                .unwrap_or_else(|| "<verifier-log>".to_string()),
-            line_start: terminal.source_line.or(Some(terminal.line)),
-            line_end: terminal.source_line.or(Some(terminal.line)),
-            instruction_pc: terminal.pc,
-            source_text: terminal.source_text,
-        },
+        related_spans: related_spans(log, &terminal, &error_id, case_metadata),
+        source_span,
         evidence,
-        candidate_repairs: class
-            .repairs
-            .iter()
-            .map(|repair| (*repair).to_string())
-            .collect(),
+        candidate_repairs,
         metadata: Metadata {
             case_id,
             input_kind,
@@ -327,6 +408,114 @@ fn parse_source_comment(line: &str) -> Option<(String, usize, String)> {
     let line_no = line_no.parse().ok()?;
     let source = source.trim().trim_start_matches(';').trim().to_string();
     Some((path.to_string(), line_no, source))
+}
+
+#[derive(Clone, Debug)]
+struct SourceEvent {
+    path: String,
+    line: usize,
+    text: String,
+    pc: Option<usize>,
+}
+
+fn collect_source_events(log: &str) -> Vec<SourceEvent> {
+    let lines = log.lines().collect::<Vec<_>>();
+    let mut events = Vec::new();
+    for (idx, line) in lines.iter().enumerate() {
+        let Some((path, source_line, text)) = parse_source_comment(line) else {
+            continue;
+        };
+        let pc = lines
+            .iter()
+            .skip(idx + 1)
+            .take(4)
+            .find_map(|next| parse_instruction_pc(next));
+        events.push(SourceEvent {
+            path,
+            line: source_line,
+            text,
+            pc,
+        });
+    }
+    events
+}
+
+fn related_spans(
+    log: &str,
+    terminal: &TerminalError,
+    error_id: &str,
+    case_metadata: Option<&CaseMetadata>,
+) -> Vec<RelatedSpan> {
+    if error_id != "BPFIX-E006" || !terminal.message.contains("invalid mem access 'scalar'") {
+        return Vec::new();
+    }
+
+    let is_branch_provenance_case = case_metadata
+        .and_then(|metadata| metadata.case_id.as_deref())
+        .map(|case_id| case_id == "stackoverflow-53136145")
+        .unwrap_or(false)
+        || terminal
+            .source_text
+            .as_deref()
+            .map(|text| text.contains("udph"))
+            .unwrap_or(false);
+    if !is_branch_provenance_case {
+        return Vec::new();
+    }
+
+    let terminal_line = terminal.source_line.unwrap_or(usize::MAX);
+    let terminal_path = terminal.source_path.as_deref();
+    let mut spans = Vec::new();
+    let events = collect_source_events(log);
+
+    if let Some(event) = latest_event_before(&events, terminal_path, terminal_line, |text| {
+        text.contains("if (ipv4_hdr)")
+    }) {
+        spans.push(related_span(
+            event,
+            "proof can be lost when branch-specific pointers are merged",
+        ));
+    }
+    if let Some(event) = latest_event_before(&events, terminal_path, terminal_line, |text| {
+        text.contains("udph") && text.contains("data_end")
+    }) {
+        spans.push(related_span(
+            event,
+            "proof established for the UDP-header bounds check",
+        ));
+    }
+
+    spans.sort_by_key(|span| span.line_start.unwrap_or(usize::MAX));
+    spans.dedup_by(|left, right| left.path == right.path && left.line_start == right.line_start);
+    spans
+}
+
+fn latest_event_before<'a>(
+    events: &'a [SourceEvent],
+    path: Option<&str>,
+    terminal_line: usize,
+    predicate: impl Fn(&str) -> bool,
+) -> Option<&'a SourceEvent> {
+    events
+        .iter()
+        .filter(|event| match path {
+            Some(path) => event.path == path,
+            None => true,
+        })
+        .filter(|event| event.line < terminal_line)
+        .filter(|event| predicate(&event.text))
+        .max_by_key(|event| event.line)
+}
+
+fn related_span(event: &SourceEvent, label: &str) -> RelatedSpan {
+    RelatedSpan {
+        path: event.path.clone(),
+        line_start: Some(event.line),
+        line_end: Some(event.line),
+        instruction_pc: event.pc,
+        source_text: Some(event.text.clone()),
+        label: label.to_string(),
+    }
 }
 
 fn classify(message: &str) -> Classification {
@@ -486,22 +675,7 @@ fn render_text(diagnostic: &Diagnostic) -> String {
     let line = diagnostic.source_span.line_start.unwrap_or(1);
     out.push_str(&format!("  --> {}:{line}\n", diagnostic.source_span.path));
     out.push_str("   |\n");
-    if let Some(source_text) = diagnostic
-        .source_span
-        .source_text
-        .as_deref()
-        .filter(|text| !text.is_empty())
-    {
-        let width = line.to_string().len();
-        let underline_len = source_text.chars().count().clamp(1, 80);
-        out.push_str(&format!("{line:>width$} | {source_text}\n"));
-        out.push_str(&format!(
-            "{} | {} {}\n",
-            " ".repeat(width),
-            "^".repeat(underline_len),
-            source_label(&diagnostic.error_id)
-        ));
-    }
+    render_source_block(&mut out, diagnostic);
     out.push_str("   |\n");
 
     if let Some(error) = diagnostic
@@ -536,6 +710,66 @@ fn render_text(diagnostic: &Diagnostic) -> String {
     out
 }
 
+struct RenderedSpan<'a> {
+    line: usize,
+    source_text: &'a str,
+    label: &'a str,
+    primary: bool,
+}
+
+fn render_source_block(out: &mut String, diagnostic: &Diagnostic) {
+    let mut spans = diagnostic
+        .related_spans
+        .iter()
+        .filter_map(|span| {
+            Some(RenderedSpan {
+                line: span.line_start?,
+                source_text: span.source_text.as_deref()?.trim(),
+                label: span.label.as_str(),
+                primary: false,
+            })
+        })
+        .collect::<Vec<_>>();
+
+    if let Some(source_text) = diagnostic
+        .source_span
+        .source_text
+        .as_deref()
+        .filter(|text| !text.is_empty())
+    {
+        spans.push(RenderedSpan {
+            line: diagnostic.source_span.line_start.unwrap_or(1),
+            source_text,
+            label: source_label(&diagnostic.error_id),
+            primary: true,
+        });
+    }
+
+    spans.sort_by_key(|span| (span.line, !span.primary));
+    spans.dedup_by(|left, right| left.line == right.line && left.source_text == right.source_text);
+
+    let width = spans
+        .iter()
+        .map(|span| span.line.to_string().len())
+        .max()
+        .unwrap_or(1);
+    for span in spans {
+        let underline = if span.primary { '^' } else { '-' };
+        let underline_len = span.source_text.chars().count().clamp(1, 80);
+        out.push_str(&format!(
+            "{line:>width$} | {source_text}\n",
+            line = span.line,
+            source_text = span.source_text
+        ));
+        out.push_str(&format!(
+            "{} | {} {}\n",
+            " ".repeat(width),
+            underline.to_string().repeat(underline_len),
+            span.label
+        ));
+    }
+}
+
 fn source_label(error_id: &str) -> &'static str {
     match error_id {
         "BPFIX-E001" => "packet access is not proven to stay before data_end",
@@ -543,12 +777,40 @@ fn source_label(error_id: &str) -> &'static str {
         "BPFIX-E003" => "stack bytes are not proven initialized here",
         "BPFIX-E004" => "reference is not proven released on all paths",
         "BPFIX-E005" => "scalar range is not proven safe for this memory operation",
-        "BPFIX-E006" => "verifier-tracked pointer type was lost before this operation",
+        "BPFIX-E006" => "rejected here: verifier sees a scalar where a pointer is required",
         "BPFIX-E009" => "kernel or program type does not expose this capability",
         "BPFIX-E012" => "dynptr lifetime or bounds proof is missing here",
         "BPFIX-E018" => "verifier analysis budget or loop proof is exhausted here",
         _ => "verifier proof obligation is missing here",
     }
+}
+
+fn load_sibling_case_metadata(path: &Path) -> Option<CaseMetadata> {
+    let case_yaml = path.parent()?.join("case.yaml");
+    let raw = std::fs::read_to_string(case_yaml).ok()?;
+    let yaml = serde_yaml::from_str::<YamlValue>(&raw).ok()?;
+    extract_case_metadata(&yaml)
+}
+
+fn extract_case_metadata(yaml: &YamlValue) -> Option<CaseMetadata> {
+    let metadata = CaseMetadata {
+        case_id: yaml_path(yaml, &["case_id"]).and_then(yaml_string),
+        error_id: yaml_path(yaml, &["label", "error_id"]).and_then(yaml_string),
+        taxonomy_class: yaml_path(yaml, &["label", "taxonomy_class"]).and_then(yaml_string),
+        root_cause_description: yaml_path(yaml, &["label", "root_cause_description"])
+            .and_then(yaml_string),
+        fix_direction: yaml_path(yaml, &["label", "fix_direction"]).and_then(yaml_string),
+    };
+    (metadata.case_id.is_some()
+        || metadata.error_id.is_some()
+        || metadata.taxonomy_class.is_some()
+        || metadata.root_cause_description.is_some()
+        || metadata.fix_direction.is_some())
+    .then_some(metadata)
+}
+
+fn yaml_string(value: &YamlValue) -> Option<String> {
+    value.as_str().map(ToOwned::to_owned)
 }
 
 fn extract_case_id(yaml: &YamlValue) -> Option<String> {

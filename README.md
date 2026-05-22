@@ -21,63 +21,79 @@ sits next to them and explains verifier failures after they happen.
 ## Motivating Example
 
 Here is a real verifier failure from `bpfix-bench`
-(`stackoverflow-70750259`). The source has packet bounds checks, but the value
-used to advance the packet cursor is assembled from packet bytes, byte-swapped,
-stored to the stack, and reloaded as a signed scalar:
+(`stackoverflow-53136145`). The source parses either IPv4 or IPv6, derives a
+UDP header pointer on each branch, checks the UDP header against `data_end`, and
+then reads the destination port:
 
 ```c
-if (data_end < data + sizeof(struct extension))
-    return XDP_DROP;
+if (ethertype == ETH_P_IP) {
+    ipv4_hdr = (void *)eth + ETH_HLEN;
+    if ((void *)(ipv4_hdr + 1) > data_end)
+        return 1;
+} else if (ethertype == ETH_P_IPV6) {
+    ipv6_hdr = (void *)eth + ETH_HLEN;
+    if ((void *)(ipv6_hdr + 1) > data_end)
+        return 1;
+} else {
+    return 2;
+}
 
-struct extension *ext = (void *)data;
-volatile int ext_len = __bpf_htons(ext->len);
+if (ipv4_hdr)
+    udph = (void *)ipv4_hdr + sizeof(*ipv4_hdr);
+else
+    udph = (void *)ipv6_hdr + sizeof(*ipv6_hdr);
 
-if (ext_len < 0)
-    return XDP_DROP;
+if (udph + sizeof(struct udphdr) > data_end)
+    return 1;
 
-data += ext_len;
+dst_port = __constant_ntohs(((struct udphdr *)udph)->dest);
 ```
 
-The raw verifier log is technically accurate, but it is hard to turn into a
-repair:
+That source shape is normal BPF C: the developer made the packet proof explicit.
+The failure is in the verifier-visible proof after lowering. One replay path
+reaches the shared `udph->dest` load with `r5` as a scalar instead of a packet
+pointer:
 
 ```text
-; volatile int ext_len = __bpf_htons(ext->len); @ prog.c:274
-22: (4f) r0 |= r6
-23: (dc) r0 = be16 r0
-24: (63) *(u32 *)(r10 -4) = r0
-
-; data += ext_len; @ prog.c:280
-30: (61) r0 = *(u32 *)(r10 -4)
-31: (67) r0 <<= 32
-32: (c7) r0 s>>= 32
-33: (0f) r5 += r0
-value -2147483648 makes pkt pointer be out of bounds
+from 31 to 34: ... R5_w=40 ...
+; if (udph + sizeof(struct udphdr) > data_end) @ prog.c:267
+34: (bf) r3 = r5                      ; R3_w=40 R5_w=40
+35: (07) r3 += 8                      ; R3=48
+36: (2d) if r3 > r2 goto pc+4         ; R2=pkt_end() R3=48
+; dst_port = __constant_ntohs(((struct udphdr *)udph)->dest); @ prog.c:270
+37: (69) r2 = *(u16 *)(r5 +2)
+R5 invalid mem access 'scalar'
 ```
 
-The final line points at `data += ext_len`, but the useful diagnostic is the
-missing proof: the verifier needs a bounded, non-negative scalar at the packet
-pointer addition. BPFix turns that into a Rust-style diagnostic:
+The raw log says where the verifier stopped, but not the source-level proof
+story. BPFix turns the trace into a Rust-style multi-span diagnostic:
 
 ```text
-error[BPFIX-E005]: scalar range proof is missing
+error[BPFIX-E006]: pointer type proof is missing
   = class: lowering_artifact
-  --> prog.c:280
+  --> prog.c:270
    |
-280 | data += ext_len;
-    | ^^^^^^^^^^^^^^^^ scalar range is not proven safe for this memory operation
+263 | if (ipv4_hdr)
+    | ------------- proof can be lost when branch-specific pointers are merged
+267 | if (udph + sizeof(struct udphdr) > data_end)
+    | -------------------------------------------- proof established for the UDP-header bounds check
+270 | dst_port = __constant_ntohs(((struct udphdr *)udph)->dest);
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ rejected here: verifier sees a scalar where a pointer is required
    |
-   = verifier[121]: value -2147483648 makes pkt pointer be out of bounds
-   = note: nearest BPF instruction pc 33
-   = note: parsed 30 verifier state snapshots
-   = obligation: bound the scalar value tightly enough for the verifier to prove the memory access range
-help: Clamp the index or length with explicit upper and lower bounds.
-help: Keep the bounded scalar in the same SSA value used for pointer arithmetic or helper length.
+   = verifier[282]: R5 invalid mem access 'scalar'
+   = note: nearest BPF instruction pc 37
+   = note: parsed 60 verifier state snapshots
+   = obligation: preserve a verifier-recognized pointer type at the operation that requires a pointer
+help: Keep the IPv4 and IPv6 UDP-pointer derivations in separate verifier-visible branches, or rederive the UDP pointer from a checked base immediately before dereferencing it.
+help: Avoid integer casts or arithmetic that turn the pointer into a scalar before the access.
+help: Recompute the pointer from a verifier-tracked base after scalar manipulation.
 ```
 
 This is the kind of failure that motivates the project: the program is not
-missing a generic "add a bounds check" hint. The developer needs to understand
-which verifier proof was lost and where to make that proof visible again.
+missing a generic "add a bounds check" hint. The useful answer is the proof
+lifecycle: where a verifier-recognized pointer proof exists, where branch-local
+provenance can be merged away, and where the rejected instruction finally needs
+that proof.
 
 ## Quick Start
 

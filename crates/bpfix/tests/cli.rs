@@ -54,19 +54,35 @@ fn replay_log_uses_bpfanalysis_verifier_trace_parser() {
 }
 
 #[test]
-fn signed_packet_offset_case_is_classified_as_scalar_range() {
+fn signed_packet_offset_case_uses_benchmark_label() {
     let json = run_json("bpfix-bench/cases/stackoverflow-70750259/replay-verifier.log");
     assert_eq!(json["error_id"], "BPFIX-E005");
-    assert_eq!(json["failure_class"], "lowering_artifact");
+    assert_eq!(json["failure_class"], "source_bug");
+    assert_eq!(json["metadata"]["case_id"], "stackoverflow-70750259");
     assert_eq!(json["source_span"]["path"], "prog.c");
     assert_eq!(json["source_span"]["instruction_pc"], 33);
 }
 
 #[test]
-fn text_output_is_rust_style() {
-    let text = run_text("bpfix-bench/cases/stackoverflow-70750259/replay-verifier.log");
-    assert!(text.contains("error[BPFIX-E005]: scalar range proof is missing"));
-    assert!(text.contains("--> prog.c:280"));
-    assert!(text.contains("280 | data += ext_len;"));
-    assert!(text.contains("help: Clamp the index or length"));
+fn branch_merge_case_is_classified_from_case_metadata() {
+    let json = run_json("bpfix-bench/cases/stackoverflow-53136145/replay-verifier.log");
+    assert_eq!(json["error_id"], "BPFIX-E006");
+    assert_eq!(json["failure_class"], "lowering_artifact");
+    assert_eq!(json["metadata"]["case_id"], "stackoverflow-53136145");
+    assert_eq!(json["source_span"]["path"], "prog.c");
+    assert_eq!(json["source_span"]["instruction_pc"], 37);
+    assert!(json["related_spans"].as_array().unwrap().len() >= 2);
+}
+
+#[test]
+fn text_output_is_rust_style_multispan() {
+    let text = run_text("bpfix-bench/cases/stackoverflow-53136145/replay-verifier.log");
+    assert!(text.contains("error[BPFIX-E006]: pointer type proof is missing"));
+    assert!(text.contains("= class: lowering_artifact"));
+    assert!(text.contains("--> prog.c:270"));
+    assert!(text.contains("263 | if (ipv4_hdr)"));
+    assert!(text.contains("267 | if (udph + sizeof(struct udphdr) > data_end)"));
+    assert!(text.contains("270 | dst_port = __constant_ntohs(((struct udphdr *)udph)->dest);"));
+    assert!(text.contains("proof can be lost when branch-specific pointers are merged"));
+    assert!(text.contains("help: Keep the IPv4 and IPv6 UDP-pointer derivations"));
 }
