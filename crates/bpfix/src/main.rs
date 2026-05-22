@@ -331,10 +331,20 @@ fn build_diagnostic(
     });
     let class = classify(&terminal.message);
     let error_id = class.error_id.to_string();
-    let (trace_state_count, analysis_error, proof_events) =
+    let (trace_state_count, analysis_error, proof_events, required_proof) =
         match diagnostic::analyze_verifier_log(log, terminal.pc, &terminal.message) {
-            Ok(analysis) => (analysis.state_count, None, analysis.events),
-            Err(err) => (0, Some(err.to_string()), Vec::new()),
+            Ok(analysis) => (
+                analysis.state_count,
+                None,
+                analysis.events,
+                analysis.required_proof.description,
+            ),
+            Err(err) => (
+                0,
+                Some(err.to_string()),
+                Vec::new(),
+                class.required_proof.to_string(),
+            ),
         };
     let failure_class = inferred_failure_class(&class, &proof_events).to_string();
 
@@ -386,7 +396,7 @@ fn build_diagnostic(
         error_id: error_id.clone(),
         failure_class,
         message: format!("{}: {}", class.summary, terminal.message),
-        required_proof: class.required_proof.to_string(),
+        required_proof,
         related_spans,
         source_span,
         evidence,
@@ -577,10 +587,14 @@ fn inferred_failure_class(
     class: &Classification,
     proof_events: &[diagnostic::ProofEvent],
 ) -> &'static str {
-    if proof_events
-        .iter()
-        .any(|event| event.role == ProofEventRole::ProofLost)
-    {
+    if proof_events.iter().any(|event| {
+        event.role == ProofEventRole::ProofLost
+            && matches!(
+                event.obligation,
+                diagnostic::ProofObligation::PointerProvenance
+                    | diagnostic::ProofObligation::ScalarRange
+            )
+    }) {
         return "lowering_artifact";
     }
     match class.error_id {
@@ -650,6 +664,8 @@ fn classify(message: &str) -> Classification {
     if lower.contains("unbounded")
         || lower.contains("min value is negative")
         || lower.contains("out of bounds")
+        || lower.contains("invalid access to map value")
+        || lower.contains("invalid zero-sized")
         || lower.contains("makes pkt pointer")
         || lower.contains("outside of allowed memory range")
         || lower.contains("invalid variable-offset")

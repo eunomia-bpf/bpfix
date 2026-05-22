@@ -185,13 +185,16 @@ uses `libbpf-sys` for BPF instruction and program-type constants. The libbpf
 source is tracked as a submodule in `vendor/libbpf`.
 
 The current user-facing pipeline is log-first: `bpfix` parses verifier state
-snapshots, infers the required verifier proof, extracts proof lifecycle events,
-and maps them back to source comments when the log contains BTF/source
-annotations. The CLI accepts an optional `--object prog.o` today, builds
-`ProgramCFG` summaries, and correlates verifier-state PCs with CFG sites when
-the object section layout matches the loaded verifier program. Full BTF source
-correlation is the next analysis layer, not a runtime requirement for the basic
-CLI.
+snapshots, instantiates the required verifier proof from the terminal error
+and verifier state, extracts proof lifecycle events, and maps them back to
+source comments when the log contains BTF/source annotations. Packet bounds,
+scalar range, nullable pointer, stack readability, reference lifecycle, helper
+capability, and pointer-provenance failures now produce parameterized proof
+requirements instead of only terminal-error categories. The CLI accepts an
+optional `--object prog.o` today, builds `ProgramCFG` summaries, and correlates
+verifier-state PCs with CFG sites when the object section layout matches the
+loaded verifier program. Full BTF source correlation is the next analysis
+layer, not a runtime requirement for the basic CLI.
 
 ## What BPFix Handles
 

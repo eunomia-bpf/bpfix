@@ -26,7 +26,10 @@ trace.
 - [x] Parse verifier state snapshots from log-level-2 verifier output.
 - [x] Expose neutral verifier-log facts from `bpfanalysis` and keep
       user-facing diagnostic rules in `bpfix`.
-- [x] Infer first-pass required proofs from terminal verifier errors.
+- [x] Instantiate first-pass required proofs from terminal verifier errors and
+      parsed verifier state, including concrete registers, packet/map ranges,
+      scalar ranges, nullable values, helper names, and reference IDs where
+      visible.
 - [x] Emit proof lifecycle events: `proof_established`, `proof_lost`, and
       `rejected`.
 - [x] Map proof events to source spans when verifier logs include
@@ -42,6 +45,9 @@ trace.
       diagnostics.
 - [x] Cover the branch-merge provenance example
       `stackoverflow-53136145` in analysis and CLI tests.
+- [x] Add focused lifecycle regression tests for packet bounds, scalar range,
+      nullable pointer, stack readability, reference lifecycle, and helper
+      capability diagnostics.
 - [x] Preserve YAML log extraction and case IDs for benchmark fixtures while
       ignoring adjudicated labels in runtime diagnostics.
 
@@ -51,9 +57,8 @@ trace.
       are sparse or missing.
 - [ ] Move source correlation from log comments to BTF line records when an
       object is available.
-- [ ] Generalize proof-lost detection beyond pointer provenance into scalar
-      range loss, nullable pointer refinement loss, stack initialization loss,
-      and reference lifecycle leaks.
+- [ ] Replace the current source-comment heuristics for scalar/null/reference
+      proof loss with CFG-aware value-lineage and path analysis.
 - [ ] Track register lineage across copies, spills, reloads, and branch joins so
       proof events follow the value that matters instead of only one register
       number.

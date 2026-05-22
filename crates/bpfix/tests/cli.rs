@@ -101,7 +101,11 @@ fn replay_log_uses_bpfanalysis_verifier_trace_parser() {
 fn signed_packet_offset_case_runs_without_yaml_metadata() {
     let json = run_json("bpfix-bench/cases/stackoverflow-70750259/replay-verifier.log");
     assert_eq!(json["error_id"], "BPFIX-E005");
-    assert_eq!(json["failure_class"], "source_bug");
+    assert_eq!(json["failure_class"], "lowering_artifact");
+    assert!(json["required_proof"]
+        .as_str()
+        .unwrap()
+        .contains("cannot be negative"));
     assert_eq!(json["metadata"]["case_id"], "replay-verifier");
     assert_eq!(json["source_span"]["path"], "prog.c");
     assert_eq!(json["source_span"]["instruction_pc"], 33);
@@ -165,7 +169,7 @@ fn stdin_log_path_does_not_need_yaml() {
     let json = run_json_stdin(&replay);
 
     assert_eq!(json["error_id"], "BPFIX-E005");
-    assert_eq!(json["failure_class"], "source_bug");
+    assert_eq!(json["failure_class"], "lowering_artifact");
     assert_eq!(json["source_span"]["instruction_pc"], 33);
 }
 
