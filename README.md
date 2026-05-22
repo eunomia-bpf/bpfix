@@ -83,7 +83,7 @@ error[BPFIX-E006]: pointer type proof is missing
    = verifier[229]: R5 invalid mem access 'scalar'
    = note: nearest BPF instruction pc 37
    = note: parsed 60 verifier state snapshots
-   = obligation: preserve a verifier-recognized pointer type at the operation that requires a pointer
+   = required proof: preserve a verifier-recognized pointer type at the operation that requires a pointer
 help: Keep branch-specific pointer derivations in separate verifier-visible branches, or rederive the pointer from a checked base immediately before dereferencing it.
 help: Avoid integer casts or arithmetic that turn the pointer into a scalar before the access.
 help: Recompute the pointer from a verifier-tracked base after scalar manipulation.
@@ -123,8 +123,10 @@ when the log contains surrounding build output:
 cargo run -p bpfix -- build-or-load.log
 ```
 
-Optionally pass the BPF object. Today this records and validates the object
-input; BTF/CFG-backed source correlation will build on the same CLI shape:
+Optionally pass the BPF object. BPFix reads BPF instruction sections, builds a
+`ProgramCFG`, correlates verifier states to CFG sites when the log PC layout
+matches the object section, and reports CFG metadata in JSON. BTF-backed source
+correlation will build on the same CLI shape:
 
 ```bash
 cargo run -p bpfix -- --object xdp.o verifier.log
@@ -137,7 +139,8 @@ cargo run -p bpfix -- verifier.log --format json
 ```
 
 Run it on a benchmark YAML record when evaluating BPFix against the bundled
-corpus:
+corpus. The CLI only extracts the verifier log and case ID from YAML; labels are
+kept as evaluation oracles, not runtime inputs:
 
 ```bash
 cargo run -p bpfix -- bpfix-bench/raw/so/stackoverflow-60053570.yaml
@@ -181,13 +184,14 @@ The `bpfanalysis` crate imports analysis code from the `bpfopt` project and
 uses `libbpf-sys` for BPF instruction and program-type constants. The libbpf
 source is tracked as a submodule in `vendor/libbpf`.
 
-The current user-facing pipeline is log-first: `bpfix` calls
-`bpfanalysis::analyze_verifier_log`, which parses verifier state snapshots,
-infers the missing proof obligation, extracts proof lifecycle events, and maps
-them back to source comments when the log contains BTF/source annotations. The
-CLI accepts an optional `--object prog.o` today so object-aware workflows have a
-stable entry point; full object-file CFG and BTF correlation are the next
-analysis layer, not a runtime requirement for the basic CLI.
+The current user-facing pipeline is log-first: `bpfix` parses verifier state
+snapshots, infers the required verifier proof, extracts proof lifecycle events,
+and maps them back to source comments when the log contains BTF/source
+annotations. The CLI accepts an optional `--object prog.o` today, builds
+`ProgramCFG` summaries, and correlates verifier-state PCs with CFG sites when
+the object section layout matches the loaded verifier program. Full BTF source
+correlation is the next analysis layer, not a runtime requirement for the basic
+CLI.
 
 ## What BPFix Handles
 

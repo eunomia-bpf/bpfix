@@ -7,15 +7,16 @@
 
 pub mod analysis;
 pub mod insn;
+pub mod object_file;
 pub mod pass;
 pub mod passes;
 
-mod proof;
 mod verifier_log;
 
-pub use proof::{
-    analyze_verifier_log, ProofEvent, ProofEventRole, ProofObligation, SourceLocation,
-    VerifierLogAnalysis,
+pub use object_file::{load_object_cfg_summaries, ObjectProgramSummary};
+pub use verifier_log::{
+    verifier_states_from_log, RegState, ScalarRange, StackState, Tnum, VerifierInsn,
+    VerifierInsnKind, VerifierValueWidth,
 };
 
 #[cfg(test)]

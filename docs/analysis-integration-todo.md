@@ -9,7 +9,7 @@ BPFix should be useful without changing a developer's BPF workflow. A user
 should be able to pipe a failed `bpftool`, libbpf-rs, Aya, or BCC load log into
 `bpfix` and get a Rust-style diagnostic that says:
 
-- what proof obligation the verifier needed
+- what verifier proof was required
 - where that proof was established, if visible in the trace
 - where the proof was lost or became verifier-invisible, if visible
 - where the verifier finally rejected the program
@@ -24,31 +24,31 @@ trace.
 - [x] Keep `bpfix` as a userspace log post-processor for the first public path.
 - [x] Import the `bpfopt` analysis code into `crates/bpfanalysis`.
 - [x] Parse verifier state snapshots from log-level-2 verifier output.
-- [x] Add `bpfanalysis::analyze_verifier_log` as the public analysis API for the
-      CLI.
-- [x] Infer first-pass proof obligations from terminal verifier errors.
+- [x] Expose neutral verifier-log facts from `bpfanalysis` and keep
+      user-facing diagnostic rules in `bpfix`.
+- [x] Infer first-pass required proofs from terminal verifier errors.
 - [x] Emit proof lifecycle events: `proof_established`, `proof_lost`, and
       `rejected`.
 - [x] Map proof events to source spans when verifier logs include
       `; source @ file:line` annotations.
-- [x] Refactor `crates/bpfix` so multi-span diagnostics come from
-      `bpfanalysis`, not CLI-local source scanning.
+- [x] Refactor `crates/bpfix` so multi-span diagnostics come from the
+      `bpfix::diagnostic` product layer, not ad hoc CLI-local source scanning.
 - [x] Make the runtime log path independent from `case.yaml`; benchmark YAML is
       used only when the YAML file is passed as input.
 - [x] Extract the verifier region from full libbpf/build logs before analysis.
-- [x] Accept and validate an optional `--object prog.o` argument and expose it in
-      diagnostic metadata.
+- [x] Accept an optional `--object prog.o`, read BPF instruction sections, build
+      `ProgramCFG` summaries, correlate verifier states by PC when the loaded
+      verifier layout matches the object section, and expose CFG metadata in
+      diagnostics.
 - [x] Cover the branch-merge provenance example
       `stackoverflow-53136145` in analysis and CLI tests.
-- [x] Preserve benchmark metadata support so replay cases can still supply
-      adjudicated taxonomy class and repair direction.
+- [x] Preserve YAML log extraction and case IDs for benchmark fixtures while
+      ignoring adjudicated labels in runtime diagnostics.
 
 ## Next
 
-- [ ] Use `--object prog.o` for real BTF/ELF source correlation when source
-      comments are sparse or missing.
-- [ ] Build a `ProgramCFG` from object instructions and connect verifier states
-      to `InsnSite` instead of only raw PCs.
+- [ ] Use `--object prog.o` for real BTF source correlation when source comments
+      are sparse or missing.
 - [ ] Move source correlation from log comments to BTF line records when an
       object is available.
 - [ ] Generalize proof-lost detection beyond pointer provenance into scalar
@@ -59,7 +59,7 @@ trace.
       number.
 - [ ] Rank repair hints from the detected proof lifecycle rather than only the
       terminal error class.
-- [ ] Add golden tests for at least one representative case per obligation
+- [ ] Add golden tests for at least one representative case per required-proof
       class.
 - [ ] Keep JSON stable enough for editors and CI integrations.
 
@@ -67,12 +67,12 @@ trace.
 
 - The first public API is log-driven. It does not require source code, YAML, or
   an object file.
-- `--object` is accepted and validated, but BTF/CFG-backed source correlation is
-  still future work.
+- `--object` builds CFG summaries and records verifier-state/CFG correlation
+  status, but BTF-backed source correlation is still future work.
 - Source spans require verifier logs with source comments until object-backed
   correlation is implemented.
 - The proof-lost engine is strongest today for pointer provenance and branch
-  merge failures. Other obligation classes still need deeper value-lineage
+  merge failures. Other required-proof classes still need deeper value-lineage
   tracking.
-- Benchmark `case.yaml` metadata is used only when a YAML record is passed as
-  input. It is the evaluation oracle, not a runtime dependency for normal logs.
+- Benchmark `case.yaml` labels are evaluation oracles. Runtime diagnostics only
+  use YAML as an optional container for a verifier log and case ID.

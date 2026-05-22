@@ -10,5 +10,6 @@ description = "Rust analysis primitives for eBPF verifier diagnostics"
 anyhow.workspace = true
 clap.workspace = true
 libbpf-sys.workspace = true
+object.workspace = true
 serde.workspace = true
 serde_json.workspace = true

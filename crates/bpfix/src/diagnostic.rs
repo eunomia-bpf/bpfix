@@ -1,6 +1,5 @@
 use anyhow::Result;
-
-use crate::verifier_log::{verifier_states_from_log, RegState, VerifierInsn};
+use bpfanalysis::{verifier_states_from_log, RegState, VerifierInsn};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct VerifierLogAnalysis {
@@ -216,7 +215,7 @@ fn is_pointer_state(state: &RegState) -> bool {
     state.reg_type != "scalar" && state.reg_type != "fp"
 }
 
-fn infer_obligation(message: &str) -> ProofObligation {
+pub fn infer_obligation(message: &str) -> ProofObligation {
     let lower = message.to_ascii_lowercase();
     if lower.contains("invalid access to packet") || lower.contains("outside of the packet") {
         return ProofObligation::PacketBounds;
@@ -302,7 +301,7 @@ fn rejected_detail(obligation: ProofObligation) -> &'static str {
         ProofObligation::DynptrSafety => {
             "rejected here: dynptr lifetime or bounds proof is missing"
         }
-        ProofObligation::Unknown => "rejected here: verifier proof obligation is missing",
+        ProofObligation::Unknown => "rejected here: required verifier proof is missing",
     }
 }
 
@@ -418,21 +417,16 @@ mod tests {
 
         assert_eq!(analysis.state_count, 60);
         assert_eq!(analysis.obligation, ProofObligation::PointerProvenance);
-        assert!(analysis
-            .events
-            .iter()
-            .any(|event| event.role == ProofEventRole::ProofLost
-                && event.source.as_ref().unwrap().line == 263));
-        assert!(analysis
-            .events
-            .iter()
-            .any(|event| event.role == ProofEventRole::ProofEstablished
-                && event.source.as_ref().unwrap().line == 267));
-        assert!(analysis
-            .events
-            .iter()
-            .any(|event| event.role == ProofEventRole::Rejected
-                && event.source.as_ref().unwrap().line == 270));
+        assert!(analysis.events.iter().any(|event| {
+            event.role == ProofEventRole::ProofLost && event.source.as_ref().unwrap().line == 263
+        }));
+        assert!(analysis.events.iter().any(|event| {
+            event.role == ProofEventRole::ProofEstablished
+                && event.source.as_ref().unwrap().line == 267
+        }));
+        assert!(analysis.events.iter().any(|event| {
+            event.role == ProofEventRole::Rejected && event.source.as_ref().unwrap().line == 270
+        }));
     }
 
     #[test]
@@ -447,10 +441,8 @@ mod tests {
         .unwrap();
 
         assert_eq!(analysis.obligation, ProofObligation::ScalarRange);
-        assert!(analysis
-            .events
-            .iter()
-            .any(|event| event.role == ProofEventRole::Rejected
-                && event.source.as_ref().unwrap().line == 280));
+        assert!(analysis.events.iter().any(|event| {
+            event.role == ProofEventRole::Rejected && event.source.as_ref().unwrap().line == 280
+        }));
     }
 }

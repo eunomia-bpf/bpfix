@@ -660,13 +660,17 @@ impl PassContext {
         // log_level=1 — the kernel only emits the final pass/fail line, no
         // per-PC deltas. Passes that consume verifier states fall back to
         // unknown reg classification (which their is_some_and gates handle).
-        self.verifier_states = Arc::from(crate::verifier_log::verifier_states_from_log(log)?);
+        self.set_verifier_states(crate::verifier_log::verifier_states_from_log(log)?);
         Ok(())
+    }
+
+    pub(crate) fn set_verifier_states(&mut self, states: Vec<VerifierInsn>) {
+        self.verifier_states = Arc::from(states);
     }
 
     #[cfg(test)]
     pub(crate) fn set_verifier_states_test(&mut self, states: Vec<VerifierInsn>) {
-        self.verifier_states = Arc::from(states);
+        self.set_verifier_states(states);
     }
 
     pub fn has_verifier_states(&self) -> bool {

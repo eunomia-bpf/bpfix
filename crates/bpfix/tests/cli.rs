@@ -170,6 +170,37 @@ fn stdin_log_path_does_not_need_yaml() {
 }
 
 #[test]
+fn yaml_labels_do_not_change_runtime_diagnostic() {
+    let replay = std::fs::read_to_string(
+        workspace_root().join("bpfix-bench/cases/stackoverflow-53136145/replay-verifier.log"),
+    )
+    .expect("fixture should be readable");
+    let indented_log = replay
+        .lines()
+        .map(|line| format!("    {line}\n"))
+        .collect::<String>();
+    let yaml = format!(
+        "case_id: yaml-oracle\nlabel:\n  error_id: BPFIX-E009\n  taxonomy_class: environment_or_configuration\n  root_cause_description: SHOULD_NOT_LEAK\n  fix_direction: WRONG_REPAIR\nverifier_log:\n  combined: |\n{indented_log}"
+    );
+
+    let json = run_json_stdin(&yaml);
+
+    assert_eq!(json["error_id"], "BPFIX-E006");
+    assert_eq!(json["failure_class"], "lowering_artifact");
+    assert_eq!(json["metadata"]["case_id"], "yaml-oracle");
+    assert!(
+        !json["evidence"].as_array().unwrap().iter().any(|evidence| {
+            evidence["kind"] == "case_root_cause" || evidence["detail"] == "SHOULD_NOT_LEAK"
+        })
+    );
+    assert!(!json["candidate_repairs"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|repair| repair == "WRONG_REPAIR"));
+}
+
+#[test]
 fn object_argument_is_validated_and_reported() {
     let log_path =
         workspace_root().join("bpfix-bench/cases/stackoverflow-53136145/replay-verifier.log");
@@ -186,4 +217,88 @@ fn object_argument_is_validated_and_reported() {
         json["metadata"]["object_path"],
         object_path.to_str().unwrap()
     );
+    assert_eq!(
+        json["metadata"]["object_programs"][0]["section_name"],
+        "xdp"
+    );
+    assert_eq!(
+        json["metadata"]["object_programs"][0]["instruction_count"],
+        54
+    );
+    assert!(
+        json["metadata"]["object_programs"][0]["block_count"]
+            .as_u64()
+            .unwrap()
+            > 0
+    );
+    assert!(
+        json["metadata"]["object_programs"][0]["verifier_state_site_count"]
+            .as_u64()
+            .unwrap()
+            > 0
+    );
+    assert!(json["metadata"]["object_programs"][0]["verifier_state_attach_error"].is_null());
+}
+
+#[test]
+fn object_argument_keeps_diagnostic_when_log_pcs_use_loaded_layout() {
+    let log_path = workspace_root()
+        .join("bpfix-bench/cases/github-commit-cilium-968227de9cc5/replay-verifier.log");
+    let object_path =
+        workspace_root().join("bpfix-bench/cases/github-commit-cilium-968227de9cc5/prog.o");
+    let json = run_json_with_args(&[
+        "--object",
+        object_path.to_str().unwrap(),
+        log_path.to_str().unwrap(),
+        "--format",
+        "json",
+    ]);
+
+    assert_eq!(
+        json["metadata"]["object_path"],
+        object_path.to_str().unwrap()
+    );
+    assert!(
+        json["metadata"]["object_programs"][0]["block_count"]
+            .as_u64()
+            .unwrap()
+            > 0
+    );
+    assert!(
+        json["metadata"]["object_programs"][0]["verifier_state_attach_error"]
+            .as_str()
+            .unwrap()
+            .contains("could not be attached")
+    );
+}
+
+#[test]
+fn object_parse_error_is_reported_without_blocking_log_diagnostic() {
+    let log_path =
+        workspace_root().join("bpfix-bench/cases/stackoverflow-70750259/replay-verifier.log");
+    let object_path =
+        std::env::temp_dir().join(format!("bpfix-invalid-object-{}.o", std::process::id()));
+    std::fs::write(&object_path, b"not an elf").expect("temp object should be writable");
+    let json = run_json_with_args(&[
+        "--object",
+        object_path.to_str().unwrap(),
+        log_path.to_str().unwrap(),
+        "--format",
+        "json",
+    ]);
+    let _ = std::fs::remove_file(&object_path);
+
+    assert_eq!(json["error_id"], "BPFIX-E005");
+    assert_eq!(
+        json["metadata"]["object_path"],
+        object_path.to_str().unwrap()
+    );
+    assert!(json["metadata"]["object_programs"]
+        .as_array()
+        .unwrap()
+        .is_empty());
+    assert!(json["metadata"]["object_analysis_error"]
+        .as_str()
+        .unwrap()
+        .contains("failed to parse ELF object"));
 }

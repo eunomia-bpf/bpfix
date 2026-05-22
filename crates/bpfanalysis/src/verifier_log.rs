@@ -13,25 +13,25 @@ use std::collections::HashMap;
 use anyhow::{anyhow, bail, Context, Result};
 #[allow(clippy::enum_variant_names)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) enum VerifierInsnKind {
+pub enum VerifierInsnKind {
     EdgeFullState,
     PcFullState,
     BranchDeltaState,
     InsnDeltaState,
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) enum VerifierValueWidth {
+pub enum VerifierValueWidth {
     Unknown,
     Bits32,
     Bits64,
 }
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub(crate) struct Tnum {
+pub struct Tnum {
     pub value: u64,
     pub mask: u64,
 }
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub(crate) struct ScalarRange {
+pub struct ScalarRange {
     pub smin: Option<i64>,
     pub smax: Option<i64>,
     pub umin: Option<u64>,
@@ -42,7 +42,7 @@ pub(crate) struct ScalarRange {
     pub umax32: Option<u32>,
 }
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub(crate) struct VerifierInsn {
+pub struct VerifierInsn {
     pub pc: usize,
     pub frame: usize,
     pub from_pc: Option<usize>,
@@ -52,7 +52,7 @@ pub(crate) struct VerifierInsn {
     pub stack: HashMap<i16, StackState>,
 }
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub(crate) struct RegState {
+pub struct RegState {
     pub reg_type: String,
     pub value_width: VerifierValueWidth,
     pub precise: bool,
@@ -92,7 +92,7 @@ impl RegState {
     }
 }
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub(crate) struct StackState {
+pub struct StackState {
     pub slot_types: Option<String>,
     pub value: Option<RegState>,
 }
@@ -104,7 +104,7 @@ pub(crate) fn parse_verifier_log(log: &str) -> Vec<VerifierInsn> {
 pub(crate) fn parse_verifier_log_result(log: &str) -> Result<Vec<VerifierInsn>> {
     parse_log_states(log, true)
 }
-pub(crate) fn verifier_states_from_log(log: &str) -> Result<Vec<VerifierInsn>> {
+pub fn verifier_states_from_log(log: &str) -> Result<Vec<VerifierInsn>> {
     parse_log_states(log, false)
 }
 fn parse_log_states(log: &str, include_branch_delta: bool) -> Result<Vec<VerifierInsn>> {

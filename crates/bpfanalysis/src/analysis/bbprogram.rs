@@ -470,7 +470,7 @@ impl ProgramCFG {
             .find(|binding| binding.old_fd == imm)
             .map(|binding| binding.map_id)
     }
-    pub(crate) fn verifier_states_at(&self, site: InsnSite) -> Option<&[VerifierInsn]> {
+    pub fn verifier_states_at(&self, site: InsnSite) -> Option<&[VerifierInsn]> {
         let block = self.blocks.get(site.block.0)?;
         if site.idx < block.insns.len() {
             block.insns[site.idx].verifier_states.as_deref()

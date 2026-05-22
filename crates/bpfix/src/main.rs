@@ -1,10 +1,12 @@
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};
-use bpfanalysis::ProofEventRole;
 use clap::{Parser, ValueEnum};
+use diagnostic::ProofEventRole;
 use serde::Serialize;
 use serde_yaml::Value as YamlValue;
+
+mod diagnostic;
 
 #[derive(Parser, Debug)]
 #[command(version, about = "Diagnose eBPF verifier failures from userspace")]
@@ -35,7 +37,6 @@ struct LoadedInput {
     case_id: Option<String>,
     input_kind: &'static str,
     object_path_hint: Option<String>,
-    case_metadata: Option<CaseMetadata>,
 }
 
 #[derive(Clone, Debug)]
@@ -48,21 +49,12 @@ struct TerminalError {
     source_text: Option<String>,
 }
 
-#[derive(Clone, Debug, Default)]
-struct CaseMetadata {
-    case_id: Option<String>,
-    error_id: Option<String>,
-    taxonomy_class: Option<String>,
-    root_cause_description: Option<String>,
-    fix_direction: Option<String>,
-}
-
 #[derive(Clone, Debug)]
 struct Classification {
     error_id: &'static str,
     failure_class: &'static str,
     summary: &'static str,
-    obligation: &'static str,
+    required_proof: &'static str,
     repairs: &'static [&'static str],
 }
 
@@ -72,7 +64,7 @@ struct Diagnostic {
     error_id: String,
     failure_class: String,
     message: String,
-    missing_obligation: String,
+    required_proof: String,
     source_span: SourceSpan,
     related_spans: Vec<RelatedSpan>,
     evidence: Vec<Evidence>,
@@ -111,32 +103,35 @@ struct Metadata {
     case_id: Option<String>,
     input_kind: &'static str,
     object_path: Option<String>,
+    object_programs: Vec<ObjectProgramMetadata>,
+    object_analysis_error: Option<String>,
     trace_state_count: usize,
     analysis_error: Option<String>,
+}
+
+#[derive(Serialize)]
+struct ObjectProgramMetadata {
+    section_name: String,
+    instruction_count: usize,
+    block_count: usize,
+    site_count: usize,
+    verifier_state_site_count: usize,
+    verifier_state_attach_error: Option<String>,
 }
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
     let loaded = load_input(cli.input.as_deref())?;
-    let object_path = match cli.object.as_deref() {
-        Some(path) => Some(validate_object_path(path)?),
-        None => loaded.object_path_hint.clone(),
-    };
-    let case_id = cli
-        .case_id
-        .or_else(|| {
-            loaded
-                .case_metadata
-                .as_ref()
-                .and_then(|metadata| metadata.case_id.clone())
-        })
-        .or_else(|| loaded.case_id.clone());
+    let (object_path, object_programs, object_analysis_error) =
+        object_metadata(cli.object.as_deref(), &loaded);
+    let case_id = cli.case_id.or_else(|| loaded.case_id.clone());
     let diagnostic = build_diagnostic(
         &loaded.log,
         case_id,
         loaded.input_kind,
-        loaded.case_metadata.as_ref(),
         object_path,
+        object_programs,
+        object_analysis_error,
     );
 
     match cli.format {
@@ -168,7 +163,6 @@ fn load_input(path: Option<&Path>) -> Result<LoadedInput> {
                 case_id: extract_case_id(&yaml),
                 input_kind,
                 object_path_hint,
-                case_metadata: extract_case_metadata(&yaml),
             });
         }
     }
@@ -182,7 +176,6 @@ fn load_input(path: Option<&Path>) -> Result<LoadedInput> {
             .map(ToOwned::to_owned),
         input_kind,
         object_path_hint,
-        case_metadata: None,
     })
 }
 
@@ -193,6 +186,51 @@ fn read_stdin() -> Result<String> {
         .read_to_string(&mut raw)
         .context("failed to read verifier log from stdin")?;
     Ok(raw)
+}
+
+fn object_metadata(
+    explicit_object: Option<&Path>,
+    loaded: &LoadedInput,
+) -> (Option<String>, Vec<ObjectProgramMetadata>, Option<String>) {
+    match explicit_object {
+        Some(path) => {
+            let object_path = path.display().to_string();
+            match validate_object_path(path).and_then(|validated| {
+                load_object_program_metadata(Path::new(&validated), &loaded.log)
+            }) {
+                Ok(programs) => (Some(object_path), programs, None),
+                Err(err) => (Some(object_path), Vec::new(), Some(err.to_string())),
+            }
+        }
+        None => {
+            let Some(path) = loaded.object_path_hint.as_deref() else {
+                return (None, Vec::new(), None);
+            };
+            let object_path = Path::new(path);
+            if !object_path.is_file() {
+                return (Some(path.to_string()), Vec::new(), None);
+            }
+            match load_object_program_metadata(object_path, &loaded.log) {
+                Ok(programs) => (Some(path.to_string()), programs, None),
+                Err(err) => (Some(path.to_string()), Vec::new(), Some(err.to_string())),
+            }
+        }
+    }
+}
+
+fn load_object_program_metadata(path: &Path, log: &str) -> Result<Vec<ObjectProgramMetadata>> {
+    let summaries = bpfanalysis::load_object_cfg_summaries(path, Some(log))?;
+    Ok(summaries
+        .into_iter()
+        .map(|summary| ObjectProgramMetadata {
+            section_name: summary.section_name,
+            instruction_count: summary.instruction_count,
+            block_count: summary.block_count,
+            site_count: summary.site_count,
+            verifier_state_site_count: summary.verifier_state_site_count,
+            verifier_state_attach_error: summary.verifier_state_attach_error,
+        })
+        .collect())
 }
 
 fn validate_object_path(path: &Path) -> Result<String> {
@@ -277,8 +315,9 @@ fn build_diagnostic(
     log: &str,
     case_id: Option<String>,
     input_kind: &'static str,
-    case_metadata: Option<&CaseMetadata>,
     object_path: Option<String>,
+    object_programs: Vec<ObjectProgramMetadata>,
+    object_analysis_error: Option<String>,
 ) -> Diagnostic {
     let terminal = find_terminal_error(log).unwrap_or_else(|| TerminalError {
         line: log.lines().count().max(1),
@@ -291,23 +330,13 @@ fn build_diagnostic(
         source_text: None,
     });
     let class = classify(&terminal.message);
-    let error_id = if class.error_id == "BPFIX-UNKNOWN" {
-        case_metadata
-            .and_then(|metadata| metadata.error_id.as_deref())
-            .unwrap_or(class.error_id)
-    } else {
-        class.error_id
-    }
-    .to_string();
+    let error_id = class.error_id.to_string();
     let (trace_state_count, analysis_error, proof_events) =
-        match bpfanalysis::analyze_verifier_log(log, terminal.pc, &terminal.message) {
+        match diagnostic::analyze_verifier_log(log, terminal.pc, &terminal.message) {
             Ok(analysis) => (analysis.state_count, None, analysis.events),
             Err(err) => (0, Some(err.to_string()), Vec::new()),
         };
-    let failure_class = case_metadata
-        .and_then(|metadata| metadata.taxonomy_class.as_deref())
-        .unwrap_or_else(|| inferred_failure_class(&class, &proof_events))
-        .to_string();
+    let failure_class = inferred_failure_class(&class, &proof_events).to_string();
 
     let mut evidence = Vec::new();
     evidence.push(Evidence {
@@ -329,19 +358,6 @@ fn build_diagnostic(
             line: None,
         });
     }
-    if let Some(root_cause) = case_metadata.and_then(|metadata| {
-        metadata
-            .root_cause_description
-            .as_deref()
-            .filter(|description| !description.is_empty())
-    }) {
-        evidence.push(Evidence {
-            kind: "case_root_cause",
-            detail: root_cause.to_string(),
-            line: None,
-        });
-    }
-
     let source_span = proof_events
         .iter()
         .find(|event| event.role == ProofEventRole::Rejected)
@@ -364,22 +380,13 @@ fn build_diagnostic(
         .map(|repair| (*repair).to_string())
         .collect::<Vec<_>>();
     add_proof_event_repairs(&mut candidate_repairs, &proof_events);
-    if let Some(fix_direction) = case_metadata.and_then(|metadata| {
-        metadata
-            .fix_direction
-            .as_deref()
-            .filter(|direction| !direction.is_empty())
-    }) {
-        candidate_repairs.retain(|repair| repair != fix_direction);
-        candidate_repairs.insert(0, fix_direction.to_string());
-    }
 
     Diagnostic {
         diagnostic_version: "bpfix.diagnostic/v1",
         error_id: error_id.clone(),
         failure_class,
         message: format!("{}: {}", class.summary, terminal.message),
-        missing_obligation: class.obligation.to_string(),
+        required_proof: class.required_proof.to_string(),
         related_spans,
         source_span,
         evidence,
@@ -388,6 +395,8 @@ fn build_diagnostic(
             case_id,
             input_kind,
             object_path,
+            object_programs,
+            object_analysis_error,
             trace_state_count,
             analysis_error,
         },
@@ -511,7 +520,7 @@ fn parse_source_comment(line: &str) -> Option<(String, usize, String)> {
     Some((path.to_string(), line_no, source))
 }
 
-fn source_span_from_proof_event(event: &bpfanalysis::ProofEvent) -> Option<SourceSpan> {
+fn source_span_from_proof_event(event: &diagnostic::ProofEvent) -> Option<SourceSpan> {
     let source = event.source.as_ref()?;
     Some(SourceSpan {
         path: source.path.clone(),
@@ -522,7 +531,7 @@ fn source_span_from_proof_event(event: &bpfanalysis::ProofEvent) -> Option<Sourc
     })
 }
 
-fn related_spans_from_proof_events(events: &[bpfanalysis::ProofEvent]) -> Vec<RelatedSpan> {
+fn related_spans_from_proof_events(events: &[diagnostic::ProofEvent]) -> Vec<RelatedSpan> {
     let mut spans = events
         .iter()
         .filter(|event| event.role != ProofEventRole::Rejected)
@@ -543,7 +552,7 @@ fn related_spans_from_proof_events(events: &[bpfanalysis::ProofEvent]) -> Vec<Re
     spans
 }
 
-fn add_proof_event_repairs(repairs: &mut Vec<String>, events: &[bpfanalysis::ProofEvent]) {
+fn add_proof_event_repairs(repairs: &mut Vec<String>, events: &[diagnostic::ProofEvent]) {
     for event in events {
         if event.role != ProofEventRole::ProofLost {
             continue;
@@ -566,7 +575,7 @@ fn insert_repair(repairs: &mut Vec<String>, repair: &str) {
 
 fn inferred_failure_class(
     class: &Classification,
-    proof_events: &[bpfanalysis::ProofEvent],
+    proof_events: &[diagnostic::ProofEvent],
 ) -> &'static str {
     if proof_events
         .iter()
@@ -587,7 +596,7 @@ fn classify(message: &str) -> Classification {
             error_id: "BPFIX-E001",
             failure_class: "source_bug",
             summary: "packet bounds proof is missing",
-            obligation: "prove that the packet pointer plus requested access size stays before data_end on every path reaching the load, store, or helper call",
+            required_proof: "prove that the packet pointer plus requested access size stays before data_end on every path reaching the load, store, or helper call",
             repairs: &[
                 "Add or move a packet bounds check immediately before the access or helper argument use.",
                 "Check the exact pointer and byte length passed to the helper, not only an earlier header pointer.",
@@ -603,7 +612,7 @@ fn classify(message: &str) -> Classification {
             error_id: "BPFIX-E002",
             failure_class: "source_bug",
             summary: "nullable pointer proof is missing",
-            obligation: "prove that the nullable pointer returned by a helper is checked for null before dereference or helper reuse",
+            required_proof: "prove that the nullable pointer returned by a helper is checked for null before dereference or helper reuse",
             repairs: &[
                 "Add an explicit null check and keep the dereference inside the non-null branch.",
                 "Avoid copying the nullable value through a path that loses the verifier's refined type.",
@@ -619,7 +628,7 @@ fn classify(message: &str) -> Classification {
             error_id: "BPFIX-E003",
             failure_class: "source_bug",
             summary: "stack initialization proof is missing",
-            obligation: "initialize every stack byte that can be read directly or passed indirectly to a helper",
+            required_proof: "initialize every stack byte that can be read directly or passed indirectly to a helper",
             repairs: &[
                 "Initialize the full stack object before the helper call or load.",
                 "Reduce the helper length argument so it covers only initialized bytes.",
@@ -631,7 +640,7 @@ fn classify(message: &str) -> Classification {
             error_id: "BPFIX-E004",
             failure_class: "source_bug",
             summary: "reference lifecycle proof is missing",
-            obligation: "release every acquired verifier-tracked reference on every exit path",
+            required_proof: "release every acquired verifier-tracked reference on every exit path",
             repairs: &[
                 "Call the matching release helper before each return.",
                 "Restructure error paths so acquired references share one cleanup block.",
@@ -649,7 +658,7 @@ fn classify(message: &str) -> Classification {
             error_id: "BPFIX-E005",
             failure_class: "lowering_artifact",
             summary: "scalar range proof is missing",
-            obligation: "bound the scalar value tightly enough for the verifier to prove the memory access range",
+            required_proof: "bound the scalar value tightly enough for the verifier to prove the memory access range",
             repairs: &[
                 "Clamp the index or length with explicit upper and lower bounds.",
                 "Keep the bounded scalar in the same SSA value used for pointer arithmetic or helper length.",
@@ -661,7 +670,7 @@ fn classify(message: &str) -> Classification {
             error_id: "BPFIX-E006",
             failure_class: "source_bug",
             summary: "pointer type proof is missing",
-            obligation: "preserve a verifier-recognized pointer type at the operation that requires a pointer",
+            required_proof: "preserve a verifier-recognized pointer type at the operation that requires a pointer",
             repairs: &[
                 "Avoid integer casts or arithmetic that turn the pointer into a scalar before the access.",
                 "Recompute the pointer from a verifier-tracked base after scalar manipulation.",
@@ -677,7 +686,7 @@ fn classify(message: &str) -> Classification {
             error_id: "BPFIX-E018",
             failure_class: "verifier_limit",
             summary: "verifier resource limit was reached",
-            obligation: "reduce verifier state growth or provide a statically bounded loop shape",
+            required_proof: "reduce verifier state growth or provide a statically bounded loop shape",
             repairs: &[
                 "Add a constant loop bound or split complex control flow into smaller helper programs.",
                 "Reduce path-sensitive state by simplifying branches and stack state carried through the loop.",
@@ -693,7 +702,7 @@ fn classify(message: &str) -> Classification {
             error_id: "BPFIX-E009",
             failure_class: "environment_or_configuration",
             summary: "kernel or program-type capability is unavailable",
-            obligation: "load the program with a kernel, program type, attach point, and privileges that support the requested helper or kfunc",
+            required_proof: "load the program with a kernel, program type, attach point, and privileges that support the requested helper or kfunc",
             repairs: &[
                 "Check kernel version, program type, attach type, capabilities, and BTF availability.",
                 "Use a supported helper or gate the code path by target kernel capabilities.",
@@ -705,7 +714,7 @@ fn classify(message: &str) -> Classification {
             error_id: "BPFIX-E012",
             failure_class: "source_bug",
             summary: "dynptr lifetime or bounds proof is missing",
-            obligation: "keep dynptr slices inside their proven lifetime, initialized range, and read/write mode",
+            required_proof: "keep dynptr slices inside their proven lifetime, initialized range, and read/write mode",
             repairs: &[
                 "Revalidate dynptr slice nullability and length before use.",
                 "Do not reuse a dynptr slice after an operation that invalidates it.",
@@ -715,8 +724,8 @@ fn classify(message: &str) -> Classification {
     Classification {
         error_id: "BPFIX-UNKNOWN",
         failure_class: "source_bug",
-        summary: "verifier proof obligation is not classified yet",
-        obligation: "inspect the terminal verifier line and add the missing safety proof required at that program point",
+        summary: "required verifier proof is not classified yet",
+        required_proof: "inspect the terminal verifier line and add the missing safety proof required at that program point",
         repairs: &[
             "Move the relevant check closer to the rejected instruction.",
             "Preserve the exact register or scalar value that the verifier has already proven safe.",
@@ -764,11 +773,14 @@ fn render_text(diagnostic: &Diagnostic) -> String {
         ));
     }
     out.push_str(&format!(
-        "   = obligation: {}\n",
-        diagnostic.missing_obligation
+        "   = required proof: {}\n",
+        diagnostic.required_proof
     ));
     if let Some(err) = &diagnostic.metadata.analysis_error {
         out.push_str(&format!("   = warning: {err}\n"));
+    }
+    if let Some(err) = &diagnostic.metadata.object_analysis_error {
+        out.push_str(&format!("   = warning: object analysis: {err}\n"));
     }
     for repair in &diagnostic.candidate_repairs {
         out.push_str(&format!("help: {repair}\n"));
@@ -847,29 +859,8 @@ fn source_label(error_id: &str) -> &'static str {
         "BPFIX-E009" => "kernel or program type does not expose this capability",
         "BPFIX-E012" => "dynptr lifetime or bounds proof is missing here",
         "BPFIX-E018" => "verifier analysis budget or loop proof is exhausted here",
-        _ => "verifier proof obligation is missing here",
+        _ => "required verifier proof is missing here",
     }
-}
-
-fn extract_case_metadata(yaml: &YamlValue) -> Option<CaseMetadata> {
-    let metadata = CaseMetadata {
-        case_id: yaml_path(yaml, &["case_id"]).and_then(yaml_string),
-        error_id: yaml_path(yaml, &["label", "error_id"]).and_then(yaml_string),
-        taxonomy_class: yaml_path(yaml, &["label", "taxonomy_class"]).and_then(yaml_string),
-        root_cause_description: yaml_path(yaml, &["label", "root_cause_description"])
-            .and_then(yaml_string),
-        fix_direction: yaml_path(yaml, &["label", "fix_direction"]).and_then(yaml_string),
-    };
-    (metadata.case_id.is_some()
-        || metadata.error_id.is_some()
-        || metadata.taxonomy_class.is_some()
-        || metadata.root_cause_description.is_some()
-        || metadata.fix_direction.is_some())
-    .then_some(metadata)
-}
-
-fn yaml_string(value: &YamlValue) -> Option<String> {
-    value.as_str().map(ToOwned::to_owned)
 }
 
 fn extract_case_id(yaml: &YamlValue) -> Option<String> {
