@@ -1,20 +1,20 @@
 from __future__ import annotations
 
-from interface.extractor.engine.cfg_builder import build_cfg
-from interface.extractor.engine.monitor import monitor_carriers
-from interface.extractor.engine.opcode_safety import (
+from bpfix.extractor.engine.cfg_builder import build_cfg
+from bpfix.extractor.engine.monitor import monitor_carriers
+from bpfix.extractor.engine.opcode_safety import (
     OperandRole,
     SafetyDomain,
     discover_compatible_carriers,
     infer_safety_schemas,
     instantiate_primary_carrier,
 )
-from interface.extractor.pipeline import (
+from bpfix.extractor.pipeline import (
     _override_taxonomy_class,
     classify_atom,
     compute_forward_dominators,
 )
-from interface.extractor.trace_parser import RegisterState, TracedInstruction
+from bpfix.extractor.trace_parser import RegisterState, TracedInstruction
 
 
 def _rs(type_: str, **kwargs) -> RegisterState:

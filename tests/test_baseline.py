@@ -7,9 +7,9 @@ from jsonschema import Draft202012Validator
 import pytest
 import yaml
 
-from interface.baseline.error_patterns import match_error_pattern
-from interface.baseline.regex_diagnostic import generate_baseline_diagnostic
-from interface.extractor.pipeline import generate_diagnostic
+from bpfix.baseline.error_patterns import match_error_pattern
+from bpfix.baseline.regex_diagnostic import generate_baseline_diagnostic
+from bpfix.extractor.pipeline import generate_diagnostic
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -125,7 +125,7 @@ bpf_test.go:170: verifier error: load program: operation not supported:
 
 
 def test_baseline_output_matches_bpfix_schema() -> None:
-    schema = json.loads((ROOT / "interface" / "schema" / "diagnostic.json").read_text(encoding="utf-8"))
+    schema = json.loads((ROOT / "bpfix" / "schema" / "diagnostic.json").read_text(encoding="utf-8"))
     log = _load_verifier_log("bpfix-bench/raw/so/stackoverflow-70750259.yaml")
 
     baseline_output = generate_baseline_diagnostic(log)

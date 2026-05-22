@@ -1,7 +1,7 @@
-# interface/extractor
+# bpfix/extractor
 
 Verifier-log diagnostic pipeline for BPFix. The entry point is
-`pipeline.generate_diagnostic()`, which takes a raw LOG_LEVEL2 verifier log and
+`bpfix.extractor.pipeline.generate_diagnostic()`, which takes a raw LOG_LEVEL2 verifier log and
 returns text plus structured JSON.
 
 ## Flow

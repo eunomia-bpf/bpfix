@@ -8,7 +8,7 @@ from jsonschema import Draft202012Validator
 
 ROOT = Path(__file__).resolve().parents[1]
 
-from interface.api import build_diagnostic, load_schema
+from bpfix.api import build_diagnostic, load_schema
 
 
 def _load_verifier_log(relative_path: str) -> str:
@@ -35,6 +35,6 @@ def test_build_diagnostic_emits_schema_valid_payload() -> None:
 
 def test_load_schema_matches_packaged_schema_file() -> None:
     expected = json.loads(
-        (ROOT / "interface" / "schema" / "diagnostic.json").read_text(encoding="utf-8")
+        (ROOT / "bpfix" / "schema" / "diagnostic.json").read_text(encoding="utf-8")
     )
     assert load_schema() == expected

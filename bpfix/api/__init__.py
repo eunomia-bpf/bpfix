@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from interface.extractor.pipeline import generate_diagnostic
+from bpfix.extractor.pipeline import generate_diagnostic
 
 
 SCHEMA_PATH = Path(__file__).resolve().parents[1] / "schema" / "diagnostic.json"

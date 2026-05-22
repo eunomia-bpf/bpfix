@@ -2,12 +2,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from interface.extractor.engine.helper_signatures import (
+from bpfix.extractor.engine.helper_signatures import (
     HELPER_SIGNATURES,
     get_helper_id_by_name,
     get_helper_safety_condition,
 )
-from interface.extractor.engine.opcode_safety import (
+from bpfix.extractor.engine.opcode_safety import (
     SafetyDomain,
     decode_opcode,
     evaluate_condition,

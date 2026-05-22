@@ -89,12 +89,12 @@ lint:
 	$(PYTHON) -m flake8 \
 		--max-line-length=120 \
 		--extend-ignore=E203,W503 \
-		$(CURDIR)/interface/ $(CURDIR)/tools/ $(CURDIR)/tests/
+		$(CURDIR)/bpfix/ $(CURDIR)/tools/ $(CURDIR)/tests/
 
 .PHONY: loc
 loc:
 	@echo "[loc] Active Python modules:"
-	@find interface tools tests -name '*.py' -print0 | xargs -0 wc -l | sort -rn | tail -1
+	@find bpfix tools tests -name '*.py' -print0 | xargs -0 wc -l | sort -rn | tail -1
 
 .PHONY: clean
 clean: paper-clean

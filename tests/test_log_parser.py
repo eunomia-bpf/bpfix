@@ -6,7 +6,7 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 
-from interface.extractor.log_parser import parse_log
+from bpfix.extractor.log_parser import parse_log
 
 
 def _load_verifier_log(relative_path: str) -> str:

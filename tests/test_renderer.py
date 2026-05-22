@@ -7,9 +7,9 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 
-from interface.extractor.pipeline import generate_diagnostic
-from interface.extractor.renderer import render_diagnostic
-from interface.extractor.source_correlator import SourceSpan
+from bpfix.extractor.pipeline import generate_diagnostic
+from bpfix.extractor.renderer import render_diagnostic
+from bpfix.extractor.source_correlator import SourceSpan
 
 
 def _load_verifier_log(relative_path: str) -> str:

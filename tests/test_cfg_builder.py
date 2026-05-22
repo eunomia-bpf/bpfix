@@ -1,4 +1,4 @@
-"""Tests for interface/extractor/engine/cfg_builder.py.
+"""Tests for bpfix/extractor/engine/cfg_builder.py.
 
 Tests use synthetic TracedInstruction objects to exercise the CFG builder
 without needing a full verifier log.  One integration test loads a real case.
@@ -12,14 +12,14 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 
-from interface.extractor.trace_parser import TracedInstruction
-from interface.extractor.engine.cfg_builder import (
+from bpfix.extractor.trace_parser import TracedInstruction
+from bpfix.extractor.engine.cfg_builder import (
     build_cfg,
     build_cfg_from_trace,
     extract_branch_target,
     is_unconditional_goto,
 )
-from interface.extractor.trace_parser import parse_trace
+from bpfix.extractor.trace_parser import parse_trace
 
 
 # ---------------------------------------------------------------------------

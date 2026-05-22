@@ -19,7 +19,7 @@ from functools import lru_cache
 import re
 from pathlib import Path
 
-from interface.extractor.pipeline import generate_diagnostic
+from bpfix.extractor.pipeline import generate_diagnostic
 
 ROOT = Path(__file__).resolve().parents[1]
 SO_CASES_DIR = ROOT / "bpfix-bench" / "raw" / "so"

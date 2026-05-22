@@ -6,7 +6,7 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 
-from interface.extractor.trace_parser import (
+from bpfix.extractor.trace_parser import (
     BacktrackLine,
     ErrorLine,
     InstructionLine,

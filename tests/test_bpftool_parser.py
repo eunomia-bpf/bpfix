@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from interface.extractor.bpftool_parser import parse_bpftool_xlated_linum
+from bpfix.extractor.bpftool_parser import parse_bpftool_xlated_linum
 
 
 def test_parse_bpftool_xlated_linum_extracts_instruction_mapping() -> None:

@@ -18,18 +18,17 @@ btf = ["pyelftools>=0.32"]
 dev = ["pytest>=8.0"]
 
 [project.scripts]
-bpfix = "bpfix:main"
+bpfix = "bpfix.cli:main"
 
 [tool.setuptools]
 include-package-data = true
-py-modules = ["bpfix"]
 
 [tool.setuptools.packages.find]
-include = ["interface*"]
+include = ["bpfix*", "interface*"]
 
 [tool.setuptools.package-data]
-"interface.schema" = ["diagnostic.json"]
-"interface.catalogs" = ["*.yaml"]
+"bpfix.schema" = ["diagnostic.json"]
+"bpfix.catalogs" = ["*.yaml"]
 
 [tool.pytest.ini_options]
 pythonpath = ["."]

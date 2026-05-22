@@ -18,7 +18,7 @@ def test_expected_files_exist() -> None:
         ROOT / "bpfix-bench" / "manifest.yaml",
         ROOT / "bpfix-bench" / "raw" / "index.yaml",
         ROOT / "bpfix-bench" / "taxonomy.yaml",
-        ROOT / "interface" / "schema" / "diagnostic.json",
+        ROOT / "bpfix" / "schema" / "diagnostic.json",
         ROOT / "tools" / "validate_benchmark.py",
         ROOT / "tools" / "evaluate_benchmark.py",
         ROOT / "tools" / "sync_external_raw_bench.py",
@@ -68,7 +68,7 @@ def test_taxonomy_defines_all_five_classes() -> None:
 
 
 def test_diagnostic_schema_accepts_minimal_example() -> None:
-    schema = json.loads((ROOT / "interface" / "schema" / "diagnostic.json").read_text(encoding="utf-8"))
+    schema = json.loads((ROOT / "bpfix" / "schema" / "diagnostic.json").read_text(encoding="utf-8"))
     example = {
         "diagnostic_version": "0.1.0",
         "error_id": "packet.bounds.missing_guard",

@@ -6,8 +6,8 @@ cases under
 `bpfix-bench/cases/*/case.yaml` and the current taxonomy/catalog inputs:
 
 - `bpfix-bench/taxonomy.yaml`
-- `interface/catalogs/error_catalog.yaml`
-- `interface/catalogs/obligation_catalog.yaml`
+- `bpfix/catalogs/error_catalog.yaml`
+- `bpfix/catalogs/obligation_catalog.yaml`
 - `docs/evaluation/metrics.md`
 - `docs/evaluation/baselines.md`
 
@@ -449,8 +449,8 @@ Representative commands used for this audit:
 
 ```bash
 sed -n '1,240p' bpfix-bench/taxonomy.yaml
-sed -n '1,620p' interface/catalogs/error_catalog.yaml
-sed -n '1,520p' interface/catalogs/obligation_catalog.yaml
+sed -n '1,620p' bpfix/catalogs/error_catalog.yaml
+sed -n '1,520p' bpfix/catalogs/obligation_catalog.yaml
 sed -n '1,520p' docs/evaluation/metrics.md
 sed -n '1,520p' docs/evaluation/baselines.md
 find bpfix-bench/cases -mindepth 2 -maxdepth 2 -name case.yaml | wc -l

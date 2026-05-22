@@ -10,9 +10,9 @@ from typing import Any
 
 import yaml
 
-from interface.api import SCHEMA_PATH, build_diagnostic, load_schema
-from interface.extractor.pipeline import generate_diagnostic
-from interface.extractor.renderer import DiagnosticOutput
+from bpfix.api import SCHEMA_PATH, build_diagnostic, load_schema
+from bpfix.extractor.pipeline import generate_diagnostic
+from bpfix.extractor.renderer import DiagnosticOutput
 
 
 def build_parser() -> argparse.ArgumentParser:

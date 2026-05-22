@@ -1,82 +1,60 @@
-# Benchmark Refactor TODO
+# Benchmark Refactor Status
 
-Date: 2026-04-29  
 Status: completed
 
-## Goal
+The legacy mixed evaluation entry points have been replaced by the top-level
+`bpfix-bench/` benchmark layout. The maintained discovery entry point is:
 
-Replace the mixed legacy evaluation corpus entry points with a simple
-top-level `bpfix-bench/` benchmark layout. A case is eligible for the primary
-diagnostic eval only if `tools/validate_benchmark.py --replay bpfix-bench`
-can rebuild, reload, recapture, and re-parse the verifier failure locally.
+```text
+bpfix-bench/manifest.yaml
+```
+
+A primary diagnostic-evaluation case is eligible only if
+`tools/validate_benchmark.py --replay bpfix-bench` can rebuild it, load it,
+recapture the verifier rejection, and parse the resulting log locally.
+
+## Current Result
+
+The current manifest contains 235 replayable verifier-reject cases:
+
+| source_kind | cases |
+| --- | ---: |
+| `github_issue` | 18 |
+| `github_commit` | 46 |
+| `kernel_selftest` | 85 |
+| `stackoverflow` | 86 |
+| **total** | **235** |
+
+Expected validator summary on a fully provisioned pinned environment:
+
+```text
+passed: 235
+failed: 0
+total_cases: 235
+```
+
+Latest local validation on this checkout produced:
+
+```text
+passed: 150
+failed: 85
+total_cases: 235
+```
+
+All failures were `kernel_selftest` cases whose build failed because the host
+linker could not find `-lbpf`. This is an environment provisioning issue, not a
+manifest-count change.
 
 ## Acceptance Criteria
 
-- `bpfix-bench/manifest.yaml` exists and is the benchmark discovery entry point.
-- Each imported primary case is self-contained under
-  `bpfix-bench/cases/<case_id>/`.
-- Each primary case has `case.yaml`, source, `Makefile`, and `capture.yaml`.
-  Build/load stdout/stderr files are optional retained artifacts when the
-  harness stores them.
-- `fixed/` is optional and only used when `repair.eligible: true`.
-- `tools/validate_benchmark.py --replay bpfix-bench` actually runs build/load
-  for every listed benchmark case.
+- `bpfix-bench/manifest.yaml` is the benchmark discovery entry point.
+- Each listed case is self-contained under `bpfix-bench/cases/<case_id>/`.
+- Each listed case has `case.yaml`, source, and replay commands.
 - The validator rejects cases that build but do not reproduce a verifier
   rejection.
-- Eval entry points can consume `--benchmark bpfix-bench` without scanning
-  `case_study/cases/*` for headline results.
-- A reviewer subagent audits the refactor after implementation.
-
-## Work Packages
-
-1. Benchmark scaffold and importer - completed
-   - Owner: worker A.
-   - Write scope: `bpfix-bench/`, optional importer helper under
-     `tools/create_bpfix_bench.py`.
-   - Import a small seed set from verified artifacts only.
-   - Do not include excerpt-only or synthetic no-log cases.
-
-2. Replay validator - completed
-   - Owner: worker B.
-   - Write scope: `tools/validate_benchmark.py`, `tools/replay_case.py` if
-     needed.
-   - Implement `--replay` as the required path.
-   - Re-run each case's build/load command and compare terminal error,
-     rejected instruction and log quality.
-
-3. Eval benchmark adapter - completed
-   - Owner: worker C.
-   - Write scope: `eval/benchmark_loader.py` and minimal CLI changes in eval
-     scripts.
-   - Add `--benchmark bpfix-bench` support without removing legacy behavior.
-   - Ensure benchmark-mode rows carry `benchmark_id`, `case_id`, `capture_id`,
-     `source_kind`, `family_id`, and `representative`.
-
-4. Integration and review - completed
-   - Owner: main agent plus reviewer subagent.
-   - Resolve conflicts, run validator, then ask a reviewer subagent to inspect
-     the final changes.
-
-## Validation Commands
-
-```bash
-python3 tools/validate_benchmark.py --replay bpfix-bench --timeout-sec 60
-```
-
-Final local result:
-
-```text
-passed: 102
-failed: 0
-total_cases: 102
-```
-
-```text
-kernel_selftest: 79
-stackoverflow: 23
-stackoverflow exact/partial: 21
-stackoverflow semantic: 2
-```
+- `tools/evaluate_benchmark.py --benchmark bpfix-bench` consumes the same
+  manifest and uses freshly replayed verifier logs.
+- Non-primary raw material remains under `bpfix-bench/raw/`.
 
 The benchmark is not considered valid on another host until replay passes again
-in that host's pinned environment.
+in that host's kernel/compiler/libbpf/BTF environment.

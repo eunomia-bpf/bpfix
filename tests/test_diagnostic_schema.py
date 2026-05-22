@@ -8,7 +8,7 @@ from jsonschema import Draft202012Validator
 
 ROOT = Path(__file__).resolve().parents[1]
 
-from interface.extractor.pipeline import generate_diagnostic
+from bpfix.extractor.pipeline import generate_diagnostic
 
 
 def _load_verifier_log(relative_path: str) -> str:
@@ -18,7 +18,7 @@ def _load_verifier_log(relative_path: str) -> str:
 
 
 def test_generate_diagnostic_json_matches_declared_schema() -> None:
-    schema = json.loads((ROOT / "interface" / "schema" / "diagnostic.json").read_text(encoding="utf-8"))
+    schema = json.loads((ROOT / "bpfix" / "schema" / "diagnostic.json").read_text(encoding="utf-8"))
     output = generate_diagnostic(
         _load_verifier_log("bpfix-bench/raw/so/stackoverflow-70750259.yaml")
     )

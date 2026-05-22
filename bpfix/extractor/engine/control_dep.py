@@ -400,7 +400,7 @@ def compute_control_dependence_from_trace(parsed_trace) -> ControlDep:
     Parameters
     ----------
     parsed_trace:
-        A ``ParsedTrace`` object from ``interface.extractor.trace_parser``.
+        A ``ParsedTrace`` object from ``bpfix.extractor.trace_parser``.
 
     Returns
     -------

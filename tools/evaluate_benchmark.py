@@ -19,10 +19,10 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from interface.baseline import generate_baseline_diagnostic
-from interface.extractor.engine.cfg_builder import build_cfg
-from interface.extractor.engine.monitor import CarrierBoundPredicate, TraceMonitor, monitor_carriers
-from interface.extractor.engine.opcode_safety import (
+from bpfix.baseline import generate_baseline_diagnostic
+from bpfix.extractor.engine.cfg_builder import build_cfg
+from bpfix.extractor.engine.monitor import CarrierBoundPredicate, TraceMonitor, monitor_carriers
+from bpfix.extractor.engine.opcode_safety import (
     OpcodeConditionPredicate,
     discover_compatible_carriers,
     evaluate_condition,
@@ -32,9 +32,9 @@ from interface.extractor.engine.opcode_safety import (
     instantiate_primary_carrier,
     instantiate_schema,
 )
-from interface.extractor.engine.slicer import backward_slice
-from interface.extractor.log_parser import parse_log
-from interface.extractor.pipeline import (
+from bpfix.extractor.engine.slicer import backward_slice
+from bpfix.extractor.log_parser import parse_log
+from bpfix.extractor.pipeline import (
     _STRUCTURAL_TAXONOMY_BY_ERROR_ID,
     _build_proof_events,
     _ensure_rejected_span,
@@ -42,9 +42,9 @@ from interface.extractor.pipeline import (
     classify_atom,
     compute_forward_dominators,
 )
-from interface.extractor.pipeline import generate_diagnostic
-from interface.extractor.source_correlator import correlate_to_source
-from interface.extractor.trace_parser import parse_trace
+from bpfix.extractor.pipeline import generate_diagnostic
+from bpfix.extractor.source_correlator import correlate_to_source
+from bpfix.extractor.trace_parser import parse_trace
 from tools.replay_case import replay_case
 
 
@@ -90,7 +90,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--source-kind",
         action="append",
-        choices=("stackoverflow", "github_issue", "kernel_selftest"),
+        choices=("stackoverflow", "github_issue", "github_commit", "kernel_selftest"),
         default=[],
         help="Optional source-kind filter.",
     )

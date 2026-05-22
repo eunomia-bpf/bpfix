@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import re
 
-from interface.extractor.renderer import DIAGNOSTIC_VERSION, DiagnosticOutput
+from bpfix.extractor.renderer import DIAGNOSTIC_VERSION, DiagnosticOutput
 
 from .error_patterns import (
     DiagnosticContext,

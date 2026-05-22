@@ -1,92 +1,71 @@
 # Raw Backlog Triage
 
-This document explains the non-admitted external raw records in
-`bpfix-bench/raw/`. It replaces the old coarse `not_attempted` bucket with
-more precise statuses so the paper can distinguish raw material from replayable
-benchmark cases.
+This document explains external raw records under `bpfix-bench/raw/`. Raw
+records are audit material and future expansion candidates. Primary diagnostic
+claims must use only cases listed in `bpfix-bench/manifest.yaml`, where each
+case locally builds and replays to a verifier rejection.
 
-Primary benchmark claims must still use only `bpfix-bench/cases/`, where each
-case locally builds and replays to a verifier rejection. Raw records are an audit
-surface and a future expansion pool.
+Current raw facts come from `bpfix-bench/raw/index.yaml`.
 
 ## Status Definitions
 
 | status | meaning |
-|---|---|
-| `candidate_for_replay` | Has verifier-reject evidence and enough source/context to plausibly build a local replay harness next. |
-| `needs_manual_reconstruction` | Useful raw evidence exists, but a standalone `prog.c`/`Makefile`/loader harness must be manually reconstructed. |
-| `missing_verifier_log` | Source/context exists, but the raw record lacks a concrete verifier log. |
+| --- | --- |
+| `replay_valid` | Reconstructed and admitted to the replayable benchmark. |
+| `replay_reject_no_rejected_insn` | Replays to a reject, but the log lacks a parseable rejected instruction index. |
+| `attempted_accepted` | The reconstructed program loads successfully in the pinned environment. |
+| `environment_required` | Reproduction depends on a larger framework, kernel feature, loader setup, architecture, or runtime environment not captured locally. |
 | `missing_source` | Verifier-like evidence exists, but source or harness context is missing. |
-| `environment_required` | Reproduction depends on a larger framework, cluster, kernel feature, architecture, or toolchain environment not captured locally. |
-| `out_of_scope_non_verifier` | Collected record is not a verifier-reject benchmark candidate. |
+| `missing_verifier_log` | Source/context exists, but the raw record lacks a concrete verifier log. |
+| `not_reconstructable_from_diff` | A commit/diff exists, but it does not provide enough standalone verifier-failure context to reconstruct a benchmark case. |
+| `out_of_scope_non_verifier` | The record is not a verifier-reject benchmark candidate. |
 
 ## Current Counts
 
-The current raw index has no remaining `not_attempted` records.
+The current raw index has 736 external records.
 
 | status | records |
-|---|---:|
-| `needs_manual_reconstruction` | 566 |
-| `replay_valid` | 101 |
-| `attempted_unknown` | 35 |
-| `environment_required` | 8 |
-| `candidate_for_replay` | 8 |
-| `missing_source` | 5 |
-| `attempted_accepted` | 4 |
-| `missing_verifier_log` | 4 |
-| `replay_reject_no_rejected_insn` | 3 |
-| `out_of_scope_non_verifier` | 2 |
+| --- | ---: |
+| `replay_valid` | 150 |
+| `replay_reject_no_rejected_insn` | 4 |
+| `attempted_accepted` | 32 |
+| `environment_required` | 197 |
+| `missing_source` | 31 |
+| `missing_verifier_log` | 15 |
+| `not_reconstructable_from_diff` | 45 |
+| `out_of_scope_non_verifier` | 262 |
 | **total** | **736** |
 
 By source:
 
-| source_kind | replay_valid | attempted/other replay status | candidate_for_replay | needs_manual_reconstruction | missing_source | missing_verifier_log | environment_required | out_of_scope_non_verifier | total |
-|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| `github_commit` | 0 | 30 | 0 | 561 | 0 | 0 | 0 | 0 | 591 |
-| `github_issue` | 18 | 7 | 1 | 0 | 1 | 0 | 4 | 0 | 31 |
-| `stackoverflow` | 83 | 5 | 7 | 5 | 4 | 4 | 4 | 2 | 114 |
+| source_kind | records |
+| --- | ---: |
+| `github_commit` | 591 |
+| `github_issue` | 31 |
+| `stackoverflow` | 114 |
+| **total** | **736** |
 
-`attempted/other replay status` combines `attempted_accepted`,
-`attempted_unknown`, and `replay_reject_no_rejected_insn`.
+## Admission Rule
 
-## Candidate For Replay
-
-These 8 records are the next best manual reconstruction targets:
-
-| raw_id | reason |
-|---|---|
-| `github-aya-rs-aya-864` | Clear verifier reject plus embedded Aya eBPF source/context. |
-| `stackoverflow-48267671` | Reject log and complete small sockops/tail-call program. |
-| `stackoverflow-62936008` | Load rejection plus BPF/user/Makefile context. |
-| `stackoverflow-68460177` | BCC script plus verifier reject. |
-| `stackoverflow-70392721` | BPF/user code, disassembly, and BTF/load failure context. |
-| `stackoverflow-77191387` | Complete cgroup skb program plus verifier reject. |
-| `stackoverflow-77225068` | Complete XDP program and unsupported-helper reject log. |
-| `stackoverflow-79513583` | BPF/user/header snippets plus concrete reserved-fields reject. |
-
-## Why Most Commit-Derived Records Are Not Cases
-
-The 561 `github_commit` records in `needs_manual_reconstruction` usually have a
-buggy/fixed diff but not a self-contained verifier reproducer. They often lack a
-captured verifier log, map definitions, attach type, loader command, kernel
-environment, or complete standalone program. They are useful raw evidence, but
-not benchmark cases until reconstructed into:
+To become a primary benchmark case, a raw record must be converted into a
+self-contained directory:
 
 ```text
-bpfix-bench/cases/<case>/
-  prog.c
+bpfix-bench/cases/<case_id>/
   Makefile
+  prog.c
   case.yaml
 ```
 
-and validated by `tools/validate_benchmark.py --replay bpfix-bench`.
+and pass:
 
-## Out Of Scope Examples
+```bash
+python3 tools/validate_benchmark.py --replay bpfix-bench --timeout-sec 60
+```
 
-Some raw records should not become verifier-reject cases. For example,
-`stackoverflow-47591176` has a verifier log showing successful load; the user
-problem is `tc` direct-action runtime semantics. Such records remain useful for
-corpus transparency, but they must not enter the primary benchmark.
+Records marked `environment_required`, `missing_source`, `missing_verifier_log`,
+or `not_reconstructable_from_diff` should not be counted as benchmark cases
+until those missing pieces are resolved.
 
 ## Audit Command
 

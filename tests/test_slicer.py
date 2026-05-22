@@ -1,4 +1,4 @@
-"""Tests for interface/extractor/engine/slicer.py — principled backward slice.
+"""Tests for bpfix/extractor/engine/slicer.py — principled backward slice.
 
 Tests cover:
   1. Simple data-only slice: A defines R3, B uses R3 and defines R5,
@@ -19,9 +19,9 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 
-from interface.extractor.trace_parser import TracedInstruction
-from interface.extractor.engine.slicer import BackwardSlice, backward_slice
-from interface.extractor.trace_parser import parse_trace
+from bpfix.extractor.trace_parser import TracedInstruction
+from bpfix.extractor.engine.slicer import BackwardSlice, backward_slice
+from bpfix.extractor.trace_parser import parse_trace
 
 
 # ---------------------------------------------------------------------------
@@ -343,7 +343,7 @@ class TestRealCase:
 
         # Use R0 as the criterion register (common for this case: r5 += r0 at insn 39)
         # Try to find the first used register at the error instruction
-        from interface.extractor.engine.dataflow import compute_reaching_defs
+        from bpfix.extractor.engine.dataflow import compute_reaching_defs
         chain = compute_reaching_defs(instructions)
         uses = chain.uses_at(error_insn.insn_idx)
         if not uses:
@@ -434,7 +434,7 @@ class TestRealCase:
 
 def test_accepts_prebuilt_cfg() -> None:
     """backward_slice() should accept an externally provided TraceCFG."""
-    from interface.extractor.engine.cfg_builder import build_cfg
+    from bpfix.extractor.engine.cfg_builder import build_cfg
 
     trace = [
         _insn(0, "r3 = r1", opcode_hex="bf"),

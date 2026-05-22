@@ -1,4 +1,4 @@
-"""Tests for interface/extractor/engine/control_dep.py.
+"""Tests for bpfix/extractor/engine/control_dep.py.
 
 Tests use synthetic TracedInstruction / TraceCFG objects to exercise the
 control dependence analysis without needing a real verifier log.
@@ -20,9 +20,9 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 
-from interface.extractor.trace_parser import TracedInstruction
-from interface.extractor.engine.cfg_builder import build_cfg, TraceCFG
-from interface.extractor.engine.control_dep import (
+from bpfix.extractor.trace_parser import TracedInstruction
+from bpfix.extractor.engine.cfg_builder import build_cfg, TraceCFG
+from bpfix.extractor.engine.control_dep import (
     ControlDep,
     compute_control_dependence,
     compute_control_dependence_from_trace,
@@ -347,7 +347,7 @@ def test_real_case_smoke() -> None:
     except FileNotFoundError:
         pytest.skip(f"Case file not found: {case_path}")
 
-    from interface.extractor.trace_parser import parse_trace
+    from bpfix.extractor.trace_parser import parse_trace
 
     parsed = parse_trace(log)
     # Use the high-level entry point that provides insn_map for opcode-based

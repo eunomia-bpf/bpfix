@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-from interface.extractor.engine.monitor import TraceMonitor
-from interface.extractor.engine.opcode_safety import (
+from bpfix.extractor.engine.monitor import TraceMonitor
+from bpfix.extractor.engine.opcode_safety import (
     OpcodeConditionPredicate,
     SafetyCondition,
     SafetyDomain,
 )
-from interface.extractor.trace_parser import RegisterState, TracedInstruction
+from bpfix.extractor.trace_parser import RegisterState, TracedInstruction
 
 
 class PacketAccessGap:
