@@ -12,7 +12,7 @@ from your existing workflow and turns them into:
 - a stable `BPFIX-*` error ID
 - a short explanation of what the verifier could not prove
 - the nearest instruction or source location when the log contains one
-- practical repair hints
+- actionable `help:` guidance
 - JSON output for editors, CI, and other tools
 
 BPFix does not replace Aya, libbpf-rs, `bpftool`, or the kernel verifier. It
@@ -182,6 +182,8 @@ It is not the active development surface.
 
 The maintained project status, benchmark snapshot, and near-term roadmap live
 in `docs/research-plan.md`.
+The workshop submission plan lives in `docs/workshop-paper-plan.md`, and the
+public CLI/JSON design lives in `docs/open-source-tool-design.md`.
 
 The `bpfanalysis` crate imports analysis code from the `bpfopt` project and
 uses `libbpf-sys` for BPF instruction and program-type constants. The libbpf
@@ -258,6 +260,8 @@ bpfix-bench/       replayable verifier-failure corpus and raw examples
 crates/bpfanalysis Rust analysis library
 crates/bpfix       user-facing CLI
 docs/research-plan.md current project status and roadmap
+docs/workshop-paper-plan.md focused workshop submission story
+docs/open-source-tool-design.md public CLI and JSON contract
 docs/evaluation/   benchmark and metric notes
 docs/bpfix-py/     archived Python prototype, without generated Python caches
 vendor/libbpf/     libbpf submodule

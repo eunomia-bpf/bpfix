@@ -197,11 +197,11 @@ fn yaml_labels_do_not_change_runtime_diagnostic() {
             evidence["kind"] == "case_root_cause" || evidence["detail"] == "SHOULD_NOT_LEAK"
         })
     );
-    assert!(!json["candidate_repairs"]
+    assert!(!json["help"]
         .as_array()
         .unwrap()
         .iter()
-        .any(|repair| repair == "WRONG_REPAIR"));
+        .any(|item| item == "WRONG_REPAIR"));
 }
 
 #[test]

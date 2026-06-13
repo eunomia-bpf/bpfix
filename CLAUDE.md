@@ -6,7 +6,7 @@ This file provides guidance to Claude Code when working with this repository.
 
 **BPFix** — userspace, Rust-style diagnostics for eBPF verifier failures.
 
-BPFix analyzes eBPF verifier verbose logs to produce stable, structured diagnostics. The active product scope is a pure-userspace CLI/API that explains verifier rejections with stable error IDs, proof obligations, source/bytecode spans, and repair-oriented hints. Automatic patch synthesis is not part of the current maintained scope.
+BPFix analyzes eBPF verifier verbose logs to produce stable, structured diagnostics. The active product scope is a pure-userspace CLI/API that explains verifier rejections with stable error IDs, proof obligations, source/bytecode spans, and actionable help text. Automatic patch synthesis is not part of the current maintained scope.
 
 ### Core Thesis
 

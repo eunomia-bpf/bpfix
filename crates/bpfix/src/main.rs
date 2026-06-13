@@ -55,7 +55,7 @@ struct Classification {
     failure_class: &'static str,
     summary: &'static str,
     required_proof: &'static str,
-    repairs: &'static [&'static str],
+    help: &'static [&'static str],
 }
 
 #[derive(Serialize)]
@@ -68,7 +68,7 @@ struct Diagnostic {
     source_span: SourceSpan,
     related_spans: Vec<RelatedSpan>,
     evidence: Vec<Evidence>,
-    candidate_repairs: Vec<String>,
+    help: Vec<String>,
     metadata: Metadata,
 }
 
@@ -384,15 +384,15 @@ fn build_diagnostic(
         });
     let related_spans = related_spans_from_proof_events(&proof_events);
 
-    let mut candidate_repairs = class
-        .repairs
+    let mut help = class
+        .help
         .iter()
-        .map(|repair| (*repair).to_string())
+        .map(|item| (*item).to_string())
         .collect::<Vec<_>>();
-    add_proof_event_repairs(&mut candidate_repairs, &proof_events);
+    add_proof_event_help(&mut help, &proof_events);
 
     Diagnostic {
-        diagnostic_version: "bpfix.diagnostic/v1",
+        diagnostic_version: "bpfix.diagnostic/v2",
         error_id: error_id.clone(),
         failure_class,
         message: format!("{}: {}", class.summary, terminal.message),
@@ -400,7 +400,7 @@ fn build_diagnostic(
         related_spans,
         source_span,
         evidence,
-        candidate_repairs,
+        help,
         metadata: Metadata {
             case_id,
             input_kind,
@@ -562,25 +562,25 @@ fn related_spans_from_proof_events(events: &[diagnostic::ProofEvent]) -> Vec<Rel
     spans
 }
 
-fn add_proof_event_repairs(repairs: &mut Vec<String>, events: &[diagnostic::ProofEvent]) {
+fn add_proof_event_help(help: &mut Vec<String>, events: &[diagnostic::ProofEvent]) {
     for event in events {
         if event.role != ProofEventRole::ProofLost {
             continue;
         }
         if event.detail.contains("branch-specific pointers") {
-            insert_repair(
-                repairs,
+            insert_help(
+                help,
                 "Keep branch-specific pointer derivations in separate verifier-visible branches, or rederive the pointer from a checked base immediately before dereferencing it.",
             );
         }
     }
 }
 
-fn insert_repair(repairs: &mut Vec<String>, repair: &str) {
-    if repairs.iter().any(|existing| existing == repair) {
+fn insert_help(help: &mut Vec<String>, item: &str) {
+    if help.iter().any(|existing| existing == item) {
         return;
     }
-    repairs.insert(0, repair.to_string());
+    help.insert(0, item.to_string());
 }
 
 fn inferred_failure_class(
@@ -611,7 +611,7 @@ fn classify(message: &str) -> Classification {
             failure_class: "source_bug",
             summary: "packet bounds proof is missing",
             required_proof: "prove that the packet pointer plus requested access size stays before data_end on every path reaching the load, store, or helper call",
-            repairs: &[
+            help: &[
                 "Add or move a packet bounds check immediately before the access or helper argument use.",
                 "Check the exact pointer and byte length passed to the helper, not only an earlier header pointer.",
             ],
@@ -627,7 +627,7 @@ fn classify(message: &str) -> Classification {
             failure_class: "source_bug",
             summary: "nullable pointer proof is missing",
             required_proof: "prove that the nullable pointer returned by a helper is checked for null before dereference or helper reuse",
-            repairs: &[
+            help: &[
                 "Add an explicit null check and keep the dereference inside the non-null branch.",
                 "Avoid copying the nullable value through a path that loses the verifier's refined type.",
             ],
@@ -643,7 +643,7 @@ fn classify(message: &str) -> Classification {
             failure_class: "source_bug",
             summary: "stack initialization proof is missing",
             required_proof: "initialize every stack byte that can be read directly or passed indirectly to a helper",
-            repairs: &[
+            help: &[
                 "Initialize the full stack object before the helper call or load.",
                 "Reduce the helper length argument so it covers only initialized bytes.",
             ],
@@ -655,7 +655,7 @@ fn classify(message: &str) -> Classification {
             failure_class: "source_bug",
             summary: "reference lifecycle proof is missing",
             required_proof: "release every acquired verifier-tracked reference on every exit path",
-            repairs: &[
+            help: &[
                 "Call the matching release helper before each return.",
                 "Restructure error paths so acquired references share one cleanup block.",
             ],
@@ -675,7 +675,7 @@ fn classify(message: &str) -> Classification {
             failure_class: "lowering_artifact",
             summary: "scalar range proof is missing",
             required_proof: "bound the scalar value tightly enough for the verifier to prove the memory access range",
-            repairs: &[
+            help: &[
                 "Clamp the index or length with explicit upper and lower bounds.",
                 "Keep the bounded scalar in the same SSA value used for pointer arithmetic or helper length.",
             ],
@@ -687,7 +687,7 @@ fn classify(message: &str) -> Classification {
             failure_class: "source_bug",
             summary: "pointer type proof is missing",
             required_proof: "preserve a verifier-recognized pointer type at the operation that requires a pointer",
-            repairs: &[
+            help: &[
                 "Avoid integer casts or arithmetic that turn the pointer into a scalar before the access.",
                 "Recompute the pointer from a verifier-tracked base after scalar manipulation.",
             ],
@@ -703,7 +703,7 @@ fn classify(message: &str) -> Classification {
             failure_class: "verifier_limit",
             summary: "verifier resource limit was reached",
             required_proof: "reduce verifier state growth or provide a statically bounded loop shape",
-            repairs: &[
+            help: &[
                 "Add a constant loop bound or split complex control flow into smaller helper programs.",
                 "Reduce path-sensitive state by simplifying branches and stack state carried through the loop.",
             ],
@@ -719,7 +719,7 @@ fn classify(message: &str) -> Classification {
             failure_class: "environment_or_configuration",
             summary: "kernel or program-type capability is unavailable",
             required_proof: "load the program with a kernel, program type, attach point, and privileges that support the requested helper or kfunc",
-            repairs: &[
+            help: &[
                 "Check kernel version, program type, attach type, capabilities, and BTF availability.",
                 "Use a supported helper or gate the code path by target kernel capabilities.",
             ],
@@ -731,7 +731,7 @@ fn classify(message: &str) -> Classification {
             failure_class: "source_bug",
             summary: "dynptr lifetime or bounds proof is missing",
             required_proof: "keep dynptr slices inside their proven lifetime, initialized range, and read/write mode",
-            repairs: &[
+            help: &[
                 "Revalidate dynptr slice nullability and length before use.",
                 "Do not reuse a dynptr slice after an operation that invalidates it.",
             ],
@@ -742,7 +742,7 @@ fn classify(message: &str) -> Classification {
         failure_class: "source_bug",
         summary: "required verifier proof is not classified yet",
         required_proof: "inspect the terminal verifier line and add the missing safety proof required at that program point",
-        repairs: &[
+        help: &[
             "Move the relevant check closer to the rejected instruction.",
             "Preserve the exact register or scalar value that the verifier has already proven safe.",
         ],
@@ -798,8 +798,8 @@ fn render_text(diagnostic: &Diagnostic) -> String {
     if let Some(err) = &diagnostic.metadata.object_analysis_error {
         out.push_str(&format!("   = warning: object analysis: {err}\n"));
     }
-    for repair in &diagnostic.candidate_repairs {
-        out.push_str(&format!("help: {repair}\n"));
+    for item in &diagnostic.help {
+        out.push_str(&format!("help: {item}\n"));
     }
     out
 }

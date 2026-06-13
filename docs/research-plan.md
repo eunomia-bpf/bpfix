@@ -200,6 +200,8 @@ Canonical current facts live in:
 
 - `README.md`
 - `docs/research-plan.md`
+- `docs/workshop-paper-plan.md`
+- `docs/open-source-tool-design.md`
 - `docs/evaluation/`
 - `bpfix-bench/README.md`
 - `bpfix-bench/manifest.yaml`

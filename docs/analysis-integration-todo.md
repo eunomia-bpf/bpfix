@@ -62,7 +62,7 @@ trace.
 - [ ] Track register lineage across copies, spills, reloads, and branch joins so
       proof events follow the value that matters instead of only one register
       number.
-- [ ] Rank repair hints from the detected proof lifecycle rather than only the
+- [ ] Rank user-facing help text from the detected proof lifecycle rather than only the
       terminal error class.
 - [ ] Add golden tests for at least one representative case per required-proof
       class.
