@@ -2,6 +2,8 @@ CLANG ?= clang
 CC ?= cc
 TARGET_FUNCTION ?= test_dynptr_skb_small_buff
 
+include ../../libbpf.mk
+
 CLANG_SYS_INCLUDES := $(shell $(CLANG) -v -E - </dev/null 2>&1 | awk '/#include <...> search starts here:/{flag=1; next} /End of search list./{flag=0} flag && $$1 ~ /^\// {printf "-idirafter %s ", $$1}')
 CFLAGS := -g -Wall -Werror -Wno-unused-function -Wno-unused-variable -D__TARGET_ARCH_x86 -mlittle-endian -Iheaders -Iheaders/progs -std=gnu11 -fno-strict-aliasing -Wno-microsoft-anon-tag -fms-extensions -Wno-compare-distinct-pointer-types -Wno-initializer-overrides $(CLANG_SYS_INCLUDES) -O2 --target=bpfel -mcpu=v3
 
@@ -12,8 +14,8 @@ all: prog.o selftest_prog_loader
 prog.o: prog.c
 	$(CLANG) $(CFLAGS) -c $< -o $@
 
-selftest_prog_loader: selftest_prog_loader.c
-	$(CC) -O2 -Wall -Wextra -Werror $< -lbpf -lelf -lz -o $@
+selftest_prog_loader: selftest_prog_loader.c $(LIBBPF_OBJ)
+	$(CC) $(LOADER_CFLAGS) $< $(LIBBPF_OBJ) $(LOADER_LDLIBS) -o $@
 
 verify: prog.o selftest_prog_loader
 	@sudo ./selftest_prog_loader prog.o $(TARGET_FUNCTION) > verifier_load_result.json || true

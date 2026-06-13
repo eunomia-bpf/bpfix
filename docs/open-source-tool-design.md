@@ -14,6 +14,50 @@ Primary users:
 - editor or agent integrations that need machine-readable verifier diagnostics
 - benchmark/evaluation scripts using `bpfix-bench`
 
+## Product Use Cases
+
+BPFix should be judged by whether it helps a developer decide what to try next,
+not by whether it only improves a paper metric.
+
+The main user-visible workflows are:
+
+- local debugger: paste or pipe a `bpftool`, libbpf, Aya, BCC, or build log and
+  get the rejected operation, required verifier proof, and concrete `help`
+  guidance
+- CI annotator: run BPFix on failed verifier logs and publish stable JSON as
+  build annotations, review comments, or artifacts
+- editor/agent backend: expose diagnostic spans, verifier evidence, and
+  machine-readable failure classes to tools that can show or reason over them
+- maintainer triage aid: distinguish source bugs from environment problems,
+  lowering artifacts, verifier limits, and likely verifier false positives
+
+The benchmark is supporting infrastructure for these workflows. It should catch
+regressions, measure coverage, and supply examples, but it should not become
+the only documented way to use the project.
+
+## User-Ready Bar
+
+A change moves BPFix toward an open-source tool when it improves at least one
+of these surfaces:
+
+- easier installation, build, or submodule setup
+- accepting logs from real eBPF workflows without custom wrappers
+- better localization of the rejected source or bytecode site
+- clearer proof-oriented `help` messages
+- stable JSON for CI, editors, and agents
+- examples that users can run outside the benchmark harness
+
+Pure evaluation work belongs in `docs/evaluation/` or `docs/tmp/` until it is
+connected to one of those user-visible surfaces.
+
+## Documentation Surfaces
+
+- `README.md`: user-facing overview, quick start, examples, current status
+- `docs/open-source-tool-design.md`: public CLI, JSON, and product boundaries
+- `bpfix-bench/README.md`: replayable benchmark setup and validation
+- `docs/research-plan.md`: roadmap and current implementation status
+- `docs/workshop-paper-plan.md`: paper story, separated from product docs
+
 ## CLI Contract
 
 Build from source:

@@ -18,6 +18,28 @@ from your existing workflow and turns them into:
 BPFix does not replace Aya, libbpf-rs, `bpftool`, or the kernel verifier. It
 sits next to them and explains verifier failures after they happen.
 
+## User-Facing Value
+
+BPFix is useful when it shortens the path from "the verifier rejected my
+program" to the next concrete source edit. The normal user entry point is a
+verifier log from an existing build, test, or load command, not a benchmark
+case.
+
+The product value is:
+
+- local debugging: turn a long verifier trace into the rejected operation, the
+  missing proof, and the likely code region to inspect
+- CI triage: emit stable JSON that can become build annotations instead of a
+  pasted kernel log
+- editor and agent support: provide structured spans, evidence, and `help`
+  messages that another tool can consume
+- maintainer review: separate source bugs, environment/configuration failures,
+  lowering artifacts, verifier limits, and likely verifier false positives
+
+`bpfix-bench` exists to keep those user-facing diagnostics honest. It is a
+regression and evaluation corpus, not the main interface a developer should
+learn first.
+
 ## Motivating Example
 
 Here is a real verifier failure from `bpfix-bench`

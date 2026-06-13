@@ -36,14 +36,14 @@ total_cases: 235
 Latest local validation on this checkout produced:
 
 ```text
-passed: 150
-failed: 85
+passed: 235
+failed: 0
 total_cases: 235
 ```
 
-All failures were `kernel_selftest` cases whose build failed because the host
-linker could not find `-lbpf`. This is an environment provisioning issue, not a
-manifest-count change.
+The previous 85 `kernel_selftest` build failures were caused by linking loader
+binaries against a missing host `-lbpf`. Those loaders now use the local
+`vendor/libbpf` submodule through `bpfix-bench/libbpf.mk`.
 
 ## Acceptance Criteria
 

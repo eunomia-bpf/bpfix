@@ -66,13 +66,15 @@ compiler, libbpf, and BTF setup and fail to reproduce on another.
 Latest local validation on this checkout:
 
 ```text
-passed: 150
-failed: 85
+passed: 235
+failed: 0
 ```
 
-All 85 failures were `kernel_selftest` cases that failed during build because
-the host linker could not find `-lbpf`. The admitted Stack Overflow, GitHub
-issue, and GitHub commit cases replayed successfully on this host.
+The `kernel_selftest` loader builds link against the local
+`vendor/libbpf` submodule through `bpfix-bench/libbpf.mk`, so replay does not
+depend on a host `libbpf` install for `-lbpf`. The host still needs the normal
+replay toolchain dependencies, including clang, bpftool, libelf, zlib, sudo,
+kernel BTF, and a compatible kernel.
 
 ## Raw Audit
 
