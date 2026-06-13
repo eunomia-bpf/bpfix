@@ -66,49 +66,65 @@ Build from source:
 cargo build --workspace
 ```
 
+Install from this checkout:
+
+```bash
+cargo install --path crates/bpfix
+```
+
 Run on a verifier log:
 
 ```bash
-cargo run -p bpfix -- verifier.log
+bpfix verifier.log
 ```
 
 Pipe a failing load command:
 
 ```bash
-sudo bpftool prog load xdp.o /sys/fs/bpf/xdp 2>&1 | cargo run -p bpfix --
+sudo bpftool -d prog load xdp.o /sys/fs/bpf/xdp 2>&1 | bpfix
 ```
 
 Pass a full build or libbpf log. BPFix extracts the verifier region when it can:
 
 ```bash
-cargo run -p bpfix -- build-or-load.log
+bpfix build-or-load.log
 ```
 
 Use optional object metadata:
 
 ```bash
-cargo run -p bpfix -- --object xdp.o verifier.log
+bpfix --object xdp.o verifier.log
 ```
 
 Emit JSON:
 
 ```bash
-cargo run -p bpfix -- verifier.log --format json
+bpfix --format json verifier.log
 ```
 
 Emit both text and JSON:
 
 ```bash
-cargo run -p bpfix -- verifier.log --format both
+bpfix --format both verifier.log
 ```
 
 Benchmark YAML is an evaluation convenience only:
 
 ```bash
-cargo run -p bpfix -- bpfix-bench/raw/so/stackoverflow-60053570.yaml
+bpfix bpfix-bench/raw/so/stackoverflow-60053570.yaml
 ```
 
 Runtime diagnostics must not consume benchmark labels as input.
+
+The public CLI model is:
+
+```text
+bpfix [OPTIONS] [LOG]
+```
+
+`LOG` is optional. When omitted or set to `-`, BPFix reads stdin. Plain text is
+the default because the common path is human debugging; JSON is opt-in for CI,
+editors, and agents.
 
 ## Input Policy
 

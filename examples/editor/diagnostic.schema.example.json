@@ -1,0 +1,43 @@
+{
+  "diagnostic_version": "bpfix.diagnostic/v2",
+  "error_id": "BPFIX-E006",
+  "failure_class": "lowering_artifact",
+  "message": "pointer type proof is missing: R5 invalid mem access 'scalar'",
+  "required_proof": "preserve a verifier-recognized pointer type at the operation that requires a pointer",
+  "source_span": {
+    "path": "prog.c",
+    "line_start": 270,
+    "line_end": 270,
+    "instruction_pc": 37,
+    "source_text": "dst_port = __constant_ntohs(((struct udphdr *)udph)->dest);"
+  },
+  "related_spans": [
+    {
+      "path": "prog.c",
+      "line_start": 267,
+      "line_end": 267,
+      "instruction_pc": 36,
+      "source_text": "if (udph + sizeof(struct udphdr) > data_end)",
+      "label": "proof established by a verifier-visible bounds check"
+    }
+  ],
+  "evidence": [
+    {
+      "kind": "verifier_error",
+      "detail": "R5 invalid mem access 'scalar'",
+      "line": 229
+    }
+  ],
+  "help": [
+    "Keep branch-specific pointer derivations in separate verifier-visible branches, or rederive the pointer from a checked base immediately before dereferencing it."
+  ],
+  "metadata": {
+    "case_id": null,
+    "input_kind": "verifier-log",
+    "object_path": null,
+    "object_programs": [],
+    "object_analysis_error": null,
+    "trace_state_count": 60,
+    "analysis_error": null
+  }
+}

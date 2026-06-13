@@ -1,0 +1,28 @@
+# Drop-in Makefile targets for diagnosing an existing eBPF load target.
+#
+# Override these from the command line if your project uses different names:
+#   make bpfix-load LOAD_TARGET=run BPF_OBJECT=target/bpf/program.o
+
+LOAD_TARGET ?= load
+BPF_OBJECT ?=
+VERIFIER_LOG ?= verifier.log
+BPFIX ?= bpfix
+SHELL := /bin/bash
+
+.PHONY: bpfix-load bpfix-json
+
+bpfix-load:
+	@set -o pipefail; \
+	$(MAKE) $(LOAD_TARGET) 2>&1 | tee $(VERIFIER_LOG); \
+	status=$${PIPESTATUS[0]}; \
+	if [ $$status -ne 0 ]; then \
+		if [ -n "$(BPF_OBJECT)" ]; then \
+			$(BPFIX) --object "$(BPF_OBJECT)" "$(VERIFIER_LOG)"; \
+		else \
+			$(BPFIX) "$(VERIFIER_LOG)"; \
+		fi; \
+	fi; \
+	exit $$status
+
+bpfix-json:
+	$(BPFIX) --format json $(VERIFIER_LOG) > bpfix-diagnostic.json

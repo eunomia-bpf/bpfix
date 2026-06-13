@@ -126,23 +126,30 @@ git submodule update --init --recursive
 cargo build --workspace
 ```
 
+Install the CLI from this checkout if you want the examples below to use
+`bpfix` directly:
+
+```bash
+cargo install --path crates/bpfix
+```
+
 Run BPFix on a verifier log:
 
 ```bash
-cargo run -p bpfix -- verifier.log
+bpfix verifier.log
 ```
 
 Pipe a failing load command into BPFix:
 
 ```bash
-sudo bpftool prog load xdp.o /sys/fs/bpf/xdp 2>&1 | cargo run -p bpfix --
+sudo bpftool -d prog load xdp.o /sys/fs/bpf/xdp 2>&1 | bpfix
 ```
 
 Pass a full libbpf or build log directly; BPFix extracts the verifier region
 when the log contains surrounding build output:
 
 ```bash
-cargo run -p bpfix -- build-or-load.log
+bpfix build-or-load.log
 ```
 
 Optionally pass the BPF object. BPFix reads BPF instruction sections, builds a
@@ -151,13 +158,13 @@ matches the object section, and reports CFG metadata in JSON. BTF-backed source
 correlation will build on the same CLI shape:
 
 ```bash
-cargo run -p bpfix -- --object xdp.o verifier.log
+bpfix --object xdp.o verifier.log
 ```
 
 Get JSON for CI or editor integration:
 
 ```bash
-cargo run -p bpfix -- verifier.log --format json
+bpfix --format json verifier.log
 ```
 
 Run it on a benchmark YAML record when evaluating BPFix against the bundled
@@ -165,8 +172,18 @@ corpus. The CLI only extracts the verifier log and case ID from YAML; labels are
 kept as evaluation oracles, not runtime inputs:
 
 ```bash
-cargo run -p bpfix -- bpfix-bench/raw/so/stackoverflow-60053570.yaml
+bpfix bpfix-bench/raw/so/stackoverflow-60053570.yaml
 ```
+
+The CLI shape is intentionally small:
+
+```text
+bpfix [OPTIONS] [LOG]
+```
+
+`LOG` can be a verifier, build, `bpftool`, libbpf, Aya, or BCC log. When `LOG`
+is omitted or `-`, BPFix reads stdin. The default output is plain text; use
+`--format json` only for tools.
 
 ## Best Workflow
 
@@ -181,12 +198,14 @@ bpfix verifier.log
 or:
 
 ```bash
-sudo bpftool prog load xdp.o /sys/fs/bpf/xdp 2> verifier.log
+sudo bpftool -d prog load xdp.o /sys/fs/bpf/xdp 2> verifier.log
 bpfix --object xdp.o verifier.log
 ```
 
 BPFix does not need `case.yaml` for normal use. YAML records are for the bundled
 benchmark and later accuracy evaluation.
+
+More copyable integration snippets live in `examples/`.
 
 ## Project Status
 
@@ -284,6 +303,7 @@ crates/bpfix       user-facing CLI
 docs/research-plan.md current project status and roadmap
 docs/workshop-paper-plan.md focused workshop submission story
 docs/open-source-tool-design.md public CLI and JSON contract
+examples/          bpftool, libbpf, Aya, BCC, CI, and editor integration snippets
 docs/evaluation/   benchmark and metric notes
 docs/bpfix-py/     archived Python prototype, without generated Python caches
 vendor/libbpf/     libbpf submodule

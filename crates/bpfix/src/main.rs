@@ -11,7 +11,7 @@ mod diagnostic;
 #[derive(Parser, Debug)]
 #[command(version, about = "Diagnose eBPF verifier failures from userspace")]
 struct Cli {
-    /// Verifier log or bpfix-bench raw YAML. Reads stdin when omitted or '-'.
+    /// Verifier, build, bpftool, libbpf, Aya, or BCC log. Reads stdin when omitted or '-'.
     input: Option<PathBuf>,
     /// Optional compiled BPF object. Used for validation now and source/BTF correlation later.
     #[arg(long)]

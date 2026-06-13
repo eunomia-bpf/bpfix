@@ -1,0 +1,44 @@
+name: eBPF verifier diagnostics
+
+on:
+  pull_request:
+  push:
+
+jobs:
+  bpfix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Install BPFix
+        run: cargo install --git https://github.com/eunomia-bpf/bpfix bpfix
+
+      - name: Build eBPF object
+        run: make build
+
+      - name: Load eBPF program
+        id: load
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          sudo bpftool -d prog load xdp.o /sys/fs/bpf/xdp 2>&1 | tee verifier.log
+
+      - name: Diagnose verifier failure
+        if: steps.load.outcome == 'failure'
+        run: bpfix --format json --object xdp.o verifier.log > bpfix-diagnostic.json
+
+      - uses: actions/upload-artifact@v4
+        if: steps.load.outcome == 'failure'
+        with:
+          name: bpfix-diagnostic
+          path: |
+            verifier.log
+            bpfix-diagnostic.json
+
+      - name: Fail after diagnostic upload
+        if: steps.load.outcome == 'failure'
+        run: exit 1
