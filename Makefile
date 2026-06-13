@@ -5,6 +5,7 @@ CURDIR := $(shell pwd)
 CARGO := cargo
 BENCH_DIR := $(CURDIR)/bpfix-bench
 PAPER_DIR := $(CURDIR)/docs/paper
+LATEX := xelatex
 CASE ?= bpfix-bench/raw/so/stackoverflow-60053570.yaml
 
 .DEFAULT_GOAL := help
@@ -65,16 +66,16 @@ bench-smoke:
 .PHONY: paper
 paper:
 	@echo "[paper] Compiling LaTeX paper..."
-	cd $(PAPER_DIR) && pdflatex -interaction=nonstopmode main.tex
+	cd $(PAPER_DIR) && $(LATEX) -interaction=nonstopmode main.tex
 	@echo "[paper] Output: $(PAPER_DIR)/main.pdf"
 
 .PHONY: paper-full
 paper-full:
 	@echo "[paper-full] Compiling paper with bibliography..."
-	cd $(PAPER_DIR) && pdflatex -interaction=nonstopmode main.tex
+	cd $(PAPER_DIR) && $(LATEX) -interaction=nonstopmode main.tex
 	cd $(PAPER_DIR) && bibtex main || true
-	cd $(PAPER_DIR) && pdflatex -interaction=nonstopmode main.tex
-	cd $(PAPER_DIR) && pdflatex -interaction=nonstopmode main.tex
+	cd $(PAPER_DIR) && $(LATEX) -interaction=nonstopmode main.tex
+	cd $(PAPER_DIR) && $(LATEX) -interaction=nonstopmode main.tex
 	@echo "[paper-full] Output: $(PAPER_DIR)/main.pdf"
 
 .PHONY: paper-clean

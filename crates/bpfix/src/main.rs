@@ -459,15 +459,22 @@ fn is_verifier_error_line(line: &str) -> bool {
     }
     let lower = line.to_ascii_lowercase();
     let markers = [
+        "bpf program is too large",
+        "combined stack size",
         "invalid ",
         "unbounded",
         "out of bounds",
         "outside of",
         "expected ",
+        "missing btf",
+        "unknown opcode",
         "unknown func",
         "unreleased reference",
         "reference has not",
         "helper call is not allowed",
+        "cannot use helper",
+        "calling kernel function",
+        "jit does not support",
         "cannot ",
         "permission denied",
         "too many states",
@@ -694,9 +701,12 @@ fn classify(message: &str) -> Classification {
         };
     }
     if lower.contains("too many states")
+        || lower.contains("bpf program is too large")
+        || lower.contains("combined stack size")
         || lower.contains("complexity")
         || lower.contains("loop is not bounded")
         || lower.contains("combined stack")
+        || lower.contains("processed 1000001 insn")
     {
         return Classification {
             error_id: "BPFIX-E018",
@@ -705,12 +715,21 @@ fn classify(message: &str) -> Classification {
             required_proof: "reduce verifier state growth or provide a statically bounded loop shape",
             help: &[
                 "Add a constant loop bound or split complex control flow into smaller helper programs.",
+                "For combined stack-size errors, reduce stack usage across caller, subprogram, and callback frames.",
                 "Reduce path-sensitive state by simplifying branches and stack state carried through the loop.",
             ],
         };
     }
     if lower.contains("unknown func")
         || lower.contains("helper call is not allowed")
+        || lower.contains("program of this type cannot use helper")
+        || lower.contains("cannot use helper")
+        || lower.contains("calling kernel function")
+        || lower.contains("jit does not support")
+        || lower.contains("missing btf")
+        || lower.contains("invalid bpf_context access")
+        || lower.contains("unknown opcode")
+        || lower.contains("expected=map_ptr")
         || lower.contains("cannot call")
         || lower.contains("permission denied")
     {
