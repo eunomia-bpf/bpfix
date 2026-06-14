@@ -40,8 +40,8 @@ not be exposed to any method at inference time.
 
 If replay produces no verifier rejection log, the case is marked
 `replay_invalid` for that run and no diagnostic method is scored on it. The
-replay failure must be reported in the artifact-validity table. A final paper
-run should have zero `replay_invalid` cases after running
+replay failure must be reported in the artifact-validity table. A final
+published evaluation run should have zero `replay_invalid` cases after running
 `docs/bpfix-py/tools/validate_benchmark.py --replay bpfix-bench`; otherwise the diagnostic
 denominator is smaller and the missing cases must be explained explicitly.
 
@@ -167,8 +167,8 @@ Purpose:
 
 ### B4: LLM + Structured BPFix
 
-Use this method only if the paper includes an LLM-assisted diagnosis or repair
-workflow that consumes BPFix output. It is not a replacement for the non-LLM
+Use this method only if the evaluation includes an LLM-assisted diagnosis or
+repair workflow that consumes BPFix output. It is not a replacement for the non-LLM
 BPFix pipeline; it is a downstream-consumer baseline.
 
 Allowed input:
@@ -235,9 +235,9 @@ the pipeline, input logs, output schema, and evaluation harness unchanged.
 | `A6-no-source-correlation` | BTF/log/source correlator | instruction-level spans only | source-level usability |
 | `A7-no-taxonomy-renderer` | taxonomy-specific renderer and explanation templates | generic structured JSON converted to plain text | presentation and taxonomy-specific guidance |
 
-The minimum ablation set for the paper should include `A1`, `A2`, `A3`, `A6`,
+The minimum ablation set for a full evaluation should include `A1`, `A2`, `A3`, `A6`,
 and `A7`. `A4` and `A5` should be included if space permits or if the slicer is
-a central contribution in the paper narrative.
+a central contribution in the evaluation narrative.
 
 ## Metrics
 
@@ -338,8 +338,8 @@ the allowed retries is `invalid_output`, not a manual-repair opportunity.
 | LLM+raw-log |  |  |  |  |  |
 | BPFix full |  |  |  |  |  |
 
-The paper should report both case-weighted and family-weighted versions of the
-headline table. Stratified reporting is required because message-level baselines
-can look strong on direct helper-contract violations while failing on lowering
-artifacts, proof-loss transitions, and cases where the final rejection is only a
-symptom.
+Published results should report both case-weighted and family-weighted versions
+of the headline table. Stratified reporting is required because message-level
+baselines can look strong on direct helper-contract violations while failing on
+lowering artifacts, proof-loss transitions, and cases where the final rejection
+is only a symptom.

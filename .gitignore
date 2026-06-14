@@ -25,6 +25,7 @@ out/
 *.log
 *.jsonl
 docs/tmp/benchmark-eval-results.json
+docs/tmp/
 
 # Compiled artifacts
 *.o

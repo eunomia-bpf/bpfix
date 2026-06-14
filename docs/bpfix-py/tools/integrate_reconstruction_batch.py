@@ -45,7 +45,7 @@ class BatchRow:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("report", type=Path, help="docs/tmp/reconstruction-batch-XX.md")
+    parser.add_argument("report", type=Path, help="reconstruction batch report markdown")
     parser.add_argument("--bench-root", type=Path, default=PROJECT_ROOT / "bpfix-bench")
     parser.add_argument("--apply", action="store_true", help="write metadata updates")
     args = parser.parse_args(argv)

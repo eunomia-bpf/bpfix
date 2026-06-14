@@ -632,7 +632,7 @@ def main() -> int:
     parser.add_argument("--confusion", action="store_true")
     parser.add_argument("--sample-audit", action="store_true")
     parser.add_argument("--sample-size", default=80, type=int)
-    parser.add_argument("--sample-seed", default="bpfix-paper-v1")
+    parser.add_argument("--sample-seed", default="bpfix-eval-v1")
     args = parser.parse_args()
 
     if not args.bpfix_bin.exists():

@@ -433,5 +433,5 @@ Each evaluation run should emit a machine-readable artifact with at least:
 - per-case binary and partial scores
 - aggregate metrics and stratified metrics
 
-The artifact must be sufficient to recompute all tables in the paper without
-rerunning BPFix, except for explicitly marked runtime measurements.
+The artifact must be sufficient to recompute all published evaluation tables
+without rerunning BPFix, except for explicitly marked runtime measurements.

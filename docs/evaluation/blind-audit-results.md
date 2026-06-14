@@ -80,5 +80,6 @@ limit messages, but they do not provide root spans or proof-lifecycle context.
 
 Both scorers also found unsafe BPFix help in 14/60 cases, especially for stack
 alignment, false-positive range-precision cases, and verifier-specific
-lifecycle/order constraints.  The paper should therefore claim a localization
-and help-quality advantage on this sample, not complete diagnostic correctness.
+lifecycle/order constraints. Published results should therefore claim a
+localization and help-quality advantage on this sample, not complete diagnostic
+correctness.

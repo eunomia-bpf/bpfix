@@ -137,7 +137,7 @@ impl Clone for ProgramCFG {
 }
 /// Lifecycle-aligned indirect wrapper for an instruction.
 ///
-/// Hosts inline fact fields. See docs/tmp/bpfopt_verifier_state_proof_design_20260514.md.
+/// Hosts inline facts used by CFG, use-def, and verifier-state analyses.
 #[derive(Clone, Debug)]
 pub struct InsnNode {
     pub insn: BpfInsn,

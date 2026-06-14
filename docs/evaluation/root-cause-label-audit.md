@@ -57,5 +57,5 @@ Before making headline localization claims:
 4. Keep environment, declaration, metadata, and verifier-scope cases out of
    instruction-distance denominators.
 
-Historical case lists for earlier audits remain in `docs/tmp/` and are not the
-current denominator.
+Historical scratch case lists from earlier audits are not part of the current
+denominator.

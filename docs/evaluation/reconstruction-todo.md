@@ -3,7 +3,7 @@
 This file tracks the policy for turning raw external records into strict
 `bpfix-bench/cases/` entries. There is no active hand-assigned reconstruction
 queue in the maintained project state. Historical batch reports remain under
-`docs/tmp/`.
+external scratch archives, not in the maintained repository docs.
 
 ## Current State
 
@@ -50,8 +50,8 @@ its own `Makefile` commands before being added to `manifest.yaml`.
 - Do not change `raw/index.yaml` without regenerating or auditing the raw index.
 - Keep generated object files and replay logs out of version control.
 - Record reconstruction rationale in a maintained doc only if the case is being
-  admitted or rejected for a durable reason. Use `docs/tmp/` for scratch batch
-  notes.
+  admitted or rejected for a durable reason. Keep scratch batch notes out of
+  the maintained docs tree.
 
 ## Good Next Candidates
 

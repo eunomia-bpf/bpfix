@@ -61,7 +61,7 @@ Use exactly one primary value per case in `label.taxonomy_class`:
 | `verifier_false_positive` | The bytecode is semantically safe, but the verifier rejects it conservatively or incorrectly. Stronger evidence may identify an upstream verifier bug. | Kernel/verifier fix or verifier-friendly semantic-preserving workaround. |
 
 `unknown` should remain an adjudication status, not a primary class for final
-paper metrics.
+published metrics.
 
 ### Secondary Axes
 
@@ -126,8 +126,8 @@ such as `helper_contract`, `nullability`, or `stack_safety`.
 
 Use `lowering_artifact` only when the source-level safety argument is already
 present and the rejection is best explained by the compiler/lowering path. At
-least one strong evidence item should be recorded, and for final paper labels
-two are preferable:
+least one strong evidence item should be recorded, and for final published
+labels two are preferable:
 
 - a dominating source-level check or invariant exists before the rejected use;
 - verifier trace shows the proof was established and then lost through a
@@ -249,7 +249,7 @@ would be:
 | `verifier_limit` | 4 | Existing `verifier_limit`, pending manual confirmation. |
 | `verifier_false_positive` | 0 | No pre-migration primary label; introduced by the later lowering-candidate audit. |
 
-These provisional counts should not be used as final paper counts until the
+These provisional counts should not be used as final published counts until the
 manual review queue below is resolved.
 
 ## Pre-Migration-to-New Mapping
@@ -315,7 +315,7 @@ Low-confidence `lowering_artifact` cases:
 
 In addition to the three low-confidence lowering artifacts above, the 40
 medium-confidence `lowering_artifact` cases should receive explicit evidence
-tags before they are used for final paper claims as lowering artifacts:
+tags before they are used for published claims as lowering artifacts:
 
 - `github-cilium-cilium-41522`
 - `github-commit-bcc-42c00adb4181`
