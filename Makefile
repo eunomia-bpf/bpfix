@@ -21,6 +21,7 @@ help:
 	@echo "  make fmt               Format Rust code"
 	@echo "  make cli CASE=...      Run bpfix against a verifier/build/load log"
 	@echo "  make bench-smoke       Run the CLI against one benchmark case"
+	@echo "  make bench-eval        Run bpfix over bpfix-bench and print metrics"
 	@echo ""
 	@echo "Utilities"
 	@echo "  make clean             Remove generated Rust and benchmark artifacts"
@@ -55,6 +56,11 @@ cli:
 bench-smoke:
 	@echo "[bench-smoke] Running bpfix benchmark smoke case..."
 	cd $(CURDIR) && $(CARGO) run -q -p bpfix -- bpfix-bench/cases/stackoverflow-60053570/replay-verifier.log --format json
+
+.PHONY: bench-eval
+bench-eval:
+	@echo "[bench-eval] Running bpfix diagnostic benchmark..."
+	cd $(CURDIR) && python3 bpfix-bench/run-bpfix-eval.py --confusion
 
 .PHONY: clean
 clean:

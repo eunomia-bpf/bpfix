@@ -92,6 +92,17 @@ The `bpfanalysis` crate imports the analysis implementation from the `bpfopt`
 analysis module and keeps the dependent instruction, verifier-log, and
 pass-context modules needed to compile that analysis as a standalone library.
 
+Current diagnostic boundary: `bpfix` has a real proof-event layer, but the
+front-door classifier is still terminal-message driven. The maintained path
+parses verifier states, source annotations, rejected PCs, and emits structured
+`ProofEstablished`, `ProofLost`, and `Rejected` events. However, initial
+`BPFIX-*` family selection still uses verifier-message fragments in
+`crates/bpfix/src/classifier.rs`, and some lowering-artifact /
+verifier-precision adjustments still use message/source-text checks in
+`crates/bpfix/src/main.rs`. The next implementation cleanup is to turn those
+string-triggered adjustments into structured verifier-rejection and proof-signal
+classification, not to expand the pattern table.
+
 ## Benchmark Snapshot
 
 `bpfix-bench/manifest.yaml` is the primary benchmark discovery entry point.
@@ -160,7 +171,7 @@ Legacy benchmark replay tools remain available for corpus maintenance:
 
 ```bash
 python3 docs/bpfix-py/tools/validate_benchmark.py --replay bpfix-bench --timeout-sec 60
-python3 docs/evaluation/evaluate_diagnostics.py --confusion
+python3 bpfix-bench/run-bpfix-eval.py --confusion
 ```
 
 Current Rust evaluation TODO:

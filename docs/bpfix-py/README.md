@@ -27,5 +27,5 @@ cargo run -p bpfix -- <verifier-log>
 Use the current diagnostic evaluation script for product metrics:
 
 ```bash
-python3 docs/evaluation/evaluate_diagnostics.py --confusion
+python3 bpfix-bench/run-bpfix-eval.py --confusion
 ```

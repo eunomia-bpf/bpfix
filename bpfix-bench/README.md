@@ -76,6 +76,19 @@ depend on a host `libbpf` install for `-lbpf`. The host still needs the normal
 replay toolchain dependencies, including clang, bpftool, libelf, zlib, sudo,
 kernel BTF, and a compatible kernel.
 
+## Diagnostic Evaluation
+
+Run BPFix over every admitted replay log in the benchmark:
+
+```bash
+python3 bpfix-bench/run-bpfix-eval.py --confusion
+```
+
+The driver builds the Rust `bpfix` CLI by default, reads `manifest.yaml`, and
+invokes `bpfix --format json` for each case log through the shared metric
+implementation in `docs/evaluation/evaluate_diagnostics.py`. Use
+`--bpfix-bin /path/to/bpfix --no-build` to evaluate an existing binary.
+
 ## Raw Audit
 
 Regenerate the raw external audit index with:

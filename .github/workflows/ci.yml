@@ -48,7 +48,7 @@ jobs:
         run: scripts/check-release.sh
 
       - name: Evaluate diagnostics
-        run: python3 docs/evaluation/evaluate_diagnostics.py --confusion
+        run: python3 bpfix-bench/run-bpfix-eval.py --confusion --no-build
 
       - name: Reject fallback diagnostics
         shell: bash
