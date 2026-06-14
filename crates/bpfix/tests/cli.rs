@@ -214,11 +214,18 @@ fn signed_packet_offset_case_runs_without_yaml_metadata() {
 fn branch_merge_case_is_classified_from_proof_events_without_yaml() {
     let json = run_json("bpfix-bench/cases/stackoverflow-53136145/replay-verifier.log");
     assert_eq!(json["error_id"], "BPFIX-E006");
-    assert_eq!(json["failure_class"], "source_bug");
+    assert_eq!(json["failure_class"], "lowering_artifact");
     assert!(json["metadata"]["case_id"].is_null());
     assert_eq!(json["metadata"]["input_kind"], "verifier-log-region");
     assert_eq!(json["source_span"]["path"], "prog.c");
     assert_eq!(json["source_span"]["instruction_pc"], 37);
+    assert!(json["evidence"].as_array().unwrap().iter().any(|evidence| {
+        evidence["kind"] == "lowering_artifact_signal"
+            && evidence["detail"]
+                .as_str()
+                .unwrap()
+                .contains("compiler-lowered control flow")
+    }));
     assert!(json["related_spans"].as_array().unwrap().len() >= 2);
     let labels = json["related_spans"]
         .as_array()
@@ -233,10 +240,55 @@ fn branch_merge_case_is_classified_from_proof_events_without_yaml() {
 }
 
 #[test]
+fn lowering_artifact_shapes_are_classified_from_verifier_evidence() {
+    let stack_alignment =
+        run_json("bpfix-bench/cases/github-commit-cilium-4853fb153410/replay-verifier.log");
+    assert_eq!(stack_alignment["error_id"], "BPFIX-E007");
+    assert_eq!(stack_alignment["failure_class"], "lowering_artifact");
+    assert!(stack_alignment["message"]
+        .as_str()
+        .unwrap()
+        .contains("verifier-visible compiler lowering"));
+
+    let pointer_merge =
+        run_json("bpfix-bench/cases/github-commit-cilium-4dc7d8047caf/replay-verifier.log");
+    assert_eq!(pointer_merge["error_id"], "BPFIX-E006");
+    assert_eq!(pointer_merge["failure_class"], "lowering_artifact");
+
+    let ctx_argument =
+        run_json("bpfix-bench/cases/github-commit-cilium-caf84595d9cb/replay-verifier.log");
+    assert_eq!(ctx_argument["error_id"], "BPFIX-E010");
+    assert_eq!(ctx_argument["failure_class"], "lowering_artifact");
+    assert!(ctx_argument["evidence"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|evidence| {
+            evidence["kind"] == "lowering_artifact_signal"
+                && evidence["detail"].as_str().unwrap().contains("liveness")
+        }));
+}
+
+#[test]
+fn ordinary_source_bugs_are_not_overclassified_as_lowering_artifacts() {
+    let pointer_load_reuse =
+        run_json("bpfix-bench/cases/stackoverflow-56965789/replay-verifier.log");
+    assert_eq!(pointer_load_reuse["error_id"], "BPFIX-E006");
+    assert_eq!(pointer_load_reuse["failure_class"], "source_bug");
+
+    let generic_alignment =
+        run_json("bpfix-bench/cases/stackoverflow-76441958/replay-verifier.log");
+    assert_eq!(generic_alignment["error_id"], "BPFIX-E007");
+    assert_eq!(generic_alignment["failure_class"], "source_bug");
+}
+
+#[test]
 fn text_output_is_rust_style_multispan() {
     let text = run_text("bpfix-bench/cases/stackoverflow-53136145/replay-verifier.log");
-    assert!(text.contains("error[BPFIX-E006]: pointer type proof is missing"));
-    assert!(text.contains("= class: source_bug"));
+    assert!(text.contains(
+        "error[BPFIX-E006]: verifier-visible compiler lowering hides the required proof"
+    ));
+    assert!(text.contains("= class: lowering_artifact"));
     assert!(text.contains("--> prog.c:270"));
     assert!(text.contains("263 | if (ipv4_hdr)"));
     assert!(text.contains("267 | if (udph + sizeof(struct udphdr) > data_end)"));
@@ -323,7 +375,7 @@ fn yaml_labels_do_not_change_runtime_diagnostic() {
     let json = run_json_stdin(&yaml);
 
     assert_eq!(json["error_id"], "BPFIX-E006");
-    assert_eq!(json["failure_class"], "source_bug");
+    assert_eq!(json["failure_class"], "lowering_artifact");
     assert!(json["metadata"]["case_id"].is_null());
     assert!(
         !json["evidence"].as_array().unwrap().iter().any(|evidence| {

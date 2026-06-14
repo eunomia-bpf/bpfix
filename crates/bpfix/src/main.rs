@@ -179,7 +179,19 @@ fn build_diagnostic(
                 ),
             }
         };
-    let failure_class = class.failure_class.to_string();
+    let class_adjustment =
+        classify_lowering_artifact(&terminal.message, class.failure_class, &proof_events);
+    let failure_class = class_adjustment
+        .map(|adjustment| adjustment.failure_class)
+        .unwrap_or(class.failure_class)
+        .to_string();
+    let confidence = class_adjustment
+        .map(|adjustment| adjustment.confidence)
+        .unwrap_or(class.confidence)
+        .to_string();
+    let message_summary = class_adjustment
+        .map(|adjustment| adjustment.summary)
+        .unwrap_or(class.summary);
 
     let mut evidence = Vec::new();
     evidence.push(Evidence {
@@ -199,6 +211,13 @@ fn build_diagnostic(
             kind: "verifier_trace",
             detail: format!("parsed {trace_state_count} per-instruction verifier state snapshots"),
             line: None,
+        });
+    }
+    if let Some(adjustment) = class_adjustment {
+        evidence.push(Evidence {
+            kind: "lowering_artifact_signal",
+            detail: adjustment.evidence_detail.to_string(),
+            line: Some(terminal.line),
         });
     }
     let rejected_detail = proof_events
@@ -227,17 +246,20 @@ fn build_diagnostic(
         .iter()
         .map(|item| (*item).to_string())
         .collect::<Vec<_>>();
+    if let Some(adjustment) = class_adjustment {
+        insert_help(&mut help, adjustment.help);
+    }
     add_proof_event_help(&mut help, &proof_events);
 
     Diagnostic {
         diagnostic_version: "bpfix.diagnostic/v2",
         error_id: error_id.clone(),
         failure_class,
-        confidence: class.confidence.to_string(),
+        confidence,
         diagnostic_kind: class.diagnostic_kind.to_string(),
         help_safety: class.help_safety.to_string(),
         span_confidence,
-        message: format!("{}: {}", class.summary, terminal.message),
+        message: format!("{}: {}", message_summary, terminal.message),
         required_proof,
         related_spans,
         source_span,
@@ -254,6 +276,86 @@ fn build_diagnostic(
             trace_state_count,
             analysis_error,
         },
+    }
+}
+
+#[derive(Clone, Copy)]
+struct ClassAdjustment {
+    failure_class: &'static str,
+    confidence: &'static str,
+    summary: &'static str,
+    evidence_detail: &'static str,
+    help: &'static str,
+}
+
+fn classify_lowering_artifact(
+    terminal_message: &str,
+    base_failure_class: &str,
+    proof_events: &[diagnostic::ProofEvent],
+) -> Option<ClassAdjustment> {
+    if base_failure_class != "source_bug" {
+        return None;
+    }
+
+    let message = terminal_message.to_ascii_lowercase();
+    if message.contains("misaligned stack access") {
+        return Some(lowering_adjustment(
+            "compiler-lowered stack access requires stronger alignment than the source layout exposes",
+            "wide stack loads, stores, copies, or inline assembly can make stack-object alignment a verifier-visible property; align the stack object or avoid the wide access shape.",
+        ));
+    }
+    if message.contains("same insn cannot be used with different pointers") {
+        return Some(lowering_adjustment(
+            "compiler code merging hides distinct pointer proofs from the verifier",
+            "Keep incompatible pointer-typed paths separated at the dereference, or force the load to stay branch-local so one instruction is not shared by different verifier pointer types.",
+        ));
+    }
+    if message.contains("pointer arithmetic with <<=") {
+        return Some(lowering_adjustment(
+            "compiler-lowered integer operation drops pointer provenance",
+            "Keep packet or context pointers in verifier-tracked 64-bit pointer values; avoid materializing them through 32-bit scalar arithmetic before the access.",
+        ));
+    }
+    if message.contains("dereference of modified ctx ptr") {
+        return Some(lowering_adjustment(
+            "compiler-lowered context access violates the verifier context contract",
+            "Keep context field accesses as verifier-recognized field loads; avoid wide casts or modified context pointers for adjacent fields.",
+        ));
+    }
+    if message.contains("expects pointer to ctx")
+        && message.contains("caller passes invalid args into func")
+    {
+        return Some(lowering_adjustment(
+            "compiler liveness hides the context argument required by a BPF subprogram",
+            "Keep the context argument verifier-visible at the BPF-to-BPF callsite, for example by passing it directly or preventing the compiler from dropping the value.",
+        ));
+    }
+    if proof_events.iter().any(|event| {
+        event.role == ProofEventRole::ProofLost
+            && event.evidence == ProofEventEvidence::VerifierState
+            && event.obligation == ProofObligation::PointerProvenance
+            && event.detail.contains("changes from pkt to scalar")
+            && event
+                .source
+                .as_ref()
+                .is_some_and(|source| source.text.contains("data_end"))
+    }) {
+        return Some(lowering_adjustment(
+            "compiler-lowered control flow hides an established packet-pointer proof",
+            "Keep the checked packet pointer derivation in the same verifier-visible path as the dereference, or rederive it from a checked base immediately before use.",
+        ));
+    }
+
+    None
+}
+
+fn lowering_adjustment(evidence_detail: &'static str, help: &'static str) -> ClassAdjustment {
+    ClassAdjustment {
+        failure_class: "lowering_artifact",
+        confidence: "medium",
+        summary: "verifier-visible compiler lowering hides the required proof",
+        evidence_detail,
+        help,
     }
 }
 

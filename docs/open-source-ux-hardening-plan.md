@@ -66,8 +66,10 @@ root pc exact on labeled subset: 88/140 (62.9%)
 ```text
 known error id: 235/235 (100.0%)
 BPFIX-UNKNOWN/E000/E099 on replay logs: 0/235
-related proof spans: 94/235 (40.0%)
-taxonomy agreement: 199/235 (84.7%)
+related proof spans: 99/235 (42.1%)
+taxonomy agreement: 211/235 (89.8%)
+taxonomy macro-F1: 0.695
+lowering-artifact recall: 12/24 (50.0%)
 terminal dictionary taxonomy agreement: 199/235 (84.7%)
 root pc exact on labeled subset: 101/140 (72.1%)
 root pc within 5 on labeled subset: 120/140 (85.7%)
