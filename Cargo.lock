@@ -79,7 +79,6 @@ dependencies = [
  "libbpf-sys",
  "object",
  "serde",
- "serde_json",
 ]
 
 [[package]]

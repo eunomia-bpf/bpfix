@@ -14,7 +14,6 @@ clap.workspace = true
 libbpf-sys = { workspace = true, optional = true }
 object = { workspace = true, optional = true }
 serde.workspace = true
-serde_json.workspace = true
 
 [features]
 default = ["analysis", "object-analysis"]
