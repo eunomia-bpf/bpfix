@@ -348,7 +348,9 @@ pub fn analyze_verifier_log(
             ));
         }
         ProofObligation::PacketBounds => events.extend(packet_bounds_events(
+            log,
             &states,
+            &branch_states,
             &source_events,
             terminal_pc,
             terminal_error,
@@ -504,7 +506,9 @@ fn is_pointer_state(state: &RegState) -> bool {
 }
 
 fn packet_bounds_events(
+    log: &str,
     states: &[VerifierInsn],
+    branch_states: &[VerifierInsn],
     source_events: &[SourceEvent],
     terminal_pc: Option<usize>,
     terminal_error: &str,
@@ -526,7 +530,20 @@ fn packet_bounds_events(
         });
     }
     if let Some((pc, range, required)) =
-        latest_sufficient_packet_range(states, terminal_pc, terminal_error, register)
+        latest_sufficient_packet_range(states, terminal_pc, terminal_error, register).or_else(
+            || {
+                latest_sufficient_packet_guard_range(
+                    log,
+                    states,
+                    branch_states,
+                    source_events,
+                    terminal_pc,
+                    terminal_error,
+                    rejected_source,
+                    register,
+                )
+            },
+        )
     {
         events.push(ProofEvent {
             role: ProofEventRole::ProofEstablished,
@@ -580,18 +597,16 @@ fn latest_sufficient_packet_range(
 ) -> Option<(usize, u32, u32)> {
     let reg = register?;
     let required = packet_required_range(terminal_error)?;
-    states
-        .iter()
-        .filter(|state| terminal_pc.is_none_or(|pc| state.pc < pc))
-        .rev()
-        .find_map(|state| {
-            let reg_state = state.regs.get(&reg)?;
-            if reg_state.reg_type != "pkt" {
-                return None;
-            }
-            let range = reg_state.packet_range?;
-            (range >= required).then_some((state.pc, range, required))
-        })
+    let (idx, state, reg_state) = latest_reg_state_index_before(states, terminal_pc, reg)?;
+    if reg_state.reg_type != "pkt" {
+        return None;
+    }
+    if let Some(range) = reg_state.packet_range {
+        if range >= required {
+            return Some((state.pc, range, required));
+        }
+    }
+    prior_sufficient_packet_range(states, idx, reg, required, reg_state)
 }
 
 fn latest_insufficient_packet_range(
@@ -607,17 +622,12 @@ fn latest_insufficient_packet_range(
     if required <= 1 {
         return None;
     }
-    let nearest = states
-        .iter()
-        .filter(|state| terminal_pc.is_none_or(|pc| state.pc <= pc))
-        .rev()
-        .find(|state| state.regs.contains_key(&reg))?;
-    let reg_state = nearest.regs.get(&reg)?;
+    let (_, state, reg_state) = latest_reg_state_index_before(states, terminal_pc, reg)?;
     if reg_state.reg_type != "pkt" {
         return None;
     }
     let range = reg_state.packet_range?;
-    (range < required).then_some((nearest.pc, range, required))
+    (range < required).then_some((state.pc, range, required))
 }
 
 fn packet_range_lost_before_access(
@@ -632,19 +642,266 @@ fn packet_range_lost_before_access(
     if required <= 1 {
         return None;
     }
+    let (_, state, reg_state) = latest_reg_state_index_before(states, terminal_pc, reg)?;
+    if state.pc <= proof_pc || reg_state.reg_type != "pkt" {
+        return None;
+    }
+    let range = reg_state.packet_range?;
+    (range < required).then_some((state.pc, range))
+}
+
+fn latest_reg_state_index_before(
+    states: &[VerifierInsn],
+    terminal_pc: Option<usize>,
+    reg: u8,
+) -> Option<(usize, &VerifierInsn, &RegState)> {
     states
         .iter()
-        .filter(|state| terminal_pc.is_none_or(|pc| state.pc <= pc))
-        .filter(|state| state.pc > proof_pc)
+        .enumerate()
+        .filter(|(_, state)| terminal_pc.is_none_or(|pc| state.pc <= pc))
         .rev()
-        .find_map(|state| {
-            let reg_state = state.regs.get(&reg)?;
-            if reg_state.reg_type != "pkt" {
+        .find_map(|(idx, state)| {
+            state
+                .regs
+                .get(&reg)
+                .map(|reg_state| (idx, state, reg_state))
+        })
+}
+
+fn prior_sufficient_packet_range(
+    states: &[VerifierInsn],
+    before_idx: usize,
+    reg: u8,
+    required: u32,
+    current: &RegState,
+) -> Option<(usize, u32, u32)> {
+    for state in states[..before_idx].iter().rev() {
+        let Some(reg_state) = state.regs.get(&reg) else {
+            continue;
+        };
+        if reg_state.reg_type != "pkt" {
+            return None;
+        }
+        if !same_packet_lineage(reg_state, current) {
+            return None;
+        }
+        let Some(range) = reg_state.packet_range else {
+            continue;
+        };
+        if range >= required {
+            return Some((state.pc, range, required));
+        }
+    }
+    None
+}
+
+fn same_packet_lineage(prior: &RegState, current: &RegState) -> bool {
+    if prior.reg_type != "pkt" || current.reg_type != "pkt" {
+        return false;
+    }
+    match (prior.id, current.id) {
+        (Some(prior_id), Some(current_id)) => prior_id == current_id,
+        (Some(_), None) => false,
+        (None, Some(_)) => false,
+        (None, None) => true,
+    }
+}
+
+fn latest_sufficient_packet_guard_range(
+    log: &str,
+    states: &[VerifierInsn],
+    branch_states: &[VerifierInsn],
+    source_events: &[SourceEvent],
+    terminal_pc: Option<usize>,
+    terminal_error: &str,
+    rejected_source: Option<&SourceLocation>,
+    register: Option<u8>,
+) -> Option<(usize, u32, u32)> {
+    let reg = register?;
+    let required = packet_required_range(terminal_error)?;
+    let (current_idx, _, current) = latest_reg_state_index_before(states, terminal_pc, reg)?;
+    if current.reg_type != "pkt" || current.packet_range.is_some_and(|range| range >= required) {
+        return None;
+    }
+    let rejected = rejected_source?;
+    source_events
+        .iter()
+        .filter(|event| event.source.path == rejected.path)
+        .filter(|event| event.source.line < rejected.line)
+        .filter(|event| looks_like_packet_bounds_check(&event.source.text))
+        .filter_map(|event| {
+            let guard_pc = event.pc?;
+            if terminal_pc.is_some_and(|pc| guard_pc > pc) {
                 return None;
             }
-            let range = reg_state.packet_range?;
-            (range < required).then_some((state.pc, range))
+            let mixed_id_same_register_history =
+                has_prior_noid_same_register_packet_range_for_guard(
+                    states,
+                    source_events,
+                    current_idx,
+                    reg,
+                    required,
+                    current,
+                    &event.source,
+                );
+            Some((guard_pc, mixed_id_same_register_history))
         })
+        .flat_map(|(guard_pc, mixed_id_same_register_history)| {
+            guard_branch_operand_registers(log, guard_pc, 6)
+                .into_iter()
+                .map(move |operand| (guard_pc, mixed_id_same_register_history, operand))
+        })
+        .filter_map(
+            |(guard_source_pc, mixed_id_same_register_history, (branch_pc, branch_reg))| {
+                branch_states
+                    .iter()
+                    .filter(|state| state.pc == branch_pc)
+                    .filter_map(|state| state.regs.get(&branch_reg))
+                    .find_map(|guard| {
+                        packet_guard_proves_rejected_access(
+                            guard,
+                            current,
+                            required,
+                            mixed_id_same_register_history,
+                        )
+                        .map(|range| (guard_source_pc, range, required))
+                    })
+            },
+        )
+        .max_by_key(|(pc, _, _)| *pc)
+}
+
+fn has_prior_noid_same_register_packet_range_for_guard(
+    states: &[VerifierInsn],
+    source_events: &[SourceEvent],
+    before_idx: usize,
+    reg: u8,
+    required: u32,
+    current: &RegState,
+    guard_source: &SourceLocation,
+) -> bool {
+    if current.id.is_none() {
+        return false;
+    }
+    let Some(guard_derivation) = packet_guard_derivation_source(source_events, guard_source) else {
+        return false;
+    };
+    for state in states[..before_idx].iter().rev() {
+        let Some(prior) = state.regs.get(&reg) else {
+            continue;
+        };
+        if prior.reg_type != "pkt" {
+            return false;
+        }
+        if prior.id.is_some() {
+            return false;
+        }
+        if prior.packet_range.is_some_and(|range| range >= required)
+            && same_packet_offset(prior, current)
+            && source_for_pc(source_events, state.pc)
+                .is_some_and(|source| same_source_location(source, guard_derivation))
+        {
+            return true;
+        }
+    }
+    false
+}
+
+fn same_packet_offset(left: &RegState, right: &RegState) -> bool {
+    left.offset
+        .zip(right.offset)
+        .is_some_and(|(left, right)| left == right)
+}
+
+fn packet_guard_derivation_source<'a>(
+    source_events: &'a [SourceEvent],
+    guard_source: &SourceLocation,
+) -> Option<&'a SourceLocation> {
+    let guard_var = packet_guard_pointer_variable(&guard_source.text)?;
+    source_events
+        .iter()
+        .filter(|event| event.source.path == guard_source.path)
+        .filter(|event| event.source.line < guard_source.line)
+        .filter(|event| looks_like_packet_pointer_derivation(&event.source.text))
+        .filter(|event| {
+            packet_derivation_lhs_variable(&event.source.text)
+                .as_deref()
+                .is_some_and(|lhs| lhs == guard_var)
+        })
+        .max_by_key(|event| event.source.line)
+        .map(|event| &event.source)
+}
+
+fn packet_guard_pointer_variable(text: &str) -> Option<String> {
+    let text = text.trim();
+    let condition = text.strip_prefix("if ")?.trim();
+    let condition = condition
+        .strip_prefix('(')
+        .and_then(|condition| condition.strip_suffix(')'))
+        .unwrap_or(condition);
+    let before_data_end = condition
+        .split_once("> data_end")
+        .map(|(left, _)| left)
+        .or_else(|| condition.split_once(">= data_end").map(|(left, _)| left))?;
+    identifier_tokens(before_data_end).into_iter().next()
+}
+
+fn packet_derivation_lhs_variable(text: &str) -> Option<String> {
+    let (lhs, _) = text.split_once('=')?;
+    identifier_tokens(lhs).into_iter().last()
+}
+
+fn packet_guard_proves_rejected_access(
+    guard: &RegState,
+    current: &RegState,
+    required: u32,
+    mixed_id_same_register_history: bool,
+) -> Option<u32> {
+    if guard.reg_type != "pkt" || current.reg_type != "pkt" {
+        return None;
+    }
+    let range = guard.packet_range?;
+    if range < required
+        || current
+            .packet_range
+            .is_some_and(|current| current >= required)
+    {
+        return None;
+    }
+    match (guard.id, current.id) {
+        (Some(guard_id), Some(current_id)) if guard_id == current_id => Some(range),
+        (None, None) => Some(range),
+        _ => {
+            let guard_offset = guard.offset.and_then(|offset| u32::try_from(offset).ok())?;
+            (mixed_id_same_register_history
+                && guard_offset >= required
+                && has_bounded_variable_packet_offset(current)
+                && packet_variable_bounds_match(guard, current))
+            .then_some(range)
+        }
+    }
+}
+
+fn has_bounded_variable_packet_offset(state: &RegState) -> bool {
+    state.range.smin.is_some()
+        || state.range.smax.is_some()
+        || state.range.umin.is_some()
+        || state.range.umax.is_some()
+        || state.range.smin32.is_some()
+        || state.range.smax32.is_some()
+        || state.range.umin32.is_some()
+        || state.range.umax32.is_some()
+}
+
+fn packet_variable_bounds_match(left: &RegState, right: &RegState) -> bool {
+    left.range.smin == right.range.smin
+        && left.range.smax == right.range.smax
+        && left.range.umin == right.range.umin
+        && left.range.umax == right.range.umax
+        && left.range.smin32 == right.range.smin32
+        && left.range.smax32 == right.range.smax32
+        && left.range.umin32 == right.range.umin32
+        && left.range.umax32 == right.range.umax32
 }
 
 fn scalar_range_events(
@@ -1366,10 +1623,10 @@ fn packet_range_proof_lost_before_access(events: &[ProofEvent]) -> bool {
         event.role == ProofEventRole::ProofEstablished
             && event.evidence == ProofEventEvidence::VerifierState
             && event.obligation == ProofObligation::PacketBounds
-            && event
-                .source
-                .as_ref()
-                .is_some_and(|source| looks_like_packet_pointer_derivation(&source.text))
+            && event.source.as_ref().is_some_and(|source| {
+                looks_like_packet_pointer_derivation(&source.text)
+                    || looks_like_packet_bounds_check(&source.text)
+            })
     });
     has_sufficient_range
         && events.iter().any(|event| {
@@ -1403,8 +1660,19 @@ fn packet_max_offset_precision_boundary(context: &ProofSignalContext<'_>) -> boo
         && state.packet_range == Some(0)
         && packet_offset_range_reaches_precision_boundary(state, required)
         && packet_source_guard_is_relevant(context.events)
-        && (packet_source_guard_covers_required_range(context.events, required)
-            || has_prior_sufficient_packet_range_for_rejected_source(context.events))
+        && (packet_source_guard_covers_required_range(
+            context.log,
+            context.events,
+            context.branch_states,
+            state,
+            required,
+        ) || packet_source_guard_covers_relative_packet_range(
+            context.log,
+            context.events,
+            context.branch_states,
+            state,
+            required,
+        ) || has_prior_sufficient_packet_range_for_rejected_source(context.events))
 }
 
 fn packet_offset_range_reaches_precision_boundary(state: &RegState, required: u32) -> bool {
@@ -1448,17 +1716,167 @@ fn packet_source_guard_is_relevant(events: &[ProofEvent]) -> bool {
     })
 }
 
-fn packet_source_guard_covers_required_range(events: &[ProofEvent], required: u32) -> bool {
+fn packet_source_guard_covers_required_range(
+    log: &str,
+    events: &[ProofEvent],
+    states: &[VerifierInsn],
+    current: &RegState,
+    required: u32,
+) -> bool {
     events.iter().any(|event| {
         event.role == ProofEventRole::ProofEstablished
             && event.evidence == ProofEventEvidence::SourceComment
             && event.obligation == ProofObligation::PacketBounds
             && event.source.as_ref().is_some_and(|source| {
                 looks_like_packet_bounds_check(&source.text)
-                    && (max_numeric_token(&source.text).is_some_and(|guarded| guarded >= required)
-                        || source.text.contains("sizeof("))
+                    && packet_source_guard_is_linked(log, states, event.pc, current)
+                    && max_numeric_token(&source.text).is_some_and(|guarded| guarded >= required)
             })
     })
+}
+
+fn packet_source_guard_covers_relative_packet_range(
+    log: &str,
+    events: &[ProofEvent],
+    states: &[VerifierInsn],
+    state: &RegState,
+    required: u32,
+) -> bool {
+    let Some(fixed_offset) = state.offset.and_then(|offset| u32::try_from(offset).ok()) else {
+        return false;
+    };
+    let Some(relative_required) = required.checked_sub(fixed_offset) else {
+        return false;
+    };
+    if relative_required == 0 {
+        return false;
+    }
+    events.iter().any(|event| {
+        event.role == ProofEventRole::ProofEstablished
+            && event.evidence == ProofEventEvidence::SourceComment
+            && event.obligation == ProofObligation::PacketBounds
+            && event.source.as_ref().is_some_and(|source| {
+                looks_like_packet_bounds_check(&source.text)
+                    && packet_source_guard_is_linked(log, states, event.pc, state)
+                    && packet_source_guard_covers_relative_bound(&source.text, relative_required)
+            })
+    })
+}
+
+fn packet_source_guard_covers_relative_bound(source_text: &str, relative_required: u32) -> bool {
+    max_numeric_token(source_text).is_some_and(|guarded| guarded >= relative_required)
+        || (relative_required <= 1 && source_text.contains("sizeof("))
+}
+
+fn packet_source_guard_is_linked(
+    log: &str,
+    states: &[VerifierInsn],
+    guard_pc: Option<usize>,
+    current: &RegState,
+) -> bool {
+    packet_guard_verifier_state_links_to_rejected(log, states, guard_pc, current)
+}
+
+fn packet_guard_verifier_state_links_to_rejected(
+    log: &str,
+    states: &[VerifierInsn],
+    guard_pc: Option<usize>,
+    current: &RegState,
+) -> bool {
+    let Some(guard_pc) = guard_pc else {
+        return false;
+    };
+    guard_branch_operand_registers(log, guard_pc, 6)
+        .into_iter()
+        .any(|(pc, reg)| {
+            states
+                .iter()
+                .filter(|state| state.pc == pc)
+                .filter_map(|state| state.regs.get(&reg))
+                .any(|state| packet_guard_operand_covers_current(state, current))
+        })
+}
+
+fn packet_guard_operand_covers_current(guard: &RegState, current: &RegState) -> bool {
+    if guard.reg_type != "pkt" || current.reg_type != "pkt" {
+        return false;
+    }
+    match (guard.id, current.id) {
+        (Some(guard_id), Some(current_id)) if guard_id == current_id => {
+            packet_offset_covers(guard, current)
+        }
+        (None, None) => packet_offset_covers(guard, current),
+        _ => false,
+    }
+}
+
+fn packet_offset_covers(guard: &RegState, current: &RegState) -> bool {
+    guard.offset.unwrap_or(0) >= current.offset.unwrap_or(0)
+}
+
+fn guard_branch_operand_registers(
+    log: &str,
+    guard_pc: usize,
+    lookahead: usize,
+) -> Vec<(usize, u8)> {
+    let max_pc = guard_pc.saturating_add(lookahead);
+    log.lines()
+        .filter_map(|line| instruction_pc_tail(line.trim()))
+        .filter(|(pc, _)| *pc >= guard_pc && *pc <= max_pc)
+        .flat_map(|(pc, tail)| {
+            conditional_branch_registers(tail)
+                .into_iter()
+                .map(move |reg| (pc, reg))
+        })
+        .collect()
+}
+
+fn instruction_pc_tail(line: &str) -> Option<(usize, &str)> {
+    let digits_len = line
+        .bytes()
+        .take_while(|byte| byte.is_ascii_digit())
+        .count();
+    if digits_len == 0 || line.as_bytes().get(digits_len) != Some(&b':') {
+        return None;
+    }
+    Some((
+        line[..digits_len].parse().ok()?,
+        line[digits_len + 1..].trim(),
+    ))
+}
+
+fn conditional_branch_registers(tail: &str) -> Vec<u8> {
+    let Some(condition) = tail
+        .split_once(" if ")
+        .map(|(_, condition)| condition)
+        .or_else(|| tail.strip_prefix("if "))
+    else {
+        return Vec::new();
+    };
+    let condition = condition.split(" goto ").next().unwrap_or(condition);
+    register_operands(condition)
+}
+
+fn register_operands(text: &str) -> Vec<u8> {
+    let mut regs = Vec::new();
+    let bytes = text.as_bytes();
+    let mut idx = 0usize;
+    while idx + 1 < bytes.len() {
+        if bytes[idx] != b'r' || !bytes[idx + 1].is_ascii_digit() {
+            idx += 1;
+            continue;
+        }
+        let start = idx + 1;
+        let mut end = start + 1;
+        while end < bytes.len() && bytes[end].is_ascii_digit() {
+            end += 1;
+        }
+        if let Ok(reg) = text[start..end].parse::<u8>() {
+            regs.push(reg);
+        }
+        idx = end;
+    }
+    regs
 }
 
 fn rejected_source(events: &[ProofEvent]) -> Option<&SourceLocation> {

@@ -362,7 +362,7 @@ fn lowering_artifact_shapes_are_classified_from_verifier_evidence() {
         .filter_map(|span| span["label"].as_str())
         .collect::<Vec<_>>()
         .join("\n");
-    assert!(packet_range_labels.contains("packet range 74 bytes"));
+    assert!(packet_range_labels.contains("packet range 60 bytes"));
     assert!(packet_range_labels.contains("dropped to 0 bytes"));
 
     let constant_scalar_load =
@@ -459,6 +459,51 @@ fn verifier_precision_limits_are_triage_not_source_bugs() {
                     .as_str()
                     .unwrap()
                     .contains("packet-offset precision boundary")
+        }));
+
+    let unrelated_guard = "\
+; if (ctx->other + len + 64 > data_end) @ prog.c:10
+10: R1=pkt(id=4,off=64,r=64,smin=umin=smin32=umin32=20,smax=umax=smax32=umax32=0x1003b,var_off=(0x0; 0x1ffff)) R2=pkt(id=3,off=26,r=0,smin=umin=smin32=umin32=20,smax=umax=smax32=umax32=0x1003b,var_off=(0x0; 0x1ffff)) R6=pkt_end()
+10: (2d) if r1 > r6 goto pc+1
+20: R2=pkt(id=3,off=26,r=0,smin=umin=smin32=umin32=20,smax=umax=smax32=umax32=0x1003b,var_off=(0x0; 0x1ffff)) R6=pkt_end()
+; return *(__u8 *)(ctx->data + len); @ prog.c:20
+20: (71) r8 = *(u8 *)(r2 +0)
+invalid access to packet, off=26 size=1, R2(id=3,off=26,r=0)
+processed 21 insns (limit 1000000) max_states_per_insn 0 total_states 1 peak_states 1 mark_read 0
+";
+    let unrelated = run_json_stdin(unrelated_guard);
+    assert_eq!(unrelated["failure_class"], "source_bug");
+    assert!(!unrelated["evidence"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|evidence| {
+            evidence["kind"] == "lowering_artifact_signal"
+                || evidence["kind"] == "verifier_precision_signal"
+        }));
+
+    let unrelated_guard_with_prior_history = "\
+; char *p = data + len; @ prog.c:4
+0: R2=pkt(off=26,r=100) R6=pkt_end()
+; char *other_checked = other + len + 64; @ prog.c:10
+2: R1=pkt(id=4,off=64,r=64,smin=umin=smin32=umin32=20,smax=umax=smax32=umax32=0x1003b,var_off=(0x0; 0x1ffff)) R6=pkt_end()
+; if (other_checked > data_end) @ prog.c:11
+2: (2d) if r1 > r6 goto pc+1
+20: R2=pkt(id=3,off=26,r=0,smin=umin=smin32=umin32=20,smax=umax=smax32=umax32=0x1003b,var_off=(0x0; 0x1ffff)) R6=pkt_end()
+; return *(__u8 *)(p); @ prog.c:20
+20: (71) r8 = *(u8 *)(r2 +0)
+invalid access to packet, off=26 size=1, R2(id=3,off=26,r=0)
+processed 21 insns (limit 1000000) max_states_per_insn 0 total_states 1 peak_states 1 mark_read 0
+";
+    let unrelated_with_history = run_json_stdin(unrelated_guard_with_prior_history);
+    assert_eq!(unrelated_with_history["failure_class"], "source_bug");
+    assert!(!unrelated_with_history["evidence"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|evidence| {
+            evidence["kind"] == "lowering_artifact_signal"
+                || evidence["kind"] == "verifier_precision_signal"
         }));
 
     let packet_sizeof_guard =
@@ -768,7 +813,7 @@ fn packet_bounds_diagnostic_reports_prior_verifier_range_proof() {
         .filter_map(|span| span["label"].as_str())
         .collect::<Vec<_>>()
         .join("\n");
-    assert!(labels.contains("verifier had proved packet range 74 bytes"));
+    assert!(labels.contains("verifier had proved packet range 60 bytes"));
     assert!(labels.contains("required 60 bytes"));
     assert!(json["help"].as_array().unwrap().iter().any(|item| item
         .as_str()
@@ -837,7 +882,127 @@ processed 3 insns (limit 1000000) max_states_per_insn 0 total_states 1 peak_stat
         .filter_map(|span| span["label"].as_str())
         .collect::<Vec<_>>()
         .join("\n");
+    assert_eq!(stale["failure_class"], "source_bug");
+    assert!(!stale["evidence"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|evidence| {
+            evidence["kind"] == "lowering_artifact_signal"
+                || evidence["kind"] == "verifier_precision_signal"
+        }));
+    assert!(!stale_labels.contains("verifier had proved packet range"));
     assert!(!stale_labels.contains("verifier only proves packet range"));
+
+    let stale_packet_lineage = "\
+0: R2=pkt(id=1,off=0,r=100) R10=fp0
+1: R2=pkt(id=2,off=0,r=0) R10=fp0
+; byte = *ptr; @ prog.c:20
+2: (71) r1 = *(u8 *)(r2 +59)
+invalid access to packet, off=59 size=1, R2(id=2,off=59,r=0)
+processed 3 insns (limit 1000000) max_states_per_insn 0 total_states 1 peak_states 1 mark_read 0
+";
+    let stale_packet = run_json_stdin(stale_packet_lineage);
+    assert_eq!(stale_packet["failure_class"], "source_bug");
+    assert!(!stale_packet["evidence"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|evidence| {
+            evidence["kind"] == "lowering_artifact_signal"
+                || evidence["kind"] == "verifier_precision_signal"
+        }));
+    let stale_packet_labels = stale_packet["related_spans"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|span| span["label"].as_str())
+        .collect::<Vec<_>>()
+        .join("\n");
+    assert!(!stale_packet_labels.contains("verifier had proved packet range 100 bytes"));
+
+    let stale_mixed_packet_lineage = "\
+0: R2=pkt(off=0,r=100) R10=fp0
+1: R2=pkt(id=2,off=0,r=0,smin=umin=smin32=umin32=0,smax=umax=smax32=umax32=0x1003b,var_off=(0x0; 0x1ffff)) R10=fp0
+; byte = *ptr; @ prog.c:20
+2: (71) r1 = *(u8 *)(r2 +59)
+invalid access to packet, off=59 size=1, R2(id=2,off=59,r=0)
+processed 3 insns (limit 1000000) max_states_per_insn 0 total_states 1 peak_states 1 mark_read 0
+";
+    let stale_mixed = run_json_stdin(stale_mixed_packet_lineage);
+    assert_eq!(stale_mixed["failure_class"], "source_bug");
+    assert!(!stale_mixed["evidence"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|evidence| {
+            evidence["kind"] == "lowering_artifact_signal"
+                || evidence["kind"] == "verifier_precision_signal"
+        }));
+    let stale_mixed_labels = stale_mixed["related_spans"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|span| span["label"].as_str())
+        .collect::<Vec<_>>()
+        .join("\n");
+    assert!(!stale_mixed_labels.contains("verifier had proved packet range 100 bytes"));
+
+    let stale_mixed_same_offset_packet_lineage = "\
+; char *p = data + 26; @ prog.c:10
+0: R2=pkt(off=26,r=100) R10=fp0
+1: R2=pkt(id=2,off=26,r=0,smin=umin=smin32=umin32=20,smax=umax=smax32=umax32=0x1003b,var_off=(0x0; 0x1ffff)) R10=fp0
+; byte = *p; @ prog.c:20
+2: (71) r1 = *(u8 *)(r2 +0)
+invalid access to packet, off=26 size=1, R2(id=2,off=26,r=0)
+processed 3 insns (limit 1000000) max_states_per_insn 0 total_states 1 peak_states 1 mark_read 0
+";
+    let stale_mixed_same_offset = run_json_stdin(stale_mixed_same_offset_packet_lineage);
+    assert_eq!(stale_mixed_same_offset["failure_class"], "source_bug");
+    assert!(!stale_mixed_same_offset["evidence"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|evidence| {
+            evidence["kind"] == "lowering_artifact_signal"
+                || evidence["kind"] == "verifier_precision_signal"
+        }));
+    let stale_mixed_same_offset_labels = stale_mixed_same_offset["related_spans"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|span| span["label"].as_str())
+        .collect::<Vec<_>>()
+        .join("\n");
+    assert!(!stale_mixed_same_offset_labels.contains("verifier had proved packet range 100 bytes"));
+
+    let stale_mixed_variable_derivation = "\
+; char *p = data + len; @ prog.c:10
+0: R2=pkt(off=26,r=100) R10=fp0
+1: R2=pkt(id=2,off=26,r=0,smin=umin=smin32=umin32=20,smax=umax=smax32=umax32=0x1003b,var_off=(0x0; 0x1ffff)) R10=fp0
+; byte = *p; @ prog.c:20
+2: (71) r1 = *(u8 *)(r2 +0)
+invalid access to packet, off=26 size=1, R2(id=2,off=26,r=0)
+processed 3 insns (limit 1000000) max_states_per_insn 0 total_states 1 peak_states 1 mark_read 0
+";
+    let stale_variable = run_json_stdin(stale_mixed_variable_derivation);
+    assert_eq!(stale_variable["failure_class"], "source_bug");
+    assert!(!stale_variable["evidence"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|evidence| {
+            evidence["kind"] == "lowering_artifact_signal"
+                || evidence["kind"] == "verifier_precision_signal"
+        }));
+    let stale_variable_labels = stale_variable["related_spans"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|span| span["label"].as_str())
+        .collect::<Vec<_>>()
+        .join("\n");
+    assert!(!stale_variable_labels.contains("verifier had proved packet range 100 bytes"));
 
     let one_byte_without_range = "\
 0: R2=pkt(r=0) R10=fp0
