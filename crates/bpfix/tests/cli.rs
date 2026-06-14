@@ -777,6 +777,87 @@ fn packet_bounds_diagnostic_reports_prior_verifier_range_proof() {
 }
 
 #[test]
+fn packet_bounds_diagnostic_reports_insufficient_verifier_range() {
+    let json = run_json("bpfix-bench/cases/stackoverflow-73088287/replay-verifier.log");
+
+    assert_eq!(json["error_id"], "BPFIX-E001");
+    assert_eq!(json["failure_class"], "source_bug");
+
+    assert!(
+        !json["evidence"].as_array().unwrap().iter().any(|evidence| {
+            evidence["kind"] == "lowering_artifact_signal"
+                || evidence["kind"] == "verifier_precision_signal"
+        })
+    );
+
+    let related_spans = json["related_spans"].as_array().unwrap();
+    assert!(related_spans.iter().any(|span| {
+        span["path"] == "prog.c"
+            && span["instruction_pc"] == 26
+            && span["source_text"]
+                .as_str()
+                .unwrap()
+                .contains("checked > data_end")
+    }));
+    assert!(!related_spans.iter().any(|span| {
+        span["instruction_pc"] == json["source_span"]["instruction_pc"]
+            && span["source_text"] == json["source_span"]["source_text"]
+    }));
+
+    let labels = related_spans
+        .iter()
+        .filter_map(|span| span["label"].as_str())
+        .collect::<Vec<_>>()
+        .join("\n");
+    assert!(labels.contains("verifier only proves packet range 43 bytes"));
+    assert!(labels.contains("rejected access requires 59 bytes"));
+
+    let help = json["help"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|item| item.as_str())
+        .collect::<Vec<_>>()
+        .join("\n");
+    assert!(help.contains("Check the exact pointer and byte length"));
+
+    let stale_register_state = "\
+0: R2=pkt(r=30) R10=fp0
+1: R2=scalar() R10=fp0
+; byte = *ptr; @ prog.c:20
+2: (71) r1 = *(u8 *)(r2 +19)
+invalid access to packet, off=19 size=1, R2(id=0,off=19,r=0)
+processed 3 insns (limit 1000000) max_states_per_insn 0 total_states 1 peak_states 1 mark_read 0
+";
+    let stale = run_json_stdin(stale_register_state);
+    let stale_labels = stale["related_spans"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|span| span["label"].as_str())
+        .collect::<Vec<_>>()
+        .join("\n");
+    assert!(!stale_labels.contains("verifier only proves packet range"));
+
+    let one_byte_without_range = "\
+0: R2=pkt(r=0) R10=fp0
+; byte = *ptr; @ prog.c:10
+1: (71) r1 = *(u8 *)(r2 +0)
+invalid access to packet, off=0 size=1, R2(id=0,off=0,r=0)
+processed 2 insns (limit 1000000) max_states_per_insn 0 total_states 1 peak_states 1 mark_read 0
+";
+    let one_byte = run_json_stdin(one_byte_without_range);
+    let one_byte_labels = one_byte["related_spans"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|span| span["label"].as_str())
+        .collect::<Vec<_>>()
+        .join("\n");
+    assert!(!one_byte_labels.contains("verifier only proves packet range"));
+}
+
+#[test]
 fn ordinary_source_bugs_are_not_overclassified_as_runtime_artifacts() {
     let pointer_load_reuse =
         run_json("bpfix-bench/cases/stackoverflow-56965789/replay-verifier.log");

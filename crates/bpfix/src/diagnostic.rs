@@ -554,6 +554,20 @@ fn packet_bounds_events(
                 ),
             });
         }
+    } else if let Some((pc, range, required)) =
+        latest_insufficient_packet_range(states, terminal_pc, terminal_error, register)
+    {
+        events.push(ProofEvent {
+            role: ProofEventRole::ProofLost,
+            evidence: ProofEventEvidence::VerifierState,
+            obligation: ProofObligation::PacketBounds,
+            pc: Some(pc),
+            source: source_for_pc_in_rejected_file(source_events, pc, rejected_source),
+            register,
+            detail: format!(
+                "verifier only proves packet range {range} bytes on this path, but the rejected access requires {required} bytes"
+            ),
+        });
     }
     events
 }
@@ -578,6 +592,32 @@ fn latest_sufficient_packet_range(
             let range = reg_state.packet_range?;
             (range >= required).then_some((state.pc, range, required))
         })
+}
+
+fn latest_insufficient_packet_range(
+    states: &[VerifierInsn],
+    terminal_pc: Option<usize>,
+    terminal_error: &str,
+    register: Option<u8>,
+) -> Option<(usize, u32, u32)> {
+    let reg = register?;
+    let required = packet_required_range(terminal_error)?;
+    // A one-byte access with r=0 is common when no packet proof exists at all.
+    // Avoid adding a low-signal related span unless the access needs a wider range.
+    if required <= 1 {
+        return None;
+    }
+    let nearest = states
+        .iter()
+        .filter(|state| terminal_pc.is_none_or(|pc| state.pc <= pc))
+        .rev()
+        .find(|state| state.regs.contains_key(&reg))?;
+    let reg_state = nearest.regs.get(&reg)?;
+    if reg_state.reg_type != "pkt" {
+        return None;
+    }
+    let range = reg_state.packet_range?;
+    (range < required).then_some((nearest.pc, range, required))
 }
 
 fn packet_range_lost_before_access(
@@ -1426,6 +1466,22 @@ fn rejected_source(events: &[ProofEvent]) -> Option<&SourceLocation> {
         .iter()
         .find(|event| event.role == ProofEventRole::Rejected)
         .and_then(|event| event.source.as_ref())
+}
+
+fn source_for_pc_in_rejected_file(
+    source_events: &[SourceEvent],
+    pc: usize,
+    rejected: Option<&SourceLocation>,
+) -> Option<SourceLocation> {
+    let rejected = rejected?;
+    let source = source_events
+        .iter()
+        .filter(|event| event.source.path == rejected.path)
+        .filter(|event| event.pc.is_some_and(|event_pc| event_pc <= pc))
+        .max_by_key(|event| event.pc)?
+        .source
+        .clone();
+    (!same_source_location(&source, rejected)).then_some(source)
 }
 
 fn same_source_location(left: &SourceLocation, right: &SourceLocation) -> bool {
