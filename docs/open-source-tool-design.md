@@ -55,7 +55,7 @@ of those user-visible surfaces.
 - `README.md`: user-facing overview, quick start, examples, current status
 - `docs/open-source-tool-design.md`: public CLI, JSON, and product boundaries
 - `bpfix-bench/README.md`: replayable benchmark setup and validation
-- `docs/research-plan.md`: roadmap and current implementation status
+- `docs/project-status.md`: roadmap and current implementation status
 
 ## CLI Contract
 

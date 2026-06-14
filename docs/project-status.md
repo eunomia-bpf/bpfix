@@ -198,7 +198,7 @@ Current Rust evaluation TODO:
 Canonical current facts live in:
 
 - `README.md`
-- `docs/research-plan.md`
+- `docs/project-status.md`
 - `docs/open-source-tool-design.md`
 - `docs/user-guide.md`
 - `docs/evaluation/`
