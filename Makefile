@@ -60,7 +60,7 @@ bench-smoke:
 .PHONY: bench-eval
 bench-eval:
 	@echo "[bench-eval] Running bpfix diagnostic benchmark..."
-	cd $(CURDIR) && python3 bpfix-bench/run-bpfix-eval.py --confusion
+	cd $(CURDIR) && python3 bpfix-bench/run-bpfix-eval.py --confusion --reject-fallback
 
 .PHONY: clean
 clean:

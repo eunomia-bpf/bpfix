@@ -66,6 +66,7 @@ require_package_file bpfix "${bpfix_manifest}" src/main.rs
 require_package_file bpfix "${bpfix_manifest}" tests/cli.rs
 reject_package_paths bpfix "${bpfix_manifest}"
 
+examples/check-examples.sh
 cargo test -p bpfix --features object-analysis --test cli
 cargo package -p bpfanalysis "${package_flags[@]}"
 
