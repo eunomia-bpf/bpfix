@@ -59,6 +59,7 @@ pub struct RegState {
     pub exact_value: Option<u64>,
     pub tnum: Option<Tnum>,
     pub range: ScalarRange,
+    pub packet_range: Option<u32>,
     pub offset: Option<i32>,
     pub id: Option<u32>,
 }
@@ -71,6 +72,7 @@ impl RegState {
             exact_value: None,
             tnum: None,
             range: ScalarRange::default(),
+            packet_range: None,
             offset: None,
             id: None,
         }
@@ -508,11 +510,12 @@ fn parse_reg_attributes(attrs: &str, state: &mut RegState) {
                     state.range.umax32 = parse_attr(key, value, parse_u32(value));
                 }
                 "off" => state.offset = parse_attr(key, value, parse_i32(value)),
+                "r" => state.packet_range = parse_attr(key, value, parse_u32(value)),
                 "id" => state.id = parse_attr(key, value, parse_u32(value)),
                 "var_off" => {
                     state.tnum = parse_attr(key, value, parse_tnum(value));
                 }
-                "r" | "map" | "ks" | "vs" | "imm" | "ref_obj_id" | "btf_id" | "mem_size"
+                "map" | "ks" | "vs" | "imm" | "ref_obj_id" | "btf_id" | "mem_size"
                 | "alloc_size" | "aux_off" | "name" => {}
                 other => {
                     warn_verifier_log(format!("unknown verifier register attribute {other:?}"));

@@ -124,6 +124,18 @@ from 12 to 18 (speculative execution): frame1: R2_w=42 R10=fp0 fp-24=0000???? sc
 }
 
 #[test]
+fn parses_packet_range_attribute() {
+    let log = r#"
+5: (2d) if r4 > r3 goto pc+14         ; R2_w=pkt(off=34,r=74) R4_w=pkt(off=74,r=74)
+"#;
+
+    let insns = parse_verifier_log(log);
+    assert_eq!(insns.len(), 1);
+    assert_eq!(insns[0].regs.get(&2).unwrap().packet_range, Some(74));
+    assert_eq!(insns[0].regs.get(&4).unwrap().packet_range, Some(74));
+}
+
+#[test]
 fn distinguishes_exact_64bit_and_32bit_scalars() {
     let log = r#"
 0: (b7) r3 = 42                       ; R3=42
