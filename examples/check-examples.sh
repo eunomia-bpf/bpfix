@@ -30,6 +30,13 @@ for file in $required_files; do
     test -f "$examples_dir/$file"
 done
 
+generated_files=$(find "$examples_dir" \( -name '__pycache__' -o -name '*.py[co]' \) -print)
+if [ -n "$generated_files" ]; then
+    echo "examples contain generated Python cache files:" >&2
+    printf '%s\n' "$generated_files" >&2
+    exit 1
+fi
+
 find "$examples_dir" -name '*.sh' -type f -print | sort | while IFS= read -r script; do
     bash -n "$script"
 done
