@@ -66,3 +66,15 @@ if ! rg -q "bpfix verifier\\.log" "$examples_dir/README.md"; then
     echo "examples README must keep the log-first quickstart visible" >&2
     exit 1
 fi
+
+ci_workflow="$examples_dir/ci/github-actions.yml"
+for pattern in \
+    "--fail-on-unsupported" \
+    "continue-on-error: true" \
+    "if: always() && steps.load.outcome == 'failure'"
+do
+    if ! rg -q --fixed-strings -- "$pattern" "$ci_workflow"; then
+        echo "CI example must preserve diagnostic artifacts while failing unsupported diagnostics: missing $pattern" >&2
+        exit 1
+    fi
+done

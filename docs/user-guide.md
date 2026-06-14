@@ -185,8 +185,9 @@ One simple CI pattern is to preserve the loader log as an artifact and emit JSON
 
 ```bash
 make load 2>&1 | tee verifier.log
-bpfix --format json verifier.log > bpfix-diagnostic.json
+bpfix --format json --fail-on-unsupported verifier.log > bpfix-diagnostic.json
 ```
 
-Do not fail CI only because BPFix emits `input_error`; treat that as a log
-collection problem and upload the full loader output.
+If `bpfix` exits with code 2, the JSON was still written; treat that as a log
+collection or unsupported-message problem and upload both files before failing
+the job.
