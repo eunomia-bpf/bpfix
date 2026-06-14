@@ -5,7 +5,6 @@ use anyhow::{Context, Result};
 #[derive(Clone, Debug)]
 pub(crate) struct LoadedInput {
     pub(crate) log: String,
-    pub(crate) case_id: Option<String>,
     pub(crate) input_kind: &'static str,
 }
 
@@ -27,15 +26,7 @@ pub(crate) fn load_input(path: Option<&Path>) -> Result<LoadedInput> {
             .with_context(|| format!("failed to read {}", path.display()))?,
     };
     let (log, input_kind) = normalize_verifier_log(raw, "verifier-log");
-    Ok(LoadedInput {
-        log,
-        case_id: path
-            .filter(|path| *path != Path::new("-"))
-            .and_then(Path::file_stem)
-            .and_then(|stem| stem.to_str())
-            .map(ToOwned::to_owned),
-        input_kind,
-    })
+    Ok(LoadedInput { log, input_kind })
 }
 
 fn read_stdin() -> Result<String> {

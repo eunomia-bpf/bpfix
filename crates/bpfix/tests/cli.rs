@@ -102,6 +102,18 @@ fn run_text(path: &str) -> String {
 }
 
 #[test]
+fn help_marks_object_analysis_as_experimental_and_feature_gated() {
+    let output = Command::new(env!("CARGO_BIN_EXE_bpfix"))
+        .arg("--help")
+        .output()
+        .expect("bpfix --help should execute");
+    assert!(output.status.success());
+    let help = String::from_utf8(output.stdout).expect("help should be UTF-8");
+    assert!(help.contains("Experimental compiled BPF object metadata"));
+    assert!(help.contains("Requires --features object-analysis"));
+}
+
+#[test]
 fn replay_log_uses_bpfanalysis_verifier_trace_parser() {
     let json = run_json("bpfix-bench/cases/stackoverflow-60053570/replay-verifier.log");
     assert_eq!(json["error_id"], "BPFIX-E001");
@@ -119,7 +131,7 @@ fn signed_packet_offset_case_runs_without_yaml_metadata() {
         .as_str()
         .unwrap()
         .contains("cannot be negative"));
-    assert_eq!(json["metadata"]["case_id"], "replay-verifier");
+    assert!(json["metadata"]["case_id"].is_null());
     assert_eq!(json["source_span"]["path"], "prog.c");
     assert_eq!(json["source_span"]["instruction_pc"], 33);
 }
@@ -129,7 +141,7 @@ fn branch_merge_case_is_classified_from_proof_events_without_yaml() {
     let json = run_json("bpfix-bench/cases/stackoverflow-53136145/replay-verifier.log");
     assert_eq!(json["error_id"], "BPFIX-E006");
     assert_eq!(json["failure_class"], "source_bug");
-    assert_eq!(json["metadata"]["case_id"], "replay-verifier");
+    assert!(json["metadata"]["case_id"].is_null());
     assert_eq!(json["metadata"]["input_kind"], "verifier-log-region");
     assert_eq!(json["source_span"]["path"], "prog.c");
     assert_eq!(json["source_span"]["instruction_pc"], 37);
@@ -160,6 +172,28 @@ fn text_output_is_rust_style_multispan() {
     assert!(!text.contains("proof can be lost when branch-specific pointers are merged"));
     assert!(!text.contains("proof established by a verifier-visible bounds check"));
     assert!(text.contains("help: Preserve pointer provenance across the failing path"));
+}
+
+#[test]
+fn case_id_is_explicit_metadata_not_derived_from_log_filename() {
+    let path =
+        workspace_root().join("bpfix-bench/cases/stackoverflow-60053570/replay-verifier.log");
+    let path = path.to_str().expect("fixture path should be UTF-8");
+
+    let default_json = run_json_with_args(&[path, "--format", "json"]);
+    assert!(default_json["metadata"]["case_id"].is_null());
+
+    let explicit_json = run_json_with_args(&[
+        path,
+        "--case-id",
+        "stackoverflow-60053570",
+        "--format",
+        "json",
+    ]);
+    assert_eq!(
+        explicit_json["metadata"]["case_id"],
+        "stackoverflow-60053570"
+    );
 }
 
 #[test]

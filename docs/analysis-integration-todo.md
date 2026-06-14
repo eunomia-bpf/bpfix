@@ -37,7 +37,7 @@ trace.
 - [x] Refactor `crates/bpfix` so multi-span diagnostics come from the
       `bpfix::diagnostic` product layer, not ad hoc CLI-local source scanning.
 - [x] Make the runtime log path independent from `case.yaml`; benchmark YAML is
-      used only when the YAML file is passed as input.
+      evaluation-only and is not parsed by the public CLI.
 - [x] Extract the verifier region from full libbpf/build logs before analysis.
 - [x] Accept an optional `--object prog.o`, read BPF instruction sections, build
       `ProgramCFG` summaries, correlate verifier states by PC when the loaded
@@ -48,8 +48,8 @@ trace.
 - [x] Add focused lifecycle regression tests for packet bounds, scalar range,
       nullable pointer, stack readability, reference lifecycle, and helper
       capability diagnostics.
-- [x] Preserve YAML log extraction and case IDs for benchmark fixtures while
-      ignoring adjudicated labels in runtime diagnostics.
+- [x] Keep runtime diagnostics independent from YAML labels and case IDs; JSON
+      `metadata.case_id` is populated only by an explicit `--case-id`.
 
 ## Next
 
@@ -79,5 +79,5 @@ trace.
 - The proof-lost engine is strongest today for pointer provenance and branch
   merge failures. Other required-proof classes still need deeper value-lineage
   tracking.
-- Benchmark `case.yaml` labels are evaluation oracles. Runtime diagnostics only
-  use YAML as an optional container for a verifier log and case ID.
+- Benchmark `case.yaml` labels are evaluation oracles. Runtime diagnostics read
+  only log text; use `--case-id` when a caller wants bookkeeping metadata.

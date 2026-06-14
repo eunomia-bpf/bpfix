@@ -26,7 +26,7 @@ mod source;
 struct Cli {
     /// Verifier, build, bpftool, libbpf, Aya, or BCC log. Reads stdin when omitted or '-'.
     input: Option<PathBuf>,
-    /// Optional compiled BPF object. Used for validation now and source/BTF correlation later.
+    /// Experimental compiled BPF object metadata. Requires --features object-analysis.
     #[arg(long)]
     object: Option<PathBuf>,
     /// Output format.
@@ -49,10 +49,9 @@ fn main() -> Result<()> {
     let loaded = load_input(cli.input.as_deref())?;
     let (object_path, object_programs, object_analysis_error) =
         object_metadata(cli.object.as_deref(), &loaded);
-    let case_id = cli.case_id.or_else(|| loaded.case_id.clone());
     let diagnostic = build_diagnostic(
         &loaded.log,
-        case_id,
+        cli.case_id,
         loaded.input_kind,
         object_path,
         object_programs,
