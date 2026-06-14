@@ -328,8 +328,11 @@ cargo run -p bpfix -- bpfix-bench/cases/stackoverflow-60053570/replay-verifier.l
 Check release packaging:
 
 ```bash
-scripts/check-release.sh
+make release-check
 ```
+
+This runs packaging checks, example consistency checks, the benchmark
+`--reject-fallback` gate, and the feature-gated object-analysis CLI tests.
 
 `bpfix` depends on the sibling `bpfanalysis` crate. Publish `bpfanalysis` first,
 wait for it to appear in the crates.io index, then publish `bpfix`.

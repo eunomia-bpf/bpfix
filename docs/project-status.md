@@ -183,6 +183,12 @@ Run the current log-only benchmark diagnostic gate:
 python3 bpfix-bench/run-bpfix-eval.py --confusion --reject-fallback
 ```
 
+Run the full local release gate:
+
+```bash
+make release-check
+```
+
 Legacy replay validation remains available for corpus maintenance:
 
 ```bash

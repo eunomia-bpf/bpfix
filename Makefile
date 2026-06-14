@@ -22,6 +22,7 @@ help:
 	@echo "  make cli CASE=...      Run bpfix against a verifier/build/load log"
 	@echo "  make bench-smoke       Run the CLI against one benchmark case"
 	@echo "  make bench-eval        Run bpfix over bpfix-bench and print metrics"
+	@echo "  make release-check     Run packaging, example, benchmark, and object-analysis gates"
 	@echo ""
 	@echo "Utilities"
 	@echo "  make clean             Remove generated Rust and benchmark artifacts"
@@ -61,6 +62,11 @@ bench-smoke:
 bench-eval:
 	@echo "[bench-eval] Running bpfix diagnostic benchmark..."
 	cd $(CURDIR) && python3 bpfix-bench/run-bpfix-eval.py --confusion --reject-fallback
+
+.PHONY: release-check
+release-check:
+	@echo "[release-check] Running release readiness checks..."
+	cd $(CURDIR) && scripts/check-release.sh
 
 .PHONY: clean
 clean:
