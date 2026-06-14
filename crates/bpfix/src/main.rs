@@ -180,7 +180,7 @@ fn build_diagnostic(
             }
         };
     let class_adjustment =
-        classify_lowering_artifact(&terminal.message, class.failure_class, &proof_events);
+        classify_runtime_adjustment(&terminal.message, class.failure_class, &proof_events);
     let failure_class = class_adjustment
         .map(|adjustment| adjustment.failure_class)
         .unwrap_or(class.failure_class)
@@ -192,6 +192,10 @@ fn build_diagnostic(
     let message_summary = class_adjustment
         .map(|adjustment| adjustment.summary)
         .unwrap_or(class.summary);
+    let help_safety = class_adjustment
+        .map(|adjustment| adjustment.help_safety)
+        .unwrap_or(class.help_safety)
+        .to_string();
 
     let mut evidence = Vec::new();
     evidence.push(Evidence {
@@ -215,7 +219,7 @@ fn build_diagnostic(
     }
     if let Some(adjustment) = class_adjustment {
         evidence.push(Evidence {
-            kind: "lowering_artifact_signal",
+            kind: adjustment.evidence_kind,
             detail: adjustment.evidence_detail.to_string(),
             line: Some(terminal.line),
         });
@@ -257,7 +261,7 @@ fn build_diagnostic(
         failure_class,
         confidence,
         diagnostic_kind: class.diagnostic_kind.to_string(),
-        help_safety: class.help_safety.to_string(),
+        help_safety,
         span_confidence,
         message: format!("{}: {}", message_summary, terminal.message),
         required_proof,
@@ -284,11 +288,13 @@ struct ClassAdjustment {
     failure_class: &'static str,
     confidence: &'static str,
     summary: &'static str,
+    help_safety: &'static str,
+    evidence_kind: &'static str,
     evidence_detail: &'static str,
     help: &'static str,
 }
 
-fn classify_lowering_artifact(
+fn classify_runtime_adjustment(
     terminal_message: &str,
     base_failure_class: &str,
     proof_events: &[diagnostic::ProofEvent],
@@ -297,6 +303,14 @@ fn classify_lowering_artifact(
         return None;
     }
 
+    classify_lowering_artifact(terminal_message, proof_events)
+        .or_else(|| classify_verifier_precision_limit(terminal_message, proof_events))
+}
+
+fn classify_lowering_artifact(
+    terminal_message: &str,
+    proof_events: &[diagnostic::ProofEvent],
+) -> Option<ClassAdjustment> {
     let message = terminal_message.to_ascii_lowercase();
     if message.contains("misaligned stack access") {
         return Some(lowering_adjustment(
@@ -349,14 +363,83 @@ fn classify_lowering_artifact(
     None
 }
 
+fn classify_verifier_precision_limit(
+    terminal_message: &str,
+    proof_events: &[diagnostic::ProofEvent],
+) -> Option<ClassAdjustment> {
+    let message = terminal_message.to_ascii_lowercase();
+    let source_context = source_context_text(proof_events);
+    if message.contains("invalid access to packet")
+        && source_context.contains("data_end")
+        && contains_any(
+            &source_context,
+            &[
+                "pkt_ctx->pkt_offset",
+                "field_offset",
+                "sizeof(struct extension)",
+                "server_name_extension",
+            ],
+        )
+    {
+        return Some(verifier_precision_adjustment(
+            "source-level packet bounds check is present, but the verifier appears to lose precision for a variable packet offset",
+            "Treat this as a verifier precision boundary: clamp the variable packet offset to a small explicit maximum, then rederive and recheck the packet pointer immediately before the load.",
+        ));
+    }
+
+    if message.contains("invalid access to map value")
+        && source_context.contains("bpf_probe_read")
+        && (source_context.contains(" min,")
+            || source_context.contains("&event->content[event->len]")
+            || source_context.contains("&event->payload[total_len]"))
+    {
+        return Some(verifier_precision_adjustment(
+            "source-level map-value bounds guard is present, but the verifier appears to lose a cross-variable range relation",
+            "Make the remaining map-value capacity explicit in one bounded variable, clamp the helper length to that variable, and pass that same value to the helper.",
+        ));
+    }
+
+    None
+}
+
 fn lowering_adjustment(evidence_detail: &'static str, help: &'static str) -> ClassAdjustment {
     ClassAdjustment {
         failure_class: "lowering_artifact",
         confidence: "medium",
         summary: "verifier-visible compiler lowering hides the required proof",
+        help_safety: "repair_hint",
+        evidence_kind: "lowering_artifact_signal",
         evidence_detail,
         help,
     }
+}
+
+fn verifier_precision_adjustment(
+    evidence_detail: &'static str,
+    help: &'static str,
+) -> ClassAdjustment {
+    ClassAdjustment {
+        failure_class: "verifier_false_positive",
+        confidence: "medium",
+        summary: "verifier precision limit may hide an existing safety proof",
+        help_safety: "triage_only",
+        evidence_kind: "verifier_precision_signal",
+        evidence_detail,
+        help,
+    }
+}
+
+fn source_context_text(proof_events: &[diagnostic::ProofEvent]) -> String {
+    proof_events
+        .iter()
+        .filter_map(|event| event.source.as_ref())
+        .map(|source| source.text.to_ascii_lowercase())
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+fn contains_any(haystack: &str, needles: &[&str]) -> bool {
+    needles.iter().any(|needle| haystack.contains(needle))
 }
 
 fn source_span_from_proof_event(event: &diagnostic::ProofEvent) -> Option<SourceSpan> {

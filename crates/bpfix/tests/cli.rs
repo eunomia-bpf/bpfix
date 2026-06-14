@@ -117,6 +117,7 @@ fn help_marks_object_analysis_as_experimental_and_feature_gated() {
 #[test]
 fn diagnostic_schema_and_editor_example_track_json_contract() {
     let json = run_json("bpfix-bench/cases/stackoverflow-53136145/replay-verifier.log");
+    let precision_json = run_json("bpfix-bench/cases/stackoverflow-77762365/replay-verifier.log");
     let schema: Value = serde_json::from_str(
         &std::fs::read_to_string(workspace_root().join("docs/evaluation/diagnostic.schema.json"))
             .expect("schema should be readable"),
@@ -141,6 +142,15 @@ fn diagnostic_schema_and_editor_example_track_json_contract() {
     assert!(schema["properties"].get("missing_obligation").is_none());
     assert!(schema["properties"].get("candidate_repairs").is_none());
     assert!(schema["properties"].get("raw_log_excerpt").is_none());
+    let failure_classes = string_array_set(&schema["properties"]["failure_class"]["enum"]);
+    let evidence_kinds =
+        string_array_set(&schema["$defs"]["evidence_item"]["properties"]["kind"]["enum"]);
+    for diagnostic in [&json, &precision_json, &example] {
+        assert!(failure_classes.contains(diagnostic["failure_class"].as_str().unwrap()));
+        for evidence in diagnostic["evidence"].as_array().unwrap() {
+            assert!(evidence_kinds.contains(evidence["kind"].as_str().unwrap()));
+        }
+    }
 
     let metadata_keys = object_keys(&json["metadata"]);
     assert_eq!(
@@ -270,7 +280,29 @@ fn lowering_artifact_shapes_are_classified_from_verifier_evidence() {
 }
 
 #[test]
-fn ordinary_source_bugs_are_not_overclassified_as_lowering_artifacts() {
+fn verifier_precision_limits_are_triage_not_source_bugs() {
+    let packet_precision = run_json("bpfix-bench/cases/stackoverflow-70873332/replay-verifier.log");
+    assert_eq!(packet_precision["error_id"], "BPFIX-E001");
+    assert_eq!(packet_precision["failure_class"], "verifier_false_positive");
+    assert_eq!(packet_precision["help_safety"], "triage_only");
+    assert!(packet_precision["evidence"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|evidence| evidence["kind"] == "verifier_precision_signal"));
+
+    let map_relation = run_json("bpfix-bench/cases/stackoverflow-77762365/replay-verifier.log");
+    assert_eq!(map_relation["error_id"], "BPFIX-E005");
+    assert_eq!(map_relation["failure_class"], "verifier_false_positive");
+    assert_eq!(map_relation["help_safety"], "triage_only");
+    assert!(map_relation["message"]
+        .as_str()
+        .unwrap()
+        .contains("verifier precision limit"));
+}
+
+#[test]
+fn ordinary_source_bugs_are_not_overclassified_as_runtime_artifacts() {
     let pointer_load_reuse =
         run_json("bpfix-bench/cases/stackoverflow-56965789/replay-verifier.log");
     assert_eq!(pointer_load_reuse["error_id"], "BPFIX-E006");
@@ -280,6 +312,14 @@ fn ordinary_source_bugs_are_not_overclassified_as_lowering_artifacts() {
         run_json("bpfix-bench/cases/stackoverflow-76441958/replay-verifier.log");
     assert_eq!(generic_alignment["error_id"], "BPFIX-E007");
     assert_eq!(generic_alignment["failure_class"], "source_bug");
+
+    let packet_bounds = run_json("bpfix-bench/cases/stackoverflow-60053570/replay-verifier.log");
+    assert_eq!(packet_bounds["error_id"], "BPFIX-E001");
+    assert_eq!(packet_bounds["failure_class"], "source_bug");
+
+    let helper_bounds = run_json("bpfix-bench/cases/stackoverflow-77713434/replay-verifier.log");
+    assert_eq!(helper_bounds["error_id"], "BPFIX-E005");
+    assert_eq!(helper_bounds["failure_class"], "source_bug");
 }
 
 #[test]

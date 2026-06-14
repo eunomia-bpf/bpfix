@@ -1,12 +1,12 @@
 {
   "diagnostic_version": "bpfix.diagnostic/v2",
   "error_id": "BPFIX-E006",
-  "failure_class": "source_bug",
+  "failure_class": "lowering_artifact",
   "confidence": "medium",
   "diagnostic_kind": "supported",
   "help_safety": "repair_hint",
   "span_confidence": "exact_pc",
-  "message": "pointer type proof is missing: R5 invalid mem access 'scalar'",
+  "message": "verifier-visible compiler lowering hides the required proof: R5 invalid mem access 'scalar'",
   "required_proof": "preserve a verifier-recognized pointer type at the operation that requires a pointer",
   "source_span": {
     "path": "prog.c",
@@ -48,10 +48,16 @@
       "kind": "verifier_trace",
       "detail": "parsed 60 per-instruction verifier state snapshots",
       "line": null
+    },
+    {
+      "kind": "lowering_artifact_signal",
+      "detail": "compiler-lowered control flow hides an established packet-pointer proof",
+      "line": 229
     }
   ],
   "help": [
     "Preserve pointer provenance across the failing path, or rederive the pointer from a checked base immediately before dereferencing it.",
+    "Keep the checked packet pointer derivation in the same verifier-visible path as the dereference, or rederive it from a checked base immediately before use.",
     "Avoid integer casts or arithmetic that turn the pointer into a scalar before the access.",
     "Recompute the pointer from a verifier-tracked base after scalar manipulation."
   ],

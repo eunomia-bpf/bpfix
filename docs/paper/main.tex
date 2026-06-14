@@ -596,7 +596,7 @@ Claim & 需要证明什么 & 当前证据 & 状态 \\
 C1 replayable corpus & benchmark case 能在固定环境中重新触发 verifier reject & validator 235/235 pass，selftest loader 85/85 local libbpf link & supported \\
 C2 log-first robustness & 用户给现有工具日志时，\sys 能 fail-soft 输出诊断对象 & 235/235 replay log 产生 parseable JSON、primary span、evidence 和 help & supported \\
 C3 proof-family coverage & 常见 verifier failure 能映射到具体 error id 和 required proof & 235/235 known error id，99/235 有 related proof spans & partial \\
-C4 taxonomy routing & 系统能区分 source bug、lowering artifact 和环境/配置失败 & coarse failure-class 与 taxonomy agreement 为 211/235；lowering artifact recall 为 12/24，environment recall 为 10/11，limit recall 为 4/4 & partial \\
+C4 taxonomy routing & 系统能区分 source bug、lowering artifact、verifier false positive 和环境/配置失败 & coarse failure-class 与 taxonomy agreement 为 217/235；lowering artifact recall 为 12/24，verifier false positive recall 为 6/9，environment recall 为 10/11，limit recall 为 4/4 & partial \\
 C5 user advantage & 与 terminal-message baseline 相比，用户得到更多结构化定位信息 & label-proxy baseline 显示 root-pc exact 101/140；60-case blind audit 中 \sys root exact/near 为 18/26 和 21/27，correct help 为 24/60 和 23/60 & partial \\
 \bottomrule
 \end{tabularx}
@@ -733,11 +733,11 @@ Replay validator 的通过证明了两件事。第一，corpus 中的 235 个 ca
 
 同时，覆盖仍不完整。当前 replay logs 已全部避开 \code{BPFIX-UNKNOWN}/fallback family，并在 235/235 case 上给出具体 error id；但 related proof spans 只有 99/235，说明 proof lifecycle reconstruction 已在一部分 case 上工作，还不是所有 case 的默认能力。因此，当前论文不应声称“完整自动 root-cause localization”；更可信的 claim 是：\sys 建立了 log-first diagnostic architecture，并已在 235 个 replayable reject 上证明鲁棒性，在 235 个 case 上给出具体 error id，在 99 个 case 上给出 proof lifecycle span。
 
-表~\ref{tab:taxonomy-confusion} 进一步给出 coarse routing 的真实状态。当前 runtime failure-class 与 benchmark taxonomy 在 211/235 个 case 上相同。这个数字不能被写成最终诊断准确率，因为 taxonomy 只有粗粒度类别，而最终诊断还必须评价 required proof、causal mechanism、root span 和 false claim。它的价值在于暴露实现缺口：environment/configuration、verifier limit 和一半 lowering artifact 已能被当前 classifier 路由，但 false positive 仍全部被当作 source/lowering 类处理，scalar range 与 pointer provenance case 也仍会把部分 source bug 和 lowering artifact 混在一起。表~\ref{tab:per-source-coverage} 显示这种缺口在真实项目和 Stack Overflow case 上更明显，而 kernel selftest 的 terminal message 更规范，coarse agreement 更高。
+表~\ref{tab:taxonomy-confusion} 进一步给出 coarse routing 的真实状态。当前 runtime failure-class 与 benchmark taxonomy 在 217/235 个 case 上相同。这个数字不能被写成最终诊断准确率，因为 taxonomy 只有粗粒度类别，而最终诊断还必须评价 required proof、causal mechanism、root span 和 false claim。它的价值在于暴露实现缺口：environment/configuration、verifier limit、一半 lowering artifact 和 6/9 verifier false positive 已能被当前 classifier 路由，但仍有 3 个 false positive 被当作 source/lowering 类处理，scalar range 与 pointer provenance case 也仍会把部分 source bug 和 lowering artifact 混在一起。表~\ref{tab:per-source-coverage} 显示这种缺口在真实项目和 Stack Overflow case 上更明显，而 kernel selftest 的 terminal message 更规范，coarse agreement 更高。
 
 \subsection{Baselines}
 
-我们把 baseline 分成已运行的 label-proxy baseline 和正式 submission 前必须补的 human-scored baseline。已运行 baseline 是 terminal dictionary：只看 \code{case.yaml} 中的 terminal error，用一组 regex 输出 error id、failure class 和粗略 next action。它代表 final-message translator 的下界，不读取 full verifier trace、source annotation 或 object metadata。表~\ref{tab:proxy-baseline} 给出结果：\sys 当前在 known error id、coarse taxonomy agreement、macro-F1、lowering recall、primary span、related proof spans 和 root-pc localization 上超过 terminal dictionary；terminal dictionary 在 next-action proxy 上仍略高，说明 action proxy 噪声较大，help quality 仍必须用 human scoring 支撑。这个结果支持“\sys 提供 terminal-only baseline 没有的结构化定位上下文和部分 coarse routing 增量”，但仍不等价于完整自动 root-cause correctness。
+我们把 baseline 分成已运行的 label-proxy baseline 和正式 submission 前必须补的 human-scored baseline。已运行 baseline 是 terminal dictionary：只看 \code{case.yaml} 中的 terminal error，用一组 regex 输出 error id、failure class 和粗略 next action。它代表 final-message translator 的下界，不读取 full verifier trace、source annotation 或 object metadata。表~\ref{tab:proxy-baseline} 给出结果：\sys 当前在 known error id、coarse taxonomy agreement、macro-F1、lowering recall、verifier false-positive recall、primary span、related proof spans 和 root-pc localization 上超过 terminal dictionary；terminal dictionary 在 next-action proxy 上仍略高，说明 action proxy 噪声较大，help quality 仍必须用 human scoring 支撑。这个结果支持“\sys 提供 terminal-only baseline 没有的结构化定位上下文和部分 coarse routing 增量”，但仍不等价于完整自动 root-cause correctness。
 
 完整 baseline 计划仍包括 raw verifier log、Pretty Verifier 类工具和 LLM+raw-log，并用同一个 oracle 比较 required proof、root-cause span、help quality、triage time 和输出稳定性。为减少纯 proxy 指标的偏差，我们进一步构造 60-case 分层样本，并让两个独立 scorer 在匿名方法 \code{M1/M2/M3} 上做 blind audit。样本包含全部 minority classes：24 个 lowering artifact、11 个 environment/configuration、9 个 false positive、4 个 verifier limit，以及 12 个 source bug；结果记录在 \code{docs/evaluation/blind-audit-results.md}。表~\ref{tab:blind-audit} 显示 \sys 在 root localization 和 help quality 上明显优于 raw terminal 和 terminal dictionary，但 unsafe help 仍有 14/60，说明当前结果支持 partial user-advantage claim，而不是完整诊断正确性。
 
@@ -750,12 +750,13 @@ Replay validator 的通过证明了两件事。第一，corpus 中的 235 个 ca
 \toprule
 Metric & \sys full log & terminal dictionary & interpretation \\
 \midrule
-known error id & 235/235 & 145/235 & \sys 避免 fallback/unknown，并覆盖 dynptr、environment、limit 和 lowering-pattern families \\
+known error id & 235/235 & 145/235 & \sys 避免 fallback/unknown，并覆盖 dynptr、environment、limit、lowering 和 verifier-precision families \\
 error-id exact & 60/235 & 43/235 & label error id 比 runtime catalog 更细，二者都偏低 \\
-taxonomy agreement & 211/235 & 199/235 & \sys 利用 full-log proof/lowering signals 提升 coarse routing，但不是完整 root-cause accuracy \\
-taxonomy macro-F1 & 0.695 & 0.558 & lowering artifact routing 明显改善，但 false positive 仍未建模 \\
+taxonomy agreement & 217/235 & 199/235 & \sys 利用 full-log proof/lowering/precision signals 提升 coarse routing，但不是完整 root-cause accuracy \\
+taxonomy macro-F1 & 0.858 & 0.558 & minority-class routing 明显改善，但仍不是完整 help correctness \\
 lowering recall & 12/24 & 0/24 & terminal-only 无法识别 verifier-visible lowering artifacts \\
 environment recall & 10/11 & 11/11 & 显式 capability pattern 覆盖多数 env cases，但仍有边界 case 需要 object/environment context \\
+verifier false-positive recall & 6/9 & 0/9 & terminal-only 无法区分 verifier precision limit 与普通 source bug \\
 verifier-limit recall & 4/4 & 4/4 & 显式 budget pattern 已覆盖当前 limit cases \\
 primary span emitted & 235/235 & 0/235 & terminal-only baseline 不产生结构化 span \\
 related proof spans & 99/235 & 0/235 & \sys 的主要增量是 proof lifecycle context \\

@@ -33,7 +33,9 @@
       "type": "string",
       "enum": [
         "source_bug",
+        "lowering_artifact",
         "environment_or_configuration",
+        "verifier_false_positive",
         "verifier_limit",
         "input_error",
         "unsupported_verifier_message"
@@ -207,7 +209,9 @@
           "enum": [
             "terminal_verifier_error",
             "instruction_pc",
-            "verifier_trace"
+            "verifier_trace",
+            "lowering_artifact_signal",
+            "verifier_precision_signal"
           ]
         },
         "detail": {

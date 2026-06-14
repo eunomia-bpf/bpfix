@@ -434,6 +434,18 @@ def emit_summary(rows: list[Row]) -> None:
             ),
         ),
         (
+            "verifier-false-positive recall",
+            ratio(
+                sum(
+                    row.taxonomy == "verifier_false_positive"
+                    and row.bpfix.failure_class == "verifier_false_positive"
+                    for row in rows
+                ),
+                sum(row.taxonomy == "verifier_false_positive" for row in rows),
+            ),
+            ratio(0, sum(row.taxonomy == "verifier_false_positive" for row in rows)),
+        ),
+        (
             "verifier-limit recall",
             ratio(
                 sum(
