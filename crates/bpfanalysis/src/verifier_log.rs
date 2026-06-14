@@ -523,7 +523,9 @@ fn parse_reg_attributes(attrs: &str, state: &mut RegState) {
 }
 
 fn warn_verifier_log(message: String) {
-    eprintln!("warning: verifier log: {message}");
+    if std::env::var_os("BPFANALYSIS_WARN_VERIFIER_LOG").is_some() {
+        eprintln!("warning: verifier log: {message}");
+    }
 }
 fn parse_attr<T>(key: &str, value: &str, parsed: Option<T>) -> Option<T> {
     if parsed.is_none() {
@@ -697,14 +699,19 @@ mod tests;
 // site-to-state lookup happens in `ProgramCFG::verifier_states_at`.
 // ==========================================================================
 
+#[cfg(feature = "analysis")]
 use crate::analysis::InsnSite;
+#[cfg(feature = "analysis")]
 use crate::pass::RegKind;
+#[cfg(feature = "analysis")]
 use std::collections::BTreeMap;
+#[cfg(feature = "analysis")]
 use std::sync::Arc;
 
 /// Lift-time mapping from site to verifier states. After lift, per-site
 /// states live on `InsnNode`/`BasicBlock`; this alias survives only at the
 /// lift boundary.
+#[cfg(feature = "analysis")]
 pub(crate) type VerifierStatesBySite = BTreeMap<InsnSite, Arc<[VerifierInsn]>>;
 
 pub(crate) fn reg_known_constant(
@@ -726,6 +733,7 @@ pub(crate) fn reg_known_constant(
     Some(first as i64)
 }
 
+#[cfg(feature = "analysis")]
 pub(crate) fn reg_kind(states: Option<&[VerifierInsn]>, reg: u8) -> Option<RegKind> {
     let mut iter = verifier_reg_states(states, reg)?;
     let first = reg_kind_from_verifier_type(&iter.next()?.reg_type);
@@ -881,6 +889,7 @@ fn verifier_stack_slot_exact_bytes(stack: &StackState) -> Option<[u8; 8]> {
     Some(value.to_le_bytes())
 }
 
+#[cfg(feature = "analysis")]
 fn reg_kind_from_verifier_type(reg_type: &str) -> RegKind {
     match reg_type {
         "scalar" => RegKind::Scalar,

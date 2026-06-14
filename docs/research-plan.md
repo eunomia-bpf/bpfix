@@ -10,7 +10,8 @@ other tools to consume.
 Repair synthesis, verifier-oracle patch loops, and paper-only experiments are
 not part of the active product scope in this repository pass. Historical notes
 under `docs/tmp/` are intentionally non-canonical. The previous Python
-implementation is archived under `docs/bpfix-py/`.
+implementation has been removed; `docs/bpfix-py/` now contains only legacy
+benchmark-maintenance tools.
 
 ## Current Thesis
 
@@ -85,8 +86,7 @@ The active project is a Cargo workspace.
 | pass context/support types | active | `crates/bpfanalysis/src/pass.rs` |
 | libbpf source reference | active | `vendor/libbpf` submodule |
 | benchmark corpus | active | `bpfix-bench/` |
-| legacy Python implementation | archived | `docs/bpfix-py/` |
-| legacy replay/evaluation tools | archived | `docs/bpfix-py/tools/` |
+| benchmark replay tools | legacy maintenance | `docs/bpfix-py/tools/` |
 
 The `bpfanalysis` crate imports the analysis implementation from the `bpfopt`
 analysis module and keeps the dependent instruction, verifier-log, and
@@ -153,15 +153,14 @@ cargo check --workspace
 Quick diagnostic smoke:
 
 ```bash
-cargo run -p bpfix -- bpfix-bench/raw/so/stackoverflow-60053570.yaml --format both
+cargo run -p bpfix -- bpfix-bench/cases/stackoverflow-60053570/replay-verifier.log --format both
 ```
 
-Legacy Python replay/evaluation tools remain available only as archived
-reference:
+Legacy benchmark replay tools remain available for corpus maintenance:
 
 ```bash
 python3 docs/bpfix-py/tools/validate_benchmark.py --replay bpfix-bench --timeout-sec 60
-python3 docs/bpfix-py/tools/evaluate_benchmark.py --benchmark bpfix-bench --timeout-sec 60
+python3 docs/evaluation/evaluate_diagnostics.py --confusion
 ```
 
 Current Rust evaluation TODO:
@@ -179,8 +178,8 @@ Current Rust evaluation TODO:
    clear crate layout, and maintained docs.
 2. Treat `bpfix-bench/manifest.yaml` and `bpfix-bench/raw/index.yaml` as the
    source of benchmark facts.
-3. Expand `crates/bpfix` classification coverage from the archived Python
-   catalogs while keeping JSON output stable.
+3. Expand `crates/bpfix` classification coverage from current benchmark gaps
+   while keeping JSON output stable.
 4. Expose more typed analysis from `bpfanalysis` instead of relying on final
    verifier-message matching.
 5. Keep repair synthesis out of the active API until it is implemented,

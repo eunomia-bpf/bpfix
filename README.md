@@ -72,9 +72,8 @@ dst_port = __constant_ntohs(((struct udphdr *)udph)->dest);
 ```
 
 That source shape is normal BPF C: the developer made the packet proof explicit.
-The failure is in the verifier-visible proof after lowering. One replay path
-reaches the shared `udph->dest` load with `r5` as a scalar instead of a packet
-pointer:
+The failure is in the verifier-visible proof lifecycle. One replay path reaches
+the shared `udph->dest` load with `r5` as a scalar instead of a packet pointer:
 
 ```text
 from 31 to 34: ... R5_w=40 ...
@@ -92,13 +91,15 @@ story. BPFix turns the trace into a Rust-style multi-span diagnostic:
 
 ```text
 error[BPFIX-E006]: pointer type proof is missing
-  = class: lowering_artifact
+  = class: source_bug
+  = confidence: medium
+  = diagnostic: supported, help: repair_hint, span: exact_pc
   --> prog.c:270
    |
 263 | if (ipv4_hdr)
-    | ------------- proof can be lost when branch-specific pointers are merged
+    | ------------- nearby source context for pointer provenance
 267 | if (udph + sizeof(struct udphdr) > data_end)
-    | -------------------------------------------- proof established by a verifier-visible bounds check
+    | -------------------------------------------- verifier state changes from pkt to scalar before the rejected access
 270 | dst_port = __constant_ntohs(((struct udphdr *)udph)->dest);
     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ rejected here: verifier sees a scalar where a pointer is required
    |
@@ -152,12 +153,14 @@ when the log contains surrounding build output:
 bpfix build-or-load.log
 ```
 
-Optionally pass the BPF object. BPFix reads BPF instruction sections, builds a
-`ProgramCFG`, correlates verifier states to CFG sites when the log PC layout
-matches the object section, and reports CFG metadata in JSON. BTF-backed source
-correlation will build on the same CLI shape:
+Optionally pass the BPF object when BPFix is built with object analysis enabled.
+This is an experimental enhancement: BPFix reads BPF instruction sections,
+reports object metadata in JSON, and keeps log-only diagnostics working if object
+analysis fails. BTF-backed source correlation will build on the same explicit
+opt-in shape:
 
 ```bash
+cargo install --path crates/bpfix --features object-analysis
 bpfix --object xdp.o verifier.log
 ```
 
@@ -167,14 +170,6 @@ Get JSON for CI or editor integration:
 bpfix --format json verifier.log
 ```
 
-Run it on a benchmark YAML record when evaluating BPFix against the bundled
-corpus. The CLI only extracts the verifier log and case ID from YAML; labels are
-kept as evaluation oracles, not runtime inputs:
-
-```bash
-bpfix bpfix-bench/raw/so/stackoverflow-60053570.yaml
-```
-
 The CLI shape is intentionally small:
 
 ```text
@@ -182,8 +177,12 @@ bpfix [OPTIONS] [LOG]
 ```
 
 `LOG` can be a verifier, build, `bpftool`, libbpf, Aya, or BCC log. When `LOG`
-is omitted or `-`, BPFix reads stdin. The default output is plain text; use
-`--format json` only for tools.
+is omitted or `-`, BPFix reads stdin. Positional input and stdin are always log
+text. BPFix does not execute loader commands in the default path, and there is
+no default command-execution workflow. Benchmark YAML and Docker-based execution
+are explicit non-default modes; if Docker support is added, it should be selected
+with an option such as `--docker`, not inferred from `LOG`. The default output is
+plain text; use `--format json` only for tools.
 
 ## Best Workflow
 
@@ -198,14 +197,23 @@ bpfix verifier.log
 or:
 
 ```bash
-sudo bpftool -d prog load xdp.o /sys/fs/bpf/xdp 2> verifier.log
+sudo bpftool -d prog load xdp.o /sys/fs/bpf/xdp 2>&1 | tee verifier.log
+bpfix verifier.log
+```
+
+with experimental object metadata, after installing with
+`--features object-analysis`:
+
+```bash
 bpfix --object xdp.o verifier.log
 ```
 
-BPFix does not need `case.yaml` for normal use. YAML records are for the bundled
-benchmark and later accuracy evaluation.
+BPFix does not need `case.yaml` for normal use. Benchmark YAML records are
+evaluation fixtures; use the evaluation scripts when measuring the bundled
+corpus.
 
-More copyable integration snippets live in `examples/`.
+The full user workflow is documented in `docs/user-guide.md`. More copyable
+integration snippets live in `examples/`.
 
 ## Project Status
 
@@ -218,17 +226,19 @@ crates/
   bpfanalysis/  verifier-log and BPF bytecode analysis primitives
 ```
 
-The old Python implementation is archived under `docs/bpfix-py/` for reference.
-It is not the active development surface.
+The old Python implementation has been removed from the maintained tree. The
+remaining `docs/bpfix-py/tools/` scripts are legacy benchmark-maintenance
+helpers, not a second BPFix implementation.
 
 The maintained project status, benchmark snapshot, and near-term roadmap live
 in `docs/research-plan.md`.
 The workshop submission plan lives in `docs/workshop-paper-plan.md`, and the
 public CLI/JSON design lives in `docs/open-source-tool-design.md`.
 
-The `bpfanalysis` crate imports analysis code from the `bpfopt` project and
-uses `libbpf-sys` for BPF instruction and program-type constants. The libbpf
-source is tracked as a submodule in `vendor/libbpf`.
+The default `bpfix` CLI uses the verifier-log parser from `bpfanalysis`.
+Object/CFG analysis is behind the `object-analysis` Cargo feature; that path
+uses `libbpf-sys` and the `vendor/libbpf` submodule for BPF instruction and
+program-type constants.
 
 The current user-facing pipeline is log-first: `bpfix` parses verifier state
 snapshots, instantiates the required verifier proof from the terminal error
@@ -236,11 +246,12 @@ and verifier state, extracts proof lifecycle events, and maps them back to
 source comments when the log contains BTF/source annotations. Packet bounds,
 scalar range, nullable pointer, stack readability, reference lifecycle, helper
 capability, and pointer-provenance failures now produce parameterized proof
-requirements instead of only terminal-error categories. The CLI accepts an
-optional `--object prog.o` today, builds `ProgramCFG` summaries, and correlates
-verifier-state PCs with CFG sites when the object section layout matches the
-loaded verifier program. Full BTF source correlation is the next analysis
-layer, not a runtime requirement for the basic CLI.
+requirements instead of only terminal-error categories. When built with
+`--features object-analysis`, the CLI accepts `--object prog.o`, builds
+`ProgramCFG` summaries, and correlates verifier-state PCs with CFG sites when
+the object section layout matches the loaded verifier program. Full BTF source
+correlation is the next analysis layer, not a runtime requirement for the basic
+CLI.
 
 ## What BPFix Handles
 
@@ -291,7 +302,7 @@ cargo fmt --all
 Run a smoke test:
 
 ```bash
-cargo run -p bpfix -- bpfix-bench/raw/so/stackoverflow-60053570.yaml --format both
+cargo run -p bpfix -- bpfix-bench/cases/stackoverflow-60053570/replay-verifier.log --format both
 ```
 
 ## Repository Layout
@@ -301,10 +312,11 @@ bpfix-bench/       replayable verifier-failure corpus and raw examples
 crates/bpfanalysis Rust analysis library
 crates/bpfix       user-facing CLI
 docs/research-plan.md current project status and roadmap
+docs/user-guide.md    install, getting logs, output, and CI usage
 docs/workshop-paper-plan.md focused workshop submission story
 docs/open-source-tool-design.md public CLI and JSON contract
 examples/          bpftool, libbpf, Aya, BCC, CI, and editor integration snippets
 docs/evaluation/   benchmark and metric notes
-docs/bpfix-py/     archived Python prototype, without generated Python caches
+docs/bpfix-py/     legacy benchmark-maintenance tools
 vendor/libbpf/     libbpf submodule
 ```

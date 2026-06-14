@@ -5,6 +5,7 @@
 
 LOAD_TARGET ?= load
 BPF_OBJECT ?=
+BPFIX_OBJECT_ANALYSIS ?= 0
 VERIFIER_LOG ?= verifier.log
 BPFIX ?= bpfix
 SHELL := /bin/bash
@@ -16,7 +17,7 @@ bpfix-load:
 	$(MAKE) $(LOAD_TARGET) 2>&1 | tee $(VERIFIER_LOG); \
 	status=$${PIPESTATUS[0]}; \
 	if [ $$status -ne 0 ]; then \
-		if [ -n "$(BPF_OBJECT)" ]; then \
+		if [ "$(BPFIX_OBJECT_ANALYSIS)" = "1" ] && [ -n "$(BPF_OBJECT)" ]; then \
 			$(BPFIX) --object "$(BPF_OBJECT)" "$(VERIFIER_LOG)"; \
 		else \
 			$(BPFIX) "$(VERIFIER_LOG)"; \

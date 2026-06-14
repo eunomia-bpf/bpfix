@@ -1,33 +1,20 @@
 use anyhow::Result;
 use bpfanalysis::{verifier_states_from_log, RegState, VerifierInsn};
 
+use crate::family::ProofObligation;
+use crate::proof::{instantiate_required_proof, scalar_range_summary, RequiredProof};
+use crate::source::{
+    collect_source_events, latest_source_before, looks_like_null_check, looks_like_nullable_return,
+    looks_like_packet_bounds_check, looks_like_reference_acquire, looks_like_reference_release,
+    looks_like_scalar_guard, looks_like_stack_initialization, source_for_pc, terminal_source,
+    SourceEvent, SourceLocation,
+};
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct VerifierLogAnalysis {
     pub state_count: usize,
     pub required_proof: RequiredProof,
     pub events: Vec<ProofEvent>,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct RequiredProof {
-    pub obligation: ProofObligation,
-    pub register: Option<u8>,
-    pub description: String,
-    pub rejection_detail: String,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum ProofObligation {
-    PacketBounds,
-    PointerProvenance,
-    ScalarRange,
-    NullablePointer,
-    StackInitialized,
-    ReferenceLifecycle,
-    VerifierLimit,
-    EnvironmentCapability,
-    DynptrSafety,
-    Unknown,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -37,27 +24,22 @@ pub enum ProofEventRole {
     Rejected,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ProofEventEvidence {
+    VerifierState,
+    SourceComment,
+    TerminalVerifier,
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ProofEvent {
     pub role: ProofEventRole,
+    pub evidence: ProofEventEvidence,
     pub obligation: ProofObligation,
     pub pc: Option<usize>,
     pub source: Option<SourceLocation>,
     pub register: Option<u8>,
     pub detail: String,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct SourceLocation {
-    pub path: String,
-    pub line: usize,
-    pub text: String,
-}
-
-#[derive(Clone, Debug)]
-struct SourceEvent {
-    pc: Option<usize>,
-    source: SourceLocation,
 }
 
 pub fn analyze_verifier_log(
@@ -122,6 +104,7 @@ pub fn analyze_verifier_log(
 
     events.push(ProofEvent {
         role: ProofEventRole::Rejected,
+        evidence: ProofEventEvidence::TerminalVerifier,
         obligation,
         pc: terminal_pc,
         source: rejected_source,
@@ -134,192 +117,6 @@ pub fn analyze_verifier_log(
         required_proof,
         events,
     })
-}
-
-fn instantiate_required_proof(
-    terminal_error: &str,
-    terminal_pc: Option<usize>,
-    states: &[VerifierInsn],
-) -> RequiredProof {
-    let obligation = infer_obligation(terminal_error);
-    let register = parse_register_from_error(terminal_error);
-    match obligation {
-        ProofObligation::PacketBounds => packet_bounds_required_proof(terminal_error, register),
-        ProofObligation::ScalarRange => {
-            scalar_range_required_proof(terminal_error, terminal_pc, states, register)
-        }
-        ProofObligation::NullablePointer => nullable_required_proof(terminal_error, register),
-        ProofObligation::StackInitialized => stack_required_proof(terminal_error, register),
-        ProofObligation::ReferenceLifecycle => reference_required_proof(terminal_error, register),
-        ProofObligation::EnvironmentCapability => environment_required_proof(terminal_error),
-        _ => RequiredProof {
-            obligation,
-            register,
-            description: default_required_proof(obligation).to_string(),
-            rejection_detail: rejected_detail(obligation).to_string(),
-        },
-    }
-}
-
-fn packet_bounds_required_proof(message: &str, register: Option<u8>) -> RequiredProof {
-    let off = parse_i64_after(message, "off=");
-    let size = parse_i64_after(message, "size=");
-    let proven_range = parse_i64_after(message, "r=");
-    let required_end = off.zip(size).map(|(off, size)| off.saturating_add(size));
-    let description = match (register, required_end, proven_range) {
-        (Some(reg), Some(required), Some(range)) => format!(
-            "prove R{reg} has packet range at least {required} bytes before this access; verifier currently has range {range}"
-        ),
-        (Some(reg), Some(required), None) => {
-            format!("prove R{reg} has packet range at least {required} bytes before this access")
-        }
-        _ => default_required_proof(ProofObligation::PacketBounds).to_string(),
-    };
-    let rejection_detail = match (register, required_end, proven_range) {
-        (Some(reg), Some(required), Some(range)) => format!(
-            "rejected here: verifier needs R{reg} packet range >= {required}, but only {range} bytes are proven"
-        ),
-        (Some(reg), Some(required), None) => format!(
-            "rejected here: verifier needs R{reg} packet range >= {required} before this access"
-        ),
-        _ => rejected_detail(ProofObligation::PacketBounds).to_string(),
-    };
-    RequiredProof {
-        obligation: ProofObligation::PacketBounds,
-        register,
-        description,
-        rejection_detail,
-    }
-}
-
-fn scalar_range_required_proof(
-    message: &str,
-    terminal_pc: Option<usize>,
-    states: &[VerifierInsn],
-    register: Option<u8>,
-) -> RequiredProof {
-    let register = register.or_else(|| latest_scalar_register(states, terminal_pc));
-    let state = register.and_then(|reg| latest_reg_state(states, terminal_pc, reg));
-    let description = if message.contains("value -") {
-        "prove the scalar used for pointer arithmetic cannot be negative on any path".to_string()
-    } else {
-        match (register, state) {
-            (Some(reg), Some(state)) => format!(
-                "prove R{reg} has a bounded non-negative scalar range before this pointer arithmetic or helper memory access; verifier sees {}",
-                scalar_range_summary(state)
-            ),
-            (Some(reg), None) => {
-                format!("prove R{reg} has a bounded non-negative scalar range before this pointer arithmetic or helper memory access")
-            }
-            _ => default_required_proof(ProofObligation::ScalarRange).to_string(),
-        }
-    };
-    let rejection_detail = match (register, state) {
-        (Some(reg), Some(state)) => format!(
-            "rejected here: verifier still sees R{reg} as {}",
-            scalar_range_summary(state)
-        ),
-        (Some(reg), None) => {
-            format!("rejected here: R{reg} is not proven to have a safe scalar range")
-        }
-        (None, _) => rejected_detail(ProofObligation::ScalarRange).to_string(),
-    };
-    RequiredProof {
-        obligation: ProofObligation::ScalarRange,
-        register,
-        description,
-        rejection_detail,
-    }
-}
-
-fn nullable_required_proof(message: &str, register: Option<u8>) -> RequiredProof {
-    let description = match register {
-        Some(reg) => {
-            format!("prove R{reg} is non-null in the same verifier-visible branch before dereference, pointer arithmetic, or helper reuse")
-        }
-        None => default_required_proof(ProofObligation::NullablePointer).to_string(),
-    };
-    let rejection_detail = match register {
-        Some(reg) if message.contains("pointer arithmetic") => {
-            format!("rejected here: R{reg} is still nullable, so pointer arithmetic is prohibited")
-        }
-        Some(reg) => format!("rejected here: R{reg} is still nullable at the use site"),
-        None => rejected_detail(ProofObligation::NullablePointer).to_string(),
-    };
-    RequiredProof {
-        obligation: ProofObligation::NullablePointer,
-        register,
-        description,
-        rejection_detail,
-    }
-}
-
-fn stack_required_proof(message: &str, register: Option<u8>) -> RequiredProof {
-    let description = match register {
-        Some(reg) if message.contains("!read_ok") => {
-            format!(
-                "write a readable value to R{reg} on every path before this return or helper use"
-            )
-        }
-        Some(reg) => {
-            format!("initialize every stack byte reachable from R{reg} before it is read or passed to a helper")
-        }
-        None => default_required_proof(ProofObligation::StackInitialized).to_string(),
-    };
-    let rejection_detail = match register {
-        Some(reg) if message.contains("!read_ok") => {
-            format!("rejected here: R{reg} is not readable on this path")
-        }
-        Some(reg) => {
-            format!("rejected here: stack memory reachable from R{reg} is not fully initialized")
-        }
-        None => rejected_detail(ProofObligation::StackInitialized).to_string(),
-    };
-    RequiredProof {
-        obligation: ProofObligation::StackInitialized,
-        register,
-        description,
-        rejection_detail,
-    }
-}
-
-fn reference_required_proof(message: &str, register: Option<u8>) -> RequiredProof {
-    let ref_id =
-        parse_i64_after(message, "id=").or_else(|| parse_i64_after(message, "ref_obj_id="));
-    let description = match ref_id {
-        Some(id) => format!("release verifier-tracked reference id {id} on every path before exit"),
-        None => default_required_proof(ProofObligation::ReferenceLifecycle).to_string(),
-    };
-    let rejection_detail = match ref_id {
-        Some(id) => format!("rejected here: reference id {id} is not released on every path"),
-        None => rejected_detail(ProofObligation::ReferenceLifecycle).to_string(),
-    };
-    RequiredProof {
-        obligation: ProofObligation::ReferenceLifecycle,
-        register,
-        description,
-        rejection_detail,
-    }
-}
-
-fn environment_required_proof(message: &str) -> RequiredProof {
-    let helper = parse_helper_name(message);
-    let description = match helper.as_deref() {
-        Some(helper) => format!(
-            "load this program with an attach type and kernel environment that allow {helper}, or avoid that helper on this path"
-        ),
-        None => default_required_proof(ProofObligation::EnvironmentCapability).to_string(),
-    };
-    let rejection_detail = match helper {
-        Some(helper) => format!("rejected here: this program type cannot use {helper}"),
-        None => rejected_detail(ProofObligation::EnvironmentCapability).to_string(),
-    };
-    RequiredProof {
-        obligation: ProofObligation::EnvironmentCapability,
-        register: parse_register_from_error(message),
-        description,
-        rejection_detail,
-    }
 }
 
 fn pointer_provenance_events(
@@ -336,6 +133,7 @@ fn pointer_provenance_events(
         }) {
             events.push(ProofEvent {
                 role: ProofEventRole::ProofLost,
+                evidence: ProofEventEvidence::SourceComment,
                 obligation: ProofObligation::PointerProvenance,
                 pc: event.pc,
                 source: Some(event.source.clone()),
@@ -349,6 +147,7 @@ fn pointer_provenance_events(
         }) {
             events.push(ProofEvent {
                 role: ProofEventRole::ProofEstablished,
+                evidence: ProofEventEvidence::SourceComment,
                 obligation: ProofObligation::PointerProvenance,
                 pc: event.pc,
                 source: Some(event.source.clone()),
@@ -358,16 +157,10 @@ fn pointer_provenance_events(
         }
     }
 
-    if events
-        .iter()
-        .any(|event| event.role == ProofEventRole::ProofLost)
-    {
-        return events;
-    }
-
     if let Some((pc, kind)) = latest_pointer_to_scalar_transition(states, terminal_pc, register) {
         events.push(ProofEvent {
             role: ProofEventRole::ProofLost,
+            evidence: ProofEventEvidence::VerifierState,
             obligation: ProofObligation::PointerProvenance,
             pc: Some(pc),
             source: source_for_pc(source_events, pc).cloned(),
@@ -422,6 +215,7 @@ fn packet_bounds_events(
     }) {
         events.push(ProofEvent {
             role: ProofEventRole::ProofEstablished,
+            evidence: ProofEventEvidence::SourceComment,
             obligation: ProofObligation::PacketBounds,
             pc: event.pc,
             source: Some(event.source.clone()),
@@ -445,6 +239,7 @@ fn scalar_range_events(
     }) {
         events.push(ProofEvent {
             role: ProofEventRole::ProofEstablished,
+            evidence: ProofEventEvidence::SourceComment,
             obligation: ProofObligation::ScalarRange,
             pc: event.pc,
             source: Some(event.source.clone()),
@@ -458,6 +253,7 @@ fn scalar_range_events(
     }) {
         events.push(ProofEvent {
             role: ProofEventRole::ProofLost,
+            evidence: ProofEventEvidence::SourceComment,
             obligation: ProofObligation::ScalarRange,
             pc: event.pc,
             source: Some(event.source.clone()),
@@ -474,6 +270,7 @@ fn scalar_range_events(
     if let Some((pc, state)) = latest_unsafe_scalar_state(states, terminal_pc, reg) {
         events.push(ProofEvent {
             role: ProofEventRole::ProofLost,
+            evidence: ProofEventEvidence::VerifierState,
             obligation: ProofObligation::ScalarRange,
             pc: Some(pc),
             source: source_for_pc(source_events, pc).cloned(),
@@ -500,6 +297,7 @@ fn nullable_pointer_events(
     }) {
         events.push(ProofEvent {
             role: ProofEventRole::ProofEstablished,
+            evidence: ProofEventEvidence::SourceComment,
             obligation: ProofObligation::NullablePointer,
             pc: event.pc,
             source: Some(event.source.clone()),
@@ -513,6 +311,7 @@ fn nullable_pointer_events(
     }) {
         events.push(ProofEvent {
             role: ProofEventRole::ProofLost,
+            evidence: ProofEventEvidence::SourceComment,
             obligation: ProofObligation::NullablePointer,
             pc: event.pc,
             source: Some(event.source.clone()),
@@ -529,6 +328,7 @@ fn nullable_pointer_events(
     if let Some((pc, kind)) = latest_nullable_state(states, terminal_pc, reg) {
         events.push(ProofEvent {
             role: ProofEventRole::ProofLost,
+            evidence: ProofEventEvidence::VerifierState,
             obligation: ProofObligation::NullablePointer,
             pc: Some(pc),
             source: source_for_pc(source_events, pc).cloned(),
@@ -550,6 +350,7 @@ fn stack_initialized_events(
     }) {
         events.push(ProofEvent {
             role: ProofEventRole::ProofEstablished,
+            evidence: ProofEventEvidence::SourceComment,
             obligation: ProofObligation::StackInitialized,
             pc: event.pc,
             source: Some(event.source.clone()),
@@ -572,6 +373,7 @@ fn reference_lifecycle_events(
     }) {
         events.push(ProofEvent {
             role: ProofEventRole::ProofEstablished,
+            evidence: ProofEventEvidence::SourceComment,
             obligation: ProofObligation::ReferenceLifecycle,
             pc: event.pc,
             source: Some(event.source.clone()),
@@ -584,6 +386,7 @@ fn reference_lifecycle_events(
     }) {
         events.push(ProofEvent {
             role: ProofEventRole::ProofEstablished,
+            evidence: ProofEventEvidence::SourceComment,
             obligation: ProofObligation::ReferenceLifecycle,
             pc: event.pc,
             source: Some(event.source.clone()),
@@ -594,6 +397,7 @@ fn reference_lifecycle_events(
     if let Some(source) = rejected_source {
         events.push(ProofEvent {
             role: ProofEventRole::ProofLost,
+            evidence: ProofEventEvidence::SourceComment,
             obligation: ProofObligation::ReferenceLifecycle,
             pc: None,
             source: Some(source.clone()),
@@ -614,6 +418,7 @@ fn environment_capability_events(
     if let Some(source) = rejected_source.filter(|source| source.text.contains("bpf_")) {
         events.push(ProofEvent {
             role: ProofEventRole::ProofLost,
+            evidence: ProofEventEvidence::SourceComment,
             obligation: ProofObligation::EnvironmentCapability,
             pc: None,
             source: Some(source.clone()),
@@ -628,6 +433,7 @@ fn environment_capability_events(
     {
         events.push(ProofEvent {
             role: ProofEventRole::ProofLost,
+            evidence: ProofEventEvidence::SourceComment,
             obligation: ProofObligation::EnvironmentCapability,
             pc: event.pc,
             source: Some(event.source.clone()),
@@ -637,226 +443,6 @@ fn environment_capability_events(
         });
     }
     events
-}
-
-pub fn infer_obligation(message: &str) -> ProofObligation {
-    let lower = message.to_ascii_lowercase();
-    if lower.contains("invalid access to packet") || lower.contains("outside of the packet") {
-        return ProofObligation::PacketBounds;
-    }
-    if lower.contains("invalid access to map value") {
-        return ProofObligation::ScalarRange;
-    }
-    if lower.contains("map_value_or_null")
-        || lower.contains("ptr_or_null")
-        || lower.contains("mem_or_null")
-        || lower.contains("possibly null")
-    {
-        return ProofObligation::NullablePointer;
-    }
-    if lower.contains("invalid read from stack")
-        || lower.contains("invalid indirect read from stack")
-        || lower.contains("uninitialized")
-        || lower.contains("r0 !read_ok")
-    {
-        return ProofObligation::StackInitialized;
-    }
-    if lower.contains("unreleased reference") || lower.contains("reference has not been released") {
-        return ProofObligation::ReferenceLifecycle;
-    }
-    if lower.contains("unbounded")
-        || lower.contains("min value is negative")
-        || lower.contains("out of bounds")
-        || lower.contains("invalid access to map value")
-        || lower.contains("invalid zero-sized")
-        || lower.contains("makes pkt pointer")
-        || lower.contains("outside of allowed memory range")
-        || lower.contains("invalid variable-offset")
-    {
-        return ProofObligation::ScalarRange;
-    }
-    if lower.contains("expected pointer")
-        || lower.contains("invalid mem access 'scalar'")
-        || lower.contains("same insn cannot be used with different pointers")
-    {
-        return ProofObligation::PointerProvenance;
-    }
-    if lower.contains("too many states")
-        || lower.contains("complexity")
-        || lower.contains("loop is not bounded")
-        || lower.contains("combined stack")
-    {
-        return ProofObligation::VerifierLimit;
-    }
-    if lower.contains("unknown func")
-        || lower.contains("helper call is not allowed")
-        || lower.contains("cannot use helper")
-        || lower.contains("cannot call")
-        || lower.contains("permission denied")
-    {
-        return ProofObligation::EnvironmentCapability;
-    }
-    if lower.contains("dynptr") {
-        return ProofObligation::DynptrSafety;
-    }
-    ProofObligation::Unknown
-}
-
-fn rejected_detail(obligation: ProofObligation) -> &'static str {
-    match obligation {
-        ProofObligation::PacketBounds => {
-            "rejected here: packet access is not proven to stay before data_end"
-        }
-        ProofObligation::PointerProvenance => {
-            "rejected here: verifier sees a scalar where a pointer is required"
-        }
-        ProofObligation::ScalarRange => {
-            "rejected here: scalar range is not proven safe for this memory operation"
-        }
-        ProofObligation::NullablePointer => {
-            "rejected here: nullable pointer is used without a visible non-null proof"
-        }
-        ProofObligation::StackInitialized => {
-            "rejected here: stack bytes are not proven initialized"
-        }
-        ProofObligation::ReferenceLifecycle => {
-            "rejected here: reference is not proven released on all paths"
-        }
-        ProofObligation::VerifierLimit => {
-            "rejected here: verifier analysis budget or loop proof is exhausted"
-        }
-        ProofObligation::EnvironmentCapability => {
-            "rejected here: kernel or program type does not expose this capability"
-        }
-        ProofObligation::DynptrSafety => {
-            "rejected here: dynptr lifetime or bounds proof is missing"
-        }
-        ProofObligation::Unknown => "rejected here: required verifier proof is missing",
-    }
-}
-
-fn default_required_proof(obligation: ProofObligation) -> &'static str {
-    match obligation {
-        ProofObligation::PacketBounds => {
-            "prove that the packet pointer plus requested access size stays before data_end on every path reaching the load, store, or helper call"
-        }
-        ProofObligation::PointerProvenance => {
-            "preserve a verifier-recognized pointer type at the operation that requires a pointer"
-        }
-        ProofObligation::ScalarRange => {
-            "bound the scalar value tightly enough for the verifier to prove the memory access range"
-        }
-        ProofObligation::NullablePointer => {
-            "prove that the nullable pointer returned by a helper is checked for null before dereference or helper reuse"
-        }
-        ProofObligation::StackInitialized => {
-            "initialize every stack byte that can be read directly or passed indirectly to a helper"
-        }
-        ProofObligation::ReferenceLifecycle => {
-            "release every acquired verifier-tracked reference on every exit path"
-        }
-        ProofObligation::VerifierLimit => {
-            "reduce verifier state growth or provide a statically bounded loop shape"
-        }
-        ProofObligation::EnvironmentCapability => {
-            "load the program with a kernel, program type, attach point, and privileges that support the requested helper or kfunc"
-        }
-        ProofObligation::DynptrSafety => {
-            "keep dynptr slices inside their proven lifetime, initialized range, and read/write mode"
-        }
-        ProofObligation::Unknown => {
-            "inspect the terminal verifier line and add the missing safety proof required at that program point"
-        }
-    }
-}
-
-fn parse_register_from_error(message: &str) -> Option<u8> {
-    let bytes = message.as_bytes();
-    let mut idx = 0usize;
-    while idx + 1 < bytes.len() {
-        if bytes[idx] != b'R' || !bytes[idx + 1].is_ascii_digit() {
-            idx += 1;
-            continue;
-        }
-        let start = idx + 1;
-        let mut end = start;
-        while end < bytes.len() && bytes[end].is_ascii_digit() {
-            end += 1;
-        }
-        return message[start..end].parse().ok();
-    }
-    None
-}
-
-fn parse_i64_after(message: &str, needle: &str) -> Option<i64> {
-    let start = message.find(needle)? + needle.len();
-    let bytes = message.as_bytes();
-    let mut end = start;
-    if bytes.get(end) == Some(&b'-') {
-        end += 1;
-    }
-    let digits_start = end;
-    if message.get(end..end + 2) == Some("0x") {
-        end += 2;
-        while end < bytes.len() && bytes[end].is_ascii_hexdigit() {
-            end += 1;
-        }
-    } else {
-        while end < bytes.len() && bytes[end].is_ascii_digit() {
-            end += 1;
-        }
-    }
-    if end == digits_start
-        || (end == digits_start + 2 && message.get(digits_start..end) == Some("0x"))
-    {
-        return None;
-    }
-    let raw = &message[start..end];
-    if let Some(hex) = raw.strip_prefix("0x") {
-        i64::from_str_radix(hex, 16).ok()
-    } else if let Some(hex) = raw.strip_prefix("-0x") {
-        i64::from_str_radix(hex, 16).ok().map(|value| -value)
-    } else {
-        raw.parse().ok()
-    }
-}
-
-fn parse_helper_name(message: &str) -> Option<String> {
-    for marker in ["cannot use helper ", "helper call ", "unknown func "] {
-        let Some(start) = message.find(marker).map(|idx| idx + marker.len()) else {
-            continue;
-        };
-        let helper = message[start..]
-            .split_whitespace()
-            .next()?
-            .trim_matches(|ch: char| ch == ':' || ch == ',' || ch == ';')
-            .to_string();
-        if !helper.is_empty() {
-            return Some(helper);
-        }
-    }
-    None
-}
-
-fn latest_reg_state(
-    states: &[VerifierInsn],
-    terminal_pc: Option<usize>,
-    reg: u8,
-) -> Option<&RegState> {
-    states
-        .iter()
-        .filter(|state| terminal_pc.is_none_or(|pc| state.pc <= pc))
-        .filter_map(|state| state.regs.get(&reg))
-        .last()
-}
-
-fn latest_scalar_register(states: &[VerifierInsn], terminal_pc: Option<usize>) -> Option<u8> {
-    states
-        .iter()
-        .filter(|state| terminal_pc.is_none_or(|pc| state.pc <= pc))
-        .rev()
-        .flat_map(|state| state.regs.iter())
-        .find_map(|(&reg, state)| (state.reg_type == "scalar").then_some(reg))
 }
 
 fn latest_unsafe_scalar_state(
@@ -899,155 +485,10 @@ fn scalar_range_is_unsafe(state: &RegState) -> bool {
         || state.range.umax.is_none_or(|value| value > i32::MAX as u64)
 }
 
-fn scalar_range_summary(state: &RegState) -> String {
-    if let Some(value) = state.exact_value {
-        return format!("scalar exact {value}");
-    }
-    let mut parts = Vec::new();
-    if let Some(smin) = state.range.smin {
-        parts.push(format!("smin={smin}"));
-    }
-    if let Some(smax) = state.range.smax {
-        parts.push(format!("smax={smax}"));
-    }
-    if let Some(umin) = state.range.umin {
-        parts.push(format!("umin={umin}"));
-    }
-    if let Some(umax) = state.range.umax {
-        parts.push(format!("umax={umax}"));
-    }
-    if parts.is_empty() {
-        "scalar with unknown bounds".to_string()
-    } else {
-        format!("scalar({})", parts.join(","))
-    }
-}
-
-fn collect_source_events(log: &str) -> Vec<SourceEvent> {
-    let lines = log.lines().collect::<Vec<_>>();
-    let mut events = Vec::new();
-    for (idx, line) in lines.iter().enumerate() {
-        let Some(source) = parse_source_comment(line) else {
-            continue;
-        };
-        let pc = lines
-            .iter()
-            .skip(idx + 1)
-            .take(4)
-            .find_map(|next| parse_instruction_pc(next));
-        events.push(SourceEvent { pc, source });
-    }
-    events
-}
-
-fn parse_source_comment(line: &str) -> Option<SourceLocation> {
-    let (source, tail) = line.rsplit_once(" @ ")?;
-    let (path, line_no) = tail.trim().rsplit_once(':')?;
-    Some(SourceLocation {
-        path: path.to_string(),
-        line: line_no.parse().ok()?,
-        text: source.trim().trim_start_matches(';').trim().to_string(),
-    })
-}
-
-fn parse_instruction_pc(line: &str) -> Option<usize> {
-    let trimmed = line.trim_start();
-    let digits_len = trimmed
-        .bytes()
-        .take_while(|byte| byte.is_ascii_digit())
-        .count();
-    if digits_len == 0 || trimmed.as_bytes().get(digits_len) != Some(&b':') {
-        return None;
-    }
-    trimmed[..digits_len].parse().ok()
-}
-
-fn terminal_source(
-    source_events: &[SourceEvent],
-    terminal_pc: Option<usize>,
-) -> Option<SourceLocation> {
-    match terminal_pc {
-        Some(pc) => source_for_pc(source_events, pc).cloned(),
-        None => source_events.last().map(|event| event.source.clone()),
-    }
-}
-
-fn source_for_pc(source_events: &[SourceEvent], pc: usize) -> Option<&SourceLocation> {
-    source_events
-        .iter()
-        .filter(|event| event.pc.is_some_and(|event_pc| event_pc <= pc))
-        .max_by_key(|event| event.pc)
-        .map(|event| &event.source)
-}
-
-fn latest_source_before<'a>(
-    source_events: &'a [SourceEvent],
-    rejected_source: Option<&SourceLocation>,
-    predicate: impl Fn(&str) -> bool,
-) -> Option<&'a SourceEvent> {
-    let rejected_source = rejected_source?;
-    source_events
-        .iter()
-        .filter(|event| event.source.path == rejected_source.path)
-        .filter(|event| event.source.line < rejected_source.line)
-        .filter(|event| predicate(&event.source.text))
-        .max_by_key(|event| event.source.line)
-}
-
-fn looks_like_scalar_guard(text: &str) -> bool {
-    text.starts_with("if ")
-        && (text.contains('<')
-            || text.contains('>')
-            || text.contains("<=")
-            || text.contains(">=")
-            || text.contains("!=")
-            || text.contains("=="))
-}
-
-fn looks_like_packet_bounds_check(text: &str) -> bool {
-    text.starts_with("if ") && text.contains("data_end")
-}
-
-fn looks_like_null_check(text: &str) -> bool {
-    let lower = text.to_ascii_lowercase();
-    lower.starts_with("if ")
-        && (lower.contains("null")
-            || lower.contains("!tmp")
-            || lower.contains("!val")
-            || lower.contains("!ptr")
-            || lower.contains("!value")
-            || lower.contains("== 0")
-            || lower.contains("!= 0")
-            || lower.contains("== null")
-            || lower.contains("!= null"))
-}
-
-fn looks_like_nullable_return(text: &str) -> bool {
-    text.contains("bpf_map_lookup_elem")
-        || text.contains("bpf_ringbuf_reserve")
-        || text.contains("bpf_sk_lookup")
-        || text.contains("bpf_skc_lookup")
-}
-
-fn looks_like_stack_initialization(text: &str) -> bool {
-    text.contains('=') && (text.contains("0") || text.contains("memset"))
-}
-
-fn looks_like_reference_acquire(text: &str) -> bool {
-    text.contains("bpf_ringbuf_reserve")
-        || text.contains("bpf_sk_lookup")
-        || text.contains("bpf_skc_lookup")
-}
-
-fn looks_like_reference_release(text: &str) -> bool {
-    text.contains("bpf_ringbuf_discard")
-        || text.contains("bpf_ringbuf_submit")
-        || text.contains("bpf_sk_release")
-}
-
 #[cfg(test)]
 mod tests {
-    use super::{analyze_verifier_log, ProofEventRole, ProofObligation};
+    use super::{analyze_verifier_log, ProofEventEvidence, ProofEventRole};
+    use crate::family::ProofObligation;
 
     #[test]
     fn branch_merge_case_produces_proof_lifecycle_events() {
@@ -1066,6 +507,11 @@ mod tests {
         }));
         assert!(analysis.events.iter().any(|event| {
             event.role == ProofEventRole::ProofEstablished
+                && event.source.as_ref().unwrap().line == 267
+        }));
+        assert!(analysis.events.iter().any(|event| {
+            event.role == ProofEventRole::ProofLost
+                && event.evidence == ProofEventEvidence::VerifierState
                 && event.source.as_ref().unwrap().line == 267
         }));
         assert!(analysis.events.iter().any(|event| {
@@ -1120,6 +566,7 @@ mod tests {
         assert!(analysis.required_proof.description.contains("42"));
         assert!(analysis.events.iter().any(|event| {
             event.role == ProofEventRole::ProofEstablished
+                && event.evidence == ProofEventEvidence::SourceComment
                 && event.source.as_ref().unwrap().line == 52
         }));
     }

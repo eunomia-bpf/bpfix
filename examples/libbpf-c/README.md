@@ -17,7 +17,7 @@ LIBBPF_OPTS(bpf_object_open_opts, opts,
 After `bpf_object__load(obj)` fails, write that buffer to `verifier.log` and run:
 
 ```bash
-bpfix --object xdp.o verifier.log
+bpfix verifier.log
 ```
 
 For skeleton-based loaders, keep the skeleton flow unchanged and capture the
@@ -26,4 +26,11 @@ loader's stderr/stdout:
 ```bash
 ./loader 2>&1 | tee verifier.log
 bpfix verifier.log
+```
+
+If BPFix was installed with `--features object-analysis`, you may additionally
+pass the compiled object:
+
+```bash
+bpfix --object xdp.o verifier.log
 ```

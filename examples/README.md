@@ -23,7 +23,7 @@ bpfix --format json verifier.log
 
 | path | audience | what it shows |
 | --- | --- | --- |
-| `bpftool/` | users loading `.o` files directly | `bpftool -d` capture plus `bpfix --object` |
+| `bpftool/` | users loading `.o` files directly | `bpftool -d` capture plus log-first diagnosis |
 | `make/` | existing C/Rust/eBPF projects | Makefile targets that preserve the original load command |
 | `libbpf-c/` | C loaders and skeleton users | libbpf verifier-log buffer setup and post-failure diagnosis |
 | `libbpf-rs/` | Rust loaders using libbpf-rs | stderr/log capture around an existing loader binary |
@@ -36,3 +36,24 @@ The examples intentionally keep placeholders such as `xdp.o`, `./loader`, and
 `cargo run --bin loader`. Replace them with the command that already fails in
 your project. BPFix should sit beside that command; it should not force you to
 rewrite the loader just to get a useful diagnostic.
+
+## Support Levels
+
+| capability | status | user command |
+| --- | --- | --- |
+| File or stdin verifier/build/load log | stable default | `bpfix verifier.log` |
+| Plain text diagnostic | stable default | `bpfix verifier.log` |
+| JSON diagnostic | stable for tools | `bpfix --format json verifier.log` |
+| Existing bpftool/libbpf/Aya/BCC output | stable when the log includes the verifier region | capture stderr/stdout, then run `bpfix` |
+| Object metadata | experimental, feature-gated | build with `--features object-analysis`, then pass `--object prog.o` |
+| Docker or command execution | not a default example path | use only if a future explicit option is implemented |
+
+The default examples avoid feature-gated options. Set
+`BPFIX_OBJECT_ANALYSIS=1` only after installing BPFix with
+`--features object-analysis`.
+
+Run the lightweight consistency check after editing examples:
+
+```bash
+./examples/check-examples.sh
+```

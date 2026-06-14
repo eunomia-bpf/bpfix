@@ -11,7 +11,11 @@ load_status=${PIPESTATUS[0]}
 set -e
 
 if [ "$load_status" -ne 0 ]; then
-  bpfix --object "$obj" "$log"
+  if [ "${BPFIX_OBJECT_ANALYSIS:-0}" = "1" ]; then
+    bpfix --object "$obj" "$log"
+  else
+    bpfix "$log"
+  fi
 fi
 
 exit "$load_status"

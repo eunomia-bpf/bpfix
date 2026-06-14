@@ -90,9 +90,11 @@ Pass a full build or libbpf log. BPFix extracts the verifier region when it can:
 bpfix build-or-load.log
 ```
 
-Use optional object metadata:
+Use optional object metadata. This path is explicit and feature-gated because
+object analysis is an enhancement, not the default input contract:
 
 ```bash
+cargo install --path crates/bpfix --features object-analysis
 bpfix --object xdp.o verifier.log
 ```
 
@@ -108,23 +110,19 @@ Emit both text and JSON:
 bpfix --format both verifier.log
 ```
 
-Benchmark YAML is an evaluation convenience only:
-
-```bash
-bpfix bpfix-bench/raw/so/stackoverflow-60053570.yaml
-```
-
-Runtime diagnostics must not consume benchmark labels as input.
-
 The public CLI model is:
 
 ```text
 bpfix [OPTIONS] [LOG]
 ```
 
-`LOG` is optional. When omitted or set to `-`, BPFix reads stdin. Plain text is
-the default because the common path is human debugging; JSON is opt-in for CI,
-editors, and agents.
+`LOG` is optional. When omitted or set to `-`, BPFix reads stdin. Positional
+input and stdin are always verifier/build/load log text. BPFix does not run the
+loader command in the default path, and the public contract should not include a
+command-execution shortcut. Docker execution, if supported, must be an explicit
+option such as `--docker`; benchmark YAML and repository workspace analysis also
+stay outside the positional argument. Plain text is the default because the
+common path is human debugging; JSON is opt-in for CI, editors, and agents.
 
 ## Input Policy
 
@@ -134,9 +132,15 @@ Required:
 
 Optional:
 
-- compiled BPF object via `--object`
+- compiled BPF object via `--object` in a build with `object-analysis`
 - source comments already present in the verifier log
-- `bpfix-bench` YAML wrapper when evaluating bundled cases
+- Docker/replay environment selection via an explicit `--docker`-style option,
+  only if that mode is implemented
+
+Evaluation-only:
+
+- `bpfix-bench` YAML records and labels, consumed by evaluation scripts rather
+  than the public default CLI
 
 Not required:
 
@@ -194,7 +198,7 @@ BPFix is not:
 - Keep `cargo test --workspace` passing.
 - Freeze the JSON v2 field names before external examples depend on them.
 - Add golden text and JSON fixtures for representative proof families.
-- Implement BTF-backed source correlation from `--object` without changing the
-  log-only CLI shape.
+- Implement BTF-backed source correlation behind `object-analysis` without
+  changing the log-only CLI shape.
 - Publish examples for `bpftool`, libbpf/Aya logs, CI annotations, and editor
   integration.

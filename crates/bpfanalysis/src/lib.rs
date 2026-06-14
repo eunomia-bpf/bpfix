@@ -5,21 +5,27 @@
 //! The core analysis modules are imported from the `bpfopt` project and kept
 //! behind a small public surface that is useful for user-facing diagnostics.
 
+#[cfg(feature = "analysis")]
 pub mod analysis;
+#[cfg(feature = "analysis")]
 pub mod insn;
+#[cfg(feature = "object-analysis")]
 pub mod object_file;
+#[cfg(feature = "analysis")]
 pub mod pass;
+#[cfg(feature = "analysis")]
 pub mod passes;
 
 mod verifier_log;
 
+#[cfg(feature = "object-analysis")]
 pub use object_file::{load_object_cfg_summaries, ObjectProgramSummary};
 pub use verifier_log::{
     verifier_states_from_log, RegState, ScalarRange, StackState, Tnum, VerifierInsn,
     VerifierInsnKind, VerifierValueWidth,
 };
 
-#[cfg(test)]
+#[cfg(all(test, feature = "analysis"))]
 pub(crate) mod test_helpers;
 
 #[derive(Clone, Debug, PartialEq, Eq)]

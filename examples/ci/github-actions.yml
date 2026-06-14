@@ -29,7 +29,7 @@ jobs:
 
       - name: Diagnose verifier failure
         if: steps.load.outcome == 'failure'
-        run: bpfix --format json --object xdp.o verifier.log > bpfix-diagnostic.json
+        run: bpfix --format json verifier.log > bpfix-diagnostic.json
 
       - uses: actions/upload-artifact@v4
         if: steps.load.outcome == 'failure'

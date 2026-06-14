@@ -1,3 +1,0 @@
-# Canonical dependency declarations live in pyproject.toml.
-# This file is a contributor convenience entry point.
--e .[dev]

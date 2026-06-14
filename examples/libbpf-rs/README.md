@@ -11,9 +11,13 @@ The wrapper is intentionally small:
 
 ```bash
 ./target/debug/loader 2>&1 | tee verifier.log
-bpfix --object xdp.o verifier.log
+bpfix verifier.log
 ```
 
 If your loader can expose libbpf's verifier buffer directly, write that buffer
 to `verifier.log` and call the same `bpfix` command. BPFix does not need the
-Rust project checkout; it only needs the log and, optionally, the `.o`.
+Rust project checkout; it only needs the log.
+
+Object metadata is optional and experimental. Install with
+`--features object-analysis`, then run the wrapper with `BPFIX_OBJECT_ANALYSIS=1`
+and an object path.

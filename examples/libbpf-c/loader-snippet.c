@@ -35,8 +35,8 @@ int load_with_bpfix_log(const char *object_path)
             fputs(verifier_log, fp);
             fclose(fp);
         }
-        fprintf(stderr, "verifier rejected %s; run: bpfix --object %s verifier.log\n",
-                object_path, object_path);
+        fprintf(stderr, "verifier rejected %s; run: bpfix verifier.log\n",
+                object_path);
     }
 
     bpf_object__close(obj);

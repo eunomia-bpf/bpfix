@@ -12,8 +12,11 @@ path = "src/main.rs"
 
 [dependencies]
 anyhow.workspace = true
-bpfanalysis = { path = "../bpfanalysis" }
+bpfanalysis = { path = "../bpfanalysis", default-features = false }
 clap.workspace = true
 serde.workspace = true
 serde_json.workspace = true
-serde_yaml.workspace = true
+
+[features]
+default = []
+object-analysis = ["bpfanalysis/object-analysis"]

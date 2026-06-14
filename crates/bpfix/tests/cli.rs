@@ -66,6 +66,28 @@ fn run_json_stdin(input: &str) -> Value {
     serde_json::from_slice(&output.stdout).expect("bpfix should emit JSON")
 }
 
+fn run_json_stdin_output(input: &str) -> std::process::Output {
+    let mut child = Command::new(env!("CARGO_BIN_EXE_bpfix"))
+        .arg("-")
+        .arg("--format")
+        .arg("json")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .expect("bpfix should execute");
+    {
+        use std::io::Write;
+        child
+            .stdin
+            .as_mut()
+            .expect("stdin should be piped")
+            .write_all(input.as_bytes())
+            .expect("stdin write should succeed");
+    }
+    child.wait_with_output().expect("bpfix should finish")
+}
+
 fn run_text(path: &str) -> String {
     let output = Command::new(env!("CARGO_BIN_EXE_bpfix"))
         .arg(workspace_root().join(path))
@@ -77,15 +99,6 @@ fn run_text(path: &str) -> String {
         String::from_utf8_lossy(&output.stderr)
     );
     String::from_utf8(output.stdout).expect("bpfix should emit UTF-8")
-}
-
-#[test]
-fn raw_yaml_packet_bounds_case_is_classified() {
-    let json = run_json("bpfix-bench/raw/so/stackoverflow-60053570.yaml");
-    assert_eq!(json["error_id"], "BPFIX-E001");
-    assert_eq!(json["failure_class"], "source_bug");
-    assert_eq!(json["metadata"]["case_id"], "stackoverflow-60053570");
-    assert_eq!(json["source_span"]["instruction_pc"], 49);
 }
 
 #[test]
@@ -101,7 +114,7 @@ fn replay_log_uses_bpfanalysis_verifier_trace_parser() {
 fn signed_packet_offset_case_runs_without_yaml_metadata() {
     let json = run_json("bpfix-bench/cases/stackoverflow-70750259/replay-verifier.log");
     assert_eq!(json["error_id"], "BPFIX-E005");
-    assert_eq!(json["failure_class"], "lowering_artifact");
+    assert_eq!(json["failure_class"], "source_bug");
     assert!(json["required_proof"]
         .as_str()
         .unwrap()
@@ -115,26 +128,38 @@ fn signed_packet_offset_case_runs_without_yaml_metadata() {
 fn branch_merge_case_is_classified_from_proof_events_without_yaml() {
     let json = run_json("bpfix-bench/cases/stackoverflow-53136145/replay-verifier.log");
     assert_eq!(json["error_id"], "BPFIX-E006");
-    assert_eq!(json["failure_class"], "lowering_artifact");
+    assert_eq!(json["failure_class"], "source_bug");
     assert_eq!(json["metadata"]["case_id"], "replay-verifier");
     assert_eq!(json["metadata"]["input_kind"], "verifier-log-region");
     assert_eq!(json["source_span"]["path"], "prog.c");
     assert_eq!(json["source_span"]["instruction_pc"], 37);
     assert!(json["related_spans"].as_array().unwrap().len() >= 2);
+    let labels = json["related_spans"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|span| span["label"].as_str())
+        .collect::<Vec<_>>()
+        .join("\n");
+    assert!(labels.contains("nearby source context for pointer provenance"));
+    assert!(labels.contains("verifier state changes from pkt to scalar"));
+    assert!(!labels.contains("proof established by a verifier-visible bounds check"));
 }
 
 #[test]
 fn text_output_is_rust_style_multispan() {
     let text = run_text("bpfix-bench/cases/stackoverflow-53136145/replay-verifier.log");
     assert!(text.contains("error[BPFIX-E006]: pointer type proof is missing"));
-    assert!(text.contains("= class: lowering_artifact"));
+    assert!(text.contains("= class: source_bug"));
     assert!(text.contains("--> prog.c:270"));
     assert!(text.contains("263 | if (ipv4_hdr)"));
     assert!(text.contains("267 | if (udph + sizeof(struct udphdr) > data_end)"));
     assert!(text.contains("270 | dst_port = __constant_ntohs(((struct udphdr *)udph)->dest);"));
-    assert!(text.contains("proof can be lost when branch-specific pointers are merged"));
-    assert!(text.contains("proof established by a verifier-visible bounds check"));
-    assert!(text.contains("help: Keep branch-specific pointer derivations"));
+    assert!(text.contains("nearby source context for pointer provenance"));
+    assert!(text.contains("verifier state changes from pkt to scalar"));
+    assert!(!text.contains("proof can be lost when branch-specific pointers are merged"));
+    assert!(!text.contains("proof established by a verifier-visible bounds check"));
+    assert!(text.contains("help: Preserve pointer provenance across the failing path"));
 }
 
 #[test]
@@ -169,7 +194,7 @@ fn stdin_log_path_does_not_need_yaml() {
     let json = run_json_stdin(&replay);
 
     assert_eq!(json["error_id"], "BPFIX-E005");
-    assert_eq!(json["failure_class"], "lowering_artifact");
+    assert_eq!(json["failure_class"], "source_bug");
     assert_eq!(json["source_span"]["instruction_pc"], 33);
 }
 
@@ -190,8 +215,8 @@ fn yaml_labels_do_not_change_runtime_diagnostic() {
     let json = run_json_stdin(&yaml);
 
     assert_eq!(json["error_id"], "BPFIX-E006");
-    assert_eq!(json["failure_class"], "lowering_artifact");
-    assert_eq!(json["metadata"]["case_id"], "yaml-oracle");
+    assert_eq!(json["failure_class"], "source_bug");
+    assert!(json["metadata"]["case_id"].is_null());
     assert!(
         !json["evidence"].as_array().unwrap().iter().any(|evidence| {
             evidence["kind"] == "case_root_cause" || evidence["detail"] == "SHOULD_NOT_LEAK"
@@ -205,6 +230,42 @@ fn yaml_labels_do_not_change_runtime_diagnostic() {
 }
 
 #[test]
+fn input_without_verifier_rejection_gets_actionable_input_error() {
+    let json = run_json_stdin("clang -O2 -target bpf -c prog.bpf.c\nbuild succeeded\n");
+
+    assert_eq!(json["error_id"], "BPFIX-E000");
+    assert_eq!(json["failure_class"], "input_error");
+    assert_eq!(json["diagnostic_kind"], "unsupported_input");
+    assert_eq!(json["help_safety"], "triage_only");
+    assert!(json["help"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|item| item.as_str().unwrap().contains("bpftool -d")));
+}
+
+#[test]
+fn parser_recovery_warnings_do_not_pollute_json_stderr() {
+    let output = run_json_stdin_output(
+        "0: R1=scalar(foo=bar) fp-8_w=0\n1: (95) exit\nR1 invalid mem access 'scalar'\n",
+    );
+    assert!(
+        output.status.success(),
+        "bpfix failed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(
+        output.stderr.is_empty(),
+        "bpfix should keep parser recovery warnings out of stderr by default: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let json: Value = serde_json::from_slice(&output.stdout).expect("bpfix should emit JSON");
+    assert_eq!(json["error_id"], "BPFIX-E006");
+    assert_eq!(json["metadata"]["trace_state_count"], 1);
+}
+
+#[test]
+#[cfg(feature = "object-analysis")]
 fn object_argument_is_validated_and_reported() {
     let log_path =
         workspace_root().join("bpfix-bench/cases/stackoverflow-53136145/replay-verifier.log");
@@ -245,6 +306,7 @@ fn object_argument_is_validated_and_reported() {
 }
 
 #[test]
+#[cfg(feature = "object-analysis")]
 fn object_argument_keeps_diagnostic_when_log_pcs_use_loaded_layout() {
     let log_path = workspace_root()
         .join("bpfix-bench/cases/github-commit-cilium-968227de9cc5/replay-verifier.log");
@@ -277,6 +339,7 @@ fn object_argument_keeps_diagnostic_when_log_pcs_use_loaded_layout() {
 }
 
 #[test]
+#[cfg(feature = "object-analysis")]
 fn object_parse_error_is_reported_without_blocking_log_diagnostic() {
     let log_path =
         workspace_root().join("bpfix-bench/cases/stackoverflow-70750259/replay-verifier.log");
@@ -305,4 +368,33 @@ fn object_parse_error_is_reported_without_blocking_log_diagnostic() {
         .as_str()
         .unwrap()
         .contains("failed to parse ELF object"));
+}
+
+#[test]
+#[cfg(not(feature = "object-analysis"))]
+fn object_argument_reports_disabled_feature_without_blocking_log_diagnostic() {
+    let log_path =
+        workspace_root().join("bpfix-bench/cases/stackoverflow-70750259/replay-verifier.log");
+    let object_path = workspace_root().join("bpfix-bench/cases/stackoverflow-70750259/prog.o");
+    let json = run_json_with_args(&[
+        "--object",
+        object_path.to_str().unwrap(),
+        log_path.to_str().unwrap(),
+        "--format",
+        "json",
+    ]);
+
+    assert_eq!(json["error_id"], "BPFIX-E005");
+    assert_eq!(
+        json["metadata"]["object_path"],
+        object_path.to_str().unwrap()
+    );
+    assert!(json["metadata"]["object_programs"]
+        .as_array()
+        .unwrap()
+        .is_empty());
+    assert!(json["metadata"]["object_analysis_error"]
+        .as_str()
+        .unwrap()
+        .contains("--features object-analysis"));
 }

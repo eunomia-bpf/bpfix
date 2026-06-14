@@ -52,8 +52,8 @@ binaries against a missing host `-lbpf`. Those loaders now use the local
 - Each listed case has `case.yaml`, source, and replay commands.
 - The validator rejects cases that build but do not reproduce a verifier
   rejection.
-- `docs/bpfix-py/tools/evaluate_benchmark.py --benchmark bpfix-bench` consumes the same
-  manifest and uses freshly replayed verifier logs.
+- `docs/evaluation/evaluate_diagnostics.py --confusion` consumes the same
+  manifest and stored replay verifier logs for product diagnostic metrics.
 - Non-primary raw material remains under `bpfix-bench/raw/`.
 
 The benchmark is not considered valid on another host until replay passes again
