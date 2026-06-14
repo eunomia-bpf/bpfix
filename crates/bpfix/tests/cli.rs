@@ -384,6 +384,22 @@ fn lowering_artifact_shapes_are_classified_from_verifier_evidence() {
                     .unwrap()
                     .contains("map-value access wider")
         }));
+
+    let checked_map_relation =
+        run_json("bpfix-bench/cases/stackoverflow-74178703/replay-verifier.log");
+    assert_eq!(checked_map_relation["error_id"], "BPFIX-E005");
+    assert_eq!(checked_map_relation["failure_class"], "lowering_artifact");
+    assert!(checked_map_relation["evidence"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|evidence| {
+            evidence["kind"] == "lowering_artifact_signal"
+                && evidence["detail"]
+                    .as_str()
+                    .unwrap()
+                    .contains("source bounds the map-value expression")
+        }));
 }
 
 #[test]
@@ -396,7 +412,13 @@ fn verifier_precision_limits_are_triage_not_source_bugs() {
         .as_array()
         .unwrap()
         .iter()
-        .any(|evidence| evidence["kind"] == "verifier_precision_signal"));
+        .any(|evidence| {
+            evidence["kind"] == "verifier_precision_signal"
+                && evidence["detail"]
+                    .as_str()
+                    .unwrap()
+                    .contains("packet-offset precision boundary")
+        }));
 
     let map_relation = run_json("bpfix-bench/cases/stackoverflow-77762365/replay-verifier.log");
     assert_eq!(map_relation["error_id"], "BPFIX-E005");
@@ -406,6 +428,57 @@ fn verifier_precision_limits_are_triage_not_source_bugs() {
         .as_str()
         .unwrap()
         .contains("verifier precision limit"));
+
+    let packet_repeated_source =
+        run_json("bpfix-bench/cases/stackoverflow-70729664/replay-verifier.log");
+    assert_eq!(packet_repeated_source["error_id"], "BPFIX-E001");
+    assert_eq!(
+        packet_repeated_source["failure_class"],
+        "verifier_false_positive"
+    );
+    assert_eq!(packet_repeated_source["help_safety"], "triage_only");
+    assert!(packet_repeated_source["evidence"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|evidence| {
+            evidence["kind"] == "verifier_precision_signal"
+                && evidence["detail"]
+                    .as_str()
+                    .unwrap()
+                    .contains("packet-offset precision boundary")
+        }));
+
+    let packet_sizeof_guard =
+        run_json("bpfix-bench/cases/stackoverflow-70760516/replay-verifier.log");
+    assert_eq!(packet_sizeof_guard["error_id"], "BPFIX-E001");
+    assert_eq!(
+        packet_sizeof_guard["failure_class"],
+        "verifier_false_positive"
+    );
+    assert_eq!(packet_sizeof_guard["help_safety"], "triage_only");
+    assert!(packet_sizeof_guard["evidence"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|evidence| {
+            evidence["kind"] == "verifier_precision_signal"
+                && evidence["detail"]
+                    .as_str()
+                    .unwrap()
+                    .contains("packet-offset precision boundary")
+        }));
+}
+
+#[test]
+fn verifier_precision_labels_without_runtime_proof_stay_source_bugs() {
+    let off_by_one_guard = run_json("bpfix-bench/cases/stackoverflow-72575736/replay-verifier.log");
+    assert_eq!(off_by_one_guard["error_id"], "BPFIX-E001");
+    assert_eq!(off_by_one_guard["failure_class"], "source_bug");
+
+    let loop_callback = run_json("bpfix-bench/cases/stackoverflow-77967675/replay-verifier.log");
+    assert_eq!(loop_callback["error_id"], "BPFIX-E001");
+    assert_eq!(loop_callback["failure_class"], "source_bug");
 }
 
 #[test]
@@ -451,9 +524,34 @@ fn ordinary_source_bugs_are_not_overclassified_as_runtime_artifacts() {
     assert_eq!(off_by_one_packet_loop["error_id"], "BPFIX-E001");
     assert_eq!(off_by_one_packet_loop["failure_class"], "source_bug");
 
+    let underchecked_packet_copy =
+        run_json("bpfix-bench/cases/stackoverflow-73088287/replay-verifier.log");
+    assert_eq!(underchecked_packet_copy["error_id"], "BPFIX-E001");
+    assert_eq!(underchecked_packet_copy["failure_class"], "source_bug");
+
+    let underchecked_packet_offset =
+        run_json("bpfix-bench/cases/stackoverflow-78186253/replay-verifier.log");
+    assert_eq!(underchecked_packet_offset["error_id"], "BPFIX-E001");
+    assert_eq!(underchecked_packet_offset["failure_class"], "source_bug");
+
+    let underchecked_packet_write =
+        run_json("bpfix-bench/cases/github-commit-cilium-ceaa4c42b010/replay-verifier.log");
+    assert_eq!(underchecked_packet_write["error_id"], "BPFIX-E001");
+    assert_eq!(underchecked_packet_write["failure_class"], "source_bug");
+
     let helper_bounds = run_json("bpfix-bench/cases/stackoverflow-77713434/replay-verifier.log");
     assert_eq!(helper_bounds["error_id"], "BPFIX-E005");
     assert_eq!(helper_bounds["failure_class"], "source_bug");
+
+    let map_value_guard_too_large =
+        run_json("bpfix-bench/cases/stackoverflow-78196801/replay-verifier.log");
+    assert_eq!(map_value_guard_too_large["error_id"], "BPFIX-E005");
+    assert_eq!(map_value_guard_too_large["failure_class"], "source_bug");
+
+    let map_value_guard_too_large_2 =
+        run_json("bpfix-bench/cases/stackoverflow-78208591/replay-verifier.log");
+    assert_eq!(map_value_guard_too_large_2["error_id"], "BPFIX-E005");
+    assert_eq!(map_value_guard_too_large_2["failure_class"], "source_bug");
 }
 
 #[test]

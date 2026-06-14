@@ -61,7 +61,8 @@ pub enum ProofSignal {
     PacketPointerProofLostAfterBoundsCheck,
     PacketRangeProofLostBeforeAccess,
     MapValueWideAccess,
-    PacketVariableOffsetPrecisionBoundary,
+    MapValueCheckedOffsetRelationLost,
+    PacketMaxOffsetPrecisionBoundary,
     MapValueRelationPrecisionBoundary,
 }
 
@@ -136,8 +137,11 @@ impl ProofSignal {
             Self::MapValueWideAccess => {
                 "bytecode performs a map-value access wider than the verifier-proven map value size"
             }
-            Self::PacketVariableOffsetPrecisionBoundary => {
-                "source-level packet bounds check is present, but the verifier appears to lose precision for a variable packet offset"
+            Self::MapValueCheckedOffsetRelationLost => {
+                "source bounds the map-value expression to the declared value size, but verifier state later sees the rebuilt pointer range cross that size"
+            }
+            Self::PacketMaxOffsetPrecisionBoundary => {
+                "verifier state reaches a packet access with a large variable offset range at the packet-offset precision boundary"
             }
             Self::MapValueRelationPrecisionBoundary => {
                 "source-level map-value bounds guard is present, but the verifier appears to lose a cross-variable range relation"
@@ -183,8 +187,11 @@ impl ProofSignal {
             Self::MapValueWideAccess => {
                 "Keep generated or lowered map-value loads and stores within the declared value type width; avoid widening a 32-bit value access into a 64-bit BPF memory operation."
             }
-            Self::PacketVariableOffsetPrecisionBoundary => {
-                "Treat this as a verifier precision boundary: clamp the variable packet offset to a small explicit maximum, then rederive and recheck the packet pointer immediately before the load."
+            Self::MapValueCheckedOffsetRelationLost => {
+                "Reuse the exact bounded map-value address expression at the access site, or store the checked remaining capacity in one scalar that the final load uses directly."
+            }
+            Self::PacketMaxOffsetPrecisionBoundary => {
+                "Treat this as a verifier precision boundary: clamp the packet cursor to a verifier-friendly maximum before the loop, then rederive and recheck the exact byte pointer used by the load."
             }
             Self::MapValueRelationPrecisionBoundary => {
                 "Make the remaining map-value capacity explicit in one bounded variable, clamp the helper length to that variable, and pass that same value to the helper."
@@ -196,10 +203,22 @@ impl ProofSignal {
         "medium"
     }
 
+    const fn selection_rank(self) -> u8 {
+        match self {
+            Self::WideStackAlignment
+            | Self::SharedInstructionPointerMerge
+            | Self::PointerShiftDropsProvenance
+            | Self::ModifiedContextPointer
+            | Self::SubprogramContextArgumentDropped => 20,
+            signal if signal.is_verifier_precision_boundary() => 30,
+            _ => 10,
+        }
+    }
+
     const fn is_verifier_precision_boundary(self) -> bool {
         matches!(
             self,
-            Self::PacketVariableOffsetPrecisionBoundary | Self::MapValueRelationPrecisionBoundary
+            Self::PacketMaxOffsetPrecisionBoundary | Self::MapValueRelationPrecisionBoundary
         )
     }
 }
@@ -744,6 +763,9 @@ fn proof_signals(context: ProofSignalContext<'_>) -> Vec<ProofSignal> {
     if let Some(signal) = verifier_precision_signal(context.obligation, context.events) {
         signals.push(signal);
     }
+    if let Some(signal) = packet_verifier_precision_signal(&context) {
+        signals.push(signal);
+    }
     if context
         .events
         .iter()
@@ -763,6 +785,17 @@ fn proof_signals(context: ProofSignalContext<'_>) -> Vec<ProofSignal> {
     ) {
         signals.push(ProofSignal::MapValueWideAccess);
     }
+    if map_value_checked_offset_relation_lost(
+        context.terminal_error,
+        context.terminal_pc,
+        context.register,
+        context.states,
+        context.events,
+        context.source_events,
+    ) {
+        signals.push(ProofSignal::MapValueCheckedOffsetRelationLost);
+    }
+    signals.sort_by_key(|signal| signal.selection_rank());
     signals
 }
 
@@ -872,6 +905,51 @@ fn map_value_wide_access(
     }
     latest_reg_state_before(states, terminal_pc, reg).is_some_and(|state| {
         state.reg_type == "map_value" && state.map_value_size == Some(reported_value_size)
+    })
+}
+
+fn map_value_checked_offset_relation_lost(
+    terminal_error: &str,
+    terminal_pc: Option<usize>,
+    register: Option<u8>,
+    states: &[VerifierInsn],
+    events: &[ProofEvent],
+    source_events: &[SourceEvent],
+) -> bool {
+    if !terminal_error.contains("invalid access to map value") {
+        return false;
+    }
+    let Some(reg) = register else {
+        return false;
+    };
+    let Some(reported_value_size) = parse_u32_after(terminal_error, "value_size=") else {
+        return false;
+    };
+    let Some(access_offset) = parse_u32_after(terminal_error, "off=") else {
+        return false;
+    };
+    let Some(access_size) = parse_u32_after(terminal_error, "size=") else {
+        return false;
+    };
+    if access_size > reported_value_size {
+        return false;
+    }
+    let Some(access_end) = access_offset.checked_add(access_size) else {
+        return false;
+    };
+    if access_end <= reported_value_size {
+        return false;
+    }
+    let Some(rejected) = rejected_source(events) else {
+        return false;
+    };
+    if !source_guard_mentions_bound(events, source_events, reported_value_size, rejected) {
+        return false;
+    }
+    latest_reg_state_before(states, terminal_pc, reg).is_some_and(|state| {
+        state.reg_type == "map_value"
+            && state.map_value_size == Some(reported_value_size)
+            && map_value_range_may_exceed_value_size(state)
     })
 }
 
@@ -985,6 +1063,227 @@ fn packet_range_proof_lost_before_access(events: &[ProofEvent]) -> bool {
         })
 }
 
+fn packet_verifier_precision_signal(context: &ProofSignalContext<'_>) -> Option<ProofSignal> {
+    if context.obligation != ProofObligation::PacketBounds {
+        return None;
+    }
+    if packet_max_offset_precision_boundary(context) {
+        return Some(ProofSignal::PacketMaxOffsetPrecisionBoundary);
+    }
+    None
+}
+
+fn packet_max_offset_precision_boundary(context: &ProofSignalContext<'_>) -> bool {
+    let Some(reg) = context.register else {
+        return false;
+    };
+    let Some(state) = latest_reg_state_before(context.states, context.terminal_pc, reg) else {
+        return false;
+    };
+    let Some(required) = packet_required_range(context.terminal_error) else {
+        return false;
+    };
+    state.reg_type == "pkt"
+        && state.packet_range == Some(0)
+        && packet_offset_range_reaches_precision_boundary(state, required)
+        && packet_source_guard_is_relevant(context.events)
+        && (packet_source_guard_covers_required_range(context.events, required)
+            || has_prior_sufficient_packet_range_for_rejected_source(context.events))
+}
+
+fn packet_offset_range_reaches_precision_boundary(state: &RegState, required: u32) -> bool {
+    let variable_max = state
+        .range
+        .umax
+        .or_else(|| state.range.smax.and_then(|value| u64::try_from(value).ok()));
+    let fixed_offset = state.offset.and_then(|offset| u64::try_from(offset).ok());
+    let max_offset = match (fixed_offset, variable_max) {
+        (Some(fixed), Some(variable)) => fixed.saturating_add(variable),
+        (None, Some(variable)) => variable,
+        _ => return false,
+    };
+    max_offset.saturating_add(u64::from(required)) > 0xffff
+}
+
+fn has_prior_sufficient_packet_range_for_rejected_source(events: &[ProofEvent]) -> bool {
+    let Some(rejected) = rejected_source(events) else {
+        return false;
+    };
+    events.iter().any(|event| {
+        event.role == ProofEventRole::ProofEstablished
+            && event.evidence == ProofEventEvidence::VerifierState
+            && event.obligation == ProofObligation::PacketBounds
+            && event
+                .source
+                .as_ref()
+                .is_some_and(|source| same_source_location(source, rejected))
+    })
+}
+
+fn packet_source_guard_is_relevant(events: &[ProofEvent]) -> bool {
+    events.iter().any(|event| {
+        event.role == ProofEventRole::ProofEstablished
+            && event.evidence == ProofEventEvidence::SourceComment
+            && event.obligation == ProofObligation::PacketBounds
+            && event
+                .source
+                .as_ref()
+                .is_some_and(|source| looks_like_packet_bounds_check(&source.text))
+    })
+}
+
+fn packet_source_guard_covers_required_range(events: &[ProofEvent], required: u32) -> bool {
+    events.iter().any(|event| {
+        event.role == ProofEventRole::ProofEstablished
+            && event.evidence == ProofEventEvidence::SourceComment
+            && event.obligation == ProofObligation::PacketBounds
+            && event.source.as_ref().is_some_and(|source| {
+                looks_like_packet_bounds_check(&source.text)
+                    && (max_numeric_token(&source.text).is_some_and(|guarded| guarded >= required)
+                        || source.text.contains("sizeof("))
+            })
+    })
+}
+
+fn rejected_source(events: &[ProofEvent]) -> Option<&SourceLocation> {
+    events
+        .iter()
+        .find(|event| event.role == ProofEventRole::Rejected)
+        .and_then(|event| event.source.as_ref())
+}
+
+fn same_source_location(left: &SourceLocation, right: &SourceLocation) -> bool {
+    left.path == right.path && left.line == right.line && left.text == right.text
+}
+
+fn source_guard_mentions_bound(
+    events: &[ProofEvent],
+    source_events: &[SourceEvent],
+    bound: u32,
+    rejected: &SourceLocation,
+) -> bool {
+    events.iter().any(|event| {
+        event.role == ProofEventRole::ProofEstablished
+            && event.evidence == ProofEventEvidence::SourceComment
+            && event.obligation == ProofObligation::ScalarRange
+            && event.source.as_ref().is_some_and(|source| {
+                looks_like_scalar_guard(&source.text)
+                    && text_has_numeric_token(&source.text, bound)
+                    && source_guard_has_structural_link(source_events, source, rejected)
+            })
+    })
+}
+
+fn source_guard_has_structural_link(
+    source_events: &[SourceEvent],
+    guard: &SourceLocation,
+    rejected: &SourceLocation,
+) -> bool {
+    let guard_ids = identifier_tokens(&guard.text);
+    let rejected_ids = identifier_tokens(&rejected.text);
+    let common = guard_ids
+        .iter()
+        .filter(|identifier| rejected_ids.iter().any(|rejected| rejected == *identifier))
+        .count();
+    if common >= 2 {
+        return true;
+    }
+    source_events.iter().any(|event| {
+        event.source.path == guard.path
+            && event.source.line > guard.line
+            && event.source.line < rejected.line
+            && source_line_links_identifiers(&event.source.text, &guard_ids, &rejected_ids)
+    })
+}
+
+fn source_line_links_identifiers(
+    text: &str,
+    guard_ids: &[String],
+    rejected_ids: &[String],
+) -> bool {
+    if !(text.starts_with("for ") || text.starts_with("if ")) {
+        return false;
+    }
+    let ids = identifier_tokens(text);
+    ids.iter()
+        .any(|identifier| guard_ids.iter().any(|guard| guard == identifier))
+        && ids
+            .iter()
+            .any(|identifier| rejected_ids.iter().any(|rejected| rejected == identifier))
+}
+
+fn text_has_numeric_token(text: &str, expected: u32) -> bool {
+    numeric_tokens(text)
+        .into_iter()
+        .any(|token| token == expected)
+}
+
+fn max_numeric_token(text: &str) -> Option<u32> {
+    numeric_tokens(text).into_iter().max()
+}
+
+fn numeric_tokens(text: &str) -> Vec<u32> {
+    let bytes = text.as_bytes();
+    let mut idx = 0usize;
+    let mut tokens = Vec::new();
+    while idx < bytes.len() {
+        if !bytes[idx].is_ascii_digit() {
+            idx += 1;
+            continue;
+        }
+        let start = idx;
+        idx += 1;
+        while idx < bytes.len() && bytes[idx].is_ascii_digit() {
+            idx += 1;
+        }
+        if let Ok(value) = text[start..idx].parse::<u32>() {
+            tokens.push(value);
+        }
+    }
+    tokens
+}
+
+fn identifier_tokens(text: &str) -> Vec<String> {
+    let mut identifiers = Vec::new();
+    let mut start = None;
+    for (idx, ch) in text.char_indices() {
+        if ch == '_' || ch.is_ascii_alphanumeric() {
+            start.get_or_insert(idx);
+            continue;
+        }
+        if let Some(token_start) = start.take() {
+            push_meaningful_identifier(&mut identifiers, &text[token_start..idx]);
+        }
+    }
+    if let Some(token_start) = start {
+        push_meaningful_identifier(&mut identifiers, &text[token_start..]);
+    }
+    identifiers
+}
+
+fn push_meaningful_identifier(identifiers: &mut Vec<String>, token: &str) {
+    if (token.len() < 2 && !matches!(token, "i" | "j" | "k"))
+        || token.as_bytes()[0].is_ascii_digit()
+        || matches!(
+            token,
+            "if" | "void"
+                | "char"
+                | "unsigned"
+                | "int"
+                | "__u8"
+                | "__u16"
+                | "__u32"
+                | "__u64"
+                | "data"
+                | "data_end"
+                | "byte"
+        )
+    {
+        return;
+    }
+    identifiers.push(token.to_string());
+}
+
 fn looks_like_packet_pointer_derivation(text: &str) -> bool {
     let text = text.trim();
     if text.starts_with("if ") || !text.contains('=') || !text.contains('+') {
@@ -1001,20 +1300,6 @@ fn verifier_precision_signal(
     events: &[ProofEvent],
 ) -> Option<ProofSignal> {
     match obligation {
-        ProofObligation::PacketBounds
-            if source_text_contains(events, looks_like_packet_bounds_check)
-                && source_text_contains_any(
-                    events,
-                    &[
-                        "pkt_ctx->pkt_offset",
-                        "field_offset",
-                        "sizeof(struct extension)",
-                        "server_name_extension",
-                    ],
-                ) =>
-        {
-            Some(ProofSignal::PacketVariableOffsetPrecisionBoundary)
-        }
         ProofObligation::ScalarRange
             if source_text_contains_any(events, &["bpf_probe_read"])
                 && source_text_contains_any(
@@ -1070,10 +1355,17 @@ fn map_value_range_may_exceed_value_size(state: &RegState) -> bool {
     let Some(value_size) = state.map_value_size else {
         return false;
     };
-    let max_offset = state
+    let max_variable_offset = state
         .range
         .umax
         .or_else(|| state.range.smax.and_then(|value| u64::try_from(value).ok()));
+    let fixed_offset = state.offset.and_then(|offset| u64::try_from(offset).ok());
+    let max_offset = match (fixed_offset, max_variable_offset) {
+        (Some(fixed), Some(variable)) => fixed.checked_add(variable),
+        (Some(fixed), None) => Some(fixed),
+        (None, Some(variable)) => Some(variable),
+        (None, None) => None,
+    };
     max_offset.is_some_and(|offset| offset >= u64::from(value_size))
 }
 
