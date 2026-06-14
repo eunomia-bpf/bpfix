@@ -49,6 +49,16 @@ fn run_json_stdin(input: &str) -> Value {
     run_json_stdin_with_args(input, &["-", "--format", "json"])
 }
 
+fn assert_source_bug_without_verifier_state_signal(json: &Value, error_id: &str) {
+    assert_eq!(json["error_id"], error_id);
+    assert_eq!(json["failure_class"], "source_bug");
+    assert!(!json["evidence"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|evidence| evidence["kind"] == "verifier_state_signal"));
+}
+
 fn run_json_stdin_with_args(input: &str, args: &[&str]) -> Value {
     let mut child = Command::new(env!("CARGO_BIN_EXE_bpfix"))
         .args(args)
@@ -539,15 +549,19 @@ fn verifier_precision_labels_without_runtime_proof_stay_source_bugs() {
 }
 
 #[test]
-fn map_pointer_scalar_zero_signal_does_not_claim_log_only_relocation() {
+fn map_pointer_scalar_zero_reports_missing_relocation() {
     let scalar_zero_map_arg =
         run_json("bpfix-bench/cases/stackoverflow-72606055/replay-verifier.log");
-    assert_eq!(scalar_zero_map_arg["error_id"], "BPFIX-E008");
+    assert_eq!(scalar_zero_map_arg["error_id"], "BPFIX-E021");
     assert_eq!(
-        scalar_zero_map_arg["failure_class"], "source_bug",
-        "log/source evidence alone proves a scalar-zero helper argument, not a loader relocation"
+        scalar_zero_map_arg["failure_class"],
+        "environment_or_configuration"
     );
     assert_eq!(scalar_zero_map_arg["help_safety"], "triage_only");
+    assert!(scalar_zero_map_arg["required_proof"]
+        .as_str()
+        .unwrap()
+        .contains("apply the map relocation"));
     assert!(scalar_zero_map_arg["evidence"]
         .as_array()
         .unwrap()
@@ -556,21 +570,43 @@ fn map_pointer_scalar_zero_signal_does_not_claim_log_only_relocation() {
             evidence["kind"] == "verifier_state_signal"
                 && evidence["detail"].as_str().unwrap().contains("scalar zero")
         }));
-    assert!(!scalar_zero_map_arg["evidence"]
+    assert!(scalar_zero_map_arg["help"]
         .as_array()
         .unwrap()
         .iter()
-        .any(|evidence| evidence["kind"] == "environment_signal"));
+        .any(|help| help.as_str().unwrap().contains("applies map relocations")));
 
-    let wrong_map_argument =
-        run_json("bpfix-bench/cases/stackoverflow-70091221/replay-verifier.log");
-    assert_eq!(wrong_map_argument["error_id"], "BPFIX-E008");
-    assert_eq!(wrong_map_argument["failure_class"], "source_bug");
-    assert!(!wrong_map_argument["evidence"]
+    let declared_map_symbol = run_json_stdin(
+        "0: R1=ctx() R10=fp0\n\
+         ; struct { __uint(type, BPF_MAP_TYPE_ARRAY); } my_map SEC(\".maps\"); @ prog.c:3\n\
+         ; value = bpf_map_lookup_elem(&my_map, &key); @ prog.c:10\n\
+         0: (b7) r1 = 0                  ; R1_w=0\n\
+         1: (85) call bpf_map_lookup_elem#1\n\
+         R1 type=scalar expected=map_ptr\n",
+    );
+    assert_eq!(declared_map_symbol["error_id"], "BPFIX-E021");
+    assert_eq!(
+        declared_map_symbol["failure_class"],
+        "environment_or_configuration"
+    );
+    assert!(declared_map_symbol["evidence"]
         .as_array()
         .unwrap()
         .iter()
         .any(|evidence| evidence["kind"] == "verifier_state_signal"));
+
+    let undeclared_map_symbol = run_json_stdin(
+        "0: R1=ctx() R10=fp0\n\
+         ; value = bpf_map_lookup_elem(&my_map, &key); @ prog.c:10\n\
+         0: (b7) r1 = 0                  ; R1_w=0\n\
+         1: (85) call bpf_map_lookup_elem#1\n\
+         R1 type=scalar expected=map_ptr\n",
+    );
+    assert_source_bug_without_verifier_state_signal(&undeclared_map_symbol, "BPFIX-E008");
+
+    let wrong_map_argument =
+        run_json("bpfix-bench/cases/stackoverflow-70091221/replay-verifier.log");
+    assert_source_bug_without_verifier_state_signal(&wrong_map_argument, "BPFIX-E008");
 
     let literal_null_map = run_json_stdin(
         "0: R1=ctx() R10=fp0\n\
@@ -579,13 +615,64 @@ fn map_pointer_scalar_zero_signal_does_not_claim_log_only_relocation() {
          1: (85) call bpf_map_lookup_elem#1\n\
          R1 type=scalar expected=map_ptr\n",
     );
-    assert_eq!(literal_null_map["error_id"], "BPFIX-E008");
-    assert_eq!(literal_null_map["failure_class"], "source_bug");
-    assert!(!literal_null_map["evidence"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .any(|evidence| evidence["kind"] == "verifier_state_signal"));
+    assert_source_bug_without_verifier_state_signal(&literal_null_map, "BPFIX-E008");
+
+    let suffixed_null_map = run_json_stdin(
+        "0: R1=ctx() R10=fp0\n\
+         ; value = bpf_map_lookup_elem(0ULL, &key); @ prog.c:10\n\
+         0: (b7) r1 = 0                  ; R1_w=0\n\
+         1: (85) call bpf_map_lookup_elem#1\n\
+         R1 type=scalar expected=map_ptr\n",
+    );
+    assert_source_bug_without_verifier_state_signal(&suffixed_null_map, "BPFIX-E008");
+
+    let cast_null_map = run_json_stdin(
+        "0: R1=ctx() R10=fp0\n\
+         ; value = bpf_map_lookup_elem((struct bpf_map *)0, &key); @ prog.c:10\n\
+         0: (b7) r1 = 0                  ; R1_w=0\n\
+         1: (85) call bpf_map_lookup_elem#1\n\
+         R1 type=scalar expected=map_ptr\n",
+    );
+    assert_source_bug_without_verifier_state_signal(&cast_null_map, "BPFIX-E008");
+
+    let zero_valued_variable_map = run_json_stdin(
+        "0: R1=ctx() R10=fp0\n\
+         ; void *m = 0; @ prog.c:9\n\
+         ; value = bpf_map_lookup_elem(m, &key); @ prog.c:10\n\
+         0: (b7) r1 = 0                  ; R1_w=0\n\
+         1: (85) call bpf_map_lookup_elem#1\n\
+         R1 type=scalar expected=map_ptr\n",
+    );
+    assert_source_bug_without_verifier_state_signal(&zero_valued_variable_map, "BPFIX-E008");
+
+    let map_named_zero_variable = run_json_stdin(
+        "0: R1=ctx() R10=fp0\n\
+         ; void *map = 0; @ prog.c:9\n\
+         ; value = bpf_map_lookup_elem(map, &key); @ prog.c:10\n\
+         0: (b7) r1 = 0                  ; R1_w=0\n\
+         1: (85) call bpf_map_lookup_elem#1\n\
+         R1 type=scalar expected=map_ptr\n",
+    );
+    assert_source_bug_without_verifier_state_signal(&map_named_zero_variable, "BPFIX-E008");
+
+    let map_ptr_named_zero_variable = run_json_stdin(
+        "0: R1=ctx() R10=fp0\n\
+         ; void *my_map_ptr = 0; @ prog.c:9\n\
+         ; value = bpf_map_lookup_elem(my_map_ptr, &key); @ prog.c:10\n\
+         0: (b7) r1 = 0                  ; R1_w=0\n\
+         1: (85) call bpf_map_lookup_elem#1\n\
+         R1 type=scalar expected=map_ptr\n",
+    );
+    assert_source_bug_without_verifier_state_signal(&map_ptr_named_zero_variable, "BPFIX-E008");
+
+    let address_of_key_argument = run_json_stdin(
+        "0: R1=ctx() R10=fp0\n\
+         ; value = bpf_map_lookup_elem(&key, &key); @ prog.c:10\n\
+         0: (b7) r1 = 0                  ; R1_w=0\n\
+         1: (85) call bpf_map_lookup_elem#1\n\
+         R1 type=scalar expected=map_ptr\n",
+    );
+    assert_source_bug_without_verifier_state_signal(&address_of_key_argument, "BPFIX-E008");
 }
 
 #[test]

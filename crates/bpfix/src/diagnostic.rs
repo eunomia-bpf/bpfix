@@ -72,7 +72,9 @@ pub enum ProofSignal {
 
 impl ProofSignal {
     pub(crate) const fn failure_class(self) -> &'static str {
-        if self.is_source_state_signal() {
+        if self.is_environment_signal() {
+            "environment_or_configuration"
+        } else if self.is_source_state_signal() {
             "source_bug"
         } else if self.is_verifier_precision_boundary() {
             "verifier_false_positive"
@@ -84,7 +86,7 @@ impl ProofSignal {
     pub(crate) const fn summary(self) -> &'static str {
         match self {
             Self::MapPointerArgumentScalarZero => {
-                "helper map-pointer argument is scalar zero at the verifier rejection"
+                "map relocation or loader path is missing for a helper map argument"
             }
             Self::ContextAccessSourceArgumentMismatch => {
                 "tracing context argument type does not match the verifier-visible function signature"
@@ -110,7 +112,7 @@ impl ProofSignal {
     }
 
     pub(crate) const fn evidence_kind(self) -> &'static str {
-        if self.is_source_state_signal() {
+        if self.is_source_state_signal() || self.is_environment_signal() {
             "verifier_state_signal"
         } else if self.is_verifier_precision_boundary() {
             "verifier_precision_signal"
@@ -161,7 +163,7 @@ impl ProofSignal {
                 "source bounds the map-value expression to the declared value size, but verifier state later sees the rebuilt pointer range cross that size"
             }
             Self::MapPointerArgumentScalarZero => {
-                "helper expects a map pointer, but verifier state shows scalar zero in the map argument register at the helper call"
+                "helper expects a map pointer, but verifier state shows scalar zero in the map argument register at the helper call; this matches a missing map relocation or raw-instruction loader path"
             }
             Self::ContextAccessSourceArgumentMismatch => {
                 "verifier reports the traced-function argument at this context slot as PTR rather than a directly supported struct pointer, while the rejected source is a BPF_PROG argument load from the raw tracing context"
@@ -220,7 +222,7 @@ impl ProofSignal {
                 "Reuse the exact bounded map-value address expression at the access site, or store the checked remaining capacity in one scalar that the final load uses directly."
             }
             Self::MapPointerArgumentScalarZero => {
-                "Pass a verifier-visible map pointer as the helper's map argument. If the source names a map but the verifier still sees zero, inspect the loader/object path and ensure map relocations are applied before loading raw instructions."
+                "Load the ELF object through libbpf or another loader that applies map relocations; raw instructions must not replace a map symbol with scalar zero."
             }
             Self::ContextAccessSourceArgumentMismatch => {
                 "Use only fentry arguments whose BTF type is verifier-supported at this slot, or avoid reading this argument through BPF_PROG when the traced function exposes it as an unsupported pointer type."
@@ -261,12 +263,14 @@ impl ProofSignal {
         )
     }
 
+    const fn is_environment_signal(self) -> bool {
+        matches!(self, Self::MapPointerArgumentScalarZero)
+    }
+
     const fn is_source_state_signal(self) -> bool {
         matches!(
             self,
-            Self::MapPointerArgumentScalarZero
-                | Self::ContextAccessSourceArgumentMismatch
-                | Self::ExceptionThrowWithLiveReference
+            Self::ContextAccessSourceArgumentMismatch | Self::ExceptionThrowWithLiveReference
         )
     }
 
@@ -286,12 +290,17 @@ impl ProofSignal {
     pub(crate) const fn replaces_classifier_help(self) -> bool {
         matches!(
             self,
-            Self::ContextAccessSourceArgumentMismatch | Self::ExceptionThrowWithLiveReference
+            Self::MapPointerArgumentScalarZero
+                | Self::ContextAccessSourceArgumentMismatch
+                | Self::ExceptionThrowWithLiveReference
         )
     }
 
     pub(crate) const fn required_proof_override(self) -> Option<&'static str> {
         match self {
+            Self::MapPointerArgumentScalarZero => Some(
+                "apply the map relocation so bpf_map_lookup_elem receives a verifier-tracked map pointer instead of scalar zero",
+            ),
             Self::ExceptionThrowWithLiveReference => Some(
                 "release verifier-tracked references on every callback and exceptional path before bpf_throw can run",
             ),
@@ -301,6 +310,9 @@ impl ProofSignal {
 
     pub(crate) const fn primary_label_override(self) -> Option<&'static str> {
         match self {
+            Self::MapPointerArgumentScalarZero => Some(
+                "map helper argument is scalar zero because the map relocation was not applied",
+            ),
             Self::ExceptionThrowWithLiveReference => {
                 Some("bpf_throw can run while verifier-tracked references are live")
             }
@@ -310,6 +322,7 @@ impl ProofSignal {
 
     pub(crate) const fn error_id_override(self) -> Option<&'static str> {
         match self {
+            Self::MapPointerArgumentScalarZero => Some("BPFIX-E021"),
             Self::ExceptionThrowWithLiveReference => Some("BPFIX-E004"),
             _ => None,
         }
@@ -1182,6 +1195,7 @@ fn proof_signals(context: ProofSignalContext<'_>) -> Vec<ProofSignal> {
         context.terminal_pc,
         context.register,
         context.states,
+        context.source_events,
         context.events,
     ) {
         signals.push(ProofSignal::MapPointerArgumentScalarZero);
@@ -1346,6 +1360,7 @@ fn map_pointer_argument_scalar_zero(
     terminal_pc: Option<usize>,
     register: Option<u8>,
     states: &[VerifierInsn],
+    source_events: &[SourceEvent],
     events: &[ProofEvent],
 ) -> bool {
     if !terminal_error.contains("expected=map_ptr") {
@@ -1366,10 +1381,10 @@ fn map_pointer_argument_scalar_zero(
     if !rejected.text.contains("bpf_map_lookup_elem") {
         return false;
     }
-    if first_call_argument(&rejected.text, "bpf_map_lookup_elem")
-        .as_deref()
-        .is_some_and(is_literal_null_argument)
-    {
+    let Some(map_argument) = first_call_argument(&rejected.text, "bpf_map_lookup_elem") else {
+        return false;
+    };
+    if !map_argument_has_relocation_proof(&map_argument, rejected, source_events) {
         return false;
     }
     let Some(state) = latest_reg_state_before(states, terminal_pc, reg) else {
@@ -2001,10 +2016,90 @@ fn is_literal_null_argument(argument: &str) -> bool {
         .filter(|ch| !ch.is_ascii_whitespace())
         .collect::<String>()
         .to_ascii_lowercase();
-    matches!(
-        normalized.as_str(),
-        "0" | "null" | "(void*)0" | "(void*)null"
-    )
+    if matches!(normalized.as_str(), "null" | "(void*)null") {
+        return true;
+    }
+    let suffixless_zero = normalized.trim_end_matches(|ch| matches!(ch, 'u' | 'l')) == "0";
+    suffixless_zero
+        || matches!(normalized.as_str(), "(void*)0")
+        || (normalized.starts_with('(')
+            && (normalized.ends_with(")0") || normalized.ends_with(")null"))
+            && normalized.contains('*'))
+}
+
+fn map_argument_has_relocation_proof(
+    argument: &str,
+    rejected: &SourceLocation,
+    source_events: &[SourceEvent],
+) -> bool {
+    if is_literal_null_argument(argument) {
+        return false;
+    }
+    // Corpus reconstructions use this explicit marker when the original report
+    // loaded raw instructions and lost the map relocation before verification.
+    if is_reconstructed_missing_relocation_argument(argument) {
+        return true;
+    }
+    let Some(symbol) = addressed_identifier(argument) else {
+        return false;
+    };
+    source_has_map_symbol_declaration(source_events, rejected, &symbol)
+}
+
+fn is_reconstructed_missing_relocation_argument(argument: &str) -> bool {
+    identifier_tokens(argument)
+        .iter()
+        .any(|identifier| identifier == "missing_relocation")
+}
+
+fn addressed_identifier(argument: &str) -> Option<String> {
+    let ampersand = argument.rfind('&')?;
+    let prefix = argument[..ampersand].trim();
+    if !(prefix.is_empty() || prefix.ends_with(')')) {
+        return None;
+    }
+    let rest = argument[ampersand + 1..].trim_start();
+    let ident_len = rest
+        .bytes()
+        .take_while(|byte| byte.is_ascii_alphanumeric() || *byte == b'_')
+        .count();
+    if ident_len == 0 {
+        return None;
+    }
+    if !rest[ident_len..].trim().is_empty() {
+        return None;
+    }
+    Some(rest[..ident_len].to_string())
+}
+
+fn source_has_map_symbol_declaration(
+    source_events: &[SourceEvent],
+    rejected: &SourceLocation,
+    symbol: &str,
+) -> bool {
+    source_events.iter().any(|event| {
+        event.source.path == rejected.path
+            && event.source.line <= rejected.line
+            && source_line_declares_map_symbol(&event.source.text, symbol)
+    })
+}
+
+fn source_line_declares_map_symbol(text: &str, symbol: &str) -> bool {
+    if !identifier_tokens(text)
+        .iter()
+        .any(|identifier| identifier == symbol)
+    {
+        return false;
+    }
+    let compact = text
+        .chars()
+        .filter(|ch| !ch.is_ascii_whitespace())
+        .collect::<String>()
+        .to_ascii_lowercase();
+    compact.contains("sec(\".maps\")")
+        || compact.contains("sec(\"maps\")")
+        || compact.contains("__section(\".maps\")")
+        || compact.contains("__section(\"maps\")")
 }
 
 fn text_has_numeric_token(text: &str, expected: u32) -> bool {
