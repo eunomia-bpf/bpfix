@@ -4,6 +4,8 @@
 //!
 //! The core analysis modules are imported from the `bpfopt` project and kept
 //! behind a small public surface that is useful for user-facing diagnostics.
+//! The optional `cli` feature only enables `clap` derives for pass-runner
+//! integrations; log parsing and object analysis do not need it.
 
 #[cfg(feature = "analysis")]
 pub mod analysis;

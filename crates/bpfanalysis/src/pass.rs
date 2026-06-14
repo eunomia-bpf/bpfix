@@ -18,7 +18,6 @@ use crate::passes::map_inline::{CompressedMapValues, MapInfo, MapInlineHintSpec}
 #[cfg(test)]
 pub(crate) use crate::verifier_log::{RegState, ScalarRange, StackState, Tnum, VerifierValueWidth};
 pub(crate) use crate::verifier_log::{VerifierInsn, VerifierInsnKind};
-use clap::Args;
 use serde::{Deserialize, Serialize};
 
 pub type RegSet = HashSet<u8>;
@@ -105,37 +104,38 @@ impl BtfInfoRecords {
 /// `--profile`, prefetch's `--profile`) goes in the pass's own
 /// `<Pass>CliArgs` struct and is parsed AFTER `--`. Adding a pass-specific
 /// flag here pollutes the pass invocation namespace.
-#[derive(Args, Clone, Debug, Default)]
+#[cfg_attr(feature = "cli", derive(clap::Args))]
+#[derive(Clone, Debug, Default)]
 pub struct CommonArgs {
     /// Input bytecode file. Defaults to stdin.
-    #[arg(long, value_name = "FILE")]
+    #[cfg_attr(feature = "cli", arg(long, value_name = "FILE"))]
     pub input: Option<PathBuf>,
     /// Output bytecode or JSON file. Defaults to stdout.
-    #[arg(long, value_name = "FILE")]
+    #[cfg_attr(feature = "cli", arg(long, value_name = "FILE"))]
     pub output: Option<PathBuf>,
     /// Pass report JSON output file.
-    #[arg(long, value_name = "FILE")]
+    #[cfg_attr(feature = "cli", arg(long, value_name = "FILE"))]
     pub report: Option<PathBuf>,
     /// BPF program type, such as xdp, sched_cls, tracing, or a numeric type.
-    #[arg(long, value_name = "TYPE")]
+    #[cfg_attr(feature = "cli", arg(long, value_name = "TYPE"))]
     pub prog_type: Option<String>,
     /// Kinsn capability JSON file.
-    #[arg(long, value_name = "FILE")]
+    #[cfg_attr(feature = "cli", arg(long, value_name = "FILE"))]
     pub target: Option<PathBuf>,
     /// Verifier states JSON file.
-    #[arg(long, value_name = "FILE")]
+    #[cfg_attr(feature = "cli", arg(long, value_name = "FILE"))]
     pub verifier_states: Option<PathBuf>,
     /// Raw func_info records to remap in place when instruction offsets change.
-    #[arg(long, value_name = "FILE")]
+    #[cfg_attr(feature = "cli", arg(long, value_name = "FILE"))]
     pub func_info: Option<PathBuf>,
     /// Byte size of one func_info record.
-    #[arg(long, value_name = "BYTES")]
+    #[cfg_attr(feature = "cli", arg(long, value_name = "BYTES"))]
     pub func_info_rec_size: Option<u32>,
     /// Raw line_info records to remap in place when instruction offsets change.
-    #[arg(long, value_name = "FILE")]
+    #[cfg_attr(feature = "cli", arg(long, value_name = "FILE"))]
     pub line_info: Option<PathBuf>,
     /// Byte size of one line_info record.
-    #[arg(long, value_name = "BYTES")]
+    #[cfg_attr(feature = "cli", arg(long, value_name = "BYTES"))]
     pub line_info_rec_size: Option<u32>,
 }
 
