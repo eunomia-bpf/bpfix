@@ -35,6 +35,7 @@ find "$examples_dir" -name '*.sh' -type f -print | sort | while IFS= read -r scr
 done
 
 python3 -m json.tool "$examples_dir/editor/diagnostic.schema.example.json" >/dev/null
+python3 -m json.tool "$repo_root/docs/evaluation/diagnostic.schema.json" >/dev/null
 
 obsolete_pattern='bpfix capt(ure)?|capt(ure)? --|case\.yaml|BPFIX-UNK[N]OWN'
 if rg -n "$obsolete_pattern" "$examples_dir" --glob '!check-examples.sh'; then

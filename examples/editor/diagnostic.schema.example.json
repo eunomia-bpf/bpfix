@@ -1,7 +1,11 @@
 {
   "diagnostic_version": "bpfix.diagnostic/v2",
   "error_id": "BPFIX-E006",
-  "failure_class": "lowering_artifact",
+  "failure_class": "source_bug",
+  "confidence": "medium",
+  "diagnostic_kind": "supported",
+  "help_safety": "repair_hint",
+  "span_confidence": "exact_pc",
   "message": "pointer type proof is missing: R5 invalid mem access 'scalar'",
   "required_proof": "preserve a verifier-recognized pointer type at the operation that requires a pointer",
   "source_span": {
@@ -14,26 +18,46 @@
   "related_spans": [
     {
       "path": "prog.c",
+      "line_start": 263,
+      "line_end": 263,
+      "instruction_pc": 30,
+      "source_text": "if (ipv4_hdr)",
+      "label": "nearby source context for pointer provenance"
+    },
+    {
+      "path": "prog.c",
       "line_start": 267,
       "line_end": 267,
-      "instruction_pc": 36,
+      "instruction_pc": 34,
       "source_text": "if (udph + sizeof(struct udphdr) > data_end)",
-      "label": "proof established by a verifier-visible bounds check"
+      "label": "verifier state changes from pkt to scalar before the rejected access"
     }
   ],
   "evidence": [
     {
-      "kind": "verifier_error",
+      "kind": "terminal_verifier_error",
       "detail": "R5 invalid mem access 'scalar'",
       "line": 229
+    },
+    {
+      "kind": "instruction_pc",
+      "detail": "nearest verifier instruction pc 37",
+      "line": 229
+    },
+    {
+      "kind": "verifier_trace",
+      "detail": "parsed 60 per-instruction verifier state snapshots",
+      "line": null
     }
   ],
   "help": [
-    "Keep branch-specific pointer derivations in separate verifier-visible branches, or rederive the pointer from a checked base immediately before dereferencing it."
+    "Preserve pointer provenance across the failing path, or rederive the pointer from a checked base immediately before dereferencing it.",
+    "Avoid integer casts or arithmetic that turn the pointer into a scalar before the access.",
+    "Recompute the pointer from a verifier-tracked base after scalar manipulation."
   ],
   "metadata": {
     "case_id": null,
-    "input_kind": "verifier-log",
+    "input_kind": "verifier-log-region",
     "object_path": null,
     "object_programs": [],
     "object_analysis_error": null,

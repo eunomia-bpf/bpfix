@@ -1,3 +1,4 @@
+use std::collections::BTreeSet;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
 
@@ -111,6 +112,79 @@ fn help_marks_object_analysis_as_experimental_and_feature_gated() {
     let help = String::from_utf8(output.stdout).expect("help should be UTF-8");
     assert!(help.contains("Experimental compiled BPF object metadata"));
     assert!(help.contains("Requires --features object-analysis"));
+}
+
+#[test]
+fn diagnostic_schema_and_editor_example_track_json_contract() {
+    let json = run_json("bpfix-bench/cases/stackoverflow-53136145/replay-verifier.log");
+    let schema: Value = serde_json::from_str(
+        &std::fs::read_to_string(workspace_root().join("docs/evaluation/diagnostic.schema.json"))
+            .expect("schema should be readable"),
+    )
+    .expect("schema should be JSON");
+    let example: Value = serde_json::from_str(
+        &std::fs::read_to_string(
+            workspace_root().join("examples/editor/diagnostic.schema.example.json"),
+        )
+        .expect("editor example should be readable"),
+    )
+    .expect("editor example should be JSON");
+
+    let output_keys = object_keys(&json);
+    assert_eq!(object_keys(&schema["properties"]), output_keys);
+    assert_eq!(string_array_set(&schema["required"]), output_keys);
+    assert_eq!(object_keys(&example), output_keys);
+    assert_eq!(
+        schema["properties"]["diagnostic_version"]["const"],
+        "bpfix.diagnostic/v2"
+    );
+    assert!(schema["properties"].get("missing_obligation").is_none());
+    assert!(schema["properties"].get("candidate_repairs").is_none());
+    assert!(schema["properties"].get("raw_log_excerpt").is_none());
+
+    let metadata_keys = object_keys(&json["metadata"]);
+    assert_eq!(
+        object_keys(&schema["$defs"]["metadata"]["properties"]),
+        metadata_keys
+    );
+    assert_eq!(
+        string_array_set(&schema["$defs"]["metadata"]["required"]),
+        metadata_keys
+    );
+    assert_eq!(object_keys(&example["metadata"]), metadata_keys);
+
+    let source_span_keys = object_keys(&json["source_span"]);
+    assert_eq!(
+        object_keys(&schema["$defs"]["source_span"]["properties"]),
+        source_span_keys
+    );
+    assert_eq!(
+        string_array_set(&schema["$defs"]["source_span"]["required"]),
+        source_span_keys
+    );
+    assert_eq!(object_keys(&example["source_span"]), source_span_keys);
+}
+
+fn object_keys(value: &Value) -> BTreeSet<String> {
+    value
+        .as_object()
+        .expect("value should be a JSON object")
+        .keys()
+        .cloned()
+        .collect()
+}
+
+fn string_array_set(value: &Value) -> BTreeSet<String> {
+    value
+        .as_array()
+        .expect("value should be a JSON array")
+        .iter()
+        .map(|item| {
+            item.as_str()
+                .expect("array item should be a string")
+                .to_string()
+        })
+        .collect()
 }
 
 #[test]

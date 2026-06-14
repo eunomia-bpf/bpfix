@@ -1,102 +1,105 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://bpfix.dev/schema/diagnostic.json",
-  "title": "BPFix Structured Diagnostic",
-  "description": "Machine-consumable representation of a verifier failure with source mapping, abstract-state evidence, and candidate repair hints.",
+  "$id": "https://bpfix.dev/schema/diagnostic-v2.json",
+  "title": "BPFix Diagnostic v2",
+  "description": "Structured JSON emitted by the Rust bpfix CLI for eBPF verifier-log diagnostics.",
   "type": "object",
   "additionalProperties": false,
   "required": [
     "diagnostic_version",
     "error_id",
     "failure_class",
+    "confidence",
+    "diagnostic_kind",
+    "help_safety",
+    "span_confidence",
     "message",
+    "required_proof",
     "source_span",
-    "missing_obligation"
+    "related_spans",
+    "evidence",
+    "help",
+    "metadata"
   ],
   "properties": {
     "diagnostic_version": {
-      "type": "string",
-      "description": "Version of the diagnostic schema emitted by the extractor.",
-      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+      "const": "bpfix.diagnostic/v2"
     },
     "error_id": {
       "type": "string",
-      "description": "Stable diagnostic identifier intended to remain more durable than raw verifier text.",
-      "pattern": "^[A-Za-z0-9_.:-]+$"
-    },
-    "case_id": {
-      "type": "string",
-      "description": "Optional link back to a benchmark case."
-    },
-    "kernel_release": {
-      "type": "string",
-      "description": "Kernel release or build tag under which the diagnostic was produced."
+      "pattern": "^BPFIX-E[0-9]{3}$"
     },
     "failure_class": {
       "type": "string",
       "enum": [
         "source_bug",
-        "lowering_artifact",
-        "verifier_limit",
         "environment_or_configuration",
-        "verifier_false_positive"
+        "verifier_limit",
+        "input_error",
+        "unsupported_verifier_message"
+      ]
+    },
+    "confidence": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high"
+      ]
+    },
+    "diagnostic_kind": {
+      "type": "string",
+      "enum": [
+        "supported",
+        "unsupported_input",
+        "unsupported_verifier_message"
+      ]
+    },
+    "help_safety": {
+      "type": "string",
+      "enum": [
+        "repair_hint",
+        "triage_only"
+      ]
+    },
+    "span_confidence": {
+      "type": "string",
+      "enum": [
+        "exact_pc",
+        "nearest_source_comment",
+        "terminal_line_only",
+        "none"
       ]
     },
     "message": {
-      "type": "string",
-      "description": "Short human-readable summary of the failure."
+      "type": "string"
+    },
+    "required_proof": {
+      "type": "string"
     },
     "source_span": {
       "$ref": "#/$defs/source_span"
     },
-    "verifier_site": {
-      "$ref": "#/$defs/verifier_site"
-    },
-    "expected_state": {
-      "$ref": "#/$defs/abstract_state"
-    },
-    "observed_state": {
-      "$ref": "#/$defs/abstract_state"
-    },
-    "missing_obligation": {
-      "type": "string",
-      "description": "Canonical description of the proof obligation that was not discharged."
+    "related_spans": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/related_span"
+      }
     },
     "evidence": {
       "type": "array",
       "items": {
         "$ref": "#/$defs/evidence_item"
-      },
-      "default": []
+      }
     },
-    "candidate_repairs": {
-      "type": "array",
-      "items": {
-        "$ref": "#/$defs/repair_action"
-      },
-      "default": []
-    },
-    "confidence": {
-      "type": "number",
-      "minimum": 0.0,
-      "maximum": 1.0,
-      "description": "Extractor confidence in the primary diagnosis."
-    },
-    "raw_log_excerpt": {
-      "type": "string",
-      "description": "Optional short excerpt from the verifier log for traceability."
-    },
-    "tags": {
+    "help": {
       "type": "array",
       "items": {
         "type": "string"
-      },
-      "default": []
+      }
     },
     "metadata": {
-      "type": "object",
-      "description": "Extensible metadata bag for non-core fields.",
-      "additionalProperties": true
+      "$ref": "#/$defs/metadata"
     }
   },
   "$defs": {
@@ -106,86 +109,87 @@
       "required": [
         "path",
         "line_start",
-        "line_end"
+        "line_end",
+        "instruction_pc",
+        "source_text"
       ],
       "properties": {
         "path": {
-          "type": "string",
-          "description": "Repository-relative or absolute source path."
-        },
-        "function": {
-          "type": "string",
-          "description": "Optional function name containing the failure site."
+          "type": "string"
         },
         "line_start": {
-          "type": "integer",
+          "type": [
+            "integer",
+            "null"
+          ],
           "minimum": 1
         },
         "line_end": {
-          "type": "integer",
+          "type": [
+            "integer",
+            "null"
+          ],
           "minimum": 1
         },
-        "column_start": {
-          "type": "integer",
-          "minimum": 1
-        },
-        "column_end": {
-          "type": "integer",
-          "minimum": 1
-        },
-        "snippet": {
-          "type": "string",
-          "description": "Optional short code excerpt."
-        }
-      }
-    },
-    "verifier_site": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "check_name": {
-          "type": "string",
-          "description": "Human-oriented name of the verifier check site."
-        },
-        "kernel_function": {
-          "type": "string",
-          "description": "Kernel verifier function associated with the rejection."
-        },
-        "instruction_index": {
-          "type": "integer",
+        "instruction_pc": {
+          "type": [
+            "integer",
+            "null"
+          ],
           "minimum": 0
+        },
+        "source_text": {
+          "type": [
+            "string",
+            "null"
+          ]
         }
       }
     },
-    "abstract_state": {
+    "related_span": {
       "type": "object",
       "additionalProperties": false,
+      "required": [
+        "path",
+        "line_start",
+        "line_end",
+        "instruction_pc",
+        "source_text",
+        "label"
+      ],
       "properties": {
-        "registers": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "string"
-          },
-          "description": "Compact per-register facts such as pointer type or scalar range."
+        "path": {
+          "type": "string"
         },
-        "stack": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "description": "Optional stack-slot summaries."
+        "line_start": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
         },
-        "references": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
+        "line_end": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
         },
-        "notes": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
+        "instruction_pc": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "source_text": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "label": {
+          "type": "string"
         }
       }
     },
@@ -194,54 +198,122 @@
       "additionalProperties": false,
       "required": [
         "kind",
-        "detail"
+        "detail",
+        "line"
       ],
       "properties": {
         "kind": {
           "type": "string",
           "enum": [
-            "verifier_log",
-            "source_map",
-            "abstract_state",
-            "kernel_capability",
-            "heuristic"
+            "terminal_verifier_error",
+            "instruction_pc",
+            "verifier_trace"
           ]
         },
         "detail": {
           "type": "string"
         },
-        "instruction_index": {
-          "type": "integer",
-          "minimum": 0
+        "line": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
         }
       }
     },
-    "repair_action": {
+    "metadata": {
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "action",
-        "rationale"
+        "case_id",
+        "input_kind",
+        "object_path",
+        "object_programs",
+        "object_analysis_error",
+        "trace_state_count",
+        "analysis_error"
       ],
       "properties": {
-        "action": {
-          "type": "string",
-          "enum": [
-            "ADD_BOUNDS_GUARD",
-            "ADD_NULL_CHECK",
-            "TIGHTEN_RANGE",
-            "SIMPLIFY_CFG",
-            "REWRITE_POINTER_ARITH",
-            "GATE_BY_KERNEL_CAPABILITY",
-            "INVESTIGATE_VERIFIER_BUG",
-            "UNKNOWN"
+        "case_id": {
+          "type": [
+            "string",
+            "null"
           ]
         },
-        "rationale": {
+        "input_kind": {
+          "type": "string",
+          "enum": [
+            "verifier-log",
+            "verifier-log-region"
+          ]
+        },
+        "object_path": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "object_programs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/object_program"
+          }
+        },
+        "object_analysis_error": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "trace_state_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "analysis_error": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "object_program": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "section_name",
+        "instruction_count",
+        "block_count",
+        "site_count",
+        "verifier_state_site_count",
+        "verifier_state_attach_error"
+      ],
+      "properties": {
+        "section_name": {
           "type": "string"
         },
-        "patch_hint": {
-          "type": "string"
+        "instruction_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "block_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "site_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "verifier_state_site_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "verifier_state_attach_error": {
+          "type": [
+            "string",
+            "null"
+          ]
         }
       }
     }

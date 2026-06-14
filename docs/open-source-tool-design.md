@@ -166,6 +166,10 @@ JSON output is for tools. Version `bpfix.diagnostic/v2` contains:
 - `diagnostic_version`
 - `error_id`
 - `failure_class`
+- `confidence`
+- `diagnostic_kind`
+- `help_safety`
+- `span_confidence`
 - `message`
 - `required_proof`
 - `source_span`
@@ -176,6 +180,8 @@ JSON output is for tools. Version `bpfix.diagnostic/v2` contains:
 
 The JSON field is `help` because BPFix explains what proof the verifier needs.
 It does not synthesize source patches.
+
+The formal schema is tracked at `docs/evaluation/diagnostic.schema.json`.
 
 ## Product Boundaries
 
@@ -196,7 +202,8 @@ BPFix is not:
 ## Near-Term Hardening
 
 - Keep `cargo test --workspace` passing.
-- Freeze the JSON v2 field names before external examples depend on them.
+- Keep `docs/evaluation/diagnostic.schema.json` aligned with the Rust JSON
+  renderer before external examples depend on it.
 - Add golden text and JSON fixtures for representative proof families.
 - Implement BTF-backed source correlation behind `object-analysis` without
   changing the log-only CLI shape.
