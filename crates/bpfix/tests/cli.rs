@@ -555,6 +555,128 @@ fn verifier_precision_labels_without_runtime_proof_stay_source_bugs() {
 }
 
 #[test]
+fn map_lookup_unreadable_key_argument_points_to_helper_arg() {
+    let unreadable_key =
+        run_json("bpfix-bench/cases/github-commit-cilium-3740e9db8fef/replay-verifier.log");
+    assert_eq!(unreadable_key["error_id"], "BPFIX-E003");
+    assert_eq!(unreadable_key["failure_class"], "source_bug");
+    assert!(unreadable_key["message"]
+        .as_str()
+        .unwrap()
+        .contains("map lookup key pointer argument is unreadable"));
+    assert!(unreadable_key["required_proof"]
+        .as_str()
+        .unwrap()
+        .contains("initialized map key storage"));
+    assert!(evidence_contains(
+        &unreadable_key,
+        "verifier_state_signal",
+        "bpf_map_lookup_elem consumes R2"
+    ));
+    assert!(unreadable_key["help"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|help| help
+            .as_str()
+            .unwrap()
+            .contains("not an uninitialized key pointer")));
+
+    let address_of_key_argument = run_json_stdin(
+        "0: R1=ctx() R10=fp0\n\
+         ; __u64 *value = bpf_map_lookup_elem(&values, &key); @ prog.c:19\n\
+         0: (18) r1 = 0xffff8994f9d68800 ; R1_w=map_ptr(map=values,ks=4,vs=8)\n\
+         2: (85) call bpf_map_lookup_elem#1\n\
+         R2 !read_ok\n",
+    );
+    assert_eq!(address_of_key_argument["error_id"], "BPFIX-E003");
+    assert_eq!(address_of_key_argument["failure_class"], "source_bug");
+    assert!(!evidence_contains(
+        &address_of_key_argument,
+        "verifier_state_signal",
+        "bpf_map_lookup_elem consumes R2"
+    ));
+
+    let expression_key_argument = run_json_stdin(
+        "0: R1=ctx() R10=fp0\n\
+         ; __u64 *value = bpf_map_lookup_elem(&values, key + 0); @ prog.c:19\n\
+         0: (18) r1 = 0xffff8994f9d68800 ; R1_w=map_ptr(map=values,ks=4,vs=8)\n\
+         2: (85) call bpf_map_lookup_elem#1\n\
+         R2 !read_ok\n",
+    );
+    assert_eq!(expression_key_argument["error_id"], "BPFIX-E003");
+    assert_eq!(expression_key_argument["failure_class"], "source_bug");
+    assert!(!evidence_contains(
+        &expression_key_argument,
+        "verifier_state_signal",
+        "bpf_map_lookup_elem consumes R2"
+    ));
+
+    let cast_key_argument = run_json_stdin(
+        "0: R1=ctx() R10=fp0\n\
+         ; __u64 *value = bpf_map_lookup_elem(&values, (void *)key); @ prog.c:19\n\
+         0: (18) r1 = 0xffff8994f9d68800 ; R1_w=map_ptr(map=values,ks=4,vs=8)\n\
+         2: (85) call bpf_map_lookup_elem#1\n\
+         R2 !read_ok\n",
+    );
+    assert_eq!(cast_key_argument["error_id"], "BPFIX-E003");
+    assert_eq!(cast_key_argument["failure_class"], "source_bug");
+    assert!(!evidence_contains(
+        &cast_key_argument,
+        "verifier_state_signal",
+        "bpf_map_lookup_elem consumes R2"
+    ));
+
+    let non_map_helper = run_json_stdin(
+        "0: R1=ctx() R10=fp0\n\
+         ; bpf_probe_read_kernel(dst, len, key); @ prog.c:19\n\
+         2: (85) call bpf_probe_read_kernel#113\n\
+         R2 !read_ok\n",
+    );
+    assert_eq!(non_map_helper["error_id"], "BPFIX-E003");
+    assert_eq!(non_map_helper["failure_class"], "source_bug");
+    assert!(!evidence_contains(
+        &non_map_helper,
+        "verifier_state_signal",
+        "bpf_map_lookup_elem consumes R2"
+    ));
+
+    let map_lookup_mentioned_but_not_terminal = run_json_stdin(
+        "0: R1=ctx() R10=fp0\n\
+         ; if (bpf_map_lookup_elem(&values, key)) bpf_probe_read_kernel(dst, len, key); @ prog.c:19\n\
+         2: (85) call bpf_probe_read_kernel#113\n\
+         R2 !read_ok\n",
+    );
+    assert_eq!(
+        map_lookup_mentioned_but_not_terminal["error_id"],
+        "BPFIX-E003"
+    );
+    assert_eq!(
+        map_lookup_mentioned_but_not_terminal["failure_class"],
+        "source_bug"
+    );
+    assert!(!evidence_contains(
+        &map_lookup_mentioned_but_not_terminal,
+        "verifier_state_signal",
+        "bpf_map_lookup_elem consumes R2"
+    ));
+
+    let ambiguous_same_line_lookup = run_json_stdin(
+        "0: R1=ctx() R10=fp0\n\
+         ; if (bpf_map_lookup_elem(&values, key)) value = bpf_map_lookup_elem(&values, &key); @ prog.c:19\n\
+         2: (85) call bpf_map_lookup_elem#1\n\
+         R2 !read_ok\n",
+    );
+    assert_eq!(ambiguous_same_line_lookup["error_id"], "BPFIX-E003");
+    assert_eq!(ambiguous_same_line_lookup["failure_class"], "source_bug");
+    assert!(!evidence_contains(
+        &ambiguous_same_line_lookup,
+        "verifier_state_signal",
+        "bpf_map_lookup_elem consumes R2"
+    ));
+}
+
+#[test]
 fn underchecked_packet_guards_report_source_state_signal() {
     let off_by_one_guard = run_json("bpfix-bench/cases/stackoverflow-72575736/replay-verifier.log");
     assert_eq!(off_by_one_guard["error_id"], "BPFIX-E001");

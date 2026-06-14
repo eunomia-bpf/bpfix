@@ -66,6 +66,7 @@ pub enum ProofSignal {
     MapPointerArgumentScalarZero,
     ContextAccessSourceArgumentMismatch,
     ExceptionThrowWithLiveReference,
+    MapLookupKeyArgumentUnreadable,
     PacketGuardUndercoversAccess,
     PacketMaxOffsetPrecisionBoundary,
     MapValueRelationPrecisionBoundary,
@@ -94,6 +95,9 @@ impl ProofSignal {
             }
             Self::ExceptionThrowWithLiveReference => {
                 "exception callback can throw while a verifier-tracked reference is still live"
+            }
+            Self::MapLookupKeyArgumentUnreadable => {
+                "map lookup key pointer argument is unreadable"
             }
             Self::PacketGuardUndercoversAccess => {
                 "packet bounds check is narrower than the later packet access"
@@ -175,6 +179,9 @@ impl ProofSignal {
             Self::ExceptionThrowWithLiveReference => {
                 "verifier state reaches bpf_throw inside a callback frame while verifier-tracked references are live"
             }
+            Self::MapLookupKeyArgumentUnreadable => {
+                "bpf_map_lookup_elem consumes R2 as the key pointer, but verifier state reports that this helper argument register is not readable"
+            }
             Self::PacketGuardUndercoversAccess => {
                 "source has a packet bounds check, but verifier state after that check proves only a shorter packet range than the rejected access needs"
             }
@@ -237,6 +244,9 @@ impl ProofSignal {
             Self::ExceptionThrowWithLiveReference => {
                 "Release verifier-tracked references before any callback path can throw, or avoid bpf_throw while a reference acquired by the caller is still live."
             }
+            Self::MapLookupKeyArgumentUnreadable => {
+                "Pass bpf_map_lookup_elem a pointer to initialized key storage, such as &key for a local key variable, not an uninitialized key pointer."
+            }
             Self::PacketGuardUndercoversAccess => {
                 "Move the data_end check to the final pointer expression and include the access width, for example check pointer + size before dereferencing pointer."
             }
@@ -283,6 +293,7 @@ impl ProofSignal {
             self,
             Self::ContextAccessSourceArgumentMismatch
                 | Self::ExceptionThrowWithLiveReference
+                | Self::MapLookupKeyArgumentUnreadable
                 | Self::PacketGuardUndercoversAccess
         )
     }
@@ -306,6 +317,7 @@ impl ProofSignal {
             Self::MapPointerArgumentScalarZero
                 | Self::ContextAccessSourceArgumentMismatch
                 | Self::ExceptionThrowWithLiveReference
+                | Self::MapLookupKeyArgumentUnreadable
         )
     }
 
@@ -316,6 +328,9 @@ impl ProofSignal {
             ),
             Self::ExceptionThrowWithLiveReference => Some(
                 "release verifier-tracked references on every callback and exceptional path before bpf_throw can run",
+            ),
+            Self::MapLookupKeyArgumentUnreadable => Some(
+                "pass a pointer to initialized map key storage in bpf_map_lookup_elem's second argument",
             ),
             _ => None,
         }
@@ -328,6 +343,9 @@ impl ProofSignal {
             ),
             Self::ExceptionThrowWithLiveReference => {
                 Some("bpf_throw can run while verifier-tracked references are live")
+            }
+            Self::MapLookupKeyArgumentUnreadable => {
+                Some("map lookup key argument register is unreadable at the helper call")
             }
             _ => None,
         }
@@ -1213,6 +1231,15 @@ fn proof_signals(context: ProofSignalContext<'_>) -> Vec<ProofSignal> {
     ) {
         signals.push(ProofSignal::MapPointerArgumentScalarZero);
     }
+    if map_lookup_key_argument_unreadable(
+        context.log,
+        context.terminal_error,
+        context.terminal_pc,
+        context.register,
+        context.events,
+    ) {
+        signals.push(ProofSignal::MapLookupKeyArgumentUnreadable);
+    }
     if context
         .events
         .iter()
@@ -1407,6 +1434,36 @@ fn map_pointer_argument_scalar_zero(
         return false;
     };
     state.reg_type == "scalar" && state.exact_value == Some(0)
+}
+
+fn map_lookup_key_argument_unreadable(
+    log: &str,
+    terminal_error: &str,
+    terminal_pc: Option<usize>,
+    register: Option<u8>,
+    events: &[ProofEvent],
+) -> bool {
+    if !terminal_error.contains("!read_ok") || register != Some(2) {
+        return false;
+    }
+    if !terminal_instruction_contains(log, terminal_pc, "call bpf_map_lookup_elem#") {
+        return false;
+    }
+    let Some(rejected) = rejected_source(events) else {
+        return false;
+    };
+    if rejected
+        .text
+        .match_indices("bpf_map_lookup_elem")
+        .take(2)
+        .count()
+        != 1
+    {
+        return false;
+    }
+    call_argument(&rejected.text, "bpf_map_lookup_elem", 1)
+        .as_deref()
+        .is_some_and(is_bare_identifier_argument)
 }
 
 fn map_value_wide_access(
@@ -2063,6 +2120,10 @@ fn source_line_links_identifiers(
 }
 
 fn first_call_argument(source_text: &str, function: &str) -> Option<String> {
+    call_argument(source_text, function, 0)
+}
+
+fn call_argument(source_text: &str, function: &str, argument_index: usize) -> Option<String> {
     let open = source_text.find(function)? + function.len();
     let mut chars = source_text[open..].char_indices();
     let (_, first) = chars.next()?;
@@ -2070,29 +2131,39 @@ fn first_call_argument(source_text: &str, function: &str) -> Option<String> {
         return None;
     }
     let args_start = open + first.len_utf8();
+    let mut arg_start = args_start;
+    let mut current_argument = 0usize;
     let mut depth = 0usize;
     for (relative_idx, ch) in chars {
+        let absolute_idx = open + relative_idx;
         match ch {
             '(' => depth += 1,
             ')' if depth == 0 => {
-                return Some(
-                    source_text[args_start..open + relative_idx]
-                        .trim()
-                        .to_string(),
-                )
+                return (current_argument == argument_index)
+                    .then(|| source_text[arg_start..absolute_idx].trim().to_string())
             }
             ')' => depth = depth.saturating_sub(1),
             ',' if depth == 0 => {
-                return Some(
-                    source_text[args_start..open + relative_idx]
-                        .trim()
-                        .to_string(),
-                )
+                if current_argument == argument_index {
+                    return Some(source_text[arg_start..absolute_idx].trim().to_string());
+                }
+                current_argument += 1;
+                arg_start = absolute_idx + ch.len_utf8();
             }
             _ => {}
         }
     }
     None
+}
+
+fn is_bare_identifier_argument(argument: &str) -> bool {
+    let argument = argument.trim();
+    let mut chars = argument.chars();
+    let Some(first) = chars.next() else {
+        return false;
+    };
+    (first == '_' || first.is_ascii_alphabetic())
+        && chars.all(|ch| ch == '_' || ch.is_ascii_alphanumeric())
 }
 
 fn is_literal_null_argument(argument: &str) -> bool {
