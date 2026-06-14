@@ -219,8 +219,7 @@ integration snippets live in `examples/`.
 
 ## Project Status
 
-This repository is currently a Rust rewrite of the original Python prototype.
-The active code is the Rust workspace:
+The maintained implementation is the Rust workspace:
 
 ```text
 crates/
@@ -228,14 +227,15 @@ crates/
   bpfanalysis/  verifier-log and BPF bytecode analysis primitives
 ```
 
-The old Python implementation has been removed from the maintained tree. The
+The earlier Python version has been removed from the maintained tree. The
 remaining `docs/bpfix-py/tools/` scripts are legacy benchmark-maintenance
-helpers, not a second BPFix implementation.
+helpers, not a second BPFix implementation and not part of the public CLI.
 
-The maintained project status, benchmark snapshot, and near-term roadmap live
-in `docs/research-plan.md`.
-The workshop submission plan lives in `docs/workshop-paper-plan.md`, and the
-public CLI/JSON design lives in `docs/open-source-tool-design.md`.
+The public CLI/JSON design lives in `docs/open-source-tool-design.md`, and the
+full user workflow is in `docs/user-guide.md`. Benchmark methodology and
+project planning notes live under `docs/evaluation/` and
+`docs/research-plan.md`; they are supporting material, not required reading for
+normal use.
 
 The default `bpfix` CLI uses the verifier-log parser from `bpfanalysis`.
 Object/CFG analysis is behind the `object-analysis` Cargo feature; that path
@@ -330,9 +330,8 @@ wait for it to appear in the crates.io index, then publish `bpfix`.
 bpfix-bench/       replayable verifier-failure corpus and raw examples
 crates/bpfanalysis Rust analysis library
 crates/bpfix       user-facing CLI
-docs/research-plan.md current project status and roadmap
+docs/research-plan.md project planning and benchmark notes
 docs/user-guide.md    install, getting logs, output, and CI usage
-docs/workshop-paper-plan.md focused workshop submission story
 docs/open-source-tool-design.md public CLI and JSON contract
 examples/          bpftool, libbpf, Aya, BCC, CI, and editor integration snippets
 docs/evaluation/   benchmark and metric notes

@@ -42,6 +42,10 @@ sudo bpftool -d prog load xdp.o /sys/fs/bpf/xdp 2>&1 | bpfix
 The positional argument and stdin are always interpreted as verifier/build/load
 log text.
 
+BPFix strips common wrappers before looking for the verifier region, including
+ANSI color escapes, ISO-8601 timestamp prefixes, and GitHub Actions group
+markers. That means a copied CI artifact usually works without hand-editing.
+
 BPFix does not execute the loader command for you. Docker or replay
 environments, if added later, should be selected by explicit options such as
 `--docker`; they do not change what the positional argument or stdin means.
