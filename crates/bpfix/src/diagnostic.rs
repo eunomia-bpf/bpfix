@@ -57,6 +57,7 @@ pub enum ProofSignal {
     ModifiedContextPointer,
     SubprogramContextArgumentDropped,
     PacketPointerProofLostAfterBoundsCheck,
+    PacketRangeProofLostBeforeAccess,
     PacketVariableOffsetPrecisionBoundary,
     MapValueRelationPrecisionBoundary,
 }
@@ -126,6 +127,9 @@ impl ProofSignal {
             Self::PacketPointerProofLostAfterBoundsCheck => {
                 "compiler-lowered control flow hides an established packet-pointer proof"
             }
+            Self::PacketRangeProofLostBeforeAccess => {
+                "verifier state proves the packet access range earlier, but the rejected path reaches the access after that range proof is lost"
+            }
             Self::PacketVariableOffsetPrecisionBoundary => {
                 "source-level packet bounds check is present, but the verifier appears to lose precision for a variable packet offset"
             }
@@ -166,6 +170,9 @@ impl ProofSignal {
             }
             Self::PacketPointerProofLostAfterBoundsCheck => {
                 "Keep the checked packet pointer derivation in the same verifier-visible path as the dereference, or rederive it from a checked base immediately before use."
+            }
+            Self::PacketRangeProofLostBeforeAccess => {
+                "Keep the packet pointer that received the sufficient data_end range proof live through the access, or recheck the final derived pointer immediately before dereferencing it."
             }
             Self::PacketVariableOffsetPrecisionBoundary => {
                 "Treat this as a verifier precision boundary: clamp the variable packet offset to a small explicit maximum, then rederive and recheck the packet pointer immediately before the load."
@@ -403,6 +410,21 @@ fn packet_bounds_events(
                 "verifier had proved packet range {range} bytes here, enough for the required {required} bytes"
             ),
         });
+        if let Some((pc, current_range)) =
+            packet_range_lost_before_access(states, terminal_pc, terminal_error, register, pc)
+        {
+            events.push(ProofEvent {
+                role: ProofEventRole::ProofLost,
+                evidence: ProofEventEvidence::VerifierState,
+                obligation: ProofObligation::PacketBounds,
+                pc: Some(pc),
+                source: source_for_pc(source_events, pc).cloned(),
+                register,
+                detail: format!(
+                    "verifier packet range for this register dropped to {current_range} bytes before the rejected access"
+                ),
+            });
+        }
     }
     events
 }
@@ -426,6 +448,33 @@ fn latest_sufficient_packet_range(
             }
             let range = reg_state.packet_range?;
             (range >= required).then_some((state.pc, range, required))
+        })
+}
+
+fn packet_range_lost_before_access(
+    states: &[VerifierInsn],
+    terminal_pc: Option<usize>,
+    terminal_error: &str,
+    register: Option<u8>,
+    proof_pc: usize,
+) -> Option<(usize, u32)> {
+    let reg = register?;
+    let required = packet_required_range(terminal_error)?;
+    if required <= 1 {
+        return None;
+    }
+    states
+        .iter()
+        .filter(|state| terminal_pc.is_none_or(|pc| state.pc <= pc))
+        .filter(|state| state.pc > proof_pc)
+        .rev()
+        .find_map(|state| {
+            let reg_state = state.regs.get(&reg)?;
+            if reg_state.reg_type != "pkt" {
+                return None;
+            }
+            let range = reg_state.packet_range?;
+            (range < required).then_some((state.pc, range))
         })
 }
 
@@ -676,6 +725,9 @@ fn proof_signals(context: ProofSignalContext<'_>) -> Vec<ProofSignal> {
             signals.push(signal);
         }
     }
+    if let Some(signal) = verifier_precision_signal(context.obligation, context.events) {
+        signals.push(signal);
+    }
     if context
         .events
         .iter()
@@ -683,8 +735,8 @@ fn proof_signals(context: ProofSignalContext<'_>) -> Vec<ProofSignal> {
     {
         signals.push(ProofSignal::PacketPointerProofLostAfterBoundsCheck);
     }
-    if let Some(signal) = verifier_precision_signal(context.obligation, context.events) {
-        signals.push(signal);
+    if packet_range_proof_lost_before_access(context.events) {
+        signals.push(ProofSignal::PacketRangeProofLostBeforeAccess);
     }
     signals
 }
@@ -808,6 +860,35 @@ fn packet_proof_lost_after_bounds_check(event: &ProofEvent) -> bool {
             .source
             .as_ref()
             .is_some_and(|source| looks_like_packet_bounds_check(&source.text))
+}
+
+fn packet_range_proof_lost_before_access(events: &[ProofEvent]) -> bool {
+    let has_sufficient_range = events.iter().any(|event| {
+        event.role == ProofEventRole::ProofEstablished
+            && event.evidence == ProofEventEvidence::VerifierState
+            && event.obligation == ProofObligation::PacketBounds
+            && event
+                .source
+                .as_ref()
+                .is_some_and(|source| looks_like_packet_pointer_derivation(&source.text))
+    });
+    has_sufficient_range
+        && events.iter().any(|event| {
+            event.role == ProofEventRole::ProofLost
+                && event.evidence == ProofEventEvidence::VerifierState
+                && event.obligation == ProofObligation::PacketBounds
+        })
+}
+
+fn looks_like_packet_pointer_derivation(text: &str) -> bool {
+    let text = text.trim();
+    if text.starts_with("if ") || !text.contains('=') || !text.contains('+') {
+        return false;
+    }
+    let Some((lhs, _)) = text.split_once('=') else {
+        return false;
+    };
+    lhs.contains('*')
 }
 
 fn verifier_precision_signal(

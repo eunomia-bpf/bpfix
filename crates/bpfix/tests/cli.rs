@@ -326,6 +326,31 @@ fn lowering_artifact_shapes_are_classified_from_verifier_evidence() {
                     .contains("shared instruction")
         }));
 
+    let packet_range_loss =
+        run_json("bpfix-bench/cases/github-iovisor-bcc-5062/replay-verifier.log");
+    assert_eq!(packet_range_loss["error_id"], "BPFIX-E001");
+    assert_eq!(packet_range_loss["failure_class"], "lowering_artifact");
+    assert!(packet_range_loss["evidence"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|evidence| {
+            evidence["kind"] == "lowering_artifact_signal"
+                && evidence["detail"]
+                    .as_str()
+                    .unwrap()
+                    .contains("packet access range earlier")
+        }));
+    let packet_range_labels = packet_range_loss["related_spans"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|span| span["label"].as_str())
+        .collect::<Vec<_>>()
+        .join("\n");
+    assert!(packet_range_labels.contains("packet range 74 bytes"));
+    assert!(packet_range_labels.contains("dropped to 0 bytes"));
+
     let constant_scalar_load =
         run_json("bpfix-bench/cases/github-commit-bcc-42c00adb4181/replay-verifier.log");
     assert_eq!(constant_scalar_load["error_id"], "BPFIX-E006");
@@ -370,7 +395,7 @@ fn packet_bounds_diagnostic_reports_prior_verifier_range_proof() {
     let json = run_json("bpfix-bench/cases/github-iovisor-bcc-5062/replay-verifier.log");
 
     assert_eq!(json["error_id"], "BPFIX-E001");
-    assert_eq!(json["failure_class"], "source_bug");
+    assert_eq!(json["failure_class"], "lowering_artifact");
 
     let labels = json["related_spans"]
         .as_array()
@@ -402,6 +427,11 @@ fn ordinary_source_bugs_are_not_overclassified_as_runtime_artifacts() {
     let packet_bounds = run_json("bpfix-bench/cases/stackoverflow-60053570/replay-verifier.log");
     assert_eq!(packet_bounds["error_id"], "BPFIX-E001");
     assert_eq!(packet_bounds["failure_class"], "source_bug");
+
+    let off_by_one_packet_loop =
+        run_json("bpfix-bench/cases/stackoverflow-76637174/replay-verifier.log");
+    assert_eq!(off_by_one_packet_loop["error_id"], "BPFIX-E001");
+    assert_eq!(off_by_one_packet_loop["failure_class"], "source_bug");
 
     let helper_bounds = run_json("bpfix-bench/cases/stackoverflow-77713434/replay-verifier.log");
     assert_eq!(helper_bounds["error_id"], "BPFIX-E005");
