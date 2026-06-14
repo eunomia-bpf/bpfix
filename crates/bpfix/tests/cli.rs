@@ -282,6 +282,63 @@ fn lowering_artifact_shapes_are_classified_from_verifier_evidence() {
             evidence["kind"] == "lowering_artifact_signal"
                 && evidence["detail"].as_str().unwrap().contains("liveness")
         }));
+
+    let alu32_copy =
+        run_json("bpfix-bench/cases/github-commit-cilium-4d36cac2ee63/replay-verifier.log");
+    assert_eq!(alu32_copy["error_id"], "BPFIX-E006");
+    assert_eq!(alu32_copy["failure_class"], "lowering_artifact");
+    assert!(alu32_copy["evidence"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|evidence| {
+            evidence["kind"] == "lowering_artifact_signal"
+                && evidence["detail"]
+                    .as_str()
+                    .unwrap()
+                    .contains("32-bit register copy")
+        }));
+
+    let shared_pointer_path =
+        run_json("bpfix-bench/cases/github-commit-cilium-50c319d0cbfe/replay-verifier.log");
+    assert_eq!(shared_pointer_path["error_id"], "BPFIX-E006");
+    assert_eq!(shared_pointer_path["failure_class"], "lowering_artifact");
+    assert!(shared_pointer_path["message"]
+        .as_str()
+        .unwrap()
+        .contains("verifier-visible compiler lowering"));
+
+    let shared_uninit =
+        run_json("bpfix-bench/cases/github-commit-cilium-c3b65fce8b84/replay-verifier.log");
+    assert_eq!(shared_uninit["error_id"], "BPFIX-E003");
+    assert_eq!(shared_uninit["failure_class"], "lowering_artifact");
+    assert!(shared_uninit["evidence"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|evidence| {
+            evidence["kind"] == "lowering_artifact_signal"
+                && evidence["detail"]
+                    .as_str()
+                    .unwrap()
+                    .contains("shared instruction")
+        }));
+
+    let constant_scalar_load =
+        run_json("bpfix-bench/cases/github-commit-bcc-42c00adb4181/replay-verifier.log");
+    assert_eq!(constant_scalar_load["error_id"], "BPFIX-E006");
+    assert_eq!(constant_scalar_load["failure_class"], "lowering_artifact");
+    assert!(constant_scalar_load["evidence"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|evidence| {
+            evidence["kind"] == "lowering_artifact_signal"
+                && evidence["detail"]
+                    .as_str()
+                    .unwrap()
+                    .contains("small scalar constant")
+        }));
 }
 
 #[test]

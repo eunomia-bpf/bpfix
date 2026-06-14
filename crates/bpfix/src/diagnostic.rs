@@ -47,6 +47,10 @@ pub struct ProofEvent {
 pub enum ProofSignal {
     WideStackAlignment,
     SharedInstructionPointerMerge,
+    SharedInstructionPathProofLoss,
+    Alu32PointerCopyDropsProvenance,
+    ConstantScalarMemoryLoad,
+    SharedInstructionUninitializedRegister,
     PointerShiftDropsProvenance,
     ModifiedContextPointer,
     SubprogramContextArgumentDropped,
@@ -96,6 +100,18 @@ impl ProofSignal {
             Self::SharedInstructionPointerMerge => {
                 "compiler code merging hides distinct pointer proofs from the verifier"
             }
+            Self::SharedInstructionPathProofLoss => {
+                "one verifier path reaches this shared instruction with a valid pointer proof, but another path reaches it after the proof is clobbered"
+            }
+            Self::Alu32PointerCopyDropsProvenance => {
+                "a 32-bit register copy materializes a packet pointer as a scalar and drops verifier pointer provenance"
+            }
+            Self::ConstantScalarMemoryLoad => {
+                "bytecode tries to dereference a small scalar constant, which is a compiler or relocation lowering shape rather than a verifier-tracked pointer"
+            }
+            Self::SharedInstructionUninitializedRegister => {
+                "one verifier path initializes this register before a shared instruction, but another path reaches the same instruction without that register proof"
+            }
             Self::PointerShiftDropsProvenance => {
                 "compiler-lowered integer operation drops pointer provenance"
             }
@@ -124,6 +140,18 @@ impl ProofSignal {
             }
             Self::SharedInstructionPointerMerge => {
                 "Keep incompatible pointer-typed paths separated at the dereference, or force the load to stay branch-local so one instruction is not shared by different verifier pointer types."
+            }
+            Self::SharedInstructionPathProofLoss => {
+                "Keep the checked pointer use on the path where the pointer proof is established, or split the shared instruction so the clobbered path cannot reach it."
+            }
+            Self::Alu32PointerCopyDropsProvenance => {
+                "Keep packet pointers in 64-bit verifier-tracked registers; avoid 32-bit moves or ALU32 lowering for pointer values before packet access."
+            }
+            Self::ConstantScalarMemoryLoad => {
+                "Rebuild the object with verifier-friendly optimization and relocation settings so field offsets are folded into recognized pointer accesses instead of standalone scalar dereferences."
+            }
+            Self::SharedInstructionUninitializedRegister => {
+                "Initialize the register on every path before the shared instruction, or keep the path-specific spill/load separate so the verifier can see the initialized value."
             }
             Self::PointerShiftDropsProvenance => {
                 "Keep packet or context pointers in verifier-tracked 64-bit pointer values; avoid materializing them through 32-bit scalar arithmetic before the access."
@@ -229,7 +257,17 @@ pub fn analyze_verifier_log(
         register,
         detail: required_proof.rejection_detail.clone(),
     });
-    let signals = proof_signals(terminal_error, obligation, &events);
+    let signal_context = ProofSignalContext {
+        log,
+        terminal_error,
+        obligation,
+        terminal_pc,
+        register,
+        states: &states,
+        source_events: &source_events,
+        events: &events,
+    };
+    let signals = proof_signals(signal_context);
 
     Ok(VerifierLogAnalysis {
         state_count: states.len(),
@@ -565,22 +603,137 @@ fn environment_capability_events(
     events
 }
 
-fn proof_signals(
-    terminal_error: &str,
+struct ProofSignalContext<'a> {
+    log: &'a str,
+    terminal_error: &'a str,
     obligation: ProofObligation,
-    events: &[ProofEvent],
-) -> Vec<ProofSignal> {
+    terminal_pc: Option<usize>,
+    register: Option<u8>,
+    states: &'a [VerifierInsn],
+    source_events: &'a [SourceEvent],
+    events: &'a [ProofEvent],
+}
+
+fn proof_signals(context: ProofSignalContext<'_>) -> Vec<ProofSignal> {
     let mut signals = Vec::new();
-    if let Some(signal) = terminal_lowering_signal(terminal_error) {
+    if let Some(signal) = terminal_lowering_signal(context.terminal_error) {
         signals.push(signal);
     }
-    if events.iter().any(packet_proof_lost_after_bounds_check) {
+    if context.source_events.is_empty() {
+        if let Some(signal) = bytecode_only_lowering_signal(
+            context.log,
+            context.terminal_error,
+            context.obligation,
+            context.terminal_pc,
+            context.register,
+            context.states,
+        ) {
+            signals.push(signal);
+        }
+    }
+    if context
+        .events
+        .iter()
+        .any(packet_proof_lost_after_bounds_check)
+    {
         signals.push(ProofSignal::PacketPointerProofLostAfterBoundsCheck);
     }
-    if let Some(signal) = verifier_precision_signal(obligation, events) {
+    if let Some(signal) = verifier_precision_signal(context.obligation, context.events) {
         signals.push(signal);
     }
     signals
+}
+
+fn bytecode_only_lowering_signal(
+    log: &str,
+    terminal_error: &str,
+    obligation: ProofObligation,
+    terminal_pc: Option<usize>,
+    register: Option<u8>,
+    states: &[VerifierInsn],
+) -> Option<ProofSignal> {
+    match obligation {
+        ProofObligation::PointerProvenance => {
+            let reg = register?;
+            if alu32_pointer_copy_drops_provenance(log, reg) {
+                return Some(ProofSignal::Alu32PointerCopyDropsProvenance);
+            }
+            if same_pc_has_pointer_proof(states, terminal_pc, reg) {
+                return Some(ProofSignal::SharedInstructionPathProofLoss);
+            }
+            if invalid_scalar_memory_load_from_constant(terminal_error, states, terminal_pc, reg) {
+                return Some(ProofSignal::ConstantScalarMemoryLoad);
+            }
+            None
+        }
+        ProofObligation::StackInitialized => {
+            let reg = register?;
+            if terminal_error.contains("!read_ok")
+                && same_pc_has_register_state(states, terminal_pc, reg)
+            {
+                Some(ProofSignal::SharedInstructionUninitializedRegister)
+            } else {
+                None
+            }
+        }
+        _ => None,
+    }
+}
+
+fn alu32_pointer_copy_drops_provenance(log: &str, reg: u8) -> bool {
+    let copy = format!("(bc) w{reg} = w");
+    let scalar = format!("R{reg}_w=scalar");
+    log.lines().any(|line| {
+        line.contains(&copy)
+            && line.contains(&scalar)
+            && (line.contains("=pkt(") || line.contains("=ctx("))
+    })
+}
+
+fn same_pc_has_pointer_proof(states: &[VerifierInsn], terminal_pc: Option<usize>, reg: u8) -> bool {
+    states
+        .iter()
+        .filter(|state| terminal_pc.is_some_and(|pc| state.pc == pc))
+        .filter_map(|state| state.regs.get(&reg))
+        .any(is_pointer_state)
+}
+
+fn same_pc_has_register_state(
+    states: &[VerifierInsn],
+    terminal_pc: Option<usize>,
+    reg: u8,
+) -> bool {
+    states
+        .iter()
+        .filter(|state| terminal_pc.is_some_and(|pc| state.pc == pc))
+        .any(|state| state.regs.contains_key(&reg))
+}
+
+fn invalid_scalar_memory_load_from_constant(
+    terminal_error: &str,
+    states: &[VerifierInsn],
+    terminal_pc: Option<usize>,
+    reg: u8,
+) -> bool {
+    if !terminal_error.contains("invalid mem access 'scalar'") {
+        return false;
+    }
+    latest_reg_state_before(states, terminal_pc, reg)
+        .and_then(|state| state.exact_value)
+        .is_some_and(|value| (1..=4096).contains(&value))
+}
+
+fn latest_reg_state_before(
+    states: &[VerifierInsn],
+    terminal_pc: Option<usize>,
+    reg: u8,
+) -> Option<&RegState> {
+    states
+        .iter()
+        .filter(|state| terminal_pc.is_none_or(|pc| state.pc <= pc))
+        .rev()
+        .filter_map(|state| state.regs.get(&reg))
+        .next()
 }
 
 fn terminal_lowering_signal(message: &str) -> Option<ProofSignal> {

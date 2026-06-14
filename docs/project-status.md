@@ -99,10 +99,12 @@ parses verifier states, source annotations, rejected PCs, and emits structured
 selection now goes through `VerifierRejectionKind` in
 `crates/bpfix/src/classifier.rs`, and lowering-artifact / verifier-precision
 overrides now flow through `ProofSignal` in `crates/bpfix/src/diagnostic.rs`.
-Those signal detectors still consume terminal and source cues, but `main.rs`
-only renders structured classifications. The next cleanup is to derive more
-signals from verifier state and object analysis instead of adding more message
-patterns.
+Those signal detectors now include verifier-state/bytecode-only lowering shapes
+such as ALU32 pointer-provenance loss, shared-instruction path proof loss, and
+small scalar-constant memory loads. Some detectors still consume terminal and
+source cues, but `main.rs` only renders structured classifications. The next
+cleanup is to derive more signals from verifier state and object analysis
+instead of adding more terminal-message patterns.
 
 ## Benchmark Snapshot
 
