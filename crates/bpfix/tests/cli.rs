@@ -661,6 +661,48 @@ fn map_lookup_unreadable_key_argument_points_to_helper_arg() {
         "bpf_map_lookup_elem consumes R2"
     ));
 
+    let stale_map_lookup_before_terminal_helper = run_json_stdin(
+        "0: R1=ctx() R10=fp0\n\
+         2: (85) call bpf_map_lookup_elem#1\n\
+         ; if (bpf_map_lookup_elem(&values, key)) bpf_probe_read_kernel(dst, len, key); @ prog.c:19\n\
+         2: (85) call bpf_probe_read_kernel#113\n\
+         R2 !read_ok\n",
+    );
+    assert_eq!(
+        stale_map_lookup_before_terminal_helper["error_id"],
+        "BPFIX-E003"
+    );
+    assert_eq!(
+        stale_map_lookup_before_terminal_helper["failure_class"],
+        "source_bug"
+    );
+    assert!(!evidence_contains(
+        &stale_map_lookup_before_terminal_helper,
+        "verifier_state_signal",
+        "bpf_map_lookup_elem consumes R2"
+    ));
+
+    let state_line_after_terminal_map_lookup = run_json_stdin(
+        "0: R1=ctx() R10=fp0\n\
+         ; __u64 *value = bpf_map_lookup_elem(&values, key); @ prog.c:19\n\
+         2: (85) call bpf_map_lookup_elem#1\n\
+         2: R1=map_ptr(map=values,ks=4,vs=8) R2=scalar()\n\
+         R2 !read_ok\n",
+    );
+    assert_eq!(
+        state_line_after_terminal_map_lookup["error_id"],
+        "BPFIX-E003"
+    );
+    assert_eq!(
+        state_line_after_terminal_map_lookup["failure_class"],
+        "source_bug"
+    );
+    assert!(evidence_contains(
+        &state_line_after_terminal_map_lookup,
+        "verifier_state_signal",
+        "bpf_map_lookup_elem consumes R2"
+    ));
+
     let ambiguous_same_line_lookup = run_json_stdin(
         "0: R1=ctx() R10=fp0\n\
          ; if (bpf_map_lookup_elem(&values, key)) value = bpf_map_lookup_elem(&values, &key); @ prog.c:19\n\
@@ -885,6 +927,19 @@ fn map_pointer_scalar_zero_reports_missing_relocation() {
          R1 type=scalar expected=map_ptr\n",
     );
     assert_source_bug_without_verifier_state_signal(&address_of_key_argument, "BPFIX-E008");
+
+    let stale_map_lookup_before_terminal_non_map_helper = run_json_stdin(
+        "0: R1=ctx() R10=fp0\n\
+         ; struct { __uint(type, BPF_MAP_TYPE_ARRAY); } my_map SEC(\".maps\"); @ prog.c:3\n\
+         1: (85) call bpf_map_lookup_elem#1\n\
+         ; value = bpf_map_lookup_elem(&my_map, &key); @ prog.c:10\n\
+         1: (85) call bpf_probe_read_kernel#113\n\
+         R1 type=scalar expected=map_ptr\n",
+    );
+    assert_source_bug_without_verifier_state_signal(
+        &stale_map_lookup_before_terminal_non_map_helper,
+        "BPFIX-E008",
+    );
 }
 
 #[test]
@@ -1491,6 +1546,24 @@ fn ordinary_source_bugs_are_not_overclassified_as_runtime_artifacts() {
     );
     assert!(evidence_contains(
         &stale_terminal_offset_fragment,
+        "verifier_state_signal",
+        "source bounds the map-value index"
+    ));
+
+    let state_line_after_terminal_map_value_access = run_json_stdin(
+        "0: R1=ctx() R10=fp0\n\
+         ; if (idx <= 19) @ prog.c:12\n\
+         10: (25) if r1 > 0x13 goto pc+3 ; R1=scalar(smin=0,smax=umax=19)\n\
+         ; value->flags[idx] = 1; @ prog.c:13\n\
+         11: (0f) r0 += r1\n\
+         12: R0_w=map_value(map=output_map,ks=1,vs=20,smin=0,smax=umax=19,var_off=(0x0; 0x13)) R1=scalar(smin=0,smax=umax=19,var_off=(0x0; 0x13))\n\
+         13: (73) *(u8 *)(r0 +8) = r1\n\
+         13: R0_w=map_value(map=output_map,ks=1,vs=20,smin=0,smax=umax=19,var_off=(0x0; 0x13)) R1=1\n\
+         invalid access to map value, value_size=20 off=27 size=1\n\
+         R0 max value is outside of the allowed memory range\n",
+    );
+    assert!(evidence_contains(
+        &state_line_after_terminal_map_value_access,
         "verifier_state_signal",
         "source bounds the map-value index"
     ));

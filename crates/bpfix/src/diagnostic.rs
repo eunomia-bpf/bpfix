@@ -1242,6 +1242,7 @@ fn proof_signals(context: ProofSignalContext<'_>) -> Vec<ProofSignal> {
         context.log,
         context.terminal_error,
         context.terminal_pc,
+        context.terminal_line,
         context.register,
         context.states,
         context.source_events,
@@ -1253,6 +1254,7 @@ fn proof_signals(context: ProofSignalContext<'_>) -> Vec<ProofSignal> {
         context.log,
         context.terminal_error,
         context.terminal_pc,
+        context.terminal_line,
         context.register,
         context.events,
     ) {
@@ -1275,6 +1277,7 @@ fn proof_signals(context: ProofSignalContext<'_>) -> Vec<ProofSignal> {
         context.log,
         context.terminal_error,
         context.terminal_pc,
+        context.terminal_line,
         context.register,
         context.branch_states,
     ) {
@@ -1422,6 +1425,7 @@ fn map_pointer_argument_scalar_zero(
     log: &str,
     terminal_error: &str,
     terminal_pc: Option<usize>,
+    terminal_line: Option<usize>,
     register: Option<u8>,
     states: &[VerifierInsn],
     source_events: &[SourceEvent],
@@ -1436,7 +1440,8 @@ fn map_pointer_argument_scalar_zero(
     if reg != 1 {
         return false;
     }
-    if !terminal_instruction_contains(log, terminal_pc, "call bpf_map_lookup_elem#") {
+    if !terminal_instruction_contains(log, terminal_pc, terminal_line, "call bpf_map_lookup_elem#")
+    {
         return false;
     }
     let Some(rejected) = rejected_source(events) else {
@@ -1461,13 +1466,15 @@ fn map_lookup_key_argument_unreadable(
     log: &str,
     terminal_error: &str,
     terminal_pc: Option<usize>,
+    terminal_line: Option<usize>,
     register: Option<u8>,
     events: &[ProofEvent],
 ) -> bool {
     if !terminal_error.contains("!read_ok") || register != Some(2) {
         return false;
     }
-    if !terminal_instruction_contains(log, terminal_pc, "call bpf_map_lookup_elem#") {
+    if !terminal_instruction_contains(log, terminal_pc, terminal_line, "call bpf_map_lookup_elem#")
+    {
         return false;
     }
     let Some(rejected) = rejected_source(events) else {
@@ -1491,6 +1498,7 @@ fn map_value_wide_access(
     log: &str,
     terminal_error: &str,
     terminal_pc: Option<usize>,
+    terminal_line: Option<usize>,
     register: Option<u8>,
     states: &[VerifierInsn],
 ) -> bool {
@@ -1509,7 +1517,7 @@ fn map_value_wide_access(
     if access_size <= reported_value_size {
         return false;
     }
-    if terminal_instruction_access_width(log, terminal_pc) != Some(access_size) {
+    if terminal_instruction_access_width(log, terminal_pc, terminal_line) != Some(access_size) {
         return false;
     }
     latest_reg_state_before(states, terminal_pc, reg).is_some_and(|state| {
@@ -1617,12 +1625,12 @@ fn map_value_guard_exceeds_value_size(context: &ProofSignalContext<'_>) -> bool 
     source_guard_exceeds_index_capacity(context, rejected, &index, max_index, state, reg)
 }
 
-fn terminal_instruction_access_width(log: &str, terminal_pc: Option<usize>) -> Option<u32> {
-    let pc = terminal_pc?;
-    let prefix = format!("{pc}:");
-    log.lines()
-        .filter_map(|line| line.trim().strip_prefix(&prefix))
-        .find_map(memory_access_width)
+fn terminal_instruction_access_width(
+    log: &str,
+    terminal_pc: Option<usize>,
+    terminal_line: Option<usize>,
+) -> Option<u32> {
+    terminal_instruction_tail(log, terminal_pc, terminal_line).and_then(memory_access_width)
 }
 
 fn terminal_instruction_memory_offset(
@@ -1630,27 +1638,43 @@ fn terminal_instruction_memory_offset(
     terminal_pc: Option<usize>,
     terminal_line: Option<usize>,
 ) -> Option<i64> {
+    terminal_instruction_tail(log, terminal_pc, terminal_line).and_then(memory_access_offset)
+}
+
+fn terminal_instruction_contains(
+    log: &str,
+    terminal_pc: Option<usize>,
+    terminal_line: Option<usize>,
+    needle: &str,
+) -> bool {
+    terminal_instruction_tail(log, terminal_pc, terminal_line)
+        .is_some_and(|tail| tail.contains(needle))
+}
+
+fn terminal_instruction_tail(
+    log: &str,
+    terminal_pc: Option<usize>,
+    terminal_line: Option<usize>,
+) -> Option<&str> {
     let pc = terminal_pc?;
     log.lines()
         .enumerate()
         .filter(|(idx, _)| terminal_line.is_none_or(|terminal_line| *idx + 1 < terminal_line))
         .filter_map(|(_, line)| {
             let (line_pc, tail) = instruction_pc_tail(line.trim())?;
-            (line_pc == pc)
-                .then(|| memory_access_offset(tail))
-                .flatten()
+            (line_pc == pc && looks_like_bpf_instruction_tail(tail)).then_some(tail)
         })
         .last()
 }
 
-fn terminal_instruction_contains(log: &str, terminal_pc: Option<usize>, needle: &str) -> bool {
-    let Some(pc) = terminal_pc else {
-        return false;
-    };
-    let prefix = format!("{pc}:");
-    log.lines()
-        .filter_map(|line| line.trim().strip_prefix(&prefix))
-        .any(|line| line.contains(needle))
+fn looks_like_bpf_instruction_tail(tail: &str) -> bool {
+    let tail = tail.trim_start();
+    tail.as_bytes().get(0) == Some(&b'(')
+        && tail
+            .as_bytes()
+            .get(1..3)
+            .is_some_and(|bytes| bytes.iter().all(u8::is_ascii_hexdigit))
+        && tail.as_bytes().get(3) == Some(&b')')
 }
 
 fn terminal_call_target(
