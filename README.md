@@ -227,9 +227,10 @@ crates/
   bpfanalysis/  verifier-log and BPF bytecode analysis primitives
 ```
 
-The earlier Python version has been removed from the maintained tree. The
-remaining `docs/bpfix-py/tools/` scripts are legacy benchmark-maintenance
-helpers, not a second BPFix implementation and not part of the public CLI.
+The earlier Python version has been removed from the maintained tree. Python
+scripts that remain under `bpfix-bench/tools/` are benchmark replay and corpus
+maintenance helpers, not a second BPFix implementation and not part of the
+public CLI.
 
 The public CLI/JSON design lives in `docs/open-source-tool-design.md`, and the
 full user workflow is in `docs/user-guide.md`. Benchmark methodology and
@@ -335,6 +336,6 @@ docs/user-guide.md    install, getting logs, output, and CI usage
 docs/open-source-tool-design.md public CLI and JSON contract
 examples/          bpftool, libbpf, Aya, BCC, CI, and editor integration snippets
 docs/evaluation/   benchmark and metric notes
-docs/bpfix-py/     legacy benchmark-maintenance tools
+bpfix-bench/tools/ benchmark replay and corpus-maintenance tools
 vendor/libbpf/     libbpf submodule
 ```

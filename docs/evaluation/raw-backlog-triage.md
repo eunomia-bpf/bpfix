@@ -60,7 +60,7 @@ bpfix-bench/cases/<case_id>/
 and pass:
 
 ```bash
-python3 docs/bpfix-py/tools/validate_benchmark.py --replay bpfix-bench --timeout-sec 60
+python3 bpfix-bench/tools/validate_benchmark.py --replay bpfix-bench --timeout-sec 60
 ```
 
 Records marked `environment_required`, `missing_source`, `missing_verifier_log`,

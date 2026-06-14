@@ -10,7 +10,7 @@ toolchain:
   libbpf: 1.3.0
 harness:
   name: bpfix-replay
-  script: docs/bpfix-py/tools/validate_benchmark.py
+  script: bpfix-bench/tools/validate_benchmark.py
   verifier_log_level: 2
   timeout_sec: 30
 runtime:

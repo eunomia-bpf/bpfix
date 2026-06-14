@@ -11,7 +11,8 @@ Repair synthesis, verifier-oracle patch loops, and publication-only experiments
 are not part of the active product scope in this repository pass. Historical
 scratch reports are intentionally non-canonical and are not kept in the
 maintained documentation set. The previous Python implementation has been
-removed; `docs/bpfix-py/` now contains only legacy benchmark-maintenance tools.
+removed; `bpfix-bench/tools/` contains only benchmark replay and corpus
+maintenance tools.
 
 ## Current Thesis
 
@@ -86,7 +87,7 @@ The active project is a Cargo workspace.
 | pass context/support types | active | `crates/bpfanalysis/src/pass.rs` |
 | libbpf source reference | active | `vendor/libbpf` submodule |
 | benchmark corpus | active | `bpfix-bench/` |
-| benchmark replay tools | legacy maintenance | `docs/bpfix-py/tools/` |
+| benchmark replay tools | corpus maintenance | `bpfix-bench/tools/` |
 
 The `bpfanalysis` crate imports the analysis implementation from the `bpfopt`
 analysis module and keeps the dependent instruction, verifier-log, and
@@ -185,7 +186,7 @@ python3 bpfix-bench/run-bpfix-eval.py --confusion --reject-fallback
 Legacy replay validation remains available for corpus maintenance:
 
 ```bash
-python3 docs/bpfix-py/tools/validate_benchmark.py --replay bpfix-bench --timeout-sec 60
+python3 bpfix-bench/tools/validate_benchmark.py --replay bpfix-bench --timeout-sec 60
 ```
 
 Current evaluation TODO:

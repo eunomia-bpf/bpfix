@@ -45,10 +45,10 @@ reject_package_paths() {
     local crate=$1
     local manifest=$2
 
-    if printf '%s\n' "${manifest}" | grep -Eq '^(bpfix-bench|docs/tmp|vendor|docs/bpfix-py|docs/project-status\.md)(/|$)'; then
+    if printf '%s\n' "${manifest}" | grep -Eq '^(bpfix-bench|docs/tmp|vendor|docs/project-status\.md)(/|$)'; then
         echo "${crate} package includes non-release project material:" >&2
         printf '%s\n' "${manifest}" |
-            grep -E '^(bpfix-bench|docs/tmp|vendor|docs/bpfix-py|docs/project-status\.md)(/|$)' >&2
+            grep -E '^(bpfix-bench|docs/tmp|vendor|docs/project-status\.md)(/|$)' >&2
         exit 1
     fi
 }
