@@ -82,12 +82,12 @@ fn object_metadata(
 
     #[cfg(feature = "object-analysis")]
     {
-        return match validate_object_path(path)
+        match validate_object_path(path)
             .and_then(|validated| load_object_program_metadata(Path::new(&validated), &loaded.log))
         {
             Ok(programs) => (Some(object_path), programs, None),
             Err(err) => (Some(object_path), Vec::new(), Some(err.to_string())),
-        };
+        }
     }
 
     #[cfg(not(feature = "object-analysis"))]

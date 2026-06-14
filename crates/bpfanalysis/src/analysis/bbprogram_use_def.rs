@@ -76,7 +76,7 @@ impl UseDefGraph {
     }
 }
 
-fn site_uses_defs<'a>(prog: &'a ProgramCFG, site: InsnSite) -> Option<(&'a RegSet, &'a RegSet)> {
+fn site_uses_defs(prog: &ProgramCFG, site: InsnSite) -> Option<(&RegSet, &RegSet)> {
     let block = prog.block_ref(site.block)?;
     if site.idx < block.insns.len() {
         let node = &block.insns[site.idx];
@@ -160,7 +160,7 @@ fn populate_site_use_def(prog: &mut ProgramCFG) -> anyhow::Result<()> {
             .terminator
             .raw_insn()
         {
-            let (uses, defs) = insn_use_def_pair(&term_insn);
+            let (uses, defs) = insn_use_def_pair(term_insn);
             let block = prog.block_mut_for_use_def(block_id)?;
             block.terminator_uses = uses;
             block.terminator_defs = defs;

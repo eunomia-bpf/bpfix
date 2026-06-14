@@ -32,6 +32,9 @@ jobs:
       - name: Check examples
         run: examples/check-examples.sh
 
+      - name: Lint workspace
+        run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+
       - name: Test workspace
         run: cargo test --workspace
 

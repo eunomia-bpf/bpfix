@@ -156,11 +156,11 @@ fn is_program_section(section: &object::Section<'_, '_>) -> bool {
     if section.kind() == SectionKind::Text {
         return true;
     }
-    section.size() > 0 && section.size() % 8 == 0
+    section.size() > 0 && section.size().is_multiple_of(8)
 }
 
 fn decode_bpf_insns(data: &[u8]) -> Result<Vec<BpfInsn>> {
-    if data.len() % 8 != 0 {
+    if !data.len().is_multiple_of(8) {
         anyhow::bail!(
             "BPF instruction section length {} is not a multiple of 8",
             data.len()

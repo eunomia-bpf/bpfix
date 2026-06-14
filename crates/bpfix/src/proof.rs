@@ -291,9 +291,10 @@ fn latest_reg_state(
 ) -> Option<&RegState> {
     states
         .iter()
+        .rev()
         .filter(|state| terminal_pc.is_none_or(|pc| state.pc <= pc))
         .filter_map(|state| state.regs.get(&reg))
-        .last()
+        .next()
 }
 
 fn latest_scalar_register(states: &[VerifierInsn], terminal_pc: Option<usize>) -> Option<u8> {

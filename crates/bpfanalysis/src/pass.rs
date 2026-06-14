@@ -441,8 +441,10 @@ pub enum Arch {
     Aarch64,
 }
 
-impl Arch {
-    pub fn from_str(s: &str) -> anyhow::Result<Self> {
+impl std::str::FromStr for Arch {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> anyhow::Result<Self> {
         match s {
             "x86_64" | "amd64" => Ok(Self::X86_64),
             "aarch64" | "arm64" => Ok(Self::Aarch64),
