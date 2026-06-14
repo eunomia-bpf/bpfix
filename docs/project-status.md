@@ -164,6 +164,12 @@ Check the workspace:
 cargo check --workspace
 ```
 
+Check the feature-gated object-analysis CLI path:
+
+```bash
+cargo test -p bpfix --features object-analysis --test cli
+```
+
 Quick diagnostic smoke:
 
 ```bash
