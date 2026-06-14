@@ -451,7 +451,7 @@ python3 eval/batch_diagnostic_eval.py --benchmark bpfix-bench \
 
 ## Reporting Requirements
 
-Every paper result using this benchmark should report:
+Every public evaluation result using this benchmark should report:
 
 - benchmark ID;
 - environment ID;
@@ -473,6 +473,6 @@ maintaining separate source, reproducer, capture, and label trees. The tradeoff
 is intentional: any case that cannot be normalized into this format is excluded
 from the primary eval.
 
-That tradeoff is appropriate for a systems paper. A smaller benchmark with
-uniform local reproduction is more defensible than a larger benchmark with mixed
-log provenance.
+That tradeoff is appropriate for a systems-tool evaluation. A smaller benchmark
+with uniform local reproduction is more defensible than a larger benchmark with
+mixed log provenance.

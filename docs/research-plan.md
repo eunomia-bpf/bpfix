@@ -7,7 +7,7 @@ The maintained product goal is: take existing verifier logs and return
 Rust-style diagnostics that are stable enough for developers, CI systems, and
 other tools to consume.
 
-Repair synthesis, verifier-oracle patch loops, and paper-only experiments are
+Repair synthesis, verifier-oracle patch loops, and publication-only experiments are
 not part of the active product scope in this repository pass. Historical notes
 under `docs/tmp/` are intentionally non-canonical. The previous Python
 implementation has been removed; `docs/bpfix-py/` now contains only legacy
@@ -190,7 +190,7 @@ Current Rust evaluation TODO:
 - automatic patch generation
 - semantic correctness oracle integration
 - cross-kernel benchmark claims
-- paper-number claims based on historical `docs/tmp/` reports
+- claims based on historical `docs/tmp/` reports
 - treating raw records as primary benchmark cases before local replay admission
 
 ## Documentation Ownership
@@ -199,12 +199,13 @@ Canonical current facts live in:
 
 - `README.md`
 - `docs/research-plan.md`
-- `docs/workshop-paper-plan.md`
 - `docs/open-source-tool-design.md`
+- `docs/user-guide.md`
 - `docs/evaluation/`
 - `bpfix-bench/README.md`
 - `bpfix-bench/manifest.yaml`
 - `bpfix-bench/raw/index.yaml`
 
-`docs/tmp/` is retained for historical analysis reports and should not be used
-as the source of current project status.
+`docs/tmp/` is retained for historical analysis reports, draft plans, and
+archived todo documents. It should not be used as the source of current project
+status.
