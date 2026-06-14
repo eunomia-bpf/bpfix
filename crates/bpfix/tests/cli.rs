@@ -28,6 +28,11 @@ fn run_json_path(path: PathBuf) -> Value {
 }
 
 fn run_json_with_args(args: &[&str]) -> Value {
+    let output = run_with_args(args);
+    serde_json::from_slice(&output.stdout).expect("bpfix should emit JSON")
+}
+
+fn run_with_args(args: &[&str]) -> std::process::Output {
     let output = Command::new(env!("CARGO_BIN_EXE_bpfix"))
         .args(args)
         .output()
@@ -37,7 +42,7 @@ fn run_json_with_args(args: &[&str]) -> Value {
         "bpfix failed: {}",
         String::from_utf8_lossy(&output.stderr)
     );
-    serde_json::from_slice(&output.stdout).expect("bpfix should emit JSON")
+    output
 }
 
 fn run_json_stdin(input: &str) -> Value {
@@ -354,6 +359,25 @@ fn text_output_explains_verifier_precision_triage() {
         .contains("   = note[verifier-precision]: source-level map-value bounds guard is present"));
     assert!(text
         .contains("help: Make the remaining map-value capacity explicit in one bounded variable"));
+}
+
+#[test]
+fn format_both_emits_text_then_parseable_json() {
+    let path =
+        workspace_root().join("bpfix-bench/cases/stackoverflow-53136145/replay-verifier.log");
+    let output = run_with_args(&[path.to_str().unwrap(), "--format", "both"]);
+    let stdout = String::from_utf8(output.stdout).expect("bpfix should emit UTF-8");
+    let json_start = stdout
+        .rfind("\n{\n")
+        .expect("JSON object should follow text output")
+        + 1;
+    let (text, json_text) = stdout.split_at(json_start);
+    let json: Value = serde_json::from_str(json_text).expect("--format both JSON should parse");
+
+    assert!(text.starts_with("error[BPFIX-E006]:"));
+    assert!(text.contains("= class: lowering_artifact"));
+    assert_eq!(json["error_id"], "BPFIX-E006");
+    assert_eq!(json["failure_class"], "lowering_artifact");
 }
 
 #[test]
