@@ -1,0 +1,68 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install native dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang llvm libelf-dev pkg-config python3-yaml ripgrep zlib1g-dev
+
+      - name: Check formatting
+        run: cargo fmt --all --check
+
+      - name: Check examples
+        run: examples/check-examples.sh
+
+      - name: Test workspace
+        run: cargo test --workspace
+
+      - name: Test object analysis feature
+        run: cargo test -p bpfix --features object-analysis
+
+      - name: Build minimal bpfix
+        run: cargo build -p bpfix --no-default-features
+
+      - name: Check release packaging
+        run: scripts/check-release.sh
+
+      - name: Evaluate diagnostics
+        run: python3 docs/evaluation/evaluate_diagnostics.py --confusion
+
+      - name: Reject fallback diagnostics
+        shell: bash
+        run: |
+          set -euo pipefail
+          count=0
+          for log in bpfix-bench/cases/*/replay-verifier.log; do
+            out=$(target/debug/bpfix --format json "$log")
+            if printf '%s\n' "$out" | rg -q '"error_id": "BPFIX-(E000|E099|UNKNOWN)"'; then
+              printf '%s\n' "$log"
+              count=$((count + 1))
+            fi
+          done
+          printf 'replay_special_count %s\n' "$count"
+          test "$count" -eq 0
+
+      - name: Install smoke test
+        run: |
+          cargo install --path crates/bpfix --root /tmp/bpfix-install-default --force
+          /tmp/bpfix-install-default/bin/bpfix --version
