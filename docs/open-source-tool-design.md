@@ -204,6 +204,8 @@ BPFix is not:
 - Keep `cargo test --workspace` passing.
 - Keep `docs/evaluation/diagnostic.schema.json` aligned with the Rust JSON
   renderer before external examples depend on it.
+- Keep `scripts/check-release.sh` passing so the workspace remains installable
+  and releaseable in the right crate order.
 - Add golden text and JSON fixtures for representative proof families.
 - Implement BTF-backed source correlation behind `object-analysis` without
   changing the log-only CLI shape.

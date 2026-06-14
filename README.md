@@ -305,6 +305,15 @@ Run a smoke test:
 cargo run -p bpfix -- bpfix-bench/cases/stackoverflow-60053570/replay-verifier.log --format both
 ```
 
+Check release packaging:
+
+```bash
+scripts/check-release.sh
+```
+
+`bpfix` depends on the sibling `bpfanalysis` crate. Publish `bpfanalysis` first,
+wait for it to appear in the crates.io index, then publish `bpfix`.
+
 ## Repository Layout
 
 ```text
