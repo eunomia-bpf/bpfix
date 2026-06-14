@@ -109,6 +109,7 @@ enum VerifierRejectionKind {
     KfuncReference,
     IteratorLifecycle,
     LockState,
+    MapValueBounds,
     ScalarRange,
     PointerProvenance,
     LoopBound,
@@ -242,6 +243,10 @@ const REJECTION_PATTERNS: &[RejectionPattern] = &[
     ),
     RejectionPattern::any(VerifierRejectionKind::LockState, &["irq", "rcu", "lock"]),
     RejectionPattern::any(
+        VerifierRejectionKind::MapValueBounds,
+        &["invalid access to map value"],
+    ),
+    RejectionPattern::any(
         VerifierRejectionKind::ScalarRange,
         &[
             "unbounded",
@@ -249,7 +254,6 @@ const REJECTION_PATTERNS: &[RejectionPattern] = &[
             "min value is outside",
             "out of bounds",
             "should have been in",
-            "invalid access to map value",
             "invalid zero-sized",
             "makes pkt pointer",
             "outside of allowed memory range",
@@ -457,6 +461,16 @@ impl VerifierRejectionKind {
                     "Avoid restoring IRQ or lock state out of order across branches and callbacks.",
                 ],
             ),
+            Self::MapValueBounds => Classification::supported(
+                "BPFIX-E005",
+                ProofObligation::ScalarRange,
+                "source_bug",
+                "map-value access bounds proof is missing",
+                &[
+                    "Clamp the computed map-value offset against the declared value size before the access.",
+                    "Check the field offset plus index plus access width, not only the raw index.",
+                ],
+            ),
             Self::ScalarRange => Classification::supported(
                 "BPFIX-E005",
                 ProofObligation::ScalarRange,
@@ -537,6 +551,12 @@ mod tests {
         assert_eq!(
             VerifierRejectionKind::parse("invalid access to packet, off=42 size=4, r=40"),
             Some(VerifierRejectionKind::PacketBounds)
+        );
+        assert_eq!(
+            VerifierRejectionKind::parse(
+                "invalid access to map value, value_size=24 off=67 size=1"
+            ),
+            Some(VerifierRejectionKind::MapValueBounds)
         );
         assert_eq!(
             VerifierRejectionKind::parse(

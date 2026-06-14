@@ -78,6 +78,10 @@ fn scalar_range_required_proof(
     states: &[VerifierInsn],
     register: Option<u8>,
 ) -> RequiredProof {
+    if let Some(proof) = map_value_access_required_proof(message, terminal_pc, states, register) {
+        return proof;
+    }
+
     let register = register.or_else(|| latest_scalar_register(states, terminal_pc));
     let state = register.and_then(|reg| latest_reg_state(states, terminal_pc, reg));
     let description = if message.contains("value -") {
@@ -112,6 +116,64 @@ fn scalar_range_required_proof(
         description,
         rejection_detail,
     }
+}
+
+fn map_value_access_required_proof(
+    message: &str,
+    terminal_pc: Option<usize>,
+    states: &[VerifierInsn],
+    register: Option<u8>,
+) -> Option<RequiredProof> {
+    if !message
+        .to_ascii_lowercase()
+        .contains("invalid access to map value")
+    {
+        return None;
+    }
+
+    let register = register.or_else(|| latest_map_value_register(states, terminal_pc));
+    let state = register.and_then(|reg| latest_reg_state(states, terminal_pc, reg));
+    let value_size = parse_i64_after(message, "value_size=")
+        .or_else(|| state.and_then(|state| state.map_value_size.map(i64::from)));
+    let access_off = parse_i64_after(message, "off=");
+    let access_size = parse_i64_after(message, "size=");
+    let access_end = access_off.and_then(|off| access_size.and_then(|size| off.checked_add(size)));
+    let state_summary = state.map(verifier_value_summary);
+
+    let description = match (register, value_size, access_off, access_size, state_summary) {
+        (Some(reg), Some(value_size), Some(off), Some(size), Some(summary)) => format!(
+            "prove R{reg}'s map-value byte range off={off} size={size} stays within value_size={value_size}; verifier sees {summary}"
+        ),
+        (Some(reg), Some(value_size), Some(off), Some(size), None) => format!(
+            "prove R{reg}'s map-value byte range off={off} size={size} stays within value_size={value_size}"
+        ),
+        (Some(reg), Some(value_size), _, _, Some(summary)) => format!(
+            "prove R{reg}'s computed map-value offset stays within value_size={value_size}; verifier sees {summary}"
+        ),
+        (Some(reg), Some(value_size), _, _, None) => format!(
+            "prove R{reg}'s computed map-value offset stays within value_size={value_size}"
+        ),
+        _ => ProofObligation::ScalarRange
+            .default_required_proof()
+            .to_string(),
+    };
+
+    let rejection_detail = match (register, value_size, access_end, access_off, access_size) {
+        (Some(reg), Some(value_size), Some(end), Some(off), Some(size)) => format!(
+            "rejected here: R{reg} map-value access off={off} size={size} reaches byte {end}, past value_size={value_size}"
+        ),
+        (Some(reg), Some(value_size), _, _, _) => format!(
+            "rejected here: R{reg} map-value offset is not proven within value_size={value_size}"
+        ),
+        _ => ProofObligation::ScalarRange.rejected_detail().to_string(),
+    };
+
+    Some(RequiredProof {
+        obligation: ProofObligation::ScalarRange,
+        register,
+        description,
+        rejection_detail,
+    })
 }
 
 fn nullable_required_proof(message: &str, register: Option<u8>) -> RequiredProof {
@@ -239,36 +301,50 @@ fn parse_register_from_error(message: &str) -> Option<u8> {
 }
 
 fn parse_i64_after(message: &str, needle: &str) -> Option<i64> {
-    let start = message.find(needle)? + needle.len();
     let bytes = message.as_bytes();
-    let mut end = start;
-    if bytes.get(end) == Some(&b'-') {
-        end += 1;
-    }
-    let digits_start = end;
-    if message.get(end..end + 2) == Some("0x") {
-        end += 2;
-        while end < bytes.len() && bytes[end].is_ascii_hexdigit() {
+    let mut search_start = 0usize;
+    while let Some(relative) = message[search_start..].find(needle) {
+        let field_start = search_start + relative;
+        if field_start > 0 {
+            let previous = bytes[field_start - 1];
+            if previous.is_ascii_alphanumeric() || previous == b'_' {
+                search_start = field_start + needle.len();
+                continue;
+            }
+        }
+
+        let start = field_start + needle.len();
+        let mut end = start;
+        if bytes.get(end) == Some(&b'-') {
             end += 1;
         }
-    } else {
-        while end < bytes.len() && bytes[end].is_ascii_digit() {
-            end += 1;
+        let digits_start = end;
+        if message.get(end..end + 2) == Some("0x") {
+            end += 2;
+            while end < bytes.len() && bytes[end].is_ascii_hexdigit() {
+                end += 1;
+            }
+        } else {
+            while end < bytes.len() && bytes[end].is_ascii_digit() {
+                end += 1;
+            }
         }
+        if end == digits_start
+            || (end == digits_start + 2 && message.get(digits_start..end) == Some("0x"))
+        {
+            search_start = field_start + needle.len();
+            continue;
+        }
+        let raw = &message[start..end];
+        return if let Some(hex) = raw.strip_prefix("0x") {
+            i64::from_str_radix(hex, 16).ok()
+        } else if let Some(hex) = raw.strip_prefix("-0x") {
+            i64::from_str_radix(hex, 16).ok().map(|value| -value)
+        } else {
+            raw.parse().ok()
+        };
     }
-    if end == digits_start
-        || (end == digits_start + 2 && message.get(digits_start..end) == Some("0x"))
-    {
-        return None;
-    }
-    let raw = &message[start..end];
-    if let Some(hex) = raw.strip_prefix("0x") {
-        i64::from_str_radix(hex, 16).ok()
-    } else if let Some(hex) = raw.strip_prefix("-0x") {
-        i64::from_str_radix(hex, 16).ok().map(|value| -value)
-    } else {
-        raw.parse().ok()
-    }
+    None
 }
 
 fn parse_helper_name(message: &str) -> Option<String> {
@@ -310,10 +386,52 @@ fn latest_scalar_register(states: &[VerifierInsn], terminal_pc: Option<usize>) -
         .find_map(|(&reg, state)| (state.reg_type == "scalar").then_some(reg))
 }
 
+fn latest_map_value_register(states: &[VerifierInsn], terminal_pc: Option<usize>) -> Option<u8> {
+    states
+        .iter()
+        .filter(|state| terminal_pc.is_none_or(|pc| state.pc <= pc))
+        .rev()
+        .flat_map(|state| state.regs.iter())
+        .find_map(|(&reg, state)| (state.reg_type == "map_value").then_some(reg))
+}
+
 pub(crate) fn scalar_range_summary(state: &RegState) -> String {
     if let Some(value) = state.exact_value {
         return format!("scalar exact {value}");
     }
+    let parts = scalar_range_parts(state);
+    if parts.is_empty() {
+        "scalar with unknown bounds".to_string()
+    } else {
+        format!("scalar({})", parts.join(","))
+    }
+}
+
+pub(crate) fn verifier_value_summary(state: &RegState) -> String {
+    if state.reg_type == "scalar" {
+        return scalar_range_summary(state);
+    }
+
+    let mut parts = Vec::new();
+    if let Some(offset) = state.offset {
+        parts.push(format!("off={offset}"));
+    }
+    if let Some(value_size) = state.map_value_size {
+        parts.push(format!("value_size={value_size}"));
+    }
+    let range = scalar_range_parts(state);
+    if !range.is_empty() {
+        parts.push(format!("range({})", range.join(",")));
+    }
+
+    if parts.is_empty() {
+        state.reg_type.clone()
+    } else {
+        format!("{}({})", state.reg_type, parts.join(","))
+    }
+}
+
+fn scalar_range_parts(state: &RegState) -> Vec<String> {
     let mut parts = Vec::new();
     if let Some(smin) = state.range.smin {
         parts.push(format!("smin={smin}"));
@@ -327,9 +445,5 @@ pub(crate) fn scalar_range_summary(state: &RegState) -> String {
     if let Some(umax) = state.range.umax {
         parts.push(format!("umax={umax}"));
     }
-    if parts.is_empty() {
-        "scalar with unknown bounds".to_string()
-    } else {
-        format!("scalar({})", parts.join(","))
-    }
+    parts
 }

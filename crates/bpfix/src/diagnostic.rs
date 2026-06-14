@@ -5,7 +5,7 @@ use bpfanalysis::{
 
 use crate::family::ProofObligation;
 use crate::proof::{
-    instantiate_required_proof, packet_required_range, scalar_range_summary, RequiredProof,
+    instantiate_required_proof, packet_required_range, verifier_value_summary, RequiredProof,
 };
 use crate::source::{
     collect_source_events, latest_source_before, looks_like_null_check, looks_like_nullable_return,
@@ -543,8 +543,8 @@ fn scalar_range_events(
             source: source_for_pc(source_events, pc).cloned(),
             register,
             detail: format!(
-                "verifier still sees R{reg} as {}, so the required scalar bound is not available at the use",
-                scalar_range_summary(state)
+                "verifier still sees R{reg} as {}, so the required scalar or map-value bound is not available at the use",
+                verifier_value_summary(state)
             ),
         });
     }
@@ -1057,9 +1057,24 @@ fn latest_unsafe_scalar_state(
         .rev()
         .find_map(|state| {
             let reg_state = state.regs.get(&reg)?;
-            (reg_state.reg_type == "scalar" && scalar_range_is_unsafe(reg_state))
-                .then_some((state.pc, reg_state))
+            ((reg_state.reg_type == "scalar" && scalar_range_is_unsafe(reg_state))
+                || map_value_range_may_exceed_value_size(reg_state))
+            .then_some((state.pc, reg_state))
         })
+}
+
+fn map_value_range_may_exceed_value_size(state: &RegState) -> bool {
+    if state.reg_type != "map_value" {
+        return false;
+    }
+    let Some(value_size) = state.map_value_size else {
+        return false;
+    };
+    let max_offset = state
+        .range
+        .umax
+        .or_else(|| state.range.smax.and_then(|value| u64::try_from(value).ok()));
+    max_offset.is_some_and(|offset| offset >= u64::from(value_size))
 }
 
 fn latest_nullable_state(
@@ -1150,6 +1165,45 @@ mod tests {
         }));
         assert!(analysis.events.iter().any(|event| {
             event.role == ProofEventRole::Rejected && event.source.as_ref().unwrap().line == 280
+        }));
+    }
+
+    #[test]
+    fn map_value_access_case_describes_value_size_bounds() {
+        let log =
+            include_str!("../../../bpfix-bench/cases/stackoverflow-78196801/replay-verifier.log");
+        let analysis = analyze_verifier_log(
+            log,
+            Some(13),
+            "invalid access to map value, value_size=24 off=67 size=1; R0 max value is outside of the allowed memory range",
+            ProofObligation::ScalarRange,
+        )
+        .unwrap();
+
+        assert_eq!(
+            analysis.required_proof.obligation,
+            ProofObligation::ScalarRange
+        );
+        assert!(analysis.required_proof.description.contains("map-value"));
+        assert!(analysis
+            .required_proof
+            .description
+            .contains("value_size=24"));
+        assert!(analysis.required_proof.description.contains("off=67"));
+        assert!(analysis.required_proof.description.contains("size=1"));
+        assert!(analysis
+            .required_proof
+            .description
+            .contains("map_value(value_size=24"));
+        assert!(analysis
+            .required_proof
+            .rejection_detail
+            .contains("reaches byte 68"));
+        assert!(analysis.events.iter().any(|event| {
+            event.role == ProofEventRole::ProofLost
+                && event
+                    .detail
+                    .contains("map_value(value_size=24,range(smin=0,smax=63,umax=63)")
         }));
     }
 
