@@ -5,7 +5,7 @@ use anyhow::Context;
 use anyhow::Result;
 use clap::{Parser, ValueEnum};
 use classifier::{classify, no_verifier_rejection_classification};
-use diagnostic::{ProofEventEvidence, ProofEventRole};
+use diagnostic::{ProofEventEvidence, ProofEventRole, ProofSignal};
 use family::ProofObligation;
 use input::{find_terminal_error, load_input, LoadedInput, TerminalError};
 use output::{
@@ -152,9 +152,15 @@ fn build_diagnostic(
         source_text: None,
     });
     let error_id = class.error_id.to_string();
-    let (trace_state_count, analysis_error, proof_events, required_proof) =
+    let (trace_state_count, analysis_error, proof_events, proof_signals, required_proof) =
         if class.error_id == "BPFIX-E000" {
-            (0, None, Vec::new(), class.required_proof.to_string())
+            (
+                0,
+                None,
+                Vec::new(),
+                Vec::new(),
+                class.required_proof.to_string(),
+            )
         } else {
             match diagnostic::analyze_verifier_log(
                 log,
@@ -169,31 +175,37 @@ fn build_diagnostic(
                         } else {
                             analysis.required_proof.description
                         };
-                    (analysis.state_count, None, analysis.events, required_proof)
+                    (
+                        analysis.state_count,
+                        None,
+                        analysis.events,
+                        analysis.signals,
+                        required_proof,
+                    )
                 }
                 Err(err) => (
                     0,
                     Some(err.to_string()),
                     Vec::new(),
+                    Vec::new(),
                     class.required_proof.to_string(),
                 ),
             }
         };
-    let class_adjustment =
-        classify_runtime_adjustment(&terminal.message, class.failure_class, &proof_events);
-    let failure_class = class_adjustment
-        .map(|adjustment| adjustment.failure_class)
+    let proof_signal = runtime_proof_signal(class.failure_class, &proof_signals);
+    let failure_class = proof_signal
+        .map(ProofSignal::failure_class)
         .unwrap_or(class.failure_class)
         .to_string();
-    let confidence = class_adjustment
-        .map(|adjustment| adjustment.confidence)
+    let confidence = proof_signal
+        .map(ProofSignal::confidence)
         .unwrap_or(class.confidence)
         .to_string();
-    let message_summary = class_adjustment
-        .map(|adjustment| adjustment.summary)
+    let message_summary = proof_signal
+        .map(ProofSignal::summary)
         .unwrap_or(class.summary);
-    let help_safety = class_adjustment
-        .map(|adjustment| adjustment.help_safety)
+    let help_safety = proof_signal
+        .map(ProofSignal::help_safety)
         .unwrap_or(class.help_safety)
         .to_string();
 
@@ -217,10 +229,10 @@ fn build_diagnostic(
             line: None,
         });
     }
-    if let Some(adjustment) = class_adjustment {
+    if let Some(signal) = proof_signal {
         evidence.push(Evidence {
-            kind: adjustment.evidence_kind,
-            detail: adjustment.evidence_detail.to_string(),
+            kind: signal.evidence_kind(),
+            detail: signal.evidence_detail().to_string(),
             line: Some(terminal.line),
         });
     }
@@ -250,8 +262,8 @@ fn build_diagnostic(
         .iter()
         .map(|item| (*item).to_string())
         .collect::<Vec<_>>();
-    if let Some(adjustment) = class_adjustment {
-        insert_help(&mut help, adjustment.help);
+    if let Some(signal) = proof_signal {
+        insert_help(&mut help, signal.help());
     }
     add_proof_event_help(&mut help, &proof_events);
 
@@ -283,163 +295,15 @@ fn build_diagnostic(
     }
 }
 
-#[derive(Clone, Copy)]
-struct ClassAdjustment {
-    failure_class: &'static str,
-    confidence: &'static str,
-    summary: &'static str,
-    help_safety: &'static str,
-    evidence_kind: &'static str,
-    evidence_detail: &'static str,
-    help: &'static str,
-}
-
-fn classify_runtime_adjustment(
-    terminal_message: &str,
+fn runtime_proof_signal(
     base_failure_class: &str,
-    proof_events: &[diagnostic::ProofEvent],
-) -> Option<ClassAdjustment> {
+    proof_signals: &[ProofSignal],
+) -> Option<ProofSignal> {
     if base_failure_class != "source_bug" {
-        return None;
+        None
+    } else {
+        proof_signals.first().copied()
     }
-
-    classify_lowering_artifact(terminal_message, proof_events)
-        .or_else(|| classify_verifier_precision_limit(terminal_message, proof_events))
-}
-
-fn classify_lowering_artifact(
-    terminal_message: &str,
-    proof_events: &[diagnostic::ProofEvent],
-) -> Option<ClassAdjustment> {
-    let message = terminal_message.to_ascii_lowercase();
-    if message.contains("misaligned stack access") {
-        return Some(lowering_adjustment(
-            "compiler-lowered stack access requires stronger alignment than the source layout exposes",
-            "wide stack loads, stores, copies, or inline assembly can make stack-object alignment a verifier-visible property; align the stack object or avoid the wide access shape.",
-        ));
-    }
-    if message.contains("same insn cannot be used with different pointers") {
-        return Some(lowering_adjustment(
-            "compiler code merging hides distinct pointer proofs from the verifier",
-            "Keep incompatible pointer-typed paths separated at the dereference, or force the load to stay branch-local so one instruction is not shared by different verifier pointer types.",
-        ));
-    }
-    if message.contains("pointer arithmetic with <<=") {
-        return Some(lowering_adjustment(
-            "compiler-lowered integer operation drops pointer provenance",
-            "Keep packet or context pointers in verifier-tracked 64-bit pointer values; avoid materializing them through 32-bit scalar arithmetic before the access.",
-        ));
-    }
-    if message.contains("dereference of modified ctx ptr") {
-        return Some(lowering_adjustment(
-            "compiler-lowered context access violates the verifier context contract",
-            "Keep context field accesses as verifier-recognized field loads; avoid wide casts or modified context pointers for adjacent fields.",
-        ));
-    }
-    if message.contains("expects pointer to ctx")
-        && message.contains("caller passes invalid args into func")
-    {
-        return Some(lowering_adjustment(
-            "compiler liveness hides the context argument required by a BPF subprogram",
-            "Keep the context argument verifier-visible at the BPF-to-BPF callsite, for example by passing it directly or preventing the compiler from dropping the value.",
-        ));
-    }
-    if proof_events.iter().any(|event| {
-        event.role == ProofEventRole::ProofLost
-            && event.evidence == ProofEventEvidence::VerifierState
-            && event.obligation == ProofObligation::PointerProvenance
-            && event.detail.contains("changes from pkt to scalar")
-            && event
-                .source
-                .as_ref()
-                .is_some_and(|source| source.text.contains("data_end"))
-    }) {
-        return Some(lowering_adjustment(
-            "compiler-lowered control flow hides an established packet-pointer proof",
-            "Keep the checked packet pointer derivation in the same verifier-visible path as the dereference, or rederive it from a checked base immediately before use.",
-        ));
-    }
-
-    None
-}
-
-fn classify_verifier_precision_limit(
-    terminal_message: &str,
-    proof_events: &[diagnostic::ProofEvent],
-) -> Option<ClassAdjustment> {
-    let message = terminal_message.to_ascii_lowercase();
-    let source_context = source_context_text(proof_events);
-    if message.contains("invalid access to packet")
-        && source_context.contains("data_end")
-        && contains_any(
-            &source_context,
-            &[
-                "pkt_ctx->pkt_offset",
-                "field_offset",
-                "sizeof(struct extension)",
-                "server_name_extension",
-            ],
-        )
-    {
-        return Some(verifier_precision_adjustment(
-            "source-level packet bounds check is present, but the verifier appears to lose precision for a variable packet offset",
-            "Treat this as a verifier precision boundary: clamp the variable packet offset to a small explicit maximum, then rederive and recheck the packet pointer immediately before the load.",
-        ));
-    }
-
-    if message.contains("invalid access to map value")
-        && source_context.contains("bpf_probe_read")
-        && (source_context.contains(" min,")
-            || source_context.contains("&event->content[event->len]")
-            || source_context.contains("&event->payload[total_len]"))
-    {
-        return Some(verifier_precision_adjustment(
-            "source-level map-value bounds guard is present, but the verifier appears to lose a cross-variable range relation",
-            "Make the remaining map-value capacity explicit in one bounded variable, clamp the helper length to that variable, and pass that same value to the helper.",
-        ));
-    }
-
-    None
-}
-
-fn lowering_adjustment(evidence_detail: &'static str, help: &'static str) -> ClassAdjustment {
-    ClassAdjustment {
-        failure_class: "lowering_artifact",
-        confidence: "medium",
-        summary: "verifier-visible compiler lowering hides the required proof",
-        help_safety: "repair_hint",
-        evidence_kind: "lowering_artifact_signal",
-        evidence_detail,
-        help,
-    }
-}
-
-fn verifier_precision_adjustment(
-    evidence_detail: &'static str,
-    help: &'static str,
-) -> ClassAdjustment {
-    ClassAdjustment {
-        failure_class: "verifier_false_positive",
-        confidence: "medium",
-        summary: "verifier precision limit may hide an existing safety proof",
-        help_safety: "triage_only",
-        evidence_kind: "verifier_precision_signal",
-        evidence_detail,
-        help,
-    }
-}
-
-fn source_context_text(proof_events: &[diagnostic::ProofEvent]) -> String {
-    proof_events
-        .iter()
-        .filter_map(|event| event.source.as_ref())
-        .map(|source| source.text.to_ascii_lowercase())
-        .collect::<Vec<_>>()
-        .join("\n")
-}
-
-fn contains_any(haystack: &str, needles: &[&str]) -> bool {
-    needles.iter().any(|needle| haystack.contains(needle))
 }
 
 fn source_span_from_proof_event(event: &diagnostic::ProofEvent) -> Option<SourceSpan> {

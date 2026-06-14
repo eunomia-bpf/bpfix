@@ -95,13 +95,14 @@ pass-context modules needed to compile that analysis as a standalone library.
 Current diagnostic boundary: `bpfix` has a real proof-event layer, but the
 front-door classifier is still terminal-message driven. The maintained path
 parses verifier states, source annotations, rejected PCs, and emits structured
-`ProofEstablished`, `ProofLost`, and `Rejected` events. However, initial
-`BPFIX-*` family selection still uses verifier-message fragments in
-`crates/bpfix/src/classifier.rs`, and some lowering-artifact /
-verifier-precision adjustments still use message/source-text checks in
-`crates/bpfix/src/main.rs`. The next implementation cleanup is to turn those
-string-triggered adjustments into structured verifier-rejection and proof-signal
-classification, not to expand the pattern table.
+`ProofEstablished`, `ProofLost`, and `Rejected` events. Initial `BPFIX-*` family
+selection now goes through `VerifierRejectionKind` in
+`crates/bpfix/src/classifier.rs`, and lowering-artifact / verifier-precision
+overrides now flow through `ProofSignal` in `crates/bpfix/src/diagnostic.rs`.
+Those signal detectors still consume terminal and source cues, but `main.rs`
+only renders structured classifications. The next cleanup is to derive more
+signals from verifier state and object analysis instead of adding more message
+patterns.
 
 ## Benchmark Snapshot
 

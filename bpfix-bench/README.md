@@ -91,12 +91,6 @@ implementation in `docs/evaluation/evaluate_diagnostics.py`. Use
 
 ## Raw Audit
 
-Regenerate the raw external audit index with:
-
-```bash
-python3 docs/bpfix-py/tools/sync_external_raw_bench.py --bench-root bpfix-bench --apply
-```
-
 `raw/index.yaml` records reproduction status for external raw material, including
 `replay_valid`, `attempted_accepted`, `environment_required`,
 `missing_source`, `missing_verifier_log`, `not_reconstructable_from_diff`,

@@ -3,8 +3,8 @@
 This directory no longer contains a Python implementation of BPFix. The active
 diagnostic tool is the Rust workspace at the repository root.
 
-Only legacy benchmark-maintenance tools remain here because `bpfix-bench`
-metadata and reconstruction notes still reference them.
+Only replay-validation helpers remain here because `bpfix-bench` still needs
+them to rebuild and reload admitted benchmark cases.
 
 Generated Python artifacts are intentionally not kept here. Do not commit
 `__pycache__/`, `.pytest_cache/`, `*.pyc`, coverage files, or other local
@@ -14,7 +14,6 @@ Contents:
 
 - `tools/validate_benchmark.py`: replay and validate `bpfix-bench` cases
 - `tools/replay_case.py`: shared build/load/log parsing helper
-- `tools/sync_external_raw_bench.py`: maintain raw external audit records
 
 Use the Rust CLI for maintained development:
 

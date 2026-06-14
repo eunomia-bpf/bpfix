@@ -63,11 +63,5 @@ Policy:
   admission.
 - `cases/` inclusion requires fresh local replay that builds and is rejected by
   the pinned verifier/toolchain.
-- `raw/index.yaml` is the audit surface for counting collected, reproduced, and
-  unreproduced external material.
-
-Regenerate:
-
-```bash
-python3 docs/bpfix-py/tools/sync_external_raw_bench.py --bench-root bpfix-bench --apply
-```
+- `raw/index.yaml` is checked-in audit data for counting collected, reproduced,
+  and unreproduced external material.

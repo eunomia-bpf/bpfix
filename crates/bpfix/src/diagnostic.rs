@@ -15,6 +15,7 @@ pub struct VerifierLogAnalysis {
     pub state_count: usize,
     pub required_proof: RequiredProof,
     pub events: Vec<ProofEvent>,
+    pub signals: Vec<ProofSignal>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -40,6 +41,121 @@ pub struct ProofEvent {
     pub source: Option<SourceLocation>,
     pub register: Option<u8>,
     pub detail: String,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ProofSignal {
+    WideStackAlignment,
+    SharedInstructionPointerMerge,
+    PointerShiftDropsProvenance,
+    ModifiedContextPointer,
+    SubprogramContextArgumentDropped,
+    PacketPointerProofLostAfterBoundsCheck,
+    PacketVariableOffsetPrecisionBoundary,
+    MapValueRelationPrecisionBoundary,
+}
+
+impl ProofSignal {
+    pub(crate) const fn failure_class(self) -> &'static str {
+        if self.is_verifier_precision_boundary() {
+            "verifier_false_positive"
+        } else {
+            "lowering_artifact"
+        }
+    }
+
+    pub(crate) const fn summary(self) -> &'static str {
+        if self.is_verifier_precision_boundary() {
+            "verifier precision limit may hide an existing safety proof"
+        } else {
+            "verifier-visible compiler lowering hides the required proof"
+        }
+    }
+
+    pub(crate) const fn help_safety(self) -> &'static str {
+        if self.is_verifier_precision_boundary() {
+            "triage_only"
+        } else {
+            "repair_hint"
+        }
+    }
+
+    pub(crate) const fn evidence_kind(self) -> &'static str {
+        if self.is_verifier_precision_boundary() {
+            "verifier_precision_signal"
+        } else {
+            "lowering_artifact_signal"
+        }
+    }
+
+    pub(crate) const fn evidence_detail(self) -> &'static str {
+        match self {
+            Self::WideStackAlignment => {
+                "compiler-lowered stack access requires stronger alignment than the source layout exposes"
+            }
+            Self::SharedInstructionPointerMerge => {
+                "compiler code merging hides distinct pointer proofs from the verifier"
+            }
+            Self::PointerShiftDropsProvenance => {
+                "compiler-lowered integer operation drops pointer provenance"
+            }
+            Self::ModifiedContextPointer => {
+                "compiler-lowered context access violates the verifier context contract"
+            }
+            Self::SubprogramContextArgumentDropped => {
+                "compiler liveness hides the context argument required by a BPF subprogram"
+            }
+            Self::PacketPointerProofLostAfterBoundsCheck => {
+                "compiler-lowered control flow hides an established packet-pointer proof"
+            }
+            Self::PacketVariableOffsetPrecisionBoundary => {
+                "source-level packet bounds check is present, but the verifier appears to lose precision for a variable packet offset"
+            }
+            Self::MapValueRelationPrecisionBoundary => {
+                "source-level map-value bounds guard is present, but the verifier appears to lose a cross-variable range relation"
+            }
+        }
+    }
+
+    pub(crate) const fn help(self) -> &'static str {
+        match self {
+            Self::WideStackAlignment => {
+                "wide stack loads, stores, copies, or inline assembly can make stack-object alignment a verifier-visible property; align the stack object or avoid the wide access shape."
+            }
+            Self::SharedInstructionPointerMerge => {
+                "Keep incompatible pointer-typed paths separated at the dereference, or force the load to stay branch-local so one instruction is not shared by different verifier pointer types."
+            }
+            Self::PointerShiftDropsProvenance => {
+                "Keep packet or context pointers in verifier-tracked 64-bit pointer values; avoid materializing them through 32-bit scalar arithmetic before the access."
+            }
+            Self::ModifiedContextPointer => {
+                "Keep context field accesses as verifier-recognized field loads; avoid wide casts or modified context pointers for adjacent fields."
+            }
+            Self::SubprogramContextArgumentDropped => {
+                "Keep the context argument verifier-visible at the BPF-to-BPF callsite, for example by passing it directly or preventing the compiler from dropping the value."
+            }
+            Self::PacketPointerProofLostAfterBoundsCheck => {
+                "Keep the checked packet pointer derivation in the same verifier-visible path as the dereference, or rederive it from a checked base immediately before use."
+            }
+            Self::PacketVariableOffsetPrecisionBoundary => {
+                "Treat this as a verifier precision boundary: clamp the variable packet offset to a small explicit maximum, then rederive and recheck the packet pointer immediately before the load."
+            }
+            Self::MapValueRelationPrecisionBoundary => {
+                "Make the remaining map-value capacity explicit in one bounded variable, clamp the helper length to that variable, and pass that same value to the helper."
+            }
+        }
+    }
+
+    pub(crate) const fn confidence(self) -> &'static str {
+        "medium"
+    }
+
+    const fn is_verifier_precision_boundary(self) -> bool {
+        matches!(
+            self,
+            Self::PacketVariableOffsetPrecisionBoundary | Self::MapValueRelationPrecisionBoundary
+        )
+    }
 }
 
 pub fn analyze_verifier_log(
@@ -113,11 +229,13 @@ pub fn analyze_verifier_log(
         register,
         detail: required_proof.rejection_detail.clone(),
     });
+    let signals = proof_signals(terminal_error, obligation, &events);
 
     Ok(VerifierLogAnalysis {
         state_count: states.len(),
         required_proof,
         events,
+        signals,
     })
 }
 
@@ -445,6 +563,103 @@ fn environment_capability_events(
         });
     }
     events
+}
+
+fn proof_signals(
+    terminal_error: &str,
+    obligation: ProofObligation,
+    events: &[ProofEvent],
+) -> Vec<ProofSignal> {
+    let mut signals = Vec::new();
+    if let Some(signal) = terminal_lowering_signal(terminal_error) {
+        signals.push(signal);
+    }
+    if events.iter().any(packet_proof_lost_after_bounds_check) {
+        signals.push(ProofSignal::PacketPointerProofLostAfterBoundsCheck);
+    }
+    if let Some(signal) = verifier_precision_signal(obligation, events) {
+        signals.push(signal);
+    }
+    signals
+}
+
+fn terminal_lowering_signal(message: &str) -> Option<ProofSignal> {
+    let message = message.to_ascii_lowercase();
+    if message.contains("misaligned stack access") {
+        Some(ProofSignal::WideStackAlignment)
+    } else if message.contains("same insn cannot be used with different pointers") {
+        Some(ProofSignal::SharedInstructionPointerMerge)
+    } else if message.contains("pointer arithmetic with <<=") {
+        Some(ProofSignal::PointerShiftDropsProvenance)
+    } else if message.contains("dereference of modified ctx ptr") {
+        Some(ProofSignal::ModifiedContextPointer)
+    } else if message.contains("expects pointer to ctx")
+        && message.contains("caller passes invalid args into func")
+    {
+        Some(ProofSignal::SubprogramContextArgumentDropped)
+    } else {
+        None
+    }
+}
+
+fn packet_proof_lost_after_bounds_check(event: &ProofEvent) -> bool {
+    event.role == ProofEventRole::ProofLost
+        && event.evidence == ProofEventEvidence::VerifierState
+        && event.obligation == ProofObligation::PointerProvenance
+        && event
+            .source
+            .as_ref()
+            .is_some_and(|source| looks_like_packet_bounds_check(&source.text))
+}
+
+fn verifier_precision_signal(
+    obligation: ProofObligation,
+    events: &[ProofEvent],
+) -> Option<ProofSignal> {
+    match obligation {
+        ProofObligation::PacketBounds
+            if source_text_contains(events, looks_like_packet_bounds_check)
+                && source_text_contains_any(
+                    events,
+                    &[
+                        "pkt_ctx->pkt_offset",
+                        "field_offset",
+                        "sizeof(struct extension)",
+                        "server_name_extension",
+                    ],
+                ) =>
+        {
+            Some(ProofSignal::PacketVariableOffsetPrecisionBoundary)
+        }
+        ProofObligation::ScalarRange
+            if source_text_contains_any(events, &["bpf_probe_read"])
+                && source_text_contains_any(
+                    events,
+                    &[
+                        " min,",
+                        "&event->content[event->len]",
+                        "&event->payload[total_len]",
+                    ],
+                ) =>
+        {
+            Some(ProofSignal::MapValueRelationPrecisionBoundary)
+        }
+        _ => None,
+    }
+}
+
+fn source_text_contains(events: &[ProofEvent], predicate: impl Fn(&str) -> bool) -> bool {
+    events
+        .iter()
+        .filter_map(|event| event.source.as_ref())
+        .any(|source| predicate(&source.text))
+}
+
+fn source_text_contains_any(events: &[ProofEvent], needles: &[&str]) -> bool {
+    source_text_contains(events, |text| {
+        let text = text.to_ascii_lowercase();
+        needles.iter().any(|needle| text.contains(needle))
+    })
 }
 
 fn latest_unsafe_scalar_state(
