@@ -34,7 +34,13 @@ find "$examples_dir" -name '*.sh' -type f -print | sort | while IFS= read -r scr
     bash -n "$script"
 done
 
-python3 -m py_compile "$examples_dir/bcc/tool-snippet.py"
+python3 - "$examples_dir/bcc/tool-snippet.py" <<'PY'
+import pathlib
+import sys
+
+path = pathlib.Path(sys.argv[1])
+compile(path.read_text(encoding="utf-8"), str(path), "exec")
+PY
 python3 -m json.tool "$examples_dir/editor/diagnostic.schema.example.json" >/dev/null
 python3 -m json.tool "$repo_root/docs/evaluation/diagnostic.schema.json" >/dev/null
 
