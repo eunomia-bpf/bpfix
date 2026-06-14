@@ -208,7 +208,7 @@ Current evaluation TODO:
   action proxy
 - report object-CFG attachment quality by program section, not only aggregate
   object/program/site counts
-- report latency on the same machine and command configuration
+- separate CLI process-startup overhead from in-process diagnostic analysis time
 
 ## Near-Term Roadmap
 

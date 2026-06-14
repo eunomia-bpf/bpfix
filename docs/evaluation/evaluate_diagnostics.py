@@ -15,6 +15,7 @@ import json
 import pathlib
 import subprocess
 import sys
+import time
 from dataclasses import dataclass
 from typing import Iterable
 
@@ -47,6 +48,7 @@ class Prediction:
     object_state_site_count: int = 0
     object_attach_errors: int = 0
     object_analysis_error: str | None = None
+    duration_ms: float = 0.0
 
 
 @dataclass
@@ -311,6 +313,7 @@ def run_bpfix(
     if object_path is not None:
         cmd.extend(["--object", str(object_path)])
     cmd.append(str(log_path))
+    started = time.perf_counter()
     completed = subprocess.run(
         cmd,
         check=True,
@@ -318,6 +321,7 @@ def run_bpfix(
         stderr=subprocess.DEVNULL,
         text=True,
     )
+    duration_ms = (time.perf_counter() - started) * 1000.0
     diagnostic = json.loads(completed.stdout)
     pc_candidates: list[int] = []
     source_span = diagnostic.get("source_span") or {}
@@ -348,6 +352,7 @@ def run_bpfix(
             if program.get("verifier_state_attach_error") is not None
         ),
         object_analysis_error=metadata.get("object_analysis_error"),
+        duration_ms=duration_ms,
     )
 
 
@@ -393,6 +398,29 @@ def ratio(numerator: int, denominator: int) -> str:
     return f"{numerator}/{denominator} ({pct:.1f}%)"
 
 
+def latency_summary(predictions: Iterable[Prediction]) -> tuple[float, float, float]:
+    values = sorted(prediction.duration_ms for prediction in predictions)
+    if not values:
+        return (0.0, 0.0, 0.0)
+    median = percentile(values, 50)
+    p95 = percentile(values, 95)
+    return (median, p95, values[-1])
+
+
+def percentile(values: list[float], pct: int) -> float:
+    if len(values) == 1:
+        return values[0]
+    rank = (pct / 100.0) * (len(values) - 1)
+    lower = int(rank)
+    upper = min(lower + 1, len(values) - 1)
+    weight = rank - lower
+    return values[lower] * (1.0 - weight) + values[upper] * weight
+
+
+def ms(value: float) -> str:
+    return f"{value:.1f} ms"
+
+
 def macro_f1(gold_pred: Iterable[tuple[str, str]]) -> float:
     pairs = list(gold_pred)
     values = []
@@ -423,6 +451,7 @@ def emit_summary(rows: list[Row]) -> None:
     root_exact, root_total = exact_root(rows, "bpfix")
     root_w5, _ = exact_root(rows, "bpfix", within=5)
     term_root, _ = exact_root(rows, "terminal")
+    bpfix_median, bpfix_p95, bpfix_max = latency_summary(row.bpfix for row in rows)
 
     metrics = [
         (
@@ -531,6 +560,11 @@ def emit_summary(rows: list[Row]) -> None:
             "next-action proxy exact",
             ratio(sum(row.bpfix.action == row.label_action for row in rows), total),
             ratio(sum(row.terminal.action == row.label_action for row in rows), total),
+        ),
+        (
+            "bpfix CLI wall time, median/p95/max",
+            f"{ms(bpfix_median)} / {ms(bpfix_p95)} / {ms(bpfix_max)}",
+            "n/a",
         ),
     ]
 

@@ -89,7 +89,9 @@ invokes `bpfix --format json` for each case log through the shared metric
 implementation in `docs/evaluation/evaluate_diagnostics.py`. `--reject-fallback`
 fails the run if any admitted replay case emits `BPFIX-UNKNOWN`, `BPFIX-E000`,
 or `BPFIX-E099`. Use `--bpfix-bin /path/to/bpfix --no-build` to evaluate an
-existing binary.
+existing binary. The summary also reports BPFix CLI wall-clock time
+median/p95/max over the same run; this measures the diagnostic invocation only,
+not replay build or loader time.
 
 To include object/CFG attachment coverage, run:
 
