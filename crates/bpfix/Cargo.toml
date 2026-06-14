@@ -5,6 +5,9 @@ edition.workspace = true
 license.workspace = true
 repository.workspace = true
 description = "Userspace eBPF verifier failure diagnostic CLI"
+readme = "../../README.md"
+keywords = ["ebpf", "bpf", "verifier", "diagnostics"]
+categories = ["command-line-utilities", "development-tools::debugging"]
 
 [[bin]]
 name = "bpfix"

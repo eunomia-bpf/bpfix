@@ -90,8 +90,8 @@ The raw log says where the verifier stopped, but not the source-level proof
 story. BPFix turns the trace into a Rust-style multi-span diagnostic:
 
 ```text
-error[BPFIX-E006]: pointer type proof is missing
-  = class: source_bug
+error[BPFIX-E006]: verifier-visible compiler lowering hides the required proof
+  = class: lowering_artifact
   = confidence: medium
   = diagnostic: supported, help: repair_hint, span: exact_pc
   --> prog.c:270
@@ -106,8 +106,10 @@ error[BPFIX-E006]: pointer type proof is missing
    = verifier[229]: R5 invalid mem access 'scalar'
    = note: nearest BPF instruction pc 37
    = note: parsed 60 verifier state snapshots
+   = note[lowering]: compiler-lowered control flow hides an established packet-pointer proof
    = required proof: preserve a verifier-recognized pointer type at the operation that requires a pointer
-help: Keep branch-specific pointer derivations in separate verifier-visible branches, or rederive the pointer from a checked base immediately before dereferencing it.
+help: Preserve pointer provenance across the failing path, or rederive the pointer from a checked base immediately before dereferencing it.
+help: Keep the checked packet pointer derivation in the same verifier-visible path as the dereference, or rederive it from a checked base immediately before use.
 help: Avoid integer casts or arithmetic that turn the pointer into a scalar before the access.
 help: Recompute the pointer from a verifier-tracked base after scalar manipulation.
 ```
@@ -263,6 +265,8 @@ Current diagnostics focus on common verifier failures:
 - reference lifetime leaks
 - scalar range and variable-offset problems
 - pointer type/provenance loss
+- verifier-visible compiler lowering artifacts
+- verifier precision limits and likely false positives
 - verifier complexity and loop limits
 - missing kernel/helper/program-type support
 - dynptr lifetime and bounds issues
@@ -291,6 +295,12 @@ Check the workspace:
 
 ```bash
 cargo check --workspace
+```
+
+Run the same lint gate used by CI:
+
+```bash
+cargo clippy --workspace --all-targets --all-features -- -D warnings
 ```
 
 Format code:

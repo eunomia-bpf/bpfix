@@ -5,6 +5,8 @@ edition.workspace = true
 license.workspace = true
 repository.workspace = true
 description = "Rust analysis primitives for eBPF verifier diagnostics"
+keywords = ["ebpf", "bpf", "verifier", "analysis"]
+categories = ["development-tools::debugging", "parser-implementations"]
 
 [dependencies]
 anyhow.workspace = true
