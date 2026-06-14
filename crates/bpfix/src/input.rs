@@ -2,6 +2,8 @@ use std::path::Path;
 
 use anyhow::{Context, Result};
 
+use crate::source::{parse_instruction_pc, parse_source_comment};
+
 const TERMINAL_ERROR_MARKERS: &[&str] = &[
     "bpf program is too large",
     "combined stack size",
@@ -331,38 +333,17 @@ fn nearest_instruction_pc(lines: &[&str], mut idx: usize) -> Option<usize> {
     }
 }
 
-fn parse_instruction_pc(line: &str) -> Option<usize> {
-    let trimmed = line.trim_start();
-    let digits_len = trimmed
-        .bytes()
-        .take_while(|byte| byte.is_ascii_digit())
-        .count();
-    if digits_len == 0 || trimmed.as_bytes().get(digits_len) != Some(&b':') {
-        return None;
-    }
-    trimmed[..digits_len].parse().ok()
-}
-
 fn nearest_source_span(
     lines: &[&str],
     mut idx: usize,
 ) -> (Option<String>, Option<usize>, Option<String>) {
     loop {
-        if let Some((path, line, source_text)) = parse_source_comment(lines[idx]) {
-            return (Some(path), Some(line), Some(source_text));
+        if let Some(source) = parse_source_comment(lines[idx]) {
+            return (Some(source.path), Some(source.line), Some(source.text));
         }
         if idx == 0 {
             return (None, None, None);
         }
         idx -= 1;
     }
-}
-
-fn parse_source_comment(line: &str) -> Option<(String, usize, String)> {
-    let (source, tail) = line.rsplit_once(" @ ")?;
-    let tail = tail.trim();
-    let (path, line_no) = tail.rsplit_once(':')?;
-    let line_no = line_no.parse().ok()?;
-    let source = source.trim().trim_start_matches(';').trim().to_string();
-    Some((path.to_string(), line_no, source))
 }

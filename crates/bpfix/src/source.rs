@@ -28,7 +28,7 @@ pub(crate) fn collect_source_events(log: &str) -> Vec<SourceEvent> {
     events
 }
 
-fn parse_source_comment(line: &str) -> Option<SourceLocation> {
+pub(crate) fn parse_source_comment(line: &str) -> Option<SourceLocation> {
     let (source, tail) = line.rsplit_once(" @ ")?;
     let (path, line_no) = tail.trim().rsplit_once(':')?;
     Some(SourceLocation {
@@ -38,7 +38,7 @@ fn parse_source_comment(line: &str) -> Option<SourceLocation> {
     })
 }
 
-fn parse_instruction_pc(line: &str) -> Option<usize> {
+pub(crate) fn parse_instruction_pc(line: &str) -> Option<usize> {
     let trimmed = line.trim_start();
     let digits_len = trimmed
         .bytes()

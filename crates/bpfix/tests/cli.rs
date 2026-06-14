@@ -46,10 +46,12 @@ fn run_with_args(args: &[&str]) -> std::process::Output {
 }
 
 fn run_json_stdin(input: &str) -> Value {
+    run_json_stdin_with_args(input, &["-", "--format", "json"])
+}
+
+fn run_json_stdin_with_args(input: &str, args: &[&str]) -> Value {
     let mut child = Command::new(env!("CARGO_BIN_EXE_bpfix"))
-        .arg("-")
-        .arg("--format")
-        .arg("json")
+        .args(args)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .spawn()
@@ -559,6 +561,20 @@ fn stdin_log_path_does_not_need_yaml() {
 
     assert_eq!(json["error_id"], "BPFIX-E005");
     assert_eq!(json["failure_class"], "source_bug");
+    assert_eq!(json["source_span"]["instruction_pc"], 33);
+}
+
+#[test]
+fn omitted_log_reads_stdin_by_default() {
+    let replay = std::fs::read_to_string(
+        workspace_root().join("bpfix-bench/cases/stackoverflow-70750259/replay-verifier.log"),
+    )
+    .expect("fixture should be readable");
+    let json = run_json_stdin_with_args(&replay, &["--format", "json"]);
+
+    assert_eq!(json["error_id"], "BPFIX-E005");
+    assert_eq!(json["failure_class"], "source_bug");
+    assert_eq!(json["metadata"]["input_kind"], "verifier-log-region");
     assert_eq!(json["source_span"]["instruction_pc"], 33);
 }
 
