@@ -62,13 +62,16 @@ pub enum ProofSignal {
     PacketRangeProofLostBeforeAccess,
     MapValueWideAccess,
     MapValueCheckedOffsetRelationLost,
+    MapPointerArgumentScalarZero,
     PacketMaxOffsetPrecisionBoundary,
     MapValueRelationPrecisionBoundary,
 }
 
 impl ProofSignal {
     pub(crate) const fn failure_class(self) -> &'static str {
-        if self.is_verifier_precision_boundary() {
+        if self.is_source_state_signal() {
+            "source_bug"
+        } else if self.is_verifier_precision_boundary() {
             "verifier_false_positive"
         } else {
             "lowering_artifact"
@@ -76,7 +79,9 @@ impl ProofSignal {
     }
 
     pub(crate) const fn summary(self) -> &'static str {
-        if self.is_verifier_precision_boundary() {
+        if self.is_source_state_signal() {
+            "helper map-pointer argument is scalar zero at the verifier rejection"
+        } else if self.is_verifier_precision_boundary() {
             "verifier precision limit may hide an existing safety proof"
         } else {
             "verifier-visible compiler lowering hides the required proof"
@@ -84,7 +89,7 @@ impl ProofSignal {
     }
 
     pub(crate) const fn help_safety(self) -> &'static str {
-        if self.is_verifier_precision_boundary() {
+        if self.is_source_state_signal() || self.is_verifier_precision_boundary() {
             "triage_only"
         } else {
             "repair_hint"
@@ -92,7 +97,9 @@ impl ProofSignal {
     }
 
     pub(crate) const fn evidence_kind(self) -> &'static str {
-        if self.is_verifier_precision_boundary() {
+        if self.is_source_state_signal() {
+            "verifier_state_signal"
+        } else if self.is_verifier_precision_boundary() {
             "verifier_precision_signal"
         } else {
             "lowering_artifact_signal"
@@ -139,6 +146,9 @@ impl ProofSignal {
             }
             Self::MapValueCheckedOffsetRelationLost => {
                 "source bounds the map-value expression to the declared value size, but verifier state later sees the rebuilt pointer range cross that size"
+            }
+            Self::MapPointerArgumentScalarZero => {
+                "helper expects a map pointer, but verifier state shows scalar zero in the map argument register at the helper call"
             }
             Self::PacketMaxOffsetPrecisionBoundary => {
                 "verifier state reaches a packet access with a large variable offset range at the packet-offset precision boundary"
@@ -190,6 +200,9 @@ impl ProofSignal {
             Self::MapValueCheckedOffsetRelationLost => {
                 "Reuse the exact bounded map-value address expression at the access site, or store the checked remaining capacity in one scalar that the final load uses directly."
             }
+            Self::MapPointerArgumentScalarZero => {
+                "Pass a verifier-visible map pointer as the helper's map argument. If the source names a map but the verifier still sees zero, inspect the loader/object path and ensure map relocations are applied before loading raw instructions."
+            }
             Self::PacketMaxOffsetPrecisionBoundary => {
                 "Treat this as a verifier precision boundary: clamp the packet cursor to a verifier-friendly maximum before the loop, then rederive and recheck the exact byte pointer used by the load."
             }
@@ -210,6 +223,7 @@ impl ProofSignal {
             | Self::PointerShiftDropsProvenance
             | Self::ModifiedContextPointer
             | Self::SubprogramContextArgumentDropped => 20,
+            signal if signal.is_source_state_signal() => 10,
             signal if signal.is_verifier_precision_boundary() => 30,
             _ => 10,
         }
@@ -220,6 +234,10 @@ impl ProofSignal {
             self,
             Self::PacketMaxOffsetPrecisionBoundary | Self::MapValueRelationPrecisionBoundary
         )
+    }
+
+    const fn is_source_state_signal(self) -> bool {
+        matches!(self, Self::MapPointerArgumentScalarZero)
     }
 }
 
@@ -766,6 +784,16 @@ fn proof_signals(context: ProofSignalContext<'_>) -> Vec<ProofSignal> {
     if let Some(signal) = packet_verifier_precision_signal(&context) {
         signals.push(signal);
     }
+    if map_pointer_argument_scalar_zero(
+        context.log,
+        context.terminal_error,
+        context.terminal_pc,
+        context.register,
+        context.states,
+        context.events,
+    ) {
+        signals.push(ProofSignal::MapPointerArgumentScalarZero);
+    }
     if context
         .events
         .iter()
@@ -878,6 +906,44 @@ fn invalid_scalar_memory_load_from_constant(
         .is_some_and(|value| (1..=4096).contains(&value))
 }
 
+fn map_pointer_argument_scalar_zero(
+    log: &str,
+    terminal_error: &str,
+    terminal_pc: Option<usize>,
+    register: Option<u8>,
+    states: &[VerifierInsn],
+    events: &[ProofEvent],
+) -> bool {
+    if !terminal_error.contains("expected=map_ptr") {
+        return false;
+    }
+    let Some(reg) = register else {
+        return false;
+    };
+    if reg != 1 {
+        return false;
+    }
+    if !terminal_instruction_contains(log, terminal_pc, "call bpf_map_lookup_elem#") {
+        return false;
+    }
+    let Some(rejected) = rejected_source(events) else {
+        return false;
+    };
+    if !rejected.text.contains("bpf_map_lookup_elem") {
+        return false;
+    }
+    if first_call_argument(&rejected.text, "bpf_map_lookup_elem")
+        .as_deref()
+        .is_some_and(is_literal_null_argument)
+    {
+        return false;
+    }
+    let Some(state) = latest_reg_state_before(states, terminal_pc, reg) else {
+        return false;
+    };
+    state.reg_type == "scalar" && state.exact_value == Some(0)
+}
+
 fn map_value_wide_access(
     log: &str,
     terminal_error: &str,
@@ -959,6 +1025,16 @@ fn terminal_instruction_access_width(log: &str, terminal_pc: Option<usize>) -> O
     log.lines()
         .filter_map(|line| line.trim().strip_prefix(&prefix))
         .find_map(memory_access_width)
+}
+
+fn terminal_instruction_contains(log: &str, terminal_pc: Option<usize>, needle: &str) -> bool {
+    let Some(pc) = terminal_pc else {
+        return false;
+    };
+    let prefix = format!("{pc}:");
+    log.lines()
+        .filter_map(|line| line.trim().strip_prefix(&prefix))
+        .any(|line| line.contains(needle))
 }
 
 fn memory_access_width(line_after_pc: &str) -> Option<u32> {
@@ -1210,6 +1286,51 @@ fn source_line_links_identifiers(
         && ids
             .iter()
             .any(|identifier| rejected_ids.iter().any(|rejected| rejected == identifier))
+}
+
+fn first_call_argument(source_text: &str, function: &str) -> Option<String> {
+    let open = source_text.find(function)? + function.len();
+    let mut chars = source_text[open..].char_indices();
+    let (_, first) = chars.next()?;
+    if first != '(' {
+        return None;
+    }
+    let args_start = open + first.len_utf8();
+    let mut depth = 0usize;
+    for (relative_idx, ch) in chars {
+        match ch {
+            '(' => depth += 1,
+            ')' if depth == 0 => {
+                return Some(
+                    source_text[args_start..open + relative_idx]
+                        .trim()
+                        .to_string(),
+                )
+            }
+            ')' => depth = depth.saturating_sub(1),
+            ',' if depth == 0 => {
+                return Some(
+                    source_text[args_start..open + relative_idx]
+                        .trim()
+                        .to_string(),
+                )
+            }
+            _ => {}
+        }
+    }
+    None
+}
+
+fn is_literal_null_argument(argument: &str) -> bool {
+    let normalized = argument
+        .chars()
+        .filter(|ch| !ch.is_ascii_whitespace())
+        .collect::<String>()
+        .to_ascii_lowercase();
+    matches!(
+        normalized.as_str(),
+        "0" | "null" | "(void*)0" | "(void*)null"
+    )
 }
 
 fn text_has_numeric_token(text: &str, expected: u32) -> bool {

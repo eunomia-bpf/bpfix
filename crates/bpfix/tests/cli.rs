@@ -127,6 +127,8 @@ fn help_marks_object_analysis_as_experimental_and_feature_gated() {
 fn diagnostic_schema_and_editor_example_track_json_contract() {
     let json = run_json("bpfix-bench/cases/stackoverflow-53136145/replay-verifier.log");
     let precision_json = run_json("bpfix-bench/cases/stackoverflow-77762365/replay-verifier.log");
+    let verifier_state_signal_json =
+        run_json("bpfix-bench/cases/stackoverflow-72606055/replay-verifier.log");
     let schema: Value = serde_json::from_str(
         &std::fs::read_to_string(workspace_root().join("docs/evaluation/diagnostic.schema.json"))
             .expect("schema should be readable"),
@@ -154,12 +156,22 @@ fn diagnostic_schema_and_editor_example_track_json_contract() {
     let failure_classes = string_array_set(&schema["properties"]["failure_class"]["enum"]);
     let evidence_kinds =
         string_array_set(&schema["$defs"]["evidence_item"]["properties"]["kind"]["enum"]);
-    for diagnostic in [&json, &precision_json, &example] {
+    for diagnostic in [
+        &json,
+        &precision_json,
+        &verifier_state_signal_json,
+        &example,
+    ] {
         assert!(failure_classes.contains(diagnostic["failure_class"].as_str().unwrap()));
         for evidence in diagnostic["evidence"].as_array().unwrap() {
             assert!(evidence_kinds.contains(evidence["kind"].as_str().unwrap()));
         }
     }
+    assert!(verifier_state_signal_json["evidence"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|evidence| evidence["kind"] == "verifier_state_signal"));
 
     let metadata_keys = object_keys(&json["metadata"]);
     assert_eq!(
@@ -479,6 +491,56 @@ fn verifier_precision_labels_without_runtime_proof_stay_source_bugs() {
     let loop_callback = run_json("bpfix-bench/cases/stackoverflow-77967675/replay-verifier.log");
     assert_eq!(loop_callback["error_id"], "BPFIX-E001");
     assert_eq!(loop_callback["failure_class"], "source_bug");
+}
+
+#[test]
+fn map_pointer_scalar_zero_signal_does_not_claim_log_only_relocation() {
+    let scalar_zero_map_arg =
+        run_json("bpfix-bench/cases/stackoverflow-72606055/replay-verifier.log");
+    assert_eq!(scalar_zero_map_arg["error_id"], "BPFIX-E008");
+    assert_eq!(
+        scalar_zero_map_arg["failure_class"], "source_bug",
+        "log/source evidence alone proves a scalar-zero helper argument, not a loader relocation"
+    );
+    assert_eq!(scalar_zero_map_arg["help_safety"], "triage_only");
+    assert!(scalar_zero_map_arg["evidence"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|evidence| {
+            evidence["kind"] == "verifier_state_signal"
+                && evidence["detail"].as_str().unwrap().contains("scalar zero")
+        }));
+    assert!(!scalar_zero_map_arg["evidence"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|evidence| evidence["kind"] == "environment_signal"));
+
+    let wrong_map_argument =
+        run_json("bpfix-bench/cases/stackoverflow-70091221/replay-verifier.log");
+    assert_eq!(wrong_map_argument["error_id"], "BPFIX-E008");
+    assert_eq!(wrong_map_argument["failure_class"], "source_bug");
+    assert!(!wrong_map_argument["evidence"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|evidence| evidence["kind"] == "verifier_state_signal"));
+
+    let literal_null_map = run_json_stdin(
+        "0: R1=ctx() R10=fp0\n\
+         ; value = bpf_map_lookup_elem(0, &key); @ prog.c:10\n\
+         0: (b7) r1 = 0                  ; R1_w=0\n\
+         1: (85) call bpf_map_lookup_elem#1\n\
+         R1 type=scalar expected=map_ptr\n",
+    );
+    assert_eq!(literal_null_map["error_id"], "BPFIX-E008");
+    assert_eq!(literal_null_map["failure_class"], "source_bug");
+    assert!(!literal_null_map["evidence"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|evidence| evidence["kind"] == "verifier_state_signal"));
 }
 
 #[test]
