@@ -141,6 +141,7 @@ fn render_runtime_evidence_notes(out: &mut String, diagnostic: &Diagnostic) {
 fn runtime_evidence_label(kind: &str) -> Option<&'static str> {
     match kind {
         "lowering_artifact_signal" => Some("lowering"),
+        "verifier_state_signal" => Some("verifier-state"),
         "verifier_precision_signal" => Some("verifier-precision"),
         _ => None,
     }

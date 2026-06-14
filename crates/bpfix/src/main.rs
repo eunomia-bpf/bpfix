@@ -158,7 +158,6 @@ fn build_diagnostic(
         source_line: None,
         source_text: None,
     });
-    let error_id = class.error_id.to_string();
     let (trace_state_count, analysis_error, proof_events, proof_signals, required_proof) =
         if class.error_id == "BPFIX-E000" {
             (
@@ -172,6 +171,7 @@ fn build_diagnostic(
             match diagnostic::analyze_verifier_log(
                 log,
                 terminal.pc,
+                Some(terminal.line),
                 &terminal.message,
                 class.obligation,
             ) {
@@ -200,6 +200,10 @@ fn build_diagnostic(
             }
         };
     let proof_signal = runtime_proof_signal(class.failure_class, &proof_signals);
+    let error_id = proof_signal
+        .and_then(ProofSignal::error_id_override)
+        .unwrap_or(class.error_id)
+        .to_string();
     let failure_class = proof_signal
         .map(ProofSignal::failure_class)
         .unwrap_or(class.failure_class)
@@ -215,6 +219,10 @@ fn build_diagnostic(
         .map(ProofSignal::help_safety)
         .unwrap_or(class.help_safety)
         .to_string();
+    let required_proof = proof_signal
+        .and_then(ProofSignal::required_proof_override)
+        .map(ToOwned::to_owned)
+        .unwrap_or(required_proof);
 
     let mut evidence = Vec::new();
     evidence.push(Evidence {
@@ -292,7 +300,10 @@ fn build_diagnostic(
         source_span,
         evidence,
         help,
-        primary_label: rejected_detail
+        primary_label: proof_signal
+            .and_then(ProofSignal::primary_label_override)
+            .map(ToOwned::to_owned)
+            .or(rejected_detail)
             .unwrap_or_else(|| format!("rejected here: {}", class.summary)),
         metadata: Metadata {
             case_id,

@@ -66,6 +66,9 @@ from 4 to 6: R0_w=pkt(off=8,r=8) R1=ctx() R2_w=pkt(r=8) R3_w=pkt_end() R10=fp0
     let fp8 = insns[4].stack.get(&-8).unwrap();
     assert_eq!(fp8.slot_types.as_deref(), Some("0000????"));
     assert!(fp8.value.is_none());
+    assert_eq!(insns[4].refs, Some(2));
+    assert_eq!(insns[4].callback_kind, Some(CallbackKind::Sync));
+    assert!(insns[4].callback);
 }
 
 #[test]
@@ -141,6 +144,31 @@ fn parses_packet_range_attribute() {
     assert_eq!(insns.len(), 1);
     assert_eq!(insns[0].regs.get(&2).unwrap().packet_range, Some(74));
     assert_eq!(insns[0].regs.get(&4).unwrap().packet_range, Some(74));
+}
+
+#[test]
+fn parses_callback_state_tokens() {
+    let log = r#"
+	17: frame1: R1=scalar() R2=0 R10=fp0 refs=2 cb
+	15: R1=map_ptr(map=hmap,ks=4,vs=16) R10=fp0 async_cb
+	19: frame1: R1=scalar() R10=fp0 refs=bad cb
+	"#;
+
+    let insns = parse_verifier_log(log);
+    assert_eq!(insns.len(), 3);
+    assert_eq!(insns[0].log_line, 2);
+    assert_eq!(insns[0].frame, 1);
+    assert_eq!(insns[0].refs, Some(2));
+    assert_eq!(insns[0].callback_kind, Some(CallbackKind::Sync));
+    assert!(insns[0].callback);
+    assert_eq!(insns[1].log_line, 3);
+    assert_eq!(insns[1].refs, None);
+    assert_eq!(insns[1].callback_kind, Some(CallbackKind::Async));
+    assert!(insns[1].callback);
+    assert_eq!(insns[2].log_line, 4);
+    assert_eq!(insns[2].refs, None);
+    assert_eq!(insns[2].callback_kind, Some(CallbackKind::Sync));
+    assert!(insns[2].callback);
 }
 
 #[test]

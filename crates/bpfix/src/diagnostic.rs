@@ -1,6 +1,7 @@
 use anyhow::Result;
 use bpfanalysis::{
-    verifier_states_with_branch_deltas_from_log, RegState, VerifierInsn, VerifierInsnKind,
+    verifier_states_with_branch_deltas_from_log, CallbackKind, RegState, VerifierInsn,
+    VerifierInsnKind,
 };
 
 use crate::family::ProofObligation;
@@ -64,6 +65,7 @@ pub enum ProofSignal {
     MapValueCheckedOffsetRelationLost,
     MapPointerArgumentScalarZero,
     ContextAccessSourceArgumentMismatch,
+    ExceptionThrowWithLiveReference,
     PacketMaxOffsetPrecisionBoundary,
     MapValueRelationPrecisionBoundary,
 }
@@ -86,6 +88,9 @@ impl ProofSignal {
             }
             Self::ContextAccessSourceArgumentMismatch => {
                 "tracing context argument type does not match the verifier-visible function signature"
+            }
+            Self::ExceptionThrowWithLiveReference => {
+                "exception callback can throw while a verifier-tracked reference is still live"
             }
             signal if signal.is_verifier_precision_boundary() => {
                 "verifier precision limit may hide an existing safety proof"
@@ -161,6 +166,9 @@ impl ProofSignal {
             Self::ContextAccessSourceArgumentMismatch => {
                 "verifier reports the traced-function argument at this context slot as PTR rather than a directly supported struct pointer, while the rejected source is a BPF_PROG argument load from the raw tracing context"
             }
+            Self::ExceptionThrowWithLiveReference => {
+                "verifier state reaches bpf_throw inside a callback frame while verifier-tracked references are live"
+            }
             Self::PacketMaxOffsetPrecisionBoundary => {
                 "verifier state reaches a packet access with a large variable offset range at the packet-offset precision boundary"
             }
@@ -217,6 +225,9 @@ impl ProofSignal {
             Self::ContextAccessSourceArgumentMismatch => {
                 "Use only fentry arguments whose BTF type is verifier-supported at this slot, or avoid reading this argument through BPF_PROG when the traced function exposes it as an unsupported pointer type."
             }
+            Self::ExceptionThrowWithLiveReference => {
+                "Release verifier-tracked references before any callback path can throw, or avoid bpf_throw while a reference acquired by the caller is still live."
+            }
             Self::PacketMaxOffsetPrecisionBoundary => {
                 "Treat this as a verifier precision boundary: clamp the packet cursor to a verifier-friendly maximum before the loop, then rederive and recheck the exact byte pointer used by the load."
             }
@@ -253,24 +264,62 @@ impl ProofSignal {
     const fn is_source_state_signal(self) -> bool {
         matches!(
             self,
-            Self::MapPointerArgumentScalarZero | Self::ContextAccessSourceArgumentMismatch
+            Self::MapPointerArgumentScalarZero
+                | Self::ContextAccessSourceArgumentMismatch
+                | Self::ExceptionThrowWithLiveReference
         )
     }
 
     pub(crate) fn can_override_base_failure_class(self, base_failure_class: &str) -> bool {
-        base_failure_class == "source_bug"
-            || (base_failure_class == "environment_or_configuration"
-                && matches!(self, Self::ContextAccessSourceArgumentMismatch))
+        match self {
+            Self::ExceptionThrowWithLiveReference => {
+                base_failure_class == "environment_or_configuration"
+            }
+            Self::ContextAccessSourceArgumentMismatch => {
+                base_failure_class == "source_bug"
+                    || base_failure_class == "environment_or_configuration"
+            }
+            _ => base_failure_class == "source_bug",
+        }
     }
 
     pub(crate) const fn replaces_classifier_help(self) -> bool {
-        matches!(self, Self::ContextAccessSourceArgumentMismatch)
+        matches!(
+            self,
+            Self::ContextAccessSourceArgumentMismatch | Self::ExceptionThrowWithLiveReference
+        )
+    }
+
+    pub(crate) const fn required_proof_override(self) -> Option<&'static str> {
+        match self {
+            Self::ExceptionThrowWithLiveReference => Some(
+                "release verifier-tracked references on every callback and exceptional path before bpf_throw can run",
+            ),
+            _ => None,
+        }
+    }
+
+    pub(crate) const fn primary_label_override(self) -> Option<&'static str> {
+        match self {
+            Self::ExceptionThrowWithLiveReference => {
+                Some("bpf_throw can run while verifier-tracked references are live")
+            }
+            _ => None,
+        }
+    }
+
+    pub(crate) const fn error_id_override(self) -> Option<&'static str> {
+        match self {
+            Self::ExceptionThrowWithLiveReference => Some("BPFIX-E004"),
+            _ => None,
+        }
     }
 }
 
 pub fn analyze_verifier_log(
     log: &str,
     terminal_pc: Option<usize>,
+    terminal_line: Option<usize>,
     terminal_error: &str,
     obligation: ProofObligation,
 ) -> Result<VerifierLogAnalysis> {
@@ -352,6 +401,7 @@ pub fn analyze_verifier_log(
         terminal_error,
         obligation,
         terminal_pc,
+        terminal_line,
         register,
         states: &states,
         branch_states: &branch_states,
@@ -781,6 +831,7 @@ struct ProofSignalContext<'a> {
     terminal_error: &'a str,
     obligation: ProofObligation,
     terminal_pc: Option<usize>,
+    terminal_line: Option<usize>,
     register: Option<u8>,
     states: &'a [VerifierInsn],
     branch_states: &'a [VerifierInsn],
@@ -819,6 +870,14 @@ fn proof_signals(context: ProofSignalContext<'_>) -> Vec<ProofSignal> {
         context.events,
     ) {
         signals.push(ProofSignal::ContextAccessSourceArgumentMismatch);
+    }
+    if exception_throw_with_live_reference(
+        context.log,
+        context.terminal_pc,
+        context.terminal_line,
+        context.states,
+    ) {
+        signals.push(ProofSignal::ExceptionThrowWithLiveReference);
     }
     if map_pointer_argument_scalar_zero(
         context.log,
@@ -970,6 +1029,20 @@ fn context_access_source_argument_mismatch(
     latest_reg_state_before(states, terminal_pc, 1).is_some_and(|state| state.reg_type == "ctx")
 }
 
+fn exception_throw_with_live_reference(
+    log: &str,
+    terminal_pc: Option<usize>,
+    terminal_line: Option<usize>,
+    states: &[VerifierInsn],
+) -> bool {
+    if terminal_call_target(log, terminal_pc, terminal_line) != Some("bpf_throw") {
+        return false;
+    }
+    latest_verifier_state_before(states, terminal_pc, terminal_line).is_some_and(|state| {
+        state.callback_kind == Some(CallbackKind::Sync) && state.refs.is_some_and(|refs| refs > 0)
+    })
+}
+
 fn map_pointer_argument_scalar_zero(
     log: &str,
     terminal_error: &str,
@@ -1101,6 +1174,42 @@ fn terminal_instruction_contains(log: &str, terminal_pc: Option<usize>, needle: 
         .any(|line| line.contains(needle))
 }
 
+fn terminal_call_target(
+    log: &str,
+    terminal_pc: Option<usize>,
+    terminal_line: Option<usize>,
+) -> Option<&str> {
+    let pc = terminal_pc?;
+    let prefix = format!("{pc}:");
+    let lines = log.lines().collect::<Vec<_>>();
+    let search_end = terminal_line
+        .map(|line| line.saturating_sub(1))
+        .unwrap_or(lines.len())
+        .min(lines.len());
+    for line in lines[..search_end].iter().rev() {
+        let Some(tail) = line.trim().strip_prefix(&prefix) else {
+            continue;
+        };
+        if let Some(target) = call_target_from_instruction_tail(tail) {
+            return Some(target);
+        }
+    }
+    None
+}
+
+fn call_target_from_instruction_tail(line: &str) -> Option<&str> {
+    let mut tokens = line.split_whitespace();
+    let call = loop {
+        let token = tokens.next()?;
+        if token == "call" {
+            break tokens.next()?;
+        }
+    };
+    call.split_once('#')
+        .map(|(target, _)| target)
+        .or(Some(call))
+}
+
 fn terminal_error_has_nearby_prior_line(
     log: &str,
     terminal_error: &str,
@@ -1169,6 +1278,18 @@ fn latest_reg_state_before(
         .rev()
         .filter_map(|state| state.regs.get(&reg))
         .next()
+}
+
+fn latest_verifier_state_before(
+    states: &[VerifierInsn],
+    terminal_pc: Option<usize>,
+    terminal_line: Option<usize>,
+) -> Option<&VerifierInsn> {
+    states
+        .iter()
+        .filter(|state| terminal_pc.is_none_or(|pc| state.pc <= pc))
+        .filter(|state| terminal_line.is_none_or(|line| state.log_line < line))
+        .next_back()
 }
 
 fn terminal_lowering_signal(message: &str) -> Option<ProofSignal> {
@@ -1605,6 +1726,7 @@ mod tests {
         let analysis = analyze_verifier_log(
             log,
             Some(37),
+            None,
             "R5 invalid mem access 'scalar'",
             ProofObligation::PointerProvenance,
         )
@@ -1639,6 +1761,7 @@ mod tests {
         let analysis = analyze_verifier_log(
             log,
             Some(33),
+            None,
             "value -2147483648 makes pkt pointer be out of bounds",
             ProofObligation::ScalarRange,
         )
@@ -1667,6 +1790,7 @@ mod tests {
         let analysis = analyze_verifier_log(
             log,
             Some(13),
+            None,
             "invalid access to map value, value_size=24 off=67 size=1; R0 max value is outside of the allowed memory range",
             ProofObligation::ScalarRange,
         )
@@ -1706,6 +1830,7 @@ mod tests {
         let analysis = analyze_verifier_log(
             log,
             Some(26),
+            None,
             "invalid access to packet, off=34 size=64, R3(id=0,off=34,r=42)",
             ProofObligation::PacketBounds,
         )
@@ -1732,6 +1857,7 @@ mod tests {
         let analysis = analyze_verifier_log(
             log,
             Some(7),
+            None,
             "R0 invalid mem access 'map_value_or_null'",
             ProofObligation::NullablePointer,
         )
@@ -1757,6 +1883,7 @@ mod tests {
         let analysis = analyze_verifier_log(
             log,
             Some(8),
+            None,
             "program of this type cannot use helper bpf_probe_read#4",
             ProofObligation::EnvironmentCapability,
         )
@@ -1780,6 +1907,7 @@ mod tests {
         let analysis = analyze_verifier_log(
             "0: (95) exit\nR0 !read_ok\n",
             Some(0),
+            None,
             "R0 !read_ok",
             ProofObligation::StackInitialized,
         )
@@ -1808,6 +1936,7 @@ Unreleased reference id=2 alloc_insn=5
         let analysis = analyze_verifier_log(
             log,
             Some(6),
+            None,
             "Unreleased reference id=2 alloc_insn=5",
             ProofObligation::ReferenceLifecycle,
         )

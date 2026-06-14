@@ -20,6 +20,11 @@ pub enum VerifierInsnKind {
     InsnDeltaState,
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CallbackKind {
+    Sync,
+    Async,
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum VerifierValueWidth {
     Unknown,
     Bits32,
@@ -44,12 +49,16 @@ pub struct ScalarRange {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct VerifierInsn {
     pub pc: usize,
+    pub log_line: usize,
     pub frame: usize,
     pub from_pc: Option<usize>,
     pub kind: VerifierInsnKind,
     pub speculative: bool,
     pub regs: HashMap<u8, RegState>,
     pub stack: HashMap<i16, StackState>,
+    pub refs: Option<u32>,
+    pub callback_kind: Option<CallbackKind>,
+    pub callback: bool,
 }
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct RegState {
@@ -119,7 +128,7 @@ pub fn verifier_states_with_branch_deltas_from_log(log: &str) -> Result<Vec<Veri
 fn parse_log_states(log: &str, include_branch_delta: bool) -> Result<Vec<VerifierInsn>> {
     let mut states = Vec::new();
     for (idx, line) in log.lines().enumerate() {
-        let Some(state) = parse_state_line(line).with_context(|| {
+        let Some(mut state) = parse_state_line(line).with_context(|| {
             format!(
                 "failed to parse verifier state line {}: {:?}",
                 idx + 1,
@@ -129,6 +138,7 @@ fn parse_log_states(log: &str, include_branch_delta: bool) -> Result<Vec<Verifie
         else {
             continue;
         };
+        state.log_line = idx + 1;
         if include_branch_delta || state.kind != VerifierInsnKind::BranchDeltaState {
             states.push(state);
         }
@@ -151,10 +161,27 @@ fn parse_state_line(line: &str) -> Result<Option<VerifierInsn>> {
     let (frame, state_text) = strip_frame_prefix(state_text);
     let mut regs = HashMap::new();
     let mut stack = HashMap::new();
+    let mut refs = None;
+    let mut callback_kind = None;
     let tokens = split_top_level_tokens(state_text);
     let mut idx = 0usize;
     while idx < tokens.len() {
         let token = tokens[idx];
+        if token == "cb" {
+            callback_kind = Some(CallbackKind::Sync);
+            idx += 1;
+            continue;
+        }
+        if token == "async_cb" {
+            callback_kind = Some(CallbackKind::Async);
+            idx += 1;
+            continue;
+        }
+        if let Some(value) = token.strip_prefix("refs=") {
+            refs = value.parse().ok();
+            idx += 1;
+            continue;
+        }
         if let Some((regno, state)) = parse_reg_token(token) {
             regs.insert(regno, state);
             idx += 1;
@@ -188,12 +215,16 @@ fn parse_state_line(line: &str) -> Result<Option<VerifierInsn>> {
     }
     Ok(Some(VerifierInsn {
         pc,
+        log_line: 0,
         frame,
         from_pc,
         kind,
         speculative,
         regs,
         stack,
+        refs,
+        callback_kind,
+        callback: callback_kind.is_some(),
     }))
 }
 fn looks_like_state_line(line: &str) -> bool {

@@ -599,6 +599,162 @@ fn fentry_context_argument_mismatch_overrides_terminal_environment_classifier() 
 }
 
 #[test]
+fn exception_throw_with_live_reference_overrides_jit_environment_classifier() {
+    let live_reference_throw = run_json(
+        "bpfix-bench/cases/kernel-selftest-exceptions-fail-reject-with-cb-reference-tc-c99ec1a7/replay-verifier.log",
+    );
+    assert_eq!(live_reference_throw["error_id"], "BPFIX-E004");
+    assert_eq!(live_reference_throw["failure_class"], "source_bug");
+    assert_eq!(live_reference_throw["help_safety"], "repair_hint");
+    assert!(live_reference_throw["required_proof"]
+        .as_str()
+        .unwrap()
+        .contains("release verifier-tracked references"));
+    assert!(live_reference_throw["evidence"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|evidence| {
+            evidence["kind"] == "verifier_state_signal"
+                && evidence["detail"]
+                    .as_str()
+                    .unwrap()
+                    .contains("references are live")
+        }));
+    let help = live_reference_throw["help"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|item| item.as_str())
+        .collect::<Vec<_>>()
+        .join("\n");
+    assert!(help.contains("Release verifier-tracked references"));
+    assert!(!help.contains("JIT support"));
+    let text = run_text(
+        "bpfix-bench/cases/kernel-selftest-exceptions-fail-reject-with-cb-reference-tc-c99ec1a7/replay-verifier.log",
+    );
+    assert!(text.contains("error[BPFIX-E004]: exception callback can throw"));
+    assert!(text.contains("bpf_throw can run while verifier-tracked references are live"));
+    assert!(text.contains("note[verifier-state]: verifier state reaches bpf_throw"));
+    assert!(!text.contains("kernel or JIT does not support this instruction or feature"));
+
+    let raw_log_without_source_comments = "\
+0: R1=scalar() R10=fp0 refs=2
+1: frame1: R1=scalar() R10=fp0 refs=2 cb
+1: (b7) r1 = 0                       ; frame1: R1_w=0 refs=2 cb
+2: (85) call bpf_throw#73439
+JIT does not support calling kfunc bpf_throw#73439
+processed 3 insns (limit 1000000) max_states_per_insn 0 total_states 1 peak_states 1 mark_read 0
+";
+    let raw = run_json_stdin(raw_log_without_source_comments);
+    assert_eq!(raw["error_id"], "BPFIX-E004");
+    assert_eq!(raw["failure_class"], "source_bug");
+
+    let async_callback_throw = run_json(
+        "bpfix-bench/cases/kernel-selftest-exceptions-fail-reject-async-callback-throw-tc-a86cf7b1/replay-verifier.log",
+    );
+    assert_eq!(async_callback_throw["error_id"], "BPFIX-E016");
+    assert_eq!(
+        async_callback_throw["failure_class"],
+        "environment_or_configuration"
+    );
+    assert!(!async_callback_throw["evidence"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|evidence| evidence["kind"] == "verifier_state_signal"));
+
+    let rbtree_throw_with_lock_state = run_json(
+        "bpfix-bench/cases/kernel-selftest-exceptions-fail-reject-with-rbtree-add-throw-tc-e943cfe2/replay-verifier.log",
+    );
+    assert_ne!(rbtree_throw_with_lock_state["error_id"], "BPFIX-E004");
+}
+
+#[test]
+fn exception_throw_signal_uses_nearest_callback_state() {
+    let log = "\
+0: (85) call bpf_loop#181
+0: frame1: R1=scalar() R10=fp0 refs=2 cb
+0: R1=scalar() R10=fp0
+; bpf_throw(0); @ prog.c:12
+1: (85) call bpf_throw#73439
+JIT does not support calling kfunc bpf_throw#73439
+processed 2 insns (limit 1000000) max_states_per_insn 0 total_states 1 peak_states 1 mark_read 0
+";
+
+    let json = run_json_stdin(log);
+
+    assert_eq!(json["error_id"], "BPFIX-E016");
+    assert_eq!(json["failure_class"], "environment_or_configuration");
+    assert!(!json["evidence"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|evidence| evidence["kind"] == "verifier_state_signal"));
+
+    let zero_refs_log = "\
+0: frame1: R1=scalar() R10=fp0 refs=0 cb
+; bpf_throw(0); @ prog.c:12
+1: (85) call bpf_throw#73439
+JIT does not support calling kfunc bpf_throw#73439
+processed 2 insns (limit 1000000) max_states_per_insn 0 total_states 1 peak_states 1 mark_read 0
+";
+    let zero_refs = run_json_stdin(zero_refs_log);
+    assert_eq!(zero_refs["error_id"], "BPFIX-E016");
+    assert_eq!(zero_refs["failure_class"], "environment_or_configuration");
+
+    let async_refs_log = "\
+0: frame1: R1=scalar() R10=fp0 refs=2 async_cb
+; bpf_throw(0); @ prog.c:12
+1: (85) call bpf_throw#73439
+JIT does not support calling kfunc bpf_throw#73439
+processed 2 insns (limit 1000000) max_states_per_insn 0 total_states 1 peak_states 1 mark_read 0
+";
+    let async_refs = run_json_stdin(async_refs_log);
+    assert_eq!(async_refs["error_id"], "BPFIX-E016");
+    assert_eq!(async_refs["failure_class"], "environment_or_configuration");
+
+    let repeated_pc_retry_log = "\
+0: frame1: R1=scalar() R10=fp0 refs=2 cb
+1: (85) call bpf_throw#73439
+JIT does not support calling kfunc bpf_throw#73439
+0: frame1: R1=scalar() R10=fp0 refs=2 cb
+1: (85) call bpf_timer_start#123
+JIT does not support calling kfunc bpf_timer_start#123
+processed 4 insns (limit 1000000) max_states_per_insn 0 total_states 2 peak_states 1 mark_read 0
+";
+    let repeated_pc_retry = run_json_stdin(repeated_pc_retry_log);
+    assert_eq!(repeated_pc_retry["error_id"], "BPFIX-E016");
+    assert_eq!(
+        repeated_pc_retry["failure_class"],
+        "environment_or_configuration"
+    );
+    assert!(!repeated_pc_retry["evidence"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|evidence| evidence["kind"] == "verifier_state_signal"));
+
+    let state_after_terminal_log = "\
+1: (85) call bpf_throw#73439
+JIT does not support calling kfunc bpf_throw#73439
+1: frame1: R1=scalar() R10=fp0 refs=2 cb
+processed 2 insns (limit 1000000) max_states_per_insn 0 total_states 1 peak_states 1 mark_read 0
+";
+    let state_after_terminal = run_json_stdin(state_after_terminal_log);
+    assert_eq!(state_after_terminal["error_id"], "BPFIX-E016");
+    assert_eq!(
+        state_after_terminal["failure_class"],
+        "environment_or_configuration"
+    );
+    assert!(!state_after_terminal["evidence"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|evidence| evidence["kind"] == "verifier_state_signal"));
+}
+
+#[test]
 fn packet_bounds_diagnostic_reports_prior_verifier_range_proof() {
     let json = run_json("bpfix-bench/cases/github-iovisor-bcc-5062/replay-verifier.log");
 

@@ -155,12 +155,16 @@ pub fn verifier_state(
 ) -> VerifierInsn {
     VerifierInsn {
         pc,
+        log_line: 0,
         frame,
         from_pc: None,
         kind,
         speculative: false,
         regs,
         stack,
+        refs: None,
+        callback_kind: None,
+        callback: false,
     }
 }
 
