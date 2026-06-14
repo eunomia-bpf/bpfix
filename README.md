@@ -172,6 +172,15 @@ Get JSON for CI or editor integration:
 bpfix --format json verifier.log
 ```
 
+For CI pipelines that want to fail when BPFix cannot produce a supported
+diagnostic, add `--fail-on-unsupported`. BPFix still renders the requested
+output first, then exits with code 2 for `unsupported_input` or
+`unsupported_verifier_message`:
+
+```bash
+bpfix --format json --fail-on-unsupported verifier.log
+```
+
 The CLI shape is intentionally small:
 
 ```text

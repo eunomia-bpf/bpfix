@@ -79,6 +79,15 @@ JSON is for CI, editors, and agents:
 bpfix --format json verifier.log
 ```
 
+If CI should fail when the input is not a supported verifier diagnostic, use:
+
+```bash
+bpfix --format json --fail-on-unsupported verifier.log
+```
+
+With that flag, BPFix still prints the diagnostic JSON first, then exits with
+code 2 for `unsupported_input` or `unsupported_verifier_message`.
+
 Both outputs:
 
 ```bash

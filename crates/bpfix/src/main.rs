@@ -35,6 +35,9 @@ struct Cli {
     /// Override diagnostic case ID.
     #[arg(long)]
     case_id: Option<String>,
+    /// Exit with code 2 after rendering if the input cannot be diagnosed.
+    #[arg(long)]
+    fail_on_unsupported: bool,
 }
 
 #[derive(Clone, Copy, Debug, ValueEnum)]
@@ -66,6 +69,10 @@ fn main() -> Result<()> {
             println!();
             println!("{}", render_json(&diagnostic)?);
         }
+    }
+
+    if cli.fail_on_unsupported && diagnostic.diagnostic_kind != "supported" {
+        std::process::exit(2);
     }
 
     Ok(())

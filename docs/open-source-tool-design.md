@@ -103,6 +103,12 @@ Emit JSON:
 bpfix --format json verifier.log
 ```
 
+Fail CI on unsupported inputs while still emitting the requested output:
+
+```bash
+bpfix --format json --fail-on-unsupported verifier.log
+```
+
 Emit both text and JSON:
 
 ```bash
@@ -118,10 +124,13 @@ bpfix [OPTIONS] [LOG]
 `LOG` is optional. When omitted or set to `-`, BPFix reads stdin. Positional
 input and stdin are always verifier/build/load log text. BPFix does not run the
 loader command in the default path, and the public contract should not include a
-command-execution shortcut. Docker execution, if supported, must be an explicit
-option such as `--docker`; benchmark YAML and repository workspace analysis also
-stay outside the positional argument. Plain text is the default because the
-common path is human debugging; JSON is opt-in for CI, editors, and agents.
+command-execution shortcut. `--fail-on-unsupported` only changes BPFix's own
+exit status after rendering: it exits with code 2 for `unsupported_input` or
+`unsupported_verifier_message`, and leaves supported diagnostics at exit code 0.
+Docker execution, if supported, must be an explicit option such as `--docker`;
+benchmark YAML and repository workspace analysis also stay outside the
+positional argument. Plain text is the default because the common path is human
+debugging; JSON is opt-in for CI, editors, and agents.
 
 ## Input Policy
 

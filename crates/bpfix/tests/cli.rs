@@ -75,10 +75,12 @@ fn run_json_stdin_with_args(input: &str, args: &[&str]) -> Value {
 }
 
 fn run_json_stdin_output(input: &str) -> std::process::Output {
+    run_stdin_output(input, &["-", "--format", "json"])
+}
+
+fn run_stdin_output(input: &str, args: &[&str]) -> std::process::Output {
     let mut child = Command::new(env!("CARGO_BIN_EXE_bpfix"))
-        .arg("-")
-        .arg("--format")
-        .arg("json")
+        .args(args)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -668,6 +670,39 @@ fn input_without_verifier_rejection_gets_actionable_input_error() {
         .unwrap()
         .iter()
         .any(|item| item.as_str().unwrap().contains("bpftool -d")));
+}
+
+#[test]
+fn fail_on_unsupported_exits_after_rendering_diagnostic() {
+    let output = run_stdin_output(
+        "clang -O2 -target bpf -c prog.bpf.c\nbuild succeeded\n",
+        &["-", "--format", "json", "--fail-on-unsupported"],
+    );
+    assert_eq!(output.status.code(), Some(2));
+    assert!(output.stderr.is_empty());
+    let json: Value = serde_json::from_slice(&output.stdout).expect("bpfix should emit JSON");
+    assert_eq!(json["error_id"], "BPFIX-E000");
+    assert_eq!(json["diagnostic_kind"], "unsupported_input");
+
+    let output = run_stdin_output(
+        "0: (95) exit\ninvalid verifier frobnication\n",
+        &["-", "--format", "json", "--fail-on-unsupported"],
+    );
+    assert_eq!(output.status.code(), Some(2));
+    assert!(output.stderr.is_empty());
+    let json: Value = serde_json::from_slice(&output.stdout).expect("bpfix should emit JSON");
+    assert_eq!(json["error_id"], "BPFIX-E099");
+    assert_eq!(json["diagnostic_kind"], "unsupported_verifier_message");
+
+    let output = run_stdin_output(
+        "0: (95) exit\nR0 !read_ok\n",
+        &["-", "--format", "json", "--fail-on-unsupported"],
+    );
+    assert!(output.status.success());
+    assert!(output.stderr.is_empty());
+    let json: Value = serde_json::from_slice(&output.stdout).expect("bpfix should emit JSON");
+    assert_eq!(json["error_id"], "BPFIX-E003");
+    assert_eq!(json["diagnostic_kind"], "supported");
 }
 
 #[test]
