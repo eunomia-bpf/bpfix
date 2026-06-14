@@ -12,6 +12,13 @@ from 4 to 6: R0_w=pkt(off=8,r=8) R1=ctx() R2_w=pkt(r=8) R3_w=pkt_end() R10=fp0
 
     let insns = parse_verifier_log(log);
     assert_eq!(insns.len(), 5);
+    assert_eq!(verifier_states_from_log(log).unwrap().len(), 4);
+    assert_eq!(
+        verifier_states_with_branch_deltas_from_log(log)
+            .unwrap()
+            .len(),
+        5
+    );
 
     assert_eq!(insns[0].pc, 6);
     assert_eq!(insns[0].from_pc, Some(4));
@@ -48,6 +55,7 @@ from 4 to 6: R0_w=pkt(off=8,r=8) R1=ctx() R2_w=pkt(r=8) R3_w=pkt_end() R10=fp0
     let r1 = insns[4].regs.get(&1).unwrap();
     assert_eq!(r1.reg_type, "map_value");
     assert_eq!(r1.offset, Some(1));
+    assert_eq!(r1.map_value_size, Some(2));
 
     let r2 = insns[4].regs.get(&2).unwrap();
     assert_eq!(r2.reg_type, "scalar");

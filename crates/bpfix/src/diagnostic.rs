@@ -1,5 +1,7 @@
 use anyhow::Result;
-use bpfanalysis::{verifier_states_from_log, RegState, VerifierInsn};
+use bpfanalysis::{
+    verifier_states_from_log, verifier_states_with_branch_deltas_from_log, RegState, VerifierInsn,
+};
 
 use crate::family::ProofObligation;
 use crate::proof::{
@@ -58,6 +60,7 @@ pub enum ProofSignal {
     SubprogramContextArgumentDropped,
     PacketPointerProofLostAfterBoundsCheck,
     PacketRangeProofLostBeforeAccess,
+    MapValueWideAccess,
     PacketVariableOffsetPrecisionBoundary,
     MapValueRelationPrecisionBoundary,
 }
@@ -130,6 +133,9 @@ impl ProofSignal {
             Self::PacketRangeProofLostBeforeAccess => {
                 "verifier state proves the packet access range earlier, but the rejected path reaches the access after that range proof is lost"
             }
+            Self::MapValueWideAccess => {
+                "bytecode performs a map-value access wider than the verifier-proven map value size"
+            }
             Self::PacketVariableOffsetPrecisionBoundary => {
                 "source-level packet bounds check is present, but the verifier appears to lose precision for a variable packet offset"
             }
@@ -174,6 +180,9 @@ impl ProofSignal {
             Self::PacketRangeProofLostBeforeAccess => {
                 "Keep the packet pointer that received the sufficient data_end range proof live through the access, or recheck the final derived pointer immediately before dereferencing it."
             }
+            Self::MapValueWideAccess => {
+                "Keep generated or lowered map-value loads and stores within the declared value type width; avoid widening a 32-bit value access into a 64-bit BPF memory operation."
+            }
             Self::PacketVariableOffsetPrecisionBoundary => {
                 "Treat this as a verifier precision boundary: clamp the variable packet offset to a small explicit maximum, then rederive and recheck the packet pointer immediately before the load."
             }
@@ -202,6 +211,7 @@ pub fn analyze_verifier_log(
     obligation: ProofObligation,
 ) -> Result<VerifierLogAnalysis> {
     let states = verifier_states_from_log(log)?;
+    let branch_states = verifier_states_with_branch_deltas_from_log(log)?;
     let source_events = collect_source_events(log);
     let required_proof =
         instantiate_required_proof(terminal_error, terminal_pc, &states, obligation);
@@ -276,6 +286,7 @@ pub fn analyze_verifier_log(
         terminal_pc,
         register,
         states: &states,
+        branch_states: &branch_states,
         source_events: &source_events,
         events: &events,
     };
@@ -704,6 +715,7 @@ struct ProofSignalContext<'a> {
     terminal_pc: Option<usize>,
     register: Option<u8>,
     states: &'a [VerifierInsn],
+    branch_states: &'a [VerifierInsn],
     source_events: &'a [SourceEvent],
     events: &'a [ProofEvent],
 }
@@ -737,6 +749,15 @@ fn proof_signals(context: ProofSignalContext<'_>) -> Vec<ProofSignal> {
     }
     if packet_range_proof_lost_before_access(context.events) {
         signals.push(ProofSignal::PacketRangeProofLostBeforeAccess);
+    }
+    if map_value_wide_access(
+        context.log,
+        context.terminal_error,
+        context.terminal_pc,
+        context.register,
+        context.branch_states,
+    ) {
+        signals.push(ProofSignal::MapValueWideAccess);
     }
     signals
 }
@@ -818,6 +839,86 @@ fn invalid_scalar_memory_load_from_constant(
     latest_reg_state_before(states, terminal_pc, reg)
         .and_then(|state| state.exact_value)
         .is_some_and(|value| (1..=4096).contains(&value))
+}
+
+fn map_value_wide_access(
+    log: &str,
+    terminal_error: &str,
+    terminal_pc: Option<usize>,
+    register: Option<u8>,
+    states: &[VerifierInsn],
+) -> bool {
+    if !terminal_error.contains("invalid access to map value") {
+        return false;
+    }
+    let Some(reg) = register else {
+        return false;
+    };
+    let Some(reported_value_size) = parse_u32_after(terminal_error, "value_size=") else {
+        return false;
+    };
+    let Some(access_size) = parse_u32_after(terminal_error, "size=") else {
+        return false;
+    };
+    if access_size <= reported_value_size {
+        return false;
+    }
+    if terminal_instruction_access_width(log, terminal_pc) != Some(access_size) {
+        return false;
+    }
+    latest_reg_state_before(states, terminal_pc, reg).is_some_and(|state| {
+        state.reg_type == "map_value" && state.map_value_size == Some(reported_value_size)
+    })
+}
+
+fn terminal_instruction_access_width(log: &str, terminal_pc: Option<usize>) -> Option<u32> {
+    let pc = terminal_pc?;
+    let prefix = format!("{pc}:");
+    log.lines()
+        .filter_map(|line| line.trim().strip_prefix(&prefix))
+        .find_map(memory_access_width)
+}
+
+fn memory_access_width(line_after_pc: &str) -> Option<u32> {
+    let marker = "*(u";
+    let start = line_after_pc.find(marker)? + marker.len();
+    let bytes = line_after_pc.as_bytes();
+    let mut end = start;
+    while end < bytes.len() && bytes[end].is_ascii_digit() {
+        end += 1;
+    }
+    if line_after_pc.get(end..end + 3)? != " *)" {
+        return None;
+    }
+    line_after_pc[start..end]
+        .parse::<u32>()
+        .ok()
+        .and_then(|bits| bits.checked_div(8))
+}
+
+fn parse_u32_after(message: &str, needle: &str) -> Option<u32> {
+    let bytes = message.as_bytes();
+    let mut search_start = 0usize;
+    while let Some(relative) = message[search_start..].find(needle) {
+        let field_start = search_start + relative;
+        if field_start > 0 {
+            let previous = bytes[field_start - 1];
+            if previous.is_ascii_alphanumeric() || previous == b'_' {
+                search_start = field_start + needle.len();
+                continue;
+            }
+        }
+        let start = field_start + needle.len();
+        let mut end = start;
+        while end < bytes.len() && bytes[end].is_ascii_digit() {
+            end += 1;
+        }
+        if end > start {
+            return message[start..end].parse().ok();
+        }
+        search_start = field_start + needle.len();
+    }
+    None
 }
 
 fn latest_reg_state_before(

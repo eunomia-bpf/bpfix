@@ -60,6 +60,7 @@ pub struct RegState {
     pub tnum: Option<Tnum>,
     pub range: ScalarRange,
     pub packet_range: Option<u32>,
+    pub map_value_size: Option<u32>,
     pub offset: Option<i32>,
     pub id: Option<u32>,
 }
@@ -73,6 +74,7 @@ impl RegState {
             tnum: None,
             range: ScalarRange::default(),
             packet_range: None,
+            map_value_size: None,
             offset: None,
             id: None,
         }
@@ -109,6 +111,11 @@ pub(crate) fn parse_verifier_log_result(log: &str) -> Result<Vec<VerifierInsn>> 
 pub fn verifier_states_from_log(log: &str) -> Result<Vec<VerifierInsn>> {
     parse_log_states(log, false)
 }
+
+pub fn verifier_states_with_branch_deltas_from_log(log: &str) -> Result<Vec<VerifierInsn>> {
+    parse_log_states(log, true)
+}
+
 fn parse_log_states(log: &str, include_branch_delta: bool) -> Result<Vec<VerifierInsn>> {
     let mut states = Vec::new();
     for (idx, line) in log.lines().enumerate() {
@@ -511,12 +518,13 @@ fn parse_reg_attributes(attrs: &str, state: &mut RegState) {
                 }
                 "off" => state.offset = parse_attr(key, value, parse_i32(value)),
                 "r" => state.packet_range = parse_attr(key, value, parse_u32(value)),
+                "vs" => state.map_value_size = parse_attr(key, value, parse_u32(value)),
                 "id" => state.id = parse_attr(key, value, parse_u32(value)),
                 "var_off" => {
                     state.tnum = parse_attr(key, value, parse_tnum(value));
                 }
-                "map" | "ks" | "vs" | "imm" | "ref_obj_id" | "btf_id" | "mem_size"
-                | "alloc_size" | "aux_off" | "name" => {}
+                "map" | "ks" | "imm" | "ref_obj_id" | "btf_id" | "mem_size" | "alloc_size"
+                | "aux_off" | "name" => {}
                 other => {
                     warn_verifier_log(format!("unknown verifier register attribute {other:?}"));
                 }

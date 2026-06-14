@@ -23,8 +23,8 @@ mod verifier_log;
 #[cfg(feature = "object-analysis")]
 pub use object_file::{load_object_cfg_summaries, ObjectProgramSummary};
 pub use verifier_log::{
-    verifier_states_from_log, RegState, ScalarRange, StackState, Tnum, VerifierInsn,
-    VerifierInsnKind, VerifierValueWidth,
+    verifier_states_from_log, verifier_states_with_branch_deltas_from_log, RegState, ScalarRange,
+    StackState, Tnum, VerifierInsn, VerifierInsnKind, VerifierValueWidth,
 };
 
 #[cfg(all(test, feature = "analysis"))]

@@ -366,6 +366,22 @@ fn lowering_artifact_shapes_are_classified_from_verifier_evidence() {
                     .unwrap()
                     .contains("small scalar constant")
         }));
+
+    let wide_map_value_access =
+        run_json("bpfix-bench/cases/github-orangeopensource-p4rt-ovs-5/replay-verifier.log");
+    assert_eq!(wide_map_value_access["error_id"], "BPFIX-E005");
+    assert_eq!(wide_map_value_access["failure_class"], "lowering_artifact");
+    assert!(wide_map_value_access["evidence"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|evidence| {
+            evidence["kind"] == "lowering_artifact_signal"
+                && evidence["detail"]
+                    .as_str()
+                    .unwrap()
+                    .contains("map-value access wider")
+        }));
 }
 
 #[test]
