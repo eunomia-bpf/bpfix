@@ -41,7 +41,7 @@ external_match:
 label:
   capture_id: stackoverflow-77191387__kernel-6.15.11-clang-18-log2
   taxonomy_class: source_bug
-  error_id: BPFIX-UNKNOWN
+  error_id: BPFIX-E005
   confidence: medium
   label_source: external_replay_reconstruction
   root_cause_description: cgroup_skb programs may only return 0 or 1, but the

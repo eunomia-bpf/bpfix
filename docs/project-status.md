@@ -1,6 +1,6 @@
 # BPFix Project Status and Roadmap
 
-Last updated: 2026-05-22
+Last updated: 2026-06-13
 
 BPFix is scoped as a Rust userspace diagnostic tool for eBPF verifier failures.
 The maintained product goal is: take existing verifier logs and return
@@ -168,16 +168,20 @@ Quick diagnostic smoke:
 cargo run -p bpfix -- bpfix-bench/cases/stackoverflow-60053570/replay-verifier.log --format both
 ```
 
-Legacy benchmark replay tools remain available for corpus maintenance:
+Run the current log-only benchmark diagnostic gate:
 
 ```bash
-python3 docs/bpfix-py/tools/validate_benchmark.py --replay bpfix-bench --timeout-sec 60
 python3 bpfix-bench/run-bpfix-eval.py --confusion
 ```
 
-Current Rust evaluation TODO:
+Legacy replay validation remains available for corpus maintenance:
 
-- run `bpfix` over every admitted benchmark log in log-only mode
+```bash
+python3 docs/bpfix-py/tools/validate_benchmark.py --replay bpfix-bench --timeout-sec 60
+```
+
+Current evaluation TODO:
+
 - rerun cases with available objects using `--object`
 - report required-proof coverage by verifier proof family
 - report source/bytecode localization coverage

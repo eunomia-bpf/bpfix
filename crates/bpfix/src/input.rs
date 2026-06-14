@@ -32,6 +32,8 @@ const TERMINAL_ERROR_MARKERS: &[&str] = &[
     "back-edge",
     "same insn cannot be used with different pointers",
     "pointer arithmetic",
+    "bitwise operator",
+    "should have been in",
     "cannot restore irq",
     "rcu",
     "lock",
@@ -296,6 +298,7 @@ fn is_verifier_error_line(line: &str) -> bool {
         || line.starts_with("stack depth ")
         || line.starts_with("mark_precise:")
         || line.starts_with(';')
+        || is_verifier_state_line(line)
     {
         return false;
     }
@@ -303,6 +306,17 @@ fn is_verifier_error_line(line: &str) -> bool {
     TERMINAL_ERROR_MARKERS
         .iter()
         .any(|marker| lower.contains(marker))
+}
+
+fn is_verifier_state_line(line: &str) -> bool {
+    if line.starts_with("from ") {
+        return true;
+    }
+    let Some((_, rest)) = line.split_once(':') else {
+        return false;
+    };
+    let trimmed = rest.trim_start();
+    trimmed.starts_with('R') || trimmed.starts_with("frame")
 }
 
 fn nearest_instruction_pc(lines: &[&str], mut idx: usize) -> Option<usize> {

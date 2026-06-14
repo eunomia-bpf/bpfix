@@ -147,8 +147,8 @@ Error IDs are defined in `docs/evaluation/legacy-catalogs/error_catalog.yaml`.
 | BPFIX-E002 | nullable_map_value_dereference | source_bug | 10 |
 | BPFIX-E003 | uninitialized_stack_read | source_bug | 4 |
 | BPFIX-E004 | reference_lifetime_violation | lowering_artifact 1, source_bug 3 | 4 |
-| BPFIX-E005 | scalar_range_too_wide_after_lowering | lowering_artifact 11, source_bug 13, verifier_false_positive 9 | 33 |
-| BPFIX-E006 | provenance_lost_across_spill | environment_or_configuration 1, lowering_artifact 12, source_bug 4 | 17 |
+| BPFIX-E005 | scalar_range_too_wide_after_lowering | lowering_artifact 11, source_bug 14, verifier_false_positive 9 | 34 |
+| BPFIX-E006 | provenance_lost_across_spill | environment_or_configuration 1, lowering_artifact 12, source_bug 5 | 18 |
 | BPFIX-E009 | helper_or_kfunc_unavailable | environment_or_configuration | 1 |
 | BPFIX-E010 | verifier_false_positive_or_regression | source_bug | 1 |
 | BPFIX-E011 | scalar_pointer_dereference | source_bug | 59 |
@@ -156,22 +156,21 @@ Error IDs are defined in `docs/evaluation/legacy-catalogs/error_catalog.yaml`.
 | BPFIX-E013 | execution_context_discipline_violation | source_bug | 13 |
 | BPFIX-E014 | iterator_state_protocol_violation | source_bug | 6 |
 | BPFIX-E015 | trusted_arg_nullability | source_bug | 9 |
-| BPFIX-E016 | helper_or_kfunc_context_restriction | environment_or_configuration 4, source_bug 3 | 7 |
+| BPFIX-E016 | helper_or_kfunc_context_restriction | environment_or_configuration 5, source_bug 3 | 8 |
 | BPFIX-E017 | map_value_bounds_violation | source_bug | 8 |
 | BPFIX-E018 | verifier_analysis_budget_limit | verifier_limit | 4 |
 | BPFIX-E019 | dynptr_storage_or_release_contract_violation | source_bug | 13 |
 | BPFIX-E020 | irq_flag_state_protocol_violation | source_bug | 3 |
 | BPFIX-E021 | btf_reference_metadata_missing | environment_or_configuration 4, source_bug 1 | 5 |
 | BPFIX-E023 | register_or_stack_contract_violation | source_bug | 16 |
-| BPFIX-UNKNOWN | <missing> | environment_or_configuration 1, source_bug 2 | 3 |
 
 The taxonomy column above uses the labels in each `case.yaml`, not only the
 default taxonomy in `docs/evaluation/legacy-catalogs/error_catalog.yaml`. For `BPFIX-E005`,
-13 cases are labelled `source_bug`, 11 are labelled `lowering_artifact`, and 9
+14 cases are labelled `source_bug`, 11 are labelled `lowering_artifact`, and 9
 are labelled `verifier_false_positive`.
 
 Notable concentration: `BPFIX-E011` accounts for 59 of 235 replayable cases,
-and `BPFIX-E005` accounts for 33. Together they make up 92 cases, or 39.1% of
+and `BPFIX-E005` accounts for 34. Together they make up 93 cases, or 39.6% of
 the replayable corpus.
 
 ## External Raw Records

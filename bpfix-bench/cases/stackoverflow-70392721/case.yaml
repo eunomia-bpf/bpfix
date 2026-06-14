@@ -51,7 +51,7 @@ label:
   - unoptimized_helper_call_shape
   - indirect_helper_call_opcode
   - optimization_flag_required
-  error_id: BPFIX-UNKNOWN
+  error_id: BPFIX-E016
   confidence: medium
   label_source: external_replay_reconstruction
   root_cause_description: Compiling the BPF program without optimization leaves

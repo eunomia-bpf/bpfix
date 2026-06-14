@@ -328,6 +328,29 @@ fn ordinary_source_bugs_are_not_overclassified_as_runtime_artifacts() {
 }
 
 #[test]
+fn terminal_error_selection_ignores_state_lines_and_uses_final_reject() {
+    let pointer_bitwise = run_json("bpfix-bench/cases/stackoverflow-68460177/replay-verifier.log");
+    assert_eq!(pointer_bitwise["error_id"], "BPFIX-E006");
+    assert_eq!(pointer_bitwise["failure_class"], "source_bug");
+    assert!(pointer_bitwise["message"]
+        .as_str()
+        .unwrap()
+        .contains("R4 bitwise operator |= on pointer prohibited"));
+
+    let return_range = run_json("bpfix-bench/cases/stackoverflow-77191387/replay-verifier.log");
+    assert_eq!(return_range["error_id"], "BPFIX-E005");
+    assert_eq!(return_range["failure_class"], "source_bug");
+    assert!(return_range["message"]
+        .as_str()
+        .unwrap()
+        .contains("At program exit the register R0"));
+    assert!(!return_range["message"]
+        .as_str()
+        .unwrap()
+        .contains("from 20 to 22"));
+}
+
+#[test]
 fn text_output_is_rust_style_multispan() {
     let text = run_text("bpfix-bench/cases/stackoverflow-53136145/replay-verifier.log");
     assert!(text.contains(
