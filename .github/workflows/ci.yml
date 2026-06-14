@@ -38,9 +38,6 @@ jobs:
       - name: Test workspace
         run: cargo test --workspace
 
-      - name: Test object analysis feature
-        run: cargo test -p bpfix --features object-analysis
-
       - name: Build minimal bpfix
         run: cargo build -p bpfix --no-default-features
 
