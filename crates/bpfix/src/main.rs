@@ -264,11 +264,15 @@ fn build_diagnostic(
     let related_spans = related_spans_from_proof_events(&proof_events);
     let span_confidence = span_confidence(&source_span, &related_spans, &proof_events).to_string();
 
-    let mut help = class
-        .help
-        .iter()
-        .map(|item| (*item).to_string())
-        .collect::<Vec<_>>();
+    let mut help = if proof_signal.is_some_and(ProofSignal::replaces_classifier_help) {
+        Vec::new()
+    } else {
+        class
+            .help
+            .iter()
+            .map(|item| (*item).to_string())
+            .collect::<Vec<_>>()
+    };
     if let Some(signal) = proof_signal {
         insert_help(&mut help, signal.help());
     }
@@ -306,11 +310,10 @@ fn runtime_proof_signal(
     base_failure_class: &str,
     proof_signals: &[ProofSignal],
 ) -> Option<ProofSignal> {
-    if base_failure_class != "source_bug" {
-        None
-    } else {
-        proof_signals.first().copied()
-    }
+    proof_signals
+        .iter()
+        .copied()
+        .find(|signal| signal.can_override_base_failure_class(base_failure_class))
 }
 
 fn source_span_from_proof_event(event: &diagnostic::ProofEvent) -> Option<SourceSpan> {

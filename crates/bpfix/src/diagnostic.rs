@@ -63,6 +63,7 @@ pub enum ProofSignal {
     MapValueWideAccess,
     MapValueCheckedOffsetRelationLost,
     MapPointerArgumentScalarZero,
+    ContextAccessSourceArgumentMismatch,
     PacketMaxOffsetPrecisionBoundary,
     MapValueRelationPrecisionBoundary,
 }
@@ -79,17 +80,24 @@ impl ProofSignal {
     }
 
     pub(crate) const fn summary(self) -> &'static str {
-        if self.is_source_state_signal() {
-            "helper map-pointer argument is scalar zero at the verifier rejection"
-        } else if self.is_verifier_precision_boundary() {
-            "verifier precision limit may hide an existing safety proof"
-        } else {
-            "verifier-visible compiler lowering hides the required proof"
+        match self {
+            Self::MapPointerArgumentScalarZero => {
+                "helper map-pointer argument is scalar zero at the verifier rejection"
+            }
+            Self::ContextAccessSourceArgumentMismatch => {
+                "tracing context argument type does not match the verifier-visible function signature"
+            }
+            signal if signal.is_verifier_precision_boundary() => {
+                "verifier precision limit may hide an existing safety proof"
+            }
+            _ => "verifier-visible compiler lowering hides the required proof",
         }
     }
 
     pub(crate) const fn help_safety(self) -> &'static str {
-        if self.is_source_state_signal() || self.is_verifier_precision_boundary() {
+        if matches!(self, Self::MapPointerArgumentScalarZero)
+            || self.is_verifier_precision_boundary()
+        {
             "triage_only"
         } else {
             "repair_hint"
@@ -150,6 +158,9 @@ impl ProofSignal {
             Self::MapPointerArgumentScalarZero => {
                 "helper expects a map pointer, but verifier state shows scalar zero in the map argument register at the helper call"
             }
+            Self::ContextAccessSourceArgumentMismatch => {
+                "verifier reports the traced-function argument at this context slot as PTR rather than a directly supported struct pointer, while the rejected source is a BPF_PROG argument load from the raw tracing context"
+            }
             Self::PacketMaxOffsetPrecisionBoundary => {
                 "verifier state reaches a packet access with a large variable offset range at the packet-offset precision boundary"
             }
@@ -203,6 +214,9 @@ impl ProofSignal {
             Self::MapPointerArgumentScalarZero => {
                 "Pass a verifier-visible map pointer as the helper's map argument. If the source names a map but the verifier still sees zero, inspect the loader/object path and ensure map relocations are applied before loading raw instructions."
             }
+            Self::ContextAccessSourceArgumentMismatch => {
+                "Use only fentry arguments whose BTF type is verifier-supported at this slot, or avoid reading this argument through BPF_PROG when the traced function exposes it as an unsupported pointer type."
+            }
             Self::PacketMaxOffsetPrecisionBoundary => {
                 "Treat this as a verifier precision boundary: clamp the packet cursor to a verifier-friendly maximum before the loop, then rederive and recheck the exact byte pointer used by the load."
             }
@@ -237,7 +251,20 @@ impl ProofSignal {
     }
 
     const fn is_source_state_signal(self) -> bool {
-        matches!(self, Self::MapPointerArgumentScalarZero)
+        matches!(
+            self,
+            Self::MapPointerArgumentScalarZero | Self::ContextAccessSourceArgumentMismatch
+        )
+    }
+
+    pub(crate) fn can_override_base_failure_class(self, base_failure_class: &str) -> bool {
+        base_failure_class == "source_bug"
+            || (base_failure_class == "environment_or_configuration"
+                && matches!(self, Self::ContextAccessSourceArgumentMismatch))
+    }
+
+    pub(crate) const fn replaces_classifier_help(self) -> bool {
+        matches!(self, Self::ContextAccessSourceArgumentMismatch)
     }
 }
 
@@ -784,6 +811,15 @@ fn proof_signals(context: ProofSignalContext<'_>) -> Vec<ProofSignal> {
     if let Some(signal) = packet_verifier_precision_signal(&context) {
         signals.push(signal);
     }
+    if context_access_source_argument_mismatch(
+        context.log,
+        context.terminal_error,
+        context.terminal_pc,
+        context.states,
+        context.events,
+    ) {
+        signals.push(ProofSignal::ContextAccessSourceArgumentMismatch);
+    }
     if map_pointer_argument_scalar_zero(
         context.log,
         context.terminal_error,
@@ -904,6 +940,34 @@ fn invalid_scalar_memory_load_from_constant(
     latest_reg_state_before(states, terminal_pc, reg)
         .and_then(|state| state.exact_value)
         .is_some_and(|value| (1..=4096).contains(&value))
+}
+
+fn context_access_source_argument_mismatch(
+    log: &str,
+    terminal_error: &str,
+    terminal_pc: Option<usize>,
+    states: &[VerifierInsn],
+    events: &[ProofEvent],
+) -> bool {
+    let terminal = terminal_error.to_ascii_lowercase();
+    if !(terminal.contains("invalid bpf_context access")
+        || terminal.contains("invalid ctx access")
+        || terminal.contains("invalid access to context"))
+    {
+        return false;
+    }
+    if !terminal_error_has_nearby_prior_line(log, terminal_error, 3, |line| {
+        line.contains("type PTR is not a struct")
+    }) {
+        return false;
+    }
+    let Some(rejected) = rejected_source(events) else {
+        return false;
+    };
+    if !rejected.text.contains("BPF_PROG(") {
+        return false;
+    }
+    latest_reg_state_before(states, terminal_pc, 1).is_some_and(|state| state.reg_type == "ctx")
 }
 
 fn map_pointer_argument_scalar_zero(
@@ -1035,6 +1099,21 @@ fn terminal_instruction_contains(log: &str, terminal_pc: Option<usize>, needle: 
     log.lines()
         .filter_map(|line| line.trim().strip_prefix(&prefix))
         .any(|line| line.contains(needle))
+}
+
+fn terminal_error_has_nearby_prior_line(
+    log: &str,
+    terminal_error: &str,
+    lookback: usize,
+    predicate: impl Fn(&str) -> bool,
+) -> bool {
+    let lines = log.lines().collect::<Vec<_>>();
+    lines.iter().enumerate().any(|(idx, line)| {
+        line.contains(terminal_error)
+            && lines[idx.saturating_sub(lookback)..idx]
+                .iter()
+                .any(|prior| predicate(prior))
+    })
 }
 
 fn memory_access_width(line_after_pc: &str) -> Option<u32> {

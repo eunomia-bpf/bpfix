@@ -544,6 +544,61 @@ fn map_pointer_scalar_zero_signal_does_not_claim_log_only_relocation() {
 }
 
 #[test]
+fn fentry_context_argument_mismatch_overrides_terminal_environment_classifier() {
+    let typed_context_mismatch =
+        run_json("bpfix-bench/cases/stackoverflow-79878809/replay-verifier.log");
+    assert_eq!(typed_context_mismatch["error_id"], "BPFIX-E011");
+    assert_eq!(typed_context_mismatch["failure_class"], "source_bug");
+    assert_eq!(typed_context_mismatch["help_safety"], "repair_hint");
+    assert!(typed_context_mismatch["evidence"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|evidence| {
+            evidence["kind"] == "verifier_state_signal"
+                && evidence["detail"]
+                    .as_str()
+                    .unwrap()
+                    .contains("BPF_PROG argument load")
+        }));
+    let help = typed_context_mismatch["help"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|item| item.as_str())
+        .collect::<Vec<_>>()
+        .join("\n");
+    assert!(help.contains("BTF type is verifier-supported"));
+    assert!(help.contains("unsupported pointer type"));
+    assert!(!help.contains("section name"));
+    assert!(!help.contains("attach type"));
+
+    let context_abi_mismatch =
+        run_json("bpfix-bench/cases/stackoverflow-67402772/replay-verifier.log");
+    assert_eq!(
+        context_abi_mismatch["failure_class"],
+        "environment_or_configuration"
+    );
+    assert!(!context_abi_mismatch["evidence"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|evidence| evidence["kind"] == "verifier_state_signal"));
+
+    let lowered_context_access =
+        run_json("bpfix-bench/cases/github-commit-cilium-4bb6b56b5c22/replay-verifier.log");
+    assert_eq!(
+        lowered_context_access["failure_class"],
+        "environment_or_configuration"
+    );
+    assert!(!lowered_context_access["evidence"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|evidence| evidence["kind"] == "verifier_state_signal"));
+}
+
+#[test]
 fn packet_bounds_diagnostic_reports_prior_verifier_range_proof() {
     let json = run_json("bpfix-bench/cases/github-iovisor-bcc-5062/replay-verifier.log");
 
