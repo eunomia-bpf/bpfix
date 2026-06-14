@@ -15,8 +15,6 @@ Contents:
 - `tools/validate_benchmark.py`: replay and validate `bpfix-bench` cases
 - `tools/replay_case.py`: shared build/load/log parsing helper
 - `tools/sync_external_raw_bench.py`: maintain raw external audit records
-- `tools/integrate_reconstruction_batch.py`: apply reviewed reconstruction
-  metadata
 
 Use the Rust CLI for maintained development:
 
