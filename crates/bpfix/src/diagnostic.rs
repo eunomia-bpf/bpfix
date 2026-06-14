@@ -46,10 +46,12 @@ pub fn analyze_verifier_log(
     log: &str,
     terminal_pc: Option<usize>,
     terminal_error: &str,
+    obligation: ProofObligation,
 ) -> Result<VerifierLogAnalysis> {
     let states = verifier_states_from_log(log)?;
     let source_events = collect_source_events(log);
-    let required_proof = instantiate_required_proof(terminal_error, terminal_pc, &states);
+    let required_proof =
+        instantiate_required_proof(terminal_error, terminal_pc, &states, obligation);
     let obligation = required_proof.obligation;
     let register = required_proof.register;
     let rejected_source = terminal_source(&source_events, terminal_pc);
@@ -494,8 +496,13 @@ mod tests {
     fn branch_merge_case_produces_proof_lifecycle_events() {
         let log =
             include_str!("../../../bpfix-bench/cases/stackoverflow-53136145/replay-verifier.log");
-        let analysis =
-            analyze_verifier_log(log, Some(37), "R5 invalid mem access 'scalar'").unwrap();
+        let analysis = analyze_verifier_log(
+            log,
+            Some(37),
+            "R5 invalid mem access 'scalar'",
+            ProofObligation::PointerProvenance,
+        )
+        .unwrap();
 
         assert_eq!(analysis.state_count, 60);
         assert_eq!(
@@ -527,6 +534,7 @@ mod tests {
             log,
             Some(33),
             "value -2147483648 makes pkt pointer be out of bounds",
+            ProofObligation::ScalarRange,
         )
         .unwrap();
 
@@ -554,6 +562,7 @@ mod tests {
             log,
             Some(26),
             "invalid access to packet, off=34 size=64, R3(id=0,off=34,r=42)",
+            ProofObligation::PacketBounds,
         )
         .unwrap();
 
@@ -575,9 +584,13 @@ mod tests {
     fn nullable_pointer_case_points_at_unchecked_helper_result() {
         let log =
             include_str!("../../../bpfix-bench/cases/github-iovisor-bcc-10/replay-verifier.log");
-        let analysis =
-            analyze_verifier_log(log, Some(7), "R0 invalid mem access 'map_value_or_null'")
-                .unwrap();
+        let analysis = analyze_verifier_log(
+            log,
+            Some(7),
+            "R0 invalid mem access 'map_value_or_null'",
+            ProofObligation::NullablePointer,
+        )
+        .unwrap();
 
         assert_eq!(
             analysis.required_proof.obligation,
@@ -600,6 +613,7 @@ mod tests {
             log,
             Some(8),
             "program of this type cannot use helper bpf_probe_read#4",
+            ProofObligation::EnvironmentCapability,
         )
         .unwrap();
 
@@ -618,8 +632,13 @@ mod tests {
 
     #[test]
     fn stack_readability_case_instantiates_register_requirement() {
-        let analysis =
-            analyze_verifier_log("0: (95) exit\nR0 !read_ok\n", Some(0), "R0 !read_ok").unwrap();
+        let analysis = analyze_verifier_log(
+            "0: (95) exit\nR0 !read_ok\n",
+            Some(0),
+            "R0 !read_ok",
+            ProofObligation::StackInitialized,
+        )
+        .unwrap();
 
         assert_eq!(
             analysis.required_proof.obligation,
@@ -641,8 +660,13 @@ mod tests {
 6: (95) exit
 Unreleased reference id=2 alloc_insn=5
 ";
-        let analysis =
-            analyze_verifier_log(log, Some(6), "Unreleased reference id=2 alloc_insn=5").unwrap();
+        let analysis = analyze_verifier_log(
+            log,
+            Some(6),
+            "Unreleased reference id=2 alloc_insn=5",
+            ProofObligation::ReferenceLifecycle,
+        )
+        .unwrap();
 
         assert_eq!(
             analysis.required_proof.obligation,

@@ -3,6 +3,7 @@ use crate::family::ProofObligation;
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct Classification {
     pub(crate) error_id: &'static str,
+    pub(crate) obligation: ProofObligation,
     pub(crate) failure_class: &'static str,
     pub(crate) summary: &'static str,
     pub(crate) required_proof: &'static str,
@@ -38,6 +39,7 @@ fn triage_class(
 ) -> Classification {
     Classification {
         error_id,
+        obligation: ProofObligation::Unknown,
         failure_class,
         summary,
         required_proof,
@@ -68,6 +70,7 @@ macro_rules! supported_rule {
             all: &[],
             class: Classification {
                 error_id: $error_id,
+                obligation: $obligation,
                 failure_class: $failure_class,
                 summary: $summary,
                 required_proof: ($obligation).default_required_proof(),
@@ -87,6 +90,7 @@ macro_rules! triage_rule {
             all: &[],
             class: Classification {
                 error_id: $error_id,
+                obligation: $obligation,
                 failure_class: $failure_class,
                 summary: $summary,
                 required_proof: ($obligation).default_required_proof(),
@@ -250,6 +254,7 @@ const CLASS_RULES: &[ClassRule] = &[
         all: &["type=", "expected="],
         class: Classification {
             error_id: "BPFIX-E008",
+            obligation: ProofObligation::TypeContract,
             failure_class: "source_bug",
             summary: "verifier-visible type does not match the required type",
             required_proof: ProofObligation::TypeContract.default_required_proof(),

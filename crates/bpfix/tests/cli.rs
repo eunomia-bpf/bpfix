@@ -299,6 +299,26 @@ fn parser_recovery_warnings_do_not_pollute_json_stderr() {
 }
 
 #[test]
+fn required_proof_uses_classifier_obligation_for_type_contracts() {
+    let json = run_json_stdin("0: (bf) r1 = r10\nR1 type=scalar expected=fp\n");
+
+    assert_eq!(json["error_id"], "BPFIX-E008");
+    assert_eq!(json["failure_class"], "source_bug");
+    assert!(json["required_proof"]
+        .as_str()
+        .unwrap()
+        .contains("verifier-visible type required"));
+    assert!(json["message"]
+        .as_str()
+        .unwrap()
+        .contains("R1 type=scalar expected=fp"));
+    assert!(!json["required_proof"]
+        .as_str()
+        .unwrap()
+        .contains("inspect the terminal verifier line"));
+}
+
+#[test]
 #[cfg(feature = "object-analysis")]
 fn object_argument_is_validated_and_reported() {
     let log_path =

@@ -14,8 +14,8 @@ pub(crate) fn instantiate_required_proof(
     terminal_error: &str,
     terminal_pc: Option<usize>,
     states: &[VerifierInsn],
+    obligation: ProofObligation,
 ) -> RequiredProof {
-    let obligation = infer_obligation(terminal_error);
     let register = parse_register_from_error(terminal_error);
     match obligation {
         ProofObligation::PacketBounds => packet_bounds_required_proof(terminal_error, register),
@@ -214,69 +214,6 @@ fn environment_required_proof(message: &str) -> RequiredProof {
         description,
         rejection_detail,
     }
-}
-
-pub(crate) fn infer_obligation(message: &str) -> ProofObligation {
-    let lower = message.to_ascii_lowercase();
-    if lower.contains("invalid access to packet") || lower.contains("outside of the packet") {
-        return ProofObligation::PacketBounds;
-    }
-    if lower.contains("invalid access to map value") {
-        return ProofObligation::ScalarRange;
-    }
-    if lower.contains("map_value_or_null")
-        || lower.contains("ptr_or_null")
-        || lower.contains("mem_or_null")
-        || lower.contains("possibly null")
-    {
-        return ProofObligation::NullablePointer;
-    }
-    if lower.contains("invalid read from stack")
-        || lower.contains("invalid indirect read from stack")
-        || lower.contains("uninitialized")
-        || lower.contains("r0 !read_ok")
-    {
-        return ProofObligation::StackInitialized;
-    }
-    if lower.contains("unreleased reference") || lower.contains("reference has not been released") {
-        return ProofObligation::ReferenceLifecycle;
-    }
-    if lower.contains("unbounded")
-        || lower.contains("min value is negative")
-        || lower.contains("out of bounds")
-        || lower.contains("invalid access to map value")
-        || lower.contains("invalid zero-sized")
-        || lower.contains("makes pkt pointer")
-        || lower.contains("outside of allowed memory range")
-        || lower.contains("invalid variable-offset")
-    {
-        return ProofObligation::ScalarRange;
-    }
-    if lower.contains("expected pointer")
-        || lower.contains("invalid mem access 'scalar'")
-        || lower.contains("same insn cannot be used with different pointers")
-    {
-        return ProofObligation::PointerProvenance;
-    }
-    if lower.contains("too many states")
-        || lower.contains("complexity")
-        || lower.contains("loop is not bounded")
-        || lower.contains("combined stack")
-    {
-        return ProofObligation::VerifierLimit;
-    }
-    if lower.contains("unknown func")
-        || lower.contains("helper call is not allowed")
-        || lower.contains("cannot use helper")
-        || lower.contains("cannot call")
-        || lower.contains("permission denied")
-    {
-        return ProofObligation::EnvironmentCapability;
-    }
-    if lower.contains("dynptr") {
-        return ProofObligation::DynptrSafety;
-    }
-    ProofObligation::Unknown
 }
 
 fn parse_register_from_error(message: &str) -> Option<u8> {

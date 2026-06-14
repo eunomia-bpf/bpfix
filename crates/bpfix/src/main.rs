@@ -156,7 +156,12 @@ fn build_diagnostic(
         if class.error_id == "BPFIX-E000" {
             (0, None, Vec::new(), class.required_proof.to_string())
         } else {
-            match diagnostic::analyze_verifier_log(log, terminal.pc, &terminal.message) {
+            match diagnostic::analyze_verifier_log(
+                log,
+                terminal.pc,
+                &terminal.message,
+                class.obligation,
+            ) {
                 Ok(analysis) => {
                     let required_proof =
                         if analysis.required_proof.obligation == ProofObligation::Unknown {
