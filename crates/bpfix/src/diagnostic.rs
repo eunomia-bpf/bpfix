@@ -66,6 +66,7 @@ pub enum ProofSignal {
     MapPointerArgumentScalarZero,
     ContextAccessSourceArgumentMismatch,
     ExceptionThrowWithLiveReference,
+    PacketGuardUndercoversAccess,
     PacketMaxOffsetPrecisionBoundary,
     MapValueRelationPrecisionBoundary,
 }
@@ -93,6 +94,9 @@ impl ProofSignal {
             }
             Self::ExceptionThrowWithLiveReference => {
                 "exception callback can throw while a verifier-tracked reference is still live"
+            }
+            Self::PacketGuardUndercoversAccess => {
+                "packet bounds check is narrower than the later packet access"
             }
             signal if signal.is_verifier_precision_boundary() => {
                 "verifier precision limit may hide an existing safety proof"
@@ -171,6 +175,9 @@ impl ProofSignal {
             Self::ExceptionThrowWithLiveReference => {
                 "verifier state reaches bpf_throw inside a callback frame while verifier-tracked references are live"
             }
+            Self::PacketGuardUndercoversAccess => {
+                "source has a packet bounds check, but verifier state after that check proves only a shorter packet range than the rejected access needs"
+            }
             Self::PacketMaxOffsetPrecisionBoundary => {
                 "verifier state reaches a packet access with a large variable offset range at the packet-offset precision boundary"
             }
@@ -230,6 +237,9 @@ impl ProofSignal {
             Self::ExceptionThrowWithLiveReference => {
                 "Release verifier-tracked references before any callback path can throw, or avoid bpf_throw while a reference acquired by the caller is still live."
             }
+            Self::PacketGuardUndercoversAccess => {
+                "Move the data_end check to the final pointer expression and include the access width, for example check pointer + size before dereferencing pointer."
+            }
             Self::PacketMaxOffsetPrecisionBoundary => {
                 "Treat this as a verifier precision boundary: clamp the packet cursor to a verifier-friendly maximum before the loop, then rederive and recheck the exact byte pointer used by the load."
             }
@@ -245,6 +255,7 @@ impl ProofSignal {
 
     const fn selection_rank(self) -> u8 {
         match self {
+            Self::PacketGuardUndercoversAccess => 40,
             Self::WideStackAlignment
             | Self::SharedInstructionPointerMerge
             | Self::PointerShiftDropsProvenance
@@ -270,7 +281,9 @@ impl ProofSignal {
     const fn is_source_state_signal(self) -> bool {
         matches!(
             self,
-            Self::ContextAccessSourceArgumentMismatch | Self::ExceptionThrowWithLiveReference
+            Self::ContextAccessSourceArgumentMismatch
+                | Self::ExceptionThrowWithLiveReference
+                | Self::PacketGuardUndercoversAccess
         )
     }
 
@@ -760,7 +773,7 @@ fn latest_sufficient_packet_guard_range(
             Some((guard_pc, mixed_id_same_register_history))
         })
         .flat_map(|(guard_pc, mixed_id_same_register_history)| {
-            guard_branch_operand_registers(log, guard_pc, 6)
+            guard_branch_packet_operand_registers(log, branch_states, guard_pc, 6)
                 .into_iter()
                 .map(move |operand| (guard_pc, mixed_id_same_register_history, operand))
         })
@@ -1210,6 +1223,9 @@ fn proof_signals(context: ProofSignalContext<'_>) -> Vec<ProofSignal> {
     if packet_range_proof_lost_before_access(context.events) {
         signals.push(ProofSignal::PacketRangeProofLostBeforeAccess);
     }
+    if packet_guard_undercovers_access(&context) {
+        signals.push(ProofSignal::PacketGuardUndercoversAccess);
+    }
     if map_value_wide_access(
         context.log,
         context.terminal_error,
@@ -1651,6 +1667,39 @@ fn packet_range_proof_lost_before_access(events: &[ProofEvent]) -> bool {
         })
 }
 
+fn packet_guard_undercovers_access(context: &ProofSignalContext<'_>) -> bool {
+    if context.obligation != ProofObligation::PacketBounds {
+        return false;
+    }
+    let Some(reg) = context.register else {
+        return false;
+    };
+    let Some(current) = latest_reg_state_before(context.states, context.terminal_pc, reg) else {
+        return false;
+    };
+    let has_sufficient_verifier_range = context.events.iter().any(|event| {
+        event.role == ProofEventRole::ProofEstablished
+            && event.evidence == ProofEventEvidence::VerifierState
+            && event.obligation == ProofObligation::PacketBounds
+    });
+    !has_sufficient_verifier_range
+        && context.events.iter().any(|event| {
+            event.role == ProofEventRole::ProofLost
+                && event.evidence == ProofEventEvidence::VerifierState
+                && event.obligation == ProofObligation::PacketBounds
+                && event
+                    .source
+                    .as_ref()
+                    .is_some_and(|source| looks_like_packet_bounds_check(&source.text))
+                && packet_source_guard_is_linked(
+                    context.log,
+                    context.branch_states,
+                    event.pc,
+                    current,
+                )
+        })
+}
+
 fn packet_verifier_precision_signal(context: &ProofSignalContext<'_>) -> Option<ProofSignal> {
     if context.obligation != ProofObligation::PacketBounds {
         return None;
@@ -1801,7 +1850,7 @@ fn packet_guard_verifier_state_links_to_rejected(
     let Some(guard_pc) = guard_pc else {
         return false;
     };
-    guard_branch_operand_registers(log, guard_pc, 6)
+    guard_branch_packet_operand_registers(log, states, guard_pc, 6)
         .into_iter()
         .any(|(pc, reg)| {
             states
@@ -1809,6 +1858,43 @@ fn packet_guard_verifier_state_links_to_rejected(
                 .filter(|state| state.pc == pc)
                 .filter_map(|state| state.regs.get(&reg))
                 .any(|state| packet_guard_operand_covers_current(state, current))
+        })
+}
+
+fn guard_branch_packet_operand_registers(
+    log: &str,
+    states: &[VerifierInsn],
+    guard_pc: usize,
+    lookahead: usize,
+) -> Vec<(usize, u8)> {
+    let mut operands = Vec::new();
+    for (pc, regs) in guard_branch_register_sets(log, guard_pc, lookahead) {
+        for state in states.iter().filter(|state| state.pc == pc) {
+            for reg in &regs {
+                if branch_operand_is_packet_checked_against_pkt_end(state, &regs, *reg) {
+                    operands.push((pc, *reg));
+                }
+            }
+        }
+    }
+    operands
+}
+
+fn branch_operand_is_packet_checked_against_pkt_end(
+    state: &VerifierInsn,
+    branch_regs: &[u8],
+    reg: u8,
+) -> bool {
+    state
+        .regs
+        .get(&reg)
+        .is_some_and(|reg_state| reg_state.reg_type == "pkt")
+        && branch_regs.iter().any(|other| {
+            *other != reg
+                && state
+                    .regs
+                    .get(other)
+                    .is_some_and(|reg_state| reg_state.reg_type == "pkt_end")
         })
 }
 
@@ -1829,19 +1915,18 @@ fn packet_offset_covers(guard: &RegState, current: &RegState) -> bool {
     guard.offset.unwrap_or(0) >= current.offset.unwrap_or(0)
 }
 
-fn guard_branch_operand_registers(
+fn guard_branch_register_sets(
     log: &str,
     guard_pc: usize,
     lookahead: usize,
-) -> Vec<(usize, u8)> {
+) -> Vec<(usize, Vec<u8>)> {
     let max_pc = guard_pc.saturating_add(lookahead);
     log.lines()
         .filter_map(|line| instruction_pc_tail(line.trim()))
         .filter(|(pc, _)| *pc >= guard_pc && *pc <= max_pc)
-        .flat_map(|(pc, tail)| {
-            conditional_branch_registers(tail)
-                .into_iter()
-                .map(move |reg| (pc, reg))
+        .filter_map(|(pc, tail)| {
+            let regs = conditional_branch_registers(tail);
+            (!regs.is_empty()).then_some((pc, regs))
         })
         .collect()
 }

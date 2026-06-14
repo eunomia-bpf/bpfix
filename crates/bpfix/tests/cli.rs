@@ -59,6 +59,12 @@ fn assert_source_bug_without_verifier_state_signal(json: &Value, error_id: &str)
         .any(|evidence| evidence["kind"] == "verifier_state_signal"));
 }
 
+fn evidence_contains(json: &Value, kind: &str, detail: &str) -> bool {
+    json["evidence"].as_array().unwrap().iter().any(|evidence| {
+        evidence["kind"] == kind && evidence["detail"].as_str().unwrap().contains(detail)
+    })
+}
+
 fn run_json_stdin_with_args(input: &str, args: &[&str]) -> Value {
     let mut child = Command::new(env!("CARGO_BIN_EXE_bpfix"))
         .args(args)
@@ -546,6 +552,90 @@ fn verifier_precision_labels_without_runtime_proof_stay_source_bugs() {
     let loop_callback = run_json("bpfix-bench/cases/stackoverflow-77967675/replay-verifier.log");
     assert_eq!(loop_callback["error_id"], "BPFIX-E001");
     assert_eq!(loop_callback["failure_class"], "source_bug");
+}
+
+#[test]
+fn underchecked_packet_guards_report_source_state_signal() {
+    let off_by_one_guard = run_json("bpfix-bench/cases/stackoverflow-72575736/replay-verifier.log");
+    assert_eq!(off_by_one_guard["error_id"], "BPFIX-E001");
+    assert_eq!(off_by_one_guard["failure_class"], "source_bug");
+    assert!(evidence_contains(
+        &off_by_one_guard,
+        "verifier_state_signal",
+        "source has a packet bounds check"
+    ));
+    assert!(off_by_one_guard["help"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|help| help.as_str().unwrap().contains("include the access width")));
+
+    let underchecked_copy =
+        run_json("bpfix-bench/cases/stackoverflow-73088287/replay-verifier.log");
+    assert_eq!(underchecked_copy["error_id"], "BPFIX-E001");
+    assert_eq!(underchecked_copy["failure_class"], "source_bug");
+    assert!(evidence_contains(
+        &underchecked_copy,
+        "verifier_state_signal",
+        "shorter packet range"
+    ));
+
+    let underchecked_payload =
+        run_json("bpfix-bench/cases/stackoverflow-78186253/replay-verifier.log");
+    assert_eq!(underchecked_payload["error_id"], "BPFIX-E001");
+    assert_eq!(underchecked_payload["failure_class"], "source_bug");
+    assert!(evidence_contains(
+        &underchecked_payload,
+        "verifier_state_signal",
+        "shorter packet range"
+    ));
+
+    let loop_callback = run_json("bpfix-bench/cases/stackoverflow-77967675/replay-verifier.log");
+    assert_eq!(loop_callback["error_id"], "BPFIX-E001");
+    assert_eq!(loop_callback["failure_class"], "source_bug");
+    assert!(!evidence_contains(
+        &loop_callback,
+        "verifier_state_signal",
+        "shorter packet range"
+    ));
+
+    let unrelated_guard = "\
+; if (ctx->other + len + 1 > data_end) @ prog.c:10
+10: R1=pkt(id=8,off=1,r=1,smin=umin=smin32=umin32=20,smax=umax=smax32=umax32=0x1003b,var_off=(0x0; 0x1ffff)) R2=pkt(id=3,off=26,r=0,smin=umin=smin32=umin32=20,smax=umax=smax32=umax32=0x1003b,var_off=(0x0; 0x1ffff)) R6=pkt_end()
+10: (2d) if r1 > r6 goto pc+1
+; return *(__u16 *)(ctx->data + len); @ prog.c:20
+20: (69) r0 = *(u16 *)(r2 +0)
+invalid access to packet, off=26 size=2, R2(id=3,off=26,r=0)
+processed 21 insns (limit 1000000) max_states_per_insn 0 total_states 1 peak_states 1 mark_read 0
+";
+    let unrelated = run_json_stdin(unrelated_guard);
+    assert_eq!(unrelated["error_id"], "BPFIX-E001");
+    assert_eq!(unrelated["failure_class"], "source_bug");
+    assert!(!evidence_contains(
+        &unrelated,
+        "verifier_state_signal",
+        "shorter packet range"
+    ));
+
+    let unrelated_guard_with_nearby_packet_branch = "\
+; if (ctx->other + len + 1 > data_end) @ prog.c:10
+10: R1=pkt(id=8,off=1,r=1,smin=umin=smin32=umin32=20,smax=umax=smax32=umax32=0x1003b,var_off=(0x0; 0x1ffff)) R2=pkt(id=3,off=26,r=0,smin=umin=smin32=umin32=20,smax=umax=smax32=umax32=0x1003b,var_off=(0x0; 0x1ffff)) R6=pkt_end()
+10: (2d) if r1 > r6 goto pc+1
+12: R2=pkt(id=3,off=26,r=0,smin=umin=smin32=umin32=20,smax=umax=smax32=umax32=0x1003b,var_off=(0x0; 0x1ffff)) R7=scalar()
+12: (1d) if r2 == r7 goto pc+1
+; return *(__u16 *)(ctx->data + len); @ prog.c:20
+20: (69) r0 = *(u16 *)(r2 +0)
+invalid access to packet, off=26 size=2, R2(id=3,off=26,r=0)
+processed 21 insns (limit 1000000) max_states_per_insn 0 total_states 1 peak_states 1 mark_read 0
+";
+    let unrelated_nearby = run_json_stdin(unrelated_guard_with_nearby_packet_branch);
+    assert_eq!(unrelated_nearby["error_id"], "BPFIX-E001");
+    assert_eq!(unrelated_nearby["failure_class"], "source_bug");
+    assert!(!evidence_contains(
+        &unrelated_nearby,
+        "verifier_state_signal",
+        "shorter packet range"
+    ));
 }
 
 #[test]
