@@ -1,6 +1,6 @@
 use anyhow::Result;
 use bpfanalysis::{
-    verifier_states_from_log, verifier_states_with_branch_deltas_from_log, RegState, VerifierInsn,
+    verifier_states_with_branch_deltas_from_log, RegState, VerifierInsn, VerifierInsnKind,
 };
 
 use crate::family::ProofObligation;
@@ -210,8 +210,12 @@ pub fn analyze_verifier_log(
     terminal_error: &str,
     obligation: ProofObligation,
 ) -> Result<VerifierLogAnalysis> {
-    let states = verifier_states_from_log(log)?;
     let branch_states = verifier_states_with_branch_deltas_from_log(log)?;
+    let states = branch_states
+        .iter()
+        .filter(|state| state.kind != VerifierInsnKind::BranchDeltaState)
+        .cloned()
+        .collect::<Vec<_>>();
     let source_events = collect_source_events(log);
     let required_proof =
         instantiate_required_proof(terminal_error, terminal_pc, &states, obligation);
