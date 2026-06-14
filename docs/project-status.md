@@ -179,7 +179,7 @@ cargo run -p bpfix -- bpfix-bench/cases/stackoverflow-60053570/replay-verifier.l
 Run the current log-only benchmark diagnostic gate:
 
 ```bash
-python3 bpfix-bench/run-bpfix-eval.py --confusion
+python3 bpfix-bench/run-bpfix-eval.py --confusion --reject-fallback
 ```
 
 Legacy replay validation remains available for corpus maintenance:

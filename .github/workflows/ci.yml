@@ -45,22 +45,7 @@ jobs:
         run: scripts/check-release.sh
 
       - name: Evaluate diagnostics
-        run: python3 bpfix-bench/run-bpfix-eval.py --confusion --no-build
-
-      - name: Reject fallback diagnostics
-        shell: bash
-        run: |
-          set -euo pipefail
-          count=0
-          for log in bpfix-bench/cases/*/replay-verifier.log; do
-            out=$(target/debug/bpfix --format json "$log")
-            if printf '%s\n' "$out" | rg -q '"error_id": "BPFIX-(E000|E099|UNKNOWN)"'; then
-              printf '%s\n' "$log"
-              count=$((count + 1))
-            fi
-          done
-          printf 'replay_special_count %s\n' "$count"
-          test "$count" -eq 0
+        run: python3 bpfix-bench/run-bpfix-eval.py --confusion --reject-fallback --no-build
 
       - name: Install smoke test
         run: |

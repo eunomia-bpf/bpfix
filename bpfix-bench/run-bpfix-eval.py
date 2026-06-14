@@ -40,6 +40,11 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Print the deterministic stratified audit sample.",
     )
+    parser.add_argument(
+        "--reject-fallback",
+        action="store_true",
+        help="Exit non-zero if any replay case emits UNKNOWN, input_error, or unsupported diagnostics.",
+    )
     parser.add_argument("--sample-size", default=80, type=int)
     parser.add_argument("--sample-seed", default="bpfix-eval-v1")
     return parser.parse_args()
@@ -80,6 +85,8 @@ def main() -> int:
         eval_cmd.append("--confusion")
     if args.sample_audit:
         eval_cmd.append("--sample-audit")
+    if args.reject_fallback:
+        eval_cmd.append("--reject-fallback")
     eval_cmd.extend(["--sample-size", str(args.sample_size)])
     eval_cmd.extend(["--sample-seed", args.sample_seed])
 

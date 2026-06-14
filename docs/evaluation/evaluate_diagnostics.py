@@ -29,6 +29,8 @@ TAXONOMY_CLASSES = [
     "verifier_limit",
 ]
 
+FALLBACK_ERROR_IDS = {"BPFIX-UNKNOWN", "BPFIX-E000", "BPFIX-E099"}
+
 
 @dataclass
 class Prediction:
@@ -497,6 +499,26 @@ def emit_summary(rows: list[Row]) -> None:
         print(f"| {metric} | {bpfix} | {terminal} |")
 
 
+def fallback_rows(rows: list[Row]) -> list[Row]:
+    return [row for row in rows if row.bpfix.error_id in FALLBACK_ERROR_IDS]
+
+
+def emit_fallback_gate(rows: list[Row]) -> bool:
+    failures = fallback_rows(rows)
+    print(f"\nfallback/unknown replay gate: {len(failures)}")
+    if not failures:
+        return True
+
+    print("| case_id | error_id | failure_class |")
+    print("| --- | --- | --- |")
+    for row in failures:
+        print(
+            f"| `{row.case_id}` | {row.bpfix.error_id} | "
+            f"{row.bpfix.failure_class} |"
+        )
+    return False
+
+
 def emit_confusion(rows: list[Row], prediction: str) -> None:
     confusion: dict[str, collections.Counter[str]] = collections.defaultdict(collections.Counter)
     for row in rows:
@@ -633,6 +655,11 @@ def main() -> int:
     parser.add_argument("--sample-audit", action="store_true")
     parser.add_argument("--sample-size", default=80, type=int)
     parser.add_argument("--sample-seed", default="bpfix-eval-v1")
+    parser.add_argument(
+        "--reject-fallback",
+        action="store_true",
+        help="Exit non-zero if any replay case emits UNKNOWN, input_error, or unsupported diagnostics.",
+    )
     args = parser.parse_args()
 
     if not args.bpfix_bin.exists():
@@ -649,6 +676,8 @@ def main() -> int:
     if args.sample_audit:
         print("\nStratified sample audit:\n")
         emit_sample_audit(rows, args.sample_size, args.sample_seed)
+    if args.reject_fallback and not emit_fallback_gate(rows):
+        return 1
     return 0
 
 
