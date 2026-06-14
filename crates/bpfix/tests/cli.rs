@@ -1365,11 +1365,152 @@ fn ordinary_source_bugs_are_not_overclassified_as_runtime_artifacts() {
         run_json("bpfix-bench/cases/stackoverflow-78196801/replay-verifier.log");
     assert_eq!(map_value_guard_too_large["error_id"], "BPFIX-E005");
     assert_eq!(map_value_guard_too_large["failure_class"], "source_bug");
+    assert!(map_value_guard_too_large["message"]
+        .as_str()
+        .unwrap()
+        .contains("map-value index guard exceeds the map value size"));
+    assert!(map_value_guard_too_large["required_proof"]
+        .as_str()
+        .unwrap()
+        .contains("field offset and access width"));
+    assert!(evidence_contains(
+        &map_value_guard_too_large,
+        "verifier_state_signal",
+        "source bounds the map-value index"
+    ));
 
     let map_value_guard_too_large_2 =
         run_json("bpfix-bench/cases/stackoverflow-78208591/replay-verifier.log");
     assert_eq!(map_value_guard_too_large_2["error_id"], "BPFIX-E005");
     assert_eq!(map_value_guard_too_large_2["failure_class"], "source_bug");
+    assert!(evidence_contains(
+        &map_value_guard_too_large_2,
+        "verifier_state_signal",
+        "source bounds the map-value index"
+    ));
+
+    let map_value_state_offset_guard = run_json_stdin(
+        "0: R1=ctx() R10=fp0\n\
+         ; if (idx <= 19) @ prog.c:12\n\
+         10: (25) if r1 > 0x13 goto pc+3 ; R1=scalar(smin=0,smax=umax=19)\n\
+         ; value->flags[idx] = 1; @ prog.c:13\n\
+         11: (0f) r0 += r1\n\
+         12: R0_w=map_value(map=output_map,ks=1,vs=20,off=8,smin=0,smax=umax=19,var_off=(0x0; 0x13)) R1=scalar(smin=0,smax=umax=19,var_off=(0x0; 0x13))\n\
+         13: (73) *(u8 *)(r0 +0) = r1\n\
+         invalid access to map value, value_size=20 off=27 size=1\n\
+         R0 max value is outside of the allowed memory range\n",
+    );
+    assert!(evidence_contains(
+        &map_value_state_offset_guard,
+        "verifier_state_signal",
+        "source bounds the map-value index"
+    ));
+
+    let source_text_guard_without_verifier_branch_proof = run_json_stdin(
+        "0: R1=ctx() R10=fp0\n\
+         ; if (idx < 64) @ prog.c:12\n\
+         10: (25) if r2 > 0x3f goto pc+3 ; R2=scalar(smin=0,smax=umax=63) R1=scalar(smin=0,smax=umax=63)\n\
+         ; value->flags[idx] = 1; @ prog.c:13\n\
+         11: (0f) r0 += r1\n\
+         12: R0_w=map_value(map=output_map,ks=1,vs=20,smin=0,smax=umax=63,var_off=(0x0; 0x3f)) R1=scalar(smin=0,smax=umax=63,var_off=(0x0; 0x3f))\n\
+         13: (73) *(u8 *)(r0 +0) = r1\n\
+         invalid access to map value, value_size=20 off=63 size=1\n\
+         R0 max value is outside of the allowed memory range\n",
+    );
+    assert!(!evidence_contains(
+        &source_text_guard_without_verifier_branch_proof,
+        "verifier_state_signal",
+        "source bounds the map-value index"
+    ));
+
+    let register_prefix_add = run_json_stdin(
+        "0: R1=ctx() R10=fp0\n\
+         ; if (idx < 64) @ prog.c:12\n\
+         10: (25) if r1 > 0x3f goto pc+3 ; R1=scalar(smin=0,smax=umax=63)\n\
+         ; value->flags[idx] = 1; @ prog.c:13\n\
+         11: (0f) r0 += r10\n\
+         12: R0_w=map_value(map=output_map,ks=1,vs=20,smin=0,smax=umax=63,var_off=(0x0; 0x3f)) R1=scalar(smin=0,smax=umax=63,var_off=(0x0; 0x3f))\n\
+         13: (73) *(u8 *)(r0 +0) = r1\n\
+         invalid access to map value, value_size=20 off=63 size=1\n\
+         R0 max value is outside of the allowed memory range\n",
+    );
+    assert!(!evidence_contains(
+        &register_prefix_add,
+        "verifier_state_signal",
+        "source bounds the map-value index"
+    ));
+
+    let future_pc_guard = run_json_stdin(
+        "0: R1=ctx() R10=fp0\n\
+         ; if (idx < 64) @ prog.c:12\n\
+         20: (25) if r1 > 0x3f goto pc+3 ; R1=scalar(smin=0,smax=umax=63)\n\
+         ; value->flags[idx] = 1; @ prog.c:13\n\
+         11: (0f) r0 += r1\n\
+         12: R0_w=map_value(map=output_map,ks=1,vs=20,smin=0,smax=umax=63,var_off=(0x0; 0x3f)) R1=scalar(smin=0,smax=umax=63,var_off=(0x0; 0x3f))\n\
+         13: (73) *(u8 *)(r0 +0) = r1\n\
+         invalid access to map value, value_size=20 off=63 size=1\n\
+         R0 max value is outside of the allowed memory range\n",
+    );
+    assert!(!evidence_contains(
+        &future_pc_guard,
+        "verifier_state_signal",
+        "source bounds the map-value index"
+    ));
+
+    let stale_retry_fragment = run_json_stdin(
+        "0: R1=ctx() R10=fp0\n\
+         ; if (idx < 64) @ prog.c:12\n\
+         10: (25) if r2 > 0x3f goto pc+3 ; R2=scalar(smin=0,smax=umax=63)\n\
+         11: (0f) r0 += r2\n\
+         ; if (idx < 64) @ prog.c:12\n\
+         10: (25) if r2 > 0x3f goto pc+3 ; R2=scalar(smin=0,smax=umax=63) R1=scalar(smin=0,smax=umax=63)\n\
+         ; value->flags[idx] = 1; @ prog.c:13\n\
+         11: (0f) r0 += r1\n\
+         12: R0_w=map_value(map=output_map,ks=1,vs=20,smin=0,smax=umax=63,var_off=(0x0; 0x3f)) R1=scalar(smin=0,smax=umax=63,var_off=(0x0; 0x3f))\n\
+         13: (73) *(u8 *)(r0 +0) = r1\n\
+         invalid access to map value, value_size=20 off=63 size=1\n\
+         R0 max value is outside of the allowed memory range\n",
+    );
+    assert!(!evidence_contains(
+        &stale_retry_fragment,
+        "verifier_state_signal",
+        "source bounds the map-value index"
+    ));
+
+    let stale_terminal_offset_fragment = run_json_stdin(
+        "0: R1=ctx() R10=fp0\n\
+         13: (73) *(u8 *)(r0 +0) = r1\n\
+         ; if (idx <= 19) @ prog.c:12\n\
+         10: (25) if r1 > 0x13 goto pc+3 ; R1=scalar(smin=0,smax=umax=19)\n\
+         ; value->flags[idx] = 1; @ prog.c:13\n\
+         11: (0f) r0 += r1\n\
+         12: R0_w=map_value(map=output_map,ks=1,vs=20,smin=0,smax=umax=19,var_off=(0x0; 0x13)) R1=scalar(smin=0,smax=umax=19,var_off=(0x0; 0x13))\n\
+         13: (73) *(u8 *)(r0 +8) = r1\n\
+         invalid access to map value, value_size=20 off=27 size=1\n\
+         R0 max value is outside of the allowed memory range\n",
+    );
+    assert!(evidence_contains(
+        &stale_terminal_offset_fragment,
+        "verifier_state_signal",
+        "source bounds the map-value index"
+    ));
+
+    let unrelated_map_value_guard = run_json_stdin(
+        "0: R1=ctx() R10=fp0\n\
+         ; if (other < 64) @ prog.c:12\n\
+         10: (25) if r1 > 0x3f goto pc+3 ; R1=scalar(smin=0,smax=umax=63)\n\
+         ; value->flags[idx] = 1; @ prog.c:13\n\
+         11: (0f) r0 += r1\n\
+         12: R0_w=map_value(map=output_map,ks=1,vs=20,smin=0,smax=umax=63,var_off=(0x0; 0x3f)) R1=scalar(smin=0,smax=umax=63,var_off=(0x0; 0x3f))\n\
+         13: (73) *(u8 *)(r0 +0) = r1\n\
+         invalid access to map value, value_size=20 off=63 size=1\n\
+         R0 max value is outside of the allowed memory range\n",
+    );
+    assert!(!evidence_contains(
+        &unrelated_map_value_guard,
+        "verifier_state_signal",
+        "source bounds the map-value index"
+    ));
 }
 
 #[test]

@@ -8,6 +8,7 @@ pub struct SourceLocation {
 #[derive(Clone, Debug)]
 pub(crate) struct SourceEvent {
     pub(crate) pc: Option<usize>,
+    pub(crate) log_line: usize,
     pub(crate) source: SourceLocation,
 }
 
@@ -23,7 +24,11 @@ pub(crate) fn collect_source_events(log: &str) -> Vec<SourceEvent> {
             .skip(idx + 1)
             .take(4)
             .find_map(|next| parse_instruction_pc(next));
-        events.push(SourceEvent { pc, source });
+        events.push(SourceEvent {
+            pc,
+            log_line: idx + 1,
+            source,
+        });
     }
     events
 }
