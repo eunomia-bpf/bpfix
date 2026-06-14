@@ -17,7 +17,7 @@ Primary users:
 ## Product Use Cases
 
 BPFix should be judged by whether it helps a developer decide what to try next,
-not by whether it only improves a paper metric.
+not by whether it only improves an offline evaluation metric.
 
 The main user-visible workflows are:
 
@@ -47,8 +47,8 @@ of these surfaces:
 - stable JSON for CI, editors, and agents
 - examples that users can run outside the benchmark harness
 
-Pure evaluation work belongs in `docs/evaluation/` or `docs/tmp/` until it is
-connected to one of those user-visible surfaces.
+Pure evaluation work belongs in `docs/evaluation/` until it is connected to one
+of those user-visible surfaces.
 
 ## Documentation Surfaces
 
@@ -56,7 +56,6 @@ connected to one of those user-visible surfaces.
 - `docs/open-source-tool-design.md`: public CLI, JSON, and product boundaries
 - `bpfix-bench/README.md`: replayable benchmark setup and validation
 - `docs/research-plan.md`: roadmap and current implementation status
-- `docs/workshop-paper-plan.md`: paper story, separated from product docs
 
 ## CLI Contract
 
