@@ -426,6 +426,28 @@ fn noisy_build_log_is_reduced_to_verifier_region() {
 }
 
 #[test]
+fn ci_wrapped_log_is_reduced_to_verifier_region() {
+    let replay = std::fs::read_to_string(
+        workspace_root().join("bpfix-bench/cases/stackoverflow-53136145/replay-verifier.log"),
+    )
+    .expect("fixture should be readable");
+    let wrapped = replay
+        .lines()
+        .map(|line| format!("2026-06-13T21:04:05.123Z \u{1b}[31m{line}\u{1b}[0m\n"))
+        .collect::<String>();
+    let ci_log =
+        format!("::group::load BPF object\nwarning: unrelated CI noise\n{wrapped}::endgroup::\n");
+
+    let json = run_json_stdin(&ci_log);
+
+    assert_eq!(json["error_id"], "BPFIX-E006");
+    assert_eq!(json["failure_class"], "lowering_artifact");
+    assert_eq!(json["metadata"]["input_kind"], "verifier-log-region");
+    assert_eq!(json["source_span"]["path"], "prog.c");
+    assert_eq!(json["source_span"]["instruction_pc"], 37);
+}
+
+#[test]
 fn stdin_log_path_does_not_need_yaml() {
     let replay = std::fs::read_to_string(
         workspace_root().join("bpfix-bench/cases/stackoverflow-70750259/replay-verifier.log"),

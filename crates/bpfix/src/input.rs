@@ -39,10 +39,105 @@ fn read_stdin() -> Result<String> {
 }
 
 fn normalize_verifier_log(raw: String, base_kind: &'static str) -> (String, &'static str) {
-    match extract_verifier_log_region(&raw) {
+    let normalized = normalize_log_wrappers(&raw);
+    match extract_verifier_log_region(&normalized) {
         Some(region) => (region, "verifier-log-region"),
-        None => (raw, base_kind),
+        None => (normalized, base_kind),
     }
+}
+
+fn normalize_log_wrappers(raw: &str) -> String {
+    let mut normalized = raw
+        .lines()
+        .filter_map(normalize_log_line)
+        .collect::<Vec<_>>()
+        .join("\n");
+    if !normalized.is_empty() && raw.ends_with('\n') {
+        normalized.push('\n');
+    }
+    normalized
+}
+
+fn normalize_log_line(line: &str) -> Option<String> {
+    let stripped = strip_ansi_escape_sequences(line);
+    let line = strip_ci_timestamp_prefix(stripped.trim_end_matches('\r')).trim_start();
+    if is_ci_control_line(line) {
+        None
+    } else {
+        Some(line.to_string())
+    }
+}
+
+fn strip_ansi_escape_sequences(line: &str) -> String {
+    let mut out = String::with_capacity(line.len());
+    let mut chars = line.chars().peekable();
+    while let Some(ch) = chars.next() {
+        if ch == '\x1b' && chars.peek() == Some(&'[') {
+            chars.next();
+            for code in chars.by_ref() {
+                if ('@'..='~').contains(&code) {
+                    break;
+                }
+            }
+        } else {
+            out.push(ch);
+        }
+    }
+    out
+}
+
+fn strip_ci_timestamp_prefix(mut line: &str) -> &str {
+    loop {
+        let trimmed = line.trim_start();
+        if let Some(rest) = strip_bracketed_timestamp(trimmed) {
+            line = rest;
+            continue;
+        }
+        let Some((token, rest)) = trimmed.split_once(char::is_whitespace) else {
+            return trimmed;
+        };
+        if looks_like_iso8601_timestamp(token) {
+            line = rest;
+            continue;
+        }
+        return trimmed;
+    }
+}
+
+fn strip_bracketed_timestamp(line: &str) -> Option<&str> {
+    let rest = line.strip_prefix('[')?;
+    let close = rest.find(']')?;
+    let timestamp = &rest[..close];
+    if !looks_like_iso8601_timestamp(timestamp) {
+        return None;
+    }
+    Some(rest[close + 1..].trim_start())
+}
+
+fn looks_like_iso8601_timestamp(token: &str) -> bool {
+    let Some(prefix) = token.get(..19) else {
+        return false;
+    };
+    let bytes = prefix.as_bytes();
+    bytes.len() == 19
+        && bytes[0..4].iter().all(u8::is_ascii_digit)
+        && bytes[4] == b'-'
+        && bytes[5..7].iter().all(u8::is_ascii_digit)
+        && bytes[7] == b'-'
+        && bytes[8..10].iter().all(u8::is_ascii_digit)
+        && matches!(bytes[10], b'T' | b't' | b' ')
+        && bytes[11..13].iter().all(u8::is_ascii_digit)
+        && bytes[13] == b':'
+        && bytes[14..16].iter().all(u8::is_ascii_digit)
+        && bytes[16] == b':'
+        && bytes[17..19].iter().all(u8::is_ascii_digit)
+}
+
+fn is_ci_control_line(line: &str) -> bool {
+    line.starts_with("::group::")
+        || line.starts_with("::endgroup::")
+        || line.starts_with("##[group]")
+        || line.starts_with("##[endgroup]")
 }
 
 fn extract_verifier_log_region(raw: &str) -> Option<String> {
