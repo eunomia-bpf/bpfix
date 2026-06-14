@@ -364,6 +364,28 @@ fn verifier_precision_limits_are_triage_not_source_bugs() {
 }
 
 #[test]
+fn packet_bounds_diagnostic_reports_prior_verifier_range_proof() {
+    let json = run_json("bpfix-bench/cases/github-iovisor-bcc-5062/replay-verifier.log");
+
+    assert_eq!(json["error_id"], "BPFIX-E001");
+    assert_eq!(json["failure_class"], "source_bug");
+
+    let labels = json["related_spans"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|span| span["label"].as_str())
+        .collect::<Vec<_>>()
+        .join("\n");
+    assert!(labels.contains("verifier had proved packet range 74 bytes"));
+    assert!(labels.contains("required 60 bytes"));
+    assert!(json["help"].as_array().unwrap().iter().any(|item| item
+        .as_str()
+        .unwrap()
+        .contains("packet pointer derivation that received the data_end proof")));
+}
+
+#[test]
 fn ordinary_source_bugs_are_not_overclassified_as_runtime_artifacts() {
     let pointer_load_reuse =
         run_json("bpfix-bench/cases/stackoverflow-56965789/replay-verifier.log");

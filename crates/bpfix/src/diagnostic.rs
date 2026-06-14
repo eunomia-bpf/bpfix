@@ -2,7 +2,9 @@ use anyhow::Result;
 use bpfanalysis::{verifier_states_from_log, RegState, VerifierInsn};
 
 use crate::family::ProofObligation;
-use crate::proof::{instantiate_required_proof, scalar_range_summary, RequiredProof};
+use crate::proof::{
+    instantiate_required_proof, packet_required_range, scalar_range_summary, RequiredProof,
+};
 use crate::source::{
     collect_source_events, latest_source_before, looks_like_null_check, looks_like_nullable_return,
     looks_like_packet_bounds_check, looks_like_reference_acquire, looks_like_reference_release,
@@ -212,7 +214,10 @@ pub fn analyze_verifier_log(
             ));
         }
         ProofObligation::PacketBounds => events.extend(packet_bounds_events(
+            &states,
             &source_events,
+            terminal_pc,
+            terminal_error,
             rejected_source.as_ref(),
             register,
         )),
@@ -363,7 +368,10 @@ fn is_pointer_state(state: &RegState) -> bool {
 }
 
 fn packet_bounds_events(
+    states: &[VerifierInsn],
     source_events: &[SourceEvent],
+    terminal_pc: Option<usize>,
+    terminal_error: &str,
     rejected_source: Option<&SourceLocation>,
     register: Option<u8>,
 ) -> Vec<ProofEvent> {
@@ -381,7 +389,44 @@ fn packet_bounds_events(
             detail: "packet bounds proof is established by this data_end check".to_string(),
         });
     }
+    if let Some((pc, range, required)) =
+        latest_sufficient_packet_range(states, terminal_pc, terminal_error, register)
+    {
+        events.push(ProofEvent {
+            role: ProofEventRole::ProofEstablished,
+            evidence: ProofEventEvidence::VerifierState,
+            obligation: ProofObligation::PacketBounds,
+            pc: Some(pc),
+            source: source_for_pc(source_events, pc).cloned(),
+            register,
+            detail: format!(
+                "verifier had proved packet range {range} bytes here, enough for the required {required} bytes"
+            ),
+        });
+    }
     events
+}
+
+fn latest_sufficient_packet_range(
+    states: &[VerifierInsn],
+    terminal_pc: Option<usize>,
+    terminal_error: &str,
+    register: Option<u8>,
+) -> Option<(usize, u32, u32)> {
+    let reg = register?;
+    let required = packet_required_range(terminal_error)?;
+    states
+        .iter()
+        .filter(|state| terminal_pc.is_none_or(|pc| state.pc < pc))
+        .rev()
+        .find_map(|state| {
+            let reg_state = state.regs.get(&reg)?;
+            if reg_state.reg_type != "pkt" {
+                return None;
+            }
+            let range = reg_state.packet_range?;
+            (range >= required).then_some((state.pc, range, required))
+        })
 }
 
 fn scalar_range_events(

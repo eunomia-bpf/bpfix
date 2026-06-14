@@ -36,10 +36,8 @@ pub(crate) fn instantiate_required_proof(
 }
 
 fn packet_bounds_required_proof(message: &str, register: Option<u8>) -> RequiredProof {
-    let off = parse_i64_after(message, "off=");
-    let size = parse_i64_after(message, "size=");
     let proven_range = parse_i64_after(message, "r=");
-    let required_end = off.zip(size).map(|(off, size)| off.saturating_add(size));
+    let required_end = packet_required_range(message).map(i64::from);
     let description = match (register, required_end, proven_range) {
         (Some(reg), Some(required), Some(range)) => format!(
             "prove R{reg} has packet range at least {required} bytes before this access; verifier currently has range {range}"
@@ -66,6 +64,12 @@ fn packet_bounds_required_proof(message: &str, register: Option<u8>) -> Required
         description,
         rejection_detail,
     }
+}
+
+pub(crate) fn packet_required_range(message: &str) -> Option<u32> {
+    let off = parse_i64_after(message, "off=")?;
+    let size = parse_i64_after(message, "size=")?;
+    u32::try_from(off.checked_add(size)?).ok()
 }
 
 fn scalar_range_required_proof(

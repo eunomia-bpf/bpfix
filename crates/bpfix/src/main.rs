@@ -367,6 +367,15 @@ fn evidence_strength_rank(evidence: ProofEventEvidence) -> u8 {
 
 fn add_proof_event_help(help: &mut Vec<String>, events: &[diagnostic::ProofEvent]) {
     for event in events {
+        if event.role == ProofEventRole::ProofEstablished
+            && event.evidence == ProofEventEvidence::VerifierState
+            && event.obligation == ProofObligation::PacketBounds
+        {
+            insert_help(
+                help,
+                "Use the packet pointer derivation that received the data_end proof, or rederive and recheck the final access pointer immediately before the load.",
+            );
+        }
         if event.role != ProofEventRole::ProofLost {
             continue;
         }
