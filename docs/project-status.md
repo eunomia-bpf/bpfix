@@ -180,7 +180,14 @@ cargo run -p bpfix -- bpfix-bench/cases/stackoverflow-60053570/replay-verifier.l
 Run the current log-only benchmark diagnostic gate:
 
 ```bash
-python3 bpfix-bench/run-bpfix-eval.py --confusion --reject-fallback
+python3 bpfix-bench/run-bpfix-eval.py --confusion --coverage --reject-fallback
+```
+
+Run benchmark diagnostics with checked-in BPF objects and object-CFG attachment
+coverage:
+
+```bash
+python3 bpfix-bench/run-bpfix-eval.py --coverage --object-if-available
 ```
 
 Run the full local release gate:
@@ -197,10 +204,10 @@ python3 bpfix-bench/tools/validate_benchmark.py --replay bpfix-bench --timeout-s
 
 Current evaluation TODO:
 
-- rerun cases with available objects using `--object`
-- report required-proof coverage by verifier proof family
-- report source/bytecode localization coverage
-- report object-CFG attachment success and non-fatal object-analysis failures
+- report required-proof coverage by verifier proof family, not only expected
+  action proxy
+- report object-CFG attachment quality by program section, not only aggregate
+  object/program/site counts
 - report latency on the same machine and command configuration
 
 ## Near-Term Roadmap

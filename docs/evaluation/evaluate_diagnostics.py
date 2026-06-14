@@ -40,6 +40,13 @@ class Prediction:
     primary_span: bool
     related_spans: int
     pc_candidates: list[int]
+    analysis_error: str | None = None
+    object_requested: bool = False
+    object_programs: int = 0
+    object_site_count: int = 0
+    object_state_site_count: int = 0
+    object_attach_errors: int = 0
+    object_analysis_error: str | None = None
 
 
 @dataclass
@@ -295,9 +302,17 @@ def bpfix_action(diagnostic: dict) -> str:
     return "other"
 
 
-def run_bpfix(bpfix_bin: pathlib.Path, log_path: pathlib.Path) -> Prediction:
+def run_bpfix(
+    bpfix_bin: pathlib.Path,
+    log_path: pathlib.Path,
+    object_path: pathlib.Path | None,
+) -> Prediction:
+    cmd = [str(bpfix_bin), "--format", "json"]
+    if object_path is not None:
+        cmd.extend(["--object", str(object_path)])
+    cmd.append(str(log_path))
     completed = subprocess.run(
-        [str(bpfix_bin), "--format", "json", str(log_path)],
+        cmd,
         check=True,
         stdout=subprocess.PIPE,
         stderr=subprocess.DEVNULL,
@@ -311,6 +326,8 @@ def run_bpfix(bpfix_bin: pathlib.Path, log_path: pathlib.Path) -> Prediction:
     for span in diagnostic.get("related_spans") or []:
         if span.get("instruction_pc") is not None:
             pc_candidates.append(span["instruction_pc"])
+    metadata = diagnostic.get("metadata") or {}
+    object_programs = metadata.get("object_programs") or []
     return Prediction(
         error_id=diagnostic["error_id"],
         failure_class=diagnostic["failure_class"],
@@ -318,10 +335,27 @@ def run_bpfix(bpfix_bin: pathlib.Path, log_path: pathlib.Path) -> Prediction:
         primary_span=bool(diagnostic.get("source_span")),
         related_spans=len(diagnostic.get("related_spans") or []),
         pc_candidates=pc_candidates,
+        analysis_error=metadata.get("analysis_error"),
+        object_requested=object_path is not None,
+        object_programs=len(object_programs),
+        object_site_count=sum(program.get("site_count") or 0 for program in object_programs),
+        object_state_site_count=sum(
+            program.get("verifier_state_site_count") or 0 for program in object_programs
+        ),
+        object_attach_errors=sum(
+            1
+            for program in object_programs
+            if program.get("verifier_state_attach_error") is not None
+        ),
+        object_analysis_error=metadata.get("object_analysis_error"),
     )
 
 
-def load_rows(bench_root: pathlib.Path, bpfix_bin: pathlib.Path) -> list[Row]:
+def load_rows(
+    bench_root: pathlib.Path,
+    bpfix_bin: pathlib.Path,
+    object_if_available: bool = False,
+) -> list[Row]:
     manifest = yaml.safe_load((bench_root / "manifest.yaml").read_text())
     source_by_case = {entry["case_id"]: entry["source_kind"] for entry in manifest["cases"]}
     rows: list[Row] = []
@@ -331,6 +365,13 @@ def load_rows(bench_root: pathlib.Path, bpfix_bin: pathlib.Path) -> list[Row]:
         label = data["label"]
         capture = data["capture"]
         log_path = case_yaml.parent / capture.get("verifier_log", "replay-verifier.log")
+        object_path = None
+        if object_if_available:
+            candidate = case_yaml.parent / data.get("reproducer", {}).get(
+                "object_path", "prog.o"
+            )
+            if candidate.exists():
+                object_path = candidate
         rows.append(
             Row(
                 case_id=case_id,
@@ -340,7 +381,7 @@ def load_rows(bench_root: pathlib.Path, bpfix_bin: pathlib.Path) -> list[Row]:
                 label_action=label_action(label),
                 root_pc=label.get("root_cause_insn_idx"),
                 confidence=label.get("confidence", ""),
-                bpfix=run_bpfix(bpfix_bin, log_path),
+                bpfix=run_bpfix(bpfix_bin, log_path, object_path),
                 terminal=terminal_dictionary(capture.get("terminal_error") or ""),
             )
         )
@@ -531,6 +572,86 @@ def emit_confusion(rows: list[Row], prediction: str) -> None:
         print("| " + gold + " | " + " | ".join(str(counts.get(pred, 0)) for pred in predicted) + " |")
 
 
+def emit_coverage(rows: list[Row]) -> None:
+    print("\nBPFix coverage by expected action:\n")
+    print(
+        "| expected action | cases | taxonomy agreement | action exact | primary span | related spans | root exact | root within 5 |"
+    )
+    print("| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |")
+    for action in sorted({row.label_action for row in rows}):
+        bucket = [row for row in rows if row.label_action == action]
+        rooted = [row for row in bucket if row.root_pc is not None]
+        root_exact = sum(
+            any(pc == row.root_pc for pc in row.bpfix.pc_candidates) for row in rooted
+        )
+        root_within_5 = sum(
+            any(abs(pc - row.root_pc) <= 5 for pc in row.bpfix.pc_candidates)
+            for row in rooted
+        )
+        print(
+            f"| {action} | {len(bucket)} | "
+            f"{ratio(sum(row.bpfix.failure_class == row.taxonomy for row in bucket), len(bucket))} | "
+            f"{ratio(sum(row.bpfix.action == row.label_action for row in bucket), len(bucket))} | "
+            f"{ratio(sum(row.bpfix.primary_span for row in bucket), len(bucket))} | "
+            f"{ratio(sum(row.bpfix.related_spans > 0 for row in bucket), len(bucket))} | "
+            f"{ratio(root_exact, len(rooted))} | "
+            f"{ratio(root_within_5, len(rooted))} |"
+        )
+
+    if any(row.bpfix.object_requested for row in rows):
+        emit_object_coverage(rows)
+
+
+def emit_object_coverage(rows: list[Row]) -> None:
+    object_rows = [row for row in rows if row.bpfix.object_requested]
+    print("\nBPFix object-analysis coverage:\n")
+    print("| metric | value |")
+    print("| --- | ---: |")
+    print(f"| cases run with --object | {len(object_rows)} |")
+    print(
+        f"| cases with parsed object programs | "
+        f"{ratio(sum(row.bpfix.object_programs > 0 for row in object_rows), len(object_rows))} |"
+    )
+    print(
+        f"| cases with attached verifier states | "
+        f"{ratio(sum(row.bpfix.object_state_site_count > 0 for row in object_rows), len(object_rows))} |"
+    )
+    print(
+        f"| cases with object-analysis error | "
+        f"{ratio(sum(row.bpfix.object_analysis_error is not None for row in object_rows), len(object_rows))} |"
+    )
+    print(
+        f"| object programs parsed | "
+        f"{sum(row.bpfix.object_programs for row in object_rows)} |"
+    )
+    print(
+        f"| object CFG sites | "
+        f"{sum(row.bpfix.object_site_count for row in object_rows)} |"
+    )
+    print(
+        f"| verifier states attached to object sites | "
+        f"{sum(row.bpfix.object_state_site_count for row in object_rows)} |"
+    )
+    print(
+        f"| per-program attach errors | "
+        f"{sum(row.bpfix.object_attach_errors for row in object_rows)} |"
+    )
+
+    failures = [
+        row
+        for row in object_rows
+        if row.bpfix.object_analysis_error is not None or row.bpfix.object_attach_errors > 0
+    ]
+    if failures:
+        if len(failures) > 20:
+            print(f"\nFirst 20 object-analysis issues out of {len(failures)}:")
+        print("\n| case_id | object_analysis_error | attach_errors |")
+        print("| --- | --- | ---: |")
+        for row in failures[:20]:
+            error = row.bpfix.object_analysis_error or "none"
+            print(f"| `{row.case_id}` | {error} | {row.bpfix.object_attach_errors} |")
+
+
 def stable_key(seed: str, *parts: str) -> str:
     data = "\0".join([seed, *parts]).encode()
     return hashlib.sha256(data).hexdigest()
@@ -652,9 +773,15 @@ def main() -> int:
     parser.add_argument("--bench-root", default="bpfix-bench", type=pathlib.Path)
     parser.add_argument("--bpfix-bin", default="target/debug/bpfix", type=pathlib.Path)
     parser.add_argument("--confusion", action="store_true")
+    parser.add_argument("--coverage", action="store_true")
     parser.add_argument("--sample-audit", action="store_true")
     parser.add_argument("--sample-size", default=80, type=int)
     parser.add_argument("--sample-seed", default="bpfix-eval-v1")
+    parser.add_argument(
+        "--object-if-available",
+        action="store_true",
+        help="Pass each case's object_path to bpfix when the object exists.",
+    )
     parser.add_argument(
         "--reject-fallback",
         action="store_true",
@@ -666,13 +793,15 @@ def main() -> int:
         print(f"missing bpfix binary: {args.bpfix_bin}", file=sys.stderr)
         return 2
 
-    rows = load_rows(args.bench_root, args.bpfix_bin)
+    rows = load_rows(args.bench_root, args.bpfix_bin, args.object_if_available)
     emit_summary(rows)
     if args.confusion:
         print("\nBPFix confusion:\n")
         emit_confusion(rows, "bpfix")
         print("\nTerminal dictionary confusion:\n")
         emit_confusion(rows, "terminal")
+    if args.coverage:
+        emit_coverage(rows)
     if args.sample_audit:
         print("\nStratified sample audit:\n")
         emit_sample_audit(rows, args.sample_size, args.sample_seed)

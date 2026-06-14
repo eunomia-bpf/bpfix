@@ -81,7 +81,7 @@ kernel BTF, and a compatible kernel.
 Run BPFix over every admitted replay log in the benchmark:
 
 ```bash
-python3 bpfix-bench/run-bpfix-eval.py --confusion --reject-fallback
+python3 bpfix-bench/run-bpfix-eval.py --confusion --coverage --reject-fallback
 ```
 
 The driver builds the Rust `bpfix` CLI by default, reads `manifest.yaml`, and
@@ -90,6 +90,17 @@ implementation in `docs/evaluation/evaluate_diagnostics.py`. `--reject-fallback`
 fails the run if any admitted replay case emits `BPFIX-UNKNOWN`, `BPFIX-E000`,
 or `BPFIX-E099`. Use `--bpfix-bin /path/to/bpfix --no-build` to evaluate an
 existing binary.
+
+To include object/CFG attachment coverage, run:
+
+```bash
+python3 bpfix-bench/run-bpfix-eval.py --coverage --object-if-available
+```
+
+That mode builds `bpfix` with `--features object-analysis` unless
+`--bpfix-bin` is supplied, passes each case's checked-in `prog.o`, and reports
+parsed object programs, CFG sites, attached verifier states, and non-fatal
+object-analysis errors.
 
 ## Raw Audit
 

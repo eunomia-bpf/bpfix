@@ -36,6 +36,16 @@ def parse_args() -> argparse.Namespace:
         help="Print taxonomy confusion matrices after the metric summary.",
     )
     parser.add_argument(
+        "--coverage",
+        action="store_true",
+        help="Print proof-action, localization, and optional object-analysis coverage tables.",
+    )
+    parser.add_argument(
+        "--object-if-available",
+        action="store_true",
+        help="Build with object-analysis and pass each case's prog.o to bpfix when present.",
+    )
+    parser.add_argument(
         "--sample-audit",
         action="store_true",
         help="Print the deterministic stratified audit sample.",
@@ -70,6 +80,8 @@ def main() -> int:
         build_cmd = ["cargo", "build", "-p", "bpfix"]
         if args.release:
             build_cmd.append("--release")
+        if args.object_if_available and args.bpfix_bin is None:
+            build_cmd.extend(["--features", "object-analysis"])
         subprocess.run(build_cmd, cwd=root, check=True)
 
     eval_script = root / "docs" / "evaluation" / "evaluate_diagnostics.py"
@@ -83,6 +95,10 @@ def main() -> int:
     ]
     if args.confusion:
         eval_cmd.append("--confusion")
+    if args.coverage:
+        eval_cmd.append("--coverage")
+    if args.object_if_available:
+        eval_cmd.append("--object-if-available")
     if args.sample_audit:
         eval_cmd.append("--sample-audit")
     if args.reject_fallback:
