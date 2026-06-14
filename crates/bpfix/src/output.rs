@@ -112,6 +112,7 @@ pub(crate) fn render_text(diagnostic: &Diagnostic) -> String {
             diagnostic.metadata.trace_state_count
         ));
     }
+    render_runtime_evidence_notes(&mut out, diagnostic);
     out.push_str(&format!(
         "   = required proof: {}\n",
         diagnostic.required_proof
@@ -126,6 +127,23 @@ pub(crate) fn render_text(diagnostic: &Diagnostic) -> String {
         out.push_str(&format!("help: {item}\n"));
     }
     out
+}
+
+fn render_runtime_evidence_notes(out: &mut String, diagnostic: &Diagnostic) {
+    for evidence in &diagnostic.evidence {
+        let Some(label) = runtime_evidence_label(evidence.kind) else {
+            continue;
+        };
+        out.push_str(&format!("   = note[{label}]: {}\n", evidence.detail));
+    }
+}
+
+fn runtime_evidence_label(kind: &str) -> Option<&'static str> {
+    match kind {
+        "lowering_artifact_signal" => Some("lowering"),
+        "verifier_precision_signal" => Some("verifier-precision"),
+        _ => None,
+    }
 }
 
 struct RenderedSpan<'a> {

@@ -335,9 +335,25 @@ fn text_output_is_rust_style_multispan() {
     assert!(text.contains("270 | dst_port = __constant_ntohs(((struct udphdr *)udph)->dest);"));
     assert!(text.contains("nearby source context for pointer provenance"));
     assert!(text.contains("verifier state changes from pkt to scalar"));
+    assert!(text.contains(
+        "   = note[lowering]: compiler-lowered control flow hides an established packet-pointer proof"
+    ));
     assert!(!text.contains("proof can be lost when branch-specific pointers are merged"));
     assert!(!text.contains("proof established by a verifier-visible bounds check"));
     assert!(text.contains("help: Preserve pointer provenance across the failing path"));
+}
+
+#[test]
+fn text_output_explains_verifier_precision_triage() {
+    let text = run_text("bpfix-bench/cases/stackoverflow-77762365/replay-verifier.log");
+
+    assert!(text.contains("error[BPFIX-E005]: verifier precision limit may hide"));
+    assert!(text.contains("= class: verifier_false_positive"));
+    assert!(text.contains("help: triage_only"));
+    assert!(text
+        .contains("   = note[verifier-precision]: source-level map-value bounds guard is present"));
+    assert!(text
+        .contains("help: Make the remaining map-value capacity explicit in one bounded variable"));
 }
 
 #[test]
