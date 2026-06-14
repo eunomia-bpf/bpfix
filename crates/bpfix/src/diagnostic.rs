@@ -1682,22 +1682,8 @@ fn terminal_call_target(
     terminal_pc: Option<usize>,
     terminal_line: Option<usize>,
 ) -> Option<&str> {
-    let pc = terminal_pc?;
-    let prefix = format!("{pc}:");
-    let lines = log.lines().collect::<Vec<_>>();
-    let search_end = terminal_line
-        .map(|line| line.saturating_sub(1))
-        .unwrap_or(lines.len())
-        .min(lines.len());
-    for line in lines[..search_end].iter().rev() {
-        let Some(tail) = line.trim().strip_prefix(&prefix) else {
-            continue;
-        };
-        if let Some(target) = call_target_from_instruction_tail(tail) {
-            return Some(target);
-        }
-    }
-    None
+    terminal_instruction_tail(log, terminal_pc, terminal_line)
+        .and_then(call_target_from_instruction_tail)
 }
 
 fn call_target_from_instruction_tail(line: &str) -> Option<&str> {

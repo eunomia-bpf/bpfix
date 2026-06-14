@@ -1113,6 +1113,24 @@ processed 2 insns (limit 1000000) max_states_per_insn 0 total_states 1 peak_stat
     assert_eq!(async_refs["error_id"], "BPFIX-E016");
     assert_eq!(async_refs["failure_class"], "environment_or_configuration");
 
+    let state_between_throw_and_reject_log = "\
+1: (85) call bpf_throw#73439
+1: frame1: R1=scalar() R10=fp0 refs=2 cb
+JIT does not support calling kfunc bpf_throw#73439
+processed 2 insns (limit 1000000) max_states_per_insn 0 total_states 1 peak_states 1 mark_read 0
+";
+    let state_between_throw_and_reject = run_json_stdin(state_between_throw_and_reject_log);
+    assert_eq!(state_between_throw_and_reject["error_id"], "BPFIX-E004");
+    assert_eq!(
+        state_between_throw_and_reject["failure_class"],
+        "source_bug"
+    );
+    assert!(state_between_throw_and_reject["evidence"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|evidence| evidence["kind"] == "verifier_state_signal"));
+
     let repeated_pc_retry_log = "\
 0: frame1: R1=scalar() R10=fp0 refs=2 cb
 1: (85) call bpf_throw#73439
