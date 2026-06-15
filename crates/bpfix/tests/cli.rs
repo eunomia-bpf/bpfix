@@ -2439,7 +2439,7 @@ fn object_argument_uses_rejected_program_section_states() {
 
 #[test]
 #[cfg(feature = "object-analysis")]
-fn object_section_lift_error_is_reported_per_program() {
+fn object_argument_stitches_reachable_text_subprograms() {
     let log_path = workspace_root().join(
         "bpfix-bench/cases/kernel-selftest-exceptions-fail-reject-exception-cb-call-static-func-tc-f3ceb9b7/replay-verifier.log",
     );
@@ -2460,12 +2460,17 @@ fn object_section_lift_error_is_reported_per_program() {
         json["metadata"]["object_programs"][0]["section_name"],
         "?tc"
     );
-    assert!(
-        json["metadata"]["object_programs"][0]["verifier_state_attach_error"]
-            .as_str()
-            .unwrap()
-            .contains("failed to lift section ?tc into ProgramCFG")
+    assert_eq!(
+        json["metadata"]["object_programs"][0]["instruction_count"],
+        7
     );
+    assert!(
+        json["metadata"]["object_programs"][0]["verifier_state_site_count"]
+            .as_u64()
+            .unwrap()
+            > 0
+    );
+    assert!(json["metadata"]["object_programs"][0]["verifier_state_attach_error"].is_null());
 }
 
 #[test]
