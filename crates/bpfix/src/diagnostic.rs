@@ -93,6 +93,8 @@ pub enum ProofSignal {
     ExceptionThrowWithLiveReference,
     ExceptionCallbackProtocolViolation,
     MapLookupKeyArgumentUnreadable,
+    UnreadableProgramEntryArgument,
+    UnreadableHelperArgument,
     PacketGuardUndercoversAccess,
     PacketMaxOffsetPrecisionBoundary,
     MapValueRelationPrecisionBoundary,
@@ -187,6 +189,12 @@ impl ProofSignal {
             }
             Self::MapLookupKeyArgumentUnreadable => {
                 "map lookup key pointer argument is unreadable"
+            }
+            Self::UnreadableProgramEntryArgument => {
+                "program entry argument register is unreadable in verifier state"
+            }
+            Self::UnreadableHelperArgument => {
+                "helper argument register is unreadable at the call site"
             }
             Self::MapValueGuardExceedsValueSize => {
                 "map-value index guard exceeds the map value size"
@@ -351,6 +359,12 @@ impl ProofSignal {
             Self::MapLookupKeyArgumentUnreadable => {
                 "bpf_map_lookup_elem consumes R2 as the key pointer, but verifier state reports that this helper argument register is not readable"
             }
+            Self::UnreadableProgramEntryArgument => {
+                "verifier entry state exposes only the program context and frame pointer, but the rejected instruction reads an entry argument register this program ABI did not provide"
+            }
+            Self::UnreadableHelperArgument => {
+                "the rejected helper call consumes an argument register that has no verifier-readable state at the call site"
+            }
             Self::PacketGuardUndercoversAccess => {
                 "source has a packet bounds check, but verifier state after that check proves only a shorter packet range than the rejected access needs"
             }
@@ -488,6 +502,12 @@ impl ProofSignal {
             Self::MapLookupKeyArgumentUnreadable => {
                 "Pass bpf_map_lookup_elem a pointer to initialized key storage, such as &key for a local key variable, not an uninitialized key pointer."
             }
+            Self::UnreadableProgramEntryArgument => {
+                "Use the verifier-supported program ABI: read kprobe/syscall arguments from ctx or pt_regs helpers, or use a supported BPF_PROG-style wrapper."
+            }
+            Self::UnreadableHelperArgument => {
+                "Set the helper argument register to a verifier-readable value immediately before the helper call, or remove the helper path that reaches the call without that argument."
+            }
             Self::PacketGuardUndercoversAccess => {
                 "Move the data_end check to the final pointer expression and include the access width, for example check pointer + size before dereferencing pointer."
             }
@@ -565,6 +585,8 @@ impl ProofSignal {
                 | Self::KfuncArgumentTypeMismatch
                 | Self::ModernBpfObjectProtocolViolation
                 | Self::MapLookupKeyArgumentUnreadable
+                | Self::UnreadableProgramEntryArgument
+                | Self::UnreadableHelperArgument
                 | Self::MapValueGuardExceedsValueSize
                 | Self::ScalarRangeUnsafeAtUse
                 | Self::PacketAccessWithoutBoundsProof
@@ -660,6 +682,8 @@ impl ProofSignal {
                 | Self::ContextFieldUnavailable
                 | Self::ExceptionThrowWithLiveReference
                 | Self::MapLookupKeyArgumentUnreadable
+                | Self::UnreadableProgramEntryArgument
+                | Self::UnreadableHelperArgument
         )
     }
 
@@ -733,6 +757,12 @@ impl ProofSignal {
             ),
             Self::MapLookupKeyArgumentUnreadable => Some(
                 "pass a pointer to initialized map key storage in bpf_map_lookup_elem's second argument",
+            ),
+            Self::UnreadableProgramEntryArgument => Some(
+                "use the program-type context ABI instead of reading an entry argument register the verifier did not provide",
+            ),
+            Self::UnreadableHelperArgument => Some(
+                "set the rejected helper argument register to a verifier-readable value on every path before the helper call",
             ),
             Self::ContextFieldUnavailable => Some(
                 "access only context offsets and field widths exposed by the active BPF program type and attach point",
@@ -818,6 +848,12 @@ impl ProofSignal {
             Self::MapLookupKeyArgumentUnreadable => {
                 Some("map lookup key argument register is unreadable at the helper call")
             }
+            Self::UnreadableProgramEntryArgument => {
+                Some("this argument register is not readable in verifier state")
+            }
+            Self::UnreadableHelperArgument => {
+                Some("this helper argument register is not readable at the call")
+            }
             Self::ContextFieldUnavailable => {
                 Some("context access uses an unavailable offset or field width")
             }
@@ -856,6 +892,8 @@ impl ProofSignal {
             Self::PacketAccessWithoutBoundsProof => Some("BPFIX-E001"),
             Self::ExceptionThrowWithLiveReference => Some("BPFIX-E004"),
             Self::ExceptionCallbackProtocolViolation => Some("BPFIX-E013"),
+            Self::UnreadableProgramEntryArgument => Some("BPFIX-E011"),
+            Self::UnreadableHelperArgument => Some("BPFIX-E010"),
             _ => None,
         }
     }
@@ -1782,6 +1820,12 @@ fn proof_signals(context: ProofSignalContext<'_>) -> Vec<ProofSignal> {
     ) {
         signals.push(ProofSignal::MapLookupKeyArgumentUnreadable);
     }
+    if unreadable_program_entry_argument(&context) {
+        signals.push(ProofSignal::UnreadableProgramEntryArgument);
+    }
+    if unreadable_helper_argument(&context) {
+        signals.push(ProofSignal::UnreadableHelperArgument);
+    }
     if dynptr_stack_slot_write_overlap(&context) {
         signals.push(ProofSignal::DynptrStackSlotWriteOverlap);
     }
@@ -2532,6 +2576,100 @@ fn map_lookup_key_argument_unreadable(
     call_argument(&rejected.text, "bpf_map_lookup_elem", 1)
         .as_deref()
         .is_some_and(is_bare_identifier_argument)
+}
+
+fn unreadable_program_entry_argument(context: &ProofSignalContext<'_>) -> bool {
+    let Some((reg, instruction, fragment_start)) = unreadable_register_terminal_site(context)
+    else {
+        return false;
+    };
+    unreadable_entry_argument(context, instruction, fragment_start, reg)
+}
+
+fn unreadable_helper_argument(context: &ProofSignalContext<'_>) -> bool {
+    let Some((reg, instruction, _)) = unreadable_register_terminal_site(context) else {
+        return false;
+    };
+    unreadable_helper_call_argument(instruction, reg)
+}
+
+fn unreadable_register_terminal_site<'a>(
+    context: &'a ProofSignalContext<'a>,
+) -> Option<(u8, TerminalInstruction<'a>, usize)> {
+    if context.obligation != ProofObligation::StackInitialized
+        || !context.terminal_error.contains("!read_ok")
+    {
+        return None;
+    }
+    let reg = context.register?;
+    if reg == 0 {
+        return None;
+    }
+    let instruction =
+        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)?;
+    let fragment_start = context
+        .terminal_line
+        .map(|line| verifier_fragment_start_line(context.log, line))
+        .unwrap_or(1);
+    if latest_reg_state_before_instruction(context.states, instruction, fragment_start, reg)
+        .is_some()
+    {
+        return None;
+    }
+    Some((reg, instruction, fragment_start))
+}
+
+fn unreadable_helper_call_argument(instruction: TerminalInstruction<'_>, reg: u8) -> bool {
+    let Some(target) = call_target_from_instruction_tail(instruction.tail) else {
+        return false;
+    };
+    target == "bpf_skb_store_bytes" && reg == 5
+}
+
+fn unreadable_entry_argument(
+    context: &ProofSignalContext<'_>,
+    instruction: TerminalInstruction<'_>,
+    fragment_start: usize,
+    reg: u8,
+) -> bool {
+    if reg < 2 {
+        return false;
+    }
+    if !terminal_instruction_uses_register(instruction.tail, reg) {
+        return false;
+    }
+    let Some(entry_state) = context
+        .states
+        .iter()
+        .filter(|state| state.log_line >= fragment_start)
+        .filter(|state| state.pc == 0)
+        .find(|state| state.regs.get(&1).is_some_and(|reg| reg.reg_type == "ctx"))
+    else {
+        return false;
+    };
+    if entry_state.regs.contains_key(&reg) {
+        return false;
+    }
+    context
+        .source_events
+        .iter()
+        .filter(|event| event.log_line >= fragment_start)
+        .any(|event| event.pc == Some(0) && looks_like_multi_argument_bpf_entry(&event.source.text))
+}
+
+fn terminal_instruction_uses_register(tail: &str, reg: u8) -> bool {
+    let needle = format!("r{reg}");
+    tail.split(|ch: char| !ch.is_ascii_alphanumeric())
+        .any(|token| token == needle)
+}
+
+fn looks_like_multi_argument_bpf_entry(text: &str) -> bool {
+    let trimmed = text.trim_start();
+    let looks_like_function = trimmed.starts_with("int ")
+        || trimmed.starts_with("long ")
+        || trimmed.contains("BPF_PROG(")
+        || trimmed.contains("BPF_KPROBE(");
+    looks_like_function && trimmed.contains('(') && trimmed.contains(',')
 }
 
 fn dynptr_stack_storage_access(context: &ProofSignalContext<'_>) -> bool {
@@ -6132,6 +6270,151 @@ mod tests {
             .required_proof
             .rejection_detail
             .contains("not readable"));
+    }
+
+    #[test]
+    fn unreadable_program_entry_argument_is_a_source_state_signal() {
+        let log =
+            include_str!("../../../bpfix-bench/cases/stackoverflow-69506785/replay-verifier.log");
+        let analysis = analyze_verifier_log(
+            log,
+            Some(0),
+            None,
+            "R2 !read_ok",
+            None,
+            ProofObligation::StackInitialized,
+        )
+        .unwrap();
+
+        assert!(analysis
+            .signals
+            .contains(&ProofSignal::UnreadableProgramEntryArgument));
+    }
+
+    #[test]
+    fn unreadable_helper_argument_is_a_source_state_signal() {
+        let log = include_str!(
+            "../../../bpfix-bench/cases/github-commit-cilium-6b3c9f16c99f/replay-verifier.log"
+        );
+        let analysis = analyze_verifier_log(
+            log,
+            Some(6),
+            None,
+            "R5 !read_ok",
+            Some("bpf_skb_store_bytes"),
+            ProofObligation::StackInitialized,
+        )
+        .unwrap();
+
+        assert!(analysis
+            .signals
+            .contains(&ProofSignal::UnreadableHelperArgument));
+    }
+
+    #[test]
+    fn map_lookup_unreadable_key_stays_stack_initialization_signal() {
+        let log = "\
+; value = bpf_map_lookup_elem(&map, key); @ prog.c:20
+4: (85) call bpf_map_lookup_elem#1
+R2 !read_ok
+";
+        let analysis = analyze_verifier_log(
+            log,
+            Some(4),
+            None,
+            "R2 !read_ok",
+            Some("bpf_map_lookup_elem"),
+            ProofObligation::StackInitialized,
+        )
+        .unwrap();
+
+        assert!(analysis
+            .signals
+            .contains(&ProofSignal::MapLookupKeyArgumentUnreadable));
+        assert!(!analysis
+            .signals
+            .contains(&ProofSignal::UnreadableProgramEntryArgument));
+        assert!(!analysis
+            .signals
+            .contains(&ProofSignal::UnreadableHelperArgument));
+    }
+
+    #[test]
+    fn ordinary_helper_unreadable_arg_stays_stack_initialization_without_signal() {
+        let log = "\
+0: R1=ctx() R10=fp0
+; bpf_probe_read_kernel(dst, len, key); @ prog.c:19
+2: (85) call bpf_probe_read_kernel#113
+R2 !read_ok
+";
+        let analysis = analyze_verifier_log(
+            log,
+            Some(2),
+            None,
+            "R2 !read_ok",
+            Some("bpf_probe_read_kernel"),
+            ProofObligation::StackInitialized,
+        )
+        .unwrap();
+
+        assert!(!analysis
+            .signals
+            .contains(&ProofSignal::UnreadableProgramEntryArgument));
+        assert!(!analysis
+            .signals
+            .contains(&ProofSignal::UnreadableHelperArgument));
+    }
+
+    #[test]
+    fn legacy_skb_access_is_not_program_entry_abi_signal() {
+        let log = "\
+0: R1=ctx() R10=fp0
+; asm volatile (\"r0 = *(u8 *)skb[9]\" ::: \"r0\"); @ prog.c:8
+0: (30) r0 = *(u8 *)skb[9]
+R6 !read_ok
+";
+        let analysis = analyze_verifier_log(
+            log,
+            Some(0),
+            None,
+            "R6 !read_ok",
+            None,
+            ProofObligation::StackInitialized,
+        )
+        .unwrap();
+
+        assert!(!analysis
+            .signals
+            .contains(&ProofSignal::UnreadableProgramEntryArgument));
+        assert!(!analysis
+            .signals
+            .contains(&ProofSignal::UnreadableHelperArgument));
+    }
+
+    #[test]
+    fn static_helper_signature_is_not_program_entry_abi_signal() {
+        let log = "\
+0: R1=ctx() R10=fp0
+; static int helper(void *ctx, int arg) @ prog.c:8
+0: (bf) r3 = r2
+R2 !read_ok
+";
+        let analysis = analyze_verifier_log(
+            log,
+            Some(0),
+            None,
+            "R2 !read_ok",
+            None,
+            ProofObligation::StackInitialized,
+        )
+        .unwrap();
+
+        assert!(!analysis
+            .signals
+            .contains(&ProofSignal::UnreadableProgramEntryArgument));
+        assert!(!analysis
+            .signals
+            .contains(&ProofSignal::UnreadableHelperArgument));
     }
 
     #[test]

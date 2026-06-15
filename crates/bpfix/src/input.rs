@@ -539,6 +539,8 @@ processed 6 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_stat
         assert!(terminal
             .message
             .starts_with("global functions that may sleep are not allowed"));
-        assert!(terminal.message.contains("non-sleepable BPF program context"));
+        assert!(terminal
+            .message
+            .contains("non-sleepable BPF program context"));
     }
 }

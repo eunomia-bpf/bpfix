@@ -844,6 +844,16 @@ fn map_lookup_unreadable_key_argument_points_to_helper_arg() {
         "verifier_state_signal",
         "bpf_map_lookup_elem consumes R2"
     ));
+    assert!(!evidence_contains(
+        &non_map_helper,
+        "verifier_state_signal",
+        "helper call consumes an argument register"
+    ));
+    assert!(!evidence_contains(
+        &non_map_helper,
+        "verifier_state_signal",
+        "program ABI did not provide"
+    ));
 
     let map_lookup_mentioned_but_not_terminal = run_json_stdin(
         "0: R1=ctx() R10=fp0\n\
@@ -1332,6 +1342,53 @@ fn fentry_context_argument_mismatch_overrides_terminal_environment_classifier() 
         .join("\n");
     assert!(help.contains("unavailable context slot"));
     assert!(!help.contains("section name"));
+}
+
+#[test]
+fn unreadable_program_argument_overrides_stack_readability_classifier() {
+    let entry_arg = run_json("bpfix-bench/cases/stackoverflow-69506785/replay-verifier.log");
+    assert_eq!(entry_arg["error_id"], "BPFIX-E011");
+    assert_eq!(entry_arg["failure_class"], "source_bug");
+    assert!(evidence_contains(
+        &entry_arg,
+        "verifier_state_signal",
+        "program ABI did not provide"
+    ));
+    assert!(entry_arg["required_proof"]
+        .as_str()
+        .unwrap()
+        .contains("program-type context ABI"));
+    let help = entry_arg["help"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|item| item.as_str())
+        .collect::<Vec<_>>()
+        .join("\n");
+    assert!(help.contains("pt_regs"));
+    assert!(!help.contains("Initialize the full stack object"));
+
+    let helper_arg =
+        run_json("bpfix-bench/cases/github-commit-cilium-6b3c9f16c99f/replay-verifier.log");
+    assert_eq!(helper_arg["error_id"], "BPFIX-E010");
+    assert!(evidence_contains(
+        &helper_arg,
+        "verifier_state_signal",
+        "helper call consumes an argument register"
+    ));
+    assert!(helper_arg["required_proof"]
+        .as_str()
+        .unwrap()
+        .contains("helper argument register"));
+    let helper_help = helper_arg["help"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|item| item.as_str())
+        .collect::<Vec<_>>()
+        .join("\n");
+    assert!(helper_help.contains("helper argument register"));
+    assert!(!helper_help.contains("pt_regs"));
 }
 
 #[test]
