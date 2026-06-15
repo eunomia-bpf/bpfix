@@ -3358,6 +3358,29 @@ fn irq_flag_state_reports_protocol_violation() {
             .any(|help| help.as_str().unwrap().contains("Release acquired references")));
     }
 
+    for path in [
+        "bpfix-bench/cases/kernel-selftest-irq-irq-restore-missing-3-subprog-tc-8592c5d7/replay-verifier.log",
+        "bpfix-bench/cases/kernel-selftest-irq-irq-restore-missing-3-minus-2-subprog-tc-5c202e26/replay-verifier.log",
+    ] {
+        let diagnostic = run_json(path);
+        assert_eq!(diagnostic["error_id"], "BPFIX-E013");
+        assert_eq!(diagnostic["failure_class"], "source_bug");
+        assert!(evidence_contains(
+            &diagnostic,
+            "verifier_state_signal",
+            "BPF_EXIT with live IRQ save references"
+        ));
+        assert!(diagnostic["required_proof"]
+            .as_str()
+            .unwrap()
+            .contains("before any BPF_EXIT"));
+        assert!(!diagnostic["help"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|help| help.as_str().unwrap().contains("release operations balanced")));
+    }
+
     let unknown_terminal_irq_double_save = run_stdin_output(
         "func#0 @0\n\
          0: R1=ctx() R10=fp0\n\
@@ -3544,6 +3567,88 @@ fn irq_flag_state_reports_protocol_violation() {
         &out_of_order_without_live_flag_slot,
         "verifier_state_signal",
         "newer outstanding IRQ state"
+    ));
+
+    let exit_with_irq_terminal_without_live_refs = run_json_stdin(
+        "func#0 @0\n\
+         0: (85) call bpf_local_irq_save#72094\n\
+         1: (95) exit\n\
+         BPF_EXIT instruction in main prog cannot be used inside bpf_local_irq_save-ed region\n",
+    );
+    assert_eq!(
+        exit_with_irq_terminal_without_live_refs["error_id"],
+        "BPFIX-E015"
+    );
+    assert!(!evidence_contains(
+        &exit_with_irq_terminal_without_live_refs,
+        "verifier_state_signal",
+        "BPF_EXIT with live IRQ save references"
+    ));
+
+    let exit_with_live_refs_without_prior_irq_save = run_json_stdin(
+        "func#0 @0\n\
+         0: R1=ctx() R10=fp0 refs=1\n\
+         1: (95) exit\n\
+         BPF_EXIT instruction in main prog cannot be used inside bpf_local_irq_save-ed region\n",
+    );
+    assert_eq!(
+        exit_with_live_refs_without_prior_irq_save["error_id"],
+        "BPFIX-E015"
+    );
+    assert!(!evidence_contains(
+        &exit_with_live_refs_without_prior_irq_save,
+        "verifier_state_signal",
+        "BPF_EXIT with live IRQ save references"
+    ));
+
+    let exit_after_latest_state_clears_refs = run_json_stdin(
+        "func#0 @0\n\
+         0: (85) call bpf_local_irq_save#72094 ; refs=1\n\
+         1: R0=0\n\
+         2: (95) exit\n\
+         BPF_EXIT instruction in main prog cannot be used inside bpf_local_irq_save-ed region\n",
+    );
+    assert_eq!(
+        exit_after_latest_state_clears_refs["error_id"],
+        "BPFIX-E015"
+    );
+    assert!(!evidence_contains(
+        &exit_after_latest_state_clears_refs,
+        "verifier_state_signal",
+        "BPF_EXIT with live IRQ save references"
+    ));
+
+    let stale_prior_fragment_irq_save = run_json_stdin(
+        "func#0 @0\n\
+         0: (85) call bpf_local_irq_save#72094 ; refs=1\n\
+         processed 1 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0 mark_read 0\n\
+         func#1 @0\n\
+         0: R0=0 refs=1\n\
+         1: (95) exit\n\
+         BPF_EXIT instruction in main prog cannot be used inside bpf_local_irq_save-ed region\n",
+    );
+    assert_eq!(stale_prior_fragment_irq_save["error_id"], "BPFIX-E015");
+    assert!(!evidence_contains(
+        &stale_prior_fragment_irq_save,
+        "verifier_state_signal",
+        "BPF_EXIT with live IRQ save references"
+    ));
+
+    let same_pc_empty_state_overrides_stale_refs = run_json_stdin(
+        "func#0 @0\n\
+         0: (85) call bpf_local_irq_save#72094 ; refs=1\n\
+         0: R0=0\n\
+         1: (95) exit\n\
+         BPF_EXIT instruction in main prog cannot be used inside bpf_local_irq_save-ed region\n",
+    );
+    assert_eq!(
+        same_pc_empty_state_overrides_stale_refs["error_id"],
+        "BPFIX-E015"
+    );
+    assert!(!evidence_contains(
+        &same_pc_empty_state_overrides_stale_refs,
+        "verifier_state_signal",
+        "BPF_EXIT with live IRQ save references"
     ));
 }
 

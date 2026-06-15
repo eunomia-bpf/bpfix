@@ -78,6 +78,7 @@ pub enum ProofSignal {
     IteratorHelperArgumentStateMismatch,
     IrqFlagStateMismatch,
     IrqRestoreOrderMismatch,
+    IrqStateLiveAtExit,
     SleepableCallInNonSleepableContext,
     CallbackCallWhileLocked,
     TrustedNullableArgument,
@@ -142,6 +143,9 @@ impl ProofSignal {
             }
             Self::IrqRestoreOrderMismatch => {
                 "IRQ state is restored outside the verifier-approved acquisition order"
+            }
+            Self::IrqStateLiveAtExit => {
+                "program exits while verifier-tracked IRQ state is still live"
             }
             Self::SleepableCallInNonSleepableContext => {
                 "sleepable helper or subprogram call reaches a non-sleepable verifier context"
@@ -285,6 +289,9 @@ impl ProofSignal {
             Self::IrqRestoreOrderMismatch => {
                 "verifier state reaches an IRQ restore helper with a live IRQ flag slot while the verifier expects a newer outstanding IRQ state"
             }
+            Self::IrqStateLiveAtExit => {
+                "verifier state reaches BPF_EXIT with live IRQ save references that have not been restored"
+            }
             Self::SleepableCallInNonSleepableContext => {
                 "verifier state reaches a sleepable helper or subprogram call while IRQ, RCU, preempt, or program-context rules require non-sleepable execution"
             }
@@ -404,6 +411,9 @@ impl ProofSignal {
             Self::IrqRestoreOrderMismatch => {
                 "Restore IRQ save and lock state in strict reverse acquisition order, using the same flag slot returned by each save or lock helper."
             }
+            Self::IrqStateLiveAtExit => {
+                "Restore every verifier-tracked IRQ save state before returning or exiting, including states acquired inside BPF subprogram helpers."
+            }
             Self::SleepableCallInNonSleepableContext => {
                 "Move sleepable helper or global-subprogram calls outside IRQ/RCU/preempt-disabled regions, or use only non-sleepable operations from this program context."
             }
@@ -492,6 +502,7 @@ impl ProofSignal {
                 | Self::CallbackCallWhileLocked
                 | Self::IrqFlagStateMismatch
                 | Self::IrqRestoreOrderMismatch
+                | Self::IrqStateLiveAtExit
                 | Self::SleepableCallInNonSleepableContext
                 | Self::IteratorHelperArgumentStateMismatch
                 | Self::IteratorStackStorageAccess
@@ -542,6 +553,7 @@ impl ProofSignal {
                 | Self::ExceptionThrowWithLiveReference
                 | Self::IrqFlagStateMismatch
                 | Self::IrqRestoreOrderMismatch
+                | Self::IrqStateLiveAtExit
                 | Self::SleepableCallInNonSleepableContext
                 | Self::IteratorHelperArgumentStateMismatch
                 | Self::IteratorStackStorageAccess
@@ -572,6 +584,7 @@ impl ProofSignal {
                 | Self::ExceptionCallbackProtocolViolation
                 | Self::IrqFlagStateMismatch
                 | Self::IrqRestoreOrderMismatch
+                | Self::IrqStateLiveAtExit
                 | Self::SleepableCallInNonSleepableContext
                 | Self::CallbackCallWhileLocked
                 | Self::IteratorHelperArgumentStateMismatch
@@ -622,6 +635,9 @@ impl ProofSignal {
             ),
             Self::IrqRestoreOrderMismatch => Some(
                 "restore each verifier-tracked IRQ state in strict LIFO order with the flag slot produced by its matching save or lock helper",
+            ),
+            Self::IrqStateLiveAtExit => Some(
+                "restore every verifier-tracked IRQ save state before any BPF_EXIT can leave the program",
             ),
             Self::SleepableCallInNonSleepableContext => Some(
                 "prove the sleepable helper or subprogram call cannot run in a non-sleepable IRQ, RCU, preempt-disabled, or program-context region",
@@ -692,6 +708,9 @@ impl ProofSignal {
             Self::IrqRestoreOrderMismatch => {
                 Some("IRQ restore uses a flag slot before newer IRQ state is restored")
             }
+            Self::IrqStateLiveAtExit => {
+                Some("BPF_EXIT is reached while IRQ save state is still live")
+            }
             Self::SleepableCallInNonSleepableContext => {
                 Some("sleepable call is reachable from a non-sleepable verifier context")
             }
@@ -737,6 +756,7 @@ impl ProofSignal {
             Self::IteratorHelperArgumentStateMismatch => Some("BPFIX-E014"),
             Self::IrqFlagStateMismatch => Some("BPFIX-E020"),
             Self::IrqRestoreOrderMismatch => Some("BPFIX-E013"),
+            Self::IrqStateLiveAtExit => Some("BPFIX-E013"),
             Self::SleepableCallInNonSleepableContext => Some("BPFIX-E016"),
             Self::CallbackCallWhileLocked => Some("BPFIX-E015"),
             Self::TrustedNullableArgument => Some("BPFIX-E015"),
@@ -1693,6 +1713,9 @@ fn proof_signals(context: ProofSignalContext<'_>) -> Vec<ProofSignal> {
     }
     if irq_restore_order_mismatch(&context) {
         signals.push(ProofSignal::IrqRestoreOrderMismatch);
+    }
+    if irq_state_live_at_exit(&context) {
+        signals.push(ProofSignal::IrqStateLiveAtExit);
     }
     if sleepable_call_in_non_sleepable_context(&context) {
         signals.push(ProofSignal::SleepableCallInNonSleepableContext);
@@ -2977,6 +3000,62 @@ fn irq_save_target(target: &str) -> bool {
     matches!(target, "bpf_local_irq_save" | "bpf_res_spin_lock_irqsave")
 }
 
+fn irq_state_live_at_exit(context: &ProofSignalContext<'_>) -> bool {
+    if !matches!(
+        context.obligation,
+        ProofObligation::LockState
+            | ProofObligation::KfuncReference
+            | ProofObligation::ReferenceLifecycle
+            | ProofObligation::Unknown
+    ) {
+        return false;
+    }
+    let terminal = context.terminal_error.to_ascii_lowercase();
+    if !(terminal.contains("bpf_exit instruction") && terminal.contains("bpf_local_irq_save-ed")) {
+        return false;
+    }
+    let Some(instruction) =
+        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)
+    else {
+        return false;
+    };
+    if !instruction.tail.contains("exit") {
+        return false;
+    }
+    let fragment_start = verifier_fragment_start_line(context.log, instruction.line);
+    let Some(exit_state) =
+        latest_verifier_state_at_or_before_instruction(context.states, instruction, fragment_start)
+    else {
+        return false;
+    };
+    exit_state.ref_ids.iter().any(|ref_id| {
+        irq_save_ref_origin_before_exit(context, fragment_start, instruction.line, *ref_id)
+    })
+}
+
+fn irq_save_ref_origin_before_exit(
+    context: &ProofSignalContext<'_>,
+    fragment_start: usize,
+    before_line: usize,
+    ref_id: u32,
+) -> bool {
+    context
+        .states
+        .iter()
+        .filter(|state| state.log_line >= fragment_start)
+        .filter(|state| state.log_line < before_line)
+        .filter(|state| state.ref_ids.contains(&ref_id))
+        .any(|state| {
+            call_target_on_log_line(context.log, state.log_line).is_some_and(irq_save_target)
+        })
+}
+
+fn call_target_on_log_line(log: &str, line_number: usize) -> Option<&str> {
+    let line = log.lines().nth(line_number.checked_sub(1)?)?;
+    let (_, tail) = parse_instruction_line(line.trim())?;
+    call_target_from_instruction_tail(tail)
+}
+
 fn callback_call_while_locked(context: &ProofSignalContext<'_>) -> bool {
     let terminal = context.terminal_error.to_ascii_lowercase();
     if !(terminal.contains("function calls are not allowed") && terminal.contains("holding a lock"))
@@ -4126,6 +4205,19 @@ fn latest_verifier_state_before_instruction<'a>(
         .iter()
         .filter(|state| state.log_line >= fragment_start_line)
         .filter(|state| state.log_line < instruction.line)
+        .filter(|state| state.pc <= instruction.pc)
+        .next_back()
+}
+
+fn latest_verifier_state_at_or_before_instruction<'a>(
+    states: &'a [VerifierInsn],
+    instruction: TerminalInstruction<'_>,
+    fragment_start_line: usize,
+) -> Option<&'a VerifierInsn> {
+    states
+        .iter()
+        .filter(|state| state.log_line >= fragment_start_line)
+        .filter(|state| state.log_line <= instruction.line)
         .filter(|state| state.pc <= instruction.pc)
         .next_back()
 }
