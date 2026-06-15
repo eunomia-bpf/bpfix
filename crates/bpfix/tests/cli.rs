@@ -2288,57 +2288,107 @@ fn trusted_nullable_arguments_report_state_discipline() {
 fn kfunc_argument_type_contract_reports_object_mismatch() {
     let stack_cast_cgroup =
         run_json("bpfix-bench/cases/kernel-selftest-cgrp-kfunc-failure-cgrp-kfunc-acquire-fp-tp-btf-cgroup-mkdir-7d3a90fe/replay-verifier.log");
-    assert_eq!(stack_cast_cgroup["error_id"], "BPFIX-E013");
+    assert_eq!(stack_cast_cgroup["error_id"], "BPFIX-E023");
     assert_eq!(stack_cast_cgroup["failure_class"], "source_bug");
     assert!(evidence_contains(
         &stack_cast_cgroup,
         "verifier_state_signal",
-        "different pointer class"
+        "modern BPF object"
     ));
     assert!(stack_cast_cgroup["required_proof"]
         .as_str()
         .unwrap()
-        .contains("verifier-tracked object"));
+        .contains("verifier-approved object"));
 
     let walked_cgroup =
         run_json("bpfix-bench/cases/kernel-selftest-cgrp-kfunc-failure-cgrp-kfunc-acquire-trusted-walked-tp-btf-cgroup-mkdir-6deeac84/replay-verifier.log");
-    assert_eq!(walked_cgroup["error_id"], "BPFIX-E013");
+    assert_eq!(walked_cgroup["error_id"], "BPFIX-E023");
     assert!(evidence_contains(
         &walked_cgroup,
         "verifier_state_signal",
-        "different pointer class"
+        "modern BPF object"
+    ));
+
+    let rcu_release_cgroup =
+        run_json("bpfix-bench/cases/kernel-selftest-cgrp-kfunc-failure-cgrp-kfunc-rcu-get-release-tp-btf-cgroup-mkdir-29aa212b/replay-verifier.log");
+    assert_eq!(rcu_release_cgroup["error_id"], "BPFIX-E023");
+    assert!(evidence_contains(
+        &rcu_release_cgroup,
+        "verifier_state_signal",
+        "modern BPF object"
     ));
 
     let plain_cpumask =
         run_json("bpfix-bench/cases/kernel-selftest-cpumask-failure-test-mutate-cpumask-tp-btf-task-newtask-d7b7c258/replay-verifier.log");
-    assert_eq!(plain_cpumask["error_id"], "BPFIX-E013");
+    assert_eq!(plain_cpumask["error_id"], "BPFIX-E023");
     assert!(evidence_contains(
         &plain_cpumask,
         "verifier_state_signal",
-        "different pointer class"
+        "modern BPF object"
     ));
     assert!(plain_cpumask["help"]
         .as_array()
         .unwrap()
         .iter()
-        .any(|help| help.as_str().unwrap().contains("verifier-owned object")));
+        .any(|help| help.as_str().unwrap().contains("modern BPF object helpers")));
 
-    let ordinary_fp_contract =
+    let cpumask_fp_contract =
         run_json("bpfix-bench/cases/kernel-selftest-cpumask-failure-test-populate-invalid-destination-tp-btf-task-newtask-2aa0585a/replay-verifier.log");
-    assert_eq!(ordinary_fp_contract["error_id"], "BPFIX-E008");
-    assert!(!evidence_contains(
-        &ordinary_fp_contract,
+    assert_eq!(cpumask_fp_contract["error_id"], "BPFIX-E023");
+    assert!(evidence_contains(
+        &cpumask_fp_contract,
         "verifier_state_signal",
-        "different pointer class"
+        "modern BPF object"
     ));
 
     let out_of_rcu_cpumask =
         run_json("bpfix-bench/cases/kernel-selftest-cpumask-failure-test-global-mask-out-of-rcu-tp-btf-task-newtask-55a16b69/replay-verifier.log");
-    assert_eq!(out_of_rcu_cpumask["error_id"], "BPFIX-E015");
-    assert!(!evidence_contains(
+    assert_eq!(out_of_rcu_cpumask["error_id"], "BPFIX-E023");
+    assert!(evidence_contains(
         &out_of_rcu_cpumask,
         "verifier_state_signal",
-        "different pointer class"
+        "modern BPF object"
+    ));
+
+    let invalid_kptr_storage =
+        run_json("bpfix-bench/cases/kernel-selftest-cpumask-failure-test-invalid-nested-array-tp-btf-task-newtask-bd05d03f/replay-verifier.log");
+    assert_eq!(invalid_kptr_storage["error_id"], "BPFIX-E023");
+    assert!(evidence_contains(
+        &invalid_kptr_storage,
+        "verifier_state_signal",
+        "modern BPF object"
+    ));
+
+    let invalid_cpumask_source =
+        run_json("bpfix-bench/cases/kernel-selftest-cpumask-failure-test-populate-invalid-source-tp-btf-task-newtask-149c6ecc/replay-verifier.log");
+    assert_eq!(invalid_cpumask_source["error_id"], "BPFIX-E023");
+    assert!(evidence_contains(
+        &invalid_cpumask_source,
+        "verifier_state_signal",
+        "modern BPF object"
+    ));
+
+    let skb_without_reference =
+        run_json("bpfix-bench/cases/kernel-selftest-dynptr-fail-skb-invalid-ctx-fentry-fentry-skb-tx-error-17cea403/replay-verifier.log");
+    assert_eq!(skb_without_reference["error_id"], "BPFIX-E023");
+    assert!(evidence_contains(
+        &skb_without_reference,
+        "verifier_state_signal",
+        "modern BPF object"
+    ));
+
+    let ordinary_fp_contract = run_json_stdin(
+        "func#0 @0\n\
+         0: R1=ctx() R10=fp0\n\
+         1: R1=scalar()\n\
+         2: (85) call bpf_map_lookup_elem#1\n\
+         R1 type=scalar expected=fp\n",
+    );
+    assert_eq!(ordinary_fp_contract["error_id"], "BPFIX-E008");
+    assert!(!evidence_contains(
+        &ordinary_fp_contract,
+        "verifier_state_signal",
+        "modern BPF object"
     ));
 }
 

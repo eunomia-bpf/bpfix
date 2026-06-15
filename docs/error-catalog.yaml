@@ -131,6 +131,12 @@ active_error_ids:
       - environment_or_configuration
     summary: Loader relocation, BTF func_info, or subprogram reference metadata is missing, so a verifier-visible argument has the wrong value or type.
 
+  - error_id: BPFIX-E023
+    short_name: modern_bpf_object_protocol_violation
+    failure_classes:
+      - source_bug
+    summary: A cgroup, cpumask, kptr, skb, or related modern BPF object helper argument is not verifier-owned, RCU-protected, referenced, or valid in the required way.
+
   - error_id: BPFIX-E099
     short_name: unsupported_verifier_message
     failure_classes:
@@ -141,4 +147,3 @@ historical_error_ids:
   - BPFIX-E017
   - BPFIX-E019
   - BPFIX-E022
-  - BPFIX-E023

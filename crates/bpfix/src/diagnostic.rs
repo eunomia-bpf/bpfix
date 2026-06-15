@@ -77,6 +77,7 @@ pub enum ProofSignal {
     CallbackCallWhileLocked,
     TrustedNullableArgument,
     KfuncArgumentTypeMismatch,
+    ModernBpfObjectProtocolViolation,
     ContextAccessSourceArgumentMismatch,
     ExceptionThrowWithLiveReference,
     ExceptionCallbackProtocolViolation,
@@ -133,6 +134,9 @@ impl ProofSignal {
             }
             Self::KfuncArgumentTypeMismatch => {
                 "kfunc argument does not have the verifier-required object or reference type"
+            }
+            Self::ModernBpfObjectProtocolViolation => {
+                "modern BPF object helper or kfunc argument violates its verifier object protocol"
             }
             Self::ContextAccessSourceArgumentMismatch => {
                 "tracing context argument type does not match the verifier-visible function signature"
@@ -258,6 +262,9 @@ impl ProofSignal {
             Self::KfuncArgumentTypeMismatch => {
                 "verifier state shows the rejected kfunc argument is a different pointer class than the kfunc contract requires"
             }
+            Self::ModernBpfObjectProtocolViolation => {
+                "verifier state shows a modern BPF object protocol helper received a non-owned, non-RCU, non-referenced, or invalid cgroup, cpumask, kptr, or skb object argument"
+            }
             Self::ContextAccessSourceArgumentMismatch => {
                 "verifier reports the traced-function argument at this context slot as PTR rather than a directly supported struct pointer, while the rejected source is a BPF_PROG argument load from the raw tracing context"
             }
@@ -359,6 +366,9 @@ impl ProofSignal {
             Self::KfuncArgumentTypeMismatch => {
                 "Pass kfuncs the exact verifier-owned object type they require; do not cast stack memory, walked struct members, or plain kernel objects into BPF-owned kfunc object types."
             }
+            Self::ModernBpfObjectProtocolViolation => {
+                "Pass modern BPF object helpers and kfuncs only verifier-owned, RCU-protected, referenced, or valid kptr-storage objects as required by the specific helper contract."
+            }
             Self::ContextAccessSourceArgumentMismatch => {
                 "Use only fentry arguments whose BTF type is verifier-supported at this slot, or avoid reading this argument through BPF_PROG when the traced function exposes it as an unsupported pointer type."
             }
@@ -390,6 +400,7 @@ impl ProofSignal {
     const fn selection_rank(self) -> u8 {
         match self {
             Self::MapValueGuardExceedsValueSize => 5,
+            Self::ModernBpfObjectProtocolViolation => 8,
             Self::PacketGuardUndercoversAccess => 40,
             Self::WideStackAlignment
             | Self::SharedInstructionPointerMerge
@@ -429,6 +440,7 @@ impl ProofSignal {
                 | Self::IteratorHelperArgumentStateMismatch
                 | Self::IteratorStackStorageAccess
                 | Self::KfuncArgumentTypeMismatch
+                | Self::ModernBpfObjectProtocolViolation
                 | Self::MapLookupKeyArgumentUnreadable
                 | Self::MapValueGuardExceedsValueSize
                 | Self::PacketGuardUndercoversAccess
@@ -499,6 +511,7 @@ impl ProofSignal {
                 | Self::IteratorHelperArgumentStateMismatch
                 | Self::IteratorStackStorageAccess
                 | Self::KfuncArgumentTypeMismatch
+                | Self::ModernBpfObjectProtocolViolation
                 | Self::TrustedNullableArgument
                 | Self::ContextAccessSourceArgumentMismatch
                 | Self::ExceptionThrowWithLiveReference
@@ -540,6 +553,9 @@ impl ProofSignal {
             ),
             Self::KfuncArgumentTypeMismatch => Some(
                 "pass the kfunc a verifier-tracked object or reference whose BTF and ownership class exactly matches the kfunc argument contract",
+            ),
+            Self::ModernBpfObjectProtocolViolation => Some(
+                "pass the helper or kfunc a verifier-approved object: valid kptr storage, a referenced/trusted object, or an RCU-protected object in the required state",
             ),
             Self::ExceptionThrowWithLiveReference => Some(
                 "release verifier-tracked references on every callback and exceptional path before bpf_throw can run",
@@ -592,6 +608,9 @@ impl ProofSignal {
             Self::KfuncArgumentTypeMismatch => {
                 Some("kfunc argument has the wrong verifier object type")
             }
+            Self::ModernBpfObjectProtocolViolation => {
+                Some("modern BPF object argument violates its verifier protocol")
+            }
             Self::ExceptionThrowWithLiveReference => {
                 Some("bpf_throw can run while verifier-tracked references are live")
             }
@@ -621,6 +640,7 @@ impl ProofSignal {
             Self::CallbackCallWhileLocked => Some("BPFIX-E015"),
             Self::TrustedNullableArgument => Some("BPFIX-E015"),
             Self::KfuncArgumentTypeMismatch => Some("BPFIX-E013"),
+            Self::ModernBpfObjectProtocolViolation => Some("BPFIX-E023"),
             Self::ExceptionThrowWithLiveReference => Some("BPFIX-E004"),
             Self::ExceptionCallbackProtocolViolation => Some("BPFIX-E013"),
             _ => None,
@@ -1562,6 +1582,9 @@ fn proof_signals(context: ProofSignalContext<'_>) -> Vec<ProofSignal> {
     if callback_call_while_locked(&context) {
         signals.push(ProofSignal::CallbackCallWhileLocked);
     }
+    if modern_bpf_object_protocol_violation(&context) {
+        signals.push(ProofSignal::ModernBpfObjectProtocolViolation);
+    }
     if kfunc_argument_type_mismatch(&context) {
         signals.push(ProofSignal::KfuncArgumentTypeMismatch);
     }
@@ -1898,6 +1921,106 @@ fn validation_seen(log: &str, start_line: usize, before_line: usize) -> bool {
 
 fn validation_success_line(line: &str) -> bool {
     line.starts_with("Func#") && line.contains(" is safe for any args")
+}
+
+fn modern_bpf_object_protocol_violation(context: &ProofSignalContext<'_>) -> bool {
+    let terminal = context.terminal_error.to_ascii_lowercase();
+    let Some(instruction) =
+        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)
+    else {
+        return false;
+    };
+    let Some(target) = call_target_from_instruction_tail(instruction.tail) else {
+        return false;
+    };
+    if !modern_bpf_object_protocol_target(target) {
+        return false;
+    }
+    let Some(reg) =
+        modern_bpf_object_protocol_register(&terminal, target, context.register)
+    else {
+        return false;
+    };
+    let fragment_start = context
+        .terminal_line
+        .map(|line| verifier_fragment_start_line(context.log, line))
+        .unwrap_or_else(|| verifier_fragment_start_line(context.log, instruction.line));
+    let Some(state) = latest_reg_state_for_call_argument(
+        context.states,
+        instruction,
+        fragment_start,
+        context.terminal_line,
+        reg,
+    ) else {
+        return false;
+    };
+
+    if terminal.contains("has no valid kptr") {
+        return target == "bpf_kptr_xchg" && invalid_kptr_storage_state(state);
+    }
+    if terminal.contains("must be a rcu pointer") {
+        return modern_bpf_object_pointer_state(state)
+            && !state.reg_type.starts_with("rcu_ptr")
+            && !state.reg_type.starts_with("trusted_ptr");
+    }
+    if terminal.contains("must be referenced or trusted") {
+        return modern_bpf_object_pointer_state(state) && !referenced_or_trusted_state(state);
+    }
+    if terminal.contains("pointer type struct") && terminal.contains("must point to scalar") {
+        return target.starts_with("bpf_cgroup_") && state.reg_type == "fp";
+    }
+    if terminal.contains("expected pointer to struct") {
+        return modern_bpf_object_pointer_state(state);
+    }
+    if terminal.contains("type=scalar expected=fp")
+        || terminal.contains("memory, len pair leads to invalid memory access")
+    {
+        return target == "bpf_cpumask_populate" && state.reg_type == "scalar";
+    }
+    false
+}
+
+fn modern_bpf_object_protocol_target(target: &str) -> bool {
+    target.starts_with("bpf_cgroup_")
+        || target.starts_with("bpf_cpumask_")
+        || target == "bpf_kptr_xchg"
+        || target == "bpf_dynptr_from_skb"
+}
+
+fn modern_bpf_object_protocol_register(
+    terminal: &str,
+    target: &str,
+    fallback: Option<u8>,
+) -> Option<u8> {
+    fallback
+        .or_else(|| parse_arg_register_after(terminal, "args#"))
+        .or_else(|| parse_arg_register_after(terminal, "arg#"))
+        .or_else(|| (target == "bpf_kptr_xchg" && terminal.contains("has no valid kptr")).then_some(1))
+}
+
+fn parse_arg_register_after(message: &str, needle: &str) -> Option<u8> {
+    let arg = parse_u32_after(message, needle)?;
+    if arg >= 5 {
+        return None;
+    }
+    u8::try_from(arg + 1).ok()
+}
+
+fn modern_bpf_object_pointer_state(state: &RegState) -> bool {
+    state.reg_type == "fp"
+        || state.reg_type == "scalar"
+        || state.reg_type.starts_with("ptr_")
+        || state.reg_type.starts_with("rcu_ptr")
+        || state.reg_type.starts_with("untrusted_ptr")
+        || state.reg_type.starts_with("trusted_ptr")
+}
+
+fn referenced_or_trusted_state(state: &RegState) -> bool {
+    state.reg_type.starts_with("trusted_ptr") || state.reg_type.contains("ref_obj_id")
+}
+
+fn invalid_kptr_storage_state(state: &RegState) -> bool {
+    state.reg_type == "map_value" || state.reg_type == "fp" || state.reg_type == "scalar"
 }
 
 fn map_pointer_argument_scalar_zero(
