@@ -1469,6 +1469,111 @@ fn unavailable_context_field_requires_ctx_state_and_matching_access_shape() {
 }
 
 #[test]
+fn kernel_object_field_access_uses_state_and_core_mismatch() {
+    let diagnostic =
+        run_json("bpfix-bench/cases/github-commit-bcc-a75f0180b714/replay-verifier.log");
+    assert_eq!(diagnostic["error_id"], "BPFIX-E011");
+    assert_eq!(diagnostic["failure_class"], "source_bug");
+    assert_eq!(diagnostic["help_safety"], "repair_hint");
+    assert!(evidence_contains(
+        &diagnostic,
+        "verifier_state_signal",
+        "CO-RE relocation metadata targets a different struct"
+    ));
+    assert!(diagnostic["required_proof"]
+        .as_str()
+        .unwrap()
+        .contains("verifier-supported helper or CO-RE access path"));
+    let help = diagnostic["help"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|item| item.as_str())
+        .collect::<Vec<_>>()
+        .join("\n");
+    assert!(help.contains("BPF_CORE_READ"));
+}
+
+#[test]
+fn kernel_object_field_access_requires_matching_state_access_and_core_mismatch() {
+    let scalar_base = run_json_stdin(
+        "libbpf: prog 'x': relo #0: <byte_off> [1] struct inet_sock.inet_sport (0:5 @ offset 798)\n\
+         func#0 @0\n\
+         0: R1=scalar() R10=fp0\n\
+         1: (69) r2 = *(u16 *)(r1 +798)\n\
+         access beyond struct sock at off 798 size 2\n",
+    );
+    assert_source_bug_without_verifier_state_signal(&scalar_base, "BPFIX-E011");
+
+    let mismatched_size = run_json_stdin(
+        "libbpf: prog 'x': relo #0: <byte_off> [1] struct inet_sock.inet_sport (0:5 @ offset 798)\n\
+         func#0 @0\n\
+         0: R1=ptr_sock() R10=fp0\n\
+         1: (69) r2 = *(u16 *)(r1 +798)\n\
+         access beyond struct sock at off 798 size 4\n",
+    );
+    assert_source_bug_without_verifier_state_signal(&mismatched_size, "BPFIX-E011");
+
+    let no_core_mismatch = run_json_stdin(
+        "func#0 @0\n\
+         0: R1=ptr_sock() R10=fp0\n\
+         1: (69) r2 = *(u16 *)(r1 +798)\n\
+         access beyond struct sock at off 798 size 2\n",
+    );
+    assert_source_bug_without_verifier_state_signal(&no_core_mismatch, "BPFIX-E011");
+
+    let same_core_struct = run_json_stdin(
+        "libbpf: prog 'x': relo #0: <byte_off> [1] struct sock.sk_hash (0:5 @ offset 798)\n\
+         func#0 @0\n\
+         0: R1=ptr_sock() R10=fp0\n\
+         1: (69) r2 = *(u16 *)(r1 +798)\n\
+         access beyond struct sock at off 798 size 2\n",
+    );
+    assert_source_bug_without_verifier_state_signal(&same_core_struct, "BPFIX-E011");
+
+    let prior_program_relocation = run_json_stdin(
+        "libbpf: prog 'other_prog': relo #0: <byte_off> [1] struct inet_sock.inet_sport (0:5 @ offset 798)\n\
+         libbpf: prog 'other_prog': relo #0: patched insn #1 (LDX/ST/STX) off 798 -> 798\n\
+         libbpf: prog 'failed_prog': -- BEGIN PROG LOAD LOG --\n\
+         func#0 @0\n\
+         0: R1=ptr_sock() R10=fp0\n\
+         1: (69) r2 = *(u16 *)(r1 +798)\n\
+         access beyond struct sock at off 798 size 2\n\
+         -- END PROG LOAD LOG --\n",
+    );
+    assert_source_bug_without_verifier_state_signal(&prior_program_relocation, "BPFIX-E011");
+
+    let wrong_patched_instruction = run_json_stdin(
+        "libbpf: prog 'failed_prog': relo #0: <byte_off> [1] struct inet_sock.inet_sport (0:5 @ offset 798)\n\
+         libbpf: prog 'failed_prog': relo #0: patched insn #2 (LDX/ST/STX) off 798 -> 798\n\
+         libbpf: prog 'failed_prog': -- BEGIN PROG LOAD LOG --\n\
+         func#0 @0\n\
+         0: R1=ptr_sock() R10=fp0\n\
+         1: (69) r2 = *(u16 *)(r1 +798)\n\
+         access beyond struct sock at off 798 size 2\n\
+         -- END PROG LOAD LOG --\n",
+    );
+    assert_source_bug_without_verifier_state_signal(&wrong_patched_instruction, "BPFIX-E011");
+
+    let prior_same_program_attempt = run_json_stdin(
+        "libbpf: prog 'failed_prog': relo #0: <byte_off> [1] struct inet_sock.inet_sport (0:5 @ offset 798)\n\
+         libbpf: prog 'failed_prog': relo #0: patched insn #1 (LDX/ST/STX) off 798 -> 798\n\
+         libbpf: prog 'failed_prog': -- BEGIN PROG LOAD LOG --\n\
+         func#0 @0\n\
+         0: R0=scalar() R10=fp0\n\
+         1: (95) exit\n\
+         -- END PROG LOAD LOG --\n\
+         libbpf: prog 'failed_prog': -- BEGIN PROG LOAD LOG --\n\
+         func#0 @0\n\
+         0: R1=ptr_sock() R10=fp0\n\
+         1: (69) r2 = *(u16 *)(r1 +798)\n\
+         access beyond struct sock at off 798 size 2\n\
+         -- END PROG LOAD LOG --\n",
+    );
+    assert_source_bug_without_verifier_state_signal(&prior_same_program_attempt, "BPFIX-E011");
+}
+
+#[test]
 fn exception_throw_with_live_reference_overrides_jit_environment_classifier() {
     let live_reference_throw = run_json(
         "bpfix-bench/cases/kernel-selftest-exceptions-fail-reject-with-cb-reference-tc-c99ec1a7/replay-verifier.log",

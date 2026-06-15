@@ -90,6 +90,7 @@ pub enum ProofSignal {
     ModernBpfObjectProtocolViolation,
     ContextAccessSourceArgumentMismatch,
     ContextFieldUnavailable,
+    KernelObjectFieldAccessMismatch,
     ExceptionThrowWithLiveReference,
     ExceptionCallbackProtocolViolation,
     MapLookupKeyArgumentUnreadable,
@@ -184,6 +185,9 @@ impl ProofSignal {
             }
             Self::ContextFieldUnavailable => {
                 "program context field is unavailable for the active verifier context"
+            }
+            Self::KernelObjectFieldAccessMismatch => {
+                "kernel object field access targets a different struct than the verifier-visible pointer"
             }
             Self::ExceptionThrowWithLiveReference => {
                 "exception callback can throw while a verifier-tracked reference is still live"
@@ -366,6 +370,9 @@ impl ProofSignal {
             Self::ContextFieldUnavailable => {
                 "verifier state shows the rejected memory access uses a ctx register at an offset and width that the active program context does not expose"
             }
+            Self::KernelObjectFieldAccessMismatch => {
+                "verifier state shows the base register is a kernel object pointer for the reported struct, while CO-RE relocation metadata targets a different struct at the rejected offset"
+            }
             Self::ExceptionThrowWithLiveReference => {
                 "verifier state reaches bpf_throw inside a callback frame while verifier-tracked references are live"
             }
@@ -521,6 +528,9 @@ impl ProofSignal {
             Self::ContextFieldUnavailable => {
                 "Use a program type or attach type that exposes this context field, read a verifier-supported context field, or derive the value from packet data instead of an unavailable context slot."
             }
+            Self::KernelObjectFieldAccessMismatch => {
+                "Read the field through a verifier-supported kernel-memory access path such as BPF_CORE_READ, instead of directly casting a verifier-visible kernel object pointer to a larger or different struct."
+            }
             Self::ExceptionThrowWithLiveReference => {
                 "Release verifier-tracked references before any callback path can throw, or avoid bpf_throw while a reference acquired by the caller is still live."
             }
@@ -606,6 +616,7 @@ impl ProofSignal {
         matches!(
             self,
             Self::ContextAccessSourceArgumentMismatch
+                | Self::KernelObjectFieldAccessMismatch
                 | Self::DynptrHelperArgumentStateMismatch
                 | Self::DynptrReleaseUnacquiredReference
                 | Self::DynptrStackStorageAccess
@@ -724,6 +735,7 @@ impl ProofSignal {
                 | Self::TrustedNullableArgument
                 | Self::ContextAccessSourceArgumentMismatch
                 | Self::ContextFieldUnavailable
+                | Self::KernelObjectFieldAccessMismatch
                 | Self::ExceptionThrowWithLiveReference
                 | Self::MapLookupKeyArgumentUnreadable
                 | Self::UnreadableProgramEntryArgument
@@ -827,6 +839,9 @@ impl ProofSignal {
             Self::ContextFieldUnavailable => Some(
                 "access only context offsets and field widths exposed by the active BPF program type and attach point",
             ),
+            Self::KernelObjectFieldAccessMismatch => Some(
+                "read the kernel field through a verifier-supported helper or CO-RE access path instead of directly loading a field outside the verifier-visible object type",
+            ),
             Self::MapValueGuardExceedsValueSize => Some(
                 "prove the map-value index plus field offset and access width stays below the map value size",
             ),
@@ -929,6 +944,9 @@ impl ProofSignal {
             Self::ContextFieldUnavailable => {
                 Some("context access uses an unavailable offset or field width")
             }
+            Self::KernelObjectFieldAccessMismatch => {
+                Some("this load reads a field outside the verifier-visible kernel object type")
+            }
             Self::MapValueGuardExceedsValueSize => {
                 Some("map value index guard is wider than the value field can hold")
             }
@@ -969,13 +987,35 @@ impl ProofSignal {
             Self::HelperStackWriteBeyondFrame => Some("BPFIX-E006"),
             Self::ScalarValueUsedAsPointer => Some("BPFIX-E011"),
             Self::StalePointerAfterInvalidatingHelper => Some("BPFIX-E011"),
+            Self::KernelObjectFieldAccessMismatch => Some("BPFIX-E011"),
             _ => None,
         }
     }
 }
 
+#[cfg(test)]
 pub fn analyze_verifier_log(
     log: &str,
+    terminal_pc: Option<usize>,
+    terminal_line: Option<usize>,
+    terminal_error: &str,
+    terminal_call_target: Option<&str>,
+    obligation: ProofObligation,
+) -> Result<VerifierLogAnalysis> {
+    analyze_verifier_log_with_context(
+        log,
+        log,
+        terminal_pc,
+        terminal_line,
+        terminal_error,
+        terminal_call_target,
+        obligation,
+    )
+}
+
+pub fn analyze_verifier_log_with_context(
+    log: &str,
+    full_log: &str,
     terminal_pc: Option<usize>,
     terminal_line: Option<usize>,
     terminal_error: &str,
@@ -1064,6 +1104,7 @@ pub fn analyze_verifier_log(
     });
     let signal_context = ProofSignalContext {
         log,
+        full_log,
         terminal_error,
         terminal_call_target,
         obligation,
@@ -1790,6 +1831,7 @@ fn environment_capability_events(
 
 struct ProofSignalContext<'a> {
     log: &'a str,
+    full_log: &'a str,
     terminal_error: &'a str,
     terminal_call_target: Option<&'a str>,
     obligation: ProofObligation,
@@ -1855,6 +1897,9 @@ fn proof_signals(context: ProofSignalContext<'_>) -> Vec<ProofSignal> {
     }
     if context_field_unavailable(&context) {
         signals.push(ProofSignal::ContextFieldUnavailable);
+    }
+    if kernel_object_field_access_mismatch(&context) {
+        signals.push(ProofSignal::KernelObjectFieldAccessMismatch);
     }
     if exception_throw_with_live_reference(
         context.log,
@@ -2155,6 +2200,195 @@ fn context_field_unavailable(context: &ProofSignalContext<'_>) -> bool {
         .unwrap_or_else(|| verifier_fragment_start_line(context.log, instruction.line));
     latest_reg_state_before_instruction(context.states, instruction, fragment_start, base_reg)
         .is_some_and(|state| state.reg_type == "ctx")
+}
+
+fn kernel_object_field_access_mismatch(context: &ProofSignalContext<'_>) -> bool {
+    let Some(reported_struct) = access_beyond_struct_name(context.terminal_error) else {
+        return false;
+    };
+    let Some(access_offset) = access_beyond_struct_offset(context.terminal_error) else {
+        return false;
+    };
+    let Some(access_size) = access_beyond_struct_size(context.terminal_error) else {
+        return false;
+    };
+    let Some(instruction) =
+        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)
+    else {
+        return false;
+    };
+    if memory_access_offset(instruction.tail) != Some(i64::from(access_offset)) {
+        return false;
+    }
+    if memory_access_width(instruction.tail) != Some(access_size) {
+        return false;
+    }
+    let Some(base_reg) = memory_access_base_register(instruction.tail) else {
+        return false;
+    };
+    let fragment_start = context
+        .terminal_line
+        .map(|line| verifier_fragment_start_line(context.log, line))
+        .unwrap_or_else(|| verifier_fragment_start_line(context.log, instruction.line));
+    let Some(base_state) =
+        latest_reg_state_before_instruction(context.states, instruction, fragment_start, base_reg)
+    else {
+        return false;
+    };
+    if !kernel_pointer_state_matches_struct(&base_state.reg_type, reported_struct) {
+        return false;
+    }
+    let Some(before_line) = terminal_error_line_in_log(context.full_log, context.terminal_error)
+    else {
+        return false;
+    };
+    let Some((program_name, window_start)) =
+        current_libbpf_program_scope(context.full_log, before_line)
+    else {
+        return false;
+    };
+    core_relocation_struct_for_instruction(
+        context.full_log,
+        window_start,
+        before_line,
+        program_name,
+        instruction.pc,
+        access_offset,
+    )
+    .is_some_and(|relocated_struct| !kernel_struct_names_match(relocated_struct, reported_struct))
+}
+
+fn current_libbpf_program_scope(log: &str, before_line: usize) -> Option<(&str, usize)> {
+    let lines = log.lines().collect::<Vec<_>>();
+    let before = before_line.saturating_sub(1).min(lines.len());
+    let (begin_idx, program_name) =
+        lines[..before]
+            .iter()
+            .enumerate()
+            .rev()
+            .find_map(|(idx, line)| {
+                line.contains("-- BEGIN PROG LOAD LOG --")
+                    .then(|| libbpf_program_name(line).map(|name| (idx, name)))
+                    .flatten()
+            })?;
+    let window_start = current_libbpf_load_window_start(&lines, begin_idx);
+    Some((program_name, window_start))
+}
+
+fn current_libbpf_load_window_start(lines: &[&str], before_idx: usize) -> usize {
+    let prior = &lines[..before_idx];
+    if let Some(idx) = prior
+        .iter()
+        .enumerate()
+        .rev()
+        .find_map(|(idx, line)| line.starts_with("libbpf: loading object").then_some(idx))
+    {
+        return idx + 2;
+    }
+    prior
+        .iter()
+        .enumerate()
+        .rev()
+        .find_map(|(idx, line)| line.contains("-- END PROG LOAD LOG --").then_some(idx + 2))
+        .unwrap_or(1)
+}
+
+fn libbpf_program_name(line: &str) -> Option<&str> {
+    let (_, tail) = line.split_once("prog '")?;
+    let (name, _) = tail.split_once("':")?;
+    (!name.is_empty()).then_some(name)
+}
+
+fn line_is_libbpf_program(line: &str, program_name: &str) -> bool {
+    libbpf_program_name(line).is_some_and(|name| name == program_name)
+}
+
+fn core_relocation_struct_for_instruction<'a>(
+    log: &'a str,
+    window_start: usize,
+    before_line: usize,
+    program_name: &str,
+    pc: usize,
+    offset: u32,
+) -> Option<&'a str> {
+    let patched_pc = u32::try_from(pc).ok()?;
+    let lines = log.lines().collect::<Vec<_>>();
+    let end = before_line.saturating_sub(1).min(lines.len());
+    let start = window_start.saturating_sub(1).min(end);
+    let scoped_lines = &lines[start..end];
+    let patched_relo_ids = scoped_lines
+        .iter()
+        .filter_map(|line| {
+            if !line_is_libbpf_program(line, program_name)
+                || parse_u32_after(line, "patched insn #") != Some(patched_pc)
+                || !core_patched_offset_matches(line, offset)
+            {
+                return None;
+            }
+            parse_u32_after(line, "relo #")
+        })
+        .collect::<Vec<_>>();
+    scoped_lines
+        .iter()
+        .rev()
+        .filter(|line| line_is_libbpf_program(line, program_name))
+        .filter(|line| {
+            parse_u32_after(line, "relo #")
+                .is_some_and(|relo_id| patched_relo_ids.contains(&relo_id))
+        })
+        .find_map(|line| core_relocation_struct_name(line))
+}
+
+fn core_patched_offset_matches(line: &str, offset: u32) -> bool {
+    parse_u32_after(line, " off ") == Some(offset) || parse_u32_after(line, " -> ") == Some(offset)
+}
+
+fn core_relocation_struct_name(line: &str) -> Option<&str> {
+    let (_, tail) = line.split_once("struct ")?;
+    let name = tail
+        .split(|ch: char| !(ch.is_ascii_alphanumeric() || ch == '_'))
+        .next()?;
+    (!name.is_empty()).then_some(name)
+}
+
+fn terminal_error_line_in_log(log: &str, terminal_error: &str) -> Option<usize> {
+    let lines = log.lines().collect::<Vec<_>>();
+    lines
+        .iter()
+        .enumerate()
+        .rev()
+        .find_map(|(idx, line)| line.contains(terminal_error).then_some(idx + 1))
+}
+
+fn access_beyond_struct_name(terminal_error: &str) -> Option<&str> {
+    let (_, tail) = terminal_error.split_once("access beyond struct ")?;
+    let name = tail
+        .split(|ch: char| !(ch.is_ascii_alphanumeric() || ch == '_'))
+        .next()?;
+    (!name.is_empty()).then_some(name)
+}
+
+fn access_beyond_struct_offset(terminal_error: &str) -> Option<u32> {
+    parse_u32_after(terminal_error, "off ").or_else(|| parse_u32_after(terminal_error, "off="))
+}
+
+fn access_beyond_struct_size(terminal_error: &str) -> Option<u32> {
+    parse_u32_after(terminal_error, "size ").or_else(|| parse_u32_after(terminal_error, "size="))
+}
+
+fn kernel_pointer_state_matches_struct(reg_type: &str, struct_name: &str) -> bool {
+    let expected = format!("ptr_{}", normalized_kernel_struct_name(struct_name));
+    reg_type == expected
+}
+
+fn kernel_struct_names_match(left: &str, right: &str) -> bool {
+    normalized_kernel_struct_name(left) == normalized_kernel_struct_name(right)
+}
+
+fn normalized_kernel_struct_name(name: &str) -> &str {
+    name.trim()
+        .strip_prefix("struct ")
+        .unwrap_or_else(|| name.trim())
 }
 
 fn exception_throw_with_live_reference(

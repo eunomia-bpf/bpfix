@@ -54,6 +54,7 @@ fn main() -> Result<()> {
         object_metadata(cli.object.as_deref(), &loaded);
     let diagnostic = build_diagnostic(
         &loaded.log,
+        &loaded.full_log,
         cli.case_id,
         loaded.input_kind,
         object_path,
@@ -139,6 +140,7 @@ fn validate_object_path(path: &Path) -> Result<String> {
 
 fn build_diagnostic(
     log: &str,
+    full_log: &str,
     case_id: Option<String>,
     input_kind: &'static str,
     object_path: Option<String>,
@@ -169,8 +171,9 @@ fn build_diagnostic(
                 class.required_proof.to_string(),
             )
         } else {
-            match diagnostic::analyze_verifier_log(
+            match diagnostic::analyze_verifier_log_with_context(
                 log,
+                full_log,
                 terminal.pc,
                 Some(terminal.line),
                 &terminal.message,

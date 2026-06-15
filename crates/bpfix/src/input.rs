@@ -66,6 +66,7 @@ const TERMINAL_ERROR_MARKERS: &[&str] = &[
 #[derive(Clone, Debug)]
 pub(crate) struct LoadedInput {
     pub(crate) log: String,
+    pub(crate) full_log: String,
     pub(crate) input_kind: &'static str,
 }
 
@@ -87,8 +88,16 @@ pub(crate) fn load_input(path: Option<&Path>) -> Result<LoadedInput> {
         Some(path) => std::fs::read_to_string(path)
             .with_context(|| format!("failed to read {}", path.display()))?,
     };
-    let (log, input_kind) = normalize_verifier_log(raw, "verifier-log");
-    Ok(LoadedInput { log, input_kind })
+    let full_log = normalize_log_wrappers(&raw);
+    let (log, input_kind) = match extract_verifier_log_region(&full_log) {
+        Some(region) => (region, "verifier-log-region"),
+        None => (full_log.clone(), "verifier-log"),
+    };
+    Ok(LoadedInput {
+        log,
+        full_log,
+        input_kind,
+    })
 }
 
 fn read_stdin() -> Result<String> {
@@ -98,14 +107,6 @@ fn read_stdin() -> Result<String> {
         .read_to_string(&mut raw)
         .context("failed to read verifier log from stdin")?;
     Ok(raw)
-}
-
-fn normalize_verifier_log(raw: String, base_kind: &'static str) -> (String, &'static str) {
-    let normalized = normalize_log_wrappers(&raw);
-    match extract_verifier_log_region(&normalized) {
-        Some(region) => (region, "verifier-log-region"),
-        None => (normalized, base_kind),
-    }
 }
 
 fn normalize_log_wrappers(raw: &str) -> String {
