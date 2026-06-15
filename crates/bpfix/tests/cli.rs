@@ -1377,6 +1377,67 @@ processed 3 insns (limit 1000000) max_states_per_insn 0 total_states 1 peak_stat
         "bpfix-bench/cases/kernel-selftest-exceptions-fail-reject-with-rbtree-add-throw-tc-e943cfe2/replay-verifier.log",
     );
     assert_ne!(rbtree_throw_with_lock_state["error_id"], "BPFIX-E004");
+    assert_eq!(rbtree_throw_with_lock_state["error_id"], "BPFIX-E015");
+    assert!(evidence_contains(
+        &rbtree_throw_with_lock_state,
+        "verifier_state_signal",
+        "enters a synchronous callback"
+    ));
+    let help = rbtree_throw_with_lock_state["help"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|item| item.as_str())
+        .collect::<Vec<_>>()
+        .join("\n");
+    assert!(help.contains("Move callback-invoking operations"));
+    assert!(!help.contains("Keep acquire and release operations balanced"));
+
+    let unlocked_before_callback = run_json_stdin(
+        "0: R10=fp0\n\
+         0: (85) call bpf_spin_lock#93\n\
+         1: (85) call bpf_spin_unlock#94\n\
+         2: (85) call bpf_rbtree_add_impl#73007\n\
+         from 2 to 4: frame1: R10=fp0 cb\n\
+         4: frame1: R10=fp0 cb\n\
+         5: (85) call bpf_throw#73439\n\
+         function calls are not allowed while holding a lock\n\
+         processed 6 insns (limit 1000000) max_states_per_insn 0 total_states 1 peak_states 1 mark_read 0\n",
+    );
+    assert_eq!(unlocked_before_callback["error_id"], "BPFIX-E015");
+    assert!(!evidence_contains(
+        &unlocked_before_callback,
+        "verifier_state_signal",
+        "enters a synchronous callback"
+    ));
+
+    let callback_completed_before_terminal = run_json_stdin(
+        "0: R10=fp0\n\
+         0: (85) call bpf_spin_lock#93\n\
+         1: (85) call bpf_loop#181\n\
+         from 1 to 3: frame1: R10=fp0 cb\n\
+         3: frame1: R10=fp0 cb\n\
+         4: R10=fp0\n\
+         5: (85) call bpf_throw#73439\n\
+         function calls are not allowed while holding a lock\n\
+         processed 6 insns (limit 1000000) max_states_per_insn 0 total_states 1 peak_states 1 mark_read 0\n",
+    );
+    assert_eq!(callback_completed_before_terminal["error_id"], "BPFIX-E015");
+    assert!(!evidence_contains(
+        &callback_completed_before_terminal,
+        "verifier_state_signal",
+        "enters a synchronous callback"
+    ));
+
+    let non_callback_lock_reject = run_json(
+        "bpfix-bench/cases/kernel-selftest-irq-irq-wrong-kfunc-class-2-tc-03b53958/replay-verifier.log",
+    );
+    assert_eq!(non_callback_lock_reject["error_id"], "BPFIX-E015");
+    assert!(!evidence_contains(
+        &non_callback_lock_reject,
+        "verifier_state_signal",
+        "enters a synchronous callback"
+    ));
 }
 
 #[test]

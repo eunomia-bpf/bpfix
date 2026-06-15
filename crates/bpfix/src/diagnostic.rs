@@ -74,6 +74,7 @@ pub enum ProofSignal {
     IteratorStackStorageAccess,
     IteratorHelperArgumentStateMismatch,
     IrqFlagStateMismatch,
+    CallbackCallWhileLocked,
     TrustedNullableArgument,
     KfuncArgumentTypeMismatch,
     ContextAccessSourceArgumentMismatch,
@@ -122,6 +123,9 @@ impl ProofSignal {
             }
             Self::IrqFlagStateMismatch => {
                 "IRQ flag helper argument has the wrong verifier-tracked lifecycle state"
+            }
+            Self::CallbackCallWhileLocked => {
+                "callback-invoking operation runs while a spin lock is held"
             }
             Self::TrustedNullableArgument => {
                 "trusted helper argument is still verifier-visible as nullable"
@@ -241,6 +245,9 @@ impl ProofSignal {
             Self::IrqFlagStateMismatch => {
                 "the rejected IRQ helper receives a stack slot whose verifier state does not match the helper's save/restore lifecycle contract"
             }
+            Self::CallbackCallWhileLocked => {
+                "verifier branch state enters a synchronous callback from a call made after bpf_spin_lock and before the matching unlock"
+            }
             Self::TrustedNullableArgument => {
                 "verifier state shows the rejected helper or kfunc argument is still a nullable RCU/trusted pointer at the call site"
             }
@@ -336,6 +343,9 @@ impl ProofSignal {
             Self::IrqFlagStateMismatch => {
                 "Keep each IRQ flag stack slot dedicated to one save/restore pair, and pass restore the exact slot initialized by the matching save helper."
             }
+            Self::CallbackCallWhileLocked => {
+                "Move callback-invoking operations such as rbtree insertion outside spin-locked regions, or release the lock before a callback path can call helpers, kfuncs, or bpf_throw."
+            }
             Self::TrustedNullableArgument => {
                 "Keep the RCU or trusted-pointer argument inside the verifier-visible non-null branch, or acquire a trusted reference before passing it to the helper or kfunc."
             }
@@ -403,6 +413,7 @@ impl ProofSignal {
                 | Self::DynptrStackStorageAccess
                 | Self::DynptrSliceVariableLength
                 | Self::ExceptionThrowWithLiveReference
+                | Self::CallbackCallWhileLocked
                 | Self::IrqFlagStateMismatch
                 | Self::IteratorHelperArgumentStateMismatch
                 | Self::IteratorStackStorageAccess
@@ -450,6 +461,7 @@ impl ProofSignal {
                 | Self::IrqFlagStateMismatch
                 | Self::IteratorHelperArgumentStateMismatch
                 | Self::IteratorStackStorageAccess
+                | Self::CallbackCallWhileLocked
                 | Self::BtfFuncInfoMissing
                 | Self::MapLookupKeyArgumentUnreadable
                 | Self::MapPointerArgumentScalarZero
@@ -471,6 +483,7 @@ impl ProofSignal {
                 | Self::DynptrStackStorageAccess
                 | Self::DynptrSliceVariableLength
                 | Self::IrqFlagStateMismatch
+                | Self::CallbackCallWhileLocked
                 | Self::IteratorHelperArgumentStateMismatch
                 | Self::IteratorStackStorageAccess
                 | Self::KfuncArgumentTypeMismatch
@@ -506,6 +519,9 @@ impl ProofSignal {
             ),
             Self::IrqFlagStateMismatch => Some(
                 "pass bpf_local_irq_save an empty stack flag slot and pass bpf_local_irq_restore the same verifier-tracked flag slot produced by save",
+            ),
+            Self::CallbackCallWhileLocked => Some(
+                "avoid entering verifier callback frames from operations executed while a spin lock is held",
             ),
             Self::TrustedNullableArgument => Some(
                 "prove the RCU/trusted pointer argument is non-null and trusted at the helper or kfunc call site",
@@ -552,6 +568,9 @@ impl ProofSignal {
             Self::IrqFlagStateMismatch => {
                 Some("IRQ flag helper argument has the wrong lifecycle state")
             }
+            Self::CallbackCallWhileLocked => {
+                Some("callback path can run a forbidden call while a spin lock is held")
+            }
             Self::TrustedNullableArgument => {
                 Some("trusted helper argument remains nullable at the call site")
             }
@@ -581,6 +600,7 @@ impl ProofSignal {
             Self::IteratorStackStorageAccess => Some("BPFIX-E014"),
             Self::IteratorHelperArgumentStateMismatch => Some("BPFIX-E014"),
             Self::IrqFlagStateMismatch => Some("BPFIX-E020"),
+            Self::CallbackCallWhileLocked => Some("BPFIX-E015"),
             Self::TrustedNullableArgument => Some("BPFIX-E015"),
             Self::KfuncArgumentTypeMismatch => Some("BPFIX-E013"),
             Self::ExceptionThrowWithLiveReference => Some("BPFIX-E004"),
@@ -1517,6 +1537,9 @@ fn proof_signals(context: ProofSignalContext<'_>) -> Vec<ProofSignal> {
     if irq_flag_state_mismatch(&context) {
         signals.push(ProofSignal::IrqFlagStateMismatch);
     }
+    if callback_call_while_locked(&context) {
+        signals.push(ProofSignal::CallbackCallWhileLocked);
+    }
     if kfunc_argument_type_mismatch(&context) {
         signals.push(ProofSignal::KfuncArgumentTypeMismatch);
     }
@@ -2126,6 +2149,142 @@ fn irq_flag_stack_slot_state(
 
 fn is_irq_flag_stack_slot(stack: &StackState) -> bool {
     stack.value.is_none() && stack.slot_types.as_deref() == Some("ffffffff")
+}
+
+fn callback_call_while_locked(context: &ProofSignalContext<'_>) -> bool {
+    let terminal = context.terminal_error.to_ascii_lowercase();
+    if !(terminal.contains("function calls are not allowed") && terminal.contains("holding a lock"))
+    {
+        return false;
+    }
+    let Some(terminal_instruction) =
+        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)
+    else {
+        return false;
+    };
+    if call_target_from_instruction_tail(terminal_instruction.tail).is_none() {
+        return false;
+    }
+    let fragment_start = context
+        .terminal_line
+        .map(|line| verifier_fragment_start_line(context.log, line))
+        .unwrap_or_else(|| verifier_fragment_start_line(context.log, terminal_instruction.line));
+    if !latest_state_is_sync_callback(context, fragment_start, terminal_instruction) {
+        return false;
+    }
+    let Some(callback_entry) =
+        latest_sync_callback_entry(context, fragment_start, terminal_instruction)
+    else {
+        return false;
+    };
+    let Some(origin_pc) = callback_entry.from_pc else {
+        return false;
+    };
+    let Some(origin_instruction) = instruction_site_before_line(
+        context.log,
+        origin_pc,
+        fragment_start,
+        callback_entry.log_line,
+    ) else {
+        return false;
+    };
+    let Some(origin_target) = call_target_from_instruction_tail(origin_instruction.tail) else {
+        return false;
+    };
+    if !operation_invokes_verifier_callback(origin_target) {
+        return false;
+    }
+    spin_lock_held_before_instruction(context.log, fragment_start, origin_instruction.line)
+}
+
+fn latest_state_is_sync_callback(
+    context: &ProofSignalContext<'_>,
+    fragment_start: usize,
+    terminal_instruction: TerminalInstruction<'_>,
+) -> bool {
+    let limit = context
+        .terminal_line
+        .unwrap_or_else(|| terminal_instruction.line.saturating_add(1));
+    context
+        .states
+        .iter()
+        .filter(|state| state.log_line >= fragment_start)
+        .filter(|state| state.log_line < limit)
+        .filter(|state| state.pc <= terminal_instruction.pc)
+        .next_back()
+        .is_some_and(|state| state.callback_kind == Some(CallbackKind::Sync))
+}
+
+fn latest_sync_callback_entry<'a>(
+    context: &'a ProofSignalContext<'_>,
+    fragment_start: usize,
+    terminal_instruction: TerminalInstruction<'_>,
+) -> Option<&'a VerifierInsn> {
+    context
+        .branch_states
+        .iter()
+        .filter(|state| state.from_pc.is_some())
+        .filter(|state| state.callback_kind == Some(CallbackKind::Sync))
+        .filter(|state| state.log_line >= fragment_start)
+        .filter(|state| state.log_line < terminal_instruction.line)
+        .filter(|state| state.pc <= terminal_instruction.pc)
+        .next_back()
+}
+
+fn operation_invokes_verifier_callback(target: &str) -> bool {
+    target.contains("rbtree")
+        || matches!(
+            target,
+            "bpf_loop" | "bpf_for_each_map_elem" | "bpf_user_ringbuf_drain" | "bpf_find_vma"
+        )
+}
+
+fn spin_lock_held_before_instruction(
+    log: &str,
+    fragment_start: usize,
+    instruction_line: usize,
+) -> bool {
+    let mut lock_depth = 0u32;
+    for line in log
+        .lines()
+        .skip(fragment_start.saturating_sub(1))
+        .take(instruction_line.saturating_sub(fragment_start))
+    {
+        let Some((_, tail)) = parse_instruction_line(line.trim()) else {
+            continue;
+        };
+        let Some(target) = call_target_from_instruction_tail(tail) else {
+            continue;
+        };
+        match target {
+            "bpf_spin_lock" => lock_depth = lock_depth.saturating_add(1),
+            "bpf_spin_unlock" => lock_depth = lock_depth.saturating_sub(1),
+            _ => {}
+        }
+    }
+    lock_depth > 0
+}
+
+fn instruction_site_before_line(
+    log: &str,
+    pc: usize,
+    fragment_start: usize,
+    before_line: usize,
+) -> Option<TerminalInstruction<'_>> {
+    log.lines()
+        .enumerate()
+        .skip(fragment_start.saturating_sub(1))
+        .take(before_line.saturating_sub(fragment_start))
+        .filter_map(|(idx, line)| {
+            let line_number = idx + 1;
+            let (line_pc, tail) = parse_instruction_line(line.trim())?;
+            (line_pc == pc).then_some(TerminalInstruction {
+                pc: line_pc,
+                line: line_number,
+                tail,
+            })
+        })
+        .last()
 }
 
 fn kfunc_argument_type_mismatch(context: &ProofSignalContext<'_>) -> bool {
