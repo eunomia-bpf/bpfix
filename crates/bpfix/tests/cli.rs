@@ -1847,6 +1847,11 @@ fn packet_bounds_diagnostic_reports_insufficient_verifier_range() {
         .join("\n");
     assert!(labels.contains("verifier only proves packet range 43 bytes"));
     assert!(labels.contains("rejected access requires 59 bytes"));
+    assert!(evidence_contains(
+        &json,
+        "verifier_state_signal",
+        "shorter packet range"
+    ));
 
     let help = json["help"]
         .as_array()
@@ -1855,7 +1860,25 @@ fn packet_bounds_diagnostic_reports_insufficient_verifier_range() {
         .filter_map(|item| item.as_str())
         .collect::<Vec<_>>()
         .join("\n");
-    assert!(help.contains("Check the exact pointer and byte length"));
+    assert!(help.contains("data_end check"));
+
+    for path in [
+        "bpfix-bench/cases/github-cilium-cilium-41522/replay-verifier.log",
+        "bpfix-bench/cases/stackoverflow-60053570/replay-verifier.log",
+    ] {
+        let diagnostic = run_json(path);
+        assert_eq!(diagnostic["error_id"], "BPFIX-E001");
+        assert_eq!(diagnostic["failure_class"], "source_bug");
+        assert!(evidence_contains(
+            &diagnostic,
+            "verifier_state_signal",
+            "packet register's proven range"
+        ));
+        assert!(diagnostic["required_proof"]
+            .as_str()
+            .unwrap()
+            .contains("off + size"));
+    }
 
     let stale_register_state = "\
 0: R2=pkt(r=30) R10=fp0
@@ -1884,6 +1907,131 @@ processed 3 insns (limit 1000000) max_states_per_insn 0 total_states 1 peak_stat
         }));
     assert!(!stale_labels.contains("verifier had proved packet range"));
     assert!(!stale_labels.contains("verifier only proves packet range"));
+    assert!(!evidence_contains(
+        &stale,
+        "verifier_state_signal",
+        "packet register's proven range"
+    ));
+
+    let mismatched_memory_base = "\
+0: R2=pkt(r=0) R3=pkt(r=0) R10=fp0
+; byte = *ptr; @ prog.c:20
+1: (71) r1 = *(u8 *)(r3 +19)
+invalid access to packet, off=19 size=1, R2(id=0,off=19,r=0)
+processed 2 insns (limit 1000000) max_states_per_insn 0 total_states 1 peak_states 1 mark_read 0
+";
+    let mismatched_base = run_json_stdin(mismatched_memory_base);
+    assert_eq!(mismatched_base["failure_class"], "source_bug");
+    assert!(!evidence_contains(
+        &mismatched_base,
+        "verifier_state_signal",
+        "packet register's proven range"
+    ));
+
+    let mismatched_reported_range = "\
+0: R2=pkt(r=10) R10=fp0
+; byte = *ptr; @ prog.c:20
+1: (71) r1 = *(u8 *)(r2 +19)
+invalid access to packet, off=19 size=1, R2(id=0,off=19,r=0)
+processed 2 insns (limit 1000000) max_states_per_insn 0 total_states 1 peak_states 1 mark_read 0
+";
+    let mismatched_range = run_json_stdin(mismatched_reported_range);
+    assert_eq!(mismatched_range["failure_class"], "source_bug");
+    assert!(!evidence_contains(
+        &mismatched_range,
+        "verifier_state_signal",
+        "packet register's proven range"
+    ));
+
+    let mismatched_instruction_offset = "\
+0: R2=pkt(r=0) R10=fp0
+; byte = *ptr; @ prog.c:20
+1: (71) r1 = *(u8 *)(r2 +0)
+invalid access to packet, off=19 size=1, R2(id=0,off=19,r=0)
+processed 2 insns (limit 1000000) max_states_per_insn 0 total_states 1 peak_states 1 mark_read 0
+";
+    let mismatched_offset = run_json_stdin(mismatched_instruction_offset);
+    assert_eq!(mismatched_offset["failure_class"], "source_bug");
+    assert!(!evidence_contains(
+        &mismatched_offset,
+        "verifier_state_signal",
+        "packet register's proven range"
+    ));
+
+    let mismatched_instruction_width = "\
+0: R2=pkt(r=0) R10=fp0
+; half = *ptr; @ prog.c:20
+1: (69) r1 = *(u16 *)(r2 +19)
+invalid access to packet, off=19 size=1, R2(id=0,off=19,r=0)
+processed 2 insns (limit 1000000) max_states_per_insn 0 total_states 1 peak_states 1 mark_read 0
+";
+    let mismatched_width = run_json_stdin(mismatched_instruction_width);
+    assert_eq!(mismatched_width["failure_class"], "source_bug");
+    assert!(!evidence_contains(
+        &mismatched_width,
+        "verifier_state_signal",
+        "packet register's proven range"
+    ));
+
+    let mismatched_helper_offset = "\
+0: R1=pkt(off=0,r=0) R10=fp0
+; ret = bpf_csum_diff(ptr, 4, 0, 0, 0); @ prog.c:20
+1: (85) call bpf_csum_diff#28
+invalid access to packet, off=34 size=4, R1(id=0,off=34,r=0)
+processed 2 insns (limit 1000000) max_states_per_insn 0 total_states 1 peak_states 1 mark_read 0
+";
+    let mismatched_helper = run_json_stdin(mismatched_helper_offset);
+    assert_eq!(mismatched_helper["failure_class"], "source_bug");
+    assert!(!evidence_contains(
+        &mismatched_helper,
+        "verifier_state_signal",
+        "packet register's proven range"
+    ));
+
+    let call_text_inside_non_call_instruction = "\
+0: R1=pkt(off=0,r=0) R10=fp0
+; not_a_helper_call(); @ prog.c:20
+1: (b7) r0 = 0 ; call bpf_csum_diff#28
+invalid access to packet, off=0 size=4, R1(id=0,off=0,r=0)
+processed 2 insns (limit 1000000) max_states_per_insn 0 total_states 1 peak_states 1 mark_read 0
+";
+    let non_call = run_json_stdin(call_text_inside_non_call_instruction);
+    assert_eq!(non_call["failure_class"], "source_bug");
+    assert!(!evidence_contains(
+        &non_call,
+        "verifier_state_signal",
+        "packet register's proven range"
+    ));
+
+    let negative_terminal_offset_mismatch = "\
+0: R2=pkt(r=0) R10=fp0
+; half = *ptr; @ prog.c:20
+1: (69) r1 = *(u16 *)(r2 +0)
+invalid access to packet, off=-1 size=2, R2(id=0,off=-1,r=0)
+processed 2 insns (limit 1000000) max_states_per_insn 0 total_states 1 peak_states 1 mark_read 0
+";
+    let negative_offset = run_json_stdin(negative_terminal_offset_mismatch);
+    assert_eq!(negative_offset["failure_class"], "source_bug");
+    assert!(!evidence_contains(
+        &negative_offset,
+        "verifier_state_signal",
+        "packet register's proven range"
+    ));
+
+    let unrelated_helper_call = "\
+0: R2=pkt(r=0) R10=fp0
+; random = bpf_get_prandom_u32(); @ prog.c:20
+1: (85) call bpf_get_prandom_u32#7
+invalid access to packet, off=0 size=4, R2(id=0,off=0,r=0)
+processed 2 insns (limit 1000000) max_states_per_insn 0 total_states 1 peak_states 1 mark_read 0
+";
+    let unrelated_helper = run_json_stdin(unrelated_helper_call);
+    assert_eq!(unrelated_helper["failure_class"], "source_bug");
+    assert!(!evidence_contains(
+        &unrelated_helper,
+        "verifier_state_signal",
+        "packet register's proven range"
+    ));
 
     let stale_packet_lineage = "\
 0: R2=pkt(id=1,off=0,r=100) R10=fp0

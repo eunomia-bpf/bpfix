@@ -63,6 +63,7 @@ pub enum ProofSignal {
     SubprogramContextArgumentDropped,
     PacketPointerProofLostAfterBoundsCheck,
     PacketRangeProofLostBeforeAccess,
+    PacketAccessWithoutBoundsProof,
     MapValueWideAccess,
     MapValueCheckedOffsetRelationLost,
     MapValueGuardExceedsValueSize,
@@ -191,6 +192,9 @@ impl ProofSignal {
             }
             Self::PacketGuardUndercoversAccess => {
                 "packet bounds check is narrower than the later packet access"
+            }
+            Self::PacketAccessWithoutBoundsProof => {
+                "packet access reaches the use before the verifier has enough packet range"
             }
             signal if signal.is_verifier_precision_boundary() => {
                 "verifier precision limit may hide an existing safety proof"
@@ -343,6 +347,9 @@ impl ProofSignal {
             Self::PacketGuardUndercoversAccess => {
                 "source has a packet bounds check, but verifier state after that check proves only a shorter packet range than the rejected access needs"
             }
+            Self::PacketAccessWithoutBoundsProof => {
+                "verifier state shows the packet register's proven range is shorter than the rejected access requires at this instruction"
+            }
             Self::PacketMaxOffsetPrecisionBoundary => {
                 "verifier state reaches a packet access with a large variable offset range at the packet-offset precision boundary"
             }
@@ -474,6 +481,9 @@ impl ProofSignal {
             Self::PacketGuardUndercoversAccess => {
                 "Move the data_end check to the final pointer expression and include the access width, for example check pointer + size before dereferencing pointer."
             }
+            Self::PacketAccessWithoutBoundsProof => {
+                "Move or add a data_end bounds check for the exact packet pointer and access width immediately before the load, store, or helper call that consumes it."
+            }
             Self::PacketMaxOffsetPrecisionBoundary => {
                 "Treat this as a verifier precision boundary: clamp the packet cursor to a verifier-friendly maximum before the loop, then rederive and recheck the exact byte pointer used by the load."
             }
@@ -493,6 +503,7 @@ impl ProofSignal {
             Self::SleepableCallInNonSleepableContext => 7,
             Self::ModernBpfObjectProtocolViolation => 8,
             Self::PacketGuardUndercoversAccess => 40,
+            Self::PacketAccessWithoutBoundsProof => 50,
             Self::WideStackAlignment
             | Self::SharedInstructionPointerMerge
             | Self::PointerShiftDropsProvenance
@@ -544,6 +555,7 @@ impl ProofSignal {
                 | Self::ModernBpfObjectProtocolViolation
                 | Self::MapLookupKeyArgumentUnreadable
                 | Self::MapValueGuardExceedsValueSize
+                | Self::PacketAccessWithoutBoundsProof
                 | Self::PacketGuardUndercoversAccess
                 | Self::SubprogramReferenceMetadataMissing
                 | Self::TrustedNullableArgument
@@ -629,6 +641,7 @@ impl ProofSignal {
                 | Self::KfuncArgumentTypeMismatch
                 | Self::ModernBpfObjectProtocolViolation
                 | Self::NullablePointerUseWithoutProof
+                | Self::PacketAccessWithoutBoundsProof
                 | Self::TrustedNullableArgument
                 | Self::ContextAccessSourceArgumentMismatch
                 | Self::ContextFieldUnavailable
@@ -714,6 +727,9 @@ impl ProofSignal {
             Self::MapValueGuardExceedsValueSize => Some(
                 "prove the map-value index plus field offset and access width stays below the map value size",
             ),
+            Self::PacketAccessWithoutBoundsProof => Some(
+                "prove this packet register has range at least off + size at the rejected load, store, or helper call",
+            ),
             _ => None,
         }
     }
@@ -795,6 +811,9 @@ impl ProofSignal {
             Self::MapValueGuardExceedsValueSize => {
                 Some("map value index guard is wider than the value field can hold")
             }
+            Self::PacketAccessWithoutBoundsProof => {
+                Some("packet range proof is too short for this access")
+            }
             _ => None,
         }
     }
@@ -821,6 +840,7 @@ impl ProofSignal {
             Self::TrustedNullableArgument => Some("BPFIX-E015"),
             Self::KfuncArgumentTypeMismatch => Some("BPFIX-E013"),
             Self::ModernBpfObjectProtocolViolation => Some("BPFIX-E023"),
+            Self::PacketAccessWithoutBoundsProof => Some("BPFIX-E001"),
             Self::ExceptionThrowWithLiveReference => Some("BPFIX-E004"),
             Self::ExceptionCallbackProtocolViolation => Some("BPFIX-E013"),
             _ => None,
@@ -1812,6 +1832,9 @@ fn proof_signals(context: ProofSignalContext<'_>) -> Vec<ProofSignal> {
     }
     if packet_guard_undercovers_access(&context) {
         signals.push(ProofSignal::PacketGuardUndercoversAccess);
+    }
+    if packet_access_without_bounds_proof(&context) {
+        signals.push(ProofSignal::PacketAccessWithoutBoundsProof);
     }
     if map_value_wide_access(
         context.log,
@@ -4440,6 +4463,35 @@ fn parse_signed_decimal(text: &str) -> Option<i64> {
     text.parse().ok()
 }
 
+fn parse_i64_after(message: &str, needle: &str) -> Option<i64> {
+    let bytes = message.as_bytes();
+    let mut search_start = 0usize;
+    while let Some(relative) = message[search_start..].find(needle) {
+        let field_start = search_start + relative;
+        if field_start > 0 {
+            let previous = bytes[field_start - 1];
+            if previous.is_ascii_alphanumeric() || previous == b'_' {
+                search_start = field_start + needle.len();
+                continue;
+            }
+        }
+        let start = field_start + needle.len();
+        let mut end = start;
+        if end < bytes.len() && bytes[end] == b'-' {
+            end += 1;
+        }
+        let digit_start = end;
+        while end < bytes.len() && bytes[end].is_ascii_digit() {
+            end += 1;
+        }
+        if end > digit_start {
+            return message[start..end].parse().ok();
+        }
+        search_start = field_start + needle.len();
+    }
+    None
+}
+
 fn parse_u32_after(message: &str, needle: &str) -> Option<u32> {
     let bytes = message.as_bytes();
     let mut search_start = 0usize;
@@ -4621,6 +4673,115 @@ fn packet_guard_undercovers_access(context: &ProofSignalContext<'_>) -> bool {
                     current,
                 )
         })
+}
+
+fn packet_access_without_bounds_proof(context: &ProofSignalContext<'_>) -> bool {
+    if context.obligation != ProofObligation::PacketBounds {
+        return false;
+    }
+    let Some(reg) = context.register else {
+        return false;
+    };
+    let Some(required) = packet_required_range(context.terminal_error) else {
+        return false;
+    };
+    let Some(instruction) =
+        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)
+    else {
+        return false;
+    };
+    let fragment_start = context
+        .terminal_line
+        .map(|line| verifier_fragment_start_line(context.log, line))
+        .unwrap_or_else(|| verifier_fragment_start_line(context.log, instruction.line));
+    let Some(state) =
+        latest_reg_state_before_instruction(context.states, instruction, fragment_start, reg)
+    else {
+        return false;
+    };
+    if state.reg_type != "pkt" {
+        return false;
+    }
+    if !packet_access_instruction_matches_register(
+        instruction.tail,
+        reg,
+        state,
+        context.terminal_error,
+    ) {
+        return false;
+    }
+    let Some(range) = state.packet_range else {
+        return false;
+    };
+    if parse_u32_after(context.terminal_error, "r=").is_some_and(|reported| reported != range) {
+        return false;
+    }
+    range < required
+}
+
+fn packet_access_instruction_matches_register(
+    instruction_tail: &str,
+    reg: u8,
+    state: &RegState,
+    terminal_error: &str,
+) -> bool {
+    match memory_access_base_register(instruction_tail) {
+        Some(base) => {
+            base == reg
+                && packet_memory_access_shape_matches(instruction_tail, state, terminal_error)
+        }
+        None => direct_call_target_from_instruction_tail(instruction_tail).is_some_and(|target| {
+            packet_helper_consumes_packet_arg(target, reg)
+                && packet_terminal_offset_matches_state(state, terminal_error, Some(0))
+        }),
+    }
+}
+
+fn packet_memory_access_shape_matches(
+    instruction_tail: &str,
+    state: &RegState,
+    terminal_error: &str,
+) -> bool {
+    if parse_u32_after(terminal_error, "size=")
+        .is_some_and(|size| memory_access_width(instruction_tail) != Some(size))
+    {
+        return false;
+    }
+    packet_terminal_offset_matches_state(
+        state,
+        terminal_error,
+        memory_access_offset(instruction_tail),
+    )
+}
+
+fn packet_terminal_offset_matches_state(
+    state: &RegState,
+    terminal_error: &str,
+    instruction_offset: Option<i64>,
+) -> bool {
+    if let Some(reported_off) = parse_i64_after(terminal_error, "off=") {
+        let Some(instruction_offset) = instruction_offset else {
+            return false;
+        };
+        let state_off = i64::from(state.offset.unwrap_or(0));
+        return state_off.saturating_add(instruction_offset) == reported_off;
+    }
+    true
+}
+
+fn packet_helper_consumes_packet_arg(target: &str, reg: u8) -> bool {
+    matches!(target, "bpf_csum_diff") && matches!(reg, 1 | 3)
+}
+
+fn direct_call_target_from_instruction_tail(instruction_tail: &str) -> Option<&str> {
+    let mut tokens = instruction_tail.split_whitespace();
+    if tokens.next()? != "(85)" || tokens.next()? != "call" {
+        return None;
+    }
+    let call = tokens.next()?;
+    call.split_once('#')
+        .map(|(target, _)| target)
+        .or(Some(call))
 }
 
 fn packet_verifier_precision_signal(context: &ProofSignalContext<'_>) -> Option<ProofSignal> {
