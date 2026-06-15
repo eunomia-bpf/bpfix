@@ -2508,6 +2508,28 @@ fn dynptr_protocol_diagnostic_uses_specific_required_proof() {
         "unsupported stack-backed input memory"
     ));
 
+    let dynptr_read_into_slot =
+        run_json("bpfix-bench/cases/kernel-selftest-dynptr-fail-dynptr-read-into-slot-raw-tp-5420cc35/replay-verifier.log");
+    assert_eq!(dynptr_read_into_slot["error_id"], "BPFIX-E019");
+    assert!(evidence_contains(
+        &dynptr_read_into_slot,
+        "verifier_state_signal",
+        "write target overlaps"
+    ));
+    assert!(dynptr_read_into_slot["required_proof"]
+        .as_str()
+        .unwrap()
+        .contains("disjoint from live verifier-tracked dynptr stack slots"));
+
+    let uninit_write_into_slot =
+        run_json("bpfix-bench/cases/kernel-selftest-dynptr-fail-uninit-write-into-slot-raw-tp-a80cb838/replay-verifier.log");
+    assert_eq!(uninit_write_into_slot["error_id"], "BPFIX-E019");
+    assert!(evidence_contains(
+        &uninit_write_into_slot,
+        "verifier_state_signal",
+        "write target overlaps"
+    ));
+
     let uninitialized_dynptr_clone =
         run_json("bpfix-bench/cases/kernel-selftest-dynptr-fail-clone-invalid1-raw-tp-b7206632/replay-verifier.log");
     assert_eq!(uninitialized_dynptr_clone["error_id"], "BPFIX-E012");

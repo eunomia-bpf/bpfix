@@ -70,6 +70,7 @@ pub enum ProofSignal {
     BtfFuncInfoMissing,
     SubprogramReferenceMetadataMissing,
     DynptrStackStorageAccess,
+    DynptrStackSlotWriteOverlap,
     DynptrHelperArgumentStateMismatch,
     DynptrSliceVariableLength,
     IteratorStackStorageAccess,
@@ -115,6 +116,9 @@ impl ProofSignal {
             }
             Self::DynptrStackStorageAccess => {
                 "dynptr stack storage is being used as ordinary memory"
+            }
+            Self::DynptrStackSlotWriteOverlap => {
+                "helper output or ordinary write overlaps live dynptr stack storage"
             }
             Self::DynptrHelperArgumentStateMismatch => {
                 "dynptr helper argument has the wrong stack-slot or backing-memory state"
@@ -249,6 +253,9 @@ impl ProofSignal {
             Self::DynptrStackStorageAccess => {
                 "verifier state shows this stack slot contains dynptr state, but the rejected instruction reads it as ordinary stack bytes"
             }
+            Self::DynptrStackSlotWriteOverlap => {
+                "verifier state shows the rejected write target overlaps stack bytes that currently store live dynptr state"
+            }
             Self::DynptrHelperArgumentStateMismatch => {
                 "verifier state at the dynptr helper call shows an unstable dynptr slot, an interior dynptr pointer, or unsupported stack-backed input memory"
             }
@@ -359,6 +366,9 @@ impl ProofSignal {
             Self::DynptrStackStorageAccess => {
                 "Do not copy, read, or pass a dynptr object as ordinary bytes; use dynptr helpers to read data out of the dynptr and keep the dynptr object in its dedicated stack slot."
             }
+            Self::DynptrStackSlotWriteOverlap => {
+                "Keep helper output buffers and ordinary writes disjoint from stack bytes that store live dynptr state."
+            }
             Self::DynptrHelperArgumentStateMismatch => {
                 "Pass dynptr helpers the exact verifier-tracked stack slot and a supported backing memory object; avoid global dynptr storage, variable stack offsets, and interior dynptr pointers."
             }
@@ -454,6 +464,7 @@ impl ProofSignal {
             Self::ContextAccessSourceArgumentMismatch
                 | Self::DynptrHelperArgumentStateMismatch
                 | Self::DynptrStackStorageAccess
+                | Self::DynptrStackSlotWriteOverlap
                 | Self::DynptrSliceVariableLength
                 | Self::ExceptionCallbackProtocolViolation
                 | Self::ExceptionThrowWithLiveReference
@@ -503,6 +514,7 @@ impl ProofSignal {
             Self::ContextAccessSourceArgumentMismatch
                 | Self::DynptrHelperArgumentStateMismatch
                 | Self::DynptrStackStorageAccess
+                | Self::DynptrStackSlotWriteOverlap
                 | Self::DynptrSliceVariableLength
                 | Self::ExceptionThrowWithLiveReference
                 | Self::IrqFlagStateMismatch
@@ -530,6 +542,7 @@ impl ProofSignal {
                 | Self::SubprogramReferenceMetadataMissing
                 | Self::DynptrHelperArgumentStateMismatch
                 | Self::DynptrStackStorageAccess
+                | Self::DynptrStackSlotWriteOverlap
                 | Self::DynptrSliceVariableLength
                 | Self::ExceptionCallbackProtocolViolation
                 | Self::IrqFlagStateMismatch
@@ -559,6 +572,9 @@ impl ProofSignal {
             ),
             Self::DynptrStackStorageAccess => Some(
                 "keep the dynptr object in its verifier-tracked stack slot and use dynptr helpers instead of reading or copying the dynptr storage as ordinary bytes",
+            ),
+            Self::DynptrStackSlotWriteOverlap => Some(
+                "keep helper output buffers and ordinary writes disjoint from live verifier-tracked dynptr stack slots",
             ),
             Self::DynptrHelperArgumentStateMismatch => Some(
                 "pass dynptr helpers an exact verifier-tracked dynptr stack slot and supported non-stack backing memory",
@@ -620,6 +636,9 @@ impl ProofSignal {
             Self::DynptrStackStorageAccess => {
                 Some("dynptr stack storage is read as ordinary memory")
             }
+            Self::DynptrStackSlotWriteOverlap => {
+                Some("write target overlaps a live dynptr stack slot")
+            }
             Self::DynptrHelperArgumentStateMismatch => {
                 Some("dynptr helper argument does not match the verifier dynptr contract")
             }
@@ -672,6 +691,7 @@ impl ProofSignal {
             Self::BtfFuncInfoMissing => Some("BPFIX-E021"),
             Self::SubprogramReferenceMetadataMissing => Some("BPFIX-E021"),
             Self::DynptrStackStorageAccess => Some("BPFIX-E012"),
+            Self::DynptrStackSlotWriteOverlap => Some("BPFIX-E019"),
             Self::DynptrHelperArgumentStateMismatch => Some("BPFIX-E019"),
             Self::DynptrSliceVariableLength => Some("BPFIX-E019"),
             Self::IteratorStackStorageAccess => Some("BPFIX-E014"),
@@ -1607,6 +1627,9 @@ fn proof_signals(context: ProofSignalContext<'_>) -> Vec<ProofSignal> {
     ) {
         signals.push(ProofSignal::MapLookupKeyArgumentUnreadable);
     }
+    if dynptr_stack_slot_write_overlap(&context) {
+        signals.push(ProofSignal::DynptrStackSlotWriteOverlap);
+    }
     if dynptr_stack_storage_access(&context) {
         signals.push(ProofSignal::DynptrStackStorageAccess);
     }
@@ -2310,6 +2333,35 @@ fn dynptr_stack_storage_access(context: &ProofSignalContext<'_>) -> bool {
         return false;
     }
     let Some(access) = stack_access_range_from_context(context) else {
+        return false;
+    };
+    latest_stack_value_overlap(context, access, 16, |value| {
+        value.reg_type.starts_with("dynptr")
+    })
+    .unwrap_or(false)
+}
+
+fn dynptr_stack_slot_write_overlap(context: &ProofSignalContext<'_>) -> bool {
+    if !matches!(
+        context.obligation,
+        ProofObligation::DynptrSafety
+            | ProofObligation::HelperArgument
+            | ProofObligation::StackInitialized
+            | ProofObligation::Unknown
+    ) {
+        return false;
+    }
+    if !context
+        .terminal_error
+        .to_ascii_lowercase()
+        .contains("potential write to dynptr")
+    {
+        return false;
+    }
+    let Some(offset) = parse_signed_i16_after(context.terminal_error, "off=") else {
+        return false;
+    };
+    let Some(access) = stack_value_range(offset, 1) else {
         return false;
     };
     latest_stack_value_overlap(context, access, 16, |value| {

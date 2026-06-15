@@ -123,7 +123,7 @@ active_error_ids:
     short_name: dynptr_helper_contract_violation
     failure_classes:
       - source_bug
-    summary: A dynptr helper needs an exact verifier-tracked stack slot, supported backing memory, or constant slice length, but verifier state proves the helper argument violates that contract.
+    summary: A dynptr helper needs an exact verifier-tracked stack slot, supported backing memory, non-overlapping output storage, or constant slice length, but verifier state proves the helper contract is violated.
 
   - error_id: BPFIX-E020
     short_name: irq_flag_lifecycle_violation
