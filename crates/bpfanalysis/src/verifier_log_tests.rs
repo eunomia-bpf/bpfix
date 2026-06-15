@@ -177,6 +177,7 @@ fn parses_stack_access_suffixes_and_dynptr_stack_state() {
     );
     assert!(insns[1].stack.get(&-32).unwrap().value.is_none());
     assert_eq!(insns[1].refs, Some(1));
+    assert_eq!(insns[1].ref_ids, vec![1]);
 }
 
 #[test]
@@ -250,21 +251,26 @@ fn parses_callback_state_tokens() {
 	19: frame1: R1=scalar() R10=fp0 refs=bad cb
 	20: (85) call bpf_local_irq_save#72094 ; frame1: refs=1,2
 	21: refs=1,2,3 cb
+	22: refs=0
+	23: R1=ctx() refs=1,bad,2
 	"#;
 
     let insns = parse_verifier_log(log);
-    assert_eq!(insns.len(), 5);
+    assert_eq!(insns.len(), 7);
     assert_eq!(insns[0].log_line, 2);
     assert_eq!(insns[0].frame, 1);
     assert_eq!(insns[0].refs, Some(2));
+    assert_eq!(insns[0].ref_ids, vec![2]);
     assert_eq!(insns[0].callback_kind, Some(CallbackKind::Sync));
     assert!(insns[0].callback);
     assert_eq!(insns[1].log_line, 3);
     assert_eq!(insns[1].refs, None);
+    assert!(insns[1].ref_ids.is_empty());
     assert_eq!(insns[1].callback_kind, Some(CallbackKind::Async));
     assert!(insns[1].callback);
     assert_eq!(insns[2].log_line, 4);
     assert_eq!(insns[2].refs, None);
+    assert!(insns[2].ref_ids.is_empty());
     assert_eq!(insns[2].callback_kind, Some(CallbackKind::Sync));
     assert!(insns[2].callback);
     assert_eq!(insns[3].log_line, 5);
@@ -272,11 +278,17 @@ fn parses_callback_state_tokens() {
     assert!(insns[3].regs.is_empty());
     assert!(insns[3].stack.is_empty());
     assert_eq!(insns[3].refs, Some(2));
+    assert_eq!(insns[3].ref_ids, vec![1, 2]);
     assert_eq!(insns[4].log_line, 6);
     assert!(insns[4].regs.is_empty());
     assert!(insns[4].stack.is_empty());
     assert_eq!(insns[4].refs, Some(3));
+    assert_eq!(insns[4].ref_ids, vec![1, 2, 3]);
     assert_eq!(insns[4].callback_kind, Some(CallbackKind::Sync));
+    assert_eq!(insns[5].refs, Some(0));
+    assert!(insns[5].ref_ids.is_empty());
+    assert_eq!(insns[6].refs, None);
+    assert!(insns[6].ref_ids.is_empty());
 }
 
 #[test]

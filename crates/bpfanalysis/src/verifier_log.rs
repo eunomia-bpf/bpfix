@@ -57,6 +57,7 @@ pub struct VerifierInsn {
     pub regs: HashMap<u8, RegState>,
     pub stack: HashMap<i16, StackState>,
     pub refs: Option<u32>,
+    pub ref_ids: Vec<u32>,
     pub callback_kind: Option<CallbackKind>,
     pub callback: bool,
 }
@@ -164,6 +165,7 @@ fn parse_state_line(line: &str) -> Result<Option<VerifierInsn>> {
     let mut regs = HashMap::new();
     let mut stack = HashMap::new();
     let mut refs = None;
+    let mut ref_ids = Vec::new();
     let mut callback_kind = None;
     let tokens = split_top_level_tokens(state_text);
     let mut idx = 0usize;
@@ -181,6 +183,7 @@ fn parse_state_line(line: &str) -> Result<Option<VerifierInsn>> {
         }
         if let Some(value) = token.strip_prefix("refs=") {
             refs = parse_refs_value(value);
+            ref_ids = parse_ref_ids(value);
             idx += 1;
             continue;
         }
@@ -225,6 +228,7 @@ fn parse_state_line(line: &str) -> Result<Option<VerifierInsn>> {
         regs,
         stack,
         refs,
+        ref_ids,
         callback_kind,
         callback: callback_kind.is_some(),
     }))
@@ -332,6 +336,20 @@ fn parse_refs_value(value: &str) -> Option<u32> {
             .then(|| count.try_into().ok())
             .flatten()
     })
+}
+
+fn parse_ref_ids(value: &str) -> Vec<u32> {
+    let mut ids = Vec::new();
+    for item in value.split(',') {
+        let Ok(id) = item.parse() else {
+            return Vec::new();
+        };
+        if id == 0 {
+            return Vec::new();
+        }
+        ids.push(id);
+    }
+    ids
 }
 
 fn split_top_level_tokens(text: &str) -> Vec<&str> {

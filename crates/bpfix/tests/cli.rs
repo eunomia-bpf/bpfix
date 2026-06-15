@@ -3331,6 +3331,33 @@ fn irq_flag_state_reports_protocol_violation() {
             .any(|help| help.as_str().unwrap().contains("Initialize the full stack")));
     }
 
+    for path in [
+        "bpfix-bench/cases/kernel-selftest-irq-irq-restore-ooo-tc-84ede29d/replay-verifier.log",
+        "bpfix-bench/cases/kernel-selftest-irq-irq-restore-ooo-3-tc-e0b5e5ee/replay-verifier.log",
+        "bpfix-bench/cases/kernel-selftest-irq-irq-restore-ooo-3-subprog-tc-b32ae1a0/replay-verifier.log",
+        "bpfix-bench/cases/kernel-selftest-irq-irq-restore-4-subprog-tc-f3feb6a1/replay-verifier.log",
+        "bpfix-bench/cases/kernel-selftest-irq-irq-ooo-refs-array-tc-193001a6/replay-verifier.log",
+        "bpfix-bench/cases/kernel-selftest-irq-irq-ooo-lock-cond-inv-tc-950f35d5/replay-verifier.log",
+    ] {
+        let diagnostic = run_json(path);
+        assert_eq!(diagnostic["error_id"], "BPFIX-E013");
+        assert_eq!(diagnostic["failure_class"], "source_bug");
+        assert!(evidence_contains(
+            &diagnostic,
+            "verifier_state_signal",
+            "newer outstanding IRQ state"
+        ));
+        assert!(diagnostic["required_proof"]
+            .as_str()
+            .unwrap()
+            .contains("strict LIFO order"));
+        assert!(!diagnostic["help"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|help| help.as_str().unwrap().contains("Release acquired references")));
+    }
+
     let unknown_terminal_irq_double_save = run_stdin_output(
         "func#0 @0\n\
          0: R1=ctx() R10=fp0\n\
@@ -3484,6 +3511,39 @@ fn irq_flag_state_reports_protocol_violation() {
         &stale_prior_fragment_irq_slot,
         "verifier_state_signal",
         "IRQ helper receives a stack slot"
+    ));
+
+    let out_of_order_without_live_ref_state = run_json_stdin(
+        "func#0 @0\n\
+         0: R1=fp-8 fp-8_w=ffffffff\n\
+         1: (85) call bpf_local_irq_restore#72093\n\
+         cannot restore irq state out of order, expected id=2 acquired at insn_idx=0\n",
+    );
+    assert_eq!(
+        out_of_order_without_live_ref_state["error_id"],
+        "BPFIX-E013"
+    );
+    assert!(!evidence_contains(
+        &out_of_order_without_live_ref_state,
+        "verifier_state_signal",
+        "newer outstanding IRQ state"
+    ));
+
+    let out_of_order_without_live_flag_slot = run_json_stdin(
+        "func#0 @0\n\
+         0: (85) call bpf_local_irq_save#72094 ; refs=1,2\n\
+         1: R1=fp-8 fp-8_w=0 refs=1,2\n\
+         2: (85) call bpf_local_irq_restore#72093\n\
+         cannot restore irq state out of order, expected id=2 acquired at insn_idx=0\n",
+    );
+    assert_eq!(
+        out_of_order_without_live_flag_slot["error_id"],
+        "BPFIX-E013"
+    );
+    assert!(!evidence_contains(
+        &out_of_order_without_live_flag_slot,
+        "verifier_state_signal",
+        "newer outstanding IRQ state"
     ));
 }
 

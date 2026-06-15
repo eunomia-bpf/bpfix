@@ -163,6 +163,7 @@ pub fn verifier_state(
         regs,
         stack,
         refs: None,
+        ref_ids: Vec::new(),
         callback_kind: None,
         callback: false,
     }

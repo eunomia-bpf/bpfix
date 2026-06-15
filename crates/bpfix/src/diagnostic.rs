@@ -77,6 +77,7 @@ pub enum ProofSignal {
     IteratorStackStorageAccess,
     IteratorHelperArgumentStateMismatch,
     IrqFlagStateMismatch,
+    IrqRestoreOrderMismatch,
     SleepableCallInNonSleepableContext,
     CallbackCallWhileLocked,
     TrustedNullableArgument,
@@ -138,6 +139,9 @@ impl ProofSignal {
             }
             Self::IrqFlagStateMismatch => {
                 "IRQ flag helper argument has the wrong verifier-tracked lifecycle state"
+            }
+            Self::IrqRestoreOrderMismatch => {
+                "IRQ state is restored outside the verifier-approved acquisition order"
             }
             Self::SleepableCallInNonSleepableContext => {
                 "sleepable helper or subprogram call reaches a non-sleepable verifier context"
@@ -278,6 +282,9 @@ impl ProofSignal {
             Self::IrqFlagStateMismatch => {
                 "the rejected IRQ helper receives a stack slot whose verifier state does not match the helper's save/restore lifecycle contract"
             }
+            Self::IrqRestoreOrderMismatch => {
+                "verifier state reaches an IRQ restore helper with a live IRQ flag slot while the verifier expects a newer outstanding IRQ state"
+            }
             Self::SleepableCallInNonSleepableContext => {
                 "verifier state reaches a sleepable helper or subprogram call while IRQ, RCU, preempt, or program-context rules require non-sleepable execution"
             }
@@ -394,6 +401,9 @@ impl ProofSignal {
             Self::IrqFlagStateMismatch => {
                 "Keep each IRQ flag stack slot dedicated to one save/restore pair, and pass restore the exact slot initialized by the matching save helper."
             }
+            Self::IrqRestoreOrderMismatch => {
+                "Restore IRQ save and lock state in strict reverse acquisition order, using the same flag slot returned by each save or lock helper."
+            }
             Self::SleepableCallInNonSleepableContext => {
                 "Move sleepable helper or global-subprogram calls outside IRQ/RCU/preempt-disabled regions, or use only non-sleepable operations from this program context."
             }
@@ -481,6 +491,7 @@ impl ProofSignal {
                 | Self::ExceptionThrowWithLiveReference
                 | Self::CallbackCallWhileLocked
                 | Self::IrqFlagStateMismatch
+                | Self::IrqRestoreOrderMismatch
                 | Self::SleepableCallInNonSleepableContext
                 | Self::IteratorHelperArgumentStateMismatch
                 | Self::IteratorStackStorageAccess
@@ -530,6 +541,7 @@ impl ProofSignal {
                 | Self::DynptrSliceVariableLength
                 | Self::ExceptionThrowWithLiveReference
                 | Self::IrqFlagStateMismatch
+                | Self::IrqRestoreOrderMismatch
                 | Self::SleepableCallInNonSleepableContext
                 | Self::IteratorHelperArgumentStateMismatch
                 | Self::IteratorStackStorageAccess
@@ -559,6 +571,7 @@ impl ProofSignal {
                 | Self::DynptrSliceVariableLength
                 | Self::ExceptionCallbackProtocolViolation
                 | Self::IrqFlagStateMismatch
+                | Self::IrqRestoreOrderMismatch
                 | Self::SleepableCallInNonSleepableContext
                 | Self::CallbackCallWhileLocked
                 | Self::IteratorHelperArgumentStateMismatch
@@ -606,6 +619,9 @@ impl ProofSignal {
             ),
             Self::IrqFlagStateMismatch => Some(
                 "pass bpf_local_irq_save an empty stack flag slot and pass bpf_local_irq_restore the same verifier-tracked flag slot produced by save",
+            ),
+            Self::IrqRestoreOrderMismatch => Some(
+                "restore each verifier-tracked IRQ state in strict LIFO order with the flag slot produced by its matching save or lock helper",
             ),
             Self::SleepableCallInNonSleepableContext => Some(
                 "prove the sleepable helper or subprogram call cannot run in a non-sleepable IRQ, RCU, preempt-disabled, or program-context region",
@@ -673,6 +689,9 @@ impl ProofSignal {
             Self::IrqFlagStateMismatch => {
                 Some("IRQ flag helper argument has the wrong lifecycle state")
             }
+            Self::IrqRestoreOrderMismatch => {
+                Some("IRQ restore uses a flag slot before newer IRQ state is restored")
+            }
             Self::SleepableCallInNonSleepableContext => {
                 Some("sleepable call is reachable from a non-sleepable verifier context")
             }
@@ -717,6 +736,7 @@ impl ProofSignal {
             Self::IteratorStackStorageAccess => Some("BPFIX-E014"),
             Self::IteratorHelperArgumentStateMismatch => Some("BPFIX-E014"),
             Self::IrqFlagStateMismatch => Some("BPFIX-E020"),
+            Self::IrqRestoreOrderMismatch => Some("BPFIX-E013"),
             Self::SleepableCallInNonSleepableContext => Some("BPFIX-E016"),
             Self::CallbackCallWhileLocked => Some("BPFIX-E015"),
             Self::TrustedNullableArgument => Some("BPFIX-E015"),
@@ -1670,6 +1690,9 @@ fn proof_signals(context: ProofSignalContext<'_>) -> Vec<ProofSignal> {
     }
     if irq_flag_state_mismatch(&context) {
         signals.push(ProofSignal::IrqFlagStateMismatch);
+    }
+    if irq_restore_order_mismatch(&context) {
+        signals.push(ProofSignal::IrqRestoreOrderMismatch);
     }
     if sleepable_call_in_non_sleepable_context(&context) {
         signals.push(ProofSignal::SleepableCallInNonSleepableContext);
@@ -2791,7 +2814,7 @@ fn irq_flag_state_mismatch(context: &ProofSignalContext<'_>) -> bool {
         .terminal_line
         .map(|line| verifier_fragment_start_line(context.log, line))
         .unwrap_or_else(|| verifier_fragment_start_line(context.log, instruction.line));
-    let Some(arg) = latest_reg_state_for_call_argument(
+    let Some((arg, arg_frame)) = latest_reg_state_for_call_argument_with_frame(
         context.states,
         instruction,
         fragment_start,
@@ -2805,13 +2828,13 @@ fn irq_flag_state_mismatch(context: &ProofSignalContext<'_>) -> bool {
             if arg.reg_type != "fp" {
                 return true;
             }
-            irq_flag_stack_slot_state(context, arg).is_some()
+            irq_flag_stack_slot_state(context, arg, arg_frame).is_some()
         }
         IrqFlagArg0Requirement::LiveIrqFlagSlot => {
             if arg.reg_type != "fp" {
                 return true;
             }
-            irq_flag_stack_slot_state(context, arg)
+            irq_flag_stack_slot_state(context, arg, arg_frame)
                 .is_some_and(|state| state == IrqFlagStackSlotState::OrdinaryBytes)
         }
     }
@@ -2834,6 +2857,7 @@ enum IrqFlagStackSlotState {
 fn irq_flag_stack_slot_state(
     context: &ProofSignalContext<'_>,
     arg: &RegState,
+    arg_frame: usize,
 ) -> Option<IrqFlagStackSlotState> {
     let offset = i16::try_from(arg.offset?).ok()?;
     let fragment_start = context
@@ -2844,6 +2868,7 @@ fn irq_flag_stack_slot_state(
         .states
         .iter()
         .filter(|state| state.log_line >= fragment_start)
+        .filter(|state| state.frame == arg_frame)
         .filter(|state| context.terminal_pc.is_none_or(|pc| state.pc <= pc))
         .filter(|state| {
             context
@@ -2870,6 +2895,86 @@ fn irq_flag_stack_slot_state(
 
 fn is_irq_flag_stack_slot(stack: &StackState) -> bool {
     stack.value.is_none() && stack.slot_types.as_deref() == Some("ffffffff")
+}
+
+fn irq_restore_order_mismatch(context: &ProofSignalContext<'_>) -> bool {
+    if !matches!(
+        context.obligation,
+        ProofObligation::LockState
+            | ProofObligation::KfuncReference
+            | ProofObligation::ReferenceLifecycle
+            | ProofObligation::HelperArgument
+            | ProofObligation::Unknown
+    ) {
+        return false;
+    }
+    let terminal = context.terminal_error.to_ascii_lowercase();
+    if !terminal.contains("cannot restore irq state out of order") {
+        return false;
+    }
+    let Some(expected_ref_id) = parse_u32_after(&terminal, "expected id=") else {
+        return false;
+    };
+    let Some(acquired_pc) =
+        parse_u32_after(&terminal, "acquired at insn_idx=").and_then(|pc| usize::try_from(pc).ok())
+    else {
+        return false;
+    };
+    let Some(instruction) = terminal_call_instruction_site(context) else {
+        return false;
+    };
+    let Some(target) = call_target_from_instruction_tail(instruction.tail) else {
+        return false;
+    };
+    let Some(flag_arg) = irq_restore_flag_argument(target) else {
+        return false;
+    };
+    let fragment_start = verifier_fragment_start_line(context.log, instruction.line);
+    let Some(acquired_instruction) =
+        instruction_site_before_line(context.log, acquired_pc, fragment_start, instruction.line)
+    else {
+        return false;
+    };
+    let Some(acquired_target) = call_target_from_instruction_tail(acquired_instruction.tail) else {
+        return false;
+    };
+    if !irq_save_target(acquired_target) {
+        return false;
+    }
+    let Some((arg, arg_frame)) = latest_reg_state_for_call_argument_with_frame(
+        context.states,
+        instruction,
+        fragment_start,
+        context.terminal_line,
+        flag_arg,
+    ) else {
+        return false;
+    };
+    if arg.reg_type != "fp" || reg_state_has_variable_offset(arg) {
+        return false;
+    }
+    if irq_flag_stack_slot_state(context, arg, arg_frame)
+        != Some(IrqFlagStackSlotState::LiveIrqFlag)
+    {
+        return false;
+    }
+    if target == "bpf_local_irq_restore" {
+        return latest_ref_state_before_instruction(context.states, instruction, fragment_start)
+            .is_some_and(|state| state.ref_ids.contains(&expected_ref_id));
+    }
+    target == "bpf_res_spin_unlock_irqrestore" && acquired_target == "bpf_res_spin_lock_irqsave"
+}
+
+fn irq_restore_flag_argument(target: &str) -> Option<u8> {
+    match target {
+        "bpf_local_irq_restore" => Some(1),
+        "bpf_res_spin_unlock_irqrestore" => Some(2),
+        _ => None,
+    }
+}
+
+fn irq_save_target(target: &str) -> bool {
+    matches!(target, "bpf_local_irq_save" | "bpf_res_spin_lock_irqsave")
 }
 
 fn callback_call_while_locked(context: &ProofSignalContext<'_>) -> bool {
@@ -4025,6 +4130,20 @@ fn latest_verifier_state_before_instruction<'a>(
         .next_back()
 }
 
+fn latest_ref_state_before_instruction<'a>(
+    states: &'a [VerifierInsn],
+    instruction: TerminalInstruction<'_>,
+    fragment_start_line: usize,
+) -> Option<&'a VerifierInsn> {
+    states
+        .iter()
+        .filter(|state| state.log_line >= fragment_start_line)
+        .filter(|state| state.log_line < instruction.line)
+        .filter(|state| state.pc <= instruction.pc)
+        .filter(|state| !state.ref_ids.is_empty())
+        .next_back()
+}
+
 fn latest_verifier_state_before(
     states: &[VerifierInsn],
     terminal_pc: Option<usize>,
@@ -5032,6 +5151,7 @@ mod tests {
             ProofSignal::DynptrSliceVariableLength,
             ProofSignal::ExceptionThrowWithLiveReference,
             ProofSignal::IrqFlagStateMismatch,
+            ProofSignal::IrqRestoreOrderMismatch,
             ProofSignal::IteratorHelperArgumentStateMismatch,
             ProofSignal::IteratorStackStorageAccess,
             ProofSignal::MapLookupKeyArgumentUnreadable,
