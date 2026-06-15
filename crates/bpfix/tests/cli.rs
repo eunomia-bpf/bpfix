@@ -661,6 +661,90 @@ fn verifier_precision_limits_are_triage_not_source_bugs() {
         .unwrap()
         .contains("verifier precision limit"));
 
+    let helper_clamp_relation =
+        run_json("bpfix-bench/cases/stackoverflow-72560675/replay-verifier.log");
+    assert_eq!(helper_clamp_relation["error_id"], "BPFIX-E005");
+    assert_eq!(
+        helper_clamp_relation["failure_class"],
+        "verifier_false_positive"
+    );
+    assert_eq!(helper_clamp_relation["help_safety"], "triage_only");
+    assert!(evidence_contains(
+        &helper_clamp_relation,
+        "verifier_precision_signal",
+        "cross-variable range relation"
+    ));
+
+    let split_payload_relation =
+        run_json("bpfix-bench/cases/stackoverflow-79095876/replay-verifier.log");
+    assert_eq!(split_payload_relation["error_id"], "BPFIX-E005");
+    assert_eq!(
+        split_payload_relation["failure_class"],
+        "verifier_false_positive"
+    );
+    assert_eq!(split_payload_relation["help_safety"], "triage_only");
+    assert!(evidence_contains(
+        &split_payload_relation,
+        "verifier_precision_signal",
+        "cross-variable range relation"
+    ));
+
+    let helper_min_name_without_relation_guard = run_json_stdin(
+        "func#0 @0\n\
+         0: R1=map_value(map=heap,ks=4,vs=70) R2=scalar(umax=16383) R10=fp0\n\
+         ; if (bpf_probe_read_user(map_buf, min, src)) { @ prog.c:20\n\
+         1: (85) call bpf_probe_read_user#112\n\
+         invalid access to map value, value_size=70 off=0 size=16383\n\
+         R1 min value is outside of the allowed memory range\n",
+    );
+    assert_eq!(
+        helper_min_name_without_relation_guard["error_id"],
+        "BPFIX-E005"
+    );
+    assert_eq!(
+        helper_min_name_without_relation_guard["failure_class"],
+        "source_bug"
+    );
+    assert!(!evidence_contains(
+        &helper_min_name_without_relation_guard,
+        "verifier_precision_signal",
+        "cross-variable range relation"
+    ));
+    assert!(evidence_contains(
+        &helper_min_name_without_relation_guard,
+        "verifier_state_signal",
+        "map-value pointer access crosses"
+    ));
+
+    let helper_relation_guard_too_small_for_value = run_json_stdin(
+        "func#0 @0\n\
+         0: R1=map_value(map=heap,ks=4,vs=70) R2=scalar(umax=16383) R3=scalar(umax=1000) R4=scalar(umax=1) R10=fp0\n\
+         ; if (event->len + min <= 1000) @ prog.c:19\n\
+         1: (25) if r3 > 0x3e8 goto pc+1 ; R3=scalar(umax=1000) R4=scalar(umax=1)\n\
+         ; if (bpf_probe_read_user(map_buf, min, src)) { @ prog.c:20\n\
+         2: (85) call bpf_probe_read_user#112\n\
+         invalid access to map value, value_size=70 off=0 size=16383\n\
+         R1 min value is outside of the allowed memory range\n",
+    );
+    assert_eq!(
+        helper_relation_guard_too_small_for_value["error_id"],
+        "BPFIX-E005"
+    );
+    assert_eq!(
+        helper_relation_guard_too_small_for_value["failure_class"],
+        "source_bug"
+    );
+    assert!(!evidence_contains(
+        &helper_relation_guard_too_small_for_value,
+        "verifier_precision_signal",
+        "cross-variable range relation"
+    ));
+    assert!(evidence_contains(
+        &helper_relation_guard_too_small_for_value,
+        "verifier_state_signal",
+        "map-value pointer access crosses"
+    ));
+
     let packet_repeated_source =
         run_json("bpfix-bench/cases/stackoverflow-70729664/replay-verifier.log");
     assert_eq!(packet_repeated_source["error_id"], "BPFIX-E001");
@@ -2393,6 +2477,199 @@ fn ordinary_source_bugs_are_not_overclassified_as_runtime_artifacts() {
     let helper_bounds = run_json("bpfix-bench/cases/stackoverflow-77713434/replay-verifier.log");
     assert_eq!(helper_bounds["error_id"], "BPFIX-E005");
     assert_eq!(helper_bounds["failure_class"], "source_bug");
+    assert!(evidence_contains(
+        &helper_bounds,
+        "verifier_state_signal",
+        "map-value pointer access crosses"
+    ));
+
+    let fixed_offset_map_value_bounds =
+        run_json("bpfix-bench/cases/stackoverflow-73282201/replay-verifier.log");
+    assert_eq!(fixed_offset_map_value_bounds["error_id"], "BPFIX-E005");
+    assert_eq!(fixed_offset_map_value_bounds["failure_class"], "source_bug");
+    assert!(fixed_offset_map_value_bounds["message"]
+        .as_str()
+        .unwrap()
+        .contains("map-value access exceeds"));
+    assert!(fixed_offset_map_value_bounds["required_proof"]
+        .as_str()
+        .unwrap()
+        .contains("declared map value size"));
+    assert!(fixed_offset_map_value_bounds["help"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|help| help.as_str().unwrap().contains("map-value field offsets")));
+    assert!(evidence_contains(
+        &fixed_offset_map_value_bounds,
+        "verifier_state_signal",
+        "map-value pointer access crosses"
+    ));
+
+    let branch_refined_map_value_bounds =
+        run_json("bpfix-bench/cases/stackoverflow-75515263/replay-verifier.log");
+    assert_eq!(branch_refined_map_value_bounds["error_id"], "BPFIX-E005");
+    assert_eq!(
+        branch_refined_map_value_bounds["failure_class"],
+        "source_bug"
+    );
+    assert!(evidence_contains(
+        &branch_refined_map_value_bounds,
+        "verifier_state_signal",
+        "map-value pointer access crosses"
+    ));
+
+    let branch_delta_map_value_bounds = run_json_stdin(
+        "func#0 @0\n\
+         0: R1=ctx() R10=fp0\n\
+         4: (18) r1 = 0xffff89975b852400 ; R1_w=map_ptr(map=lookup,ks=4,vs=8)\n\
+         6: (85) call bpf_map_lookup_elem#1 ; R0_w=map_value_or_null(id=1,map=lookup,ks=4,vs=8)\n\
+         7: (15) if r0 == 0x0 goto pc+10 ; R0_w=map_value(map=lookup,ks=4,vs=8)\n\
+         13: (69) r3 = *(u16 *)(r0 +8)\n\
+         invalid access to map value, value_size=8 off=8 size=2\n\
+         R0 min value is outside of the allowed memory range\n",
+    );
+    assert_eq!(branch_delta_map_value_bounds["error_id"], "BPFIX-E005");
+    assert_eq!(branch_delta_map_value_bounds["failure_class"], "source_bug");
+    assert!(evidence_contains(
+        &branch_delta_map_value_bounds,
+        "verifier_state_signal",
+        "map-value pointer access crosses"
+    ));
+
+    let direct_width_too_wide_remains_lowering = run_json_stdin(
+        "func#0 @0\n\
+         0: R0=map_value(map=m,ks=4,vs=4) R10=fp0\n\
+         1: (79) r1 = *(u64 *)(r0 +0)\n\
+         invalid access to map value, value_size=4 off=0 size=8\n\
+         R0 min value is outside of the allowed memory range\n",
+    );
+    assert_eq!(
+        direct_width_too_wide_remains_lowering["error_id"],
+        "BPFIX-E005"
+    );
+    assert_eq!(
+        direct_width_too_wide_remains_lowering["failure_class"],
+        "lowering_artifact"
+    );
+    assert!(evidence_contains(
+        &direct_width_too_wide_remains_lowering,
+        "lowering_artifact_signal",
+        "wider than the verifier-proven map value size"
+    ));
+
+    let in_bounds_map_value_shape = run_json_stdin(
+        "func#0 @0\n\
+         0: R0=map_value(map=m,ks=4,vs=16) R10=fp0\n\
+         1: (71) r1 = *(u8 *)(r0 +15)\n\
+         invalid access to map value, value_size=16 off=15 size=1\n\
+         R0 min value is outside of the allowed memory range\n",
+    );
+    assert_eq!(in_bounds_map_value_shape["error_id"], "BPFIX-E005");
+    assert_eq!(in_bounds_map_value_shape["failure_class"], "source_bug");
+    assert!(!evidence_contains(
+        &in_bounds_map_value_shape,
+        "verifier_state_signal",
+        "map-value pointer access crosses"
+    ));
+
+    let mismatched_map_value_width = run_json_stdin(
+        "func#0 @0\n\
+         0: R0=map_value(map=m,ks=4,vs=16) R10=fp0\n\
+         1: (71) r1 = *(u8 *)(r0 +16)\n\
+         invalid access to map value, value_size=16 off=16 size=2\n\
+         R0 min value is outside of the allowed memory range\n",
+    );
+    assert_eq!(mismatched_map_value_width["error_id"], "BPFIX-E005");
+    assert_eq!(mismatched_map_value_width["failure_class"], "source_bug");
+    assert!(!evidence_contains(
+        &mismatched_map_value_width,
+        "verifier_state_signal",
+        "map-value pointer access crosses"
+    ));
+
+    let helper_bounds_mismatched_length_state = run_json_stdin(
+        "func#0 @0\n\
+         0: R1=map_value(map=m,ks=4,vs=70) R2=16 R10=fp0\n\
+         1: (85) call bpf_probe_read_user#112\n\
+         invalid access to map value, value_size=70 off=0 size=16383\n\
+         R1 min value is outside of the allowed memory range\n",
+    );
+    assert_eq!(
+        helper_bounds_mismatched_length_state["error_id"],
+        "BPFIX-E005"
+    );
+    assert_eq!(
+        helper_bounds_mismatched_length_state["failure_class"],
+        "source_bug"
+    );
+    assert!(!evidence_contains(
+        &helper_bounds_mismatched_length_state,
+        "verifier_state_signal",
+        "map-value pointer access crosses"
+    ));
+
+    let helper_bounds_terminal_reports_length_register = run_json_stdin(
+        "func#0 @0\n\
+         0: R1=map_value(map=m,ks=4,vs=70) R2=scalar(umax=16383) R10=fp0\n\
+         1: (85) call bpf_probe_read_user#112\n\
+         invalid access to map value, value_size=70 off=0 size=16383\n\
+         R2 min value is outside of the allowed memory range\n",
+    );
+    assert_eq!(
+        helper_bounds_terminal_reports_length_register["error_id"],
+        "BPFIX-E005"
+    );
+    assert_eq!(
+        helper_bounds_terminal_reports_length_register["failure_class"],
+        "source_bug"
+    );
+    assert!(evidence_contains(
+        &helper_bounds_terminal_reports_length_register,
+        "verifier_state_signal",
+        "map-value pointer access crosses"
+    ));
+
+    let unrelated_helper_map_value_bounds = run_json_stdin(
+        "func#0 @0\n\
+         0: R1=map_value(map=m,ks=4,vs=70) R2=scalar(umax=16383) R10=fp0\n\
+         1: (85) call bpf_get_prandom_u32#7\n\
+         invalid access to map value, value_size=70 off=0 size=16383\n\
+         R1 min value is outside of the allowed memory range\n",
+    );
+    assert_eq!(unrelated_helper_map_value_bounds["error_id"], "BPFIX-E005");
+    assert_eq!(
+        unrelated_helper_map_value_bounds["failure_class"],
+        "source_bug"
+    );
+    assert!(!evidence_contains(
+        &unrelated_helper_map_value_bounds,
+        "verifier_state_signal",
+        "map-value pointer access crosses"
+    ));
+
+    let branch_delta_map_value_overridden_by_later_scalar = run_json_stdin(
+        "func#0 @0\n\
+         0: R0=map_value_or_null(id=1,map=lookup,ks=4,vs=8) R10=fp0\n\
+         7: (15) if r0 == 0x0 goto pc+10 ; R0_w=map_value(map=lookup,ks=4,vs=8)\n\
+         12: R0=scalar()\n\
+         13: (69) r3 = *(u16 *)(r0 +8)\n\
+         invalid access to map value, value_size=8 off=8 size=2\n\
+         R0 min value is outside of the allowed memory range\n",
+    );
+    assert_eq!(
+        branch_delta_map_value_overridden_by_later_scalar["error_id"],
+        "BPFIX-E005"
+    );
+    assert_eq!(
+        branch_delta_map_value_overridden_by_later_scalar["failure_class"],
+        "source_bug"
+    );
+    assert!(!evidence_contains(
+        &branch_delta_map_value_overridden_by_later_scalar,
+        "verifier_state_signal",
+        "map-value pointer access crosses"
+    ));
 
     for path in [
         "bpfix-bench/cases/github-aya-rs-aya-1062/replay-verifier.log",

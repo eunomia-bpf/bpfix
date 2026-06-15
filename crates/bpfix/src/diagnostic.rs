@@ -67,6 +67,7 @@ pub enum ProofSignal {
     MapValueWideAccess,
     MapValueCheckedOffsetRelationLost,
     MapValueGuardExceedsValueSize,
+    MapValueAccessOutOfBounds,
     ScalarRangeUnsafeAtUse,
     MapPointerArgumentScalarZero,
     BtfFuncInfoMissing,
@@ -219,6 +220,9 @@ impl ProofSignal {
             Self::MapValueGuardExceedsValueSize => {
                 "map-value index guard exceeds the map value size"
             }
+            Self::MapValueAccessOutOfBounds => {
+                "map-value access exceeds the verifier-visible value size"
+            }
             Self::ScalarRangeUnsafeAtUse => {
                 "scalar range at the rejected use is still verifier-unsafe"
             }
@@ -300,6 +304,9 @@ impl ProofSignal {
             }
             Self::MapValueGuardExceedsValueSize => {
                 "source bounds the map-value index to a range larger than the verifier-visible value size allows"
+            }
+            Self::MapValueAccessOutOfBounds => {
+                "verifier state shows the rejected map-value pointer access crosses the declared value size"
             }
             Self::ScalarRangeUnsafeAtUse => {
                 "verifier state shows the rejected scalar or pointer-offset register still has an unsafe range at the use"
@@ -459,6 +466,9 @@ impl ProofSignal {
             Self::MapValueGuardExceedsValueSize => {
                 "Clamp the map-value index to the array length or remaining bytes inside the map value; the guard must account for field offset plus access width."
             }
+            Self::MapValueAccessOutOfBounds => {
+                "Keep map-value field offsets, array indexes, and helper lengths inside the declared map value size; resize the map value or clamp the access before the load, store, or helper call."
+            }
             Self::MapPointerArgumentScalarZero => {
                 "Load the ELF object through libbpf or another loader that applies map relocations; raw instructions must not replace a map symbol with scalar zero."
             }
@@ -579,7 +589,9 @@ impl ProofSignal {
 
     const fn selection_rank(self) -> u8 {
         match self {
+            Self::MapValueRelationPrecisionBoundary => 4,
             Self::MapValueGuardExceedsValueSize => 5,
+            Self::MapValueAccessOutOfBounds => 6,
             Self::SleepableCallInNonSleepableContext => 7,
             Self::ModernBpfObjectProtocolViolation => 8,
             Self::PacketGuardUndercoversAccess => 40,
@@ -643,6 +655,7 @@ impl ProofSignal {
                 | Self::StalePointerAfterInvalidatingHelper
                 | Self::ProhibitedPointerArithmetic
                 | Self::MapValueGuardExceedsValueSize
+                | Self::MapValueAccessOutOfBounds
                 | Self::ScalarRangeUnsafeAtUse
                 | Self::PacketAccessWithoutBoundsProof
                 | Self::PacketGuardUndercoversAccess
@@ -732,6 +745,7 @@ impl ProofSignal {
                 | Self::NullablePointerUseWithoutProof
                 | Self::PacketAccessWithoutBoundsProof
                 | Self::ScalarRangeUnsafeAtUse
+                | Self::MapValueAccessOutOfBounds
                 | Self::TrustedNullableArgument
                 | Self::ContextAccessSourceArgumentMismatch
                 | Self::ContextFieldUnavailable
@@ -845,6 +859,9 @@ impl ProofSignal {
             Self::MapValueGuardExceedsValueSize => Some(
                 "prove the map-value index plus field offset and access width stays below the map value size",
             ),
+            Self::MapValueAccessOutOfBounds => Some(
+                "prove the map-value field offset plus access width stays below the declared map value size at the rejected access",
+            ),
             Self::PacketAccessWithoutBoundsProof => Some(
                 "prove this packet register has range at least off + size at the rejected load, store, or helper call",
             ),
@@ -950,6 +967,9 @@ impl ProofSignal {
             Self::MapValueGuardExceedsValueSize => {
                 Some("map value index guard is wider than the value field can hold")
             }
+            Self::MapValueAccessOutOfBounds => {
+                Some("this map-value access crosses the declared value size")
+            }
             Self::PacketAccessWithoutBoundsProof => {
                 Some("packet range proof is too short for this access")
             }
@@ -985,6 +1005,7 @@ impl ProofSignal {
             Self::UnreadableProgramEntryArgument => Some("BPFIX-E011"),
             Self::UnreadableHelperArgument => Some("BPFIX-E010"),
             Self::HelperStackWriteBeyondFrame => Some("BPFIX-E006"),
+            Self::MapValueAccessOutOfBounds => Some("BPFIX-E005"),
             Self::ScalarValueUsedAsPointer => Some("BPFIX-E011"),
             Self::StalePointerAfterInvalidatingHelper => Some("BPFIX-E011"),
             Self::KernelObjectFieldAccessMismatch => Some("BPFIX-E011"),
@@ -1880,7 +1901,7 @@ fn proof_signals(context: ProofSignalContext<'_>) -> Vec<ProofSignal> {
             signals.push(signal);
         }
     }
-    if let Some(signal) = verifier_precision_signal(context.obligation, context.events) {
+    if let Some(signal) = verifier_precision_signal(&context) {
         signals.push(signal);
     }
     if let Some(signal) = packet_verifier_precision_signal(&context) {
@@ -2041,6 +2062,9 @@ fn proof_signals(context: ProofSignalContext<'_>) -> Vec<ProofSignal> {
     }
     if map_value_guard_exceeds_value_size(&context) {
         signals.push(ProofSignal::MapValueGuardExceedsValueSize);
+    }
+    if map_value_access_out_of_bounds(&context) {
+        signals.push(ProofSignal::MapValueAccessOutOfBounds);
     }
     if signals.is_empty() && stale_pointer_after_invalidating_helper(&context) {
         signals.push(ProofSignal::StalePointerAfterInvalidatingHelper);
@@ -4956,6 +4980,133 @@ fn map_value_guard_exceeds_value_size(context: &ProofSignalContext<'_>) -> bool 
     source_guard_exceeds_index_capacity(context, rejected, &index, max_index, state, reg)
 }
 
+fn map_value_access_out_of_bounds(context: &ProofSignalContext<'_>) -> bool {
+    if !context
+        .terminal_error
+        .contains("invalid access to map value")
+    {
+        return false;
+    }
+    let Some(value_size) = parse_u32_after(context.terminal_error, "value_size=") else {
+        return false;
+    };
+    let Some(access_offset) = parse_u32_after(context.terminal_error, "off=") else {
+        return false;
+    };
+    let Some(access_size) = parse_u32_after(context.terminal_error, "size=") else {
+        return false;
+    };
+    if access_offset
+        .checked_add(access_size)
+        .is_none_or(|end| end <= value_size)
+    {
+        return false;
+    }
+    let Some(instruction) =
+        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)
+    else {
+        return false;
+    };
+    let instruction_target = direct_call_target_from_instruction_tail(instruction.tail);
+    let Some(reg) = memory_access_base_register(instruction.tail)
+        .or_else(|| instruction_target.and_then(helper_memory_pointer_argument_register))
+        .or(context.register)
+        .or_else(|| register_from_terminal_error(context.terminal_error))
+    else {
+        return false;
+    };
+    let fragment_start = context
+        .terminal_line
+        .map(|line| verifier_fragment_start_line(context.log, line))
+        .unwrap_or_else(|| verifier_fragment_start_line(context.log, instruction.line));
+    let Some(state) = latest_reg_state_before_instruction(
+        context.branch_states,
+        instruction,
+        fragment_start,
+        reg,
+    ) else {
+        return false;
+    };
+    if state.reg_type != "map_value" || state.map_value_size != Some(value_size) {
+        return false;
+    }
+    if let Some(base_reg) = memory_access_base_register(instruction.tail) {
+        if access_size > value_size {
+            return false;
+        }
+        return base_reg == reg
+            && memory_access_width(instruction.tail) == Some(access_size)
+            && map_value_terminal_offset_matches_state(
+                state,
+                access_offset,
+                memory_access_offset(instruction.tail),
+            );
+    }
+    let Some(target) = instruction_target else {
+        return false;
+    };
+    helper_memory_pointer_argument_register(target) == Some(reg)
+        && map_value_terminal_offset_matches_state(state, access_offset, Some(0))
+        && helper_memory_access_length_matches(
+            context.branch_states,
+            instruction,
+            fragment_start,
+            target,
+            access_size,
+        )
+}
+
+fn map_value_terminal_offset_matches_state(
+    state: &RegState,
+    reported_offset: u32,
+    instruction_offset: Option<i64>,
+) -> bool {
+    let Some(instruction_offset) = instruction_offset else {
+        return false;
+    };
+    i64::from(state.offset.unwrap_or(0)).saturating_add(instruction_offset)
+        == i64::from(reported_offset)
+}
+
+fn helper_memory_pointer_argument_register(target: &str) -> Option<u8> {
+    match target {
+        "bpf_probe_read"
+        | "bpf_probe_read_kernel"
+        | "bpf_probe_read_kernel_str"
+        | "bpf_probe_read_user"
+        | "bpf_probe_read_user_str" => Some(1),
+        _ => None,
+    }
+}
+
+fn helper_memory_access_length_matches(
+    states: &[VerifierInsn],
+    instruction: TerminalInstruction<'_>,
+    fragment_start: usize,
+    target: &str,
+    access_size: u32,
+) -> bool {
+    let Some(length_reg) = scalar_length_helper_argument_register(target) else {
+        return false;
+    };
+    latest_reg_state_before_instruction(states, instruction, fragment_start, length_reg)
+        .is_some_and(|state| scalar_state_upper_bound_matches_size(state, access_size))
+}
+
+fn scalar_state_upper_bound_matches_size(state: &RegState, access_size: u32) -> bool {
+    state.exact_value == Some(u64::from(access_size))
+        || state.range.umax == Some(u64::from(access_size))
+        || state
+            .range
+            .smax
+            .is_some_and(|value| value == i64::from(access_size))
+        || state.range.umax32 == Some(access_size)
+        || state
+            .range
+            .smax32
+            .is_some_and(|value| value == access_size as i32)
+}
+
 fn terminal_instruction_access_width(
     log: &str,
     terminal_pc: Option<usize>,
@@ -6590,26 +6741,290 @@ fn looks_like_packet_pointer_derivation(text: &str) -> bool {
     lhs.contains('*')
 }
 
-fn verifier_precision_signal(
-    obligation: ProofObligation,
-    events: &[ProofEvent],
-) -> Option<ProofSignal> {
-    match obligation {
-        ProofObligation::ScalarRange
-            if source_text_contains_any(events, &["bpf_probe_read"])
-                && source_text_contains_any(
-                    events,
-                    &[
-                        " min,",
-                        "&event->content[event->len]",
-                        "&event->payload[total_len]",
-                    ],
-                ) =>
-        {
+fn verifier_precision_signal(context: &ProofSignalContext<'_>) -> Option<ProofSignal> {
+    match context.obligation {
+        ProofObligation::ScalarRange if map_value_relation_precision_boundary(context) => {
             Some(ProofSignal::MapValueRelationPrecisionBoundary)
         }
         _ => None,
     }
+}
+
+fn map_value_relation_precision_boundary(context: &ProofSignalContext<'_>) -> bool {
+    if !context
+        .terminal_error
+        .contains("invalid access to map value")
+    {
+        return false;
+    }
+    let Some(value_size) = parse_u32_after(context.terminal_error, "value_size=") else {
+        return false;
+    };
+    let Some(access_offset) = parse_u32_after(context.terminal_error, "off=") else {
+        return false;
+    };
+    let Some(access_size) = parse_u32_after(context.terminal_error, "size=") else {
+        return false;
+    };
+    if access_offset
+        .checked_add(access_size)
+        .is_none_or(|end| end <= value_size)
+    {
+        return false;
+    }
+    let Some(instruction) =
+        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)
+    else {
+        return false;
+    };
+    let Some(target) = direct_call_target_from_instruction_tail(instruction.tail) else {
+        return false;
+    };
+    let Some(pointer_reg) = helper_memory_pointer_argument_register(target) else {
+        return false;
+    };
+    let Some(length_reg) = scalar_length_helper_argument_register(target) else {
+        return false;
+    };
+    let fragment_start = context
+        .terminal_line
+        .map(|line| verifier_fragment_start_line(context.log, line))
+        .unwrap_or_else(|| verifier_fragment_start_line(context.log, instruction.line));
+    let Some(pointer_state) = latest_reg_state_before_instruction(
+        context.branch_states,
+        instruction,
+        fragment_start,
+        pointer_reg,
+    ) else {
+        return false;
+    };
+    if pointer_state.reg_type != "map_value" || pointer_state.map_value_size != Some(value_size) {
+        return false;
+    }
+    let Some(relation_capacity) = map_value_remaining_capacity(pointer_state, value_size) else {
+        return false;
+    };
+    if !map_value_relation_precision_source_shape(
+        context,
+        instruction,
+        fragment_start,
+        length_reg,
+        relation_capacity,
+    ) {
+        return false;
+    }
+    if map_value_access_range_may_exceed_value_size(pointer_state, access_size) {
+        return true;
+    }
+    latest_reg_state_before_instruction(
+        context.branch_states,
+        instruction,
+        fragment_start,
+        length_reg,
+    )
+    .is_some_and(|state| {
+        access_size > value_size && scalar_state_upper_bound_matches_size(state, access_size)
+    })
+}
+
+fn map_value_relation_precision_source_shape(
+    context: &ProofSignalContext<'_>,
+    instruction: TerminalInstruction<'_>,
+    fragment_start: usize,
+    length_reg: u8,
+    relation_capacity: u32,
+) -> bool {
+    let helper_call_is_visible = source_text_contains_any(context.events, &["bpf_probe_read"])
+        || source_event_text_contains_any(context.source_events, &["bpf_probe_read"]);
+    if !helper_call_is_visible {
+        return false;
+    }
+    if !source_text_contains_any(
+        context.events,
+        &[
+            " min,",
+            "&event->content[event->len]",
+            "&event->payload[total_len]",
+        ],
+    ) {
+        return false;
+    }
+    (source_event_text_contains_min_clamp(context.source_events)
+        && recent_scalar_state_at_most(
+            context.branch_states,
+            instruction,
+            fragment_start,
+            Some(length_reg),
+            relation_capacity,
+        ))
+        || source_event_text_contains_relation_guard(
+            context.source_events,
+            context.branch_states,
+            instruction,
+            fragment_start,
+            length_reg,
+            relation_capacity,
+        )
+        || source_event_text_contains_split_payload_bounds(
+            context.source_events,
+            context.branch_states,
+            instruction,
+            fragment_start,
+            length_reg,
+            relation_capacity,
+        )
+}
+
+fn source_event_text_contains_any(source_events: &[SourceEvent], needles: &[&str]) -> bool {
+    source_events.iter().any(|event| {
+        needles
+            .iter()
+            .any(|needle| event.source.text.contains(needle))
+    })
+}
+
+fn source_event_text_contains_min_clamp(source_events: &[SourceEvent]) -> bool {
+    source_events.iter().any(|event| {
+        let text = event.source.text.as_str();
+        text.contains("MIN(") || text.contains("min =")
+    })
+}
+
+fn source_event_text_contains_relation_guard(
+    source_events: &[SourceEvent],
+    states: &[VerifierInsn],
+    instruction: TerminalInstruction<'_>,
+    fragment_start: usize,
+    length_reg: u8,
+    relation_capacity: u32,
+) -> bool {
+    source_events.iter().any(|event| {
+        let text = event.source.text.as_str();
+        text.contains("if (")
+            && text.contains('+')
+            && (text.contains(" < ") || text.contains(" <= "))
+            && (source_line_numeric_bound_at_most(text, relation_capacity)
+                || recent_scalar_state_at_most(
+                    states,
+                    instruction,
+                    fragment_start,
+                    Some(length_reg),
+                    relation_capacity,
+                ))
+    })
+}
+
+fn source_event_text_contains_split_payload_bounds(
+    source_events: &[SourceEvent],
+    states: &[VerifierInsn],
+    instruction: TerminalInstruction<'_>,
+    fragment_start: usize,
+    length_reg: u8,
+    relation_capacity: u32,
+) -> bool {
+    let has_total_len_guard = source_events.iter().any(|event| {
+        let text = event.source.text.as_str();
+        text.contains("if (")
+            && text.contains("total_len")
+            && (text.contains(" <")
+                || text.contains(" <=")
+                || text.contains(" >")
+                || text.contains(" >="))
+    });
+    let has_to_read_guard = source_events.iter().any(|event| {
+        let text = event.source.text.as_str();
+        text.contains("if (")
+            && text.contains("to_read")
+            && (text.contains(" <")
+                || text.contains(" <=")
+                || text.contains(" >")
+                || text.contains(" >="))
+    });
+    has_total_len_guard
+        && has_to_read_guard
+        && recent_scalar_state_at_most(
+            states,
+            instruction,
+            fragment_start,
+            Some(length_reg),
+            relation_capacity,
+        )
+}
+
+fn source_line_numeric_bound_at_most(text: &str, relation_capacity: u32) -> bool {
+    max_numeric_token(text).is_some_and(|bound| bound <= relation_capacity)
+}
+
+fn recent_scalar_state_at_most(
+    states: &[VerifierInsn],
+    instruction: TerminalInstruction<'_>,
+    fragment_start: usize,
+    reg: Option<u8>,
+    relation_capacity: u32,
+) -> bool {
+    let earliest_pc = instruction.pc.saturating_sub(12);
+    states
+        .iter()
+        .filter(|state| state.log_line >= fragment_start)
+        .filter(|state| state.log_line < instruction.line)
+        .filter(|state| state.pc >= earliest_pc && state.pc <= instruction.pc)
+        .any(|state| match reg {
+            Some(reg) => state
+                .regs
+                .get(&reg)
+                .is_some_and(|state| scalar_state_upper_bound_at_most(state, relation_capacity)),
+            None => state
+                .regs
+                .values()
+                .any(|state| scalar_state_upper_bound_at_most(state, relation_capacity)),
+        })
+}
+
+fn scalar_state_upper_bound_at_most(state: &RegState, relation_capacity: u32) -> bool {
+    if state.reg_type != "scalar" {
+        return false;
+    }
+    let capacity = u64::from(relation_capacity);
+    state.exact_value.is_some_and(|value| value <= capacity)
+        || state.range.umax.is_some_and(|value| value <= capacity)
+        || state
+            .range
+            .smax
+            .is_some_and(|value| value >= 0 && value as u64 <= capacity)
+        || state
+            .range
+            .umax32
+            .is_some_and(|value| value <= relation_capacity)
+        || state
+            .range
+            .smax32
+            .is_some_and(|value| value >= 0 && value as u32 <= relation_capacity)
+}
+
+fn map_value_remaining_capacity(state: &RegState, value_size: u32) -> Option<u32> {
+    let fixed_offset = state.offset.unwrap_or(0);
+    let fixed_offset = u32::try_from(fixed_offset).ok()?;
+    value_size.checked_sub(fixed_offset)
+}
+
+fn map_value_access_range_may_exceed_value_size(state: &RegState, access_size: u32) -> bool {
+    if state.reg_type != "map_value" {
+        return false;
+    }
+    let Some(value_size) = state.map_value_size else {
+        return false;
+    };
+    let max_variable_offset = map_value_variable_max_offset(state);
+    let fixed_offset = state.offset.and_then(|offset| u64::try_from(offset).ok());
+    let max_offset = match (fixed_offset, max_variable_offset) {
+        (Some(fixed), Some(variable)) => fixed.checked_add(variable),
+        (Some(fixed), None) => Some(fixed),
+        (None, Some(variable)) => Some(variable),
+        (None, None) => Some(0),
+    };
+    max_offset
+        .and_then(|offset| offset.checked_add(u64::from(access_size)))
+        .is_some_and(|end| end > u64::from(value_size))
 }
 
 fn source_text_contains(events: &[ProofEvent], predicate: impl Fn(&str) -> bool) -> bool {
