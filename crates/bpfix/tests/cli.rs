@@ -2624,6 +2624,157 @@ fn scalar_pointer_state_signal_requires_matching_current_instruction_state() {
 }
 
 #[test]
+fn stale_data_pointer_after_invalidating_helper_reports_state_signal() {
+    for path in [
+        "bpfix-bench/cases/github-commit-cilium-2ff1a462cd33/replay-verifier.log",
+        "bpfix-bench/cases/github-commit-cilium-3f356b0156d8/replay-verifier.log",
+        "bpfix-bench/cases/kernel-selftest-dynptr-fail-skb-invalid-data-slice1-tc-0b35a757/replay-verifier.log",
+        "bpfix-bench/cases/kernel-selftest-dynptr-fail-skb-invalid-data-slice3-tc-a15c4322/replay-verifier.log",
+        "bpfix-bench/cases/kernel-selftest-dynptr-fail-dynptr-invalidate-slice-reinit-raw-tp-f5b71f50/replay-verifier.log",
+        "bpfix-bench/cases/kernel-selftest-dynptr-fail-xdp-invalid-data-slice1-xdp-c0fa30d5/replay-verifier.log",
+    ] {
+        let diagnostic = run_json(path);
+        assert_eq!(diagnostic["error_id"], "BPFIX-E011");
+        assert_eq!(diagnostic["failure_class"], "source_bug");
+        assert!(evidence_contains(
+            &diagnostic,
+            "verifier_state_signal",
+            "intervening helper invalidated"
+        ));
+        assert!(diagnostic["required_proof"]
+            .as_str()
+            .unwrap()
+            .contains("preserve pointer provenance"));
+    }
+}
+
+#[test]
+fn stale_data_pointer_signal_requires_invalidating_helper_after_pointer_state() {
+    let non_invalidating_helper = run_json_stdin(
+        "func#0 @0\n\
+         0: R7=pkt(r=14) R10=fp0\n\
+         1: (85) call bpf_get_prandom_u32#7\n\
+         2: (71) r0 = *(u8 *)(r7 +0)\n\
+         R7 invalid mem access 'scalar'\n",
+    );
+    assert!(!evidence_contains(
+        &non_invalidating_helper,
+        "verifier_state_signal",
+        "intervening helper invalidated"
+    ));
+
+    let pointer_reacquired_after_helper = run_json_stdin(
+        "func#0 @0\n\
+         0: (85) call bpf_xdp_adjust_head#44\n\
+         1: R7=pkt(r=14) R10=fp0\n\
+         2: (71) r0 = *(u8 *)(r7 +0)\n\
+         R7 invalid mem access 'scalar'\n",
+    );
+    assert!(!evidence_contains(
+        &pointer_reacquired_after_helper,
+        "verifier_state_signal",
+        "intervening helper invalidated"
+    ));
+
+    let scalar_state_after_invalidating_helper = run_json_stdin(
+        "func#0 @0\n\
+         0: R7=pkt(r=14) R10=fp0\n\
+         1: (85) call bpf_xdp_adjust_head#44\n\
+         2: R7=scalar() R10=fp0\n\
+         3: (71) r0 = *(u8 *)(r7 +0)\n\
+         R7 invalid mem access 'scalar'\n",
+    );
+    assert!(!evidence_contains(
+        &scalar_state_after_invalidating_helper,
+        "verifier_state_signal",
+        "intervening helper invalidated"
+    ));
+    assert!(evidence_contains(
+        &scalar_state_after_invalidating_helper,
+        "verifier_state_signal",
+        "consumed register is scalar"
+    ));
+
+    let local_dynptr_data_ignores_packet_helper = run_json_stdin(
+        "func#0 @0\n\
+         0: R3=fp-16 R4=fp-32 R10=fp0\n\
+         1: (85) call bpf_dynptr_from_skb#71549\n\
+         2: (85) call bpf_dynptr_from_mem#197\n\
+         3: R1=fp-32 R10=fp0\n\
+         4: (85) call bpf_dynptr_data#203\n\
+         5: R7=mem(sz=1) R10=fp0\n\
+         6: (85) call bpf_skb_pull_data#39\n\
+         7: (71) r0 = *(u8 *)(r7 +0)\n\
+         R7 invalid mem access 'scalar'\n",
+    );
+    assert!(!evidence_contains(
+        &local_dynptr_data_ignores_packet_helper,
+        "verifier_state_signal",
+        "intervening helper invalidated"
+    ));
+
+    let unrelated_dynptr_write = run_json_stdin(
+        "func#0 @0\n\
+         0: R4=fp-16 R10=fp0\n\
+         1: (85) call bpf_dynptr_from_mem#197\n\
+         2: R1=fp-16 R10=fp0\n\
+         3: (85) call bpf_dynptr_data#203\n\
+         4: R7=mem(sz=1) R10=fp0\n\
+         5: R1=fp-32 R10=fp0\n\
+         6: (85) call bpf_dynptr_write#202\n\
+         7: (71) r0 = *(u8 *)(r7 +0)\n\
+         R7 invalid mem access 'scalar'\n",
+    );
+    assert!(!evidence_contains(
+        &unrelated_dynptr_write,
+        "verifier_state_signal",
+        "intervening helper invalidated"
+    ));
+
+    let later_data_pointer_producer_for_different_register = run_json_stdin(
+        "func#0 @0\n\
+         0: R4=fp-16 R10=fp0\n\
+         1: (85) call bpf_dynptr_from_mem#197\n\
+         2: R1=fp-16 R10=fp0\n\
+         3: (85) call bpf_dynptr_data#203\n\
+         4: (bf) r7 = r0 ; R7_w=mem(sz=1)\n\
+         5: R4=fp-32 R10=fp0\n\
+         6: (85) call bpf_dynptr_from_mem#197\n\
+         7: R1=fp-32 R10=fp0\n\
+         8: (85) call bpf_dynptr_data#203\n\
+         9: (bf) r8 = r0 ; R7=mem(sz=1) R8_w=mem(sz=1)\n\
+         10: R1=fp-32 R10=fp0\n\
+         11: (85) call bpf_dynptr_write#202\n\
+         12: (71) r0 = *(u8 *)(r7 +0)\n\
+         R7 invalid mem access 'scalar'\n",
+    );
+    assert!(!evidence_contains(
+        &later_data_pointer_producer_for_different_register,
+        "verifier_state_signal",
+        "intervening helper invalidated"
+    ));
+
+    let r0_clobber_breaks_dynptr_lineage = run_json_stdin(
+        "func#0 @0\n\
+         0: R4=fp-16 R10=fp0\n\
+         1: (85) call bpf_dynptr_from_mem#197\n\
+         2: R1=fp-16 R10=fp0\n\
+         3: (85) call bpf_dynptr_data#203\n\
+         4: (85) call bpf_get_prandom_u32#7\n\
+         5: (bf) r7 = r0 ; R7_w=mem(sz=1)\n\
+         6: R1=fp-16 R10=fp0\n\
+         7: (85) call bpf_dynptr_write#202\n\
+         8: (71) r0 = *(u8 *)(r7 +0)\n\
+         R7 invalid mem access 'scalar'\n",
+    );
+    assert!(!evidence_contains(
+        &r0_clobber_breaks_dynptr_lineage,
+        "verifier_state_signal",
+        "intervening helper invalidated"
+    ));
+}
+
+#[test]
 fn nullable_pointer_uses_report_state_discipline() {
     for path in [
         "bpfix-bench/cases/github-cilium-cilium-36936/replay-verifier.log",

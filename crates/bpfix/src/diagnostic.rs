@@ -97,6 +97,7 @@ pub enum ProofSignal {
     UnreadableHelperArgument,
     HelperStackWriteBeyondFrame,
     ScalarValueUsedAsPointer,
+    StalePointerAfterInvalidatingHelper,
     ProhibitedPointerArithmetic,
     PacketGuardUndercoversAccess,
     PacketMaxOffsetPrecisionBoundary,
@@ -204,6 +205,9 @@ impl ProofSignal {
             }
             Self::ScalarValueUsedAsPointer => {
                 "scalar or pkt_end value is used where the verifier requires a real pointer"
+            }
+            Self::StalePointerAfterInvalidatingHelper => {
+                "skb/xdp or dynptr data pointer is reused after a helper invalidates it"
             }
             Self::ProhibitedPointerArithmetic => {
                 "pointer arithmetic uses an operator the verifier cannot apply to pointer state"
@@ -383,6 +387,9 @@ impl ProofSignal {
             Self::ScalarValueUsedAsPointer => {
                 "verifier state at the rejected instruction shows the consumed register is scalar or pkt_end state, but the instruction uses it as a memory pointer or pointer-like value"
             }
+            Self::StalePointerAfterInvalidatingHelper => {
+                "verifier state shows this register previously held an skb/xdp or dynptr data pointer, but an intervening helper invalidated that pointer before the rejected memory access"
+            }
             Self::ProhibitedPointerArithmetic => {
                 "verifier state at the rejected instruction shows the target register is still pointer state, but the instruction applies a prohibited pointer arithmetic or bitwise operator"
             }
@@ -535,6 +542,9 @@ impl ProofSignal {
             Self::ScalarValueUsedAsPointer => {
                 "Use a verifier-recognized pointer at the access site; keep end sentinels, scalar offsets, and pointer bases separate, and reload or rederive the pointer from a supported context/helper before dereferencing it."
             }
+            Self::StalePointerAfterInvalidatingHelper => {
+                "After helpers that move or rewrite skb/xdp data, write dynptr backing storage, or replace dynptr backing state, discard old data and slice pointers and reacquire a fresh verifier-recognized pointer before dereferencing."
+            }
             Self::ProhibitedPointerArithmetic => {
                 "Avoid bitwise or unsupported arithmetic on pointer registers; preserve pointer provenance by keeping the pointer unchanged and applying scalar arithmetic to a separate offset before deriving a verifier-recognized pointer."
             }
@@ -619,6 +629,7 @@ impl ProofSignal {
                 | Self::UnreadableHelperArgument
                 | Self::HelperStackWriteBeyondFrame
                 | Self::ScalarValueUsedAsPointer
+                | Self::StalePointerAfterInvalidatingHelper
                 | Self::ProhibitedPointerArithmetic
                 | Self::MapValueGuardExceedsValueSize
                 | Self::ScalarRangeUnsafeAtUse
@@ -719,6 +730,7 @@ impl ProofSignal {
                 | Self::UnreadableHelperArgument
                 | Self::HelperStackWriteBeyondFrame
                 | Self::ScalarValueUsedAsPointer
+                | Self::StalePointerAfterInvalidatingHelper
                 | Self::ProhibitedPointerArithmetic
         )
     }
@@ -805,6 +817,9 @@ impl ProofSignal {
             ),
             Self::ScalarValueUsedAsPointer => Some(
                 "prove the value consumed by this memory access or pointer operation is a verifier-recognized pointer, not scalar or pkt_end state",
+            ),
+            Self::StalePointerAfterInvalidatingHelper => Some(
+                "preserve pointer provenance by reacquiring and rechecking the skb/xdp or dynptr data pointer after the helper that invalidates existing data pointers",
             ),
             Self::ProhibitedPointerArithmetic => Some(
                 "preserve pointer state by avoiding bitwise or verifier-prohibited arithmetic on the pointer register",
@@ -905,6 +920,9 @@ impl ProofSignal {
             Self::ScalarValueUsedAsPointer => {
                 Some("this access consumes scalar or pkt_end state where a pointer is required")
             }
+            Self::StalePointerAfterInvalidatingHelper => {
+                Some("this access reuses a pointer invalidated by an earlier helper call")
+            }
             Self::ProhibitedPointerArithmetic => {
                 Some("this instruction applies a prohibited operation to pointer state")
             }
@@ -950,6 +968,7 @@ impl ProofSignal {
             Self::UnreadableHelperArgument => Some("BPFIX-E010"),
             Self::HelperStackWriteBeyondFrame => Some("BPFIX-E006"),
             Self::ScalarValueUsedAsPointer => Some("BPFIX-E011"),
+            Self::StalePointerAfterInvalidatingHelper => Some("BPFIX-E011"),
             _ => None,
         }
     }
@@ -1977,6 +1996,9 @@ fn proof_signals(context: ProofSignalContext<'_>) -> Vec<ProofSignal> {
     }
     if map_value_guard_exceeds_value_size(&context) {
         signals.push(ProofSignal::MapValueGuardExceedsValueSize);
+    }
+    if signals.is_empty() && stale_pointer_after_invalidating_helper(&context) {
+        signals.push(ProofSignal::StalePointerAfterInvalidatingHelper);
     }
     if signals.is_empty() && scalar_value_used_as_pointer(&context) {
         signals.push(ProofSignal::ScalarValueUsedAsPointer);
@@ -3788,6 +3810,307 @@ fn scalar_value_used_as_pointer(context: &ProofSignalContext<'_>) -> bool {
     }
 }
 
+fn stale_pointer_after_invalidating_helper(context: &ProofSignalContext<'_>) -> bool {
+    if context.obligation != ProofObligation::PointerProvenance {
+        return false;
+    }
+    let terminal = context.terminal_error.to_ascii_lowercase();
+    if !(terminal.contains("invalid mem access 'scalar'")
+        || terminal.contains("invalid mem access 'inv'"))
+    {
+        return false;
+    }
+    let Some(reg) = context
+        .register
+        .or_else(|| register_from_terminal_error(context.terminal_error))
+    else {
+        return false;
+    };
+    let Some(instruction) =
+        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)
+    else {
+        return false;
+    };
+    if memory_access_base_register(instruction.tail) != Some(reg) {
+        return false;
+    }
+    let fragment_start = context
+        .terminal_line
+        .map(|line| verifier_fragment_start_line(context.log, line))
+        .unwrap_or_else(|| verifier_fragment_start_line(context.log, instruction.line));
+    let Some((state, state_log_line)) = latest_reg_state_before_instruction_with_log_line(
+        context.branch_states,
+        instruction,
+        fragment_start,
+        reg,
+    ) else {
+        return false;
+    };
+    let Some(pointer_kind) = stale_data_pointer_kind(&context, state, state_log_line, reg) else {
+        return false;
+    };
+    invalidating_helper_between(&context, state_log_line, instruction.line, pointer_kind)
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum StaleDataPointerKind {
+    Packet,
+    DynptrData(DynptrDataOrigin),
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct DynptrDataOrigin {
+    slot: DynptrStackSlot,
+    backing: DynptrBacking,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct DynptrStackSlot {
+    frame: usize,
+    offset: i32,
+}
+
+fn stale_data_pointer_kind(
+    context: &ProofSignalContext<'_>,
+    state: &RegState,
+    state_log_line: usize,
+    reg: u8,
+) -> Option<StaleDataPointerKind> {
+    match state.reg_type.as_str() {
+        "pkt" => Some(StaleDataPointerKind::Packet),
+        "mem" | "rdonly_mem" => Some(StaleDataPointerKind::DynptrData(dynptr_data_origin(
+            context,
+            state_log_line,
+            reg,
+        )?)),
+        _ => None,
+    }
+}
+
+fn invalidating_helper_between(
+    context: &ProofSignalContext<'_>,
+    after_line: usize,
+    before_line: usize,
+    pointer_kind: StaleDataPointerKind,
+) -> bool {
+    if after_line >= before_line {
+        return false;
+    }
+    context
+        .log
+        .lines()
+        .enumerate()
+        .filter(|(idx, _)| {
+            let line = idx + 1;
+            line > after_line && line < before_line
+        })
+        .filter_map(|(idx, line)| {
+            let (pc, tail) = parse_instruction_line(line.trim())?;
+            let target = call_target_from_instruction_tail(tail)?;
+            Some((
+                TerminalInstruction {
+                    pc,
+                    line: idx + 1,
+                    tail,
+                },
+                target,
+            ))
+        })
+        .any(|(instruction, target)| match pointer_kind {
+            StaleDataPointerKind::Packet => packet_pointer_invalidating_helper(target),
+            StaleDataPointerKind::DynptrData(origin) => {
+                dynptr_data_invalidated_by_call(context, instruction, target, origin)
+                    || (origin.backing == DynptrBacking::Packet
+                        && packet_pointer_invalidating_helper(target))
+            }
+        })
+}
+
+fn packet_pointer_invalidating_helper(target: &str) -> bool {
+    matches!(
+        target,
+        "bpf_xdp_adjust_head"
+            | "bpf_xdp_adjust_meta"
+            | "bpf_xdp_adjust_tail"
+            | "bpf_skb_store_bytes"
+            | "bpf_skb_pull_data"
+            | "bpf_skb_change_head"
+            | "bpf_skb_change_tail"
+            | "bpf_skb_change_proto"
+            | "bpf_skb_adjust_room"
+            | "bpf_skb_vlan_push"
+            | "bpf_skb_vlan_pop"
+            | "bpf_l3_csum_replace"
+            | "bpf_l4_csum_replace"
+            | "bpf_lwt_push_encap"
+            | "bpf_lwt_seg6_store_bytes"
+            | "bpf_lwt_seg6_adjust_srh"
+            | "bpf_lwt_seg6_action"
+    )
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum DynptrBacking {
+    Packet,
+    Memory,
+}
+
+fn dynptr_data_origin(
+    context: &ProofSignalContext<'_>,
+    before_line: usize,
+    reg: u8,
+) -> Option<DynptrDataOrigin> {
+    let fragment_start = verifier_fragment_start_line(context.log, before_line);
+    let mut current_reg = reg;
+    let lines = context.log.lines().collect::<Vec<_>>();
+    let end = before_line.min(lines.len());
+    let start = fragment_start.saturating_sub(1).min(end);
+    for (idx, line) in lines[start..end].iter().enumerate().rev() {
+        let line_number = start + idx + 1;
+        let Some((pc, tail)) = parse_instruction_line(line.trim()) else {
+            continue;
+        };
+        if let Some(source_reg) = register_copy_source(tail, current_reg) {
+            current_reg = source_reg;
+            continue;
+        }
+        let target = call_target_from_instruction_tail(tail);
+        if current_reg != 0 {
+            continue;
+        }
+        let Some(target) = target else {
+            continue;
+        };
+        let Some(arg_reg) = dynptr_data_producer_arg(target) else {
+            return None;
+        };
+        let instruction = TerminalInstruction {
+            pc,
+            line: line_number,
+            tail,
+        };
+        let slot = dynptr_stack_slot_for_call_argument(
+            context.branch_states,
+            instruction,
+            fragment_start,
+            arg_reg,
+        )?;
+        let backing = dynptr_slot_backing_before(context, slot, instruction.line)?;
+        return Some(DynptrDataOrigin { slot, backing });
+    }
+    None
+}
+
+fn dynptr_data_producer_arg(target: &str) -> Option<u8> {
+    matches!(
+        target,
+        "bpf_dynptr_data" | "bpf_dynptr_slice" | "bpf_dynptr_slice_rdwr"
+    )
+    .then_some(1)
+}
+
+fn register_copy_source(instruction_tail: &str, dest: u8) -> Option<u8> {
+    let (_, rest) = instruction_tail.split_once(')')?;
+    let rest = rest.trim_start();
+    if !(rest.starts_with(&format!("r{dest} = ")) || rest.starts_with(&format!("w{dest} = "))) {
+        return None;
+    }
+    let rhs = rest.split_once(" = ")?.1.split(';').next()?.trim();
+    if !rhs.starts_with('r') && !rhs.starts_with('w') {
+        return None;
+    }
+    let regs = register_operands(rhs);
+    (regs.len() == 1).then_some(regs[0])
+}
+
+fn dynptr_slot_backing_before(
+    context: &ProofSignalContext<'_>,
+    slot: DynptrStackSlot,
+    before_line: usize,
+) -> Option<DynptrBacking> {
+    let fragment_start = verifier_fragment_start_line(context.log, before_line);
+    context
+        .log
+        .lines()
+        .enumerate()
+        .filter(|(idx, _)| {
+            let line = idx + 1;
+            line >= fragment_start && line < before_line
+        })
+        .filter_map(|(idx, line)| {
+            let (pc, tail) = parse_instruction_line(line.trim())?;
+            let target = call_target_from_instruction_tail(tail)?;
+            let backing = dynptr_backing_from_helper(target)?;
+            let arg_reg = dynptr_initializer_output_arg(target)?;
+            let instruction = TerminalInstruction {
+                pc,
+                line: idx + 1,
+                tail,
+            };
+            let initialized_slot = dynptr_stack_slot_for_call_argument(
+                context.branch_states,
+                instruction,
+                fragment_start,
+                arg_reg,
+            )?;
+            (initialized_slot == slot).then_some(backing)
+        })
+        .last()
+}
+
+fn dynptr_data_invalidated_by_call(
+    context: &ProofSignalContext<'_>,
+    instruction: TerminalInstruction<'_>,
+    target: &str,
+    origin: DynptrDataOrigin,
+) -> bool {
+    let Some(arg_reg) = dynptr_data_invalidating_arg(target) else {
+        return false;
+    };
+    let fragment_start = verifier_fragment_start_line(context.log, instruction.line);
+    dynptr_stack_slot_for_call_argument(context.branch_states, instruction, fragment_start, arg_reg)
+        == Some(origin.slot)
+}
+
+fn dynptr_data_invalidating_arg(target: &str) -> Option<u8> {
+    match target {
+        "bpf_dynptr_write" => Some(1),
+        "bpf_dynptr_from_mem" => Some(4),
+        "bpf_dynptr_from_skb" | "bpf_dynptr_from_xdp" => Some(3),
+        _ => None,
+    }
+}
+
+fn dynptr_stack_slot_for_call_argument(
+    states: &[VerifierInsn],
+    instruction: TerminalInstruction<'_>,
+    fragment_start_line: usize,
+    reg: u8,
+) -> Option<DynptrStackSlot> {
+    let (arg, frame) = latest_reg_state_for_call_argument_with_frame(
+        states,
+        instruction,
+        fragment_start_line,
+        Some(instruction.line),
+        reg,
+    )?;
+    if arg.reg_type != "fp" || reg_state_has_variable_offset(arg) {
+        return None;
+    }
+    Some(DynptrStackSlot {
+        frame,
+        offset: arg.offset?,
+    })
+}
+
+fn dynptr_backing_from_helper(target: &str) -> Option<DynptrBacking> {
+    match target {
+        "bpf_dynptr_from_skb" | "bpf_dynptr_from_xdp" => Some(DynptrBacking::Packet),
+        "bpf_dynptr_from_mem" => Some(DynptrBacking::Memory),
+        _ => None,
+    }
+}
+
 fn prohibited_pointer_arithmetic(context: &ProofSignalContext<'_>) -> bool {
     if context.obligation != ProofObligation::PointerProvenance {
         return false;
@@ -4929,6 +5252,28 @@ fn latest_reg_state_before_instruction<'a>(
 ) -> Option<&'a RegState> {
     latest_reg_state_before_instruction_with_frame(states, instruction, fragment_start_line, reg)
         .map(|(state, _)| state)
+}
+
+fn latest_reg_state_before_instruction_with_log_line<'a>(
+    states: &'a [VerifierInsn],
+    instruction: TerminalInstruction<'_>,
+    fragment_start_line: usize,
+    reg: u8,
+) -> Option<(&'a RegState, usize)> {
+    let call_frame =
+        latest_verifier_state_before_instruction(states, instruction, fragment_start_line)
+            .map(|state| state.frame);
+    states
+        .iter()
+        .filter(|state| state.log_line >= fragment_start_line)
+        .filter(|state| state.log_line < instruction.line)
+        .filter(|state| state.pc <= instruction.pc)
+        .filter(|state| call_frame.is_none_or(|frame| state.frame == frame))
+        .rev()
+        .find_map(|state| {
+            let reg_state = state.regs.get(&reg)?;
+            Some((reg_state, state.log_line))
+        })
 }
 
 fn latest_reg_state_before_instruction_with_frame<'a>(
@@ -6584,6 +6929,46 @@ mod tests {
         assert!(analysis
             .signals
             .contains(&ProofSignal::ScalarValueUsedAsPointer));
+    }
+
+    #[test]
+    fn stale_packet_pointer_after_helper_is_a_source_state_signal() {
+        let log = include_str!(
+            "../../../bpfix-bench/cases/github-commit-cilium-2ff1a462cd33/replay-verifier.log"
+        );
+        let analysis = analyze_verifier_log(
+            log,
+            Some(10),
+            None,
+            "R7 invalid mem access 'scalar'",
+            None,
+            ProofObligation::PointerProvenance,
+        )
+        .unwrap();
+
+        assert!(analysis
+            .signals
+            .contains(&ProofSignal::StalePointerAfterInvalidatingHelper));
+    }
+
+    #[test]
+    fn stale_dynptr_data_after_reinit_helper_is_a_source_state_signal() {
+        let log = include_str!(
+            "../../../bpfix-bench/cases/kernel-selftest-dynptr-fail-dynptr-invalidate-slice-reinit-raw-tp-f5b71f50/replay-verifier.log"
+        );
+        let analysis = analyze_verifier_log(
+            log,
+            Some(52),
+            None,
+            "R7 invalid mem access 'scalar'",
+            None,
+            ProofObligation::PointerProvenance,
+        )
+        .unwrap();
+
+        assert!(analysis
+            .signals
+            .contains(&ProofSignal::StalePointerAfterInvalidatingHelper));
     }
 
     #[test]
