@@ -145,6 +145,8 @@ fn diagnostic_schema_and_editor_example_track_json_contract() {
     let precision_json = run_json("bpfix-bench/cases/stackoverflow-77762365/replay-verifier.log");
     let verifier_state_signal_json =
         run_json("bpfix-bench/cases/stackoverflow-72606055/replay-verifier.log");
+    let verifier_metadata_signal_json =
+        run_json("bpfix-bench/cases/github-aya-rs-aya-521/replay-verifier.log");
     let schema: Value = serde_json::from_str(
         &std::fs::read_to_string(workspace_root().join("docs/evaluation/diagnostic.schema.json"))
             .expect("schema should be readable"),
@@ -176,6 +178,7 @@ fn diagnostic_schema_and_editor_example_track_json_contract() {
         &json,
         &precision_json,
         &verifier_state_signal_json,
+        &verifier_metadata_signal_json,
         &example,
     ] {
         assert!(failure_classes.contains(diagnostic["failure_class"].as_str().unwrap()));
@@ -188,6 +191,17 @@ fn diagnostic_schema_and_editor_example_track_json_contract() {
         .unwrap()
         .iter()
         .any(|evidence| evidence["kind"] == "verifier_state_signal"));
+    assert!(verifier_metadata_signal_json["evidence"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|evidence| {
+            evidence["kind"] == "verifier_state_signal"
+                && evidence["detail"]
+                    .as_str()
+                    .unwrap()
+                    .contains("BTF func_info")
+        }));
 
     let metadata_keys = object_keys(&json["metadata"]);
     assert_eq!(
@@ -1130,6 +1144,112 @@ fn map_pointer_scalar_zero_reports_missing_relocation() {
         &stale_map_lookup_before_terminal_non_map_helper,
         "BPFIX-E008",
     );
+}
+
+#[test]
+fn verifier_metadata_reports_e021_without_overmatching_helper_errors() {
+    let missing_func_info = run_json("bpfix-bench/cases/github-aya-rs-aya-521/replay-verifier.log");
+    assert_eq!(missing_func_info["error_id"], "BPFIX-E021");
+    assert_eq!(
+        missing_func_info["failure_class"],
+        "environment_or_configuration"
+    );
+    assert_eq!(missing_func_info["help_safety"], "triage_only");
+    assert!(missing_func_info["required_proof"]
+        .as_str()
+        .unwrap()
+        .contains("BTF func_info"));
+    assert!(evidence_contains(
+        &missing_func_info,
+        "verifier_state_signal",
+        "missing BTF func_info"
+    ));
+    assert!(missing_func_info["help"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|help| help.as_str().unwrap().contains("BTF func_info")));
+
+    let missing_reference_metadata =
+        run_json("bpfix-bench/cases/github-cilium-cilium-35182/replay-verifier.log");
+    assert_eq!(missing_reference_metadata["error_id"], "BPFIX-E021");
+    assert_eq!(missing_reference_metadata["failure_class"], "source_bug");
+    assert_eq!(missing_reference_metadata["help_safety"], "repair_hint");
+    assert!(missing_reference_metadata["required_proof"]
+        .as_str()
+        .unwrap()
+        .contains("reference type metadata"));
+    assert!(evidence_contains(
+        &missing_reference_metadata,
+        "verifier_state_signal",
+        "reference type is UNKNOWN"
+    ));
+
+    let erased_callee_signature =
+        run_json("bpfix-bench/cases/github-commit-cilium-8eb389403823/replay-verifier.log");
+    assert_eq!(erased_callee_signature["error_id"], "BPFIX-E021");
+    assert_eq!(erased_callee_signature["failure_class"], "source_bug");
+    assert!(erased_callee_signature["required_proof"]
+        .as_str()
+        .unwrap()
+        .contains("reference type metadata"));
+    assert!(evidence_contains(
+        &erased_callee_signature,
+        "verifier_state_signal",
+        "reference type is UNKNOWN"
+    ));
+
+    let erased_second_argument = run_json_stdin(
+        "func#0 @0\n\
+         func#1 @3\n\
+         0: R1=ctx() R2=ctx() R10=fp0\n\
+         ; return mock_fib_lookup(ctx, (void *)ctx); @ prog.c:21\n\
+         0: (85) call pc+1\n\
+         arg#1 reference type('UNKNOWN ') size cannot be determined: -22\n\
+         Caller passes invalid args into func#1 ('mock_fib_lookup')\n",
+    );
+    assert_eq!(erased_second_argument["error_id"], "BPFIX-E021");
+    assert!(evidence_contains(
+        &erased_second_argument,
+        "verifier_state_signal",
+        "reference type is UNKNOWN"
+    ));
+
+    let unrelated_first_arg_cast = run_json_stdin(
+        "func#0 @0\n\
+         func#1 @3\n\
+         0: R1=ctx() R2=scalar() R10=fp0\n\
+         ; return mock_fib_lookup((void *)ctx, len); @ prog.c:21\n\
+         0: (85) call pc+1\n\
+         arg#1 reference type('UNKNOWN ') size cannot be determined: -22\n\
+         Caller passes invalid args into func#1 ('mock_fib_lookup')\n",
+    );
+    assert_eq!(unrelated_first_arg_cast["error_id"], "BPFIX-E010");
+    assert!(!evidence_contains(
+        &unrelated_first_arg_cast,
+        "verifier_state_signal",
+        "reference type is UNKNOWN"
+    ));
+
+    let helper_forbidden = run_json("bpfix-bench/cases/github-aya-rs-aya-1233/replay-verifier.log");
+    assert_eq!(helper_forbidden["error_id"], "BPFIX-E009");
+    assert!(!evidence_contains(
+        &helper_forbidden,
+        "verifier_state_signal",
+        "metadata"
+    ));
+
+    let generic_missing_btf = run_json_stdin(
+        "0: R1=ctx() R10=fp0\n\
+         0: (85) call bpf_ktime_get_ns#5\n\
+         missing btf\n",
+    );
+    assert_eq!(generic_missing_btf["error_id"], "BPFIX-E009");
+    assert!(!evidence_contains(
+        &generic_missing_btf,
+        "verifier_state_signal",
+        "func_info"
+    ));
 }
 
 #[test]

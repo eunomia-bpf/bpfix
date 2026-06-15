@@ -67,6 +67,8 @@ pub enum ProofSignal {
     MapValueCheckedOffsetRelationLost,
     MapValueGuardExceedsValueSize,
     MapPointerArgumentScalarZero,
+    BtfFuncInfoMissing,
+    SubprogramReferenceMetadataMissing,
     DynptrStackStorageAccess,
     DynptrSliceVariableLength,
     IteratorStackStorageAccess,
@@ -98,6 +100,12 @@ impl ProofSignal {
         match self {
             Self::MapPointerArgumentScalarZero => {
                 "map relocation or loader path is missing for a helper map argument"
+            }
+            Self::BtfFuncInfoMissing => {
+                "BTF function metadata required by a subprogram call is missing"
+            }
+            Self::SubprogramReferenceMetadataMissing => {
+                "subprogram argument reference metadata is missing at the BPF-to-BPF call"
             }
             Self::DynptrStackStorageAccess => {
                 "dynptr stack storage is being used as ordinary memory"
@@ -140,8 +148,10 @@ impl ProofSignal {
     }
 
     pub(crate) const fn help_safety(self) -> &'static str {
-        if matches!(self, Self::MapPointerArgumentScalarZero)
-            || self.is_verifier_precision_boundary()
+        if matches!(
+            self,
+            Self::MapPointerArgumentScalarZero | Self::BtfFuncInfoMissing
+        ) || self.is_verifier_precision_boundary()
         {
             "triage_only"
         } else {
@@ -205,6 +215,12 @@ impl ProofSignal {
             }
             Self::MapPointerArgumentScalarZero => {
                 "helper expects a map pointer, but verifier state shows scalar zero in the map argument register at the helper call; this matches a missing map relocation or raw-instruction loader path"
+            }
+            Self::BtfFuncInfoMissing => {
+                "the verifier reports missing BTF func_info while the load log contains a multi-function BPF object or subprogram relocation"
+            }
+            Self::SubprogramReferenceMetadataMissing => {
+                "the BPF-to-BPF call receives a source-level subprogram argument whose verifier reference type is UNKNOWN and has no size metadata"
             }
             Self::DynptrStackStorageAccess => {
                 "verifier state shows this stack slot contains dynptr state, but the rejected instruction reads it as ordinary stack bytes"
@@ -292,6 +308,12 @@ impl ProofSignal {
             Self::MapPointerArgumentScalarZero => {
                 "Load the ELF object through libbpf or another loader that applies map relocations; raw instructions must not replace a map symbol with scalar zero."
             }
+            Self::BtfFuncInfoMissing => {
+                "Rebuild and load the object with BTF func_info for BPF subprograms and callbacks; stripped or incomplete BTF metadata can make the verifier reject otherwise valid call shapes."
+            }
+            Self::SubprogramReferenceMetadataMissing => {
+                "Use a verifier-supported BPF subprogram argument type instead of erasing the reference through an untyped pointer; keep the argument type metadata visible at the call boundary."
+            }
             Self::DynptrStackStorageAccess => {
                 "Do not copy, read, or pass a dynptr object as ordinary bytes; use dynptr helpers to read data out of the dynptr and keep the dynptr object in its dedicated stack slot."
             }
@@ -358,7 +380,10 @@ impl ProofSignal {
     }
 
     const fn is_environment_signal(self) -> bool {
-        matches!(self, Self::MapPointerArgumentScalarZero)
+        matches!(
+            self,
+            Self::MapPointerArgumentScalarZero | Self::BtfFuncInfoMissing
+        )
     }
 
     const fn is_source_state_signal(self) -> bool {
@@ -374,6 +399,7 @@ impl ProofSignal {
                 | Self::MapLookupKeyArgumentUnreadable
                 | Self::MapValueGuardExceedsValueSize
                 | Self::PacketGuardUndercoversAccess
+                | Self::SubprogramReferenceMetadataMissing
                 | Self::TrustedNullableArgument
         )
     }
@@ -390,6 +416,15 @@ impl ProofSignal {
                 base_failure_class == "source_bug"
                     || base_failure_class == "environment_or_configuration"
             }
+            Self::BtfFuncInfoMissing => {
+                base_failure_class == "environment_or_configuration"
+                    || base_failure_class == "unsupported_verifier_message"
+            }
+            Self::SubprogramReferenceMetadataMissing => {
+                base_failure_class == "source_bug"
+                    || base_failure_class == "environment_or_configuration"
+                    || base_failure_class == "unsupported_verifier_message"
+            }
             _ => base_failure_class == "source_bug",
         }
     }
@@ -404,12 +439,14 @@ impl ProofSignal {
                 | Self::IrqFlagStateMismatch
                 | Self::IteratorHelperArgumentStateMismatch
                 | Self::IteratorStackStorageAccess
+                | Self::BtfFuncInfoMissing
                 | Self::MapLookupKeyArgumentUnreadable
                 | Self::MapPointerArgumentScalarZero
                 | Self::MapValueGuardExceedsValueSize
                 | Self::MapValueRelationPrecisionBoundary
                 | Self::PacketGuardUndercoversAccess
                 | Self::PacketMaxOffsetPrecisionBoundary
+                | Self::SubprogramReferenceMetadataMissing
                 | Self::TrustedNullableArgument
         )
     }
@@ -418,6 +455,8 @@ impl ProofSignal {
         matches!(
             self,
             Self::MapPointerArgumentScalarZero
+                | Self::BtfFuncInfoMissing
+                | Self::SubprogramReferenceMetadataMissing
                 | Self::DynptrStackStorageAccess
                 | Self::DynptrSliceVariableLength
                 | Self::IrqFlagStateMismatch
@@ -434,6 +473,12 @@ impl ProofSignal {
         match self {
             Self::MapPointerArgumentScalarZero => Some(
                 "apply the map relocation so bpf_map_lookup_elem receives a verifier-tracked map pointer instead of scalar zero",
+            ),
+            Self::BtfFuncInfoMissing => Some(
+                "provide BTF func_info metadata for every BPF subprogram or callback reached by the loaded program",
+            ),
+            Self::SubprogramReferenceMetadataMissing => Some(
+                "preserve verifier-visible reference type metadata across the BPF-to-BPF subprogram argument boundary",
             ),
             Self::DynptrStackStorageAccess => Some(
                 "keep the dynptr object in its verifier-tracked stack slot and use dynptr helpers instead of reading or copying the dynptr storage as ordinary bytes",
@@ -471,6 +516,12 @@ impl ProofSignal {
             Self::MapPointerArgumentScalarZero => Some(
                 "map helper argument is scalar zero because the map relocation was not applied",
             ),
+            Self::BtfFuncInfoMissing => {
+                Some("BTF func_info metadata is missing for a subprogram call")
+            }
+            Self::SubprogramReferenceMetadataMissing => {
+                Some("subprogram argument reference metadata is missing at this call")
+            }
             Self::DynptrStackStorageAccess => {
                 Some("dynptr stack storage is read as ordinary memory")
             }
@@ -505,6 +556,8 @@ impl ProofSignal {
     pub(crate) const fn error_id_override(self) -> Option<&'static str> {
         match self {
             Self::MapPointerArgumentScalarZero => Some("BPFIX-E021"),
+            Self::BtfFuncInfoMissing => Some("BPFIX-E021"),
+            Self::SubprogramReferenceMetadataMissing => Some("BPFIX-E021"),
             Self::DynptrStackStorageAccess => Some("BPFIX-E012"),
             Self::DynptrSliceVariableLength => Some("BPFIX-E012"),
             Self::IteratorStackStorageAccess => Some("BPFIX-E014"),
@@ -1414,6 +1467,12 @@ fn proof_signals(context: ProofSignalContext<'_>) -> Vec<ProofSignal> {
     ) {
         signals.push(ProofSignal::MapPointerArgumentScalarZero);
     }
+    if btf_func_info_missing(&context) {
+        signals.push(ProofSignal::BtfFuncInfoMissing);
+    }
+    if subprogram_reference_metadata_missing(&context) {
+        signals.push(ProofSignal::SubprogramReferenceMetadataMissing);
+    }
     if map_lookup_key_argument_unreadable(
         context.log,
         context.terminal_error,
@@ -1642,6 +1701,105 @@ fn map_pointer_argument_scalar_zero(
         return false;
     };
     state.reg_type == "scalar" && state.exact_value == Some(0)
+}
+
+fn btf_func_info_missing(context: &ProofSignalContext<'_>) -> bool {
+    if !context
+        .terminal_error
+        .eq_ignore_ascii_case("missing btf func_info")
+    {
+        return false;
+    }
+    log_contains_subprogram(context.log) || log_contains_subprogram_relocation(context.log)
+}
+
+fn subprogram_reference_metadata_missing(context: &ProofSignalContext<'_>) -> bool {
+    let terminal = context.terminal_error.to_ascii_lowercase();
+    if !terminal.contains("caller passes invalid args into func") {
+        return false;
+    }
+    let terminal_has_unknown_reference_size = terminal.contains("reference type('unknown")
+        && terminal.contains("size cannot be determined");
+    if !terminal_has_unknown_reference_size
+        && !terminal_error_has_nearby_prior_line(context.log, context.terminal_error, 3, |line| {
+            let lower = line.to_ascii_lowercase();
+            lower.contains("reference type('unknown") && lower.contains("size cannot be determined")
+        })
+    {
+        return false;
+    }
+    let Some(instruction) =
+        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)
+    else {
+        return false;
+    };
+    if !instruction.tail.contains("call pc+") {
+        return false;
+    }
+    let Some(callee) = invalid_args_function_name(context.terminal_error) else {
+        return false;
+    };
+    let fragment_start = context
+        .terminal_line
+        .map(|line| verifier_fragment_start_line(context.log, line))
+        .unwrap_or_else(|| verifier_fragment_start_line(context.log, instruction.line));
+    let Some(rejected) = source_for_instruction_in_fragment(
+        context.source_events,
+        instruction.pc,
+        fragment_start,
+        instruction.line,
+    ) else {
+        return false;
+    };
+    let Some(arg_index) = subprogram_argument_index(context.terminal_error) else {
+        return false;
+    };
+    let Some(argument) = call_argument(&rejected.text, callee, arg_index as usize) else {
+        return false;
+    };
+    let Some(arg_reg) = subprogram_argument_register(arg_index) else {
+        return false;
+    };
+    if source_argument_erases_reference_metadata(&argument) {
+        return true;
+    }
+    is_bare_identifier_argument(&argument)
+        && latest_reg_state_before_instruction(context.states, instruction, fragment_start, arg_reg)
+            .is_some_and(|state| state.reg_type == "ctx")
+}
+
+fn log_contains_subprogram(log: &str) -> bool {
+    log.lines()
+        .any(|line| line.trim_start().starts_with("func#1 @"))
+}
+
+fn log_contains_subprogram_relocation(log: &str) -> bool {
+    log.lines().any(|line| {
+        let lower = line.to_ascii_lowercase();
+        lower.contains("points to subprog")
+            || lower.contains("added ") && lower.contains("sub-prog")
+    })
+}
+
+fn source_argument_erases_reference_metadata(argument: &str) -> bool {
+    let compact = argument
+        .chars()
+        .filter(|ch| !ch.is_ascii_whitespace())
+        .collect::<String>()
+        .to_ascii_lowercase();
+    compact.contains("(void*)") || compact == "void*"
+}
+
+fn subprogram_argument_index(terminal_error: &str) -> Option<u32> {
+    let arg = parse_u32_after(terminal_error, "arg#")?;
+    (arg < 5).then_some(arg)
+}
+
+fn subprogram_argument_register(arg_index: u32) -> Option<u8> {
+    if arg_index >= 5 {
+        return None;
+    }
+    u8::try_from(arg_index + 1).ok()
 }
 
 fn map_lookup_key_argument_unreadable(
@@ -3749,6 +3907,7 @@ mod tests {
     #[test]
     fn unsupported_terminal_replacement_is_an_explicit_signal_whitelist() {
         let replaceable = [
+            ProofSignal::BtfFuncInfoMissing,
             ProofSignal::ContextAccessSourceArgumentMismatch,
             ProofSignal::DynptrStackStorageAccess,
             ProofSignal::DynptrSliceVariableLength,
@@ -3762,6 +3921,7 @@ mod tests {
             ProofSignal::MapValueRelationPrecisionBoundary,
             ProofSignal::PacketGuardUndercoversAccess,
             ProofSignal::PacketMaxOffsetPrecisionBoundary,
+            ProofSignal::SubprogramReferenceMetadataMissing,
             ProofSignal::TrustedNullableArgument,
         ];
         for signal in replaceable {

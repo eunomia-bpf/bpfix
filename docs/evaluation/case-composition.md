@@ -163,7 +163,7 @@ CLI error-id contract lives in `docs/error-catalog.yaml`.
 | BPFIX-E018 | verifier_analysis_budget_limit | verifier_limit | 4 |
 | BPFIX-E019 | dynptr_storage_or_release_contract_violation | source_bug | 13 |
 | BPFIX-E020 | irq_flag_state_protocol_violation | source_bug | 3 |
-| BPFIX-E021 | btf_reference_metadata_missing | environment_or_configuration 4, source_bug 1 | 5 |
+| BPFIX-E021 | map_relocation_or_metadata_missing | environment_or_configuration 4, source_bug 1 | 5 |
 | BPFIX-E023 | register_or_stack_contract_violation | source_bug | 16 |
 
 The taxonomy column above uses the labels in each `case.yaml`, not only the

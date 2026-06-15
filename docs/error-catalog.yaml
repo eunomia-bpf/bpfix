@@ -127,8 +127,9 @@ active_error_ids:
   - error_id: BPFIX-E021
     short_name: map_relocation_or_metadata_missing
     failure_classes:
+      - source_bug
       - environment_or_configuration
-    summary: Loader relocation or verifier metadata is missing, so a map/helper argument is verifier-visible as the wrong value.
+    summary: Loader relocation, BTF func_info, or subprogram reference metadata is missing, so a verifier-visible argument has the wrong value or type.
 
   - error_id: BPFIX-E099
     short_name: unsupported_verifier_message
