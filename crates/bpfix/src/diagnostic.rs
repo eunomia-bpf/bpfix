@@ -86,6 +86,7 @@ pub enum ProofSignal {
     KfuncArgumentTypeMismatch,
     ModernBpfObjectProtocolViolation,
     ContextAccessSourceArgumentMismatch,
+    ContextFieldUnavailable,
     ExceptionThrowWithLiveReference,
     ExceptionCallbackProtocolViolation,
     MapLookupKeyArgumentUnreadable,
@@ -168,6 +169,9 @@ impl ProofSignal {
             }
             Self::ContextAccessSourceArgumentMismatch => {
                 "tracing context argument type does not match the verifier-visible function signature"
+            }
+            Self::ContextFieldUnavailable => {
+                "program context field is unavailable for the active verifier context"
             }
             Self::ExceptionThrowWithLiveReference => {
                 "exception callback can throw while a verifier-tracked reference is still live"
@@ -317,6 +321,9 @@ impl ProofSignal {
             Self::ContextAccessSourceArgumentMismatch => {
                 "verifier reports the traced-function argument at this context slot as PTR rather than a directly supported struct pointer, while the rejected source is a BPF_PROG argument load from the raw tracing context"
             }
+            Self::ContextFieldUnavailable => {
+                "verifier state shows the rejected memory access uses a ctx register at an offset and width that the active program context does not expose"
+            }
             Self::ExceptionThrowWithLiveReference => {
                 "verifier state reaches bpf_throw inside a callback frame while verifier-tracked references are live"
             }
@@ -442,6 +449,9 @@ impl ProofSignal {
             Self::ContextAccessSourceArgumentMismatch => {
                 "Use only fentry arguments whose BTF type is verifier-supported at this slot, or avoid reading this argument through BPF_PROG when the traced function exposes it as an unsupported pointer type."
             }
+            Self::ContextFieldUnavailable => {
+                "Use a program type or attach type that exposes this context field, read a verifier-supported context field, or derive the value from packet data instead of an unavailable context slot."
+            }
             Self::ExceptionThrowWithLiveReference => {
                 "Release verifier-tracked references before any callback path can throw, or avoid bpf_throw while a reference acquired by the caller is still live."
             }
@@ -494,7 +504,9 @@ impl ProofSignal {
     const fn is_environment_signal(self) -> bool {
         matches!(
             self,
-            Self::MapPointerArgumentScalarZero | Self::BtfFuncInfoMissing
+            Self::MapPointerArgumentScalarZero
+                | Self::BtfFuncInfoMissing
+                | Self::ContextFieldUnavailable
         )
     }
 
@@ -539,6 +551,7 @@ impl ProofSignal {
                 base_failure_class == "source_bug"
                     || base_failure_class == "environment_or_configuration"
             }
+            Self::ContextFieldUnavailable => base_failure_class == "environment_or_configuration",
             Self::BtfFuncInfoMissing => {
                 base_failure_class == "environment_or_configuration"
                     || base_failure_class == "unsupported_verifier_message"
@@ -606,6 +619,7 @@ impl ProofSignal {
                 | Self::ModernBpfObjectProtocolViolation
                 | Self::TrustedNullableArgument
                 | Self::ContextAccessSourceArgumentMismatch
+                | Self::ContextFieldUnavailable
                 | Self::ExceptionThrowWithLiveReference
                 | Self::MapLookupKeyArgumentUnreadable
         )
@@ -678,6 +692,9 @@ impl ProofSignal {
             ),
             Self::MapLookupKeyArgumentUnreadable => Some(
                 "pass a pointer to initialized map key storage in bpf_map_lookup_elem's second argument",
+            ),
+            Self::ContextFieldUnavailable => Some(
+                "access only context offsets and field widths exposed by the active BPF program type and attach point",
             ),
             Self::MapValueGuardExceedsValueSize => Some(
                 "prove the map-value index plus field offset and access width stays below the map value size",
@@ -753,6 +770,9 @@ impl ProofSignal {
             }
             Self::MapLookupKeyArgumentUnreadable => {
                 Some("map lookup key argument register is unreadable at the helper call")
+            }
+            Self::ContextFieldUnavailable => {
+                Some("context access uses an unavailable offset or field width")
             }
             Self::MapValueGuardExceedsValueSize => {
                 Some("map value index guard is wider than the value field can hold")
@@ -1668,6 +1688,9 @@ fn proof_signals(context: ProofSignalContext<'_>) -> Vec<ProofSignal> {
     ) {
         signals.push(ProofSignal::ContextAccessSourceArgumentMismatch);
     }
+    if context_field_unavailable(&context) {
+        signals.push(ProofSignal::ContextFieldUnavailable);
+    }
     if exception_throw_with_live_reference(
         context.log,
         context.terminal_pc,
@@ -1900,6 +1923,46 @@ fn context_access_source_argument_mismatch(
         return false;
     }
     latest_reg_state_before(states, terminal_pc, 1).is_some_and(|state| state.reg_type == "ctx")
+}
+
+fn context_field_unavailable(context: &ProofSignalContext<'_>) -> bool {
+    let terminal = context.terminal_error.to_ascii_lowercase();
+    if !(terminal.contains("invalid bpf_context access")
+        || terminal.contains("invalid ctx access")
+        || terminal.contains("invalid access to context"))
+    {
+        return false;
+    }
+    if terminal_error_has_nearby_prior_line(context.log, context.terminal_error, 3, |line| {
+        line.contains("type PTR is not a struct")
+    }) {
+        return false;
+    }
+    let Some(instruction) =
+        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)
+    else {
+        return false;
+    };
+    let Some(base_reg) = memory_access_base_register(instruction.tail) else {
+        return false;
+    };
+    if parse_u32_after(context.terminal_error, "size=")
+        .is_some_and(|size| memory_access_width(instruction.tail) != Some(size))
+    {
+        return false;
+    }
+    if parse_u32_after(context.terminal_error, "off=")
+        .map(i64::from)
+        .is_some_and(|offset| memory_access_offset(instruction.tail) != Some(offset))
+    {
+        return false;
+    }
+    let fragment_start = context
+        .terminal_line
+        .map(|line| verifier_fragment_start_line(context.log, line))
+        .unwrap_or_else(|| verifier_fragment_start_line(context.log, instruction.line));
+    latest_reg_state_before_instruction(context.states, instruction, fragment_start, base_reg)
+        .is_some_and(|state| state.reg_type == "ctx")
 }
 
 fn exception_throw_with_live_reference(

@@ -1284,27 +1284,105 @@ fn fentry_context_argument_mismatch_overrides_terminal_environment_classifier() 
 
     let context_abi_mismatch =
         run_json("bpfix-bench/cases/stackoverflow-67402772/replay-verifier.log");
+    assert_eq!(context_abi_mismatch["error_id"], "BPFIX-E011");
     assert_eq!(
         context_abi_mismatch["failure_class"],
         "environment_or_configuration"
     );
-    assert!(!context_abi_mismatch["evidence"]
+    assert!(context_abi_mismatch["required_proof"]
+        .as_str()
+        .unwrap()
+        .contains("active BPF program type"));
+    assert!(context_abi_mismatch["evidence"]
         .as_array()
         .unwrap()
         .iter()
-        .any(|evidence| evidence["kind"] == "verifier_state_signal"));
+        .any(|evidence| {
+            evidence["kind"] == "verifier_state_signal"
+                && evidence["detail"]
+                    .as_str()
+                    .unwrap()
+                    .contains("ctx register")
+        }));
 
     let lowered_context_access =
         run_json("bpfix-bench/cases/github-commit-cilium-4bb6b56b5c22/replay-verifier.log");
+    assert_eq!(lowered_context_access["error_id"], "BPFIX-E011");
     assert_eq!(
         lowered_context_access["failure_class"],
         "environment_or_configuration"
     );
-    assert!(!lowered_context_access["evidence"]
+    assert!(lowered_context_access["evidence"]
         .as_array()
         .unwrap()
         .iter()
-        .any(|evidence| evidence["kind"] == "verifier_state_signal"));
+        .any(|evidence| {
+            evidence["kind"] == "verifier_state_signal"
+                && evidence["detail"]
+                    .as_str()
+                    .unwrap()
+                    .contains("ctx register")
+        }));
+    let help = lowered_context_access["help"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|item| item.as_str())
+        .collect::<Vec<_>>()
+        .join("\n");
+    assert!(help.contains("unavailable context slot"));
+    assert!(!help.contains("section name"));
+}
+
+#[test]
+fn unavailable_context_field_requires_ctx_state_and_matching_access_shape() {
+    let scalar_base = run_json_stdin(
+        "func#0 @0\n\
+         0: R2=scalar() R10=fp0\n\
+         1: (61) r3 = *(u32 *)(r2 +96)\n\
+         invalid bpf_context access off=96 size=4\n",
+    );
+    assert_eq!(scalar_base["error_id"], "BPFIX-E011");
+    assert_eq!(scalar_base["failure_class"], "environment_or_configuration");
+    assert!(!evidence_contains(
+        &scalar_base,
+        "verifier_state_signal",
+        "ctx register"
+    ));
+
+    let mismatched_size = run_json_stdin(
+        "func#0 @0\n\
+         0: R1=ctx() R10=fp0\n\
+         1: (61) r3 = *(u32 *)(r1 +96)\n\
+         invalid bpf_context access off=96 size=8\n",
+    );
+    assert_eq!(mismatched_size["error_id"], "BPFIX-E011");
+    assert_eq!(
+        mismatched_size["failure_class"],
+        "environment_or_configuration"
+    );
+    assert!(!evidence_contains(
+        &mismatched_size,
+        "verifier_state_signal",
+        "ctx register"
+    ));
+
+    let mismatched_offset = run_json_stdin(
+        "func#0 @0\n\
+         0: R1=ctx() R10=fp0\n\
+         1: (61) r3 = *(u32 *)(r1 +96)\n\
+         invalid bpf_context access off=100 size=4\n",
+    );
+    assert_eq!(mismatched_offset["error_id"], "BPFIX-E011");
+    assert_eq!(
+        mismatched_offset["failure_class"],
+        "environment_or_configuration"
+    );
+    assert!(!evidence_contains(
+        &mismatched_offset,
+        "verifier_state_signal",
+        "ctx register"
+    ));
 }
 
 #[test]
