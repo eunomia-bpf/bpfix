@@ -361,6 +361,40 @@ misaligned stack access off 0+-16+4 size 8
         .iter()
         .any(|evidence| evidence["kind"] == "lowering_artifact_signal"));
 
+    let pointer_shift =
+        run_json("bpfix-bench/cases/github-commit-cilium-847014aa62f9/replay-verifier.log");
+    assert_eq!(pointer_shift["error_id"], "BPFIX-E006");
+    assert_eq!(pointer_shift["failure_class"], "lowering_artifact");
+    assert!(pointer_shift["evidence"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|evidence| {
+            evidence["kind"] == "lowering_artifact_signal"
+                && evidence["detail"]
+                    .as_str()
+                    .unwrap()
+                    .contains("integer operation drops pointer provenance")
+        }));
+
+    let stale_pointer_shift_state = run_json_stdin(
+        "\
+4: (07) r3 += 14                      ; R3_w=pkt(off=14,r=0)
+5: (67) r3 <<= 32
+R3 pointer arithmetic with <<= operator prohibited
+5: (67) r3 <<= 32
+R3 pointer arithmetic with <<= operator prohibited
+processed 6 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0 mark_read 0
+",
+    );
+    assert_eq!(stale_pointer_shift_state["error_id"], "BPFIX-E006");
+    assert_eq!(stale_pointer_shift_state["failure_class"], "source_bug");
+    assert!(!stale_pointer_shift_state["evidence"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|evidence| evidence["kind"] == "lowering_artifact_signal"));
+
     let pointer_merge =
         run_json("bpfix-bench/cases/github-commit-cilium-4dc7d8047caf/replay-verifier.log");
     assert_eq!(pointer_merge["error_id"], "BPFIX-E006");
