@@ -1,9 +1,9 @@
 # Lowering Artifact Candidate Audit
 
-This audit tracks every case currently labelled `label.taxonomy_class:
-lowering_artifact`. The goal is to separate confirmed lowering artifacts from
-ordinary source obligations that happen to produce scalar-range or provenance
-verifier errors.
+This audit tracks the historical set of replayable cases that were considered
+lowering-artifact candidates during corpus cleanup. The goal is to separate
+confirmed lowering artifacts from ordinary source obligations that happen to
+produce scalar-range or provenance verifier errors.
 
 ## Decision Standard
 
@@ -28,7 +28,7 @@ resource, complexity, loop, state, instruction, or stack-budget failures.
 
 - [x] `github-cilium-cilium-41522` (github_issue, BPFIX-E005, conf=medium, fix=bounds_check)
 - [x] `github-commit-bcc-42c00adb4181` (github_commit, BPFIX-E005, conf=medium, fix=compiler_flags)
-- [x] `github-commit-cilium-3740e9db8fef` (github_commit, BPFIX-E004, conf=medium, fix=initialization)
+- [x] `github-commit-cilium-3740e9db8fef` (github_commit, BPFIX-E003, conf=medium, fix=initialization)
 - [x] `github-commit-cilium-4853fb153410` (github_commit, BPFIX-E005, conf=medium, fix=stack_alignment)
 - [x] `github-commit-cilium-489da3e3f924` (github_commit, BPFIX-E006, conf=medium, fix=align_stack)
 - [x] `github-commit-cilium-4bb6b56b5c22` (github_commit, BPFIX-E006, conf=medium, fix=avoid_wide_context_access)
@@ -55,16 +55,16 @@ resource, complexity, loop, state, instruction, or stack-budget failures.
 - [x] `stackoverflow-70873332` (stackoverflow, BPFIX-E005, conf=medium, fix=clamp)
 - [x] `stackoverflow-71522674` (stackoverflow, BPFIX-E005, conf=medium, fix=clamp)
 - [x] `stackoverflow-72560675` (stackoverflow, BPFIX-E005, conf=medium, fix=clamp)
-- [x] `stackoverflow-72575736` (stackoverflow, BPFIX-E005, conf=medium, fix=bounds_check)
-- [x] `stackoverflow-73088287` (stackoverflow, BPFIX-E005, conf=medium, fix=bounds_check)
+- [x] `stackoverflow-72575736` (stackoverflow, BPFIX-E001, conf=medium, fix=bounds_check)
+- [x] `stackoverflow-73088287` (stackoverflow, BPFIX-E001, conf=medium, fix=bounds_check)
 - [x] `stackoverflow-73282201` (stackoverflow, BPFIX-E005, conf=medium, fix=bounds_check)
 - [x] `stackoverflow-73381767` (stackoverflow, BPFIX-E005, conf=medium, fix=bounds_check)
 - [x] `stackoverflow-74178703` (stackoverflow, BPFIX-E005, conf=medium, fix=reorder)
 - [x] `stackoverflow-76760635` (stackoverflow, BPFIX-E005, conf=medium, fix=bounds_check)
 - [x] `stackoverflow-77713434` (stackoverflow, BPFIX-E005, conf=medium, fix=bounds_check)
 - [x] `stackoverflow-77762365` (stackoverflow, BPFIX-E005, conf=medium, fix=clamp)
-- [x] `stackoverflow-77967675` (stackoverflow, BPFIX-E005, conf=medium, fix=bounds_check)
-- [x] `stackoverflow-78186253` (stackoverflow, BPFIX-E005, conf=medium, fix=bounds_check)
+- [x] `stackoverflow-77967675` (stackoverflow, BPFIX-E001, conf=medium, fix=bounds_check)
+- [x] `stackoverflow-78186253` (stackoverflow, BPFIX-E001, conf=medium, fix=bounds_check)
 - [x] `stackoverflow-78196801` (stackoverflow, BPFIX-E005, conf=medium, fix=bounds_check)
 - [x] `stackoverflow-78208591` (stackoverflow, BPFIX-E005, conf=medium, fix=bounds_check)
 - [x] `stackoverflow-78591601` (stackoverflow, BPFIX-E005, conf=medium, fix=bounds_check)
@@ -75,13 +75,13 @@ resource, complexity, loop, state, instruction, or stack-budget failures.
 
 ## Results
 
-First manual pass over all 46 current lowering candidates:
+First manual pass over all 46 historical lowering candidates:
 
 | case_id | audit class | evidence strength | rationale |
 | --- | --- | --- | --- |
 | `github-cilium-cilium-41522` | `source_bug` | high | The case description says the packet access occurs before sufficient `data_end` proof; the fix adds the missing full-range proof. |
 | `github-commit-bcc-42c00adb4181` | `lowering_artifact` | high | Same source compiled through the frontend with `-O2` instead of `-O0` avoids verifier-hostile noinline/optnone bytecode. |
-| `github-commit-cilium-3740e9db8fef` | `lowering_artifact` | high | Clang 17 can spill a value from an error path where the source no longer uses it; initializing `*l4_off` is a verifier-visible workaround. |
+| `github-commit-cilium-3740e9db8fef` | `source_bug` | high | Current replay passes an uninitialized key pointer to `bpf_map_lookup_elem`; the executable artifact no longer demonstrates the original lowering-sensitive workaround. |
 | `github-commit-cilium-4853fb153410` | `lowering_artifact` | high | LLVM 18 emits 64-bit stack accesses to only 4-byte-aligned IPv6 stack objects; `__align_stack_8` preserves semantics while changing layout. |
 | `github-commit-cilium-489da3e3f924` | `lowering_artifact` | high | A packed IPv6 CT tuple is lowered into an unaligned 8-byte stack copy; alignment annotation changes bytecode shape, not semantics. |
 | `github-commit-cilium-4bb6b56b5c22` | `environment_or_configuration` | medium | UAPI/context layout update leads to target verifier context-access mismatch; evidence points more to target ABI/header compatibility than proof-loss lowering. |
@@ -108,18 +108,18 @@ First manual pass over all 46 current lowering candidates:
 | `stackoverflow-70873332` | `verifier_false_positive` | high | Accepted answer explicitly calls it a verifier corner case: packet length check exists but is ignored due `MAX_PACKET_OFF` overflow risk. |
 | `stackoverflow-71522674` | `source_bug` | high | Accepted answer identifies a real missing boundary check before reading `tcph->doff`. |
 | `stackoverflow-72560675` | `verifier_false_positive` | medium | Older 4.14 verifier loses the range from `MIN()`; explicit clamp is a verifier workaround for the same semantic bound. |
-| `stackoverflow-72575736` | `verifier_false_positive` | high | Accepted answer identifies a missing verifier bugfix in Linux 5.10 that is present in 5.13. |
-| `stackoverflow-73088287` | `lowering_artifact` | high | Compiler likely emits separate registers for `payload + i + 1` and `payload[i]`; source check exists but bytecode expression equivalence is lost. |
+| `stackoverflow-72575736` | `source_bug` | high | Current replay checks `address > data_end` before a one-byte load, leaving `address == data_end` unexcluded; this executable artifact is source-bug-shaped despite the original 5.10 false-positive story. |
+| `stackoverflow-73088287` | `source_bug` | high | Current replay checks `payload + i + 1` but reads `payload + i + 16`; the source check undercovers the load. |
 | `stackoverflow-73282201` | `source_bug` | medium | Fix changes the loop index type/range so the verifier can prove it stays below the map-value bound; no independent lowering evidence. |
 | `stackoverflow-73381767` | `source_bug` | high | Accepted answer says the program must prove it never reads past the 4096-byte map value. |
 | `stackoverflow-74178703` | `lowering_artifact` | medium | Source checks `offset + i`, but lowered/rebuilt access loses that relation before the `memcpy` load/store. |
 | `stackoverflow-76760635` | `source_bug` | low | External answer only explains how to obtain the verifier log; no evidence supports a lowering/proof-loss claim. |
 | `stackoverflow-77713434` | `source_bug` | low | Available source shows a variable helper read into a 70-byte map value with no accepted-answer evidence for an existing proof. |
 | `stackoverflow-77762365` | `verifier_false_positive` | high | Verifier cannot preserve the relation `event->len + read < MAX_READ_CONTENT_LENGTH` for helper destination bounds. |
-| `stackoverflow-77967675` | `verifier_false_positive` | medium | Source bounds `index`, but verifier does not recognize the bound for packet pointer arithmetic inside `bpf_loop`. |
-| `stackoverflow-78186253` | `lowering_artifact` | medium | Accepted answer says verifier loses track of `payload + i` between the check and use; making the checked expression its own variable should preserve bytecode proof. |
-| `stackoverflow-78196801` | `lowering_artifact` | high | Accepted answer explicitly attributes the failure to unfortunate bytecode generation: compiler reloads `value->index`, so verifier cannot connect the checked and used values. |
-| `stackoverflow-78208591` | `lowering_artifact` | low | Question reports equivalent logic and weird compiled code; no accepted answer, but the source shape resembles the `value->index` reload proof-loss pattern. |
+| `stackoverflow-77967675` | `source_bug` | high | Current replay callback reads `pkt[index]` without a callback-local `data_end` check. |
+| `stackoverflow-78186253` | `source_bug` | high | Current replay checks `payload + 1` but reads `payload[64]`; the source check undercovers the load. |
+| `stackoverflow-78196801` | `source_bug` | high | Current replay allows `idx < 64` for a 20-byte `flags` field inside a 24-byte map value. |
+| `stackoverflow-78208591` | `source_bug` | high | Current replay allows `idx < 64` for a 20-byte map value. |
 | `stackoverflow-78591601` | `source_bug` | high | Accepted answer says the bounds check does not include the 4-byte access width. |
 | `stackoverflow-78599154` | `source_bug` | low | Available evidence points to map-value offset beyond declared value size; no confirmed source proof-loss mechanism. |
 | `stackoverflow-78958420` | `source_bug` | high | Program passes a packet-backed 254-byte map key after proving only one byte. |
@@ -130,14 +130,14 @@ First-pass counts:
 
 | audit class | cases |
 | --- | ---: |
-| `lowering_artifact` | 24 |
-| `verifier_false_positive` | 9 |
-| `source_bug` | 12 |
+| `lowering_artifact` | 19 |
+| `verifier_false_positive` | 7 |
+| `source_bug` | 19 |
 | `environment_or_configuration` | 1 |
 | `verifier_limit` | 0 |
 
-The 24 `lowering_artifact` cases are the interesting set to preserve and
-strengthen with `mechanism_tags` and `evidence_tags`. The 9
+The 19 active `lowering_artifact` cases are the interesting set to preserve and
+strengthen with `mechanism_tags` and `evidence_tags`. The 7 active
 `verifier_false_positive` cases should not be mixed into lowering claims; they
 are still valuable, but the claim is verifier precision/conservatism rather than
 compiler-lowering proof loss.

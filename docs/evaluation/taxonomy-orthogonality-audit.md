@@ -22,10 +22,10 @@ primary classes:
 
 | active primary class | cases |
 | --- | ---: |
-| `source_bug` | 187 |
-| `lowering_artifact` | 24 |
+| `source_bug` | 194 |
+| `lowering_artifact` | 19 |
 | `environment_or_configuration` | 11 |
-| `verifier_false_positive` | 9 |
+| `verifier_false_positive` | 7 |
 | `verifier_limit` | 4 |
 | **total** | **235** |
 
@@ -233,8 +233,9 @@ Other audit facts:
 - `external_match.status` counts are `not_applicable` 131, `exact` 42,
   `semantic` 37, and `partial` 25.
 - `repair.eligible` is false for 203 cases and true for 32 cases.
-- `bpfix-bench/taxonomy.yaml` now defines `verifier_false_positive`; the first
-  lowering-candidate audit moved 9 replayable cases into that class.
+- `bpfix-bench/taxonomy.yaml` now defines `verifier_false_positive`; the active
+  replay corpus currently keeps 7 replayable cases in that class after
+  replay-artifact drift corrections.
 - `stack_safety` and `build_configuration` were case labels but were not
   top-level classes in `bpfix-bench/taxonomy.yaml`.
 

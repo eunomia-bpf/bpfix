@@ -40,7 +40,7 @@ external_match:
     SO/GH artifact.
 label:
   capture_id: stackoverflow-78196801__kernel-6.15.11-clang-18-log2
-  taxonomy_class: lowering_artifact
+  taxonomy_class: source_bug
   error_id: BPFIX-E005
   confidence: medium
   label_source: external_replay_reconstruction
@@ -61,4 +61,5 @@ reporting:
   family_id: stackoverflow-78196801
   representative: true
   intentional_negative_test: false
-  notes: External SO/GH case imported from verified exact/partial artifact.
+  notes: Current replay artifact allows idx < 64 while the map value field has
+    only 20 valid flag bytes, so the executable case is labelled as a source bug.

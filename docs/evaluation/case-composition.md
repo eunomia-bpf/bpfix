@@ -122,20 +122,20 @@ Every replayable case has `label.taxonomy_class`, `label.error_id`, and
 
 | taxonomy_class | cases |
 |---|---:|
-| source_bug | 187 |
-| lowering_artifact | 24 |
+| source_bug | 194 |
+| lowering_artifact | 19 |
 | environment_or_configuration | 11 |
-| verifier_false_positive | 9 |
+| verifier_false_positive | 7 |
 | verifier_limit | 4 |
 
 Breakdown by source:
 
 | source_kind | environment_or_configuration | lowering_artifact | source_bug | verifier_false_positive | verifier_limit | total |
 |---|---:|---:|---:|---:|---:|---:|
-| github_commit | 2 | 16 | 28 | 0 | 0 | 46 |
+| github_commit | 2 | 15 | 29 | 0 | 0 | 46 |
 | github_issue | 2 | 2 | 14 | 0 | 0 | 18 |
 | kernel_selftest | 3 | 0 | 80 | 0 | 2 | 85 |
-| stackoverflow | 4 | 6 | 65 | 9 | 2 | 86 |
+| stackoverflow | 4 | 2 | 71 | 7 | 2 | 86 |
 
 ## Error Categories
 
@@ -143,11 +143,11 @@ Error IDs are defined in `docs/evaluation/legacy-catalogs/error_catalog.yaml`.
 
 | error_id | short_name | case-label taxonomy_class | cases |
 |---|---|---|---:|
-| BPFIX-E001 | packet_bounds_missing | source_bug | 11 |
+| BPFIX-E001 | packet_bounds_missing | source_bug | 15 |
 | BPFIX-E002 | nullable_map_value_dereference | source_bug | 10 |
-| BPFIX-E003 | uninitialized_stack_read | source_bug | 4 |
-| BPFIX-E004 | reference_lifetime_violation | lowering_artifact 1, source_bug 3 | 4 |
-| BPFIX-E005 | scalar_range_too_wide_after_lowering | lowering_artifact 11, source_bug 14, verifier_false_positive 9 | 34 |
+| BPFIX-E003 | uninitialized_stack_read | source_bug | 5 |
+| BPFIX-E004 | reference_lifetime_violation | source_bug | 3 |
+| BPFIX-E005 | scalar_range_too_wide_after_lowering | lowering_artifact 7, source_bug 16, verifier_false_positive 7 | 30 |
 | BPFIX-E006 | provenance_lost_across_spill | environment_or_configuration 1, lowering_artifact 12, source_bug 5 | 18 |
 | BPFIX-E009 | helper_or_kfunc_unavailable | environment_or_configuration | 1 |
 | BPFIX-E010 | verifier_false_positive_or_regression | source_bug | 1 |
@@ -166,11 +166,11 @@ Error IDs are defined in `docs/evaluation/legacy-catalogs/error_catalog.yaml`.
 
 The taxonomy column above uses the labels in each `case.yaml`, not only the
 default taxonomy in `docs/evaluation/legacy-catalogs/error_catalog.yaml`. For `BPFIX-E005`,
-14 cases are labelled `source_bug`, 11 are labelled `lowering_artifact`, and 9
+16 cases are labelled `source_bug`, 7 are labelled `lowering_artifact`, and 7
 are labelled `verifier_false_positive`.
 
 Notable concentration: `BPFIX-E011` accounts for 59 of 235 replayable cases,
-and `BPFIX-E005` accounts for 34. Together they make up 93 cases, or 39.6% of
+and `BPFIX-E005` accounts for 30. Together they make up 89 cases, or 37.9% of
 the replayable corpus.
 
 ## External Raw Records
@@ -210,9 +210,9 @@ metadata. The replayable kernel selftest count is therefore taken from
 
 ## Gaps and Biases
 
-The replayable corpus is dominated by `source_bug` labels: 187 of 235 cases
-(79.6%). `lowering_artifact` has 24 cases after the first manual audit,
-`verifier_false_positive` has 9, and `verifier_limit` has only 4.
+The replayable corpus is dominated by `source_bug` labels: 194 of 235 cases
+(82.6%). `lowering_artifact` has 19 cases after the first manual audit,
+`verifier_false_positive` has 7, and `verifier_limit` has only 4.
 
 Kernel selftests are strongly represented in the admitted corpus: 85 of 235
 cases. They are useful because they are reproducible and trace-rich, but they

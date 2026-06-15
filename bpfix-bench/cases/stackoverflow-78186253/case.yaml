@@ -40,8 +40,8 @@ external_match:
     SO/GH artifact.
 label:
   capture_id: stackoverflow-78186253__kernel-6.15.11-clang-18-log2
-  taxonomy_class: lowering_artifact
-  error_id: BPFIX-E005
+  taxonomy_class: source_bug
+  error_id: BPFIX-E001
   confidence: medium
   label_source: external_replay_reconstruction
   root_cause_description: Packet parser reads at an offset that is not fully covered
@@ -60,4 +60,6 @@ reporting:
   family_id: stackoverflow-78186253
   representative: true
   intentional_negative_test: false
-  notes: External SO/GH case imported from verified exact/partial artifact.
+  notes: Current replay artifact checks payload + 1 but reads payload[64], so
+    the executable case is labelled as a source bug rather than a lowering
+    artifact.

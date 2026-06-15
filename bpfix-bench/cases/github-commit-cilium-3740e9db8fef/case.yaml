@@ -41,8 +41,8 @@ external_match:
     this exact verifier error and the standalone replay reproduces it.
 label:
   capture_id: github-commit-cilium-3740e9db8fef__kernel-6.15.11-clang-18-log2
-  taxonomy_class: lowering_artifact
-  error_id: BPFIX-E004
+  taxonomy_class: source_bug
+  error_id: BPFIX-E003
   confidence: medium
   label_source: external_replay_reconstruction
   root_cause_description: A helper argument register is consumed before all paths
@@ -62,4 +62,7 @@ reporting:
   family_id: github-commit-cilium-3740e9db8fef
   representative: true
   intentional_negative_test: false
-  notes: Batch 07 manual reconstruction.
+  notes: Current replay artifact passes an uninitialized key pointer to
+    bpf_map_lookup_elem, so the executable case is labelled as a source bug
+    even though the external commit record may describe a lowering-sensitive
+    workaround.

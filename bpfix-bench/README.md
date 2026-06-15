@@ -27,10 +27,10 @@ Primary taxonomy labels:
 
 | taxonomy_class | cases |
 | --- | ---: |
-| `source_bug` | 187 |
-| `lowering_artifact` | 24 |
+| `source_bug` | 194 |
+| `lowering_artifact` | 19 |
 | `environment_or_configuration` | 11 |
-| `verifier_false_positive` | 9 |
+| `verifier_false_positive` | 7 |
 | `verifier_limit` | 4 |
 
 Raw external audit records:
