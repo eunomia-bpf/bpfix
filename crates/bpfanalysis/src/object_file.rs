@@ -47,18 +47,25 @@ pub fn load_object_cfg_summaries(
             continue;
         }
 
-        let (cfg, verifier_state_attach_error) = lift_program_cfg(
+        let instruction_count = insns.len();
+        let (cfg, verifier_state_attach_error) = match lift_program_cfg(
             &insns,
             verifier_states.as_deref(),
             verifier_state_parse_error.as_deref(),
-        )
-        .with_context(|| format!("failed to lift section {name} into ProgramCFG"))?;
+        ) {
+            Ok(result) => result,
+            Err(err) => {
+                let error = format!("failed to lift section {name} into ProgramCFG: {err:#}");
+                summaries.push(failed_section_summary(name, instruction_count, error));
+                continue;
+            }
+        };
         let site_count = cfg.all_sites().count();
         let verifier_state_site_count =
             verifier_state_site_count(&cfg, verifier_state_attach_error.is_none());
         summaries.push(ObjectProgramSummary {
             section_name: name,
-            instruction_count: insns.len(),
+            instruction_count,
             block_count: cfg.blocks().count(),
             site_count,
             verifier_state_site_count,
@@ -68,6 +75,21 @@ pub fn load_object_cfg_summaries(
 
     mark_ambiguous_state_attachments(&mut summaries);
     Ok(summaries)
+}
+
+fn failed_section_summary(
+    section_name: String,
+    instruction_count: usize,
+    error: String,
+) -> ObjectProgramSummary {
+    ObjectProgramSummary {
+        section_name,
+        instruction_count,
+        block_count: 0,
+        site_count: 0,
+        verifier_state_site_count: 0,
+        verifier_state_attach_error: Some(error),
+    }
 }
 
 fn mark_ambiguous_state_attachments(summaries: &mut [ObjectProgramSummary]) {

@@ -2407,6 +2407,37 @@ fn object_argument_keeps_diagnostic_when_log_pcs_use_loaded_layout() {
 
 #[test]
 #[cfg(feature = "object-analysis")]
+fn object_section_lift_error_is_reported_per_program() {
+    let log_path = workspace_root().join(
+        "bpfix-bench/cases/kernel-selftest-exceptions-fail-reject-exception-cb-call-static-func-tc-f3ceb9b7/replay-verifier.log",
+    );
+    let object_path = workspace_root().join(
+        "bpfix-bench/cases/kernel-selftest-exceptions-fail-reject-exception-cb-call-static-func-tc-f3ceb9b7/prog.o",
+    );
+    let json = run_json_with_args(&[
+        "--object",
+        object_path.to_str().unwrap(),
+        log_path.to_str().unwrap(),
+        "--format",
+        "json",
+    ]);
+
+    assert_eq!(json["error_id"], "BPFIX-E010");
+    assert!(json["metadata"]["object_analysis_error"].is_null());
+    assert_eq!(
+        json["metadata"]["object_programs"][0]["section_name"],
+        "?tc"
+    );
+    assert!(
+        json["metadata"]["object_programs"][0]["verifier_state_attach_error"]
+            .as_str()
+            .unwrap()
+            .contains("failed to lift section ?tc into ProgramCFG")
+    );
+}
+
+#[test]
+#[cfg(feature = "object-analysis")]
 fn object_parse_error_is_reported_without_blocking_log_diagnostic() {
     let log_path =
         workspace_root().join("bpfix-bench/cases/stackoverflow-70750259/replay-verifier.log");
