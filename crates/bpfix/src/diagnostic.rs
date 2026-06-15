@@ -1656,9 +1656,6 @@ fn dynptr_slice_variable_length(context: &ProofSignalContext<'_>) -> bool {
 
 fn trusted_nullable_argument(context: &ProofSignalContext<'_>) -> bool {
     let terminal = context.terminal_error.to_ascii_lowercase();
-    if !terminal.contains("possibly null pointer passed to") {
-        return false;
-    }
     let Some(instruction) =
         terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)
     else {
@@ -1667,7 +1664,10 @@ fn trusted_nullable_argument(context: &ProofSignalContext<'_>) -> bool {
     let Some(target) = call_target_from_instruction_tail(instruction.tail) else {
         return false;
     };
-    let Some(reg) = nullable_argument_register(&terminal) else {
+    let fallback_reg = (context.obligation == ProofObligation::Unknown)
+        .then(|| nullable_argument_register_from_call_target(target))
+        .flatten();
+    let Some(reg) = nullable_argument_register(&terminal).or(fallback_reg) else {
         return false;
     };
     let fragment_start = context
@@ -1696,6 +1696,13 @@ fn nullable_argument_register(message: &str) -> Option<u8> {
         return arg.checked_add(1).and_then(|reg| reg.try_into().ok());
     }
     parse_u32_after(message, "helper arg").and_then(|reg| reg.try_into().ok())
+}
+
+fn nullable_argument_register_from_call_target(target: &str) -> Option<u8> {
+    match target {
+        "bpf_kptr_xchg" => Some(2),
+        _ => None,
+    }
 }
 
 fn is_trusted_nullable_state(state: &RegState) -> bool {

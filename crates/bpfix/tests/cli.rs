@@ -1866,6 +1866,71 @@ fn trusted_nullable_arguments_report_state_discipline() {
         "verifier_state_signal",
         "nullable RCU/trusted pointer"
     ));
+
+    let unknown_terminal_kptr_call = run_stdin_output(
+        "func#0 @0\n\
+         0: R1=ctx() R10=fp0\n\
+         14: R2=rcu_ptr_or_null_bpf_cpumask(id=5)\n\
+         15: (85) call bpf_kptr_xchg#194\n\
+         invalid verifier frobnication\n",
+        &["-", "--format", "json", "--fail-on-unsupported"],
+    );
+    assert!(unknown_terminal_kptr_call.status.success());
+    assert!(unknown_terminal_kptr_call.stderr.is_empty());
+    let unknown_terminal_kptr_call: Value =
+        serde_json::from_slice(&unknown_terminal_kptr_call.stdout).expect("bpfix should emit JSON");
+    assert_eq!(unknown_terminal_kptr_call["error_id"], "BPFIX-E015");
+    assert_eq!(unknown_terminal_kptr_call["diagnostic_kind"], "supported");
+    assert!(evidence_contains(
+        &unknown_terminal_kptr_call,
+        "verifier_state_signal",
+        "nullable RCU/trusted pointer"
+    ));
+
+    let generic_nullable_unknown_terminal_kptr_call = run_stdin_output(
+        "func#0 @0\n\
+         0: R1=ctx() R10=fp0\n\
+         14: R2=map_value_or_null(id=1,map=test,ks=4,vs=8)\n\
+         15: (85) call bpf_kptr_xchg#194\n\
+         invalid verifier frobnication\n",
+        &["-", "--format", "json", "--fail-on-unsupported"],
+    );
+    assert_eq!(
+        generic_nullable_unknown_terminal_kptr_call.status.code(),
+        Some(2)
+    );
+    assert!(generic_nullable_unknown_terminal_kptr_call
+        .stderr
+        .is_empty());
+    let generic_nullable_unknown_terminal_kptr_call: Value =
+        serde_json::from_slice(&generic_nullable_unknown_terminal_kptr_call.stdout)
+            .expect("bpfix should emit JSON");
+    assert_eq!(
+        generic_nullable_unknown_terminal_kptr_call["diagnostic_kind"],
+        "unsupported_verifier_message"
+    );
+    assert!(!evidence_contains(
+        &generic_nullable_unknown_terminal_kptr_call,
+        "verifier_state_signal",
+        "nullable RCU/trusted pointer"
+    ));
+
+    let kptr_destination_error_with_nullable_r2 = run_json_stdin(
+        "func#0 @0\n\
+         0: R1=ctx() R10=fp0\n\
+         14: R2=rcu_ptr_or_null_bpf_cpumask(id=5)\n\
+         15: (85) call bpf_kptr_xchg#194\n\
+         R1 has no valid kptr\n",
+    );
+    assert_eq!(
+        kptr_destination_error_with_nullable_r2["error_id"],
+        "BPFIX-E013"
+    );
+    assert!(!evidence_contains(
+        &kptr_destination_error_with_nullable_r2,
+        "verifier_state_signal",
+        "nullable RCU/trusted pointer"
+    ));
 }
 
 #[test]
