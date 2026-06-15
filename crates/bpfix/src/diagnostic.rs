@@ -78,6 +78,7 @@ pub enum ProofSignal {
     IteratorHelperArgumentStateMismatch,
     IrqFlagStateMismatch,
     IrqRestoreOrderMismatch,
+    IrqRestoreHelperClassMismatch,
     IrqStateLiveAtExit,
     SleepableCallInNonSleepableContext,
     CallbackCallWhileLocked,
@@ -143,6 +144,9 @@ impl ProofSignal {
             }
             Self::IrqRestoreOrderMismatch => {
                 "IRQ state is restored outside the verifier-approved acquisition order"
+            }
+            Self::IrqRestoreHelperClassMismatch => {
+                "IRQ restore helper class does not match the verifier-tracked state"
             }
             Self::IrqStateLiveAtExit => {
                 "program exits while verifier-tracked IRQ state is still live"
@@ -289,6 +293,9 @@ impl ProofSignal {
             Self::IrqRestoreOrderMismatch => {
                 "verifier state reaches an IRQ restore helper with a live IRQ flag slot while the verifier expects a newer outstanding IRQ state"
             }
+            Self::IrqRestoreHelperClassMismatch => {
+                "verifier state reaches an IRQ restore helper whose class does not match the newest live IRQ state origin"
+            }
             Self::IrqStateLiveAtExit => {
                 "verifier state reaches BPF_EXIT with live IRQ save references that have not been restored"
             }
@@ -411,6 +418,9 @@ impl ProofSignal {
             Self::IrqRestoreOrderMismatch => {
                 "Restore IRQ save and lock state in strict reverse acquisition order, using the same flag slot returned by each save or lock helper."
             }
+            Self::IrqRestoreHelperClassMismatch => {
+                "Restore lock-acquired IRQ state with bpf_res_spin_unlock_irqrestore, and plain local IRQ state with bpf_local_irq_restore, in strict LIFO order."
+            }
             Self::IrqStateLiveAtExit => {
                 "Restore every verifier-tracked IRQ save state before returning or exiting, including states acquired inside BPF subprogram helpers."
             }
@@ -502,6 +512,7 @@ impl ProofSignal {
                 | Self::CallbackCallWhileLocked
                 | Self::IrqFlagStateMismatch
                 | Self::IrqRestoreOrderMismatch
+                | Self::IrqRestoreHelperClassMismatch
                 | Self::IrqStateLiveAtExit
                 | Self::SleepableCallInNonSleepableContext
                 | Self::IteratorHelperArgumentStateMismatch
@@ -553,6 +564,7 @@ impl ProofSignal {
                 | Self::ExceptionThrowWithLiveReference
                 | Self::IrqFlagStateMismatch
                 | Self::IrqRestoreOrderMismatch
+                | Self::IrqRestoreHelperClassMismatch
                 | Self::IrqStateLiveAtExit
                 | Self::SleepableCallInNonSleepableContext
                 | Self::IteratorHelperArgumentStateMismatch
@@ -584,6 +596,7 @@ impl ProofSignal {
                 | Self::ExceptionCallbackProtocolViolation
                 | Self::IrqFlagStateMismatch
                 | Self::IrqRestoreOrderMismatch
+                | Self::IrqRestoreHelperClassMismatch
                 | Self::IrqStateLiveAtExit
                 | Self::SleepableCallInNonSleepableContext
                 | Self::CallbackCallWhileLocked
@@ -635,6 +648,9 @@ impl ProofSignal {
             ),
             Self::IrqRestoreOrderMismatch => Some(
                 "restore each verifier-tracked IRQ state in strict LIFO order with the flag slot produced by its matching save or lock helper",
+            ),
+            Self::IrqRestoreHelperClassMismatch => Some(
+                "restore each verifier-tracked IRQ state with the helper class that matches the save or lock helper that created it",
             ),
             Self::IrqStateLiveAtExit => Some(
                 "restore every verifier-tracked IRQ save state before any BPF_EXIT can leave the program",
@@ -708,6 +724,9 @@ impl ProofSignal {
             Self::IrqRestoreOrderMismatch => {
                 Some("IRQ restore uses a flag slot before newer IRQ state is restored")
             }
+            Self::IrqRestoreHelperClassMismatch => {
+                Some("IRQ restore helper class does not match live state origin")
+            }
             Self::IrqStateLiveAtExit => {
                 Some("BPF_EXIT is reached while IRQ save state is still live")
             }
@@ -756,6 +775,7 @@ impl ProofSignal {
             Self::IteratorHelperArgumentStateMismatch => Some("BPFIX-E014"),
             Self::IrqFlagStateMismatch => Some("BPFIX-E020"),
             Self::IrqRestoreOrderMismatch => Some("BPFIX-E013"),
+            Self::IrqRestoreHelperClassMismatch => Some("BPFIX-E013"),
             Self::IrqStateLiveAtExit => Some("BPFIX-E013"),
             Self::SleepableCallInNonSleepableContext => Some("BPFIX-E016"),
             Self::CallbackCallWhileLocked => Some("BPFIX-E015"),
@@ -1713,6 +1733,9 @@ fn proof_signals(context: ProofSignalContext<'_>) -> Vec<ProofSignal> {
     }
     if irq_restore_order_mismatch(&context) {
         signals.push(ProofSignal::IrqRestoreOrderMismatch);
+    }
+    if irq_restore_helper_class_mismatch(&context) {
+        signals.push(ProofSignal::IrqRestoreHelperClassMismatch);
     }
     if irq_state_live_at_exit(&context) {
         signals.push(ProofSignal::IrqStateLiveAtExit);
@@ -2998,6 +3021,161 @@ fn irq_restore_flag_argument(target: &str) -> Option<u8> {
 
 fn irq_save_target(target: &str) -> bool {
     matches!(target, "bpf_local_irq_save" | "bpf_res_spin_lock_irqsave")
+}
+
+fn irq_restore_helper_class_mismatch(context: &ProofSignalContext<'_>) -> bool {
+    if !matches!(
+        context.obligation,
+        ProofObligation::LockState
+            | ProofObligation::KfuncReference
+            | ProofObligation::ReferenceLifecycle
+            | ProofObligation::HelperArgument
+            | ProofObligation::Unknown
+    ) {
+        return false;
+    }
+    let terminal = context.terminal_error.to_ascii_lowercase();
+    if !(terminal.contains("function calls are not allowed") && terminal.contains("holding a lock"))
+    {
+        return false;
+    }
+    let Some(instruction) = terminal_call_instruction_site(context) else {
+        return false;
+    };
+    let Some(restore_target) = call_target_from_instruction_tail(instruction.tail) else {
+        return false;
+    };
+    let Some(flag_arg) = irq_restore_flag_argument(restore_target) else {
+        return false;
+    };
+    let fragment_start = verifier_fragment_start_line(context.log, instruction.line);
+    let Some((arg, arg_frame)) = latest_reg_state_for_call_argument_with_frame(
+        context.states,
+        instruction,
+        fragment_start,
+        context.terminal_line,
+        flag_arg,
+    ) else {
+        return false;
+    };
+    if arg.reg_type != "fp" || reg_state_has_variable_offset(arg) {
+        return false;
+    }
+    if irq_flag_stack_slot_state(context, arg, arg_frame)
+        != Some(IrqFlagStackSlotState::LiveIrqFlag)
+    {
+        return false;
+    }
+    let Some(ref_state) =
+        latest_verifier_state_before_instruction(context.states, instruction, fragment_start)
+    else {
+        return false;
+    };
+    let Some(newest_ref) = ref_state.ref_ids.last().copied() else {
+        return false;
+    };
+    let Some(origin_target) = irq_ref_origin_for_stack_slot(
+        context,
+        fragment_start,
+        instruction.line,
+        newest_ref,
+        arg,
+        arg_frame,
+    ) else {
+        return false;
+    };
+    matches!(
+        (restore_target, origin_target),
+        ("bpf_local_irq_restore", "bpf_res_spin_lock_irqsave")
+            | ("bpf_res_spin_unlock_irqrestore", "bpf_local_irq_save")
+    )
+}
+
+fn irq_ref_origin_for_stack_slot<'a>(
+    context: &'a ProofSignalContext<'_>,
+    fragment_start: usize,
+    before_line: usize,
+    ref_id: u32,
+    arg: &RegState,
+    arg_frame: usize,
+) -> Option<&'a str> {
+    let offset = i16::try_from(arg.offset?).ok()?;
+    context
+        .states
+        .iter()
+        .rev()
+        .filter(|state| state.log_line >= fragment_start)
+        .filter(|state| state.log_line < before_line)
+        .filter(|state| state.ref_ids.contains(&ref_id))
+        .find_map(|state| {
+            let target = call_target_on_log_line(context.log, state.log_line)?;
+            if !irq_save_target(target) {
+                return None;
+            }
+            if state.frame == arg_frame
+                && state
+                    .stack
+                    .get(&offset)
+                    .is_some_and(is_irq_flag_stack_slot)
+            {
+                return Some(target);
+            }
+            (irq_ref_stack_slot_linked_after_origin(
+                context,
+                fragment_start,
+                state.log_line,
+                before_line,
+                ref_id,
+                offset,
+                arg_frame,
+            ))
+            .then_some(target)
+        })
+}
+
+fn irq_ref_stack_slot_linked_after_origin(
+    context: &ProofSignalContext<'_>,
+    fragment_start: usize,
+    origin_line: usize,
+    before_line: usize,
+    ref_id: u32,
+    offset: i16,
+    frame: usize,
+) -> bool {
+    if irq_stack_slot_live_before_line(context, fragment_start, origin_line, offset, frame) {
+        return false;
+    }
+    context
+        .states
+        .iter()
+        .filter(|state| state.log_line > origin_line)
+        .filter(|state| state.log_line < before_line)
+        .filter(|state| state.frame == frame)
+        .filter(|state| state.ref_ids.contains(&ref_id))
+        .any(|state| {
+            state
+                .stack
+                .get(&offset)
+                .is_some_and(is_irq_flag_stack_slot)
+        })
+}
+
+fn irq_stack_slot_live_before_line(
+    context: &ProofSignalContext<'_>,
+    fragment_start: usize,
+    before_line: usize,
+    offset: i16,
+    frame: usize,
+) -> bool {
+    context
+        .states
+        .iter()
+        .filter(|state| state.log_line >= fragment_start)
+        .filter(|state| state.log_line < before_line)
+        .filter(|state| state.frame == frame)
+        .rev()
+        .find_map(|state| state.stack.get(&offset))
+        .is_some_and(is_irq_flag_stack_slot)
 }
 
 fn irq_state_live_at_exit(context: &ProofSignalContext<'_>) -> bool {
@@ -5244,6 +5422,8 @@ mod tests {
             ProofSignal::ExceptionThrowWithLiveReference,
             ProofSignal::IrqFlagStateMismatch,
             ProofSignal::IrqRestoreOrderMismatch,
+            ProofSignal::IrqRestoreHelperClassMismatch,
+            ProofSignal::IrqStateLiveAtExit,
             ProofSignal::IteratorHelperArgumentStateMismatch,
             ProofSignal::IteratorStackStorageAccess,
             ProofSignal::MapLookupKeyArgumentUnreadable,

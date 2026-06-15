@@ -1432,7 +1432,7 @@ processed 3 insns (limit 1000000) max_states_per_insn 0 total_states 1 peak_stat
     let non_callback_lock_reject = run_json(
         "bpfix-bench/cases/kernel-selftest-irq-irq-wrong-kfunc-class-2-tc-03b53958/replay-verifier.log",
     );
-    assert_eq!(non_callback_lock_reject["error_id"], "BPFIX-E015");
+    assert_eq!(non_callback_lock_reject["error_id"], "BPFIX-E013");
     assert!(!evidence_contains(
         &non_callback_lock_reject,
         "verifier_state_signal",
@@ -3358,6 +3358,36 @@ fn irq_flag_state_reports_protocol_violation() {
             .any(|help| help.as_str().unwrap().contains("Release acquired references")));
     }
 
+    let wrong_restore_helper_class =
+        run_json("bpfix-bench/cases/kernel-selftest-irq-irq-wrong-kfunc-class-2-tc-03b53958/replay-verifier.log");
+    assert_eq!(wrong_restore_helper_class["error_id"], "BPFIX-E013");
+    assert_eq!(wrong_restore_helper_class["failure_class"], "source_bug");
+    assert!(evidence_contains(
+        &wrong_restore_helper_class,
+        "verifier_state_signal",
+        "restore helper whose class"
+    ));
+    assert!(wrong_restore_helper_class["required_proof"]
+        .as_str()
+        .unwrap()
+        .contains("helper class"));
+    assert!(wrong_restore_helper_class["help"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|help| help
+            .as_str()
+            .unwrap()
+            .contains("bpf_res_spin_unlock_irqrestore")));
+    assert!(!wrong_restore_helper_class["help"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|help| help
+            .as_str()
+            .unwrap()
+            .contains("release operations balanced")));
+
     for path in [
         "bpfix-bench/cases/kernel-selftest-irq-irq-restore-missing-3-subprog-tc-8592c5d7/replay-verifier.log",
         "bpfix-bench/cases/kernel-selftest-irq-irq-restore-missing-3-minus-2-subprog-tc-5c202e26/replay-verifier.log",
@@ -3567,6 +3597,106 @@ fn irq_flag_state_reports_protocol_violation() {
         &out_of_order_without_live_flag_slot,
         "verifier_state_signal",
         "newer outstanding IRQ state"
+    ));
+
+    let helper_class_without_live_refs = run_json_stdin(
+        "func#0 @0\n\
+         0: R1=fp-16\n\
+         1: (85) call bpf_local_irq_restore#72093\n\
+         function calls are not allowed while holding a lock\n",
+    );
+    assert_eq!(helper_class_without_live_refs["error_id"], "BPFIX-E015");
+    assert!(!evidence_contains(
+        &helper_class_without_live_refs,
+        "verifier_state_signal",
+        "restore helper whose class"
+    ));
+
+    let helper_class_latest_state_clears_refs = run_json_stdin(
+        "func#0 @0\n\
+         0: (85) call bpf_res_spin_lock_irqsave#73032 ; fp-16_w=ffffffff refs=1\n\
+         1: R1=fp-16\n\
+         2: (85) call bpf_local_irq_restore#72093\n\
+         function calls are not allowed while holding a lock\n",
+    );
+    assert_eq!(
+        helper_class_latest_state_clears_refs["error_id"],
+        "BPFIX-E015"
+    );
+    assert!(!evidence_contains(
+        &helper_class_latest_state_clears_refs,
+        "verifier_state_signal",
+        "restore helper whose class"
+    ));
+
+    let helper_class_cross_frame_origin = run_json_stdin(
+        "func#0 @0\n\
+         func#1 @10\n\
+         10: frame1: R2=fp[0]-16 R10=fp0\n\
+         10: (85) call bpf_res_spin_lock_irqsave#73032 ; frame1: refs=1\n\
+         1: R10=fp0 fp-16_w=ffffffff refs=1\n\
+         2: R1=fp-16 refs=1\n\
+         3: (85) call bpf_local_irq_restore#72093\n\
+         function calls are not allowed while holding a lock\n",
+    );
+    assert_eq!(helper_class_cross_frame_origin["error_id"], "BPFIX-E013");
+    assert!(evidence_contains(
+        &helper_class_cross_frame_origin,
+        "verifier_state_signal",
+        "restore helper whose class"
+    ));
+
+    let helper_class_matching_local_restore = run_json_stdin(
+        "func#0 @0\n\
+         0: (85) call bpf_local_irq_save#72094 ; fp-8_w=ffffffff refs=1\n\
+         1: R1=fp-8 refs=1\n\
+         2: (85) call bpf_local_irq_restore#72093\n\
+         function calls are not allowed while holding a lock\n",
+    );
+    assert_eq!(
+        helper_class_matching_local_restore["error_id"],
+        "BPFIX-E015"
+    );
+    assert!(!evidence_contains(
+        &helper_class_matching_local_restore,
+        "verifier_state_signal",
+        "restore helper whose class"
+    ));
+
+    let helper_class_prefers_nearest_origin = run_json_stdin(
+        "func#0 @0\n\
+         0: (85) call bpf_res_spin_lock_irqsave#73032 ; fp-8_w=ffffffff refs=1\n\
+         1: (85) call bpf_local_irq_save#72094 ; fp-8_w=ffffffff refs=1\n\
+         2: R1=fp-8 refs=1\n\
+         3: (85) call bpf_local_irq_restore#72093\n\
+         function calls are not allowed while holding a lock\n",
+    );
+    assert_eq!(
+        helper_class_prefers_nearest_origin["error_id"],
+        "BPFIX-E015"
+    );
+    assert!(!evidence_contains(
+        &helper_class_prefers_nearest_origin,
+        "verifier_state_signal",
+        "restore helper whose class"
+    ));
+
+    let helper_class_newest_lock_but_other_slot = run_json_stdin(
+        "func#0 @0\n\
+         0: (85) call bpf_local_irq_save#72094 ; fp-8_w=ffffffff refs=1\n\
+         1: (85) call bpf_res_spin_lock_irqsave#73032 ; fp-16_w=ffffffff refs=1,2\n\
+         2: R1=fp-8 refs=1,2\n\
+         3: (85) call bpf_local_irq_restore#72093\n\
+         function calls are not allowed while holding a lock\n",
+    );
+    assert_eq!(
+        helper_class_newest_lock_but_other_slot["error_id"],
+        "BPFIX-E015"
+    );
+    assert!(!evidence_contains(
+        &helper_class_newest_lock_but_other_slot,
+        "verifier_state_signal",
+        "restore helper whose class"
     ));
 
     let exit_with_irq_terminal_without_live_refs = run_json_stdin(
