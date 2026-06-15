@@ -2224,6 +2224,106 @@ fn ordinary_source_bugs_are_not_overclassified_as_runtime_artifacts() {
 }
 
 #[test]
+fn nullable_pointer_uses_report_state_discipline() {
+    for path in [
+        "bpfix-bench/cases/github-cilium-cilium-36936/replay-verifier.log",
+        "bpfix-bench/cases/github-commit-cilium-5a76cf2c5e96/replay-verifier.log",
+        "bpfix-bench/cases/kernel-selftest-dynptr-fail-data-slice-missing-null-check1-raw-tp-af2be9c9/replay-verifier.log",
+    ] {
+        let diagnostic = run_json(path);
+        assert_eq!(diagnostic["error_id"], "BPFIX-E002");
+        assert_eq!(diagnostic["failure_class"], "source_bug");
+        assert!(evidence_contains(
+            &diagnostic,
+            "verifier_state_signal",
+            "nullable helper result"
+        ));
+        assert!(diagnostic["required_proof"]
+            .as_str()
+            .unwrap()
+            .contains("same verifier-visible branch"));
+        assert!(diagnostic["help"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|help| help.as_str().unwrap().contains("non-null branch")));
+    }
+
+    let mismatched_memory_base = run_json_stdin(
+        "0: R0=map_value_or_null(id=1,map=test,ks=4,vs=8) R2=map_value(map=test,ks=4,vs=8)\n\
+         1: (79) r1 = *(u64 *)(r2 +0)\n\
+         R0 invalid mem access 'map_value_or_null'\n",
+    );
+    assert_source_bug_without_verifier_state_signal(&mismatched_memory_base, "BPFIX-E002");
+
+    let non_nullable_state = run_json_stdin(
+        "0: R0=map_value(map=test,ks=4,vs=8)\n\
+         1: (79) r0 = *(u64 *)(r0 +0)\n\
+         R0 invalid mem access 'map_value_or_null'\n",
+    );
+    assert_source_bug_without_verifier_state_signal(&non_nullable_state, "BPFIX-E002");
+
+    let register_prefix_is_not_arithmetic_target = run_json_stdin(
+        "0: R1=map_value_or_null(id=1,map=test,ks=4,vs=8) R10=fp0\n\
+         1: (07) r10 += -8\n\
+         R1 pointer arithmetic on map_value_or_null prohibited, null-check it first\n",
+    );
+    assert_source_bug_without_verifier_state_signal(
+        &register_prefix_is_not_arithmetic_target,
+        "BPFIX-E002",
+    );
+
+    let trusted_arg_terminal_is_not_generic_nullable = run_json_stdin(
+        "0: R1=map_value_or_null(id=1,map=test,ks=4,vs=8)\n\
+         1: (85) call bpf_obj_new#200\n\
+         R1 type=map_value_or_null expected=ptr_, trusted arg0\n",
+    );
+    assert_source_bug_without_verifier_state_signal(
+        &trusted_arg_terminal_is_not_generic_nullable,
+        "BPFIX-E002",
+    );
+
+    let helper_arg_terminal_must_be_call = run_json_stdin(
+        "0: R1=ctx() R3=map_value_or_null(id=1,map=test,ks=4,vs=8) R10=fp0\n\
+         1: (bf) r2 = r10\n\
+         Possibly NULL pointer passed to helper arg3\n",
+    );
+    assert_source_bug_without_verifier_state_signal(
+        &helper_arg_terminal_must_be_call,
+        "BPFIX-E002",
+    );
+
+    let helper_arg_terminal_requires_instruction_site = run_json_stdin(
+        "0: R1=ctx() R3=map_value_or_null(id=1,map=test,ks=4,vs=8) R10=fp0\n\
+         Possibly NULL pointer passed to helper arg3\n",
+    );
+    assert_source_bug_without_verifier_state_signal(
+        &helper_arg_terminal_requires_instruction_site,
+        "BPFIX-E002",
+    );
+
+    let impossible_helper_arg_is_ignored = run_json_stdin(
+        "0: R1=ctx() R6=map_value_or_null(id=1,map=test,ks=4,vs=8)\n\
+         1: (85) call bpf_map_update_elem#2\n\
+         Possibly NULL pointer passed to helper arg6\n",
+    );
+    assert_source_bug_without_verifier_state_signal(
+        &impossible_helper_arg_is_ignored,
+        "BPFIX-E002",
+    );
+
+    let impossible_helper_arg_cannot_fallback_to_terminal_register = run_json_stdin(
+        "0: R1=ctx() R6=map_value_or_null(id=1,map=test,ks=4,vs=8)\n\
+         1: (85) call bpf_map_update_elem#2\n\
+         R6 Possibly NULL pointer passed to helper arg6\n",
+    );
+    assert_source_bug_without_verifier_state_signal(
+        &impossible_helper_arg_cannot_fallback_to_terminal_register,
+        "BPFIX-E002",
+    );
+}
+
+#[test]
 fn trusted_nullable_arguments_report_state_discipline() {
     let cpumask_trusted_arg =
         run_json("bpfix-bench/cases/kernel-selftest-cpumask-failure-test-global-mask-no-null-check-tp-btf-task-newtask-655f6c03/replay-verifier.log");
@@ -2271,7 +2371,18 @@ fn trusted_nullable_arguments_report_state_discipline() {
          2: (85) call bpf_map_update_elem#2\n\
          Possibly NULL pointer passed to helper arg3\n",
     );
-    assert_source_bug_without_verifier_state_signal(&generic_nullable_helper_arg, "BPFIX-E002");
+    assert_eq!(generic_nullable_helper_arg["error_id"], "BPFIX-E002");
+    assert_eq!(generic_nullable_helper_arg["failure_class"], "source_bug");
+    assert!(evidence_contains(
+        &generic_nullable_helper_arg,
+        "verifier_state_signal",
+        "nullable helper result"
+    ));
+    assert!(!evidence_contains(
+        &generic_nullable_helper_arg,
+        "verifier_state_signal",
+        "nullable RCU/trusted pointer"
+    ));
 
     let nullable_map_value_to_kptr_xchg = run_json_stdin(
         "0: R1=ctx() R10=fp0\n\
@@ -2279,7 +2390,17 @@ fn trusted_nullable_arguments_report_state_discipline() {
          2: (85) call bpf_kptr_xchg#194\n\
          Possibly NULL pointer passed to helper arg2\n",
     );
-    assert_source_bug_without_verifier_state_signal(&nullable_map_value_to_kptr_xchg, "BPFIX-E002");
+    assert_eq!(nullable_map_value_to_kptr_xchg["error_id"], "BPFIX-E002");
+    assert!(evidence_contains(
+        &nullable_map_value_to_kptr_xchg,
+        "verifier_state_signal",
+        "nullable helper result"
+    ));
+    assert!(!evidence_contains(
+        &nullable_map_value_to_kptr_xchg,
+        "verifier_state_signal",
+        "nullable RCU/trusted pointer"
+    ));
 
     let live_regs_only_kptr_call = run_json_stdin(
         "func#0 @0\n\
@@ -2825,7 +2946,10 @@ invalid verifier frobnication
 ",
         &["-", "--format", "json", "--fail-on-unsupported"],
     );
-    assert_eq!(unrelated_terminal_after_dynptr_detail.status.code(), Some(2));
+    assert_eq!(
+        unrelated_terminal_after_dynptr_detail.status.code(),
+        Some(2)
+    );
     assert!(unrelated_terminal_after_dynptr_detail.stderr.is_empty());
     let unrelated_terminal_after_dynptr_detail: Value =
         serde_json::from_slice(&unrelated_terminal_after_dynptr_detail.stdout)

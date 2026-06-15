@@ -82,6 +82,7 @@ pub enum ProofSignal {
     IrqStateLiveAtExit,
     SleepableCallInNonSleepableContext,
     CallbackCallWhileLocked,
+    NullablePointerUseWithoutProof,
     TrustedNullableArgument,
     KfuncArgumentTypeMismatch,
     ModernBpfObjectProtocolViolation,
@@ -157,6 +158,9 @@ impl ProofSignal {
             }
             Self::CallbackCallWhileLocked => {
                 "callback-invoking operation runs while a spin lock is held"
+            }
+            Self::NullablePointerUseWithoutProof => {
+                "nullable pointer is used before the verifier sees a non-null proof"
             }
             Self::TrustedNullableArgument => {
                 "trusted helper argument is still verifier-visible as nullable"
@@ -309,6 +313,9 @@ impl ProofSignal {
             Self::CallbackCallWhileLocked => {
                 "verifier branch state enters a synchronous callback from a call made after bpf_spin_lock and before the matching unlock"
             }
+            Self::NullablePointerUseWithoutProof => {
+                "verifier state shows the rejected pointer register is still a nullable helper result at the dereference, arithmetic, or helper-use site"
+            }
             Self::TrustedNullableArgument => {
                 "verifier state shows the rejected helper or kfunc argument is still a nullable RCU/trusted pointer at the call site"
             }
@@ -437,6 +444,9 @@ impl ProofSignal {
             Self::CallbackCallWhileLocked => {
                 "Move callback-invoking operations such as rbtree insertion outside spin-locked regions, or release the lock before a callback path can call helpers, kfuncs, or bpf_throw."
             }
+            Self::NullablePointerUseWithoutProof => {
+                "Check the helper result for null and keep the dereference, pointer arithmetic, or helper argument inside the same verifier-visible non-null branch."
+            }
             Self::TrustedNullableArgument => {
                 "Keep the RCU or trusted-pointer argument inside the verifier-visible non-null branch, or acquire a trusted reference before passing it to the helper or kfunc."
             }
@@ -522,6 +532,7 @@ impl ProofSignal {
                 | Self::ExceptionCallbackProtocolViolation
                 | Self::ExceptionThrowWithLiveReference
                 | Self::CallbackCallWhileLocked
+                | Self::NullablePointerUseWithoutProof
                 | Self::IrqFlagStateMismatch
                 | Self::IrqRestoreOrderMismatch
                 | Self::IrqRestoreHelperClassMismatch
@@ -617,6 +628,7 @@ impl ProofSignal {
                 | Self::IteratorStackStorageAccess
                 | Self::KfuncArgumentTypeMismatch
                 | Self::ModernBpfObjectProtocolViolation
+                | Self::NullablePointerUseWithoutProof
                 | Self::TrustedNullableArgument
                 | Self::ContextAccessSourceArgumentMismatch
                 | Self::ContextFieldUnavailable
@@ -674,6 +686,9 @@ impl ProofSignal {
             ),
             Self::CallbackCallWhileLocked => Some(
                 "avoid entering verifier callback frames from operations executed while a spin lock is held",
+            ),
+            Self::NullablePointerUseWithoutProof => Some(
+                "prove the nullable helper result is non-null in the same verifier-visible branch as this use",
             ),
             Self::TrustedNullableArgument => Some(
                 "prove the RCU/trusted pointer argument is non-null and trusted at the helper or kfunc call site",
@@ -753,6 +768,9 @@ impl ProofSignal {
             Self::CallbackCallWhileLocked => {
                 Some("callback path can run a forbidden call while a spin lock is held")
             }
+            Self::NullablePointerUseWithoutProof => {
+                Some("nullable pointer reaches this use without a non-null proof")
+            }
             Self::TrustedNullableArgument => {
                 Some("trusted helper argument remains nullable at the call site")
             }
@@ -799,6 +817,7 @@ impl ProofSignal {
             Self::IrqStateLiveAtExit => Some("BPFIX-E013"),
             Self::SleepableCallInNonSleepableContext => Some("BPFIX-E016"),
             Self::CallbackCallWhileLocked => Some("BPFIX-E015"),
+            Self::NullablePointerUseWithoutProof => Some("BPFIX-E002"),
             Self::TrustedNullableArgument => Some("BPFIX-E015"),
             Self::KfuncArgumentTypeMismatch => Some("BPFIX-E013"),
             Self::ModernBpfObjectProtocolViolation => Some("BPFIX-E023"),
@@ -1769,6 +1788,9 @@ fn proof_signals(context: ProofSignalContext<'_>) -> Vec<ProofSignal> {
     if callback_call_while_locked(&context) {
         signals.push(ProofSignal::CallbackCallWhileLocked);
     }
+    if nullable_pointer_use_without_proof(&context) {
+        signals.push(ProofSignal::NullablePointerUseWithoutProof);
+    }
     if modern_bpf_object_protocol_violation(&context) {
         signals.push(ProofSignal::ModernBpfObjectProtocolViolation);
     }
@@ -2214,9 +2236,7 @@ fn modern_bpf_object_protocol_violation(context: &ProofSignalContext<'_>) -> boo
     if !modern_bpf_object_protocol_target(target) {
         return false;
     }
-    let Some(reg) =
-        modern_bpf_object_protocol_register(&terminal, target, context.register)
-    else {
+    let Some(reg) = modern_bpf_object_protocol_register(&terminal, target, context.register) else {
         return false;
     };
     let fragment_start = context
@@ -2273,7 +2293,9 @@ fn modern_bpf_object_protocol_register(
     fallback
         .or_else(|| parse_arg_register_after(terminal, "args#"))
         .or_else(|| parse_arg_register_after(terminal, "arg#"))
-        .or_else(|| (target == "bpf_kptr_xchg" && terminal.contains("has no valid kptr")).then_some(1))
+        .or_else(|| {
+            (target == "bpf_kptr_xchg" && terminal.contains("has no valid kptr")).then_some(1)
+        })
 }
 
 fn parse_arg_register_after(message: &str, needle: &str) -> Option<u8> {
@@ -3176,10 +3198,7 @@ fn irq_ref_origin_for_stack_slot<'a>(
                 return None;
             }
             if state.frame == arg_frame
-                && state
-                    .stack
-                    .get(&offset)
-                    .is_some_and(is_irq_flag_stack_slot)
+                && state.stack.get(&offset).is_some_and(is_irq_flag_stack_slot)
             {
                 return Some(target);
             }
@@ -3215,12 +3234,7 @@ fn irq_ref_stack_slot_linked_after_origin(
         .filter(|state| state.log_line < before_line)
         .filter(|state| state.frame == frame)
         .filter(|state| state.ref_ids.contains(&ref_id))
-        .any(|state| {
-            state
-                .stack
-                .get(&offset)
-                .is_some_and(is_irq_flag_stack_slot)
-        })
+        .any(|state| state.stack.get(&offset).is_some_and(is_irq_flag_stack_slot))
 }
 
 fn irq_stack_slot_live_before_line(
@@ -3341,6 +3355,65 @@ fn callback_call_while_locked(context: &ProofSignalContext<'_>) -> bool {
         return false;
     }
     spin_lock_held_before_instruction(context.log, fragment_start, origin_instruction.line)
+}
+
+fn nullable_pointer_use_without_proof(context: &ProofSignalContext<'_>) -> bool {
+    if context.obligation != ProofObligation::NullablePointer {
+        return false;
+    }
+    let terminal = context.terminal_error.to_ascii_lowercase();
+    if !(terminal.contains("_or_null") || terminal.contains("possibly null pointer")) {
+        return false;
+    }
+    if terminal.contains("trusted arg") {
+        return false;
+    }
+    let helper_arg_terminal = terminal.contains("helper arg");
+    let Some(reg) = (if helper_arg_terminal {
+        nullable_use_register(&terminal)
+    } else {
+        nullable_use_register(&terminal).or(context.register)
+    }) else {
+        return false;
+    };
+    let state = if let Some(instruction) =
+        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)
+    {
+        if nullable_instruction_register_mismatch(&terminal, instruction.tail, reg) {
+            return false;
+        }
+        let fragment_start = context
+            .terminal_line
+            .map(|line| verifier_fragment_start_line(context.log, line))
+            .unwrap_or_else(|| verifier_fragment_start_line(context.log, instruction.line));
+        latest_reg_state_before_instruction(context.states, instruction, fragment_start, reg)
+    } else {
+        if helper_arg_terminal {
+            return false;
+        }
+        latest_reg_state_before(context.states, context.terminal_pc, reg)
+    };
+    state.is_some_and(|state| {
+        state.reg_type.contains("_or_null") && !is_trusted_nullable_state(state)
+    })
+}
+
+fn nullable_use_register(terminal: &str) -> Option<u8> {
+    parse_u32_after(terminal, "helper arg")
+        .and_then(|reg| (1..=5).contains(&reg).then_some(reg as u8))
+}
+
+fn nullable_instruction_register_mismatch(terminal: &str, instruction_tail: &str, reg: u8) -> bool {
+    if terminal.contains("helper arg") {
+        return call_target_from_instruction_tail(instruction_tail).is_none();
+    }
+    if terminal.contains("invalid mem access") {
+        return memory_access_base_register(instruction_tail).is_some_and(|base| base != reg);
+    }
+    if terminal.contains("pointer arithmetic") {
+        return register_operands(instruction_tail).first().copied() != Some(reg);
+    }
+    false
 }
 
 fn latest_state_is_sync_callback(
