@@ -1795,6 +1795,65 @@ fn ordinary_source_bugs_are_not_overclassified_as_runtime_artifacts() {
 }
 
 #[test]
+fn trusted_nullable_arguments_report_state_discipline() {
+    let cpumask_trusted_arg =
+        run_json("bpfix-bench/cases/kernel-selftest-cpumask-failure-test-global-mask-no-null-check-tp-btf-task-newtask-655f6c03/replay-verifier.log");
+    assert_eq!(cpumask_trusted_arg["error_id"], "BPFIX-E015");
+    assert_eq!(cpumask_trusted_arg["failure_class"], "source_bug");
+    assert!(evidence_contains(
+        &cpumask_trusted_arg,
+        "verifier_state_signal",
+        "nullable RCU/trusted pointer"
+    ));
+    assert!(cpumask_trusted_arg["required_proof"]
+        .as_str()
+        .unwrap()
+        .contains("RCU/trusted pointer argument"));
+    assert!(!cpumask_trusted_arg["help"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|help| help
+            .as_str()
+            .unwrap()
+            .contains("nullable pointer returned by a helper")));
+
+    let cgroup_trusted_arg =
+        run_json("bpfix-bench/cases/kernel-selftest-cgrp-kfunc-failure-cgrp-kfunc-release-untrusted-tp-btf-cgroup-mkdir-9eb3123d/replay-verifier.log");
+    assert_eq!(cgroup_trusted_arg["error_id"], "BPFIX-E015");
+    assert!(evidence_contains(
+        &cgroup_trusted_arg,
+        "verifier_state_signal",
+        "nullable RCU/trusted pointer"
+    ));
+
+    let nullable_kptr_exchange =
+        run_json("bpfix-bench/cases/kernel-selftest-cpumask-failure-test-global-mask-rcu-no-null-check-tp-btf-task-newtask-c8a92e39/replay-verifier.log");
+    assert_eq!(nullable_kptr_exchange["error_id"], "BPFIX-E015");
+    assert!(evidence_contains(
+        &nullable_kptr_exchange,
+        "verifier_state_signal",
+        "nullable RCU/trusted pointer"
+    ));
+
+    let generic_nullable_helper_arg = run_json_stdin(
+        "0: R1=ctx() R10=fp0\n\
+         1: R3=map_value_or_null(id=1,map=test,ks=4,vs=8)\n\
+         2: (85) call bpf_map_update_elem#2\n\
+         Possibly NULL pointer passed to helper arg3\n",
+    );
+    assert_source_bug_without_verifier_state_signal(&generic_nullable_helper_arg, "BPFIX-E002");
+
+    let nullable_map_value_to_kptr_xchg = run_json_stdin(
+        "0: R1=ctx() R10=fp0\n\
+         1: R2=map_value_or_null(id=1,map=test,ks=4,vs=8)\n\
+         2: (85) call bpf_kptr_xchg#194\n\
+         Possibly NULL pointer passed to helper arg2\n",
+    );
+    assert_source_bug_without_verifier_state_signal(&nullable_map_value_to_kptr_xchg, "BPFIX-E002");
+}
+
+#[test]
 fn terminal_error_selection_ignores_state_lines_and_uses_final_reject() {
     let pointer_bitwise = run_json("bpfix-bench/cases/stackoverflow-68460177/replay-verifier.log");
     assert_eq!(pointer_bitwise["error_id"], "BPFIX-E006");
@@ -1874,6 +1933,33 @@ fn dynptr_protocol_diagnostic_uses_specific_required_proof() {
         "environment_or_configuration"
     );
     assert_eq!(unavailable_dynptr_kfunc["error_id"], "BPFIX-E009");
+
+    let variable_slice_length =
+        run_json("bpfix-bench/cases/kernel-selftest-dynptr-fail-dynptr-slice-var-len2-tc-673ab9e7/replay-verifier.log");
+    assert_eq!(variable_slice_length["error_id"], "BPFIX-E012");
+    assert!(variable_slice_length["message"]
+        .as_str()
+        .unwrap()
+        .contains("must be a known constant"));
+    assert!(variable_slice_length["required_proof"]
+        .as_str()
+        .unwrap()
+        .contains("verifier-known constant length"));
+
+    let read_write_slice_in_read_only_context =
+        run_json("bpfix-bench/cases/kernel-selftest-dynptr-fail-invalid-slice-rdwr-rdonly-cgroup-skb-ingress-61688196/replay-verifier.log");
+    assert_eq!(
+        read_write_slice_in_read_only_context["error_id"],
+        "BPFIX-E012"
+    );
+    assert!(read_write_slice_in_read_only_context["message"]
+        .as_str()
+        .unwrap()
+        .contains("does not allow writes to packet data"));
+    assert!(read_write_slice_in_read_only_context["required_proof"]
+        .as_str()
+        .unwrap()
+        .contains("read-only dynptr slice helper"));
 
     let generic_unacquired_reference = run_json_stdin(
         "0: (85) call bpf_obj_drop#108\n\

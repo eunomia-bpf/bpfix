@@ -13,6 +13,7 @@ const TERMINAL_ERROR_MARKERS: &[&str] = &[
     "outside of",
     "expected ",
     "expected=",
+    "possibly null pointer passed to",
     "misaligned",
     "missing btf",
     "unknown opcode",
@@ -28,6 +29,7 @@ const TERMINAL_ERROR_MARKERS: &[&str] = &[
     "jit does not support",
     "cannot ",
     "permission denied",
+    "does not allow writes to packet data",
     "too many states",
     "processed 1000001",
     "loop is not bounded",
@@ -52,6 +54,7 @@ const TERMINAL_ERROR_MARKERS: &[&str] = &[
     "only read from",
     "access beyond struct",
     "has no valid kptr",
+    "must be a known constant",
     "dynptr",
 ];
 
@@ -367,15 +370,33 @@ fn instruction_tail(line: &str) -> Option<&str> {
         return None;
     }
     let tail = trimmed[colon + 1..].trim_start();
-    let bytes = tail.as_bytes();
-    if bytes.len() < 4
-        || bytes[0] != b'('
-        || !bytes[1..3].iter().all(u8::is_ascii_hexdigit)
-        || bytes[3] != b')'
-    {
-        return None;
+    instruction_opcode_tail(tail)
+}
+
+fn instruction_opcode_tail(tail: &str) -> Option<&str> {
+    if looks_like_opcode_tail(tail) {
+        return Some(tail);
     }
-    Some(tail)
+    let bytes = tail.as_bytes();
+    let mask_len = bytes
+        .iter()
+        .take_while(|byte| byte.is_ascii_digit() || **byte == b'.')
+        .count();
+    if mask_len > 0 && bytes.get(mask_len).is_some_and(u8::is_ascii_whitespace) {
+        let rest = tail[mask_len..].trim_start();
+        if looks_like_opcode_tail(rest) {
+            return Some(rest);
+        }
+    }
+    None
+}
+
+fn looks_like_opcode_tail(tail: &str) -> bool {
+    let bytes = tail.as_bytes();
+    bytes.len() >= 4
+        && bytes[0] == b'('
+        && bytes[1..3].iter().all(u8::is_ascii_hexdigit)
+        && bytes[3] == b')'
 }
 
 fn call_target_from_instruction_tail(line: &str) -> Option<&str> {
@@ -417,4 +438,34 @@ fn is_backward_search_boundary(line: &str) -> bool {
         || line.starts_with("verification time ")
         || line.starts_with("stack depth ")
         || (parse_instruction_pc(line).is_none() && is_verifier_error_line(line))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{find_terminal_error, is_verifier_error_line};
+
+    #[test]
+    fn live_regs_instruction_rows_are_not_terminal_errors() {
+        assert!(!is_verifier_error_line(
+            "17: ......6... (85) call bpf_rcu_read_unlock#73013"
+        ));
+        let log = "\
+func#0 @0
+Live regs before insn:
+ 17: ......6... (85) call bpf_rcu_read_unlock#73013
+0: R1=ctx() R10=fp0
+12: (79) r2 = *(u64 *)(r6 +0)         ; R2_w=rcu_ptr_or_null_bpf_cpumask(id=5)
+13: (18) r1 = 0xffff8999fb071508      ; R1_w=map_value(map=.bss.MASK,ks=4,vs=8)
+15: (85) call bpf_kptr_xchg#194
+Possibly NULL pointer passed to helper arg2
+processed 13 insns (limit 1000000) max_states_per_insn 0 total_states 1 peak_states 1 mark_read 1
+";
+        let terminal = find_terminal_error(log).expect("terminal error should be found");
+        assert_eq!(
+            terminal.message,
+            "Possibly NULL pointer passed to helper arg2"
+        );
+        assert_eq!(terminal.pc, Some(15));
+        assert_eq!(terminal.call_target.as_deref(), Some("bpf_kptr_xchg"));
+    }
 }

@@ -543,7 +543,9 @@ fn context_implies_dynptr_safety(message: &str, call_target: Option<&str>) -> bo
         && (message.contains("unacquired reference")
             || message.contains("reference type")
             || message.contains("expected an initialized")
-            || message.contains("expected pointer to stack"))
+            || message.contains("expected pointer to stack")
+            || message.contains("must be a known constant")
+            || message.contains("does not allow writes to packet data"))
 }
 
 fn unsupported_message_classification() -> Classification {
@@ -563,7 +565,7 @@ fn unsupported_message_classification() -> Classification {
 
 #[cfg(test)]
 mod tests {
-    use super::{classify, VerifierRejectionKind};
+    use super::{classify, classify_with_context, VerifierRejectionKind};
 
     #[test]
     fn parses_rejection_kind_before_mapping_to_diagnostic_class() {
@@ -594,5 +596,21 @@ mod tests {
         let class = classify("a new verifier rejection shape");
         assert_eq!(class.error_id, "BPFIX-E099");
         assert_eq!(class.failure_class, "unsupported_verifier_message");
+    }
+
+    #[test]
+    fn dynptr_call_context_classifies_mode_and_constant_rejects() {
+        let constant =
+            classify_with_context("R4 must be a known constant", Some("bpf_dynptr_slice_rdwr"));
+        assert_eq!(constant.error_id, "BPFIX-E012");
+
+        let write_mode = classify_with_context(
+            "the prog does not allow writes to packet data",
+            Some("bpf_dynptr_slice_rdwr"),
+        );
+        assert_eq!(write_mode.error_id, "BPFIX-E012");
+
+        let generic = classify("R4 must be a known constant");
+        assert_eq!(generic.error_id, "BPFIX-E099");
     }
 }

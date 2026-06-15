@@ -67,6 +67,7 @@ pub enum ProofSignal {
     MapValueGuardExceedsValueSize,
     MapPointerArgumentScalarZero,
     DynptrStackStorageAccess,
+    TrustedNullableArgument,
     ContextAccessSourceArgumentMismatch,
     ExceptionThrowWithLiveReference,
     MapLookupKeyArgumentUnreadable,
@@ -95,6 +96,9 @@ impl ProofSignal {
             }
             Self::DynptrStackStorageAccess => {
                 "dynptr stack storage is being used as ordinary memory"
+            }
+            Self::TrustedNullableArgument => {
+                "trusted helper argument is still verifier-visible as nullable"
             }
             Self::ContextAccessSourceArgumentMismatch => {
                 "tracing context argument type does not match the verifier-visible function signature"
@@ -188,6 +192,9 @@ impl ProofSignal {
             Self::DynptrStackStorageAccess => {
                 "verifier state shows this stack slot contains dynptr state, but the rejected instruction reads it as ordinary stack bytes"
             }
+            Self::TrustedNullableArgument => {
+                "verifier state shows the rejected helper or kfunc argument is still a nullable RCU/trusted pointer at the call site"
+            }
             Self::ContextAccessSourceArgumentMismatch => {
                 "verifier reports the traced-function argument at this context slot as PTR rather than a directly supported struct pointer, while the rejected source is a BPF_PROG argument load from the raw tracing context"
             }
@@ -259,6 +266,9 @@ impl ProofSignal {
             Self::DynptrStackStorageAccess => {
                 "Do not copy, read, or pass a dynptr object as ordinary bytes; use dynptr helpers to read data out of the dynptr and keep the dynptr object in its dedicated stack slot."
             }
+            Self::TrustedNullableArgument => {
+                "Keep the RCU or trusted-pointer argument inside the verifier-visible non-null branch, or acquire a trusted reference before passing it to the helper or kfunc."
+            }
             Self::ContextAccessSourceArgumentMismatch => {
                 "Use only fentry arguments whose BTF type is verifier-supported at this slot, or avoid reading this argument through BPF_PROG when the traced function exposes it as an unsupported pointer type."
             }
@@ -319,6 +329,7 @@ impl ProofSignal {
                 | Self::MapLookupKeyArgumentUnreadable
                 | Self::MapValueGuardExceedsValueSize
                 | Self::PacketGuardUndercoversAccess
+                | Self::TrustedNullableArgument
         )
     }
 
@@ -340,6 +351,7 @@ impl ProofSignal {
             self,
             Self::MapPointerArgumentScalarZero
                 | Self::DynptrStackStorageAccess
+                | Self::TrustedNullableArgument
                 | Self::ContextAccessSourceArgumentMismatch
                 | Self::ExceptionThrowWithLiveReference
                 | Self::MapLookupKeyArgumentUnreadable
@@ -353,6 +365,9 @@ impl ProofSignal {
             ),
             Self::DynptrStackStorageAccess => Some(
                 "keep the dynptr object in its verifier-tracked stack slot and use dynptr helpers instead of reading or copying the dynptr storage as ordinary bytes",
+            ),
+            Self::TrustedNullableArgument => Some(
+                "prove the RCU/trusted pointer argument is non-null and trusted at the helper or kfunc call site",
             ),
             Self::ExceptionThrowWithLiveReference => Some(
                 "release verifier-tracked references on every callback and exceptional path before bpf_throw can run",
@@ -375,6 +390,9 @@ impl ProofSignal {
             Self::DynptrStackStorageAccess => {
                 Some("dynptr stack storage is read as ordinary memory")
             }
+            Self::TrustedNullableArgument => {
+                Some("trusted helper argument remains nullable at the call site")
+            }
             Self::ExceptionThrowWithLiveReference => {
                 Some("bpf_throw can run while verifier-tracked references are live")
             }
@@ -392,6 +410,7 @@ impl ProofSignal {
         match self {
             Self::MapPointerArgumentScalarZero => Some("BPFIX-E021"),
             Self::DynptrStackStorageAccess => Some("BPFIX-E012"),
+            Self::TrustedNullableArgument => Some("BPFIX-E015"),
             Self::ExceptionThrowWithLiveReference => Some("BPFIX-E004"),
             _ => None,
         }
@@ -1308,6 +1327,9 @@ fn proof_signals(context: ProofSignalContext<'_>) -> Vec<ProofSignal> {
     if dynptr_stack_storage_access(&context) {
         signals.push(ProofSignal::DynptrStackStorageAccess);
     }
+    if trusted_nullable_argument(&context) {
+        signals.push(ProofSignal::TrustedNullableArgument);
+    }
     if context
         .events
         .iter()
@@ -1559,6 +1581,50 @@ fn dynptr_stack_storage_access(context: &ProofSignalContext<'_>) -> bool {
         return false;
     };
     latest_dynptr_stack_overlap(context, access).unwrap_or(false)
+}
+
+fn trusted_nullable_argument(context: &ProofSignalContext<'_>) -> bool {
+    let terminal = context.terminal_error.to_ascii_lowercase();
+    if !terminal.contains("possibly null pointer passed to") {
+        return false;
+    }
+    let Some(instruction) =
+        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)
+    else {
+        return false;
+    };
+    let Some(target) = call_target_from_instruction_tail(instruction.tail) else {
+        return false;
+    };
+    let Some(reg) = nullable_argument_register(&terminal) else {
+        return false;
+    };
+    let fragment_start = context
+        .terminal_line
+        .map(|line| verifier_fragment_start_line(context.log, line))
+        .unwrap_or_else(|| verifier_fragment_start_line(context.log, instruction.line));
+    let Some(state) =
+        latest_reg_state_before_instruction(context.states, instruction, fragment_start, reg)
+    else {
+        return false;
+    };
+    is_trusted_nullable_state(state)
+        && (terminal.contains("trusted arg")
+            || state.reg_type.starts_with("rcu_ptr_or_null")
+            || target == "bpf_kptr_xchg")
+}
+
+fn nullable_argument_register(message: &str) -> Option<u8> {
+    // The verifier prints trusted kfunc args as zero-based argN, while helper
+    // args are one-based and map directly to R1..R5.
+    if let Some(arg) = parse_u32_after(message, "trusted arg") {
+        return arg.checked_add(1).and_then(|reg| reg.try_into().ok());
+    }
+    parse_u32_after(message, "helper arg").and_then(|reg| reg.try_into().ok())
+}
+
+fn is_trusted_nullable_state(state: &RegState) -> bool {
+    state.reg_type.starts_with("rcu_ptr_or_null") || state.reg_type.starts_with("ptr_or_null")
 }
 
 fn latest_dynptr_stack_overlap(

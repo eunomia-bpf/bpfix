@@ -116,6 +116,16 @@ fn dynptr_required_proof(
             "pass a dynptr with the helper-required backing type and read/write mode".to_string(),
             "rejected here: dynptr backing type or mode does not match this helper".to_string(),
         )
+    } else if lower.contains("must be a known constant") {
+        (
+            "pass a verifier-known constant length to the dynptr slice helper, or split variable-length handling into verifier-visible constant-size cases".to_string(),
+            "rejected here: dynptr slice length is not a verifier-known constant".to_string(),
+        )
+    } else if lower.contains("does not allow writes to packet data") {
+        (
+            "use a read-only dynptr slice helper in this program context, or move the write path to a hook where packet writes are allowed".to_string(),
+            "rejected here: read-write dynptr access is not allowed for this packet context".to_string(),
+        )
     } else if lower.contains("potential write to dynptr") {
         (
             "keep ordinary writes and helper outputs away from stack bytes that store live dynptr state".to_string(),
