@@ -66,6 +66,7 @@ pub enum ProofSignal {
     MapValueCheckedOffsetRelationLost,
     MapValueGuardExceedsValueSize,
     MapPointerArgumentScalarZero,
+    DynptrStackStorageAccess,
     ContextAccessSourceArgumentMismatch,
     ExceptionThrowWithLiveReference,
     MapLookupKeyArgumentUnreadable,
@@ -91,6 +92,9 @@ impl ProofSignal {
         match self {
             Self::MapPointerArgumentScalarZero => {
                 "map relocation or loader path is missing for a helper map argument"
+            }
+            Self::DynptrStackStorageAccess => {
+                "dynptr stack storage is being used as ordinary memory"
             }
             Self::ContextAccessSourceArgumentMismatch => {
                 "tracing context argument type does not match the verifier-visible function signature"
@@ -181,6 +185,9 @@ impl ProofSignal {
             Self::MapPointerArgumentScalarZero => {
                 "helper expects a map pointer, but verifier state shows scalar zero in the map argument register at the helper call; this matches a missing map relocation or raw-instruction loader path"
             }
+            Self::DynptrStackStorageAccess => {
+                "verifier state shows this stack slot contains dynptr state, but the rejected instruction reads it as ordinary stack bytes"
+            }
             Self::ContextAccessSourceArgumentMismatch => {
                 "verifier reports the traced-function argument at this context slot as PTR rather than a directly supported struct pointer, while the rejected source is a BPF_PROG argument load from the raw tracing context"
             }
@@ -249,6 +256,9 @@ impl ProofSignal {
             Self::MapPointerArgumentScalarZero => {
                 "Load the ELF object through libbpf or another loader that applies map relocations; raw instructions must not replace a map symbol with scalar zero."
             }
+            Self::DynptrStackStorageAccess => {
+                "Do not copy, read, or pass a dynptr object as ordinary bytes; use dynptr helpers to read data out of the dynptr and keep the dynptr object in its dedicated stack slot."
+            }
             Self::ContextAccessSourceArgumentMismatch => {
                 "Use only fentry arguments whose BTF type is verifier-supported at this slot, or avoid reading this argument through BPF_PROG when the traced function exposes it as an unsupported pointer type."
             }
@@ -304,6 +314,7 @@ impl ProofSignal {
         matches!(
             self,
             Self::ContextAccessSourceArgumentMismatch
+                | Self::DynptrStackStorageAccess
                 | Self::ExceptionThrowWithLiveReference
                 | Self::MapLookupKeyArgumentUnreadable
                 | Self::MapValueGuardExceedsValueSize
@@ -328,6 +339,7 @@ impl ProofSignal {
         matches!(
             self,
             Self::MapPointerArgumentScalarZero
+                | Self::DynptrStackStorageAccess
                 | Self::ContextAccessSourceArgumentMismatch
                 | Self::ExceptionThrowWithLiveReference
                 | Self::MapLookupKeyArgumentUnreadable
@@ -338,6 +350,9 @@ impl ProofSignal {
         match self {
             Self::MapPointerArgumentScalarZero => Some(
                 "apply the map relocation so bpf_map_lookup_elem receives a verifier-tracked map pointer instead of scalar zero",
+            ),
+            Self::DynptrStackStorageAccess => Some(
+                "keep the dynptr object in its verifier-tracked stack slot and use dynptr helpers instead of reading or copying the dynptr storage as ordinary bytes",
             ),
             Self::ExceptionThrowWithLiveReference => Some(
                 "release verifier-tracked references on every callback and exceptional path before bpf_throw can run",
@@ -357,6 +372,9 @@ impl ProofSignal {
             Self::MapPointerArgumentScalarZero => Some(
                 "map helper argument is scalar zero because the map relocation was not applied",
             ),
+            Self::DynptrStackStorageAccess => {
+                Some("dynptr stack storage is read as ordinary memory")
+            }
             Self::ExceptionThrowWithLiveReference => {
                 Some("bpf_throw can run while verifier-tracked references are live")
             }
@@ -373,6 +391,7 @@ impl ProofSignal {
     pub(crate) const fn error_id_override(self) -> Option<&'static str> {
         match self {
             Self::MapPointerArgumentScalarZero => Some("BPFIX-E021"),
+            Self::DynptrStackStorageAccess => Some("BPFIX-E012"),
             Self::ExceptionThrowWithLiveReference => Some("BPFIX-E004"),
             _ => None,
         }
@@ -1286,6 +1305,9 @@ fn proof_signals(context: ProofSignalContext<'_>) -> Vec<ProofSignal> {
     ) {
         signals.push(ProofSignal::MapLookupKeyArgumentUnreadable);
     }
+    if dynptr_stack_storage_access(&context) {
+        signals.push(ProofSignal::DynptrStackStorageAccess);
+    }
     if context
         .events
         .iter()
@@ -1518,6 +1540,129 @@ fn map_lookup_key_argument_unreadable(
     call_argument(&rejected.text, "bpf_map_lookup_elem", 1)
         .as_deref()
         .is_some_and(is_bare_identifier_argument)
+}
+
+fn dynptr_stack_storage_access(context: &ProofSignalContext<'_>) -> bool {
+    if context.obligation != ProofObligation::StackInitialized {
+        return false;
+    }
+    if !context.terminal_error.contains("invalid read from stack") {
+        return false;
+    }
+    if rejected_source(context.events).is_some_and(|source| {
+        source.text.contains("bpf_dynptr_slice")
+            && context.terminal_error.contains("memory, len pair")
+    }) {
+        return false;
+    }
+    let Some(access) = stack_access_range(context.terminal_error) else {
+        return false;
+    };
+    latest_dynptr_stack_overlap(context, access).unwrap_or(false)
+}
+
+fn latest_dynptr_stack_overlap(
+    context: &ProofSignalContext<'_>,
+    access: StackByteRange,
+) -> Option<bool> {
+    for state in context
+        .states
+        .iter()
+        .filter(|state| context.terminal_pc.is_none_or(|pc| state.pc <= pc))
+        .filter(|state| {
+            context
+                .terminal_line
+                .is_none_or(|line| state.log_line < line)
+        })
+        .rev()
+    {
+        let mut saw_overlap = false;
+        let mut start_in_dynptr = false;
+        let mut start_in_non_dynptr = false;
+        let mut contains_dynptr = false;
+        for (offset, stack) in &state.stack {
+            let is_dynptr = stack
+                .value
+                .as_ref()
+                .is_some_and(|value| value.reg_type.starts_with("dynptr"));
+            let Some(range) = stack_value_range(*offset, is_dynptr) else {
+                continue;
+            };
+            if !range.overlaps(access) {
+                continue;
+            }
+            saw_overlap = true;
+            if range.contains(access.start) {
+                if is_dynptr {
+                    start_in_dynptr = true;
+                } else {
+                    start_in_non_dynptr = true;
+                }
+            }
+            if is_dynptr && access.contains_range(range) {
+                contains_dynptr = true;
+            }
+        }
+        if contains_dynptr || start_in_dynptr {
+            return Some(true);
+        }
+        if start_in_non_dynptr || saw_overlap {
+            return Some(false);
+        }
+    }
+    None
+}
+
+#[derive(Clone, Copy)]
+struct StackByteRange {
+    start: i16,
+    end: i16,
+}
+
+impl StackByteRange {
+    fn overlaps(self, other: Self) -> bool {
+        self.start < other.end && other.start < self.end
+    }
+
+    fn contains(self, offset: i16) -> bool {
+        self.start <= offset && offset < self.end
+    }
+
+    fn contains_range(self, other: Self) -> bool {
+        self.start <= other.start && other.end <= self.end
+    }
+}
+
+fn stack_value_range(offset: i16, is_dynptr: bool) -> Option<StackByteRange> {
+    let size = if is_dynptr { 16 } else { 8 };
+    Some(StackByteRange {
+        start: offset,
+        end: offset.checked_add(size)?,
+    })
+}
+
+fn stack_access_range(message: &str) -> Option<StackByteRange> {
+    let offset = parse_signed_i16_after(message, "off ")?;
+    let size = parse_signed_i16_after(message, "size ")?;
+    let end = offset.checked_add(size)?;
+    Some(StackByteRange { start: offset, end })
+}
+
+fn parse_signed_i16_after(message: &str, marker: &str) -> Option<i16> {
+    let start = message.find(marker)? + marker.len();
+    let rest = message[start..].trim_start();
+    let bytes = rest.as_bytes();
+    let mut end = 0usize;
+    if matches!(bytes.first(), Some(b'-' | b'+')) {
+        end = 1;
+    }
+    while end < bytes.len() && bytes[end].is_ascii_digit() {
+        end += 1;
+    }
+    if end == 0 || matches!(rest.as_bytes().get(..end), Some([b'-']) | Some([b'+'])) {
+        return None;
+    }
+    rest[..end].parse::<i16>().ok()
 }
 
 fn map_value_wide_access(

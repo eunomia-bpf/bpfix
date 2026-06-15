@@ -366,6 +366,7 @@ fn parse_reg_token(token: &str) -> Option<(u8, RegState)> {
 fn parse_stack_token(token: &str) -> Option<(i16, StackState)> {
     let (lhs, rhs) = token.split_once('=')?;
     let fp_off = lhs.strip_prefix("fp")?;
+    let fp_off = strip_stack_access_suffix(fp_off);
     let Some(off) = parse_i32(fp_off).and_then(|off| off.try_into().ok()) else {
         warn_verifier_log(format!("invalid stack offset in {token:?}"));
         return None;
@@ -378,6 +379,15 @@ fn parse_stack_token(token: &str) -> Option<(i16, StackState)> {
         }
     }
 }
+
+fn strip_stack_access_suffix(offset: &str) -> &str {
+    offset
+        .strip_suffix("_rw")
+        .or_else(|| offset.strip_suffix("_r"))
+        .or_else(|| offset.strip_suffix("_w"))
+        .unwrap_or(offset)
+}
+
 fn parse_reg_name(name: &str) -> Option<(u8, VerifierValueWidth)> {
     let name = name.strip_prefix('R')?;
     let (name, value_width) = if let Some(name) = name.strip_suffix("_w") {

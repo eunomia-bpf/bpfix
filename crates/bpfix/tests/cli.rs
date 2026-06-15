@@ -1881,6 +1881,83 @@ fn dynptr_protocol_diagnostic_uses_specific_required_proof() {
     );
     assert_ne!(generic_unacquired_reference["error_id"], "BPFIX-E012");
 
+    let raw_dynptr_storage_read =
+        run_json("bpfix-bench/cases/kernel-selftest-dynptr-fail-invalid-read1-raw-tp-f61c0428/replay-verifier.log");
+    assert_eq!(raw_dynptr_storage_read["error_id"], "BPFIX-E012");
+    assert!(evidence_contains(
+        &raw_dynptr_storage_read,
+        "verifier_state_signal",
+        "stack slot contains dynptr state"
+    ));
+    assert!(raw_dynptr_storage_read["required_proof"]
+        .as_str()
+        .unwrap()
+        .contains("use dynptr helpers"));
+    assert!(!raw_dynptr_storage_read["help"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|help| help.as_str().unwrap().contains("Initialize the full stack")));
+
+    let dynptr_storage_passed_to_map =
+        run_json("bpfix-bench/cases/kernel-selftest-dynptr-fail-add-dynptr-to-map1-raw-tp-2b5ac898/replay-verifier.log");
+    assert_eq!(dynptr_storage_passed_to_map["error_id"], "BPFIX-E012");
+    assert!(evidence_contains(
+        &dynptr_storage_passed_to_map,
+        "verifier_state_signal",
+        "stack slot contains dynptr state"
+    ));
+    let dynptr_interior_read =
+        run_json("bpfix-bench/cases/kernel-selftest-dynptr-fail-invalid-read3-raw-tp-99c4b958/replay-verifier.log");
+    assert_eq!(dynptr_interior_read["error_id"], "BPFIX-E012");
+    assert!(evidence_contains(
+        &dynptr_interior_read,
+        "verifier_state_signal",
+        "stack slot contains dynptr state"
+    ));
+    let struct_copy_with_embedded_dynptr =
+        run_json("bpfix-bench/cases/kernel-selftest-dynptr-fail-add-dynptr-to-map2-raw-tp-7a037daf/replay-verifier.log");
+    assert_eq!(struct_copy_with_embedded_dynptr["error_id"], "BPFIX-E012");
+    assert!(evidence_contains(
+        &struct_copy_with_embedded_dynptr,
+        "verifier_state_signal",
+        "stack slot contains dynptr state"
+    ));
+    let embedded_dynptr_with_plain_prefix = run_json_stdin(
+        "0: R10=fp0\n\
+         1: (85) call bpf_ringbuf_reserve_dynptr#198 ; R0_w=scalar() fp-24_w=0 fp-16_w=dynptr_ringbuf(id=1,dynptr_id=1)\n\
+         2: (85) call bpf_map_update_elem#2\n\
+         invalid read from stack R3 off -24+0 size 24\n",
+    );
+    assert_eq!(embedded_dynptr_with_plain_prefix["error_id"], "BPFIX-E012");
+    assert!(evidence_contains(
+        &embedded_dynptr_with_plain_prefix,
+        "verifier_state_signal",
+        "stack slot contains dynptr state"
+    ));
+
+    let dynptr_slice_small_buffer =
+        run_json("bpfix-bench/cases/kernel-selftest-dynptr-fail-test-dynptr-skb-small-buff-cgroup-skb-egress-4f498dbd/replay-verifier.log");
+    assert_eq!(dynptr_slice_small_buffer["error_id"], "BPFIX-E003");
+    assert!(!evidence_contains(
+        &dynptr_slice_small_buffer,
+        "verifier_state_signal",
+        "stack slot contains dynptr state"
+    ));
+    let stale_dynptr_stack_state = run_json_stdin(
+        "0: R10=fp0\n\
+         1: (85) call bpf_ringbuf_reserve_dynptr#198 ; R0_w=scalar() fp-16_w=dynptr_ringbuf(id=1,dynptr_id=1)\n\
+         2: (7b) *(u64 *)(r10 -16) = r1 ; R1_w=0 R10=fp0 fp-16_w=0\n\
+         3: (61) r2 = *(u32 *)(r10 -16)\n\
+         invalid read from stack off -16+0 size 4\n",
+    );
+    assert_eq!(stale_dynptr_stack_state["error_id"], "BPFIX-E003");
+    assert!(!evidence_contains(
+        &stale_dynptr_stack_state,
+        "verifier_state_signal",
+        "stack slot contains dynptr state"
+    ));
+
     let text =
         run_text("bpfix-bench/cases/kernel-selftest-dynptr-fail-release-twice-raw-tp-3722429d/replay-verifier.log");
     assert!(text.contains("dynptr-backed references only while they are acquired"));

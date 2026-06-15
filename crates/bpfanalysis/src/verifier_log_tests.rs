@@ -135,6 +135,40 @@ from 12 to 18 (speculative execution): frame1: R2_w=42 R10=fp0 fp-24=0000???? sc
 }
 
 #[test]
+fn parses_stack_access_suffixes_and_dynptr_stack_state() {
+    let log = r#"
+7: (85) call bpf_ringbuf_reserve_dynptr#198 ; R0_w=scalar() fp-16_w=dynptr_ringbuf(id=1,ref_id=2,dynptr_id=1) fp-8_r=0000???? fp-24_rw=0
+"#;
+
+    let insns = parse_verifier_log(log);
+    assert_eq!(insns.len(), 1);
+
+    let dynptr = insns[0]
+        .stack
+        .get(&-16)
+        .and_then(|stack| stack.value.as_ref())
+        .unwrap();
+    assert_eq!(dynptr.reg_type, "dynptr_ringbuf");
+    assert_eq!(dynptr.id, Some(1));
+
+    assert_eq!(
+        insns[0]
+            .stack
+            .get(&-8)
+            .and_then(|stack| stack.slot_types.as_deref()),
+        Some("0000????")
+    );
+    assert_eq!(
+        insns[0]
+            .stack
+            .get(&-24)
+            .and_then(|stack| stack.value.as_ref())
+            .and_then(RegState::exact_u64),
+        Some(0)
+    );
+}
+
+#[test]
 fn parses_packet_range_attribute() {
     let log = r#"
 5: (2d) if r4 > r3 goto pc+14         ; R2_w=pkt(off=34,r=74) R4_w=pkt(off=74,r=74)
