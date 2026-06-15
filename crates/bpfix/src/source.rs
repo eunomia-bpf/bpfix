@@ -44,6 +44,28 @@ pub(crate) fn parse_source_comment(line: &str) -> Option<SourceLocation> {
 }
 
 pub(crate) fn parse_instruction_pc(line: &str) -> Option<usize> {
+    parse_instruction_prefix(line).map(|(pc, _)| pc)
+}
+
+pub(crate) fn parse_instruction_line(line: &str) -> Option<(usize, &str)> {
+    let (pc, tail) = parse_instruction_prefix(line)?;
+    Some((pc, instruction_opcode_tail(tail.trim_start())?))
+}
+
+pub(crate) fn call_target_from_instruction_tail(line: &str) -> Option<&str> {
+    let mut tokens = line.split_whitespace();
+    let call = loop {
+        let token = tokens.next()?;
+        if token == "call" {
+            break tokens.next()?;
+        }
+    };
+    call.split_once('#')
+        .map(|(target, _)| target)
+        .or(Some(call))
+}
+
+fn parse_instruction_prefix(line: &str) -> Option<(usize, &str)> {
     let trimmed = line.trim_start();
     let digits_len = trimmed
         .bytes()
@@ -52,7 +74,30 @@ pub(crate) fn parse_instruction_pc(line: &str) -> Option<usize> {
     if digits_len == 0 || trimmed.as_bytes().get(digits_len) != Some(&b':') {
         return None;
     }
-    trimmed[..digits_len].parse().ok()
+    Some((
+        trimmed[..digits_len].parse().ok()?,
+        trimmed[digits_len + 1..].trim_start(),
+    ))
+}
+
+fn instruction_opcode_tail(tail: &str) -> Option<&str> {
+    if looks_like_opcode_tail(tail) {
+        return Some(tail);
+    }
+    let mask_len = tail.find(char::is_whitespace)?;
+    tail[..mask_len]
+        .bytes()
+        .all(|byte| byte.is_ascii_digit() || byte == b'.')
+        .then(|| tail[mask_len..].trim_start())
+        .filter(|rest| looks_like_opcode_tail(rest))
+}
+
+fn looks_like_opcode_tail(tail: &str) -> bool {
+    let bytes = tail.as_bytes();
+    bytes.len() >= 4
+        && bytes[0] == b'('
+        && bytes[1..3].iter().all(u8::is_ascii_hexdigit)
+        && bytes[3] == b')'
 }
 
 pub(crate) fn terminal_source(

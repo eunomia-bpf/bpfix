@@ -2,7 +2,10 @@ use std::path::Path;
 
 use anyhow::{Context, Result};
 
-use crate::source::{parse_instruction_pc, parse_source_comment};
+use crate::source::{
+    call_target_from_instruction_tail, parse_instruction_line, parse_instruction_pc,
+    parse_source_comment,
+};
 
 const TERMINAL_ERROR_MARKERS: &[&str] = &[
     "bpf program is too large",
@@ -304,7 +307,7 @@ pub(crate) fn is_verifier_error_line(line: &str) -> bool {
         || line.starts_with("libbpf:")
         || line.starts_with("Error:")
         || line.starts_with("-- END")
-        || instruction_tail(line).is_some()
+        || parse_instruction_line(line).is_some()
         || (line.starts_with("processed ") && !line.contains("1000001"))
         || line.starts_with("verification time ")
         || line.starts_with("stack depth ")
@@ -333,7 +336,7 @@ fn is_verifier_state_line(line: &str) -> bool {
 
 fn nearest_instruction_pc(lines: &[&str], mut idx: usize) -> Option<usize> {
     loop {
-        if let Some(pc) = parse_instruction_pc(lines[idx]) {
+        if let Some((pc, _)) = parse_instruction_line(lines[idx]) {
             return Some(pc);
         }
         if idx == 0 {
@@ -348,7 +351,7 @@ fn nearest_instruction_pc(lines: &[&str], mut idx: usize) -> Option<usize> {
 
 fn nearest_call_target(lines: &[&str], mut idx: usize) -> Option<String> {
     loop {
-        if let Some(tail) = instruction_tail(lines[idx]) {
+        if let Some((_, tail)) = parse_instruction_line(lines[idx]) {
             if let Some(target) = call_target_from_instruction_tail(tail) {
                 return Some(target.to_string());
             }
@@ -361,55 +364,6 @@ fn nearest_call_target(lines: &[&str], mut idx: usize) -> Option<String> {
         }
         idx -= 1;
     }
-}
-
-fn instruction_tail(line: &str) -> Option<&str> {
-    let trimmed = line.trim_start();
-    let colon = trimmed.find(':')?;
-    if !trimmed[..colon].chars().all(|ch| ch.is_ascii_digit()) {
-        return None;
-    }
-    let tail = trimmed[colon + 1..].trim_start();
-    instruction_opcode_tail(tail)
-}
-
-fn instruction_opcode_tail(tail: &str) -> Option<&str> {
-    if looks_like_opcode_tail(tail) {
-        return Some(tail);
-    }
-    let bytes = tail.as_bytes();
-    let mask_len = bytes
-        .iter()
-        .take_while(|byte| byte.is_ascii_digit() || **byte == b'.')
-        .count();
-    if mask_len > 0 && bytes.get(mask_len).is_some_and(u8::is_ascii_whitespace) {
-        let rest = tail[mask_len..].trim_start();
-        if looks_like_opcode_tail(rest) {
-            return Some(rest);
-        }
-    }
-    None
-}
-
-fn looks_like_opcode_tail(tail: &str) -> bool {
-    let bytes = tail.as_bytes();
-    bytes.len() >= 4
-        && bytes[0] == b'('
-        && bytes[1..3].iter().all(u8::is_ascii_hexdigit)
-        && bytes[3] == b')'
-}
-
-fn call_target_from_instruction_tail(line: &str) -> Option<&str> {
-    let mut tokens = line.split_whitespace();
-    let call = loop {
-        let token = tokens.next()?;
-        if token == "call" {
-            break tokens.next()?;
-        }
-    };
-    call.split_once('#')
-        .map(|(target, _)| target)
-        .or(Some(call))
 }
 
 fn nearest_source_span(
@@ -465,6 +419,18 @@ processed 13 insns (limit 1000000) max_states_per_insn 0 total_states 1 peak_sta
             terminal.message,
             "Possibly NULL pointer passed to helper arg2"
         );
+        assert_eq!(terminal.pc, Some(15));
+        assert_eq!(terminal.call_target.as_deref(), Some("bpf_kptr_xchg"));
+
+        let live_regs_only = "\
+func#0 @0
+Live regs before insn:
+ 15: .12....... (85) call bpf_kptr_xchg#194
+0: R1=ctx() R10=fp0
+14: R2=rcu_ptr_or_null_bpf_cpumask(id=5)
+Possibly NULL pointer passed to helper arg2
+";
+        let terminal = find_terminal_error(live_regs_only).expect("terminal error should be found");
         assert_eq!(terminal.pc, Some(15));
         assert_eq!(terminal.call_target.as_deref(), Some("bpf_kptr_xchg"));
     }

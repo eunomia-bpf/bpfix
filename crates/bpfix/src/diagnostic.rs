@@ -10,9 +10,10 @@ use crate::proof::{
     instantiate_required_proof, packet_required_range, verifier_value_summary, RequiredProof,
 };
 use crate::source::{
-    collect_source_events, latest_source_before, looks_like_null_check, looks_like_nullable_return,
-    looks_like_packet_bounds_check, looks_like_reference_acquire, looks_like_reference_release,
-    looks_like_scalar_guard, looks_like_stack_initialization, source_for_pc, terminal_source,
+    call_target_from_instruction_tail, collect_source_events, latest_source_before,
+    looks_like_null_check, looks_like_nullable_return, looks_like_packet_bounds_check,
+    looks_like_reference_acquire, looks_like_reference_release, looks_like_scalar_guard,
+    looks_like_stack_initialization, parse_instruction_line, source_for_pc, terminal_source,
     SourceEvent, SourceLocation,
 };
 
@@ -1603,9 +1604,13 @@ fn trusted_nullable_argument(context: &ProofSignalContext<'_>) -> bool {
         .terminal_line
         .map(|line| verifier_fragment_start_line(context.log, line))
         .unwrap_or_else(|| verifier_fragment_start_line(context.log, instruction.line));
-    let Some(state) =
-        latest_reg_state_before_instruction(context.states, instruction, fragment_start, reg)
-    else {
+    let Some(state) = latest_reg_state_for_call_argument(
+        context.states,
+        instruction,
+        fragment_start,
+        context.terminal_line,
+        reg,
+    ) else {
         return false;
     };
     is_trusted_nullable_state(state)
@@ -1625,6 +1630,27 @@ fn nullable_argument_register(message: &str) -> Option<u8> {
 
 fn is_trusted_nullable_state(state: &RegState) -> bool {
     state.reg_type.starts_with("rcu_ptr_or_null") || state.reg_type.starts_with("ptr_or_null")
+}
+
+fn latest_reg_state_for_call_argument<'a>(
+    states: &'a [VerifierInsn],
+    instruction: TerminalInstruction<'_>,
+    fragment_start_line: usize,
+    terminal_line: Option<usize>,
+    reg: u8,
+) -> Option<&'a RegState> {
+    latest_reg_state_before_instruction(states, instruction, fragment_start_line, reg).or_else(
+        || {
+            states
+                .iter()
+                .filter(|state| state.log_line >= fragment_start_line)
+                .filter(|state| terminal_line.is_none_or(|line| state.log_line < line))
+                .filter(|state| state.pc <= instruction.pc)
+                .rev()
+                .filter_map(|state| state.regs.get(&reg))
+                .next()
+        },
+    )
 }
 
 fn latest_dynptr_stack_overlap(
@@ -1911,26 +1937,14 @@ fn terminal_instruction_site(
         .enumerate()
         .filter_map(|(offset, line)| {
             let line_number = start + offset + 1;
-            let (line_pc, tail) = instruction_pc_tail(line.trim())?;
-            (line_pc == pc && looks_like_bpf_instruction_tail(tail)).then_some(
-                TerminalInstruction {
-                    pc: line_pc,
-                    line: line_number,
-                    tail,
-                },
-            )
+            let (line_pc, tail) = parse_instruction_line(line.trim())?;
+            (line_pc == pc).then_some(TerminalInstruction {
+                pc: line_pc,
+                line: line_number,
+                tail,
+            })
         })
         .last()
-}
-
-fn looks_like_bpf_instruction_tail(tail: &str) -> bool {
-    let tail = tail.trim_start();
-    tail.as_bytes().get(0) == Some(&b'(')
-        && tail
-            .as_bytes()
-            .get(1..3)
-            .is_some_and(|bytes| bytes.iter().all(u8::is_ascii_hexdigit))
-        && tail.as_bytes().get(3) == Some(&b')')
 }
 
 fn terminal_call_target(
@@ -1940,19 +1954,6 @@ fn terminal_call_target(
 ) -> Option<&str> {
     terminal_instruction_site(log, terminal_pc, terminal_line)
         .and_then(|instruction| call_target_from_instruction_tail(instruction.tail))
-}
-
-fn call_target_from_instruction_tail(line: &str) -> Option<&str> {
-    let mut tokens = line.split_whitespace();
-    let call = loop {
-        let token = tokens.next()?;
-        if token == "call" {
-            break tokens.next()?;
-        }
-    };
-    call.split_once('#')
-        .map(|(target, _)| target)
-        .or(Some(call))
 }
 
 fn terminal_error_has_nearby_prior_line(
@@ -2198,7 +2199,7 @@ fn is_verifier_fragment_boundary(line: &str) -> bool {
         || line.starts_with("processed ")
         || line.starts_with("verification time ")
         || line.starts_with("stack depth ")
-        || (instruction_pc_tail(line).is_none() && is_verifier_error_line(line))
+        || (parse_instruction_line(line).is_none() && is_verifier_error_line(line))
 }
 
 fn misaligned_stack_access_size(message: &str) -> Option<u32> {
@@ -2604,27 +2605,13 @@ fn guard_branch_register_sets(
 ) -> Vec<(usize, Vec<u8>)> {
     let max_pc = guard_pc.saturating_add(lookahead);
     log.lines()
-        .filter_map(|line| instruction_pc_tail(line.trim()))
+        .filter_map(parse_instruction_line)
         .filter(|(pc, _)| *pc >= guard_pc && *pc <= max_pc)
         .filter_map(|(pc, tail)| {
             let regs = conditional_branch_registers(tail);
             (!regs.is_empty()).then_some((pc, regs))
         })
         .collect()
-}
-
-fn instruction_pc_tail(line: &str) -> Option<(usize, &str)> {
-    let digits_len = line
-        .bytes()
-        .take_while(|byte| byte.is_ascii_digit())
-        .count();
-    if digits_len == 0 || line.as_bytes().get(digits_len) != Some(&b':') {
-        return None;
-    }
-    Some((
-        line[..digits_len].parse().ok()?,
-        line[digits_len + 1..].trim(),
-    ))
 }
 
 fn conditional_branch_registers(tail: &str) -> Vec<u8> {
@@ -2803,7 +2790,7 @@ fn scalar_guard_verifier_state_links_to_map_value(
             let Some(line) = state.log_line.checked_sub(1).and_then(|idx| lines.get(idx)) else {
                 return false;
             };
-            let Some((pc, tail)) = instruction_pc_tail(line.trim()) else {
+            let Some((pc, tail)) = parse_instruction_line(line.trim()) else {
                 return false;
             };
             if pc != state.pc {
@@ -2847,7 +2834,7 @@ fn map_value_add_uses_scalar_between(
         .enumerate()
         .filter(|(idx, _)| *idx + 1 > guard_log_line)
         .filter(|(idx, _)| terminal_line.is_none_or(|terminal_line| *idx + 1 < terminal_line))
-        .filter_map(|(_, line)| instruction_pc_tail(line.trim()))
+        .filter_map(|(_, line)| parse_instruction_line(line.trim()))
         .any(|(pc, tail)| {
             pc > guard_pc
                 && pc < terminal_pc

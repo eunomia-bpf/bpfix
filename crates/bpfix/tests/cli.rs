@@ -1851,6 +1851,21 @@ fn trusted_nullable_arguments_report_state_discipline() {
          Possibly NULL pointer passed to helper arg2\n",
     );
     assert_source_bug_without_verifier_state_signal(&nullable_map_value_to_kptr_xchg, "BPFIX-E002");
+
+    let live_regs_only_kptr_call = run_json_stdin(
+        "func#0 @0\n\
+         Live regs before insn:\n\
+          15: .12....... (85) call bpf_kptr_xchg#194\n\
+         0: R1=ctx() R10=fp0\n\
+         14: R2=rcu_ptr_or_null_bpf_cpumask(id=5)\n\
+         Possibly NULL pointer passed to helper arg2\n",
+    );
+    assert_eq!(live_regs_only_kptr_call["error_id"], "BPFIX-E015");
+    assert!(evidence_contains(
+        &live_regs_only_kptr_call,
+        "verifier_state_signal",
+        "nullable RCU/trusted pointer"
+    ));
 }
 
 #[test]
