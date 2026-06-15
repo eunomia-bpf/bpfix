@@ -2409,6 +2409,36 @@ fn object_argument_attaches_section_local_states_from_loaded_layout() {
 
 #[test]
 #[cfg(feature = "object-analysis")]
+fn object_argument_uses_rejected_program_section_states() {
+    let log_path =
+        workspace_root().join("bpfix-bench/cases/stackoverflow-72560675/replay-verifier.log");
+    let object_path = workspace_root().join("bpfix-bench/cases/stackoverflow-72560675/prog.o");
+    let json = run_json_with_args(&[
+        "--object",
+        object_path.to_str().unwrap(),
+        log_path.to_str().unwrap(),
+        "--format",
+        "json",
+    ]);
+    let programs = json["metadata"]["object_programs"].as_array().unwrap();
+    let enter = programs
+        .iter()
+        .find(|program| program["section_name"] == "tracepoint/syscalls/sys_enter_read")
+        .unwrap();
+    let exit = programs
+        .iter()
+        .find(|program| program["section_name"] == "tracepoint/syscalls/sys_exit_read")
+        .unwrap();
+
+    assert_eq!(json["error_id"], "BPFIX-E005");
+    assert_eq!(enter["verifier_state_site_count"], 0);
+    assert!(enter["verifier_state_attach_error"].is_null());
+    assert!(exit["verifier_state_site_count"].as_u64().unwrap() > 0);
+    assert!(exit["verifier_state_attach_error"].is_null());
+}
+
+#[test]
+#[cfg(feature = "object-analysis")]
 fn object_section_lift_error_is_reported_per_program() {
     let log_path = workspace_root().join(
         "bpfix-bench/cases/kernel-selftest-exceptions-fail-reject-exception-cb-call-static-func-tc-f3ceb9b7/replay-verifier.log",

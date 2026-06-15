@@ -27,7 +27,8 @@ pub fn load_object_cfg_summaries(
     let file = object::File::parse(bytes.as_slice())
         .with_context(|| format!("failed to parse ELF object {}", path.display()))?;
     let mut summaries = Vec::new();
-    let (verifier_states, verifier_state_parse_error) = parse_verifier_states(verifier_log);
+    let (verifier_states, verifier_state_parse_error, verifier_function_starts) =
+        parse_verifier_states(verifier_log);
 
     for section in file.sections() {
         if !is_program_section(&section) {
@@ -51,6 +52,7 @@ pub fn load_object_cfg_summaries(
         let (cfg, verifier_state_attach_error) = match lift_program_cfg(
             &insns,
             verifier_states.as_deref(),
+            &verifier_function_starts,
             verifier_state_parse_error.as_deref(),
         ) {
             Ok(result) => result,
@@ -117,19 +119,29 @@ fn mark_ambiguous_state_attachments(summaries: &mut [ObjectProgramSummary]) {
 
 fn parse_verifier_states(
     verifier_log: Option<&str>,
-) -> (Option<Vec<VerifierInsn>>, Option<String>) {
+) -> (Option<Vec<VerifierInsn>>, Option<String>, Vec<usize>) {
     let Some(log) = verifier_log else {
-        return (None, None);
+        return (None, None, Vec::new());
     };
+    let function_starts = verifier_function_starts(log);
     match verifier_states_from_log(log) {
-        Ok(states) => (Some(states), None),
-        Err(err) => (None, Some(err.to_string())),
+        Ok(states) => (Some(states), None, function_starts),
+        Err(err) => (None, Some(err.to_string()), function_starts),
     }
+}
+
+fn verifier_function_starts(log: &str) -> Vec<usize> {
+    log.lines()
+        .filter_map(|line| line.trim().strip_prefix("func#"))
+        .filter_map(|line| line.split_once('@').map(|(_, pc)| pc.trim()))
+        .filter_map(|pc| pc.parse().ok())
+        .collect()
 }
 
 fn lift_program_cfg(
     insns: &[BpfInsn],
     verifier_states: Option<&[VerifierInsn]>,
+    verifier_function_starts: &[usize],
     verifier_state_parse_error: Option<&str>,
 ) -> Result<(ProgramCFG, Option<String>)> {
     let Some(states) = verifier_states.filter(|states| !states.is_empty()) else {
@@ -138,11 +150,19 @@ fn lift_program_cfg(
             verifier_state_parse_error.map(ToOwned::to_owned),
         ));
     };
+    let original_state_count = states.len();
     let states = states
         .iter()
         .filter(|state| state.pc < insns.len())
         .cloned()
         .collect::<Vec<_>>();
+    if states.len() < original_state_count
+        && !verifier_function_starts
+            .iter()
+            .any(|start| *start == insns.len())
+    {
+        return Ok((lift_without_verifier_states(insns)?, None));
+    }
     if states.is_empty() {
         return Ok((lift_without_verifier_states(insns)?, None));
     }
