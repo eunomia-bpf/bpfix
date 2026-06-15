@@ -56,6 +56,7 @@ from 4 to 6: R0_w=pkt(off=8,r=8) R1=ctx() R2_w=pkt(r=8) R3_w=pkt_end() R10=fp0
     assert_eq!(r1.reg_type, "map_value");
     assert_eq!(r1.offset, Some(1));
     assert_eq!(r1.map_value_size, Some(2));
+    assert_eq!(r1.mem_size, None);
 
     let r2 = insns[4].regs.get(&2).unwrap();
     assert_eq!(r2.reg_type, "scalar");
@@ -69,6 +70,19 @@ from 4 to 6: R0_w=pkt(off=8,r=8) R1=ctx() R2_w=pkt(r=8) R3_w=pkt_end() R10=fp0
     assert_eq!(insns[4].refs, Some(2));
     assert_eq!(insns[4].callback_kind, Some(CallbackKind::Sync));
     assert!(insns[4].callback);
+}
+
+#[test]
+fn parses_memory_object_size_from_register_state() {
+    let log = r#"
+16: (85) call bpf_dynptr_slice_rdwr#202  ; R0_w=mem(sz=14)
+17: (73) *(u8 *)(r0 +14) = r6
+"#;
+
+    let insns = verifier_states_from_log(log).unwrap();
+    let mem = insns[0].regs.get(&0).unwrap();
+    assert_eq!(mem.reg_type, "mem");
+    assert_eq!(mem.mem_size, Some(14));
 }
 
 #[test]

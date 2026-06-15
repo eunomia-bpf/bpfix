@@ -71,6 +71,7 @@ pub struct RegState {
     pub range: ScalarRange,
     pub packet_range: Option<u32>,
     pub map_value_size: Option<u32>,
+    pub mem_size: Option<u32>,
     pub offset: Option<i32>,
     pub source_frame: Option<usize>,
     pub id: Option<u32>,
@@ -87,6 +88,7 @@ impl RegState {
             range: ScalarRange::default(),
             packet_range: None,
             map_value_size: None,
+            mem_size: None,
             offset: None,
             source_frame: None,
             id: None,
@@ -609,13 +611,14 @@ fn parse_reg_attributes(attrs: &str, state: &mut RegState) {
                 "off" => state.offset = parse_attr(key, value, parse_i32(value)),
                 "r" => state.packet_range = parse_attr(key, value, parse_u32(value)),
                 "vs" => state.map_value_size = parse_attr(key, value, parse_u32(value)),
+                "sz" | "mem_size" => state.mem_size = parse_attr(key, value, parse_u32(value)),
                 "id" => state.id = parse_attr(key, value, parse_u32(value)),
                 "ref_id" => state.ref_id = parse_attr(key, value, parse_u32(value)),
                 "var_off" => {
                     state.tnum = parse_attr(key, value, parse_tnum(value));
                 }
-                "map" | "ks" | "imm" | "ref_obj_id" | "btf_id" | "mem_size" | "alloc_size"
-                | "aux_off" | "name" | "dynptr_id" => {}
+                "map" | "ks" | "imm" | "ref_obj_id" | "btf_id" | "alloc_size" | "aux_off"
+                | "name" | "dynptr_id" => {}
                 other => {
                     warn_verifier_log(format!("unknown verifier register attribute {other:?}"));
                 }

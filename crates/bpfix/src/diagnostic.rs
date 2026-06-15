@@ -17,6 +17,8 @@ use crate::source::{
     SourceEvent, SourceLocation,
 };
 
+const MAX_BPF_STACK_DEPTH: i32 = 512;
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct VerifierLogAnalysis {
     pub state_count: usize,
@@ -68,6 +70,9 @@ pub enum ProofSignal {
     MapValueCheckedOffsetRelationLost,
     MapValueGuardExceedsValueSize,
     MapValueAccessOutOfBounds,
+    MemoryObjectAccessOutOfBounds,
+    ReturnRangeOutOfBounds,
+    StackVariableOffsetOutOfBounds,
     ScalarRangeUnsafeAtUse,
     MapPointerArgumentScalarZero,
     BtfFuncInfoMissing,
@@ -243,6 +248,15 @@ impl ProofSignal {
             Self::MapValueAccessOutOfBounds => {
                 "map-value access exceeds the verifier-visible value size"
             }
+            Self::MemoryObjectAccessOutOfBounds => {
+                "memory-object access exceeds the verifier-visible object size"
+            }
+            Self::ReturnRangeOutOfBounds => {
+                "program return value is outside the verifier-required range"
+            }
+            Self::StackVariableOffsetOutOfBounds => {
+                "stack variable-offset access crosses the verifier stack frame"
+            }
             Self::ScalarRangeUnsafeAtUse => {
                 "scalar range at the rejected use is still verifier-unsafe"
             }
@@ -327,6 +341,15 @@ impl ProofSignal {
             }
             Self::MapValueAccessOutOfBounds => {
                 "verifier state shows the rejected map-value pointer access crosses the declared value size"
+            }
+            Self::MemoryObjectAccessOutOfBounds => {
+                "verifier state shows the rejected memory pointer has a fixed object size and the access crosses that object boundary"
+            }
+            Self::ReturnRangeOutOfBounds => {
+                "verifier state reaches BPF_EXIT with a return register value or range outside the terminal return-value contract"
+            }
+            Self::StackVariableOffsetOutOfBounds => {
+                "verifier state shows the stack pointer's variable byte interval can leave the valid BPF stack frame at the rejected access"
             }
             Self::ScalarRangeUnsafeAtUse => {
                 "verifier state shows the rejected scalar or pointer-offset register still has an unsafe range at the use"
@@ -504,6 +527,15 @@ impl ProofSignal {
             Self::MapValueAccessOutOfBounds => {
                 "Keep map-value field offsets, array indexes, and helper lengths inside the declared map value size; resize the map value or clamp the access before the load, store, or helper call."
             }
+            Self::MemoryObjectAccessOutOfBounds => {
+                "Keep dynptr slice or helper-returned memory accesses inside the verifier-reported object size; clamp the offset and width before dereferencing the memory pointer."
+            }
+            Self::ReturnRangeOutOfBounds => {
+                "Return only values in the verifier-required range on every exit path; clamp or branch on the computed return value before BPF_EXIT."
+            }
+            Self::StackVariableOffsetOutOfBounds => {
+                "Clamp the stack index so the final frame-pointer byte range stays within -512..0, accounting for the base offset and access width."
+            }
             Self::MapPointerArgumentScalarZero => {
                 "Load the ELF object through libbpf or another loader that applies map relocations; raw instructions must not replace a map symbol with scalar zero."
             }
@@ -647,6 +679,9 @@ impl ProofSignal {
             Self::VerifierTypeContractMismatch => 12,
             Self::PacketGuardUndercoversAccess => 40,
             Self::PacketAccessWithoutBoundsProof => 50,
+            Self::ReturnRangeOutOfBounds => 55,
+            Self::MemoryObjectAccessOutOfBounds => 55,
+            Self::StackVariableOffsetOutOfBounds => 55,
             Self::ScalarRangeUnsafeAtUse => 60,
             Self::WideStackAlignment
             | Self::SharedInstructionPointerMerge
@@ -712,6 +747,9 @@ impl ProofSignal {
                 | Self::ProhibitedPointerArithmetic
                 | Self::MapValueGuardExceedsValueSize
                 | Self::MapValueAccessOutOfBounds
+                | Self::MemoryObjectAccessOutOfBounds
+                | Self::ReturnRangeOutOfBounds
+                | Self::StackVariableOffsetOutOfBounds
                 | Self::ScalarRangeUnsafeAtUse
                 | Self::PacketAccessWithoutBoundsProof
                 | Self::PacketGuardUndercoversAccess
@@ -807,6 +845,9 @@ impl ProofSignal {
                 | Self::NullablePointerUseWithoutProof
                 | Self::PacketAccessWithoutBoundsProof
                 | Self::ScalarRangeUnsafeAtUse
+                | Self::MemoryObjectAccessOutOfBounds
+                | Self::ReturnRangeOutOfBounds
+                | Self::StackVariableOffsetOutOfBounds
                 | Self::MapValueAccessOutOfBounds
                 | Self::TrustedNullableArgument
                 | Self::ContextAccessSourceArgumentMismatch
@@ -939,6 +980,15 @@ impl ProofSignal {
             Self::MapValueAccessOutOfBounds => Some(
                 "prove the map-value field offset plus access width stays below the declared map value size at the rejected access",
             ),
+            Self::MemoryObjectAccessOutOfBounds => Some(
+                "prove the memory pointer offset plus access width stays inside the verifier-reported object size at the rejected access",
+            ),
+            Self::ReturnRangeOutOfBounds => Some(
+                "prove the value in R0 is inside the verifier-required return range at every BPF_EXIT",
+            ),
+            Self::StackVariableOffsetOutOfBounds => Some(
+                "prove the final stack byte interval stays inside the verifier stack frame at the rejected access",
+            ),
             Self::PacketAccessWithoutBoundsProof => Some(
                 "prove this packet register has range at least off + size at the rejected load, store, or helper call",
             ),
@@ -1062,6 +1112,15 @@ impl ProofSignal {
             Self::MapValueAccessOutOfBounds => {
                 Some("this map-value access crosses the declared value size")
             }
+            Self::MemoryObjectAccessOutOfBounds => {
+                Some("this memory access crosses the verifier-reported object size")
+            }
+            Self::ReturnRangeOutOfBounds => {
+                Some("this exit returns a value outside the verifier-required range")
+            }
+            Self::StackVariableOffsetOutOfBounds => {
+                Some("this stack access can leave the verifier stack frame")
+            }
             Self::PacketAccessWithoutBoundsProof => {
                 Some("packet range proof is too short for this access")
             }
@@ -1103,6 +1162,9 @@ impl ProofSignal {
             Self::UnreadableHelperArgument => Some("BPFIX-E010"),
             Self::HelperStackWriteBeyondFrame => Some("BPFIX-E006"),
             Self::MapValueAccessOutOfBounds => Some("BPFIX-E005"),
+            Self::MemoryObjectAccessOutOfBounds => Some("BPFIX-E005"),
+            Self::ReturnRangeOutOfBounds => Some("BPFIX-E005"),
+            Self::StackVariableOffsetOutOfBounds => Some("BPFIX-E005"),
             Self::ScalarValueUsedAsPointer => Some("BPFIX-E011"),
             Self::StalePointerAfterInvalidatingHelper => Some("BPFIX-E011"),
             Self::KernelObjectFieldAccessMismatch => Some("BPFIX-E011"),
@@ -2132,6 +2194,15 @@ fn proof_signals(context: ProofSignalContext<'_>) -> Vec<ProofSignal> {
     }
     if verifier_type_contract_mismatch(&context) {
         signals.push(ProofSignal::VerifierTypeContractMismatch);
+    }
+    if memory_object_access_out_of_bounds(&context) {
+        signals.push(ProofSignal::MemoryObjectAccessOutOfBounds);
+    }
+    if return_range_out_of_bounds(&context) {
+        signals.push(ProofSignal::ReturnRangeOutOfBounds);
+    }
+    if stack_variable_offset_out_of_bounds(&context) {
+        signals.push(ProofSignal::StackVariableOffsetOutOfBounds);
     }
     if scalar_range_unsafe_at_use(&context) {
         signals.push(ProofSignal::ScalarRangeUnsafeAtUse);
@@ -6374,6 +6445,25 @@ fn latest_reg_state_before_instruction<'a>(
         .map(|(state, _)| state)
 }
 
+fn latest_reg_state_at_or_before_instruction<'a>(
+    states: &'a [VerifierInsn],
+    instruction: TerminalInstruction<'_>,
+    fragment_start_line: usize,
+    reg: u8,
+) -> Option<&'a RegState> {
+    let call_frame =
+        latest_verifier_state_at_or_before_instruction(states, instruction, fragment_start_line)
+            .map(|state| state.frame);
+    states
+        .iter()
+        .filter(|state| state.log_line >= fragment_start_line)
+        .filter(|state| state.log_line <= instruction.line)
+        .filter(|state| state.pc <= instruction.pc)
+        .filter(|state| call_frame.is_none_or(|frame| state.frame == frame))
+        .rev()
+        .find_map(|state| state.regs.get(&reg))
+}
+
 fn latest_reg_state_before_instruction_with_log_line<'a>(
     states: &'a [VerifierInsn],
     instruction: TerminalInstruction<'_>,
@@ -7776,6 +7866,209 @@ fn source_text_contains_any(events: &[ProofEvent], needles: &[&str]) -> bool {
     })
 }
 
+fn memory_object_access_out_of_bounds(context: &ProofSignalContext<'_>) -> bool {
+    if context.obligation != ProofObligation::ScalarRange {
+        return false;
+    }
+    let terminal = context.terminal_error.to_ascii_lowercase();
+    if !terminal.contains("invalid access to memory") || !terminal.contains("mem_size=") {
+        return false;
+    }
+    let Some(mem_size) = parse_u32_after(context.terminal_error, "mem_size=") else {
+        return false;
+    };
+    let Some(access_offset) = parse_i64_after(context.terminal_error, "off=") else {
+        return false;
+    };
+    let Some(access_size) = parse_u32_after(context.terminal_error, "size=") else {
+        return false;
+    };
+    if !byte_range_out_of_bounds(access_offset, access_size, mem_size) {
+        return false;
+    }
+    let Some(instruction) =
+        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)
+    else {
+        return false;
+    };
+    if memory_access_width(instruction.tail) != Some(access_size) {
+        return false;
+    }
+    let Some(base_reg) = memory_access_base_register(instruction.tail) else {
+        return false;
+    };
+    if context
+        .register
+        .or_else(|| register_from_terminal_error(context.terminal_error))
+        .is_some_and(|reg| reg != base_reg)
+    {
+        return false;
+    }
+    let Some(instruction_offset) = memory_access_offset(instruction.tail) else {
+        return false;
+    };
+    let fragment_start = context
+        .terminal_line
+        .map(|line| verifier_fragment_start_line(context.log, line))
+        .unwrap_or_else(|| verifier_fragment_start_line(context.log, instruction.line));
+    let Some(base_state) = latest_reg_state_before_instruction(
+        context.branch_states,
+        instruction,
+        fragment_start,
+        base_reg,
+    ) else {
+        return false;
+    };
+    if !memory_object_state_matches_size(base_state, mem_size) {
+        return false;
+    }
+    let total_offset = i64::from(base_state.offset.unwrap_or(0)).saturating_add(instruction_offset);
+    total_offset == access_offset && byte_range_out_of_bounds(total_offset, access_size, mem_size)
+}
+
+fn memory_object_state_matches_size(state: &RegState, mem_size: u32) -> bool {
+    state.mem_size == Some(mem_size)
+        && (state.reg_type == "mem" || state.reg_type.ends_with("_mem"))
+}
+
+fn byte_range_out_of_bounds(offset: i64, size: u32, limit: u32) -> bool {
+    offset < 0
+        || offset
+            .checked_add(i64::from(size))
+            .is_none_or(|end| end > i64::from(limit))
+}
+
+fn return_range_out_of_bounds(context: &ProofSignalContext<'_>) -> bool {
+    if context.obligation != ProofObligation::ScalarRange {
+        return false;
+    }
+    let terminal = context.terminal_error.to_ascii_lowercase();
+    if !terminal.contains("at program exit")
+        || !terminal.contains("register r")
+        || !terminal.contains("should have been in")
+    {
+        return false;
+    }
+    let Some(required_range) = terminal_required_return_range(context.terminal_error) else {
+        return false;
+    };
+    let reg = context
+        .register
+        .or_else(|| register_from_terminal_error(context.terminal_error))
+        .unwrap_or(0);
+    let Some(instruction) =
+        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)
+    else {
+        return false;
+    };
+    if !instruction_is_bpf_exit(instruction.tail) {
+        return false;
+    }
+    let fragment_start = context
+        .terminal_line
+        .map(|line| verifier_fragment_start_line(context.log, line))
+        .unwrap_or_else(|| verifier_fragment_start_line(context.log, instruction.line));
+    latest_reg_state_at_or_before_instruction(
+        context.branch_states,
+        instruction,
+        fragment_start,
+        reg,
+    )
+    .or_else(|| {
+        latest_reg_state_before_instruction(context.branch_states, instruction, fragment_start, reg)
+    })
+    .is_some_and(|state| scalar_state_outside_required_range(state, required_range))
+}
+
+fn stack_variable_offset_out_of_bounds(context: &ProofSignalContext<'_>) -> bool {
+    if context.obligation != ProofObligation::ScalarRange {
+        return false;
+    }
+    let terminal = context.terminal_error.to_ascii_lowercase();
+    if !terminal.contains("unbounded variable-offset") || !terminal.contains("stack") {
+        return false;
+    }
+    let Some(instruction) =
+        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)
+    else {
+        return false;
+    };
+    let Some(width) = memory_access_width(instruction.tail) else {
+        return false;
+    };
+    let Some(instruction_offset) = memory_access_offset(instruction.tail) else {
+        return false;
+    };
+    let Some(base_reg) = memory_access_base_register(instruction.tail) else {
+        return false;
+    };
+    if context
+        .register
+        .or_else(|| register_from_terminal_error(context.terminal_error))
+        .is_some_and(|reg| reg != base_reg)
+    {
+        return false;
+    }
+    let fragment_start = context
+        .terminal_line
+        .map(|line| verifier_fragment_start_line(context.log, line))
+        .unwrap_or_else(|| verifier_fragment_start_line(context.log, instruction.line));
+    let Some(base_state) = latest_reg_state_before_instruction(
+        context.branch_states,
+        instruction,
+        fragment_start,
+        base_reg,
+    ) else {
+        return false;
+    };
+    stack_pointer_access_range_out_of_bounds(base_state, instruction_offset, width)
+}
+
+fn stack_pointer_access_range_out_of_bounds(
+    state: &RegState,
+    instruction_offset: i64,
+    width: u32,
+) -> bool {
+    if state.reg_type != "fp" || (state.tnum.is_none() && !scalar_range_has_any_bound(state)) {
+        return false;
+    }
+    let base_offset = i64::from(state.offset.unwrap_or(0));
+    let min_offset = scalar_range_min_i64(state);
+    let max_offset = scalar_range_max_i64(state);
+    let width = i64::from(width);
+    let min_byte = min_offset.and_then(|offset| {
+        base_offset
+            .checked_add(offset)
+            .and_then(|value| value.checked_add(instruction_offset))
+    });
+    let max_byte_exclusive = max_offset.and_then(|offset| {
+        base_offset
+            .checked_add(offset)
+            .and_then(|value| value.checked_add(instruction_offset))
+            .and_then(|value| value.checked_add(width))
+    });
+    min_byte.is_none_or(|start| start < i64::from(-MAX_BPF_STACK_DEPTH))
+        || max_byte_exclusive.is_none_or(|end| end > 0)
+}
+
+fn scalar_range_min_i64(state: &RegState) -> Option<i64> {
+    state
+        .range
+        .smin
+        .or_else(|| state.range.umin.and_then(|value| i64::try_from(value).ok()))
+        .or_else(|| state.range.smin32.map(i64::from))
+        .or_else(|| state.range.umin32.map(i64::from))
+}
+
+fn scalar_range_max_i64(state: &RegState) -> Option<i64> {
+    state
+        .range
+        .smax
+        .or_else(|| state.range.umax.and_then(|value| i64::try_from(value).ok()))
+        .or_else(|| state.range.smax32.map(i64::from))
+        .or_else(|| state.range.umax32.map(i64::from))
+}
+
 fn scalar_range_unsafe_at_use(context: &ProofSignalContext<'_>) -> bool {
     if context.obligation != ProofObligation::ScalarRange {
         return false;
@@ -7826,9 +8119,14 @@ fn instruction_consumes_scalar_register(instruction_tail: &str, reg: u8) -> bool
         .map(|(opcode, _)| opcode)
         .unwrap_or(instruction_tail);
     if let Some(target) = direct_call_target_from_instruction_tail(opcode_tail) {
-        return scalar_length_helper_argument_register(target) == Some(reg);
+        return helper_consumes_scalar_length_register(target, reg);
     }
     instruction_reads_register(opcode_tail, reg)
+}
+
+fn helper_consumes_scalar_length_register(target: &str, reg: u8) -> bool {
+    scalar_length_helper_argument_register(target) == Some(reg)
+        || matches!(target, "bpf_csum_diff") && matches!(reg, 2 | 4)
 }
 
 fn scalar_length_helper_argument_register(target: &str) -> Option<u8> {
@@ -7838,6 +8136,7 @@ fn scalar_length_helper_argument_register(target: &str) -> Option<u8> {
         | "bpf_probe_read_kernel_str"
         | "bpf_probe_read_user"
         | "bpf_probe_read_user_str" => Some(2),
+        "bpf_csum_diff" => Some(4),
         "bpf_skb_load_bytes" => Some(4),
         "bpf_perf_event_output" => Some(5),
         _ => None,
@@ -7855,7 +8154,8 @@ fn instruction_reads_register(opcode_tail: &str, reg: u8) -> bool {
 }
 
 fn scalar_range_state_is_unsafe_for_signal(state: &RegState, terminal_error: &str) -> bool {
-    if terminal_error.to_ascii_lowercase().contains("zero-sized") {
+    let terminal = terminal_error.to_ascii_lowercase();
+    if terminal.contains("zero-sized") {
         return scalar_range_may_include_zero(state);
     }
     if let Some(value) = state.exact_value {

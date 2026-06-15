@@ -2587,6 +2587,31 @@ fn ordinary_source_bugs_are_not_overclassified_as_runtime_artifacts() {
         "map-value pointer access crosses"
     ));
 
+    let csum_helper_bounds =
+        run_json("bpfix-bench/cases/github-iovisor-bcc-2463/replay-verifier.log");
+    assert_eq!(csum_helper_bounds["error_id"], "BPFIX-E005");
+    assert_eq!(csum_helper_bounds["failure_class"], "source_bug");
+    assert!(evidence_contains(
+        &csum_helper_bounds,
+        "verifier_state_signal",
+        "unsafe range at the use"
+    ));
+
+    let csum_from_size_bounds = run_json_stdin(
+        "0: R2=scalar(smin=-1,smax=umax=16,var_off=(0x0; 0x10)) R4=8 R10=fp0\n\
+         ; bpf_csum_diff(from, from_size, to, to_size, seed); @ prog.c:9\n\
+         1: (85) call bpf_csum_diff#28\n\
+         R2 min value is negative, either use unsigned or 'var &= const'\n\
+         processed 2 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0 mark_read 0\n",
+    );
+    assert_eq!(csum_from_size_bounds["error_id"], "BPFIX-E005");
+    assert_eq!(csum_from_size_bounds["failure_class"], "source_bug");
+    assert!(evidence_contains(
+        &csum_from_size_bounds,
+        "verifier_state_signal",
+        "unsafe range at the use"
+    ));
+
     let fixed_offset_map_value_bounds =
         run_json("bpfix-bench/cases/stackoverflow-73282201/replay-verifier.log");
     assert_eq!(fixed_offset_map_value_bounds["error_id"], "BPFIX-E005");
@@ -2621,6 +2646,71 @@ fn ordinary_source_bugs_are_not_overclassified_as_runtime_artifacts() {
         &branch_refined_map_value_bounds,
         "verifier_state_signal",
         "map-value pointer access crosses"
+    ));
+
+    for path in [
+        "bpfix-bench/cases/kernel-selftest-dynptr-fail-data-slice-out-of-bounds-map-value-raw-tp-de37aa84/replay-verifier.log",
+        "bpfix-bench/cases/kernel-selftest-dynptr-fail-data-slice-out-of-bounds-skb-tc-b903ac49/replay-verifier.log",
+    ] {
+        let memory_object_bounds = run_json(path);
+        assert_eq!(memory_object_bounds["error_id"], "BPFIX-E005");
+        assert_eq!(memory_object_bounds["failure_class"], "source_bug");
+        assert!(memory_object_bounds["message"]
+            .as_str()
+            .unwrap()
+            .contains("memory-object access exceeds"));
+        assert!(memory_object_bounds["required_proof"]
+            .as_str()
+            .unwrap()
+            .contains("verifier-reported object size"));
+        assert!(evidence_contains(
+            &memory_object_bounds,
+            "verifier_state_signal",
+            "fixed object size"
+        ));
+    }
+
+    let mismatched_memory_object_state = run_json_stdin(
+        "0: R0=mem(sz=8) R10=fp0\n\
+         1: (71) r1 = *(u8 *)(r0 +5)\n\
+         invalid access to memory, mem_size=4 off=5 size=1\n\
+         R0 min value is outside of the allowed memory range\n",
+    );
+    assert_eq!(mismatched_memory_object_state["error_id"], "BPFIX-E005");
+    assert!(!evidence_contains(
+        &mismatched_memory_object_state,
+        "verifier_state_signal",
+        "fixed object size"
+    ));
+
+    let negative_memory_object_offset = run_json_stdin(
+        "0: R0=mem(sz=4) R10=fp0\n\
+         1: (71) r1 = *(u8 *)(r0 -1)\n\
+         invalid access to memory, mem_size=4 off=-1 size=1\n\
+         R0 min value is outside of the allowed memory range\n",
+    );
+    assert_eq!(negative_memory_object_offset["error_id"], "BPFIX-E005");
+    assert!(evidence_contains(
+        &negative_memory_object_offset,
+        "verifier_state_signal",
+        "fixed object size"
+    ));
+
+    let return_range = run_json("bpfix-bench/cases/stackoverflow-77191387/replay-verifier.log");
+    assert_eq!(return_range["error_id"], "BPFIX-E005");
+    assert_eq!(return_range["failure_class"], "source_bug");
+    assert!(return_range["message"]
+        .as_str()
+        .unwrap()
+        .contains("program return value"));
+    assert!(return_range["required_proof"]
+        .as_str()
+        .unwrap()
+        .contains("value in R0"));
+    assert!(evidence_contains(
+        &return_range,
+        "verifier_state_signal",
+        "BPF_EXIT with a return register"
     ));
 
     let branch_delta_map_value_bounds = run_json_stdin(
@@ -2789,6 +2879,44 @@ fn ordinary_source_bugs_are_not_overclassified_as_runtime_artifacts() {
             "unsafe range at the use"
         ));
     }
+
+    let stack_variable_offset =
+        run_json("bpfix-bench/cases/stackoverflow-78525670/replay-verifier.log");
+    assert_eq!(stack_variable_offset["error_id"], "BPFIX-E005");
+    assert_eq!(stack_variable_offset["failure_class"], "source_bug");
+    assert!(stack_variable_offset["message"]
+        .as_str()
+        .unwrap()
+        .contains("stack variable-offset access"));
+    assert!(evidence_contains(
+        &stack_variable_offset,
+        "verifier_state_signal",
+        "stack pointer's variable byte interval"
+    ));
+
+    let stack_interval_crosses_frame_top = run_json_stdin(
+        "0: R1=fp(off=-4,smin=umin=0,smax=umax=8) R10=fp0\n\
+         1: (71) r0 = *(u8 *)(r1 +0)\n\
+         invalid unbounded variable-offset read from stack R1\n",
+    );
+    assert_eq!(stack_interval_crosses_frame_top["error_id"], "BPFIX-E005");
+    assert!(evidence_contains(
+        &stack_interval_crosses_frame_top,
+        "verifier_state_signal",
+        "stack pointer's variable byte interval"
+    ));
+
+    let stack_interval_safe = run_json_stdin(
+        "0: R1=fp(off=-16,smin=umin=0,smax=umax=7) R10=fp0\n\
+         1: (71) r0 = *(u8 *)(r1 +0)\n\
+         invalid unbounded variable-offset read from stack R1\n",
+    );
+    assert_eq!(stack_interval_safe["error_id"], "BPFIX-E005");
+    assert!(!evidence_contains(
+        &stack_interval_safe,
+        "verifier_state_signal",
+        "stack pointer's variable byte interval"
+    ));
 
     let exact_safe_helper_length = run_json_stdin(
         "0: R2=16 R10=fp0\n\
