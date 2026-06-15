@@ -265,6 +265,7 @@ fn is_verifier_region_start(line: &str) -> bool {
         || parse_source_comment(line).is_some()
         || parse_instruction_pc(line).is_some()
         || line.starts_with("from ")
+        || line.starts_with("Validating ")
 }
 
 pub(crate) fn find_terminal_error(log: &str) -> Option<TerminalError> {
@@ -286,7 +287,8 @@ pub(crate) fn find_terminal_error(log: &str) -> Option<TerminalError> {
                 context_idx = idx - 1;
             }
         }
-        let pc = nearest_instruction_pc(&lines, context_idx);
+        let pc = explicit_terminal_insn_pc(&message)
+            .or_else(|| nearest_instruction_pc(&lines, context_idx));
         let call_target = nearest_call_target(&lines, context_idx);
         let (source_path, source_line, source_text) = nearest_source_span(&lines, context_idx);
         return Some(TerminalError {
@@ -392,6 +394,14 @@ fn is_backward_search_boundary(line: &str) -> bool {
         || line.starts_with("verification time ")
         || line.starts_with("stack depth ")
         || (parse_instruction_pc(line).is_none() && is_verifier_error_line(line))
+}
+
+fn explicit_terminal_insn_pc(message: &str) -> Option<usize> {
+    let rest = message.strip_prefix("insn ")?;
+    let digits_len = rest.bytes().take_while(u8::is_ascii_digit).count();
+    (digits_len > 0)
+        .then(|| rest[..digits_len].parse().ok())
+        .flatten()
 }
 
 #[cfg(test)]

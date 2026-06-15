@@ -1441,6 +1441,176 @@ processed 3 insns (limit 1000000) max_states_per_insn 0 total_states 1 peak_stat
 }
 
 #[test]
+fn exception_callback_protocol_reports_direct_call_and_return_contract() {
+    for path in [
+        "bpfix-bench/cases/kernel-selftest-exceptions-fail-reject-exception-cb-call-global-func-tc-bd94f6f8/replay-verifier.log",
+        "bpfix-bench/cases/kernel-selftest-exceptions-fail-reject-exception-cb-call-static-func-tc-f3ceb9b7/replay-verifier.log",
+    ] {
+        let json = run_json(path);
+        assert_eq!(json["error_id"], "BPFIX-E013");
+        assert_eq!(json["failure_class"], "source_bug");
+        assert_eq!(json["source_span"]["instruction_pc"], 3);
+        assert!(json["source_span"]["source_text"]
+            .as_str()
+            .unwrap()
+            .contains("exception_cb1"));
+        assert!(evidence_contains(
+            &json,
+            "verifier_state_signal",
+            "exception callback"
+        ));
+        let help = json["help"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter_map(|item| item.as_str())
+            .collect::<Vec<_>>()
+            .join("\n");
+        assert!(help.contains("Keep exception callbacks out of ordinary subprogram call graphs"));
+        assert!(!help.contains("Check the exact register passed"));
+    }
+
+    let bad_return = run_json(
+        "bpfix-bench/cases/kernel-selftest-exceptions-fail-reject-set-exception-cb-bad-ret1-fentry-bpf-check-8124b586/replay-verifier.log",
+    );
+    assert_eq!(bad_return["error_id"], "BPFIX-E013");
+    assert_eq!(bad_return["failure_class"], "source_bug");
+    assert!(bad_return["required_proof"]
+        .as_str()
+        .unwrap()
+        .contains("return-value contract"));
+    assert!(evidence_contains(
+        &bad_return,
+        "verifier_state_signal",
+        "exception callback"
+    ));
+    let bad_return_help = bad_return["help"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|item| item.as_str())
+        .collect::<Vec<_>>()
+        .join("\n");
+    assert!(bad_return_help.contains("returns satisfy"));
+    assert!(!bad_return_help.contains("Clamp the index or length"));
+
+    let ordinary_return_range =
+        run_json("bpfix-bench/cases/stackoverflow-77191387/replay-verifier.log");
+    assert_eq!(ordinary_return_range["error_id"], "BPFIX-E005");
+    assert!(!evidence_contains(
+        &ordinary_return_range,
+        "verifier_state_signal",
+        "exception callback"
+    ));
+
+    let malformed_direct_call = run_json_stdin(
+        "0: R10=fp0\n\
+         insn 3 cannot call exception cb directly\n\
+         processed 1 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0 mark_read 0\n",
+    );
+    assert_eq!(malformed_direct_call["error_id"], "BPFIX-E010");
+    assert!(!evidence_contains(
+        &malformed_direct_call,
+        "verifier_state_signal",
+        "exception callback"
+    ));
+
+    let assumed_valid_without_validation = run_json_stdin(
+        "3: (85) call pc+1\n\
+         Func#2 ('exception_cb1') is global and assumed valid.\n\
+         insn 3 cannot call exception cb directly\n\
+         processed 4 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0 mark_read 0\n",
+    );
+    assert_eq!(assumed_valid_without_validation["error_id"], "BPFIX-E010");
+    assert!(!evidence_contains(
+        &assumed_valid_without_validation,
+        "verifier_state_signal",
+        "exception callback"
+    ));
+
+    let arbitrary_name_direct_call = run_json_stdin(
+        "; return my_cb(x); @ prog.c:9\n\
+         3: (85) call pc+1\n\
+         Validating my_cb() func#1...\n\
+         4: R0_w=scalar()\n\
+         insn 3 cannot call exception cb directly\n\
+         processed 5 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0 mark_read 0\n",
+    );
+    assert_eq!(arbitrary_name_direct_call["error_id"], "BPFIX-E013");
+    assert!(evidence_contains(
+        &arbitrary_name_direct_call,
+        "verifier_state_signal",
+        "exception callback"
+    ));
+
+    let ordinary_return_after_prior_callback_validation = run_json_stdin(
+        "Validating exception_cb_ok() func#1...\n\
+         1: R0_w=0\n\
+         1: (95) exit\n\
+         Func#1 ('exception_cb_ok') is safe for any args that match its prototype\n\
+         2: R1=scalar() R10=fp0\n\
+         2: (bf) r0 = r1                       ; R0_w=scalar(id=1)\n\
+         3: (95) exit\n\
+         At program exit the register R0 has unknown scalar value should have been in [0, 0]\n\
+         processed 4 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0 mark_read 0\n",
+    );
+    assert_eq!(
+        ordinary_return_after_prior_callback_validation["error_id"],
+        "BPFIX-E005"
+    );
+    assert!(!evidence_contains(
+        &ordinary_return_after_prior_callback_validation,
+        "verifier_state_signal",
+        "exception callback"
+    ));
+
+    let known_bad_subprogram_return = run_json_stdin(
+        "Validating my_cb() func#1...\n\
+         2: R10=fp0\n\
+         2: (b7) r0 = 2                       ; R0_w=2\n\
+         3: (95) exit\n\
+         At program exit the register R0 has unknown scalar value should have been in [3, 4]\n\
+         processed 4 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 1 mark_read 0\n",
+    );
+    assert_eq!(known_bad_subprogram_return["error_id"], "BPFIX-E013");
+    assert!(evidence_contains(
+        &known_bad_subprogram_return,
+        "verifier_state_signal",
+        "subprogram"
+    ));
+
+    let satisfied_exact_subprogram_return = run_json_stdin(
+        "Validating my_cb() func#1...\n\
+         2: R10=fp0\n\
+         2: (b7) r0 = 3                       ; R0_w=3\n\
+         3: (95) exit\n\
+         At program exit the register R0 has unknown scalar value should have been in [3, 4]\n\
+         processed 4 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 1 mark_read 0\n",
+    );
+    assert_eq!(satisfied_exact_subprogram_return["error_id"], "BPFIX-E005");
+    assert!(!evidence_contains(
+        &satisfied_exact_subprogram_return,
+        "verifier_state_signal",
+        "subprogram"
+    ));
+
+    let satisfied_wide_subprogram_return = run_json_stdin(
+        "Validating my_cb() func#1...\n\
+         2: R10=fp0\n\
+         2: (bc) w0 = w1                       ; R0_w=scalar(smin32=3,smax32=4,umin32=3,umax32=4)\n\
+         3: (95) exit\n\
+         At program exit the register R0 has unknown scalar value should have been in [3, 4]\n\
+         processed 4 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 1 mark_read 0\n",
+    );
+    assert_eq!(satisfied_wide_subprogram_return["error_id"], "BPFIX-E005");
+    assert!(!evidence_contains(
+        &satisfied_wide_subprogram_return,
+        "verifier_state_signal",
+        "subprogram"
+    ));
+}
+
+#[test]
 fn exception_throw_signal_uses_nearest_callback_state() {
     let log = "\
 0: (85) call bpf_loop#181
@@ -3448,7 +3618,7 @@ fn object_argument_stitches_reachable_text_subprograms() {
         "json",
     ]);
 
-    assert_eq!(json["error_id"], "BPFIX-E010");
+    assert_eq!(json["error_id"], "BPFIX-E013");
     assert!(json["metadata"]["object_analysis_error"].is_null());
     assert_eq!(
         json["metadata"]["object_programs"][0]["section_name"],

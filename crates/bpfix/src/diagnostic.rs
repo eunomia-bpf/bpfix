@@ -79,6 +79,7 @@ pub enum ProofSignal {
     KfuncArgumentTypeMismatch,
     ContextAccessSourceArgumentMismatch,
     ExceptionThrowWithLiveReference,
+    ExceptionCallbackProtocolViolation,
     MapLookupKeyArgumentUnreadable,
     PacketGuardUndercoversAccess,
     PacketMaxOffsetPrecisionBoundary,
@@ -138,6 +139,9 @@ impl ProofSignal {
             }
             Self::ExceptionThrowWithLiveReference => {
                 "exception callback can throw while a verifier-tracked reference is still live"
+            }
+            Self::ExceptionCallbackProtocolViolation => {
+                "subprogram or exception callback protocol contract is violated"
             }
             Self::MapLookupKeyArgumentUnreadable => {
                 "map lookup key pointer argument is unreadable"
@@ -260,6 +264,9 @@ impl ProofSignal {
             Self::ExceptionThrowWithLiveReference => {
                 "verifier state reaches bpf_throw inside a callback frame while verifier-tracked references are live"
             }
+            Self::ExceptionCallbackProtocolViolation => {
+                "verifier log validates a BPF subprogram or exception callback whose call path or return value violates the verifier protocol"
+            }
             Self::MapLookupKeyArgumentUnreadable => {
                 "bpf_map_lookup_elem consumes R2 as the key pointer, but verifier state reports that this helper argument register is not readable"
             }
@@ -358,6 +365,9 @@ impl ProofSignal {
             Self::ExceptionThrowWithLiveReference => {
                 "Release verifier-tracked references before any callback path can throw, or avoid bpf_throw while a reference acquired by the caller is still live."
             }
+            Self::ExceptionCallbackProtocolViolation => {
+                "Keep exception callbacks out of ordinary subprogram call graphs, and make subprogram or callback returns satisfy the verifier's printed return-value contract."
+            }
             Self::MapLookupKeyArgumentUnreadable => {
                 "Pass bpf_map_lookup_elem a pointer to initialized key storage, such as &key for a local key variable, not an uninitialized key pointer."
             }
@@ -412,6 +422,7 @@ impl ProofSignal {
             Self::ContextAccessSourceArgumentMismatch
                 | Self::DynptrStackStorageAccess
                 | Self::DynptrSliceVariableLength
+                | Self::ExceptionCallbackProtocolViolation
                 | Self::ExceptionThrowWithLiveReference
                 | Self::CallbackCallWhileLocked
                 | Self::IrqFlagStateMismatch
@@ -482,6 +493,7 @@ impl ProofSignal {
                 | Self::SubprogramReferenceMetadataMissing
                 | Self::DynptrStackStorageAccess
                 | Self::DynptrSliceVariableLength
+                | Self::ExceptionCallbackProtocolViolation
                 | Self::IrqFlagStateMismatch
                 | Self::CallbackCallWhileLocked
                 | Self::IteratorHelperArgumentStateMismatch
@@ -532,6 +544,9 @@ impl ProofSignal {
             Self::ExceptionThrowWithLiveReference => Some(
                 "release verifier-tracked references on every callback and exceptional path before bpf_throw can run",
             ),
+            Self::ExceptionCallbackProtocolViolation => Some(
+                "keep exception callbacks reachable only through the verifier exception machinery and make subprogram or callback returns satisfy the verifier's printed return-value contract",
+            ),
             Self::MapLookupKeyArgumentUnreadable => Some(
                 "pass a pointer to initialized map key storage in bpf_map_lookup_elem's second argument",
             ),
@@ -580,6 +595,9 @@ impl ProofSignal {
             Self::ExceptionThrowWithLiveReference => {
                 Some("bpf_throw can run while verifier-tracked references are live")
             }
+            Self::ExceptionCallbackProtocolViolation => {
+                Some("subprogram or exception callback violates the verifier-approved protocol")
+            }
             Self::MapLookupKeyArgumentUnreadable => {
                 Some("map lookup key argument register is unreadable at the helper call")
             }
@@ -604,6 +622,7 @@ impl ProofSignal {
             Self::TrustedNullableArgument => Some("BPFIX-E015"),
             Self::KfuncArgumentTypeMismatch => Some("BPFIX-E013"),
             Self::ExceptionThrowWithLiveReference => Some("BPFIX-E004"),
+            Self::ExceptionCallbackProtocolViolation => Some("BPFIX-E013"),
             _ => None,
         }
     }
@@ -1494,6 +1513,9 @@ fn proof_signals(context: ProofSignalContext<'_>) -> Vec<ProofSignal> {
     ) {
         signals.push(ProofSignal::ExceptionThrowWithLiveReference);
     }
+    if exception_callback_protocol_violation(&context) {
+        signals.push(ProofSignal::ExceptionCallbackProtocolViolation);
+    }
     if map_pointer_argument_scalar_zero(
         context.log,
         context.terminal_error,
@@ -1705,6 +1727,177 @@ fn exception_throw_with_live_reference(
     latest_verifier_state_before(states, terminal_pc, terminal_line).is_some_and(|state| {
         state.callback_kind == Some(CallbackKind::Sync) && state.refs.is_some_and(|refs| refs > 0)
     })
+}
+
+fn exception_callback_protocol_violation(context: &ProofSignalContext<'_>) -> bool {
+    let terminal = context.terminal_error.to_ascii_lowercase();
+    if terminal.contains("cannot call exception cb directly") {
+        return direct_exception_callback_call(context);
+    }
+    if terminal.contains("at program exit")
+        && terminal.contains("register r0")
+        && terminal.contains("should have been in")
+    {
+        return exception_callback_return_contract_mismatch(context);
+    }
+    false
+}
+
+fn direct_exception_callback_call(context: &ProofSignalContext<'_>) -> bool {
+    let Some(terminal_line) = context.terminal_line else {
+        return false;
+    };
+    let Some(reported_pc) =
+        parse_u32_after(context.terminal_error, "insn ").and_then(|pc| usize::try_from(pc).ok())
+    else {
+        return false;
+    };
+    let fragment_start = verifier_fragment_start_line(context.log, terminal_line);
+    let Some(instruction) =
+        instruction_site_before_line(context.log, reported_pc, fragment_start, terminal_line)
+    else {
+        return false;
+    };
+    if call_target_from_instruction_tail(instruction.tail).is_none() {
+        return false;
+    }
+    validation_seen(context.log, instruction.line, terminal_line)
+}
+
+fn exception_callback_return_contract_mismatch(context: &ProofSignalContext<'_>) -> bool {
+    let Some(terminal_line) = context.terminal_line else {
+        return false;
+    };
+    let Some(required_range) = terminal_required_return_range(context.terminal_error) else {
+        return false;
+    };
+    let fragment_start = verifier_fragment_start_line(context.log, terminal_line);
+    let Some(validation_start) =
+        active_validation_start(context.log, fragment_start, terminal_line)
+    else {
+        return false;
+    };
+    latest_reg_state_in_line_range_before(
+        context.states,
+        validation_start,
+        terminal_line,
+        context.terminal_pc,
+        0,
+    )
+    .is_some_and(|state| scalar_state_outside_required_range(state, required_range))
+}
+
+fn terminal_required_return_range(message: &str) -> Option<(i64, i64)> {
+    let (_, rest) = message.split_once("should have been in [")?;
+    let (range, _) = rest.split_once(']')?;
+    let (lo, hi) = range.split_once(',')?;
+    Some((parse_signed_decimal(lo)?, parse_signed_decimal(hi)?))
+}
+
+fn scalar_state_outside_required_range(state: &RegState, required: (i64, i64)) -> bool {
+    if state.reg_type != "scalar" {
+        return false;
+    }
+    if let Some(value) = state.exact_u64() {
+        return exact_u64_outside_required_range(value, required);
+    }
+    if let Some(value) = state.exact_u32() {
+        return exact_u32_outside_required_range(value, required);
+    }
+    let (required_min, required_max) = required;
+    if let (Some(smin), Some(smax)) = (state.range.smin, state.range.smax) {
+        return smin < required_min || smax > required_max;
+    }
+    if let Some((required_min, required_max)) = nonnegative_required_range_as_u64(required) {
+        if let (Some(umin), Some(umax)) = (state.range.umin, state.range.umax) {
+            return umin < required_min || umax > required_max;
+        }
+    }
+    if let (Some(smin), Some(smax)) = (state.range.smin32, state.range.smax32) {
+        return i64::from(smin) < required_min || i64::from(smax) > required_max;
+    }
+    if let Some((required_min, required_max)) = nonnegative_required_range_as_u64(required) {
+        if let (Some(umin), Some(umax)) = (state.range.umin32, state.range.umax32) {
+            return u64::from(umin) < required_min || u64::from(umax) > required_max;
+        }
+    }
+    true
+}
+
+fn exact_u64_outside_required_range(value: u64, required: (i64, i64)) -> bool {
+    let signed_value = value as i64;
+    if signed_value >= required.0 && signed_value <= required.1 {
+        return false;
+    }
+    nonnegative_required_range_as_u64(required)
+        .is_none_or(|(min, max)| value < min || value > max)
+}
+
+fn exact_u32_outside_required_range(value: u32, required: (i64, i64)) -> bool {
+    let signed_value = i64::from(value as i32);
+    if signed_value >= required.0 && signed_value <= required.1 {
+        return false;
+    }
+    nonnegative_required_range_as_u64(required)
+        .is_none_or(|(min, max)| u64::from(value) < min || u64::from(value) > max)
+}
+
+fn nonnegative_required_range_as_u64(required: (i64, i64)) -> Option<(u64, u64)> {
+    let min = u64::try_from(required.0).ok()?;
+    let max = u64::try_from(required.1).ok()?;
+    Some((min, max))
+}
+
+fn latest_reg_state_in_line_range_before(
+    states: &[VerifierInsn],
+    start_line: usize,
+    before_line: usize,
+    terminal_pc: Option<usize>,
+    reg: u8,
+) -> Option<&RegState> {
+    states
+        .iter()
+        .filter(|state| state.log_line >= start_line)
+        .filter(|state| state.log_line < before_line)
+        .filter(|state| terminal_pc.is_none_or(|pc| state.pc <= pc))
+        .rev()
+        .filter_map(|state| state.regs.get(&reg))
+        .next()
+}
+
+fn active_validation_start(log: &str, start_line: usize, before_line: usize) -> Option<usize> {
+    let mut active = None;
+    for (idx, line) in log
+        .lines()
+        .enumerate()
+        .skip(start_line.saturating_sub(1))
+        .take(before_line.saturating_sub(start_line))
+    {
+        let line = line.trim();
+        if validating_function_name(line).is_some() {
+            active = Some(idx + 1);
+        } else if validation_success_line(line) {
+            active = None;
+        }
+    }
+    active
+}
+
+fn validating_function_name(line: &str) -> Option<&str> {
+    let rest = line.strip_prefix("Validating ")?;
+    let (name, _) = rest.split_once("() func#")?;
+    (!name.is_empty()).then_some(name)
+}
+
+fn validation_seen(log: &str, start_line: usize, before_line: usize) -> bool {
+    log.lines()
+        .skip(start_line.saturating_sub(1))
+        .take(before_line.saturating_sub(start_line))
+        .any(|line| validating_function_name(line.trim()).is_some())
+}
+
+fn validation_success_line(line: &str) -> bool {
+    line.starts_with("Func#") && line.contains(" is safe for any args")
 }
 
 fn map_pointer_argument_scalar_zero(

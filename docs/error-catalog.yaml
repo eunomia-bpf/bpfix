@@ -88,10 +88,10 @@ active_error_ids:
     summary: Dynptr initialization, lifetime, bounds, mode, storage, or release protocol is violated.
 
   - error_id: BPFIX-E013
-    short_name: kfunc_reference_contract_violation
+    short_name: kfunc_or_subprogram_contract_violation
     failure_classes:
       - source_bug
-    summary: A kfunc trusted-pointer, nullability, reference, or ownership contract is violated.
+    summary: A kfunc trusted-pointer, nullability, reference, ownership, subprogram return, or exception-callback protocol contract is violated.
 
   - error_id: BPFIX-E014
     short_name: iterator_lifecycle_violation
