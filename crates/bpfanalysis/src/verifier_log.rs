@@ -300,6 +300,7 @@ fn parse_pc_state_line(line: &str) -> Option<(usize, Option<usize>, VerifierInsn
 fn is_state_text(text: &str) -> bool {
     text.starts_with('R')
         || text.starts_with("frame")
+        || text.starts_with("fp-")
         || text.starts_with("refs=")
         || matches!(text, "cb" | "async_cb")
 }

@@ -118,6 +118,12 @@ active_error_ids:
       - verifier_limit
     summary: A loop bound is missing or verifier analysis exceeds a resource, stack, state, or complexity budget.
 
+  - error_id: BPFIX-E020
+    short_name: irq_flag_lifecycle_violation
+    failure_classes:
+      - source_bug
+    summary: An IRQ flag stack slot is reused, corrupted, or restored outside the verifier-approved save/restore lifecycle.
+
   - error_id: BPFIX-E021
     short_name: map_relocation_or_metadata_missing
     failure_classes:
@@ -133,6 +139,5 @@ active_error_ids:
 historical_error_ids:
   - BPFIX-E017
   - BPFIX-E019
-  - BPFIX-E020
   - BPFIX-E022
   - BPFIX-E023

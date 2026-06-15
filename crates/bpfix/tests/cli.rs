@@ -2585,6 +2585,188 @@ fn iterator_state_storage_reports_protocol_violation() {
 }
 
 #[test]
+fn irq_flag_state_reports_protocol_violation() {
+    for path in [
+        "bpfix-bench/cases/kernel-selftest-irq-irq-save-invalid-tc-86a07a3f/replay-verifier.log",
+        "bpfix-bench/cases/kernel-selftest-irq-irq-restore-invalid-tc-e1f743bf/replay-verifier.log",
+        "bpfix-bench/cases/kernel-selftest-irq-irq-flag-overwrite-tc-4c974993/replay-verifier.log",
+    ] {
+        let diagnostic = run_json(path);
+        assert_eq!(diagnostic["error_id"], "BPFIX-E020");
+        assert_eq!(diagnostic["failure_class"], "source_bug");
+        assert!(evidence_contains(
+            &diagnostic,
+            "verifier_state_signal",
+            "IRQ helper receives a stack slot"
+        ));
+        assert!(diagnostic["required_proof"]
+            .as_str()
+            .unwrap()
+            .contains("bpf_local_irq_save"));
+        assert!(!diagnostic["help"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|help| help.as_str().unwrap().contains("Initialize the full stack")));
+    }
+
+    let unknown_terminal_irq_double_save = run_stdin_output(
+        "func#0 @0\n\
+         0: R1=ctx() R10=fp0\n\
+         3: (85) call bpf_local_irq_save#72094 ; fp-8_w=ffffffff refs=1\n\
+         4: R1=fp-8 refs=1\n\
+         4: (85) call bpf_local_irq_save#72094\n\
+         invalid verifier frobnication\n",
+        &["-", "--format", "json", "--fail-on-unsupported"],
+    );
+    assert!(unknown_terminal_irq_double_save.status.success());
+    assert!(unknown_terminal_irq_double_save.stderr.is_empty());
+    let unknown_terminal_irq_double_save: Value =
+        serde_json::from_slice(&unknown_terminal_irq_double_save.stdout)
+            .expect("bpfix should emit JSON");
+    assert_eq!(unknown_terminal_irq_double_save["error_id"], "BPFIX-E020");
+    assert_eq!(
+        unknown_terminal_irq_double_save["diagnostic_kind"],
+        "supported"
+    );
+    assert!(evidence_contains(
+        &unknown_terminal_irq_double_save,
+        "verifier_state_signal",
+        "IRQ helper receives a stack slot"
+    ));
+
+    let unknown_terminal_irq_restore_wrong_slot = run_stdin_output(
+        "func#0 @0\n\
+         0: R1=ctx() R10=fp0\n\
+         3: R1=fp-8 fp-8_w=0 refs=1\n\
+         3: (85) call bpf_local_irq_restore#72093\n\
+         invalid verifier frobnication\n",
+        &["-", "--format", "json", "--fail-on-unsupported"],
+    );
+    assert!(unknown_terminal_irq_restore_wrong_slot.status.success());
+    assert!(unknown_terminal_irq_restore_wrong_slot.stderr.is_empty());
+    let unknown_terminal_irq_restore_wrong_slot: Value =
+        serde_json::from_slice(&unknown_terminal_irq_restore_wrong_slot.stdout)
+            .expect("bpfix should emit JSON");
+    assert_eq!(
+        unknown_terminal_irq_restore_wrong_slot["error_id"],
+        "BPFIX-E020"
+    );
+    assert!(evidence_contains(
+        &unknown_terminal_irq_restore_wrong_slot,
+        "verifier_state_signal",
+        "IRQ helper receives a stack slot"
+    ));
+
+    let unknown_terminal_irq_restore_scalar_hex_slot = run_stdin_output(
+        "func#0 @0\n\
+         0: R1=ctx() R10=fp0\n\
+         3: R1=fp-8 fp-8_w=0xffffffff refs=1\n\
+         3: (85) call bpf_local_irq_restore#72093\n\
+         invalid verifier frobnication\n",
+        &["-", "--format", "json", "--fail-on-unsupported"],
+    );
+    assert!(unknown_terminal_irq_restore_scalar_hex_slot
+        .status
+        .success());
+    assert!(unknown_terminal_irq_restore_scalar_hex_slot
+        .stderr
+        .is_empty());
+    let unknown_terminal_irq_restore_scalar_hex_slot: Value =
+        serde_json::from_slice(&unknown_terminal_irq_restore_scalar_hex_slot.stdout)
+            .expect("bpfix should emit JSON");
+    assert_eq!(
+        unknown_terminal_irq_restore_scalar_hex_slot["error_id"],
+        "BPFIX-E020"
+    );
+    assert!(evidence_contains(
+        &unknown_terminal_irq_restore_scalar_hex_slot,
+        "verifier_state_signal",
+        "IRQ helper receives a stack slot"
+    ));
+
+    let unknown_terminal_irq_restore_interior_pointer = run_stdin_output(
+        "func#0 @0\n\
+         0: R1=ctx() R10=fp0\n\
+         3: R1=fp-4 fp-8_w=ffffffff refs=1\n\
+         3: (85) call bpf_local_irq_restore#72093\n\
+         invalid verifier frobnication\n",
+        &["-", "--format", "json", "--fail-on-unsupported"],
+    );
+    assert!(unknown_terminal_irq_restore_interior_pointer
+        .status
+        .success());
+    assert!(unknown_terminal_irq_restore_interior_pointer
+        .stderr
+        .is_empty());
+    let unknown_terminal_irq_restore_interior_pointer: Value =
+        serde_json::from_slice(&unknown_terminal_irq_restore_interior_pointer.stdout)
+            .expect("bpfix should emit JSON");
+    assert_eq!(
+        unknown_terminal_irq_restore_interior_pointer["error_id"],
+        "BPFIX-E020"
+    );
+    assert!(evidence_contains(
+        &unknown_terminal_irq_restore_interior_pointer,
+        "verifier_state_signal",
+        "IRQ helper receives a stack slot"
+    ));
+
+    let unknown_terminal_irq_restore_live_slot = run_stdin_output(
+        "func#0 @0\n\
+         0: R1=ctx() R10=fp0\n\
+         3: R1=fp-8 fp-8_w=ffffffff refs=1\n\
+         3: (85) call bpf_local_irq_restore#72093\n\
+         invalid verifier frobnication\n",
+        &["-", "--format", "json", "--fail-on-unsupported"],
+    );
+    assert_eq!(
+        unknown_terminal_irq_restore_live_slot.status.code(),
+        Some(2)
+    );
+    assert!(unknown_terminal_irq_restore_live_slot.stderr.is_empty());
+    let unknown_terminal_irq_restore_live_slot: Value =
+        serde_json::from_slice(&unknown_terminal_irq_restore_live_slot.stdout)
+            .expect("bpfix should emit JSON");
+    assert_eq!(
+        unknown_terminal_irq_restore_live_slot["diagnostic_kind"],
+        "unsupported_verifier_message"
+    );
+    assert!(!evidence_contains(
+        &unknown_terminal_irq_restore_live_slot,
+        "verifier_state_signal",
+        "IRQ helper receives a stack slot"
+    ));
+
+    let stale_prior_fragment_irq_slot = run_stdin_output(
+        "func#0 @0\n\
+         0: R1=ctx() R10=fp0\n\
+         3: (85) call bpf_local_irq_save#72094 ; fp-8_w=ffffffff refs=1\n\
+         processed 4 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0 mark_read 0\n\
+         func#1 @0\n\
+         0: R1=ctx() R10=fp0\n\
+         3: R1=fp-8\n\
+         3: (85) call bpf_local_irq_save#72094\n\
+         invalid verifier frobnication\n",
+        &["-", "--format", "json", "--fail-on-unsupported"],
+    );
+    assert_eq!(stale_prior_fragment_irq_slot.status.code(), Some(2));
+    assert!(stale_prior_fragment_irq_slot.stderr.is_empty());
+    let stale_prior_fragment_irq_slot: Value =
+        serde_json::from_slice(&stale_prior_fragment_irq_slot.stdout)
+            .expect("bpfix should emit JSON");
+    assert_eq!(
+        stale_prior_fragment_irq_slot["diagnostic_kind"],
+        "unsupported_verifier_message"
+    );
+    assert!(!evidence_contains(
+        &stale_prior_fragment_irq_slot,
+        "verifier_state_signal",
+        "IRQ helper receives a stack slot"
+    ));
+}
+
+#[test]
 fn text_output_is_rust_style_multispan() {
     let text = run_text("bpfix-bench/cases/stackoverflow-53136145/replay-verifier.log");
     assert!(text.contains(

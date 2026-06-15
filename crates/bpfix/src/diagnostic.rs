@@ -1,6 +1,6 @@
 use anyhow::Result;
 use bpfanalysis::{
-    verifier_states_with_branch_deltas_from_log, CallbackKind, RegState, VerifierInsn,
+    verifier_states_with_branch_deltas_from_log, CallbackKind, RegState, StackState, VerifierInsn,
     VerifierInsnKind,
 };
 
@@ -71,6 +71,7 @@ pub enum ProofSignal {
     DynptrSliceVariableLength,
     IteratorStackStorageAccess,
     IteratorHelperArgumentStateMismatch,
+    IrqFlagStateMismatch,
     TrustedNullableArgument,
     ContextAccessSourceArgumentMismatch,
     ExceptionThrowWithLiveReference,
@@ -109,6 +110,9 @@ impl ProofSignal {
             }
             Self::IteratorHelperArgumentStateMismatch => {
                 "iterator helper argument has the wrong verifier-tracked lifecycle state"
+            }
+            Self::IrqFlagStateMismatch => {
+                "IRQ flag helper argument has the wrong verifier-tracked lifecycle state"
             }
             Self::TrustedNullableArgument => {
                 "trusted helper argument is still verifier-visible as nullable"
@@ -214,6 +218,9 @@ impl ProofSignal {
             Self::IteratorHelperArgumentStateMismatch => {
                 "the rejected iterator helper receives an argument whose verifier state does not match the helper's required stack iterator lifecycle state"
             }
+            Self::IrqFlagStateMismatch => {
+                "the rejected IRQ helper receives a stack slot whose verifier state does not match the helper's save/restore lifecycle contract"
+            }
             Self::TrustedNullableArgument => {
                 "verifier state shows the rejected helper or kfunc argument is still a nullable RCU/trusted pointer at the call site"
             }
@@ -297,6 +304,9 @@ impl ProofSignal {
             Self::IteratorHelperArgumentStateMismatch => {
                 "Keep iterator objects in verifier-tracked stack slots and call iterator create, next, and destroy helpers in the required lifecycle order."
             }
+            Self::IrqFlagStateMismatch => {
+                "Keep each IRQ flag stack slot dedicated to one save/restore pair, and pass restore the exact slot initialized by the matching save helper."
+            }
             Self::TrustedNullableArgument => {
                 "Keep the RCU or trusted-pointer argument inside the verifier-visible non-null branch, or acquire a trusted reference before passing it to the helper or kfunc."
             }
@@ -358,6 +368,7 @@ impl ProofSignal {
                 | Self::DynptrStackStorageAccess
                 | Self::DynptrSliceVariableLength
                 | Self::ExceptionThrowWithLiveReference
+                | Self::IrqFlagStateMismatch
                 | Self::IteratorHelperArgumentStateMismatch
                 | Self::IteratorStackStorageAccess
                 | Self::MapLookupKeyArgumentUnreadable
@@ -390,6 +401,7 @@ impl ProofSignal {
                 | Self::DynptrStackStorageAccess
                 | Self::DynptrSliceVariableLength
                 | Self::ExceptionThrowWithLiveReference
+                | Self::IrqFlagStateMismatch
                 | Self::IteratorHelperArgumentStateMismatch
                 | Self::IteratorStackStorageAccess
                 | Self::MapLookupKeyArgumentUnreadable
@@ -408,6 +420,7 @@ impl ProofSignal {
             Self::MapPointerArgumentScalarZero
                 | Self::DynptrStackStorageAccess
                 | Self::DynptrSliceVariableLength
+                | Self::IrqFlagStateMismatch
                 | Self::IteratorHelperArgumentStateMismatch
                 | Self::IteratorStackStorageAccess
                 | Self::TrustedNullableArgument
@@ -433,6 +446,9 @@ impl ProofSignal {
             ),
             Self::IteratorHelperArgumentStateMismatch => Some(
                 "pass bpf_iter_* helpers a verifier-tracked stack iterator slot in the lifecycle state required by the called helper",
+            ),
+            Self::IrqFlagStateMismatch => Some(
+                "pass bpf_local_irq_save an empty stack flag slot and pass bpf_local_irq_restore the same verifier-tracked flag slot produced by save",
             ),
             Self::TrustedNullableArgument => Some(
                 "prove the RCU/trusted pointer argument is non-null and trusted at the helper or kfunc call site",
@@ -467,6 +483,9 @@ impl ProofSignal {
             Self::IteratorHelperArgumentStateMismatch => {
                 Some("iterator helper argument has the wrong lifecycle state")
             }
+            Self::IrqFlagStateMismatch => {
+                Some("IRQ flag helper argument has the wrong lifecycle state")
+            }
             Self::TrustedNullableArgument => {
                 Some("trusted helper argument remains nullable at the call site")
             }
@@ -490,6 +509,7 @@ impl ProofSignal {
             Self::DynptrSliceVariableLength => Some("BPFIX-E012"),
             Self::IteratorStackStorageAccess => Some("BPFIX-E014"),
             Self::IteratorHelperArgumentStateMismatch => Some("BPFIX-E014"),
+            Self::IrqFlagStateMismatch => Some("BPFIX-E020"),
             Self::TrustedNullableArgument => Some("BPFIX-E015"),
             Self::ExceptionThrowWithLiveReference => Some("BPFIX-E004"),
             _ => None,
@@ -1416,6 +1436,9 @@ fn proof_signals(context: ProofSignalContext<'_>) -> Vec<ProofSignal> {
     if iterator_stack_storage_access(&context) {
         signals.push(ProofSignal::IteratorStackStorageAccess);
     }
+    if irq_flag_state_mismatch(&context) {
+        signals.push(ProofSignal::IrqFlagStateMismatch);
+    }
     if trusted_nullable_argument(&context) {
         signals.push(ProofSignal::TrustedNullableArgument);
     }
@@ -1813,6 +1836,118 @@ fn iterator_stack_slot_state(
     })
 }
 
+#[derive(Clone, Copy)]
+enum IrqFlagArg0Requirement {
+    EmptyStackSlot,
+    LiveIrqFlagSlot,
+}
+
+fn irq_flag_state_mismatch(context: &ProofSignalContext<'_>) -> bool {
+    if !matches!(
+        context.obligation,
+        ProofObligation::LockState
+            | ProofObligation::HelperArgument
+            | ProofObligation::StackInitialized
+            | ProofObligation::Unknown
+    ) {
+        return false;
+    }
+    let Some(instruction) =
+        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)
+    else {
+        return false;
+    };
+    let Some(target) = call_target_from_instruction_tail(instruction.tail) else {
+        return false;
+    };
+    let Some(requirement) = irq_flag_arg0_requirement(target) else {
+        return false;
+    };
+    let fragment_start = context
+        .terminal_line
+        .map(|line| verifier_fragment_start_line(context.log, line))
+        .unwrap_or_else(|| verifier_fragment_start_line(context.log, instruction.line));
+    let Some(arg) = latest_reg_state_for_call_argument(
+        context.states,
+        instruction,
+        fragment_start,
+        context.terminal_line,
+        1,
+    ) else {
+        return false;
+    };
+    match requirement {
+        IrqFlagArg0Requirement::EmptyStackSlot => {
+            if arg.reg_type != "fp" {
+                return true;
+            }
+            irq_flag_stack_slot_state(context, arg).is_some()
+        }
+        IrqFlagArg0Requirement::LiveIrqFlagSlot => {
+            if arg.reg_type != "fp" {
+                return true;
+            }
+            irq_flag_stack_slot_state(context, arg)
+                .is_some_and(|state| state == IrqFlagStackSlotState::OrdinaryBytes)
+        }
+    }
+}
+
+fn irq_flag_arg0_requirement(target: &str) -> Option<IrqFlagArg0Requirement> {
+    match target {
+        "bpf_local_irq_save" => Some(IrqFlagArg0Requirement::EmptyStackSlot),
+        "bpf_local_irq_restore" => Some(IrqFlagArg0Requirement::LiveIrqFlagSlot),
+        _ => None,
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum IrqFlagStackSlotState {
+    LiveIrqFlag,
+    OrdinaryBytes,
+}
+
+fn irq_flag_stack_slot_state(
+    context: &ProofSignalContext<'_>,
+    arg: &RegState,
+) -> Option<IrqFlagStackSlotState> {
+    let offset = i16::try_from(arg.offset?).ok()?;
+    let fragment_start = context
+        .terminal_line
+        .map(|line| verifier_fragment_start_line(context.log, line))
+        .unwrap_or(0);
+    for state in context
+        .states
+        .iter()
+        .filter(|state| state.log_line >= fragment_start)
+        .filter(|state| context.terminal_pc.is_none_or(|pc| state.pc <= pc))
+        .filter(|state| {
+            context
+                .terminal_line
+                .is_none_or(|line| state.log_line < line)
+        })
+        .rev()
+    {
+        if let Some(stack) = state.stack.get(&offset) {
+            return Some(if is_irq_flag_stack_slot(stack) {
+                IrqFlagStackSlotState::LiveIrqFlag
+            } else {
+                IrqFlagStackSlotState::OrdinaryBytes
+            });
+        }
+        if state.stack.iter().any(|(slot_offset, _)| {
+            stack_value_range(*slot_offset, 8).is_some_and(|range| range.contains(offset))
+        }) {
+            return Some(IrqFlagStackSlotState::OrdinaryBytes);
+        }
+    }
+    None
+}
+
+fn is_irq_flag_stack_slot(stack: &StackState) -> bool {
+    stack.value.is_none() && stack.slot_types.as_deref() == Some("ffffffff")
+}
+
 fn trusted_nullable_argument(context: &ProofSignalContext<'_>) -> bool {
     let terminal = context.terminal_error.to_ascii_lowercase();
     let Some(instruction) =
@@ -1940,6 +2075,20 @@ fn latest_stack_value_overlap(
     target_size: i16,
     target_value: impl Fn(&RegState) -> bool,
 ) -> Option<bool> {
+    latest_stack_slot_overlap(context, access, target_size, |stack| {
+        stack
+            .value
+            .as_ref()
+            .is_some_and(|value| target_value(value))
+    })
+}
+
+fn latest_stack_slot_overlap(
+    context: &ProofSignalContext<'_>,
+    access: StackByteRange,
+    target_size: i16,
+    target_slot: impl Fn(&StackState) -> bool,
+) -> Option<bool> {
     let fragment_start = context
         .terminal_line
         .map(|line| verifier_fragment_start_line(context.log, line))
@@ -1961,10 +2110,7 @@ fn latest_stack_value_overlap(
         let mut start_in_non_target = false;
         let mut contains_target = false;
         for (offset, stack) in &state.stack {
-            let is_target = stack
-                .value
-                .as_ref()
-                .is_some_and(|value| target_value(value));
+            let is_target = target_slot(stack);
             let Some(range) = stack_value_range(*offset, if is_target { target_size } else { 8 })
             else {
                 continue;
@@ -3607,6 +3753,7 @@ mod tests {
             ProofSignal::DynptrStackStorageAccess,
             ProofSignal::DynptrSliceVariableLength,
             ProofSignal::ExceptionThrowWithLiveReference,
+            ProofSignal::IrqFlagStateMismatch,
             ProofSignal::IteratorHelperArgumentStateMismatch,
             ProofSignal::IteratorStackStorageAccess,
             ProofSignal::MapLookupKeyArgumentUnreadable,

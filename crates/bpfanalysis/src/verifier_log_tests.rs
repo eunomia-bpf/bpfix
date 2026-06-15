@@ -138,10 +138,11 @@ from 12 to 18 (speculative execution): frame1: R2_w=42 R10=fp0 fp-24=0000???? sc
 fn parses_stack_access_suffixes_and_dynptr_stack_state() {
     let log = r#"
 7: (85) call bpf_ringbuf_reserve_dynptr#198 ; R0_w=scalar() fp-16_w=dynptr_ringbuf(id=1,ref_id=2,dynptr_id=1) fp-8_r=0000???? fp-24_rw=0
+8: (85) call bpf_local_irq_save#72094 ; fp-32_w=ffffffff refs=1
 "#;
 
     let insns = parse_verifier_log(log);
-    assert_eq!(insns.len(), 1);
+    assert_eq!(insns.len(), 2);
 
     let dynptr = insns[0]
         .stack
@@ -166,6 +167,35 @@ fn parses_stack_access_suffixes_and_dynptr_stack_state() {
             .and_then(RegState::exact_u64),
         Some(0)
     );
+
+    assert_eq!(
+        insns[1]
+            .stack
+            .get(&-32)
+            .and_then(|stack| stack.slot_types.as_deref()),
+        Some("ffffffff")
+    );
+    assert!(insns[1].stack.get(&-32).unwrap().value.is_none());
+    assert_eq!(insns[1].refs, Some(1));
+}
+
+#[test]
+fn parses_standalone_stack_only_state_lines() {
+    let log = r#"
+8: fp-32_w=ffffffff refs=1
+"#;
+
+    let insns = parse_verifier_log(log);
+    assert_eq!(insns.len(), 1);
+    assert_eq!(insns[0].pc, 8);
+    assert_eq!(
+        insns[0]
+            .stack
+            .get(&-32)
+            .and_then(|stack| stack.slot_types.as_deref()),
+        Some("ffffffff")
+    );
+    assert_eq!(insns[0].refs, Some(1));
 }
 
 #[test]
