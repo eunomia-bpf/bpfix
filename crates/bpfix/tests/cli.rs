@@ -3843,6 +3843,15 @@ fn dynptr_protocol_diagnostic_uses_specific_required_proof() {
     let uninitialized_dynptr_clone =
         run_json("bpfix-bench/cases/kernel-selftest-dynptr-fail-clone-invalid1-raw-tp-b7206632/replay-verifier.log");
     assert_eq!(uninitialized_dynptr_clone["error_id"], "BPFIX-E012");
+    assert!(uninitialized_dynptr_clone["required_proof"]
+        .as_str()
+        .unwrap()
+        .contains("exact verifier-tracked initialized dynptr stack slot"));
+    assert!(evidence_contains(
+        &uninitialized_dynptr_clone,
+        "verifier_state_signal",
+        "not the current initialized dynptr object"
+    ));
     assert!(!evidence_contains(
         &uninitialized_dynptr_clone,
         "verifier_state_signal",
@@ -3852,10 +3861,78 @@ fn dynptr_protocol_diagnostic_uses_specific_required_proof() {
     let overwritten_dynptr_slot =
         run_json("bpfix-bench/cases/kernel-selftest-dynptr-fail-invalid-write1-raw-tp-ba5ba8ca/replay-verifier.log");
     assert_eq!(overwritten_dynptr_slot["error_id"], "BPFIX-E012");
+    assert!(evidence_contains(
+        &overwritten_dynptr_slot,
+        "verifier_state_signal",
+        "not the current initialized dynptr object"
+    ));
     assert!(!evidence_contains(
         &overwritten_dynptr_slot,
         "verifier_state_signal",
         "unstable dynptr slot"
+    ));
+
+    let initializer_overwrites_referenced_dynptr =
+        run_json("bpfix-bench/cases/kernel-selftest-dynptr-fail-dynptr-overwrite-ref-raw-tp-3fed55ba/replay-verifier.log");
+    assert_eq!(
+        initializer_overwrites_referenced_dynptr["error_id"],
+        "BPFIX-E012"
+    );
+    assert!(initializer_overwrites_referenced_dynptr["required_proof"]
+        .as_str()
+        .unwrap()
+        .contains("reference is still live"));
+    assert!(evidence_contains(
+        &initializer_overwrites_referenced_dynptr,
+        "verifier_state_signal",
+        "dynptr reference is still live"
+    ));
+
+    let plain_write_overwrites_referenced_dynptr =
+        run_json("bpfix-bench/cases/kernel-selftest-dynptr-fail-dynptr-pruning-type-confusion-tc-28056c9b/replay-verifier.log");
+    assert_eq!(
+        plain_write_overwrites_referenced_dynptr["error_id"],
+        "BPFIX-E012"
+    );
+    assert!(evidence_contains(
+        &plain_write_overwrites_referenced_dynptr,
+        "verifier_state_signal",
+        "dynptr reference is still live"
+    ));
+
+    let partial_write_overwrites_referenced_dynptr = run_json_stdin(
+        "func#0 @0\n\
+         0: R10=fp0\n\
+         1: (85) call bpf_ringbuf_reserve_dynptr#198 ; R0_w=scalar() fp-16_w=dynptr_ringbuf(id=1,ref_id=2,dynptr_id=1) refs=2\n\
+         2: R1=0 R10=fp0\n\
+         2: (7b) *(u64 *)(r10 -20) = r1\n\
+         cannot overwrite referenced dynptr\n",
+    );
+    assert_eq!(
+        partial_write_overwrites_referenced_dynptr["error_id"],
+        "BPFIX-E012"
+    );
+    assert!(evidence_contains(
+        &partial_write_overwrites_referenced_dynptr,
+        "verifier_state_signal",
+        "dynptr reference is still live"
+    ));
+
+    let mismatched_ref_does_not_overclaim_live_dynptr_slot = run_json_stdin(
+        "func#0 @0\n\
+         0: R10=fp0\n\
+         1: R4=fp-16 R10=fp0 fp-16_w=dynptr_ringbuf(id=1,ref_id=2,dynptr_id=1) refs=3\n\
+         2: (85) call bpf_dynptr_from_mem#197\n\
+         cannot overwrite referenced dynptr\n",
+    );
+    assert_eq!(
+        mismatched_ref_does_not_overclaim_live_dynptr_slot["error_id"],
+        "BPFIX-E012"
+    );
+    assert!(!evidence_contains(
+        &mismatched_ref_does_not_overclaim_live_dynptr_slot,
+        "verifier_state_signal",
+        "dynptr reference is still live"
     ));
 
     let unavailable_dynptr_kfunc =
@@ -4089,6 +4166,104 @@ invalid verifier frobnication
         "interior dynptr pointer"
     ));
 
+    let unknown_terminal_uninitialized_dynptr = run_stdin_output(
+        "\
+func#0 @0
+0: R10=fp0
+1: R1=fp-16 R10=fp0 fp-16_w=0
+2: (85) call bpf_dynptr_clone#71541
+invalid verifier frobnication
+",
+        &["-", "--format", "json", "--fail-on-unsupported"],
+    );
+    assert_eq!(unknown_terminal_uninitialized_dynptr.status.code(), Some(2));
+    let unknown_terminal_uninitialized_dynptr: Value =
+        serde_json::from_slice(&unknown_terminal_uninitialized_dynptr.stdout)
+            .expect("bpfix should emit JSON");
+    assert_eq!(
+        unknown_terminal_uninitialized_dynptr["diagnostic_kind"],
+        "unsupported_verifier_message"
+    );
+    assert!(!evidence_contains(
+        &unknown_terminal_uninitialized_dynptr,
+        "verifier_state_signal",
+        "not the current initialized dynptr object"
+    ));
+
+    let unknown_terminal_referenced_dynptr_overwrite = run_stdin_output(
+        "\
+func#0 @0
+0: R10=fp0
+1: (85) call bpf_ringbuf_reserve_dynptr#198 ; R0_w=scalar() fp-16_w=dynptr_ringbuf(id=1,ref_id=2,dynptr_id=1) refs=2
+2: R1=0 R10=fp0
+2: (7b) *(u64 *)(r10 -16) = r1
+invalid verifier frobnication
+",
+        &["-", "--format", "json", "--fail-on-unsupported"],
+    );
+    assert_eq!(
+        unknown_terminal_referenced_dynptr_overwrite.status.code(),
+        Some(2)
+    );
+    let unknown_terminal_referenced_dynptr_overwrite: Value =
+        serde_json::from_slice(&unknown_terminal_referenced_dynptr_overwrite.stdout)
+            .expect("bpfix should emit JSON");
+    assert_eq!(
+        unknown_terminal_referenced_dynptr_overwrite["diagnostic_kind"],
+        "unsupported_verifier_message"
+    );
+    assert!(!evidence_contains(
+        &unknown_terminal_referenced_dynptr_overwrite,
+        "verifier_state_signal",
+        "dynptr reference is still live"
+    ));
+
+    let unknown_terminal_readonly_packet_dynptr_write = run_stdin_output(
+        "\
+func#0 @0
+0: R10=fp0
+1: (85) call bpf_dynptr_from_skb#71549 ; R0_w=scalar() fp-32_w=dynptr_skb(id=1,dynptr_id=1)
+2: R1=fp-32 R4=14 R10=fp0
+3: (85) call bpf_dynptr_slice_rdwr#71568
+invalid verifier frobnication
+",
+        &["-", "--format", "json", "--fail-on-unsupported"],
+    );
+    assert_eq!(
+        unknown_terminal_readonly_packet_dynptr_write.status.code(),
+        Some(2)
+    );
+    let unknown_terminal_readonly_packet_dynptr_write: Value =
+        serde_json::from_slice(&unknown_terminal_readonly_packet_dynptr_write.stdout)
+            .expect("bpfix should emit JSON");
+    assert_eq!(
+        unknown_terminal_readonly_packet_dynptr_write["diagnostic_kind"],
+        "unsupported_verifier_message"
+    );
+    assert!(!evidence_contains(
+        &unknown_terminal_readonly_packet_dynptr_write,
+        "verifier_state_signal",
+        "packet-backed storage"
+    ));
+
+    let memory_backed_dynptr_write_terminal_does_not_claim_packet_backing = run_json_stdin(
+        "func#0 @0\n\
+         0: R4=fp-16 R10=fp0\n\
+         1: (85) call bpf_dynptr_from_mem#197 ; R0_w=scalar() fp-16_w=dynptr_local(id=1,dynptr_id=1)\n\
+         2: R1=fp-16 R4=8 R10=fp0\n\
+         3: (85) call bpf_dynptr_slice_rdwr#71568\n\
+         the prog does not allow writes to packet data\n",
+    );
+    assert_eq!(
+        memory_backed_dynptr_write_terminal_does_not_claim_packet_backing["error_id"],
+        "BPFIX-E012"
+    );
+    assert!(!evidence_contains(
+        &memory_backed_dynptr_write_terminal_does_not_claim_packet_backing,
+        "verifier_state_signal",
+        "packet-backed storage"
+    ));
+
     let read_write_slice_in_read_only_context =
         run_json("bpfix-bench/cases/kernel-selftest-dynptr-fail-invalid-slice-rdwr-rdonly-cgroup-skb-ingress-61688196/replay-verifier.log");
     assert_eq!(
@@ -4102,7 +4277,12 @@ invalid verifier frobnication
     assert!(read_write_slice_in_read_only_context["required_proof"]
         .as_str()
         .unwrap()
-        .contains("read-only dynptr slice helper"));
+        .contains("read-only dynptr packet access"));
+    assert!(evidence_contains(
+        &read_write_slice_in_read_only_context,
+        "verifier_state_signal",
+        "packet-backed storage"
+    ));
 
     let generic_unacquired_reference = run_json_stdin(
         "0: (85) call bpf_obj_drop#108\n\

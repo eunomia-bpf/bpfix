@@ -74,6 +74,7 @@ pub struct RegState {
     pub offset: Option<i32>,
     pub source_frame: Option<usize>,
     pub id: Option<u32>,
+    pub ref_id: Option<u32>,
 }
 impl RegState {
     pub fn new(reg_type: impl Into<String>, value_width: VerifierValueWidth) -> Self {
@@ -89,6 +90,7 @@ impl RegState {
             offset: None,
             source_frame: None,
             id: None,
+            ref_id: None,
         }
     }
     pub fn exact_u64(&self) -> Option<u64> {
@@ -608,11 +610,12 @@ fn parse_reg_attributes(attrs: &str, state: &mut RegState) {
                 "r" => state.packet_range = parse_attr(key, value, parse_u32(value)),
                 "vs" => state.map_value_size = parse_attr(key, value, parse_u32(value)),
                 "id" => state.id = parse_attr(key, value, parse_u32(value)),
+                "ref_id" => state.ref_id = parse_attr(key, value, parse_u32(value)),
                 "var_off" => {
                     state.tnum = parse_attr(key, value, parse_tnum(value));
                 }
                 "map" | "ks" | "imm" | "ref_obj_id" | "btf_id" | "mem_size" | "alloc_size"
-                | "aux_off" | "name" => {}
+                | "aux_off" | "name" | "dynptr_id" => {}
                 other => {
                     warn_verifier_log(format!("unknown verifier register attribute {other:?}"));
                 }

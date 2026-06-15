@@ -73,6 +73,9 @@ pub enum ProofSignal {
     BtfFuncInfoMissing,
     SubprogramReferenceMetadataMissing,
     DynptrStackStorageAccess,
+    DynptrUninitializedArgument,
+    DynptrReferencedSlotOverwrite,
+    DynptrReadonlyPacketWrite,
     DynptrStackSlotWriteOverlap,
     DynptrHelperArgumentStateMismatch,
     DynptrReleaseUnacquiredReference,
@@ -134,6 +137,15 @@ impl ProofSignal {
             }
             Self::DynptrStackStorageAccess => {
                 "dynptr stack storage is being used as ordinary memory"
+            }
+            Self::DynptrUninitializedArgument => {
+                "dynptr helper argument is not an initialized verifier-tracked dynptr slot"
+            }
+            Self::DynptrReferencedSlotOverwrite => {
+                "stack write or helper output overwrites a referenced verifier-tracked dynptr"
+            }
+            Self::DynptrReadonlyPacketWrite => {
+                "writable dynptr slice is requested for packet data in a read-only context"
             }
             Self::DynptrStackSlotWriteOverlap => {
                 "helper output or ordinary write overlaps live dynptr stack storage"
@@ -331,6 +343,15 @@ impl ProofSignal {
             Self::DynptrStackStorageAccess => {
                 "verifier state shows this stack slot contains dynptr state, but the rejected instruction reads it as ordinary stack bytes"
             }
+            Self::DynptrUninitializedArgument => {
+                "verifier state shows the helper receives a stable stack pointer, but that stack slot is not the current initialized dynptr object"
+            }
+            Self::DynptrReferencedSlotOverwrite => {
+                "verifier state shows the rejected write target overlaps a dynptr stack slot while a dynptr reference is still live"
+            }
+            Self::DynptrReadonlyPacketWrite => {
+                "verifier state traces the dynptr argument back to packet-backed storage before the rejected bpf_dynptr_slice_rdwr call"
+            }
             Self::DynptrStackSlotWriteOverlap => {
                 "verifier state shows the rejected write target overlaps stack bytes that currently store live dynptr state"
             }
@@ -495,6 +516,15 @@ impl ProofSignal {
             Self::DynptrStackStorageAccess => {
                 "Do not copy, read, or pass a dynptr object as ordinary bytes; use dynptr helpers to read data out of the dynptr and keep the dynptr object in its dedicated stack slot."
             }
+            Self::DynptrUninitializedArgument => {
+                "Initialize the dynptr stack slot through a dynptr creation helper and pass that exact slot to later dynptr helpers; do not pass zeroed, clobbered, or unrelated stack bytes."
+            }
+            Self::DynptrReferencedSlotOverwrite => {
+                "Do not overwrite or reinitialize a dynptr stack slot until the verifier-tracked dynptr reference has been submitted, discarded, or otherwise released."
+            }
+            Self::DynptrReadonlyPacketWrite => {
+                "Use bpf_dynptr_slice for read-only packet dynptr access, or move writable packet access to a hook and helper combination where packet writes are verifier-allowed."
+            }
             Self::DynptrStackSlotWriteOverlap => {
                 "Keep helper output buffers and ordinary writes disjoint from stack bytes that store live dynptr state."
             }
@@ -653,6 +683,9 @@ impl ProofSignal {
                 | Self::DynptrHelperArgumentStateMismatch
                 | Self::DynptrReleaseUnacquiredReference
                 | Self::DynptrStackStorageAccess
+                | Self::DynptrUninitializedArgument
+                | Self::DynptrReferencedSlotOverwrite
+                | Self::DynptrReadonlyPacketWrite
                 | Self::DynptrStackSlotWriteOverlap
                 | Self::DynptrSliceVariableLength
                 | Self::ExceptionCallbackProtocolViolation
@@ -753,6 +786,9 @@ impl ProofSignal {
                 | Self::DynptrHelperArgumentStateMismatch
                 | Self::DynptrReleaseUnacquiredReference
                 | Self::DynptrStackStorageAccess
+                | Self::DynptrUninitializedArgument
+                | Self::DynptrReferencedSlotOverwrite
+                | Self::DynptrReadonlyPacketWrite
                 | Self::DynptrStackSlotWriteOverlap
                 | Self::DynptrSliceVariableLength
                 | Self::ReferenceLiveAtExit
@@ -800,6 +836,15 @@ impl ProofSignal {
             ),
             Self::DynptrStackStorageAccess => Some(
                 "keep the dynptr object in its verifier-tracked stack slot and use dynptr helpers instead of reading or copying the dynptr storage as ordinary bytes",
+            ),
+            Self::DynptrUninitializedArgument => Some(
+                "pass the exact verifier-tracked initialized dynptr stack slot to this helper argument",
+            ),
+            Self::DynptrReferencedSlotOverwrite => Some(
+                "do not overwrite or reinitialize this dynptr stack slot while its verifier-tracked reference is still live",
+            ),
+            Self::DynptrReadonlyPacketWrite => Some(
+                "use read-only dynptr packet access unless the program context permits writable packet data",
             ),
             Self::DynptrStackSlotWriteOverlap => Some(
                 "keep helper output buffers and ordinary writes disjoint from live verifier-tracked dynptr stack slots",
@@ -915,6 +960,15 @@ impl ProofSignal {
             Self::DynptrStackStorageAccess => {
                 Some("dynptr stack storage is read as ordinary memory")
             }
+            Self::DynptrUninitializedArgument => {
+                Some("this helper argument is not an initialized dynptr stack slot")
+            }
+            Self::DynptrReferencedSlotOverwrite => {
+                Some("this write overwrites a dynptr stack slot with a live reference")
+            }
+            Self::DynptrReadonlyPacketWrite => {
+                Some("this writable slice request targets a packet-backed dynptr")
+            }
             Self::DynptrStackSlotWriteOverlap => {
                 Some("write target overlaps a live dynptr stack slot")
             }
@@ -1021,6 +1075,9 @@ impl ProofSignal {
             Self::BtfFuncInfoMissing => Some("BPFIX-E021"),
             Self::SubprogramReferenceMetadataMissing => Some("BPFIX-E021"),
             Self::DynptrStackStorageAccess => Some("BPFIX-E012"),
+            Self::DynptrUninitializedArgument => Some("BPFIX-E012"),
+            Self::DynptrReferencedSlotOverwrite => Some("BPFIX-E012"),
+            Self::DynptrReadonlyPacketWrite => Some("BPFIX-E012"),
             Self::DynptrStackSlotWriteOverlap => Some("BPFIX-E019"),
             Self::DynptrHelperArgumentStateMismatch => Some("BPFIX-E019"),
             Self::DynptrReleaseUnacquiredReference => Some("BPFIX-E019"),
@@ -2012,6 +2069,15 @@ fn proof_signals(context: ProofSignalContext<'_>) -> Vec<ProofSignal> {
     }
     if helper_stack_write_beyond_frame(&context) {
         signals.push(ProofSignal::HelperStackWriteBeyondFrame);
+    }
+    if dynptr_uninitialized_argument(&context) {
+        signals.push(ProofSignal::DynptrUninitializedArgument);
+    }
+    if dynptr_referenced_slot_overwrite(&context) {
+        signals.push(ProofSignal::DynptrReferencedSlotOverwrite);
+    }
+    if dynptr_readonly_packet_write(&context) {
+        signals.push(ProofSignal::DynptrReadonlyPacketWrite);
     }
     if dynptr_stack_slot_write_overlap(&context) {
         signals.push(ProofSignal::DynptrStackSlotWriteOverlap);
@@ -3283,6 +3349,174 @@ fn dynptr_stack_slot_write_overlap(context: &ProofSignalContext<'_>) -> bool {
     .unwrap_or(false)
 }
 
+fn dynptr_protocol_signal_obligation(obligation: ProofObligation) -> bool {
+    matches!(
+        obligation,
+        ProofObligation::DynptrSafety
+            | ProofObligation::HelperArgument
+            | ProofObligation::ReferenceLifecycle
+            | ProofObligation::StackInitialized
+            | ProofObligation::TypeContract
+            | ProofObligation::Unknown
+    )
+}
+
+fn dynptr_uninitialized_argument(context: &ProofSignalContext<'_>) -> bool {
+    if !dynptr_protocol_signal_obligation(context.obligation) {
+        return false;
+    }
+    if !context
+        .terminal_error
+        .to_ascii_lowercase()
+        .contains("expected an initialized dynptr")
+    {
+        return false;
+    }
+    dynptr_initialized_argument_missing(context)
+}
+
+fn dynptr_referenced_slot_overwrite(context: &ProofSignalContext<'_>) -> bool {
+    if !dynptr_protocol_signal_obligation(context.obligation) {
+        return false;
+    }
+    if !context
+        .terminal_error
+        .to_ascii_lowercase()
+        .contains("cannot overwrite referenced dynptr")
+    {
+        return false;
+    }
+    dynptr_referenced_stack_slot_overwrite(context)
+}
+
+fn dynptr_readonly_packet_write(context: &ProofSignalContext<'_>) -> bool {
+    if !dynptr_protocol_signal_obligation(context.obligation) {
+        return false;
+    }
+    if !context
+        .terminal_error
+        .to_ascii_lowercase()
+        .contains("does not allow writes to packet data")
+    {
+        return false;
+    }
+    dynptr_packet_rdwr_disallowed(context)
+}
+
+fn dynptr_initialized_argument_missing(context: &ProofSignalContext<'_>) -> bool {
+    let Some(instruction) = terminal_call_instruction_site(context) else {
+        return false;
+    };
+    let Some(target) = call_target_from_instruction_tail(instruction.tail) else {
+        return false;
+    };
+    let Some(arg_reg) = dynptr_initialized_arg(target) else {
+        return false;
+    };
+    let fragment_start = verifier_fragment_start_line(context.log, instruction.line);
+    let Some((arg, arg_frame)) = latest_reg_state_for_call_argument_with_frame(
+        context.states,
+        instruction,
+        fragment_start,
+        context.terminal_line,
+        arg_reg,
+    ) else {
+        return false;
+    };
+    if !is_stable_dynptr_stack_arg(arg) {
+        return false;
+    }
+    dynptr_stack_slot_relation(context, instruction, fragment_start, arg, arg_frame).is_none()
+}
+
+fn dynptr_referenced_stack_slot_overwrite(context: &ProofSignalContext<'_>) -> bool {
+    if let Some(instruction) = terminal_call_instruction_site(context) {
+        let fragment_start = verifier_fragment_start_line(context.log, instruction.line);
+        if dynptr_initializer_overwrites_referenced_slot(context, instruction, fragment_start) {
+            return true;
+        }
+    }
+    dynptr_plain_write_overlaps_referenced_slot(context)
+}
+
+fn dynptr_initializer_overwrites_referenced_slot(
+    context: &ProofSignalContext<'_>,
+    instruction: TerminalInstruction<'_>,
+    fragment_start: usize,
+) -> bool {
+    let Some(target) = call_target_from_instruction_tail(instruction.tail) else {
+        return false;
+    };
+    let Some(arg_reg) = dynptr_initializer_output_arg(target) else {
+        return false;
+    };
+    let Some((arg, arg_frame)) = latest_reg_state_for_call_argument_with_frame(
+        context.states,
+        instruction,
+        fragment_start,
+        context.terminal_line,
+        arg_reg,
+    ) else {
+        return false;
+    };
+    if dynptr_stack_slot_relation(context, instruction, fragment_start, arg, arg_frame)
+        != Some(DynptrStackSlotRelation::Exact)
+    {
+        return false;
+    }
+    dynptr_slot_has_live_ref_before_instruction(
+        context,
+        instruction,
+        fragment_start,
+        arg.offset,
+        arg_frame,
+    )
+}
+
+fn dynptr_plain_write_overlaps_referenced_slot(context: &ProofSignalContext<'_>) -> bool {
+    let Some(instruction) =
+        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)
+    else {
+        return false;
+    };
+    let fragment_start = context
+        .terminal_line
+        .map(|line| verifier_fragment_start_line(context.log, line))
+        .unwrap_or_else(|| verifier_fragment_start_line(context.log, instruction.line));
+    let Some((access, frame)) =
+        terminal_stack_memory_write_range_with_frame(context, instruction, fragment_start)
+    else {
+        return false;
+    };
+    latest_live_ref_dynptr_stack_overlap_before_instruction(
+        context,
+        instruction,
+        fragment_start,
+        access,
+        frame,
+    )
+    .unwrap_or(false)
+}
+
+fn dynptr_packet_rdwr_disallowed(context: &ProofSignalContext<'_>) -> bool {
+    let Some(instruction) = terminal_call_instruction_site(context) else {
+        return false;
+    };
+    let Some(target) = call_target_from_instruction_tail(instruction.tail) else {
+        return false;
+    };
+    if target != "bpf_dynptr_slice_rdwr" {
+        return false;
+    }
+    let fragment_start = verifier_fragment_start_line(context.log, instruction.line);
+    let Some(slot) =
+        dynptr_stack_slot_for_call_argument(context.branch_states, instruction, fragment_start, 1)
+    else {
+        return false;
+    };
+    dynptr_slot_backing_before(context, slot, instruction.line) == Some(DynptrBacking::Packet)
+}
+
 fn dynptr_helper_argument_state_mismatch(context: &ProofSignalContext<'_>) -> bool {
     if !matches!(
         context.obligation,
@@ -3461,6 +3695,54 @@ fn dynptr_live_arg(target: &str) -> Option<u8> {
         "bpf_dynptr_read" | "bpf_dynptr_write" => Some(3),
         _ => None,
     }
+}
+
+fn dynptr_initialized_arg(target: &str) -> Option<u8> {
+    match target {
+        "bpf_dynptr_data"
+        | "bpf_dynptr_clone"
+        | "bpf_dynptr_slice"
+        | "bpf_dynptr_slice_rdwr"
+        | "bpf_ringbuf_discard_dynptr"
+        | "bpf_ringbuf_submit_dynptr" => Some(1),
+        "bpf_dynptr_read" | "bpf_dynptr_write" => Some(3),
+        _ => None,
+    }
+}
+
+fn dynptr_slot_has_live_ref_before_instruction(
+    context: &ProofSignalContext<'_>,
+    instruction: TerminalInstruction<'_>,
+    fragment_start: usize,
+    offset: Option<i32>,
+    frame: usize,
+) -> bool {
+    let Some(offset) = offset.and_then(|offset| i16::try_from(offset).ok()) else {
+        return false;
+    };
+    context
+        .states
+        .iter()
+        .filter(|state| state.log_line >= fragment_start)
+        .filter(|state| state.log_line < instruction.line)
+        .filter(|state| state.pc <= instruction.pc)
+        .filter(|state| state.frame == frame)
+        .rev()
+        .find_map(|state| {
+            let stack = state.stack.get(&offset)?;
+            Some(dynptr_stack_slot_has_live_ref(stack, state))
+        })
+        .unwrap_or(false)
+}
+
+fn dynptr_stack_slot_has_live_ref(stack: &StackState, state: &VerifierInsn) -> bool {
+    let Some(value) = stack.value.as_ref() else {
+        return false;
+    };
+    value.reg_type.starts_with("dynptr")
+        && value
+            .ref_id
+            .is_some_and(|ref_id| state.ref_ids.contains(&ref_id))
 }
 
 fn is_stable_dynptr_stack_arg(arg: &RegState) -> bool {
@@ -4968,6 +5250,43 @@ fn terminal_stack_memory_access_range(context: &ProofSignalContext<'_>) -> Optio
     })
 }
 
+fn terminal_stack_memory_write_range_with_frame(
+    context: &ProofSignalContext<'_>,
+    instruction: TerminalInstruction<'_>,
+    fragment_start: usize,
+) -> Option<(StackByteRange, usize)> {
+    if !memory_access_is_store(instruction.tail) {
+        return None;
+    }
+    let width =
+        terminal_instruction_access_width(context.log, context.terminal_pc, context.terminal_line)?;
+    let insn_offset = terminal_instruction_memory_offset(
+        context.log,
+        context.terminal_pc,
+        context.terminal_line,
+    )?;
+    let base_reg = memory_access_base_register(instruction.tail)?;
+    let (base, frame) = latest_reg_state_before_instruction_with_frame(
+        context.states,
+        instruction,
+        fragment_start,
+        base_reg,
+    )?;
+    if base.reg_type != "fp" {
+        return None;
+    }
+    let base_offset = i64::from(base.offset.unwrap_or(0));
+    let start = base_offset.checked_add(insn_offset)?;
+    let end = start.checked_add(i64::from(width))?;
+    Some((
+        StackByteRange {
+            start: i16::try_from(start).ok()?,
+            end: i16::try_from(end).ok()?,
+        },
+        frame,
+    ))
+}
+
 fn latest_reg_state_for_call_argument<'a>(
     states: &'a [VerifierInsn],
     instruction: TerminalInstruction<'_>,
@@ -5076,6 +5395,52 @@ fn latest_stack_slot_overlap(
             return Some(true);
         }
         if start_in_non_target || saw_overlap {
+            return Some(false);
+        }
+    }
+    None
+}
+
+fn latest_live_ref_dynptr_stack_overlap_before_instruction(
+    context: &ProofSignalContext<'_>,
+    instruction: TerminalInstruction<'_>,
+    fragment_start: usize,
+    access: StackByteRange,
+    frame: usize,
+) -> Option<bool> {
+    for state in context
+        .states
+        .iter()
+        .filter(|state| state.log_line >= fragment_start)
+        .filter(|state| state.log_line < instruction.line)
+        .filter(|state| state.pc <= instruction.pc)
+        .filter(|state| state.frame == frame)
+        .rev()
+    {
+        let mut saw_overlap = false;
+        let mut saw_live_ref_dynptr = false;
+        for (offset, stack) in &state.stack {
+            let is_live_ref_dynptr = dynptr_stack_slot_has_live_ref(stack, state);
+            let is_dynptr = is_live_ref_dynptr
+                || stack
+                    .value
+                    .as_ref()
+                    .is_some_and(|value| value.reg_type.starts_with("dynptr"));
+            let Some(range) = stack_value_range(*offset, if is_dynptr { 16 } else { 8 }) else {
+                continue;
+            };
+            if !range.overlaps(access) {
+                continue;
+            }
+            saw_overlap = true;
+            if is_live_ref_dynptr {
+                saw_live_ref_dynptr = true;
+            }
+        }
+        if saw_live_ref_dynptr {
+            return Some(true);
+        }
+        if saw_overlap {
             return Some(false);
         }
     }
@@ -5818,6 +6183,12 @@ fn memory_access_width(line_after_pc: &str) -> Option<u32> {
 
 fn memory_access_is_load(line_after_pc: &str) -> bool {
     line_after_pc.contains("= *(")
+}
+
+fn memory_access_is_store(line_after_pc: &str) -> bool {
+    !memory_access_is_load(line_after_pc)
+        && line_after_pc.contains("*)(")
+        && line_after_pc.contains(" = ")
 }
 
 fn memory_access_offset(line_after_pc: &str) -> Option<i64> {

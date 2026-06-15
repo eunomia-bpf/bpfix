@@ -151,6 +151,7 @@ fn parses_stack_access_suffixes_and_dynptr_stack_state() {
         .unwrap();
     assert_eq!(dynptr.reg_type, "dynptr_ringbuf");
     assert_eq!(dynptr.id, Some(1));
+    assert_eq!(dynptr.ref_id, Some(2));
 
     assert_eq!(
         insns[0]
