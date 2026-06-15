@@ -1158,7 +1158,13 @@ fn map_pointer_scalar_zero_reports_missing_relocation() {
 
     let wrong_map_argument =
         run_json("bpfix-bench/cases/stackoverflow-70091221/replay-verifier.log");
-    assert_source_bug_without_verifier_state_signal(&wrong_map_argument, "BPFIX-E008");
+    assert_eq!(wrong_map_argument["error_id"], "BPFIX-E008");
+    assert_eq!(wrong_map_argument["failure_class"], "source_bug");
+    assert!(evidence_contains(
+        &wrong_map_argument,
+        "verifier_state_signal",
+        "helper or kfunc contract"
+    ));
 
     let literal_null_map = run_json_stdin(
         "0: R1=ctx() R10=fp0\n\
@@ -3522,6 +3528,61 @@ fn kfunc_argument_type_contract_reports_object_mismatch() {
         "verifier_state_signal",
         "modern BPF object"
     ));
+}
+
+#[test]
+fn helper_type_contract_mismatch_uses_callsite_state() {
+    let ringbuf_mem_mismatch =
+        run_json("bpfix-bench/cases/kernel-selftest-dynptr-fail-ringbuf-invalid-api-raw-tp-87a443d6/replay-verifier.log");
+    assert_eq!(ringbuf_mem_mismatch["error_id"], "BPFIX-E008");
+    assert_eq!(ringbuf_mem_mismatch["failure_class"], "source_bug");
+    assert!(evidence_contains(
+        &ringbuf_mem_mismatch,
+        "verifier_state_signal",
+        "verifier state at the call site"
+    ));
+    assert!(ringbuf_mem_mismatch["required_proof"]
+        .as_str()
+        .unwrap()
+        .contains("exact verifier-visible type"));
+
+    let map_value_as_map_ptr =
+        run_json("bpfix-bench/cases/stackoverflow-70091221/replay-verifier.log");
+    assert_eq!(map_value_as_map_ptr["error_id"], "BPFIX-E008");
+    assert!(evidence_contains(
+        &map_value_as_map_ptr,
+        "verifier_state_signal",
+        "helper or kfunc contract"
+    ));
+
+    let stack_pointer_as_trusted_object =
+        run_json("bpfix-bench/cases/stackoverflow-79348306/replay-verifier.log");
+    assert_eq!(stack_pointer_as_trusted_object["error_id"], "BPFIX-E008");
+    assert!(evidence_contains(
+        &stack_pointer_as_trusted_object,
+        "verifier_state_signal",
+        "printed actual type"
+    ));
+
+    let stale_or_inconsistent_terminal = run_json_stdin(
+        "func#0 @0\n\
+         0: R1=fp0 R10=fp0\n\
+         1: (85) call bpf_map_lookup_elem#1\n\
+         R1 type=scalar expected=fp\n",
+    );
+    assert_source_bug_without_verifier_state_signal(&stale_or_inconsistent_terminal, "BPFIX-E008");
+
+    let overwritten_after_matching_state = run_json_stdin(
+        "func#0 @0\n\
+         0: R1=scalar() R10=fp0\n\
+         1: (bf) r1 = r10\n\
+         2: (85) call bpf_map_lookup_elem#1\n\
+         R1 type=scalar expected=fp\n",
+    );
+    assert_source_bug_without_verifier_state_signal(
+        &overwritten_after_matching_state,
+        "BPFIX-E008",
+    );
 }
 
 #[test]

@@ -88,6 +88,7 @@ pub enum ProofSignal {
     NullablePointerUseWithoutProof,
     TrustedNullableArgument,
     KfuncArgumentTypeMismatch,
+    VerifierTypeContractMismatch,
     ModernBpfObjectProtocolViolation,
     ContextAccessSourceArgumentMismatch,
     ContextFieldUnavailable,
@@ -177,6 +178,9 @@ impl ProofSignal {
             }
             Self::KfuncArgumentTypeMismatch => {
                 "kfunc argument does not have the verifier-required object or reference type"
+            }
+            Self::VerifierTypeContractMismatch => {
+                "helper or kfunc argument has the wrong verifier-visible type"
             }
             Self::ModernBpfObjectProtocolViolation => {
                 "modern BPF object helper or kfunc argument violates its verifier object protocol"
@@ -368,6 +372,9 @@ impl ProofSignal {
             Self::KfuncArgumentTypeMismatch => {
                 "verifier state shows the rejected kfunc argument is a different pointer class than the kfunc contract requires"
             }
+            Self::VerifierTypeContractMismatch => {
+                "verifier state at the call site confirms the rejected argument register has the printed actual type, while the helper or kfunc contract requires a different verifier-visible type"
+            }
             Self::ModernBpfObjectProtocolViolation => {
                 "verifier state shows a modern BPF object protocol helper received a non-owned, non-RCU, non-referenced, or invalid cgroup, cpumask, kptr, or skb object argument"
             }
@@ -529,6 +536,9 @@ impl ProofSignal {
             Self::KfuncArgumentTypeMismatch => {
                 "Pass kfuncs the exact verifier-owned object type they require; do not cast stack memory, walked struct members, or plain kernel objects into BPF-owned kfunc object types."
             }
+            Self::VerifierTypeContractMismatch => {
+                "Pass the helper or kfunc the exact verifier-visible argument type it requires; use a real map pointer, stack pointer, packet pointer, ringbuf memory pointer, or trusted object pointer rather than casting or reusing a different pointer class."
+            }
             Self::ModernBpfObjectProtocolViolation => {
                 "Pass modern BPF object helpers and kfuncs only verifier-owned, RCU-protected, referenced, or valid kptr-storage objects as required by the specific helper contract."
             }
@@ -594,6 +604,7 @@ impl ProofSignal {
             Self::MapValueAccessOutOfBounds => 6,
             Self::SleepableCallInNonSleepableContext => 7,
             Self::ModernBpfObjectProtocolViolation => 8,
+            Self::VerifierTypeContractMismatch => 12,
             Self::PacketGuardUndercoversAccess => 40,
             Self::PacketAccessWithoutBoundsProof => 50,
             Self::ScalarRangeUnsafeAtUse => 60,
@@ -646,6 +657,7 @@ impl ProofSignal {
                 | Self::IteratorHelperArgumentStateMismatch
                 | Self::IteratorStackStorageAccess
                 | Self::KfuncArgumentTypeMismatch
+                | Self::VerifierTypeContractMismatch
                 | Self::ModernBpfObjectProtocolViolation
                 | Self::MapLookupKeyArgumentUnreadable
                 | Self::UnreadableProgramEntryArgument
@@ -741,6 +753,7 @@ impl ProofSignal {
                 | Self::IteratorHelperArgumentStateMismatch
                 | Self::IteratorStackStorageAccess
                 | Self::KfuncArgumentTypeMismatch
+                | Self::VerifierTypeContractMismatch
                 | Self::ModernBpfObjectProtocolViolation
                 | Self::NullablePointerUseWithoutProof
                 | Self::PacketAccessWithoutBoundsProof
@@ -819,6 +832,9 @@ impl ProofSignal {
             ),
             Self::KfuncArgumentTypeMismatch => Some(
                 "pass the kfunc a verifier-tracked object or reference whose BTF and ownership class exactly matches the kfunc argument contract",
+            ),
+            Self::VerifierTypeContractMismatch => Some(
+                "pass the helper or kfunc argument register the exact verifier-visible type required by its contract at this call site",
             ),
             Self::ModernBpfObjectProtocolViolation => Some(
                 "pass the helper or kfunc a verifier-approved object: valid kptr storage, a referenced/trusted object, or an RCU-protected object in the required state",
@@ -928,6 +944,9 @@ impl ProofSignal {
             Self::KfuncArgumentTypeMismatch => {
                 Some("kfunc argument has the wrong verifier object type")
             }
+            Self::VerifierTypeContractMismatch => {
+                Some("helper or kfunc argument has the wrong verifier-visible type")
+            }
             Self::ModernBpfObjectProtocolViolation => {
                 Some("modern BPF object argument violates its verifier protocol")
             }
@@ -998,6 +1017,7 @@ impl ProofSignal {
             Self::NullablePointerUseWithoutProof => Some("BPFIX-E002"),
             Self::TrustedNullableArgument => Some("BPFIX-E015"),
             Self::KfuncArgumentTypeMismatch => Some("BPFIX-E013"),
+            Self::VerifierTypeContractMismatch => Some("BPFIX-E008"),
             Self::ModernBpfObjectProtocolViolation => Some("BPFIX-E023"),
             Self::PacketAccessWithoutBoundsProof => Some("BPFIX-E001"),
             Self::ExceptionThrowWithLiveReference => Some("BPFIX-E004"),
@@ -2020,6 +2040,9 @@ fn proof_signals(context: ProofSignalContext<'_>) -> Vec<ProofSignal> {
     }
     if trusted_nullable_argument(&context) {
         signals.push(ProofSignal::TrustedNullableArgument);
+    }
+    if verifier_type_contract_mismatch(&context) {
+        signals.push(ProofSignal::VerifierTypeContractMismatch);
     }
     if scalar_range_unsafe_at_use(&context) {
         signals.push(ProofSignal::ScalarRangeUnsafeAtUse);
@@ -4578,6 +4601,164 @@ fn expected_kfunc_struct_type(terminal: &str) -> Option<&str> {
         .split(|ch: char| ch.is_ascii_whitespace() || ch == ',' || ch == ';')
         .next()
         .filter(|name| !name.is_empty())
+}
+
+fn verifier_type_contract_mismatch(context: &ProofSignalContext<'_>) -> bool {
+    if context.obligation != ProofObligation::TypeContract {
+        return false;
+    }
+    let Some((reg, actual_type)) = terminal_type_contract(context.terminal_error) else {
+        return false;
+    };
+    if !(1..=5).contains(&reg) {
+        return false;
+    }
+    let Some(instruction) =
+        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)
+    else {
+        return false;
+    };
+    if direct_call_target_from_instruction_tail(instruction.tail).is_none() {
+        return false;
+    }
+    let fragment_start = context
+        .terminal_line
+        .map(|line| verifier_fragment_start_line(context.log, line))
+        .unwrap_or_else(|| verifier_fragment_start_line(context.log, instruction.line));
+    latest_type_contract_argument_state(context, instruction, fragment_start, reg)
+        .is_some_and(|state| actual_type_matches_state(&actual_type, state))
+}
+
+fn latest_type_contract_argument_state<'a>(
+    context: &ProofSignalContext<'a>,
+    instruction: TerminalInstruction<'_>,
+    fragment_start_line: usize,
+    reg: u8,
+) -> Option<&'a RegState> {
+    let call_frame =
+        latest_verifier_state_before_instruction(context.states, instruction, fragment_start_line)
+            .map(|state| state.frame);
+    let (state, state_log_line) = latest_reg_state_before_instruction_with_log_line(
+        context.states,
+        instruction,
+        fragment_start_line,
+        reg,
+    )
+    .or_else(|| {
+        context
+            .states
+            .iter()
+            .filter(|state| state.log_line >= fragment_start_line)
+            .filter(|state| {
+                context
+                    .terminal_line
+                    .is_none_or(|line| state.log_line < line)
+            })
+            .filter(|state| state.pc <= instruction.pc)
+            .filter(|state| call_frame.is_none_or(|frame| state.frame == frame))
+            .rev()
+            .find_map(|state| {
+                let reg_state = state.regs.get(&reg)?;
+                Some((reg_state, state.log_line))
+            })
+    })?;
+    (!register_written_between(context.log, state_log_line, instruction.line, reg)).then_some(state)
+}
+
+fn register_written_between(log: &str, after_line: usize, before_line: usize, reg: u8) -> bool {
+    log.lines()
+        .enumerate()
+        .filter(|(idx, _)| {
+            let line = idx + 1;
+            line > after_line && line < before_line
+        })
+        .filter_map(|(_, line)| parse_instruction_line(line.trim()))
+        .any(|(_, tail)| instruction_writes_register(tail, reg))
+}
+
+fn instruction_writes_register(tail: &str, reg: u8) -> bool {
+    let mut tokens = tail.split_whitespace();
+    let Some(first) = tokens.next() else {
+        return false;
+    };
+    let Some(destination) = (if first.starts_with('(') {
+        tokens.next()
+    } else {
+        Some(first)
+    }) else {
+        return false;
+    };
+    if destination == "call" {
+        return reg <= 5;
+    }
+    if register_write_token(destination) != Some(reg) {
+        return false;
+    }
+    tokens
+        .next()
+        .is_some_and(|operator| operator.ends_with('='))
+}
+
+fn register_write_token(token: &str) -> Option<u8> {
+    let token = token.trim_end_matches(|ch| matches!(ch, ',' | ';'));
+    let digits = token
+        .strip_prefix('r')
+        .or_else(|| token.strip_prefix('w'))?;
+    (!digits.is_empty() && digits.bytes().all(|byte| byte.is_ascii_digit()))
+        .then(|| digits.parse().ok())
+        .flatten()
+}
+
+fn terminal_type_contract(message: &str) -> Option<(u8, String)> {
+    let reg = register_from_terminal_error(message)?;
+    let lower = message.to_ascii_lowercase();
+    if lower.contains("trusted arg") {
+        return None;
+    }
+    let (_, after_type) = lower.split_once("type=")?;
+    let (actual, after_expected) = after_type.split_once(" expected=")?;
+    let actual = actual.trim().trim_end_matches(',');
+    let expected = after_expected
+        .split(|ch| ch == '\n' || ch == ';')
+        .next()
+        .unwrap_or("")
+        .trim();
+    if actual.is_empty() || expected.is_empty() || actual.contains("_or_null") {
+        return None;
+    }
+    if actual == "scalar" && expected_type_list_contains(expected, "map_ptr") {
+        return None;
+    }
+    Some((reg, actual.to_string()))
+}
+
+fn expected_type_list_contains(expected: &str, needle: &str) -> bool {
+    expected
+        .split(',')
+        .map(str::trim)
+        .any(|item| item == needle)
+}
+
+fn actual_type_matches_state(actual_type: &str, state: &RegState) -> bool {
+    let state_type = state.reg_type.as_str();
+    if state_type == actual_type {
+        return true;
+    }
+    match actual_type {
+        "scalar" => state_type == "scalar",
+        "fp" => state_type == "fp",
+        "ctx" => state_type == "ctx",
+        "map_ptr" => state_type == "map_ptr",
+        "map_value" => state_type == "map_value",
+        "mem" => state_type == "mem",
+        "ringbuf_mem" => state_type == "ringbuf_mem",
+        "ptr_" => state_type.starts_with("ptr_"),
+        "trusted_ptr_" => state_type.starts_with("trusted_ptr"),
+        "rcu_ptr_" => state_type.starts_with("rcu_ptr"),
+        "untrusted_ptr_" => state_type.starts_with("untrusted_ptr"),
+        _ if actual_type.ends_with('_') => state_type.starts_with(actual_type),
+        _ => false,
+    }
 }
 
 fn trusted_nullable_argument(context: &ProofSignalContext<'_>) -> bool {
