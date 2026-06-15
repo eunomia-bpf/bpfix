@@ -67,6 +67,7 @@ pub enum ProofSignal {
     MapValueWideAccess,
     MapValueCheckedOffsetRelationLost,
     MapValueGuardExceedsValueSize,
+    ScalarRangeUnsafeAtUse,
     MapPointerArgumentScalarZero,
     BtfFuncInfoMissing,
     SubprogramReferenceMetadataMissing,
@@ -190,6 +191,9 @@ impl ProofSignal {
             Self::MapValueGuardExceedsValueSize => {
                 "map-value index guard exceeds the map value size"
             }
+            Self::ScalarRangeUnsafeAtUse => {
+                "scalar range at the rejected use is still verifier-unsafe"
+            }
             Self::PacketGuardUndercoversAccess => {
                 "packet bounds check is narrower than the later packet access"
             }
@@ -268,6 +272,9 @@ impl ProofSignal {
             }
             Self::MapValueGuardExceedsValueSize => {
                 "source bounds the map-value index to a range larger than the verifier-visible value size allows"
+            }
+            Self::ScalarRangeUnsafeAtUse => {
+                "verifier state shows the rejected scalar or pointer-offset register still has an unsafe range at the use"
             }
             Self::MapPointerArgumentScalarZero => {
                 "helper expects a map pointer, but verifier state shows scalar zero in the map argument register at the helper call; this matches a missing map relocation or raw-instruction loader path"
@@ -451,6 +458,9 @@ impl ProofSignal {
             Self::CallbackCallWhileLocked => {
                 "Move callback-invoking operations such as rbtree insertion outside spin-locked regions, or release the lock before a callback path can call helpers, kfuncs, or bpf_throw."
             }
+            Self::ScalarRangeUnsafeAtUse => {
+                "Clamp or branch-check the exact scalar used by this helper, pointer arithmetic, stack access, or map-value access immediately before the rejected operation."
+            }
             Self::NullablePointerUseWithoutProof => {
                 "Check the helper result for null and keep the dereference, pointer arithmetic, or helper argument inside the same verifier-visible non-null branch."
             }
@@ -504,6 +514,7 @@ impl ProofSignal {
             Self::ModernBpfObjectProtocolViolation => 8,
             Self::PacketGuardUndercoversAccess => 40,
             Self::PacketAccessWithoutBoundsProof => 50,
+            Self::ScalarRangeUnsafeAtUse => 60,
             Self::WideStackAlignment
             | Self::SharedInstructionPointerMerge
             | Self::PointerShiftDropsProvenance
@@ -555,6 +566,7 @@ impl ProofSignal {
                 | Self::ModernBpfObjectProtocolViolation
                 | Self::MapLookupKeyArgumentUnreadable
                 | Self::MapValueGuardExceedsValueSize
+                | Self::ScalarRangeUnsafeAtUse
                 | Self::PacketAccessWithoutBoundsProof
                 | Self::PacketGuardUndercoversAccess
                 | Self::SubprogramReferenceMetadataMissing
@@ -642,6 +654,7 @@ impl ProofSignal {
                 | Self::ModernBpfObjectProtocolViolation
                 | Self::NullablePointerUseWithoutProof
                 | Self::PacketAccessWithoutBoundsProof
+                | Self::ScalarRangeUnsafeAtUse
                 | Self::TrustedNullableArgument
                 | Self::ContextAccessSourceArgumentMismatch
                 | Self::ContextFieldUnavailable
@@ -1819,6 +1832,9 @@ fn proof_signals(context: ProofSignalContext<'_>) -> Vec<ProofSignal> {
     }
     if trusted_nullable_argument(&context) {
         signals.push(ProofSignal::TrustedNullableArgument);
+    }
+    if scalar_range_unsafe_at_use(&context) {
+        signals.push(ProofSignal::ScalarRangeUnsafeAtUse);
     }
     if context
         .events
@@ -5636,6 +5652,150 @@ fn source_text_contains_any(events: &[ProofEvent], needles: &[&str]) -> bool {
         let text = text.to_ascii_lowercase();
         needles.iter().any(|needle| text.contains(needle))
     })
+}
+
+fn scalar_range_unsafe_at_use(context: &ProofSignalContext<'_>) -> bool {
+    if context.obligation != ProofObligation::ScalarRange {
+        return false;
+    }
+    if !scalar_range_terminal_needs_runtime_bound(context.terminal_error) {
+        return false;
+    }
+    let Some(reg) = context.register else {
+        return false;
+    };
+    let Some(instruction) =
+        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)
+    else {
+        return false;
+    };
+    if !instruction_consumes_scalar_register(instruction.tail, reg) {
+        return false;
+    }
+    let fragment_start = context
+        .terminal_line
+        .map(|line| verifier_fragment_start_line(context.log, line))
+        .unwrap_or_else(|| verifier_fragment_start_line(context.log, instruction.line));
+    latest_reg_state_before_instruction(context.states, instruction, fragment_start, reg)
+        .is_some_and(|state| scalar_range_state_is_unsafe_for_signal(state, context.terminal_error))
+}
+
+fn scalar_range_terminal_needs_runtime_bound(terminal_error: &str) -> bool {
+    let terminal = terminal_error.to_ascii_lowercase();
+    !terminal.contains("program exit")
+        && [
+            "min value is negative",
+            "zero-sized",
+            "unbounded variable-offset",
+            "unbounded memory access",
+            "math between",
+            "invalid access to map value",
+            "invalid access to memory",
+            "pointer be out of bounds",
+            "outside of the allowed memory range",
+        ]
+        .iter()
+        .any(|needle| terminal.contains(needle))
+}
+
+fn instruction_consumes_scalar_register(instruction_tail: &str, reg: u8) -> bool {
+    let opcode_tail = instruction_tail
+        .split_once(';')
+        .map(|(opcode, _)| opcode)
+        .unwrap_or(instruction_tail);
+    if let Some(target) = direct_call_target_from_instruction_tail(opcode_tail) {
+        return scalar_length_helper_argument_register(target) == Some(reg);
+    }
+    instruction_reads_register(opcode_tail, reg)
+}
+
+fn scalar_length_helper_argument_register(target: &str) -> Option<u8> {
+    match target {
+        "bpf_probe_read"
+        | "bpf_probe_read_kernel"
+        | "bpf_probe_read_kernel_str"
+        | "bpf_probe_read_user"
+        | "bpf_probe_read_user_str" => Some(2),
+        "bpf_skb_load_bytes" => Some(4),
+        "bpf_perf_event_output" => Some(5),
+        _ => None,
+    }
+}
+
+fn instruction_reads_register(opcode_tail: &str, reg: u8) -> bool {
+    if let Some(operand) = memory_access_operand(opcode_tail) {
+        return register_operands(operand).contains(&reg);
+    }
+    if opcode_tail.split_once(" = ").is_some() {
+        return false;
+    }
+    register_operands(opcode_tail).contains(&reg)
+}
+
+fn scalar_range_state_is_unsafe_for_signal(state: &RegState, terminal_error: &str) -> bool {
+    if terminal_error.to_ascii_lowercase().contains("zero-sized") {
+        return scalar_range_may_include_zero(state);
+    }
+    if let Some(value) = state.exact_value {
+        return value > i32::MAX as u64;
+    }
+    if map_value_range_may_exceed_value_size(state) {
+        return true;
+    }
+    if state.reg_type != "scalar" && !scalar_range_has_any_bound(state) {
+        return false;
+    }
+    scalar_range_may_be_negative(state) || scalar_range_upper_unbounded_or_too_large(state)
+}
+
+fn scalar_range_may_include_zero(state: &RegState) -> bool {
+    if let Some(value) = state.exact_value {
+        return value == 0;
+    }
+    if state.range.smax.is_some_and(|value| value < 0) {
+        return false;
+    }
+    if state.range.smin.is_some_and(|value| value > 0) {
+        return false;
+    }
+    if state.range.umin.is_some_and(|value| value > 0) {
+        return false;
+    }
+    true
+}
+
+fn scalar_range_may_be_negative(state: &RegState) -> bool {
+    if let Some(value) = state.exact_value {
+        return value > i64::MAX as u64;
+    }
+    if let Some(smin) = state.range.smin {
+        return smin < 0;
+    }
+    state.range.umin.is_none()
+}
+
+fn scalar_range_upper_unbounded_or_too_large(state: &RegState) -> bool {
+    let signed_too_large = state
+        .range
+        .smax
+        .is_some_and(|value| value > i32::MAX as i64);
+    let unsigned_too_large = state
+        .range
+        .umax
+        .is_some_and(|value| value > i32::MAX as u64);
+    let unbounded = state.range.smax.is_none() && state.range.umax.is_none();
+    signed_too_large || unsigned_too_large || unbounded
+}
+
+fn scalar_range_has_any_bound(state: &RegState) -> bool {
+    state.range.smin.is_some()
+        || state.range.smax.is_some()
+        || state.range.umin.is_some()
+        || state.range.umax.is_some()
+        || state.range.smin32.is_some()
+        || state.range.smax32.is_some()
+        || state.range.umin32.is_some()
+        || state.range.umax32.is_some()
 }
 
 fn latest_unsafe_scalar_state(

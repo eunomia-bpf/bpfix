@@ -2201,6 +2201,111 @@ fn ordinary_source_bugs_are_not_overclassified_as_runtime_artifacts() {
     assert_eq!(helper_bounds["error_id"], "BPFIX-E005");
     assert_eq!(helper_bounds["failure_class"], "source_bug");
 
+    for path in [
+        "bpfix-bench/cases/github-aya-rs-aya-1062/replay-verifier.log",
+        "bpfix-bench/cases/github-aya-rs-aya-1207/replay-verifier.log",
+        "bpfix-bench/cases/github-commit-bcc-0ae562c8862f/replay-verifier.log",
+    ] {
+        let scalar_range = run_json(path);
+        assert_eq!(scalar_range["error_id"], "BPFIX-E005");
+        assert_eq!(scalar_range["failure_class"], "source_bug");
+        assert!(evidence_contains(
+            &scalar_range,
+            "verifier_state_signal",
+            "unsafe range at the use"
+        ));
+    }
+
+    let exact_safe_helper_length = run_json_stdin(
+        "0: R2=16 R10=fp0\n\
+         ; bpf_probe_read_user(buf, len, ctx); @ prog.c:9\n\
+         1: (85) call bpf_probe_read_user#112\n\
+         R2 min value is negative, either use unsigned or 'var &= const'\n\
+         processed 2 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0 mark_read 0\n",
+    );
+    assert_eq!(exact_safe_helper_length["error_id"], "BPFIX-E005");
+    assert_eq!(exact_safe_helper_length["failure_class"], "source_bug");
+    assert!(!evidence_contains(
+        &exact_safe_helper_length,
+        "verifier_state_signal",
+        "unsafe range at the use"
+    ));
+
+    let bounded_safe_helper_length = run_json_stdin(
+        "0: R2=scalar(smin=0,smax=umax=16,var_off=(0x0; 0x10)) R10=fp0\n\
+         ; bpf_probe_read_user(buf, len, ctx); @ prog.c:9\n\
+         1: (85) call bpf_probe_read_user#112\n\
+         R2 min value is negative, either use unsigned or 'var &= const'\n\
+         processed 2 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0 mark_read 0\n",
+    );
+    assert_eq!(bounded_safe_helper_length["error_id"], "BPFIX-E005");
+    assert_eq!(bounded_safe_helper_length["failure_class"], "source_bug");
+    assert!(!evidence_contains(
+        &bounded_safe_helper_length,
+        "verifier_state_signal",
+        "unsafe range at the use"
+    ));
+
+    let comment_only_register = run_json_stdin(
+        "0: R2=scalar(smin=-1,smax=umax=16,var_off=(0x0; 0x10)) R10=fp0\n\
+         ; not the failing scalar use; @ prog.c:9\n\
+         1: (b7) r0 = 0 ; len = r2\n\
+         R2 min value is negative, either use unsigned or 'var &= const'\n\
+         processed 2 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0 mark_read 0\n",
+    );
+    assert_eq!(comment_only_register["error_id"], "BPFIX-E005");
+    assert_eq!(comment_only_register["failure_class"], "source_bug");
+    assert!(!evidence_contains(
+        &comment_only_register,
+        "verifier_state_signal",
+        "unsafe range at the use"
+    ));
+
+    let destination_only_register = run_json_stdin(
+        "0: R2=scalar(smin=-1,smax=umax=16,var_off=(0x0; 0x10)) R10=fp0\n\
+         ; len = 0; @ prog.c:9\n\
+         1: (b7) r2 = 0\n\
+         R2 min value is negative, either use unsigned or 'var &= const'\n\
+         processed 2 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0 mark_read 0\n",
+    );
+    assert_eq!(destination_only_register["error_id"], "BPFIX-E005");
+    assert_eq!(destination_only_register["failure_class"], "source_bug");
+    assert!(!evidence_contains(
+        &destination_only_register,
+        "verifier_state_signal",
+        "unsafe range at the use"
+    ));
+
+    let register_copy_rhs = run_json_stdin(
+        "0: R2=scalar(smin=-1,smax=umax=16,var_off=(0x0; 0x10)) R10=fp0\n\
+         ; len = other; @ prog.c:9\n\
+         1: (bf) r1 = r2\n\
+         R2 min value is negative, either use unsigned or 'var &= const'\n\
+         processed 2 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0 mark_read 0\n",
+    );
+    assert_eq!(register_copy_rhs["error_id"], "BPFIX-E005");
+    assert_eq!(register_copy_rhs["failure_class"], "source_bug");
+    assert!(!evidence_contains(
+        &register_copy_rhs,
+        "verifier_state_signal",
+        "unsafe range at the use"
+    ));
+
+    let unrelated_helper_argument = run_json_stdin(
+        "0: R5=scalar(smin=-1,smax=umax=16,var_off=(0x0; 0x10)) R10=fp0\n\
+         ; bpf_get_prandom_u32(); @ prog.c:9\n\
+         1: (85) call bpf_get_prandom_u32#7\n\
+         R5 min value is negative, either use unsigned or 'var &= const'\n\
+         processed 2 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0 mark_read 0\n",
+    );
+    assert_eq!(unrelated_helper_argument["error_id"], "BPFIX-E005");
+    assert_eq!(unrelated_helper_argument["failure_class"], "source_bug");
+    assert!(!evidence_contains(
+        &unrelated_helper_argument,
+        "verifier_state_signal",
+        "unsafe range at the use"
+    ));
+
     let map_value_guard_too_large =
         run_json("bpfix-bench/cases/stackoverflow-78196801/replay-verifier.log");
     assert_eq!(map_value_guard_too_large["error_id"], "BPFIX-E005");
