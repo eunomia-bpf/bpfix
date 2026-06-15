@@ -75,6 +75,7 @@ pub enum ProofSignal {
     IteratorHelperArgumentStateMismatch,
     IrqFlagStateMismatch,
     TrustedNullableArgument,
+    KfuncArgumentTypeMismatch,
     ContextAccessSourceArgumentMismatch,
     ExceptionThrowWithLiveReference,
     MapLookupKeyArgumentUnreadable,
@@ -124,6 +125,9 @@ impl ProofSignal {
             }
             Self::TrustedNullableArgument => {
                 "trusted helper argument is still verifier-visible as nullable"
+            }
+            Self::KfuncArgumentTypeMismatch => {
+                "kfunc argument does not have the verifier-required object or reference type"
             }
             Self::ContextAccessSourceArgumentMismatch => {
                 "tracing context argument type does not match the verifier-visible function signature"
@@ -240,6 +244,9 @@ impl ProofSignal {
             Self::TrustedNullableArgument => {
                 "verifier state shows the rejected helper or kfunc argument is still a nullable RCU/trusted pointer at the call site"
             }
+            Self::KfuncArgumentTypeMismatch => {
+                "verifier state shows the rejected kfunc argument is a different pointer class than the kfunc contract requires"
+            }
             Self::ContextAccessSourceArgumentMismatch => {
                 "verifier reports the traced-function argument at this context slot as PTR rather than a directly supported struct pointer, while the rejected source is a BPF_PROG argument load from the raw tracing context"
             }
@@ -332,6 +339,9 @@ impl ProofSignal {
             Self::TrustedNullableArgument => {
                 "Keep the RCU or trusted-pointer argument inside the verifier-visible non-null branch, or acquire a trusted reference before passing it to the helper or kfunc."
             }
+            Self::KfuncArgumentTypeMismatch => {
+                "Pass kfuncs the exact verifier-owned object type they require; do not cast stack memory, walked struct members, or plain kernel objects into BPF-owned kfunc object types."
+            }
             Self::ContextAccessSourceArgumentMismatch => {
                 "Use only fentry arguments whose BTF type is verifier-supported at this slot, or avoid reading this argument through BPF_PROG when the traced function exposes it as an unsupported pointer type."
             }
@@ -396,6 +406,7 @@ impl ProofSignal {
                 | Self::IrqFlagStateMismatch
                 | Self::IteratorHelperArgumentStateMismatch
                 | Self::IteratorStackStorageAccess
+                | Self::KfuncArgumentTypeMismatch
                 | Self::MapLookupKeyArgumentUnreadable
                 | Self::MapValueGuardExceedsValueSize
                 | Self::PacketGuardUndercoversAccess
@@ -462,6 +473,7 @@ impl ProofSignal {
                 | Self::IrqFlagStateMismatch
                 | Self::IteratorHelperArgumentStateMismatch
                 | Self::IteratorStackStorageAccess
+                | Self::KfuncArgumentTypeMismatch
                 | Self::TrustedNullableArgument
                 | Self::ContextAccessSourceArgumentMismatch
                 | Self::ExceptionThrowWithLiveReference
@@ -497,6 +509,9 @@ impl ProofSignal {
             ),
             Self::TrustedNullableArgument => Some(
                 "prove the RCU/trusted pointer argument is non-null and trusted at the helper or kfunc call site",
+            ),
+            Self::KfuncArgumentTypeMismatch => Some(
+                "pass the kfunc a verifier-tracked object or reference whose BTF and ownership class exactly matches the kfunc argument contract",
             ),
             Self::ExceptionThrowWithLiveReference => Some(
                 "release verifier-tracked references on every callback and exceptional path before bpf_throw can run",
@@ -540,6 +555,9 @@ impl ProofSignal {
             Self::TrustedNullableArgument => {
                 Some("trusted helper argument remains nullable at the call site")
             }
+            Self::KfuncArgumentTypeMismatch => {
+                Some("kfunc argument has the wrong verifier object type")
+            }
             Self::ExceptionThrowWithLiveReference => {
                 Some("bpf_throw can run while verifier-tracked references are live")
             }
@@ -564,6 +582,7 @@ impl ProofSignal {
             Self::IteratorHelperArgumentStateMismatch => Some("BPFIX-E014"),
             Self::IrqFlagStateMismatch => Some("BPFIX-E020"),
             Self::TrustedNullableArgument => Some("BPFIX-E015"),
+            Self::KfuncArgumentTypeMismatch => Some("BPFIX-E013"),
             Self::ExceptionThrowWithLiveReference => Some("BPFIX-E004"),
             _ => None,
         }
@@ -1498,6 +1517,9 @@ fn proof_signals(context: ProofSignalContext<'_>) -> Vec<ProofSignal> {
     if irq_flag_state_mismatch(&context) {
         signals.push(ProofSignal::IrqFlagStateMismatch);
     }
+    if kfunc_argument_type_mismatch(&context) {
+        signals.push(ProofSignal::KfuncArgumentTypeMismatch);
+    }
     if trusted_nullable_argument(&context) {
         signals.push(ProofSignal::TrustedNullableArgument);
     }
@@ -2104,6 +2126,89 @@ fn irq_flag_stack_slot_state(
 
 fn is_irq_flag_stack_slot(stack: &StackState) -> bool {
     stack.value.is_none() && stack.slot_types.as_deref() == Some("ffffffff")
+}
+
+fn kfunc_argument_type_mismatch(context: &ProofSignalContext<'_>) -> bool {
+    let terminal = context.terminal_error.to_ascii_lowercase();
+    if !kfunc_argument_type_terminal(&terminal) {
+        return false;
+    }
+    let Some(instruction) =
+        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)
+    else {
+        return false;
+    };
+    let Some(target) = call_target_from_instruction_tail(instruction.tail) else {
+        return false;
+    };
+    if !kfunc_object_contract_target(target, &terminal) {
+        return false;
+    }
+    let Some(reg) = context
+        .register
+        .or_else(|| parse_subprogram_arg_register(context.terminal_error))
+    else {
+        return false;
+    };
+    let fragment_start = context
+        .terminal_line
+        .map(|line| verifier_fragment_start_line(context.log, line))
+        .unwrap_or_else(|| verifier_fragment_start_line(context.log, instruction.line));
+    let Some(state) = latest_reg_state_for_call_argument(
+        context.states,
+        instruction,
+        fragment_start,
+        context.terminal_line,
+        reg,
+    ) else {
+        return false;
+    };
+    if terminal.contains("must be a rcu pointer") {
+        if state.reg_type.starts_with("untrusted_ptr") {
+            return false;
+        }
+        return !state.reg_type.starts_with("rcu_ptr")
+            && !state.reg_type.starts_with("trusted_ptr");
+    }
+    if terminal.contains("pointer type struct") && terminal.contains("must point to scalar") {
+        return state.reg_type == "fp";
+    }
+    if let Some(expected) = expected_kfunc_struct_type(&terminal) {
+        return !state.reg_type.contains(expected);
+    }
+    false
+}
+
+fn kfunc_argument_type_terminal(terminal: &str) -> bool {
+    terminal.contains("must be a rcu pointer")
+        || (terminal.contains("pointer type struct") && terminal.contains("must point to scalar"))
+        || (terminal.contains("kernel function")
+            && terminal.contains("expected pointer to struct")
+            && terminal.contains(" but r"))
+}
+
+fn kfunc_object_contract_target(target: &str, terminal: &str) -> bool {
+    terminal.contains("kernel function")
+        || target.contains("cgroup")
+        || target.contains("cpumask")
+        || target.contains("rbtree")
+        || target.contains("kptr")
+}
+
+fn parse_subprogram_arg_register(terminal_error: &str) -> Option<u8> {
+    let arg = parse_u32_after(terminal_error, "arg#")?;
+    if arg >= 5 {
+        return None;
+    }
+    u8::try_from(arg + 1).ok()
+}
+
+fn expected_kfunc_struct_type(terminal: &str) -> Option<&str> {
+    let (_, after) = terminal.split_once("expected pointer to struct ")?;
+    after
+        .split(|ch: char| ch.is_ascii_whitespace() || ch == ',' || ch == ';')
+        .next()
+        .filter(|name| !name.is_empty())
 }
 
 fn trusted_nullable_argument(context: &ProofSignalContext<'_>) -> bool {

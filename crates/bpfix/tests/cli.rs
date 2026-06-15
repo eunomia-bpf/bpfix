@@ -2054,6 +2054,64 @@ fn trusted_nullable_arguments_report_state_discipline() {
 }
 
 #[test]
+fn kfunc_argument_type_contract_reports_object_mismatch() {
+    let stack_cast_cgroup =
+        run_json("bpfix-bench/cases/kernel-selftest-cgrp-kfunc-failure-cgrp-kfunc-acquire-fp-tp-btf-cgroup-mkdir-7d3a90fe/replay-verifier.log");
+    assert_eq!(stack_cast_cgroup["error_id"], "BPFIX-E013");
+    assert_eq!(stack_cast_cgroup["failure_class"], "source_bug");
+    assert!(evidence_contains(
+        &stack_cast_cgroup,
+        "verifier_state_signal",
+        "different pointer class"
+    ));
+    assert!(stack_cast_cgroup["required_proof"]
+        .as_str()
+        .unwrap()
+        .contains("verifier-tracked object"));
+
+    let walked_cgroup =
+        run_json("bpfix-bench/cases/kernel-selftest-cgrp-kfunc-failure-cgrp-kfunc-acquire-trusted-walked-tp-btf-cgroup-mkdir-6deeac84/replay-verifier.log");
+    assert_eq!(walked_cgroup["error_id"], "BPFIX-E013");
+    assert!(evidence_contains(
+        &walked_cgroup,
+        "verifier_state_signal",
+        "different pointer class"
+    ));
+
+    let plain_cpumask =
+        run_json("bpfix-bench/cases/kernel-selftest-cpumask-failure-test-mutate-cpumask-tp-btf-task-newtask-d7b7c258/replay-verifier.log");
+    assert_eq!(plain_cpumask["error_id"], "BPFIX-E013");
+    assert!(evidence_contains(
+        &plain_cpumask,
+        "verifier_state_signal",
+        "different pointer class"
+    ));
+    assert!(plain_cpumask["help"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|help| help.as_str().unwrap().contains("verifier-owned object")));
+
+    let ordinary_fp_contract =
+        run_json("bpfix-bench/cases/kernel-selftest-cpumask-failure-test-populate-invalid-destination-tp-btf-task-newtask-2aa0585a/replay-verifier.log");
+    assert_eq!(ordinary_fp_contract["error_id"], "BPFIX-E008");
+    assert!(!evidence_contains(
+        &ordinary_fp_contract,
+        "verifier_state_signal",
+        "different pointer class"
+    ));
+
+    let out_of_rcu_cpumask =
+        run_json("bpfix-bench/cases/kernel-selftest-cpumask-failure-test-global-mask-out-of-rcu-tp-btf-task-newtask-55a16b69/replay-verifier.log");
+    assert_eq!(out_of_rcu_cpumask["error_id"], "BPFIX-E015");
+    assert!(!evidence_contains(
+        &out_of_rcu_cpumask,
+        "verifier_state_signal",
+        "different pointer class"
+    ));
+}
+
+#[test]
 fn terminal_error_selection_ignores_state_lines_and_uses_final_reject() {
     let pointer_bitwise = run_json("bpfix-bench/cases/stackoverflow-68460177/replay-verifier.log");
     assert_eq!(pointer_bitwise["error_id"], "BPFIX-E006");
