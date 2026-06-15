@@ -1815,6 +1815,76 @@ fn terminal_error_selection_ignores_state_lines_and_uses_final_reject() {
         .as_str()
         .unwrap()
         .contains("from 20 to 22"));
+
+    let dynptr_release_twice =
+        run_json("bpfix-bench/cases/kernel-selftest-dynptr-fail-release-twice-raw-tp-3722429d/replay-verifier.log");
+    assert_eq!(dynptr_release_twice["error_id"], "BPFIX-E012");
+    assert!(dynptr_release_twice["message"]
+        .as_str()
+        .unwrap()
+        .contains("arg 1 is an unacquired reference"));
+    assert!(dynptr_release_twice["required_proof"]
+        .as_str()
+        .unwrap()
+        .contains("dynptr-backed references only while they are acquired"));
+    assert!(!dynptr_release_twice["evidence"][0]["detail"]
+        .as_str()
+        .unwrap()
+        .contains("call bpf_ringbuf_discard_dynptr"));
+    assert!(dynptr_release_twice["source_span"]["source_text"]
+        .as_str()
+        .unwrap()
+        .contains("bpf_ringbuf_discard_dynptr"));
+}
+
+#[test]
+fn dynptr_protocol_diagnostic_uses_specific_required_proof() {
+    let interior_dynptr_arg =
+        run_json("bpfix-bench/cases/kernel-selftest-dynptr-fail-invalid-helper2-raw-tp-34ba04aa/replay-verifier.log");
+    assert_eq!(interior_dynptr_arg["error_id"], "BPFIX-E012");
+    assert!(interior_dynptr_arg["required_proof"]
+        .as_str()
+        .unwrap()
+        .contains("exact initialized dynptr stack slot"));
+    assert!(interior_dynptr_arg["required_proof"]
+        .as_str()
+        .unwrap()
+        .contains("arg #2"));
+    assert!(!interior_dynptr_arg["required_proof"]
+        .as_str()
+        .unwrap()
+        .contains("null"));
+
+    let shifted_initializer =
+        run_json("bpfix-bench/cases/kernel-selftest-dynptr-fail-invalid-offset-raw-tp-549f8135/replay-verifier.log");
+    assert_eq!(shifted_initializer["error_id"], "BPFIX-E012");
+    assert!(shifted_initializer["required_proof"]
+        .as_str()
+        .unwrap()
+        .contains("clean dynptr stack slot"));
+    assert!(!shifted_initializer["required_proof"]
+        .as_str()
+        .unwrap()
+        .contains("stack byte"));
+
+    let unavailable_dynptr_kfunc =
+        run_json("bpfix-bench/cases/kernel-selftest-dynptr-fail-skb-invalid-ctx-xdp-1a32a21f/replay-verifier.log");
+    assert_eq!(
+        unavailable_dynptr_kfunc["failure_class"],
+        "environment_or_configuration"
+    );
+    assert_eq!(unavailable_dynptr_kfunc["error_id"], "BPFIX-E009");
+
+    let generic_unacquired_reference = run_json_stdin(
+        "0: (85) call bpf_obj_drop#108\n\
+         arg 1 is an unacquired reference\n",
+    );
+    assert_ne!(generic_unacquired_reference["error_id"], "BPFIX-E012");
+
+    let text =
+        run_text("bpfix-bench/cases/kernel-selftest-dynptr-fail-release-twice-raw-tp-3722429d/replay-verifier.log");
+    assert!(text.contains("dynptr-backed references only while they are acquired"));
+    assert!(text.contains("arg 1 is an unacquired reference"));
 }
 
 #[test]

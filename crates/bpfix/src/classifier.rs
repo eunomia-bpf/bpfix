@@ -160,6 +160,10 @@ const REJECTION_PATTERNS: &[RejectionPattern] = &[
             "possibly null",
         ],
     ),
+    RejectionPattern::all(
+        VerifierRejectionKind::DynptrSafety,
+        &["dynptr", "uninitialized"],
+    ),
     RejectionPattern::any(
         VerifierRejectionKind::StackInitialized,
         &[
@@ -425,10 +429,10 @@ impl VerifierRejectionKind {
                 "BPFIX-E012",
                 ProofObligation::DynptrSafety,
                 "source_bug",
-                "dynptr lifetime or bounds proof is missing",
+                "dynptr protocol proof is missing",
                 &[
-                    "Revalidate dynptr slice nullability and length before use.",
-                    "Do not reuse a dynptr slice after an operation that invalidates it.",
+                    "Pass dynptr helpers the exact verifier-visible dynptr stack slot and expected read/write mode.",
+                    "Do not overwrite, partially address, or reuse a dynptr after an operation has consumed or invalidated it.",
                 ],
             ),
             Self::KfuncReference => Classification::supported(
@@ -516,11 +520,30 @@ impl VerifierRejectionKind {
     }
 }
 
+#[cfg(test)]
 pub(crate) fn classify(message: &str) -> Classification {
+    classify_with_context(message, None)
+}
+
+pub(crate) fn classify_with_context(message: &str, call_target: Option<&str>) -> Classification {
     let lower = message.to_ascii_lowercase();
+    if context_implies_dynptr_safety(&lower, call_target) {
+        return VerifierRejectionKind::DynptrSafety.classification();
+    }
     VerifierRejectionKind::parse(&lower)
         .map(VerifierRejectionKind::classification)
         .unwrap_or_else(unsupported_message_classification)
+}
+
+fn context_implies_dynptr_safety(message: &str, call_target: Option<&str>) -> bool {
+    let Some(target) = call_target else {
+        return false;
+    };
+    target.contains("dynptr")
+        && (message.contains("unacquired reference")
+            || message.contains("reference type")
+            || message.contains("expected an initialized")
+            || message.contains("expected pointer to stack"))
 }
 
 fn unsupported_message_classification() -> Classification {

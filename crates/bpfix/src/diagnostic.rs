@@ -384,6 +384,7 @@ pub fn analyze_verifier_log(
     terminal_pc: Option<usize>,
     terminal_line: Option<usize>,
     terminal_error: &str,
+    terminal_call_target: Option<&str>,
     obligation: ProofObligation,
 ) -> Result<VerifierLogAnalysis> {
     let branch_states = verifier_states_with_branch_deltas_from_log(log)?;
@@ -393,8 +394,13 @@ pub fn analyze_verifier_log(
         .cloned()
         .collect::<Vec<_>>();
     let source_events = collect_source_events(log);
-    let required_proof =
-        instantiate_required_proof(terminal_error, terminal_pc, &states, obligation);
+    let required_proof = instantiate_required_proof(
+        terminal_error,
+        terminal_call_target,
+        terminal_pc,
+        &states,
+        obligation,
+    );
     let obligation = required_proof.obligation;
     let register = required_proof.register;
     let rejected_source = terminal_source(&source_events, terminal_pc);
@@ -3113,6 +3119,7 @@ mod tests {
             Some(37),
             None,
             "R5 invalid mem access 'scalar'",
+            None,
             ProofObligation::PointerProvenance,
         )
         .unwrap();
@@ -3148,6 +3155,7 @@ mod tests {
             Some(33),
             None,
             "value -2147483648 makes pkt pointer be out of bounds",
+            None,
             ProofObligation::ScalarRange,
         )
         .unwrap();
@@ -3177,6 +3185,7 @@ mod tests {
             Some(13),
             None,
             "invalid access to map value, value_size=24 off=67 size=1; R0 max value is outside of the allowed memory range",
+            None,
             ProofObligation::ScalarRange,
         )
         .unwrap();
@@ -3217,6 +3226,7 @@ mod tests {
             Some(26),
             None,
             "invalid access to packet, off=34 size=64, R3(id=0,off=34,r=42)",
+            None,
             ProofObligation::PacketBounds,
         )
         .unwrap();
@@ -3244,6 +3254,7 @@ mod tests {
             Some(7),
             None,
             "R0 invalid mem access 'map_value_or_null'",
+            None,
             ProofObligation::NullablePointer,
         )
         .unwrap();
@@ -3270,6 +3281,7 @@ mod tests {
             Some(8),
             None,
             "program of this type cannot use helper bpf_probe_read#4",
+            None,
             ProofObligation::EnvironmentCapability,
         )
         .unwrap();
@@ -3294,6 +3306,7 @@ mod tests {
             Some(0),
             None,
             "R0 !read_ok",
+            None,
             ProofObligation::StackInitialized,
         )
         .unwrap();
@@ -3323,6 +3336,7 @@ Unreleased reference id=2 alloc_insn=5
             Some(6),
             None,
             "Unreleased reference id=2 alloc_insn=5",
+            None,
             ProofObligation::ReferenceLifecycle,
         )
         .unwrap();

@@ -85,7 +85,7 @@ impl ProofObligation {
                 "load the program with a kernel, program type, attach point, and privileges that support the requested helper or kfunc"
             }
             Self::DynptrSafety => {
-                "keep dynptr slices inside their proven lifetime, initialized range, and read/write mode"
+                "keep dynptr helper arguments on valid dynptr stack slots with live state, supported mode, and proven access length"
             }
             Self::KfuncReference => {
                 "satisfy the kfunc trusted argument, nullability, and acquire/release contract on every path"
@@ -142,7 +142,9 @@ impl ProofObligation {
             Self::EnvironmentCapability => {
                 "rejected here: kernel or program type does not expose this capability"
             }
-            Self::DynptrSafety => "rejected here: dynptr lifetime or bounds proof is missing",
+            Self::DynptrSafety => {
+                "rejected here: dynptr helper argument violates the verifier's dynptr protocol"
+            }
             Self::KfuncReference => {
                 "rejected here: kfunc trusted-pointer or reference contract is not satisfied"
             }

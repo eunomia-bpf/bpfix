@@ -12,6 +12,7 @@ pub struct RequiredProof {
 
 pub(crate) fn instantiate_required_proof(
     terminal_error: &str,
+    terminal_call_target: Option<&str>,
     terminal_pc: Option<usize>,
     states: &[VerifierInsn],
     obligation: ProofObligation,
@@ -25,6 +26,9 @@ pub(crate) fn instantiate_required_proof(
         ProofObligation::NullablePointer => nullable_required_proof(terminal_error, register),
         ProofObligation::StackInitialized => stack_required_proof(terminal_error, register),
         ProofObligation::ReferenceLifecycle => reference_required_proof(terminal_error, register),
+        ProofObligation::DynptrSafety => {
+            dynptr_required_proof(terminal_error, terminal_call_target, register)
+        }
         ProofObligation::EnvironmentCapability => environment_required_proof(terminal_error),
         _ => RequiredProof {
             obligation,
@@ -32,6 +36,105 @@ pub(crate) fn instantiate_required_proof(
             description: obligation.default_required_proof().to_string(),
             rejection_detail: obligation.rejected_detail().to_string(),
         },
+    }
+}
+
+fn dynptr_required_proof(
+    message: &str,
+    call_target: Option<&str>,
+    register: Option<u8>,
+) -> RequiredProof {
+    let lower = message.to_ascii_lowercase();
+    let arg = parse_arg_number(message);
+    let arg_label = arg.map(|arg| format!("arg #{arg}"));
+    let helper_label = call_target
+        .filter(|target| target.contains("dynptr"))
+        .unwrap_or("this dynptr helper");
+
+    let (description, rejection_detail) = if lower.contains("unacquired reference") {
+        match arg_label {
+            Some(arg) => (
+                format!(
+                    "release or discard dynptr-backed references only while they are acquired, exactly once; {arg} is not acquired at {helper_label}"
+                ),
+                format!(
+                    "rejected here: {arg} is an unacquired dynptr-backed reference at this helper call"
+                ),
+            ),
+            None => (
+                format!(
+                    "release or discard dynptr-backed references only while they are acquired, exactly once before calling {helper_label}"
+                ),
+                "rejected here: dynptr-backed reference is not acquired at this helper call".to_string(),
+            ),
+        }
+    } else if lower.contains("expected an initialized dynptr") {
+        match arg_label {
+            Some(arg) => (
+                format!(
+                    "pass the exact initialized dynptr stack slot as {arg}; avoid interior pointers such as &ptr + offset or overwritten dynptr storage"
+                ),
+                format!(
+                    "rejected here: {arg} is not the exact initialized dynptr stack slot expected by this helper"
+                ),
+            ),
+            None => (
+                "pass the exact initialized dynptr stack slot to the helper; avoid interior pointers such as &ptr + offset or overwritten dynptr storage".to_string(),
+                "rejected here: helper argument is not the exact initialized dynptr stack slot".to_string(),
+            ),
+        }
+    } else if lower.contains("dynptr has to be an uninitialized dynptr") {
+        (
+            "pass a clean dynptr stack slot at the exact declared address to the initializer helper; do not pass an interior or already-initialized dynptr slot".to_string(),
+            "rejected here: dynptr initializer did not receive an uninitialized dynptr stack slot".to_string(),
+        )
+    } else if lower.contains("cannot pass in dynptr at an offset")
+        || lower.contains("dynptr has to be at a constant offset")
+        || lower.contains("expected pointer to stack or const struct bpf_dynptr")
+    {
+        match arg_label {
+            Some(arg) => (
+                format!(
+                    "pass the exact dynptr stack slot address as {arg} at a verifier-visible constant offset, not an interior or variable pointer"
+                ),
+                format!(
+                    "rejected here: {arg} points inside or variably around the dynptr stack slot"
+                ),
+            ),
+            None => (
+                "pass the exact dynptr stack slot address at a verifier-visible constant offset, not an interior or variable pointer".to_string(),
+                "rejected here: helper argument points inside or variably around the dynptr stack slot".to_string(),
+            ),
+        }
+    } else if lower.contains("cannot overwrite referenced dynptr") {
+        (
+            "do not overwrite or reinitialize a dynptr stack slot while verifier-tracked dynptr state is still live".to_string(),
+            "rejected here: live referenced dynptr state would be overwritten".to_string(),
+        )
+    } else if lower.contains("expected a dynptr of type") {
+        (
+            "pass a dynptr with the helper-required backing type and read/write mode".to_string(),
+            "rejected here: dynptr backing type or mode does not match this helper".to_string(),
+        )
+    } else if lower.contains("potential write to dynptr") {
+        (
+            "keep ordinary writes and helper outputs away from stack bytes that store live dynptr state".to_string(),
+            "rejected here: write may clobber verifier-tracked dynptr storage".to_string(),
+        )
+    } else {
+        (
+            ProofObligation::DynptrSafety
+                .default_required_proof()
+                .to_string(),
+            ProofObligation::DynptrSafety.rejected_detail().to_string(),
+        )
+    };
+
+    RequiredProof {
+        obligation: ProofObligation::DynptrSafety,
+        register,
+        description,
+        rejection_detail,
     }
 }
 
@@ -298,6 +401,12 @@ fn parse_register_from_error(message: &str) -> Option<u8> {
         return message[start..end].parse().ok();
     }
     None
+}
+
+fn parse_arg_number(message: &str) -> Option<i64> {
+    parse_i64_after(message, "arg #")
+        .or_else(|| parse_i64_after(message, "arg#"))
+        .or_else(|| parse_i64_after(message, "arg "))
 }
 
 fn parse_i64_after(message: &str, needle: &str) -> Option<i64> {

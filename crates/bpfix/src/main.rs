@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use anyhow::Context;
 use anyhow::Result;
 use clap::{Parser, ValueEnum};
-use classifier::{classify, no_verifier_rejection_classification};
+use classifier::{classify_with_context, no_verifier_rejection_classification};
 use diagnostic::{ProofEventEvidence, ProofEventRole, ProofSignal};
 use family::ProofObligation;
 use input::{find_terminal_error, load_input, LoadedInput, TerminalError};
@@ -148,12 +148,13 @@ fn build_diagnostic(
     let terminal = find_terminal_error(log);
     let class = terminal
         .as_ref()
-        .map(|terminal| classify(&terminal.message))
+        .map(|terminal| classify_with_context(&terminal.message, terminal.call_target.as_deref()))
         .unwrap_or_else(no_verifier_rejection_classification);
     let terminal = terminal.unwrap_or_else(|| TerminalError {
         line: log.lines().count().max(1),
         message: "no verifier rejection was found in this input".to_string(),
         pc: None,
+        call_target: None,
         source_path: None,
         source_line: None,
         source_text: None,
@@ -173,6 +174,7 @@ fn build_diagnostic(
                 terminal.pc,
                 Some(terminal.line),
                 &terminal.message,
+                terminal.call_target.as_deref(),
                 class.obligation,
             ) {
                 Ok(analysis) => {

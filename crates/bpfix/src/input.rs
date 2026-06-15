@@ -20,6 +20,7 @@ const TERMINAL_ERROR_MARKERS: &[&str] = &[
     "arg#",
     "unreleased reference",
     "reference has not",
+    "unacquired reference",
     "helper call is not allowed",
     "helper access to the packet is not allowed",
     "cannot use helper",
@@ -65,6 +66,7 @@ pub(crate) struct TerminalError {
     pub(crate) line: usize,
     pub(crate) message: String,
     pub(crate) pc: Option<usize>,
+    pub(crate) call_target: Option<String>,
     pub(crate) source_path: Option<String>,
     pub(crate) source_line: Option<usize>,
     pub(crate) source_text: Option<String>,
@@ -279,11 +281,13 @@ pub(crate) fn find_terminal_error(log: &str) -> Option<TerminalError> {
             }
         }
         let pc = nearest_instruction_pc(&lines, context_idx);
+        let call_target = nearest_call_target(&lines, context_idx);
         let (source_path, source_line, source_text) = nearest_source_span(&lines, context_idx);
         return Some(TerminalError {
             line: context_idx + 1,
             message,
             pc,
+            call_target,
             source_path,
             source_line,
             source_text,
@@ -297,6 +301,7 @@ pub(crate) fn is_verifier_error_line(line: &str) -> bool {
         || line.starts_with("libbpf:")
         || line.starts_with("Error:")
         || line.starts_with("-- END")
+        || instruction_tail(line).is_some()
         || (line.starts_with("processed ") && !line.contains("1000001"))
         || line.starts_with("verification time ")
         || line.starts_with("stack depth ")
@@ -336,6 +341,54 @@ fn nearest_instruction_pc(lines: &[&str], mut idx: usize) -> Option<usize> {
         }
         idx -= 1;
     }
+}
+
+fn nearest_call_target(lines: &[&str], mut idx: usize) -> Option<String> {
+    loop {
+        if let Some(tail) = instruction_tail(lines[idx]) {
+            if let Some(target) = call_target_from_instruction_tail(tail) {
+                return Some(target.to_string());
+            }
+        }
+        if idx == 0 {
+            return None;
+        }
+        if is_backward_search_boundary(lines[idx - 1].trim()) {
+            return None;
+        }
+        idx -= 1;
+    }
+}
+
+fn instruction_tail(line: &str) -> Option<&str> {
+    let trimmed = line.trim_start();
+    let colon = trimmed.find(':')?;
+    if !trimmed[..colon].chars().all(|ch| ch.is_ascii_digit()) {
+        return None;
+    }
+    let tail = trimmed[colon + 1..].trim_start();
+    let bytes = tail.as_bytes();
+    if bytes.len() < 4
+        || bytes[0] != b'('
+        || !bytes[1..3].iter().all(u8::is_ascii_hexdigit)
+        || bytes[3] != b')'
+    {
+        return None;
+    }
+    Some(tail)
+}
+
+fn call_target_from_instruction_tail(line: &str) -> Option<&str> {
+    let mut tokens = line.split_whitespace();
+    let call = loop {
+        let token = tokens.next()?;
+        if token == "call" {
+            break tokens.next()?;
+        }
+    };
+    call.split_once('#')
+        .map(|(target, _)| target)
+        .or(Some(call))
 }
 
 fn nearest_source_span(
