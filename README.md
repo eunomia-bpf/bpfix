@@ -15,6 +15,11 @@ from your existing workflow and turns them into:
 - actionable `help:` guidance
 - JSON output for editors, CI, and other tools
 
+The current CLI error-id contract is tracked in
+[`docs/error-catalog.yaml`](https://github.com/eunomia-bpf/bpfix/blob/master/docs/error-catalog.yaml).
+Historical benchmark labels may use older family names, but the CLI catalog is
+the user-facing source of truth for new integrations.
+
 BPFix does not replace Aya, libbpf-rs, `bpftool`, or the kernel verifier. It
 sits next to them and explains verifier failures after they happen.
 

@@ -116,6 +116,7 @@ error[BPFIX-E006]: verifier-visible compiler lowering hides the required proof
 Fields:
 
 - `error_id`: stable family identifier for tooling and docs.
+  The current CLI catalog lives in `docs/error-catalog.yaml`.
 - `class`: broad action class, such as `source_bug`, `lowering_artifact`,
   `verifier_false_positive`, `environment_or_configuration`,
   `verifier_limit`, or `input_error`.

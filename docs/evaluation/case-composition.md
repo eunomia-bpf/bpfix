@@ -139,7 +139,9 @@ Breakdown by source:
 
 ## Error Categories
 
-Error IDs are defined in `docs/evaluation/legacy-catalogs/error_catalog.yaml`.
+Benchmark label error IDs are summarized against
+`docs/evaluation/legacy-catalogs/error_catalog.yaml`. The current user-facing
+CLI error-id contract lives in `docs/error-catalog.yaml`.
 
 | error_id | short_name | case-label taxonomy_class | cases |
 |---|---|---|---:|
