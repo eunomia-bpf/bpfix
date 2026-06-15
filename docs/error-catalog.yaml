@@ -108,8 +108,9 @@ active_error_ids:
   - error_id: BPFIX-E016
     short_name: instruction_or_execution_context_unsupported
     failure_classes:
+      - source_bug
       - environment_or_configuration
-    summary: The generated instruction, JIT feature, helper, kfunc, or execution context is unsupported.
+    summary: The generated instruction, JIT feature, helper, kfunc, sleepable call, or execution context is unsupported or used from the wrong verifier context.
 
   - error_id: BPFIX-E018
     short_name: loop_or_verifier_budget_limit

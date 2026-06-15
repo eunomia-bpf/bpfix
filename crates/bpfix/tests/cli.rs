@@ -3226,6 +3226,71 @@ fn irq_flag_state_reports_protocol_violation() {
 }
 
 #[test]
+fn sleepable_calls_report_non_sleepable_context() {
+    for path in [
+        "bpfix-bench/cases/kernel-selftest-irq-irq-sleepable-global-subprog-indirect-syscall-c96d09ca/replay-verifier.log",
+        "bpfix-bench/cases/kernel-selftest-irq-irq-sleepable-helper-global-subprog-syscall-7d470f89/replay-verifier.log",
+    ] {
+        let diagnostic = run_json(path);
+        assert_eq!(diagnostic["error_id"], "BPFIX-E016");
+        assert_eq!(diagnostic["failure_class"], "source_bug");
+        assert!(diagnostic["message"]
+            .as_str()
+            .unwrap()
+            .contains("global functions that may sleep are not allowed"));
+        assert!(evidence_contains(
+            &diagnostic,
+            "verifier_state_signal",
+            "sleepable helper or subprogram call"
+        ));
+        assert!(diagnostic["required_proof"]
+            .as_str()
+            .unwrap()
+            .contains("non-sleepable IRQ"));
+    }
+
+    let no_prior_non_sleepable_state = run_stdin_output(
+        "func#0 @0\n\
+         0: R1=ctx() R10=fp0\n\
+         5: (85) call pc+4\n\
+         global functions that may sleep are not allowed in non-sleepable context,\n\
+         i.e., in a RCU/IRQ/preempt-disabled section, or in\n\
+         a non-sleepable BPF program context\n",
+        &["-", "--format", "json", "--fail-on-unsupported"],
+    );
+    assert!(no_prior_non_sleepable_state.status.success());
+    assert!(no_prior_non_sleepable_state.stderr.is_empty());
+    let no_prior_non_sleepable_state: Value =
+        serde_json::from_slice(&no_prior_non_sleepable_state.stdout)
+            .expect("bpfix should emit JSON");
+    assert_ne!(no_prior_non_sleepable_state["error_id"], "BPFIX-E016");
+    assert!(!evidence_contains(
+        &no_prior_non_sleepable_state,
+        "verifier_state_signal",
+        "sleepable helper or subprogram call"
+    ));
+
+    let adjacent_independent_error = run_json_stdin(
+        "func#0 @0\n\
+         0: R1=ctx() R10=fp0\n\
+         1: (85) call bpf_local_irq_save#72094\n\
+         2: (85) call pc+4\n\
+         global functions that may sleep are not allowed in non-sleepable context,\n\
+         BPF_EXIT instruction in main prog cannot be used inside bpf_local_irq_save-ed region\n",
+    );
+    assert_eq!(adjacent_independent_error["error_id"], "BPFIX-E015");
+    assert!(adjacent_independent_error["message"]
+        .as_str()
+        .unwrap()
+        .contains("BPF_EXIT instruction"));
+    assert!(!evidence_contains(
+        &adjacent_independent_error,
+        "verifier_state_signal",
+        "sleepable helper or subprogram call"
+    ));
+}
+
+#[test]
 fn text_output_is_rust_style_multispan() {
     let text = run_text("bpfix-bench/cases/stackoverflow-53136145/replay-verifier.log");
     assert!(text.contains(

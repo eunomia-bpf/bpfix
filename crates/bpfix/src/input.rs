@@ -43,6 +43,8 @@ const TERMINAL_ERROR_MARKERS: &[&str] = &[
     "bitwise operator",
     "should have been in",
     "cannot restore irq",
+    "may sleep",
+    "non-sleepable",
     "rcu",
     "lock",
     "kfunc",
@@ -278,15 +280,21 @@ pub(crate) fn find_terminal_error(log: &str) -> Option<TerminalError> {
             continue;
         }
 
-        let mut message = line.to_string();
         let mut context_idx = idx;
-        if idx > 0 {
-            let previous = lines[idx - 1].trim();
-            if is_verifier_error_line(previous) && !previous.starts_with("libbpf:") {
-                message = format!("{previous}; {message}");
-                context_idx = idx - 1;
+        let mut message_start = line;
+        while context_idx > 0 {
+            let previous = lines[context_idx - 1].trim();
+            if !is_terminal_error_continuation(message_start, previous) {
+                break;
             }
+            context_idx -= 1;
+            message_start = previous;
         }
+        let message = lines[context_idx..=idx]
+            .iter()
+            .map(|line| line.trim())
+            .collect::<Vec<_>>()
+            .join("; ");
         let pc = explicit_terminal_insn_pc(&message)
             .or_else(|| nearest_instruction_pc(&lines, context_idx));
         let call_target = nearest_call_target(&lines, context_idx);
@@ -334,6 +342,73 @@ fn is_verifier_state_line(line: &str) -> bool {
     };
     let trimmed = rest.trim_start();
     trimmed.starts_with('R') || trimmed.starts_with("frame")
+}
+
+fn is_terminal_error_continuation(first_line: &str, previous: &str) -> bool {
+    if !is_verifier_error_line(previous) || previous.starts_with("libbpf:") {
+        return false;
+    }
+    is_sleepable_error_continuation(first_line, previous)
+        || is_register_range_detail_continuation(first_line, previous)
+        || is_helper_memory_pair_detail_continuation(first_line, previous)
+        || is_subprogram_reference_detail_continuation(first_line, previous)
+        || is_subprogram_argument_detail_continuation(first_line, previous)
+}
+
+fn is_sleepable_error_continuation(first_line: &str, previous: &str) -> bool {
+    let first = first_line.to_ascii_lowercase();
+    let previous = previous.to_ascii_lowercase();
+    (first.contains("non-sleepable bpf program context")
+        && previous.contains("rcu/irq/preempt-disabled"))
+        || (first.contains("rcu/irq/preempt-disabled")
+            && previous.contains("may sleep")
+            && previous.contains("non-sleepable context"))
+}
+
+fn is_register_range_detail_continuation(first_line: &str, previous: &str) -> bool {
+    let first = first_line.to_ascii_lowercase();
+    let previous = previous.to_ascii_lowercase();
+    looks_like_register_detail(&first)
+        && (previous.contains("invalid access")
+            || previous.contains("unbounded memory access")
+            || previous.contains("makes pkt pointer")
+            || previous.contains("out of bounds")
+            || previous.contains("outside of"))
+}
+
+fn looks_like_register_detail(line: &str) -> bool {
+    let bytes = line.as_bytes();
+    bytes.first() == Some(&b'r')
+        && bytes.get(1).is_some_and(u8::is_ascii_digit)
+        && (line.contains("value is outside")
+            || line.contains("offset is outside")
+            || line.contains("min value is negative")
+            || line.contains("max value is outside")
+            || line.contains("min value is outside"))
+}
+
+fn is_helper_memory_pair_detail_continuation(first_line: &str, previous: &str) -> bool {
+    let first = first_line.to_ascii_lowercase();
+    let previous = previous.to_ascii_lowercase();
+    first.contains("memory, len pair leads to invalid memory access")
+        && ((previous.contains("type=") && previous.contains("expected="))
+            || previous.contains("invalid read from stack"))
+}
+
+fn is_subprogram_reference_detail_continuation(first_line: &str, previous: &str) -> bool {
+    let first = first_line.to_ascii_lowercase();
+    let previous = previous.to_ascii_lowercase();
+    first.contains("caller passes invalid args into func")
+        && previous.contains("reference type('unknown")
+        && previous.contains("size cannot be determined")
+}
+
+fn is_subprogram_argument_detail_continuation(first_line: &str, previous: &str) -> bool {
+    let first = first_line.to_ascii_lowercase();
+    let previous = previous.to_ascii_lowercase();
+    first.contains("caller passes invalid args into func")
+        && previous.starts_with("arg#")
+        && previous.contains("expects")
 }
 
 fn nearest_instruction_pc(lines: &[&str], mut idx: usize) -> Option<usize> {
@@ -443,5 +518,27 @@ Possibly NULL pointer passed to helper arg2
         let terminal = find_terminal_error(live_regs_only).expect("terminal error should be found");
         assert_eq!(terminal.pc, Some(15));
         assert_eq!(terminal.call_target.as_deref(), Some("bpf_kptr_xchg"));
+    }
+
+    #[test]
+    fn multiline_terminal_error_keeps_primary_sleepable_line() {
+        let log = "\
+func#0 @0
+0: R1=ctx() R10=fp0
+; global_subprog_calling_sleepable_global(0); @ prog.c:52
+5: (85) call pc+4
+global functions that may sleep are not allowed in non-sleepable context,
+i.e., in a RCU/IRQ/preempt-disabled section, or in
+a non-sleepable BPF program context
+processed 6 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0 mark_read 0
+";
+        let terminal = find_terminal_error(log).expect("terminal error should be found");
+        assert_eq!(terminal.line, 5);
+        assert_eq!(terminal.pc, Some(5));
+        assert_eq!(terminal.call_target.as_deref(), Some("pc+4"));
+        assert!(terminal
+            .message
+            .starts_with("global functions that may sleep are not allowed"));
+        assert!(terminal.message.contains("non-sleepable BPF program context"));
     }
 }

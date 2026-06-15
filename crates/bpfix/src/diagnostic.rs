@@ -74,6 +74,7 @@ pub enum ProofSignal {
     IteratorStackStorageAccess,
     IteratorHelperArgumentStateMismatch,
     IrqFlagStateMismatch,
+    SleepableCallInNonSleepableContext,
     CallbackCallWhileLocked,
     TrustedNullableArgument,
     KfuncArgumentTypeMismatch,
@@ -125,6 +126,9 @@ impl ProofSignal {
             }
             Self::IrqFlagStateMismatch => {
                 "IRQ flag helper argument has the wrong verifier-tracked lifecycle state"
+            }
+            Self::SleepableCallInNonSleepableContext => {
+                "sleepable helper or subprogram call reaches a non-sleepable verifier context"
             }
             Self::CallbackCallWhileLocked => {
                 "callback-invoking operation runs while a spin lock is held"
@@ -253,6 +257,9 @@ impl ProofSignal {
             Self::IrqFlagStateMismatch => {
                 "the rejected IRQ helper receives a stack slot whose verifier state does not match the helper's save/restore lifecycle contract"
             }
+            Self::SleepableCallInNonSleepableContext => {
+                "verifier state reaches a sleepable helper or subprogram call while IRQ, RCU, preempt, or program-context rules require non-sleepable execution"
+            }
             Self::CallbackCallWhileLocked => {
                 "verifier branch state enters a synchronous callback from a call made after bpf_spin_lock and before the matching unlock"
             }
@@ -357,6 +364,9 @@ impl ProofSignal {
             Self::IrqFlagStateMismatch => {
                 "Keep each IRQ flag stack slot dedicated to one save/restore pair, and pass restore the exact slot initialized by the matching save helper."
             }
+            Self::SleepableCallInNonSleepableContext => {
+                "Move sleepable helper or global-subprogram calls outside IRQ/RCU/preempt-disabled regions, or use only non-sleepable operations from this program context."
+            }
             Self::CallbackCallWhileLocked => {
                 "Move callback-invoking operations such as rbtree insertion outside spin-locked regions, or release the lock before a callback path can call helpers, kfuncs, or bpf_throw."
             }
@@ -400,6 +410,7 @@ impl ProofSignal {
     const fn selection_rank(self) -> u8 {
         match self {
             Self::MapValueGuardExceedsValueSize => 5,
+            Self::SleepableCallInNonSleepableContext => 7,
             Self::ModernBpfObjectProtocolViolation => 8,
             Self::PacketGuardUndercoversAccess => 40,
             Self::WideStackAlignment
@@ -437,6 +448,7 @@ impl ProofSignal {
                 | Self::ExceptionThrowWithLiveReference
                 | Self::CallbackCallWhileLocked
                 | Self::IrqFlagStateMismatch
+                | Self::SleepableCallInNonSleepableContext
                 | Self::IteratorHelperArgumentStateMismatch
                 | Self::IteratorStackStorageAccess
                 | Self::KfuncArgumentTypeMismatch
@@ -482,6 +494,7 @@ impl ProofSignal {
                 | Self::DynptrSliceVariableLength
                 | Self::ExceptionThrowWithLiveReference
                 | Self::IrqFlagStateMismatch
+                | Self::SleepableCallInNonSleepableContext
                 | Self::IteratorHelperArgumentStateMismatch
                 | Self::IteratorStackStorageAccess
                 | Self::CallbackCallWhileLocked
@@ -507,6 +520,7 @@ impl ProofSignal {
                 | Self::DynptrSliceVariableLength
                 | Self::ExceptionCallbackProtocolViolation
                 | Self::IrqFlagStateMismatch
+                | Self::SleepableCallInNonSleepableContext
                 | Self::CallbackCallWhileLocked
                 | Self::IteratorHelperArgumentStateMismatch
                 | Self::IteratorStackStorageAccess
@@ -544,6 +558,9 @@ impl ProofSignal {
             ),
             Self::IrqFlagStateMismatch => Some(
                 "pass bpf_local_irq_save an empty stack flag slot and pass bpf_local_irq_restore the same verifier-tracked flag slot produced by save",
+            ),
+            Self::SleepableCallInNonSleepableContext => Some(
+                "prove the sleepable helper or subprogram call cannot run in a non-sleepable IRQ, RCU, preempt-disabled, or program-context region",
             ),
             Self::CallbackCallWhileLocked => Some(
                 "avoid entering verifier callback frames from operations executed while a spin lock is held",
@@ -599,6 +616,9 @@ impl ProofSignal {
             Self::IrqFlagStateMismatch => {
                 Some("IRQ flag helper argument has the wrong lifecycle state")
             }
+            Self::SleepableCallInNonSleepableContext => {
+                Some("sleepable call is reachable from a non-sleepable verifier context")
+            }
             Self::CallbackCallWhileLocked => {
                 Some("callback path can run a forbidden call while a spin lock is held")
             }
@@ -637,6 +657,7 @@ impl ProofSignal {
             Self::IteratorStackStorageAccess => Some("BPFIX-E014"),
             Self::IteratorHelperArgumentStateMismatch => Some("BPFIX-E014"),
             Self::IrqFlagStateMismatch => Some("BPFIX-E020"),
+            Self::SleepableCallInNonSleepableContext => Some("BPFIX-E016"),
             Self::CallbackCallWhileLocked => Some("BPFIX-E015"),
             Self::TrustedNullableArgument => Some("BPFIX-E015"),
             Self::KfuncArgumentTypeMismatch => Some("BPFIX-E013"),
@@ -1579,6 +1600,9 @@ fn proof_signals(context: ProofSignalContext<'_>) -> Vec<ProofSignal> {
     if irq_flag_state_mismatch(&context) {
         signals.push(ProofSignal::IrqFlagStateMismatch);
     }
+    if sleepable_call_in_non_sleepable_context(&context) {
+        signals.push(ProofSignal::SleepableCallInNonSleepableContext);
+    }
     if callback_call_while_locked(&context) {
         signals.push(ProofSignal::CallbackCallWhileLocked);
     }
@@ -1921,6 +1945,58 @@ fn validation_seen(log: &str, start_line: usize, before_line: usize) -> bool {
 
 fn validation_success_line(line: &str) -> bool {
     line.starts_with("Func#") && line.contains(" is safe for any args")
+}
+
+fn sleepable_call_in_non_sleepable_context(context: &ProofSignalContext<'_>) -> bool {
+    let terminal = context.terminal_error.to_ascii_lowercase();
+    if !terminal.contains("may sleep")
+        && !terminal.contains("sleepable helper")
+        && !terminal.contains("non-sleepable")
+    {
+        return false;
+    }
+    if !terminal.contains("non-sleepable") && !terminal.contains("preempt-disabled") {
+        return false;
+    }
+    let Some(instruction) =
+        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)
+    else {
+        return false;
+    };
+    if !instruction.tail.contains("call ") {
+        return false;
+    }
+    let fragment_start = context
+        .terminal_line
+        .map(|line| verifier_fragment_start_line(context.log, line))
+        .unwrap_or_else(|| verifier_fragment_start_line(context.log, instruction.line));
+    prior_non_sleepable_state(context.log, fragment_start, instruction.line)
+}
+
+fn prior_non_sleepable_state(log: &str, start_line: usize, before_line: usize) -> bool {
+    let mut irq_save_depth = 0u32;
+    for line in log
+        .lines()
+        .skip(start_line.saturating_sub(1))
+        .take(before_line.saturating_sub(start_line))
+    {
+        let Some((_, tail)) = parse_instruction_line(line) else {
+            continue;
+        };
+        let Some(target) = call_target_from_instruction_tail(tail) else {
+            continue;
+        };
+        match target {
+            "bpf_local_irq_save" | "bpf_rcu_read_lock" => {
+                irq_save_depth = irq_save_depth.saturating_add(1);
+            }
+            "bpf_local_irq_restore" | "bpf_rcu_read_unlock" => {
+                irq_save_depth = irq_save_depth.saturating_sub(1);
+            }
+            _ => {}
+        }
+    }
+    irq_save_depth > 0
 }
 
 fn modern_bpf_object_protocol_violation(context: &ProofSignalContext<'_>) -> bool {
