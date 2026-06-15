@@ -395,6 +395,40 @@ processed 6 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_stat
         .iter()
         .any(|evidence| evidence["kind"] == "lowering_artifact_signal"));
 
+    let modified_ctx =
+        run_json("bpfix-bench/cases/github-commit-cilium-86c904761b39/replay-verifier.log");
+    assert_eq!(modified_ctx["error_id"], "BPFIX-E006");
+    assert_eq!(modified_ctx["failure_class"], "lowering_artifact");
+    assert!(modified_ctx["evidence"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|evidence| {
+            evidence["kind"] == "lowering_artifact_signal"
+                && evidence["detail"]
+                    .as_str()
+                    .unwrap()
+                    .contains("context access violates")
+        }));
+
+    let stale_modified_ctx_state = run_json_stdin(
+        "\
+3: R2_w=12 R3_w=ctx(off=12)
+4: (61) r2 = *(u32 *)(r3 +4)
+dereference of modified ctx ptr R3 off=12 disallowed
+4: (61) r2 = *(u32 *)(r3 +4)
+dereference of modified ctx ptr R3 off=12 disallowed
+processed 5 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0 mark_read 0
+",
+    );
+    assert_eq!(stale_modified_ctx_state["error_id"], "BPFIX-E006");
+    assert_eq!(stale_modified_ctx_state["failure_class"], "source_bug");
+    assert!(!stale_modified_ctx_state["evidence"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|evidence| evidence["kind"] == "lowering_artifact_signal"));
+
     let pointer_merge =
         run_json("bpfix-bench/cases/github-commit-cilium-4dc7d8047caf/replay-verifier.log");
     assert_eq!(pointer_merge["error_id"], "BPFIX-E006");

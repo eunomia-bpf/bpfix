@@ -1214,6 +1214,9 @@ fn proof_signals(context: ProofSignalContext<'_>) -> Vec<ProofSignal> {
     if pointer_shift_lowering_signal(&context) {
         signals.push(ProofSignal::PointerShiftDropsProvenance);
     }
+    if modified_context_pointer_lowering_signal(&context) {
+        signals.push(ProofSignal::ModifiedContextPointer);
+    }
     if let Some(signal) = terminal_lowering_signal(context.terminal_error) {
         signals.push(signal);
     }
@@ -1816,6 +1819,42 @@ fn pointer_shift_lowering_signal(context: &ProofSignalContext<'_>) -> bool {
         .is_some_and(is_pointer_state)
 }
 
+fn modified_context_pointer_lowering_signal(context: &ProofSignalContext<'_>) -> bool {
+    if !context
+        .terminal_error
+        .contains("dereference of modified ctx ptr")
+    {
+        return false;
+    }
+    let Some(reg) = context.register else {
+        return false;
+    };
+    let Some(instruction) =
+        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)
+    else {
+        return false;
+    };
+    if memory_access_base_register(instruction.tail) != Some(reg) {
+        return false;
+    }
+    let fragment_start = context
+        .terminal_line
+        .map(|line| verifier_fragment_start_line(context.log, line))
+        .unwrap_or_else(|| verifier_fragment_start_line(context.log, instruction.line));
+    let Some(state) =
+        latest_reg_state_before_instruction(context.states, instruction, fragment_start, reg)
+    else {
+        return false;
+    };
+    if state.reg_type != "ctx" || state.offset.unwrap_or(0) == 0 {
+        return false;
+    }
+    let Some(offset) = parse_u32_after(context.terminal_error, "off=") else {
+        return false;
+    };
+    u32::try_from(state.offset.unwrap_or(0)) == Ok(offset)
+}
+
 fn verifier_fragment_start_line(log: &str, before_line: usize) -> usize {
     let lines = log.lines().collect::<Vec<_>>();
     let end = before_line.saturating_sub(1).min(lines.len());
@@ -1963,8 +2002,6 @@ fn terminal_lowering_signal(message: &str) -> Option<ProofSignal> {
     let message = message.to_ascii_lowercase();
     if message.contains("same insn cannot be used with different pointers") {
         Some(ProofSignal::SharedInstructionPointerMerge)
-    } else if message.contains("dereference of modified ctx ptr") {
-        Some(ProofSignal::ModifiedContextPointer)
     } else if message.contains("expects pointer to ctx")
         && message.contains("caller passes invalid args into func")
     {
