@@ -138,9 +138,17 @@ fn lift_program_cfg(
             verifier_state_parse_error.map(ToOwned::to_owned),
         ));
     };
+    let states = states
+        .iter()
+        .filter(|state| state.pc < insns.len())
+        .cloned()
+        .collect::<Vec<_>>();
+    if states.is_empty() {
+        return Ok((lift_without_verifier_states(insns)?, None));
+    }
 
     let mut ctx = PassContext::default();
-    ctx.set_verifier_states(states.to_vec());
+    ctx.set_verifier_states(states);
     match lift_with_pass_context(insns, &ctx) {
         Ok(cfg) => Ok((cfg, None)),
         Err(err) => Ok((

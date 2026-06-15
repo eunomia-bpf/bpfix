@@ -2374,7 +2374,7 @@ fn object_argument_is_validated_and_reported() {
 
 #[test]
 #[cfg(feature = "object-analysis")]
-fn object_argument_keeps_diagnostic_when_log_pcs_use_loaded_layout() {
+fn object_argument_attaches_section_local_states_from_loaded_layout() {
     let log_path = workspace_root()
         .join("bpfix-bench/cases/github-commit-cilium-968227de9cc5/replay-verifier.log");
     let object_path =
@@ -2391,6 +2391,7 @@ fn object_argument_keeps_diagnostic_when_log_pcs_use_loaded_layout() {
         json["metadata"]["object_path"],
         object_path.to_str().unwrap()
     );
+    assert_eq!(json["error_id"], "BPFIX-E006");
     assert!(
         json["metadata"]["object_programs"][0]["block_count"]
             .as_u64()
@@ -2398,11 +2399,12 @@ fn object_argument_keeps_diagnostic_when_log_pcs_use_loaded_layout() {
             > 0
     );
     assert!(
-        json["metadata"]["object_programs"][0]["verifier_state_attach_error"]
-            .as_str()
+        json["metadata"]["object_programs"][0]["verifier_state_site_count"]
+            .as_u64()
             .unwrap()
-            .contains("could not be attached")
+            > 0
     );
+    assert!(json["metadata"]["object_programs"][0]["verifier_state_attach_error"].is_null());
 }
 
 #[test]
