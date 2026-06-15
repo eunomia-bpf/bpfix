@@ -2292,6 +2292,60 @@ fn fail_on_unsupported_exits_after_rendering_diagnostic() {
 }
 
 #[test]
+fn verifier_state_signal_can_replace_unsupported_terminal_message() {
+    let log = "\
+func#0 @0
+0: frame1: R1=scalar() R10=fp0 refs=1 cb
+0: (85) call bpf_throw#999
+invalid verifier frobnication
+";
+    let output = run_stdin_output(log, &["-", "--format", "json", "--fail-on-unsupported"]);
+    assert!(
+        output.status.success(),
+        "bpfix failed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(output.stderr.is_empty());
+    let json: Value = serde_json::from_slice(&output.stdout).expect("bpfix should emit JSON");
+    assert_eq!(json["error_id"], "BPFIX-E004");
+    assert_eq!(json["failure_class"], "source_bug");
+    assert_eq!(json["diagnostic_kind"], "supported");
+    assert!(evidence_contains(
+        &json,
+        "verifier_state_signal",
+        "bpf_throw"
+    ));
+}
+
+#[test]
+fn verifier_trace_without_structured_signal_stays_unsupported() {
+    let log = "\
+func#0 @0
+0: R1=scalar() R10=fp0
+0: (95) exit
+invalid verifier frobnication
+";
+    let output = run_stdin_output(log, &["-", "--format", "json", "--fail-on-unsupported"]);
+    assert_eq!(output.status.code(), Some(2));
+    assert!(output.stderr.is_empty());
+    let json: Value = serde_json::from_slice(&output.stdout).expect("bpfix should emit JSON");
+    assert_eq!(json["error_id"], "BPFIX-E099");
+    assert_eq!(json["diagnostic_kind"], "unsupported_verifier_message");
+    assert!(evidence_contains(
+        &json,
+        "verifier_trace",
+        "parsed 1 per-instruction verifier state snapshots"
+    ));
+    assert!(
+        !json["evidence"].as_array().unwrap().iter().any(|evidence| {
+            evidence["kind"] == "verifier_state_signal"
+                || evidence["kind"] == "lowering_artifact_signal"
+                || evidence["kind"] == "verifier_precision_signal"
+        })
+    );
+}
+
+#[test]
 fn parser_recovery_warnings_do_not_pollute_json_stderr() {
     let output = run_json_stdin_output(
         "0: R1=scalar(foo=bar) fp-8_w=0\n1: (95) exit\nR1 invalid mem access 'scalar'\n",

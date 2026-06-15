@@ -335,6 +335,9 @@ impl ProofSignal {
     }
 
     pub(crate) fn can_override_base_failure_class(self, base_failure_class: &str) -> bool {
+        if base_failure_class == "unsupported_verifier_message" {
+            return self.can_replace_unsupported_terminal();
+        }
         match self {
             Self::ExceptionThrowWithLiveReference => {
                 base_failure_class == "environment_or_configuration"
@@ -345,6 +348,22 @@ impl ProofSignal {
             }
             _ => base_failure_class == "source_bug",
         }
+    }
+
+    pub(crate) const fn can_replace_unsupported_terminal(self) -> bool {
+        matches!(
+            self,
+            Self::ContextAccessSourceArgumentMismatch
+                | Self::DynptrStackStorageAccess
+                | Self::ExceptionThrowWithLiveReference
+                | Self::MapLookupKeyArgumentUnreadable
+                | Self::MapPointerArgumentScalarZero
+                | Self::MapValueGuardExceedsValueSize
+                | Self::MapValueRelationPrecisionBoundary
+                | Self::PacketGuardUndercoversAccess
+                | Self::PacketMaxOffsetPrecisionBoundary
+                | Self::TrustedNullableArgument
+        )
     }
 
     pub(crate) const fn replaces_classifier_help(self) -> bool {
@@ -3305,8 +3324,52 @@ fn scalar_range_is_unsafe(state: &RegState) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::{analyze_verifier_log, ProofEventEvidence, ProofEventRole};
+    use super::{analyze_verifier_log, ProofEventEvidence, ProofEventRole, ProofSignal};
     use crate::family::ProofObligation;
+
+    #[test]
+    fn unsupported_terminal_replacement_is_an_explicit_signal_whitelist() {
+        let replaceable = [
+            ProofSignal::ContextAccessSourceArgumentMismatch,
+            ProofSignal::DynptrStackStorageAccess,
+            ProofSignal::ExceptionThrowWithLiveReference,
+            ProofSignal::MapLookupKeyArgumentUnreadable,
+            ProofSignal::MapPointerArgumentScalarZero,
+            ProofSignal::MapValueGuardExceedsValueSize,
+            ProofSignal::MapValueRelationPrecisionBoundary,
+            ProofSignal::PacketGuardUndercoversAccess,
+            ProofSignal::PacketMaxOffsetPrecisionBoundary,
+            ProofSignal::TrustedNullableArgument,
+        ];
+        for signal in replaceable {
+            assert!(
+                signal.can_replace_unsupported_terminal(),
+                "{signal:?} should replace unsupported terminal messages"
+            );
+        }
+
+        let lowering_only = [
+            ProofSignal::WideStackAlignment,
+            ProofSignal::SharedInstructionPointerMerge,
+            ProofSignal::SharedInstructionPathProofLoss,
+            ProofSignal::Alu32PointerCopyDropsProvenance,
+            ProofSignal::ConstantScalarMemoryLoad,
+            ProofSignal::SharedInstructionUninitializedRegister,
+            ProofSignal::PointerShiftDropsProvenance,
+            ProofSignal::ModifiedContextPointer,
+            ProofSignal::SubprogramContextArgumentDropped,
+            ProofSignal::PacketPointerProofLostAfterBoundsCheck,
+            ProofSignal::PacketRangeProofLostBeforeAccess,
+            ProofSignal::MapValueWideAccess,
+            ProofSignal::MapValueCheckedOffsetRelationLost,
+        ];
+        for signal in lowering_only {
+            assert!(
+                !signal.can_replace_unsupported_terminal(),
+                "{signal:?} should not replace unsupported terminal messages"
+            );
+        }
+    }
 
     #[test]
     fn branch_merge_case_produces_proof_lifecycle_events() {

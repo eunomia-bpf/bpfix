@@ -221,6 +221,13 @@ fn build_diagnostic(
         .map(ProofSignal::help_safety)
         .unwrap_or(class.help_safety)
         .to_string();
+    let diagnostic_kind = if class.diagnostic_kind == "unsupported_verifier_message"
+        && proof_signal.is_some_and(ProofSignal::can_replace_unsupported_terminal)
+    {
+        "supported"
+    } else {
+        class.diagnostic_kind
+    };
     let required_proof = proof_signal
         .and_then(ProofSignal::required_proof_override)
         .map(ToOwned::to_owned)
@@ -293,7 +300,7 @@ fn build_diagnostic(
         error_id: error_id.clone(),
         failure_class,
         confidence,
-        diagnostic_kind: class.diagnostic_kind.to_string(),
+        diagnostic_kind: diagnostic_kind.to_string(),
         help_safety,
         span_confidence,
         message: format!("{}: {}", message_summary, terminal.message),
