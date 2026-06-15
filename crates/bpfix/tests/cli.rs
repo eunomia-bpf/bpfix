@@ -2317,6 +2317,40 @@ fn iterator_state_storage_reports_protocol_violation() {
         .iter()
         .any(|help| help.as_str().unwrap().contains("Initialize the full stack")));
 
+    let iterator_double_create =
+        run_json("bpfix-bench/cases/kernel-selftest-iters-state-safety-double-create-fail-raw-tp-11a53add/replay-verifier.log");
+    assert_eq!(iterator_double_create["error_id"], "BPFIX-E014");
+    assert!(evidence_contains(
+        &iterator_double_create,
+        "verifier_state_signal",
+        "iterator helper receives an argument"
+    ));
+    assert!(iterator_double_create["required_proof"]
+        .as_str()
+        .unwrap()
+        .contains("bpf_iter_* helpers"));
+
+    let iterator_global_argument =
+        run_json("bpfix-bench/cases/kernel-selftest-iters-iter-new-bad-arg-raw-tp-e25f0e76/replay-verifier.log");
+    assert_eq!(iterator_global_argument["error_id"], "BPFIX-E014");
+    assert!(evidence_contains(
+        &iterator_global_argument,
+        "verifier_state_signal",
+        "iterator helper receives an argument"
+    ));
+
+    let iterator_slot_overwritten_by_helper =
+        run_json("bpfix-bench/cases/kernel-selftest-iters-state-safety-compromise-iter-w-helper-write-fail-raw-tp-50431478/replay-verifier.log");
+    assert_eq!(
+        iterator_slot_overwritten_by_helper["error_id"],
+        "BPFIX-E014"
+    );
+    assert!(evidence_contains(
+        &iterator_slot_overwritten_by_helper,
+        "verifier_state_signal",
+        "iterator helper receives an argument"
+    ));
+
     let unknown_terminal_iterator_storage_read = run_stdin_output(
         "func#0 @0\n\
          0: R1=ctx() R10=fp0\n\
@@ -2343,6 +2377,142 @@ fn iterator_state_storage_reports_protocol_violation() {
         &unknown_terminal_iterator_storage_read,
         "verifier_state_signal",
         "stack slot contains iterator state"
+    ));
+
+    let unknown_terminal_iterator_double_create = run_stdin_output(
+        "func#0 @0\n\
+         0: R1=ctx() R10=fp0\n\
+         5: (85) call bpf_iter_num_new#71887 ; R0_w=scalar() fp-8_w=iter_num(ref_id=1,state=active,depth=0) refs=1\n\
+         6: R6=fp-8 refs=1\n\
+         7: R1=fp-8 refs=1\n\
+         7: (85) call bpf_iter_num_new#71887\n\
+         invalid verifier frobnication\n",
+        &["-", "--format", "json", "--fail-on-unsupported"],
+    );
+    assert!(unknown_terminal_iterator_double_create.status.success());
+    assert!(unknown_terminal_iterator_double_create.stderr.is_empty());
+    let unknown_terminal_iterator_double_create: Value =
+        serde_json::from_slice(&unknown_terminal_iterator_double_create.stdout)
+            .expect("bpfix should emit JSON");
+    assert_eq!(
+        unknown_terminal_iterator_double_create["error_id"],
+        "BPFIX-E014"
+    );
+    assert_eq!(
+        unknown_terminal_iterator_double_create["diagnostic_kind"],
+        "supported"
+    );
+    assert!(evidence_contains(
+        &unknown_terminal_iterator_double_create,
+        "verifier_state_signal",
+        "iterator helper receives an argument"
+    ));
+
+    let unknown_terminal_iterator_new_on_initialized_slot = run_stdin_output(
+        "func#0 @0\n\
+         0: R1=ctx() R10=fp0\n\
+         5: R1=fp-8 fp-8_w=0\n\
+         5: (85) call bpf_iter_num_new#71887\n\
+         invalid verifier frobnication\n",
+        &["-", "--format", "json", "--fail-on-unsupported"],
+    );
+    assert!(unknown_terminal_iterator_new_on_initialized_slot
+        .status
+        .success());
+    assert!(unknown_terminal_iterator_new_on_initialized_slot
+        .stderr
+        .is_empty());
+    let unknown_terminal_iterator_new_on_initialized_slot: Value =
+        serde_json::from_slice(&unknown_terminal_iterator_new_on_initialized_slot.stdout)
+            .expect("bpfix should emit JSON");
+    assert_eq!(
+        unknown_terminal_iterator_new_on_initialized_slot["error_id"],
+        "BPFIX-E014"
+    );
+    assert!(evidence_contains(
+        &unknown_terminal_iterator_new_on_initialized_slot,
+        "verifier_state_signal",
+        "iterator helper receives an argument"
+    ));
+
+    let ordinary_iterator_new_unknown_terminal = run_stdin_output(
+        "func#0 @0\n\
+         0: R1=ctx() R10=fp0\n\
+         5: R1=fp-8\n\
+         5: (85) call bpf_iter_num_new#71887\n\
+         invalid verifier frobnication\n",
+        &["-", "--format", "json", "--fail-on-unsupported"],
+    );
+    assert_eq!(
+        ordinary_iterator_new_unknown_terminal.status.code(),
+        Some(2)
+    );
+    assert!(ordinary_iterator_new_unknown_terminal.stderr.is_empty());
+    let ordinary_iterator_new_unknown_terminal: Value =
+        serde_json::from_slice(&ordinary_iterator_new_unknown_terminal.stdout)
+            .expect("bpfix should emit JSON");
+    assert_eq!(
+        ordinary_iterator_new_unknown_terminal["diagnostic_kind"],
+        "unsupported_verifier_message"
+    );
+    assert!(!evidence_contains(
+        &ordinary_iterator_new_unknown_terminal,
+        "verifier_state_signal",
+        "iterator helper receives an argument"
+    ));
+
+    let stale_prior_fragment_iterator_state = run_stdin_output(
+        "func#0 @0\n\
+         0: R1=ctx() R10=fp0\n\
+         5: (85) call bpf_iter_num_new#71887 ; R0_w=scalar() fp-8_w=iter_num(ref_id=1,state=active,depth=0) refs=1\n\
+         processed 6 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0 mark_read 0\n\
+         func#1 @0\n\
+         0: R1=ctx() R10=fp0\n\
+         5: R1=fp-8\n\
+         5: (85) call bpf_iter_num_new#71887\n\
+         invalid verifier frobnication\n",
+        &["-", "--format", "json", "--fail-on-unsupported"],
+    );
+    assert_eq!(stale_prior_fragment_iterator_state.status.code(), Some(2));
+    assert!(stale_prior_fragment_iterator_state.stderr.is_empty());
+    let stale_prior_fragment_iterator_state: Value =
+        serde_json::from_slice(&stale_prior_fragment_iterator_state.stdout)
+            .expect("bpfix should emit JSON");
+    assert_eq!(
+        stale_prior_fragment_iterator_state["diagnostic_kind"],
+        "unsupported_verifier_message"
+    );
+    assert!(!evidence_contains(
+        &stale_prior_fragment_iterator_state,
+        "verifier_state_signal",
+        "iterator helper receives an argument"
+    ));
+
+    let stale_prior_fragment_ordinary_slot = run_stdin_output(
+        "func#0 @0\n\
+         0: R1=ctx() R10=fp0\n\
+         5: R1=fp-8 fp-8_w=0\n\
+         processed 6 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0 mark_read 0\n\
+         func#1 @0\n\
+         0: R1=ctx() R10=fp0\n\
+         5: R1=fp-8\n\
+         5: (85) call bpf_iter_num_destroy#71885\n\
+         invalid verifier frobnication\n",
+        &["-", "--format", "json", "--fail-on-unsupported"],
+    );
+    assert_eq!(stale_prior_fragment_ordinary_slot.status.code(), Some(2));
+    assert!(stale_prior_fragment_ordinary_slot.stderr.is_empty());
+    let stale_prior_fragment_ordinary_slot: Value =
+        serde_json::from_slice(&stale_prior_fragment_ordinary_slot.stdout)
+            .expect("bpfix should emit JSON");
+    assert_eq!(
+        stale_prior_fragment_ordinary_slot["diagnostic_kind"],
+        "unsupported_verifier_message"
+    );
+    assert!(!evidence_contains(
+        &stale_prior_fragment_ordinary_slot,
+        "verifier_state_signal",
+        "iterator helper receives an argument"
     ));
 
     let ordinary_stack_read_unknown_terminal = run_stdin_output(

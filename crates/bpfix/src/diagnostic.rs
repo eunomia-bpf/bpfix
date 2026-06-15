@@ -70,6 +70,7 @@ pub enum ProofSignal {
     DynptrStackStorageAccess,
     DynptrSliceVariableLength,
     IteratorStackStorageAccess,
+    IteratorHelperArgumentStateMismatch,
     TrustedNullableArgument,
     ContextAccessSourceArgumentMismatch,
     ExceptionThrowWithLiveReference,
@@ -105,6 +106,9 @@ impl ProofSignal {
             }
             Self::IteratorStackStorageAccess => {
                 "iterator state storage is being read as ordinary memory"
+            }
+            Self::IteratorHelperArgumentStateMismatch => {
+                "iterator helper argument has the wrong verifier-tracked lifecycle state"
             }
             Self::TrustedNullableArgument => {
                 "trusted helper argument is still verifier-visible as nullable"
@@ -207,6 +211,9 @@ impl ProofSignal {
             Self::IteratorStackStorageAccess => {
                 "verifier state shows this stack slot contains iterator state, but the rejected instruction reads it as ordinary stack bytes"
             }
+            Self::IteratorHelperArgumentStateMismatch => {
+                "the rejected iterator helper receives an argument whose verifier state does not match the helper's required stack iterator lifecycle state"
+            }
             Self::TrustedNullableArgument => {
                 "verifier state shows the rejected helper or kfunc argument is still a nullable RCU/trusted pointer at the call site"
             }
@@ -287,6 +294,9 @@ impl ProofSignal {
             Self::IteratorStackStorageAccess => {
                 "Treat iterator stack slots as opaque verifier state; use iterator helpers to read, advance, or destroy the iterator rather than loading the slot bytes directly."
             }
+            Self::IteratorHelperArgumentStateMismatch => {
+                "Keep iterator objects in verifier-tracked stack slots and call iterator create, next, and destroy helpers in the required lifecycle order."
+            }
             Self::TrustedNullableArgument => {
                 "Keep the RCU or trusted-pointer argument inside the verifier-visible non-null branch, or acquire a trusted reference before passing it to the helper or kfunc."
             }
@@ -348,6 +358,7 @@ impl ProofSignal {
                 | Self::DynptrStackStorageAccess
                 | Self::DynptrSliceVariableLength
                 | Self::ExceptionThrowWithLiveReference
+                | Self::IteratorHelperArgumentStateMismatch
                 | Self::IteratorStackStorageAccess
                 | Self::MapLookupKeyArgumentUnreadable
                 | Self::MapValueGuardExceedsValueSize
@@ -379,6 +390,7 @@ impl ProofSignal {
                 | Self::DynptrStackStorageAccess
                 | Self::DynptrSliceVariableLength
                 | Self::ExceptionThrowWithLiveReference
+                | Self::IteratorHelperArgumentStateMismatch
                 | Self::IteratorStackStorageAccess
                 | Self::MapLookupKeyArgumentUnreadable
                 | Self::MapPointerArgumentScalarZero
@@ -396,6 +408,7 @@ impl ProofSignal {
             Self::MapPointerArgumentScalarZero
                 | Self::DynptrStackStorageAccess
                 | Self::DynptrSliceVariableLength
+                | Self::IteratorHelperArgumentStateMismatch
                 | Self::IteratorStackStorageAccess
                 | Self::TrustedNullableArgument
                 | Self::ContextAccessSourceArgumentMismatch
@@ -417,6 +430,9 @@ impl ProofSignal {
             ),
             Self::IteratorStackStorageAccess => Some(
                 "treat the iterator stack slot as opaque verifier state and access it only through iterator helpers",
+            ),
+            Self::IteratorHelperArgumentStateMismatch => Some(
+                "pass bpf_iter_* helpers a verifier-tracked stack iterator slot in the lifecycle state required by the called helper",
             ),
             Self::TrustedNullableArgument => Some(
                 "prove the RCU/trusted pointer argument is non-null and trusted at the helper or kfunc call site",
@@ -448,6 +464,9 @@ impl ProofSignal {
             Self::IteratorStackStorageAccess => {
                 Some("iterator state stack slot is read as ordinary memory")
             }
+            Self::IteratorHelperArgumentStateMismatch => {
+                Some("iterator helper argument has the wrong lifecycle state")
+            }
             Self::TrustedNullableArgument => {
                 Some("trusted helper argument remains nullable at the call site")
             }
@@ -470,6 +489,7 @@ impl ProofSignal {
             Self::DynptrStackStorageAccess => Some("BPFIX-E012"),
             Self::DynptrSliceVariableLength => Some("BPFIX-E012"),
             Self::IteratorStackStorageAccess => Some("BPFIX-E014"),
+            Self::IteratorHelperArgumentStateMismatch => Some("BPFIX-E014"),
             Self::TrustedNullableArgument => Some("BPFIX-E015"),
             Self::ExceptionThrowWithLiveReference => Some("BPFIX-E004"),
             _ => None,
@@ -1390,6 +1410,9 @@ fn proof_signals(context: ProofSignalContext<'_>) -> Vec<ProofSignal> {
     if dynptr_slice_variable_length(&context) {
         signals.push(ProofSignal::DynptrSliceVariableLength);
     }
+    if iterator_helper_argument_state_mismatch(&context) {
+        signals.push(ProofSignal::IteratorHelperArgumentStateMismatch);
+    }
     if iterator_stack_storage_access(&context) {
         signals.push(ProofSignal::IteratorStackStorageAccess);
     }
@@ -1696,6 +1719,100 @@ fn iterator_stack_storage_access(context: &ProofSignalContext<'_>) -> bool {
     .unwrap_or(false)
 }
 
+#[derive(Clone, Copy)]
+enum IteratorArg0Requirement {
+    EmptyStackSlot,
+    LiveIteratorStackSlot,
+}
+
+fn iterator_helper_argument_state_mismatch(context: &ProofSignalContext<'_>) -> bool {
+    if !matches!(
+        context.obligation,
+        ProofObligation::IteratorLifecycle
+            | ProofObligation::HelperArgument
+            | ProofObligation::StackInitialized
+            | ProofObligation::Unknown
+    ) {
+        return false;
+    }
+    let Some(instruction) =
+        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)
+    else {
+        return false;
+    };
+    let Some(target) = call_target_from_instruction_tail(instruction.tail) else {
+        return false;
+    };
+    let Some(requirement) = iterator_arg0_requirement(target) else {
+        return false;
+    };
+    let fragment_start = context
+        .terminal_line
+        .map(|line| verifier_fragment_start_line(context.log, line))
+        .unwrap_or_else(|| verifier_fragment_start_line(context.log, instruction.line));
+    let Some(arg) = latest_reg_state_for_call_argument(
+        context.states,
+        instruction,
+        fragment_start,
+        context.terminal_line,
+        1,
+    ) else {
+        return false;
+    };
+    match requirement {
+        IteratorArg0Requirement::EmptyStackSlot => {
+            if arg.reg_type != "fp" {
+                return true;
+            }
+            iterator_stack_slot_state(context, arg).is_some()
+        }
+        IteratorArg0Requirement::LiveIteratorStackSlot => {
+            if arg.reg_type != "fp" {
+                return true;
+            }
+            iterator_stack_slot_state(context, arg)
+                .is_some_and(|state| state == IteratorStackSlotState::OrdinaryBytes)
+        }
+    }
+}
+
+fn iterator_arg0_requirement(target: &str) -> Option<IteratorArg0Requirement> {
+    if !target.starts_with("bpf_iter_") {
+        return None;
+    }
+    if target.ends_with("_new") {
+        return Some(IteratorArg0Requirement::EmptyStackSlot);
+    }
+    if target.ends_with("_next") || target.ends_with("_destroy") {
+        return Some(IteratorArg0Requirement::LiveIteratorStackSlot);
+    }
+    None
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum IteratorStackSlotState {
+    LiveIterator,
+    OrdinaryBytes,
+}
+
+fn iterator_stack_slot_state(
+    context: &ProofSignalContext<'_>,
+    arg: &RegState,
+) -> Option<IteratorStackSlotState> {
+    let offset = i16::try_from(arg.offset?).ok()?;
+    let range = stack_value_range(offset, 8)?;
+    latest_stack_value_overlap(context, range, 8, |value| {
+        value.reg_type.starts_with("iter_")
+    })
+    .map(|has_iterator| {
+        if has_iterator {
+            IteratorStackSlotState::LiveIterator
+        } else {
+            IteratorStackSlotState::OrdinaryBytes
+        }
+    })
+}
+
 fn trusted_nullable_argument(context: &ProofSignalContext<'_>) -> bool {
     let terminal = context.terminal_error.to_ascii_lowercase();
     let Some(instruction) =
@@ -1823,9 +1940,14 @@ fn latest_stack_value_overlap(
     target_size: i16,
     target_value: impl Fn(&RegState) -> bool,
 ) -> Option<bool> {
+    let fragment_start = context
+        .terminal_line
+        .map(|line| verifier_fragment_start_line(context.log, line))
+        .unwrap_or(0);
     for state in context
         .states
         .iter()
+        .filter(|state| state.log_line >= fragment_start)
         .filter(|state| context.terminal_pc.is_none_or(|pc| state.pc <= pc))
         .filter(|state| {
             context
@@ -3485,6 +3607,7 @@ mod tests {
             ProofSignal::DynptrStackStorageAccess,
             ProofSignal::DynptrSliceVariableLength,
             ProofSignal::ExceptionThrowWithLiveReference,
+            ProofSignal::IteratorHelperArgumentStateMismatch,
             ProofSignal::IteratorStackStorageAccess,
             ProofSignal::MapLookupKeyArgumentUnreadable,
             ProofSignal::MapPointerArgumentScalarZero,
