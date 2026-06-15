@@ -2416,7 +2416,7 @@ fn terminal_error_selection_ignores_state_lines_and_uses_final_reject() {
 
     let dynptr_release_twice =
         run_json("bpfix-bench/cases/kernel-selftest-dynptr-fail-release-twice-raw-tp-3722429d/replay-verifier.log");
-    assert_eq!(dynptr_release_twice["error_id"], "BPFIX-E012");
+    assert_eq!(dynptr_release_twice["error_id"], "BPFIX-E019");
     assert!(dynptr_release_twice["message"]
         .as_str()
         .unwrap()
@@ -2424,7 +2424,12 @@ fn terminal_error_selection_ignores_state_lines_and_uses_final_reject() {
     assert!(dynptr_release_twice["required_proof"]
         .as_str()
         .unwrap()
-        .contains("dynptr-backed references only while they are acquired"));
+        .contains("exactly once"));
+    assert!(evidence_contains(
+        &dynptr_release_twice,
+        "verifier_state_signal",
+        "without a live reference"
+    ));
     assert!(!dynptr_release_twice["evidence"][0]["detail"]
         .as_str()
         .unwrap()
@@ -2528,6 +2533,15 @@ fn dynptr_protocol_diagnostic_uses_specific_required_proof() {
         &uninit_write_into_slot,
         "verifier_state_signal",
         "write target overlaps"
+    ));
+
+    let dynptr_release_twice_callback =
+        run_json("bpfix-bench/cases/kernel-selftest-dynptr-fail-release-twice-callback-raw-tp-bd7b2a60/replay-verifier.log");
+    assert_eq!(dynptr_release_twice_callback["error_id"], "BPFIX-E019");
+    assert!(evidence_contains(
+        &dynptr_release_twice_callback,
+        "verifier_state_signal",
+        "without a live reference"
     ));
 
     let uninitialized_dynptr_clone =
@@ -2796,6 +2810,59 @@ invalid verifier frobnication
          arg 1 is an unacquired reference\n",
     );
     assert_ne!(generic_unacquired_reference["error_id"], "BPFIX-E012");
+    assert_ne!(generic_unacquired_reference["error_id"], "BPFIX-E019");
+
+    let dynptr_release_without_dynptr_state = run_json_stdin(
+        "func#0 @0\n\
+         0: R1=scalar() R10=fp0\n\
+         1: (85) call bpf_ringbuf_discard_dynptr#200\n\
+         arg 1 is an unacquired reference\n",
+    );
+    assert_eq!(
+        dynptr_release_without_dynptr_state["error_id"],
+        "BPFIX-E012"
+    );
+    assert!(!evidence_contains(
+        &dynptr_release_without_dynptr_state,
+        "verifier_state_signal",
+        "without a live reference"
+    ));
+
+    let dynptr_release_with_same_offset_in_different_frame = run_json_stdin(
+        "func#0 @0\n\
+         func#1 @10\n\
+         0: (85) call bpf_ringbuf_reserve_dynptr#198 ; R0_w=scalar() fp-16_w=dynptr_ringbuf(id=1,ref_id=2,dynptr_id=1) refs=2\n\
+         10: frame1: R1=fp-16 R10=fp0 cb\n\
+         11: (85) call bpf_ringbuf_discard_dynptr#200\n\
+         arg 1 is an unacquired reference\n",
+    );
+    assert_eq!(
+        dynptr_release_with_same_offset_in_different_frame["error_id"],
+        "BPFIX-E012"
+    );
+    assert!(!evidence_contains(
+        &dynptr_release_with_same_offset_in_different_frame,
+        "verifier_state_signal",
+        "without a live reference"
+    ));
+
+    let dynptr_release_without_current_frame_arg = run_json_stdin(
+        "func#0 @0\n\
+         func#1 @10\n\
+         0: R1=fp-16 fp-16_w=dynptr_ringbuf(id=1,ref_id=2,dynptr_id=1) refs=2\n\
+         10: frame1: R2=0 R10=fp0 cb\n\
+         11: (85) call bpf_ringbuf_discard_dynptr#200\n\
+         arg 1 is an unacquired reference\n",
+    );
+    assert_eq!(
+        dynptr_release_without_current_frame_arg["error_id"],
+        "BPFIX-E012"
+    );
+    assert!(!evidence_contains(
+        &dynptr_release_without_current_frame_arg,
+        "verifier_state_signal",
+        "without a live reference"
+    ));
 
     let raw_dynptr_storage_read =
         run_json("bpfix-bench/cases/kernel-selftest-dynptr-fail-invalid-read1-raw-tp-f61c0428/replay-verifier.log");
@@ -2946,7 +3013,7 @@ invalid verifier frobnication
 
     let text =
         run_text("bpfix-bench/cases/kernel-selftest-dynptr-fail-release-twice-raw-tp-3722429d/replay-verifier.log");
-    assert!(text.contains("dynptr-backed references only while they are acquired"));
+    assert!(text.contains("release or submit each verifier-tracked dynptr reference exactly once"));
     assert!(text.contains("arg 1 is an unacquired reference"));
 }
 

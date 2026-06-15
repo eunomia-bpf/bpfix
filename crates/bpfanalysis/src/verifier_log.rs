@@ -71,6 +71,7 @@ pub struct RegState {
     pub packet_range: Option<u32>,
     pub map_value_size: Option<u32>,
     pub offset: Option<i32>,
+    pub source_frame: Option<usize>,
     pub id: Option<u32>,
 }
 impl RegState {
@@ -85,6 +86,7 @@ impl RegState {
             packet_range: None,
             map_value_size: None,
             offset: None,
+            source_frame: None,
             id: None,
         }
     }
@@ -433,10 +435,17 @@ fn parse_reg_state(raw: &str, value_width: VerifierValueWidth) -> Result<RegStat
         let mut state = RegState::new("fp", value_width);
         state.precise = precise;
         // Cross-frame form `fp[N]-M`: the kernel verifier annotates the source
-        // frame for stack pointers. We don't track frame index per register, so
-        // strip the `[N]` and use the offset M.
+        // frame for stack pointers, which callers need to avoid confusing a
+        // parent-frame stack slot with the current frame.
         let offset_text = match rest.strip_prefix('[').and_then(|r| r.split_once(']')) {
-            Some((_, after)) => after,
+            Some((frame, after)) => {
+                state.source_frame = Some(
+                    frame
+                        .parse()
+                        .map_err(|_| anyhow!("invalid frame-pointer source frame {frame:?}"))?,
+                );
+                after
+            }
             None => rest,
         };
         if !offset_text.is_empty() {

@@ -72,6 +72,7 @@ pub enum ProofSignal {
     DynptrStackStorageAccess,
     DynptrStackSlotWriteOverlap,
     DynptrHelperArgumentStateMismatch,
+    DynptrReleaseUnacquiredReference,
     DynptrSliceVariableLength,
     IteratorStackStorageAccess,
     IteratorHelperArgumentStateMismatch,
@@ -122,6 +123,9 @@ impl ProofSignal {
             }
             Self::DynptrHelperArgumentStateMismatch => {
                 "dynptr helper argument has the wrong stack-slot or backing-memory state"
+            }
+            Self::DynptrReleaseUnacquiredReference => {
+                "dynptr release helper is called after the dynptr reference was already consumed"
             }
             Self::DynptrSliceVariableLength => {
                 "dynptr slice length is not verifier-visible as a constant"
@@ -259,6 +263,9 @@ impl ProofSignal {
             Self::DynptrHelperArgumentStateMismatch => {
                 "verifier state at the dynptr helper call shows an unstable dynptr slot, an interior dynptr pointer, or unsupported stack-backed input memory"
             }
+            Self::DynptrReleaseUnacquiredReference => {
+                "verifier state reaches a dynptr release helper with the exact dynptr stack slot but without a live reference"
+            }
             Self::DynptrSliceVariableLength => {
                 "the rejected dynptr slice helper uses R4 as its length argument, but verifier state shows R4 is still a scalar range rather than a known constant"
             }
@@ -372,6 +379,9 @@ impl ProofSignal {
             Self::DynptrHelperArgumentStateMismatch => {
                 "Pass dynptr helpers the exact verifier-tracked stack slot and a supported backing memory object; avoid global dynptr storage, variable stack offsets, and interior dynptr pointers."
             }
+            Self::DynptrReleaseUnacquiredReference => {
+                "Release or submit each acquired dynptr exactly once; structure callback and error paths so a consumed dynptr cannot reach another release helper."
+            }
             Self::DynptrSliceVariableLength => {
                 "Use a constant dynptr slice length, or split runtime lengths into verifier-visible constant-size cases before calling the dynptr slice helper."
             }
@@ -463,6 +473,7 @@ impl ProofSignal {
             self,
             Self::ContextAccessSourceArgumentMismatch
                 | Self::DynptrHelperArgumentStateMismatch
+                | Self::DynptrReleaseUnacquiredReference
                 | Self::DynptrStackStorageAccess
                 | Self::DynptrStackSlotWriteOverlap
                 | Self::DynptrSliceVariableLength
@@ -513,6 +524,7 @@ impl ProofSignal {
             self,
             Self::ContextAccessSourceArgumentMismatch
                 | Self::DynptrHelperArgumentStateMismatch
+                | Self::DynptrReleaseUnacquiredReference
                 | Self::DynptrStackStorageAccess
                 | Self::DynptrStackSlotWriteOverlap
                 | Self::DynptrSliceVariableLength
@@ -541,6 +553,7 @@ impl ProofSignal {
                 | Self::BtfFuncInfoMissing
                 | Self::SubprogramReferenceMetadataMissing
                 | Self::DynptrHelperArgumentStateMismatch
+                | Self::DynptrReleaseUnacquiredReference
                 | Self::DynptrStackStorageAccess
                 | Self::DynptrStackSlotWriteOverlap
                 | Self::DynptrSliceVariableLength
@@ -578,6 +591,9 @@ impl ProofSignal {
             ),
             Self::DynptrHelperArgumentStateMismatch => Some(
                 "pass dynptr helpers an exact verifier-tracked dynptr stack slot and supported non-stack backing memory",
+            ),
+            Self::DynptrReleaseUnacquiredReference => Some(
+                "release or submit each verifier-tracked dynptr reference exactly once while the reference is still live",
             ),
             Self::DynptrSliceVariableLength => Some(
                 "pass a verifier-known constant length to the dynptr slice helper",
@@ -642,6 +658,9 @@ impl ProofSignal {
             Self::DynptrHelperArgumentStateMismatch => {
                 Some("dynptr helper argument does not match the verifier dynptr contract")
             }
+            Self::DynptrReleaseUnacquiredReference => {
+                Some("dynptr release helper is called without a live dynptr reference")
+            }
             Self::DynptrSliceVariableLength => {
                 Some("dynptr slice length argument is not a known constant")
             }
@@ -693,6 +712,7 @@ impl ProofSignal {
             Self::DynptrStackStorageAccess => Some("BPFIX-E012"),
             Self::DynptrStackSlotWriteOverlap => Some("BPFIX-E019"),
             Self::DynptrHelperArgumentStateMismatch => Some("BPFIX-E019"),
+            Self::DynptrReleaseUnacquiredReference => Some("BPFIX-E019"),
             Self::DynptrSliceVariableLength => Some("BPFIX-E019"),
             Self::IteratorStackStorageAccess => Some("BPFIX-E014"),
             Self::IteratorHelperArgumentStateMismatch => Some("BPFIX-E014"),
@@ -1636,6 +1656,9 @@ fn proof_signals(context: ProofSignalContext<'_>) -> Vec<ProofSignal> {
     if dynptr_helper_argument_state_mismatch(&context) {
         signals.push(ProofSignal::DynptrHelperArgumentStateMismatch);
     }
+    if dynptr_release_unacquired_reference(&context) {
+        signals.push(ProofSignal::DynptrReleaseUnacquiredReference);
+    }
     if dynptr_slice_variable_length(&context) {
         signals.push(ProofSignal::DynptrSliceVariableLength);
     }
@@ -1924,8 +1947,7 @@ fn exact_u64_outside_required_range(value: u64, required: (i64, i64)) -> bool {
     if signed_value >= required.0 && signed_value <= required.1 {
         return false;
     }
-    nonnegative_required_range_as_u64(required)
-        .is_none_or(|(min, max)| value < min || value > max)
+    nonnegative_required_range_as_u64(required).is_none_or(|(min, max)| value < min || value > max)
 }
 
 fn exact_u32_outside_required_range(value: u32, required: (i64, i64)) -> bool {
@@ -2470,7 +2492,7 @@ fn dynptr_live_argument_interior_pointer(
     let Some(arg_reg) = dynptr_live_arg(target) else {
         return false;
     };
-    let Some(arg) = latest_reg_state_for_call_argument(
+    let Some((arg, arg_frame)) = latest_reg_state_for_call_argument_with_frame(
         context.states,
         instruction,
         fragment_start,
@@ -2479,8 +2501,56 @@ fn dynptr_live_argument_interior_pointer(
     ) else {
         return false;
     };
-    dynptr_stack_slot_relation(context, instruction, fragment_start, arg)
+    dynptr_stack_slot_relation(context, instruction, fragment_start, arg, arg_frame)
         == Some(DynptrStackSlotRelation::Interior)
+}
+
+fn dynptr_release_unacquired_reference(context: &ProofSignalContext<'_>) -> bool {
+    if !matches!(
+        context.obligation,
+        ProofObligation::DynptrSafety
+            | ProofObligation::ReferenceLifecycle
+            | ProofObligation::HelperArgument
+            | ProofObligation::Unknown
+    ) {
+        return false;
+    }
+    if !context
+        .terminal_error
+        .to_ascii_lowercase()
+        .contains("unacquired reference")
+    {
+        return false;
+    }
+    let Some(instruction) = terminal_call_instruction_site(context) else {
+        return false;
+    };
+    let Some(target) = call_target_from_instruction_tail(instruction.tail) else {
+        return false;
+    };
+    if !matches!(
+        target,
+        "bpf_ringbuf_discard_dynptr" | "bpf_ringbuf_submit_dynptr"
+    ) {
+        return false;
+    }
+    let fragment_start = verifier_fragment_start_line(context.log, instruction.line);
+    let Some((arg, arg_frame)) = latest_reg_state_for_call_argument_with_frame(
+        context.states,
+        instruction,
+        fragment_start,
+        context.terminal_line,
+        1,
+    ) else {
+        return false;
+    };
+    if dynptr_stack_slot_relation(context, instruction, fragment_start, arg, arg_frame)
+        != Some(DynptrStackSlotRelation::Exact)
+    {
+        return false;
+    }
+    latest_verifier_state_before_instruction(context.states, instruction, fragment_start)
+        .is_some_and(|state| state.refs.unwrap_or(0) == 0)
 }
 
 fn dynptr_initializer_output_arg(target: &str) -> Option<u8> {
@@ -2531,6 +2601,7 @@ fn dynptr_stack_slot_relation(
     instruction: TerminalInstruction<'_>,
     fragment_start: usize,
     arg: &RegState,
+    arg_frame: usize,
 ) -> Option<DynptrStackSlotRelation> {
     if arg.reg_type != "fp" || reg_state_has_variable_offset(arg) {
         return None;
@@ -2546,6 +2617,9 @@ fn dynptr_stack_slot_relation(
         .rev()
     {
         let mut saw_overlapping_stack_state = false;
+        if state.frame != arg_frame {
+            continue;
+        }
         for (slot_offset, stack) in &state.stack {
             let is_dynptr = stack
                 .value
@@ -3124,18 +3198,40 @@ fn latest_reg_state_for_call_argument<'a>(
     terminal_line: Option<usize>,
     reg: u8,
 ) -> Option<&'a RegState> {
-    latest_reg_state_before_instruction(states, instruction, fragment_start_line, reg).or_else(
-        || {
+    latest_reg_state_for_call_argument_with_frame(
+        states,
+        instruction,
+        fragment_start_line,
+        terminal_line,
+        reg,
+    )
+    .map(|(state, _)| state)
+}
+
+fn latest_reg_state_for_call_argument_with_frame<'a>(
+    states: &'a [VerifierInsn],
+    instruction: TerminalInstruction<'_>,
+    fragment_start_line: usize,
+    terminal_line: Option<usize>,
+    reg: u8,
+) -> Option<(&'a RegState, usize)> {
+    let call_frame =
+        latest_verifier_state_before_instruction(states, instruction, fragment_start_line)
+            .map(|state| state.frame);
+    latest_reg_state_before_instruction_with_frame(states, instruction, fragment_start_line, reg)
+        .or_else(|| {
             states
                 .iter()
                 .filter(|state| state.log_line >= fragment_start_line)
                 .filter(|state| terminal_line.is_none_or(|line| state.log_line < line))
                 .filter(|state| state.pc <= instruction.pc)
+                .filter(|state| call_frame.is_none_or(|frame| state.frame == frame))
                 .rev()
-                .filter_map(|state| state.regs.get(&reg))
-                .next()
-        },
-    )
+                .find_map(|state| {
+                    let reg_state = state.regs.get(&reg)?;
+                    Some((reg_state, reg_state.source_frame.unwrap_or(state.frame)))
+                })
+        })
 }
 
 fn latest_stack_value_overlap(
@@ -3890,14 +3986,43 @@ fn latest_reg_state_before_instruction<'a>(
     fragment_start_line: usize,
     reg: u8,
 ) -> Option<&'a RegState> {
+    latest_reg_state_before_instruction_with_frame(states, instruction, fragment_start_line, reg)
+        .map(|(state, _)| state)
+}
+
+fn latest_reg_state_before_instruction_with_frame<'a>(
+    states: &'a [VerifierInsn],
+    instruction: TerminalInstruction<'_>,
+    fragment_start_line: usize,
+    reg: u8,
+) -> Option<(&'a RegState, usize)> {
+    let call_frame =
+        latest_verifier_state_before_instruction(states, instruction, fragment_start_line)
+            .map(|state| state.frame);
     states
         .iter()
         .filter(|state| state.log_line >= fragment_start_line)
         .filter(|state| state.log_line < instruction.line)
         .filter(|state| state.pc <= instruction.pc)
+        .filter(|state| call_frame.is_none_or(|frame| state.frame == frame))
         .rev()
-        .filter_map(|state| state.regs.get(&reg))
-        .next()
+        .find_map(|state| {
+            let reg_state = state.regs.get(&reg)?;
+            Some((reg_state, reg_state.source_frame.unwrap_or(state.frame)))
+        })
+}
+
+fn latest_verifier_state_before_instruction<'a>(
+    states: &'a [VerifierInsn],
+    instruction: TerminalInstruction<'_>,
+    fragment_start_line: usize,
+) -> Option<&'a VerifierInsn> {
+    states
+        .iter()
+        .filter(|state| state.log_line >= fragment_start_line)
+        .filter(|state| state.log_line < instruction.line)
+        .filter(|state| state.pc <= instruction.pc)
+        .next_back()
 }
 
 fn latest_verifier_state_before(

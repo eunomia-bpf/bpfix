@@ -195,6 +195,23 @@ fn parses_frame_pointer_with_variable_offset_attributes() {
 }
 
 #[test]
+fn preserves_cross_frame_pointer_source_frame() {
+    let log = r#"
+17: frame1: R1=fp[0]-16 R2=fp-16 R10=fp0 cb
+"#;
+
+    let insns = parse_verifier_log(log);
+    let r1 = insns[0].regs.get(&1).unwrap();
+    assert_eq!(r1.reg_type, "fp");
+    assert_eq!(r1.offset, Some(-16));
+    assert_eq!(r1.source_frame, Some(0));
+    let r2 = insns[0].regs.get(&2).unwrap();
+    assert_eq!(r2.reg_type, "fp");
+    assert_eq!(r2.offset, Some(-16));
+    assert_eq!(r2.source_frame, None);
+}
+
+#[test]
 fn parses_standalone_stack_only_state_lines() {
     let log = r#"
 8: fp-32_w=ffffffff refs=1
