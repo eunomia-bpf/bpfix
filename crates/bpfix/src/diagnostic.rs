@@ -69,6 +69,7 @@ pub enum ProofSignal {
     MapPointerArgumentScalarZero,
     DynptrStackStorageAccess,
     DynptrSliceVariableLength,
+    IteratorStackStorageAccess,
     TrustedNullableArgument,
     ContextAccessSourceArgumentMismatch,
     ExceptionThrowWithLiveReference,
@@ -101,6 +102,9 @@ impl ProofSignal {
             }
             Self::DynptrSliceVariableLength => {
                 "dynptr slice length is not verifier-visible as a constant"
+            }
+            Self::IteratorStackStorageAccess => {
+                "iterator state storage is being read as ordinary memory"
             }
             Self::TrustedNullableArgument => {
                 "trusted helper argument is still verifier-visible as nullable"
@@ -200,6 +204,9 @@ impl ProofSignal {
             Self::DynptrSliceVariableLength => {
                 "the rejected dynptr slice helper uses R4 as its length argument, but verifier state shows R4 is still a scalar range rather than a known constant"
             }
+            Self::IteratorStackStorageAccess => {
+                "verifier state shows this stack slot contains iterator state, but the rejected instruction reads it as ordinary stack bytes"
+            }
             Self::TrustedNullableArgument => {
                 "verifier state shows the rejected helper or kfunc argument is still a nullable RCU/trusted pointer at the call site"
             }
@@ -277,6 +284,9 @@ impl ProofSignal {
             Self::DynptrSliceVariableLength => {
                 "Use a constant dynptr slice length, or split runtime lengths into verifier-visible constant-size cases before calling the dynptr slice helper."
             }
+            Self::IteratorStackStorageAccess => {
+                "Treat iterator stack slots as opaque verifier state; use iterator helpers to read, advance, or destroy the iterator rather than loading the slot bytes directly."
+            }
             Self::TrustedNullableArgument => {
                 "Keep the RCU or trusted-pointer argument inside the verifier-visible non-null branch, or acquire a trusted reference before passing it to the helper or kfunc."
             }
@@ -338,6 +348,7 @@ impl ProofSignal {
                 | Self::DynptrStackStorageAccess
                 | Self::DynptrSliceVariableLength
                 | Self::ExceptionThrowWithLiveReference
+                | Self::IteratorStackStorageAccess
                 | Self::MapLookupKeyArgumentUnreadable
                 | Self::MapValueGuardExceedsValueSize
                 | Self::PacketGuardUndercoversAccess
@@ -368,6 +379,7 @@ impl ProofSignal {
                 | Self::DynptrStackStorageAccess
                 | Self::DynptrSliceVariableLength
                 | Self::ExceptionThrowWithLiveReference
+                | Self::IteratorStackStorageAccess
                 | Self::MapLookupKeyArgumentUnreadable
                 | Self::MapPointerArgumentScalarZero
                 | Self::MapValueGuardExceedsValueSize
@@ -384,6 +396,7 @@ impl ProofSignal {
             Self::MapPointerArgumentScalarZero
                 | Self::DynptrStackStorageAccess
                 | Self::DynptrSliceVariableLength
+                | Self::IteratorStackStorageAccess
                 | Self::TrustedNullableArgument
                 | Self::ContextAccessSourceArgumentMismatch
                 | Self::ExceptionThrowWithLiveReference
@@ -401,6 +414,9 @@ impl ProofSignal {
             ),
             Self::DynptrSliceVariableLength => Some(
                 "pass a verifier-known constant length to the dynptr slice helper",
+            ),
+            Self::IteratorStackStorageAccess => Some(
+                "treat the iterator stack slot as opaque verifier state and access it only through iterator helpers",
             ),
             Self::TrustedNullableArgument => Some(
                 "prove the RCU/trusted pointer argument is non-null and trusted at the helper or kfunc call site",
@@ -429,6 +445,9 @@ impl ProofSignal {
             Self::DynptrSliceVariableLength => {
                 Some("dynptr slice length argument is not a known constant")
             }
+            Self::IteratorStackStorageAccess => {
+                Some("iterator state stack slot is read as ordinary memory")
+            }
             Self::TrustedNullableArgument => {
                 Some("trusted helper argument remains nullable at the call site")
             }
@@ -450,6 +469,7 @@ impl ProofSignal {
             Self::MapPointerArgumentScalarZero => Some("BPFIX-E021"),
             Self::DynptrStackStorageAccess => Some("BPFIX-E012"),
             Self::DynptrSliceVariableLength => Some("BPFIX-E012"),
+            Self::IteratorStackStorageAccess => Some("BPFIX-E014"),
             Self::TrustedNullableArgument => Some("BPFIX-E015"),
             Self::ExceptionThrowWithLiveReference => Some("BPFIX-E004"),
             _ => None,
@@ -1370,6 +1390,9 @@ fn proof_signals(context: ProofSignalContext<'_>) -> Vec<ProofSignal> {
     if dynptr_slice_variable_length(&context) {
         signals.push(ProofSignal::DynptrSliceVariableLength);
     }
+    if iterator_stack_storage_access(&context) {
+        signals.push(ProofSignal::IteratorStackStorageAccess);
+    }
     if trusted_nullable_argument(&context) {
         signals.push(ProofSignal::TrustedNullableArgument);
     }
@@ -1608,10 +1631,10 @@ fn map_lookup_key_argument_unreadable(
 }
 
 fn dynptr_stack_storage_access(context: &ProofSignalContext<'_>) -> bool {
-    if context.obligation != ProofObligation::StackInitialized {
-        return false;
-    }
-    if !context.terminal_error.contains("invalid read from stack") {
+    if !matches!(
+        context.obligation,
+        ProofObligation::StackInitialized | ProofObligation::Unknown
+    ) {
         return false;
     }
     if rejected_source(context.events).is_some_and(|source| {
@@ -1620,10 +1643,13 @@ fn dynptr_stack_storage_access(context: &ProofSignalContext<'_>) -> bool {
     }) {
         return false;
     }
-    let Some(access) = stack_access_range(context.terminal_error) else {
+    let Some(access) = stack_access_range_from_context(context) else {
         return false;
     };
-    latest_dynptr_stack_overlap(context, access).unwrap_or(false)
+    latest_stack_value_overlap(context, access, 16, |value| {
+        value.reg_type.starts_with("dynptr")
+    })
+    .unwrap_or(false)
 }
 
 fn dynptr_slice_variable_length(context: &ProofSignalContext<'_>) -> bool {
@@ -1652,6 +1678,22 @@ fn dynptr_slice_variable_length(context: &ProofSignalContext<'_>) -> bool {
         return false;
     };
     length.reg_type == "scalar" && length.exact_value.is_none()
+}
+
+fn iterator_stack_storage_access(context: &ProofSignalContext<'_>) -> bool {
+    if !matches!(
+        context.obligation,
+        ProofObligation::StackInitialized | ProofObligation::Unknown
+    ) {
+        return false;
+    }
+    let Some(access) = stack_access_range_from_context(context) else {
+        return false;
+    };
+    latest_stack_value_overlap(context, access, 8, |value| {
+        value.reg_type.starts_with("iter_")
+    })
+    .unwrap_or(false)
 }
 
 fn trusted_nullable_argument(context: &ProofSignalContext<'_>) -> bool {
@@ -1709,6 +1751,51 @@ fn is_trusted_nullable_state(state: &RegState) -> bool {
     state.reg_type.starts_with("rcu_ptr_or_null") || state.reg_type.starts_with("ptr_or_null")
 }
 
+fn stack_access_range_from_context(context: &ProofSignalContext<'_>) -> Option<StackByteRange> {
+    stack_read_access_range(context.terminal_error)
+        .or_else(|| terminal_stack_memory_access_range(context))
+}
+
+fn stack_read_access_range(message: &str) -> Option<StackByteRange> {
+    message
+        .to_ascii_lowercase()
+        .contains("read from stack")
+        .then(|| stack_access_range(message))
+        .flatten()
+}
+
+fn terminal_stack_memory_access_range(context: &ProofSignalContext<'_>) -> Option<StackByteRange> {
+    let instruction =
+        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)?;
+    if !memory_access_is_load(instruction.tail) {
+        return None;
+    }
+    let width =
+        terminal_instruction_access_width(context.log, context.terminal_pc, context.terminal_line)?;
+    let insn_offset = terminal_instruction_memory_offset(
+        context.log,
+        context.terminal_pc,
+        context.terminal_line,
+    )?;
+    let base_reg = memory_access_base_register(instruction.tail)?;
+    let fragment_start = context
+        .terminal_line
+        .map(|line| verifier_fragment_start_line(context.log, line))
+        .unwrap_or_else(|| verifier_fragment_start_line(context.log, instruction.line));
+    let base =
+        latest_reg_state_before_instruction(context.states, instruction, fragment_start, base_reg)?;
+    if base.reg_type != "fp" {
+        return None;
+    }
+    let base_offset = i64::from(base.offset.unwrap_or(0));
+    let start = base_offset.checked_add(insn_offset)?;
+    let end = start.checked_add(i64::from(width))?;
+    Some(StackByteRange {
+        start: i16::try_from(start).ok()?,
+        end: i16::try_from(end).ok()?,
+    })
+}
+
 fn latest_reg_state_for_call_argument<'a>(
     states: &'a [VerifierInsn],
     instruction: TerminalInstruction<'_>,
@@ -1730,9 +1817,11 @@ fn latest_reg_state_for_call_argument<'a>(
     )
 }
 
-fn latest_dynptr_stack_overlap(
+fn latest_stack_value_overlap(
     context: &ProofSignalContext<'_>,
     access: StackByteRange,
+    target_size: i16,
+    target_value: impl Fn(&RegState) -> bool,
 ) -> Option<bool> {
     for state in context
         .states
@@ -1746,15 +1835,16 @@ fn latest_dynptr_stack_overlap(
         .rev()
     {
         let mut saw_overlap = false;
-        let mut start_in_dynptr = false;
-        let mut start_in_non_dynptr = false;
-        let mut contains_dynptr = false;
+        let mut start_in_target = false;
+        let mut start_in_non_target = false;
+        let mut contains_target = false;
         for (offset, stack) in &state.stack {
-            let is_dynptr = stack
+            let is_target = stack
                 .value
                 .as_ref()
-                .is_some_and(|value| value.reg_type.starts_with("dynptr"));
-            let Some(range) = stack_value_range(*offset, is_dynptr) else {
+                .is_some_and(|value| target_value(value));
+            let Some(range) = stack_value_range(*offset, if is_target { target_size } else { 8 })
+            else {
                 continue;
             };
             if !range.overlaps(access) {
@@ -1762,20 +1852,20 @@ fn latest_dynptr_stack_overlap(
             }
             saw_overlap = true;
             if range.contains(access.start) {
-                if is_dynptr {
-                    start_in_dynptr = true;
+                if is_target {
+                    start_in_target = true;
                 } else {
-                    start_in_non_dynptr = true;
+                    start_in_non_target = true;
                 }
             }
-            if is_dynptr && access.contains_range(range) {
-                contains_dynptr = true;
+            if is_target && access.contains_range(range) {
+                contains_target = true;
             }
         }
-        if contains_dynptr || start_in_dynptr {
+        if contains_target || start_in_target {
             return Some(true);
         }
-        if start_in_non_dynptr || saw_overlap {
+        if start_in_non_target || saw_overlap {
             return Some(false);
         }
     }
@@ -1802,8 +1892,7 @@ impl StackByteRange {
     }
 }
 
-fn stack_value_range(offset: i16, is_dynptr: bool) -> Option<StackByteRange> {
-    let size = if is_dynptr { 16 } else { 8 };
+fn stack_value_range(offset: i16, size: i16) -> Option<StackByteRange> {
     Some(StackByteRange {
         start: offset,
         end: offset.checked_add(size)?,
@@ -2301,6 +2390,10 @@ fn memory_access_width(line_after_pc: &str) -> Option<u32> {
         .parse::<u32>()
         .ok()
         .and_then(|bits| bits.checked_div(8))
+}
+
+fn memory_access_is_load(line_after_pc: &str) -> bool {
+    line_after_pc.contains("= *(")
 }
 
 fn memory_access_offset(line_after_pc: &str) -> Option<i64> {
@@ -3392,6 +3485,7 @@ mod tests {
             ProofSignal::DynptrStackStorageAccess,
             ProofSignal::DynptrSliceVariableLength,
             ProofSignal::ExceptionThrowWithLiveReference,
+            ProofSignal::IteratorStackStorageAccess,
             ProofSignal::MapLookupKeyArgumentUnreadable,
             ProofSignal::MapPointerArgumentScalarZero,
             ProofSignal::MapValueGuardExceedsValueSize,

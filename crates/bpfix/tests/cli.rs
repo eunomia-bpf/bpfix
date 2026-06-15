@@ -2220,10 +2220,198 @@ invalid verifier frobnication
         "stack slot contains dynptr state"
     ));
 
+    let unknown_terminal_dynptr_storage_read = run_stdin_output(
+        "func#0 @0\n\
+         0: R1=ctx() R10=fp0\n\
+         5: (85) call bpf_ringbuf_reserve_dynptr#198 ; R0_w=scalar() fp-16_w=dynptr_ringbuf(id=1,dynptr_id=1)\n\
+         6: R6=fp-16\n\
+         6: (79) r1 = *(u64 *)(r6 +0)\n\
+         invalid verifier frobnication\n",
+        &["-", "--format", "json", "--fail-on-unsupported"],
+    );
+    assert!(unknown_terminal_dynptr_storage_read.status.success());
+    assert!(unknown_terminal_dynptr_storage_read.stderr.is_empty());
+    let unknown_terminal_dynptr_storage_read: Value =
+        serde_json::from_slice(&unknown_terminal_dynptr_storage_read.stdout)
+            .expect("bpfix should emit JSON");
+    assert_eq!(
+        unknown_terminal_dynptr_storage_read["error_id"],
+        "BPFIX-E012"
+    );
+    assert_eq!(
+        unknown_terminal_dynptr_storage_read["diagnostic_kind"],
+        "supported"
+    );
+    assert!(evidence_contains(
+        &unknown_terminal_dynptr_storage_read,
+        "verifier_state_signal",
+        "stack slot contains dynptr state"
+    ));
+
+    let unknown_terminal_dynptr_storage_store = run_stdin_output(
+        "func#0 @0\n\
+         0: R1=ctx() R10=fp0\n\
+         5: (85) call bpf_ringbuf_reserve_dynptr#198 ; R0_w=scalar() fp-16_w=dynptr_ringbuf(id=1,dynptr_id=1)\n\
+         6: R6=fp-16 R1=0\n\
+         6: (7b) *(u64 *)(r6 +0) = r1\n\
+         invalid verifier frobnication\n",
+        &["-", "--format", "json", "--fail-on-unsupported"],
+    );
+    assert_eq!(unknown_terminal_dynptr_storage_store.status.code(), Some(2));
+    assert!(unknown_terminal_dynptr_storage_store.stderr.is_empty());
+    let unknown_terminal_dynptr_storage_store: Value =
+        serde_json::from_slice(&unknown_terminal_dynptr_storage_store.stdout)
+            .expect("bpfix should emit JSON");
+    assert_eq!(
+        unknown_terminal_dynptr_storage_store["diagnostic_kind"],
+        "unsupported_verifier_message"
+    );
+    assert!(!evidence_contains(
+        &unknown_terminal_dynptr_storage_store,
+        "verifier_state_signal",
+        "stack slot contains dynptr state"
+    ));
+
+    let write_terminal_dynptr_storage_store = run_json_stdin(
+        "func#0 @0\n\
+         0: R1=ctx() R10=fp0\n\
+         5: (85) call bpf_ringbuf_reserve_dynptr#198 ; R0_w=scalar() fp-16_w=dynptr_ringbuf(id=1,dynptr_id=1)\n\
+         6: R6=fp-16 R1=0\n\
+         6: (7b) *(u64 *)(r6 +0) = r1\n\
+         invalid write to stack off -16+0 size 8\n",
+    );
+    assert_ne!(
+        write_terminal_dynptr_storage_store["error_id"],
+        "BPFIX-E012"
+    );
+    assert!(!evidence_contains(
+        &write_terminal_dynptr_storage_store,
+        "verifier_state_signal",
+        "stack slot contains dynptr state"
+    ));
+
     let text =
         run_text("bpfix-bench/cases/kernel-selftest-dynptr-fail-release-twice-raw-tp-3722429d/replay-verifier.log");
     assert!(text.contains("dynptr-backed references only while they are acquired"));
     assert!(text.contains("arg 1 is an unacquired reference"));
+}
+
+#[test]
+fn iterator_state_storage_reports_protocol_violation() {
+    let iterator_storage_read =
+        run_json("bpfix-bench/cases/kernel-selftest-iters-state-safety-read-from-iter-slot-fail-raw-tp-812dc246/replay-verifier.log");
+    assert_eq!(iterator_storage_read["error_id"], "BPFIX-E014");
+    assert_eq!(iterator_storage_read["failure_class"], "source_bug");
+    assert!(evidence_contains(
+        &iterator_storage_read,
+        "verifier_state_signal",
+        "stack slot contains iterator state"
+    ));
+    assert!(iterator_storage_read["required_proof"]
+        .as_str()
+        .unwrap()
+        .contains("iterator stack slot as opaque"));
+    assert!(!iterator_storage_read["help"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|help| help.as_str().unwrap().contains("Initialize the full stack")));
+
+    let unknown_terminal_iterator_storage_read = run_stdin_output(
+        "func#0 @0\n\
+         0: R1=ctx() R10=fp0\n\
+         5: (85) call bpf_iter_num_new#71887 ; R0_w=scalar() fp-24_w=iter_num(ref_id=1,state=active,depth=0) refs=1\n\
+         6: R6=fp-24\n\
+         6: (79) r7 = *(u64 *)(r6 +0)\n\
+         invalid verifier frobnication\n",
+        &["-", "--format", "json", "--fail-on-unsupported"],
+    );
+    assert!(unknown_terminal_iterator_storage_read.status.success());
+    assert!(unknown_terminal_iterator_storage_read.stderr.is_empty());
+    let unknown_terminal_iterator_storage_read: Value =
+        serde_json::from_slice(&unknown_terminal_iterator_storage_read.stdout)
+            .expect("bpfix should emit JSON");
+    assert_eq!(
+        unknown_terminal_iterator_storage_read["error_id"],
+        "BPFIX-E014"
+    );
+    assert_eq!(
+        unknown_terminal_iterator_storage_read["diagnostic_kind"],
+        "supported"
+    );
+    assert!(evidence_contains(
+        &unknown_terminal_iterator_storage_read,
+        "verifier_state_signal",
+        "stack slot contains iterator state"
+    ));
+
+    let ordinary_stack_read_unknown_terminal = run_stdin_output(
+        "func#0 @0\n\
+         0: R1=ctx() R10=fp0\n\
+         5: R6=fp-24 fp-24_w=0\n\
+         6: (79) r7 = *(u64 *)(r6 +0)\n\
+         invalid verifier frobnication\n",
+        &["-", "--format", "json", "--fail-on-unsupported"],
+    );
+    assert_eq!(ordinary_stack_read_unknown_terminal.status.code(), Some(2));
+    assert!(ordinary_stack_read_unknown_terminal.stderr.is_empty());
+    let ordinary_stack_read_unknown_terminal: Value =
+        serde_json::from_slice(&ordinary_stack_read_unknown_terminal.stdout)
+            .expect("bpfix should emit JSON");
+    assert_eq!(
+        ordinary_stack_read_unknown_terminal["diagnostic_kind"],
+        "unsupported_verifier_message"
+    );
+    assert!(!evidence_contains(
+        &ordinary_stack_read_unknown_terminal,
+        "verifier_state_signal",
+        "stack slot contains iterator state"
+    ));
+
+    let iterator_storage_store_unknown_terminal = run_stdin_output(
+        "func#0 @0\n\
+         0: R1=ctx() R10=fp0\n\
+         5: (85) call bpf_iter_num_new#71887 ; R0_w=scalar() fp-24_w=iter_num(ref_id=1,state=active,depth=0) refs=1\n\
+         6: R6=fp-24 R1=0\n\
+         6: (7b) *(u64 *)(r6 +0) = r1\n\
+         invalid verifier frobnication\n",
+        &["-", "--format", "json", "--fail-on-unsupported"],
+    );
+    assert_eq!(
+        iterator_storage_store_unknown_terminal.status.code(),
+        Some(2)
+    );
+    assert!(iterator_storage_store_unknown_terminal.stderr.is_empty());
+    let iterator_storage_store_unknown_terminal: Value =
+        serde_json::from_slice(&iterator_storage_store_unknown_terminal.stdout)
+            .expect("bpfix should emit JSON");
+    assert_eq!(
+        iterator_storage_store_unknown_terminal["diagnostic_kind"],
+        "unsupported_verifier_message"
+    );
+    assert!(!evidence_contains(
+        &iterator_storage_store_unknown_terminal,
+        "verifier_state_signal",
+        "stack slot contains iterator state"
+    ));
+
+    let iterator_storage_store_write_terminal = run_json_stdin(
+        "func#0 @0\n\
+         0: R1=ctx() R10=fp0\n\
+         5: (85) call bpf_iter_num_new#71887 ; R0_w=scalar() fp-24_w=iter_num(ref_id=1,state=active,depth=0) refs=1\n\
+         6: R6=fp-24 R1=0\n\
+         6: (7b) *(u64 *)(r6 +0) = r1\n\
+         invalid write to stack off -24+0 size 8\n",
+    );
+    assert_ne!(
+        iterator_storage_store_write_terminal["error_id"],
+        "BPFIX-E014"
+    );
+    assert!(!evidence_contains(
+        &iterator_storage_store_write_terminal,
+        "verifier_state_signal",
+        "stack slot contains iterator state"
+    ));
 }
 
 #[test]
