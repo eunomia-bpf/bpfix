@@ -3870,7 +3870,7 @@ fn iterator_helper_argument_state_mismatch(context: &ProofSignalContext<'_>) -> 
         .terminal_line
         .map(|line| verifier_fragment_start_line(context.log, line))
         .unwrap_or_else(|| verifier_fragment_start_line(context.log, instruction.line));
-    let Some(arg) = latest_reg_state_for_call_argument(
+    let Some((arg, arg_frame)) = latest_reg_state_for_call_argument_with_frame(
         context.states,
         instruction,
         fragment_start,
@@ -3890,8 +3890,21 @@ fn iterator_helper_argument_state_mismatch(context: &ProofSignalContext<'_>) -> 
             if arg.reg_type != "fp" {
                 return true;
             }
-            iterator_stack_slot_state(context, arg)
-                .is_some_and(|state| state == IteratorStackSlotState::OrdinaryBytes)
+            match iterator_live_stack_slot_state(
+                context,
+                instruction,
+                fragment_start,
+                arg,
+                arg_frame,
+            ) {
+                Some(IteratorLiveStackSlotState::LiveIterator) => false,
+                Some(IteratorLiveStackSlotState::OrdinaryBytes) => true,
+                Some(IteratorLiveStackSlotState::ConsumedIterator) => context
+                    .terminal_error
+                    .to_ascii_lowercase()
+                    .contains("expected an initialized iter"),
+                None => false,
+            }
         }
     }
 }
@@ -3915,6 +3928,13 @@ enum IteratorStackSlotState {
     OrdinaryBytes,
 }
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum IteratorLiveStackSlotState {
+    LiveIterator,
+    ConsumedIterator,
+    OrdinaryBytes,
+}
+
 fn iterator_stack_slot_state(
     context: &ProofSignalContext<'_>,
     arg: &RegState,
@@ -3931,6 +3951,62 @@ fn iterator_stack_slot_state(
             IteratorStackSlotState::OrdinaryBytes
         }
     })
+}
+
+fn iterator_live_stack_slot_state(
+    context: &ProofSignalContext<'_>,
+    instruction: TerminalInstruction<'_>,
+    fragment_start: usize,
+    arg: &RegState,
+    arg_frame: usize,
+) -> Option<IteratorLiveStackSlotState> {
+    let offset = i16::try_from(arg.offset?).ok()?;
+    let access = stack_value_range(offset, 8)?;
+    let current_state =
+        latest_verifier_state_before_instruction(context.states, instruction, fragment_start);
+    for state in context
+        .states
+        .iter()
+        .filter(|state| state.log_line >= fragment_start)
+        .filter(|state| state.log_line < instruction.line)
+        .filter(|state| state.pc <= instruction.pc)
+        .filter(|state| state.frame == arg_frame)
+        .rev()
+    {
+        let mut saw_overlap = false;
+        for (slot_offset, stack) in &state.stack {
+            let is_iterator = stack
+                .value
+                .as_ref()
+                .is_some_and(|value| value.reg_type.starts_with("iter_"));
+            let Some(range) = stack_value_range(*slot_offset, 8) else {
+                continue;
+            };
+            if !range.overlaps(access) {
+                continue;
+            }
+            saw_overlap = true;
+            if !is_iterator {
+                continue;
+            }
+            let live = stack
+                .value
+                .as_ref()
+                .and_then(|value| value.ref_id)
+                .is_some_and(|ref_id| {
+                    current_state.is_some_and(|state| state.ref_ids.contains(&ref_id))
+                });
+            return Some(if live {
+                IteratorLiveStackSlotState::LiveIterator
+            } else {
+                IteratorLiveStackSlotState::ConsumedIterator
+            });
+        }
+        if saw_overlap {
+            return Some(IteratorLiveStackSlotState::OrdinaryBytes);
+        }
+    }
+    None
 }
 
 #[derive(Clone, Copy)]

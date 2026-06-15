@@ -4551,6 +4551,73 @@ fn iterator_state_storage_reports_protocol_violation() {
         "iterator helper receives an argument"
     ));
 
+    let iterator_double_destroy =
+        run_json("bpfix-bench/cases/kernel-selftest-iters-state-safety-double-destroy-fail-raw-tp-224283ff/replay-verifier.log");
+    assert_eq!(iterator_double_destroy["error_id"], "BPFIX-E014");
+    assert!(evidence_contains(
+        &iterator_double_destroy,
+        "verifier_state_signal",
+        "iterator helper receives an argument"
+    ));
+
+    let live_iterator_next_unknown_terminal = run_stdin_output(
+        "func#0 @0\n\
+         0: R1=ctx() R10=fp0\n\
+         5: (85) call bpf_iter_num_new#71887 ; R0_w=scalar() fp-8_w=iter_num(ref_id=1,state=active,depth=0) refs=1\n\
+         6: R1=fp-8 refs=1\n\
+         7: (85) call bpf_iter_num_next#71886\n\
+         invalid verifier frobnication\n",
+        &["-", "--format", "json", "--fail-on-unsupported"],
+    );
+    assert_eq!(live_iterator_next_unknown_terminal.status.code(), Some(2));
+    assert!(live_iterator_next_unknown_terminal.stderr.is_empty());
+    let live_iterator_next_unknown_terminal: Value =
+        serde_json::from_slice(&live_iterator_next_unknown_terminal.stdout)
+            .expect("bpfix should emit JSON");
+    assert_eq!(
+        live_iterator_next_unknown_terminal["diagnostic_kind"],
+        "unsupported_verifier_message"
+    );
+    assert!(!evidence_contains(
+        &live_iterator_next_unknown_terminal,
+        "verifier_state_signal",
+        "iterator helper receives an argument"
+    ));
+
+    let consumed_iterator_next = run_json_stdin(
+        "func#0 @0\n\
+         0: R1=ctx() R10=fp0\n\
+         5: (85) call bpf_iter_num_new#71887 ; R0_w=scalar() fp-8_w=iter_num(ref_id=1,state=active,depth=0) refs=1\n\
+         6: R1=fp-8 refs=1\n\
+         7: (85) call bpf_iter_num_destroy#71885\n\
+         8: R1=fp-8\n\
+         9: (85) call bpf_iter_num_next#71886\n\
+         expected an initialized iter_num as arg #0\n",
+    );
+    assert_eq!(consumed_iterator_next["error_id"], "BPFIX-E014");
+    assert!(evidence_contains(
+        &consumed_iterator_next,
+        "verifier_state_signal",
+        "iterator helper receives an argument"
+    ));
+
+    let cross_frame_consumed_iterator = run_json_stdin(
+        "func#0 @0\n\
+         func#1 @10\n\
+         0: (85) call bpf_iter_num_new#71887 ; R0_w=scalar() fp-8_w=iter_num(ref_id=1,state=active,depth=0) refs=1\n\
+         1: R1=fp-8 refs=1\n\
+         2: (85) call bpf_iter_num_destroy#71885\n\
+         10: frame1: R1=fp[0]-8 R10=fp0 cb\n\
+         11: (85) call bpf_iter_num_destroy#71885\n\
+         expected an initialized iter_num as arg #0\n",
+    );
+    assert_eq!(cross_frame_consumed_iterator["error_id"], "BPFIX-E014");
+    assert!(evidence_contains(
+        &cross_frame_consumed_iterator,
+        "verifier_state_signal",
+        "iterator helper receives an argument"
+    ));
+
     let unknown_terminal_iterator_storage_read = run_stdin_output(
         "func#0 @0\n\
          0: R1=ctx() R10=fp0\n\
@@ -4657,6 +4724,35 @@ fn iterator_state_storage_reports_protocol_violation() {
     );
     assert!(!evidence_contains(
         &ordinary_iterator_new_unknown_terminal,
+        "verifier_state_signal",
+        "iterator helper receives an argument"
+    ));
+
+    let consumed_iterator_destroy_unknown_terminal = run_stdin_output(
+        "func#0 @0\n\
+         0: R1=ctx() R10=fp0\n\
+         5: (85) call bpf_iter_num_new#71887 ; R0_w=scalar() fp-8_w=iter_num(ref_id=1,state=active,depth=0) refs=1\n\
+         6: R1=fp-8 refs=1\n\
+         7: (85) call bpf_iter_num_destroy#71885\n\
+         8: R1=fp-8\n\
+         9: (85) call bpf_iter_num_destroy#71885\n\
+         invalid verifier frobnication\n",
+        &["-", "--format", "json", "--fail-on-unsupported"],
+    );
+    assert_eq!(
+        consumed_iterator_destroy_unknown_terminal.status.code(),
+        Some(2)
+    );
+    assert!(consumed_iterator_destroy_unknown_terminal.stderr.is_empty());
+    let consumed_iterator_destroy_unknown_terminal: Value =
+        serde_json::from_slice(&consumed_iterator_destroy_unknown_terminal.stdout)
+            .expect("bpfix should emit JSON");
+    assert_eq!(
+        consumed_iterator_destroy_unknown_terminal["diagnostic_kind"],
+        "unsupported_verifier_message"
+    );
+    assert!(!evidence_contains(
+        &consumed_iterator_destroy_unknown_terminal,
         "verifier_state_signal",
         "iterator helper receives an argument"
     ));
