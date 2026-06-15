@@ -42,11 +42,11 @@ active_error_ids:
     summary: A scalar, helper length, or map-value offset range is not tight enough for the access.
 
   - error_id: BPFIX-E006
-    short_name: pointer_provenance_missing
+    short_name: pointer_or_stack_region_proof_missing
     failure_classes:
       - source_bug
       - lowering_artifact
-    summary: A verifier-recognized pointer type or provenance proof is missing at the use site.
+    summary: A verifier-recognized pointer/provenance proof, or a helper writable stack-region proof, is missing at the use site.
 
   - error_id: BPFIX-E007
     short_name: alignment_proof_missing

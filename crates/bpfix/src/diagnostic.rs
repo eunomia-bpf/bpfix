@@ -95,6 +95,7 @@ pub enum ProofSignal {
     MapLookupKeyArgumentUnreadable,
     UnreadableProgramEntryArgument,
     UnreadableHelperArgument,
+    HelperStackWriteBeyondFrame,
     PacketGuardUndercoversAccess,
     PacketMaxOffsetPrecisionBoundary,
     MapValueRelationPrecisionBoundary,
@@ -195,6 +196,9 @@ impl ProofSignal {
             }
             Self::UnreadableHelperArgument => {
                 "helper argument register is unreadable at the call site"
+            }
+            Self::HelperStackWriteBeyondFrame => {
+                "helper writable stack region crosses the verifier stack frame"
             }
             Self::MapValueGuardExceedsValueSize => {
                 "map-value index guard exceeds the map value size"
@@ -365,6 +369,9 @@ impl ProofSignal {
             Self::UnreadableHelperArgument => {
                 "the rejected helper call consumes an argument register that has no verifier-readable state at the call site"
             }
+            Self::HelperStackWriteBeyondFrame => {
+                "verifier state shows the helper receives a frame-pointer stack region whose byte range extends beyond the BPF stack frame"
+            }
             Self::PacketGuardUndercoversAccess => {
                 "source has a packet bounds check, but verifier state after that check proves only a shorter packet range than the rejected access needs"
             }
@@ -508,6 +515,9 @@ impl ProofSignal {
             Self::UnreadableHelperArgument => {
                 "Set the helper argument register to a verifier-readable value immediately before the helper call, or remove the helper path that reaches the call without that argument."
             }
+            Self::HelperStackWriteBeyondFrame => {
+                "Move large scratch buffers to a per-CPU map, shrink the stack object, or pass a smaller helper length so the writable region stays inside the 512-byte BPF stack frame."
+            }
             Self::PacketGuardUndercoversAccess => {
                 "Move the data_end check to the final pointer expression and include the access width, for example check pointer + size before dereferencing pointer."
             }
@@ -587,6 +597,7 @@ impl ProofSignal {
                 | Self::MapLookupKeyArgumentUnreadable
                 | Self::UnreadableProgramEntryArgument
                 | Self::UnreadableHelperArgument
+                | Self::HelperStackWriteBeyondFrame
                 | Self::MapValueGuardExceedsValueSize
                 | Self::ScalarRangeUnsafeAtUse
                 | Self::PacketAccessWithoutBoundsProof
@@ -684,6 +695,7 @@ impl ProofSignal {
                 | Self::MapLookupKeyArgumentUnreadable
                 | Self::UnreadableProgramEntryArgument
                 | Self::UnreadableHelperArgument
+                | Self::HelperStackWriteBeyondFrame
         )
     }
 
@@ -763,6 +775,9 @@ impl ProofSignal {
             ),
             Self::UnreadableHelperArgument => Some(
                 "set the rejected helper argument register to a verifier-readable value on every path before the helper call",
+            ),
+            Self::HelperStackWriteBeyondFrame => Some(
+                "keep the helper writable stack range fully inside the current BPF stack frame, whose valid byte offsets are -512..0",
             ),
             Self::ContextFieldUnavailable => Some(
                 "access only context offsets and field widths exposed by the active BPF program type and attach point",
@@ -854,6 +869,9 @@ impl ProofSignal {
             Self::UnreadableHelperArgument => {
                 Some("this helper argument register is not readable at the call")
             }
+            Self::HelperStackWriteBeyondFrame => {
+                Some("this helper write crosses the verifier stack frame boundary")
+            }
             Self::ContextFieldUnavailable => {
                 Some("context access uses an unavailable offset or field width")
             }
@@ -894,6 +912,7 @@ impl ProofSignal {
             Self::ExceptionCallbackProtocolViolation => Some("BPFIX-E013"),
             Self::UnreadableProgramEntryArgument => Some("BPFIX-E011"),
             Self::UnreadableHelperArgument => Some("BPFIX-E010"),
+            Self::HelperStackWriteBeyondFrame => Some("BPFIX-E006"),
             _ => None,
         }
     }
@@ -1826,6 +1845,9 @@ fn proof_signals(context: ProofSignalContext<'_>) -> Vec<ProofSignal> {
     if unreadable_helper_argument(&context) {
         signals.push(ProofSignal::UnreadableHelperArgument);
     }
+    if helper_stack_write_beyond_frame(&context) {
+        signals.push(ProofSignal::HelperStackWriteBeyondFrame);
+    }
     if dynptr_stack_slot_write_overlap(&context) {
         signals.push(ProofSignal::DynptrStackSlotWriteOverlap);
     }
@@ -2670,6 +2692,91 @@ fn looks_like_multi_argument_bpf_entry(text: &str) -> bool {
         || trimmed.contains("BPF_PROG(")
         || trimmed.contains("BPF_KPROBE(");
     looks_like_function && trimmed.contains('(') && trimmed.contains(',')
+}
+
+fn helper_stack_write_beyond_frame(context: &ProofSignalContext<'_>) -> bool {
+    if context.obligation != ProofObligation::StackInitialized {
+        return false;
+    }
+    let Some(access) = stack_write_access_range(context.terminal_error) else {
+        return false;
+    };
+    if bpf_stack_frame_contains(access) {
+        return false;
+    }
+    let Some(reg) = context.register else {
+        return false;
+    };
+    let Some(instruction) =
+        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)
+    else {
+        return false;
+    };
+    let Some(target) = call_target_from_instruction_tail(instruction.tail) else {
+        return false;
+    };
+    let Some((write_reg, len_reg)) = helper_writable_stack_signature(target) else {
+        return false;
+    };
+    if reg != write_reg {
+        return false;
+    }
+    let fragment_start = context
+        .terminal_line
+        .map(|line| verifier_fragment_start_line(context.log, line))
+        .unwrap_or(1);
+    let Some(arg) =
+        latest_reg_state_before_instruction(context.states, instruction, fragment_start, reg)
+    else {
+        return false;
+    };
+    if arg.reg_type != "fp" || arg.offset != Some(i32::from(access.start)) {
+        return false;
+    }
+    helper_write_size_argument_matches(context, instruction, fragment_start, len_reg, access)
+}
+
+fn helper_writable_stack_signature(target: &str) -> Option<(u8, u8)> {
+    match target {
+        "bpf_get_current_comm" => Some((1, 2)),
+        _ => None,
+    }
+}
+
+fn helper_write_size_argument_matches(
+    context: &ProofSignalContext<'_>,
+    instruction: TerminalInstruction<'_>,
+    fragment_start: usize,
+    len_reg: u8,
+    access: StackByteRange,
+) -> bool {
+    let Some(size_arg) =
+        latest_reg_state_before_instruction(context.states, instruction, fragment_start, len_reg)
+    else {
+        return false;
+    };
+    size_arg.exact_u64() == Some(access.len() as u64)
+        || size_arg.exact_u32() == Some(access.len() as u32)
+}
+
+fn stack_write_access_range(message: &str) -> Option<StackByteRange> {
+    message
+        .to_ascii_lowercase()
+        .contains("invalid write to stack")
+        .then(|| {
+            let offset = parse_signed_i16_after(message, "off=")
+                .or_else(|| parse_signed_i16_after(message, "off "))?;
+            let size = parse_signed_i16_after(message, "size=")
+                .or_else(|| parse_signed_i16_after(message, "size "))?;
+            let end = offset.checked_add(size)?;
+            Some(StackByteRange { start: offset, end })
+        })
+        .flatten()
+}
+
+fn bpf_stack_frame_contains(access: StackByteRange) -> bool {
+    const BPF_STACK_MIN_OFFSET: i16 = -512;
+    BPF_STACK_MIN_OFFSET <= access.start && access.end <= 0
 }
 
 fn dynptr_stack_storage_access(context: &ProofSignalContext<'_>) -> bool {
@@ -3997,6 +4104,10 @@ impl StackByteRange {
 
     fn contains_range(self, other: Self) -> bool {
         self.start <= other.start && other.end <= self.end
+    }
+
+    fn len(self) -> i16 {
+        self.end.saturating_sub(self.start)
     }
 }
 
@@ -6415,6 +6526,140 @@ R2 !read_ok
         assert!(!analysis
             .signals
             .contains(&ProofSignal::UnreadableHelperArgument));
+    }
+
+    #[test]
+    fn helper_stack_write_beyond_frame_is_a_source_state_signal() {
+        let log = include_str!(
+            "../../../bpfix-bench/cases/github-commit-cilium-31a01b994f8b/replay-verifier.log"
+        );
+        let analysis = analyze_verifier_log(
+            log,
+            Some(3),
+            None,
+            "invalid write to stack R1 off=-600 size=600",
+            Some("bpf_get_current_comm"),
+            ProofObligation::StackInitialized,
+        )
+        .unwrap();
+
+        assert!(analysis
+            .signals
+            .contains(&ProofSignal::HelperStackWriteBeyondFrame));
+    }
+
+    #[test]
+    fn helper_stack_write_inside_frame_is_not_beyond_frame_signal() {
+        let log = "\
+0: R1=ctx() R10=fp0
+1: R1_w=fp-16 R2_w=16 R10=fp0
+1: (85) call bpf_get_current_comm#16
+invalid write to stack R1 off=-16 size=16
+";
+        let analysis = analyze_verifier_log(
+            log,
+            Some(1),
+            None,
+            "invalid write to stack R1 off=-16 size=16",
+            Some("bpf_get_current_comm"),
+            ProofObligation::StackInitialized,
+        )
+        .unwrap();
+
+        assert!(!analysis
+            .signals
+            .contains(&ProofSignal::HelperStackWriteBeyondFrame));
+    }
+
+    #[test]
+    fn ordinary_stack_store_is_not_helper_stack_write_signal() {
+        let log = "\
+0: R1=fp-600 R2=scalar(id=1) R10=fp0
+0: (7b) *(u64 *)(r1 +0) = r2
+invalid write to stack R1 off=-600 size=8
+";
+        let analysis = analyze_verifier_log(
+            log,
+            Some(0),
+            None,
+            "invalid write to stack R1 off=-600 size=8",
+            None,
+            ProofObligation::StackInitialized,
+        )
+        .unwrap();
+
+        assert!(!analysis
+            .signals
+            .contains(&ProofSignal::HelperStackWriteBeyondFrame));
+    }
+
+    #[test]
+    fn helper_stack_write_requires_modeled_helper_signature() {
+        let log = "\
+0: R1=ctx() R10=fp0
+1: R1_w=fp-600 R2_w=600 R10=fp0
+1: (85) call bpf_probe_read_kernel#113
+invalid write to stack R1 off=-600 size=600
+";
+        let analysis = analyze_verifier_log(
+            log,
+            Some(1),
+            None,
+            "invalid write to stack R1 off=-600 size=600",
+            Some("bpf_probe_read_kernel"),
+            ProofObligation::StackInitialized,
+        )
+        .unwrap();
+
+        assert!(!analysis
+            .signals
+            .contains(&ProofSignal::HelperStackWriteBeyondFrame));
+    }
+
+    #[test]
+    fn helper_stack_write_requires_matching_length_state() {
+        let log = "\
+0: R1=ctx() R10=fp0
+1: R1_w=fp-600 R2_w=16 R10=fp0
+1: (85) call bpf_get_current_comm#16
+invalid write to stack R1 off=-600 size=600
+";
+        let analysis = analyze_verifier_log(
+            log,
+            Some(1),
+            None,
+            "invalid write to stack R1 off=-600 size=600",
+            Some("bpf_get_current_comm"),
+            ProofObligation::StackInitialized,
+        )
+        .unwrap();
+
+        assert!(!analysis
+            .signals
+            .contains(&ProofSignal::HelperStackWriteBeyondFrame));
+    }
+
+    #[test]
+    fn helper_stack_write_requires_matching_frame_pointer_offset() {
+        let log = "\
+0: R1=ctx() R10=fp0
+1: R1_w=fp-608 R2_w=600 R10=fp0
+1: (85) call bpf_get_current_comm#16
+invalid write to stack R1 off=-600 size=600
+";
+        let analysis = analyze_verifier_log(
+            log,
+            Some(1),
+            None,
+            "invalid write to stack R1 off=-600 size=600",
+            Some("bpf_get_current_comm"),
+            ProofObligation::StackInitialized,
+        )
+        .unwrap();
+
+        assert!(!analysis
+            .signals
+            .contains(&ProofSignal::HelperStackWriteBeyondFrame));
     }
 
     #[test]

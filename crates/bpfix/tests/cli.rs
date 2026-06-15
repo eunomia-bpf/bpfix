@@ -1392,6 +1392,32 @@ fn unreadable_program_argument_overrides_stack_readability_classifier() {
 }
 
 #[test]
+fn helper_stack_write_beyond_frame_overrides_stack_initialization_classifier() {
+    let oversized_stack =
+        run_json("bpfix-bench/cases/github-commit-cilium-31a01b994f8b/replay-verifier.log");
+    assert_eq!(oversized_stack["error_id"], "BPFIX-E006");
+    assert_eq!(oversized_stack["failure_class"], "source_bug");
+    assert!(evidence_contains(
+        &oversized_stack,
+        "verifier_state_signal",
+        "frame-pointer stack region"
+    ));
+    assert!(oversized_stack["required_proof"]
+        .as_str()
+        .unwrap()
+        .contains("-512..0"));
+    let help = oversized_stack["help"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|item| item.as_str())
+        .collect::<Vec<_>>()
+        .join("\n");
+    assert!(help.contains("per-CPU map"));
+    assert!(!help.contains("Initialize the full stack object"));
+}
+
+#[test]
 fn unavailable_context_field_requires_ctx_state_and_matching_access_shape() {
     let scalar_base = run_json_stdin(
         "func#0 @0\n\
