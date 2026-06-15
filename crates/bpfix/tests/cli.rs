@@ -296,6 +296,70 @@ fn lowering_artifact_shapes_are_classified_from_verifier_evidence() {
         .as_str()
         .unwrap()
         .contains("verifier-visible compiler lowering"));
+    assert!(stack_alignment["evidence"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|evidence| {
+            evidence["kind"] == "lowering_artifact_signal"
+                && evidence["detail"]
+                    .as_str()
+                    .unwrap()
+                    .contains("stack access requires stronger alignment")
+        }));
+
+    let unproven_alignment_artifact = run_json_stdin(
+        "\
+0: R1=ctx() R10=fp0
+10: R1=ctx() R10=fp0
+10: (79) r1 = *(u64 *)(r1 +4)
+misaligned stack access off 0+-16+4 size 8
+processed 11 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0 mark_read 0
+",
+    );
+    assert_eq!(unproven_alignment_artifact["error_id"], "BPFIX-E007");
+    assert_eq!(unproven_alignment_artifact["failure_class"], "source_bug");
+    assert!(!unproven_alignment_artifact["evidence"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|evidence| evidence["kind"] == "lowering_artifact_signal"));
+
+    let stale_alignment_state = run_json_stdin(
+        "\
+9: (07) r1 += -16                     ; R1_w=fp-16
+10: (79) r1 = *(u64 *)(r1 +4)
+misaligned stack access off 0+-16+4 size 8
+10: (79) r1 = *(u64 *)(r1 +4)
+misaligned stack access off 0+-16+4 size 8
+processed 12 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0 mark_read 0
+",
+    );
+    assert_eq!(stale_alignment_state["error_id"], "BPFIX-E007");
+    assert_eq!(stale_alignment_state["failure_class"], "source_bug");
+    assert!(!stale_alignment_state["evidence"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|evidence| evidence["kind"] == "lowering_artifact_signal"));
+
+    let stale_alignment_opcode = run_json_stdin(
+        "\
+9: (07) r1 += -16                     ; R1_w=fp-16
+10: (79) r1 = *(u64 *)(r1 +4)
+misaligned stack access off 0+-16+4 size 8
+processed 11 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0 mark_read 0
+misaligned stack access off 0+-16+4 size 8
+",
+    );
+    assert_eq!(stale_alignment_opcode["error_id"], "BPFIX-E007");
+    assert!(stale_alignment_opcode["source_span"]["instruction_pc"].is_null());
+    assert_eq!(stale_alignment_opcode["failure_class"], "source_bug");
+    assert!(!stale_alignment_opcode["evidence"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|evidence| evidence["kind"] == "lowering_artifact_signal"));
 
     let pointer_merge =
         run_json("bpfix-bench/cases/github-commit-cilium-4dc7d8047caf/replay-verifier.log");

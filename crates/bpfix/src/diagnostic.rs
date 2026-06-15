@@ -5,6 +5,7 @@ use bpfanalysis::{
 };
 
 use crate::family::ProofObligation;
+use crate::input::is_verifier_error_line;
 use crate::proof::{
     instantiate_required_proof, packet_required_range, verifier_value_summary, RequiredProof,
 };
@@ -1198,8 +1199,18 @@ struct ProofSignalContext<'a> {
     events: &'a [ProofEvent],
 }
 
+#[derive(Clone, Copy)]
+struct TerminalInstruction<'a> {
+    pc: usize,
+    line: usize,
+    tail: &'a str,
+}
+
 fn proof_signals(context: ProofSignalContext<'_>) -> Vec<ProofSignal> {
     let mut signals = Vec::new();
+    if stack_alignment_lowering_signal(&context) {
+        signals.push(ProofSignal::WideStackAlignment);
+    }
     if let Some(signal) = terminal_lowering_signal(context.terminal_error) {
         signals.push(signal);
     }
@@ -1630,7 +1641,8 @@ fn terminal_instruction_access_width(
     terminal_pc: Option<usize>,
     terminal_line: Option<usize>,
 ) -> Option<u32> {
-    terminal_instruction_tail(log, terminal_pc, terminal_line).and_then(memory_access_width)
+    terminal_instruction_site(log, terminal_pc, terminal_line)
+        .and_then(|instruction| memory_access_width(instruction.tail))
 }
 
 fn terminal_instruction_memory_offset(
@@ -1638,7 +1650,8 @@ fn terminal_instruction_memory_offset(
     terminal_pc: Option<usize>,
     terminal_line: Option<usize>,
 ) -> Option<i64> {
-    terminal_instruction_tail(log, terminal_pc, terminal_line).and_then(memory_access_offset)
+    terminal_instruction_site(log, terminal_pc, terminal_line)
+        .and_then(|instruction| memory_access_offset(instruction.tail))
 }
 
 fn terminal_instruction_contains(
@@ -1647,22 +1660,39 @@ fn terminal_instruction_contains(
     terminal_line: Option<usize>,
     needle: &str,
 ) -> bool {
-    terminal_instruction_tail(log, terminal_pc, terminal_line)
-        .is_some_and(|tail| tail.contains(needle))
+    terminal_instruction_site(log, terminal_pc, terminal_line)
+        .is_some_and(|instruction| instruction.tail.contains(needle))
 }
 
-fn terminal_instruction_tail(
+fn terminal_instruction_site(
     log: &str,
     terminal_pc: Option<usize>,
     terminal_line: Option<usize>,
-) -> Option<&str> {
+) -> Option<TerminalInstruction<'_>> {
     let pc = terminal_pc?;
-    log.lines()
+    let lines = log.lines().collect::<Vec<_>>();
+    let end = terminal_line
+        .map(|line| line.saturating_sub(1))
+        .unwrap_or(lines.len())
+        .min(lines.len());
+    let start = terminal_line
+        .map(|line| verifier_fragment_start_line(log, line))
+        .unwrap_or(1)
+        .saturating_sub(1)
+        .min(end);
+    lines[start..end]
+        .iter()
         .enumerate()
-        .filter(|(idx, _)| terminal_line.is_none_or(|terminal_line| *idx + 1 < terminal_line))
-        .filter_map(|(_, line)| {
+        .filter_map(|(offset, line)| {
+            let line_number = start + offset + 1;
             let (line_pc, tail) = instruction_pc_tail(line.trim())?;
-            (line_pc == pc && looks_like_bpf_instruction_tail(tail)).then_some(tail)
+            (line_pc == pc && looks_like_bpf_instruction_tail(tail)).then_some(
+                TerminalInstruction {
+                    pc: line_pc,
+                    line: line_number,
+                    tail,
+                },
+            )
         })
         .last()
 }
@@ -1682,8 +1712,8 @@ fn terminal_call_target(
     terminal_pc: Option<usize>,
     terminal_line: Option<usize>,
 ) -> Option<&str> {
-    terminal_instruction_tail(log, terminal_pc, terminal_line)
-        .and_then(call_target_from_instruction_tail)
+    terminal_instruction_site(log, terminal_pc, terminal_line)
+        .and_then(|instruction| call_target_from_instruction_tail(instruction.tail))
 }
 
 fn call_target_from_instruction_tail(line: &str) -> Option<&str> {
@@ -1714,6 +1744,76 @@ fn terminal_error_has_nearby_prior_line(
     })
 }
 
+fn stack_alignment_lowering_signal(context: &ProofSignalContext<'_>) -> bool {
+    if context.obligation != ProofObligation::Alignment {
+        return false;
+    }
+    let Some(reported_size) = misaligned_stack_access_size(context.terminal_error) else {
+        return false;
+    };
+    if reported_size == 0 {
+        return false;
+    }
+    let Some(instruction) =
+        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)
+    else {
+        return false;
+    };
+    if memory_access_width(instruction.tail) != Some(reported_size) {
+        return false;
+    }
+    let Some(base_reg) = memory_access_base_register(instruction.tail) else {
+        return false;
+    };
+    let Some(access_offset) = memory_access_offset(instruction.tail) else {
+        return false;
+    };
+    let fragment_start = context
+        .terminal_line
+        .map(|line| verifier_fragment_start_line(context.log, line))
+        .unwrap_or_else(|| verifier_fragment_start_line(context.log, instruction.line));
+    let Some(base_state) =
+        latest_reg_state_before_instruction(context.states, instruction, fragment_start, base_reg)
+    else {
+        return false;
+    };
+    if base_state.reg_type != "fp" {
+        return false;
+    }
+    let total_offset = i64::from(base_state.offset.unwrap_or(0)).saturating_add(access_offset);
+    total_offset.rem_euclid(i64::from(reported_size)) != 0
+}
+
+fn verifier_fragment_start_line(log: &str, before_line: usize) -> usize {
+    let lines = log.lines().collect::<Vec<_>>();
+    let end = before_line.saturating_sub(1).min(lines.len());
+    lines[..end]
+        .iter()
+        .enumerate()
+        .rev()
+        .find_map(|(idx, line)| {
+            is_verifier_fragment_boundary(line.trim()).then_some(idx.saturating_add(2))
+        })
+        .unwrap_or(1)
+}
+
+fn is_verifier_fragment_boundary(line: &str) -> bool {
+    line.starts_with("func#")
+        || line.contains("-- BEGIN PROG LOAD LOG --")
+        || line.contains("-- END PROG LOAD LOG --")
+        || line.starts_with("processed ")
+        || line.starts_with("verification time ")
+        || line.starts_with("stack depth ")
+        || (instruction_pc_tail(line).is_none() && is_verifier_error_line(line))
+}
+
+fn misaligned_stack_access_size(message: &str) -> Option<u32> {
+    message
+        .contains("misaligned stack access")
+        .then(|| parse_u32_after(message, "size ").or_else(|| parse_u32_after(message, "size=")))
+        .flatten()
+}
+
 fn memory_access_width(line_after_pc: &str) -> Option<u32> {
     let marker = "*(u";
     let start = line_after_pc.find(marker)? + marker.len();
@@ -1732,8 +1832,7 @@ fn memory_access_width(line_after_pc: &str) -> Option<u32> {
 }
 
 fn memory_access_offset(line_after_pc: &str) -> Option<i64> {
-    let (_, after_marker) = line_after_pc.split_once("*)(")?;
-    let operand = after_marker.split_once(')')?.0.trim();
+    let operand = memory_access_operand(line_after_pc)?;
     if let Some((_, offset)) = operand.rsplit_once('+') {
         return parse_signed_decimal(offset);
     }
@@ -1741,6 +1840,17 @@ fn memory_access_offset(line_after_pc: &str) -> Option<i64> {
         return parse_signed_decimal(offset).map(|value| -value);
     }
     register_operands(operand).first().map(|_| 0)
+}
+
+fn memory_access_base_register(line_after_pc: &str) -> Option<u8> {
+    register_operands(memory_access_operand(line_after_pc)?)
+        .first()
+        .copied()
+}
+
+fn memory_access_operand(line_after_pc: &str) -> Option<&str> {
+    let (_, after_marker) = line_after_pc.split_once("*)(")?;
+    Some(after_marker.split_once(')')?.0.trim())
 }
 
 fn parse_signed_decimal(text: &str) -> Option<i64> {
@@ -1789,6 +1899,22 @@ fn latest_reg_state_before(
         .next()
 }
 
+fn latest_reg_state_before_instruction<'a>(
+    states: &'a [VerifierInsn],
+    instruction: TerminalInstruction<'_>,
+    fragment_start_line: usize,
+    reg: u8,
+) -> Option<&'a RegState> {
+    states
+        .iter()
+        .filter(|state| state.log_line >= fragment_start_line)
+        .filter(|state| state.log_line < instruction.line)
+        .filter(|state| state.pc <= instruction.pc)
+        .rev()
+        .filter_map(|state| state.regs.get(&reg))
+        .next()
+}
+
 fn latest_verifier_state_before(
     states: &[VerifierInsn],
     terminal_pc: Option<usize>,
@@ -1803,9 +1929,7 @@ fn latest_verifier_state_before(
 
 fn terminal_lowering_signal(message: &str) -> Option<ProofSignal> {
     let message = message.to_ascii_lowercase();
-    if message.contains("misaligned stack access") {
-        Some(ProofSignal::WideStackAlignment)
-    } else if message.contains("same insn cannot be used with different pointers") {
+    if message.contains("same insn cannot be used with different pointers") {
         Some(ProofSignal::SharedInstructionPointerMerge)
     } else if message.contains("pointer arithmetic with <<=") {
         Some(ProofSignal::PointerShiftDropsProvenance)

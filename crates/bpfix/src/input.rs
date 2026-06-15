@@ -270,16 +270,18 @@ pub(crate) fn find_terminal_error(log: &str) -> Option<TerminalError> {
         }
 
         let mut message = line.to_string();
+        let mut context_idx = idx;
         if idx > 0 {
             let previous = lines[idx - 1].trim();
             if is_verifier_error_line(previous) && !previous.starts_with("libbpf:") {
                 message = format!("{previous}; {message}");
+                context_idx = idx - 1;
             }
         }
-        let pc = nearest_instruction_pc(&lines, idx);
-        let (source_path, source_line, source_text) = nearest_source_span(&lines, idx);
+        let pc = nearest_instruction_pc(&lines, context_idx);
+        let (source_path, source_line, source_text) = nearest_source_span(&lines, context_idx);
         return Some(TerminalError {
-            line: idx + 1,
+            line: context_idx + 1,
             message,
             pc,
             source_path,
@@ -290,7 +292,7 @@ pub(crate) fn find_terminal_error(log: &str) -> Option<TerminalError> {
     None
 }
 
-fn is_verifier_error_line(line: &str) -> bool {
+pub(crate) fn is_verifier_error_line(line: &str) -> bool {
     if line.is_empty()
         || line.starts_with("libbpf:")
         || line.starts_with("Error:")
@@ -329,6 +331,9 @@ fn nearest_instruction_pc(lines: &[&str], mut idx: usize) -> Option<usize> {
         if idx == 0 {
             return None;
         }
+        if is_backward_search_boundary(lines[idx - 1].trim()) {
+            return None;
+        }
         idx -= 1;
     }
 }
@@ -344,6 +349,19 @@ fn nearest_source_span(
         if idx == 0 {
             return (None, None, None);
         }
+        if is_backward_search_boundary(lines[idx - 1].trim()) {
+            return (None, None, None);
+        }
         idx -= 1;
     }
+}
+
+fn is_backward_search_boundary(line: &str) -> bool {
+    line.starts_with("func#")
+        || line.contains("-- BEGIN PROG LOAD LOG --")
+        || line.contains("-- END PROG LOAD LOG --")
+        || line.starts_with("processed ")
+        || line.starts_with("verification time ")
+        || line.starts_with("stack depth ")
+        || (parse_instruction_pc(line).is_none() && is_verifier_error_line(line))
 }
