@@ -544,7 +544,6 @@ fn context_implies_dynptr_safety(message: &str, call_target: Option<&str>) -> bo
             || message.contains("reference type")
             || message.contains("expected an initialized")
             || message.contains("expected pointer to stack")
-            || message.contains("must be a known constant")
             || message.contains("does not allow writes to packet data"))
 }
 
@@ -599,10 +598,10 @@ mod tests {
     }
 
     #[test]
-    fn dynptr_call_context_classifies_mode_and_constant_rejects() {
+    fn dynptr_call_context_leaves_constant_rejects_to_proof_signals() {
         let constant =
             classify_with_context("R4 must be a known constant", Some("bpf_dynptr_slice_rdwr"));
-        assert_eq!(constant.error_id, "BPFIX-E012");
+        assert_eq!(constant.error_id, "BPFIX-E099");
 
         let write_mode = classify_with_context(
             "the prog does not allow writes to packet data",

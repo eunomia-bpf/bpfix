@@ -68,6 +68,7 @@ pub enum ProofSignal {
     MapValueGuardExceedsValueSize,
     MapPointerArgumentScalarZero,
     DynptrStackStorageAccess,
+    DynptrSliceVariableLength,
     TrustedNullableArgument,
     ContextAccessSourceArgumentMismatch,
     ExceptionThrowWithLiveReference,
@@ -97,6 +98,9 @@ impl ProofSignal {
             }
             Self::DynptrStackStorageAccess => {
                 "dynptr stack storage is being used as ordinary memory"
+            }
+            Self::DynptrSliceVariableLength => {
+                "dynptr slice length is not verifier-visible as a constant"
             }
             Self::TrustedNullableArgument => {
                 "trusted helper argument is still verifier-visible as nullable"
@@ -193,6 +197,9 @@ impl ProofSignal {
             Self::DynptrStackStorageAccess => {
                 "verifier state shows this stack slot contains dynptr state, but the rejected instruction reads it as ordinary stack bytes"
             }
+            Self::DynptrSliceVariableLength => {
+                "the rejected dynptr slice helper uses R4 as its length argument, but verifier state shows R4 is still a scalar range rather than a known constant"
+            }
             Self::TrustedNullableArgument => {
                 "verifier state shows the rejected helper or kfunc argument is still a nullable RCU/trusted pointer at the call site"
             }
@@ -267,6 +274,9 @@ impl ProofSignal {
             Self::DynptrStackStorageAccess => {
                 "Do not copy, read, or pass a dynptr object as ordinary bytes; use dynptr helpers to read data out of the dynptr and keep the dynptr object in its dedicated stack slot."
             }
+            Self::DynptrSliceVariableLength => {
+                "Use a constant dynptr slice length, or split runtime lengths into verifier-visible constant-size cases before calling the dynptr slice helper."
+            }
             Self::TrustedNullableArgument => {
                 "Keep the RCU or trusted-pointer argument inside the verifier-visible non-null branch, or acquire a trusted reference before passing it to the helper or kfunc."
             }
@@ -326,6 +336,7 @@ impl ProofSignal {
             self,
             Self::ContextAccessSourceArgumentMismatch
                 | Self::DynptrStackStorageAccess
+                | Self::DynptrSliceVariableLength
                 | Self::ExceptionThrowWithLiveReference
                 | Self::MapLookupKeyArgumentUnreadable
                 | Self::MapValueGuardExceedsValueSize
@@ -355,6 +366,7 @@ impl ProofSignal {
             self,
             Self::ContextAccessSourceArgumentMismatch
                 | Self::DynptrStackStorageAccess
+                | Self::DynptrSliceVariableLength
                 | Self::ExceptionThrowWithLiveReference
                 | Self::MapLookupKeyArgumentUnreadable
                 | Self::MapPointerArgumentScalarZero
@@ -371,6 +383,7 @@ impl ProofSignal {
             self,
             Self::MapPointerArgumentScalarZero
                 | Self::DynptrStackStorageAccess
+                | Self::DynptrSliceVariableLength
                 | Self::TrustedNullableArgument
                 | Self::ContextAccessSourceArgumentMismatch
                 | Self::ExceptionThrowWithLiveReference
@@ -385,6 +398,9 @@ impl ProofSignal {
             ),
             Self::DynptrStackStorageAccess => Some(
                 "keep the dynptr object in its verifier-tracked stack slot and use dynptr helpers instead of reading or copying the dynptr storage as ordinary bytes",
+            ),
+            Self::DynptrSliceVariableLength => Some(
+                "pass a verifier-known constant length to the dynptr slice helper",
             ),
             Self::TrustedNullableArgument => Some(
                 "prove the RCU/trusted pointer argument is non-null and trusted at the helper or kfunc call site",
@@ -410,6 +426,9 @@ impl ProofSignal {
             Self::DynptrStackStorageAccess => {
                 Some("dynptr stack storage is read as ordinary memory")
             }
+            Self::DynptrSliceVariableLength => {
+                Some("dynptr slice length argument is not a known constant")
+            }
             Self::TrustedNullableArgument => {
                 Some("trusted helper argument remains nullable at the call site")
             }
@@ -430,6 +449,7 @@ impl ProofSignal {
         match self {
             Self::MapPointerArgumentScalarZero => Some("BPFIX-E021"),
             Self::DynptrStackStorageAccess => Some("BPFIX-E012"),
+            Self::DynptrSliceVariableLength => Some("BPFIX-E012"),
             Self::TrustedNullableArgument => Some("BPFIX-E015"),
             Self::ExceptionThrowWithLiveReference => Some("BPFIX-E004"),
             _ => None,
@@ -1347,6 +1367,9 @@ fn proof_signals(context: ProofSignalContext<'_>) -> Vec<ProofSignal> {
     if dynptr_stack_storage_access(&context) {
         signals.push(ProofSignal::DynptrStackStorageAccess);
     }
+    if dynptr_slice_variable_length(&context) {
+        signals.push(ProofSignal::DynptrSliceVariableLength);
+    }
     if trusted_nullable_argument(&context) {
         signals.push(ProofSignal::TrustedNullableArgument);
     }
@@ -1601,6 +1624,34 @@ fn dynptr_stack_storage_access(context: &ProofSignalContext<'_>) -> bool {
         return false;
     };
     latest_dynptr_stack_overlap(context, access).unwrap_or(false)
+}
+
+fn dynptr_slice_variable_length(context: &ProofSignalContext<'_>) -> bool {
+    let Some(instruction) =
+        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)
+    else {
+        return false;
+    };
+    let Some(target) = call_target_from_instruction_tail(instruction.tail) else {
+        return false;
+    };
+    if !matches!(target, "bpf_dynptr_slice" | "bpf_dynptr_slice_rdwr") {
+        return false;
+    }
+    let fragment_start = context
+        .terminal_line
+        .map(|line| verifier_fragment_start_line(context.log, line))
+        .unwrap_or_else(|| verifier_fragment_start_line(context.log, instruction.line));
+    let Some(length) = latest_reg_state_for_call_argument(
+        context.states,
+        instruction,
+        fragment_start,
+        context.terminal_line,
+        4,
+    ) else {
+        return false;
+    };
+    length.reg_type == "scalar" && length.exact_value.is_none()
 }
 
 fn trusted_nullable_argument(context: &ProofSignalContext<'_>) -> bool {
@@ -3332,6 +3383,7 @@ mod tests {
         let replaceable = [
             ProofSignal::ContextAccessSourceArgumentMismatch,
             ProofSignal::DynptrStackStorageAccess,
+            ProofSignal::DynptrSliceVariableLength,
             ProofSignal::ExceptionThrowWithLiveReference,
             ProofSignal::MapLookupKeyArgumentUnreadable,
             ProofSignal::MapPointerArgumentScalarZero,

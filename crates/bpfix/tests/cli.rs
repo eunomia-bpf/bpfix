@@ -1960,6 +1960,102 @@ fn dynptr_protocol_diagnostic_uses_specific_required_proof() {
         .as_str()
         .unwrap()
         .contains("verifier-known constant length"));
+    assert!(evidence_contains(
+        &variable_slice_length,
+        "verifier_state_signal",
+        "R4 is still a scalar range"
+    ));
+
+    let variable_slice_length_with_unknown_terminal = run_stdin_output(
+        "\
+func#0 @0
+0: R1=ctx() R10=fp0
+10: (61) r4 = *(u32 *)(r1 +0)         ; R1_w=map_value(map=prog.data,ks=4,vs=4) R4_w=scalar(smin=0,smax=umax=0xffffffff,var_off=(0x0; 0xffffffff))
+12: (26) if w4 > 0xe goto pc+12       ; R4_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=14,var_off=(0x0; 0xf))
+18: (85) call bpf_dynptr_slice_rdwr#71568
+invalid verifier frobnication
+",
+        &["-", "--format", "json", "--fail-on-unsupported"],
+    );
+    assert!(variable_slice_length_with_unknown_terminal.status.success());
+    assert!(variable_slice_length_with_unknown_terminal
+        .stderr
+        .is_empty());
+    let variable_slice_length_with_unknown_terminal: Value =
+        serde_json::from_slice(&variable_slice_length_with_unknown_terminal.stdout)
+            .expect("bpfix should emit JSON");
+    assert_eq!(
+        variable_slice_length_with_unknown_terminal["error_id"],
+        "BPFIX-E012"
+    );
+    assert_eq!(
+        variable_slice_length_with_unknown_terminal["diagnostic_kind"],
+        "supported"
+    );
+    assert!(evidence_contains(
+        &variable_slice_length_with_unknown_terminal,
+        "verifier_state_signal",
+        "R4 is still a scalar range"
+    ));
+
+    let readonly_variable_slice_length_with_unknown_terminal = run_stdin_output(
+        "\
+func#0 @0
+0: R1=ctx() R10=fp0
+7: (61) r4 = *(u32 *)(r1 +0)          ; R1_w=map_value(map=prog.data,ks=4,vs=4) R4_w=scalar(smin=0,smax=umax=0xffffffff,var_off=(0x0; 0xffffffff))
+9: (26) if w4 > 0xe goto pc+12        ; R4_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=14,var_off=(0x0; 0xf))
+14: (85) call bpf_dynptr_slice#71567
+invalid verifier frobnication
+",
+        &["-", "--format", "json", "--fail-on-unsupported"],
+    );
+    assert!(readonly_variable_slice_length_with_unknown_terminal
+        .status
+        .success());
+    assert!(readonly_variable_slice_length_with_unknown_terminal
+        .stderr
+        .is_empty());
+    let readonly_variable_slice_length_with_unknown_terminal: Value =
+        serde_json::from_slice(&readonly_variable_slice_length_with_unknown_terminal.stdout)
+            .expect("bpfix should emit JSON");
+    assert_eq!(
+        readonly_variable_slice_length_with_unknown_terminal["error_id"],
+        "BPFIX-E012"
+    );
+    assert_eq!(
+        readonly_variable_slice_length_with_unknown_terminal["diagnostic_kind"],
+        "supported"
+    );
+
+    let constant_slice_length_with_unknown_terminal = run_stdin_output(
+        "\
+func#0 @0
+0: R1=ctx() R10=fp0
+13: (b7) r4 = 14                      ; R4_w=14
+14: (85) call bpf_dynptr_slice_rdwr#71568
+invalid verifier frobnication
+",
+        &["-", "--format", "json", "--fail-on-unsupported"],
+    );
+    assert_eq!(
+        constant_slice_length_with_unknown_terminal.status.code(),
+        Some(2)
+    );
+    assert!(constant_slice_length_with_unknown_terminal
+        .stderr
+        .is_empty());
+    let constant_slice_length_with_unknown_terminal: Value =
+        serde_json::from_slice(&constant_slice_length_with_unknown_terminal.stdout)
+            .expect("bpfix should emit JSON");
+    assert_eq!(
+        constant_slice_length_with_unknown_terminal["diagnostic_kind"],
+        "unsupported_verifier_message"
+    );
+    assert!(!constant_slice_length_with_unknown_terminal["evidence"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|evidence| evidence["kind"] == "verifier_state_signal"));
 
     let read_write_slice_in_read_only_context =
         run_json("bpfix-bench/cases/kernel-selftest-dynptr-fail-invalid-slice-rdwr-rdonly-cgroup-skb-ingress-61688196/replay-verifier.log");
