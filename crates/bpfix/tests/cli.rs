@@ -2248,8 +2248,13 @@ processed 2 insns (limit 1000000) max_states_per_insn 0 total_states 1 peak_stat
 fn ordinary_source_bugs_are_not_overclassified_as_runtime_artifacts() {
     let pointer_load_reuse =
         run_json("bpfix-bench/cases/stackoverflow-56965789/replay-verifier.log");
-    assert_eq!(pointer_load_reuse["error_id"], "BPFIX-E006");
+    assert_eq!(pointer_load_reuse["error_id"], "BPFIX-E011");
     assert_eq!(pointer_load_reuse["failure_class"], "source_bug");
+    assert!(evidence_contains(
+        &pointer_load_reuse,
+        "verifier_state_signal",
+        "consumed register is scalar"
+    ));
 
     let generic_alignment =
         run_json("bpfix-bench/cases/stackoverflow-76441958/replay-verifier.log");
@@ -2556,6 +2561,65 @@ fn ordinary_source_bugs_are_not_overclassified_as_runtime_artifacts() {
         &unrelated_map_value_guard,
         "verifier_state_signal",
         "source bounds the map-value index"
+    ));
+}
+
+#[test]
+fn scalar_pointer_state_signal_handles_inv_and_pkt_end_variants() {
+    let invalid_inv = run_json_stdin(
+        "func#0 @0\n\
+         0: R2=scalar() R10=fp0\n\
+         1: (61) r0 = *(u32 *)(r2 +0)\n\
+         R2 invalid mem access 'inv'\n",
+    );
+    assert_eq!(invalid_inv["error_id"], "BPFIX-E011");
+    assert!(evidence_contains(
+        &invalid_inv,
+        "verifier_state_signal",
+        "consumed register is scalar"
+    ));
+
+    let packet_end_spelling = run_json_stdin(
+        "func#0 @0\n\
+         0: R1=ctx() R10=fp0\n\
+         0: (61) r0 = *(u32 *)(r1 +80) ; R0_w=pkt_end() R1=ctx()\n\
+         1: (07) r0 += 1\n\
+         R0 pointer arithmetic on PTR_TO_PACKET_END prohibited\n",
+    );
+    assert_eq!(packet_end_spelling["error_id"], "BPFIX-E011");
+    assert!(evidence_contains(
+        &packet_end_spelling,
+        "verifier_state_signal",
+        "pkt_end state"
+    ));
+}
+
+#[test]
+fn scalar_pointer_state_signal_requires_matching_current_instruction_state() {
+    let mismatched_base_register = run_json_stdin(
+        "func#0 @0\n\
+         0: R1=scalar() R2=scalar() R10=fp0\n\
+         1: (61) r0 = *(u32 *)(r2 +0)\n\
+         R1 invalid mem access 'scalar'\n",
+    );
+    assert_eq!(mismatched_base_register["error_id"], "BPFIX-E006");
+    assert!(!evidence_contains(
+        &mismatched_base_register,
+        "verifier_state_signal",
+        "consumed register is scalar"
+    ));
+
+    let stale_state_after_terminal = run_json_stdin(
+        "func#0 @0\n\
+         1: (61) r0 = *(u32 *)(r1 +0)\n\
+         R1 invalid mem access 'scalar'\n\
+         2: R1=scalar() R10=fp0\n",
+    );
+    assert_eq!(stale_state_after_terminal["error_id"], "BPFIX-E006");
+    assert!(!evidence_contains(
+        &stale_state_after_terminal,
+        "verifier_state_signal",
+        "consumed register is scalar"
     ));
 }
 
@@ -2936,6 +3000,11 @@ fn terminal_error_selection_ignores_state_lines_and_uses_final_reject() {
         .as_str()
         .unwrap()
         .contains("R4 bitwise operator |= on pointer prohibited"));
+    assert!(evidence_contains(
+        &pointer_bitwise,
+        "verifier_state_signal",
+        "prohibited pointer arithmetic"
+    ));
 
     let return_range = run_json("bpfix-bench/cases/stackoverflow-77191387/replay-verifier.log");
     assert_eq!(return_range["error_id"], "BPFIX-E005");
@@ -4765,7 +4834,12 @@ fn object_argument_attaches_section_local_states_from_loaded_layout() {
         json["metadata"]["object_path"],
         object_path.to_str().unwrap()
     );
-    assert_eq!(json["error_id"], "BPFIX-E006");
+    assert_eq!(json["error_id"], "BPFIX-E011");
+    assert!(evidence_contains(
+        &json,
+        "verifier_state_signal",
+        "consumed register is scalar"
+    ));
     assert!(
         json["metadata"]["object_programs"][0]["block_count"]
             .as_u64()

@@ -270,6 +270,7 @@ const REJECTION_PATTERNS: &[RejectionPattern] = &[
         VerifierRejectionKind::PointerProvenance,
         &[
             "invalid mem access 'scalar'",
+            "invalid mem access 'inv'",
             "same insn cannot be used with different pointers",
             "pointer arithmetic",
             "bitwise operator",

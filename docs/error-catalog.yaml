@@ -75,11 +75,11 @@ active_error_ids:
     summary: A helper, kfunc, or BPF subprogram argument contract is not satisfied.
 
   - error_id: BPFIX-E011
-    short_name: context_or_struct_access_invalid
+    short_name: invalid_pointer_or_context_access
     failure_classes:
       - source_bug
       - environment_or_configuration
-    summary: The requested context or kernel-struct field is invalid for the verifier-visible type.
+    summary: The access consumes a scalar, pkt_end, unsupported context, or invalid struct pointer where the verifier requires a supported pointer value.
 
   - error_id: BPFIX-E012
     short_name: dynptr_protocol_violation

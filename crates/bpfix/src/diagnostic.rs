@@ -96,6 +96,8 @@ pub enum ProofSignal {
     UnreadableProgramEntryArgument,
     UnreadableHelperArgument,
     HelperStackWriteBeyondFrame,
+    ScalarValueUsedAsPointer,
+    ProhibitedPointerArithmetic,
     PacketGuardUndercoversAccess,
     PacketMaxOffsetPrecisionBoundary,
     MapValueRelationPrecisionBoundary,
@@ -199,6 +201,12 @@ impl ProofSignal {
             }
             Self::HelperStackWriteBeyondFrame => {
                 "helper writable stack region crosses the verifier stack frame"
+            }
+            Self::ScalarValueUsedAsPointer => {
+                "scalar or pkt_end value is used where the verifier requires a real pointer"
+            }
+            Self::ProhibitedPointerArithmetic => {
+                "pointer arithmetic uses an operator the verifier cannot apply to pointer state"
             }
             Self::MapValueGuardExceedsValueSize => {
                 "map-value index guard exceeds the map value size"
@@ -372,6 +380,12 @@ impl ProofSignal {
             Self::HelperStackWriteBeyondFrame => {
                 "verifier state shows the helper receives a frame-pointer stack region whose byte range extends beyond the BPF stack frame"
             }
+            Self::ScalarValueUsedAsPointer => {
+                "verifier state at the rejected instruction shows the consumed register is scalar or pkt_end state, but the instruction uses it as a memory pointer or pointer-like value"
+            }
+            Self::ProhibitedPointerArithmetic => {
+                "verifier state at the rejected instruction shows the target register is still pointer state, but the instruction applies a prohibited pointer arithmetic or bitwise operator"
+            }
             Self::PacketGuardUndercoversAccess => {
                 "source has a packet bounds check, but verifier state after that check proves only a shorter packet range than the rejected access needs"
             }
@@ -518,6 +532,12 @@ impl ProofSignal {
             Self::HelperStackWriteBeyondFrame => {
                 "Move large scratch buffers to a per-CPU map, shrink the stack object, or pass a smaller helper length so the writable region stays inside the 512-byte BPF stack frame."
             }
+            Self::ScalarValueUsedAsPointer => {
+                "Use a verifier-recognized pointer at the access site; keep end sentinels, scalar offsets, and pointer bases separate, and reload or rederive the pointer from a supported context/helper before dereferencing it."
+            }
+            Self::ProhibitedPointerArithmetic => {
+                "Avoid bitwise or unsupported arithmetic on pointer registers; preserve pointer provenance by keeping the pointer unchanged and applying scalar arithmetic to a separate offset before deriving a verifier-recognized pointer."
+            }
             Self::PacketGuardUndercoversAccess => {
                 "Move the data_end check to the final pointer expression and include the access width, for example check pointer + size before dereferencing pointer."
             }
@@ -598,6 +618,8 @@ impl ProofSignal {
                 | Self::UnreadableProgramEntryArgument
                 | Self::UnreadableHelperArgument
                 | Self::HelperStackWriteBeyondFrame
+                | Self::ScalarValueUsedAsPointer
+                | Self::ProhibitedPointerArithmetic
                 | Self::MapValueGuardExceedsValueSize
                 | Self::ScalarRangeUnsafeAtUse
                 | Self::PacketAccessWithoutBoundsProof
@@ -696,6 +718,8 @@ impl ProofSignal {
                 | Self::UnreadableProgramEntryArgument
                 | Self::UnreadableHelperArgument
                 | Self::HelperStackWriteBeyondFrame
+                | Self::ScalarValueUsedAsPointer
+                | Self::ProhibitedPointerArithmetic
         )
     }
 
@@ -778,6 +802,12 @@ impl ProofSignal {
             ),
             Self::HelperStackWriteBeyondFrame => Some(
                 "keep the helper writable stack range fully inside the current BPF stack frame, whose valid byte offsets are -512..0",
+            ),
+            Self::ScalarValueUsedAsPointer => Some(
+                "prove the value consumed by this memory access or pointer operation is a verifier-recognized pointer, not scalar or pkt_end state",
+            ),
+            Self::ProhibitedPointerArithmetic => Some(
+                "preserve pointer state by avoiding bitwise or verifier-prohibited arithmetic on the pointer register",
             ),
             Self::ContextFieldUnavailable => Some(
                 "access only context offsets and field widths exposed by the active BPF program type and attach point",
@@ -872,6 +902,12 @@ impl ProofSignal {
             Self::HelperStackWriteBeyondFrame => {
                 Some("this helper write crosses the verifier stack frame boundary")
             }
+            Self::ScalarValueUsedAsPointer => {
+                Some("this access consumes scalar or pkt_end state where a pointer is required")
+            }
+            Self::ProhibitedPointerArithmetic => {
+                Some("this instruction applies a prohibited operation to pointer state")
+            }
             Self::ContextFieldUnavailable => {
                 Some("context access uses an unavailable offset or field width")
             }
@@ -913,6 +949,7 @@ impl ProofSignal {
             Self::UnreadableProgramEntryArgument => Some("BPFIX-E011"),
             Self::UnreadableHelperArgument => Some("BPFIX-E010"),
             Self::HelperStackWriteBeyondFrame => Some("BPFIX-E006"),
+            Self::ScalarValueUsedAsPointer => Some("BPFIX-E011"),
             _ => None,
         }
     }
@@ -1940,6 +1977,12 @@ fn proof_signals(context: ProofSignalContext<'_>) -> Vec<ProofSignal> {
     }
     if map_value_guard_exceeds_value_size(&context) {
         signals.push(ProofSignal::MapValueGuardExceedsValueSize);
+    }
+    if signals.is_empty() && scalar_value_used_as_pointer(&context) {
+        signals.push(ProofSignal::ScalarValueUsedAsPointer);
+    }
+    if signals.is_empty() && prohibited_pointer_arithmetic(&context) {
+        signals.push(ProofSignal::ProhibitedPointerArithmetic);
     }
     signals.sort_by_key(|signal| signal.selection_rank());
     signals
@@ -3698,6 +3741,89 @@ fn nullable_instruction_register_mismatch(terminal: &str, instruction_tail: &str
         return register_operands(instruction_tail).first().copied() != Some(reg);
     }
     false
+}
+
+fn scalar_value_used_as_pointer(context: &ProofSignalContext<'_>) -> bool {
+    if context.obligation != ProofObligation::PointerProvenance {
+        return false;
+    }
+    let terminal = context.terminal_error.to_ascii_lowercase();
+    let scalar_mem_access = terminal.contains("invalid mem access 'scalar'")
+        || terminal.contains("invalid mem access 'inv'");
+    let pkt_end_arithmetic =
+        terminal.contains("pointer arithmetic") && terminal_mentions_pkt_end(&terminal);
+    if !scalar_mem_access && !pkt_end_arithmetic {
+        return false;
+    }
+    let Some(reg) = context
+        .register
+        .or_else(|| register_from_terminal_error(context.terminal_error))
+    else {
+        return false;
+    };
+    let Some(instruction) =
+        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)
+    else {
+        return false;
+    };
+    if scalar_mem_access && memory_access_base_register(instruction.tail) != Some(reg) {
+        return false;
+    }
+    if pkt_end_arithmetic && register_operands(instruction.tail).first().copied() != Some(reg) {
+        return false;
+    }
+    let fragment_start = context
+        .terminal_line
+        .map(|line| verifier_fragment_start_line(context.log, line))
+        .unwrap_or_else(|| verifier_fragment_start_line(context.log, instruction.line));
+    let Some(state) =
+        latest_reg_state_before_instruction(context.states, instruction, fragment_start, reg)
+    else {
+        return false;
+    };
+    if scalar_mem_access {
+        state.reg_type == "scalar"
+    } else {
+        state.reg_type == "pkt_end"
+    }
+}
+
+fn prohibited_pointer_arithmetic(context: &ProofSignalContext<'_>) -> bool {
+    if context.obligation != ProofObligation::PointerProvenance {
+        return false;
+    }
+    let terminal = context.terminal_error.to_ascii_lowercase();
+    if !(terminal.contains("bitwise operator") || terminal.contains("pointer arithmetic")) {
+        return false;
+    }
+    if terminal_mentions_pkt_end(&terminal) {
+        return false;
+    }
+    let Some(reg) = context.register else {
+        return false;
+    };
+    let Some(instruction) =
+        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)
+    else {
+        return false;
+    };
+    if register_operands(instruction.tail).first().copied() != Some(reg) {
+        return false;
+    }
+    let fragment_start = context
+        .terminal_line
+        .map(|line| verifier_fragment_start_line(context.log, line))
+        .unwrap_or_else(|| verifier_fragment_start_line(context.log, instruction.line));
+    latest_reg_state_before_instruction(context.states, instruction, fragment_start, reg)
+        .is_some_and(verifier_pointer_state_for_arithmetic)
+}
+
+fn verifier_pointer_state_for_arithmetic(state: &RegState) -> bool {
+    state.reg_type != "scalar"
+}
+
+fn terminal_mentions_pkt_end(terminal: &str) -> bool {
+    terminal.contains("pkt_end") || terminal.contains("ptr_to_packet_end")
 }
 
 fn latest_state_is_sync_callback(
@@ -5532,6 +5658,24 @@ fn register_token(token: &str) -> Option<u8> {
         .flatten()
 }
 
+fn register_from_terminal_error(message: &str) -> Option<u8> {
+    let bytes = message.as_bytes();
+    let mut idx = 0usize;
+    while idx + 1 < bytes.len() {
+        if bytes[idx] != b'R' || !bytes[idx + 1].is_ascii_digit() {
+            idx += 1;
+            continue;
+        }
+        let start = idx + 1;
+        let mut end = start + 1;
+        while end < bytes.len() && bytes[end].is_ascii_digit() {
+            end += 1;
+        }
+        return message[start..end].parse().ok();
+    }
+    None
+}
+
 fn source_guard_has_structural_link(
     source_events: &[SourceEvent],
     guard: &SourceLocation,
@@ -6420,6 +6564,45 @@ mod tests {
         assert!(analysis
             .signals
             .contains(&ProofSignal::UnreadableHelperArgument));
+    }
+
+    #[test]
+    fn scalar_pointer_dereference_is_a_source_state_signal() {
+        let log = include_str!(
+            "../../../bpfix-bench/cases/github-commit-bcc-02daf8d84ecd/replay-verifier.log"
+        );
+        let analysis = analyze_verifier_log(
+            log,
+            Some(1),
+            None,
+            "R1 invalid mem access 'scalar'",
+            None,
+            ProofObligation::PointerProvenance,
+        )
+        .unwrap();
+
+        assert!(analysis
+            .signals
+            .contains(&ProofSignal::ScalarValueUsedAsPointer));
+    }
+
+    #[test]
+    fn prohibited_pointer_arithmetic_is_a_source_state_signal() {
+        let log =
+            include_str!("../../../bpfix-bench/cases/stackoverflow-68460177/replay-verifier.log");
+        let analysis = analyze_verifier_log(
+            log,
+            Some(37),
+            None,
+            "R4 bitwise operator |= on pointer prohibited",
+            None,
+            ProofObligation::PointerProvenance,
+        )
+        .unwrap();
+
+        assert!(analysis
+            .signals
+            .contains(&ProofSignal::ProhibitedPointerArithmetic));
     }
 
     #[test]
