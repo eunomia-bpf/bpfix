@@ -119,6 +119,12 @@ active_error_ids:
       - verifier_limit
     summary: A loop bound is missing or verifier analysis exceeds a resource, stack, state, or complexity budget.
 
+  - error_id: BPFIX-E019
+    short_name: dynptr_slice_length_contract_violation
+    failure_classes:
+      - source_bug
+    summary: A dynptr slice helper needs a verifier-known constant length, but verifier state proves the length argument is still variable at the helper call.
+
   - error_id: BPFIX-E020
     short_name: irq_flag_lifecycle_violation
     failure_classes:
@@ -146,5 +152,4 @@ active_error_ids:
 
 historical_error_ids:
   - BPFIX-E017
-  - BPFIX-E019
   - BPFIX-E022

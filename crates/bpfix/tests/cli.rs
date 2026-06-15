@@ -2475,7 +2475,7 @@ fn dynptr_protocol_diagnostic_uses_specific_required_proof() {
 
     let variable_slice_length =
         run_json("bpfix-bench/cases/kernel-selftest-dynptr-fail-dynptr-slice-var-len2-tc-673ab9e7/replay-verifier.log");
-    assert_eq!(variable_slice_length["error_id"], "BPFIX-E012");
+    assert_eq!(variable_slice_length["error_id"], "BPFIX-E019");
     assert!(variable_slice_length["message"]
         .as_str()
         .unwrap()
@@ -2510,7 +2510,7 @@ invalid verifier frobnication
             .expect("bpfix should emit JSON");
     assert_eq!(
         variable_slice_length_with_unknown_terminal["error_id"],
-        "BPFIX-E012"
+        "BPFIX-E019"
     );
     assert_eq!(
         variable_slice_length_with_unknown_terminal["diagnostic_kind"],
@@ -2544,7 +2544,7 @@ invalid verifier frobnication
             .expect("bpfix should emit JSON");
     assert_eq!(
         readonly_variable_slice_length_with_unknown_terminal["error_id"],
-        "BPFIX-E012"
+        "BPFIX-E019"
     );
     assert_eq!(
         readonly_variable_slice_length_with_unknown_terminal["diagnostic_kind"],

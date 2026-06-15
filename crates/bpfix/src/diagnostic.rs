@@ -653,7 +653,7 @@ impl ProofSignal {
             Self::BtfFuncInfoMissing => Some("BPFIX-E021"),
             Self::SubprogramReferenceMetadataMissing => Some("BPFIX-E021"),
             Self::DynptrStackStorageAccess => Some("BPFIX-E012"),
-            Self::DynptrSliceVariableLength => Some("BPFIX-E012"),
+            Self::DynptrSliceVariableLength => Some("BPFIX-E019"),
             Self::IteratorStackStorageAccess => Some("BPFIX-E014"),
             Self::IteratorHelperArgumentStateMismatch => Some("BPFIX-E014"),
             Self::IrqFlagStateMismatch => Some("BPFIX-E020"),
