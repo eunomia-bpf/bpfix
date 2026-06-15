@@ -180,6 +180,21 @@ fn parses_stack_access_suffixes_and_dynptr_stack_state() {
 }
 
 #[test]
+fn parses_frame_pointer_with_variable_offset_attributes() {
+    let log = r#"
+17: R4_w=fp(off=-32,smin=smin32=0,smax=umax=smax32=umax32=16,var_off=(0x0; 0x10))
+"#;
+
+    let insns = parse_verifier_log(log);
+    let r4 = insns[0].regs.get(&4).unwrap();
+    assert_eq!(r4.reg_type, "fp");
+    assert_eq!(r4.offset, Some(-32));
+    assert_eq!(r4.range.smin, Some(0));
+    assert_eq!(r4.range.umax, Some(16));
+    assert_eq!(r4.tnum.unwrap().mask, 0x10);
+}
+
+#[test]
 fn parses_standalone_stack_only_state_lines() {
     let log = r#"
 8: fp-32_w=ffffffff refs=1

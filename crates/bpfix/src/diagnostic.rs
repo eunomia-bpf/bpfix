@@ -70,6 +70,7 @@ pub enum ProofSignal {
     BtfFuncInfoMissing,
     SubprogramReferenceMetadataMissing,
     DynptrStackStorageAccess,
+    DynptrHelperArgumentStateMismatch,
     DynptrSliceVariableLength,
     IteratorStackStorageAccess,
     IteratorHelperArgumentStateMismatch,
@@ -114,6 +115,9 @@ impl ProofSignal {
             }
             Self::DynptrStackStorageAccess => {
                 "dynptr stack storage is being used as ordinary memory"
+            }
+            Self::DynptrHelperArgumentStateMismatch => {
+                "dynptr helper argument has the wrong stack-slot or backing-memory state"
             }
             Self::DynptrSliceVariableLength => {
                 "dynptr slice length is not verifier-visible as a constant"
@@ -245,6 +249,9 @@ impl ProofSignal {
             Self::DynptrStackStorageAccess => {
                 "verifier state shows this stack slot contains dynptr state, but the rejected instruction reads it as ordinary stack bytes"
             }
+            Self::DynptrHelperArgumentStateMismatch => {
+                "verifier state at the dynptr helper call shows an unstable dynptr slot, an interior dynptr pointer, or unsupported stack-backed input memory"
+            }
             Self::DynptrSliceVariableLength => {
                 "the rejected dynptr slice helper uses R4 as its length argument, but verifier state shows R4 is still a scalar range rather than a known constant"
             }
@@ -352,6 +359,9 @@ impl ProofSignal {
             Self::DynptrStackStorageAccess => {
                 "Do not copy, read, or pass a dynptr object as ordinary bytes; use dynptr helpers to read data out of the dynptr and keep the dynptr object in its dedicated stack slot."
             }
+            Self::DynptrHelperArgumentStateMismatch => {
+                "Pass dynptr helpers the exact verifier-tracked stack slot and a supported backing memory object; avoid global dynptr storage, variable stack offsets, and interior dynptr pointers."
+            }
             Self::DynptrSliceVariableLength => {
                 "Use a constant dynptr slice length, or split runtime lengths into verifier-visible constant-size cases before calling the dynptr slice helper."
             }
@@ -442,6 +452,7 @@ impl ProofSignal {
         matches!(
             self,
             Self::ContextAccessSourceArgumentMismatch
+                | Self::DynptrHelperArgumentStateMismatch
                 | Self::DynptrStackStorageAccess
                 | Self::DynptrSliceVariableLength
                 | Self::ExceptionCallbackProtocolViolation
@@ -490,6 +501,7 @@ impl ProofSignal {
         matches!(
             self,
             Self::ContextAccessSourceArgumentMismatch
+                | Self::DynptrHelperArgumentStateMismatch
                 | Self::DynptrStackStorageAccess
                 | Self::DynptrSliceVariableLength
                 | Self::ExceptionThrowWithLiveReference
@@ -516,6 +528,7 @@ impl ProofSignal {
             Self::MapPointerArgumentScalarZero
                 | Self::BtfFuncInfoMissing
                 | Self::SubprogramReferenceMetadataMissing
+                | Self::DynptrHelperArgumentStateMismatch
                 | Self::DynptrStackStorageAccess
                 | Self::DynptrSliceVariableLength
                 | Self::ExceptionCallbackProtocolViolation
@@ -546,6 +559,9 @@ impl ProofSignal {
             ),
             Self::DynptrStackStorageAccess => Some(
                 "keep the dynptr object in its verifier-tracked stack slot and use dynptr helpers instead of reading or copying the dynptr storage as ordinary bytes",
+            ),
+            Self::DynptrHelperArgumentStateMismatch => Some(
+                "pass dynptr helpers an exact verifier-tracked dynptr stack slot and supported non-stack backing memory",
             ),
             Self::DynptrSliceVariableLength => Some(
                 "pass a verifier-known constant length to the dynptr slice helper",
@@ -604,6 +620,9 @@ impl ProofSignal {
             Self::DynptrStackStorageAccess => {
                 Some("dynptr stack storage is read as ordinary memory")
             }
+            Self::DynptrHelperArgumentStateMismatch => {
+                Some("dynptr helper argument does not match the verifier dynptr contract")
+            }
             Self::DynptrSliceVariableLength => {
                 Some("dynptr slice length argument is not a known constant")
             }
@@ -653,6 +672,7 @@ impl ProofSignal {
             Self::BtfFuncInfoMissing => Some("BPFIX-E021"),
             Self::SubprogramReferenceMetadataMissing => Some("BPFIX-E021"),
             Self::DynptrStackStorageAccess => Some("BPFIX-E012"),
+            Self::DynptrHelperArgumentStateMismatch => Some("BPFIX-E019"),
             Self::DynptrSliceVariableLength => Some("BPFIX-E019"),
             Self::IteratorStackStorageAccess => Some("BPFIX-E014"),
             Self::IteratorHelperArgumentStateMismatch => Some("BPFIX-E014"),
@@ -760,6 +780,7 @@ pub fn analyze_verifier_log(
     let signal_context = ProofSignalContext {
         log,
         terminal_error,
+        terminal_call_target,
         obligation,
         terminal_pc,
         terminal_line,
@@ -1485,6 +1506,7 @@ fn environment_capability_events(
 struct ProofSignalContext<'a> {
     log: &'a str,
     terminal_error: &'a str,
+    terminal_call_target: Option<&'a str>,
     obligation: ProofObligation,
     terminal_pc: Option<usize>,
     terminal_line: Option<usize>,
@@ -1587,6 +1609,9 @@ fn proof_signals(context: ProofSignalContext<'_>) -> Vec<ProofSignal> {
     }
     if dynptr_stack_storage_access(&context) {
         signals.push(ProofSignal::DynptrStackStorageAccess);
+    }
+    if dynptr_helper_argument_state_mismatch(&context) {
+        signals.push(ProofSignal::DynptrHelperArgumentStateMismatch);
     }
     if dynptr_slice_variable_length(&context) {
         signals.push(ProofSignal::DynptrSliceVariableLength);
@@ -2293,10 +2318,36 @@ fn dynptr_stack_storage_access(context: &ProofSignalContext<'_>) -> bool {
     .unwrap_or(false)
 }
 
+fn dynptr_helper_argument_state_mismatch(context: &ProofSignalContext<'_>) -> bool {
+    if !matches!(
+        context.obligation,
+        ProofObligation::DynptrSafety
+            | ProofObligation::HelperArgument
+            | ProofObligation::TypeContract
+            | ProofObligation::ReferenceLifecycle
+            | ProofObligation::Unknown
+    ) {
+        return false;
+    }
+    let Some(instruction) = terminal_call_instruction_site(context) else {
+        return false;
+    };
+    let Some(target) = call_target_from_instruction_tail(instruction.tail) else {
+        return false;
+    };
+    let fragment_start = verifier_fragment_start_line(context.log, instruction.line);
+
+    if dynptr_initializer_output_slot_mismatch(context, instruction, fragment_start, target) {
+        return true;
+    }
+    if dynptr_from_mem_backing_memory_mismatch(context, instruction, fragment_start, target) {
+        return true;
+    }
+    dynptr_live_argument_interior_pointer(context, instruction, fragment_start, target)
+}
+
 fn dynptr_slice_variable_length(context: &ProofSignalContext<'_>) -> bool {
-    let Some(instruction) =
-        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)
-    else {
+    let Some(instruction) = terminal_call_instruction_site(context) else {
         return false;
     };
     let Some(target) = call_target_from_instruction_tail(instruction.tail) else {
@@ -2305,10 +2356,7 @@ fn dynptr_slice_variable_length(context: &ProofSignalContext<'_>) -> bool {
     if !matches!(target, "bpf_dynptr_slice" | "bpf_dynptr_slice_rdwr") {
         return false;
     }
-    let fragment_start = context
-        .terminal_line
-        .map(|line| verifier_fragment_start_line(context.log, line))
-        .unwrap_or_else(|| verifier_fragment_start_line(context.log, instruction.line));
+    let fragment_start = verifier_fragment_start_line(context.log, instruction.line);
     let Some(length) = latest_reg_state_for_call_argument(
         context.states,
         instruction,
@@ -2319,6 +2367,161 @@ fn dynptr_slice_variable_length(context: &ProofSignalContext<'_>) -> bool {
         return false;
     };
     length.reg_type == "scalar" && length.exact_value.is_none()
+}
+
+fn dynptr_initializer_output_slot_mismatch(
+    context: &ProofSignalContext<'_>,
+    instruction: TerminalInstruction<'_>,
+    fragment_start: usize,
+    target: &str,
+) -> bool {
+    let Some(arg_reg) = dynptr_initializer_output_arg(target) else {
+        return false;
+    };
+    let Some(arg) = latest_reg_state_for_call_argument(
+        context.states,
+        instruction,
+        fragment_start,
+        context.terminal_line,
+        arg_reg,
+    ) else {
+        return false;
+    };
+    !is_stable_dynptr_stack_arg(arg)
+}
+
+fn dynptr_from_mem_backing_memory_mismatch(
+    context: &ProofSignalContext<'_>,
+    instruction: TerminalInstruction<'_>,
+    fragment_start: usize,
+    target: &str,
+) -> bool {
+    if target != "bpf_dynptr_from_mem" {
+        return false;
+    }
+    latest_reg_state_for_call_argument(
+        context.states,
+        instruction,
+        fragment_start,
+        context.terminal_line,
+        1,
+    )
+    .is_some_and(|arg| arg.reg_type == "fp")
+}
+
+fn dynptr_live_argument_interior_pointer(
+    context: &ProofSignalContext<'_>,
+    instruction: TerminalInstruction<'_>,
+    fragment_start: usize,
+    target: &str,
+) -> bool {
+    let Some(arg_reg) = dynptr_live_arg(target) else {
+        return false;
+    };
+    let Some(arg) = latest_reg_state_for_call_argument(
+        context.states,
+        instruction,
+        fragment_start,
+        context.terminal_line,
+        arg_reg,
+    ) else {
+        return false;
+    };
+    dynptr_stack_slot_relation(context, instruction, fragment_start, arg)
+        == Some(DynptrStackSlotRelation::Interior)
+}
+
+fn dynptr_initializer_output_arg(target: &str) -> Option<u8> {
+    match target {
+        "bpf_ringbuf_reserve_dynptr" | "bpf_dynptr_from_mem" => Some(4),
+        "bpf_dynptr_from_skb" | "bpf_dynptr_from_xdp" => Some(3),
+        _ => None,
+    }
+}
+
+fn dynptr_live_arg(target: &str) -> Option<u8> {
+    match target {
+        "bpf_dynptr_data"
+        | "bpf_dynptr_clone"
+        | "bpf_ringbuf_discard_dynptr"
+        | "bpf_ringbuf_submit_dynptr" => Some(1),
+        "bpf_dynptr_read" | "bpf_dynptr_write" => Some(3),
+        _ => None,
+    }
+}
+
+fn is_stable_dynptr_stack_arg(arg: &RegState) -> bool {
+    arg.reg_type == "fp"
+        && arg.offset.is_some_and(|offset| offset < 0)
+        && !reg_state_has_variable_offset(arg)
+}
+
+fn reg_state_has_variable_offset(state: &RegState) -> bool {
+    state.tnum.is_some()
+        || state.range.smin.is_some()
+        || state.range.smax.is_some()
+        || state.range.umin.is_some()
+        || state.range.umax.is_some()
+        || state.range.smin32.is_some()
+        || state.range.smax32.is_some()
+        || state.range.umin32.is_some()
+        || state.range.umax32.is_some()
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum DynptrStackSlotRelation {
+    Exact,
+    Interior,
+}
+
+fn dynptr_stack_slot_relation(
+    context: &ProofSignalContext<'_>,
+    instruction: TerminalInstruction<'_>,
+    fragment_start: usize,
+    arg: &RegState,
+) -> Option<DynptrStackSlotRelation> {
+    if arg.reg_type != "fp" || reg_state_has_variable_offset(arg) {
+        return None;
+    }
+    let offset = i16::try_from(arg.offset?).ok()?;
+    let access = stack_value_range(offset, 16)?;
+    for state in context
+        .states
+        .iter()
+        .filter(|state| state.log_line >= fragment_start)
+        .filter(|state| state.log_line < instruction.line)
+        .filter(|state| state.pc <= instruction.pc)
+        .rev()
+    {
+        let mut saw_overlapping_stack_state = false;
+        for (slot_offset, stack) in &state.stack {
+            let is_dynptr = stack
+                .value
+                .as_ref()
+                .is_some_and(|value| value.reg_type.starts_with("dynptr"));
+            let Some(slot_range) = stack_value_range(*slot_offset, if is_dynptr { 16 } else { 8 })
+            else {
+                continue;
+            };
+            if !slot_range.overlaps(access) {
+                continue;
+            }
+            saw_overlapping_stack_state = true;
+            if !is_dynptr {
+                continue;
+            }
+            if *slot_offset == offset {
+                return Some(DynptrStackSlotRelation::Exact);
+            }
+            if slot_range.contains(offset) {
+                return Some(DynptrStackSlotRelation::Interior);
+            }
+        }
+        if saw_overlapping_stack_state {
+            return None;
+        }
+    }
+    None
 }
 
 fn iterator_stack_storage_access(context: &ProofSignalContext<'_>) -> bool {
@@ -3193,6 +3396,89 @@ fn terminal_instruction_site(
             })
         })
         .last()
+}
+
+fn terminal_call_instruction_site<'a>(
+    context: &'a ProofSignalContext<'a>,
+) -> Option<TerminalInstruction<'a>> {
+    terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line).or_else(
+        || {
+            nearest_call_instruction_before(
+                context.log,
+                context.terminal_line?,
+                context.terminal_call_target,
+            )
+        },
+    )
+}
+
+fn nearest_call_instruction_before<'a>(
+    log: &'a str,
+    terminal_line: usize,
+    expected_target: Option<&'a str>,
+) -> Option<TerminalInstruction<'a>> {
+    let lines = log.lines().collect::<Vec<_>>();
+    let mut idx = terminal_line.saturating_sub(1).min(lines.len());
+    while idx > 0 {
+        let next_line_toward_terminal = lines.get(idx).map(|line| line.trim());
+        idx -= 1;
+        let line = lines[idx].trim();
+        if is_call_search_boundary(line, next_line_toward_terminal) {
+            return None;
+        }
+        let Some((pc, tail)) = parse_instruction_line(line) else {
+            continue;
+        };
+        let Some(target) = call_target_from_instruction_tail(tail) else {
+            continue;
+        };
+        if expected_target.is_some_and(|expected| expected != target) {
+            continue;
+        }
+        return Some(TerminalInstruction {
+            pc,
+            line: idx + 1,
+            tail,
+        });
+    }
+    None
+}
+
+fn is_call_search_boundary(line: &str, next_line_toward_terminal: Option<&str>) -> bool {
+    line.starts_with("func#")
+        || line.contains("-- BEGIN PROG LOAD LOG --")
+        || line.contains("-- END PROG LOAD LOG --")
+        || line.starts_with("processed ")
+        || line.starts_with("verification time ")
+        || line.starts_with("stack depth ")
+        || (is_verifier_error_line(line)
+            && !is_dynptr_call_detail_line(line, next_line_toward_terminal))
+}
+
+fn is_dynptr_call_detail_line(line: &str, next_line_toward_terminal: Option<&str>) -> bool {
+    let lower = line.to_ascii_lowercase();
+    (is_dynptr_stack_slot_detail_line(&lower)
+        && next_line_toward_terminal.is_some_and(is_dynptr_contract_terminal_line))
+        || (lower.contains("unbounded memory access")
+            && lower.contains("var")
+            && next_line_toward_terminal.is_some_and(is_memory_len_pair_error_line))
+}
+
+fn is_dynptr_stack_slot_detail_line(lower: &str) -> bool {
+    lower.contains("cannot pass in dynptr at an offset")
+        || lower.contains("dynptr has to be at a constant offset")
+        || lower.contains("expected pointer to stack or const struct bpf_dynptr")
+}
+
+fn is_dynptr_contract_terminal_line(line: &str) -> bool {
+    let lower = line.to_ascii_lowercase();
+    lower.contains("expected an initialized dynptr")
+        || lower.contains("dynptr has to be an uninitialized dynptr")
+}
+
+fn is_memory_len_pair_error_line(line: &str) -> bool {
+    line.to_ascii_lowercase()
+        .contains("memory, len pair leads to invalid memory access")
 }
 
 fn terminal_call_target(

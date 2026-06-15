@@ -2439,31 +2439,92 @@ fn terminal_error_selection_ignores_state_lines_and_uses_final_reject() {
 fn dynptr_protocol_diagnostic_uses_specific_required_proof() {
     let interior_dynptr_arg =
         run_json("bpfix-bench/cases/kernel-selftest-dynptr-fail-invalid-helper2-raw-tp-34ba04aa/replay-verifier.log");
-    assert_eq!(interior_dynptr_arg["error_id"], "BPFIX-E012");
+    assert_eq!(interior_dynptr_arg["error_id"], "BPFIX-E019");
     assert!(interior_dynptr_arg["required_proof"]
         .as_str()
         .unwrap()
-        .contains("exact initialized dynptr stack slot"));
-    assert!(interior_dynptr_arg["required_proof"]
-        .as_str()
-        .unwrap()
-        .contains("arg #2"));
+        .contains("exact verifier-tracked dynptr stack slot"));
     assert!(!interior_dynptr_arg["required_proof"]
         .as_str()
         .unwrap()
         .contains("null"));
+    assert!(evidence_contains(
+        &interior_dynptr_arg,
+        "verifier_state_signal",
+        "unstable dynptr slot"
+    ));
+
+    let one_byte_interior_dynptr_arg =
+        run_json("bpfix-bench/cases/kernel-selftest-dynptr-fail-invalid-read2-raw-tp-2cc2b993/replay-verifier.log");
+    assert_eq!(one_byte_interior_dynptr_arg["error_id"], "BPFIX-E019");
+    assert!(evidence_contains(
+        &one_byte_interior_dynptr_arg,
+        "verifier_state_signal",
+        "interior dynptr pointer"
+    ));
 
     let shifted_initializer =
         run_json("bpfix-bench/cases/kernel-selftest-dynptr-fail-invalid-offset-raw-tp-549f8135/replay-verifier.log");
-    assert_eq!(shifted_initializer["error_id"], "BPFIX-E012");
+    assert_eq!(shifted_initializer["error_id"], "BPFIX-E019");
     assert!(shifted_initializer["required_proof"]
         .as_str()
         .unwrap()
-        .contains("clean dynptr stack slot"));
+        .contains("exact verifier-tracked dynptr stack slot"));
     assert!(!shifted_initializer["required_proof"]
         .as_str()
         .unwrap()
         .contains("stack byte"));
+    assert!(evidence_contains(
+        &shifted_initializer,
+        "verifier_state_signal",
+        "unstable dynptr slot"
+    ));
+
+    let variable_offset_initializer =
+        run_json("bpfix-bench/cases/kernel-selftest-dynptr-fail-dynptr-var-off-overwrite-tc-ab0a2e71/replay-verifier.log");
+    assert_eq!(variable_offset_initializer["error_id"], "BPFIX-E019");
+    assert!(evidence_contains(
+        &variable_offset_initializer,
+        "verifier_state_signal",
+        "unstable dynptr slot"
+    ));
+
+    let global_dynptr = run_json(
+        "bpfix-bench/cases/kernel-selftest-dynptr-fail-global-raw-tp-e92dc79e/replay-verifier.log",
+    );
+    assert_eq!(global_dynptr["error_id"], "BPFIX-E019");
+    assert!(evidence_contains(
+        &global_dynptr,
+        "verifier_state_signal",
+        "unstable dynptr slot"
+    ));
+
+    let stack_backed_from_mem =
+        run_json("bpfix-bench/cases/kernel-selftest-dynptr-fail-dynptr-from-mem-invalid-api-raw-tp-1040be69/replay-verifier.log");
+    assert_eq!(stack_backed_from_mem["error_id"], "BPFIX-E019");
+    assert!(evidence_contains(
+        &stack_backed_from_mem,
+        "verifier_state_signal",
+        "unsupported stack-backed input memory"
+    ));
+
+    let uninitialized_dynptr_clone =
+        run_json("bpfix-bench/cases/kernel-selftest-dynptr-fail-clone-invalid1-raw-tp-b7206632/replay-verifier.log");
+    assert_eq!(uninitialized_dynptr_clone["error_id"], "BPFIX-E012");
+    assert!(!evidence_contains(
+        &uninitialized_dynptr_clone,
+        "verifier_state_signal",
+        "unstable dynptr slot"
+    ));
+
+    let overwritten_dynptr_slot =
+        run_json("bpfix-bench/cases/kernel-selftest-dynptr-fail-invalid-write1-raw-tp-ba5ba8ca/replay-verifier.log");
+    assert_eq!(overwritten_dynptr_slot["error_id"], "BPFIX-E012");
+    assert!(!evidence_contains(
+        &overwritten_dynptr_slot,
+        "verifier_state_signal",
+        "unstable dynptr slot"
+    ));
 
     let unavailable_dynptr_kfunc =
         run_json("bpfix-bench/cases/kernel-selftest-dynptr-fail-skb-invalid-ctx-xdp-1a32a21f/replay-verifier.log");
@@ -2580,6 +2641,118 @@ invalid verifier frobnication
         .unwrap()
         .iter()
         .any(|evidence| evidence["kind"] == "verifier_state_signal"));
+
+    let unrelated_error_after_dynptr_call = run_stdin_output(
+        "\
+func#0 @0
+0: R1=ctx() R10=fp0
+7: (61) r4 = *(u32 *)(r1 +0)          ; R1_w=map_value(map=prog.data,ks=4,vs=4) R4_w=scalar(smin=0,smax=umax=0xffffffff,var_off=(0x0; 0xffffffff))
+14: (85) call bpf_dynptr_slice_rdwr#71568
+R1 invalid mem access 'scalar'
+invalid verifier frobnication
+",
+        &["-", "--format", "json", "--fail-on-unsupported"],
+    );
+    assert_eq!(unrelated_error_after_dynptr_call.status.code(), Some(2));
+    assert!(unrelated_error_after_dynptr_call.stderr.is_empty());
+    let unrelated_error_after_dynptr_call: Value =
+        serde_json::from_slice(&unrelated_error_after_dynptr_call.stdout)
+            .expect("bpfix should emit JSON");
+    assert_eq!(
+        unrelated_error_after_dynptr_call["diagnostic_kind"],
+        "unsupported_verifier_message"
+    );
+    assert!(!evidence_contains(
+        &unrelated_error_after_dynptr_call,
+        "verifier_state_signal",
+        "R4 is still a scalar range"
+    ));
+
+    let unrelated_unbounded_error_after_dynptr_call = run_stdin_output(
+        "\
+func#0 @0
+0: R1=ctx() R10=fp0
+7: (61) r4 = *(u32 *)(r1 +0)          ; R1_w=map_value(map=prog.data,ks=4,vs=4) R4_w=scalar(smin=0,smax=umax=0xffffffff,var_off=(0x0; 0xffffffff))
+14: (85) call bpf_dynptr_slice_rdwr#71568
+R4 unbounded memory access, use 'var &= const' or 'if (var < const)'
+invalid verifier frobnication
+",
+        &["-", "--format", "json", "--fail-on-unsupported"],
+    );
+    assert_eq!(
+        unrelated_unbounded_error_after_dynptr_call.status.code(),
+        Some(2)
+    );
+    assert!(unrelated_unbounded_error_after_dynptr_call
+        .stderr
+        .is_empty());
+    let unrelated_unbounded_error_after_dynptr_call: Value =
+        serde_json::from_slice(&unrelated_unbounded_error_after_dynptr_call.stdout)
+            .expect("bpfix should emit JSON");
+    assert_eq!(
+        unrelated_unbounded_error_after_dynptr_call["diagnostic_kind"],
+        "unsupported_verifier_message"
+    );
+    assert!(!evidence_contains(
+        &unrelated_unbounded_error_after_dynptr_call,
+        "verifier_state_signal",
+        "R4 is still a scalar range"
+    ));
+
+    let unrelated_terminal_after_dynptr_detail = run_stdin_output(
+        "\
+func#0 @0
+0: R10=fp0
+1: (bf) r1 = r10                      ; R1_w=fp0 R10=fp0 fp-16_w=dynptr_ringbuf(id=1,dynptr_id=1)
+2: (07) r1 += -8                      ; R1_w=fp-8
+3: (85) call bpf_dynptr_data#203
+cannot pass in dynptr at an offset=-8
+invalid verifier frobnication
+",
+        &["-", "--format", "json", "--fail-on-unsupported"],
+    );
+    assert_eq!(unrelated_terminal_after_dynptr_detail.status.code(), Some(2));
+    assert!(unrelated_terminal_after_dynptr_detail.stderr.is_empty());
+    let unrelated_terminal_after_dynptr_detail: Value =
+        serde_json::from_slice(&unrelated_terminal_after_dynptr_detail.stdout)
+            .expect("bpfix should emit JSON");
+    assert_eq!(
+        unrelated_terminal_after_dynptr_detail["diagnostic_kind"],
+        "unsupported_verifier_message"
+    );
+    assert!(!evidence_contains(
+        &unrelated_terminal_after_dynptr_detail,
+        "verifier_state_signal",
+        "interior dynptr pointer"
+    ));
+
+    let stale_interior_dynptr_pointer = run_stdin_output(
+        "\
+func#0 @0
+0: R10=fp0
+1: (85) call bpf_ringbuf_reserve_dynptr#198 ; R0_w=scalar() fp-16_w=dynptr_ringbuf(id=1,dynptr_id=1)
+2: (7b) *(u64 *)(r10 -16) = r1        ; R1_w=0 R10=fp0 fp-16_w=0
+3: (bf) r1 = r10                      ; R1_w=fp0 R10=fp0
+4: (07) r1 += -15                     ; R1_w=fp-15
+5: (85) call bpf_dynptr_data#203
+invalid verifier frobnication
+",
+        &["-", "--format", "json", "--fail-on-unsupported"],
+    );
+    assert_eq!(stale_interior_dynptr_pointer.status.code(), Some(2));
+    assert!(stale_interior_dynptr_pointer.stderr.is_empty());
+    let stale_interior_dynptr_pointer: Value =
+        serde_json::from_slice(&stale_interior_dynptr_pointer.stdout)
+            .expect("bpfix should emit JSON");
+    assert_eq!(
+        stale_interior_dynptr_pointer["diagnostic_kind"],
+        "unsupported_verifier_message"
+    );
+    assert!(!evidence_contains(
+        &stale_interior_dynptr_pointer,
+        "verifier_state_signal",
+        "interior dynptr pointer"
+    ));
 
     let read_write_slice_in_read_only_context =
         run_json("bpfix-bench/cases/kernel-selftest-dynptr-fail-invalid-slice-rdwr-rdonly-cgroup-skb-ingress-61688196/replay-verifier.log");

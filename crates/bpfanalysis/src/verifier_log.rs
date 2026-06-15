@@ -426,7 +426,10 @@ fn parse_reg_state(raw: &str, value_width: VerifierValueWidth) -> Result<RegStat
         apply_exact_value_to_range(&mut state.range, exact, value_width);
         return Ok(state);
     }
-    if let Some(rest) = value.strip_prefix("fp") {
+    if let Some(rest) = value
+        .strip_prefix("fp")
+        .filter(|rest| !rest.starts_with('('))
+    {
         let mut state = RegState::new("fp", value_width);
         state.precise = precise;
         // Cross-frame form `fp[N]-M`: the kernel verifier annotates the source
