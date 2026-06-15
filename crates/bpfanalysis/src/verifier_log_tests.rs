@@ -186,10 +186,12 @@ fn parses_callback_state_tokens() {
 	17: frame1: R1=scalar() R2=0 R10=fp0 refs=2 cb
 	15: R1=map_ptr(map=hmap,ks=4,vs=16) R10=fp0 async_cb
 	19: frame1: R1=scalar() R10=fp0 refs=bad cb
+	20: (85) call bpf_local_irq_save#72094 ; frame1: refs=1,2
+	21: refs=1,2,3 cb
 	"#;
 
     let insns = parse_verifier_log(log);
-    assert_eq!(insns.len(), 3);
+    assert_eq!(insns.len(), 5);
     assert_eq!(insns[0].log_line, 2);
     assert_eq!(insns[0].frame, 1);
     assert_eq!(insns[0].refs, Some(2));
@@ -203,6 +205,16 @@ fn parses_callback_state_tokens() {
     assert_eq!(insns[2].refs, None);
     assert_eq!(insns[2].callback_kind, Some(CallbackKind::Sync));
     assert!(insns[2].callback);
+    assert_eq!(insns[3].log_line, 5);
+    assert_eq!(insns[3].frame, 1);
+    assert!(insns[3].regs.is_empty());
+    assert!(insns[3].stack.is_empty());
+    assert_eq!(insns[3].refs, Some(2));
+    assert_eq!(insns[4].log_line, 6);
+    assert!(insns[4].regs.is_empty());
+    assert!(insns[4].stack.is_empty());
+    assert_eq!(insns[4].refs, Some(3));
+    assert_eq!(insns[4].callback_kind, Some(CallbackKind::Sync));
 }
 
 #[test]

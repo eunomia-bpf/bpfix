@@ -178,7 +178,7 @@ fn parse_state_line(line: &str) -> Result<Option<VerifierInsn>> {
             continue;
         }
         if let Some(value) = token.strip_prefix("refs=") {
-            refs = value.parse().ok();
+            refs = parse_refs_value(value);
             idx += 1;
             continue;
         }
@@ -210,7 +210,7 @@ fn parse_state_line(line: &str) -> Result<Option<VerifierInsn>> {
         }
         idx += 1;
     }
-    if regs.is_empty() && stack.is_empty() {
+    if regs.is_empty() && stack.is_empty() && refs.is_none() && callback_kind.is_none() {
         bail!("verifier state line contained no register or stack state");
     }
     Ok(Some(VerifierInsn {
@@ -298,7 +298,10 @@ fn parse_pc_state_line(line: &str) -> Option<(usize, Option<usize>, VerifierInsn
     is_state_text(state_text).then_some((pc, None, kind, false, state_text))
 }
 fn is_state_text(text: &str) -> bool {
-    text.starts_with('R') || text.starts_with("frame")
+    text.starts_with('R')
+        || text.starts_with("frame")
+        || text.starts_with("refs=")
+        || matches!(text, "cb" | "async_cb")
 }
 fn strip_frame_prefix(text: &str) -> (usize, &str) {
     let Some(rest) = text.strip_prefix("frame") else {
@@ -315,6 +318,19 @@ fn strip_frame_prefix(text: &str) -> (usize, &str) {
         _ => (0, text),
     }
 }
+
+fn parse_refs_value(value: &str) -> Option<u32> {
+    value.parse().ok().or_else(|| {
+        let count = value
+            .split(',')
+            .filter(|item| !item.is_empty() && item.bytes().all(|byte| byte.is_ascii_digit()))
+            .count();
+        (count > 0 && value.split(',').count() == count)
+            .then(|| count.try_into().ok())
+            .flatten()
+    })
+}
+
 fn split_top_level_tokens(text: &str) -> Vec<&str> {
     let mut tokens = Vec::new();
     let mut start = None;
