@@ -1217,8 +1217,11 @@ fn proof_signals(context: ProofSignalContext<'_>) -> Vec<ProofSignal> {
     if modified_context_pointer_lowering_signal(&context) {
         signals.push(ProofSignal::ModifiedContextPointer);
     }
-    if let Some(signal) = terminal_lowering_signal(context.terminal_error) {
-        signals.push(signal);
+    if shared_instruction_pointer_merge_signal(&context) {
+        signals.push(ProofSignal::SharedInstructionPointerMerge);
+    }
+    if subprogram_context_argument_dropped_signal(&context) {
+        signals.push(ProofSignal::SubprogramContextArgumentDropped);
     }
     if context.source_events.is_empty() {
         if let Some(signal) = bytecode_only_lowering_signal(
@@ -1855,6 +1858,109 @@ fn modified_context_pointer_lowering_signal(context: &ProofSignalContext<'_>) ->
     u32::try_from(state.offset.unwrap_or(0)) == Ok(offset)
 }
 
+fn shared_instruction_pointer_merge_signal(context: &ProofSignalContext<'_>) -> bool {
+    if !context
+        .terminal_error
+        .contains("same insn cannot be used with different pointers")
+    {
+        return false;
+    }
+    let Some(instruction) =
+        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)
+    else {
+        return false;
+    };
+    let Some(base_reg) = memory_access_base_register(instruction.tail) else {
+        return false;
+    };
+    let fragment_start = context
+        .terminal_line
+        .map(|line| verifier_fragment_start_line(context.log, line))
+        .unwrap_or_else(|| verifier_fragment_start_line(context.log, instruction.line));
+    let Some(current) =
+        latest_reg_state_before_instruction(context.states, instruction, fragment_start, base_reg)
+    else {
+        return false;
+    };
+    if !is_pointer_state(current) {
+        return false;
+    }
+    context
+        .states
+        .iter()
+        .filter(|state| state.log_line >= fragment_start)
+        .filter(|state| state.log_line < instruction.line)
+        .filter(|state| state.pc == instruction.pc)
+        .filter_map(|state| state.regs.get(&base_reg))
+        .filter(|state| is_pointer_state(state))
+        .any(|state| state.reg_type != current.reg_type)
+}
+
+fn subprogram_context_argument_dropped_signal(context: &ProofSignalContext<'_>) -> bool {
+    let terminal = context.terminal_error.to_ascii_lowercase();
+    if !terminal.contains("expects pointer to ctx")
+        || !terminal.contains("caller passes invalid args into func")
+    {
+        return false;
+    }
+    let Some(instruction) =
+        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)
+    else {
+        return false;
+    };
+    if !instruction.tail.contains("call pc+") {
+        return false;
+    }
+    let Some(callee) = invalid_args_function_name(context.terminal_error) else {
+        return false;
+    };
+    let fragment_start = context
+        .terminal_line
+        .map(|line| verifier_fragment_start_line(context.log, line))
+        .unwrap_or_else(|| verifier_fragment_start_line(context.log, instruction.line));
+    let Some(rejected) = source_for_instruction_in_fragment(
+        context.source_events,
+        instruction.pc,
+        fragment_start,
+        instruction.line,
+    ) else {
+        return false;
+    };
+    if call_argument(&rejected.text, callee, 0).as_deref() != Some("ctx") {
+        return false;
+    }
+    let Some(current_r1) =
+        latest_reg_state_before_instruction(context.states, instruction, fragment_start, 1)
+    else {
+        return false;
+    };
+    if current_r1.reg_type == "ctx" {
+        return false;
+    }
+    context
+        .states
+        .iter()
+        .filter(|state| state.log_line >= fragment_start)
+        .filter(|state| state.log_line < instruction.line)
+        .filter_map(|state| state.regs.get(&1))
+        .any(|state| state.reg_type == "ctx")
+}
+
+fn source_for_instruction_in_fragment(
+    source_events: &[SourceEvent],
+    pc: usize,
+    fragment_start_line: usize,
+    instruction_line: usize,
+) -> Option<&SourceLocation> {
+    source_events
+        .iter()
+        .filter(|event| event.log_line >= fragment_start_line)
+        .filter(|event| event.log_line < instruction_line)
+        .filter(|event| event.pc.is_some_and(|event_pc| event_pc <= pc))
+        .max_by_key(|event| (event.pc.unwrap_or(0), event.log_line))
+        .map(|event| &event.source)
+}
+
 fn verifier_fragment_start_line(log: &str, before_line: usize) -> usize {
     let lines = log.lines().collect::<Vec<_>>();
     let end = before_line.saturating_sub(1).min(lines.len());
@@ -1996,19 +2102,6 @@ fn latest_verifier_state_before(
         .filter(|state| terminal_pc.is_none_or(|pc| state.pc <= pc))
         .filter(|state| terminal_line.is_none_or(|line| state.log_line < line))
         .next_back()
-}
-
-fn terminal_lowering_signal(message: &str) -> Option<ProofSignal> {
-    let message = message.to_ascii_lowercase();
-    if message.contains("same insn cannot be used with different pointers") {
-        Some(ProofSignal::SharedInstructionPointerMerge)
-    } else if message.contains("expects pointer to ctx")
-        && message.contains("caller passes invalid args into func")
-    {
-        Some(ProofSignal::SubprogramContextArgumentDropped)
-    } else {
-        None
-    }
 }
 
 fn packet_proof_lost_after_bounds_check(event: &ProofEvent) -> bool {
@@ -2678,6 +2771,12 @@ fn parse_u32_literal(text: &str) -> Option<u32> {
 
 fn first_call_argument(source_text: &str, function: &str) -> Option<String> {
     call_argument(source_text, function, 0)
+}
+
+fn invalid_args_function_name(terminal_error: &str) -> Option<&str> {
+    let (_, after_open) = terminal_error.rsplit_once("('")?;
+    let (name, _) = after_open.split_once("')")?;
+    (!name.is_empty()).then_some(name)
 }
 
 fn call_argument(source_text: &str, function: &str, argument_index: usize) -> Option<String> {

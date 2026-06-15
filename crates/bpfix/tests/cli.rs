@@ -433,6 +433,39 @@ processed 5 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_stat
         run_json("bpfix-bench/cases/github-commit-cilium-4dc7d8047caf/replay-verifier.log");
     assert_eq!(pointer_merge["error_id"], "BPFIX-E006");
     assert_eq!(pointer_merge["failure_class"], "lowering_artifact");
+    assert!(pointer_merge["evidence"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|evidence| {
+            evidence["kind"] == "lowering_artifact_signal"
+                && evidence["detail"]
+                    .as_str()
+                    .unwrap()
+                    .contains("distinct pointer proofs")
+        }));
+
+    let stale_pointer_merge_state = run_json_stdin(
+        "\
+; old verifier attempt @ prog.c:1
+26: R0=sock(ref_obj_id=2)
+27: (61) r7 = *(u32 *)(r0 +4)
+same insn cannot be used with different pointers
+processed 3 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0 mark_read 0
+; current verifier attempt @ prog.c:2
+26: R0=sock_common(ref_obj_id=4)
+27: (61) r7 = *(u32 *)(r0 +4)
+same insn cannot be used with different pointers
+processed 3 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0 mark_read 0
+",
+    );
+    assert_eq!(stale_pointer_merge_state["error_id"], "BPFIX-E006");
+    assert_eq!(stale_pointer_merge_state["failure_class"], "source_bug");
+    assert!(!stale_pointer_merge_state["evidence"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|evidence| evidence["kind"] == "lowering_artifact_signal"));
 
     let ctx_argument =
         run_json("bpfix-bench/cases/github-commit-cilium-caf84595d9cb/replay-verifier.log");
@@ -446,6 +479,31 @@ processed 5 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_stat
             evidence["kind"] == "lowering_artifact_signal"
                 && evidence["detail"].as_str().unwrap().contains("liveness")
         }));
+
+    let stale_ctx_argument_state = run_json_stdin(
+        "\
+; ret = mock_fib_lookup(ctx, &fib, sizeof(fib), 0); @ prog.c:44
+0: R1=ctx() R10=fp0
+24: R1=fp-64
+26: (85) call pc+7
+arg#0 expects pointer to ctx
+Caller passes invalid args into func#1 ('mock_fib_lookup')
+processed 27 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0 mark_read 0
+0: R1=ctx() R10=fp0
+24: R1=fp-64
+26: (85) call pc+7
+arg#0 expects pointer to ctx
+Caller passes invalid args into func#1 ('mock_fib_lookup')
+processed 27 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0 mark_read 0
+",
+    );
+    assert_eq!(stale_ctx_argument_state["error_id"], "BPFIX-E010");
+    assert_eq!(stale_ctx_argument_state["failure_class"], "source_bug");
+    assert!(!stale_ctx_argument_state["evidence"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|evidence| evidence["kind"] == "lowering_artifact_signal"));
 
     let alu32_copy =
         run_json("bpfix-bench/cases/github-commit-cilium-4d36cac2ee63/replay-verifier.log");
