@@ -1797,6 +1797,104 @@ processed 3 insns (limit 1000000) max_states_per_insn 0 total_states 1 peak_stat
 }
 
 #[test]
+fn reference_live_at_exit_reports_state_signal() {
+    let kptr_leak = run_json(
+        "bpfix-bench/cases/kernel-selftest-cgrp-kfunc-failure-cgrp-kfunc-xchg-unreleased-tp-btf-cgroup-mkdir-241e8fc0/replay-verifier.log",
+    );
+    assert_eq!(kptr_leak["error_id"], "BPFIX-E004");
+    assert_eq!(kptr_leak["failure_class"], "source_bug");
+    assert!(evidence_contains(
+        &kptr_leak,
+        "verifier_state_signal",
+        "BPF_EXIT with the terminal reference id"
+    ));
+    assert!(kptr_leak["required_proof"]
+        .as_str()
+        .unwrap()
+        .contains("before each BPF_EXIT"));
+    assert!(kptr_leak["help"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|help| help.as_str().unwrap().contains("cleanup blocks")));
+
+    let crypto_leak = run_json(
+        "bpfix-bench/cases/kernel-selftest-crypto-basic-crypto-acquire-syscall-b8afbe98/replay-verifier.log",
+    );
+    assert_eq!(crypto_leak["error_id"], "BPFIX-E004");
+    assert!(evidence_contains(
+        &crypto_leak,
+        "verifier_state_signal",
+        "refs set"
+    ));
+
+    let iterator_leak = run_json_stdin(
+        "5: (85) call bpf_iter_num_new#71887 ; R0_w=scalar() fp-8_w=iter_num(ref_id=1,state=active,depth=0) refs=1\n\
+         6: (b4) w0 = 0 ; R0_w=0 refs=1\n\
+         7: (95) exit\n\
+         Unreleased reference id=1 alloc_insn=5\n",
+    );
+    assert_eq!(iterator_leak["error_id"], "BPFIX-E004");
+    assert!(evidence_contains(
+        &iterator_leak,
+        "verifier_state_signal",
+        "BPF_EXIT with the terminal reference id"
+    ));
+
+    let stale_terminal_without_live_ref = run_json_stdin(
+        "5: (85) call bpf_ringbuf_reserve#131 ; R0_w=ringbuf_mem_or_null(id=2,ref_obj_id=2) refs=2\n\
+         6: R0=scalar()\n\
+         7: (95) exit\n\
+         Unreleased reference id=2 alloc_insn=5\n",
+    );
+    assert_source_bug_without_verifier_state_signal(&stale_terminal_without_live_ref, "BPFIX-E004");
+
+    let non_exit_terminal_site = run_json_stdin(
+        "5: (85) call bpf_ringbuf_reserve#131 ; R0_w=ringbuf_mem_or_null(id=2,ref_obj_id=2) refs=2\n\
+         6: (b4) w0 = 0 ; R0_w=0 refs=2\n\
+         Unreleased reference id=2 alloc_insn=5\n",
+    );
+    assert_source_bug_without_verifier_state_signal(&non_exit_terminal_site, "BPFIX-E004");
+
+    let dynptr_release_twice =
+        run_json("bpfix-bench/cases/kernel-selftest-dynptr-fail-release-twice-raw-tp-3722429d/replay-verifier.log");
+    assert_eq!(dynptr_release_twice["error_id"], "BPFIX-E019");
+    assert!(!evidence_contains(
+        &dynptr_release_twice,
+        "verifier_state_signal",
+        "BPF_EXIT with the terminal reference id"
+    ));
+
+    let irq_lock_ref =
+        run_json("bpfix-bench/cases/kernel-selftest-irq-irq-wrong-kfunc-class-2-tc-03b53958/replay-verifier.log");
+    assert_eq!(irq_lock_ref["error_id"], "BPFIX-E013");
+    assert!(!evidence_contains(
+        &irq_lock_ref,
+        "verifier_state_signal",
+        "BPF_EXIT with the terminal reference id"
+    ));
+
+    let exception_throw = run_json(
+        "bpfix-bench/cases/kernel-selftest-exceptions-fail-reject-with-cb-reference-tc-c99ec1a7/replay-verifier.log",
+    );
+    assert_eq!(exception_throw["error_id"], "BPFIX-E004");
+    assert!(!evidence_contains(
+        &exception_throw,
+        "verifier_state_signal",
+        "BPF_EXIT with the terminal reference id"
+    ));
+
+    let missing_reference_metadata =
+        run_json("bpfix-bench/cases/github-aya-rs-aya-521/replay-verifier.log");
+    assert_eq!(missing_reference_metadata["error_id"], "BPFIX-E021");
+    assert!(!evidence_contains(
+        &missing_reference_metadata,
+        "verifier_state_signal",
+        "BPF_EXIT with the terminal reference id"
+    ));
+}
+
+#[test]
 fn exception_callback_protocol_reports_direct_call_and_return_contract() {
     for path in [
         "bpfix-bench/cases/kernel-selftest-exceptions-fail-reject-exception-cb-call-global-func-tc-bd94f6f8/replay-verifier.log",

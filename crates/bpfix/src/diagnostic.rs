@@ -94,6 +94,7 @@ pub enum ProofSignal {
     ContextFieldUnavailable,
     KernelObjectFieldAccessMismatch,
     ExceptionThrowWithLiveReference,
+    ReferenceLiveAtExit,
     ExceptionCallbackProtocolViolation,
     MapLookupKeyArgumentUnreadable,
     UnreadableProgramEntryArgument,
@@ -196,6 +197,9 @@ impl ProofSignal {
             }
             Self::ExceptionThrowWithLiveReference => {
                 "exception callback can throw while a verifier-tracked reference is still live"
+            }
+            Self::ReferenceLiveAtExit => {
+                "program exits while a verifier-tracked reference is still live"
             }
             Self::ExceptionCallbackProtocolViolation => {
                 "subprogram or exception callback protocol contract is violated"
@@ -390,6 +394,9 @@ impl ProofSignal {
             Self::ExceptionThrowWithLiveReference => {
                 "verifier state reaches bpf_throw inside a callback frame while verifier-tracked references are live"
             }
+            Self::ReferenceLiveAtExit => {
+                "verifier state reaches BPF_EXIT with the terminal reference id still live in the refs set"
+            }
             Self::ExceptionCallbackProtocolViolation => {
                 "verifier log validates a BPF subprogram or exception callback whose call path or return value violates the verifier protocol"
             }
@@ -554,6 +561,9 @@ impl ProofSignal {
             Self::ExceptionThrowWithLiveReference => {
                 "Release verifier-tracked references before any callback path can throw, or avoid bpf_throw while a reference acquired by the caller is still live."
             }
+            Self::ReferenceLiveAtExit => {
+                "Release every verifier-tracked reference on all return paths; route success and error exits through cleanup blocks that release the exact live reference id before BPF_EXIT."
+            }
             Self::ExceptionCallbackProtocolViolation => {
                 "Keep exception callbacks out of ordinary subprogram call graphs, and make subprogram or callback returns satisfy the verifier's printed return-value contract."
             }
@@ -647,6 +657,7 @@ impl ProofSignal {
                 | Self::DynptrSliceVariableLength
                 | Self::ExceptionCallbackProtocolViolation
                 | Self::ExceptionThrowWithLiveReference
+                | Self::ReferenceLiveAtExit
                 | Self::CallbackCallWhileLocked
                 | Self::NullablePointerUseWithoutProof
                 | Self::IrqFlagStateMismatch
@@ -712,6 +723,7 @@ impl ProofSignal {
                 | Self::DynptrStackSlotWriteOverlap
                 | Self::DynptrSliceVariableLength
                 | Self::ExceptionThrowWithLiveReference
+                | Self::ReferenceLiveAtExit
                 | Self::IrqFlagStateMismatch
                 | Self::IrqRestoreOrderMismatch
                 | Self::IrqRestoreHelperClassMismatch
@@ -743,6 +755,7 @@ impl ProofSignal {
                 | Self::DynptrStackStorageAccess
                 | Self::DynptrStackSlotWriteOverlap
                 | Self::DynptrSliceVariableLength
+                | Self::ReferenceLiveAtExit
                 | Self::ExceptionCallbackProtocolViolation
                 | Self::IrqFlagStateMismatch
                 | Self::IrqRestoreOrderMismatch
@@ -841,6 +854,9 @@ impl ProofSignal {
             ),
             Self::ExceptionThrowWithLiveReference => Some(
                 "release verifier-tracked references on every callback and exceptional path before bpf_throw can run",
+            ),
+            Self::ReferenceLiveAtExit => Some(
+                "release every verifier-tracked reference before each BPF_EXIT path can leave the program",
             ),
             Self::ExceptionCallbackProtocolViolation => Some(
                 "keep exception callbacks reachable only through the verifier exception machinery and make subprogram or callback returns satisfy the verifier's printed return-value contract",
@@ -953,6 +969,9 @@ impl ProofSignal {
             Self::ExceptionThrowWithLiveReference => {
                 Some("bpf_throw can run while verifier-tracked references are live")
             }
+            Self::ReferenceLiveAtExit => {
+                Some("this exit is reachable with a verifier-tracked reference still live")
+            }
             Self::ExceptionCallbackProtocolViolation => {
                 Some("subprogram or exception callback violates the verifier-approved protocol")
             }
@@ -1021,6 +1040,7 @@ impl ProofSignal {
             Self::ModernBpfObjectProtocolViolation => Some("BPFIX-E023"),
             Self::PacketAccessWithoutBoundsProof => Some("BPFIX-E001"),
             Self::ExceptionThrowWithLiveReference => Some("BPFIX-E004"),
+            Self::ReferenceLiveAtExit => Some("BPFIX-E004"),
             Self::ExceptionCallbackProtocolViolation => Some("BPFIX-E013"),
             Self::UnreadableProgramEntryArgument => Some("BPFIX-E011"),
             Self::UnreadableHelperArgument => Some("BPFIX-E010"),
@@ -1950,6 +1970,9 @@ fn proof_signals(context: ProofSignalContext<'_>) -> Vec<ProofSignal> {
     ) {
         signals.push(ProofSignal::ExceptionThrowWithLiveReference);
     }
+    if reference_live_at_exit(&context) {
+        signals.push(ProofSignal::ReferenceLiveAtExit);
+    }
     if exception_callback_protocol_violation(&context) {
         signals.push(ProofSignal::ExceptionCallbackProtocolViolation);
     }
@@ -2450,6 +2473,90 @@ fn exception_throw_with_live_reference(
     latest_verifier_state_before(states, terminal_pc, terminal_line).is_some_and(|state| {
         state.callback_kind == Some(CallbackKind::Sync) && state.refs.is_some_and(|refs| refs > 0)
     })
+}
+
+fn reference_live_at_exit(context: &ProofSignalContext<'_>) -> bool {
+    if !matches!(
+        context.obligation,
+        ProofObligation::ReferenceLifecycle | ProofObligation::Unknown
+    ) {
+        return false;
+    }
+    let terminal = context.terminal_error.to_ascii_lowercase();
+    if !terminal.contains("unreleased reference id=") {
+        return false;
+    }
+    let Some(ref_id) = parse_u32_after(&terminal, "reference id=") else {
+        return false;
+    };
+    let Some(alloc_pc) =
+        parse_u32_after(&terminal, "alloc_insn=").and_then(|pc| usize::try_from(pc).ok())
+    else {
+        return false;
+    };
+    let Some(instruction) =
+        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)
+    else {
+        return false;
+    };
+    if !instruction_is_bpf_exit(instruction.tail) {
+        return false;
+    }
+    let fragment_start = context
+        .terminal_line
+        .map(|line| verifier_fragment_start_line(context.log, line))
+        .unwrap_or_else(|| verifier_fragment_start_line(context.log, instruction.line));
+    let Some(exit_state) =
+        latest_verifier_state_at_or_before_instruction(context.states, instruction, fragment_start)
+    else {
+        return false;
+    };
+    exit_state.ref_ids.contains(&ref_id)
+        && reference_alloc_call_before_exit(
+            context,
+            fragment_start,
+            instruction.line,
+            alloc_pc,
+            ref_id,
+        )
+}
+
+fn reference_alloc_call_before_exit(
+    context: &ProofSignalContext<'_>,
+    fragment_start: usize,
+    before_line: usize,
+    alloc_pc: usize,
+    ref_id: u32,
+) -> bool {
+    let Some(alloc_instruction) =
+        instruction_site_before_line(context.log, alloc_pc, fragment_start, before_line)
+    else {
+        return false;
+    };
+    let Some(target) = call_target_from_instruction_tail(alloc_instruction.tail) else {
+        return false;
+    };
+    reference_acquire_target(target)
+        && context
+            .states
+            .iter()
+            .filter(|state| state.log_line >= alloc_instruction.line)
+            .filter(|state| state.log_line < before_line)
+            .any(|state| state.ref_ids.contains(&ref_id))
+}
+
+fn reference_acquire_target(target: &str) -> bool {
+    target.contains("_acquire")
+        || target.contains("_create")
+        || target.ends_with("_new")
+        || target.starts_with("bpf_ringbuf_reserve")
+        || target == "bpf_kptr_xchg"
+        || target == "bpf_obj_new"
+}
+
+fn instruction_is_bpf_exit(tail: &str) -> bool {
+    let mut tokens = tail.split_whitespace();
+    tokens.next() == Some("(95)") && tokens.next() == Some("exit")
 }
 
 fn exception_callback_protocol_violation(context: &ProofSignalContext<'_>) -> bool {
@@ -7445,6 +7552,7 @@ mod tests {
             ProofSignal::DynptrStackStorageAccess,
             ProofSignal::DynptrSliceVariableLength,
             ProofSignal::ExceptionThrowWithLiveReference,
+            ProofSignal::ReferenceLiveAtExit,
             ProofSignal::IrqFlagStateMismatch,
             ProofSignal::IrqRestoreOrderMismatch,
             ProofSignal::IrqRestoreHelperClassMismatch,
@@ -8094,5 +8202,24 @@ Unreleased reference id=2 alloc_insn=5
         assert!(analysis.events.iter().any(|event| {
             event.role == ProofEventRole::ProofLost && event.source.as_ref().unwrap().line == 11
         }));
+        assert!(analysis.signals.contains(&ProofSignal::ReferenceLiveAtExit));
+
+        let released_before_exit = "\
+5: (85) call bpf_ringbuf_reserve#131 ; R0_w=ringbuf_mem_or_null(id=2,ref_obj_id=2) refs=2
+6: R0=scalar()
+7: (95) exit
+Unreleased reference id=2 alloc_insn=5
+";
+        let analysis = analyze_verifier_log(
+            released_before_exit,
+            Some(7),
+            None,
+            "Unreleased reference id=2 alloc_insn=5",
+            None,
+            ProofObligation::ReferenceLifecycle,
+        )
+        .unwrap();
+
+        assert!(!analysis.signals.contains(&ProofSignal::ReferenceLiveAtExit));
     }
 }
