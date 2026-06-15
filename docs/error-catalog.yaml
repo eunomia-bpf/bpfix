@@ -1,0 +1,138 @@
+version: 0.1.0
+description: Current user-facing error identifier catalog for the Rust bpfix CLI.
+active_error_ids:
+  - error_id: BPFIX-E000
+    short_name: input_missing_verifier_rejection
+    failure_classes:
+      - input_error
+    summary: The input did not contain a verifier rejection region.
+
+  - error_id: BPFIX-E001
+    short_name: packet_bounds_missing
+    failure_classes:
+      - source_bug
+      - verifier_false_positive
+    summary: Packet access is not proven to stay within data/data_end.
+
+  - error_id: BPFIX-E002
+    short_name: nullable_pointer_unchecked
+    failure_classes:
+      - source_bug
+    summary: A nullable pointer is used without a verifier-visible non-null proof.
+
+  - error_id: BPFIX-E003
+    short_name: stack_or_register_uninitialized
+    failure_classes:
+      - source_bug
+      - lowering_artifact
+    summary: A stack byte or register is read before the verifier can prove initialization.
+
+  - error_id: BPFIX-E004
+    short_name: reference_lifecycle_violation
+    failure_classes:
+      - source_bug
+    summary: A verifier-tracked reference is not released or is live across a disallowed edge.
+
+  - error_id: BPFIX-E005
+    short_name: scalar_or_map_value_range_missing
+    failure_classes:
+      - source_bug
+      - lowering_artifact
+      - verifier_false_positive
+    summary: A scalar, helper length, or map-value offset range is not tight enough for the access.
+
+  - error_id: BPFIX-E006
+    short_name: pointer_provenance_missing
+    failure_classes:
+      - source_bug
+      - lowering_artifact
+    summary: A verifier-recognized pointer type or provenance proof is missing at the use site.
+
+  - error_id: BPFIX-E007
+    short_name: alignment_proof_missing
+    failure_classes:
+      - source_bug
+      - lowering_artifact
+    summary: The verifier cannot prove the required memory-access alignment.
+
+  - error_id: BPFIX-E008
+    short_name: verifier_type_contract_mismatch
+    failure_classes:
+      - source_bug
+    summary: The verifier-visible value type does not match the required type.
+
+  - error_id: BPFIX-E009
+    short_name: environment_capability_unavailable
+    failure_classes:
+      - environment_or_configuration
+    summary: The kernel, program type, attach point, privilege, helper, or BTF capability is unavailable.
+
+  - error_id: BPFIX-E010
+    short_name: helper_or_subprogram_argument_contract
+    failure_classes:
+      - source_bug
+      - lowering_artifact
+    summary: A helper, kfunc, or BPF subprogram argument contract is not satisfied.
+
+  - error_id: BPFIX-E011
+    short_name: context_or_struct_access_invalid
+    failure_classes:
+      - source_bug
+      - environment_or_configuration
+    summary: The requested context or kernel-struct field is invalid for the verifier-visible type.
+
+  - error_id: BPFIX-E012
+    short_name: dynptr_protocol_violation
+    failure_classes:
+      - source_bug
+    summary: Dynptr initialization, lifetime, bounds, mode, storage, or release protocol is violated.
+
+  - error_id: BPFIX-E013
+    short_name: kfunc_reference_contract_violation
+    failure_classes:
+      - source_bug
+    summary: A kfunc trusted-pointer, nullability, reference, or ownership contract is violated.
+
+  - error_id: BPFIX-E014
+    short_name: iterator_lifecycle_violation
+    failure_classes:
+      - source_bug
+    summary: Iterator state is used outside the verifier-approved lifecycle.
+
+  - error_id: BPFIX-E015
+    short_name: lock_rcu_irq_state_violation
+    failure_classes:
+      - source_bug
+    summary: Lock, RCU, IRQ, or trusted-nullability state discipline is violated.
+
+  - error_id: BPFIX-E016
+    short_name: instruction_or_execution_context_unsupported
+    failure_classes:
+      - environment_or_configuration
+    summary: The generated instruction, JIT feature, helper, kfunc, or execution context is unsupported.
+
+  - error_id: BPFIX-E018
+    short_name: loop_or_verifier_budget_limit
+    failure_classes:
+      - source_bug
+      - verifier_limit
+    summary: A loop bound is missing or verifier analysis exceeds a resource, stack, state, or complexity budget.
+
+  - error_id: BPFIX-E021
+    short_name: map_relocation_or_metadata_missing
+    failure_classes:
+      - environment_or_configuration
+    summary: Loader relocation or verifier metadata is missing, so a map/helper argument is verifier-visible as the wrong value.
+
+  - error_id: BPFIX-E099
+    short_name: unsupported_verifier_message
+    failure_classes:
+      - unsupported_verifier_message
+    summary: The verifier rejection shape is not yet supported by BPFix.
+
+historical_error_ids:
+  - BPFIX-E017
+  - BPFIX-E019
+  - BPFIX-E020
+  - BPFIX-E022
+  - BPFIX-E023
