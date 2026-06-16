@@ -2,66 +2,11 @@ use std::path::Path;
 
 use anyhow::{Context, Result};
 use bpfanalysis::verifier_log::{
-    call_target_from_instruction_tail, parse_instruction_line, parse_instruction_pc,
+    call_target_from_instruction_tail, is_verifier_error_line, parse_instruction_line,
+    parse_instruction_pc,
 };
 
 use crate::source::parse_source_comment;
-
-const TERMINAL_ERROR_MARKERS: &[&str] = &[
-    "bpf program is too large",
-    "combined stack size",
-    "invalid ",
-    "unbounded",
-    "out of bounds",
-    "outside of",
-    "expected ",
-    "expected=",
-    "possibly null pointer passed to",
-    "misaligned",
-    "missing btf",
-    "unknown opcode",
-    "unknown func",
-    "arg#",
-    "unreleased reference",
-    "reference has not",
-    "unacquired reference",
-    "helper call is not allowed",
-    "helper access to the packet is not allowed",
-    "cannot use helper",
-    "calling kernel function",
-    "jit does not support",
-    "cannot ",
-    "permission denied",
-    "does not allow writes to packet data",
-    "too many states",
-    "processed 1000001",
-    "loop is not bounded",
-    "infinite loop detected",
-    "back-edge",
-    "same insn cannot be used with different pointers",
-    "pointer arithmetic",
-    "bitwise operator",
-    "should have been in",
-    "cannot restore irq",
-    "may sleep",
-    "non-sleepable",
-    "rcu",
-    "lock",
-    "kfunc",
-    "trusted",
-    "iter",
-    "min value is negative",
-    "min value is outside",
-    "dereference of modified ctx ptr",
-    "makes pkt pointer",
-    "type=",
-    "!read_ok",
-    "only read from",
-    "access beyond struct",
-    "has no valid kptr",
-    "must be a known constant",
-    "dynptr",
-];
 
 #[derive(Clone, Debug)]
 pub(crate) struct LoadedInput {
@@ -311,38 +256,6 @@ pub(crate) fn find_terminal_error(log: &str) -> Option<TerminalError> {
         });
     }
     None
-}
-
-pub(crate) fn is_verifier_error_line(line: &str) -> bool {
-    if line.is_empty()
-        || line.starts_with("libbpf:")
-        || line.starts_with("Error:")
-        || line.starts_with("-- END")
-        || parse_instruction_line(line).is_some()
-        || (line.starts_with("processed ") && !line.contains("1000001"))
-        || line.starts_with("verification time ")
-        || line.starts_with("stack depth ")
-        || line.starts_with("mark_precise:")
-        || line.starts_with(';')
-        || is_verifier_state_line(line)
-    {
-        return false;
-    }
-    let lower = line.to_ascii_lowercase();
-    TERMINAL_ERROR_MARKERS
-        .iter()
-        .any(|marker| lower.contains(marker))
-}
-
-fn is_verifier_state_line(line: &str) -> bool {
-    if line.starts_with("from ") {
-        return true;
-    }
-    let Some((_, rest)) = line.split_once(':') else {
-        return false;
-    };
-    let trimmed = rest.trim_start();
-    trimmed.starts_with('R') || trimmed.starts_with("frame")
 }
 
 fn is_terminal_error_continuation(first_line: &str, previous: &str) -> bool {

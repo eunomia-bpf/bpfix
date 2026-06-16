@@ -219,6 +219,198 @@ pub struct VerifierLogInstruction<'a> {
     pub tail: &'a str,
 }
 
+const TERMINAL_ERROR_MARKERS: &[&str] = &[
+    "bpf program is too large",
+    "combined stack size",
+    "invalid ",
+    "unbounded",
+    "out of bounds",
+    "outside of",
+    "expected ",
+    "expected=",
+    "possibly null pointer passed to",
+    "misaligned",
+    "missing btf",
+    "unknown opcode",
+    "unknown func",
+    "arg#",
+    "unreleased reference",
+    "reference has not",
+    "unacquired reference",
+    "helper call is not allowed",
+    "helper access to the packet is not allowed",
+    "cannot use helper",
+    "calling kernel function",
+    "jit does not support",
+    "cannot ",
+    "permission denied",
+    "does not allow writes to packet data",
+    "too many states",
+    "processed 1000001",
+    "loop is not bounded",
+    "infinite loop detected",
+    "back-edge",
+    "same insn cannot be used with different pointers",
+    "pointer arithmetic",
+    "bitwise operator",
+    "should have been in",
+    "cannot restore irq",
+    "may sleep",
+    "non-sleepable",
+    "rcu",
+    "lock",
+    "kfunc",
+    "trusted",
+    "iter",
+    "min value is negative",
+    "min value is outside",
+    "dereference of modified ctx ptr",
+    "makes pkt pointer",
+    "type=",
+    "!read_ok",
+    "only read from",
+    "access beyond struct",
+    "has no valid kptr",
+    "must be a known constant",
+    "dynptr",
+];
+
+pub fn is_verifier_error_line(line: &str) -> bool {
+    if line.is_empty()
+        || line.starts_with("libbpf:")
+        || line.starts_with("Error:")
+        || line.starts_with("-- END")
+        || parse_instruction_line(line).is_some()
+        || (line.starts_with("processed ") && !line.contains("1000001"))
+        || line.starts_with("verification time ")
+        || line.starts_with("stack depth ")
+        || line.starts_with("mark_precise:")
+        || line.starts_with(';')
+        || is_verifier_state_line(line)
+    {
+        return false;
+    }
+    let lower = line.to_ascii_lowercase();
+    TERMINAL_ERROR_MARKERS
+        .iter()
+        .any(|marker| lower.contains(marker))
+}
+
+fn is_verifier_state_line(line: &str) -> bool {
+    if line.starts_with("from ") {
+        return true;
+    }
+    let Some((_, rest)) = line.split_once(':') else {
+        return false;
+    };
+    let trimmed = rest.trim_start();
+    trimmed.starts_with('R') || trimmed.starts_with("frame")
+}
+
+pub fn is_verifier_fragment_boundary(line: &str) -> bool {
+    line.starts_with("func#")
+        || line.contains("-- BEGIN PROG LOAD LOG --")
+        || line.contains("-- END PROG LOAD LOG --")
+        || line.starts_with("processed ")
+        || line.starts_with("verification time ")
+        || line.starts_with("stack depth ")
+        || (parse_instruction_line(line).is_none() && is_verifier_error_line(line))
+}
+
+pub fn verifier_fragment_start_line(log: &str, before_line: usize) -> usize {
+    let lines = log.lines().collect::<Vec<_>>();
+    let end = before_line.saturating_sub(1).min(lines.len());
+    lines[..end]
+        .iter()
+        .enumerate()
+        .rev()
+        .find_map(|(idx, line)| {
+            is_verifier_fragment_boundary(line.trim()).then_some(idx.saturating_add(2))
+        })
+        .unwrap_or(1)
+}
+
+pub fn instruction_on_log_line(
+    log: &str,
+    line_number: usize,
+) -> Option<VerifierLogInstruction<'_>> {
+    let line = log.lines().nth(line_number.checked_sub(1)?)?;
+    let (pc, tail) = parse_instruction_line(line.trim())?;
+    Some(VerifierLogInstruction {
+        pc,
+        line: line_number,
+        tail,
+    })
+}
+
+pub fn terminal_instruction_site(
+    log: &str,
+    terminal_pc: Option<usize>,
+    terminal_line: Option<usize>,
+) -> Option<VerifierLogInstruction<'_>> {
+    let pc = terminal_pc?;
+    let lines = log.lines().collect::<Vec<_>>();
+    let end = terminal_line
+        .map(|line| line.saturating_sub(1))
+        .unwrap_or(lines.len())
+        .min(lines.len());
+    let start = terminal_line
+        .map(|line| verifier_fragment_start_line(log, line))
+        .unwrap_or(1)
+        .saturating_sub(1)
+        .min(end);
+    lines[start..end]
+        .iter()
+        .enumerate()
+        .filter_map(|(offset, line)| {
+            let line_number = start + offset + 1;
+            let (line_pc, tail) = parse_instruction_line(line.trim())?;
+            (line_pc == pc).then_some(VerifierLogInstruction {
+                pc: line_pc,
+                line: line_number,
+                tail,
+            })
+        })
+        .next_back()
+}
+
+pub fn terminal_instruction_access_width(
+    log: &str,
+    terminal_pc: Option<usize>,
+    terminal_line: Option<usize>,
+) -> Option<u32> {
+    terminal_instruction_site(log, terminal_pc, terminal_line)
+        .and_then(|instruction| memory_access_width(instruction.tail))
+}
+
+pub fn terminal_instruction_memory_offset(
+    log: &str,
+    terminal_pc: Option<usize>,
+    terminal_line: Option<usize>,
+) -> Option<i64> {
+    terminal_instruction_site(log, terminal_pc, terminal_line)
+        .and_then(|instruction| memory_access_offset(instruction.tail))
+}
+
+pub fn terminal_instruction_contains(
+    log: &str,
+    terminal_pc: Option<usize>,
+    terminal_line: Option<usize>,
+    needle: &str,
+) -> bool {
+    terminal_instruction_site(log, terminal_pc, terminal_line)
+        .is_some_and(|instruction| instruction.tail.contains(needle))
+}
+
+pub fn terminal_call_target(
+    log: &str,
+    terminal_pc: Option<usize>,
+    terminal_line: Option<usize>,
+) -> Option<&str> {
+    terminal_instruction_site(log, terminal_pc, terminal_line)
+        .and_then(|instruction| call_target_from_instruction_tail(instruction.tail))
+}
+
 #[derive(Clone, Debug)]
 pub struct PathVerifierSnapshot {
     pub frame: usize,
@@ -1058,7 +1250,7 @@ fn looks_like_opcode_tail(tail: &str) -> bool {
 }
 
 fn parse_register_token(token: &str, allow_w: bool) -> Option<u8> {
-    let token = token.trim_end_matches(|ch| matches!(ch, ',' | ';'));
+    let token = token.trim_end_matches([',', ';']);
     let digits = token
         .strip_prefix('r')
         .or_else(|| allow_w.then(|| token.strip_prefix('w')).flatten())?;

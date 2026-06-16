@@ -3,12 +3,13 @@ use bpfanalysis::verifier_log::{
     atomic_memory_access_width, call_target_from_instruction_tail, conditional_branch_registers,
     direct_call_target_from_instruction_tail, initialized_stack_bytes_from_snapshot,
     instruction_adds_register, instruction_assigns_register, instruction_destination_register,
-    instruction_opcode_body, instruction_reads_register, instruction_register_copy_source,
-    instruction_single_register_rhs_source,
+    instruction_on_log_line, instruction_opcode_body, instruction_reads_register,
+    instruction_register_copy_source, instruction_single_register_rhs_source,
     instruction_uses_register as terminal_instruction_uses_register, instruction_writes_register,
-    latest_nullable_state, latest_ref_state_before_instruction,
-    latest_reg_state_at_or_before_instruction, latest_reg_state_before,
-    latest_reg_state_before_instruction, latest_reg_state_before_instruction_with_frame,
+    is_verifier_error_line, is_verifier_fragment_boundary, latest_nullable_state,
+    latest_ref_state_before_instruction, latest_reg_state_at_or_before_instruction,
+    latest_reg_state_before, latest_reg_state_before_instruction,
+    latest_reg_state_before_instruction_with_frame,
     latest_reg_state_before_instruction_with_log_line, latest_reg_state_index_before,
     latest_unsafe_scalar_state, latest_verifier_state_at_or_before_instruction,
     latest_verifier_state_before, latest_verifier_state_before_instruction,
@@ -19,14 +20,15 @@ use bpfanalysis::verifier_log::{
     parse_instruction_line, scalar_range_has_any_bound, scalar_range_max_i64,
     scalar_range_may_be_negative, scalar_range_may_include_zero, scalar_range_min_i64,
     scalar_range_upper_unbounded_or_too_large, scalar_ranges_match,
-    scalar_state_upper_bound_at_most, stack_access_range, stack_value_range,
+    scalar_state_upper_bound_at_most, stack_access_range, stack_value_range, terminal_call_target,
+    terminal_instruction_access_width, terminal_instruction_contains,
+    terminal_instruction_memory_offset, terminal_instruction_site, verifier_fragment_start_line,
     verifier_path_snapshot_before_instruction, verifier_states_with_branch_deltas_from_log,
     verifier_value_summary, CallbackKind, PathVerifierSnapshot, RegState, StackByteRange,
     StackState, VerifierInsn, VerifierInsnKind, VerifierLogInstruction as TerminalInstruction,
 };
 
 use crate::family::ProofObligation;
-use crate::input::is_verifier_error_line;
 use crate::proof::{instantiate_required_proof, packet_required_range, RequiredProof};
 use crate::source::{
     collect_source_events, latest_source_before, looks_like_null_check, looks_like_nullable_return,
@@ -3893,16 +3895,6 @@ fn non_null_pointer_overwritten_with_zero_before_use(
         })
 }
 
-fn instruction_on_log_line(log: &str, line_number: usize) -> Option<TerminalInstruction<'_>> {
-    let line = log.lines().nth(line_number.checked_sub(1)?)?;
-    let (pc, tail) = parse_instruction_line(line.trim())?;
-    Some(TerminalInstruction {
-        pc,
-        line: line_number,
-        tail,
-    })
-}
-
 fn conditional_branch_compares_register_with_zero(instruction_tail: &str, reg: u8) -> bool {
     let body = instruction_opcode_body(instruction_tail);
     body.contains(" if ")
@@ -5919,65 +5911,6 @@ fn scalar_state_upper_bound_matches_size(state: &RegState, access_size: u32) -> 
             .is_some_and(|value| value == access_size as i32)
 }
 
-fn terminal_instruction_access_width(
-    log: &str,
-    terminal_pc: Option<usize>,
-    terminal_line: Option<usize>,
-) -> Option<u32> {
-    terminal_instruction_site(log, terminal_pc, terminal_line)
-        .and_then(|instruction| memory_access_width(instruction.tail))
-}
-
-fn terminal_instruction_memory_offset(
-    log: &str,
-    terminal_pc: Option<usize>,
-    terminal_line: Option<usize>,
-) -> Option<i64> {
-    terminal_instruction_site(log, terminal_pc, terminal_line)
-        .and_then(|instruction| memory_access_offset(instruction.tail))
-}
-
-fn terminal_instruction_contains(
-    log: &str,
-    terminal_pc: Option<usize>,
-    terminal_line: Option<usize>,
-    needle: &str,
-) -> bool {
-    terminal_instruction_site(log, terminal_pc, terminal_line)
-        .is_some_and(|instruction| instruction.tail.contains(needle))
-}
-
-fn terminal_instruction_site(
-    log: &str,
-    terminal_pc: Option<usize>,
-    terminal_line: Option<usize>,
-) -> Option<TerminalInstruction<'_>> {
-    let pc = terminal_pc?;
-    let lines = log.lines().collect::<Vec<_>>();
-    let end = terminal_line
-        .map(|line| line.saturating_sub(1))
-        .unwrap_or(lines.len())
-        .min(lines.len());
-    let start = terminal_line
-        .map(|line| verifier_fragment_start_line(log, line))
-        .unwrap_or(1)
-        .saturating_sub(1)
-        .min(end);
-    lines[start..end]
-        .iter()
-        .enumerate()
-        .filter_map(|(offset, line)| {
-            let line_number = start + offset + 1;
-            let (line_pc, tail) = parse_instruction_line(line.trim())?;
-            (line_pc == pc).then_some(TerminalInstruction {
-                pc: line_pc,
-                line: line_number,
-                tail,
-            })
-        })
-        .last()
-}
-
 fn terminal_call_instruction_site<'a>(
     context: &'a ProofSignalContext<'a>,
 ) -> Option<TerminalInstruction<'a>> {
@@ -6059,15 +5992,6 @@ fn is_dynptr_contract_terminal_line(line: &str) -> bool {
 fn is_memory_len_pair_error_line(line: &str) -> bool {
     line.to_ascii_lowercase()
         .contains("memory, len pair leads to invalid memory access")
-}
-
-fn terminal_call_target(
-    log: &str,
-    terminal_pc: Option<usize>,
-    terminal_line: Option<usize>,
-) -> Option<&str> {
-    terminal_instruction_site(log, terminal_pc, terminal_line)
-        .and_then(|instruction| call_target_from_instruction_tail(instruction.tail))
 }
 
 fn terminal_error_has_nearby_prior_line(
@@ -6473,29 +6397,6 @@ fn source_for_instruction_in_fragment(
         .filter(|event| event.pc.is_some_and(|event_pc| event_pc <= pc))
         .max_by_key(|event| (event.pc.unwrap_or(0), event.log_line))
         .map(|event| &event.source)
-}
-
-fn verifier_fragment_start_line(log: &str, before_line: usize) -> usize {
-    let lines = log.lines().collect::<Vec<_>>();
-    let end = before_line.saturating_sub(1).min(lines.len());
-    lines[..end]
-        .iter()
-        .enumerate()
-        .rev()
-        .find_map(|(idx, line)| {
-            is_verifier_fragment_boundary(line.trim()).then_some(idx.saturating_add(2))
-        })
-        .unwrap_or(1)
-}
-
-fn is_verifier_fragment_boundary(line: &str) -> bool {
-    line.starts_with("func#")
-        || line.contains("-- BEGIN PROG LOAD LOG --")
-        || line.contains("-- END PROG LOAD LOG --")
-        || line.starts_with("processed ")
-        || line.starts_with("verification time ")
-        || line.starts_with("stack depth ")
-        || (parse_instruction_line(line).is_none() && is_verifier_error_line(line))
 }
 
 fn misaligned_stack_access_size(message: &str) -> Option<u32> {

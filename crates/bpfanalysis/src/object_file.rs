@@ -156,11 +156,7 @@ fn lift_program_cfg(
         .filter(|state| state.pc < insns.len())
         .cloned()
         .collect::<Vec<_>>();
-    if states.len() < original_state_count
-        && !verifier_function_starts
-            .iter()
-            .any(|start| *start == insns.len())
-    {
+    if states.len() < original_state_count && !verifier_function_starts.contains(&insns.len()) {
         return Ok((lift_without_verifier_states(insns)?, None));
     }
     if states.is_empty() {

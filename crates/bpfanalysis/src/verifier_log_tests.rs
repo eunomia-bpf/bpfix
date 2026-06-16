@@ -89,6 +89,85 @@ fn parses_memory_access_shape() {
 }
 
 #[test]
+fn identifies_verifier_error_lines_and_fragments() {
+    assert!(is_verifier_error_line(
+        "invalid access to map value, value_size=2 off=1 size=2"
+    ));
+    assert!(is_verifier_error_line(
+        "processed 1000001 insns (limit exceeded)"
+    ));
+    assert!(!is_verifier_error_line("12: (71) r1 = *(u8 *)(r2 +0)"));
+    assert!(!is_verifier_error_line("12: R1=ctx() R10=fp0"));
+    assert!(!is_verifier_error_line("processed 18 insns"));
+
+    assert!(is_verifier_fragment_boundary("func#1 @0"));
+    assert!(is_verifier_fragment_boundary(
+        "invalid access to map value, value_size=2 off=1 size=2"
+    ));
+    assert!(!is_verifier_fragment_boundary("12: R1=ctx() R10=fp0"));
+
+    let log = "\
+0: (b7) r0 = 0
+invalid access to map value, value_size=2 off=1 size=2
+0: (b7) r0 = 1
+1: (95) exit
+";
+    assert_eq!(verifier_fragment_start_line(log, 4), 3);
+}
+
+#[test]
+fn locates_terminal_instruction_inside_current_fragment() {
+    let log = "\
+0: (b7) r1 = 0
+1: (85) call bpf_map_lookup_elem#1
+invalid mem access 'scalar'
+0: (b7) r1 = 1
+1: (79) r2 = *(u64 *)(r10 -8)
+R2 invalid mem access 'scalar'
+";
+
+    let instruction = terminal_instruction_site(log, Some(1), Some(6)).unwrap();
+    assert_eq!(instruction.line, 5);
+    assert_eq!(instruction.tail, "(79) r2 = *(u64 *)(r10 -8)");
+    assert_eq!(
+        terminal_instruction_access_width(log, Some(1), Some(6)),
+        Some(8)
+    );
+    assert_eq!(
+        terminal_instruction_memory_offset(log, Some(1), Some(6)),
+        Some(-8)
+    );
+    assert!(terminal_instruction_contains(
+        log,
+        Some(1),
+        Some(6),
+        "*(u64 *)"
+    ));
+    assert_eq!(
+        terminal_call_target(log, Some(1), Some(3)),
+        Some("bpf_map_lookup_elem")
+    );
+
+    let direct = instruction_on_log_line(log, 5).unwrap();
+    assert_eq!(direct.pc, 1);
+}
+
+#[test]
+fn terminal_instruction_uses_last_matching_pc_before_terminal() {
+    let log = "\
+4: (bf) r2 = r1
+5: (71) r3 = *(u8 *)(r2 +0)
+5: (7b) *(u64 *)(r10 -8) = r3
+R3 invalid mem access 'scalar'
+";
+
+    let instruction = terminal_instruction_site(log, Some(5), Some(4)).unwrap();
+    assert_eq!(instruction.line, 3);
+    assert_eq!(instruction.tail, "(7b) *(u64 *)(r10 -8) = r3");
+    assert!(!memory_access_is_load(instruction.tail));
+}
+
+#[test]
 fn queries_instruction_register_effects() {
     let copy = "(bf) r3 = r1                      ; R3_w=ctx()";
     assert_eq!(instruction_destination_register(copy), Some(3));
