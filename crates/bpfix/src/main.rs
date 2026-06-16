@@ -9,8 +9,8 @@ use diagnostic::{ProofEventEvidence, ProofEventRole, ProofSignal};
 use family::ProofObligation;
 use input::{find_terminal_error, load_input, LoadedInput, TerminalError};
 use output::{
-    render_json, render_text, Diagnostic, Evidence, Metadata, ObjectProgramMetadata, RelatedSpan,
-    SourceSpan,
+    render_json, render_text, Diagnostic, Evidence, Metadata, NextAction, ObjectProgramMetadata,
+    RelatedSpan, SourceSpan,
 };
 
 mod classifier;
@@ -226,8 +226,7 @@ fn build_diagnostic(
         .to_string();
     let next_action = proof_signal
         .map(ProofSignal::next_action)
-        .unwrap_or_else(|| classifier_next_action(&class))
-        .to_string();
+        .unwrap_or_else(|| classifier_next_action(&class));
     let diagnostic_kind = if class.diagnostic_kind == "unsupported_verifier_message"
         && proof_signal.is_some_and(ProofSignal::can_replace_unsupported_terminal)
     {
@@ -334,35 +333,35 @@ fn build_diagnostic(
     }
 }
 
-fn classifier_next_action(class: &classifier::Classification) -> &'static str {
+fn classifier_next_action(class: &classifier::Classification) -> NextAction {
     match class.failure_class {
-        "environment_or_configuration" => "environment",
-        "verifier_limit" => "budget",
-        "input_error" | "unsupported_verifier_message" => "other",
+        "environment_or_configuration" => NextAction::Environment,
+        "verifier_limit" => NextAction::Budget,
+        "input_error" | "unsupported_verifier_message" => NextAction::Other,
         _ => obligation_next_action(class.obligation),
     }
 }
 
-fn obligation_next_action(obligation: ProofObligation) -> &'static str {
+fn obligation_next_action(obligation: ProofObligation) -> NextAction {
     match obligation {
-        ProofObligation::PacketBounds | ProofObligation::ScalarRange => "bounds",
-        ProofObligation::NullablePointer => "null",
-        ProofObligation::StackInitialized => "initialize",
-        ProofObligation::ReferenceLifecycle => "release",
-        ProofObligation::VerifierLimit | ProofObligation::LoopBound => "budget",
+        ProofObligation::PacketBounds | ProofObligation::ScalarRange => NextAction::Bounds,
+        ProofObligation::NullablePointer => NextAction::Null,
+        ProofObligation::StackInitialized => NextAction::Initialize,
+        ProofObligation::ReferenceLifecycle => NextAction::Release,
+        ProofObligation::VerifierLimit | ProofObligation::LoopBound => NextAction::Budget,
         ProofObligation::EnvironmentCapability | ProofObligation::InstructionSupport => {
-            "environment"
+            NextAction::Environment
         }
         ProofObligation::PointerProvenance
         | ProofObligation::Alignment
-        | ProofObligation::TypeContract => "provenance",
-        ProofObligation::ContextAccess => "context",
+        | ProofObligation::TypeContract => NextAction::Provenance,
+        ProofObligation::ContextAccess => NextAction::Context,
         ProofObligation::HelperArgument
         | ProofObligation::DynptrSafety
         | ProofObligation::KfuncReference
         | ProofObligation::IteratorLifecycle
-        | ProofObligation::LockState => "protocol",
-        ProofObligation::Unknown => "other",
+        | ProofObligation::LockState => NextAction::Protocol,
+        ProofObligation::Unknown => NextAction::Other,
     }
 }
 

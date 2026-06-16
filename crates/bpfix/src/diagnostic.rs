@@ -6,6 +6,7 @@ use bpfanalysis::{
 
 use crate::family::ProofObligation;
 use crate::input::is_verifier_error_line;
+use crate::output::NextAction;
 use crate::proof::{
     instantiate_required_proof, packet_required_range, verifier_value_summary, RequiredProof,
 };
@@ -328,9 +329,11 @@ impl ProofSignal {
         }
     }
 
-    pub(crate) const fn next_action(self) -> &'static str {
+    pub(crate) const fn next_action(self) -> NextAction {
         match self {
-            Self::MapPointerArgumentScalarZero | Self::BtfFuncInfoMissing => "environment",
+            Self::MapPointerArgumentScalarZero | Self::BtfFuncInfoMissing => {
+                NextAction::Environment
+            }
             Self::ContextFieldUnavailable
             | Self::ContextAccessSourceArgumentMismatch
             | Self::KernelObjectFieldAccessMismatch
@@ -338,17 +341,19 @@ impl ProofSignal {
             | Self::SleepableCallInNonSleepableContext
             | Self::DynptrReadonlyPacketWrite
             | Self::UnreadableProgramEntryArgument
-            | Self::LegacySkbLoadUnreadableRegister => "context",
-            Self::LoopBackEdgeStateRepeats => "budget",
-            Self::NullablePointerUseWithoutProof | Self::TrustedNullableArgument => "null",
+            | Self::LegacySkbLoadUnreadableRegister => NextAction::Context,
+            Self::LoopBackEdgeStateRepeats => NextAction::Budget,
+            Self::NullablePointerUseWithoutProof | Self::TrustedNullableArgument => {
+                NextAction::Null
+            }
             Self::ExceptionThrowWithLiveReference
             | Self::ReferenceLiveAtExit
-            | Self::DynptrReleaseUnacquiredReference => "release",
+            | Self::DynptrReleaseUnacquiredReference => NextAction::Release,
             Self::SharedInstructionUninitializedRegister
             | Self::MapLookupKeyArgumentUnreadable
             | Self::UnreadableHelperArgument
             | Self::UnreadableReturnRegister
-            | Self::HelperStackReadExceedsInitializedRange => "initialize",
+            | Self::HelperStackReadExceedsInitializedRange => NextAction::Initialize,
             Self::PacketAccessWithoutBoundsProof
             | Self::PacketGuardUndercoversAccess
             | Self::PacketMaxOffsetPrecisionBoundary
@@ -360,7 +365,7 @@ impl ProofSignal {
             | Self::StackVariableOffsetOutOfBounds
             | Self::ScalarRangeUnsafeAtUse
             | Self::DynptrSliceVariableLength
-            | Self::HelperStackWriteBeyondFrame => "bounds",
+            | Self::HelperStackWriteBeyondFrame => NextAction::Bounds,
             Self::WideStackAlignment
             | Self::AtomicMemoryAccessScalarBase
             | Self::SharedInstructionPointerMerge
@@ -376,7 +381,7 @@ impl ProofSignal {
             | Self::SubprogramReferenceMetadataMissing
             | Self::ScalarValueUsedAsPointer
             | Self::StalePointerAfterInvalidatingHelper
-            | Self::ProhibitedPointerArithmetic => "provenance",
+            | Self::ProhibitedPointerArithmetic => NextAction::Provenance,
             Self::DynptrStackStorageAccess
             | Self::DynptrUninitializedArgument
             | Self::DynptrReferencedSlotOverwrite
@@ -394,7 +399,7 @@ impl ProofSignal {
             | Self::IrqStateLiveAtExit
             | Self::CallbackCallWhileLocked
             | Self::MapPointerRawAccessContract
-            | Self::PerfEventOutputPacketAccess => "protocol",
+            | Self::PerfEventOutputPacketAccess => NextAction::Protocol,
         }
     }
 
@@ -9134,6 +9139,7 @@ fn scalar_range_is_unsafe(state: &RegState) -> bool {
 mod tests {
     use super::{analyze_verifier_log, ProofEventEvidence, ProofEventRole, ProofSignal};
     use crate::family::ProofObligation;
+    use crate::output::NextAction;
 
     macro_rules! define_all_proof_signals {
         ($($variant:ident),+ $(,)?) => {
@@ -9150,7 +9156,7 @@ mod tests {
         for signal in ALL_PROOF_SIGNALS {
             assert_ne!(
                 signal.next_action(),
-                "other",
+                NextAction::Other,
                 "{signal:?} should expose a concrete next_action"
             );
         }

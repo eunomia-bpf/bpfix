@@ -1,5 +1,94 @@
 use anyhow::{Context, Result};
-use serde::Serialize;
+use serde::{Serialize, Serializer};
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum NextAction {
+    Bounds,
+    Provenance,
+    Null,
+    Initialize,
+    Release,
+    Environment,
+    Budget,
+    Protocol,
+    Context,
+    Other,
+}
+
+impl NextAction {
+    #[cfg(test)]
+    const ALL: &'static [Self] = &[
+        Self::Bounds,
+        Self::Provenance,
+        Self::Null,
+        Self::Initialize,
+        Self::Release,
+        Self::Environment,
+        Self::Budget,
+        Self::Protocol,
+        Self::Context,
+        Self::Other,
+    ];
+
+    pub(crate) const fn as_str(self) -> &'static str {
+        match self {
+            Self::Bounds => "bounds",
+            Self::Provenance => "provenance",
+            Self::Null => "null",
+            Self::Initialize => "initialize",
+            Self::Release => "release",
+            Self::Environment => "environment",
+            Self::Budget => "budget",
+            Self::Protocol => "protocol",
+            Self::Context => "context",
+            Self::Other => "other",
+        }
+    }
+}
+
+impl Serialize for NextAction {
+    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(self.as_str())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::NextAction;
+    use serde_json::Value;
+    use std::collections::BTreeSet;
+    use std::path::PathBuf;
+
+    #[test]
+    fn next_action_schema_enum_matches_internal_contract() {
+        let schema_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../..")
+            .join("docs/evaluation/diagnostic.schema.json");
+        let schema: Value = serde_json::from_str(
+            &std::fs::read_to_string(schema_path).expect("schema should be readable"),
+        )
+        .expect("schema should be JSON");
+        let schema_actions = schema["properties"]["next_action"]["enum"]
+            .as_array()
+            .expect("next_action enum should be an array")
+            .iter()
+            .map(|value| {
+                value
+                    .as_str()
+                    .expect("next_action enum values should be strings")
+            })
+            .collect::<BTreeSet<_>>();
+        let internal_actions = NextAction::ALL
+            .iter()
+            .map(|action| action.as_str())
+            .collect::<BTreeSet<_>>();
+
+        assert_eq!(internal_actions, schema_actions);
+    }
+}
 
 #[derive(Serialize)]
 pub(crate) struct Diagnostic {
@@ -9,7 +98,7 @@ pub(crate) struct Diagnostic {
     pub(crate) confidence: String,
     pub(crate) diagnostic_kind: String,
     pub(crate) help_safety: String,
-    pub(crate) next_action: String,
+    pub(crate) next_action: NextAction,
     pub(crate) span_confidence: String,
     pub(crate) message: String,
     pub(crate) required_proof: String,
@@ -87,7 +176,10 @@ pub(crate) fn render_text(diagnostic: &Diagnostic) -> String {
         "  = diagnostic: {}, help: {}, span: {}\n",
         diagnostic.diagnostic_kind, diagnostic.help_safety, diagnostic.span_confidence
     ));
-    out.push_str(&format!("  = next action: {}\n", diagnostic.next_action));
+    out.push_str(&format!(
+        "  = next action: {}\n",
+        diagnostic.next_action.as_str()
+    ));
 
     let line = diagnostic.source_span.line_start.unwrap_or(1);
     out.push_str(&format!("  --> {}:{line}\n", diagnostic.source_span.path));
