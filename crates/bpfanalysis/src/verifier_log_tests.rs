@@ -52,6 +52,34 @@ fn parses_marked_decimal_and_hex_numbers() {
 }
 
 #[test]
+fn classifies_terminal_error_predicates() {
+    assert!(terminal_error_is_invalid_scalar_memory_access(
+        "R7 invalid mem access 'scalar'"
+    ));
+    assert!(terminal_error_is_invalid_scalar_memory_access(
+        "R2 invalid mem access 'INV'"
+    ));
+    assert!(!terminal_error_is_invalid_scalar_memory_access(
+        "R0 invalid mem access 'map_value_or_null'"
+    ));
+    assert!(terminal_error_is_pointer_arithmetic(
+        "pointer arithmetic on PTR_TO_PACKET_END prohibited"
+    ));
+    assert!(terminal_error_is_pointer_arithmetic_or_bitwise(
+        "R1 bitwise operator &= on pointer prohibited"
+    ));
+    assert!(terminal_error_mentions_packet_end(
+        "pointer arithmetic on ptr_to_packet_end"
+    ));
+    assert!(terminal_error_is_context_access(
+        "invalid ctx access off=80 size=8"
+    ));
+    assert!(terminal_error_is_context_access(
+        "invalid access to context, off=16 size=8"
+    ));
+}
+
+#[test]
 fn parses_instruction_lines_and_call_targets() {
     assert_eq!(
         parse_instruction_line("  6: (71) r3 = *(u8 *)(r2 +0)"),

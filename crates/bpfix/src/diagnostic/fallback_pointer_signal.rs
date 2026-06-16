@@ -1,6 +1,8 @@
 use bpfanalysis::verifier_log::{
     latest_reg_state_before_instruction, loose_register_operands as register_operands,
-    memory_access_base_register, RegState,
+    memory_access_base_register, terminal_error_is_invalid_scalar_memory_access,
+    terminal_error_is_pointer_arithmetic, terminal_error_is_pointer_arithmetic_or_bitwise,
+    terminal_error_mentions_packet_end, RegState,
 };
 
 use crate::family::ProofObligation;
@@ -11,11 +13,9 @@ pub(super) fn scalar_value_used_as_pointer(context: &ProofSignalContext<'_>) -> 
     if context.obligation != ProofObligation::PointerProvenance {
         return false;
     }
-    let terminal = context.terminal_error.to_ascii_lowercase();
-    let scalar_mem_access = terminal.contains("invalid mem access 'scalar'")
-        || terminal.contains("invalid mem access 'inv'");
-    let pkt_end_arithmetic =
-        terminal.contains("pointer arithmetic") && terminal_mentions_pkt_end(&terminal);
+    let scalar_mem_access = terminal_error_is_invalid_scalar_memory_access(context.terminal_error);
+    let pkt_end_arithmetic = terminal_error_is_pointer_arithmetic(context.terminal_error)
+        && terminal_error_mentions_packet_end(context.terminal_error);
     if !scalar_mem_access && !pkt_end_arithmetic {
         return false;
     }
@@ -50,11 +50,10 @@ pub(super) fn prohibited_pointer_arithmetic(context: &ProofSignalContext<'_>) ->
     if context.obligation != ProofObligation::PointerProvenance {
         return false;
     }
-    let terminal = context.terminal_error.to_ascii_lowercase();
-    if !(terminal.contains("bitwise operator") || terminal.contains("pointer arithmetic")) {
+    if !terminal_error_is_pointer_arithmetic_or_bitwise(context.terminal_error) {
         return false;
     }
-    if terminal_mentions_pkt_end(&terminal) {
+    if terminal_error_mentions_packet_end(context.terminal_error) {
         return false;
     }
     let Some(reg) = context.register else {
@@ -72,8 +71,4 @@ pub(super) fn prohibited_pointer_arithmetic(context: &ProofSignalContext<'_>) ->
 
 fn verifier_pointer_state_for_arithmetic(state: &RegState) -> bool {
     state.reg_type != "scalar"
-}
-
-fn terminal_mentions_pkt_end(terminal: &str) -> bool {
-    terminal.contains("pkt_end") || terminal.contains("ptr_to_packet_end")
 }

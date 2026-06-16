@@ -8,8 +8,8 @@ use bpfanalysis::verifier_log::{
     latest_reg_state_before_instruction_with_origin, latest_verifier_state_before_instruction,
     memory_access_base_register, memory_access_is_store, reg_state_has_variable_offset,
     register_assigned_between, stack_memory_access_range, stack_value_range,
-    verifier_fragment_start_line, CallbackKind, RegState, StackByteRange, VerifierInsn,
-    VerifierLogInstruction as TerminalInstruction,
+    terminal_error_is_invalid_scalar_memory_access, verifier_fragment_start_line, CallbackKind,
+    RegState, StackByteRange, VerifierInsn, VerifierLogInstruction as TerminalInstruction,
 };
 
 use crate::family::ProofObligation;
@@ -25,10 +25,7 @@ pub(super) fn stale_pointer_after_invalidating_helper(
     if context.obligation != ProofObligation::PointerProvenance {
         return None;
     }
-    let terminal = context.terminal_error.to_ascii_lowercase();
-    if !(terminal.contains("invalid mem access 'scalar'")
-        || terminal.contains("invalid mem access 'inv'"))
-    {
+    if !terminal_error_is_invalid_scalar_memory_access(context.terminal_error) {
         return None;
     }
     let reg = context

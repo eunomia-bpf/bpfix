@@ -5,7 +5,8 @@ use bpfanalysis::verifier_log::{
     latest_reg_state_before, latest_reg_state_before_instruction,
     latest_reg_state_before_instruction_with_origin, memory_access_base_register,
     memory_access_is_load, memory_access_offset, memory_access_width, parse_u32_after,
-    VerifierInsn, VerifierLogInstruction as TerminalInstruction,
+    terminal_error_is_context_access, terminal_error_is_invalid_scalar_memory_access, VerifierInsn,
+    VerifierLogInstruction as TerminalInstruction,
 };
 
 use crate::family::ProofObligation;
@@ -17,11 +18,7 @@ use super::{
 };
 
 pub(super) fn bpf_prog_context_argument_mismatch(context: &ProofSignalContext<'_>) -> bool {
-    let terminal = context.terminal_error.to_ascii_lowercase();
-    if !(terminal.contains("invalid bpf_context access")
-        || terminal.contains("invalid ctx access")
-        || terminal.contains("invalid access to context"))
-    {
+    if !terminal_error_is_context_access(context.terminal_error) {
         return false;
     }
     if !terminal_error_has_nearby_prior_line(
@@ -47,10 +44,7 @@ pub(super) fn trace_context_scalar_argument_dereference(context: &ProofSignalCon
     if context.obligation != ProofObligation::PointerProvenance {
         return false;
     }
-    let terminal = context.terminal_error.to_ascii_lowercase();
-    if !(terminal.contains("invalid mem access 'scalar'")
-        || terminal.contains("invalid mem access 'inv'"))
-    {
+    if !terminal_error_is_invalid_scalar_memory_access(context.terminal_error) {
         return false;
     }
     let Some((instruction, fragment_start)) = terminal_site(context) else {
@@ -204,11 +198,7 @@ fn section_is_tracepoint(section: &str) -> bool {
 }
 
 pub(super) fn context_field_unavailable(context: &ProofSignalContext<'_>) -> bool {
-    let terminal = context.terminal_error.to_ascii_lowercase();
-    if !(terminal.contains("invalid bpf_context access")
-        || terminal.contains("invalid ctx access")
-        || terminal.contains("invalid access to context"))
-    {
+    if !terminal_error_is_context_access(context.terminal_error) {
         return false;
     }
     if terminal_error_has_nearby_prior_line(
@@ -249,10 +239,7 @@ pub(super) fn packet_context_field_access_in_unsupported_program(
     {
         return false;
     }
-    let terminal = context.terminal_error.to_ascii_lowercase();
-    if !(terminal.contains("invalid mem access 'scalar'")
-        || terminal.contains("invalid mem access 'inv'"))
-    {
+    if !terminal_error_is_invalid_scalar_memory_access(context.terminal_error) {
         return false;
     }
     let Some((instruction, fragment_start)) = terminal_site(context) else {

@@ -6,7 +6,8 @@ use bpfanalysis::verifier_log::{
     latest_reg_state_before_instruction_with_frame, latest_reg_state_for_call_argument_with_frame,
     memory_access_base_register, memory_access_is_load, memory_access_is_store,
     memory_access_width, reg_state_has_variable_offset, stack_memory_access_range,
-    stack_value_range, StackByteRange, VerifierInsn, VerifierLogInstruction as TerminalInstruction,
+    stack_value_range, terminal_error_is_invalid_scalar_memory_access, StackByteRange,
+    VerifierInsn, VerifierLogInstruction as TerminalInstruction,
 };
 
 use crate::family::ProofObligation;
@@ -20,10 +21,7 @@ pub(super) fn opaque_scalar_pointer_dereference(context: &ProofSignalContext<'_>
     if context.obligation != ProofObligation::PointerProvenance {
         return false;
     }
-    let terminal = context.terminal_error.to_ascii_lowercase();
-    if !(terminal.contains("invalid mem access 'scalar'")
-        || terminal.contains("invalid mem access 'inv'"))
-    {
+    if !terminal_error_is_invalid_scalar_memory_access(context.terminal_error) {
         return false;
     }
     let Some(reg) = context

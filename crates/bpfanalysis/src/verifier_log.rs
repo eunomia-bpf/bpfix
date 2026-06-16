@@ -24,9 +24,11 @@ mod terminal_error;
 pub use terminal_error::{
     arg_number_from_verifier_error, helper_name_from_verifier_error, map_value_access_error,
     register_for_zero_based_arg_index, register_from_verifier_error, stack_access_range,
-    stack_read_access, stack_write_access_range, terminal_required_return_range,
-    zero_based_arg_index_after, zero_based_arg_register_after, MapValueAccessError,
-    StackReadAccess,
+    stack_read_access, stack_write_access_range, terminal_error_is_context_access,
+    terminal_error_is_invalid_scalar_memory_access, terminal_error_is_pointer_arithmetic,
+    terminal_error_is_pointer_arithmetic_or_bitwise, terminal_error_mentions_packet_end,
+    terminal_required_return_range, zero_based_arg_index_after, zero_based_arg_register_after,
+    MapValueAccessError, StackReadAccess,
 };
 
 #[allow(clippy::enum_variant_names)]

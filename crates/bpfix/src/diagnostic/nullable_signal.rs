@@ -4,7 +4,8 @@ use bpfanalysis::verifier_log::{
     instruction_register_copy_source, instructions_in_line_range, latest_reg_state_before,
     latest_reg_state_before_instruction, latest_reg_state_before_instruction_with_origin,
     loose_register_operands as register_operands, memory_access_base_register, parse_u32_after,
-    RegState, VerifierInsn,
+    terminal_error_is_invalid_scalar_memory_access, terminal_error_is_pointer_arithmetic, RegState,
+    VerifierInsn,
 };
 
 use crate::family::ProofObligation;
@@ -61,7 +62,7 @@ fn nullable_instruction_register_mismatch(terminal: &str, instruction_tail: &str
     if terminal.contains("invalid mem access") {
         return memory_access_base_register(instruction_tail).is_some_and(|base| base != reg);
     }
-    if terminal.contains("pointer arithmetic") {
+    if terminal_error_is_pointer_arithmetic(terminal) {
         return register_operands(instruction_tail).first().copied() != Some(reg);
     }
     false
@@ -73,10 +74,7 @@ pub(super) fn null_scalar_dereference_after_pointer_proof(
     if context.obligation != ProofObligation::PointerProvenance {
         return false;
     }
-    let terminal = context.terminal_error.to_ascii_lowercase();
-    if !(terminal.contains("invalid mem access 'scalar'")
-        || terminal.contains("invalid mem access 'inv'"))
-    {
+    if !terminal_error_is_invalid_scalar_memory_access(context.terminal_error) {
         return false;
     }
     let Some(reg) = context

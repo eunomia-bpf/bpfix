@@ -46,6 +46,41 @@ pub fn stack_write_access_range(message: &str) -> Option<StackByteRange> {
         .flatten()
 }
 
+pub fn terminal_error_is_invalid_scalar_memory_access(message: &str) -> bool {
+    terminal_error_contains_any(
+        message,
+        &["invalid mem access 'scalar'", "invalid mem access 'inv'"],
+    )
+}
+
+pub fn terminal_error_mentions_packet_end(message: &str) -> bool {
+    terminal_error_contains_any(message, &["pkt_end", "ptr_to_packet_end"])
+}
+
+pub fn terminal_error_is_pointer_arithmetic(message: &str) -> bool {
+    terminal_error_contains_any(message, &["pointer arithmetic"])
+}
+
+pub fn terminal_error_is_pointer_arithmetic_or_bitwise(message: &str) -> bool {
+    terminal_error_contains_any(message, &["pointer arithmetic", "bitwise operator"])
+}
+
+pub fn terminal_error_is_context_access(message: &str) -> bool {
+    terminal_error_contains_any(
+        message,
+        &[
+            "invalid bpf_context access",
+            "invalid ctx access",
+            "invalid access to context",
+        ],
+    )
+}
+
+fn terminal_error_contains_any(message: &str, needles: &[&str]) -> bool {
+    let lower = message.to_ascii_lowercase();
+    needles.iter().any(|needle| lower.contains(needle))
+}
+
 fn parse_stack_read_access_segment(segment: &str) -> Option<StackReadAccess> {
     let tokens = segment.split_whitespace().collect::<Vec<_>>();
     for start in 0..tokens.len().saturating_sub(3) {
