@@ -5159,6 +5159,10 @@ invalid verifier frobnication
         read_write_slice_in_read_only_context["error_id"],
         "BPFIX-E012"
     );
+    assert_eq!(
+        read_write_slice_in_read_only_context["next_action"],
+        "environment"
+    );
     assert!(read_write_slice_in_read_only_context["message"]
         .as_str()
         .unwrap()

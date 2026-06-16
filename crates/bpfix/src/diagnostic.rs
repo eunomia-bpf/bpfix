@@ -349,13 +349,13 @@ impl ProofSignal {
         match self {
             Self::MapPointerArgumentScalarZero
             | Self::BtfFuncInfoMissing
-            | Self::PacketContextFieldAccessInUnsupportedProgram => NextAction::Environment,
+            | Self::PacketContextFieldAccessInUnsupportedProgram
+            | Self::DynptrReadonlyPacketWrite => NextAction::Environment,
             Self::ContextFieldUnavailable
             | Self::ContextAccessSourceArgumentMismatch
             | Self::KernelObjectFieldAccessMismatch
             | Self::ModifiedContextPointer
             | Self::SleepableCallInNonSleepableContext
-            | Self::DynptrReadonlyPacketWrite
             | Self::UnreadableProgramEntryArgument
             | Self::LegacySkbLoadUnreadableRegister => NextAction::Context,
             Self::LoopBackEdgeStateRepeats => NextAction::Budget,
