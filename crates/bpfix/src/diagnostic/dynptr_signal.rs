@@ -10,8 +10,8 @@ use super::{
     dynptr_slot_backing_before, dynptr_stack_slot_for_call_argument,
     latest_live_ref_dynptr_stack_overlap_before_instruction, latest_reg_state_for_call_argument,
     latest_reg_state_for_call_argument_with_frame, latest_stack_value_overlap,
-    reg_state_has_variable_offset, rejected_source, stack_access_range_from_context,
-    terminal_call_instruction_site, terminal_fragment_start,
+    reg_state_has_variable_offset, rejected_source, stack_access_site_for_terminal_range,
+    stack_access_site_from_context, terminal_call_instruction_site, terminal_fragment_start,
     terminal_stack_memory_write_range_with_frame, DynptrBacking, ProofSignalContext,
 };
 
@@ -28,7 +28,7 @@ pub(super) fn dynptr_stack_storage_access(context: &ProofSignalContext<'_>) -> b
     }) {
         return false;
     }
-    let Some(access) = stack_access_range_from_context(context) else {
+    let Some(access) = stack_access_site_from_context(context) else {
         return false;
     };
     latest_stack_value_overlap(context, access, 16, |value| {
@@ -60,6 +60,9 @@ pub(super) fn dynptr_stack_slot_write_overlap(context: &ProofSignalContext<'_>) 
         return false;
     };
     let Some(access) = stack_value_range(offset, 1) else {
+        return false;
+    };
+    let Some(access) = stack_access_site_for_terminal_range(context, access) else {
         return false;
     };
     latest_stack_value_overlap(context, access, 16, |value| {

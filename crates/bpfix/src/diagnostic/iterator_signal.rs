@@ -7,7 +7,7 @@ use crate::family::ProofObligation;
 
 use super::{
     latest_reg_state_for_call_argument_with_frame, latest_stack_value_overlap,
-    stack_access_range_from_context, terminal_fragment_start, ProofSignalContext,
+    stack_access_site_from_context, terminal_fragment_start, ProofSignalContext, StackAccessSite,
 };
 
 pub(super) fn iterator_stack_storage_access(context: &ProofSignalContext<'_>) -> bool {
@@ -17,7 +17,7 @@ pub(super) fn iterator_stack_storage_access(context: &ProofSignalContext<'_>) ->
     ) {
         return false;
     }
-    let Some(access) = stack_access_range_from_context(context) else {
+    let Some(access) = stack_access_site_from_context(context) else {
         return false;
     };
     latest_stack_value_overlap(context, access, 8, |value| {
@@ -68,7 +68,7 @@ pub(super) fn iterator_helper_argument_state_mismatch(context: &ProofSignalConte
             if arg.reg_type != "fp" {
                 return true;
             }
-            iterator_stack_slot_state(context, arg).is_some()
+            iterator_stack_slot_state(context, arg, arg_frame).is_some()
         }
         IteratorArg0Requirement::LiveIteratorStackSlot => {
             if arg.reg_type != "fp" {
@@ -122,12 +122,19 @@ enum IteratorLiveStackSlotState {
 fn iterator_stack_slot_state(
     context: &ProofSignalContext<'_>,
     arg: &RegState,
+    arg_frame: usize,
 ) -> Option<IteratorStackSlotState> {
     let offset = i16::try_from(arg.offset?).ok()?;
     let range = stack_value_range(offset, 8)?;
-    latest_stack_value_overlap(context, range, 8, |value| {
-        value.reg_type.starts_with("iter_")
-    })
+    latest_stack_value_overlap(
+        context,
+        StackAccessSite {
+            range,
+            frame: arg_frame,
+        },
+        8,
+        |value| value.reg_type.starts_with("iter_"),
+    )
     .map(|has_iterator| {
         if has_iterator {
             IteratorStackSlotState::LiveIterator

@@ -5396,6 +5396,51 @@ invalid verifier frobnication
         "stack slot contains dynptr state"
     ));
 
+    let cross_frame_dynptr_storage_read = run_stdin_output(
+        "func#0 @0\n\
+         func#1 @10\n\
+         0: (85) call bpf_ringbuf_reserve_dynptr#198 ; R0_w=scalar() fp-16_w=dynptr_ringbuf(id=1,dynptr_id=1)\n\
+         10: frame1: R6=fp-16 R10=fp0 cb\n\
+         11: (79) r1 = *(u64 *)(r6 +0)\n\
+         invalid verifier frobnication\n",
+        &["-", "--format", "json", "--fail-on-unsupported"],
+    );
+    assert_eq!(cross_frame_dynptr_storage_read.status.code(), Some(2));
+    assert!(cross_frame_dynptr_storage_read.stderr.is_empty());
+    let cross_frame_dynptr_storage_read: Value =
+        serde_json::from_slice(&cross_frame_dynptr_storage_read.stdout)
+            .expect("bpfix should emit JSON");
+    assert_eq!(
+        cross_frame_dynptr_storage_read["diagnostic_kind"],
+        "unsupported_verifier_message"
+    );
+    assert!(!evidence_contains(
+        &cross_frame_dynptr_storage_read,
+        "verifier_state_signal",
+        "stack slot contains dynptr state"
+    ));
+
+    let caller_frame_dynptr_storage_read = run_stdin_output(
+        "func#0 @0\n\
+         func#1 @10\n\
+         0: (85) call bpf_ringbuf_reserve_dynptr#198 ; R0_w=scalar() fp-16_w=dynptr_ringbuf(id=1,dynptr_id=1)\n\
+         10: frame1: R6=fp[0]-16 R10=fp0 cb\n\
+         11: (79) r1 = *(u64 *)(r6 +0)\n\
+         invalid verifier frobnication\n",
+        &["-", "--format", "json", "--fail-on-unsupported"],
+    );
+    assert!(caller_frame_dynptr_storage_read.status.success());
+    assert!(caller_frame_dynptr_storage_read.stderr.is_empty());
+    let caller_frame_dynptr_storage_read: Value =
+        serde_json::from_slice(&caller_frame_dynptr_storage_read.stdout)
+            .expect("bpfix should emit JSON");
+    assert_eq!(caller_frame_dynptr_storage_read["error_id"], "BPFIX-E012");
+    assert!(evidence_contains(
+        &caller_frame_dynptr_storage_read,
+        "verifier_state_signal",
+        "stack slot contains dynptr state"
+    ));
+
     let unknown_terminal_dynptr_storage_store = run_stdin_output(
         "func#0 @0\n\
          0: R1=ctx() R10=fp0\n\
@@ -5590,6 +5635,51 @@ fn iterator_state_storage_reports_protocol_violation() {
     );
     assert!(evidence_contains(
         &unknown_terminal_iterator_storage_read,
+        "verifier_state_signal",
+        "stack slot contains iterator state"
+    ));
+
+    let cross_frame_iterator_storage_read = run_stdin_output(
+        "func#0 @0\n\
+         func#1 @10\n\
+         5: (85) call bpf_iter_num_new#71887 ; R0_w=scalar() fp-24_w=iter_num(ref_id=1,state=active,depth=0) refs=1\n\
+         10: frame1: R6=fp-24 R10=fp0 cb\n\
+         11: (79) r7 = *(u64 *)(r6 +0)\n\
+         invalid verifier frobnication\n",
+        &["-", "--format", "json", "--fail-on-unsupported"],
+    );
+    assert_eq!(cross_frame_iterator_storage_read.status.code(), Some(2));
+    assert!(cross_frame_iterator_storage_read.stderr.is_empty());
+    let cross_frame_iterator_storage_read: Value =
+        serde_json::from_slice(&cross_frame_iterator_storage_read.stdout)
+            .expect("bpfix should emit JSON");
+    assert_eq!(
+        cross_frame_iterator_storage_read["diagnostic_kind"],
+        "unsupported_verifier_message"
+    );
+    assert!(!evidence_contains(
+        &cross_frame_iterator_storage_read,
+        "verifier_state_signal",
+        "stack slot contains iterator state"
+    ));
+
+    let caller_frame_iterator_storage_read = run_stdin_output(
+        "func#0 @0\n\
+         func#1 @10\n\
+         5: (85) call bpf_iter_num_new#71887 ; R0_w=scalar() fp-24_w=iter_num(ref_id=1,state=active,depth=0) refs=1\n\
+         10: frame1: R6=fp[0]-24 R10=fp0 cb\n\
+         11: (79) r7 = *(u64 *)(r6 +0)\n\
+         invalid verifier frobnication\n",
+        &["-", "--format", "json", "--fail-on-unsupported"],
+    );
+    assert!(caller_frame_iterator_storage_read.status.success());
+    assert!(caller_frame_iterator_storage_read.stderr.is_empty());
+    let caller_frame_iterator_storage_read: Value =
+        serde_json::from_slice(&caller_frame_iterator_storage_read.stdout)
+            .expect("bpfix should emit JSON");
+    assert_eq!(caller_frame_iterator_storage_read["error_id"], "BPFIX-E014");
+    assert!(evidence_contains(
+        &caller_frame_iterator_storage_read,
         "verifier_state_signal",
         "stack slot contains iterator state"
     ));

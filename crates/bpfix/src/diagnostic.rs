@@ -2193,9 +2193,48 @@ fn spin_lock_held_before_instruction(
     lock_depth > 0
 }
 
-fn stack_access_range_from_context(context: &ProofSignalContext<'_>) -> Option<StackByteRange> {
-    stack_read_access_range(context.terminal_error)
-        .or_else(|| terminal_stack_memory_access_range(context))
+#[derive(Clone, Copy)]
+pub(super) struct StackAccessSite {
+    pub(super) range: StackByteRange,
+    pub(super) frame: usize,
+}
+
+fn stack_access_site_from_context(context: &ProofSignalContext<'_>) -> Option<StackAccessSite> {
+    if let Some(range) = stack_read_access_range(context.terminal_error) {
+        return stack_access_site_for_terminal_range(context, range);
+    }
+    terminal_stack_memory_access_site(context)
+}
+
+fn stack_access_site_for_terminal_range(
+    context: &ProofSignalContext<'_>,
+    range: StackByteRange,
+) -> Option<StackAccessSite> {
+    let instruction =
+        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)?;
+    let fragment_start = terminal_fragment_start(context, instruction);
+    let frame = stack_access_frame_from_instruction(context, instruction, fragment_start)
+        .or_else(|| {
+            latest_verifier_state_before_instruction(context.states, instruction, fragment_start)
+                .map(|state| state.frame)
+        })
+        .unwrap_or(0);
+    Some(StackAccessSite { range, frame })
+}
+
+fn stack_access_frame_from_instruction(
+    context: &ProofSignalContext<'_>,
+    instruction: TerminalInstruction<'_>,
+    fragment_start: usize,
+) -> Option<usize> {
+    let base_reg = memory_access_base_register(instruction.tail)?;
+    let (base, frame) = latest_reg_state_before_instruction_with_frame(
+        context.states,
+        instruction,
+        fragment_start,
+        base_reg,
+    )?;
+    (base.reg_type == "fp").then_some(frame)
 }
 
 fn stack_read_access_range(message: &str) -> Option<StackByteRange> {
@@ -2206,7 +2245,7 @@ fn stack_read_access_range(message: &str) -> Option<StackByteRange> {
         .flatten()
 }
 
-fn terminal_stack_memory_access_range(context: &ProofSignalContext<'_>) -> Option<StackByteRange> {
+fn terminal_stack_memory_access_site(context: &ProofSignalContext<'_>) -> Option<StackAccessSite> {
     let instruction =
         terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)?;
     if !memory_access_is_load(instruction.tail) {
@@ -2221,15 +2260,22 @@ fn terminal_stack_memory_access_range(context: &ProofSignalContext<'_>) -> Optio
     )?;
     let base_reg = memory_access_base_register(instruction.tail)?;
     let fragment_start = terminal_fragment_start(context, instruction);
-    let base =
-        latest_reg_state_before_instruction(context.states, instruction, fragment_start, base_reg)?;
+    let (base, frame) = latest_reg_state_before_instruction_with_frame(
+        context.states,
+        instruction,
+        fragment_start,
+        base_reg,
+    )?;
     if base.reg_type != "fp" {
         return None;
     }
     let base_offset = i64::from(base.offset.unwrap_or(0));
     let start = base_offset.checked_add(insn_offset)?;
     let end = start.checked_add(i64::from(width))?;
-    StackByteRange::new(i16::try_from(start).ok()?, i16::try_from(end).ok()?)
+    Some(StackAccessSite {
+        range: StackByteRange::new(i16::try_from(start).ok()?, i16::try_from(end).ok()?)?,
+        frame,
+    })
 }
 
 fn terminal_stack_memory_write_range_with_frame(
@@ -2315,7 +2361,7 @@ fn reg_state_has_variable_offset(state: &RegState) -> bool {
 
 fn latest_stack_value_overlap(
     context: &ProofSignalContext<'_>,
-    access: StackByteRange,
+    access: StackAccessSite,
     target_size: i16,
     target_value: impl Fn(&RegState) -> bool,
 ) -> Option<bool> {
@@ -2326,7 +2372,7 @@ fn latest_stack_value_overlap(
 
 fn latest_stack_slot_overlap(
     context: &ProofSignalContext<'_>,
-    access: StackByteRange,
+    access: StackAccessSite,
     target_size: i16,
     target_slot: impl Fn(&StackState) -> bool,
 ) -> Option<bool> {
@@ -2338,6 +2384,7 @@ fn latest_stack_slot_overlap(
         .states
         .iter()
         .filter(|state| state.log_line >= fragment_start)
+        .filter(|state| state.frame == access.frame)
         .filter(|state| context.terminal_pc.is_none_or(|pc| state.pc <= pc))
         .filter(|state| {
             context
@@ -2356,18 +2403,18 @@ fn latest_stack_slot_overlap(
             else {
                 continue;
             };
-            if !range.overlaps(access) {
+            if !range.overlaps(access.range) {
                 continue;
             }
             saw_overlap = true;
-            if range.contains(access.start()) {
+            if range.contains(access.range.start()) {
                 if is_target {
                     start_in_target = true;
                 } else {
                     start_in_non_target = true;
                 }
             }
-            if is_target && access.contains_range(range) {
+            if is_target && access.range.contains_range(range) {
                 contains_target = true;
             }
         }
