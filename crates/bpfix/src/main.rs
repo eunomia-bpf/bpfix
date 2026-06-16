@@ -172,16 +172,16 @@ fn build_diagnostic(
                 class.required_proof.to_string(),
             )
         } else {
-            match diagnostic::analyze_verifier_log_with_context(
+            match diagnostic::analyze_verifier_log_with_context(diagnostic::VerifierLogContext {
                 log,
                 full_log,
-                &object_sections,
-                terminal.pc,
-                Some(terminal.line),
-                &terminal.message,
-                terminal.call_target.as_deref(),
-                class.obligation,
-            ) {
+                object_sections: &object_sections,
+                terminal_pc: terminal.pc,
+                terminal_line: Some(terminal.line),
+                terminal_error: &terminal.message,
+                terminal_call_target: terminal.call_target.as_deref(),
+                obligation: class.obligation,
+            }) {
                 Ok(analysis) => {
                     let required_proof =
                         if analysis.required_proof.obligation == ProofObligation::Unknown {

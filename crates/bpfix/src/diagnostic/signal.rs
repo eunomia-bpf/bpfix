@@ -1,5 +1,105 @@
-use super::ProofSignal;
 use crate::output::NextAction;
+
+macro_rules! proof_signal_variants {
+    ($macro:ident) => {
+        $macro! {
+            WideStackAlignment,
+            AtomicMemoryAccessScalarBase,
+            LoopBackEdgeStateRepeats,
+            SharedInstructionPointerMerge,
+            SharedInstructionPathProofLoss,
+            Alu32PointerCopyDropsProvenance,
+            ConstantScalarMemoryLoad,
+            SharedInstructionUninitializedRegister,
+            PointerShiftDropsProvenance,
+            ModifiedContextPointer,
+            SubprogramContextArgumentDropped,
+            PacketPointerProofLostAfterBoundsCheck,
+            PacketRangeProofLostBeforeAccess,
+            PacketAccessWithoutBoundsProof,
+            MapValueWideAccess,
+            MapValueCheckedOffsetRelationLost,
+            MapValueGuardExceedsValueSize,
+            MapValueAccessOutOfBounds,
+            MemoryObjectAccessOutOfBounds,
+            ReturnRangeOutOfBounds,
+            StackVariableOffsetOutOfBounds,
+            ScalarRangeUnsafeAtUse,
+            MapPointerArgumentScalarZero,
+            BtfFuncInfoMissing,
+            SubprogramReferenceMetadataMissing,
+            DynptrStackStorageAccess,
+            DynptrUninitializedArgument,
+            DynptrReferencedSlotOverwrite,
+            DynptrReadonlyPacketWrite,
+            DynptrStackSlotWriteOverlap,
+            DynptrHelperArgumentStateMismatch,
+            DynptrReleaseUnacquiredReference,
+            DynptrSliceVariableLength,
+            IteratorStackStorageAccess,
+            IteratorHelperArgumentStateMismatch,
+            IrqFlagStateMismatch,
+            IrqRestoreOrderMismatch,
+            IrqRestoreHelperClassMismatch,
+            IrqStateLiveAtExit,
+            SleepableCallInNonSleepableContext,
+            CallbackCallWhileLocked,
+            NullablePointerUseWithoutProof,
+            NullScalarDereferenceAfterPointerProof,
+            TrustedNullableArgument,
+            KfuncArgumentTypeMismatch,
+            VerifierTypeContractMismatch,
+            ModernBpfObjectProtocolViolation,
+            ContextAccessSourceArgumentMismatch,
+            ContextFieldUnavailable,
+            PacketContextFieldAccessInUnsupportedProgram,
+            KernelObjectFieldAccessMismatch,
+            ExceptionThrowWithLiveReference,
+            ReferenceLiveAtExit,
+            ExceptionCallbackProtocolViolation,
+            MapLookupKeyArgumentUnreadable,
+            UnreadableProgramEntryArgument,
+            UnreadableHelperArgument,
+            MapPointerRawAccessContract,
+            PerfEventOutputPacketAccess,
+            UnreadableReturnRegister,
+            LegacySkbLoadUnreadableRegister,
+            HelperStackReadExceedsInitializedRange,
+            HelperStackWriteBeyondFrame,
+            ScalarValueUsedAsPointer,
+            OpaqueScalarPointerDereference,
+            StalePointerAfterInvalidatingHelper,
+            DynptrDataPointerInvalidatedBeforeUse,
+            ProhibitedPointerArithmetic,
+            PacketGuardUndercoversAccess,
+            PacketMaxOffsetPrecisionBoundary,
+            MapValueRelationPrecisionBoundary,
+        }
+    };
+}
+
+macro_rules! define_proof_signal_enum {
+    ($($variant:ident),+ $(,)?) => {
+        #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+        pub enum ProofSignal {
+            $($variant),+
+        }
+    };
+}
+
+proof_signal_variants!(define_proof_signal_enum);
+
+#[cfg(test)]
+macro_rules! define_all_proof_signals {
+    ($($variant:ident),+ $(,)?) => {
+        pub(super) const ALL_PROOF_SIGNALS: &[ProofSignal] = &[
+            $(ProofSignal::$variant),+
+        ];
+    };
+}
+
+#[cfg(test)]
+proof_signal_variants!(define_all_proof_signals);
 
 #[derive(Clone, Copy)]
 struct SignalInfo {

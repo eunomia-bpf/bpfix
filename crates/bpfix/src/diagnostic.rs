@@ -72,96 +72,8 @@ pub struct ProofEvent {
     pub detail: String,
 }
 
-macro_rules! proof_signal_variants {
-    ($macro:ident) => {
-        $macro! {
-            WideStackAlignment,
-            AtomicMemoryAccessScalarBase,
-            LoopBackEdgeStateRepeats,
-            SharedInstructionPointerMerge,
-            SharedInstructionPathProofLoss,
-            Alu32PointerCopyDropsProvenance,
-            ConstantScalarMemoryLoad,
-            SharedInstructionUninitializedRegister,
-            PointerShiftDropsProvenance,
-            ModifiedContextPointer,
-            SubprogramContextArgumentDropped,
-            PacketPointerProofLostAfterBoundsCheck,
-            PacketRangeProofLostBeforeAccess,
-            PacketAccessWithoutBoundsProof,
-            MapValueWideAccess,
-            MapValueCheckedOffsetRelationLost,
-            MapValueGuardExceedsValueSize,
-            MapValueAccessOutOfBounds,
-            MemoryObjectAccessOutOfBounds,
-            ReturnRangeOutOfBounds,
-            StackVariableOffsetOutOfBounds,
-            ScalarRangeUnsafeAtUse,
-            MapPointerArgumentScalarZero,
-            BtfFuncInfoMissing,
-            SubprogramReferenceMetadataMissing,
-            DynptrStackStorageAccess,
-            DynptrUninitializedArgument,
-            DynptrReferencedSlotOverwrite,
-            DynptrReadonlyPacketWrite,
-            DynptrStackSlotWriteOverlap,
-            DynptrHelperArgumentStateMismatch,
-            DynptrReleaseUnacquiredReference,
-            DynptrSliceVariableLength,
-            IteratorStackStorageAccess,
-            IteratorHelperArgumentStateMismatch,
-            IrqFlagStateMismatch,
-            IrqRestoreOrderMismatch,
-            IrqRestoreHelperClassMismatch,
-            IrqStateLiveAtExit,
-            SleepableCallInNonSleepableContext,
-            CallbackCallWhileLocked,
-            NullablePointerUseWithoutProof,
-            NullScalarDereferenceAfterPointerProof,
-            TrustedNullableArgument,
-            KfuncArgumentTypeMismatch,
-            VerifierTypeContractMismatch,
-            ModernBpfObjectProtocolViolation,
-            ContextAccessSourceArgumentMismatch,
-            ContextFieldUnavailable,
-            PacketContextFieldAccessInUnsupportedProgram,
-            KernelObjectFieldAccessMismatch,
-            ExceptionThrowWithLiveReference,
-            ReferenceLiveAtExit,
-            ExceptionCallbackProtocolViolation,
-            MapLookupKeyArgumentUnreadable,
-            UnreadableProgramEntryArgument,
-            UnreadableHelperArgument,
-            MapPointerRawAccessContract,
-            PerfEventOutputPacketAccess,
-            UnreadableReturnRegister,
-            LegacySkbLoadUnreadableRegister,
-            HelperStackReadExceedsInitializedRange,
-            HelperStackWriteBeyondFrame,
-            ScalarValueUsedAsPointer,
-            OpaqueScalarPointerDereference,
-            StalePointerAfterInvalidatingHelper,
-            DynptrDataPointerInvalidatedBeforeUse,
-            ProhibitedPointerArithmetic,
-            PacketGuardUndercoversAccess,
-            PacketMaxOffsetPrecisionBoundary,
-            MapValueRelationPrecisionBoundary,
-        }
-    };
-}
-
-macro_rules! define_proof_signal_enum {
-    ($($variant:ident),+ $(,)?) => {
-        #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-        pub enum ProofSignal {
-            $($variant),+
-        }
-    };
-}
-
-proof_signal_variants!(define_proof_signal_enum);
-
 mod signal;
+pub use signal::ProofSignal;
 
 #[cfg(test)]
 pub fn analyze_verifier_log(
@@ -172,28 +84,42 @@ pub fn analyze_verifier_log(
     terminal_call_target: Option<&str>,
     obligation: ProofObligation,
 ) -> Result<VerifierLogAnalysis> {
-    analyze_verifier_log_with_context(
+    analyze_verifier_log_with_context(VerifierLogContext {
         log,
-        log,
-        &[],
+        full_log: log,
+        object_sections: &[],
         terminal_pc,
         terminal_line,
         terminal_error,
         terminal_call_target,
         obligation,
-    )
+    })
+}
+
+pub struct VerifierLogContext<'a> {
+    pub log: &'a str,
+    pub full_log: &'a str,
+    pub object_sections: &'a [String],
+    pub terminal_pc: Option<usize>,
+    pub terminal_line: Option<usize>,
+    pub terminal_error: &'a str,
+    pub terminal_call_target: Option<&'a str>,
+    pub obligation: ProofObligation,
 }
 
 pub fn analyze_verifier_log_with_context(
-    log: &str,
-    full_log: &str,
-    object_sections: &[String],
-    terminal_pc: Option<usize>,
-    terminal_line: Option<usize>,
-    terminal_error: &str,
-    terminal_call_target: Option<&str>,
-    obligation: ProofObligation,
+    context: VerifierLogContext<'_>,
 ) -> Result<VerifierLogAnalysis> {
+    let VerifierLogContext {
+        log,
+        full_log,
+        object_sections,
+        terminal_pc,
+        terminal_line,
+        terminal_error,
+        terminal_call_target,
+        obligation,
+    } = context;
     let branch_states = verifier_states_with_branch_deltas_from_log(log)?;
     let states = branch_states
         .iter()
@@ -223,16 +149,18 @@ pub fn analyze_verifier_log_with_context(
                 register,
             ));
         }
-        ProofObligation::PacketBounds => events.extend(packet_bounds_events(
-            log,
-            &states,
-            &branch_states,
-            &source_events,
-            terminal_pc,
-            terminal_error,
-            rejected_source.as_ref(),
-            register,
-        )),
+        ProofObligation::PacketBounds => {
+            events.extend(packet_bounds_events(&PacketBoundsEventContext {
+                log,
+                states: &states,
+                branch_states: &branch_states,
+                source_events: &source_events,
+                terminal_pc,
+                terminal_error,
+                rejected_source: rejected_source.as_ref(),
+                register,
+            }))
+        }
         ProofObligation::ScalarRange => events.extend(scalar_range_events(
             &states,
             &source_events,
@@ -384,82 +312,89 @@ fn is_pointer_state(state: &RegState) -> bool {
     state.reg_type != "scalar" && state.reg_type != "fp"
 }
 
-fn packet_bounds_events(
-    log: &str,
-    states: &[VerifierInsn],
-    branch_states: &[VerifierInsn],
-    source_events: &[SourceEvent],
+struct PacketBoundsEventContext<'a> {
+    log: &'a str,
+    states: &'a [VerifierInsn],
+    branch_states: &'a [VerifierInsn],
+    source_events: &'a [SourceEvent],
     terminal_pc: Option<usize>,
-    terminal_error: &str,
-    rejected_source: Option<&SourceLocation>,
+    terminal_error: &'a str,
+    rejected_source: Option<&'a SourceLocation>,
     register: Option<u8>,
-) -> Vec<ProofEvent> {
+}
+
+fn packet_bounds_events(context: &PacketBoundsEventContext<'_>) -> Vec<ProofEvent> {
     let mut events = Vec::new();
-    if let Some(event) = latest_source_before(source_events, rejected_source, |text| {
-        looks_like_packet_bounds_check(text)
-    }) {
+    if let Some(event) =
+        latest_source_before(context.source_events, context.rejected_source, |text| {
+            looks_like_packet_bounds_check(text)
+        })
+    {
         events.push(ProofEvent {
             role: ProofEventRole::ProofEstablished,
             evidence: ProofEventEvidence::SourceComment,
             obligation: ProofObligation::PacketBounds,
             pc: event.pc,
             source: Some(event.source.clone()),
-            register,
+            register: context.register,
             detail: "packet bounds proof is established by this data_end check".to_string(),
         });
     }
-    if let Some((pc, range, required)) =
-        latest_sufficient_packet_range(states, terminal_pc, terminal_error, register).or_else(
-            || {
-                latest_sufficient_packet_guard_range(
-                    log,
-                    states,
-                    branch_states,
-                    source_events,
-                    terminal_pc,
-                    terminal_error,
-                    rejected_source,
-                    register,
-                )
-            },
-        )
+    if let Some((pc, range, required)) = latest_sufficient_packet_range(
+        context.states,
+        context.terminal_pc,
+        context.terminal_error,
+        context.register,
+    )
+    .or_else(|| latest_sufficient_packet_guard_range(context))
     {
         events.push(ProofEvent {
             role: ProofEventRole::ProofEstablished,
             evidence: ProofEventEvidence::VerifierState,
             obligation: ProofObligation::PacketBounds,
             pc: Some(pc),
-            source: source_for_pc(source_events, pc).cloned(),
-            register,
+            source: source_for_pc(context.source_events, pc).cloned(),
+            register: context.register,
             detail: format!(
                 "verifier had proved packet range {range} bytes here, enough for the required {required} bytes"
             ),
         });
-        if let Some((pc, current_range)) =
-            packet_range_lost_before_access(states, terminal_pc, terminal_error, register, pc)
-        {
+        if let Some((pc, current_range)) = packet_range_lost_before_access(
+            context.states,
+            context.terminal_pc,
+            context.terminal_error,
+            context.register,
+            pc,
+        ) {
             events.push(ProofEvent {
                 role: ProofEventRole::ProofLost,
                 evidence: ProofEventEvidence::VerifierState,
                 obligation: ProofObligation::PacketBounds,
                 pc: Some(pc),
-                source: source_for_pc(source_events, pc).cloned(),
-                register,
+                source: source_for_pc(context.source_events, pc).cloned(),
+                register: context.register,
                 detail: format!(
                     "verifier packet range for this register dropped to {current_range} bytes before the rejected access"
                 ),
             });
         }
-    } else if let Some((pc, range, required)) =
-        latest_insufficient_packet_range(states, terminal_pc, terminal_error, register)
-    {
+    } else if let Some((pc, range, required)) = latest_insufficient_packet_range(
+        context.states,
+        context.terminal_pc,
+        context.terminal_error,
+        context.register,
+    ) {
         events.push(ProofEvent {
             role: ProofEventRole::ProofLost,
             evidence: ProofEventEvidence::VerifierState,
             obligation: ProofObligation::PacketBounds,
             pc: Some(pc),
-            source: source_for_pc_in_rejected_file(source_events, pc, rejected_source),
-            register,
+            source: source_for_pc_in_rejected_file(
+                context.source_events,
+                pc,
+                context.rejected_source,
+            ),
+            register: context.register,
             detail: format!(
                 "verifier only proves packet range {range} bytes on this path, but the rejected access requires {required} bytes"
             ),
@@ -569,36 +504,31 @@ fn same_packet_lineage(prior: &RegState, current: &RegState) -> bool {
 }
 
 fn latest_sufficient_packet_guard_range(
-    log: &str,
-    states: &[VerifierInsn],
-    branch_states: &[VerifierInsn],
-    source_events: &[SourceEvent],
-    terminal_pc: Option<usize>,
-    terminal_error: &str,
-    rejected_source: Option<&SourceLocation>,
-    register: Option<u8>,
+    context: &PacketBoundsEventContext<'_>,
 ) -> Option<(usize, u32, u32)> {
-    let reg = register?;
-    let required = packet_required_range(terminal_error)?;
-    let (current_idx, _, current) = latest_reg_state_index_before(states, terminal_pc, reg)?;
+    let reg = context.register?;
+    let required = packet_required_range(context.terminal_error)?;
+    let (current_idx, _, current) =
+        latest_reg_state_index_before(context.states, context.terminal_pc, reg)?;
     if current.reg_type != "pkt" || current.packet_range.is_some_and(|range| range >= required) {
         return None;
     }
-    let rejected = rejected_source?;
-    source_events
+    let rejected = context.rejected_source?;
+    context
+        .source_events
         .iter()
         .filter(|event| event.source.path == rejected.path)
         .filter(|event| event.source.line < rejected.line)
         .filter(|event| looks_like_packet_bounds_check(&event.source.text))
         .filter_map(|event| {
             let guard_pc = event.pc?;
-            if terminal_pc.is_some_and(|pc| guard_pc > pc) {
+            if context.terminal_pc.is_some_and(|pc| guard_pc > pc) {
                 return None;
             }
             let mixed_id_same_register_history =
                 has_prior_noid_same_register_packet_range_for_guard(
-                    states,
-                    source_events,
+                    context.states,
+                    context.source_events,
                     current_idx,
                     reg,
                     required,
@@ -608,13 +538,14 @@ fn latest_sufficient_packet_guard_range(
             Some((guard_pc, mixed_id_same_register_history))
         })
         .flat_map(|(guard_pc, mixed_id_same_register_history)| {
-            guard_branch_packet_operand_registers(log, branch_states, guard_pc, 6)
+            guard_branch_packet_operand_registers(context.log, context.branch_states, guard_pc, 6)
                 .into_iter()
                 .map(move |operand| (guard_pc, mixed_id_same_register_history, operand))
         })
         .filter_map(
             |(guard_source_pc, mixed_id_same_register_history, (branch_pc, branch_reg))| {
-                branch_states
+                context
+                    .branch_states
                     .iter()
                     .filter(|state| state.pc == branch_pc)
                     .filter_map(|state| state.regs.get(&branch_reg))
@@ -1028,7 +959,7 @@ fn proof_signals(context: ProofSignalContext<'_>) -> Vec<ProofSignal> {
         ProofSignal::ExceptionThrowWithLiveReference => exception_throw_with_live_reference(c.log, c.terminal_pc, c.terminal_line, c.states),
         ProofSignal::ReferenceLiveAtExit => reference_live_at_exit(c),
         ProofSignal::ExceptionCallbackProtocolViolation => exception_callback_protocol_violation(c),
-        ProofSignal::MapPointerArgumentScalarZero => map_pointer_argument_scalar_zero(c.log, c.terminal_error, c.terminal_pc, c.terminal_line, c.register, c.states, c.source_events, c.events),
+        ProofSignal::MapPointerArgumentScalarZero => map_pointer_argument_scalar_zero(c),
         ProofSignal::BtfFuncInfoMissing => btf_func_info_missing(c),
         ProofSignal::SubprogramReferenceMetadataMissing => subprogram_reference_metadata_missing(c),
         ProofSignal::MapLookupKeyArgumentUnreadable => map_lookup_key_argument_unreadable(c.log, c.terminal_error, c.terminal_pc, c.terminal_line, c.register, c.events),
@@ -1908,30 +1839,25 @@ fn invalid_kptr_storage_state(state: &RegState) -> bool {
     state.reg_type == "map_value" || state.reg_type == "fp" || state.reg_type == "scalar"
 }
 
-fn map_pointer_argument_scalar_zero(
-    log: &str,
-    terminal_error: &str,
-    terminal_pc: Option<usize>,
-    terminal_line: Option<usize>,
-    register: Option<u8>,
-    states: &[VerifierInsn],
-    source_events: &[SourceEvent],
-    events: &[ProofEvent],
-) -> bool {
-    if !terminal_error.contains("expected=map_ptr") {
+fn map_pointer_argument_scalar_zero(context: &ProofSignalContext<'_>) -> bool {
+    if !context.terminal_error.contains("expected=map_ptr") {
         return false;
     }
-    let Some(reg) = register else {
+    let Some(reg) = context.register else {
         return false;
     };
     if reg != 1 {
         return false;
     }
-    if !terminal_instruction_contains(log, terminal_pc, terminal_line, "call bpf_map_lookup_elem#")
-    {
+    if !terminal_instruction_contains(
+        context.log,
+        context.terminal_pc,
+        context.terminal_line,
+        "call bpf_map_lookup_elem#",
+    ) {
         return false;
     }
-    let Some(rejected) = rejected_source(events) else {
+    let Some(rejected) = rejected_source(context.events) else {
         return false;
     };
     if !rejected.text.contains("bpf_map_lookup_elem") {
@@ -1940,10 +1866,10 @@ fn map_pointer_argument_scalar_zero(
     let Some(map_argument) = first_call_argument(&rejected.text, "bpf_map_lookup_elem") else {
         return false;
     };
-    if !map_argument_has_relocation_proof(&map_argument, rejected, source_events) {
+    if !map_argument_has_relocation_proof(&map_argument, rejected, context.source_events) {
         return false;
     }
-    let Some(state) = latest_reg_state_before(states, terminal_pc, reg) else {
+    let Some(state) = latest_reg_state_before(context.states, context.terminal_pc, reg) else {
         return false;
     };
     state.is_exact_zero_scalar()
@@ -4356,33 +4282,23 @@ fn stale_pointer_after_invalidating_helper(
     {
         return None;
     }
-    let Some(reg) = context
+    let reg = context
         .register
-        .or_else(|| register_from_terminal_error(context.terminal_error))
-    else {
-        return None;
-    };
-    let Some(instruction) =
-        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)
-    else {
-        return None;
-    };
+        .or_else(|| register_from_terminal_error(context.terminal_error))?;
+    let instruction =
+        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)?;
     if memory_access_base_register(instruction.tail) != Some(reg) {
         return None;
     }
     let fragment_start = terminal_fragment_start(context, instruction);
-    let Some((state, state_log_line, state_frame)) =
-        latest_reg_state_before_instruction_with_origin(
-            context.branch_states,
-            instruction,
-            fragment_start,
-            reg,
-        )
-    else {
-        return None;
-    };
+    let (state, state_log_line, state_frame) = latest_reg_state_before_instruction_with_origin(
+        context.branch_states,
+        instruction,
+        fragment_start,
+        reg,
+    )?;
     let (pointer_kind, invalidated) = if let Some(pointer_kind) =
-        stale_data_pointer_kind(&context, state, state_log_line, reg)
+        stale_data_pointer_kind(context, state, state_log_line, reg)
     {
         if register_assigned_between(
             context.branch_states,
@@ -4396,12 +4312,12 @@ fn stale_pointer_after_invalidating_helper(
             return None;
         }
         let invalidated =
-            invalidating_helper_between(&context, state_log_line, instruction.line, pointer_kind)
+            invalidating_helper_between(context, state_log_line, instruction.line, pointer_kind)
                 || matches!(
                     pointer_kind,
                     StaleDataPointerKind::DynptrData(origin)
                         if dynptr_data_invalidated_by_callback_write(
-                            &context,
+                            context,
                             state_log_line,
                             instruction.line,
                             origin,
@@ -4409,16 +4325,14 @@ fn stale_pointer_after_invalidating_helper(
                 );
         (pointer_kind, invalidated)
     } else {
-        let Some((origin, origin_log_line)) = prior_dynptr_data_pointer_before_instruction(
-            &context,
+        let (origin, origin_log_line) = prior_dynptr_data_pointer_before_instruction(
+            context,
             instruction,
             fragment_start,
             reg,
-        ) else {
-            return None;
-        };
+        )?;
         if !dynptr_data_invalidated_by_callback_write(
-            &context,
+            context,
             origin_log_line,
             instruction.line,
             origin,
@@ -4662,9 +4576,7 @@ fn dynptr_data_origin(
         let Some(target) = target else {
             continue;
         };
-        let Some(arg_reg) = dynptr_data_producer_arg(target) else {
-            return None;
-        };
+        let arg_reg = dynptr_data_producer_arg(target)?;
         let instruction = TerminalInstruction {
             pc,
             line: line_number,
@@ -4774,14 +4686,9 @@ fn bpf_loop_callback_entry_stack_pointer(
     fragment_start: usize,
     entry: &VerifierInsn,
 ) -> Option<DynptrStackSlot> {
-    let Some(from_pc) = entry.from_pc else {
-        return None;
-    };
-    let Some(call_instruction) =
-        callback_origin_call_instruction(context.log, fragment_start, entry.log_line, from_pc)
-    else {
-        return None;
-    };
+    let from_pc = entry.from_pc?;
+    let call_instruction =
+        callback_origin_call_instruction(context.log, fragment_start, entry.log_line, from_pc)?;
     if call_target_from_instruction_tail(call_instruction.tail) != Some("bpf_loop") {
         return None;
     }
@@ -5264,7 +5171,7 @@ fn terminal_type_contract(message: &str) -> Option<(u8, String)> {
     let (actual, after_expected) = after_type.split_once(" expected=")?;
     let actual = actual.trim().trim_end_matches(',');
     let expected = after_expected
-        .split(|ch| ch == '\n' || ch == ';')
+        .split(['\n', ';'])
         .next()
         .unwrap_or("")
         .trim();
@@ -5481,10 +5388,7 @@ fn latest_stack_value_overlap(
     target_value: impl Fn(&RegState) -> bool,
 ) -> Option<bool> {
     latest_stack_slot_overlap(context, access, target_size, |stack| {
-        stack
-            .value
-            .as_ref()
-            .is_some_and(|value| target_value(value))
+        stack.value.as_ref().is_some_and(&target_value)
     })
 }
 
@@ -5710,7 +5614,7 @@ fn map_value_guard_exceeds_value_size(context: &ProofSignalContext<'_>) -> bool 
     let Some(max_index) = bytes_after_field.checked_sub(access_size) else {
         return false;
     };
-    if !map_value_variable_max_offset(state).is_some_and(|max| max > u64::from(max_index)) {
+    if map_value_variable_max_offset(state).is_none_or(|max| max <= u64::from(max_index)) {
         return false;
     }
     let Some(rejected) = rejected_source(context.events) else {
@@ -6851,17 +6755,17 @@ fn source_guard_exceeds_index_capacity(
         if source.path != rejected.path
             || source.line >= rejected.line
             || !looks_like_scalar_guard(&source.text)
-            || !scalar_guard_upper_bound_for_identifier(&source.text, index)
-                .is_some_and(|upper| upper > max_index)
+            || scalar_guard_upper_bound_for_identifier(&source.text, index)
+                .is_none_or(|upper| upper <= max_index)
         {
             return false;
         }
         let Some(guard_pc) = event.pc else {
             return false;
         };
-        if !context
+        if context
             .terminal_pc
-            .is_some_and(|terminal_pc| guard_pc < terminal_pc)
+            .is_none_or(|terminal_pc| guard_pc >= terminal_pc)
         {
             return false;
         }
@@ -6873,19 +6777,16 @@ fn source_guard_exceeds_index_capacity(
         ) else {
             return false;
         };
-        if !context
+        if context
             .terminal_line
-            .is_some_and(|terminal_line| guard_log_line < terminal_line)
+            .is_none_or(|terminal_line| guard_log_line >= terminal_line)
         {
             return false;
         }
         scalar_guard_verifier_state_links_to_map_value(
-            context.log,
-            context.branch_states,
+            context,
             guard_pc,
             guard_log_line,
-            context.terminal_pc,
-            context.terminal_line,
             map_reg,
             current,
         )
@@ -6908,21 +6809,23 @@ fn source_event_log_line(
 }
 
 fn scalar_guard_verifier_state_links_to_map_value(
-    log: &str,
-    states: &[VerifierInsn],
+    context: &ProofSignalContext<'_>,
     guard_pc: usize,
     guard_log_line: usize,
-    terminal_pc: Option<usize>,
-    terminal_line: Option<usize>,
     map_reg: u8,
     current: &RegState,
 ) -> bool {
-    let lines = log.lines().collect::<Vec<_>>();
-    states
+    let lines = context.log.lines().collect::<Vec<_>>();
+    context
+        .branch_states
         .iter()
         .filter(|state| state.pc >= guard_pc && state.pc <= guard_pc.saturating_add(3))
         .filter(|state| state.log_line > guard_log_line)
-        .filter(|state| terminal_line.is_none_or(|terminal_line| state.log_line < terminal_line))
+        .filter(|state| {
+            context
+                .terminal_line
+                .is_none_or(|terminal_line| state.log_line < terminal_line)
+        })
         .any(|state| {
             let Some(line) = state.log_line.checked_sub(1).and_then(|idx| lines.get(idx)) else {
                 return false;
@@ -6939,11 +6842,11 @@ fn scalar_guard_verifier_state_links_to_map_value(
                     guard.reg_type == "scalar"
                         && scalar_ranges_match(guard, current)
                         && map_value_add_uses_scalar_between(
-                            log,
+                            context.log,
                             guard_pc,
                             guard_log_line,
-                            terminal_pc,
-                            terminal_line,
+                            context.terminal_pc,
+                            context.terminal_line,
                             map_reg,
                             *reg,
                         )
@@ -7096,9 +6999,7 @@ fn trim_outer_parens(text: &str) -> &str {
 }
 
 fn parse_u32_literal(text: &str) -> Option<u32> {
-    let digits = text
-        .trim()
-        .trim_end_matches(|ch| matches!(ch, 'u' | 'U' | 'l' | 'L'));
+    let digits = text.trim().trim_end_matches(['u', 'U', 'l', 'L']);
     (!digits.is_empty() && digits.bytes().all(|byte| byte.is_ascii_digit()))
         .then(|| digits.parse().ok())
         .flatten()
@@ -7166,7 +7067,7 @@ fn is_literal_null_argument(argument: &str) -> bool {
     if matches!(normalized.as_str(), "null" | "(void*)null") {
         return true;
     }
-    let suffixless_zero = normalized.trim_end_matches(|ch| matches!(ch, 'u' | 'l')) == "0";
+    let suffixless_zero = normalized.trim_end_matches(['u', 'l']) == "0";
     suffixless_zero
         || matches!(normalized.as_str(), "(void*)0")
         || (normalized.starts_with('(')

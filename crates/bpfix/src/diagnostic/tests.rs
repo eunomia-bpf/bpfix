@@ -6,16 +6,6 @@ use crate::family::ProofObligation;
 use crate::output::NextAction;
 use std::collections::BTreeSet;
 
-macro_rules! define_all_proof_signals {
-        ($($variant:ident),+ $(,)?) => {
-            const ALL_PROOF_SIGNALS: &[ProofSignal] = &[
-                $(ProofSignal::$variant),+
-            ];
-        };
-    }
-
-proof_signal_variants!(define_all_proof_signals);
-
 #[test]
 fn skb_tracepoint_section_predicate_is_deliberately_narrow() {
     assert!(active_object_section_is_skb_tracepoint(&[
@@ -47,7 +37,7 @@ fn skb_tracepoint_section_predicate_is_deliberately_narrow() {
 
 #[test]
 fn proof_signals_have_specific_next_actions() {
-    for signal in ALL_PROOF_SIGNALS {
+    for signal in super::signal::ALL_PROOF_SIGNALS {
         assert_ne!(
             signal.next_action(),
             NextAction::Other,
@@ -58,7 +48,7 @@ fn proof_signals_have_specific_next_actions() {
 
 #[test]
 fn proof_signal_metadata_is_complete_and_unique() {
-    let all_signals = ALL_PROOF_SIGNALS
+    let all_signals = super::signal::ALL_PROOF_SIGNALS
         .iter()
         .map(|signal| format!("{signal:?}"))
         .collect::<BTreeSet<_>>();
