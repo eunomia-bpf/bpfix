@@ -1,18 +1,17 @@
 use anyhow::Result;
 use bpfanalysis::helper_abi::helper_dynptr_initializer_output_arg;
 use bpfanalysis::verifier_log::{
-    atomic_memory_access_width, call_target_from_instruction_tail, instruction_assigns_register,
-    instruction_frame, instruction_site_before_line, instructions_in_line_range,
-    latest_reg_state_before, latest_reg_state_before_instruction,
+    atomic_memory_access_width, call_target_from_instruction_tail, instruction_site_before_line,
+    instructions_in_line_range, latest_reg_state_before, latest_reg_state_before_instruction,
     latest_reg_state_before_instruction_with_origin, latest_reg_state_for_call_argument,
-    latest_reg_state_for_call_argument_with_frame, loop_state_snapshots_repeat,
-    loose_register_operands as register_operands, memory_access_base_register,
-    memory_access_is_atomic, memory_access_offset, memory_access_width, parse_u32_after,
-    reg_state_has_variable_offset, register_from_verifier_error as register_from_terminal_error,
-    stack_value_range, terminal_instruction_site, terminal_loop_state_snapshots,
-    verifier_fragment_start_line, verifier_states_with_branch_deltas_from_log, CallbackKind,
-    RegState, StackByteRange, VerifierInsn, VerifierInsnKind,
-    VerifierLogInstruction as TerminalInstruction,
+    latest_reg_state_for_call_argument_with_frame, latest_register_assignment,
+    loop_state_snapshots_repeat, loose_register_operands as register_operands,
+    memory_access_base_register, memory_access_is_atomic, memory_access_offset,
+    memory_access_width, parse_u32_after, reg_state_has_variable_offset,
+    register_from_verifier_error as register_from_terminal_error, stack_value_range,
+    terminal_instruction_site, terminal_loop_state_snapshots, verifier_fragment_start_line,
+    verifier_states_with_branch_deltas_from_log, CallbackKind, RegState, StackByteRange,
+    VerifierInsn, VerifierInsnKind, VerifierLogInstruction as TerminalInstruction,
 };
 
 use crate::family::ProofObligation;
@@ -476,23 +475,6 @@ fn callback_call_while_locked(context: &ProofSignalContext<'_>) -> bool {
         return false;
     }
     spin_lock_held_before_instruction(context.log, fragment_start, origin_instruction.line)
-}
-
-fn latest_register_assignment<'a>(
-    states: &[VerifierInsn],
-    log: &'a str,
-    fragment_start: usize,
-    before_line: usize,
-    reg: u8,
-    frame: usize,
-) -> Option<TerminalInstruction<'a>> {
-    instructions_in_line_range(log, fragment_start, before_line)
-        .filter(|instruction| {
-            instruction_assigns_register(instruction.tail, reg)
-                && instruction_frame(states, *instruction, fragment_start)
-                    .is_none_or(|assigned_frame| assigned_frame == frame)
-        })
-        .last()
 }
 
 fn scalar_value_used_as_pointer(context: &ProofSignalContext<'_>) -> bool {

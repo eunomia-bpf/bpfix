@@ -693,6 +693,23 @@ pub fn instruction_assigns_register(instruction_tail: &str, reg: u8) -> bool {
     body.starts_with(&format!("r{reg} ")) || body.starts_with(&format!("w{reg} "))
 }
 
+pub fn latest_register_assignment<'a>(
+    states: &[VerifierInsn],
+    log: &'a str,
+    fragment_start_line: usize,
+    before_line: usize,
+    reg: u8,
+    frame: usize,
+) -> Option<VerifierLogInstruction<'a>> {
+    instructions_in_line_range(log, fragment_start_line, before_line)
+        .filter(|instruction| {
+            instruction_assigns_register(instruction.tail, reg)
+                && instruction_frame(states, *instruction, fragment_start_line)
+                    .is_none_or(|assigned_frame| assigned_frame == frame)
+        })
+        .last()
+}
+
 pub fn instruction_writes_register(instruction_tail: &str, reg: u8) -> bool {
     let mut tokens = instruction_tail.split_whitespace();
     let Some(first) = tokens.next() else {

@@ -302,6 +302,27 @@ fn queries_instruction_register_effects() {
 }
 
 #[test]
+fn queries_latest_register_assignment_with_frame_scope() {
+    let log = "\
+0: R1=ctx() R2=scalar(id=1) R10=fp0
+1: (bf) r3 = r1                      ; R3_w=ctx()
+2: frame1: R1=scalar(id=2) R3=fp[0]-16 R10=fp0
+3: (bf) r3 = r1                      ; frame1: R3_w=scalar(id=2)
+4: R1=ctx() R3=ctx() R10=fp0
+5: (bf) r3 = r1                      ; R3_w=ctx()
+6: (79) r0 = *(u64 *)(r3 +0)
+";
+
+    let states = parse_verifier_log(log);
+
+    let latest_frame0 = latest_register_assignment(&states, log, 1, 7, 3, 0).unwrap();
+    assert_eq!(latest_frame0.pc, 5);
+
+    let latest_frame1 = latest_register_assignment(&states, log, 1, 7, 3, 1).unwrap();
+    assert_eq!(latest_frame1.pc, 3);
+}
+
+#[test]
 fn queries_latest_verifier_state_before_instruction() {
     let log = "\
 0: R1=ctx() R2=scalar(id=1) R10=fp0
