@@ -1,6 +1,6 @@
 use super::{
-    active_object_section_is_skb_tracepoint, analyze_verifier_log, ProofEventEvidence,
-    ProofEventRole, ProofSignal,
+    analyze_verifier_log, context_signal::active_object_section_is_skb_tracepoint,
+    ProofEventEvidence, ProofEventRole, ProofSignal,
 };
 use crate::family::ProofObligation;
 use crate::output::NextAction;
