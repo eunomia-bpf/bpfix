@@ -161,8 +161,7 @@ fn section_is_tracepoint(section: &str) -> bool {
 
 fn active_libbpf_program_section<'a>(context: &ProofSignalContext<'a>) -> Option<&'a str> {
     let before_line = terminal_error_line_in_log(context.full_log, context.terminal_error)?;
-    let (program_name, window_start) =
-        current_libbpf_program_scope(context.full_log, before_line)?;
+    let (program_name, window_start) = current_libbpf_program_scope(context.full_log, before_line)?;
     libbpf_section_for_program(context.full_log, window_start, before_line, program_name)
 }
 

@@ -1,11 +1,10 @@
 use anyhow::Result;
 use bpfanalysis::verifier_log::{
     atomic_memory_access_width, call_target_from_instruction_tail, conditional_branch_registers,
-    direct_call_target_from_instruction_tail, initialized_stack_bytes_from_snapshot,
-    instruction_adds_register, instruction_assigns_register, instruction_destination_register,
-    instruction_on_log_line, instruction_opcode_body, instruction_reads_register,
-    instruction_register_copy_source, instruction_single_register_rhs_source,
-    instruction_site_before_line, instruction_uses_register as terminal_instruction_uses_register,
+    direct_call_target_from_instruction_tail, instruction_adds_register,
+    instruction_assigns_register, instruction_destination_register, instruction_on_log_line,
+    instruction_opcode_body, instruction_reads_register, instruction_register_copy_source,
+    instruction_single_register_rhs_source, instruction_site_before_line,
     instruction_writes_register, instructions_in_line_range, is_verifier_error_line,
     is_verifier_fragment_boundary, latest_nullable_state, latest_ref_state_before_instruction,
     latest_reg_state_at_or_before_instruction, latest_reg_state_before,
@@ -24,8 +23,8 @@ use bpfanalysis::verifier_log::{
     terminal_instruction_access_width, terminal_instruction_contains,
     terminal_instruction_memory_offset, terminal_instruction_site, verifier_fragment_start_line,
     verifier_path_snapshot_before_instruction, verifier_states_with_branch_deltas_from_log,
-    verifier_value_summary, CallbackKind, PathVerifierSnapshot, RegState, StackByteRange,
-    StackState, VerifierInsn, VerifierInsnKind, VerifierLogInstruction as TerminalInstruction,
+    verifier_value_summary, CallbackKind, RegState, StackByteRange, StackState, VerifierInsn,
+    VerifierInsnKind, VerifierLogInstruction as TerminalInstruction,
 };
 
 use crate::family::ProofObligation;
@@ -75,6 +74,7 @@ pub struct ProofEvent {
 mod context_signal;
 mod protocol_signal;
 mod signal;
+mod stack_signal;
 pub use signal::ProofSignal;
 
 #[cfg(test)]
@@ -964,15 +964,15 @@ fn proof_signals(context: ProofSignalContext<'_>) -> Vec<ProofSignal> {
         ProofSignal::MapPointerArgumentScalarZero => map_pointer_argument_scalar_zero(c),
         ProofSignal::BtfFuncInfoMissing => btf_func_info_missing(c),
         ProofSignal::SubprogramReferenceMetadataMissing => subprogram_reference_metadata_missing(c),
-        ProofSignal::MapLookupKeyArgumentUnreadable => map_lookup_key_argument_unreadable(c.log, c.terminal_error, c.terminal_pc, c.terminal_line, c.register, c.events),
-        ProofSignal::UnreadableProgramEntryArgument => unreadable_program_entry_argument(c),
-        ProofSignal::UnreadableHelperArgument => unreadable_helper_argument(c),
+        ProofSignal::MapLookupKeyArgumentUnreadable => stack_signal::map_lookup_key_argument_unreadable(c),
+        ProofSignal::UnreadableProgramEntryArgument => stack_signal::unreadable_program_entry_argument(c),
+        ProofSignal::UnreadableHelperArgument => stack_signal::unreadable_helper_argument(c),
         ProofSignal::MapPointerRawAccessContract => map_pointer_raw_access_contract(c),
         ProofSignal::PerfEventOutputPacketAccess => perf_event_output_packet_access(c),
-        ProofSignal::UnreadableReturnRegister => unreadable_return_register(c),
-        ProofSignal::LegacySkbLoadUnreadableRegister => legacy_skb_load_unreadable_register(c),
-        ProofSignal::HelperStackReadExceedsInitializedRange => helper_stack_read_exceeds_initialized_range(c),
-        ProofSignal::HelperStackWriteBeyondFrame => helper_stack_write_beyond_frame(c),
+        ProofSignal::UnreadableReturnRegister => stack_signal::unreadable_return_register(c),
+        ProofSignal::LegacySkbLoadUnreadableRegister => stack_signal::legacy_skb_load_unreadable_register(c),
+        ProofSignal::HelperStackReadExceedsInitializedRange => stack_signal::helper_stack_read_exceeds_initialized_range(c),
+        ProofSignal::HelperStackWriteBeyondFrame => stack_signal::helper_stack_write_beyond_frame(c),
         ProofSignal::DynptrUninitializedArgument => dynptr_uninitialized_argument(c),
         ProofSignal::DynptrReferencedSlotOverwrite => dynptr_referenced_slot_overwrite(c),
         ProofSignal::DynptrReadonlyPacketWrite => dynptr_readonly_packet_write(c),
@@ -1295,139 +1295,6 @@ fn subprogram_argument_register(arg_index: u32) -> Option<u8> {
     u8::try_from(arg_index + 1).ok()
 }
 
-fn map_lookup_key_argument_unreadable(
-    log: &str,
-    terminal_error: &str,
-    terminal_pc: Option<usize>,
-    terminal_line: Option<usize>,
-    register: Option<u8>,
-    events: &[ProofEvent],
-) -> bool {
-    if !terminal_error.contains("!read_ok") || register != Some(2) {
-        return false;
-    }
-    if !terminal_instruction_contains(log, terminal_pc, terminal_line, "call bpf_map_lookup_elem#")
-    {
-        return false;
-    }
-    let Some(rejected) = rejected_source(events) else {
-        return false;
-    };
-    if rejected
-        .text
-        .match_indices("bpf_map_lookup_elem")
-        .take(2)
-        .count()
-        != 1
-    {
-        return false;
-    }
-    call_argument(&rejected.text, "bpf_map_lookup_elem", 1)
-        .as_deref()
-        .is_some_and(is_bare_identifier_argument)
-}
-
-fn unreadable_program_entry_argument(context: &ProofSignalContext<'_>) -> bool {
-    let Some((reg, instruction, fragment_start)) = unreadable_register_terminal_site(context)
-    else {
-        return false;
-    };
-    unreadable_entry_argument(context, instruction, fragment_start, reg)
-}
-
-fn unreadable_helper_argument(context: &ProofSignalContext<'_>) -> bool {
-    let Some((reg, instruction, _)) = unreadable_register_terminal_site(context) else {
-        return false;
-    };
-    unreadable_helper_call_argument(instruction, reg)
-}
-
-fn unreadable_return_register(context: &ProofSignalContext<'_>) -> bool {
-    if context.obligation != ProofObligation::StackInitialized
-        || !context.terminal_error.contains("!read_ok")
-        || context.register != Some(0)
-    {
-        return false;
-    }
-    let Some(instruction) =
-        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)
-    else {
-        return false;
-    };
-    if !instruction_is_bpf_exit(instruction.tail) {
-        return false;
-    }
-    true
-}
-
-fn legacy_skb_load_unreadable_register(context: &ProofSignalContext<'_>) -> bool {
-    if context.obligation != ProofObligation::StackInitialized
-        || !context.terminal_error.contains("!read_ok")
-        || context.register != Some(6)
-    {
-        return false;
-    }
-    let Some(instruction) =
-        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)
-    else {
-        return false;
-    };
-    if !legacy_skb_load_instruction(instruction.tail) {
-        return false;
-    }
-    let fragment_start = context
-        .terminal_line
-        .map(|line| verifier_fragment_start_line(context.log, line))
-        .unwrap_or(1);
-    verifier_path_snapshot_before_instruction(context.branch_states, instruction, fragment_start)
-        .is_some_and(|snapshot| !snapshot.regs.contains_key(&6))
-}
-
-fn legacy_skb_load_instruction(tail: &str) -> bool {
-    let mut tokens = tail.split_whitespace();
-    let Some(opcode) = tokens.next() else {
-        return false;
-    };
-    if !matches!(opcode, "(20)" | "(28)" | "(30)" | "(40)" | "(48)" | "(50)") {
-        return false;
-    }
-    let compact: String = tail.split_whitespace().collect();
-    compact.contains("=*(u") && compact.contains("*)skb[")
-}
-
-fn unreadable_register_terminal_site<'a>(
-    context: &'a ProofSignalContext<'a>,
-) -> Option<(u8, TerminalInstruction<'a>, usize)> {
-    if context.obligation != ProofObligation::StackInitialized
-        || !context.terminal_error.contains("!read_ok")
-    {
-        return None;
-    }
-    let reg = context.register?;
-    if reg == 0 {
-        return None;
-    }
-    let instruction =
-        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)?;
-    let fragment_start = context
-        .terminal_line
-        .map(|line| verifier_fragment_start_line(context.log, line))
-        .unwrap_or(1);
-    if latest_reg_state_before_instruction(context.states, instruction, fragment_start, reg)
-        .is_some()
-    {
-        return None;
-    }
-    Some((reg, instruction, fragment_start))
-}
-
-fn unreadable_helper_call_argument(instruction: TerminalInstruction<'_>, reg: u8) -> bool {
-    let Some(target) = call_target_from_instruction_tail(instruction.tail) else {
-        return false;
-    };
-    target == "bpf_skb_store_bytes" && reg == 5
-}
-
 fn map_pointer_raw_access_contract(context: &ProofSignalContext<'_>) -> bool {
     if context.obligation != ProofObligation::HelperArgument
         || !context
@@ -1489,270 +1356,6 @@ fn perf_event_output_packet_access(context: &ProofSignalContext<'_>) -> bool {
         return false;
     };
     matches!(data.reg_type.as_str(), "pkt" | "pkt_meta") && size.reg_type == "scalar"
-}
-
-fn helper_stack_read_exceeds_initialized_range(context: &ProofSignalContext<'_>) -> bool {
-    if context.obligation != ProofObligation::StackInitialized {
-        return false;
-    }
-    let terminal = context.terminal_error.to_ascii_lowercase();
-    if !terminal.contains("read from stack") || !terminal.contains("memory, len pair") {
-        return false;
-    }
-    let Some(access) = parse_stack_read_access(context.terminal_error) else {
-        return false;
-    };
-    let Some(instruction) =
-        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)
-    else {
-        return false;
-    };
-    let Some(target) = call_target_from_instruction_tail(instruction.tail) else {
-        return false;
-    };
-    let Some((pointer_reg, len_reg)) = helper_stack_read_signature(target) else {
-        return false;
-    };
-    if access.reg != pointer_reg {
-        return false;
-    }
-    if context.register.is_some_and(|reg| reg != pointer_reg) {
-        return false;
-    }
-    let fragment_start = terminal_fragment_start(context, instruction);
-    let Some(snapshot) = verifier_path_snapshot_before_instruction(
-        context.branch_states,
-        instruction,
-        fragment_start,
-    ) else {
-        return false;
-    };
-    let Some(pointer_state) = snapshot.regs.get(&pointer_reg) else {
-        return false;
-    };
-    if pointer_state.reg_type != "fp" {
-        return false;
-    }
-    let pointer_frame = pointer_state.source_frame.unwrap_or(snapshot.frame);
-    if pointer_frame != snapshot.frame {
-        return false;
-    }
-    let Some(len) = helper_stack_read_length_from_snapshot(&snapshot, len_reg) else {
-        return false;
-    };
-    if access.size != len || access.delta < 0 {
-        return false;
-    }
-    let Some(start) = pointer_state
-        .offset
-        .and_then(|offset| i16::try_from(offset).ok())
-    else {
-        return false;
-    };
-    if i64::from(start) != access.base_off {
-        return false;
-    }
-    if u64::try_from(access.delta)
-        .ok()
-        .is_none_or(|delta| delta >= len)
-    {
-        return false;
-    }
-    len > u64::try_from(initialized_stack_bytes_from_snapshot(
-        &snapshot.stack,
-        start,
-    ))
-    .unwrap_or(0)
-}
-
-fn helper_stack_read_signature(target: &str) -> Option<(u8, u8)> {
-    match target {
-        "bpf_dynptr_slice" | "bpf_dynptr_slice_rdwr" => Some((3, 4)),
-        _ => None,
-    }
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-struct StackReadAccess {
-    reg: u8,
-    base_off: i64,
-    delta: i64,
-    size: u64,
-}
-
-fn parse_stack_read_access(message: &str) -> Option<StackReadAccess> {
-    message.split(';').find_map(parse_stack_read_access_segment)
-}
-
-fn parse_stack_read_access_segment(segment: &str) -> Option<StackReadAccess> {
-    let tokens: Vec<_> = segment.split_whitespace().collect();
-    for window in tokens.windows(9) {
-        if window[0] != "invalid"
-            || window[1] != "read"
-            || window[2] != "from"
-            || window[3] != "stack"
-            || window[5] != "off"
-            || window[7] != "size"
-        {
-            continue;
-        }
-        let reg = window[4].strip_prefix('R')?.parse().ok()?;
-        let (base_off, delta) = parse_stack_offset_delta(window[6])?;
-        let size = window[8].parse().ok()?;
-        return Some(StackReadAccess {
-            reg,
-            base_off,
-            delta,
-            size,
-        });
-    }
-    None
-}
-
-fn parse_stack_offset_delta(expression: &str) -> Option<(i64, i64)> {
-    let split = expression
-        .char_indices()
-        .skip(1)
-        .find_map(|(idx, ch)| matches!(ch, '+' | '-').then_some(idx));
-    let Some(split) = split else {
-        return Some((expression.parse().ok()?, 0));
-    };
-    Some((
-        expression[..split].parse().ok()?,
-        expression[split..].parse().ok()?,
-    ))
-}
-
-fn helper_stack_read_length_from_snapshot(
-    snapshot: &PathVerifierSnapshot,
-    len_reg: u8,
-) -> Option<u64> {
-    snapshot.regs.get(&len_reg)?.exact_scalar_value()
-}
-
-fn unreadable_entry_argument(
-    context: &ProofSignalContext<'_>,
-    instruction: TerminalInstruction<'_>,
-    fragment_start: usize,
-    reg: u8,
-) -> bool {
-    if reg < 2 {
-        return false;
-    }
-    if !terminal_instruction_uses_register(instruction.tail, reg) {
-        return false;
-    }
-    let Some(entry_state) = context
-        .states
-        .iter()
-        .filter(|state| state.log_line >= fragment_start)
-        .filter(|state| state.pc == 0)
-        .find(|state| state.regs.get(&1).is_some_and(|reg| reg.reg_type == "ctx"))
-    else {
-        return false;
-    };
-    if entry_state.regs.contains_key(&reg) {
-        return false;
-    }
-    context
-        .source_events
-        .iter()
-        .filter(|event| event.log_line >= fragment_start)
-        .any(|event| event.pc == Some(0) && looks_like_multi_argument_bpf_entry(&event.source.text))
-}
-
-fn looks_like_multi_argument_bpf_entry(text: &str) -> bool {
-    let trimmed = text.trim_start();
-    let looks_like_function = trimmed.starts_with("int ")
-        || trimmed.starts_with("long ")
-        || trimmed.contains("BPF_PROG(")
-        || trimmed.contains("BPF_KPROBE(");
-    looks_like_function && trimmed.contains('(') && trimmed.contains(',')
-}
-
-fn helper_stack_write_beyond_frame(context: &ProofSignalContext<'_>) -> bool {
-    if context.obligation != ProofObligation::StackInitialized {
-        return false;
-    }
-    let Some(access) = stack_write_access_range(context.terminal_error) else {
-        return false;
-    };
-    if bpf_stack_frame_contains(access) {
-        return false;
-    }
-    let Some(reg) = context.register else {
-        return false;
-    };
-    let Some(instruction) =
-        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)
-    else {
-        return false;
-    };
-    let Some(target) = call_target_from_instruction_tail(instruction.tail) else {
-        return false;
-    };
-    let Some((write_reg, len_reg)) = helper_writable_stack_signature(target) else {
-        return false;
-    };
-    if reg != write_reg {
-        return false;
-    }
-    let fragment_start = context
-        .terminal_line
-        .map(|line| verifier_fragment_start_line(context.log, line))
-        .unwrap_or(1);
-    let Some(arg) =
-        latest_reg_state_before_instruction(context.states, instruction, fragment_start, reg)
-    else {
-        return false;
-    };
-    if arg.reg_type != "fp" || arg.offset != Some(i32::from(access.start())) {
-        return false;
-    }
-    helper_write_size_argument_matches(context, instruction, fragment_start, len_reg, access)
-}
-
-fn helper_writable_stack_signature(target: &str) -> Option<(u8, u8)> {
-    match target {
-        "bpf_get_current_comm" => Some((1, 2)),
-        _ => None,
-    }
-}
-
-fn helper_write_size_argument_matches(
-    context: &ProofSignalContext<'_>,
-    instruction: TerminalInstruction<'_>,
-    fragment_start: usize,
-    len_reg: u8,
-    access: StackByteRange,
-) -> bool {
-    let Some(size_arg) =
-        latest_reg_state_before_instruction(context.states, instruction, fragment_start, len_reg)
-    else {
-        return false;
-    };
-    size_arg.exact_scalar_value() == Some(access.len() as u64)
-}
-
-fn stack_write_access_range(message: &str) -> Option<StackByteRange> {
-    message
-        .to_ascii_lowercase()
-        .contains("invalid write to stack")
-        .then(|| {
-            let offset = parse_i64_after(message, "off=")
-                .or_else(|| parse_i64_after(message, "off "))
-                .and_then(|value| i16::try_from(value).ok())?;
-            let size = parse_i64_after(message, "size=")
-                .or_else(|| parse_i64_after(message, "size "))
-                .and_then(|value| i16::try_from(value).ok())?;
-            stack_value_range(offset, size)
-        })
-        .flatten()
-}
-
-fn bpf_stack_frame_contains(access: StackByteRange) -> bool {
-    const BPF_STACK_MIN_OFFSET: i16 = -512;
-    BPF_STACK_MIN_OFFSET <= access.start() && access.end() <= 0
 }
 
 fn dynptr_stack_storage_access(context: &ProofSignalContext<'_>) -> bool {
