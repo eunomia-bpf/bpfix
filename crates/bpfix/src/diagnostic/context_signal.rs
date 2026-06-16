@@ -20,9 +20,13 @@ pub(super) fn bpf_prog_context_argument_mismatch(context: &ProofSignalContext<'_
     {
         return false;
     }
-    if !terminal_error_has_nearby_prior_line(context.log, context.terminal_error, 3, |line| {
-        line.contains("type PTR is not a struct")
-    }) {
+    if !terminal_error_has_nearby_prior_line(
+        context.log,
+        context.terminal_error,
+        context.terminal_line,
+        3,
+        |line| line.contains("type PTR is not a struct"),
+    ) {
         return false;
     }
     let Some(rejected) = rejected_source(context.events) else {
@@ -84,7 +88,13 @@ pub(super) fn trace_context_scalar_argument_dereference(context: &ProofSignalCon
     if !context_scalar_loaded_from_ctx(context.states, origin, fragment_start) {
         return false;
     }
-    let source_use = trace_context_pointer_source_use(context, origin.pc, instruction.pc);
+    let source_use = trace_context_pointer_source_use(
+        context,
+        origin.pc,
+        instruction.pc,
+        fragment_start,
+        instruction.line,
+    );
     source_use.direct_ctx_field
         || (source_use.typed_pointer_use && active_context_section_is_tracepoint(context))
 }
@@ -114,10 +124,12 @@ fn trace_context_pointer_source_use<'a>(
     context: &ProofSignalContext<'a>,
     origin_pc: usize,
     rejected_pc: usize,
+    fragment_start: usize,
+    before_line: usize,
 ) -> TraceContextPointerSourceUse {
-    let origin_source = source_text_for_pc(context, origin_pc);
-    let rejected_source = source_text_for_pc(context, rejected_pc)
-        .or_else(|| rejected_source(context.events).map(|source| source.text.as_str()));
+    let origin_source = source_text_for_pc(context, origin_pc, fragment_start, before_line);
+    let rejected_source = source_text_for_pc(context, rejected_pc, fragment_start, before_line)
+        .or_else(|| rejected_source_text_in_fragment(context, fragment_start, before_line));
     [origin_source, rejected_source].into_iter().flatten().fold(
         TraceContextPointerSourceUse::default(),
         |use_shape, source| TraceContextPointerSourceUse {
@@ -138,12 +150,34 @@ fn trace_context_direct_ctx_field(text: &str) -> bool {
         .any(|field| text.contains(field))
 }
 
-fn source_text_for_pc<'a>(context: &ProofSignalContext<'a>, pc: usize) -> Option<&'a str> {
+fn source_text_for_pc<'a>(
+    context: &ProofSignalContext<'a>,
+    pc: usize,
+    fragment_start: usize,
+    before_line: usize,
+) -> Option<&'a str> {
     context
         .source_events
         .iter()
+        .filter(|event| event.log_line >= fragment_start)
+        .filter(|event| event.log_line < before_line)
         .filter(|event| event.pc.is_some_and(|event_pc| event_pc <= pc))
-        .max_by_key(|event| event.pc)
+        .max_by_key(|event| (event.pc, event.log_line))
+        .map(|event| event.source.text.as_str())
+}
+
+fn rejected_source_text_in_fragment<'a>(
+    context: &ProofSignalContext<'a>,
+    fragment_start: usize,
+    before_line: usize,
+) -> Option<&'a str> {
+    let rejected = rejected_source(context.events)?;
+    context
+        .source_events
+        .iter()
+        .filter(|event| event.log_line >= fragment_start)
+        .filter(|event| event.log_line < before_line)
+        .find(|event| event.source == *rejected)
         .map(|event| event.source.text.as_str())
 }
 
@@ -202,9 +236,13 @@ pub(super) fn context_field_unavailable(context: &ProofSignalContext<'_>) -> boo
     {
         return false;
     }
-    if terminal_error_has_nearby_prior_line(context.log, context.terminal_error, 3, |line| {
-        line.contains("type PTR is not a struct")
-    }) {
+    if terminal_error_has_nearby_prior_line(
+        context.log,
+        context.terminal_error,
+        context.terminal_line,
+        3,
+        |line| line.contains("type PTR is not a struct"),
+    ) {
         return false;
     }
     let Some(instruction) =

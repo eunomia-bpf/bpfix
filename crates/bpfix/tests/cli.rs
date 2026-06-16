@@ -1602,6 +1602,24 @@ fn trace_context_scalar_arguments_report_context_action() {
     ));
     assert_eq!(raw_tracepoint_region["next_action"], "context");
 
+    let stale_prior_fragment_source = run_json_stdin(
+        "func#0 @0\n\
+         ; const char *const first_env_value = ctx->envp[0]; @ old.c:10\n\
+         0: (79) r2 = *(u64 *)(r1 +32) ; R1=ctx() R2_w=scalar()\n\
+         processed 1 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0 mark_read 0\n\
+         func#0 @0\n\
+         0: R1=ctx() R10=fp0\n\
+         0: (79) r2 = *(u64 *)(r1 +32) ; R1=ctx() R2_w=scalar()\n\
+         1: (79) r3 = *(u64 *)(r2 +0)\n\
+         R2 invalid mem access 'scalar'\n",
+    );
+    assert_eq!(stale_prior_fragment_source["next_action"], "provenance");
+    assert!(!evidence_contains(
+        &stale_prior_fragment_source,
+        "verifier_state_signal",
+        "tracepoint/raw-tracepoint context field produced a scalar"
+    ));
+
     let kprobe_pt_regs =
         run_json("bpfix-bench/cases/github-commit-bcc-02daf8d84ecd/replay-verifier.log");
     assert_eq!(kprobe_pt_regs["next_action"], "provenance");

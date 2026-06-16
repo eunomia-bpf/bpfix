@@ -67,10 +67,17 @@ pub(super) fn subprogram_reference_metadata_missing(context: &ProofSignalContext
     let terminal_has_unknown_reference_size = terminal.contains("reference type('unknown")
         && terminal.contains("size cannot be determined");
     if !terminal_has_unknown_reference_size
-        && !terminal_error_has_nearby_prior_line(context.log, context.terminal_error, 3, |line| {
-            let lower = line.to_ascii_lowercase();
-            lower.contains("reference type('unknown") && lower.contains("size cannot be determined")
-        })
+        && !terminal_error_has_nearby_prior_line(
+            context.log,
+            context.terminal_error,
+            context.terminal_line,
+            3,
+            |line| {
+                let lower = line.to_ascii_lowercase();
+                lower.contains("reference type('unknown")
+                    && lower.contains("size cannot be determined")
+            },
+        )
     {
         return false;
     }
