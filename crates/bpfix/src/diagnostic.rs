@@ -5,11 +5,9 @@ use bpfanalysis::verifier_log::{
     instruction_assigns_register, instruction_destination_register, instruction_on_log_line,
     instruction_reads_register, instruction_register_copy_source,
     instruction_single_register_rhs_source, instruction_site_before_line,
-    instruction_writes_register, instructions_in_line_range, is_verifier_error_line,
-    is_verifier_fragment_boundary, latest_nullable_state,
-    latest_reg_state_at_or_before_instruction, latest_reg_state_before,
+    instructions_in_line_range, is_verifier_error_line, is_verifier_fragment_boundary,
+    latest_nullable_state, latest_reg_state_at_or_before_instruction, latest_reg_state_before,
     latest_reg_state_before_instruction, latest_reg_state_before_instruction_with_frame,
-    latest_reg_state_before_instruction_with_log_line,
     latest_reg_state_before_instruction_with_origin, latest_reg_state_index_before,
     latest_unsafe_scalar_state, latest_verifier_state_before_instruction,
     loose_register_operands as register_operands, map_value_access_range_may_exceed_value_size,
@@ -79,6 +77,7 @@ mod nullable_signal;
 mod protocol_signal;
 mod signal;
 mod stack_signal;
+mod type_contract_signal;
 pub use signal::ProofSignal;
 
 #[cfg(test)]
@@ -996,9 +995,9 @@ fn proof_signals(context: ProofSignalContext<'_>) -> Vec<ProofSignal> {
         ProofSignal::CallbackCallWhileLocked => callback_call_while_locked(c),
         ProofSignal::NullablePointerUseWithoutProof => nullable_signal::nullable_pointer_use_without_proof(c),
         ProofSignal::ModernBpfObjectProtocolViolation => protocol_signal::modern_bpf_object_protocol_violation(c),
-        ProofSignal::KfuncArgumentTypeMismatch => kfunc_argument_type_mismatch(c),
+        ProofSignal::KfuncArgumentTypeMismatch => type_contract_signal::kfunc_argument_type_mismatch(c),
         ProofSignal::TrustedNullableArgument => nullable_signal::trusted_nullable_argument(c),
-        ProofSignal::VerifierTypeContractMismatch => verifier_type_contract_mismatch(c),
+        ProofSignal::VerifierTypeContractMismatch => type_contract_signal::verifier_type_contract_mismatch(c),
         ProofSignal::MemoryObjectAccessOutOfBounds => memory_object_access_out_of_bounds(c),
         ProofSignal::ReturnRangeOutOfBounds => return_range_out_of_bounds(c),
         ProofSignal::StackVariableOffsetOutOfBounds => stack_variable_offset_out_of_bounds(c),
@@ -2386,202 +2385,6 @@ fn spin_lock_held_before_instruction(
         }
     }
     lock_depth > 0
-}
-
-fn kfunc_argument_type_mismatch(context: &ProofSignalContext<'_>) -> bool {
-    let terminal = context.terminal_error.to_ascii_lowercase();
-    if !kfunc_argument_type_terminal(&terminal) {
-        return false;
-    }
-    let Some(instruction) =
-        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)
-    else {
-        return false;
-    };
-    let Some(target) = call_target_from_instruction_tail(instruction.tail) else {
-        return false;
-    };
-    if !kfunc_object_contract_target(target, &terminal) {
-        return false;
-    }
-    let Some(reg) = context
-        .register
-        .or_else(|| parse_subprogram_arg_register(context.terminal_error))
-    else {
-        return false;
-    };
-    let fragment_start = terminal_fragment_start(context, instruction);
-    let Some(state) = latest_reg_state_for_call_argument(
-        context.states,
-        instruction,
-        fragment_start,
-        context.terminal_line,
-        reg,
-    ) else {
-        return false;
-    };
-    if terminal.contains("must be a rcu pointer") {
-        if state.reg_type.starts_with("untrusted_ptr") {
-            return false;
-        }
-        return !state.reg_type.starts_with("rcu_ptr")
-            && !state.reg_type.starts_with("trusted_ptr");
-    }
-    if terminal.contains("pointer type struct") && terminal.contains("must point to scalar") {
-        return state.reg_type == "fp";
-    }
-    if let Some(expected) = expected_kfunc_struct_type(&terminal) {
-        return !state.reg_type.contains(expected);
-    }
-    false
-}
-
-fn kfunc_argument_type_terminal(terminal: &str) -> bool {
-    terminal.contains("must be a rcu pointer")
-        || (terminal.contains("pointer type struct") && terminal.contains("must point to scalar"))
-        || (terminal.contains("kernel function")
-            && terminal.contains("expected pointer to struct")
-            && terminal.contains(" but r"))
-}
-
-fn kfunc_object_contract_target(target: &str, terminal: &str) -> bool {
-    terminal.contains("kernel function")
-        || target.contains("cgroup")
-        || target.contains("cpumask")
-        || target.contains("rbtree")
-        || target.contains("kptr")
-}
-
-fn parse_subprogram_arg_register(terminal_error: &str) -> Option<u8> {
-    let arg = parse_u32_after(terminal_error, "arg#")?;
-    if arg >= 5 {
-        return None;
-    }
-    u8::try_from(arg + 1).ok()
-}
-
-fn expected_kfunc_struct_type(terminal: &str) -> Option<&str> {
-    let (_, after) = terminal.split_once("expected pointer to struct ")?;
-    after
-        .split(|ch: char| ch.is_ascii_whitespace() || ch == ',' || ch == ';')
-        .next()
-        .filter(|name| !name.is_empty())
-}
-
-fn verifier_type_contract_mismatch(context: &ProofSignalContext<'_>) -> bool {
-    if context.obligation != ProofObligation::TypeContract {
-        return false;
-    }
-    let Some((reg, actual_type)) = terminal_type_contract(context.terminal_error) else {
-        return false;
-    };
-    if !(1..=5).contains(&reg) {
-        return false;
-    }
-    let Some(instruction) =
-        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)
-    else {
-        return false;
-    };
-    if direct_call_target_from_instruction_tail(instruction.tail).is_none() {
-        return false;
-    }
-    let fragment_start = terminal_fragment_start(context, instruction);
-    latest_type_contract_argument_state(context, instruction, fragment_start, reg)
-        .is_some_and(|state| actual_type_matches_state(&actual_type, state))
-}
-
-fn latest_type_contract_argument_state<'a>(
-    context: &ProofSignalContext<'a>,
-    instruction: TerminalInstruction<'_>,
-    fragment_start_line: usize,
-    reg: u8,
-) -> Option<&'a RegState> {
-    let call_frame =
-        latest_verifier_state_before_instruction(context.states, instruction, fragment_start_line)
-            .map(|state| state.frame);
-    let (state, state_log_line) = latest_reg_state_before_instruction_with_log_line(
-        context.states,
-        instruction,
-        fragment_start_line,
-        reg,
-    )
-    .or_else(|| {
-        context
-            .states
-            .iter()
-            .filter(|state| state.log_line >= fragment_start_line)
-            .filter(|state| {
-                context
-                    .terminal_line
-                    .is_none_or(|line| state.log_line < line)
-            })
-            .filter(|state| state.pc <= instruction.pc)
-            .filter(|state| call_frame.is_none_or(|frame| state.frame == frame))
-            .rev()
-            .find_map(|state| {
-                let reg_state = state.regs.get(&reg)?;
-                Some((reg_state, state.log_line))
-            })
-    })?;
-    (!register_written_between(context.log, state_log_line, instruction.line, reg)).then_some(state)
-}
-
-fn register_written_between(log: &str, after_line: usize, before_line: usize, reg: u8) -> bool {
-    instructions_in_line_range(log, after_line.saturating_add(1), before_line)
-        .any(|instruction| instruction_writes_register(instruction.tail, reg))
-}
-
-fn terminal_type_contract(message: &str) -> Option<(u8, String)> {
-    let reg = register_from_terminal_error(message)?;
-    let lower = message.to_ascii_lowercase();
-    if lower.contains("trusted arg") {
-        return None;
-    }
-    let (_, after_type) = lower.split_once("type=")?;
-    let (actual, after_expected) = after_type.split_once(" expected=")?;
-    let actual = actual.trim().trim_end_matches(',');
-    let expected = after_expected
-        .split(['\n', ';'])
-        .next()
-        .unwrap_or("")
-        .trim();
-    if actual.is_empty() || expected.is_empty() || actual.contains("_or_null") {
-        return None;
-    }
-    if actual == "scalar" && expected_type_list_contains(expected, "map_ptr") {
-        return None;
-    }
-    Some((reg, actual.to_string()))
-}
-
-fn expected_type_list_contains(expected: &str, needle: &str) -> bool {
-    expected
-        .split(',')
-        .map(str::trim)
-        .any(|item| item == needle)
-}
-
-fn actual_type_matches_state(actual_type: &str, state: &RegState) -> bool {
-    let state_type = state.reg_type.as_str();
-    if state_type == actual_type {
-        return true;
-    }
-    match actual_type {
-        "scalar" => state_type == "scalar",
-        "fp" => state_type == "fp",
-        "ctx" => state_type == "ctx",
-        "map_ptr" => state_type == "map_ptr",
-        "map_value" => state_type == "map_value",
-        "mem" => state_type == "mem",
-        "ringbuf_mem" => state_type == "ringbuf_mem",
-        "ptr_" => state_type.starts_with("ptr_"),
-        "trusted_ptr_" => state_type.starts_with("trusted_ptr"),
-        "rcu_ptr_" => state_type.starts_with("rcu_ptr"),
-        "untrusted_ptr_" => state_type.starts_with("untrusted_ptr"),
-        _ if actual_type.ends_with('_') => state_type.starts_with(actual_type),
-        _ => false,
-    }
 }
 
 fn stack_access_range_from_context(context: &ProofSignalContext<'_>) -> Option<StackByteRange> {
