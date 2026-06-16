@@ -954,7 +954,8 @@ fn proof_signals(context: ProofSignalContext<'_>) -> Vec<ProofSignal> {
     push_optional_signals!(verifier_precision_signal(c), packet_verifier_precision_signal(c));
 
     push_signals! {
-        ProofSignal::ContextAccessSourceArgumentMismatch => context_signal::context_access_source_argument_mismatch(c),
+        ProofSignal::ContextAccessSourceArgumentMismatch => context_signal::bpf_prog_context_argument_mismatch(c),
+        ProofSignal::TraceContextScalarArgumentMismatch => context_signal::trace_context_scalar_argument_dereference(c),
         ProofSignal::ContextFieldUnavailable => context_signal::context_field_unavailable(c),
         ProofSignal::PacketContextFieldAccessInUnsupportedProgram => context_signal::packet_context_field_access_in_unsupported_program(c),
         ProofSignal::KernelObjectFieldAccessMismatch => context_signal::kernel_object_field_access_mismatch(c),

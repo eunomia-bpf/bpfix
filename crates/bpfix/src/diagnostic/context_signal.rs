@@ -12,12 +12,7 @@ use super::{
     terminal_error_has_nearby_prior_line, terminal_fragment_start, ProofSignalContext,
 };
 
-pub(super) fn context_access_source_argument_mismatch(context: &ProofSignalContext<'_>) -> bool {
-    bpf_prog_context_argument_mismatch(context)
-        || trace_context_scalar_argument_dereference(context)
-}
-
-fn bpf_prog_context_argument_mismatch(context: &ProofSignalContext<'_>) -> bool {
+pub(super) fn bpf_prog_context_argument_mismatch(context: &ProofSignalContext<'_>) -> bool {
     let terminal = context.terminal_error.to_ascii_lowercase();
     if !(terminal.contains("invalid bpf_context access")
         || terminal.contains("invalid ctx access")
@@ -40,11 +35,8 @@ fn bpf_prog_context_argument_mismatch(context: &ProofSignalContext<'_>) -> bool 
         .is_some_and(|state| state.reg_type == "ctx")
 }
 
-fn trace_context_scalar_argument_dereference(context: &ProofSignalContext<'_>) -> bool {
+pub(super) fn trace_context_scalar_argument_dereference(context: &ProofSignalContext<'_>) -> bool {
     if context.obligation != ProofObligation::PointerProvenance {
-        return false;
-    }
-    if !active_context_section_is_tracepoint(context) {
         return false;
     }
     let terminal = context.terminal_error.to_ascii_lowercase();
@@ -92,7 +84,9 @@ fn trace_context_scalar_argument_dereference(context: &ProofSignalContext<'_>) -
     if !context_scalar_loaded_from_ctx(context.states, origin, fragment_start) {
         return false;
     }
-    source_looks_like_trace_context_pointer_use(context, origin.pc, instruction.pc)
+    let source_use = trace_context_pointer_source_use(context, origin.pc, instruction.pc);
+    source_use.direct_ctx_field
+        || (source_use.typed_pointer_use && active_context_section_is_tracepoint(context))
 }
 
 fn context_scalar_loaded_from_ctx(
@@ -110,18 +104,38 @@ fn context_scalar_loaded_from_ctx(
         .is_some_and(|state| state.reg_type == "ctx")
 }
 
-fn source_looks_like_trace_context_pointer_use<'a>(
+#[derive(Clone, Copy, Default)]
+struct TraceContextPointerSourceUse {
+    typed_pointer_use: bool,
+    direct_ctx_field: bool,
+}
+
+fn trace_context_pointer_source_use<'a>(
     context: &ProofSignalContext<'a>,
     origin_pc: usize,
     rejected_pc: usize,
-) -> bool {
+) -> TraceContextPointerSourceUse {
     let origin_source = source_text_for_pc(context, origin_pc);
     let rejected_source = source_text_for_pc(context, rejected_pc)
         .or_else(|| rejected_source(context.events).map(|source| source.text.as_str()));
-    [origin_source, rejected_source]
+    [origin_source, rejected_source].into_iter().flatten().fold(
+        TraceContextPointerSourceUse::default(),
+        |use_shape, source| TraceContextPointerSourceUse {
+            typed_pointer_use: use_shape.typed_pointer_use
+                || trace_context_typed_pointer_source_text(source),
+            direct_ctx_field: use_shape.direct_ctx_field || trace_context_direct_ctx_field(source),
+        },
+    )
+}
+
+fn trace_context_typed_pointer_source_text(text: &str) -> bool {
+    text.contains("PT_REGS_") || trace_context_direct_ctx_field(text)
+}
+
+fn trace_context_direct_ctx_field(text: &str) -> bool {
+    ["ctx->args", "ctx->envp", "ctx->argv", "ctx->filename"]
         .into_iter()
-        .flatten()
-        .any(trace_context_pointer_source_text)
+        .any(|field| text.contains(field))
 }
 
 fn source_text_for_pc<'a>(context: &ProofSignalContext<'a>, pc: usize) -> Option<&'a str> {
@@ -131,13 +145,6 @@ fn source_text_for_pc<'a>(context: &ProofSignalContext<'a>, pc: usize) -> Option
         .filter(|event| event.pc.is_some_and(|event_pc| event_pc <= pc))
         .max_by_key(|event| event.pc)
         .map(|event| event.source.text.as_str())
-}
-
-fn trace_context_pointer_source_text(text: &str) -> bool {
-    text.contains("PT_REGS_")
-        || text.contains("ctx->envp")
-        || text.contains("ctx->argv")
-        || text.contains("ctx->filename")
 }
 
 fn active_context_section_is_tracepoint(context: &ProofSignalContext<'_>) -> bool {

@@ -12,6 +12,16 @@ fn run_json(path: &str) -> Value {
     run_json_path(workspace_root().join(path))
 }
 
+fn verifier_region_only(path: &str) -> String {
+    let log = std::fs::read_to_string(workspace_root().join(path))
+        .expect("replay log should be readable");
+    let start = log
+        .find("func#0 @0")
+        .expect("replay log should contain verifier region");
+    let end = log.find("-- END PROG LOAD LOG --").unwrap_or(log.len());
+    log[start..end].to_string()
+}
+
 fn run_json_path(path: PathBuf) -> Value {
     let output = Command::new(env!("CARGO_BIN_EXE_bpfix"))
         .arg(path)
@@ -1573,6 +1583,10 @@ fn trace_context_scalar_arguments_report_context_action() {
         "verifier_state_signal",
         "tracepoint/raw-tracepoint context field produced a scalar"
     ));
+    let tracepoint_envp_region = run_json_stdin(&verifier_region_only(
+        "bpfix-bench/cases/stackoverflow-67188440/replay-verifier.log",
+    ));
+    assert_eq!(tracepoint_envp_region["next_action"], "context");
 
     let raw_tracepoint_pt_regs =
         run_json("bpfix-bench/cases/stackoverflow-77568308/replay-verifier.log");
@@ -1583,6 +1597,10 @@ fn trace_context_scalar_arguments_report_context_action() {
         "verifier_state_signal",
         "tracepoint/raw-tracepoint context field produced a scalar"
     ));
+    let raw_tracepoint_region = run_json_stdin(&verifier_region_only(
+        "bpfix-bench/cases/stackoverflow-77568308/replay-verifier.log",
+    ));
+    assert_eq!(raw_tracepoint_region["next_action"], "context");
 
     let kprobe_pt_regs =
         run_json("bpfix-bench/cases/github-commit-bcc-02daf8d84ecd/replay-verifier.log");
@@ -1592,6 +1610,10 @@ fn trace_context_scalar_arguments_report_context_action() {
         "verifier_state_signal",
         "tracepoint/raw-tracepoint context field produced a scalar"
     ));
+    let kprobe_region = run_json_stdin(&verifier_region_only(
+        "bpfix-bench/cases/github-commit-bcc-02daf8d84ecd/replay-verifier.log",
+    ));
+    assert_eq!(kprobe_region["next_action"], "provenance");
 }
 
 #[test]
