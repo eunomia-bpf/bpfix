@@ -11,18 +11,10 @@ source:
   - bpfix-bench/raw/so/stackoverflow-69506785.yaml
 reproducer:
   reconstruction: reconstructed
-  source_file: prog.c
-  build_command: make
-  object_path: prog.o
-  load_command: make replay-verify
-  notes: Imported from reconstructed external source into bpfix-bench; replay logs
-    are generated as replay-verifier.log.
+  notes: Imported from reconstructed external source into bpfix-bench; replay logs are generated
+    as replay-verifier.log.
 capture:
   capture_id: stackoverflow-69506785__kernel-6.15.11-clang-18-log2
-  environment_id: kernel-6.15.11-clang-18-log2
-  verifier_log: replay-verifier.log
-  capture_metadata: capture.yaml
-  log_quality: trace_rich
   terminal_error: R2 !read_ok
   rejected_insn_idx: 0
 external_match:
@@ -31,25 +23,21 @@ external_match:
   matched_messages:
   - R2 !read_ok
   - R2 !read_ok
-  notes: Imported only because verifier_error_match was exact/partial in the verified
-    SO/GH artifact.
+  notes: Imported only because verifier_error_match was exact/partial in the verified SO/GH
+    artifact.
 label:
   capture_id: stackoverflow-69506785__kernel-6.15.11-clang-18-log2
   taxonomy_class: source_bug
   error_id: BPFIX-E011
   confidence: medium
   label_source: external_replay_reconstruction
-  root_cause_description: Program uses an unavailable register argument for the selected
-    BPF program type.
+  root_cause_description: Program uses an unavailable register argument for the selected BPF
+    program type.
   root_cause_insn_idx: null
-  rejected_line: null
-  root_cause_line: null
   localization_confidence: medium
   fix_type: use_correct_context
-  fix_direction: Use the program type context object and supported ABI instead of
-    reading an uninitialized argument register.
-repair:
-  eligible: false
+  fix_direction: Use the program type context object and supported ABI instead of reading
+    an uninitialized argument register.
 reporting:
   family_id: stackoverflow-69506785
   representative: true

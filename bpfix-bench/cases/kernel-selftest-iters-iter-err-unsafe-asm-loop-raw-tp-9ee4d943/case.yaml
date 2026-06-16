@@ -8,22 +8,13 @@ source:
   upstream_file: tools/testing/selftests/bpf/progs/iters.c
   upstream_section: iter_err_unsafe_asm_loop
   collected_at: '2026-03-20T00:37:26.722744+00:00'
-  raw_excerpt_files: []
 reproducer:
   reconstruction: original
   program_type: ?raw_tp
-  source_file: prog.c
-  build_command: make
-  object_path: prog.o
-  load_command: make replay-verify
-  notes: Imported from locally verified kernel selftest artifact; replay log is written
-    to replay-verifier.log.
+  notes: Imported from locally verified kernel selftest artifact; replay log is written to
+    replay-verifier.log.
 capture:
   capture_id: kernel-selftest-iters-iter-err-unsafe-asm-loop-raw-tp-9ee4d943__kernel-6.15.11-clang-18-log2
-  environment_id: kernel-6.15.11-clang-18-log2
-  verifier_log: replay-verifier.log
-  capture_metadata: capture.yaml
-  log_quality: trace_rich
   terminal_error: R1 unbounded memory access, make sure to bounds check any such access
   rejected_insn_idx: 24
 external_match:
@@ -38,9 +29,9 @@ label:
   error_id: BPFIX-E017
   confidence: high
   label_source: agree
-  root_cause_description: 'Intentional negative test: counts iterator iterations in
-    `r6` and then uses that unbounded count as the byte offset into `small_arr` before
-    storing through the derived pointer.'
+  root_cause_description: 'Intentional negative test: counts iterator iterations in `r6` and
+    then uses that unbounded count as the byte offset into `small_arr` before storing through
+    the derived pointer.'
   root_cause_insn_idx: 24
   rejected_line: asm volatile (
   root_cause_line: asm volatile (
@@ -48,8 +39,6 @@ label:
   fix_type: bounds_check
   fix_direction: In real code, clamp the iterator-derived index to the size of `small_arr`
     before turning it into an array offset.
-repair:
-  eligible: false
 reporting:
   family_id: R1 unbounded memory access, make sure to bounds check any such access
   representative: true

@@ -69,6 +69,11 @@ that field. A non-null `label.root_cause_insn_idx` must name an instruction PC
 present in the stored `replay-verifier.log`, otherwise the case is not eligible
 for root-PC localization metrics.
 
+`manifest.yaml` defines the fixed per-case defaults for this frozen benchmark:
+`prog.c`, `prog.o`, `make`, `make replay-verify`, `replay-verifier.log`,
+`capture.yaml`, and `trace_rich`. Case files only carry fields that vary across
+cases plus the replay terminal error and rejected instruction.
+
 Latest local validation on this checkout:
 
 ```text

@@ -22,6 +22,11 @@ from typing import Iterable
 import yaml
 
 
+TOOLS_DIR = pathlib.Path(__file__).resolve().parents[2] / "bpfix-bench" / "tools"
+sys.path.insert(0, str(TOOLS_DIR))
+from benchmark_metadata import with_case_defaults  # noqa: E402
+
+
 TAXONOMY_CLASSES = [
     "source_bug",
     "lowering_artifact",
@@ -419,7 +424,7 @@ def load_rows(
     rows: list[Row] = []
     for case_yaml in sorted((bench_root / "cases").glob("*/case.yaml")):
         case_id = case_yaml.parent.name
-        data = yaml.safe_load(case_yaml.read_text())
+        data = with_case_defaults(yaml.safe_load(case_yaml.read_text()), manifest)
         label = data["label"]
         capture = data["capture"]
         log_path = case_yaml.parent / capture.get("verifier_log", "replay-verifier.log")

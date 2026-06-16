@@ -11,18 +11,10 @@ source:
   - bpfix-bench/raw/so/stackoverflow-68460177.yaml
 reproducer:
   reconstruction: reconstructed
-  source_file: prog.c
-  build_command: make
-  object_path: prog.o
-  load_command: make replay-verify
-  notes: Reconstructed from the BCC text program using a local BCC-style
-    bpf_trace_printk wrapper. Replay logs are generated as replay-verifier.log.
+  notes: Reconstructed from the BCC text program using a local BCC-style bpf_trace_printk
+    wrapper. Replay logs are generated as replay-verifier.log.
 capture:
   capture_id: stackoverflow-68460177__kernel-6.15.11-clang-18-log2
-  environment_id: kernel-6.15.11-clang-18-log2
-  verifier_log: replay-verifier.log
-  capture_metadata: capture.yaml
-  log_quality: trace_rich
   terminal_error: R4 bitwise operator |= on pointer prohibited
   rejected_insn_idx: 37
 external_match:
@@ -37,17 +29,13 @@ label:
   error_id: BPFIX-E006
   confidence: medium
   label_source: external_replay_reconstruction
-  root_cause_description: Pointer arithmetic derived from a mutable string start
-    offset is compiled into a prohibited bitwise operation on a stack pointer.
+  root_cause_description: Pointer arithmetic derived from a mutable string start offset is
+    compiled into a prohibited bitwise operation on a stack pointer.
   root_cause_insn_idx: null
-  rejected_line: null
-  root_cause_line: null
   localization_confidence: medium
   fix_type: pointer_arithmetic
-  fix_direction: Avoid dynamic pointer arithmetic on stack string pointers passed
-    through trace_printk varargs.
-repair:
-  eligible: false
+  fix_direction: Avoid dynamic pointer arithmetic on stack string pointers passed through
+    trace_printk varargs.
 reporting:
   family_id: stackoverflow-68460177
   representative: true

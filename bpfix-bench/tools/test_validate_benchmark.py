@@ -23,16 +23,9 @@ def base_case_data() -> dict:
         "source": {"kind": "stackoverflow"},
         "reproducer": {
             "reconstruction": "original",
-            "build_command": "make",
-            "load_command": "make replay-verify",
-            "source_file": "prog.c",
-            "object_path": "prog.o",
         },
         "capture": {
             "capture_id": "cap-1",
-            "environment_id": "env-1",
-            "capture_metadata": "capture.yaml",
-            "log_quality": "trace_rich",
             "terminal_error": "R1 invalid mem access 'scalar'",
             "rejected_insn_idx": 1,
         },
@@ -48,7 +41,22 @@ def base_case_data() -> dict:
 
 
 def base_manifest() -> dict:
-    return {"environment_id": "env-1"}
+    return {
+        "environment_id": "env-1",
+        "case_defaults": {
+            "reproducer": {
+                "build_command": "make",
+                "load_command": "make replay-verify",
+                "source_file": "prog.c",
+                "object_path": "prog.o",
+            },
+            "capture": {
+                "verifier_log": "replay-verifier.log",
+                "capture_metadata": "capture.yaml",
+                "log_quality": "trace_rich",
+            },
+        },
+    }
 
 
 def base_manifest_entry() -> dict:
@@ -62,7 +70,13 @@ def base_manifest_entry() -> dict:
 
 
 class ValidateCaseMetadataTest(unittest.TestCase):
-    def validate_metadata(self, case_data: dict, manifest_entry: dict | None = None) -> list[str]:
+    def validate_metadata(
+        self,
+        case_data: dict,
+        manifest_entry: dict | None = None,
+        manifest: dict | None = None,
+    ) -> list[str]:
+        manifest_data = manifest or base_manifest()
         with tempfile.TemporaryDirectory() as tmpdir:
             case_dir = Path(tmpdir)
             (case_dir / "capture.yaml").write_text(
@@ -82,15 +96,64 @@ class ValidateCaseMetadataTest(unittest.TestCase):
             report = {"errors": [], "warnings": []}
             validate_benchmark.validate_case_metadata(
                 case_dir,
-                base_manifest(),
+                manifest_data,
                 manifest_entry or base_manifest_entry(),
-                case_data,
+                validate_benchmark.with_case_defaults(case_data, manifest_data),
                 report,
             )
             return report["errors"]
 
     def test_minimal_case_metadata_accepts_capture_yaml_provenance(self) -> None:
         self.assertEqual(self.validate_metadata(base_case_data()), [])
+
+    def test_manifest_case_defaults_schema_is_validated(self) -> None:
+        manifest = base_manifest()
+        manifest["case_defaults"]["capture"]["unexpected"] = "value"
+        manifest["case_defaults"]["reproducer"]["source_file"] = ""
+        manifest["case_defaults"]["unknown"] = {}
+
+        errors = validate_benchmark.validate_manifest_metadata(manifest)
+
+        self.assertIn("invalid manifest.case_defaults.capture.unexpected", errors)
+        self.assertIn("manifest.case_defaults.reproducer.source_file must be a non-empty string", errors)
+        self.assertIn("invalid manifest.case_defaults section: 'unknown'", errors)
+
+    def test_missing_verifier_log_default_is_rejected(self) -> None:
+        manifest = base_manifest()
+        del manifest["case_defaults"]["capture"]["verifier_log"]
+
+        errors = self.validate_metadata(base_case_data(), manifest=manifest)
+
+        self.assertIn("missing capture.verifier_log", errors)
+
+    def test_case_metadata_default_override_is_respected(self) -> None:
+        case_data = base_case_data()
+        case_data["reproducer"]["load_command"] = "make custom-load"
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            case_dir = Path(tmpdir)
+            (case_dir / "capture.yaml").write_text(
+                "\n".join(
+                    [
+                        "capture_id: cap-1",
+                        "environment_id: env-1",
+                        "build_command: make",
+                        "load_command: make custom-load",
+                    ]
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            report = {"errors": [], "warnings": []}
+            validate_benchmark.validate_case_metadata(
+                case_dir,
+                base_manifest(),
+                base_manifest_entry(),
+                validate_benchmark.with_case_defaults(case_data, base_manifest()),
+                report,
+            )
+
+        self.assertEqual(report["errors"], [])
 
     def test_removed_case_yaml_fields_are_rejected(self) -> None:
         case_data = copy.deepcopy(base_case_data())

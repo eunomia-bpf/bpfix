@@ -6,23 +6,14 @@ source:
   repository: null
   commit: null
   upstream_file: null
-  collected_at: null
   raw_excerpt_files:
   - bpfix-bench/raw/so/stackoverflow-70760516.yaml
 reproducer:
   reconstruction: reconstructed
-  source_file: prog.c
-  build_command: make
-  object_path: prog.o
-  load_command: make replay-verify
-  notes: Imported from reconstructed external source into bpfix-bench; replay logs
-    are generated as replay-verifier.log.
+  notes: Imported from reconstructed external source into bpfix-bench; replay logs are generated
+    as replay-verifier.log.
 capture:
   capture_id: stackoverflow-70760516__kernel-6.15.11-clang-18-log2
-  environment_id: kernel-6.15.11-clang-18-log2
-  verifier_log: replay-verifier.log
-  capture_metadata: capture.yaml
-  log_quality: trace_rich
   terminal_error: invalid access to packet, off=90 size=1, R6(id=22,off=90,r=0)
   rejected_insn_idx: 16
 external_match:
@@ -31,8 +22,8 @@ external_match:
   matched_messages:
   - invalid access to packet, off=90 size=1, R0(id=22,off=90,r=0)
   - invalid access to packet, off=90 size=1, R6(id=22,off=90,r=0)
-  notes: Imported only because verifier_error_match was exact/partial in the verified
-    SO/GH artifact.
+  notes: Imported only because verifier_error_match was exact/partial in the verified SO/GH
+    artifact.
 label:
   capture_id: stackoverflow-70760516__kernel-6.15.11-clang-18-log2
   taxonomy_class: verifier_false_positive
@@ -45,18 +36,13 @@ label:
   error_id: BPFIX-E005
   confidence: medium
   label_source: external_replay_reconstruction
-  root_cause_description: The TLS/XDP parser bounds each extension length, but
-    the verifier accumulates packet-offset maxima across loop iterations and no
-    longer preserves the intended range at the later byte load.
+  root_cause_description: The TLS/XDP parser bounds each extension length, but the verifier
+    accumulates packet-offset maxima across loop iterations and no longer preserves the intended
+    range at the later byte load.
   root_cause_insn_idx: null
-  rejected_line: null
-  root_cause_line: null
   localization_confidence: medium
   fix_type: bounds_check
-  fix_direction: Recheck packet bounds immediately before each variable-offset packet
-    load.
-repair:
-  eligible: false
+  fix_direction: Recheck packet bounds immediately before each variable-offset packet load.
 reporting:
   family_id: stackoverflow-70760516
   representative: true

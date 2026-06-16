@@ -6,24 +6,14 @@ source:
   repository: https://github.com/cilium/cilium
   commit: 4bb6b56b5c2276045efdfadae7452d6d85bf7e6f
   upstream_file: bpf/include/linux/bpf.h
-  collected_at: null
   raw_excerpt_files:
   - bpfix-bench/raw/gh/github-commit-cilium-4bb6b56b5c22.yaml
 reproducer:
   reconstruction: reconstructed
-  source_file: prog.c
-  build_command: make
-  object_path: prog.o
-  load_command: make replay-verify
-  notes: Minimal replay of the double-word context write described in the commit.
-    The upstream log reports a compiler-generated u64 context access where only word-wise
-    access was verifier-compatible.
+  notes: Minimal replay of the double-word context write described in the commit. The upstream
+    log reports a compiler-generated u64 context access where only word-wise access was verifier-compatible.
 capture:
   capture_id: github-commit-cilium-4bb6b56b5c22__kernel-6.15.11-clang-18-log2
-  environment_id: kernel-6.15.11-clang-18-log2
-  verifier_log: replay-verifier.log
-  capture_metadata: capture.yaml
-  log_quality: trace_rich
   terminal_error: invalid bpf_context access off=8 size=8
   rejected_insn_idx: 1
 external_match:
@@ -31,8 +21,8 @@ external_match:
   policy: terminal_error
   matched_messages:
   - invalid bpf_context access off=8 size=8
-  notes: Commit-derived case reconstructed from raw diff/context; no external verifier
-    log matching is required.
+  notes: Commit-derived case reconstructed from raw diff/context; no external verifier log
+    matching is required.
 label:
   capture_id: github-commit-cilium-4bb6b56b5c22__kernel-6.15.11-clang-18-log2
   taxonomy_class: environment_or_configuration
@@ -45,17 +35,13 @@ label:
   error_id: BPFIX-E006
   confidence: medium
   label_source: manual_reconstruction
-  root_cause_description: A context field update is lowered to an 8-byte store at
-    a context offset whose verifier ABI only accepts narrower accesses.
+  root_cause_description: A context field update is lowered to an 8-byte store at a context
+    offset whose verifier ABI only accepts narrower accesses.
   root_cause_insn_idx: null
-  rejected_line: null
-  root_cause_line: null
   localization_confidence: medium
   fix_type: avoid_wide_context_access
-  fix_direction: Avoid context fields or header layouts that make clang emit a wide
-    context access unsupported by the target verifier.
-repair:
-  eligible: false
+  fix_direction: Avoid context fields or header layouts that make clang emit a wide context
+    access unsupported by the target verifier.
 reporting:
   family_id: github-commit-cilium-4bb6b56b5c22
   representative: true

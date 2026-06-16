@@ -8,22 +8,13 @@ source:
   upstream_file: tools/testing/selftests/bpf/progs/dynptr_fail.c
   upstream_section: invalid_data_slices
   collected_at: '2026-03-20T00:37:17.883281+00:00'
-  raw_excerpt_files: []
 reproducer:
   reconstruction: original
   program_type: ?raw_tp
-  source_file: prog.c
-  build_command: make
-  object_path: prog.o
-  load_command: make replay-verify
-  notes: Imported from locally verified kernel selftest artifact; replay log is written
-    to replay-verifier.log.
+  notes: Imported from locally verified kernel selftest artifact; replay log is written to
+    replay-verifier.log.
 capture:
   capture_id: kernel-selftest-dynptr-fail-invalid-data-slices-raw-tp-6798c725__kernel-6.15.11-clang-18-log2
-  environment_id: kernel-6.15.11-clang-18-log2
-  verifier_log: replay-verifier.log
-  capture_metadata: capture.yaml
-  log_quality: trace_rich
   terminal_error: R6 invalid mem access 'scalar'
   rejected_insn_idx: 38
 external_match:
@@ -39,17 +30,15 @@ label:
   confidence: high
   label_source: agree
   root_cause_description: 'Intentional negative test: stores `slice = bpf_dynptr_data(...)`,
-    runs `bpf_loop(10, callback, &ptr, 0)`, and then writes `*slice = 1` after the
-    callback may have invalidated the dynptr.'
+    runs `bpf_loop(10, callback, &ptr, 0)`, and then writes `*slice = 1` after the callback
+    may have invalidated the dynptr.'
   root_cause_insn_idx: 38
   rejected_line: '*slice = 1;'
   root_cause_line: '*slice = 1;'
   localization_confidence: high
   fix_type: reorder
-  fix_direction: In real code, reacquire the slice after callbacks that can mutate
-    or invalidate the dynptr before using it again.
-repair:
-  eligible: false
+  fix_direction: In real code, reacquire the slice after callbacks that can mutate or invalidate
+    the dynptr before using it again.
 reporting:
   family_id: R6 invalid mem access 'scalar'
   representative: true

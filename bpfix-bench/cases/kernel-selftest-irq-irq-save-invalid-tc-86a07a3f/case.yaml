@@ -8,22 +8,13 @@ source:
   upstream_file: tools/testing/selftests/bpf/progs/irq.c
   upstream_section: irq_save_invalid
   collected_at: '2026-03-20T00:37:25.230851+00:00'
-  raw_excerpt_files: []
 reproducer:
   reconstruction: original
   program_type: ?tc
-  source_file: prog.c
-  build_command: make
-  object_path: prog.o
-  load_command: make replay-verify
-  notes: Imported from locally verified kernel selftest artifact; replay log is written
-    to replay-verifier.log.
+  notes: Imported from locally verified kernel selftest artifact; replay log is written to
+    replay-verifier.log.
 capture:
   capture_id: kernel-selftest-irq-irq-save-invalid-tc-86a07a3f__kernel-6.15.11-clang-18-log2
-  environment_id: kernel-6.15.11-clang-18-log2
-  verifier_log: replay-verifier.log
-  capture_metadata: capture.yaml
-  log_quality: trace_rich
   terminal_error: expected uninitialized irq flag as arg#0
   rejected_insn_idx: 5
 external_match:
@@ -45,10 +36,8 @@ label:
   root_cause_line: bpf_local_irq_save(&flags1);
   localization_confidence: high
   fix_type: other
-  fix_direction: In real code, use a fresh uninitialized stack slot for each IRQ save
-    or restore the first slot before reusing it.
-repair:
-  eligible: false
+  fix_direction: In real code, use a fresh uninitialized stack slot for each IRQ save or restore
+    the first slot before reusing it.
 reporting:
   family_id: expected uninitialized irq flag as arg#0
   representative: true

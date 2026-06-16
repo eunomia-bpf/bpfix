@@ -8,22 +8,13 @@ source:
   upstream_file: tools/testing/selftests/bpf/progs/cpumask_failure.c
   upstream_section: test_invalid_nested_array
   collected_at: '2026-03-20T00:37:14.985164+00:00'
-  raw_excerpt_files: []
 reproducer:
   reconstruction: original
   program_type: tp_btf/task_newtask
-  source_file: prog.c
-  build_command: make
-  object_path: prog.o
-  load_command: make replay-verify
-  notes: Imported from locally verified kernel selftest artifact; replay log is written
-    to replay-verifier.log.
+  notes: Imported from locally verified kernel selftest artifact; replay log is written to
+    replay-verifier.log.
 capture:
   capture_id: kernel-selftest-cpumask-failure-test-invalid-nested-array-tp-btf-task-newtask-bd05d03f__kernel-6.15.11-clang-18-log2
-  environment_id: kernel-6.15.11-clang-18-log2
-  verifier_log: replay-verifier.log
-  capture_metadata: capture.yaml
-  log_quality: trace_rich
   terminal_error: R1 has no valid kptr
   rejected_insn_idx: 22
 external_match:
@@ -48,10 +39,8 @@ label:
     local);
   localization_confidence: high
   fix_type: other
-  fix_direction: In real code, exchange only a declared kptr field that the verifier
-    recognizes as valid cpumask storage.
-repair:
-  eligible: false
+  fix_direction: In real code, exchange only a declared kptr field that the verifier recognizes
+    as valid cpumask storage.
 reporting:
   family_id: R1 has no valid kptr
   representative: true

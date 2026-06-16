@@ -8,22 +8,13 @@ source:
   upstream_file: tools/testing/selftests/bpf/progs/iters_state_safety.c
   upstream_section: compromise_iter_w_helper_write_fail
   collected_at: '2026-03-20T00:37:26.998451+00:00'
-  raw_excerpt_files: []
 reproducer:
   reconstruction: original
   program_type: ?raw_tp
-  source_file: prog.c
-  build_command: make
-  object_path: prog.o
-  load_command: make replay-verify
-  notes: Imported from locally verified kernel selftest artifact; replay log is written
-    to replay-verifier.log.
+  notes: Imported from locally verified kernel selftest artifact; replay log is written to
+    replay-verifier.log.
 capture:
   capture_id: kernel-selftest-iters-state-safety-compromise-iter-w-helper-write-fail-raw-tp-50431478__kernel-6.15.11-clang-18-log2
-  environment_id: kernel-6.15.11-clang-18-log2
-  verifier_log: replay-verifier.log
-  capture_metadata: capture.yaml
-  log_quality: trace_rich
   terminal_error: 'expected an initialized iter_num as arg #0'
   rejected_insn_idx: 12
 external_match:
@@ -38,18 +29,16 @@ label:
   error_id: BPFIX-E014
   confidence: high
   label_source: agree
-  root_cause_description: 'Intentional negative test: creates a `struct bpf_iter_num`,
-    overwrites byte 7 of that iterator slot with `bpf_probe_read_kernel`, and then
-    tries to destroy the corrupted iterator.'
+  root_cause_description: 'Intentional negative test: creates a `struct bpf_iter_num`, overwrites
+    byte 7 of that iterator slot with `bpf_probe_read_kernel`, and then tries to destroy the
+    corrupted iterator.'
   root_cause_insn_idx: 12
   rejected_line: asm volatile (
   root_cause_line: asm volatile (
   localization_confidence: high
   fix_type: other
-  fix_direction: In real code, keep helper writes away from iterator storage and never
-    mutate iterator state bytes directly.
-repair:
-  eligible: false
+  fix_direction: In real code, keep helper writes away from iterator storage and never mutate
+    iterator state bytes directly.
 reporting:
   family_id: 'expected an initialized iter_num as arg #0'
   representative: true

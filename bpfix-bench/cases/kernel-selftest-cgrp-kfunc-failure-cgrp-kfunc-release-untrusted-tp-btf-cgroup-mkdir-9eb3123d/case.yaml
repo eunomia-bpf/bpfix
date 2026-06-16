@@ -8,22 +8,13 @@ source:
   upstream_file: tools/testing/selftests/bpf/progs/cgrp_kfunc_failure.c
   upstream_section: cgrp_kfunc_release_untrusted
   collected_at: '2026-03-20T00:37:13.036811+00:00'
-  raw_excerpt_files: []
 reproducer:
   reconstruction: original
   program_type: tp_btf/cgroup_mkdir
-  source_file: prog.c
-  build_command: make
-  object_path: prog.o
-  load_command: make replay-verify
-  notes: Imported from locally verified kernel selftest artifact; replay log is written
-    to replay-verifier.log.
+  notes: Imported from locally verified kernel selftest artifact; replay log is written to
+    replay-verifier.log.
 capture:
   capture_id: kernel-selftest-cgrp-kfunc-failure-cgrp-kfunc-release-untrusted-tp-btf-cgroup-mkdir-9eb3123d__kernel-6.15.11-clang-18-log2
-  environment_id: kernel-6.15.11-clang-18-log2
-  verifier_log: replay-verifier.log
-  capture_metadata: capture.yaml
-  log_quality: trace_rich
   terminal_error: Possibly NULL pointer passed to trusted arg0
   rejected_insn_idx: 61
 external_match:
@@ -47,8 +38,6 @@ label:
   fix_type: null_check
   fix_direction: In real code, only release a cgroup pointer after proving it is non-NULL
     and came from a reference-producing acquire/xchg path.
-repair:
-  eligible: false
 reporting:
   family_id: Possibly NULL pointer passed to trusted arg0
   representative: true

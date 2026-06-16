@@ -8,22 +8,13 @@ source:
   upstream_file: tools/testing/selftests/bpf/progs/dynptr_fail.c
   upstream_section: skb_invalid_ctx_fentry
   collected_at: '2026-03-20T00:37:18.872710+00:00'
-  raw_excerpt_files: []
 reproducer:
   reconstruction: original
   program_type: fentry/skb_tx_error
-  source_file: prog.c
-  build_command: make
-  object_path: prog.o
-  load_command: make replay-verify
-  notes: Imported from locally verified kernel selftest artifact; replay log is written
-    to replay-verifier.log.
+  notes: Imported from locally verified kernel selftest artifact; replay log is written to
+    replay-verifier.log.
 capture:
   capture_id: kernel-selftest-dynptr-fail-skb-invalid-ctx-fentry-fentry-skb-tx-error-17cea403__kernel-6.15.11-clang-18-log2
-  environment_id: kernel-6.15.11-clang-18-log2
-  verifier_log: replay-verifier.log
-  capture_metadata: capture.yaml
-  log_quality: trace_rich
   terminal_error: R1 must be referenced or trusted
   rejected_insn_idx: 4
 external_match:
@@ -38,18 +29,16 @@ label:
   error_id: BPFIX-E023
   confidence: high
   label_source: agree
-  root_cause_description: 'Intentional negative test: calls `bpf_dynptr_from_skb(skb,
-    0, &ptr)` from `fentry/skb_tx_error` on an `skb` argument that is not a referenced
-    or trusted sk_buff pointer.'
+  root_cause_description: 'Intentional negative test: calls `bpf_dynptr_from_skb(skb, 0, &ptr)`
+    from `fentry/skb_tx_error` on an `skb` argument that is not a referenced or trusted sk_buff
+    pointer.'
   root_cause_insn_idx: 4
   rejected_line: bpf_dynptr_from_skb(skb, 0, &ptr);
   root_cause_line: bpf_dynptr_from_skb(skb, 0, &ptr);
   localization_confidence: high
   fix_type: reorder
-  fix_direction: In real code, call `bpf_dynptr_from_skb` only with a verifier-trusted
-    sk_buff pointer from a supported context.
-repair:
-  eligible: false
+  fix_direction: In real code, call `bpf_dynptr_from_skb` only with a verifier-trusted sk_buff
+    pointer from a supported context.
 reporting:
   family_id: R1 must be referenced or trusted
   representative: true

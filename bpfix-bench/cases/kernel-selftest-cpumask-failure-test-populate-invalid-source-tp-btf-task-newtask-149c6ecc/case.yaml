@@ -8,22 +8,13 @@ source:
   upstream_file: tools/testing/selftests/bpf/progs/cpumask_failure.c
   upstream_section: test_populate_invalid_source
   collected_at: '2026-03-20T00:37:16.152669+00:00'
-  raw_excerpt_files: []
 reproducer:
   reconstruction: original
   program_type: tp_btf/task_newtask
-  source_file: prog.c
-  build_command: make
-  object_path: prog.o
-  load_command: make replay-verify
-  notes: Imported from locally verified kernel selftest artifact; replay log is written
-    to replay-verifier.log.
+  notes: Imported from locally verified kernel selftest artifact; replay log is written to
+    replay-verifier.log.
 capture:
   capture_id: kernel-selftest-cpumask-failure-test-populate-invalid-source-tp-btf-task-newtask-149c6ecc__kernel-6.15.11-clang-18-log2
-  environment_id: kernel-6.15.11-clang-18-log2
-  verifier_log: replay-verifier.log
-  capture_metadata: capture.yaml
-  log_quality: trace_rich
   terminal_error: arg#1 arg#2 memory, len pair leads to invalid memory access
   rejected_insn_idx: 21
 external_match:
@@ -38,17 +29,15 @@ label:
   error_id: BPFIX-E023
   confidence: high
   label_source: agree
-  root_cause_description: 'Intentional negative test: passes the fabricated scalar
-    pointer `0x123456` as the source buffer to `bpf_cpumask_populate`.'
+  root_cause_description: 'Intentional negative test: passes the fabricated scalar pointer
+    `0x123456` as the source buffer to `bpf_cpumask_populate`.'
   root_cause_insn_idx: 21
   rejected_line: ret = bpf_cpumask_populate((struct cpumask *)local, garbage, 8);
   root_cause_line: ret = bpf_cpumask_populate((struct cpumask *)local, garbage, 8);
   localization_confidence: high
   fix_type: other
-  fix_direction: In real code, populate the cpumask from a valid stack or map-backed
-    memory buffer whose length is verifier-proven.
-repair:
-  eligible: false
+  fix_direction: In real code, populate the cpumask from a valid stack or map-backed memory
+    buffer whose length is verifier-proven.
 reporting:
   family_id: arg#1 arg#2 memory, len pair leads to invalid memory access
   representative: true

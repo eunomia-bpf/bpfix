@@ -11,18 +11,10 @@ source:
   - bpfix-bench/raw/gh/github-aya-rs-aya-1233.yaml
 reproducer:
   reconstruction: reconstructed
-  source_file: prog.c
-  build_command: make
-  object_path: prog.o
-  load_command: make replay-verify
-  notes: Imported from reconstructed external source into bpfix-bench; replay logs
-    are generated as replay-verifier.log.
+  notes: Imported from reconstructed external source into bpfix-bench; replay logs are generated
+    as replay-verifier.log.
 capture:
   capture_id: github-aya-rs-aya-1233__kernel-6.15.11-clang-18-log2
-  environment_id: kernel-6.15.11-clang-18-log2
-  verifier_log: replay-verifier.log
-  capture_metadata: capture.yaml
-  log_quality: trace_rich
   terminal_error: program of this type cannot use helper bpf_probe_read#4
   rejected_insn_idx: 8
 external_match:
@@ -31,8 +23,8 @@ external_match:
   matched_messages:
   - program of this type cannot use helper bpf_probe_read#4
   - program of this type cannot use helper bpf_probe_read#4
-  notes: Imported only because verifier_error_match was exact/partial in the verified
-    SO/GH artifact.
+  notes: Imported only because verifier_error_match was exact/partial in the verified SO/GH
+    artifact.
 label:
   capture_id: github-aya-rs-aya-1233__kernel-6.15.11-clang-18-log2
   taxonomy_class: environment_or_configuration
@@ -49,17 +41,12 @@ label:
   error_id: BPFIX-E021
   confidence: medium
   label_source: external_replay_reconstruction
-  root_cause_description: Program type is incompatible with bpf_probe_read on this
-    kernel/toolchain.
+  root_cause_description: Program type is incompatible with bpf_probe_read on this kernel/toolchain.
   root_cause_insn_idx: null
-  rejected_line: null
-  root_cause_line: null
   localization_confidence: medium
   fix_type: change_prog_type
-  fix_direction: Use a program type/helper combination allowed by the verifier or
-    switch to a permitted helper.
-repair:
-  eligible: false
+  fix_direction: Use a program type/helper combination allowed by the verifier or switch to
+    a permitted helper.
 reporting:
   family_id: github-aya-rs-aya-1233
   representative: true

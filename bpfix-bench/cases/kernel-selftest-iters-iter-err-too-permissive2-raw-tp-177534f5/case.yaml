@@ -8,22 +8,13 @@ source:
   upstream_file: tools/testing/selftests/bpf/progs/iters.c
   upstream_section: iter_err_too_permissive2
   collected_at: '2026-03-20T00:37:26.574779+00:00'
-  raw_excerpt_files: []
 reproducer:
   reconstruction: original
   program_type: ?raw_tp
-  source_file: prog.c
-  build_command: make
-  object_path: prog.o
-  load_command: make replay-verify
-  notes: Imported from locally verified kernel selftest artifact; replay log is written
-    to replay-verifier.log.
+  notes: Imported from locally verified kernel selftest artifact; replay log is written to
+    replay-verifier.log.
 capture:
   capture_id: kernel-selftest-iters-iter-err-too-permissive2-raw-tp-177534f5__kernel-6.15.11-clang-18-log2
-  environment_id: kernel-6.15.11-clang-18-log2
-  verifier_log: replay-verifier.log
-  capture_metadata: capture.yaml
-  log_quality: trace_rich
   terminal_error: R6 invalid mem access 'map_value_or_null'
   rejected_insn_idx: 33
 external_match:
@@ -38,18 +29,16 @@ label:
   error_id: BPFIX-E002
   confidence: high
   label_source: agree
-  root_cause_description: 'Intentional negative test: proves an initial `map_val`
-    non-NULL, then reassigns `map_val = bpf_map_lookup_elem(...)` inside `bpf_repeat`,
-    so the final pointer may again be NULL at `*map_val = 123`.'
+  root_cause_description: 'Intentional negative test: proves an initial `map_val` non-NULL,
+    then reassigns `map_val = bpf_map_lookup_elem(...)` inside `bpf_repeat`, so the final
+    pointer may again be NULL at `*map_val = 123`.'
   root_cause_insn_idx: 33
   rejected_line: '*map_val = 123;'
   root_cause_line: '*map_val = 123;'
   localization_confidence: high
   fix_type: null_check
-  fix_direction: In real code, repeat the NULL check on the final lookup result and
-    dereference it only inside the non-NULL branch.
-repair:
-  eligible: false
+  fix_direction: In real code, repeat the NULL check on the final lookup result and dereference
+    it only inside the non-NULL branch.
 reporting:
   family_id: R6 invalid mem access 'map_value_or_null'
   representative: true

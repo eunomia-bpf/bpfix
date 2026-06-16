@@ -6,25 +6,15 @@ source:
   repository: null
   commit: null
   upstream_file: null
-  collected_at: null
   raw_excerpt_files:
   - bpfix-bench/raw/so/stackoverflow-74531552.yaml
 reproducer:
   reconstruction: reconstructed
-  source_file: prog.c
-  build_command: make
-  object_path: prog.o
-  load_command: make replay-verify
-  notes: Imported from reconstructed external source into bpfix-bench; replay logs
-    are generated as replay-verifier.log.
+  notes: Imported from reconstructed external source into bpfix-bench; replay logs are generated
+    as replay-verifier.log.
 capture:
   capture_id: stackoverflow-74531552__kernel-6.15.11-clang-18-log2
-  environment_id: kernel-6.15.11-clang-18-log2
-  verifier_log: replay-verifier.log
-  capture_metadata: capture.yaml
-  log_quality: trace_rich
-  terminal_error: math between fp pointer and register with unbounded min value is
-    not allowed
+  terminal_error: math between fp pointer and register with unbounded min value is not allowed
   rejected_insn_idx: 68
 external_match:
   status: exact
@@ -32,26 +22,23 @@ external_match:
   matched_messages:
   - math between fp pointer and register with unbounded min value is not allowed
   - math between fp pointer and register with unbounded min value is not allowed
-  notes: Promoted after a fresh raw SO/GH rebuild matched the locally captured terminal
-    verifier error exactly; the earlier mismatch came from a coarse loader/permission
-    line rather than the terminal verifier error.
+  notes: Promoted after a fresh raw SO/GH rebuild matched the locally captured terminal verifier
+    error exactly; the earlier mismatch came from a coarse loader/permission line rather than
+    the terminal verifier error.
 label:
   capture_id: stackoverflow-74531552__kernel-6.15.11-clang-18-log2
   taxonomy_class: source_bug
   error_id: BPFIX-E023
   confidence: low
   label_source: adjudicated
-  root_cause_description: The state-machine code checks `next`, but it still uses
-    the current state value to form a shifted table offset without first clamping
-    that current state into the valid automaton range, so the verifier sees unsafe
-    register-derived offset arithmetic.
+  root_cause_description: The state-machine code checks `next`, but it still uses the current
+    state value to form a shifted table offset without first clamping that current state into
+    the valid automaton range, so the verifier sees unsafe register-derived offset arithmetic.
   root_cause_insn_idx: null
-  rejected_line: null
-  root_cause_line: null
   localization_confidence: high
   fix_type: clamp
-  fix_direction: Add a dominating range check on the current state value before using
-    it to index the automaton tables or build the shifted offset.
+  fix_direction: Add a dominating range check on the current state value before using it to
+    index the automaton tables or build the shifted offset.
 repair:
   eligible: true
 reporting:

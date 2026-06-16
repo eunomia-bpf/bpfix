@@ -11,18 +11,10 @@ source:
   - bpfix-bench/raw/so/stackoverflow-77713434.yaml
 reproducer:
   reconstruction: reconstructed
-  source_file: prog.c
-  build_command: make
-  object_path: prog.o
-  load_command: make replay-verify
-  notes: Imported from reconstructed external source into bpfix-bench; replay logs
-    are generated as replay-verifier.log.
+  notes: Imported from reconstructed external source into bpfix-bench; replay logs are generated
+    as replay-verifier.log.
 capture:
   capture_id: stackoverflow-77713434__kernel-6.15.11-clang-18-log2
-  environment_id: kernel-6.15.11-clang-18-log2
-  verifier_log: replay-verifier.log
-  capture_metadata: capture.yaml
-  log_quality: trace_rich
   terminal_error: invalid access to map value, value_size=70 off=0 size=16383
   rejected_insn_idx: 25
 external_match:
@@ -30,28 +22,24 @@ external_match:
   policy: terminal_error
   matched_messages:
   - '{"error": "field SyscallProbeRetRead: program syscall__probe_ret_read: load program:
-    permission denied: invalid access to map value, value_size=70 off=0 size=16383:
-    R1 min value is outside of the allowed memory range (truncated, 73 line(s) omitted)"}'
+    permission denied: invalid access to map value, value_size=70 off=0 size=16383: R1 min
+    value is outside of the allowed memory range (truncated, 73 line(s) omitted)"}'
   - invalid access to map value, value_size=70 off=0 size=16383
-  notes: Imported only because verifier_error_match was exact/partial in the verified
-    SO/GH artifact.
+  notes: Imported only because verifier_error_match was exact/partial in the verified SO/GH
+    artifact.
 label:
   capture_id: stackoverflow-77713434__kernel-6.15.11-clang-18-log2
   taxonomy_class: source_bug
   error_id: BPFIX-E005
   confidence: medium
   label_source: external_replay_reconstruction
-  root_cause_description: Variable-length bpf_probe_read_user writes into a fixed-size
-    map value; verifier cannot prove the requested length stays within the map value.
+  root_cause_description: Variable-length bpf_probe_read_user writes into a fixed-size map
+    value; verifier cannot prove the requested length stays within the map value.
   root_cause_insn_idx: null
-  rejected_line: null
-  root_cause_line: null
   localization_confidence: medium
   fix_type: bounds_check
-  fix_direction: Clamp the helper read size to the destination map-value buffer size
-    immediately before the helper call.
-repair:
-  eligible: false
+  fix_direction: Clamp the helper read size to the destination map-value buffer size immediately
+    before the helper call.
 reporting:
   family_id: stackoverflow-77713434
   representative: true

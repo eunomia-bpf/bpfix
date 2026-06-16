@@ -2,6 +2,16 @@ schema_version: bpfix.benchmark/v1
 benchmark_id: bpfix-bench-v1
 frozen_at: '2026-04-29'
 environment_id: kernel-6.15.11-clang-18-log2
+case_defaults:
+  reproducer:
+    source_file: prog.c
+    build_command: make
+    object_path: prog.o
+    load_command: make replay-verify
+  capture:
+    verifier_log: replay-verifier.log
+    capture_metadata: capture.yaml
+    log_quality: trace_rich
 description: Locally reproducible verifier-log benchmark.
 cases:
 - case_id: github-aya-rs-aya-1002

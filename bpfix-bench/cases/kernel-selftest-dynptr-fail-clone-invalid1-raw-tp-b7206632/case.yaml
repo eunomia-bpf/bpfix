@@ -8,22 +8,13 @@ source:
   upstream_file: tools/testing/selftests/bpf/progs/dynptr_fail.c
   upstream_section: clone_invalid1
   collected_at: '2026-03-20T00:37:16.787143+00:00'
-  raw_excerpt_files: []
 reproducer:
   reconstruction: original
   program_type: ?raw_tp
-  source_file: prog.c
-  build_command: make
-  object_path: prog.o
-  load_command: make replay-verify
-  notes: Imported from locally verified kernel selftest artifact; replay log is written
-    to replay-verifier.log.
+  notes: Imported from locally verified kernel selftest artifact; replay log is written to
+    replay-verifier.log.
 capture:
   capture_id: kernel-selftest-dynptr-fail-clone-invalid1-raw-tp-b7206632__kernel-6.15.11-clang-18-log2
-  environment_id: kernel-6.15.11-clang-18-log2
-  verifier_log: replay-verifier.log
-  capture_metadata: capture.yaml
-  log_quality: trace_rich
   terminal_error: 'Expected an initialized dynptr as arg #0'
   rejected_insn_idx: 7
 external_match:
@@ -38,18 +29,16 @@ label:
   error_id: BPFIX-E012
   confidence: high
   label_source: agree
-  root_cause_description: 'Intentional negative test: calls `bpf_dynptr_clone(&ptr1,
-    &ptr2)` even though `ptr1` is just a zero-initialized dynptr that was never created
-    by a dynptr helper.'
+  root_cause_description: 'Intentional negative test: calls `bpf_dynptr_clone(&ptr1, &ptr2)`
+    even though `ptr1` is just a zero-initialized dynptr that was never created by a dynptr
+    helper.'
   root_cause_insn_idx: 7
   rejected_line: bpf_dynptr_clone(&ptr1, &ptr2);
   root_cause_line: bpf_dynptr_clone(&ptr1, &ptr2);
   localization_confidence: high
   fix_type: other
-  fix_direction: In real code, clone only dynptrs that were initialized by a successful
-    reserve/from_* helper call.
-repair:
-  eligible: false
+  fix_direction: In real code, clone only dynptrs that were initialized by a successful reserve/from_*
+    helper call.
 reporting:
   family_id: 'Expected an initialized dynptr as arg #0'
   representative: true

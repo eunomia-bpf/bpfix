@@ -8,22 +8,13 @@ source:
   upstream_file: tools/testing/selftests/bpf/progs/cpumask_failure.c
   upstream_section: test_populate_invalid_destination
   collected_at: '2026-03-20T00:37:15.765455+00:00'
-  raw_excerpt_files: []
 reproducer:
   reconstruction: original
   program_type: tp_btf/task_newtask
-  source_file: prog.c
-  build_command: make
-  object_path: prog.o
-  load_command: make replay-verify
-  notes: Imported from locally verified kernel selftest artifact; replay log is written
-    to replay-verifier.log.
+  notes: Imported from locally verified kernel selftest artifact; replay log is written to
+    replay-verifier.log.
 capture:
   capture_id: kernel-selftest-cpumask-failure-test-populate-invalid-destination-tp-btf-task-newtask-2aa0585a__kernel-6.15.11-clang-18-log2
-  environment_id: kernel-6.15.11-clang-18-log2
-  verifier_log: replay-verifier.log
-  capture_metadata: capture.yaml
-  log_quality: trace_rich
   terminal_error: R1 type=scalar expected=fp
   rejected_insn_idx: 4
 external_match:
@@ -38,17 +29,15 @@ label:
   error_id: BPFIX-E023
   confidence: high
   label_source: agree
-  root_cause_description: 'Intentional negative test: passes the fabricated scalar
-    pointer `0x123456` as the destination cpumask in `bpf_cpumask_populate`.'
+  root_cause_description: 'Intentional negative test: passes the fabricated scalar pointer
+    `0x123456` as the destination cpumask in `bpf_cpumask_populate`.'
   root_cause_insn_idx: 4
   rejected_line: ret = bpf_cpumask_populate((struct cpumask *)invalid, &bits, sizeof(bits));
   root_cause_line: ret = bpf_cpumask_populate((struct cpumask *)invalid, &bits, sizeof(bits));
   localization_confidence: high
   fix_type: other
-  fix_direction: In real code, pass a stack or otherwise verifier-tracked destination
-    cpumask pointer, not a made-up scalar address.
-repair:
-  eligible: false
+  fix_direction: In real code, pass a stack or otherwise verifier-tracked destination cpumask
+    pointer, not a made-up scalar address.
 reporting:
   family_id: R1 type=scalar expected=fp
   representative: true

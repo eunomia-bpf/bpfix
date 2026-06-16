@@ -6,23 +6,14 @@ source:
   repository: null
   commit: null
   upstream_file: null
-  collected_at: null
   raw_excerpt_files:
   - bpfix-bench/raw/so/stackoverflow-72606055.yaml
 reproducer:
   reconstruction: reconstructed
-  source_file: prog.c
-  build_command: make
-  object_path: prog.o
-  load_command: make replay-verify
-  notes: Imported from reconstructed external source into bpfix-bench; replay logs
-    are generated as replay-verifier.log.
+  notes: Imported from reconstructed external source into bpfix-bench; replay logs are generated
+    as replay-verifier.log.
 capture:
   capture_id: stackoverflow-72606055__kernel-6.15.11-clang-18-log2
-  environment_id: kernel-6.15.11-clang-18-log2
-  verifier_log: replay-verifier.log
-  capture_metadata: capture.yaml
-  log_quality: trace_rich
   terminal_error: R1 type=scalar expected=map_ptr
   rejected_insn_idx: 4
 external_match:
@@ -31,8 +22,8 @@ external_match:
   matched_messages:
   - R1 type=inv expected=map_ptr
   - R1 type=scalar expected=map_ptr
-  notes: Imported only because verifier_error_match was exact/partial in the verified
-    SO/GH artifact.
+  notes: Imported only because verifier_error_match was exact/partial in the verified SO/GH
+    artifact.
 label:
   capture_id: stackoverflow-72606055__kernel-6.15.11-clang-18-log2
   taxonomy_class: environment_or_configuration
@@ -49,16 +40,15 @@ label:
   error_id: BPFIX-E021
   confidence: medium
   label_source: external_replay_reconstruction
-  root_cause_description: External StackOverflow report loaded raw eBPF instructions
-    without applying the map relocation, so the helper received a scalar zero instead
-    of a map pointer.
+  root_cause_description: External StackOverflow report loaded raw eBPF instructions without
+    applying the map relocation, so the helper received a scalar zero instead of a map pointer.
   root_cause_insn_idx: 4
   rejected_line: value = bpf_map_lookup_elem(missing_relocation, &index);
   root_cause_line: value = bpf_map_lookup_elem(missing_relocation, &index);
   localization_confidence: high
   fix_type: loader_fix
-  fix_direction: Load the ELF through libbpf or otherwise apply map relocations so
-    bpf_map_lookup_elem receives a verifier-tracked map pointer.
+  fix_direction: Load the ELF through libbpf or otherwise apply map relocations so bpf_map_lookup_elem
+    receives a verifier-tracked map pointer.
 repair:
   eligible: true
 reporting:

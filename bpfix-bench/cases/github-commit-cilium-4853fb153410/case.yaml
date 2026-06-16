@@ -6,25 +6,15 @@ source:
   repository: https://github.com/cilium/cilium
   commit: 4853fb153410219443d8985442759c1f0ec23d6a
   upstream_file: bpf/lib/lb.h
-  collected_at: null
   raw_excerpt_files:
   - bpfix-bench/raw/gh/github-commit-cilium-4853fb153410.yaml
 reproducer:
   reconstruction: reconstructed
-  source_file: prog.c
-  build_command: make
-  object_path: prog.o
-  load_command: make replay-verify
-  notes: Standalone reconstruction of the LLVM 18 stack-alignment failure
-    described by the Cilium diff. The program creates a 4-byte IPv6-style stack
-    object and performs a 64-bit load from a 4-byte offset, which is what
-    __align_stack_8 prevents in the upstream fix.
+  notes: Standalone reconstruction of the LLVM 18 stack-alignment failure described by the
+    Cilium diff. The program creates a 4-byte IPv6-style stack object and performs a 64-bit
+    load from a 4-byte offset, which is what __align_stack_8 prevents in the upstream fix.
 capture:
   capture_id: github-commit-cilium-4853fb153410__kernel-6.15.11-clang-18-log2
-  environment_id: kernel-6.15.11-clang-18-log2
-  verifier_log: replay-verifier.log
-  capture_metadata: capture.yaml
-  log_quality: trace_rich
   terminal_error: misaligned stack access off 0+-16+4 size 8
   rejected_insn_idx: 10
 external_match:
@@ -33,26 +23,22 @@ external_match:
   matched_messages:
   - 64-bit accesses to only 4-byte-aligned stack slots
   - misaligned stack access off 0+-16+4 size 8
-  notes: The raw commit has no full verifier log, but its diff summary identifies
-    LLVM 18 64-bit stack accesses to 4-byte-aligned IPv6 objects. The local
-    replay validates that verifier-rejected shape.
+  notes: The raw commit has no full verifier log, but its diff summary identifies LLVM 18
+    64-bit stack accesses to 4-byte-aligned IPv6 objects. The local replay validates that
+    verifier-rejected shape.
 label:
   capture_id: github-commit-cilium-4853fb153410__kernel-6.15.11-clang-18-log2
   taxonomy_class: lowering_artifact
   error_id: BPFIX-E005
   confidence: medium
   label_source: external_replay_reconstruction
-  root_cause_description: Lowered BPF performs a 64-bit access through an
-    IPv6-style stack object that is only proven 4-byte aligned.
+  root_cause_description: Lowered BPF performs a 64-bit access through an IPv6-style stack
+    object that is only proven 4-byte aligned.
   root_cause_insn_idx: null
-  rejected_line: null
-  root_cause_line: null
   localization_confidence: medium
   fix_type: stack_alignment
-  fix_direction: Force the stack object to 8-byte alignment before any 64-bit
-    load, store, copy, or helper-visible access can target it.
-repair:
-  eligible: false
+  fix_direction: Force the stack object to 8-byte alignment before any 64-bit load, store,
+    copy, or helper-visible access can target it.
 reporting:
   family_id: github-commit-cilium-4853fb153410
   representative: true

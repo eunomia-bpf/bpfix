@@ -6,23 +6,14 @@ source:
   repository: null
   commit: null
   upstream_file: null
-  collected_at: null
   raw_excerpt_files:
   - bpfix-bench/raw/so/stackoverflow-79348306.yaml
 reproducer:
   reconstruction: reconstructed
-  source_file: prog.c
-  build_command: make
-  object_path: prog.o
-  load_command: make replay-verify
-  notes: Imported from reconstructed external source into bpfix-bench; replay logs
-    are generated as replay-verifier.log.
+  notes: Imported from reconstructed external source into bpfix-bench; replay logs are generated
+    as replay-verifier.log.
 capture:
   capture_id: stackoverflow-79348306__kernel-6.15.11-clang-18-log2
-  environment_id: kernel-6.15.11-clang-18-log2
-  verifier_log: replay-verifier.log
-  capture_metadata: capture.yaml
-  log_quality: trace_rich
   terminal_error: R1 type=fp expected=ptr_, trusted_ptr_, rcu_ptr_
   rejected_insn_idx: 12
 external_match:
@@ -31,25 +22,24 @@ external_match:
   matched_messages:
   - R1 type=fp expected=ptr_, trusted_ptr_, rcu_ptr_
   - R1 type=fp expected=ptr_, trusted_ptr_, rcu_ptr_
-  notes: Imported only because verifier_error_match was exact/partial in the verified
-    SO/GH artifact.
+  notes: Imported only because verifier_error_match was exact/partial in the verified SO/GH
+    artifact.
 label:
   capture_id: stackoverflow-79348306__kernel-6.15.11-clang-18-log2
   taxonomy_class: source_bug
   error_id: BPFIX-E023
   confidence: medium
   label_source: agree
-  root_cause_description: The program copies `file->f_path` into the stack variable
-    `file_path` with `BPF_CORE_READ_INTO` and then passes `&file_path` to `bpf_d_path`,
-    but `bpf_d_path` requires a trusted `struct path *`, not a stack copy.
+  root_cause_description: The program copies `file->f_path` into the stack variable `file_path`
+    with `BPF_CORE_READ_INTO` and then passes `&file_path` to `bpf_d_path`, but `bpf_d_path`
+    requires a trusted `struct path *`, not a stack copy.
   root_cause_insn_idx: 12
   rejected_line: long err = bpf_d_path(&file_path, path_buffer, sizeof(path_buffer));
   root_cause_line: long err = bpf_d_path(&file_path, path_buffer, sizeof(path_buffer));
   localization_confidence: high
   fix_type: other
-  fix_direction: Pass a trusted pointer to `file->f_path` directly, or use a helper
-    pattern that preserves the trusted path type instead of materializing it on the
-    stack.
+  fix_direction: Pass a trusted pointer to `file->f_path` directly, or use a helper pattern
+    that preserves the trusted path type instead of materializing it on the stack.
 repair:
   eligible: true
 reporting:

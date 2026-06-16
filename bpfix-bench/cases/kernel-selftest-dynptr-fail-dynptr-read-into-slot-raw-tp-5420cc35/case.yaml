@@ -8,22 +8,13 @@ source:
   upstream_file: tools/testing/selftests/bpf/progs/dynptr_fail.c
   upstream_section: dynptr_read_into_slot
   collected_at: '2026-03-20T00:37:17.483267+00:00'
-  raw_excerpt_files: []
 reproducer:
   reconstruction: original
   program_type: ?raw_tp
-  source_file: prog.c
-  build_command: make
-  object_path: prog.o
-  load_command: make replay-verify
-  notes: Imported from locally verified kernel selftest artifact; replay log is written
-    to replay-verifier.log.
+  notes: Imported from locally verified kernel selftest artifact; replay log is written to
+    replay-verifier.log.
 capture:
   capture_id: kernel-selftest-dynptr-fail-dynptr-read-into-slot-raw-tp-5420cc35__kernel-6.15.11-clang-18-log2
-  environment_id: kernel-6.15.11-clang-18-log2
-  verifier_log: replay-verifier.log
-  capture_metadata: capture.yaml
-  log_quality: trace_rich
   terminal_error: 'arg#0 reference type(''UNKNOWN '') size cannot be determined: -22'
   rejected_insn_idx: 16
 external_match:
@@ -38,18 +29,16 @@ label:
   error_id: BPFIX-E019
   confidence: high
   label_source: agree
-  root_cause_description: 'Intentional negative test: calls `bpf_dynptr_read(data.buf,
-    sizeof(data.buf), &data.ptr, 0, 0)` where the 64-byte destination buffer overlaps
-    the same union storage as `data.ptr`.'
+  root_cause_description: 'Intentional negative test: calls `bpf_dynptr_read(data.buf, sizeof(data.buf),
+    &data.ptr, 0, 0)` where the 64-byte destination buffer overlaps the same union storage
+    as `data.ptr`.'
   root_cause_insn_idx: 14
   rejected_line: bpf_dynptr_read(data.buf, sizeof(data.buf), &data.ptr, 0, 0);
   root_cause_line: bpf_dynptr_read(data.buf, sizeof(data.buf), &data.ptr, 0, 0);
   localization_confidence: high
   fix_type: other
-  fix_direction: In real code, read dynptr contents into a destination buffer that
-    does not overlap the dynptr's own stack slot.
-repair:
-  eligible: false
+  fix_direction: In real code, read dynptr contents into a destination buffer that does not
+    overlap the dynptr's own stack slot.
 reporting:
   family_id: 'arg#0 reference type(''UNKNOWN '') size cannot be determined: -22'
   representative: true

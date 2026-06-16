@@ -6,23 +6,14 @@ source:
   repository: null
   commit: null
   upstream_file: null
-  collected_at: null
   raw_excerpt_files:
   - bpfix-bench/raw/so/stackoverflow-67402772.yaml
 reproducer:
   reconstruction: reconstructed
-  source_file: prog.c
-  build_command: make
-  object_path: prog.o
-  load_command: make replay-verify
-  notes: Imported from reconstructed external source into bpfix-bench; replay logs
-    are generated as replay-verifier.log.
+  notes: Imported from reconstructed external source into bpfix-bench; replay logs are generated
+    as replay-verifier.log.
 capture:
   capture_id: stackoverflow-67402772__kernel-6.15.11-clang-18-log2
-  environment_id: kernel-6.15.11-clang-18-log2
-  verifier_log: replay-verifier.log
-  capture_metadata: capture.yaml
-  log_quality: trace_rich
   terminal_error: invalid bpf_context access off=96 size=4
   rejected_insn_idx: 11
 external_match:
@@ -31,9 +22,9 @@ external_match:
   matched_messages:
   - invalid bpf_context access off=96 size=4
   - invalid bpf_context access off=96 size=4
-  notes: Promoted after a fresh raw SO/GH rebuild matched the locally captured terminal
-    verifier error exactly; the earlier mismatch came from a coarse loader/permission
-    line rather than the terminal verifier error.
+  notes: Promoted after a fresh raw SO/GH rebuild matched the locally captured terminal verifier
+    error exactly; the earlier mismatch came from a coarse loader/permission line rather than
+    the terminal verifier error.
 label:
   capture_id: stackoverflow-67402772__kernel-6.15.11-clang-18-log2
   taxonomy_class: environment_or_configuration
@@ -50,16 +41,14 @@ label:
   error_id: BPFIX-E016
   confidence: medium
   label_source: agree
-  root_cause_description: The program reads `skb->local_ip4` and `skb->remote_ip4`
-    from a `__sk_buff` context offset that the active program type does not expose,
-    so the verifier rejects the context access at offset 92.
+  root_cause_description: The program reads `skb->local_ip4` and `skb->remote_ip4` from a
+    `__sk_buff` context offset that the active program type does not expose, so the verifier
+    rejects the context access at offset 92.
   root_cause_insn_idx: 11
-  rejected_line: null
-  root_cause_line: null
   localization_confidence: high
   fix_type: env_fix
-  fix_direction: Use a program type that exposes those `__sk_buff` members, or parse
-    the packet payload directly instead of reading unavailable context fields.
+  fix_direction: Use a program type that exposes those `__sk_buff` members, or parse the packet
+    payload directly instead of reading unavailable context fields.
 repair:
   eligible: true
 reporting:

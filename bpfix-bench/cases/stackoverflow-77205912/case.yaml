@@ -6,54 +6,42 @@ source:
   repository: null
   commit: null
   upstream_file: null
-  collected_at: null
   raw_excerpt_files:
   - bpfix-bench/raw/so/stackoverflow-77205912.yaml
 reproducer:
   reconstruction: reconstructed
-  source_file: prog.c
-  build_command: make
-  object_path: prog.o
-  load_command: make replay-verify
-  notes: Imported from reconstructed external source into bpfix-bench; replay logs
-    are generated as replay-verifier.log.
+  notes: Imported from reconstructed external source into bpfix-bench; replay logs are generated
+    as replay-verifier.log.
 capture:
   capture_id: stackoverflow-77205912__kernel-6.15.11-clang-18-log2
-  environment_id: kernel-6.15.11-clang-18-log2
-  verifier_log: replay-verifier.log
-  capture_metadata: capture.yaml
-  log_quality: trace_rich
-  terminal_error: R1 type=scalar expected=fp, pkt, pkt_meta, map_key, map_value, mem,
-    ringbuf_mem, buf, trusted_ptr_
+  terminal_error: R1 type=scalar expected=fp, pkt, pkt_meta, map_key, map_value, mem, ringbuf_mem,
+    buf, trusted_ptr_
   rejected_insn_idx: 65
 external_match:
   status: partial
   policy: terminal_error
   matched_messages:
-  - R1 type=scalar expected=fp, pkt, pkt_meta, map_key, map_value, mem, ringbuf_mem,
-    buf processed 57 insns (limit 1000000) max_states_per_insn 0 total_states 3 peak_states
-    3 mark_read 2
-  - R1 type=scalar expected=fp, pkt, pkt_meta, map_key, map_value, mem, ringbuf_mem,
-    buf, trusted_ptr_
-  notes: Imported only because verifier_error_match was exact/partial in the verified
-    SO/GH artifact.
+  - R1 type=scalar expected=fp, pkt, pkt_meta, map_key, map_value, mem, ringbuf_mem, buf processed
+    57 insns (limit 1000000) max_states_per_insn 0 total_states 3 peak_states 3 mark_read
+    2
+  - R1 type=scalar expected=fp, pkt, pkt_meta, map_key, map_value, mem, ringbuf_mem, buf,
+    trusted_ptr_
+  notes: Imported only because verifier_error_match was exact/partial in the verified SO/GH
+    artifact.
 label:
   capture_id: stackoverflow-77205912__kernel-6.15.11-clang-18-log2
   taxonomy_class: source_bug
   error_id: BPFIX-E023
   confidence: medium
   label_source: agree
-  root_cause_description: After `bpf_skb_store_bytes`, `bpf_l3_csum_replace`, and
-    `bpf_l4_csum_replace` mutate the packet, the program reuses the old packet-derived
-    pointer `r7` as the source buffer for a second `bpf_csum_diff`, but that pointer
-    has already lost packet provenance.
+  root_cause_description: After `bpf_skb_store_bytes`, `bpf_l3_csum_replace`, and `bpf_l4_csum_replace`
+    mutate the packet, the program reuses the old packet-derived pointer `r7` as the source
+    buffer for a second `bpf_csum_diff`, but that pointer has already lost packet provenance.
   root_cause_insn_idx: 56
-  rejected_line: null
-  root_cause_line: null
   localization_confidence: high
   fix_type: reorder
-  fix_direction: Reload `data`/`data_end` and rebuild any packet pointers after helpers
-    that can modify packet data before making a second checksum call.
+  fix_direction: Reload `data`/`data_end` and rebuild any packet pointers after helpers that
+    can modify packet data before making a second checksum call.
 repair:
   eligible: true
 reporting:

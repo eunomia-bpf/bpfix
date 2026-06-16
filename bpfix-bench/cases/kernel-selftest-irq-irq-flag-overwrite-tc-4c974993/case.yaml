@@ -8,22 +8,13 @@ source:
   upstream_file: tools/testing/selftests/bpf/progs/irq.c
   upstream_section: irq_flag_overwrite
   collected_at: '2026-03-20T00:37:21.816455+00:00'
-  raw_excerpt_files: []
 reproducer:
   reconstruction: original
   program_type: ?tc
-  source_file: prog.c
-  build_command: make
-  object_path: prog.o
-  load_command: make replay-verify
-  notes: Imported from locally verified kernel selftest artifact; replay log is written
-    to replay-verifier.log.
+  notes: Imported from locally verified kernel selftest artifact; replay log is written to
+    replay-verifier.log.
 capture:
   capture_id: kernel-selftest-irq-irq-flag-overwrite-tc-4c974993__kernel-6.15.11-clang-18-log2
-  environment_id: kernel-6.15.11-clang-18-log2
-  verifier_log: replay-verifier.log
-  capture_metadata: capture.yaml
-  log_quality: trace_rich
   terminal_error: expected an initialized irq flag as arg#0
   rejected_insn_idx: 8
 external_match:
@@ -38,18 +29,15 @@ label:
   error_id: BPFIX-E020
   confidence: high
   label_source: agree
-  root_cause_description: 'Intentional negative test: saves IRQ state into `flags`,
-    overwrites that slot with `0xdeadbeef`, and then passes the corrupted slot to
-    `bpf_local_irq_restore(&flags)`.'
+  root_cause_description: 'Intentional negative test: saves IRQ state into `flags`, overwrites
+    that slot with `0xdeadbeef`, and then passes the corrupted slot to `bpf_local_irq_restore(&flags)`.'
   root_cause_insn_idx: 8
   rejected_line: bpf_local_irq_restore(&flags);
   root_cause_line: bpf_local_irq_restore(&flags);
   localization_confidence: high
   fix_type: other
-  fix_direction: In real code, keep the IRQ flag slot dedicated to the save/restore
-    pair and do not write any other value into it.
-repair:
-  eligible: false
+  fix_direction: In real code, keep the IRQ flag slot dedicated to the save/restore pair and
+    do not write any other value into it.
 reporting:
   family_id: expected an initialized irq flag as arg#0
   representative: true

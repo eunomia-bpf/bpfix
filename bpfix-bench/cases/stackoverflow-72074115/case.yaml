@@ -6,23 +6,14 @@ source:
   repository: null
   commit: null
   upstream_file: null
-  collected_at: null
   raw_excerpt_files:
   - bpfix-bench/raw/so/stackoverflow-72074115.yaml
 reproducer:
   reconstruction: reconstructed
-  source_file: prog.c
-  build_command: make
-  object_path: prog.o
-  load_command: make replay-verify
-  notes: Imported from reconstructed external source into bpfix-bench; replay logs
-    are generated as replay-verifier.log.
+  notes: Imported from reconstructed external source into bpfix-bench; replay logs are generated
+    as replay-verifier.log.
 capture:
   capture_id: stackoverflow-72074115__kernel-6.15.11-clang-18-log2
-  environment_id: kernel-6.15.11-clang-18-log2
-  verifier_log: replay-verifier.log
-  capture_metadata: capture.yaml
-  log_quality: trace_rich
   terminal_error: R2 unbounded memory access, make sure to bounds check any such access
   rejected_insn_idx: 7
 external_match:
@@ -31,25 +22,23 @@ external_match:
   matched_messages:
   - R2 invalid mem access 'inv'
   - R2 unbounded memory access, make sure to bounds check any such access
-  notes: Original external report text did not exactly match this kernel's terminal
-    verifier error; the case is included because the local replay produces a trace-rich
-    verifier rejection.
+  notes: Original external report text did not exactly match this kernel's terminal verifier
+    error; the case is included because the local replay produces a trace-rich verifier rejection.
 label:
   capture_id: stackoverflow-72074115__kernel-6.15.11-clang-18-log2
   taxonomy_class: source_bug
   error_id: BPFIX-E017
   confidence: medium
   label_source: external_replay_reconstruction
-  root_cause_description: External StackOverflow report indexes a constant lookup
-    table with a verifier-untrusted scalar; the verifier cannot prove the table access
-    stays in bounds.
+  root_cause_description: External StackOverflow report indexes a constant lookup table with
+    a verifier-untrusted scalar; the verifier cannot prove the table access stays in bounds.
   root_cause_insn_idx: 7
   rejected_line: return ((__u32)(((__u32)v[shift] + 10) << b)) >> 6;
   root_cause_line: return ((__u32)(((__u32)v[shift] + 10) << b)) >> 6;
   localization_confidence: high
   fix_type: bounds_check
-  fix_direction: Clamp or otherwise prove the table index range immediately before
-    indexing the lookup table.
+  fix_direction: Clamp or otherwise prove the table index range immediately before indexing
+    the lookup table.
 repair:
   eligible: true
 reporting:

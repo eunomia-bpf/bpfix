@@ -8,22 +8,13 @@ source:
   upstream_file: tools/testing/selftests/bpf/progs/dynptr_fail.c
   upstream_section: skb_invalid_data_slice1
   collected_at: '2026-03-20T00:37:19.037129+00:00'
-  raw_excerpt_files: []
 reproducer:
   reconstruction: original
   program_type: ?tc
-  source_file: prog.c
-  build_command: make
-  object_path: prog.o
-  load_command: make replay-verify
-  notes: Imported from locally verified kernel selftest artifact; replay log is written
-    to replay-verifier.log.
+  notes: Imported from locally verified kernel selftest artifact; replay log is written to
+    replay-verifier.log.
 capture:
   capture_id: kernel-selftest-dynptr-fail-skb-invalid-data-slice1-tc-0b35a757__kernel-6.15.11-clang-18-log2
-  environment_id: kernel-6.15.11-clang-18-log2
-  verifier_log: replay-verifier.log
-  capture_metadata: capture.yaml
-  log_quality: trace_rich
   terminal_error: R8 invalid mem access 'scalar'
   rejected_insn_idx: 31
 external_match:
@@ -39,17 +30,15 @@ label:
   confidence: high
   label_source: agree
   root_cause_description: 'Intentional negative test: reads `hdr->h_proto` after `bpf_skb_pull_data(skb,
-    skb->len)`, which can move or rewrite packet data and therefore invalidates the
-    old slice pointer.'
+    skb->len)`, which can move or rewrite packet data and therefore invalidates the old slice
+    pointer.'
   root_cause_insn_idx: 31
   rejected_line: val = hdr->h_proto;
   root_cause_line: val = hdr->h_proto;
   localization_confidence: high
   fix_type: reorder
-  fix_direction: In real code, reacquire the dynptr slice after `bpf_skb_pull_data`
-    before dereferencing packet data again.
-repair:
-  eligible: false
+  fix_direction: In real code, reacquire the dynptr slice after `bpf_skb_pull_data` before
+    dereferencing packet data again.
 reporting:
   family_id: R8 invalid mem access 'scalar'
   representative: true

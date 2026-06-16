@@ -8,22 +8,13 @@ source:
   upstream_file: tools/testing/selftests/bpf/progs/async_stack_depth.c
   upstream_section: pseudo_call_check
   collected_at: '2026-03-20T00:37:10.636848+00:00'
-  raw_excerpt_files: []
 reproducer:
   reconstruction: original
   program_type: tc
-  source_file: prog.c
-  build_command: make
-  object_path: prog.o
-  load_command: make replay-verify
-  notes: Imported from locally verified kernel selftest artifact; replay log is written
-    to replay-verifier.log.
+  notes: Imported from locally verified kernel selftest artifact; replay log is written to
+    replay-verifier.log.
 capture:
   capture_id: kernel-selftest-async-stack-depth-pseudo-call-check-tc-320d654d__kernel-6.15.11-clang-18-log2
-  environment_id: kernel-6.15.11-clang-18-log2
-  verifier_log: replay-verifier.log
-  capture_metadata: capture.yaml
-  log_quality: trace_rich
   terminal_error: combined stack size of 2 calls is 544. Too large
   rejected_insn_idx: 56
 external_match:
@@ -48,19 +39,16 @@ label:
   error_id: BPFIX-E018
   confidence: high
   label_source: agree
-  root_cause_description: 'Intentional negative test: keeps a 256-byte local `buf`,
-    directly pseudo-calls `timer_cb(NULL, NULL, NULL)`, and also registers `timer_cb`
-    as the timer callback, so the combined pseudo-call and callback stack usage exceeds
-    the verifier limit.'
+  root_cause_description: 'Intentional negative test: keeps a 256-byte local `buf`, directly
+    pseudo-calls `timer_cb(NULL, NULL, NULL)`, and also registers `timer_cb` as the timer
+    callback, so the combined pseudo-call and callback stack usage exceeds the verifier limit.'
   root_cause_insn_idx: 56
   rejected_line: '}'
   root_cause_line: '}'
   localization_confidence: medium
   fix_type: inline
-  fix_direction: In real code, shrink the local stack footprint and avoid stacking
-    large caller and callee frames before registering the timer callback.
-repair:
-  eligible: false
+  fix_direction: In real code, shrink the local stack footprint and avoid stacking large caller
+    and callee frames before registering the timer callback.
 reporting:
   family_id: combined stack size of 2 calls is 544. Too large
   representative: true

@@ -8,22 +8,13 @@ source:
   upstream_file: tools/testing/selftests/bpf/progs/cpumask_failure.c
   upstream_section: test_global_mask_out_of_rcu
   collected_at: '2026-03-20T00:37:14.210886+00:00'
-  raw_excerpt_files: []
 reproducer:
   reconstruction: original
   program_type: tp_btf/task_newtask
-  source_file: prog.c
-  build_command: make
-  object_path: prog.o
-  load_command: make replay-verify
-  notes: Imported from locally verified kernel selftest artifact; replay log is written
-    to replay-verifier.log.
+  notes: Imported from locally verified kernel selftest artifact; replay log is written to
+    replay-verifier.log.
 capture:
   capture_id: kernel-selftest-cpumask-failure-test-global-mask-out-of-rcu-tp-btf-task-newtask-55a16b69__kernel-6.15.11-clang-18-log2
-  environment_id: kernel-6.15.11-clang-18-log2
-  verifier_log: replay-verifier.log
-  capture_metadata: capture.yaml
-  log_quality: trace_rich
   terminal_error: R2 must be a rcu pointer
   rejected_insn_idx: 45
 external_match:
@@ -38,18 +29,16 @@ label:
   error_id: BPFIX-E023
   confidence: high
   label_source: agree
-  root_cause_description: 'Intentional negative test: reads `global_mask` inside an
-    RCU critical section, drops the lock, and only then calls `bpf_cpumask_test_cpu`
-    on the stale `local` pointer.'
+  root_cause_description: 'Intentional negative test: reads `global_mask` inside an RCU critical
+    section, drops the lock, and only then calls `bpf_cpumask_test_cpu` on the stale `local`
+    pointer.'
   root_cause_insn_idx: 45
   rejected_line: bpf_cpumask_test_cpu(0, (const struct cpumask *)local);
   root_cause_line: bpf_cpumask_test_cpu(0, (const struct cpumask *)local);
   localization_confidence: high
   fix_type: reorder
-  fix_direction: In real code, perform `bpf_cpumask_test_cpu` before leaving the RCU
-    critical section or reacquire the cpumask inside a fresh RCU section.
-repair:
-  eligible: false
+  fix_direction: In real code, perform `bpf_cpumask_test_cpu` before leaving the RCU critical
+    section or reacquire the cpumask inside a fresh RCU section.
 reporting:
   family_id: R2 must be a rcu pointer
   representative: true

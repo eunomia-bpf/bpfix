@@ -6,24 +6,15 @@ source:
   repository: https://github.com/cilium/cilium
   commit: 892316d8df689384d6eaf9b964e44027e6b251bb
   upstream_file: bpf/lib/eth.h
-  collected_at: null
   raw_excerpt_files:
   - bpfix-bench/raw/gh/github-commit-cilium-892316d8df68.yaml
 reproducer:
   reconstruction: reconstructed
-  source_file: prog.c
-  build_command: make
-  object_path: prog.o
-  load_command: make replay-verify
-  notes: Standalone reconstruction of the unaligned MAC source described in the
-    Cilium XDP/nodeport diff. The program models a MAC address beginning at an
-    unaligned stack byte and then performs a wide load before packet storage.
+  notes: Standalone reconstruction of the unaligned MAC source described in the Cilium XDP/nodeport
+    diff. The program models a MAC address beginning at an unaligned stack byte and then performs
+    a wide load before packet storage.
 capture:
   capture_id: github-commit-cilium-892316d8df68__kernel-6.15.11-clang-18-log2
-  environment_id: kernel-6.15.11-clang-18-log2
-  verifier_log: replay-verifier.log
-  capture_metadata: capture.yaml
-  log_quality: trace_rich
   terminal_error: misaligned stack access off 0+-7+1 size 4
   rejected_insn_idx: 21
 external_match:
@@ -32,26 +23,21 @@ external_match:
   matched_messages:
   - unaligned dst/src mac storage
   - misaligned stack access off 0+-7+1 size 4
-  notes: The raw commit has no verifier log; the replay validates the unaligned
-    stack MAC-load shape that the fixed aligned store helper path avoids.
+  notes: The raw commit has no verifier log; the replay validates the unaligned stack MAC-load
+    shape that the fixed aligned store helper path avoids.
 label:
   capture_id: github-commit-cilium-892316d8df68__kernel-6.15.11-clang-18-log2
   taxonomy_class: lowering_artifact
   error_id: BPFIX-E005
   confidence: medium
   label_source: external_replay_reconstruction
-  root_cause_description: A MAC byte array begins at an unaligned stack offset,
-    but lowered code reads it with a wide word access before storing to packet
-    data.
+  root_cause_description: A MAC byte array begins at an unaligned stack offset, but lowered
+    code reads it with a wide word access before storing to packet data.
   root_cause_insn_idx: null
-  rejected_line: null
-  root_cause_line: null
   localization_confidence: medium
   fix_type: stack_alignment
-  fix_direction: Use an aligned helper path or byte-wise copy when MAC data can
-    originate from an unaligned stack layout.
-repair:
-  eligible: false
+  fix_direction: Use an aligned helper path or byte-wise copy when MAC data can originate
+    from an unaligned stack layout.
 reporting:
   family_id: github-commit-cilium-892316d8df68
   representative: true

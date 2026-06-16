@@ -8,31 +8,22 @@ source:
   upstream_file: tools/testing/selftests/bpf/progs/cpumask_failure.c
   upstream_section: test_mutate_cpumask
   collected_at: '2026-03-20T00:37:15.381954+00:00'
-  raw_excerpt_files: []
 reproducer:
   reconstruction: original
   program_type: tp_btf/task_newtask
-  source_file: prog.c
-  build_command: make
-  object_path: prog.o
-  load_command: make replay-verify
-  notes: Imported from locally verified kernel selftest artifact; replay log is written
-    to replay-verifier.log.
+  notes: Imported from locally verified kernel selftest artifact; replay log is written to
+    replay-verifier.log.
 capture:
   capture_id: kernel-selftest-cpumask-failure-test-mutate-cpumask-tp-btf-task-newtask-d7b7c258__kernel-6.15.11-clang-18-log2
-  environment_id: kernel-6.15.11-clang-18-log2
-  verifier_log: replay-verifier.log
-  capture_metadata: capture.yaml
-  log_quality: trace_rich
-  terminal_error: kernel function bpf_cpumask_set_cpu args#1 expected pointer to STRUCT
-    bpf_cpumask but R2 has a pointer to STRUCT cpumask
+  terminal_error: kernel function bpf_cpumask_set_cpu args#1 expected pointer to STRUCT bpf_cpumask
+    but R2 has a pointer to STRUCT cpumask
   rejected_insn_idx: 3
 external_match:
   status: not_applicable
   policy: kernel_selftest_expected_message
   matched_messages:
-  - kernel function bpf_cpumask_set_cpu args#1 expected pointer to STRUCT bpf_cpumask
-    but R2 has a pointer to STRUCT cpumask
+  - kernel function bpf_cpumask_set_cpu args#1 expected pointer to STRUCT bpf_cpumask but
+    R2 has a pointer to STRUCT cpumask
   notes: Kernel selftest case; no external report matching is required.
 label:
   capture_id: kernel-selftest-cpumask-failure-test-mutate-cpumask-tp-btf-task-newtask-d7b7c258__kernel-6.15.11-clang-18-log2
@@ -40,20 +31,18 @@ label:
   error_id: BPFIX-E023
   confidence: high
   label_source: agree
-  root_cause_description: 'Intentional negative test: casts `task->cpus_ptr` to `struct
-    bpf_cpumask *` and passes it to `bpf_cpumask_set_cpu`, but that object is a plain
-    `struct cpumask *`, not a BPF cpumask object.'
+  root_cause_description: 'Intentional negative test: casts `task->cpus_ptr` to `struct bpf_cpumask
+    *` and passes it to `bpf_cpumask_set_cpu`, but that object is a plain `struct cpumask
+    *`, not a BPF cpumask object.'
   root_cause_insn_idx: 3
   rejected_line: bpf_cpumask_set_cpu(0, (struct bpf_cpumask *)task->cpus_ptr);
   root_cause_line: bpf_cpumask_set_cpu(0, (struct bpf_cpumask *)task->cpus_ptr);
   localization_confidence: high
   fix_type: other
-  fix_direction: In real code, mutate only a `struct bpf_cpumask *` created or acquired
-    through the BPF cpumask APIs.
-repair:
-  eligible: false
+  fix_direction: In real code, mutate only a `struct bpf_cpumask *` created or acquired through
+    the BPF cpumask APIs.
 reporting:
-  family_id: kernel function bpf_cpumask_set_cpu args#1 expected pointer to STRUCT
-    bpf_cpumask but R2 has a pointer to STRUCT cpumask
+  family_id: kernel function bpf_cpumask_set_cpu args#1 expected pointer to STRUCT bpf_cpumask
+    but R2 has a pointer to STRUCT cpumask
   representative: true
   notes: Kernel selftest replay-valid case.

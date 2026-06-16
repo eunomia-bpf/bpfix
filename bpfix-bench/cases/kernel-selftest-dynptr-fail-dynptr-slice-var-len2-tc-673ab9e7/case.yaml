@@ -8,22 +8,13 @@ source:
   upstream_file: tools/testing/selftests/bpf/progs/dynptr_fail.c
   upstream_section: dynptr_slice_var_len2
   collected_at: '2026-03-20T00:37:17.657321+00:00'
-  raw_excerpt_files: []
 reproducer:
   reconstruction: original
   program_type: ?tc
-  source_file: prog.c
-  build_command: make
-  object_path: prog.o
-  load_command: make replay-verify
-  notes: Imported from locally verified kernel selftest artifact; replay log is written
-    to replay-verifier.log.
+  notes: Imported from locally verified kernel selftest artifact; replay log is written to
+    replay-verifier.log.
 capture:
   capture_id: kernel-selftest-dynptr-fail-dynptr-slice-var-len2-tc-673ab9e7__kernel-6.15.11-clang-18-log2
-  environment_id: kernel-6.15.11-clang-18-log2
-  verifier_log: replay-verifier.log
-  capture_metadata: capture.yaml
-  log_quality: trace_rich
   terminal_error: R4 must be a known constant
   rejected_insn_idx: 18
 external_match:
@@ -38,18 +29,16 @@ label:
   error_id: BPFIX-E019
   confidence: high
   label_source: agree
-  root_cause_description: 'Intentional negative test: calls `bpf_dynptr_slice_rdwr(&ptr,
-    0, buffer, hdr_size)` with a runtime `hdr_size` even though the API requires the
-    requested length to be constant.'
+  root_cause_description: 'Intentional negative test: calls `bpf_dynptr_slice_rdwr(&ptr, 0,
+    buffer, hdr_size)` with a runtime `hdr_size` even though the API requires the requested
+    length to be constant.'
   root_cause_insn_idx: 10
   rejected_line: hdr = bpf_dynptr_slice_rdwr(&ptr, 0, buffer, hdr_size);
   root_cause_line: hdr = bpf_dynptr_slice_rdwr(&ptr, 0, buffer, hdr_size);
   localization_confidence: high
   fix_type: other
-  fix_direction: In real code, split runtime sizes into constant cases or switch to
-    a fixed writable slice length.
-repair:
-  eligible: false
+  fix_direction: In real code, split runtime sizes into constant cases or switch to a fixed
+    writable slice length.
 reporting:
   family_id: R4 must be a known constant
   representative: true

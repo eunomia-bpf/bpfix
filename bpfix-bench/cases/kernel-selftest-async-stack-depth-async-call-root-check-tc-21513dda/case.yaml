@@ -8,22 +8,13 @@ source:
   upstream_file: tools/testing/selftests/bpf/progs/async_stack_depth.c
   upstream_section: async_call_root_check
   collected_at: '2026-03-20T00:37:10.299066+00:00'
-  raw_excerpt_files: []
 reproducer:
   reconstruction: original
   program_type: tc
-  source_file: prog.c
-  build_command: make
-  object_path: prog.o
-  load_command: make replay-verify
-  notes: Imported from locally verified kernel selftest artifact; replay log is written
-    to replay-verifier.log.
+  notes: Imported from locally verified kernel selftest artifact; replay log is written to
+    replay-verifier.log.
 capture:
   capture_id: kernel-selftest-async-stack-depth-async-call-root-check-tc-21513dda__kernel-6.15.11-clang-18-log2
-  environment_id: kernel-6.15.11-clang-18-log2
-  verifier_log: replay-verifier.log
-  capture_metadata: capture.yaml
-  log_quality: trace_rich
   terminal_error: combined stack size of 2 calls is 576. Too large
   rejected_insn_idx: 54
 external_match:
@@ -48,19 +39,16 @@ label:
   error_id: BPFIX-E018
   confidence: high
   label_source: agree
-  root_cause_description: 'Intentional negative test: allocates a 256-byte local `buf`
-    in the main TC program and then registers `bad_timer_cb`, so the main frame plus
-    async callback frame exceed the verifier''s combined two-call stack budget.'
+  root_cause_description: 'Intentional negative test: allocates a 256-byte local `buf` in
+    the main TC program and then registers `bad_timer_cb`, so the main frame plus async callback
+    frame exceed the verifier''s combined two-call stack budget.'
   root_cause_insn_idx: 54
   rejected_line: '}'
   root_cause_line: '}'
   localization_confidence: medium
   fix_type: inline
-  fix_direction: In real code, reduce stack usage across the main program and timer
-    callback, or move the large local buffer out of one of the frames before calling
-    `bpf_timer_set_callback`.
-repair:
-  eligible: false
+  fix_direction: In real code, reduce stack usage across the main program and timer callback,
+    or move the large local buffer out of one of the frames before calling `bpf_timer_set_callback`.
 reporting:
   family_id: combined stack size of 2 calls is 576. Too large
   representative: true

@@ -6,23 +6,14 @@ source:
   repository: https://github.com/iovisor/bcc
   commit: 0cfd665b49d8d2dfe8ee2599763cbca3f4b54015
   upstream_file: src/cc/export/helpers.h
-  collected_at: null
   raw_excerpt_files:
   - bpfix-bench/raw/gh/github-commit-bcc-0cfd665b49d8.yaml
 reproducer:
   reconstruction: reconstructed
-  source_file: prog.c
-  build_command: make
-  object_path: prog.o
-  load_command: make replay-verify
-  notes: Standalone reconstruction of the TP_DATA_LOC_READ short-vs-unsigned-short
-    verifier failure from the commit diff.
+  notes: Standalone reconstruction of the TP_DATA_LOC_READ short-vs-unsigned-short verifier
+    failure from the commit diff.
 capture:
   capture_id: github-commit-bcc-0cfd665b49d8__kernel-6.15.11-clang-18-log2
-  environment_id: kernel-6.15.11-clang-18-log2
-  verifier_log: replay-verifier.log
-  capture_metadata: capture.yaml
-  log_quality: trace_rich
   terminal_error: R2 min value is negative, either use unsigned or 'var &= const'
   rejected_insn_idx: 10
 external_match:
@@ -31,27 +22,22 @@ external_match:
   matched_messages:
   - short __offset
   - R2 min value is negative, either use unsigned or 'var &= const'
-  notes: Raw commit has no verifier log; replay validates the same signed data_loc
-    length/offset pattern fixed by using unsigned short.
+  notes: Raw commit has no verifier log; replay validates the same signed data_loc length/offset
+    pattern fixed by using unsigned short.
 label:
   capture_id: github-commit-bcc-0cfd665b49d8__kernel-6.15.11-clang-18-log2
   taxonomy_class: source_bug
   error_id: BPFIX-E011
   confidence: medium
   label_source: external_replay_reconstruction
-  root_cause_description: Tracepoint data_loc offset and length are narrowed to
-    signed short values, leaving a negative verifier range for helper arguments.
+  root_cause_description: Tracepoint data_loc offset and length are narrowed to signed short
+    values, leaving a negative verifier range for helper arguments.
   root_cause_insn_idx: null
-  rejected_line: null
-  root_cause_line: null
   localization_confidence: medium
   fix_type: type_cast
-  fix_direction: Preserve data_loc offset and length as unsigned values before
-    pointer arithmetic and helper calls.
-repair:
-  eligible: false
+  fix_direction: Preserve data_loc offset and length as unsigned values before pointer arithmetic
+    and helper calls.
 reporting:
   family_id: github-commit-bcc-0cfd665b49d8
   representative: true
-  notes: Reconstructed from a raw GitHub commit diff without an external verifier
-    log.
+  notes: Reconstructed from a raw GitHub commit diff without an external verifier log.

@@ -8,22 +8,13 @@ source:
   upstream_file: tools/testing/selftests/bpf/progs/crypto_basic.c
   upstream_section: crypto_acquire
   collected_at: '2026-03-20T00:37:16.547737+00:00'
-  raw_excerpt_files: []
 reproducer:
   reconstruction: original
   program_type: syscall
-  source_file: prog.c
-  build_command: make
-  object_path: prog.o
-  load_command: make replay-verify
-  notes: Imported from locally verified kernel selftest artifact; replay log is written
-    to replay-verifier.log.
+  notes: Imported from locally verified kernel selftest artifact; replay log is written to
+    replay-verifier.log.
 capture:
   capture_id: kernel-selftest-crypto-basic-crypto-acquire-syscall-b8afbe98__kernel-6.15.11-clang-18-log2
-  environment_id: kernel-6.15.11-clang-18-log2
-  verifier_log: replay-verifier.log
-  capture_metadata: capture.yaml
-  log_quality: trace_rich
   terminal_error: BPF_EXIT instruction in main prog would lead to reference leak
   rejected_insn_idx: 80
 external_match:
@@ -38,18 +29,16 @@ label:
   error_id: BPFIX-E004
   confidence: high
   label_source: agree
-  root_cause_description: 'Intentional negative test: creates a crypto context, acquires
-    a second reference with `bpf_crypto_ctx_acquire(cctx)`, and releases only one
-    `bpf_crypto_ctx *` before exit.'
+  root_cause_description: 'Intentional negative test: creates a crypto context, acquires a
+    second reference with `bpf_crypto_ctx_acquire(cctx)`, and releases only one `bpf_crypto_ctx
+    *` before exit.'
   root_cause_insn_idx: 67
   rejected_line: '}'
   root_cause_line: cctx = bpf_crypto_ctx_create(&params, sizeof(params), &err);
   localization_confidence: high
   fix_type: refcount
-  fix_direction: In real code, release both the original and the re-acquired crypto
-    context references, or avoid taking the extra reference in the first place.
-repair:
-  eligible: false
+  fix_direction: In real code, release both the original and the re-acquired crypto context
+    references, or avoid taking the extra reference in the first place.
 reporting:
   family_id: BPF_EXIT instruction in main prog would lead to reference leak
   representative: true

@@ -8,22 +8,13 @@ source:
   upstream_file: tools/testing/selftests/bpf/progs/exceptions_fail.c
   upstream_section: reject_async_callback_throw
   collected_at: '2026-03-20T00:37:19.775365+00:00'
-  raw_excerpt_files: []
 reproducer:
   reconstruction: original
   program_type: ?tc
-  source_file: prog.c
-  build_command: make
-  object_path: prog.o
-  load_command: make replay-verify
-  notes: Imported from locally verified kernel selftest artifact; replay log is written
-    to replay-verifier.log.
+  notes: Imported from locally verified kernel selftest artifact; replay log is written to
+    replay-verifier.log.
 capture:
   capture_id: kernel-selftest-exceptions-fail-reject-async-callback-throw-tc-a86cf7b1__kernel-6.15.11-clang-18-log2
-  environment_id: kernel-6.15.11-clang-18-log2
-  verifier_log: replay-verifier.log
-  capture_metadata: capture.yaml
-  log_quality: trace_rich
   terminal_error: JIT does not support calling kfunc bpf_throw#73439
   rejected_insn_idx: 16
 external_match:
@@ -48,9 +39,9 @@ label:
   error_id: BPFIX-E016
   confidence: medium
   label_source: agree
-  root_cause_description: 'Intentional negative test: registers `timer_cb` as an async
-    callback even though that callback executes `bpf_throw(0)`, which is not supported
-    from the callback/JIT execution path.'
+  root_cause_description: 'Intentional negative test: registers `timer_cb` as an async callback
+    even though that callback executes `bpf_throw(0)`, which is not supported from the callback/JIT
+    execution path.'
   root_cause_insn_idx: 16
   rejected_line: bpf_throw(0);
   root_cause_line: bpf_throw(0);
@@ -58,8 +49,6 @@ label:
   fix_type: env_fix
   fix_direction: In real code, keep `bpf_throw` out of timer callbacks and use a callback-safe
     signaling path instead.
-repair:
-  eligible: false
 reporting:
   family_id: JIT does not support calling kfunc bpf_throw#73439
   representative: true

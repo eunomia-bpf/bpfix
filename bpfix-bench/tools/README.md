@@ -5,9 +5,13 @@ implementation of BPFix and are not part of the public diagnostic CLI.
 
 - `validate_benchmark.py` rebuilds and reloads admitted `bpfix-bench` cases,
   then checks that the fresh verifier rejection matches each case record. It
-  also rejects redundant `label.rejected_insn_idx` fields and non-null
+  expands `manifest.yaml.case_defaults` before replay so case files do not
+  repeat fixed paths and commands. It also rejects redundant
+  `label.rejected_insn_idx` fields and non-null
   `label.root_cause_insn_idx` values that are not present in the stored local
   replay verifier log.
+- `benchmark_metadata.py` contains the shared manifest-default expansion used by
+  the validator and diagnostic evaluation scripts.
 - `replay_case.py` contains the shared build/load/log parsing helper used by
   the validator.
 

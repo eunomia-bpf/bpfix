@@ -11,18 +11,10 @@ source:
   - bpfix-bench/raw/so/stackoverflow-78929469.yaml
 reproducer:
   reconstruction: reconstructed
-  source_file: prog.c
-  build_command: make
-  object_path: prog.o
-  load_command: make replay-verify
-  notes: Imported from reconstructed external source into bpfix-bench; replay logs
-    are generated as replay-verifier.log.
+  notes: Imported from reconstructed external source into bpfix-bench; replay logs are generated
+    as replay-verifier.log.
 capture:
   capture_id: stackoverflow-78929469__kernel-6.15.11-clang-18-log2
-  environment_id: kernel-6.15.11-clang-18-log2
-  verifier_log: replay-verifier.log
-  capture_metadata: capture.yaml
-  log_quality: trace_rich
   terminal_error: R3 !read_ok
   rejected_insn_idx: 0
 external_match:
@@ -31,25 +23,20 @@ external_match:
   matched_messages:
   - R3 !read_ok
   - R3 !read_ok
-  notes: Imported only because verifier_error_match was exact/partial in the verified
-    SO/GH artifact.
+  notes: Imported only because verifier_error_match was exact/partial in the verified SO/GH
+    artifact.
 label:
   capture_id: stackoverflow-78929469__kernel-6.15.11-clang-18-log2
   taxonomy_class: source_bug
   error_id: BPFIX-E011
   confidence: medium
   label_source: external_replay_reconstruction
-  root_cause_description: Program reads from a register argument that is not initialized
-    by this program type ABI.
+  root_cause_description: Program reads from a register argument that is not initialized by
+    this program type ABI.
   root_cause_insn_idx: null
-  rejected_line: null
-  root_cause_line: null
   localization_confidence: medium
   fix_type: use_correct_context
-  fix_direction: Use the proper context struct/signature for the selected tracing
-    program.
-repair:
-  eligible: false
+  fix_direction: Use the proper context struct/signature for the selected tracing program.
 reporting:
   family_id: stackoverflow-78929469
   representative: true

@@ -11,19 +11,11 @@ source:
   - bpfix-bench/raw/so/stackoverflow-70392721.yaml
 reproducer:
   reconstruction: reconstructed
-  source_file: prog.c
-  build_command: make
-  object_path: prog.o
-  load_command: make replay-verify
-  notes: Reconstructed from the Stack Overflow source and disassembly. The raw
-    record shows helper callx instructions produced without -O2; this Makefile
-    intentionally compiles at -O0 to preserve that verifier-rejected form.
+  notes: Reconstructed from the Stack Overflow source and disassembly. The raw record shows
+    helper callx instructions produced without -O2; this Makefile intentionally compiles at
+    -O0 to preserve that verifier-rejected form.
 capture:
   capture_id: stackoverflow-70392721__kernel-6.15.11-clang-18-log2
-  environment_id: kernel-6.15.11-clang-18-log2
-  verifier_log: replay-verifier.log
-  capture_metadata: capture.yaml
-  log_quality: trace_rich
   terminal_error: unknown opcode 8d
   rejected_insn_idx: 0
 external_match:
@@ -32,9 +24,8 @@ external_match:
   matched_messages:
   - FUNC bpf_prog1 type_id=10 Invalid arg#1
   - unknown opcode 8d
-  notes: The raw record shows BTF load failure plus callx helper disassembly.
-    Local replay reproduces the same unoptimized helper-call shape as a verifier
-    rejection on this kernel.
+  notes: The raw record shows BTF load failure plus callx helper disassembly. Local replay
+    reproduces the same unoptimized helper-call shape as a verifier rejection on this kernel.
 label:
   capture_id: stackoverflow-70392721__kernel-6.15.11-clang-18-log2
   taxonomy_class: environment_or_configuration
@@ -49,17 +40,13 @@ label:
   error_id: BPFIX-E016
   confidence: medium
   label_source: external_replay_reconstruction
-  root_cause_description: Compiling the BPF program without optimization leaves
-    indirect helper calls that the verifier rejects.
+  root_cause_description: Compiling the BPF program without optimization leaves indirect helper
+    calls that the verifier rejects.
   root_cause_insn_idx: null
-  rejected_line: null
-  root_cause_line: null
   localization_confidence: medium
   fix_type: compiler_flags
-  fix_direction: Compile BPF code with -O2 and strip unnecessary debug info when
-    required by the loader/kernel combination.
-repair:
-  eligible: false
+  fix_direction: Compile BPF code with -O2 and strip unnecessary debug info when required
+    by the loader/kernel combination.
 reporting:
   family_id: stackoverflow-70392721
   representative: true

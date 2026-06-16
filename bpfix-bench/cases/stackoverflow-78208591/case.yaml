@@ -11,18 +11,10 @@ source:
   - bpfix-bench/raw/so/stackoverflow-78208591.yaml
 reproducer:
   reconstruction: reconstructed
-  source_file: prog.c
-  build_command: make
-  object_path: prog.o
-  load_command: make replay-verify
-  notes: Imported from reconstructed external source into bpfix-bench; replay logs
-    are generated as replay-verifier.log.
+  notes: Imported from reconstructed external source into bpfix-bench; replay logs are generated
+    as replay-verifier.log.
 capture:
   capture_id: stackoverflow-78208591__kernel-6.15.11-clang-18-log2
-  environment_id: kernel-6.15.11-clang-18-log2
-  verifier_log: replay-verifier.log
-  capture_metadata: capture.yaml
-  log_quality: trace_rich
   terminal_error: invalid access to map value, value_size=20 off=63 size=1
   rejected_insn_idx: 13
 external_match:
@@ -31,27 +23,23 @@ external_match:
   matched_messages:
   - invalid access to map value, value_size=20 off=21 size=1
   - invalid access to map value, value_size=20 off=63 size=1
-  notes: Imported only because verifier_error_match was exact/partial in the verified
-    SO/GH artifact.
+  notes: Imported only because verifier_error_match was exact/partial in the verified SO/GH
+    artifact.
 label:
   capture_id: stackoverflow-78208591__kernel-6.15.11-clang-18-log2
   taxonomy_class: source_bug
   error_id: BPFIX-E005
   confidence: medium
   label_source: external_replay_reconstruction
-  root_cause_description: Program accesses a map value at an offset beyond the declared
-    20-byte value size.
+  root_cause_description: Program accesses a map value at an offset beyond the declared 20-byte
+    value size.
   root_cause_insn_idx: null
-  rejected_line: null
-  root_cause_line: null
   localization_confidence: medium
   fix_type: bounds_check
-  fix_direction: Clamp or validate the computed offset against the map value size
-    before accessing it.
-repair:
-  eligible: false
+  fix_direction: Clamp or validate the computed offset against the map value size before accessing
+    it.
 reporting:
   family_id: stackoverflow-78208591
   representative: true
-  notes: Current replay artifact allows idx < 64 while the map value has only
-    20 bytes, so the executable case is labelled as a source bug.
+  notes: Current replay artifact allows idx < 64 while the map value has only 20 bytes, so
+    the executable case is labelled as a source bug.

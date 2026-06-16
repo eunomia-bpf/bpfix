@@ -8,22 +8,13 @@ source:
   upstream_file: tools/testing/selftests/bpf/progs/cgrp_kfunc_failure.c
   upstream_section: cgrp_kfunc_rcu_get_release
   collected_at: '2026-03-20T00:37:12.250703+00:00'
-  raw_excerpt_files: []
 reproducer:
   reconstruction: original
   program_type: tp_btf/cgroup_mkdir
-  source_file: prog.c
-  build_command: make
-  object_path: prog.o
-  load_command: make replay-verify
-  notes: Imported from locally verified kernel selftest artifact; replay log is written
-    to replay-verifier.log.
+  notes: Imported from locally verified kernel selftest artifact; replay log is written to
+    replay-verifier.log.
 capture:
   capture_id: kernel-selftest-cgrp-kfunc-failure-cgrp-kfunc-rcu-get-release-tp-btf-cgroup-mkdir-29aa212b__kernel-6.15.11-clang-18-log2
-  environment_id: kernel-6.15.11-clang-18-log2
-  verifier_log: replay-verifier.log
-  capture_metadata: capture.yaml
-  log_quality: trace_rich
   terminal_error: R1 must be referenced or trusted
   rejected_insn_idx: 62
 external_match:
@@ -38,19 +29,16 @@ label:
   error_id: BPFIX-E023
   confidence: high
   label_source: agree
-  root_cause_description: 'Intentional negative test: reads `kptr = v->cgrp` under
-    RCU and then calls `bpf_cgroup_release(kptr)` even though the raw map kptr was
-    never acquired as a referenced cgroup object.'
+  root_cause_description: 'Intentional negative test: reads `kptr = v->cgrp` under RCU and
+    then calls `bpf_cgroup_release(kptr)` even though the raw map kptr was never acquired
+    as a referenced cgroup object.'
   root_cause_insn_idx: 7
   rejected_line: bpf_cgroup_release(kptr);
   root_cause_line: bpf_cgroup_release(kptr);
   localization_confidence: high
   fix_type: reorder
   fix_direction: In real code, release only cgroup pointers that came from `bpf_cgroup_acquire`
-    or another reference-producing API, or reacquire a proper reference before releasing
-    it.
-repair:
-  eligible: false
+    or another reference-producing API, or reacquire a proper reference before releasing it.
 reporting:
   family_id: R1 must be referenced or trusted
   representative: true

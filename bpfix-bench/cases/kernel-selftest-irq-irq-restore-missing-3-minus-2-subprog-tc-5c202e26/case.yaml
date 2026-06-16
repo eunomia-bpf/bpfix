@@ -8,22 +8,13 @@ source:
   upstream_file: tools/testing/selftests/bpf/progs/irq.c
   upstream_section: irq_restore_missing_3_minus_2_subprog
   collected_at: '2026-03-20T00:37:23.486362+00:00'
-  raw_excerpt_files: []
 reproducer:
   reconstruction: original
   program_type: ?tc
-  source_file: prog.c
-  build_command: make
-  object_path: prog.o
-  load_command: make replay-verify
-  notes: Imported from locally verified kernel selftest artifact; replay log is written
-    to replay-verifier.log.
+  notes: Imported from locally verified kernel selftest artifact; replay log is written to
+    replay-verifier.log.
 capture:
   capture_id: kernel-selftest-irq-irq-restore-missing-3-minus-2-subprog-tc-5c202e26__kernel-6.15.11-clang-18-log2
-  environment_id: kernel-6.15.11-clang-18-log2
-  verifier_log: replay-verifier.log
-  capture_metadata: capture.yaml
-  log_quality: trace_rich
   terminal_error: BPF_EXIT instruction in main prog cannot be used inside bpf_local_irq_save-ed
     region
   rejected_insn_idx: 16
@@ -31,8 +22,7 @@ external_match:
   status: not_applicable
   policy: kernel_selftest_expected_message
   matched_messages:
-  - BPF_EXIT instruction in main prog cannot be used inside bpf_local_irq_save-ed
-    region
+  - BPF_EXIT instruction in main prog cannot be used inside bpf_local_irq_save-ed region
   notes: Kernel selftest case; no external report matching is required.
 label:
   capture_id: kernel-selftest-irq-irq-restore-missing-3-minus-2-subprog-tc-5c202e26__kernel-6.15.11-clang-18-log2
@@ -40,18 +30,15 @@ label:
   error_id: BPFIX-E013
   confidence: high
   label_source: agree
-  root_cause_description: 'Intentional negative test: saves `flags1`, `flags2`, and
-    `flags3`, restores only `flags3` and `flags2`, and then exits with `flags1` still
-    active.'
+  root_cause_description: 'Intentional negative test: saves `flags1`, `flags2`, and `flags3`,
+    restores only `flags3` and `flags2`, and then exits with `flags1` still active.'
   root_cause_insn_idx: 16
   rejected_line: return 0;
   root_cause_line: return 0;
   localization_confidence: high
   fix_type: reorder
-  fix_direction: In real code, restore every saved IRQ flag before returning from
-    the program, including the oldest outstanding save.
-repair:
-  eligible: false
+  fix_direction: In real code, restore every saved IRQ flag before returning from the program,
+    including the oldest outstanding save.
 reporting:
   family_id: BPF_EXIT instruction in main prog cannot be used inside bpf_local_irq_save-ed
     region

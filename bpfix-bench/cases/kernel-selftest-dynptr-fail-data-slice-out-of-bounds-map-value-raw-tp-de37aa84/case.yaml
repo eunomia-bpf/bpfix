@@ -8,22 +8,13 @@ source:
   upstream_file: tools/testing/selftests/bpf/progs/dynptr_fail.c
   upstream_section: data_slice_out_of_bounds_map_value
   collected_at: '2026-03-20T00:37:17.017986+00:00'
-  raw_excerpt_files: []
 reproducer:
   reconstruction: original
   program_type: ?raw_tp
-  source_file: prog.c
-  build_command: make
-  object_path: prog.o
-  load_command: make replay-verify
-  notes: Imported from locally verified kernel selftest artifact; replay log is written
-    to replay-verifier.log.
+  notes: Imported from locally verified kernel selftest artifact; replay log is written to
+    replay-verifier.log.
 capture:
   capture_id: kernel-selftest-dynptr-fail-data-slice-out-of-bounds-map-value-raw-tp-de37aa84__kernel-6.15.11-clang-18-log2
-  environment_id: kernel-6.15.11-clang-18-log2
-  verifier_log: replay-verifier.log
-  capture_metadata: capture.yaml
-  log_quality: trace_rich
   terminal_error: invalid access to memory, mem_size=4 off=5 size=1
   rejected_insn_idx: 28
 external_match:
@@ -45,10 +36,8 @@ label:
   root_cause_line: val = *((char *)data + (sizeof(map_val) + 1));
   localization_confidence: high
   fix_type: bounds_check
-  fix_direction: In real code, limit all accesses to the exact slice length or request
-    a larger slice before indexing past the end.
-repair:
-  eligible: false
+  fix_direction: In real code, limit all accesses to the exact slice length or request a larger
+    slice before indexing past the end.
 reporting:
   family_id: invalid access to memory, mem_size=4 off=5 size=1
   representative: true

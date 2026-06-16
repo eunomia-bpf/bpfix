@@ -15,15 +15,21 @@ from typing import Any
 import yaml
 
 if __package__:
+    from .benchmark_metadata import with_case_defaults
     from .replay_case import parse_verifier_log, replay_case
 else:
     sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from benchmark_metadata import with_case_defaults
     from replay_case import parse_verifier_log, replay_case
 
 
 VALID_RECONSTRUCTIONS = {"original", "minimized", "reconstructed"}
 VALID_EXTERNAL_MATCH = {"exact", "partial", "semantic", "not_applicable"}
 VALID_SOURCE_KINDS = {"kernel_selftest", "stackoverflow", "github_issue", "github_commit"}
+VALID_CASE_DEFAULT_FIELDS = {
+    "reproducer": {"source_file", "build_command", "object_path", "load_command"},
+    "capture": {"verifier_log", "capture_metadata", "log_quality"},
+}
 VALID_TAXONOMY_CLASSES = {
     "source_bug",
     "lowering_artifact",
@@ -89,6 +95,10 @@ def validate_benchmark(benchmark_root: Path, timeout_sec: int) -> dict[str, Any]
         report["errors"].append(f"failed to read manifest.yaml: {exc}")
         return report
 
+    report["errors"].extend(validate_manifest_metadata(manifest))
+    if report["errors"]:
+        return report
+
     entries = manifest.get("cases")
     if not isinstance(entries, list):
         report["errors"].append("manifest.cases must be a list")
@@ -110,6 +120,35 @@ def validate_benchmark(benchmark_root: Path, timeout_sec: int) -> dict[str, Any]
 
     report["valid"] = not report["errors"] and report["summary"]["failed"] == 0
     return report
+
+
+def validate_manifest_metadata(manifest: dict[str, Any]) -> list[str]:
+    errors: list[str] = []
+    if not isinstance(manifest.get("environment_id"), str) or not manifest.get("environment_id"):
+        errors.append("manifest.environment_id must be a non-empty string")
+
+    defaults_value = manifest.get("case_defaults")
+    if defaults_value is None:
+        return errors
+    if not isinstance(defaults_value, dict):
+        errors.append("manifest.case_defaults must be a mapping")
+        return errors
+
+    for section_name, section_defaults in defaults_value.items():
+        if section_name not in VALID_CASE_DEFAULT_FIELDS:
+            errors.append(f"invalid manifest.case_defaults section: {section_name!r}")
+            continue
+        if not isinstance(section_defaults, dict):
+            errors.append(f"manifest.case_defaults.{section_name} must be a mapping")
+            continue
+        valid_fields = VALID_CASE_DEFAULT_FIELDS[section_name]
+        for field, value in section_defaults.items():
+            if field not in valid_fields:
+                errors.append(f"invalid manifest.case_defaults.{section_name}.{field}")
+                continue
+            if not isinstance(value, str) or not value:
+                errors.append(f"manifest.case_defaults.{section_name}.{field} must be a non-empty string")
+    return errors
 
 
 def validate_case(
@@ -148,6 +187,7 @@ def validate_case(
     except Exception as exc:  # noqa: BLE001
         case_report["errors"].append(f"failed to read case.yaml: {exc}")
         return case_report
+    case_data = with_case_defaults(case_data, manifest)
 
     validate_case_metadata(case_dir, manifest, entry, case_data, case_report)
     validate_stored_artifacts(case_dir, case_data, case_report)
@@ -223,7 +263,20 @@ def validate_case_metadata(
 
     require_fields(case_data, ["schema_version", "case_id", "source", "reproducer", "capture", "label", "reporting"], "case", errors)
     require_fields(reproducer, ["reconstruction", "build_command", "load_command", "source_file", "object_path"], "reproducer", errors)
-    require_fields(capture, ["capture_id", "log_quality", "terminal_error", "rejected_insn_idx"], "capture", errors)
+    require_fields(
+        capture,
+        [
+            "capture_id",
+            "environment_id",
+            "verifier_log",
+            "capture_metadata",
+            "log_quality",
+            "terminal_error",
+            "rejected_insn_idx",
+        ],
+        "capture",
+        errors,
+    )
     require_fields(label, ["capture_id", "taxonomy_class"], "label", errors)
     require_fields(reporting, ["family_id", "representative"], "reporting", errors)
     validate_label_metadata(label, errors)

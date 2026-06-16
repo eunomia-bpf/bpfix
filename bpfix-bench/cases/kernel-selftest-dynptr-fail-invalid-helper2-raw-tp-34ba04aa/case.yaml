@@ -8,22 +8,13 @@ source:
   upstream_file: tools/testing/selftests/bpf/progs/dynptr_fail.c
   upstream_section: invalid_helper2
   collected_at: '2026-03-20T00:37:18.042326+00:00'
-  raw_excerpt_files: []
 reproducer:
   reconstruction: original
   program_type: ?raw_tp
-  source_file: prog.c
-  build_command: make
-  object_path: prog.o
-  load_command: make replay-verify
-  notes: Imported from locally verified kernel selftest artifact; replay log is written
-    to replay-verifier.log.
+  notes: Imported from locally verified kernel selftest artifact; replay log is written to
+    replay-verifier.log.
 capture:
   capture_id: kernel-selftest-dynptr-fail-invalid-helper2-raw-tp-34ba04aa__kernel-6.15.11-clang-18-log2
-  environment_id: kernel-6.15.11-clang-18-log2
-  verifier_log: replay-verifier.log
-  capture_metadata: capture.yaml
-  log_quality: trace_rich
   terminal_error: 'Expected an initialized dynptr as arg #2'
   rejected_insn_idx: 29
 external_match:
@@ -38,20 +29,16 @@ label:
   error_id: BPFIX-E019
   confidence: high
   label_source: agree
-  root_cause_description: 'Intentional negative test: calls `bpf_dynptr_read(read_data,
-    sizeof(read_data), (void *)&ptr + 8, 0, 0)`, so arg #2 points 8 bytes into the
-    dynptr instead of to the dynptr slot itself.'
+  root_cause_description: 'Intentional negative test: calls `bpf_dynptr_read(read_data, sizeof(read_data),
+    (void *)&ptr + 8, 0, 0)`, so arg #2 points 8 bytes into the dynptr instead of to the dynptr
+    slot itself.'
   root_cause_insn_idx: 26
-  rejected_line: bpf_dynptr_read(read_data, sizeof(read_data), (void *)&ptr + 8, 0,
-    0);
-  root_cause_line: bpf_dynptr_read(read_data, sizeof(read_data), (void *)&ptr + 8,
-    0, 0);
+  rejected_line: bpf_dynptr_read(read_data, sizeof(read_data), (void *)&ptr + 8, 0, 0);
+  root_cause_line: bpf_dynptr_read(read_data, sizeof(read_data), (void *)&ptr + 8, 0, 0);
   localization_confidence: high
   fix_type: other
-  fix_direction: In real code, pass the exact `&ptr` address to dynptr helpers, not
-    an interior pointer into the dynptr slot.
-repair:
-  eligible: false
+  fix_direction: In real code, pass the exact `&ptr` address to dynptr helpers, not an interior
+    pointer into the dynptr slot.
 reporting:
   family_id: 'Expected an initialized dynptr as arg #2'
   representative: true

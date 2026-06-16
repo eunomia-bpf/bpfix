@@ -16,13 +16,17 @@ Replayable cases, labels, and log quality:
 python - <<'PY'
 from pathlib import Path
 from collections import Counter
+import sys
 import yaml
 
 root = Path("bpfix-bench")
+sys.path.insert(0, str(root / "tools"))
+from benchmark_metadata import with_case_defaults
+
 manifest = yaml.safe_load((root / "manifest.yaml").read_text())
 cases = manifest["cases"]
 case_docs = [
-    yaml.safe_load((root / case["path"] / "case.yaml").read_text())
+    with_case_defaults(yaml.safe_load((root / case["path"] / "case.yaml").read_text()), manifest)
     for case in cases
 ]
 
@@ -111,7 +115,8 @@ The replayable corpus currently has one log-quality class.
 |---|---:|
 | trace_rich | 235 |
 
-No replayable `case.yaml` is missing `capture.log_quality`.
+No replayable case is missing `capture.log_quality` after
+`manifest.yaml.case_defaults` are applied.
 
 ## Taxonomy Composition
 

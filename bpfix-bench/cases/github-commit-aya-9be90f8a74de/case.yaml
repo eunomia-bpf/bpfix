@@ -6,24 +6,15 @@ source:
   repository: https://github.com/aya-rs/aya
   commit: 9be90f8a74de26de16a5cb79206f027d0cbed377
   upstream_file: ebpf/aya-log-ebpf-macros/src/expand.rs
-  collected_at: null
   raw_excerpt_files:
   - bpfix-bench/raw/gh/github-commit-aya-9be90f8a74de.yaml
 reproducer:
   reconstruction: reconstructed
-  source_file: prog.c
-  build_command: make
-  object_path: prog.o
-  load_command: make replay-verify
-  notes: Standalone reconstruction of the missing log-buffer bound check from the
-    commit diff. The unchecked record_len is modeled as a verifier-visible scalar
-    used as a stack buffer offset.
+  notes: Standalone reconstruction of the missing log-buffer bound check from the commit diff.
+    The unchecked record_len is modeled as a verifier-visible scalar used as a stack buffer
+    offset.
 capture:
   capture_id: github-commit-aya-9be90f8a74de__kernel-6.15.11-clang-18-log2
-  environment_id: kernel-6.15.11-clang-18-log2
-  verifier_log: replay-verifier.log
-  capture_metadata: capture.yaml
-  log_quality: trace_rich
   terminal_error: invalid unbounded variable-offset write to stack R2
   rejected_insn_idx: 18
 external_match:
@@ -32,27 +23,23 @@ external_match:
   matched_messages:
   - record_len >= buf.buf.len()
   - invalid unbounded variable-offset write to stack R2
-  notes: Raw commit has no verifier log; replay validates the same unchecked
-    variable-offset buffer-write pattern fixed by the commit.
+  notes: Raw commit has no verifier log; replay validates the same unchecked variable-offset
+    buffer-write pattern fixed by the commit.
 label:
   capture_id: github-commit-aya-9be90f8a74de__kernel-6.15.11-clang-18-log2
   taxonomy_class: source_bug
   error_id: BPFIX-E011
   confidence: medium
   label_source: external_replay_reconstruction
-  root_cause_description: A verifier-visible record length is used as a buffer
-    offset without proving it is within the stack buffer.
+  root_cause_description: A verifier-visible record length is used as a buffer offset without
+    proving it is within the stack buffer.
   root_cause_insn_idx: null
-  rejected_line: null
-  root_cause_line: null
   localization_confidence: medium
   fix_type: bounds_check
-  fix_direction: Check record_len against the log buffer capacity before slicing
-    or writing through the derived offset.
-repair:
-  eligible: false
+  fix_direction: Check record_len against the log buffer capacity before slicing or writing
+    through the derived offset.
 reporting:
   family_id: github-commit-aya-log-buffer-bounds
   representative: false
-  notes: Reconstructed from a raw GitHub commit diff without an external verifier
-    log; same verifier pattern as github-commit-aya-628b473e0937.
+  notes: Reconstructed from a raw GitHub commit diff without an external verifier log; same
+    verifier pattern as github-commit-aya-628b473e0937.

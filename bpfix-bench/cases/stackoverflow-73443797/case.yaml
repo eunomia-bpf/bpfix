@@ -6,23 +6,14 @@ source:
   repository: null
   commit: null
   upstream_file: null
-  collected_at: null
   raw_excerpt_files:
   - bpfix-bench/raw/so/stackoverflow-73443797.yaml
 reproducer:
   reconstruction: reconstructed
-  source_file: prog.c
-  build_command: make
-  object_path: prog.o
-  load_command: make replay-verify
-  notes: Imported from reconstructed external source into bpfix-bench; replay logs
-    are generated as replay-verifier.log.
+  notes: Imported from reconstructed external source into bpfix-bench; replay logs are generated
+    as replay-verifier.log.
 capture:
   capture_id: stackoverflow-73443797__kernel-6.15.11-clang-18-log2
-  environment_id: kernel-6.15.11-clang-18-log2
-  verifier_log: replay-verifier.log
-  capture_metadata: capture.yaml
-  log_quality: trace_rich
   terminal_error: R1 type=fp expected=map_value, ptr_
   rejected_insn_idx: 3
 external_match:
@@ -31,8 +22,8 @@ external_match:
   matched_messages:
   - R1 type=fp expected=map_value
   - R1 type=fp expected=map_value, ptr_
-  notes: Imported only because verifier_error_match was exact/partial in the verified
-    SO/GH artifact.
+  notes: Imported only because verifier_error_match was exact/partial in the verified SO/GH
+    artifact.
 label:
   capture_id: stackoverflow-73443797__kernel-6.15.11-clang-18-log2
   taxonomy_class: source_bug
@@ -46,10 +37,8 @@ label:
   root_cause_line: bpf_spin_lock(&val.lock);
   localization_confidence: high
   fix_type: move_to_map_value
-  fix_direction: Store the lock-containing value in a BPF map and pass the map-value
-    lock pointer to bpf_spin_lock/bpf_spin_unlock.
-repair:
-  eligible: false
+  fix_direction: Store the lock-containing value in a BPF map and pass the map-value lock
+    pointer to bpf_spin_lock/bpf_spin_unlock.
 reporting:
   family_id: stackoverflow-73443797
   representative: true

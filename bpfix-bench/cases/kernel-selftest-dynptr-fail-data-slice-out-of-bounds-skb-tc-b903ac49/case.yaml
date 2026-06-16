@@ -8,22 +8,13 @@ source:
   upstream_file: tools/testing/selftests/bpf/progs/dynptr_fail.c
   upstream_section: data_slice_out_of_bounds_skb
   collected_at: '2026-03-20T00:37:17.099828+00:00'
-  raw_excerpt_files: []
 reproducer:
   reconstruction: original
   program_type: ?tc
-  source_file: prog.c
-  build_command: make
-  object_path: prog.o
-  load_command: make replay-verify
-  notes: Imported from locally verified kernel selftest artifact; replay log is written
-    to replay-verifier.log.
+  notes: Imported from locally verified kernel selftest artifact; replay log is written to
+    replay-verifier.log.
 capture:
   capture_id: kernel-selftest-dynptr-fail-data-slice-out-of-bounds-skb-tc-b903ac49__kernel-6.15.11-clang-18-log2
-  environment_id: kernel-6.15.11-clang-18-log2
-  verifier_log: replay-verifier.log
-  capture_metadata: capture.yaml
-  log_quality: trace_rich
   terminal_error: invalid access to memory, mem_size=14 off=14 size=1
   rejected_insn_idx: 17
 external_match:
@@ -38,17 +29,15 @@ label:
   error_id: BPFIX-E001
   confidence: high
   label_source: agree
-  root_cause_description: 'Intentional negative test: writes `*(__u8 *)(hdr + 1)`
-    immediately past the `struct ethhdr` slice returned by `bpf_dynptr_slice_rdwr`.'
+  root_cause_description: 'Intentional negative test: writes `*(__u8 *)(hdr + 1)` immediately
+    past the `struct ethhdr` slice returned by `bpf_dynptr_slice_rdwr`.'
   root_cause_insn_idx: 17
   rejected_line: '*(__u8*)(hdr + 1) = 1;'
   root_cause_line: '*(__u8*)(hdr + 1) = 1;'
   localization_confidence: high
   fix_type: bounds_check
-  fix_direction: In real code, write only within the returned Ethernet-header slice
-    or request a larger writable slice before touching bytes past `hdr`.
-repair:
-  eligible: false
+  fix_direction: In real code, write only within the returned Ethernet-header slice or request
+    a larger writable slice before touching bytes past `hdr`.
 reporting:
   family_id: invalid access to memory, mem_size=14 off=14 size=1
   representative: true

@@ -8,22 +8,13 @@ source:
   upstream_file: tools/testing/selftests/bpf/progs/iters_state_safety.c
   upstream_section: read_from_iter_slot_fail
   collected_at: '2026-03-20T00:37:27.193092+00:00'
-  raw_excerpt_files: []
 reproducer:
   reconstruction: original
   program_type: ?raw_tp
-  source_file: prog.c
-  build_command: make
-  object_path: prog.o
-  load_command: make replay-verify
-  notes: Imported from locally verified kernel selftest artifact; replay log is written
-    to replay-verifier.log.
+  notes: Imported from locally verified kernel selftest artifact; replay log is written to
+    replay-verifier.log.
 capture:
   capture_id: kernel-selftest-iters-state-safety-read-from-iter-slot-fail-raw-tp-812dc246__kernel-6.15.11-clang-18-log2
-  environment_id: kernel-6.15.11-clang-18-log2
-  verifier_log: replay-verifier.log
-  capture_metadata: capture.yaml
-  log_quality: trace_rich
   terminal_error: invalid read from stack off -24+0 size 8
   rejected_insn_idx: 6
 external_match:
@@ -38,18 +29,16 @@ label:
   error_id: BPFIX-E014
   confidence: high
   label_source: agree
-  root_cause_description: 'Intentional negative test: creates an iterator in the stack
-    slot pointed to by `r6` and then raw-loads `*(u64 *)(r6 + 0)` and `*(u64 *)(r6
-    + 8)` to leak internal iterator state.'
+  root_cause_description: 'Intentional negative test: creates an iterator in the stack slot
+    pointed to by `r6` and then raw-loads `*(u64 *)(r6 + 0)` and `*(u64 *)(r6 + 8)` to leak
+    internal iterator state.'
   root_cause_insn_idx: 6
   rejected_line: asm volatile (
   root_cause_line: asm volatile (
   localization_confidence: high
   fix_type: other
-  fix_direction: In real code, treat iterator slots as opaque state and interact with
-    them only through iterator helpers.
-repair:
-  eligible: false
+  fix_direction: In real code, treat iterator slots as opaque state and interact with them
+    only through iterator helpers.
 reporting:
   family_id: invalid read from stack off -24+0 size 8
   representative: true

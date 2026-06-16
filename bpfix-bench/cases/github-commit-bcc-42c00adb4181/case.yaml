@@ -6,24 +6,14 @@ source:
   repository: https://github.com/iovisor/bcc
   commit: 42c00adb4181920d3e52f01e5020686ef470d6ce
   upstream_file: src/cc/frontends/clang/loader.cc
-  collected_at: null
   raw_excerpt_files:
   - bpfix-bench/raw/gh/github-commit-bcc-42c00adb4181.yaml
 reproducer:
   reconstruction: reconstructed
-  source_file: prog.c
-  build_command: make
-  object_path: prog.o
-  load_command: make replay-verify
-  notes: Standalone reconstruction of the BCC frontend using clang -O0 instead
-    of adding -O2. The Makefile intentionally compiles at -O0 to preserve the
-    verifier-hostile lowering.
+  notes: Standalone reconstruction of the BCC frontend using clang -O0 instead of adding -O2.
+    The Makefile intentionally compiles at -O0 to preserve the verifier-hostile lowering.
 capture:
   capture_id: github-commit-bcc-42c00adb4181__kernel-6.15.11-clang-18-log2
-  environment_id: kernel-6.15.11-clang-18-log2
-  verifier_log: replay-verifier.log
-  capture_metadata: capture.yaml
-  log_quality: trace_rich
   terminal_error: R2 invalid mem access 'scalar'
   rejected_insn_idx: 3
 external_match:
@@ -32,27 +22,22 @@ external_match:
   matched_messages:
   - clang frontend optimization level from 0 to 2
   - R2 invalid mem access 'scalar'
-  notes: Raw commit has no verifier log; replay validates that -O0 can emit
-    verifier-rejected BPF for code accepted under optimized lowering.
+  notes: Raw commit has no verifier log; replay validates that -O0 can emit verifier-rejected
+    BPF for code accepted under optimized lowering.
 label:
   capture_id: github-commit-bcc-42c00adb4181__kernel-6.15.11-clang-18-log2
   taxonomy_class: lowering_artifact
   error_id: BPFIX-E005
   confidence: medium
   label_source: external_replay_reconstruction
-  root_cause_description: Clang -O0 leaves verifier-hostile loads and an uninlined
-    subprogram shape that optimized BPF lowering removes.
+  root_cause_description: Clang -O0 leaves verifier-hostile loads and an uninlined subprogram
+    shape that optimized BPF lowering removes.
   root_cause_insn_idx: null
-  rejected_line: null
-  root_cause_line: null
   localization_confidence: medium
   fix_type: compiler_flags
-  fix_direction: Compile BPF C through the optimized frontend path, as in BCC's
-    added -O2 flag.
-repair:
-  eligible: false
+  fix_direction: Compile BPF C through the optimized frontend path, as in BCC's added -O2
+    flag.
 reporting:
   family_id: github-commit-bcc-42c00adb4181
   representative: true
-  notes: Reconstructed from a raw GitHub commit diff without an external verifier
-    log.
+  notes: Reconstructed from a raw GitHub commit diff without an external verifier log.

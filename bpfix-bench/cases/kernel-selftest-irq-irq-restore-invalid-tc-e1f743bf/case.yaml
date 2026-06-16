@@ -8,22 +8,13 @@ source:
   upstream_file: tools/testing/selftests/bpf/progs/irq.c
   upstream_section: irq_restore_invalid
   collected_at: '2026-03-20T00:37:23.146848+00:00'
-  raw_excerpt_files: []
 reproducer:
   reconstruction: original
   program_type: ?tc
-  source_file: prog.c
-  build_command: make
-  object_path: prog.o
-  load_command: make replay-verify
-  notes: Imported from locally verified kernel selftest artifact; replay log is written
-    to replay-verifier.log.
+  notes: Imported from locally verified kernel selftest artifact; replay log is written to
+    replay-verifier.log.
 capture:
   capture_id: kernel-selftest-irq-irq-restore-invalid-tc-e1f743bf__kernel-6.15.11-clang-18-log2
-  environment_id: kernel-6.15.11-clang-18-log2
-  verifier_log: replay-verifier.log
-  capture_metadata: capture.yaml
-  log_quality: trace_rich
   terminal_error: expected an initialized irq flag as arg#0
   rejected_insn_idx: 8
 external_match:
@@ -39,17 +30,14 @@ label:
   confidence: high
   label_source: agree
   root_cause_description: 'Intentional negative test: calls `bpf_local_irq_restore(&flags)`
-    on the unrelated constant-initialized variable `flags` instead of the saved slot
-    `flags1`.'
+    on the unrelated constant-initialized variable `flags` instead of the saved slot `flags1`.'
   root_cause_insn_idx: 8
   rejected_line: bpf_local_irq_restore(&flags);
   root_cause_line: bpf_local_irq_restore(&flags);
   localization_confidence: high
   fix_type: other
-  fix_direction: In real code, restore IRQ state only with the exact stack slot that
-    was initialized by `bpf_local_irq_save`.
-repair:
-  eligible: false
+  fix_direction: In real code, restore IRQ state only with the exact stack slot that was initialized
+    by `bpf_local_irq_save`.
 reporting:
   family_id: expected an initialized irq flag as arg#0
   representative: true

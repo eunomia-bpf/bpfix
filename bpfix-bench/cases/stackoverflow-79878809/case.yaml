@@ -11,18 +11,10 @@ source:
   - bpfix-bench/raw/so/stackoverflow-79878809.yaml
 reproducer:
   reconstruction: reconstructed
-  source_file: prog.c
-  build_command: make
-  object_path: prog.o
-  load_command: make replay-verify
-  notes: Imported from reconstructed external source into bpfix-bench; replay logs
-    are generated as replay-verifier.log.
+  notes: Imported from reconstructed external source into bpfix-bench; replay logs are generated
+    as replay-verifier.log.
 capture:
   capture_id: stackoverflow-79878809__kernel-6.15.11-clang-18-log2
-  environment_id: kernel-6.15.11-clang-18-log2
-  verifier_log: replay-verifier.log
-  capture_metadata: capture.yaml
-  log_quality: trace_rich
   terminal_error: invalid bpf_context access off=24 size=8
   rejected_insn_idx: 0
 external_match:
@@ -31,8 +23,8 @@ external_match:
   matched_messages:
   - invalid bpf_context access off=24 size=8
   - invalid bpf_context access off=24 size=8
-  notes: Imported only because verifier_error_match was exact/partial in the verified
-    SO/GH artifact.
+  notes: Imported only because verifier_error_match was exact/partial in the verified SO/GH
+    artifact.
 label:
   capture_id: stackoverflow-79878809__kernel-6.15.11-clang-18-log2
   taxonomy_class: source_bug
@@ -42,14 +34,10 @@ label:
   root_cause_description: fentry context is indexed as a generic u64 array at an argument
     whose BTF type is not a struct pointer the verifier accepts.
   root_cause_insn_idx: null
-  rejected_line: null
-  root_cause_line: null
   localization_confidence: medium
   fix_type: use_correct_context
   fix_direction: Use the typed fentry/BPF_PROG signature or access only verifier-supported
     context arguments.
-repair:
-  eligible: false
 reporting:
   family_id: stackoverflow-79878809
   representative: true

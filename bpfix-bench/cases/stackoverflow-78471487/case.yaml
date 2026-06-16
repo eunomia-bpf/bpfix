@@ -6,23 +6,14 @@ source:
   repository: null
   commit: null
   upstream_file: null
-  collected_at: null
   raw_excerpt_files:
   - bpfix-bench/raw/so/stackoverflow-78471487.yaml
 reproducer:
   reconstruction: reconstructed
-  source_file: prog.c
-  build_command: make
-  object_path: prog.o
-  load_command: make replay-verify
-  notes: Imported from reconstructed external source into bpfix-bench; replay logs
-    are generated as replay-verifier.log.
+  notes: Imported from reconstructed external source into bpfix-bench; replay logs are generated
+    as replay-verifier.log.
 capture:
   capture_id: stackoverflow-78471487__kernel-6.15.11-clang-18-log2
-  environment_id: kernel-6.15.11-clang-18-log2
-  verifier_log: replay-verifier.log
-  capture_metadata: capture.yaml
-  log_quality: trace_rich
   terminal_error: R1 invalid mem access 'scalar'
   rejected_insn_idx: 6
 external_match:
@@ -31,25 +22,20 @@ external_match:
   matched_messages:
   - R3 invalid mem access 'scalar'
   - R1 invalid mem access 'scalar'
-  notes: Imported only because verifier_error_match was exact/partial in the verified
-    SO/GH artifact.
+  notes: Imported only because verifier_error_match was exact/partial in the verified SO/GH
+    artifact.
 label:
   capture_id: stackoverflow-78471487__kernel-6.15.11-clang-18-log2
   taxonomy_class: source_bug
   error_id: BPFIX-E011
   confidence: medium
   label_source: external_replay_reconstruction
-  root_cause_description: Program casts a scalar to a struct pointer and dereferences
-    it.
+  root_cause_description: Program casts a scalar to a struct pointer and dereferences it.
   root_cause_insn_idx: null
-  rejected_line: null
-  root_cause_line: null
   localization_confidence: medium
   fix_type: use_valid_pointer
-  fix_direction: Read through verifier-tracked pointers only; do not cast arbitrary
-    scalar values to kernel pointers.
-repair:
-  eligible: false
+  fix_direction: Read through verifier-tracked pointers only; do not cast arbitrary scalar
+    values to kernel pointers.
 reporting:
   family_id: stackoverflow-78471487
   representative: true

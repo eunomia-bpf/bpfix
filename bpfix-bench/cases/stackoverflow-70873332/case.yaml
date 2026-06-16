@@ -6,23 +6,14 @@ source:
   repository: null
   commit: null
   upstream_file: null
-  collected_at: null
   raw_excerpt_files:
   - bpfix-bench/raw/so/stackoverflow-70873332.yaml
 reproducer:
   reconstruction: reconstructed
-  source_file: prog.c
-  build_command: make
-  object_path: prog.o
-  load_command: make replay-verify
-  notes: Imported from reconstructed external source into bpfix-bench; replay logs
-    are generated as replay-verifier.log.
+  notes: Imported from reconstructed external source into bpfix-bench; replay logs are generated
+    as replay-verifier.log.
 capture:
   capture_id: stackoverflow-70873332__kernel-6.15.11-clang-18-log2
-  environment_id: kernel-6.15.11-clang-18-log2
-  verifier_log: replay-verifier.log
-  capture_metadata: capture.yaml
-  log_quality: trace_rich
   terminal_error: invalid access to packet, off=0 size=1, R1(id=1,off=0,r=0)
   rejected_insn_idx: 18
 external_match:
@@ -31,8 +22,8 @@ external_match:
   matched_messages:
   - invalid access to packet, off=0 size=1, R1(id=2,off=0,r=0)
   - invalid access to packet, off=0 size=1, R1(id=1,off=0,r=0)
-  notes: Imported only because verifier_error_match was exact/partial in the verified
-    SO/GH artifact.
+  notes: Imported only because verifier_error_match was exact/partial in the verified SO/GH
+    artifact.
 label:
   capture_id: stackoverflow-70873332__kernel-6.15.11-clang-18-log2
   taxonomy_class: verifier_false_positive
@@ -46,15 +37,15 @@ label:
   confidence: medium
   label_source: agree
   root_cause_description: The loop checks `data + pkt_ctx->pkt_offset + j + 1 <= data_end`,
-    but the verifier refuses to apply that packet-length proof because the map-derived
-    offset range can cross the `MAX_PACKET_OFF` precision boundary.
+    but the verifier refuses to apply that packet-length proof because the map-derived offset
+    range can cross the `MAX_PACKET_OFF` precision boundary.
   root_cause_insn_idx: 11
   rejected_line: if (data[pkt_ctx->pkt_offset + j] == '\r') {
   root_cause_line: for (__u16 j = 0; j < 253; j++) {
   localization_confidence: medium
   fix_type: clamp
-  fix_direction: Bound `pkt_ctx->pkt_offset` separately before the loop and keep the
-    checked packet pointer in the same register that is later dereferenced.
+  fix_direction: Bound `pkt_ctx->pkt_offset` separately before the loop and keep the checked
+    packet pointer in the same register that is later dereferenced.
 repair:
   eligible: true
 reporting:

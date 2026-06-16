@@ -6,24 +6,15 @@ source:
   repository: https://github.com/cilium/cilium
   commit: caf84595d9cb34db3c6084e5cce40c6c78083e3b
   upstream_file: bpf/tests/tc_nodeport_lb4_nat_lb.c
-  collected_at: null
   raw_excerpt_files:
   - bpfix-bench/raw/gh/github-commit-cilium-caf84595d9cb.yaml
 reproducer:
   reconstruction: reconstructed
-  source_file: prog.c
-  build_command: make
-  object_path: prog.o
-  load_command: make replay-verify
-  notes: Minimal replay of clang dropping the unused ctx argument before calling
-    a global mock_fib_lookup subprogram. The caller reaches the subprogram with
-    a stack pointer in arg0 where BTF requires the packet context.
+  notes: Minimal replay of clang dropping the unused ctx argument before calling a global
+    mock_fib_lookup subprogram. The caller reaches the subprogram with a stack pointer in
+    arg0 where BTF requires the packet context.
 capture:
   capture_id: github-commit-cilium-caf84595d9cb__kernel-6.15.11-clang-18-log2
-  environment_id: kernel-6.15.11-clang-18-log2
-  verifier_log: replay-verifier.log
-  capture_metadata: capture.yaml
-  log_quality: trace_rich
   terminal_error: Caller passes invalid args into func#1 ('mock_fib_lookup')
   rejected_insn_idx: 26
 external_match:
@@ -31,26 +22,21 @@ external_match:
   policy: terminal_error
   matched_messages:
   - Caller passes invalid args into func#1
-  notes: Commit-derived semantic reconstruction; no external log matching is
-    required for admission.
+  notes: Commit-derived semantic reconstruction; no external log matching is required for
+    admission.
 label:
   capture_id: github-commit-cilium-caf84595d9cb__kernel-6.15.11-clang-18-log2
   taxonomy_class: lowering_artifact
   error_id: BPFIX-E006
   confidence: high
   label_source: manual_reconstruction
-  root_cause_description: An unused context parameter is not materialized at a
-    BPF-to-BPF callsite, so the verifier's BTF argument check sees the wrong
-    register type for arg0.
+  root_cause_description: An unused context parameter is not materialized at a BPF-to-BPF
+    callsite, so the verifier's BTF argument check sees the wrong register type for arg0.
   root_cause_insn_idx: 26
-  rejected_line: null
-  root_cause_line: null
   localization_confidence: high
   fix_type: preserve_ctx_argument
-  fix_direction: Force the context argument to remain live at the mock helper
-    callsite, for example by making the parameter volatile.
-repair:
-  eligible: false
+  fix_direction: Force the context argument to remain live at the mock helper callsite, for
+    example by making the parameter volatile.
 reporting:
   family_id: github-commit-cilium-caf84595d9cb
   representative: true

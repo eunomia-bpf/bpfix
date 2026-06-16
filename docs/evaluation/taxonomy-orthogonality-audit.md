@@ -463,11 +463,18 @@ Aggregate label counts were computed with this read-only Python/YAML scan:
 ```bash
 python3 - <<'PY'
 from pathlib import Path
+import sys
 import yaml, collections
 
+root = Path('bpfix-bench')
+sys.path.insert(0, str(root / 'tools'))
+from benchmark_metadata import with_case_defaults
+
+manifest = yaml.safe_load((root / 'manifest.yaml').read_text())
 rows = []
-for p in sorted(Path('bpfix-bench/cases').glob('*/case.yaml')):
-    d = yaml.safe_load(p.read_text())
+for case in manifest['cases']:
+    p = root / case['path'] / 'case.yaml'
+    d = with_case_defaults(yaml.safe_load(p.read_text()), manifest)
     lab = d.get('label') or {}
     rows.append({
         'case_id': d.get('case_id') or p.parent.name,
@@ -481,7 +488,7 @@ for p in sorted(Path('bpfix-bench/cases').glob('*/case.yaml')):
         'log_quality': (d.get('capture') or {}).get('log_quality'),
         'external_status': (d.get('external_match') or {}).get('status'),
         'reconstruction': (d.get('reproducer') or {}).get('reconstruction'),
-        'repair_eligible': (d.get('repair') or {}).get('eligible'),
+        'repair_eligible': (d.get('repair') or {}).get('eligible', False),
     })
 
 print('total', len(rows))

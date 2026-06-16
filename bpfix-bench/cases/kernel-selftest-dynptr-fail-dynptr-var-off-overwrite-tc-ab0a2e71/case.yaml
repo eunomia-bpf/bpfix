@@ -8,22 +8,13 @@ source:
   upstream_file: tools/testing/selftests/bpf/progs/dynptr_fail.c
   upstream_section: dynptr_var_off_overwrite
   collected_at: '2026-03-20T00:37:17.734842+00:00'
-  raw_excerpt_files: []
 reproducer:
   reconstruction: original
   program_type: ?tc
-  source_file: prog.c
-  build_command: make
-  object_path: prog.o
-  load_command: make replay-verify
-  notes: Imported from locally verified kernel selftest artifact; replay log is written
-    to replay-verifier.log.
+  notes: Imported from locally verified kernel selftest artifact; replay log is written to
+    replay-verifier.log.
 capture:
   capture_id: kernel-selftest-dynptr-fail-dynptr-var-off-overwrite-tc-ab0a2e71__kernel-6.15.11-clang-18-log2
-  environment_id: kernel-6.15.11-clang-18-log2
-  verifier_log: replay-verifier.log
-  capture_metadata: capture.yaml
-  log_quality: trace_rich
   terminal_error: Dynptr has to be an uninitialized dynptr
   rejected_insn_idx: 17
 external_match:
@@ -38,18 +29,16 @@ label:
   error_id: BPFIX-E019
   confidence: high
   label_source: agree
-  root_cause_description: 'Intentional negative test: computes the dynptr stack address
-    as `fp-32 + r8` in inline assembly, so reserve/discard operate on a dynptr whose
-    stack offset is not constant.'
+  root_cause_description: 'Intentional negative test: computes the dynptr stack address as
+    `fp-32 + r8` in inline assembly, so reserve/discard operate on a dynptr whose stack offset
+    is not constant.'
   root_cause_insn_idx: 17
   rejected_line: asm volatile (
   root_cause_line: asm volatile (
   localization_confidence: high
   fix_type: other
-  fix_direction: In real code, keep the dynptr object at one fixed stack offset and
-    avoid variable-offset dynptr addresses.
-repair:
-  eligible: false
+  fix_direction: In real code, keep the dynptr object at one fixed stack offset and avoid
+    variable-offset dynptr addresses.
 reporting:
   family_id: Dynptr has to be an uninitialized dynptr
   representative: true

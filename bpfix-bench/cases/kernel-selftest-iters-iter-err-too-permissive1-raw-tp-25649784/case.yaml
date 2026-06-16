@@ -8,22 +8,13 @@ source:
   upstream_file: tools/testing/selftests/bpf/progs/iters.c
   upstream_section: iter_err_too_permissive1
   collected_at: '2026-03-20T00:37:26.470736+00:00'
-  raw_excerpt_files: []
 reproducer:
   reconstruction: original
   program_type: ?raw_tp
-  source_file: prog.c
-  build_command: make
-  object_path: prog.o
-  load_command: make replay-verify
-  notes: Imported from locally verified kernel selftest artifact; replay log is written
-    to replay-verifier.log.
+  notes: Imported from locally verified kernel selftest artifact; replay log is written to
+    replay-verifier.log.
 capture:
   capture_id: kernel-selftest-iters-iter-err-too-permissive1-raw-tp-25649784__kernel-6.15.11-clang-18-log2
-  environment_id: kernel-6.15.11-clang-18-log2
-  verifier_log: replay-verifier.log
-  capture_metadata: capture.yaml
-  log_quality: trace_rich
   terminal_error: R6 invalid mem access 'scalar'
   rejected_insn_idx: 27
 external_match:
@@ -38,18 +29,16 @@ label:
   error_id: BPFIX-E011
   confidence: high
   label_source: agree
-  root_cause_description: 'Intentional negative test: proves `map_val` non-NULL, then
-    runs `bpf_repeat(1000000) { map_val = NULL; }` and finally writes `*map_val =
-    123` after the pointer has been smashed to a scalar NULL state.'
+  root_cause_description: 'Intentional negative test: proves `map_val` non-NULL, then runs
+    `bpf_repeat(1000000) { map_val = NULL; }` and finally writes `*map_val = 123` after the
+    pointer has been smashed to a scalar NULL state.'
   root_cause_insn_idx: 27
   rejected_line: '*map_val = 123;'
   root_cause_line: '*map_val = 123;'
   localization_confidence: high
   fix_type: null_check
-  fix_direction: In real code, preserve the proven non-NULL map pointer across the
-    loop or revalidate it immediately before dereferencing it.
-repair:
-  eligible: false
+  fix_direction: In real code, preserve the proven non-NULL map pointer across the loop or
+    revalidate it immediately before dereferencing it.
 reporting:
   family_id: R6 invalid mem access 'scalar'
   representative: true

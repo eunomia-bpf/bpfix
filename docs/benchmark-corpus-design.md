@@ -159,6 +159,12 @@ layout.
 
 Path: `bpfix-bench/cases/<case_id>/case.yaml`
 
+The validator expands `manifest.yaml.case_defaults` before replaying or scoring
+a case. Fields that are constant across the frozen corpus, such as `prog.c`,
+`prog.o`, `make`, `make replay-verify`, `replay-verifier.log`, `capture.yaml`,
+and `trace_rich`, should stay in the manifest defaults instead of being repeated
+in every case.
+
 ```yaml
 schema_version: bpfix.case/v1
 case_id: stackoverflow-70750259
@@ -178,22 +184,10 @@ source:
 reproducer:
   reconstruction: original  # original | minimized | reconstructed
   program_type: socket_filter
-  source_file: prog.c
-  build_command: make
-  object_path: prog.o
-  load_command: bpftool prog load prog.o /sys/fs/bpf/bpfix_case
   notes: "Build glue added around the original code snippet."
 
 capture:
   capture_id: stackoverflow-70750259__kernel-6.15.11-clang-18-log2
-  environment_id: kernel-6.15.11-clang-18-log2
-  verifier_log: replay-verifier.log
-  capture_metadata: capture.yaml
-  build_stdout: build.stdout
-  build_stderr: build.stderr
-  load_stdout: load.stdout
-  load_stderr: load.stderr
-  log_quality: trace_rich
   terminal_error: "math between pkt pointer and register with unbounded min value is not allowed"
   rejected_insn_idx: 39
 
@@ -218,13 +212,6 @@ label:
   fix_type: reorder
   fix_direction: "Move the bounds check so the verifier can connect the checked length to the packet access."
 
-repair:
-  eligible: false           # diagnostic eval ignores this block
-  fixed_dir: null
-  fixed_build_command: null
-  fixed_load_command: null
-  fixed_oracle: null
-
 reporting:
   family_id: packet-pointer-provenance
   duplicate_group: null
@@ -233,6 +220,9 @@ reporting:
     - external_user_report
     - reconstructed
 ```
+
+Omit `repair` when no repair oracle exists. A `repair` block is present only for
+repair-eligible cases.
 
 The label repeats `capture_id` on purpose. Localization labels depend on the
 captured verifier failure, so the validator must reject a case if replay drifts
@@ -263,7 +253,8 @@ A case enters `bpfix-bench` only if all conditions hold:
 13. Commit-derived cases require manual audit and
     `external_match.status == not_applicable`.
 14. `reporting.family_id` and `reporting.representative` are present.
-15. `bpfix-bench/tools/validate_benchmark.py --replay bpfix-bench` succeeds for the case.
+15. `bpfix-bench/tools/validate_benchmark.py --replay bpfix-bench` succeeds for the case
+    after applying `manifest.yaml.case_defaults`.
 
 No exception path should allow excerpt-only logs, message-only loader errors, or
 synthetic no-log cases into `bpfix-bench`.
@@ -283,7 +274,8 @@ A case is eligible for repair eval only if:
 5. Fixed build/load stdout and stderr are stored under `fixed/`.
 
 Diagnostic eval must ignore the `repair` block. Repair eval must ignore cases
-where `repair.eligible != true`.
+without `repair.eligible == true`; an omitted `repair` block means the diagnostic
+case has no repair oracle.
 
 ## Non-Primary Cases
 

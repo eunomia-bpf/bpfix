@@ -8,22 +8,13 @@ source:
   upstream_file: tools/testing/selftests/bpf/progs/dynptr_fail.c
   upstream_section: invalid_slice_rdwr_rdonly
   collected_at: '2026-03-20T00:37:18.492796+00:00'
-  raw_excerpt_files: []
 reproducer:
   reconstruction: original
   program_type: cgroup_skb/ingress
-  source_file: prog.c
-  build_command: make
-  object_path: prog.o
-  load_command: make replay-verify
-  notes: Imported from locally verified kernel selftest artifact; replay log is written
-    to replay-verifier.log.
+  notes: Imported from locally verified kernel selftest artifact; replay log is written to
+    replay-verifier.log.
 capture:
   capture_id: kernel-selftest-dynptr-fail-invalid-slice-rdwr-rdonly-cgroup-skb-ingress-61688196__kernel-6.15.11-clang-18-log2
-  environment_id: kernel-6.15.11-clang-18-log2
-  verifier_log: replay-verifier.log
-  capture_metadata: capture.yaml
-  log_quality: trace_rich
   terminal_error: the prog does not allow writes to packet data
   rejected_insn_idx: 14
 external_match:
@@ -48,18 +39,16 @@ label:
   error_id: BPFIX-E016
   confidence: medium
   label_source: adjudicated
-  root_cause_description: 'Intentional negative test: calls `bpf_dynptr_slice_rdwr(&ptr,
-    0, buffer, sizeof(buffer))` on an skb dynptr in `cgroup_skb/ingress`, a program
-    type that does not permit packet writes.'
+  root_cause_description: 'Intentional negative test: calls `bpf_dynptr_slice_rdwr(&ptr, 0,
+    buffer, sizeof(buffer))` on an skb dynptr in `cgroup_skb/ingress`, a program type that
+    does not permit packet writes.'
   root_cause_insn_idx: 13
   rejected_line: hdr = bpf_dynptr_slice_rdwr(&ptr, 0, buffer, sizeof(buffer));
   root_cause_line: hdr = bpf_dynptr_slice_rdwr(&ptr, 0, buffer, sizeof(buffer));
   localization_confidence: high
   fix_type: env_fix
-  fix_direction: In real code, request a read-only slice in this attach type, or move
-    the writable packet update to a program type that allows packet writes.
-repair:
-  eligible: false
+  fix_direction: In real code, request a read-only slice in this attach type, or move the
+    writable packet update to a program type that allows packet writes.
 reporting:
   family_id: the prog does not allow writes to packet data
   representative: true
