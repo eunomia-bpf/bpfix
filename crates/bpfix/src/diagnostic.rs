@@ -307,6 +307,7 @@ fn proof_signals(context: ProofSignalContext<'_>) -> Vec<ProofSignal> {
         ProofSignal::PerfEventOutputPacketAccess => helper_contract_signal::perf_event_output_packet_access(c),
         ProofSignal::UnreadableReturnRegister => stack_signal::unreadable_return_register(c),
         ProofSignal::LegacySkbLoadUnreadableRegister => stack_signal::legacy_skb_load_unreadable_register(c),
+        ProofSignal::HelperStackReadLengthExceedsInitializedRange => stack_signal::helper_stack_read_length_exceeds_initialized_range(c),
         ProofSignal::HelperStackReadExceedsInitializedRange => stack_signal::helper_stack_read_exceeds_initialized_range(c),
         ProofSignal::HelperStackWriteBeyondFrame => stack_signal::helper_stack_write_beyond_frame(c),
         ProofSignal::DynptrUninitializedArgument => dynptr_signal::dynptr_uninitialized_argument(c),

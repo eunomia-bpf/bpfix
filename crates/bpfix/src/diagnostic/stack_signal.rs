@@ -143,79 +143,85 @@ fn unreadable_helper_call_argument(instruction: TerminalInstruction<'_>, reg: u8
 pub(super) fn helper_stack_read_exceeds_initialized_range(
     context: &ProofSignalContext<'_>,
 ) -> bool {
+    helper_stack_read_issue(context).is_some()
+}
+
+pub(super) fn helper_stack_read_length_exceeds_initialized_range(
+    context: &ProofSignalContext<'_>,
+) -> bool {
+    helper_stack_read_issue(context).is_some_and(|issue| {
+        issue.initialized_bytes > 0
+            && u64::try_from(issue.access.delta)
+                .ok()
+                .is_some_and(|delta| delta >= issue.initialized_bytes)
+    })
+}
+
+struct HelperStackReadIssue {
+    access: bpfanalysis::verifier_log::StackReadAccess,
+    initialized_bytes: u64,
+}
+
+fn helper_stack_read_issue(context: &ProofSignalContext<'_>) -> Option<HelperStackReadIssue> {
     if context.obligation != ProofObligation::StackInitialized {
-        return false;
+        return None;
     }
     let terminal = context.terminal_error.to_ascii_lowercase();
     if !terminal.contains("read from stack") || !terminal.contains("memory, len pair") {
-        return false;
+        return None;
     }
-    let Some(access) = stack_read_access(context.terminal_error) else {
-        return false;
-    };
-    let Some(instruction) =
-        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)
-    else {
-        return false;
-    };
-    let Some(target) = call_target_from_instruction_tail(instruction.tail) else {
-        return false;
-    };
-    let Some(pair) = helper_stack_read_pair(target) else {
-        return false;
-    };
+    let access = stack_read_access(context.terminal_error)?;
+    let instruction =
+        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)?;
+    let target = call_target_from_instruction_tail(instruction.tail)?;
+    let pair = helper_stack_read_pair(target)?;
     let pointer_reg = pair.ptr_reg;
     let len_reg = pair.len_reg;
     if access.reg != Some(pointer_reg) {
-        return false;
+        return None;
     }
     if context.register.is_some_and(|reg| reg != pointer_reg) {
-        return false;
+        return None;
     }
     let fragment_start = terminal_fragment_start(context, instruction);
-    let Some(snapshot) = verifier_path_snapshot_before_instruction(
+    let snapshot = verifier_path_snapshot_before_instruction(
         context.branch_states,
         instruction,
         fragment_start,
-    ) else {
-        return false;
-    };
-    let Some(pointer_state) = snapshot.regs.get(&pointer_reg) else {
-        return false;
-    };
+    )?;
+    let pointer_state = snapshot.regs.get(&pointer_reg)?;
     if pointer_state.reg_type != "fp" {
-        return false;
+        return None;
     }
     let pointer_frame = pointer_state.source_frame.unwrap_or(snapshot.frame);
     if pointer_frame != snapshot.frame {
-        return false;
+        return None;
     }
-    let Some(len) = helper_stack_read_length_from_snapshot(&snapshot, len_reg) else {
-        return false;
-    };
+    let len = helper_stack_read_length_from_snapshot(&snapshot, len_reg)?;
     if access.size != len || access.delta < 0 {
-        return false;
+        return None;
     }
-    let Some(start) = pointer_state
+    let start = pointer_state
         .offset
-        .and_then(|offset| i16::try_from(offset).ok())
-    else {
-        return false;
-    };
+        .and_then(|offset| i16::try_from(offset).ok())?;
     if i64::from(start) != access.base_off {
-        return false;
+        return None;
     }
     if u64::try_from(access.delta)
         .ok()
         .is_none_or(|delta| delta >= len)
     {
-        return false;
+        return None;
     }
-    len > u64::try_from(initialized_stack_bytes_from_snapshot(
+    let initialized_bytes = u64::try_from(initialized_stack_bytes_from_snapshot(
         &snapshot.stack,
         start,
     ))
-    .unwrap_or(0)
+    .unwrap_or(0);
+    (len > initialized_bytes).then_some(HelperStackReadIssue {
+        access,
+        initialized_bytes,
+    })
 }
 
 fn helper_stack_read_length_from_snapshot(

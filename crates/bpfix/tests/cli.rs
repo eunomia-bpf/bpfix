@@ -1089,6 +1089,7 @@ fn stack_initialization_source_state_signals_cover_unreadable_exits_and_helper_r
         run_json("bpfix-bench/cases/kernel-selftest-dynptr-fail-test-dynptr-skb-small-buff-cgroup-skb-egress-4f498dbd/replay-verifier.log");
     assert_eq!(dynptr_slice_small_buffer["error_id"], "BPFIX-E003");
     assert_eq!(dynptr_slice_small_buffer["failure_class"], "source_bug");
+    assert_eq!(dynptr_slice_small_buffer["next_action"], "bounds");
     assert!(dynptr_slice_small_buffer["message"]
         .as_str()
         .unwrap()
@@ -1096,7 +1097,7 @@ fn stack_initialization_source_state_signals_cover_unreadable_exits_and_helper_r
     assert!(evidence_contains(
         &dynptr_slice_small_buffer,
         "verifier_state_signal",
-        "stack pointer and length"
+        "initialized byte prefix"
     ));
 
     let initialized_stack_buffer_large_enough = run_json_stdin(

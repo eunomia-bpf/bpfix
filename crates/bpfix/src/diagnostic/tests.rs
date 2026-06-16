@@ -653,6 +653,13 @@ arg#2 arg#3 memory, len pair leads to invalid memory access
     assert!(analysis
         .signals
         .contains(&ProofSignal::HelperStackReadExceedsInitializedRange));
+    assert!(analysis
+        .signals
+        .contains(&ProofSignal::HelperStackReadLengthExceedsInitializedRange));
+    assert_eq!(
+        ProofSignal::HelperStackReadLengthExceedsInitializedRange.next_action(),
+        NextAction::Bounds
+    );
 
     let branch_paths_are_not_mixed = "\
 0: R1=ctx() R10=fp0
@@ -710,6 +717,9 @@ arg#2 arg#3 memory, len pair leads to invalid memory access
     assert!(analysis
         .signals
         .contains(&ProofSignal::HelperStackReadExceedsInitializedRange));
+    assert!(!analysis
+        .signals
+        .contains(&ProofSignal::HelperStackReadLengthExceedsInitializedRange));
 
     let partial_high_half_read = "\
 0: R1=ctx() R10=fp0
