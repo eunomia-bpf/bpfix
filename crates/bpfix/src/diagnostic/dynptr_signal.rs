@@ -4,7 +4,7 @@ use bpfanalysis::helper_abi::{
 use bpfanalysis::verifier_log::{
     call_target_from_instruction_tail, latest_verifier_state_before_instruction, parse_i64_after,
     reg_state_has_variable_offset, stack_value_range, terminal_instruction_site,
-    verifier_fragment_start_line, RegState, StackState, VerifierInsn,
+    verifier_fragment_start_line, RegState, StackByteRange, StackState, VerifierInsn,
     VerifierLogInstruction as TerminalInstruction,
 };
 
@@ -17,9 +17,8 @@ use super::stack_access::{
 };
 use super::{
     dynptr_slot_backing_before, dynptr_stack_slot_for_call_argument,
-    latest_live_ref_dynptr_stack_overlap_before_instruction, latest_reg_state_for_call_argument,
-    latest_reg_state_for_call_argument_with_frame, terminal_call_instruction_site,
-    terminal_fragment_start, DynptrBacking, ProofSignalContext,
+    latest_reg_state_for_call_argument, latest_reg_state_for_call_argument_with_frame,
+    terminal_call_instruction_site, terminal_fragment_start, DynptrBacking, ProofSignalContext,
 };
 
 pub(super) fn dynptr_stack_storage_access(context: &ProofSignalContext<'_>) -> bool {
@@ -222,6 +221,52 @@ fn dynptr_plain_write_overlaps_referenced_slot(context: &ProofSignalContext<'_>)
         frame,
     )
     .unwrap_or(false)
+}
+
+fn latest_live_ref_dynptr_stack_overlap_before_instruction(
+    context: &ProofSignalContext<'_>,
+    instruction: TerminalInstruction<'_>,
+    fragment_start: usize,
+    access: StackByteRange,
+    frame: usize,
+) -> Option<bool> {
+    for state in context
+        .states
+        .iter()
+        .filter(|state| state.log_line >= fragment_start)
+        .filter(|state| state.log_line < instruction.line)
+        .filter(|state| state.pc <= instruction.pc)
+        .filter(|state| state.frame == frame)
+        .rev()
+    {
+        let mut saw_overlap = false;
+        let mut saw_live_ref_dynptr = false;
+        for (offset, stack) in &state.stack {
+            let is_live_ref_dynptr = dynptr_stack_slot_has_live_ref(stack, state);
+            let is_dynptr = is_live_ref_dynptr
+                || stack
+                    .value
+                    .as_ref()
+                    .is_some_and(|value| value.reg_type.starts_with("dynptr"));
+            let Some(range) = stack_value_range(*offset, if is_dynptr { 16 } else { 8 }) else {
+                continue;
+            };
+            if !range.overlaps(access) {
+                continue;
+            }
+            saw_overlap = true;
+            if is_live_ref_dynptr {
+                saw_live_ref_dynptr = true;
+            }
+        }
+        if saw_live_ref_dynptr {
+            return Some(true);
+        }
+        if saw_overlap {
+            return Some(false);
+        }
+    }
+    None
 }
 
 fn dynptr_packet_rdwr_disallowed(context: &ProofSignalContext<'_>) -> bool {
