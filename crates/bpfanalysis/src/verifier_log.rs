@@ -1338,6 +1338,42 @@ pub fn scalar_state_upper_bound_at_most(state: &RegState, relation_capacity: u32
             .is_some_and(|value| value >= 0 && value as u32 <= relation_capacity)
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct MapValueAccessError {
+    pub value_size: u32,
+    pub offset: i64,
+    pub size: u32,
+}
+
+impl MapValueAccessError {
+    pub fn end(self) -> Option<i64> {
+        self.offset.checked_add(i64::from(self.size))
+    }
+
+    pub fn exceeds_value_size(self) -> bool {
+        self.end()
+            .is_some_and(|end| end > i64::from(self.value_size))
+    }
+
+    pub fn access_is_wider_than_value(self) -> bool {
+        self.size > self.value_size
+    }
+}
+
+pub fn map_value_access_error(message: &str) -> Option<MapValueAccessError> {
+    if !message
+        .to_ascii_lowercase()
+        .contains("invalid access to map value")
+    {
+        return None;
+    }
+    Some(MapValueAccessError {
+        value_size: parse_u32_after(message, "value_size=")?,
+        offset: parse_i64_after(message, "off=")?,
+        size: parse_u32_after(message, "size=")?,
+    })
+}
+
 pub fn map_value_remaining_capacity(state: &RegState, value_size: u32) -> Option<u32> {
     let fixed_offset = state.offset.unwrap_or(0);
     let fixed_offset = u32::try_from(fixed_offset).ok()?;

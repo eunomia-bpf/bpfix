@@ -2,10 +2,10 @@ use bpfanalysis::helper_abi::helper_map_value_memory_access_pair;
 use bpfanalysis::verifier_log::{
     conditional_branch_registers, direct_call_target_from_instruction_tail,
     instruction_adds_register, instruction_on_log_line, instructions_in_line_range,
-    latest_reg_state_before, latest_reg_state_before_instruction,
+    latest_reg_state_before, latest_reg_state_before_instruction, map_value_access_error,
     map_value_access_range_may_exceed_value_size, map_value_range_may_exceed_value_size,
     map_value_remaining_capacity, map_value_variable_max_offset, memory_access_base_register,
-    memory_access_offset, memory_access_width, parse_u32_after, scalar_ranges_match,
+    memory_access_offset, memory_access_width, scalar_ranges_match,
     scalar_state_upper_bound_at_most, terminal_instruction_access_width,
     terminal_instruction_memory_offset, RegState, VerifierInsn,
     VerifierLogInstruction as TerminalInstruction,
@@ -31,26 +31,20 @@ pub(super) fn map_value_wide_access(
     register: Option<u8>,
     states: &[VerifierInsn],
 ) -> bool {
-    if !terminal_error.contains("invalid access to map value") {
+    let Some(access) = map_value_access_error(terminal_error) else {
         return false;
-    }
+    };
     let Some(reg) = register else {
         return false;
     };
-    let Some(reported_value_size) = parse_u32_after(terminal_error, "value_size=") else {
-        return false;
-    };
-    let Some(access_size) = parse_u32_after(terminal_error, "size=") else {
-        return false;
-    };
-    if access_size <= reported_value_size {
+    if !access.access_is_wider_than_value() {
         return false;
     }
-    if terminal_instruction_access_width(log, terminal_pc, terminal_line) != Some(access_size) {
+    if terminal_instruction_access_width(log, terminal_pc, terminal_line) != Some(access.size) {
         return false;
     }
     latest_reg_state_before(states, terminal_pc, reg).is_some_and(|state| {
-        state.reg_type == "map_value" && state.map_value_size == Some(reported_value_size)
+        state.reg_type == "map_value" && state.map_value_size == Some(access.value_size)
     })
 }
 
@@ -62,66 +56,45 @@ pub(super) fn map_value_checked_offset_relation_lost(
     events: &[ProofEvent],
     source_events: &[SourceEvent],
 ) -> bool {
-    if !terminal_error.contains("invalid access to map value") {
+    let Some(access) = map_value_access_error(terminal_error) else {
         return false;
-    }
+    };
     let Some(reg) = register else {
         return false;
     };
-    let Some(reported_value_size) = parse_u32_after(terminal_error, "value_size=") else {
-        return false;
-    };
-    let Some(access_offset) = parse_u32_after(terminal_error, "off=") else {
-        return false;
-    };
-    let Some(access_size) = parse_u32_after(terminal_error, "size=") else {
-        return false;
-    };
-    if access_size > reported_value_size {
+    if access.access_is_wider_than_value() {
         return false;
     }
-    let Some(access_end) = access_offset.checked_add(access_size) else {
-        return false;
-    };
-    if access_end <= reported_value_size {
+    if !access.exceeds_value_size() {
         return false;
     }
     let Some(rejected) = rejected_source(events) else {
         return false;
     };
-    if !source_guard_mentions_bound(events, source_events, reported_value_size, rejected) {
+    if !source_guard_mentions_bound(events, source_events, access.value_size, rejected) {
         return false;
     }
     latest_reg_state_before(states, terminal_pc, reg).is_some_and(|state| {
         state.reg_type == "map_value"
-            && state.map_value_size == Some(reported_value_size)
+            && state.map_value_size == Some(access.value_size)
             && map_value_range_may_exceed_value_size(state)
     })
 }
 
 pub(super) fn map_value_guard_exceeds_value_size(context: &ProofSignalContext<'_>) -> bool {
-    if !context
-        .terminal_error
-        .contains("invalid access to map value")
-    {
+    let Some(access) = map_value_access_error(context.terminal_error) else {
         return false;
-    }
+    };
     let Some(reg) = context.register else {
         return false;
     };
-    let Some(value_size) = parse_u32_after(context.terminal_error, "value_size=") else {
-        return false;
-    };
-    let Some(access_size) = parse_u32_after(context.terminal_error, "size=") else {
-        return false;
-    };
-    if access_size > value_size {
+    if access.access_is_wider_than_value() {
         return false;
     }
     let Some(state) = latest_reg_state_before(context.states, context.terminal_pc, reg) else {
         return false;
     };
-    if state.reg_type != "map_value" || state.map_value_size != Some(value_size) {
+    if state.reg_type != "map_value" || state.map_value_size != Some(access.value_size) {
         return false;
     }
     let Some(access_offset) =
@@ -136,10 +109,10 @@ pub(super) fn map_value_guard_exceeds_value_size(context: &ProofSignalContext<'_
     let Ok(total_fixed_offset) = u32::try_from(total_fixed_offset) else {
         return false;
     };
-    let Some(bytes_after_field) = value_size.checked_sub(total_fixed_offset) else {
+    let Some(bytes_after_field) = access.value_size.checked_sub(total_fixed_offset) else {
         return false;
     };
-    let Some(max_index) = bytes_after_field.checked_sub(access_size) else {
+    let Some(max_index) = bytes_after_field.checked_sub(access.size) else {
         return false;
     };
     if map_value_variable_max_offset(state).is_none_or(|max| max <= u64::from(max_index)) {
@@ -155,25 +128,10 @@ pub(super) fn map_value_guard_exceeds_value_size(context: &ProofSignalContext<'_
 }
 
 pub(super) fn map_value_access_out_of_bounds(context: &ProofSignalContext<'_>) -> bool {
-    if !context
-        .terminal_error
-        .contains("invalid access to map value")
-    {
-        return false;
-    }
-    let Some(value_size) = parse_u32_after(context.terminal_error, "value_size=") else {
+    let Some(access) = map_value_access_error(context.terminal_error) else {
         return false;
     };
-    let Some(access_offset) = parse_u32_after(context.terminal_error, "off=") else {
-        return false;
-    };
-    let Some(access_size) = parse_u32_after(context.terminal_error, "size=") else {
-        return false;
-    };
-    if access_offset
-        .checked_add(access_size)
-        .is_none_or(|end| end <= value_size)
-    {
+    if !access.exceeds_value_size() {
         return false;
     }
     let Some((instruction, fragment_start)) = terminal_site(context) else {
@@ -199,18 +157,18 @@ pub(super) fn map_value_access_out_of_bounds(context: &ProofSignalContext<'_>) -
     ) else {
         return false;
     };
-    if state.reg_type != "map_value" || state.map_value_size != Some(value_size) {
+    if state.reg_type != "map_value" || state.map_value_size != Some(access.value_size) {
         return false;
     }
     if let Some(base_reg) = memory_access_base_register(instruction.tail) {
-        if access_size > value_size {
+        if access.access_is_wider_than_value() {
             return false;
         }
         return base_reg == reg
-            && memory_access_width(instruction.tail) == Some(access_size)
+            && memory_access_width(instruction.tail) == Some(access.size)
             && map_value_terminal_offset_matches_state(
                 state,
-                access_offset,
+                access.offset,
                 memory_access_offset(instruction.tail),
             );
     }
@@ -218,26 +176,25 @@ pub(super) fn map_value_access_out_of_bounds(context: &ProofSignalContext<'_>) -
         return false;
     };
     helper_map_value_memory_access_pair(target).is_some_and(|pair| pair.ptr_reg == reg)
-        && map_value_terminal_offset_matches_state(state, access_offset, Some(0))
+        && map_value_terminal_offset_matches_state(state, access.offset, Some(0))
         && helper_memory_access_length_matches(
             context.branch_states,
             instruction,
             fragment_start,
             target,
-            access_size,
+            access.size,
         )
 }
 
 fn map_value_terminal_offset_matches_state(
     state: &RegState,
-    reported_offset: u32,
+    reported_offset: i64,
     instruction_offset: Option<i64>,
 ) -> bool {
     let Some(instruction_offset) = instruction_offset else {
         return false;
     };
-    i64::from(state.offset.unwrap_or(0)).saturating_add(instruction_offset)
-        == i64::from(reported_offset)
+    i64::from(state.offset.unwrap_or(0)).saturating_add(instruction_offset) == reported_offset
 }
 
 fn helper_memory_access_length_matches(
@@ -544,25 +501,10 @@ pub(super) fn verifier_precision_signal(context: &ProofSignalContext<'_>) -> Opt
 }
 
 fn map_value_relation_precision_boundary(context: &ProofSignalContext<'_>) -> bool {
-    if !context
-        .terminal_error
-        .contains("invalid access to map value")
-    {
-        return false;
-    }
-    let Some(value_size) = parse_u32_after(context.terminal_error, "value_size=") else {
+    let Some(access) = map_value_access_error(context.terminal_error) else {
         return false;
     };
-    let Some(access_offset) = parse_u32_after(context.terminal_error, "off=") else {
-        return false;
-    };
-    let Some(access_size) = parse_u32_after(context.terminal_error, "size=") else {
-        return false;
-    };
-    if access_offset
-        .checked_add(access_size)
-        .is_none_or(|end| end <= value_size)
-    {
+    if !access.exceeds_value_size() {
         return false;
     }
     let Some((instruction, fragment_start)) = terminal_site(context) else {
@@ -584,10 +526,13 @@ fn map_value_relation_precision_boundary(context: &ProofSignalContext<'_>) -> bo
     ) else {
         return false;
     };
-    if pointer_state.reg_type != "map_value" || pointer_state.map_value_size != Some(value_size) {
+    if pointer_state.reg_type != "map_value"
+        || pointer_state.map_value_size != Some(access.value_size)
+    {
         return false;
     }
-    let Some(relation_capacity) = map_value_remaining_capacity(pointer_state, value_size) else {
+    let Some(relation_capacity) = map_value_remaining_capacity(pointer_state, access.value_size)
+    else {
         return false;
     };
     if !map_value_relation_precision_source_shape(
@@ -599,7 +544,7 @@ fn map_value_relation_precision_boundary(context: &ProofSignalContext<'_>) -> bo
     ) {
         return false;
     }
-    if map_value_access_range_may_exceed_value_size(pointer_state, access_size) {
+    if map_value_access_range_may_exceed_value_size(pointer_state, access.size) {
         return true;
     }
     latest_reg_state_before_instruction(
@@ -609,7 +554,8 @@ fn map_value_relation_precision_boundary(context: &ProofSignalContext<'_>) -> bo
         length_reg,
     )
     .is_some_and(|state| {
-        access_size > value_size && scalar_state_upper_bound_matches_size(state, access_size)
+        access.access_is_wider_than_value()
+            && scalar_state_upper_bound_matches_size(state, access.size)
     })
 }
 

@@ -1,5 +1,6 @@
 use bpfanalysis::verifier_log::{
-    latest_reg_state_before, parse_i64_after, scalar_range_summary, verifier_value_summary,
+    latest_reg_state_before, map_value_access_error, parse_i64_after, scalar_range_summary,
+    verifier_value_summary,
 };
 use bpfanalysis::VerifierInsn;
 
@@ -249,11 +250,20 @@ fn map_value_access_required_proof(
 
     let register = register.or_else(|| latest_map_value_register(states, terminal_pc));
     let state = register.and_then(|reg| latest_reg_state_before(states, terminal_pc, reg));
-    let value_size = parse_i64_after(message, "value_size=")
+    let access = map_value_access_error(message);
+    let value_size = access
+        .map(|access| i64::from(access.value_size))
+        .or_else(|| parse_i64_after(message, "value_size="))
         .or_else(|| state.and_then(|state| state.map_value_size.map(i64::from)));
-    let access_off = parse_i64_after(message, "off=");
-    let access_size = parse_i64_after(message, "size=");
-    let access_end = access_off.and_then(|off| access_size.and_then(|size| off.checked_add(size)));
+    let access_off = access
+        .map(|access| access.offset)
+        .or_else(|| parse_i64_after(message, "off="));
+    let access_size = access
+        .map(|access| i64::from(access.size))
+        .or_else(|| parse_i64_after(message, "size="));
+    let access_end = access
+        .and_then(|access| access.end())
+        .or_else(|| access_off.and_then(|off| access_size.and_then(|size| off.checked_add(size))));
     let state_summary = state.map(verifier_value_summary);
 
     let description = match (register, value_size, access_off, access_size, state_summary) {

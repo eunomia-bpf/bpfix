@@ -4,6 +4,7 @@ use super::{
 };
 use crate::family::ProofObligation;
 use crate::output::NextAction;
+use bpfanalysis::verifier_log::verifier_states_from_log;
 use std::collections::BTreeSet;
 
 #[test]
@@ -222,6 +223,45 @@ fn map_value_access_case_describes_value_size_bounds() {
                 .detail
                 .contains("map_value(value_size=24,range(smin=0,smax=63,umax=63)")
     }));
+}
+
+#[test]
+fn map_value_required_proof_preserves_signed_offsets() {
+    let log = "0: R1=map_value(map=foo,ks=4,vs=16) R10=fp0\n";
+    let analysis = analyze_verifier_log(
+        log,
+        Some(0),
+        None,
+        "invalid access to map value, value_size=16 off=-1 size=8",
+        None,
+        ProofObligation::ScalarRange,
+    )
+    .unwrap();
+
+    assert!(analysis.required_proof.description.contains("off=-1"));
+    assert!(analysis.required_proof.description.contains("size=8"));
+    assert!(analysis
+        .required_proof
+        .rejection_detail
+        .contains("reaches byte 7"));
+}
+
+#[test]
+fn map_value_wide_access_accepts_signed_offsets() {
+    let log = "\
+0: R1=map_value(map=foo,ks=4,vs=4) R10=fp0
+1: (79) r0 = *(u64 *)(r1 -1)
+";
+    let states = verifier_states_from_log(log).unwrap();
+
+    assert!(super::map_value_signal::map_value_wide_access(
+        log,
+        "invalid access to map value, value_size=4 off=-1 size=8",
+        Some(1),
+        None,
+        Some(1),
+        &states,
+    ));
 }
 
 #[test]

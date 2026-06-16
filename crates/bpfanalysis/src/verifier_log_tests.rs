@@ -712,6 +712,38 @@ fn interprets_scalar_and_map_value_register_state() {
 }
 
 #[test]
+fn parses_map_value_access_error() {
+    let access =
+        map_value_access_error("invalid access to map value, value_size=16 off=15 size=2").unwrap();
+    assert_eq!(
+        access,
+        MapValueAccessError {
+            value_size: 16,
+            offset: 15,
+            size: 2
+        }
+    );
+    assert_eq!(access.end(), Some(17));
+    assert!(access.exceeds_value_size());
+    assert!(!access.access_is_wider_than_value());
+
+    let negative =
+        map_value_access_error("invalid access to map value, value_size=16 off=-1 size=8").unwrap();
+    assert_eq!(negative.offset, -1);
+    assert_eq!(negative.end(), Some(7));
+    assert!(!negative.exceeds_value_size());
+
+    let overflow = map_value_access_error(&format!(
+        "invalid access to map value, value_size=16 off={} size=1",
+        i64::MAX
+    ))
+    .unwrap();
+    assert_eq!(overflow.end(), None);
+    assert!(!overflow.exceeds_value_size());
+    assert!(map_value_access_error("invalid access to packet, off=0 size=1").is_none());
+}
+
+#[test]
 fn queries_latest_unsafe_scalar_and_nullable_state() {
     let log = r#"
 0: R1=scalar(smin=-1,umax=5) R2=map_value_or_null(id=1,map=foo,ks=4,vs=8)
