@@ -12,6 +12,7 @@ pub mod analysis;
 pub mod helper_abi;
 #[cfg(feature = "analysis")]
 pub mod insn;
+pub mod libbpf_log;
 #[cfg(feature = "object-analysis")]
 pub mod object_file;
 #[cfg(feature = "analysis")]

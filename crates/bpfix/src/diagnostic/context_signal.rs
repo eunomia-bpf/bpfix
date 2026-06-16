@@ -1,3 +1,6 @@
+use bpfanalysis::libbpf_log::{
+    active_libbpf_program_section, core_relocation_struct_for_active_program,
+};
 use bpfanalysis::verifier_log::{
     latest_reg_state_before, latest_reg_state_before_instruction,
     latest_reg_state_before_instruction_with_origin, memory_access_base_register,
@@ -188,7 +191,9 @@ fn active_context_section_is_tracepoint(context: &ProofSignalContext<'_>) -> boo
             .iter()
             .any(|section| section_is_tracepoint(section));
     }
-    active_libbpf_program_section(context).is_some_and(section_is_tracepoint)
+    terminal_error_line_in_log(context.full_log, context.terminal_error)
+        .and_then(|before_line| active_libbpf_program_section(context.full_log, before_line))
+        .is_some_and(section_is_tracepoint)
 }
 
 fn section_is_tracepoint(section: &str) -> bool {
@@ -198,34 +203,6 @@ fn section_is_tracepoint(section: &str) -> bool {
         || section.starts_with("raw_tracepoint/")
         || section.starts_with("raw_tp/")
         || section == "raw_tp"
-}
-
-fn active_libbpf_program_section<'a>(context: &ProofSignalContext<'a>) -> Option<&'a str> {
-    let before_line = terminal_error_line_in_log(context.full_log, context.terminal_error)?;
-    let (program_name, window_start) = current_libbpf_program_scope(context.full_log, before_line)?;
-    libbpf_section_for_program(context.full_log, window_start, before_line, program_name)
-}
-
-fn libbpf_section_for_program<'a>(
-    log: &'a str,
-    window_start: usize,
-    before_line: usize,
-    program_name: &str,
-) -> Option<&'a str> {
-    let lines = log.lines().collect::<Vec<_>>();
-    let end = before_line.saturating_sub(1).min(lines.len());
-    let start = window_start.saturating_sub(1).min(end);
-    lines[start..end]
-        .iter()
-        .rev()
-        .find_map(|line| libbpf_found_program_section(line, program_name))
-}
-
-fn libbpf_found_program_section<'a>(line: &'a str, program_name: &str) -> Option<&'a str> {
-    let (_, tail) = line.split_once("libbpf: sec '")?;
-    let (section, tail) = tail.split_once("': found program '")?;
-    let (found_program, _) = tail.split_once('\'')?;
-    (found_program == program_name && !section.is_empty()).then_some(section)
 }
 
 pub(super) fn context_field_unavailable(context: &ProofSignalContext<'_>) -> bool {
@@ -359,16 +336,9 @@ pub(super) fn kernel_object_field_access_mismatch(context: &ProofSignalContext<'
     else {
         return false;
     };
-    let Some((program_name, window_start)) =
-        current_libbpf_program_scope(context.full_log, before_line)
-    else {
-        return false;
-    };
-    core_relocation_struct_for_instruction(
+    core_relocation_struct_for_active_program(
         context.full_log,
-        window_start,
         before_line,
-        program_name,
         instruction.pc,
         access_offset,
     )
@@ -403,99 +373,6 @@ fn packet_context_field_loaded_from_ctx(
 
 fn is_skb_packet_pointer_field_offset(offset: i64) -> bool {
     matches!(offset, 76 | 80)
-}
-
-fn current_libbpf_program_scope(log: &str, before_line: usize) -> Option<(&str, usize)> {
-    let lines = log.lines().collect::<Vec<_>>();
-    let before = before_line.saturating_sub(1).min(lines.len());
-    let (begin_idx, program_name) =
-        lines[..before]
-            .iter()
-            .enumerate()
-            .rev()
-            .find_map(|(idx, line)| {
-                line.contains("-- BEGIN PROG LOAD LOG --")
-                    .then(|| libbpf_program_name(line).map(|name| (idx, name)))
-                    .flatten()
-            })?;
-    let window_start = current_libbpf_load_window_start(&lines, begin_idx);
-    Some((program_name, window_start))
-}
-
-fn current_libbpf_load_window_start(lines: &[&str], before_idx: usize) -> usize {
-    let prior = &lines[..before_idx];
-    if let Some(idx) = prior
-        .iter()
-        .enumerate()
-        .rev()
-        .find_map(|(idx, line)| line.starts_with("libbpf: loading object").then_some(idx))
-    {
-        return idx + 2;
-    }
-    prior
-        .iter()
-        .enumerate()
-        .rev()
-        .find_map(|(idx, line)| line.contains("-- END PROG LOAD LOG --").then_some(idx + 2))
-        .unwrap_or(1)
-}
-
-fn libbpf_program_name(line: &str) -> Option<&str> {
-    let (_, tail) = line.split_once("prog '")?;
-    let (name, _) = tail.split_once("':")?;
-    (!name.is_empty()).then_some(name)
-}
-
-fn line_is_libbpf_program(line: &str, program_name: &str) -> bool {
-    libbpf_program_name(line).is_some_and(|name| name == program_name)
-}
-
-fn core_relocation_struct_for_instruction<'a>(
-    log: &'a str,
-    window_start: usize,
-    before_line: usize,
-    program_name: &str,
-    pc: usize,
-    offset: u32,
-) -> Option<&'a str> {
-    let patched_pc = u32::try_from(pc).ok()?;
-    let lines = log.lines().collect::<Vec<_>>();
-    let end = before_line.saturating_sub(1).min(lines.len());
-    let start = window_start.saturating_sub(1).min(end);
-    let scoped_lines = &lines[start..end];
-    let patched_relo_ids = scoped_lines
-        .iter()
-        .filter_map(|line| {
-            if !line_is_libbpf_program(line, program_name)
-                || parse_u32_after(line, "patched insn #") != Some(patched_pc)
-                || !core_patched_offset_matches(line, offset)
-            {
-                return None;
-            }
-            parse_u32_after(line, "relo #")
-        })
-        .collect::<Vec<_>>();
-    scoped_lines
-        .iter()
-        .rev()
-        .filter(|line| line_is_libbpf_program(line, program_name))
-        .filter(|line| {
-            parse_u32_after(line, "relo #")
-                .is_some_and(|relo_id| patched_relo_ids.contains(&relo_id))
-        })
-        .find_map(|line| core_relocation_struct_name(line))
-}
-
-fn core_patched_offset_matches(line: &str, offset: u32) -> bool {
-    parse_u32_after(line, " off ") == Some(offset) || parse_u32_after(line, " -> ") == Some(offset)
-}
-
-fn core_relocation_struct_name(line: &str) -> Option<&str> {
-    let (_, tail) = line.split_once("struct ")?;
-    let name = tail
-        .split(|ch: char| !(ch.is_ascii_alphanumeric() || ch == '_'))
-        .next()?;
-    (!name.is_empty()).then_some(name)
 }
 
 fn terminal_error_line_in_log(log: &str, terminal_error: &str) -> Option<usize> {
