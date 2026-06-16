@@ -232,6 +232,8 @@ R2 invalid mem access 'scalar'
 
     let direct = instruction_on_log_line(log, 5).unwrap();
     assert_eq!(direct.pc, 1);
+    assert_eq!(call_target_on_log_line(log, 2), Some("bpf_map_lookup_elem"));
+    assert_eq!(call_target_on_log_line(log, 5), None);
 }
 
 #[test]

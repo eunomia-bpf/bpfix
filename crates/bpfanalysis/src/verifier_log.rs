@@ -435,6 +435,11 @@ pub fn instruction_on_log_line(
     })
 }
 
+pub fn call_target_on_log_line(log: &str, line_number: usize) -> Option<&str> {
+    instruction_on_log_line(log, line_number)
+        .and_then(|instruction| call_target_from_instruction_tail(instruction.tail))
+}
+
 pub fn terminal_instruction_site(
     log: &str,
     terminal_pc: Option<usize>,

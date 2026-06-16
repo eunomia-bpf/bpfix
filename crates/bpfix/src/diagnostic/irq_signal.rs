@@ -1,5 +1,5 @@
 use bpfanalysis::verifier_log::{
-    call_target_from_instruction_tail, instruction_on_log_line, instruction_site_before_line,
+    call_target_from_instruction_tail, call_target_on_log_line, instruction_site_before_line,
     latest_ref_state_before_instruction, latest_verifier_state_at_or_before_instruction,
     latest_verifier_state_before_instruction, parse_u32_after, reg_state_has_variable_offset,
     stack_value_range, terminal_instruction_site, verifier_fragment_start_line, RegState,
@@ -399,9 +399,4 @@ fn irq_save_ref_origin_before_exit(
         .any(|state| {
             call_target_on_log_line(context.log, state.log_line).is_some_and(irq_save_target)
         })
-}
-
-fn call_target_on_log_line(log: &str, line_number: usize) -> Option<&str> {
-    instruction_on_log_line(log, line_number)
-        .and_then(|instruction| call_target_from_instruction_tail(instruction.tail))
 }
