@@ -98,6 +98,15 @@ fn parses_memory_access_shape() {
     assert!(slot.overlaps(access));
     assert!(slot.contains(-16));
     assert!(slot.contains_range(access));
+    let reg_access = stack_read_access("invalid read from stack R3 off -24+8 size 9").unwrap();
+    assert_eq!(reg_access.reg, Some(3));
+    assert_eq!(reg_access.base_off, -24);
+    assert_eq!(reg_access.delta, 8);
+    assert_eq!(reg_access.size, 9);
+    assert_eq!(reg_access.range().unwrap().start(), -16);
+    let bare_access = stack_read_access("invalid read from stack off -16+0 size 4").unwrap();
+    assert_eq!(bare_access.reg, None);
+    assert_eq!(bare_access.range().unwrap().end(), -12);
     assert_eq!(slot.len(), 8);
     assert_eq!(slot.start(), -16);
     assert_eq!(slot.end(), -8);

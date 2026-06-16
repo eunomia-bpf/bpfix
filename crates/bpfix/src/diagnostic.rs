@@ -2309,10 +2309,12 @@ fn terminal_error_has_nearby_prior_line(
     predicate: impl Fn(&str) -> bool,
 ) -> bool {
     let lines = log.lines().collect::<Vec<_>>();
-    if let Some(idx) = terminal_line.and_then(|line| line.checked_sub(1)) {
+    if let Some((line, idx)) = terminal_line.and_then(|line| Some((line, line.checked_sub(1)?))) {
+        let fragment_start = verifier_fragment_start_line(log, line).saturating_sub(1);
+        let lookback_start = idx.saturating_sub(lookback).max(fragment_start);
         return lines.get(idx).is_some_and(|line| {
             line.contains(terminal_error)
-                && lines[idx.saturating_sub(lookback)..idx]
+                && lines[lookback_start..idx]
                     .iter()
                     .any(|prior| predicate(prior))
         });

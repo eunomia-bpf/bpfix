@@ -3761,6 +3761,27 @@ fn opaque_probe_read_pointer_values_report_protocol_action() {
         "helper-written stack storage"
     ));
 
+    let caller_frame_helper_output_pointer = run_json_stdin(
+        "func#0 @0\n\
+         func#1 @10\n\
+         0: R1=fp-8 R2=8 R3=scalar() R10=fp0\n\
+         1: (85) call bpf_probe_read_kernel#113\n\
+         10: frame1: R6=fp[0]-8 R10=fp0 cb\n\
+         11: (79) r7 = *(u64 *)(r6 +0) ; frame1: R7_w=scalar()\n\
+         12: (71) r0 = *(u8 *)(r7 +0)\n\
+         R7 invalid mem access 'scalar'\n",
+    );
+    assert_eq!(caller_frame_helper_output_pointer["error_id"], "BPFIX-E011");
+    assert_eq!(
+        caller_frame_helper_output_pointer["next_action"],
+        "protocol"
+    );
+    assert!(evidence_contains(
+        &caller_frame_helper_output_pointer,
+        "verifier_state_signal",
+        "helper-written stack storage"
+    ));
+
     let copied_helper_output_pointer = run_json_stdin(
         "func#0 @0\n\
          0: R1=fp-8 R2=8 R3=scalar() R6=scalar() R7=scalar() R10=fp0\n\
@@ -5459,6 +5480,38 @@ invalid verifier frobnication
         "stack slot contains dynptr state"
     ));
 
+    let cross_frame_dynptr_helper_read = run_json_stdin(
+        "func#0 @0\n\
+         func#1 @10\n\
+         0: (85) call bpf_ringbuf_reserve_dynptr#198 ; R0_w=scalar() fp-16_w=dynptr_ringbuf(id=1,dynptr_id=1)\n\
+         10: frame1: R3=fp-16 R4=8 R10=fp0 cb\n\
+         11: (85) call bpf_dynptr_slice#71567\n\
+         invalid read from stack R3 off -16+0 size 8\n\
+         arg#2 arg#3 memory, len pair leads to invalid memory access\n",
+    );
+    assert_ne!(cross_frame_dynptr_helper_read["error_id"], "BPFIX-E012");
+    assert!(!evidence_contains(
+        &cross_frame_dynptr_helper_read,
+        "verifier_state_signal",
+        "stack slot contains dynptr state"
+    ));
+
+    let caller_frame_dynptr_helper_read = run_json_stdin(
+        "func#0 @0\n\
+         func#1 @10\n\
+         0: (85) call bpf_ringbuf_reserve_dynptr#198 ; R0_w=scalar() fp-16_w=dynptr_ringbuf(id=1,dynptr_id=1)\n\
+         10: frame1: R3=fp[0]-16 R4=8 R10=fp0 cb\n\
+         11: (85) call bpf_dynptr_slice#71567\n\
+         invalid read from stack R3 off -16+0 size 8\n\
+         arg#2 arg#3 memory, len pair leads to invalid memory access\n",
+    );
+    assert_eq!(caller_frame_dynptr_helper_read["error_id"], "BPFIX-E012");
+    assert!(evidence_contains(
+        &caller_frame_dynptr_helper_read,
+        "verifier_state_signal",
+        "stack slot contains dynptr state"
+    ));
+
     let unknown_terminal_dynptr_storage_store = run_stdin_output(
         "func#0 @0\n\
          0: R1=ctx() R10=fp0\n\
@@ -5698,6 +5751,38 @@ fn iterator_state_storage_reports_protocol_violation() {
     assert_eq!(caller_frame_iterator_storage_read["error_id"], "BPFIX-E014");
     assert!(evidence_contains(
         &caller_frame_iterator_storage_read,
+        "verifier_state_signal",
+        "stack slot contains iterator state"
+    ));
+
+    let cross_frame_iterator_helper_read = run_json_stdin(
+        "func#0 @0\n\
+         func#1 @10\n\
+         5: (85) call bpf_iter_num_new#71887 ; R0_w=scalar() fp-24_w=iter_num(ref_id=1,state=active,depth=0) refs=1\n\
+         10: frame1: R3=fp-24 R4=8 R10=fp0 cb\n\
+         11: (85) call bpf_probe_read_kernel#113\n\
+         invalid read from stack R3 off -24+0 size 8\n\
+         arg#2 arg#3 memory, len pair leads to invalid memory access\n",
+    );
+    assert_ne!(cross_frame_iterator_helper_read["error_id"], "BPFIX-E014");
+    assert!(!evidence_contains(
+        &cross_frame_iterator_helper_read,
+        "verifier_state_signal",
+        "stack slot contains iterator state"
+    ));
+
+    let caller_frame_iterator_helper_read = run_json_stdin(
+        "func#0 @0\n\
+         func#1 @10\n\
+         5: (85) call bpf_iter_num_new#71887 ; R0_w=scalar() fp-24_w=iter_num(ref_id=1,state=active,depth=0) refs=1\n\
+         10: frame1: R3=fp[0]-24 R4=8 R10=fp0 cb\n\
+         11: (85) call bpf_probe_read_kernel#113\n\
+         invalid read from stack R3 off -24+0 size 8\n\
+         arg#2 arg#3 memory, len pair leads to invalid memory access\n",
+    );
+    assert_eq!(caller_frame_iterator_helper_read["error_id"], "BPFIX-E014");
+    assert!(evidence_contains(
+        &caller_frame_iterator_helper_read,
         "verifier_state_signal",
         "stack slot contains iterator state"
     ));

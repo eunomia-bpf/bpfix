@@ -52,7 +52,7 @@ pub(super) fn opaque_scalar_pointer_dereference(context: &ProofSignalContext<'_>
     if state.reg_type != "scalar" {
         return false;
     }
-    let Some((stack_load, stack_range)) = latest_stack_pointer_value_load_source(
+    let Some(stack_load) = latest_stack_pointer_value_load_source(
         context.branch_states,
         context.log,
         instruction,
@@ -66,10 +66,16 @@ pub(super) fn opaque_scalar_pointer_dereference(context: &ProofSignalContext<'_>
         context.branch_states,
         context.log,
         fragment_start,
-        stack_load.line,
-        stack_range,
-        frame,
+        stack_load.instruction.line,
+        stack_load.range,
+        stack_load.storage_frame,
     )
+}
+
+struct StackPointerValueLoad<'a> {
+    instruction: TerminalInstruction<'a>,
+    range: StackByteRange,
+    storage_frame: usize,
 }
 
 fn latest_stack_pointer_value_load_source<'a>(
@@ -79,7 +85,7 @@ fn latest_stack_pointer_value_load_source<'a>(
     fragment_start: usize,
     reg: u8,
     frame: usize,
-) -> Option<(TerminalInstruction<'a>, StackByteRange)> {
+) -> Option<StackPointerValueLoad<'a>> {
     latest_stack_pointer_value_load_source_inner(
         states,
         log,
@@ -99,7 +105,7 @@ fn latest_stack_pointer_value_load_source_inner<'a>(
     reg: u8,
     frame: usize,
     depth: usize,
-) -> Option<(TerminalInstruction<'a>, StackByteRange)> {
+) -> Option<StackPointerValueLoad<'a>> {
     if depth > 8 {
         return None;
     }
@@ -122,16 +128,14 @@ fn latest_stack_pointer_value_load_source_inner<'a>(
                     fragment_start,
                     base_reg,
                 )?;
-                if base_frame != frame
-                    || base.reg_type != "fp"
-                    || reg_state_has_variable_offset(base)
-                {
+                if base.reg_type != "fp" || reg_state_has_variable_offset(base) {
                     return None;
                 }
-                return Some((
+                return Some(StackPointerValueLoad {
                     instruction,
-                    stack_memory_access_range(base, instruction.tail)?,
-                ));
+                    range: stack_memory_access_range(base, instruction.tail)?,
+                    storage_frame: base_frame,
+                });
             }
             let source = instruction_register_copy_source(instruction.tail, reg)?;
             latest_stack_pointer_value_load_source_inner(

@@ -1,9 +1,9 @@
 use bpfanalysis::verifier_log::{
     latest_reg_state_before_instruction_with_frame, latest_verifier_state_before_instruction,
-    memory_access_base_register, memory_access_is_load, memory_access_is_store, stack_access_range,
+    memory_access_base_register, memory_access_is_load, memory_access_is_store, stack_read_access,
     stack_value_range, terminal_instruction_access_width, terminal_instruction_memory_offset,
-    terminal_instruction_site, verifier_fragment_start_line, RegState, StackByteRange, StackState,
-    VerifierLogInstruction as TerminalInstruction,
+    terminal_instruction_site, verifier_fragment_start_line, RegState, StackByteRange,
+    StackReadAccess, StackState, VerifierLogInstruction as TerminalInstruction,
 };
 
 use super::{terminal_fragment_start, ProofSignalContext};
@@ -17,10 +17,28 @@ pub(super) struct StackAccessSite {
 pub(super) fn stack_access_site_from_context(
     context: &ProofSignalContext<'_>,
 ) -> Option<StackAccessSite> {
-    if let Some(range) = stack_read_access_range(context.terminal_error) {
-        return stack_access_site_for_terminal_range(context, range);
+    if let Some(access) = stack_read_access(context.terminal_error) {
+        return stack_access_site_for_stack_read(context, access);
     }
     terminal_stack_memory_access_site(context)
+}
+
+fn stack_access_site_for_stack_read(
+    context: &ProofSignalContext<'_>,
+    access: StackReadAccess,
+) -> Option<StackAccessSite> {
+    let range = access.range()?;
+    let instruction =
+        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)?;
+    let fragment_start = terminal_fragment_start(context, instruction);
+    if let Some(reg) = access.reg {
+        if let Some(frame) =
+            stack_access_frame_from_register(context, instruction, fragment_start, reg)
+        {
+            return Some(StackAccessSite { range, frame });
+        }
+    }
+    stack_access_site_for_terminal_range(context, range)
 }
 
 pub(super) fn stack_access_site_for_terminal_range(
@@ -45,21 +63,22 @@ fn stack_access_frame_from_instruction(
     fragment_start: usize,
 ) -> Option<usize> {
     let base_reg = memory_access_base_register(instruction.tail)?;
+    stack_access_frame_from_register(context, instruction, fragment_start, base_reg)
+}
+
+fn stack_access_frame_from_register(
+    context: &ProofSignalContext<'_>,
+    instruction: TerminalInstruction<'_>,
+    fragment_start: usize,
+    reg: u8,
+) -> Option<usize> {
     let (base, frame) = latest_reg_state_before_instruction_with_frame(
         context.states,
         instruction,
         fragment_start,
-        base_reg,
+        reg,
     )?;
     (base.reg_type == "fp").then_some(frame)
-}
-
-fn stack_read_access_range(message: &str) -> Option<StackByteRange> {
-    message
-        .to_ascii_lowercase()
-        .contains("read from stack")
-        .then(|| stack_access_range(message))
-        .flatten()
 }
 
 fn terminal_stack_memory_access_site(context: &ProofSignalContext<'_>) -> Option<StackAccessSite> {

@@ -1,7 +1,7 @@
 use bpfanalysis::verifier_log::{
     call_target_from_instruction_tail, initialized_stack_bytes_from_snapshot,
     instruction_uses_register as terminal_instruction_uses_register,
-    latest_reg_state_before_instruction, parse_i64_after, stack_value_range,
+    latest_reg_state_before_instruction, parse_i64_after, stack_read_access, stack_value_range,
     terminal_instruction_contains, terminal_instruction_site, verifier_fragment_start_line,
     verifier_path_snapshot_before_instruction, PathVerifierSnapshot, StackByteRange,
     VerifierLogInstruction as TerminalInstruction,
@@ -151,7 +151,7 @@ pub(super) fn helper_stack_read_exceeds_initialized_range(
     if !terminal.contains("read from stack") || !terminal.contains("memory, len pair") {
         return false;
     }
-    let Some(access) = parse_stack_read_access(context.terminal_error) else {
+    let Some(access) = stack_read_access(context.terminal_error) else {
         return false;
     };
     let Some(instruction) =
@@ -165,7 +165,7 @@ pub(super) fn helper_stack_read_exceeds_initialized_range(
     let Some((pointer_reg, len_reg)) = helper_stack_read_signature(target) else {
         return false;
     };
-    if access.reg != pointer_reg {
+    if access.reg != Some(pointer_reg) {
         return false;
     }
     if context.register.is_some_and(|reg| reg != pointer_reg) {
@@ -222,57 +222,6 @@ fn helper_stack_read_signature(target: &str) -> Option<(u8, u8)> {
         "bpf_dynptr_slice" | "bpf_dynptr_slice_rdwr" => Some((3, 4)),
         _ => None,
     }
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-struct StackReadAccess {
-    reg: u8,
-    base_off: i64,
-    delta: i64,
-    size: u64,
-}
-
-fn parse_stack_read_access(message: &str) -> Option<StackReadAccess> {
-    message.split(';').find_map(parse_stack_read_access_segment)
-}
-
-fn parse_stack_read_access_segment(segment: &str) -> Option<StackReadAccess> {
-    let tokens: Vec<_> = segment.split_whitespace().collect();
-    for window in tokens.windows(9) {
-        if window[0] != "invalid"
-            || window[1] != "read"
-            || window[2] != "from"
-            || window[3] != "stack"
-            || window[5] != "off"
-            || window[7] != "size"
-        {
-            continue;
-        }
-        let reg = window[4].strip_prefix('R')?.parse().ok()?;
-        let (base_off, delta) = parse_stack_offset_delta(window[6])?;
-        let size = window[8].parse().ok()?;
-        return Some(StackReadAccess {
-            reg,
-            base_off,
-            delta,
-            size,
-        });
-    }
-    None
-}
-
-fn parse_stack_offset_delta(expression: &str) -> Option<(i64, i64)> {
-    let split = expression
-        .char_indices()
-        .skip(1)
-        .find_map(|(idx, ch)| matches!(ch, '+' | '-').then_some(idx));
-    let Some(split) = split else {
-        return Some((expression.parse().ok()?, 0));
-    };
-    Some((
-        expression[..split].parse().ok()?,
-        expression[split..].parse().ok()?,
-    ))
 }
 
 fn helper_stack_read_length_from_snapshot(

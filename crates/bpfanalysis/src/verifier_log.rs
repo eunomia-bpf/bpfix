@@ -722,10 +722,76 @@ pub fn stack_value_range(offset: i16, size: i16) -> Option<StackByteRange> {
     StackByteRange::new(offset, offset.checked_add(size)?)
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct StackReadAccess {
+    pub reg: Option<u8>,
+    pub base_off: i64,
+    pub delta: i64,
+    pub size: u64,
+}
+
+impl StackReadAccess {
+    pub fn range(self) -> Option<StackByteRange> {
+        let start = self.base_off.checked_add(self.delta)?;
+        StackByteRange::new(
+            i16::try_from(start).ok()?,
+            i16::try_from(start.checked_add(i64::try_from(self.size).ok()?)?).ok()?,
+        )
+    }
+}
+
 pub fn stack_access_range(message: &str) -> Option<StackByteRange> {
-    let offset = parse_signed_i16_after(message, "off ")?;
-    let size = parse_signed_i16_after(message, "size ")?;
-    stack_value_range(offset, size)
+    stack_read_access(message).and_then(StackReadAccess::range)
+}
+
+pub fn stack_read_access(message: &str) -> Option<StackReadAccess> {
+    message.split(';').find_map(parse_stack_read_access_segment)
+}
+
+fn parse_stack_read_access_segment(segment: &str) -> Option<StackReadAccess> {
+    let tokens = segment.split_whitespace().collect::<Vec<_>>();
+    for start in 0..tokens.len().saturating_sub(3) {
+        if tokens[start..start + 4] != ["invalid", "read", "from", "stack"] {
+            continue;
+        }
+        let cursor = start + 4;
+        let (reg, off_idx) = if tokens.get(cursor) == Some(&"off") {
+            (None, cursor)
+        } else if tokens.get(cursor + 1) == Some(&"off") {
+            (
+                Some(tokens[cursor].strip_prefix('R')?.parse().ok()?),
+                cursor + 1,
+            )
+        } else {
+            continue;
+        };
+        let size_idx = off_idx + 2;
+        if tokens.get(size_idx) != Some(&"size") {
+            continue;
+        }
+        let (base_off, delta) = parse_stack_offset_delta(tokens.get(off_idx + 1)?)?;
+        return Some(StackReadAccess {
+            reg,
+            base_off,
+            delta,
+            size: tokens.get(size_idx + 1)?.parse().ok()?,
+        });
+    }
+    None
+}
+
+fn parse_stack_offset_delta(expression: &str) -> Option<(i64, i64)> {
+    let split = expression
+        .char_indices()
+        .skip(1)
+        .find_map(|(idx, ch)| matches!(ch, '+' | '-').then_some(idx));
+    let Some(split) = split else {
+        return Some((expression.parse().ok()?, 0));
+    };
+    Some((
+        expression[..split].parse().ok()?,
+        expression[split..].parse().ok()?,
+    ))
 }
 
 pub fn scalar_range_summary(state: &RegState) -> String {
