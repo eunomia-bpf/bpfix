@@ -56,6 +56,7 @@ pub struct ProofEvent {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ProofSignal {
     WideStackAlignment,
+    AtomicMemoryAccessScalarBase,
     SharedInstructionPointerMerge,
     SharedInstructionPathProofLoss,
     Alu32PointerCopyDropsProvenance,
@@ -241,6 +242,9 @@ impl ProofSignal {
             }
             Self::PerfEventOutputPacketAccess => {
                 "perf event output helper receives packet memory directly"
+            }
+            Self::AtomicMemoryAccessScalarBase => {
+                "atomic memory operation uses a scalar base instead of an aligned pointer"
             }
             Self::UnreadableReturnRegister => {
                 "return register is unreadable at BPF_EXIT"
@@ -480,6 +484,9 @@ impl ProofSignal {
             Self::PerfEventOutputPacketAccess => {
                 "verifier state at bpf_perf_event_output passes a packet pointer and scalar length as the data/size pair, but this helper cannot read packet memory directly"
             }
+            Self::AtomicMemoryAccessScalarBase => {
+                "verifier state at the rejected atomic memory operation shows the base register is scalar, so the verifier has no pointer alignment proof for the access"
+            }
             Self::UnreadableReturnRegister => {
                 "terminal verifier state rejects BPF_EXIT because the return register is not readable"
             }
@@ -680,6 +687,9 @@ impl ProofSignal {
             Self::PerfEventOutputPacketAccess => {
                 "Copy packet bytes into stack or map storage first, or use a helper path that supports packet data instead of passing the packet pointer directly as the perf-event payload."
             }
+            Self::AtomicMemoryAccessScalarBase => {
+                "Keep the atomic target as verifier-visible aligned storage, for example by applying the atomic operation to the map-value field itself instead of to a scalar value loaded from that field."
+            }
             Self::UnreadableReturnRegister => {
                 "Initialize R0 with a valid return code on every path before returning from the BPF program."
             }
@@ -794,6 +804,7 @@ impl ProofSignal {
                 | Self::UnreadableHelperArgument
                 | Self::MapPointerRawAccessContract
                 | Self::PerfEventOutputPacketAccess
+                | Self::AtomicMemoryAccessScalarBase
                 | Self::UnreadableReturnRegister
                 | Self::LegacySkbLoadUnreadableRegister
                 | Self::HelperStackReadExceedsInitializedRange
@@ -915,6 +926,7 @@ impl ProofSignal {
                 | Self::UnreadableHelperArgument
                 | Self::MapPointerRawAccessContract
                 | Self::PerfEventOutputPacketAccess
+                | Self::AtomicMemoryAccessScalarBase
                 | Self::UnreadableReturnRegister
                 | Self::LegacySkbLoadUnreadableRegister
                 | Self::HelperStackReadExceedsInitializedRange
@@ -1022,6 +1034,9 @@ impl ProofSignal {
             ),
             Self::PerfEventOutputPacketAccess => Some(
                 "pass bpf_perf_event_output helper-readable stack or map memory, not a live packet pointer, as its data payload",
+            ),
+            Self::AtomicMemoryAccessScalarBase => Some(
+                "prove the atomic memory operand is a verifier-visible aligned pointer, not a scalar loaded from another object",
             ),
             Self::UnreadableReturnRegister => {
                 Some("initialize R0 to a verifier-readable return value before BPF_EXIT")
@@ -1170,6 +1185,9 @@ impl ProofSignal {
             Self::PerfEventOutputPacketAccess => {
                 Some("this helper call passes packet memory as the output payload")
             }
+            Self::AtomicMemoryAccessScalarBase => {
+                Some("this atomic operation uses a scalar as its memory base")
+            }
             Self::UnreadableReturnRegister => Some("this exit has no readable value in R0"),
             Self::LegacySkbLoadUnreadableRegister => {
                 Some("this legacy skb load uses an implicit unreadable register")
@@ -1251,6 +1269,7 @@ impl ProofSignal {
             Self::UnreadableHelperArgument => Some("BPFIX-E010"),
             Self::MapPointerRawAccessContract => Some("BPFIX-E010"),
             Self::PerfEventOutputPacketAccess => Some("BPFIX-E010"),
+            Self::AtomicMemoryAccessScalarBase => Some("BPFIX-E007"),
             Self::UnreadableReturnRegister => Some("BPFIX-E003"),
             Self::LegacySkbLoadUnreadableRegister => Some("BPFIX-E003"),
             Self::HelperStackReadExceedsInitializedRange => Some("BPFIX-E003"),
@@ -2136,6 +2155,9 @@ fn proof_signals(context: ProofSignalContext<'_>) -> Vec<ProofSignal> {
     let mut signals = Vec::new();
     if stack_alignment_lowering_signal(&context) {
         signals.push(ProofSignal::WideStackAlignment);
+    }
+    if atomic_memory_alignment_scalar_base(&context) {
+        signals.push(ProofSignal::AtomicMemoryAccessScalarBase);
     }
     if pointer_shift_lowering_signal(&context) {
         signals.push(ProofSignal::PointerShiftDropsProvenance);
@@ -6597,6 +6619,48 @@ fn stack_alignment_lowering_signal(context: &ProofSignalContext<'_>) -> bool {
     total_offset.rem_euclid(i64::from(reported_size)) != 0
 }
 
+fn atomic_memory_alignment_scalar_base(context: &ProofSignalContext<'_>) -> bool {
+    if context.obligation != ProofObligation::Alignment {
+        return false;
+    }
+    let Some(reported_size) = misaligned_access_size(context.terminal_error) else {
+        return false;
+    };
+    if reported_size == 0 {
+        return false;
+    }
+    let Some(instruction) =
+        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)
+    else {
+        return false;
+    };
+    if !memory_access_is_atomic(instruction.tail) {
+        return false;
+    }
+    if atomic_memory_access_width(instruction.tail) != Some(reported_size) {
+        return false;
+    }
+    let Some(base_reg) = memory_access_base_register(instruction.tail) else {
+        return false;
+    };
+    let fragment_start = context
+        .terminal_line
+        .map(|line| verifier_fragment_start_line(context.log, line))
+        .unwrap_or_else(|| verifier_fragment_start_line(context.log, instruction.line));
+    let Some(base_state) = latest_reg_state_before_instruction(
+        context.branch_states,
+        instruction,
+        fragment_start,
+        base_reg,
+    )
+    .or_else(|| {
+        latest_reg_state_before_instruction(context.states, instruction, fragment_start, base_reg)
+    }) else {
+        return false;
+    };
+    base_state.reg_type == "scalar"
+}
+
 fn pointer_shift_lowering_signal(context: &ProofSignalContext<'_>) -> bool {
     if context.obligation != ProofObligation::PointerProvenance {
         return false;
@@ -6795,6 +6859,13 @@ fn misaligned_stack_access_size(message: &str) -> Option<u32> {
         .flatten()
 }
 
+fn misaligned_access_size(message: &str) -> Option<u32> {
+    message
+        .contains("misaligned access")
+        .then(|| parse_u32_after(message, "size ").or_else(|| parse_u32_after(message, "size=")))
+        .flatten()
+}
+
 fn memory_access_width(line_after_pc: &str) -> Option<u32> {
     let marker = "*(u";
     let start = line_after_pc.find(marker)? + marker.len();
@@ -6820,6 +6891,43 @@ fn memory_access_is_store(line_after_pc: &str) -> bool {
     !memory_access_is_load(line_after_pc)
         && line_after_pc.contains("*)(")
         && line_after_pc.contains(" = ")
+}
+
+fn instruction_opcode_body(line_after_pc: &str) -> &str {
+    line_after_pc
+        .split_once(';')
+        .map_or(line_after_pc, |(body, _)| body)
+        .trim()
+}
+
+fn memory_access_is_atomic(line_after_pc: &str) -> bool {
+    let body = instruction_opcode_body(line_after_pc);
+    (body.contains("atomic") && body.contains("*)(")) || body.contains("lock *(")
+}
+
+fn atomic_memory_access_width(line_after_pc: &str) -> Option<u32> {
+    let body = instruction_opcode_body(line_after_pc);
+    if !memory_access_is_atomic(body) {
+        return None;
+    }
+    let marker = "(u";
+    let bytes = body.as_bytes();
+    let mut search_start = 0usize;
+    while let Some(relative) = body[search_start..].find(marker) {
+        let start = search_start + relative + marker.len();
+        let mut end = start;
+        while end < bytes.len() && bytes[end].is_ascii_digit() {
+            end += 1;
+        }
+        if end > start && body.get(end..end + 4) == Some(" *)(") {
+            return body[start..end]
+                .parse::<u32>()
+                .ok()
+                .and_then(|bits| bits.checked_div(8));
+        }
+        search_start = search_start + relative + marker.len();
+    }
+    None
 }
 
 fn memory_access_offset(line_after_pc: &str) -> Option<i64> {

@@ -2637,6 +2637,53 @@ processed 2 insns (limit 1000000) max_states_per_insn 0 total_states 1 peak_stat
 }
 
 #[test]
+fn atomic_alignment_signal_requires_instruction_scoped_scalar_base() {
+    let no_state = run_json_stdin(
+        "\
+15: (db) r0 = atomic64_cmpxchg((u64 *)(r1 +0), r0, r2)
+misaligned access off (0x0; 0xffffffffffffffff)+0+0 size 8
+",
+    );
+    assert_eq!(no_state["error_id"], "BPFIX-E007");
+    assert_eq!(no_state["failure_class"], "source_bug");
+    assert!(!evidence_contains(
+        &no_state,
+        "verifier_state_signal",
+        "base register is scalar"
+    ));
+
+    let pointer_base = run_json_stdin(
+        "\
+14: R1=map_value(map=prog.bss,ks=4,vs=8) R0=0 R2=1
+15: (db) r0 = atomic64_cmpxchg((u64 *)(r1 +0), r0, r2)
+misaligned access off (0x0; 0xffffffffffffffff)+0+0 size 8
+",
+    );
+    assert_eq!(pointer_base["error_id"], "BPFIX-E007");
+    assert_eq!(pointer_base["failure_class"], "source_bug");
+    assert!(!evidence_contains(
+        &pointer_base,
+        "verifier_state_signal",
+        "base register is scalar"
+    ));
+
+    let comment_mentions_atomic = run_json_stdin(
+        "\
+14: R1=scalar() R10=fp0
+15: (79) r0 = *(u64 *)(r1 +0) ; comment mentions atomic xchg
+misaligned access off (0x0; 0xffffffffffffffff)+0+0 size 8
+",
+    );
+    assert_eq!(comment_mentions_atomic["error_id"], "BPFIX-E007");
+    assert_eq!(comment_mentions_atomic["failure_class"], "source_bug");
+    assert!(!evidence_contains(
+        &comment_mentions_atomic,
+        "verifier_state_signal",
+        "base register is scalar"
+    ));
+}
+
+#[test]
 fn ordinary_source_bugs_are_not_overclassified_as_runtime_artifacts() {
     let pointer_load_reuse =
         run_json("bpfix-bench/cases/stackoverflow-56965789/replay-verifier.log");
@@ -2652,6 +2699,11 @@ fn ordinary_source_bugs_are_not_overclassified_as_runtime_artifacts() {
         run_json("bpfix-bench/cases/stackoverflow-76441958/replay-verifier.log");
     assert_eq!(generic_alignment["error_id"], "BPFIX-E007");
     assert_eq!(generic_alignment["failure_class"], "source_bug");
+    assert!(evidence_contains(
+        &generic_alignment,
+        "verifier_state_signal",
+        "base register is scalar"
+    ));
 
     let packet_bounds = run_json("bpfix-bench/cases/stackoverflow-60053570/replay-verifier.log");
     assert_eq!(packet_bounds["error_id"], "BPFIX-E001");
