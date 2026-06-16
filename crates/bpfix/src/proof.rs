@@ -1,6 +1,7 @@
 use bpfanalysis::verifier_log::{
-    latest_reg_state_before, latest_register_with_type_before, map_value_access_error,
-    parse_i64_after, register_from_verifier_error, scalar_range_summary, verifier_value_summary,
+    arg_number_from_verifier_error, helper_name_from_verifier_error, latest_reg_state_before,
+    latest_register_with_type_before, map_value_access_error, parse_i64_after,
+    register_from_verifier_error, scalar_range_summary, verifier_value_summary,
 };
 use bpfanalysis::VerifierInsn;
 
@@ -49,7 +50,7 @@ fn dynptr_required_proof(
     register: Option<u8>,
 ) -> RequiredProof {
     let lower = message.to_ascii_lowercase();
-    let arg = parse_arg_number(message);
+    let arg = arg_number_from_verifier_error(message);
     let arg_label = arg.map(|arg| format!("arg #{arg}"));
     let helper_label = call_target
         .filter(|target| target.contains("dynptr"))
@@ -387,7 +388,7 @@ fn reference_required_proof(message: &str, register: Option<u8>) -> RequiredProo
 }
 
 fn environment_required_proof(message: &str) -> RequiredProof {
-    let helper = parse_helper_name(message);
+    let helper = helper_name_from_verifier_error(message);
     let description = match helper.as_deref() {
         Some(helper) => format!(
             "load this program with an attach type and kernel environment that allow {helper}, or avoid that helper on this path"
@@ -408,27 +409,4 @@ fn environment_required_proof(message: &str) -> RequiredProof {
         description,
         rejection_detail,
     }
-}
-
-fn parse_arg_number(message: &str) -> Option<i64> {
-    parse_i64_after(message, "arg #")
-        .or_else(|| parse_i64_after(message, "arg#"))
-        .or_else(|| parse_i64_after(message, "arg "))
-}
-
-fn parse_helper_name(message: &str) -> Option<String> {
-    for marker in ["cannot use helper ", "helper call ", "unknown func "] {
-        let Some(start) = message.find(marker).map(|idx| idx + marker.len()) else {
-            continue;
-        };
-        let helper = message[start..]
-            .split_whitespace()
-            .next()?
-            .trim_matches(|ch: char| ch == ':' || ch == ',' || ch == ';')
-            .to_string();
-        if !helper.is_empty() {
-            return Some(helper);
-        }
-    }
-    None
 }

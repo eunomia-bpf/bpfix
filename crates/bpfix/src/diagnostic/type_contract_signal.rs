@@ -1,7 +1,7 @@
 use bpfanalysis::verifier_log::{
     call_target_from_instruction_tail, direct_call_target_from_instruction_tail,
     latest_reg_state_before_instruction_with_log_line, latest_verifier_state_before_instruction,
-    parse_u32_after, register_written_between, RegState,
+    register_written_between, zero_based_arg_register_after, RegState,
     VerifierLogInstruction as TerminalInstruction,
 };
 
@@ -28,7 +28,7 @@ pub(super) fn kfunc_argument_type_mismatch(context: &ProofSignalContext<'_>) -> 
     }
     let Some(reg) = context
         .register
-        .or_else(|| parse_subprogram_arg_register(context.terminal_error))
+        .or_else(|| zero_based_arg_register_after(context.terminal_error, "arg#"))
     else {
         return false;
     };
@@ -71,14 +71,6 @@ fn kfunc_object_contract_target(target: &str, terminal: &str) -> bool {
         || target.contains("cpumask")
         || target.contains("rbtree")
         || target.contains("kptr")
-}
-
-fn parse_subprogram_arg_register(terminal_error: &str) -> Option<u8> {
-    let arg = parse_u32_after(terminal_error, "arg#")?;
-    if arg >= 5 {
-        return None;
-    }
-    u8::try_from(arg + 1).ok()
 }
 
 fn expected_kfunc_struct_type(terminal: &str) -> Option<&str> {

@@ -1,7 +1,8 @@
 use bpfanalysis::verifier_log::{
     call_target_from_instruction_tail, latest_reg_state_before,
-    latest_reg_state_before_instruction, memory_access_base_register, parse_u32_after,
-    terminal_instruction_contains, verifier_path_snapshot_before_instruction,
+    latest_reg_state_before_instruction, memory_access_base_register,
+    register_for_zero_based_arg_index, terminal_instruction_contains,
+    verifier_path_snapshot_before_instruction, zero_based_arg_index_after,
 };
 
 use crate::family::ProofObligation;
@@ -97,13 +98,13 @@ pub(super) fn subprogram_reference_metadata_missing(context: &ProofSignalContext
     ) else {
         return false;
     };
-    let Some(arg_index) = subprogram_argument_index(context.terminal_error) else {
+    let Some(arg_index) = zero_based_arg_index_after(context.terminal_error, "arg#") else {
         return false;
     };
     let Some(argument) = call_argument(&rejected.text, callee, arg_index as usize) else {
         return false;
     };
-    let Some(arg_reg) = subprogram_argument_register(arg_index) else {
+    let Some(arg_reg) = register_for_zero_based_arg_index(arg_index) else {
         return false;
     };
     if source_argument_erases_reference_metadata(&argument) {
@@ -134,18 +135,6 @@ fn source_argument_erases_reference_metadata(argument: &str) -> bool {
         .collect::<String>()
         .to_ascii_lowercase();
     compact.contains("(void*)") || compact == "void*"
-}
-
-fn subprogram_argument_index(terminal_error: &str) -> Option<u32> {
-    let arg = parse_u32_after(terminal_error, "arg#")?;
-    (arg < 5).then_some(arg)
-}
-
-fn subprogram_argument_register(arg_index: u32) -> Option<u8> {
-    if arg_index >= 5 {
-        return None;
-    }
-    u8::try_from(arg_index + 1).ok()
 }
 
 pub(super) fn map_pointer_raw_access_contract(context: &ProofSignalContext<'_>) -> bool {

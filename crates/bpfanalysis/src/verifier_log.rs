@@ -2680,6 +2680,62 @@ pub fn register_from_verifier_error(message: &str) -> Option<u8> {
     None
 }
 
+/// Parses a verifier terminal argument number from forms such as `arg #1`,
+/// `arg#1`, or `arg 1`.
+///
+/// This reports the number printed by the verifier; it does not convert between
+/// helper ABI argument numbering and BPF registers.
+pub fn arg_number_from_verifier_error(message: &str) -> Option<u32> {
+    parse_u32_after(message, "arg #")
+        .or_else(|| parse_u32_after(message, "arg#"))
+        .or_else(|| parse_u32_after(message, "arg "))
+}
+
+/// Parses zero-based verifier call-slot indices from markers such as `arg#` or
+/// `args#`.
+///
+/// Do not use this for one-based messages such as `helper arg1`; those already
+/// name the BPF helper argument register directly.
+pub fn zero_based_arg_index_after(message: &str, marker: &str) -> Option<u32> {
+    let arg = parse_u32_after(message, marker)?;
+    (arg < 5).then_some(arg)
+}
+
+/// Converts a zero-based verifier call-slot index to the corresponding helper
+/// argument register (`arg#0` maps to R1).
+pub fn register_for_zero_based_arg_index(arg: u32) -> Option<u8> {
+    (arg < 5).then(|| (arg + 1) as u8)
+}
+
+/// Parses a zero-based `arg#`/`args#` verifier call-slot and returns its helper
+/// argument register.
+///
+/// Do not use this for one-based `helper argN` messages.
+pub fn zero_based_arg_register_after(message: &str, marker: &str) -> Option<u8> {
+    register_for_zero_based_arg_index(zero_based_arg_index_after(message, marker)?)
+}
+
+/// Parses the helper token printed in terminal verifier errors.
+///
+/// The returned token may include the verifier helper id suffix, for example
+/// `bpf_probe_read#4`.
+pub fn helper_name_from_verifier_error(message: &str) -> Option<String> {
+    for marker in ["cannot use helper ", "helper call ", "unknown func "] {
+        let Some(start) = message.find(marker).map(|idx| idx + marker.len()) else {
+            continue;
+        };
+        let helper = message[start..]
+            .split_whitespace()
+            .next()?
+            .trim_matches(|ch: char| ch == ':' || ch == ',' || ch == ';')
+            .to_string();
+        if !helper.is_empty() {
+            return Some(helper);
+        }
+    }
+    None
+}
+
 fn parse_marked_i64(raw: &str) -> Option<i64> {
     let (negative, magnitude) = raw
         .strip_prefix('-')

@@ -4,7 +4,8 @@ use bpfanalysis::verifier_log::{
     latest_reg_state_in_line_range_before, latest_verifier_state_at_or_before_instruction,
     latest_verifier_state_before, parse_u32_after, scalar_state_outside_required_range,
     terminal_call_target, terminal_required_return_range, validation_seen,
-    verifier_fragment_start_line, CallbackKind, RegState, VerifierInsn,
+    verifier_fragment_start_line, zero_based_arg_register_after, CallbackKind, RegState,
+    VerifierInsn,
 };
 
 use crate::family::ProofObligation;
@@ -257,19 +258,11 @@ fn modern_bpf_object_protocol_register(
     fallback: Option<u8>,
 ) -> Option<u8> {
     fallback
-        .or_else(|| parse_arg_register_after(terminal, "args#"))
-        .or_else(|| parse_arg_register_after(terminal, "arg#"))
+        .or_else(|| zero_based_arg_register_after(terminal, "args#"))
+        .or_else(|| zero_based_arg_register_after(terminal, "arg#"))
         .or_else(|| {
             (target == "bpf_kptr_xchg" && terminal.contains("has no valid kptr")).then_some(1)
         })
-}
-
-fn parse_arg_register_after(message: &str, needle: &str) -> Option<u8> {
-    let arg = parse_u32_after(message, needle)?;
-    if arg >= 5 {
-        return None;
-    }
-    u8::try_from(arg + 1).ok()
 }
 
 fn modern_bpf_object_pointer_state(state: &RegState) -> bool {

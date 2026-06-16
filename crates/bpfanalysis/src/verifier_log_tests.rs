@@ -23,6 +23,32 @@ fn parses_marked_decimal_and_hex_numbers() {
         register_from_verifier_error("invalid access to map value"),
         None
     );
+    assert_eq!(
+        arg_number_from_verifier_error("expected an initialized dynptr as arg #1"),
+        Some(1)
+    );
+    assert_eq!(
+        arg_number_from_verifier_error(
+            "arg#2 reference type('UNKNOWN ') size cannot be determined"
+        ),
+        Some(2)
+    );
+    assert_eq!(
+        zero_based_arg_index_after("args#3 has bad type", "args#"),
+        Some(3)
+    );
+    assert_eq!(
+        zero_based_arg_register_after("arg#0 expected=map_ptr", "arg#"),
+        Some(1)
+    );
+    assert_eq!(
+        zero_based_arg_register_after("arg#5 expected=fp", "arg#"),
+        None
+    );
+    assert_eq!(
+        helper_name_from_verifier_error("program of this type cannot use helper bpf_probe_read#4"),
+        Some("bpf_probe_read#4".to_string())
+    );
 }
 
 #[test]
