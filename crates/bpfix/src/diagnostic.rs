@@ -1,20 +1,18 @@
 use anyhow::Result;
 use bpfanalysis::verifier_log::{
-    active_validation_start, atomic_memory_access_width, call_target_from_instruction_tail,
-    conditional_branch_registers, direct_call_target_from_instruction_tail,
-    initialized_stack_bytes_from_snapshot, instruction_adds_register, instruction_assigns_register,
-    instruction_destination_register, instruction_on_log_line, instruction_opcode_body,
-    instruction_reads_register, instruction_register_copy_source,
-    instruction_single_register_rhs_source, instruction_site_before_line,
-    instruction_uses_register as terminal_instruction_uses_register, instruction_writes_register,
-    instructions_in_line_range, is_verifier_error_line, is_verifier_fragment_boundary,
-    latest_nullable_state, latest_ref_state_before_instruction,
+    atomic_memory_access_width, call_target_from_instruction_tail, conditional_branch_registers,
+    direct_call_target_from_instruction_tail, initialized_stack_bytes_from_snapshot,
+    instruction_adds_register, instruction_assigns_register, instruction_destination_register,
+    instruction_on_log_line, instruction_opcode_body, instruction_reads_register,
+    instruction_register_copy_source, instruction_single_register_rhs_source,
+    instruction_site_before_line, instruction_uses_register as terminal_instruction_uses_register,
+    instruction_writes_register, instructions_in_line_range, is_verifier_error_line,
+    is_verifier_fragment_boundary, latest_nullable_state, latest_ref_state_before_instruction,
     latest_reg_state_at_or_before_instruction, latest_reg_state_before,
     latest_reg_state_before_instruction, latest_reg_state_before_instruction_with_frame,
     latest_reg_state_before_instruction_with_log_line,
-    latest_reg_state_before_instruction_with_origin, latest_reg_state_in_line_range_before,
-    latest_reg_state_index_before, latest_unsafe_scalar_state,
-    latest_verifier_state_at_or_before_instruction, latest_verifier_state_before,
+    latest_reg_state_before_instruction_with_origin, latest_reg_state_index_before,
+    latest_unsafe_scalar_state, latest_verifier_state_at_or_before_instruction,
     latest_verifier_state_before_instruction, loose_register_operands as register_operands,
     map_value_access_range_may_exceed_value_size, map_value_range_may_exceed_value_size,
     map_value_remaining_capacity, map_value_variable_max_offset, memory_access_base_register,
@@ -23,12 +21,11 @@ use bpfanalysis::verifier_log::{
     scalar_range_has_any_bound, scalar_range_max_i64, scalar_range_may_be_negative,
     scalar_range_may_include_zero, scalar_range_min_i64, scalar_range_upper_unbounded_or_too_large,
     scalar_ranges_match, scalar_state_upper_bound_at_most, stack_access_range, stack_value_range,
-    terminal_call_target, terminal_instruction_access_width, terminal_instruction_contains,
-    terminal_instruction_memory_offset, terminal_instruction_site, validation_seen,
-    verifier_fragment_start_line, verifier_path_snapshot_before_instruction,
-    verifier_states_with_branch_deltas_from_log, verifier_value_summary, CallbackKind,
-    PathVerifierSnapshot, RegState, StackByteRange, StackState, VerifierInsn, VerifierInsnKind,
-    VerifierLogInstruction as TerminalInstruction,
+    terminal_instruction_access_width, terminal_instruction_contains,
+    terminal_instruction_memory_offset, terminal_instruction_site, verifier_fragment_start_line,
+    verifier_path_snapshot_before_instruction, verifier_states_with_branch_deltas_from_log,
+    verifier_value_summary, CallbackKind, PathVerifierSnapshot, RegState, StackByteRange,
+    StackState, VerifierInsn, VerifierInsnKind, VerifierLogInstruction as TerminalInstruction,
 };
 
 use crate::family::ProofObligation;
@@ -76,6 +73,7 @@ pub struct ProofEvent {
 }
 
 mod context_signal;
+mod protocol_signal;
 mod signal;
 pub use signal::ProofSignal;
 
@@ -960,9 +958,9 @@ fn proof_signals(context: ProofSignalContext<'_>) -> Vec<ProofSignal> {
         ProofSignal::ContextFieldUnavailable => context_signal::context_field_unavailable(c),
         ProofSignal::PacketContextFieldAccessInUnsupportedProgram => context_signal::packet_context_field_access_in_unsupported_program(c),
         ProofSignal::KernelObjectFieldAccessMismatch => context_signal::kernel_object_field_access_mismatch(c),
-        ProofSignal::ExceptionThrowWithLiveReference => exception_throw_with_live_reference(c.log, c.terminal_pc, c.terminal_line, c.states),
-        ProofSignal::ReferenceLiveAtExit => reference_live_at_exit(c),
-        ProofSignal::ExceptionCallbackProtocolViolation => exception_callback_protocol_violation(c),
+        ProofSignal::ExceptionThrowWithLiveReference => protocol_signal::exception_throw_with_live_reference(c.log, c.terminal_pc, c.terminal_line, c.states),
+        ProofSignal::ReferenceLiveAtExit => protocol_signal::reference_live_at_exit(c),
+        ProofSignal::ExceptionCallbackProtocolViolation => protocol_signal::exception_callback_protocol_violation(c),
         ProofSignal::MapPointerArgumentScalarZero => map_pointer_argument_scalar_zero(c),
         ProofSignal::BtfFuncInfoMissing => btf_func_info_missing(c),
         ProofSignal::SubprogramReferenceMetadataMissing => subprogram_reference_metadata_missing(c),
@@ -989,10 +987,10 @@ fn proof_signals(context: ProofSignalContext<'_>) -> Vec<ProofSignal> {
         ProofSignal::IrqRestoreOrderMismatch => irq_restore_order_mismatch(c),
         ProofSignal::IrqRestoreHelperClassMismatch => irq_restore_helper_class_mismatch(c),
         ProofSignal::IrqStateLiveAtExit => irq_state_live_at_exit(c),
-        ProofSignal::SleepableCallInNonSleepableContext => sleepable_call_in_non_sleepable_context(c),
+        ProofSignal::SleepableCallInNonSleepableContext => protocol_signal::sleepable_call_in_non_sleepable_context(c),
         ProofSignal::CallbackCallWhileLocked => callback_call_while_locked(c),
         ProofSignal::NullablePointerUseWithoutProof => nullable_pointer_use_without_proof(c),
-        ProofSignal::ModernBpfObjectProtocolViolation => modern_bpf_object_protocol_violation(c),
+        ProofSignal::ModernBpfObjectProtocolViolation => protocol_signal::modern_bpf_object_protocol_violation(c),
         ProofSignal::KfuncArgumentTypeMismatch => kfunc_argument_type_mismatch(c),
         ProofSignal::TrustedNullableArgument => trusted_nullable_argument(c),
         ProofSignal::VerifierTypeContractMismatch => verifier_type_contract_mismatch(c),
@@ -1100,157 +1098,9 @@ fn invalid_scalar_memory_load_from_constant(
         .is_some_and(|value| (1..=4096).contains(&value))
 }
 
-fn exception_throw_with_live_reference(
-    log: &str,
-    terminal_pc: Option<usize>,
-    terminal_line: Option<usize>,
-    states: &[VerifierInsn],
-) -> bool {
-    if terminal_call_target(log, terminal_pc, terminal_line) != Some("bpf_throw") {
-        return false;
-    }
-    latest_verifier_state_before(states, terminal_pc, terminal_line).is_some_and(|state| {
-        state.callback_kind == Some(CallbackKind::Sync) && state.refs.is_some_and(|refs| refs > 0)
-    })
-}
-
-fn reference_live_at_exit(context: &ProofSignalContext<'_>) -> bool {
-    if !matches!(
-        context.obligation,
-        ProofObligation::ReferenceLifecycle | ProofObligation::Unknown
-    ) {
-        return false;
-    }
-    let terminal = context.terminal_error.to_ascii_lowercase();
-    if !terminal.contains("unreleased reference id=") {
-        return false;
-    }
-    let Some(ref_id) = parse_u32_after(&terminal, "reference id=") else {
-        return false;
-    };
-    let Some(alloc_pc) =
-        parse_u32_after(&terminal, "alloc_insn=").and_then(|pc| usize::try_from(pc).ok())
-    else {
-        return false;
-    };
-    let Some(instruction) =
-        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)
-    else {
-        return false;
-    };
-    if !instruction_is_bpf_exit(instruction.tail) {
-        return false;
-    }
-    let fragment_start = terminal_fragment_start(context, instruction);
-    let Some(exit_state) =
-        latest_verifier_state_at_or_before_instruction(context.states, instruction, fragment_start)
-    else {
-        return false;
-    };
-    exit_state.ref_ids.contains(&ref_id)
-        && reference_alloc_call_before_exit(
-            context,
-            fragment_start,
-            instruction.line,
-            alloc_pc,
-            ref_id,
-        )
-}
-
-fn reference_alloc_call_before_exit(
-    context: &ProofSignalContext<'_>,
-    fragment_start: usize,
-    before_line: usize,
-    alloc_pc: usize,
-    ref_id: u32,
-) -> bool {
-    let Some(alloc_instruction) =
-        instruction_site_before_line(context.log, alloc_pc, fragment_start, before_line)
-    else {
-        return false;
-    };
-    let Some(target) = call_target_from_instruction_tail(alloc_instruction.tail) else {
-        return false;
-    };
-    reference_acquire_target(target)
-        && context
-            .states
-            .iter()
-            .filter(|state| state.log_line >= alloc_instruction.line)
-            .filter(|state| state.log_line < before_line)
-            .any(|state| state.ref_ids.contains(&ref_id))
-}
-
-fn reference_acquire_target(target: &str) -> bool {
-    target.contains("_acquire")
-        || target.contains("_create")
-        || target.ends_with("_new")
-        || target.starts_with("bpf_ringbuf_reserve")
-        || target == "bpf_kptr_xchg"
-        || target == "bpf_obj_new"
-}
-
 fn instruction_is_bpf_exit(tail: &str) -> bool {
     let mut tokens = tail.split_whitespace();
     tokens.next() == Some("(95)") && tokens.next() == Some("exit")
-}
-
-fn exception_callback_protocol_violation(context: &ProofSignalContext<'_>) -> bool {
-    let terminal = context.terminal_error.to_ascii_lowercase();
-    if terminal.contains("cannot call exception cb directly") {
-        return direct_exception_callback_call(context);
-    }
-    if terminal.contains("at program exit")
-        && terminal.contains("register r0")
-        && terminal.contains("should have been in")
-    {
-        return exception_callback_return_contract_mismatch(context);
-    }
-    false
-}
-
-fn direct_exception_callback_call(context: &ProofSignalContext<'_>) -> bool {
-    let Some(terminal_line) = context.terminal_line else {
-        return false;
-    };
-    let Some(reported_pc) =
-        parse_u32_after(context.terminal_error, "insn ").and_then(|pc| usize::try_from(pc).ok())
-    else {
-        return false;
-    };
-    let fragment_start = verifier_fragment_start_line(context.log, terminal_line);
-    let Some(instruction) =
-        instruction_site_before_line(context.log, reported_pc, fragment_start, terminal_line)
-    else {
-        return false;
-    };
-    if call_target_from_instruction_tail(instruction.tail).is_none() {
-        return false;
-    }
-    validation_seen(context.log, instruction.line, terminal_line)
-}
-
-fn exception_callback_return_contract_mismatch(context: &ProofSignalContext<'_>) -> bool {
-    let Some(terminal_line) = context.terminal_line else {
-        return false;
-    };
-    let Some(required_range) = terminal_required_return_range(context.terminal_error) else {
-        return false;
-    };
-    let fragment_start = verifier_fragment_start_line(context.log, terminal_line);
-    let Some(validation_start) =
-        active_validation_start(context.log, fragment_start, terminal_line)
-    else {
-        return false;
-    };
-    latest_reg_state_in_line_range_before(
-        context.states,
-        validation_start,
-        terminal_line,
-        context.terminal_pc,
-        0,
-    )
-    .is_some_and(|state| scalar_state_outside_required_range(state, required_range))
 }
 
 fn terminal_required_return_range(message: &str) -> Option<(i64, i64)> {
@@ -1311,145 +1161,6 @@ fn nonnegative_required_range_as_u64(required: (i64, i64)) -> Option<(u64, u64)>
     let min = u64::try_from(required.0).ok()?;
     let max = u64::try_from(required.1).ok()?;
     Some((min, max))
-}
-
-fn sleepable_call_in_non_sleepable_context(context: &ProofSignalContext<'_>) -> bool {
-    let terminal = context.terminal_error.to_ascii_lowercase();
-    if !terminal.contains("may sleep")
-        && !terminal.contains("sleepable helper")
-        && !terminal.contains("non-sleepable")
-    {
-        return false;
-    }
-    if !terminal.contains("non-sleepable") && !terminal.contains("preempt-disabled") {
-        return false;
-    }
-    let Some(instruction) =
-        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)
-    else {
-        return false;
-    };
-    if !instruction.tail.contains("call ") {
-        return false;
-    }
-    let fragment_start = terminal_fragment_start(context, instruction);
-    prior_non_sleepable_state(context.log, fragment_start, instruction.line)
-}
-
-fn prior_non_sleepable_state(log: &str, start_line: usize, before_line: usize) -> bool {
-    let mut irq_save_depth = 0u32;
-    for instruction in instructions_in_line_range(log, start_line, before_line) {
-        let Some(target) = call_target_from_instruction_tail(instruction.tail) else {
-            continue;
-        };
-        match target {
-            "bpf_local_irq_save" | "bpf_rcu_read_lock" => {
-                irq_save_depth = irq_save_depth.saturating_add(1);
-            }
-            "bpf_local_irq_restore" | "bpf_rcu_read_unlock" => {
-                irq_save_depth = irq_save_depth.saturating_sub(1);
-            }
-            _ => {}
-        }
-    }
-    irq_save_depth > 0
-}
-
-fn modern_bpf_object_protocol_violation(context: &ProofSignalContext<'_>) -> bool {
-    let terminal = context.terminal_error.to_ascii_lowercase();
-    let Some(instruction) =
-        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)
-    else {
-        return false;
-    };
-    let Some(target) = call_target_from_instruction_tail(instruction.tail) else {
-        return false;
-    };
-    if !modern_bpf_object_protocol_target(target) {
-        return false;
-    }
-    let Some(reg) = modern_bpf_object_protocol_register(&terminal, target, context.register) else {
-        return false;
-    };
-    let fragment_start = terminal_fragment_start(context, instruction);
-    let Some(state) = latest_reg_state_for_call_argument(
-        context.states,
-        instruction,
-        fragment_start,
-        context.terminal_line,
-        reg,
-    ) else {
-        return false;
-    };
-
-    if terminal.contains("has no valid kptr") {
-        return target == "bpf_kptr_xchg" && invalid_kptr_storage_state(state);
-    }
-    if terminal.contains("must be a rcu pointer") {
-        return modern_bpf_object_pointer_state(state)
-            && !state.reg_type.starts_with("rcu_ptr")
-            && !state.reg_type.starts_with("trusted_ptr");
-    }
-    if terminal.contains("must be referenced or trusted") {
-        return modern_bpf_object_pointer_state(state) && !referenced_or_trusted_state(state);
-    }
-    if terminal.contains("pointer type struct") && terminal.contains("must point to scalar") {
-        return target.starts_with("bpf_cgroup_") && state.reg_type == "fp";
-    }
-    if terminal.contains("expected pointer to struct") {
-        return modern_bpf_object_pointer_state(state);
-    }
-    if terminal.contains("type=scalar expected=fp")
-        || terminal.contains("memory, len pair leads to invalid memory access")
-    {
-        return target == "bpf_cpumask_populate" && state.reg_type == "scalar";
-    }
-    false
-}
-
-fn modern_bpf_object_protocol_target(target: &str) -> bool {
-    target.starts_with("bpf_cgroup_")
-        || target.starts_with("bpf_cpumask_")
-        || target == "bpf_kptr_xchg"
-        || target == "bpf_dynptr_from_skb"
-}
-
-fn modern_bpf_object_protocol_register(
-    terminal: &str,
-    target: &str,
-    fallback: Option<u8>,
-) -> Option<u8> {
-    fallback
-        .or_else(|| parse_arg_register_after(terminal, "args#"))
-        .or_else(|| parse_arg_register_after(terminal, "arg#"))
-        .or_else(|| {
-            (target == "bpf_kptr_xchg" && terminal.contains("has no valid kptr")).then_some(1)
-        })
-}
-
-fn parse_arg_register_after(message: &str, needle: &str) -> Option<u8> {
-    let arg = parse_u32_after(message, needle)?;
-    if arg >= 5 {
-        return None;
-    }
-    u8::try_from(arg + 1).ok()
-}
-
-fn modern_bpf_object_pointer_state(state: &RegState) -> bool {
-    state.reg_type == "fp"
-        || state.reg_type == "scalar"
-        || state.reg_type.starts_with("ptr_")
-        || state.reg_type.starts_with("rcu_ptr")
-        || state.reg_type.starts_with("untrusted_ptr")
-        || state.reg_type.starts_with("trusted_ptr")
-}
-
-fn referenced_or_trusted_state(state: &RegState) -> bool {
-    state.reg_type.starts_with("trusted_ptr") || state.reg_type.contains("ref_obj_id")
-}
-
-fn invalid_kptr_storage_state(state: &RegState) -> bool {
-    state.reg_type == "map_value" || state.reg_type == "fp" || state.reg_type == "scalar"
 }
 
 fn map_pointer_argument_scalar_zero(context: &ProofSignalContext<'_>) -> bool {
