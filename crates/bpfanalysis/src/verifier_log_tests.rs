@@ -206,6 +206,11 @@ R2 invalid mem access 'scalar'
         terminal_instruction_memory_offset(log, Some(1), Some(6)),
         Some(-8)
     );
+    assert_eq!(
+        terminal_or_nearest_call_instruction_site(log, Some(1), Some(6), None)
+            .map(|instruction| instruction.line),
+        Some(5)
+    );
     assert!(terminal_instruction_contains(
         log,
         Some(1),
@@ -219,6 +224,25 @@ R2 invalid mem access 'scalar'
 
     let direct = instruction_on_log_line(log, 5).unwrap();
     assert_eq!(direct.pc, 1);
+}
+
+#[test]
+fn locates_nearest_call_through_dynptr_detail_lines() {
+    let log = "\
+0: (85) call bpf_dynptr_slice#200
+cannot pass in dynptr at an offset=-8
+expected an initialized dynptr as arg #1
+";
+
+    let instruction =
+        terminal_or_nearest_call_instruction_site(log, None, Some(3), Some("bpf_dynptr_slice"))
+            .unwrap();
+    assert_eq!(instruction.pc, 0);
+    assert_eq!(instruction.line, 1);
+    assert_eq!(
+        terminal_or_nearest_call_instruction_site(log, None, Some(3), Some("bpf_map_lookup_elem")),
+        None
+    );
 }
 
 #[test]

@@ -2,12 +2,12 @@ use anyhow::Result;
 use bpfanalysis::verifier_log::{
     atomic_memory_access_width, call_target_from_instruction_tail, instruction_assigns_register,
     instruction_frame, instruction_site_before_line, instructions_in_line_range,
-    is_verifier_error_line, latest_reg_state_before, latest_reg_state_before_instruction,
+    latest_reg_state_before, latest_reg_state_before_instruction,
     latest_reg_state_before_instruction_with_origin, latest_reg_state_for_call_argument,
     latest_reg_state_for_call_argument_with_frame, loop_state_snapshots_repeat,
     loose_register_operands as register_operands, memory_access_base_register,
-    memory_access_is_atomic, memory_access_offset, memory_access_width, parse_instruction_line,
-    parse_u32_after, reg_state_has_variable_offset, stack_value_range, terminal_instruction_site,
+    memory_access_is_atomic, memory_access_offset, memory_access_width, parse_u32_after,
+    reg_state_has_variable_offset, stack_value_range, terminal_instruction_site,
     terminal_loop_state_snapshots, verifier_fragment_start_line,
     verifier_states_with_branch_deltas_from_log, CallbackKind, RegState, StackByteRange,
     VerifierInsn, VerifierInsnKind, VerifierLogInstruction as TerminalInstruction,
@@ -744,84 +744,12 @@ fn latest_live_ref_dynptr_stack_overlap_before_instruction(
 fn terminal_call_instruction_site<'a>(
     context: &'a ProofSignalContext<'a>,
 ) -> Option<TerminalInstruction<'a>> {
-    terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line).or_else(
-        || {
-            nearest_call_instruction_before(
-                context.log,
-                context.terminal_line?,
-                context.terminal_call_target,
-            )
-        },
+    bpfanalysis::verifier_log::terminal_or_nearest_call_instruction_site(
+        context.log,
+        context.terminal_pc,
+        context.terminal_line,
+        context.terminal_call_target,
     )
-}
-
-fn nearest_call_instruction_before<'a>(
-    log: &'a str,
-    terminal_line: usize,
-    expected_target: Option<&'a str>,
-) -> Option<TerminalInstruction<'a>> {
-    let lines = log.lines().collect::<Vec<_>>();
-    let mut idx = terminal_line.saturating_sub(1).min(lines.len());
-    while idx > 0 {
-        let next_line_toward_terminal = lines.get(idx).map(|line| line.trim());
-        idx -= 1;
-        let line = lines[idx].trim();
-        if is_call_search_boundary(line, next_line_toward_terminal) {
-            return None;
-        }
-        let Some((pc, tail)) = parse_instruction_line(line) else {
-            continue;
-        };
-        let Some(target) = call_target_from_instruction_tail(tail) else {
-            continue;
-        };
-        if expected_target.is_some_and(|expected| expected != target) {
-            continue;
-        }
-        return Some(TerminalInstruction {
-            pc,
-            line: idx + 1,
-            tail,
-        });
-    }
-    None
-}
-
-fn is_call_search_boundary(line: &str, next_line_toward_terminal: Option<&str>) -> bool {
-    line.starts_with("func#")
-        || line.contains("-- BEGIN PROG LOAD LOG --")
-        || line.contains("-- END PROG LOAD LOG --")
-        || line.starts_with("processed ")
-        || line.starts_with("verification time ")
-        || line.starts_with("stack depth ")
-        || (is_verifier_error_line(line)
-            && !is_dynptr_call_detail_line(line, next_line_toward_terminal))
-}
-
-fn is_dynptr_call_detail_line(line: &str, next_line_toward_terminal: Option<&str>) -> bool {
-    let lower = line.to_ascii_lowercase();
-    (is_dynptr_stack_slot_detail_line(&lower)
-        && next_line_toward_terminal.is_some_and(is_dynptr_contract_terminal_line))
-        || (lower.contains("unbounded memory access")
-            && lower.contains("var")
-            && next_line_toward_terminal.is_some_and(is_memory_len_pair_error_line))
-}
-
-fn is_dynptr_stack_slot_detail_line(lower: &str) -> bool {
-    lower.contains("cannot pass in dynptr at an offset")
-        || lower.contains("dynptr has to be at a constant offset")
-        || lower.contains("expected pointer to stack or const struct bpf_dynptr")
-}
-
-fn is_dynptr_contract_terminal_line(line: &str) -> bool {
-    let lower = line.to_ascii_lowercase();
-    lower.contains("expected an initialized dynptr")
-        || lower.contains("dynptr has to be an uninitialized dynptr")
-}
-
-fn is_memory_len_pair_error_line(line: &str) -> bool {
-    line.to_ascii_lowercase()
-        .contains("memory, len pair leads to invalid memory access")
 }
 
 fn terminal_error_has_nearby_prior_line(
