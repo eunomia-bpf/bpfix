@@ -110,6 +110,14 @@ impl RegState {
         }
         self.exact_value.map(|value| value as u32)
     }
+
+    pub fn exact_scalar_value(&self) -> Option<u64> {
+        self.exact_u64().or_else(|| self.exact_u32().map(u64::from))
+    }
+
+    pub fn is_exact_zero_scalar(&self) -> bool {
+        self.exact_scalar_value() == Some(0)
+    }
 }
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct StackState {
@@ -923,9 +931,7 @@ fn verifier_post_insn_reg_states(
 }
 
 fn reg_exact_value(state: &RegState) -> Option<u64> {
-    state
-        .exact_u64()
-        .or_else(|| state.exact_u32().map(u64::from))
+    state.exact_scalar_value()
 }
 
 fn reg_exact_value_for_width(state: &RegState, is_32: bool) -> Option<u64> {
