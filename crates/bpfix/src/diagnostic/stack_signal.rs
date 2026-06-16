@@ -2,7 +2,7 @@ use bpfanalysis::helper_abi::{helper_stack_read_pair, helper_writable_stack_outp
 use bpfanalysis::verifier_log::{
     call_target_from_instruction_tail, initialized_stack_bytes_from_snapshot,
     instruction_is_bpf_exit, instruction_uses_register as terminal_instruction_uses_register,
-    latest_reg_state_before_instruction, parse_i64_after, stack_read_access, stack_value_range,
+    latest_reg_state_before_instruction, stack_read_access, stack_write_access_range,
     terminal_instruction_contains, verifier_fragment_start_line,
     verifier_path_snapshot_before_instruction, PathVerifierSnapshot, StackByteRange,
     VerifierLogInstruction as TerminalInstruction,
@@ -271,7 +271,7 @@ pub(super) fn helper_stack_write_beyond_frame(context: &ProofSignalContext<'_>) 
     let Some(access) = stack_write_access_range(context.terminal_error) else {
         return false;
     };
-    if bpf_stack_frame_contains(access) {
+    if access.is_within_bpf_stack_frame() {
         return false;
     }
     let Some(reg) = context.register else {
@@ -319,25 +319,4 @@ fn helper_write_size_argument_matches(
         return false;
     };
     size_arg.exact_scalar_value() == Some(access.len() as u64)
-}
-
-fn stack_write_access_range(message: &str) -> Option<StackByteRange> {
-    message
-        .to_ascii_lowercase()
-        .contains("invalid write to stack")
-        .then(|| {
-            let offset = parse_i64_after(message, "off=")
-                .or_else(|| parse_i64_after(message, "off "))
-                .and_then(|value| i16::try_from(value).ok())?;
-            let size = parse_i64_after(message, "size=")
-                .or_else(|| parse_i64_after(message, "size "))
-                .and_then(|value| i16::try_from(value).ok())?;
-            stack_value_range(offset, size)
-        })
-        .flatten()
-}
-
-fn bpf_stack_frame_contains(access: StackByteRange) -> bool {
-    const BPF_STACK_MIN_OFFSET: i16 = -512;
-    BPF_STACK_MIN_OFFSET <= access.start() && access.end() <= 0
 }

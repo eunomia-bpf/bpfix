@@ -144,6 +144,22 @@ fn parses_memory_access_shape() {
     assert_eq!(slot.len(), 8);
     assert_eq!(slot.start(), -16);
     assert_eq!(slot.end(), -8);
+    assert!(slot.is_within_bpf_stack_frame());
+    let write_access =
+        stack_write_access_range("invalid write to stack R1 off=-520 size=16").unwrap();
+    assert_eq!(write_access.start(), -520);
+    assert_eq!(write_access.end(), -504);
+    assert!(!write_access.is_within_bpf_stack_frame());
+    assert!(
+        stack_write_access_range("invalid write to stack R1 off -512 size 512")
+            .unwrap()
+            .is_within_bpf_stack_frame()
+    );
+    assert!(
+        !stack_write_access_range("invalid write to stack R1 off -512 size 513")
+            .unwrap()
+            .is_within_bpf_stack_frame()
+    );
     let bare_fp = RegState::new("fp", VerifierValueWidth::Unknown);
     assert_eq!(
         stack_memory_access_range(&bare_fp, "(79) r1 = *(u64 *)(r10 -8)")
@@ -153,6 +169,7 @@ fn parses_memory_access_shape() {
     );
     assert!(stack_value_range(-8, -1).is_none());
     assert!(stack_access_range("invalid read from stack R3 off -12 size -4").is_none());
+    assert!(stack_write_access_range("invalid read from stack R1 off=-520 size=16").is_none());
 }
 
 #[test]

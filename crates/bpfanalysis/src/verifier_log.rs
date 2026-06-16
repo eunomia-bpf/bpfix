@@ -933,6 +933,11 @@ impl StackByteRange {
     pub fn is_empty(self) -> bool {
         self.len() == 0
     }
+
+    pub fn is_within_bpf_stack_frame(self) -> bool {
+        const BPF_STACK_MIN_OFFSET: i16 = -512;
+        BPF_STACK_MIN_OFFSET <= self.start() && self.end() <= 0
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -993,6 +998,24 @@ pub fn stack_access_range(message: &str) -> Option<StackByteRange> {
 
 pub fn stack_read_access(message: &str) -> Option<StackReadAccess> {
     message.split(';').find_map(parse_stack_read_access_segment)
+}
+
+/// Parses a terminal `invalid write to stack` verifier error into a half-open
+/// stack byte range.
+pub fn stack_write_access_range(message: &str) -> Option<StackByteRange> {
+    message
+        .to_ascii_lowercase()
+        .contains("invalid write to stack")
+        .then(|| {
+            let offset = parse_i64_after(message, "off=")
+                .or_else(|| parse_i64_after(message, "off "))
+                .and_then(|value| i16::try_from(value).ok())?;
+            let size = parse_i64_after(message, "size=")
+                .or_else(|| parse_i64_after(message, "size "))
+                .and_then(|value| i16::try_from(value).ok())?;
+            stack_value_range(offset, size)
+        })
+        .flatten()
 }
 
 /// Returns whether the newest verifier state that overlaps `query.access`
