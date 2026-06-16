@@ -3546,6 +3546,111 @@ fn scalar_pointer_state_signal_requires_matching_current_instruction_state() {
 }
 
 #[test]
+fn scalar_zero_pointer_lifecycle_reports_null_action() {
+    for path in [
+        "bpfix-bench/cases/github-commit-cilium-848d41d1909b/replay-verifier.log",
+        "bpfix-bench/cases/kernel-selftest-iters-iter-err-too-permissive1-raw-tp-25649784/replay-verifier.log",
+        "bpfix-bench/cases/kernel-selftest-iters-looping-missing-null-check-fail-raw-tp-732d9857/replay-verifier.log",
+    ] {
+        let diagnostic = run_json(path);
+        assert_eq!(diagnostic["error_id"], "BPFIX-E011");
+        assert_eq!(diagnostic["failure_class"], "source_bug");
+        assert_eq!(diagnostic["next_action"], "null");
+        assert!(evidence_contains(
+            &diagnostic,
+            "verifier_state_signal",
+            "exact scalar zero"
+        ));
+    assert!(diagnostic["required_proof"]
+            .as_str()
+            .unwrap()
+            .contains("non-null"));
+    }
+
+    let helper_return_copy_through = run_json_stdin(
+        "func#0 @0\n\
+         0: R6=fp-8 R7=scalar() R10=fp0\n\
+         1: (bf) r1 = r6\n\
+         2: (b7) r2 = 0\n\
+         3: (b7) r3 = 1000\n\
+         4: (85) call bpf_iter_num_new#71887\n\
+         5: (bf) r1 = r6\n\
+         6: (85) call bpf_iter_num_next#71889 ; R0_w=0\n\
+         7: (bf) r7 = r0\n\
+         8: R7=0 R10=fp0\n\
+         9: (61) r1 = *(u32 *)(r7 +0)\n\
+         R7 invalid mem access 'scalar'\n",
+    );
+    assert_eq!(helper_return_copy_through["error_id"], "BPFIX-E011");
+    assert_eq!(helper_return_copy_through["next_action"], "null");
+    assert!(evidence_contains(
+        &helper_return_copy_through,
+        "verifier_state_signal",
+        "exact scalar zero"
+    ));
+
+    let numeric_helper_return_copy_through = run_json_stdin(
+        "func#0 @0\n\
+         0: R6=fp-8 R7=scalar() R10=fp0\n\
+         1: (bf) r1 = r6\n\
+         2: (b7) r2 = 0\n\
+         3: (b7) r3 = 1000\n\
+         4: (85) call bpf_iter_num_new#71887\n\
+         5: (bf) r1 = r6\n\
+         6: (85) call 71889 ; R0_w=0\n\
+         7: (bf) r7 = r0\n\
+         8: R7=0 R10=fp0\n\
+         9: (61) r1 = *(u32 *)(r7 +0)\n\
+         R7 invalid mem access 'scalar'\n",
+    );
+    assert_eq!(numeric_helper_return_copy_through["error_id"], "BPFIX-E011");
+    assert_eq!(numeric_helper_return_copy_through["next_action"], "null");
+    assert!(evidence_contains(
+        &numeric_helper_return_copy_through,
+        "verifier_state_signal",
+        "exact scalar zero"
+    ));
+
+    let no_pointer_lifecycle = run_json_stdin(
+        "func#0 @0\n\
+         0: R1=ctx() R10=fp0\n\
+         1: (b7) r1 = 0\n\
+         2: R1=0 R10=fp0\n\
+         3: (61) r0 = *(u32 *)(r1 +0)\n\
+         R1 invalid mem access 'scalar'\n",
+    );
+    assert_eq!(no_pointer_lifecycle["error_id"], "BPFIX-E011");
+    assert_eq!(no_pointer_lifecycle["next_action"], "provenance");
+    assert!(!evidence_contains(
+        &no_pointer_lifecycle,
+        "verifier_state_signal",
+        "exact scalar zero"
+    ));
+
+    let explicit_zero_after_nullable_history = run_json_stdin(
+        "func#0 @0\n\
+         0: R1=map_value_or_null(id=1,map=test,ks=4,vs=8) R10=fp0\n\
+         1: (b7) r1 = 0\n\
+         2: R1=0 R10=fp0\n\
+         3: (61) r0 = *(u32 *)(r1 +0)\n\
+         R1 invalid mem access 'scalar'\n",
+    );
+    assert_eq!(
+        explicit_zero_after_nullable_history["error_id"],
+        "BPFIX-E011"
+    );
+    assert_eq!(
+        explicit_zero_after_nullable_history["next_action"],
+        "provenance"
+    );
+    assert!(!evidence_contains(
+        &explicit_zero_after_nullable_history,
+        "verifier_state_signal",
+        "exact scalar zero"
+    ));
+}
+
+#[test]
 fn opaque_probe_read_pointer_values_report_protocol_action() {
     for path in [
         "bpfix-bench/cases/stackoverflow-77387582/replay-verifier.log",
