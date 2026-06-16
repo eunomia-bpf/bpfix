@@ -177,6 +177,9 @@ Get JSON for CI or editor integration:
 bpfix --format json verifier.log
 ```
 
+Tooling should read `next_action` for a stable action family and `help` for
+human-readable guidance; it should not infer actions by scraping prose.
+
 For CI pipelines that want to fail when BPFix cannot produce a supported
 diagnostic, add `--fail-on-unsupported`. BPFix still renders the requested
 output first, then exits with code 2 for `unsupported_input` or

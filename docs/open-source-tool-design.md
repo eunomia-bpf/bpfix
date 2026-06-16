@@ -169,7 +169,7 @@ Text output is Rust-style and human-readable:
 - required proof
 - `help:` guidance
 
-JSON output is for tools. Version `bpfix.diagnostic/v2` contains:
+JSON output is for tools. Version `bpfix.diagnostic/v3` contains:
 
 - `diagnostic_version`
 - `error_id`
@@ -177,6 +177,7 @@ JSON output is for tools. Version `bpfix.diagnostic/v2` contains:
 - `confidence`
 - `diagnostic_kind`
 - `help_safety`
+- `next_action`
 - `span_confidence`
 - `message`
 - `required_proof`
@@ -186,8 +187,14 @@ JSON output is for tools. Version `bpfix.diagnostic/v2` contains:
 - `help`
 - `metadata`
 
-The JSON field is `help` because BPFix explains what proof the verifier needs.
-It does not synthesize source patches.
+`next_action` is a coarse action family for CI, editors, and agents:
+`bounds`, `provenance`, `null`, `initialize`, `release`, `environment`,
+`budget`, `protocol`, `context`, or `other`. `protocol` covers verifier-managed
+object and lifecycle protocols such as dynptr, iterator, kfunc, IRQ, callback,
+and helper contracts. `context` covers program/context ABI and sleepability
+constraints. Human-facing guidance remains in `required_proof` and `help`. The
+JSON field is `help` because BPFix explains what proof the verifier needs. It
+does not synthesize source patches.
 
 The formal schema is tracked at `docs/evaluation/diagnostic.schema.json`.
 

@@ -38,6 +38,7 @@ class Prediction:
     error_id: str
     failure_class: str
     action: str
+    prose_action: str
     primary_span: bool
     related_spans: int
     pc_candidates: list[int]
@@ -142,10 +143,12 @@ def terminal_dictionary(message: str) -> Prediction:
         error_id = "BPFIX-UNKNOWN"
         failure_class = "source_bug"
 
+    action = terminal_action(message, failure_class)
     return Prediction(
         error_id=error_id,
         failure_class=failure_class,
-        action=terminal_action(message, failure_class),
+        action=action,
+        prose_action=action,
         primary_span=False,
         related_spans=0,
         pc_candidates=[],
@@ -174,7 +177,7 @@ def terminal_action(message: str, failure_class: str) -> str:
         return "bounds"
     if "scalar" in lower or "pointer" in lower:
         return "provenance"
-    return "other"
+    return "unspecified"
 
 
 def label_action(label: dict) -> str:
@@ -182,6 +185,47 @@ def label_action(label: dict) -> str:
     fix_type = (label.get("fix_type") or "").lower()
     tags = " ".join(label.get("mechanism_tags") or []).lower()
 
+    if (
+        "sleepability" in tags
+        or "context_access" in tags
+        or fix_type in {"use_correct_context", "avoid_wide_context_access"}
+    ):
+        return "context"
+    if (
+        "stack_bounds" in tags
+        or "large_stack_object" in tags
+        or fix_type
+        in {
+            "add_l2_header_presence_guard",
+            "map_definition_fix",
+            "move_to_map_storage",
+        }
+    ):
+        return "bounds"
+    if (
+        taxonomy == "source_bug"
+        and fix_type == "reorder"
+        and "verifier_range_precision" not in tags
+        and "packet_bounds" not in tags
+        and "scalar_range" not in tags
+    ):
+        return "protocol"
+    if fix_type in {
+        "move_to_map_value",
+        "use_correct_map_pointer",
+        "use_map_value",
+        "use_stack_copy",
+        "use_valid_pointer",
+    }:
+        return "protocol"
+    if any(
+        token in tags
+        for token in [
+            "irq_state",
+            "critical_section",
+        ]
+    ):
+        return "protocol"
     if (
         taxonomy == "environment_or_configuration"
         or fix_type
@@ -240,10 +284,17 @@ def label_action(label: dict) -> str:
         ]
     ):
         return "provenance"
-    return "other"
+    return "unspecified"
 
 
 def bpfix_action(diagnostic: dict) -> str:
+    if diagnostic.get("next_action"):
+        return diagnostic["next_action"]
+
+    return bpfix_prose_action(diagnostic)
+
+
+def bpfix_prose_action(diagnostic: dict) -> str:
     text = " ".join(diagnostic.get("help") or [])
     text += " " + diagnostic.get("required_proof", "")
     text += " " + diagnostic.get("message", "")
@@ -323,6 +374,7 @@ def run_bpfix(
     )
     duration_ms = (time.perf_counter() - started) * 1000.0
     diagnostic = json.loads(completed.stdout)
+    prose_action = bpfix_prose_action(diagnostic)
     pc_candidates: list[int] = []
     source_span = diagnostic.get("source_span") or {}
     if source_span.get("instruction_pc") is not None:
@@ -335,7 +387,8 @@ def run_bpfix(
     return Prediction(
         error_id=diagnostic["error_id"],
         failure_class=diagnostic["failure_class"],
-        action=bpfix_action(diagnostic),
+        action=diagnostic.get("next_action") or prose_action,
+        prose_action=prose_action,
         primary_span=bool(diagnostic.get("source_span")),
         related_spans=len(diagnostic.get("related_spans") or []),
         pc_candidates=pc_candidates,
@@ -448,6 +501,7 @@ def exact_root(rows: list[Row], prediction: str, within: int | None = None) -> t
 
 def emit_summary(rows: list[Row]) -> None:
     total = len(rows)
+    action_labeled = [row for row in rows if row.label_action != "unspecified"]
     root_exact, root_total = exact_root(rows, "bpfix")
     root_w5, _ = exact_root(rows, "bpfix", within=5)
     term_root, _ = exact_root(rows, "terminal")
@@ -557,9 +611,26 @@ def emit_summary(rows: list[Row]) -> None:
             ratio(0, root_total),
         ),
         (
-            "next-action proxy exact",
-            ratio(sum(row.bpfix.action == row.label_action for row in rows), total),
-            ratio(sum(row.terminal.action == row.label_action for row in rows), total),
+            f"next-action contract exact, labeled subset n={len(action_labeled)}",
+            ratio(
+                sum(row.bpfix.action == row.label_action for row in action_labeled),
+                len(action_labeled),
+            ),
+            ratio(
+                sum(row.terminal.action == row.label_action for row in action_labeled),
+                len(action_labeled),
+            ),
+        ),
+        (
+            f"legacy prose-action proxy exact, labeled subset n={len(action_labeled)}",
+            ratio(
+                sum(row.bpfix.prose_action == row.label_action for row in action_labeled),
+                len(action_labeled),
+            ),
+            ratio(
+                sum(row.terminal.prose_action == row.label_action for row in action_labeled),
+                len(action_labeled),
+            ),
         ),
         (
             "bpfix CLI wall time, median/p95/max",
@@ -612,7 +683,7 @@ def emit_coverage(rows: list[Row]) -> None:
         "| expected action | cases | taxonomy agreement | action exact | primary span | related spans | root exact | root within 5 |"
     )
     print("| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |")
-    for action in sorted({row.label_action for row in rows}):
+    for action in sorted({row.label_action for row in rows if row.label_action != "unspecified"}):
         bucket = [row for row in rows if row.label_action == action]
         rooted = [row for row in bucket if row.root_pc is not None]
         root_exact = sum(
@@ -630,6 +701,12 @@ def emit_coverage(rows: list[Row]) -> None:
             f"{ratio(sum(row.bpfix.related_spans > 0 for row in bucket), len(bucket))} | "
             f"{ratio(root_exact, len(rooted))} | "
             f"{ratio(root_within_5, len(rooted))} |"
+        )
+
+    skipped = sum(row.label_action == "unspecified" for row in rows)
+    if skipped:
+        print(
+            f"\nAction labels marked unspecified and skipped for action exact: {skipped}/{len(rows)}"
         )
 
     if any(row.bpfix.object_requested for row in rows):
@@ -735,7 +812,10 @@ def proof_score(row: Row, prediction: Prediction) -> str:
         return "exact"
     if prediction.error_id == "BPFIX-UNKNOWN":
         return "miss"
-    if prediction.failure_class == row.taxonomy or prediction.action == row.label_action:
+    action_matches = (
+        row.label_action != "unspecified" and prediction.action == row.label_action
+    )
+    if prediction.failure_class == row.taxonomy or action_matches:
         return "partial"
     return "miss"
 
@@ -751,9 +831,20 @@ def root_score(row: Row, prediction: Prediction) -> str:
 
 
 def action_score(row: Row, prediction: Prediction) -> str:
+    if row.label_action == "unspecified":
+        return "na"
     if prediction.action == row.label_action:
         return "correct"
-    source_like = {"bounds", "provenance", "null", "initialize", "release", "other"}
+    source_like = {
+        "bounds",
+        "provenance",
+        "null",
+        "initialize",
+        "release",
+        "protocol",
+        "context",
+        "other",
+    }
     if row.label_action in {"environment", "budget"} and prediction.action in source_like:
         return "unsafe"
     if row.label_action in source_like and prediction.action in {"environment", "budget"}:

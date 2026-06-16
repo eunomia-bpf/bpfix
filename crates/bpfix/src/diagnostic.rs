@@ -314,6 +314,76 @@ impl ProofSignal {
         }
     }
 
+    pub(crate) const fn next_action(self) -> &'static str {
+        match self {
+            Self::MapPointerArgumentScalarZero | Self::BtfFuncInfoMissing => "environment",
+            Self::ContextFieldUnavailable
+            | Self::ContextAccessSourceArgumentMismatch
+            | Self::KernelObjectFieldAccessMismatch
+            | Self::ModifiedContextPointer
+            | Self::SleepableCallInNonSleepableContext
+            | Self::DynptrReadonlyPacketWrite
+            | Self::UnreadableProgramEntryArgument
+            | Self::LegacySkbLoadUnreadableRegister => "context",
+            Self::LoopBackEdgeStateRepeats => "budget",
+            Self::NullablePointerUseWithoutProof | Self::TrustedNullableArgument => "null",
+            Self::ExceptionThrowWithLiveReference
+            | Self::ReferenceLiveAtExit
+            | Self::DynptrReleaseUnacquiredReference => "release",
+            Self::SharedInstructionUninitializedRegister
+            | Self::MapLookupKeyArgumentUnreadable
+            | Self::UnreadableHelperArgument
+            | Self::UnreadableReturnRegister
+            | Self::HelperStackReadExceedsInitializedRange => "initialize",
+            Self::PacketAccessWithoutBoundsProof
+            | Self::PacketGuardUndercoversAccess
+            | Self::PacketMaxOffsetPrecisionBoundary
+            | Self::MapValueGuardExceedsValueSize
+            | Self::MapValueAccessOutOfBounds
+            | Self::MapValueRelationPrecisionBoundary
+            | Self::MemoryObjectAccessOutOfBounds
+            | Self::ReturnRangeOutOfBounds
+            | Self::StackVariableOffsetOutOfBounds
+            | Self::ScalarRangeUnsafeAtUse
+            | Self::DynptrSliceVariableLength
+            | Self::HelperStackWriteBeyondFrame => "bounds",
+            Self::WideStackAlignment
+            | Self::AtomicMemoryAccessScalarBase
+            | Self::SharedInstructionPointerMerge
+            | Self::SharedInstructionPathProofLoss
+            | Self::Alu32PointerCopyDropsProvenance
+            | Self::ConstantScalarMemoryLoad
+            | Self::PointerShiftDropsProvenance
+            | Self::SubprogramContextArgumentDropped
+            | Self::PacketPointerProofLostAfterBoundsCheck
+            | Self::PacketRangeProofLostBeforeAccess
+            | Self::MapValueWideAccess
+            | Self::MapValueCheckedOffsetRelationLost
+            | Self::SubprogramReferenceMetadataMissing
+            | Self::ScalarValueUsedAsPointer
+            | Self::StalePointerAfterInvalidatingHelper
+            | Self::ProhibitedPointerArithmetic => "provenance",
+            Self::DynptrStackStorageAccess
+            | Self::DynptrUninitializedArgument
+            | Self::DynptrReferencedSlotOverwrite
+            | Self::DynptrStackSlotWriteOverlap
+            | Self::DynptrHelperArgumentStateMismatch
+            | Self::IteratorStackStorageAccess
+            | Self::IteratorHelperArgumentStateMismatch
+            | Self::IrqFlagStateMismatch
+            | Self::KfuncArgumentTypeMismatch
+            | Self::VerifierTypeContractMismatch
+            | Self::ModernBpfObjectProtocolViolation
+            | Self::ExceptionCallbackProtocolViolation
+            | Self::IrqRestoreOrderMismatch
+            | Self::IrqRestoreHelperClassMismatch
+            | Self::IrqStateLiveAtExit
+            | Self::CallbackCallWhileLocked
+            | Self::MapPointerRawAccessContract
+            | Self::PerfEventOutputPacketAccess => "protocol",
+        }
+    }
+
     pub(crate) const fn evidence_kind(self) -> &'static str {
         if self.is_source_state_signal() || self.is_environment_signal() {
             "verifier_state_signal"
@@ -9050,6 +9120,87 @@ fn scalar_range_is_unsafe(state: &RegState) -> bool {
 mod tests {
     use super::{analyze_verifier_log, ProofEventEvidence, ProofEventRole, ProofSignal};
     use crate::family::ProofObligation;
+
+    const ALL_PROOF_SIGNALS: &[ProofSignal] = &[
+        ProofSignal::WideStackAlignment,
+        ProofSignal::AtomicMemoryAccessScalarBase,
+        ProofSignal::LoopBackEdgeStateRepeats,
+        ProofSignal::SharedInstructionPointerMerge,
+        ProofSignal::SharedInstructionPathProofLoss,
+        ProofSignal::Alu32PointerCopyDropsProvenance,
+        ProofSignal::ConstantScalarMemoryLoad,
+        ProofSignal::SharedInstructionUninitializedRegister,
+        ProofSignal::PointerShiftDropsProvenance,
+        ProofSignal::ModifiedContextPointer,
+        ProofSignal::SubprogramContextArgumentDropped,
+        ProofSignal::PacketPointerProofLostAfterBoundsCheck,
+        ProofSignal::PacketRangeProofLostBeforeAccess,
+        ProofSignal::PacketAccessWithoutBoundsProof,
+        ProofSignal::MapValueWideAccess,
+        ProofSignal::MapValueCheckedOffsetRelationLost,
+        ProofSignal::MapValueGuardExceedsValueSize,
+        ProofSignal::MapValueAccessOutOfBounds,
+        ProofSignal::MemoryObjectAccessOutOfBounds,
+        ProofSignal::ReturnRangeOutOfBounds,
+        ProofSignal::StackVariableOffsetOutOfBounds,
+        ProofSignal::ScalarRangeUnsafeAtUse,
+        ProofSignal::MapPointerArgumentScalarZero,
+        ProofSignal::BtfFuncInfoMissing,
+        ProofSignal::SubprogramReferenceMetadataMissing,
+        ProofSignal::DynptrStackStorageAccess,
+        ProofSignal::DynptrUninitializedArgument,
+        ProofSignal::DynptrReferencedSlotOverwrite,
+        ProofSignal::DynptrReadonlyPacketWrite,
+        ProofSignal::DynptrStackSlotWriteOverlap,
+        ProofSignal::DynptrHelperArgumentStateMismatch,
+        ProofSignal::DynptrReleaseUnacquiredReference,
+        ProofSignal::DynptrSliceVariableLength,
+        ProofSignal::IteratorStackStorageAccess,
+        ProofSignal::IteratorHelperArgumentStateMismatch,
+        ProofSignal::IrqFlagStateMismatch,
+        ProofSignal::IrqRestoreOrderMismatch,
+        ProofSignal::IrqRestoreHelperClassMismatch,
+        ProofSignal::IrqStateLiveAtExit,
+        ProofSignal::SleepableCallInNonSleepableContext,
+        ProofSignal::CallbackCallWhileLocked,
+        ProofSignal::NullablePointerUseWithoutProof,
+        ProofSignal::TrustedNullableArgument,
+        ProofSignal::KfuncArgumentTypeMismatch,
+        ProofSignal::VerifierTypeContractMismatch,
+        ProofSignal::ModernBpfObjectProtocolViolation,
+        ProofSignal::ContextAccessSourceArgumentMismatch,
+        ProofSignal::ContextFieldUnavailable,
+        ProofSignal::KernelObjectFieldAccessMismatch,
+        ProofSignal::ExceptionThrowWithLiveReference,
+        ProofSignal::ReferenceLiveAtExit,
+        ProofSignal::ExceptionCallbackProtocolViolation,
+        ProofSignal::MapLookupKeyArgumentUnreadable,
+        ProofSignal::UnreadableProgramEntryArgument,
+        ProofSignal::UnreadableHelperArgument,
+        ProofSignal::MapPointerRawAccessContract,
+        ProofSignal::PerfEventOutputPacketAccess,
+        ProofSignal::UnreadableReturnRegister,
+        ProofSignal::LegacySkbLoadUnreadableRegister,
+        ProofSignal::HelperStackReadExceedsInitializedRange,
+        ProofSignal::HelperStackWriteBeyondFrame,
+        ProofSignal::ScalarValueUsedAsPointer,
+        ProofSignal::StalePointerAfterInvalidatingHelper,
+        ProofSignal::ProhibitedPointerArithmetic,
+        ProofSignal::PacketGuardUndercoversAccess,
+        ProofSignal::PacketMaxOffsetPrecisionBoundary,
+        ProofSignal::MapValueRelationPrecisionBoundary,
+    ];
+
+    #[test]
+    fn proof_signals_have_specific_next_actions() {
+        for signal in ALL_PROOF_SIGNALS {
+            assert_ne!(
+                signal.next_action(),
+                "other",
+                "{signal:?} should expose a concrete next_action"
+            );
+        }
+    }
 
     #[test]
     fn unsupported_terminal_replacement_is_an_explicit_signal_whitelist() {

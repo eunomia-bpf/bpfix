@@ -1,10 +1,11 @@
 {
-  "diagnostic_version": "bpfix.diagnostic/v2",
+  "diagnostic_version": "bpfix.diagnostic/v3",
   "error_id": "BPFIX-E006",
   "failure_class": "lowering_artifact",
   "confidence": "medium",
   "diagnostic_kind": "supported",
   "help_safety": "repair_hint",
+  "next_action": "provenance",
   "span_confidence": "exact_pc",
   "message": "verifier-visible compiler lowering hides the required proof: R5 invalid mem access 'scalar'",
   "required_proof": "preserve a verifier-recognized pointer type at the operation that requires a pointer",

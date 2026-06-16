@@ -224,6 +224,10 @@ fn build_diagnostic(
         .map(ProofSignal::help_safety)
         .unwrap_or(class.help_safety)
         .to_string();
+    let next_action = proof_signal
+        .map(ProofSignal::next_action)
+        .unwrap_or_else(|| classifier_next_action(&class))
+        .to_string();
     let diagnostic_kind = if class.diagnostic_kind == "unsupported_verifier_message"
         && proof_signal.is_some_and(ProofSignal::can_replace_unsupported_terminal)
     {
@@ -299,12 +303,13 @@ fn build_diagnostic(
     add_proof_event_help(&mut help, &proof_events);
 
     Diagnostic {
-        diagnostic_version: "bpfix.diagnostic/v2",
+        diagnostic_version: "bpfix.diagnostic/v3",
         error_id: error_id.clone(),
         failure_class,
         confidence,
         diagnostic_kind: diagnostic_kind.to_string(),
         help_safety,
+        next_action,
         span_confidence,
         message: format!("{}: {}", message_summary, terminal.message),
         required_proof,
@@ -326,6 +331,38 @@ fn build_diagnostic(
             trace_state_count,
             analysis_error,
         },
+    }
+}
+
+fn classifier_next_action(class: &classifier::Classification) -> &'static str {
+    match class.failure_class {
+        "environment_or_configuration" => "environment",
+        "verifier_limit" => "budget",
+        "input_error" | "unsupported_verifier_message" => "other",
+        _ => obligation_next_action(class.obligation),
+    }
+}
+
+fn obligation_next_action(obligation: ProofObligation) -> &'static str {
+    match obligation {
+        ProofObligation::PacketBounds | ProofObligation::ScalarRange => "bounds",
+        ProofObligation::NullablePointer => "null",
+        ProofObligation::StackInitialized => "initialize",
+        ProofObligation::ReferenceLifecycle => "release",
+        ProofObligation::VerifierLimit | ProofObligation::LoopBound => "budget",
+        ProofObligation::EnvironmentCapability | ProofObligation::InstructionSupport => {
+            "environment"
+        }
+        ProofObligation::PointerProvenance
+        | ProofObligation::Alignment
+        | ProofObligation::TypeContract => "provenance",
+        ProofObligation::ContextAccess => "context",
+        ProofObligation::HelperArgument
+        | ProofObligation::DynptrSafety
+        | ProofObligation::KfuncReference
+        | ProofObligation::IteratorLifecycle
+        | ProofObligation::LockState => "protocol",
+        ProofObligation::Unknown => "other",
     }
 }
 

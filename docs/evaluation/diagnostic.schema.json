@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://bpfix.dev/schema/diagnostic-v2.json",
-  "title": "BPFix Diagnostic v2",
+  "$id": "https://bpfix.dev/schema/diagnostic-v3.json",
+  "title": "BPFix Diagnostic v3",
   "description": "Structured JSON emitted by the Rust bpfix CLI for eBPF verifier-log diagnostics.",
   "type": "object",
   "additionalProperties": false,
@@ -12,6 +12,7 @@
     "confidence",
     "diagnostic_kind",
     "help_safety",
+    "next_action",
     "span_confidence",
     "message",
     "required_proof",
@@ -23,7 +24,7 @@
   ],
   "properties": {
     "diagnostic_version": {
-      "const": "bpfix.diagnostic/v2"
+      "const": "bpfix.diagnostic/v3"
     },
     "error_id": {
       "type": "string",
@@ -62,6 +63,22 @@
       "enum": [
         "repair_hint",
         "triage_only"
+      ]
+    },
+    "next_action": {
+      "type": "string",
+      "description": "Stable machine-readable action family for CI, editor, and agent consumers. Human guidance remains in help.",
+      "enum": [
+        "bounds",
+        "provenance",
+        "null",
+        "initialize",
+        "release",
+        "environment",
+        "budget",
+        "protocol",
+        "context",
+        "other"
       ]
     },
     "span_confidence": {

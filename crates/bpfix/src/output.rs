@@ -9,6 +9,7 @@ pub(crate) struct Diagnostic {
     pub(crate) confidence: String,
     pub(crate) diagnostic_kind: String,
     pub(crate) help_safety: String,
+    pub(crate) next_action: String,
     pub(crate) span_confidence: String,
     pub(crate) message: String,
     pub(crate) required_proof: String,
@@ -86,6 +87,7 @@ pub(crate) fn render_text(diagnostic: &Diagnostic) -> String {
         "  = diagnostic: {}, help: {}, span: {}\n",
         diagnostic.diagnostic_kind, diagnostic.help_safety, diagnostic.span_confidence
     ));
+    out.push_str(&format!("  = next action: {}\n", diagnostic.next_action));
 
     let line = diagnostic.source_span.line_start.unwrap_or(1);
     out.push_str(&format!("  --> {}:{line}\n", diagnostic.source_span.path));

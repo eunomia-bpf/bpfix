@@ -147,6 +147,11 @@ fn diagnostic_schema_and_editor_example_track_json_contract() {
         run_json("bpfix-bench/cases/stackoverflow-72606055/replay-verifier.log");
     let verifier_metadata_signal_json =
         run_json("bpfix-bench/cases/github-aya-rs-aya-521/replay-verifier.log");
+    let protocol_signal_json = run_json(
+        "bpfix-bench/cases/kernel-selftest-dynptr-fail-invalid-helper2-raw-tp-34ba04aa/replay-verifier.log",
+    );
+    let context_signal_json =
+        run_json("bpfix-bench/cases/stackoverflow-56526650/replay-verifier.log");
     let schema: Value = serde_json::from_str(
         &std::fs::read_to_string(workspace_root().join("docs/evaluation/diagnostic.schema.json"))
             .expect("schema should be readable"),
@@ -166,12 +171,13 @@ fn diagnostic_schema_and_editor_example_track_json_contract() {
     assert_eq!(object_keys(&example), output_keys);
     assert_eq!(
         schema["properties"]["diagnostic_version"]["const"],
-        "bpfix.diagnostic/v2"
+        "bpfix.diagnostic/v3"
     );
     assert!(schema["properties"].get("missing_obligation").is_none());
     assert!(schema["properties"].get("candidate_repairs").is_none());
     assert!(schema["properties"].get("raw_log_excerpt").is_none());
     let failure_classes = string_array_set(&schema["properties"]["failure_class"]["enum"]);
+    let next_actions = string_array_set(&schema["properties"]["next_action"]["enum"]);
     let evidence_kinds =
         string_array_set(&schema["$defs"]["evidence_item"]["properties"]["kind"]["enum"]);
     for diagnostic in [
@@ -179,13 +185,22 @@ fn diagnostic_schema_and_editor_example_track_json_contract() {
         &precision_json,
         &verifier_state_signal_json,
         &verifier_metadata_signal_json,
+        &protocol_signal_json,
+        &context_signal_json,
         &example,
     ] {
         assert!(failure_classes.contains(diagnostic["failure_class"].as_str().unwrap()));
+        assert!(next_actions.contains(diagnostic["next_action"].as_str().unwrap()));
         for evidence in diagnostic["evidence"].as_array().unwrap() {
             assert!(evidence_kinds.contains(evidence["kind"].as_str().unwrap()));
         }
     }
+    assert_eq!(json["next_action"], "provenance");
+    assert_eq!(precision_json["next_action"], "bounds");
+    assert_eq!(verifier_state_signal_json["next_action"], "environment");
+    assert_eq!(verifier_metadata_signal_json["next_action"], "environment");
+    assert_eq!(protocol_signal_json["next_action"], "protocol");
+    assert_eq!(context_signal_json["next_action"], "context");
     assert!(verifier_state_signal_json["evidence"]
         .as_array()
         .unwrap()
@@ -5897,6 +5912,7 @@ fn text_output_is_rust_style_multispan() {
         "error[BPFIX-E006]: verifier-visible compiler lowering hides the required proof"
     ));
     assert!(text.contains("= class: lowering_artifact"));
+    assert!(text.contains("= next action: provenance"));
     assert!(text.contains("--> prog.c:270"));
     assert!(text.contains("263 | if (ipv4_hdr)"));
     assert!(text.contains("267 | if (udph + sizeof(struct udphdr) > data_end)"));

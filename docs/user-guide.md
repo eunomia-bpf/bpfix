@@ -178,7 +178,8 @@ Current log-first diagnostics cover:
 
 Some families have exact PC/source spans; others are terminal-line or nearby
 source-context diagnostics. JSON consumers should read `span_confidence` before
-automatically highlighting source.
+automatically highlighting source. They should read `next_action` for a stable
+machine-readable action family instead of scraping `help` text.
 
 ## CI Pattern
 
