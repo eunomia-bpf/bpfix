@@ -57,6 +57,7 @@ pub struct ProofEvent {
 pub enum ProofSignal {
     WideStackAlignment,
     AtomicMemoryAccessScalarBase,
+    LoopBackEdgeStateRepeats,
     SharedInstructionPointerMerge,
     SharedInstructionPathProofLoss,
     Alu32PointerCopyDropsProvenance,
@@ -245,6 +246,9 @@ impl ProofSignal {
             }
             Self::AtomicMemoryAccessScalarBase => {
                 "atomic memory operation uses a scalar base instead of an aligned pointer"
+            }
+            Self::LoopBackEdgeStateRepeats => {
+                "loop back-edge repeats verifier state without a visible terminating bound"
             }
             Self::UnreadableReturnRegister => {
                 "return register is unreadable at BPF_EXIT"
@@ -487,6 +491,9 @@ impl ProofSignal {
             Self::AtomicMemoryAccessScalarBase => {
                 "verifier state at the rejected atomic memory operation shows the base register is scalar, so the verifier has no pointer alignment proof for the access"
             }
+            Self::LoopBackEdgeStateRepeats => {
+                "verifier printed matching current and previous loop-entry states at the rejected back edge, so no loop-carried value proves monotonic progress toward a finite bound"
+            }
             Self::UnreadableReturnRegister => {
                 "terminal verifier state rejects BPF_EXIT because the return register is not readable"
             }
@@ -690,6 +697,9 @@ impl ProofSignal {
             Self::AtomicMemoryAccessScalarBase => {
                 "Keep the atomic target as verifier-visible aligned storage, for example by applying the atomic operation to the map-value field itself instead of to a scalar value loaded from that field."
             }
+            Self::LoopBackEdgeStateRepeats => {
+                "Make loop progress verifier-visible with a constant upper bound and an induction variable updated on every back-edge path; do not rely on data-dependent lookup failure as the only exit."
+            }
             Self::UnreadableReturnRegister => {
                 "Initialize R0 with a valid return code on every path before returning from the BPF program."
             }
@@ -805,6 +815,7 @@ impl ProofSignal {
                 | Self::MapPointerRawAccessContract
                 | Self::PerfEventOutputPacketAccess
                 | Self::AtomicMemoryAccessScalarBase
+                | Self::LoopBackEdgeStateRepeats
                 | Self::UnreadableReturnRegister
                 | Self::LegacySkbLoadUnreadableRegister
                 | Self::HelperStackReadExceedsInitializedRange
@@ -927,6 +938,7 @@ impl ProofSignal {
                 | Self::MapPointerRawAccessContract
                 | Self::PerfEventOutputPacketAccess
                 | Self::AtomicMemoryAccessScalarBase
+                | Self::LoopBackEdgeStateRepeats
                 | Self::UnreadableReturnRegister
                 | Self::LegacySkbLoadUnreadableRegister
                 | Self::HelperStackReadExceedsInitializedRange
@@ -1037,6 +1049,9 @@ impl ProofSignal {
             ),
             Self::AtomicMemoryAccessScalarBase => Some(
                 "prove the atomic memory operand is a verifier-visible aligned pointer, not a scalar loaded from another object",
+            ),
+            Self::LoopBackEdgeStateRepeats => Some(
+                "prove the back edge can execute only a statically bounded number of times with a verifier-visible induction variable",
             ),
             Self::UnreadableReturnRegister => {
                 Some("initialize R0 to a verifier-readable return value before BPF_EXIT")
@@ -1188,6 +1203,9 @@ impl ProofSignal {
             Self::AtomicMemoryAccessScalarBase => {
                 Some("this atomic operation uses a scalar as its memory base")
             }
+            Self::LoopBackEdgeStateRepeats => {
+                Some("current and previous loop-entry states repeat at this back edge")
+            }
             Self::UnreadableReturnRegister => Some("this exit has no readable value in R0"),
             Self::LegacySkbLoadUnreadableRegister => {
                 Some("this legacy skb load uses an implicit unreadable register")
@@ -1270,6 +1288,7 @@ impl ProofSignal {
             Self::MapPointerRawAccessContract => Some("BPFIX-E010"),
             Self::PerfEventOutputPacketAccess => Some("BPFIX-E010"),
             Self::AtomicMemoryAccessScalarBase => Some("BPFIX-E007"),
+            Self::LoopBackEdgeStateRepeats => Some("BPFIX-E018"),
             Self::UnreadableReturnRegister => Some("BPFIX-E003"),
             Self::LegacySkbLoadUnreadableRegister => Some("BPFIX-E003"),
             Self::HelperStackReadExceedsInitializedRange => Some("BPFIX-E003"),
@@ -2158,6 +2177,9 @@ fn proof_signals(context: ProofSignalContext<'_>) -> Vec<ProofSignal> {
     }
     if atomic_memory_alignment_scalar_base(&context) {
         signals.push(ProofSignal::AtomicMemoryAccessScalarBase);
+    }
+    if loop_back_edge_state_repeats(&context) {
+        signals.push(ProofSignal::LoopBackEdgeStateRepeats);
     }
     if pointer_shift_lowering_signal(&context) {
         signals.push(ProofSignal::PointerShiftDropsProvenance);
@@ -6659,6 +6681,146 @@ fn atomic_memory_alignment_scalar_base(context: &ProofSignalContext<'_>) -> bool
         return false;
     };
     base_state.reg_type == "scalar"
+}
+
+fn loop_back_edge_state_repeats(context: &ProofSignalContext<'_>) -> bool {
+    if context.obligation != ProofObligation::LoopBound {
+        return false;
+    }
+    let Some((current, previous)) = terminal_loop_state_pair(context) else {
+        return false;
+    };
+    loop_state_snapshots_repeat(&current, &previous)
+}
+
+fn terminal_loop_state_pair(
+    context: &ProofSignalContext<'_>,
+) -> Option<(VerifierInsn, VerifierInsn)> {
+    let pc = parse_u32_after(context.terminal_error, "insn ")? as usize;
+    let lines = context.log.lines().collect::<Vec<_>>();
+    let terminal_idx = context
+        .terminal_line
+        .map(|line| line.saturating_sub(1))
+        .or_else(|| {
+            lines
+                .iter()
+                .position(|line| line.contains(context.terminal_error))
+        })?;
+    let mut current = None;
+    let mut previous = None;
+    for line in &lines[terminal_idx.saturating_add(1)..] {
+        let trimmed = line.trim();
+        if let Some(state_text) = trimmed.strip_prefix("cur state:") {
+            current = parse_loop_state_snapshot(pc, state_text.trim());
+        } else if let Some(state_text) = trimmed.strip_prefix("old state:") {
+            previous = parse_loop_state_snapshot(pc, state_text.trim());
+        } else if is_verifier_fragment_boundary(trimmed) {
+            break;
+        }
+        if current.is_some() && previous.is_some() {
+            break;
+        }
+    }
+    current.zip(previous)
+}
+
+fn parse_loop_state_snapshot(pc: usize, state_text: &str) -> Option<VerifierInsn> {
+    let state_text = normalize_loop_state_register_access_suffixes(state_text);
+    let pseudo_log = format!("{pc}: {state_text}");
+    verifier_states_with_branch_deltas_from_log(&pseudo_log)
+        .ok()?
+        .into_iter()
+        .next()
+}
+
+fn normalize_loop_state_register_access_suffixes(state_text: &str) -> String {
+    state_text
+        .split_whitespace()
+        .map(|token| {
+            let Some((lhs, rhs)) = token.split_once('=') else {
+                return token.to_string();
+            };
+            let Some(normalized) = normalize_register_state_lhs(lhs) else {
+                return token.to_string();
+            };
+            format!("{normalized}={rhs}")
+        })
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+fn normalize_register_state_lhs(lhs: &str) -> Option<String> {
+    let rest = lhs.strip_prefix('R')?;
+    let digits_len = rest.chars().take_while(|ch| ch.is_ascii_digit()).count();
+    if digits_len == 0 {
+        return None;
+    }
+    let suffix = &rest[digits_len..];
+    matches!(suffix, "" | "_w" | "_r" | "_rw").then(|| format!("R{}", &rest[..digits_len]))
+}
+
+fn loop_state_snapshots_repeat(current: &VerifierInsn, previous: &VerifierInsn) -> bool {
+    if current.frame != previous.frame
+        || current.refs != previous.refs
+        || current.ref_ids != previous.ref_ids
+        || current.callback_kind != previous.callback_kind
+        || current.callback != previous.callback
+    {
+        return false;
+    }
+
+    let current_reg_count = current.regs.keys().filter(|reg| **reg != 10).count();
+    let previous_reg_count = previous.regs.keys().filter(|reg| **reg != 10).count();
+    if current_reg_count != previous_reg_count {
+        return false;
+    }
+    for (reg, state) in current.regs.iter().filter(|(reg, _)| **reg != 10) {
+        let Some(old) = previous.regs.get(reg) else {
+            return false;
+        };
+        if !loop_reg_state_repeats(state, old) {
+            return false;
+        }
+    }
+
+    if current.stack.len() != previous.stack.len() {
+        return false;
+    }
+    for (off, state) in &current.stack {
+        let Some(old) = previous.stack.get(off) else {
+            return false;
+        };
+        if !loop_stack_state_repeats(state, old) {
+            return false;
+        }
+    }
+
+    current_reg_count >= 2 || (current_reg_count >= 1 && !current.stack.is_empty())
+}
+
+fn loop_reg_state_repeats(current: &RegState, previous: &RegState) -> bool {
+    current.reg_type == previous.reg_type
+        && current.value_width == previous.value_width
+        && current.precise == previous.precise
+        && current.exact_value == previous.exact_value
+        && current.tnum == previous.tnum
+        && current.range == previous.range
+        && current.packet_range == previous.packet_range
+        && current.map_value_size == previous.map_value_size
+        && current.mem_size == previous.mem_size
+        && current.offset == previous.offset
+        && current.source_frame == previous.source_frame
+        && current.id == previous.id
+        && current.ref_id == previous.ref_id
+}
+
+fn loop_stack_state_repeats(current: &StackState, previous: &StackState) -> bool {
+    current.slot_types == previous.slot_types
+        && match (&current.value, &previous.value) {
+            (Some(current), Some(previous)) => loop_reg_state_repeats(current, previous),
+            (None, None) => true,
+            _ => false,
+        }
 }
 
 fn pointer_shift_lowering_signal(context: &ProofSignalContext<'_>) -> bool {

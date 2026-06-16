@@ -2684,6 +2684,135 @@ misaligned access off (0x0; 0xffffffffffffffff)+0+0 size 8
 }
 
 #[test]
+fn loop_bound_diagnostic_uses_cur_old_state_snapshots() {
+    let loop_bound = run_json("bpfix-bench/cases/stackoverflow-56872436/replay-verifier.log");
+    assert_eq!(loop_bound["error_id"], "BPFIX-E018");
+    assert_eq!(loop_bound["failure_class"], "source_bug");
+    assert!(evidence_contains(
+        &loop_bound,
+        "verifier_state_signal",
+        "current and previous loop-entry states"
+    ));
+    assert!(loop_bound["required_proof"]
+        .as_str()
+        .unwrap()
+        .contains("back edge"));
+
+    let no_snapshots = run_json_stdin(
+        "\
+10: (05) goto pc-1
+infinite loop detected at insn 10
+",
+    );
+    assert_eq!(no_snapshots["error_id"], "BPFIX-E018");
+    assert_eq!(no_snapshots["failure_class"], "source_bug");
+    assert!(!evidence_contains(
+        &no_snapshots,
+        "verifier_state_signal",
+        "current and previous loop-entry states"
+    ));
+
+    let changing_loop_carried_state = run_json_stdin(
+        "\
+-- BEGIN PROG LOAD LOG --
+func#0 @0
+10: (05) goto pc-1
+infinite loop detected at insn 10
+cur state: R0=map_value(map=m,ks=4,vs=4) R1=1 R2=scalar(smin=0,smax=umax=10,var_off=(0x0; 0xf)) R10=fp0 fp-8=mmmm????
+old state: R0=map_value(map=m,ks=4,vs=4) R1=2 R2=scalar(smin=0,smax=umax=10,var_off=(0x0; 0xf)) R10=fp0 fp-8=mmmm????
+-- END PROG LOAD LOG --
+",
+    );
+    assert_eq!(changing_loop_carried_state["error_id"], "BPFIX-E018");
+    assert_eq!(changing_loop_carried_state["failure_class"], "source_bug");
+    assert!(!evidence_contains(
+        &changing_loop_carried_state,
+        "verifier_state_signal",
+        "current and previous loop-entry states"
+    ));
+
+    let stale_snapshots_after_boundary = run_json_stdin(
+        "\
+-- BEGIN PROG LOAD LOG --
+func#0 @0
+10: (05) goto pc-1
+infinite loop detected at insn 10
+processed 11 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0 mark_read 0
+cur state: R0=map_value(map=m,ks=4,vs=4) R1=1 R2=scalar(smin=0,smax=umax=10,var_off=(0x0; 0xf)) R10=fp0 fp-8=mmmm????
+old state: R0=map_value(map=m,ks=4,vs=4) R1=1 R2=scalar(smin=0,smax=umax=10,var_off=(0x0; 0xf)) R10=fp0 fp-8=mmmm????
+-- END PROG LOAD LOG --
+",
+    );
+    assert_eq!(stale_snapshots_after_boundary["error_id"], "BPFIX-E018");
+    assert_eq!(
+        stale_snapshots_after_boundary["failure_class"],
+        "source_bug"
+    );
+    assert!(!evidence_contains(
+        &stale_snapshots_after_boundary,
+        "verifier_state_signal",
+        "current and previous loop-entry states"
+    ));
+
+    let different_reference_state = run_json_stdin(
+        "\
+-- BEGIN PROG LOAD LOG --
+func#0 @0
+10: (05) goto pc-1
+infinite loop detected at insn 10
+cur state: R0=map_value(map=m,ks=4,vs=4) R1=1 R2=scalar(smin=0,smax=umax=10,var_off=(0x0; 0xf)) R10=fp0 fp-8=mmmm???? refs=1
+old state: R0=map_value(map=m,ks=4,vs=4) R1=1 R2=scalar(smin=0,smax=umax=10,var_off=(0x0; 0xf)) R10=fp0 fp-8=mmmm???? refs=2
+-- END PROG LOAD LOG --
+",
+    );
+    assert_eq!(different_reference_state["error_id"], "BPFIX-E018");
+    assert_eq!(different_reference_state["failure_class"], "source_bug");
+    assert!(!evidence_contains(
+        &different_reference_state,
+        "verifier_state_signal",
+        "current and previous loop-entry states"
+    ));
+
+    let different_precise_state = run_json_stdin(
+        "\
+-- BEGIN PROG LOAD LOG --
+func#0 @0
+10: (05) goto pc-1
+infinite loop detected at insn 10
+cur state: R0=map_value(map=m,ks=4,vs=4) R1=1 R2=Pscalar(smin=0,smax=umax=10,var_off=(0x0; 0xf)) R10=fp0 fp-8=mmmm????
+old state: R0=map_value(map=m,ks=4,vs=4) R1=1 R2=scalar(smin=0,smax=umax=10,var_off=(0x0; 0xf)) R10=fp0 fp-8=mmmm????
+-- END PROG LOAD LOG --
+",
+    );
+    assert_eq!(different_precise_state["error_id"], "BPFIX-E018");
+    assert_eq!(different_precise_state["failure_class"], "source_bug");
+    assert!(!evidence_contains(
+        &different_precise_state,
+        "verifier_state_signal",
+        "current and previous loop-entry states"
+    ));
+
+    let different_source_frame_state = run_json_stdin(
+        "\
+-- BEGIN PROG LOAD LOG --
+func#0 @0
+10: (05) goto pc-1
+infinite loop detected at insn 10
+cur state: R0=map_value(map=m,ks=4,vs=4) R1=fp[1]-8 R2=scalar(smin=0,smax=umax=10,var_off=(0x0; 0xf)) R10=fp0 fp-8=mmmm????
+old state: R0=map_value(map=m,ks=4,vs=4) R1=fp[0]-8 R2=scalar(smin=0,smax=umax=10,var_off=(0x0; 0xf)) R10=fp0 fp-8=mmmm????
+-- END PROG LOAD LOG --
+",
+    );
+    assert_eq!(different_source_frame_state["error_id"], "BPFIX-E018");
+    assert_eq!(different_source_frame_state["failure_class"], "source_bug");
+    assert!(!evidence_contains(
+        &different_source_frame_state,
+        "verifier_state_signal",
+        "current and previous loop-entry states"
+    ));
+}
+
+#[test]
 fn ordinary_source_bugs_are_not_overclassified_as_runtime_artifacts() {
     let pointer_load_reuse =
         run_json("bpfix-bench/cases/stackoverflow-56965789/replay-verifier.log");
