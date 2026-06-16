@@ -2,6 +2,8 @@
 
 **BPFix makes eBPF verifier errors feel closer to Rust compiler errors.**
 
+> experimental
+
 The Linux eBPF verifier is powerful, but its failure logs are hard to read. A
 developer usually sees a long `bpftool`, libbpf, Aya, or BCC log and then has to
 guess which safety proof the verifier could not establish.
