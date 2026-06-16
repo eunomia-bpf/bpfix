@@ -976,265 +976,100 @@ struct ProofSignalContext<'a> {
     events: &'a [ProofEvent],
 }
 
+#[rustfmt::skip]
 fn proof_signals(context: ProofSignalContext<'_>) -> Vec<ProofSignal> {
     let mut signals = Vec::new();
-    if stack_alignment_lowering_signal(&context) {
-        signals.push(ProofSignal::WideStackAlignment);
-    }
-    if atomic_memory_alignment_scalar_base(&context) {
-        signals.push(ProofSignal::AtomicMemoryAccessScalarBase);
-    }
-    if loop_back_edge_state_repeats(&context) {
-        signals.push(ProofSignal::LoopBackEdgeStateRepeats);
-    }
-    if pointer_shift_lowering_signal(&context) {
-        signals.push(ProofSignal::PointerShiftDropsProvenance);
-    }
-    if modified_context_pointer_lowering_signal(&context) {
-        signals.push(ProofSignal::ModifiedContextPointer);
-    }
-    if shared_instruction_pointer_merge_signal(&context) {
-        signals.push(ProofSignal::SharedInstructionPointerMerge);
-    }
-    if subprogram_context_argument_dropped_signal(&context) {
-        signals.push(ProofSignal::SubprogramContextArgumentDropped);
-    }
-    if context.source_events.is_empty() {
-        if let Some(signal) = bytecode_only_lowering_signal(
-            context.log,
-            context.terminal_error,
-            context.obligation,
-            context.terminal_pc,
-            context.register,
-            context.states,
-        ) {
-            signals.push(signal);
-        }
-    }
-    if let Some(signal) = verifier_precision_signal(&context) {
-        signals.push(signal);
-    }
-    if let Some(signal) = packet_verifier_precision_signal(&context) {
-        signals.push(signal);
-    }
-    if context_access_source_argument_mismatch(
-        context.log,
-        context.terminal_error,
-        context.terminal_pc,
-        context.states,
-        context.events,
-    ) {
-        signals.push(ProofSignal::ContextAccessSourceArgumentMismatch);
-    }
-    if context_field_unavailable(&context) {
-        signals.push(ProofSignal::ContextFieldUnavailable);
-    }
-    if packet_context_field_access_in_unsupported_program(&context) {
-        signals.push(ProofSignal::PacketContextFieldAccessInUnsupportedProgram);
-    }
-    if kernel_object_field_access_mismatch(&context) {
-        signals.push(ProofSignal::KernelObjectFieldAccessMismatch);
-    }
-    if exception_throw_with_live_reference(
-        context.log,
-        context.terminal_pc,
-        context.terminal_line,
-        context.states,
-    ) {
-        signals.push(ProofSignal::ExceptionThrowWithLiveReference);
-    }
-    if reference_live_at_exit(&context) {
-        signals.push(ProofSignal::ReferenceLiveAtExit);
-    }
-    if exception_callback_protocol_violation(&context) {
-        signals.push(ProofSignal::ExceptionCallbackProtocolViolation);
-    }
-    if map_pointer_argument_scalar_zero(
-        context.log,
-        context.terminal_error,
-        context.terminal_pc,
-        context.terminal_line,
-        context.register,
-        context.states,
-        context.source_events,
-        context.events,
-    ) {
-        signals.push(ProofSignal::MapPointerArgumentScalarZero);
-    }
-    if btf_func_info_missing(&context) {
-        signals.push(ProofSignal::BtfFuncInfoMissing);
-    }
-    if subprogram_reference_metadata_missing(&context) {
-        signals.push(ProofSignal::SubprogramReferenceMetadataMissing);
-    }
-    if map_lookup_key_argument_unreadable(
-        context.log,
-        context.terminal_error,
-        context.terminal_pc,
-        context.terminal_line,
-        context.register,
-        context.events,
-    ) {
-        signals.push(ProofSignal::MapLookupKeyArgumentUnreadable);
-    }
-    if unreadable_program_entry_argument(&context) {
-        signals.push(ProofSignal::UnreadableProgramEntryArgument);
-    }
-    if unreadable_helper_argument(&context) {
-        signals.push(ProofSignal::UnreadableHelperArgument);
-    }
-    if map_pointer_raw_access_contract(&context) {
-        signals.push(ProofSignal::MapPointerRawAccessContract);
-    }
-    if perf_event_output_packet_access(&context) {
-        signals.push(ProofSignal::PerfEventOutputPacketAccess);
-    }
-    if unreadable_return_register(&context) {
-        signals.push(ProofSignal::UnreadableReturnRegister);
-    }
-    if legacy_skb_load_unreadable_register(&context) {
-        signals.push(ProofSignal::LegacySkbLoadUnreadableRegister);
-    }
-    if helper_stack_read_exceeds_initialized_range(&context) {
-        signals.push(ProofSignal::HelperStackReadExceedsInitializedRange);
-    }
-    if helper_stack_write_beyond_frame(&context) {
-        signals.push(ProofSignal::HelperStackWriteBeyondFrame);
-    }
-    if dynptr_uninitialized_argument(&context) {
-        signals.push(ProofSignal::DynptrUninitializedArgument);
-    }
-    if dynptr_referenced_slot_overwrite(&context) {
-        signals.push(ProofSignal::DynptrReferencedSlotOverwrite);
-    }
-    if dynptr_readonly_packet_write(&context) {
-        signals.push(ProofSignal::DynptrReadonlyPacketWrite);
-    }
-    if dynptr_stack_slot_write_overlap(&context) {
-        signals.push(ProofSignal::DynptrStackSlotWriteOverlap);
-    }
-    if dynptr_stack_storage_access(&context) {
-        signals.push(ProofSignal::DynptrStackStorageAccess);
-    }
-    if dynptr_helper_argument_state_mismatch(&context) {
-        signals.push(ProofSignal::DynptrHelperArgumentStateMismatch);
-    }
-    if dynptr_release_unacquired_reference(&context) {
-        signals.push(ProofSignal::DynptrReleaseUnacquiredReference);
-    }
-    if dynptr_slice_variable_length(&context) {
-        signals.push(ProofSignal::DynptrSliceVariableLength);
-    }
-    if iterator_helper_argument_state_mismatch(&context) {
-        signals.push(ProofSignal::IteratorHelperArgumentStateMismatch);
-    }
-    if iterator_stack_storage_access(&context) {
-        signals.push(ProofSignal::IteratorStackStorageAccess);
-    }
-    if irq_flag_state_mismatch(&context) {
-        signals.push(ProofSignal::IrqFlagStateMismatch);
-    }
-    if irq_restore_order_mismatch(&context) {
-        signals.push(ProofSignal::IrqRestoreOrderMismatch);
-    }
-    if irq_restore_helper_class_mismatch(&context) {
-        signals.push(ProofSignal::IrqRestoreHelperClassMismatch);
-    }
-    if irq_state_live_at_exit(&context) {
-        signals.push(ProofSignal::IrqStateLiveAtExit);
-    }
-    if sleepable_call_in_non_sleepable_context(&context) {
-        signals.push(ProofSignal::SleepableCallInNonSleepableContext);
-    }
-    if callback_call_while_locked(&context) {
-        signals.push(ProofSignal::CallbackCallWhileLocked);
-    }
-    if nullable_pointer_use_without_proof(&context) {
-        signals.push(ProofSignal::NullablePointerUseWithoutProof);
-    }
-    if modern_bpf_object_protocol_violation(&context) {
-        signals.push(ProofSignal::ModernBpfObjectProtocolViolation);
-    }
-    if kfunc_argument_type_mismatch(&context) {
-        signals.push(ProofSignal::KfuncArgumentTypeMismatch);
-    }
-    if trusted_nullable_argument(&context) {
-        signals.push(ProofSignal::TrustedNullableArgument);
-    }
-    if verifier_type_contract_mismatch(&context) {
-        signals.push(ProofSignal::VerifierTypeContractMismatch);
-    }
-    if memory_object_access_out_of_bounds(&context) {
-        signals.push(ProofSignal::MemoryObjectAccessOutOfBounds);
-    }
-    if return_range_out_of_bounds(&context) {
-        signals.push(ProofSignal::ReturnRangeOutOfBounds);
-    }
-    if stack_variable_offset_out_of_bounds(&context) {
-        signals.push(ProofSignal::StackVariableOffsetOutOfBounds);
-    }
-    if scalar_range_unsafe_at_use(&context) {
-        signals.push(ProofSignal::ScalarRangeUnsafeAtUse);
-    }
-    if context
-        .events
-        .iter()
-        .any(packet_proof_lost_after_bounds_check)
-    {
-        signals.push(ProofSignal::PacketPointerProofLostAfterBoundsCheck);
-    }
-    if packet_range_proof_lost_before_access(context.events) {
-        signals.push(ProofSignal::PacketRangeProofLostBeforeAccess);
-    }
-    if packet_guard_undercovers_access(&context) {
-        signals.push(ProofSignal::PacketGuardUndercoversAccess);
-    }
-    if packet_access_without_bounds_proof(&context) {
-        signals.push(ProofSignal::PacketAccessWithoutBoundsProof);
-    }
-    if map_value_wide_access(
-        context.log,
-        context.terminal_error,
-        context.terminal_pc,
-        context.terminal_line,
-        context.register,
-        context.branch_states,
-    ) {
-        signals.push(ProofSignal::MapValueWideAccess);
-    }
-    if map_value_checked_offset_relation_lost(
-        context.terminal_error,
-        context.terminal_pc,
-        context.register,
-        context.states,
-        context.events,
-        context.source_events,
-    ) {
-        signals.push(ProofSignal::MapValueCheckedOffsetRelationLost);
-    }
-    if map_value_guard_exceeds_value_size(&context) {
-        signals.push(ProofSignal::MapValueGuardExceedsValueSize);
-    }
-    if map_value_access_out_of_bounds(&context) {
-        signals.push(ProofSignal::MapValueAccessOutOfBounds);
-    }
-    if signals.is_empty() {
-        if let Some(signal) = stale_pointer_after_invalidating_helper(&context) {
-            signals.push(signal);
-        }
-    }
-    if signals.is_empty() && opaque_scalar_pointer_dereference(&context) {
-        signals.push(ProofSignal::OpaqueScalarPointerDereference);
-    }
-    if signals.is_empty() && null_scalar_dereference_after_pointer_proof(&context) {
-        signals.push(ProofSignal::NullScalarDereferenceAfterPointerProof);
-    }
-    if signals.is_empty() && scalar_value_used_as_pointer(&context) {
-        signals.push(ProofSignal::ScalarValueUsedAsPointer);
-    }
-    if signals.is_empty() && prohibited_pointer_arithmetic(&context) {
-        signals.push(ProofSignal::ProhibitedPointerArithmetic);
-    }
+    let c = &context;
+
+    macro_rules! push_signals {
+        ($($signal:expr => $predicate:expr),* $(,)?) => { $( if $predicate { signals.push($signal); } )* };
+    }
+    macro_rules! push_optional_signals {
+        ($($predicate:expr),* $(,)?) => { $( if let Some(signal) = $predicate { signals.push(signal); } )* };
+    }
+    macro_rules! push_fallback_signal {
+        ($signal:expr => $predicate:expr) => { if signals.is_empty() && $predicate { signals.push($signal); } };
+    }
+    macro_rules! push_fallback_opt {
+        ($predicate:expr) => { if signals.is_empty() { push_optional_signals!($predicate); } };
+    }
+
+    push_signals! {
+        ProofSignal::WideStackAlignment => stack_alignment_lowering_signal(c),
+        ProofSignal::AtomicMemoryAccessScalarBase => atomic_memory_alignment_scalar_base(c),
+        ProofSignal::LoopBackEdgeStateRepeats => loop_back_edge_state_repeats(c),
+        ProofSignal::PointerShiftDropsProvenance => pointer_shift_lowering_signal(c),
+        ProofSignal::ModifiedContextPointer => modified_context_pointer_lowering_signal(c),
+        ProofSignal::SharedInstructionPointerMerge => shared_instruction_pointer_merge_signal(c),
+        ProofSignal::SubprogramContextArgumentDropped => subprogram_context_argument_dropped_signal(c),
+    }
+    if c.source_events.is_empty() {
+        push_optional_signals!(bytecode_only_lowering_signal(c.log, c.terminal_error, c.obligation, c.terminal_pc, c.register, c.states));
+    }
+    push_optional_signals!(verifier_precision_signal(c), packet_verifier_precision_signal(c));
+
+    push_signals! {
+        ProofSignal::ContextAccessSourceArgumentMismatch => context_access_source_argument_mismatch(c.log, c.terminal_error, c.terminal_pc, c.states, c.events),
+        ProofSignal::ContextFieldUnavailable => context_field_unavailable(c),
+        ProofSignal::PacketContextFieldAccessInUnsupportedProgram => packet_context_field_access_in_unsupported_program(c),
+        ProofSignal::KernelObjectFieldAccessMismatch => kernel_object_field_access_mismatch(c),
+        ProofSignal::ExceptionThrowWithLiveReference => exception_throw_with_live_reference(c.log, c.terminal_pc, c.terminal_line, c.states),
+        ProofSignal::ReferenceLiveAtExit => reference_live_at_exit(c),
+        ProofSignal::ExceptionCallbackProtocolViolation => exception_callback_protocol_violation(c),
+        ProofSignal::MapPointerArgumentScalarZero => map_pointer_argument_scalar_zero(c.log, c.terminal_error, c.terminal_pc, c.terminal_line, c.register, c.states, c.source_events, c.events),
+        ProofSignal::BtfFuncInfoMissing => btf_func_info_missing(c),
+        ProofSignal::SubprogramReferenceMetadataMissing => subprogram_reference_metadata_missing(c),
+        ProofSignal::MapLookupKeyArgumentUnreadable => map_lookup_key_argument_unreadable(c.log, c.terminal_error, c.terminal_pc, c.terminal_line, c.register, c.events),
+        ProofSignal::UnreadableProgramEntryArgument => unreadable_program_entry_argument(c),
+        ProofSignal::UnreadableHelperArgument => unreadable_helper_argument(c),
+        ProofSignal::MapPointerRawAccessContract => map_pointer_raw_access_contract(c),
+        ProofSignal::PerfEventOutputPacketAccess => perf_event_output_packet_access(c),
+        ProofSignal::UnreadableReturnRegister => unreadable_return_register(c),
+        ProofSignal::LegacySkbLoadUnreadableRegister => legacy_skb_load_unreadable_register(c),
+        ProofSignal::HelperStackReadExceedsInitializedRange => helper_stack_read_exceeds_initialized_range(c),
+        ProofSignal::HelperStackWriteBeyondFrame => helper_stack_write_beyond_frame(c),
+        ProofSignal::DynptrUninitializedArgument => dynptr_uninitialized_argument(c),
+        ProofSignal::DynptrReferencedSlotOverwrite => dynptr_referenced_slot_overwrite(c),
+        ProofSignal::DynptrReadonlyPacketWrite => dynptr_readonly_packet_write(c),
+        ProofSignal::DynptrStackSlotWriteOverlap => dynptr_stack_slot_write_overlap(c),
+        ProofSignal::DynptrStackStorageAccess => dynptr_stack_storage_access(c),
+        ProofSignal::DynptrHelperArgumentStateMismatch => dynptr_helper_argument_state_mismatch(c),
+        ProofSignal::DynptrReleaseUnacquiredReference => dynptr_release_unacquired_reference(c),
+        ProofSignal::DynptrSliceVariableLength => dynptr_slice_variable_length(c),
+        ProofSignal::IteratorHelperArgumentStateMismatch => iterator_helper_argument_state_mismatch(c),
+        ProofSignal::IteratorStackStorageAccess => iterator_stack_storage_access(c),
+        ProofSignal::IrqFlagStateMismatch => irq_flag_state_mismatch(c),
+        ProofSignal::IrqRestoreOrderMismatch => irq_restore_order_mismatch(c),
+        ProofSignal::IrqRestoreHelperClassMismatch => irq_restore_helper_class_mismatch(c),
+        ProofSignal::IrqStateLiveAtExit => irq_state_live_at_exit(c),
+        ProofSignal::SleepableCallInNonSleepableContext => sleepable_call_in_non_sleepable_context(c),
+        ProofSignal::CallbackCallWhileLocked => callback_call_while_locked(c),
+        ProofSignal::NullablePointerUseWithoutProof => nullable_pointer_use_without_proof(c),
+        ProofSignal::ModernBpfObjectProtocolViolation => modern_bpf_object_protocol_violation(c),
+        ProofSignal::KfuncArgumentTypeMismatch => kfunc_argument_type_mismatch(c),
+        ProofSignal::TrustedNullableArgument => trusted_nullable_argument(c),
+        ProofSignal::VerifierTypeContractMismatch => verifier_type_contract_mismatch(c),
+        ProofSignal::MemoryObjectAccessOutOfBounds => memory_object_access_out_of_bounds(c),
+        ProofSignal::ReturnRangeOutOfBounds => return_range_out_of_bounds(c),
+        ProofSignal::StackVariableOffsetOutOfBounds => stack_variable_offset_out_of_bounds(c),
+        ProofSignal::ScalarRangeUnsafeAtUse => scalar_range_unsafe_at_use(c),
+        ProofSignal::PacketPointerProofLostAfterBoundsCheck => c.events.iter().any(packet_proof_lost_after_bounds_check),
+        ProofSignal::PacketRangeProofLostBeforeAccess => packet_range_proof_lost_before_access(c.events),
+        ProofSignal::PacketGuardUndercoversAccess => packet_guard_undercovers_access(c),
+        ProofSignal::PacketAccessWithoutBoundsProof => packet_access_without_bounds_proof(c),
+        ProofSignal::MapValueWideAccess => map_value_wide_access(c.log, c.terminal_error, c.terminal_pc, c.terminal_line, c.register, c.branch_states),
+        ProofSignal::MapValueCheckedOffsetRelationLost => map_value_checked_offset_relation_lost(c.terminal_error, c.terminal_pc, c.register, c.states, c.events, c.source_events),
+        ProofSignal::MapValueGuardExceedsValueSize => map_value_guard_exceeds_value_size(c),
+        ProofSignal::MapValueAccessOutOfBounds => map_value_access_out_of_bounds(c),
+    }
+
+    push_fallback_opt!(stale_pointer_after_invalidating_helper(c));
+    push_fallback_signal!(ProofSignal::OpaqueScalarPointerDereference => opaque_scalar_pointer_dereference(c));
+    push_fallback_signal!(ProofSignal::NullScalarDereferenceAfterPointerProof => null_scalar_dereference_after_pointer_proof(c));
+    push_fallback_signal!(ProofSignal::ScalarValueUsedAsPointer => scalar_value_used_as_pointer(c));
+    push_fallback_signal!(ProofSignal::ProhibitedPointerArithmetic => prohibited_pointer_arithmetic(c));
+
+    // Same-rank signals keep registry order; runtime selection relies on stable sorting.
     signals.sort_by_key(|signal| signal.selection_rank());
     signals
 }
