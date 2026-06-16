@@ -7124,9 +7124,15 @@ fn packet_access_without_bounds_proof(context: &ProofSignalContext<'_>) -> bool 
         .terminal_line
         .map(|line| verifier_fragment_start_line(context.log, line))
         .unwrap_or_else(|| verifier_fragment_start_line(context.log, instruction.line));
-    let Some(state) =
+    let Some(state) = latest_reg_state_before_instruction(
+        context.branch_states,
+        instruction,
+        fragment_start,
+        reg,
+    )
+    .or_else(|| {
         latest_reg_state_before_instruction(context.states, instruction, fragment_start, reg)
-    else {
+    }) else {
         return false;
     };
     if state.reg_type != "pkt" {
@@ -8962,6 +8968,25 @@ mod tests {
                 && event.evidence == ProofEventEvidence::SourceComment
                 && event.source.as_ref().unwrap().line == 52
         }));
+
+        let derived_header_log =
+            include_str!("../../../bpfix-bench/cases/stackoverflow-76277872/replay-verifier.log");
+        let analysis = analyze_verifier_log(
+            derived_header_log,
+            Some(6),
+            None,
+            "invalid access to packet, off=26 size=4, R1(id=0,off=26,r=14); R1 offset is outside of the packet",
+            None,
+            ProofObligation::PacketBounds,
+        )
+        .unwrap();
+        assert!(
+            analysis
+                .signals
+                .contains(&ProofSignal::PacketAccessWithoutBoundsProof),
+            "signals: {:?}",
+            analysis.signals
+        );
     }
 
     #[test]

@@ -1116,6 +1116,41 @@ fn underchecked_packet_guards_report_source_state_signal() {
         "shorter packet range"
     ));
 
+    let derived_header_pointer =
+        run_json("bpfix-bench/cases/stackoverflow-76277872/replay-verifier.log");
+    assert_eq!(derived_header_pointer["error_id"], "BPFIX-E001");
+    assert_eq!(derived_header_pointer["failure_class"], "source_bug");
+    assert!(evidence_contains(
+        &derived_header_pointer,
+        "verifier_state_signal",
+        "packet register's proven range is shorter"
+    ));
+
+    let stale_branch_state_from_prior_fragment = run_json_stdin(
+        "\
+0: R1=pkt(off=14,r=14) R7=pkt_end()
+0: (2d) if r1 > r7 goto pc+1
+invalid access to packet, off=26 size=4, R1(id=0,off=26,r=14)
+processed 1 insns (limit 1000000) max_states_per_insn 0 total_states 1 peak_states 1 mark_read 0
+func#1 @0
+0: (61) r2 = *(u32 *)(r1 +12)
+invalid access to packet, off=26 size=4, R1(id=0,off=26,r=14)
+",
+    );
+    assert_eq!(
+        stale_branch_state_from_prior_fragment["error_id"],
+        "BPFIX-E001"
+    );
+    assert_eq!(
+        stale_branch_state_from_prior_fragment["failure_class"],
+        "source_bug"
+    );
+    assert!(!evidence_contains(
+        &stale_branch_state_from_prior_fragment,
+        "verifier_state_signal",
+        "packet register's proven range is shorter"
+    ));
+
     let loop_callback = run_json("bpfix-bench/cases/stackoverflow-77967675/replay-verifier.log");
     assert_eq!(loop_callback["error_id"], "BPFIX-E001");
     assert_eq!(loop_callback["failure_class"], "source_bug");
