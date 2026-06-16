@@ -120,6 +120,7 @@ macro_rules! proof_signal_variants {
             HelperStackWriteBeyondFrame,
             ScalarValueUsedAsPointer,
             StalePointerAfterInvalidatingHelper,
+            DynptrDataPointerInvalidatedBeforeUse,
             ProhibitedPointerArithmetic,
             PacketGuardUndercoversAccess,
             PacketMaxOffsetPrecisionBoundary,
@@ -281,7 +282,10 @@ impl ProofSignal {
                 "scalar or pkt_end value is used where the verifier requires a real pointer"
             }
             Self::StalePointerAfterInvalidatingHelper => {
-                "skb/xdp or dynptr data pointer is reused after a helper invalidates it"
+                "skb/xdp packet pointer is reused after a helper invalidates it"
+            }
+            Self::DynptrDataPointerInvalidatedBeforeUse => {
+                "dynptr data or slice pointer is reused after verifier-visible invalidation"
             }
             Self::ProhibitedPointerArithmetic => {
                 "pointer arithmetic uses an operator the verifier cannot apply to pointer state"
@@ -393,6 +397,7 @@ impl ProofSignal {
             | Self::KfuncArgumentTypeMismatch
             | Self::VerifierTypeContractMismatch
             | Self::ModernBpfObjectProtocolViolation
+            | Self::DynptrDataPointerInvalidatedBeforeUse
             | Self::ExceptionCallbackProtocolViolation
             | Self::IrqRestoreOrderMismatch
             | Self::IrqRestoreHelperClassMismatch
@@ -599,7 +604,10 @@ impl ProofSignal {
                 "verifier state at the rejected instruction shows the consumed register is scalar or pkt_end state, but the instruction uses it as a memory pointer or pointer-like value"
             }
             Self::StalePointerAfterInvalidatingHelper => {
-                "verifier state shows this register previously held an skb/xdp or dynptr data pointer, but an intervening helper invalidated that pointer before the rejected memory access"
+                "verifier state shows this register previously held an skb/xdp packet pointer, but an intervening packet-mutating helper invalidated that pointer before the rejected memory access"
+            }
+            Self::DynptrDataPointerInvalidatedBeforeUse => {
+                "verifier state traces this register to a dynptr data or slice helper result, then sees a later helper invalidate the underlying dynptr or packet backing before the rejected memory access"
             }
             Self::ProhibitedPointerArithmetic => {
                 "verifier state at the rejected instruction shows the target register is still pointer state, but the instruction applies a prohibited pointer arithmetic or bitwise operator"
@@ -805,7 +813,10 @@ impl ProofSignal {
                 "Use a verifier-recognized pointer at the access site; keep end sentinels, scalar offsets, and pointer bases separate, and reload or rederive the pointer from a supported context/helper before dereferencing it."
             }
             Self::StalePointerAfterInvalidatingHelper => {
-                "After helpers that move or rewrite skb/xdp data, write dynptr backing storage, or replace dynptr backing state, discard old data and slice pointers and reacquire a fresh verifier-recognized pointer before dereferencing."
+                "After helpers that move or rewrite skb/xdp data, reload packet data/data_end, recheck the packet range, and derive a fresh packet pointer before dereferencing."
+            }
+            Self::DynptrDataPointerInvalidatedBeforeUse => {
+                "Treat dynptr data and slice pointers as invalid after helpers or packet operations that can mutate their backing storage; reacquire a fresh dynptr data or slice pointer before dereferencing."
             }
             Self::ProhibitedPointerArithmetic => {
                 "Avoid bitwise or unsupported arithmetic on pointer registers; preserve pointer provenance by keeping the pointer unchanged and applying scalar arithmetic to a separate offset before deriving a verifier-recognized pointer."
@@ -911,6 +922,7 @@ impl ProofSignal {
                 | Self::HelperStackWriteBeyondFrame
                 | Self::ScalarValueUsedAsPointer
                 | Self::StalePointerAfterInvalidatingHelper
+                | Self::DynptrDataPointerInvalidatedBeforeUse
                 | Self::ProhibitedPointerArithmetic
                 | Self::MapValueGuardExceedsValueSize
                 | Self::MapValueAccessOutOfBounds
@@ -1034,6 +1046,7 @@ impl ProofSignal {
                 | Self::HelperStackWriteBeyondFrame
                 | Self::ScalarValueUsedAsPointer
                 | Self::StalePointerAfterInvalidatingHelper
+                | Self::DynptrDataPointerInvalidatedBeforeUse
                 | Self::ProhibitedPointerArithmetic
         )
     }
@@ -1158,7 +1171,10 @@ impl ProofSignal {
                 "prove the value consumed by this memory access or pointer operation is a verifier-recognized pointer, not scalar or pkt_end state",
             ),
             Self::StalePointerAfterInvalidatingHelper => Some(
-                "preserve pointer provenance by reacquiring and rechecking the skb/xdp or dynptr data pointer after the helper that invalidates existing data pointers",
+                "preserve pointer provenance by reacquiring and rechecking the skb/xdp packet pointer after the helper that invalidates existing packet data pointers",
+            ),
+            Self::DynptrDataPointerInvalidatedBeforeUse => Some(
+                "follow the dynptr data/slice lifecycle by discarding invalidated data pointers and reacquiring a fresh verifier-tracked slice after the invalidating helper",
             ),
             Self::ProhibitedPointerArithmetic => Some(
                 "preserve pointer state by avoiding bitwise or verifier-prohibited arithmetic on the pointer register",
@@ -1311,6 +1327,9 @@ impl ProofSignal {
             Self::StalePointerAfterInvalidatingHelper => {
                 Some("this access reuses a pointer invalidated by an earlier helper call")
             }
+            Self::DynptrDataPointerInvalidatedBeforeUse => {
+                Some("this access reuses a dynptr data pointer after invalidation")
+            }
             Self::ProhibitedPointerArithmetic => {
                 Some("this instruction applies a prohibited operation to pointer state")
             }
@@ -1388,6 +1407,7 @@ impl ProofSignal {
             Self::StackVariableOffsetOutOfBounds => Some("BPFIX-E005"),
             Self::ScalarValueUsedAsPointer => Some("BPFIX-E011"),
             Self::StalePointerAfterInvalidatingHelper => Some("BPFIX-E011"),
+            Self::DynptrDataPointerInvalidatedBeforeUse => Some("BPFIX-E011"),
             Self::KernelObjectFieldAccessMismatch => Some("BPFIX-E011"),
             _ => None,
         }
@@ -2498,8 +2518,10 @@ fn proof_signals(context: ProofSignalContext<'_>) -> Vec<ProofSignal> {
     if map_value_access_out_of_bounds(&context) {
         signals.push(ProofSignal::MapValueAccessOutOfBounds);
     }
-    if signals.is_empty() && stale_pointer_after_invalidating_helper(&context) {
-        signals.push(ProofSignal::StalePointerAfterInvalidatingHelper);
+    if signals.is_empty() {
+        if let Some(signal) = stale_pointer_after_invalidating_helper(&context) {
+            signals.push(signal);
+        }
     }
     if signals.is_empty() && scalar_value_used_as_pointer(&context) {
         signals.push(ProofSignal::ScalarValueUsedAsPointer);
@@ -5244,29 +5266,31 @@ fn scalar_value_used_as_pointer(context: &ProofSignalContext<'_>) -> bool {
     }
 }
 
-fn stale_pointer_after_invalidating_helper(context: &ProofSignalContext<'_>) -> bool {
+fn stale_pointer_after_invalidating_helper(
+    context: &ProofSignalContext<'_>,
+) -> Option<ProofSignal> {
     if context.obligation != ProofObligation::PointerProvenance {
-        return false;
+        return None;
     }
     let terminal = context.terminal_error.to_ascii_lowercase();
     if !(terminal.contains("invalid mem access 'scalar'")
         || terminal.contains("invalid mem access 'inv'"))
     {
-        return false;
+        return None;
     }
     let Some(reg) = context
         .register
         .or_else(|| register_from_terminal_error(context.terminal_error))
     else {
-        return false;
+        return None;
     };
     let Some(instruction) =
         terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)
     else {
-        return false;
+        return None;
     };
     if memory_access_base_register(instruction.tail) != Some(reg) {
-        return false;
+        return None;
     }
     let fragment_start = context
         .terminal_line
@@ -5278,12 +5302,18 @@ fn stale_pointer_after_invalidating_helper(context: &ProofSignalContext<'_>) -> 
         fragment_start,
         reg,
     ) else {
-        return false;
+        return None;
     };
     let Some(pointer_kind) = stale_data_pointer_kind(&context, state, state_log_line, reg) else {
-        return false;
+        return None;
     };
-    invalidating_helper_between(&context, state_log_line, instruction.line, pointer_kind)
+    if !invalidating_helper_between(&context, state_log_line, instruction.line, pointer_kind) {
+        return None;
+    }
+    Some(match pointer_kind {
+        StaleDataPointerKind::Packet => ProofSignal::StalePointerAfterInvalidatingHelper,
+        StaleDataPointerKind::DynptrData(_) => ProofSignal::DynptrDataPointerInvalidatedBeforeUse,
+    })
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -9527,6 +9557,9 @@ mod tests {
         assert!(analysis
             .signals
             .contains(&ProofSignal::StalePointerAfterInvalidatingHelper));
+        assert!(!analysis
+            .signals
+            .contains(&ProofSignal::DynptrDataPointerInvalidatedBeforeUse));
     }
 
     #[test]
@@ -9545,6 +9578,9 @@ mod tests {
         .unwrap();
 
         assert!(analysis
+            .signals
+            .contains(&ProofSignal::DynptrDataPointerInvalidatedBeforeUse));
+        assert!(!analysis
             .signals
             .contains(&ProofSignal::StalePointerAfterInvalidatingHelper));
     }

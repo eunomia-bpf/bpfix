@@ -65,6 +65,19 @@ fn evidence_contains(json: &Value, kind: &str, detail: &str) -> bool {
     })
 }
 
+fn assert_no_stale_pointer_invalidation_signal(json: &Value) {
+    assert!(!evidence_contains(
+        json,
+        "verifier_state_signal",
+        "packet-mutating helper invalidated"
+    ));
+    assert!(!evidence_contains(
+        json,
+        "verifier_state_signal",
+        "dynptr data or slice helper result"
+    ));
+}
+
 fn run_json_stdin_with_args(input: &str, args: &[&str]) -> Value {
     let mut child = Command::new(env!("CARGO_BIN_EXE_bpfix"))
         .args(args)
@@ -3537,6 +3550,23 @@ fn stale_data_pointer_after_invalidating_helper_reports_state_signal() {
     for path in [
         "bpfix-bench/cases/github-commit-cilium-2ff1a462cd33/replay-verifier.log",
         "bpfix-bench/cases/github-commit-cilium-3f356b0156d8/replay-verifier.log",
+    ] {
+        let diagnostic = run_json(path);
+        assert_eq!(diagnostic["error_id"], "BPFIX-E011");
+        assert_eq!(diagnostic["failure_class"], "source_bug");
+        assert_eq!(diagnostic["next_action"], "provenance");
+        assert!(evidence_contains(
+            &diagnostic,
+            "verifier_state_signal",
+            "intervening packet-mutating helper invalidated"
+        ));
+        assert!(diagnostic["required_proof"]
+            .as_str()
+            .unwrap()
+            .contains("preserve pointer provenance"));
+    }
+
+    for path in [
         "bpfix-bench/cases/kernel-selftest-dynptr-fail-skb-invalid-data-slice1-tc-0b35a757/replay-verifier.log",
         "bpfix-bench/cases/kernel-selftest-dynptr-fail-skb-invalid-data-slice3-tc-a15c4322/replay-verifier.log",
         "bpfix-bench/cases/kernel-selftest-dynptr-fail-dynptr-invalidate-slice-reinit-raw-tp-f5b71f50/replay-verifier.log",
@@ -3545,15 +3575,16 @@ fn stale_data_pointer_after_invalidating_helper_reports_state_signal() {
         let diagnostic = run_json(path);
         assert_eq!(diagnostic["error_id"], "BPFIX-E011");
         assert_eq!(diagnostic["failure_class"], "source_bug");
+        assert_eq!(diagnostic["next_action"], "protocol");
         assert!(evidence_contains(
             &diagnostic,
             "verifier_state_signal",
-            "intervening helper invalidated"
+            "dynptr data or slice helper result"
         ));
         assert!(diagnostic["required_proof"]
             .as_str()
             .unwrap()
-            .contains("preserve pointer provenance"));
+            .contains("dynptr data/slice lifecycle"));
     }
 }
 
@@ -3566,11 +3597,7 @@ fn stale_data_pointer_signal_requires_invalidating_helper_after_pointer_state() 
          2: (71) r0 = *(u8 *)(r7 +0)\n\
          R7 invalid mem access 'scalar'\n",
     );
-    assert!(!evidence_contains(
-        &non_invalidating_helper,
-        "verifier_state_signal",
-        "intervening helper invalidated"
-    ));
+    assert_no_stale_pointer_invalidation_signal(&non_invalidating_helper);
 
     let pointer_reacquired_after_helper = run_json_stdin(
         "func#0 @0\n\
@@ -3579,11 +3606,7 @@ fn stale_data_pointer_signal_requires_invalidating_helper_after_pointer_state() 
          2: (71) r0 = *(u8 *)(r7 +0)\n\
          R7 invalid mem access 'scalar'\n",
     );
-    assert!(!evidence_contains(
-        &pointer_reacquired_after_helper,
-        "verifier_state_signal",
-        "intervening helper invalidated"
-    ));
+    assert_no_stale_pointer_invalidation_signal(&pointer_reacquired_after_helper);
 
     let scalar_state_after_invalidating_helper = run_json_stdin(
         "func#0 @0\n\
@@ -3593,11 +3616,7 @@ fn stale_data_pointer_signal_requires_invalidating_helper_after_pointer_state() 
          3: (71) r0 = *(u8 *)(r7 +0)\n\
          R7 invalid mem access 'scalar'\n",
     );
-    assert!(!evidence_contains(
-        &scalar_state_after_invalidating_helper,
-        "verifier_state_signal",
-        "intervening helper invalidated"
-    ));
+    assert_no_stale_pointer_invalidation_signal(&scalar_state_after_invalidating_helper);
     assert!(evidence_contains(
         &scalar_state_after_invalidating_helper,
         "verifier_state_signal",
@@ -3616,11 +3635,7 @@ fn stale_data_pointer_signal_requires_invalidating_helper_after_pointer_state() 
          7: (71) r0 = *(u8 *)(r7 +0)\n\
          R7 invalid mem access 'scalar'\n",
     );
-    assert!(!evidence_contains(
-        &local_dynptr_data_ignores_packet_helper,
-        "verifier_state_signal",
-        "intervening helper invalidated"
-    ));
+    assert_no_stale_pointer_invalidation_signal(&local_dynptr_data_ignores_packet_helper);
 
     let unrelated_dynptr_write = run_json_stdin(
         "func#0 @0\n\
@@ -3634,11 +3649,7 @@ fn stale_data_pointer_signal_requires_invalidating_helper_after_pointer_state() 
          7: (71) r0 = *(u8 *)(r7 +0)\n\
          R7 invalid mem access 'scalar'\n",
     );
-    assert!(!evidence_contains(
-        &unrelated_dynptr_write,
-        "verifier_state_signal",
-        "intervening helper invalidated"
-    ));
+    assert_no_stale_pointer_invalidation_signal(&unrelated_dynptr_write);
 
     let later_data_pointer_producer_for_different_register = run_json_stdin(
         "func#0 @0\n\
@@ -3657,11 +3668,9 @@ fn stale_data_pointer_signal_requires_invalidating_helper_after_pointer_state() 
          12: (71) r0 = *(u8 *)(r7 +0)\n\
          R7 invalid mem access 'scalar'\n",
     );
-    assert!(!evidence_contains(
+    assert_no_stale_pointer_invalidation_signal(
         &later_data_pointer_producer_for_different_register,
-        "verifier_state_signal",
-        "intervening helper invalidated"
-    ));
+    );
 
     let r0_clobber_breaks_dynptr_lineage = run_json_stdin(
         "func#0 @0\n\
@@ -3676,11 +3685,7 @@ fn stale_data_pointer_signal_requires_invalidating_helper_after_pointer_state() 
          8: (71) r0 = *(u8 *)(r7 +0)\n\
          R7 invalid mem access 'scalar'\n",
     );
-    assert!(!evidence_contains(
-        &r0_clobber_breaks_dynptr_lineage,
-        "verifier_state_signal",
-        "intervening helper invalidated"
-    ));
+    assert_no_stale_pointer_invalidation_signal(&r0_clobber_breaks_dynptr_lineage);
 }
 
 #[test]
