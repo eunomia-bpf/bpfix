@@ -108,6 +108,8 @@ pub enum ProofSignal {
     MapLookupKeyArgumentUnreadable,
     UnreadableProgramEntryArgument,
     UnreadableHelperArgument,
+    MapPointerRawAccessContract,
+    PerfEventOutputPacketAccess,
     UnreadableReturnRegister,
     LegacySkbLoadUnreadableRegister,
     HelperStackReadExceedsInitializedRange,
@@ -233,6 +235,12 @@ impl ProofSignal {
             }
             Self::UnreadableHelperArgument => {
                 "helper argument register is unreadable at the call site"
+            }
+            Self::MapPointerRawAccessContract => {
+                "map pointer is accessed as ordinary memory"
+            }
+            Self::PerfEventOutputPacketAccess => {
+                "perf event output helper receives packet memory directly"
             }
             Self::UnreadableReturnRegister => {
                 "return register is unreadable at BPF_EXIT"
@@ -466,6 +474,12 @@ impl ProofSignal {
             Self::UnreadableHelperArgument => {
                 "the rejected helper call consumes an argument register that has no verifier-readable state at the call site"
             }
+            Self::MapPointerRawAccessContract => {
+                "verifier state shows an ordinary memory access whose base register is a map_ptr, but map contents must be reached through a helper-returned map-value pointer"
+            }
+            Self::PerfEventOutputPacketAccess => {
+                "verifier state at bpf_perf_event_output passes a packet pointer and scalar length as the data/size pair, but this helper cannot read packet memory directly"
+            }
             Self::UnreadableReturnRegister => {
                 "terminal verifier state rejects BPF_EXIT because the return register is not readable"
             }
@@ -660,6 +674,12 @@ impl ProofSignal {
             Self::UnreadableHelperArgument => {
                 "Set the helper argument register to a verifier-readable value immediately before the helper call, or remove the helper path that reaches the call without that argument."
             }
+            Self::MapPointerRawAccessContract => {
+                "Look up an element and read or write the returned map-value pointer; do not dereference or store through the map object pointer itself."
+            }
+            Self::PerfEventOutputPacketAccess => {
+                "Copy packet bytes into stack or map storage first, or use a helper path that supports packet data instead of passing the packet pointer directly as the perf-event payload."
+            }
             Self::UnreadableReturnRegister => {
                 "Initialize R0 with a valid return code on every path before returning from the BPF program."
             }
@@ -772,6 +792,8 @@ impl ProofSignal {
                 | Self::MapLookupKeyArgumentUnreadable
                 | Self::UnreadableProgramEntryArgument
                 | Self::UnreadableHelperArgument
+                | Self::MapPointerRawAccessContract
+                | Self::PerfEventOutputPacketAccess
                 | Self::UnreadableReturnRegister
                 | Self::LegacySkbLoadUnreadableRegister
                 | Self::HelperStackReadExceedsInitializedRange
@@ -891,6 +913,8 @@ impl ProofSignal {
                 | Self::MapLookupKeyArgumentUnreadable
                 | Self::UnreadableProgramEntryArgument
                 | Self::UnreadableHelperArgument
+                | Self::MapPointerRawAccessContract
+                | Self::PerfEventOutputPacketAccess
                 | Self::UnreadableReturnRegister
                 | Self::LegacySkbLoadUnreadableRegister
                 | Self::HelperStackReadExceedsInitializedRange
@@ -992,6 +1016,12 @@ impl ProofSignal {
             ),
             Self::UnreadableHelperArgument => Some(
                 "set the rejected helper argument register to a verifier-readable value on every path before the helper call",
+            ),
+            Self::MapPointerRawAccessContract => Some(
+                "derive a verifier-visible map-value pointer with the proper map helper before reading or writing map contents",
+            ),
+            Self::PerfEventOutputPacketAccess => Some(
+                "pass bpf_perf_event_output helper-readable stack or map memory, not a live packet pointer, as its data payload",
             ),
             Self::UnreadableReturnRegister => {
                 Some("initialize R0 to a verifier-readable return value before BPF_EXIT")
@@ -1134,6 +1164,12 @@ impl ProofSignal {
             Self::UnreadableHelperArgument => {
                 Some("this helper argument register is not readable at the call")
             }
+            Self::MapPointerRawAccessContract => {
+                Some("this memory access uses the map object pointer as ordinary memory")
+            }
+            Self::PerfEventOutputPacketAccess => {
+                Some("this helper call passes packet memory as the output payload")
+            }
             Self::UnreadableReturnRegister => Some("this exit has no readable value in R0"),
             Self::LegacySkbLoadUnreadableRegister => {
                 Some("this legacy skb load uses an implicit unreadable register")
@@ -1213,6 +1249,8 @@ impl ProofSignal {
             Self::ExceptionCallbackProtocolViolation => Some("BPFIX-E013"),
             Self::UnreadableProgramEntryArgument => Some("BPFIX-E011"),
             Self::UnreadableHelperArgument => Some("BPFIX-E010"),
+            Self::MapPointerRawAccessContract => Some("BPFIX-E010"),
+            Self::PerfEventOutputPacketAccess => Some("BPFIX-E010"),
             Self::UnreadableReturnRegister => Some("BPFIX-E003"),
             Self::LegacySkbLoadUnreadableRegister => Some("BPFIX-E003"),
             Self::HelperStackReadExceedsInitializedRange => Some("BPFIX-E003"),
@@ -2191,6 +2229,12 @@ fn proof_signals(context: ProofSignalContext<'_>) -> Vec<ProofSignal> {
     }
     if unreadable_helper_argument(&context) {
         signals.push(ProofSignal::UnreadableHelperArgument);
+    }
+    if map_pointer_raw_access_contract(&context) {
+        signals.push(ProofSignal::MapPointerRawAccessContract);
+    }
+    if perf_event_output_packet_access(&context) {
+        signals.push(ProofSignal::PerfEventOutputPacketAccess);
     }
     if unreadable_return_register(&context) {
         signals.push(ProofSignal::UnreadableReturnRegister);
@@ -3361,6 +3405,75 @@ fn unreadable_helper_call_argument(instruction: TerminalInstruction<'_>, reg: u8
         return false;
     };
     target == "bpf_skb_store_bytes" && reg == 5
+}
+
+fn map_pointer_raw_access_contract(context: &ProofSignalContext<'_>) -> bool {
+    if context.obligation != ProofObligation::HelperArgument
+        || !context
+            .terminal_error
+            .contains("only read from bpf_array is supported")
+    {
+        return false;
+    }
+    let Some(instruction) =
+        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)
+    else {
+        return false;
+    };
+    let Some(base_reg) = memory_access_base_register(instruction.tail) else {
+        return false;
+    };
+    let fragment_start = context
+        .terminal_line
+        .map(|line| verifier_fragment_start_line(context.log, line))
+        .unwrap_or_else(|| verifier_fragment_start_line(context.log, instruction.line));
+    let Some(snapshot) = verifier_path_snapshot_before_instruction(
+        context.branch_states,
+        instruction,
+        fragment_start,
+    ) else {
+        return false;
+    };
+    snapshot
+        .regs
+        .get(&base_reg)
+        .is_some_and(|state| state.reg_type == "map_ptr")
+}
+
+fn perf_event_output_packet_access(context: &ProofSignalContext<'_>) -> bool {
+    if context.obligation != ProofObligation::HelperArgument
+        || !context
+            .terminal_error
+            .contains("helper access to the packet is not allowed")
+    {
+        return false;
+    }
+    let Some(instruction) =
+        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)
+    else {
+        return false;
+    };
+    if call_target_from_instruction_tail(instruction.tail) != Some("bpf_perf_event_output") {
+        return false;
+    }
+    let fragment_start = context
+        .terminal_line
+        .map(|line| verifier_fragment_start_line(context.log, line))
+        .unwrap_or_else(|| verifier_fragment_start_line(context.log, instruction.line));
+    let Some(snapshot) = verifier_path_snapshot_before_instruction(
+        context.branch_states,
+        instruction,
+        fragment_start,
+    ) else {
+        return false;
+    };
+    let Some(data) = snapshot.regs.get(&4) else {
+        return false;
+    };
+    let Some(size) = snapshot.regs.get(&5) else {
+        return false;
+    };
+    matches!(data.reg_type.as_str(), "pkt" | "pkt_meta") && size.reg_type == "scalar"
 }
 
 fn helper_stack_read_exceeds_initialized_range(context: &ProofSignalContext<'_>) -> bool {

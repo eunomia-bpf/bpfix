@@ -3876,6 +3876,66 @@ fn helper_type_contract_mismatch_uses_callsite_state() {
 }
 
 #[test]
+fn helper_argument_contracts_use_callsite_state() {
+    let raw_map_pointer_access =
+        run_json("bpfix-bench/cases/github-aya-rs-aya-1002/replay-verifier.log");
+    assert_eq!(raw_map_pointer_access["error_id"], "BPFIX-E010");
+    assert_eq!(raw_map_pointer_access["failure_class"], "source_bug");
+    assert!(raw_map_pointer_access["message"]
+        .as_str()
+        .unwrap()
+        .contains("map pointer is accessed"));
+    assert!(evidence_contains(
+        &raw_map_pointer_access,
+        "verifier_state_signal",
+        "base register is a map_ptr"
+    ));
+
+    let packet_payload = run_json("bpfix-bench/cases/github-aya-rs-aya-440/replay-verifier.log");
+    assert_eq!(packet_payload["error_id"], "BPFIX-E010");
+    assert_eq!(packet_payload["failure_class"], "source_bug");
+    assert!(packet_payload["message"]
+        .as_str()
+        .unwrap()
+        .contains("packet memory"));
+    assert!(evidence_contains(
+        &packet_payload,
+        "verifier_state_signal",
+        "passes a packet pointer and scalar length"
+    ));
+
+    let terminal_without_map_pointer_state = run_json_stdin(
+        "func#0 @0\n\
+         0: R1=scalar() R2=0 R10=fp0\n\
+         1: (7b) *(u64 *)(r1 +0) = r2\n\
+         only read from bpf_array is supported\n",
+    );
+    assert_source_bug_without_verifier_state_signal(
+        &terminal_without_map_pointer_state,
+        "BPFIX-E010",
+    );
+
+    let terminal_with_map_value_base = run_json_stdin(
+        "func#0 @0\n\
+         0: R1=map_value(map=events,ks=4,vs=8) R2=0 R10=fp0\n\
+         1: (7b) *(u64 *)(r1 +0) = r2\n\
+         only read from bpf_array is supported\n",
+    );
+    assert_source_bug_without_verifier_state_signal(&terminal_with_map_value_base, "BPFIX-E010");
+
+    let terminal_without_packet_payload_state = run_json_stdin(
+        "func#0 @0\n\
+         0: R1=ctx() R2=map_ptr(map=events,ks=4,vs=4) R3=0 R4=fp-8 R5=8 R10=fp0\n\
+         1: (85) call bpf_perf_event_output#25\n\
+         helper access to the packet is not allowed\n",
+    );
+    assert_source_bug_without_verifier_state_signal(
+        &terminal_without_packet_payload_state,
+        "BPFIX-E010",
+    );
+}
+
+#[test]
 fn terminal_error_selection_ignores_state_lines_and_uses_final_reject() {
     let pointer_bitwise = run_json("bpfix-bench/cases/stackoverflow-68460177/replay-verifier.log");
     assert_eq!(pointer_bitwise["error_id"], "BPFIX-E006");
