@@ -1,17 +1,20 @@
 use anyhow::Result;
 use bpfanalysis::verifier_log::{
-    atomic_memory_access_width, call_target_from_instruction_tail,
+    atomic_memory_access_width, call_target_from_instruction_tail, conditional_branch_registers,
     direct_call_target_from_instruction_tail, initialized_stack_bytes_from_snapshot,
-    instruction_opcode_body, latest_ref_state_before_instruction,
-    latest_reg_state_at_or_before_instruction, latest_reg_state_before,
-    latest_reg_state_before_instruction, latest_reg_state_before_instruction_with_frame,
+    instruction_adds_register, instruction_assigns_register, instruction_destination_register,
+    instruction_opcode_body, instruction_reads_register, instruction_register_copy_source,
+    instruction_single_register_rhs_source,
+    instruction_uses_register as terminal_instruction_uses_register, instruction_writes_register,
+    latest_ref_state_before_instruction, latest_reg_state_at_or_before_instruction,
+    latest_reg_state_before, latest_reg_state_before_instruction,
+    latest_reg_state_before_instruction_with_frame,
     latest_reg_state_before_instruction_with_log_line, latest_reg_state_index_before,
     latest_verifier_state_at_or_before_instruction, latest_verifier_state_before,
     latest_verifier_state_before_instruction, loose_register_operands as register_operands,
     memory_access_base_register, memory_access_is_atomic, memory_access_is_load,
-    memory_access_is_store, memory_access_offset, memory_access_operand, memory_access_width,
-    parse_instruction_line, register_token, register_write_token, stack_access_range,
-    stack_value_range, verifier_path_snapshot_before_instruction,
+    memory_access_is_store, memory_access_offset, memory_access_width, parse_instruction_line,
+    stack_access_range, stack_value_range, verifier_path_snapshot_before_instruction,
     verifier_states_with_branch_deltas_from_log, CallbackKind, PathVerifierSnapshot, RegState,
     StackByteRange, StackState, VerifierInsn, VerifierInsnKind,
     VerifierLogInstruction as TerminalInstruction,
@@ -2610,12 +2613,6 @@ fn unreadable_entry_argument(
         .any(|event| event.pc == Some(0) && looks_like_multi_argument_bpf_entry(&event.source.text))
 }
 
-fn terminal_instruction_uses_register(tail: &str, reg: u8) -> bool {
-    let needle = format!("r{reg}");
-    tail.split(|ch: char| !ch.is_ascii_alphanumeric())
-        .any(|token| token == needle)
-}
-
 fn looks_like_multi_argument_bpf_entry(text: &str) -> bool {
     let trimmed = text.trim_start();
     let looks_like_function = trimmed.starts_with("int ")
@@ -4591,25 +4588,6 @@ fn helper_exact_u64_argument(
         .exact_scalar_value()
 }
 
-fn instruction_register_copy_source(instruction_tail: &str, destination: u8) -> Option<u8> {
-    if instruction_destination_register(instruction_tail) != Some(destination) {
-        return None;
-    }
-    let (_, rest) = instruction_tail.split_once(')')?;
-    let (_, rhs) = rest
-        .split_once(';')
-        .map_or(rest, |(body, _)| body)
-        .trim()
-        .split_once(" = ")?;
-    register_token(rhs.trim())
-}
-
-fn instruction_destination_register(instruction_tail: &str) -> Option<u8> {
-    let (_, rest) = instruction_tail.split_once(')')?;
-    let lhs = rest.trim_start().split_once(" = ")?.0.trim();
-    register_write_token(lhs)
-}
-
 fn stale_pointer_after_invalidating_helper(
     context: &ProofSignalContext<'_>,
 ) -> Option<ProofSignal> {
@@ -4828,17 +4806,6 @@ fn register_assigned_between(
         })
 }
 
-fn instruction_assigns_register(instruction_tail: &str, reg: u8) -> bool {
-    if reg == 0 && call_target_from_instruction_tail(instruction_tail).is_some() {
-        return true;
-    }
-    let Some((_, rest)) = instruction_tail.split_once(')') else {
-        return false;
-    };
-    let body = rest.split_once(';').map_or(rest, |(body, _)| body).trim();
-    body.starts_with(&format!("r{reg} ")) || body.starts_with(&format!("w{reg} "))
-}
-
 fn instruction_frame(
     states: &[VerifierInsn],
     instruction: TerminalInstruction<'_>,
@@ -4931,7 +4898,7 @@ fn dynptr_data_origin(
         let Some((pc, tail)) = parse_instruction_line(line.trim()) else {
             continue;
         };
-        if let Some(source_reg) = register_copy_source(tail, current_reg) {
+        if let Some(source_reg) = instruction_single_register_rhs_source(tail, current_reg) {
             current_reg = source_reg;
             continue;
         }
@@ -4968,20 +4935,6 @@ fn dynptr_data_producer_arg(target: &str) -> Option<u8> {
         "bpf_dynptr_data" | "bpf_dynptr_slice" | "bpf_dynptr_slice_rdwr"
     )
     .then_some(1)
-}
-
-fn register_copy_source(instruction_tail: &str, dest: u8) -> Option<u8> {
-    let (_, rest) = instruction_tail.split_once(')')?;
-    let rest = rest.trim_start();
-    if !(rest.starts_with(&format!("r{dest} = ")) || rest.starts_with(&format!("w{dest} = "))) {
-        return None;
-    }
-    let rhs = rest.split_once(" = ")?.1.split(';').next()?.trim();
-    if !rhs.starts_with('r') && !rhs.starts_with('w') {
-        return None;
-    }
-    let regs = register_operands(rhs);
-    (regs.len() == 1).then_some(regs[0])
 }
 
 fn dynptr_slot_backing_before(
@@ -5555,29 +5508,6 @@ fn register_written_between(log: &str, after_line: usize, before_line: usize, re
         })
         .filter_map(|(_, line)| parse_instruction_line(line.trim()))
         .any(|(_, tail)| instruction_writes_register(tail, reg))
-}
-
-fn instruction_writes_register(tail: &str, reg: u8) -> bool {
-    let mut tokens = tail.split_whitespace();
-    let Some(first) = tokens.next() else {
-        return false;
-    };
-    let Some(destination) = (if first.starts_with('(') {
-        tokens.next()
-    } else {
-        Some(first)
-    }) else {
-        return false;
-    };
-    if destination == "call" {
-        return reg <= 5;
-    }
-    if register_write_token(destination) != Some(reg) {
-        return false;
-    }
-    tokens
-        .next()
-        .is_some_and(|operator| operator.ends_with('='))
 }
 
 fn terminal_type_contract(message: &str) -> Option<(u8, String)> {
@@ -7232,18 +7162,6 @@ fn guard_branch_register_sets(
         .collect()
 }
 
-fn conditional_branch_registers(tail: &str) -> Vec<u8> {
-    let Some(condition) = tail
-        .split_once(" if ")
-        .map(|(_, condition)| condition)
-        .or_else(|| tail.strip_prefix("if "))
-    else {
-        return Vec::new();
-    };
-    let condition = condition.split(" goto ").next().unwrap_or(condition);
-    register_operands(condition)
-}
-
 fn rejected_source(events: &[ProofEvent]) -> Option<&SourceLocation> {
     events
         .iter()
@@ -7436,22 +7354,6 @@ fn map_value_add_uses_scalar_between(
                 && pc < terminal_pc
                 && instruction_adds_register(tail, map_reg, scalar_reg)
         })
-}
-
-fn instruction_adds_register(tail: &str, destination: u8, source: u8) -> bool {
-    let mut tokens = tail.split_whitespace();
-    while let Some(token) = tokens.next() {
-        if register_token(token) != Some(destination) {
-            continue;
-        }
-        if tokens.next() != Some("+=") {
-            continue;
-        }
-        if tokens.next().and_then(register_token) == Some(source) {
-            return true;
-        }
-    }
-    false
 }
 
 fn register_from_terminal_error(message: &str) -> Option<u8> {
@@ -8382,16 +8284,6 @@ fn scalar_length_helper_argument_register(target: &str) -> Option<u8> {
         "bpf_perf_event_output" => Some(5),
         _ => None,
     }
-}
-
-fn instruction_reads_register(opcode_tail: &str, reg: u8) -> bool {
-    if let Some(operand) = memory_access_operand(opcode_tail) {
-        return register_operands(operand).contains(&reg);
-    }
-    if opcode_tail.split_once(" = ").is_some() {
-        return false;
-    }
-    register_operands(opcode_tail).contains(&reg)
 }
 
 fn scalar_range_state_is_unsafe_for_signal(state: &RegState, terminal_error: &str) -> bool {

@@ -89,6 +89,39 @@ fn parses_memory_access_shape() {
 }
 
 #[test]
+fn queries_instruction_register_effects() {
+    let copy = "(bf) r3 = r1                      ; R3_w=ctx()";
+    assert_eq!(instruction_destination_register(copy), Some(3));
+    assert!(instruction_assigns_register(copy, 3));
+    assert!(instruction_writes_register(copy, 3));
+    assert_eq!(instruction_register_copy_source(copy, 3), Some(1));
+    assert_eq!(instruction_single_register_rhs_source(copy, 3), Some(1));
+    assert_eq!(
+        instruction_register_copy_source("(bf) r3 = r1 + 0", 3),
+        None
+    );
+    assert_eq!(
+        instruction_single_register_rhs_source("(bf) r3 = r1 + 0", 3),
+        Some(1)
+    );
+    assert!(instruction_uses_register(
+        "r1 += 8; *(u64 *)(r10 -8) = r1",
+        10
+    ));
+
+    let call = "(85) call bpf_map_lookup_elem#1";
+    assert!(instruction_assigns_register(call, 0));
+    assert!(instruction_writes_register(call, 5));
+    assert!(!instruction_writes_register(call, 6));
+
+    let branch = "(2d) if r2 > r1 goto pc+3";
+    assert_eq!(conditional_branch_registers(branch), vec![2, 1]);
+    assert!(instruction_adds_register("(0f) r4 += r2", 4, 2));
+    assert!(!instruction_reads_register("(bf) r4 = r2", 2));
+    assert!(instruction_reads_register("(2d) if r2 > r1 goto pc+3", 2));
+}
+
+#[test]
 fn queries_latest_verifier_state_before_instruction() {
     let log = "\
 0: R1=ctx() R2=scalar(id=1) R10=fp0

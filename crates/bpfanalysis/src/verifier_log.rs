@@ -5,6 +5,9 @@
 //! The stable crate-root surface exposes parsed verifier state records. This
 //! module also contains raw helpers used by BPFix while the query layer is
 //! being consolidated into a higher-level trace API.
+//! Instruction text query helpers are public because BPFix consumes this crate
+//! as a separate package; they are narrow verifier-log scanners, not a complete
+//! BPF assembly parser.
 //!
 //! The verifier emits state snapshots in a few common forms:
 //! - `from <prev> to <pc>: R0=... R1=...`
@@ -255,6 +258,124 @@ pub fn instruction_opcode_body(line_after_pc: &str) -> &str {
         .split_once(';')
         .map_or(line_after_pc, |(body, _)| body)
         .trim()
+}
+
+pub fn instruction_destination_register(instruction_tail: &str) -> Option<u8> {
+    let (_, rest) = instruction_tail.split_once(')')?;
+    let lhs = rest.trim_start().split_once(" = ")?.0.trim();
+    register_write_token(lhs)
+}
+
+pub fn instruction_assigns_register(instruction_tail: &str, reg: u8) -> bool {
+    if reg == 0 && call_target_from_instruction_tail(instruction_tail).is_some() {
+        return true;
+    }
+    let Some((_, rest)) = instruction_tail.split_once(')') else {
+        return false;
+    };
+    let body = rest.split_once(';').map_or(rest, |(body, _)| body).trim();
+    body.starts_with(&format!("r{reg} ")) || body.starts_with(&format!("w{reg} "))
+}
+
+pub fn instruction_writes_register(instruction_tail: &str, reg: u8) -> bool {
+    let mut tokens = instruction_tail.split_whitespace();
+    let Some(first) = tokens.next() else {
+        return false;
+    };
+    let Some(destination) = (if first.starts_with('(') {
+        tokens.next()
+    } else {
+        Some(first)
+    }) else {
+        return false;
+    };
+    if destination == "call" {
+        return reg <= 5;
+    }
+    if register_write_token(destination) != Some(reg) {
+        return false;
+    }
+    tokens
+        .next()
+        .is_some_and(|operator| operator.ends_with('='))
+}
+
+pub fn instruction_register_copy_source(instruction_tail: &str, destination: u8) -> Option<u8> {
+    if instruction_destination_register(instruction_tail) != Some(destination) {
+        return None;
+    }
+    let rhs = instruction_assignment_rhs(instruction_tail)?;
+    register_token(rhs.trim())
+}
+
+pub fn instruction_single_register_rhs_source(
+    instruction_tail: &str,
+    destination: u8,
+) -> Option<u8> {
+    if instruction_destination_register(instruction_tail) != Some(destination) {
+        return None;
+    }
+    let rhs = instruction_assignment_rhs(instruction_tail)?;
+    if !rhs.starts_with('r') && !rhs.starts_with('w') {
+        return None;
+    }
+    let regs = loose_register_operands(rhs);
+    (regs.len() == 1).then_some(regs[0])
+}
+
+fn instruction_assignment_rhs(instruction_tail: &str) -> Option<&str> {
+    let (_, rest) = instruction_tail.split_once(')')?;
+    let (_, rhs) = rest
+        .split_once(';')
+        .map_or(rest, |(body, _)| body)
+        .trim()
+        .split_once(" = ")?;
+    Some(rhs)
+}
+
+pub fn instruction_uses_register(instruction_tail: &str, reg: u8) -> bool {
+    let needle = format!("r{reg}");
+    instruction_tail
+        .split(|ch: char| !ch.is_ascii_alphanumeric())
+        .any(|token| token == needle)
+}
+
+pub fn instruction_reads_register(opcode_tail: &str, reg: u8) -> bool {
+    if let Some(operand) = memory_access_operand(opcode_tail) {
+        return loose_register_operands(operand).contains(&reg);
+    }
+    if opcode_tail.split_once(" = ").is_some() {
+        return false;
+    }
+    loose_register_operands(opcode_tail).contains(&reg)
+}
+
+pub fn conditional_branch_registers(instruction_tail: &str) -> Vec<u8> {
+    let Some(condition) = instruction_tail
+        .split_once(" if ")
+        .map(|(_, condition)| condition)
+        .or_else(|| instruction_tail.strip_prefix("if "))
+    else {
+        return Vec::new();
+    };
+    let condition = condition.split(" goto ").next().unwrap_or(condition);
+    loose_register_operands(condition)
+}
+
+pub fn instruction_adds_register(instruction_tail: &str, destination: u8, source: u8) -> bool {
+    let mut tokens = instruction_tail.split_whitespace();
+    while let Some(token) = tokens.next() {
+        if register_token(token) != Some(destination) {
+            continue;
+        }
+        if tokens.next() != Some("+=") {
+            continue;
+        }
+        if tokens.next().and_then(register_token) == Some(source) {
+            return true;
+        }
+    }
+    false
 }
 
 pub fn memory_access_is_atomic(line_after_pc: &str) -> bool {
