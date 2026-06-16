@@ -511,6 +511,14 @@ fn interprets_scalar_and_map_value_register_state() {
     assert!(scalar_range_may_include_zero(&scalar));
     assert!(!scalar_range_may_be_negative(&scalar));
     assert!(scalar_state_upper_bound_at_most(&scalar, 64));
+    assert_eq!(
+        terminal_required_return_range("At program exit the register R0 has value (0x0; 0xffffffff) should have been in [0, 1]"),
+        Some((0, 1))
+    );
+    assert!(scalar_state_outside_required_range(&scalar, (0, 1)));
+    scalar.range.smax = Some(1);
+    scalar.range.umax = Some(1);
+    assert!(!scalar_state_outside_required_range(&scalar, (0, 1)));
     assert!(scalar_ranges_match(&scalar, &scalar));
     assert!(!scalar_range_upper_unbounded_or_too_large(&scalar));
     assert!(!scalar_range_is_unsafe(&scalar));
@@ -535,6 +543,9 @@ fn interprets_scalar_and_map_value_register_state() {
     assert_eq!(map_value_variable_max_offset(&map_value), Some(12));
     assert!(map_value_access_range_may_exceed_value_size(&map_value, 1));
     assert!(map_value_range_may_exceed_value_size(&map_value));
+
+    assert!(instruction_is_bpf_exit("(95) exit"));
+    assert!(!instruction_is_bpf_exit("(85) call bpf_map_lookup_elem#1"));
 }
 
 #[test]

@@ -1,18 +1,15 @@
 use bpfanalysis::verifier_log::{
-    active_validation_start, call_target_from_instruction_tail, instruction_site_before_line,
-    instructions_in_line_range, latest_reg_state_in_line_range_before,
-    latest_verifier_state_at_or_before_instruction, latest_verifier_state_before, parse_u32_after,
-    terminal_call_target, terminal_instruction_site, validation_seen, verifier_fragment_start_line,
-    CallbackKind, RegState, VerifierInsn,
+    active_validation_start, call_target_from_instruction_tail, instruction_is_bpf_exit,
+    instruction_site_before_line, instructions_in_line_range,
+    latest_reg_state_in_line_range_before, latest_verifier_state_at_or_before_instruction,
+    latest_verifier_state_before, parse_u32_after, scalar_state_outside_required_range,
+    terminal_call_target, terminal_instruction_site, terminal_required_return_range,
+    validation_seen, verifier_fragment_start_line, CallbackKind, RegState, VerifierInsn,
 };
 
 use crate::family::ProofObligation;
 
-use super::{
-    instruction_is_bpf_exit, latest_reg_state_for_call_argument,
-    scalar_state_outside_required_range, terminal_fragment_start, terminal_required_return_range,
-    ProofSignalContext,
-};
+use super::{latest_reg_state_for_call_argument, terminal_fragment_start, ProofSignalContext};
 
 pub(super) fn exception_throw_with_live_reference(
     log: &str,

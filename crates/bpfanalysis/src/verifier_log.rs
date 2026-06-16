@@ -637,6 +637,11 @@ pub fn instruction_writes_register(instruction_tail: &str, reg: u8) -> bool {
         .is_some_and(|operator| operator.ends_with('='))
 }
 
+pub fn instruction_is_bpf_exit(instruction_tail: &str) -> bool {
+    let mut tokens = instruction_tail.split_whitespace();
+    tokens.next() == Some("(95)") && tokens.next() == Some("exit")
+}
+
 pub fn instruction_register_copy_source(instruction_tail: &str, destination: u8) -> Option<u8> {
     if instruction_destination_register(instruction_tail) != Some(destination) {
         return None;
@@ -981,6 +986,66 @@ pub fn scalar_range_has_any_bound(state: &RegState) -> bool {
 
 pub fn reg_state_has_variable_offset(state: &RegState) -> bool {
     state.tnum.is_some() || scalar_range_has_any_bound(state)
+}
+
+pub fn terminal_required_return_range(message: &str) -> Option<(i64, i64)> {
+    let (_, rest) = message.split_once("should have been in [")?;
+    let (range, _) = rest.split_once(']')?;
+    let (lo, hi) = range.split_once(',')?;
+    Some((parse_signed_decimal(lo)?, parse_signed_decimal(hi)?))
+}
+
+pub fn scalar_state_outside_required_range(state: &RegState, required: (i64, i64)) -> bool {
+    if state.reg_type != "scalar" {
+        return false;
+    }
+    if let Some(value) = state.exact_u64() {
+        return exact_u64_outside_required_range(value, required);
+    }
+    if let Some(value) = state.exact_u32() {
+        return exact_u32_outside_required_range(value, required);
+    }
+    let (required_min, required_max) = required;
+    if let (Some(smin), Some(smax)) = (state.range.smin, state.range.smax) {
+        return smin < required_min || smax > required_max;
+    }
+    if let Some((required_min, required_max)) = nonnegative_required_range_as_u64(required) {
+        if let (Some(umin), Some(umax)) = (state.range.umin, state.range.umax) {
+            return umin < required_min || umax > required_max;
+        }
+    }
+    if let (Some(smin), Some(smax)) = (state.range.smin32, state.range.smax32) {
+        return i64::from(smin) < required_min || i64::from(smax) > required_max;
+    }
+    if let Some((required_min, required_max)) = nonnegative_required_range_as_u64(required) {
+        if let (Some(umin), Some(umax)) = (state.range.umin32, state.range.umax32) {
+            return u64::from(umin) < required_min || u64::from(umax) > required_max;
+        }
+    }
+    true
+}
+
+fn exact_u64_outside_required_range(value: u64, required: (i64, i64)) -> bool {
+    let signed_value = value as i64;
+    if signed_value >= required.0 && signed_value <= required.1 {
+        return false;
+    }
+    nonnegative_required_range_as_u64(required).is_none_or(|(min, max)| value < min || value > max)
+}
+
+fn exact_u32_outside_required_range(value: u32, required: (i64, i64)) -> bool {
+    let signed_value = i64::from(value as i32);
+    if signed_value >= required.0 && signed_value <= required.1 {
+        return false;
+    }
+    nonnegative_required_range_as_u64(required)
+        .is_none_or(|(min, max)| u64::from(value) < min || u64::from(value) > max)
+}
+
+fn nonnegative_required_range_as_u64(required: (i64, i64)) -> Option<(u64, u64)> {
+    let min = u64::try_from(required.0).ok()?;
+    let max = u64::try_from(required.1).ok()?;
+    Some((min, max))
 }
 
 pub fn scalar_ranges_match(left: &RegState, right: &RegState) -> bool {

@@ -1,7 +1,7 @@
 use bpfanalysis::helper_abi::{helper_stack_read_pair, helper_writable_stack_output_pair};
 use bpfanalysis::verifier_log::{
     call_target_from_instruction_tail, initialized_stack_bytes_from_snapshot,
-    instruction_uses_register as terminal_instruction_uses_register,
+    instruction_is_bpf_exit, instruction_uses_register as terminal_instruction_uses_register,
     latest_reg_state_before_instruction, parse_i64_after, stack_read_access, stack_value_range,
     terminal_instruction_contains, terminal_instruction_site, verifier_fragment_start_line,
     verifier_path_snapshot_before_instruction, PathVerifierSnapshot, StackByteRange,
@@ -11,8 +11,8 @@ use bpfanalysis::verifier_log::{
 use crate::family::ProofObligation;
 
 use super::{
-    call_argument, instruction_is_bpf_exit, is_bare_identifier_argument, rejected_source,
-    terminal_fragment_start, ProofSignalContext,
+    call_argument, is_bare_identifier_argument, rejected_source, terminal_fragment_start,
+    ProofSignalContext,
 };
 
 pub(super) fn map_lookup_key_argument_unreadable(context: &ProofSignalContext<'_>) -> bool {

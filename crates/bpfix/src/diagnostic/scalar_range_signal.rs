@@ -1,20 +1,18 @@
 use bpfanalysis::helper_abi::helper_consumes_scalar_length_register;
 use bpfanalysis::verifier_log::{
-    direct_call_target_from_instruction_tail, instruction_reads_register,
+    direct_call_target_from_instruction_tail, instruction_is_bpf_exit, instruction_reads_register,
     latest_reg_state_at_or_before_instruction, latest_reg_state_before_instruction,
     map_value_range_may_exceed_value_size, memory_access_base_register, memory_access_offset,
     memory_access_width, parse_i64_after, parse_u32_after, scalar_range_has_any_bound,
     scalar_range_max_i64, scalar_range_may_be_negative, scalar_range_may_include_zero,
-    scalar_range_min_i64, scalar_range_upper_unbounded_or_too_large, terminal_instruction_site,
+    scalar_range_min_i64, scalar_range_upper_unbounded_or_too_large,
+    scalar_state_outside_required_range, terminal_instruction_site, terminal_required_return_range,
     RegState,
 };
 
 use crate::family::ProofObligation;
 
-use super::{
-    instruction_is_bpf_exit, register_from_terminal_error, scalar_state_outside_required_range,
-    terminal_fragment_start, terminal_required_return_range, ProofSignalContext,
-};
+use super::{register_from_terminal_error, terminal_fragment_start, ProofSignalContext};
 
 const MAX_BPF_STACK_DEPTH: i32 = 512;
 
