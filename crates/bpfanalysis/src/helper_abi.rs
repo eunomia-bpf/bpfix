@@ -74,10 +74,15 @@ pub fn helper_writable_stack_output_pair(target: &str) -> Option<HelperMemoryArg
 pub fn helper_map_value_memory_access_pair(target: &str) -> Option<HelperMemoryArgPair> {
     match target {
         "bpf_probe_read"
+        | "4"
         | "bpf_probe_read_kernel"
+        | "113"
         | "bpf_probe_read_kernel_str"
+        | "115"
         | "bpf_probe_read_user"
-        | "bpf_probe_read_user_str" => Some(HelperMemoryArgPair::new(1, 2)),
+        | "112"
+        | "bpf_probe_read_user_str"
+        | "114" => Some(HelperMemoryArgPair::new(1, 2)),
         _ => None,
     }
 }
@@ -85,10 +90,15 @@ pub fn helper_map_value_memory_access_pair(target: &str) -> Option<HelperMemoryA
 pub fn helper_scalar_length_register(target: &str) -> Option<u8> {
     match target {
         "bpf_probe_read"
+        | "4"
         | "bpf_probe_read_kernel"
+        | "113"
         | "bpf_probe_read_kernel_str"
+        | "115"
         | "bpf_probe_read_user"
-        | "bpf_probe_read_user_str" => Some(2),
+        | "112"
+        | "bpf_probe_read_user_str"
+        | "114" => Some(2),
         "bpf_csum_diff" => Some(4),
         "bpf_skb_load_bytes" => Some(4),
         "bpf_perf_event_output" => Some(5),
@@ -161,6 +171,10 @@ mod tests {
             Some(HelperMemoryArgPair::new(1, 2))
         );
         assert_eq!(
+            helper_map_value_memory_access_pair("113"),
+            Some(HelperMemoryArgPair::new(1, 2))
+        );
+        assert_eq!(
             helper_stack_output_pair("bpf_skb_load_bytes"),
             Some(HelperMemoryArgPair::new(3, 4))
         );
@@ -192,6 +206,7 @@ mod tests {
             helper_scalar_length_register("bpf_perf_event_output"),
             Some(5)
         );
+        assert_eq!(helper_scalar_length_register("113"), Some(2));
         assert!(helper_consumes_scalar_length_register("bpf_csum_diff", 2));
         assert!(helper_consumes_scalar_length_register("bpf_csum_diff", 4));
         assert!(!helper_consumes_scalar_length_register("bpf_csum_diff", 5));
