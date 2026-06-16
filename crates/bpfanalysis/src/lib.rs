@@ -18,7 +18,7 @@ pub mod pass;
 #[cfg(feature = "analysis")]
 pub mod passes;
 
-mod verifier_log;
+pub mod verifier_log;
 
 #[cfg(feature = "object-analysis")]
 pub use object_file::{load_object_cfg_summaries, ObjectProgramSummary};

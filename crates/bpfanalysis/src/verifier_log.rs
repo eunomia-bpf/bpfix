@@ -1,5 +1,10 @@
 // SPDX-License-Identifier: MIT
-//! Parser for BPF verifier logs captured with `log_level=2`.
+//! Parser and low-level query helpers for BPF verifier logs captured with
+//! `log_level=2`.
+//!
+//! The stable crate-root surface exposes parsed verifier state records. This
+//! module also contains raw helpers used by BPFix while the query layer is
+//! being consolidated into a higher-level trace API.
 //!
 //! The verifier emits state snapshots in a few common forms:
 //! - `from <prev> to <pc>: R0=... R1=...`
@@ -124,6 +129,591 @@ pub struct StackState {
     pub slot_types: Option<String>,
     pub value: Option<RegState>,
 }
+
+/// Parses the verifier-log PC prefix from `<pc>:` lines.
+///
+/// This intentionally accepts both opcode rows and state-only rows such as
+/// `17: R1=ctx()`. Use [`parse_instruction_line`] when the caller needs an
+/// actual opcode tail.
+pub fn parse_instruction_pc(line: &str) -> Option<usize> {
+    parse_instruction_prefix(line).map(|(pc, _)| pc)
+}
+
+/// Parses a verifier opcode row and returns its PC plus opcode tail.
+pub fn parse_instruction_line(line: &str) -> Option<(usize, &str)> {
+    let (pc, tail) = parse_instruction_prefix(line)?;
+    Some((pc, instruction_opcode_tail(tail.trim_start())?))
+}
+
+/// Extracts the token after the first `call` word in an instruction tail.
+///
+/// This is a loose helper for already-filtered verifier rows. Use
+/// [`direct_call_target_from_instruction_tail`] when the caller needs to prove
+/// that the tail is exactly a direct BPF call instruction.
+pub fn call_target_from_instruction_tail(line: &str) -> Option<&str> {
+    let mut tokens = line.split_whitespace();
+    let call = loop {
+        let token = tokens.next()?;
+        if token == "call" {
+            break tokens.next()?;
+        }
+    };
+    call.split_once('#')
+        .map(|(target, _)| target)
+        .or(Some(call))
+}
+
+/// Extracts the target from a strict `(85) call <target>` instruction tail.
+pub fn direct_call_target_from_instruction_tail(line: &str) -> Option<&str> {
+    let mut tokens = line.split_whitespace();
+    if tokens.next()? != "(85)" || tokens.next()? != "call" {
+        return None;
+    }
+    let call = tokens.next()?;
+    call.split_once('#')
+        .map(|(target, _)| target)
+        .or(Some(call))
+}
+
+/// Scans textual operands for `rN` register mentions.
+///
+/// This is intentionally a lightweight verifier-log scanner, not a complete
+/// BPF assembly lexer. It does not include `wN` write aliases.
+pub fn loose_register_operands(text: &str) -> Vec<u8> {
+    let mut regs = Vec::new();
+    let bytes = text.as_bytes();
+    let mut idx = 0usize;
+    while idx + 1 < bytes.len() {
+        if bytes[idx] != b'r' || !bytes[idx + 1].is_ascii_digit() {
+            idx += 1;
+            continue;
+        }
+        let start = idx + 1;
+        let mut end = start + 1;
+        while end < bytes.len() && bytes[end].is_ascii_digit() {
+            end += 1;
+        }
+        if let Ok(reg) = text[start..end].parse::<u8>() {
+            regs.push(reg);
+        }
+        idx = end;
+    }
+    regs
+}
+
+pub fn register_token(token: &str) -> Option<u8> {
+    parse_register_token(token, false)
+}
+
+pub fn register_write_token(token: &str) -> Option<u8> {
+    parse_register_token(token, true)
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct VerifierLogInstruction<'a> {
+    pub pc: usize,
+    pub line: usize,
+    pub tail: &'a str,
+}
+
+#[derive(Clone, Debug)]
+pub struct PathVerifierSnapshot {
+    pub frame: usize,
+    pub regs: HashMap<u8, RegState>,
+    pub stack: HashMap<i16, StackState>,
+}
+
+pub fn memory_access_width(line_after_pc: &str) -> Option<u32> {
+    let marker = "*(u";
+    let start = line_after_pc.find(marker)? + marker.len();
+    let bytes = line_after_pc.as_bytes();
+    let mut end = start;
+    while end < bytes.len() && bytes[end].is_ascii_digit() {
+        end += 1;
+    }
+    if line_after_pc.get(end..end + 3)? != " *)" {
+        return None;
+    }
+    line_after_pc[start..end]
+        .parse::<u32>()
+        .ok()
+        .and_then(|bits| bits.checked_div(8))
+}
+
+pub fn memory_access_is_load(line_after_pc: &str) -> bool {
+    line_after_pc.contains("= *(")
+}
+
+pub fn memory_access_is_store(line_after_pc: &str) -> bool {
+    !memory_access_is_load(line_after_pc)
+        && line_after_pc.contains("*)(")
+        && line_after_pc.contains(" = ")
+}
+
+pub fn instruction_opcode_body(line_after_pc: &str) -> &str {
+    line_after_pc
+        .split_once(';')
+        .map_or(line_after_pc, |(body, _)| body)
+        .trim()
+}
+
+pub fn memory_access_is_atomic(line_after_pc: &str) -> bool {
+    let body = instruction_opcode_body(line_after_pc);
+    (body.contains("atomic") && body.contains("*)(")) || body.contains("lock *(")
+}
+
+pub fn atomic_memory_access_width(line_after_pc: &str) -> Option<u32> {
+    let body = instruction_opcode_body(line_after_pc);
+    if !memory_access_is_atomic(body) {
+        return None;
+    }
+    let marker = "(u";
+    let bytes = body.as_bytes();
+    let mut search_start = 0usize;
+    while let Some(relative) = body[search_start..].find(marker) {
+        let start = search_start + relative + marker.len();
+        let mut end = start;
+        while end < bytes.len() && bytes[end].is_ascii_digit() {
+            end += 1;
+        }
+        if end > start && body.get(end..end + 4) == Some(" *)(") {
+            return body[start..end]
+                .parse::<u32>()
+                .ok()
+                .and_then(|bits| bits.checked_div(8));
+        }
+        search_start = search_start + relative + marker.len();
+    }
+    None
+}
+
+pub fn memory_access_offset(line_after_pc: &str) -> Option<i64> {
+    let operand = memory_access_operand(line_after_pc)?;
+    if let Some((_, offset)) = operand.rsplit_once('+') {
+        return parse_signed_decimal(offset);
+    }
+    if let Some((_, offset)) = operand.rsplit_once('-') {
+        return parse_signed_decimal(offset).map(|value| -value);
+    }
+    loose_register_operands(operand).first().map(|_| 0)
+}
+
+pub fn memory_access_base_register(line_after_pc: &str) -> Option<u8> {
+    loose_register_operands(memory_access_operand(line_after_pc)?)
+        .first()
+        .copied()
+}
+
+pub fn memory_access_operand(line_after_pc: &str) -> Option<&str> {
+    let (_, after_marker) = line_after_pc.split_once("*)(")?;
+    Some(after_marker.split_once(')')?.0.trim())
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct StackByteRange {
+    start: i16,
+    end: i16,
+}
+
+impl StackByteRange {
+    pub fn new(start: i16, end: i16) -> Option<Self> {
+        (start <= end).then_some(Self { start, end })
+    }
+
+    pub fn start(self) -> i16 {
+        self.start
+    }
+
+    pub fn end(self) -> i16 {
+        self.end
+    }
+
+    pub fn overlaps(self, other: Self) -> bool {
+        self.start < other.end && other.start < self.end
+    }
+
+    pub fn contains(self, offset: i16) -> bool {
+        self.start <= offset && offset < self.end
+    }
+
+    pub fn contains_range(self, other: Self) -> bool {
+        self.start <= other.start && other.end <= self.end
+    }
+
+    pub fn len(self) -> i16 {
+        self.end.saturating_sub(self.start)
+    }
+
+    pub fn is_empty(self) -> bool {
+        self.len() == 0
+    }
+}
+
+pub fn stack_value_range(offset: i16, size: i16) -> Option<StackByteRange> {
+    if size < 0 {
+        return None;
+    }
+    StackByteRange::new(offset, offset.checked_add(size)?)
+}
+
+pub fn stack_access_range(message: &str) -> Option<StackByteRange> {
+    let offset = parse_signed_i16_after(message, "off ")?;
+    let size = parse_signed_i16_after(message, "size ")?;
+    stack_value_range(offset, size)
+}
+
+fn parse_signed_i16_after(message: &str, marker: &str) -> Option<i16> {
+    let start = message.find(marker)? + marker.len();
+    let rest = message[start..].trim_start();
+    let bytes = rest.as_bytes();
+    let mut end = 0usize;
+    if matches!(bytes.first(), Some(b'-' | b'+')) {
+        end = 1;
+    }
+    while end < bytes.len() && bytes[end].is_ascii_digit() {
+        end += 1;
+    }
+    if end == 0 || matches!(rest.as_bytes().get(..end), Some([b'-']) | Some([b'+'])) {
+        return None;
+    }
+    rest[..end].parse::<i16>().ok()
+}
+
+pub fn latest_reg_state_before(
+    states: &[VerifierInsn],
+    terminal_pc: Option<usize>,
+    reg: u8,
+) -> Option<&RegState> {
+    states
+        .iter()
+        .filter(|state| terminal_pc.is_none_or(|pc| state.pc <= pc))
+        .rev()
+        .filter_map(|state| state.regs.get(&reg))
+        .next()
+}
+
+pub fn latest_reg_state_index_before(
+    states: &[VerifierInsn],
+    terminal_pc: Option<usize>,
+    reg: u8,
+) -> Option<(usize, &VerifierInsn, &RegState)> {
+    states
+        .iter()
+        .enumerate()
+        .filter(|(_, state)| terminal_pc.is_none_or(|pc| state.pc <= pc))
+        .rev()
+        .find_map(|(idx, state)| {
+            state
+                .regs
+                .get(&reg)
+                .map(|reg_state| (idx, state, reg_state))
+        })
+}
+
+pub fn latest_reg_state_before_instruction<'a>(
+    states: &'a [VerifierInsn],
+    instruction: VerifierLogInstruction<'_>,
+    fragment_start_line: usize,
+    reg: u8,
+) -> Option<&'a RegState> {
+    latest_reg_state_for_instruction(
+        states,
+        instruction,
+        fragment_start_line,
+        reg,
+        false,
+        |_, reg| reg,
+    )
+}
+
+pub fn latest_reg_state_at_or_before_instruction<'a>(
+    states: &'a [VerifierInsn],
+    instruction: VerifierLogInstruction<'_>,
+    fragment_start_line: usize,
+    reg: u8,
+) -> Option<&'a RegState> {
+    latest_reg_state_for_instruction(
+        states,
+        instruction,
+        fragment_start_line,
+        reg,
+        true,
+        |_, reg| reg,
+    )
+}
+
+pub fn latest_reg_state_before_instruction_with_log_line<'a>(
+    states: &'a [VerifierInsn],
+    instruction: VerifierLogInstruction<'_>,
+    fragment_start_line: usize,
+    reg: u8,
+) -> Option<(&'a RegState, usize)> {
+    latest_reg_state_for_instruction(
+        states,
+        instruction,
+        fragment_start_line,
+        reg,
+        false,
+        |state, reg| (reg, state.log_line),
+    )
+}
+
+pub fn latest_reg_state_before_instruction_with_frame<'a>(
+    states: &'a [VerifierInsn],
+    instruction: VerifierLogInstruction<'_>,
+    fragment_start_line: usize,
+    reg: u8,
+) -> Option<(&'a RegState, usize)> {
+    latest_reg_state_for_instruction(
+        states,
+        instruction,
+        fragment_start_line,
+        reg,
+        false,
+        |state, reg| (reg, reg.source_frame.unwrap_or(state.frame)),
+    )
+}
+
+pub fn latest_verifier_state_before_instruction<'a>(
+    states: &'a [VerifierInsn],
+    instruction: VerifierLogInstruction<'_>,
+    fragment_start_line: usize,
+) -> Option<&'a VerifierInsn> {
+    latest_verifier_state_for_instruction(states, instruction, fragment_start_line, false, false)
+}
+
+pub fn latest_verifier_state_at_or_before_instruction<'a>(
+    states: &'a [VerifierInsn],
+    instruction: VerifierLogInstruction<'_>,
+    fragment_start_line: usize,
+) -> Option<&'a VerifierInsn> {
+    latest_verifier_state_for_instruction(states, instruction, fragment_start_line, true, false)
+}
+
+pub fn latest_ref_state_before_instruction<'a>(
+    states: &'a [VerifierInsn],
+    instruction: VerifierLogInstruction<'_>,
+    fragment_start_line: usize,
+) -> Option<&'a VerifierInsn> {
+    latest_verifier_state_for_instruction(states, instruction, fragment_start_line, false, true)
+}
+
+pub fn latest_verifier_state_before(
+    states: &[VerifierInsn],
+    terminal_pc: Option<usize>,
+    terminal_line: Option<usize>,
+) -> Option<&VerifierInsn> {
+    states
+        .iter()
+        .filter(|state| terminal_pc.is_none_or(|pc| state.pc <= pc))
+        .filter(|state| terminal_line.is_none_or(|line| state.log_line < line))
+        .next_back()
+}
+
+pub fn verifier_path_snapshot_before_instruction(
+    states: &[VerifierInsn],
+    instruction: VerifierLogInstruction<'_>,
+    fragment_start: usize,
+) -> Option<PathVerifierSnapshot> {
+    let mut snapshot: Option<PathVerifierSnapshot> = None;
+    for state in states_in_instruction_window(states, instruction, fragment_start, false) {
+        let reset_path = matches!(
+            state.kind,
+            VerifierInsnKind::EdgeFullState | VerifierInsnKind::PcFullState
+        ) || snapshot
+            .as_ref()
+            .is_some_and(|snapshot| snapshot.frame != state.frame);
+        if reset_path || snapshot.is_none() {
+            snapshot = Some(PathVerifierSnapshot {
+                frame: state.frame,
+                regs: state.regs.clone(),
+                stack: state.stack.clone(),
+            });
+            continue;
+        }
+        let snapshot = snapshot.as_mut()?;
+        snapshot.regs.extend(state.regs.clone());
+        snapshot.stack.extend(state.stack.clone());
+    }
+    snapshot
+}
+
+pub fn initialized_stack_bytes_from_snapshot(stack: &HashMap<i16, StackState>, start: i16) -> i16 {
+    if start >= 0 {
+        return 0;
+    }
+    let mut initialized = 0i16;
+    let mut offset = start;
+    while offset < 0 {
+        if !stack_byte_initialized_at_offset(stack, offset) {
+            break;
+        }
+        initialized = initialized.saturating_add(1);
+        offset = offset.saturating_add(1);
+    }
+    initialized
+}
+
+fn latest_verifier_state_for_instruction<'a>(
+    states: &'a [VerifierInsn],
+    instruction: VerifierLogInstruction<'_>,
+    fragment_start_line: usize,
+    include_instruction: bool,
+    refs_only: bool,
+) -> Option<&'a VerifierInsn> {
+    states_in_instruction_window(
+        states,
+        instruction,
+        fragment_start_line,
+        include_instruction,
+    )
+    .filter(|state| !refs_only || !state.ref_ids.is_empty())
+    .next_back()
+}
+
+fn latest_reg_state_for_instruction<'a, T>(
+    states: &'a [VerifierInsn],
+    instruction: VerifierLogInstruction<'_>,
+    fragment_start_line: usize,
+    reg: u8,
+    include_instruction: bool,
+    map: impl Fn(&'a VerifierInsn, &'a RegState) -> T,
+) -> Option<T> {
+    let call_frame = latest_verifier_state_for_instruction(
+        states,
+        instruction,
+        fragment_start_line,
+        include_instruction,
+        false,
+    )
+    .map(|state| state.frame);
+    states_in_instruction_window(
+        states,
+        instruction,
+        fragment_start_line,
+        include_instruction,
+    )
+    .filter(|state| call_frame.is_none_or(|frame| state.frame == frame))
+    .rev()
+    .find_map(|state| state.regs.get(&reg).map(|reg_state| map(state, reg_state)))
+}
+
+fn states_in_instruction_window<'a>(
+    states: &'a [VerifierInsn],
+    instruction: VerifierLogInstruction<'_>,
+    fragment_start_line: usize,
+    include_instruction: bool,
+) -> impl DoubleEndedIterator<Item = &'a VerifierInsn> + 'a {
+    let instruction_pc = instruction.pc;
+    let instruction_line = instruction.line;
+    states.iter().filter(move |state| {
+        state.log_line >= fragment_start_line
+            && if include_instruction {
+                state.log_line <= instruction_line
+            } else {
+                state.log_line < instruction_line
+            }
+            && state.pc <= instruction_pc
+    })
+}
+
+fn stack_byte_initialized_at_offset(
+    stack: &HashMap<i16, StackState>,
+    absolute_offset: i16,
+) -> bool {
+    let Some(slot_start) = verifier_stack_slot_start(i32::from(absolute_offset)) else {
+        return false;
+    };
+    stack
+        .get(&slot_start)
+        .is_some_and(|slot| stack_byte_initialized(slot, slot_start, absolute_offset))
+}
+
+fn stack_byte_initialized(stack: &StackState, slot_start: i16, absolute_offset: i16) -> bool {
+    if let Some(slot_types) = stack.slot_types.as_deref() {
+        let byte_index = absolute_offset.saturating_sub(slot_start);
+        let Ok(byte_index) = usize::try_from(byte_index) else {
+            return false;
+        };
+        if byte_index >= 8 {
+            return false;
+        }
+        return slot_types
+            .as_bytes()
+            .get(7 - byte_index)
+            .is_some_and(|slot_type| plain_stack_slot_byte(*slot_type, stack.value.as_ref()));
+    }
+    stack
+        .value
+        .as_ref()
+        .is_some_and(plain_helper_readable_stack_value)
+}
+
+fn plain_stack_slot_byte(slot_type: u8, value: Option<&RegState>) -> bool {
+    match slot_type {
+        b'0' | b'm' => true,
+        b'r' => value.is_some_and(plain_helper_readable_stack_value),
+        _ => false,
+    }
+}
+
+fn plain_helper_readable_stack_value(value: &RegState) -> bool {
+    value.reg_type == "scalar"
+}
+
+fn parse_instruction_prefix(line: &str) -> Option<(usize, &str)> {
+    let trimmed = line.trim_start();
+    let digits_len = trimmed
+        .bytes()
+        .take_while(|byte| byte.is_ascii_digit())
+        .count();
+    if digits_len == 0 || trimmed.as_bytes().get(digits_len) != Some(&b':') {
+        return None;
+    }
+    Some((
+        trimmed[..digits_len].parse().ok()?,
+        trimmed[digits_len + 1..].trim_start(),
+    ))
+}
+
+fn instruction_opcode_tail(tail: &str) -> Option<&str> {
+    if looks_like_opcode_tail(tail) {
+        return Some(tail);
+    }
+    let mask_len = tail.find(char::is_whitespace)?;
+    tail[..mask_len]
+        .bytes()
+        .all(|byte| byte.is_ascii_digit() || byte == b'.')
+        .then(|| tail[mask_len..].trim_start())
+        .filter(|rest| looks_like_opcode_tail(rest))
+}
+
+fn looks_like_opcode_tail(tail: &str) -> bool {
+    let bytes = tail.as_bytes();
+    bytes.len() >= 4
+        && bytes[0] == b'('
+        && bytes[1..3].iter().all(u8::is_ascii_hexdigit)
+        && bytes[3] == b')'
+}
+
+fn parse_register_token(token: &str, allow_w: bool) -> Option<u8> {
+    let token = token.trim_end_matches(|ch| matches!(ch, ',' | ';'));
+    let digits = token
+        .strip_prefix('r')
+        .or_else(|| allow_w.then(|| token.strip_prefix('w')).flatten())?;
+    (!digits.is_empty() && digits.bytes().all(|byte| byte.is_ascii_digit()))
+        .then(|| digits.parse().ok())
+        .flatten()
+}
+
+fn parse_signed_decimal(text: &str) -> Option<i64> {
+    let text = text.trim();
+    if text.is_empty() {
+        return None;
+    }
+    text.parse().ok()
+}
+
 #[cfg(test)]
 pub(crate) fn parse_verifier_log(log: &str) -> Vec<VerifierInsn> {
     parse_verifier_log_result(log).expect("test verifier log should parse")

@@ -1,11 +1,11 @@
 use std::path::Path;
 
 use anyhow::{Context, Result};
-
-use crate::source::{
+use bpfanalysis::verifier_log::{
     call_target_from_instruction_tail, parse_instruction_line, parse_instruction_pc,
-    parse_source_comment,
 };
+
+use crate::source::parse_source_comment;
 
 const TERMINAL_ERROR_MARKERS: &[&str] = &[
     "bpf program is too large",

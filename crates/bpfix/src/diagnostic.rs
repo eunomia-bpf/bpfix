@@ -1,7 +1,20 @@
 use anyhow::Result;
-use bpfanalysis::{
-    verifier_states_with_branch_deltas_from_log, CallbackKind, RegState, StackState, VerifierInsn,
-    VerifierInsnKind,
+use bpfanalysis::verifier_log::{
+    atomic_memory_access_width, call_target_from_instruction_tail,
+    direct_call_target_from_instruction_tail, initialized_stack_bytes_from_snapshot,
+    instruction_opcode_body, latest_ref_state_before_instruction,
+    latest_reg_state_at_or_before_instruction, latest_reg_state_before,
+    latest_reg_state_before_instruction, latest_reg_state_before_instruction_with_frame,
+    latest_reg_state_before_instruction_with_log_line, latest_reg_state_index_before,
+    latest_verifier_state_at_or_before_instruction, latest_verifier_state_before,
+    latest_verifier_state_before_instruction, loose_register_operands as register_operands,
+    memory_access_base_register, memory_access_is_atomic, memory_access_is_load,
+    memory_access_is_store, memory_access_offset, memory_access_operand, memory_access_width,
+    parse_instruction_line, register_token, register_write_token, stack_access_range,
+    stack_value_range, verifier_path_snapshot_before_instruction,
+    verifier_states_with_branch_deltas_from_log, CallbackKind, PathVerifierSnapshot, RegState,
+    StackByteRange, StackState, VerifierInsn, VerifierInsnKind,
+    VerifierLogInstruction as TerminalInstruction,
 };
 
 use crate::family::ProofObligation;
@@ -10,13 +23,11 @@ use crate::proof::{
     instantiate_required_proof, packet_required_range, verifier_value_summary, RequiredProof,
 };
 use crate::source::{
-    call_target_from_instruction_tail, collect_source_events, latest_source_before,
-    looks_like_null_check, looks_like_nullable_return, looks_like_packet_bounds_check,
-    looks_like_reference_acquire, looks_like_reference_release, looks_like_scalar_guard,
-    looks_like_stack_initialization, parse_instruction_line, source_for_pc, terminal_source,
+    collect_source_events, latest_source_before, looks_like_null_check, looks_like_nullable_return,
+    looks_like_packet_bounds_check, looks_like_reference_acquire, looks_like_reference_release,
+    looks_like_scalar_guard, looks_like_stack_initialization, source_for_pc, terminal_source,
     SourceEvent, SourceLocation,
 };
-use std::collections::HashMap;
 
 const MAX_BPF_STACK_DEPTH: i32 = 512;
 
@@ -510,24 +521,6 @@ fn packet_range_lost_before_access(
     (range < required).then_some((state.pc, range))
 }
 
-fn latest_reg_state_index_before(
-    states: &[VerifierInsn],
-    terminal_pc: Option<usize>,
-    reg: u8,
-) -> Option<(usize, &VerifierInsn, &RegState)> {
-    states
-        .iter()
-        .enumerate()
-        .filter(|(_, state)| terminal_pc.is_none_or(|pc| state.pc <= pc))
-        .rev()
-        .find_map(|(idx, state)| {
-            state
-                .regs
-                .get(&reg)
-                .map(|reg_state| (idx, state, reg_state))
-        })
-}
-
 fn prior_sufficient_packet_range(
     states: &[VerifierInsn],
     before_idx: usize,
@@ -997,20 +990,6 @@ struct ProofSignalContext<'a> {
     branch_states: &'a [VerifierInsn],
     source_events: &'a [SourceEvent],
     events: &'a [ProofEvent],
-}
-
-#[derive(Clone, Copy)]
-struct TerminalInstruction<'a> {
-    pc: usize,
-    line: usize,
-    tail: &'a str,
-}
-
-#[derive(Clone, Debug)]
-struct PathVerifierSnapshot {
-    frame: usize,
-    regs: HashMap<u8, RegState>,
-    stack: HashMap<i16, StackState>,
 }
 
 fn proof_signals(context: ProofSignalContext<'_>) -> Vec<ProofSignal> {
@@ -2600,107 +2579,6 @@ fn helper_stack_read_length_from_snapshot(
     snapshot.regs.get(&len_reg)?.exact_scalar_value()
 }
 
-fn verifier_path_snapshot_before_instruction(
-    states: &[VerifierInsn],
-    instruction: TerminalInstruction<'_>,
-    fragment_start: usize,
-) -> Option<PathVerifierSnapshot> {
-    let mut snapshot: Option<PathVerifierSnapshot> = None;
-    for state in states
-        .iter()
-        .filter(|state| state.log_line >= fragment_start)
-        .filter(|state| state.log_line < instruction.line)
-        .filter(|state| state.pc <= instruction.pc)
-    {
-        let reset_path = matches!(
-            state.kind,
-            VerifierInsnKind::EdgeFullState | VerifierInsnKind::PcFullState
-        ) || snapshot
-            .as_ref()
-            .is_some_and(|snapshot| snapshot.frame != state.frame);
-        if reset_path || snapshot.is_none() {
-            snapshot = Some(PathVerifierSnapshot {
-                frame: state.frame,
-                regs: state.regs.clone(),
-                stack: state.stack.clone(),
-            });
-            continue;
-        }
-        let snapshot = snapshot.as_mut()?;
-        snapshot.regs.extend(state.regs.clone());
-        snapshot.stack.extend(state.stack.clone());
-    }
-    snapshot
-}
-
-fn initialized_stack_bytes_from_snapshot(stack: &HashMap<i16, StackState>, start: i16) -> i16 {
-    if start >= 0 {
-        return 0;
-    }
-    let mut initialized = 0i16;
-    let mut offset = start;
-    while offset < 0 {
-        if !stack_byte_initialized_at_offset(stack, offset) {
-            break;
-        }
-        initialized = initialized.saturating_add(1);
-        offset = offset.saturating_add(1);
-    }
-    initialized
-}
-
-fn stack_byte_initialized_at_offset(
-    stack: &HashMap<i16, StackState>,
-    absolute_offset: i16,
-) -> bool {
-    let Some(slot_start) = verifier_stack_slot_start(absolute_offset) else {
-        return false;
-    };
-    stack
-        .get(&slot_start)
-        .is_some_and(|slot| stack_byte_initialized(slot, slot_start, absolute_offset))
-}
-
-fn stack_byte_initialized(stack: &StackState, slot_start: i16, absolute_offset: i16) -> bool {
-    if let Some(slot_types) = stack.slot_types.as_deref() {
-        let byte_index = absolute_offset.saturating_sub(slot_start);
-        let Ok(byte_index) = usize::try_from(byte_index) else {
-            return false;
-        };
-        if byte_index >= 8 {
-            return false;
-        }
-        return slot_types
-            .as_bytes()
-            .get(7 - byte_index)
-            .is_some_and(|slot_type| plain_stack_slot_byte(*slot_type, stack.value.as_ref()));
-    }
-    stack
-        .value
-        .as_ref()
-        .is_some_and(plain_helper_readable_stack_value)
-}
-
-fn plain_stack_slot_byte(slot_type: u8, value: Option<&RegState>) -> bool {
-    match slot_type {
-        b'0' | b'm' => true,
-        b'r' => value.is_some_and(plain_helper_readable_stack_value),
-        _ => false,
-    }
-}
-
-fn plain_helper_readable_stack_value(value: &RegState) -> bool {
-    value.reg_type == "scalar"
-}
-
-fn verifier_stack_slot_start(absolute_offset: i16) -> Option<i16> {
-    if absolute_offset >= 0 {
-        return None;
-    }
-    let slot_index = ((-i32::from(absolute_offset) - 1) / 8) + 1;
-    i16::try_from(-slot_index * 8).ok()
-}
-
 fn unreadable_entry_argument(
     context: &ProofSignalContext<'_>,
     instruction: TerminalInstruction<'_>,
@@ -2783,7 +2661,7 @@ fn helper_stack_write_beyond_frame(context: &ProofSignalContext<'_>) -> bool {
     else {
         return false;
     };
-    if arg.reg_type != "fp" || arg.offset != Some(i32::from(access.start)) {
+    if arg.reg_type != "fp" || arg.offset != Some(i32::from(access.start())) {
         return false;
     }
     helper_write_size_argument_matches(context, instruction, fragment_start, len_reg, access)
@@ -2816,19 +2694,20 @@ fn stack_write_access_range(message: &str) -> Option<StackByteRange> {
         .to_ascii_lowercase()
         .contains("invalid write to stack")
         .then(|| {
-            let offset = parse_signed_i16_after(message, "off=")
-                .or_else(|| parse_signed_i16_after(message, "off "))?;
-            let size = parse_signed_i16_after(message, "size=")
-                .or_else(|| parse_signed_i16_after(message, "size "))?;
-            let end = offset.checked_add(size)?;
-            Some(StackByteRange { start: offset, end })
+            let offset = parse_i64_after(message, "off=")
+                .or_else(|| parse_i64_after(message, "off "))
+                .and_then(|value| i16::try_from(value).ok())?;
+            let size = parse_i64_after(message, "size=")
+                .or_else(|| parse_i64_after(message, "size "))
+                .and_then(|value| i16::try_from(value).ok())?;
+            stack_value_range(offset, size)
         })
         .flatten()
 }
 
 fn bpf_stack_frame_contains(access: StackByteRange) -> bool {
     const BPF_STACK_MIN_OFFSET: i16 = -512;
-    BPF_STACK_MIN_OFFSET <= access.start && access.end <= 0
+    BPF_STACK_MIN_OFFSET <= access.start() && access.end() <= 0
 }
 
 fn dynptr_stack_storage_access(context: &ProofSignalContext<'_>) -> bool {
@@ -2870,7 +2749,9 @@ fn dynptr_stack_slot_write_overlap(context: &ProofSignalContext<'_>) -> bool {
     {
         return false;
     }
-    let Some(offset) = parse_signed_i16_after(context.terminal_error, "off=") else {
+    let Some(offset) =
+        parse_i64_after(context.terminal_error, "off=").and_then(|value| i16::try_from(value).ok())
+    else {
         return false;
     };
     let Some(access) = stack_value_range(offset, 1) else {
@@ -4696,7 +4577,7 @@ fn helper_stack_argument_starts_at_access(
             if arg_frame != frame || arg.reg_type != "fp" || reg_state_has_variable_offset(arg) {
                 return false;
             }
-            i16::try_from(arg.offset.unwrap_or_default()) == Ok(access.start)
+            i16::try_from(arg.offset.unwrap_or_default()) == Ok(access.start())
         })
 }
 
@@ -4720,28 +4601,13 @@ fn instruction_register_copy_source(instruction_tail: &str, destination: u8) -> 
         .map_or(rest, |(body, _)| body)
         .trim()
         .split_once(" = ")?;
-    parse_register_operand(rhs.trim())
+    register_token(rhs.trim())
 }
 
 fn instruction_destination_register(instruction_tail: &str) -> Option<u8> {
     let (_, rest) = instruction_tail.split_once(')')?;
     let lhs = rest.trim_start().split_once(" = ")?.0.trim();
-    if lhs.len() < 2 {
-        return None;
-    }
-    let (prefix, digits) = lhs.split_at(1);
-    if !matches!(prefix, "r" | "w") {
-        return None;
-    }
-    digits.parse().ok()
-}
-
-fn parse_register_operand(operand: &str) -> Option<u8> {
-    let digits = operand.strip_prefix('r')?;
-    if digits.is_empty() || !digits.bytes().all(|byte| byte.is_ascii_digit()) {
-        return None;
-    }
-    digits.parse().ok()
+    register_write_token(lhs)
 }
 
 fn stale_pointer_after_invalidating_helper(
@@ -5714,16 +5580,6 @@ fn instruction_writes_register(tail: &str, reg: u8) -> bool {
         .is_some_and(|operator| operator.ends_with('='))
 }
 
-fn register_write_token(token: &str) -> Option<u8> {
-    let token = token.trim_end_matches(|ch| matches!(ch, ',' | ';'));
-    let digits = token
-        .strip_prefix('r')
-        .or_else(|| token.strip_prefix('w'))?;
-    (!digits.is_empty() && digits.bytes().all(|byte| byte.is_ascii_digit()))
-        .then(|| digits.parse().ok())
-        .flatten()
-}
-
 fn terminal_type_contract(message: &str) -> Option<(u8, String)> {
     let reg = register_from_terminal_error(message)?;
     let lower = message.to_ascii_lowercase();
@@ -5870,10 +5726,7 @@ fn terminal_stack_memory_access_range(context: &ProofSignalContext<'_>) -> Optio
     let base_offset = i64::from(base.offset.unwrap_or(0));
     let start = base_offset.checked_add(insn_offset)?;
     let end = start.checked_add(i64::from(width))?;
-    Some(StackByteRange {
-        start: i16::try_from(start).ok()?,
-        end: i16::try_from(end).ok()?,
-    })
+    StackByteRange::new(i16::try_from(start).ok()?, i16::try_from(end).ok()?)
 }
 
 fn terminal_stack_memory_write_range_with_frame(
@@ -5905,10 +5758,7 @@ fn terminal_stack_memory_write_range_with_frame(
     let start = base_offset.checked_add(insn_offset)?;
     let end = start.checked_add(i64::from(width))?;
     Some((
-        StackByteRange {
-            start: i16::try_from(start).ok()?,
-            end: i16::try_from(end).ok()?,
-        },
+        StackByteRange::new(i16::try_from(start).ok()?, i16::try_from(end).ok()?)?,
         frame,
     ))
 }
@@ -6006,7 +5856,7 @@ fn latest_stack_slot_overlap(
                 continue;
             }
             saw_overlap = true;
-            if range.contains(access.start) {
+            if range.contains(access.start()) {
                 if is_target {
                     start_in_target = true;
                 } else {
@@ -6071,61 +5921,6 @@ fn latest_live_ref_dynptr_stack_overlap_before_instruction(
         }
     }
     None
-}
-
-#[derive(Clone, Copy)]
-struct StackByteRange {
-    start: i16,
-    end: i16,
-}
-
-impl StackByteRange {
-    fn overlaps(self, other: Self) -> bool {
-        self.start < other.end && other.start < self.end
-    }
-
-    fn contains(self, offset: i16) -> bool {
-        self.start <= offset && offset < self.end
-    }
-
-    fn contains_range(self, other: Self) -> bool {
-        self.start <= other.start && other.end <= self.end
-    }
-
-    fn len(self) -> i16 {
-        self.end.saturating_sub(self.start)
-    }
-}
-
-fn stack_value_range(offset: i16, size: i16) -> Option<StackByteRange> {
-    Some(StackByteRange {
-        start: offset,
-        end: offset.checked_add(size)?,
-    })
-}
-
-fn stack_access_range(message: &str) -> Option<StackByteRange> {
-    let offset = parse_signed_i16_after(message, "off ")?;
-    let size = parse_signed_i16_after(message, "size ")?;
-    let end = offset.checked_add(size)?;
-    Some(StackByteRange { start: offset, end })
-}
-
-fn parse_signed_i16_after(message: &str, marker: &str) -> Option<i16> {
-    let start = message.find(marker)? + marker.len();
-    let rest = message[start..].trim_start();
-    let bytes = rest.as_bytes();
-    let mut end = 0usize;
-    if matches!(bytes.first(), Some(b'-' | b'+')) {
-        end = 1;
-    }
-    while end < bytes.len() && bytes[end].is_ascii_digit() {
-        end += 1;
-    }
-    if end == 0 || matches!(rest.as_bytes().get(..end), Some([b'-']) | Some([b'+'])) {
-        return None;
-    }
-    rest[..end].parse::<i16>().ok()
 }
 
 fn map_value_wide_access(
@@ -6979,92 +6774,6 @@ fn misaligned_access_size(message: &str) -> Option<u32> {
         .flatten()
 }
 
-fn memory_access_width(line_after_pc: &str) -> Option<u32> {
-    let marker = "*(u";
-    let start = line_after_pc.find(marker)? + marker.len();
-    let bytes = line_after_pc.as_bytes();
-    let mut end = start;
-    while end < bytes.len() && bytes[end].is_ascii_digit() {
-        end += 1;
-    }
-    if line_after_pc.get(end..end + 3)? != " *)" {
-        return None;
-    }
-    line_after_pc[start..end]
-        .parse::<u32>()
-        .ok()
-        .and_then(|bits| bits.checked_div(8))
-}
-
-fn memory_access_is_load(line_after_pc: &str) -> bool {
-    line_after_pc.contains("= *(")
-}
-
-fn memory_access_is_store(line_after_pc: &str) -> bool {
-    !memory_access_is_load(line_after_pc)
-        && line_after_pc.contains("*)(")
-        && line_after_pc.contains(" = ")
-}
-
-fn instruction_opcode_body(line_after_pc: &str) -> &str {
-    line_after_pc
-        .split_once(';')
-        .map_or(line_after_pc, |(body, _)| body)
-        .trim()
-}
-
-fn memory_access_is_atomic(line_after_pc: &str) -> bool {
-    let body = instruction_opcode_body(line_after_pc);
-    (body.contains("atomic") && body.contains("*)(")) || body.contains("lock *(")
-}
-
-fn atomic_memory_access_width(line_after_pc: &str) -> Option<u32> {
-    let body = instruction_opcode_body(line_after_pc);
-    if !memory_access_is_atomic(body) {
-        return None;
-    }
-    let marker = "(u";
-    let bytes = body.as_bytes();
-    let mut search_start = 0usize;
-    while let Some(relative) = body[search_start..].find(marker) {
-        let start = search_start + relative + marker.len();
-        let mut end = start;
-        while end < bytes.len() && bytes[end].is_ascii_digit() {
-            end += 1;
-        }
-        if end > start && body.get(end..end + 4) == Some(" *)(") {
-            return body[start..end]
-                .parse::<u32>()
-                .ok()
-                .and_then(|bits| bits.checked_div(8));
-        }
-        search_start = search_start + relative + marker.len();
-    }
-    None
-}
-
-fn memory_access_offset(line_after_pc: &str) -> Option<i64> {
-    let operand = memory_access_operand(line_after_pc)?;
-    if let Some((_, offset)) = operand.rsplit_once('+') {
-        return parse_signed_decimal(offset);
-    }
-    if let Some((_, offset)) = operand.rsplit_once('-') {
-        return parse_signed_decimal(offset).map(|value| -value);
-    }
-    register_operands(operand).first().map(|_| 0)
-}
-
-fn memory_access_base_register(line_after_pc: &str) -> Option<u8> {
-    register_operands(memory_access_operand(line_after_pc)?)
-        .first()
-        .copied()
-}
-
-fn memory_access_operand(line_after_pc: &str) -> Option<&str> {
-    let (_, after_marker) = line_after_pc.split_once("*)(")?;
-    Some(after_marker.split_once(')')?.0.trim())
-}
-
 fn parse_signed_decimal(text: &str) -> Option<i64> {
     let text = text.trim();
     if text.is_empty() {
@@ -7125,144 +6834,6 @@ fn parse_u32_after(message: &str, needle: &str) -> Option<u32> {
         search_start = field_start + needle.len();
     }
     None
-}
-
-fn latest_reg_state_before(
-    states: &[VerifierInsn],
-    terminal_pc: Option<usize>,
-    reg: u8,
-) -> Option<&RegState> {
-    states
-        .iter()
-        .filter(|state| terminal_pc.is_none_or(|pc| state.pc <= pc))
-        .rev()
-        .filter_map(|state| state.regs.get(&reg))
-        .next()
-}
-
-fn latest_reg_state_before_instruction<'a>(
-    states: &'a [VerifierInsn],
-    instruction: TerminalInstruction<'_>,
-    fragment_start_line: usize,
-    reg: u8,
-) -> Option<&'a RegState> {
-    latest_reg_state_before_instruction_with_frame(states, instruction, fragment_start_line, reg)
-        .map(|(state, _)| state)
-}
-
-fn latest_reg_state_at_or_before_instruction<'a>(
-    states: &'a [VerifierInsn],
-    instruction: TerminalInstruction<'_>,
-    fragment_start_line: usize,
-    reg: u8,
-) -> Option<&'a RegState> {
-    let call_frame =
-        latest_verifier_state_at_or_before_instruction(states, instruction, fragment_start_line)
-            .map(|state| state.frame);
-    states
-        .iter()
-        .filter(|state| state.log_line >= fragment_start_line)
-        .filter(|state| state.log_line <= instruction.line)
-        .filter(|state| state.pc <= instruction.pc)
-        .filter(|state| call_frame.is_none_or(|frame| state.frame == frame))
-        .rev()
-        .find_map(|state| state.regs.get(&reg))
-}
-
-fn latest_reg_state_before_instruction_with_log_line<'a>(
-    states: &'a [VerifierInsn],
-    instruction: TerminalInstruction<'_>,
-    fragment_start_line: usize,
-    reg: u8,
-) -> Option<(&'a RegState, usize)> {
-    let call_frame =
-        latest_verifier_state_before_instruction(states, instruction, fragment_start_line)
-            .map(|state| state.frame);
-    states
-        .iter()
-        .filter(|state| state.log_line >= fragment_start_line)
-        .filter(|state| state.log_line < instruction.line)
-        .filter(|state| state.pc <= instruction.pc)
-        .filter(|state| call_frame.is_none_or(|frame| state.frame == frame))
-        .rev()
-        .find_map(|state| {
-            let reg_state = state.regs.get(&reg)?;
-            Some((reg_state, state.log_line))
-        })
-}
-
-fn latest_reg_state_before_instruction_with_frame<'a>(
-    states: &'a [VerifierInsn],
-    instruction: TerminalInstruction<'_>,
-    fragment_start_line: usize,
-    reg: u8,
-) -> Option<(&'a RegState, usize)> {
-    let call_frame =
-        latest_verifier_state_before_instruction(states, instruction, fragment_start_line)
-            .map(|state| state.frame);
-    states
-        .iter()
-        .filter(|state| state.log_line >= fragment_start_line)
-        .filter(|state| state.log_line < instruction.line)
-        .filter(|state| state.pc <= instruction.pc)
-        .filter(|state| call_frame.is_none_or(|frame| state.frame == frame))
-        .rev()
-        .find_map(|state| {
-            let reg_state = state.regs.get(&reg)?;
-            Some((reg_state, reg_state.source_frame.unwrap_or(state.frame)))
-        })
-}
-
-fn latest_verifier_state_before_instruction<'a>(
-    states: &'a [VerifierInsn],
-    instruction: TerminalInstruction<'_>,
-    fragment_start_line: usize,
-) -> Option<&'a VerifierInsn> {
-    states
-        .iter()
-        .filter(|state| state.log_line >= fragment_start_line)
-        .filter(|state| state.log_line < instruction.line)
-        .filter(|state| state.pc <= instruction.pc)
-        .next_back()
-}
-
-fn latest_verifier_state_at_or_before_instruction<'a>(
-    states: &'a [VerifierInsn],
-    instruction: TerminalInstruction<'_>,
-    fragment_start_line: usize,
-) -> Option<&'a VerifierInsn> {
-    states
-        .iter()
-        .filter(|state| state.log_line >= fragment_start_line)
-        .filter(|state| state.log_line <= instruction.line)
-        .filter(|state| state.pc <= instruction.pc)
-        .next_back()
-}
-
-fn latest_ref_state_before_instruction<'a>(
-    states: &'a [VerifierInsn],
-    instruction: TerminalInstruction<'_>,
-    fragment_start_line: usize,
-) -> Option<&'a VerifierInsn> {
-    states
-        .iter()
-        .filter(|state| state.log_line >= fragment_start_line)
-        .filter(|state| state.log_line < instruction.line)
-        .filter(|state| state.pc <= instruction.pc)
-        .filter(|state| !state.ref_ids.is_empty())
-        .next_back()
-}
-
-fn latest_verifier_state_before(
-    states: &[VerifierInsn],
-    terminal_pc: Option<usize>,
-    terminal_line: Option<usize>,
-) -> Option<&VerifierInsn> {
-    states
-        .iter()
-        .filter(|state| terminal_pc.is_none_or(|pc| state.pc <= pc))
-        .filter(|state| terminal_line.is_none_or(|line| state.log_line < line))
-        .next_back()
 }
 
 fn packet_proof_lost_after_bounds_check(event: &ProofEvent) -> bool {
@@ -7428,17 +6999,6 @@ fn packet_terminal_offset_matches_state(
 
 fn packet_helper_consumes_packet_arg(target: &str, reg: u8) -> bool {
     matches!(target, "bpf_csum_diff") && matches!(reg, 1 | 3)
-}
-
-fn direct_call_target_from_instruction_tail(instruction_tail: &str) -> Option<&str> {
-    let mut tokens = instruction_tail.split_whitespace();
-    if tokens.next()? != "(85)" || tokens.next()? != "call" {
-        return None;
-    }
-    let call = tokens.next()?;
-    call.split_once('#')
-        .map(|(target, _)| target)
-        .or(Some(call))
 }
 
 fn packet_verifier_precision_signal(context: &ProofSignalContext<'_>) -> Option<ProofSignal> {
@@ -7684,28 +7244,6 @@ fn conditional_branch_registers(tail: &str) -> Vec<u8> {
     register_operands(condition)
 }
 
-fn register_operands(text: &str) -> Vec<u8> {
-    let mut regs = Vec::new();
-    let bytes = text.as_bytes();
-    let mut idx = 0usize;
-    while idx + 1 < bytes.len() {
-        if bytes[idx] != b'r' || !bytes[idx + 1].is_ascii_digit() {
-            idx += 1;
-            continue;
-        }
-        let start = idx + 1;
-        let mut end = start + 1;
-        while end < bytes.len() && bytes[end].is_ascii_digit() {
-            end += 1;
-        }
-        if let Ok(reg) = text[start..end].parse::<u8>() {
-            regs.push(reg);
-        }
-        idx = end;
-    }
-    regs
-}
-
 fn rejected_source(events: &[ProofEvent]) -> Option<&SourceLocation> {
     events
         .iter()
@@ -7914,14 +7452,6 @@ fn instruction_adds_register(tail: &str, destination: u8, source: u8) -> bool {
         }
     }
     false
-}
-
-fn register_token(token: &str) -> Option<u8> {
-    let token = token.trim_end_matches(|ch| matches!(ch, ',' | ';'));
-    let digits = token.strip_prefix('r')?;
-    (!digits.is_empty() && digits.bytes().all(|byte| byte.is_ascii_digit()))
-        .then(|| digits.parse().ok())
-        .flatten()
 }
 
 fn register_from_terminal_error(message: &str) -> Option<u8> {

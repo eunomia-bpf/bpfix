@@ -1,6 +1,175 @@
 use super::*;
 
 #[test]
+fn parses_instruction_lines_and_call_targets() {
+    assert_eq!(
+        parse_instruction_line("  6: (71) r3 = *(u8 *)(r2 +0)"),
+        Some((6, "(71) r3 = *(u8 *)(r2 +0)"))
+    );
+    assert_eq!(parse_instruction_pc("17: R1=ctx() R10=fp0"), Some(17));
+    assert_eq!(parse_instruction_line("17: R1=ctx() R10=fp0"), None);
+    assert_eq!(
+        parse_instruction_line("21: .12....... (85) call bpf_map_lookup_elem#1"),
+        Some((21, "(85) call bpf_map_lookup_elem#1"))
+    );
+    assert_eq!(parse_instruction_line("processed 4 insns"), None);
+
+    assert_eq!(
+        call_target_from_instruction_tail("(85) call bpf_map_lookup_elem#1"),
+        Some("bpf_map_lookup_elem")
+    );
+    assert_eq!(
+        call_target_from_instruction_tail("(85) call unknown"),
+        Some("unknown")
+    );
+    assert_eq!(
+        call_target_from_instruction_tail("(15) if r1 == 0x0 call not_a_direct_call"),
+        Some("not_a_direct_call")
+    );
+    assert_eq!(
+        direct_call_target_from_instruction_tail("(85) call bpf_dynptr_slice_rdwr#202"),
+        Some("bpf_dynptr_slice_rdwr")
+    );
+    assert_eq!(
+        direct_call_target_from_instruction_tail("(15) if r1 == 0x0 goto pc+1"),
+        None
+    );
+}
+
+#[test]
+fn parses_instruction_register_operands() {
+    assert_eq!(loose_register_operands("if r1 > r2 goto pc+1"), vec![1, 2]);
+    assert_eq!(loose_register_operands("w3 = r4; r10 = fp"), vec![4, 10]);
+    assert_eq!(
+        loose_register_operands("r1 += 8; *(u64 *)(r10 -8) = r1"),
+        vec![1, 10, 1]
+    );
+    assert_eq!(loose_register_operands("err12 r2foo w3"), vec![12, 2]);
+
+    assert_eq!(register_token("r7,"), Some(7));
+    assert_eq!(register_token("w7"), None);
+    assert_eq!(register_token("r7+0"), None);
+    assert_eq!(register_token("r"), None);
+    assert_eq!(register_write_token("w7;"), Some(7));
+    assert_eq!(register_write_token("r10"), Some(10));
+}
+
+#[test]
+fn parses_memory_access_shape() {
+    let load = "(79) r1 = *(u64 *)(r10 -8)";
+    assert_eq!(memory_access_width(load), Some(8));
+    assert!(memory_access_is_load(load));
+    assert!(!memory_access_is_store(load));
+    assert!(!memory_access_is_atomic(load));
+    assert_eq!(memory_access_operand(load), Some("r10 -8"));
+    assert_eq!(memory_access_base_register(load), Some(10));
+    assert_eq!(memory_access_offset(load), Some(-8));
+
+    let store = "(7b) *(u64 *)(r10 -16) = r1";
+    assert_eq!(memory_access_width(store), Some(8));
+    assert!(!memory_access_is_load(store));
+    assert!(memory_access_is_store(store));
+    assert_eq!(memory_access_base_register(store), Some(10));
+    assert_eq!(memory_access_offset(store), Some(-16));
+
+    let atomic = "(db) lock *(u64 *)(r1 +0) += r2";
+    assert!(memory_access_is_atomic(atomic));
+    assert_eq!(atomic_memory_access_width(atomic), Some(8));
+
+    let slot = stack_value_range(-16, 8).unwrap();
+    let access = stack_access_range("invalid read from stack R3 off -12 size 4").unwrap();
+    assert!(slot.overlaps(access));
+    assert!(slot.contains(-16));
+    assert!(slot.contains_range(access));
+    assert_eq!(slot.len(), 8);
+    assert_eq!(slot.start(), -16);
+    assert_eq!(slot.end(), -8);
+    assert!(stack_value_range(-8, -1).is_none());
+    assert!(stack_access_range("invalid read from stack R3 off -12 size -4").is_none());
+}
+
+#[test]
+fn queries_latest_verifier_state_before_instruction() {
+    let log = "\
+0: R1=ctx() R2=scalar(id=1) R10=fp0
+1: (bf) r3 = r1                      ; R3_w=ctx()
+2: frame1: R1=scalar(id=2) R2=fp[0]-16 R10=fp0 fp-8=00000000 refs=7
+3: (b7) r0 = 0                       ; R0_w=0
+";
+
+    let states = parse_verifier_log(log);
+    let instruction = VerifierLogInstruction {
+        pc: 3,
+        line: 4,
+        tail: "(b7) r0 = 0",
+    };
+
+    assert_eq!(
+        latest_reg_state_before(&states, Some(1), 1)
+            .unwrap()
+            .reg_type,
+        "ctx"
+    );
+    assert_eq!(
+        latest_verifier_state_before_instruction(&states, instruction, 1)
+            .unwrap()
+            .pc,
+        2
+    );
+    assert_eq!(
+        latest_verifier_state_at_or_before_instruction(&states, instruction, 1)
+            .unwrap()
+            .pc,
+        3
+    );
+    assert_eq!(
+        latest_reg_state_before_instruction(&states, instruction, 1, 1)
+            .unwrap()
+            .reg_type,
+        "scalar"
+    );
+    assert_eq!(
+        latest_reg_state_at_or_before_instruction(&states, instruction, 1, 0)
+            .unwrap()
+            .exact_u32(),
+        Some(0)
+    );
+    assert_eq!(
+        latest_reg_state_before_instruction_with_frame(&states, instruction, 1, 2)
+            .unwrap()
+            .1,
+        0
+    );
+    assert_eq!(
+        latest_reg_state_before_instruction_with_log_line(&states, instruction, 1, 1)
+            .unwrap()
+            .1,
+        3
+    );
+    assert_eq!(
+        latest_ref_state_before_instruction(&states, instruction, 1)
+            .unwrap()
+            .pc,
+        2
+    );
+    assert_eq!(
+        latest_verifier_state_before(&states, Some(3), Some(4))
+            .unwrap()
+            .pc,
+        2
+    );
+
+    let snapshot = verifier_path_snapshot_before_instruction(&states, instruction, 1).unwrap();
+    assert_eq!(snapshot.frame, 1);
+    assert_eq!(snapshot.regs.get(&1).unwrap().reg_type, "scalar");
+    assert!(!snapshot.regs.contains_key(&3));
+    assert_eq!(
+        initialized_stack_bytes_from_snapshot(&snapshot.stack, -8),
+        8
+    );
+}
+
+#[test]
 fn parses_real_style_branch_and_insn_states() {
     let log = r#"
 from 4 to 6: R0_w=pkt(off=8,r=8) R1=ctx() R2_w=pkt(r=8) R3_w=pkt_end() R10=fp0
