@@ -1,31 +1,34 @@
 use anyhow::Result;
 use bpfanalysis::verifier_log::{
-    atomic_memory_access_width, call_target_from_instruction_tail, conditional_branch_registers,
-    direct_call_target_from_instruction_tail, initialized_stack_bytes_from_snapshot,
-    instruction_adds_register, instruction_assigns_register, instruction_destination_register,
-    instruction_on_log_line, instruction_opcode_body, instruction_reads_register,
-    instruction_register_copy_source, instruction_single_register_rhs_source,
+    active_validation_start, atomic_memory_access_width, call_target_from_instruction_tail,
+    conditional_branch_registers, direct_call_target_from_instruction_tail,
+    initialized_stack_bytes_from_snapshot, instruction_adds_register, instruction_assigns_register,
+    instruction_destination_register, instruction_on_log_line, instruction_opcode_body,
+    instruction_reads_register, instruction_register_copy_source,
+    instruction_single_register_rhs_source, instruction_site_before_line,
     instruction_uses_register as terminal_instruction_uses_register, instruction_writes_register,
-    is_verifier_error_line, is_verifier_fragment_boundary, latest_nullable_state,
-    latest_ref_state_before_instruction, latest_reg_state_at_or_before_instruction,
-    latest_reg_state_before, latest_reg_state_before_instruction,
-    latest_reg_state_before_instruction_with_frame,
-    latest_reg_state_before_instruction_with_log_line, latest_reg_state_index_before,
-    latest_unsafe_scalar_state, latest_verifier_state_at_or_before_instruction,
-    latest_verifier_state_before, latest_verifier_state_before_instruction,
-    loose_register_operands as register_operands, map_value_access_range_may_exceed_value_size,
-    map_value_range_may_exceed_value_size, map_value_remaining_capacity,
-    map_value_variable_max_offset, memory_access_base_register, memory_access_is_atomic,
-    memory_access_is_load, memory_access_is_store, memory_access_offset, memory_access_width,
-    parse_instruction_line, scalar_range_has_any_bound, scalar_range_max_i64,
+    instructions_in_line_range, is_verifier_error_line, is_verifier_fragment_boundary,
+    latest_nullable_state, latest_ref_state_before_instruction,
+    latest_reg_state_at_or_before_instruction, latest_reg_state_before,
+    latest_reg_state_before_instruction, latest_reg_state_before_instruction_with_frame,
+    latest_reg_state_before_instruction_with_log_line,
+    latest_reg_state_before_instruction_with_origin, latest_reg_state_in_line_range_before,
+    latest_reg_state_index_before, latest_unsafe_scalar_state,
+    latest_verifier_state_at_or_before_instruction, latest_verifier_state_before,
+    latest_verifier_state_before_instruction, loose_register_operands as register_operands,
+    map_value_access_range_may_exceed_value_size, map_value_range_may_exceed_value_size,
+    map_value_remaining_capacity, map_value_variable_max_offset, memory_access_base_register,
+    memory_access_is_atomic, memory_access_is_load, memory_access_is_store, memory_access_offset,
+    memory_access_width, parse_instruction_line, scalar_range_has_any_bound, scalar_range_max_i64,
     scalar_range_may_be_negative, scalar_range_may_include_zero, scalar_range_min_i64,
     scalar_range_upper_unbounded_or_too_large, scalar_ranges_match,
     scalar_state_upper_bound_at_most, stack_access_range, stack_value_range, terminal_call_target,
     terminal_instruction_access_width, terminal_instruction_contains,
-    terminal_instruction_memory_offset, terminal_instruction_site, verifier_fragment_start_line,
-    verifier_path_snapshot_before_instruction, verifier_states_with_branch_deltas_from_log,
-    verifier_value_summary, CallbackKind, PathVerifierSnapshot, RegState, StackByteRange,
-    StackState, VerifierInsn, VerifierInsnKind, VerifierLogInstruction as TerminalInstruction,
+    terminal_instruction_memory_offset, terminal_instruction_site, validation_seen,
+    verifier_fragment_start_line, verifier_path_snapshot_before_instruction,
+    verifier_states_with_branch_deltas_from_log, verifier_value_summary, CallbackKind,
+    PathVerifierSnapshot, RegState, StackByteRange, StackState, VerifierInsn, VerifierInsnKind,
+    VerifierLogInstruction as TerminalInstruction,
 };
 
 use crate::family::ProofObligation;
@@ -1641,58 +1644,6 @@ fn nonnegative_required_range_as_u64(required: (i64, i64)) -> Option<(u64, u64)>
     Some((min, max))
 }
 
-fn latest_reg_state_in_line_range_before(
-    states: &[VerifierInsn],
-    start_line: usize,
-    before_line: usize,
-    terminal_pc: Option<usize>,
-    reg: u8,
-) -> Option<&RegState> {
-    states
-        .iter()
-        .filter(|state| state.log_line >= start_line)
-        .filter(|state| state.log_line < before_line)
-        .filter(|state| terminal_pc.is_none_or(|pc| state.pc <= pc))
-        .rev()
-        .filter_map(|state| state.regs.get(&reg))
-        .next()
-}
-
-fn active_validation_start(log: &str, start_line: usize, before_line: usize) -> Option<usize> {
-    let mut active = None;
-    for (idx, line) in log
-        .lines()
-        .enumerate()
-        .skip(start_line.saturating_sub(1))
-        .take(before_line.saturating_sub(start_line))
-    {
-        let line = line.trim();
-        if validating_function_name(line).is_some() {
-            active = Some(idx + 1);
-        } else if validation_success_line(line) {
-            active = None;
-        }
-    }
-    active
-}
-
-fn validating_function_name(line: &str) -> Option<&str> {
-    let rest = line.strip_prefix("Validating ")?;
-    let (name, _) = rest.split_once("() func#")?;
-    (!name.is_empty()).then_some(name)
-}
-
-fn validation_seen(log: &str, start_line: usize, before_line: usize) -> bool {
-    log.lines()
-        .skip(start_line.saturating_sub(1))
-        .take(before_line.saturating_sub(start_line))
-        .any(|line| validating_function_name(line.trim()).is_some())
-}
-
-fn validation_success_line(line: &str) -> bool {
-    line.starts_with("Func#") && line.contains(" is safe for any args")
-}
-
 fn sleepable_call_in_non_sleepable_context(context: &ProofSignalContext<'_>) -> bool {
     let terminal = context.terminal_error.to_ascii_lowercase();
     if !terminal.contains("may sleep")
@@ -1718,15 +1669,8 @@ fn sleepable_call_in_non_sleepable_context(context: &ProofSignalContext<'_>) -> 
 
 fn prior_non_sleepable_state(log: &str, start_line: usize, before_line: usize) -> bool {
     let mut irq_save_depth = 0u32;
-    for line in log
-        .lines()
-        .skip(start_line.saturating_sub(1))
-        .take(before_line.saturating_sub(start_line))
-    {
-        let Some((_, tail)) = parse_instruction_line(line) else {
-            continue;
-        };
-        let Some(target) = call_target_from_instruction_tail(tail) else {
+    for instruction in instructions_in_line_range(log, start_line, before_line) {
+        let Some(target) = call_target_from_instruction_tail(instruction.tail) else {
             continue;
         };
         match target {
@@ -3519,9 +3463,8 @@ fn irq_save_ref_origin_before_exit(
 }
 
 fn call_target_on_log_line(log: &str, line_number: usize) -> Option<&str> {
-    let line = log.lines().nth(line_number.checked_sub(1)?)?;
-    let (_, tail) = parse_instruction_line(line.trim())?;
-    call_target_from_instruction_tail(tail)
+    instruction_on_log_line(log, line_number)
+        .and_then(|instruction| call_target_from_instruction_tail(instruction.tail))
 }
 
 fn callback_call_while_locked(context: &ProofSignalContext<'_>) -> bool {
@@ -3797,17 +3740,10 @@ fn register_reassigned_to_non_zero_between(
     before_line: usize,
     reg: u8,
 ) -> bool {
-    log.lines()
-        .enumerate()
-        .filter(|(idx, _)| {
-            let line = idx + 1;
-            line > after_line && line < before_line
-        })
-        .filter_map(|(_, line)| parse_instruction_line(line.trim()))
-        .any(|(_, tail)| {
-            instruction_assigns_register(tail, reg)
-                && !instruction_assigns_exact_zero_to_register(tail, reg)
-        })
+    instructions_in_line_range(log, after_line.saturating_add(1), before_line).any(|instruction| {
+        instruction_assigns_register(instruction.tail, reg)
+            && !instruction_assigns_exact_zero_to_register(instruction.tail, reg)
+    })
 }
 
 fn instruction_assigns_exact_zero_to_register(instruction_tail: &str, reg: u8) -> bool {
@@ -3854,25 +3790,11 @@ fn latest_register_assignment<'a>(
     reg: u8,
     frame: usize,
 ) -> Option<TerminalInstruction<'a>> {
-    log.lines()
-        .enumerate()
-        .filter(|(idx, _)| {
-            let line = idx + 1;
-            line >= fragment_start && line < before_line
-        })
-        .filter_map(|(idx, line)| {
-            let (pc, tail) = parse_instruction_line(line.trim())?;
-            if !instruction_assigns_register(tail, reg) {
-                return None;
-            }
-            let instruction = TerminalInstruction {
-                pc,
-                line: idx + 1,
-                tail,
-            };
-            instruction_frame(states, instruction, fragment_start)
-                .is_none_or(|assigned_frame| assigned_frame == frame)
-                .then_some(instruction)
+    instructions_in_line_range(log, fragment_start, before_line)
+        .filter(|instruction| {
+            instruction_assigns_register(instruction.tail, reg)
+                && instruction_frame(states, *instruction, fragment_start)
+                    .is_none_or(|assigned_frame| assigned_frame == frame)
         })
         .last()
 }
@@ -4006,25 +3928,11 @@ fn latest_stack_pointer_value_load_source_inner<'a>(
     if depth > 8 {
         return None;
     }
-    log.lines()
-        .enumerate()
-        .filter(|(idx, _)| {
-            let line = idx + 1;
-            line >= fragment_start && line < before_line
-        })
-        .filter_map(|(idx, line)| {
-            let (pc, tail) = parse_instruction_line(line.trim())?;
-            if !instruction_assigns_register(tail, reg) {
-                return None;
-            }
-            let instruction = TerminalInstruction {
-                pc,
-                line: idx + 1,
-                tail,
-            };
-            instruction_frame(states, instruction, fragment_start)
-                .is_none_or(|assigned_frame| assigned_frame == frame)
-                .then_some(instruction)
+    instructions_in_line_range(log, fragment_start, before_line)
+        .filter(|instruction| {
+            instruction_assigns_register(instruction.tail, reg)
+                && instruction_frame(states, *instruction, fragment_start)
+                    .is_none_or(|assigned_frame| assigned_frame == frame)
         })
         .last()
         .and_then(|instruction| {
@@ -4095,22 +4003,8 @@ fn latest_stack_range_writer(
     access: StackByteRange,
     frame: usize,
 ) -> Option<StackRangeWriter> {
-    let instructions = log
-        .lines()
-        .enumerate()
-        .filter(|(idx, _)| {
-            let line = idx + 1;
-            line >= fragment_start && line < before_line
-        })
-        .filter_map(|(idx, line)| {
-            let (pc, tail) = parse_instruction_line(line.trim())?;
-            Some(TerminalInstruction {
-                pc,
-                line: idx + 1,
-                tail,
-            })
-        })
-        .collect::<Vec<_>>();
+    let instructions =
+        instructions_in_line_range(log, fragment_start, before_line).collect::<Vec<_>>();
     instructions.iter().rev().copied().find_map(|instruction| {
         if stack_store_overlaps_range(states, instruction, fragment_start, access, frame) {
             return Some(StackRangeWriter::Other);
@@ -4385,28 +4279,6 @@ fn stale_data_pointer_kind(
     }
 }
 
-fn latest_reg_state_before_instruction_with_origin<'a>(
-    states: &'a [VerifierInsn],
-    instruction: TerminalInstruction<'_>,
-    fragment_start_line: usize,
-    reg: u8,
-) -> Option<(&'a RegState, usize, usize)> {
-    let call_frame =
-        latest_verifier_state_before_instruction(states, instruction, fragment_start_line)
-            .map(|state| state.frame);
-    states
-        .iter()
-        .filter(|state| state.log_line >= fragment_start_line)
-        .filter(|state| state.log_line < instruction.line)
-        .filter(|state| state.pc <= instruction.pc)
-        .filter(|state| call_frame.is_none_or(|frame| state.frame == frame))
-        .rev()
-        .find_map(|state| {
-            let reg_state = state.regs.get(&reg)?;
-            Some((reg_state, state.log_line, state.frame))
-        })
-}
-
 fn prior_dynptr_data_pointer_before_instruction(
     context: &ProofSignalContext<'_>,
     instruction: TerminalInstruction<'_>,
@@ -4452,20 +4324,7 @@ fn register_assigned_between(
     after_line: usize,
     before_line: usize,
 ) -> bool {
-    log.lines()
-        .enumerate()
-        .filter(|(idx, _)| {
-            let line = idx + 1;
-            line > after_line && line < before_line
-        })
-        .filter_map(|(idx, line)| {
-            let (pc, tail) = parse_instruction_line(line.trim())?;
-            Some(TerminalInstruction {
-                pc,
-                line: idx + 1,
-                tail,
-            })
-        })
+    instructions_in_line_range(log, after_line.saturating_add(1), before_line)
         .filter(|instruction| instruction_assigns_register(instruction.tail, reg))
         .any(|instruction| {
             instruction_frame(states, instruction, fragment_start)
@@ -4491,25 +4350,10 @@ fn invalidating_helper_between(
     if after_line >= before_line {
         return false;
     }
-    context
-        .log
-        .lines()
-        .enumerate()
-        .filter(|(idx, _)| {
-            let line = idx + 1;
-            line > after_line && line < before_line
-        })
-        .filter_map(|(idx, line)| {
-            let (pc, tail) = parse_instruction_line(line.trim())?;
-            let target = call_target_from_instruction_tail(tail)?;
-            Some((
-                TerminalInstruction {
-                    pc,
-                    line: idx + 1,
-                    tail,
-                },
-                target,
-            ))
+    instructions_in_line_range(context.log, after_line.saturating_add(1), before_line)
+        .filter_map(|instruction| {
+            let target = call_target_from_instruction_tail(instruction.tail)?;
+            Some((instruction, target))
         })
         .any(|(instruction, target)| match pointer_kind {
             StaleDataPointerKind::Packet => packet_pointer_invalidating_helper(target),
@@ -4557,19 +4401,17 @@ fn dynptr_data_origin(
 ) -> Option<DynptrDataOrigin> {
     let fragment_start = verifier_fragment_start_line(context.log, before_line);
     let mut current_reg = reg;
-    let lines = context.log.lines().collect::<Vec<_>>();
-    let end = before_line.min(lines.len());
-    let start = fragment_start.saturating_sub(1).min(end);
-    for (idx, line) in lines[start..end].iter().enumerate().rev() {
-        let line_number = start + idx + 1;
-        let Some((pc, tail)) = parse_instruction_line(line.trim()) else {
-            continue;
-        };
-        if let Some(source_reg) = instruction_single_register_rhs_source(tail, current_reg) {
+    let instructions =
+        instructions_in_line_range(context.log, fragment_start, before_line.saturating_add(1))
+            .collect::<Vec<_>>();
+    for instruction in instructions.iter().rev().copied() {
+        if let Some(source_reg) =
+            instruction_single_register_rhs_source(instruction.tail, current_reg)
+        {
             current_reg = source_reg;
             continue;
         }
-        let target = call_target_from_instruction_tail(tail);
+        let target = call_target_from_instruction_tail(instruction.tail);
         if current_reg != 0 {
             continue;
         }
@@ -4577,11 +4419,6 @@ fn dynptr_data_origin(
             continue;
         };
         let arg_reg = dynptr_data_producer_arg(target)?;
-        let instruction = TerminalInstruction {
-            pc,
-            line: line_number,
-            tail,
-        };
         let slot = dynptr_stack_slot_for_call_argument(
             context.branch_states,
             instruction,
@@ -4608,24 +4445,11 @@ fn dynptr_slot_backing_before(
     before_line: usize,
 ) -> Option<DynptrBacking> {
     let fragment_start = verifier_fragment_start_line(context.log, before_line);
-    context
-        .log
-        .lines()
-        .enumerate()
-        .filter(|(idx, _)| {
-            let line = idx + 1;
-            line >= fragment_start && line < before_line
-        })
-        .filter_map(|(idx, line)| {
-            let (pc, tail) = parse_instruction_line(line.trim())?;
-            let target = call_target_from_instruction_tail(tail)?;
+    instructions_in_line_range(context.log, fragment_start, before_line)
+        .filter_map(|instruction| {
+            let target = call_target_from_instruction_tail(instruction.tail)?;
             let backing = dynptr_backing_from_helper(target)?;
             let arg_reg = dynptr_initializer_output_arg(target)?;
-            let instruction = TerminalInstruction {
-                pc,
-                line: idx + 1,
-                tail,
-            };
             let initialized_slot = dynptr_stack_slot_for_call_argument(
                 context.branch_states,
                 instruction,
@@ -4688,7 +4512,7 @@ fn bpf_loop_callback_entry_stack_pointer(
 ) -> Option<DynptrStackSlot> {
     let from_pc = entry.from_pc?;
     let call_instruction =
-        callback_origin_call_instruction(context.log, fragment_start, entry.log_line, from_pc)?;
+        instruction_site_before_line(context.log, from_pc, fragment_start, entry.log_line)?;
     if call_target_from_instruction_tail(call_instruction.tail) != Some("bpf_loop") {
         return None;
     }
@@ -4714,31 +4538,6 @@ fn stack_pointer_can_reach_dynptr_slot(pointer: DynptrStackSlot, slot: DynptrSta
         .is_some_and(|offset| slot_range.contains(offset))
 }
 
-fn callback_origin_call_instruction<'a>(
-    log: &'a str,
-    fragment_start: usize,
-    before_line: usize,
-    from_pc: usize,
-) -> Option<TerminalInstruction<'a>> {
-    log.lines()
-        .enumerate()
-        .filter(|(idx, _)| {
-            let line = idx + 1;
-            line >= fragment_start && line < before_line
-        })
-        .filter_map(|(idx, line)| {
-            let (pc, tail) = parse_instruction_line(line.trim())?;
-            (pc == from_pc && call_target_from_instruction_tail(tail).is_some()).then_some(
-                TerminalInstruction {
-                    pc,
-                    line: idx + 1,
-                    tail,
-                },
-            )
-        })
-        .last()
-}
-
 fn callback_entry_stack_slot(entry: &VerifierInsn, reg: u8) -> Option<DynptrStackSlot> {
     let reg_state = entry.regs.get(&reg)?;
     if reg_state.reg_type != "fp" || reg_state_has_variable_offset(reg_state) {
@@ -4760,25 +4559,8 @@ fn callback_writes_dynptr_slot(
     let Some(slot_range) = dynptr_stack_slot_range(slot) else {
         return false;
     };
-    context
-        .log
-        .lines()
-        .enumerate()
-        .filter(|(idx, _)| {
-            let line = idx + 1;
-            line > entry.log_line && line < before_line
-        })
-        .filter_map(|(idx, line)| {
-            let (pc, tail) = parse_instruction_line(line.trim())?;
-            if !memory_access_is_store(tail) {
-                return None;
-            }
-            Some(TerminalInstruction {
-                pc,
-                line: idx + 1,
-                tail,
-            })
-        })
+    instructions_in_line_range(context.log, entry.log_line.saturating_add(1), before_line)
+        .filter(|instruction| memory_access_is_store(instruction.tail))
         .any(|instruction| {
             callback_instruction_matches_entry(
                 context.branch_states,
@@ -4969,15 +4751,8 @@ fn spin_lock_held_before_instruction(
     instruction_line: usize,
 ) -> bool {
     let mut lock_depth = 0u32;
-    for line in log
-        .lines()
-        .skip(fragment_start.saturating_sub(1))
-        .take(instruction_line.saturating_sub(fragment_start))
-    {
-        let Some((_, tail)) = parse_instruction_line(line.trim()) else {
-            continue;
-        };
-        let Some(target) = call_target_from_instruction_tail(tail) else {
+    for instruction in instructions_in_line_range(log, fragment_start, instruction_line) {
+        let Some(target) = call_target_from_instruction_tail(instruction.tail) else {
             continue;
         };
         match target {
@@ -4987,28 +4762,6 @@ fn spin_lock_held_before_instruction(
         }
     }
     lock_depth > 0
-}
-
-fn instruction_site_before_line(
-    log: &str,
-    pc: usize,
-    fragment_start: usize,
-    before_line: usize,
-) -> Option<TerminalInstruction<'_>> {
-    log.lines()
-        .enumerate()
-        .skip(fragment_start.saturating_sub(1))
-        .take(before_line.saturating_sub(fragment_start))
-        .filter_map(|(idx, line)| {
-            let line_number = idx + 1;
-            let (line_pc, tail) = parse_instruction_line(line.trim())?;
-            (line_pc == pc).then_some(TerminalInstruction {
-                pc: line_pc,
-                line: line_number,
-                tail,
-            })
-        })
-        .last()
 }
 
 fn kfunc_argument_type_mismatch(context: &ProofSignalContext<'_>) -> bool {
@@ -5151,14 +4904,8 @@ fn latest_type_contract_argument_state<'a>(
 }
 
 fn register_written_between(log: &str, after_line: usize, before_line: usize, reg: u8) -> bool {
-    log.lines()
-        .enumerate()
-        .filter(|(idx, _)| {
-            let line = idx + 1;
-            line > after_line && line < before_line
-        })
-        .filter_map(|(_, line)| parse_instruction_line(line.trim()))
-        .any(|(_, tail)| instruction_writes_register(tail, reg))
+    instructions_in_line_range(log, after_line.saturating_add(1), before_line)
+        .any(|instruction| instruction_writes_register(instruction.tail, reg))
 }
 
 fn terminal_type_contract(message: &str) -> Option<(u8, String)> {
@@ -6679,12 +6426,11 @@ fn guard_branch_register_sets(
     lookahead: usize,
 ) -> Vec<(usize, Vec<u8>)> {
     let max_pc = guard_pc.saturating_add(lookahead);
-    log.lines()
-        .filter_map(parse_instruction_line)
-        .filter(|(pc, _)| *pc >= guard_pc && *pc <= max_pc)
-        .filter_map(|(pc, tail)| {
-            let regs = conditional_branch_registers(tail);
-            (!regs.is_empty()).then_some((pc, regs))
+    instructions_in_line_range(log, 1, usize::MAX)
+        .filter(|instruction| instruction.pc >= guard_pc && instruction.pc <= max_pc)
+        .filter_map(|instruction| {
+            let regs = conditional_branch_registers(instruction.tail);
+            (!regs.is_empty()).then_some((instruction.pc, regs))
         })
         .collect()
 }
@@ -6815,7 +6561,6 @@ fn scalar_guard_verifier_state_links_to_map_value(
     map_reg: u8,
     current: &RegState,
 ) -> bool {
-    let lines = context.log.lines().collect::<Vec<_>>();
     context
         .branch_states
         .iter()
@@ -6827,16 +6572,13 @@ fn scalar_guard_verifier_state_links_to_map_value(
                 .is_none_or(|terminal_line| state.log_line < terminal_line)
         })
         .any(|state| {
-            let Some(line) = state.log_line.checked_sub(1).and_then(|idx| lines.get(idx)) else {
+            let Some(instruction) = instruction_on_log_line(context.log, state.log_line) else {
                 return false;
             };
-            let Some((pc, tail)) = parse_instruction_line(line.trim()) else {
-                return false;
-            };
-            if pc != state.pc {
+            if instruction.pc != state.pc {
                 return false;
             }
-            let regs = conditional_branch_registers(tail);
+            let regs = conditional_branch_registers(instruction.tail);
             regs.iter().any(|reg| {
                 state.regs.get(reg).is_some_and(|guard| {
                     guard.reg_type == "scalar"
@@ -6870,16 +6612,14 @@ fn map_value_add_uses_scalar_between(
     if guard_pc >= terminal_pc {
         return false;
     }
-    log.lines()
-        .enumerate()
-        .filter(|(idx, _)| *idx + 1 > guard_log_line)
-        .filter(|(idx, _)| terminal_line.is_none_or(|terminal_line| *idx + 1 < terminal_line))
-        .filter_map(|(_, line)| parse_instruction_line(line.trim()))
-        .any(|(pc, tail)| {
-            pc > guard_pc
-                && pc < terminal_pc
-                && instruction_adds_register(tail, map_reg, scalar_reg)
-        })
+    let before_line = terminal_line.unwrap_or(usize::MAX);
+    instructions_in_line_range(log, guard_log_line.saturating_add(1), before_line).any(
+        |instruction| {
+            instruction.pc > guard_pc
+                && instruction.pc < terminal_pc
+                && instruction_adds_register(instruction.tail, map_reg, scalar_reg)
+        },
+    )
 }
 
 fn register_from_terminal_error(message: &str) -> Option<u8> {

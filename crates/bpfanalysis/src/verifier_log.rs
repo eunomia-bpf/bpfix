@@ -349,29 +349,82 @@ pub fn terminal_instruction_site(
     terminal_line: Option<usize>,
 ) -> Option<VerifierLogInstruction<'_>> {
     let pc = terminal_pc?;
-    let lines = log.lines().collect::<Vec<_>>();
-    let end = terminal_line
-        .map(|line| line.saturating_sub(1))
-        .unwrap_or(lines.len())
-        .min(lines.len());
-    let start = terminal_line
+    let line_count = log.lines().count();
+    let before_line = terminal_line
+        .unwrap_or_else(|| line_count.saturating_add(1))
+        .min(line_count.saturating_add(1));
+    let end = before_line.saturating_sub(1).min(line_count);
+    let fragment_start = terminal_line
         .map(|line| verifier_fragment_start_line(log, line))
         .unwrap_or(1)
-        .saturating_sub(1)
-        .min(end);
-    lines[start..end]
-        .iter()
+        .min(end.saturating_add(1));
+    instruction_site_before_line(log, pc, fragment_start, before_line)
+}
+
+pub fn instruction_site_before_line(
+    log: &str,
+    pc: usize,
+    fragment_start_line: usize,
+    before_line: usize,
+) -> Option<VerifierLogInstruction<'_>> {
+    instructions_in_line_range(log, fragment_start_line, before_line)
+        .filter(|instruction| instruction.pc == pc)
+        .last()
+}
+
+pub fn instructions_in_line_range(
+    log: &str,
+    start_line: usize,
+    before_line: usize,
+) -> impl Iterator<Item = VerifierLogInstruction<'_>> {
+    log.lines()
         .enumerate()
-        .filter_map(|(offset, line)| {
-            let line_number = start + offset + 1;
+        .skip(start_line.saturating_sub(1))
+        .take(before_line.saturating_sub(start_line))
+        .filter_map(|(idx, line)| {
+            let line_number = idx + 1;
             let (line_pc, tail) = parse_instruction_line(line.trim())?;
-            (line_pc == pc).then_some(VerifierLogInstruction {
+            Some(VerifierLogInstruction {
                 pc: line_pc,
                 line: line_number,
                 tail,
             })
         })
-        .next_back()
+}
+
+pub fn active_validation_start(log: &str, start_line: usize, before_line: usize) -> Option<usize> {
+    let mut active = None;
+    for (idx, line) in log
+        .lines()
+        .enumerate()
+        .skip(start_line.saturating_sub(1))
+        .take(before_line.saturating_sub(start_line))
+    {
+        let line = line.trim();
+        if validating_function_name(line).is_some() {
+            active = Some(idx + 1);
+        } else if validation_success_line(line) {
+            active = None;
+        }
+    }
+    active
+}
+
+pub fn validation_seen(log: &str, start_line: usize, before_line: usize) -> bool {
+    log.lines()
+        .skip(start_line.saturating_sub(1))
+        .take(before_line.saturating_sub(start_line))
+        .any(|line| validating_function_name(line.trim()).is_some())
+}
+
+fn validating_function_name(line: &str) -> Option<&str> {
+    let rest = line.strip_prefix("Validating ")?;
+    let (name, _) = rest.split_once("() func#")?;
+    (!name.is_empty()).then_some(name)
+}
+
+fn validation_success_line(line: &str) -> bool {
+    line.starts_with("Func#") && line.contains(" is safe for any args")
 }
 
 pub fn terminal_instruction_access_width(
@@ -1027,6 +1080,22 @@ pub fn latest_reg_state_before_instruction_with_frame<'a>(
     )
 }
 
+pub fn latest_reg_state_before_instruction_with_origin<'a>(
+    states: &'a [VerifierInsn],
+    instruction: VerifierLogInstruction<'_>,
+    fragment_start_line: usize,
+    reg: u8,
+) -> Option<(&'a RegState, usize, usize)> {
+    latest_reg_state_for_instruction(
+        states,
+        instruction,
+        fragment_start_line,
+        reg,
+        false,
+        |state, reg| (reg, state.log_line, state.frame),
+    )
+}
+
 pub fn latest_verifier_state_before_instruction<'a>(
     states: &'a [VerifierInsn],
     instruction: VerifierLogInstruction<'_>,
@@ -1061,6 +1130,23 @@ pub fn latest_verifier_state_before(
         .filter(|state| terminal_pc.is_none_or(|pc| state.pc <= pc))
         .filter(|state| terminal_line.is_none_or(|line| state.log_line < line))
         .next_back()
+}
+
+pub fn latest_reg_state_in_line_range_before(
+    states: &[VerifierInsn],
+    start_line: usize,
+    before_line: usize,
+    terminal_pc: Option<usize>,
+    reg: u8,
+) -> Option<&RegState> {
+    states
+        .iter()
+        .filter(|state| state.log_line >= start_line)
+        .filter(|state| state.log_line < before_line)
+        .filter(|state| terminal_pc.is_none_or(|pc| state.pc <= pc))
+        .rev()
+        .filter_map(|state| state.regs.get(&reg))
+        .next()
 }
 
 pub fn verifier_path_snapshot_before_instruction(

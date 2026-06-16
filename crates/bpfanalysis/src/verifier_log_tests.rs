@@ -130,6 +130,29 @@ R2 invalid mem access 'scalar'
     assert_eq!(instruction.line, 5);
     assert_eq!(instruction.tail, "(79) r2 = *(u64 *)(r10 -8)");
     assert_eq!(
+        instruction_site_before_line(log, 1, 4, 6).map(|instruction| instruction.line),
+        Some(5)
+    );
+    assert_eq!(
+        instructions_in_line_range(log, 4, 6)
+            .map(|instruction| instruction.line)
+            .collect::<Vec<_>>(),
+        vec![4, 5]
+    );
+    assert_eq!(
+        instructions_in_line_range(log, 4, 5)
+            .map(|instruction| instruction.line)
+            .collect::<Vec<_>>(),
+        vec![4]
+    );
+    assert_eq!(instructions_in_line_range(log, 6, 6).count(), 0);
+    assert_eq!(instructions_in_line_range(log, 7, 6).count(), 0);
+    assert_eq!(
+        instruction_site_before_line(log, 0, 4, 5).map(|instruction| instruction.line),
+        Some(4)
+    );
+    assert_eq!(instruction_site_before_line(log, 1, 4, 5), None);
+    assert_eq!(
         terminal_instruction_access_width(log, Some(1), Some(6)),
         Some(8)
     );
@@ -258,6 +281,15 @@ fn queries_latest_verifier_state_before_instruction() {
             .1,
         3
     );
+    let (_, log_line, frame) =
+        latest_reg_state_before_instruction_with_origin(&states, instruction, 1, 2).unwrap();
+    assert_eq!((log_line, frame), (3, 1));
+    assert_eq!(
+        latest_reg_state_in_line_range_before(&states, 2, 4, Some(3), 2)
+            .unwrap()
+            .reg_type,
+        "fp"
+    );
     assert_eq!(
         latest_ref_state_before_instruction(&states, instruction, 1)
             .unwrap()
@@ -279,6 +311,23 @@ fn queries_latest_verifier_state_before_instruction() {
         initialized_stack_bytes_from_snapshot(&snapshot.stack, -8),
         8
     );
+}
+
+#[test]
+fn tracks_active_validation_windows() {
+    let log = "\
+0: (b7) r0 = 0
+Validating cb() func#1...
+1: R0=scalar(smin=-1,smax=2)
+Func#1 is safe for any args
+Validating cb() func#2...
+2: R0=scalar(smin=0,smax=1)
+register R0 has value 2 should have been in [0, 1]
+";
+
+    assert!(validation_seen(log, 1, 7));
+    assert_eq!(active_validation_start(log, 1, 7), Some(5));
+    assert_eq!(active_validation_start(log, 1, 5), None);
 }
 
 #[test]
