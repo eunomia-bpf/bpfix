@@ -1,7 +1,8 @@
 use bpfanalysis::verifier_log::{
     call_target_from_instruction_tail, latest_verifier_state_before_instruction, parse_i64_after,
-    stack_value_range, terminal_instruction_site, verifier_fragment_start_line, RegState,
-    StackState, VerifierInsn, VerifierLogInstruction as TerminalInstruction,
+    reg_state_has_variable_offset, stack_value_range, terminal_instruction_site,
+    verifier_fragment_start_line, RegState, StackState, VerifierInsn,
+    VerifierLogInstruction as TerminalInstruction,
 };
 
 use crate::family::ProofObligation;
@@ -13,8 +14,8 @@ use super::stack_access::{
 use super::{
     dynptr_slot_backing_before, dynptr_stack_slot_for_call_argument,
     latest_live_ref_dynptr_stack_overlap_before_instruction, latest_reg_state_for_call_argument,
-    latest_reg_state_for_call_argument_with_frame, reg_state_has_variable_offset, rejected_source,
-    terminal_call_instruction_site, terminal_fragment_start, DynptrBacking, ProofSignalContext,
+    latest_reg_state_for_call_argument_with_frame, rejected_source, terminal_call_instruction_site,
+    terminal_fragment_start, DynptrBacking, ProofSignalContext,
 };
 
 pub(super) fn dynptr_stack_storage_access(context: &ProofSignalContext<'_>) -> bool {

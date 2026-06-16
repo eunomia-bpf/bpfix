@@ -548,6 +548,7 @@ fn queries_latest_unsafe_scalar_and_nullable_state() {
     let (pc, state) = latest_unsafe_scalar_state(&states, Some(1), 1).unwrap();
     assert_eq!(pc, 0);
     assert_eq!(state.range.smin, Some(-1));
+    assert!(reg_state_has_variable_offset(state));
     assert_eq!(
         latest_nullable_state(&states, Some(1), 2),
         Some((0, "map_value_or_null".to_string()))

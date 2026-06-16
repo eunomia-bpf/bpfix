@@ -5,15 +5,16 @@ use bpfanalysis::verifier_log::{
     instructions_in_line_range, latest_reg_state_before_instruction,
     latest_reg_state_before_instruction_with_frame, latest_reg_state_for_call_argument_with_frame,
     memory_access_base_register, memory_access_is_load, memory_access_is_store,
-    memory_access_width, stack_memory_access_range, stack_value_range, terminal_instruction_site,
-    StackByteRange, VerifierInsn, VerifierLogInstruction as TerminalInstruction,
+    memory_access_width, reg_state_has_variable_offset, stack_memory_access_range,
+    stack_value_range, terminal_instruction_site, StackByteRange, VerifierInsn,
+    VerifierLogInstruction as TerminalInstruction,
 };
 
 use crate::family::ProofObligation;
 
 use super::{
-    latest_reg_state_before_instruction_with_origin, reg_state_has_variable_offset,
-    register_from_terminal_error, terminal_fragment_start, ProofSignalContext,
+    latest_reg_state_before_instruction_with_origin, register_from_terminal_error,
+    terminal_fragment_start, ProofSignalContext,
 };
 
 pub(super) fn opaque_scalar_pointer_dereference(context: &ProofSignalContext<'_>) -> bool {

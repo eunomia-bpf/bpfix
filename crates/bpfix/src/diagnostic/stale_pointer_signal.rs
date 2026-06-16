@@ -3,17 +3,17 @@ use bpfanalysis::verifier_log::{
     instruction_single_register_rhs_source, instruction_site_before_line,
     instructions_in_line_range, latest_reg_state_before_instruction_with_frame,
     latest_reg_state_before_instruction_with_origin, latest_verifier_state_before_instruction,
-    memory_access_base_register, memory_access_is_store, stack_memory_access_range,
-    stack_value_range, terminal_instruction_site, verifier_fragment_start_line, CallbackKind,
-    RegState, StackByteRange, VerifierInsn, VerifierLogInstruction as TerminalInstruction,
+    memory_access_base_register, memory_access_is_store, reg_state_has_variable_offset,
+    stack_memory_access_range, stack_value_range, terminal_instruction_site,
+    verifier_fragment_start_line, CallbackKind, RegState, StackByteRange, VerifierInsn,
+    VerifierLogInstruction as TerminalInstruction,
 };
 
 use crate::family::ProofObligation;
 
 use super::{
-    dynptr_slot_backing_before, dynptr_stack_slot_for_call_argument, reg_state_has_variable_offset,
-    register_from_terminal_error, terminal_fragment_start, DynptrBacking, DynptrStackSlot,
-    ProofSignal, ProofSignalContext,
+    dynptr_slot_backing_before, dynptr_stack_slot_for_call_argument, register_from_terminal_error,
+    terminal_fragment_start, DynptrBacking, DynptrStackSlot, ProofSignal, ProofSignalContext,
 };
 
 pub(super) fn stale_pointer_after_invalidating_helper(

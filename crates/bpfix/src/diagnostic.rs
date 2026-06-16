@@ -7,7 +7,7 @@ use bpfanalysis::verifier_log::{
     latest_reg_state_for_call_argument_with_frame, loop_state_snapshots_repeat,
     loose_register_operands as register_operands, memory_access_base_register,
     memory_access_is_atomic, memory_access_offset, memory_access_width, parse_instruction_line,
-    parse_u32_after, scalar_range_has_any_bound, stack_value_range, terminal_instruction_site,
+    parse_u32_after, reg_state_has_variable_offset, stack_value_range, terminal_instruction_site,
     terminal_loop_state_snapshots, verifier_fragment_start_line,
     verifier_states_with_branch_deltas_from_log, CallbackKind, RegState, StackByteRange,
     VerifierInsn, VerifierInsnKind, VerifierLogInstruction as TerminalInstruction,
@@ -758,10 +758,6 @@ fn spin_lock_held_before_instruction(
         }
     }
     lock_depth > 0
-}
-
-fn reg_state_has_variable_offset(state: &RegState) -> bool {
-    state.tnum.is_some() || scalar_range_has_any_bound(state)
 }
 
 fn latest_live_ref_dynptr_stack_overlap_before_instruction(

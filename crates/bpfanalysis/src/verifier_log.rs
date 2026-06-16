@@ -979,6 +979,10 @@ pub fn scalar_range_has_any_bound(state: &RegState) -> bool {
         || state.range.umax32.is_some()
 }
 
+pub fn reg_state_has_variable_offset(state: &RegState) -> bool {
+    state.tnum.is_some() || scalar_range_has_any_bound(state)
+}
+
 pub fn scalar_ranges_match(left: &RegState, right: &RegState) -> bool {
     left.range.smin == right.range.smin
         && left.range.smax == right.range.smax

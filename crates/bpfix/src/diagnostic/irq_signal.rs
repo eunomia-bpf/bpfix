@@ -1,15 +1,16 @@
 use bpfanalysis::verifier_log::{
     call_target_from_instruction_tail, instruction_on_log_line, instruction_site_before_line,
     latest_ref_state_before_instruction, latest_verifier_state_at_or_before_instruction,
-    latest_verifier_state_before_instruction, parse_u32_after, stack_value_range,
-    terminal_instruction_site, verifier_fragment_start_line, RegState, StackState,
+    latest_verifier_state_before_instruction, parse_u32_after, reg_state_has_variable_offset,
+    stack_value_range, terminal_instruction_site, verifier_fragment_start_line, RegState,
+    StackState,
 };
 
 use crate::family::ProofObligation;
 
 use super::{
-    latest_reg_state_for_call_argument_with_frame, reg_state_has_variable_offset,
-    terminal_call_instruction_site, terminal_fragment_start, ProofSignalContext,
+    latest_reg_state_for_call_argument_with_frame, terminal_call_instruction_site,
+    terminal_fragment_start, ProofSignalContext,
 };
 
 #[derive(Clone, Copy)]
