@@ -1,8 +1,7 @@
 use bpfanalysis::helper_abi::helper_dynptr_initializer_output_arg;
 use bpfanalysis::verifier_log::{
     call_target_from_instruction_tail, instructions_in_line_range, reg_state_has_variable_offset,
-    verifier_fragment_start_line, RegState, VerifierInsn,
-    VerifierLogInstruction as TerminalInstruction,
+    verifier_fragment_start_line, VerifierInsn, VerifierLogInstruction as TerminalInstruction,
 };
 
 use super::ProofSignalContext;
@@ -10,6 +9,7 @@ use super::ProofSignalContext;
 pub(super) use bpfanalysis::verifier_log::{
     latest_reg_state_before_instruction_with_origin, latest_reg_state_for_call_argument,
     latest_reg_state_for_call_argument_with_frame, latest_register_assignment,
+    reg_state_is_pointer_like as is_pointer_state,
     register_from_verifier_error as register_from_terminal_error,
 };
 
@@ -23,10 +23,6 @@ pub(super) struct DynptrStackSlot {
 pub(super) enum DynptrBacking {
     Packet,
     Memory,
-}
-
-pub(super) fn is_pointer_state(state: &RegState) -> bool {
-    state.reg_type != "scalar" && state.reg_type != "fp"
 }
 
 pub(super) fn terminal_fragment_start(

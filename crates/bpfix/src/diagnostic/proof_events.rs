@@ -1,7 +1,7 @@
 use bpfanalysis::verifier_log::{
-    latest_nullable_state, latest_reg_state_index_before, latest_unsafe_scalar_state,
-    scalar_range_has_any_bound, scalar_ranges_match, verifier_value_summary, RegState,
-    VerifierInsn,
+    latest_nullable_state, latest_pointer_to_scalar_transition, latest_reg_state_index_before,
+    latest_unsafe_scalar_state, scalar_range_has_any_bound, scalar_ranges_match,
+    verifier_value_summary, RegState, VerifierInsn,
 };
 
 use crate::family::ProofObligation;
@@ -18,7 +18,7 @@ use super::source_query::{
     identifier_tokens, looks_like_packet_pointer_derivation, same_source_location,
     source_for_pc_in_rejected_file,
 };
-use super::{is_pointer_state, ProofEvent, ProofEventEvidence, ProofEventRole};
+use super::{ProofEvent, ProofEventEvidence, ProofEventRole};
 
 pub(super) fn pointer_provenance_events(
     states: &[VerifierInsn],
@@ -58,7 +58,9 @@ pub(super) fn pointer_provenance_events(
         }
     }
 
-    if let Some((pc, kind)) = latest_pointer_to_scalar_transition(states, terminal_pc, register) {
+    if let Some((pc, kind)) =
+        register.and_then(|reg| latest_pointer_to_scalar_transition(states, terminal_pc, reg))
+    {
         events.push(ProofEvent {
             role: ProofEventRole::ProofLost,
             evidence: ProofEventEvidence::VerifierState,
@@ -73,32 +75,6 @@ pub(super) fn pointer_provenance_events(
     }
 
     events
-}
-
-fn latest_pointer_to_scalar_transition(
-    states: &[VerifierInsn],
-    terminal_pc: Option<usize>,
-    register: Option<u8>,
-) -> Option<(usize, String)> {
-    let reg = register?;
-    let mut latest_pointer: Option<(usize, String)> = None;
-    let mut latest_loss = None;
-    for state in states {
-        if terminal_pc.is_some_and(|pc| state.pc > pc) {
-            continue;
-        }
-        let Some(reg_state) = state.regs.get(&reg) else {
-            continue;
-        };
-        if is_pointer_state(reg_state) {
-            latest_pointer = Some((state.pc, reg_state.reg_type.clone()));
-        } else if reg_state.reg_type == "scalar" {
-            if let Some((_, pointer_kind)) = latest_pointer.as_ref() {
-                latest_loss = Some((state.pc, pointer_kind.clone()));
-            }
-        }
-    }
-    latest_loss
 }
 
 pub(super) struct PacketBoundsEventContext<'a> {

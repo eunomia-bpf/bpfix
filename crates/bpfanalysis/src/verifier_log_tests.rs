@@ -762,6 +762,40 @@ fn queries_latest_unsafe_scalar_and_nullable_state() {
 }
 
 #[test]
+fn queries_latest_pointer_to_scalar_transition() {
+    let log = r#"
+0: R2=scalar(umax=1) R10=fp0
+0: R1=pkt(id=1,off=0,r=14) R10=fp0
+1: R1=scalar(umax=64) R10=fp0
+2: R1=ctx() R10=fp0
+3: R1=scalar(umax=4) R10=fp0
+4: R2=pkt(id=2,off=0,r=8) R10=fp0
+"#;
+
+    let states = verifier_states_from_log(log).unwrap();
+    assert!(reg_state_is_pointer_like(states[1].regs.get(&1).unwrap()));
+    assert!(!reg_state_is_pointer_like(states[0].regs.get(&2).unwrap()));
+    assert!(!reg_state_is_pointer_like(states[4].regs.get(&10).unwrap()));
+    assert_eq!(
+        latest_pointer_to_scalar_transition(&states, Some(1), 1),
+        Some((1, "pkt".to_string()))
+    );
+    assert_eq!(
+        latest_pointer_to_scalar_transition(&states, Some(3), 1),
+        Some((3, "ctx".to_string()))
+    );
+    assert_eq!(
+        latest_pointer_to_scalar_transition(&states, None, 1),
+        Some((3, "ctx".to_string()))
+    );
+    assert_eq!(
+        latest_pointer_to_scalar_transition(&states, Some(0), 2),
+        None
+    );
+    assert_eq!(latest_pointer_to_scalar_transition(&states, None, 2), None);
+}
+
+#[test]
 fn parses_speculative_full_state_and_stack_spill() {
     let log = r#"
 from 12 to 18 (speculative execution): frame1: R2_w=42 R10=fp0 fp-24=0000???? scalar(id=7,var_off=(0x2a; 0x0))

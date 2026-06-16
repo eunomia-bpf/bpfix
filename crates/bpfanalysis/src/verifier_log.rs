@@ -1485,6 +1485,41 @@ pub fn latest_nullable_state(
         })
 }
 
+/// Returns whether a verifier register state should be treated as pointer-like
+/// for proof-lifecycle diagnostics.
+///
+/// This is a deliberately broad verifier-log predicate: everything except the
+/// explicit `scalar` and frame-pointer `fp` states is considered pointer-like.
+/// It is not a complete kernel verifier register-type taxonomy.
+pub fn reg_state_is_pointer_like(state: &RegState) -> bool {
+    state.reg_type != "scalar" && state.reg_type != "fp"
+}
+
+pub fn latest_pointer_to_scalar_transition(
+    states: &[VerifierInsn],
+    terminal_pc: Option<usize>,
+    reg: u8,
+) -> Option<(usize, String)> {
+    let mut latest_pointer: Option<(usize, String)> = None;
+    let mut latest_loss = None;
+    for state in states {
+        if terminal_pc.is_some_and(|pc| state.pc > pc) {
+            continue;
+        }
+        let Some(reg_state) = state.regs.get(&reg) else {
+            continue;
+        };
+        if reg_state_is_pointer_like(reg_state) {
+            latest_pointer = Some((state.pc, reg_state.reg_type.clone()));
+        } else if reg_state.reg_type == "scalar" {
+            if let Some((_, pointer_kind)) = latest_pointer.as_ref() {
+                latest_loss = Some((state.pc, pointer_kind.clone()));
+            }
+        }
+    }
+    latest_loss
+}
+
 pub fn latest_reg_state_index_before(
     states: &[VerifierInsn],
     terminal_pc: Option<usize>,
