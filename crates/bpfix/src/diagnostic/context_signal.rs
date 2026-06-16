@@ -13,6 +13,11 @@ use super::{
 };
 
 pub(super) fn context_access_source_argument_mismatch(context: &ProofSignalContext<'_>) -> bool {
+    bpf_prog_context_argument_mismatch(context)
+        || trace_context_scalar_argument_dereference(context)
+}
+
+fn bpf_prog_context_argument_mismatch(context: &ProofSignalContext<'_>) -> bool {
     let terminal = context.terminal_error.to_ascii_lowercase();
     if !(terminal.contains("invalid bpf_context access")
         || terminal.contains("invalid ctx access")
@@ -33,6 +38,154 @@ pub(super) fn context_access_source_argument_mismatch(context: &ProofSignalConte
     }
     latest_reg_state_before(context.states, context.terminal_pc, 1)
         .is_some_and(|state| state.reg_type == "ctx")
+}
+
+fn trace_context_scalar_argument_dereference(context: &ProofSignalContext<'_>) -> bool {
+    if context.obligation != ProofObligation::PointerProvenance {
+        return false;
+    }
+    if !active_context_section_is_tracepoint(context) {
+        return false;
+    }
+    let terminal = context.terminal_error.to_ascii_lowercase();
+    if !(terminal.contains("invalid mem access 'scalar'")
+        || terminal.contains("invalid mem access 'inv'"))
+    {
+        return false;
+    }
+    let Some(instruction) =
+        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)
+    else {
+        return false;
+    };
+    let Some(reg) = context
+        .register
+        .or_else(|| register_from_terminal_error(context.terminal_error))
+    else {
+        return false;
+    };
+    if memory_access_base_register(instruction.tail) != Some(reg) {
+        return false;
+    }
+    let fragment_start = terminal_fragment_start(context, instruction);
+    let Some((state, _, frame)) = latest_reg_state_before_instruction_with_origin(
+        context.branch_states,
+        instruction,
+        fragment_start,
+        reg,
+    ) else {
+        return false;
+    };
+    if state.reg_type != "scalar" {
+        return false;
+    }
+    let Some(origin) = latest_register_assignment(
+        context.states,
+        context.log,
+        fragment_start,
+        instruction.line,
+        reg,
+        frame,
+    ) else {
+        return false;
+    };
+    if !context_scalar_loaded_from_ctx(context.states, origin, fragment_start) {
+        return false;
+    }
+    source_looks_like_trace_context_pointer_use(context, origin.pc, instruction.pc)
+}
+
+fn context_scalar_loaded_from_ctx(
+    states: &[VerifierInsn],
+    instruction: TerminalInstruction<'_>,
+    fragment_start: usize,
+) -> bool {
+    if !memory_access_is_load(instruction.tail) {
+        return false;
+    }
+    let Some(ctx_reg) = memory_access_base_register(instruction.tail) else {
+        return false;
+    };
+    latest_reg_state_before_instruction(states, instruction, fragment_start, ctx_reg)
+        .is_some_and(|state| state.reg_type == "ctx")
+}
+
+fn source_looks_like_trace_context_pointer_use<'a>(
+    context: &ProofSignalContext<'a>,
+    origin_pc: usize,
+    rejected_pc: usize,
+) -> bool {
+    let origin_source = source_text_for_pc(context, origin_pc);
+    let rejected_source = source_text_for_pc(context, rejected_pc)
+        .or_else(|| rejected_source(context.events).map(|source| source.text.as_str()));
+    [origin_source, rejected_source]
+        .into_iter()
+        .flatten()
+        .any(trace_context_pointer_source_text)
+}
+
+fn source_text_for_pc<'a>(context: &ProofSignalContext<'a>, pc: usize) -> Option<&'a str> {
+    context
+        .source_events
+        .iter()
+        .filter(|event| event.pc.is_some_and(|event_pc| event_pc <= pc))
+        .max_by_key(|event| event.pc)
+        .map(|event| event.source.text.as_str())
+}
+
+fn trace_context_pointer_source_text(text: &str) -> bool {
+    text.contains("PT_REGS_")
+        || text.contains("ctx->envp")
+        || text.contains("ctx->argv")
+        || text.contains("ctx->filename")
+}
+
+fn active_context_section_is_tracepoint(context: &ProofSignalContext<'_>) -> bool {
+    if !context.object_sections.is_empty() {
+        return context
+            .object_sections
+            .iter()
+            .any(|section| section_is_tracepoint(section));
+    }
+    active_libbpf_program_section(context).is_some_and(section_is_tracepoint)
+}
+
+fn section_is_tracepoint(section: &str) -> bool {
+    let section = section.trim_start_matches('?');
+    section.starts_with("tracepoint/")
+        || section.starts_with("tp/")
+        || section.starts_with("raw_tracepoint/")
+        || section.starts_with("raw_tp/")
+        || section == "raw_tp"
+}
+
+fn active_libbpf_program_section<'a>(context: &ProofSignalContext<'a>) -> Option<&'a str> {
+    let before_line = terminal_error_line_in_log(context.full_log, context.terminal_error)?;
+    let (program_name, window_start) =
+        current_libbpf_program_scope(context.full_log, before_line)?;
+    libbpf_section_for_program(context.full_log, window_start, before_line, program_name)
+}
+
+fn libbpf_section_for_program<'a>(
+    log: &'a str,
+    window_start: usize,
+    before_line: usize,
+    program_name: &str,
+) -> Option<&'a str> {
+    let lines = log.lines().collect::<Vec<_>>();
+    let end = before_line.saturating_sub(1).min(lines.len());
+    let start = window_start.saturating_sub(1).min(end);
+    lines[start..end]
+        .iter()
+        .rev()
+        .find_map(|line| libbpf_found_program_section(line, program_name))
+}
+
+fn libbpf_found_program_section<'a>(line: &'a str, program_name: &str) -> Option<&'a str> {
+    let (_, tail) = line.split_once("libbpf: sec '")?;
+    let (section, tail) = tail.split_once("': found program '")?;
+    let (found_program, _) = tail.split_once('\'')?;
+    (found_program == program_name && !section.is_empty()).then_some(section)
 }
 
 pub(super) fn context_field_unavailable(context: &ProofSignalContext<'_>) -> bool {

@@ -1564,6 +1564,37 @@ fn fentry_context_argument_mismatch_overrides_terminal_environment_classifier() 
 }
 
 #[test]
+fn trace_context_scalar_arguments_report_context_action() {
+    let tracepoint_envp = run_json("bpfix-bench/cases/stackoverflow-67188440/replay-verifier.log");
+    assert_eq!(tracepoint_envp["error_id"], "BPFIX-E011");
+    assert_eq!(tracepoint_envp["next_action"], "context");
+    assert!(evidence_contains(
+        &tracepoint_envp,
+        "verifier_state_signal",
+        "tracepoint/raw-tracepoint context field produced a scalar"
+    ));
+
+    let raw_tracepoint_pt_regs =
+        run_json("bpfix-bench/cases/stackoverflow-77568308/replay-verifier.log");
+    assert_eq!(raw_tracepoint_pt_regs["error_id"], "BPFIX-E011");
+    assert_eq!(raw_tracepoint_pt_regs["next_action"], "context");
+    assert!(evidence_contains(
+        &raw_tracepoint_pt_regs,
+        "verifier_state_signal",
+        "tracepoint/raw-tracepoint context field produced a scalar"
+    ));
+
+    let kprobe_pt_regs =
+        run_json("bpfix-bench/cases/github-commit-bcc-02daf8d84ecd/replay-verifier.log");
+    assert_eq!(kprobe_pt_regs["next_action"], "provenance");
+    assert!(!evidence_contains(
+        &kprobe_pt_regs,
+        "verifier_state_signal",
+        "tracepoint/raw-tracepoint context field produced a scalar"
+    ));
+}
+
+#[test]
 fn unreadable_program_argument_overrides_stack_readability_classifier() {
     let entry_arg = run_json("bpfix-bench/cases/stackoverflow-69506785/replay-verifier.log");
     assert_eq!(entry_arg["error_id"], "BPFIX-E011");
