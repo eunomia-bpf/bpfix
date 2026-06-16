@@ -592,6 +592,7 @@ processed 27 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_sta
         run_json("bpfix-bench/cases/github-iovisor-bcc-5062/replay-verifier.log");
     assert_eq!(packet_range_loss["error_id"], "BPFIX-E001");
     assert_eq!(packet_range_loss["failure_class"], "lowering_artifact");
+    assert_eq!(packet_range_loss["next_action"], "bounds");
     assert!(packet_range_loss["evidence"]
         .as_array()
         .unwrap()
@@ -633,6 +634,7 @@ processed 27 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_sta
         run_json("bpfix-bench/cases/github-orangeopensource-p4rt-ovs-5/replay-verifier.log");
     assert_eq!(wide_map_value_access["error_id"], "BPFIX-E005");
     assert_eq!(wide_map_value_access["failure_class"], "lowering_artifact");
+    assert_eq!(wide_map_value_access["next_action"], "bounds");
     assert!(wide_map_value_access["evidence"]
         .as_array()
         .unwrap()
