@@ -15,6 +15,14 @@ fn parses_marked_decimal_and_hex_numbers() {
     assert_eq!(parse_i64_after("not_off=4 off=8", "off="), Some(8));
     assert_eq!(parse_i64_after("off=oops off=9", "off="), Some(9));
     assert_eq!(parse_i64_after("42", ""), None);
+    assert_eq!(
+        register_from_verifier_error("R10 invalid mem access 'fp'"),
+        Some(10)
+    );
+    assert_eq!(
+        register_from_verifier_error("invalid access to map value"),
+        None
+    );
 }
 
 #[test]

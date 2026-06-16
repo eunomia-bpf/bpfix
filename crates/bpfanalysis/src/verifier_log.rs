@@ -2439,6 +2439,24 @@ pub fn parse_u32_after(message: &str, marker: &str) -> Option<u32> {
     parse_i64_after(message, marker).and_then(|value| value.try_into().ok())
 }
 
+pub fn register_from_verifier_error(message: &str) -> Option<u8> {
+    let bytes = message.as_bytes();
+    let mut idx = 0usize;
+    while idx + 1 < bytes.len() {
+        if bytes[idx] != b'R' || !bytes[idx + 1].is_ascii_digit() {
+            idx += 1;
+            continue;
+        }
+        let start = idx + 1;
+        let mut end = start + 1;
+        while end < bytes.len() && bytes[end].is_ascii_digit() {
+            end += 1;
+        }
+        return message[start..end].parse().ok();
+    }
+    None
+}
+
 fn parse_marked_i64(raw: &str) -> Option<i64> {
     let (negative, magnitude) = raw
         .strip_prefix('-')

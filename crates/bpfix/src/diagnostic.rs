@@ -8,10 +8,11 @@ use bpfanalysis::verifier_log::{
     latest_reg_state_for_call_argument_with_frame, loop_state_snapshots_repeat,
     loose_register_operands as register_operands, memory_access_base_register,
     memory_access_is_atomic, memory_access_offset, memory_access_width, parse_u32_after,
-    reg_state_has_variable_offset, stack_value_range, terminal_instruction_site,
-    terminal_loop_state_snapshots, verifier_fragment_start_line,
-    verifier_states_with_branch_deltas_from_log, CallbackKind, RegState, StackByteRange,
-    VerifierInsn, VerifierInsnKind, VerifierLogInstruction as TerminalInstruction,
+    reg_state_has_variable_offset, register_from_verifier_error as register_from_terminal_error,
+    stack_value_range, terminal_instruction_site, terminal_loop_state_snapshots,
+    verifier_fragment_start_line, verifier_states_with_branch_deltas_from_log, CallbackKind,
+    RegState, StackByteRange, VerifierInsn, VerifierInsnKind,
+    VerifierLogInstruction as TerminalInstruction,
 };
 
 use crate::family::ProofObligation;
@@ -1062,24 +1063,6 @@ fn source_for_pc_in_rejected_file(
 
 fn same_source_location(left: &SourceLocation, right: &SourceLocation) -> bool {
     left.path == right.path && left.line == right.line && left.text == right.text
-}
-
-fn register_from_terminal_error(message: &str) -> Option<u8> {
-    let bytes = message.as_bytes();
-    let mut idx = 0usize;
-    while idx + 1 < bytes.len() {
-        if bytes[idx] != b'R' || !bytes[idx + 1].is_ascii_digit() {
-            idx += 1;
-            continue;
-        }
-        let start = idx + 1;
-        let mut end = start + 1;
-        while end < bytes.len() && bytes[end].is_ascii_digit() {
-            end += 1;
-        }
-        return message[start..end].parse().ok();
-    }
-    None
 }
 
 fn first_call_argument(source_text: &str, function: &str) -> Option<String> {
