@@ -1,5 +1,5 @@
 use bpfanalysis::verifier_log::{
-    latest_reg_state_before, scalar_range_summary, verifier_value_summary,
+    latest_reg_state_before, parse_i64_after, scalar_range_summary, verifier_value_summary,
 };
 use bpfanalysis::VerifierInsn;
 
@@ -420,53 +420,6 @@ fn parse_arg_number(message: &str) -> Option<i64> {
     parse_i64_after(message, "arg #")
         .or_else(|| parse_i64_after(message, "arg#"))
         .or_else(|| parse_i64_after(message, "arg "))
-}
-
-fn parse_i64_after(message: &str, needle: &str) -> Option<i64> {
-    let bytes = message.as_bytes();
-    let mut search_start = 0usize;
-    while let Some(relative) = message[search_start..].find(needle) {
-        let field_start = search_start + relative;
-        if field_start > 0 {
-            let previous = bytes[field_start - 1];
-            if previous.is_ascii_alphanumeric() || previous == b'_' {
-                search_start = field_start + needle.len();
-                continue;
-            }
-        }
-
-        let start = field_start + needle.len();
-        let mut end = start;
-        if bytes.get(end) == Some(&b'-') {
-            end += 1;
-        }
-        let digits_start = end;
-        if message.get(end..end + 2) == Some("0x") {
-            end += 2;
-            while end < bytes.len() && bytes[end].is_ascii_hexdigit() {
-                end += 1;
-            }
-        } else {
-            while end < bytes.len() && bytes[end].is_ascii_digit() {
-                end += 1;
-            }
-        }
-        if end == digits_start
-            || (end == digits_start + 2 && message.get(digits_start..end) == Some("0x"))
-        {
-            search_start = field_start + needle.len();
-            continue;
-        }
-        let raw = &message[start..end];
-        return if let Some(hex) = raw.strip_prefix("0x") {
-            i64::from_str_radix(hex, 16).ok()
-        } else if let Some(hex) = raw.strip_prefix("-0x") {
-            i64::from_str_radix(hex, 16).ok().map(|value| -value)
-        } else {
-            raw.parse().ok()
-        };
-    }
-    None
 }
 
 fn parse_helper_name(message: &str) -> Option<String> {

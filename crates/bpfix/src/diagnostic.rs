@@ -19,11 +19,11 @@ use bpfanalysis::verifier_log::{
     map_value_access_range_may_exceed_value_size, map_value_range_may_exceed_value_size,
     map_value_remaining_capacity, map_value_variable_max_offset, memory_access_base_register,
     memory_access_is_atomic, memory_access_is_load, memory_access_is_store, memory_access_offset,
-    memory_access_width, parse_instruction_line, scalar_range_has_any_bound, scalar_range_max_i64,
-    scalar_range_may_be_negative, scalar_range_may_include_zero, scalar_range_min_i64,
-    scalar_range_upper_unbounded_or_too_large, scalar_ranges_match,
-    scalar_state_upper_bound_at_most, stack_access_range, stack_value_range, terminal_call_target,
-    terminal_instruction_access_width, terminal_instruction_contains,
+    memory_access_width, parse_i64_after, parse_instruction_line, parse_u32_after,
+    scalar_range_has_any_bound, scalar_range_max_i64, scalar_range_may_be_negative,
+    scalar_range_may_include_zero, scalar_range_min_i64, scalar_range_upper_unbounded_or_too_large,
+    scalar_ranges_match, scalar_state_upper_bound_at_most, stack_access_range, stack_value_range,
+    terminal_call_target, terminal_instruction_access_width, terminal_instruction_contains,
     terminal_instruction_memory_offset, terminal_instruction_site, validation_seen,
     verifier_fragment_start_line, verifier_path_snapshot_before_instruction,
     verifier_states_with_branch_deltas_from_log, verifier_value_summary, CallbackKind,
@@ -5656,60 +5656,6 @@ fn parse_signed_decimal(text: &str) -> Option<i64> {
         return None;
     }
     text.parse().ok()
-}
-
-fn parse_i64_after(message: &str, needle: &str) -> Option<i64> {
-    let bytes = message.as_bytes();
-    let mut search_start = 0usize;
-    while let Some(relative) = message[search_start..].find(needle) {
-        let field_start = search_start + relative;
-        if field_start > 0 {
-            let previous = bytes[field_start - 1];
-            if previous.is_ascii_alphanumeric() || previous == b'_' {
-                search_start = field_start + needle.len();
-                continue;
-            }
-        }
-        let start = field_start + needle.len();
-        let mut end = start;
-        if end < bytes.len() && bytes[end] == b'-' {
-            end += 1;
-        }
-        let digit_start = end;
-        while end < bytes.len() && bytes[end].is_ascii_digit() {
-            end += 1;
-        }
-        if end > digit_start {
-            return message[start..end].parse().ok();
-        }
-        search_start = field_start + needle.len();
-    }
-    None
-}
-
-fn parse_u32_after(message: &str, needle: &str) -> Option<u32> {
-    let bytes = message.as_bytes();
-    let mut search_start = 0usize;
-    while let Some(relative) = message[search_start..].find(needle) {
-        let field_start = search_start + relative;
-        if field_start > 0 {
-            let previous = bytes[field_start - 1];
-            if previous.is_ascii_alphanumeric() || previous == b'_' {
-                search_start = field_start + needle.len();
-                continue;
-            }
-        }
-        let start = field_start + needle.len();
-        let mut end = start;
-        while end < bytes.len() && bytes[end].is_ascii_digit() {
-            end += 1;
-        }
-        if end > start {
-            return message[start..end].parse().ok();
-        }
-        search_start = field_start + needle.len();
-    }
-    None
 }
 
 fn packet_proof_lost_after_bounds_check(event: &ProofEvent) -> bool {

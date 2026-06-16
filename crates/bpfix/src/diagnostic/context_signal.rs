@@ -1,14 +1,14 @@
 use bpfanalysis::verifier_log::{
     latest_reg_state_before, latest_reg_state_before_instruction,
     latest_reg_state_before_instruction_with_origin, memory_access_base_register,
-    memory_access_is_load, memory_access_offset, memory_access_width, terminal_instruction_site,
-    VerifierInsn, VerifierLogInstruction as TerminalInstruction,
+    memory_access_is_load, memory_access_offset, memory_access_width, parse_u32_after,
+    terminal_instruction_site, VerifierInsn, VerifierLogInstruction as TerminalInstruction,
 };
 
 use crate::family::ProofObligation;
 
 use super::{
-    latest_register_assignment, parse_u32_after, register_from_terminal_error, rejected_source,
+    latest_register_assignment, register_from_terminal_error, rejected_source,
     terminal_error_has_nearby_prior_line, terminal_fragment_start, ProofSignalContext,
 };
 

@@ -2020,6 +2020,72 @@ fn parse_scalar_exact_value(text: &str) -> Option<u64> {
     }
     parse_unsigned_u64(value)
 }
+
+pub fn parse_i64_after(message: &str, marker: &str) -> Option<i64> {
+    if marker.is_empty() {
+        return None;
+    }
+    let bytes = message.as_bytes();
+    let mut search_start = 0usize;
+    while let Some(relative) = message[search_start..].find(marker) {
+        let field_start = search_start + relative;
+        if field_start > 0 {
+            let previous = bytes[field_start - 1];
+            if previous.is_ascii_alphanumeric() || previous == b'_' {
+                search_start = field_start + marker.len();
+                continue;
+            }
+        }
+
+        let start = field_start + marker.len();
+        let mut end = start;
+        if matches!(bytes.get(end), Some(b'-' | b'+')) {
+            end += 1;
+        }
+        let digits_start = end;
+        if matches!(message.get(end..end + 2), Some("0x" | "0X")) {
+            end += 2;
+            while end < bytes.len() && bytes[end].is_ascii_hexdigit() {
+                end += 1;
+            }
+        } else {
+            while end < bytes.len() && bytes[end].is_ascii_digit() {
+                end += 1;
+            }
+        }
+        if end == digits_start
+            || (end == digits_start + 2
+                && matches!(message.get(digits_start..end), Some("0x" | "0X")))
+        {
+            search_start = field_start + marker.len();
+            continue;
+        }
+        let raw = &message[start..end];
+        return parse_marked_i64(raw);
+    }
+    None
+}
+
+pub fn parse_u32_after(message: &str, marker: &str) -> Option<u32> {
+    parse_i64_after(message, marker).and_then(|value| value.try_into().ok())
+}
+
+fn parse_marked_i64(raw: &str) -> Option<i64> {
+    let (negative, magnitude) = raw
+        .strip_prefix('-')
+        .map(|magnitude| (true, magnitude))
+        .or_else(|| raw.strip_prefix('+').map(|magnitude| (false, magnitude)))
+        .unwrap_or((false, raw));
+    let Some(hex) = magnitude
+        .strip_prefix("0x")
+        .or_else(|| magnitude.strip_prefix("0X"))
+    else {
+        return raw.parse().ok();
+    };
+    let value = i64::from_str_radix(hex, 16).ok()?;
+    Some(if negative { -value } else { value })
+}
+
 fn parse_tnum(text: &str) -> Option<Tnum> {
     let value = text.trim();
     let inner = value.strip_prefix('(')?.strip_suffix(')')?;

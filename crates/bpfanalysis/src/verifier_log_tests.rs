@@ -1,6 +1,23 @@
 use super::*;
 
 #[test]
+fn parses_marked_decimal_and_hex_numbers() {
+    assert_eq!(parse_i64_after("off=-8 size=4", "off="), Some(-8));
+    assert_eq!(parse_i64_after("imm=0x2a", "imm="), Some(42));
+    assert_eq!(parse_i64_after("imm=-0x2a", "imm="), Some(-42));
+    assert_eq!(parse_i64_after("imm=+42", "imm="), Some(42));
+    assert_eq!(
+        parse_i64_after("off=-9223372036854775808", "off="),
+        Some(i64::MIN)
+    );
+    assert_eq!(parse_u32_after("size=4096", "size="), Some(4096));
+    assert_eq!(parse_u32_after("size=-1", "size="), None);
+    assert_eq!(parse_i64_after("not_off=4 off=8", "off="), Some(8));
+    assert_eq!(parse_i64_after("off=oops off=9", "off="), Some(9));
+    assert_eq!(parse_i64_after("42", ""), None);
+}
+
+#[test]
 fn parses_instruction_lines_and_call_targets() {
     assert_eq!(
         parse_instruction_line("  6: (71) r3 = *(u8 *)(r2 +0)"),
