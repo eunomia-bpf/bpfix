@@ -1,8 +1,7 @@
 use bpfanalysis::verifier_log::{
     call_target_from_instruction_tail, latest_reg_state_before,
     latest_reg_state_before_instruction, memory_access_base_register, parse_u32_after,
-    terminal_instruction_contains, terminal_instruction_site,
-    verifier_path_snapshot_before_instruction,
+    terminal_instruction_contains, verifier_path_snapshot_before_instruction,
 };
 
 use crate::family::ProofObligation;
@@ -11,7 +10,7 @@ use super::source_query::{
     call_argument, first_call_argument, invalid_args_function_name, is_bare_identifier_argument,
     map_argument_has_relocation_proof, rejected_source, source_for_instruction_in_fragment,
 };
-use super::{terminal_error_has_nearby_prior_line, terminal_fragment_start, ProofSignalContext};
+use super::{terminal_error_has_nearby_prior_line, terminal_site, ProofSignalContext};
 
 pub(super) fn map_pointer_argument_scalar_zero(context: &ProofSignalContext<'_>) -> bool {
     if !context.terminal_error.contains("expected=map_ptr") {
@@ -81,9 +80,7 @@ pub(super) fn subprogram_reference_metadata_missing(context: &ProofSignalContext
     {
         return false;
     }
-    let Some(instruction) =
-        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)
-    else {
+    let Some((instruction, fragment_start)) = terminal_site(context) else {
         return false;
     };
     if !instruction.tail.contains("call pc+") {
@@ -92,7 +89,6 @@ pub(super) fn subprogram_reference_metadata_missing(context: &ProofSignalContext
     let Some(callee) = invalid_args_function_name(context.terminal_error) else {
         return false;
     };
-    let fragment_start = terminal_fragment_start(context, instruction);
     let Some(rejected) = source_for_instruction_in_fragment(
         context.source_events,
         instruction.pc,
@@ -160,15 +156,12 @@ pub(super) fn map_pointer_raw_access_contract(context: &ProofSignalContext<'_>) 
     {
         return false;
     }
-    let Some(instruction) =
-        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)
-    else {
+    let Some((instruction, fragment_start)) = terminal_site(context) else {
         return false;
     };
     let Some(base_reg) = memory_access_base_register(instruction.tail) else {
         return false;
     };
-    let fragment_start = terminal_fragment_start(context, instruction);
     let Some(snapshot) = verifier_path_snapshot_before_instruction(
         context.branch_states,
         instruction,
@@ -190,15 +183,12 @@ pub(super) fn perf_event_output_packet_access(context: &ProofSignalContext<'_>) 
     {
         return false;
     }
-    let Some(instruction) =
-        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)
-    else {
+    let Some((instruction, fragment_start)) = terminal_site(context) else {
         return false;
     };
     if call_target_from_instruction_tail(instruction.tail) != Some("bpf_perf_event_output") {
         return false;
     }
-    let fragment_start = terminal_fragment_start(context, instruction);
     let Some(snapshot) = verifier_path_snapshot_before_instruction(
         context.branch_states,
         instruction,

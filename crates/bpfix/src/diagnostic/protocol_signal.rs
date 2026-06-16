@@ -3,13 +3,13 @@ use bpfanalysis::verifier_log::{
     instruction_site_before_line, instructions_in_line_range,
     latest_reg_state_in_line_range_before, latest_verifier_state_at_or_before_instruction,
     latest_verifier_state_before, parse_u32_after, scalar_state_outside_required_range,
-    terminal_call_target, terminal_instruction_site, terminal_required_return_range,
-    validation_seen, verifier_fragment_start_line, CallbackKind, RegState, VerifierInsn,
+    terminal_call_target, terminal_required_return_range, validation_seen,
+    verifier_fragment_start_line, CallbackKind, RegState, VerifierInsn,
 };
 
 use crate::family::ProofObligation;
 
-use super::{latest_reg_state_for_call_argument, terminal_fragment_start, ProofSignalContext};
+use super::{latest_reg_state_for_call_argument, terminal_site, ProofSignalContext};
 
 pub(super) fn exception_throw_with_live_reference(
     log: &str,
@@ -44,15 +44,12 @@ pub(super) fn reference_live_at_exit(context: &ProofSignalContext<'_>) -> bool {
     else {
         return false;
     };
-    let Some(instruction) =
-        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)
-    else {
+    let Some((instruction, fragment_start)) = terminal_site(context) else {
         return false;
     };
     if !instruction_is_bpf_exit(instruction.tail) {
         return false;
     }
-    let fragment_start = terminal_fragment_start(context, instruction);
     let Some(exit_state) =
         latest_verifier_state_at_or_before_instruction(context.states, instruction, fragment_start)
     else {
@@ -170,15 +167,12 @@ pub(super) fn sleepable_call_in_non_sleepable_context(context: &ProofSignalConte
     if !terminal.contains("non-sleepable") && !terminal.contains("preempt-disabled") {
         return false;
     }
-    let Some(instruction) =
-        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)
-    else {
+    let Some((instruction, fragment_start)) = terminal_site(context) else {
         return false;
     };
     if !instruction.tail.contains("call ") {
         return false;
     }
-    let fragment_start = terminal_fragment_start(context, instruction);
     prior_non_sleepable_state(context.log, fragment_start, instruction.line)
 }
 
@@ -203,9 +197,7 @@ fn prior_non_sleepable_state(log: &str, start_line: usize, before_line: usize) -
 
 pub(super) fn modern_bpf_object_protocol_violation(context: &ProofSignalContext<'_>) -> bool {
     let terminal = context.terminal_error.to_ascii_lowercase();
-    let Some(instruction) =
-        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)
-    else {
+    let Some((instruction, fragment_start)) = terminal_site(context) else {
         return false;
     };
     let Some(target) = call_target_from_instruction_tail(instruction.tail) else {
@@ -217,7 +209,6 @@ pub(super) fn modern_bpf_object_protocol_violation(context: &ProofSignalContext<
     let Some(reg) = modern_bpf_object_protocol_register(&terminal, target, context.register) else {
         return false;
     };
-    let fragment_start = terminal_fragment_start(context, instruction);
     let Some(state) = latest_reg_state_for_call_argument(
         context.states,
         instruction,

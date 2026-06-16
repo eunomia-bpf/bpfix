@@ -1,6 +1,6 @@
 use bpfanalysis::verifier_log::{
     call_target_from_instruction_tail, latest_verifier_state_before_instruction, stack_value_range,
-    terminal_instruction_site, RegState, VerifierLogInstruction as TerminalInstruction,
+    RegState, VerifierLogInstruction as TerminalInstruction,
 };
 
 use crate::family::ProofObligation;
@@ -8,9 +8,7 @@ use crate::family::ProofObligation;
 use super::stack_access::{
     latest_stack_value_overlap, stack_access_site_from_context, StackAccessSite,
 };
-use super::{
-    latest_reg_state_for_call_argument_with_frame, terminal_fragment_start, ProofSignalContext,
-};
+use super::{latest_reg_state_for_call_argument_with_frame, terminal_site, ProofSignalContext};
 
 pub(super) fn iterator_stack_storage_access(context: &ProofSignalContext<'_>) -> bool {
     if !matches!(
@@ -44,9 +42,7 @@ pub(super) fn iterator_helper_argument_state_mismatch(context: &ProofSignalConte
     ) {
         return false;
     }
-    let Some(instruction) =
-        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)
-    else {
+    let Some((instruction, fragment_start)) = terminal_site(context) else {
         return false;
     };
     let Some(target) = call_target_from_instruction_tail(instruction.tail) else {
@@ -55,7 +51,6 @@ pub(super) fn iterator_helper_argument_state_mismatch(context: &ProofSignalConte
     let Some(requirement) = iterator_arg0_requirement(target) else {
         return false;
     };
-    let fragment_start = terminal_fragment_start(context, instruction);
     let Some((arg, arg_frame)) = latest_reg_state_for_call_argument_with_frame(
         context.states,
         instruction,

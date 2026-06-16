@@ -39,6 +39,24 @@ pub(super) fn terminal_fragment_start(
         .unwrap_or_else(|| verifier_fragment_start_line(context.log, instruction.line))
 }
 
+pub(super) fn terminal_instruction<'log>(
+    context: &ProofSignalContext<'log>,
+) -> Option<TerminalInstruction<'log>> {
+    bpfanalysis::verifier_log::terminal_instruction_site(
+        context.log,
+        context.terminal_pc,
+        context.terminal_line,
+    )
+}
+
+pub(super) fn terminal_site<'log>(
+    context: &ProofSignalContext<'log>,
+) -> Option<(TerminalInstruction<'log>, usize)> {
+    let instruction = terminal_instruction(context)?;
+    let fragment_start = terminal_fragment_start(context, instruction);
+    Some((instruction, fragment_start))
+}
+
 pub(super) fn dynptr_slot_backing_before(
     context: &ProofSignalContext<'_>,
     slot: DynptrStackSlot,

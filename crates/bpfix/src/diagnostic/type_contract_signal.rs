@@ -1,14 +1,14 @@
 use bpfanalysis::verifier_log::{
     call_target_from_instruction_tail, direct_call_target_from_instruction_tail,
     latest_reg_state_before_instruction_with_log_line, latest_verifier_state_before_instruction,
-    parse_u32_after, register_written_between, terminal_instruction_site, RegState,
+    parse_u32_after, register_written_between, RegState,
     VerifierLogInstruction as TerminalInstruction,
 };
 
 use crate::family::ProofObligation;
 
 use super::{
-    latest_reg_state_for_call_argument, register_from_terminal_error, terminal_fragment_start,
+    latest_reg_state_for_call_argument, register_from_terminal_error, terminal_site,
     ProofSignalContext,
 };
 
@@ -17,9 +17,7 @@ pub(super) fn kfunc_argument_type_mismatch(context: &ProofSignalContext<'_>) -> 
     if !kfunc_argument_type_terminal(&terminal) {
         return false;
     }
-    let Some(instruction) =
-        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)
-    else {
+    let Some((instruction, fragment_start)) = terminal_site(context) else {
         return false;
     };
     let Some(target) = call_target_from_instruction_tail(instruction.tail) else {
@@ -34,7 +32,6 @@ pub(super) fn kfunc_argument_type_mismatch(context: &ProofSignalContext<'_>) -> 
     else {
         return false;
     };
-    let fragment_start = terminal_fragment_start(context, instruction);
     let Some(state) = latest_reg_state_for_call_argument(
         context.states,
         instruction,
@@ -102,15 +99,12 @@ pub(super) fn verifier_type_contract_mismatch(context: &ProofSignalContext<'_>) 
     if !(1..=5).contains(&reg) {
         return false;
     }
-    let Some(instruction) =
-        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)
-    else {
+    let Some((instruction, fragment_start)) = terminal_site(context) else {
         return false;
     };
     if direct_call_target_from_instruction_tail(instruction.tail).is_none() {
         return false;
     }
-    let fragment_start = terminal_fragment_start(context, instruction);
     latest_type_contract_argument_state(context, instruction, fragment_start, reg)
         .is_some_and(|state| actual_type_matches_state(&actual_type, state))
 }

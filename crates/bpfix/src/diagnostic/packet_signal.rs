@@ -2,7 +2,7 @@ use bpfanalysis::verifier_log::{
     conditional_branch_registers, direct_call_target_from_instruction_tail,
     instructions_in_line_range, latest_reg_state_before, latest_reg_state_before_instruction,
     memory_access_base_register, memory_access_offset, memory_access_width, parse_i64_after,
-    parse_u32_after, terminal_instruction_site, RegState, VerifierInsn,
+    parse_u32_after, RegState, VerifierInsn,
 };
 
 use crate::family::ProofObligation;
@@ -13,8 +13,7 @@ use super::source_query::{
     looks_like_packet_pointer_derivation, max_numeric_token, rejected_source, same_source_location,
 };
 use super::{
-    terminal_fragment_start, ProofEvent, ProofEventEvidence, ProofEventRole, ProofSignal,
-    ProofSignalContext,
+    terminal_site, ProofEvent, ProofEventEvidence, ProofEventRole, ProofSignal, ProofSignalContext,
 };
 
 pub(super) fn packet_pointer_proof_lost_after_bounds_check(events: &[ProofEvent]) -> bool {
@@ -92,12 +91,9 @@ pub(super) fn packet_access_without_bounds_proof(context: &ProofSignalContext<'_
     let Some(required) = packet_required_range(context.terminal_error) else {
         return false;
     };
-    let Some(instruction) =
-        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)
-    else {
+    let Some((instruction, fragment_start)) = terminal_site(context) else {
         return false;
     };
-    let fragment_start = terminal_fragment_start(context, instruction);
     let Some(state) = latest_reg_state_before_instruction(
         context.branch_states,
         instruction,

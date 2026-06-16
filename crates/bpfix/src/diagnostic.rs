@@ -68,7 +68,8 @@ use shared::{
     latest_reg_state_before_instruction_with_origin, latest_reg_state_for_call_argument,
     latest_reg_state_for_call_argument_with_frame, latest_register_assignment,
     register_from_terminal_error, terminal_call_instruction_site,
-    terminal_error_has_nearby_prior_line, terminal_fragment_start, DynptrBacking, DynptrStackSlot,
+    terminal_error_has_nearby_prior_line, terminal_fragment_start, terminal_site, DynptrBacking,
+    DynptrStackSlot,
 };
 pub use signal::ProofSignal;
 

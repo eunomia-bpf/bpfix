@@ -7,7 +7,7 @@ use bpfanalysis::verifier_log::{
     map_value_remaining_capacity, map_value_variable_max_offset, memory_access_base_register,
     memory_access_offset, memory_access_width, parse_u32_after, scalar_ranges_match,
     scalar_state_upper_bound_at_most, terminal_instruction_access_width,
-    terminal_instruction_memory_offset, terminal_instruction_site, RegState, VerifierInsn,
+    terminal_instruction_memory_offset, RegState, VerifierInsn,
     VerifierLogInstruction as TerminalInstruction,
 };
 
@@ -19,8 +19,8 @@ use super::source_query::{
     rejected_source, same_source_location,
 };
 use super::{
-    register_from_terminal_error, terminal_fragment_start, ProofEvent, ProofEventEvidence,
-    ProofEventRole, ProofSignal, ProofSignalContext,
+    register_from_terminal_error, terminal_site, ProofEvent, ProofEventEvidence, ProofEventRole,
+    ProofSignal, ProofSignalContext,
 };
 
 pub(super) fn map_value_wide_access(
@@ -176,9 +176,7 @@ pub(super) fn map_value_access_out_of_bounds(context: &ProofSignalContext<'_>) -
     {
         return false;
     }
-    let Some(instruction) =
-        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)
-    else {
+    let Some((instruction, fragment_start)) = terminal_site(context) else {
         return false;
     };
     let instruction_target = direct_call_target_from_instruction_tail(instruction.tail);
@@ -193,7 +191,6 @@ pub(super) fn map_value_access_out_of_bounds(context: &ProofSignalContext<'_>) -
     else {
         return false;
     };
-    let fragment_start = terminal_fragment_start(context, instruction);
     let Some(state) = latest_reg_state_before_instruction(
         context.branch_states,
         instruction,
@@ -568,9 +565,7 @@ fn map_value_relation_precision_boundary(context: &ProofSignalContext<'_>) -> bo
     {
         return false;
     }
-    let Some(instruction) =
-        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)
-    else {
+    let Some((instruction, fragment_start)) = terminal_site(context) else {
         return false;
     };
     let Some(target) = direct_call_target_from_instruction_tail(instruction.tail) else {
@@ -581,7 +576,6 @@ fn map_value_relation_precision_boundary(context: &ProofSignalContext<'_>) -> bo
     };
     let pointer_reg = pair.ptr_reg;
     let length_reg = pair.len_reg;
-    let fragment_start = terminal_fragment_start(context, instruction);
     let Some(pointer_state) = latest_reg_state_before_instruction(
         context.branch_states,
         instruction,

@@ -1,11 +1,11 @@
 use bpfanalysis::verifier_log::{
     latest_reg_state_before_instruction, loose_register_operands as register_operands,
-    memory_access_base_register, terminal_instruction_site, RegState,
+    memory_access_base_register, RegState,
 };
 
 use crate::family::ProofObligation;
 
-use super::{register_from_terminal_error, terminal_fragment_start, ProofSignalContext};
+use super::{register_from_terminal_error, terminal_site, ProofSignalContext};
 
 pub(super) fn scalar_value_used_as_pointer(context: &ProofSignalContext<'_>) -> bool {
     if context.obligation != ProofObligation::PointerProvenance {
@@ -25,9 +25,7 @@ pub(super) fn scalar_value_used_as_pointer(context: &ProofSignalContext<'_>) -> 
     else {
         return false;
     };
-    let Some(instruction) =
-        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)
-    else {
+    let Some((instruction, fragment_start)) = terminal_site(context) else {
         return false;
     };
     if scalar_mem_access && memory_access_base_register(instruction.tail) != Some(reg) {
@@ -36,7 +34,6 @@ pub(super) fn scalar_value_used_as_pointer(context: &ProofSignalContext<'_>) -> 
     if pkt_end_arithmetic && register_operands(instruction.tail).first().copied() != Some(reg) {
         return false;
     }
-    let fragment_start = terminal_fragment_start(context, instruction);
     let Some(state) =
         latest_reg_state_before_instruction(context.states, instruction, fragment_start, reg)
     else {
@@ -63,15 +60,12 @@ pub(super) fn prohibited_pointer_arithmetic(context: &ProofSignalContext<'_>) ->
     let Some(reg) = context.register else {
         return false;
     };
-    let Some(instruction) =
-        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)
-    else {
+    let Some((instruction, fragment_start)) = terminal_site(context) else {
         return false;
     };
     if register_operands(instruction.tail).first().copied() != Some(reg) {
         return false;
     }
-    let fragment_start = terminal_fragment_start(context, instruction);
     latest_reg_state_before_instruction(context.states, instruction, fragment_start, reg)
         .is_some_and(verifier_pointer_state_for_arithmetic)
 }

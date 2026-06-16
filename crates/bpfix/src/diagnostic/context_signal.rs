@@ -5,7 +5,7 @@ use bpfanalysis::verifier_log::{
     latest_reg_state_before, latest_reg_state_before_instruction,
     latest_reg_state_before_instruction_with_origin, memory_access_base_register,
     memory_access_is_load, memory_access_offset, memory_access_width, parse_u32_after,
-    terminal_instruction_site, VerifierInsn, VerifierLogInstruction as TerminalInstruction,
+    VerifierInsn, VerifierLogInstruction as TerminalInstruction,
 };
 
 use crate::family::ProofObligation;
@@ -13,7 +13,7 @@ use crate::family::ProofObligation;
 use super::source_query::rejected_source;
 use super::{
     latest_register_assignment, register_from_terminal_error, terminal_error_has_nearby_prior_line,
-    terminal_fragment_start, ProofSignalContext,
+    terminal_site, ProofSignalContext,
 };
 
 pub(super) fn bpf_prog_context_argument_mismatch(context: &ProofSignalContext<'_>) -> bool {
@@ -53,9 +53,7 @@ pub(super) fn trace_context_scalar_argument_dereference(context: &ProofSignalCon
     {
         return false;
     }
-    let Some(instruction) =
-        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)
-    else {
+    let Some((instruction, fragment_start)) = terminal_site(context) else {
         return false;
     };
     let Some(reg) = context
@@ -67,7 +65,6 @@ pub(super) fn trace_context_scalar_argument_dereference(context: &ProofSignalCon
     if memory_access_base_register(instruction.tail) != Some(reg) {
         return false;
     }
-    let fragment_start = terminal_fragment_start(context, instruction);
     let Some((state, _, frame)) = latest_reg_state_before_instruction_with_origin(
         context.branch_states,
         instruction,
@@ -223,9 +220,7 @@ pub(super) fn context_field_unavailable(context: &ProofSignalContext<'_>) -> boo
     ) {
         return false;
     }
-    let Some(instruction) =
-        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)
-    else {
+    let Some((instruction, fragment_start)) = terminal_site(context) else {
         return false;
     };
     let Some(base_reg) = memory_access_base_register(instruction.tail) else {
@@ -242,7 +237,6 @@ pub(super) fn context_field_unavailable(context: &ProofSignalContext<'_>) -> boo
     {
         return false;
     }
-    let fragment_start = terminal_fragment_start(context, instruction);
     latest_reg_state_before_instruction(context.states, instruction, fragment_start, base_reg)
         .is_some_and(|state| state.reg_type == "ctx")
 }
@@ -261,9 +255,7 @@ pub(super) fn packet_context_field_access_in_unsupported_program(
     {
         return false;
     }
-    let Some(instruction) =
-        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)
-    else {
+    let Some((instruction, fragment_start)) = terminal_site(context) else {
         return false;
     };
     let Some(reg) = context
@@ -275,7 +267,6 @@ pub(super) fn packet_context_field_access_in_unsupported_program(
     if memory_access_base_register(instruction.tail) != Some(reg) {
         return false;
     }
-    let fragment_start = terminal_fragment_start(context, instruction);
     let Some((state, _, frame)) = latest_reg_state_before_instruction_with_origin(
         context.branch_states,
         instruction,
@@ -310,9 +301,7 @@ pub(super) fn kernel_object_field_access_mismatch(context: &ProofSignalContext<'
     let Some(access_size) = access_beyond_struct_size(context.terminal_error) else {
         return false;
     };
-    let Some(instruction) =
-        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)
-    else {
+    let Some((instruction, fragment_start)) = terminal_site(context) else {
         return false;
     };
     if memory_access_offset(instruction.tail) != Some(i64::from(access_offset)) {
@@ -324,7 +313,6 @@ pub(super) fn kernel_object_field_access_mismatch(context: &ProofSignalContext<'
     let Some(base_reg) = memory_access_base_register(instruction.tail) else {
         return false;
     };
-    let fragment_start = terminal_fragment_start(context, instruction);
     let Some(base_state) =
         latest_reg_state_before_instruction(context.states, instruction, fragment_start, base_reg)
     else {

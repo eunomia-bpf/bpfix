@@ -1,8 +1,8 @@
 use bpfanalysis::verifier_log::{
     atomic_memory_access_width, latest_reg_state_before, latest_reg_state_before_instruction,
     loop_state_snapshots_repeat, memory_access_base_register, memory_access_is_atomic,
-    memory_access_offset, memory_access_width, parse_u32_after, terminal_instruction_site,
-    terminal_loop_state_snapshots, VerifierInsn,
+    memory_access_offset, memory_access_width, parse_u32_after, terminal_loop_state_snapshots,
+    VerifierInsn,
 };
 
 use crate::family::ProofObligation;
@@ -10,7 +10,7 @@ use crate::family::ProofObligation;
 use super::source_query::{
     call_argument, invalid_args_function_name, source_for_instruction_in_fragment,
 };
-use super::{is_pointer_state, terminal_fragment_start, ProofSignal, ProofSignalContext};
+use super::{is_pointer_state, terminal_site, ProofSignal, ProofSignalContext};
 
 pub(super) fn bytecode_only_lowering_signal(
     log: &str,
@@ -101,9 +101,7 @@ pub(super) fn stack_alignment_lowering_signal(context: &ProofSignalContext<'_>) 
     if reported_size == 0 {
         return false;
     }
-    let Some(instruction) =
-        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)
-    else {
+    let Some((instruction, fragment_start)) = terminal_site(context) else {
         return false;
     };
     if memory_access_width(instruction.tail) != Some(reported_size) {
@@ -115,7 +113,6 @@ pub(super) fn stack_alignment_lowering_signal(context: &ProofSignalContext<'_>) 
     let Some(access_offset) = memory_access_offset(instruction.tail) else {
         return false;
     };
-    let fragment_start = terminal_fragment_start(context, instruction);
     let Some(base_state) =
         latest_reg_state_before_instruction(context.states, instruction, fragment_start, base_reg)
     else {
@@ -138,9 +135,7 @@ pub(super) fn atomic_memory_alignment_scalar_base(context: &ProofSignalContext<'
     if reported_size == 0 {
         return false;
     }
-    let Some(instruction) =
-        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)
-    else {
+    let Some((instruction, fragment_start)) = terminal_site(context) else {
         return false;
     };
     if !memory_access_is_atomic(instruction.tail) {
@@ -152,7 +147,6 @@ pub(super) fn atomic_memory_alignment_scalar_base(context: &ProofSignalContext<'
     let Some(base_reg) = memory_access_base_register(instruction.tail) else {
         return false;
     };
-    let fragment_start = terminal_fragment_start(context, instruction);
     let Some(base_state) = latest_reg_state_before_instruction(
         context.branch_states,
         instruction,
@@ -192,15 +186,12 @@ pub(super) fn pointer_shift_lowering_signal(context: &ProofSignalContext<'_>) ->
     let Some(reg) = context.register else {
         return false;
     };
-    let Some(instruction) =
-        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)
-    else {
+    let Some((instruction, fragment_start)) = terminal_site(context) else {
         return false;
     };
     if !instruction.tail.contains(&format!("r{reg} <<=")) {
         return false;
     }
-    let fragment_start = terminal_fragment_start(context, instruction);
     latest_reg_state_before_instruction(context.states, instruction, fragment_start, reg)
         .is_some_and(is_pointer_state)
 }
@@ -215,15 +206,12 @@ pub(super) fn modified_context_pointer_lowering_signal(context: &ProofSignalCont
     let Some(reg) = context.register else {
         return false;
     };
-    let Some(instruction) =
-        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)
-    else {
+    let Some((instruction, fragment_start)) = terminal_site(context) else {
         return false;
     };
     if memory_access_base_register(instruction.tail) != Some(reg) {
         return false;
     }
-    let fragment_start = terminal_fragment_start(context, instruction);
     let Some(state) =
         latest_reg_state_before_instruction(context.states, instruction, fragment_start, reg)
     else {
@@ -245,15 +233,12 @@ pub(super) fn shared_instruction_pointer_merge_signal(context: &ProofSignalConte
     {
         return false;
     }
-    let Some(instruction) =
-        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)
-    else {
+    let Some((instruction, fragment_start)) = terminal_site(context) else {
         return false;
     };
     let Some(base_reg) = memory_access_base_register(instruction.tail) else {
         return false;
     };
-    let fragment_start = terminal_fragment_start(context, instruction);
     let Some(current) =
         latest_reg_state_before_instruction(context.states, instruction, fragment_start, base_reg)
     else {
@@ -280,9 +265,7 @@ pub(super) fn subprogram_context_argument_dropped_signal(context: &ProofSignalCo
     {
         return false;
     }
-    let Some(instruction) =
-        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)
-    else {
+    let Some((instruction, fragment_start)) = terminal_site(context) else {
         return false;
     };
     if !instruction.tail.contains("call pc+") {
@@ -291,7 +274,6 @@ pub(super) fn subprogram_context_argument_dropped_signal(context: &ProofSignalCo
     let Some(callee) = invalid_args_function_name(context.terminal_error) else {
         return false;
     };
-    let fragment_start = terminal_fragment_start(context, instruction);
     let Some(rejected) = source_for_instruction_in_fragment(
         context.source_events,
         instruction.pc,

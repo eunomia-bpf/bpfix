@@ -6,13 +6,12 @@ use bpfanalysis::verifier_log::{
     memory_access_width, parse_i64_after, parse_u32_after, scalar_range_has_any_bound,
     scalar_range_max_i64, scalar_range_may_be_negative, scalar_range_may_include_zero,
     scalar_range_min_i64, scalar_range_upper_unbounded_or_too_large,
-    scalar_state_outside_required_range, terminal_instruction_site, terminal_required_return_range,
-    RegState,
+    scalar_state_outside_required_range, terminal_required_return_range, RegState,
 };
 
 use crate::family::ProofObligation;
 
-use super::{register_from_terminal_error, terminal_fragment_start, ProofSignalContext};
+use super::{register_from_terminal_error, terminal_site, ProofSignalContext};
 
 const MAX_BPF_STACK_DEPTH: i32 = 512;
 
@@ -36,9 +35,7 @@ pub(super) fn memory_object_access_out_of_bounds(context: &ProofSignalContext<'_
     if !byte_range_out_of_bounds(access_offset, access_size, mem_size) {
         return false;
     }
-    let Some(instruction) =
-        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)
-    else {
+    let Some((instruction, fragment_start)) = terminal_site(context) else {
         return false;
     };
     if memory_access_width(instruction.tail) != Some(access_size) {
@@ -57,7 +54,6 @@ pub(super) fn memory_object_access_out_of_bounds(context: &ProofSignalContext<'_
     let Some(instruction_offset) = memory_access_offset(instruction.tail) else {
         return false;
     };
-    let fragment_start = terminal_fragment_start(context, instruction);
     let Some(base_state) = latest_reg_state_before_instruction(
         context.branch_states,
         instruction,
@@ -103,15 +99,12 @@ pub(super) fn return_range_out_of_bounds(context: &ProofSignalContext<'_>) -> bo
         .register
         .or_else(|| register_from_terminal_error(context.terminal_error))
         .unwrap_or(0);
-    let Some(instruction) =
-        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)
-    else {
+    let Some((instruction, fragment_start)) = terminal_site(context) else {
         return false;
     };
     if !instruction_is_bpf_exit(instruction.tail) {
         return false;
     }
-    let fragment_start = terminal_fragment_start(context, instruction);
     latest_reg_state_at_or_before_instruction(
         context.branch_states,
         instruction,
@@ -132,9 +125,7 @@ pub(super) fn stack_variable_offset_out_of_bounds(context: &ProofSignalContext<'
     if !terminal.contains("unbounded variable-offset") || !terminal.contains("stack") {
         return false;
     }
-    let Some(instruction) =
-        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)
-    else {
+    let Some((instruction, fragment_start)) = terminal_site(context) else {
         return false;
     };
     let Some(width) = memory_access_width(instruction.tail) else {
@@ -153,7 +144,6 @@ pub(super) fn stack_variable_offset_out_of_bounds(context: &ProofSignalContext<'
     {
         return false;
     }
-    let fragment_start = terminal_fragment_start(context, instruction);
     let Some(base_state) = latest_reg_state_before_instruction(
         context.branch_states,
         instruction,
@@ -202,15 +192,12 @@ pub(super) fn scalar_range_unsafe_at_use(context: &ProofSignalContext<'_>) -> bo
     let Some(reg) = context.register else {
         return false;
     };
-    let Some(instruction) =
-        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)
-    else {
+    let Some((instruction, fragment_start)) = terminal_site(context) else {
         return false;
     };
     if !instruction_consumes_scalar_register(instruction.tail, reg) {
         return false;
     }
-    let fragment_start = terminal_fragment_start(context, instruction);
     latest_reg_state_before_instruction(context.states, instruction, fragment_start, reg)
         .is_some_and(|state| scalar_range_state_is_unsafe_for_signal(state, context.terminal_error))
 }
