@@ -4,14 +4,14 @@ use bpfanalysis::verifier_log::{
     instruction_register_copy_source, instructions_in_line_range, latest_reg_state_before,
     latest_reg_state_before_instruction, latest_reg_state_before_instruction_with_origin,
     loose_register_operands as register_operands, memory_access_base_register, parse_u32_after,
-    terminal_instruction_site, RegState, VerifierInsn,
+    RegState, VerifierInsn,
 };
 
 use crate::family::ProofObligation;
 
 use super::{
     latest_reg_state_for_call_argument, latest_register_assignment, register_from_terminal_error,
-    terminal_fragment_start, ProofSignalContext,
+    terminal_site, ProofSignalContext,
 };
 
 pub(super) fn nullable_pointer_use_without_proof(context: &ProofSignalContext<'_>) -> bool {
@@ -33,13 +33,10 @@ pub(super) fn nullable_pointer_use_without_proof(context: &ProofSignalContext<'_
     }) else {
         return false;
     };
-    let state = if let Some(instruction) =
-        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)
-    {
+    let state = if let Some((instruction, fragment_start)) = terminal_site(context) {
         if nullable_instruction_register_mismatch(&terminal, instruction.tail, reg) {
             return false;
         }
-        let fragment_start = terminal_fragment_start(context, instruction);
         latest_reg_state_before_instruction(context.states, instruction, fragment_start, reg)
     } else {
         if helper_arg_terminal {
@@ -88,15 +85,12 @@ pub(super) fn null_scalar_dereference_after_pointer_proof(
     else {
         return false;
     };
-    let Some(instruction) =
-        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)
-    else {
+    let Some((instruction, fragment_start)) = terminal_site(context) else {
         return false;
     };
     if memory_access_base_register(instruction.tail) != Some(reg) {
         return false;
     }
-    let fragment_start = terminal_fragment_start(context, instruction);
     let Some((state, _, frame)) = latest_reg_state_before_instruction_with_origin(
         context.branch_states,
         instruction,
@@ -290,9 +284,7 @@ fn nullable_zero_return_helper(target: &str) -> bool {
 
 pub(super) fn trusted_nullable_argument(context: &ProofSignalContext<'_>) -> bool {
     let terminal = context.terminal_error.to_ascii_lowercase();
-    let Some(instruction) =
-        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)
-    else {
+    let Some((instruction, fragment_start)) = terminal_site(context) else {
         return false;
     };
     let Some(target) = call_target_from_instruction_tail(instruction.tail) else {
@@ -304,7 +296,6 @@ pub(super) fn trusted_nullable_argument(context: &ProofSignalContext<'_>) -> boo
     let Some(reg) = nullable_argument_register(&terminal).or(fallback_reg) else {
         return false;
     };
-    let fragment_start = terminal_fragment_start(context, instruction);
     let Some(state) = latest_reg_state_for_call_argument(
         context.states,
         instruction,

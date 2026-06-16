@@ -3,7 +3,7 @@ use bpfanalysis::verifier_log::{
     call_target_from_instruction_tail, initialized_stack_bytes_from_snapshot,
     instruction_is_bpf_exit, instruction_uses_register as terminal_instruction_uses_register,
     latest_reg_state_before_instruction, parse_i64_after, stack_read_access, stack_value_range,
-    terminal_instruction_contains, terminal_instruction_site, verifier_fragment_start_line,
+    terminal_instruction_contains, verifier_fragment_start_line,
     verifier_path_snapshot_before_instruction, PathVerifierSnapshot, StackByteRange,
     VerifierLogInstruction as TerminalInstruction,
 };
@@ -11,7 +11,7 @@ use bpfanalysis::verifier_log::{
 use crate::family::ProofObligation;
 
 use super::source_query::{call_argument, is_bare_identifier_argument, rejected_source};
-use super::{terminal_fragment_start, ProofSignalContext};
+use super::{terminal_instruction, terminal_site, ProofSignalContext};
 
 pub(super) fn map_lookup_key_argument_unreadable(context: &ProofSignalContext<'_>) -> bool {
     if !context.terminal_error.contains("!read_ok") || context.register != Some(2) {
@@ -64,9 +64,7 @@ pub(super) fn unreadable_return_register(context: &ProofSignalContext<'_>) -> bo
     {
         return false;
     }
-    let Some(instruction) =
-        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)
-    else {
+    let Some(instruction) = terminal_instruction(context) else {
         return false;
     };
     instruction_is_bpf_exit(instruction.tail)
@@ -79,9 +77,7 @@ pub(super) fn legacy_skb_load_unreadable_register(context: &ProofSignalContext<'
     {
         return false;
     }
-    let Some(instruction) =
-        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)
-    else {
+    let Some(instruction) = terminal_instruction(context) else {
         return false;
     };
     if !legacy_skb_load_instruction(instruction.tail) {
@@ -119,8 +115,7 @@ fn unreadable_register_terminal_site<'a>(
     if reg == 0 {
         return None;
     }
-    let instruction =
-        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)?;
+    let instruction = terminal_instruction(context)?;
     let fragment_start = context
         .terminal_line
         .map(|line| verifier_fragment_start_line(context.log, line))
@@ -171,8 +166,7 @@ fn helper_stack_read_issue(context: &ProofSignalContext<'_>) -> Option<HelperSta
         return None;
     }
     let access = stack_read_access(context.terminal_error)?;
-    let instruction =
-        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)?;
+    let (instruction, fragment_start) = terminal_site(context)?;
     let target = call_target_from_instruction_tail(instruction.tail)?;
     let pair = helper_stack_read_pair(target)?;
     let pointer_reg = pair.ptr_reg;
@@ -183,7 +177,6 @@ fn helper_stack_read_issue(context: &ProofSignalContext<'_>) -> Option<HelperSta
     if context.register.is_some_and(|reg| reg != pointer_reg) {
         return None;
     }
-    let fragment_start = terminal_fragment_start(context, instruction);
     let snapshot = verifier_path_snapshot_before_instruction(
         context.branch_states,
         instruction,
@@ -284,9 +277,7 @@ pub(super) fn helper_stack_write_beyond_frame(context: &ProofSignalContext<'_>) 
     let Some(reg) = context.register else {
         return false;
     };
-    let Some(instruction) =
-        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)
-    else {
+    let Some(instruction) = terminal_instruction(context) else {
         return false;
     };
     let Some(target) = call_target_from_instruction_tail(instruction.tail) else {

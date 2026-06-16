@@ -3,9 +3,8 @@ use bpfanalysis::helper_abi::{
 };
 use bpfanalysis::verifier_log::{
     call_target_from_instruction_tail, latest_verifier_state_before_instruction, parse_i64_after,
-    reg_state_has_variable_offset, stack_value_range, terminal_instruction_site,
-    verifier_fragment_start_line, RegState, StackByteRange, StackState, VerifierInsn,
-    VerifierLogInstruction as TerminalInstruction,
+    reg_state_has_variable_offset, stack_value_range, verifier_fragment_start_line, RegState,
+    StackByteRange, StackState, VerifierInsn, VerifierLogInstruction as TerminalInstruction,
 };
 
 use crate::family::ProofObligation;
@@ -18,7 +17,7 @@ use super::stack_access::{
 use super::{
     dynptr_slot_backing_before, dynptr_stack_slot_for_call_argument,
     latest_reg_state_for_call_argument, latest_reg_state_for_call_argument_with_frame,
-    terminal_call_instruction_site, terminal_fragment_start, DynptrBacking, ProofSignalContext,
+    terminal_call_instruction_site, terminal_site, DynptrBacking, ProofSignalContext,
 };
 
 pub(super) fn dynptr_stack_storage_access(context: &ProofSignalContext<'_>) -> bool {
@@ -202,12 +201,9 @@ fn dynptr_initializer_overwrites_referenced_slot(
 }
 
 fn dynptr_plain_write_overlaps_referenced_slot(context: &ProofSignalContext<'_>) -> bool {
-    let Some(instruction) =
-        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)
-    else {
+    let Some((instruction, fragment_start)) = terminal_site(context) else {
         return false;
     };
-    let fragment_start = terminal_fragment_start(context, instruction);
     let Some((access, frame)) =
         terminal_stack_memory_write_range_with_frame(context, instruction, fragment_start)
     else {

@@ -1,10 +1,9 @@
 use bpfanalysis::verifier_log::{
     call_target_from_instruction_tail, instruction_site_before_line, instructions_in_line_range,
-    terminal_instruction_site, CallbackKind, VerifierInsn,
-    VerifierLogInstruction as TerminalInstruction,
+    CallbackKind, VerifierInsn, VerifierLogInstruction as TerminalInstruction,
 };
 
-use super::{terminal_fragment_start, ProofSignalContext};
+use super::{terminal_site, ProofSignalContext};
 
 pub(super) fn callback_call_while_locked(context: &ProofSignalContext<'_>) -> bool {
     let terminal = context.terminal_error.to_ascii_lowercase();
@@ -12,15 +11,12 @@ pub(super) fn callback_call_while_locked(context: &ProofSignalContext<'_>) -> bo
     {
         return false;
     }
-    let Some(terminal_instruction) =
-        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)
-    else {
+    let Some((terminal_instruction, fragment_start)) = terminal_site(context) else {
         return false;
     };
     if call_target_from_instruction_tail(terminal_instruction.tail).is_none() {
         return false;
     }
-    let fragment_start = terminal_fragment_start(context, terminal_instruction);
     if !latest_state_is_sync_callback(context, fragment_start, terminal_instruction) {
         return false;
     }

@@ -2,15 +2,14 @@ use bpfanalysis::verifier_log::{
     call_target_from_instruction_tail, call_target_on_log_line, instruction_site_before_line,
     latest_ref_state_before_instruction, latest_verifier_state_at_or_before_instruction,
     latest_verifier_state_before_instruction, parse_u32_after, reg_state_has_variable_offset,
-    stack_value_range, terminal_instruction_site, verifier_fragment_start_line, RegState,
-    StackState,
+    stack_value_range, verifier_fragment_start_line, RegState, StackState,
 };
 
 use crate::family::ProofObligation;
 
 use super::{
     latest_reg_state_for_call_argument_with_frame, terminal_call_instruction_site,
-    terminal_fragment_start, ProofSignalContext,
+    terminal_instruction, terminal_site, ProofSignalContext,
 };
 
 #[derive(Clone, Copy)]
@@ -29,9 +28,7 @@ pub(super) fn irq_flag_state_mismatch(context: &ProofSignalContext<'_>) -> bool 
     ) {
         return false;
     }
-    let Some(instruction) =
-        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)
-    else {
+    let Some((instruction, fragment_start)) = terminal_site(context) else {
         return false;
     };
     let Some(target) = call_target_from_instruction_tail(instruction.tail) else {
@@ -40,7 +37,6 @@ pub(super) fn irq_flag_state_mismatch(context: &ProofSignalContext<'_>) -> bool 
     let Some(requirement) = irq_flag_arg0_requirement(target) else {
         return false;
     };
-    let fragment_start = terminal_fragment_start(context, instruction);
     let Some((arg, arg_frame)) = latest_reg_state_for_call_argument_with_frame(
         context.states,
         instruction,
@@ -365,9 +361,7 @@ pub(super) fn irq_state_live_at_exit(context: &ProofSignalContext<'_>) -> bool {
     if !(terminal.contains("bpf_exit instruction") && terminal.contains("bpf_local_irq_save-ed")) {
         return false;
     }
-    let Some(instruction) =
-        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)
-    else {
+    let Some(instruction) = terminal_instruction(context) else {
         return false;
     };
     if !instruction.tail.contains("exit") {

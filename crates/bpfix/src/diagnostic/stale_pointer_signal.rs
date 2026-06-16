@@ -8,15 +8,15 @@ use bpfanalysis::verifier_log::{
     latest_reg_state_before_instruction_with_origin, latest_verifier_state_before_instruction,
     memory_access_base_register, memory_access_is_store, reg_state_has_variable_offset,
     register_assigned_between, stack_memory_access_range, stack_value_range,
-    terminal_instruction_site, verifier_fragment_start_line, CallbackKind, RegState,
-    StackByteRange, VerifierInsn, VerifierLogInstruction as TerminalInstruction,
+    verifier_fragment_start_line, CallbackKind, RegState, StackByteRange, VerifierInsn,
+    VerifierLogInstruction as TerminalInstruction,
 };
 
 use crate::family::ProofObligation;
 
 use super::{
     dynptr_slot_backing_before, dynptr_stack_slot_for_call_argument, register_from_terminal_error,
-    terminal_fragment_start, DynptrBacking, DynptrStackSlot, ProofSignal, ProofSignalContext,
+    terminal_site, DynptrBacking, DynptrStackSlot, ProofSignal, ProofSignalContext,
 };
 
 pub(super) fn stale_pointer_after_invalidating_helper(
@@ -34,12 +34,10 @@ pub(super) fn stale_pointer_after_invalidating_helper(
     let reg = context
         .register
         .or_else(|| register_from_terminal_error(context.terminal_error))?;
-    let instruction =
-        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)?;
+    let (instruction, fragment_start) = terminal_site(context)?;
     if memory_access_base_register(instruction.tail) != Some(reg) {
         return None;
     }
-    let fragment_start = terminal_fragment_start(context, instruction);
     let (state, state_log_line, state_frame) = latest_reg_state_before_instruction_with_origin(
         context.branch_states,
         instruction,

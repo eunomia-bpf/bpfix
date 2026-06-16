@@ -6,15 +6,14 @@ use bpfanalysis::verifier_log::{
     latest_reg_state_before_instruction_with_frame, latest_reg_state_for_call_argument_with_frame,
     memory_access_base_register, memory_access_is_load, memory_access_is_store,
     memory_access_width, reg_state_has_variable_offset, stack_memory_access_range,
-    stack_value_range, terminal_instruction_site, StackByteRange, VerifierInsn,
-    VerifierLogInstruction as TerminalInstruction,
+    stack_value_range, StackByteRange, VerifierInsn, VerifierLogInstruction as TerminalInstruction,
 };
 
 use crate::family::ProofObligation;
 
 use super::{
-    latest_reg_state_before_instruction_with_origin, register_from_terminal_error,
-    terminal_fragment_start, ProofSignalContext,
+    latest_reg_state_before_instruction_with_origin, register_from_terminal_error, terminal_site,
+    ProofSignalContext,
 };
 
 pub(super) fn opaque_scalar_pointer_dereference(context: &ProofSignalContext<'_>) -> bool {
@@ -33,15 +32,12 @@ pub(super) fn opaque_scalar_pointer_dereference(context: &ProofSignalContext<'_>
     else {
         return false;
     };
-    let Some(instruction) =
-        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)
-    else {
+    let Some((instruction, fragment_start)) = terminal_site(context) else {
         return false;
     };
     if memory_access_base_register(instruction.tail) != Some(reg) {
         return false;
     }
-    let fragment_start = terminal_fragment_start(context, instruction);
     let Some((state, _, frame)) = latest_reg_state_before_instruction_with_origin(
         context.branch_states,
         instruction,
