@@ -3570,6 +3570,7 @@ fn stale_data_pointer_after_invalidating_helper_reports_state_signal() {
         "bpfix-bench/cases/kernel-selftest-dynptr-fail-skb-invalid-data-slice1-tc-0b35a757/replay-verifier.log",
         "bpfix-bench/cases/kernel-selftest-dynptr-fail-skb-invalid-data-slice3-tc-a15c4322/replay-verifier.log",
         "bpfix-bench/cases/kernel-selftest-dynptr-fail-dynptr-invalidate-slice-reinit-raw-tp-f5b71f50/replay-verifier.log",
+        "bpfix-bench/cases/kernel-selftest-dynptr-fail-invalid-data-slices-raw-tp-6798c725/replay-verifier.log",
         "bpfix-bench/cases/kernel-selftest-dynptr-fail-xdp-invalid-data-slice1-xdp-c0fa30d5/replay-verifier.log",
     ] {
         let diagnostic = run_json(path);
@@ -3686,6 +3687,115 @@ fn stale_data_pointer_signal_requires_invalidating_helper_after_pointer_state() 
          R7 invalid mem access 'scalar'\n",
     );
     assert_no_stale_pointer_invalidation_signal(&r0_clobber_breaks_dynptr_lineage);
+
+    let callback_writes_unrelated_stack_slot = run_json_stdin(
+        "func#0 @0\n\
+         func#1 @10\n\
+         0: R4=fp-16 R10=fp0\n\
+         1: (85) call bpf_dynptr_from_mem#197\n\
+         2: R1=fp-16 R10=fp0\n\
+         3: (85) call bpf_dynptr_data#203\n\
+         4: (bf) r7 = r0 ; R7_w=mem(sz=1)\n\
+         5: R3=fp-16 R7=mem(sz=1) R10=fp0\n\
+         6: (85) call bpf_loop#181\n\
+         from 6 to 10: frame1: R1=scalar() R2=fp[0]-32 R10=fp0 cb\n\
+         10: frame1: R1=scalar() R2=fp[0]-32 R10=fp0 cb\n\
+         11: (63) *(u32 *)(r2 +0) = r1 ; frame1: R1_w=123 R2=fp[0]-32 cb\n\
+         from 11 to 6: R7=scalar() R10=fp0\n\
+         7: (71) r0 = *(u8 *)(r7 +0)\n\
+         R7 invalid mem access 'scalar'\n",
+    );
+    assert_no_stale_pointer_invalidation_signal(&callback_writes_unrelated_stack_slot);
+
+    let r0_clobbered_by_bpf_loop_return = run_json_stdin(
+        "func#0 @0\n\
+         func#1 @10\n\
+         0: R4=fp-16 R10=fp0\n\
+         1: (85) call bpf_dynptr_from_mem#197\n\
+         2: R1=fp-16 R10=fp0\n\
+         3: (85) call bpf_dynptr_data#203\n\
+         4: R0=mem(sz=1) R3=fp-16 R10=fp0\n\
+         5: (85) call bpf_loop#181\n\
+         from 5 to 10: frame1: R1=scalar() R2=fp[0]-16 R10=fp0 cb\n\
+         10: frame1: R1=scalar() R2=fp[0]-16 R10=fp0 cb\n\
+         11: (63) *(u32 *)(r2 +0) = r1 ; frame1: R1_w=123 R2=fp[0]-16 cb\n\
+         from 11 to 5: R0=scalar() R10=fp0\n\
+         6: (71) r1 = *(u8 *)(r0 +0)\n\
+         R0 invalid mem access 'scalar'\n",
+    );
+    assert_no_stale_pointer_invalidation_signal(&r0_clobbered_by_bpf_loop_return);
+
+    let r0_call_clobber_without_return_state = run_json_stdin(
+        "func#0 @0\n\
+         func#1 @10\n\
+         0: R4=fp-16 R10=fp0\n\
+         1: (85) call bpf_dynptr_from_mem#197\n\
+         2: R1=fp-16 R10=fp0\n\
+         3: (85) call bpf_dynptr_data#203\n\
+         4: R0=mem(sz=1) R3=fp-16 R10=fp0\n\
+         5: (85) call bpf_loop#181\n\
+         from 5 to 10: frame1: R1=scalar() R2=fp[0]-16 R10=fp0 cb\n\
+         10: frame1: R1=scalar() R2=fp[0]-16 R10=fp0 cb\n\
+         11: (63) *(u32 *)(r2 +0) = r1 ; frame1: R1_w=123 R2=fp[0]-16 cb\n\
+         6: (71) r1 = *(u8 *)(r0 +0)\n\
+         R0 invalid mem access 'scalar'\n",
+    );
+    assert_no_stale_pointer_invalidation_signal(&r0_call_clobber_without_return_state);
+
+    let callback_local_register_assignment_preserves_caller_lineage = run_json_stdin(
+        "func#0 @0\n\
+         func#1 @10\n\
+         0: R4=fp-16 R10=fp0\n\
+         1: (85) call bpf_dynptr_from_mem#197\n\
+         2: R1=fp-16 R10=fp0\n\
+         3: (85) call bpf_dynptr_data#203\n\
+         4: (bf) r7 = r0 ; R7_w=mem(sz=1)\n\
+         5: R3=fp-16 R7=mem(sz=1) R10=fp0\n\
+         6: (85) call bpf_loop#181\n\
+         from 6 to 10: frame1: R1=scalar() R2=fp[0]-16 R10=fp0 cb\n\
+         10: frame1: R1=scalar() R2=fp[0]-16 R10=fp0 cb\n\
+         11: (bf) r7 = r2 ; frame1: R2=fp[0]-16 R7_w=fp[0]-16 cb\n\
+         12: (63) *(u32 *)(r2 +0) = r1 ; frame1: R1_w=123 R2=fp[0]-16 cb\n\
+         from 12 to 6: R7=scalar() R10=fp0\n\
+         7: (71) r0 = *(u8 *)(r7 +0)\n\
+         R7 invalid mem access 'scalar'\n",
+    );
+    assert_eq!(
+        callback_local_register_assignment_preserves_caller_lineage["next_action"],
+        "protocol"
+    );
+    assert!(evidence_contains(
+        &callback_local_register_assignment_preserves_caller_lineage,
+        "verifier_state_signal",
+        "dynptr data or slice helper result"
+    ));
+
+    let callback_interior_data_pointer_overlaps_dynptr_slot = run_json_stdin(
+        "func#0 @0\n\
+         func#1 @10\n\
+         0: R4=fp-24 R10=fp0\n\
+         1: (85) call bpf_dynptr_from_mem#197\n\
+         2: R1=fp-24 R10=fp0\n\
+         3: (85) call bpf_dynptr_data#203\n\
+         4: (bf) r7 = r0 ; R7_w=mem(sz=1)\n\
+         5: R3=fp-16 R7=mem(sz=1) R10=fp0\n\
+         6: (85) call bpf_loop#181\n\
+         from 6 to 10: frame1: R1=scalar() R2=fp[0]-16 R10=fp0 cb\n\
+         10: frame1: R1=scalar() R2=fp[0]-16 R10=fp0 cb\n\
+         11: (63) *(u32 *)(r2 +0) = r1 ; frame1: R1_w=123 R2=fp[0]-16 cb\n\
+         from 11 to 6: R7=scalar() R10=fp0\n\
+         7: (71) r0 = *(u8 *)(r7 +0)\n\
+         R7 invalid mem access 'scalar'\n",
+    );
+    assert_eq!(
+        callback_interior_data_pointer_overlaps_dynptr_slot["next_action"],
+        "protocol"
+    );
+    assert!(evidence_contains(
+        &callback_interior_data_pointer_overlaps_dynptr_slot,
+        "verifier_state_signal",
+        "dynptr data or slice helper result"
+    ));
 }
 
 #[test]

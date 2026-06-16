@@ -607,7 +607,7 @@ impl ProofSignal {
                 "verifier state shows this register previously held an skb/xdp packet pointer, but an intervening packet-mutating helper invalidated that pointer before the rejected memory access"
             }
             Self::DynptrDataPointerInvalidatedBeforeUse => {
-                "verifier state traces this register to a dynptr data or slice helper result, then sees a later helper invalidate the underlying dynptr or packet backing before the rejected memory access"
+                "verifier state traces this register to a dynptr data or slice helper result, then sees a later helper or callback write invalidate the underlying dynptr or packet backing before the rejected memory access"
             }
             Self::ProhibitedPointerArithmetic => {
                 "verifier state at the rejected instruction shows the target register is still pointer state, but the instruction applies a prohibited pointer arithmetic or bitwise operator"
@@ -816,7 +816,7 @@ impl ProofSignal {
                 "After helpers that move or rewrite skb/xdp data, reload packet data/data_end, recheck the packet range, and derive a fresh packet pointer before dereferencing."
             }
             Self::DynptrDataPointerInvalidatedBeforeUse => {
-                "Treat dynptr data and slice pointers as invalid after helpers or packet operations that can mutate their backing storage; reacquire a fresh dynptr data or slice pointer before dereferencing."
+                "Treat dynptr data and slice pointers as invalid after helpers, callback writes, or packet operations that can mutate their backing storage; reacquire a fresh dynptr data or slice pointer before dereferencing."
             }
             Self::ProhibitedPointerArithmetic => {
                 "Avoid bitwise or unsupported arithmetic on pointer registers; preserve pointer provenance by keeping the pointer unchanged and applying scalar arithmetic to a separate offset before deriving a verifier-recognized pointer."
@@ -1174,7 +1174,7 @@ impl ProofSignal {
                 "preserve pointer provenance by reacquiring and rechecking the skb/xdp packet pointer after the helper that invalidates existing packet data pointers",
             ),
             Self::DynptrDataPointerInvalidatedBeforeUse => Some(
-                "follow the dynptr data/slice lifecycle by discarding invalidated data pointers and reacquiring a fresh verifier-tracked slice after the invalidating helper",
+                "follow the dynptr data/slice lifecycle by discarding invalidated data pointers and reacquiring a fresh verifier-tracked slice after the invalidating helper or callback write",
             ),
             Self::ProhibitedPointerArithmetic => Some(
                 "preserve pointer state by avoiding bitwise or verifier-prohibited arithmetic on the pointer register",
@@ -5296,18 +5296,63 @@ fn stale_pointer_after_invalidating_helper(
         .terminal_line
         .map(|line| verifier_fragment_start_line(context.log, line))
         .unwrap_or_else(|| verifier_fragment_start_line(context.log, instruction.line));
-    let Some((state, state_log_line)) = latest_reg_state_before_instruction_with_log_line(
-        context.branch_states,
-        instruction,
-        fragment_start,
-        reg,
-    ) else {
+    let Some((state, state_log_line, state_frame)) =
+        latest_reg_state_before_instruction_with_origin(
+            context.branch_states,
+            instruction,
+            fragment_start,
+            reg,
+        )
+    else {
         return None;
     };
-    let Some(pointer_kind) = stale_data_pointer_kind(&context, state, state_log_line, reg) else {
-        return None;
+    let (pointer_kind, invalidated) = if let Some(pointer_kind) =
+        stale_data_pointer_kind(&context, state, state_log_line, reg)
+    {
+        if register_assigned_between(
+            context.branch_states,
+            context.log,
+            reg,
+            state_frame,
+            fragment_start,
+            state_log_line,
+            instruction.line,
+        ) {
+            return None;
+        }
+        let invalidated =
+            invalidating_helper_between(&context, state_log_line, instruction.line, pointer_kind)
+                || matches!(
+                    pointer_kind,
+                    StaleDataPointerKind::DynptrData(origin)
+                        if dynptr_data_invalidated_by_callback_write(
+                            &context,
+                            state_log_line,
+                            instruction.line,
+                            origin,
+                        )
+                );
+        (pointer_kind, invalidated)
+    } else {
+        let Some((origin, origin_log_line)) = prior_dynptr_data_pointer_before_instruction(
+            &context,
+            instruction,
+            fragment_start,
+            reg,
+        ) else {
+            return None;
+        };
+        if !dynptr_data_invalidated_by_callback_write(
+            &context,
+            origin_log_line,
+            instruction.line,
+            origin,
+        ) {
+            return None;
+        }
+        (StaleDataPointerKind::DynptrData(origin), true)
     };
-    if !invalidating_helper_between(&context, state_log_line, instruction.line, pointer_kind) {
+    if !invalidated {
         return None;
     }
     Some(match pointer_kind {
@@ -5349,6 +5394,114 @@ fn stale_data_pointer_kind(
         )?)),
         _ => None,
     }
+}
+
+fn latest_reg_state_before_instruction_with_origin<'a>(
+    states: &'a [VerifierInsn],
+    instruction: TerminalInstruction<'_>,
+    fragment_start_line: usize,
+    reg: u8,
+) -> Option<(&'a RegState, usize, usize)> {
+    let call_frame =
+        latest_verifier_state_before_instruction(states, instruction, fragment_start_line)
+            .map(|state| state.frame);
+    states
+        .iter()
+        .filter(|state| state.log_line >= fragment_start_line)
+        .filter(|state| state.log_line < instruction.line)
+        .filter(|state| state.pc <= instruction.pc)
+        .filter(|state| call_frame.is_none_or(|frame| state.frame == frame))
+        .rev()
+        .find_map(|state| {
+            let reg_state = state.regs.get(&reg)?;
+            Some((reg_state, state.log_line, state.frame))
+        })
+}
+
+fn prior_dynptr_data_pointer_before_instruction(
+    context: &ProofSignalContext<'_>,
+    instruction: TerminalInstruction<'_>,
+    fragment_start: usize,
+    reg: u8,
+) -> Option<(DynptrDataOrigin, usize)> {
+    context
+        .branch_states
+        .iter()
+        .filter(|state| state.log_line >= fragment_start)
+        .filter(|state| state.log_line < instruction.line)
+        .filter(|state| state.pc <= instruction.pc)
+        .rev()
+        .find_map(|state| {
+            let reg_state = state.regs.get(&reg)?;
+            if !matches!(reg_state.reg_type.as_str(), "mem" | "rdonly_mem") {
+                return None;
+            }
+            if register_assigned_between(
+                context.branch_states,
+                context.log,
+                reg,
+                state.frame,
+                fragment_start,
+                state.log_line,
+                instruction.line,
+            ) {
+                return None;
+            }
+            Some((
+                dynptr_data_origin(context, state.log_line, reg)?,
+                state.log_line,
+            ))
+        })
+}
+
+fn register_assigned_between(
+    states: &[VerifierInsn],
+    log: &str,
+    reg: u8,
+    frame: usize,
+    fragment_start: usize,
+    after_line: usize,
+    before_line: usize,
+) -> bool {
+    log.lines()
+        .enumerate()
+        .filter(|(idx, _)| {
+            let line = idx + 1;
+            line > after_line && line < before_line
+        })
+        .filter_map(|(idx, line)| {
+            let (pc, tail) = parse_instruction_line(line.trim())?;
+            Some(TerminalInstruction {
+                pc,
+                line: idx + 1,
+                tail,
+            })
+        })
+        .filter(|instruction| instruction_assigns_register(instruction.tail, reg))
+        .any(|instruction| {
+            instruction_frame(states, instruction, fragment_start)
+                .is_none_or(|assigned_frame| assigned_frame == frame)
+        })
+}
+
+fn instruction_assigns_register(instruction_tail: &str, reg: u8) -> bool {
+    if reg == 0 && call_target_from_instruction_tail(instruction_tail).is_some() {
+        return true;
+    }
+    let Some((_, rest)) = instruction_tail.split_once(')') else {
+        return false;
+    };
+    let body = rest.split_once(';').map_or(rest, |(body, _)| body).trim();
+    body.starts_with(&format!("r{reg} ")) || body.starts_with(&format!("w{reg} "))
+}
+
+fn instruction_frame(
+    states: &[VerifierInsn],
+    instruction: TerminalInstruction<'_>,
+    fragment_start: usize,
+) -> Option<usize> {
+    latest_verifier_state_before_instruction(states, instruction, fragment_start)
+        .map(|state| state.frame)
 }
 
 fn invalidating_helper_between(
@@ -5534,6 +5687,207 @@ fn dynptr_data_invalidated_by_call(
     let fragment_start = verifier_fragment_start_line(context.log, instruction.line);
     dynptr_stack_slot_for_call_argument(context.branch_states, instruction, fragment_start, arg_reg)
         == Some(origin.slot)
+}
+
+fn dynptr_data_invalidated_by_callback_write(
+    context: &ProofSignalContext<'_>,
+    after_line: usize,
+    before_line: usize,
+    origin: DynptrDataOrigin,
+) -> bool {
+    if after_line >= before_line {
+        return false;
+    }
+    let fragment_start = verifier_fragment_start_line(context.log, before_line);
+    context
+        .branch_states
+        .iter()
+        .filter(|state| state.log_line > after_line)
+        .filter(|state| state.log_line < before_line)
+        .filter(|state| state.callback_kind == Some(CallbackKind::Sync))
+        .filter(|state| state.from_pc.is_some())
+        .any(|entry| {
+            bpf_loop_callback_entry_stack_pointer(context, fragment_start, entry).is_some_and(
+                |data_slot| stack_pointer_can_reach_dynptr_slot(data_slot, origin.slot),
+            ) && callback_writes_dynptr_slot(
+                context,
+                fragment_start,
+                entry,
+                before_line,
+                origin.slot,
+            )
+        })
+}
+
+fn bpf_loop_callback_entry_stack_pointer(
+    context: &ProofSignalContext<'_>,
+    fragment_start: usize,
+    entry: &VerifierInsn,
+) -> Option<DynptrStackSlot> {
+    let Some(from_pc) = entry.from_pc else {
+        return None;
+    };
+    let Some(call_instruction) =
+        callback_origin_call_instruction(context.log, fragment_start, entry.log_line, from_pc)
+    else {
+        return None;
+    };
+    if call_target_from_instruction_tail(call_instruction.tail) != Some("bpf_loop") {
+        return None;
+    }
+    let call_slot = dynptr_stack_slot_for_call_argument(
+        context.branch_states,
+        call_instruction,
+        fragment_start,
+        3,
+    )?;
+    let entry_slot = callback_entry_stack_slot(entry, 2)?;
+    (call_slot == entry_slot).then_some(entry_slot)
+}
+
+fn stack_pointer_can_reach_dynptr_slot(pointer: DynptrStackSlot, slot: DynptrStackSlot) -> bool {
+    if pointer.frame != slot.frame {
+        return false;
+    }
+    let Some(slot_range) = dynptr_stack_slot_range(slot) else {
+        return false;
+    };
+    i16::try_from(pointer.offset)
+        .ok()
+        .is_some_and(|offset| slot_range.contains(offset))
+}
+
+fn callback_origin_call_instruction<'a>(
+    log: &'a str,
+    fragment_start: usize,
+    before_line: usize,
+    from_pc: usize,
+) -> Option<TerminalInstruction<'a>> {
+    log.lines()
+        .enumerate()
+        .filter(|(idx, _)| {
+            let line = idx + 1;
+            line >= fragment_start && line < before_line
+        })
+        .filter_map(|(idx, line)| {
+            let (pc, tail) = parse_instruction_line(line.trim())?;
+            (pc == from_pc && call_target_from_instruction_tail(tail).is_some()).then_some(
+                TerminalInstruction {
+                    pc,
+                    line: idx + 1,
+                    tail,
+                },
+            )
+        })
+        .last()
+}
+
+fn callback_entry_stack_slot(entry: &VerifierInsn, reg: u8) -> Option<DynptrStackSlot> {
+    let reg_state = entry.regs.get(&reg)?;
+    if reg_state.reg_type != "fp" || reg_state_has_variable_offset(reg_state) {
+        return None;
+    }
+    Some(DynptrStackSlot {
+        frame: reg_state.source_frame.unwrap_or(entry.frame),
+        offset: reg_state.offset?,
+    })
+}
+
+fn callback_writes_dynptr_slot(
+    context: &ProofSignalContext<'_>,
+    fragment_start: usize,
+    entry: &VerifierInsn,
+    before_line: usize,
+    slot: DynptrStackSlot,
+) -> bool {
+    let Some(slot_range) = dynptr_stack_slot_range(slot) else {
+        return false;
+    };
+    context
+        .log
+        .lines()
+        .enumerate()
+        .filter(|(idx, _)| {
+            let line = idx + 1;
+            line > entry.log_line && line < before_line
+        })
+        .filter_map(|(idx, line)| {
+            let (pc, tail) = parse_instruction_line(line.trim())?;
+            if !memory_access_is_store(tail) {
+                return None;
+            }
+            Some(TerminalInstruction {
+                pc,
+                line: idx + 1,
+                tail,
+            })
+        })
+        .any(|instruction| {
+            callback_instruction_matches_entry(
+                context.branch_states,
+                instruction,
+                fragment_start,
+                entry,
+            ) && memory_store_overlaps_dynptr_slot(
+                context.branch_states,
+                instruction,
+                fragment_start,
+                slot,
+                slot_range,
+            )
+        })
+}
+
+fn callback_instruction_matches_entry(
+    states: &[VerifierInsn],
+    instruction: TerminalInstruction<'_>,
+    fragment_start: usize,
+    entry: &VerifierInsn,
+) -> bool {
+    latest_verifier_state_before_instruction(states, instruction, fragment_start).is_some_and(
+        |state| {
+            state.log_line >= entry.log_line
+                && state.frame == entry.frame
+                && state.callback_kind == entry.callback_kind
+        },
+    )
+}
+
+fn memory_store_overlaps_dynptr_slot(
+    states: &[VerifierInsn],
+    instruction: TerminalInstruction<'_>,
+    fragment_start: usize,
+    slot: DynptrStackSlot,
+    slot_range: StackByteRange,
+) -> bool {
+    let Some(base_reg) = memory_access_base_register(instruction.tail) else {
+        return false;
+    };
+    let Some((base, frame)) = latest_reg_state_before_instruction_with_frame(
+        states,
+        instruction,
+        fragment_start,
+        base_reg,
+    ) else {
+        return false;
+    };
+    if frame != slot.frame || base.reg_type != "fp" || reg_state_has_variable_offset(base) {
+        return false;
+    }
+    stack_memory_access_range(base, instruction.tail)
+        .is_some_and(|access| access.overlaps(slot_range))
+}
+
+fn stack_memory_access_range(base: &RegState, instruction_tail: &str) -> Option<StackByteRange> {
+    let base_offset = i16::try_from(base.offset?).ok()?;
+    let access_offset = i16::try_from(memory_access_offset(instruction_tail)?).ok()?;
+    let start = base_offset.checked_add(access_offset)?;
+    let width = i16::try_from(memory_access_width(instruction_tail)?).ok()?;
+    stack_value_range(start, width)
+}
+
+fn dynptr_stack_slot_range(slot: DynptrStackSlot) -> Option<StackByteRange> {
+    stack_value_range(i16::try_from(slot.offset).ok()?, 16)
 }
 
 fn dynptr_data_invalidating_arg(target: &str) -> Option<u8> {
