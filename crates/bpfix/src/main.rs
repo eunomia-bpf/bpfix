@@ -147,6 +147,7 @@ fn build_diagnostic(
     object_programs: Vec<ObjectProgramMetadata>,
     object_analysis_error: Option<String>,
 ) -> Diagnostic {
+    let object_sections = active_object_sections(&object_programs);
     let terminal = find_terminal_error(log);
     let class = terminal
         .as_ref()
@@ -174,6 +175,7 @@ fn build_diagnostic(
             match diagnostic::analyze_verifier_log_with_context(
                 log,
                 full_log,
+                &object_sections,
                 terminal.pc,
                 Some(terminal.line),
                 &terminal.message,
@@ -333,6 +335,21 @@ fn build_diagnostic(
     }
 }
 
+fn active_object_sections(object_programs: &[ObjectProgramMetadata]) -> Vec<String> {
+    let sections = object_programs
+        .iter()
+        .filter(|program| {
+            program.verifier_state_site_count > 0 && program.verifier_state_attach_error.is_none()
+        })
+        .map(|program| program.section_name.clone())
+        .collect::<Vec<_>>();
+    if sections.len() == 1 {
+        sections
+    } else {
+        Vec::new()
+    }
+}
+
 fn classifier_next_action(class: &classifier::Classification) -> NextAction {
     match class.failure_class {
         "environment_or_configuration" => NextAction::Environment,
@@ -485,4 +502,44 @@ fn insert_help(help: &mut Vec<String>, item: &str) {
         return;
     }
     help.insert(0, item.to_string());
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn object_program(
+        section_name: &str,
+        verifier_state_site_count: usize,
+    ) -> ObjectProgramMetadata {
+        ObjectProgramMetadata {
+            section_name: section_name.to_string(),
+            instruction_count: 1,
+            block_count: 1,
+            site_count: 1,
+            verifier_state_site_count,
+            verifier_state_attach_error: None,
+        }
+    }
+
+    #[test]
+    fn active_object_sections_selects_only_rejected_program() {
+        let programs = [
+            object_program("xdp", 0),
+            object_program("tracepoint/skb/consume_skb", 6),
+        ];
+        assert_eq!(
+            active_object_sections(&programs),
+            vec!["tracepoint/skb/consume_skb".to_string()]
+        );
+    }
+
+    #[test]
+    fn active_object_sections_rejects_ambiguous_active_programs() {
+        let programs = [
+            object_program("xdp", 4),
+            object_program("tracepoint/skb/x", 6),
+        ];
+        assert!(active_object_sections(&programs).is_empty());
+    }
 }

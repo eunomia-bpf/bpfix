@@ -6715,6 +6715,43 @@ fn object_argument_attaches_section_local_states_from_loaded_layout() {
 
 #[test]
 #[cfg(feature = "object-analysis")]
+fn object_section_identifies_packet_context_fields_in_tracepoint() {
+    let case = "bpfix-bench/cases/stackoverflow-72717564";
+    let log_path = workspace_root().join(case).join("replay-verifier.log");
+    let object_path = workspace_root().join(case).join("prog.o");
+
+    let log_only = run_json_path(log_path.clone());
+    assert_eq!(log_only["error_id"], "BPFIX-E011");
+    assert_eq!(log_only["next_action"], "provenance");
+
+    let with_object = run_json_with_args(&[
+        "--object",
+        object_path.to_str().unwrap(),
+        log_path.to_str().unwrap(),
+        "--format",
+        "json",
+    ]);
+
+    assert_eq!(with_object["error_id"], "BPFIX-E011");
+    assert_eq!(with_object["failure_class"], "source_bug");
+    assert_eq!(with_object["next_action"], "environment");
+    assert_eq!(
+        with_object["metadata"]["object_programs"][0]["section_name"],
+        "tracepoint/skb/consume_skb"
+    );
+    assert!(evidence_contains(
+        &with_object,
+        "verifier_state_signal",
+        "non-packet program"
+    ));
+    assert!(with_object["required_proof"]
+        .as_str()
+        .unwrap()
+        .contains("packet data/data_end"));
+}
+
+#[test]
+#[cfg(feature = "object-analysis")]
 fn object_argument_uses_rejected_program_section_states() {
     let log_path =
         workspace_root().join("bpfix-bench/cases/stackoverflow-72560675/replay-verifier.log");

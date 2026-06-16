@@ -106,6 +106,7 @@ macro_rules! proof_signal_variants {
             ModernBpfObjectProtocolViolation,
             ContextAccessSourceArgumentMismatch,
             ContextFieldUnavailable,
+            PacketContextFieldAccessInUnsupportedProgram,
             KernelObjectFieldAccessMismatch,
             ExceptionThrowWithLiveReference,
             ReferenceLiveAtExit,
@@ -235,6 +236,9 @@ impl ProofSignal {
             Self::ContextFieldUnavailable => {
                 "program context field is unavailable for the active verifier context"
             }
+            Self::PacketContextFieldAccessInUnsupportedProgram => {
+                "packet context fields are read from a program type that does not expose packet pointers"
+            }
             Self::KernelObjectFieldAccessMismatch => {
                 "kernel object field access targets a different struct than the verifier-visible pointer"
             }
@@ -343,9 +347,9 @@ impl ProofSignal {
 
     pub(crate) const fn next_action(self) -> NextAction {
         match self {
-            Self::MapPointerArgumentScalarZero | Self::BtfFuncInfoMissing => {
-                NextAction::Environment
-            }
+            Self::MapPointerArgumentScalarZero
+            | Self::BtfFuncInfoMissing
+            | Self::PacketContextFieldAccessInUnsupportedProgram => NextAction::Environment,
             Self::ContextFieldUnavailable
             | Self::ContextAccessSourceArgumentMismatch
             | Self::KernelObjectFieldAccessMismatch
@@ -564,6 +568,9 @@ impl ProofSignal {
             Self::ContextFieldUnavailable => {
                 "verifier state shows the rejected memory access uses a ctx register at an offset and width that the active program context does not expose"
             }
+            Self::PacketContextFieldAccessInUnsupportedProgram => {
+                "object section metadata identifies a non-packet program while verifier state shows the rejected pointer came from __sk_buff packet data/data_end offsets that are scalar in that context"
+            }
             Self::KernelObjectFieldAccessMismatch => {
                 "verifier state shows the base register is a kernel object pointer for the reported struct, while CO-RE relocation metadata targets a different struct at the rejected offset"
             }
@@ -779,6 +786,9 @@ impl ProofSignal {
             Self::ContextFieldUnavailable => {
                 "Use a program type or attach type that exposes this context field, read a verifier-supported context field, or derive the value from packet data instead of an unavailable context slot."
             }
+            Self::PacketContextFieldAccessInUnsupportedProgram => {
+                "Move direct packet parsing to XDP, TC, classifier, or another packet program type that exposes packet pointers; otherwise read the traced kernel object through a verifier-approved helper."
+            }
             Self::KernelObjectFieldAccessMismatch => {
                 "Read the field through a verifier-supported kernel-memory access path such as BPF_CORE_READ, instead of directly casting a verifier-visible kernel object pointer to a larger or different struct."
             }
@@ -930,6 +940,7 @@ impl ProofSignal {
                 | Self::KfuncArgumentTypeMismatch
                 | Self::VerifierTypeContractMismatch
                 | Self::ModernBpfObjectProtocolViolation
+                | Self::PacketContextFieldAccessInUnsupportedProgram
                 | Self::MapLookupKeyArgumentUnreadable
                 | Self::UnreadableProgramEntryArgument
                 | Self::UnreadableHelperArgument
@@ -1023,6 +1034,7 @@ impl ProofSignal {
             Self::MapPointerArgumentScalarZero
                 | Self::BtfFuncInfoMissing
                 | Self::SubprogramReferenceMetadataMissing
+                | Self::PacketContextFieldAccessInUnsupportedProgram
                 | Self::DynptrHelperArgumentStateMismatch
                 | Self::DynptrReleaseUnacquiredReference
                 | Self::DynptrStackStorageAccess
@@ -1211,6 +1223,9 @@ impl ProofSignal {
             Self::ContextFieldUnavailable => Some(
                 "access only context offsets and field widths exposed by the active BPF program type and attach point",
             ),
+            Self::PacketContextFieldAccessInUnsupportedProgram => Some(
+                "use an attach/program type that exposes verifier-tracked packet data/data_end pointers before doing direct packet parsing",
+            ),
             Self::KernelObjectFieldAccessMismatch => Some(
                 "read the kernel field through a verifier-supported helper or CO-RE access path instead of directly loading a field outside the verifier-visible object type",
             ),
@@ -1371,6 +1386,9 @@ impl ProofSignal {
             Self::ContextFieldUnavailable => {
                 Some("context access uses an unavailable offset or field width")
             }
+            Self::PacketContextFieldAccessInUnsupportedProgram => {
+                Some("packet data/data_end fields are scalar in this program section")
+            }
             Self::KernelObjectFieldAccessMismatch => {
                 Some("this load reads a field outside the verifier-visible kernel object type")
             }
@@ -1446,6 +1464,7 @@ impl ProofSignal {
             Self::StalePointerAfterInvalidatingHelper => Some("BPFIX-E011"),
             Self::DynptrDataPointerInvalidatedBeforeUse => Some("BPFIX-E011"),
             Self::KernelObjectFieldAccessMismatch => Some("BPFIX-E011"),
+            Self::PacketContextFieldAccessInUnsupportedProgram => Some("BPFIX-E011"),
             _ => None,
         }
     }
@@ -1463,6 +1482,7 @@ pub fn analyze_verifier_log(
     analyze_verifier_log_with_context(
         log,
         log,
+        &[],
         terminal_pc,
         terminal_line,
         terminal_error,
@@ -1474,6 +1494,7 @@ pub fn analyze_verifier_log(
 pub fn analyze_verifier_log_with_context(
     log: &str,
     full_log: &str,
+    object_sections: &[String],
     terminal_pc: Option<usize>,
     terminal_line: Option<usize>,
     terminal_error: &str,
@@ -1563,6 +1584,7 @@ pub fn analyze_verifier_log_with_context(
     let signal_context = ProofSignalContext {
         log,
         full_log,
+        object_sections,
         terminal_error,
         terminal_call_target,
         obligation,
@@ -2290,6 +2312,7 @@ fn environment_capability_events(
 struct ProofSignalContext<'a> {
     log: &'a str,
     full_log: &'a str,
+    object_sections: &'a [String],
     terminal_error: &'a str,
     terminal_call_target: Option<&'a str>,
     obligation: ProofObligation,
@@ -2368,6 +2391,9 @@ fn proof_signals(context: ProofSignalContext<'_>) -> Vec<ProofSignal> {
     }
     if context_field_unavailable(&context) {
         signals.push(ProofSignal::ContextFieldUnavailable);
+    }
+    if packet_context_field_access_in_unsupported_program(&context) {
+        signals.push(ProofSignal::PacketContextFieldAccessInUnsupportedProgram);
     }
     if kernel_object_field_access_mismatch(&context) {
         signals.push(ProofSignal::KernelObjectFieldAccessMismatch);
@@ -2721,6 +2747,90 @@ fn context_field_unavailable(context: &ProofSignalContext<'_>) -> bool {
         .unwrap_or_else(|| verifier_fragment_start_line(context.log, instruction.line));
     latest_reg_state_before_instruction(context.states, instruction, fragment_start, base_reg)
         .is_some_and(|state| state.reg_type == "ctx")
+}
+
+fn packet_context_field_access_in_unsupported_program(context: &ProofSignalContext<'_>) -> bool {
+    if context.obligation != ProofObligation::PointerProvenance
+        || !active_object_section_is_skb_tracepoint(context.object_sections)
+    {
+        return false;
+    }
+    let terminal = context.terminal_error.to_ascii_lowercase();
+    if !(terminal.contains("invalid mem access 'scalar'")
+        || terminal.contains("invalid mem access 'inv'"))
+    {
+        return false;
+    }
+    let Some(instruction) =
+        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)
+    else {
+        return false;
+    };
+    let Some(reg) = context
+        .register
+        .or_else(|| register_from_terminal_error(context.terminal_error))
+    else {
+        return false;
+    };
+    if memory_access_base_register(instruction.tail) != Some(reg) {
+        return false;
+    }
+    let fragment_start = context
+        .terminal_line
+        .map(|line| verifier_fragment_start_line(context.log, line))
+        .unwrap_or_else(|| verifier_fragment_start_line(context.log, instruction.line));
+    let Some((state, _, frame)) = latest_reg_state_before_instruction_with_origin(
+        context.branch_states,
+        instruction,
+        fragment_start,
+        reg,
+    ) else {
+        return false;
+    };
+    if state.reg_type != "scalar" {
+        return false;
+    }
+    let Some(origin) = latest_register_assignment(
+        context.states,
+        context.log,
+        fragment_start,
+        instruction.line,
+        reg,
+        frame,
+    ) else {
+        return false;
+    };
+    packet_context_field_loaded_from_ctx(context.states, origin, fragment_start)
+}
+
+fn active_object_section_is_skb_tracepoint(sections: &[String]) -> bool {
+    let [section] = sections else {
+        return false;
+    };
+    let section = section.trim_start_matches('?');
+    section.starts_with("tracepoint/skb/") || section.starts_with("tp/skb/")
+}
+
+fn packet_context_field_loaded_from_ctx(
+    states: &[VerifierInsn],
+    instruction: TerminalInstruction<'_>,
+    fragment_start: usize,
+) -> bool {
+    if !memory_access_is_load(instruction.tail) {
+        return false;
+    }
+    if !memory_access_offset(instruction.tail).is_some_and(is_skb_packet_pointer_field_offset) {
+        return false;
+    }
+    let Some(ctx_reg) = memory_access_base_register(instruction.tail) else {
+        return false;
+    };
+    latest_reg_state_before_instruction(states, instruction, fragment_start, ctx_reg)
+        .is_some_and(|state| state.reg_type == "ctx")
+}
+
+fn is_skb_packet_pointer_field_offset(offset: i64) -> bool {
+    matches!(offset, 76 | 80)
 }
 
 fn kernel_object_field_access_mismatch(context: &ProofSignalContext<'_>) -> bool {
@@ -10225,7 +10335,10 @@ fn scalar_range_is_unsafe(state: &RegState) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::{analyze_verifier_log, ProofEventEvidence, ProofEventRole, ProofSignal};
+    use super::{
+        active_object_section_is_skb_tracepoint, analyze_verifier_log, ProofEventEvidence,
+        ProofEventRole, ProofSignal,
+    };
     use crate::family::ProofObligation;
     use crate::output::NextAction;
 
@@ -10238,6 +10351,35 @@ mod tests {
     }
 
     proof_signal_variants!(define_all_proof_signals);
+
+    #[test]
+    fn skb_tracepoint_section_predicate_is_deliberately_narrow() {
+        assert!(active_object_section_is_skb_tracepoint(&[
+            "tracepoint/skb/consume_skb".to_string()
+        ]));
+        assert!(active_object_section_is_skb_tracepoint(&[
+            "tp/skb/consume_skb".to_string()
+        ]));
+        assert!(!active_object_section_is_skb_tracepoint(&[
+            "xdp".to_string()
+        ]));
+        assert!(!active_object_section_is_skb_tracepoint(
+            &["tc".to_string()]
+        ));
+        assert!(!active_object_section_is_skb_tracepoint(&[
+            "raw_tracepoint/sched_wakeup".to_string()
+        ]));
+        assert!(!active_object_section_is_skb_tracepoint(&[
+            "kprobe/do_sys_open".to_string()
+        ]));
+        assert!(!active_object_section_is_skb_tracepoint(&[
+            "fentry/do_sys_open".to_string()
+        ]));
+        assert!(!active_object_section_is_skb_tracepoint(&[
+            "tracepoint/skb/consume_skb".to_string(),
+            "xdp".to_string(),
+        ]));
+    }
 
     #[test]
     fn proof_signals_have_specific_next_actions() {
