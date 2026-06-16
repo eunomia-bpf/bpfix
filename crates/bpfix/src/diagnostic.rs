@@ -978,6 +978,16 @@ struct ProofSignalContext<'a> {
     events: &'a [ProofEvent],
 }
 
+fn terminal_fragment_start(
+    context: &ProofSignalContext<'_>,
+    instruction: TerminalInstruction<'_>,
+) -> usize {
+    context
+        .terminal_line
+        .map(|line| verifier_fragment_start_line(context.log, line))
+        .unwrap_or_else(|| verifier_fragment_start_line(context.log, instruction.line))
+}
+
 #[rustfmt::skip]
 fn proof_signals(context: ProofSignalContext<'_>) -> Vec<ProofSignal> {
     let mut signals = Vec::new();
@@ -1215,10 +1225,7 @@ fn context_field_unavailable(context: &ProofSignalContext<'_>) -> bool {
     {
         return false;
     }
-    let fragment_start = context
-        .terminal_line
-        .map(|line| verifier_fragment_start_line(context.log, line))
-        .unwrap_or_else(|| verifier_fragment_start_line(context.log, instruction.line));
+    let fragment_start = terminal_fragment_start(context, instruction);
     latest_reg_state_before_instruction(context.states, instruction, fragment_start, base_reg)
         .is_some_and(|state| state.reg_type == "ctx")
 }
@@ -1249,10 +1256,7 @@ fn packet_context_field_access_in_unsupported_program(context: &ProofSignalConte
     if memory_access_base_register(instruction.tail) != Some(reg) {
         return false;
     }
-    let fragment_start = context
-        .terminal_line
-        .map(|line| verifier_fragment_start_line(context.log, line))
-        .unwrap_or_else(|| verifier_fragment_start_line(context.log, instruction.line));
+    let fragment_start = terminal_fragment_start(context, instruction);
     let Some((state, _, frame)) = latest_reg_state_before_instruction_with_origin(
         context.branch_states,
         instruction,
@@ -1331,10 +1335,7 @@ fn kernel_object_field_access_mismatch(context: &ProofSignalContext<'_>) -> bool
     let Some(base_reg) = memory_access_base_register(instruction.tail) else {
         return false;
     };
-    let fragment_start = context
-        .terminal_line
-        .map(|line| verifier_fragment_start_line(context.log, line))
-        .unwrap_or_else(|| verifier_fragment_start_line(context.log, instruction.line));
+    let fragment_start = terminal_fragment_start(context, instruction);
     let Some(base_state) =
         latest_reg_state_before_instruction(context.states, instruction, fragment_start, base_reg)
     else {
@@ -1537,10 +1538,7 @@ fn reference_live_at_exit(context: &ProofSignalContext<'_>) -> bool {
     if !instruction_is_bpf_exit(instruction.tail) {
         return false;
     }
-    let fragment_start = context
-        .terminal_line
-        .map(|line| verifier_fragment_start_line(context.log, line))
-        .unwrap_or_else(|| verifier_fragment_start_line(context.log, instruction.line));
+    let fragment_start = terminal_fragment_start(context, instruction);
     let Some(exit_state) =
         latest_verifier_state_at_or_before_instruction(context.states, instruction, fragment_start)
     else {
@@ -1783,10 +1781,7 @@ fn sleepable_call_in_non_sleepable_context(context: &ProofSignalContext<'_>) -> 
     if !instruction.tail.contains("call ") {
         return false;
     }
-    let fragment_start = context
-        .terminal_line
-        .map(|line| verifier_fragment_start_line(context.log, line))
-        .unwrap_or_else(|| verifier_fragment_start_line(context.log, instruction.line));
+    let fragment_start = terminal_fragment_start(context, instruction);
     prior_non_sleepable_state(context.log, fragment_start, instruction.line)
 }
 
@@ -1832,10 +1827,7 @@ fn modern_bpf_object_protocol_violation(context: &ProofSignalContext<'_>) -> boo
     let Some(reg) = modern_bpf_object_protocol_register(&terminal, target, context.register) else {
         return false;
     };
-    let fragment_start = context
-        .terminal_line
-        .map(|line| verifier_fragment_start_line(context.log, line))
-        .unwrap_or_else(|| verifier_fragment_start_line(context.log, instruction.line));
+    let fragment_start = terminal_fragment_start(context, instruction);
     let Some(state) = latest_reg_state_for_call_argument(
         context.states,
         instruction,
@@ -1993,10 +1985,7 @@ fn subprogram_reference_metadata_missing(context: &ProofSignalContext<'_>) -> bo
     let Some(callee) = invalid_args_function_name(context.terminal_error) else {
         return false;
     };
-    let fragment_start = context
-        .terminal_line
-        .map(|line| verifier_fragment_start_line(context.log, line))
-        .unwrap_or_else(|| verifier_fragment_start_line(context.log, instruction.line));
+    let fragment_start = terminal_fragment_start(context, instruction);
     let Some(rejected) = source_for_instruction_in_fragment(
         context.source_events,
         instruction.pc,
@@ -2205,10 +2194,7 @@ fn map_pointer_raw_access_contract(context: &ProofSignalContext<'_>) -> bool {
     let Some(base_reg) = memory_access_base_register(instruction.tail) else {
         return false;
     };
-    let fragment_start = context
-        .terminal_line
-        .map(|line| verifier_fragment_start_line(context.log, line))
-        .unwrap_or_else(|| verifier_fragment_start_line(context.log, instruction.line));
+    let fragment_start = terminal_fragment_start(context, instruction);
     let Some(snapshot) = verifier_path_snapshot_before_instruction(
         context.branch_states,
         instruction,
@@ -2238,10 +2224,7 @@ fn perf_event_output_packet_access(context: &ProofSignalContext<'_>) -> bool {
     if call_target_from_instruction_tail(instruction.tail) != Some("bpf_perf_event_output") {
         return false;
     }
-    let fragment_start = context
-        .terminal_line
-        .map(|line| verifier_fragment_start_line(context.log, line))
-        .unwrap_or_else(|| verifier_fragment_start_line(context.log, instruction.line));
+    let fragment_start = terminal_fragment_start(context, instruction);
     let Some(snapshot) = verifier_path_snapshot_before_instruction(
         context.branch_states,
         instruction,
@@ -2286,10 +2269,7 @@ fn helper_stack_read_exceeds_initialized_range(context: &ProofSignalContext<'_>)
     if context.register.is_some_and(|reg| reg != pointer_reg) {
         return false;
     }
-    let fragment_start = context
-        .terminal_line
-        .map(|line| verifier_fragment_start_line(context.log, line))
-        .unwrap_or_else(|| verifier_fragment_start_line(context.log, instruction.line));
+    let fragment_start = terminal_fragment_start(context, instruction);
     let Some(snapshot) = verifier_path_snapshot_before_instruction(
         context.branch_states,
         instruction,
@@ -2708,10 +2688,7 @@ fn dynptr_plain_write_overlaps_referenced_slot(context: &ProofSignalContext<'_>)
     else {
         return false;
     };
-    let fragment_start = context
-        .terminal_line
-        .map(|line| verifier_fragment_start_line(context.log, line))
-        .unwrap_or_else(|| verifier_fragment_start_line(context.log, instruction.line));
+    let fragment_start = terminal_fragment_start(context, instruction);
     let Some((access, frame)) =
         terminal_stack_memory_write_range_with_frame(context, instruction, fragment_start)
     else {
@@ -3087,10 +3064,7 @@ fn iterator_helper_argument_state_mismatch(context: &ProofSignalContext<'_>) -> 
     let Some(requirement) = iterator_arg0_requirement(target) else {
         return false;
     };
-    let fragment_start = context
-        .terminal_line
-        .map(|line| verifier_fragment_start_line(context.log, line))
-        .unwrap_or_else(|| verifier_fragment_start_line(context.log, instruction.line));
+    let fragment_start = terminal_fragment_start(context, instruction);
     let Some((arg, arg_frame)) = latest_reg_state_for_call_argument_with_frame(
         context.states,
         instruction,
@@ -3257,10 +3231,7 @@ fn irq_flag_state_mismatch(context: &ProofSignalContext<'_>) -> bool {
     let Some(requirement) = irq_flag_arg0_requirement(target) else {
         return false;
     };
-    let fragment_start = context
-        .terminal_line
-        .map(|line| verifier_fragment_start_line(context.log, line))
-        .unwrap_or_else(|| verifier_fragment_start_line(context.log, instruction.line));
+    let fragment_start = terminal_fragment_start(context, instruction);
     let Some((arg, arg_frame)) = latest_reg_state_for_call_argument_with_frame(
         context.states,
         instruction,
@@ -3641,10 +3612,7 @@ fn callback_call_while_locked(context: &ProofSignalContext<'_>) -> bool {
     if call_target_from_instruction_tail(terminal_instruction.tail).is_none() {
         return false;
     }
-    let fragment_start = context
-        .terminal_line
-        .map(|line| verifier_fragment_start_line(context.log, line))
-        .unwrap_or_else(|| verifier_fragment_start_line(context.log, terminal_instruction.line));
+    let fragment_start = terminal_fragment_start(context, terminal_instruction);
     if !latest_state_is_sync_callback(context, fragment_start, terminal_instruction) {
         return false;
     }
@@ -3698,10 +3666,7 @@ fn nullable_pointer_use_without_proof(context: &ProofSignalContext<'_>) -> bool 
         if nullable_instruction_register_mismatch(&terminal, instruction.tail, reg) {
             return false;
         }
-        let fragment_start = context
-            .terminal_line
-            .map(|line| verifier_fragment_start_line(context.log, line))
-            .unwrap_or_else(|| verifier_fragment_start_line(context.log, instruction.line));
+        let fragment_start = terminal_fragment_start(context, instruction);
         latest_reg_state_before_instruction(context.states, instruction, fragment_start, reg)
     } else {
         if helper_arg_terminal {
@@ -3756,10 +3721,7 @@ fn null_scalar_dereference_after_pointer_proof(context: &ProofSignalContext<'_>)
     if memory_access_base_register(instruction.tail) != Some(reg) {
         return false;
     }
-    let fragment_start = context
-        .terminal_line
-        .map(|line| verifier_fragment_start_line(context.log, line))
-        .unwrap_or_else(|| verifier_fragment_start_line(context.log, instruction.line));
+    let fragment_start = terminal_fragment_start(context, instruction);
     let Some((state, _, frame)) = latest_reg_state_before_instruction_with_origin(
         context.branch_states,
         instruction,
@@ -4018,10 +3980,7 @@ fn scalar_value_used_as_pointer(context: &ProofSignalContext<'_>) -> bool {
     if pkt_end_arithmetic && register_operands(instruction.tail).first().copied() != Some(reg) {
         return false;
     }
-    let fragment_start = context
-        .terminal_line
-        .map(|line| verifier_fragment_start_line(context.log, line))
-        .unwrap_or_else(|| verifier_fragment_start_line(context.log, instruction.line));
+    let fragment_start = terminal_fragment_start(context, instruction);
     let Some(state) =
         latest_reg_state_before_instruction(context.states, instruction, fragment_start, reg)
     else {
@@ -4058,10 +4017,7 @@ fn opaque_scalar_pointer_dereference(context: &ProofSignalContext<'_>) -> bool {
     if memory_access_base_register(instruction.tail) != Some(reg) {
         return false;
     }
-    let fragment_start = context
-        .terminal_line
-        .map(|line| verifier_fragment_start_line(context.log, line))
-        .unwrap_or_else(|| verifier_fragment_start_line(context.log, instruction.line));
+    let fragment_start = terminal_fragment_start(context, instruction);
     let Some((state, _, frame)) = latest_reg_state_before_instruction_with_origin(
         context.branch_states,
         instruction,
@@ -4414,10 +4370,7 @@ fn stale_pointer_after_invalidating_helper(
     if memory_access_base_register(instruction.tail) != Some(reg) {
         return None;
     }
-    let fragment_start = context
-        .terminal_line
-        .map(|line| verifier_fragment_start_line(context.log, line))
-        .unwrap_or_else(|| verifier_fragment_start_line(context.log, instruction.line));
+    let fragment_start = terminal_fragment_start(context, instruction);
     let Some((state, state_log_line, state_frame)) =
         latest_reg_state_before_instruction_with_origin(
             context.branch_states,
@@ -5048,10 +5001,7 @@ fn prohibited_pointer_arithmetic(context: &ProofSignalContext<'_>) -> bool {
     if register_operands(instruction.tail).first().copied() != Some(reg) {
         return false;
     }
-    let fragment_start = context
-        .terminal_line
-        .map(|line| verifier_fragment_start_line(context.log, line))
-        .unwrap_or_else(|| verifier_fragment_start_line(context.log, instruction.line));
+    let fragment_start = terminal_fragment_start(context, instruction);
     latest_reg_state_before_instruction(context.states, instruction, fragment_start, reg)
         .is_some_and(verifier_pointer_state_for_arithmetic)
 }
@@ -5176,10 +5126,7 @@ fn kfunc_argument_type_mismatch(context: &ProofSignalContext<'_>) -> bool {
     else {
         return false;
     };
-    let fragment_start = context
-        .terminal_line
-        .map(|line| verifier_fragment_start_line(context.log, line))
-        .unwrap_or_else(|| verifier_fragment_start_line(context.log, instruction.line));
+    let fragment_start = terminal_fragment_start(context, instruction);
     let Some(state) = latest_reg_state_for_call_argument(
         context.states,
         instruction,
@@ -5255,10 +5202,7 @@ fn verifier_type_contract_mismatch(context: &ProofSignalContext<'_>) -> bool {
     if direct_call_target_from_instruction_tail(instruction.tail).is_none() {
         return false;
     }
-    let fragment_start = context
-        .terminal_line
-        .map(|line| verifier_fragment_start_line(context.log, line))
-        .unwrap_or_else(|| verifier_fragment_start_line(context.log, instruction.line));
+    let fragment_start = terminal_fragment_start(context, instruction);
     latest_type_contract_argument_state(context, instruction, fragment_start, reg)
         .is_some_and(|state| actual_type_matches_state(&actual_type, state))
 }
@@ -5378,10 +5322,7 @@ fn trusted_nullable_argument(context: &ProofSignalContext<'_>) -> bool {
     let Some(reg) = nullable_argument_register(&terminal).or(fallback_reg) else {
         return false;
     };
-    let fragment_start = context
-        .terminal_line
-        .map(|line| verifier_fragment_start_line(context.log, line))
-        .unwrap_or_else(|| verifier_fragment_start_line(context.log, instruction.line));
+    let fragment_start = terminal_fragment_start(context, instruction);
     let Some(state) = latest_reg_state_for_call_argument(
         context.states,
         instruction,
@@ -5444,10 +5385,7 @@ fn terminal_stack_memory_access_range(context: &ProofSignalContext<'_>) -> Optio
         context.terminal_line,
     )?;
     let base_reg = memory_access_base_register(instruction.tail)?;
-    let fragment_start = context
-        .terminal_line
-        .map(|line| verifier_fragment_start_line(context.log, line))
-        .unwrap_or_else(|| verifier_fragment_start_line(context.log, instruction.line));
+    let fragment_start = terminal_fragment_start(context, instruction);
     let base =
         latest_reg_state_before_instruction(context.states, instruction, fragment_start, base_reg)?;
     if base.reg_type != "fp" {
@@ -5819,10 +5757,7 @@ fn map_value_access_out_of_bounds(context: &ProofSignalContext<'_>) -> bool {
     else {
         return false;
     };
-    let fragment_start = context
-        .terminal_line
-        .map(|line| verifier_fragment_start_line(context.log, line))
-        .unwrap_or_else(|| verifier_fragment_start_line(context.log, instruction.line));
+    let fragment_start = terminal_fragment_start(context, instruction);
     let Some(state) = latest_reg_state_before_instruction(
         context.branch_states,
         instruction,
@@ -6033,10 +5968,7 @@ fn stack_alignment_lowering_signal(context: &ProofSignalContext<'_>) -> bool {
     let Some(access_offset) = memory_access_offset(instruction.tail) else {
         return false;
     };
-    let fragment_start = context
-        .terminal_line
-        .map(|line| verifier_fragment_start_line(context.log, line))
-        .unwrap_or_else(|| verifier_fragment_start_line(context.log, instruction.line));
+    let fragment_start = terminal_fragment_start(context, instruction);
     let Some(base_state) =
         latest_reg_state_before_instruction(context.states, instruction, fragment_start, base_reg)
     else {
@@ -6073,10 +6005,7 @@ fn atomic_memory_alignment_scalar_base(context: &ProofSignalContext<'_>) -> bool
     let Some(base_reg) = memory_access_base_register(instruction.tail) else {
         return false;
     };
-    let fragment_start = context
-        .terminal_line
-        .map(|line| verifier_fragment_start_line(context.log, line))
-        .unwrap_or_else(|| verifier_fragment_start_line(context.log, instruction.line));
+    let fragment_start = terminal_fragment_start(context, instruction);
     let Some(base_state) = latest_reg_state_before_instruction(
         context.branch_states,
         instruction,
@@ -6252,10 +6181,7 @@ fn pointer_shift_lowering_signal(context: &ProofSignalContext<'_>) -> bool {
     if !instruction.tail.contains(&format!("r{reg} <<=")) {
         return false;
     }
-    let fragment_start = context
-        .terminal_line
-        .map(|line| verifier_fragment_start_line(context.log, line))
-        .unwrap_or_else(|| verifier_fragment_start_line(context.log, instruction.line));
+    let fragment_start = terminal_fragment_start(context, instruction);
     latest_reg_state_before_instruction(context.states, instruction, fragment_start, reg)
         .is_some_and(is_pointer_state)
 }
@@ -6278,10 +6204,7 @@ fn modified_context_pointer_lowering_signal(context: &ProofSignalContext<'_>) ->
     if memory_access_base_register(instruction.tail) != Some(reg) {
         return false;
     }
-    let fragment_start = context
-        .terminal_line
-        .map(|line| verifier_fragment_start_line(context.log, line))
-        .unwrap_or_else(|| verifier_fragment_start_line(context.log, instruction.line));
+    let fragment_start = terminal_fragment_start(context, instruction);
     let Some(state) =
         latest_reg_state_before_instruction(context.states, instruction, fragment_start, reg)
     else {
@@ -6311,10 +6234,7 @@ fn shared_instruction_pointer_merge_signal(context: &ProofSignalContext<'_>) -> 
     let Some(base_reg) = memory_access_base_register(instruction.tail) else {
         return false;
     };
-    let fragment_start = context
-        .terminal_line
-        .map(|line| verifier_fragment_start_line(context.log, line))
-        .unwrap_or_else(|| verifier_fragment_start_line(context.log, instruction.line));
+    let fragment_start = terminal_fragment_start(context, instruction);
     let Some(current) =
         latest_reg_state_before_instruction(context.states, instruction, fragment_start, base_reg)
     else {
@@ -6352,10 +6272,7 @@ fn subprogram_context_argument_dropped_signal(context: &ProofSignalContext<'_>) 
     let Some(callee) = invalid_args_function_name(context.terminal_error) else {
         return false;
     };
-    let fragment_start = context
-        .terminal_line
-        .map(|line| verifier_fragment_start_line(context.log, line))
-        .unwrap_or_else(|| verifier_fragment_start_line(context.log, instruction.line));
+    let fragment_start = terminal_fragment_start(context, instruction);
     let Some(rejected) = source_for_instruction_in_fragment(
         context.source_events,
         instruction.pc,
@@ -6551,10 +6468,7 @@ fn packet_access_without_bounds_proof(context: &ProofSignalContext<'_>) -> bool 
     else {
         return false;
     };
-    let fragment_start = context
-        .terminal_line
-        .map(|line| verifier_fragment_start_line(context.log, line))
-        .unwrap_or_else(|| verifier_fragment_start_line(context.log, instruction.line));
+    let fragment_start = terminal_fragment_start(context, instruction);
     let Some(state) = latest_reg_state_before_instruction(
         context.branch_states,
         instruction,
@@ -7463,10 +7377,7 @@ fn map_value_relation_precision_boundary(context: &ProofSignalContext<'_>) -> bo
     let Some(length_reg) = scalar_length_helper_argument_register(target) else {
         return false;
     };
-    let fragment_start = context
-        .terminal_line
-        .map(|line| verifier_fragment_start_line(context.log, line))
-        .unwrap_or_else(|| verifier_fragment_start_line(context.log, instruction.line));
+    let fragment_start = terminal_fragment_start(context, instruction);
     let Some(pointer_state) = latest_reg_state_before_instruction(
         context.branch_states,
         instruction,
@@ -7712,10 +7623,7 @@ fn memory_object_access_out_of_bounds(context: &ProofSignalContext<'_>) -> bool 
     let Some(instruction_offset) = memory_access_offset(instruction.tail) else {
         return false;
     };
-    let fragment_start = context
-        .terminal_line
-        .map(|line| verifier_fragment_start_line(context.log, line))
-        .unwrap_or_else(|| verifier_fragment_start_line(context.log, instruction.line));
+    let fragment_start = terminal_fragment_start(context, instruction);
     let Some(base_state) = latest_reg_state_before_instruction(
         context.branch_states,
         instruction,
@@ -7769,10 +7677,7 @@ fn return_range_out_of_bounds(context: &ProofSignalContext<'_>) -> bool {
     if !instruction_is_bpf_exit(instruction.tail) {
         return false;
     }
-    let fragment_start = context
-        .terminal_line
-        .map(|line| verifier_fragment_start_line(context.log, line))
-        .unwrap_or_else(|| verifier_fragment_start_line(context.log, instruction.line));
+    let fragment_start = terminal_fragment_start(context, instruction);
     latest_reg_state_at_or_before_instruction(
         context.branch_states,
         instruction,
@@ -7814,10 +7719,7 @@ fn stack_variable_offset_out_of_bounds(context: &ProofSignalContext<'_>) -> bool
     {
         return false;
     }
-    let fragment_start = context
-        .terminal_line
-        .map(|line| verifier_fragment_start_line(context.log, line))
-        .unwrap_or_else(|| verifier_fragment_start_line(context.log, instruction.line));
+    let fragment_start = terminal_fragment_start(context, instruction);
     let Some(base_state) = latest_reg_state_before_instruction(
         context.branch_states,
         instruction,
@@ -7874,10 +7776,7 @@ fn scalar_range_unsafe_at_use(context: &ProofSignalContext<'_>) -> bool {
     if !instruction_consumes_scalar_register(instruction.tail, reg) {
         return false;
     }
-    let fragment_start = context
-        .terminal_line
-        .map(|line| verifier_fragment_start_line(context.log, line))
-        .unwrap_or_else(|| verifier_fragment_start_line(context.log, instruction.line));
+    let fragment_start = terminal_fragment_start(context, instruction);
     latest_reg_state_before_instruction(context.states, instruction, fragment_start, reg)
         .is_some_and(|state| scalar_range_state_is_unsafe_for_signal(state, context.terminal_error))
 }
