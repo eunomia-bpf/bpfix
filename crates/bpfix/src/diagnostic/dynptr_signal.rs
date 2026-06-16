@@ -2,9 +2,10 @@ use bpfanalysis::helper_abi::{
     helper_dynptr_initialized_arg, helper_dynptr_initializer_output_arg, helper_dynptr_live_arg,
 };
 use bpfanalysis::verifier_log::{
-    call_target_from_instruction_tail, latest_verifier_state_before_instruction, parse_i64_after,
-    reg_state_has_variable_offset, stack_value_range, verifier_fragment_start_line, RegState,
-    StackByteRange, StackState, VerifierInsn, VerifierLogInstruction as TerminalInstruction,
+    call_target_from_instruction_tail, latest_stack_slot_overlaps_before,
+    latest_verifier_state_before_instruction, parse_i64_after, reg_state_has_variable_offset,
+    stack_value_range, verifier_fragment_start_line, RegState, StackByteRange,
+    StackSlotOverlapQuery, StackState, VerifierInsn, VerifierLogInstruction as TerminalInstruction,
 };
 
 use crate::family::ProofObligation;
@@ -226,43 +227,19 @@ fn latest_live_ref_dynptr_stack_overlap_before_instruction(
     access: StackByteRange,
     frame: usize,
 ) -> Option<bool> {
-    for state in context
-        .states
-        .iter()
-        .filter(|state| state.log_line >= fragment_start)
-        .filter(|state| state.log_line < instruction.line)
-        .filter(|state| state.pc <= instruction.pc)
-        .filter(|state| state.frame == frame)
-        .rev()
-    {
-        let mut saw_overlap = false;
-        let mut saw_live_ref_dynptr = false;
-        for (offset, stack) in &state.stack {
-            let is_live_ref_dynptr = dynptr_stack_slot_has_live_ref(stack, state);
-            let is_dynptr = is_live_ref_dynptr
-                || stack
-                    .value
-                    .as_ref()
-                    .is_some_and(|value| value.reg_type.starts_with("dynptr"));
-            let Some(range) = stack_value_range(*offset, if is_dynptr { 16 } else { 8 }) else {
-                continue;
-            };
-            if !range.overlaps(access) {
-                continue;
-            }
-            saw_overlap = true;
-            if is_live_ref_dynptr {
-                saw_live_ref_dynptr = true;
-            }
-        }
-        if saw_live_ref_dynptr {
-            return Some(true);
-        }
-        if saw_overlap {
-            return Some(false);
-        }
-    }
-    None
+    latest_stack_slot_overlaps_before(
+        context.states,
+        StackSlotOverlapQuery {
+            access,
+            frame,
+            fragment_start_line: fragment_start,
+            before_pc: Some(instruction.pc),
+            before_line: Some(instruction.line),
+        },
+        dynptr_stack_slot_size,
+        dynptr_stack_slot_has_live_ref,
+    )
+    .map(|overlaps| overlaps.iter().any(|overlap| overlap.is_target))
 }
 
 fn dynptr_packet_rdwr_disallowed(context: &ProofSignalContext<'_>) -> bool {
@@ -504,44 +481,44 @@ fn dynptr_stack_slot_relation(
     }
     let offset = i16::try_from(arg.offset?).ok()?;
     let access = stack_value_range(offset, 16)?;
-    for state in context
-        .states
+    let overlaps = latest_stack_slot_overlaps_before(
+        context.states,
+        StackSlotOverlapQuery {
+            access,
+            frame: arg_frame,
+            fragment_start_line: fragment_start,
+            before_pc: Some(instruction.pc),
+            before_line: Some(instruction.line),
+        },
+        dynptr_stack_slot_size,
+        |stack, _| dynptr_stack_slot_is_dynptr(stack),
+    )?;
+    overlaps
         .iter()
-        .filter(|state| state.log_line >= fragment_start)
-        .filter(|state| state.log_line < instruction.line)
-        .filter(|state| state.pc <= instruction.pc)
-        .rev()
-    {
-        let mut saw_overlapping_stack_state = false;
-        if state.frame != arg_frame {
-            continue;
-        }
-        for (slot_offset, stack) in &state.stack {
-            let is_dynptr = stack
-                .value
-                .as_ref()
-                .is_some_and(|value| value.reg_type.starts_with("dynptr"));
-            let Some(slot_range) = stack_value_range(*slot_offset, if is_dynptr { 16 } else { 8 })
-            else {
-                continue;
-            };
-            if !slot_range.overlaps(access) {
-                continue;
+        .filter(|overlap| overlap.is_target)
+        .find_map(|overlap| {
+            if overlap.offset == offset {
+                Some(DynptrStackSlotRelation::Exact)
+            } else {
+                overlap
+                    .range
+                    .contains(offset)
+                    .then_some(DynptrStackSlotRelation::Interior)
             }
-            saw_overlapping_stack_state = true;
-            if !is_dynptr {
-                continue;
-            }
-            if *slot_offset == offset {
-                return Some(DynptrStackSlotRelation::Exact);
-            }
-            if slot_range.contains(offset) {
-                return Some(DynptrStackSlotRelation::Interior);
-            }
-        }
-        if saw_overlapping_stack_state {
-            return None;
-        }
+        })
+}
+
+fn dynptr_stack_slot_size(stack: &StackState, _: &VerifierInsn) -> i16 {
+    if dynptr_stack_slot_is_dynptr(stack) {
+        16
+    } else {
+        8
     }
-    None
+}
+
+fn dynptr_stack_slot_is_dynptr(stack: &StackState) -> bool {
+    stack
+        .value
+        .as_ref()
+        .is_some_and(|value| value.reg_type.starts_with("dynptr"))
 }

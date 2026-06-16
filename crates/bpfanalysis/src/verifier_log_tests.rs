@@ -118,8 +118,110 @@ fn parses_memory_access_shape() {
     assert_eq!(slot.len(), 8);
     assert_eq!(slot.start(), -16);
     assert_eq!(slot.end(), -8);
+    let bare_fp = RegState::new("fp", VerifierValueWidth::Unknown);
+    assert_eq!(
+        stack_memory_access_range(&bare_fp, "(79) r1 = *(u64 *)(r10 -8)")
+            .unwrap()
+            .start(),
+        -8
+    );
     assert!(stack_value_range(-8, -1).is_none());
     assert!(stack_access_range("invalid read from stack R3 off -12 size -4").is_none());
+}
+
+#[test]
+fn queries_latest_stack_slot_overlap_window() {
+    let log = "\
+0: R10=fp0 fp-16=dynptr(ref_id=7) refs=7
+1: R10=fp0 fp-24=scalar refs=7
+2: R10=fp0 fp-16=dynptr(ref_id=7) refs=7
+3: (7b) *(u64 *)(r10 -8) = r1
+";
+    let states = parse_verifier_log(log);
+    let dynptr_slot = |stack: &StackState, _: &VerifierInsn| {
+        stack
+            .value
+            .as_ref()
+            .is_some_and(|value| value.reg_type.starts_with("dynptr"))
+    };
+
+    assert_eq!(
+        latest_stack_target_overlap_before(
+            &states,
+            StackSlotOverlapQuery {
+                access: stack_value_range(-12, 4).unwrap(),
+                frame: 0,
+                fragment_start_line: 1,
+                before_pc: Some(3),
+                before_line: Some(4),
+            },
+            16,
+            dynptr_slot,
+        ),
+        Some(true)
+    );
+    assert_eq!(
+        latest_stack_target_overlap_before(
+            &states,
+            StackSlotOverlapQuery {
+                access: stack_value_range(-24, 4).unwrap(),
+                frame: 0,
+                fragment_start_line: 1,
+                before_pc: Some(3),
+                before_line: Some(4),
+            },
+            16,
+            dynptr_slot,
+        ),
+        Some(false)
+    );
+
+    let live_ref_dynptr = |stack: &StackState, state: &VerifierInsn| {
+        stack
+            .value
+            .as_ref()
+            .and_then(|value| value.ref_id)
+            .is_some_and(|ref_id| state.ref_ids.contains(&ref_id))
+    };
+    let overlaps = latest_stack_slot_overlaps_before(
+        &states,
+        StackSlotOverlapQuery {
+            access: stack_value_range(-8, 1).unwrap(),
+            frame: 0,
+            fragment_start_line: 1,
+            before_pc: Some(3),
+            before_line: Some(4),
+        },
+        |stack, state| if dynptr_slot(stack, state) { 16 } else { 8 },
+        live_ref_dynptr,
+    )
+    .unwrap();
+    assert_eq!(overlaps.len(), 1);
+    assert_eq!(overlaps[0].offset, -16);
+    assert_eq!(overlaps[0].range.end(), 0);
+    assert!(overlaps[0].is_target);
+
+    let masked_log = "\
+0: R10=fp0 fp-16=dynptr(ref_id=7) refs=7
+1: R10=fp0 fp-16=scalar refs=7
+2: (7b) *(u64 *)(r10 -8) = r1
+";
+    let states = parse_verifier_log(masked_log);
+    assert_eq!(
+        latest_stack_target_overlap_before(
+            &states,
+            StackSlotOverlapQuery {
+                access: stack_value_range(-12, 4).unwrap(),
+                frame: 0,
+                fragment_start_line: 1,
+                before_pc: Some(2),
+                before_line: Some(3),
+            },
+            16,
+            dynptr_slot,
+        ),
+        Some(false)
+    );
 }
 
 #[test]

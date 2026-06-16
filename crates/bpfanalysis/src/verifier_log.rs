@@ -935,6 +935,22 @@ impl StackByteRange {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct StackSlotOverlap {
+    pub offset: i16,
+    pub range: StackByteRange,
+    pub is_target: bool,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct StackSlotOverlapQuery {
+    pub access: StackByteRange,
+    pub frame: usize,
+    pub fragment_start_line: usize,
+    pub before_pc: Option<usize>,
+    pub before_line: Option<usize>,
+}
+
 pub fn stack_value_range(offset: i16, size: i16) -> Option<StackByteRange> {
     if size < 0 {
         return None;
@@ -946,7 +962,7 @@ pub fn stack_memory_access_range(
     base: &RegState,
     instruction_tail: &str,
 ) -> Option<StackByteRange> {
-    let base_offset = i16::try_from(base.offset?).ok()?;
+    let base_offset = i16::try_from(base.offset.unwrap_or(0)).ok()?;
     let access_offset = i16::try_from(memory_access_offset(instruction_tail)?).ok()?;
     let start = base_offset.checked_add(access_offset)?;
     let width = i16::try_from(memory_access_width(instruction_tail)?).ok()?;
@@ -977,6 +993,80 @@ pub fn stack_access_range(message: &str) -> Option<StackByteRange> {
 
 pub fn stack_read_access(message: &str) -> Option<StackReadAccess> {
     message.split(';').find_map(parse_stack_read_access_segment)
+}
+
+/// Returns whether the newest verifier state that overlaps `query.access`
+/// contains a target stack slot.
+///
+/// `Some(true)` means that newest overlapping state contains a target slot that
+/// either covers the access start or is fully covered by the access.
+/// `Some(false)` means an overlapping state exists, but not in a target shape.
+/// `None` means no stack state in the selected verifier window overlaps the
+/// access. Non-target slots are treated as 8-byte verifier stack slots.
+pub fn latest_stack_target_overlap_before(
+    states: &[VerifierInsn],
+    query: StackSlotOverlapQuery,
+    target_size: i16,
+    target_slot: impl Fn(&StackState, &VerifierInsn) -> bool,
+) -> Option<bool> {
+    let target_slot = &target_slot;
+    let overlaps = latest_stack_slot_overlaps_before(
+        states,
+        query,
+        |stack, state| {
+            if target_slot(stack, state) {
+                target_size
+            } else {
+                8
+            }
+        },
+        |stack, state| target_slot(stack, state),
+    )?;
+    Some(
+        overlaps
+            .iter()
+            .filter(|overlap| overlap.is_target)
+            .any(|overlap| {
+                overlap.range.contains(query.access.start())
+                    || query.access.contains_range(overlap.range)
+            }),
+    )
+}
+
+/// Returns all stack slots from the newest verifier state that overlaps
+/// `query.access`.
+///
+/// Callers provide slot sizing and target classification separately. This keeps
+/// protocol-specific decisions such as dynptr/live-reference handling outside
+/// the log parser while preserving verifier-window ordering in one place.
+pub fn latest_stack_slot_overlaps_before(
+    states: &[VerifierInsn],
+    query: StackSlotOverlapQuery,
+    slot_size: impl Fn(&StackState, &VerifierInsn) -> i16,
+    target_slot: impl Fn(&StackState, &VerifierInsn) -> bool,
+) -> Option<Vec<StackSlotOverlap>> {
+    states
+        .iter()
+        .filter(|state| state.log_line >= query.fragment_start_line)
+        .filter(|state| state.frame == query.frame)
+        .filter(|state| query.before_pc.is_none_or(|pc| state.pc <= pc))
+        .filter(|state| query.before_line.is_none_or(|line| state.log_line < line))
+        .rev()
+        .find_map(|state| {
+            let overlaps = state
+                .stack
+                .iter()
+                .filter_map(|(offset, stack)| {
+                    let range = stack_value_range(*offset, slot_size(stack, state))?;
+                    range.overlaps(query.access).then(|| StackSlotOverlap {
+                        offset: *offset,
+                        range,
+                        is_target: target_slot(stack, state),
+                    })
+                })
+                .collect::<Vec<_>>();
+            (!overlaps.is_empty()).then_some(overlaps)
+        })
 }
 
 fn parse_stack_read_access_segment(segment: &str) -> Option<StackReadAccess> {

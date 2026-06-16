@@ -1,8 +1,8 @@
 use bpfanalysis::verifier_log::{
-    latest_reg_state_before_instruction_with_frame, latest_verifier_state_before_instruction,
-    memory_access_base_register, memory_access_is_load, memory_access_is_store, stack_read_access,
-    stack_value_range, terminal_instruction_access_width, terminal_instruction_memory_offset,
-    verifier_fragment_start_line, RegState, StackByteRange, StackReadAccess, StackState,
+    latest_reg_state_before_instruction_with_frame, latest_stack_target_overlap_before,
+    latest_verifier_state_before_instruction, memory_access_base_register, memory_access_is_load,
+    memory_access_is_store, stack_memory_access_range, stack_read_access, RegState, StackByteRange,
+    StackReadAccess, StackSlotOverlapQuery, StackState,
     VerifierLogInstruction as TerminalInstruction,
 };
 
@@ -82,30 +82,9 @@ fn terminal_stack_memory_access_site(context: &ProofSignalContext<'_>) -> Option
     if !memory_access_is_load(instruction.tail) {
         return None;
     }
-    let width =
-        terminal_instruction_access_width(context.log, context.terminal_pc, context.terminal_line)?;
-    let insn_offset = terminal_instruction_memory_offset(
-        context.log,
-        context.terminal_pc,
-        context.terminal_line,
-    )?;
-    let base_reg = memory_access_base_register(instruction.tail)?;
-    let (base, frame) = latest_reg_state_before_instruction_with_frame(
-        context.states,
-        instruction,
-        fragment_start,
-        base_reg,
-    )?;
-    if base.reg_type != "fp" {
-        return None;
-    }
-    let base_offset = i64::from(base.offset.unwrap_or(0));
-    let start = base_offset.checked_add(insn_offset)?;
-    let end = start.checked_add(i64::from(width))?;
-    Some(StackAccessSite {
-        range: StackByteRange::new(i16::try_from(start).ok()?, i16::try_from(end).ok()?)?,
-        frame,
-    })
+    let (range, frame) =
+        terminal_stack_memory_range_with_frame(context, instruction, fragment_start)?;
+    Some(StackAccessSite { range, frame })
 }
 
 pub(super) fn terminal_stack_memory_write_range_with_frame(
@@ -116,13 +95,14 @@ pub(super) fn terminal_stack_memory_write_range_with_frame(
     if !memory_access_is_store(instruction.tail) {
         return None;
     }
-    let width =
-        terminal_instruction_access_width(context.log, context.terminal_pc, context.terminal_line)?;
-    let insn_offset = terminal_instruction_memory_offset(
-        context.log,
-        context.terminal_pc,
-        context.terminal_line,
-    )?;
+    terminal_stack_memory_range_with_frame(context, instruction, fragment_start)
+}
+
+fn terminal_stack_memory_range_with_frame(
+    context: &ProofSignalContext<'_>,
+    instruction: TerminalInstruction<'_>,
+    fragment_start: usize,
+) -> Option<(StackByteRange, usize)> {
     let base_reg = memory_access_base_register(instruction.tail)?;
     let (base, frame) = latest_reg_state_before_instruction_with_frame(
         context.states,
@@ -133,13 +113,8 @@ pub(super) fn terminal_stack_memory_write_range_with_frame(
     if base.reg_type != "fp" {
         return None;
     }
-    let base_offset = i64::from(base.offset.unwrap_or(0));
-    let start = base_offset.checked_add(insn_offset)?;
-    let end = start.checked_add(i64::from(width))?;
-    Some((
-        StackByteRange::new(i16::try_from(start).ok()?, i16::try_from(end).ok()?)?,
-        frame,
-    ))
+    let range = stack_memory_access_range(base, instruction.tail)?;
+    Some((range, frame))
 }
 
 pub(super) fn latest_stack_value_overlap(
@@ -161,52 +136,18 @@ fn latest_stack_slot_overlap(
 ) -> Option<bool> {
     let fragment_start = context
         .terminal_line
-        .map(|line| verifier_fragment_start_line(context.log, line))
+        .map(|line| bpfanalysis::verifier_log::verifier_fragment_start_line(context.log, line))
         .unwrap_or(0);
-    for state in context
-        .states
-        .iter()
-        .filter(|state| state.log_line >= fragment_start)
-        .filter(|state| state.frame == access.frame)
-        .filter(|state| context.terminal_pc.is_none_or(|pc| state.pc <= pc))
-        .filter(|state| {
-            context
-                .terminal_line
-                .is_none_or(|line| state.log_line < line)
-        })
-        .rev()
-    {
-        let mut saw_overlap = false;
-        let mut start_in_target = false;
-        let mut start_in_non_target = false;
-        let mut contains_target = false;
-        for (offset, stack) in &state.stack {
-            let is_target = target_slot(stack);
-            let Some(range) = stack_value_range(*offset, if is_target { target_size } else { 8 })
-            else {
-                continue;
-            };
-            if !range.overlaps(access.range) {
-                continue;
-            }
-            saw_overlap = true;
-            if range.contains(access.range.start()) {
-                if is_target {
-                    start_in_target = true;
-                } else {
-                    start_in_non_target = true;
-                }
-            }
-            if is_target && access.range.contains_range(range) {
-                contains_target = true;
-            }
-        }
-        if contains_target || start_in_target {
-            return Some(true);
-        }
-        if start_in_non_target || saw_overlap {
-            return Some(false);
-        }
-    }
-    None
+    latest_stack_target_overlap_before(
+        context.states,
+        StackSlotOverlapQuery {
+            access: access.range,
+            frame: access.frame,
+            fragment_start_line: fragment_start,
+            before_pc: context.terminal_pc,
+            before_line: context.terminal_line,
+        },
+        target_size,
+        |stack, _| target_slot(stack),
+    )
 }
