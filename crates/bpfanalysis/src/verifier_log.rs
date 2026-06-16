@@ -710,6 +710,23 @@ pub fn latest_register_assignment<'a>(
         .last()
 }
 
+pub fn register_assigned_between(
+    states: &[VerifierInsn],
+    log: &str,
+    reg: u8,
+    frame: usize,
+    fragment_start_line: usize,
+    after_line: usize,
+    before_line: usize,
+) -> bool {
+    instructions_in_line_range(log, after_line.saturating_add(1), before_line)
+        .filter(|instruction| instruction_assigns_register(instruction.tail, reg))
+        .any(|instruction| {
+            instruction_frame(states, instruction, fragment_start_line)
+                .is_none_or(|assigned_frame| assigned_frame == frame)
+        })
+}
+
 pub fn instruction_writes_register(instruction_tail: &str, reg: u8) -> bool {
     let mut tokens = instruction_tail.split_whitespace();
     let Some(first) = tokens.next() else {
@@ -731,6 +748,11 @@ pub fn instruction_writes_register(instruction_tail: &str, reg: u8) -> bool {
     tokens
         .next()
         .is_some_and(|operator| operator.ends_with('='))
+}
+
+pub fn register_written_between(log: &str, after_line: usize, before_line: usize, reg: u8) -> bool {
+    instructions_in_line_range(log, after_line.saturating_add(1), before_line)
+        .any(|instruction| instruction_writes_register(instruction.tail, reg))
 }
 
 pub fn instruction_is_bpf_exit(instruction_tail: &str) -> bool {

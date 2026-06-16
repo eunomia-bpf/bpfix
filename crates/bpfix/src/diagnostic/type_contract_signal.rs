@@ -1,8 +1,7 @@
 use bpfanalysis::verifier_log::{
     call_target_from_instruction_tail, direct_call_target_from_instruction_tail,
-    instruction_writes_register, instructions_in_line_range,
     latest_reg_state_before_instruction_with_log_line, latest_verifier_state_before_instruction,
-    parse_u32_after, terminal_instruction_site, RegState,
+    parse_u32_after, register_written_between, terminal_instruction_site, RegState,
     VerifierLogInstruction as TerminalInstruction,
 };
 
@@ -150,11 +149,6 @@ fn latest_type_contract_argument_state<'a>(
             })
     })?;
     (!register_written_between(context.log, state_log_line, instruction.line, reg)).then_some(state)
-}
-
-fn register_written_between(log: &str, after_line: usize, before_line: usize, reg: u8) -> bool {
-    instructions_in_line_range(log, after_line.saturating_add(1), before_line)
-        .any(|instruction| instruction_writes_register(instruction.tail, reg))
 }
 
 fn terminal_type_contract(message: &str) -> Option<(u8, String)> {

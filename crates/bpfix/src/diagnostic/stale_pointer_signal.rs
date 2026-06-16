@@ -2,14 +2,14 @@ use bpfanalysis::helper_abi::{
     helper_dynptr_data_invalidating_arg, helper_dynptr_data_producer_arg,
 };
 use bpfanalysis::verifier_log::{
-    call_target_from_instruction_tail, instruction_assigns_register, instruction_frame,
-    instruction_single_register_rhs_source, instruction_site_before_line,
-    instructions_in_line_range, latest_reg_state_before_instruction_with_frame,
+    call_target_from_instruction_tail, instruction_single_register_rhs_source,
+    instruction_site_before_line, instructions_in_line_range,
+    latest_reg_state_before_instruction_with_frame,
     latest_reg_state_before_instruction_with_origin, latest_verifier_state_before_instruction,
     memory_access_base_register, memory_access_is_store, reg_state_has_variable_offset,
-    stack_memory_access_range, stack_value_range, terminal_instruction_site,
-    verifier_fragment_start_line, CallbackKind, RegState, StackByteRange, VerifierInsn,
-    VerifierLogInstruction as TerminalInstruction,
+    register_assigned_between, stack_memory_access_range, stack_value_range,
+    terminal_instruction_site, verifier_fragment_start_line, CallbackKind, RegState,
+    StackByteRange, VerifierInsn, VerifierLogInstruction as TerminalInstruction,
 };
 
 use crate::family::ProofObligation;
@@ -161,23 +161,6 @@ fn prior_dynptr_data_pointer_before_instruction(
                 dynptr_data_origin(context, state.log_line, reg)?,
                 state.log_line,
             ))
-        })
-}
-
-fn register_assigned_between(
-    states: &[VerifierInsn],
-    log: &str,
-    reg: u8,
-    frame: usize,
-    fragment_start: usize,
-    after_line: usize,
-    before_line: usize,
-) -> bool {
-    instructions_in_line_range(log, after_line.saturating_add(1), before_line)
-        .filter(|instruction| instruction_assigns_register(instruction.tail, reg))
-        .any(|instruction| {
-            instruction_frame(states, instruction, fragment_start)
-                .is_none_or(|assigned_frame| assigned_frame == frame)
         })
 }
 

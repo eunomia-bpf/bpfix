@@ -320,6 +320,12 @@ fn queries_latest_register_assignment_with_frame_scope() {
 
     let latest_frame1 = latest_register_assignment(&states, log, 1, 7, 3, 1).unwrap();
     assert_eq!(latest_frame1.pc, 3);
+
+    assert!(register_assigned_between(&states, log, 3, 0, 1, 4, 7));
+    assert!(register_assigned_between(&states, log, 3, 1, 1, 2, 5));
+    assert!(!register_assigned_between(&states, log, 3, 1, 1, 4, 7));
+    assert!(register_written_between(log, 4, 7, 3));
+    assert!(!register_written_between(log, 4, 7, 7));
 }
 
 #[test]
