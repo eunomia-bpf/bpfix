@@ -142,6 +142,26 @@ invalid access to map value, value_size=2 off=1 size=2
 }
 
 #[test]
+fn extracts_loop_state_snapshots_and_detects_repeated_state() {
+    let log = "\
+0: (b7) r0 = 0
+back-edge from insn 7 to 3
+cur state: R0_w=0 R1_rw=scalar(umax=4) R10=fp0
+old state: R0=0 R1=scalar(umax=4) R10=fp0
+processed 8 insns
+";
+
+    let (current, previous) =
+        terminal_loop_state_snapshots(log, "back-edge from insn 7 to 3", Some(2)).unwrap();
+    assert_eq!(current.pc, 7);
+    assert!(loop_state_snapshots_repeat(&current, &previous));
+
+    let mut changed = previous.clone();
+    changed.regs.get_mut(&1).unwrap().range.umax = Some(5);
+    assert!(!loop_state_snapshots_repeat(&current, &changed));
+}
+
+#[test]
 fn locates_terminal_instruction_inside_current_fragment() {
     let log = "\
 0: (b7) r1 = 0

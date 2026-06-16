@@ -2,15 +2,15 @@ use anyhow::Result;
 use bpfanalysis::verifier_log::{
     atomic_memory_access_width, call_target_from_instruction_tail, instruction_assigns_register,
     instruction_frame, instruction_site_before_line, instructions_in_line_range,
-    is_verifier_error_line, is_verifier_fragment_boundary, latest_reg_state_before,
-    latest_reg_state_before_instruction, latest_reg_state_before_instruction_with_origin,
-    latest_reg_state_for_call_argument, latest_reg_state_for_call_argument_with_frame,
+    is_verifier_error_line, latest_reg_state_before, latest_reg_state_before_instruction,
+    latest_reg_state_before_instruction_with_origin, latest_reg_state_for_call_argument,
+    latest_reg_state_for_call_argument_with_frame, loop_state_snapshots_repeat,
     loose_register_operands as register_operands, memory_access_base_register,
     memory_access_is_atomic, memory_access_offset, memory_access_width, parse_instruction_line,
     parse_u32_after, scalar_range_has_any_bound, stack_value_range, terminal_instruction_site,
-    verifier_fragment_start_line, verifier_states_with_branch_deltas_from_log, CallbackKind,
-    RegState, StackByteRange, StackState, VerifierInsn, VerifierInsnKind,
-    VerifierLogInstruction as TerminalInstruction,
+    terminal_loop_state_snapshots, verifier_fragment_start_line,
+    verifier_states_with_branch_deltas_from_log, CallbackKind, RegState, StackByteRange,
+    VerifierInsn, VerifierInsnKind, VerifierLogInstruction as TerminalInstruction,
 };
 
 use crate::family::ProofObligation;
@@ -999,140 +999,12 @@ fn loop_back_edge_state_repeats(context: &ProofSignalContext<'_>) -> bool {
     if context.obligation != ProofObligation::LoopBound {
         return false;
     }
-    let Some((current, previous)) = terminal_loop_state_pair(context) else {
+    let Some((current, previous)) =
+        terminal_loop_state_snapshots(context.log, context.terminal_error, context.terminal_line)
+    else {
         return false;
     };
     loop_state_snapshots_repeat(&current, &previous)
-}
-
-fn terminal_loop_state_pair(
-    context: &ProofSignalContext<'_>,
-) -> Option<(VerifierInsn, VerifierInsn)> {
-    let pc = parse_u32_after(context.terminal_error, "insn ")? as usize;
-    let lines = context.log.lines().collect::<Vec<_>>();
-    let terminal_idx = context
-        .terminal_line
-        .map(|line| line.saturating_sub(1))
-        .or_else(|| {
-            lines
-                .iter()
-                .position(|line| line.contains(context.terminal_error))
-        })?;
-    let mut current = None;
-    let mut previous = None;
-    for line in &lines[terminal_idx.saturating_add(1)..] {
-        let trimmed = line.trim();
-        if let Some(state_text) = trimmed.strip_prefix("cur state:") {
-            current = parse_loop_state_snapshot(pc, state_text.trim());
-        } else if let Some(state_text) = trimmed.strip_prefix("old state:") {
-            previous = parse_loop_state_snapshot(pc, state_text.trim());
-        } else if is_verifier_fragment_boundary(trimmed) {
-            break;
-        }
-        if current.is_some() && previous.is_some() {
-            break;
-        }
-    }
-    current.zip(previous)
-}
-
-fn parse_loop_state_snapshot(pc: usize, state_text: &str) -> Option<VerifierInsn> {
-    let state_text = normalize_loop_state_register_access_suffixes(state_text);
-    let pseudo_log = format!("{pc}: {state_text}");
-    verifier_states_with_branch_deltas_from_log(&pseudo_log)
-        .ok()?
-        .into_iter()
-        .next()
-}
-
-fn normalize_loop_state_register_access_suffixes(state_text: &str) -> String {
-    state_text
-        .split_whitespace()
-        .map(|token| {
-            let Some((lhs, rhs)) = token.split_once('=') else {
-                return token.to_string();
-            };
-            let Some(normalized) = normalize_register_state_lhs(lhs) else {
-                return token.to_string();
-            };
-            format!("{normalized}={rhs}")
-        })
-        .collect::<Vec<_>>()
-        .join(" ")
-}
-
-fn normalize_register_state_lhs(lhs: &str) -> Option<String> {
-    let rest = lhs.strip_prefix('R')?;
-    let digits_len = rest.chars().take_while(|ch| ch.is_ascii_digit()).count();
-    if digits_len == 0 {
-        return None;
-    }
-    let suffix = &rest[digits_len..];
-    matches!(suffix, "" | "_w" | "_r" | "_rw").then(|| format!("R{}", &rest[..digits_len]))
-}
-
-fn loop_state_snapshots_repeat(current: &VerifierInsn, previous: &VerifierInsn) -> bool {
-    if current.frame != previous.frame
-        || current.refs != previous.refs
-        || current.ref_ids != previous.ref_ids
-        || current.callback_kind != previous.callback_kind
-        || current.callback != previous.callback
-    {
-        return false;
-    }
-
-    let current_reg_count = current.regs.keys().filter(|reg| **reg != 10).count();
-    let previous_reg_count = previous.regs.keys().filter(|reg| **reg != 10).count();
-    if current_reg_count != previous_reg_count {
-        return false;
-    }
-    for (reg, state) in current.regs.iter().filter(|(reg, _)| **reg != 10) {
-        let Some(old) = previous.regs.get(reg) else {
-            return false;
-        };
-        if !loop_reg_state_repeats(state, old) {
-            return false;
-        }
-    }
-
-    if current.stack.len() != previous.stack.len() {
-        return false;
-    }
-    for (off, state) in &current.stack {
-        let Some(old) = previous.stack.get(off) else {
-            return false;
-        };
-        if !loop_stack_state_repeats(state, old) {
-            return false;
-        }
-    }
-
-    current_reg_count >= 2 || (current_reg_count >= 1 && !current.stack.is_empty())
-}
-
-fn loop_reg_state_repeats(current: &RegState, previous: &RegState) -> bool {
-    current.reg_type == previous.reg_type
-        && current.value_width == previous.value_width
-        && current.precise == previous.precise
-        && current.exact_value == previous.exact_value
-        && current.tnum == previous.tnum
-        && current.range == previous.range
-        && current.packet_range == previous.packet_range
-        && current.map_value_size == previous.map_value_size
-        && current.mem_size == previous.mem_size
-        && current.offset == previous.offset
-        && current.source_frame == previous.source_frame
-        && current.id == previous.id
-        && current.ref_id == previous.ref_id
-}
-
-fn loop_stack_state_repeats(current: &StackState, previous: &StackState) -> bool {
-    current.slot_types == previous.slot_types
-        && match (&current.value, &previous.value) {
-            (Some(current), Some(previous)) => loop_reg_state_repeats(current, previous),
-            (None, None) => true,
-            _ => false,
-        }
 }
 
 fn pointer_shift_lowering_signal(context: &ProofSignalContext<'_>) -> bool {

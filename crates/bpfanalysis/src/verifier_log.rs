@@ -330,6 +330,98 @@ pub fn verifier_fragment_start_line(log: &str, before_line: usize) -> usize {
         .unwrap_or(1)
 }
 
+pub fn terminal_loop_state_snapshots(
+    log: &str,
+    terminal_error: &str,
+    terminal_line: Option<usize>,
+) -> Option<(VerifierInsn, VerifierInsn)> {
+    let pc = parse_u32_after(terminal_error, "insn ")? as usize;
+    let lines = log.lines().collect::<Vec<_>>();
+    let terminal_idx = terminal_line
+        .map(|line| line.saturating_sub(1))
+        .or_else(|| lines.iter().position(|line| line.contains(terminal_error)))?;
+    let mut current = None;
+    let mut previous = None;
+    for line in &lines[terminal_idx.saturating_add(1)..] {
+        let trimmed = line.trim();
+        if let Some(state_text) = trimmed.strip_prefix("cur state:") {
+            current = parse_loop_state_snapshot(pc, state_text.trim());
+        } else if let Some(state_text) = trimmed.strip_prefix("old state:") {
+            previous = parse_loop_state_snapshot(pc, state_text.trim());
+        } else if is_verifier_fragment_boundary(trimmed) {
+            break;
+        }
+        if current.is_some() && previous.is_some() {
+            break;
+        }
+    }
+    current.zip(previous)
+}
+
+pub fn loop_state_snapshots_repeat(current: &VerifierInsn, previous: &VerifierInsn) -> bool {
+    if current.frame != previous.frame
+        || current.refs != previous.refs
+        || current.ref_ids != previous.ref_ids
+        || current.callback_kind != previous.callback_kind
+        || current.callback != previous.callback
+    {
+        return false;
+    }
+
+    let current_reg_count = non_frame_register_count(current);
+    if current_reg_count != non_frame_register_count(previous)
+        || !current
+            .regs
+            .iter()
+            .filter(|(reg, _)| **reg != 10)
+            .all(|(reg, state)| previous.regs.get(reg) == Some(state))
+    {
+        return false;
+    }
+
+    current.stack == previous.stack
+        && (current_reg_count >= 2 || (current_reg_count >= 1 && !current.stack.is_empty()))
+}
+
+fn non_frame_register_count(state: &VerifierInsn) -> usize {
+    state.regs.keys().filter(|reg| **reg != 10).count()
+}
+
+fn parse_loop_state_snapshot(pc: usize, state_text: &str) -> Option<VerifierInsn> {
+    let state_text = normalize_loop_state_register_access_suffixes(state_text);
+    let pseudo_log = format!("{pc}: {state_text}");
+    verifier_states_with_branch_deltas_from_log(&pseudo_log)
+        .ok()?
+        .into_iter()
+        .next()
+}
+
+fn normalize_loop_state_register_access_suffixes(state_text: &str) -> String {
+    state_text
+        .split_whitespace()
+        .map(|token| {
+            let Some((lhs, rhs)) = token.split_once('=') else {
+                return token.to_string();
+            };
+            let Some(normalized) = normalize_register_state_lhs(lhs) else {
+                return token.to_string();
+            };
+            format!("{normalized}={rhs}")
+        })
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+fn normalize_register_state_lhs(lhs: &str) -> Option<String> {
+    let rest = lhs.strip_prefix('R')?;
+    let digits_len = rest.chars().take_while(|ch| ch.is_ascii_digit()).count();
+    if digits_len == 0 {
+        return None;
+    }
+    let suffix = &rest[digits_len..];
+    matches!(suffix, "" | "_w" | "_r" | "_rw").then(|| format!("R{}", &rest[..digits_len]))
+}
+
 pub fn instruction_on_log_line(
     log: &str,
     line_number: usize,
