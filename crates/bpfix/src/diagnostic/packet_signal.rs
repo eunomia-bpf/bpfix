@@ -9,8 +9,10 @@ use crate::family::ProofObligation;
 use crate::proof::packet_required_range;
 use crate::source::looks_like_packet_bounds_check;
 
-use super::{
+use super::source_query::{
     looks_like_packet_pointer_derivation, max_numeric_token, rejected_source, same_source_location,
+};
+use super::{
     terminal_fragment_start, ProofEvent, ProofEventEvidence, ProofEventRole, ProofSignal,
     ProofSignalContext,
 };

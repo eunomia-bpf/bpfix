@@ -7,11 +7,11 @@ use bpfanalysis::verifier_log::{
 
 use crate::family::ProofObligation;
 
-use super::{
+use super::source_query::{
     call_argument, first_call_argument, invalid_args_function_name, is_bare_identifier_argument,
     map_argument_has_relocation_proof, rejected_source, source_for_instruction_in_fragment,
-    terminal_error_has_nearby_prior_line, terminal_fragment_start, ProofSignalContext,
 };
+use super::{terminal_error_has_nearby_prior_line, terminal_fragment_start, ProofSignalContext};
 
 pub(super) fn map_pointer_argument_scalar_zero(context: &ProofSignalContext<'_>) -> bool {
     if !context.terminal_error.contains("expected=map_ptr") {

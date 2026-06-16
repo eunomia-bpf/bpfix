@@ -7,10 +7,10 @@ use bpfanalysis::verifier_log::{
 
 use crate::family::ProofObligation;
 
-use super::{
-    call_argument, invalid_args_function_name, is_pointer_state,
-    source_for_instruction_in_fragment, terminal_fragment_start, ProofSignal, ProofSignalContext,
+use super::source_query::{
+    call_argument, invalid_args_function_name, source_for_instruction_in_fragment,
 };
+use super::{is_pointer_state, terminal_fragment_start, ProofSignal, ProofSignalContext};
 
 pub(super) fn bytecode_only_lowering_signal(
     log: &str,

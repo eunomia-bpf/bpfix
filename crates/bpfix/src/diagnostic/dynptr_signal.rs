@@ -10,6 +10,7 @@ use bpfanalysis::verifier_log::{
 
 use crate::family::ProofObligation;
 
+use super::source_query::rejected_source;
 use super::stack_access::{
     latest_stack_value_overlap, stack_access_site_for_terminal_range,
     stack_access_site_from_context, terminal_stack_memory_write_range_with_frame,
@@ -17,7 +18,7 @@ use super::stack_access::{
 use super::{
     dynptr_slot_backing_before, dynptr_stack_slot_for_call_argument,
     latest_live_ref_dynptr_stack_overlap_before_instruction, latest_reg_state_for_call_argument,
-    latest_reg_state_for_call_argument_with_frame, rejected_source, terminal_call_instruction_site,
+    latest_reg_state_for_call_argument_with_frame, terminal_call_instruction_site,
     terminal_fragment_start, DynptrBacking, ProofSignalContext,
 };
 

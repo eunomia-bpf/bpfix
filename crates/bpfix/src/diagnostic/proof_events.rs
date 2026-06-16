@@ -14,11 +14,11 @@ use crate::source::{
 };
 
 use super::packet_signal::guard_branch_packet_operand_registers;
-use super::{
-    identifier_tokens, is_pointer_state, looks_like_packet_pointer_derivation,
-    same_source_location, source_for_pc_in_rejected_file, ProofEvent, ProofEventEvidence,
-    ProofEventRole,
+use super::source_query::{
+    identifier_tokens, looks_like_packet_pointer_derivation, same_source_location,
+    source_for_pc_in_rejected_file,
 };
+use super::{is_pointer_state, ProofEvent, ProofEventEvidence, ProofEventRole};
 
 pub(super) fn pointer_provenance_events(
     states: &[VerifierInsn],

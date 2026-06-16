@@ -14,10 +14,13 @@ use bpfanalysis::verifier_log::{
 use crate::family::ProofObligation;
 use crate::source::{looks_like_scalar_guard, SourceEvent, SourceLocation};
 
-use super::{
+use super::source_query::{
     identifier_tokens, is_bare_identifier_argument, max_numeric_token, numeric_tokens,
-    register_from_terminal_error, rejected_source, terminal_fragment_start, ProofEvent,
-    ProofEventEvidence, ProofEventRole, ProofSignal, ProofSignalContext,
+    rejected_source, same_source_location,
+};
+use super::{
+    register_from_terminal_error, terminal_fragment_start, ProofEvent, ProofEventEvidence,
+    ProofEventRole, ProofSignal, ProofSignalContext,
 };
 
 pub(super) fn map_value_wide_access(
@@ -354,7 +357,7 @@ fn source_event_log_line(
 ) -> Option<usize> {
     source_events
         .iter()
-        .filter(|event| super::same_source_location(&event.source, source))
+        .filter(|event| same_source_location(&event.source, source))
         .filter(|event| event.pc == pc)
         .filter(|event| terminal_line.is_none_or(|terminal_line| event.log_line < terminal_line))
         .map(|event| event.log_line)

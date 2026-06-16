@@ -69,12 +69,6 @@ mod stack_signal;
 mod stale_pointer_signal;
 mod type_contract_signal;
 pub use signal::ProofSignal;
-use source_query::{
-    call_argument, first_call_argument, identifier_tokens, invalid_args_function_name,
-    is_bare_identifier_argument, looks_like_packet_pointer_derivation,
-    map_argument_has_relocation_proof, max_numeric_token, numeric_tokens, rejected_source,
-    same_source_location, source_for_instruction_in_fragment, source_for_pc_in_rejected_file,
-};
 
 #[cfg(test)]
 pub fn analyze_verifier_log(

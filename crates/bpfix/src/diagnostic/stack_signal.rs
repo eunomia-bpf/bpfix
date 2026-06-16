@@ -10,10 +10,8 @@ use bpfanalysis::verifier_log::{
 
 use crate::family::ProofObligation;
 
-use super::{
-    call_argument, is_bare_identifier_argument, rejected_source, terminal_fragment_start,
-    ProofSignalContext,
-};
+use super::source_query::{call_argument, is_bare_identifier_argument, rejected_source};
+use super::{terminal_fragment_start, ProofSignalContext};
 
 pub(super) fn map_lookup_key_argument_unreadable(context: &ProofSignalContext<'_>) -> bool {
     if !context.terminal_error.contains("!read_ok") || context.register != Some(2) {

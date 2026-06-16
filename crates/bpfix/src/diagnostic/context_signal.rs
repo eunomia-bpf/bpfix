@@ -10,9 +10,10 @@ use bpfanalysis::verifier_log::{
 
 use crate::family::ProofObligation;
 
+use super::source_query::rejected_source;
 use super::{
-    latest_register_assignment, register_from_terminal_error, rejected_source,
-    terminal_error_has_nearby_prior_line, terminal_fragment_start, ProofSignalContext,
+    latest_register_assignment, register_from_terminal_error, terminal_error_has_nearby_prior_line,
+    terminal_fragment_start, ProofSignalContext,
 };
 
 pub(super) fn bpf_prog_context_argument_mismatch(context: &ProofSignalContext<'_>) -> bool {
