@@ -10,9 +10,7 @@ source:
   raw_excerpt_files:
   - bpfix-bench/raw/gh/github-commit-aya-9be90f8a74de.yaml
 reproducer:
-  status: ready
   reconstruction: reconstructed
-  language: C
   source_file: prog.c
   build_command: make
   object_path: prog.o
@@ -23,9 +21,6 @@ reproducer:
 capture:
   capture_id: github-commit-aya-9be90f8a74de__kernel-6.15.11-clang-18-log2
   environment_id: kernel-6.15.11-clang-18-log2
-  build_status: success
-  load_status: verifier_reject
-  verifier_pass: false
   verifier_log: replay-verifier.log
   capture_metadata: capture.yaml
   log_quality: trace_rich
@@ -47,7 +42,6 @@ label:
   label_source: external_replay_reconstruction
   root_cause_description: A verifier-visible record length is used as a buffer
     offset without proving it is within the stack buffer.
-  legacy_rejected_insn_idx: null
   root_cause_insn_idx: null
   rejected_line: null
   root_cause_line: null
@@ -60,6 +54,5 @@ repair:
 reporting:
   family_id: github-commit-aya-log-buffer-bounds
   representative: false
-  intentional_negative_test: false
   notes: Reconstructed from a raw GitHub commit diff without an external verifier
     log; same verifier pattern as github-commit-aya-628b473e0937.

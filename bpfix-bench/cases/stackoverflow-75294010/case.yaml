@@ -10,9 +10,7 @@ source:
   raw_excerpt_files:
   - bpfix-bench/raw/so/stackoverflow-75294010.yaml
 reproducer:
-  status: ready
   reconstruction: reconstructed
-  language: C
   source_file: prog.c
   build_command: make
   object_path: prog.o
@@ -25,9 +23,6 @@ reproducer:
 capture:
   capture_id: stackoverflow-75294010__kernel-6.15.11-clang-18-log2
   environment_id: kernel-6.15.11-clang-18-log2
-  build_status: success
-  load_status: verifier_reject
-  verifier_pass: false
   verifier_log: replay-verifier.log
   capture_metadata: capture.yaml
   log_quality: trace_rich
@@ -52,7 +47,6 @@ label:
     i.e. the address of the map-value pointer variable on the stack, so the helper
     interprets a stack slot as the output payload instead of the `event` map value
     buffer.
-  legacy_rejected_insn_idx: 11
   root_cause_insn_idx: 11
   rejected_line: event->attr.fd = ctx->fd;
   root_cause_line: event->attr.fd = ctx->fd;
@@ -65,5 +59,4 @@ repair:
 reporting:
   family_id: stackoverflow-75294010
   representative: true
-  intentional_negative_test: false
   notes: External SO/GH case imported as a replay-valid semantic match.

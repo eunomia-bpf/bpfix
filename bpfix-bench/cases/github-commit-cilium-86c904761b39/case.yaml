@@ -10,9 +10,7 @@ source:
   raw_excerpt_files:
   - bpfix-bench/raw/gh/github-commit-cilium-86c904761b39.yaml
 reproducer:
-  status: ready
   reconstruction: reconstructed
-  language: C
   source_file: prog.c
   build_command: make
   object_path: prog.o
@@ -24,9 +22,6 @@ reproducer:
 capture:
   capture_id: github-commit-cilium-86c904761b39__kernel-6.15.11-clang-18-log2
   environment_id: kernel-6.15.11-clang-18-log2
-  build_status: success
-  load_status: verifier_reject
-  verifier_pass: false
   verifier_log: replay-verifier.log
   capture_metadata: capture.yaml
   log_quality: trace_rich
@@ -49,7 +44,6 @@ label:
   root_cause_description: Adjacent IPv6 sock_addr context words are accessed as a
     single wide load after modifying the context pointer, which violates the
     verifier's context-access contract.
-  legacy_rejected_insn_idx: null
   root_cause_insn_idx: null
   rejected_line: null
   root_cause_line: null
@@ -62,5 +56,4 @@ repair:
 reporting:
   family_id: github-commit-cilium-86c904761b39
   representative: true
-  intentional_negative_test: false
   notes: Batch 12 semantic reconstruction from a raw GitHub commit diff.

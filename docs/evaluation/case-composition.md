@@ -32,8 +32,6 @@ print("case source.kind", dict(sorted(Counter(d["source"]["kind"] for d in case_
 print("log_quality", dict(sorted(Counter(d["capture"].get("log_quality", "<missing>") for d in case_docs).items())))
 print("taxonomy_class", dict(sorted(Counter(d["label"].get("taxonomy_class", "<missing>") for d in case_docs).items())))
 print("error_id", dict(sorted(Counter(d["label"].get("error_id", "<missing>") for d in case_docs).items())))
-print("reproducer status", dict(sorted(Counter(d["reproducer"].get("status", "<missing>") for d in case_docs).items())))
-print("load_status", dict(sorted(Counter(d["capture"].get("load_status", "<missing>") for d in case_docs).items())))
 for field in ["taxonomy_class", "error_id", "fix_type"]:
     print("missing label." + field, sum(1 for d in case_docs if not d.get("label", {}).get(field)))
 PY
@@ -90,9 +88,9 @@ PY
 
 ## Replayable Cases
 
-`bpfix-bench/manifest.yaml` lists 235 replayable cases. Every listed case had a
-loadable `case.yaml`, `reproducer.status: ready`, and
-`capture.load_status: verifier_reject`.
+`bpfix-bench/manifest.yaml` lists 235 replayable cases. Manifest membership is
+the ready-case set: every listed case has a loadable `case.yaml`, builds in the
+pinned environment, and is rejected by the verifier during replay validation.
 
 | source_kind | replayable cases |
 |---|---:|

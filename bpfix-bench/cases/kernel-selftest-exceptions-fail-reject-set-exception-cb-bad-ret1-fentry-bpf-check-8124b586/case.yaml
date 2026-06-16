@@ -10,9 +10,7 @@ source:
   collected_at: '2026-03-20T00:37:20.813041+00:00'
   raw_excerpt_files: []
 reproducer:
-  status: ready
   reconstruction: original
-  language: C
   program_type: ?fentry/bpf_check
   source_file: prog.c
   build_command: make
@@ -23,11 +21,6 @@ reproducer:
 capture:
   capture_id: kernel-selftest-exceptions-fail-reject-set-exception-cb-bad-ret1-fentry-bpf-check-8124b586__kernel-6.15.11-clang-18-log2
   environment_id: kernel-6.15.11-clang-18-log2
-  captured_at: '2026-04-29T22:43:53+00:00'
-  build_status: success
-  load_status: verifier_reject
-  verifier_pass: false
-  exit_code: 1
   verifier_log: replay-verifier.log
   capture_metadata: capture.yaml
   log_quality: trace_rich
@@ -56,11 +49,9 @@ label:
   fix_type: reorder
   fix_direction: In real code, make the exception callback return a verifier-visible
     scalar value that matches the main program's exit contract.
-  legacy_rejected_insn_idx: 2
 repair:
   eligible: false
 reporting:
   family_id: At program exit the register R0 has unknown scalar value should have been in [0, 0]
   representative: true
-  intentional_negative_test: true
   notes: Kernel selftest replay-valid case.

@@ -10,9 +10,7 @@ source:
   collected_at: '2026-03-20T00:37:19.357031+00:00'
   raw_excerpt_files: []
 reproducer:
-  status: ready
   reconstruction: original
-  language: C
   program_type: ?raw_tp
   source_file: prog.c
   build_command: make
@@ -23,11 +21,6 @@ reproducer:
 capture:
   capture_id: kernel-selftest-dynptr-fail-xdp-invalid-ctx-raw-tp-e886d43f__kernel-6.15.11-clang-18-log2
   environment_id: kernel-6.15.11-clang-18-log2
-  captured_at: '2026-04-29T22:43:51+00:00'
-  build_status: success
-  load_status: verifier_reject
-  verifier_pass: false
-  exit_code: 1
   verifier_log: replay-verifier.log
   capture_metadata: capture.yaml
   log_quality: trace_rich
@@ -69,5 +62,4 @@ repair:
 reporting:
   family_id: calling kernel function bpf_dynptr_from_xdp is not allowed
   representative: true
-  intentional_negative_test: true
   notes: Kernel selftest replay-valid case.

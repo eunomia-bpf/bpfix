@@ -10,9 +10,7 @@ source:
   collected_at: '2026-03-20T00:37:17.807291+00:00'
   raw_excerpt_files: []
 reproducer:
-  status: ready
   reconstruction: original
-  language: C
   program_type: ?raw_tp
   source_file: prog.c
   build_command: make
@@ -23,11 +21,6 @@ reproducer:
 capture:
   capture_id: kernel-selftest-dynptr-fail-global-raw-tp-e92dc79e__kernel-6.15.11-clang-18-log2
   environment_id: kernel-6.15.11-clang-18-log2
-  captured_at: '2026-04-29T22:43:48+00:00'
-  build_status: success
-  load_status: verifier_reject
-  verifier_pass: false
-  exit_code: 1
   verifier_log: replay-verifier.log
   capture_metadata: capture.yaml
   log_quality: trace_rich
@@ -60,5 +53,4 @@ repair:
 reporting:
   family_id: R4 type=map_value expected=fp, dynptr_ptr
   representative: true
-  intentional_negative_test: true
   notes: Kernel selftest replay-valid case.

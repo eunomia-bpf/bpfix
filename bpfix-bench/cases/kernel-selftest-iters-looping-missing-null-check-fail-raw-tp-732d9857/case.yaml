@@ -10,9 +10,7 @@ source:
   collected_at: '2026-03-20T00:37:26.929956+00:00'
   raw_excerpt_files: []
 reproducer:
-  status: ready
   reconstruction: original
-  language: C
   program_type: ?raw_tp
   source_file: prog.c
   build_command: make
@@ -23,11 +21,6 @@ reproducer:
 capture:
   capture_id: kernel-selftest-iters-looping-missing-null-check-fail-raw-tp-732d9857__kernel-6.15.11-clang-18-log2
   environment_id: kernel-6.15.11-clang-18-log2
-  captured_at: '2026-04-30T00:45:33+00:00'
-  build_status: success
-  load_status: verifier_reject
-  verifier_pass: false
-  exit_code: 1
   verifier_log: replay-verifier.log
   capture_metadata: capture.yaml
   log_quality: trace_rich
@@ -48,7 +41,6 @@ label:
   root_cause_description: 'Intentional negative test: calls `bpf_iter_num_next`, gets
     the result in `r0`, and immediately dereferences `*(u32 *)(r0 + 0)` without checking
     whether the iterator returned NULL.'
-  legacy_rejected_insn_idx: 8
   root_cause_insn_idx: 8
   rejected_line: asm volatile (
   root_cause_line: asm volatile (
@@ -61,5 +53,4 @@ repair:
 reporting:
   family_id: R0 invalid mem access 'scalar'
   representative: true
-  intentional_negative_test: true
   notes: Kernel selftest replay-valid case.

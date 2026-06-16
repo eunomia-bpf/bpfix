@@ -11,6 +11,9 @@ Layout:
 - `gh/github-commit-<repo>-<commit>.yaml`: GitHub commit-derived candidates.
 - `kernel_selftests/*.yaml`: kernel selftest verifier-log fixtures retained from the same unified bench root.
 - `index.yaml`: generated summary linking raw records to replayable cases.
+- `legacy-insn-numbering.yaml`: pre-replay rejected instruction indices kept as
+  provenance only. These values are not in the pinned replay instruction
+  numbering and must not be compared with `capture.rejected_insn_idx`.
 
 Each raw record uses `schema_version: bpfix.raw_external/v1`:
 

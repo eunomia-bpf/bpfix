@@ -10,9 +10,7 @@ source:
   raw_excerpt_files:
   - bpfix-bench/raw/so/stackoverflow-77673256.yaml
 reproducer:
-  status: ready
   reconstruction: reconstructed
-  language: C
   source_file: prog.c
   build_command: make
   object_path: prog.o
@@ -22,9 +20,6 @@ reproducer:
 capture:
   capture_id: stackoverflow-77673256__kernel-6.15.11-clang-18-log2
   environment_id: kernel-6.15.11-clang-18-log2
-  build_status: success
-  load_status: verifier_reject
-  verifier_pass: false
   verifier_log: replay-verifier.log
   capture_metadata: capture.yaml
   log_quality: trace_rich
@@ -48,7 +43,6 @@ label:
   label_source: external_replay_reconstruction
   root_cause_description: A scalar value is passed where a helper expects a verifier-tracked
     memory pointer.
-  legacy_rejected_insn_idx: null
   root_cause_insn_idx: null
   rejected_line: null
   root_cause_line: null
@@ -61,5 +55,4 @@ repair:
 reporting:
   family_id: stackoverflow-77673256
   representative: true
-  intentional_negative_test: false
   notes: External SO/GH case imported as a replay-valid semantic match.

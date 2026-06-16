@@ -10,9 +10,7 @@ source:
   raw_excerpt_files:
   - bpfix-bench/raw/so/stackoverflow-61945212.yaml
 reproducer:
-  status: ready
   reconstruction: reconstructed
-  language: C
   source_file: prog.c
   build_command: make
   object_path: prog.o
@@ -22,9 +20,6 @@ reproducer:
 capture:
   capture_id: stackoverflow-61945212__kernel-6.15.11-clang-18-log2
   environment_id: kernel-6.15.11-clang-18-log2
-  build_status: success
-  load_status: verifier_reject
-  verifier_pass: false
   verifier_log: replay-verifier.log
   capture_metadata: capture.yaml
   log_quality: trace_rich
@@ -63,5 +58,4 @@ repair:
 reporting:
   family_id: stackoverflow-61945212
   representative: true
-  intentional_negative_test: false
   notes: External SO/GH case promoted after fresh exact terminal-error replay audit.

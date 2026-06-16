@@ -10,9 +10,7 @@ source:
   collected_at: '2026-03-20T00:37:17.657321+00:00'
   raw_excerpt_files: []
 reproducer:
-  status: ready
   reconstruction: original
-  language: C
   program_type: ?tc
   source_file: prog.c
   build_command: make
@@ -23,11 +21,6 @@ reproducer:
 capture:
   capture_id: kernel-selftest-dynptr-fail-dynptr-slice-var-len2-tc-673ab9e7__kernel-6.15.11-clang-18-log2
   environment_id: kernel-6.15.11-clang-18-log2
-  captured_at: '2026-04-29T22:43:48+00:00'
-  build_status: success
-  load_status: verifier_reject
-  verifier_pass: false
-  exit_code: 1
   verifier_log: replay-verifier.log
   capture_metadata: capture.yaml
   log_quality: trace_rich
@@ -55,11 +48,9 @@ label:
   fix_type: other
   fix_direction: In real code, split runtime sizes into constant cases or switch to
     a fixed writable slice length.
-  legacy_rejected_insn_idx: 10
 repair:
   eligible: false
 reporting:
   family_id: R4 must be a known constant
   representative: true
-  intentional_negative_test: true
   notes: Kernel selftest replay-valid case.

@@ -36,10 +36,11 @@ Canonical `source.kind` values in the new benchmark are:
 - `kernel_selftest`
 - `stackoverflow`
 - `github_issue`
-- `commit_derived`
+- `github_commit`
 
-Legacy names such as `kernel_selftests`, `github_issues`, and `eval_commits`
-are import-time aliases only. They should not appear in `bpfix-bench/`.
+Legacy names such as `kernel_selftests`, `github_issues`,
+`commit_derived`, and `eval_commits` are import-time aliases only. They should
+not appear in `bpfix-bench/`.
 
 ## Minimal Directory Layout
 
@@ -163,7 +164,7 @@ schema_version: bpfix.case/v1
 case_id: stackoverflow-70750259
 
 source:
-  kind: stackoverflow       # kernel_selftest | stackoverflow | github_issue | commit_derived
+  kind: stackoverflow       # kernel_selftest | stackoverflow | github_issue | github_commit
   url: https://stackoverflow.com/questions/70750259
   repository: null
   commit: null
@@ -175,9 +176,7 @@ source:
     - original.log
 
 reproducer:
-  status: ready             # ready | blocked | retired
   reconstruction: original  # original | minimized | reconstructed
-  language: C
   program_type: socket_filter
   source_file: prog.c
   build_command: make
@@ -188,11 +187,6 @@ reproducer:
 capture:
   capture_id: stackoverflow-70750259__kernel-6.15.11-clang-18-log2
   environment_id: kernel-6.15.11-clang-18-log2
-  captured_at: "2026-03-13T18:42:10Z"
-  build_status: success
-  load_status: verifier_reject
-  verifier_pass: false
-  exit_code: 255
   verifier_log: replay-verifier.log
   capture_metadata: capture.yaml
   build_stdout: build.stdout
@@ -248,7 +242,8 @@ from the recorded terminal error or rejected instruction.
 
 A case enters `bpfix-bench` only if all conditions hold:
 
-1. `reproducer.status == ready`.
+1. The case is listed in `bpfix-bench/manifest.yaml`; blocked and retired
+   reproducers stay outside the frozen benchmark manifest.
 2. `reproducer.reconstruction` is `original`, `minimized`, or `reconstructed`.
 3. The buggy program builds in the pinned environment.
 4. The buggy program is rejected by the verifier in the pinned environment.
@@ -259,7 +254,7 @@ A case enters `bpfix-bench` only if all conditions hold:
 9. Any non-null `label.root_cause_insn_idx` appears in the stored local replay
    verifier log. Root-cause indices use the same instruction numbering as
    `capture.rejected_insn_idx`; original external-log instruction numbers must
-   stay in raw audit records or explicitly legacy provenance fields.
+   stay in raw audit records such as `raw/legacy-insn-numbering.yaml`.
 10. `label.capture_id == capture.capture_id`.
 11. For Stack Overflow and GitHub cases, `external_match.status` is `exact`,
     `partial`, or `semantic`. `semantic` is allowed only when fresh local replay

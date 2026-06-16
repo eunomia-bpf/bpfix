@@ -10,9 +10,7 @@ source:
   collected_at: '2026-03-20T00:37:12.250703+00:00'
   raw_excerpt_files: []
 reproducer:
-  status: ready
   reconstruction: original
-  language: C
   program_type: tp_btf/cgroup_mkdir
   source_file: prog.c
   build_command: make
@@ -23,11 +21,6 @@ reproducer:
 capture:
   capture_id: kernel-selftest-cgrp-kfunc-failure-cgrp-kfunc-rcu-get-release-tp-btf-cgroup-mkdir-29aa212b__kernel-6.15.11-clang-18-log2
   environment_id: kernel-6.15.11-clang-18-log2
-  captured_at: '2026-04-29T22:43:42+00:00'
-  build_status: success
-  load_status: verifier_reject
-  verifier_pass: false
-  exit_code: 1
   verifier_log: replay-verifier.log
   capture_metadata: capture.yaml
   log_quality: trace_rich
@@ -56,11 +49,9 @@ label:
   fix_direction: In real code, release only cgroup pointers that came from `bpf_cgroup_acquire`
     or another reference-producing API, or reacquire a proper reference before releasing
     it.
-  legacy_rejected_insn_idx: 7
 repair:
   eligible: false
 reporting:
   family_id: R1 must be referenced or trusted
   representative: true
-  intentional_negative_test: true
   notes: Kernel selftest replay-valid case.

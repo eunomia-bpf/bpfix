@@ -23,12 +23,29 @@ else:
 
 VALID_RECONSTRUCTIONS = {"original", "minimized", "reconstructed"}
 VALID_EXTERNAL_MATCH = {"exact", "partial", "semantic", "not_applicable"}
+VALID_SOURCE_KINDS = {"kernel_selftest", "stackoverflow", "github_issue", "github_commit"}
 VALID_TAXONOMY_CLASSES = {
     "source_bug",
     "lowering_artifact",
     "environment_or_configuration",
     "verifier_limit",
     "verifier_false_positive",
+}
+REMOVED_CASE_FIELDS = {
+    "capture": {
+        "build_status": "success is validated by replay",
+        "load_status": "verifier reject is validated by replay",
+        "verifier_pass": "verifier reject is validated by replay",
+        "captured_at": "capture timestamps belong in capture.yaml",
+        "exit_code": "loader exit details belong in capture.yaml",
+    },
+    "reproducer": {
+        "status": "manifest membership and replay validation define active cases",
+        "language": "all current reproducers are BPF C; add language only when it varies",
+    },
+    "reporting": {
+        "intentional_negative_test": "derived from source.kind for the current corpus",
+    },
 }
 VERIFIER_PC_RE = re.compile(r"^\s*(\d+):")
 
@@ -205,7 +222,7 @@ def validate_case_metadata(
     external_match = mapping(case_data.get("external_match"))
 
     require_fields(case_data, ["schema_version", "case_id", "source", "reproducer", "capture", "label", "reporting"], "case", errors)
-    require_fields(reproducer, ["status", "reconstruction", "build_command", "load_command", "source_file", "object_path"], "reproducer", errors)
+    require_fields(reproducer, ["reconstruction", "build_command", "load_command", "source_file", "object_path"], "reproducer", errors)
     require_fields(capture, ["capture_id", "log_quality", "terminal_error", "rejected_insn_idx"], "capture", errors)
     require_fields(label, ["capture_id", "taxonomy_class"], "label", errors)
     require_fields(reporting, ["family_id", "representative"], "reporting", errors)
@@ -220,21 +237,27 @@ def validate_case_metadata(
 
     compare(case_data.get("case_id"), case_id, "case.case_id", errors)
     compare(source.get("kind"), entry.get("source_kind"), "source.kind/source_kind", errors)
+    if source.get("kind") not in VALID_SOURCE_KINDS:
+        errors.append(f"invalid source.kind: {source.get('kind')!r}")
+    if entry.get("source_kind") not in VALID_SOURCE_KINDS:
+        errors.append(f"invalid manifest.source_kind: {entry.get('source_kind')!r}")
     compare(capture.get("capture_id"), entry.get("capture_id"), "capture.capture_id/manifest.capture_id", errors)
     compare(label.get("capture_id"), capture.get("capture_id"), "label.capture_id/capture.capture_id", errors)
     if "rejected_insn_idx" in label:
         errors.append("label.rejected_insn_idx is redundant; use capture.rejected_insn_idx")
+    if "legacy_rejected_insn_idx" in label:
+        errors.append("label.legacy_rejected_insn_idx is legacy numbering metadata; do not store it in case.yaml")
     compare(reporting.get("family_id"), entry.get("family_id"), "reporting.family_id/manifest.family_id", errors)
     compare(reporting.get("representative"), entry.get("representative"), "reporting.representative/manifest.representative", errors)
 
-    if reproducer.get("status") != "ready":
-        errors.append(f"reproducer.status must be 'ready', got {reproducer.get('status')!r}")
+    for section_name, fields in REMOVED_CASE_FIELDS.items():
+        section = mapping(case_data.get(section_name))
+        for field, reason in fields.items():
+            if field in section:
+                errors.append(f"{section_name}.{field} is redundant in case.yaml: {reason}")
+
     if reproducer.get("reconstruction") not in VALID_RECONSTRUCTIONS:
         errors.append(f"invalid reproducer.reconstruction: {reproducer.get('reconstruction')!r}")
-    if capture.get("load_status") not in (None, "verifier_reject"):
-        errors.append(f"capture.load_status must be 'verifier_reject', got {capture.get('load_status')!r}")
-    if capture.get("verifier_pass") not in (None, False):
-        errors.append(f"capture.verifier_pass must be false, got {capture.get('verifier_pass')!r}")
     if not entry.get("family_id"):
         errors.append("manifest family_id is required")
     if "representative" not in entry:
@@ -248,7 +271,7 @@ def validate_case_metadata(
             errors.append("kernel_selftest cases must use external_match.status == 'not_applicable'")
         if source.get("kind") in {"stackoverflow", "github_issue"} and status not in {"exact", "partial", "semantic"}:
             errors.append("Stack Overflow/GitHub cases must use exact, partial, or semantic external_match.status")
-        if source.get("kind") in {"commit_derived", "github_commit"} and status != "not_applicable":
+        if source.get("kind") == "github_commit" and status != "not_applicable":
             errors.append("commit-derived cases must use external_match.status == 'not_applicable'")
 
     if manifest.get("environment_id") and capture.get("environment_id"):
@@ -374,7 +397,7 @@ def validate_capture_metadata(
             case_report["errors"].append(f"capture metadata {name} mismatch: expected {expected!r}, got {actual!r}")
 
     source = mapping(case_data.get("source"))
-    if source.get("kind") in {"commit_derived", "github_commit"}:
+    if source.get("kind") == "github_commit":
         source_artifact = mapping(metadata.get("source_artifact"))
         verifier_error_match = source_artifact.get("verifier_error_match")
         if verifier_error_match is not None and verifier_error_match != "not_applicable":
