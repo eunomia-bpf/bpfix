@@ -18,11 +18,11 @@ use bpfanalysis::verifier_log::{
     scalar_range_max_i64, scalar_range_may_be_negative, scalar_range_may_include_zero,
     scalar_range_min_i64, scalar_range_upper_unbounded_or_too_large, scalar_ranges_match,
     scalar_state_upper_bound_at_most, stack_access_range, stack_value_range,
-    terminal_instruction_access_width, terminal_instruction_contains,
-    terminal_instruction_memory_offset, terminal_instruction_site, verifier_fragment_start_line,
-    verifier_path_snapshot_before_instruction, verifier_states_with_branch_deltas_from_log,
-    verifier_value_summary, CallbackKind, RegState, StackByteRange, StackState, VerifierInsn,
-    VerifierInsnKind, VerifierLogInstruction as TerminalInstruction,
+    terminal_instruction_access_width, terminal_instruction_memory_offset,
+    terminal_instruction_site, verifier_fragment_start_line,
+    verifier_states_with_branch_deltas_from_log, verifier_value_summary, CallbackKind, RegState,
+    StackByteRange, StackState, VerifierInsn, VerifierInsnKind,
+    VerifierLogInstruction as TerminalInstruction,
 };
 
 use crate::family::ProofObligation;
@@ -71,6 +71,7 @@ pub struct ProofEvent {
 
 mod context_signal;
 mod dynptr_signal;
+mod helper_contract_signal;
 mod irq_signal;
 mod iterator_signal;
 mod nullable_signal;
@@ -965,14 +966,14 @@ fn proof_signals(context: ProofSignalContext<'_>) -> Vec<ProofSignal> {
         ProofSignal::ExceptionThrowWithLiveReference => protocol_signal::exception_throw_with_live_reference(c.log, c.terminal_pc, c.terminal_line, c.states),
         ProofSignal::ReferenceLiveAtExit => protocol_signal::reference_live_at_exit(c),
         ProofSignal::ExceptionCallbackProtocolViolation => protocol_signal::exception_callback_protocol_violation(c),
-        ProofSignal::MapPointerArgumentScalarZero => map_pointer_argument_scalar_zero(c),
-        ProofSignal::BtfFuncInfoMissing => btf_func_info_missing(c),
-        ProofSignal::SubprogramReferenceMetadataMissing => subprogram_reference_metadata_missing(c),
+        ProofSignal::MapPointerArgumentScalarZero => helper_contract_signal::map_pointer_argument_scalar_zero(c),
+        ProofSignal::BtfFuncInfoMissing => helper_contract_signal::btf_func_info_missing(c),
+        ProofSignal::SubprogramReferenceMetadataMissing => helper_contract_signal::subprogram_reference_metadata_missing(c),
         ProofSignal::MapLookupKeyArgumentUnreadable => stack_signal::map_lookup_key_argument_unreadable(c),
         ProofSignal::UnreadableProgramEntryArgument => stack_signal::unreadable_program_entry_argument(c),
         ProofSignal::UnreadableHelperArgument => stack_signal::unreadable_helper_argument(c),
-        ProofSignal::MapPointerRawAccessContract => map_pointer_raw_access_contract(c),
-        ProofSignal::PerfEventOutputPacketAccess => perf_event_output_packet_access(c),
+        ProofSignal::MapPointerRawAccessContract => helper_contract_signal::map_pointer_raw_access_contract(c),
+        ProofSignal::PerfEventOutputPacketAccess => helper_contract_signal::perf_event_output_packet_access(c),
         ProofSignal::UnreadableReturnRegister => stack_signal::unreadable_return_register(c),
         ProofSignal::LegacySkbLoadUnreadableRegister => stack_signal::legacy_skb_load_unreadable_register(c),
         ProofSignal::HelperStackReadExceedsInitializedRange => stack_signal::helper_stack_read_exceeds_initialized_range(c),
@@ -1165,201 +1166,6 @@ fn nonnegative_required_range_as_u64(required: (i64, i64)) -> Option<(u64, u64)>
     let min = u64::try_from(required.0).ok()?;
     let max = u64::try_from(required.1).ok()?;
     Some((min, max))
-}
-
-fn map_pointer_argument_scalar_zero(context: &ProofSignalContext<'_>) -> bool {
-    if !context.terminal_error.contains("expected=map_ptr") {
-        return false;
-    }
-    let Some(reg) = context.register else {
-        return false;
-    };
-    if reg != 1 {
-        return false;
-    }
-    if !terminal_instruction_contains(
-        context.log,
-        context.terminal_pc,
-        context.terminal_line,
-        "call bpf_map_lookup_elem#",
-    ) {
-        return false;
-    }
-    let Some(rejected) = rejected_source(context.events) else {
-        return false;
-    };
-    if !rejected.text.contains("bpf_map_lookup_elem") {
-        return false;
-    }
-    let Some(map_argument) = first_call_argument(&rejected.text, "bpf_map_lookup_elem") else {
-        return false;
-    };
-    if !map_argument_has_relocation_proof(&map_argument, rejected, context.source_events) {
-        return false;
-    }
-    let Some(state) = latest_reg_state_before(context.states, context.terminal_pc, reg) else {
-        return false;
-    };
-    state.is_exact_zero_scalar()
-}
-
-fn btf_func_info_missing(context: &ProofSignalContext<'_>) -> bool {
-    if !context
-        .terminal_error
-        .eq_ignore_ascii_case("missing btf func_info")
-    {
-        return false;
-    }
-    log_contains_subprogram(context.log) || log_contains_subprogram_relocation(context.log)
-}
-
-fn subprogram_reference_metadata_missing(context: &ProofSignalContext<'_>) -> bool {
-    let terminal = context.terminal_error.to_ascii_lowercase();
-    if !terminal.contains("caller passes invalid args into func") {
-        return false;
-    }
-    let terminal_has_unknown_reference_size = terminal.contains("reference type('unknown")
-        && terminal.contains("size cannot be determined");
-    if !terminal_has_unknown_reference_size
-        && !terminal_error_has_nearby_prior_line(context.log, context.terminal_error, 3, |line| {
-            let lower = line.to_ascii_lowercase();
-            lower.contains("reference type('unknown") && lower.contains("size cannot be determined")
-        })
-    {
-        return false;
-    }
-    let Some(instruction) =
-        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)
-    else {
-        return false;
-    };
-    if !instruction.tail.contains("call pc+") {
-        return false;
-    }
-    let Some(callee) = invalid_args_function_name(context.terminal_error) else {
-        return false;
-    };
-    let fragment_start = terminal_fragment_start(context, instruction);
-    let Some(rejected) = source_for_instruction_in_fragment(
-        context.source_events,
-        instruction.pc,
-        fragment_start,
-        instruction.line,
-    ) else {
-        return false;
-    };
-    let Some(arg_index) = subprogram_argument_index(context.terminal_error) else {
-        return false;
-    };
-    let Some(argument) = call_argument(&rejected.text, callee, arg_index as usize) else {
-        return false;
-    };
-    let Some(arg_reg) = subprogram_argument_register(arg_index) else {
-        return false;
-    };
-    if source_argument_erases_reference_metadata(&argument) {
-        return true;
-    }
-    is_bare_identifier_argument(&argument)
-        && latest_reg_state_before_instruction(context.states, instruction, fragment_start, arg_reg)
-            .is_some_and(|state| state.reg_type == "ctx")
-}
-
-fn log_contains_subprogram(log: &str) -> bool {
-    log.lines()
-        .any(|line| line.trim_start().starts_with("func#1 @"))
-}
-
-fn log_contains_subprogram_relocation(log: &str) -> bool {
-    log.lines().any(|line| {
-        let lower = line.to_ascii_lowercase();
-        lower.contains("points to subprog")
-            || lower.contains("added ") && lower.contains("sub-prog")
-    })
-}
-
-fn source_argument_erases_reference_metadata(argument: &str) -> bool {
-    let compact = argument
-        .chars()
-        .filter(|ch| !ch.is_ascii_whitespace())
-        .collect::<String>()
-        .to_ascii_lowercase();
-    compact.contains("(void*)") || compact == "void*"
-}
-
-fn subprogram_argument_index(terminal_error: &str) -> Option<u32> {
-    let arg = parse_u32_after(terminal_error, "arg#")?;
-    (arg < 5).then_some(arg)
-}
-
-fn subprogram_argument_register(arg_index: u32) -> Option<u8> {
-    if arg_index >= 5 {
-        return None;
-    }
-    u8::try_from(arg_index + 1).ok()
-}
-
-fn map_pointer_raw_access_contract(context: &ProofSignalContext<'_>) -> bool {
-    if context.obligation != ProofObligation::HelperArgument
-        || !context
-            .terminal_error
-            .contains("only read from bpf_array is supported")
-    {
-        return false;
-    }
-    let Some(instruction) =
-        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)
-    else {
-        return false;
-    };
-    let Some(base_reg) = memory_access_base_register(instruction.tail) else {
-        return false;
-    };
-    let fragment_start = terminal_fragment_start(context, instruction);
-    let Some(snapshot) = verifier_path_snapshot_before_instruction(
-        context.branch_states,
-        instruction,
-        fragment_start,
-    ) else {
-        return false;
-    };
-    snapshot
-        .regs
-        .get(&base_reg)
-        .is_some_and(|state| state.reg_type == "map_ptr")
-}
-
-fn perf_event_output_packet_access(context: &ProofSignalContext<'_>) -> bool {
-    if context.obligation != ProofObligation::HelperArgument
-        || !context
-            .terminal_error
-            .contains("helper access to the packet is not allowed")
-    {
-        return false;
-    }
-    let Some(instruction) =
-        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)
-    else {
-        return false;
-    };
-    if call_target_from_instruction_tail(instruction.tail) != Some("bpf_perf_event_output") {
-        return false;
-    }
-    let fragment_start = terminal_fragment_start(context, instruction);
-    let Some(snapshot) = verifier_path_snapshot_before_instruction(
-        context.branch_states,
-        instruction,
-        fragment_start,
-    ) else {
-        return false;
-    };
-    let Some(data) = snapshot.regs.get(&4) else {
-        return false;
-    };
-    let Some(size) = snapshot.regs.get(&5) else {
-        return false;
-    };
-    matches!(data.reg_type.as_str(), "pkt" | "pkt_meta") && size.reg_type == "scalar"
 }
 
 fn callback_call_while_locked(context: &ProofSignalContext<'_>) -> bool {
