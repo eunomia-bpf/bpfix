@@ -3546,6 +3546,192 @@ fn scalar_pointer_state_signal_requires_matching_current_instruction_state() {
 }
 
 #[test]
+fn opaque_probe_read_pointer_values_report_protocol_action() {
+    for path in [
+        "bpfix-bench/cases/stackoverflow-77387582/replay-verifier.log",
+        "bpfix-bench/cases/stackoverflow-79097886/replay-verifier.log",
+    ] {
+        let diagnostic = run_json(path);
+        assert_eq!(diagnostic["error_id"], "BPFIX-E011");
+        assert_eq!(diagnostic["failure_class"], "source_bug");
+        assert_eq!(diagnostic["next_action"], "protocol");
+        assert!(evidence_contains(
+            &diagnostic,
+            "verifier_state_signal",
+            "helper-written stack storage"
+        ));
+        assert!(diagnostic["required_proof"]
+            .as_str()
+            .unwrap()
+            .contains("verifier-approved helper"));
+    }
+
+    let helper_output_pointer = run_json_stdin(
+        "func#0 @0\n\
+         0: R1=fp-8 R2=8 R3=scalar() R10=fp0\n\
+         1: (85) call bpf_probe_read_kernel#113\n\
+         2: R7=scalar() R10=fp0 fp-8=mmmmmmmm\n\
+         3: (79) r7 = *(u64 *)(r10 -8)\n\
+         4: (71) r0 = *(u8 *)(r7 +0)\n\
+         R7 invalid mem access 'scalar'\n",
+    );
+    assert_eq!(helper_output_pointer["error_id"], "BPFIX-E011");
+    assert_eq!(helper_output_pointer["next_action"], "protocol");
+    assert!(evidence_contains(
+        &helper_output_pointer,
+        "verifier_state_signal",
+        "helper-written stack storage"
+    ));
+
+    let copied_helper_output_pointer = run_json_stdin(
+        "func#0 @0\n\
+         0: R1=fp-8 R2=8 R3=scalar() R6=scalar() R7=scalar() R10=fp0\n\
+         1: (85) call bpf_probe_read_kernel#113\n\
+         2: R6=scalar() R7=scalar() R10=fp0 fp-8=mmmmmmmm\n\
+         3: (79) r6 = *(u64 *)(r10 -8)\n\
+         4: (bf) r7 = r6\n\
+         5: R7=scalar() R10=fp0\n\
+         6: (71) r0 = *(u8 *)(r7 +0)\n\
+         R7 invalid mem access 'scalar'\n",
+    );
+    assert_eq!(copied_helper_output_pointer["error_id"], "BPFIX-E011");
+    assert_eq!(copied_helper_output_pointer["next_action"], "protocol");
+    assert!(evidence_contains(
+        &copied_helper_output_pointer,
+        "verifier_state_signal",
+        "helper-written stack storage"
+    ));
+
+    let numeric_helper_id = run_json_stdin(
+        "func#0 @0\n\
+         0: R1=fp-8 R2=8 R3=scalar() R10=fp0\n\
+         1: (85) call 113\n\
+         2: R7=scalar() R10=fp0 fp-8=mmmmmmmm\n\
+         3: (79) r7 = *(u64 *)(r10 -8)\n\
+         4: (71) r0 = *(u8 *)(r7 +0)\n\
+         R7 invalid mem access 'scalar'\n",
+    );
+    assert_eq!(numeric_helper_id["error_id"], "BPFIX-E011");
+    assert_eq!(numeric_helper_id["next_action"], "protocol");
+    assert!(evidence_contains(
+        &numeric_helper_id,
+        "verifier_state_signal",
+        "helper-written stack storage"
+    ));
+}
+
+#[test]
+fn opaque_probe_read_pointer_signal_requires_matching_helper_output_stack_slot() {
+    let unrelated_helper_output = run_json_stdin(
+        "func#0 @0\n\
+         0: R1=fp-16 R2=8 R3=scalar() R10=fp0\n\
+         1: (85) call bpf_probe_read_kernel#113\n\
+         2: R7=scalar() R10=fp0 fp-16=mmmmmmmm\n\
+         3: (79) r7 = *(u64 *)(r10 -8)\n\
+         4: (71) r0 = *(u8 *)(r7 +0)\n\
+         R7 invalid mem access 'scalar'\n",
+    );
+    assert_eq!(unrelated_helper_output["error_id"], "BPFIX-E011");
+    assert_eq!(unrelated_helper_output["next_action"], "provenance");
+    assert!(!evidence_contains(
+        &unrelated_helper_output,
+        "verifier_state_signal",
+        "helper-written stack storage"
+    ));
+    assert!(evidence_contains(
+        &unrelated_helper_output,
+        "verifier_state_signal",
+        "consumed register is scalar"
+    ));
+
+    let overwritten_helper_output = run_json_stdin(
+        "func#0 @0\n\
+         0: R1=fp-8 R2=8 R3=scalar() R10=fp0\n\
+         1: (85) call bpf_probe_read_kernel#113\n\
+         2: R0=scalar() R10=fp0 fp-8=mmmmmmmm\n\
+         3: (7b) *(u64 *)(r10 -8) = r0\n\
+         4: R7=scalar() R10=fp0 fp-8=mmmmmmmm\n\
+         5: (79) r7 = *(u64 *)(r10 -8)\n\
+         6: (71) r0 = *(u8 *)(r7 +0)\n\
+         R7 invalid mem access 'scalar'\n",
+    );
+    assert_eq!(overwritten_helper_output["error_id"], "BPFIX-E011");
+    assert_eq!(overwritten_helper_output["next_action"], "provenance");
+    assert!(!evidence_contains(
+        &overwritten_helper_output,
+        "verifier_state_signal",
+        "helper-written stack storage"
+    ));
+
+    let helper_clobbered_output = run_json_stdin(
+        "func#0 @0\n\
+         0: R1=fp-8 R2=8 R3=scalar() R10=fp0\n\
+         1: (85) call bpf_probe_read_kernel#113\n\
+         2: R1=fp-8 R2=8 R7=scalar() R10=fp0 fp-8=mmmmmmmm\n\
+         3: (85) call bpf_get_current_comm#16\n\
+         4: R7=scalar() R10=fp0 fp-8=mmmmmmmm\n\
+         5: (79) r7 = *(u64 *)(r10 -8)\n\
+         6: (71) r0 = *(u8 *)(r7 +0)\n\
+         R7 invalid mem access 'scalar'\n",
+    );
+    assert_eq!(helper_clobbered_output["error_id"], "BPFIX-E011");
+    assert_eq!(helper_clobbered_output["next_action"], "provenance");
+    assert!(!evidence_contains(
+        &helper_clobbered_output,
+        "verifier_state_signal",
+        "helper-written stack storage"
+    ));
+
+    let unknown_helper_clobbered_output = run_json_stdin(
+        "func#0 @0\n\
+         0: R1=fp-8 R2=8 R3=scalar() R10=fp0\n\
+         1: (85) call bpf_probe_read_kernel#113\n\
+         2: R1=scalar() R2=scalar() R3=fp-8 R7=scalar() R10=fp0 fp-8=mmmmmmmm\n\
+         3: (85) call bpf_unknown_stack_writer#999\n\
+         4: R7=scalar() R10=fp0 fp-8=mmmmmmmm\n\
+         5: (79) r7 = *(u64 *)(r10 -8)\n\
+         6: (71) r0 = *(u8 *)(r7 +0)\n\
+         R7 invalid mem access 'scalar'\n",
+    );
+    assert_eq!(unknown_helper_clobbered_output["error_id"], "BPFIX-E011");
+    assert_eq!(unknown_helper_clobbered_output["next_action"], "provenance");
+    assert!(!evidence_contains(
+        &unknown_helper_clobbered_output,
+        "verifier_state_signal",
+        "helper-written stack storage"
+    ));
+
+    let partial_later_probe_read = run_json_stdin(
+        "func#0 @0\n\
+         0: R1=fp-8 R2=8 R3=scalar() R10=fp0\n\
+         1: (85) call bpf_probe_read_kernel#113\n\
+         2: R1=fp-8 R2=4 R3=scalar() R7=scalar() R10=fp0 fp-8=mmmmmmmm\n\
+         3: (85) call bpf_probe_read_kernel#113\n\
+         4: R7=scalar() R10=fp0 fp-8=mmmmmmmm\n\
+         5: (79) r7 = *(u64 *)(r10 -8)\n\
+         6: (71) r0 = *(u8 *)(r7 +0)\n\
+         R7 invalid mem access 'scalar'\n",
+    );
+    assert_eq!(partial_later_probe_read["error_id"], "BPFIX-E011");
+    assert_eq!(partial_later_probe_read["next_action"], "provenance");
+    assert!(!evidence_contains(
+        &partial_later_probe_read,
+        "verifier_state_signal",
+        "helper-written stack storage"
+    ));
+
+    let random_scalar_pointer =
+        run_json("bpfix-bench/cases/stackoverflow-78471487/replay-verifier.log");
+    assert_eq!(random_scalar_pointer["error_id"], "BPFIX-E011");
+    assert_eq!(random_scalar_pointer["next_action"], "provenance");
+    assert!(!evidence_contains(
+        &random_scalar_pointer,
+        "verifier_state_signal",
+        "helper-written stack storage"
+    ));
+}
+
+#[test]
 fn stale_data_pointer_after_invalidating_helper_reports_state_signal() {
     for path in [
         "bpfix-bench/cases/github-commit-cilium-2ff1a462cd33/replay-verifier.log",

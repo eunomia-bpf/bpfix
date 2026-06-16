@@ -119,6 +119,7 @@ macro_rules! proof_signal_variants {
             HelperStackReadExceedsInitializedRange,
             HelperStackWriteBeyondFrame,
             ScalarValueUsedAsPointer,
+            OpaqueScalarPointerDereference,
             StalePointerAfterInvalidatingHelper,
             DynptrDataPointerInvalidatedBeforeUse,
             ProhibitedPointerArithmetic,
@@ -281,6 +282,9 @@ impl ProofSignal {
             Self::ScalarValueUsedAsPointer => {
                 "scalar or pkt_end value is used where the verifier requires a real pointer"
             }
+            Self::OpaqueScalarPointerDereference => {
+                "opaque pointer-sized helper output is dereferenced as ordinary memory"
+            }
             Self::StalePointerAfterInvalidatingHelper => {
                 "skb/xdp packet pointer is reused after a helper invalidates it"
             }
@@ -386,7 +390,8 @@ impl ProofSignal {
             | Self::ScalarValueUsedAsPointer
             | Self::StalePointerAfterInvalidatingHelper
             | Self::ProhibitedPointerArithmetic => NextAction::Provenance,
-            Self::DynptrStackStorageAccess
+            Self::OpaqueScalarPointerDereference
+            | Self::DynptrStackStorageAccess
             | Self::DynptrUninitializedArgument
             | Self::DynptrReferencedSlotOverwrite
             | Self::DynptrStackSlotWriteOverlap
@@ -603,6 +608,9 @@ impl ProofSignal {
             Self::ScalarValueUsedAsPointer => {
                 "verifier state at the rejected instruction shows the consumed register is scalar or pkt_end state, but the instruction uses it as a memory pointer or pointer-like value"
             }
+            Self::OpaqueScalarPointerDereference => {
+                "verifier state shows the rejected scalar value was loaded from helper-written stack storage, so any kernel or user memory it denotes still must be read through a verifier-approved helper"
+            }
             Self::StalePointerAfterInvalidatingHelper => {
                 "verifier state shows this register previously held an skb/xdp packet pointer, but an intervening packet-mutating helper invalidated that pointer before the rejected memory access"
             }
@@ -812,6 +820,9 @@ impl ProofSignal {
             Self::ScalarValueUsedAsPointer => {
                 "Use a verifier-recognized pointer at the access site; keep end sentinels, scalar offsets, and pointer bases separate, and reload or rederive the pointer from a supported context/helper before dereferencing it."
             }
+            Self::OpaqueScalarPointerDereference => {
+                "Treat pointer-sized values read with bpf_probe_read* or BPF_CORE_READ as opaque scalars; use another helper read to copy the memory they denote into stack or map storage before inspecting it."
+            }
             Self::StalePointerAfterInvalidatingHelper => {
                 "After helpers that move or rewrite skb/xdp data, reload packet data/data_end, recheck the packet range, and derive a fresh packet pointer before dereferencing."
             }
@@ -921,6 +932,7 @@ impl ProofSignal {
                 | Self::HelperStackReadExceedsInitializedRange
                 | Self::HelperStackWriteBeyondFrame
                 | Self::ScalarValueUsedAsPointer
+                | Self::OpaqueScalarPointerDereference
                 | Self::StalePointerAfterInvalidatingHelper
                 | Self::DynptrDataPointerInvalidatedBeforeUse
                 | Self::ProhibitedPointerArithmetic
@@ -1170,6 +1182,9 @@ impl ProofSignal {
             Self::ScalarValueUsedAsPointer => Some(
                 "prove the value consumed by this memory access or pointer operation is a verifier-recognized pointer, not scalar or pkt_end state",
             ),
+            Self::OpaqueScalarPointerDereference => Some(
+                "read the memory referenced by this opaque scalar pointer through a verifier-approved helper instead of directly dereferencing it",
+            ),
             Self::StalePointerAfterInvalidatingHelper => Some(
                 "preserve pointer provenance by reacquiring and rechecking the skb/xdp packet pointer after the helper that invalidates existing packet data pointers",
             ),
@@ -1324,6 +1339,9 @@ impl ProofSignal {
             Self::ScalarValueUsedAsPointer => {
                 Some("this access consumes scalar or pkt_end state where a pointer is required")
             }
+            Self::OpaqueScalarPointerDereference => {
+                Some("this access dereferences an opaque scalar pointer loaded from helper output")
+            }
             Self::StalePointerAfterInvalidatingHelper => {
                 Some("this access reuses a pointer invalidated by an earlier helper call")
             }
@@ -1406,6 +1424,7 @@ impl ProofSignal {
             Self::ReturnRangeOutOfBounds => Some("BPFIX-E005"),
             Self::StackVariableOffsetOutOfBounds => Some("BPFIX-E005"),
             Self::ScalarValueUsedAsPointer => Some("BPFIX-E011"),
+            Self::OpaqueScalarPointerDereference => Some("BPFIX-E011"),
             Self::StalePointerAfterInvalidatingHelper => Some("BPFIX-E011"),
             Self::DynptrDataPointerInvalidatedBeforeUse => Some("BPFIX-E011"),
             Self::KernelObjectFieldAccessMismatch => Some("BPFIX-E011"),
@@ -2522,6 +2541,9 @@ fn proof_signals(context: ProofSignalContext<'_>) -> Vec<ProofSignal> {
         if let Some(signal) = stale_pointer_after_invalidating_helper(&context) {
             signals.push(signal);
         }
+    }
+    if signals.is_empty() && opaque_scalar_pointer_dereference(&context) {
+        signals.push(ProofSignal::OpaqueScalarPointerDereference);
     }
     if signals.is_empty() && scalar_value_used_as_pointer(&context) {
         signals.push(ProofSignal::ScalarValueUsedAsPointer);
@@ -5264,6 +5286,396 @@ fn scalar_value_used_as_pointer(context: &ProofSignalContext<'_>) -> bool {
     } else {
         state.reg_type == "pkt_end"
     }
+}
+
+fn opaque_scalar_pointer_dereference(context: &ProofSignalContext<'_>) -> bool {
+    if context.obligation != ProofObligation::PointerProvenance {
+        return false;
+    }
+    let terminal = context.terminal_error.to_ascii_lowercase();
+    if !(terminal.contains("invalid mem access 'scalar'")
+        || terminal.contains("invalid mem access 'inv'"))
+    {
+        return false;
+    }
+    let Some(reg) = context
+        .register
+        .or_else(|| register_from_terminal_error(context.terminal_error))
+    else {
+        return false;
+    };
+    let Some(instruction) =
+        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)
+    else {
+        return false;
+    };
+    if memory_access_base_register(instruction.tail) != Some(reg) {
+        return false;
+    }
+    let fragment_start = context
+        .terminal_line
+        .map(|line| verifier_fragment_start_line(context.log, line))
+        .unwrap_or_else(|| verifier_fragment_start_line(context.log, instruction.line));
+    let Some((state, _, frame)) = latest_reg_state_before_instruction_with_origin(
+        context.branch_states,
+        instruction,
+        fragment_start,
+        reg,
+    ) else {
+        return false;
+    };
+    if state.reg_type != "scalar" {
+        return false;
+    }
+    let Some((stack_load, stack_range)) = latest_stack_pointer_value_load_source(
+        context.branch_states,
+        context.log,
+        instruction,
+        fragment_start,
+        reg,
+        frame,
+    ) else {
+        return false;
+    };
+    probe_read_helper_wrote_stack_range(
+        context.branch_states,
+        context.log,
+        fragment_start,
+        stack_load.line,
+        stack_range,
+        frame,
+    )
+}
+
+fn latest_stack_pointer_value_load_source<'a>(
+    states: &[VerifierInsn],
+    log: &'a str,
+    terminal_instruction: TerminalInstruction<'_>,
+    fragment_start: usize,
+    reg: u8,
+    frame: usize,
+) -> Option<(TerminalInstruction<'a>, StackByteRange)> {
+    latest_stack_pointer_value_load_source_inner(
+        states,
+        log,
+        terminal_instruction.line,
+        fragment_start,
+        reg,
+        frame,
+        0,
+    )
+}
+
+fn latest_stack_pointer_value_load_source_inner<'a>(
+    states: &[VerifierInsn],
+    log: &'a str,
+    before_line: usize,
+    fragment_start: usize,
+    reg: u8,
+    frame: usize,
+    depth: usize,
+) -> Option<(TerminalInstruction<'a>, StackByteRange)> {
+    if depth > 8 {
+        return None;
+    }
+    log.lines()
+        .enumerate()
+        .filter(|(idx, _)| {
+            let line = idx + 1;
+            line >= fragment_start && line < before_line
+        })
+        .filter_map(|(idx, line)| {
+            let (pc, tail) = parse_instruction_line(line.trim())?;
+            if !instruction_assigns_register(tail, reg) {
+                return None;
+            }
+            let instruction = TerminalInstruction {
+                pc,
+                line: idx + 1,
+                tail,
+            };
+            instruction_frame(states, instruction, fragment_start)
+                .is_none_or(|assigned_frame| assigned_frame == frame)
+                .then_some(instruction)
+        })
+        .last()
+        .and_then(|instruction| {
+            if memory_access_is_load(instruction.tail)
+                && memory_access_width(instruction.tail) == Some(8)
+                && instruction_destination_register(instruction.tail) == Some(reg)
+            {
+                let base_reg = memory_access_base_register(instruction.tail)?;
+                let (base, base_frame) = latest_reg_state_before_instruction_with_frame(
+                    states,
+                    instruction,
+                    fragment_start,
+                    base_reg,
+                )?;
+                if base_frame != frame
+                    || base.reg_type != "fp"
+                    || reg_state_has_variable_offset(base)
+                {
+                    return None;
+                }
+                return Some((
+                    instruction,
+                    stack_memory_access_range(base, instruction.tail)?,
+                ));
+            }
+            let source = instruction_register_copy_source(instruction.tail, reg)?;
+            latest_stack_pointer_value_load_source_inner(
+                states,
+                log,
+                instruction.line,
+                fragment_start,
+                source,
+                frame,
+                depth + 1,
+            )
+        })
+}
+
+fn probe_read_helper_wrote_stack_range(
+    states: &[VerifierInsn],
+    log: &str,
+    fragment_start: usize,
+    before_line: usize,
+    access: StackByteRange,
+    frame: usize,
+) -> bool {
+    latest_stack_range_writer(states, log, fragment_start, before_line, access, frame).is_some_and(
+        |writer| {
+            matches!(
+                writer,
+                StackRangeWriter::ProbeReadValue { written } if written.contains_range(access)
+            )
+        },
+    )
+}
+
+#[derive(Clone, Copy)]
+enum StackRangeWriter {
+    ProbeReadValue { written: StackByteRange },
+    Other,
+}
+
+fn latest_stack_range_writer(
+    states: &[VerifierInsn],
+    log: &str,
+    fragment_start: usize,
+    before_line: usize,
+    access: StackByteRange,
+    frame: usize,
+) -> Option<StackRangeWriter> {
+    let instructions = log
+        .lines()
+        .enumerate()
+        .filter(|(idx, _)| {
+            let line = idx + 1;
+            line >= fragment_start && line < before_line
+        })
+        .filter_map(|(idx, line)| {
+            let (pc, tail) = parse_instruction_line(line.trim())?;
+            Some(TerminalInstruction {
+                pc,
+                line: idx + 1,
+                tail,
+            })
+        })
+        .collect::<Vec<_>>();
+    instructions.iter().rev().copied().find_map(|instruction| {
+        if stack_store_overlaps_range(states, instruction, fragment_start, access, frame) {
+            return Some(StackRangeWriter::Other);
+        }
+        let target = call_target_from_instruction_tail(instruction.tail)?;
+        if let Some(written) =
+            helper_stack_output_range(states, instruction, fragment_start, target, frame)
+        {
+            if written.overlaps(access) {
+                if probe_read_value_helper(target) {
+                    return Some(StackRangeWriter::ProbeReadValue { written });
+                }
+                return Some(StackRangeWriter::Other);
+            }
+        }
+        if helper_stack_argument_starts_at_access(
+            states,
+            instruction,
+            fragment_start,
+            access,
+            frame,
+        ) {
+            return Some(StackRangeWriter::Other);
+        }
+        None
+    })
+}
+
+fn stack_store_overlaps_range(
+    states: &[VerifierInsn],
+    instruction: TerminalInstruction<'_>,
+    fragment_start: usize,
+    access: StackByteRange,
+    frame: usize,
+) -> bool {
+    if !memory_access_is_store(instruction.tail) {
+        return false;
+    }
+    let Some(base_reg) = memory_access_base_register(instruction.tail) else {
+        return false;
+    };
+    let Some((base, base_frame)) = latest_reg_state_before_instruction_with_frame(
+        states,
+        instruction,
+        fragment_start,
+        base_reg,
+    ) else {
+        return false;
+    };
+    if base_frame != frame || base.reg_type != "fp" || reg_state_has_variable_offset(base) {
+        return false;
+    }
+    stack_memory_access_range(base, instruction.tail)
+        .is_some_and(|written| written.overlaps(access))
+}
+
+fn helper_stack_output_range(
+    states: &[VerifierInsn],
+    instruction: TerminalInstruction<'_>,
+    fragment_start: usize,
+    target: &str,
+    frame: usize,
+) -> Option<StackByteRange> {
+    let (write_reg, len_reg) = stack_output_helper_signature(target)?;
+    let (arg, arg_frame) = latest_reg_state_for_call_argument_with_frame(
+        states,
+        instruction,
+        fragment_start,
+        Some(instruction.line),
+        write_reg,
+    )?;
+    if arg_frame != frame || arg.reg_type != "fp" || reg_state_has_variable_offset(arg) {
+        return None;
+    }
+    let len = helper_exact_u64_argument(states, instruction, fragment_start, len_reg)?;
+    let len = i16::try_from(len).ok()?;
+    let offset = i16::try_from(arg.offset.unwrap_or_default()).ok()?;
+    stack_value_range(offset, len)
+}
+
+fn probe_read_value_helper(target: &str) -> bool {
+    probe_read_value_helper_signature(target).is_some()
+}
+
+fn probe_read_value_helper_signature(target: &str) -> Option<(u8, u8)> {
+    match target {
+        "bpf_probe_read"
+        | "4"
+        | "bpf_probe_read_user"
+        | "112"
+        | "bpf_probe_read_kernel"
+        | "113" => Some((1, 2)),
+        _ => None,
+    }
+}
+
+fn stack_output_helper_signature(target: &str) -> Option<(u8, u8)> {
+    match target {
+        "bpf_probe_read"
+        | "4"
+        | "bpf_probe_read_user"
+        | "112"
+        | "bpf_probe_read_kernel"
+        | "113"
+        | "bpf_probe_read_str"
+        | "45"
+        | "bpf_probe_read_user_str"
+        | "114"
+        | "bpf_probe_read_kernel_str"
+        | "115"
+        | "bpf_get_current_comm"
+        | "16"
+        | "bpf_copy_from_user"
+        | "bpf_copy_from_user_task"
+        | "bpf_dynptr_read"
+        | "bpf_snprintf" => Some((1, 2)),
+        "bpf_d_path" | "bpf_get_stack" | "bpf_get_task_stack" => Some((2, 3)),
+        "bpf_skb_load_bytes" | "26" | "bpf_skb_load_bytes_relative" | "bpf_xdp_load_bytes" => {
+            Some((3, 4))
+        }
+        _ => None,
+    }
+}
+
+fn helper_stack_argument_starts_at_access(
+    states: &[VerifierInsn],
+    instruction: TerminalInstruction<'_>,
+    fragment_start: usize,
+    access: StackByteRange,
+    frame: usize,
+) -> bool {
+    call_target_from_instruction_tail(instruction.tail).is_some()
+        && (1..=5).any(|reg| {
+            let Some((arg, arg_frame)) = latest_reg_state_for_call_argument_with_frame(
+                states,
+                instruction,
+                fragment_start,
+                Some(instruction.line),
+                reg,
+            ) else {
+                return false;
+            };
+            if arg_frame != frame || arg.reg_type != "fp" || reg_state_has_variable_offset(arg) {
+                return false;
+            }
+            i16::try_from(arg.offset.unwrap_or_default()) == Ok(access.start)
+        })
+}
+
+fn helper_exact_u64_argument(
+    states: &[VerifierInsn],
+    instruction: TerminalInstruction<'_>,
+    fragment_start: usize,
+    reg: u8,
+) -> Option<u64> {
+    let state = latest_reg_state_before_instruction(states, instruction, fragment_start, reg)?;
+    state
+        .exact_u64()
+        .or_else(|| state.exact_u32().map(u64::from))
+}
+
+fn instruction_register_copy_source(instruction_tail: &str, destination: u8) -> Option<u8> {
+    if instruction_destination_register(instruction_tail) != Some(destination) {
+        return None;
+    }
+    let (_, rest) = instruction_tail.split_once(')')?;
+    let (_, rhs) = rest
+        .split_once(';')
+        .map_or(rest, |(body, _)| body)
+        .trim()
+        .split_once(" = ")?;
+    parse_register_operand(rhs.trim())
+}
+
+fn instruction_destination_register(instruction_tail: &str) -> Option<u8> {
+    let (_, rest) = instruction_tail.split_once(')')?;
+    let lhs = rest.trim_start().split_once(" = ")?.0.trim();
+    if lhs.len() < 2 {
+        return None;
+    }
+    let (prefix, digits) = lhs.split_at(1);
+    if !matches!(prefix, "r" | "w") {
+        return None;
+    }
+    digits.parse().ok()
+}
+
+fn parse_register_operand(operand: &str) -> Option<u8> {
+    let digits = operand.strip_prefix('r')?;
+    if digits.is_empty() || !digits.bytes().all(|byte| byte.is_ascii_digit()) {
+        return None;
+    }
+    digits.parse().ok()
 }
 
 fn stale_pointer_after_invalidating_helper(
