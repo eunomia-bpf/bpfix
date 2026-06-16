@@ -1,6 +1,6 @@
 use bpfanalysis::verifier_log::{
-    latest_reg_state_before, map_value_access_error, parse_i64_after, scalar_range_summary,
-    verifier_value_summary,
+    latest_reg_state_before, latest_register_with_type_before, map_value_access_error,
+    parse_i64_after, register_from_verifier_error, scalar_range_summary, verifier_value_summary,
 };
 use bpfanalysis::VerifierInsn;
 
@@ -21,7 +21,7 @@ pub(crate) fn instantiate_required_proof(
     states: &[VerifierInsn],
     obligation: ProofObligation,
 ) -> RequiredProof {
-    let register = parse_register_from_error(terminal_error);
+    let register = register_from_verifier_error(terminal_error);
     match obligation {
         ProofObligation::PacketBounds => packet_bounds_required_proof(terminal_error, register),
         ProofObligation::ScalarRange => {
@@ -199,7 +199,8 @@ fn scalar_range_required_proof(
         return proof;
     }
 
-    let register = register.or_else(|| latest_scalar_register(states, terminal_pc));
+    let register =
+        register.or_else(|| latest_register_with_type_before(states, terminal_pc, "scalar"));
     let state = register.and_then(|reg| latest_reg_state_before(states, terminal_pc, reg));
     let description = if message.contains("value -") {
         "prove the scalar used for pointer arithmetic cannot be negative on any path".to_string()
@@ -248,7 +249,8 @@ fn map_value_access_required_proof(
         return None;
     }
 
-    let register = register.or_else(|| latest_map_value_register(states, terminal_pc));
+    let register =
+        register.or_else(|| latest_register_with_type_before(states, terminal_pc, "map_value"));
     let state = register.and_then(|reg| latest_reg_state_before(states, terminal_pc, reg));
     let access = map_value_access_error(message);
     let value_size = access
@@ -402,28 +404,10 @@ fn environment_required_proof(message: &str) -> RequiredProof {
     };
     RequiredProof {
         obligation: ProofObligation::EnvironmentCapability,
-        register: parse_register_from_error(message),
+        register: register_from_verifier_error(message),
         description,
         rejection_detail,
     }
-}
-
-fn parse_register_from_error(message: &str) -> Option<u8> {
-    let bytes = message.as_bytes();
-    let mut idx = 0usize;
-    while idx + 1 < bytes.len() {
-        if bytes[idx] != b'R' || !bytes[idx + 1].is_ascii_digit() {
-            idx += 1;
-            continue;
-        }
-        let start = idx + 1;
-        let mut end = start;
-        while end < bytes.len() && bytes[end].is_ascii_digit() {
-            end += 1;
-        }
-        return message[start..end].parse().ok();
-    }
-    None
 }
 
 fn parse_arg_number(message: &str) -> Option<i64> {
@@ -447,22 +431,4 @@ fn parse_helper_name(message: &str) -> Option<String> {
         }
     }
     None
-}
-
-fn latest_scalar_register(states: &[VerifierInsn], terminal_pc: Option<usize>) -> Option<u8> {
-    states
-        .iter()
-        .filter(|state| terminal_pc.is_none_or(|pc| state.pc <= pc))
-        .rev()
-        .flat_map(|state| state.regs.iter())
-        .find_map(|(&reg, state)| (state.reg_type == "scalar").then_some(reg))
-}
-
-fn latest_map_value_register(states: &[VerifierInsn], terminal_pc: Option<usize>) -> Option<u8> {
-    states
-        .iter()
-        .filter(|state| terminal_pc.is_none_or(|pc| state.pc <= pc))
-        .rev()
-        .flat_map(|state| state.regs.iter())
-        .find_map(|(&reg, state)| (state.reg_type == "map_value").then_some(reg))
 }

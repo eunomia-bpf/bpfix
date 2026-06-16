@@ -746,11 +746,23 @@ fn parses_map_value_access_error() {
 #[test]
 fn queries_latest_unsafe_scalar_and_nullable_state() {
     let log = r#"
-0: R1=scalar(smin=-1,umax=5) R2=map_value_or_null(id=1,map=foo,ks=4,vs=8)
-1: R1=1 R2=map_value(map=foo,ks=4,vs=8)
+0: R1=scalar(smin=-1,umax=5) R2=map_value_or_null(id=1,map=foo,ks=4,vs=8) R4=scalar(umax=7)
+1: R1=1 R2=map_value(map=foo,ks=4,vs=8) R3=map_value(map=foo,ks=4,vs=8)
 "#;
 
     let states = verifier_states_from_log(log).unwrap();
+    assert_eq!(
+        latest_register_with_type_before(&states, Some(0), "scalar"),
+        Some(1)
+    );
+    assert_eq!(
+        latest_register_with_type_before(&states, Some(1), "map_value"),
+        Some(2)
+    );
+    assert_eq!(
+        latest_register_with_type_before(&states, Some(0), "map_value"),
+        None
+    );
     let (pc, state) = latest_unsafe_scalar_state(&states, Some(1), 1).unwrap();
     assert_eq!(pc, 0);
     assert_eq!(state.range.smin, Some(-1));

@@ -1450,6 +1450,24 @@ pub fn latest_reg_state_before(
         .next()
 }
 
+pub fn latest_register_with_type_before(
+    states: &[VerifierInsn],
+    terminal_pc: Option<usize>,
+    reg_type: &str,
+) -> Option<u8> {
+    states
+        .iter()
+        .filter(|state| terminal_pc.is_none_or(|pc| state.pc <= pc))
+        .rev()
+        .find_map(|state| {
+            state
+                .regs
+                .iter()
+                .filter_map(|(&reg, state)| (state.reg_type == reg_type).then_some(reg))
+                .min()
+        })
+}
+
 pub fn latest_unsafe_scalar_state(
     states: &[VerifierInsn],
     terminal_pc: Option<usize>,
