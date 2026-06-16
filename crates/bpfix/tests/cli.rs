@@ -1017,6 +1017,70 @@ fn map_lookup_unreadable_key_argument_points_to_helper_arg() {
 }
 
 #[test]
+fn stack_initialization_source_state_signals_cover_unreadable_exits_and_helper_reads() {
+    let unreadable_return =
+        run_json("bpfix-bench/cases/github-commit-bcc-80b1e778aa72/replay-verifier.log");
+    assert_eq!(unreadable_return["error_id"], "BPFIX-E003");
+    assert_eq!(unreadable_return["failure_class"], "source_bug");
+    assert!(unreadable_return["message"]
+        .as_str()
+        .unwrap()
+        .contains("return register is unreadable"));
+    assert!(evidence_contains(
+        &unreadable_return,
+        "verifier_state_signal",
+        "rejects BPF_EXIT because"
+    ));
+
+    let legacy_skb_load = run_json("bpfix-bench/cases/stackoverflow-67441023/replay-verifier.log");
+    assert_eq!(legacy_skb_load["error_id"], "BPFIX-E003");
+    assert_eq!(legacy_skb_load["failure_class"], "source_bug");
+    assert!(legacy_skb_load["message"]
+        .as_str()
+        .unwrap()
+        .contains("legacy skb load"));
+    assert!(evidence_contains(
+        &legacy_skb_load,
+        "verifier_state_signal",
+        "legacy skb load"
+    ));
+
+    let dynptr_slice_small_buffer =
+        run_json("bpfix-bench/cases/kernel-selftest-dynptr-fail-test-dynptr-skb-small-buff-cgroup-skb-egress-4f498dbd/replay-verifier.log");
+    assert_eq!(dynptr_slice_small_buffer["error_id"], "BPFIX-E003");
+    assert_eq!(dynptr_slice_small_buffer["failure_class"], "source_bug");
+    assert!(dynptr_slice_small_buffer["message"]
+        .as_str()
+        .unwrap()
+        .contains("helper memory/length pair"));
+    assert!(evidence_contains(
+        &dynptr_slice_small_buffer,
+        "verifier_state_signal",
+        "stack pointer and length"
+    ));
+
+    let initialized_stack_buffer_large_enough = run_json_stdin(
+        "0: R1=ctx() R10=fp0\n\
+         1: (7b) *(u64 *)(r10 -24) = r2        ; R2_w=0 R10=fp0 fp-24_w=0\n\
+         2: (bf) r3 = r10                      ; R3_w=fp0 R10=fp0\n\
+         3: (07) r3 += -24                     ; R3_w=fp-24\n\
+         4: (b7) r4 = 8                        ; R4_w=8\n\
+         5: (85) call bpf_dynptr_slice#71567\n\
+         invalid read from stack R3 off -24+8 size 8\n\
+         arg#2 arg#3 memory, len pair leads to invalid memory access\n",
+    );
+    assert_eq!(
+        initialized_stack_buffer_large_enough["error_id"],
+        "BPFIX-E003"
+    );
+    assert!(!evidence_contains(
+        &initialized_stack_buffer_large_enough,
+        "verifier_state_signal",
+        "stack pointer and length"
+    ));
+}
+
+#[test]
 fn underchecked_packet_guards_report_source_state_signal() {
     let off_by_one_guard = run_json("bpfix-bench/cases/stackoverflow-72575736/replay-verifier.log");
     assert_eq!(off_by_one_guard["error_id"], "BPFIX-E001");

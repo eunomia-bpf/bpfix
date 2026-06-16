@@ -16,6 +16,7 @@ use crate::source::{
     looks_like_stack_initialization, parse_instruction_line, source_for_pc, terminal_source,
     SourceEvent, SourceLocation,
 };
+use std::collections::HashMap;
 
 const MAX_BPF_STACK_DEPTH: i32 = 512;
 
@@ -107,6 +108,9 @@ pub enum ProofSignal {
     MapLookupKeyArgumentUnreadable,
     UnreadableProgramEntryArgument,
     UnreadableHelperArgument,
+    UnreadableReturnRegister,
+    LegacySkbLoadUnreadableRegister,
+    HelperStackReadExceedsInitializedRange,
     HelperStackWriteBeyondFrame,
     ScalarValueUsedAsPointer,
     StalePointerAfterInvalidatingHelper,
@@ -229,6 +233,15 @@ impl ProofSignal {
             }
             Self::UnreadableHelperArgument => {
                 "helper argument register is unreadable at the call site"
+            }
+            Self::UnreadableReturnRegister => {
+                "return register is unreadable at BPF_EXIT"
+            }
+            Self::LegacySkbLoadUnreadableRegister => {
+                "legacy skb load reads an implicit unreadable register"
+            }
+            Self::HelperStackReadExceedsInitializedRange => {
+                "helper memory/length pair reads unwritten stack bytes"
             }
             Self::HelperStackWriteBeyondFrame => {
                 "helper writable stack region crosses the verifier stack frame"
@@ -453,6 +466,15 @@ impl ProofSignal {
             Self::UnreadableHelperArgument => {
                 "the rejected helper call consumes an argument register that has no verifier-readable state at the call site"
             }
+            Self::UnreadableReturnRegister => {
+                "terminal verifier state rejects BPF_EXIT because the return register is not readable"
+            }
+            Self::LegacySkbLoadUnreadableRegister => {
+                "verifier state for this legacy skb load has no readable state for the instruction's implicit skb register"
+            }
+            Self::HelperStackReadExceedsInitializedRange => {
+                "verifier state shows the helper receives a stack pointer and length whose access range extends past the stack bytes proven written at that pointer"
+            }
             Self::HelperStackWriteBeyondFrame => {
                 "verifier state shows the helper receives a frame-pointer stack region whose byte range extends beyond the BPF stack frame"
             }
@@ -638,6 +660,15 @@ impl ProofSignal {
             Self::UnreadableHelperArgument => {
                 "Set the helper argument register to a verifier-readable value immediately before the helper call, or remove the helper path that reaches the call without that argument."
             }
+            Self::UnreadableReturnRegister => {
+                "Initialize R0 with a valid return code on every path before returning from the BPF program."
+            }
+            Self::LegacySkbLoadUnreadableRegister => {
+                "Use verifier-recognized pointer or context access patterns instead of classic skb[] inline-assembly loads; do not rely on implicit registers outside the program ABI."
+            }
+            Self::HelperStackReadExceedsInitializedRange => {
+                "Write every byte in the helper access range before the call, or reduce the length passed with the stack pointer."
+            }
             Self::HelperStackWriteBeyondFrame => {
                 "Move large scratch buffers to a per-CPU map, shrink the stack object, or pass a smaller helper length so the writable region stays inside the 512-byte BPF stack frame."
             }
@@ -741,6 +772,9 @@ impl ProofSignal {
                 | Self::MapLookupKeyArgumentUnreadable
                 | Self::UnreadableProgramEntryArgument
                 | Self::UnreadableHelperArgument
+                | Self::UnreadableReturnRegister
+                | Self::LegacySkbLoadUnreadableRegister
+                | Self::HelperStackReadExceedsInitializedRange
                 | Self::HelperStackWriteBeyondFrame
                 | Self::ScalarValueUsedAsPointer
                 | Self::StalePointerAfterInvalidatingHelper
@@ -857,6 +891,9 @@ impl ProofSignal {
                 | Self::MapLookupKeyArgumentUnreadable
                 | Self::UnreadableProgramEntryArgument
                 | Self::UnreadableHelperArgument
+                | Self::UnreadableReturnRegister
+                | Self::LegacySkbLoadUnreadableRegister
+                | Self::HelperStackReadExceedsInitializedRange
                 | Self::HelperStackWriteBeyondFrame
                 | Self::ScalarValueUsedAsPointer
                 | Self::StalePointerAfterInvalidatingHelper
@@ -955,6 +992,15 @@ impl ProofSignal {
             ),
             Self::UnreadableHelperArgument => Some(
                 "set the rejected helper argument register to a verifier-readable value on every path before the helper call",
+            ),
+            Self::UnreadableReturnRegister => {
+                Some("initialize R0 to a verifier-readable return value before BPF_EXIT")
+            }
+            Self::LegacySkbLoadUnreadableRegister => Some(
+                "use verifier-recognized pointer or context access instead of a legacy skb[] load with an implicit unreadable register",
+            ),
+            Self::HelperStackReadExceedsInitializedRange => Some(
+                "prove every byte in the helper memory/length pair access range is written before the call",
             ),
             Self::HelperStackWriteBeyondFrame => Some(
                 "keep the helper writable stack range fully inside the current BPF stack frame, whose valid byte offsets are -512..0",
@@ -1088,6 +1134,13 @@ impl ProofSignal {
             Self::UnreadableHelperArgument => {
                 Some("this helper argument register is not readable at the call")
             }
+            Self::UnreadableReturnRegister => Some("this exit has no readable value in R0"),
+            Self::LegacySkbLoadUnreadableRegister => {
+                Some("this legacy skb load uses an implicit unreadable register")
+            }
+            Self::HelperStackReadExceedsInitializedRange => {
+                Some("this helper reads unwritten stack bytes")
+            }
             Self::HelperStackWriteBeyondFrame => {
                 Some("this helper write crosses the verifier stack frame boundary")
             }
@@ -1160,6 +1213,9 @@ impl ProofSignal {
             Self::ExceptionCallbackProtocolViolation => Some("BPFIX-E013"),
             Self::UnreadableProgramEntryArgument => Some("BPFIX-E011"),
             Self::UnreadableHelperArgument => Some("BPFIX-E010"),
+            Self::UnreadableReturnRegister => Some("BPFIX-E003"),
+            Self::LegacySkbLoadUnreadableRegister => Some("BPFIX-E003"),
+            Self::HelperStackReadExceedsInitializedRange => Some("BPFIX-E003"),
             Self::HelperStackWriteBeyondFrame => Some("BPFIX-E006"),
             Self::MapValueAccessOutOfBounds => Some("BPFIX-E005"),
             Self::MemoryObjectAccessOutOfBounds => Some("BPFIX-E005"),
@@ -2031,6 +2087,13 @@ struct TerminalInstruction<'a> {
     tail: &'a str,
 }
 
+#[derive(Clone, Debug)]
+struct PathVerifierSnapshot {
+    frame: usize,
+    regs: HashMap<u8, RegState>,
+    stack: HashMap<i16, StackState>,
+}
+
 fn proof_signals(context: ProofSignalContext<'_>) -> Vec<ProofSignal> {
     let mut signals = Vec::new();
     if stack_alignment_lowering_signal(&context) {
@@ -2128,6 +2191,15 @@ fn proof_signals(context: ProofSignalContext<'_>) -> Vec<ProofSignal> {
     }
     if unreadable_helper_argument(&context) {
         signals.push(ProofSignal::UnreadableHelperArgument);
+    }
+    if unreadable_return_register(&context) {
+        signals.push(ProofSignal::UnreadableReturnRegister);
+    }
+    if legacy_skb_load_unreadable_register(&context) {
+        signals.push(ProofSignal::LegacySkbLoadUnreadableRegister);
+    }
+    if helper_stack_read_exceeds_initialized_range(&context) {
+        signals.push(ProofSignal::HelperStackReadExceedsInitializedRange);
     }
     if helper_stack_write_beyond_frame(&context) {
         signals.push(ProofSignal::HelperStackWriteBeyondFrame);
@@ -3205,6 +3277,59 @@ fn unreadable_helper_argument(context: &ProofSignalContext<'_>) -> bool {
     unreadable_helper_call_argument(instruction, reg)
 }
 
+fn unreadable_return_register(context: &ProofSignalContext<'_>) -> bool {
+    if context.obligation != ProofObligation::StackInitialized
+        || !context.terminal_error.contains("!read_ok")
+        || context.register != Some(0)
+    {
+        return false;
+    }
+    let Some(instruction) =
+        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)
+    else {
+        return false;
+    };
+    if !instruction_is_bpf_exit(instruction.tail) {
+        return false;
+    }
+    true
+}
+
+fn legacy_skb_load_unreadable_register(context: &ProofSignalContext<'_>) -> bool {
+    if context.obligation != ProofObligation::StackInitialized
+        || !context.terminal_error.contains("!read_ok")
+        || context.register != Some(6)
+    {
+        return false;
+    }
+    let Some(instruction) =
+        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)
+    else {
+        return false;
+    };
+    if !legacy_skb_load_instruction(instruction.tail) {
+        return false;
+    }
+    let fragment_start = context
+        .terminal_line
+        .map(|line| verifier_fragment_start_line(context.log, line))
+        .unwrap_or(1);
+    verifier_path_snapshot_before_instruction(context.branch_states, instruction, fragment_start)
+        .is_some_and(|snapshot| !snapshot.regs.contains_key(&6))
+}
+
+fn legacy_skb_load_instruction(tail: &str) -> bool {
+    let mut tokens = tail.split_whitespace();
+    let Some(opcode) = tokens.next() else {
+        return false;
+    };
+    if !matches!(opcode, "(20)" | "(28)" | "(30)" | "(40)" | "(48)" | "(50)") {
+        return false;
+    }
+    let compact: String = tail.split_whitespace().collect();
+    compact.contains("=*(u") && compact.contains("*)skb[")
+}
+
 fn unreadable_register_terminal_site<'a>(
     context: &'a ProofSignalContext<'a>,
 ) -> Option<(u8, TerminalInstruction<'a>, usize)> {
@@ -3236,6 +3361,252 @@ fn unreadable_helper_call_argument(instruction: TerminalInstruction<'_>, reg: u8
         return false;
     };
     target == "bpf_skb_store_bytes" && reg == 5
+}
+
+fn helper_stack_read_exceeds_initialized_range(context: &ProofSignalContext<'_>) -> bool {
+    if context.obligation != ProofObligation::StackInitialized {
+        return false;
+    }
+    let terminal = context.terminal_error.to_ascii_lowercase();
+    if !terminal.contains("read from stack") || !terminal.contains("memory, len pair") {
+        return false;
+    }
+    let Some(access) = parse_stack_read_access(context.terminal_error) else {
+        return false;
+    };
+    let Some(instruction) =
+        terminal_instruction_site(context.log, context.terminal_pc, context.terminal_line)
+    else {
+        return false;
+    };
+    let Some(target) = call_target_from_instruction_tail(instruction.tail) else {
+        return false;
+    };
+    let Some((pointer_reg, len_reg)) = helper_stack_read_signature(target) else {
+        return false;
+    };
+    if access.reg != pointer_reg {
+        return false;
+    }
+    if context.register.is_some_and(|reg| reg != pointer_reg) {
+        return false;
+    }
+    let fragment_start = context
+        .terminal_line
+        .map(|line| verifier_fragment_start_line(context.log, line))
+        .unwrap_or_else(|| verifier_fragment_start_line(context.log, instruction.line));
+    let Some(snapshot) = verifier_path_snapshot_before_instruction(
+        context.branch_states,
+        instruction,
+        fragment_start,
+    ) else {
+        return false;
+    };
+    let Some(pointer_state) = snapshot.regs.get(&pointer_reg) else {
+        return false;
+    };
+    if pointer_state.reg_type != "fp" {
+        return false;
+    }
+    let pointer_frame = pointer_state.source_frame.unwrap_or(snapshot.frame);
+    if pointer_frame != snapshot.frame {
+        return false;
+    }
+    let Some(len) = helper_stack_read_length_from_snapshot(&snapshot, len_reg) else {
+        return false;
+    };
+    if access.size != len || access.delta < 0 {
+        return false;
+    }
+    let Some(start) = pointer_state
+        .offset
+        .and_then(|offset| i16::try_from(offset).ok())
+    else {
+        return false;
+    };
+    if i64::from(start) != access.base_off {
+        return false;
+    }
+    if u64::try_from(access.delta)
+        .ok()
+        .is_none_or(|delta| delta >= len)
+    {
+        return false;
+    }
+    len > u64::try_from(initialized_stack_bytes_from_snapshot(
+        &snapshot.stack,
+        start,
+    ))
+    .unwrap_or(0)
+}
+
+fn helper_stack_read_signature(target: &str) -> Option<(u8, u8)> {
+    match target {
+        "bpf_dynptr_slice" | "bpf_dynptr_slice_rdwr" => Some((3, 4)),
+        _ => None,
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct StackReadAccess {
+    reg: u8,
+    base_off: i64,
+    delta: i64,
+    size: u64,
+}
+
+fn parse_stack_read_access(message: &str) -> Option<StackReadAccess> {
+    message.split(';').find_map(parse_stack_read_access_segment)
+}
+
+fn parse_stack_read_access_segment(segment: &str) -> Option<StackReadAccess> {
+    let tokens: Vec<_> = segment.split_whitespace().collect();
+    for window in tokens.windows(9) {
+        if window[0] != "invalid"
+            || window[1] != "read"
+            || window[2] != "from"
+            || window[3] != "stack"
+            || window[5] != "off"
+            || window[7] != "size"
+        {
+            continue;
+        }
+        let reg = window[4].strip_prefix('R')?.parse().ok()?;
+        let (base_off, delta) = parse_stack_offset_delta(window[6])?;
+        let size = window[8].parse().ok()?;
+        return Some(StackReadAccess {
+            reg,
+            base_off,
+            delta,
+            size,
+        });
+    }
+    None
+}
+
+fn parse_stack_offset_delta(expression: &str) -> Option<(i64, i64)> {
+    let split = expression
+        .char_indices()
+        .skip(1)
+        .find_map(|(idx, ch)| matches!(ch, '+' | '-').then_some(idx));
+    let Some(split) = split else {
+        return Some((expression.parse().ok()?, 0));
+    };
+    Some((
+        expression[..split].parse().ok()?,
+        expression[split..].parse().ok()?,
+    ))
+}
+
+fn helper_stack_read_length_from_snapshot(
+    snapshot: &PathVerifierSnapshot,
+    len_reg: u8,
+) -> Option<u64> {
+    let state = snapshot.regs.get(&len_reg)?;
+    state
+        .exact_u64()
+        .or_else(|| state.exact_u32().map(u64::from))
+}
+
+fn verifier_path_snapshot_before_instruction(
+    states: &[VerifierInsn],
+    instruction: TerminalInstruction<'_>,
+    fragment_start: usize,
+) -> Option<PathVerifierSnapshot> {
+    let mut snapshot: Option<PathVerifierSnapshot> = None;
+    for state in states
+        .iter()
+        .filter(|state| state.log_line >= fragment_start)
+        .filter(|state| state.log_line < instruction.line)
+        .filter(|state| state.pc <= instruction.pc)
+    {
+        let reset_path = matches!(
+            state.kind,
+            VerifierInsnKind::EdgeFullState | VerifierInsnKind::PcFullState
+        ) || snapshot
+            .as_ref()
+            .is_some_and(|snapshot| snapshot.frame != state.frame);
+        if reset_path || snapshot.is_none() {
+            snapshot = Some(PathVerifierSnapshot {
+                frame: state.frame,
+                regs: state.regs.clone(),
+                stack: state.stack.clone(),
+            });
+            continue;
+        }
+        let snapshot = snapshot.as_mut()?;
+        snapshot.regs.extend(state.regs.clone());
+        snapshot.stack.extend(state.stack.clone());
+    }
+    snapshot
+}
+
+fn initialized_stack_bytes_from_snapshot(stack: &HashMap<i16, StackState>, start: i16) -> i16 {
+    if start >= 0 {
+        return 0;
+    }
+    let mut initialized = 0i16;
+    let mut offset = start;
+    while offset < 0 {
+        if !stack_byte_initialized_at_offset(stack, offset) {
+            break;
+        }
+        initialized = initialized.saturating_add(1);
+        offset = offset.saturating_add(1);
+    }
+    initialized
+}
+
+fn stack_byte_initialized_at_offset(
+    stack: &HashMap<i16, StackState>,
+    absolute_offset: i16,
+) -> bool {
+    let Some(slot_start) = verifier_stack_slot_start(absolute_offset) else {
+        return false;
+    };
+    stack
+        .get(&slot_start)
+        .is_some_and(|slot| stack_byte_initialized(slot, slot_start, absolute_offset))
+}
+
+fn stack_byte_initialized(stack: &StackState, slot_start: i16, absolute_offset: i16) -> bool {
+    if let Some(slot_types) = stack.slot_types.as_deref() {
+        let byte_index = absolute_offset.saturating_sub(slot_start);
+        let Ok(byte_index) = usize::try_from(byte_index) else {
+            return false;
+        };
+        if byte_index >= 8 {
+            return false;
+        }
+        return slot_types
+            .as_bytes()
+            .get(7 - byte_index)
+            .is_some_and(|slot_type| plain_stack_slot_byte(*slot_type, stack.value.as_ref()));
+    }
+    stack
+        .value
+        .as_ref()
+        .is_some_and(plain_helper_readable_stack_value)
+}
+
+fn plain_stack_slot_byte(slot_type: u8, value: Option<&RegState>) -> bool {
+    match slot_type {
+        b'0' | b'm' => true,
+        b'r' => value.is_some_and(plain_helper_readable_stack_value),
+        _ => false,
+    }
+}
+
+fn plain_helper_readable_stack_value(value: &RegState) -> bool {
+    value.reg_type == "scalar"
+}
+
+fn verifier_stack_slot_start(absolute_offset: i16) -> Option<i16> {
+    if absolute_offset >= 0 {
+        return None;
+    }
+    let slot_index = ((-i32::from(absolute_offset) - 1) / 8) + 1;
+    i16::try_from(-slot_index * 8).ok()
 }
 
 fn unreadable_entry_argument(
@@ -8555,6 +8926,9 @@ mod tests {
             .required_proof
             .rejection_detail
             .contains("not readable"));
+        assert!(analysis
+            .signals
+            .contains(&ProofSignal::UnreadableReturnRegister));
     }
 
     #[test]
@@ -8753,6 +9127,335 @@ R6 !read_ok
         assert!(!analysis
             .signals
             .contains(&ProofSignal::UnreadableHelperArgument));
+        assert!(analysis
+            .signals
+            .contains(&ProofSignal::LegacySkbLoadUnreadableRegister));
+
+        let readable_r6_log = "\
+0: R1=ctx() R6=ctx() R10=fp0
+; asm volatile (\"r0 = *(u8 *)skb[9]\" ::: \"r0\"); @ prog.c:8
+0: (30) r0 = *(u8 *)skb[9]
+R6 !read_ok
+";
+        let analysis = analyze_verifier_log(
+            readable_r6_log,
+            Some(0),
+            None,
+            "R6 !read_ok",
+            None,
+            ProofObligation::StackInitialized,
+        )
+        .unwrap();
+        assert!(!analysis
+            .signals
+            .contains(&ProofSignal::LegacySkbLoadUnreadableRegister));
+
+        let stale_r6_from_earlier_full_state = "\
+0: R1=ctx() R6=ctx() R10=fp0
+0: R1=ctx() R10=fp0
+; asm volatile (\"r0 = *(u8 *)skb[9]\" ::: \"r0\"); @ prog.c:8
+0: (30) r0 = *(u8 *)skb[9]
+R6 !read_ok
+";
+        let analysis = analyze_verifier_log(
+            stale_r6_from_earlier_full_state,
+            Some(0),
+            None,
+            "R6 !read_ok",
+            None,
+            ProofObligation::StackInitialized,
+        )
+        .unwrap();
+        assert!(analysis
+            .signals
+            .contains(&ProofSignal::LegacySkbLoadUnreadableRegister));
+
+        let no_snapshot_log = "\
+; asm volatile (\"r0 = *(u8 *)skb[9]\" ::: \"r0\"); @ prog.c:8
+0: (30) r0 = *(u8 *)skb[9]
+R6 !read_ok
+";
+        let analysis = analyze_verifier_log(
+            no_snapshot_log,
+            Some(0),
+            None,
+            "R6 !read_ok",
+            None,
+            ProofObligation::StackInitialized,
+        )
+        .unwrap();
+        assert!(!analysis
+            .signals
+            .contains(&ProofSignal::LegacySkbLoadUnreadableRegister));
+    }
+
+    #[test]
+    fn helper_stack_read_length_exceeding_initialized_bytes_is_source_state_signal() {
+        let helper_stack_read_signal = |log: &str, terminal_error: &str| {
+            analyze_verifier_log(
+                log,
+                Some(2),
+                None,
+                terminal_error,
+                Some("bpf_dynptr_slice"),
+                ProofObligation::StackInitialized,
+            )
+            .unwrap()
+            .signals
+            .contains(&ProofSignal::HelperStackReadExceedsInitializedRange)
+        };
+        let log = "\
+0: R1=ctx() R10=fp0
+1: (7b) *(u64 *)(r10 -24) = r2        ; R2_w=0 R10=fp0 fp-24_w=0
+2: (bf) r3 = r10                      ; R3_w=fp0 R10=fp0
+3: (07) r3 += -24                     ; R3_w=fp-24
+4: (b7) r4 = 9                        ; R4_w=9
+5: (85) call bpf_dynptr_slice#71567
+invalid read from stack R3 off -24+8 size 9
+arg#2 arg#3 memory, len pair leads to invalid memory access
+";
+        let analysis = analyze_verifier_log(
+            log,
+            Some(5),
+            None,
+            "invalid read from stack R3 off -24+8 size 9; arg#2 arg#3 memory, len pair leads to invalid memory access",
+            Some("bpf_dynptr_slice"),
+            ProofObligation::StackInitialized,
+        )
+        .unwrap();
+
+        assert!(analysis
+            .signals
+            .contains(&ProofSignal::HelperStackReadExceedsInitializedRange));
+
+        let branch_paths_are_not_mixed = "\
+0: R1=ctx() R10=fp0
+1: R3=fp-32 R4=16 R10=fp0 fp-32_w=0
+from 1 to 2: R3=fp-32 R4=16 R10=fp0 fp-24_w=0
+2: (85) call bpf_dynptr_slice#71567
+invalid read from stack R3 off -32+8 size 16
+arg#2 arg#3 memory, len pair leads to invalid memory access
+";
+        assert!(helper_stack_read_signal(
+            branch_paths_are_not_mixed,
+            "invalid read from stack R3 off -32+8 size 16; arg#2 arg#3 memory, len pair leads to invalid memory access"
+        ));
+
+        let pc_full_states_are_not_merged = "\
+0: R1=ctx() R10=fp0 fp-32_w=0
+1: R3=fp-32 R4=16 R10=fp0 fp-24_w=0
+2: (85) call bpf_dynptr_slice#71567
+invalid read from stack R3 off -32+8 size 16
+arg#2 arg#3 memory, len pair leads to invalid memory access
+";
+        assert!(helper_stack_read_signal(
+            pc_full_states_are_not_merged,
+            "invalid read from stack R3 off -32+8 size 16; arg#2 arg#3 memory, len pair leads to invalid memory access"
+        ));
+
+        let branch_delta_state_is_part_of_current_path = "\
+0: R1=ctx() R10=fp0 fp-24_w=0
+1: (55) if r1 != 0x0 goto pc+1      ; R3=fp-24 R4=9 R10=fp0
+2: (85) call bpf_dynptr_slice#71567
+invalid read from stack R3 off -24+8 size 9
+arg#2 arg#3 memory, len pair leads to invalid memory access
+";
+        assert!(helper_stack_read_signal(
+            branch_delta_state_is_part_of_current_path,
+            "invalid read from stack R3 off -24+8 size 9; arg#2 arg#3 memory, len pair leads to invalid memory access"
+        ));
+
+        let partial_low_half_read = "\
+0: R1=ctx() R10=fp0
+1: R3=fp-24 R4=4 R10=fp0 fp-24=0000????
+2: (85) call bpf_dynptr_slice#71567
+invalid read from stack R3 off -24+0 size 4
+arg#2 arg#3 memory, len pair leads to invalid memory access
+";
+        let analysis = analyze_verifier_log(
+            partial_low_half_read,
+            Some(2),
+            None,
+            "invalid read from stack R3 off -24+0 size 4; arg#2 arg#3 memory, len pair leads to invalid memory access",
+            Some("bpf_dynptr_slice"),
+            ProofObligation::StackInitialized,
+        )
+        .unwrap();
+        assert!(analysis
+            .signals
+            .contains(&ProofSignal::HelperStackReadExceedsInitializedRange));
+
+        let partial_high_half_read = "\
+0: R1=ctx() R10=fp0
+1: R3=fp-20 R4=4 R10=fp0 fp-24=0000????
+2: (85) call bpf_dynptr_slice#71567
+invalid read from stack R3 off -20+0 size 4
+arg#2 arg#3 memory, len pair leads to invalid memory access
+";
+        let analysis = analyze_verifier_log(
+            partial_high_half_read,
+            Some(2),
+            None,
+            "invalid read from stack R3 off -20+0 size 4; arg#2 arg#3 memory, len pair leads to invalid memory access",
+            Some("bpf_dynptr_slice"),
+            ProofObligation::StackInitialized,
+        )
+        .unwrap();
+        assert!(!analysis
+            .signals
+            .contains(&ProofSignal::HelperStackReadExceedsInitializedRange));
+
+        let oversized_exact_length = "\
+0: R1=ctx() R10=fp0
+1: R3=fp-24 R4=65535 R10=fp0 fp-24_w=0
+2: (85) call bpf_dynptr_slice#71567
+invalid read from stack R3 off -24+0 size 65535
+arg#2 arg#3 memory, len pair leads to invalid memory access
+";
+        let analysis = analyze_verifier_log(
+            oversized_exact_length,
+            Some(2),
+            None,
+            "invalid read from stack R3 off -24+0 size 65535; arg#2 arg#3 memory, len pair leads to invalid memory access",
+            Some("bpf_dynptr_slice"),
+            ProofObligation::StackInitialized,
+        )
+        .unwrap();
+        assert!(analysis
+            .signals
+            .contains(&ProofSignal::HelperStackReadExceedsInitializedRange));
+
+        let iterator_slot_is_not_plain_buffer = "\
+0: R1=ctx() R10=fp0
+1: R3=fp-24 R4=9 R10=fp0 fp-24_w=0 fp-16_w=iter_num()
+2: (85) call bpf_dynptr_slice#71567
+invalid read from stack R3 off -24+0 size 9
+arg#2 arg#3 memory, len pair leads to invalid memory access
+";
+        let analysis = analyze_verifier_log(
+            iterator_slot_is_not_plain_buffer,
+            Some(2),
+            None,
+            "invalid read from stack R3 off -24+0 size 9; arg#2 arg#3 memory, len pair leads to invalid memory access",
+            Some("bpf_dynptr_slice"),
+            ProofObligation::StackInitialized,
+        )
+        .unwrap();
+        assert!(analysis
+            .signals
+            .contains(&ProofSignal::HelperStackReadExceedsInitializedRange));
+
+        let frame_pointer_spill_is_not_plain_buffer = "\
+0: R1=ctx() R10=fp0
+1: R3=fp-24 R4=9 R10=fp0 fp-24_w=0 fp-16=fp-40
+2: (85) call bpf_dynptr_slice#71567
+invalid read from stack R3 off -24+8 size 9
+arg#2 arg#3 memory, len pair leads to invalid memory access
+";
+        assert!(helper_stack_read_signal(
+            frame_pointer_spill_is_not_plain_buffer,
+            "invalid read from stack R3 off -24+8 size 9; arg#2 arg#3 memory, len pair leads to invalid memory access"
+        ));
+
+        let map_value_spill_is_not_plain_buffer = "\
+0: R1=ctx() R10=fp0
+1: R3=fp-24 R4=9 R10=fp0 fp-24_w=0 fp-16=map_value(map=demo,ks=4,vs=8)
+2: (85) call bpf_dynptr_slice#71567
+invalid read from stack R3 off -24+8 size 9
+arg#2 arg#3 memory, len pair leads to invalid memory access
+";
+        assert!(helper_stack_read_signal(
+            map_value_spill_is_not_plain_buffer,
+            "invalid read from stack R3 off -24+8 size 9; arg#2 arg#3 memory, len pair leads to invalid memory access"
+        ));
+
+        let ctx_spill_is_not_plain_buffer = "\
+0: R1=ctx() R10=fp0
+1: R3=fp-24 R4=9 R10=fp0 fp-24_w=0 fp-16=ctx()
+2: (85) call bpf_dynptr_slice#71567
+invalid read from stack R3 off -24+8 size 9
+arg#2 arg#3 memory, len pair leads to invalid memory access
+";
+        assert!(helper_stack_read_signal(
+            ctx_spill_is_not_plain_buffer,
+            "invalid read from stack R3 off -24+8 size 9; arg#2 arg#3 memory, len pair leads to invalid memory access"
+        ));
+
+        let raw_dynptr_slot_type_is_not_plain_buffer = "\
+0: R1=ctx() R10=fp0
+1: R3=fp-24 R4=9 R10=fp0 fp-24_w=0 fp-16=dddddddd
+2: (85) call bpf_dynptr_slice#71567
+invalid read from stack R3 off -24+0 size 9
+arg#2 arg#3 memory, len pair leads to invalid memory access
+";
+        let analysis = analyze_verifier_log(
+            raw_dynptr_slot_type_is_not_plain_buffer,
+            Some(2),
+            None,
+            "invalid read from stack R3 off -24+0 size 9; arg#2 arg#3 memory, len pair leads to invalid memory access",
+            Some("bpf_dynptr_slice"),
+            ProofObligation::StackInitialized,
+        )
+        .unwrap();
+        assert!(analysis
+            .signals
+            .contains(&ProofSignal::HelperStackReadExceedsInitializedRange));
+
+        let adjacent_initialized_slots = "\
+0: R1=ctx() R10=fp0
+1: R3=fp-32 R4=16 R10=fp0 fp-32_w=0 fp-24_w=0
+2: (85) call bpf_dynptr_slice#71567
+invalid read from stack R3 off -32+0 size 16
+arg#2 arg#3 memory, len pair leads to invalid memory access
+";
+        let analysis = analyze_verifier_log(
+            adjacent_initialized_slots,
+            Some(2),
+            None,
+            "invalid read from stack R3 off -32+0 size 16; arg#2 arg#3 memory, len pair leads to invalid memory access",
+            Some("bpf_dynptr_slice"),
+            ProofObligation::StackInitialized,
+        )
+        .unwrap();
+        assert!(!analysis
+            .signals
+            .contains(&ProofSignal::HelperStackReadExceedsInitializedRange));
+
+        let reported_register_mismatch = "\
+0: R1=ctx() R10=fp0
+1: R3=fp-24 R4=9 R10=fp0 fp-24_w=0
+2: (85) call bpf_dynptr_slice#71567
+invalid read from stack R2 off -24+8 size 9
+arg#2 arg#3 memory, len pair leads to invalid memory access
+";
+        assert!(!helper_stack_read_signal(
+            reported_register_mismatch,
+            "invalid read from stack R2 off -24+8 size 9; arg#2 arg#3 memory, len pair leads to invalid memory access"
+        ));
+
+        let reported_offset_mismatch = "\
+0: R1=ctx() R10=fp0
+1: R3=fp-24 R4=9 R10=fp0 fp-24_w=0
+2: (85) call bpf_dynptr_slice#71567
+invalid read from stack R3 off -16+8 size 9
+arg#2 arg#3 memory, len pair leads to invalid memory access
+";
+        assert!(!helper_stack_read_signal(
+            reported_offset_mismatch,
+            "invalid read from stack R3 off -16+8 size 9; arg#2 arg#3 memory, len pair leads to invalid memory access"
+        ));
+
+        let reported_size_mismatch = "\
+0: R1=ctx() R10=fp0
+1: R3=fp-24 R4=70000 R10=fp0 fp-24_w=0
+2: (85) call bpf_dynptr_slice#71567
+invalid read from stack R3 off -24+8 size 65535
+arg#2 arg#3 memory, len pair leads to invalid memory access
+";
+        assert!(!helper_stack_read_signal(
+            reported_size_mismatch,
+            "invalid read from stack R3 off -24+8 size 65535; arg#2 arg#3 memory, len pair leads to invalid memory access"
+        ));
     }
 
     #[test]
