@@ -1,3 +1,4 @@
+use bpfanalysis::helper_abi::{helper_probe_read_value_pair, helper_stack_output_pair};
 use bpfanalysis::verifier_log::{
     call_target_from_instruction_tail, instruction_assigns_register,
     instruction_destination_register, instruction_frame, instruction_register_copy_source,
@@ -246,7 +247,9 @@ fn helper_stack_output_range(
     target: &str,
     frame: usize,
 ) -> Option<StackByteRange> {
-    let (write_reg, len_reg) = stack_output_helper_signature(target)?;
+    let pair = helper_stack_output_pair(target)?;
+    let write_reg = pair.ptr_reg;
+    let len_reg = pair.len_reg;
     let (arg, arg_frame) = latest_reg_state_for_call_argument_with_frame(
         states,
         instruction,
@@ -264,47 +267,7 @@ fn helper_stack_output_range(
 }
 
 fn probe_read_value_helper(target: &str) -> bool {
-    probe_read_value_helper_signature(target).is_some()
-}
-
-fn probe_read_value_helper_signature(target: &str) -> Option<(u8, u8)> {
-    match target {
-        "bpf_probe_read"
-        | "4"
-        | "bpf_probe_read_user"
-        | "112"
-        | "bpf_probe_read_kernel"
-        | "113" => Some((1, 2)),
-        _ => None,
-    }
-}
-
-fn stack_output_helper_signature(target: &str) -> Option<(u8, u8)> {
-    match target {
-        "bpf_probe_read"
-        | "4"
-        | "bpf_probe_read_user"
-        | "112"
-        | "bpf_probe_read_kernel"
-        | "113"
-        | "bpf_probe_read_str"
-        | "45"
-        | "bpf_probe_read_user_str"
-        | "114"
-        | "bpf_probe_read_kernel_str"
-        | "115"
-        | "bpf_get_current_comm"
-        | "16"
-        | "bpf_copy_from_user"
-        | "bpf_copy_from_user_task"
-        | "bpf_dynptr_read"
-        | "bpf_snprintf" => Some((1, 2)),
-        "bpf_d_path" | "bpf_get_stack" | "bpf_get_task_stack" => Some((2, 3)),
-        "bpf_skb_load_bytes" | "26" | "bpf_skb_load_bytes_relative" | "bpf_xdp_load_bytes" => {
-            Some((3, 4))
-        }
-        _ => None,
-    }
+    helper_probe_read_value_pair(target).is_some()
 }
 
 fn helper_stack_argument_starts_at_access(

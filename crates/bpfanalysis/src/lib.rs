@@ -9,6 +9,7 @@
 
 #[cfg(feature = "analysis")]
 pub mod analysis;
+pub mod helper_abi;
 #[cfg(feature = "analysis")]
 pub mod insn;
 #[cfg(feature = "object-analysis")]

@@ -1,3 +1,4 @@
+use bpfanalysis::helper_abi::{helper_stack_read_pair, helper_writable_stack_output_pair};
 use bpfanalysis::verifier_log::{
     call_target_from_instruction_tail, initialized_stack_bytes_from_snapshot,
     instruction_uses_register as terminal_instruction_uses_register,
@@ -162,9 +163,11 @@ pub(super) fn helper_stack_read_exceeds_initialized_range(
     let Some(target) = call_target_from_instruction_tail(instruction.tail) else {
         return false;
     };
-    let Some((pointer_reg, len_reg)) = helper_stack_read_signature(target) else {
+    let Some(pair) = helper_stack_read_pair(target) else {
         return false;
     };
+    let pointer_reg = pair.ptr_reg;
+    let len_reg = pair.len_reg;
     if access.reg != Some(pointer_reg) {
         return false;
     }
@@ -215,13 +218,6 @@ pub(super) fn helper_stack_read_exceeds_initialized_range(
         start,
     ))
     .unwrap_or(0)
-}
-
-fn helper_stack_read_signature(target: &str) -> Option<(u8, u8)> {
-    match target {
-        "bpf_dynptr_slice" | "bpf_dynptr_slice_rdwr" => Some((3, 4)),
-        _ => None,
-    }
 }
 
 fn helper_stack_read_length_from_snapshot(
@@ -292,9 +288,11 @@ pub(super) fn helper_stack_write_beyond_frame(context: &ProofSignalContext<'_>) 
     let Some(target) = call_target_from_instruction_tail(instruction.tail) else {
         return false;
     };
-    let Some((write_reg, len_reg)) = helper_writable_stack_signature(target) else {
+    let Some(pair) = helper_writable_stack_output_pair(target) else {
         return false;
     };
+    let write_reg = pair.ptr_reg;
+    let len_reg = pair.len_reg;
     if reg != write_reg {
         return false;
     }
@@ -311,13 +309,6 @@ pub(super) fn helper_stack_write_beyond_frame(context: &ProofSignalContext<'_>) 
         return false;
     }
     helper_write_size_argument_matches(context, instruction, fragment_start, len_reg, access)
-}
-
-fn helper_writable_stack_signature(target: &str) -> Option<(u8, u8)> {
-    match target {
-        "bpf_get_current_comm" => Some((1, 2)),
-        _ => None,
-    }
 }
 
 fn helper_write_size_argument_matches(

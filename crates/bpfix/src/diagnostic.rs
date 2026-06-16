@@ -1,4 +1,7 @@
 use anyhow::Result;
+use bpfanalysis::helper_abi::{
+    helper_consumes_scalar_length_register, helper_map_value_memory_access_pair,
+};
 use bpfanalysis::verifier_log::{
     atomic_memory_access_width, call_target_from_instruction_tail, conditional_branch_registers,
     direct_call_target_from_instruction_tail, instruction_adds_register,
@@ -980,7 +983,11 @@ fn map_value_access_out_of_bounds(context: &ProofSignalContext<'_>) -> bool {
     };
     let instruction_target = direct_call_target_from_instruction_tail(instruction.tail);
     let Some(reg) = memory_access_base_register(instruction.tail)
-        .or_else(|| instruction_target.and_then(helper_memory_pointer_argument_register))
+        .or_else(|| {
+            instruction_target
+                .and_then(helper_map_value_memory_access_pair)
+                .map(|pair| pair.ptr_reg)
+        })
         .or(context.register)
         .or_else(|| register_from_terminal_error(context.terminal_error))
     else {
@@ -1013,7 +1020,7 @@ fn map_value_access_out_of_bounds(context: &ProofSignalContext<'_>) -> bool {
     let Some(target) = instruction_target else {
         return false;
     };
-    helper_memory_pointer_argument_register(target) == Some(reg)
+    helper_map_value_memory_access_pair(target).is_some_and(|pair| pair.ptr_reg == reg)
         && map_value_terminal_offset_matches_state(state, access_offset, Some(0))
         && helper_memory_access_length_matches(
             context.branch_states,
@@ -1036,17 +1043,6 @@ fn map_value_terminal_offset_matches_state(
         == i64::from(reported_offset)
 }
 
-fn helper_memory_pointer_argument_register(target: &str) -> Option<u8> {
-    match target {
-        "bpf_probe_read"
-        | "bpf_probe_read_kernel"
-        | "bpf_probe_read_kernel_str"
-        | "bpf_probe_read_user"
-        | "bpf_probe_read_user_str" => Some(1),
-        _ => None,
-    }
-}
-
 fn helper_memory_access_length_matches(
     states: &[VerifierInsn],
     instruction: TerminalInstruction<'_>,
@@ -1054,7 +1050,8 @@ fn helper_memory_access_length_matches(
     target: &str,
     access_size: u32,
 ) -> bool {
-    let Some(length_reg) = scalar_length_helper_argument_register(target) else {
+    let Some(length_reg) = helper_map_value_memory_access_pair(target).map(|pair| pair.len_reg)
+    else {
         return false;
     };
     latest_reg_state_before_instruction(states, instruction, fragment_start, length_reg)
@@ -2547,12 +2544,11 @@ fn map_value_relation_precision_boundary(context: &ProofSignalContext<'_>) -> bo
     let Some(target) = direct_call_target_from_instruction_tail(instruction.tail) else {
         return false;
     };
-    let Some(pointer_reg) = helper_memory_pointer_argument_register(target) else {
+    let Some(pair) = helper_map_value_memory_access_pair(target) else {
         return false;
     };
-    let Some(length_reg) = scalar_length_helper_argument_register(target) else {
-        return false;
-    };
+    let pointer_reg = pair.ptr_reg;
+    let length_reg = pair.len_reg;
     let fragment_start = terminal_fragment_start(context, instruction);
     let Some(pointer_state) = latest_reg_state_before_instruction(
         context.branch_states,
@@ -2984,25 +2980,6 @@ fn instruction_consumes_scalar_register(instruction_tail: &str, reg: u8) -> bool
         return helper_consumes_scalar_length_register(target, reg);
     }
     instruction_reads_register(opcode_tail, reg)
-}
-
-fn helper_consumes_scalar_length_register(target: &str, reg: u8) -> bool {
-    scalar_length_helper_argument_register(target) == Some(reg)
-        || matches!(target, "bpf_csum_diff") && matches!(reg, 2 | 4)
-}
-
-fn scalar_length_helper_argument_register(target: &str) -> Option<u8> {
-    match target {
-        "bpf_probe_read"
-        | "bpf_probe_read_kernel"
-        | "bpf_probe_read_kernel_str"
-        | "bpf_probe_read_user"
-        | "bpf_probe_read_user_str" => Some(2),
-        "bpf_csum_diff" => Some(4),
-        "bpf_skb_load_bytes" => Some(4),
-        "bpf_perf_event_output" => Some(5),
-        _ => None,
-    }
 }
 
 fn scalar_range_state_is_unsafe_for_signal(state: &RegState, terminal_error: &str) -> bool {
