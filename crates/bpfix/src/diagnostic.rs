@@ -2,12 +2,14 @@ use anyhow::Result;
 use bpfanalysis::verifier_log::{
     atomic_memory_access_width, call_target_from_instruction_tail, conditional_branch_registers,
     direct_call_target_from_instruction_tail, instruction_adds_register,
-    instruction_assigns_register, instruction_on_log_line, instruction_reads_register,
-    instruction_single_register_rhs_source, instruction_site_before_line,
-    instructions_in_line_range, is_verifier_error_line, is_verifier_fragment_boundary,
-    latest_nullable_state, latest_reg_state_at_or_before_instruction, latest_reg_state_before,
+    instruction_assigns_register, instruction_frame, instruction_on_log_line,
+    instruction_reads_register, instruction_single_register_rhs_source,
+    instruction_site_before_line, instructions_in_line_range, is_verifier_error_line,
+    is_verifier_fragment_boundary, latest_nullable_state,
+    latest_reg_state_at_or_before_instruction, latest_reg_state_before,
     latest_reg_state_before_instruction, latest_reg_state_before_instruction_with_frame,
-    latest_reg_state_before_instruction_with_origin, latest_reg_state_index_before,
+    latest_reg_state_before_instruction_with_origin, latest_reg_state_for_call_argument,
+    latest_reg_state_for_call_argument_with_frame, latest_reg_state_index_before,
     latest_unsafe_scalar_state, latest_verifier_state_before_instruction,
     loose_register_operands as register_operands, map_value_access_range_may_exceed_value_size,
     map_value_range_may_exceed_value_size, map_value_remaining_capacity,
@@ -16,8 +18,9 @@ use bpfanalysis::verifier_log::{
     parse_instruction_line, parse_u32_after, scalar_range_has_any_bound, scalar_range_max_i64,
     scalar_range_may_be_negative, scalar_range_may_include_zero, scalar_range_min_i64,
     scalar_range_upper_unbounded_or_too_large, scalar_ranges_match,
-    scalar_state_upper_bound_at_most, stack_value_range, terminal_instruction_access_width,
-    terminal_instruction_memory_offset, terminal_instruction_site, verifier_fragment_start_line,
+    scalar_state_upper_bound_at_most, stack_memory_access_range, stack_value_range,
+    terminal_instruction_access_width, terminal_instruction_memory_offset,
+    terminal_instruction_site, verifier_fragment_start_line,
     verifier_states_with_branch_deltas_from_log, verifier_value_summary, CallbackKind, RegState,
     StackByteRange, StackState, VerifierInsn, VerifierInsnKind,
     VerifierLogInstruction as TerminalInstruction,
@@ -1438,15 +1441,6 @@ fn register_assigned_between(
         })
 }
 
-fn instruction_frame(
-    states: &[VerifierInsn],
-    instruction: TerminalInstruction<'_>,
-    fragment_start: usize,
-) -> Option<usize> {
-    latest_verifier_state_before_instruction(states, instruction, fragment_start)
-        .map(|state| state.frame)
-}
-
 fn invalidating_helper_between(
     context: &ProofSignalContext<'_>,
     after_line: usize,
@@ -1723,14 +1717,6 @@ fn memory_store_overlaps_dynptr_slot(
         .is_some_and(|access| access.overlaps(slot_range))
 }
 
-fn stack_memory_access_range(base: &RegState, instruction_tail: &str) -> Option<StackByteRange> {
-    let base_offset = i16::try_from(base.offset?).ok()?;
-    let access_offset = i16::try_from(memory_access_offset(instruction_tail)?).ok()?;
-    let start = base_offset.checked_add(access_offset)?;
-    let width = i16::try_from(memory_access_width(instruction_tail)?).ok()?;
-    stack_value_range(start, width)
-}
-
 fn dynptr_stack_slot_range(slot: DynptrStackSlot) -> Option<StackByteRange> {
     stack_value_range(i16::try_from(slot.offset).ok()?, 16)
 }
@@ -1868,49 +1854,6 @@ fn spin_lock_held_before_instruction(
         }
     }
     lock_depth > 0
-}
-
-fn latest_reg_state_for_call_argument<'a>(
-    states: &'a [VerifierInsn],
-    instruction: TerminalInstruction<'_>,
-    fragment_start_line: usize,
-    terminal_line: Option<usize>,
-    reg: u8,
-) -> Option<&'a RegState> {
-    latest_reg_state_for_call_argument_with_frame(
-        states,
-        instruction,
-        fragment_start_line,
-        terminal_line,
-        reg,
-    )
-    .map(|(state, _)| state)
-}
-
-fn latest_reg_state_for_call_argument_with_frame<'a>(
-    states: &'a [VerifierInsn],
-    instruction: TerminalInstruction<'_>,
-    fragment_start_line: usize,
-    terminal_line: Option<usize>,
-    reg: u8,
-) -> Option<(&'a RegState, usize)> {
-    let call_frame =
-        latest_verifier_state_before_instruction(states, instruction, fragment_start_line)
-            .map(|state| state.frame);
-    latest_reg_state_before_instruction_with_frame(states, instruction, fragment_start_line, reg)
-        .or_else(|| {
-            states
-                .iter()
-                .filter(|state| state.log_line >= fragment_start_line)
-                .filter(|state| terminal_line.is_none_or(|line| state.log_line < line))
-                .filter(|state| state.pc <= instruction.pc)
-                .filter(|state| call_frame.is_none_or(|frame| state.frame == frame))
-                .rev()
-                .find_map(|state| {
-                    let reg_state = state.regs.get(&reg)?;
-                    Some((reg_state, reg_state.source_frame.unwrap_or(state.frame)))
-                })
-        })
 }
 
 fn reg_state_has_variable_offset(state: &RegState) -> bool {

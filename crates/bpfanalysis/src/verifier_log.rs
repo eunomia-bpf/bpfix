@@ -722,6 +722,17 @@ pub fn stack_value_range(offset: i16, size: i16) -> Option<StackByteRange> {
     StackByteRange::new(offset, offset.checked_add(size)?)
 }
 
+pub fn stack_memory_access_range(
+    base: &RegState,
+    instruction_tail: &str,
+) -> Option<StackByteRange> {
+    let base_offset = i16::try_from(base.offset?).ok()?;
+    let access_offset = i16::try_from(memory_access_offset(instruction_tail)?).ok()?;
+    let start = base_offset.checked_add(access_offset)?;
+    let width = i16::try_from(memory_access_width(instruction_tail)?).ok()?;
+    stack_value_range(start, width)
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct StackReadAccess {
     pub reg: Option<u8>,
@@ -1146,6 +1157,49 @@ pub fn latest_reg_state_before_instruction_with_frame<'a>(
     )
 }
 
+pub fn latest_reg_state_for_call_argument<'a>(
+    states: &'a [VerifierInsn],
+    instruction: VerifierLogInstruction<'_>,
+    fragment_start_line: usize,
+    terminal_line: Option<usize>,
+    reg: u8,
+) -> Option<&'a RegState> {
+    latest_reg_state_for_call_argument_with_frame(
+        states,
+        instruction,
+        fragment_start_line,
+        terminal_line,
+        reg,
+    )
+    .map(|(state, _)| state)
+}
+
+pub fn latest_reg_state_for_call_argument_with_frame<'a>(
+    states: &'a [VerifierInsn],
+    instruction: VerifierLogInstruction<'_>,
+    fragment_start_line: usize,
+    terminal_line: Option<usize>,
+    reg: u8,
+) -> Option<(&'a RegState, usize)> {
+    let call_frame =
+        latest_verifier_state_before_instruction(states, instruction, fragment_start_line)
+            .map(|state| state.frame);
+    latest_reg_state_before_instruction_with_frame(states, instruction, fragment_start_line, reg)
+        .or_else(|| {
+            states
+                .iter()
+                .filter(|state| state.log_line >= fragment_start_line)
+                .filter(|state| terminal_line.is_none_or(|line| state.log_line < line))
+                .filter(|state| state.pc <= instruction.pc)
+                .filter(|state| call_frame.is_none_or(|frame| state.frame == frame))
+                .rev()
+                .find_map(|state| {
+                    let reg_state = state.regs.get(&reg)?;
+                    Some((reg_state, reg_state.source_frame.unwrap_or(state.frame)))
+                })
+        })
+}
+
 pub fn latest_reg_state_before_instruction_with_origin<'a>(
     states: &'a [VerifierInsn],
     instruction: VerifierLogInstruction<'_>,
@@ -1168,6 +1222,15 @@ pub fn latest_verifier_state_before_instruction<'a>(
     fragment_start_line: usize,
 ) -> Option<&'a VerifierInsn> {
     latest_verifier_state_for_instruction(states, instruction, fragment_start_line, false, false)
+}
+
+pub fn instruction_frame(
+    states: &[VerifierInsn],
+    instruction: VerifierLogInstruction<'_>,
+    fragment_start_line: usize,
+) -> Option<usize> {
+    latest_verifier_state_before_instruction(states, instruction, fragment_start_line)
+        .map(|state| state.frame)
 }
 
 pub fn latest_verifier_state_at_or_before_instruction<'a>(
