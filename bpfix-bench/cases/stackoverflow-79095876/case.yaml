@@ -53,7 +53,6 @@ label:
   root_cause_description: The verifier cannot preserve the relation between
     `total_len`, `to_read`, and the destination map-value capacity, so a
     semantically bounded helper copy still appears able to exceed the map value.
-  rejected_insn_idx: 24
   legacy_rejected_insn_idx: null
   root_cause_insn_idx: null
   rejected_line: null

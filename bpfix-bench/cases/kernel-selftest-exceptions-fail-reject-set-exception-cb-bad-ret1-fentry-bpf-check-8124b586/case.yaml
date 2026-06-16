@@ -49,7 +49,6 @@ label:
   root_cause_description: 'Intentional negative test: associates `exception_cb_bad_ret`
     with the `fentry/bpf_check` program even though that callback can leave `R0` as
     an unconstrained scalar instead of the required concrete return value.'
-  rejected_insn_idx: 3
   root_cause_insn_idx: 2
   rejected_line: return c;
   root_cause_line: return c;

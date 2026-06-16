@@ -48,7 +48,6 @@ label:
   root_cause_description: 'Intentional negative test: proves `map_val` non-NULL, then
     runs `bpf_repeat(1000000) { map_val = NULL; }` and finally writes `*map_val =
     123` after the pointer has been smashed to a scalar NULL state.'
-  rejected_insn_idx: 27
   root_cause_insn_idx: 27
   rejected_line: '*map_val = 123;'
   root_cause_line: '*map_val = 123;'

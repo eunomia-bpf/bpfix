@@ -10,23 +10,29 @@ must therefore report the eligible denominator for each localization target.
 
 ## Current Coverage
 
-Current `label.root_cause_insn_idx` coverage:
+Current validated `label.root_cause_insn_idx` coverage:
 
 | metric | cases |
 | --- | ---: |
 | replayable cases | 235 |
-| cases with `root_cause_insn_idx` | 140 |
-| cases without `root_cause_insn_idx` | 95 |
+| cases with local-replay `root_cause_insn_idx` | 132 |
+| cases without `root_cause_insn_idx` | 103 |
+| invalid external-numbered root labels nulled | 8 |
 
 Missing instruction labels by source:
 
 | source_kind | missing instruction labels |
 | --- | ---: |
 | `github_issue` | 18 |
-| `github_commit` | 24 |
-| `stackoverflow` | 53 |
+| `github_commit` | 25 |
+| `stackoverflow` | 60 |
 
 Kernel selftest cases currently all have instruction-level root-cause labels.
+
+Non-null root-cause instruction labels must use the stored local replay verifier
+log numbering, the same numbering as `capture.rejected_insn_idx`. Labels copied
+from original Stack Overflow or GitHub logs are not eligible for instruction
+distance metrics until they are re-localized on the pinned replay log.
 
 ## Interpretation For Metrics
 

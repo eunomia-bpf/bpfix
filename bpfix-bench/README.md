@@ -63,6 +63,12 @@ failed: 0
 The benchmark is environment-sensitive. A case can be valid on one kernel,
 compiler, libbpf, and BTF setup and fail to reproduce on another.
 
+Instruction labels use the checked-in local replay log numbering. The reject
+site lives only in `capture.rejected_insn_idx`; label blocks do not duplicate
+that field. A non-null `label.root_cause_insn_idx` must name an instruction PC
+present in the stored `replay-verifier.log`, otherwise the case is not eligible
+for root-PC localization metrics.
+
 Latest local validation on this checkout:
 
 ```text

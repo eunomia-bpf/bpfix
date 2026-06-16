@@ -56,7 +56,6 @@ label:
   root_cause_description: The loop uses `data + i < data_end` for a one-byte read;
     the accepted external fix identifies this as an off-by-one/incomplete access-width
     guard and rewrites the loop to test the exact byte access before dereferencing.
-  rejected_insn_idx: 54
   root_cause_insn_idx: 50
   rejected_line: if (*((uint8_t*)(data+i)) == 0 && !found) {
   root_cause_line: for (i = cur; data+i < data_end; i++) {

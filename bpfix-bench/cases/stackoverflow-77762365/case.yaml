@@ -54,8 +54,7 @@ label:
     but the verifier cannot preserve that relation when validating `bpf_probe_read_user(&event->content[event->len],
     read, ...)`, so the destination pointer still appears able to overflow the map
     value.
-  rejected_insn_idx: 42
-  root_cause_insn_idx: 127
+  root_cause_insn_idx: null
   rejected_line: long res = bpf_probe_read_user(&event->content[event->len], read,
     (const void *) args->buf);
   root_cause_line: if(event->len + read < MAX_READ_CONTENT_LENGTH) {

@@ -48,7 +48,6 @@ label:
   root_cause_description: 'Intentional negative test: calls `bpf_dynptr_from_skb(skb,
     0, &ptr)` from `fentry/skb_tx_error` on an `skb` argument that is not a referenced
     or trusted sk_buff pointer.'
-  rejected_insn_idx: 4
   root_cause_insn_idx: 4
   rejected_line: bpf_dynptr_from_skb(skb, 0, &ptr);
   root_cause_line: bpf_dynptr_from_skb(skb, 0, &ptr);

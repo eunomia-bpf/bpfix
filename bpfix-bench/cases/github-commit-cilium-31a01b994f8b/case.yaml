@@ -58,7 +58,6 @@ label:
   label_source: external_replay_reconstruction
   root_cause_description: Large per-invocation scratch storage is placed on the BPF
     stack and then passed to a helper as a writable region beyond verifier limits.
-  rejected_insn_idx: 3
   legacy_rejected_insn_idx: null
   root_cause_insn_idx: null
   rejected_line: null

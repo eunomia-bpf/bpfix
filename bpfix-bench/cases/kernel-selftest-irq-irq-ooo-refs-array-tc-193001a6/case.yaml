@@ -49,7 +49,6 @@ label:
   root_cause_description: 'Intentional negative test: saves IRQ state into `flags[0]`,
     `flags[1]`, and `flags[2]`, then after extra reference churn restores `flags[1]`
     before `flags[2]`, breaking the active IRQ-order stack.'
-  rejected_insn_idx: 27
   root_cause_insn_idx: 27
   rejected_line: bpf_local_irq_restore(&flags[1]);
   root_cause_line: bpf_local_irq_restore(&flags[1]);

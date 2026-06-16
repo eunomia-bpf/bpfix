@@ -46,7 +46,6 @@ label:
   label_source: external_replay_reconstruction
   root_cause_description: Program dereferences a map value pointer that may still
     be NULL.
-  rejected_insn_idx: 7
   legacy_rejected_insn_idx: null
   root_cause_insn_idx: null
   rejected_line: null

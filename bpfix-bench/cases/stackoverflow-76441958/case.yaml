@@ -46,7 +46,6 @@ label:
   label_source: external_replay_reconstruction
   root_cause_description: Atomic cmpxchg is performed through an unaligned verifier-visible
     pointer.
-  rejected_insn_idx: 15
   legacy_rejected_insn_idx: null
   root_cause_insn_idx: null
   rejected_line: null

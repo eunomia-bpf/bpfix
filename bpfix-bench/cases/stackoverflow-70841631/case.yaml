@@ -58,7 +58,6 @@ label:
   root_cause_description: The HTTP parser nests a 512-byte outer scan with a 253-byte
     inner host-name scan, so verifier exploration crosses the one-million-instruction
     analysis budget before it can prove the whole program safe.
-  rejected_insn_idx: 77
   legacy_rejected_insn_idx: 67
   root_cause_insn_idx: 67
   rejected_line: if (*data == '\r') {

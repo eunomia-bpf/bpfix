@@ -48,7 +48,6 @@ label:
   root_cause_description: A MAC byte array begins at an unaligned stack offset,
     but lowered code reads it with a wide word access before storing to packet
     data.
-  rejected_insn_idx: 21
   legacy_rejected_insn_idx: null
   root_cause_insn_idx: null
   rejected_line: null

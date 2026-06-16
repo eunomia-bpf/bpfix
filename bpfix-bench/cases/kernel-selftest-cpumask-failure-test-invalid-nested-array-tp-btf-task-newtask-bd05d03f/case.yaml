@@ -48,7 +48,6 @@ label:
   root_cause_description: 'Intentional negative test: calls `bpf_kptr_xchg` on `global_mask_nested_arr.d_1.d_2[CPUMASK_KPTR_FIELDS_MAX].mask`,
     which is outside the valid nested kptr field set and therefore has no verifier-visible
     kptr metadata.'
-  rejected_insn_idx: 22
   root_cause_insn_idx: 22
   rejected_line: prev = bpf_kptr_xchg(&global_mask_nested_arr.d_1.d_2[CPUMASK_KPTR_FIELDS_MAX].mask,
     local);

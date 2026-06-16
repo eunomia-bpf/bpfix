@@ -48,7 +48,6 @@ label:
   root_cause_description: 'Intentional negative test: reads `global_mask` under RCU
     and calls `bpf_cpumask_test_cpu(0, (const struct cpumask *)local)` without checking
     whether the global cpumask kptr is NULL.'
-  rejected_insn_idx: 36
   root_cause_insn_idx: 36
   rejected_line: bpf_cpumask_test_cpu(0, (const struct cpumask *)local);
   root_cause_line: bpf_cpumask_test_cpu(0, (const struct cpumask *)local);

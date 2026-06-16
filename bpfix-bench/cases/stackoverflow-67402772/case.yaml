@@ -58,7 +58,6 @@ label:
   root_cause_description: The program reads `skb->local_ip4` and `skb->remote_ip4`
     from a `__sk_buff` context offset that the active program type does not expose,
     so the verifier rejects the context access at offset 92.
-  rejected_insn_idx: 11
   root_cause_insn_idx: 11
   rejected_line: null
   root_cause_line: null

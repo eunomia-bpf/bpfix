@@ -48,7 +48,6 @@ label:
   root_cause_description: The program casts a struct sock pointer to struct
     inet_sock and directly loads inet_sock fields past the verifier-known sock
     object bounds.
-  rejected_insn_idx: 1
   legacy_rejected_insn_idx: null
   root_cause_insn_idx: null
   rejected_line: null

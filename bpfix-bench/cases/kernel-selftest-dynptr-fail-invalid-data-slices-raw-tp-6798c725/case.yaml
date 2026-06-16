@@ -48,7 +48,6 @@ label:
   root_cause_description: 'Intentional negative test: stores `slice = bpf_dynptr_data(...)`,
     runs `bpf_loop(10, callback, &ptr, 0)`, and then writes `*slice = 1` after the
     callback may have invalidated the dynptr.'
-  rejected_insn_idx: 38
   root_cause_insn_idx: 38
   rejected_line: '*slice = 1;'
   root_cause_line: '*slice = 1;'

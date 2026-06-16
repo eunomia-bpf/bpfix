@@ -46,7 +46,6 @@ label:
   label_source: external_replay_reconstruction
   root_cause_description: The code assumes an Ethernet header is present after
     proving only a zero-byte packet range on an L3-only device.
-  rejected_insn_idx: 4
   legacy_rejected_insn_idx: null
   root_cause_insn_idx: 3
   rejected_line: first_dest_octet = eth->h_dest[0];

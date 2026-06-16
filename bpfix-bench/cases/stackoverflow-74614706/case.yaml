@@ -56,7 +56,6 @@ label:
   label_source: external_replay_reconstruction
   root_cause_description: Nested calls keep enough local stack state to exceed the
     verifier combined stack limit.
-  rejected_insn_idx: 40
   legacy_rejected_insn_idx: null
   root_cause_insn_idx: null
   rejected_line: null

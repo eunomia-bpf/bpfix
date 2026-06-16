@@ -58,7 +58,6 @@ label:
   root_cause_description: 'Intentional negative test: calls `bpf_dynptr_slice_rdwr(&ptr,
     0, buffer, sizeof(buffer))` on an skb dynptr in `cgroup_skb/ingress`, a program
     type that does not permit packet writes.'
-  rejected_insn_idx: 14
   root_cause_insn_idx: 13
   rejected_line: hdr = bpf_dynptr_slice_rdwr(&ptr, 0, buffer, sizeof(buffer));
   root_cause_line: hdr = bpf_dynptr_slice_rdwr(&ptr, 0, buffer, sizeof(buffer));

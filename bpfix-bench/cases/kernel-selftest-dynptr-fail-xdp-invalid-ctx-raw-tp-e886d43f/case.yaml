@@ -57,7 +57,6 @@ label:
   label_source: agree
   root_cause_description: 'Intentional negative test: calls `bpf_dynptr_from_xdp(ctx,
     0, &ptr)` from a raw tracepoint program, where XDP dynptr creation is not allowed.'
-  rejected_insn_idx: 3
   root_cause_insn_idx: 3
   rejected_line: bpf_dynptr_from_xdp(ctx, 0, &ptr);
   root_cause_line: bpf_dynptr_from_xdp(ctx, 0, &ptr);

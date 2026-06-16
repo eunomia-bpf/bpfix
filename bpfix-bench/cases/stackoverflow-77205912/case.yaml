@@ -52,7 +52,6 @@ label:
     `bpf_l4_csum_replace` mutate the packet, the program reuses the old packet-derived
     pointer `r7` as the source buffer for a second `bpf_csum_diff`, but that pointer
     has already lost packet provenance.
-  rejected_insn_idx: 65
   root_cause_insn_idx: 56
   rejected_line: null
   root_cause_line: null

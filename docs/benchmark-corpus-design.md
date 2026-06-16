@@ -217,7 +217,6 @@ label:
   confidence: high
   label_source: adjudicated
   root_cause_description: "Compiler/verifier-unfriendly lowering loses packet-bound proof before pointer arithmetic."
-  rejected_insn_idx: 39
   root_cause_insn_idx: 28
   rejected_line: "..."
   root_cause_line: "..."
@@ -257,15 +256,19 @@ A case enters `bpfix-bench` only if all conditions hold:
 6. Harness verifier log level is `2` or an explicitly documented equivalent.
 7. The parser can recover a terminal error from the fresh replay log.
 8. The parser can recover or validate `capture.rejected_insn_idx`.
-9. `label.capture_id == capture.capture_id`.
-10. For Stack Overflow and GitHub cases, `external_match.status` is `exact`,
+9. Any non-null `label.root_cause_insn_idx` appears in the stored local replay
+   verifier log. Root-cause indices use the same instruction numbering as
+   `capture.rejected_insn_idx`; original external-log instruction numbers must
+   stay in raw audit records or explicitly legacy provenance fields.
+10. `label.capture_id == capture.capture_id`.
+11. For Stack Overflow and GitHub cases, `external_match.status` is `exact`,
     `partial`, or `semantic`. `semantic` is allowed only when fresh local replay
     produces a trace-rich verifier rejection; it is not a candidate split.
-11. For kernel selftests, `external_match.status == not_applicable`.
-12. Commit-derived cases require manual audit and
+12. For kernel selftests, `external_match.status == not_applicable`.
+13. Commit-derived cases require manual audit and
     `external_match.status == not_applicable`.
-13. `reporting.family_id` and `reporting.representative` are present.
-14. `bpfix-bench/tools/validate_benchmark.py --replay bpfix-bench` succeeds for the case.
+14. `reporting.family_id` and `reporting.representative` are present.
+15. `bpfix-bench/tools/validate_benchmark.py --replay bpfix-bench` succeeds for the case.
 
 No exception path should allow excerpt-only logs, message-only loader errors, or
 synthetic no-log cases into `bpfix-bench`.

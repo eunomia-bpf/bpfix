@@ -48,7 +48,6 @@ label:
   label_source: external_replay_reconstruction
   root_cause_description: Variable-length bpf_probe_read_user writes into a fixed-size
     map value; verifier cannot prove the requested length stays within the map value.
-  rejected_insn_idx: 25
   legacy_rejected_insn_idx: null
   root_cause_insn_idx: null
   rejected_line: null

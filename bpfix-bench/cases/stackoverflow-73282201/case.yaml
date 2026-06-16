@@ -46,7 +46,6 @@ label:
   label_source: external_replay_reconstruction
   root_cause_description: Program accesses exactly one byte past the end of a 4096-byte
     map value.
-  rejected_insn_idx: 8
   legacy_rejected_insn_idx: null
   root_cause_insn_idx: null
   rejected_line: null

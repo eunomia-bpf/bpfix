@@ -48,7 +48,6 @@ label:
   root_cause_description: After copying user memory into `str`, the CRC loop dereferences
     `*current++` even though `current` is not a verifier-proven pointer to that stack
     buffer, so the load is treated as an invalid scalar dereference.
-  rejected_insn_idx: 58
   root_cause_insn_idx: 48
   rejected_line: crc ^= *current++;
   root_cause_line: crc ^= *current++;

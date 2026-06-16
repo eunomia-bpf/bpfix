@@ -48,7 +48,6 @@ label:
   root_cause_description: 'Intentional negative test: calls `bpf_ringbuf_reserve_dynptr(&ringbuf,
     64, 0, &ptr + 1)`, placing the dynptr object at a shifted stack slot rather than
     at `&ptr`.'
-  rejected_insn_idx: 6
   root_cause_insn_idx: 6
   rejected_line: bpf_ringbuf_reserve_dynptr(&ringbuf, 64, 0, &ptr + 1);
   root_cause_line: bpf_ringbuf_reserve_dynptr(&ringbuf, 64, 0, &ptr + 1);

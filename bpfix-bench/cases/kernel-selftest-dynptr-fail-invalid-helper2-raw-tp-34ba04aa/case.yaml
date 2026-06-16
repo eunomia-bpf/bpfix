@@ -48,7 +48,6 @@ label:
   root_cause_description: 'Intentional negative test: calls `bpf_dynptr_read(read_data,
     sizeof(read_data), (void *)&ptr + 8, 0, 0)`, so arg #2 points 8 bytes into the
     dynptr instead of to the dynptr slot itself.'
-  rejected_insn_idx: 29
   root_cause_insn_idx: 26
   rejected_line: bpf_dynptr_read(read_data, sizeof(read_data), (void *)&ptr + 8, 0,
     0);

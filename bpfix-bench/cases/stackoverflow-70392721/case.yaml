@@ -56,7 +56,6 @@ label:
   label_source: external_replay_reconstruction
   root_cause_description: Compiling the BPF program without optimization leaves
     indirect helper calls that the verifier rejects.
-  rejected_insn_idx: 0
   legacy_rejected_insn_idx: null
   root_cause_insn_idx: null
   rejected_line: null

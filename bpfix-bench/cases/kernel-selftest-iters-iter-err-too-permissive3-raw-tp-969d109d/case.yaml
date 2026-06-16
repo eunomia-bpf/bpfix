@@ -48,7 +48,6 @@ label:
   root_cause_description: 'Intentional negative test: sets `found = true` inside the
     repeat loop and then writes `*map_val = 123` under `if (found)` even though the
     last loop lookup can still leave `map_val` NULL.'
-  rejected_insn_idx: 28
   root_cause_insn_idx: 28
   rejected_line: '*map_val = 123;'
   root_cause_line: '*map_val = 123;'

@@ -48,7 +48,6 @@ label:
   label_source: external_replay_reconstruction
   root_cause_description: The program writes fields in a larger IPv6 auth header
     after proving only the smaller extension-header prefix is inside the packet.
-  rejected_insn_idx: 7
   legacy_rejected_insn_idx: null
   root_cause_insn_idx: 7
   rejected_line: auth->seq = bpf_htonl(1);

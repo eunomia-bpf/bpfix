@@ -48,7 +48,6 @@ label:
   label_source: external_replay_reconstruction
   root_cause_description: The program reads TCP ports without proving that the TCP
     header is inside the packet.
-  rejected_insn_idx: 16
   legacy_rejected_insn_idx: null
   root_cause_insn_idx: 16
   rejected_line: null

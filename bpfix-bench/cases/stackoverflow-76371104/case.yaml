@@ -46,7 +46,6 @@ label:
   label_source: external_replay_reconstruction
   root_cause_description: bpf_skb_load_bytes is called with a length whose verifier
     lower bound still includes zero.
-  rejected_insn_idx: 19
   legacy_rejected_insn_idx: null
   root_cause_insn_idx: null
   rejected_line: null

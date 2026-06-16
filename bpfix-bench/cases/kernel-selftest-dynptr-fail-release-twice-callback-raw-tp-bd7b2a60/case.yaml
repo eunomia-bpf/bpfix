@@ -47,7 +47,6 @@ label:
   label_source: agree
   root_cause_description: 'Intentional negative test: discards `ptr` in the main program
     and then calls `bpf_ringbuf_discard_dynptr(data, 0)` again from `release_twice_callback_fn`.'
-  rejected_insn_idx: 23
   root_cause_insn_idx: 21
   rejected_line: bpf_ringbuf_discard_dynptr(data, 0);
   root_cause_line: bpf_ringbuf_discard_dynptr(data, 0);

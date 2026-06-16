@@ -50,8 +50,7 @@ label:
     the current state value to form a shifted table offset without first clamping
     that current state into the valid automaton range, so the verifier sees unsafe
     register-derived offset arithmetic.
-  rejected_insn_idx: 68
-  root_cause_insn_idx: 108
+  root_cause_insn_idx: null
   rejected_line: null
   root_cause_line: null
   localization_confidence: high

@@ -48,7 +48,6 @@ label:
   label_source: external_replay_reconstruction
   root_cause_description: Map lookup result may be NULL and is passed to a helper
     before the verifier can prove non-nullness.
-  rejected_insn_idx: 13
   legacy_rejected_insn_idx: null
   root_cause_insn_idx: null
   rejected_line: null

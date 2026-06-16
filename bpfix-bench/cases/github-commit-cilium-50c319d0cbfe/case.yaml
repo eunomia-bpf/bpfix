@@ -47,7 +47,6 @@ label:
   label_source: manual_reconstruction
   root_cause_description: A compiler-shaped path leaves the register used for an IPv6-header
     byte load without packet-pointer provenance.
-  rejected_insn_idx: 8
   legacy_rejected_insn_idx: 1527
   root_cause_insn_idx: 7
   rejected_line: null

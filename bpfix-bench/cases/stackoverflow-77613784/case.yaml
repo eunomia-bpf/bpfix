@@ -46,7 +46,6 @@ label:
   label_source: external_replay_reconstruction
   root_cause_description: Program casts or propagates a scalar as a pointer and dereferences
     it.
-  rejected_insn_idx: 10
   legacy_rejected_insn_idx: null
   root_cause_insn_idx: null
   rejected_line: null

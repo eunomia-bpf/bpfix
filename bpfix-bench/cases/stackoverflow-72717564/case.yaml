@@ -47,7 +47,6 @@ label:
   root_cause_description: External StackOverflow report treats a tracepoint argument
     as struct __sk_buff and performs direct packet access; in this tracepoint context
     those fields are scalars, not verifier-tracked packet pointers.
-  rejected_insn_idx: 8
   legacy_rejected_insn_idx: 8
   root_cause_insn_idx: 0
   rejected_line: bpf_trace_printk("%x\n", eth->h_proto);

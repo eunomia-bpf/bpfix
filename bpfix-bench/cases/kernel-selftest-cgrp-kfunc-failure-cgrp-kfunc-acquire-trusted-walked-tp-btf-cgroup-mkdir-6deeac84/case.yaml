@@ -48,7 +48,6 @@ label:
   root_cause_description: 'Intentional negative test: passes the walked member pointer
     `cgrp->old_dom_cgrp` to `bpf_cgroup_acquire`, but that member is no longer a trusted/RCU
     cgroup pointer.'
-  rejected_insn_idx: 2
   root_cause_insn_idx: 2
   rejected_line: acquired = bpf_cgroup_acquire(cgrp->old_dom_cgrp);
   root_cause_line: acquired = bpf_cgroup_acquire(cgrp->old_dom_cgrp);

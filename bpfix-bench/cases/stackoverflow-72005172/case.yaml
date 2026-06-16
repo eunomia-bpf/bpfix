@@ -49,7 +49,6 @@ label:
     keeps alive: it reads deeper header or HTTP bytes without a dominating `data_end`
     check for the exact access width, so commenting out the print merely lets the
     compiler optimize the bad path away.'
-  rejected_insn_idx: 15
   root_cause_insn_idx: 15
   rejected_line: null
   root_cause_line: null

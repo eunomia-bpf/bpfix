@@ -66,9 +66,11 @@ the corresponding metrics.
 
 ### Localization Labels
 
-- `reject_insn_idx`: verifier instruction index reported at rejection
+- `capture.rejected_insn_idx`: verifier instruction index reported by the
+  local replay rejection
 - `root_cause_insn_idx`: instruction index where the causal obligation is
-  introduced or lost
+  introduced or lost, using the same local replay verifier-log numbering as
+  `capture.rejected_insn_idx`
 - `root_cause_source_span`: canonical source file, start line/column, and end
   line/column for the root cause
 - `localization_target_kind`: expected target granularity, such as
@@ -162,7 +164,10 @@ not only the verifier reject site.
 
 ### Instruction Localization
 
-Compare predicted instruction indices with `root_cause_insn_idx`.
+Compare predicted instruction indices with `root_cause_insn_idx`. Include only
+cases whose `root_cause_insn_idx` is non-null and validated against the stored
+local replay verifier-log PC set. Do not mix these labels with legacy external
+log instruction numbers.
 
 Report:
 
@@ -171,9 +176,9 @@ Report:
 - mean absolute instruction error
 - median absolute instruction error
 - root-before-reject detection for cases where
-  `root_cause_insn_idx != reject_insn_idx`
+  `root_cause_insn_idx != capture.rejected_insn_idx`
 
-Predictions that identify only `reject_insn_idx` receive full localization
+Predictions that identify only `capture.rejected_insn_idx` receive full localization
 credit only when the ground-truth root cause and reject instruction are the
 same. Otherwise, they receive reject-site credit but not root-cause credit.
 
@@ -373,12 +378,14 @@ Required category strata:
 - verifier error family
 - program type
 - language/frontend
-- root-cause distance bucket:
+- root-cause distance bucket, computed only for cases with a validated local
+  replay `root_cause_insn_idx` and `capture.rejected_insn_idx`:
   - `0`: root and reject instruction are the same
   - `1-5`
   - `6-10`
   - `11-25`
   - `26+`
+  - `not_applicable`: null, non-instruction, or not-yet-relocalized targets
 - replay status
 - repair applicability
 

@@ -49,7 +49,6 @@ label:
   root_cause_description: Adjacent IPv6 sock_addr context words are accessed as a
     single wide load after modifying the context pointer, which violates the
     verifier's context-access contract.
-  rejected_insn_idx: 4
   legacy_rejected_insn_idx: null
   root_cause_insn_idx: null
   rejected_line: null

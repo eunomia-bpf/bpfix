@@ -49,7 +49,6 @@ label:
   root_cause_description: 'Intentional negative test: increments the obscure loop
     counter `i` for every `bpf_iter_num_next` result and then writes `small_arr[i]
     = 123` without bounding `i` to the array length.'
-  rejected_insn_idx: 13
   root_cause_insn_idx: 2
   rejected_line: while ((v = bpf_iter_num_next(&it))) {
   root_cause_line: while ((v = bpf_iter_num_next(&it))) {

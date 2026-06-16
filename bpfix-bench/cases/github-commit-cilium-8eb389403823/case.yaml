@@ -48,7 +48,6 @@ label:
   label_source: external_replay_reconstruction
   root_cause_description: A BPF global subprogram declares the execution context
     as void *, so verifier BTF validation loses the concrete ctx reference type.
-  rejected_insn_idx: 15
   legacy_rejected_insn_idx: null
   root_cause_insn_idx: 15
   rejected_line: "return mock_fib_lookup(ctx, &params, sizeof(params), 0);"

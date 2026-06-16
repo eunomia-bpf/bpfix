@@ -46,7 +46,6 @@ label:
   label_source: external_replay_reconstruction
   root_cause_description: The program directly dereferences a kernel pointer from
     kprobe context instead of using a verifier-supported probe/CO-RE read.
-  rejected_insn_idx: 1
   legacy_rejected_insn_idx: null
   root_cause_insn_idx: null
   rejected_line: null

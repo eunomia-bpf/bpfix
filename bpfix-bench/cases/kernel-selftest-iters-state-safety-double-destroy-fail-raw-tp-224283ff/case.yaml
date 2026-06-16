@@ -47,7 +47,6 @@ label:
   label_source: agree
   root_cause_description: 'Intentional negative test: destroys the same iterator slot
     twice with back-to-back `bpf_iter_num_destroy` calls.'
-  rejected_insn_idx: 9
   legacy_rejected_insn_idx: 9
   root_cause_insn_idx: 9
   rejected_line: asm volatile (

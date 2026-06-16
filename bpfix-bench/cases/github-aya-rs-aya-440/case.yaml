@@ -46,7 +46,6 @@ label:
   label_source: external_replay_reconstruction
   root_cause_description: Program passes packet memory to a helper that is not allowed
     to access the packet for this program/context.
-  rejected_insn_idx: 9
   legacy_rejected_insn_idx: null
   root_cause_insn_idx: null
   rejected_line: null

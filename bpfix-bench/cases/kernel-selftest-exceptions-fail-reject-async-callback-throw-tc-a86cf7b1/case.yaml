@@ -58,7 +58,6 @@ label:
   root_cause_description: 'Intentional negative test: registers `timer_cb` as an async
     callback even though that callback executes `bpf_throw(0)`, which is not supported
     from the callback/JIT execution path.'
-  rejected_insn_idx: 16
   root_cause_insn_idx: 16
   rejected_line: bpf_throw(0);
   root_cause_line: bpf_throw(0);

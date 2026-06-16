@@ -50,7 +50,6 @@ label:
   root_cause_description: 'Intentional negative test: saves `flags1`, `flags2`, and
     `flags3`, restores only `flags3` and `flags2`, and then exits with `flags1` still
     active.'
-  rejected_insn_idx: 16
   root_cause_insn_idx: 16
   rejected_line: return 0;
   root_cause_line: return 0;

@@ -47,7 +47,6 @@ label:
   label_source: agree
   root_cause_description: 'Intentional negative test: calls `bpf_cgroup_release(v->cgrp)`
     on a map-loaded pointer that may still be NULL and is not a referenced cgroup.'
-  rejected_insn_idx: 61
   root_cause_insn_idx: 4
   rejected_line: bpf_cgroup_release(v->cgrp);
   root_cause_line: bpf_cgroup_release(v->cgrp);

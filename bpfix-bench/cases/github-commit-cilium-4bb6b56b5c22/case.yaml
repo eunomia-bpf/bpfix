@@ -52,7 +52,6 @@ label:
   label_source: manual_reconstruction
   root_cause_description: A context field update is lowered to an 8-byte store at
     a context offset whose verifier ABI only accepts narrower accesses.
-  rejected_insn_idx: 1
   legacy_rejected_insn_idx: 256
   root_cause_insn_idx: null
   rejected_line: null

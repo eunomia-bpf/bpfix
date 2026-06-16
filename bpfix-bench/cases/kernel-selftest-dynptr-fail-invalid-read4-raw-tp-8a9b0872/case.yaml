@@ -48,7 +48,6 @@ label:
   root_cause_description: 'Intentional negative test: passes `&ptr` into `bpf_loop`
     and then `invalid_read4_callback` directly reads `*(__u32 *)data` from the dynptr
     slot.'
-  rejected_insn_idx: 19
   root_cause_insn_idx: 19
   rejected_line: val = *(__u32 *)data;
   root_cause_line: val = *(__u32 *)data;

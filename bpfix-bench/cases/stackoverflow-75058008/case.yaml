@@ -46,7 +46,6 @@ label:
   label_source: external_replay_reconstruction
   root_cause_description: A helper/subprogram receives memory that may be null and
     dereferences it without proving non-nullness in the callee.
-  rejected_insn_idx: 34
   legacy_rejected_insn_idx: null
   root_cause_insn_idx: null
   rejected_line: null

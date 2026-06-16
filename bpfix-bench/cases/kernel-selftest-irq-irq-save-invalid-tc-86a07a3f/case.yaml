@@ -47,7 +47,6 @@ label:
   label_source: agree
   root_cause_description: 'Intentional negative test: calls `bpf_local_irq_save(&flags1)`
     twice on the same already-initialized flag slot.'
-  rejected_insn_idx: 5
   root_cause_insn_idx: 5
   rejected_line: bpf_local_irq_save(&flags1);
   root_cause_line: bpf_local_irq_save(&flags1);

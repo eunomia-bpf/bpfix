@@ -48,7 +48,6 @@ label:
   root_cause_description: 'Intentional negative test: overwrites the first byte of
     `ptr` with `memcpy(&ptr, &x, sizeof(x))` and then calls `bpf_dynptr_data(&ptr,
     0, 1)` on the corrupted dynptr slot.'
-  rejected_insn_idx: 27
   root_cause_insn_idx: 27
   rejected_line: data = bpf_dynptr_data(&ptr, 0, 1);
   root_cause_line: data = bpf_dynptr_data(&ptr, 0, 1);

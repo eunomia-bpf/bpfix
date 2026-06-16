@@ -58,7 +58,6 @@ label:
   root_cause_description: 'Intentional negative test: allocates a 256-byte local `buf`
     in the main TC program and then registers `bad_timer_cb`, so the main frame plus
     async callback frame exceed the verifier''s combined two-call stack budget.'
-  rejected_insn_idx: 54
   root_cause_insn_idx: 54
   rejected_line: '}'
   root_cause_line: '}'

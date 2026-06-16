@@ -50,7 +50,6 @@ label:
   root_cause_description: The XDP program copies an IP header into `me.dest_ip` before
     proving that the packet actually contains the full IP header beyond the Ethernet
     header.
-  rejected_insn_idx: 6
   legacy_rejected_insn_idx: 6
   root_cause_insn_idx: 6
   rejected_line: memcpy(&me.dest_ip,ip,sizeof(struct iphdr));

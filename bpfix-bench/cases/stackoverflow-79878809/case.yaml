@@ -46,7 +46,6 @@ label:
   label_source: external_replay_reconstruction
   root_cause_description: fentry context is indexed as a generic u64 array at an argument
     whose BTF type is not a struct pointer the verifier accepts.
-  rejected_insn_idx: 0
   legacy_rejected_insn_idx: null
   root_cause_insn_idx: null
   rejected_line: null

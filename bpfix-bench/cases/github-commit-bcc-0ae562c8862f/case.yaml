@@ -46,7 +46,6 @@ label:
   label_source: external_replay_reconstruction
   root_cause_description: A signed stack depth from a map value is used in map-value
     pointer arithmetic without a verifier-visible non-negative lower bound.
-  rejected_insn_idx: 25
   legacy_rejected_insn_idx: null
   root_cause_insn_idx: null
   rejected_line: null

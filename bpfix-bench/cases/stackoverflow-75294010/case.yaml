@@ -52,7 +52,6 @@ label:
     i.e. the address of the map-value pointer variable on the stack, so the helper
     interprets a stack slot as the output payload instead of the `event` map value
     buffer.
-  rejected_insn_idx: 12
   legacy_rejected_insn_idx: 11
   root_cause_insn_idx: 11
   rejected_line: event->attr.fd = ctx->fd;

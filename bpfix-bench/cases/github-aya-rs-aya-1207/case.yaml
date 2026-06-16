@@ -45,7 +45,6 @@ label:
   confidence: medium
   label_source: external_replay_reconstruction
   root_cause_description: A helper read size can be zero, which this helper rejects.
-  rejected_insn_idx: 5
   legacy_rejected_insn_idx: null
   root_cause_insn_idx: null
   rejected_line: null

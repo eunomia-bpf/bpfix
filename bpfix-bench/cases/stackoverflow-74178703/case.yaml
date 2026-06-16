@@ -52,9 +52,8 @@ label:
     access as `b + offset + i` for `memcpy(dst + i, b + i, 1)`, and the verifier cannot
     keep that cross-variable relation, so the map-value access still appears able
     to reach offset 1024.
-  rejected_insn_idx: 34
   legacy_rejected_insn_idx: 195
-  root_cause_insn_idx: 204
+  root_cause_insn_idx: null
   rejected_line: memcpy(dst + i, b + offset + i, sizeof(__u8));
   root_cause_line: for (__u32 i = 0; i < size && i < 512; ++i) {
   localization_confidence: high

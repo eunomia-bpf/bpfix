@@ -47,7 +47,6 @@ label:
   label_source: agree
   root_cause_description: 'Intentional negative test: reads `hdr->h_proto` after `bpf_xdp_adjust_head(xdp,
     -sizeof(*hdr))`, which changes packet layout and invalidates the old slice pointer.'
-  rejected_insn_idx: 32
   root_cause_insn_idx: 32
   rejected_line: val = hdr->h_proto;
   root_cause_line: val = hdr->h_proto;

@@ -59,8 +59,7 @@ label:
     after repeated variable-size advances the verifier treats the cumulative cursor
     range as exceeding its packet-offset precision model and rejects the later chunk-header
     read.
-  rejected_insn_idx: 85
-  root_cause_insn_idx: 2940
+  root_cause_insn_idx: null
   rejected_line: if (type == INV_RET_U8)
   root_cause_line: if (nh->pos + size < data_end)
   localization_confidence: high

@@ -46,7 +46,6 @@ label:
   label_source: external_replay_reconstruction
   root_cause_description: Program writes through a BPF array map pointer; verifier
     only permits supported array value access patterns.
-  rejected_insn_idx: 4
   legacy_rejected_insn_idx: null
   root_cause_insn_idx: null
   rejected_line: null

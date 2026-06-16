@@ -60,7 +60,6 @@ label:
   root_cause_description: 'Intentional negative test: calls `global_sleepable_helper_subprog(0)`
     while IRQs are disabled, so the verifier sees a sleepable global function inside
     a non-sleepable context.'
-  rejected_insn_idx: 5
   root_cause_insn_idx: 5
   rejected_line: global_sleepable_helper_subprog(0);
   root_cause_line: global_sleepable_helper_subprog(0);

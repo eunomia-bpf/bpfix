@@ -59,7 +59,6 @@ label:
   label_source: agree
   root_cause_description: 'Intentional negative test: calls `global_subprog_calling_sleepable_global(0)`
     while IRQs are disabled by `bpf_local_irq_save(&flags)`.'
-  rejected_insn_idx: 5
   root_cause_insn_idx: 5
   rejected_line: global_subprog_calling_sleepable_global(0);
   root_cause_line: global_subprog_calling_sleepable_global(0);

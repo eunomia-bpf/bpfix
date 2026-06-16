@@ -48,7 +48,6 @@ label:
   root_cause_description: 'Intentional negative test: calls `bpf_get_current_comm(data.buf,
     80)` on a struct whose last 16 bytes are the dynptr slot `data.ptr`, so the helper
     would overwrite dynptr state.'
-  rejected_insn_idx: 12
   root_cause_insn_idx: 10
   rejected_line: bpf_get_current_comm(data.buf, 80);
   root_cause_line: bpf_get_current_comm(data.buf, 80);

@@ -47,7 +47,6 @@ label:
   label_source: agree
   root_cause_description: 'Intentional negative test: writes `*(__u8 *)(hdr + 1)`
     immediately past the `struct ethhdr` slice returned by `bpf_dynptr_slice_rdwr`.'
-  rejected_insn_idx: 17
   root_cause_insn_idx: 17
   rejected_line: '*(__u8*)(hdr + 1) = 1;'
   root_cause_line: '*(__u8*)(hdr + 1) = 1;'

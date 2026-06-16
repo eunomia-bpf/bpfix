@@ -47,7 +47,6 @@ label:
   root_cause_description: A packed stack object is used as the destination for an
     8-byte copy, so the verifier sees a wide stack access through an unaligned frame-pointer-derived
     address.
-  rejected_insn_idx: 3
   legacy_rejected_insn_idx: null
   root_cause_insn_idx: null
   rejected_line: null

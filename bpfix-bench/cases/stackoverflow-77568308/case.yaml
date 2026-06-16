@@ -48,7 +48,6 @@ label:
   label_source: external_replay_reconstruction
   root_cause_description: Raw tracepoint argument is treated as pt_regs and dereferenced
     even though the verifier tracks it as a scalar/raw argument.
-  rejected_insn_idx: 16
   legacy_rejected_insn_idx: null
   root_cause_insn_idx: null
   rejected_line: null

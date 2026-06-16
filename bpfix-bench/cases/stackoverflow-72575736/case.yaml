@@ -52,7 +52,6 @@ label:
   label_source: external_replay_reconstruction
   root_cause_description: The current replay checks address > data_end before a
     one-byte packet load, leaving address == data_end unexcluded.
-  rejected_insn_idx: 18
   legacy_rejected_insn_idx: null
   root_cause_insn_idx: null
   rejected_line: null

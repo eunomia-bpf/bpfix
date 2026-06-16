@@ -50,7 +50,6 @@ label:
   root_cause_description: 'Intentional negative test: casts `task->cpus_ptr` to `struct
     bpf_cpumask *` and passes it to `bpf_cpumask_set_cpu`, but that object is a plain
     `struct cpumask *`, not a BPF cpumask object.'
-  rejected_insn_idx: 3
   root_cause_insn_idx: 3
   rejected_line: bpf_cpumask_set_cpu(0, (struct bpf_cpumask *)task->cpus_ptr);
   root_cause_line: bpf_cpumask_set_cpu(0, (struct bpf_cpumask *)task->cpus_ptr);

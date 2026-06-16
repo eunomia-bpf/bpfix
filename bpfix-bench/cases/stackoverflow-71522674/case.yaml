@@ -48,8 +48,7 @@ label:
     the variable `tcp_len` proof does not survive into the `bpf_csum_diff(0, 0, (void
     *)tcph, tcp_len, 0)` memory/len argument pair, so the helper call is rejected
     as a packet access beyond the proven range.
-  rejected_insn_idx: 19
-  root_cause_insn_idx: 47
+  root_cause_insn_idx: null
   rejected_line: null
   root_cause_line: null
   localization_confidence: low

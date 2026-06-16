@@ -51,7 +51,6 @@ label:
   root_cause_description: The current replay callback reads pkt[index] without a
     callback-local data_end check; the bpf_loop iteration bound alone does not
     prove packet length.
-  rejected_insn_idx: 17
   legacy_rejected_insn_idx: null
   root_cause_insn_idx: null
   rejected_line: null

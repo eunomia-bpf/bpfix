@@ -46,7 +46,6 @@ label:
   label_source: manual_reconstruction
   root_cause_description: Two control-flow paths carry incompatible verifier socket
     pointer types into one shared dereference instruction after compiler code merging.
-  rejected_insn_idx: 27
   legacy_rejected_insn_idx: 838
   root_cause_insn_idx: 27
   rejected_line: null

@@ -4,7 +4,10 @@ These scripts maintain the replayable benchmark corpus. They are not a Python
 implementation of BPFix and are not part of the public diagnostic CLI.
 
 - `validate_benchmark.py` rebuilds and reloads admitted `bpfix-bench` cases,
-  then checks that the fresh verifier rejection matches each case record.
+  then checks that the fresh verifier rejection matches each case record. It
+  also rejects redundant `label.rejected_insn_idx` fields and non-null
+  `label.root_cause_insn_idx` values that are not present in the stored local
+  replay verifier log.
 - `replay_case.py` contains the shared build/load/log parsing helper used by
   the validator.
 

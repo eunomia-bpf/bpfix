@@ -48,7 +48,6 @@ label:
   root_cause_description: 'Intentional negative test: takes `lockA` with `bpf_res_spin_lock_irqsave(&lockA,
     &flags2)` and then calls `bpf_local_irq_restore(&flags2)` while the lock is still
     held.'
-  rejected_insn_idx: 11
   root_cause_insn_idx: 11
   rejected_line: bpf_local_irq_restore(&flags2);
   root_cause_line: bpf_local_irq_restore(&flags2);

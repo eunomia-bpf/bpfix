@@ -48,7 +48,6 @@ label:
   root_cause_description: Packet data pointers are invalidated by
     bpf_xdp_adjust_head(), but the program performs a packet read through a
     pointer proven only before the helper call.
-  rejected_insn_idx: 10
   legacy_rejected_insn_idx: null
   root_cause_insn_idx: 10
   rejected_line: null

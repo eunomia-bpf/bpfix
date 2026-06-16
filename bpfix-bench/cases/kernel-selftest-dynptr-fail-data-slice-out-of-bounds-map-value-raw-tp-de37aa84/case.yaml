@@ -47,7 +47,6 @@ label:
   label_source: agree
   root_cause_description: 'Intentional negative test: reads `*((char *)data + sizeof(map_val)
     + 1)` one byte past the 4-byte map-value slice returned by `bpf_dynptr_data`.'
-  rejected_insn_idx: 28
   root_cause_insn_idx: 28
   rejected_line: val = *((char *)data + (sizeof(map_val) + 1));
   root_cause_line: val = *((char *)data + (sizeof(map_val) + 1));

@@ -48,7 +48,6 @@ label:
   root_cause_description: 'Intentional negative test: gets a plain `struct sample
     *sample` from `bpf_dynptr_data(&ptr, ...)` and then calls `bpf_ringbuf_submit(sample,
     0)` instead of submitting the owning dynptr.'
-  rejected_insn_idx: 17
   root_cause_insn_idx: 17
   rejected_line: bpf_ringbuf_submit(sample, 0);
   root_cause_line: bpf_ringbuf_submit(sample, 0);

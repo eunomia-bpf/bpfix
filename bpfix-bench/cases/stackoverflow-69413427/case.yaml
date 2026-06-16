@@ -50,7 +50,6 @@ label:
   root_cause_description: 'It passes the inode pointer value returned by `BPF_CORE_READ(dentry,
     d_inode)` directly as arg #2 to `bpf_map_lookup_elem`, but the helper expects
     a pointer to a key object in verifier-tracked memory, not the key value itself.'
-  rejected_insn_idx: 10
   legacy_rejected_insn_idx: 10
   root_cause_insn_idx: 10
   rejected_line: struct value *val = bpf_map_lookup_elem(&info, p);

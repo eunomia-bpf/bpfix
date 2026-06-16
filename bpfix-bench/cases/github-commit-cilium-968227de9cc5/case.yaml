@@ -47,9 +47,8 @@ label:
   label_source: external_replay_reconstruction
   root_cause_description: A local pointer variable can remain without a tracked
     pointer value on one subprogram path before it is tested and dereferenced.
-  rejected_insn_idx: 6
   legacy_rejected_insn_idx: null
-  root_cause_insn_idx: 30
+  root_cause_insn_idx: null
   rejected_line: "return state->value;"
   root_cause_line: "struct nat_entry *state;"
   localization_confidence: medium

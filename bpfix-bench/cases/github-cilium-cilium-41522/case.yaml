@@ -46,7 +46,6 @@ label:
   label_source: external_replay_reconstruction
   root_cause_description: Packet access occurs before a sufficient data/data_end bounds
     proof.
-  rejected_insn_idx: 1
   legacy_rejected_insn_idx: null
   root_cause_insn_idx: null
   rejected_line: null

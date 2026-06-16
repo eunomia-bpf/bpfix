@@ -48,7 +48,6 @@ label:
   root_cause_description: 'Intentional negative test: calls `bpf_dynptr_clone(&ptr1,
     &ptr2)` even though `ptr1` is just a zero-initialized dynptr that was never created
     by a dynptr helper.'
-  rejected_insn_idx: 7
   root_cause_insn_idx: 7
   rejected_line: bpf_dynptr_clone(&ptr1, &ptr2);
   root_cause_line: bpf_dynptr_clone(&ptr1, &ptr2);

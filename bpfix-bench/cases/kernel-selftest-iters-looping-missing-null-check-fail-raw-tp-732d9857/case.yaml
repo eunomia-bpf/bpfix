@@ -48,7 +48,6 @@ label:
   root_cause_description: 'Intentional negative test: calls `bpf_iter_num_next`, gets
     the result in `r0`, and immediately dereferences `*(u32 *)(r0 + 0)` without checking
     whether the iterator returned NULL.'
-  rejected_insn_idx: 8
   legacy_rejected_insn_idx: 8
   root_cause_insn_idx: 8
   rejected_line: asm volatile (

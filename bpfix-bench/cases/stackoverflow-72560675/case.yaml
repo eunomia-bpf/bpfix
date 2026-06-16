@@ -54,7 +54,6 @@ label:
   root_cause_description: On the older 4.14 kernel, the copy length is clamped with
     `MIN()`, but that verifier loses the resulting range and still treats the `bpf_probe_read`
     size as potentially outside the 2048-byte heap map value.
-  rejected_insn_idx: 27
   root_cause_insn_idx: 24
   rejected_line: null
   root_cause_line: null

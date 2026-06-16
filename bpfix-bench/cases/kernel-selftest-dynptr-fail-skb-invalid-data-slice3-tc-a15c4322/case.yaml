@@ -48,7 +48,6 @@ label:
   root_cause_description: 'Intentional negative test: reads `hdr->h_proto` after calling
     `bpf_dynptr_write(&ptr, 0, write_data, sizeof(write_data), 0)`, which invalidates
     existing data slices.'
-  rejected_insn_idx: 45
   root_cause_insn_idx: 45
   rejected_line: val = hdr->h_proto;
   root_cause_line: val = hdr->h_proto;

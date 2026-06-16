@@ -46,7 +46,6 @@ label:
   label_source: manual_reconstruction
   root_cause_description: A stack object used by a wide copy is not 8-byte aligned,
     so verifier stack-access alignment requirements are violated.
-  rejected_insn_idx: 3
   legacy_rejected_insn_idx: null
   root_cause_insn_idx: null
   rejected_line: null

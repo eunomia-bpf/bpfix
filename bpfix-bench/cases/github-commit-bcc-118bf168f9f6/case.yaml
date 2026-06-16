@@ -49,7 +49,6 @@ label:
   root_cause_description: A verifier-visible loop bound controls an index into
     the filter_ports rodata array without also constraining the index to the
     array capacity.
-  rejected_insn_idx: 23
   legacy_rejected_insn_idx: null
   root_cause_insn_idx: 23
   rejected_line: null

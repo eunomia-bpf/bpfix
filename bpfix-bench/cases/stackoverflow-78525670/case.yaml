@@ -46,7 +46,6 @@ label:
   label_source: external_replay_reconstruction
   root_cause_description: Program performs a variable-offset stack read with an index
     not proven to stay within the initialized stack object.
-  rejected_insn_idx: 15
   legacy_rejected_insn_idx: null
   root_cause_insn_idx: null
   rejected_line: null

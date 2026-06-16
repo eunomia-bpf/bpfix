@@ -48,7 +48,6 @@ label:
   root_cause_description: 'Intentional negative test: passes the on-stack `struct
     bpf_dynptr ptr` directly to `bpf_map_update_elem(&array_map1, ...)`, which would
     copy opaque dynptr state out of the stack as plain bytes.'
-  rejected_insn_idx: 18
   root_cause_insn_idx: 18
   rejected_line: bpf_map_update_elem(&array_map1, &key, &ptr, 0);
   root_cause_line: bpf_map_update_elem(&array_map1, &key, &ptr, 0);

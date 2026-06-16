@@ -47,7 +47,6 @@ label:
   root_cause_description: The loop condition `tcp_data + i <= data_end` does not dominate
     the one-byte access `tcp_data[i]` on the final iteration, so the verifier still
     sees a path where the read occurs exactly at `data_end`.
-  rejected_insn_idx: 29
   root_cause_insn_idx: 36
   rejected_line: if (tcp_data[i] == ' ') {
   root_cause_line: if (tcp_data[i] == ' ') {

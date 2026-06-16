@@ -47,7 +47,6 @@ label:
   root_cause_description: 'It uses the task pointer returned by `bpf_get_current_task`,
     which the verifier treats as a scalar, as arg #1 to `bpf_task_storage_get`, which
     requires a trusted task pointer.'
-  rejected_insn_idx: 6
   root_cause_insn_idx: 6
   rejected_line: prov = bpf_task_storage_get(&provenance_structure_map_task, s_task,
     NULL, 0);

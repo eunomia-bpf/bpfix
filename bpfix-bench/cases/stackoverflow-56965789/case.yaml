@@ -48,7 +48,6 @@ label:
   label_source: external_replay_reconstruction
   root_cause_description: Program uses a scalar where a pointer is required for memory
     access.
-  rejected_insn_idx: 9
   legacy_rejected_insn_idx: null
   root_cause_insn_idx: null
   rejected_line: null

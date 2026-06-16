@@ -49,7 +49,6 @@ label:
   label_source: external_replay_reconstruction
   root_cause_description: A map lookup result is adjusted as a backend field pointer
     while it is still verifier-typed as map_value_or_null.
-  rejected_insn_idx: 8
   legacy_rejected_insn_idx: null
   root_cause_insn_idx: 8
   rejected_line: 'asm volatile("%0 += 4" : "+r"(field));'

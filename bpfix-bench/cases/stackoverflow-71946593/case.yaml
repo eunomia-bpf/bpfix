@@ -48,7 +48,6 @@ label:
   root_cause_description: The kprobe computes `skb->head + skb->mac_header` and dereferences
     `eth->h_proto` directly from the probed `sk_buff`, but kprobe programs must copy
     those kernel fields through approved read helpers first.
-  rejected_insn_idx: 2
   root_cause_insn_idx: 2
   rejected_line: struct ethhdr *eth = (struct ethhdr *)(skb->head + skb->mac_header);
   root_cause_line: struct ethhdr *eth = (struct ethhdr *)(skb->head + skb->mac_header);

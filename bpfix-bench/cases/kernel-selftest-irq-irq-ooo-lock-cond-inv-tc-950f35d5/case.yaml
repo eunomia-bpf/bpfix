@@ -49,7 +49,6 @@ label:
   root_cause_description: 'Intentional negative test: acquires `lockA` with `flags1`
     and `lockB` with `flags2`, but then unlocks `lockB` with `flags1` and `lockA`
     with `flags2`, reversing the required pairings.'
-  rejected_insn_idx: 18
   root_cause_insn_idx: 18
   rejected_line: bpf_res_spin_unlock_irqrestore(&lockB, &flags1);
   root_cause_line: bpf_res_spin_unlock_irqrestore(&lockB, &flags1);

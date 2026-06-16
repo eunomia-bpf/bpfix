@@ -48,7 +48,6 @@ label:
   root_cause_description: 'Intentional negative test: requests a 9-byte dynptr slice
     into the 8-byte stack buffer `buffer`, so the helper''s destination memory/len
     pair is invalid.'
-  rejected_insn_idx: 17
   root_cause_insn_idx: 17
   rejected_line: data = bpf_dynptr_slice(&ptr, 0, buffer, 9);
   root_cause_line: data = bpf_dynptr_slice(&ptr, 0, buffer, 9);

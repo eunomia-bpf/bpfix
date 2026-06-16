@@ -48,7 +48,6 @@ label:
   label_source: external_replay_reconstruction
   root_cause_description: Optimizer uses a packet pointer register that did not receive
     the latest verifier bounds proof.
-  rejected_insn_idx: 17
   legacy_rejected_insn_idx: null
   root_cause_insn_idx: null
   rejected_line: null

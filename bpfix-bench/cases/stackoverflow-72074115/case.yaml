@@ -48,7 +48,6 @@ label:
   root_cause_description: External StackOverflow report indexes a constant lookup
     table with a verifier-untrusted scalar; the verifier cannot prove the table access
     stays in bounds.
-  rejected_insn_idx: 7
   legacy_rejected_insn_idx: 7
   root_cause_insn_idx: 7
   rejected_line: return ((__u32)(((__u32)v[shift] + 10) << b)) >> 6;

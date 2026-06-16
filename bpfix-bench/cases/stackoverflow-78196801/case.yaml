@@ -46,7 +46,6 @@ label:
   label_source: external_replay_reconstruction
   root_cause_description: Program accesses a map value at an offset beyond the declared
     24-byte value size.
-  rejected_insn_idx: 13
   legacy_rejected_insn_idx: null
   root_cause_insn_idx: null
   rejected_line: null

@@ -47,7 +47,6 @@ label:
   label_source: external_replay_reconstruction
   root_cause_description: Map lookup result is dereferenced along a path where the
     verifier still sees map_value_or_null.
-  rejected_insn_idx: 7
   legacy_rejected_insn_idx: null
   root_cause_insn_idx: null
   rejected_line: null

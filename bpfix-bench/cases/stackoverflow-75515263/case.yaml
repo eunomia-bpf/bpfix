@@ -51,7 +51,6 @@ label:
   root_cause_description: The hash map is declared with value type `struct sock_info
     *`, but the program reads fields as if the map stored an in-place `struct sock_info`,
     so the verifier sees an 8-byte map value and rejects the read at offset 8.
-  rejected_insn_idx: 13
   legacy_rejected_insn_idx: 15
   root_cause_insn_idx: 15
   rejected_line: bpf_trace_printk(foo,sizeof(foo),og_sock->sport);

@@ -46,7 +46,6 @@ label:
   label_source: external_replay_reconstruction
   root_cause_description: XDP payload aggregation reads four bytes after only a shorter
     packet range is proven.
-  rejected_insn_idx: 6
   legacy_rejected_insn_idx: null
   root_cause_insn_idx: null
   rejected_line: null

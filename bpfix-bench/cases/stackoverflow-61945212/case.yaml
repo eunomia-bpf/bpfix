@@ -51,7 +51,6 @@ label:
   root_cause_description: 'The program calls `bpf_map_update_elem(&queue_map, NULL,
     &value, BPF_ANY)`, so helper arg #2 is a NULL scalar instead of a verifier-tracked
     key pointer, and queue maps should not be updated through `map_update_elem` anyway.'
-  rejected_insn_idx: 8
   root_cause_insn_idx: 8
   rejected_line: null
   root_cause_line: null

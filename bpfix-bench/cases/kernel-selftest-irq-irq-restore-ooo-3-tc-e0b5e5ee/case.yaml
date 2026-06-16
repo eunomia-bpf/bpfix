@@ -49,7 +49,6 @@ label:
   root_cause_description: 'Intentional negative test: saves `flags1`, saves `flags2`,
     restores `flags2`, saves `flags3`, and then restores `flags1` while `flags3` is
     still active.'
-  rejected_insn_idx: 15
   root_cause_insn_idx: 15
   rejected_line: bpf_local_irq_restore(&flags1);
   root_cause_line: bpf_local_irq_restore(&flags1);

@@ -46,7 +46,6 @@ label:
   label_source: external_replay_reconstruction
   root_cause_description: Program uses a kernel pointer path that is not tracked as
     a valid kptr by the verifier.
-  rejected_insn_idx: 10
   legacy_rejected_insn_idx: null
   root_cause_insn_idx: null
   rejected_line: null

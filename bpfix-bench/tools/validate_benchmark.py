@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from dataclasses import asdict
 from datetime import datetime, timezone
@@ -29,6 +30,7 @@ VALID_TAXONOMY_CLASSES = {
     "verifier_limit",
     "verifier_false_positive",
 }
+VERIFIER_PC_RE = re.compile(r"^\s*(\d+):")
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -220,8 +222,8 @@ def validate_case_metadata(
     compare(source.get("kind"), entry.get("source_kind"), "source.kind/source_kind", errors)
     compare(capture.get("capture_id"), entry.get("capture_id"), "capture.capture_id/manifest.capture_id", errors)
     compare(label.get("capture_id"), capture.get("capture_id"), "label.capture_id/capture.capture_id", errors)
-    if label.get("rejected_insn_idx") is not None:
-        compare(label.get("rejected_insn_idx"), capture.get("rejected_insn_idx"), "label.rejected_insn_idx/capture.rejected_insn_idx", errors)
+    if "rejected_insn_idx" in label:
+        errors.append("label.rejected_insn_idx is redundant; use capture.rejected_insn_idx")
     compare(reporting.get("family_id"), entry.get("family_id"), "reporting.family_id/manifest.family_id", errors)
     compare(reporting.get("representative"), entry.get("representative"), "reporting.representative/manifest.representative", errors)
 
@@ -287,17 +289,21 @@ def validate_stored_artifacts(case_dir: Path, case_data: dict[str, Any], case_re
 
     verifier_log_path = case_dir / verifier_log_value
     if not verifier_log_path.exists():
+        errors.append(f"missing verifier log: {verifier_log_path}")
         return
     if verifier_log_path.stat().st_size == 0:
         errors.append(f"empty verifier log: {verifier_log_path}")
         return
 
-    parsed = parse_verifier_log(verifier_log_path.read_text(encoding="utf-8", errors="replace"), source=str(verifier_log_path.name))
+    verifier_log = verifier_log_path.read_text(encoding="utf-8", errors="replace")
+    parsed = parse_verifier_log(verifier_log, source=str(verifier_log_path.name))
+    instruction_pcs = verifier_log_instruction_pcs(verifier_log)
     case_report["stored"] = {
         "verifier_log": verifier_log_value,
         "terminal_error": parsed.terminal_error,
         "rejected_insn_idx": parsed.rejected_insn_idx,
         "log_quality": parsed.log_quality,
+        "instruction_pc_count": len(instruction_pcs),
     }
 
     if capture.get("terminal_error") and parsed.terminal_error != capture.get("terminal_error"):
@@ -306,6 +312,18 @@ def validate_stored_artifacts(case_dir: Path, case_data: dict[str, Any], case_re
         errors.append("stored verifier.log has no parseable rejected instruction index")
     elif capture.get("rejected_insn_idx") != parsed.rejected_insn_idx:
         errors.append("capture.rejected_insn_idx does not match stored verifier.log")
+
+    label = mapping(case_data.get("label"))
+    root_pc = label.get("root_cause_insn_idx")
+    if root_pc is not None:
+        if not isinstance(root_pc, int):
+            errors.append("label.root_cause_insn_idx must be an integer or null")
+        elif root_pc not in instruction_pcs:
+            max_pc = max(instruction_pcs) if instruction_pcs else None
+            errors.append(
+                "label.root_cause_insn_idx is outside the stored replay verifier-log "
+                f"instruction numbering: root={root_pc!r}, max_pc={max_pc!r}"
+            )
 
     for field in ("build_stdout", "build_stderr", "load_stdout", "load_stderr"):
         value = capture.get(field)
@@ -399,6 +417,15 @@ def first_present(mapping_value: dict[str, Any], *paths: list[str]) -> Any:
         if value is not None:
             return value
     return None
+
+
+def verifier_log_instruction_pcs(verifier_log: str) -> set[int]:
+    pcs: set[int] = set()
+    for line in verifier_log.splitlines():
+        match = VERIFIER_PC_RE.match(line)
+        if match:
+            pcs.add(int(match.group(1)))
+    return pcs
 
 
 def command_summary(result: Any) -> dict[str, Any]:

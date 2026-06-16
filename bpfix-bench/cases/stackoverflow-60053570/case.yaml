@@ -46,7 +46,6 @@ label:
   label_source: external_replay_reconstruction
   root_cause_description: Checksum helper is asked to read more packet bytes than
     the verifier-proven packet range.
-  rejected_insn_idx: 26
   legacy_rejected_insn_idx: null
   root_cause_insn_idx: null
   rejected_line: null

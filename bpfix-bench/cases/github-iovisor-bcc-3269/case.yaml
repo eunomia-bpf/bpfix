@@ -48,7 +48,6 @@ label:
   label_source: external_replay_reconstruction
   root_cause_description: skb_load_bytes length can be zero or otherwise not verifier-proven
     for the destination range.
-  rejected_insn_idx: 17
   legacy_rejected_insn_idx: null
   root_cause_insn_idx: null
   rejected_line: null

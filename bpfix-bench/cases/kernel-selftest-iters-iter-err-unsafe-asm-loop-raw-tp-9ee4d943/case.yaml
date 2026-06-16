@@ -48,7 +48,6 @@ label:
   root_cause_description: 'Intentional negative test: counts iterator iterations in
     `r6` and then uses that unbounded count as the byte offset into `small_arr` before
     storing through the derived pointer.'
-  rejected_insn_idx: 24
   legacy_rejected_insn_idx: 24
   root_cause_insn_idx: 24
   rejected_line: asm volatile (

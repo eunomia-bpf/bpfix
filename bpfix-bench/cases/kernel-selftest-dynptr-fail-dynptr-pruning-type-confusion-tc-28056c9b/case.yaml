@@ -48,7 +48,6 @@ label:
   root_cause_description: 'Intentional negative test: uses inline assembly to reuse
     the same stack slot as both a reserved ringbuf dynptr and a `bpf_dynptr_from_mem`
     destination, creating dynptr state confusion after branch pruning.'
-  rejected_insn_idx: 40
   root_cause_insn_idx: 40
   rejected_line: asm volatile (
   root_cause_line: asm volatile (

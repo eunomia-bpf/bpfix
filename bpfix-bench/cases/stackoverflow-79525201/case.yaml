@@ -47,7 +47,6 @@ label:
   label_source: external_replay_reconstruction
   root_cause_description: Program adds an unbounded scalar to a packet pointer, so
     the pointer may move out of bounds.
-  rejected_insn_idx: 4
   legacy_rejected_insn_idx: null
   root_cause_insn_idx: null
   rejected_line: null

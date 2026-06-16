@@ -47,7 +47,6 @@ label:
   label_source: agree
   root_cause_description: 'Intentional negative test: passes `&ptr` to `get_map_val_dynptr(&ptr)`,
     overwriting an already referenced ringbuf dynptr slot.'
-  rejected_insn_idx: 28
   root_cause_insn_idx: 26
   rejected_line: bpf_dynptr_from_mem(map_val, sizeof(*map_val), 0, ptr);
   root_cause_line: bpf_dynptr_from_mem(map_val, sizeof(*map_val), 0, ptr);

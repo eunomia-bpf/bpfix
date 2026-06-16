@@ -48,7 +48,6 @@ label:
     after the byte-assembly and endianness conversion the lowered register no longer
     has a non-negative lower bound, so `data + ext_len` is rejected as packet-pointer
     arithmetic with an unbounded min value.
-  rejected_insn_idx: 33
   root_cause_insn_idx: 20
   rejected_line: null
   root_cause_line: volatile int ext_len = __bpf_htons(ext->len);

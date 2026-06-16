@@ -47,7 +47,6 @@ label:
   label_source: agree
   root_cause_description: 'Intentional negative test: passes the fabricated scalar
     pointer `0x123456` as the destination cpumask in `bpf_cpumask_populate`.'
-  rejected_insn_idx: 4
   root_cause_insn_idx: 4
   rejected_line: ret = bpf_cpumask_populate((struct cpumask *)invalid, &bits, sizeof(bits));
   root_cause_line: ret = bpf_cpumask_populate((struct cpumask *)invalid, &bits, sizeof(bits));

@@ -48,7 +48,6 @@ label:
   root_cause_description: 'Intentional negative test: creates a crypto context, acquires
     a second reference with `bpf_crypto_ctx_acquire(cctx)`, and releases only one
     `bpf_crypto_ctx *` before exit.'
-  rejected_insn_idx: 80
   root_cause_insn_idx: 67
   rejected_line: '}'
   root_cause_line: cctx = bpf_crypto_ctx_create(&params, sizeof(params), &err);

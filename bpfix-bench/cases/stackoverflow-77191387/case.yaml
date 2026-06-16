@@ -46,7 +46,6 @@ label:
   label_source: external_replay_reconstruction
   root_cause_description: cgroup_skb programs may only return 0 or 1, but the
     program uses TC_ACT_SHOT, which is 2.
-  rejected_insn_idx: 23
   legacy_rejected_insn_idx: null
   root_cause_insn_idx: null
   rejected_line: null

@@ -47,7 +47,6 @@ label:
   label_source: external_replay_reconstruction
   root_cause_description: A helper argument register is consumed before all paths
     initialize the value feeding it.
-  rejected_insn_idx: 2
   legacy_rejected_insn_idx: null
   root_cause_insn_idx: null
   rejected_line: null

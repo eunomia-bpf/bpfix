@@ -48,7 +48,6 @@ label:
   root_cause_description: 'Intentional negative test: passes `curr = global_mask`
     directly to `bpf_kptr_xchg(&global_mask, curr)` while that pointer is still `PTR_MAYBE_NULL
     | MEM_RCU`.'
-  rejected_insn_idx: 15
   root_cause_insn_idx: 15
   rejected_line: prev = bpf_kptr_xchg(&global_mask, curr);
   root_cause_line: prev = bpf_kptr_xchg(&global_mask, curr);
