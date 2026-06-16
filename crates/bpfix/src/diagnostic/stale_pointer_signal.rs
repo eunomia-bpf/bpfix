@@ -1,3 +1,6 @@
+use bpfanalysis::helper_abi::{
+    helper_dynptr_data_invalidating_arg, helper_dynptr_data_producer_arg,
+};
 use bpfanalysis::verifier_log::{
     call_target_from_instruction_tail, instruction_assigns_register, instruction_frame,
     instruction_single_register_rhs_source, instruction_site_before_line,
@@ -249,7 +252,7 @@ fn dynptr_data_origin(
         let Some(target) = target else {
             continue;
         };
-        let arg_reg = dynptr_data_producer_arg(target)?;
+        let arg_reg = helper_dynptr_data_producer_arg(target)?;
         let slot = dynptr_stack_slot_for_call_argument(
             context.branch_states,
             instruction,
@@ -262,21 +265,13 @@ fn dynptr_data_origin(
     None
 }
 
-fn dynptr_data_producer_arg(target: &str) -> Option<u8> {
-    matches!(
-        target,
-        "bpf_dynptr_data" | "bpf_dynptr_slice" | "bpf_dynptr_slice_rdwr"
-    )
-    .then_some(1)
-}
-
 fn dynptr_data_invalidated_by_call(
     context: &ProofSignalContext<'_>,
     instruction: TerminalInstruction<'_>,
     target: &str,
     origin: DynptrDataOrigin,
 ) -> bool {
-    let Some(arg_reg) = dynptr_data_invalidating_arg(target) else {
+    let Some(arg_reg) = helper_dynptr_data_invalidating_arg(target) else {
         return false;
     };
     let fragment_start = verifier_fragment_start_line(context.log, instruction.line);
@@ -428,13 +423,4 @@ fn memory_store_overlaps_dynptr_slot(
 
 fn dynptr_stack_slot_range(slot: DynptrStackSlot) -> Option<StackByteRange> {
     stack_value_range(i16::try_from(slot.offset).ok()?, 16)
-}
-
-fn dynptr_data_invalidating_arg(target: &str) -> Option<u8> {
-    match target {
-        "bpf_dynptr_write" => Some(1),
-        "bpf_dynptr_from_mem" => Some(4),
-        "bpf_dynptr_from_skb" | "bpf_dynptr_from_xdp" => Some(3),
-        _ => None,
-    }
 }

@@ -1,3 +1,6 @@
+use bpfanalysis::helper_abi::{
+    helper_dynptr_initialized_arg, helper_dynptr_initializer_output_arg, helper_dynptr_live_arg,
+};
 use bpfanalysis::verifier_log::{
     call_target_from_instruction_tail, latest_verifier_state_before_instruction, parse_i64_after,
     reg_state_has_variable_offset, stack_value_range, terminal_instruction_site,
@@ -135,7 +138,7 @@ fn dynptr_initialized_argument_missing(context: &ProofSignalContext<'_>) -> bool
     let Some(target) = call_target_from_instruction_tail(instruction.tail) else {
         return false;
     };
-    let Some(arg_reg) = dynptr_initialized_arg(target) else {
+    let Some(arg_reg) = helper_dynptr_initialized_arg(target) else {
         return false;
     };
     let fragment_start = verifier_fragment_start_line(context.log, instruction.line);
@@ -172,7 +175,7 @@ fn dynptr_initializer_overwrites_referenced_slot(
     let Some(target) = call_target_from_instruction_tail(instruction.tail) else {
         return false;
     };
-    let Some(arg_reg) = dynptr_initializer_output_arg(target) else {
+    let Some(arg_reg) = helper_dynptr_initializer_output_arg(target) else {
         return false;
     };
     let Some((arg, arg_frame)) = latest_reg_state_for_call_argument_with_frame(
@@ -296,7 +299,7 @@ fn dynptr_initializer_output_slot_mismatch(
     fragment_start: usize,
     target: &str,
 ) -> bool {
-    let Some(arg_reg) = dynptr_initializer_output_arg(target) else {
+    let Some(arg_reg) = helper_dynptr_initializer_output_arg(target) else {
         return false;
     };
     let Some(arg) = latest_reg_state_for_call_argument(
@@ -336,7 +339,7 @@ fn dynptr_live_argument_interior_pointer(
     fragment_start: usize,
     target: &str,
 ) -> bool {
-    let Some(arg_reg) = dynptr_live_arg(target) else {
+    let Some(arg_reg) = helper_dynptr_live_arg(target) else {
         return false;
     };
     let Some((arg, arg_frame)) = latest_reg_state_for_call_argument_with_frame(
@@ -398,38 +401,6 @@ pub(super) fn dynptr_release_unacquired_reference(context: &ProofSignalContext<'
     }
     latest_verifier_state_before_instruction(context.states, instruction, fragment_start)
         .is_some_and(|state| state.refs.unwrap_or(0) == 0)
-}
-
-pub(super) fn dynptr_initializer_output_arg(target: &str) -> Option<u8> {
-    match target {
-        "bpf_ringbuf_reserve_dynptr" | "bpf_dynptr_from_mem" => Some(4),
-        "bpf_dynptr_from_skb" | "bpf_dynptr_from_xdp" => Some(3),
-        _ => None,
-    }
-}
-
-fn dynptr_live_arg(target: &str) -> Option<u8> {
-    match target {
-        "bpf_dynptr_data"
-        | "bpf_dynptr_clone"
-        | "bpf_ringbuf_discard_dynptr"
-        | "bpf_ringbuf_submit_dynptr" => Some(1),
-        "bpf_dynptr_read" | "bpf_dynptr_write" => Some(3),
-        _ => None,
-    }
-}
-
-fn dynptr_initialized_arg(target: &str) -> Option<u8> {
-    match target {
-        "bpf_dynptr_data"
-        | "bpf_dynptr_clone"
-        | "bpf_dynptr_slice"
-        | "bpf_dynptr_slice_rdwr"
-        | "bpf_ringbuf_discard_dynptr"
-        | "bpf_ringbuf_submit_dynptr" => Some(1),
-        "bpf_dynptr_read" | "bpf_dynptr_write" => Some(3),
-        _ => None,
-    }
 }
 
 fn dynptr_slot_has_live_ref_before_instruction(

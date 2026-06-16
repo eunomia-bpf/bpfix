@@ -101,6 +101,55 @@ pub fn helper_consumes_scalar_length_register(target: &str, reg: u8) -> bool {
         || matches!(target, "bpf_csum_diff") && matches!(reg, 2 | 4)
 }
 
+pub fn helper_dynptr_initializer_output_arg(target: &str) -> Option<u8> {
+    match target {
+        "bpf_ringbuf_reserve_dynptr" | "bpf_dynptr_from_mem" => Some(4),
+        "bpf_dynptr_from_skb" | "bpf_dynptr_from_xdp" => Some(3),
+        _ => None,
+    }
+}
+
+pub fn helper_dynptr_live_arg(target: &str) -> Option<u8> {
+    match target {
+        "bpf_dynptr_data"
+        | "bpf_dynptr_clone"
+        | "bpf_ringbuf_discard_dynptr"
+        | "bpf_ringbuf_submit_dynptr" => Some(1),
+        "bpf_dynptr_read" | "bpf_dynptr_write" => Some(3),
+        _ => None,
+    }
+}
+
+pub fn helper_dynptr_initialized_arg(target: &str) -> Option<u8> {
+    match target {
+        "bpf_dynptr_data"
+        | "bpf_dynptr_clone"
+        | "bpf_dynptr_slice"
+        | "bpf_dynptr_slice_rdwr"
+        | "bpf_ringbuf_discard_dynptr"
+        | "bpf_ringbuf_submit_dynptr" => Some(1),
+        "bpf_dynptr_read" | "bpf_dynptr_write" => Some(3),
+        _ => None,
+    }
+}
+
+pub fn helper_dynptr_data_producer_arg(target: &str) -> Option<u8> {
+    matches!(
+        target,
+        "bpf_dynptr_data" | "bpf_dynptr_slice" | "bpf_dynptr_slice_rdwr"
+    )
+    .then_some(1)
+}
+
+pub fn helper_dynptr_data_invalidating_arg(target: &str) -> Option<u8> {
+    match target {
+        "bpf_dynptr_write" => Some(1),
+        "bpf_dynptr_from_mem" => Some(4),
+        "bpf_dynptr_from_skb" | "bpf_dynptr_from_xdp" => Some(3),
+        _ => None,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -146,5 +195,27 @@ mod tests {
         assert!(helper_consumes_scalar_length_register("bpf_csum_diff", 2));
         assert!(helper_consumes_scalar_length_register("bpf_csum_diff", 4));
         assert!(!helper_consumes_scalar_length_register("bpf_csum_diff", 5));
+    }
+
+    #[test]
+    fn exposes_dynptr_argument_roles() {
+        assert_eq!(
+            helper_dynptr_initializer_output_arg("bpf_dynptr_from_skb"),
+            Some(3)
+        );
+        assert_eq!(
+            helper_dynptr_initializer_output_arg("bpf_dynptr_from_mem"),
+            Some(4)
+        );
+        assert_eq!(helper_dynptr_live_arg("bpf_dynptr_write"), Some(3));
+        assert_eq!(
+            helper_dynptr_initialized_arg("bpf_dynptr_slice_rdwr"),
+            Some(1)
+        );
+        assert_eq!(helper_dynptr_data_producer_arg("bpf_dynptr_slice"), Some(1));
+        assert_eq!(
+            helper_dynptr_data_invalidating_arg("bpf_dynptr_write"),
+            Some(1)
+        );
     }
 }

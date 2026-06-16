@@ -1,4 +1,5 @@
 use anyhow::Result;
+use bpfanalysis::helper_abi::helper_dynptr_initializer_output_arg;
 use bpfanalysis::verifier_log::{
     atomic_memory_access_width, call_target_from_instruction_tail, instruction_assigns_register,
     instruction_frame, instruction_site_before_line, instructions_in_line_range,
@@ -557,7 +558,7 @@ fn dynptr_slot_backing_before(
         .filter_map(|instruction| {
             let target = call_target_from_instruction_tail(instruction.tail)?;
             let backing = dynptr_backing_from_helper(target)?;
-            let arg_reg = dynptr_signal::dynptr_initializer_output_arg(target)?;
+            let arg_reg = helper_dynptr_initializer_output_arg(target)?;
             let initialized_slot = dynptr_stack_slot_for_call_argument(
                 context.branch_states,
                 instruction,
