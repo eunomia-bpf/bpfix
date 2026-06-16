@@ -317,6 +317,70 @@ fn parses_constants_and_repeated_bounds_from_real_messages() {
 }
 
 #[test]
+fn interprets_scalar_and_map_value_register_state() {
+    let mut scalar = RegState::new("scalar", VerifierValueWidth::Bits64);
+    scalar.range.smin = Some(0);
+    scalar.range.smax = Some(63);
+    scalar.range.umin = Some(0);
+    scalar.range.umax = Some(63);
+    assert_eq!(
+        scalar_range_summary(&scalar),
+        "scalar(smin=0,smax=63,umin=0,umax=63)"
+    );
+    assert_eq!(
+        verifier_value_summary(&scalar),
+        scalar_range_summary(&scalar)
+    );
+    assert_eq!(scalar_range_min_i64(&scalar), Some(0));
+    assert_eq!(scalar_range_max_i64(&scalar), Some(63));
+    assert!(scalar_range_has_any_bound(&scalar));
+    assert!(scalar_range_may_include_zero(&scalar));
+    assert!(!scalar_range_may_be_negative(&scalar));
+    assert!(scalar_state_upper_bound_at_most(&scalar, 64));
+    assert!(scalar_ranges_match(&scalar, &scalar));
+    assert!(!scalar_range_upper_unbounded_or_too_large(&scalar));
+    assert!(!scalar_range_is_unsafe(&scalar));
+
+    let unknown = RegState::new("scalar", VerifierValueWidth::Bits64);
+    assert_eq!(scalar_range_summary(&unknown), "scalar with unknown bounds");
+    assert!(!scalar_ranges_match(&scalar, &unknown));
+    assert!(scalar_range_may_include_zero(&unknown));
+    assert!(scalar_range_may_be_negative(&unknown));
+    assert!(scalar_range_upper_unbounded_or_too_large(&unknown));
+    assert!(scalar_range_is_unsafe(&unknown));
+
+    let mut map_value = RegState::new("map_value", VerifierValueWidth::Bits64);
+    map_value.offset = Some(8);
+    map_value.map_value_size = Some(16);
+    map_value.range.umax = Some(12);
+    assert_eq!(
+        verifier_value_summary(&map_value),
+        "map_value(off=8,value_size=16,range(umax=12))"
+    );
+    assert_eq!(map_value_remaining_capacity(&map_value, 16), Some(8));
+    assert_eq!(map_value_variable_max_offset(&map_value), Some(12));
+    assert!(map_value_access_range_may_exceed_value_size(&map_value, 1));
+    assert!(map_value_range_may_exceed_value_size(&map_value));
+}
+
+#[test]
+fn queries_latest_unsafe_scalar_and_nullable_state() {
+    let log = r#"
+0: R1=scalar(smin=-1,umax=5) R2=map_value_or_null(id=1,map=foo,ks=4,vs=8)
+1: R1=1 R2=map_value(map=foo,ks=4,vs=8)
+"#;
+
+    let states = verifier_states_from_log(log).unwrap();
+    let (pc, state) = latest_unsafe_scalar_state(&states, Some(1), 1).unwrap();
+    assert_eq!(pc, 0);
+    assert_eq!(state.range.smin, Some(-1));
+    assert_eq!(
+        latest_nullable_state(&states, Some(1), 2),
+        Some((0, "map_value_or_null".to_string()))
+    );
+}
+
+#[test]
 fn parses_speculative_full_state_and_stack_spill() {
     let log = r#"
 from 12 to 18 (speculative execution): frame1: R2_w=42 R10=fp0 fp-24=0000???? scalar(id=7,var_off=(0x2a; 0x0))

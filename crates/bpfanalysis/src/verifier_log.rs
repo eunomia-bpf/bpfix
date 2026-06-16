@@ -483,6 +483,211 @@ pub fn stack_access_range(message: &str) -> Option<StackByteRange> {
     stack_value_range(offset, size)
 }
 
+pub fn scalar_range_summary(state: &RegState) -> String {
+    if let Some(value) = state.exact_value {
+        return format!("scalar exact {value}");
+    }
+    let parts = scalar_range_parts(state);
+    if parts.is_empty() {
+        "scalar with unknown bounds".to_string()
+    } else {
+        format!("scalar({})", parts.join(","))
+    }
+}
+
+pub fn verifier_value_summary(state: &RegState) -> String {
+    if state.reg_type == "scalar" {
+        return scalar_range_summary(state);
+    }
+
+    let mut parts = Vec::new();
+    if let Some(offset) = state.offset {
+        parts.push(format!("off={offset}"));
+    }
+    if let Some(value_size) = state.map_value_size {
+        parts.push(format!("value_size={value_size}"));
+    }
+    let range = scalar_range_parts(state);
+    if !range.is_empty() {
+        parts.push(format!("range({})", range.join(",")));
+    }
+
+    if parts.is_empty() {
+        state.reg_type.clone()
+    } else {
+        format!("{}({})", state.reg_type, parts.join(","))
+    }
+}
+
+fn scalar_range_parts(state: &RegState) -> Vec<String> {
+    let mut parts = Vec::new();
+    if let Some(smin) = state.range.smin {
+        parts.push(format!("smin={smin}"));
+    }
+    if let Some(smax) = state.range.smax {
+        parts.push(format!("smax={smax}"));
+    }
+    if let Some(umin) = state.range.umin {
+        parts.push(format!("umin={umin}"));
+    }
+    if let Some(umax) = state.range.umax {
+        parts.push(format!("umax={umax}"));
+    }
+    parts
+}
+
+pub fn scalar_range_min_i64(state: &RegState) -> Option<i64> {
+    state
+        .range
+        .smin
+        .or_else(|| state.range.umin.and_then(|value| i64::try_from(value).ok()))
+        .or_else(|| state.range.smin32.map(i64::from))
+        .or_else(|| state.range.umin32.map(i64::from))
+}
+
+pub fn scalar_range_max_i64(state: &RegState) -> Option<i64> {
+    state
+        .range
+        .smax
+        .or_else(|| state.range.umax.and_then(|value| i64::try_from(value).ok()))
+        .or_else(|| state.range.smax32.map(i64::from))
+        .or_else(|| state.range.umax32.map(i64::from))
+}
+
+pub fn scalar_range_has_any_bound(state: &RegState) -> bool {
+    state.range.smin.is_some()
+        || state.range.smax.is_some()
+        || state.range.umin.is_some()
+        || state.range.umax.is_some()
+        || state.range.smin32.is_some()
+        || state.range.smax32.is_some()
+        || state.range.umin32.is_some()
+        || state.range.umax32.is_some()
+}
+
+pub fn scalar_ranges_match(left: &RegState, right: &RegState) -> bool {
+    left.range.smin == right.range.smin
+        && left.range.smax == right.range.smax
+        && left.range.umin == right.range.umin
+        && left.range.umax == right.range.umax
+        && left.range.smin32 == right.range.smin32
+        && left.range.smax32 == right.range.smax32
+        && left.range.umin32 == right.range.umin32
+        && left.range.umax32 == right.range.umax32
+}
+
+pub fn scalar_range_may_include_zero(state: &RegState) -> bool {
+    if let Some(value) = state.exact_value {
+        return value == 0;
+    }
+    if state.range.smax.is_some_and(|value| value < 0) {
+        return false;
+    }
+    if state.range.smin.is_some_and(|value| value > 0) {
+        return false;
+    }
+    if state.range.umin.is_some_and(|value| value > 0) {
+        return false;
+    }
+    true
+}
+
+pub fn scalar_range_may_be_negative(state: &RegState) -> bool {
+    if let Some(value) = state.exact_value {
+        return value > i64::MAX as u64;
+    }
+    if let Some(smin) = state.range.smin {
+        return smin < 0;
+    }
+    state.range.umin.is_none()
+}
+
+pub fn scalar_range_upper_unbounded_or_too_large(state: &RegState) -> bool {
+    let signed_too_large = state
+        .range
+        .smax
+        .is_some_and(|value| value > i32::MAX as i64);
+    let unsigned_too_large = state
+        .range
+        .umax
+        .is_some_and(|value| value > i32::MAX as u64);
+    let unbounded = state.range.smax.is_none() && state.range.umax.is_none();
+    signed_too_large || unsigned_too_large || unbounded
+}
+
+pub fn scalar_range_is_unsafe(state: &RegState) -> bool {
+    state.range.smin.is_none_or(|value| value < 0)
+        || state.range.umin.is_none()
+        || state.range.umax.is_none_or(|value| value > i32::MAX as u64)
+}
+
+pub fn scalar_state_upper_bound_at_most(state: &RegState, relation_capacity: u32) -> bool {
+    if state.reg_type != "scalar" {
+        return false;
+    }
+    let capacity = u64::from(relation_capacity);
+    state.exact_value.is_some_and(|value| value <= capacity)
+        || state.range.umax.is_some_and(|value| value <= capacity)
+        || state
+            .range
+            .smax
+            .is_some_and(|value| value >= 0 && value as u64 <= capacity)
+        || state
+            .range
+            .umax32
+            .is_some_and(|value| value <= relation_capacity)
+        || state
+            .range
+            .smax32
+            .is_some_and(|value| value >= 0 && value as u32 <= relation_capacity)
+}
+
+pub fn map_value_remaining_capacity(state: &RegState, value_size: u32) -> Option<u32> {
+    let fixed_offset = state.offset.unwrap_or(0);
+    let fixed_offset = u32::try_from(fixed_offset).ok()?;
+    value_size.checked_sub(fixed_offset)
+}
+
+pub fn map_value_variable_max_offset(state: &RegState) -> Option<u64> {
+    state
+        .range
+        .umax
+        .or_else(|| state.range.smax.and_then(|value| u64::try_from(value).ok()))
+}
+
+pub fn map_value_access_range_may_exceed_value_size(state: &RegState, access_size: u32) -> bool {
+    if state.reg_type != "map_value" {
+        return false;
+    }
+    let Some(value_size) = state.map_value_size else {
+        return false;
+    };
+    map_value_max_offset(state, Some(0))
+        .and_then(|offset| offset.checked_add(u64::from(access_size)))
+        .is_some_and(|end| end > u64::from(value_size))
+}
+
+pub fn map_value_range_may_exceed_value_size(state: &RegState) -> bool {
+    if state.reg_type != "map_value" {
+        return false;
+    }
+    let Some(value_size) = state.map_value_size else {
+        return false;
+    };
+    map_value_max_offset(state, None).is_some_and(|offset| offset >= u64::from(value_size))
+}
+
+fn map_value_max_offset(state: &RegState, default_without_offset: Option<u64>) -> Option<u64> {
+    let max_variable_offset = map_value_variable_max_offset(state);
+    let fixed_offset = state.offset.and_then(|offset| u64::try_from(offset).ok());
+    match (fixed_offset, max_variable_offset) {
+        (Some(fixed), Some(variable)) => fixed.checked_add(variable),
+        (Some(fixed), None) => Some(fixed),
+        (None, Some(variable)) => Some(variable),
+        (None, None) => default_without_offset,
+    }
+}
+
 fn parse_signed_i16_after(message: &str, marker: &str) -> Option<i16> {
     let start = message.find(marker)? + marker.len();
     let rest = message[start..].trim_start();
@@ -511,6 +716,41 @@ pub fn latest_reg_state_before(
         .rev()
         .filter_map(|state| state.regs.get(&reg))
         .next()
+}
+
+pub fn latest_unsafe_scalar_state(
+    states: &[VerifierInsn],
+    terminal_pc: Option<usize>,
+    reg: u8,
+) -> Option<(usize, &RegState)> {
+    states
+        .iter()
+        .filter(|state| terminal_pc.is_none_or(|pc| state.pc <= pc))
+        .rev()
+        .find_map(|state| {
+            let reg_state = state.regs.get(&reg)?;
+            ((reg_state.reg_type == "scalar" && scalar_range_is_unsafe(reg_state))
+                || map_value_range_may_exceed_value_size(reg_state))
+            .then_some((state.pc, reg_state))
+        })
+}
+
+pub fn latest_nullable_state(
+    states: &[VerifierInsn],
+    terminal_pc: Option<usize>,
+    reg: u8,
+) -> Option<(usize, String)> {
+    states
+        .iter()
+        .filter(|state| terminal_pc.is_none_or(|pc| state.pc <= pc))
+        .rev()
+        .find_map(|state| {
+            let reg_state = state.regs.get(&reg)?;
+            reg_state
+                .reg_type
+                .contains("_or_null")
+                .then(|| (state.pc, reg_state.reg_type.clone()))
+        })
 }
 
 pub fn latest_reg_state_index_before(

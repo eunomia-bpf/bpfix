@@ -6,25 +6,28 @@ use bpfanalysis::verifier_log::{
     instruction_opcode_body, instruction_reads_register, instruction_register_copy_source,
     instruction_single_register_rhs_source,
     instruction_uses_register as terminal_instruction_uses_register, instruction_writes_register,
-    latest_ref_state_before_instruction, latest_reg_state_at_or_before_instruction,
-    latest_reg_state_before, latest_reg_state_before_instruction,
-    latest_reg_state_before_instruction_with_frame,
+    latest_nullable_state, latest_ref_state_before_instruction,
+    latest_reg_state_at_or_before_instruction, latest_reg_state_before,
+    latest_reg_state_before_instruction, latest_reg_state_before_instruction_with_frame,
     latest_reg_state_before_instruction_with_log_line, latest_reg_state_index_before,
-    latest_verifier_state_at_or_before_instruction, latest_verifier_state_before,
-    latest_verifier_state_before_instruction, loose_register_operands as register_operands,
-    memory_access_base_register, memory_access_is_atomic, memory_access_is_load,
-    memory_access_is_store, memory_access_offset, memory_access_width, parse_instruction_line,
-    stack_access_range, stack_value_range, verifier_path_snapshot_before_instruction,
-    verifier_states_with_branch_deltas_from_log, CallbackKind, PathVerifierSnapshot, RegState,
-    StackByteRange, StackState, VerifierInsn, VerifierInsnKind,
-    VerifierLogInstruction as TerminalInstruction,
+    latest_unsafe_scalar_state, latest_verifier_state_at_or_before_instruction,
+    latest_verifier_state_before, latest_verifier_state_before_instruction,
+    loose_register_operands as register_operands, map_value_access_range_may_exceed_value_size,
+    map_value_range_may_exceed_value_size, map_value_remaining_capacity,
+    map_value_variable_max_offset, memory_access_base_register, memory_access_is_atomic,
+    memory_access_is_load, memory_access_is_store, memory_access_offset, memory_access_width,
+    parse_instruction_line, scalar_range_has_any_bound, scalar_range_max_i64,
+    scalar_range_may_be_negative, scalar_range_may_include_zero, scalar_range_min_i64,
+    scalar_range_upper_unbounded_or_too_large, scalar_ranges_match,
+    scalar_state_upper_bound_at_most, stack_access_range, stack_value_range,
+    verifier_path_snapshot_before_instruction, verifier_states_with_branch_deltas_from_log,
+    verifier_value_summary, CallbackKind, PathVerifierSnapshot, RegState, StackByteRange,
+    StackState, VerifierInsn, VerifierInsnKind, VerifierLogInstruction as TerminalInstruction,
 };
 
 use crate::family::ProofObligation;
 use crate::input::is_verifier_error_line;
-use crate::proof::{
-    instantiate_required_proof, packet_required_range, verifier_value_summary, RequiredProof,
-};
+use crate::proof::{instantiate_required_proof, packet_required_range, RequiredProof};
 use crate::source::{
     collect_source_events, latest_source_before, looks_like_null_check, looks_like_nullable_return,
     looks_like_packet_bounds_check, looks_like_reference_acquire, looks_like_reference_release,
@@ -731,33 +734,11 @@ fn packet_guard_proves_rejected_access(
             let guard_offset = guard.offset.and_then(|offset| u32::try_from(offset).ok())?;
             (mixed_id_same_register_history
                 && guard_offset >= required
-                && has_bounded_variable_packet_offset(current)
-                && verifier_range_bounds_match(guard, current))
+                && scalar_range_has_any_bound(current)
+                && scalar_ranges_match(guard, current))
             .then_some(range)
         }
     }
-}
-
-fn has_bounded_variable_packet_offset(state: &RegState) -> bool {
-    state.range.smin.is_some()
-        || state.range.smax.is_some()
-        || state.range.umin.is_some()
-        || state.range.umax.is_some()
-        || state.range.smin32.is_some()
-        || state.range.smax32.is_some()
-        || state.range.umin32.is_some()
-        || state.range.umax32.is_some()
-}
-
-fn verifier_range_bounds_match(left: &RegState, right: &RegState) -> bool {
-    left.range.smin == right.range.smin
-        && left.range.smax == right.range.smax
-        && left.range.umin == right.range.umin
-        && left.range.umax == right.range.umax
-        && left.range.smin32 == right.range.smin32
-        && left.range.smax32 == right.range.smax32
-        && left.range.umin32 == right.range.umin32
-        && left.range.umax32 == right.range.umax32
 }
 
 fn scalar_range_events(
@@ -3163,15 +3144,7 @@ fn is_stable_dynptr_stack_arg(arg: &RegState) -> bool {
 }
 
 fn reg_state_has_variable_offset(state: &RegState) -> bool {
-    state.tnum.is_some()
-        || state.range.smin.is_some()
-        || state.range.smax.is_some()
-        || state.range.umin.is_some()
-        || state.range.umax.is_some()
-        || state.range.smin32.is_some()
-        || state.range.smax32.is_some()
-        || state.range.umin32.is_some()
-        || state.range.umax32.is_some()
+    state.tnum.is_some() || scalar_range_has_any_bound(state)
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -7314,7 +7287,7 @@ fn scalar_guard_verifier_state_links_to_map_value(
             regs.iter().any(|reg| {
                 state.regs.get(reg).is_some_and(|guard| {
                     guard.reg_type == "scalar"
-                        && verifier_range_bounds_match(guard, current)
+                        && scalar_ranges_match(guard, current)
                         && map_value_add_uses_scalar_between(
                             log,
                             guard_pc,
@@ -7948,53 +7921,6 @@ fn recent_scalar_state_at_most(
         })
 }
 
-fn scalar_state_upper_bound_at_most(state: &RegState, relation_capacity: u32) -> bool {
-    if state.reg_type != "scalar" {
-        return false;
-    }
-    let capacity = u64::from(relation_capacity);
-    state.exact_value.is_some_and(|value| value <= capacity)
-        || state.range.umax.is_some_and(|value| value <= capacity)
-        || state
-            .range
-            .smax
-            .is_some_and(|value| value >= 0 && value as u64 <= capacity)
-        || state
-            .range
-            .umax32
-            .is_some_and(|value| value <= relation_capacity)
-        || state
-            .range
-            .smax32
-            .is_some_and(|value| value >= 0 && value as u32 <= relation_capacity)
-}
-
-fn map_value_remaining_capacity(state: &RegState, value_size: u32) -> Option<u32> {
-    let fixed_offset = state.offset.unwrap_or(0);
-    let fixed_offset = u32::try_from(fixed_offset).ok()?;
-    value_size.checked_sub(fixed_offset)
-}
-
-fn map_value_access_range_may_exceed_value_size(state: &RegState, access_size: u32) -> bool {
-    if state.reg_type != "map_value" {
-        return false;
-    }
-    let Some(value_size) = state.map_value_size else {
-        return false;
-    };
-    let max_variable_offset = map_value_variable_max_offset(state);
-    let fixed_offset = state.offset.and_then(|offset| u64::try_from(offset).ok());
-    let max_offset = match (fixed_offset, max_variable_offset) {
-        (Some(fixed), Some(variable)) => fixed.checked_add(variable),
-        (Some(fixed), None) => Some(fixed),
-        (None, Some(variable)) => Some(variable),
-        (None, None) => Some(0),
-    };
-    max_offset
-        .and_then(|offset| offset.checked_add(u64::from(access_size)))
-        .is_some_and(|end| end > u64::from(value_size))
-}
-
 fn source_text_contains(events: &[ProofEvent], predicate: impl Fn(&str) -> bool) -> bool {
     events
         .iter()
@@ -8194,24 +8120,6 @@ fn stack_pointer_access_range_out_of_bounds(
         || max_byte_exclusive.is_none_or(|end| end > 0)
 }
 
-fn scalar_range_min_i64(state: &RegState) -> Option<i64> {
-    state
-        .range
-        .smin
-        .or_else(|| state.range.umin.and_then(|value| i64::try_from(value).ok()))
-        .or_else(|| state.range.smin32.map(i64::from))
-        .or_else(|| state.range.umin32.map(i64::from))
-}
-
-fn scalar_range_max_i64(state: &RegState) -> Option<i64> {
-    state
-        .range
-        .smax
-        .or_else(|| state.range.umax.and_then(|value| i64::try_from(value).ok()))
-        .or_else(|| state.range.smax32.map(i64::from))
-        .or_else(|| state.range.umax32.map(i64::from))
-}
-
 fn scalar_range_unsafe_at_use(context: &ProofSignalContext<'_>) -> bool {
     if context.obligation != ProofObligation::ScalarRange {
         return false;
@@ -8301,122 +8209,6 @@ fn scalar_range_state_is_unsafe_for_signal(state: &RegState, terminal_error: &st
         return false;
     }
     scalar_range_may_be_negative(state) || scalar_range_upper_unbounded_or_too_large(state)
-}
-
-fn scalar_range_may_include_zero(state: &RegState) -> bool {
-    if let Some(value) = state.exact_value {
-        return value == 0;
-    }
-    if state.range.smax.is_some_and(|value| value < 0) {
-        return false;
-    }
-    if state.range.smin.is_some_and(|value| value > 0) {
-        return false;
-    }
-    if state.range.umin.is_some_and(|value| value > 0) {
-        return false;
-    }
-    true
-}
-
-fn scalar_range_may_be_negative(state: &RegState) -> bool {
-    if let Some(value) = state.exact_value {
-        return value > i64::MAX as u64;
-    }
-    if let Some(smin) = state.range.smin {
-        return smin < 0;
-    }
-    state.range.umin.is_none()
-}
-
-fn scalar_range_upper_unbounded_or_too_large(state: &RegState) -> bool {
-    let signed_too_large = state
-        .range
-        .smax
-        .is_some_and(|value| value > i32::MAX as i64);
-    let unsigned_too_large = state
-        .range
-        .umax
-        .is_some_and(|value| value > i32::MAX as u64);
-    let unbounded = state.range.smax.is_none() && state.range.umax.is_none();
-    signed_too_large || unsigned_too_large || unbounded
-}
-
-fn scalar_range_has_any_bound(state: &RegState) -> bool {
-    state.range.smin.is_some()
-        || state.range.smax.is_some()
-        || state.range.umin.is_some()
-        || state.range.umax.is_some()
-        || state.range.smin32.is_some()
-        || state.range.smax32.is_some()
-        || state.range.umin32.is_some()
-        || state.range.umax32.is_some()
-}
-
-fn latest_unsafe_scalar_state(
-    states: &[VerifierInsn],
-    terminal_pc: Option<usize>,
-    reg: u8,
-) -> Option<(usize, &RegState)> {
-    states
-        .iter()
-        .filter(|state| terminal_pc.is_none_or(|pc| state.pc <= pc))
-        .rev()
-        .find_map(|state| {
-            let reg_state = state.regs.get(&reg)?;
-            ((reg_state.reg_type == "scalar" && scalar_range_is_unsafe(reg_state))
-                || map_value_range_may_exceed_value_size(reg_state))
-            .then_some((state.pc, reg_state))
-        })
-}
-
-fn map_value_range_may_exceed_value_size(state: &RegState) -> bool {
-    if state.reg_type != "map_value" {
-        return false;
-    }
-    let Some(value_size) = state.map_value_size else {
-        return false;
-    };
-    let max_variable_offset = map_value_variable_max_offset(state);
-    let fixed_offset = state.offset.and_then(|offset| u64::try_from(offset).ok());
-    let max_offset = match (fixed_offset, max_variable_offset) {
-        (Some(fixed), Some(variable)) => fixed.checked_add(variable),
-        (Some(fixed), None) => Some(fixed),
-        (None, Some(variable)) => Some(variable),
-        (None, None) => None,
-    };
-    max_offset.is_some_and(|offset| offset >= u64::from(value_size))
-}
-
-fn map_value_variable_max_offset(state: &RegState) -> Option<u64> {
-    state
-        .range
-        .umax
-        .or_else(|| state.range.smax.and_then(|value| u64::try_from(value).ok()))
-}
-
-fn latest_nullable_state(
-    states: &[VerifierInsn],
-    terminal_pc: Option<usize>,
-    reg: u8,
-) -> Option<(usize, String)> {
-    states
-        .iter()
-        .filter(|state| terminal_pc.is_none_or(|pc| state.pc <= pc))
-        .rev()
-        .find_map(|state| {
-            let reg_state = state.regs.get(&reg)?;
-            reg_state
-                .reg_type
-                .contains("_or_null")
-                .then(|| (state.pc, reg_state.reg_type.clone()))
-        })
-}
-
-fn scalar_range_is_unsafe(state: &RegState) -> bool {
-    state.range.smin.is_none_or(|value| value < 0)
-        || state.range.umin.is_none()
-        || state.range.umax.is_none_or(|value| value > i32::MAX as u64)
 }
 
 #[cfg(test)]

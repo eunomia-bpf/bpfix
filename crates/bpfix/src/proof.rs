@@ -1,4 +1,7 @@
-use bpfanalysis::{RegState, VerifierInsn};
+use bpfanalysis::verifier_log::{
+    latest_reg_state_before, scalar_range_summary, verifier_value_summary,
+};
+use bpfanalysis::VerifierInsn;
 
 use crate::family::ProofObligation;
 
@@ -196,7 +199,7 @@ fn scalar_range_required_proof(
     }
 
     let register = register.or_else(|| latest_scalar_register(states, terminal_pc));
-    let state = register.and_then(|reg| latest_reg_state(states, terminal_pc, reg));
+    let state = register.and_then(|reg| latest_reg_state_before(states, terminal_pc, reg));
     let description = if message.contains("value -") {
         "prove the scalar used for pointer arithmetic cannot be negative on any path".to_string()
     } else {
@@ -245,7 +248,7 @@ fn map_value_access_required_proof(
     }
 
     let register = register.or_else(|| latest_map_value_register(states, terminal_pc));
-    let state = register.and_then(|reg| latest_reg_state(states, terminal_pc, reg));
+    let state = register.and_then(|reg| latest_reg_state_before(states, terminal_pc, reg));
     let value_size = parse_i64_after(message, "value_size=")
         .or_else(|| state.and_then(|state| state.map_value_size.map(i64::from)));
     let access_off = parse_i64_after(message, "off=");
@@ -483,19 +486,6 @@ fn parse_helper_name(message: &str) -> Option<String> {
     None
 }
 
-fn latest_reg_state(
-    states: &[VerifierInsn],
-    terminal_pc: Option<usize>,
-    reg: u8,
-) -> Option<&RegState> {
-    states
-        .iter()
-        .rev()
-        .filter(|state| terminal_pc.is_none_or(|pc| state.pc <= pc))
-        .filter_map(|state| state.regs.get(&reg))
-        .next()
-}
-
 fn latest_scalar_register(states: &[VerifierInsn], terminal_pc: Option<usize>) -> Option<u8> {
     states
         .iter()
@@ -512,57 +502,4 @@ fn latest_map_value_register(states: &[VerifierInsn], terminal_pc: Option<usize>
         .rev()
         .flat_map(|state| state.regs.iter())
         .find_map(|(&reg, state)| (state.reg_type == "map_value").then_some(reg))
-}
-
-pub(crate) fn scalar_range_summary(state: &RegState) -> String {
-    if let Some(value) = state.exact_value {
-        return format!("scalar exact {value}");
-    }
-    let parts = scalar_range_parts(state);
-    if parts.is_empty() {
-        "scalar with unknown bounds".to_string()
-    } else {
-        format!("scalar({})", parts.join(","))
-    }
-}
-
-pub(crate) fn verifier_value_summary(state: &RegState) -> String {
-    if state.reg_type == "scalar" {
-        return scalar_range_summary(state);
-    }
-
-    let mut parts = Vec::new();
-    if let Some(offset) = state.offset {
-        parts.push(format!("off={offset}"));
-    }
-    if let Some(value_size) = state.map_value_size {
-        parts.push(format!("value_size={value_size}"));
-    }
-    let range = scalar_range_parts(state);
-    if !range.is_empty() {
-        parts.push(format!("range({})", range.join(",")));
-    }
-
-    if parts.is_empty() {
-        state.reg_type.clone()
-    } else {
-        format!("{}({})", state.reg_type, parts.join(","))
-    }
-}
-
-fn scalar_range_parts(state: &RegState) -> Vec<String> {
-    let mut parts = Vec::new();
-    if let Some(smin) = state.range.smin {
-        parts.push(format!("smin={smin}"));
-    }
-    if let Some(smax) = state.range.smax {
-        parts.push(format!("smax={smax}"));
-    }
-    if let Some(umin) = state.range.umin {
-        parts.push(format!("umin={umin}"));
-    }
-    if let Some(umax) = state.range.umax {
-        parts.push(format!("umax={umax}"));
-    }
-    parts
 }
