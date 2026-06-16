@@ -6,13 +6,15 @@ use bpfanalysis::verifier_log::{
 
 use crate::family::ProofObligation;
 
+use super::stack_access::{
+    latest_stack_value_overlap, stack_access_site_for_terminal_range,
+    stack_access_site_from_context, terminal_stack_memory_write_range_with_frame,
+};
 use super::{
     dynptr_slot_backing_before, dynptr_stack_slot_for_call_argument,
     latest_live_ref_dynptr_stack_overlap_before_instruction, latest_reg_state_for_call_argument,
-    latest_reg_state_for_call_argument_with_frame, latest_stack_value_overlap,
-    reg_state_has_variable_offset, rejected_source, stack_access_site_for_terminal_range,
-    stack_access_site_from_context, terminal_call_instruction_site, terminal_fragment_start,
-    terminal_stack_memory_write_range_with_frame, DynptrBacking, ProofSignalContext,
+    latest_reg_state_for_call_argument_with_frame, reg_state_has_variable_offset, rejected_source,
+    terminal_call_instruction_site, terminal_fragment_start, DynptrBacking, ProofSignalContext,
 };
 
 pub(super) fn dynptr_stack_storage_access(context: &ProofSignalContext<'_>) -> bool {

@@ -5,9 +5,11 @@ use bpfanalysis::verifier_log::{
 
 use crate::family::ProofObligation;
 
+use super::stack_access::{
+    latest_stack_value_overlap, stack_access_site_from_context, StackAccessSite,
+};
 use super::{
-    latest_reg_state_for_call_argument_with_frame, latest_stack_value_overlap,
-    stack_access_site_from_context, terminal_fragment_start, ProofSignalContext, StackAccessSite,
+    latest_reg_state_for_call_argument_with_frame, terminal_fragment_start, ProofSignalContext,
 };
 
 pub(super) fn iterator_stack_storage_access(context: &ProofSignalContext<'_>) -> bool {
