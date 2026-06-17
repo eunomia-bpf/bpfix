@@ -16,6 +16,10 @@
 - 每个 case 的成功必须由同一个可执行 oracle 判定：编译、verifier load、
   `bpftool prog run` 功能返回值都正确。
 
+当前 18-case pilot 的同配置 Qwen27B/llama.cpp 结果是 raw `5/18`
+和 structured `18/18`；完整配置、artifact hash 和 per-case 表见
+`pilot-results.md`。
+
 ## 目录约定
 
 每个 case 是 `cases/<case_id>/` 下的一个文件夹，不使用 YAML 配置：

@@ -31,8 +31,8 @@ proof-loss sites that are implicit or misleading in raw verifier logs.
 
 | ID | Claim | Scope | Metric/evidence | Status |
 | --- | --- | --- | --- | --- |
-| C1 | Raw verifier logs are insufficient for hard one-shot eBPF repair. | Synthetic but realistic hard reject cases. | Qwen27B raw-log one-shot pass rate below 30%. | planned |
-| C2 | BPFix structured diagnostics improve repair success. | Same cases, same model, same prompt budget. | Structured-log pass rate near 70% and absolute gain over raw. | planned |
+| C1 | Raw verifier logs are insufficient for hard one-shot eBPF repair. | Current 18-case admitted pilot; paper target remains 100 cases. | Qwen27B raw-log one-shot pass rate below 30%. | pilot observed: 5/18 = 27.8% |
+| C2 | BPFix structured diagnostics improve repair success. | Same cases, same model, same prompt budget. | Structured-log pass rate near 70% and absolute gain over raw. | pilot observed: 18/18 = 100.0% |
 | C3 | The benchmark measures working repairs, not label agreement. | All admitted cases. | Compile + verifier load + functional `bpftool prog run` oracle. | pilot implemented |
 | C4 | The suite is hard for source-only pattern matching. | Case construction. | Cases combine hidden proof loss, helper protocol, branch/source correlation, or modern BPF API contracts. | planned |
 
@@ -239,28 +239,41 @@ paper 阶段：
 
 ## 当前 Pilot 校准
 
-2026-06-17 使用本地 llama.cpp + Qwen27B 跑通了 clean 9-case pilot：
+2026-06-17 使用本地 llama.cpp + Qwen27B 跑通了 18-case admitted pilot 的同配置
+full-suite run：
 
-- raw verifier log：5/9 pass；
-- BPFix structured JSON：9/9 pass。
+- raw verifier log：5/18 pass = 27.8%；
+- BPFix structured JSON：18/18 pass = 100.0%；
+- repository commit：`443358089579bc2836eda0472bd51f2d75bafe27`；
+- llama.cpp commit：`57819b8d4b39d893408e51520dff3d47d1ebb757`；
+- model：`Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M`；
+- temperature：`0.0`，max tokens：`8192`；
+- kernel/toolchain：Linux `6.15.11-061511-generic`，clang `18.1.3`，
+  bpftool `v7.7.0`，libbpf `v1.7`。
 
-这轮结果说明 structured diagnostic 已经能帮助当前 pilot 中 4 个 raw-failing case：
+这轮结果说明当前 pilot 已达到设计时的 calibration target：raw-log one-shot 低于
+30%，structured-log one-shot 高于接近 70% 的目标线。它也说明 structured diagnostic
+的收益不是 label-proxy：每个 pass 都必须编译、verifier load，并通过 per-case
+`bpftool prog run` 功能 oracle 和必要的 helper/proof predicate。
 
-- `alu32_pointer_cookie_001`：raw 保留 pointer-shift inline asm；
-- `map_value_pointer_cookie_001`：raw 仍对 map-value pointer 做 bitwise arithmetic；
-- `ringbuf_pointer_cookie_001`：raw 仍对 ringbuf pointer 做 bitwise arithmetic；
-- `xdp_adjust_head_map_value_001`：raw verifier 可过但 post-adjust packet offset 错，
-  功能 oracle 失败。
+这个结果仍然只是 pilot evidence，不是 paper-ready benchmark：
 
-这个结果证明 runner 和 oracle 能端到端工作，但也证明当前 pilot 远未达到 hard
-suite 难度目标：raw-log 成功率 55.6%，仍高于 30%。新增 map-value case 暴露并修复了
-一个 oracle 过窄问题：旧检查只接受 map-value 状态和 load 出现在同一行 verifier 文本
-里的布局；现在改成跟踪 annotated trace 寄存器状态。`xdp_adjust_head_map_value_001`
-还暴露了 structured hint 只表达 verifier proof 不够的问题：修复需要说明 positive
-`bpf_xdp_adjust_head()` 会移动 packet head，新 `ctx->data` 从剥掉的 header 后开始。
-按照上面的失败解释，下一阶段必须继续增加组合型 hard cases，并改进 structured
-diagnostic 对 proof-loss 修复约束的表达，直到 raw-log one-shot 低于 30%，才能把它
-作为论文 benchmark 结果使用。
+- admitted case 只有 18 个，paper 目标仍是 100 个；
+- case 分布仍集中在 pointer-provenance/lowering、ringbuf/helper contract、map-value
+  nullability 和 `bpf_xdp_adjust_head()` side effect；
+- Qwen27B 同时用于 hard-case admission 和当前评测，存在 calibration bias；
+- 还没有 trimmed raw-log baseline、source-only/code-only baseline、跨模型重复 run、
+  或独立 reviewer 审核所有 oracle。
+
+本轮还修复了一个 corpus/oracle false negative：
+`ringbuf_branch_cookie_001` 的旧 success predicate 要求 verifier success log 在同一
+store path 中显式打印 `mark=7` 和 `mark=11` 两个分支常量。实际 verifier 会把 UDP
+分支后续路径折叠成 `safe`。新 oracle 改为检查 `mark=7` 分支到达
+`bpf_ringbuf_reserve()`，同时保留 `mark=11` 写入并提交 record 的可观察证据，避免把
+有效修复误判为失败。
+按照上面的失败解释，下一阶段必须继续增加组合型 hard cases，扩展到 100 个 admitted
+cases，并补齐 trimmed raw-log、source-only/code-only、跨模型重复 run 和独立 oracle
+review，才能把它作为论文 benchmark 结果使用。
 
 同日新增 4 个更难的组合 case 后，用同一模型/config 在 tightened oracle 上重跑：
 

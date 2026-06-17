@@ -5,6 +5,81 @@ Last run: 2026-06-17
 This file records calibration results for the current small pilot suite. These
 numbers are not paper-ready benchmark results.
 
+## Qwen27B llama.cpp Full 18-Case Same-Config Pilot
+
+This is the current calibration result for the admitted 18-case pilot. Unlike
+the historical roll-up below, raw and structured modes were run over the same
+case set with the same model, server, temperature, token budget, runner, kernel,
+and oracle code.
+
+Setup:
+
+- Model: `Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M`
+- Model path:
+  `/home/yunwei37/.cache/huggingface/hub/models--DevQuasar--Qwen.Qwen3.6-27B-GGUF/snapshots/b19fa7e8538a1a5f66452eb3b3167e026177be1d/Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M.gguf`
+- llama.cpp commit: `57819b8d4b39d893408e51520dff3d47d1ebb757`
+- GPU: NVIDIA GeForce RTX 5090, 32 GB VRAM
+- Server flags: `-c 32768 -ngl 999 --reasoning off`
+- Runner: `bpfix-test/tools/run_suite.py`
+- Temperature: `0.0`
+- Max tokens: `8192`
+- Cases: 18
+- Repository commit: `443358089579bc2836eda0472bd51f2d75bafe27`
+- Repository dirty: `false`
+- Kernel/toolchain: Linux `6.15.11-061511-generic`, clang `18.1.3`,
+  bpftool `v7.7.0`, libbpf `v1.7`
+- Raw local artifact:
+  `/tmp/bpfix-test-qwen27b-full-18-same-config-4433580/20260617T050654449230Z-pid64558/raw/summary.json`
+  (`2aeeed7427552d17aec88e59717d06c614aa8e87be2b73db9560a67f9be542a7`)
+- Structured local artifact:
+  `/tmp/bpfix-test-qwen27b-full-18-same-config-4433580/20260617T051002605195Z-pid64952/structured/summary.json`
+  (`e806f16c437b939a1bb01be93f6cedabf1f14024a523c2ea752b35aee00b96db`)
+
+Results:
+
+| mode | passed | total | pass rate |
+| --- | ---: | ---: | ---: |
+| raw verifier log | 5 | 18 | 27.8% |
+| BPFix structured JSON | 18 | 18 | 100.0% |
+
+Per-case result:
+
+| case | raw | structured |
+| --- | --- | --- |
+| `alu32_pointer_cookie_001` | fail | pass |
+| `map_value_branch_merge_001` | pass | pass |
+| `map_value_inline_cookie_001` | fail | pass |
+| `map_value_pointer_cookie_001` | fail | pass |
+| `map_value_spill_cookie_001` | fail | pass |
+| `packet_inline_return_cookie_001` | fail | pass |
+| `packet_l4_branch_cookie_001` | fail | pass |
+| `packet_macro_cookie_001` | fail | pass |
+| `packet_vlan_cookie_001` | fail | pass |
+| `ringbuf_branch_cookie_001` | fail | pass |
+| `ringbuf_missing_null_check_001` | pass | pass |
+| `ringbuf_pointer_cookie_001` | fail | pass |
+| `ringbuf_ref_leak_001` | pass | pass |
+| `ringbuf_stack_submit_001` | pass | pass |
+| `ringbuf_two_record_cookie_001` | fail | pass |
+| `xdp_adjust_head_map_value_001` | fail | pass |
+| `xdp_adjust_head_ringbuf_001` | fail | pass |
+| `xdp_adjust_head_stale_001` | pass | pass |
+
+Interpretation:
+
+- The 18-case pilot now meets the calibration target for this model/config:
+  raw verifier log one-shot repair is below 30%, while BPFix structured JSON is
+  above the intended near-70% bar.
+- This is evidence that the structured diagnostic is repair-useful in the pilot:
+  success is judged by compile, verifier load, and executable packet/helper
+  oracles, not by label agreement or text matching.
+- The result is still not paper-ready. The suite has only 18 cases, is
+  concentrated around pointer-provenance/lowering and helper-side-effect
+  failures, and used Qwen27B both as a calibration model and evaluation model.
+  Paper evidence still needs 100 admitted cases, reviewer-audited oracles,
+  trimmed raw-log baselines, repeated runs or additional models, and a stronger
+  source-only/code-only comparison.
+
 ## Qwen27B llama.cpp Clean 9-Case Pilot
 
 Setup:
@@ -86,6 +161,13 @@ Hardening gate:
   line ambiguity, and object/helper protocol interactions.
 
 ## Qwen27B llama.cpp Next 4 Challenging Cases
+
+Historical note: this section is retained for provenance. The
+`ringbuf_branch_cookie_001` structured failure below was later diagnosed as an
+oracle false negative: the old predicate required verifier text to print both
+branch constants at the same store site, while the verifier can fold the UDP
+successor path into `safe`. The current full-suite run above supersedes this
+batch result.
 
 Setup matches the clean 9-case pilot above. This run used the current dirty
 working tree after adding four new cases, refining two BPFix diagnostic hints,
@@ -194,9 +276,9 @@ Arithmetic roll-up of admitted pilot runs:
 
 Interpretation:
 
-- The arithmetic roll-up reaches the raw `<30%` calibration target, but it is
-  not a single 18-case run under one max-token configuration. Do not use it as
-  paper evidence until the full admitted suite is rerun under one pinned setup.
+- The arithmetic roll-up reached the raw `<30%` calibration target, but it was
+  not a single 18-case run under one max-token configuration. It is superseded
+  by the full 18-case same-config run at the top of this file.
 - This is still not a paper-ready benchmark result. The suite is small, case
   admission used one model as a difficulty gate, and no trimmed-raw or
   cross-model baseline has been run yet.
