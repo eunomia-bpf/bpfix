@@ -15,8 +15,8 @@ Current validated `label.root_cause_insn_idx` coverage:
 | metric | cases |
 | --- | ---: |
 | replayable cases | 235 |
-| cases with local-replay `root_cause_insn_idx` | 132 |
-| cases without `root_cause_insn_idx` | 103 |
+| cases with local-replay `root_cause_insn_idx` | 131 |
+| cases without `root_cause_insn_idx` | 104 |
 | invalid external-numbered root labels nulled | 8 |
 
 Missing instruction labels by source:
@@ -25,7 +25,7 @@ Missing instruction labels by source:
 | --- | ---: |
 | `github_issue` | 18 |
 | `github_commit` | 25 |
-| `stackoverflow` | 60 |
+| `stackoverflow` | 61 |
 
 Kernel selftest cases currently all have instruction-level root-cause labels.
 
