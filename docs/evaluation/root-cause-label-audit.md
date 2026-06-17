@@ -18,6 +18,7 @@ Current validated `label.root_cause_insn_idx` coverage:
 | cases with local-replay `root_cause_insn_idx` | 131 |
 | cases without `root_cause_insn_idx` | 104 |
 | invalid external-numbered root labels nulled | 8 |
+| invalid external-numbered root labels relocalized | 2 |
 
 Missing instruction labels by source:
 
@@ -33,6 +34,9 @@ Non-null root-cause instruction labels must use the stored local replay verifier
 log numbering, the same numbering as `capture.rejected_insn_idx`. Labels copied
 from original Stack Overflow or GitHub logs are not eligible for instruction
 distance metrics until they are re-localized on the pinned replay log.
+The validator rejects high-risk external-case labels whose root PC still shadows
+the raw legacy rejected PC when the local replay source line shows a numbering
+space mismatch.
 
 ## Interpretation For Metrics
 

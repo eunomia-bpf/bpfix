@@ -208,6 +208,79 @@ class ValidateCaseMetadataTest(unittest.TestCase):
 
         self.assertEqual(len(seen_case_ids), 52)
 
+    def test_legacy_shadowed_root_line_mismatch_is_rejected(self) -> None:
+        case_data = copy.deepcopy(base_case_data())
+        case_data["capture"]["terminal_error"] = "R1 type=map_value expected=map_ptr"
+        case_data["capture"]["rejected_insn_idx"] = 31
+        case_data["label"]["root_cause_insn_idx"] = 13
+        case_data["label"]["root_cause_line"] = "bpf_map_update_elem(value, &key, &new_value, BPF_ANY);"
+
+        errors = self.validate_stored_artifacts(
+            case_data,
+            legacy_rejected_idx=13,
+            verifier_log="\n".join(
+                [
+                    "0: R1=ctx() R10=fp0",
+                    "; __u32 ip_src = iph->saddr; @ prog.c:231",
+                    "13: (63) *(u32 *)(r10 -4) = r3",
+                    "; bpf_map_update_elem(&EVENTS, &key, &ip_src, BPF_ANY); @ prog.c:239",
+                    "31: (85) call bpf_map_update_elem#2",
+                    "R1 type=map_value expected=map_ptr",
+                ]
+            )
+            + "\n",
+        )
+
+        self.assertTrue(
+            any("label.root_cause_insn_idx matches legacy rejected numbering" in error for error in errors),
+            errors,
+        )
+
+    def test_legacy_shadowed_root_line_match_is_allowed(self) -> None:
+        case_data = copy.deepcopy(base_case_data())
+        case_data["capture"]["terminal_error"] = "R1 type=map_value expected=map_ptr"
+        case_data["capture"]["rejected_insn_idx"] = 31
+        case_data["label"]["root_cause_insn_idx"] = 13
+        case_data["label"]["root_cause_line"] = "__u32 ip_src = iph->saddr;"
+
+        errors = self.validate_stored_artifacts(
+            case_data,
+            legacy_rejected_idx=13,
+            verifier_log="\n".join(
+                [
+                    "0: R1=ctx() R10=fp0",
+                    "; __u32 ip_src = iph->saddr; @ prog.c:231",
+                    "13: (63) *(u32 *)(r10 -4) = r3",
+                    "; bpf_map_update_elem(&EVENTS, &key, &ip_src, BPF_ANY); @ prog.c:239",
+                    "31: (85) call bpf_map_update_elem#2",
+                    "R1 type=map_value expected=map_ptr",
+                ]
+            )
+            + "\n",
+        )
+
+        self.assertEqual(errors, [])
+
+    def validate_stored_artifacts(
+        self,
+        case_data: dict,
+        *,
+        verifier_log: str,
+        legacy_rejected_idx: int | None = None,
+    ) -> list[str]:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            case_dir = Path(tmpdir)
+            (case_dir / "prog.c").write_text("int x;\n", encoding="utf-8")
+            (case_dir / "replay-verifier.log").write_text(verifier_log, encoding="utf-8")
+            report = {"errors": [], "warnings": []}
+            validate_benchmark.validate_stored_artifacts(
+                case_dir,
+                validate_benchmark.with_case_defaults(case_data, base_manifest()),
+                report,
+                legacy_rejected_idx,
+            )
+            return report["errors"]
+
 
 class ReplayCommandResultTest(unittest.TestCase):
     def test_command_result_normalizes_timeout_bytes(self) -> None:

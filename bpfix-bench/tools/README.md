@@ -9,7 +9,9 @@ implementation of BPFix and are not part of the public diagnostic CLI.
   repeat fixed paths and commands. It also rejects redundant
   `label.rejected_insn_idx` fields and non-null
   `label.root_cause_insn_idx` values that are not present in the stored local
-  replay verifier log.
+  replay verifier log. For migrated external cases, it also checks high-risk
+  legacy-numbering shadows where a root PC still equals the raw-log rejected PC
+  after the replay rejected PC changed.
 - `benchmark_metadata.py` contains the shared manifest-default expansion used by
   the validator and diagnostic evaluation scripts.
 - `replay_case.py` contains the shared build/load/log parsing helper used by

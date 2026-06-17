@@ -67,7 +67,10 @@ Instruction labels use the checked-in local replay log numbering. The reject
 site lives only in `capture.rejected_insn_idx`; label blocks do not duplicate
 that field. A non-null `label.root_cause_insn_idx` must name an instruction PC
 present in the stored `replay-verifier.log`, otherwise the case is not eligible
-for root-PC localization metrics.
+for root-PC localization metrics. For external cases with migrated legacy
+numbering, the validator also rejects root PCs that still shadow the original
+raw-log rejected PC when the local replay source line proves the label is using
+the wrong numbering space.
 
 `manifest.yaml` defines the fixed per-case defaults for this frozen benchmark:
 `prog.c`, `prog.o`, `make`, `make replay-verify`, `replay-verifier.log`,

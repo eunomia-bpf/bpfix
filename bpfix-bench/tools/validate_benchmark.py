@@ -54,6 +54,7 @@ REMOVED_CASE_FIELDS = {
     },
 }
 VERIFIER_PC_RE = re.compile(r"^\s*(\d+):")
+SOURCE_COMMENT_RE = re.compile(r"^\s*;\s*(?P<source>.*?)(?:\s+@\s+[^@]+:\d+)?\s*$")
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -107,11 +108,17 @@ def validate_benchmark(benchmark_root: Path, timeout_sec: int) -> dict[str, Any]
     duplicate_errors = _duplicate_case_errors(entries)
     report["errors"].extend(duplicate_errors)
 
+    try:
+        legacy_rejected_indices = load_legacy_rejected_indices(benchmark_root)
+    except Exception as exc:  # noqa: BLE001
+        report["errors"].append(f"failed to read raw legacy instruction numbering: {exc}")
+        return report
+
     case_entries = [entry for entry in entries if isinstance(entry, dict)]
     report["summary"]["total_cases"] = len(case_entries)
 
     for entry in case_entries:
-        case_report = validate_case(benchmark_root, manifest, entry, timeout_sec)
+        case_report = validate_case(benchmark_root, manifest, entry, timeout_sec, legacy_rejected_indices)
         report["cases"].append(case_report)
         if case_report["valid"]:
             report["summary"]["passed"] += 1
@@ -156,6 +163,7 @@ def validate_case(
     manifest: dict[str, Any],
     entry: dict[str, Any],
     timeout_sec: int,
+    legacy_rejected_indices: dict[str, int] | None = None,
 ) -> dict[str, Any]:
     case_id = str(entry.get("case_id") or "<missing>")
     case_report: dict[str, Any] = {
@@ -190,7 +198,8 @@ def validate_case(
     case_data = with_case_defaults(case_data, manifest)
 
     validate_case_metadata(case_dir, manifest, entry, case_data, case_report)
-    validate_stored_artifacts(case_dir, case_data, case_report)
+    legacy_rejected_idx = (legacy_rejected_indices or {}).get(case_id)
+    validate_stored_artifacts(case_dir, case_data, case_report, legacy_rejected_idx)
 
     try:
         replay = replay_case(case_dir, case_data, timeout_sec=timeout_sec)
@@ -350,9 +359,15 @@ def validate_label_metadata(label: dict[str, Any], errors: list[str]) -> None:
             errors.append(f"label.{field} must be a list of non-empty strings")
 
 
-def validate_stored_artifacts(case_dir: Path, case_data: dict[str, Any], case_report: dict[str, Any]) -> None:
+def validate_stored_artifacts(
+    case_dir: Path,
+    case_data: dict[str, Any],
+    case_report: dict[str, Any],
+    legacy_rejected_idx: int | None = None,
+) -> None:
     errors = case_report["errors"]
     capture = mapping(case_data.get("capture"))
+    source_kind = mapping(case_data.get("source")).get("kind")
     source_file = mapping(case_data.get("reproducer")).get("source_file")
     if isinstance(source_file, str):
         source_path = case_dir / source_file
@@ -399,6 +414,16 @@ def validate_stored_artifacts(case_dir: Path, case_data: dict[str, Any], case_re
             errors.append(
                 "label.root_cause_insn_idx is outside the stored replay verifier-log "
                 f"instruction numbering: root={root_pc!r}, max_pc={max_pc!r}"
+            )
+        else:
+            validate_legacy_shadowed_root_line(
+                verifier_log,
+                capture,
+                label,
+                source_kind,
+                root_pc,
+                legacy_rejected_idx,
+                errors,
             )
 
     for field in ("build_stdout", "build_stderr", "load_stdout", "load_stderr"):
@@ -502,6 +527,88 @@ def verifier_log_instruction_pcs(verifier_log: str) -> set[int]:
         if match:
             pcs.add(int(match.group(1)))
     return pcs
+
+
+def verifier_log_source_comment_for_pc(verifier_log: str, pc: int) -> str | None:
+    current_source: str | None = None
+    result: str | None = None
+    for line in verifier_log.splitlines():
+        source_match = SOURCE_COMMENT_RE.match(line)
+        if source_match:
+            source = source_match.group("source").strip()
+            if source:
+                current_source = source
+            continue
+        pc_match = VERIFIER_PC_RE.match(line)
+        if pc_match and int(pc_match.group(1)) == pc and current_source:
+            # The live-register preamble can list the same PC without source
+            # comments. Keep the last source-backed occurrence from the trace.
+            result = current_source
+    return result
+
+
+def validate_legacy_shadowed_root_line(
+    verifier_log: str,
+    capture: dict[str, Any],
+    label: dict[str, Any],
+    source_kind: Any,
+    root_pc: int,
+    legacy_rejected_idx: int | None,
+    errors: list[str],
+) -> None:
+    if source_kind not in {"stackoverflow", "github_issue", "github_commit"}:
+        return
+
+    replay_rejected_idx = capture.get("rejected_insn_idx")
+    if legacy_rejected_idx is None or replay_rejected_idx == legacy_rejected_idx or root_pc != legacy_rejected_idx:
+        return
+
+    root_line = label.get("root_cause_line")
+    if not isinstance(root_line, str) or not root_line:
+        return
+
+    replay_source = verifier_log_source_comment_for_pc(verifier_log, root_pc)
+    if replay_source is None:
+        return
+    if normalize_source_line(replay_source) == normalize_source_line(root_line):
+        return
+
+    errors.append(
+        "label.root_cause_insn_idx matches legacy rejected numbering while replay "
+        "rejected_insn_idx changed, and the replay source line at that PC does not "
+        "match label.root_cause_line: "
+        f"root={root_pc!r}, legacy_rejected={legacy_rejected_idx!r}, "
+        f"replay_rejected={replay_rejected_idx!r}, "
+        f"replay_source={replay_source!r}, root_cause_line={root_line!r}"
+    )
+
+
+def normalize_source_line(line: str) -> str:
+    return "".join(line.split())
+
+
+def load_legacy_rejected_indices(benchmark_root: Path) -> dict[str, int]:
+    path = benchmark_root / "raw" / "legacy-insn-numbering.yaml"
+    if not path.exists():
+        return {}
+
+    raw = load_yaml_mapping(path)
+    entries = raw.get("entries")
+    if not isinstance(entries, list):
+        raise ValueError("raw/legacy-insn-numbering.yaml entries must be a list")
+
+    indices: dict[str, int] = {}
+    for entry in entries:
+        if not isinstance(entry, dict):
+            raise ValueError("raw/legacy-insn-numbering.yaml entries must be mappings")
+        case_id = entry.get("case_id")
+        legacy_idx = entry.get("legacy_rejected_insn_idx")
+        if not isinstance(case_id, str) or not case_id:
+            raise ValueError("legacy numbering entry case_id must be a non-empty string")
+        if not isinstance(legacy_idx, int):
+            raise ValueError(f"legacy numbering entry {case_id} has non-integer legacy_rejected_insn_idx")
+        indices[case_id] = legacy_idx
+    return indices
 
 
 def command_summary(result: Any) -> dict[str, Any]:
