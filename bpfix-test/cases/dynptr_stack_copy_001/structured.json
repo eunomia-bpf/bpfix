@@ -1,0 +1,54 @@
+{
+  "diagnostic_version": "bpfix.diagnostic/v3",
+  "error_id": "BPFIX-E012",
+  "failure_class": "source_bug",
+  "confidence": "medium",
+  "diagnostic_kind": "supported",
+  "help_safety": "repair_hint",
+  "next_action": "protocol",
+  "span_confidence": "exact_pc",
+  "message": "dynptr stack storage is being used as ordinary memory: invalid read from stack off -8+0 size 8",
+  "required_proof": "keep the dynptr object in its verifier-tracked stack slot and use dynptr helpers instead of reading or copying the dynptr storage as ordinary bytes",
+  "source_span": {
+    "path": "buggy.bpf.c",
+    "line_start": 32,
+    "line_end": 32,
+    "instruction_pc": 8,
+    "source_text": "__builtin_memcpy(&copy, &ptr, sizeof(copy));"
+  },
+  "related_spans": [],
+  "evidence": [
+    {
+      "kind": "terminal_verifier_error",
+      "detail": "invalid read from stack off -8+0 size 8",
+      "line": 42
+    },
+    {
+      "kind": "instruction_pc",
+      "detail": "nearest verifier instruction pc 8",
+      "line": 42
+    },
+    {
+      "kind": "verifier_trace",
+      "detail": "parsed 8 per-instruction verifier state snapshots",
+      "line": null
+    },
+    {
+      "kind": "verifier_state_signal",
+      "detail": "verifier state shows this stack slot contains dynptr state, but the rejected instruction reads it as ordinary stack bytes",
+      "line": 42
+    }
+  ],
+  "help": [
+    "Do not copy, read, or pass a dynptr object as ordinary bytes; use dynptr helpers to read data out of the dynptr and keep the dynptr object in its dedicated stack slot."
+  ],
+  "metadata": {
+    "case_id": null,
+    "input_kind": "verifier-log-region",
+    "object_path": null,
+    "object_programs": [],
+    "object_analysis_error": null,
+    "trace_state_count": 8,
+    "analysis_error": null
+  }
+}
