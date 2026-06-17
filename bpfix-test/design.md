@@ -212,24 +212,25 @@ paper 阶段：
 
 ## 当前 Pilot 校准
 
-2026-06-17 使用本地 llama.cpp + Qwen27B 跑通了 clean 7-case pilot：
+2026-06-17 使用本地 llama.cpp + Qwen27B 跑通了 clean 9-case pilot：
 
-- raw verifier log：5/7 pass；
-- BPFix structured JSON：7/7 pass。
+- raw verifier log：5/9 pass；
+- BPFix structured JSON：9/9 pass。
 
-随后新增两个组合 case，并在 dirty worktree 上做了 add-on calibration：
+这轮结果说明 structured diagnostic 已经能帮助当前 pilot 中 4 个 raw-failing case：
 
-- `ringbuf_pointer_cookie_001` raw 失败，structured 通过；
-- `xdp_adjust_head_map_value_001` raw 生成了 verifier 可接受但功能错误的修复，
-  structured 通过。
-
-把 clean 7-case run 和 dirty 2-case add-on 合并看，当前 indicative 结果是
-raw 5/9、structured 9/9。这个数字只能用于开发校准，不能作为论文结果，因为它不是
-同一 clean commit 的完整 9-case run。
+- `alu32_pointer_cookie_001`：raw 保留 pointer-shift inline asm；
+- `map_value_pointer_cookie_001`：raw 仍对 map-value pointer 做 bitwise arithmetic；
+- `ringbuf_pointer_cookie_001`：raw 仍对 ringbuf pointer 做 bitwise arithmetic；
+- `xdp_adjust_head_map_value_001`：raw verifier 可过但 post-adjust packet offset 错，
+  功能 oracle 失败。
 
 这个结果证明 runner 和 oracle 能端到端工作，但也证明当前 pilot 远未达到 hard
-suite 难度目标：raw-log 成功率仍高于 30%。新增 map-value case 暴露并修复了一个
-oracle 过窄问题：旧检查只接受 map-value 状态和 load 出现在同一行 verifier 文本里的
-布局；现在改成跟踪 annotated trace 寄存器状态。按照上面的失败解释，下一阶段必须
-继续增加组合型 hard cases，并改进 structured diagnostic 对 proof-loss 修复约束的表达，
-直到 raw-log one-shot 低于 30%，才能把它作为论文 benchmark 结果使用。
+suite 难度目标：raw-log 成功率 55.6%，仍高于 30%。新增 map-value case 暴露并修复了
+一个 oracle 过窄问题：旧检查只接受 map-value 状态和 load 出现在同一行 verifier 文本
+里的布局；现在改成跟踪 annotated trace 寄存器状态。`xdp_adjust_head_map_value_001`
+还暴露了 structured hint 只表达 verifier proof 不够的问题：修复需要说明 positive
+`bpf_xdp_adjust_head()` 会移动 packet head，新 `ctx->data` 从剥掉的 header 后开始。
+按照上面的失败解释，下一阶段必须继续增加组合型 hard cases，并改进 structured
+diagnostic 对 proof-loss 修复约束的表达，直到 raw-log one-shot 低于 30%，才能把它
+作为论文 benchmark 结果使用。
