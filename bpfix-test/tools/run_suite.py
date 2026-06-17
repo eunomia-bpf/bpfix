@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import datetime as dt
 import hashlib
+import http.client
 import json
 import os
 import re
@@ -349,7 +350,14 @@ def main(argv: list[str] | None = None) -> int:
                 candidate_source = extract_source(response)
                 candidate_path = case_out / "candidate.bpf.c"
                 candidate_path.write_text(candidate_source, encoding="utf-8")
-            except (ValueError, urllib.error.URLError, TimeoutError, KeyError) as exc:
+            except (
+                ValueError,
+                urllib.error.URLError,
+                TimeoutError,
+                KeyError,
+                ConnectionError,
+                http.client.HTTPException,
+            ) as exc:
                 result = {"case": case_dir.name, "status": "model_error", "error": str(exc), **prompt_info}
                 (case_out / "result.json").write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
                 summary.append(result)
