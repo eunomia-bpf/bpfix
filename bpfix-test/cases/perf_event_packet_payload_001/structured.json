@@ -1,0 +1,54 @@
+{
+  "diagnostic_version": "bpfix.diagnostic/v3",
+  "error_id": "BPFIX-E010",
+  "failure_class": "source_bug",
+  "confidence": "medium",
+  "diagnostic_kind": "supported",
+  "help_safety": "repair_hint",
+  "next_action": "protocol",
+  "span_confidence": "exact_pc",
+  "message": "perf event output helper receives packet memory directly: helper access to the packet is not allowed",
+  "required_proof": "pass bpf_perf_event_output helper-readable stack or map memory, not a live packet pointer, as its data payload",
+  "source_span": {
+    "path": "buggy.bpf.c",
+    "line_start": 38,
+    "line_end": 38,
+    "instruction_pc": 12,
+    "source_text": "bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, data, sizeof(*eth));"
+  },
+  "related_spans": [],
+  "evidence": [
+    {
+      "kind": "terminal_verifier_error",
+      "detail": "helper access to the packet is not allowed",
+      "line": 36
+    },
+    {
+      "kind": "instruction_pc",
+      "detail": "nearest verifier instruction pc 12",
+      "line": 36
+    },
+    {
+      "kind": "verifier_trace",
+      "detail": "parsed 10 per-instruction verifier state snapshots",
+      "line": null
+    },
+    {
+      "kind": "verifier_state_signal",
+      "detail": "verifier state at bpf_perf_event_output passes a packet pointer and scalar length as the data/size pair, but this helper cannot read packet memory directly",
+      "line": 36
+    }
+  ],
+  "help": [
+    "Copy packet bytes into stack or map storage first, or use a helper path that supports packet data instead of passing the packet pointer directly as the perf-event payload."
+  ],
+  "metadata": {
+    "case_id": null,
+    "input_kind": "verifier-log-region",
+    "object_path": null,
+    "object_programs": [],
+    "object_analysis_error": null,
+    "trace_state_count": 10,
+    "analysis_error": null
+  }
+}
