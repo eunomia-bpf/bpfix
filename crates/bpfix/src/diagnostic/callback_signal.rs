@@ -56,10 +56,11 @@ fn latest_state_is_sync_callback(
     context
         .states
         .iter()
-        .filter(|state| state.log_line >= fragment_start)
-        .filter(|state| state.log_line < limit)
-        .filter(|state| state.pc <= terminal_instruction.pc)
-        .next_back()
+        .rfind(|state| {
+            state.log_line >= fragment_start
+                && state.log_line < limit
+                && state.pc <= terminal_instruction.pc
+        })
         .is_some_and(|state| state.callback_kind == Some(CallbackKind::Sync))
 }
 
@@ -68,15 +69,13 @@ fn latest_sync_callback_entry<'a>(
     fragment_start: usize,
     terminal_instruction: TerminalInstruction<'_>,
 ) -> Option<&'a VerifierInsn> {
-    context
-        .branch_states
-        .iter()
-        .filter(|state| state.from_pc.is_some())
-        .filter(|state| state.callback_kind == Some(CallbackKind::Sync))
-        .filter(|state| state.log_line >= fragment_start)
-        .filter(|state| state.log_line < terminal_instruction.line)
-        .filter(|state| state.pc <= terminal_instruction.pc)
-        .next_back()
+    context.branch_states.iter().rfind(|state| {
+        state.from_pc.is_some()
+            && state.callback_kind == Some(CallbackKind::Sync)
+            && state.log_line >= fragment_start
+            && state.log_line < terminal_instruction.line
+            && state.pc <= terminal_instruction.pc
+    })
 }
 
 fn operation_invokes_verifier_callback(target: &str) -> bool {

@@ -1068,11 +1068,10 @@ pub fn latest_verifier_state_before(
     terminal_pc: Option<usize>,
     terminal_line: Option<usize>,
 ) -> Option<&VerifierInsn> {
-    states
-        .iter()
-        .filter(|state| terminal_pc.is_none_or(|pc| state.pc <= pc))
-        .filter(|state| terminal_line.is_none_or(|line| state.log_line < line))
-        .next_back()
+    states.iter().rfind(|state| {
+        terminal_pc.is_none_or(|pc| state.pc <= pc)
+            && terminal_line.is_none_or(|line| state.log_line < line)
+    })
 }
 
 pub fn latest_reg_state_in_line_range_before(
@@ -1149,8 +1148,7 @@ fn latest_verifier_state_for_instruction<'a>(
         fragment_start_line,
         include_instruction,
     )
-    .filter(|state| !refs_only || !state.ref_ids.is_empty())
-    .next_back()
+    .rfind(|state| !refs_only || !state.ref_ids.is_empty())
 }
 
 fn latest_reg_state_for_instruction<'a, T>(

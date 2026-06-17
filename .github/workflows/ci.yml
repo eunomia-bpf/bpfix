@@ -3,6 +3,7 @@ name: CI
 on:
   pull_request:
   push:
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -51,3 +52,154 @@ jobs:
         run: |
           cargo install --path crates/bpfix --root /tmp/bpfix-install-default --force
           /tmp/bpfix-install-default/bin/bpfix --version
+
+  publish:
+    name: Publish to crates.io
+    runs-on: ubuntu-latest
+    needs: test
+    if: |
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
+      (github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main') &&
+      (github.event_name != 'push' ||
+        (!contains(github.event.head_commit.message, '[skip ci]') &&
+         !contains(github.event.head_commit.message, '[ci skip]')))
+    concurrency:
+      group: crates-publish
+      cancel-in-progress: false
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install native dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang llvm libelf-dev pkg-config python3-yaml ripgrep zlib1g-dev
+
+      - name: Resolve crate publish state
+        run: |
+          python3 - <<'PY'
+          import json
+          import tomllib
+          import urllib.error
+          import urllib.request
+          from pathlib import Path
+
+          USER_AGENT = "bpfix-release-ci"
+          CRATES = [
+              ("bpfanalysis", "BPFANALYSIS", Path("crates/bpfanalysis/Cargo.toml"), []),
+              ("bpfix", "BPFIX", Path("crates/bpfix/Cargo.toml"), ["bpfanalysis"]),
+          ]
+
+          def manifest(path: Path) -> dict:
+              return tomllib.loads(path.read_text(encoding="utf-8"))
+
+          manifests = {crate: manifest(path) for crate, _, path, _ in CRATES}
+          versions = {
+              crate: manifests[crate]["package"]["version"]
+              for crate, _, _, _ in CRATES
+          }
+
+          bpfix_bpfanalysis = manifests["bpfix"]["dependencies"]["bpfanalysis"]
+          if bpfix_bpfanalysis["version"] != versions["bpfanalysis"]:
+              raise SystemExit(
+                  "bpfix dependency bpfanalysis version "
+                  f"{bpfix_bpfanalysis['version']} does not match "
+                  f"bpfanalysis {versions['bpfanalysis']}"
+              )
+          if bpfix_bpfanalysis.get("path") != "../bpfanalysis":
+              raise SystemExit("bpfix dependency on bpfanalysis must keep the local path")
+
+          def published(crate: str, version: str) -> bool:
+              req = urllib.request.Request(
+                  f"https://crates.io/api/v1/crates/{crate}/{version}",
+                  headers={"User-Agent": USER_AGENT},
+              )
+              try:
+                  with urllib.request.urlopen(req, timeout=30) as response:
+                      json.load(response)
+                  return True
+              except urllib.error.HTTPError as exc:
+                  if exc.code == 404:
+                      return False
+                  raise
+
+          with open("publish_versions.env", "w", encoding="utf-8") as env:
+              for crate, env_name, _, _ in CRATES:
+                  version = versions[crate]
+                  is_published = published(crate, version)
+                  action = "already published" if is_published else "not published yet"
+                  print(f"{crate} {version} is {action}")
+                  env.write(f"{env_name}_VERSION={version}\n")
+                  env.write(f"PUBLISH_{env_name}={str(not is_published).lower()}\n")
+          PY
+          cat publish_versions.env >> "$GITHUB_ENV"
+
+      - name: Check release packaging
+        run: scripts/check-release.sh
+
+      - name: Publish bpfanalysis
+        if: env.PUBLISH_BPFANALYSIS == 'true'
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${CARGO_REGISTRY_TOKEN:-}" ]; then
+            echo "::error::CARGO_REGISTRY_TOKEN is not set; cannot publish to crates.io."
+            exit 1
+          fi
+          cargo publish -p bpfanalysis
+
+      - name: Wait for bpfanalysis index
+        if: env.PUBLISH_BPFANALYSIS == 'true'
+        env:
+          CRATE_NAME: bpfanalysis
+          CRATE_VERSION: ${{ env.BPFANALYSIS_VERSION }}
+        run: bash .github/workflows/wait-for-crate.sh
+
+      - name: Verify bpfix Cargo package
+        run: cargo package -p bpfix
+
+      - name: Publish bpfix
+        if: env.PUBLISH_BPFIX == 'true'
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${CARGO_REGISTRY_TOKEN:-}" ]; then
+            echo "::error::CARGO_REGISTRY_TOKEN is not set; cannot publish to crates.io."
+            exit 1
+          fi
+          cargo publish -p bpfix
+
+      - name: Wait for bpfix index
+        if: env.PUBLISH_BPFIX == 'true'
+        env:
+          CRATE_NAME: bpfix
+          CRATE_VERSION: ${{ env.BPFIX_VERSION }}
+        run: bash .github/workflows/wait-for-crate.sh
+
+      - name: Smoke test cargo install from crates.io
+        env:
+          BPFIX_VERSION: ${{ env.BPFIX_VERSION }}
+        run: |
+          set -euo pipefail
+          install_dir="$(mktemp -d)"
+          for attempt in 1 2 3 4 5 6 7 8 9 10 11 12; do
+            if cargo install bpfix --version "$BPFIX_VERSION" --locked --root "$install_dir"; then
+              break
+            fi
+            if [ "$attempt" -eq 12 ]; then
+              echo "::error::cargo install bpfix ${BPFIX_VERSION} failed after ${attempt} attempts"
+              exit 1
+            fi
+            sleep $((attempt * 10))
+          done
+          "$install_dir/bin/bpfix" --version
+          "$install_dir/bin/bpfix" --help | grep -q "Usage:"

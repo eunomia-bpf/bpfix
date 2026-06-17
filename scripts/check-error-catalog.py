@@ -12,10 +12,7 @@ import yaml
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 CATALOG = ROOT / "docs" / "error-catalog.yaml"
-SOURCE_FILES = [
-    ROOT / "crates" / "bpfix" / "src" / "classifier.rs",
-    ROOT / "crates" / "bpfix" / "src" / "diagnostic.rs",
-]
+SOURCE_FILES = sorted((ROOT / "crates" / "bpfix" / "src").rglob("*.rs"))
 ERROR_ID_RE = re.compile(r"BPFIX-E\d{3}")
 
 
