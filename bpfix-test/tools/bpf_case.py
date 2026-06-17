@@ -318,7 +318,7 @@ def xdp_adjust_head_called_with_delta14(load_output: str) -> bool:
     return helper_calls_use_register_value(load_output, "call bpf_xdp_adjust_head#44", "2", 14)
 
 
-def loaded_map_value_u32_offset0(load_output: str) -> bool:
+def loaded_map_value_u32_offset(load_output: str, offset: int) -> bool:
     in_annotated_trace = False
     map_value_registers: set[str] = set()
     for line in load_output.splitlines():
@@ -333,7 +333,7 @@ def loaded_map_value_u32_offset0(load_output: str) -> bool:
             continue
         if not in_annotated_trace:
             continue
-        load = re.search(r"=\s*\*\(u32 \*\)\(r(\d+)\s*\+\s*0\)", line)
+        load = re.search(rf"=\s*\*\(u32 \*\)\(r(\d+)\s*\+\s*{offset}\)", line)
         if load is not None and load.group(1) in map_value_registers:
             return True
         for register, is_map_value in map_value_register_updates(line).items():
@@ -342,6 +342,47 @@ def loaded_map_value_u32_offset0(load_output: str) -> bool:
             else:
                 map_value_registers.discard(register)
     return False
+
+
+def stored_map_value_u32_offset(load_output: str, offset: int) -> bool:
+    in_annotated_trace = False
+    map_value_registers: set[str] = set()
+    for line in load_output.splitlines():
+        if not line.strip():
+            map_value_registers = set()
+            continue
+        if line.startswith("0: R1="):
+            in_annotated_trace = True
+            map_value_registers = {
+                register for register, is_map_value in map_value_register_updates(line).items() if is_map_value
+            }
+            continue
+        if not in_annotated_trace:
+            continue
+        line_map_values = {
+            register for register, is_map_value in map_value_register_updates(line).items() if is_map_value
+        }
+        store = re.search(rf"\*\(u32 \*\)\(r(\d+)\s*\+\s*{offset}\)\s*=\s*r\d+", line)
+        if store is not None and (store.group(1) in map_value_registers or store.group(1) in line_map_values):
+            return True
+        for register, is_map_value in map_value_register_updates(line).items():
+            if is_map_value:
+                map_value_registers.add(register)
+            else:
+                map_value_registers.discard(register)
+    return False
+
+
+def loaded_map_value_u32_offset0(load_output: str) -> bool:
+    return loaded_map_value_u32_offset(load_output, 0)
+
+
+def loaded_map_value_u32_offset4(load_output: str) -> bool:
+    return loaded_map_value_u32_offset(load_output, 4)
+
+
+def stored_map_value_u32_offset4(load_output: str) -> bool:
+    return stored_map_value_u32_offset(load_output, 4)
 
 
 def submitted_written_ringbuf_record(load_output: str) -> bool:

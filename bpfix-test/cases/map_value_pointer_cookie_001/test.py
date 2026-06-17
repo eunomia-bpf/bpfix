@@ -7,7 +7,12 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools"))
 
-from bpf_case import loaded_map_value_u32_offset0, run_case
+from bpf_case import (
+    loaded_map_value_u32_offset0,
+    loaded_map_value_u32_offset4,
+    run_case,
+    stored_map_value_u32_offset4,
+)
 
 
 def ipv4_packet(protocol: int) -> bytes:
@@ -47,6 +52,8 @@ if __name__ == "__main__":
             ],
             required_success_predicates=[
                 ("load drop_proto from map_value offset 0", loaded_map_value_u32_offset0),
+                ("load seen_packets from map_value offset 4", loaded_map_value_u32_offset4),
+                ("store seen_packets to map_value offset 4", stored_map_value_u32_offset4),
             ],
             map_updates=[
                 ("configs", struct.pack("<I", 0), struct.pack("<II", 6, 0)),
