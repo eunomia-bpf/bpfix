@@ -34,9 +34,13 @@ MAX_CAPTURE_BYTES = 8_000_000
 class CommandResult:
     command: str
     returncode: int | None
-    stdout: str
-    stderr: str
+    stdout: str | bytes | None
+    stderr: str | bytes | None
     timed_out: bool = False
+
+    def __post_init__(self) -> None:
+        self.stdout = _text_output(self.stdout)
+        self.stderr = _text_output(self.stderr)
 
     @property
     def combined_output(self) -> str:
@@ -80,8 +84,8 @@ def run_shell_command(command: str, cwd: Path, timeout_sec: int) -> CommandResul
         return CommandResult(
             command=command,
             returncode=None,
-            stdout=exc.stdout or "",
-            stderr=exc.stderr or "",
+            stdout=exc.stdout,
+            stderr=exc.stderr,
             timed_out=True,
         )
     return CommandResult(
@@ -90,6 +94,14 @@ def run_shell_command(command: str, cwd: Path, timeout_sec: int) -> CommandResul
         stdout=completed.stdout,
         stderr=completed.stderr,
     )
+
+
+def _text_output(output: str | bytes | None) -> str:
+    if output is None:
+        return ""
+    if isinstance(output, bytes):
+        return output.decode("utf-8", errors="replace")
+    return output
 
 
 def parse_verifier_log(text: str, source: str = "output") -> ParsedVerifierLog:

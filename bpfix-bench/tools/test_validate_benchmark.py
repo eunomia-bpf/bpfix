@@ -14,6 +14,7 @@ BENCH_ROOT = TOOLS_DIR.parent
 sys.path.insert(0, str(TOOLS_DIR))
 
 import validate_benchmark  # noqa: E402
+import replay_case  # noqa: E402
 
 
 def base_case_data() -> dict:
@@ -206,6 +207,21 @@ class ValidateCaseMetadataTest(unittest.TestCase):
             self.assertNotIn("legacy_rejected_insn_idx", case_data.get("label", {}))
 
         self.assertEqual(len(seen_case_ids), 52)
+
+
+class ReplayCommandResultTest(unittest.TestCase):
+    def test_command_result_normalizes_timeout_bytes(self) -> None:
+        result = replay_case.CommandResult(
+            command="make replay-verify",
+            returncode=None,
+            stdout=b"partial stdout",
+            stderr=b"partial stderr",
+            timed_out=True,
+        )
+
+        self.assertEqual(result.stdout, "partial stdout")
+        self.assertEqual(result.stderr, "partial stderr")
+        self.assertEqual(result.combined_output, "partial stdout\npartial stderr")
 
 
 if __name__ == "__main__":

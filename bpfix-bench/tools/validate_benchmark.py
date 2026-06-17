@@ -59,7 +59,7 @@ VERIFIER_PC_RE = re.compile(r"^\s*(\d+):")
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--replay", type=Path, required=True, help="Benchmark root, e.g. bpfix-bench")
-    parser.add_argument("--timeout-sec", type=int, default=30, help="Per-command timeout in seconds")
+    parser.add_argument("--timeout-sec", type=int, default=60, help="Per-command timeout in seconds")
     args = parser.parse_args(argv)
 
     report = validate_benchmark(args.replay.resolve(), args.timeout_sec)
