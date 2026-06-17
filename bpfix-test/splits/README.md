@@ -13,6 +13,10 @@ until 60 new cases are admitted. A valid clean split must:
 - pass `audit_cases.py` for every case;
 - pass buggy-reject smoke for every case before any LLM result is collected.
 
+`run_suite.py` treats an explicit empty `--split` as an error unless
+`--allow-empty-split` is passed, so an unadmitted clean split cannot silently
+fall back to all dev cases.
+
 Run the gates:
 
 ```bash

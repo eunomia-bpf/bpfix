@@ -73,6 +73,15 @@ python3 bpfix-test/tools/audit_cases.py --smoke
 检查 split 和污染规则：
 
 ```bash
+make bpfix-test-dev40-gate
+
+# Expected to fail until 60 heldout cases are admitted.
+make bpfix-test-clean60-gate
+```
+
+等价的底层命令是：
+
+```bash
 python3 bpfix-test/tools/audit_splits.py \
   --split bpfix-test/splits/dev40.txt \
   --expected-count 40 \
@@ -85,8 +94,9 @@ python3 bpfix-test/tools/audit_splits.py \
   --audit-cases --smoke
 ```
 
-第二个命令在 `clean60` 填满前应该失败；这是保护主 benchmark 不被 dev cases 污染
-的 gate。
+第二个命令在 `clean60` 填满前应该失败；runner 直接使用空 `--split` 也会失败，
+不会退回到全量 discovered cases。这是保护主 benchmark 不被 dev cases 污染的
+gate。
 
 重新抓取 raw log 和 structured diagnostic：
 
@@ -130,12 +140,14 @@ server。ActPlane 历史配置使用的本地入口是：
 ```bash
 python3 bpfix-test/tools/run_suite.py \
   --split bpfix-test/splits/dev40.txt \
+  --expected-count 40 \
   --mode raw \
   --base-url http://127.0.0.1:18080/v1 \
   --model Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M
 
 python3 bpfix-test/tools/run_suite.py \
   --split bpfix-test/splits/dev40.txt \
+  --expected-count 40 \
   --mode structured \
   --base-url http://127.0.0.1:18080/v1 \
   --model Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M
@@ -160,6 +172,7 @@ python3 bpfix-test/tools/run_suite.py \
 ```bash
 python3 bpfix-test/tools/run_suite.py \
   --split bpfix-test/splits/dev40.txt \
+  --expected-count 40 \
   --mode structured \
   --base-url http://127.0.0.1:18080/v1 \
   --model Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M \
@@ -173,6 +186,8 @@ Structured mode 的 prompt 会显式告诉模型如何消费 BPFix JSON：
 `source_span` 是 verifier 拒绝的操作，`related_spans` 是可用的 proof context
 而不是 oracle 答案，`required_proof` 和 `help` 是候选源码必须满足的约束。如果
 `help` 说明某个操作不能保留或必须重写，候选源码不能把它作为死代码留在程序里。
+`--case` 只用于单 case debug，不能和 `--split` 混用；正式结果必须由 split 文件
+决定 denominator。
 
 ## 环境要求
 

@@ -58,7 +58,8 @@ python3 bpfix-test/tools/audit_splits.py \
 ```
 
 这个命令在 `clean60` 填满前应该失败。只有它通过后，才能把 `clean60` 作为主
-benchmark 运行。
+benchmark 运行。`run_suite.py --split bpfix-test/splits/clean60.txt` 对空 split
+也会失败，不会把空 split 解释成“全部 case”。
 
 ## 污染控制
 
@@ -160,12 +161,14 @@ toolchain、prompt hash、prompt length、model config 和 server metadata。
 ```bash
 python3 bpfix-test/tools/run_suite.py \
   --split bpfix-test/splits/clean60.txt \
+  --expected-count 60 \
   --mode raw \
   --base-url http://127.0.0.1:18080/v1 \
   --model Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M
 
 python3 bpfix-test/tools/run_suite.py \
   --split bpfix-test/splits/clean60.txt \
+  --expected-count 60 \
   --mode structured \
   --base-url http://127.0.0.1:18080/v1 \
   --model Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M

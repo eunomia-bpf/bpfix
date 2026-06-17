@@ -124,6 +124,8 @@ def audit_test_py(case_dir: Path, errors: list[str]) -> dict[str, int | None]:
 def audit_prompt(case_dir: Path, errors: list[str]) -> None:
     for mode in run_suite.MODES:
         prompt = run_suite.build_prompt(case_dir, mode)
+        if case_dir.name in prompt:
+            errors.append(f"{mode} prompt leaks semantic case id {case_dir.name!r}")
         for snippet in FORBIDDEN_PROMPT_SNIPPETS:
             if snippet in prompt:
                 errors.append(f"{mode} prompt leaks oracle/test.py snippet {snippet!r}")

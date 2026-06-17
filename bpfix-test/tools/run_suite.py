@@ -72,6 +72,14 @@ def sha256_text(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
+def sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
 def trim_verifier_log(log: str) -> str:
     begin = log.find("BEGIN PROG LOAD LOG")
     end = log.find("-- END PROG LOAD LOG --")
@@ -125,9 +133,32 @@ def server_model_metadata(base_url: str) -> dict[str, object]:
         return {"reachable": False, "models": None}
 
 
+def split_metadata(args: argparse.Namespace) -> dict[str, object]:
+    if args.split is None:
+        return {
+            "path": None,
+            "sha256": None,
+            "case_count": None,
+            "expected_count": args.expected_count,
+            "allow_empty": args.allow_empty_split,
+        }
+    resolved = args.split.resolve()
+    cases = read_split_file(args.split)
+    return {
+        "path": str(resolved),
+        "sha256": sha256_file(resolved),
+        "case_count": len(cases),
+        "expected_count": args.expected_count,
+        "allow_empty": args.allow_empty_split,
+    }
+
+
 def run_metadata(args: argparse.Namespace, root: Path) -> dict[str, object]:
     return {
         "generated_at": dt.datetime.now(dt.timezone.utc).isoformat(),
+        "runner": {
+            "argv": sys.argv,
+        },
         "git": git_metadata(root),
         "toolchain": {
             "kernel": command_text(["uname", "-a"]),
@@ -147,7 +178,7 @@ def run_metadata(args: argparse.Namespace, root: Path) -> dict[str, object]:
             "server": server_model_metadata(args.base_url),
         },
         "case_selection": {
-            "split": str(args.split.resolve()) if args.split else None,
+            "split": split_metadata(args),
             "case_overrides": args.case or [],
         },
     }
@@ -197,8 +228,6 @@ Return only one complete replacement C source file in a fenced ```c block.
 Do not explain. Do not output a diff. Preserve the intended packet/helper
 semantics; do not remove the program, maps, SEC() section, or license.
 {diagnostic_guidance}
-
-Case: {case_dir.name}
 
 Source file:
 ```c
@@ -309,6 +338,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--smoke", action="store_true", help="Validate fixtures and buggy rejection only.")
     parser.add_argument("--prompt-only", action="store_true", help="Write prompts without calling a model.")
     parser.add_argument("--split", type=Path, help="Run case ids listed in a split file.")
+    parser.add_argument(
+        "--allow-empty-split",
+        action="store_true",
+        help="Allow an explicitly empty --split to select zero cases instead of failing.",
+    )
+    parser.add_argument("--expected-count", type=int, help="Require the selected split to contain this many cases.")
     parser.add_argument("--case", action="append", help="Run only this case id.")
     parser.add_argument("--candidate", type=Path, help="Evaluate a local candidate source; requires one --case.")
     parser.add_argument("--results-dir", type=Path, default=repo_root() / "bpfix-test" / "results")
@@ -351,12 +386,23 @@ def select_cases(root: Path, wanted: list[str] | None) -> list[Path]:
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     root = repo_root()
+    if args.split is not None and args.case:
+        raise SystemExit("--split and --case cannot be combined; use --case without --split for single-case debug runs")
+
     wanted_cases: list[str] = []
     if args.split is not None:
-        wanted_cases.extend(read_split_file(args.split))
+        split_cases = read_split_file(args.split)
+        if not split_cases and not args.allow_empty_split:
+            raise SystemExit(f"{args.split}: split is empty; pass --allow-empty-split to run zero cases")
+        if args.expected_count is not None and len(split_cases) != args.expected_count:
+            raise SystemExit(f"{args.split}: expected {args.expected_count} cases, found {len(split_cases)}")
+        wanted_cases.extend(split_cases)
     if args.case:
         wanted_cases.extend(args.case)
-    cases = select_cases(root, wanted_cases or None)
+    if args.split is not None and not wanted_cases and args.allow_empty_split:
+        cases = []
+    else:
+        cases = select_cases(root, wanted_cases or None)
 
     if args.smoke:
         reports = [smoke_case(case) for case in cases]

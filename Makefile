@@ -24,6 +24,8 @@ help:
 	@echo "  make bench-eval        Run bpfix over bpfix-bench and print metrics"
 	@echo "  make bpfix-test-audit  Audit bpfix-test fixture structure and prompts"
 	@echo "  make bpfix-test-smoke  Validate bpfix-test fixtures and buggy rejects"
+	@echo "  make bpfix-test-dev40-gate   Run the full dev40 split quality gate"
+	@echo "  make bpfix-test-clean60-gate Run the clean60 heldout gate; fails until admitted"
 	@echo "  make release-check     Run packaging, example, benchmark, and object-analysis gates"
 	@echo ""
 	@echo "Utilities"
@@ -74,6 +76,23 @@ bpfix-test-smoke:
 bpfix-test-audit:
 	@echo "[bpfix-test-audit] Auditing LLM repair stress fixtures..."
 	cd $(CURDIR) && python3 bpfix-test/tools/audit_cases.py
+
+.PHONY: bpfix-test-dev40-gate
+bpfix-test-dev40-gate:
+	@echo "[bpfix-test-dev40-gate] Auditing dev40 split and buggy-reject smoke..."
+	cd $(CURDIR) && python3 bpfix-test/tools/audit_splits.py \
+		--split bpfix-test/splits/dev40.txt \
+		--expected-count 40 \
+		--audit-cases --smoke
+
+.PHONY: bpfix-test-clean60-gate
+bpfix-test-clean60-gate:
+	@echo "[bpfix-test-clean60-gate] Auditing clean60 heldout split..."
+	cd $(CURDIR) && python3 bpfix-test/tools/audit_splits.py \
+		--split bpfix-test/splits/clean60.txt \
+		--expected-count 60 \
+		--disallow-overlap bpfix-test/splits/dev40.txt \
+		--audit-cases --smoke
 
 .PHONY: release-check
 release-check:
