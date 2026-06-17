@@ -1,0 +1,59 @@
+{
+  "diagnostic_version": "bpfix.diagnostic/v3",
+  "error_id": "BPFIX-E003",
+  "failure_class": "source_bug",
+  "confidence": "medium",
+  "diagnostic_kind": "supported",
+  "help_safety": "repair_hint",
+  "next_action": "initialize",
+  "span_confidence": "exact_pc",
+  "message": "stack initialization proof is missing: invalid read from stack R3 off=-8 size=12",
+  "required_proof": "initialize every stack byte reachable from R3 before it is read or passed to a helper",
+  "source_span": {
+    "path": "buggy.bpf.c",
+    "line_start": 28,
+    "line_end": 28,
+    "instruction_pc": 12,
+    "source_text": "sum = bpf_csum_diff(0, 0, (__be32 *)&seed, 12, 0);"
+  },
+  "related_spans": [
+    {
+      "path": "buggy.bpf.c",
+      "line_start": 25,
+      "line_end": 25,
+      "instruction_pc": 4,
+      "source_text": "__u64 seed = 0x0102030405060708ULL;",
+      "label": "nearby source context for stack initialization"
+    }
+  ],
+  "evidence": [
+    {
+      "kind": "terminal_verifier_error",
+      "detail": "invalid read from stack R3 off=-8 size=12",
+      "line": 48
+    },
+    {
+      "kind": "instruction_pc",
+      "detail": "nearest verifier instruction pc 12",
+      "line": 48
+    },
+    {
+      "kind": "verifier_trace",
+      "detail": "parsed 12 per-instruction verifier state snapshots",
+      "line": null
+    }
+  ],
+  "help": [
+    "Initialize the full stack object before the helper call or load.",
+    "Reduce the helper length argument so it covers only initialized bytes."
+  ],
+  "metadata": {
+    "case_id": null,
+    "input_kind": "verifier-log-region",
+    "object_path": null,
+    "object_programs": [],
+    "object_analysis_error": null,
+    "trace_state_count": 12,
+    "analysis_error": null
+  }
+}
