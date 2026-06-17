@@ -1,0 +1,87 @@
+libbpf: loading object from <work-dir>/prog.o
+libbpf: elf: section(3) xdp, size 168, link 0, flags 6, type=1
+libbpf: sec 'xdp': found program 'helper_map_arg_stack' at insn offset 0 (0 bytes), code size 21 insns (168 bytes)
+libbpf: elf: section(4) license, size 4, link 0, flags 3, type=1
+libbpf: license of <work-dir>/prog.o is GPL
+libbpf: elf: section(5) .maps, size 32, link 0, flags 3, type=1
+libbpf: elf: section(15) .BTF, size 1359, link 0, flags 0, type=1
+libbpf: elf: section(17) .BTF.ext, size 316, link 0, flags 0, type=1
+libbpf: elf: section(25) .symtab, size 360, link 1, flags 0, type=2
+libbpf: looking for externs among 15 symbols...
+libbpf: collected 0 externs total
+libbpf: map 'configs': at sec_idx 5, offset 0.
+libbpf: map 'configs': found type = 2.
+libbpf: map 'configs': found key [8], sz = 4.
+libbpf: map 'configs': found value [11], sz = 4.
+libbpf: map 'configs': found max_entries = 1.
+libbpf: object 'prog': failed (-95) to create BPF token from '/sys/fs/bpf', skipping optional step...
+libbpf: loaded kernel BTF from '/sys/kernel/btf/vmlinux'
+libbpf: sec 'xdp': found 3 CO-RE relocations
+libbpf: CO-RE relocating [15] struct xdp_md: found target candidate [14922] struct xdp_md in [vmlinux]
+libbpf: prog 'helper_map_arg_stack': relo #0: <byte_off> [15] struct xdp_md.data_end (0:1 @ offset 4)
+libbpf: prog 'helper_map_arg_stack': relo #0: matching candidate #0 <byte_off> [14922] struct xdp_md.data_end (0:1 @ offset 4)
+libbpf: prog 'helper_map_arg_stack': relo #0: patched insn #0 (LDX/ST/STX) off 4 -> 4
+libbpf: prog 'helper_map_arg_stack': relo #1: <byte_off> [15] struct xdp_md.data (0:0 @ offset 0)
+libbpf: prog 'helper_map_arg_stack': relo #1: matching candidate #0 <byte_off> [14922] struct xdp_md.data (0:0 @ offset 0)
+libbpf: prog 'helper_map_arg_stack': relo #1: patched insn #1 (LDX/ST/STX) off 0 -> 0
+libbpf: CO-RE relocating [18] struct ethhdr: found target candidate [23410] struct ethhdr in [vmlinux]
+libbpf: prog 'helper_map_arg_stack': relo #2: <byte_off> [18] struct ethhdr.h_proto (0:2 @ offset 12)
+libbpf: prog 'helper_map_arg_stack': relo #2: matching candidate #0 <byte_off> [23410] struct ethhdr.h_proto (0:2 @ offset 12)
+libbpf: prog 'helper_map_arg_stack': relo #2: patched insn #8 (LDX/ST/STX) off 12 -> 12
+libbpf: map 'configs': created successfully, fd=0
+libbpf: prog 'helper_map_arg_stack': BPF program load failed: -EACCES
+libbpf: prog 'helper_map_arg_stack': -- BEGIN PROG LOAD LOG --
+func#0 @0
+Live regs before insn:
+  0: .1........ (61) r2 = *(u32 *)(r1 +4)
+  1: .12....... (61) r1 = *(u32 *)(r1 +0)
+  2: .12....... (b7) r3 = 0
+  3: .123...... (63) *(u32 *)(r10 -4) = r3
+  4: .12....... (b7) r6 = 2
+  5: .12...6... (bf) r3 = r1
+  6: .123..6... (07) r3 += 14
+  7: .123..6... (2d) if r3 > r2 goto pc+11
+  8: .1....6... (69) r7 = *(u16 *)(r1 +12)
+  9: ......67.. (bf) r1 = r10
+ 10: .1....67.. (07) r1 += -4
+ 11: .1....67.. (bf) r2 = r1
+ 12: .12...67.. (85) call bpf_map_lookup_elem#1
+ 13: 0.....67.. (15) if r0 == 0x0 goto pc+5
+ 14: 0......7.. (dc) r7 = be16 r7
+ 15: 0......7.. (61) r1 = *(u32 *)(r0 +0)
+ 16: .1.....7.. (b7) r6 = 1
+ 17: .1....67.. (1d) if r1 == r7 goto pc+1
+ 18: .......... (b7) r6 = 2
+ 19: ......6... (bf) r0 = r6
+ 20: 0......... (95) exit
+0: R1=ctx() R10=fp0
+; void *data_end = (void *)(long)ctx->data_end; @ buggy.bpf.c:34
+0: (61) r2 = *(u32 *)(r1 +4)          ; R1=ctx() R2_w=pkt_end()
+; void *data = (void *)(long)ctx->data; @ buggy.bpf.c:33
+1: (61) r1 = *(u32 *)(r1 +0)          ; R1_w=pkt(r=0)
+2: (b7) r3 = 0                        ; R3_w=0
+; __u32 key = 0; @ buggy.bpf.c:38
+3: (63) *(u32 *)(r10 -4) = r3
+mark_precise: frame0: last_idx 3 first_idx 0 subseq_idx -1 
+mark_precise: frame0: regs=r3 stack= before 2: (b7) r3 = 0
+4: R3_w=0 R10=fp0 fp-8=0000????
+4: (b7) r6 = 2                        ; R6_w=2
+; if ((void *)(eth + 1) > data_end) @ buggy.bpf.c:40
+5: (bf) r3 = r1                       ; R1_w=pkt(r=0) R3_w=pkt(r=0)
+6: (07) r3 += 14                      ; R3_w=pkt(off=14,r=0)
+7: (2d) if r3 > r2 goto pc+11         ; R2_w=pkt_end() R3_w=pkt(off=14,r=14)
+; proto = bpf_ntohs(eth->h_proto); @ buggy.bpf.c:43
+8: (69) r7 = *(u16 *)(r1 +12)         ; R1_w=pkt(r=14) R7_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=0xffff,var_off=(0x0; 0xffff))
+9: (bf) r1 = r10                      ; R1_w=fp0 R10=fp0
+10: (07) r1 += -4                     ; R1_w=fp-4
+; cfg = bpf_map_lookup_elem(&key, &key); @ buggy.bpf.c:44
+11: (bf) r2 = r1                      ; R1_w=fp-4 R2_w=fp-4
+12: (85) call bpf_map_lookup_elem#1
+R1 type=fp expected=map_ptr
+verification time 0 usec
+stack depth 8
+processed 13 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0 mark_read 0
+-- END PROG LOAD LOG --
+libbpf: prog 'helper_map_arg_stack': failed to load: -EACCES
+libbpf: failed to load object '<work-dir>/prog.o'
+Error: failed to load object file
