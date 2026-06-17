@@ -4,7 +4,8 @@
   "profile": "dev_calibration",
   "freeze": {
     "frozen": false,
-    "reason": "dev/calibration split used during prompt, diagnostic, and oracle development"
+    "reason": "dev/calibration split used during prompt, diagnostic, and oracle development",
+    "fingerprints_frozen": true
   },
   "admission_policy": {
     "model_result_used_for_admission": true,
@@ -15,48 +16,332 @@
     "prog_type": "xdp",
     "origin": "dev40 calibration suite",
     "review_status": "dev_reviewed",
-    "oracle_kind": ["compile", "verifier_load", "bpftool_prog_run"]
+    "oracle_kind": [
+      "compile",
+      "verifier_load",
+      "bpftool_prog_run"
+    ]
   },
   "cases": [
-    {"case_id":"alu32_pointer_cookie_001","bucket":"proof_lifecycle","requires_helper_or_state":false,"uses_success_predicate":false},
-    {"case_id":"dynptr_slice_missing_null_check_001","bucket":"modern_bpf_protocol","requires_helper_or_state":true,"uses_success_predicate":false},
-    {"case_id":"dynptr_slice_short_mem_001","bucket":"modern_bpf_protocol","requires_helper_or_state":true,"uses_success_predicate":false},
-    {"case_id":"dynptr_slice_stack_buffer_001","bucket":"modern_bpf_protocol","requires_helper_or_state":true,"uses_success_predicate":false},
-    {"case_id":"dynptr_stack_copy_001","bucket":"modern_bpf_protocol","requires_helper_or_state":true,"uses_success_predicate":false},
-    {"case_id":"dynptr_uninitialized_slice_arg_001","bucket":"modern_bpf_protocol","requires_helper_or_state":true,"uses_success_predicate":false},
-    {"case_id":"helper_csum_diff_stack_len_001","bucket":"helper_memory_contract","requires_helper_or_state":true,"uses_success_predicate":true},
-    {"case_id":"helper_map_arg_stack_001","bucket":"helper_memory_contract","requires_helper_or_state":true,"uses_success_predicate":true},
-    {"case_id":"map_value_branch_merge_001","bucket":"proof_lifecycle","requires_helper_or_state":true,"uses_success_predicate":true},
-    {"case_id":"map_value_index_guard_oob_001","bucket":"proof_lifecycle","requires_helper_or_state":true,"uses_success_predicate":true},
-    {"case_id":"map_value_inline_cookie_001","bucket":"source_object_correlation","requires_helper_or_state":true,"uses_success_predicate":true},
-    {"case_id":"map_value_pointer_cookie_001","bucket":"proof_lifecycle","requires_helper_or_state":true,"uses_success_predicate":true},
-    {"case_id":"map_value_signed_index_001","bucket":"proof_lifecycle","requires_helper_or_state":true,"uses_success_predicate":true},
-    {"case_id":"map_value_spill_cookie_001","bucket":"proof_lifecycle","requires_helper_or_state":true,"uses_success_predicate":true},
-    {"case_id":"packet_checked_wrong_base_001","bucket":"proof_lifecycle","requires_helper_or_state":false,"uses_success_predicate":false},
-    {"case_id":"packet_eth_off_by_one_001","bucket":"proof_lifecycle","requires_helper_or_state":false,"uses_success_predicate":false},
-    {"case_id":"packet_ihl_udp_undercheck_001","bucket":"proof_lifecycle","requires_helper_or_state":false,"uses_success_predicate":false},
-    {"case_id":"packet_inline_return_cookie_001","bucket":"source_object_correlation","requires_helper_or_state":false,"uses_success_predicate":false},
-    {"case_id":"packet_l4_branch_cookie_001","bucket":"proof_lifecycle","requires_helper_or_state":false,"uses_success_predicate":false},
-    {"case_id":"packet_macro_cookie_001","bucket":"source_object_correlation","requires_helper_or_state":false,"uses_success_predicate":false},
-    {"case_id":"packet_macro_payload_undercheck_001","bucket":"source_object_correlation","requires_helper_or_state":false,"uses_success_predicate":false},
-    {"case_id":"packet_vlan_cookie_001","bucket":"proof_lifecycle","requires_helper_or_state":false,"uses_success_predicate":false},
-    {"case_id":"perf_event_packet_payload_001","bucket":"helper_memory_contract","requires_helper_or_state":true,"uses_success_predicate":true},
-    {"case_id":"ringbuf_branch_cookie_001","bucket":"modern_bpf_protocol","requires_helper_or_state":true,"uses_success_predicate":true},
-    {"case_id":"ringbuf_double_submit_001","bucket":"modern_bpf_protocol","requires_helper_or_state":true,"uses_success_predicate":true},
-    {"case_id":"ringbuf_missing_null_check_001","bucket":"modern_bpf_protocol","requires_helper_or_state":true,"uses_success_predicate":true},
-    {"case_id":"ringbuf_nested_missing_null_001","bucket":"modern_bpf_protocol","requires_helper_or_state":true,"uses_success_predicate":true},
-    {"case_id":"ringbuf_nested_reserve_leak_001","bucket":"modern_bpf_protocol","requires_helper_or_state":true,"uses_success_predicate":true},
-    {"case_id":"ringbuf_pointer_cookie_001","bucket":"modern_bpf_protocol","requires_helper_or_state":true,"uses_success_predicate":true},
-    {"case_id":"ringbuf_ref_leak_001","bucket":"modern_bpf_protocol","requires_helper_or_state":true,"uses_success_predicate":true},
-    {"case_id":"ringbuf_stack_discard_001","bucket":"modern_bpf_protocol","requires_helper_or_state":true,"uses_success_predicate":true},
-    {"case_id":"ringbuf_stack_submit_001","bucket":"modern_bpf_protocol","requires_helper_or_state":true,"uses_success_predicate":true},
-    {"case_id":"ringbuf_submit_after_discard_001","bucket":"modern_bpf_protocol","requires_helper_or_state":true,"uses_success_predicate":true},
-    {"case_id":"ringbuf_two_record_cookie_001","bucket":"modern_bpf_protocol","requires_helper_or_state":true,"uses_success_predicate":true},
-    {"case_id":"subprog_adjust_tail_stale_001","bucket":"source_object_correlation","requires_helper_or_state":false,"uses_success_predicate":true},
-    {"case_id":"subprog_map_value_null_001","bucket":"source_object_correlation","requires_helper_or_state":true,"uses_success_predicate":true},
-    {"case_id":"xdp_adjust_head_map_value_001","bucket":"proof_lifecycle","requires_helper_or_state":true,"uses_success_predicate":true},
-    {"case_id":"xdp_adjust_head_ringbuf_001","bucket":"proof_lifecycle","requires_helper_or_state":true,"uses_success_predicate":true},
-    {"case_id":"xdp_adjust_head_stale_001","bucket":"proof_lifecycle","requires_helper_or_state":true,"uses_success_predicate":true},
-    {"case_id":"xdp_adjust_tail_stale_001","bucket":"proof_lifecycle","requires_helper_or_state":true,"uses_success_predicate":true}
+    {
+      "case_id": "alu32_pointer_cookie_001",
+      "bucket": "proof_lifecycle",
+      "requires_helper_or_state": false,
+      "uses_success_predicate": false,
+      "case_sha256": "e21dc69e61b17550e03c9d45a5cdd1cc35357486260c2d234273c3325209ef67",
+      "buggy_source_sha256": "d458c984257c162cd2b3864bca2a1193f3f195789a3fc7edaf7c7db34fdcaeb2"
+    },
+    {
+      "case_id": "dynptr_slice_missing_null_check_001",
+      "bucket": "modern_bpf_protocol",
+      "requires_helper_or_state": true,
+      "uses_success_predicate": false,
+      "case_sha256": "561e9041abeef676d45cf6a0ecf4c8ddbf2d3e080939360300ca44622d6e6c22",
+      "buggy_source_sha256": "fae90a7d63b90cfd76d172f4b2cc3d10ce77f8af4e45ed0b19acb16af6b892da"
+    },
+    {
+      "case_id": "dynptr_slice_short_mem_001",
+      "bucket": "modern_bpf_protocol",
+      "requires_helper_or_state": true,
+      "uses_success_predicate": false,
+      "case_sha256": "53bda5f05a757acbff83a6b5d9498eadd90edeedc635af4639e0f190d750d58b",
+      "buggy_source_sha256": "05e6acda20c4d5875099d6859bc0bb3f7d1816995538dc6ac8f6de7d23051121"
+    },
+    {
+      "case_id": "dynptr_slice_stack_buffer_001",
+      "bucket": "modern_bpf_protocol",
+      "requires_helper_or_state": true,
+      "uses_success_predicate": false,
+      "case_sha256": "389b4b09acc82a622910964e019991a4ec88f4df301a8126728fb348cfebebcd",
+      "buggy_source_sha256": "84621098ef264bbe12543da3f83c338b3020d646c591d833e3bc96eb483541e6"
+    },
+    {
+      "case_id": "dynptr_stack_copy_001",
+      "bucket": "modern_bpf_protocol",
+      "requires_helper_or_state": true,
+      "uses_success_predicate": false,
+      "case_sha256": "59ef4cce23736e94cbaed471dd26d5ca71d91f1c3c3a4c191e16a066edcdc3a6",
+      "buggy_source_sha256": "ab7fb93588f00e88a47ce15d28d5d5d3c4ae963ca28ad47f58ba77fde53e56aa"
+    },
+    {
+      "case_id": "dynptr_uninitialized_slice_arg_001",
+      "bucket": "modern_bpf_protocol",
+      "requires_helper_or_state": true,
+      "uses_success_predicate": false,
+      "case_sha256": "1088ce6adfd299638a169955f66330f81f49a0eb28b0af6dd0c7600d6ad517b8",
+      "buggy_source_sha256": "ac82e8fab672333dac6400716bb17184b7b6de9f027a91346b93d0e0eb7b6e77"
+    },
+    {
+      "case_id": "helper_csum_diff_stack_len_001",
+      "bucket": "helper_memory_contract",
+      "requires_helper_or_state": true,
+      "uses_success_predicate": true,
+      "case_sha256": "f9dee24d34db9f78124debe59c644ece9edf8d1b06394b35c74172eb2ef7d277",
+      "buggy_source_sha256": "6971cf1cd13bfdb27be58df4869b2537ede008cc2ce4ccc1d174820f21356f34"
+    },
+    {
+      "case_id": "helper_map_arg_stack_001",
+      "bucket": "helper_memory_contract",
+      "requires_helper_or_state": true,
+      "uses_success_predicate": true,
+      "case_sha256": "752abba6b974ec03e2576ea7d7ea3d412acf9cf78de76581026aff06929531e7",
+      "buggy_source_sha256": "096affce5520749d0a1b2ea72cc88b57eadd68f81a7f450651bac2bff3e68201"
+    },
+    {
+      "case_id": "map_value_branch_merge_001",
+      "bucket": "proof_lifecycle",
+      "requires_helper_or_state": true,
+      "uses_success_predicate": true,
+      "case_sha256": "543157806c7323ecca8ac6f09f418573823c26150aadd897fe65e4e72c2165dc",
+      "buggy_source_sha256": "70dc309ec28ffdf84086aa229512b5ff8b9fa02c86c2485275ebdf1af4beabcb"
+    },
+    {
+      "case_id": "map_value_index_guard_oob_001",
+      "bucket": "proof_lifecycle",
+      "requires_helper_or_state": true,
+      "uses_success_predicate": true,
+      "case_sha256": "723efc463a00a4c28d7a797184d0779c3b8dbda08f87be7ff1dee609d56fe3fc",
+      "buggy_source_sha256": "1269df219edb4d8653f28cb9b1c0c5e94526693b25fb2612c81631b0ef7ef91e"
+    },
+    {
+      "case_id": "map_value_inline_cookie_001",
+      "bucket": "source_object_correlation",
+      "requires_helper_or_state": true,
+      "uses_success_predicate": true,
+      "case_sha256": "5208bbd1d8898024671e9bd7bad1119a1f66e721f21ca2a6f926a20d1925a41c",
+      "buggy_source_sha256": "9d2b580e09018670d05a950d93c6310dd85b74acd3bb1fff86533e2e6bb5af95"
+    },
+    {
+      "case_id": "map_value_pointer_cookie_001",
+      "bucket": "proof_lifecycle",
+      "requires_helper_or_state": true,
+      "uses_success_predicate": true,
+      "case_sha256": "3e92f6807f3a94ad941e6d4c7db3adfb13944c52d95fd979817443c95673de9e",
+      "buggy_source_sha256": "827042d93d12bf0d701b9b127c36d368ea4b6029768b3a104363aef2c3748ac1"
+    },
+    {
+      "case_id": "map_value_signed_index_001",
+      "bucket": "proof_lifecycle",
+      "requires_helper_or_state": true,
+      "uses_success_predicate": true,
+      "case_sha256": "8b8319acc011acf84b9fee6c0d79ab7be2fa4f4a0c70afdec294e6c9d7318b06",
+      "buggy_source_sha256": "b2eaac3865796edd2de0b7b751e9139f78ef83282cb8c897a3962d2b57f56df4"
+    },
+    {
+      "case_id": "map_value_spill_cookie_001",
+      "bucket": "proof_lifecycle",
+      "requires_helper_or_state": true,
+      "uses_success_predicate": true,
+      "case_sha256": "19a0887c9c79e98421ff2a8438262839a858c5488c8cbcb9042302431166e638",
+      "buggy_source_sha256": "6fc679e591da2901f78379e919782c6b95ffbba39d9b8f3549d2932731ca49cd"
+    },
+    {
+      "case_id": "packet_checked_wrong_base_001",
+      "bucket": "proof_lifecycle",
+      "requires_helper_or_state": false,
+      "uses_success_predicate": false,
+      "case_sha256": "69e2659de77d5337eb1f42deaab30f19dbeaec82618e2f79ca36ca382ce7d501",
+      "buggy_source_sha256": "0329434c51c05d3840aa6e4643f79bba3c6ac92983cdc5d03f1cc4695bb46f5d"
+    },
+    {
+      "case_id": "packet_eth_off_by_one_001",
+      "bucket": "proof_lifecycle",
+      "requires_helper_or_state": false,
+      "uses_success_predicate": false,
+      "case_sha256": "e068c5b1812a8f3e1f48e0c2180fa6742cc0db2b50b80e85a52f2d3b56cc9385",
+      "buggy_source_sha256": "2fd7c608906014790e1e264231d98048b80353155437a0447d329450a2eab1fd"
+    },
+    {
+      "case_id": "packet_ihl_udp_undercheck_001",
+      "bucket": "proof_lifecycle",
+      "requires_helper_or_state": false,
+      "uses_success_predicate": false,
+      "case_sha256": "72296fd0e8bc15dd50711e023ee99696d1d5f6d4efda74fdfadb8473de484a33",
+      "buggy_source_sha256": "dbbf47ed87a62a98e262b0bbd03c1556d994b10c080adac268a74fa748726af0"
+    },
+    {
+      "case_id": "packet_inline_return_cookie_001",
+      "bucket": "source_object_correlation",
+      "requires_helper_or_state": false,
+      "uses_success_predicate": false,
+      "case_sha256": "6f4ab603ae4e0a980433f30b26fa9a5040311e94cb68c74630035e97da851e25",
+      "buggy_source_sha256": "3b277b86daac1d5a05e1a7be9c430e7d86f2b57c034f196c62f94bbed7c86c66"
+    },
+    {
+      "case_id": "packet_l4_branch_cookie_001",
+      "bucket": "proof_lifecycle",
+      "requires_helper_or_state": false,
+      "uses_success_predicate": false,
+      "case_sha256": "059fa8fd42135418b558556b4b1cb92cf805ad45b8ffe3a373fee148f2765bb9",
+      "buggy_source_sha256": "dab5f5a050f38081b47e33bef970a00060202568154bad99579e56e7b3afb3e9"
+    },
+    {
+      "case_id": "packet_macro_cookie_001",
+      "bucket": "source_object_correlation",
+      "requires_helper_or_state": false,
+      "uses_success_predicate": false,
+      "case_sha256": "f734257e736d33e9c49bc7790084e58a7f7444eeb84897cec301d339db7d9c46",
+      "buggy_source_sha256": "2c5b1a479ae9322faeda86491dbe205eb31b14c1f9bbc312b5822850e183ae2b"
+    },
+    {
+      "case_id": "packet_macro_payload_undercheck_001",
+      "bucket": "source_object_correlation",
+      "requires_helper_or_state": false,
+      "uses_success_predicate": false,
+      "case_sha256": "2a1e0d08abe0ce60c24747120f5b22c299dd5efd4450fc058e587d622c86326a",
+      "buggy_source_sha256": "5cef06ba9e08d3ee02bfbbd0d344c0139421c34f470a30517e4ea23f0ee31c60"
+    },
+    {
+      "case_id": "packet_vlan_cookie_001",
+      "bucket": "proof_lifecycle",
+      "requires_helper_or_state": false,
+      "uses_success_predicate": false,
+      "case_sha256": "016ffa1b457af0140884ca4c1bb5ab9b8421e95590bbce78d97475d7846235b0",
+      "buggy_source_sha256": "c7d27d6fac2934b9ab2dfedfa863d00e4b7a150f1281154cb8314b5da0cf375c"
+    },
+    {
+      "case_id": "perf_event_packet_payload_001",
+      "bucket": "helper_memory_contract",
+      "requires_helper_or_state": true,
+      "uses_success_predicate": true,
+      "case_sha256": "ae60680b95b4f8f377f1276160740fef1438abf07e4988aaec3c1ac08dc2f620",
+      "buggy_source_sha256": "1f071f673cba2e80ba64cf1c5c3e1bf3cb3c8723f2d0dbca791f3b28f9afa2a1"
+    },
+    {
+      "case_id": "ringbuf_branch_cookie_001",
+      "bucket": "modern_bpf_protocol",
+      "requires_helper_or_state": true,
+      "uses_success_predicate": true,
+      "case_sha256": "997d46caeccda8b58aafe944360bae5766b00d50347380dc8bf7cebdf4579fb1",
+      "buggy_source_sha256": "1e6625534f82af3552c03729dea4746421ed0c17c77367ba224df060834773d4"
+    },
+    {
+      "case_id": "ringbuf_double_submit_001",
+      "bucket": "modern_bpf_protocol",
+      "requires_helper_or_state": true,
+      "uses_success_predicate": true,
+      "case_sha256": "4e766fb79bc18c0ed3ce3e3bac68e919a751e0e4e1db8f5a22385a30cdadc505",
+      "buggy_source_sha256": "abe0b2f26cba8635cdb3a9fdd32dd67f1044ce10dbe0946c5d6aae0f9583b3db"
+    },
+    {
+      "case_id": "ringbuf_missing_null_check_001",
+      "bucket": "modern_bpf_protocol",
+      "requires_helper_or_state": true,
+      "uses_success_predicate": true,
+      "case_sha256": "ce09b0b12c37dc71374c36d245e21d75bc6220fa79923bef807334e5b6be660a",
+      "buggy_source_sha256": "9eb155f6e68ec7d3296ecd9e1d828db94b79826b0ea98e010b37977e83c91d84"
+    },
+    {
+      "case_id": "ringbuf_nested_missing_null_001",
+      "bucket": "modern_bpf_protocol",
+      "requires_helper_or_state": true,
+      "uses_success_predicate": true,
+      "case_sha256": "6715bb9ccf28c6d9bbbfaa8d480393cfc7149ee9738d306d4b2621ae355cd773",
+      "buggy_source_sha256": "fdebedf89393dcd484730fd4eb3d9c7a93b57d6b960e509743e6da85cfce961c"
+    },
+    {
+      "case_id": "ringbuf_nested_reserve_leak_001",
+      "bucket": "modern_bpf_protocol",
+      "requires_helper_or_state": true,
+      "uses_success_predicate": true,
+      "case_sha256": "ec0691a796059d8e7260f545481d5b8f3ef1efa2b89e5b5dcbe8a0b8eac285d2",
+      "buggy_source_sha256": "546d028003b4d74fb9af3704af1afde56266ce902fbdee768f05a8fa973f4d03"
+    },
+    {
+      "case_id": "ringbuf_pointer_cookie_001",
+      "bucket": "modern_bpf_protocol",
+      "requires_helper_or_state": true,
+      "uses_success_predicate": true,
+      "case_sha256": "10df84931473284635f48330301206285d1ffff24c331ec9b0a1b944fa578b1d",
+      "buggy_source_sha256": "fd44e92e056e239cbe674a23e763999aa409a5bd8a550603b8959f8e7544d6a6"
+    },
+    {
+      "case_id": "ringbuf_ref_leak_001",
+      "bucket": "modern_bpf_protocol",
+      "requires_helper_or_state": true,
+      "uses_success_predicate": true,
+      "case_sha256": "86ba97c33702acf35c5ae6a6ace40ec128d863ef40f7895eabbd0f165d0cc8db",
+      "buggy_source_sha256": "1671be807341239d23e11da04adaa89f3ad981f5acf286e625db3d2986c183c9"
+    },
+    {
+      "case_id": "ringbuf_stack_discard_001",
+      "bucket": "modern_bpf_protocol",
+      "requires_helper_or_state": true,
+      "uses_success_predicate": true,
+      "case_sha256": "5fca157a4be36d983fc1ff2ef6f38e010dbf48a53c514a7fb6533913b6959acf",
+      "buggy_source_sha256": "ad611d225253d65bd8f8a303bde941986cf7fb66cde1e717783d478c0363743e"
+    },
+    {
+      "case_id": "ringbuf_stack_submit_001",
+      "bucket": "modern_bpf_protocol",
+      "requires_helper_or_state": true,
+      "uses_success_predicate": true,
+      "case_sha256": "9330c3e0aa58e812dc5799da796d8d403e5893ad672e29aaffcc441d086c2011",
+      "buggy_source_sha256": "e575c0302051e705810a428afba49c38de32ebda8c07f148341539a5ebef2e99"
+    },
+    {
+      "case_id": "ringbuf_submit_after_discard_001",
+      "bucket": "modern_bpf_protocol",
+      "requires_helper_or_state": true,
+      "uses_success_predicate": true,
+      "case_sha256": "8a6b5709d26ff0e013c21c105fd04265ec66571010066a7ab79d707a48b4c135",
+      "buggy_source_sha256": "fcbb90022d4868e977f95da236a9cf02e47c08af63bbfb59ee2b9c0bcfd66440"
+    },
+    {
+      "case_id": "ringbuf_two_record_cookie_001",
+      "bucket": "modern_bpf_protocol",
+      "requires_helper_or_state": true,
+      "uses_success_predicate": true,
+      "case_sha256": "845d0debbb8c9fadab42d34f6677738820fd38b4d0def9ef9b2c33397a4d2564",
+      "buggy_source_sha256": "6da992041099ebe9c927b6bf0818e880f8eaafc7947b239c683fa4bc47d7ab46"
+    },
+    {
+      "case_id": "subprog_adjust_tail_stale_001",
+      "bucket": "source_object_correlation",
+      "requires_helper_or_state": false,
+      "uses_success_predicate": true,
+      "case_sha256": "f13a16ce89fac2e378afd090e937393e0b923d53c8410aa3d048753fc07f12cb",
+      "buggy_source_sha256": "c90d5a7653c714d1eeb414757a66e85f894c48eddccbdc1f9bea6745c5536ec2"
+    },
+    {
+      "case_id": "subprog_map_value_null_001",
+      "bucket": "source_object_correlation",
+      "requires_helper_or_state": true,
+      "uses_success_predicate": true,
+      "case_sha256": "036d90cd6a76f62ab26f68474960bb6dc038ee0fdd9e9fd3b8e2935eae7e6a59",
+      "buggy_source_sha256": "b39e0a5051061b9443ce8643ffc71074bc5a31b16ba8fa1feeb186b53265a98e"
+    },
+    {
+      "case_id": "xdp_adjust_head_map_value_001",
+      "bucket": "proof_lifecycle",
+      "requires_helper_or_state": true,
+      "uses_success_predicate": true,
+      "case_sha256": "78eb6bcd373af6af5ad2783a898005ea94bafa99cb019e727ac88768002e24fc",
+      "buggy_source_sha256": "83784d73a1f03118127085610dd4a661358f53ea2e67584f827e2b0ff4dd94ac"
+    },
+    {
+      "case_id": "xdp_adjust_head_ringbuf_001",
+      "bucket": "proof_lifecycle",
+      "requires_helper_or_state": true,
+      "uses_success_predicate": true,
+      "case_sha256": "4866f901242109f01ac22e230344442a97709c1c8341259c5273ce532416ab7d",
+      "buggy_source_sha256": "5c506f91fbd79a194cf5bdb179f499c93e025bd0873e4b91816ff24d6997e323"
+    },
+    {
+      "case_id": "xdp_adjust_head_stale_001",
+      "bucket": "proof_lifecycle",
+      "requires_helper_or_state": true,
+      "uses_success_predicate": true,
+      "case_sha256": "950ccf7c4a1dfbaf9ced3b5b7c994d6d1cf5d1dd29dd2548dacf4ce21c25e9a9",
+      "buggy_source_sha256": "e30aab23195fd2534956f0c18befd3f04af3d923f01033bd6234bff0dcc932bf"
+    },
+    {
+      "case_id": "xdp_adjust_tail_stale_001",
+      "bucket": "proof_lifecycle",
+      "requires_helper_or_state": true,
+      "uses_success_predicate": true,
+      "case_sha256": "8f4d2e5bac3edca7af529a67ac97d5eca7294a98e955e7ae4628479f862ac352",
+      "buggy_source_sha256": "b1c33b80c07d4937e0b2ec3d53a38090ff48166637609bfe1d6ca1ae0e8c6550"
+    }
   ]
 }

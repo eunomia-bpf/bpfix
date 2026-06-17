@@ -66,9 +66,13 @@ python3 bpfix-test/tools/audit_splits.py \
 benchmark 运行。`run_suite.py --split bpfix-test/splits/clean60.txt` 对空 split
 也会失败，不会把空 split 解释成“全部 case”。
 `audit_splits.py --profile clean60` 会内置比较 `dev40.txt` 的 case id、case hash
-和 `buggy.bpf.c` hash；命令行里的 `--disallow-overlap` 是显式记录，不是唯一防线。
+和 `buggy.bpf.c` hash。若被比较 split 有 sibling manifest，审计使用 manifest 里的
+记录 hash 作为污染基线，而不是只依赖当前 live 文件。命令行里的
+`--disallow-overlap` 是显式记录，不是唯一防线。
 这个 hash gate 只能阻止精确复制或改名复制；语义近重复仍必须由 provenance 记录和
 independent review 拒绝。
+审计 `dev40.txt` 本身也必须携带 `dev40.manifest.json`，否则 frozen fingerprint
+baseline 不成立。
 
 ## 污染控制
 

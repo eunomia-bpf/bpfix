@@ -4,7 +4,8 @@
   "profile": "clean_heldout",
   "freeze": {
     "frozen": false,
-    "reason": "clean60 is not admitted yet; set frozen=true only after all 60 heldout cases, manifests, oracles, and prompts are frozen before the first clean run"
+    "reason": "clean60 is not admitted yet; set frozen=true only after all 60 heldout cases, manifests, oracles, and prompts are frozen before the first clean run",
+    "fingerprints_frozen": false
   },
   "admission_policy": {
     "model_result_used_for_admission": false,
@@ -13,7 +14,11 @@
   "case_defaults": {
     "prog_type": "xdp",
     "review_status": "independent_reviewed",
-    "oracle_kind": ["compile", "verifier_load", "bpftool_prog_run"]
+    "oracle_kind": [
+      "compile",
+      "verifier_load",
+      "bpftool_prog_run"
+    ]
   },
   "cases": []
 }

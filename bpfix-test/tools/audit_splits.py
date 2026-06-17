@@ -91,13 +91,66 @@ def case_fingerprints(case_ids: list[str], known_cases: dict[str, Path]) -> dict
     return fingerprints
 
 
+def manifest_case_fingerprints(path: Path) -> dict[str, dict[str, str]]:
+    if not path.exists():
+        return {}
+    manifest = read_manifest(path)
+    defaults = manifest.get("case_defaults", {})
+    if not isinstance(defaults, dict):
+        defaults = {}
+    cases = manifest.get("cases", [])
+    if not isinstance(cases, list):
+        return {}
+    fingerprints: dict[str, dict[str, str]] = {}
+    for raw_case in cases:
+        if not isinstance(raw_case, dict):
+            continue
+        case = {**defaults, **raw_case}
+        case_id = case.get("case_id")
+        if not isinstance(case_id, str):
+            continue
+        values: dict[str, str] = {}
+        for key in ["case_sha256", "buggy_source_sha256"]:
+            if isinstance(case.get(key), str):
+                values[key] = case[key]
+        if values:
+            fingerprints[case_id] = values
+    return fingerprints
+
+
+def missing_manifest_fingerprints(path: Path, case_ids: list[str]) -> list[str]:
+    if not path.exists():
+        return []
+    fingerprints = manifest_case_fingerprints(path)
+    missing: list[str] = []
+    for case_id in case_ids:
+        values = fingerprints.get(case_id, {})
+        if "case_sha256" not in values or "buggy_source_sha256" not in values:
+            missing.append(case_id)
+    return missing
+
+
+def split_manifest_path(split: Path, root: Path) -> Path:
+    splits_dir = root / "bpfix-test" / "splits"
+    known = {
+        (splits_dir / "dev40.txt").resolve(): splits_dir / "dev40.manifest.json",
+        (splits_dir / "clean60.txt").resolve(): splits_dir / "clean60.manifest.json",
+    }
+    return known.get(split.resolve(), split.with_suffix(".manifest.json"))
+
+
 def overlapping_fingerprints(
     current_ids: list[str],
     other_ids: list[str],
     known_cases: dict[str, Path],
+    *,
+    other_manifest: Path | None = None,
 ) -> dict[str, list[dict[str, str]]]:
     current = case_fingerprints(current_ids, known_cases)
     other = case_fingerprints(other_ids, known_cases)
+    if other_manifest is not None:
+        for case_id, values in manifest_case_fingerprints(other_manifest).items():
+            other.setdefault(case_id, {}).update(values)
     overlaps: dict[str, list[dict[str, str]]] = {
         "case_sha256": [],
         "buggy_source_sha256": [],
@@ -249,9 +302,13 @@ def audit_manifest(
             helper_or_state_count += 1
 
         computed_hash = None
+        computed_buggy_source_hash = None
         if case_id in known_cases:
-            computed_hash = case_digest(known_cases[case_id])
+            case_dir = known_cases[case_id]
+            computed_hash = case_digest(case_dir)
+            computed_buggy_source_hash = file_digest(case_dir / "buggy.bpf.c")
         recorded_hash = case.get("case_sha256")
+        recorded_buggy_source_hash = case.get("buggy_source_sha256")
         if profile == "clean60":
             if case.get("review_status") != "independent_reviewed":
                 errors.append(f"{case_id}: clean60 review_status must be independent_reviewed")
@@ -262,9 +319,31 @@ def audit_manifest(
             elif computed_hash is not None and recorded_hash != computed_hash:
                 errors.append(f"{case_id}: case_sha256 does not match current case files")
                 hash_mismatches.append(case_id)
+            if not isinstance(recorded_buggy_source_hash, str):
+                errors.append(f"{case_id}: clean60 buggy_source_sha256 is required")
+            elif (
+                computed_buggy_source_hash is not None
+                and recorded_buggy_source_hash != computed_buggy_source_hash
+            ):
+                errors.append(f"{case_id}: buggy_source_sha256 does not match current buggy.bpf.c")
+                hash_mismatches.append(case_id)
         elif recorded_hash is not None and computed_hash is not None and recorded_hash != computed_hash:
-            warnings.append(f"{case_id}: case_sha256 does not match current case files")
+            if freeze.get("fingerprints_frozen") is True:
+                errors.append(f"{case_id}: case_sha256 does not match frozen manifest fingerprint")
+            else:
+                warnings.append(f"{case_id}: case_sha256 does not match current case files")
             hash_mismatches.append(case_id)
+        if profile != "clean60" and freeze.get("fingerprints_frozen") is True:
+            if not isinstance(recorded_hash, str):
+                errors.append(f"{case_id}: frozen manifest requires case_sha256")
+            if not isinstance(recorded_buggy_source_hash, str):
+                errors.append(f"{case_id}: frozen manifest requires buggy_source_sha256")
+            elif (
+                computed_buggy_source_hash is not None
+                and recorded_buggy_source_hash != computed_buggy_source_hash
+            ):
+                errors.append(f"{case_id}: buggy_source_sha256 does not match frozen manifest fingerprint")
+                hash_mismatches.append(case_id)
 
         per_case_reports.append(
             {
@@ -274,6 +353,8 @@ def audit_manifest(
                 "prog_type": prog_type,
                 "computed_case_sha256": computed_hash,
                 "recorded_case_sha256": recorded_hash,
+                "computed_buggy_source_sha256": computed_buggy_source_hash,
+                "recorded_buggy_source_sha256": recorded_buggy_source_hash,
             }
         )
 
@@ -343,6 +424,7 @@ def audit_split(args: argparse.Namespace) -> dict[str, Any]:
             profile_errors.append("clean60 split cannot use --profile dev")
     else:
         profile = args.profile or "dev"
+    split_implies_dev40 = args.split.resolve() == (root / "bpfix-test" / "splits" / "dev40.txt").resolve()
 
     known_cases = case_index(root)
     split_duplicates = duplicates(case_ids)
@@ -358,9 +440,16 @@ def audit_split(args: argparse.Namespace) -> dict[str, Any]:
     for other_split in disallow_overlap_paths:
         other_case_ids = run_suite.read_split_file(other_split)
         shared = sorted(set(case_ids) & set(other_case_ids))
-        content_shared = overlapping_fingerprints(case_ids, other_case_ids, known_cases)
+        other_manifest = split_manifest_path(other_split, root)
+        content_shared = overlapping_fingerprints(
+            case_ids,
+            other_case_ids,
+            known_cases,
+            other_manifest=other_manifest,
+        )
         overlap[str(other_split)] = {
             "case_ids": shared,
+            "manifest": str(other_manifest) if other_manifest.exists() else None,
             "content": content_shared,
         }
 
@@ -382,8 +471,18 @@ def audit_split(args: argparse.Namespace) -> dict[str, Any]:
                     f"{match['case']}~{match['overlaps_case']}" for match in matches
                 )
                 errors.append(f"{fingerprint_name} content overlap with {other_split}: {formatted}")
+        manifest_path = overlap_report.get("manifest")
+        if manifest_path:
+            missing_fingerprints = missing_manifest_fingerprints(Path(manifest_path), run_suite.read_split_file(Path(other_split)))
+            if missing_fingerprints:
+                errors.append(
+                    f"overlap manifest {manifest_path} missing frozen fingerprints for: "
+                    + ", ".join(missing_fingerprints)
+                )
 
     manifest_summary: dict[str, Any] = {"enabled": False}
+    if split_implies_dev40 and args.manifest is None:
+        errors.append("dev40 split requires --manifest")
     if profile == "clean60" and args.manifest is None:
         errors.append("clean60 profile requires --manifest")
     if args.manifest is not None:

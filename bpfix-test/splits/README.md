@@ -15,7 +15,9 @@ until 60 new cases are admitted. A valid clean split must:
 
 Each split also has a machine-readable manifest:
 
-- `dev40.manifest.json` records that the current 40 cases are calibration data.
+- `dev40.manifest.json` records that the current 40 cases are calibration data
+  and carries frozen full-case and `buggy.bpf.c` fingerprints for contamination
+  checks.
 - `clean60.manifest.json` is the heldout manifest. It must be frozen before the
   first clean run and must carry per-case source category, bucket, program type,
   independent review status, oracle obligations, and case hashes.
@@ -23,9 +25,12 @@ Each split also has a machine-readable manifest:
 `run_suite.py` treats an explicit empty `--split` as an error unless
 `--allow-empty-split` is passed, so an unadmitted clean split cannot silently
 fall back to all dev cases.
+Auditing `dev40.txt` directly also requires `dev40.manifest.json`, because the
+frozen fingerprints are part of the contamination baseline.
 `audit_splits.py --profile clean60` always compares against `dev40.txt` by case
-id, full case hash, and `buggy.bpf.c` hash; `--disallow-overlap` keeps that
-comparison explicit in documented commands.
+id, full case hash, and `buggy.bpf.c` hash. When a compared split has a sibling
+manifest, the recorded fingerprints are used as the contamination baseline;
+`--disallow-overlap` keeps that comparison explicit in documented commands.
 
 Run the gates:
 
