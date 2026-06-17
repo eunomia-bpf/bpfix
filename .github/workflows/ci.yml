@@ -27,6 +27,9 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y clang llvm libelf-dev pkg-config python3-yaml ripgrep zlib1g-dev
 
+      - name: Restore benchmark replay logs
+        run: bash scripts/restore-benchmark-logs.sh
+
       - name: Check formatting
         run: cargo fmt --all --check
 
@@ -81,6 +84,9 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y clang llvm libelf-dev pkg-config python3-yaml ripgrep zlib1g-dev
+
+      - name: Restore benchmark replay logs
+        run: bash scripts/restore-benchmark-logs.sh
 
       - name: Resolve crate publish state
         run: |
