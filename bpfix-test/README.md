@@ -9,7 +9,7 @@
 > log 时能否一次生成可工作的修复？把 raw log 换成 BPFix structured
 > diagnostic 后，成功率是否显著提高？
 
-当前目录先提供 5 个可运行的 pilot cases。最终 hard suite 的目标是：
+当前目录先提供 6 个可运行的 pilot cases。最终 hard suite 的目标是：
 
 - raw-log one-shot 修复成功率低于 30%；
 - structured-log one-shot 修复成功率接近 70%；
@@ -57,6 +57,7 @@ python3 bpfix-test/tools/refresh_case_artifacts.py
 | `ringbuf_stack_submit_001` | helper protocol | stack event cannot be submitted as `ringbuf_mem` |
 | `ringbuf_missing_null_check_001` | nullable helper result | reserve result must be checked before write/submit |
 | `ringbuf_ref_leak_001` | reference lifecycle | every reserved record path must submit or discard |
+| `map_value_branch_merge_001` | proof lifecycle / nullable map value | map-value null proof must survive branch merge before value read |
 
 ## 运行 LLM One-Shot
 
@@ -116,6 +117,7 @@ python3 bpfix-test/tools/run_suite.py \
 
 ```bash
 BPFTOOL="sudo bpftool" CLANG=clang PIN_RM="sudo rm -f" \
+PIN_MKDIR="sudo mkdir -p" PIN_RM_TREE="sudo rm -rf" \
   python3 bpfix-test/tools/run_suite.py --smoke
 ```
 
@@ -128,6 +130,8 @@ BPFTOOL="sudo bpftool" CLANG=clang PIN_RM="sudo rm -f" \
 - case 的 `bpftool prog run` 功能返回值全部匹配；
 - case 需要 helper/protocol side effect 时，oracle 还会检查 verifier success
   log 中的必要 helper contract proof，例如 ringbuf reserve/submit；
+- case 需要 map 初始状态时，oracle 会 pin map、写入测试值，并检查 successful
+  verifier log 中的 map-value proof；
 - runner 没有给模型提供 reference fix、ground truth label、oracle 源码以外的答案。
 
 详细实验设计见 [design.md](design.md)。当前 pilot 校准结果见

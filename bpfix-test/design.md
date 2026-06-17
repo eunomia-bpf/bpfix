@@ -1,7 +1,7 @@
 # BPFix-Test 设计：面向 LLM One-Shot eBPF 修复的挑战集
 
 最后更新：2026-06-17
-阶段：5-case pilot + 可运行 oracle
+阶段：6-case pilot + 可运行 oracle
 仓库路径：`bpfix-test/`
 
 ## 定位
@@ -106,7 +106,7 @@ proof-loss sites that are implicit or misleading in raw verifier logs.
 | Modern BPF protocol cases | 25 | dynptr、kfunc、ringbuf/ref lifecycle、iterator、rbtree、timer、sleepable/RCU/lock |
 | Environment/config boundary cases | 10 | helper/kfunc unavailable、wrong prog type、attach mismatch、missing BTF |
 
-当前 pilot 先覆盖 5 个方向：
+当前 pilot 先覆盖 6 个方向：
 
 - `alu32_pointer_cookie_001`：inline asm/ALU 操作破坏 packet pointer proof；
 - `xdp_adjust_head_stale_001`：`bpf_xdp_adjust_head()` invalidates old packet
@@ -116,11 +116,18 @@ proof-loss sites that are implicit or misleading in raw verifier logs.
 - `ringbuf_missing_null_check_001`：`bpf_ringbuf_reserve()` 的 nullable
   `ringbuf_mem_or_null` 未检查就写入；
 - `ringbuf_ref_leak_001`：reserve 后一个分支提前退出，导致 reference leak。
+- `map_value_branch_merge_001`：`bpf_map_lookup_elem()` 返回的 nullable map value
+  只在 UDP 分支里证明 non-null，branch merge 后再次读取 map value。
 
 ringbuf oracle 除了 `bpftool prog run` 返回值，还检查 successful verifier log
 中的 helper contract proof：reserve 后的 `ringbuf_mem_or_null`、写入的
 `ringbuf_mem(ref_obj_id=...)` 与 submit/discard 使用的是同一个 record。这样能防止
 删除 ringbuf 逻辑、空 submit、写 A submit B 这类“修复”误过。
+
+map-value oracle 会 pin map、写入测试配置，再用 `bpftool prog run` 检查返回值。
+它还会检查 successful verifier log：候选必须保留 map lookup，并在读取
+`drop_proto` 前让源寄存器成为 non-null `map_value`。这个检查基于 annotated trace
+里的寄存器状态，而不是某一种固定的 verifier 文本行布局。
 
 ## Experiment Matrix
 
@@ -198,13 +205,15 @@ paper 阶段：
 
 ## 当前 Pilot 校准
 
-2026-06-17 使用本地 llama.cpp + Qwen27B 跑通了 5-case pilot：
+2026-06-17 使用本地 llama.cpp + Qwen27B 跑通了 6-case pilot：
 
-- raw verifier log：4/5 pass；
-- BPFix structured JSON：4/5 pass。
+- raw verifier log：5/6 pass；
+- BPFix structured JSON：5/6 pass。
 
 这个结果证明 runner 和 oracle 能端到端工作，但也证明当前 pilot 远未达到 hard
-suite 难度目标：raw-log 成功率过高，structured 模式也没有稳定拉开差距。按照上面的
-失败解释，下一阶段必须继续增加组合型 hard cases，并改进 structured diagnostic
-对 proof-loss 修复约束的表达，直到 raw-log one-shot 低于 30%，才能把它作为论文
-benchmark 结果使用。
+suite 难度目标：raw-log 成功率过高，structured 模式也没有稳定拉开差距。新增
+map-value case 暴露并修复了一个 oracle 过窄问题：旧检查只接受 map-value 状态和
+load 出现在同一行 verifier 文本里的布局；现在改成跟踪 annotated trace 寄存器状态。
+按照上面的失败解释，下一阶段必须继续增加组合型 hard cases，并改进 structured
+diagnostic 对 proof-loss 修复约束的表达，直到 raw-log one-shot 低于 30%，才能把它
+作为论文 benchmark 结果使用。

@@ -18,25 +18,26 @@ Setup:
 - Runner: `bpfix-test/tools/run_suite.py`
 - Temperature: `0.0`
 - Max tokens: `4096`
-- Cases: 5
+- Cases: 6
 - Local run artifacts:
-  `/tmp/bpfix-test-qwen27b-pilot-final2/20260617T011538Z/raw/summary.json`
-  (`5d5d8d50700ac979df08c8d132f9d98e480502dcf45496c817e767970f12c331`) and
-  `/tmp/bpfix-test-qwen27b-pilot-final2/20260617T011613Z/structured/summary.json`
-  (`7f401aae77b42e06e9ff7933419dd528528343eeba40cd76b3163639a228e93d`)
+  `/tmp/bpfix-test-qwen27b-sixcase-fixed/20260617T013251Z/raw/summary.json`
+  (`b6eeb8e3c0c783774a19c6aaaf2d25d8dbb776cbb16594a3074f2ca1865302c1`) and
+  `/tmp/bpfix-test-qwen27b-sixcase/20260617T013201Z/structured/summary.json`
+  (`b4dba3c82bba288fd899f054e45f2f6db59ee350b1b2c7729bd2c1b6cd662d8b`)
 
 Results:
 
 | mode | passed | total | pass rate |
 | --- | ---: | ---: | ---: |
-| raw verifier log | 4 | 5 | 80% |
-| BPFix structured JSON | 4 | 5 | 80% |
+| raw verifier log | 5 | 6 | 83.3% |
+| BPFix structured JSON | 5 | 6 | 83.3% |
 
 Raw-mode per-case result:
 
 | case | result |
 | --- | --- |
 | `alu32_pointer_cookie_001` | fail: candidate preserved pointer-shift inline asm |
+| `map_value_branch_merge_001` | pass |
 | `ringbuf_missing_null_check_001` | pass |
 | `ringbuf_ref_leak_001` | pass |
 | `ringbuf_stack_submit_001` | pass |
@@ -47,6 +48,7 @@ Structured-mode per-case result:
 | case | result |
 | --- | --- |
 | `alu32_pointer_cookie_001` | fail: candidate preserved pointer-shift inline asm |
+| `map_value_branch_merge_001` | pass |
 | `ringbuf_missing_null_check_001` | pass |
 | `ringbuf_ref_leak_001` | pass |
 | `ringbuf_stack_submit_001` | pass |
@@ -56,17 +58,23 @@ Interpretation:
 
 - The harness works end to end: prompts are generated, Qwen27B responses are
   extracted, candidates are compiled, loaded, and checked by executable oracles.
-- The current 5-case pilot is too easy. Raw-log one-shot success is far above
+- The current 6-case pilot is too easy. Raw-log one-shot success is far above
   the intended hard-suite target of `<30%`.
 - The structured mode did not improve this pilot under the current Qwen27B
   `--reasoning off` run. That is useful negative evidence: the current
   structured diagnostic for the ALU32/provenance case is not yet repair-useful
   enough, and the pilot is still too small/easy to support a paper claim.
+- Adding `map_value_branch_merge_001` exposed an oracle bug: the first map-value
+  predicate accepted only one verifier text layout and rejected a correct
+  candidate where the non-null `map_value` proof appeared on the preceding
+  branch-state line. The predicate now tracks annotated-trace register state
+  before the load instruction.
 - The oracle was hardened after review with negative probes for fixed-offset
   packet parsing, stale scalar protocol reads, path-local ringbuf writes, and
   wrong ringbuf payload values. Those probes fail under the current tests; the
   ringbuf predicates also require offset `+0` writes into a 4-byte reserved
-  record, and the XDP adjust-head case requires helper delta `14`.
+  record, the map-value case requires a real map lookup and a non-null map-value
+  load, and the XDP adjust-head case requires helper delta `14`.
 
 Hardening gate:
 

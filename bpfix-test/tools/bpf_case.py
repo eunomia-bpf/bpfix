@@ -70,12 +70,14 @@ def compile_bpf(source: Path, obj: Path) -> CommandResult:
     return run(argv)
 
 
-def load_bpf(obj: Path, pin: Path, *, debug: bool = True) -> CommandResult:
+def load_bpf(obj: Path, pin: Path, *, debug: bool = True, pin_maps: Path | None = None) -> CommandResult:
     bpftool = split_tool("BPFTOOL", "sudo bpftool")
     argv = [*bpftool]
     if debug:
         argv.append("-d")
     argv.extend(["prog", "load", str(obj), str(pin), "type", "xdp"])
+    if pin_maps is not None:
+        argv.extend(["pinmaps", str(pin_maps)])
     return run(argv)
 
 
@@ -112,6 +114,38 @@ def run_pinned(pin: Path, data: bytes) -> tuple[int, CommandResult]:
 
 def cleanup_pin(pin: Path) -> None:
     run([*split_tool("PIN_RM", "sudo rm -f"), str(pin)], timeout=10)
+
+
+def cleanup_pin_tree(path: Path) -> None:
+    run([*split_tool("PIN_RM_TREE", "sudo rm -rf"), str(path)], timeout=10)
+
+
+def ensure_pin_tree(path: Path) -> CommandResult:
+    return run([*split_tool("PIN_MKDIR", "sudo mkdir -p"), str(path)], timeout=10)
+
+
+def hex_bytes(data: bytes) -> list[str]:
+    return [f"{byte:02x}" for byte in data]
+
+
+def update_pinned_map(map_dir: Path, map_name: str, key: bytes, value: bytes) -> CommandResult:
+    bpftool = split_tool("BPFTOOL", "sudo bpftool")
+    return run(
+        [
+            *bpftool,
+            "map",
+            "update",
+            "pinned",
+            str(map_dir / map_name),
+            "key",
+            "hex",
+            *hex_bytes(key),
+            "value",
+            "hex",
+            *hex_bytes(value),
+        ],
+        timeout=10,
+    )
 
 
 def pin_name_for(source: Path) -> str:
@@ -189,6 +223,13 @@ def ringbuf_refs_for_register(state: str, register: str, *, expected_size: int =
         for ref, size in re.findall(rf"\bR{register}(?:_w)?=ringbuf_mem\(ref_obj_id=(\d+),sz=(\d+)\)", state)
         if int(size) == expected_size
     )
+
+
+def map_value_register_updates(state: str) -> dict[str, bool]:
+    updates: dict[str, bool] = {}
+    for register, value in re.findall(r"\bR(\d+)(?:_w)?=([^\s;]+)", state):
+        updates[register] = value.startswith("map_value(")
+    return updates
 
 
 def scalar_values_for_register(state: str, register: str) -> set[int]:
@@ -277,6 +318,32 @@ def xdp_adjust_head_called_with_delta14(load_output: str) -> bool:
     return helper_calls_use_register_value(load_output, "call bpf_xdp_adjust_head#44", "2", 14)
 
 
+def loaded_map_value_u32_offset0(load_output: str) -> bool:
+    in_annotated_trace = False
+    map_value_registers: set[str] = set()
+    for line in load_output.splitlines():
+        if not line.strip():
+            map_value_registers = set()
+            continue
+        if line.startswith("0: R1="):
+            in_annotated_trace = True
+            map_value_registers = {
+                register for register, is_map_value in map_value_register_updates(line).items() if is_map_value
+            }
+            continue
+        if not in_annotated_trace:
+            continue
+        load = re.search(r"=\s*\*\(u32 \*\)\(r(\d+)\s*\+\s*0\)", line)
+        if load is not None and load.group(1) in map_value_registers:
+            return True
+        for register, is_map_value in map_value_register_updates(line).items():
+            if is_map_value:
+                map_value_registers.add(register)
+            else:
+                map_value_registers.discard(register)
+    return False
+
+
 def submitted_written_ringbuf_record(load_output: str) -> bool:
     return ringbuf_written_refs_before_helper(load_output, "call bpf_ringbuf_submit#132")
 
@@ -316,6 +383,7 @@ def run_case(
     functional_tests: list[tuple[str, Callable[[], bytes], int]],
     required_success_substrings: list[str] | None = None,
     required_success_predicates: list[tuple[str, Callable[[str], bool]]] | None = None,
+    map_updates: list[tuple[str, bytes, bytes]] | None = None,
 ) -> int:
     args = parse_args(argv)
     work_dir_obj: tempfile.TemporaryDirectory[str] | None = None
@@ -329,12 +397,14 @@ def run_case(
     source = args.source.resolve()
     obj = work_dir / "prog.o"
     pin = Path("/sys/fs/bpf") / pin_name_for(source)
+    map_pin_dir = Path("/sys/fs/bpf") / f"{pin.name}_maps" if map_updates else None
 
     report: dict[str, object] = {
         "source": str(source),
         "expect_reject": args.expect_reject,
         "compile": None,
         "load": None,
+        "map_setup": [],
         "functional": [],
         "success_log_checks": [],
         "passed": False,
@@ -347,7 +417,14 @@ def run_case(
             print(json.dumps(report, indent=2, sort_keys=True))
             return 1
 
-        load_result = load_bpf(obj, pin)
+        if map_pin_dir is not None:
+            mkdir_result = ensure_pin_tree(map_pin_dir)
+            report["map_setup"] = [mkdir_result.to_json()]
+            if mkdir_result.returncode != 0:
+                print(json.dumps(report, indent=2, sort_keys=True))
+                return 1
+
+        load_result = load_bpf(obj, pin, pin_maps=map_pin_dir)
         report["load"] = load_result.to_json()
         if args.save_log is not None:
             args.save_log.write_text(
@@ -367,6 +444,16 @@ def run_case(
         if load_result.returncode != 0:
             print(json.dumps(report, indent=2, sort_keys=True))
             return 1
+
+        if map_pin_dir is not None:
+            setup_results = report["map_setup"]
+            assert isinstance(setup_results, list)
+            for map_name, key, value in map_updates or []:
+                update_result = update_pinned_map(map_pin_dir, map_name, key, value)
+                setup_results.append(update_result.to_json())
+                if update_result.returncode != 0:
+                    print(json.dumps(report, indent=2, sort_keys=True))
+                    return 1
 
         required = required_success_substrings or []
         predicates = required_success_predicates or []
@@ -397,6 +484,8 @@ def run_case(
         return 0 if ok else 1
     finally:
         cleanup_pin(pin)
+        if map_pin_dir is not None:
+            cleanup_pin_tree(map_pin_dir)
         if work_dir_obj is not None:
             work_dir_obj.cleanup()
 

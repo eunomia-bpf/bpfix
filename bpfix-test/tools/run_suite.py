@@ -295,7 +295,8 @@ def main(argv: list[str] | None = None) -> int:
     if args.candidate is not None and len(cases) != 1:
         raise SystemExit("--candidate requires exactly one --case")
 
-    stamp = dt.datetime.now(dt.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    stamp = dt.datetime.now(dt.timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
+    stamp = f"{stamp}-pid{os.getpid()}"
     run_dir = args.results_dir / stamp / args.mode
     run_dir.mkdir(parents=True, exist_ok=True)
     metadata = run_metadata(args, root)
