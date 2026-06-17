@@ -1,0 +1,121 @@
+libbpf: loading object from <work-dir>/prog.o
+libbpf: elf: section(3) xdp, size 208, link 0, flags 6, type=1
+libbpf: sec 'xdp': found program 'map_value_signed_index' at insn offset 0 (0 bytes), code size 26 insns (208 bytes)
+libbpf: elf: section(4) .relxdp, size 16, link 26, flags 40, type=9
+libbpf: elf: section(5) .maps, size 32, link 0, flags 3, type=1
+libbpf: elf: section(6) license, size 4, link 0, flags 3, type=1
+libbpf: license of <work-dir>/prog.o is GPL
+libbpf: elf: section(16) .BTF, size 1392, link 0, flags 0, type=1
+libbpf: elf: section(18) .BTF.ext, size 300, link 0, flags 0, type=1
+libbpf: elf: section(26) .symtab, size 360, link 1, flags 0, type=2
+libbpf: looking for externs among 15 symbols...
+libbpf: collected 0 externs total
+libbpf: map 'configs': at sec_idx 5, offset 0.
+libbpf: map 'configs': found type = 2.
+libbpf: map 'configs': found key [8], sz = 4.
+libbpf: map 'configs': found value [11], sz = 8.
+libbpf: map 'configs': found max_entries = 1.
+libbpf: sec '.relxdp': collecting relocation for section(3) 'xdp'
+libbpf: sec '.relxdp': relo #0: insn #14 against 'configs'
+libbpf: prog 'map_value_signed_index': found map 0 (configs, sec 5, off 0) for insn #14
+libbpf: object 'prog': failed (-95) to create BPF token from '/sys/fs/bpf', skipping optional step...
+libbpf: loaded kernel BTF from '/sys/kernel/btf/vmlinux'
+libbpf: sec 'xdp': found 3 CO-RE relocations
+libbpf: CO-RE relocating [16] struct xdp_md: found target candidate [14922] struct xdp_md in [vmlinux]
+libbpf: prog 'map_value_signed_index': relo #0: <byte_off> [16] struct xdp_md.data_end (0:1 @ offset 4)
+libbpf: prog 'map_value_signed_index': relo #0: matching candidate #0 <byte_off> [14922] struct xdp_md.data_end (0:1 @ offset 4)
+libbpf: prog 'map_value_signed_index': relo #0: patched insn #0 (LDX/ST/STX) off 4 -> 4
+libbpf: prog 'map_value_signed_index': relo #1: <byte_off> [16] struct xdp_md.data (0:0 @ offset 0)
+libbpf: prog 'map_value_signed_index': relo #1: matching candidate #0 <byte_off> [14922] struct xdp_md.data (0:0 @ offset 0)
+libbpf: prog 'map_value_signed_index': relo #1: patched insn #1 (LDX/ST/STX) off 0 -> 0
+libbpf: CO-RE relocating [19] struct ethhdr: found target candidate [23410] struct ethhdr in [vmlinux]
+libbpf: prog 'map_value_signed_index': relo #2: <byte_off> [19] struct ethhdr.h_dest[5] (0:0:5 @ offset 5)
+libbpf: prog 'map_value_signed_index': relo #2: matching candidate #0 <byte_off> [23410] struct ethhdr.h_dest[5] (0:0:5 @ offset 5)
+libbpf: prog 'map_value_signed_index': relo #2: patched insn #8 (LDX/ST/STX) off 5 -> 5
+libbpf: map 'configs': created successfully, fd=0
+libbpf: prog 'map_value_signed_index': BPF program load failed: -EINVAL
+libbpf: prog 'map_value_signed_index': -- BEGIN PROG LOAD LOG --
+func#0 @0
+Live regs before insn:
+  0: .1........ (61) r2 = *(u32 *)(r1 +4)
+  1: .12....... (61) r1 = *(u32 *)(r1 +0)
+  2: .12....... (b7) r3 = 0
+  3: .123...... (63) *(u32 *)(r10 -4) = r3
+  4: .12....... (b7) r0 = 2
+  5: 012....... (bf) r3 = r1
+  6: 0123...... (07) r3 += 14
+  7: 0123...... (2d) if r3 > r2 goto pc+17
+  8: 01........ (71) r6 = *(u8 *)(r1 +5)
+  9: 0.....6... (67) r6 <<= 56
+ 10: 0.....6... (c7) r6 s>>= 56
+ 11: 0.....6... (65) if r6 s> 0x1 goto pc+13
+ 12: ......6... (bf) r2 = r10
+ 13: ..2...6... (07) r2 += -4
+ 14: ..2...6... (18) r1 = 0xffff000000000000
+ 16: .12...6... (85) call bpf_map_lookup_elem#1
+ 17: 0.....6... (bf) r1 = r0
+ 18: .1....6... (b7) r0 = 2
+ 19: 01....6... (15) if r1 == 0x0 goto pc+5
+ 20: 01....6... (67) r6 <<= 2
+ 21: 01....6... (0f) r1 += r6
+ 22: 01........ (61) r1 = *(u32 *)(r1 +0)
+ 23: 01........ (15) if r1 == 0x0 goto pc+1
+ 24: .......... (b7) r0 = 1
+ 25: 0......... (95) exit
+0: R1=ctx() R10=fp0
+; void *data_end = (void *)(long)ctx->data_end; @ buggy.bpf.c:30
+0: (61) r2 = *(u32 *)(r1 +4)          ; R1=ctx() R2_w=pkt_end()
+; void *data = (void *)(long)ctx->data; @ buggy.bpf.c:29
+1: (61) r1 = *(u32 *)(r1 +0)          ; R1_w=pkt(r=0)
+2: (b7) r3 = 0                        ; R3_w=0
+; __u32 key = 0; @ buggy.bpf.c:34
+3: (63) *(u32 *)(r10 -4) = r3
+mark_precise: frame0: last_idx 3 first_idx 0 subseq_idx -1 
+mark_precise: frame0: regs=r3 stack= before 2: (b7) r3 = 0
+4: R3_w=0 R10=fp0 fp-8=0000????
+4: (b7) r0 = 2                        ; R0_w=2
+; if ((void *)(eth + 1) > data_end) @ buggy.bpf.c:36
+5: (bf) r3 = r1                       ; R1_w=pkt(r=0) R3_w=pkt(r=0)
+6: (07) r3 += 14                      ; R3_w=pkt(off=14,r=0)
+7: (2d) if r3 > r2 goto pc+17         ; R2_w=pkt_end() R3_w=pkt(off=14,r=14)
+; idx = (__s8)eth->h_dest[5]; @ buggy.bpf.c:39
+8: (71) r6 = *(u8 *)(r1 +5)           ; R1_w=pkt(r=14) R6_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+9: (67) r6 <<= 56                     ; R6_w=scalar(smax=0x7f00000000000000,umax=0xff00000000000000,smin32=0,smax32=umax32=0,var_off=(0x0; 0xff00000000000000))
+10: (c7) r6 s>>= 56                   ; R6_w=scalar(smin=smin32=-128,smax=smax32=127)
+; if (idx >= 2) @ buggy.bpf.c:40
+11: (65) if r6 s> 0x1 goto pc+13      ; R6_w=scalar(smin=smin32=-128,smax=smax32=1)
+12: (bf) r2 = r10                     ; R2_w=fp0 R10=fp0
+; cfg = bpf_map_lookup_elem(&configs, &key); @ buggy.bpf.c:43
+13: (07) r2 += -4                     ; R2_w=fp-4
+14: (18) r1 = 0xffff000000000000      ; R1_w=map_ptr(map=configs,ks=4,vs=8)
+16: (85) call bpf_map_lookup_elem#1   ; R0=map_value(map=configs,ks=4,vs=8)
+17: (bf) r1 = r0                      ; R0=map_value(map=configs,ks=4,vs=8) R1_w=map_value(map=configs,ks=4,vs=8)
+18: (b7) r0 = 2                       ; R0_w=2
+; if (!cfg) @ buggy.bpf.c:44
+19: (15) if r1 == 0x0 goto pc+5       ; R1_w=map_value(map=configs,ks=4,vs=8)
+; return cfg->slots[idx] ? XDP_DROP : XDP_PASS; @ buggy.bpf.c:47
+20: (67) r6 <<= 2                     ; R6_w=scalar(smax=0x7ffffffffffffffc,umax=0xffff000000000000,smax32=0x7ffffffc,umax32=0xffff000000000000,var_off=(0x0; 0xffff000000000000))
+21: (0f) r1 += r6
+mark_precise: frame0: last_idx 21 first_idx 17 subseq_idx -1 
+mark_precise: frame0: regs=r6 stack= before 20: (67) r6 <<= 2
+mark_precise: frame0: regs=r6 stack= before 19: (15) if r1 == 0x0 goto pc+5
+mark_precise: frame0: regs=r6 stack= before 18: (b7) r0 = 2
+mark_precise: frame0: regs=r6 stack= before 17: (bf) r1 = r0
+mark_precise: frame0: parent state regs=r6 stack=:  R0_rw=map_value(map=configs,ks=4,vs=8) R6_rw=Pscalar(smin=smin32=-128,smax=smax32=1) R10=fp0 fp-8=0000????
+mark_precise: frame0: last_idx 16 first_idx 0 subseq_idx 17 
+mark_precise: frame0: regs=r6 stack= before 16: (85) call bpf_map_lookup_elem#1
+mark_precise: frame0: regs=r6 stack= before 14: (18) r1 = 0xffff000000000000
+mark_precise: frame0: regs=r6 stack= before 13: (07) r2 += -4
+mark_precise: frame0: regs=r6 stack= before 12: (bf) r2 = r10
+mark_precise: frame0: regs=r6 stack= before 11: (65) if r6 s> 0x1 goto pc+13
+mark_precise: frame0: regs=r6 stack= before 10: (c7) r6 s>>= 56
+mark_precise: frame0: regs=r6 stack= before 9: (67) r6 <<= 56
+mark_precise: frame0: regs=r6 stack= before 8: (71) r6 = *(u8 *)(r1 +5)
+math between map_value pointer and register with unbounded min value is not allowed
+verification time 0 usec
+stack depth 8
+processed 21 insns (limit 1000000) max_states_per_insn 0 total_states 1 peak_states 1 mark_read 1
+-- END PROG LOAD LOG --
+libbpf: prog 'map_value_signed_index': failed to load: -EINVAL
+libbpf: failed to load object '<work-dir>/prog.o'
+Error: failed to load object file

@@ -1,0 +1,71 @@
+{
+  "diagnostic_version": "bpfix.diagnostic/v3",
+  "error_id": "BPFIX-E005",
+  "failure_class": "source_bug",
+  "confidence": "medium",
+  "diagnostic_kind": "supported",
+  "help_safety": "repair_hint",
+  "next_action": "bounds",
+  "span_confidence": "exact_pc",
+  "message": "scalar range at the rejected use is still verifier-unsafe: math between map_value pointer and register with unbounded min value is not allowed",
+  "required_proof": "prove R6 has a bounded non-negative scalar range before this pointer arithmetic or helper memory access; verifier sees scalar(smax=9223372036854775804,umax=18446462598732840960)",
+  "source_span": {
+    "path": "buggy.bpf.c",
+    "line_start": 47,
+    "line_end": 47,
+    "instruction_pc": 21,
+    "source_text": "return cfg->slots[idx] ? XDP_DROP : XDP_PASS;"
+  },
+  "related_spans": [
+    {
+      "path": "buggy.bpf.c",
+      "line_start": 40,
+      "line_end": 40,
+      "instruction_pc": 11,
+      "source_text": "if (idx >= 2)",
+      "label": "nearby source context for scalar range"
+    },
+    {
+      "path": "buggy.bpf.c",
+      "line_start": 47,
+      "line_end": 47,
+      "instruction_pc": 20,
+      "source_text": "return cfg->slots[idx] ? XDP_DROP : XDP_PASS;",
+      "label": "verifier still sees R6 as scalar(smax=9223372036854775804,umax=18446462598732840960), so the required scalar or map-value bound is not available at the use"
+    }
+  ],
+  "evidence": [
+    {
+      "kind": "terminal_verifier_error",
+      "detail": "math between map_value pointer and register with unbounded min value is not allowed",
+      "line": 77
+    },
+    {
+      "kind": "instruction_pc",
+      "detail": "nearest verifier instruction pc 21",
+      "line": 77
+    },
+    {
+      "kind": "verifier_trace",
+      "detail": "parsed 18 per-instruction verifier state snapshots",
+      "line": null
+    },
+    {
+      "kind": "verifier_state_signal",
+      "detail": "verifier state shows the rejected scalar or pointer-offset register still has an unsafe range at the use",
+      "line": 77
+    }
+  ],
+  "help": [
+    "Clamp or branch-check the exact scalar used by this helper, pointer arithmetic, stack access, or map-value access immediately before the rejected operation."
+  ],
+  "metadata": {
+    "case_id": null,
+    "input_kind": "verifier-log-region",
+    "object_path": null,
+    "object_programs": [],
+    "object_analysis_error": null,
+    "trace_state_count": 18,
+    "analysis_error": null
+  }
+}
