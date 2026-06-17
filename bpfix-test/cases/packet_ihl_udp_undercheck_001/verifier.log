@@ -1,0 +1,111 @@
+libbpf: loading object from <work-dir>/prog.o
+libbpf: elf: section(3) xdp, size 208, link 0, flags 6, type=1
+libbpf: sec 'xdp': found program 'packet_ihl_udp_undercheck' at insn offset 0 (0 bytes), code size 26 insns (208 bytes)
+libbpf: elf: section(4) license, size 4, link 0, flags 3, type=1
+libbpf: license of <work-dir>/prog.o is GPL
+libbpf: elf: section(14) .BTF, size 1649, link 0, flags 0, type=1
+libbpf: elf: section(16) .BTF.ext, size 444, link 0, flags 0, type=1
+libbpf: elf: section(24) .symtab, size 336, link 1, flags 0, type=2
+libbpf: looking for externs among 14 symbols...
+libbpf: collected 0 externs total
+libbpf: object 'prog': failed (-95) to create BPF token from '/sys/fs/bpf', skipping optional step...
+libbpf: loaded kernel BTF from '/sys/kernel/btf/vmlinux'
+libbpf: sec 'xdp': found 5 CO-RE relocations
+libbpf: CO-RE relocating [2] struct xdp_md: found target candidate [14922] struct xdp_md in [vmlinux]
+libbpf: prog 'packet_ihl_udp_undercheck': relo #0: <byte_off> [2] struct xdp_md.data_end (0:1 @ offset 4)
+libbpf: prog 'packet_ihl_udp_undercheck': relo #0: matching candidate #0 <byte_off> [14922] struct xdp_md.data_end (0:1 @ offset 4)
+libbpf: prog 'packet_ihl_udp_undercheck': relo #0: patched insn #1 (LDX/ST/STX) off 4 -> 4
+libbpf: prog 'packet_ihl_udp_undercheck': relo #1: <byte_off> [2] struct xdp_md.data (0:0 @ offset 0)
+libbpf: prog 'packet_ihl_udp_undercheck': relo #1: matching candidate #0 <byte_off> [14922] struct xdp_md.data (0:0 @ offset 0)
+libbpf: prog 'packet_ihl_udp_undercheck': relo #1: patched insn #2 (LDX/ST/STX) off 0 -> 0
+libbpf: CO-RE relocating [8] struct ethhdr: found target candidate [23410] struct ethhdr in [vmlinux]
+libbpf: prog 'packet_ihl_udp_undercheck': relo #2: <byte_off> [8] struct ethhdr.h_proto (0:2 @ offset 12)
+libbpf: prog 'packet_ihl_udp_undercheck': relo #2: matching candidate #0 <byte_off> [23410] struct ethhdr.h_proto (0:2 @ offset 12)
+libbpf: prog 'packet_ihl_udp_undercheck': relo #2: patched insn #6 (LDX/ST/STX) off 12 -> 12
+libbpf: CO-RE relocating [15] struct iphdr: found target candidate [23765] struct iphdr in [vmlinux]
+libbpf: prog 'packet_ihl_udp_undercheck': relo #3: <byte_off> [15] struct iphdr.protocol (0:7 @ offset 9)
+libbpf: prog 'packet_ihl_udp_undercheck': relo #3: matching candidate #0 <byte_off> [23765] struct iphdr.protocol (0:7 @ offset 9)
+libbpf: prog 'packet_ihl_udp_undercheck': relo #3: patched insn #10 (LDX/ST/STX) off 9 -> 9
+libbpf: prog 'packet_ihl_udp_undercheck': relo #4: <byte_off> [15] struct iphdr.ihl (0:0 @ offset 0)
+libbpf: prog 'packet_ihl_udp_undercheck': relo #4: matching candidate #0 <byte_off> [23765] struct iphdr.ihl (0:0 @ offset 0)
+libbpf: prog 'packet_ihl_udp_undercheck': relo #4: patched insn #12 (LDX/ST/STX) off 0 -> 0
+libbpf: prog 'packet_ihl_udp_undercheck': BPF program load failed: -EACCES
+libbpf: prog 'packet_ihl_udp_undercheck': -- BEGIN PROG LOAD LOG --
+func#0 @0
+Live regs before insn:
+  0: .1........ (b7) r0 = 2
+  1: 01........ (61) r2 = *(u32 *)(r1 +4)
+  2: 012....... (61) r3 = *(u32 *)(r1 +0)
+  3: 0.23...... (bf) r1 = r3
+  4: 0123...... (07) r1 += 14
+  5: 0123...... (2d) if r1 > r2 goto pc+19
+  6: 0123...... (69) r4 = *(u16 *)(r3 +12)
+  7: 01234..... (55) if r4 != 0x8 goto pc+17
+  8: 0123...... (07) r3 += 34
+  9: 0123...... (2d) if r3 > r2 goto pc+15
+ 10: 012....... (71) r3 = *(u8 *)(r1 +9)
+ 11: 0123...... (55) if r3 != 0x11 goto pc+13
+ 12: 012....... (71) r3 = *(u8 *)(r1 +0)
+ 13: 0123...... (67) r3 <<= 2
+ 14: 0123...... (57) r3 &= 60
+ 15: 0123...... (b7) r4 = 20
+ 16: 01234..... (2d) if r4 > r3 goto pc+8
+ 17: 0123...... (0f) r1 += r3
+ 18: 012....... (bf) r3 = r1
+ 19: 0123...... (07) r3 += 3
+ 20: 0123...... (2d) if r3 > r2 goto pc+4
+ 21: .1........ (69) r1 = *(u16 *)(r1 +2)
+ 22: .1........ (b7) r0 = 1
+ 23: 01........ (15) if r1 == 0x3500 goto pc+1
+ 24: .......... (b7) r0 = 2
+ 25: 0......... (95) exit
+0: R1=ctx() R10=fp0
+; int packet_ihl_udp_undercheck(struct xdp_md *ctx) @ buggy.bpf.c:20
+0: (b7) r0 = 2                        ; R0_w=2
+; void *data_end = (void *)(long)ctx->data_end; @ buggy.bpf.c:23
+1: (61) r2 = *(u32 *)(r1 +4)          ; R1=ctx() R2_w=pkt_end()
+; void *data = (void *)(long)ctx->data; @ buggy.bpf.c:22
+2: (61) r3 = *(u32 *)(r1 +0)          ; R1=ctx() R3_w=pkt(r=0)
+; if ((void *)(eth + 1) > data_end) @ buggy.bpf.c:30
+3: (bf) r1 = r3                       ; R1_w=pkt(r=0) R3_w=pkt(r=0)
+4: (07) r1 += 14                      ; R1_w=pkt(off=14,r=0)
+5: (2d) if r1 > r2 goto pc+19         ; R1_w=pkt(off=14,r=14) R2_w=pkt_end()
+; if (bpf_ntohs(eth->h_proto) != ETH_P_IP) @ buggy.bpf.c:32
+6: (69) r4 = *(u16 *)(r3 +12)         ; R3_w=pkt(r=14) R4_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=0xffff,var_off=(0x0; 0xffff))
+7: (55) if r4 != 0x8 goto pc+17       ; R4_w=8
+8: (07) r3 += 34                      ; R3=pkt(off=34,r=14)
+9: (2d) if r3 > r2 goto pc+15         ; R2=pkt_end() R3=pkt(off=34,r=34)
+; if (iph->protocol != IPPROTO_UDP) @ buggy.bpf.c:38
+10: (71) r3 = *(u8 *)(r1 +9)          ; R1=pkt(off=14,r=34) R3_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+11: (55) if r3 != 0x11 goto pc+13     ; R3_w=17
+; ihl = iph->ihl * 4; @ buggy.bpf.c:41
+12: (71) r3 = *(u8 *)(r1 +0)          ; R1=pkt(off=14,r=34) R3_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+13: (67) r3 <<= 2                     ; R3_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=1020,var_off=(0x0; 0x3fc))
+14: (57) r3 &= 60                     ; R3_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c))
+15: (b7) r4 = 20                      ; R4_w=20
+; if (ihl < sizeof(*iph) || ihl > 60) @ buggy.bpf.c:42
+16: (2d) if r4 > r3 goto pc+8         ; R3_w=scalar(smin=umin=smin32=umin32=20,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c)) R4_w=20
+; udp = data + sizeof(*eth) + ihl; @ buggy.bpf.c:45
+17: (0f) r1 += r3
+mark_precise: frame0: last_idx 17 first_idx 9 subseq_idx -1 
+mark_precise: frame0: regs=r3 stack= before 16: (2d) if r4 > r3 goto pc+8
+mark_precise: frame0: regs=r3,r4 stack= before 15: (b7) r4 = 20
+mark_precise: frame0: regs=r3 stack= before 14: (57) r3 &= 60
+mark_precise: frame0: regs=r3 stack= before 13: (67) r3 <<= 2
+mark_precise: frame0: regs=r3 stack= before 12: (71) r3 = *(u8 *)(r1 +0)
+18: R1_w=pkt(id=1,off=14,r=0,smin=umin=smin32=umin32=20,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c)) R3_w=scalar(smin=umin=smin32=umin32=20,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c))
+; if (udp + 3 > data_end) @ buggy.bpf.c:46
+18: (bf) r3 = r1                      ; R1_w=pkt(id=1,off=14,r=0,smin=umin=smin32=umin32=20,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c)) R3_w=pkt(id=1,off=14,r=0,smin=umin=smin32=umin32=20,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c))
+19: (07) r3 += 3                      ; R3=pkt(id=1,off=17,r=0,smin=umin=smin32=umin32=20,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c))
+20: (2d) if r3 > r2 goto pc+4         ; R2=pkt_end() R3=pkt(id=1,off=17,r=17,smin=umin=smin32=umin32=20,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c))
+; dport = *(__u16 *)(udp + 2); @ buggy.bpf.c:49
+21: (69) r1 = *(u16 *)(r1 +2)
+invalid access to packet, off=16 size=2, R1(id=1,off=16,r=17)
+R1 offset is outside of the packet
+verification time 0 usec
+stack depth 0
+processed 22 insns (limit 1000000) max_states_per_insn 0 total_states 2 peak_states 2 mark_read 1
+-- END PROG LOAD LOG --
+libbpf: prog 'packet_ihl_udp_undercheck': failed to load: -EACCES
+libbpf: failed to load object '<work-dir>/prog.o'
+Error: failed to load object file
