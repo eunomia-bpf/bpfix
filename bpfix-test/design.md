@@ -1,7 +1,7 @@
 # BPFix-Test 设计：面向 LLM One-Shot eBPF 修复的挑战集
 
 最后更新：2026-06-17
-阶段：18-case admitted pilot + 40-case milestone in progress
+阶段：40-case admitted milestone; 40-case LLM full-suite pending
 仓库路径：`bpfix-test/`
 
 ## 定位
@@ -31,10 +31,10 @@ proof-loss sites that are implicit or misleading in raw verifier logs.
 
 | ID | Claim | Scope | Metric/evidence | Status |
 | --- | --- | --- | --- | --- |
-| C1 | Raw verifier logs are insufficient for hard one-shot eBPF repair. | Current 18-case admitted pilot; paper target remains 100 cases. | Qwen27B raw-log one-shot pass rate below 30%. | pilot observed: 5/18 = 27.8% |
-| C2 | BPFix structured diagnostics improve repair success. | Same cases, same model, same prompt budget. | Structured-log pass rate near 70% and absolute gain over raw. | pilot observed: 18/18 = 100.0% |
-| C3 | The benchmark measures working repairs, not label agreement. | All admitted cases. | Compile + verifier load + functional `bpftool prog run` oracle. | pilot implemented |
-| C4 | The suite is hard for source-only pattern matching. | Case construction. | Cases combine hidden proof loss, helper protocol, branch/source correlation, or modern BPF API contracts. | planned |
+| C1 | Raw verifier logs are insufficient for hard one-shot eBPF repair. | 18-case pilot observed; 40-case run pending; paper target remains 100 cases. | Qwen27B raw-log one-shot pass rate below 30%. | pilot observed: 5/18 = 27.8%; 40-case pending |
+| C2 | BPFix structured diagnostics improve repair success. | Same cases, same model, same prompt budget. | Structured-log pass rate near 70% and absolute gain over raw. | pilot observed: 18/18 = 100.0%; 40-case pending |
+| C3 | The benchmark measures working repairs, not label agreement. | All admitted cases. | Compile + verifier load + functional `bpftool prog run` oracle. | implemented for 40/40 |
+| C4 | The suite is hard for source-only pattern matching. | Case construction. | Cases combine hidden proof loss, helper protocol, branch/source correlation, or modern BPF API contracts. | 40-case corpus admitted; LLM difficulty pending |
 
 ## 和 `bpfix-bench` 的区别
 
@@ -97,9 +97,9 @@ proof-loss sites that are implicit or misleading in raw verifier logs.
 
 ## 能力 Bucket
 
-最终 hard suite 目标 100 个 case。当前工程 milestone 是先把可运行 admitted corpus
+最终 hard suite 目标 100 个 case。当前工程 milestone 已经把可运行 admitted corpus
 从 18 个扩到 40 个，并用更均衡的 failure mechanism 降低现有 pointer-cookie/lowering
-集中度。40-case 的具体 admission gate、bucket 配额和 planned case list 见
+集中度。40-case 的具体 admission gate、实际 admitted list 和 excluded seeds 见
 [40-case-plan.md](40-case-plan.md)。
 
 最终 100-case hard suite 配额：
@@ -111,7 +111,11 @@ proof-loss sites that are implicit or misleading in raw verifier logs.
 | Modern BPF protocol cases | 25 | dynptr、kfunc、ringbuf/ref lifecycle、iterator、rbtree、timer、sleepable/RCU/lock |
 | Environment/config boundary cases | 10 | helper/kfunc unavailable、wrong prog type、attach mismatch、missing BTF |
 
-当前 admitted pilot 先覆盖 18 个方向：
+当前 40-case corpus 由原始 18-case pilot 加 22 个新增 case 组成。本节只保留
+原始 18-case pilot 的详细说明；新增 22 个的实际列表和分类分布见
+[40-case-plan.md](40-case-plan.md)。
+
+原始 18-case pilot 覆盖：
 
 - `alu32_pointer_cookie_001`：inline asm/ALU 操作破坏 packet pointer proof；
 - `xdp_adjust_head_stale_001`：`bpf_xdp_adjust_head()` invalidates old packet
@@ -242,7 +246,7 @@ paper 阶段：
 
 这些结果都应保留，不能只筛选 structured 成功的 case。
 
-## 当前 Pilot 校准
+## 当前校准状态
 
 2026-06-17 使用本地 llama.cpp + Qwen27B 跑通了 18-case admitted pilot 的同配置
 full-suite run：
@@ -270,69 +274,39 @@ full-suite run：
 - 还没有 trimmed raw-log baseline、source-only/code-only baseline、跨模型重复 run、
   或独立 reviewer 审核所有 oracle。
 
-本轮还修复了一个 corpus/oracle false negative：
-`ringbuf_branch_cookie_001` 的旧 success predicate 要求 verifier success log 在同一
-store path 中显式打印 `mark=7` 和 `mark=11` 两个分支常量。实际 verifier 会把 UDP
-分支后续路径折叠成 `safe`。新 oracle 改为检查 `mark=7` 分支到达
-`bpf_ringbuf_reserve()`，同时保留 `mark=11` 写入并提交 record 的可观察证据，避免把
-有效修复误判为失败。
-按照上面的失败解释，下一阶段必须继续增加组合型 hard cases，扩展到 100 个 admitted
-cases，并补齐 trimmed raw-log、source-only/code-only、跨模型重复 run 和独立 oracle
-review，才能把它作为论文 benchmark 结果使用。
+## 40-Case Milestone 状态
 
-同日新增 4 个更难的组合 case 后，用同一模型/config 在 tightened oracle 上重跑：
+2026-06-17 已经达到 40/40 admitted cases。当前验证结果：
 
-- raw verifier log：0/4 pass；
-- BPFix structured JSON：3/4 pass。
+- `python3 bpfix-test/tools/audit_cases.py`：40/40 pass；
+- `python3 bpfix-test/tools/audit_cases.py --smoke`：40/40 pass；
+- 40 个 case 都包含源码、raw verifier log、BPFix structured JSON 和可执行
+  `test.py` oracle；
+- 所有 `structured.json` 都是 supported diagnostic，没有 `unknown`。
 
-新增 case 主要覆盖两个 raw-log 弱点：一是 raw 模型会把 prohibited pointer shift
-改成另一个 bitwise mask，仍然破坏 verifier pointer provenance；二是
-`bpf_xdp_adjust_head()` 后即使 verifier load 通过，也容易按旧 L2 packet layout
-解析，导致功能 oracle 失败。tightened oracle 还暴露了一个 structured-mode
-残余失败：`ringbuf_branch_cookie_001` 的候选修复了 verifier reject，但只保留
-一个 submitted ringbuf mark，丢掉了 UDP/TCP branch-derived mark 的区分。为支持这些
-case，BPFix 诊断也做了两点工程修正：
+当前 40-case corpus 的 structured diagnostic 分布：
 
-- stale packet pointer signal 现在能从 verifier state 中识别“helper 前是 packet
-  pointer、helper 后同一寄存器变 scalar、期间没有显式重写”的 proof loss；
-- pointer-shift lowering help 明确指出不要把 verifier pointer 通过 `__u64/long`
-  cookie 位移或 mask 后再 cast 回来，应该删除 cookie/shadow round trip 并使用原始
-  checked pointer。
+| error_id | failure_class | next_action | count |
+| --- | --- | --- | ---: |
+| `BPFIX-E001` | source_bug | bounds | 4 |
+| `BPFIX-E002` | source_bug | null | 5 |
+| `BPFIX-E003` | source_bug | bounds | 1 |
+| `BPFIX-E003` | source_bug | initialize | 1 |
+| `BPFIX-E004` | source_bug | release | 2 |
+| `BPFIX-E005` | source_bug | bounds | 3 |
+| `BPFIX-E006` | lowering_artifact | provenance | 11 |
+| `BPFIX-E008` | source_bug | protocol | 5 |
+| `BPFIX-E010` | source_bug | protocol | 1 |
+| `BPFIX-E011` | source_bug | provenance | 5 |
+| `BPFIX-E012` | source_bug | protocol | 2 |
 
-合并当时 13 个 pilot cases 后：
+还没有完成的部分是 40-case LLM full-suite：
 
-- raw verifier log：5/13 pass，38.5%；
-- BPFix structured JSON：12/13 pass，92.3%。
+- raw verifier log 模式需要重新跑 40/40；
+- BPFix structured JSON 模式需要用同一模型、同一 token budget、同一温度跑 40/40；
+- 需要补 trimmed raw-log baseline，避免把 structured 的收益完全归因于日志压缩；
+- 需要跨模型重复，例如 Qwen27B、Llama-family、DeepSeek-family；
+- 需要独立 reviewer 审核每个 oracle 是否覆盖了真实功能语义。
 
-当时仍然不能声称已达到 hard-suite 目标，因为 raw 38.5% 还高于 `<30%`。但新增 4 个
-case 说明构造“raw 难、structured 多数可修”的组合场景是可行的，下一步至少还需要再
-加入 4 个 raw-failing admitted cases 才可能把当前模型/config 下的 raw pass rate
-压到 30% 以下。
-
-随后继续校准时发现 3 个候选 case 被 raw Qwen27B 直接修好：
-
-- `dynptr_slice_cookie_001`；
-- `map_value_two_lookup_cookie_001`；
-- `ringbuf_map_cookie_001`。
-
-这些 case 不作为当前 hard-mode admitted corpus 计数。如果未来重新引入，它们只能
-作为种子，并且必须增加额外、非同构的 proof obligation 后才能重新 admitted。为避免把容易样本或
-按单一模型筛选出的样本包装成泛化结论，pilot 文档把这类剔除显式记录为 calibration
-exclusions。
-
-同日新增并 admitted 5 个组合 case 后，在该批次相同模型/config 下得到：
-
-- raw verifier log：0/5 pass；
-- BPFix structured JSON：5/5 pass。
-
-把已记录的 9-case、4-case 和 5-case runs 做算术 roll-up 后：
-
-- raw verifier log：5/18 pass，27.8%；
-- BPFix structured JSON：17/18 pass，94.4%。
-
-这个 roll-up 达到 pilot hard-suite raw `<30%` 难度门槛，但它不是一次同
-max-token 配置下的完整 18-case suite run，也不是 paper-ready 结果。admitted 数量
-只有 18，新增 5 个 case 仍高度集中在 pointer-cookie provenance 模式，且 case
-admission 使用了本地 Qwen27B 校准。论文阶段仍必须扩到至少 100 个 case，加入其他
-模型/trimmed raw baseline，重新用同一配置跑完整 suite，并由独立 reviewer 审核每个
-case 的 bug、oracle、signal 多样性和是否过拟合某个 prompt/model。
+因此当前可以说“40-case corpus 已经构建并通过 verifier/oracle smoke”，但还不能说
+“40-case LLM 提升已经证明”。18-case pilot 的 5/18 和 18/18 只能作为先导证据。
