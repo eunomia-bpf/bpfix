@@ -384,6 +384,33 @@ def helper_calls_use_register_value(load_output: str, helper_call: str, register
     return saw_helper
 
 
+def helper_reachable_with_register_value(
+    load_output: str,
+    helper_call: str,
+    register: str,
+    expected_value: int,
+) -> bool:
+    in_annotated_trace = False
+    register_values: set[int] = set()
+    for line in load_output.splitlines():
+        if not line.strip():
+            register_values = set()
+            continue
+        if line.startswith("0: R1=") or line.startswith("from "):
+            in_annotated_trace = True
+            register_values = scalar_values_for_register(line, register)
+            continue
+        if not in_annotated_trace:
+            continue
+
+        values = scalar_values_for_register(line, register)
+        if values:
+            register_values = values
+        if helper_call in line and expected_value in register_values:
+            return True
+    return False
+
+
 def xdp_adjust_head_called_with_delta14(load_output: str) -> bool:
     return helper_calls_use_register_value(load_output, "call bpf_xdp_adjust_head#44", "2", 14)
 
@@ -477,6 +504,10 @@ def submitted_ringbuf_record_with_mark11(load_output: str) -> bool:
         "call bpf_ringbuf_submit#132",
         expected_u32_values={11},
     )
+
+
+def ringbuf_reserve_reachable_with_mark7(load_output: str) -> bool:
+    return helper_reachable_with_register_value(load_output, "call bpf_ringbuf_reserve#131", "7", 7)
 
 
 def submitted_ringbuf_record_with_mark3_any_path(load_output: str) -> bool:

@@ -7,7 +7,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools"))
 
-from bpf_case import run_case, submitted_ringbuf_record_with_mark7, submitted_ringbuf_record_with_mark11
+from bpf_case import run_case, ringbuf_reserve_reachable_with_mark7, submitted_ringbuf_record_with_mark11
 
 
 def ipv4_packet(protocol: int) -> bytes:
@@ -47,7 +47,7 @@ if __name__ == "__main__":
                 "call bpf_ringbuf_submit#132",
             ],
             required_success_predicates=[
-                ("write mark=7 into submitted ringbuf_mem", submitted_ringbuf_record_with_mark7),
+                ("mark=7 branch reaches ringbuf reserve", ringbuf_reserve_reachable_with_mark7),
                 ("write mark=11 into submitted ringbuf_mem", submitted_ringbuf_record_with_mark11),
             ],
         )
