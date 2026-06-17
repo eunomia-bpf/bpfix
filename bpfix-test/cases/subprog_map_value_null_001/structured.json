@@ -1,0 +1,63 @@
+{
+  "diagnostic_version": "bpfix.diagnostic/v3",
+  "error_id": "BPFIX-E002",
+  "failure_class": "source_bug",
+  "confidence": "medium",
+  "diagnostic_kind": "supported",
+  "help_safety": "repair_hint",
+  "next_action": "null",
+  "span_confidence": "exact_pc",
+  "message": "nullable pointer is used before the verifier sees a non-null proof: R0 invalid mem access 'map_value_or_null'",
+  "required_proof": "prove the nullable helper result is non-null in the same verifier-visible branch as this use",
+  "source_span": {
+    "path": "buggy.bpf.c",
+    "line_start": 51,
+    "line_end": 51,
+    "instruction_pc": 9,
+    "source_text": "return cfg->drop_proto == proto ? XDP_DROP : XDP_PASS;"
+  },
+  "related_spans": [
+    {
+      "path": "buggy.bpf.c",
+      "line_start": 34,
+      "line_end": 34,
+      "instruction_pc": 18,
+      "source_text": "return bpf_map_lookup_elem(&configs, &key);",
+      "label": "nearby source context for nullable pointer"
+    }
+  ],
+  "evidence": [
+    {
+      "kind": "terminal_verifier_error",
+      "detail": "R0 invalid mem access 'map_value_or_null'",
+      "line": 67
+    },
+    {
+      "kind": "instruction_pc",
+      "detail": "nearest verifier instruction pc 9",
+      "line": 67
+    },
+    {
+      "kind": "verifier_trace",
+      "detail": "parsed 16 per-instruction verifier state snapshots",
+      "line": null
+    },
+    {
+      "kind": "verifier_state_signal",
+      "detail": "verifier state shows the rejected pointer register is still a nullable helper result at the dereference, arithmetic, or helper-use site",
+      "line": 67
+    }
+  ],
+  "help": [
+    "Check the helper result for null and keep the dereference, pointer arithmetic, or helper argument inside the same verifier-visible non-null branch."
+  ],
+  "metadata": {
+    "case_id": null,
+    "input_kind": "verifier-log-region",
+    "object_path": null,
+    "object_programs": [],
+    "object_analysis_error": null,
+    "trace_state_count": 16,
+    "analysis_error": null
+  }
+}
