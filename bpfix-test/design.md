@@ -1,7 +1,7 @@
 # BPFix-Test 设计：面向 LLM One-Shot eBPF 修复的挑战集
 
 最后更新：2026-06-17
-阶段：9-case pilot + 可运行 oracle
+阶段：13-case pilot + 可运行 oracle
 仓库路径：`bpfix-test/`
 
 ## 定位
@@ -106,7 +106,7 @@ proof-loss sites that are implicit or misleading in raw verifier logs.
 | Modern BPF protocol cases | 25 | dynptr、kfunc、ringbuf/ref lifecycle、iterator、rbtree、timer、sleepable/RCU/lock |
 | Environment/config boundary cases | 10 | helper/kfunc unavailable、wrong prog type、attach mismatch、missing BTF |
 
-当前 pilot 先覆盖 9 个方向：
+当前 pilot 先覆盖 13 个方向：
 
 - `alu32_pointer_cookie_001`：inline asm/ALU 操作破坏 packet pointer proof；
 - `xdp_adjust_head_stale_001`：`bpf_xdp_adjust_head()` invalidates old packet
@@ -125,6 +125,18 @@ proof-loss sites that are implicit or misleading in raw verifier logs.
   并 submit；
 - `xdp_adjust_head_map_value_001`：`bpf_xdp_adjust_head()` 后必须重新获取 packet
   pointer，同时还要保留 map-value 计数副作用和 drop 配置语义。
+- `map_value_spill_cookie_001`：map-value pointer 经过 saved/cookie/shadow
+  链路和 inline asm 位移后再访问字段；正确修复必须删除 cookie round trip，
+  但保留 map lookup、`seen_packets` 更新和 packet return 语义。
+- `packet_macro_cookie_001`：packet parser 把 proof 建立藏在 helper-like inline
+  结构里，final reject 落在 pointer cookie 位移；正确修复必须保留 UDP DNS
+  drop 行为和 truncated-packet pass 行为。
+- `ringbuf_branch_cookie_001`：UDP/TCP 分支决定 ringbuf mark，reserve 后对
+  ringbuf pointer 做整数 cookie 位移；正确修复必须保留 reserve/submit 和
+  mark=7/11 的路径语义。
+- `xdp_adjust_head_ringbuf_001`：`bpf_xdp_adjust_head()` invalidates old packet
+  pointer，同时 ringbuf record 仍需 submit；正确修复必须理解 positive
+  adjust-head 后新 `ctx->data` 已经指向剥掉 Ethernet header 之后的 IP header。
 
 ringbuf oracle 除了 `bpftool prog run` 返回值，还检查 successful verifier log
 中的 helper contract proof：reserve 后的 `ringbuf_mem_or_null`、写入的
@@ -234,3 +246,32 @@ suite 难度目标：raw-log 成功率 55.6%，仍高于 30%。新增 map-value 
 按照上面的失败解释，下一阶段必须继续增加组合型 hard cases，并改进 structured
 diagnostic 对 proof-loss 修复约束的表达，直到 raw-log one-shot 低于 30%，才能把它
 作为论文 benchmark 结果使用。
+
+同日新增 4 个更难的组合 case 后，用同一模型/config 在 tightened oracle 上重跑：
+
+- raw verifier log：0/4 pass；
+- BPFix structured JSON：3/4 pass。
+
+新增 case 主要覆盖两个 raw-log 弱点：一是 raw 模型会把 prohibited pointer shift
+改成另一个 bitwise mask，仍然破坏 verifier pointer provenance；二是
+`bpf_xdp_adjust_head()` 后即使 verifier load 通过，也容易按旧 L2 packet layout
+解析，导致功能 oracle 失败。tightened oracle 还暴露了一个 structured-mode
+残余失败：`ringbuf_branch_cookie_001` 的候选修复了 verifier reject，但只保留
+一个 submitted ringbuf mark，丢掉了 UDP/TCP branch-derived mark 的区分。为支持这些
+case，BPFix 诊断也做了两点工程修正：
+
+- stale packet pointer signal 现在能从 verifier state 中识别“helper 前是 packet
+  pointer、helper 后同一寄存器变 scalar、期间没有显式重写”的 proof loss；
+- pointer-shift lowering help 明确指出不要把 verifier pointer 通过 `__u64/long`
+  cookie 位移或 mask 后再 cast 回来，应该删除 cookie/shadow round trip 并使用原始
+  checked pointer。
+
+合并当前 13 个 pilot cases 后：
+
+- raw verifier log：5/13 pass，38.5%；
+- BPFix structured JSON：12/13 pass，92.3%。
+
+这仍然不能声称已达到 hard-suite 目标，因为 raw 38.5% 还高于 `<30%`。但新增 4 个
+case 说明构造“raw 难、structured 多数可修”的组合场景是可行的，下一步至少还需要再
+加入 4 个 raw-failing admitted cases 才可能把当前模型/config 下的 raw pass rate
+压到 30% 以下。

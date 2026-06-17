@@ -9,7 +9,7 @@
 > log 时能否一次生成可工作的修复？把 raw log 换成 BPFix structured
 > diagnostic 后，成功率是否显著提高？
 
-当前目录先提供 9 个可运行的 pilot cases。最终 hard suite 的目标是：
+当前目录先提供 13 个可运行的 pilot cases。最终 hard suite 的目标是：
 
 - raw-log one-shot 修复成功率低于 30%；
 - structured-log one-shot 修复成功率接近 70%；
@@ -61,6 +61,10 @@ python3 bpfix-test/tools/refresh_case_artifacts.py
 | `map_value_pointer_cookie_001` | proof lifecycle / map-value provenance | map-value pointer cannot be shifted as an integer cookie before field access |
 | `ringbuf_pointer_cookie_001` | helper protocol / provenance | ringbuf record pointer cannot be integer-masked before write/submit |
 | `xdp_adjust_head_map_value_001` | helper side effect / map value | packet pointers must be reacquired after `bpf_xdp_adjust_head`, while map-value side effects remain correct |
+| `map_value_spill_cookie_001` | map-value provenance / packet behavior | map-value pointer cookie repair must preserve map updates and packet decisions |
+| `packet_macro_cookie_001` | source correlation / packet provenance | macro/inline-style parser proof must survive pointer-cookie repair |
+| `ringbuf_branch_cookie_001` | helper protocol / branch behavior | branch-derived ringbuf mark must be preserved while removing pointer-cookie arithmetic |
+| `xdp_adjust_head_ringbuf_001` | helper side effect / ringbuf protocol | ringbuf reserve/submit must remain correct and post-adjust packet parsing must use the new packet layout |
 
 ## 运行 LLM One-Shot
 

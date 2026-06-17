@@ -84,3 +84,65 @@ Hardening gate:
 - Next cases should combine multiple obligations in one source file: helper
   side effects plus branch merge, ref lifecycle plus nullability, source/BTF
   line ambiguity, and object/helper protocol interactions.
+
+## Qwen27B llama.cpp Next 4 Challenging Cases
+
+Setup matches the clean 9-case pilot above. This run used the current dirty
+working tree after adding four new cases, refining two BPFix diagnostic hints,
+and tightening the per-case executable oracles.
+
+- Repository base commit: `f1dd4dfb2c6391329df522db66971fc501944dbd`
+- Repository dirty: `true`
+- Raw local artifact:
+  `/tmp/bpfix-test-qwen27b-next4-oracle-tight/20260617T035110212045Z-pid33195/raw/summary.json`
+  (`5f6930ab2a8a4a711384de0e1a46258c0ff5cd9e57cf6d88c586fe45d920c330`)
+- Structured local artifact:
+  `/tmp/bpfix-test-qwen27b-next4-oracle-tight/20260617T035017111923Z-pid33073/structured/summary.json`
+  (`5812b29c40b1b07afa815860188d1d36ac44c9c5186508db68fad2683148d996`)
+
+Results:
+
+| mode | passed | total | pass rate |
+| --- | ---: | ---: | ---: |
+| raw verifier log | 0 | 4 | 0.0% |
+| BPFix structured JSON | 3 | 4 | 75.0% |
+
+Raw-mode per-case result:
+
+| case | result |
+| --- | --- |
+| `map_value_spill_cookie_001` | fail: candidate changed shift into `&= 0xFFFFFFFF`, still prohibited on a map-value pointer |
+| `packet_macro_cookie_001` | fail: candidate changed shift into `&= 0xFFFFFFFF`, still prohibited on a packet pointer |
+| `ringbuf_branch_cookie_001` | fail: candidate still used prohibited pointer bitwise arithmetic before ringbuf submit |
+| `xdp_adjust_head_ringbuf_001` | fail: candidate loaded but parsed the post-adjust packet as if Ethernet header were still present, so UDP returned pass instead of drop |
+
+Structured-mode per-case result:
+
+| case | result |
+| --- | --- |
+| `map_value_spill_cookie_001` | pass |
+| `packet_macro_cookie_001` | pass |
+| `ringbuf_branch_cookie_001` | fail: candidate repaired verifier rejection but only preserved one submitted ringbuf mark, losing the UDP/TCP branch-derived mark distinction |
+| `xdp_adjust_head_ringbuf_001` | pass |
+
+Combined pilot status:
+
+| suite | raw pass rate | structured pass rate |
+| --- | ---: | ---: |
+| clean 9-case pilot | 5/9 = 55.6% | 9/9 = 100.0% |
+| next 4 challenging cases | 0/4 = 0.0% | 3/4 = 75.0% |
+| combined current pilot | 5/13 = 38.5% | 12/13 = 92.3% |
+
+Interpretation:
+
+- The added cases are meaningfully harder for raw-log one-shot repair while
+  mostly remaining solvable from structured BPFix diagnostics.
+- The structured improvement is not just label matching: all three passing
+  structured candidates compiled, loaded, and passed functional/protocol
+  oracles. The tightened oracle also caught one structured failure that lost a
+  non-verifier branch side effect.
+- The combined pilot still does not meet the hard-suite target because raw
+  one-shot is 38.5%, above `<30%`. With raw successes fixed at 5, the suite
+  needs at least 17 total admitted cases to fall below 30%, so the next batch
+  should add at least four more raw-failing cases and continue improving
+  structured diagnostics for branch-side-effect preservation.

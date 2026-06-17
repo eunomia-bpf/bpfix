@@ -1,0 +1,142 @@
+libbpf: loading object from <work-dir>/prog.o
+libbpf: elf: section(3) xdp, size 304, link 0, flags 6, type=1
+libbpf: sec 'xdp': found program 'xdp_adjust_head_ringbuf' at insn offset 0 (0 bytes), code size 38 insns (304 bytes)
+libbpf: elf: section(4) .relxdp, size 16, link 26, flags 40, type=9
+libbpf: elf: section(5) .maps, size 16, link 0, flags 3, type=1
+libbpf: elf: section(6) license, size 4, link 0, flags 3, type=1
+libbpf: license of <work-dir>/prog.o is GPL
+libbpf: elf: section(16) .BTF, size 1859, link 0, flags 0, type=1
+libbpf: elf: section(18) .BTF.ext, size 412, link 0, flags 0, type=1
+libbpf: elf: section(26) .symtab, size 384, link 1, flags 0, type=2
+libbpf: looking for externs among 16 symbols...
+libbpf: collected 0 externs total
+libbpf: map 'events': at sec_idx 5, offset 0.
+libbpf: map 'events': found type = 27.
+libbpf: map 'events': found max_entries = 4096.
+libbpf: sec '.relxdp': collecting relocation for section(3) 'xdp'
+libbpf: sec '.relxdp': relo #0: insn #11 against 'events'
+libbpf: prog 'xdp_adjust_head_ringbuf': found map 0 (events, sec 5, off 0) for insn #11
+libbpf: object 'prog': failed (-95) to create BPF token from '/sys/fs/bpf', skipping optional step...
+libbpf: loaded kernel BTF from '/sys/kernel/btf/vmlinux'
+libbpf: sec 'xdp': found 4 CO-RE relocations
+libbpf: CO-RE relocating [10] struct xdp_md: found target candidate [14922] struct xdp_md in [vmlinux]
+libbpf: prog 'xdp_adjust_head_ringbuf': relo #0: <byte_off> [10] struct xdp_md.data_end (0:1 @ offset 4)
+libbpf: prog 'xdp_adjust_head_ringbuf': relo #0: matching candidate #0 <byte_off> [14922] struct xdp_md.data_end (0:1 @ offset 4)
+libbpf: prog 'xdp_adjust_head_ringbuf': relo #0: patched insn #1 (LDX/ST/STX) off 4 -> 4
+libbpf: prog 'xdp_adjust_head_ringbuf': relo #1: <byte_off> [10] struct xdp_md.data (0:0 @ offset 0)
+libbpf: prog 'xdp_adjust_head_ringbuf': relo #1: matching candidate #0 <byte_off> [14922] struct xdp_md.data (0:0 @ offset 0)
+libbpf: prog 'xdp_adjust_head_ringbuf': relo #1: patched insn #2 (LDX/ST/STX) off 0 -> 0
+libbpf: CO-RE relocating [15] struct ethhdr: found target candidate [23410] struct ethhdr in [vmlinux]
+libbpf: prog 'xdp_adjust_head_ringbuf': relo #2: <byte_off> [15] struct ethhdr.h_proto (0:2 @ offset 12)
+libbpf: prog 'xdp_adjust_head_ringbuf': relo #2: matching candidate #0 <byte_off> [23410] struct ethhdr.h_proto (0:2 @ offset 12)
+libbpf: prog 'xdp_adjust_head_ringbuf': relo #2: patched insn #6 (LDX/ST/STX) off 12 -> 12
+libbpf: CO-RE relocating [21] struct iphdr: found target candidate [23765] struct iphdr in [vmlinux]
+libbpf: prog 'xdp_adjust_head_ringbuf': relo #3: <byte_off> [21] struct iphdr.protocol (0:7 @ offset 9)
+libbpf: prog 'xdp_adjust_head_ringbuf': relo #3: matching candidate #0 <byte_off> [23765] struct iphdr.protocol (0:7 @ offset 9)
+libbpf: prog 'xdp_adjust_head_ringbuf': relo #3: patched insn #33 (LDX/ST/STX) off 9 -> 9
+libbpf: map 'events': created successfully, fd=0
+libbpf: prog 'xdp_adjust_head_ringbuf': BPF program load failed: -EACCES
+libbpf: prog 'xdp_adjust_head_ringbuf': -- BEGIN PROG LOAD LOG --
+func#0 @0
+Live regs before insn:
+  0: .1........ (b7) r0 = 2
+  1: 01........ (61) r2 = *(u32 *)(r1 +4)
+  2: 012....... (61) r3 = *(u32 *)(r1 +0)
+  3: 0123...... (bf) r7 = r3
+  4: 0123...7.. (07) r7 += 14
+  5: 0123...7.. (2d) if r7 > r2 goto pc+31
+  6: 0123...7.. (69) r4 = *(u16 *)(r3 +12)
+  7: 01234..7.. (55) if r4 != 0x8 goto pc+29
+  8: 0123...7.. (07) r3 += 34
+  9: 0123...7.. (2d) if r3 > r2 goto pc+27
+ 10: .1.....7.. (bf) r6 = r1
+ 11: ......67.. (18) r1 = 0xffff000000000000
+ 13: .1....67.. (b7) r2 = 4
+ 14: .12...67.. (b7) r3 = 0
+ 15: .123..67.. (85) call bpf_ringbuf_reserve#131
+ 16: 0.....67.. (bf) r1 = r6
+ 17: 01.....7.. (bf) r6 = r0
+ 18: .1....67.. (b7) r0 = 2
+ 19: 01....67.. (15) if r6 == 0x0 goto pc+17
+ 20: .1....67.. (b7) r2 = 14
+ 21: .12...67.. (85) call bpf_xdp_adjust_head#44
+ 22: 0.....67.. (65) if r0 s> 0xffff000000000000 goto pc+5
+ 23: ......6... (bf) r1 = r6
+ 24: .1........ (b7) r2 = 0
+ 25: .12....... (85) call bpf_ringbuf_discard#133
+ 26: .......... (b7) r0 = 0
+ 27: 0......... (05) goto pc+9
+ 28: ......67.. (b7) r1 = 7
+ 29: .1....67.. (63) *(u32 *)(r6 +0) = r1
+ 30: ......67.. (bf) r1 = r6
+ 31: .1.....7.. (b7) r2 = 0
+ 32: .12....7.. (85) call bpf_ringbuf_submit#132
+ 33: .......7.. (71) r1 = *(u8 *)(r7 +9)
+ 34: .1........ (b7) r0 = 1
+ 35: 01........ (15) if r1 == 0x11 goto pc+1
+ 36: .......... (b7) r0 = 2
+ 37: 0......... (95) exit
+0: R1=ctx() R10=fp0
+; int xdp_adjust_head_ringbuf(struct xdp_md *ctx) @ buggy.bpf.c:32
+0: (b7) r0 = 2                        ; R0_w=2
+; void *data_end = (void *)(long)ctx->data_end; @ buggy.bpf.c:35
+1: (61) r2 = *(u32 *)(r1 +4)          ; R1=ctx() R2_w=pkt_end()
+; void *data = (void *)(long)ctx->data; @ buggy.bpf.c:34
+2: (61) r3 = *(u32 *)(r1 +0)          ; R1=ctx() R3_w=pkt(r=0)
+; if ((void *)(eth + 1) > data_end) @ buggy.bpf.c:38
+3: (bf) r7 = r3                       ; R3_w=pkt(r=0) R7_w=pkt(r=0)
+4: (07) r7 += 14                      ; R7_w=pkt(off=14,r=0)
+5: (2d) if r7 > r2 goto pc+31         ; R2_w=pkt_end() R7_w=pkt(off=14,r=14)
+; if (bpf_ntohs(eth->h_proto) != ETH_P_IP) @ buggy.bpf.c:40
+6: (69) r4 = *(u16 *)(r3 +12)         ; R3_w=pkt(r=14) R4_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=0xffff,var_off=(0x0; 0xffff))
+7: (55) if r4 != 0x8 goto pc+29       ; R4_w=8
+8: (07) r3 += 34                      ; R3=pkt(off=34,r=14)
+9: (2d) if r3 > r2 goto pc+27         ; R2=pkt_end() R3=pkt(off=34,r=34)
+10: (bf) r6 = r1                      ; R1=ctx() R6_w=ctx()
+; struct event *rec = bpf_ringbuf_reserve(&events, sizeof(*rec), 0); @ buggy.bpf.c:47
+11: (18) r1 = 0xffff000000000000      ; R1_w=map_ptr(map=events,ks=0,vs=0)
+13: (b7) r2 = 4                       ; R2_w=4
+14: (b7) r3 = 0                       ; R3_w=0
+15: (85) call bpf_ringbuf_reserve#131
+mark_precise: frame0: last_idx 15 first_idx 9 subseq_idx -1 
+mark_precise: frame0: regs=r2 stack= before 14: (b7) r3 = 0
+mark_precise: frame0: regs=r2 stack= before 13: (b7) r2 = 4
+16: R0_w=ringbuf_mem_or_null(id=2,ref_obj_id=2,sz=4) refs=2
+16: (bf) r1 = r6                      ; R1_w=ctx() R6_w=ctx() refs=2
+17: (bf) r6 = r0                      ; R0_w=ringbuf_mem_or_null(id=2,ref_obj_id=2,sz=4) R6_w=ringbuf_mem_or_null(id=2,ref_obj_id=2,sz=4) refs=2
+18: (b7) r0 = 2                       ; R0=2 refs=2
+; if (!rec) @ buggy.bpf.c:48
+19: (15) if r6 == 0x0 goto pc+17      ; R6=ringbuf_mem(ref_obj_id=2,sz=4) refs=2
+; if (bpf_xdp_adjust_head(ctx, (int)sizeof(*eth)) < 0) { @ buggy.bpf.c:51
+20: (b7) r2 = 14                      ; R2_w=14 refs=2
+21: (85) call bpf_xdp_adjust_head#44          ; R0_w=scalar() refs=2
+22: (65) if r0 s> 0xffff000000000000 goto pc+5        ; R0_w=scalar(smax=-1,umin=0x8000000000000000,var_off=(0x8000000000000000; 0x7fffffffffffffff)) refs=2
+; bpf_ringbuf_discard(rec, 0); @ buggy.bpf.c:52
+23: (bf) r1 = r6                      ; R1_w=ringbuf_mem(ref_obj_id=2,sz=4) R6=ringbuf_mem(ref_obj_id=2,sz=4) refs=2
+24: (b7) r2 = 0                       ; R2_w=0 refs=2
+25: (85) call bpf_ringbuf_discard#133         ;
+26: (b7) r0 = 0                       ; R0_w=0
+27: (05) goto pc+9
+; } @ buggy.bpf.c:60
+37: (95) exit
+
+from 22 to 28: R0_w=scalar(smin=0,umax=0x7fffffffffffffff,var_off=(0x0; 0x7fffffffffffffff)) R6=ringbuf_mem(ref_obj_id=2,sz=4) R7=scalar() R10=fp0 refs=2
+28: R0_w=scalar(smin=0,umax=0x7fffffffffffffff,var_off=(0x0; 0x7fffffffffffffff)) R6=ringbuf_mem(ref_obj_id=2,sz=4) R7=scalar() R10=fp0 refs=2
+; bpf_ringbuf_discard(rec, 0); @ buggy.bpf.c:52
+28: (b7) r1 = 7                       ; R1_w=7 refs=2
+; rec->mark = 7; @ buggy.bpf.c:56
+29: (63) *(u32 *)(r6 +0) = r1         ; R1_w=7 R6=ringbuf_mem(ref_obj_id=2,sz=4) refs=2
+; bpf_ringbuf_submit(rec, 0); @ buggy.bpf.c:57
+30: (bf) r1 = r6                      ; R1_w=ringbuf_mem(ref_obj_id=2,sz=4) R6=ringbuf_mem(ref_obj_id=2,sz=4) refs=2
+31: (b7) r2 = 0                       ; R2_w=0 refs=2
+32: (85) call bpf_ringbuf_submit#132          ;
+; return iph->protocol == IPPROTO_UDP ? XDP_DROP : XDP_PASS; @ buggy.bpf.c:59
+33: (71) r1 = *(u8 *)(r7 +9)
+R7 invalid mem access 'scalar'
+verification time 0 usec
+stack depth 0
+processed 34 insns (limit 1000000) max_states_per_insn 0 total_states 3 peak_states 3 mark_read 2
+-- END PROG LOAD LOG --
+libbpf: prog 'xdp_adjust_head_ringbuf': failed to load: -EACCES
+libbpf: failed to load object '<work-dir>/prog.o'
+Error: failed to load object file

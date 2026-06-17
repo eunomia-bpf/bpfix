@@ -68,6 +68,17 @@ pub(super) fn stale_pointer_after_invalidating_helper(
                         )
                 );
         (pointer_kind, invalidated)
+    } else if prior_packet_pointer_invalidated_before_instruction(
+        context,
+        instruction,
+        fragment_start,
+        reg,
+        state_frame,
+        state_log_line,
+    )
+    .is_some()
+    {
+        (StaleDataPointerKind::Packet, true)
     } else {
         let (origin, origin_log_line) = prior_dynptr_data_pointer_before_instruction(
             context,
@@ -121,6 +132,48 @@ fn stale_data_pointer_kind(
         )?)),
         _ => None,
     }
+}
+
+fn prior_packet_pointer_invalidated_before_instruction(
+    context: &ProofSignalContext<'_>,
+    instruction: TerminalInstruction<'_>,
+    fragment_start: usize,
+    reg: u8,
+    frame: usize,
+    before_state_line: usize,
+) -> Option<usize> {
+    context
+        .branch_states
+        .iter()
+        .filter(|state| state.log_line >= fragment_start)
+        .filter(|state| state.log_line < before_state_line)
+        .filter(|state| state.pc <= instruction.pc)
+        .filter(|state| state.frame == frame)
+        .rev()
+        .find_map(|state| {
+            let reg_state = state.regs.get(&reg)?;
+            if reg_state.reg_type != "pkt" {
+                return None;
+            }
+            if register_assigned_between(
+                context.branch_states,
+                context.log,
+                reg,
+                frame,
+                fragment_start,
+                state.log_line,
+                instruction.line,
+            ) {
+                return None;
+            }
+            invalidating_helper_between(
+                context,
+                state.log_line,
+                instruction.line,
+                StaleDataPointerKind::Packet,
+            )
+            .then_some(state.log_line)
+        })
 }
 
 fn prior_dynptr_data_pointer_before_instruction(

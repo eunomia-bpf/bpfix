@@ -4016,9 +4016,27 @@ fn stale_data_pointer_signal_requires_invalidating_helper_after_pointer_state() 
          3: (71) r0 = *(u8 *)(r7 +0)\n\
          R7 invalid mem access 'scalar'\n",
     );
-    assert_no_stale_pointer_invalidation_signal(&scalar_state_after_invalidating_helper);
+    assert_eq!(
+        scalar_state_after_invalidating_helper["message"],
+        "skb/xdp packet pointer is reused after a helper invalidates it: R7 invalid mem access 'scalar'"
+    );
     assert!(evidence_contains(
         &scalar_state_after_invalidating_helper,
+        "verifier_state_signal",
+        "packet-mutating helper invalidated"
+    ));
+
+    let scalar_assignment_after_invalidating_helper = run_json_stdin(
+        "func#0 @0\n\
+         0: R7=pkt(r=14) R10=fp0\n\
+         1: (85) call bpf_xdp_adjust_head#44\n\
+         2: (b7) r7 = 0 ; R7_w=0\n\
+         3: (71) r0 = *(u8 *)(r7 +0)\n\
+         R7 invalid mem access 'scalar'\n",
+    );
+    assert_no_stale_pointer_invalidation_signal(&scalar_assignment_after_invalidating_helper);
+    assert!(evidence_contains(
+        &scalar_assignment_after_invalidating_helper,
         "verifier_state_signal",
         "consumed register is scalar"
     ));

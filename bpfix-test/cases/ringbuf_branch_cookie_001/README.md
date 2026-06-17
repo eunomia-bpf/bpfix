@@ -1,0 +1,9 @@
+# ringbuf_branch_cookie_001
+
+This case combines packet branch semantics with ringbuf helper protocol and
+pointer provenance. The program reserves a ringbuf record, writes a branch
+dependent mark, then destroys the ringbuf pointer through integer inline
+assembly before submit.
+
+The oracle requires the repaired program to keep reserve/submit behavior and to
+write the expected ringbuf payload value.

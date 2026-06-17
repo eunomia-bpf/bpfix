@@ -13,7 +13,13 @@ import sys
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable
+from typing import Callable, TypeAlias
+
+
+MapUpdate: TypeAlias = tuple[str, bytes, bytes]
+FunctionalTest: TypeAlias = (
+    tuple[str, Callable[[], bytes], int] | tuple[str, Callable[[], bytes], int, list[MapUpdate]]
+)
 
 
 @dataclass
@@ -146,6 +152,10 @@ def update_pinned_map(map_dir: Path, map_name: str, key: bytes, value: bytes) ->
         ],
         timeout=10,
     )
+
+
+def functional_test_map_updates(test: FunctionalTest) -> list[MapUpdate]:
+    return test[3] if len(test) == 4 else []
 
 
 def pin_name_for(source: Path) -> str:
@@ -401,6 +411,14 @@ def submitted_ringbuf_record_with_mark7(load_output: str) -> bool:
     )
 
 
+def submitted_ringbuf_record_with_mark11(load_output: str) -> bool:
+    return ringbuf_written_refs_before_helper(
+        load_output,
+        "call bpf_ringbuf_submit#132",
+        expected_u32_values={11},
+    )
+
+
 def discarded_ringbuf_record_with_mark7(load_output: str) -> bool:
     return ringbuf_written_refs_before_helper(
         load_output,
@@ -421,10 +439,10 @@ def run_case(
     *,
     argv: list[str] | None,
     expected_reject_substrings: list[str],
-    functional_tests: list[tuple[str, Callable[[], bytes], int]],
+    functional_tests: list[FunctionalTest],
     required_success_substrings: list[str] | None = None,
     required_success_predicates: list[tuple[str, Callable[[str], bool]]] | None = None,
-    map_updates: list[tuple[str, bytes, bytes]] | None = None,
+    map_updates: list[MapUpdate] | None = None,
 ) -> int:
     args = parse_args(argv)
     work_dir_obj: tempfile.TemporaryDirectory[str] | None = None
@@ -438,7 +456,8 @@ def run_case(
     source = args.source.resolve()
     obj = work_dir / "prog.o"
     pin = Path("/sys/fs/bpf") / pin_name_for(source)
-    map_pin_dir = Path("/sys/fs/bpf") / f"{pin.name}_maps" if map_updates else None
+    needs_pinned_maps = bool(map_updates) or any(functional_test_map_updates(test) for test in functional_tests)
+    map_pin_dir = Path("/sys/fs/bpf") / f"{pin.name}_maps" if needs_pinned_maps else None
 
     report: dict[str, object] = {
         "source": str(source),
@@ -506,7 +525,29 @@ def run_case(
 
         functional_results: list[dict[str, object]] = []
         ok = True
-        for name, packet_fn, expected_retval in functional_tests:
+        for test in functional_tests:
+            name, packet_fn, expected_retval = test[:3]
+            per_test_map_updates = functional_test_map_updates(test)
+            map_update_results = []
+            if per_test_map_updates:
+                assert map_pin_dir is not None
+                for map_name, key, value in per_test_map_updates:
+                    update_result = update_pinned_map(map_pin_dir, map_name, key, value)
+                    map_update_results.append(update_result.to_json())
+                    if update_result.returncode != 0:
+                        functional_results.append(
+                            {
+                                "name": name,
+                                "expected_retval": expected_retval,
+                                "actual_retval": None,
+                                "passed": False,
+                                "map_updates": map_update_results,
+                            }
+                        )
+                        ok = False
+                        break
+                if not ok:
+                    break
             retval, prog_run = run_pinned(pin, packet_fn())
             passed = retval == expected_retval
             functional_results.append(
@@ -515,6 +556,7 @@ def run_case(
                     "expected_retval": expected_retval,
                     "actual_retval": retval,
                     "passed": passed,
+                    "map_updates": map_update_results,
                     "run": prog_run.to_json(),
                 }
             )

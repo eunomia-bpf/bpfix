@@ -1,0 +1,110 @@
+libbpf: loading object from <work-dir>/prog.o
+libbpf: elf: section(3) xdp, size 240, link 0, flags 6, type=1
+libbpf: sec 'xdp': found program 'map_value_spill_cookie' at insn offset 0 (0 bytes), code size 30 insns (240 bytes)
+libbpf: elf: section(4) .relxdp, size 16, link 26, flags 40, type=9
+libbpf: elf: section(5) .maps, size 32, link 0, flags 3, type=1
+libbpf: elf: section(6) license, size 4, link 0, flags 3, type=1
+libbpf: license of <work-dir>/prog.o is GPL
+libbpf: elf: section(16) .BTF, size 1866, link 0, flags 0, type=1
+libbpf: elf: section(18) .BTF.ext, size 380, link 0, flags 0, type=1
+libbpf: elf: section(26) .symtab, size 360, link 1, flags 0, type=2
+libbpf: looking for externs among 15 symbols...
+libbpf: collected 0 externs total
+libbpf: map 'configs': at sec_idx 5, offset 0.
+libbpf: map 'configs': found type = 1.
+libbpf: map 'configs': found key [6], sz = 4.
+libbpf: map 'configs': found value [9], sz = 8.
+libbpf: map 'configs': found max_entries = 1.
+libbpf: sec '.relxdp': collecting relocation for section(3) 'xdp'
+libbpf: sec '.relxdp': relo #0: insn #6 against 'configs'
+libbpf: prog 'map_value_spill_cookie': found map 0 (configs, sec 5, off 0) for insn #6
+libbpf: object 'prog': failed (-95) to create BPF token from '/sys/fs/bpf', skipping optional step...
+libbpf: loaded kernel BTF from '/sys/kernel/btf/vmlinux'
+libbpf: sec 'xdp': found 4 CO-RE relocations
+libbpf: CO-RE relocating [13] struct xdp_md: found target candidate [14922] struct xdp_md in [vmlinux]
+libbpf: prog 'map_value_spill_cookie': relo #0: <byte_off> [13] struct xdp_md.data_end (0:1 @ offset 4)
+libbpf: prog 'map_value_spill_cookie': relo #0: matching candidate #0 <byte_off> [14922] struct xdp_md.data_end (0:1 @ offset 4)
+libbpf: prog 'map_value_spill_cookie': relo #0: patched insn #0 (LDX/ST/STX) off 4 -> 4
+libbpf: prog 'map_value_spill_cookie': relo #1: <byte_off> [13] struct xdp_md.data (0:0 @ offset 0)
+libbpf: prog 'map_value_spill_cookie': relo #1: matching candidate #0 <byte_off> [14922] struct xdp_md.data (0:0 @ offset 0)
+libbpf: prog 'map_value_spill_cookie': relo #1: patched insn #1 (LDX/ST/STX) off 0 -> 0
+libbpf: CO-RE relocating [16] struct ethhdr: found target candidate [23410] struct ethhdr in [vmlinux]
+libbpf: prog 'map_value_spill_cookie': relo #2: <byte_off> [16] struct ethhdr.h_proto (0:2 @ offset 12)
+libbpf: prog 'map_value_spill_cookie': relo #2: matching candidate #0 <byte_off> [23410] struct ethhdr.h_proto (0:2 @ offset 12)
+libbpf: prog 'map_value_spill_cookie': relo #2: patched insn #13 (LDX/ST/STX) off 12 -> 12
+libbpf: CO-RE relocating [22] struct iphdr: found target candidate [23765] struct iphdr in [vmlinux]
+libbpf: prog 'map_value_spill_cookie': relo #3: <byte_off> [22] struct iphdr.protocol (0:7 @ offset 9)
+libbpf: prog 'map_value_spill_cookie': relo #3: matching candidate #0 <byte_off> [23765] struct iphdr.protocol (0:7 @ offset 9)
+libbpf: prog 'map_value_spill_cookie': relo #3: patched insn #23 (LDX/ST/STX) off 9 -> 9
+libbpf: map 'configs': created successfully, fd=0
+libbpf: prog 'map_value_spill_cookie': BPF program load failed: -EACCES
+libbpf: prog 'map_value_spill_cookie': -- BEGIN PROG LOAD LOG --
+func#0 @0
+Live regs before insn:
+  0: .1........ (61) r6 = *(u32 *)(r1 +4)
+  1: .1....6... (61) r7 = *(u32 *)(r1 +0)
+  2: ......67.. (b7) r1 = 0
+  3: .1....67.. (63) *(u32 *)(r10 -4) = r1
+  4: ......67.. (bf) r2 = r10
+  5: ..2...67.. (07) r2 += -4
+  6: ..2...67.. (18) r1 = 0xffff000000000000
+  8: .12...67.. (85) call bpf_map_lookup_elem#1
+  9: 0.....67.. (b7) r1 = 2
+ 10: 01....67.. (bf) r2 = r7
+ 11: 012...67.. (07) r2 += 14
+ 12: 012...67.. (2d) if r2 > r6 goto pc+15
+ 13: 012...67.. (69) r3 = *(u16 *)(r7 +12)
+ 14: 0123..67.. (55) if r3 != 0x8 goto pc+13
+ 15: 012...67.. (07) r7 += 34
+ 16: 012...67.. (2d) if r7 > r6 goto pc+11
+ 17: 012....... (15) if r0 == 0x0 goto pc+10
+ 18: 0.2....... (67) r0 <<= 32
+ 19: 0.2....... (77) r0 >>= 32
+ 20: 0.2....... (61) r1 = *(u32 *)(r0 +4)
+ 21: 012....... (07) r1 += 1
+ 22: 012....... (63) *(u32 *)(r0 +4) = r1
+ 23: 0.2....... (71) r2 = *(u8 *)(r2 +9)
+ 24: 0.2....... (61) r3 = *(u32 *)(r0 +0)
+ 25: ..23...... (b7) r1 = 1
+ 26: .123...... (1d) if r3 == r2 goto pc+1
+ 27: .......... (b7) r1 = 2
+ 28: .1........ (bf) r0 = r1
+ 29: 0......... (95) exit
+0: R1=ctx() R10=fp0
+; void *data_end = (void *)(long)ctx->data_end; @ buggy.bpf.c:35
+0: (61) r6 = *(u32 *)(r1 +4)          ; R1=ctx() R6_w=pkt_end()
+; void *data = (void *)(long)ctx->data; @ buggy.bpf.c:34
+1: (61) r7 = *(u32 *)(r1 +0)          ; R1=ctx() R7_w=pkt(r=0)
+2: (b7) r1 = 0                        ; R1_w=0
+; __u32 key = 0; @ buggy.bpf.c:37
+3: (63) *(u32 *)(r10 -4) = r1
+mark_precise: frame0: last_idx 3 first_idx 0 subseq_idx -1 
+mark_precise: frame0: regs=r1 stack= before 2: (b7) r1 = 0
+4: R1_w=0 R10=fp0 fp-8=0000????
+4: (bf) r2 = r10                      ; R2_w=fp0 R10=fp0
+;  @ buggy.bpf.c:0
+5: (07) r2 += -4                      ; R2_w=fp-4
+; struct config *cfg = bpf_map_lookup_elem(&configs, &key); @ buggy.bpf.c:38
+6: (18) r1 = 0xffff000000000000       ; R1_w=map_ptr(map=configs,ks=4,vs=8)
+8: (85) call bpf_map_lookup_elem#1    ; R0_w=map_value_or_null(id=1,map=configs,ks=4,vs=8)
+9: (b7) r1 = 2                        ; R1_w=2
+; if ((void *)(eth + 1) > data_end) @ buggy.bpf.c:40
+10: (bf) r2 = r7                      ; R2_w=pkt(r=0) R7_w=pkt(r=0)
+11: (07) r2 += 14                     ; R2_w=pkt(off=14,r=0)
+12: (2d) if r2 > r6 goto pc+15        ; R2_w=pkt(off=14,r=14) R6_w=pkt_end()
+; if (bpf_ntohs(eth->h_proto) != ETH_P_IP) @ buggy.bpf.c:42
+13: (69) r3 = *(u16 *)(r7 +12)        ; R3=scalar(smin=smin32=0,smax=umax=smax32=umax32=0xffff,var_off=(0x0; 0xffff)) R7=pkt(r=14)
+14: (55) if r3 != 0x8 goto pc+13      ; R3=8
+15: (07) r7 += 34                     ; R7_w=pkt(off=34,r=14)
+16: (2d) if r7 > r6 goto pc+11        ; R6=pkt_end() R7_w=pkt(off=34,r=34)
+17: (15) if r0 == 0x0 goto pc+10      ; R0=map_value(map=configs,ks=4,vs=8)
+; asm volatile("%[cookie] <<= 32; %[cookie] >>= 32" : [cookie] "+r"(cookie)); @ buggy.bpf.c:54
+18: (67) r0 <<= 32
+R0 pointer arithmetic with <<= operator prohibited
+verification time 0 usec
+stack depth 8
+processed 18 insns (limit 1000000) max_states_per_insn 0 total_states 1 peak_states 1 mark_read 1
+-- END PROG LOAD LOG --
+libbpf: prog 'map_value_spill_cookie': failed to load: -EACCES
+libbpf: failed to load object '<work-dir>/prog.o'
+Error: failed to load object file
