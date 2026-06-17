@@ -1,7 +1,7 @@
 # BPFix-Test 设计：面向 LLM One-Shot eBPF 修复的挑战集
 
 最后更新：2026-06-17
-阶段：18-case admitted pilot + 可运行 oracle
+阶段：18-case admitted pilot + 40-case milestone in progress
 仓库路径：`bpfix-test/`
 
 ## 定位
@@ -97,7 +97,12 @@ proof-loss sites that are implicit or misleading in raw verifier logs.
 
 ## 能力 Bucket
 
-最终 hard suite 目标 100 个 case：
+最终 hard suite 目标 100 个 case。当前工程 milestone 是先把可运行 admitted corpus
+从 18 个扩到 40 个，并用更均衡的 failure mechanism 降低现有 pointer-cookie/lowering
+集中度。40-case 的具体 admission gate、bucket 配额和 planned case list 见
+[40-case-plan.md](40-case-plan.md)。
+
+最终 100-case hard suite 配额：
 
 | Bucket | 数量 | 重点 |
 | --- | ---: | --- |

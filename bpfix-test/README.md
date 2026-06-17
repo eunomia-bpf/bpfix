@@ -18,7 +18,8 @@
 
 当前 18-case pilot 的同配置 Qwen27B/llama.cpp 结果是 raw `5/18`
 和 structured `18/18`；完整配置、artifact hash 和 per-case 表见
-`pilot-results.md`。
+`pilot-results.md`。下一阶段目标是扩到 40 个 admitted cases；具体配额、
+admission gate 和 planned case list 见 [40-case-plan.md](40-case-plan.md)。
 
 ## 目录约定
 
