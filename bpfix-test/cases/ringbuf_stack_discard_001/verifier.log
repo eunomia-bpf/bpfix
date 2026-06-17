@@ -1,0 +1,47 @@
+libbpf: loading object from <work-dir>/prog.o
+libbpf: elf: section(3) xdp, size 64, link 0, flags 6, type=1
+libbpf: sec 'xdp': found program 'ringbuf_stack_discard' at insn offset 0 (0 bytes), code size 8 insns (64 bytes)
+libbpf: elf: section(4) license, size 4, link 0, flags 3, type=1
+libbpf: license of <work-dir>/prog.o is GPL
+libbpf: elf: section(5) .maps, size 16, link 0, flags 3, type=1
+libbpf: elf: section(15) .BTF, size 862, link 0, flags 0, type=1
+libbpf: elf: section(17) .BTF.ext, size 144, link 0, flags 0, type=1
+libbpf: elf: section(25) .symtab, size 336, link 1, flags 0, type=2
+libbpf: looking for externs among 14 symbols...
+libbpf: collected 0 externs total
+libbpf: map 'events': at sec_idx 5, offset 0.
+libbpf: map 'events': found type = 27.
+libbpf: map 'events': found max_entries = 4096.
+libbpf: object 'prog': failed (-95) to create BPF token from '/sys/fs/bpf', skipping optional step...
+libbpf: map 'events': created successfully, fd=0
+libbpf: prog 'ringbuf_stack_discard': BPF program load failed: -EACCES
+libbpf: prog 'ringbuf_stack_discard': -- BEGIN PROG LOAD LOG --
+func#0 @0
+Live regs before insn:
+  0: .......... (b7) r1 = 7
+  1: .1........ (63) *(u32 *)(r10 -4) = r1
+  2: .......... (bf) r1 = r10
+  3: .1........ (07) r1 += -4
+  4: .1........ (b7) r2 = 0
+  5: .12....... (85) call bpf_ringbuf_discard#133
+  6: .......... (b7) r0 = 2
+  7: 0......... (95) exit
+0: R1=ctx() R10=fp0
+; int ringbuf_stack_discard(struct xdp_md *ctx) @ buggy.bpf.c:22
+0: (b7) r1 = 7                        ; R1_w=7
+; rec.mark = 7; @ buggy.bpf.c:26
+1: (63) *(u32 *)(r10 -4) = r1         ; R1_w=7 R10=fp0 fp-8=mmmm????
+2: (bf) r1 = r10                      ; R1_w=fp0 R10=fp0
+;  @ buggy.bpf.c:0
+3: (07) r1 += -4                      ; R1_w=fp-4
+; bpf_ringbuf_discard(&rec, 0); @ buggy.bpf.c:27
+4: (b7) r2 = 0                        ; R2_w=0
+5: (85) call bpf_ringbuf_discard#133
+R1 type=fp expected=ringbuf_mem
+verification time 0 usec
+stack depth 8
+processed 6 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0 mark_read 0
+-- END PROG LOAD LOG --
+libbpf: prog 'ringbuf_stack_discard': failed to load: -EACCES
+libbpf: failed to load object '<work-dir>/prog.o'
+Error: failed to load object file
