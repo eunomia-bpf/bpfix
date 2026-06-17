@@ -1,0 +1,166 @@
+libbpf: loading object from <work-dir>/prog.o
+libbpf: elf: section(3) xdp, size 304, link 0, flags 6, type=1
+libbpf: sec 'xdp': found program 'ringbuf_nested_reserve_leak' at insn offset 0 (0 bytes), code size 38 insns (304 bytes)
+libbpf: elf: section(4) .relxdp, size 32, link 26, flags 40, type=9
+libbpf: elf: section(5) .maps, size 16, link 0, flags 3, type=1
+libbpf: elf: section(6) license, size 4, link 0, flags 3, type=1
+libbpf: license of <work-dir>/prog.o is GPL
+libbpf: elf: section(16) .BTF, size 1508, link 0, flags 0, type=1
+libbpf: elf: section(18) .BTF.ext, size 396, link 0, flags 0, type=1
+libbpf: elf: section(26) .symtab, size 384, link 1, flags 0, type=2
+libbpf: looking for externs among 16 symbols...
+libbpf: collected 0 externs total
+libbpf: map 'events': at sec_idx 5, offset 0.
+libbpf: map 'events': found type = 27.
+libbpf: map 'events': found max_entries = 4096.
+libbpf: sec '.relxdp': collecting relocation for section(3) 'xdp'
+libbpf: sec '.relxdp': relo #0: insn #7 against 'events'
+libbpf: prog 'ringbuf_nested_reserve_leak': found map 0 (events, sec 5, off 0) for insn #7
+libbpf: sec '.relxdp': relo #1: insn #16 against 'events'
+libbpf: prog 'ringbuf_nested_reserve_leak': found map 0 (events, sec 5, off 0) for insn #16
+libbpf: object 'prog': failed (-95) to create BPF token from '/sys/fs/bpf', skipping optional step...
+libbpf: loaded kernel BTF from '/sys/kernel/btf/vmlinux'
+libbpf: sec 'xdp': found 3 CO-RE relocations
+libbpf: CO-RE relocating [10] struct xdp_md: found target candidate [14922] struct xdp_md in [vmlinux]
+libbpf: prog 'ringbuf_nested_reserve_leak': relo #0: <byte_off> [10] struct xdp_md.data_end (0:1 @ offset 4)
+libbpf: prog 'ringbuf_nested_reserve_leak': relo #0: matching candidate #0 <byte_off> [14922] struct xdp_md.data_end (0:1 @ offset 4)
+libbpf: prog 'ringbuf_nested_reserve_leak': relo #0: patched insn #1 (LDX/ST/STX) off 4 -> 4
+libbpf: prog 'ringbuf_nested_reserve_leak': relo #1: <byte_off> [10] struct xdp_md.data (0:0 @ offset 0)
+libbpf: prog 'ringbuf_nested_reserve_leak': relo #1: matching candidate #0 <byte_off> [14922] struct xdp_md.data (0:0 @ offset 0)
+libbpf: prog 'ringbuf_nested_reserve_leak': relo #1: patched insn #2 (LDX/ST/STX) off 0 -> 0
+libbpf: CO-RE relocating [15] struct ethhdr: found target candidate [23410] struct ethhdr in [vmlinux]
+libbpf: prog 'ringbuf_nested_reserve_leak': relo #2: <byte_off> [15] struct ethhdr.h_proto (0:2 @ offset 12)
+libbpf: prog 'ringbuf_nested_reserve_leak': relo #2: matching candidate #0 <byte_off> [23410] struct ethhdr.h_proto (0:2 @ offset 12)
+libbpf: prog 'ringbuf_nested_reserve_leak': relo #2: patched insn #6 (LDX/ST/STX) off 12 -> 12
+libbpf: map 'events': created successfully, fd=0
+libbpf: prog 'ringbuf_nested_reserve_leak': BPF program load failed: -EINVAL
+libbpf: prog 'ringbuf_nested_reserve_leak': -- BEGIN PROG LOAD LOG --
+func#0 @0
+Live regs before insn:
+  0: .1........ (b7) r6 = 2
+  1: .1....6... (61) r2 = *(u32 *)(r1 +4)
+  2: .12...6... (61) r1 = *(u32 *)(r1 +0)
+  3: .12...6... (bf) r3 = r1
+  4: .123..6... (07) r3 += 14
+  5: .123..6... (2d) if r3 > r2 goto pc+30
+  6: .1....6... (69) r8 = *(u16 *)(r1 +12)
+  7: ......6.8. (18) r1 = 0xffff000000000000
+  9: .1....6.8. (b7) r2 = 4
+ 10: .12...6.8. (b7) r3 = 0
+ 11: .123..6.8. (85) call bpf_ringbuf_reserve#131
+ 12: 0.....6.8. (bf) r7 = r0
+ 13: ......678. (15) if r7 == 0x0 goto pc+22
+ 14: ......678. (b7) r1 = 3
+ 15: .1....678. (63) *(u32 *)(r7 +0) = r1
+ 16: ......678. (18) r1 = 0xffff000000000000
+ 18: .1....678. (b7) r2 = 4
+ 19: .12...678. (b7) r3 = 0
+ 20: .123..678. (85) call bpf_ringbuf_reserve#131
+ 21: 0.....678. (15) if r0 == 0x0 goto pc+14
+ 22: 0......78. (b7) r1 = 7
+ 23: 01.....78. (15) if r8 == 0x8 goto pc+1
+ 24: 0......78. (b7) r1 = 11
+ 25: 01.....78. (63) *(u32 *)(r0 +0) = r1
+ 26: 0......78. (bf) r1 = r7
+ 27: 01......8. (b7) r2 = 0
+ 28: 012.....8. (bf) r6 = r0
+ 29: .12...6.8. (85) call bpf_ringbuf_submit#132
+ 30: ......6.8. (bf) r1 = r6
+ 31: .1......8. (b7) r2 = 0
+ 32: .12.....8. (85) call bpf_ringbuf_submit#132
+ 33: ........8. (b7) r6 = 1
+ 34: ......6.8. (15) if r8 == 0x8 goto pc+1
+ 35: .......... (b7) r6 = 2
+ 36: ......6... (bf) r0 = r6
+ 37: 0......... (95) exit
+0: R1=ctx() R10=fp0
+; int ringbuf_nested_reserve_leak(struct xdp_md *ctx) @ buggy.bpf.c:29
+0: (b7) r6 = 2                        ; R6_w=2
+; void *data_end = (void *)(long)ctx->data_end; @ buggy.bpf.c:32
+1: (61) r2 = *(u32 *)(r1 +4)          ; R1=ctx() R2_w=pkt_end()
+; void *data = (void *)(long)ctx->data; @ buggy.bpf.c:31
+2: (61) r1 = *(u32 *)(r1 +0)          ; R1_w=pkt(r=0)
+; if ((void *)(eth + 1) > data_end) @ buggy.bpf.c:38
+3: (bf) r3 = r1                       ; R1_w=pkt(r=0) R3_w=pkt(r=0)
+4: (07) r3 += 14                      ; R3_w=pkt(off=14,r=0)
+5: (2d) if r3 > r2 goto pc+30         ; R2_w=pkt_end() R3_w=pkt(off=14,r=14)
+; is_ip = bpf_ntohs(eth->h_proto) == ETH_P_IP; @ buggy.bpf.c:41
+6: (69) r8 = *(u16 *)(r1 +12)         ; R1_w=pkt(r=14) R8_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=0xffff,var_off=(0x0; 0xffff))
+; audit = bpf_ringbuf_reserve(&events, sizeof(*audit), 0); @ buggy.bpf.c:42
+7: (18) r1 = 0xffff000000000000       ; R1_w=map_ptr(map=events,ks=0,vs=0)
+9: (b7) r2 = 4                        ; R2_w=4
+10: (b7) r3 = 0                       ; R3_w=0
+11: (85) call bpf_ringbuf_reserve#131
+mark_precise: frame0: last_idx 11 first_idx 0 subseq_idx -1 
+mark_precise: frame0: regs=r2 stack= before 10: (b7) r3 = 0
+mark_precise: frame0: regs=r2 stack= before 9: (b7) r2 = 4
+12: R0=ringbuf_mem_or_null(id=2,ref_obj_id=2,sz=4) refs=2
+12: (bf) r7 = r0                      ; R0=ringbuf_mem_or_null(id=2,ref_obj_id=2,sz=4) R7_w=ringbuf_mem_or_null(id=2,ref_obj_id=2,sz=4) refs=2
+; if (!audit) @ buggy.bpf.c:43
+13: (15) if r7 == 0x0 goto pc+22      ; R7_w=ringbuf_mem(ref_obj_id=2,sz=4) refs=2
+14: (b7) r1 = 3                       ; R1_w=3 refs=2
+; audit->mark = 3; @ buggy.bpf.c:45
+15: (63) *(u32 *)(r7 +0) = r1         ; R1_w=3 R7_w=ringbuf_mem(ref_obj_id=2,sz=4) refs=2
+; rec = bpf_ringbuf_reserve(&events, sizeof(*rec), 0); @ buggy.bpf.c:47
+16: (18) r1 = 0xffff000000000000      ; R1_w=map_ptr(map=events,ks=0,vs=0) refs=2
+18: (b7) r2 = 4                       ; R2_w=4 refs=2
+19: (b7) r3 = 0                       ; R3_w=0 refs=2
+20: (85) call bpf_ringbuf_reserve#131
+mark_precise: frame0: last_idx 20 first_idx 12 subseq_idx -1 
+mark_precise: frame0: regs=r2 stack= before 19: (b7) r3 = 0
+mark_precise: frame0: regs=r2 stack= before 18: (b7) r2 = 4
+21: R0=ringbuf_mem_or_null(id=4,ref_obj_id=4,sz=4) refs=2,4
+; if (!rec) @ buggy.bpf.c:48
+21: (15) if r0 == 0x0 goto pc+14      ; R0=ringbuf_mem(ref_obj_id=4,sz=4) refs=2,4
+22: (b7) r1 = 7                       ; R1_w=7 refs=2,4
+; rec->mark = is_ip ? 7 : 11; @ buggy.bpf.c:50
+23: (15) if r8 == 0x8 goto pc+1       ; R8=scalar(smin=smin32=0,smax=umax=smax32=umax32=0xffff,var_off=(0x0; 0xffff)) refs=2,4
+24: (b7) r1 = 11                      ; R1_w=11 refs=2,4
+25: (63) *(u32 *)(r0 +0) = r1         ; R0=ringbuf_mem(ref_obj_id=4,sz=4) R1_w=11 refs=2,4
+; bpf_ringbuf_submit(audit, 0); @ buggy.bpf.c:52
+26: (bf) r1 = r7                      ; R1_w=ringbuf_mem(ref_obj_id=2,sz=4) R7=ringbuf_mem(ref_obj_id=2,sz=4) refs=2,4
+27: (b7) r2 = 0                       ; R2_w=0 refs=2,4
+28: (bf) r6 = r0                      ; R0=ringbuf_mem(ref_obj_id=4,sz=4) R6_w=ringbuf_mem(ref_obj_id=4,sz=4) refs=2,4
+29: (85) call bpf_ringbuf_submit#132          ; refs=4
+; bpf_ringbuf_submit(rec, 0); @ buggy.bpf.c:53
+30: (bf) r1 = r6                      ; R1_w=ringbuf_mem(ref_obj_id=4,sz=4) R6=ringbuf_mem(ref_obj_id=4,sz=4) refs=4
+31: (b7) r2 = 0                       ; R2_w=0 refs=4
+32: (85) call bpf_ringbuf_submit#132          ;
+33: (b7) r6 = 1                       ; R6_w=1
+; return is_ip ? XDP_DROP : XDP_PASS; @ buggy.bpf.c:54
+34: (15) if r8 == 0x8 goto pc+1       ; R8=scalar(smin=smin32=0,smax=umax=smax32=umax32=0xffff,var_off=(0x0; 0xffff))
+35: (b7) r6 = 2                       ; R6_w=2
+; } @ buggy.bpf.c:55
+36: (bf) r0 = r6                      ; R0_w=2 R6_w=2
+37: (95) exit
+
+from 34 to 36: R6=1 R7=scalar() R8=8 R10=fp0
+36: R6=1 R7=scalar() R8=8 R10=fp0
+36: (bf) r0 = r6                      ; R0_w=1 R6=1
+37: (95) exit
+
+from 23 to 25: R0=ringbuf_mem(ref_obj_id=4,sz=4) R1_w=7 R6=2 R7=ringbuf_mem(ref_obj_id=2,sz=4) R8=8 R10=fp0 refs=2,4
+25: R0=ringbuf_mem(ref_obj_id=4,sz=4) R1_w=7 R6=2 R7=ringbuf_mem(ref_obj_id=2,sz=4) R8=8 R10=fp0 refs=2,4
+; rec->mark = is_ip ? 7 : 11; @ buggy.bpf.c:50
+25: (63) *(u32 *)(r0 +0) = r1         ; R0=ringbuf_mem(ref_obj_id=4,sz=4) R1_w=7 refs=2,4
+; bpf_ringbuf_submit(audit, 0); @ buggy.bpf.c:52
+26: (bf) r1 = r7                      ; R1_w=ringbuf_mem(ref_obj_id=2,sz=4) R7=ringbuf_mem(ref_obj_id=2,sz=4) refs=2,4
+27: (b7) r2 = 0                       ; R2_w=0 refs=2,4
+28: (bf) r6 = r0                      ; R0=ringbuf_mem(ref_obj_id=4,sz=4) R6_w=ringbuf_mem(ref_obj_id=4,sz=4) refs=2,4
+29: (85) call bpf_ringbuf_submit#132
+30: safe
+
+from 21 to 36: R0=0 R6=2 R7=ringbuf_mem(ref_obj_id=2,sz=4) R8=scalar(smin=smin32=0,smax=umax=smax32=umax32=0xffff,var_off=(0x0; 0xffff)) R10=fp0 refs=2
+36: R0=0 R6=2 R7=ringbuf_mem(ref_obj_id=2,sz=4) R8=scalar(smin=smin32=0,smax=umax=smax32=umax32=0xffff,var_off=(0x0; 0xffff)) R10=fp0 refs=2
+; } @ buggy.bpf.c:55
+36: (bf) r0 = r6                      ; R0_w=2 R6=2 refs=2
+37: (95) exit
+Unreleased reference id=2 alloc_insn=11
+BPF_EXIT instruction in main prog would lead to reference leak
+verification time 0 usec
+stack depth 0
+processed 46 insns (limit 1000000) max_states_per_insn 1 total_states 5 peak_states 5 mark_read 3
+-- END PROG LOAD LOG --
+libbpf: prog 'ringbuf_nested_reserve_leak': failed to load: -EINVAL
+libbpf: failed to load object '<work-dir>/prog.o'
+Error: failed to load object file
