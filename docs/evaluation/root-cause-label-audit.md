@@ -15,17 +15,19 @@ Current validated `label.root_cause_insn_idx` coverage:
 | metric | cases |
 | --- | ---: |
 | replayable cases | 235 |
-| cases with local-replay `root_cause_insn_idx` | 131 |
-| cases without `root_cause_insn_idx` | 104 |
+| cases with local-replay `root_cause_insn_idx` | 130 |
+| cases without `root_cause_insn_idx` | 105 |
 | invalid external-numbered root labels nulled | 8 |
 | invalid external-numbered root labels relocalized | 2 |
+| source/PC alignment labels corrected | 9 |
+| declaration-level root labels excluded from instruction metrics | 1 |
 
 Missing instruction labels by source:
 
 | source_kind | missing instruction labels |
 | --- | ---: |
 | `github_issue` | 18 |
-| `github_commit` | 25 |
+| `github_commit` | 26 |
 | `stackoverflow` | 61 |
 
 Kernel selftest cases currently all have instruction-level root-cause labels.
@@ -36,7 +38,10 @@ from original Stack Overflow or GitHub logs are not eligible for instruction
 distance metrics until they are re-localized on the pinned replay log.
 The validator rejects high-risk external-case labels whose root PC still shadows
 the raw legacy rejected PC when the local replay source line shows a numbering
-space mismatch.
+space mismatch. It also rejects cases where a `root_cause_line` appears in the
+local replay source comments but `root_cause_insn_idx` points at an unrelated
+instruction PC, while allowing a one-instruction source-comment lag observed in
+some verifier logs.
 
 ## Interpretation For Metrics
 

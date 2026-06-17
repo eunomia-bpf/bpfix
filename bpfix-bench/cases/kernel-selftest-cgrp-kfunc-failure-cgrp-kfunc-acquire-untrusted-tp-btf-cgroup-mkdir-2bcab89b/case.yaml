@@ -32,7 +32,7 @@ label:
   root_cause_description: 'Intentional negative test: loads `v->cgrp` from the map and passes
     that maybe-NULL, untrusted pointer to `bpf_cgroup_acquire` without first proving it is
     non-NULL and trusted.'
-  root_cause_insn_idx: 4
+  root_cause_insn_idx: 59
   rejected_line: acquired = bpf_cgroup_acquire(v->cgrp);
   root_cause_line: acquired = bpf_cgroup_acquire(v->cgrp);
   localization_confidence: high

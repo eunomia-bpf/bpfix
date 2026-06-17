@@ -32,7 +32,7 @@ label:
   root_cause_description: 'Intentional negative test: reads `kptr = v->cgrp` under RCU and
     then calls `bpf_cgroup_release(kptr)` even though the raw map kptr was never acquired
     as a referenced cgroup object.'
-  root_cause_insn_idx: 7
+  root_cause_insn_idx: 62
   rejected_line: bpf_cgroup_release(kptr);
   root_cause_line: bpf_cgroup_release(kptr);
   localization_confidence: high

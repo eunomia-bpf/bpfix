@@ -416,6 +416,7 @@ def validate_stored_artifacts(
                 f"instruction numbering: root={root_pc!r}, max_pc={max_pc!r}"
             )
         else:
+            validate_root_cause_line_pc_alignment(verifier_log, label, root_pc, errors)
             validate_legacy_shadowed_root_line(
                 verifier_log,
                 capture,
@@ -545,6 +546,53 @@ def verifier_log_source_comment_for_pc(verifier_log: str, pc: int) -> str | None
             # comments. Keep the last source-backed occurrence from the trace.
             result = current_source
     return result
+
+
+def verifier_log_pcs_for_source_comment(verifier_log: str, source_line: str) -> list[int]:
+    target = normalize_source_line(source_line)
+    if not target:
+        return []
+
+    current_source: str | None = None
+    pcs: list[int] = []
+    for line in verifier_log.splitlines():
+        source_match = SOURCE_COMMENT_RE.match(line)
+        if source_match:
+            current_source = source_match.group("source")
+            continue
+        pc_match = VERIFIER_PC_RE.match(line)
+        if pc_match and current_source and normalize_source_line(current_source) == target:
+            pcs.append(int(pc_match.group(1)))
+    return pcs
+
+
+def validate_root_cause_line_pc_alignment(
+    verifier_log: str,
+    label: dict[str, Any],
+    root_pc: int,
+    errors: list[str],
+) -> None:
+    root_line = label.get("root_cause_line")
+    if not isinstance(root_line, str) or not root_line:
+        return
+
+    matching_pcs = verifier_log_pcs_for_source_comment(verifier_log, root_line)
+    if matching_pcs and not root_cause_pc_matches_source_comment(root_pc, matching_pcs):
+        errors.append(
+            "label.root_cause_line maps to different replay verifier-log instruction PCs "
+            "than label.root_cause_insn_idx: "
+            f"root={root_pc!r}, line_pcs={matching_pcs!r}, root_cause_line={root_line!r}"
+        )
+
+
+def root_cause_pc_matches_source_comment(root_pc: int, matching_pcs: list[int]) -> bool:
+    if root_pc in matching_pcs:
+        return True
+    # Some verifier logs attach a source comment to the instruction after the
+    # semantic operation, for example a C loop condition followed by loop-update
+    # arithmetic.  Accept that one-instruction lag without allowing distant
+    # legacy-numbering shadows.
+    return (root_pc + 1) in matching_pcs
 
 
 def validate_legacy_shadowed_root_line(

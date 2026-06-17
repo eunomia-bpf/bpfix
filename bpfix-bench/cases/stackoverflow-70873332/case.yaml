@@ -39,9 +39,9 @@ label:
   root_cause_description: The loop checks `data + pkt_ctx->pkt_offset + j + 1 <= data_end`,
     but the verifier refuses to apply that packet-length proof because the map-derived offset
     range can cross the `MAX_PACKET_OFF` precision boundary.
-  root_cause_insn_idx: 11
+  root_cause_insn_idx: 17
   rejected_line: if (data[pkt_ctx->pkt_offset + j] == '\r') {
-  root_cause_line: for (__u16 j = 0; j < 253; j++) {
+  root_cause_line: if (data_end < data + pkt_ctx->pkt_offset + j + 1) {
   localization_confidence: medium
   fix_type: clamp
   fix_direction: Bound `pkt_ctx->pkt_offset` separately before the loop and keep the checked

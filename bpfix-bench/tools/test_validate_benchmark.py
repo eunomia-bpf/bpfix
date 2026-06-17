@@ -261,6 +261,57 @@ class ValidateCaseMetadataTest(unittest.TestCase):
 
         self.assertEqual(errors, [])
 
+    def test_root_cause_line_source_comment_must_align_with_root_pc(self) -> None:
+        case_data = copy.deepcopy(base_case_data())
+        case_data["capture"]["terminal_error"] = "R1 invalid mem access 'scalar'"
+        case_data["capture"]["rejected_insn_idx"] = 4
+        case_data["label"]["root_cause_insn_idx"] = 2
+        case_data["label"]["root_cause_line"] = "bad_access();"
+
+        errors = self.validate_stored_artifacts(
+            case_data,
+            verifier_log="\n".join(
+                [
+                    "0: R1=ctx() R10=fp0",
+                    "; setup(); @ prog.c:10",
+                    "2: (b7) r1 = 0",
+                    "; bad_access(); @ prog.c:11",
+                    "4: (79) r1 = *(u64 *)(r1 +0)",
+                    "R1 invalid mem access 'scalar'",
+                ]
+            )
+            + "\n",
+        )
+
+        self.assertTrue(
+            any("label.root_cause_line maps to different replay verifier-log instruction PCs" in error for error in errors),
+            errors,
+        )
+
+    def test_root_cause_line_allows_one_instruction_source_comment_lag(self) -> None:
+        case_data = copy.deepcopy(base_case_data())
+        case_data["capture"]["terminal_error"] = "R1 invalid mem access 'scalar'"
+        case_data["capture"]["rejected_insn_idx"] = 4
+        case_data["label"]["root_cause_insn_idx"] = 2
+        case_data["label"]["root_cause_line"] = "for (i = cur; data+i < data_end; i++) {"
+
+        errors = self.validate_stored_artifacts(
+            case_data,
+            verifier_log="\n".join(
+                [
+                    "0: R1=ctx() R10=fp0",
+                    "2: (3d) if r0 >= r1 goto pc+1",
+                    "; for (i = cur; data+i < data_end; i++) { @ prog.c:11",
+                    "3: (0f) r3 += r5",
+                    "4: (79) r1 = *(u64 *)(r1 +0)",
+                    "R1 invalid mem access 'scalar'",
+                ]
+            )
+            + "\n",
+        )
+
+        self.assertEqual(errors, [])
+
     def validate_stored_artifacts(
         self,
         case_data: dict,
