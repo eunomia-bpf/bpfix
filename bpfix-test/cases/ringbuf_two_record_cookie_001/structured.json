@@ -11,26 +11,34 @@
   "required_proof": "preserve a verifier-recognized pointer type at the operation that requires a pointer",
   "source_span": {
     "path": "buggy.bpf.c",
-    "line_start": 56,
-    "line_end": 56,
-    "instruction_pc": 19,
+    "line_start": 63,
+    "line_end": 63,
+    "instruction_pc": 35,
     "source_text": "asm volatile(\"%[cookie] <<= 32; %[cookie] >>= 32\" : [cookie] \"+r\"(cookie));"
   },
   "related_spans": [
     {
       "path": "buggy.bpf.c",
-      "line_start": 42,
-      "line_end": 42,
-      "instruction_pc": 10,
+      "line_start": 39,
+      "line_end": 39,
+      "instruction_pc": 3,
       "source_text": "if ((void *)(eth + 1) > data_end)",
       "label": "nearby source context for pointer provenance"
     },
     {
       "path": "buggy.bpf.c",
-      "line_start": 52,
-      "line_end": 52,
+      "line_start": 49,
+      "line_end": 49,
       "instruction_pc": 17,
-      "source_text": "if (!cfg)",
+      "source_text": "struct event *audit = bpf_ringbuf_reserve(&events, sizeof(*audit), 0);",
+      "label": "verifier state changes from ringbuf_mem_or_null to scalar before the rejected access"
+    },
+    {
+      "path": "buggy.bpf.c",
+      "line_start": 55,
+      "line_end": 55,
+      "instruction_pc": 26,
+      "source_text": "if (!rec) {",
       "label": "nearby source context for pointer provenance"
     }
   ],
@@ -38,25 +46,26 @@
     {
       "kind": "terminal_verifier_error",
       "detail": "R0 pointer arithmetic with <<= operator prohibited",
-      "line": 65
+      "line": 114
     },
     {
       "kind": "instruction_pc",
-      "detail": "nearest verifier instruction pc 19",
-      "line": 65
+      "detail": "nearest verifier instruction pc 35",
+      "line": 114
     },
     {
       "kind": "verifier_trace",
-      "detail": "parsed 15 per-instruction verifier state snapshots",
+      "detail": "parsed 29 per-instruction verifier state snapshots",
       "line": null
     },
     {
       "kind": "lowering_artifact_signal",
       "detail": "a verifier-tracked pointer reaches a left-shift instruction, which the verifier rejects because the operation destroys pointer provenance",
-      "line": 65
+      "line": 114
     }
   ],
   "help": [
+    "Preserve pointer provenance across the failing path, or rederive the pointer from a checked base immediately before dereferencing it.",
     "The rejected pointer-shift line must not remain as-is. Do not cast a verifier pointer through __u64/long, shift or mask that integer cookie, and cast it back. Delete the cookie/shadow round trip and use the original checked pointer variable for the packet, map-value, dynptr-slice, or ringbuf-record access.",
     "Avoid integer casts or arithmetic that turn the pointer into a scalar before the access.",
     "Recompute the pointer from a verifier-tracked base after scalar manipulation."
@@ -67,7 +76,7 @@
     "object_path": null,
     "object_programs": [],
     "object_analysis_error": null,
-    "trace_state_count": 15,
+    "trace_state_count": 29,
     "analysis_error": null
   }
 }

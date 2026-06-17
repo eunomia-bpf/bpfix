@@ -1,7 +1,7 @@
 # BPFix-Test 设计：面向 LLM One-Shot eBPF 修复的挑战集
 
 最后更新：2026-06-17
-阶段：13-case pilot + 可运行 oracle
+阶段：18-case admitted pilot + 可运行 oracle
 仓库路径：`bpfix-test/`
 
 ## 定位
@@ -106,7 +106,7 @@ proof-loss sites that are implicit or misleading in raw verifier logs.
 | Modern BPF protocol cases | 25 | dynptr、kfunc、ringbuf/ref lifecycle、iterator、rbtree、timer、sleepable/RCU/lock |
 | Environment/config boundary cases | 10 | helper/kfunc unavailable、wrong prog type、attach mismatch、missing BTF |
 
-当前 pilot 先覆盖 13 个方向：
+当前 admitted pilot 先覆盖 18 个方向：
 
 - `alu32_pointer_cookie_001`：inline asm/ALU 操作破坏 packet pointer proof；
 - `xdp_adjust_head_stale_001`：`bpf_xdp_adjust_head()` invalidates old packet
@@ -128,12 +128,27 @@ proof-loss sites that are implicit or misleading in raw verifier logs.
 - `map_value_spill_cookie_001`：map-value pointer 经过 saved/cookie/shadow
   链路和 inline asm 位移后再访问字段；正确修复必须删除 cookie round trip，
   但保留 map lookup、`seen_packets` 更新和 packet return 语义。
+- `map_value_inline_cookie_001`：map lookup 被藏在 inline helper 中，packet
+  protocol 决定 map 语义；正确修复必须删除 map-value pointer cookie，同时保留
+  nullable map proof、`seen_packets` 更新和 per-test map 配置行为。
 - `packet_macro_cookie_001`：packet parser 把 proof 建立藏在 helper-like inline
   结构里，final reject 落在 pointer cookie 位移；正确修复必须保留 UDP DNS
   drop 行为和 truncated-packet pass 行为。
+- `packet_inline_return_cookie_001`：inline parser 返回已检查的 UDP header pointer，
+  caller 再经过 pointer cookie 访问端口；正确修复必须保留 inline proof chain。
+- `packet_l4_branch_cookie_001`：UDP/TCP 两个分支分别建立 L4 pointer proof，merge
+  后 pointer cookie 破坏 provenance；正确修复必须保留 UDP DNS 和 TCP TLS 两种行为。
+- `packet_vlan_cookie_001`：packet parser 支持 plain Ethernet 和 802.1Q VLAN 两种
+  layout，final reject 在 checked TCP pointer cookie；正确修复必须同时保留 VLAN
+  和非 VLAN 行为。
 - `ringbuf_branch_cookie_001`：UDP/TCP 分支决定 ringbuf mark，reserve 后对
   ringbuf pointer 做整数 cookie 位移；正确修复必须保留 reserve/submit 和
   mark=7/11 的路径语义。
+- `ringbuf_two_record_cookie_001`：同一程序 reserve audit record 和 branch-derived
+  record，第二个 record 经 pointer cookie 后 submit；正确修复必须保留 audit
+  submit、branch-derived mark 写入、两个 distinct submitted refs 和 UDP/TCP return
+  语义。由于 verifier success log 可能把 UDP submit 后续路径折叠成 `safe`，oracle
+  不把“每个分支 submit 都被完整打印”当成可观察事实。
 - `xdp_adjust_head_ringbuf_001`：`bpf_xdp_adjust_head()` invalidates old packet
   pointer，同时 ringbuf record 仍需 submit；正确修复必须理解 positive
   adjust-head 后新 `ctx->data` 已经指向剥掉 Ethernet header 之后的 IP header。
@@ -266,12 +281,40 @@ case，BPFix 诊断也做了两点工程修正：
   cookie 位移或 mask 后再 cast 回来，应该删除 cookie/shadow round trip 并使用原始
   checked pointer。
 
-合并当前 13 个 pilot cases 后：
+合并当时 13 个 pilot cases 后：
 
 - raw verifier log：5/13 pass，38.5%；
 - BPFix structured JSON：12/13 pass，92.3%。
 
-这仍然不能声称已达到 hard-suite 目标，因为 raw 38.5% 还高于 `<30%`。但新增 4 个
+当时仍然不能声称已达到 hard-suite 目标，因为 raw 38.5% 还高于 `<30%`。但新增 4 个
 case 说明构造“raw 难、structured 多数可修”的组合场景是可行的，下一步至少还需要再
 加入 4 个 raw-failing admitted cases 才可能把当前模型/config 下的 raw pass rate
 压到 30% 以下。
+
+随后继续校准时发现 3 个候选 case 被 raw Qwen27B 直接修好：
+
+- `dynptr_slice_cookie_001`；
+- `map_value_two_lookup_cookie_001`；
+- `ringbuf_map_cookie_001`。
+
+这些 case 不作为当前 hard-mode admitted corpus 计数。如果未来重新引入，它们只能
+作为种子，并且必须增加额外、非同构的 proof obligation 后才能重新 admitted。为避免把容易样本或
+按单一模型筛选出的样本包装成泛化结论，pilot 文档把这类剔除显式记录为 calibration
+exclusions。
+
+同日新增并 admitted 5 个组合 case 后，在该批次相同模型/config 下得到：
+
+- raw verifier log：0/5 pass；
+- BPFix structured JSON：5/5 pass。
+
+把已记录的 9-case、4-case 和 5-case runs 做算术 roll-up 后：
+
+- raw verifier log：5/18 pass，27.8%；
+- BPFix structured JSON：17/18 pass，94.4%。
+
+这个 roll-up 达到 pilot hard-suite raw `<30%` 难度门槛，但它不是一次同
+max-token 配置下的完整 18-case suite run，也不是 paper-ready 结果。admitted 数量
+只有 18，新增 5 个 case 仍高度集中在 pointer-cookie provenance 模式，且 case
+admission 使用了本地 Qwen27B 校准。论文阶段仍必须扩到至少 100 个 case，加入其他
+模型/trimmed raw baseline，重新用同一配置跑完整 suite，并由独立 reviewer 审核每个
+case 的 bug、oracle、signal 多样性和是否过拟合某个 prompt/model。

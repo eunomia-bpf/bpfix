@@ -1,0 +1,91 @@
+libbpf: loading object from <work-dir>/prog.o
+libbpf: elf: section(3) xdp, size 176, link 0, flags 6, type=1
+libbpf: sec 'xdp': found program 'packet_inline_return_cookie' at insn offset 0 (0 bytes), code size 22 insns (176 bytes)
+libbpf: elf: section(4) license, size 4, link 0, flags 3, type=1
+libbpf: license of <work-dir>/prog.o is GPL
+libbpf: elf: section(14) .BTF, size 1698, link 0, flags 0, type=1
+libbpf: elf: section(16) .BTF.ext, size 380, link 0, flags 0, type=1
+libbpf: elf: section(24) .symtab, size 336, link 1, flags 0, type=2
+libbpf: looking for externs among 14 symbols...
+libbpf: collected 0 externs total
+libbpf: object 'prog': failed (-95) to create BPF token from '/sys/fs/bpf', skipping optional step...
+libbpf: loaded kernel BTF from '/sys/kernel/btf/vmlinux'
+libbpf: sec 'xdp': found 5 CO-RE relocations
+libbpf: CO-RE relocating [2] struct xdp_md: found target candidate [14922] struct xdp_md in [vmlinux]
+libbpf: prog 'packet_inline_return_cookie': relo #0: <byte_off> [2] struct xdp_md.data_end (0:1 @ offset 4)
+libbpf: prog 'packet_inline_return_cookie': relo #0: matching candidate #0 <byte_off> [14922] struct xdp_md.data_end (0:1 @ offset 4)
+libbpf: prog 'packet_inline_return_cookie': relo #0: patched insn #1 (LDX/ST/STX) off 4 -> 4
+libbpf: prog 'packet_inline_return_cookie': relo #1: <byte_off> [2] struct xdp_md.data (0:0 @ offset 0)
+libbpf: prog 'packet_inline_return_cookie': relo #1: matching candidate #0 <byte_off> [14922] struct xdp_md.data (0:0 @ offset 0)
+libbpf: prog 'packet_inline_return_cookie': relo #1: patched insn #2 (LDX/ST/STX) off 0 -> 0
+libbpf: CO-RE relocating [8] struct ethhdr: found target candidate [23410] struct ethhdr in [vmlinux]
+libbpf: prog 'packet_inline_return_cookie': relo #2: <byte_off> [8] struct ethhdr.h_proto (0:2 @ offset 12)
+libbpf: prog 'packet_inline_return_cookie': relo #2: matching candidate #0 <byte_off> [23410] struct ethhdr.h_proto (0:2 @ offset 12)
+libbpf: prog 'packet_inline_return_cookie': relo #2: patched insn #6 (LDX/ST/STX) off 12 -> 12
+libbpf: CO-RE relocating [15] struct iphdr: found target candidate [23765] struct iphdr in [vmlinux]
+libbpf: prog 'packet_inline_return_cookie': relo #3: <byte_off> [15] struct iphdr.protocol (0:7 @ offset 9)
+libbpf: prog 'packet_inline_return_cookie': relo #3: matching candidate #0 <byte_off> [23765] struct iphdr.protocol (0:7 @ offset 9)
+libbpf: prog 'packet_inline_return_cookie': relo #3: patched insn #11 (LDX/ST/STX) off 9 -> 9
+libbpf: CO-RE relocating [22] struct udphdr: found target candidate [23773] struct udphdr in [vmlinux]
+libbpf: prog 'packet_inline_return_cookie': relo #4: <byte_off> [22] struct udphdr.dest (0:1 @ offset 2)
+libbpf: prog 'packet_inline_return_cookie': relo #4: matching candidate #0 <byte_off> [23773] struct udphdr.dest (0:1 @ offset 2)
+libbpf: prog 'packet_inline_return_cookie': relo #4: patched insn #17 (LDX/ST/STX) off 2 -> 2
+libbpf: prog 'packet_inline_return_cookie': BPF program load failed: -EACCES
+libbpf: prog 'packet_inline_return_cookie': -- BEGIN PROG LOAD LOG --
+func#0 @0
+Live regs before insn:
+  0: .1........ (b7) r0 = 2
+  1: 01........ (61) r2 = *(u32 *)(r1 +4)
+  2: 012....... (61) r1 = *(u32 *)(r1 +0)
+  3: 012....... (bf) r4 = r1
+  4: 012.4..... (07) r4 += 14
+  5: 012.4..... (2d) if r4 > r2 goto pc+15
+  6: 012.4..... (69) r3 = *(u16 *)(r1 +12)
+  7: 01234..... (55) if r3 != 0x8 goto pc+13
+  8: 012.4..... (bf) r3 = r1
+  9: 01234..... (07) r3 += 34
+ 10: 01234..... (2d) if r3 > r2 goto pc+10
+ 11: 01234..... (71) r4 = *(u8 *)(r4 +9)
+ 12: 01234..... (55) if r4 != 0x11 goto pc+8
+ 13: 0123...... (07) r1 += 42
+ 14: 0123...... (2d) if r1 > r2 goto pc+6
+ 15: ...3...... (67) r3 <<= 32
+ 16: ...3...... (77) r3 >>= 32
+ 17: ...3...... (69) r1 = *(u16 *)(r3 +2)
+ 18: .1........ (b7) r0 = 1
+ 19: 01........ (15) if r1 == 0x3500 goto pc+1
+ 20: .......... (b7) r0 = 2
+ 21: 0......... (95) exit
+0: R1=ctx() R10=fp0
+; int packet_inline_return_cookie(struct xdp_md *ctx) @ buggy.bpf.c:44
+0: (b7) r0 = 2                        ; R0_w=2
+; void *data_end = (void *)(long)ctx->data_end; @ buggy.bpf.c:47
+1: (61) r2 = *(u32 *)(r1 +4)          ; R1=ctx() R2_w=pkt_end()
+; void *data = (void *)(long)ctx->data; @ buggy.bpf.c:46
+2: (61) r1 = *(u32 *)(r1 +0)          ; R1_w=pkt(r=0)
+; if ((void *)(eth + 1) > data_end) @ buggy.bpf.c:26
+3: (bf) r4 = r1                       ; R1_w=pkt(r=0) R4_w=pkt(r=0)
+4: (07) r4 += 14                      ; R4_w=pkt(off=14,r=0)
+5: (2d) if r4 > r2 goto pc+15         ; R2_w=pkt_end() R4_w=pkt(off=14,r=14)
+; if (bpf_ntohs(eth->h_proto) != ETH_P_IP) @ buggy.bpf.c:28
+6: (69) r3 = *(u16 *)(r1 +12)         ; R1_w=pkt(r=14) R3_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=0xffff,var_off=(0x0; 0xffff))
+7: (55) if r3 != 0x8 goto pc+13       ; R3_w=8
+; if ((void *)(iph + 1) > data_end) @ buggy.bpf.c:32
+8: (bf) r3 = r1                       ; R1_w=pkt(r=14) R3_w=pkt(r=14)
+9: (07) r3 += 34                      ; R3=pkt(off=34,r=14)
+10: (2d) if r3 > r2 goto pc+10        ; R2=pkt_end() R3=pkt(off=34,r=34)
+; if (iph->protocol != IPPROTO_UDP) @ buggy.bpf.c:34
+11: (71) r4 = *(u8 *)(r4 +9)          ; R4_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+12: (55) if r4 != 0x11 goto pc+8      ; R4_w=17
+13: (07) r1 += 42                     ; R1_w=pkt(off=42,r=34)
+14: (2d) if r1 > r2 goto pc+6         ; R1_w=pkt(off=42,r=42) R2=pkt_end()
+; asm volatile("%[cookie] <<= 32; %[cookie] >>= 32" : [cookie] "+r"(cookie)); @ buggy.bpf.c:54
+15: (67) r3 <<= 32
+R3 pointer arithmetic with <<= operator prohibited
+verification time 0 usec
+stack depth 0
+processed 16 insns (limit 1000000) max_states_per_insn 0 total_states 1 peak_states 1 mark_read 1
+-- END PROG LOAD LOG --
+libbpf: prog 'packet_inline_return_cookie': failed to load: -EACCES
+libbpf: failed to load object '<work-dir>/prog.o'
+Error: failed to load object file

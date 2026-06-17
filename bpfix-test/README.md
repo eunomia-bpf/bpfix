@@ -9,7 +9,7 @@
 > log 时能否一次生成可工作的修复？把 raw log 换成 BPFix structured
 > diagnostic 后，成功率是否显著提高？
 
-当前目录先提供 13 个可运行的 pilot cases。最终 hard suite 的目标是：
+当前目录先提供 18 个可运行的 admitted pilot cases。最终 hard suite 的目标是：
 
 - raw-log one-shot 修复成功率低于 30%；
 - structured-log one-shot 修复成功率接近 70%；
@@ -48,7 +48,7 @@ cargo build -p bpfix
 python3 bpfix-test/tools/refresh_case_artifacts.py
 ```
 
-当前 pilot cases：
+当前 admitted pilot cases：
 
 | case | bucket | oracle focus |
 | --- | --- | --- |
@@ -62,9 +62,18 @@ python3 bpfix-test/tools/refresh_case_artifacts.py
 | `ringbuf_pointer_cookie_001` | helper protocol / provenance | ringbuf record pointer cannot be integer-masked before write/submit |
 | `xdp_adjust_head_map_value_001` | helper side effect / map value | packet pointers must be reacquired after `bpf_xdp_adjust_head`, while map-value side effects remain correct |
 | `map_value_spill_cookie_001` | map-value provenance / packet behavior | map-value pointer cookie repair must preserve map updates and packet decisions |
+| `map_value_inline_cookie_001` | source correlation / map-value provenance | inline map lookup and map updates must survive pointer-cookie repair |
 | `packet_macro_cookie_001` | source correlation / packet provenance | macro/inline-style parser proof must survive pointer-cookie repair |
+| `packet_inline_return_cookie_001` | source correlation / packet provenance | inline parser return value must remain a checked packet pointer |
+| `packet_l4_branch_cookie_001` | proof lifecycle / branch merge | UDP/TCP branch-derived L4 pointers must remain verifier-tracked after merge |
+| `packet_vlan_cookie_001` | source correlation / packet provenance | optional VLAN parsing and TCP behavior must survive pointer-cookie repair |
 | `ringbuf_branch_cookie_001` | helper protocol / branch behavior | branch-derived ringbuf mark must be preserved while removing pointer-cookie arithmetic |
+| `ringbuf_two_record_cookie_001` | helper protocol / reference lifecycle | two reserved records, audit submit, and branch-derived marks must survive repair |
 | `xdp_adjust_head_ringbuf_001` | helper side effect / ringbuf protocol | ringbuf reserve/submit must remain correct and post-adjust packet parsing must use the new packet layout |
+
+Calibration cases that raw Qwen27B repaired directly are not admitted into this
+hard-mode pilot. If they are reintroduced later, they should be treated only as
+regression seeds and hardened with additional non-isomorphic obligations first.
 
 ## 运行 LLM One-Shot
 
@@ -111,9 +120,9 @@ python3 bpfix-test/tools/run_suite.py \
 默认 smoke test 不依赖模型。
 
 Structured mode 的 prompt 会显式告诉模型如何消费 BPFix JSON：
-`source_span` 是 verifier 拒绝的操作，`related_spans` 是 proof context，
-`required_proof` 和 `help` 是候选源码必须满足的约束。如果 `help` 说明某个
-操作不能保留或必须重写，候选源码不能把它作为死代码留在程序里。
+`source_span` 是 verifier 拒绝的操作，`related_spans` 是可用的 proof context
+而不是 oracle 答案，`required_proof` 和 `help` 是候选源码必须满足的约束。如果
+`help` 说明某个操作不能保留或必须重写，候选源码不能把它作为死代码留在程序里。
 
 ## 环境要求
 

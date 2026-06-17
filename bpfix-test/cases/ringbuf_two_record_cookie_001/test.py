@@ -8,11 +8,11 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools"))
 
 from bpf_case import (
-    loaded_map_value_u32_offset0,
-    loaded_map_value_u32_offset4,
+    ringbuf_record_written_with_mark7,
     run_case,
-    stored_map_value_u32_offset4,
-    xdp_adjust_head_called_with_delta14,
+    submitted_at_least_two_distinct_ringbuf_records,
+    submitted_ringbuf_record_with_mark3_any_path,
+    submitted_ringbuf_record_with_mark11_any_path,
 )
 
 
@@ -39,27 +39,24 @@ if __name__ == "__main__":
         run_case(
             argv=sys.argv[1:],
             expected_reject_substrings=[
-                "invalid mem access 'scalar'",
+                "pointer arithmetic with <<= operator prohibited",
             ],
             functional_tests=[
-                ("udp_after_adjust_drops_from_map_value", lambda: ipv4_packet(17), 1),
-                ("tcp_after_adjust_passes_from_map_value", lambda: ipv4_packet(6), 2),
+                ("udp_writes_branch_record_and_drops", lambda: ipv4_packet(17), 1),
+                ("tcp_submits_two_records_and_passes", lambda: ipv4_packet(6), 2),
                 ("non_ip_pass_even_with_udp_offset_byte", non_ip_packet_with_udp_protocol_offset, 2),
                 ("truncated_ipv4_pass_even_with_udp_offset_byte", truncated_ipv4_packet_with_udp_protocol_offset, 2),
             ],
             required_success_substrings=[
-                "call bpf_xdp_adjust_head#44",
-                "call bpf_map_lookup_elem#1",
-                "map_value_or_null",
+                "call bpf_ringbuf_reserve#131",
+                "ringbuf_mem_or_null",
+                "call bpf_ringbuf_submit#132",
             ],
             required_success_predicates=[
-                ("call bpf_xdp_adjust_head with delta 14", xdp_adjust_head_called_with_delta14),
-                ("load drop_proto from map_value offset 0", loaded_map_value_u32_offset0),
-                ("load seen_packets from map_value offset 4", loaded_map_value_u32_offset4),
-                ("store seen_packets to map_value offset 4", stored_map_value_u32_offset4),
-            ],
-            map_updates=[
-                ("configs", struct.pack("<I", 0), struct.pack("<II", 17, 0)),
+                ("submit at least two distinct ringbuf records", submitted_at_least_two_distinct_ringbuf_records),
+                ("submit audit mark=3 ringbuf_mem", submitted_ringbuf_record_with_mark3_any_path),
+                ("write UDP branch mark=7 ringbuf_mem", ringbuf_record_written_with_mark7),
+                ("submit TCP branch mark=11 ringbuf_mem", submitted_ringbuf_record_with_mark11_any_path),
             ],
         )
     )

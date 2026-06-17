@@ -300,6 +300,66 @@ def ringbuf_written_refs_before_helper(
     return saw_helper
 
 
+def ringbuf_refs_written_with_u32_value(
+    load_output: str,
+    expected_value: int,
+    *,
+    expected_store_offset: int = 0,
+    expected_ringbuf_size: int = 4,
+) -> set[str]:
+    in_annotated_trace = False
+    written_refs: set[str] = set()
+    for line in load_output.splitlines():
+        if line.startswith("0: R1="):
+            in_annotated_trace = True
+            continue
+        if not in_annotated_trace:
+            continue
+
+        store = re.search(r"\*\(u32 \*\)\(r(\d+)\s*([+-])\s*(\d+)\)\s*=\s*r(\d+)", line)
+        if store is None:
+            continue
+
+        sign = -1 if store.group(2) == "-" else 1
+        store_offset = sign * int(store.group(3))
+        if store_offset != expected_store_offset:
+            continue
+        if expected_value not in scalar_values_for_register(line, store.group(4)):
+            continue
+        written_refs.update(ringbuf_refs_for_register(line, store.group(1), expected_size=expected_ringbuf_size))
+    return written_refs
+
+
+def submitted_ringbuf_refs(
+    load_output: str,
+    *,
+    helper_call: str = "call bpf_ringbuf_submit#132",
+    expected_ringbuf_size: int = 4,
+) -> set[str]:
+    in_annotated_trace = False
+    r1_refs: set[str] = set()
+    submitted_refs: set[str] = set()
+    for line in load_output.splitlines():
+        if not line.strip():
+            r1_refs = set()
+            continue
+        if line.startswith("0: R1="):
+            in_annotated_trace = True
+            r1_refs = ringbuf_refs_for_register(line, "1", expected_size=expected_ringbuf_size)
+            continue
+        if line.startswith("from "):
+            r1_refs = ringbuf_refs_for_register(line, "1", expected_size=expected_ringbuf_size)
+            continue
+        if not in_annotated_trace:
+            continue
+
+        if re.search(r"\bR1(?:_w)?=", line):
+            r1_refs = ringbuf_refs_for_register(line, "1", expected_size=expected_ringbuf_size)
+        if helper_call in line:
+            submitted_refs.update(r1_refs)
+    return submitted_refs
+
+
 def helper_calls_use_register_value(load_output: str, helper_call: str, register: str, expected_value: int) -> bool:
     in_annotated_trace = False
     register_values: set[int] = set()
@@ -417,6 +477,22 @@ def submitted_ringbuf_record_with_mark11(load_output: str) -> bool:
         "call bpf_ringbuf_submit#132",
         expected_u32_values={11},
     )
+
+
+def submitted_ringbuf_record_with_mark3_any_path(load_output: str) -> bool:
+    return bool(ringbuf_refs_written_with_u32_value(load_output, 3) & submitted_ringbuf_refs(load_output))
+
+
+def submitted_ringbuf_record_with_mark11_any_path(load_output: str) -> bool:
+    return bool(ringbuf_refs_written_with_u32_value(load_output, 11) & submitted_ringbuf_refs(load_output))
+
+
+def ringbuf_record_written_with_mark7(load_output: str) -> bool:
+    return bool(ringbuf_refs_written_with_u32_value(load_output, 7))
+
+
+def submitted_at_least_two_distinct_ringbuf_records(load_output: str) -> bool:
+    return len(submitted_ringbuf_refs(load_output)) >= 2
 
 
 def discarded_ringbuf_record_with_mark7(load_output: str) -> bool:

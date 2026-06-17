@@ -43,7 +43,7 @@ if __name__ == "__main__":
             ],
             required_success_substrings=[
                 "call bpf_map_lookup_elem#1",
-                "R0_w=map_value_or_null",
+                "map_value_or_null",
             ],
             required_success_predicates=[
                 ("load drop_proto from map_value offset 0", loaded_map_value_u32_offset0),

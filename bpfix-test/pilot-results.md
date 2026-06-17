@@ -131,7 +131,7 @@ Combined pilot status:
 | --- | ---: | ---: |
 | clean 9-case pilot | 5/9 = 55.6% | 9/9 = 100.0% |
 | next 4 challenging cases | 0/4 = 0.0% | 3/4 = 75.0% |
-| combined current pilot | 5/13 = 38.5% | 12/13 = 92.3% |
+| combined intermediate 13-case pilot | 5/13 = 38.5% | 12/13 = 92.3% |
 
 Interpretation:
 
@@ -146,3 +146,64 @@ Interpretation:
   needs at least 17 total admitted cases to fall below 30%, so the next batch
   should add at least four more raw-failing cases and continue improving
   structured diagnostics for branch-side-effect preservation.
+
+## Qwen27B llama.cpp Admitted Next 5 Cases
+
+Setup matches the clean 9-case pilot above, except `--max-tokens 8192` was used.
+This run excludes three calibration candidates that raw Qwen27B repaired
+directly (`dynptr_slice_cookie_001`, `map_value_two_lookup_cookie_001`, and
+`ringbuf_map_cookie_001`). Those are not counted as hard-mode admitted cases.
+The recorded artifacts below are from the tightened-oracle rerun after adding
+the VLAN IPv4 non-TCP checks and strengthening the two-record ringbuf
+predicates.
+
+- Repository base commit: `c3698d11d8988e1251a247824299cfa0a2326385`
+- Repository dirty: `true`
+- Raw local artifact:
+  `/tmp/bpfix-test-qwen27b-admitted-next5-tightened-v3/20260617T044829217928Z-pid60228/raw/summary.json`
+  (`ad40887fd3d0112bd19bd3decd63550fd51cb733a7716503f9cafc9e228db06b`)
+- Structured local artifact:
+  `/tmp/bpfix-test-qwen27b-admitted-next5-tightened-v3/20260617T044927834654Z-pid60324/structured/summary.json`
+  (`f2c8be8d20ed82320423fcb24c70367da02a1d6157f8b1cfe974f366f6661e9f`)
+
+Results:
+
+| mode | passed | total | pass rate |
+| --- | ---: | ---: | ---: |
+| raw verifier log | 0 | 5 | 0.0% |
+| BPFix structured JSON | 5 | 5 | 100.0% |
+
+Per-case result:
+
+| case | raw | structured |
+| --- | --- | --- |
+| `map_value_inline_cookie_001` | fail | pass |
+| `packet_inline_return_cookie_001` | fail | pass |
+| `packet_l4_branch_cookie_001` | fail | pass |
+| `packet_vlan_cookie_001` | fail | pass |
+| `ringbuf_two_record_cookie_001` | fail | pass |
+
+Arithmetic roll-up of admitted pilot runs:
+
+| suite | raw pass rate | structured pass rate |
+| --- | ---: | ---: |
+| clean 9-case pilot | 5/9 = 55.6% | 9/9 = 100.0% |
+| next 4 challenging cases | 0/4 = 0.0% | 3/4 = 75.0% |
+| admitted next 5 cases | 0/5 = 0.0% | 5/5 = 100.0% |
+| arithmetic roll-up, not same-config full-suite run | 5/18 = 27.8% | 17/18 = 94.4% |
+
+Interpretation:
+
+- The arithmetic roll-up reaches the raw `<30%` calibration target, but it is
+  not a single 18-case run under one max-token configuration. Do not use it as
+  paper evidence until the full admitted suite is rerun under one pinned setup.
+- This is still not a paper-ready benchmark result. The suite is small, case
+  admission used one model as a difficulty gate, and no trimmed-raw or
+  cross-model baseline has been run yet.
+- The admitted next-5 batch is intentionally challenging but still concentrated
+  around the `PointerShiftDropsProvenance` signal. Treat it as a pilot
+  calibration batch, not evidence of broad protocol/source-correlation
+  coverage.
+- The explicit calibration exclusions are important: they prevent raw-pass
+  candidates from being silently counted as hard cases or silently discarded
+  without provenance.

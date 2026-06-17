@@ -7,53 +7,53 @@
   "help_safety": "repair_hint",
   "next_action": "provenance",
   "span_confidence": "exact_pc",
-  "message": "verifier-visible compiler lowering hides the required proof: R0 pointer arithmetic with <<= operator prohibited",
+  "message": "verifier-visible compiler lowering hides the required proof: R3 pointer arithmetic with <<= operator prohibited",
   "required_proof": "preserve a verifier-recognized pointer type at the operation that requires a pointer",
   "source_span": {
     "path": "buggy.bpf.c",
-    "line_start": 56,
-    "line_end": 56,
-    "instruction_pc": 19,
+    "line_start": 67,
+    "line_end": 67,
+    "instruction_pc": 23,
     "source_text": "asm volatile(\"%[cookie] <<= 32; %[cookie] >>= 32\" : [cookie] \"+r\"(cookie));"
   },
   "related_spans": [
     {
       "path": "buggy.bpf.c",
-      "line_start": 42,
-      "line_end": 42,
-      "instruction_pc": 10,
-      "source_text": "if ((void *)(eth + 1) > data_end)",
+      "line_start": 57,
+      "line_end": 57,
+      "instruction_pc": 16,
+      "source_text": "if ((void *)(iph + 1) > data_end)",
       "label": "nearby source context for pointer provenance"
     },
     {
       "path": "buggy.bpf.c",
-      "line_start": 52,
-      "line_end": 52,
-      "instruction_pc": 17,
-      "source_text": "if (!cfg)",
+      "line_start": 59,
+      "line_end": 59,
+      "instruction_pc": 19,
+      "source_text": "if (iph->protocol != IPPROTO_TCP)",
       "label": "nearby source context for pointer provenance"
     }
   ],
   "evidence": [
     {
       "kind": "terminal_verifier_error",
-      "detail": "R0 pointer arithmetic with <<= operator prohibited",
-      "line": 65
+      "detail": "R3 pointer arithmetic with <<= operator prohibited",
+      "line": 70
     },
     {
       "kind": "instruction_pc",
-      "detail": "nearest verifier instruction pc 19",
-      "line": 65
+      "detail": "nearest verifier instruction pc 23",
+      "line": 70
     },
     {
       "kind": "verifier_trace",
-      "detail": "parsed 15 per-instruction verifier state snapshots",
+      "detail": "parsed 17 per-instruction verifier state snapshots",
       "line": null
     },
     {
       "kind": "lowering_artifact_signal",
       "detail": "a verifier-tracked pointer reaches a left-shift instruction, which the verifier rejects because the operation destroys pointer provenance",
-      "line": 65
+      "line": 70
     }
   ],
   "help": [
@@ -67,7 +67,7 @@
     "object_path": null,
     "object_programs": [],
     "object_analysis_error": null,
-    "trace_state_count": 15,
+    "trace_state_count": 17,
     "analysis_error": null
   }
 }

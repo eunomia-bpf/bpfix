@@ -57,7 +57,7 @@
     }
   ],
   "help": [
-    "The rejected pointer-shift line must not remain as-is. Do not cast a verifier pointer through __u64/long, shift or mask that integer cookie, and cast it back. Delete the cookie/shadow round trip and use the original checked pointer variable for the packet or map-value access.",
+    "The rejected pointer-shift line must not remain as-is. Do not cast a verifier pointer through __u64/long, shift or mask that integer cookie, and cast it back. Delete the cookie/shadow round trip and use the original checked pointer variable for the packet, map-value, dynptr-slice, or ringbuf-record access.",
     "Avoid integer casts or arithmetic that turn the pointer into a scalar before the access.",
     "Recompute the pointer from a verifier-tracked base after scalar manipulation."
   ],
