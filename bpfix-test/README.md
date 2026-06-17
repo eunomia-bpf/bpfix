@@ -103,12 +103,30 @@ python3 bpfix-test/tools/audit_splits.py \
 gate。Manifest 审计还会检查 split/manifest 一致性、clean freeze 状态、source
 category、bucket、program type、review status、oracle obligation 和 case hash。
 
+生成并验证 frozen prompt manifest：
+
+```bash
+python3 bpfix-test/tools/prompt_manifest.py \
+  --split bpfix-test/splits/clean60.txt \
+  --expected-count 60 \
+  --output bpfix-test/splits/clean60.prompts.json
+
+python3 bpfix-test/tools/prompt_manifest.py \
+  --split bpfix-test/splits/clean60.txt \
+  --expected-count 60 \
+  --verify bpfix-test/splits/clean60.prompts.json
+```
+
+`*.prompts.json` 是被 gitignore 的本地/发布 artifact；报告时记录它的路径和 hash，
+但不要把它变成导致 clean run `git dirty` 的工作区文件。
+
 检查 LLM 结果矩阵是否可报告：
 
 ```bash
 python3 bpfix-test/tools/audit_results.py \
   --split bpfix-test/splits/clean60.txt \
   --expected-count 60 \
+  --prompt-manifest bpfix-test/splits/clean60.prompts.json \
   --required-mode source-only \
   --required-mode raw \
   --required-mode trimmed-raw \
@@ -119,10 +137,10 @@ python3 bpfix-test/tools/audit_results.py \
   /path/to/structured/summary.json
 ```
 
-这个 result gate 会拒绝混用不同 split、缺 baseline、case 顺序不一致、不同模型或
-工具链配置、缺模型 digest、dirty worktree、prompt-only dry run、以及没有
-`failure_stage` 的失败结果。正式 clean60 报数必须先通过 admission gate，再通过
-result gate。
+这个 result gate 会拒绝混用不同 split、缺 baseline、case 顺序不一致、prompt hash
+和 frozen manifest 不一致、不同模型或工具链配置、缺模型 digest、dirty worktree、
+prompt-only dry run、以及没有 `failure_stage` 的失败结果。正式 clean60 报数必须
+先通过 admission gate，再通过 prompt gate 和 result gate。
 
 重新抓取 raw log 和 structured diagnostic：
 

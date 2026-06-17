@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any
 
 import run_suite
+import prompt_manifest
 
 
 ALLOWED_STATUSES = {"pass", "fail", "model_error", "prompt_written"}
@@ -100,12 +101,47 @@ def selected_llm_config(summary: dict[str, Any]) -> dict[str, Any] | None:
     }
 
 
+def selected_llm_identity(summary: dict[str, Any]) -> dict[str, Any] | None:
+    config = selected_llm_config(summary)
+    if config is None:
+        return None
+    return {
+        "model": config.get("model"),
+        "temperature": config.get("temperature"),
+        "max_tokens": config.get("max_tokens"),
+        "timeout_sec": config.get("timeout_sec"),
+        "model_file_sha256": config.get("model_file_sha256"),
+        "llama_cpp_commit": config.get("llama_cpp_commit"),
+    }
+
+
 def selected_toolchain_config(summary: dict[str, Any]) -> dict[str, Any] | None:
     metadata = run_metadata(summary)
     if metadata is None:
         return None
     toolchain = metadata.get("toolchain")
     return toolchain if isinstance(toolchain, dict) else None
+
+
+def normalize_uname(value: Any) -> Any:
+    if not isinstance(value, str):
+        return value
+    parts = value.split()
+    if len(parts) >= 3 and parts[0] == "Linux":
+        return " ".join([parts[0], "<host>", *parts[2:]])
+    return value
+
+
+def selected_toolchain_identity(summary: dict[str, Any]) -> dict[str, Any] | None:
+    toolchain = selected_toolchain_config(summary)
+    if toolchain is None:
+        return None
+    return {
+        "kernel": normalize_uname(toolchain.get("kernel")),
+        "clang": toolchain.get("clang"),
+        "bpftool": toolchain.get("bpftool"),
+        "llvm_objdump": toolchain.get("llvm_objdump"),
+    }
 
 
 def selected_git_config(summary: dict[str, Any]) -> dict[str, Any] | None:
@@ -134,6 +170,42 @@ def expected_split_metadata(path: Path) -> dict[str, Any]:
     }
 
 
+def expected_prompt_index(
+    path: Path | None,
+    expected_split: dict[str, Any] | None,
+    *,
+    allow_dirty_prompt_manifest: bool,
+    allow_missing_prompt_manifest: bool,
+) -> tuple[dict[tuple[str, str], dict[str, Any]] | None, str | None]:
+    if path is None:
+        if allow_missing_prompt_manifest:
+            return None, None
+        raise SystemExit("--prompt-manifest is required; use --allow-missing-prompt-manifest only for dev dry runs")
+    manifest = prompt_manifest.read_manifest(path)
+    if manifest.get("schema_version") != prompt_manifest.SCHEMA_VERSION:
+        raise SystemExit(f"{path}: schema_version must be {prompt_manifest.SCHEMA_VERSION!r}")
+    git = manifest.get("git")
+    if isinstance(git, dict) and git.get("dirty") is True and not allow_dirty_prompt_manifest:
+        raise SystemExit(f"{path}: manifest was generated from a dirty worktree")
+    manifest_git_commit = git.get("commit") if isinstance(git, dict) and isinstance(git.get("commit"), str) else None
+    if manifest_git_commit is None:
+        raise SystemExit(f"{path}: git.commit is required")
+    manifest_split = manifest.get("split")
+    if not isinstance(manifest_split, dict):
+        raise SystemExit(f"{path}: split must be an object")
+    if expected_split is not None:
+        for key in ["sha256", "case_count", "cases"]:
+            if manifest_split.get(key) != expected_split[key]:
+                raise SystemExit(f"{path}: split.{key} does not match --split")
+    index = prompt_manifest.prompt_index(manifest)
+    prompts = manifest.get("prompts")
+    if not isinstance(prompts, list):
+        raise SystemExit(f"{path}: prompts must be a list")
+    if len(index) != len(prompts):
+        raise SystemExit(f"{path}: prompts contains malformed or duplicate rows")
+    return index, manifest_git_commit
+
+
 def stage_for_result(result: dict[str, Any]) -> str | None:
     stage = result.get("failure_stage")
     if isinstance(stage, str):
@@ -152,6 +224,7 @@ def audit_one_summary(
     summary: dict[str, Any],
     expected_count: int | None,
     expected_split: dict[str, Any] | None,
+    expected_prompts: dict[tuple[str, str], dict[str, Any]] | None,
     allow_prompt_only: bool,
     allow_dirty: bool,
     allow_missing_model_digest: bool,
@@ -233,6 +306,18 @@ def audit_one_summary(
         if status != "prompt_written" and result_mode != mode:
             errors.append(f"{path}: {case_id}: result.mode {result_mode!r} does not match summary mode {mode!r}")
 
+        if isinstance(case_id, str) and isinstance(mode, str) and expected_prompts is not None:
+            expected_prompt = expected_prompts.get((case_id, mode))
+            if expected_prompt is None:
+                errors.append(f"{path}: {case_id}: missing prompt manifest row for mode {mode}")
+            else:
+                for field in ["prompt_sha256", "prompt_chars", "source_chars", "diagnostic_chars"]:
+                    if raw_result.get(field) != expected_prompt.get(field):
+                        errors.append(
+                            f"{path}: {case_id}: {field} {raw_result.get(field)!r} "
+                            f"does not match prompt manifest {expected_prompt.get(field)!r}"
+                        )
+
         stage = stage_for_result(raw_result)
         if stage is None:
             errors.append(f"{path}: {case_id}: missing failure_stage")
@@ -301,6 +386,22 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=[],
         help="Require one summary for this prompt mode. Repeat for a matrix.",
     )
+    parser.add_argument("--prompt-manifest", type=Path, help="Frozen prompt manifest to verify result hashes.")
+    parser.add_argument(
+        "--allow-missing-prompt-manifest",
+        action="store_true",
+        help="Allow result audits without a prompt manifest. Only for dev dry runs.",
+    )
+    parser.add_argument(
+        "--allow-dirty-prompt-manifest",
+        action="store_true",
+        help="Allow a prompt manifest generated from a dirty worktree. Only for dev dry runs.",
+    )
+    parser.add_argument(
+        "--allow-commit-drift",
+        action="store_true",
+        help="Allow result git commits to differ from the prompt manifest commit. Only for non-paper debugging.",
+    )
     parser.add_argument(
         "--allow-prompt-only",
         action="store_true",
@@ -330,12 +431,20 @@ def audit_results(args: argparse.Namespace) -> dict[str, Any]:
     expected_count = args.expected_count
     if expected_count is None and expected_split is not None:
         expected_count = int(expected_split["case_count"])
+    expected_prompts, prompt_manifest_commit = expected_prompt_index(
+        args.prompt_manifest,
+        expected_split,
+        allow_dirty_prompt_manifest=args.allow_dirty_prompt_manifest,
+        allow_missing_prompt_manifest=args.allow_missing_prompt_manifest,
+    )
 
     summaries: list[dict[str, Any]] = []
     mode_to_path: dict[str, str] = {}
     case_order: list[str] | None = None
     llm_config: dict[str, Any] | None = None
+    llm_identity_config: dict[str, Any] | None = None
     toolchain_config: dict[str, Any] | None = None
+    toolchain_identity_config: dict[str, Any] | None = None
     git_commit: str | None = None
     for path in args.summary:
         summary = read_summary(path)
@@ -344,6 +453,7 @@ def audit_results(args: argparse.Namespace) -> dict[str, Any]:
             summary=summary,
             expected_count=expected_count,
             expected_split=expected_split,
+            expected_prompts=expected_prompts,
             allow_prompt_only=args.allow_prompt_only,
             allow_dirty=args.allow_dirty,
             allow_missing_model_digest=args.allow_missing_model_digest,
@@ -365,21 +475,37 @@ def audit_results(args: argparse.Namespace) -> dict[str, Any]:
                 errors.append(f"{path}: case list differs from the first summary")
 
         current_llm = selected_llm_config(summary)
-        if current_llm is not None:
+        current_llm_identity = selected_llm_identity(summary)
+        if current_llm is not None and llm_config is None:
+            llm_config = current_llm
+        if current_llm_identity is not None:
             if llm_config is None:
                 llm_config = current_llm
-            elif current_llm != llm_config:
-                errors.append(f"{path}: LLM configuration differs from the first summary")
+            if llm_identity_config is None:
+                llm_identity_config = current_llm_identity
+            elif current_llm_identity != llm_identity_config:
+                errors.append(f"{path}: LLM semantic configuration differs from the first summary")
 
         current_toolchain = selected_toolchain_config(summary)
-        if current_toolchain is not None:
+        current_toolchain_identity = selected_toolchain_identity(summary)
+        if current_toolchain is not None and toolchain_config is None:
+            toolchain_config = current_toolchain
+        if current_toolchain_identity is not None:
             if toolchain_config is None:
                 toolchain_config = current_toolchain
-            elif current_toolchain != toolchain_config:
-                errors.append(f"{path}: toolchain metadata differs from the first summary")
+            if toolchain_identity_config is None:
+                toolchain_identity_config = current_toolchain_identity
+            elif current_toolchain_identity != toolchain_identity_config:
+                errors.append(f"{path}: toolchain semantic metadata differs from the first summary")
 
         current_git = selected_git_config(summary)
         if current_git is not None and isinstance(current_git.get("commit"), str):
+            if (
+                prompt_manifest_commit is not None
+                and current_git["commit"] != prompt_manifest_commit
+                and not args.allow_commit_drift
+            ):
+                errors.append(f"{path}: git commit differs from prompt manifest commit")
             if git_commit is None:
                 git_commit = current_git["commit"]
             elif current_git["commit"] != git_commit:
@@ -421,8 +547,11 @@ def audit_results(args: argparse.Namespace) -> dict[str, Any]:
         "required_modes": required_modes,
         "modes": sorted(mode_to_path),
         "git_commit": git_commit,
+        "prompt_manifest_commit": prompt_manifest_commit,
         "llm_config": llm_config,
+        "llm_identity_config": llm_identity_config,
         "toolchain_config": toolchain_config,
+        "toolchain_identity_config": toolchain_identity_config,
         "summaries": summaries,
         "paired_results": paired_results,
         "errors": errors,

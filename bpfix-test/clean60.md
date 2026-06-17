@@ -49,6 +49,9 @@ calibration/dev evidence，不能作为 clean benchmark。
 - `splits/*.manifest.json`：split 的机器可审计元数据。`clean60.manifest.json`
   必须在首轮 clean run 前 frozen，并包含每个 case 的 source category、bucket、
   program type、independent review、oracle obligation 和 case hash。
+- `splits/*.prompts.json`：本地 frozen prompt artifact，已被 gitignore；生成后
+  用路径和 hash 记录进实验日志或 artifact bundle，但不要让它改变 clean run 的
+  git dirty 状态。
 
 `clean60` admission gate：
 
@@ -80,7 +83,7 @@ baseline 不成立。
 
 1. 所有 case id 不在 `dev40.txt` 中。
 2. 所有 case 在第一次 LLM clean run 前 admitted；之后不能因为模型结果删 case。
-3. prompt、runner、BPFix commit、model config 和 oracle 都在 clean run 前冻结。
+3. prompt manifest、runner、BPFix commit、model config 和 oracle 都在 clean run 前冻结。
 4. 如果 freeze 后修 oracle bug，必须记录 bug、影响范围，并从头重跑所有 baseline。
 5. 不允许把 reference fix、oracle expected return、success predicate、README hints
    放进 prompt。
@@ -171,6 +174,24 @@ toolchain、prompt hash、prompt length、model config 和 server metadata。
 每个失败结果还会记录 `failure_stage`，把 model call、源码抽取、编译、
 verifier load、功能 oracle 和辅助 proof predicate 分开。
 
+在第一次 clean model run 前，先冻结 prompt manifest：
+
+```bash
+python3 bpfix-test/tools/prompt_manifest.py \
+  --split bpfix-test/splits/clean60.txt \
+  --expected-count 60 \
+  --output bpfix-test/splits/clean60.prompts.json
+```
+
+freeze 后用同一个工具验证当前 checkout 仍然生成相同 prompts：
+
+```bash
+python3 bpfix-test/tools/prompt_manifest.py \
+  --split bpfix-test/splits/clean60.txt \
+  --expected-count 60 \
+  --verify bpfix-test/splits/clean60.prompts.json
+```
+
 示例：
 
 ```bash
@@ -197,7 +218,13 @@ python3 bpfix-test/tools/run_suite.py \
 - 所有 summary 来自同一个 `clean60.txt` hash 和 60 个 case；
 - source-only/raw/trimmed-raw/structured 四个模式都存在；
 - 四个模式的 case 顺序一致，不能混入 dev40、单 case debug 或旧 split；
-- 四个模式来自同一个 git commit、同一模型配置和同一工具链；
+- 每个 result 的 prompt hash、prompt length、source length 和 diagnostic length
+  都匹配冻结的 prompt manifest；
+- prompt manifest 不是 dirty worktree 产物；
+- 四个模式来自 prompt manifest 冻结的同一个 git commit；
+- 四个模式使用同一语义模型配置和工具链 fingerprint；绝对路径、server URL
+  和 hostname 只作为 provenance，不作为跨机器 equality key；
+- 同一模型矩阵使用相同 temperature、max tokens 和 timeout run budget；
 - 每个模型结果记录稳定模型 digest，至少本地模型必须通过 `--model-sha256`
   或 `LLM_MODEL_SHA256` 写入 64 位 hex SHA-256；
 - 正式结果不是 dirty worktree 产物；
@@ -210,6 +237,7 @@ python3 bpfix-test/tools/run_suite.py \
 python3 bpfix-test/tools/audit_results.py \
   --split bpfix-test/splits/clean60.txt \
   --expected-count 60 \
+  --prompt-manifest bpfix-test/splits/clean60.prompts.json \
   --required-mode source-only \
   --required-mode raw \
   --required-mode trimmed-raw \
@@ -227,7 +255,8 @@ make bpfix-test-result-gate RESULT_SUMMARIES='\
   /path/to/source-only/summary.json \
   /path/to/raw/summary.json \
   /path/to/trimmed-raw/summary.json \
-  /path/to/structured/summary.json'
+  /path/to/structured/summary.json' \
+  PROMPT_MANIFEST=bpfix-test/splits/clean60.prompts.json
 ```
 
 这个 gate 不能替代 split admission gate；正式 clean result 必须两个都通过。
@@ -237,6 +266,7 @@ make bpfix-test-result-gate RESULT_SUMMARIES='\
 论文或 README 中必须同时报告：
 
 - split 文件和 git commit；
+- prompt manifest 路径、hash 和验证输出；
 - 所有 case id；
 - 每个模型、每个输入模式的 pass/total；
 - 每个 fail 的 oracle stage：model error、extract、compile、verifier load、

@@ -27,6 +27,7 @@ out/
 docs/tmp/benchmark-eval-results.json
 docs/tmp/
 bpfix-test/results/
+bpfix-test/splits/*.prompts.json
 !bpfix-test/cases/**/verifier.log
 
 # Compiled artifacts
