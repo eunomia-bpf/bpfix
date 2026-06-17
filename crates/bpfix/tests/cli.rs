@@ -3958,6 +3958,11 @@ fn stale_data_pointer_after_invalidating_helper_reports_state_signal() {
             .as_str()
             .unwrap()
             .contains("preserve pointer provenance"));
+        assert!(diagnostic["help"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|help| help.as_str().unwrap().contains("adjusted packet head")));
     }
 
     for path in [

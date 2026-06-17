@@ -57,7 +57,7 @@
     }
   ],
   "help": [
-    "After helpers that move or rewrite skb/xdp data, reload packet data/data_end, recheck the packet range, and derive a fresh packet pointer before dereferencing."
+    "After helpers that move or rewrite skb/xdp data, reload packet data/data_end, recheck the packet range, and derive a fresh packet pointer before dereferencing. For bpf_xdp_adjust_head, account for the adjusted packet head: a positive delta strips bytes, so the new ctx->data starts after the removed header."
   ],
   "metadata": {
     "case_id": null,
