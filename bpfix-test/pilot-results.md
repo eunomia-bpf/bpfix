@@ -19,11 +19,13 @@ Setup:
 - Temperature: `0.0`
 - Max tokens: `4096`
 - Cases: 7
+- Repository commit: `7942646a6ca0dfdaf5a9cce7ed7315584290457e`
+- Repository dirty: `false`
 - Local run artifacts:
-  `/tmp/bpfix-test-qwen27b-map-pointer/20260617T020452724805Z-pid364640/raw/summary.json`
-  (`bdb11615d96455e9330f0b86150837165114834669151f77356788ed91f682f9`) and
-  `/tmp/bpfix-test-qwen27b-map-pointer/20260617T020549126477Z-pid364784/structured/summary.json`
-  (`bd565fd4a08f4a7455acb92c3310f9598c6c14439d30d2d3e1c176b0bc817caa`)
+  `/tmp/bpfix-test-qwen27b-map-pointer-oracle-tight/20260617T021645041329Z-pid382118/raw/summary.json`
+  (`9f2265a0dc4c21ba6d5377eb54354237bed1acb69bf9b57ccf06a7349286f6cc`) and
+  `/tmp/bpfix-test-qwen27b-map-pointer-oracle-tight/20260617T021740411977Z-pid382364/structured/summary.json`
+  (`8aab715fcdc6041162af4518f87ea48817520f6e0294d3d7112acddc41b8b174`)
 
 Results:
 
@@ -71,9 +73,10 @@ Interpretation:
 - `map_value_pointer_cookie_001` is the first cross-domain provenance canary:
   raw mode changed the rejected shift into another verifier-prohibited bitwise
   operation on a map-value pointer, while structured mode preserved the map
-  lookup, removed pointer-as-integer arithmetic, and passed the executable map
-  value oracle. This supports the direction, but the suite still needs many more
-  non-isomorphic hard cases before it can support a benchmark claim.
+  lookup, removed pointer-as-integer arithmetic, updated `seen_packets`, and
+  passed the executable map-value oracle. This supports the direction, but the
+  suite still needs many more non-isomorphic hard cases before it can support a
+  benchmark claim.
 - Adding `map_value_branch_merge_001` exposed an oracle bug: the first map-value
   predicate accepted only one verifier text layout and rejected a correct
   candidate where the non-null `map_value` proof appeared on the preceding
@@ -83,8 +86,10 @@ Interpretation:
   packet parsing, stale scalar protocol reads, path-local ringbuf writes, and
   wrong ringbuf payload values. Those probes fail under the current tests; the
   ringbuf predicates also require offset `+0` writes into a 4-byte reserved
-  record, the map-value case requires a real map lookup and a non-null map-value
-  load, and the XDP adjust-head case requires helper delta `14`.
+  record, the map-value cases require real map lookup and non-null map-value
+  load evidence, `map_value_pointer_cookie_001` additionally requires offset
+  `+4` map-value load/store evidence for the `seen_packets` update, and the XDP
+  adjust-head case requires helper delta `14`.
 
 Hardening gate:
 
