@@ -1,0 +1,80 @@
+libbpf: loading object from <work-dir>/prog.o
+libbpf: elf: section(3) xdp, size 176, link 0, flags 6, type=1
+libbpf: sec 'xdp': found program 'dynptr_slice_stack_buffer' at insn offset 0 (0 bytes), code size 22 insns (176 bytes)
+libbpf: elf: section(4) .relxdp, size 32, link 25, flags 40, type=9
+libbpf: elf: section(5) license, size 4, link 0, flags 3, type=1
+libbpf: license of <work-dir>/prog.o is GPL
+libbpf: elf: section(15) .BTF, size 1096, link 0, flags 0, type=1
+libbpf: elf: section(17) .BTF.ext, size 192, link 0, flags 0, type=1
+libbpf: elf: section(25) .symtab, size 384, link 1, flags 0, type=2
+libbpf: looking for externs among 16 symbols...
+libbpf: collected 2 externs total
+libbpf: extern (ksym) #0: symbol 13, name bpf_dynptr_from_xdp
+libbpf: extern (ksym) #1: symbol 14, name bpf_dynptr_slice
+libbpf: sec '.relxdp': collecting relocation for section(3) 'xdp'
+libbpf: sec '.relxdp': relo #0: insn #4 against 'bpf_dynptr_from_xdp'
+libbpf: prog 'dynptr_slice_stack_buffer': found extern #0 'bpf_dynptr_from_xdp' (sym 13) for insn #4
+libbpf: sec '.relxdp': relo #1: insn #16 against 'bpf_dynptr_slice'
+libbpf: prog 'dynptr_slice_stack_buffer': found extern #1 'bpf_dynptr_slice' (sym 14) for insn #16
+libbpf: object 'prog': failed (-95) to create BPF token from '/sys/fs/bpf', skipping optional step...
+libbpf: loaded kernel BTF from '/sys/kernel/btf/vmlinux'
+libbpf: extern (func ksym) 'bpf_dynptr_from_xdp': resolved to vmlinux [71553]
+libbpf: extern (func ksym) 'bpf_dynptr_slice': resolved to vmlinux [71567]
+libbpf: prog 'dynptr_slice_stack_buffer': BPF program load failed: -EACCES
+libbpf: prog 'dynptr_slice_stack_buffer': -- BEGIN PROG LOAD LOG --
+func#0 @0
+Live regs before insn:
+  0: .1........ (b7) r2 = 0
+  1: .12....... (7b) *(u64 *)(r10 -24) = r2
+  2: .12....... (bf) r3 = r10
+  3: .123...... (07) r3 += -16
+  4: .123...... (85) call bpf_dynptr_from_xdp#71553
+  5: 0......... (bf) r1 = r0
+  6: .1........ (b7) r0 = 2
+  7: 01........ (67) r1 <<= 32
+  8: 01........ (77) r1 >>= 32
+  9: 01........ (55) if r1 != 0x0 goto pc+11
+ 10: .......... (bf) r1 = r10
+ 11: .1........ (07) r1 += -16
+ 12: .1........ (bf) r3 = r10
+ 13: .1.3...... (07) r3 += -24
+ 14: .1.3...... (b7) r2 = 0
+ 15: .123...... (b7) r4 = 9
+ 16: .1234..... (85) call bpf_dynptr_slice#71567
+ 17: 0......... (bf) r1 = r0
+ 18: .1........ (b7) r0 = 2
+ 19: 01........ (15) if r1 == 0x0 goto pc+1
+ 20: .......... (b7) r0 = 1
+ 21: 0......... (95) exit
+0: R1=ctx() R10=fp0
+; int dynptr_slice_stack_buffer(struct xdp_md *ctx) @ buggy.bpf.c:19
+0: (b7) r2 = 0                        ; R2_w=0
+; __u64 scratch = 0; @ buggy.bpf.c:22
+1: (7b) *(u64 *)(r10 -24) = r2        ; R2_w=0 R10=fp0 fp-24_w=0
+2: (bf) r3 = r10                      ; R3_w=fp0 R10=fp0
+;  @ buggy.bpf.c:0
+3: (07) r3 += -16                     ; R3_w=fp-16
+; if (bpf_dynptr_from_xdp(ctx, 0, &ptr)) @ buggy.bpf.c:25
+4: (85) call bpf_dynptr_from_xdp#71553        ; R0_w=scalar() fp-16_w=dynptr_xdp(id=1,dynptr_id=1)
+5: (bf) r1 = r0                       ; R0_w=scalar(id=2) R1_w=scalar(id=2)
+6: (b7) r0 = 2                        ; R0_w=2
+7: (67) r1 <<= 32                     ; R1_w=scalar(smax=0x7fffffff00000000,umax=0xffff000000000000,smin32=0,smax32=umax32=0,var_off=(0x0; 0xffff000000000000))
+8: (77) r1 >>= 32                     ; R1_w=scalar(smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000))
+9: (55) if r1 != 0x0 goto pc+11       ; R1_w=0
+10: (bf) r1 = r10                     ; R1_w=fp0 R10=fp0
+; bytes = bpf_dynptr_slice(&ptr, 0, &scratch, 9); @ buggy.bpf.c:28
+11: (07) r1 += -16                    ; R1_w=fp-16
+12: (bf) r3 = r10                     ; R3_w=fp0 R10=fp0
+13: (07) r3 += -24                    ; R3_w=fp-24
+14: (b7) r2 = 0                       ; R2_w=0
+15: (b7) r4 = 9                       ; R4_w=9
+16: (85) call bpf_dynptr_slice#71567
+invalid read from stack R3 off -24+8 size 9
+arg#2 arg#3 memory, len pair leads to invalid memory access
+verification time 0 usec
+stack depth 24
+processed 17 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0 mark_read 0
+-- END PROG LOAD LOG --
+libbpf: prog 'dynptr_slice_stack_buffer': failed to load: -EACCES
+libbpf: failed to load object '<work-dir>/prog.o'
+Error: failed to load object file

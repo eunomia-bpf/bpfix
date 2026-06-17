@@ -1,0 +1,63 @@
+{
+  "diagnostic_version": "bpfix.diagnostic/v3",
+  "error_id": "BPFIX-E003",
+  "failure_class": "source_bug",
+  "confidence": "medium",
+  "diagnostic_kind": "supported",
+  "help_safety": "repair_hint",
+  "next_action": "bounds",
+  "span_confidence": "exact_pc",
+  "message": "helper memory/length pair length exceeds the initialized stack prefix: invalid read from stack R3 off -24+8 size 9; arg#2 arg#3 memory, len pair leads to invalid memory access",
+  "required_proof": "prove the helper memory length stays within the stack bytes initialized at the pointer argument",
+  "source_span": {
+    "path": "buggy.bpf.c",
+    "line_start": 28,
+    "line_end": 28,
+    "instruction_pc": 16,
+    "source_text": "bytes = bpf_dynptr_slice(&ptr, 0, &scratch, 9);"
+  },
+  "related_spans": [
+    {
+      "path": "buggy.bpf.c",
+      "line_start": 22,
+      "line_end": 22,
+      "instruction_pc": 1,
+      "source_text": "__u64 scratch = 0;",
+      "label": "nearby source context for stack initialization"
+    }
+  ],
+  "evidence": [
+    {
+      "kind": "terminal_verifier_error",
+      "detail": "invalid read from stack R3 off -24+8 size 9; arg#2 arg#3 memory, len pair leads to invalid memory access",
+      "line": 48
+    },
+    {
+      "kind": "instruction_pc",
+      "detail": "nearest verifier instruction pc 16",
+      "line": 48
+    },
+    {
+      "kind": "verifier_trace",
+      "detail": "parsed 16 per-instruction verifier state snapshots",
+      "line": null
+    },
+    {
+      "kind": "verifier_state_signal",
+      "detail": "verifier state shows the helper receives a stack pointer with an initialized byte prefix, but the helper length extends past that prefix",
+      "line": 48
+    }
+  ],
+  "help": [
+    "Clamp or reduce the helper length to the initialized stack buffer size, or initialize the full byte range before passing it to the helper."
+  ],
+  "metadata": {
+    "case_id": null,
+    "input_kind": "verifier-log-region",
+    "object_path": null,
+    "object_programs": [],
+    "object_analysis_error": null,
+    "trace_state_count": 16,
+    "analysis_error": null
+  }
+}
