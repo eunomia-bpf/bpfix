@@ -26,6 +26,8 @@ out/
 *.jsonl
 docs/tmp/benchmark-eval-results.json
 docs/tmp/
+bpfix-test/results/
+!bpfix-test/cases/**/verifier.log
 
 # Compiled artifacts
 *.o

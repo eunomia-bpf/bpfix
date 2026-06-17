@@ -1,0 +1,58 @@
+libbpf: loading object from <work-dir>/prog.o
+libbpf: elf: section(3) xdp, size 88, link 0, flags 6, type=1
+libbpf: sec 'xdp': found program 'ringbuf_stack_submit' at insn offset 0 (0 bytes), code size 11 insns (88 bytes)
+libbpf: elf: section(4) license, size 4, link 0, flags 3, type=1
+libbpf: license of <work-dir>/prog.o is GPL
+libbpf: elf: section(5) .maps, size 16, link 0, flags 3, type=1
+libbpf: elf: section(15) .BTF, size 822, link 0, flags 0, type=1
+libbpf: elf: section(17) .BTF.ext, size 172, link 0, flags 0, type=1
+libbpf: elf: section(25) .symtab, size 360, link 1, flags 0, type=2
+libbpf: looking for externs among 15 symbols...
+libbpf: collected 0 externs total
+libbpf: map 'events': at sec_idx 5, offset 0.
+libbpf: map 'events': found type = 27.
+libbpf: map 'events': found max_entries = 4096.
+libbpf: object 'prog': failed (-95) to create BPF token from '/sys/fs/bpf', skipping optional step...
+libbpf: loaded kernel BTF from '/sys/kernel/btf/vmlinux'
+libbpf: sec 'xdp': found 1 CO-RE relocations
+libbpf: CO-RE relocating [10] struct xdp_md: found target candidate [14922] struct xdp_md in [vmlinux]
+libbpf: prog 'ringbuf_stack_submit': relo #0: <byte_off> [10] struct xdp_md.data (0:0 @ offset 0)
+libbpf: prog 'ringbuf_stack_submit': relo #0: matching candidate #0 <byte_off> [14922] struct xdp_md.data (0:0 @ offset 0)
+libbpf: prog 'ringbuf_stack_submit': relo #0: patched insn #0 (LDX/ST/STX) off 0 -> 0
+libbpf: map 'events': created successfully, fd=0
+libbpf: prog 'ringbuf_stack_submit': BPF program load failed: -EACCES
+libbpf: prog 'ringbuf_stack_submit': -- BEGIN PROG LOAD LOG --
+func#0 @0
+Live regs before insn:
+  0: .1........ (61) r2 = *(u32 *)(r1 +0)
+  1: ..2....... (b7) r1 = 11
+  2: .12....... (15) if r2 == 0x0 goto pc+1
+  3: .......... (b7) r1 = 7
+  4: .1........ (63) *(u32 *)(r10 -4) = r1
+  5: .......... (bf) r1 = r10
+  6: .1........ (07) r1 += -4
+  7: .1........ (b7) r2 = 0
+  8: .12....... (85) call bpf_ringbuf_submit#132
+  9: .......... (b7) r0 = 2
+ 10: 0......... (95) exit
+0: R1=ctx() R10=fp0
+; if (ctx->data == 0) @ buggy.bpf.c:27
+0: (61) r2 = *(u32 *)(r1 +0)          ; R1=ctx() R2_w=pkt(r=0)
+1: (b7) r1 = 11                       ; R1_w=11
+2: (15) if r2 == 0x0 goto pc+1        ; R2_w=pkt(r=0)
+3: (b7) r1 = 7                        ; R1_w=7
+;  @ buggy.bpf.c:0
+4: (63) *(u32 *)(r10 -4) = r1         ; R1_w=7 R10=fp0 fp-8=mmmm????
+5: (bf) r1 = r10                      ; R1_w=fp0 R10=fp0
+6: (07) r1 += -4                      ; R1_w=fp-4
+; bpf_ringbuf_submit(&ev, 0); @ buggy.bpf.c:30
+7: (b7) r2 = 0                        ; R2_w=0
+8: (85) call bpf_ringbuf_submit#132
+R1 type=fp expected=ringbuf_mem
+verification time 0 usec
+stack depth 8
+processed 9 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0 mark_read 0
+-- END PROG LOAD LOG --
+libbpf: prog 'ringbuf_stack_submit': failed to load: -EACCES
+libbpf: failed to load object '<work-dir>/prog.o'
+Error: failed to load object file
