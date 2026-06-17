@@ -1,7 +1,7 @@
 # BPFix-Test 设计：面向 LLM One-Shot eBPF 修复的挑战集
 
 最后更新：2026-06-17
-阶段：6-case pilot + 可运行 oracle
+阶段：9-case pilot + 可运行 oracle
 仓库路径：`bpfix-test/`
 
 ## 定位
@@ -106,7 +106,7 @@ proof-loss sites that are implicit or misleading in raw verifier logs.
 | Modern BPF protocol cases | 25 | dynptr、kfunc、ringbuf/ref lifecycle、iterator、rbtree、timer、sleepable/RCU/lock |
 | Environment/config boundary cases | 10 | helper/kfunc unavailable、wrong prog type、attach mismatch、missing BTF |
 
-当前 pilot 先覆盖 6 个方向：
+当前 pilot 先覆盖 9 个方向：
 
 - `alu32_pointer_cookie_001`：inline asm/ALU 操作破坏 packet pointer proof；
 - `xdp_adjust_head_stale_001`：`bpf_xdp_adjust_head()` invalidates old packet
@@ -118,6 +118,13 @@ proof-loss sites that are implicit or misleading in raw verifier logs.
 - `ringbuf_ref_leak_001`：reserve 后一个分支提前退出，导致 reference leak。
 - `map_value_branch_merge_001`：`bpf_map_lookup_elem()` 返回的 nullable map value
   只在 UDP 分支里证明 non-null，branch merge 后再次读取 map value。
+- `map_value_pointer_cookie_001`：map-value pointer 被当作 integer cookie
+  做位移后再访问字段；
+- `ringbuf_pointer_cookie_001`：ringbuf reserved record 同时满足 helper
+  contract 和 pointer provenance，但源码把 record pointer 经整数 cookie 变换后写入
+  并 submit；
+- `xdp_adjust_head_map_value_001`：`bpf_xdp_adjust_head()` 后必须重新获取 packet
+  pointer，同时还要保留 map-value 计数副作用和 drop 配置语义。
 
 ringbuf oracle 除了 `bpftool prog run` 返回值，还检查 successful verifier log
 中的 helper contract proof：reserve 后的 `ringbuf_mem_or_null`、写入的
@@ -205,15 +212,24 @@ paper 阶段：
 
 ## 当前 Pilot 校准
 
-2026-06-17 使用本地 llama.cpp + Qwen27B 跑通了 6-case pilot：
+2026-06-17 使用本地 llama.cpp + Qwen27B 跑通了 clean 7-case pilot：
 
-- raw verifier log：5/6 pass；
-- BPFix structured JSON：5/6 pass。
+- raw verifier log：5/7 pass；
+- BPFix structured JSON：7/7 pass。
+
+随后新增两个组合 case，并在 dirty worktree 上做了 add-on calibration：
+
+- `ringbuf_pointer_cookie_001` raw 失败，structured 通过；
+- `xdp_adjust_head_map_value_001` raw 生成了 verifier 可接受但功能错误的修复，
+  structured 通过。
+
+把 clean 7-case run 和 dirty 2-case add-on 合并看，当前 indicative 结果是
+raw 5/9、structured 9/9。这个数字只能用于开发校准，不能作为论文结果，因为它不是
+同一 clean commit 的完整 9-case run。
 
 这个结果证明 runner 和 oracle 能端到端工作，但也证明当前 pilot 远未达到 hard
-suite 难度目标：raw-log 成功率过高，structured 模式也没有稳定拉开差距。新增
-map-value case 暴露并修复了一个 oracle 过窄问题：旧检查只接受 map-value 状态和
-load 出现在同一行 verifier 文本里的布局；现在改成跟踪 annotated trace 寄存器状态。
-按照上面的失败解释，下一阶段必须继续增加组合型 hard cases，并改进 structured
-diagnostic 对 proof-loss 修复约束的表达，直到 raw-log one-shot 低于 30%，才能把它
-作为论文 benchmark 结果使用。
+suite 难度目标：raw-log 成功率仍高于 30%。新增 map-value case 暴露并修复了一个
+oracle 过窄问题：旧检查只接受 map-value 状态和 load 出现在同一行 verifier 文本里的
+布局；现在改成跟踪 annotated trace 寄存器状态。按照上面的失败解释，下一阶段必须
+继续增加组合型 hard cases，并改进 structured diagnostic 对 proof-loss 修复约束的表达，
+直到 raw-log one-shot 低于 30%，才能把它作为论文 benchmark 结果使用。

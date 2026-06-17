@@ -5,7 +5,7 @@ Last run: 2026-06-17
 This file records calibration results for the current small pilot suite. These
 numbers are not paper-ready benchmark results.
 
-## Qwen27B llama.cpp Pilot
+## Qwen27B llama.cpp Clean 7-Case Pilot
 
 Setup:
 
@@ -98,3 +98,54 @@ Hardening gate:
 - Next cases should combine multiple obligations in one source file: helper
   side effects plus branch merge, ref lifecycle plus nullability, source/BTF
   line ambiguity, and object/helper protocol interactions.
+
+## Qwen27B Two-Case Combo Add-On
+
+This add-on was run before committing the two new cases, so repository dirty is
+`true`. Treat it as development calibration only, not as a clean benchmark run.
+
+Setup differences from the clean pilot:
+
+- Cases: `ringbuf_pointer_cookie_001`, `xdp_adjust_head_map_value_001`
+- Repository commit: `8428b1d409c483311073d9068236eecf0fcbf512`
+- Repository dirty: `true`
+- Raw local artifact:
+  `/tmp/bpfix-test-qwen27b-new-combo/20260617T024313880933Z-pid440630/raw/summary.json`
+  (`05e8dd8dd3e2a49f5d51d1d0520712b840265df7eebc0eed9b93f147f710e61c`)
+- Structured local artifact:
+  `/tmp/bpfix-test-qwen27b-new-combo/20260617T024341228470Z-pid440910/structured/summary.json`
+  (`d6c2091c094a9fe78d6cabb437e87fb47bcc82c5d8361ea8e508b31421cc8794`)
+
+Results:
+
+| mode | passed | total | pass rate |
+| --- | ---: | ---: | ---: |
+| raw verifier log | 0 | 2 | 0.0% |
+| BPFix structured JSON | 2 | 2 | 100.0% |
+
+Raw-mode failures:
+
+| case | failure |
+| --- | --- |
+| `ringbuf_pointer_cookie_001` | candidate replaced the pointer shift with another verifier-prohibited bitwise operation on a ringbuf pointer |
+| `xdp_adjust_head_map_value_001` | candidate loaded successfully but parsed the post-adjust packet at the wrong offset, so UDP returned pass instead of drop |
+
+Structured-mode result:
+
+| case | result |
+| --- | --- |
+| `ringbuf_pointer_cookie_001` | pass |
+| `xdp_adjust_head_map_value_001` | pass |
+
+Indicative combined calibration:
+
+| source | raw | structured |
+| --- | ---: | ---: |
+| clean 7-case pilot | 5/7 | 7/7 |
+| dirty two-case add-on | 0/2 | 2/2 |
+| combined development signal | 5/9 | 9/9 |
+
+The new cases are useful because raw mode fails in two different ways: one
+candidate remains verifier-invalid, and the other becomes verifier-valid but
+functionally wrong. The combined raw rate is still 55.6%, so the suite remains
+too easy for the target `<30%` raw-log threshold.

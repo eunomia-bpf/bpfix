@@ -9,7 +9,7 @@
 > log 时能否一次生成可工作的修复？把 raw log 换成 BPFix structured
 > diagnostic 后，成功率是否显著提高？
 
-当前目录先提供 7 个可运行的 pilot cases。最终 hard suite 的目标是：
+当前目录先提供 9 个可运行的 pilot cases。最终 hard suite 的目标是：
 
 - raw-log one-shot 修复成功率低于 30%；
 - structured-log one-shot 修复成功率接近 70%；
@@ -59,6 +59,8 @@ python3 bpfix-test/tools/refresh_case_artifacts.py
 | `ringbuf_ref_leak_001` | reference lifecycle | every reserved record path must submit or discard |
 | `map_value_branch_merge_001` | proof lifecycle / nullable map value | map-value null proof must survive branch merge before value read |
 | `map_value_pointer_cookie_001` | proof lifecycle / map-value provenance | map-value pointer cannot be shifted as an integer cookie before field access |
+| `ringbuf_pointer_cookie_001` | helper protocol / provenance | ringbuf record pointer cannot be integer-masked before write/submit |
+| `xdp_adjust_head_map_value_001` | helper side effect / map value | packet pointers must be reacquired after `bpf_xdp_adjust_head`, while map-value side effects remain correct |
 
 ## 运行 LLM One-Shot
 
