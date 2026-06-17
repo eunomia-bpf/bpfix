@@ -35,10 +35,22 @@ raw verifier log。`structured.json` 是同一份 log 的 BPFix JSON 输出。
 
 ## Smoke Test
 
+检查 case 文件结构、structured JSON、oracle prompt 是否泄露 `test.py` 信息：
+
+```bash
+python3 bpfix-test/tools/audit_cases.py
+```
+
 验证 fixtures 和 buggy 程序确实被 verifier 拒绝：
 
 ```bash
 python3 bpfix-test/tools/run_suite.py --smoke
+```
+
+也可以把两者合并为逐 case 的真实 audit：
+
+```bash
+python3 bpfix-test/tools/audit_cases.py --smoke
 ```
 
 重新抓取 raw log 和 structured diagnostic：

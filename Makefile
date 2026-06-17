@@ -22,6 +22,7 @@ help:
 	@echo "  make cli CASE=...      Run bpfix against a verifier/build/load log"
 	@echo "  make bench-smoke       Run the CLI against one benchmark case"
 	@echo "  make bench-eval        Run bpfix over bpfix-bench and print metrics"
+	@echo "  make bpfix-test-audit  Audit bpfix-test fixture structure and prompts"
 	@echo "  make bpfix-test-smoke  Validate bpfix-test fixtures and buggy rejects"
 	@echo "  make release-check     Run packaging, example, benchmark, and object-analysis gates"
 	@echo ""
@@ -68,6 +69,11 @@ bench-eval:
 bpfix-test-smoke:
 	@echo "[bpfix-test-smoke] Validating LLM repair stress fixtures..."
 	cd $(CURDIR) && python3 bpfix-test/tools/run_suite.py --smoke
+
+.PHONY: bpfix-test-audit
+bpfix-test-audit:
+	@echo "[bpfix-test-audit] Auditing LLM repair stress fixtures..."
+	cd $(CURDIR) && python3 bpfix-test/tools/audit_cases.py
 
 .PHONY: release-check
 release-check:
