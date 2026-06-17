@@ -122,7 +122,7 @@ def audit_test_py(case_dir: Path, errors: list[str]) -> dict[str, int | None]:
 
 
 def audit_prompt(case_dir: Path, errors: list[str]) -> None:
-    for mode in ["raw", "structured"]:
+    for mode in run_suite.MODES:
         prompt = run_suite.build_prompt(case_dir, mode)
         for snippet in FORBIDDEN_PROMPT_SNIPPETS:
             if snippet in prompt:

@@ -1,0 +1,29 @@
+# BPFix-Test Splits
+
+`dev40.txt` is the current calibration split. It was used while developing
+cases, prompts, diagnostics, and oracle checks, so it must not be reported as
+the final clean paper benchmark.
+
+`clean60.txt` is reserved for the heldout benchmark. It is intentionally empty
+until 60 new cases are admitted. A valid clean split must:
+
+- contain exactly 60 case ids;
+- have no overlap with `dev40.txt`;
+- contain no duplicates or unknown cases;
+- pass `audit_cases.py` for every case;
+- pass buggy-reject smoke for every case before any LLM result is collected.
+
+Run the gates:
+
+```bash
+python3 bpfix-test/tools/audit_splits.py \
+  --split bpfix-test/splits/dev40.txt \
+  --expected-count 40 \
+  --audit-cases
+
+python3 bpfix-test/tools/audit_splits.py \
+  --split bpfix-test/splits/clean60.txt \
+  --expected-count 60 \
+  --disallow-overlap bpfix-test/splits/dev40.txt \
+  --audit-cases --smoke
+```

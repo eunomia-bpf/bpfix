@@ -9,20 +9,29 @@
 > log 时能否一次生成可工作的修复？把 raw log 换成 BPFix structured
 > diagnostic 后，成功率是否显著提高？
 
-当前目录已经提供 40 个可运行的 admitted cases。hard suite 的目标是：
+当前目录已经提供 40 个可运行的 admitted cases，但它们属于 `dev40`
+calibration split：这些 case 已经参与过 prompt、diagnostic 和 oracle 开发，不能
+作为论文主 benchmark。paper-grade 目标是新的 `clean60` heldout split，必须由 60
+个不和 `dev40` 重叠的 case 组成。clean split 在 admitted 前必须保持为空并让审计
+失败，避免误报。
+
+dev/hard-suite calibration 目标是：
 
 - raw-log one-shot 修复成功率低于 30%；
 - structured-log one-shot 修复成功率接近 70%；
 - 每个 case 的成功必须由同一个可执行 oracle 判定：编译、verifier load、
   `bpftool prog run` 功能返回值都正确。
 
-40-case corpus 的同配置 Qwen27B/llama.cpp 结果是 raw `9/40`
+`dev40` 的同配置 Qwen27B/llama.cpp 结果是 raw `9/40`
 和 structured `23/40`；完整配置、artifact hash 和 per-case 表见
 `pilot-results.md`。这是真实 LLM repair run：每个 pass 都经过编译、verifier
-load 和 `bpftool prog run` oracle。18-case pilot 的历史结果 raw `5/18`
-和 structured `18/18` 仍保留在 `pilot-results.md`，报告时必须分开。
+load 和 `bpftool prog run` oracle，但它仍是 dev/calibration evidence。18-case
+pilot 的历史结果 raw `5/18` 和 structured `18/18` 仍保留在
+`pilot-results.md`，报告时必须分开。
 具体配额、admission gate、actual admitted list 和 excluded seeds 见
 [40-case-plan.md](40-case-plan.md)。
+
+`clean60` 的无污染 benchmark 协议见 [clean60.md](clean60.md)。
 
 ## 目录约定
 
@@ -60,6 +69,24 @@ python3 bpfix-test/tools/run_suite.py --smoke
 ```bash
 python3 bpfix-test/tools/audit_cases.py --smoke
 ```
+
+检查 split 和污染规则：
+
+```bash
+python3 bpfix-test/tools/audit_splits.py \
+  --split bpfix-test/splits/dev40.txt \
+  --expected-count 40 \
+  --audit-cases
+
+python3 bpfix-test/tools/audit_splits.py \
+  --split bpfix-test/splits/clean60.txt \
+  --expected-count 60 \
+  --disallow-overlap bpfix-test/splits/dev40.txt \
+  --audit-cases --smoke
+```
+
+第二个命令在 `clean60` 填满前应该失败；这是保护主 benchmark 不被 dev cases 污染
+的 gate。
 
 重新抓取 raw log 和 structured diagnostic：
 
@@ -102,11 +129,13 @@ server。ActPlane 历史配置使用的本地入口是：
 
 ```bash
 python3 bpfix-test/tools/run_suite.py \
+  --split bpfix-test/splits/dev40.txt \
   --mode raw \
   --base-url http://127.0.0.1:18080/v1 \
   --model Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M
 
 python3 bpfix-test/tools/run_suite.py \
+  --split bpfix-test/splits/dev40.txt \
   --mode structured \
   --base-url http://127.0.0.1:18080/v1 \
   --model Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M
@@ -130,6 +159,7 @@ python3 bpfix-test/tools/run_suite.py \
 
 ```bash
 python3 bpfix-test/tools/run_suite.py \
+  --split bpfix-test/splits/dev40.txt \
   --mode structured \
   --base-url http://127.0.0.1:18080/v1 \
   --model Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M \

@@ -1,0 +1,11 @@
+# Intentionally empty until the 60-case heldout benchmark is admitted.
+#
+# This split must contain exactly 60 case ids, none of which may appear in
+# dev40.txt.  The audit gate below is expected to fail until those new heldout
+# cases exist:
+#
+#   python3 bpfix-test/tools/audit_splits.py \
+#     --split bpfix-test/splits/clean60.txt \
+#     --expected-count 60 \
+#     --disallow-overlap bpfix-test/splits/dev40.txt \
+#     --audit-cases --smoke

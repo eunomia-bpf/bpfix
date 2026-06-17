@@ -7,9 +7,10 @@ numbers are not paper-ready benchmark results.
 
 ## Qwen27B llama.cpp Full 40-Case Same-Config Run
 
-This is the first real LLM repair run over the admitted 40-case corpus. Raw and
-structured modes were run over the same case set with the same model, server,
-temperature, token budget, runner, kernel, and oracle code. The run uses
+This is the first real LLM repair run over the admitted 40-case dev/calibration
+corpus (`bpfix-test/splits/dev40.txt`). Raw and structured modes were run over
+the same case set with the same model, server, temperature, token budget,
+runner, kernel, and oracle code. The run uses
 llama.cpp with prompt cache disabled because an earlier structured run with
 prompt cache enabled crashed the local `llama-server` before producing a suite
 summary; that aborted partial run is not counted.
@@ -25,7 +26,7 @@ Setup:
 - Runner: `bpfix-test/tools/run_suite.py`
 - Temperature: `0.0`
 - Max tokens: `8192`
-- Cases: 40
+- Cases: 40 (`dev40`, not the clean paper benchmark)
 - Repository commit: `93f90fbeb39cb66517c970c784942b483102c659`
 - Repository dirty: `false`
 - Kernel/toolchain: Linux `6.15.11-061511-generic`, clang `18.1.3`,
@@ -99,7 +100,7 @@ Structured-mode failures by oracle stage:
 
 Interpretation:
 
-- The 40-case corpus is harder than the 18-case pilot: raw-log one-shot repair
+- The dev40 corpus is harder than the 18-case pilot: raw-log one-shot repair
   falls to 9/40 = 22.5%, below the hard-suite target of `<30%`.
 - BPFix structured diagnostics still help substantially: 23/40 = 57.5%,
   a +35.0 percentage-point absolute gain over raw and 14 additional working
@@ -108,10 +109,12 @@ Interpretation:
   are real candidate failures, not model-call failures: 11 lose functional edge
   cases, 5 lose helper/proof side effects checked by success predicates, and 1
   fails to compile.
-- The next engineering target is not to curate easier cases; it is to improve
-  BPFix repair-useful diagnostics for dynptr short/nullable behavior, stack
-  helper memory contracts, signed range lower bounds, wrong-base packet checks,
-  map-value proof predicates, and ringbuf multi-reference lifecycle obligations.
+- The next engineering target is not to curate easier cases or report dev40 as
+  the paper benchmark. It is to improve BPFix repair-useful diagnostics for
+  dynptr short/nullable behavior, stack helper memory contracts, signed range
+  lower bounds, wrong-base packet checks, map-value proof predicates, and
+  ringbuf multi-reference lifecycle obligations, then build the separate
+  `clean60` heldout split.
 
 ## Qwen27B llama.cpp Full 18-Case Same-Config Pilot
 
@@ -184,9 +187,9 @@ Interpretation:
 - The result is still not paper-ready. The suite has only 18 cases, is
   concentrated around pointer-provenance/lowering and helper-side-effect
   failures, and used Qwen27B both as a calibration model and evaluation model.
-  Paper evidence still needs 100 admitted cases, reviewer-audited oracles,
-  trimmed raw-log baselines, repeated runs or additional models, and a stronger
-  source-only/code-only comparison.
+  Paper evidence still needs the separate `clean60` heldout split,
+  reviewer-audited oracles, trimmed raw-log baselines, repeated runs or
+  additional models, and a stronger source-only/code-only comparison.
 
 ## Qwen27B llama.cpp Clean 9-Case Pilot
 

@@ -1,7 +1,7 @@
 # BPFix-Test 设计：面向 LLM One-Shot eBPF 修复的挑战集
 
 最后更新：2026-06-17
-阶段：40-case admitted milestone; first Qwen27B full-suite completed
+阶段：dev40 admitted milestone completed; clean60 heldout protocol defined
 仓库路径：`bpfix-test/`
 
 ## 定位
@@ -31,10 +31,14 @@ proof-loss sites that are implicit or misleading in raw verifier logs.
 
 | ID | Claim | Scope | Metric/evidence | Status |
 | --- | --- | --- | --- | --- |
-| C1 | Raw verifier logs are insufficient for hard one-shot eBPF repair. | 40-case admitted corpus; paper target remains 100 cases. | Qwen27B raw-log one-shot pass rate below 30%. | supported on 40-case run: 9/40 = 22.5% |
-| C2 | BPFix structured diagnostics improve repair success. | Same cases, same model, same prompt budget. | Structured-log pass rate near 70% and absolute gain over raw. | partial on 40-case run: 23/40 = 57.5%, +35.0 pp over raw |
-| C3 | The benchmark measures working repairs, not label agreement. | All admitted cases. | Compile + verifier load + functional `bpftool prog run` oracle. | implemented for 40/40 |
-| C4 | The suite is hard for source-only pattern matching. | Case construction and 40-case raw-log run. | Cases combine hidden proof loss, helper protocol, branch/source correlation, or modern BPF API contracts. | supported for Qwen27B raw-log baseline: 9/40 = 22.5% |
+| C1 | Raw verifier logs are insufficient for hard one-shot eBPF repair. | `dev40` calibration only; paper target is `clean60`. | Qwen27B raw-log one-shot pass rate below 30%. | supported on dev40 run: 9/40 = 22.5% |
+| C2 | BPFix structured diagnostics improve repair success. | Same cases, same model, same prompt budget. | Structured-log pass rate and absolute gain over raw. | partial on dev40 run: 23/40 = 57.5%, +35.0 pp over raw |
+| C3 | The benchmark measures working repairs, not label agreement. | All admitted dev/clean cases. | Compile + verifier load + functional `bpftool prog run` oracle. | implemented for dev40: 40/40 |
+| C4 | The suite is hard for source-only pattern matching. | Case construction and dev40 raw-log run. | Cases combine hidden proof loss, helper protocol, branch/source correlation, or modern BPF API contracts. | supported for Qwen27B raw-log baseline: 9/40 = 22.5% |
+
+这些 claims 目前只对 `dev40` 成立。`dev40` 在开发过程中被用于 case hardening、
+prompt 调整和 diagnostic 修复，因此只能作为 calibration evidence。论文主结果必须
+来自新的 `clean60` heldout split，见 [clean60.md](clean60.md)。
 
 ## 和 `bpfix-bench` 的区别
 
@@ -97,19 +101,21 @@ proof-loss sites that are implicit or misleading in raw verifier logs.
 
 ## 能力 Bucket
 
-最终 hard suite 目标 100 个 case。当前工程 milestone 已经把可运行 admitted corpus
-从 18 个扩到 40 个，并用更均衡的 failure mechanism 降低现有 pointer-cookie/lowering
-集中度。40-case 的具体 admission gate、实际 admitted list 和 excluded seeds 见
+当前工程 milestone 已经把可运行 admitted calibration corpus 从 18 个扩到 40 个，
+并用更均衡的 failure mechanism 降低现有 pointer-cookie/lowering 集中度。40-case
+的具体 admission gate、实际 admitted list 和 excluded seeds 见
 [40-case-plan.md](40-case-plan.md)。
 
-最终 100-case hard suite 配额：
+论文主 benchmark 目标是新的 `clean60` heldout split，配额如下；更大的 100-case
+hard suite 可以作为后续扩展，但不能替代当前 clean benchmark gate：
 
 | Bucket | 数量 | 重点 |
 | --- | ---: | --- |
-| Proof lifecycle hard cases | 40 | proof 建立、被 lowering/merge/ALU32 破坏、final verifier line 误导 |
-| Source/object correlation hard cases | 25 | inline、macro、BTF line info、多 section、多 subprog、Rust/Aya 生成名 |
-| Modern BPF protocol cases | 25 | dynptr、kfunc、ringbuf/ref lifecycle、iterator、rbtree、timer、sleepable/RCU/lock |
-| Environment/config boundary cases | 10 | helper/kfunc unavailable、wrong prog type、attach mismatch、missing BTF |
+| Proof lifecycle hard cases | 18 | proof 建立、被 lowering/merge/ALU32 破坏、final verifier line 误导 |
+| Source/object correlation hard cases | 12 | inline、macro、BTF line info、多 section、多 subprog、Rust/Aya-style 生成名 |
+| Modern BPF protocol cases | 15 | dynptr、kfunc、ringbuf/ref lifecycle、iterator、rbtree、timer、sleepable/RCU/lock |
+| Helper and memory contract cases | 8 | helper 间接读、stack/map/packet memory、初始化和长度证明 |
+| Environment/config boundary cases | 7 | helper/kfunc unavailable、wrong prog type、attach mismatch、missing BTF |
 
 当前 40-case corpus 由原始 18-case pilot 加 22 个新增 case 组成。本节只保留
 原始 18-case pilot 的详细说明；新增 22 个的实际列表和分类分布见
@@ -224,13 +230,15 @@ pilot 阶段：
 
 paper 阶段：
 
-- 至少 100 个 admitted cases；
+- `clean60` 至少 60 个 admitted heldout cases；
+- `python3 bpfix-test/tools/audit_splits.py --split bpfix-test/splits/clean60.txt --expected-count 60 --disallow-overlap bpfix-test/splits/dev40.txt --audit-cases --smoke` 通过；
 - Qwen27B raw-log one-shot pass rate < 30%；
-- 同一模型 structured-log pass rate 接近 70%；
+- 同一模型 structured-log pass rate 显著高于 raw；
+- 至少补 source-only、trimmed-raw 和两个非 Qwen 模型；
 - 每个 case 至少有一次独立 reviewer 审核：bug 是否真实、修复 oracle 是否覆盖功能；
 - 报告 prompt budget、temperature、prompt length、model digest 或明确未记录、
   llama.cpp commit、kernel/toolchain 版本；
-- 增加 trimmed raw-log baseline，避免把 structured 提升完全归因于压缩日志。
+- 按 [clean60.md](clean60.md) 记录 split、seed exclusion、artifact hash 和污染声明。
 
 ## 失败解释
 
@@ -267,7 +275,7 @@ full-suite run：
 
 这个结果仍然只是 pilot evidence，不是 paper-ready benchmark：
 
-- admitted case 只有 18 个，paper 目标仍是 100 个；
+- admitted case 只有 18 个，且不是 heldout clean split；
 - case 分布仍集中在 pointer-provenance/lowering、ringbuf/helper contract、map-value
   nullability 和 `bpf_xdp_adjust_head()` side effect；
 - Qwen27B 同时用于 hard-case admission 和当前评测，存在 calibration bias；
@@ -318,5 +326,6 @@ ringbuf multi-reference lifecycle side effects。
 
 因此当前可以说“40-case corpus 已经构建、通过 verifier/oracle smoke，并完成第一轮
 真实 Qwen27B raw/structured repair run”。还不能说“BPFix structured repair 已达到
-paper target”；下一步必须提升 diagnostics 或 prompt contract，并补 trimmed raw-log
-baseline、跨模型重复和独立 oracle review。
+paper target”，也不能把这 40 个当作 clean benchmark；下一步必须按
+[clean60.md](clean60.md) 构造无重叠 heldout split，并补 source-only、trimmed raw-log、
+跨模型重复和独立 oracle review。

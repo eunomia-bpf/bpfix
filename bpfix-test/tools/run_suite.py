@@ -20,6 +20,7 @@ from typing import Any
 
 DEFAULT_BASE_URL = "http://127.0.0.1:18080/v1"
 DEFAULT_MODEL = "Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M"
+MODES = ["source-only", "raw", "trimmed-raw", "structured"]
 
 
 def repo_root() -> Path:
@@ -29,6 +30,18 @@ def repo_root() -> Path:
 def discover_cases(root: Path) -> list[Path]:
     cases_root = root / "bpfix-test" / "cases"
     return sorted(case for case in cases_root.iterdir() if (case / "buggy.bpf.c").exists())
+
+
+def read_split_file(path: Path) -> list[str]:
+    cases: list[str] = []
+    for line_no, raw_line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
+        line = raw_line.split("#", 1)[0].strip()
+        if not line:
+            continue
+        if "/" in line or line.endswith(".txt"):
+            raise SystemExit(f"{path}:{line_no}: split entries must be case ids, got {line!r}")
+        cases.append(line)
+    return cases
 
 
 def run(argv: list[str], *, cwd: Path) -> subprocess.CompletedProcess[str]:
@@ -57,6 +70,19 @@ def first_line(text: str) -> str | None:
 
 def sha256_text(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def trim_verifier_log(log: str) -> str:
+    begin = log.find("BEGIN PROG LOAD LOG")
+    end = log.find("-- END PROG LOAD LOG --")
+    if begin == -1 or end == -1:
+        return log.strip() + "\n"
+
+    line_start = log.rfind("\n", 0, begin)
+    line_start = 0 if line_start == -1 else line_start + 1
+    line_end = log.find("\n", end)
+    line_end = len(log) if line_end == -1 else line_end
+    return log[line_start:line_end].strip() + "\n"
 
 
 def git_metadata(root: Path) -> dict[str, object]:
@@ -120,25 +146,49 @@ def run_metadata(args: argparse.Namespace, root: Path) -> dict[str, object]:
             "llama_cpp": llama_cpp_metadata(args.llama_cpp_dir),
             "server": server_model_metadata(args.base_url),
         },
+        "case_selection": {
+            "split": str(args.split.resolve()) if args.split else None,
+            "case_overrides": args.case or [],
+        },
     }
 
 
-def build_prompt(case_dir: Path, mode: str) -> str:
-    source = (case_dir / "buggy.bpf.c").read_text(encoding="utf-8")
+def diagnostic_input(case_dir: Path, mode: str) -> tuple[str | None, str, str]:
+    if mode == "source-only":
+        return None, "", ""
     if mode == "raw":
-        diagnostic_label = "raw verifier log"
-        diagnostic = (case_dir / "verifier.log").read_text(encoding="utf-8")
-        diagnostic_guidance = ""
-    else:
-        diagnostic_label = "BPFix structured diagnostic JSON"
-        diagnostic = (case_dir / "structured.json").read_text(encoding="utf-8")
-        diagnostic_guidance = """
+        return "raw verifier log", (case_dir / "verifier.log").read_text(encoding="utf-8"), ""
+    if mode == "trimmed-raw":
+        raw_log = (case_dir / "verifier.log").read_text(encoding="utf-8")
+        return "trimmed raw verifier log", trim_verifier_log(raw_log), ""
+    if mode == "structured":
+        return (
+            "BPFix structured diagnostic JSON",
+            (case_dir / "structured.json").read_text(encoding="utf-8"),
+            """
 Use the structured diagnostic fields directly:
 - `source_span` is the verifier-rejected operation to repair.
 - `related_spans` are supporting proof context, not necessarily the only edits.
 - `required_proof` and `help` are constraints the replacement source must satisfy.
 - If `help` says an operation must not remain or must be rewritten, do not leave
   that operation in the replacement source, even if it appears unused.
+""",
+        )
+    raise ValueError(f"unknown mode: {mode}")
+
+
+def build_prompt(case_dir: Path, mode: str) -> str:
+    source = (case_dir / "buggy.bpf.c").read_text(encoding="utf-8")
+    diagnostic_label, diagnostic, diagnostic_guidance = diagnostic_input(case_dir, mode)
+    diagnostic_block = ""
+    if diagnostic_label is None:
+        diagnostic_block = "\nNo verifier diagnostic is provided for this baseline.\n"
+    else:
+        diagnostic_block = f"""
+{diagnostic_label}:
+```text
+{diagnostic}
+```
 """
 
     return f"""You are fixing one eBPF verifier rejection.
@@ -154,11 +204,7 @@ Source file:
 ```c
 {source}
 ```
-
-{diagnostic_label}:
-```text
-{diagnostic}
-```
+{diagnostic_block}
 """
 
 
@@ -259,9 +305,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     default_model_path = os.environ.get("LLM_MODEL_PATH")
     default_llama_cpp_dir = os.environ.get("LLAMA_CPP_DIR")
-    parser.add_argument("--mode", choices=["raw", "structured"], default="raw")
+    parser.add_argument("--mode", choices=MODES, default="raw")
     parser.add_argument("--smoke", action="store_true", help="Validate fixtures and buggy rejection only.")
     parser.add_argument("--prompt-only", action="store_true", help="Write prompts without calling a model.")
+    parser.add_argument("--split", type=Path, help="Run case ids listed in a split file.")
     parser.add_argument("--case", action="append", help="Run only this case id.")
     parser.add_argument("--candidate", type=Path, help="Evaluate a local candidate source; requires one --case.")
     parser.add_argument("--results-dir", type=Path, default=repo_root() / "bpfix-test" / "results")
@@ -285,18 +332,31 @@ def select_cases(root: Path, wanted: list[str] | None) -> list[Path]:
     cases = discover_cases(root)
     if not wanted:
         return cases
-    wanted_set = set(wanted)
-    selected = [case for case in cases if case.name in wanted_set]
-    missing = wanted_set - {case.name for case in selected}
+    seen: set[str] = set()
+    duplicates: list[str] = []
+    for case_id in wanted:
+        if case_id in seen and case_id not in duplicates:
+            duplicates.append(case_id)
+        seen.add(case_id)
+    if duplicates:
+        raise SystemExit(f"duplicate case(s): {', '.join(sorted(duplicates))}")
+
+    by_id = {case.name: case for case in cases}
+    missing = set(wanted) - set(by_id)
     if missing:
         raise SystemExit(f"unknown case(s): {', '.join(sorted(missing))}")
-    return selected
+    return [by_id[case_id] for case_id in wanted]
 
 
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     root = repo_root()
-    cases = select_cases(root, args.case)
+    wanted_cases: list[str] = []
+    if args.split is not None:
+        wanted_cases.extend(read_split_file(args.split))
+    if args.case:
+        wanted_cases.extend(args.case)
+    cases = select_cases(root, wanted_cases or None)
 
     if args.smoke:
         reports = [smoke_case(case) for case in cases]
@@ -324,11 +384,7 @@ def main(argv: list[str] | None = None) -> int:
             "prompt_sha256": sha256_text(prompt),
             "prompt_chars": len(prompt),
             "source_chars": len((case_dir / "buggy.bpf.c").read_text(encoding="utf-8")),
-            "diagnostic_chars": len(
-                (case_dir / ("verifier.log" if args.mode == "raw" else "structured.json")).read_text(
-                    encoding="utf-8"
-                )
-            ),
+            "diagnostic_chars": len(diagnostic_input(case_dir, args.mode)[1]),
         }
 
         if args.prompt_only:
