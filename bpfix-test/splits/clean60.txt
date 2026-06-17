@@ -6,6 +6,8 @@
 #
 #   python3 bpfix-test/tools/audit_splits.py \
 #     --split bpfix-test/splits/clean60.txt \
+#     --manifest bpfix-test/splits/clean60.manifest.json \
+#     --profile clean60 \
 #     --expected-count 60 \
 #     --disallow-overlap bpfix-test/splits/dev40.txt \
 #     --audit-cases --smoke

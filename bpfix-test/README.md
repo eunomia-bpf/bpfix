@@ -84,11 +84,15 @@ make bpfix-test-clean60-gate
 ```bash
 python3 bpfix-test/tools/audit_splits.py \
   --split bpfix-test/splits/dev40.txt \
+  --manifest bpfix-test/splits/dev40.manifest.json \
+  --profile dev \
   --expected-count 40 \
-  --audit-cases
+  --audit-cases --smoke
 
 python3 bpfix-test/tools/audit_splits.py \
   --split bpfix-test/splits/clean60.txt \
+  --manifest bpfix-test/splits/clean60.manifest.json \
+  --profile clean60 \
   --expected-count 60 \
   --disallow-overlap bpfix-test/splits/dev40.txt \
   --audit-cases --smoke
@@ -96,7 +100,8 @@ python3 bpfix-test/tools/audit_splits.py \
 
 第二个命令在 `clean60` 填满前应该失败；runner 直接使用空 `--split` 也会失败，
 不会退回到全量 discovered cases。这是保护主 benchmark 不被 dev cases 污染的
-gate。
+gate。Manifest 审计还会检查 split/manifest 一致性、clean freeze 状态、source
+category、bucket、program type、review status、oracle obligation 和 case hash。
 
 重新抓取 raw log 和 structured diagnostic：
 

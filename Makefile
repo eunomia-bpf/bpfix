@@ -82,6 +82,8 @@ bpfix-test-dev40-gate:
 	@echo "[bpfix-test-dev40-gate] Auditing dev40 split and buggy-reject smoke..."
 	cd $(CURDIR) && python3 bpfix-test/tools/audit_splits.py \
 		--split bpfix-test/splits/dev40.txt \
+		--manifest bpfix-test/splits/dev40.manifest.json \
+		--profile dev \
 		--expected-count 40 \
 		--audit-cases --smoke
 
@@ -90,6 +92,8 @@ bpfix-test-clean60-gate:
 	@echo "[bpfix-test-clean60-gate] Auditing clean60 heldout split..."
 	cd $(CURDIR) && python3 bpfix-test/tools/audit_splits.py \
 		--split bpfix-test/splits/clean60.txt \
+		--manifest bpfix-test/splits/clean60.manifest.json \
+		--profile clean60 \
 		--expected-count 60 \
 		--disallow-overlap bpfix-test/splits/dev40.txt \
 		--audit-cases --smoke

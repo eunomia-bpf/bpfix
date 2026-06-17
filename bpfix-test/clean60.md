@@ -46,12 +46,17 @@ calibration/dev evidence，不能作为 clean benchmark。
 - `splits/dev40.txt`：现有 40 个 calibration cases；
 - `splits/clean60.txt`：clean benchmark 占位，当前必须为空，直到 60 个新 case
   admission 完成。
+- `splits/*.manifest.json`：split 的机器可审计元数据。`clean60.manifest.json`
+  必须在首轮 clean run 前 frozen，并包含每个 case 的 source category、bucket、
+  program type、independent review、oracle obligation 和 case hash。
 
 `clean60` admission gate：
 
 ```bash
 python3 bpfix-test/tools/audit_splits.py \
   --split bpfix-test/splits/clean60.txt \
+  --manifest bpfix-test/splits/clean60.manifest.json \
+  --profile clean60 \
   --expected-count 60 \
   --disallow-overlap bpfix-test/splits/dev40.txt \
   --audit-cases --smoke
@@ -60,6 +65,10 @@ python3 bpfix-test/tools/audit_splits.py \
 这个命令在 `clean60` 填满前应该失败。只有它通过后，才能把 `clean60` 作为主
 benchmark 运行。`run_suite.py --split bpfix-test/splits/clean60.txt` 对空 split
 也会失败，不会把空 split 解释成“全部 case”。
+`audit_splits.py --profile clean60` 会内置比较 `dev40.txt` 的 case id、case hash
+和 `buggy.bpf.c` hash；命令行里的 `--disallow-overlap` 是显式记录，不是唯一防线。
+这个 hash gate 只能阻止精确复制或改名复制；语义近重复仍必须由 provenance 记录和
+independent review 拒绝。
 
 ## 污染控制
 

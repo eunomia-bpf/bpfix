@@ -1,0 +1,62 @@
+{
+  "schema_version": "bpfix.test.split-manifest/v1",
+  "split_id": "dev40",
+  "profile": "dev_calibration",
+  "freeze": {
+    "frozen": false,
+    "reason": "dev/calibration split used during prompt, diagnostic, and oracle development"
+  },
+  "admission_policy": {
+    "model_result_used_for_admission": true,
+    "case_ids_opaque_in_prompt": true
+  },
+  "case_defaults": {
+    "source_category": "dev_calibration",
+    "prog_type": "xdp",
+    "origin": "dev40 calibration suite",
+    "review_status": "dev_reviewed",
+    "oracle_kind": ["compile", "verifier_load", "bpftool_prog_run"]
+  },
+  "cases": [
+    {"case_id":"alu32_pointer_cookie_001","bucket":"proof_lifecycle","requires_helper_or_state":false,"uses_success_predicate":false},
+    {"case_id":"dynptr_slice_missing_null_check_001","bucket":"modern_bpf_protocol","requires_helper_or_state":true,"uses_success_predicate":false},
+    {"case_id":"dynptr_slice_short_mem_001","bucket":"modern_bpf_protocol","requires_helper_or_state":true,"uses_success_predicate":false},
+    {"case_id":"dynptr_slice_stack_buffer_001","bucket":"modern_bpf_protocol","requires_helper_or_state":true,"uses_success_predicate":false},
+    {"case_id":"dynptr_stack_copy_001","bucket":"modern_bpf_protocol","requires_helper_or_state":true,"uses_success_predicate":false},
+    {"case_id":"dynptr_uninitialized_slice_arg_001","bucket":"modern_bpf_protocol","requires_helper_or_state":true,"uses_success_predicate":false},
+    {"case_id":"helper_csum_diff_stack_len_001","bucket":"helper_memory_contract","requires_helper_or_state":true,"uses_success_predicate":true},
+    {"case_id":"helper_map_arg_stack_001","bucket":"helper_memory_contract","requires_helper_or_state":true,"uses_success_predicate":true},
+    {"case_id":"map_value_branch_merge_001","bucket":"proof_lifecycle","requires_helper_or_state":true,"uses_success_predicate":true},
+    {"case_id":"map_value_index_guard_oob_001","bucket":"proof_lifecycle","requires_helper_or_state":true,"uses_success_predicate":true},
+    {"case_id":"map_value_inline_cookie_001","bucket":"source_object_correlation","requires_helper_or_state":true,"uses_success_predicate":true},
+    {"case_id":"map_value_pointer_cookie_001","bucket":"proof_lifecycle","requires_helper_or_state":true,"uses_success_predicate":true},
+    {"case_id":"map_value_signed_index_001","bucket":"proof_lifecycle","requires_helper_or_state":true,"uses_success_predicate":true},
+    {"case_id":"map_value_spill_cookie_001","bucket":"proof_lifecycle","requires_helper_or_state":true,"uses_success_predicate":true},
+    {"case_id":"packet_checked_wrong_base_001","bucket":"proof_lifecycle","requires_helper_or_state":false,"uses_success_predicate":false},
+    {"case_id":"packet_eth_off_by_one_001","bucket":"proof_lifecycle","requires_helper_or_state":false,"uses_success_predicate":false},
+    {"case_id":"packet_ihl_udp_undercheck_001","bucket":"proof_lifecycle","requires_helper_or_state":false,"uses_success_predicate":false},
+    {"case_id":"packet_inline_return_cookie_001","bucket":"source_object_correlation","requires_helper_or_state":false,"uses_success_predicate":false},
+    {"case_id":"packet_l4_branch_cookie_001","bucket":"proof_lifecycle","requires_helper_or_state":false,"uses_success_predicate":false},
+    {"case_id":"packet_macro_cookie_001","bucket":"source_object_correlation","requires_helper_or_state":false,"uses_success_predicate":false},
+    {"case_id":"packet_macro_payload_undercheck_001","bucket":"source_object_correlation","requires_helper_or_state":false,"uses_success_predicate":false},
+    {"case_id":"packet_vlan_cookie_001","bucket":"proof_lifecycle","requires_helper_or_state":false,"uses_success_predicate":false},
+    {"case_id":"perf_event_packet_payload_001","bucket":"helper_memory_contract","requires_helper_or_state":true,"uses_success_predicate":true},
+    {"case_id":"ringbuf_branch_cookie_001","bucket":"modern_bpf_protocol","requires_helper_or_state":true,"uses_success_predicate":true},
+    {"case_id":"ringbuf_double_submit_001","bucket":"modern_bpf_protocol","requires_helper_or_state":true,"uses_success_predicate":true},
+    {"case_id":"ringbuf_missing_null_check_001","bucket":"modern_bpf_protocol","requires_helper_or_state":true,"uses_success_predicate":true},
+    {"case_id":"ringbuf_nested_missing_null_001","bucket":"modern_bpf_protocol","requires_helper_or_state":true,"uses_success_predicate":true},
+    {"case_id":"ringbuf_nested_reserve_leak_001","bucket":"modern_bpf_protocol","requires_helper_or_state":true,"uses_success_predicate":true},
+    {"case_id":"ringbuf_pointer_cookie_001","bucket":"modern_bpf_protocol","requires_helper_or_state":true,"uses_success_predicate":true},
+    {"case_id":"ringbuf_ref_leak_001","bucket":"modern_bpf_protocol","requires_helper_or_state":true,"uses_success_predicate":true},
+    {"case_id":"ringbuf_stack_discard_001","bucket":"modern_bpf_protocol","requires_helper_or_state":true,"uses_success_predicate":true},
+    {"case_id":"ringbuf_stack_submit_001","bucket":"modern_bpf_protocol","requires_helper_or_state":true,"uses_success_predicate":true},
+    {"case_id":"ringbuf_submit_after_discard_001","bucket":"modern_bpf_protocol","requires_helper_or_state":true,"uses_success_predicate":true},
+    {"case_id":"ringbuf_two_record_cookie_001","bucket":"modern_bpf_protocol","requires_helper_or_state":true,"uses_success_predicate":true},
+    {"case_id":"subprog_adjust_tail_stale_001","bucket":"source_object_correlation","requires_helper_or_state":false,"uses_success_predicate":true},
+    {"case_id":"subprog_map_value_null_001","bucket":"source_object_correlation","requires_helper_or_state":true,"uses_success_predicate":true},
+    {"case_id":"xdp_adjust_head_map_value_001","bucket":"proof_lifecycle","requires_helper_or_state":true,"uses_success_predicate":true},
+    {"case_id":"xdp_adjust_head_ringbuf_001","bucket":"proof_lifecycle","requires_helper_or_state":true,"uses_success_predicate":true},
+    {"case_id":"xdp_adjust_head_stale_001","bucket":"proof_lifecycle","requires_helper_or_state":true,"uses_success_predicate":true},
+    {"case_id":"xdp_adjust_tail_stale_001","bucket":"proof_lifecycle","requires_helper_or_state":true,"uses_success_predicate":true}
+  ]
+}
