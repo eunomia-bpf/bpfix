@@ -168,6 +168,8 @@ cases/<case_id>/
 `run_suite.py` 已支持 `--model`、`--base-url`、`--model-path`、
 `--model-sha256`、`--llama-cpp-dir` 和 `--split`，结果会记录 commit、dirty、
 toolchain、prompt hash、prompt length、model config 和 server metadata。
+每个失败结果还会记录 `failure_stage`，把 model call、源码抽取、编译、
+verifier load、功能 oracle 和辅助 proof predicate 分开。
 
 示例：
 
@@ -187,6 +189,49 @@ python3 bpfix-test/tools/run_suite.py \
   --model Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M
 ```
 
+## Result Integrity Gate
+
+每个模型的一组 clean60 结果必须在报告前通过 result gate。这个 gate 只读取
+`summary.json`，检查：
+
+- 所有 summary 来自同一个 `clean60.txt` hash 和 60 个 case；
+- source-only/raw/trimmed-raw/structured 四个模式都存在；
+- 四个模式的 case 顺序一致，不能混入 dev40、单 case debug 或旧 split；
+- 四个模式来自同一个 git commit、同一模型配置和同一工具链；
+- 每个模型结果记录稳定模型 digest，至少本地模型必须通过 `--model-sha256`
+  或 `LLM_MODEL_SHA256` 写入 64 位 hex SHA-256；
+- 正式结果不是 dirty worktree 产物；
+- `prompt_written` dry-run 不能当 benchmark result；
+- 每个失败都有机器可读的 `failure_stage`。
+
+示例：
+
+```bash
+python3 bpfix-test/tools/audit_results.py \
+  --split bpfix-test/splits/clean60.txt \
+  --expected-count 60 \
+  --required-mode source-only \
+  --required-mode raw \
+  --required-mode trimmed-raw \
+  --required-mode structured \
+  /path/to/source-only/summary.json \
+  /path/to/raw/summary.json \
+  /path/to/trimmed-raw/summary.json \
+  /path/to/structured/summary.json
+```
+
+等价 Makefile 入口：
+
+```bash
+make bpfix-test-result-gate RESULT_SUMMARIES='\
+  /path/to/source-only/summary.json \
+  /path/to/raw/summary.json \
+  /path/to/trimmed-raw/summary.json \
+  /path/to/structured/summary.json'
+```
+
+这个 gate 不能替代 split admission gate；正式 clean result 必须两个都通过。
+
 ## 报告规则
 
 论文或 README 中必须同时报告：
@@ -197,9 +242,10 @@ python3 bpfix-test/tools/run_suite.py \
 - 每个 fail 的 oracle stage：model error、extract、compile、verifier load、
   functional oracle、auxiliary proof predicate；
 - prompt chars、diagnostic chars、max tokens、temperature；
-- model digest 或明确说明未记录；
+- model digest；缺少 digest 的运行不能进入 clean60 主结果；
 - kernel、clang、bpftool、libbpf、llama.cpp commit；
 - seed exclusion ledger 和 reviewer audit 状态。
+- result gate 的输入 summary 路径和输出 JSON。
 
 不能报告：
 

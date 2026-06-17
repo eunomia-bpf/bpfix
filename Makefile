@@ -26,6 +26,7 @@ help:
 	@echo "  make bpfix-test-smoke  Validate bpfix-test fixtures and buggy rejects"
 	@echo "  make bpfix-test-dev40-gate   Run the full dev40 split quality gate"
 	@echo "  make bpfix-test-clean60-gate Run the clean60 heldout gate; fails until admitted"
+	@echo "  make bpfix-test-result-gate RESULT_SUMMARIES='...' Audit clean60 result summaries"
 	@echo "  make release-check     Run packaging, example, benchmark, and object-analysis gates"
 	@echo ""
 	@echo "Utilities"
@@ -97,6 +98,19 @@ bpfix-test-clean60-gate:
 		--expected-count 60 \
 		--disallow-overlap bpfix-test/splits/dev40.txt \
 		--audit-cases --smoke
+
+.PHONY: bpfix-test-result-gate
+bpfix-test-result-gate:
+	@test -n "$(RESULT_SUMMARIES)" || (echo "Set RESULT_SUMMARIES to clean60 summary.json paths"; exit 2)
+	@echo "[bpfix-test-result-gate] Auditing clean60 result summaries..."
+	cd $(CURDIR) && python3 bpfix-test/tools/audit_results.py \
+		--split bpfix-test/splits/clean60.txt \
+		--expected-count 60 \
+		--required-mode source-only \
+		--required-mode raw \
+		--required-mode trimmed-raw \
+		--required-mode structured \
+		$(RESULT_SUMMARIES)
 
 .PHONY: release-check
 release-check:

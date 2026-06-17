@@ -298,6 +298,43 @@ def run_oracle(case_dir: Path, source: Path, work_dir: Path) -> subprocess.Compl
     )
 
 
+def oracle_failure_stage(completed: subprocess.CompletedProcess[str]) -> str:
+    if completed.returncode == 0:
+        return "pass"
+    try:
+        report = json.loads(completed.stdout)
+    except json.JSONDecodeError:
+        return "oracle_parse"
+    if not isinstance(report, dict):
+        return "oracle_parse"
+
+    compile_report = report.get("compile")
+    if isinstance(compile_report, dict) and compile_report.get("returncode") != 0:
+        return "compile"
+
+    for setup in report.get("map_setup", []):
+        if isinstance(setup, dict) and setup.get("returncode") != 0:
+            return "map_setup"
+
+    load_report = report.get("load")
+    if isinstance(load_report, dict) and load_report.get("returncode") != 0:
+        return "verifier_load"
+
+    for check in report.get("success_log_checks", []):
+        if isinstance(check, dict) and check.get("passed") is not True:
+            return "auxiliary_proof_predicate"
+
+    for functional in report.get("functional", []):
+        if isinstance(functional, dict):
+            for update in functional.get("map_updates", []):
+                if isinstance(update, dict) and update.get("returncode") != 0:
+                    return "map_setup"
+            if functional.get("passed") is not True:
+                return "functional_oracle"
+
+    return "oracle"
+
+
 def smoke_case(case_dir: Path) -> dict[str, object]:
     missing = [
         name
@@ -449,18 +486,40 @@ def main(argv: list[str] | None = None) -> int:
                     temperature=args.temperature,
                 )
                 (case_out / "response.txt").write_text(response, encoding="utf-8")
-                candidate_source = extract_source(response)
-                candidate_path = case_out / "candidate.bpf.c"
-                candidate_path.write_text(candidate_source, encoding="utf-8")
             except (
-                ValueError,
+                json.JSONDecodeError,
                 urllib.error.URLError,
                 TimeoutError,
                 KeyError,
                 ConnectionError,
                 http.client.HTTPException,
             ) as exc:
-                result = {"case": case_dir.name, "status": "model_error", "error": str(exc), **prompt_info}
+                result = {
+                    "case": case_dir.name,
+                    "status": "model_error",
+                    "failure_stage": "model_call",
+                    "error": str(exc),
+                    "mode": args.mode,
+                    "model": args.model,
+                    **prompt_info,
+                }
+                (case_out / "result.json").write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
+                summary.append(result)
+                continue
+            try:
+                candidate_source = extract_source(response)
+                candidate_path = case_out / "candidate.bpf.c"
+                candidate_path.write_text(candidate_source, encoding="utf-8")
+            except ValueError as exc:
+                result = {
+                    "case": case_dir.name,
+                    "status": "model_error",
+                    "failure_stage": "extract_source",
+                    "error": str(exc),
+                    "mode": args.mode,
+                    "model": args.model,
+                    **prompt_info,
+                }
                 (case_out / "result.json").write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
                 summary.append(result)
                 continue
@@ -471,6 +530,7 @@ def main(argv: list[str] | None = None) -> int:
         result = {
             "case": case_dir.name,
             "status": "pass" if completed.returncode == 0 else "fail",
+            "failure_stage": oracle_failure_stage(completed),
             "candidate": str(candidate_path),
             "oracle_stdout": completed.stdout,
             "oracle_stderr": completed.stderr,
