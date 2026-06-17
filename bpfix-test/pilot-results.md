@@ -5,6 +5,114 @@ Last run: 2026-06-17
 This file records calibration results for the current small pilot suite. These
 numbers are not paper-ready benchmark results.
 
+## Qwen27B llama.cpp Full 40-Case Same-Config Run
+
+This is the first real LLM repair run over the admitted 40-case corpus. Raw and
+structured modes were run over the same case set with the same model, server,
+temperature, token budget, runner, kernel, and oracle code. The run uses
+llama.cpp with prompt cache disabled because an earlier structured run with
+prompt cache enabled crashed the local `llama-server` before producing a suite
+summary; that aborted partial run is not counted.
+
+Setup:
+
+- Model: `Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M`
+- Model path:
+  `/home/yunwei37/.cache/huggingface/hub/models--DevQuasar--Qwen.Qwen3.6-27B-GGUF/snapshots/b19fa7e8538a1a5f66452eb3b3167e026177be1d/Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M.gguf`
+- llama.cpp commit: `57819b8d4b39d893408e51520dff3d47d1ebb757`
+- GPU: NVIDIA GeForce RTX 5090, 32 GB VRAM
+- Server flags: `-c 32768 -ngl 999 --reasoning off --cache-ram 0`
+- Runner: `bpfix-test/tools/run_suite.py`
+- Temperature: `0.0`
+- Max tokens: `8192`
+- Cases: 40
+- Repository commit: `93f90fbeb39cb66517c970c784942b483102c659`
+- Repository dirty: `false`
+- Kernel/toolchain: Linux `6.15.11-061511-generic`, clang `18.1.3`,
+  bpftool `v7.7.0`, libbpf `v1.7`
+- Raw local artifact:
+  `/tmp/bpfix-test-qwen27b-full-40-93f90fb-nocache/20260617T200011916619Z-pid847632/raw/summary.json`
+  (`beaddcb0126547a769be689b083a4aac09570f0b0c9324568f4522ab515957db`)
+- Structured local artifact:
+  `/tmp/bpfix-test-qwen27b-full-40-93f90fb-nocache/20260617T200540551769Z-pid848977/structured/summary.json`
+  (`d8f7d46f5681a56564f331ad0b1a85ed416a691386b84bef625895047593b917`)
+
+Results:
+
+| mode | passed | total | pass rate |
+| --- | ---: | ---: | ---: |
+| raw verifier log | 9 | 40 | 22.5% |
+| BPFix structured JSON | 23 | 40 | 57.5% |
+
+Per-case result:
+
+| case | raw | structured |
+| --- | --- | --- |
+| `alu32_pointer_cookie_001` | fail | pass |
+| `dynptr_slice_missing_null_check_001` | fail | fail |
+| `dynptr_slice_short_mem_001` | fail | fail |
+| `dynptr_slice_stack_buffer_001` | fail | fail |
+| `dynptr_stack_copy_001` | fail | fail |
+| `dynptr_uninitialized_slice_arg_001` | fail | fail |
+| `helper_csum_diff_stack_len_001` | fail | fail |
+| `helper_map_arg_stack_001` | fail | fail |
+| `map_value_branch_merge_001` | pass | pass |
+| `map_value_index_guard_oob_001` | fail | fail |
+| `map_value_inline_cookie_001` | fail | pass |
+| `map_value_pointer_cookie_001` | fail | pass |
+| `map_value_signed_index_001` | fail | fail |
+| `map_value_spill_cookie_001` | fail | pass |
+| `packet_checked_wrong_base_001` | fail | fail |
+| `packet_eth_off_by_one_001` | fail | fail |
+| `packet_ihl_udp_undercheck_001` | pass | pass |
+| `packet_inline_return_cookie_001` | fail | pass |
+| `packet_l4_branch_cookie_001` | fail | pass |
+| `packet_macro_cookie_001` | fail | pass |
+| `packet_macro_payload_undercheck_001` | pass | pass |
+| `packet_vlan_cookie_001` | fail | pass |
+| `perf_event_packet_payload_001` | fail | fail |
+| `ringbuf_branch_cookie_001` | fail | pass |
+| `ringbuf_double_submit_001` | fail | fail |
+| `ringbuf_missing_null_check_001` | pass | pass |
+| `ringbuf_nested_missing_null_001` | fail | fail |
+| `ringbuf_nested_reserve_leak_001` | fail | fail |
+| `ringbuf_pointer_cookie_001` | fail | pass |
+| `ringbuf_ref_leak_001` | pass | pass |
+| `ringbuf_stack_discard_001` | pass | pass |
+| `ringbuf_stack_submit_001` | pass | pass |
+| `ringbuf_submit_after_discard_001` | fail | fail |
+| `ringbuf_two_record_cookie_001` | fail | pass |
+| `subprog_adjust_tail_stale_001` | fail | pass |
+| `subprog_map_value_null_001` | fail | fail |
+| `xdp_adjust_head_map_value_001` | pass | pass |
+| `xdp_adjust_head_ringbuf_001` | fail | pass |
+| `xdp_adjust_head_stale_001` | pass | pass |
+| `xdp_adjust_tail_stale_001` | fail | pass |
+
+Structured-mode failures by oracle stage:
+
+| stage | count | cases |
+| --- | ---: | --- |
+| compile | 1 | `dynptr_uninitialized_slice_arg_001` |
+| functional oracle | 11 | `dynptr_slice_missing_null_check_001`, `dynptr_slice_short_mem_001`, `dynptr_slice_stack_buffer_001`, `dynptr_stack_copy_001`, `helper_csum_diff_stack_len_001`, `map_value_signed_index_001`, `packet_checked_wrong_base_001`, `packet_eth_off_by_one_001`, `perf_event_packet_payload_001`, `ringbuf_double_submit_001`, `subprog_map_value_null_001` |
+| helper/proof success predicate | 5 | `helper_map_arg_stack_001`, `map_value_index_guard_oob_001`, `ringbuf_nested_missing_null_001`, `ringbuf_nested_reserve_leak_001`, `ringbuf_submit_after_discard_001` |
+
+Interpretation:
+
+- The 40-case corpus is harder than the 18-case pilot: raw-log one-shot repair
+  falls to 9/40 = 22.5%, below the hard-suite target of `<30%`.
+- BPFix structured diagnostics still help substantially: 23/40 = 57.5%,
+  a +35.0 percentage-point absolute gain over raw and 14 additional working
+  repairs under the same oracle.
+- The structured result does not meet the earlier near-70% target. The failures
+  are real candidate failures, not model-call failures: 11 lose functional edge
+  cases, 5 lose helper/proof side effects checked by success predicates, and 1
+  fails to compile.
+- The next engineering target is not to curate easier cases; it is to improve
+  BPFix repair-useful diagnostics for dynptr short/nullable behavior, stack
+  helper memory contracts, signed range lower bounds, wrong-base packet checks,
+  map-value proof predicates, and ringbuf multi-reference lifecycle obligations.
+
 ## Qwen27B llama.cpp Full 18-Case Same-Config Pilot
 
 This is the current calibration result for the admitted 18-case pilot. Unlike

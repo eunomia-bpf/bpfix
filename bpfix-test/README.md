@@ -16,10 +16,11 @@
 - 每个 case 的成功必须由同一个可执行 oracle 判定：编译、verifier load、
   `bpftool prog run` 功能返回值都正确。
 
-18-case pilot 的同配置 Qwen27B/llama.cpp 结果是 raw `5/18`
-和 structured `18/18`；完整配置、artifact hash 和 per-case 表见
-`pilot-results.md`。40-case corpus 已经 admission 完成并通过 smoke，
-但 40-case 的 raw/structured LLM full-suite 还没有重新跑，报告结果时必须分开。
+40-case corpus 的同配置 Qwen27B/llama.cpp 结果是 raw `9/40`
+和 structured `23/40`；完整配置、artifact hash 和 per-case 表见
+`pilot-results.md`。这是真实 LLM repair run：每个 pass 都经过编译、verifier
+load 和 `bpftool prog run` oracle。18-case pilot 的历史结果 raw `5/18`
+和 structured `18/18` 仍保留在 `pilot-results.md`，报告时必须分开。
 具体配额、admission gate、actual admitted list 和 excluded seeds 见
 [40-case-plan.md](40-case-plan.md)。
 

@@ -1,7 +1,7 @@
 # BPFix-Test 设计：面向 LLM One-Shot eBPF 修复的挑战集
 
 最后更新：2026-06-17
-阶段：40-case admitted milestone; 40-case LLM full-suite pending
+阶段：40-case admitted milestone; first Qwen27B full-suite completed
 仓库路径：`bpfix-test/`
 
 ## 定位
@@ -31,10 +31,10 @@ proof-loss sites that are implicit or misleading in raw verifier logs.
 
 | ID | Claim | Scope | Metric/evidence | Status |
 | --- | --- | --- | --- | --- |
-| C1 | Raw verifier logs are insufficient for hard one-shot eBPF repair. | 18-case pilot observed; 40-case run pending; paper target remains 100 cases. | Qwen27B raw-log one-shot pass rate below 30%. | pilot observed: 5/18 = 27.8%; 40-case pending |
-| C2 | BPFix structured diagnostics improve repair success. | Same cases, same model, same prompt budget. | Structured-log pass rate near 70% and absolute gain over raw. | pilot observed: 18/18 = 100.0%; 40-case pending |
+| C1 | Raw verifier logs are insufficient for hard one-shot eBPF repair. | 40-case admitted corpus; paper target remains 100 cases. | Qwen27B raw-log one-shot pass rate below 30%. | supported on 40-case run: 9/40 = 22.5% |
+| C2 | BPFix structured diagnostics improve repair success. | Same cases, same model, same prompt budget. | Structured-log pass rate near 70% and absolute gain over raw. | partial on 40-case run: 23/40 = 57.5%, +35.0 pp over raw |
 | C3 | The benchmark measures working repairs, not label agreement. | All admitted cases. | Compile + verifier load + functional `bpftool prog run` oracle. | implemented for 40/40 |
-| C4 | The suite is hard for source-only pattern matching. | Case construction. | Cases combine hidden proof loss, helper protocol, branch/source correlation, or modern BPF API contracts. | 40-case corpus admitted; LLM difficulty pending |
+| C4 | The suite is hard for source-only pattern matching. | Case construction and 40-case raw-log run. | Cases combine hidden proof loss, helper protocol, branch/source correlation, or modern BPF API contracts. | supported for Qwen27B raw-log baseline: 9/40 = 22.5% |
 
 ## 和 `bpfix-bench` 的区别
 
@@ -300,13 +300,23 @@ full-suite run：
 | `BPFIX-E011` | source_bug | provenance | 5 |
 | `BPFIX-E012` | source_bug | protocol | 2 |
 
-还没有完成的部分是 40-case LLM full-suite：
+同日完成了第一轮真实 40-case LLM full-suite：
 
-- raw verifier log 模式需要重新跑 40/40；
-- BPFix structured JSON 模式需要用同一模型、同一 token budget、同一温度跑 40/40；
-- 需要补 trimmed raw-log baseline，避免把 structured 的收益完全归因于日志压缩；
-- 需要跨模型重复，例如 Qwen27B、Llama-family、DeepSeek-family；
-- 需要独立 reviewer 审核每个 oracle 是否覆盖了真实功能语义。
+- raw verifier log：9/40 pass = 22.5%；
+- BPFix structured JSON：23/40 pass = 57.5%；
+- repository commit：`93f90fbeb39cb66517c970c784942b483102c659`；
+- llama.cpp commit：`57819b8d4b39d893408e51520dff3d47d1ebb757`；
+- model：`Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M`；
+- temperature：`0.0`，max tokens：`8192`；
+- server flags：`-c 32768 -ngl 999 --reasoning off --cache-ram 0`。
 
-因此当前可以说“40-case corpus 已经构建并通过 verifier/oracle smoke”，但还不能说
-“40-case LLM 提升已经证明”。18-case pilot 的 5/18 和 18/18 只能作为先导证据。
+这个结果支持 C1：40-case raw-log baseline 已经低于 30%。它只部分支持 C2：
+structured diagnostic 带来 +35.0 percentage-point 的真实修复提升，但 57.5% 低于
+near-70% 目标线。失败主要集中在 dynptr edge cases、stack/helper memory contract、
+signed range lower-bound、wrong-base packet checks、map-value proof predicate 和
+ringbuf multi-reference lifecycle side effects。
+
+因此当前可以说“40-case corpus 已经构建、通过 verifier/oracle smoke，并完成第一轮
+真实 Qwen27B raw/structured repair run”。还不能说“BPFix structured repair 已达到
+paper target”；下一步必须提升 diagnostics 或 prompt contract，并补 trimmed raw-log
+baseline、跨模型重复和独立 oracle review。
