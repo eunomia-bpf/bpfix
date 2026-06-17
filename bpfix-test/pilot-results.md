@@ -20,17 +20,17 @@ Setup:
 - Max tokens: `4096`
 - Cases: 6
 - Local run artifacts:
-  `/tmp/bpfix-test-qwen27b-sixcase-fixed/20260617T013251Z/raw/summary.json`
-  (`b6eeb8e3c0c783774a19c6aaaf2d25d8dbb776cbb16594a3074f2ca1865302c1`) and
-  `/tmp/bpfix-test-qwen27b-sixcase/20260617T013201Z/structured/summary.json`
-  (`b4dba3c82bba288fd899f054e45f2f6db59ee350b1b2c7729bd2c1b6cd662d8b`)
+  `/tmp/bpfix-test-qwen27b-after-prompt/20260617T014655337284Z-pid342562/raw/summary.json`
+  (`5c95fca4c4644974ea05b3a99825c3d977fe7e65c1328e389ad5bceab5a02453`) and
+  `/tmp/bpfix-test-qwen27b-after-prompt/20260617T014655455250Z-pid342578/structured/summary.json`
+  (`8eb3e1a8c0f966dbc6810f9bf36e67001b87406eff52986d9d28ecbf765c6d08`)
 
 Results:
 
 | mode | passed | total | pass rate |
 | --- | ---: | ---: | ---: |
 | raw verifier log | 5 | 6 | 83.3% |
-| BPFix structured JSON | 5 | 6 | 83.3% |
+| BPFix structured JSON | 6 | 6 | 100.0% |
 
 Raw-mode per-case result:
 
@@ -47,7 +47,7 @@ Structured-mode per-case result:
 
 | case | result |
 | --- | --- |
-| `alu32_pointer_cookie_001` | fail: candidate preserved pointer-shift inline asm |
+| `alu32_pointer_cookie_001` | pass |
 | `map_value_branch_merge_001` | pass |
 | `ringbuf_missing_null_check_001` | pass |
 | `ringbuf_ref_leak_001` | pass |
@@ -60,10 +60,12 @@ Interpretation:
   extracted, candidates are compiled, loaded, and checked by executable oracles.
 - The current 6-case pilot is too easy. Raw-log one-shot success is far above
   the intended hard-suite target of `<30%`.
-- The structured mode did not improve this pilot under the current Qwen27B
-  `--reasoning off` run. That is useful negative evidence: the current
-  structured diagnostic for the ALU32/provenance case is not yet repair-useful
-  enough, and the pilot is still too small/easy to support a paper claim.
+- Structured mode now improves the ALU32/provenance canary: raw mode preserved
+  the verifier-rejected pointer-shift inline asm, while structured mode removed
+  that operation after the prompt told the model to treat `source_span` and
+  `help` as repair constraints. This is useful UX evidence for agents, but it is
+  not yet a paper-ready benchmark result because the suite is still only six
+  cases and raw success remains high.
 - Adding `map_value_branch_merge_001` exposed an oracle bug: the first map-value
   predicate accepted only one verifier text layout and rejected a correct
   candidate where the non-null `map_value` proof appeared on the preceding

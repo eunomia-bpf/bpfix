@@ -426,8 +426,16 @@ misaligned stack access off 0+-16+4 size 8
                 && evidence["detail"]
                     .as_str()
                     .unwrap()
-                    .contains("integer operation drops pointer provenance")
+                    .contains("pointer reaches a left-shift instruction")
         }));
+    assert!(pointer_shift["help"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|help| help
+            .as_str()
+            .unwrap()
+            .contains("rejected pointer-shift line must not remain")));
 
     let stale_pointer_shift_state = run_json_stdin(
         "\

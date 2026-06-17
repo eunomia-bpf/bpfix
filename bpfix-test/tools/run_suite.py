@@ -127,15 +127,25 @@ def build_prompt(case_dir: Path, mode: str) -> str:
     if mode == "raw":
         diagnostic_label = "raw verifier log"
         diagnostic = (case_dir / "verifier.log").read_text(encoding="utf-8")
+        diagnostic_guidance = ""
     else:
         diagnostic_label = "BPFix structured diagnostic JSON"
         diagnostic = (case_dir / "structured.json").read_text(encoding="utf-8")
+        diagnostic_guidance = """
+Use the structured diagnostic fields directly:
+- `source_span` is the verifier-rejected operation to repair.
+- `related_spans` are supporting proof context, not necessarily the only edits.
+- `required_proof` and `help` are constraints the replacement source must satisfy.
+- If `help` says an operation must not remain or must be rewritten, do not leave
+  that operation in the replacement source, even if it appears unused.
+"""
 
     return f"""You are fixing one eBPF verifier rejection.
 
 Return only one complete replacement C source file in a fenced ```c block.
 Do not explain. Do not output a diff. Preserve the intended packet/helper
 semantics; do not remove the program, maps, SEC() section, or license.
+{diagnostic_guidance}
 
 Case: {case_dir.name}
 

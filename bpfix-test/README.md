@@ -103,6 +103,11 @@ python3 bpfix-test/tools/run_suite.py \
 
 默认 smoke test 不依赖模型。
 
+Structured mode 的 prompt 会显式告诉模型如何消费 BPFix JSON：
+`source_span` 是 verifier 拒绝的操作，`related_spans` 是 proof context，
+`required_proof` 和 `help` 是候选源码必须满足的约束。如果 `help` 说明某个
+操作不能保留或必须重写，候选源码不能把它作为死代码留在程序里。
+
 ## 环境要求
 
 当前 pilot oracle 假设：

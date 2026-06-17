@@ -52,12 +52,12 @@
     },
     {
       "kind": "lowering_artifact_signal",
-      "detail": "compiler-lowered integer operation drops pointer provenance",
+      "detail": "a verifier-tracked pointer reaches a left-shift instruction, which the verifier rejects because the operation destroys pointer provenance",
       "line": 47
     }
   ],
   "help": [
-    "Keep packet or context pointers in verifier-tracked 64-bit pointer values; avoid materializing them through 32-bit scalar arithmetic before the access.",
+    "The rejected pointer-shift line must not remain as-is; delete it or keep scalar-only bit operations separate, then derive the access pointer from a checked packet or context base.",
     "Avoid integer casts or arithmetic that turn the pointer into a scalar before the access.",
     "Recompute the pointer from a verifier-tracked base after scalar manipulation."
   ],
