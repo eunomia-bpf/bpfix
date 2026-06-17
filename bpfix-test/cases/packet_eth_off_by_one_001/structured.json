@@ -1,0 +1,65 @@
+{
+  "diagnostic_version": "bpfix.diagnostic/v3",
+  "error_id": "BPFIX-E001",
+  "failure_class": "source_bug",
+  "confidence": "medium",
+  "diagnostic_kind": "supported",
+  "help_safety": "repair_hint",
+  "next_action": "bounds",
+  "span_confidence": "exact_pc",
+  "message": "packet bounds check is narrower than the later packet access: invalid access to packet, off=12 size=2, R1(id=0,off=12,r=13); R1 offset is outside of the packet",
+  "required_proof": "prove R1 has packet range at least 14 bytes before this access; verifier currently has range 13",
+  "source_span": {
+    "path": "buggy.bpf.c",
+    "line_start": 29,
+    "line_end": 29,
+    "instruction_pc": 6,
+    "source_text": "proto = *(__u16 *)(data + 12);"
+  },
+  "related_spans": [
+    {
+      "path": "buggy.bpf.c",
+      "line_start": 26,
+      "line_end": 26,
+      "instruction_pc": 3,
+      "source_text": "if (data + 13 > data_end)",
+      "label": "verifier only proves packet range 0 bytes on this path, but the rejected access requires 14 bytes"
+    }
+  ],
+  "evidence": [
+    {
+      "kind": "terminal_verifier_error",
+      "detail": "invalid access to packet, off=12 size=2, R1(id=0,off=12,r=13); R1 offset is outside of the packet",
+      "line": 27
+    },
+    {
+      "kind": "instruction_pc",
+      "detail": "nearest verifier instruction pc 6",
+      "line": 27
+    },
+    {
+      "kind": "verifier_trace",
+      "detail": "parsed 6 per-instruction verifier state snapshots",
+      "line": null
+    },
+    {
+      "kind": "verifier_state_signal",
+      "detail": "source has a packet bounds check, but verifier state after that check proves only a shorter packet range than the rejected access needs",
+      "line": 27
+    }
+  ],
+  "help": [
+    "Move the data_end check to the final pointer expression and include the access width, for example check pointer + size before dereferencing pointer.",
+    "Add or move a packet bounds check immediately before the access or helper argument use.",
+    "Check the exact pointer and byte length passed to the helper, not only an earlier header pointer."
+  ],
+  "metadata": {
+    "case_id": null,
+    "input_kind": "verifier-log-region",
+    "object_path": null,
+    "object_programs": [],
+    "object_analysis_error": null,
+    "trace_state_count": 6,
+    "analysis_error": null
+  }
+}
