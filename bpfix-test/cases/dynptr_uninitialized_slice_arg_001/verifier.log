@@ -1,0 +1,58 @@
+libbpf: loading object from <work-dir>/prog.o
+libbpf: elf: section(3) xdp, size 112, link 0, flags 6, type=1
+libbpf: sec 'xdp': found program 'dynptr_uninitialized_slice_arg' at insn offset 0 (0 bytes), code size 14 insns (112 bytes)
+libbpf: elf: section(4) .relxdp, size 16, link 25, flags 40, type=9
+libbpf: elf: section(5) license, size 4, link 0, flags 3, type=1
+libbpf: license of <work-dir>/prog.o is GPL
+libbpf: elf: section(15) .BTF, size 1244, link 0, flags 0, type=1
+libbpf: elf: section(17) .BTF.ext, size 172, link 0, flags 0, type=1
+libbpf: elf: section(25) .symtab, size 360, link 1, flags 0, type=2
+libbpf: looking for externs among 15 symbols...
+libbpf: collected 1 externs total
+libbpf: extern (ksym) #0: symbol 13, name bpf_dynptr_slice
+libbpf: sec '.relxdp': collecting relocation for section(3) 'xdp'
+libbpf: sec '.relxdp': relo #0: insn #5 against 'bpf_dynptr_slice'
+libbpf: prog 'dynptr_uninitialized_slice_arg': found extern #0 'bpf_dynptr_slice' (sym 13) for insn #5
+libbpf: object 'prog': failed (-95) to create BPF token from '/sys/fs/bpf', skipping optional step...
+libbpf: loaded kernel BTF from '/sys/kernel/btf/vmlinux'
+libbpf: extern (func ksym) 'bpf_dynptr_slice': resolved to vmlinux [71567]
+libbpf: sec 'xdp': found 1 CO-RE relocations
+libbpf: CO-RE relocating [18] struct ethhdr: found target candidate [23410] struct ethhdr in [vmlinux]
+libbpf: prog 'dynptr_uninitialized_slice_arg': relo #0: <byte_off> [18] struct ethhdr.h_proto (0:2 @ offset 12)
+libbpf: prog 'dynptr_uninitialized_slice_arg': relo #0: matching candidate #0 <byte_off> [23410] struct ethhdr.h_proto (0:2 @ offset 12)
+libbpf: prog 'dynptr_uninitialized_slice_arg': relo #0: patched insn #9 (LDX/ST/STX) off 12 -> 12
+libbpf: prog 'dynptr_uninitialized_slice_arg': BPF program load failed: -EINVAL
+libbpf: prog 'dynptr_uninitialized_slice_arg': -- BEGIN PROG LOAD LOG --
+func#0 @0
+Live regs before insn:
+  0: .......... (bf) r1 = r10
+  1: .1........ (07) r1 += -16
+  2: .1........ (b7) r2 = 0
+  3: .12....... (b7) r3 = 0
+  4: .123...... (b7) r4 = 14
+  5: .1234..... (85) call bpf_dynptr_slice#71567
+  6: 0......... (bf) r1 = r0
+  7: .1........ (b7) r0 = 2
+  8: 01........ (15) if r1 == 0x0 goto pc+4
+  9: .1........ (69) r1 = *(u16 *)(r1 +12)
+ 10: .1........ (b7) r0 = 1
+ 11: 01........ (15) if r1 == 0x8 goto pc+1
+ 12: .......... (b7) r0 = 2
+ 13: 0......... (95) exit
+0: R1=ctx() R10=fp0
+; int dynptr_uninitialized_slice_arg(struct xdp_md *ctx) @ buggy.bpf.c:22
+0: (bf) r1 = r10                      ; R1_w=fp0 R10=fp0
+; eth = bpf_dynptr_slice(&ptr, 0, 0, sizeof(*eth)); @ buggy.bpf.c:27
+1: (07) r1 += -16                     ; R1_w=fp-16
+2: (b7) r2 = 0                        ; R2_w=0
+3: (b7) r3 = 0                        ; R3_w=0
+4: (b7) r4 = 14                       ; R4_w=14
+5: (85) call bpf_dynptr_slice#71567
+Expected an initialized dynptr as arg #0
+verification time 0 usec
+stack depth 0
+processed 6 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0 mark_read 0
+-- END PROG LOAD LOG --
+libbpf: prog 'dynptr_uninitialized_slice_arg': failed to load: -EINVAL
+libbpf: failed to load object '<work-dir>/prog.o'
+Error: failed to load object file

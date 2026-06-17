@@ -1,0 +1,54 @@
+{
+  "diagnostic_version": "bpfix.diagnostic/v3",
+  "error_id": "BPFIX-E012",
+  "failure_class": "source_bug",
+  "confidence": "medium",
+  "diagnostic_kind": "supported",
+  "help_safety": "repair_hint",
+  "next_action": "protocol",
+  "span_confidence": "exact_pc",
+  "message": "dynptr helper argument is not an initialized verifier-tracked dynptr slot: Expected an initialized dynptr as arg #0",
+  "required_proof": "pass the exact verifier-tracked initialized dynptr stack slot to this helper argument",
+  "source_span": {
+    "path": "buggy.bpf.c",
+    "line_start": 27,
+    "line_end": 27,
+    "instruction_pc": 5,
+    "source_text": "eth = bpf_dynptr_slice(&ptr, 0, 0, sizeof(*eth));"
+  },
+  "related_spans": [],
+  "evidence": [
+    {
+      "kind": "terminal_verifier_error",
+      "detail": "Expected an initialized dynptr as arg #0",
+      "line": 26
+    },
+    {
+      "kind": "instruction_pc",
+      "detail": "nearest verifier instruction pc 5",
+      "line": 26
+    },
+    {
+      "kind": "verifier_trace",
+      "detail": "parsed 6 per-instruction verifier state snapshots",
+      "line": null
+    },
+    {
+      "kind": "verifier_state_signal",
+      "detail": "verifier state shows the helper receives a stable stack pointer, but that stack slot is not the current initialized dynptr object",
+      "line": 26
+    }
+  ],
+  "help": [
+    "Initialize the dynptr stack slot through a dynptr creation helper and pass that exact slot to later dynptr helpers; do not pass zeroed, clobbered, or unrelated stack bytes."
+  ],
+  "metadata": {
+    "case_id": null,
+    "input_kind": "verifier-log-region",
+    "object_path": null,
+    "object_programs": [],
+    "object_analysis_error": null,
+    "trace_state_count": 6,
+    "analysis_error": null
+  }
+}
