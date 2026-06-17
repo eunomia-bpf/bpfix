@@ -9,7 +9,7 @@
 > log 时能否一次生成可工作的修复？把 raw log 换成 BPFix structured
 > diagnostic 后，成功率是否显著提高？
 
-当前目录先提供可运行的 canary skeleton。最终 hard suite 的目标是：
+当前目录先提供 5 个可运行的 pilot cases。最终 hard suite 的目标是：
 
 - raw-log one-shot 修复成功率低于 30%；
 - structured-log one-shot 修复成功率接近 70%；
@@ -48,6 +48,16 @@ cargo build -p bpfix
 python3 bpfix-test/tools/refresh_case_artifacts.py
 ```
 
+当前 pilot cases：
+
+| case | bucket | oracle focus |
+| --- | --- | --- |
+| `alu32_pointer_cookie_001` | proof lifecycle / lowering | packet pointer provenance must survive ALU lowering |
+| `xdp_adjust_head_stale_001` | helper side effect / provenance | `bpf_xdp_adjust_head` must remain and UDP/TCP behavior must hold |
+| `ringbuf_stack_submit_001` | helper protocol | stack event cannot be submitted as `ringbuf_mem` |
+| `ringbuf_missing_null_check_001` | nullable helper result | reserve result must be checked before write/submit |
+| `ringbuf_ref_leak_001` | reference lifecycle | every reserved record path must submit or discard |
+
 ## 运行 LLM One-Shot
 
 runner 使用 OpenAI-compatible `/v1/chat/completions` API，兼容 llama.cpp
@@ -69,10 +79,11 @@ python3 bpfix-test/tools/run_suite.py \
 
 ```bash
 /home/yunwei37/workspace/llama.cpp-latest/build/bin/llama-server \
-  -m /path/to/qwen27b.gguf -c 32768 --port 18080
+  -m /path/to/qwen27b.gguf -c 32768 -ngl 999 \
+  --reasoning off --port 18080
 ```
 
-当前机器上没有运行中的 llama server。已发现的本地 Qwen27B GGUF 路径是：
+已发现的本地 Qwen27B GGUF 路径是：
 
 ```text
 /home/yunwei37/.cache/huggingface/hub/models--DevQuasar--Qwen.Qwen3.6-27B-GGUF/snapshots/b19fa7e8538a1a5f66452eb3b3167e026177be1d/Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M.gguf
@@ -93,7 +104,7 @@ python3 bpfix-test/tools/run_suite.py \
 
 ## 环境要求
 
-当前 canary oracle 假设：
+当前 pilot oracle 假设：
 
 - Linux x86_64 with BPF enabled;
 - `/usr/include/vmlinux.h` 和 libbpf BPF headers 可用；
@@ -119,4 +130,5 @@ BPFTOOL="sudo bpftool" CLANG=clang PIN_RM="sudo rm -f" \
   log 中的必要 helper contract proof，例如 ringbuf reserve/submit；
 - runner 没有给模型提供 reference fix、ground truth label、oracle 源码以外的答案。
 
-详细实验设计见 [design.md](design.md)。
+详细实验设计见 [design.md](design.md)。当前 pilot 校准结果见
+[pilot-results.md](pilot-results.md)。

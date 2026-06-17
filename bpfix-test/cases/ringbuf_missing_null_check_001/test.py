@@ -6,7 +6,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools"))
 
-from bpf_case import run_case, submitted_ringbuf_record_with_mark7_or_11
+from bpf_case import run_case, submitted_ringbuf_record_with_mark7
 
 
 def ethernet_frame() -> bytes:
@@ -18,7 +18,7 @@ if __name__ == "__main__":
         run_case(
             argv=sys.argv[1:],
             expected_reject_substrings=[
-                "R1 type=fp expected=ringbuf_mem",
+                "R0 invalid mem access 'ringbuf_mem_or_null'",
             ],
             functional_tests=[
                 ("xdp_pass", ethernet_frame, 2),
@@ -29,7 +29,7 @@ if __name__ == "__main__":
                 "call bpf_ringbuf_submit#132",
             ],
             required_success_predicates=[
-                ("write mark=7/11 field into submitted ringbuf_mem", submitted_ringbuf_record_with_mark7_or_11),
+                ("write mark=7 into submitted ringbuf_mem", submitted_ringbuf_record_with_mark7),
             ],
         )
     )

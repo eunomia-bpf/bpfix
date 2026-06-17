@@ -1,0 +1,63 @@
+{
+  "diagnostic_version": "bpfix.diagnostic/v3",
+  "error_id": "BPFIX-E002",
+  "failure_class": "source_bug",
+  "confidence": "medium",
+  "diagnostic_kind": "supported",
+  "help_safety": "repair_hint",
+  "next_action": "null",
+  "span_confidence": "exact_pc",
+  "message": "nullable pointer is used before the verifier sees a non-null proof: R0 invalid mem access 'ringbuf_mem_or_null'",
+  "required_proof": "prove the nullable helper result is non-null in the same verifier-visible branch as this use",
+  "source_span": {
+    "path": "buggy.bpf.c",
+    "line_start": 26,
+    "line_end": 26,
+    "instruction_pc": 6,
+    "source_text": "rec->mark = 7;"
+  },
+  "related_spans": [
+    {
+      "path": "buggy.bpf.c",
+      "line_start": 24,
+      "line_end": 24,
+      "instruction_pc": 0,
+      "source_text": "struct event *rec = bpf_ringbuf_reserve(&events, sizeof(*rec), 0);",
+      "label": "nearby source context for nullable pointer"
+    }
+  ],
+  "evidence": [
+    {
+      "kind": "terminal_verifier_error",
+      "detail": "R0 invalid mem access 'ringbuf_mem_or_null'",
+      "line": 27
+    },
+    {
+      "kind": "instruction_pc",
+      "detail": "nearest verifier instruction pc 6",
+      "line": 27
+    },
+    {
+      "kind": "verifier_trace",
+      "detail": "parsed 6 per-instruction verifier state snapshots",
+      "line": null
+    },
+    {
+      "kind": "verifier_state_signal",
+      "detail": "verifier state shows the rejected pointer register is still a nullable helper result at the dereference, arithmetic, or helper-use site",
+      "line": 27
+    }
+  ],
+  "help": [
+    "Check the helper result for null and keep the dereference, pointer arithmetic, or helper argument inside the same verifier-visible non-null branch."
+  ],
+  "metadata": {
+    "case_id": null,
+    "input_kind": "verifier-log-region",
+    "object_path": null,
+    "object_programs": [],
+    "object_analysis_error": null,
+    "trace_state_count": 6,
+    "analysis_error": null
+  }
+}

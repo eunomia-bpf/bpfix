@@ -183,6 +183,132 @@ def evaluate_success_log_checks(
     return checks
 
 
+def ringbuf_refs_for_register(state: str, register: str, *, expected_size: int = 4) -> set[str]:
+    return set(
+        ref
+        for ref, size in re.findall(rf"\bR{register}(?:_w)?=ringbuf_mem\(ref_obj_id=(\d+),sz=(\d+)\)", state)
+        if int(size) == expected_size
+    )
+
+
+def scalar_values_for_register(state: str, register: str) -> set[int]:
+    values: set[int] = set()
+    for raw in re.findall(rf"\bR{register}(?:_w)?=(-?(?:0x[0-9a-fA-F]+|\d+))\b", state):
+        values.add(int(raw, 0))
+    return values
+
+
+def ringbuf_written_refs_before_helper(
+    load_output: str,
+    helper_call: str,
+    *,
+    expected_u32_values: set[int] | None = None,
+    expected_store_offset: int = 0,
+    expected_ringbuf_size: int = 4,
+) -> bool:
+    in_annotated_trace = False
+    written_refs: set[str] = set()
+    r1_refs: set[str] = set()
+    saw_helper = False
+    for line in load_output.splitlines():
+        if not line.strip():
+            written_refs = set()
+            r1_refs = set()
+            continue
+        if line.startswith("0: R1="):
+            in_annotated_trace = True
+            written_refs = set()
+            r1_refs = ringbuf_refs_for_register(line, "1", expected_size=expected_ringbuf_size)
+            continue
+        if line.startswith("from "):
+            written_refs = set()
+            r1_refs = ringbuf_refs_for_register(line, "1", expected_size=expected_ringbuf_size)
+            continue
+        if not in_annotated_trace:
+            continue
+
+        state = line
+        if re.search(r"\bR1(?:_w)?=", state):
+            r1_refs = ringbuf_refs_for_register(state, "1", expected_size=expected_ringbuf_size)
+        if helper_call in line:
+            saw_helper = True
+            if not r1_refs or not (written_refs & r1_refs):
+                return False
+
+        store = re.search(r"\*\(u32 \*\)\(r(\d+)\s*([+-])\s*(\d+)\)\s*=\s*r(\d+)", line)
+        if store is not None:
+            sign = -1 if store.group(2) == "-" else 1
+            store_offset = sign * int(store.group(3))
+            stored_values = scalar_values_for_register(state, store.group(4))
+            if store_offset == expected_store_offset and (
+                expected_u32_values is None or bool(expected_u32_values & stored_values)
+            ):
+                written_refs.update(
+                    ringbuf_refs_for_register(state, store.group(1), expected_size=expected_ringbuf_size)
+                )
+    return saw_helper
+
+
+def helper_calls_use_register_value(load_output: str, helper_call: str, register: str, expected_value: int) -> bool:
+    in_annotated_trace = False
+    register_values: set[int] = set()
+    saw_helper = False
+    for line in load_output.splitlines():
+        if not line.strip() or line.startswith("from "):
+            register_values = set()
+            continue
+        if line.startswith("0: R1="):
+            in_annotated_trace = True
+            register_values = scalar_values_for_register(line, register)
+            continue
+        if not in_annotated_trace:
+            continue
+
+        if re.search(rf"\bR{register}(?:_w)?=", line):
+            register_values = scalar_values_for_register(line, register)
+        if helper_call in line:
+            saw_helper = True
+            if expected_value not in register_values:
+                return False
+    return saw_helper
+
+
+def xdp_adjust_head_called_with_delta14(load_output: str) -> bool:
+    return helper_calls_use_register_value(load_output, "call bpf_xdp_adjust_head#44", "2", 14)
+
+
+def submitted_written_ringbuf_record(load_output: str) -> bool:
+    return ringbuf_written_refs_before_helper(load_output, "call bpf_ringbuf_submit#132")
+
+
+def discarded_written_ringbuf_record(load_output: str) -> bool:
+    return ringbuf_written_refs_before_helper(load_output, "call bpf_ringbuf_discard#133")
+
+
+def submitted_ringbuf_record_with_mark7(load_output: str) -> bool:
+    return ringbuf_written_refs_before_helper(
+        load_output,
+        "call bpf_ringbuf_submit#132",
+        expected_u32_values={7},
+    )
+
+
+def discarded_ringbuf_record_with_mark7(load_output: str) -> bool:
+    return ringbuf_written_refs_before_helper(
+        load_output,
+        "call bpf_ringbuf_discard#133",
+        expected_u32_values={7},
+    )
+
+
+def submitted_ringbuf_record_with_mark7_or_11(load_output: str) -> bool:
+    return ringbuf_written_refs_before_helper(
+        load_output,
+        "call bpf_ringbuf_submit#132",
+        expected_u32_values={7, 11},
+    )
+
+
 def run_case(
     *,
     argv: list[str] | None,

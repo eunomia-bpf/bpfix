@@ -1,7 +1,7 @@
 # BPFix-Test 设计：面向 LLM One-Shot eBPF 修复的挑战集
 
-最后更新：2026-06-16
-阶段：canary skeleton + 可运行 oracle
+最后更新：2026-06-17
+阶段：5-case pilot + 可运行 oracle
 仓库路径：`bpfix-test/`
 
 ## 定位
@@ -21,7 +21,7 @@
 2. verifier load 成功；
 3. `bpftool prog run` 的功能返回值正确。
 
-## 论文型 Thesis
+## 论文型 Target Hypothesis
 
 BPFix structured diagnostic improves one-shot LLM repair for hard eBPF verifier
 rejects because it exposes verifier proof obligations, helper contracts, and
@@ -33,7 +33,7 @@ proof-loss sites that are implicit or misleading in raw verifier logs.
 | --- | --- | --- | --- | --- |
 | C1 | Raw verifier logs are insufficient for hard one-shot eBPF repair. | Synthetic but realistic hard reject cases. | Qwen27B raw-log one-shot pass rate below 30%. | planned |
 | C2 | BPFix structured diagnostics improve repair success. | Same cases, same model, same prompt budget. | Structured-log pass rate near 70% and absolute gain over raw. | planned |
-| C3 | The benchmark measures working repairs, not label agreement. | All admitted cases. | Compile + verifier load + functional `bpftool prog run` oracle. | canary implemented |
+| C3 | The benchmark measures working repairs, not label agreement. | All admitted cases. | Compile + verifier load + functional `bpftool prog run` oracle. | pilot implemented |
 | C4 | The suite is hard for source-only pattern matching. | Case construction. | Cases combine hidden proof loss, helper protocol, branch/source correlation, or modern BPF API contracts. | planned |
 
 ## 和 `bpfix-bench` 的区别
@@ -106,13 +106,21 @@ proof-loss sites that are implicit or misleading in raw verifier logs.
 | Modern BPF protocol cases | 25 | dynptr、kfunc、ringbuf/ref lifecycle、iterator、rbtree、timer、sleepable/RCU/lock |
 | Environment/config boundary cases | 10 | helper/kfunc unavailable、wrong prog type、attach mismatch、missing BTF |
 
-canary 先覆盖两个方向：
+当前 pilot 先覆盖 5 个方向：
 
 - `alu32_pointer_cookie_001`：inline asm/ALU 操作破坏 packet pointer proof；
+- `xdp_adjust_head_stale_001`：`bpf_xdp_adjust_head()` invalidates old packet
+  pointers，final verifier line 只看到后续 scalar dereference；
 - `ringbuf_stack_submit_001`：helper contract 需要 `ringbuf_mem`，源码却把 stack
-  object 传给 submit；oracle 除了 `XDP_PASS` 返回值，还要求成功 verifier log
-  中出现 reserve 后的 `ringbuf_mem_or_null` proof 和 submit helper 调用，防止
-  删除 ringbuf 逻辑的“修复”误过。
+  object 传给 submit；
+- `ringbuf_missing_null_check_001`：`bpf_ringbuf_reserve()` 的 nullable
+  `ringbuf_mem_or_null` 未检查就写入；
+- `ringbuf_ref_leak_001`：reserve 后一个分支提前退出，导致 reference leak。
+
+ringbuf oracle 除了 `bpftool prog run` 返回值，还检查 successful verifier log
+中的 helper contract proof：reserve 后的 `ringbuf_mem_or_null`、写入的
+`ringbuf_mem(ref_obj_id=...)` 与 submit/discard 使用的是同一个 record。这样能防止
+删除 ringbuf 逻辑、空 submit、写 A submit B 这类“修复”误过。
 
 ## Experiment Matrix
 
@@ -157,7 +165,7 @@ Prompt 禁止：
 
 ## 验收门槛
 
-canary 阶段：
+pilot 阶段：
 
 - `python3 bpfix-test/tools/run_suite.py --smoke` 通过；
 - `python3 bpfix-test/tools/refresh_case_artifacts.py` 能重抓 raw/structured；
@@ -187,3 +195,16 @@ paper 阶段：
 - oracle 太窄或 case 修复空间过宽。
 
 这些结果都应保留，不能只筛选 structured 成功的 case。
+
+## 当前 Pilot 校准
+
+2026-06-17 使用本地 llama.cpp + Qwen27B 跑通了 5-case pilot：
+
+- raw verifier log：4/5 pass；
+- BPFix structured JSON：4/5 pass。
+
+这个结果证明 runner 和 oracle 能端到端工作，但也证明当前 pilot 远未达到 hard
+suite 难度目标：raw-log 成功率过高，structured 模式也没有稳定拉开差距。按照上面的
+失败解释，下一阶段必须继续增加组合型 hard cases，并改进 structured diagnostic
+对 proof-loss 修复约束的表达，直到 raw-log one-shot 低于 30%，才能把它作为论文
+benchmark 结果使用。

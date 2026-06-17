@@ -1,0 +1,79 @@
+{
+  "diagnostic_version": "bpfix.diagnostic/v3",
+  "error_id": "BPFIX-E004",
+  "failure_class": "source_bug",
+  "confidence": "medium",
+  "diagnostic_kind": "supported",
+  "help_safety": "repair_hint",
+  "next_action": "release",
+  "span_confidence": "exact_pc",
+  "message": "program exits while a verifier-tracked reference is still live: Unreleased reference id=2 alloc_insn=6",
+  "required_proof": "release every verifier-tracked reference before each BPF_EXIT path can leave the program",
+  "source_span": {
+    "path": "buggy.bpf.c",
+    "line_start": 44,
+    "line_end": 44,
+    "instruction_pc": 20,
+    "source_text": "}"
+  },
+  "related_spans": [
+    {
+      "path": "buggy.bpf.c",
+      "line_start": 30,
+      "line_end": 30,
+      "instruction_pc": 2,
+      "source_text": "struct event *rec = bpf_ringbuf_reserve(&events, sizeof(*rec), 0);",
+      "label": "nearby source context for reference lifecycle"
+    },
+    {
+      "path": "buggy.bpf.c",
+      "line_start": 42,
+      "line_end": 42,
+      "instruction_pc": 16,
+      "source_text": "bpf_ringbuf_submit(rec, 0);",
+      "label": "nearby source context for reference lifecycle"
+    },
+    {
+      "path": "buggy.bpf.c",
+      "line_start": 44,
+      "line_end": 44,
+      "instruction_pc": null,
+      "source_text": "}",
+      "label": "nearby source context for reference lifecycle"
+    }
+  ],
+  "evidence": [
+    {
+      "kind": "terminal_verifier_error",
+      "detail": "Unreleased reference id=2 alloc_insn=6",
+      "line": 78
+    },
+    {
+      "kind": "instruction_pc",
+      "detail": "nearest verifier instruction pc 20",
+      "line": 78
+    },
+    {
+      "kind": "verifier_trace",
+      "detail": "parsed 23 per-instruction verifier state snapshots",
+      "line": null
+    },
+    {
+      "kind": "verifier_state_signal",
+      "detail": "verifier state reaches BPF_EXIT with the terminal reference id still live in the refs set",
+      "line": 78
+    }
+  ],
+  "help": [
+    "Release every verifier-tracked reference on all return paths; route success and error exits through cleanup blocks that release the exact live reference id before BPF_EXIT."
+  ],
+  "metadata": {
+    "case_id": null,
+    "input_kind": "verifier-log-region",
+    "object_path": null,
+    "object_programs": [],
+    "object_analysis_error": null,
+    "trace_state_count": 23,
+    "analysis_error": null
+  }
+}

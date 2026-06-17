@@ -17,6 +17,28 @@ def udp_packet(dport: int) -> bytes:
     return eth + ip + udp
 
 
+def non_ip_packet_with_dns_byte() -> bytes:
+    packet = bytearray(bytes.fromhex("00112233445566778899aabb0806") + (b"\x00" * 64))
+    packet[37] = 53
+    return bytes(packet)
+
+
+def tcp_packet_with_dns_byte() -> bytes:
+    eth = bytes.fromhex("00112233445566778899aabb0800")
+    ip = struct.pack("!BBHHHBBHII", 0x45, 0, 28, 0, 0, 64, 6, 0, 0x0A000001, 0x0A000002)
+    payload = bytearray(b"\x00" * 16)
+    payload[3] = 53
+    return eth + ip + bytes(payload)
+
+
+def truncated_udp_packet_with_dns_byte() -> bytes:
+    eth = bytes.fromhex("00112233445566778899aabb0800")
+    ip = struct.pack("!BBHHHBBHII", 0x45, 0, 28, 0, 0, 64, 17, 0, 0x0A000001, 0x0A000002)
+    partial_udp = bytearray(b"\x00" * 4)
+    partial_udp[3] = 53
+    return eth + ip + bytes(partial_udp)
+
+
 if __name__ == "__main__":
     raise SystemExit(
         run_case(
@@ -27,6 +49,9 @@ if __name__ == "__main__":
             functional_tests=[
                 ("udp_dns_drop", lambda: udp_packet(53), 1),
                 ("udp_http_pass", lambda: udp_packet(80), 2),
+                ("non_ip_pass_even_with_dns_offset_byte", non_ip_packet_with_dns_byte, 2),
+                ("tcp_pass_even_with_dns_offset_byte", tcp_packet_with_dns_byte, 2),
+                ("truncated_udp_header_pass", truncated_udp_packet_with_dns_byte, 2),
             ],
         )
     )

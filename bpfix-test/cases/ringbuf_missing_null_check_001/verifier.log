@@ -1,0 +1,56 @@
+libbpf: loading object from <work-dir>/prog.o
+libbpf: elf: section(3) xdp, size 96, link 0, flags 6, type=1
+libbpf: sec 'xdp': found program 'ringbuf_missing_null' at insn offset 0 (0 bytes), code size 12 insns (96 bytes)
+libbpf: elf: section(4) .relxdp, size 16, link 26, flags 40, type=9
+libbpf: elf: section(5) .maps, size 16, link 0, flags 3, type=1
+libbpf: elf: section(6) license, size 4, link 0, flags 3, type=1
+libbpf: license of <work-dir>/prog.o is GPL
+libbpf: elf: section(16) .BTF, size 890, link 0, flags 0, type=1
+libbpf: elf: section(18) .BTF.ext, size 128, link 0, flags 0, type=1
+libbpf: elf: section(26) .symtab, size 336, link 1, flags 0, type=2
+libbpf: looking for externs among 14 symbols...
+libbpf: collected 0 externs total
+libbpf: map 'events': at sec_idx 5, offset 0.
+libbpf: map 'events': found type = 27.
+libbpf: map 'events': found max_entries = 4096.
+libbpf: sec '.relxdp': collecting relocation for section(3) 'xdp'
+libbpf: sec '.relxdp': relo #0: insn #0 against 'events'
+libbpf: prog 'ringbuf_missing_null': found map 0 (events, sec 5, off 0) for insn #0
+libbpf: object 'prog': failed (-95) to create BPF token from '/sys/fs/bpf', skipping optional step...
+libbpf: map 'events': created successfully, fd=0
+libbpf: prog 'ringbuf_missing_null': BPF program load failed: -EACCES
+libbpf: prog 'ringbuf_missing_null': -- BEGIN PROG LOAD LOG --
+func#0 @0
+Live regs before insn:
+  0: .......... (18) r1 = 0xffff000000000000
+  2: .1........ (b7) r2 = 4
+  3: .12....... (b7) r3 = 0
+  4: .123...... (85) call bpf_ringbuf_reserve#131
+  5: 0......... (b7) r1 = 7
+  6: 01........ (63) *(u32 *)(r0 +0) = r1
+  7: 0......... (bf) r1 = r0
+  8: .1........ (b7) r2 = 0
+  9: .12....... (85) call bpf_ringbuf_submit#132
+ 10: .......... (b7) r0 = 2
+ 11: 0......... (95) exit
+0: R1=ctx() R10=fp0
+; struct event *rec = bpf_ringbuf_reserve(&events, sizeof(*rec), 0); @ buggy.bpf.c:24
+0: (18) r1 = 0xffff000000000000       ; R1_w=map_ptr(map=events,ks=0,vs=0)
+2: (b7) r2 = 4                        ; R2_w=4
+3: (b7) r3 = 0                        ; R3_w=0
+4: (85) call bpf_ringbuf_reserve#131
+mark_precise: frame0: last_idx 4 first_idx 0 subseq_idx -1 
+mark_precise: frame0: regs=r2 stack= before 3: (b7) r3 = 0
+mark_precise: frame0: regs=r2 stack= before 2: (b7) r2 = 4
+5: R0_w=ringbuf_mem_or_null(id=2,ref_obj_id=2,sz=4) refs=2
+5: (b7) r1 = 7                        ; R1_w=7 refs=2
+; rec->mark = 7; @ buggy.bpf.c:26
+6: (63) *(u32 *)(r0 +0) = r1
+R0 invalid mem access 'ringbuf_mem_or_null'
+verification time 0 usec
+stack depth 0
+processed 6 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0 mark_read 0
+-- END PROG LOAD LOG --
+libbpf: prog 'ringbuf_missing_null': failed to load: -EACCES
+libbpf: failed to load object '<work-dir>/prog.o'
+Error: failed to load object file
