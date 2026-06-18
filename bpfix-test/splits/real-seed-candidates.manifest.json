@@ -83,6 +83,14 @@
             "decision_made_before_model_eval": true,
             "model_result_used": false,
             "notes": "Minimized the dynptr TC parser and ring-buffer dynptr workflow into a reference-lifecycle case requiring discard or submit on every ringbuf dynptr path; no LLM repair outcomes were used for admission."
+        },
+        {
+            "seed": "nccl-eBPF@2031946b3dca92a16eab90ff95e0f2e980d08918:src/kernel_observer/nccl_cpu_observer.bpf.c",
+            "decision": "admitted",
+            "case_id": "rs_nccl_cpu_observer_slot_merge_001",
+            "decision_made_before_model_eval": true,
+            "model_result_used": false,
+            "notes": "Minimized the sched_switch CPU-contention observer into a tracepoint proof-lifecycle case where a nullable per-CPU hash slot proof is lost across a branch merge; no LLM repair outcomes were used for admission."
         }
   ],
   "seed_exclusion_ledger": [
@@ -527,6 +535,63 @@
                     "bpftool prog run returns expected TC actions for blocked TCP, unblocked TCP, ringbuf-disabled blocked TCP, and non-IPv4 packets",
                     "successful verifier log shows bpf_dynptr_from_skb, bpf_dynptr_slice, bpf_dynptr_read, bpf_ringbuf_reserve_dynptr, bpf_dynptr_write, bpf_ringbuf_discard_dynptr, and bpf_ringbuf_submit_dynptr",
                     "successful verifier log proves reserve-error and write-error paths reach bpf_ringbuf_discard_dynptr"
+                ]
+            }
+        },
+        {
+            "case_id": "rs_nccl_cpu_observer_slot_merge_001",
+            "bucket": "proof_lifecycle",
+            "prog_type": "tracepoint",
+            "origin": "real-project seed from nccl-eBPF sched_switch CPU contention observer",
+            "oracle_kind": [
+                "compile",
+                "verifier_load",
+                "custom_oracle",
+                "helper_state",
+                "proof_predicate"
+            ],
+            "requires_helper_or_state": true,
+            "uses_success_predicate": true,
+            "case_sha256": "84b414bde4a8cbf7c918df7c12243bb743aba7a254d500b7ca206b1e5488c8c6",
+            "buggy_source_sha256": "b1abf5c497f82bcb6b9b6873252df7601c3076e77b3d0b26fdf36991c23b0d2c",
+            "review": {
+                "reviewer": "Franklin subagent 019ed837-af4b-7182-b504-c53aafd12f63",
+                "reviewed_at": "2026-06-17",
+                "bug_confirmed": true,
+                "oracle_adequate": true,
+                "not_seen_in_prior_eval": true,
+                "bug_summary": "The sched_switch observer proves the per-CPU hash slot non-null only inside the prev_pid < 0 branch; after the merge, the elapsed-window read can still see slot as map_value_or_null.",
+                "oracle_rationale": "The custom oracle requires compile, tracepoint verifier load, source-level preservation of the config filter, target-keyed per-CPU slot lookup, timestamp/CPU helpers, mmapable state_map publish, and successful-verifier predicates proving slot field updates after a non-null proof and stack-built state_map update.",
+                "provenance_rationale": "Seed was derived from nccl-eBPF's GPL sched_switch CPU contention observer. The minimized harness preserves the config-map filter, per-CPU slot accounting, contention classification, and mmapable state publication while using a per-target per-CPU hash slot to make the lookup nullable and exercise the intended proof-lifecycle failure."
+            },
+            "provenance": {
+                "seed_type": "minimized real-project seed in tracepoint observer harness",
+                "source": "https://github.com/eunomia-bpf/nccl-eBPF/blob/2031946b3dca92a16eab90ff95e0f2e980d08918/src/kernel_observer/nccl_cpu_observer.bpf.c",
+                "license": "GPL-2.0",
+                "minimization": "Preserved nccl-eBPF's sched_switch target filtering, rolling CPU-window accounting, contention classification, and mmapable state publication while reducing the observer to a single branch-merge nullable-slot failure.",
+                "upstream_project": "https://github.com/eunomia-bpf/nccl-eBPF",
+                "upstream_ref": "2031946b3dca92a16eab90ff95e0f2e980d08918",
+                "upstream_path": "src/kernel_observer/nccl_cpu_observer.bpf.c",
+                "upstream_license": "GPL-2.0",
+                "upstream_file_sha256": "e91ca0e003e276251358cdd033000d01c143fa3caec1e129b9d94ce26cbbca7f",
+                "derived_from_dev40": false,
+                "model_result_used": false
+            },
+            "oracle_obligation": {
+                "functional_semantics": [
+                    "repair must load as a sched_switch tracepoint, not as XDP or TC",
+                    "repair must preserve config_map target filtering and target-keyed per-CPU slot lookup",
+                    "repair must preserve rolling-window slot accounting and mmapable state_map publication"
+                ],
+                "verifier_reject_reason": [
+                    "bpf_map_lookup_elem on the per-CPU hash slot returns map_value_or_null",
+                    "buggy program checks slot only inside one prev_pid branch and then dereferences slot after the branch merge"
+                ],
+                "success_criteria": [
+                    "candidate compiles and verifier-loads as a tracepoint program",
+                    "successful verifier log shows map lookup, ktime, CPU id, and state_map update helpers in observer order",
+                    "successful verifier log proves slot field updates happen after a verifier-visible non-null proof",
+                    "successful verifier log shows state_map updated from a stack-built contention state"
                 ]
             }
         }
