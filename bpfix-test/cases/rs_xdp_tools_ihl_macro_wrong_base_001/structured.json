@@ -1,0 +1,54 @@
+{
+  "diagnostic_version": "bpfix.diagnostic/v3",
+  "error_id": "BPFIX-E001",
+  "failure_class": "source_bug",
+  "confidence": "medium",
+  "diagnostic_kind": "supported",
+  "help_safety": "repair_hint",
+  "next_action": "bounds",
+  "span_confidence": "exact_pc",
+  "message": "packet access reaches the use before the verifier has enough packet range: invalid access to packet, off=16 size=2, R1(id=1,off=16,r=0); R1 offset is outside of the packet",
+  "required_proof": "prove this packet register has range at least off + size at the rejected load, store, or helper call",
+  "source_span": {
+    "path": "buggy.bpf.c",
+    "line_start": 30,
+    "line_end": 30,
+    "instruction_pc": 19,
+    "source_text": "return bpf_ntohs(udp->dest) == 53 ? XDP_DROP : XDP_PASS;"
+  },
+  "related_spans": [],
+  "evidence": [
+    {
+      "kind": "terminal_verifier_error",
+      "detail": "invalid access to packet, off=16 size=2, R1(id=1,off=16,r=0); R1 offset is outside of the packet",
+      "line": 62
+    },
+    {
+      "kind": "instruction_pc",
+      "detail": "nearest verifier instruction pc 19",
+      "line": 62
+    },
+    {
+      "kind": "verifier_trace",
+      "detail": "parsed 15 per-instruction verifier state snapshots",
+      "line": null
+    },
+    {
+      "kind": "verifier_state_signal",
+      "detail": "verifier state shows the packet register's proven range is shorter than the rejected access requires at this instruction",
+      "line": 62
+    }
+  ],
+  "help": [
+    "Move or add a data_end bounds check for the exact packet pointer and access width immediately before the load, store, or helper call that consumes it."
+  ],
+  "metadata": {
+    "case_id": null,
+    "input_kind": "verifier-log-region",
+    "object_path": null,
+    "object_programs": [],
+    "object_analysis_error": null,
+    "trace_state_count": 15,
+    "analysis_error": null
+  }
+}

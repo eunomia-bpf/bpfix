@@ -373,7 +373,7 @@ def spdx_license_from_source(payload: bytes) -> str | None:
     for line in text.splitlines()[:20]:
         match = re.search(r"SPDX-License-Identifier:\s*(.+)$", line)
         if match:
-            return match.group(1).strip()
+            return match.group(1).strip().removesuffix("*/").strip()
     return None
 
 

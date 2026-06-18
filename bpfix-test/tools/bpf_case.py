@@ -258,6 +258,17 @@ def packet_register_updates(state: str) -> dict[str, bool]:
     return updates
 
 
+def packet_register_state_updates(state: str) -> dict[str, str | None]:
+    updates: dict[str, str | None] = {}
+    for register, value in re.findall(r"\bR(\d+)(?:_w)?=([^\s;]+)", state):
+        updates[register] = value if value.startswith("pkt(") else None
+    return updates
+
+
+def packet_state_has_variable_offset(state: str) -> bool:
+    return "var_off=" in state or re.search(r"\bumax=[1-9]\d*", state) is not None
+
+
 def packet_register_offsets(state: str) -> dict[str, int]:
     offsets: dict[str, int] = {}
     for register, value in re.findall(r"\bR(\d+)(?:_w)?=([^\s;]+)", state):
@@ -569,6 +580,36 @@ def packet_eth_proto_store_after_skb_change_proto(load_output: str) -> bool:
         expected_store_offset=12,
         expected_values={8},
     )
+
+
+def packet_u16_load_from_variable_offset(load_output: str) -> bool:
+    in_annotated_trace = False
+    saw_ihl_scale = False
+    packet_states: dict[str, str] = {}
+
+    for line in load_output.splitlines():
+        if not line.strip():
+            packet_states = {}
+            continue
+        if line.startswith("0: R1="):
+            in_annotated_trace = True
+        if not in_annotated_trace:
+            continue
+
+        if re.search(r"\br\d+\s*<<=\s*2\b", line):
+            saw_ihl_scale = True
+
+        load = re.search(r"=\s*\*\(u16 \*\)\(r(\d+)\s*\+\s*2\)", line)
+        state = packet_states.get(load.group(1)) if load is not None and saw_ihl_scale else None
+        if state is not None and packet_state_has_variable_offset(state):
+            return True
+
+        for register, updated_state in packet_register_state_updates(line).items():
+            if updated_state is None:
+                packet_states.pop(register, None)
+            else:
+                packet_states[register] = updated_state
+    return False
 
 
 def submitted_written_ringbuf_record(load_output: str) -> bool:

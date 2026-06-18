@@ -43,6 +43,14 @@
       "decision_made_before_model_eval": true,
       "model_result_used": false,
       "notes": "Minimized the Cilium overlay datapath packet-revalidation pattern into a deterministic TC harness that concretizes the invalidating helper with bpf_skb_change_proto; no LLM repair outcomes were used for admission."
+    },
+    {
+      "seed": "xdp-tools@e9469501622aa22a7e452a671000bec8685edcde:xdp-filter/xdpfilt_prog.h",
+      "decision": "admitted",
+      "case_id": "rs_xdp_tools_ihl_macro_wrong_base_001",
+      "decision_made_before_model_eval": true,
+      "model_result_used": false,
+      "notes": "Minimized the xdp-filter macro and inline parser shape into a deterministic XDP harness where the macro proves bounds for a fixed L4 pointer but the rejected read uses an IHL-derived pointer; no LLM repair outcomes were used for admission."
     }
   ],
   "seed_exclusion_ledger": [
@@ -204,6 +212,62 @@
           "candidate compiles and verifier-loads",
           "bpftool prog run returns expected TC actions for IPv6 UDP, IPv6 TCP, and IPv4 packets",
           "successful verifier log shows bpf_skb_change_proto and a later ethertype store through a reloaded packet pointer"
+        ]
+      }
+    },
+    {
+      "case_id": "rs_xdp_tools_ihl_macro_wrong_base_001",
+      "bucket": "source_object_correlation",
+      "prog_type": "xdp",
+      "origin": "real-project seed from xdp-tools xdp-filter macro and inline parser code",
+      "oracle_kind": [
+        "compile",
+        "verifier_load",
+        "bpftool_prog_run",
+        "proof_predicate"
+      ],
+      "requires_helper_or_state": true,
+      "uses_success_predicate": true,
+      "case_sha256": "4202656b4894f2def9bd1831d3bd10c0b399f3c6764be115d47c347506ec6a30",
+      "buggy_source_sha256": "e05cdd55fe1fdd1bc595382d44b235b7a6ed97e7ca259e205b4b66a90acb6f5e",
+      "review": {
+        "reviewer": "Franklin subagent 019ed837-af4b-7182-b504-c53aafd12f63",
+        "reviewed_at": "2026-06-17",
+        "bug_confirmed": true,
+        "oracle_adequate": true,
+        "not_seen_in_prior_eval": true,
+        "bug_summary": "The macro proves room for a fixed UDP header pointer, but the rejected inline UDP destination read uses a different pointer derived from the IPv4 IHL field.",
+        "oracle_rationale": "The oracle requires compile, verifier load, seven XDP functional packet-run cases including IPv4 options/non-options and DNS/non-DNS UDP, and a successful-verifier proof predicate that the repair loads UDP dest from a variable IHL-derived packet pointer at offset +2.",
+        "provenance_rationale": "Seed was derived from xdp-tools xdpfilt_prog.h, which uses macro-wrapped checks and inline parser/verdict helpers; the minimized harness preserves that source/object correlation shape without claiming this exact bug was present upstream."
+      },
+      "provenance": {
+        "seed_type": "minimized real-project seed in deterministic XDP harness",
+        "source": "https://github.com/xdp-project/xdp-tools/blob/e9469501622aa22a7e452a671000bec8685edcde/xdp-filter/xdpfilt_prog.h",
+        "license": "GPL-2.0",
+        "minimization": "Preserved xdp-filter's macro-wrapped bounds checks, inline UDP verdict helper, and parser pointer flow while replacing the full generated filter program with a small deterministic XDP packet harness.",
+        "upstream_project": "https://github.com/xdp-project/xdp-tools",
+        "upstream_ref": "e9469501622aa22a7e452a671000bec8685edcde",
+        "upstream_path": "xdp-filter/xdpfilt_prog.h",
+        "upstream_license": "GPL-2.0",
+        "upstream_file_sha256": "74f2408aab6654256c6bf2a23e8462fd1c6fecf275f2917194963c84145abdf5",
+        "derived_from_dev40": false,
+        "model_result_used": false
+      },
+      "oracle_obligation": {
+        "functional_semantics": [
+          "IPv4 UDP packets to destination port 53 return XDP_DROP",
+          "IPv4 UDP packets to destination port 123 return XDP_PASS",
+          "IPv4 packets with IHL options preserve the same UDP destination semantics",
+          "truncated UDP, TCP, and non-IPv4 packets return XDP_PASS"
+        ],
+        "verifier_reject_reason": [
+          "XDPFILT_REQUIRE_ROOM proves bounds for checked_l4 derived from iph + 1",
+          "actual_l4 is derived from the IPv4 IHL field and has no verifier-visible packet range proof at the UDP destination read"
+        ],
+        "success_criteria": [
+          "candidate compiles and verifier-loads",
+          "bpftool prog run returns expected XDP actions for seven packet fixtures",
+          "successful verifier log shows a u16 UDP destination load at offset +2 from a variable IHL-derived packet pointer"
         ]
       }
     }
