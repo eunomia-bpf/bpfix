@@ -1,0 +1,70 @@
+{
+  "diagnostic_version": "bpfix.diagnostic/v3",
+  "error_id": "BPFIX-E006",
+  "failure_class": "source_object_correlation",
+  "confidence": "medium",
+  "diagnostic_kind": "supported",
+  "help_safety": "repair_hint",
+  "next_action": "add_missing_packet_bound",
+  "span_confidence": "exact_pc",
+  "message": "DROP_DNS_UDP reads udp->dest after parse_iphdr advanced a variable-IHL cursor, but no UDP-header bound proves that field is inside the packet",
+  "required_proof": "after the variable IPv4 header proof, prove at least sizeof(struct udphdr) bytes at nh.pos before reading udp->dest",
+  "source_span": {
+    "path": "buggy.bpf.c",
+    "line_start": 92,
+    "line_end": 92,
+    "instruction_pc": 18,
+    "source_text": "DROP_DNS_UDP(udp);"
+  },
+  "related_spans": [
+    {
+      "path": "buggy.bpf.c",
+      "line_start": 58,
+      "line_end": 61,
+      "instruction_pc": 15,
+      "source_text": "hdrsize = iph->ihl * 4; if (nh->pos + hdrsize > data_end) return -1;",
+      "label": "parse_iphdr proves only the variable IPv4 header extent and advances nh.pos to the UDP cursor"
+    },
+    {
+      "path": "buggy.bpf.c",
+      "line_start": 91,
+      "line_end": 91,
+      "instruction_pc": 17,
+      "source_text": "udp = nh.pos;",
+      "label": "the cursor is converted to a UDP header pointer without a parse_udphdr-style bound"
+    },
+    {
+      "path": "buggy.bpf.c",
+      "line_start": 31,
+      "line_end": 34,
+      "instruction_pc": 18,
+      "source_text": "#define DROP_DNS_UDP(udp) ... if ((udp)->dest == bpf_htons(53)) ...",
+      "label": "the rejected packet read is hidden behind a verdict macro"
+    }
+  ],
+  "evidence": [
+    {
+      "kind": "terminal_verifier_error",
+      "detail": "invalid access to packet, off=16 size=2",
+      "line": 92
+    },
+    {
+      "kind": "verifier_state",
+      "detail": "R3 is a packet pointer with a variable IPv4-IHL offset and range that only covers the IP header proof, not the UDP dest field",
+      "line": 92
+    }
+  ],
+  "help": [
+    "Call parse_udphdr(&nh, data_end, &udp) before DROP_DNS_UDP, or add an equivalent bound check for udp + 1.",
+    "Do not replace the DNS decision with a direct return; the repair must still drop UDP/53 and pass non-DNS, non-UDP, truncated, and non-IPv4 packets."
+  ],
+  "metadata": {
+    "case_id": null,
+    "input_kind": "verifier-log-region",
+    "object_path": null,
+    "object_programs": [],
+    "object_analysis_error": null,
+    "trace_state_count": null,
+    "analysis_error": null
+  }
+}

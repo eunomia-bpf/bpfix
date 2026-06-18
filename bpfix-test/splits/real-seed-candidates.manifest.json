@@ -179,6 +179,14 @@
             "decision_made_before_model_eval": true,
             "model_result_used": false,
             "notes": "Minimized xdp-tools' AF_XDP redirect program into an XDP helper/config boundary case where xsks_map is declared as a normal array before bpf_redirect_map; no LLM repair outcomes were used for admission."
+        },
+        {
+            "seed": "xdp-tools@e9469501622aa22a7e452a671000bec8685edcde:xdp-filter/xdpfilt_prog.h",
+            "decision": "admitted",
+            "case_id": "rs_xdp_tools_xdpfilt_udp_macro_bound_001",
+            "decision_made_before_model_eval": true,
+            "model_result_used": false,
+            "notes": "Minimized xdp-tools' xdp-filter macro and inline parser workflow into an XDP source/object-correlation case where UDP destination is read after variable IPv4 parsing without a UDP header proof; no LLM repair outcomes were used for admission."
         }
   ],
   "seed_exclusion_ledger": [
@@ -1314,6 +1322,62 @@
                     "successful verifier log reaches bpf_redirect_map with xsks_map",
                     "successful verifier log shows the rr state update and bounded slot index before the helper",
                     "successful verifier log shows XDP_DROP passed as the redirect helper fallback"
+                ]
+            }
+        },
+        {
+            "case_id": "rs_xdp_tools_xdpfilt_udp_macro_bound_001",
+            "bucket": "source_object_correlation",
+            "prog_type": "xdp",
+            "origin": "real-project seed from xdp-tools xdp-filter macro and inline parser workflow",
+            "oracle_kind": [
+                "compile",
+                "verifier_load",
+                "bpftool_prog_run",
+                "proof_predicate"
+            ],
+            "requires_helper_or_state": true,
+            "uses_success_predicate": true,
+            "case_sha256": "0f6ec1e48f9f8e4fa6066fadb3c270aad6c42930660a883bc9f43756f2ebe0cb",
+            "buggy_source_sha256": "eb6b0dbf3b0383d6f07b9207934516306698bded3ac8147228d238a2924bbe0d",
+            "review": {
+                "reviewer": "Halley subagent 019ed9b8-53f8-7de1-bace-62727fb499cd",
+                "reviewed_at": "2026-06-18",
+                "bug_confirmed": true,
+                "oracle_adequate": true,
+                "not_seen_in_prior_eval": true,
+                "bug_summary": "The xdp-filter-style cursor parser proves the Ethernet header and the variable-length IPv4 header, then advances nh.pos to the UDP cursor and lets DROP_DNS_UDP read udp->dest without a parse_udphdr or equivalent UDP-header packet bound; the verifier rejects the macro-expanded packet read with R3 outside the proven packet range.",
+                "oracle_rationale": "The oracle combines compile, XDP verifier load, six bpftool prog run packet outcomes, and a verifier-state success predicate requiring the UDP destination load to occur after both the variable-IHL proof and a UDP-header bound. Temporary controls show that a parse_udphdr-style repair passes, fixed-IHL-only repairs are rejected by the proof predicate, and DNS-semantics bypasses are rejected by functional tests even when the proof predicate passes.",
+                "provenance_rationale": "Verified against the local xdp-tools checkout at commit e9469501622aa22a7e452a671000bec8685edcde, path xdp-filter/xdpfilt_prog.h, SPDX GPL-2.0, and upstream file sha256 74f2408aab6654256c6bf2a23e8462fd1c6fecf275f2917194963c84145abdf5. The candidate is not a semantic near-duplicate of dev40, bpfix-bench, or existing staged source-object cases because it exercises a missing UDP parser/bound after hdr_cursor-based variable IPv4 parsing rather than wrong-base L4 proof, IPv6 extension offset proof, or IGMPv3 record-loop proof; admission is result-blind with model_result_used=false."
+            },
+            "provenance": {
+                "seed_type": "minimized real-project seed in xdp-tools xdp-filter UDP verdict harness",
+                "source": "https://github.com/xdp-project/xdp-tools/blob/e9469501622aa22a7e452a671000bec8685edcde/xdp-filter/xdpfilt_prog.h",
+                "license": "GPL-2.0",
+                "minimization": "Preserved the xdp-filter structure of macro-expanded verdict checks, a struct hdr_cursor parser state, and inline Ethernet/IPv4 parsing. The minimized harness replaces map lookups with deterministic DNS-port actions so bpftool prog run can verify both variable-IHL and truncated-packet behavior.",
+                "upstream_project": "https://github.com/xdp-project/xdp-tools.git",
+                "upstream_ref": "e9469501622aa22a7e452a671000bec8685edcde",
+                "upstream_path": "xdp-filter/xdpfilt_prog.h",
+                "upstream_license": "GPL-2.0",
+                "upstream_file_sha256": "74f2408aab6654256c6bf2a23e8462fd1c6fecf275f2917194963c84145abdf5",
+                "derived_from_dev40": false,
+                "model_result_used": false
+            },
+            "oracle_obligation": {
+                "functional_semantics": [
+                    "repair must load as an XDP program",
+                    "repair must preserve variable-IHL IPv4 parsing",
+                    "repair must drop UDP destination port 53 and pass non-DNS UDP, TCP, truncated UDP, and non-IPv4 packets"
+                ],
+                "verifier_reject_reason": [
+                    "buggy parse_iphdr proves only the variable IPv4 header extent and advances nh.pos",
+                    "DROP_DNS_UDP reads udp->dest through a macro without proving that a full UDP header is present at nh.pos"
+                ],
+                "success_criteria": [
+                    "candidate compiles and verifier-loads as an XDP program",
+                    "bpftool prog run returns XDP_DROP for UDP/53 with normal and option-bearing IPv4 headers",
+                    "bpftool prog run returns XDP_PASS for non-DNS UDP, TCP, truncated UDP, and ARP packets",
+                    "successful verifier log shows the UDP destination load after both the variable IPv4-IHL proof and a UDP-header packet bound"
                 ]
             }
         }
