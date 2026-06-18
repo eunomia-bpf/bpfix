@@ -1,0 +1,103 @@
+libbpf: loading object from <work-dir>/prog.o
+libbpf: elf: section(3) xdp, size 200, link 0, flags 6, type=1
+libbpf: sec 'xdp': found program 'rs_cilium_srv6_segment_bound' at insn offset 0 (0 bytes), code size 25 insns (200 bytes)
+libbpf: elf: section(4) license, size 4, link 0, flags 3, type=1
+libbpf: license of <work-dir>/prog.o is GPL
+libbpf: elf: section(14) .BTF, size 1851, link 0, flags 0, type=1
+libbpf: elf: section(16) .BTF.ext, size 444, link 0, flags 0, type=1
+libbpf: elf: section(24) .symtab, size 336, link 1, flags 0, type=2
+libbpf: looking for externs among 14 symbols...
+libbpf: collected 0 externs total
+libbpf: object 'prog': failed (-95) to create BPF token from '/sys/fs/bpf', skipping optional step...
+libbpf: loaded kernel BTF from '/sys/kernel/btf/vmlinux'
+libbpf: sec 'xdp': found 5 CO-RE relocations
+libbpf: CO-RE relocating [2] struct xdp_md: found target candidate [14922] struct xdp_md in [vmlinux]
+libbpf: prog 'rs_cilium_srv6_segment_bound': relo #0: <byte_off> [2] struct xdp_md.data_end (0:1 @ offset 4)
+libbpf: prog 'rs_cilium_srv6_segment_bound': relo #0: matching candidate #0 <byte_off> [14922] struct xdp_md.data_end (0:1 @ offset 4)
+libbpf: prog 'rs_cilium_srv6_segment_bound': relo #0: patched insn #1 (LDX/ST/STX) off 4 -> 4
+libbpf: prog 'rs_cilium_srv6_segment_bound': relo #1: <byte_off> [2] struct xdp_md.data (0:0 @ offset 0)
+libbpf: prog 'rs_cilium_srv6_segment_bound': relo #1: matching candidate #0 <byte_off> [14922] struct xdp_md.data (0:0 @ offset 0)
+libbpf: prog 'rs_cilium_srv6_segment_bound': relo #1: patched insn #2 (LDX/ST/STX) off 0 -> 0
+libbpf: CO-RE relocating [8] struct ethhdr: found target candidate [23410] struct ethhdr in [vmlinux]
+libbpf: prog 'rs_cilium_srv6_segment_bound': relo #2: <byte_off> [8] struct ethhdr.h_proto (0:2 @ offset 12)
+libbpf: prog 'rs_cilium_srv6_segment_bound': relo #2: matching candidate #0 <byte_off> [23410] struct ethhdr.h_proto (0:2 @ offset 12)
+libbpf: prog 'rs_cilium_srv6_segment_bound': relo #2: patched insn #6 (LDX/ST/STX) off 12 -> 12
+libbpf: CO-RE relocating [15] struct ipv6hdr: found target candidate [23772] struct ipv6hdr in [vmlinux]
+libbpf: prog 'rs_cilium_srv6_segment_bound': relo #3: <byte_off> [15] struct ipv6hdr.nexthdr (0:4 @ offset 6)
+libbpf: prog 'rs_cilium_srv6_segment_bound': relo #3: matching candidate #0 <byte_off> [23772] struct ipv6hdr.nexthdr (0:4 @ offset 6)
+libbpf: prog 'rs_cilium_srv6_segment_bound': relo #3: patched insn #11 (LDX/ST/STX) off 6 -> 6
+libbpf: CO-RE relocating [20] struct in6_addr: found target candidate [2762] struct in6_addr in [vmlinux]
+libbpf: prog 'rs_cilium_srv6_segment_bound': relo #4: <byte_off> [20] struct in6_addr.in6_u.u6_addr32[3] (0:0:2:3 @ offset 12)
+libbpf: prog 'rs_cilium_srv6_segment_bound': relo #4: matching candidate #0 <byte_off> [2762] struct in6_addr.in6_u.u6_addr32[3] (0:0:2:3 @ offset 12)
+libbpf: prog 'rs_cilium_srv6_segment_bound': relo #4: patched insn #20 (LDX/ST/STX) off 12 -> 12
+libbpf: prog 'rs_cilium_srv6_segment_bound': BPF program load failed: -EACCES
+libbpf: prog 'rs_cilium_srv6_segment_bound': -- BEGIN PROG LOAD LOG --
+func#0 @0
+Live regs before insn:
+  0: .1........ (b7) r0 = 2
+  1: 01........ (61) r2 = *(u32 *)(r1 +4)
+  2: 012....... (61) r1 = *(u32 *)(r1 +0)
+  3: 012....... (bf) r3 = r1
+  4: 0123...... (07) r3 += 14
+  5: 0123...... (2d) if r3 > r2 goto pc+18
+  6: 0123...... (69) r4 = *(u16 *)(r1 +12)
+  7: 01234..... (55) if r4 != 0xdd86 goto pc+16
+  8: 0123...... (bf) r4 = r1
+  9: 01234..... (07) r4 += 54
+ 10: 01234..... (2d) if r4 > r2 goto pc+13
+ 11: 0123...... (71) r3 = *(u8 *)(r3 +6)
+ 12: 0123...... (55) if r3 != 0x2b goto pc+11
+ 13: 012....... (bf) r3 = r1
+ 14: 0123...... (07) r3 += 62
+ 15: 0123...... (2d) if r3 > r2 goto pc+8
+ 16: 01.3...... (71) r2 = *(u8 *)(r1 +56)
+ 17: 0123...... (55) if r2 != 0x4 goto pc+6
+ 18: 01.3...... (71) r1 = *(u8 *)(r1 +57)
+ 19: 01.3...... (15) if r1 == 0x0 goto pc+4
+ 20: ...3...... (61) r1 = *(u32 *)(r3 +12)
+ 21: .1........ (b7) r0 = 1
+ 22: 01........ (15) if r1 == 0x3412a0c1 goto pc+1
+ 23: .......... (b7) r0 = 2
+ 24: 0......... (95) exit
+0: R1=ctx() R10=fp0
+; int rs_cilium_srv6_segment_bound(struct xdp_md *ctx) @ buggy.bpf.c:65
+0: (b7) r0 = 2                        ; R0_w=2
+; void *data_end = (void *)(long)ctx->data_end; @ buggy.bpf.c:68
+1: (61) r2 = *(u32 *)(r1 +4)          ; R1=ctx() R2_w=pkt_end()
+; void *data = (void *)(long)ctx->data; @ buggy.bpf.c:67
+2: (61) r1 = *(u32 *)(r1 +0)          ; R1_w=pkt(r=0)
+; if ((void *)(eth + 1) > data_end) @ buggy.bpf.c:75
+3: (bf) r3 = r1                       ; R1_w=pkt(r=0) R3_w=pkt(r=0)
+4: (07) r3 += 14                      ; R3_w=pkt(off=14,r=0)
+5: (2d) if r3 > r2 goto pc+18         ; R2_w=pkt_end() R3_w=pkt(off=14,r=14)
+; if (bpf_ntohs(eth->h_proto) != ETH_P_IPV6) @ buggy.bpf.c:77
+6: (69) r4 = *(u16 *)(r1 +12)         ; R1_w=pkt(r=14) R4_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=0xffff,var_off=(0x0; 0xffff))
+7: (55) if r4 != 0xdd86 goto pc+16    ; R4_w=0xdd86
+8: (bf) r4 = r1                       ; R1_w=pkt(r=14) R4_w=pkt(r=14)
+9: (07) r4 += 54                      ; R4=pkt(off=54,r=14)
+10: (2d) if r4 > r2 goto pc+13        ; R2=pkt_end() R4=pkt(off=54,r=54)
+; nexthdr = ip6->nexthdr; @ buggy.bpf.c:84
+11: (71) r3 = *(u8 *)(r3 +6)          ; R3_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+; if (*nexthdr != NEXTHDR_ROUTING) @ buggy.bpf.c:47
+12: (55) if r3 != 0x2b goto pc+11     ; R3_w=43
+; if ((void *)(srh + 1) > data_end) @ buggy.bpf.c:50
+13: (bf) r3 = r1                      ; R1=pkt(r=54) R3_w=pkt(r=54)
+14: (07) r3 += 62                     ; R3_w=pkt(off=62,r=54)
+15: (2d) if r3 > r2 goto pc+8         ; R2=pkt_end() R3_w=pkt(off=62,r=62)
+; if (srh->type != IPV6_SRCRT_TYPE_4) @ buggy.bpf.c:52
+16: (71) r2 = *(u8 *)(r1 +56)         ; R1=pkt(r=62) R2_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+17: (55) if r2 != 0x4 goto pc+6       ; R2_w=4
+; if (srh->segments_left == 0) @ buggy.bpf.c:56
+18: (71) r1 = *(u8 *)(r1 +57)         ; R1=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+19: (15) if r1 == 0x0 goto pc+4       ; R1=scalar(smin=umin=smin32=umin32=1,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+; *tag = bpf_ntohl(sid->in6_u.u6_addr32[3]); @ buggy.bpf.c:60
+20: (61) r1 = *(u32 *)(r3 +12)
+invalid access to packet, off=74 size=4, R3(id=0,off=74,r=62)
+R3 offset is outside of the packet
+verification time 0 usec
+stack depth 0
+processed 21 insns (limit 1000000) max_states_per_insn 0 total_states 2 peak_states 2 mark_read 1
+-- END PROG LOAD LOG --
+libbpf: prog 'rs_cilium_srv6_segment_bound': failed to load: -EACCES
+libbpf: failed to load object '<work-dir>/prog.o'
+Error: failed to load object file
