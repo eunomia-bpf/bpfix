@@ -479,6 +479,7 @@ def audit_manifest(
     realish_count = 0
     hash_mismatches: list[str] = []
     per_case_reports: list[dict[str, Any]] = []
+    clean_buggy_source_hashes: dict[str, str] = {}
 
     for index, raw_case in enumerate(cases):
         if not isinstance(raw_case, dict):
@@ -519,7 +520,7 @@ def audit_manifest(
             errors.append(f"{case_id}: invalid source_category {source_category!r}")
         else:
             source_counts[source_category] += 1
-            if source_category in {"real_project_seed", "minimized_upstream_style"}:
+            if source_category == "real_project_seed":
                 realish_count += 1
         if prog_type not in PROG_TYPES:
             errors.append(f"{case_id}: invalid prog_type {prog_type!r}")
@@ -568,6 +569,9 @@ def audit_manifest(
                 errors.append(f"{case_id}: clean60 origin must be a non-empty string")
             if case.get("review_status") != "independent_reviewed":
                 errors.append(f"{case_id}: clean60 review_status must be independent_reviewed")
+            reviewer = review_report.get("reviewer")
+            if isinstance(reviewer, str) and "required before paper use" in reviewer.lower():
+                errors.append(f"{case_id}: clean60 review_status contradicts review.reviewer")
             if source_category == "dev_calibration":
                 errors.append(f"{case_id}: clean60 case cannot use dev_calibration source_category")
             if not isinstance(recorded_hash, str):
@@ -583,6 +587,14 @@ def audit_manifest(
             ):
                 errors.append(f"{case_id}: buggy_source_sha256 does not match current buggy.bpf.c")
                 hash_mismatches.append(case_id)
+            if isinstance(recorded_buggy_source_hash, str):
+                previous = clean_buggy_source_hashes.get(recorded_buggy_source_hash)
+                if previous is not None:
+                    errors.append(
+                        f"{case_id}: clean60 buggy_source_sha256 duplicates {previous}"
+                    )
+                else:
+                    clean_buggy_source_hashes[recorded_buggy_source_hash] = case_id
         elif recorded_hash is not None and computed_hash is not None and recorded_hash != computed_hash:
             if freeze.get("fingerprints_frozen") is True:
                 errors.append(f"{case_id}: case_sha256 does not match frozen manifest fingerprint")
