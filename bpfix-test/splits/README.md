@@ -56,7 +56,7 @@ obligations must have success substrings or predicates.
 Clean splits are also checked for exact `buggy.bpf.c` source overlap with
 `bpfix-bench/cases/**/*.c`.
 Clean splits must contain no duplicate `buggy.bpf.c` hashes inside the split
-itself. At least 20 cases must be `real_project_seed` cases with structured
+itself. All 60 clean60 cases must be `real_project_seed` cases with structured
 upstream project, pinned ref, path, license, and file sha256 provenance.
 Candidate/clean60 gates verify each real-project seed against a local upstream
 checkout: the commit must exist, the path must resolve at that commit, the file

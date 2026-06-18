@@ -109,7 +109,8 @@ dry-run，不能作为 paper-grade 结果依据。
 
 1. 所有 case id 不在 `dev40.txt` 中。
 2. 所有 case 在第一次 LLM clean run 前 admitted；之后不能因为模型结果删 case。
-3. prompt manifest、runner、BPFix commit、model config 和 oracle 都在 clean run 前冻结。
+3. split、case fingerprints、prompt manifest、runner、BPFix commit、model config
+   和 oracle 都在 clean run 前冻结。
 4. 如果 freeze 后修 oracle bug，必须记录 bug、影响范围，并从头重跑所有 baseline。
 5. 不允许把 reference fix、oracle expected return、success predicate、README hints
    放进 prompt。
@@ -162,7 +163,10 @@ upstream repos 放在其他目录，设置 `BPFIX_TEST_UPSTREAM_ROOT=/path/to/re
 本地 checkout 的任一 git remote 必须匹配 `upstream_project`，`source` 必须是指向
 同一 commit/path 的 canonical GitHub/GitLab blob URL，不能只把真实 URL 塞进 query
 string 或注释文本。
-仅仅是 `minimized_upstream_style` 或 clean-room synthetic 不计入真实项目种子数量。
+`clean60` 的 60 个 case 必须全部是 `real_project_seed`，也就是都必须有上述
+upstream project/ref/path/license/hash provenance。`minimized_upstream_style`、
+`production_shaped_synthetic` 或 clean-room synthetic 可以用于 dev/calibration，
+但不能进入 paper-grade clean60。
 
 ## Case 格式
 
@@ -217,7 +221,7 @@ cases/<case_id>/
 约束：
 
 - XDP 不能超过 25/60；
-- 至少 20/60 必须是有 upstream project/ref/path/license provenance 的
+- 60/60 必须是有 upstream project/ref/path/license provenance 的
   `real_project_seed`；
 - 至少 20/60 的正确修复需要保留 helper side effect 或 map/ringbuf state；
 - 至少 15/60 包含 source correlation 难点，而不是只修最后一行；

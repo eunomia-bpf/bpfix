@@ -131,13 +131,15 @@ python3 bpfix-test/tools/audit_splits.py \
 `clean60` 命令在 split 填满前应该失败；runner 直接使用空 `--split` 也会失败，
 不会退回到全量 discovered cases。这是保护主 benchmark 不被 dev cases 污染的
 gate。Manifest 审计还会检查 split/manifest 一致性、clean freeze 状态、source
-category、bucket、program type、review status、oracle obligation 和 case hash。
+category、bucket、program type、review status、oracle obligation、case hash 和
+frozen fingerprint 状态。
 Candidate/clean60 审计还会对 `buggy.bpf.c` 做 normalized token-shingle 近重复检查，
 比较当前 split、`dev40` 和 `bpfix-bench` 源文件，防止复制、改名或轻微包装的污染样本
 进入 paper split。
-对 `real_project_seed`，candidate/clean60 gate 还会验证 upstream commit、path、
-SPDX license 和 `upstream_file_sha256`。默认从当前仓库的 sibling 目录查找 upstream
-checkout；如果 upstream repos 放在其他位置，设置 `BPFIX_TEST_UPSTREAM_ROOT`。
+clean60 要求 60/60 都是 `real_project_seed`；candidate/clean60 gate 会验证 upstream
+commit、path、SPDX license 和 `upstream_file_sha256`。默认从当前仓库的 sibling
+目录查找 upstream checkout；如果 upstream repos 放在其他位置，设置
+`BPFIX_TEST_UPSTREAM_ROOT`。
 本地 checkout 的 git remote 必须匹配 `provenance.upstream_project`，`source` 必须是
 指向同一 commit/path 的 canonical GitHub/GitLab blob URL。
 

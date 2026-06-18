@@ -1034,6 +1034,8 @@ def audit_manifest(
                 errors.append(f"clean60 admission_policy.{key} must be {str(expected).lower()}")
         if freeze.get("frozen") is not True:
             errors.append("clean60 freeze.frozen must be true before benchmark runs")
+        if freeze.get("fingerprints_frozen") is not True:
+            errors.append("clean60 freeze.fingerprints_frozen must be true before benchmark runs")
         selection_protocol = audit_selection_protocol(manifest=manifest, errors=errors, label="clean60")
         exclusion_summary = audit_exclusion_ledger(manifest=manifest, errors=errors, label="clean60")
         candidate_seed_summary = audit_candidate_seed_ledger(
@@ -1218,8 +1220,8 @@ def audit_manifest(
                 errors.append(f"clean60 bucket {bucket} must have exactly {target} cases")
         if prog_type_counts.get("xdp", 0) > 25:
             errors.append("clean60 xdp prog_type count must be <= 25")
-        if realish_count < 20:
-            errors.append("clean60 must include at least 20 real_project_seed cases")
+        if realish_count != len(case_ids):
+            errors.append("clean60 must use real_project_seed provenance for every case")
         if helper_or_state_count < 20:
             errors.append("clean60 must include at least 20 helper/state-obligation cases")
 
