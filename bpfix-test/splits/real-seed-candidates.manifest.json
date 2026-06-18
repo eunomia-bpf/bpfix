@@ -235,6 +235,14 @@
             "decision_made_before_model_eval": true,
             "model_result_used": false,
             "notes": "Minimized the memleak free-path allocs lookup/delete and combined_allocs statistics workflow into an XDP proof-lifecycle case where the allocation-info non-null proof is branch-local before a merge; no LLM repair outcomes were used for admission."
+        },
+        {
+            "seed": "cilium@3a3646386538766d6edd5ada929b427728dbfafd:bpf/lib/ip_options.h#traceid-payload-bound",
+            "decision": "admitted",
+            "case_id": "rs_cilium_ip_options_traceid_payload_bound_001",
+            "decision_made_before_model_eval": true,
+            "model_result_used": false,
+            "notes": "Minimized Cilium's IPv4 trace-id option parser into an XDP source/object-correlation case where only the option header is bounded before reading the 16-bit trace-id payload from a loop-derived option pointer; no LLM repair outcomes were used for admission."
         }
   ],
   "seed_exclusion_ledger": [
@@ -1799,6 +1807,65 @@
                     "successful verifier log shows allocation size and stack_id loaded before allocs delete",
                     "successful verifier log shows allocs delete before combined_allocs update and the combined statistics decrement",
                     "oracle rejects repairs that delete allocs cleanup, delete combined statistics, delete the workflow, delete the wrong key, or compute the wrong decrement"
+                ]
+            }
+        },
+        {
+            "case_id": "rs_cilium_ip_options_traceid_payload_bound_001",
+            "bucket": "source_object_correlation",
+            "prog_type": "xdp",
+            "origin": "real-project seed from Cilium IPv4 trace-id option parser",
+            "oracle_kind": [
+                "compile",
+                "verifier_load",
+                "bpftool_prog_run",
+                "proof_predicate"
+            ],
+            "requires_helper_or_state": false,
+            "uses_success_predicate": true,
+            "case_sha256": "dacc99fdc49b651be2843fddab92b2b34162d4746c3496a93047c45392252a6f",
+            "buggy_source_sha256": "5538a46cc1c0a1a66146e6ec14fd036d81e3ec656897379da5e6d5c271ee3946",
+            "review": {
+                "reviewer": "Beauvoir subagent 019edc81-3c2e-7af2-8b84-5c19ef0ede6f",
+                "reviewed_at": "2026-06-18",
+                "bug_confirmed": true,
+                "oracle_adequate": true,
+                "not_seen_in_prior_eval": true,
+                "bug_summary": "The minimized XDP harness preserves Cilium's IPv4 trace-id option parser shape but checks only the option header before reading a 16-bit trace-id payload through a loop-derived option pointer. The verifier rejects the u16 packet load as invalid access to packet, off=36 size=2 with the packet register range still 36.",
+                "oracle_rationale": "The oracle requires buggy rejection with the packet-bound verifier error, then requires repaired sources to compile and verifier-load while preserving Cilium-style END/NOOP handling, the 16/32/64-bit trace-id option contract, and packet-driven option walking. Ten bpftool prog run inputs distinguish no-option UDP, matching and nonmatching 16/32/64-bit trace ids, NOOP-prefixed trace id, unsupported trace option length, and TCP. A successful-verifier predicate requires the trace-id load to remain attached to a loop-derived packet option pointer, rejecting constant-action repairs or repairs that bypass the option parser.",
+                "provenance_rationale": "Seed verified against Cilium commit 3a3646386538766d6edd5ada929b427728dbfafd, path bpf/lib/ip_options.h, remote https://github.com/cilium/cilium, sha256 a3d873c58032ebda0f4dcb698377d7dc73816d019f0a0824cfbc62f8a116ea9c, SPDX (GPL-2.0-only OR BSD-2-Clause). The case is a minimized mutation of the upstream IPv4 trace-id option parser shape, not a claim that upstream contains this exact bug, and no LLM repair result was used for admission."
+            },
+            "provenance": {
+                "seed_type": "minimized real-project seed in Cilium XDP IPv4 trace-id option parser harness",
+                "source": "https://github.com/cilium/cilium/blob/3a3646386538766d6edd5ada929b427728dbfafd/bpf/lib/ip_options.h",
+                "license": "(GPL-2.0-only OR BSD-2-Clause)",
+                "minimization": "Preserved Cilium's IPv4 trace-id option parser shape: END/NOOP handling, unrolled option walk, supported 16/32/64-bit trace-id lengths, and packet-derived option pointer movement. The minimized XDP harness injects only the missing 16-bit payload bound before reading from the loop-derived option pointer.",
+                "upstream_project": "https://github.com/cilium/cilium",
+                "upstream_ref": "3a3646386538766d6edd5ada929b427728dbfafd",
+                "upstream_path": "bpf/lib/ip_options.h",
+                "upstream_license": "(GPL-2.0-only OR BSD-2-Clause)",
+                "upstream_file_sha256": "a3d873c58032ebda0f4dcb698377d7dc73816d019f0a0824cfbc62f8a116ea9c",
+                "derived_from_dev40": false,
+                "model_result_used": false
+            },
+            "oracle_obligation": {
+                "functional_semantics": [
+                    "repair must load as an XDP program",
+                    "repair must preserve Cilium-style IPv4 option END/NOOP handling",
+                    "repair must preserve 16/32/64-bit supported trace-id option lengths",
+                    "repair must return XDP_DROP only when the parsed trace id is 0x1234",
+                    "repair must return XDP_PASS for no-options UDP, nonmatching trace ids, unsupported option lengths, and non-UDP packets"
+                ],
+                "verifier_reject_reason": [
+                    "buggy program advances the IPv4 option pointer through a packet-derived option length",
+                    "buggy program proves only the option header is inside data_end before reading the 16-bit trace-id payload",
+                    "the verifier rejects the final payload load because the loop-derived packet register has range 36 but the u16 load requires 38 bytes"
+                ],
+                "success_criteria": [
+                    "candidate compiles and verifier-loads as an XDP program",
+                    "bpftool prog run returns expected XDP actions for no-options UDP, 16/32/64-bit matching and nonmatching trace ids, NOOP-prefixed trace id, unsupported length, and TCP",
+                    "successful verifier log shows trace-id load from a loop-derived packet option pointer",
+                    "oracle rejects repairs that return constant actions, drop all UDP packets, or bypass the option-loop trace-id parser"
                 ]
             }
         }

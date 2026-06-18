@@ -1,0 +1,273 @@
+libbpf: loading object from <work-dir>/prog.o
+libbpf: elf: section(3) xdp, size 672, link 0, flags 6, type=1
+libbpf: sec 'xdp': found program 'rs_cilium_ip_options_traceid_payload_bound' at insn offset 0 (0 bytes), code size 84 insns (672 bytes)
+libbpf: elf: section(4) license, size 4, link 0, flags 3, type=1
+libbpf: license of <work-dir>/prog.o is GPL
+libbpf: elf: section(15) .BTF, size 2121, link 0, flags 0, type=1
+libbpf: elf: section(17) .BTF.ext, size 1004, link 0, flags 0, type=1
+libbpf: elf: section(25) .symtab, size 504, link 1, flags 0, type=2
+libbpf: looking for externs among 21 symbols...
+libbpf: collected 0 externs total
+libbpf: object 'prog': failed (-95) to create BPF token from '/sys/fs/bpf', skipping optional step...
+libbpf: loaded kernel BTF from '/sys/kernel/btf/vmlinux'
+libbpf: sec 'xdp': found 5 CO-RE relocations
+libbpf: CO-RE relocating [2] struct xdp_md: found target candidate [14922] struct xdp_md in [vmlinux]
+libbpf: prog 'rs_cilium_ip_options_traceid_payload_bound': relo #0: <byte_off> [2] struct xdp_md.data_end (0:1 @ offset 4)
+libbpf: prog 'rs_cilium_ip_options_traceid_payload_bound': relo #0: matching candidate #0 <byte_off> [14922] struct xdp_md.data_end (0:1 @ offset 4)
+libbpf: prog 'rs_cilium_ip_options_traceid_payload_bound': relo #0: patched insn #1 (LDX/ST/STX) off 4 -> 4
+libbpf: prog 'rs_cilium_ip_options_traceid_payload_bound': relo #1: <byte_off> [2] struct xdp_md.data (0:0 @ offset 0)
+libbpf: prog 'rs_cilium_ip_options_traceid_payload_bound': relo #1: matching candidate #0 <byte_off> [14922] struct xdp_md.data (0:0 @ offset 0)
+libbpf: prog 'rs_cilium_ip_options_traceid_payload_bound': relo #1: patched insn #2 (LDX/ST/STX) off 0 -> 0
+libbpf: CO-RE relocating [8] struct ethhdr: found target candidate [23410] struct ethhdr in [vmlinux]
+libbpf: prog 'rs_cilium_ip_options_traceid_payload_bound': relo #2: <byte_off> [8] struct ethhdr.h_proto (0:2 @ offset 12)
+libbpf: prog 'rs_cilium_ip_options_traceid_payload_bound': relo #2: matching candidate #0 <byte_off> [23410] struct ethhdr.h_proto (0:2 @ offset 12)
+libbpf: prog 'rs_cilium_ip_options_traceid_payload_bound': relo #2: patched insn #6 (LDX/ST/STX) off 12 -> 12
+libbpf: CO-RE relocating [15] struct iphdr: found target candidate [23765] struct iphdr in [vmlinux]
+libbpf: prog 'rs_cilium_ip_options_traceid_payload_bound': relo #3: <byte_off> [15] struct iphdr.protocol (0:7 @ offset 9)
+libbpf: prog 'rs_cilium_ip_options_traceid_payload_bound': relo #3: matching candidate #0 <byte_off> [23765] struct iphdr.protocol (0:7 @ offset 9)
+libbpf: prog 'rs_cilium_ip_options_traceid_payload_bound': relo #3: patched insn #11 (LDX/ST/STX) off 9 -> 9
+libbpf: prog 'rs_cilium_ip_options_traceid_payload_bound': relo #4: <byte_off> [15] struct iphdr.ihl (0:0 @ offset 0)
+libbpf: prog 'rs_cilium_ip_options_traceid_payload_bound': relo #4: matching candidate #0 <byte_off> [23765] struct iphdr.ihl (0:0 @ offset 0)
+libbpf: prog 'rs_cilium_ip_options_traceid_payload_bound': relo #4: patched insn #13 (LDX/ST/STX) off 0 -> 0
+libbpf: prog 'rs_cilium_ip_options_traceid_payload_bound': BPF program load failed: -EACCES
+libbpf: prog 'rs_cilium_ip_options_traceid_payload_bound': -- BEGIN PROG LOAD LOG --
+func#0 @0
+Live regs before insn:
+  0: .1........ (b7) r0 = 2
+  1: 01........ (61) r2 = *(u32 *)(r1 +4)
+  2: 012....... (61) r3 = *(u32 *)(r1 +0)
+  3: 0.23...... (bf) r4 = r3
+  4: 0.234..... (07) r4 += 14
+  5: 0.234..... (2d) if r4 > r2 goto pc+77
+  6: 0.234..... (69) r1 = *(u16 *)(r3 +12)
+  7: 01234..... (55) if r1 != 0x8 goto pc+75
+  8: 0.234..... (bf) r1 = r3
+  9: 01234..... (07) r1 += 34
+ 10: 01234..... (2d) if r1 > r2 goto pc+72
+ 11: 01234..... (71) r5 = *(u8 *)(r4 +9)
+ 12: 012345.... (55) if r5 != 0x11 goto pc+70
+ 13: 01234..... (71) r6 = *(u8 *)(r4 +0)
+ 14: 0123..6... (bf) r4 = r6
+ 15: 01234.6... (57) r4 &= 14
+ 16: 01234.6... (b7) r5 = 6
+ 17: 0123456... (2d) if r5 > r4 goto pc+65
+ 18: 0123..6... (67) r6 <<= 2
+ 19: 0123..6... (57) r6 &= 60
+ 20: 0123..6... (b7) r4 = 21
+ 21: 01234.6... (2d) if r4 > r6 goto pc+61
+ 22: 0123..6... (bf) r5 = r3
+ 23: 0123.56... (07) r5 += 35
+ 24: 0123.56... (2d) if r5 > r2 goto pc+58
+ 25: 0123.56... (71) r8 = *(u8 *)(r1 +0)
+ 26: 0123.56.8. (15) if r8 == 0x0 goto pc+56
+ 27: 0123.56.8. (15) if r8 == 0x1 goto pc+7
+ 28: 0123.56.8. (bf) r4 = r3
+ 29: 0123456.8. (07) r4 += 36
+ 30: 0123456.8. (2d) if r4 > r2 goto pc+52
+ 31: 0123456.8. (71) r7 = *(u8 *)(r5 +0)
+ 32: 01234.678. (15) if r8 == 0x9e goto pc+31
+ 33: 0123..67.. (0f) r1 += r7
+ 34: 0123..6... (bf) r5 = r1
+ 35: 0.23.56... (0f) r3 += r6
+ 36: 0.23.5.... (07) r3 += 14
+ 37: 0.23.5.... (3d) if r5 >= r3 goto pc+45
+ 38: 0.23.5.... (bf) r1 = r5
+ 39: 0123.5.... (07) r1 += 1
+ 40: 0123.5.... (2d) if r1 > r2 goto pc+42
+ 41: 0123.5.... (71) r6 = *(u8 *)(r5 +0)
+ 42: 0123.56... (15) if r6 == 0x0 goto pc+40
+ 43: 0123.56... (15) if r6 == 0x1 goto pc+8
+ 44: 0123.56... (bf) r4 = r5
+ 45: 0123456... (07) r4 += 2
+ 46: 0123456... (2d) if r4 > r2 goto pc+36
+ 47: 0123456... (71) r7 = *(u8 *)(r1 +0)
+ 48: 0.234567.. (bf) r1 = r5
+ 49: 01234567.. (15) if r6 == 0x9e goto pc+14
+ 50: 0.23.5.7.. (0f) r5 += r7
+ 51: 0.23.5.... (bf) r1 = r5
+ 52: 0123...... (3d) if r1 >= r3 goto pc+30
+ 53: 012....... (bf) r3 = r1
+ 54: 0123...... (07) r3 += 1
+ 55: 0123...... (2d) if r3 > r2 goto pc+27
+ 56: 0123...... (71) r5 = *(u8 *)(r1 +0)
+ 57: 0123.5.... (2d) if r0 > r5 goto pc+25
+ 58: 0123.5.... (bf) r4 = r1
+ 59: 012345.... (07) r4 += 2
+ 60: 012345.... (2d) if r4 > r2 goto pc+22
+ 61: 012345.... (71) r7 = *(u8 *)(r3 +0)
+ 62: 012.45.7.. (15) if r5 == 0x9e goto pc+1
+ 63: 0......... (05) goto pc+19
+ 64: 012.4..7.. (15) if r7 == 0xa goto pc+12
+ 65: 012.4..7.. (15) if r7 == 0x6 goto pc+5
+ 66: 0...4..7.. (55) if r7 != 0x4 goto pc+16
+ 67: 0...4..... (69) r1 = *(u16 *)(r4 +0)
+ 68: 01........ (dc) r1 = be16 r1
+ 69: 01........ (55) if r1 != 0x1234 goto pc+13
+ 70: .......... (05) goto pc+11
+ 71: 012.4..... (07) r1 += 6
+ 72: 012.4..... (2d) if r1 > r2 goto pc+10
+ 73: 0...4..... (61) r1 = *(u32 *)(r4 +0)
+ 74: 01........ (dc) r1 = be32 r1
+ 75: 01........ (55) if r1 != 0x1234 goto pc+7
+ 76: .......... (05) goto pc+5
+ 77: 012.4..... (07) r1 += 10
+ 78: 012.4..... (2d) if r1 > r2 goto pc+4
+ 79: 0...4..... (79) r1 = *(u64 *)(r4 +0)
+ 80: 01........ (dc) r1 = be64 r1
+ 81: 01........ (55) if r1 != 0x1234 goto pc+1
+ 82: .......... (b7) r0 = 1
+ 83: 0......... (95) exit
+0: R1=ctx() R10=fp0
+; int rs_cilium_ip_options_traceid_payload_bound(struct xdp_md *ctx) @ buggy.bpf.c:104
+0: (b7) r0 = 2                        ; R0_w=2
+; void *data_end = (void *)(long)ctx->data_end; @ buggy.bpf.c:107
+1: (61) r2 = *(u32 *)(r1 +4)          ; R1=ctx() R2_w=pkt_end()
+; void *data = (void *)(long)ctx->data; @ buggy.bpf.c:106
+2: (61) r3 = *(u32 *)(r1 +0)          ; R1=ctx() R3_w=pkt(r=0)
+; if ((void *)(eth + 1) > data_end) @ buggy.bpf.c:112
+3: (bf) r4 = r3                       ; R3_w=pkt(r=0) R4_w=pkt(r=0)
+4: (07) r4 += 14                      ; R4_w=pkt(off=14,r=0)
+5: (2d) if r4 > r2 goto pc+77         ; R2_w=pkt_end() R4_w=pkt(off=14,r=14)
+; if (bpf_ntohs(eth->h_proto) != ETH_P_IP) @ buggy.bpf.c:114
+6: (69) r1 = *(u16 *)(r3 +12)         ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=0xffff,var_off=(0x0; 0xffff)) R3_w=pkt(r=14)
+7: (55) if r1 != 0x8 goto pc+75       ; R1_w=8
+8: (bf) r1 = r3                       ; R1_w=pkt(r=14) R3_w=pkt(r=14)
+9: (07) r1 += 34                      ; R1=pkt(off=34,r=14)
+10: (2d) if r1 > r2 goto pc+72        ; R1=pkt(off=34,r=34) R2=pkt_end()
+; if (ip4->protocol != IPPROTO_UDP) @ buggy.bpf.c:120
+11: (71) r5 = *(u8 *)(r4 +9)          ; R4=pkt(off=14,r=34) R5_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+12: (55) if r5 != 0x11 goto pc+70     ; R5_w=17
+; void *end = data + sizeof(struct ethhdr) + ((__u32)ip4->ihl << 2); @ buggy.bpf.c:66
+13: (71) r6 = *(u8 *)(r4 +0)          ; R4=pkt(off=14,r=34) R6_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+; if (ip4->ihl <= IHL_WITH_NO_OPTS) @ buggy.bpf.c:71
+14: (bf) r4 = r6                      ; R4_w=scalar(id=1,smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R6_w=scalar(id=1,smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+15: (57) r4 &= 14                     ; R4_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=14,var_off=(0x0; 0xe))
+16: (b7) r5 = 6                       ; R5_w=6
+17: (2d) if r5 > r4 goto pc+65        ; R4_w=scalar(smin=umin=smin32=umin32=6,smax=umax=smax32=umax32=14,var_off=(0x0; 0xe)) R5_w=6
+18: (67) r6 <<= 2                     ; R6_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=1020,var_off=(0x0; 0x3fc))
+19: (57) r6 &= 60                     ; R6_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c))
+20: (b7) r4 = 21                      ; R4=21
+21: (2d) if r4 > r6 goto pc+61        ; R4=21 R6=scalar(smin=umin=smin32=umin32=21,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c))
+; if (opt + 1 > data_end) @ buggy.bpf.c:76
+22: (bf) r5 = r3                      ; R3=pkt(r=34) R5_w=pkt(r=34)
+23: (07) r5 += 35                     ; R5_w=pkt(off=35,r=34)
+24: (2d) if r5 > r2 goto pc+58        ; R2=pkt_end() R5_w=pkt(off=35,r=35)
+; opt_type = *(__u8 *)opt; @ buggy.bpf.c:79
+25: (71) r8 = *(u8 *)(r1 +0)          ; R1=pkt(off=34,r=35) R8_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+; if (opt_type == IPOPT_END) @ buggy.bpf.c:80
+26: (15) if r8 == 0x0 goto pc+56      ; R8_w=scalar(smin=umin=smin32=umin32=1,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+27: (15) if r8 == 0x1 goto pc+7       ; R8_w=scalar(smin=umin=smin32=umin32=2,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+; if (opt + 2 > data_end) @ buggy.bpf.c:88
+28: (bf) r4 = r3                      ; R3=pkt(r=35) R4_w=pkt(r=35)
+29: (07) r4 += 36                     ; R4=pkt(off=36,r=35)
+30: (2d) if r4 > r2 goto pc+52        ; R2=pkt_end() R4=pkt(off=36,r=36)
+; optlen = *(__u8 *)(opt + 1); @ buggy.bpf.c:91
+31: (71) r7 = *(u8 *)(r5 +0)          ; R5=pkt(off=35,r=36) R7_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+; if (opt_type != CILIUM_TRACE_OPT) { @ buggy.bpf.c:92
+32: (15) if r8 == 0x9e goto pc+31     ; R8=scalar(smin=umin=smin32=umin32=2,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+; opt += optlen; @ buggy.bpf.c:93
+33: (0f) r1 += r7
+mark_precise: frame0: last_idx 33 first_idx 30 subseq_idx -1 
+mark_precise: frame0: regs=r7 stack= before 32: (15) if r8 == 0x9e goto pc+31
+mark_precise: frame0: regs=r7 stack= before 31: (71) r7 = *(u8 *)(r5 +0)
+34: R1_w=pkt(id=2,off=34,r=0,smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R7_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+34: (bf) r5 = r1                      ; R1_w=pkt(id=2,off=34,r=0,smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R5_w=pkt(id=2,off=34,r=0,smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+35: (0f) r3 += r6
+mark_precise: frame0: last_idx 35 first_idx 30 subseq_idx -1 
+mark_precise: frame0: regs=r6 stack= before 34: (bf) r5 = r1
+mark_precise: frame0: regs=r6 stack= before 33: (0f) r1 += r7
+mark_precise: frame0: regs=r6 stack= before 32: (15) if r8 == 0x9e goto pc+31
+mark_precise: frame0: regs=r6 stack= before 31: (71) r7 = *(u8 *)(r5 +0)
+mark_precise: frame0: regs=r6 stack= before 30: (2d) if r4 > r2 goto pc+52
+mark_precise: frame0: parent state regs=r6 stack=:  R0=2 R1_r=pkt(off=34,r=35) R2_r=pkt_end() R3_r=pkt(r=35) R4_rw=pkt(off=36,r=35) R5_rw=pkt(off=35,r=35) R6_r=Pscalar(smin=umin=smin32=umin32=21,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c)) R8_rw=scalar(smin=umin=smin32=umin32=2,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R10=fp0
+mark_precise: frame0: last_idx 29 first_idx 21 subseq_idx 30 
+mark_precise: frame0: regs=r6 stack= before 29: (07) r4 += 36
+mark_precise: frame0: regs=r6 stack= before 28: (bf) r4 = r3
+mark_precise: frame0: regs=r6 stack= before 27: (15) if r8 == 0x1 goto pc+7
+mark_precise: frame0: regs=r6 stack= before 26: (15) if r8 == 0x0 goto pc+56
+mark_precise: frame0: regs=r6 stack= before 25: (71) r8 = *(u8 *)(r1 +0)
+mark_precise: frame0: regs=r6 stack= before 24: (2d) if r5 > r2 goto pc+58
+mark_precise: frame0: regs=r6 stack= before 23: (07) r5 += 35
+mark_precise: frame0: regs=r6 stack= before 22: (bf) r5 = r3
+mark_precise: frame0: regs=r6 stack= before 21: (2d) if r4 > r6 goto pc+61
+mark_precise: frame0: parent state regs=r4,r6 stack=:  R0=2 R1_r=pkt(off=34,r=34) R2_r=pkt_end() R3_r=pkt(r=34) R4_rw=P21 R5_w=6 R6_rw=Pscalar(smin=smin32=0,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c)) R10=fp0
+mark_precise: frame0: last_idx 20 first_idx 10 subseq_idx 21 
+mark_precise: frame0: regs=r4,r6 stack= before 20: (b7) r4 = 21
+mark_precise: frame0: regs=r6 stack= before 19: (57) r6 &= 60
+mark_precise: frame0: regs=r6 stack= before 18: (67) r6 <<= 2
+mark_precise: frame0: regs=r6 stack= before 17: (2d) if r5 > r4 goto pc+65
+mark_precise: frame0: regs=r6 stack= before 16: (b7) r5 = 6
+mark_precise: frame0: regs=r6 stack= before 15: (57) r4 &= 14
+mark_precise: frame0: regs=r6 stack= before 14: (bf) r4 = r6
+mark_precise: frame0: regs=r6 stack= before 13: (71) r6 = *(u8 *)(r4 +0)
+36: R3_w=pkt(id=3,r=0,smin=umin=smin32=umin32=21,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c)) R6=scalar(smin=umin=smin32=umin32=21,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c))
+36: (07) r3 += 14                     ; R3_w=pkt(id=3,off=14,r=0,smin=umin=smin32=umin32=21,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c))
+; for (i = 0; i < MAX_IPV4_OPTS && opt < end; i++) { @ buggy.bpf.c:75
+37: (3d) if r5 >= r3 goto pc+45       ; R3_w=pkt(id=3,off=14,r=0,smin=umin=smin32=umin32=21,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c)) R5_w=pkt(id=2,off=34,r=0,smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+; if (opt + 1 > data_end) @ buggy.bpf.c:76
+38: (bf) r1 = r5                      ; R1_w=pkt(id=2,off=34,r=0,smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R5_w=pkt(id=2,off=34,r=0,smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+39: (07) r1 += 1                      ; R1=pkt(id=2,off=35,r=0,smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+40: (2d) if r1 > r2 goto pc+42        ; R1=pkt(id=2,off=35,r=35,smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R2=pkt_end()
+; opt_type = *(__u8 *)opt; @ buggy.bpf.c:79
+41: (71) r6 = *(u8 *)(r5 +0)          ; R5=pkt(id=2,off=34,r=35,smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R6_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+; if (opt_type == IPOPT_END) @ buggy.bpf.c:80
+42: (15) if r6 == 0x0 goto pc+40      ; R6_w=scalar(smin=umin=smin32=umin32=1,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+43: (15) if r6 == 0x1 goto pc+8       ; R6_w=scalar(smin=umin=smin32=umin32=2,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+; if (opt + 2 > data_end) @ buggy.bpf.c:88
+44: (bf) r4 = r5                      ; R4_w=pkt(id=2,off=34,r=35,smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R5=pkt(id=2,off=34,r=35,smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+45: (07) r4 += 2                      ; R4_w=pkt(id=2,off=36,r=35,smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+46: (2d) if r4 > r2 goto pc+36        ; R2=pkt_end() R4_w=pkt(id=2,off=36,r=36,smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+; optlen = *(__u8 *)(opt + 1); @ buggy.bpf.c:91
+47: (71) r7 = *(u8 *)(r1 +0)          ; R1=pkt(id=2,off=35,r=36,smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R7_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+48: (bf) r1 = r5                      ; R1=pkt(id=2,off=34,r=36,smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R5=pkt(id=2,off=34,r=36,smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+; if (opt_type != CILIUM_TRACE_OPT) { @ buggy.bpf.c:92
+49: (15) if r6 == 0x9e goto pc+14     ; R6=scalar(smin=umin=smin32=umin32=2,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+; opt += optlen; @ buggy.bpf.c:93
+50: (0f) r5 += r7
+mark_precise: frame0: last_idx 50 first_idx 49 subseq_idx -1 
+mark_precise: frame0: regs=r7 stack= before 49: (15) if r6 == 0x9e goto pc+14
+mark_precise: frame0: parent state regs=r7 stack=:  R0=2 R1_w=pkt(id=2,off=34,r=36,smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R2=pkt_end() R3=pkt(id=3,off=14,r=0,smin=umin=smin32=umin32=21,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c)) R4_w=pkt(id=2,off=36,r=36,smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R5_r=pkt(id=2,off=34,r=36,smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R6_rw=scalar(smin=umin=smin32=umin32=2,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R7_rw=Pscalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=scalar(smin=umin=smin32=umin32=2,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R10=fp0
+mark_precise: frame0: last_idx 48 first_idx 40 subseq_idx 49 
+mark_precise: frame0: regs=r7 stack= before 48: (bf) r1 = r5
+mark_precise: frame0: regs=r7 stack= before 47: (71) r7 = *(u8 *)(r1 +0)
+51: R5_w=pkt(id=4,off=34,r=0,smin=smin32=0,smax=umax=smax32=umax32=510,var_off=(0x0; 0x1ff)) R7=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+51: (bf) r1 = r5                      ; R1_w=pkt(id=4,off=34,r=0,smin=smin32=0,smax=umax=smax32=umax32=510,var_off=(0x0; 0x1ff)) R5_w=pkt(id=4,off=34,r=0,smin=smin32=0,smax=umax=smax32=umax32=510,var_off=(0x0; 0x1ff))
+; for (i = 0; i < MAX_IPV4_OPTS && opt < end; i++) { @ buggy.bpf.c:75
+52: (3d) if r1 >= r3 goto pc+30       ; R1_w=pkt(id=4,off=34,r=0,smin=smin32=0,smax=umax=smax32=umax32=510,var_off=(0x0; 0x1ff)) R3=pkt(id=3,off=14,r=0,smin=umin=smin32=umin32=21,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c))
+; if (opt + 1 > data_end) @ buggy.bpf.c:76
+53: (bf) r3 = r1                      ; R1_w=pkt(id=4,off=34,r=0,smin=smin32=0,smax=umax=smax32=umax32=510,var_off=(0x0; 0x1ff)) R3_w=pkt(id=4,off=34,r=0,smin=smin32=0,smax=umax=smax32=umax32=510,var_off=(0x0; 0x1ff))
+54: (07) r3 += 1                      ; R3_w=pkt(id=4,off=35,r=0,smin=smin32=0,smax=umax=smax32=umax32=510,var_off=(0x0; 0x1ff))
+55: (2d) if r3 > r2 goto pc+27        ; R2=pkt_end() R3_w=pkt(id=4,off=35,r=35,smin=smin32=0,smax=umax=smax32=umax32=510,var_off=(0x0; 0x1ff))
+; opt_type = *(__u8 *)opt; @ buggy.bpf.c:79
+56: (71) r5 = *(u8 *)(r1 +0)          ; R1=pkt(id=4,off=34,r=35,smin=smin32=0,smax=umax=smax32=umax32=510,var_off=(0x0; 0x1ff)) R5=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+; if (opt_type == IPOPT_END) @ buggy.bpf.c:80
+57: (2d) if r0 > r5 goto pc+25        ; R0=2 R5=scalar(smin=umin=smin32=umin32=2,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+; if (opt + 2 > data_end) @ buggy.bpf.c:88
+58: (bf) r4 = r1                      ; R1=pkt(id=4,off=34,r=35,smin=smin32=0,smax=umax=smax32=umax32=510,var_off=(0x0; 0x1ff)) R4_w=pkt(id=4,off=34,r=35,smin=smin32=0,smax=umax=smax32=umax32=510,var_off=(0x0; 0x1ff))
+59: (07) r4 += 2                      ; R4_w=pkt(id=4,off=36,r=35,smin=smin32=0,smax=umax=smax32=umax32=510,var_off=(0x0; 0x1ff))
+60: (2d) if r4 > r2 goto pc+22        ; R2=pkt_end() R4_w=pkt(id=4,off=36,r=36,smin=smin32=0,smax=umax=smax32=umax32=510,var_off=(0x0; 0x1ff))
+; optlen = *(__u8 *)(opt + 1); @ buggy.bpf.c:91
+61: (71) r7 = *(u8 *)(r3 +0)          ; R3=pkt(id=4,off=35,r=36,smin=smin32=0,smax=umax=smax32=umax32=510,var_off=(0x0; 0x1ff)) R7_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+; if (opt_type != CILIUM_TRACE_OPT) { @ buggy.bpf.c:92
+62: (15) if r5 == 0x9e goto pc+1      ; R5=scalar(smin=umin=smin32=umin32=2,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+63: (05) goto pc+19
+; } @ buggy.bpf.c:127
+83: (95) exit
+
+from 62 to 64: R0=2 R1=pkt(id=4,off=34,r=36,smin=smin32=0,smax=umax=smax32=umax32=510,var_off=(0x0; 0x1ff)) R2=pkt_end() R3=pkt(id=4,off=35,r=36,smin=smin32=0,smax=umax=smax32=umax32=510,var_off=(0x0; 0x1ff)) R4=pkt(id=4,off=36,r=36,smin=smin32=0,smax=umax=smax32=umax32=510,var_off=(0x0; 0x1ff)) R5=158 R6=scalar(smin=umin=smin32=umin32=2,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R7=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=scalar(smin=umin=smin32=umin32=2,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R10=fp0
+64: R0=2 R1=pkt(id=4,off=34,r=36,smin=smin32=0,smax=umax=smax32=umax32=510,var_off=(0x0; 0x1ff)) R2=pkt_end() R3=pkt(id=4,off=35,r=36,smin=smin32=0,smax=umax=smax32=umax32=510,var_off=(0x0; 0x1ff)) R4=pkt(id=4,off=36,r=36,smin=smin32=0,smax=umax=smax32=umax32=510,var_off=(0x0; 0x1ff)) R5=158 R6=scalar(smin=umin=smin32=umin32=2,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R7=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=scalar(smin=umin=smin32=umin32=2,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R10=fp0
+; if (optlen == OPT16_LEN) { @ buggy.bpf.c:34
+64: (15) if r7 == 0xa goto pc+12      ; R7=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+65: (15) if r7 == 0x6 goto pc+5       ; R7=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+66: (55) if r7 != 0x4 goto pc+16      ; R7=4
+; *value = bpf_ntohs(*raw); @ buggy.bpf.c:37
+67: (69) r1 = *(u16 *)(r4 +0)
+invalid access to packet, off=36 size=2, R4(id=4,off=36,r=36)
+R4 offset is outside of the packet
+verification time 0 usec
+stack depth 0
+processed 69 insns (limit 1000000) max_states_per_insn 0 total_states 7 peak_states 7 mark_read 6
+-- END PROG LOAD LOG --
+libbpf: prog 'rs_cilium_ip_options_traceid_payload_bound': failed to load: -EACCES
+libbpf: failed to load object '<work-dir>/prog.o'
+Error: failed to load object file
