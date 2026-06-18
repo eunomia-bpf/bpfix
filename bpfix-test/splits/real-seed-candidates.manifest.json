@@ -155,6 +155,14 @@
             "decision_made_before_model_eval": true,
             "model_result_used": false,
             "notes": "Minimized the pidhide tail-call dispatch and prog-array workflow into a runnable XDP multi-program harness where bpf_tail_call receives a normal array map; no LLM repair outcomes were used for admission."
+        },
+        {
+            "seed": "cilium@3a3646386538766d6edd5ada929b427728dbfafd:bpf/lib/mcast.h",
+            "decision": "admitted",
+            "case_id": "rs_cilium_mcast_igmpv3_grec_bound_001",
+            "decision_made_before_model_eval": true,
+            "model_result_used": false,
+            "notes": "Minimized Cilium's IGMPv3 multicast group-record loop into an XDP source/object-correlation case where the per-record bounds check is missing; no LLM repair outcomes were used for admission."
         }
   ],
   "seed_exclusion_ledger": [
@@ -1119,6 +1127,62 @@
                     "successful verifier log reaches bpf_tail_call with slot register R3 equal to 1",
                     "successful verifier log loads and pins the tail_target_drop program",
                     "bpftool prog run returns XDP_DROP for marker packets after map slot setup and XDP_PASS for non-marker packets"
+                ]
+            }
+        },
+        {
+            "case_id": "rs_cilium_mcast_igmpv3_grec_bound_001",
+            "bucket": "source_object_correlation",
+            "prog_type": "xdp",
+            "origin": "real-project seed from Cilium multicast IGMPv3 group-record handling",
+            "oracle_kind": [
+                "compile",
+                "verifier_load",
+                "bpftool_prog_run",
+                "proof_predicate"
+            ],
+            "requires_helper_or_state": true,
+            "uses_success_predicate": true,
+            "case_sha256": "d0d595311a24824aad985c116c9dc0b0ec45065cd120fe3c24d8dc29e266f78e",
+            "buggy_source_sha256": "d176915dbbf27fe1a42dddaa33ff85124137cd5645ab47a448a79a0fbae237a0",
+            "review": {
+                "reviewer": "Einstein subagent 019ed991-920b-75e1-a619-4901921d40f6",
+                "reviewed_at": "2026-06-17",
+                "bug_confirmed": true,
+                "oracle_adequate": true,
+                "not_seen_in_prior_eval": true,
+                "bug_summary": "Minimized Cilium IGMPv3 multicast handler checks only the report header, then reads ngrec-indexed group records without a verifier-visible record-size packet bounds check; replay rejects at rec->grec_type with invalid packet access.",
+                "oracle_rationale": "Oracle combines compile/load, 9 bpftool prog run functional tests, and a verifier-state proof predicate requiring IHL scaling, ngrec load, a variable packet record bound, and group-address load after that bound; it is not just terminal-message matching and rejects first-record-only or semantics-dropping repairs.",
+                "provenance_rationale": "Verified against Cilium commit 3a3646386538766d6edd5ada929b427728dbfafd, path bpf/lib/mcast.h, SPDX (GPL-2.0-only OR BSD-2-Clause), and upstream file sha256; split audit reports no dev40/prior-eval overlap or near duplicates, and model_result_used is false."
+            },
+            "provenance": {
+                "seed_type": "minimized real-project seed in Cilium IGMPv3 multicast group-record XDP harness",
+                "source": "https://github.com/cilium/cilium/blob/3a3646386538766d6edd5ada929b427728dbfafd/bpf/lib/mcast.h",
+                "license": "(GPL-2.0-only OR BSD-2-Clause)",
+                "minimization": "Preserved the Cilium multicast handler's IPv4 IGMP classification, IPv4 IHL-derived report location, ngrec-limited unrolled group-record loop, and group-address comparison while reducing map updates to deterministic XDP return codes.",
+                "upstream_project": "https://github.com/cilium/cilium",
+                "upstream_ref": "3a3646386538766d6edd5ada929b427728dbfafd",
+                "upstream_path": "bpf/lib/mcast.h",
+                "upstream_license": "(GPL-2.0-only OR BSD-2-Clause)",
+                "upstream_file_sha256": "868fa67f6f5df37777d6acee65b2e185a6d46c1f2fee4aa29d10a8134b01e114",
+                "derived_from_dev40": false,
+                "model_result_used": false
+            },
+            "oracle_obligation": {
+                "functional_semantics": [
+                    "repair must load as an XDP program",
+                    "repair must keep ngrec-limited IGMPv3 group-record scanning, including records beyond the first",
+                    "repair must drop only exclude records for the mDNS multicast group and pass include records, other groups, truncated reports, IGMPv2, UDP, and non-IPv4 packets"
+                ],
+                "verifier_reject_reason": [
+                    "buggy program checks only the IGMPv3 report header",
+                    "the unrolled group-record loop reads rec->grec_type and rec->grec_mca without a per-record packet bound check"
+                ],
+                "success_criteria": [
+                    "candidate compiles and verifier-loads as an XDP program",
+                    "bpftool prog run drops a single exclude mDNS group record and also drops when the matching record is second",
+                    "bpftool prog run passes include records, other groups, truncated record payloads, IGMPv2, UDP, and ARP packets",
+                    "successful verifier log shows group-address loads after verifier-visible record-size packet bounds"
                 ]
             }
         }
