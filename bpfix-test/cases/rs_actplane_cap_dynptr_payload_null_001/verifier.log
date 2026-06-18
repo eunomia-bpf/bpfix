@@ -1,0 +1,1461 @@
+libbpf: loading object from <work-dir>/prog.o
+libbpf: elf: section(3) xdp, size 2208, link 0, flags 6, type=1
+libbpf: sec 'xdp': found program 'actplane_cap_dynptr_payload_null' at insn offset 0 (0 bytes), code size 276 insns (2208 bytes)
+libbpf: elf: section(4) .relxdp, size 16, link 26, flags 40, type=9
+libbpf: elf: section(5) .maps, size 32, link 0, flags 3, type=1
+libbpf: elf: section(6) license, size 13, link 0, flags 3, type=1
+libbpf: license of <work-dir>/prog.o is Dual BSD/GPL
+libbpf: elf: section(16) .BTF, size 1923, link 0, flags 0, type=1
+libbpf: elf: section(18) .BTF.ext, size 3116, link 0, flags 0, type=1
+libbpf: elf: section(26) .symtab, size 456, link 1, flags 0, type=2
+libbpf: looking for externs among 19 symbols...
+libbpf: collected 0 externs total
+libbpf: map 'scratch_map': at sec_idx 5, offset 0.
+libbpf: map 'scratch_map': found type = 2.
+libbpf: map 'scratch_map': found key [8], sz = 4.
+libbpf: map 'scratch_map': found value [11], sz = 32.
+libbpf: map 'scratch_map': found max_entries = 1.
+libbpf: sec '.relxdp': collecting relocation for section(3) 'xdp'
+libbpf: sec '.relxdp': relo #0: insn #16 against 'scratch_map'
+libbpf: prog 'actplane_cap_dynptr_payload_null': found map 0 (scratch_map, sec 5, off 0) for insn #16
+libbpf: object 'prog': failed (-95) to create BPF token from '/sys/fs/bpf', skipping optional step...
+libbpf: loaded kernel BTF from '/sys/kernel/btf/vmlinux'
+libbpf: sec 'xdp': found 2 CO-RE relocations
+libbpf: CO-RE relocating [18] struct xdp_md: found target candidate [14922] struct xdp_md in [vmlinux]
+libbpf: prog 'actplane_cap_dynptr_payload_null': relo #0: <byte_off> [18] struct xdp_md.data_end (0:1 @ offset 4)
+libbpf: prog 'actplane_cap_dynptr_payload_null': relo #0: matching candidate #0 <byte_off> [14922] struct xdp_md.data_end (0:1 @ offset 4)
+libbpf: prog 'actplane_cap_dynptr_payload_null': relo #0: patched insn #0 (LDX/ST/STX) off 4 -> 4
+libbpf: prog 'actplane_cap_dynptr_payload_null': relo #1: <byte_off> [18] struct xdp_md.data (0:0 @ offset 0)
+libbpf: prog 'actplane_cap_dynptr_payload_null': relo #1: matching candidate #0 <byte_off> [14922] struct xdp_md.data (0:0 @ offset 0)
+libbpf: prog 'actplane_cap_dynptr_payload_null': relo #1: patched insn #1 (LDX/ST/STX) off 0 -> 0
+libbpf: map 'scratch_map': created successfully, fd=0
+libbpf: prog 'actplane_cap_dynptr_payload_null': BPF program load failed: -EACCES
+libbpf: prog 'actplane_cap_dynptr_payload_null': -- BEGIN PROG LOAD LOG --
+func#0 @0
+Live regs before insn:
+  0: .1........ (61) r9 = *(u32 *)(r1 +4)
+  1: .1.......9 (61) r6 = *(u32 *)(r1 +0)
+  2: ......6..9 (b7) r1 = 0
+  3: .1....6..9 (63) *(u32 *)(r10 -20) = r1
+  4: ......6..9 (b7) r3 = 2
+  5: ...3..6..9 (bf) r8 = r6
+  6: ...3..6.89 (07) r8 += 1
+  7: ...3..6.89 (2d) if r8 > r9 goto pc+266
+  8: ......6.89 (71) r7 = *(u8 *)(r6 +0)
+  9: ......6789 (b7) r1 = 32
+ 10: .1....6789 (bf) r2 = r7
+ 11: .12...6789 (2d) if r1 > r7 goto pc+1
+ 12: ......6789 (b7) r2 = 32
+ 13: ..2...6789 (7b) *(u64 *)(r10 -32) = r2
+ 14: ......6789 (bf) r2 = r10
+ 15: ..2...6789 (07) r2 += -20
+ 16: ..2...6789 (18) r1 = 0xffff000000000000
+ 18: .12...6789 (85) call bpf_map_lookup_elem#1
+ 19: 0.....6789 (b7) r3 = 2
+ 20: 0..3..6789 (15) if r0 == 0x0 goto pc+253
+ 21: 0..3..6789 (15) if r7 == 0x0 goto pc+206
+ 22: 0..3..6789 (bf) r1 = r6
+ 23: 01.3..6789 (07) r1 += 2
+ 24: 01.3..6789 (2d) if r1 > r9 goto pc+249
+ 25: 0..3..6789 (71) r1 = *(u8 *)(r8 +0)
+ 26: 01.3..67.9 (73) *(u8 *)(r0 +0) = r1
+ 27: 0..3..67.9 (15) if r7 == 0x1 goto pc+200
+ 28: 0..3..67.9 (bf) r1 = r6
+ 29: 01.3..67.9 (07) r1 += 3
+ 30: 01.3..67.9 (2d) if r1 > r9 goto pc+243
+ 31: 0..3..67.9 (71) r1 = *(u8 *)(r6 +2)
+ 32: 01.3..67.9 (73) *(u8 *)(r0 +1) = r1
+ 33: 0..3..67.9 (b7) r1 = 3
+ 34: 01.3..67.9 (2d) if r1 > r7 goto pc+193
+ 35: 0..3..67.9 (bf) r1 = r6
+ 36: 01.3..67.9 (07) r1 += 4
+ 37: 01.3..67.9 (2d) if r1 > r9 goto pc+236
+ 38: 0..3..67.9 (71) r1 = *(u8 *)(r6 +3)
+ 39: 01.3..67.9 (73) *(u8 *)(r0 +2) = r1
+ 40: 0..3..67.9 (15) if r7 == 0x3 goto pc+187
+ 41: 0..3..67.9 (bf) r1 = r6
+ 42: 01.3..67.9 (07) r1 += 5
+ 43: 01.3..67.9 (2d) if r1 > r9 goto pc+230
+ 44: 0..3..67.9 (71) r1 = *(u8 *)(r6 +4)
+ 45: 01.3..67.9 (73) *(u8 *)(r0 +3) = r1
+ 46: 0..3..67.9 (b7) r1 = 5
+ 47: 01.3..67.9 (2d) if r1 > r7 goto pc+180
+ 48: 0..3..67.9 (bf) r1 = r6
+ 49: 01.3..67.9 (07) r1 += 6
+ 50: 01.3..67.9 (2d) if r1 > r9 goto pc+223
+ 51: 0..3..67.9 (71) r1 = *(u8 *)(r6 +5)
+ 52: 01.3..67.9 (73) *(u8 *)(r0 +4) = r1
+ 53: 0..3..67.9 (15) if r7 == 0x5 goto pc+174
+ 54: 0..3..67.9 (bf) r1 = r6
+ 55: 01.3..67.9 (07) r1 += 7
+ 56: 01.3..67.9 (2d) if r1 > r9 goto pc+217
+ 57: 0..3..67.9 (71) r1 = *(u8 *)(r6 +6)
+ 58: 01.3..67.9 (73) *(u8 *)(r0 +5) = r1
+ 59: 0..3..67.9 (b7) r1 = 7
+ 60: 01.3..67.9 (2d) if r1 > r7 goto pc+167
+ 61: 0..3..67.9 (bf) r1 = r6
+ 62: 01.3..67.9 (07) r1 += 8
+ 63: 01.3..67.9 (2d) if r1 > r9 goto pc+210
+ 64: 0..3..67.9 (71) r1 = *(u8 *)(r6 +7)
+ 65: 01.3..67.9 (73) *(u8 *)(r0 +6) = r1
+ 66: 0..3..67.9 (15) if r7 == 0x7 goto pc+161
+ 67: 0..3..67.9 (bf) r1 = r6
+ 68: 01.3..67.9 (07) r1 += 9
+ 69: 01.3..67.9 (2d) if r1 > r9 goto pc+204
+ 70: 0..3..67.9 (71) r1 = *(u8 *)(r6 +8)
+ 71: 01.3..67.9 (73) *(u8 *)(r0 +7) = r1
+ 72: 0..3..67.9 (b7) r1 = 9
+ 73: 01.3..67.9 (2d) if r1 > r7 goto pc+154
+ 74: 0..3..67.9 (bf) r1 = r6
+ 75: 01.3..67.9 (07) r1 += 10
+ 76: 01.3..67.9 (2d) if r1 > r9 goto pc+197
+ 77: 0..3..67.9 (71) r1 = *(u8 *)(r6 +9)
+ 78: 01.3..67.9 (73) *(u8 *)(r0 +8) = r1
+ 79: 0..3..67.9 (15) if r7 == 0x9 goto pc+148
+ 80: 0..3..67.9 (bf) r1 = r6
+ 81: 01.3..67.9 (07) r1 += 11
+ 82: 01.3..67.9 (2d) if r1 > r9 goto pc+191
+ 83: 0..3..67.9 (71) r1 = *(u8 *)(r6 +10)
+ 84: 01.3..67.9 (73) *(u8 *)(r0 +9) = r1
+ 85: 0..3..67.9 (b7) r1 = 11
+ 86: 01.3..67.9 (2d) if r1 > r7 goto pc+141
+ 87: 0..3..67.9 (bf) r1 = r6
+ 88: 01.3..67.9 (07) r1 += 12
+ 89: 01.3..67.9 (2d) if r1 > r9 goto pc+184
+ 90: 0..3..67.9 (71) r1 = *(u8 *)(r6 +11)
+ 91: 01.3..67.9 (73) *(u8 *)(r0 +10) = r1
+ 92: 0..3..67.9 (15) if r7 == 0xb goto pc+135
+ 93: 0..3..67.9 (bf) r1 = r6
+ 94: 01.3..67.9 (07) r1 += 13
+ 95: 01.3..67.9 (2d) if r1 > r9 goto pc+178
+ 96: 0..3..67.9 (71) r1 = *(u8 *)(r6 +12)
+ 97: 01.3..67.9 (73) *(u8 *)(r0 +11) = r1
+ 98: 0..3..67.9 (b7) r1 = 13
+ 99: 01.3..67.9 (2d) if r1 > r7 goto pc+128
+100: 0..3..67.9 (bf) r1 = r6
+101: 01.3..67.9 (07) r1 += 14
+102: 01.3..67.9 (2d) if r1 > r9 goto pc+171
+103: 0..3..67.9 (71) r1 = *(u8 *)(r6 +13)
+104: 01.3..67.9 (73) *(u8 *)(r0 +12) = r1
+105: 0..3..67.9 (15) if r7 == 0xd goto pc+122
+106: 0..3..67.9 (bf) r1 = r6
+107: 01.3..67.9 (07) r1 += 15
+108: 01.3..67.9 (2d) if r1 > r9 goto pc+165
+109: 0..3..67.9 (71) r1 = *(u8 *)(r6 +14)
+110: 01.3..67.9 (73) *(u8 *)(r0 +13) = r1
+111: 0..3..67.9 (b7) r1 = 15
+112: 01.3..67.9 (2d) if r1 > r7 goto pc+115
+113: 0..3..67.9 (bf) r1 = r6
+114: 01.3..67.9 (07) r1 += 16
+115: 01.3..67.9 (2d) if r1 > r9 goto pc+158
+116: 0..3..67.9 (71) r1 = *(u8 *)(r6 +15)
+117: 01.3..67.9 (73) *(u8 *)(r0 +14) = r1
+118: 0..3..67.9 (15) if r7 == 0xf goto pc+109
+119: 0..3..67.9 (bf) r1 = r6
+120: 01.3..67.9 (07) r1 += 17
+121: 01.3..67.9 (2d) if r1 > r9 goto pc+152
+122: 0..3..67.9 (71) r1 = *(u8 *)(r6 +16)
+123: 01.3..67.9 (73) *(u8 *)(r0 +15) = r1
+124: 0..3..67.9 (b7) r1 = 17
+125: 01.3..67.9 (2d) if r1 > r7 goto pc+102
+126: 0..3..67.9 (bf) r1 = r6
+127: 01.3..67.9 (07) r1 += 18
+128: 01.3..67.9 (2d) if r1 > r9 goto pc+145
+129: 0..3..67.9 (71) r1 = *(u8 *)(r6 +17)
+130: 01.3..67.9 (73) *(u8 *)(r0 +16) = r1
+131: 0..3..67.9 (15) if r7 == 0x11 goto pc+96
+132: 0..3..67.9 (bf) r1 = r6
+133: 01.3..67.9 (07) r1 += 19
+134: 01.3..67.9 (2d) if r1 > r9 goto pc+139
+135: 0..3..67.9 (71) r1 = *(u8 *)(r6 +18)
+136: 01.3..67.9 (73) *(u8 *)(r0 +17) = r1
+137: 0..3..67.9 (b7) r1 = 19
+138: 01.3..67.9 (2d) if r1 > r7 goto pc+89
+139: 0..3..67.9 (bf) r1 = r6
+140: 01.3..67.9 (07) r1 += 20
+141: 01.3..67.9 (2d) if r1 > r9 goto pc+132
+142: 0..3..67.9 (71) r1 = *(u8 *)(r6 +19)
+143: 01.3..67.9 (73) *(u8 *)(r0 +18) = r1
+144: 0..3..67.9 (15) if r7 == 0x13 goto pc+83
+145: 0..3..67.9 (bf) r1 = r6
+146: 01.3..67.9 (07) r1 += 21
+147: 01.3..67.9 (2d) if r1 > r9 goto pc+126
+148: 0..3..67.9 (71) r1 = *(u8 *)(r6 +20)
+149: 01.3..67.9 (73) *(u8 *)(r0 +19) = r1
+150: 0..3..67.9 (b7) r1 = 21
+151: 01.3..67.9 (2d) if r1 > r7 goto pc+76
+152: 0..3..67.9 (bf) r1 = r6
+153: 01.3..67.9 (07) r1 += 22
+154: 01.3..67.9 (2d) if r1 > r9 goto pc+119
+155: 0..3..67.9 (71) r1 = *(u8 *)(r6 +21)
+156: 01.3..67.9 (73) *(u8 *)(r0 +20) = r1
+157: 0..3..67.9 (15) if r7 == 0x15 goto pc+70
+158: 0..3..67.9 (bf) r1 = r6
+159: 01.3..67.9 (07) r1 += 23
+160: 01.3..67.9 (2d) if r1 > r9 goto pc+113
+161: 0..3..67.9 (71) r1 = *(u8 *)(r6 +22)
+162: 01.3..67.9 (73) *(u8 *)(r0 +21) = r1
+163: 0..3..67.9 (b7) r1 = 23
+164: 01.3..67.9 (2d) if r1 > r7 goto pc+63
+165: 0..3..67.9 (bf) r1 = r6
+166: 01.3..67.9 (07) r1 += 24
+167: 01.3..67.9 (2d) if r1 > r9 goto pc+106
+168: 0..3..67.9 (71) r1 = *(u8 *)(r6 +23)
+169: 01.3..67.9 (73) *(u8 *)(r0 +22) = r1
+170: 0..3..67.9 (15) if r7 == 0x17 goto pc+57
+171: 0..3..67.9 (bf) r1 = r6
+172: 01.3..67.9 (07) r1 += 25
+173: 01.3..67.9 (2d) if r1 > r9 goto pc+100
+174: 0..3..67.9 (71) r1 = *(u8 *)(r6 +24)
+175: 01.3..67.9 (73) *(u8 *)(r0 +23) = r1
+176: 0..3..67.9 (b7) r1 = 25
+177: 01.3..67.9 (2d) if r1 > r7 goto pc+50
+178: 0..3..67.9 (bf) r1 = r6
+179: 01.3..67.9 (07) r1 += 26
+180: 01.3..67.9 (2d) if r1 > r9 goto pc+93
+181: 0..3..67.9 (71) r1 = *(u8 *)(r6 +25)
+182: 01.3..67.9 (73) *(u8 *)(r0 +24) = r1
+183: 0..3..67.9 (15) if r7 == 0x19 goto pc+44
+184: 0..3..67.9 (bf) r1 = r6
+185: 01.3..67.9 (07) r1 += 27
+186: 01.3..67.9 (2d) if r1 > r9 goto pc+87
+187: 0..3..67.9 (71) r1 = *(u8 *)(r6 +26)
+188: 01.3..67.9 (73) *(u8 *)(r0 +25) = r1
+189: 0..3..67.9 (b7) r1 = 27
+190: 01.3..67.9 (2d) if r1 > r7 goto pc+37
+191: 0..3..67.9 (bf) r1 = r6
+192: 01.3..67.9 (07) r1 += 28
+193: 01.3..67.9 (2d) if r1 > r9 goto pc+80
+194: 0..3..67.9 (71) r1 = *(u8 *)(r6 +27)
+195: 01.3..67.9 (73) *(u8 *)(r0 +26) = r1
+196: 0..3..67.9 (15) if r7 == 0x1b goto pc+31
+197: 0..3..67.9 (bf) r1 = r6
+198: 01.3..67.9 (07) r1 += 29
+199: 01.3..67.9 (2d) if r1 > r9 goto pc+74
+200: 0..3..67.9 (71) r1 = *(u8 *)(r6 +28)
+201: 01.3..67.9 (73) *(u8 *)(r0 +27) = r1
+202: 0..3..67.9 (b7) r1 = 29
+203: 01.3..67.9 (2d) if r1 > r7 goto pc+24
+204: 0..3..67.9 (bf) r1 = r6
+205: 01.3..67.9 (07) r1 += 30
+206: 01.3..67.9 (2d) if r1 > r9 goto pc+67
+207: 0..3..67.9 (71) r1 = *(u8 *)(r6 +29)
+208: 01.3..67.9 (73) *(u8 *)(r0 +28) = r1
+209: 0..3..67.9 (15) if r7 == 0x1d goto pc+18
+210: 0..3..67.9 (bf) r1 = r6
+211: 01.3..67.9 (07) r1 += 31
+212: 01.3..67.9 (2d) if r1 > r9 goto pc+61
+213: 0..3..67.9 (71) r1 = *(u8 *)(r6 +30)
+214: 01.3..67.9 (73) *(u8 *)(r0 +29) = r1
+215: 0..3..67.9 (b7) r1 = 31
+216: 01.3..67.9 (2d) if r1 > r7 goto pc+11
+217: 0..3..67.9 (bf) r1 = r6
+218: 01.3..67.9 (07) r1 += 32
+219: 01.3..67.9 (2d) if r1 > r9 goto pc+54
+220: 0..3..67.9 (71) r1 = *(u8 *)(r6 +31)
+221: 01.3..67.9 (73) *(u8 *)(r0 +30) = r1
+222: 0..3..67.9 (15) if r7 == 0x1f goto pc+5
+223: 0..3..6..9 (bf) r1 = r6
+224: 01.3..6..9 (07) r1 += 33
+225: 01.3..6..9 (2d) if r1 > r9 goto pc+48
+226: 0.....6... (71) r1 = *(u8 *)(r6 +32)
+227: 01........ (73) *(u8 *)(r0 +31) = r1
+228: 0......... (b7) r6 = 0
+229: 0.....6... (bf) r4 = r10
+230: 0...4.6... (07) r4 += -16
+231: 0...4.6... (bf) r1 = r0
+232: .1..4.6... (79) r2 = *(u64 *)(r10 -32)
+233: .12.4.6... (b7) r3 = 0
+234: .1234.6... (85) call bpf_dynptr_from_mem#197
+235: 0.....6... (b7) r3 = 2
+236: 0..3..6... (6d) if r6 s> r0 goto pc+37
+237: .......... (bf) r1 = r10
+238: .1........ (07) r1 += -16
+239: .1........ (b7) r2 = 0
+240: .12....... (b7) r3 = 4
+241: .123...... (85) call bpf_dynptr_data#203
+242: 0......... (b7) r3 = 2
+243: 0..3...... (15) if r0 == 0x0 goto pc+30
+244: 0..3...... (61) r1 = *(u32 *)(r0 +0)
+245: .1.3...... (15) if r1 == 0x3ea goto pc+12
+246: .1.3...... (55) if r1 != 0x3e9 goto pc+27
+247: .......... (bf) r1 = r10
+248: .1........ (07) r1 += -16
+249: .1........ (b7) r2 = 0
+250: .12....... (b7) r3 = 12
+251: .123...... (85) call bpf_dynptr_data#203
+252: 0......... (b7) r3 = 2
+253: 0..3...... (61) r1 = *(u32 *)(r0 +4)
+254: 01.3...... (25) if r1 > 0x7 goto pc+19
+255: 0......... (b7) r1 = 85
+256: 01........ (07) r0 += 8
+257: 01........ (05) goto pc+12
+258: .......... (bf) r1 = r10
+259: .1........ (07) r1 += -16
+260: .1........ (b7) r2 = 0
+261: .12....... (b7) r3 = 16
+262: .123...... (85) call bpf_dynptr_data#203
+263: 0......... (b7) r3 = 2
+264: 0..3...... (61) r1 = *(u32 *)(r0 +4)
+265: 01.3...... (25) if r1 > 0x3 goto pc+8
+266: 0..3...... (61) r1 = *(u32 *)(r0 +8)
+267: 01.3...... (55) if r1 != 0x7 goto pc+6
+268: 0......... (b7) r1 = 9
+269: 01........ (07) r0 += 12
+270: 01........ (61) r2 = *(u32 *)(r0 +0)
+271: .12....... (b7) r3 = 1
+272: .123...... (1d) if r2 == r1 goto pc+1
+273: .......... (b7) r3 = 2
+274: ...3...... (bf) r0 = r3
+275: 0......... (95) exit
+0: R1=ctx() R10=fp0
+; void *data_end = (void *)(long)ctx->data_end; @ buggy.bpf.c:50
+0: (61) r9 = *(u32 *)(r1 +4)          ; R1=ctx() R9_w=pkt_end()
+; void *data = (void *)(long)ctx->data; @ buggy.bpf.c:49
+1: (61) r6 = *(u32 *)(r1 +0)          ; R1=ctx() R6_w=pkt(r=0)
+2: (b7) r1 = 0                        ; R1_w=0
+; __u32 key = 0; @ buggy.bpf.c:54
+3: (63) *(u32 *)(r10 -20) = r1
+mark_precise: frame0: last_idx 3 first_idx 0 subseq_idx -1 
+mark_precise: frame0: regs=r1 stack= before 2: (b7) r1 = 0
+4: R1_w=0 R10=fp0 fp-24=0000????
+4: (b7) r3 = 2                        ; R3_w=2
+; if ((void *)(bytes + 1) > data_end) @ buggy.bpf.c:58
+5: (bf) r8 = r6                       ; R6_w=pkt(r=0) R8_w=pkt(r=0)
+6: (07) r8 += 1                       ; R8_w=pkt(off=1,r=0)
+7: (2d) if r8 > r9 goto pc+266        ; R8_w=pkt(off=1,r=1) R9_w=pkt_end()
+; payload_len = bytes[0]; @ buggy.bpf.c:60
+8: (71) r7 = *(u8 *)(r6 +0)           ; R6_w=pkt(r=1) R7_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+9: (b7) r1 = 32                       ; R1_w=32
+10: (bf) r2 = r7                      ; R2_w=scalar(id=1,smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R7_w=scalar(id=1,smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+; if (payload_len > SCRATCH_SIZE) @ buggy.bpf.c:61
+11: (2d) if r1 > r7 goto pc+1         ; R1_w=32 R7_w=scalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+12: (b7) r2 = 32                      ; R2=32
+13: (7b) *(u64 *)(r10 -32) = r2       ; R2=32 R10=fp0 fp-32_w=32
+14: (bf) r2 = r10                     ; R2_w=fp0 R10=fp0
+;  @ buggy.bpf.c:0
+15: (07) r2 += -20                    ; R2_w=fp-20
+; scratch = bpf_map_lookup_elem(&scratch_map, &key); @ buggy.bpf.c:64
+16: (18) r1 = 0xffff000000000000      ; R1_w=map_ptr(map=scratch_map,ks=4,vs=32)
+18: (85) call bpf_map_lookup_elem#1   ; R0_w=map_value(map=scratch_map,ks=4,vs=32)
+19: (b7) r3 = 2                       ; R3_w=2
+; if (!scratch) @ buggy.bpf.c:65
+20: (15) if r0 == 0x0 goto pc+253     ; R0_w=map_value(map=scratch_map,ks=4,vs=32)
+; if (i < payload_len) { @ buggy.bpf.c:70
+21: (15) if r7 == 0x0 goto pc+206
+mark_precise: frame0: last_idx 21 first_idx 13 subseq_idx -1 
+mark_precise: frame0: regs=r7 stack= before 20: (15) if r0 == 0x0 goto pc+253
+mark_precise: frame0: regs=r7 stack= before 19: (b7) r3 = 2
+mark_precise: frame0: regs=r7 stack= before 18: (85) call bpf_map_lookup_elem#1
+mark_precise: frame0: regs=r7 stack= before 16: (18) r1 = 0xffff000000000000
+mark_precise: frame0: regs=r7 stack= before 15: (07) r2 += -20
+mark_precise: frame0: regs=r7 stack= before 14: (bf) r2 = r10
+mark_precise: frame0: regs=r7 stack= before 13: (7b) *(u64 *)(r10 -32) = r2
+mark_precise: frame0: parent state regs=r7 stack=:  R1_w=32 R2_rw=32 R3_w=2 R6_w=pkt(r=1) R7_rw=Pscalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8_w=pkt(off=1,r=1) R9_w=pkt_end() R10=fp0 fp-24_r=0000????
+mark_precise: frame0: last_idx 12 first_idx 0 subseq_idx 13 
+mark_precise: frame0: regs=r7 stack= before 12: (b7) r2 = 32
+mark_precise: frame0: regs=r7 stack= before 11: (2d) if r1 > r7 goto pc+1
+mark_precise: frame0: regs=r1,r2,r7 stack= before 10: (bf) r2 = r7
+mark_precise: frame0: regs=r1,r7 stack= before 9: (b7) r1 = 32
+mark_precise: frame0: regs=r7 stack= before 8: (71) r7 = *(u8 *)(r6 +0)
+21: R7=scalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+22: (bf) r1 = r6                      ; R1_w=pkt(r=1) R6=pkt(r=1)
+23: (07) r1 += 2                      ; R1=pkt(off=2,r=1)
+; if ((void *)(bytes + 2 + i) > data_end) @ buggy.bpf.c:71
+24: (2d) if r1 > r9 goto pc+249       ; R1=pkt(off=2,r=2) R9=pkt_end()
+; scratch->data[i] = bytes[1 + i]; @ buggy.bpf.c:73
+25: (71) r1 = *(u8 *)(r8 +0)          ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=pkt(off=1,r=2)
+26: (73) *(u8 *)(r0 +0) = r1          ; R0=map_value(map=scratch_map,ks=4,vs=32) R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+; if (i < payload_len) { @ buggy.bpf.c:70
+27: (15) if r7 == 0x1 goto pc+200
+mark_precise: frame0: last_idx 27 first_idx 24 subseq_idx -1 
+mark_precise: frame0: regs=r7 stack= before 26: (73) *(u8 *)(r0 +0) = r1
+mark_precise: frame0: regs=r7 stack= before 25: (71) r1 = *(u8 *)(r8 +0)
+mark_precise: frame0: regs=r7 stack= before 24: (2d) if r1 > r9 goto pc+249
+mark_precise: frame0: parent state regs=r7 stack=:  R0_rw=map_value(map=scratch_map,ks=4,vs=32) R1_rw=pkt(off=2,r=1) R3_w=2 R6=pkt(r=1) R7_r=Pscalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8_r=pkt(off=1,r=1) R9_r=pkt_end() R10=fp0 fp-24=0000???? fp-32_w=32
+mark_precise: frame0: last_idx 23 first_idx 13 subseq_idx 24 
+mark_precise: frame0: regs=r7 stack= before 23: (07) r1 += 2
+mark_precise: frame0: regs=r7 stack= before 22: (bf) r1 = r6
+mark_precise: frame0: regs=r7 stack= before 21: (15) if r7 == 0x0 goto pc+206
+mark_precise: frame0: regs=r7 stack= before 20: (15) if r0 == 0x0 goto pc+253
+mark_precise: frame0: regs=r7 stack= before 19: (b7) r3 = 2
+mark_precise: frame0: regs=r7 stack= before 18: (85) call bpf_map_lookup_elem#1
+mark_precise: frame0: regs=r7 stack= before 16: (18) r1 = 0xffff000000000000
+mark_precise: frame0: regs=r7 stack= before 15: (07) r2 += -20
+mark_precise: frame0: regs=r7 stack= before 14: (bf) r2 = r10
+mark_precise: frame0: regs=r7 stack= before 13: (7b) *(u64 *)(r10 -32) = r2
+mark_precise: frame0: parent state regs= stack=:  R1_w=32 R2_rw=32 R3_w=2 R6_rw=pkt(r=1) R7_rw=Pscalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8_rw=pkt(off=1,r=1) R9_rw=pkt_end() R10=fp0 fp-24_r=0000????
+27: R7=scalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+; if ((void *)(bytes + 2 + i) > data_end) @ buggy.bpf.c:71
+28: (bf) r1 = r6                      ; R1_w=pkt(r=2) R6=pkt(r=2)
+29: (07) r1 += 3                      ; R1_w=pkt(off=3,r=2)
+30: (2d) if r1 > r9 goto pc+243       ; R1_w=pkt(off=3,r=3) R9=pkt_end()
+; scratch->data[i] = bytes[1 + i]; @ buggy.bpf.c:73
+31: (71) r1 = *(u8 *)(r6 +2)          ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R6=pkt(r=3)
+32: (73) *(u8 *)(r0 +1) = r1          ; R0=map_value(map=scratch_map,ks=4,vs=32) R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+33: (b7) r1 = 3                       ; R1=3
+; if (i < payload_len) { @ buggy.bpf.c:70
+34: (2d) if r1 > r7 goto pc+193
+mark_precise: frame0: last_idx 34 first_idx 34 subseq_idx -1 
+mark_precise: frame0: parent state regs=r1 stack=:  R0=map_value(map=scratch_map,ks=4,vs=32) R1_rw=P3 R3=2 R6=pkt(r=3) R7_r=scalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=pkt(off=1,r=3) R9=pkt_end() R10=fp0 fp-24=0000???? fp-32=32
+mark_precise: frame0: last_idx 33 first_idx 24 subseq_idx 34 
+mark_precise: frame0: regs=r1 stack= before 33: (b7) r1 = 3
+mark_precise: frame0: last_idx 34 first_idx 34 subseq_idx -1 
+mark_precise: frame0: parent state regs=r7 stack=:  R0=map_value(map=scratch_map,ks=4,vs=32) R1_rw=P3 R3=2 R6=pkt(r=3) R7_r=Pscalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=pkt(off=1,r=3) R9=pkt_end() R10=fp0 fp-24=0000???? fp-32=32
+mark_precise: frame0: last_idx 33 first_idx 24 subseq_idx 34 
+mark_precise: frame0: regs=r7 stack= before 33: (b7) r1 = 3
+mark_precise: frame0: regs=r7 stack= before 32: (73) *(u8 *)(r0 +1) = r1
+mark_precise: frame0: regs=r7 stack= before 31: (71) r1 = *(u8 *)(r6 +2)
+mark_precise: frame0: regs=r7 stack= before 30: (2d) if r1 > r9 goto pc+243
+mark_precise: frame0: regs=r7 stack= before 29: (07) r1 += 3
+mark_precise: frame0: regs=r7 stack= before 28: (bf) r1 = r6
+mark_precise: frame0: regs=r7 stack= before 27: (15) if r7 == 0x1 goto pc+200
+mark_precise: frame0: regs=r7 stack= before 26: (73) *(u8 *)(r0 +0) = r1
+mark_precise: frame0: regs=r7 stack= before 25: (71) r1 = *(u8 *)(r8 +0)
+mark_precise: frame0: regs=r7 stack= before 24: (2d) if r1 > r9 goto pc+249
+mark_precise: frame0: parent state regs= stack=:  R0_rw=map_value(map=scratch_map,ks=4,vs=32) R1_rw=pkt(off=2,r=1) R3_w=2 R6_r=pkt(r=1) R7_r=Pscalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8_r=pkt(off=1,r=1) R9_r=pkt_end() R10=fp0 fp-24=0000???? fp-32_w=32
+34: R1=3 R7=scalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+; if ((void *)(bytes + 2 + i) > data_end) @ buggy.bpf.c:71
+35: (bf) r1 = r6                      ; R1_w=pkt(r=3) R6=pkt(r=3)
+36: (07) r1 += 4                      ; R1_w=pkt(off=4,r=3)
+37: (2d) if r1 > r9 goto pc+236       ; R1_w=pkt(off=4,r=4) R9=pkt_end()
+; scratch->data[i] = bytes[1 + i]; @ buggy.bpf.c:73
+38: (71) r1 = *(u8 *)(r6 +3)          ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R6=pkt(r=4)
+39: (73) *(u8 *)(r0 +2) = r1          ; R0=map_value(map=scratch_map,ks=4,vs=32) R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+; if (i < payload_len) { @ buggy.bpf.c:70
+40: (15) if r7 == 0x3 goto pc+187
+mark_precise: frame0: last_idx 40 first_idx 34 subseq_idx -1 
+mark_precise: frame0: regs=r7 stack= before 39: (73) *(u8 *)(r0 +2) = r1
+mark_precise: frame0: regs=r7 stack= before 38: (71) r1 = *(u8 *)(r6 +3)
+mark_precise: frame0: regs=r7 stack= before 37: (2d) if r1 > r9 goto pc+236
+mark_precise: frame0: regs=r7 stack= before 36: (07) r1 += 4
+mark_precise: frame0: regs=r7 stack= before 35: (bf) r1 = r6
+mark_precise: frame0: regs=r7 stack= before 34: (2d) if r1 > r7 goto pc+193
+mark_precise: frame0: parent state regs= stack=:  R0_r=map_value(map=scratch_map,ks=4,vs=32) R1_rw=P3 R3=2 R6_r=pkt(r=3) R7_r=Pscalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=pkt(off=1,r=3) R9_r=pkt_end() R10=fp0 fp-24=0000???? fp-32=32
+40: R7=scalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+; if ((void *)(bytes + 2 + i) > data_end) @ buggy.bpf.c:71
+41: (bf) r1 = r6                      ; R1_w=pkt(r=4) R6=pkt(r=4)
+42: (07) r1 += 5                      ; R1=pkt(off=5,r=4)
+43: (2d) if r1 > r9 goto pc+230       ; R1=pkt(off=5,r=5) R9=pkt_end()
+; scratch->data[i] = bytes[1 + i]; @ buggy.bpf.c:73
+44: (71) r1 = *(u8 *)(r6 +4)          ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R6=pkt(r=5)
+45: (73) *(u8 *)(r0 +3) = r1          ; R0=map_value(map=scratch_map,ks=4,vs=32) R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+46: (b7) r1 = 5                       ; R1_w=5
+; if (i < payload_len) { @ buggy.bpf.c:70
+47: (2d) if r1 > r7 goto pc+180
+mark_precise: frame0: last_idx 47 first_idx 43 subseq_idx -1 
+mark_precise: frame0: regs=r1 stack= before 46: (b7) r1 = 5
+mark_precise: frame0: last_idx 47 first_idx 43 subseq_idx -1 
+mark_precise: frame0: regs=r7 stack= before 46: (b7) r1 = 5
+mark_precise: frame0: regs=r7 stack= before 45: (73) *(u8 *)(r0 +3) = r1
+mark_precise: frame0: regs=r7 stack= before 44: (71) r1 = *(u8 *)(r6 +4)
+mark_precise: frame0: regs=r7 stack= before 43: (2d) if r1 > r9 goto pc+230
+mark_precise: frame0: parent state regs=r7 stack=:  R0_r=map_value(map=scratch_map,ks=4,vs=32) R1_rw=pkt(off=5,r=4) R3=2 R6_r=pkt(r=4) R7_r=Pscalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=pkt(off=1,r=4) R9_r=pkt_end() R10=fp0 fp-24=0000???? fp-32=32
+mark_precise: frame0: last_idx 42 first_idx 34 subseq_idx 43 
+mark_precise: frame0: regs=r7 stack= before 42: (07) r1 += 5
+mark_precise: frame0: regs=r7 stack= before 41: (bf) r1 = r6
+mark_precise: frame0: regs=r7 stack= before 40: (15) if r7 == 0x3 goto pc+187
+mark_precise: frame0: regs=r7 stack= before 39: (73) *(u8 *)(r0 +2) = r1
+mark_precise: frame0: regs=r7 stack= before 38: (71) r1 = *(u8 *)(r6 +3)
+mark_precise: frame0: regs=r7 stack= before 37: (2d) if r1 > r9 goto pc+236
+mark_precise: frame0: regs=r7 stack= before 36: (07) r1 += 4
+mark_precise: frame0: regs=r7 stack= before 35: (bf) r1 = r6
+mark_precise: frame0: regs=r7 stack= before 34: (2d) if r1 > r7 goto pc+193
+mark_precise: frame0: parent state regs= stack=:  R0_r=map_value(map=scratch_map,ks=4,vs=32) R1_rw=P3 R3=2 R6_r=pkt(r=3) R7_r=Pscalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=pkt(off=1,r=3) R9_r=pkt_end() R10=fp0 fp-24=0000???? fp-32=32
+47: R1_w=5 R7=scalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+; if ((void *)(bytes + 2 + i) > data_end) @ buggy.bpf.c:71
+48: (bf) r1 = r6                      ; R1_w=pkt(r=5) R6=pkt(r=5)
+49: (07) r1 += 6                      ; R1_w=pkt(off=6,r=5)
+50: (2d) if r1 > r9 goto pc+223       ; R1_w=pkt(off=6,r=6) R9=pkt_end()
+; scratch->data[i] = bytes[1 + i]; @ buggy.bpf.c:73
+51: (71) r1 = *(u8 *)(r6 +5)          ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R6=pkt(r=6)
+52: (73) *(u8 *)(r0 +4) = r1          ; R0=map_value(map=scratch_map,ks=4,vs=32) R1=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+; if (i < payload_len) { @ buggy.bpf.c:70
+53: (15) if r7 == 0x5 goto pc+174
+mark_precise: frame0: last_idx 53 first_idx 53 subseq_idx -1 
+mark_precise: frame0: parent state regs=r7 stack=:  R0=map_value(map=scratch_map,ks=4,vs=32) R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R3=2 R6=pkt(r=6) R7_r=Pscalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=pkt(off=1,r=6) R9=pkt_end() R10=fp0 fp-24=0000???? fp-32=32
+mark_precise: frame0: last_idx 52 first_idx 43 subseq_idx 53 
+mark_precise: frame0: regs=r7 stack= before 52: (73) *(u8 *)(r0 +4) = r1
+mark_precise: frame0: regs=r7 stack= before 51: (71) r1 = *(u8 *)(r6 +5)
+mark_precise: frame0: regs=r7 stack= before 50: (2d) if r1 > r9 goto pc+223
+mark_precise: frame0: regs=r7 stack= before 49: (07) r1 += 6
+mark_precise: frame0: regs=r7 stack= before 48: (bf) r1 = r6
+mark_precise: frame0: regs=r7 stack= before 47: (2d) if r1 > r7 goto pc+180
+mark_precise: frame0: regs=r1,r7 stack= before 46: (b7) r1 = 5
+mark_precise: frame0: regs=r7 stack= before 45: (73) *(u8 *)(r0 +3) = r1
+mark_precise: frame0: regs=r7 stack= before 44: (71) r1 = *(u8 *)(r6 +4)
+mark_precise: frame0: regs=r7 stack= before 43: (2d) if r1 > r9 goto pc+230
+mark_precise: frame0: parent state regs= stack=:  R0_r=map_value(map=scratch_map,ks=4,vs=32) R1_rw=pkt(off=5,r=4) R3=2 R6_r=pkt(r=4) R7_r=Pscalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=pkt(off=1,r=4) R9_r=pkt_end() R10=fp0 fp-24=0000???? fp-32=32
+53: R7=scalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+; if ((void *)(bytes + 2 + i) > data_end) @ buggy.bpf.c:71
+54: (bf) r1 = r6                      ; R1_w=pkt(r=6) R6=pkt(r=6)
+55: (07) r1 += 7                      ; R1_w=pkt(off=7,r=6)
+56: (2d) if r1 > r9 goto pc+217       ; R1_w=pkt(off=7,r=7) R9=pkt_end()
+; scratch->data[i] = bytes[1 + i]; @ buggy.bpf.c:73
+57: (71) r1 = *(u8 *)(r6 +6)          ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R6=pkt(r=7)
+58: (73) *(u8 *)(r0 +5) = r1          ; R0=map_value(map=scratch_map,ks=4,vs=32) R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+59: (b7) r1 = 7                       ; R1_w=7
+; if (i < payload_len) { @ buggy.bpf.c:70
+60: (2d) if r1 > r7 goto pc+167
+mark_precise: frame0: last_idx 60 first_idx 53 subseq_idx -1 
+mark_precise: frame0: regs=r1 stack= before 59: (b7) r1 = 7
+mark_precise: frame0: last_idx 60 first_idx 53 subseq_idx -1 
+mark_precise: frame0: regs=r7 stack= before 59: (b7) r1 = 7
+mark_precise: frame0: regs=r7 stack= before 58: (73) *(u8 *)(r0 +5) = r1
+mark_precise: frame0: regs=r7 stack= before 57: (71) r1 = *(u8 *)(r6 +6)
+mark_precise: frame0: regs=r7 stack= before 56: (2d) if r1 > r9 goto pc+217
+mark_precise: frame0: regs=r7 stack= before 55: (07) r1 += 7
+mark_precise: frame0: regs=r7 stack= before 54: (bf) r1 = r6
+mark_precise: frame0: regs=r7 stack= before 53: (15) if r7 == 0x5 goto pc+174
+mark_precise: frame0: parent state regs= stack=:  R0_r=map_value(map=scratch_map,ks=4,vs=32) R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R3=2 R6_r=pkt(r=6) R7_r=Pscalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=pkt(off=1,r=6) R9_r=pkt_end() R10=fp0 fp-24=0000???? fp-32=32
+60: R1_w=7 R7=scalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+; if ((void *)(bytes + 2 + i) > data_end) @ buggy.bpf.c:71
+61: (bf) r1 = r6                      ; R1_w=pkt(r=7) R6=pkt(r=7)
+62: (07) r1 += 8                      ; R1=pkt(off=8,r=7)
+63: (2d) if r1 > r9 goto pc+210       ; R1=pkt(off=8,r=8) R9=pkt_end()
+; scratch->data[i] = bytes[1 + i]; @ buggy.bpf.c:73
+64: (71) r1 = *(u8 *)(r6 +7)          ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R6=pkt(r=8)
+65: (73) *(u8 *)(r0 +6) = r1          ; R0=map_value(map=scratch_map,ks=4,vs=32) R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+; if (i < payload_len) { @ buggy.bpf.c:70
+66: (15) if r7 == 0x7 goto pc+161
+mark_precise: frame0: last_idx 66 first_idx 63 subseq_idx -1 
+mark_precise: frame0: regs=r7 stack= before 65: (73) *(u8 *)(r0 +6) = r1
+mark_precise: frame0: regs=r7 stack= before 64: (71) r1 = *(u8 *)(r6 +7)
+mark_precise: frame0: regs=r7 stack= before 63: (2d) if r1 > r9 goto pc+210
+mark_precise: frame0: parent state regs=r7 stack=:  R0_r=map_value(map=scratch_map,ks=4,vs=32) R1_rw=pkt(off=8,r=7) R3=2 R6_r=pkt(r=7) R7_r=Pscalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=pkt(off=1,r=7) R9_r=pkt_end() R10=fp0 fp-24=0000???? fp-32=32
+mark_precise: frame0: last_idx 62 first_idx 53 subseq_idx 63 
+mark_precise: frame0: regs=r7 stack= before 62: (07) r1 += 8
+mark_precise: frame0: regs=r7 stack= before 61: (bf) r1 = r6
+mark_precise: frame0: regs=r7 stack= before 60: (2d) if r1 > r7 goto pc+167
+mark_precise: frame0: regs=r1,r7 stack= before 59: (b7) r1 = 7
+mark_precise: frame0: regs=r7 stack= before 58: (73) *(u8 *)(r0 +5) = r1
+mark_precise: frame0: regs=r7 stack= before 57: (71) r1 = *(u8 *)(r6 +6)
+mark_precise: frame0: regs=r7 stack= before 56: (2d) if r1 > r9 goto pc+217
+mark_precise: frame0: regs=r7 stack= before 55: (07) r1 += 7
+mark_precise: frame0: regs=r7 stack= before 54: (bf) r1 = r6
+mark_precise: frame0: regs=r7 stack= before 53: (15) if r7 == 0x5 goto pc+174
+mark_precise: frame0: parent state regs= stack=:  R0_r=map_value(map=scratch_map,ks=4,vs=32) R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R3=2 R6_r=pkt(r=6) R7_r=Pscalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=pkt(off=1,r=6) R9_r=pkt_end() R10=fp0 fp-24=0000???? fp-32=32
+66: R7=scalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+; if ((void *)(bytes + 2 + i) > data_end) @ buggy.bpf.c:71
+67: (bf) r1 = r6                      ; R1_w=pkt(r=8) R6=pkt(r=8)
+68: (07) r1 += 9                      ; R1_w=pkt(off=9,r=8)
+69: (2d) if r1 > r9 goto pc+204       ; R1_w=pkt(off=9,r=9) R9=pkt_end()
+; scratch->data[i] = bytes[1 + i]; @ buggy.bpf.c:73
+70: (71) r1 = *(u8 *)(r6 +8)          ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R6=pkt(r=9)
+71: (73) *(u8 *)(r0 +7) = r1          ; R0=map_value(map=scratch_map,ks=4,vs=32) R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+72: (b7) r1 = 9                       ; R1=9
+; if (i < payload_len) { @ buggy.bpf.c:70
+73: (2d) if r1 > r7 goto pc+154
+mark_precise: frame0: last_idx 73 first_idx 73 subseq_idx -1 
+mark_precise: frame0: parent state regs=r1 stack=:  R0=map_value(map=scratch_map,ks=4,vs=32) R1_rw=P9 R3=2 R6=pkt(r=9) R7_r=scalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=pkt(off=1,r=9) R9=pkt_end() R10=fp0 fp-24=0000???? fp-32=32
+mark_precise: frame0: last_idx 72 first_idx 63 subseq_idx 73 
+mark_precise: frame0: regs=r1 stack= before 72: (b7) r1 = 9
+mark_precise: frame0: last_idx 73 first_idx 73 subseq_idx -1 
+mark_precise: frame0: parent state regs=r7 stack=:  R0=map_value(map=scratch_map,ks=4,vs=32) R1_rw=P9 R3=2 R6=pkt(r=9) R7_r=Pscalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=pkt(off=1,r=9) R9=pkt_end() R10=fp0 fp-24=0000???? fp-32=32
+mark_precise: frame0: last_idx 72 first_idx 63 subseq_idx 73 
+mark_precise: frame0: regs=r7 stack= before 72: (b7) r1 = 9
+mark_precise: frame0: regs=r7 stack= before 71: (73) *(u8 *)(r0 +7) = r1
+mark_precise: frame0: regs=r7 stack= before 70: (71) r1 = *(u8 *)(r6 +8)
+mark_precise: frame0: regs=r7 stack= before 69: (2d) if r1 > r9 goto pc+204
+mark_precise: frame0: regs=r7 stack= before 68: (07) r1 += 9
+mark_precise: frame0: regs=r7 stack= before 67: (bf) r1 = r6
+mark_precise: frame0: regs=r7 stack= before 66: (15) if r7 == 0x7 goto pc+161
+mark_precise: frame0: regs=r7 stack= before 65: (73) *(u8 *)(r0 +6) = r1
+mark_precise: frame0: regs=r7 stack= before 64: (71) r1 = *(u8 *)(r6 +7)
+mark_precise: frame0: regs=r7 stack= before 63: (2d) if r1 > r9 goto pc+210
+mark_precise: frame0: parent state regs= stack=:  R0_r=map_value(map=scratch_map,ks=4,vs=32) R1_rw=pkt(off=8,r=7) R3=2 R6_r=pkt(r=7) R7_r=Pscalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=pkt(off=1,r=7) R9_r=pkt_end() R10=fp0 fp-24=0000???? fp-32=32
+73: R1=9 R7=scalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+; if ((void *)(bytes + 2 + i) > data_end) @ buggy.bpf.c:71
+74: (bf) r1 = r6                      ; R1_w=pkt(r=9) R6=pkt(r=9)
+75: (07) r1 += 10                     ; R1_w=pkt(off=10,r=9)
+76: (2d) if r1 > r9 goto pc+197       ; R1_w=pkt(off=10,r=10) R9=pkt_end()
+; scratch->data[i] = bytes[1 + i]; @ buggy.bpf.c:73
+77: (71) r1 = *(u8 *)(r6 +9)          ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R6=pkt(r=10)
+78: (73) *(u8 *)(r0 +8) = r1          ; R0=map_value(map=scratch_map,ks=4,vs=32) R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+; if (i < payload_len) { @ buggy.bpf.c:70
+79: (15) if r7 == 0x9 goto pc+148
+mark_precise: frame0: last_idx 79 first_idx 73 subseq_idx -1 
+mark_precise: frame0: regs=r7 stack= before 78: (73) *(u8 *)(r0 +8) = r1
+mark_precise: frame0: regs=r7 stack= before 77: (71) r1 = *(u8 *)(r6 +9)
+mark_precise: frame0: regs=r7 stack= before 76: (2d) if r1 > r9 goto pc+197
+mark_precise: frame0: regs=r7 stack= before 75: (07) r1 += 10
+mark_precise: frame0: regs=r7 stack= before 74: (bf) r1 = r6
+mark_precise: frame0: regs=r7 stack= before 73: (2d) if r1 > r7 goto pc+154
+mark_precise: frame0: parent state regs= stack=:  R0_r=map_value(map=scratch_map,ks=4,vs=32) R1_rw=P9 R3=2 R6_r=pkt(r=9) R7_r=Pscalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=pkt(off=1,r=9) R9_r=pkt_end() R10=fp0 fp-24=0000???? fp-32=32
+79: R7=scalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+; if ((void *)(bytes + 2 + i) > data_end) @ buggy.bpf.c:71
+80: (bf) r1 = r6                      ; R1_w=pkt(r=10) R6=pkt(r=10)
+81: (07) r1 += 11                     ; R1=pkt(off=11,r=10)
+82: (2d) if r1 > r9 goto pc+191       ; R1=pkt(off=11,r=11) R9=pkt_end()
+; scratch->data[i] = bytes[1 + i]; @ buggy.bpf.c:73
+83: (71) r1 = *(u8 *)(r6 +10)         ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R6=pkt(r=11)
+84: (73) *(u8 *)(r0 +9) = r1          ; R0=map_value(map=scratch_map,ks=4,vs=32) R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+85: (b7) r1 = 11                      ; R1_w=11
+; if (i < payload_len) { @ buggy.bpf.c:70
+86: (2d) if r1 > r7 goto pc+141
+mark_precise: frame0: last_idx 86 first_idx 82 subseq_idx -1 
+mark_precise: frame0: regs=r1 stack= before 85: (b7) r1 = 11
+mark_precise: frame0: last_idx 86 first_idx 82 subseq_idx -1 
+mark_precise: frame0: regs=r7 stack= before 85: (b7) r1 = 11
+mark_precise: frame0: regs=r7 stack= before 84: (73) *(u8 *)(r0 +9) = r1
+mark_precise: frame0: regs=r7 stack= before 83: (71) r1 = *(u8 *)(r6 +10)
+mark_precise: frame0: regs=r7 stack= before 82: (2d) if r1 > r9 goto pc+191
+mark_precise: frame0: parent state regs=r7 stack=:  R0_r=map_value(map=scratch_map,ks=4,vs=32) R1_rw=pkt(off=11,r=10) R3=2 R6_r=pkt(r=10) R7_r=Pscalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=pkt(off=1,r=10) R9_r=pkt_end() R10=fp0 fp-24=0000???? fp-32=32
+mark_precise: frame0: last_idx 81 first_idx 73 subseq_idx 82 
+mark_precise: frame0: regs=r7 stack= before 81: (07) r1 += 11
+mark_precise: frame0: regs=r7 stack= before 80: (bf) r1 = r6
+mark_precise: frame0: regs=r7 stack= before 79: (15) if r7 == 0x9 goto pc+148
+mark_precise: frame0: regs=r7 stack= before 78: (73) *(u8 *)(r0 +8) = r1
+mark_precise: frame0: regs=r7 stack= before 77: (71) r1 = *(u8 *)(r6 +9)
+mark_precise: frame0: regs=r7 stack= before 76: (2d) if r1 > r9 goto pc+197
+mark_precise: frame0: regs=r7 stack= before 75: (07) r1 += 10
+mark_precise: frame0: regs=r7 stack= before 74: (bf) r1 = r6
+mark_precise: frame0: regs=r7 stack= before 73: (2d) if r1 > r7 goto pc+154
+mark_precise: frame0: parent state regs= stack=:  R0_r=map_value(map=scratch_map,ks=4,vs=32) R1_rw=P9 R3=2 R6_r=pkt(r=9) R7_r=Pscalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=pkt(off=1,r=9) R9_r=pkt_end() R10=fp0 fp-24=0000???? fp-32=32
+86: R1_w=11 R7=scalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+; if ((void *)(bytes + 2 + i) > data_end) @ buggy.bpf.c:71
+87: (bf) r1 = r6                      ; R1_w=pkt(r=11) R6=pkt(r=11)
+88: (07) r1 += 12                     ; R1_w=pkt(off=12,r=11)
+89: (2d) if r1 > r9 goto pc+184       ; R1_w=pkt(off=12,r=12) R9=pkt_end()
+; scratch->data[i] = bytes[1 + i]; @ buggy.bpf.c:73
+90: (71) r1 = *(u8 *)(r6 +11)         ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R6=pkt(r=12)
+91: (73) *(u8 *)(r0 +10) = r1         ; R0=map_value(map=scratch_map,ks=4,vs=32) R1=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+; if (i < payload_len) { @ buggy.bpf.c:70
+92: (15) if r7 == 0xb goto pc+135
+mark_precise: frame0: last_idx 92 first_idx 92 subseq_idx -1 
+mark_precise: frame0: parent state regs=r7 stack=:  R0=map_value(map=scratch_map,ks=4,vs=32) R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R3=2 R6=pkt(r=12) R7_r=Pscalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=pkt(off=1,r=12) R9=pkt_end() R10=fp0 fp-24=0000???? fp-32=32
+mark_precise: frame0: last_idx 91 first_idx 82 subseq_idx 92 
+mark_precise: frame0: regs=r7 stack= before 91: (73) *(u8 *)(r0 +10) = r1
+mark_precise: frame0: regs=r7 stack= before 90: (71) r1 = *(u8 *)(r6 +11)
+mark_precise: frame0: regs=r7 stack= before 89: (2d) if r1 > r9 goto pc+184
+mark_precise: frame0: regs=r7 stack= before 88: (07) r1 += 12
+mark_precise: frame0: regs=r7 stack= before 87: (bf) r1 = r6
+mark_precise: frame0: regs=r7 stack= before 86: (2d) if r1 > r7 goto pc+141
+mark_precise: frame0: regs=r1,r7 stack= before 85: (b7) r1 = 11
+mark_precise: frame0: regs=r7 stack= before 84: (73) *(u8 *)(r0 +9) = r1
+mark_precise: frame0: regs=r7 stack= before 83: (71) r1 = *(u8 *)(r6 +10)
+mark_precise: frame0: regs=r7 stack= before 82: (2d) if r1 > r9 goto pc+191
+mark_precise: frame0: parent state regs= stack=:  R0_r=map_value(map=scratch_map,ks=4,vs=32) R1_rw=pkt(off=11,r=10) R3=2 R6_r=pkt(r=10) R7_r=Pscalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=pkt(off=1,r=10) R9_r=pkt_end() R10=fp0 fp-24=0000???? fp-32=32
+92: R7=scalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+; if ((void *)(bytes + 2 + i) > data_end) @ buggy.bpf.c:71
+93: (bf) r1 = r6                      ; R1_w=pkt(r=12) R6=pkt(r=12)
+94: (07) r1 += 13                     ; R1_w=pkt(off=13,r=12)
+95: (2d) if r1 > r9 goto pc+178       ; R1_w=pkt(off=13,r=13) R9=pkt_end()
+; scratch->data[i] = bytes[1 + i]; @ buggy.bpf.c:73
+96: (71) r1 = *(u8 *)(r6 +12)         ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R6=pkt(r=13)
+97: (73) *(u8 *)(r0 +11) = r1         ; R0=map_value(map=scratch_map,ks=4,vs=32) R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+98: (b7) r1 = 13                      ; R1_w=13
+; if (i < payload_len) { @ buggy.bpf.c:70
+99: (2d) if r1 > r7 goto pc+128
+mark_precise: frame0: last_idx 99 first_idx 92 subseq_idx -1 
+mark_precise: frame0: regs=r1 stack= before 98: (b7) r1 = 13
+mark_precise: frame0: last_idx 99 first_idx 92 subseq_idx -1 
+mark_precise: frame0: regs=r7 stack= before 98: (b7) r1 = 13
+mark_precise: frame0: regs=r7 stack= before 97: (73) *(u8 *)(r0 +11) = r1
+mark_precise: frame0: regs=r7 stack= before 96: (71) r1 = *(u8 *)(r6 +12)
+mark_precise: frame0: regs=r7 stack= before 95: (2d) if r1 > r9 goto pc+178
+mark_precise: frame0: regs=r7 stack= before 94: (07) r1 += 13
+mark_precise: frame0: regs=r7 stack= before 93: (bf) r1 = r6
+mark_precise: frame0: regs=r7 stack= before 92: (15) if r7 == 0xb goto pc+135
+mark_precise: frame0: parent state regs= stack=:  R0_r=map_value(map=scratch_map,ks=4,vs=32) R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R3=2 R6_r=pkt(r=12) R7_r=Pscalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=pkt(off=1,r=12) R9_r=pkt_end() R10=fp0 fp-24=0000???? fp-32=32
+99: R1_w=13 R7=scalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+; if ((void *)(bytes + 2 + i) > data_end) @ buggy.bpf.c:71
+100: (bf) r1 = r6                     ; R1_w=pkt(r=13) R6=pkt(r=13)
+101: (07) r1 += 14                    ; R1=pkt(off=14,r=13)
+102: (2d) if r1 > r9 goto pc+171      ; R1=pkt(off=14,r=14) R9=pkt_end()
+; scratch->data[i] = bytes[1 + i]; @ buggy.bpf.c:73
+103: (71) r1 = *(u8 *)(r6 +13)        ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R6=pkt(r=14)
+104: (73) *(u8 *)(r0 +12) = r1        ; R0=map_value(map=scratch_map,ks=4,vs=32) R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+; if (i < payload_len) { @ buggy.bpf.c:70
+105: (15) if r7 == 0xd goto pc+122
+mark_precise: frame0: last_idx 105 first_idx 102 subseq_idx -1 
+mark_precise: frame0: regs=r7 stack= before 104: (73) *(u8 *)(r0 +12) = r1
+mark_precise: frame0: regs=r7 stack= before 103: (71) r1 = *(u8 *)(r6 +13)
+mark_precise: frame0: regs=r7 stack= before 102: (2d) if r1 > r9 goto pc+171
+mark_precise: frame0: parent state regs=r7 stack=:  R0_r=map_value(map=scratch_map,ks=4,vs=32) R1_rw=pkt(off=14,r=13) R3=2 R6_r=pkt(r=13) R7_r=Pscalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=pkt(off=1,r=13) R9_r=pkt_end() R10=fp0 fp-24=0000???? fp-32=32
+mark_precise: frame0: last_idx 101 first_idx 92 subseq_idx 102 
+mark_precise: frame0: regs=r7 stack= before 101: (07) r1 += 14
+mark_precise: frame0: regs=r7 stack= before 100: (bf) r1 = r6
+mark_precise: frame0: regs=r7 stack= before 99: (2d) if r1 > r7 goto pc+128
+mark_precise: frame0: regs=r1,r7 stack= before 98: (b7) r1 = 13
+mark_precise: frame0: regs=r7 stack= before 97: (73) *(u8 *)(r0 +11) = r1
+mark_precise: frame0: regs=r7 stack= before 96: (71) r1 = *(u8 *)(r6 +12)
+mark_precise: frame0: regs=r7 stack= before 95: (2d) if r1 > r9 goto pc+178
+mark_precise: frame0: regs=r7 stack= before 94: (07) r1 += 13
+mark_precise: frame0: regs=r7 stack= before 93: (bf) r1 = r6
+mark_precise: frame0: regs=r7 stack= before 92: (15) if r7 == 0xb goto pc+135
+mark_precise: frame0: parent state regs= stack=:  R0_r=map_value(map=scratch_map,ks=4,vs=32) R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R3=2 R6_r=pkt(r=12) R7_r=Pscalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=pkt(off=1,r=12) R9_r=pkt_end() R10=fp0 fp-24=0000???? fp-32=32
+105: R7=scalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+; if ((void *)(bytes + 2 + i) > data_end) @ buggy.bpf.c:71
+106: (bf) r1 = r6                     ; R1_w=pkt(r=14) R6=pkt(r=14)
+107: (07) r1 += 15                    ; R1_w=pkt(off=15,r=14)
+108: (2d) if r1 > r9 goto pc+165      ; R1_w=pkt(off=15,r=15) R9=pkt_end()
+; scratch->data[i] = bytes[1 + i]; @ buggy.bpf.c:73
+109: (71) r1 = *(u8 *)(r6 +14)        ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R6=pkt(r=15)
+110: (73) *(u8 *)(r0 +13) = r1        ; R0=map_value(map=scratch_map,ks=4,vs=32) R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+111: (b7) r1 = 15                     ; R1=15
+; if (i < payload_len) { @ buggy.bpf.c:70
+112: (2d) if r1 > r7 goto pc+115
+mark_precise: frame0: last_idx 112 first_idx 112 subseq_idx -1 
+mark_precise: frame0: parent state regs=r1 stack=:  R0=map_value(map=scratch_map,ks=4,vs=32) R1_rw=P15 R3=2 R6=pkt(r=15) R7_r=scalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=pkt(off=1,r=15) R9=pkt_end() R10=fp0 fp-24=0000???? fp-32=32
+mark_precise: frame0: last_idx 111 first_idx 102 subseq_idx 112 
+mark_precise: frame0: regs=r1 stack= before 111: (b7) r1 = 15
+mark_precise: frame0: last_idx 112 first_idx 112 subseq_idx -1 
+mark_precise: frame0: parent state regs=r7 stack=:  R0=map_value(map=scratch_map,ks=4,vs=32) R1_rw=P15 R3=2 R6=pkt(r=15) R7_r=Pscalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=pkt(off=1,r=15) R9=pkt_end() R10=fp0 fp-24=0000???? fp-32=32
+mark_precise: frame0: last_idx 111 first_idx 102 subseq_idx 112 
+mark_precise: frame0: regs=r7 stack= before 111: (b7) r1 = 15
+mark_precise: frame0: regs=r7 stack= before 110: (73) *(u8 *)(r0 +13) = r1
+mark_precise: frame0: regs=r7 stack= before 109: (71) r1 = *(u8 *)(r6 +14)
+mark_precise: frame0: regs=r7 stack= before 108: (2d) if r1 > r9 goto pc+165
+mark_precise: frame0: regs=r7 stack= before 107: (07) r1 += 15
+mark_precise: frame0: regs=r7 stack= before 106: (bf) r1 = r6
+mark_precise: frame0: regs=r7 stack= before 105: (15) if r7 == 0xd goto pc+122
+mark_precise: frame0: regs=r7 stack= before 104: (73) *(u8 *)(r0 +12) = r1
+mark_precise: frame0: regs=r7 stack= before 103: (71) r1 = *(u8 *)(r6 +13)
+mark_precise: frame0: regs=r7 stack= before 102: (2d) if r1 > r9 goto pc+171
+mark_precise: frame0: parent state regs= stack=:  R0_r=map_value(map=scratch_map,ks=4,vs=32) R1_rw=pkt(off=14,r=13) R3=2 R6_r=pkt(r=13) R7_r=Pscalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=pkt(off=1,r=13) R9_r=pkt_end() R10=fp0 fp-24=0000???? fp-32=32
+112: R1=15 R7=scalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+; if ((void *)(bytes + 2 + i) > data_end) @ buggy.bpf.c:71
+113: (bf) r1 = r6                     ; R1_w=pkt(r=15) R6=pkt(r=15)
+114: (07) r1 += 16                    ; R1_w=pkt(off=16,r=15)
+115: (2d) if r1 > r9 goto pc+158      ; R1_w=pkt(off=16,r=16) R9=pkt_end()
+; scratch->data[i] = bytes[1 + i]; @ buggy.bpf.c:73
+116: (71) r1 = *(u8 *)(r6 +15)        ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R6=pkt(r=16)
+117: (73) *(u8 *)(r0 +14) = r1        ; R0=map_value(map=scratch_map,ks=4,vs=32) R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+; if (i < payload_len) { @ buggy.bpf.c:70
+118: (15) if r7 == 0xf goto pc+109
+mark_precise: frame0: last_idx 118 first_idx 112 subseq_idx -1 
+mark_precise: frame0: regs=r7 stack= before 117: (73) *(u8 *)(r0 +14) = r1
+mark_precise: frame0: regs=r7 stack= before 116: (71) r1 = *(u8 *)(r6 +15)
+mark_precise: frame0: regs=r7 stack= before 115: (2d) if r1 > r9 goto pc+158
+mark_precise: frame0: regs=r7 stack= before 114: (07) r1 += 16
+mark_precise: frame0: regs=r7 stack= before 113: (bf) r1 = r6
+mark_precise: frame0: regs=r7 stack= before 112: (2d) if r1 > r7 goto pc+115
+mark_precise: frame0: parent state regs= stack=:  R0_r=map_value(map=scratch_map,ks=4,vs=32) R1_rw=P15 R3=2 R6_r=pkt(r=15) R7_r=Pscalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=pkt(off=1,r=15) R9_r=pkt_end() R10=fp0 fp-24=0000???? fp-32=32
+118: R7=scalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+; if ((void *)(bytes + 2 + i) > data_end) @ buggy.bpf.c:71
+119: (bf) r1 = r6                     ; R1_w=pkt(r=16) R6=pkt(r=16)
+120: (07) r1 += 17                    ; R1=pkt(off=17,r=16)
+121: (2d) if r1 > r9 goto pc+152      ; R1=pkt(off=17,r=17) R9=pkt_end()
+; scratch->data[i] = bytes[1 + i]; @ buggy.bpf.c:73
+122: (71) r1 = *(u8 *)(r6 +16)        ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R6=pkt(r=17)
+123: (73) *(u8 *)(r0 +15) = r1        ; R0=map_value(map=scratch_map,ks=4,vs=32) R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+124: (b7) r1 = 17                     ; R1_w=17
+; if (i < payload_len) { @ buggy.bpf.c:70
+125: (2d) if r1 > r7 goto pc+102
+mark_precise: frame0: last_idx 125 first_idx 121 subseq_idx -1 
+mark_precise: frame0: regs=r1 stack= before 124: (b7) r1 = 17
+mark_precise: frame0: last_idx 125 first_idx 121 subseq_idx -1 
+mark_precise: frame0: regs=r7 stack= before 124: (b7) r1 = 17
+mark_precise: frame0: regs=r7 stack= before 123: (73) *(u8 *)(r0 +15) = r1
+mark_precise: frame0: regs=r7 stack= before 122: (71) r1 = *(u8 *)(r6 +16)
+mark_precise: frame0: regs=r7 stack= before 121: (2d) if r1 > r9 goto pc+152
+mark_precise: frame0: parent state regs=r7 stack=:  R0_r=map_value(map=scratch_map,ks=4,vs=32) R1_rw=pkt(off=17,r=16) R3=2 R6_r=pkt(r=16) R7_r=Pscalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=pkt(off=1,r=16) R9_r=pkt_end() R10=fp0 fp-24=0000???? fp-32=32
+mark_precise: frame0: last_idx 120 first_idx 112 subseq_idx 121 
+mark_precise: frame0: regs=r7 stack= before 120: (07) r1 += 17
+mark_precise: frame0: regs=r7 stack= before 119: (bf) r1 = r6
+mark_precise: frame0: regs=r7 stack= before 118: (15) if r7 == 0xf goto pc+109
+mark_precise: frame0: regs=r7 stack= before 117: (73) *(u8 *)(r0 +14) = r1
+mark_precise: frame0: regs=r7 stack= before 116: (71) r1 = *(u8 *)(r6 +15)
+mark_precise: frame0: regs=r7 stack= before 115: (2d) if r1 > r9 goto pc+158
+mark_precise: frame0: regs=r7 stack= before 114: (07) r1 += 16
+mark_precise: frame0: regs=r7 stack= before 113: (bf) r1 = r6
+mark_precise: frame0: regs=r7 stack= before 112: (2d) if r1 > r7 goto pc+115
+mark_precise: frame0: parent state regs= stack=:  R0_r=map_value(map=scratch_map,ks=4,vs=32) R1_rw=P15 R3=2 R6_r=pkt(r=15) R7_r=Pscalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=pkt(off=1,r=15) R9_r=pkt_end() R10=fp0 fp-24=0000???? fp-32=32
+125: R1_w=17 R7=scalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+; if ((void *)(bytes + 2 + i) > data_end) @ buggy.bpf.c:71
+126: (bf) r1 = r6                     ; R1_w=pkt(r=17) R6=pkt(r=17)
+127: (07) r1 += 18                    ; R1_w=pkt(off=18,r=17)
+128: (2d) if r1 > r9 goto pc+145      ; R1_w=pkt(off=18,r=18) R9=pkt_end()
+; scratch->data[i] = bytes[1 + i]; @ buggy.bpf.c:73
+129: (71) r1 = *(u8 *)(r6 +17)        ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R6=pkt(r=18)
+130: (73) *(u8 *)(r0 +16) = r1        ; R0=map_value(map=scratch_map,ks=4,vs=32) R1=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+; if (i < payload_len) { @ buggy.bpf.c:70
+131: (15) if r7 == 0x11 goto pc+96
+mark_precise: frame0: last_idx 131 first_idx 131 subseq_idx -1 
+mark_precise: frame0: parent state regs=r7 stack=:  R0=map_value(map=scratch_map,ks=4,vs=32) R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R3=2 R6=pkt(r=18) R7_r=Pscalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=pkt(off=1,r=18) R9=pkt_end() R10=fp0 fp-24=0000???? fp-32=32
+mark_precise: frame0: last_idx 130 first_idx 121 subseq_idx 131 
+mark_precise: frame0: regs=r7 stack= before 130: (73) *(u8 *)(r0 +16) = r1
+mark_precise: frame0: regs=r7 stack= before 129: (71) r1 = *(u8 *)(r6 +17)
+mark_precise: frame0: regs=r7 stack= before 128: (2d) if r1 > r9 goto pc+145
+mark_precise: frame0: regs=r7 stack= before 127: (07) r1 += 18
+mark_precise: frame0: regs=r7 stack= before 126: (bf) r1 = r6
+mark_precise: frame0: regs=r7 stack= before 125: (2d) if r1 > r7 goto pc+102
+mark_precise: frame0: regs=r1,r7 stack= before 124: (b7) r1 = 17
+mark_precise: frame0: regs=r7 stack= before 123: (73) *(u8 *)(r0 +15) = r1
+mark_precise: frame0: regs=r7 stack= before 122: (71) r1 = *(u8 *)(r6 +16)
+mark_precise: frame0: regs=r7 stack= before 121: (2d) if r1 > r9 goto pc+152
+mark_precise: frame0: parent state regs= stack=:  R0_r=map_value(map=scratch_map,ks=4,vs=32) R1_rw=pkt(off=17,r=16) R3=2 R6_r=pkt(r=16) R7_r=Pscalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=pkt(off=1,r=16) R9_r=pkt_end() R10=fp0 fp-24=0000???? fp-32=32
+131: R7=scalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+; if ((void *)(bytes + 2 + i) > data_end) @ buggy.bpf.c:71
+132: (bf) r1 = r6                     ; R1_w=pkt(r=18) R6=pkt(r=18)
+133: (07) r1 += 19                    ; R1_w=pkt(off=19,r=18)
+134: (2d) if r1 > r9 goto pc+139      ; R1_w=pkt(off=19,r=19) R9=pkt_end()
+; scratch->data[i] = bytes[1 + i]; @ buggy.bpf.c:73
+135: (71) r1 = *(u8 *)(r6 +18)        ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R6=pkt(r=19)
+136: (73) *(u8 *)(r0 +17) = r1        ; R0=map_value(map=scratch_map,ks=4,vs=32) R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+137: (b7) r1 = 19                     ; R1_w=19
+; if (i < payload_len) { @ buggy.bpf.c:70
+138: (2d) if r1 > r7 goto pc+89
+mark_precise: frame0: last_idx 138 first_idx 131 subseq_idx -1 
+mark_precise: frame0: regs=r1 stack= before 137: (b7) r1 = 19
+mark_precise: frame0: last_idx 138 first_idx 131 subseq_idx -1 
+mark_precise: frame0: regs=r7 stack= before 137: (b7) r1 = 19
+mark_precise: frame0: regs=r7 stack= before 136: (73) *(u8 *)(r0 +17) = r1
+mark_precise: frame0: regs=r7 stack= before 135: (71) r1 = *(u8 *)(r6 +18)
+mark_precise: frame0: regs=r7 stack= before 134: (2d) if r1 > r9 goto pc+139
+mark_precise: frame0: regs=r7 stack= before 133: (07) r1 += 19
+mark_precise: frame0: regs=r7 stack= before 132: (bf) r1 = r6
+mark_precise: frame0: regs=r7 stack= before 131: (15) if r7 == 0x11 goto pc+96
+mark_precise: frame0: parent state regs= stack=:  R0_r=map_value(map=scratch_map,ks=4,vs=32) R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R3=2 R6_r=pkt(r=18) R7_r=Pscalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=pkt(off=1,r=18) R9_r=pkt_end() R10=fp0 fp-24=0000???? fp-32=32
+138: R1_w=19 R7=scalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+; if ((void *)(bytes + 2 + i) > data_end) @ buggy.bpf.c:71
+139: (bf) r1 = r6                     ; R1_w=pkt(r=19) R6=pkt(r=19)
+140: (07) r1 += 20                    ; R1=pkt(off=20,r=19)
+141: (2d) if r1 > r9 goto pc+132      ; R1=pkt(off=20,r=20) R9=pkt_end()
+; scratch->data[i] = bytes[1 + i]; @ buggy.bpf.c:73
+142: (71) r1 = *(u8 *)(r6 +19)        ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R6=pkt(r=20)
+143: (73) *(u8 *)(r0 +18) = r1        ; R0=map_value(map=scratch_map,ks=4,vs=32) R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+; if (i < payload_len) { @ buggy.bpf.c:70
+144: (15) if r7 == 0x13 goto pc+83
+mark_precise: frame0: last_idx 144 first_idx 141 subseq_idx -1 
+mark_precise: frame0: regs=r7 stack= before 143: (73) *(u8 *)(r0 +18) = r1
+mark_precise: frame0: regs=r7 stack= before 142: (71) r1 = *(u8 *)(r6 +19)
+mark_precise: frame0: regs=r7 stack= before 141: (2d) if r1 > r9 goto pc+132
+mark_precise: frame0: parent state regs=r7 stack=:  R0_r=map_value(map=scratch_map,ks=4,vs=32) R1_rw=pkt(off=20,r=19) R3=2 R6_r=pkt(r=19) R7_r=Pscalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=pkt(off=1,r=19) R9_r=pkt_end() R10=fp0 fp-24=0000???? fp-32=32
+mark_precise: frame0: last_idx 140 first_idx 131 subseq_idx 141 
+mark_precise: frame0: regs=r7 stack= before 140: (07) r1 += 20
+mark_precise: frame0: regs=r7 stack= before 139: (bf) r1 = r6
+mark_precise: frame0: regs=r7 stack= before 138: (2d) if r1 > r7 goto pc+89
+mark_precise: frame0: regs=r1,r7 stack= before 137: (b7) r1 = 19
+mark_precise: frame0: regs=r7 stack= before 136: (73) *(u8 *)(r0 +17) = r1
+mark_precise: frame0: regs=r7 stack= before 135: (71) r1 = *(u8 *)(r6 +18)
+mark_precise: frame0: regs=r7 stack= before 134: (2d) if r1 > r9 goto pc+139
+mark_precise: frame0: regs=r7 stack= before 133: (07) r1 += 19
+mark_precise: frame0: regs=r7 stack= before 132: (bf) r1 = r6
+mark_precise: frame0: regs=r7 stack= before 131: (15) if r7 == 0x11 goto pc+96
+mark_precise: frame0: parent state regs= stack=:  R0_r=map_value(map=scratch_map,ks=4,vs=32) R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R3=2 R6_r=pkt(r=18) R7_r=Pscalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=pkt(off=1,r=18) R9_r=pkt_end() R10=fp0 fp-24=0000???? fp-32=32
+144: R7=scalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+; if ((void *)(bytes + 2 + i) > data_end) @ buggy.bpf.c:71
+145: (bf) r1 = r6                     ; R1_w=pkt(r=20) R6=pkt(r=20)
+146: (07) r1 += 21                    ; R1_w=pkt(off=21,r=20)
+147: (2d) if r1 > r9 goto pc+126      ; R1_w=pkt(off=21,r=21) R9=pkt_end()
+; scratch->data[i] = bytes[1 + i]; @ buggy.bpf.c:73
+148: (71) r1 = *(u8 *)(r6 +20)        ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R6=pkt(r=21)
+149: (73) *(u8 *)(r0 +19) = r1        ; R0=map_value(map=scratch_map,ks=4,vs=32) R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+150: (b7) r1 = 21                     ; R1=21
+; if (i < payload_len) { @ buggy.bpf.c:70
+151: (2d) if r1 > r7 goto pc+76
+mark_precise: frame0: last_idx 151 first_idx 151 subseq_idx -1 
+mark_precise: frame0: parent state regs=r1 stack=:  R0=map_value(map=scratch_map,ks=4,vs=32) R1_rw=P21 R3=2 R6=pkt(r=21) R7_r=scalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=pkt(off=1,r=21) R9=pkt_end() R10=fp0 fp-24=0000???? fp-32=32
+mark_precise: frame0: last_idx 150 first_idx 141 subseq_idx 151 
+mark_precise: frame0: regs=r1 stack= before 150: (b7) r1 = 21
+mark_precise: frame0: last_idx 151 first_idx 151 subseq_idx -1 
+mark_precise: frame0: parent state regs=r7 stack=:  R0=map_value(map=scratch_map,ks=4,vs=32) R1_rw=P21 R3=2 R6=pkt(r=21) R7_r=Pscalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=pkt(off=1,r=21) R9=pkt_end() R10=fp0 fp-24=0000???? fp-32=32
+mark_precise: frame0: last_idx 150 first_idx 141 subseq_idx 151 
+mark_precise: frame0: regs=r7 stack= before 150: (b7) r1 = 21
+mark_precise: frame0: regs=r7 stack= before 149: (73) *(u8 *)(r0 +19) = r1
+mark_precise: frame0: regs=r7 stack= before 148: (71) r1 = *(u8 *)(r6 +20)
+mark_precise: frame0: regs=r7 stack= before 147: (2d) if r1 > r9 goto pc+126
+mark_precise: frame0: regs=r7 stack= before 146: (07) r1 += 21
+mark_precise: frame0: regs=r7 stack= before 145: (bf) r1 = r6
+mark_precise: frame0: regs=r7 stack= before 144: (15) if r7 == 0x13 goto pc+83
+mark_precise: frame0: regs=r7 stack= before 143: (73) *(u8 *)(r0 +18) = r1
+mark_precise: frame0: regs=r7 stack= before 142: (71) r1 = *(u8 *)(r6 +19)
+mark_precise: frame0: regs=r7 stack= before 141: (2d) if r1 > r9 goto pc+132
+mark_precise: frame0: parent state regs= stack=:  R0_r=map_value(map=scratch_map,ks=4,vs=32) R1_rw=pkt(off=20,r=19) R3=2 R6_r=pkt(r=19) R7_r=Pscalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=pkt(off=1,r=19) R9_r=pkt_end() R10=fp0 fp-24=0000???? fp-32=32
+151: R1=21 R7=scalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+; if ((void *)(bytes + 2 + i) > data_end) @ buggy.bpf.c:71
+152: (bf) r1 = r6                     ; R1_w=pkt(r=21) R6=pkt(r=21)
+153: (07) r1 += 22                    ; R1_w=pkt(off=22,r=21)
+154: (2d) if r1 > r9 goto pc+119      ; R1_w=pkt(off=22,r=22) R9=pkt_end()
+; scratch->data[i] = bytes[1 + i]; @ buggy.bpf.c:73
+155: (71) r1 = *(u8 *)(r6 +21)        ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R6=pkt(r=22)
+156: (73) *(u8 *)(r0 +20) = r1        ; R0=map_value(map=scratch_map,ks=4,vs=32) R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+; if (i < payload_len) { @ buggy.bpf.c:70
+157: (15) if r7 == 0x15 goto pc+70
+mark_precise: frame0: last_idx 157 first_idx 151 subseq_idx -1 
+mark_precise: frame0: regs=r7 stack= before 156: (73) *(u8 *)(r0 +20) = r1
+mark_precise: frame0: regs=r7 stack= before 155: (71) r1 = *(u8 *)(r6 +21)
+mark_precise: frame0: regs=r7 stack= before 154: (2d) if r1 > r9 goto pc+119
+mark_precise: frame0: regs=r7 stack= before 153: (07) r1 += 22
+mark_precise: frame0: regs=r7 stack= before 152: (bf) r1 = r6
+mark_precise: frame0: regs=r7 stack= before 151: (2d) if r1 > r7 goto pc+76
+mark_precise: frame0: parent state regs= stack=:  R0_r=map_value(map=scratch_map,ks=4,vs=32) R1_rw=P21 R3=2 R6_r=pkt(r=21) R7_r=Pscalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=pkt(off=1,r=21) R9_r=pkt_end() R10=fp0 fp-24=0000???? fp-32=32
+157: R7=scalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+; if ((void *)(bytes + 2 + i) > data_end) @ buggy.bpf.c:71
+158: (bf) r1 = r6                     ; R1_w=pkt(r=22) R6=pkt(r=22)
+159: (07) r1 += 23                    ; R1=pkt(off=23,r=22)
+160: (2d) if r1 > r9 goto pc+113      ; R1=pkt(off=23,r=23) R9=pkt_end()
+; scratch->data[i] = bytes[1 + i]; @ buggy.bpf.c:73
+161: (71) r1 = *(u8 *)(r6 +22)        ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R6=pkt(r=23)
+162: (73) *(u8 *)(r0 +21) = r1        ; R0=map_value(map=scratch_map,ks=4,vs=32) R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+163: (b7) r1 = 23                     ; R1_w=23
+; if (i < payload_len) { @ buggy.bpf.c:70
+164: (2d) if r1 > r7 goto pc+63
+mark_precise: frame0: last_idx 164 first_idx 160 subseq_idx -1 
+mark_precise: frame0: regs=r1 stack= before 163: (b7) r1 = 23
+mark_precise: frame0: last_idx 164 first_idx 160 subseq_idx -1 
+mark_precise: frame0: regs=r7 stack= before 163: (b7) r1 = 23
+mark_precise: frame0: regs=r7 stack= before 162: (73) *(u8 *)(r0 +21) = r1
+mark_precise: frame0: regs=r7 stack= before 161: (71) r1 = *(u8 *)(r6 +22)
+mark_precise: frame0: regs=r7 stack= before 160: (2d) if r1 > r9 goto pc+113
+mark_precise: frame0: parent state regs=r7 stack=:  R0_r=map_value(map=scratch_map,ks=4,vs=32) R1_rw=pkt(off=23,r=22) R3=2 R6_r=pkt(r=22) R7_r=Pscalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=pkt(off=1,r=22) R9_r=pkt_end() R10=fp0 fp-24=0000???? fp-32=32
+mark_precise: frame0: last_idx 159 first_idx 151 subseq_idx 160 
+mark_precise: frame0: regs=r7 stack= before 159: (07) r1 += 23
+mark_precise: frame0: regs=r7 stack= before 158: (bf) r1 = r6
+mark_precise: frame0: regs=r7 stack= before 157: (15) if r7 == 0x15 goto pc+70
+mark_precise: frame0: regs=r7 stack= before 156: (73) *(u8 *)(r0 +20) = r1
+mark_precise: frame0: regs=r7 stack= before 155: (71) r1 = *(u8 *)(r6 +21)
+mark_precise: frame0: regs=r7 stack= before 154: (2d) if r1 > r9 goto pc+119
+mark_precise: frame0: regs=r7 stack= before 153: (07) r1 += 22
+mark_precise: frame0: regs=r7 stack= before 152: (bf) r1 = r6
+mark_precise: frame0: regs=r7 stack= before 151: (2d) if r1 > r7 goto pc+76
+mark_precise: frame0: parent state regs= stack=:  R0_r=map_value(map=scratch_map,ks=4,vs=32) R1_rw=P21 R3=2 R6_r=pkt(r=21) R7_r=Pscalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=pkt(off=1,r=21) R9_r=pkt_end() R10=fp0 fp-24=0000???? fp-32=32
+164: R1_w=23 R7=scalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+; if ((void *)(bytes + 2 + i) > data_end) @ buggy.bpf.c:71
+165: (bf) r1 = r6                     ; R1_w=pkt(r=23) R6=pkt(r=23)
+166: (07) r1 += 24                    ; R1_w=pkt(off=24,r=23)
+167: (2d) if r1 > r9 goto pc+106      ; R1_w=pkt(off=24,r=24) R9=pkt_end()
+; scratch->data[i] = bytes[1 + i]; @ buggy.bpf.c:73
+168: (71) r1 = *(u8 *)(r6 +23)        ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R6=pkt(r=24)
+169: (73) *(u8 *)(r0 +22) = r1        ; R0=map_value(map=scratch_map,ks=4,vs=32) R1=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+; if (i < payload_len) { @ buggy.bpf.c:70
+170: (15) if r7 == 0x17 goto pc+57
+mark_precise: frame0: last_idx 170 first_idx 170 subseq_idx -1 
+mark_precise: frame0: parent state regs=r7 stack=:  R0=map_value(map=scratch_map,ks=4,vs=32) R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R3=2 R6=pkt(r=24) R7_r=Pscalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=pkt(off=1,r=24) R9=pkt_end() R10=fp0 fp-24=0000???? fp-32=32
+mark_precise: frame0: last_idx 169 first_idx 160 subseq_idx 170 
+mark_precise: frame0: regs=r7 stack= before 169: (73) *(u8 *)(r0 +22) = r1
+mark_precise: frame0: regs=r7 stack= before 168: (71) r1 = *(u8 *)(r6 +23)
+mark_precise: frame0: regs=r7 stack= before 167: (2d) if r1 > r9 goto pc+106
+mark_precise: frame0: regs=r7 stack= before 166: (07) r1 += 24
+mark_precise: frame0: regs=r7 stack= before 165: (bf) r1 = r6
+mark_precise: frame0: regs=r7 stack= before 164: (2d) if r1 > r7 goto pc+63
+mark_precise: frame0: regs=r1,r7 stack= before 163: (b7) r1 = 23
+mark_precise: frame0: regs=r7 stack= before 162: (73) *(u8 *)(r0 +21) = r1
+mark_precise: frame0: regs=r7 stack= before 161: (71) r1 = *(u8 *)(r6 +22)
+mark_precise: frame0: regs=r7 stack= before 160: (2d) if r1 > r9 goto pc+113
+mark_precise: frame0: parent state regs= stack=:  R0_r=map_value(map=scratch_map,ks=4,vs=32) R1_rw=pkt(off=23,r=22) R3=2 R6_r=pkt(r=22) R7_r=Pscalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=pkt(off=1,r=22) R9_r=pkt_end() R10=fp0 fp-24=0000???? fp-32=32
+170: R7=scalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+; if ((void *)(bytes + 2 + i) > data_end) @ buggy.bpf.c:71
+171: (bf) r1 = r6                     ; R1_w=pkt(r=24) R6=pkt(r=24)
+172: (07) r1 += 25                    ; R1_w=pkt(off=25,r=24)
+173: (2d) if r1 > r9 goto pc+100      ; R1_w=pkt(off=25,r=25) R9=pkt_end()
+; scratch->data[i] = bytes[1 + i]; @ buggy.bpf.c:73
+174: (71) r1 = *(u8 *)(r6 +24)        ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R6=pkt(r=25)
+175: (73) *(u8 *)(r0 +23) = r1        ; R0=map_value(map=scratch_map,ks=4,vs=32) R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+176: (b7) r1 = 25                     ; R1_w=25
+; if (i < payload_len) { @ buggy.bpf.c:70
+177: (2d) if r1 > r7 goto pc+50
+mark_precise: frame0: last_idx 177 first_idx 170 subseq_idx -1 
+mark_precise: frame0: regs=r1 stack= before 176: (b7) r1 = 25
+mark_precise: frame0: last_idx 177 first_idx 170 subseq_idx -1 
+mark_precise: frame0: regs=r7 stack= before 176: (b7) r1 = 25
+mark_precise: frame0: regs=r7 stack= before 175: (73) *(u8 *)(r0 +23) = r1
+mark_precise: frame0: regs=r7 stack= before 174: (71) r1 = *(u8 *)(r6 +24)
+mark_precise: frame0: regs=r7 stack= before 173: (2d) if r1 > r9 goto pc+100
+mark_precise: frame0: regs=r7 stack= before 172: (07) r1 += 25
+mark_precise: frame0: regs=r7 stack= before 171: (bf) r1 = r6
+mark_precise: frame0: regs=r7 stack= before 170: (15) if r7 == 0x17 goto pc+57
+mark_precise: frame0: parent state regs= stack=:  R0_r=map_value(map=scratch_map,ks=4,vs=32) R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R3=2 R6_r=pkt(r=24) R7_r=Pscalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=pkt(off=1,r=24) R9_r=pkt_end() R10=fp0 fp-24=0000???? fp-32=32
+177: R1_w=25 R7=scalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+; if ((void *)(bytes + 2 + i) > data_end) @ buggy.bpf.c:71
+178: (bf) r1 = r6                     ; R1_w=pkt(r=25) R6=pkt(r=25)
+179: (07) r1 += 26                    ; R1=pkt(off=26,r=25)
+180: (2d) if r1 > r9 goto pc+93       ; R1=pkt(off=26,r=26) R9=pkt_end()
+; scratch->data[i] = bytes[1 + i]; @ buggy.bpf.c:73
+181: (71) r1 = *(u8 *)(r6 +25)        ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R6=pkt(r=26)
+182: (73) *(u8 *)(r0 +24) = r1        ; R0=map_value(map=scratch_map,ks=4,vs=32) R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+; if (i < payload_len) { @ buggy.bpf.c:70
+183: (15) if r7 == 0x19 goto pc+44
+mark_precise: frame0: last_idx 183 first_idx 180 subseq_idx -1 
+mark_precise: frame0: regs=r7 stack= before 182: (73) *(u8 *)(r0 +24) = r1
+mark_precise: frame0: regs=r7 stack= before 181: (71) r1 = *(u8 *)(r6 +25)
+mark_precise: frame0: regs=r7 stack= before 180: (2d) if r1 > r9 goto pc+93
+mark_precise: frame0: parent state regs=r7 stack=:  R0_r=map_value(map=scratch_map,ks=4,vs=32) R1_rw=pkt(off=26,r=25) R3=2 R6_r=pkt(r=25) R7_r=Pscalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=pkt(off=1,r=25) R9_r=pkt_end() R10=fp0 fp-24=0000???? fp-32=32
+mark_precise: frame0: last_idx 179 first_idx 170 subseq_idx 180 
+mark_precise: frame0: regs=r7 stack= before 179: (07) r1 += 26
+mark_precise: frame0: regs=r7 stack= before 178: (bf) r1 = r6
+mark_precise: frame0: regs=r7 stack= before 177: (2d) if r1 > r7 goto pc+50
+mark_precise: frame0: regs=r1,r7 stack= before 176: (b7) r1 = 25
+mark_precise: frame0: regs=r7 stack= before 175: (73) *(u8 *)(r0 +23) = r1
+mark_precise: frame0: regs=r7 stack= before 174: (71) r1 = *(u8 *)(r6 +24)
+mark_precise: frame0: regs=r7 stack= before 173: (2d) if r1 > r9 goto pc+100
+mark_precise: frame0: regs=r7 stack= before 172: (07) r1 += 25
+mark_precise: frame0: regs=r7 stack= before 171: (bf) r1 = r6
+mark_precise: frame0: regs=r7 stack= before 170: (15) if r7 == 0x17 goto pc+57
+mark_precise: frame0: parent state regs= stack=:  R0_r=map_value(map=scratch_map,ks=4,vs=32) R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R3=2 R6_r=pkt(r=24) R7_r=Pscalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=pkt(off=1,r=24) R9_r=pkt_end() R10=fp0 fp-24=0000???? fp-32=32
+183: R7=scalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+; if ((void *)(bytes + 2 + i) > data_end) @ buggy.bpf.c:71
+184: (bf) r1 = r6                     ; R1_w=pkt(r=26) R6=pkt(r=26)
+185: (07) r1 += 27                    ; R1_w=pkt(off=27,r=26)
+186: (2d) if r1 > r9 goto pc+87       ; R1_w=pkt(off=27,r=27) R9=pkt_end()
+; scratch->data[i] = bytes[1 + i]; @ buggy.bpf.c:73
+187: (71) r1 = *(u8 *)(r6 +26)        ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R6=pkt(r=27)
+188: (73) *(u8 *)(r0 +25) = r1        ; R0=map_value(map=scratch_map,ks=4,vs=32) R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+189: (b7) r1 = 27                     ; R1=27
+; if (i < payload_len) { @ buggy.bpf.c:70
+190: (2d) if r1 > r7 goto pc+37
+mark_precise: frame0: last_idx 190 first_idx 190 subseq_idx -1 
+mark_precise: frame0: parent state regs=r1 stack=:  R0=map_value(map=scratch_map,ks=4,vs=32) R1_rw=P27 R3=2 R6=pkt(r=27) R7_r=scalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=pkt(off=1,r=27) R9=pkt_end() R10=fp0 fp-24=0000???? fp-32=32
+mark_precise: frame0: last_idx 189 first_idx 180 subseq_idx 190 
+mark_precise: frame0: regs=r1 stack= before 189: (b7) r1 = 27
+mark_precise: frame0: last_idx 190 first_idx 190 subseq_idx -1 
+mark_precise: frame0: parent state regs=r7 stack=:  R0=map_value(map=scratch_map,ks=4,vs=32) R1_rw=P27 R3=2 R6=pkt(r=27) R7_r=Pscalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=pkt(off=1,r=27) R9=pkt_end() R10=fp0 fp-24=0000???? fp-32=32
+mark_precise: frame0: last_idx 189 first_idx 180 subseq_idx 190 
+mark_precise: frame0: regs=r7 stack= before 189: (b7) r1 = 27
+mark_precise: frame0: regs=r7 stack= before 188: (73) *(u8 *)(r0 +25) = r1
+mark_precise: frame0: regs=r7 stack= before 187: (71) r1 = *(u8 *)(r6 +26)
+mark_precise: frame0: regs=r7 stack= before 186: (2d) if r1 > r9 goto pc+87
+mark_precise: frame0: regs=r7 stack= before 185: (07) r1 += 27
+mark_precise: frame0: regs=r7 stack= before 184: (bf) r1 = r6
+mark_precise: frame0: regs=r7 stack= before 183: (15) if r7 == 0x19 goto pc+44
+mark_precise: frame0: regs=r7 stack= before 182: (73) *(u8 *)(r0 +24) = r1
+mark_precise: frame0: regs=r7 stack= before 181: (71) r1 = *(u8 *)(r6 +25)
+mark_precise: frame0: regs=r7 stack= before 180: (2d) if r1 > r9 goto pc+93
+mark_precise: frame0: parent state regs= stack=:  R0_r=map_value(map=scratch_map,ks=4,vs=32) R1_rw=pkt(off=26,r=25) R3=2 R6_r=pkt(r=25) R7_r=Pscalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=pkt(off=1,r=25) R9_r=pkt_end() R10=fp0 fp-24=0000???? fp-32=32
+190: R1=27 R7=scalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+; if ((void *)(bytes + 2 + i) > data_end) @ buggy.bpf.c:71
+191: (bf) r1 = r6                     ; R1_w=pkt(r=27) R6=pkt(r=27)
+192: (07) r1 += 28                    ; R1_w=pkt(off=28,r=27)
+193: (2d) if r1 > r9 goto pc+80       ; R1_w=pkt(off=28,r=28) R9=pkt_end()
+; scratch->data[i] = bytes[1 + i]; @ buggy.bpf.c:73
+194: (71) r1 = *(u8 *)(r6 +27)        ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R6=pkt(r=28)
+195: (73) *(u8 *)(r0 +26) = r1        ; R0=map_value(map=scratch_map,ks=4,vs=32) R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+; if (i < payload_len) { @ buggy.bpf.c:70
+196: (15) if r7 == 0x1b goto pc+31
+mark_precise: frame0: last_idx 196 first_idx 190 subseq_idx -1 
+mark_precise: frame0: regs=r7 stack= before 195: (73) *(u8 *)(r0 +26) = r1
+mark_precise: frame0: regs=r7 stack= before 194: (71) r1 = *(u8 *)(r6 +27)
+mark_precise: frame0: regs=r7 stack= before 193: (2d) if r1 > r9 goto pc+80
+mark_precise: frame0: regs=r7 stack= before 192: (07) r1 += 28
+mark_precise: frame0: regs=r7 stack= before 191: (bf) r1 = r6
+mark_precise: frame0: regs=r7 stack= before 190: (2d) if r1 > r7 goto pc+37
+mark_precise: frame0: parent state regs= stack=:  R0_r=map_value(map=scratch_map,ks=4,vs=32) R1_rw=P27 R3=2 R6_r=pkt(r=27) R7_r=Pscalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=pkt(off=1,r=27) R9_r=pkt_end() R10=fp0 fp-24=0000???? fp-32=32
+196: R7=scalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+; if ((void *)(bytes + 2 + i) > data_end) @ buggy.bpf.c:71
+197: (bf) r1 = r6                     ; R1_w=pkt(r=28) R6=pkt(r=28)
+198: (07) r1 += 29                    ; R1=pkt(off=29,r=28)
+199: (2d) if r1 > r9 goto pc+74       ; R1=pkt(off=29,r=29) R9=pkt_end()
+; scratch->data[i] = bytes[1 + i]; @ buggy.bpf.c:73
+200: (71) r1 = *(u8 *)(r6 +28)        ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R6=pkt(r=29)
+201: (73) *(u8 *)(r0 +27) = r1        ; R0=map_value(map=scratch_map,ks=4,vs=32) R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+202: (b7) r1 = 29                     ; R1_w=29
+; if (i < payload_len) { @ buggy.bpf.c:70
+203: (2d) if r1 > r7 goto pc+24
+mark_precise: frame0: last_idx 203 first_idx 199 subseq_idx -1 
+mark_precise: frame0: regs=r1 stack= before 202: (b7) r1 = 29
+mark_precise: frame0: last_idx 203 first_idx 199 subseq_idx -1 
+mark_precise: frame0: regs=r7 stack= before 202: (b7) r1 = 29
+mark_precise: frame0: regs=r7 stack= before 201: (73) *(u8 *)(r0 +27) = r1
+mark_precise: frame0: regs=r7 stack= before 200: (71) r1 = *(u8 *)(r6 +28)
+mark_precise: frame0: regs=r7 stack= before 199: (2d) if r1 > r9 goto pc+74
+mark_precise: frame0: parent state regs=r7 stack=:  R0_r=map_value(map=scratch_map,ks=4,vs=32) R1_rw=pkt(off=29,r=28) R3=2 R6_r=pkt(r=28) R7_r=Pscalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=pkt(off=1,r=28) R9_r=pkt_end() R10=fp0 fp-24=0000???? fp-32=32
+mark_precise: frame0: last_idx 198 first_idx 190 subseq_idx 199 
+mark_precise: frame0: regs=r7 stack= before 198: (07) r1 += 29
+mark_precise: frame0: regs=r7 stack= before 197: (bf) r1 = r6
+mark_precise: frame0: regs=r7 stack= before 196: (15) if r7 == 0x1b goto pc+31
+mark_precise: frame0: regs=r7 stack= before 195: (73) *(u8 *)(r0 +26) = r1
+mark_precise: frame0: regs=r7 stack= before 194: (71) r1 = *(u8 *)(r6 +27)
+mark_precise: frame0: regs=r7 stack= before 193: (2d) if r1 > r9 goto pc+80
+mark_precise: frame0: regs=r7 stack= before 192: (07) r1 += 28
+mark_precise: frame0: regs=r7 stack= before 191: (bf) r1 = r6
+mark_precise: frame0: regs=r7 stack= before 190: (2d) if r1 > r7 goto pc+37
+mark_precise: frame0: parent state regs= stack=:  R0_r=map_value(map=scratch_map,ks=4,vs=32) R1_rw=P27 R3=2 R6_r=pkt(r=27) R7_r=Pscalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=pkt(off=1,r=27) R9_r=pkt_end() R10=fp0 fp-24=0000???? fp-32=32
+203: R1_w=29 R7=scalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+; if ((void *)(bytes + 2 + i) > data_end) @ buggy.bpf.c:71
+204: (bf) r1 = r6                     ; R1_w=pkt(r=29) R6=pkt(r=29)
+205: (07) r1 += 30                    ; R1_w=pkt(off=30,r=29)
+206: (2d) if r1 > r9 goto pc+67       ; R1_w=pkt(off=30,r=30) R9=pkt_end()
+; scratch->data[i] = bytes[1 + i]; @ buggy.bpf.c:73
+207: (71) r1 = *(u8 *)(r6 +29)        ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R6=pkt(r=30)
+208: (73) *(u8 *)(r0 +28) = r1        ; R0=map_value(map=scratch_map,ks=4,vs=32) R1=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+; if (i < payload_len) { @ buggy.bpf.c:70
+209: (15) if r7 == 0x1d goto pc+18
+mark_precise: frame0: last_idx 209 first_idx 209 subseq_idx -1 
+mark_precise: frame0: parent state regs=r7 stack=:  R0=map_value(map=scratch_map,ks=4,vs=32) R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R3=2 R6=pkt(r=30) R7_r=Pscalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=pkt(off=1,r=30) R9=pkt_end() R10=fp0 fp-24=0000???? fp-32=32
+mark_precise: frame0: last_idx 208 first_idx 199 subseq_idx 209 
+mark_precise: frame0: regs=r7 stack= before 208: (73) *(u8 *)(r0 +28) = r1
+mark_precise: frame0: regs=r7 stack= before 207: (71) r1 = *(u8 *)(r6 +29)
+mark_precise: frame0: regs=r7 stack= before 206: (2d) if r1 > r9 goto pc+67
+mark_precise: frame0: regs=r7 stack= before 205: (07) r1 += 30
+mark_precise: frame0: regs=r7 stack= before 204: (bf) r1 = r6
+mark_precise: frame0: regs=r7 stack= before 203: (2d) if r1 > r7 goto pc+24
+mark_precise: frame0: regs=r1,r7 stack= before 202: (b7) r1 = 29
+mark_precise: frame0: regs=r7 stack= before 201: (73) *(u8 *)(r0 +27) = r1
+mark_precise: frame0: regs=r7 stack= before 200: (71) r1 = *(u8 *)(r6 +28)
+mark_precise: frame0: regs=r7 stack= before 199: (2d) if r1 > r9 goto pc+74
+mark_precise: frame0: parent state regs= stack=:  R0_r=map_value(map=scratch_map,ks=4,vs=32) R1_rw=pkt(off=29,r=28) R3=2 R6_r=pkt(r=28) R7_r=Pscalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=pkt(off=1,r=28) R9_r=pkt_end() R10=fp0 fp-24=0000???? fp-32=32
+209: R7=scalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+; if ((void *)(bytes + 2 + i) > data_end) @ buggy.bpf.c:71
+210: (bf) r1 = r6                     ; R1_w=pkt(r=30) R6=pkt(r=30)
+211: (07) r1 += 31                    ; R1_w=pkt(off=31,r=30)
+212: (2d) if r1 > r9 goto pc+61       ; R1_w=pkt(off=31,r=31) R9=pkt_end()
+; scratch->data[i] = bytes[1 + i]; @ buggy.bpf.c:73
+213: (71) r1 = *(u8 *)(r6 +30)        ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R6=pkt(r=31)
+214: (73) *(u8 *)(r0 +29) = r1        ; R0=map_value(map=scratch_map,ks=4,vs=32) R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+215: (b7) r1 = 31                     ; R1_w=31
+; if (i < payload_len) { @ buggy.bpf.c:70
+216: (2d) if r1 > r7 goto pc+11
+mark_precise: frame0: last_idx 216 first_idx 209 subseq_idx -1 
+mark_precise: frame0: regs=r1 stack= before 215: (b7) r1 = 31
+mark_precise: frame0: last_idx 216 first_idx 209 subseq_idx -1 
+mark_precise: frame0: regs=r7 stack= before 215: (b7) r1 = 31
+mark_precise: frame0: regs=r7 stack= before 214: (73) *(u8 *)(r0 +29) = r1
+mark_precise: frame0: regs=r7 stack= before 213: (71) r1 = *(u8 *)(r6 +30)
+mark_precise: frame0: regs=r7 stack= before 212: (2d) if r1 > r9 goto pc+61
+mark_precise: frame0: regs=r7 stack= before 211: (07) r1 += 31
+mark_precise: frame0: regs=r7 stack= before 210: (bf) r1 = r6
+mark_precise: frame0: regs=r7 stack= before 209: (15) if r7 == 0x1d goto pc+18
+mark_precise: frame0: parent state regs= stack=:  R0_r=map_value(map=scratch_map,ks=4,vs=32) R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R3=2 R6_r=pkt(r=30) R7_r=Pscalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=pkt(off=1,r=30) R9_r=pkt_end() R10=fp0 fp-24=0000???? fp-32=32
+216: R1_w=31 R7=scalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+; if ((void *)(bytes + 2 + i) > data_end) @ buggy.bpf.c:71
+217: (bf) r1 = r6                     ; R1_w=pkt(r=31) R6=pkt(r=31)
+218: (07) r1 += 32                    ; R1=pkt(off=32,r=31)
+219: (2d) if r1 > r9 goto pc+54       ; R1=pkt(off=32,r=32) R9=pkt_end()
+; scratch->data[i] = bytes[1 + i]; @ buggy.bpf.c:73
+220: (71) r1 = *(u8 *)(r6 +31)        ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R6=pkt(r=32)
+221: (73) *(u8 *)(r0 +30) = r1        ; R0=map_value(map=scratch_map,ks=4,vs=32) R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+; if (i < payload_len) { @ buggy.bpf.c:70
+222: (15) if r7 == 0x1f goto pc+5
+mark_precise: frame0: last_idx 222 first_idx 219 subseq_idx -1 
+mark_precise: frame0: regs=r7 stack= before 221: (73) *(u8 *)(r0 +30) = r1
+mark_precise: frame0: regs=r7 stack= before 220: (71) r1 = *(u8 *)(r6 +31)
+mark_precise: frame0: regs=r7 stack= before 219: (2d) if r1 > r9 goto pc+54
+mark_precise: frame0: parent state regs=r7 stack=:  R0_r=map_value(map=scratch_map,ks=4,vs=32) R1_rw=pkt(off=32,r=31) R3=2 R6_r=pkt(r=31) R7_r=Pscalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=pkt(off=1,r=31) R9_r=pkt_end() R10=fp0 fp-24=0000???? fp-32=32
+mark_precise: frame0: last_idx 218 first_idx 209 subseq_idx 219 
+mark_precise: frame0: regs=r7 stack= before 218: (07) r1 += 32
+mark_precise: frame0: regs=r7 stack= before 217: (bf) r1 = r6
+mark_precise: frame0: regs=r7 stack= before 216: (2d) if r1 > r7 goto pc+11
+mark_precise: frame0: regs=r1,r7 stack= before 215: (b7) r1 = 31
+mark_precise: frame0: regs=r7 stack= before 214: (73) *(u8 *)(r0 +29) = r1
+mark_precise: frame0: regs=r7 stack= before 213: (71) r1 = *(u8 *)(r6 +30)
+mark_precise: frame0: regs=r7 stack= before 212: (2d) if r1 > r9 goto pc+61
+mark_precise: frame0: regs=r7 stack= before 211: (07) r1 += 31
+mark_precise: frame0: regs=r7 stack= before 210: (bf) r1 = r6
+mark_precise: frame0: regs=r7 stack= before 209: (15) if r7 == 0x1d goto pc+18
+mark_precise: frame0: parent state regs= stack=:  R0_r=map_value(map=scratch_map,ks=4,vs=32) R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R3=2 R6_r=pkt(r=30) R7_r=Pscalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=pkt(off=1,r=30) R9_r=pkt_end() R10=fp0 fp-24=0000???? fp-32=32
+222: R7=scalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+; if ((void *)(bytes + 2 + i) > data_end) @ buggy.bpf.c:71
+223: (bf) r1 = r6                     ; R1_w=pkt(r=32) R6=pkt(r=32)
+224: (07) r1 += 33                    ; R1_w=pkt(off=33,r=32)
+225: (2d) if r1 > r9 goto pc+48       ; R1_w=pkt(off=33,r=33) R9=pkt_end()
+; scratch->data[i] = bytes[1 + i]; @ buggy.bpf.c:73
+226: (71) r1 = *(u8 *)(r6 +32)        ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R6=pkt(r=33)
+227: (73) *(u8 *)(r0 +31) = r1        ; R0=map_value(map=scratch_map,ks=4,vs=32) R1=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+228: (b7) r6 = 0                      ; R6_w=0
+229: (bf) r4 = r10                    ; R4_w=fp0 R10=fp0
+;  @ buggy.bpf.c:0
+230: (07) r4 += -16                   ; R4_w=fp-16
+; if (bpf_dynptr_from_mem(scratch->data, payload_len, 0, &dynptr) < 0) @ buggy.bpf.c:77
+231: (bf) r1 = r0                     ; R0=map_value(map=scratch_map,ks=4,vs=32) R1_w=map_value(map=scratch_map,ks=4,vs=32)
+232: (79) r2 = *(u64 *)(r10 -32)      ; R2_w=32 R10=fp0 fp-32=32
+233: (b7) r3 = 0                      ; R3_w=0
+234: (85) call bpf_dynptr_from_mem#197
+mark_precise: frame0: last_idx 234 first_idx 228 subseq_idx -1 
+mark_precise: frame0: regs=r2 stack= before 233: (b7) r3 = 0
+mark_precise: frame0: regs=r2 stack= before 232: (79) r2 = *(u64 *)(r10 -32)
+mark_precise: frame0: regs= stack=-32 before 231: (bf) r1 = r0
+mark_precise: frame0: regs= stack=-32 before 230: (07) r4 += -16
+mark_precise: frame0: regs= stack=-32 before 229: (bf) r4 = r10
+mark_precise: frame0: regs= stack=-32 before 228: (b7) r6 = 0
+mark_precise: frame0: parent state regs= stack=-32:  R0_r=map_value(map=scratch_map,ks=4,vs=32) R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R3=2 R6=pkt(r=33) R7=scalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=pkt(off=1,r=33) R9=pkt_end() R10=fp0 fp-24=0000???? fp-32_r=P32
+mark_precise: frame0: last_idx 227 first_idx 219 subseq_idx 228 
+mark_precise: frame0: regs= stack=-32 before 227: (73) *(u8 *)(r0 +31) = r1
+mark_precise: frame0: regs= stack=-32 before 226: (71) r1 = *(u8 *)(r6 +32)
+mark_precise: frame0: regs= stack=-32 before 225: (2d) if r1 > r9 goto pc+48
+mark_precise: frame0: regs= stack=-32 before 224: (07) r1 += 33
+mark_precise: frame0: regs= stack=-32 before 223: (bf) r1 = r6
+mark_precise: frame0: regs= stack=-32 before 222: (15) if r7 == 0x1f goto pc+5
+mark_precise: frame0: regs= stack=-32 before 221: (73) *(u8 *)(r0 +30) = r1
+mark_precise: frame0: regs= stack=-32 before 220: (71) r1 = *(u8 *)(r6 +31)
+mark_precise: frame0: regs= stack=-32 before 219: (2d) if r1 > r9 goto pc+54
+mark_precise: frame0: parent state regs= stack=-32:  R0_r=map_value(map=scratch_map,ks=4,vs=32) R1_rw=pkt(off=32,r=31) R3=2 R6_r=pkt(r=31) R7_r=Pscalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=pkt(off=1,r=31) R9_r=pkt_end() R10=fp0 fp-24=0000???? fp-32_r=P32
+mark_precise: frame0: last_idx 218 first_idx 209 subseq_idx 219 
+mark_precise: frame0: regs= stack=-32 before 218: (07) r1 += 32
+mark_precise: frame0: regs= stack=-32 before 217: (bf) r1 = r6
+mark_precise: frame0: regs= stack=-32 before 216: (2d) if r1 > r7 goto pc+11
+mark_precise: frame0: regs= stack=-32 before 215: (b7) r1 = 31
+mark_precise: frame0: regs= stack=-32 before 214: (73) *(u8 *)(r0 +29) = r1
+mark_precise: frame0: regs= stack=-32 before 213: (71) r1 = *(u8 *)(r6 +30)
+mark_precise: frame0: regs= stack=-32 before 212: (2d) if r1 > r9 goto pc+61
+mark_precise: frame0: regs= stack=-32 before 211: (07) r1 += 31
+mark_precise: frame0: regs= stack=-32 before 210: (bf) r1 = r6
+mark_precise: frame0: regs= stack=-32 before 209: (15) if r7 == 0x1d goto pc+18
+mark_precise: frame0: parent state regs= stack=-32:  R0_r=map_value(map=scratch_map,ks=4,vs=32) R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R3=2 R6_r=pkt(r=30) R7_r=Pscalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=pkt(off=1,r=30) R9_r=pkt_end() R10=fp0 fp-24=0000???? fp-32_r=P32
+mark_precise: frame0: last_idx 208 first_idx 199 subseq_idx 209 
+mark_precise: frame0: regs= stack=-32 before 208: (73) *(u8 *)(r0 +28) = r1
+mark_precise: frame0: regs= stack=-32 before 207: (71) r1 = *(u8 *)(r6 +29)
+mark_precise: frame0: regs= stack=-32 before 206: (2d) if r1 > r9 goto pc+67
+mark_precise: frame0: regs= stack=-32 before 205: (07) r1 += 30
+mark_precise: frame0: regs= stack=-32 before 204: (bf) r1 = r6
+mark_precise: frame0: regs= stack=-32 before 203: (2d) if r1 > r7 goto pc+24
+mark_precise: frame0: regs= stack=-32 before 202: (b7) r1 = 29
+mark_precise: frame0: regs= stack=-32 before 201: (73) *(u8 *)(r0 +27) = r1
+mark_precise: frame0: regs= stack=-32 before 200: (71) r1 = *(u8 *)(r6 +28)
+mark_precise: frame0: regs= stack=-32 before 199: (2d) if r1 > r9 goto pc+74
+mark_precise: frame0: parent state regs= stack=-32:  R0_r=map_value(map=scratch_map,ks=4,vs=32) R1_rw=pkt(off=29,r=28) R3=2 R6_r=pkt(r=28) R7_r=Pscalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=pkt(off=1,r=28) R9_r=pkt_end() R10=fp0 fp-24=0000???? fp-32_r=P32
+mark_precise: frame0: last_idx 198 first_idx 190 subseq_idx 199 
+mark_precise: frame0: regs= stack=-32 before 198: (07) r1 += 29
+mark_precise: frame0: regs= stack=-32 before 197: (bf) r1 = r6
+mark_precise: frame0: regs= stack=-32 before 196: (15) if r7 == 0x1b goto pc+31
+mark_precise: frame0: regs= stack=-32 before 195: (73) *(u8 *)(r0 +26) = r1
+mark_precise: frame0: regs= stack=-32 before 194: (71) r1 = *(u8 *)(r6 +27)
+mark_precise: frame0: regs= stack=-32 before 193: (2d) if r1 > r9 goto pc+80
+mark_precise: frame0: regs= stack=-32 before 192: (07) r1 += 28
+mark_precise: frame0: regs= stack=-32 before 191: (bf) r1 = r6
+mark_precise: frame0: regs= stack=-32 before 190: (2d) if r1 > r7 goto pc+37
+mark_precise: frame0: parent state regs= stack=-32:  R0_r=map_value(map=scratch_map,ks=4,vs=32) R1_rw=P27 R3=2 R6_r=pkt(r=27) R7_r=Pscalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=pkt(off=1,r=27) R9_r=pkt_end() R10=fp0 fp-24=0000???? fp-32_r=P32
+mark_precise: frame0: last_idx 189 first_idx 180 subseq_idx 190 
+mark_precise: frame0: regs= stack=-32 before 189: (b7) r1 = 27
+mark_precise: frame0: regs= stack=-32 before 188: (73) *(u8 *)(r0 +25) = r1
+mark_precise: frame0: regs= stack=-32 before 187: (71) r1 = *(u8 *)(r6 +26)
+mark_precise: frame0: regs= stack=-32 before 186: (2d) if r1 > r9 goto pc+87
+mark_precise: frame0: regs= stack=-32 before 185: (07) r1 += 27
+mark_precise: frame0: regs= stack=-32 before 184: (bf) r1 = r6
+mark_precise: frame0: regs= stack=-32 before 183: (15) if r7 == 0x19 goto pc+44
+mark_precise: frame0: regs= stack=-32 before 182: (73) *(u8 *)(r0 +24) = r1
+mark_precise: frame0: regs= stack=-32 before 181: (71) r1 = *(u8 *)(r6 +25)
+mark_precise: frame0: regs= stack=-32 before 180: (2d) if r1 > r9 goto pc+93
+mark_precise: frame0: parent state regs= stack=-32:  R0_r=map_value(map=scratch_map,ks=4,vs=32) R1_rw=pkt(off=26,r=25) R3=2 R6_r=pkt(r=25) R7_r=Pscalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=pkt(off=1,r=25) R9_r=pkt_end() R10=fp0 fp-24=0000???? fp-32_r=P32
+mark_precise: frame0: last_idx 179 first_idx 170 subseq_idx 180 
+mark_precise: frame0: regs= stack=-32 before 179: (07) r1 += 26
+mark_precise: frame0: regs= stack=-32 before 178: (bf) r1 = r6
+mark_precise: frame0: regs= stack=-32 before 177: (2d) if r1 > r7 goto pc+50
+mark_precise: frame0: regs= stack=-32 before 176: (b7) r1 = 25
+mark_precise: frame0: regs= stack=-32 before 175: (73) *(u8 *)(r0 +23) = r1
+mark_precise: frame0: regs= stack=-32 before 174: (71) r1 = *(u8 *)(r6 +24)
+mark_precise: frame0: regs= stack=-32 before 173: (2d) if r1 > r9 goto pc+100
+mark_precise: frame0: regs= stack=-32 before 172: (07) r1 += 25
+mark_precise: frame0: regs= stack=-32 before 171: (bf) r1 = r6
+mark_precise: frame0: regs= stack=-32 before 170: (15) if r7 == 0x17 goto pc+57
+mark_precise: frame0: parent state regs= stack=-32:  R0_r=map_value(map=scratch_map,ks=4,vs=32) R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R3=2 R6_r=pkt(r=24) R7_r=Pscalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=pkt(off=1,r=24) R9_r=pkt_end() R10=fp0 fp-24=0000???? fp-32_r=P32
+mark_precise: frame0: last_idx 169 first_idx 160 subseq_idx 170 
+mark_precise: frame0: regs= stack=-32 before 169: (73) *(u8 *)(r0 +22) = r1
+mark_precise: frame0: regs= stack=-32 before 168: (71) r1 = *(u8 *)(r6 +23)
+mark_precise: frame0: regs= stack=-32 before 167: (2d) if r1 > r9 goto pc+106
+mark_precise: frame0: regs= stack=-32 before 166: (07) r1 += 24
+mark_precise: frame0: regs= stack=-32 before 165: (bf) r1 = r6
+mark_precise: frame0: regs= stack=-32 before 164: (2d) if r1 > r7 goto pc+63
+mark_precise: frame0: regs= stack=-32 before 163: (b7) r1 = 23
+mark_precise: frame0: regs= stack=-32 before 162: (73) *(u8 *)(r0 +21) = r1
+mark_precise: frame0: regs= stack=-32 before 161: (71) r1 = *(u8 *)(r6 +22)
+mark_precise: frame0: regs= stack=-32 before 160: (2d) if r1 > r9 goto pc+113
+mark_precise: frame0: parent state regs= stack=-32:  R0_r=map_value(map=scratch_map,ks=4,vs=32) R1_rw=pkt(off=23,r=22) R3=2 R6_r=pkt(r=22) R7_r=Pscalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=pkt(off=1,r=22) R9_r=pkt_end() R10=fp0 fp-24=0000???? fp-32_r=P32
+mark_precise: frame0: last_idx 159 first_idx 151 subseq_idx 160 
+mark_precise: frame0: regs= stack=-32 before 159: (07) r1 += 23
+mark_precise: frame0: regs= stack=-32 before 158: (bf) r1 = r6
+mark_precise: frame0: regs= stack=-32 before 157: (15) if r7 == 0x15 goto pc+70
+mark_precise: frame0: regs= stack=-32 before 156: (73) *(u8 *)(r0 +20) = r1
+mark_precise: frame0: regs= stack=-32 before 155: (71) r1 = *(u8 *)(r6 +21)
+mark_precise: frame0: regs= stack=-32 before 154: (2d) if r1 > r9 goto pc+119
+mark_precise: frame0: regs= stack=-32 before 153: (07) r1 += 22
+mark_precise: frame0: regs= stack=-32 before 152: (bf) r1 = r6
+mark_precise: frame0: regs= stack=-32 before 151: (2d) if r1 > r7 goto pc+76
+mark_precise: frame0: parent state regs= stack=-32:  R0_r=map_value(map=scratch_map,ks=4,vs=32) R1_rw=P21 R3=2 R6_r=pkt(r=21) R7_r=Pscalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=pkt(off=1,r=21) R9_r=pkt_end() R10=fp0 fp-24=0000???? fp-32_r=P32
+mark_precise: frame0: last_idx 150 first_idx 141 subseq_idx 151 
+mark_precise: frame0: regs= stack=-32 before 150: (b7) r1 = 21
+mark_precise: frame0: regs= stack=-32 before 149: (73) *(u8 *)(r0 +19) = r1
+mark_precise: frame0: regs= stack=-32 before 148: (71) r1 = *(u8 *)(r6 +20)
+mark_precise: frame0: regs= stack=-32 before 147: (2d) if r1 > r9 goto pc+126
+mark_precise: frame0: regs= stack=-32 before 146: (07) r1 += 21
+mark_precise: frame0: regs= stack=-32 before 145: (bf) r1 = r6
+mark_precise: frame0: regs= stack=-32 before 144: (15) if r7 == 0x13 goto pc+83
+mark_precise: frame0: regs= stack=-32 before 143: (73) *(u8 *)(r0 +18) = r1
+mark_precise: frame0: regs= stack=-32 before 142: (71) r1 = *(u8 *)(r6 +19)
+mark_precise: frame0: regs= stack=-32 before 141: (2d) if r1 > r9 goto pc+132
+mark_precise: frame0: parent state regs= stack=-32:  R0_r=map_value(map=scratch_map,ks=4,vs=32) R1_rw=pkt(off=20,r=19) R3=2 R6_r=pkt(r=19) R7_r=Pscalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=pkt(off=1,r=19) R9_r=pkt_end() R10=fp0 fp-24=0000???? fp-32_r=P32
+mark_precise: frame0: last_idx 140 first_idx 131 subseq_idx 141 
+mark_precise: frame0: regs= stack=-32 before 140: (07) r1 += 20
+mark_precise: frame0: regs= stack=-32 before 139: (bf) r1 = r6
+mark_precise: frame0: regs= stack=-32 before 138: (2d) if r1 > r7 goto pc+89
+mark_precise: frame0: regs= stack=-32 before 137: (b7) r1 = 19
+mark_precise: frame0: regs= stack=-32 before 136: (73) *(u8 *)(r0 +17) = r1
+mark_precise: frame0: regs= stack=-32 before 135: (71) r1 = *(u8 *)(r6 +18)
+mark_precise: frame0: regs= stack=-32 before 134: (2d) if r1 > r9 goto pc+139
+mark_precise: frame0: regs= stack=-32 before 133: (07) r1 += 19
+mark_precise: frame0: regs= stack=-32 before 132: (bf) r1 = r6
+mark_precise: frame0: regs= stack=-32 before 131: (15) if r7 == 0x11 goto pc+96
+mark_precise: frame0: parent state regs= stack=-32:  R0_r=map_value(map=scratch_map,ks=4,vs=32) R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R3=2 R6_r=pkt(r=18) R7_r=Pscalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=pkt(off=1,r=18) R9_r=pkt_end() R10=fp0 fp-24=0000???? fp-32_r=P32
+mark_precise: frame0: last_idx 130 first_idx 121 subseq_idx 131 
+mark_precise: frame0: regs= stack=-32 before 130: (73) *(u8 *)(r0 +16) = r1
+mark_precise: frame0: regs= stack=-32 before 129: (71) r1 = *(u8 *)(r6 +17)
+mark_precise: frame0: regs= stack=-32 before 128: (2d) if r1 > r9 goto pc+145
+mark_precise: frame0: regs= stack=-32 before 127: (07) r1 += 18
+mark_precise: frame0: regs= stack=-32 before 126: (bf) r1 = r6
+mark_precise: frame0: regs= stack=-32 before 125: (2d) if r1 > r7 goto pc+102
+mark_precise: frame0: regs= stack=-32 before 124: (b7) r1 = 17
+mark_precise: frame0: regs= stack=-32 before 123: (73) *(u8 *)(r0 +15) = r1
+mark_precise: frame0: regs= stack=-32 before 122: (71) r1 = *(u8 *)(r6 +16)
+mark_precise: frame0: regs= stack=-32 before 121: (2d) if r1 > r9 goto pc+152
+mark_precise: frame0: parent state regs= stack=-32:  R0_r=map_value(map=scratch_map,ks=4,vs=32) R1_rw=pkt(off=17,r=16) R3=2 R6_r=pkt(r=16) R7_r=Pscalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=pkt(off=1,r=16) R9_r=pkt_end() R10=fp0 fp-24=0000???? fp-32_r=P32
+mark_precise: frame0: last_idx 120 first_idx 112 subseq_idx 121 
+mark_precise: frame0: regs= stack=-32 before 120: (07) r1 += 17
+mark_precise: frame0: regs= stack=-32 before 119: (bf) r1 = r6
+mark_precise: frame0: regs= stack=-32 before 118: (15) if r7 == 0xf goto pc+109
+mark_precise: frame0: regs= stack=-32 before 117: (73) *(u8 *)(r0 +14) = r1
+mark_precise: frame0: regs= stack=-32 before 116: (71) r1 = *(u8 *)(r6 +15)
+mark_precise: frame0: regs= stack=-32 before 115: (2d) if r1 > r9 goto pc+158
+mark_precise: frame0: regs= stack=-32 before 114: (07) r1 += 16
+mark_precise: frame0: regs= stack=-32 before 113: (bf) r1 = r6
+mark_precise: frame0: regs= stack=-32 before 112: (2d) if r1 > r7 goto pc+115
+mark_precise: frame0: parent state regs= stack=-32:  R0_r=map_value(map=scratch_map,ks=4,vs=32) R1_rw=P15 R3=2 R6_r=pkt(r=15) R7_r=Pscalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=pkt(off=1,r=15) R9_r=pkt_end() R10=fp0 fp-24=0000???? fp-32_r=P32
+mark_precise: frame0: last_idx 111 first_idx 102 subseq_idx 112 
+mark_precise: frame0: regs= stack=-32 before 111: (b7) r1 = 15
+mark_precise: frame0: regs= stack=-32 before 110: (73) *(u8 *)(r0 +13) = r1
+mark_precise: frame0: regs= stack=-32 before 109: (71) r1 = *(u8 *)(r6 +14)
+mark_precise: frame0: regs= stack=-32 before 108: (2d) if r1 > r9 goto pc+165
+mark_precise: frame0: regs= stack=-32 before 107: (07) r1 += 15
+mark_precise: frame0: regs= stack=-32 before 106: (bf) r1 = r6
+mark_precise: frame0: regs= stack=-32 before 105: (15) if r7 == 0xd goto pc+122
+mark_precise: frame0: regs= stack=-32 before 104: (73) *(u8 *)(r0 +12) = r1
+mark_precise: frame0: regs= stack=-32 before 103: (71) r1 = *(u8 *)(r6 +13)
+mark_precise: frame0: regs= stack=-32 before 102: (2d) if r1 > r9 goto pc+171
+mark_precise: frame0: parent state regs= stack=-32:  R0_r=map_value(map=scratch_map,ks=4,vs=32) R1_rw=pkt(off=14,r=13) R3=2 R6_r=pkt(r=13) R7_r=Pscalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=pkt(off=1,r=13) R9_r=pkt_end() R10=fp0 fp-24=0000???? fp-32_r=P32
+mark_precise: frame0: last_idx 101 first_idx 92 subseq_idx 102 
+mark_precise: frame0: regs= stack=-32 before 101: (07) r1 += 14
+mark_precise: frame0: regs= stack=-32 before 100: (bf) r1 = r6
+mark_precise: frame0: regs= stack=-32 before 99: (2d) if r1 > r7 goto pc+128
+mark_precise: frame0: regs= stack=-32 before 98: (b7) r1 = 13
+mark_precise: frame0: regs= stack=-32 before 97: (73) *(u8 *)(r0 +11) = r1
+mark_precise: frame0: regs= stack=-32 before 96: (71) r1 = *(u8 *)(r6 +12)
+mark_precise: frame0: regs= stack=-32 before 95: (2d) if r1 > r9 goto pc+178
+mark_precise: frame0: regs= stack=-32 before 94: (07) r1 += 13
+mark_precise: frame0: regs= stack=-32 before 93: (bf) r1 = r6
+mark_precise: frame0: regs= stack=-32 before 92: (15) if r7 == 0xb goto pc+135
+mark_precise: frame0: parent state regs= stack=-32:  R0_r=map_value(map=scratch_map,ks=4,vs=32) R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R3=2 R6_r=pkt(r=12) R7_r=Pscalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=pkt(off=1,r=12) R9_r=pkt_end() R10=fp0 fp-24=0000???? fp-32_r=P32
+mark_precise: frame0: last_idx 91 first_idx 82 subseq_idx 92 
+mark_precise: frame0: regs= stack=-32 before 91: (73) *(u8 *)(r0 +10) = r1
+mark_precise: frame0: regs= stack=-32 before 90: (71) r1 = *(u8 *)(r6 +11)
+mark_precise: frame0: regs= stack=-32 before 89: (2d) if r1 > r9 goto pc+184
+mark_precise: frame0: regs= stack=-32 before 88: (07) r1 += 12
+mark_precise: frame0: regs= stack=-32 before 87: (bf) r1 = r6
+mark_precise: frame0: regs= stack=-32 before 86: (2d) if r1 > r7 goto pc+141
+mark_precise: frame0: regs= stack=-32 before 85: (b7) r1 = 11
+mark_precise: frame0: regs= stack=-32 before 84: (73) *(u8 *)(r0 +9) = r1
+mark_precise: frame0: regs= stack=-32 before 83: (71) r1 = *(u8 *)(r6 +10)
+mark_precise: frame0: regs= stack=-32 before 82: (2d) if r1 > r9 goto pc+191
+mark_precise: frame0: parent state regs= stack=-32:  R0_r=map_value(map=scratch_map,ks=4,vs=32) R1_rw=pkt(off=11,r=10) R3=2 R6_r=pkt(r=10) R7_r=Pscalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=pkt(off=1,r=10) R9_r=pkt_end() R10=fp0 fp-24=0000???? fp-32_r=P32
+mark_precise: frame0: last_idx 81 first_idx 73 subseq_idx 82 
+mark_precise: frame0: regs= stack=-32 before 81: (07) r1 += 11
+mark_precise: frame0: regs= stack=-32 before 80: (bf) r1 = r6
+mark_precise: frame0: regs= stack=-32 before 79: (15) if r7 == 0x9 goto pc+148
+mark_precise: frame0: regs= stack=-32 before 78: (73) *(u8 *)(r0 +8) = r1
+mark_precise: frame0: regs= stack=-32 before 77: (71) r1 = *(u8 *)(r6 +9)
+mark_precise: frame0: regs= stack=-32 before 76: (2d) if r1 > r9 goto pc+197
+mark_precise: frame0: regs= stack=-32 before 75: (07) r1 += 10
+mark_precise: frame0: regs= stack=-32 before 74: (bf) r1 = r6
+mark_precise: frame0: regs= stack=-32 before 73: (2d) if r1 > r7 goto pc+154
+mark_precise: frame0: parent state regs= stack=-32:  R0_r=map_value(map=scratch_map,ks=4,vs=32) R1_rw=P9 R3=2 R6_r=pkt(r=9) R7_r=Pscalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=pkt(off=1,r=9) R9_r=pkt_end() R10=fp0 fp-24=0000???? fp-32_r=P32
+mark_precise: frame0: last_idx 72 first_idx 63 subseq_idx 73 
+mark_precise: frame0: regs= stack=-32 before 72: (b7) r1 = 9
+mark_precise: frame0: regs= stack=-32 before 71: (73) *(u8 *)(r0 +7) = r1
+mark_precise: frame0: regs= stack=-32 before 70: (71) r1 = *(u8 *)(r6 +8)
+mark_precise: frame0: regs= stack=-32 before 69: (2d) if r1 > r9 goto pc+204
+mark_precise: frame0: regs= stack=-32 before 68: (07) r1 += 9
+mark_precise: frame0: regs= stack=-32 before 67: (bf) r1 = r6
+mark_precise: frame0: regs= stack=-32 before 66: (15) if r7 == 0x7 goto pc+161
+mark_precise: frame0: regs= stack=-32 before 65: (73) *(u8 *)(r0 +6) = r1
+mark_precise: frame0: regs= stack=-32 before 64: (71) r1 = *(u8 *)(r6 +7)
+mark_precise: frame0: regs= stack=-32 before 63: (2d) if r1 > r9 goto pc+210
+mark_precise: frame0: parent state regs= stack=-32:  R0_r=map_value(map=scratch_map,ks=4,vs=32) R1_rw=pkt(off=8,r=7) R3=2 R6_r=pkt(r=7) R7_r=Pscalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=pkt(off=1,r=7) R9_r=pkt_end() R10=fp0 fp-24=0000???? fp-32_r=P32
+mark_precise: frame0: last_idx 62 first_idx 53 subseq_idx 63 
+mark_precise: frame0: regs= stack=-32 before 62: (07) r1 += 8
+mark_precise: frame0: regs= stack=-32 before 61: (bf) r1 = r6
+mark_precise: frame0: regs= stack=-32 before 60: (2d) if r1 > r7 goto pc+167
+mark_precise: frame0: regs= stack=-32 before 59: (b7) r1 = 7
+mark_precise: frame0: regs= stack=-32 before 58: (73) *(u8 *)(r0 +5) = r1
+mark_precise: frame0: regs= stack=-32 before 57: (71) r1 = *(u8 *)(r6 +6)
+mark_precise: frame0: regs= stack=-32 before 56: (2d) if r1 > r9 goto pc+217
+mark_precise: frame0: regs= stack=-32 before 55: (07) r1 += 7
+mark_precise: frame0: regs= stack=-32 before 54: (bf) r1 = r6
+mark_precise: frame0: regs= stack=-32 before 53: (15) if r7 == 0x5 goto pc+174
+mark_precise: frame0: parent state regs= stack=-32:  R0_r=map_value(map=scratch_map,ks=4,vs=32) R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R3=2 R6_r=pkt(r=6) R7_r=Pscalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=pkt(off=1,r=6) R9_r=pkt_end() R10=fp0 fp-24=0000???? fp-32_r=P32
+mark_precise: frame0: last_idx 52 first_idx 43 subseq_idx 53 
+mark_precise: frame0: regs= stack=-32 before 52: (73) *(u8 *)(r0 +4) = r1
+mark_precise: frame0: regs= stack=-32 before 51: (71) r1 = *(u8 *)(r6 +5)
+mark_precise: frame0: regs= stack=-32 before 50: (2d) if r1 > r9 goto pc+223
+mark_precise: frame0: regs= stack=-32 before 49: (07) r1 += 6
+mark_precise: frame0: regs= stack=-32 before 48: (bf) r1 = r6
+mark_precise: frame0: regs= stack=-32 before 47: (2d) if r1 > r7 goto pc+180
+mark_precise: frame0: regs= stack=-32 before 46: (b7) r1 = 5
+mark_precise: frame0: regs= stack=-32 before 45: (73) *(u8 *)(r0 +3) = r1
+mark_precise: frame0: regs= stack=-32 before 44: (71) r1 = *(u8 *)(r6 +4)
+mark_precise: frame0: regs= stack=-32 before 43: (2d) if r1 > r9 goto pc+230
+mark_precise: frame0: parent state regs= stack=-32:  R0_r=map_value(map=scratch_map,ks=4,vs=32) R1_rw=pkt(off=5,r=4) R3=2 R6_r=pkt(r=4) R7_r=Pscalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=pkt(off=1,r=4) R9_r=pkt_end() R10=fp0 fp-24=0000???? fp-32_r=P32
+mark_precise: frame0: last_idx 42 first_idx 34 subseq_idx 43 
+mark_precise: frame0: regs= stack=-32 before 42: (07) r1 += 5
+mark_precise: frame0: regs= stack=-32 before 41: (bf) r1 = r6
+mark_precise: frame0: regs= stack=-32 before 40: (15) if r7 == 0x3 goto pc+187
+mark_precise: frame0: regs= stack=-32 before 39: (73) *(u8 *)(r0 +2) = r1
+mark_precise: frame0: regs= stack=-32 before 38: (71) r1 = *(u8 *)(r6 +3)
+mark_precise: frame0: regs= stack=-32 before 37: (2d) if r1 > r9 goto pc+236
+mark_precise: frame0: regs= stack=-32 before 36: (07) r1 += 4
+mark_precise: frame0: regs= stack=-32 before 35: (bf) r1 = r6
+mark_precise: frame0: regs= stack=-32 before 34: (2d) if r1 > r7 goto pc+193
+mark_precise: frame0: parent state regs= stack=-32:  R0_r=map_value(map=scratch_map,ks=4,vs=32) R1_rw=P3 R3=2 R6_r=pkt(r=3) R7_r=Pscalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=pkt(off=1,r=3) R9_r=pkt_end() R10=fp0 fp-24=0000???? fp-32_r=P32
+mark_precise: frame0: last_idx 33 first_idx 24 subseq_idx 34 
+mark_precise: frame0: regs= stack=-32 before 33: (b7) r1 = 3
+mark_precise: frame0: regs= stack=-32 before 32: (73) *(u8 *)(r0 +1) = r1
+mark_precise: frame0: regs= stack=-32 before 31: (71) r1 = *(u8 *)(r6 +2)
+mark_precise: frame0: regs= stack=-32 before 30: (2d) if r1 > r9 goto pc+243
+mark_precise: frame0: regs= stack=-32 before 29: (07) r1 += 3
+mark_precise: frame0: regs= stack=-32 before 28: (bf) r1 = r6
+mark_precise: frame0: regs= stack=-32 before 27: (15) if r7 == 0x1 goto pc+200
+mark_precise: frame0: regs= stack=-32 before 26: (73) *(u8 *)(r0 +0) = r1
+mark_precise: frame0: regs= stack=-32 before 25: (71) r1 = *(u8 *)(r8 +0)
+mark_precise: frame0: regs= stack=-32 before 24: (2d) if r1 > r9 goto pc+249
+mark_precise: frame0: parent state regs= stack=-32:  R0_rw=map_value(map=scratch_map,ks=4,vs=32) R1_rw=pkt(off=2,r=1) R3_w=2 R6_r=pkt(r=1) R7_r=Pscalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8_r=pkt(off=1,r=1) R9_r=pkt_end() R10=fp0 fp-24=0000???? fp-32_rw=P32
+mark_precise: frame0: last_idx 23 first_idx 13 subseq_idx 24 
+mark_precise: frame0: regs= stack=-32 before 23: (07) r1 += 2
+mark_precise: frame0: regs= stack=-32 before 22: (bf) r1 = r6
+mark_precise: frame0: regs= stack=-32 before 21: (15) if r7 == 0x0 goto pc+206
+mark_precise: frame0: regs= stack=-32 before 20: (15) if r0 == 0x0 goto pc+253
+mark_precise: frame0: regs= stack=-32 before 19: (b7) r3 = 2
+mark_precise: frame0: regs= stack=-32 before 18: (85) call bpf_map_lookup_elem#1
+mark_precise: frame0: regs= stack=-32 before 16: (18) r1 = 0xffff000000000000
+mark_precise: frame0: regs= stack=-32 before 15: (07) r2 += -20
+mark_precise: frame0: regs= stack=-32 before 14: (bf) r2 = r10
+mark_precise: frame0: regs= stack=-32 before 13: (7b) *(u64 *)(r10 -32) = r2
+mark_precise: frame0: parent state regs=r2 stack=:  R1_w=32 R2_rw=P32 R3_w=2 R6_rw=pkt(r=1) R7_rw=Pscalar(id=1,smin=umin=smin32=umin32=32,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8_rw=pkt(off=1,r=1) R9_rw=pkt_end() R10=fp0 fp-24_r=0000????
+mark_precise: frame0: last_idx 12 first_idx 0 subseq_idx 13 
+mark_precise: frame0: regs=r2 stack= before 12: (b7) r2 = 32
+235: R0_w=scalar() fp-16_w=dynptr_local(id=2,dynptr_id=1)
+235: (b7) r3 = 2                      ; R3_w=2
+236: (6d) if r6 s> r0 goto pc+37      ; R0_w=scalar(smin=0,umax=0x7fffffffffffffff,var_off=(0x0; 0x7fffffffffffffff)) R6_w=0
+237: (bf) r1 = r10                    ; R1_w=fp0 R10=fp0
+; tag = bpf_dynptr_data(&dynptr, 0, sizeof(*tag)); @ buggy.bpf.c:80
+238: (07) r1 += -16                   ; R1_w=fp-16
+239: (b7) r2 = 0                      ; R2_w=0
+240: (b7) r3 = 4                      ; R3_w=4
+241: (85) call bpf_dynptr_data#203
+mark_precise: frame0: last_idx 241 first_idx 228 subseq_idx -1 
+mark_precise: frame0: regs=r3 stack= before 240: (b7) r3 = 4
+242: R0=mem_or_null(id=3,sz=4) fp-16=dynptr_local(id=2,dynptr_id=1)
+242: (b7) r3 = 2                      ; R3_w=2
+; if (!tag) @ buggy.bpf.c:81
+243: (15) if r0 == 0x0 goto pc+30     ; R0=mem(sz=4)
+; if (*tag == CAP_REQ_RELOAD_UPDATE) { @ buggy.bpf.c:84
+244: (61) r1 = *(u32 *)(r0 +0)        ; R0=mem(sz=4) R1_w=scalar(smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000))
+245: (15) if r1 == 0x3ea goto pc+12   ; R1_w=scalar(smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000))
+246: (55) if r1 != 0x3e9 goto pc+27   ; R1_w=1001
+247: (bf) r1 = r10                    ; R1_w=fp0 R10=fp0
+; const struct cap_reload_update *r = bpf_dynptr_data(&dynptr, 0, sizeof(*r)); @ buggy.bpf.c:85
+248: (07) r1 += -16                   ; R1_w=fp-16
+249: (b7) r2 = 0                      ; R2_w=0
+250: (b7) r3 = 12                     ; R3_w=12
+251: (85) call bpf_dynptr_data#203
+mark_precise: frame0: last_idx 251 first_idx 242 subseq_idx -1 
+mark_precise: frame0: regs=r3 stack= before 250: (b7) r3 = 12
+252: R0=mem_or_null(id=4,sz=12) fp-16=dynptr_local(id=2,dynptr_id=1)
+252: (b7) r3 = 2                      ; R3_w=2
+; if (r->index >= MAX_TAINT_UPDATES) @ buggy.bpf.c:87
+253: (61) r1 = *(u32 *)(r0 +4)
+R0 invalid mem access 'mem_or_null'
+verification time 0 usec
+stack depth 32
+processed 253 insns (limit 1000000) max_states_per_insn 0 total_states 25 peak_states 25 mark_read 22
+-- END PROG LOAD LOG --
+libbpf: prog 'actplane_cap_dynptr_payload_null': failed to load: -EACCES
+libbpf: failed to load object '<work-dir>/prog.o'
+Error: failed to load object file

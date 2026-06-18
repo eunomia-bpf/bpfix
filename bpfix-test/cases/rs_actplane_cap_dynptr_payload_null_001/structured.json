@@ -1,0 +1,71 @@
+{
+  "diagnostic_version": "bpfix.diagnostic/v3",
+  "error_id": "BPFIX-E012",
+  "failure_class": "modern_bpf_protocol",
+  "confidence": "medium",
+  "diagnostic_kind": "supported",
+  "help_safety": "repair_hint",
+  "next_action": "add_dynptr_data_null_check",
+  "span_confidence": "exact_pc",
+  "message": "The capability request parser proves only the dynptr tag slice, then reads larger request structs returned by bpf_dynptr_data without a non-null proof",
+  "required_proof": "each bpf_dynptr_data result for a request payload struct must be proven non-null, or the dynptr length must otherwise prove the requested slice, before reading payload fields",
+  "source_span": {
+    "path": "buggy.bpf.c",
+    "line_start": 87,
+    "line_end": 87,
+    "instruction_pc": null,
+    "source_text": "if (r->index >= MAX_TAINT_UPDATES)",
+    "label": "reload-update payload struct is read while still mem_or_null"
+  },
+  "related_spans": [
+    {
+      "path": "buggy.bpf.c",
+      "line_start": 80,
+      "line_end": 82,
+      "instruction_pc": null,
+      "source_text": "tag = bpf_dynptr_data(&dynptr, 0, sizeof(*tag));",
+      "label": "this null check proves only the 32-bit tag slice"
+    },
+    {
+      "path": "buggy.bpf.c",
+      "line_start": 85,
+      "line_end": 85,
+      "instruction_pc": null,
+      "source_text": "const struct cap_reload_update *r = bpf_dynptr_data(&dynptr, 0, sizeof(*r));",
+      "label": "the larger payload slice needs its own proof"
+    },
+    {
+      "path": "buggy.bpf.c",
+      "line_start": 93,
+      "line_end": 95,
+      "instruction_pc": null,
+      "source_text": "const struct cap_reload_rule *r = bpf_dynptr_data(&dynptr, 0, sizeof(*r));",
+      "label": "the rule payload path has the same dynptr slice obligation"
+    }
+  ],
+  "evidence": [
+    {
+      "kind": "terminal_verifier_error",
+      "detail": "R0 invalid mem access 'mem_or_null'",
+      "line": 87
+    },
+    {
+      "kind": "helper_protocol",
+      "detail": "bpf_dynptr_data returns mem_or_null for a requested slice; proving the tag pointer is non-null does not prove a larger struct slice",
+      "line": 85
+    }
+  ],
+  "help": [
+    "After each payload-sized bpf_dynptr_data call, check the returned pointer before reading fields, or add an equivalent verifier-visible dynptr length proof for that payload size.",
+    "Keep the tag-dispatched reload-update and reload-rule handling; returning a constant action or bypassing dynptr payload parsing is not an equivalent repair."
+  ],
+  "metadata": {
+    "case_id": null,
+    "input_kind": "verifier-log-region",
+    "object_path": null,
+    "object_programs": [],
+    "object_analysis_error": null,
+    "trace_state_count": null,
+    "analysis_error": null
+  }
+}

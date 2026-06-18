@@ -163,6 +163,14 @@
             "decision_made_before_model_eval": true,
             "model_result_used": false,
             "notes": "Minimized Cilium's IGMPv3 multicast group-record loop into an XDP source/object-correlation case where the per-record bounds check is missing; no LLM repair outcomes were used for admission."
+        },
+        {
+            "seed": "ActPlane@84169ce6a22a302afdf64427a0b7ffbab773b6e1:bpf/capability.bpf.h",
+            "decision": "admitted",
+            "case_id": "rs_actplane_cap_dynptr_payload_null_001",
+            "decision_made_before_model_eval": true,
+            "model_result_used": false,
+            "notes": "Minimized ActPlane's tag-dispatched capability dynptr request parser into an XDP harness where the tag slice is checked but larger payload struct slices are read without their own proof; no LLM repair outcomes were used for admission."
         }
   ],
   "seed_exclusion_ledger": [
@@ -1183,6 +1191,61 @@
                     "bpftool prog run drops a single exclude mDNS group record and also drops when the matching record is second",
                     "bpftool prog run passes include records, other groups, truncated record payloads, IGMPv2, UDP, and ARP packets",
                     "successful verifier log shows group-address loads after verifier-visible record-size packet bounds"
+                ]
+            }
+        },
+        {
+            "case_id": "rs_actplane_cap_dynptr_payload_null_001",
+            "bucket": "modern_bpf_protocol",
+            "prog_type": "xdp",
+            "origin": "real-project seed from ActPlane capability dynptr request parsing",
+            "oracle_kind": [
+                "compile",
+                "verifier_load",
+                "bpftool_prog_run",
+                "proof_predicate"
+            ],
+            "requires_helper_or_state": true,
+            "uses_success_predicate": true,
+            "case_sha256": "9510a4bcb00d16a29a884bed28aeb2a704a3cc5bd0c6f8e30605f314cd49fc6f",
+            "buggy_source_sha256": "26d94179b230c52c9e10d68f0200cc718d08ef907e2c7cee23968967465478f7",
+            "review": {
+                "reviewer": "Planck subagent 019ed99f-6c78-76a0-aada-fe3dbd7d9486",
+                "reviewed_at": "2026-06-17",
+                "bug_confirmed": true,
+                "oracle_adequate": true,
+                "not_seen_in_prior_eval": true,
+                "bug_summary": "Minimized ActPlane capability request parser proves only the 32-bit dynptr tag slice, then reads reload-update and reload-rule payload structs returned by bpf_dynptr_data without proving those larger slices non-null; replay rejects at r->index with mem_or_null access.",
+                "oracle_rationale": "Oracle combines compile/load, 9 bpftool prog run functional tests, and a verifier-state predicate requiring bpf_dynptr_from_mem plus bpf_dynptr_data payload field reads from proven dynptr memory; it is not just terminal-message matching and should reject tag-only, constant-action, or semantics-dropping repairs.",
+                "provenance_rationale": "Verified against ActPlane commit 84169ce6a22a302afdf64427a0b7ffbab773b6e1, path bpf/capability.bpf.h, SPDX GPL-2.0 OR BSD-3-Clause, and upstream file sha256 f23bc2e5e9dad89db144ad6fc5956b124083ee9cd8051c4c198980dbbb1cf83c; split audit reports no dev40/prior-eval overlap or near duplicates, and model_result_used is false."
+            },
+            "provenance": {
+                "seed_type": "minimized real-project seed in ActPlane capability dynptr request parser harness",
+                "source": "https://github.com/eunomia-bpf/ActPlane/blob/84169ce6a22a302afdf64427a0b7ffbab773b6e1/bpf/capability.bpf.h",
+                "license": "GPL-2.0 OR BSD-3-Clause",
+                "minimization": "Preserved the ActPlane capability drain path's tag-first bpf_dynptr_data parsing and tag-dispatched payload structs while replacing user-ringbuf delivery with a deterministic XDP packet-to-map scratch harness for bpftool prog run checks.",
+                "upstream_project": "https://github.com/eunomia-bpf/ActPlane",
+                "upstream_ref": "84169ce6a22a302afdf64427a0b7ffbab773b6e1",
+                "upstream_path": "bpf/capability.bpf.h",
+                "upstream_license": "GPL-2.0 OR BSD-3-Clause",
+                "upstream_file_sha256": "f23bc2e5e9dad89db144ad6fc5956b124083ee9cd8051c4c198980dbbb1cf83c",
+                "derived_from_dev40": false,
+                "model_result_used": false
+            },
+            "oracle_obligation": {
+                "functional_semantics": [
+                    "repair must load as an XDP program",
+                    "repair must preserve tag-dispatched reload-update and reload-rule payload handling",
+                    "repair must drop only matching reload-update value and reload-rule domain/action requests while passing bad indexes, truncated payloads, short packets, and unknown tags"
+                ],
+                "verifier_reject_reason": [
+                    "buggy program proves only the 32-bit dynptr tag slice",
+                    "the reload-update and reload-rule paths read larger bpf_dynptr_data payload structs without proving those returned pointers are non-null"
+                ],
+                "success_criteria": [
+                    "candidate compiles and verifier-loads as an XDP program",
+                    "bpftool prog run returns XDP_DROP for matching reload-update and reload-rule requests and XDP_PASS for nonmatching or malformed requests",
+                    "successful verifier log shows bpf_dynptr_from_mem and bpf_dynptr_data payload reads from proven dynptr memory"
                 ]
             }
         }
