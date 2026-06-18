@@ -211,6 +211,14 @@
             "decision_made_before_model_eval": true,
             "model_result_used": false,
             "notes": "Minimized Tetragon's data_event user-buffer workflow into a tracepoint helper-memory contract case where a MSG_DATA_ARG_LEN-bounded size is computed but the raw masked syscall size is passed to bpf_probe_read_user and perf output; no LLM repair outcomes were used for admission."
+        },
+        {
+            "seed": "cilium@3a3646386538766d6edd5ada929b427728dbfafd:bpf/lib/fib.h#fib-lookup-param-len",
+            "decision": "admitted",
+            "case_id": "rs_cilium_fib_lookup_param_len_001",
+            "decision_made_before_model_eval": true,
+            "model_result_used": false,
+            "notes": "Minimized Cilium's FIB lookup, L2 rewrite, and redirect workflow into an XDP helper-memory contract case where bpf_fib_lookup is given a length larger than the initialized stack parameter object; no LLM repair outcomes were used for admission."
         }
   ],
   "seed_exclusion_ledger": [
@@ -1587,6 +1595,67 @@
                     "successful verifier log shows bpf_probe_read_user receives the data_heap payload pointer at offset 8 and a length bounded by MSG_DATA_ARG_LEN",
                     "successful verifier log shows bpf_perf_event_output submits the data_heap message with size equal to the same bounded copy length plus MSG_DATA_ARG_OFFSET on both clamped and variable paths",
                     "oracle rejects repairs that delete user copy, delete perf output, or replace the dynamic bounded copy with a fixed 32-byte output"
+                ]
+            }
+        },
+        {
+            "case_id": "rs_cilium_fib_lookup_param_len_001",
+            "bucket": "helper_memory_contract",
+            "prog_type": "xdp",
+            "origin": "real-project seed from Cilium FIB lookup redirect workflow",
+            "oracle_kind": [
+                "compile",
+                "verifier_load",
+                "bpftool_prog_run",
+                "helper_state",
+                "proof_predicate"
+            ],
+            "requires_helper_or_state": true,
+            "uses_success_predicate": true,
+            "case_sha256": "fa68ebb669ad73a20dd999b707cbb5d7c7dfcee85e7c815db8d9b80c667ba676",
+            "buggy_source_sha256": "bd24be0ecc4422c5a623a9b24d5543e743b54b551cf065bd9d986487ba59201c",
+            "review": {
+                "reviewer": "Ohm subagent 019edc58-ff02-7fc1-aa6d-44db5276514f",
+                "reviewed_at": "2026-06-18",
+                "bug_confirmed": true,
+                "oracle_adequate": true,
+                "not_seen_in_prior_eval": true,
+                "bug_summary": "The XDP harness preserves Cilium's IPv4 FIB lookup and redirect workflow, but intentionally passes sizeof(struct bpf_fib_lookup)+4 to bpf_fib_lookup. The verifier reaches bpf_fib_lookup#69 with R2 pointing at a 64-byte stack object and R3=68, causing invalid read from stack R2 off=-64 size=68.",
+                "oracle_rationale": "The oracle requires buggy rejection with the stack-read verifier error, then requires repaired sources to compile and verifier-load while preserving IPv4 redirect and IPv6 pass functional outcomes, bpf_fib_lookup, bpf_redirect, R3=64 at the FIB helper, full 64-byte stack zero-initialization before the helper, packet/context-derived family/src/dst/ifindex fields, and verifier-visible L2 rewrite guarded by lookup success. This rejects repairs that delete the helper, collapse to XDP_PASS, or bypass the success-path rewrite/redirect workflow.",
+                "provenance_rationale": "Seed verified against local Cilium commit 3a3646386538766d6edd5ada929b427728dbfafd, path bpf/lib/fib.h, remote https://github.com/cilium/cilium.git, sha256 e2f35ea27d6793e88b5c8d1121149ca43a7eab6b3744037829a80d39910d46f1, SPDX (GPL-2.0-only OR BSD-2-Clause). The minimized case uses the upstream FIB parameter construction, success-path L2 rewrite, and redirect workflow while injecting only the helper length/stack-read verifier failure; no LLM repair result was used for admission."
+            },
+            "provenance": {
+                "seed_type": "minimized real-project seed in Cilium XDP FIB lookup harness",
+                "source": "https://github.com/cilium/cilium/blob/3a3646386538766d6edd5ada929b427728dbfafd/bpf/lib/fib.h",
+                "license": "(GPL-2.0-only OR BSD-2-Clause)",
+                "minimization": "Preserved the upstream Cilium FIB redirect shape: build a struct bpf_fib_lookup parameter object from packet and context fields, call bpf_fib_lookup, rewrite Ethernet addresses on lookup success, and redirect using the returned interface. The minimized XDP harness isolates the incorrect helper length that exceeds the initialized stack object.",
+                "upstream_project": "https://github.com/cilium/cilium.git",
+                "upstream_ref": "3a3646386538766d6edd5ada929b427728dbfafd",
+                "upstream_path": "bpf/lib/fib.h",
+                "upstream_license": "(GPL-2.0-only OR BSD-2-Clause)",
+                "upstream_file_sha256": "e2f35ea27d6793e88b5c8d1121149ca43a7eab6b3744037829a80d39910d46f1",
+                "derived_from_dev40": false,
+                "model_result_used": false
+            },
+            "oracle_obligation": {
+                "functional_semantics": [
+                    "repair must load as an XDP program",
+                    "repair must preserve IPv4 FIB lookup and redirect behavior",
+                    "repair must preserve non-IPv4 pass-through behavior",
+                    "repair must preserve success-path Ethernet destination/source rewrite before redirect"
+                ],
+                "verifier_reject_reason": [
+                    "buggy program initializes a 64-byte struct bpf_fib_lookup stack object",
+                    "bpf_fib_lookup receives R3=68, which asks the helper to read past the initialized stack object",
+                    "the verifier rejects the helper call as invalid read from stack R2 off=-64 size=68"
+                ],
+                "success_criteria": [
+                    "candidate compiles and verifier-loads as an XDP program",
+                    "bpftool prog run returns XDP_REDIRECT for the IPv4 lookup path and XDP_PASS for the IPv6 path",
+                    "successful verifier log reaches bpf_fib_lookup with R3=64 and a fully zeroed stack parameter object",
+                    "successful verifier log shows FIB family/src/dst/ifindex fields derived from packet and context state",
+                    "successful verifier log shows lookup-success-guarded L2 rewrite followed by bpf_redirect",
+                    "oracle rejects repairs that delete FIB lookup, delete redirect, or replace the workflow with unconditional XDP_PASS"
                 ]
             }
         }
