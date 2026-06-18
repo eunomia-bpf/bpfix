@@ -1,0 +1,139 @@
+libbpf: loading object from <work-dir>/prog.o
+libbpf: elf: section(3) tc, size 288, link 0, flags 6, type=1
+libbpf: sec 'tc': found program 'rs_cilium_proxy_skc_assign_ref_leak' at insn offset 0 (0 bytes), code size 36 insns (288 bytes)
+libbpf: elf: section(4) license, size 4, link 0, flags 3, type=1
+libbpf: license of <work-dir>/prog.o is GPL
+libbpf: elf: section(14) .BTF, size 2304, link 0, flags 0, type=1
+libbpf: elf: section(16) .BTF.ext, size 396, link 0, flags 0, type=1
+libbpf: elf: section(24) .symtab, size 360, link 1, flags 0, type=2
+libbpf: looking for externs among 15 symbols...
+libbpf: collected 0 externs total
+libbpf: object 'prog': failed (-95) to create BPF token from '/sys/fs/bpf', skipping optional step...
+libbpf: loaded kernel BTF from '/sys/kernel/btf/vmlinux'
+libbpf: sec 'tc': found 5 CO-RE relocations
+libbpf: CO-RE relocating [19] struct bpf_sock_tuple: found target candidate [45251] struct bpf_sock_tuple in [vmlinux]
+libbpf: prog 'rs_cilium_proxy_skc_assign_ref_leak': relo #0: <byte_off> [19] struct bpf_sock_tuple.ipv4.saddr (0:0:0:0 @ offset 0)
+libbpf: prog 'rs_cilium_proxy_skc_assign_ref_leak': relo #0: matching candidate #0 <byte_off> [45251] struct bpf_sock_tuple.ipv4.saddr (0:0:0:0 @ offset 0)
+libbpf: prog 'rs_cilium_proxy_skc_assign_ref_leak': relo #0: patched insn #10 (LDX/ST/STX) off 0 -> 0
+libbpf: prog 'rs_cilium_proxy_skc_assign_ref_leak': relo #1: <byte_off> [19] struct bpf_sock_tuple.ipv4.daddr (0:0:0:1 @ offset 4)
+libbpf: prog 'rs_cilium_proxy_skc_assign_ref_leak': relo #1: matching candidate #0 <byte_off> [45251] struct bpf_sock_tuple.ipv4.daddr (0:0:0:1 @ offset 4)
+libbpf: prog 'rs_cilium_proxy_skc_assign_ref_leak': relo #1: patched insn #12 (LDX/ST/STX) off 4 -> 4
+libbpf: prog 'rs_cilium_proxy_skc_assign_ref_leak': relo #2: <byte_off> [19] struct bpf_sock_tuple.ipv4.sport (0:0:0:2 @ offset 8)
+libbpf: prog 'rs_cilium_proxy_skc_assign_ref_leak': relo #2: matching candidate #0 <byte_off> [45251] struct bpf_sock_tuple.ipv4.sport (0:0:0:2 @ offset 8)
+libbpf: prog 'rs_cilium_proxy_skc_assign_ref_leak': relo #2: patched insn #14 (LDX/ST/STX) off 8 -> 8
+libbpf: prog 'rs_cilium_proxy_skc_assign_ref_leak': relo #3: <byte_off> [19] struct bpf_sock_tuple.ipv4.dport (0:0:0:3 @ offset 10)
+libbpf: prog 'rs_cilium_proxy_skc_assign_ref_leak': relo #3: matching candidate #0 <byte_off> [45251] struct bpf_sock_tuple.ipv4.dport (0:0:0:3 @ offset 10)
+libbpf: prog 'rs_cilium_proxy_skc_assign_ref_leak': relo #3: patched insn #16 (LDX/ST/STX) off 10 -> 10
+libbpf: CO-RE relocating [2] struct __sk_buff: found target candidate [15151] struct __sk_buff in [vmlinux]
+libbpf: prog 'rs_cilium_proxy_skc_assign_ref_leak': relo #4: <byte_off> [2] struct __sk_buff.mark (0:2 @ offset 8)
+libbpf: prog 'rs_cilium_proxy_skc_assign_ref_leak': relo #4: matching candidate #0 <byte_off> [15151] struct __sk_buff.mark (0:2 @ offset 8)
+libbpf: prog 'rs_cilium_proxy_skc_assign_ref_leak': relo #4: patched insn #30 (LDX/ST/STX) off 8 -> 8
+libbpf: prog 'rs_cilium_proxy_skc_assign_ref_leak': BPF program load failed: -EINVAL
+libbpf: prog 'rs_cilium_proxy_skc_assign_ref_leak': -- BEGIN PROG LOAD LOG --
+func#0 @0
+Live regs before insn:
+  0: .1........ (bf) r7 = r1
+  1: .......7.. (b7) r6 = 0
+  2: ......67.. (63) *(u32 *)(r10 -8) = r6
+  3: ......67.. (7b) *(u64 *)(r10 -16) = r6
+  4: ......67.. (7b) *(u64 *)(r10 -24) = r6
+  5: ......67.. (7b) *(u64 *)(r10 -32) = r6
+  6: ......67.. (7b) *(u64 *)(r10 -40) = r6
+  7: ......67.. (bf) r2 = r10
+  8: ..2...67.. (07) r2 += -40
+  9: ..2...67.. (b7) r1 = 16777226
+ 10: .12...67.. (63) *(u32 *)(r2 +0) = r1
+ 11: ..2...67.. (b7) r1 = 33554442
+ 12: .12...67.. (63) *(u32 *)(r2 +4) = r1
+ 13: ..2...67.. (b7) r1 = 4135
+ 14: .12...67.. (6b) *(u16 *)(r2 +8) = r1
+ 15: ..2...67.. (b7) r1 = 39226
+ 16: .12...67.. (6b) *(u16 *)(r2 +10) = r1
+ 17: ..2...67.. (bf) r1 = r7
+ 18: .12...67.. (b7) r3 = 12
+ 19: .123..67.. (b7) r4 = -1
+ 20: .1234.67.. (b7) r5 = 0
+ 21: .1234567.. (85) call bpf_skc_lookup_tcp#99
+ 22: 0.....67.. (bf) r8 = r0
+ 23: ......678. (15) if r8 == 0x0 goto pc+10
+ 24: ......678. (bf) r1 = r7
+ 25: .1....678. (bf) r2 = r8
+ 26: .12...678. (b7) r3 = 0
+ 27: .123..678. (85) call bpf_sk_assign#124
+ 28: 0.....678. (55) if r0 != 0x0 goto pc+3
+ 29: .......78. (b7) r6 = 2
+ 30: ......678. (61) r1 = *(u32 *)(r7 +8)
+ 31: .1....6.8. (15) if r1 == 0x7 goto pc+2
+ 32: ......6.8. (bf) r1 = r8
+ 33: .1....6... (85) call bpf_sk_release#86
+ 34: ......6... (bf) r0 = r6
+ 35: 0......... (95) exit
+0: R1=ctx() R10=fp0
+; int rs_cilium_proxy_skc_assign_ref_leak(struct __sk_buff *skb) @ buggy.bpf.c:13
+0: (bf) r7 = r1                       ; R1=ctx() R7_w=ctx()
+1: (b7) r6 = 0                        ; R6_w=0
+; struct bpf_sock_tuple tuple = {}; @ buggy.bpf.c:15
+2: (63) *(u32 *)(r10 -8) = r6         ; R6_w=0 R10=fp0 fp-8=????0
+3: (7b) *(u64 *)(r10 -16) = r6        ; R6_w=0 R10=fp0 fp-16_w=0
+4: (7b) *(u64 *)(r10 -24) = r6        ; R6_w=0 R10=fp0 fp-24_w=0
+5: (7b) *(u64 *)(r10 -32) = r6        ; R6_w=0 R10=fp0 fp-32_w=0
+6: (7b) *(u64 *)(r10 -40) = r6        ; R6_w=0 R10=fp0 fp-40_w=0
+7: (bf) r2 = r10                      ; R2_w=fp0 R10=fp0
+;  @ buggy.bpf.c:0
+8: (07) r2 += -40                     ; R2_w=fp-40
+9: (b7) r1 = 16777226                 ; R1_w=0x100000a
+; tuple.ipv4.saddr = bpf_htonl(0x0a000001); @ buggy.bpf.c:19
+10: (63) *(u32 *)(r2 +0) = r1         ; R1_w=0x100000a R2_w=fp-40 fp-40_w=mmmm0x100000a
+11: (b7) r1 = 33554442                ; R1_w=0x200000a
+; tuple.ipv4.daddr = bpf_htonl(0x0a000002); @ buggy.bpf.c:20
+12: (63) *(u32 *)(r2 +4) = r1         ; R1_w=0x200000a R2_w=fp-40 fp-40_w=mmmmmmmm
+13: (b7) r1 = 4135                    ; R1_w=4135
+; tuple.ipv4.sport = bpf_htons(10000); @ buggy.bpf.c:21
+14: (6b) *(u16 *)(r2 +8) = r1         ; R1_w=4135 R2_w=fp-40 fp-32_w=mmmmmm4135
+15: (b7) r1 = 39226                   ; R1_w=0x993a
+; tuple.ipv4.dport = bpf_htons(PROXY_PORT); @ buggy.bpf.c:22
+16: (6b) *(u16 *)(r2 +10) = r1        ; R1_w=0x993a R2_w=fp-40 fp-32_w=mmmmmmmm
+; sk = bpf_skc_lookup_tcp(skb, &tuple, sizeof(tuple.ipv4), BPF_F_CURRENT_NETNS, 0); @ buggy.bpf.c:24
+17: (bf) r1 = r7                      ; R1_w=ctx() R7_w=ctx()
+18: (b7) r3 = 12                      ; R3_w=12
+19: (b7) r4 = -1                      ; R4_w=-1
+20: (b7) r5 = 0                       ; R5_w=0
+21: (85) call bpf_skc_lookup_tcp#99
+mark_precise: frame0: last_idx 21 first_idx 0 subseq_idx -1
+mark_precise: frame0: regs=r3 stack= before 20: (b7) r5 = 0
+mark_precise: frame0: regs=r3 stack= before 19: (b7) r4 = -1
+mark_precise: frame0: regs=r3 stack= before 18: (b7) r3 = 12
+22: R0_w=sock_common_or_null(id=2,ref_obj_id=2) refs=2
+22: (bf) r8 = r0                      ; R0_w=sock_common_or_null(id=2,ref_obj_id=2) R8_w=sock_common_or_null(id=2,ref_obj_id=2) refs=2
+; if (!sk) @ buggy.bpf.c:25
+23: (15) if r8 == 0x0 goto pc+10      ; R8_w=sock_common(ref_obj_id=2) refs=2
+; result = bpf_sk_assign(skb, sk, 0); @ buggy.bpf.c:28
+24: (bf) r1 = r7                      ; R1_w=ctx() R7_w=ctx() refs=2
+25: (bf) r2 = r8                      ; R2_w=sock_common(ref_obj_id=2) R8_w=sock_common(ref_obj_id=2) refs=2
+26: (b7) r3 = 0                       ; R3_w=0 refs=2
+27: (85) call bpf_sk_assign#124       ; R0=scalar() refs=2
+; if (result == 0 && skb->mark == PROXY_MARK) @ buggy.bpf.c:29
+28: (55) if r0 != 0x0 goto pc+3       ; R0=0 refs=2
+29: (b7) r6 = 2                       ; R6_w=2 refs=2
+30: (61) r1 = *(u32 *)(r7 +8)         ; R1_w=scalar(smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) R7=ctx() refs=2
+31: (15) if r1 == 0x7 goto pc+2       ; R1_w=scalar(smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) refs=2
+; bpf_sk_release(sk); @ buggy.bpf.c:32
+32: (bf) r1 = r8                      ; R1_w=sock_common(ref_obj_id=2) R8=sock_common(ref_obj_id=2) refs=2
+33: (85) call bpf_sk_release#86       ; R0_w=scalar()
+; } @ buggy.bpf.c:34
+34: (bf) r0 = r6                      ; R0_w=2 R6_w=2
+35: (95) exit
+
+from 31 to 34: R0=0 R1=7 R6=2 R7=ctx() R8=sock_common(ref_obj_id=2) R10=fp0 fp-8=????0 fp-16=0 fp-24=0 fp-32=mmmmmmmm fp-40=mmmmmmmm refs=2
+34: R0=0 R1=7 R6=2 R7=ctx() R8=sock_common(ref_obj_id=2) R10=fp0 fp-8=????0 fp-16=0 fp-24=0 fp-32=mmmmmmmm fp-40=mmmmmmmm refs=2
+34: (bf) r0 = r6                      ; R0_w=2 R6=2 refs=2
+35: (95) exit
+Unreleased reference id=2 alloc_insn=21
+BPF_EXIT instruction in main prog would lead to reference leak
+verification time 0 usec
+stack depth 40
+processed 38 insns (limit 1000000) max_states_per_insn 0 total_states 2 peak_states 2 mark_read 1
+-- END PROG LOAD LOG --
+libbpf: prog 'rs_cilium_proxy_skc_assign_ref_leak': failed to load: -EINVAL
+libbpf: failed to load object '<work-dir>/prog.o'
+Error: failed to load object file

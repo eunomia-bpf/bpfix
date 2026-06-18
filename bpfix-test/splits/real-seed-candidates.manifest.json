@@ -195,6 +195,14 @@
             "decision_made_before_model_eval": true,
             "model_result_used": false,
             "notes": "Minimized bpftime's opensnoop ring-buffer syscall-entry/exit workflow into a tracepoint case where a failed-only ret filter returns after bpf_ringbuf_reserve without releasing the reference or cleaning saved arguments; no LLM repair outcomes were used for admission."
+        },
+        {
+            "seed": "cilium@3a3646386538766d6edd5ada929b427728dbfafd:bpf/lib/proxy.h#skc-assign-ref",
+            "decision": "admitted",
+            "case_id": "rs_cilium_proxy_skc_assign_ref_leak_001",
+            "decision_made_before_model_eval": true,
+            "model_result_used": false,
+            "notes": "Minimized Cilium's proxy socket lookup, skb assignment, and socket release workflow into a TC case where the successful marked branch returns before bpf_sk_release; no LLM repair outcomes were used for admission."
         }
   ],
   "seed_exclusion_ledger": [
@@ -1445,6 +1453,66 @@
                     "successful verifier log reaches start-map lookup, bpf_ringbuf_reserve, bpf_probe_read_user_str, bpf_ringbuf_submit, and bpf_map_delete_elem",
                     "source predicate proves the ret-filtered branch either runs before reserve and jumps to cleanup, or discards the reserved record before cleanup",
                     "verifier-CFG predicate proves the ret-filtered successor reaches cleanup without submit, and requires discard if reserve happened before the branch"
+                ]
+            }
+        },
+        {
+            "case_id": "rs_cilium_proxy_skc_assign_ref_leak_001",
+            "bucket": "modern_bpf_protocol",
+            "prog_type": "tc",
+            "origin": "real-project seed from Cilium proxy socket assignment workflow",
+            "oracle_kind": [
+                "compile",
+                "verifier_load",
+                "custom_oracle",
+                "helper_state",
+                "proof_predicate"
+            ],
+            "requires_helper_or_state": true,
+            "uses_success_predicate": true,
+            "case_sha256": "184f6dd895bb56e54c22bfbf6b19c479df53471da3ab6d80eb83d46552e897e4",
+            "buggy_source_sha256": "6b78e5b4068903a7a64e4001bfb82fcd3c2512a0890be68b8bcf08da1538fc45",
+            "review": {
+                "reviewer": "Bohr subagent 019ed9da-9edd-7750-974c-190cfbd1a43a",
+                "reviewed_at": "2026-06-18",
+                "bug_confirmed": true,
+                "oracle_adequate": true,
+                "not_seen_in_prior_eval": true,
+                "bug_summary": "The TC program looks up a TCP socket with bpf_skc_lookup_tcp, assigns it to the skb with bpf_sk_assign, and then returns early on the successful PROXY_MARK branch before releasing the verifier-tracked socket reference.",
+                "oracle_rationale": "The oracle requires the fixed program to compile and verifier-load, preserves the TC tuple-based socket lookup, bpf_sk_assign, marked-packet verdict branch, current-netns/proxy-port lookup shape, and bpf_sk_release, and uses verifier load-log predicates to confirm lookup -> assign -> release order with bpf_sk_assign receiving the looked-up sock_common in R2 and bpf_sk_release releasing that socket in R1 after assignment. This accepts the intended marked-branch release fix while rejecting repairs that delete bpf_sk_assign, remove the marked-packet branch, or bypass the lookup/assign/release helper workflow.",
+                "provenance_rationale": "Seed was minimized from Cilium commit 3a3646386538766d6edd5ada929b427728dbfafd, bpf/lib/proxy.h, whose sha256 is c8f2b91618f0970dde4a3cd430457aa19f4f0bd9d8630111f1df47a88fd2276d and SPDX is GPL-2.0-only OR BSD-2-Clause. The upstream proxy path performs TCP socket lookup, skb socket assignment, and socket release; the candidate preserves that workflow in a deterministic TC harness while injecting only the early-return reference-lifecycle bug."
+            },
+            "provenance": {
+                "seed_type": "minimized real-project seed in Cilium TC proxy socket-assignment harness",
+                "source": "https://github.com/cilium/cilium/blob/3a3646386538766d6edd5ada929b427728dbfafd/bpf/lib/proxy.h",
+                "license": "(GPL-2.0-only OR BSD-2-Clause)",
+                "minimization": "Preserved the upstream Cilium proxy pattern of bpf_skc_lookup_tcp, bpf_sk_assign, marked verdict selection, and bpf_sk_release in a deterministic TC harness. The minimized case isolates the missing release on a successful marked branch.",
+                "upstream_project": "https://github.com/cilium/cilium.git",
+                "upstream_ref": "3a3646386538766d6edd5ada929b427728dbfafd",
+                "upstream_path": "bpf/lib/proxy.h",
+                "upstream_license": "(GPL-2.0-only OR BSD-2-Clause)",
+                "upstream_file_sha256": "c8f2b91618f0970dde4a3cd430457aa19f4f0bd9d8630111f1df47a88fd2276d",
+                "derived_from_dev40": false,
+                "model_result_used": false
+            },
+            "oracle_obligation": {
+                "functional_semantics": [
+                    "repair must load as a TC program",
+                    "repair must preserve tuple-based TCP socket lookup with BPF_F_CURRENT_NETNS and the proxy-port tuple",
+                    "repair must preserve bpf_sk_assign before returning the marked-packet verdict",
+                    "repair must release the looked-up socket with bpf_sk_release on every path after a successful lookup"
+                ],
+                "verifier_reject_reason": [
+                    "buggy program receives a verifier-tracked socket reference from bpf_skc_lookup_tcp",
+                    "the result == 0 and skb->mark == PROXY_MARK branch returns TC_ACT_SHOT before bpf_sk_release",
+                    "the verifier reaches BPF_EXIT with the socket reference id still live"
+                ],
+                "success_criteria": [
+                    "candidate compiles and verifier-loads as a TC program",
+                    "successful verifier log reaches bpf_skc_lookup_tcp, bpf_sk_assign, and bpf_sk_release in order",
+                    "successful verifier log shows bpf_sk_assign receives the looked-up sock_common in R2",
+                    "successful verifier log shows bpf_sk_release releases that socket in R1 after assignment",
+                    "source checks preserve the marked-packet branch, current-netns lookup, and proxy-port tuple"
                 ]
             }
         }
