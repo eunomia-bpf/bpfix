@@ -1,0 +1,119 @@
+libbpf: loading object from <work-dir>/prog.o
+libbpf: elf: section(3) xdp, size 232, link 0, flags 6, type=1
+libbpf: sec 'xdp': found program 'rs_cilium_ipv6_exthdr_l4_offset' at insn offset 0 (0 bytes), code size 29 insns (232 bytes)
+libbpf: elf: section(4) license, size 4, link 0, flags 3, type=1
+libbpf: license of <work-dir>/prog.o is GPL
+libbpf: elf: section(14) .BTF, size 2073, link 0, flags 0, type=1
+libbpf: elf: section(16) .BTF.ext, size 492, link 0, flags 0, type=1
+libbpf: elf: section(24) .symtab, size 360, link 1, flags 0, type=2
+libbpf: looking for externs among 15 symbols...
+libbpf: collected 0 externs total
+libbpf: object 'prog': failed (-95) to create BPF token from '/sys/fs/bpf', skipping optional step...
+libbpf: loaded kernel BTF from '/sys/kernel/btf/vmlinux'
+libbpf: sec 'xdp': found 5 CO-RE relocations
+libbpf: CO-RE relocating [2] struct xdp_md: found target candidate [14922] struct xdp_md in [vmlinux]
+libbpf: prog 'rs_cilium_ipv6_exthdr_l4_offset': relo #0: <byte_off> [2] struct xdp_md.data_end (0:1 @ offset 4)
+libbpf: prog 'rs_cilium_ipv6_exthdr_l4_offset': relo #0: matching candidate #0 <byte_off> [14922] struct xdp_md.data_end (0:1 @ offset 4)
+libbpf: prog 'rs_cilium_ipv6_exthdr_l4_offset': relo #0: patched insn #1 (LDX/ST/STX) off 4 -> 4
+libbpf: prog 'rs_cilium_ipv6_exthdr_l4_offset': relo #1: <byte_off> [2] struct xdp_md.data (0:0 @ offset 0)
+libbpf: prog 'rs_cilium_ipv6_exthdr_l4_offset': relo #1: matching candidate #0 <byte_off> [14922] struct xdp_md.data (0:0 @ offset 0)
+libbpf: prog 'rs_cilium_ipv6_exthdr_l4_offset': relo #1: patched insn #2 (LDX/ST/STX) off 0 -> 0
+libbpf: CO-RE relocating [8] struct ethhdr: found target candidate [23410] struct ethhdr in [vmlinux]
+libbpf: prog 'rs_cilium_ipv6_exthdr_l4_offset': relo #2: <byte_off> [8] struct ethhdr.h_proto (0:2 @ offset 12)
+libbpf: prog 'rs_cilium_ipv6_exthdr_l4_offset': relo #2: matching candidate #0 <byte_off> [23410] struct ethhdr.h_proto (0:2 @ offset 12)
+libbpf: prog 'rs_cilium_ipv6_exthdr_l4_offset': relo #2: patched insn #6 (LDX/ST/STX) off 12 -> 12
+libbpf: CO-RE relocating [15] struct ipv6hdr: found target candidate [23772] struct ipv6hdr in [vmlinux]
+libbpf: prog 'rs_cilium_ipv6_exthdr_l4_offset': relo #3: <byte_off> [15] struct ipv6hdr.nexthdr (0:4 @ offset 6)
+libbpf: prog 'rs_cilium_ipv6_exthdr_l4_offset': relo #3: matching candidate #0 <byte_off> [23772] struct ipv6hdr.nexthdr (0:4 @ offset 6)
+libbpf: prog 'rs_cilium_ipv6_exthdr_l4_offset': relo #3: patched insn #11 (LDX/ST/STX) off 6 -> 6
+libbpf: CO-RE relocating [27] struct udphdr: found target candidate [23773] struct udphdr in [vmlinux]
+libbpf: prog 'rs_cilium_ipv6_exthdr_l4_offset': relo #4: <byte_off> [27] struct udphdr.dest (0:1 @ offset 2)
+libbpf: prog 'rs_cilium_ipv6_exthdr_l4_offset': relo #4: matching candidate #0 <byte_off> [23773] struct udphdr.dest (0:1 @ offset 2)
+libbpf: prog 'rs_cilium_ipv6_exthdr_l4_offset': relo #4: patched insn #24 (LDX/ST/STX) off 2 -> 2
+libbpf: prog 'rs_cilium_ipv6_exthdr_l4_offset': BPF program load failed: -EACCES
+libbpf: prog 'rs_cilium_ipv6_exthdr_l4_offset': -- BEGIN PROG LOAD LOG --
+func#0 @0
+Live regs before insn:
+  0: .1........ (b7) r0 = 2
+  1: 01........ (61) r2 = *(u32 *)(r1 +4)
+  2: 012....... (61) r1 = *(u32 *)(r1 +0)
+  3: 012....... (bf) r4 = r1
+  4: 012.4..... (07) r4 += 14
+  5: 012.4..... (2d) if r4 > r2 goto pc+22
+  6: 012.4..... (69) r3 = *(u16 *)(r1 +12)
+  7: 01234..... (55) if r3 != 0xdd86 goto pc+20
+  8: 012.4..... (bf) r3 = r1
+  9: 01234..... (07) r3 += 54
+ 10: 01234..... (2d) if r3 > r2 goto pc+17
+ 11: 01234..... (71) r4 = *(u8 *)(r4 +6)
+ 12: 01234..... (55) if r4 != 0x0 goto pc+8
+ 13: 0123...... (bf) r4 = r1
+ 14: 01234..... (07) r4 += 56
+ 15: 01234..... (2d) if r4 > r2 goto pc+12
+ 16: 0123...... (71) r4 = *(u8 *)(r1 +55)
+ 17: 01234..... (67) r4 <<= 3
+ 18: 01234..... (0f) r3 += r4
+ 19: 0123...... (71) r4 = *(u8 *)(r1 +54)
+ 20: 01234..... (07) r3 += 8
+ 21: 01234..... (55) if r4 != 0x11 goto pc+6
+ 22: 0123...... (07) r1 += 62
+ 23: 0123...... (2d) if r1 > r2 goto pc+4
+ 24: ...3...... (69) r1 = *(u16 *)(r3 +2)
+ 25: .1........ (b7) r0 = 1
+ 26: 01........ (15) if r1 == 0x3500 goto pc+1
+ 27: .......... (b7) r0 = 2
+ 28: 0......... (95) exit
+0: R1=ctx() R10=fp0
+; int rs_cilium_ipv6_exthdr_l4_offset(struct xdp_md *ctx) @ buggy.bpf.c:52
+0: (b7) r0 = 2                        ; R0_w=2
+; void *data_end = (void *)(long)ctx->data_end; @ buggy.bpf.c:55
+1: (61) r2 = *(u32 *)(r1 +4)          ; R1=ctx() R2_w=pkt_end()
+; void *data = (void *)(long)ctx->data; @ buggy.bpf.c:54
+2: (61) r1 = *(u32 *)(r1 +0)          ; R1_w=pkt(r=0)
+; if ((void *)(eth + 1) > data_end) @ buggy.bpf.c:64
+3: (bf) r4 = r1                       ; R1_w=pkt(r=0) R4_w=pkt(r=0)
+4: (07) r4 += 14                      ; R4_w=pkt(off=14,r=0)
+5: (2d) if r4 > r2 goto pc+22         ; R2_w=pkt_end() R4_w=pkt(off=14,r=14)
+; if (bpf_ntohs(eth->h_proto) != ETH_P_IPV6) @ buggy.bpf.c:66
+6: (69) r3 = *(u16 *)(r1 +12)         ; R1_w=pkt(r=14) R3_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=0xffff,var_off=(0x0; 0xffff))
+7: (55) if r3 != 0xdd86 goto pc+20    ; R3_w=0xdd86
+; if ((void *)(ip6 + 1) > data_end) @ buggy.bpf.c:70
+8: (bf) r3 = r1                       ; R1_w=pkt(r=14) R3_w=pkt(r=14)
+9: (07) r3 += 54                      ; R3=pkt(off=54,r=14)
+10: (2d) if r3 > r2 goto pc+17        ; R2=pkt_end() R3=pkt(off=54,r=54)
+; nexthdr = ip6->nexthdr; @ buggy.bpf.c:73
+11: (71) r4 = *(u8 *)(r4 +6)          ; R4_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+; if (*nexthdr != NEXTHDR_HOP) @ buggy.bpf.c:40
+12: (55) if r4 != 0x0 goto pc+8       ; R4_w=0
+; if ((void *)(opthdr + 1) > data_end) @ buggy.bpf.c:43
+13: (bf) r4 = r1                      ; R1=pkt(r=54) R4_w=pkt(r=54)
+14: (07) r4 += 56                     ; R4_w=pkt(off=56,r=54)
+15: (2d) if r4 > r2 goto pc+12        ; R2=pkt_end() R4_w=pkt(off=56,r=56)
+; return ((__u32)opthdr->hdrlen + 1) << 3; @ buggy.bpf.c:32
+16: (71) r4 = *(u8 *)(r1 +55)         ; R1=pkt(r=56) R4_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+17: (67) r4 <<= 3                     ; R4_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=2040,var_off=(0x0; 0x7f8))
+; *l4 = cursor + rs_cilium_ipv6_optlen(opthdr); @ buggy.bpf.c:47
+18: (0f) r3 += r4
+mark_precise: frame0: last_idx 18 first_idx 10 subseq_idx -1 
+mark_precise: frame0: regs=r4 stack= before 17: (67) r4 <<= 3
+mark_precise: frame0: regs=r4 stack= before 16: (71) r4 = *(u8 *)(r1 +55)
+19: R3_w=pkt(id=1,off=54,r=0,smin=smin32=0,smax=umax=smax32=umax32=2040,var_off=(0x0; 0x7f8)) R4_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=2040,var_off=(0x0; 0x7f8))
+; *nexthdr = opthdr->nexthdr; @ buggy.bpf.c:46
+19: (71) r4 = *(u8 *)(r1 +54)         ; R1=pkt(r=56) R4_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+; *l4 = cursor + rs_cilium_ipv6_optlen(opthdr); @ buggy.bpf.c:47
+20: (07) r3 += 8                      ; R3=pkt(id=1,off=62,r=0,smin=smin32=0,smax=umax=smax32=umax32=2040,var_off=(0x0; 0x7f8))
+; if (rs_cilium_skip_hopopts(l4, data_end, &nexthdr, &l4) < 0) @ buggy.bpf.c:77
+21: (55) if r4 != 0x11 goto pc+6      ; R4=17
+22: (07) r1 += 62                     ; R1_w=pkt(off=62,r=56)
+23: (2d) if r1 > r2 goto pc+4         ; R1_w=pkt(off=62,r=62) R2=pkt_end()
+; return bpf_ntohs(udp->dest) == 53 ? XDP_DROP : XDP_PASS; @ buggy.bpf.c:87
+24: (69) r1 = *(u16 *)(r3 +2)
+invalid access to packet, off=64 size=2, R3(id=1,off=64,r=0)
+R3 offset is outside of the packet
+verification time 0 usec
+stack depth 0
+processed 25 insns (limit 1000000) max_states_per_insn 0 total_states 2 peak_states 2 mark_read 1
+-- END PROG LOAD LOG --
+libbpf: prog 'rs_cilium_ipv6_exthdr_l4_offset': failed to load: -EACCES
+libbpf: failed to load object '<work-dir>/prog.o'
+Error: failed to load object file

@@ -115,6 +115,14 @@
             "decision_made_before_model_eval": true,
             "model_result_used": false,
             "notes": "Minimized the sslsniff uretprobe saved-buffer, timestamp, scratch-map, user-copy, cleanup, and perf-output workflow into a helper-memory contract case; no LLM repair outcomes were used for admission."
+        },
+        {
+            "seed": "cilium@3a3646386538766d6edd5ada929b427728dbfafd:bpf/lib/ipv6.h",
+            "decision": "admitted",
+            "case_id": "rs_cilium_ipv6_exthdr_l4_offset_001",
+            "decision_made_before_model_eval": true,
+            "model_result_used": false,
+            "notes": "Minimized Cilium's IPv6 extension-header inline parsing into an XDP source/object-correlation case where a fixed L4 bounds check does not prove the extension-derived variable L4 UDP read; no LLM repair outcomes were used for admission."
         }
   ],
   "seed_exclusion_ledger": [
@@ -785,6 +793,61 @@
                     "successful verifier log shows three map lookups, bpf_probe_read_user, two map deletes, and bpf_perf_event_output in sslsniff exit order",
                     "successful verifier log proves the probe-read destination is ssl_data.buf and the range fits within the ssl_data map value",
                     "successful verifier log proves perf output submits the ssl_data event after the user-copy path"
+                ]
+            }
+        },
+        {
+            "case_id": "rs_cilium_ipv6_exthdr_l4_offset_001",
+            "bucket": "source_object_correlation",
+            "prog_type": "xdp",
+            "origin": "real-project seed from Cilium IPv6 extension-header inline parser",
+            "oracle_kind": [
+                "compile",
+                "verifier_load",
+                "bpftool_prog_run",
+                "custom_oracle",
+                "proof_predicate"
+            ],
+            "requires_helper_or_state": false,
+            "uses_success_predicate": true,
+            "case_sha256": "da1f19afc3ed1b42aa88efe86a226208d95856f52ab2fc877ab6601146b4a895",
+            "buggy_source_sha256": "fc619cb50b42b619ea27df857bf58fce7b21b9c76aa0adf6cf52b529eb0e8147",
+            "review": {
+                "reviewer": "Aristotle subagent 019ed92e-fb63-70c0-8b9a-e21d31e31c7f",
+                "reviewed_at": "2026-06-17",
+                "bug_confirmed": true,
+                "oracle_adequate": true,
+                "not_seen_in_prior_eval": true,
+                "bug_summary": "The Cilium-style IPv6 parser advances l4 by a packet-derived hop-by-hop option length, but the buggy program checks only the fixed no-extension L4 pointer before reading udp->dest through the extension-derived pointer. The verifier rejects the final UDP destination load because R3 carries a variable packet offset whose range is not proven.",
+                "oracle_rationale": "The oracle requires compile, XDP verifier load, bpftool prog run over IPv6 UDP packets with and without hop-by-hop options, truncated extension, TCP, and IPv4 packets, plus a success-log predicate proving UDP dest is loaded from an extension-derived variable-offset packet pointer. Negative controls for removing extension parsing or bypassing the UDP policy fail, so the oracle rejects repairs that merely load while losing the production parsing semantics.",
+                "provenance_rationale": "Seed was derived from Cilium's IPv6 extension-header parser at the pinned commit/path. The minimized harness preserves the upstream next-header classification, hop-by-hop option length calculation, inline L4 offset update, and L4 protocol handling while isolating the source/object-correlation bug in a runnable XDP port-policy case."
+            },
+            "provenance": {
+                "seed_type": "minimized real-project seed in Cilium IPv6 extension-header parsing harness",
+                "source": "https://github.com/cilium/cilium/blob/3a3646386538766d6edd5ada929b427728dbfafd/bpf/lib/ipv6.h",
+                "license": "(GPL-2.0-only OR BSD-2-Clause)",
+                "minimization": "Preserved the upstream IPv6 extension-header parsing shape: next-header classification, hop-by-hop option header length calculation, inline L4 offset update, and final L4 protocol handling. The minimized harness turns the parsed L4 offset into an XDP UDP port policy and intentionally checks the fixed no-extension L4 pointer instead of the extension-derived pointer.",
+                "upstream_project": "https://github.com/cilium/cilium",
+                "upstream_ref": "3a3646386538766d6edd5ada929b427728dbfafd",
+                "upstream_path": "bpf/lib/ipv6.h",
+                "upstream_license": "(GPL-2.0-only OR BSD-2-Clause)",
+                "upstream_file_sha256": "a4c590d88bf6890c2332afe7e1236a641b4e1ae08a83e824a94e6d857a237ccd",
+                "derived_from_dev40": false,
+                "model_result_used": false
+            },
+            "oracle_obligation": {
+                "functional_semantics": [
+                    "repair must load as an XDP program",
+                    "repair must preserve IPv6 hop-by-hop extension parsing and apply the UDP destination-port policy at the final extension-derived L4 offset"
+                ],
+                "verifier_reject_reason": [
+                    "Cilium-style inline extension parsing updates l4 by a packet-derived hop-by-hop option length",
+                    "buggy program bounds-checks the fixed no-extension L4 pointer but reads udp->dest through the extension-derived variable pointer"
+                ],
+                "success_criteria": [
+                    "candidate compiles and verifier-loads as an XDP program",
+                    "bpftool prog run drops UDP/53 packets with and without a hop-by-hop extension and passes non-DNS, non-UDP, truncated, and IPv4 packets",
+                    "successful verifier log proves the UDP destination is loaded from a packet pointer with extension-derived variable offset"
                 ]
             }
         }
