@@ -28,6 +28,7 @@ FORBIDDEN_PROMPT_SNIPPETS = [
     "run_case(",
     "success_log_checks",
 ]
+CUSTOM_ORACLE_KINDS = {"attach_or_runtime", "environment_config", "custom_oracle"}
 
 
 def repo_root() -> Path:
@@ -92,15 +93,23 @@ def audit_structured_json(case_dir: Path, errors: list[str], warnings: list[str]
     return payload
 
 
-def audit_test_py(case_dir: Path, errors: list[str]) -> dict[str, int | None]:
+def audit_test_py(
+    case_dir: Path,
+    errors: list[str],
+    *,
+    oracle_kind: list[str] | None = None,
+) -> dict[str, int | None | bool]:
     keywords = run_case_keywords(case_dir / "test.py")
+    custom_oracle = bool(oracle_kind and CUSTOM_ORACLE_KINDS & set(oracle_kind))
     if keywords is None:
-        errors.append("test.py does not contain a parseable run_case(...) call")
+        if not custom_oracle:
+            errors.append("test.py does not contain a parseable run_case(...) call")
         return {
             "expected_reject_substrings": None,
             "functional_tests": None,
             "required_success_substrings": None,
             "required_success_predicates": None,
+            "custom_oracle": custom_oracle,
         }
 
     reject_count = list_len(keywords.get("expected_reject_substrings"))
@@ -118,6 +127,7 @@ def audit_test_py(case_dir: Path, errors: list[str]) -> dict[str, int | None]:
         "functional_tests": functional_count,
         "required_success_substrings": success_substring_count,
         "required_success_predicates": success_predicate_count,
+        "custom_oracle": custom_oracle,
     }
 
 
@@ -133,7 +143,13 @@ def audit_prompt(case_dir: Path, errors: list[str]) -> None:
             errors.append(f"{mode} prompt appears to leak repair artifact wording")
 
 
-def audit_case(case_dir: Path, *, smoke: bool, root: Path) -> dict[str, Any]:
+def audit_case(
+    case_dir: Path,
+    *,
+    smoke: bool,
+    root: Path,
+    oracle_kind: list[str] | None = None,
+) -> dict[str, Any]:
     errors: list[str] = []
     warnings: list[str] = []
     file_names = {path.name for path in case_dir.iterdir() if path.is_file()}
@@ -145,10 +161,10 @@ def audit_case(case_dir: Path, *, smoke: bool, root: Path) -> dict[str, Any]:
         warnings.append(f"extra files: {', '.join(extra)}")
 
     structured = None
-    test_summary: dict[str, int | None] = {}
+    test_summary: dict[str, int | None | bool] = {}
     if not missing:
         structured = audit_structured_json(case_dir, errors, warnings)
-        test_summary = audit_test_py(case_dir, errors)
+        test_summary = audit_test_py(case_dir, errors, oracle_kind=oracle_kind)
         audit_prompt(case_dir, errors)
         if "BEGIN PROG LOAD LOG" not in (case_dir / "verifier.log").read_text(encoding="utf-8"):
             errors.append("verifier.log does not contain BEGIN PROG LOAD LOG")

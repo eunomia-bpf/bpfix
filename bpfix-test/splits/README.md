@@ -20,7 +20,9 @@ Each split also has a machine-readable manifest:
   checks.
 - `clean60.manifest.json` is the heldout manifest. It must be frozen before the
   first clean run and must carry per-case source category, bucket, program type,
-  independent review status, oracle obligations, and case hashes.
+  independent review status, oracle obligations, provenance, and case hashes.
+  It also records the result-blind admission protocol, candidate seed ledger,
+  and seed exclusion ledger.
 
 `run_suite.py` treats an explicit empty `--split` as an error unless
 `--allow-empty-split` is passed, so an unadmitted clean split cannot silently
@@ -31,6 +33,11 @@ frozen fingerprints are part of the contamination baseline.
 id, full case hash, and `buggy.bpf.c` hash. When a compared split has a sibling
 manifest, the recorded fingerprints are used as the contamination baseline;
 `--disallow-overlap` keeps that comparison explicit in documented commands.
+For clean60, the manifest audit also requires machine-readable case review,
+provenance, oracle-obligation, selection-protocol, candidate-seed-ledger, and
+exclusion-ledger fields.
+Clean splits are also checked for exact `buggy.bpf.c` source overlap with
+`bpfix-bench/cases/**/*.c`.
 
 Run the gates:
 

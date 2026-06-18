@@ -29,7 +29,40 @@ SOURCE_CATEGORIES = {
     "minimized_upstream_style",
 }
 PROG_TYPES = {"xdp", "tc", "tracepoint", "lsm", "cgroup", "perf_event", "socket_filter", "other"}
-ORACLE_KINDS = {"compile", "verifier_load", "bpftool_prog_run", "helper_state", "proof_predicate"}
+ORACLE_KINDS = {
+    "compile",
+    "verifier_load",
+    "bpftool_prog_run",
+    "attach_or_runtime",
+    "environment_config",
+    "custom_oracle",
+    "helper_state",
+    "proof_predicate",
+}
+BASE_CLEAN_ORACLE_KINDS = {"compile", "verifier_load"}
+CLEAN_SEMANTIC_ORACLE_KINDS = {
+    "bpftool_prog_run",
+    "attach_or_runtime",
+    "environment_config",
+    "custom_oracle",
+}
+ALLOWED_EXCLUSION_REASONS = {
+    "verifier_accepts",
+    "unstable",
+    "not_reproducible",
+    "oracle_insufficient",
+    "bpfix_unsupported",
+    "duplicate_or_near_duplicate",
+    "out_of_scope",
+    "license_unclear",
+}
+REQUIRED_CLEAN_ADMISSION_FLAGS = {
+    "model_result_used_for_admission": False,
+    "case_ids_opaque_in_prompt": True,
+    "result_blind_case_selection": True,
+    "admitted_before_first_clean_run": True,
+    "prompt_manifest_required": True,
+}
 CLEAN60_BUCKET_TARGETS = {
     "proof_lifecycle": 18,
     "source_object_correlation": 12,
@@ -78,6 +111,17 @@ def file_digest(path: Path) -> str:
     return digest.hexdigest()
 
 
+def bpfix_bench_source_fingerprints(root: Path) -> dict[str, list[str]]:
+    cases_root = root / "bpfix-bench" / "cases"
+    fingerprints: dict[str, list[str]] = {}
+    if not cases_root.exists():
+        return fingerprints
+    for source in sorted(cases_root.rglob("*.c")):
+        digest = file_digest(source)
+        fingerprints.setdefault(digest, []).append(str(source.relative_to(root)))
+    return fingerprints
+
+
 def case_fingerprints(case_ids: list[str], known_cases: dict[str, Path]) -> dict[str, dict[str, str]]:
     fingerprints: dict[str, dict[str, str]] = {}
     for case_id in case_ids:
@@ -116,6 +160,25 @@ def manifest_case_fingerprints(path: Path) -> dict[str, dict[str, str]]:
         if values:
             fingerprints[case_id] = values
     return fingerprints
+
+
+def manifest_case_oracle_kinds(manifest: dict[str, Any]) -> dict[str, list[str]]:
+    defaults = manifest.get("case_defaults", {})
+    if not isinstance(defaults, dict):
+        defaults = {}
+    cases = manifest.get("cases", [])
+    if not isinstance(cases, list):
+        return {}
+    values: dict[str, list[str]] = {}
+    for raw_case in cases:
+        if not isinstance(raw_case, dict):
+            continue
+        case = {**defaults, **raw_case}
+        case_id = case.get("case_id")
+        oracle_kind = case.get("oracle_kind")
+        if isinstance(case_id, str) and isinstance(oracle_kind, list):
+            values[case_id] = [kind for kind in oracle_kind if isinstance(kind, str)]
+    return values
 
 
 def missing_manifest_fingerprints(path: Path, case_ids: list[str]) -> list[str]:
@@ -189,6 +252,168 @@ def require_bool(value: Any) -> bool:
     return isinstance(value, bool)
 
 
+def require_nonempty_string(value: Any) -> bool:
+    return isinstance(value, str) and bool(value.strip())
+
+
+def audit_clean_selection_protocol(
+    *,
+    manifest: dict[str, Any],
+    errors: list[str],
+) -> dict[str, Any]:
+    protocol = manifest.get("selection_protocol")
+    if not isinstance(protocol, dict):
+        errors.append("clean60 selection_protocol must be an object")
+        protocol = {}
+    required_strings = [
+        "case_source_policy",
+        "admission_order_policy",
+        "review_policy",
+        "model_result_blinding_policy",
+        "near_duplicate_policy",
+    ]
+    for field in required_strings:
+        if not require_nonempty_string(protocol.get(field)):
+            errors.append(f"clean60 selection_protocol.{field} must be a non-empty string")
+    return protocol
+
+
+def audit_clean_exclusion_ledger(
+    *,
+    manifest: dict[str, Any],
+    errors: list[str],
+) -> dict[str, Any]:
+    ledger = manifest.get("seed_exclusion_ledger")
+    if not isinstance(ledger, list):
+        errors.append("clean60 seed_exclusion_ledger must be a list")
+        ledger = []
+    reason_counts = {reason: 0 for reason in ALLOWED_EXCLUSION_REASONS}
+    for index, row in enumerate(ledger):
+        if not isinstance(row, dict):
+            errors.append(f"seed_exclusion_ledger[{index}] must be an object")
+            continue
+        seed = row.get("seed")
+        reason = row.get("reason")
+        notes = row.get("notes")
+        if not require_nonempty_string(seed):
+            errors.append(f"seed_exclusion_ledger[{index}].seed must be a non-empty string")
+        if reason not in ALLOWED_EXCLUSION_REASONS:
+            errors.append(f"seed_exclusion_ledger[{index}].reason has invalid value {reason!r}")
+        else:
+            reason_counts[reason] += 1
+        if not require_nonempty_string(notes):
+            errors.append(f"seed_exclusion_ledger[{index}].notes must be a non-empty string")
+        if row.get("model_result_used") is not False:
+            errors.append(f"seed_exclusion_ledger[{index}].model_result_used must be false")
+    return {
+        "entries": len(ledger),
+        "reason_counts": reason_counts,
+    }
+
+
+def audit_clean_candidate_seed_ledger(
+    *,
+    manifest: dict[str, Any],
+    case_ids: list[str],
+    errors: list[str],
+) -> dict[str, Any]:
+    ledger = manifest.get("candidate_seed_ledger")
+    if not isinstance(ledger, list):
+        errors.append("clean60 candidate_seed_ledger must be a list")
+        ledger = []
+
+    admitted_by_case: dict[str, int] = {}
+    excluded_count = 0
+    for index, row in enumerate(ledger):
+        if not isinstance(row, dict):
+            errors.append(f"candidate_seed_ledger[{index}] must be an object")
+            continue
+        decision = row.get("decision")
+        seed = row.get("seed")
+        notes = row.get("notes")
+        if not require_nonempty_string(seed):
+            errors.append(f"candidate_seed_ledger[{index}].seed must be a non-empty string")
+        if decision not in {"admitted", "excluded"}:
+            errors.append(f"candidate_seed_ledger[{index}].decision must be 'admitted' or 'excluded'")
+        if row.get("decision_made_before_model_eval") is not True:
+            errors.append(f"candidate_seed_ledger[{index}].decision_made_before_model_eval must be true")
+        if row.get("model_result_used") is not False:
+            errors.append(f"candidate_seed_ledger[{index}].model_result_used must be false")
+        if not require_nonempty_string(notes):
+            errors.append(f"candidate_seed_ledger[{index}].notes must be a non-empty string")
+
+        if decision == "admitted":
+            case_id = row.get("case_id")
+            if not isinstance(case_id, str):
+                errors.append(f"candidate_seed_ledger[{index}].case_id must be a string for admitted seeds")
+            elif case_id not in case_ids:
+                errors.append(f"candidate_seed_ledger[{index}].case_id {case_id!r} is not in split")
+            else:
+                admitted_by_case[case_id] = admitted_by_case.get(case_id, 0) + 1
+        elif decision == "excluded":
+            excluded_count += 1
+            reason = row.get("reason")
+            if reason not in ALLOWED_EXCLUSION_REASONS:
+                errors.append(f"candidate_seed_ledger[{index}].reason has invalid value {reason!r}")
+
+    for case_id in case_ids:
+        count = admitted_by_case.get(case_id, 0)
+        if count == 0:
+            errors.append(f"{case_id}: clean60 candidate_seed_ledger missing admitted row")
+        elif count > 1:
+            errors.append(f"{case_id}: clean60 candidate_seed_ledger has duplicate admitted rows")
+
+    return {
+        "entries": len(ledger),
+        "admitted": sum(1 for row in ledger if isinstance(row, dict) and row.get("decision") == "admitted"),
+        "excluded": excluded_count,
+    }
+
+
+def audit_clean_case_review(case_id: str, case: dict[str, Any], errors: list[str]) -> dict[str, Any]:
+    review = case.get("review")
+    if not isinstance(review, dict):
+        errors.append(f"{case_id}: clean60 review must be an object")
+        review = {}
+    for field in ["reviewer", "reviewed_at", "bug_summary", "oracle_rationale", "provenance_rationale"]:
+        if not require_nonempty_string(review.get(field)):
+            errors.append(f"{case_id}: clean60 review.{field} must be a non-empty string")
+    if review.get("bug_confirmed") is not True:
+        errors.append(f"{case_id}: clean60 review.bug_confirmed must be true")
+    if review.get("oracle_adequate") is not True:
+        errors.append(f"{case_id}: clean60 review.oracle_adequate must be true")
+    if review.get("not_seen_in_prior_eval") is not True:
+        errors.append(f"{case_id}: clean60 review.not_seen_in_prior_eval must be true")
+
+    provenance = case.get("provenance")
+    if not isinstance(provenance, dict):
+        errors.append(f"{case_id}: clean60 provenance must be an object")
+        provenance = {}
+    for field in ["seed_type", "source", "license", "minimization"]:
+        if not require_nonempty_string(provenance.get(field)):
+            errors.append(f"{case_id}: clean60 provenance.{field} must be a non-empty string")
+    if provenance.get("derived_from_dev40") is not False:
+        errors.append(f"{case_id}: clean60 provenance.derived_from_dev40 must be false")
+    if provenance.get("model_result_used") is not False:
+        errors.append(f"{case_id}: clean60 provenance.model_result_used must be false")
+
+    oracle_obligation = case.get("oracle_obligation")
+    if not isinstance(oracle_obligation, dict):
+        errors.append(f"{case_id}: clean60 oracle_obligation must be an object")
+        oracle_obligation = {}
+    for field in ["functional_semantics", "verifier_reject_reason", "success_criteria"]:
+        values = oracle_obligation.get(field)
+        if not isinstance(values, list) or not values or any(not require_nonempty_string(value) for value in values):
+            errors.append(f"{case_id}: clean60 oracle_obligation.{field} must be a non-empty string list")
+
+    return {
+        "reviewer": review.get("reviewer"),
+        "reviewed_at": review.get("reviewed_at"),
+        "source": provenance.get("source"),
+        "seed_type": provenance.get("seed_type"),
+    }
+
+
 def audit_manifest(
     *,
     manifest: dict[str, Any],
@@ -230,13 +455,22 @@ def audit_manifest(
         freeze = {}
         errors.append("manifest.freeze must be an object")
 
+    selection_protocol: dict[str, Any] = {}
+    exclusion_summary: dict[str, Any] = {"entries": 0, "reason_counts": {}}
+    candidate_seed_summary: dict[str, Any] = {"entries": 0, "admitted": 0, "excluded": 0}
     if profile == "clean60":
-        if admission_policy.get("model_result_used_for_admission") is not False:
-            errors.append("clean60 admission_policy.model_result_used_for_admission must be false")
-        if admission_policy.get("case_ids_opaque_in_prompt") is not True:
-            errors.append("clean60 admission_policy.case_ids_opaque_in_prompt must be true")
+        for key, expected in REQUIRED_CLEAN_ADMISSION_FLAGS.items():
+            if admission_policy.get(key) is not expected:
+                errors.append(f"clean60 admission_policy.{key} must be {str(expected).lower()}")
         if freeze.get("frozen") is not True:
             errors.append("clean60 freeze.frozen must be true before benchmark runs")
+        selection_protocol = audit_clean_selection_protocol(manifest=manifest, errors=errors)
+        exclusion_summary = audit_clean_exclusion_ledger(manifest=manifest, errors=errors)
+        candidate_seed_summary = audit_clean_candidate_seed_ledger(
+            manifest=manifest,
+            case_ids=case_ids,
+            errors=errors,
+        )
 
     bucket_counts = {bucket: 0 for bucket in BUCKETS}
     source_counts = {category: 0 for category in SOURCE_CATEGORIES}
@@ -295,6 +529,25 @@ def audit_manifest(
             errors.append(f"{case_id}: oracle_kind must be a non-empty list")
         elif any(kind not in ORACLE_KINDS for kind in oracle_kind):
             errors.append(f"{case_id}: invalid oracle_kind entry")
+        elif profile == "clean60":
+            oracle_kind_set = set(oracle_kind)
+            missing_oracles = sorted(BASE_CLEAN_ORACLE_KINDS - oracle_kind_set)
+            if missing_oracles:
+                errors.append(f"{case_id}: clean60 oracle_kind missing: {', '.join(missing_oracles)}")
+            if not CLEAN_SEMANTIC_ORACLE_KINDS & oracle_kind_set:
+                errors.append(
+                    f"{case_id}: clean60 oracle_kind requires one semantic oracle: "
+                    + ", ".join(sorted(CLEAN_SEMANTIC_ORACLE_KINDS))
+                )
+            if case.get("uses_success_predicate") is True and "proof_predicate" not in oracle_kind_set:
+                errors.append(f"{case_id}: clean60 uses_success_predicate requires oracle_kind proof_predicate")
+            if (
+                case.get("requires_helper_or_state") is True
+                and not {"helper_state", "proof_predicate"} & oracle_kind_set
+            ):
+                errors.append(
+                    f"{case_id}: clean60 requires_helper_or_state requires oracle_kind helper_state or proof_predicate"
+                )
         for bool_field in ["requires_helper_or_state", "uses_success_predicate"]:
             if not require_bool(case.get(bool_field)):
                 errors.append(f"{case_id}: {bool_field} must be boolean")
@@ -310,6 +563,9 @@ def audit_manifest(
         recorded_hash = case.get("case_sha256")
         recorded_buggy_source_hash = case.get("buggy_source_sha256")
         if profile == "clean60":
+            review_report = audit_clean_case_review(case_id, case, errors)
+            if not require_nonempty_string(case.get("origin")):
+                errors.append(f"{case_id}: clean60 origin must be a non-empty string")
             if case.get("review_status") != "independent_reviewed":
                 errors.append(f"{case_id}: clean60 review_status must be independent_reviewed")
             if source_category == "dev_calibration":
@@ -355,6 +611,7 @@ def audit_manifest(
                 "recorded_case_sha256": recorded_hash,
                 "computed_buggy_source_sha256": computed_buggy_source_hash,
                 "recorded_buggy_source_sha256": recorded_buggy_source_hash,
+                **({"review": review_report} if profile == "clean60" else {}),
             }
         )
 
@@ -381,6 +638,9 @@ def audit_manifest(
             "helper_or_state_count": helper_or_state_count,
             "realish_count": realish_count,
             "hash_mismatches": hash_mismatches,
+            "selection_protocol": selection_protocol,
+            "candidate_seed_ledger": candidate_seed_summary,
+            "seed_exclusion_ledger": exclusion_summary,
             "warnings": warnings,
             "reports": per_case_reports,
         },
@@ -427,6 +687,7 @@ def audit_split(args: argparse.Namespace) -> dict[str, Any]:
     split_implies_dev40 = args.split.resolve() == (root / "bpfix-test" / "splits" / "dev40.txt").resolve()
 
     known_cases = case_index(root)
+    bpfix_bench_sources = bpfix_bench_source_fingerprints(root) if profile == "clean60" else {}
     split_duplicates = duplicates(case_ids)
     missing_cases = sorted(set(case_ids) - set(known_cases))
     overlap: dict[str, dict[str, Any]] = {}
@@ -461,6 +722,27 @@ def audit_split(args: argparse.Namespace) -> dict[str, Any]:
         errors.append(f"duplicate case ids: {', '.join(split_duplicates)}")
     if missing_cases:
         errors.append(f"unknown case ids: {', '.join(missing_cases)}")
+    bpfix_bench_overlap: list[dict[str, Any]] = []
+    if bpfix_bench_sources:
+        for case_id in case_ids:
+            case_dir = known_cases.get(case_id)
+            if case_dir is None:
+                continue
+            digest = file_digest(case_dir / "buggy.bpf.c")
+            matches = bpfix_bench_sources.get(digest)
+            if matches:
+                bpfix_bench_overlap.append(
+                    {
+                        "case": case_id,
+                        "buggy_source_sha256": digest,
+                        "bpfix_bench_sources": matches,
+                    }
+                )
+        if bpfix_bench_overlap:
+            formatted = ", ".join(
+                f"{match['case']}~{match['bpfix_bench_sources'][0]}" for match in bpfix_bench_overlap
+            )
+            errors.append(f"buggy.bpf.c content overlap with bpfix-bench: {formatted}")
     for other_split, overlap_report in overlap.items():
         shared = overlap_report["case_ids"]
         if shared:
@@ -481,13 +763,17 @@ def audit_split(args: argparse.Namespace) -> dict[str, Any]:
                 )
 
     manifest_summary: dict[str, Any] = {"enabled": False}
+    manifest_payload: dict[str, Any] | None = None
+    manifest_oracle_kinds: dict[str, list[str]] = {}
     if split_implies_dev40 and args.manifest is None:
         errors.append("dev40 split requires --manifest")
     if profile == "clean60" and args.manifest is None:
         errors.append("clean60 profile requires --manifest")
     if args.manifest is not None:
+        manifest_payload = read_manifest(args.manifest)
+        manifest_oracle_kinds = manifest_case_oracle_kinds(manifest_payload)
         manifest_summary, manifest_errors = audit_manifest(
-            manifest=read_manifest(args.manifest),
+            manifest=manifest_payload,
             manifest_path=args.manifest,
             case_ids=case_ids,
             known_cases=known_cases,
@@ -498,7 +784,12 @@ def audit_split(args: argparse.Namespace) -> dict[str, Any]:
     case_reports: list[dict[str, Any]] = []
     if args.audit_cases and not missing_cases and not split_duplicates:
         for case_id in case_ids:
-            report = audit_cases.audit_case(known_cases[case_id], smoke=args.smoke, root=root)
+            report = audit_cases.audit_case(
+                known_cases[case_id],
+                smoke=args.smoke,
+                root=root,
+                oracle_kind=manifest_oracle_kinds.get(case_id),
+            )
             case_reports.append(report)
         failed_cases = [report["case"] for report in case_reports if not report["passed"]]
         if failed_cases:
@@ -514,6 +805,7 @@ def audit_split(args: argparse.Namespace) -> dict[str, Any]:
         "duplicates": split_duplicates,
         "missing_cases": missing_cases,
         "overlap": overlap,
+        "bpfix_bench_overlap": bpfix_bench_overlap,
         "manifest": manifest_summary,
         "audit": {
             "enabled": bool(args.audit_cases),

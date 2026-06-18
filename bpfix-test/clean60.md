@@ -48,7 +48,7 @@ calibration/dev evidence，不能作为 clean benchmark。
   admission 完成。
 - `splits/*.manifest.json`：split 的机器可审计元数据。`clean60.manifest.json`
   必须在首轮 clean run 前 frozen，并包含每个 case 的 source category、bucket、
-  program type、independent review、oracle obligation 和 case hash。
+  program type、independent review、oracle obligation、provenance 和 case hash。
 - `splits/*.prompts.json`：本地 frozen prompt artifact，已被 gitignore；生成后
   用路径和 hash 记录进实验日志或 artifact bundle，但不要让它改变 clean run 的
   git dirty 状态。
@@ -91,6 +91,34 @@ baseline 不成立。
    exclusion，但 exclusion 原因必须是 verifier 接受、不稳定、不可复现、oracle 不足、
    或当前 BPFix unsupported，而不是“模型修得太容易/太难”。
 7. 独立 reviewer 至少审核每个 case 的 bug、oracle 覆盖和 provenance。
+
+`clean60.manifest.json` 必须把这些原则写成机器可审计字段：
+
+- `admission_policy.result_blind_case_selection: true`；
+- `admission_policy.admitted_before_first_clean_run: true`；
+- `admission_policy.prompt_manifest_required: true`；
+- `selection_protocol` 记录 case source、admission order、review、model-result
+  blinding 和 near-duplicate policy；
+- `candidate_seed_ledger[]` 中每个 candidate seed 必须有 `seed`、`decision`、
+  `decision_made_before_model_eval: true`、`model_result_used: false` 和 `notes`；
+  admitted seed 必须一一覆盖 split 中的 case id，excluded seed 必须给出允许的
+  `reason`；
+- `seed_exclusion_ledger[]` 可以额外记录被排除 seed 的详细解释；每个 exclusion
+  必须有 `seed`、允许的 `reason`、`notes`，并且 `model_result_used: false`；
+- 每个 case 必须有 `review`、`provenance` 和 `oracle_obligation` 对象。
+  `review.not_seen_in_prior_eval` 指这个 case 没有被本项目先前的 prompt tuning、
+  diagnostic development 或 LLM evaluation 使用；它不声称模型预训练中从未见过
+  相关公开代码。
+
+允许的 exclusion reasons 是：`verifier_accepts`、`unstable`、
+`not_reproducible`、`oracle_insufficient`、`bpfix_unsupported`、
+`duplicate_or_near_duplicate`、`out_of_scope`、`license_unclear`。
+
+每个 clean60 case 的 `oracle_kind` 至少包含 `compile` 和 `verifier_load`，并且
+至少包含一种语义 oracle：`bpftool_prog_run`、`attach_or_runtime`、
+`environment_config` 或 `custom_oracle`。这允许 LSM、tracepoint、cgroup 和
+environment/config boundary cases 使用 attach/runtime 或配置型 oracle，而不是被
+强行塞进 `bpftool prog run`。
 
 ## Case 格式
 
