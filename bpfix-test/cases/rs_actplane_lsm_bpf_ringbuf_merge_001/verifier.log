@@ -1,0 +1,144 @@
+libbpf: loading object from <work-dir>/prog.o
+libbpf: elf: section(3) lsm/bpf, size 272, link 0, flags 6, type=1
+libbpf: sec 'lsm/bpf': found program 'rs_actplane_lsm_bpf_ringbuf_merge' at insn offset 0 (0 bytes), code size 34 insns (272 bytes)
+libbpf: elf: section(4) .rellsm/bpf, size 32, link 27, flags 40, type=9
+libbpf: elf: section(5) license, size 4, link 0, flags 3, type=1
+libbpf: license of <work-dir>/prog.o is GPL
+libbpf: elf: section(6) .maps, size 48, link 0, flags 3, type=1
+libbpf: elf: section(17) .BTF, size 1269, link 0, flags 0, type=1
+libbpf: elf: section(19) .BTF.ext, size 288, link 0, flags 0, type=1
+libbpf: elf: section(27) .symtab, size 456, link 1, flags 0, type=2
+libbpf: looking for externs among 19 symbols...
+libbpf: collected 0 externs total
+libbpf: map 'events': at sec_idx 6, offset 0.
+libbpf: map 'events': found type = 27.
+libbpf: map 'events': found max_entries = 4096.
+libbpf: map 'protected_pids': at sec_idx 6, offset 16.
+libbpf: map 'protected_pids': found type = 1.
+libbpf: map 'protected_pids': found key [14], sz = 4.
+libbpf: map 'protected_pids': found value [14], sz = 4.
+libbpf: map 'protected_pids': found max_entries = 256.
+libbpf: sec '.rellsm/bpf': collecting relocation for section(3) 'lsm/bpf'
+libbpf: sec '.rellsm/bpf': relo #0: insn #8 against 'protected_pids'
+libbpf: prog 'rs_actplane_lsm_bpf_ringbuf_merge': found map 1 (protected_pids, sec 6, off 16) for insn #8
+libbpf: sec '.rellsm/bpf': relo #1: insn #18 against 'events'
+libbpf: prog 'rs_actplane_lsm_bpf_ringbuf_merge': found map 0 (events, sec 6, off 0) for insn #18
+libbpf: object 'prog': failed (-95) to create BPF token from '/sys/fs/bpf', skipping optional step...
+libbpf: loaded kernel BTF from '/sys/kernel/btf/vmlinux'
+libbpf: map 'events': created successfully, fd=0
+libbpf: map 'protected_pids': created successfully, fd=0
+libbpf: prog 'rs_actplane_lsm_bpf_ringbuf_merge': BPF program load failed: -EACCES
+libbpf: prog 'rs_actplane_lsm_bpf_ringbuf_merge': -- BEGIN PROG LOAD LOG --
+func#0 @0
+Live regs before insn:
+  0: .1........ (79) r8 = *(u64 *)(r1 +24)
+  1: .1......8. (79) r7 = *(u64 *)(r1 +0)
+  2: .......78. (85) call bpf_get_current_pid_tgid#14
+  3: 0......78. (bf) r6 = r0
+  4: ......678. (77) r6 >>= 32
+  5: ......678. (63) *(u32 *)(r10 -4) = r6
+  6: ......678. (bf) r2 = r10
+  7: ..2...678. (07) r2 += -4
+  8: ..2...678. (18) r1 = 0xffff000000000000
+ 10: .12...678. (85) call bpf_map_lookup_elem#1
+ 11: 0.....678. (bf) r1 = r0
+ 12: .1....678. (55) if r1 != 0x0 goto pc+2
+ 13: .......... (b7) r0 = 0
+ 14: 0......... (05) goto pc+18
+ 15: .1....678. (b7) r0 = 0
+ 16: 01....678. (61) r1 = *(u32 *)(r1 +0)
+ 17: 01....678. (55) if r1 != 0x7 goto pc+15
+ 18: ......678. (18) r1 = 0xffff000000000000
+ 20: .1....678. (b7) r2 = 8
+ 21: .12...678. (b7) r3 = 0
+ 22: .123..678. (85) call bpf_ringbuf_reserve#131
+ 23: 0.....678. (bf) r1 = r0
+ 24: .1....678. (b7) r0 = 0
+ 25: 01....678. (15) if r8 == 0x0 goto pc+1
+ 26: 01....67.. (15) if r1 == 0x0 goto pc+6
+ 27: .1....67.. (63) *(u32 *)(r1 +4) = r7
+ 28: .1....6... (63) *(u32 *)(r1 +0) = r6
+ 29: .1........ (b7) r2 = 0
+ 30: .12....... (85) call bpf_ringbuf_submit#132
+ 31: .......... (18) r0 = 0xffff000000000000
+ 33: 0......... (95) exit
+0: R1=ctx() R10=fp0
+; int BPF_PROG(rs_actplane_lsm_bpf_ringbuf_merge, int cmd, union bpf_attr *attr, @ buggy.bpf.c:37
+0: (79) r8 = *(u64 *)(r1 +24)         ; R1=ctx() R8_w=scalar()
+1: (79) r7 = *(u64 *)(r1 +0)          ; R1=ctx() R7_w=scalar()
+; __u32 pid = bpf_get_current_pid_tgid() >> 32; @ buggy.bpf.c:40
+2: (85) call bpf_get_current_pid_tgid#14      ; R0_w=scalar()
+3: (bf) r6 = r0                       ; R0_w=scalar(id=1) R6_w=scalar(id=1)
+4: (77) r6 >>= 32                     ; R6_w=scalar(smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000))
+5: (63) *(u32 *)(r10 -4) = r6         ; R6_w=scalar(smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) R10=fp0 fp-8=mmmm????
+6: (bf) r2 = r10                      ; R2_w=fp0 R10=fp0
+;  @ buggy.bpf.c:0
+7: (07) r2 += -4                      ; R2_w=fp-4
+; __u32 *flag = bpf_map_lookup_elem(&protected_pids, &pid); @ buggy.bpf.c:32
+8: (18) r1 = 0xffff000000000000       ; R1_w=map_ptr(map=protected_pids,ks=4,vs=4)
+10: (85) call bpf_map_lookup_elem#1   ; R0=map_value_or_null(id=2,map=protected_pids,ks=4,vs=4)
+11: (bf) r1 = r0                      ; R0=map_value_or_null(id=2,map=protected_pids,ks=4,vs=4) R1_w=map_value_or_null(id=2,map=protected_pids,ks=4,vs=4)
+; return flag && *flag == 7; @ buggy.bpf.c:33
+12: (55) if r1 != 0x0 goto pc+2       ; R1_w=0
+13: (b7) r0 = 0                       ; R0_w=0
+14: (05) goto pc+18
+; int BPF_PROG(rs_actplane_lsm_bpf_ringbuf_merge, int cmd, union bpf_attr *attr, @ buggy.bpf.c:37
+33: (95) exit
+mark_precise: frame0: last_idx 33 first_idx 11 subseq_idx -1 
+mark_precise: frame0: regs=r0 stack= before 14: (05) goto pc+18
+mark_precise: frame0: regs=r0 stack= before 13: (b7) r0 = 0
+
+from 12 to 15: R0=map_value(map=protected_pids,ks=4,vs=4) R1_w=map_value(map=protected_pids,ks=4,vs=4) R6=scalar(smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) R7=scalar() R8=scalar() R10=fp0 fp-8=mmmm????
+15: R0=map_value(map=protected_pids,ks=4,vs=4) R1_w=map_value(map=protected_pids,ks=4,vs=4) R6=scalar(smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) R7=scalar() R8=scalar() R10=fp0 fp-8=mmmm????
+; return flag && *flag == 7; @ buggy.bpf.c:33
+15: (b7) r0 = 0                       ; R0_w=0
+16: (61) r1 = *(u32 *)(r1 +0)         ; R1_w=scalar(smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000))
+; if (!active_policy(pid)) @ buggy.bpf.c:46
+17: (55) if r1 != 0x7 goto pc+15      ; R1_w=7
+; event = bpf_ringbuf_reserve(&events, sizeof(*event), 0); @ buggy.bpf.c:49
+18: (18) r1 = 0xffff000000000000      ; R1_w=map_ptr(map=events,ks=0,vs=0)
+20: (b7) r2 = 8                       ; R2_w=8
+21: (b7) r3 = 0                       ; R3_w=0
+22: (85) call bpf_ringbuf_reserve#131
+mark_precise: frame0: last_idx 22 first_idx 11 subseq_idx -1 
+mark_precise: frame0: regs=r2 stack= before 21: (b7) r3 = 0
+mark_precise: frame0: regs=r2 stack= before 20: (b7) r2 = 8
+23: R0=ringbuf_mem_or_null(id=4,ref_obj_id=4,sz=8) refs=4
+23: (bf) r1 = r0                      ; R0=ringbuf_mem_or_null(id=4,ref_obj_id=4,sz=8) R1_w=ringbuf_mem_or_null(id=4,ref_obj_id=4,sz=8) refs=4
+24: (b7) r0 = 0                       ; R0_w=0 refs=4
+; if (!event && privileged) @ buggy.bpf.c:50
+25: (15) if r8 == 0x0 goto pc+1       ; R8=scalar(umin=1) refs=4
+26: (15) if r1 == 0x0 goto pc+6       ; R1_w=ringbuf_mem(ref_obj_id=4,sz=8) refs=4
+; event->cmd = (__u32)cmd; @ buggy.bpf.c:54
+27: (63) *(u32 *)(r1 +4) = r7         ; R1_w=ringbuf_mem(ref_obj_id=4,sz=8) R7=scalar() refs=4
+; event->pid = pid; @ buggy.bpf.c:53
+28: (63) *(u32 *)(r1 +0) = r6         ; R1_w=ringbuf_mem(ref_obj_id=4,sz=8) R6=scalar(smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) refs=4
+; bpf_ringbuf_submit(event, 0); @ buggy.bpf.c:55
+29: (b7) r2 = 0                       ; R2_w=0 refs=4
+30: (85) call bpf_ringbuf_submit#132          ;
+31: (18) r0 = 0xffff000000000000              ; R0_w=0xffff000000000000
+; int BPF_PROG(rs_actplane_lsm_bpf_ringbuf_merge, int cmd, union bpf_attr *attr, @ buggy.bpf.c:37
+33: (95) exit
+mark_precise: frame0: last_idx 33 first_idx 31 subseq_idx -1 
+mark_precise: frame0: regs=r0 stack= before 31: (18) r0 = 0xffff000000000000
+
+from 26 to 33: R0_w=0 R1_w=0 R6=scalar(smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) R7=scalar() R8=scalar(umin=1) R10=fp0 fp-8=mmmm????
+33: R0_w=0 R1_w=0 R6=scalar(smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) R7=scalar() R8=scalar(umin=1) R10=fp0 fp-8=mmmm????
+33: (95) exit
+mark_precise: frame0: last_idx 33 first_idx 23 subseq_idx -1 
+mark_precise: frame0: regs=r0 stack= before 26: (15) if r1 == 0x0 goto pc+6
+mark_precise: frame0: regs=r0 stack= before 25: (15) if r8 == 0x0 goto pc+1
+mark_precise: frame0: regs=r0 stack= before 24: (b7) r0 = 0
+
+from 25 to 27: R0_w=0 R1_w=ringbuf_mem_or_null(id=4,ref_obj_id=4,sz=8) R6=scalar(smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) R7=scalar() R8=0 R10=fp0 fp-8=mmmm???? refs=4
+27: R0_w=0 R1_w=ringbuf_mem_or_null(id=4,ref_obj_id=4,sz=8) R6=scalar(smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) R7=scalar() R8=0 R10=fp0 fp-8=mmmm???? refs=4
+; event->cmd = (__u32)cmd; @ buggy.bpf.c:54
+27: (63) *(u32 *)(r1 +4) = r7
+R1 invalid mem access 'ringbuf_mem_or_null'
+verification time 0 usec
+stack depth 8
+processed 34 insns (limit 1000000) max_states_per_insn 0 total_states 3 peak_states 3 mark_read 2
+-- END PROG LOAD LOG --
+libbpf: prog 'rs_actplane_lsm_bpf_ringbuf_merge': failed to load: -EACCES
+libbpf: failed to load object '<work-dir>/prog.o'
+Error: failed to load object file

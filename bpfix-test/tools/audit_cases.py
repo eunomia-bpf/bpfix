@@ -82,15 +82,49 @@ def list_len(value: ast.AST | None) -> int | None:
     return None
 
 
-def run_case_keywords(test_py: Path) -> dict[str, ast.AST] | None:
+def literal_list_count(value: Any) -> int | None:
+    return len(value) if isinstance(value, list) else None
+
+
+def parse_test_tree(test_py: Path) -> ast.Module | None:
     try:
-        tree = ast.parse(test_py.read_text(encoding="utf-8"), filename=str(test_py))
+        return ast.parse(test_py.read_text(encoding="utf-8"), filename=str(test_py))
     except SyntaxError:
         return None
+
+
+def run_case_keywords_from_tree(tree: ast.Module) -> dict[str, ast.AST] | None:
     for node in ast.walk(tree):
         if isinstance(node, ast.Call) and getattr(node.func, "id", "") == "run_case":
             return {keyword.arg: keyword.value for keyword in node.keywords if keyword.arg is not None}
     return None
+
+
+def module_literal_dict(tree: ast.Module, name: str) -> dict[str, Any] | None:
+    for node in tree.body:
+        value: ast.AST | None = None
+        if isinstance(node, ast.Assign) and any(
+            isinstance(target, ast.Name) and target.id == name for target in node.targets
+        ):
+            value = node.value
+        elif isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name) and node.target.id == name:
+            value = node.value
+        if value is None:
+            continue
+        try:
+            parsed = ast.literal_eval(value)
+        except (ValueError, SyntaxError):
+            return None
+        return parsed if isinstance(parsed, dict) else None
+    return None
+
+
+def custom_oracle_coverage(tree: ast.Module) -> dict[str, int | None]:
+    coverage = module_literal_dict(tree, "CUSTOM_ORACLE_COVERAGE") or {}
+    return {
+        "required_success_substrings": literal_list_count(coverage.get("required_success_substrings")),
+        "required_success_predicates": literal_list_count(coverage.get("required_success_predicates")),
+    }
 
 
 def audit_structured_json(case_dir: Path, errors: list[str], warnings: list[str]) -> dict[str, Any] | None:
@@ -132,11 +166,13 @@ def audit_test_py(
     *,
     oracle_kind: list[str] | None = None,
 ) -> dict[str, int | None | bool]:
-    keywords = run_case_keywords(case_dir / "test.py")
+    tree = parse_test_tree(case_dir / "test.py")
+    keywords = run_case_keywords_from_tree(tree) if tree is not None else None
     oracle_kind_set = set(oracle_kind or [])
     custom_oracle = bool(CUSTOM_ORACLE_KINDS & oracle_kind_set)
     bpftool_prog_run = oracle_kind is None or BPFTOOL_PROG_RUN_ORACLE in oracle_kind_set
     if keywords is None:
+        coverage = custom_oracle_coverage(tree) if custom_oracle and tree is not None else {}
         if bpftool_prog_run:
             errors.append("test.py does not contain a parseable run_case(...) call")
         elif not custom_oracle:
@@ -144,8 +180,8 @@ def audit_test_py(
         return {
             "expected_reject_substrings": None,
             "functional_tests": None,
-            "required_success_substrings": None,
-            "required_success_predicates": None,
+            "required_success_substrings": coverage.get("required_success_substrings"),
+            "required_success_predicates": coverage.get("required_success_predicates"),
             "custom_oracle": custom_oracle,
             "bpftool_prog_run": bpftool_prog_run,
         }

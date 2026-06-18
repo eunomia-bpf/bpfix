@@ -37,6 +37,14 @@
       "notes": "Minimized the map-backed policy decision and branch-merge proof shape into a deterministic TC harness; no LLM repair outcomes were used for admission."
     },
     {
+      "seed": "ActPlane@84169ce6a22a302afdf64427a0b7ffbab773b6e1:bpf/process.bpf.c",
+      "decision": "admitted",
+      "case_id": "rs_actplane_lsm_bpf_ringbuf_merge_001",
+      "decision_made_before_model_eval": true,
+      "model_result_used": false,
+      "notes": "Minimized the LSM bpf policy-deny and ringbuf violation event path into a source-first proof-lifecycle case; no LLM repair outcomes were used for admission."
+    },
+    {
       "seed": "cilium@3a3646386538766d6edd5ada929b427728dbfafd:bpf/bpf_overlay.c",
       "decision": "admitted",
       "case_id": "rs_cilium_change_proto_stale_001",
@@ -185,6 +193,62 @@
           "candidate compiles and verifier-loads",
           "bpftool prog run returns expected TC actions for IPv4 and ARP under two map configurations",
           "successful verifier log shows drop_proto read from map value and seen_ipv4 state update"
+        ]
+      }
+    },
+    {
+      "case_id": "rs_actplane_lsm_bpf_ringbuf_merge_001",
+      "bucket": "proof_lifecycle",
+      "prog_type": "lsm",
+      "origin": "real-project seed from ActPlane LSM bpf policy enforcement and ring-buffer violation emission",
+      "oracle_kind": [
+        "compile",
+        "verifier_load",
+        "custom_oracle",
+        "helper_state",
+        "proof_predicate"
+      ],
+      "requires_helper_or_state": true,
+      "uses_success_predicate": true,
+      "case_sha256": "85d1dbf8348c0f59bb0e0e494904dcdba27955ecbdd8d4da02f4b85c4397f90f",
+      "buggy_source_sha256": "f3162ec28e0499b5cf8c4d63234dc85880f750f95133bfd070a3e640ad2b3ab5",
+      "review": {
+        "reviewer": "Franklin subagent 019ed837-af4b-7182-b504-c53aafd12f63",
+        "reviewed_at": "2026-06-17",
+        "bug_confirmed": true,
+        "oracle_adequate": true,
+        "not_seen_in_prior_eval": true,
+        "bug_summary": "The LSM policy path reaches ring-buffer event field writes with the bpf_ringbuf_reserve result still typed as ringbuf_mem_or_null on one branch.",
+        "oracle_rationale": "The custom oracle requires compile, LSM verifier load, source-level preservation of the LSM hook, protected-pid map lookup, ringbuf reserve/submit, and deny return, plus successful-verifier predicates proving lookup-reserve-submit order, event field writes before submit, and -EPERM reaching exit.",
+        "provenance_rationale": "Seed was derived from ActPlane process.bpf.c LSM bpf enforcement and ring-buffer violation emission. The minimized harness preserves the protected-pid map check, LSM deny policy, and violation event workflow without requiring behavior absent from the upstream seed."
+      },
+      "provenance": {
+        "seed_type": "minimized real-project seed in LSM harness",
+        "source": "https://github.com/eunomia-bpf/ActPlane/blob/84169ce6a22a302afdf64427a0b7ffbab773b6e1/bpf/process.bpf.c",
+        "license": "GPL-2.0 OR BSD-3-Clause",
+        "minimization": "Preserved ActPlane's LSM bpf enforcement hook, protected-pid map lookup, ring-buffer violation event emission, and deny return while reducing the full taint engine to a single proof-lifecycle failure.",
+        "upstream_project": "https://github.com/eunomia-bpf/ActPlane",
+        "upstream_ref": "84169ce6a22a302afdf64427a0b7ffbab773b6e1",
+        "upstream_path": "bpf/process.bpf.c",
+        "upstream_license": "GPL-2.0 OR BSD-3-Clause",
+        "upstream_file_sha256": "c76b74e5890c7d5b6b78eb63a2fca076a18949039e059ef3f0af160fb1125579",
+        "derived_from_dev40": false,
+        "model_result_used": false
+      },
+      "oracle_obligation": {
+        "functional_semantics": [
+          "repair must keep the LSM bpf hook, not convert the program to XDP or TC",
+          "repair must keep the protected-pid map lookup before policy enforcement",
+          "repair must keep ringbuf violation event submission and the -EPERM deny return"
+        ],
+        "verifier_reject_reason": [
+          "bpf_ringbuf_reserve returns ringbuf_mem_or_null",
+          "buggy program checks !event only under an additional privileged condition, so the unprivileged branch reaches event writes without a verifier-visible non-null proof"
+        ],
+        "success_criteria": [
+          "candidate compiles and verifier-loads as an LSM program",
+          "successful verifier log shows call bpf_map_lookup_elem#1 before call bpf_ringbuf_reserve#131 before call bpf_ringbuf_submit#132",
+          "successful verifier log shows event fields written before submit and the -EPERM deny value reaching exit"
         ]
       }
     },
