@@ -203,6 +203,14 @@
             "decision_made_before_model_eval": true,
             "model_result_used": false,
             "notes": "Minimized Cilium's proxy socket lookup, skb assignment, and socket release workflow into a TC case where the successful marked branch returns before bpf_sk_release; no LLM repair outcomes were used for admission."
+        },
+        {
+            "seed": "tetragon@8ca052908600a83c4fad7429a3023a921bc15851:bpf/process/data_event.h#data-event-size-guard",
+            "decision": "admitted",
+            "case_id": "rs_tetragon_data_event_size_guard_001",
+            "decision_made_before_model_eval": true,
+            "model_result_used": false,
+            "notes": "Minimized Tetragon's data_event user-buffer workflow into a tracepoint helper-memory contract case where a MSG_DATA_ARG_LEN-bounded size is computed but the raw masked syscall size is passed to bpf_probe_read_user and perf output; no LLM repair outcomes were used for admission."
         }
   ],
   "seed_exclusion_ledger": [
@@ -1513,6 +1521,66 @@
                     "successful verifier log shows bpf_sk_assign receives the looked-up sock_common in R2",
                     "successful verifier log shows bpf_sk_release releases that socket in R1 after assignment",
                     "source checks preserve the marked-packet branch, current-netns lookup, and proxy-port tuple"
+                ]
+            }
+        },
+        {
+            "case_id": "rs_tetragon_data_event_size_guard_001",
+            "bucket": "helper_memory_contract",
+            "prog_type": "tracepoint",
+            "origin": "real-project seed from Tetragon data_event user-buffer workflow",
+            "oracle_kind": [
+                "compile",
+                "verifier_load",
+                "custom_oracle",
+                "helper_state",
+                "proof_predicate"
+            ],
+            "requires_helper_or_state": true,
+            "uses_success_predicate": true,
+            "case_sha256": "c29b0de9ab0911ebbdff28c1687bb305f8d4963245804795e262dac61287f72d",
+            "buggy_source_sha256": "f39d8a2b662a0ee54ae164ccba94e7d6920f0b693ddb85e3b7c3ef46af5082cf",
+            "review": {
+                "reviewer": "Herschel subagent 019edc3b-c168-7e11-8c81-5e246a27c5e3",
+                "reviewed_at": "2026-06-18",
+                "bug_confirmed": true,
+                "oracle_adequate": true,
+                "not_seen_in_prior_eval": true,
+                "bug_summary": "The minimized Tetragon data-event tracepoint computes a MSG_DATA_ARG_LEN-clamped syscall write size, but passes the masked raw size into the user-copy/output helper. The verifier reaches bpf_probe_read_user with R2 bounded only to 0x7fffffff for a 32-byte data_heap payload, so the helper length proof is missing.",
+                "oracle_rationale": "The oracle requires buggy rejection with R2 unbounded memory access, then requires repaired sources to compile and verifier-load while preserving the sys_enter_write workflow, data_heap/events maps, syscall arg1/arg2 inputs, explicit MSG_DATA_ARG_LEN guard, bpf_probe_read_user, bpf_perf_event_output, and data-event descriptor. Success predicates check helper order, bpf_probe_read_user R1=data_heap+8 with R2<=32, and bpf_perf_event_output R4=data_heap with R5 covering both clamped 32->40 and variable <32->+8 bounded-copy paths, rejecting deleted-helper and fixed-32 overfits.",
+                "provenance_rationale": "Seed verified against local Tetragon commit 8ca052908600a83c4fad7429a3023a921bc15851, path bpf/process/data_event.h, remote https://github.com/eunomia-bpf/tetragon.git, sha256 29ddc13714602b6fd62f99c4a0d5d1bf3537363ba104443abe44145af741ac75, SPDX (GPL-2.0-only OR BSD-2-Clause). The harness preserves the upstream map-backed msg_data, user pointer/size, MSG_DATA_ARG_LEN cap, user-byte copy, size accounting, and perf-output workflow while isolating bounded-size propagation; no semantic near duplicate was found in bpfix-test or bpfix-bench."
+            },
+            "provenance": {
+                "seed_type": "minimized real-project seed in Tetragon data-event user-byte-copy harness",
+                "source": "https://github.com/eunomia-bpf/tetragon/blob/8ca052908600a83c4fad7429a3023a921bc15851/bpf/process/data_event.h",
+                "license": "(GPL-2.0-only OR BSD-2-Clause)",
+                "minimization": "Preserved the upstream Tetragon data_event shape: map-backed msg_data scratch storage, user pointer and size inputs, MSG_DATA_ARG_LEN cap, user-byte copy, msg size accounting, descriptor status fields, and perf-event output. The minimized tracepoint harness isolates propagation of the bounded copy size into both bpf_probe_read_user and output size.",
+                "upstream_project": "https://github.com/eunomia-bpf/tetragon.git",
+                "upstream_ref": "8ca052908600a83c4fad7429a3023a921bc15851",
+                "upstream_path": "bpf/process/data_event.h",
+                "upstream_license": "(GPL-2.0-only OR BSD-2-Clause)",
+                "upstream_file_sha256": "29ddc13714602b6fd62f99c4a0d5d1bf3537363ba104443abe44145af741ac75",
+                "derived_from_dev40": false,
+                "model_result_used": false
+            },
+            "oracle_obligation": {
+                "functional_semantics": [
+                    "repair must load as a sys_enter_write tracepoint program",
+                    "repair must preserve the map-backed data_heap msg_data storage and perf-event output map",
+                    "repair must preserve syscall arg1 as the user data pointer and syscall arg2 as the requested copy size",
+                    "repair must preserve bpf_probe_read_user, bpf_perf_event_output, msg size accounting, and descriptor status fields"
+                ],
+                "verifier_reject_reason": [
+                    "buggy program masks the raw syscall size to a non-negative scalar but only clamps a separate bounded_size value",
+                    "submit_data_bytes receives raw_size, so bpf_probe_read_user sees R2 with an upper bound of 0x7fffffff for a 32-byte payload",
+                    "the same unbounded raw size also flows into msg->common.size and the perf output size"
+                ],
+                "success_criteria": [
+                    "candidate compiles and verifier-loads as a tracepoint program",
+                    "successful verifier log reaches map lookup, bpf_probe_read_user, and bpf_perf_event_output in Tetragon data-event order",
+                    "successful verifier log shows bpf_probe_read_user receives the data_heap payload pointer at offset 8 and a length bounded by MSG_DATA_ARG_LEN",
+                    "successful verifier log shows bpf_perf_event_output submits the data_heap message with size equal to the same bounded copy length plus MSG_DATA_ARG_OFFSET on both clamped and variable paths",
+                    "oracle rejects repairs that delete user copy, delete perf output, or replace the dynamic bounded copy with a fixed 32-byte output"
                 ]
             }
         }

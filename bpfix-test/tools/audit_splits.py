@@ -12,6 +12,7 @@ import subprocess
 from pathlib import Path
 from pathlib import PurePosixPath
 from typing import Any
+from typing import Iterable
 from urllib.parse import unquote
 from urllib.parse import urlparse
 
@@ -339,6 +340,23 @@ def checkout_matches_upstream_remote(candidate: Path, upstream_project: str) -> 
     return remote_matches
 
 
+def iter_bounded_child_dirs(root: Path, *, max_depth: int) -> Iterable[Path]:
+    stack: list[tuple[Path, int]] = [(root, 0)]
+    while stack:
+        parent, depth = stack.pop()
+        if depth >= max_depth:
+            continue
+        try:
+            children = sorted(parent.iterdir(), key=lambda path: path.name)
+        except OSError:
+            continue
+        for child in children:
+            if not child.is_dir():
+                continue
+            yield child
+            stack.append((child, depth + 1))
+
+
 def resolve_local_upstream_repo(root: Path, upstream_project: str) -> Path | None:
     base = upstream_repo_basename(upstream_project)
     if not base:
@@ -370,6 +388,12 @@ def resolve_local_upstream_repo(root: Path, upstream_project: str) -> Path | Non
             for child in parent.iterdir():
                 if child.is_dir() and checkout_matches_upstream_remote(child, upstream_project):
                     return child
+        for child in iter_bounded_child_dirs(search_root, max_depth=5):
+            if child.name.lower() == lower_base and is_usable_git_checkout(child):
+                return child
+        for child in iter_bounded_child_dirs(search_root, max_depth=5):
+            if checkout_matches_upstream_remote(child, upstream_project):
+                return child
     return None
 
 

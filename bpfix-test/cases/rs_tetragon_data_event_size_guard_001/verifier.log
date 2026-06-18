@@ -1,0 +1,123 @@
+libbpf: loading object from <work-dir>/prog.o
+libbpf: elf: section(3) tracepoint/syscalls/sys_enter_write, size 344, link 0, flags 6, type=1
+libbpf: sec 'tracepoint/syscalls/sys_enter_write': found program 'rs_tetragon_data_event_size_guard' at insn offset 0 (0 bytes), code size 43 insns (344 bytes)
+libbpf: elf: section(4) .reltracepoint/syscalls/sys_enter_write, size 32, link 27, flags 40, type=9
+libbpf: elf: section(5) .maps, size 64, link 0, flags 3, type=1
+libbpf: elf: section(6) license, size 13, link 0, flags 3, type=1
+libbpf: license of <work-dir>/prog.o is Dual BSD/GPL
+libbpf: elf: section(17) .BTF, size 1921, link 0, flags 0, type=1
+libbpf: elf: section(19) .BTF.ext, size 428, link 0, flags 0, type=1
+libbpf: elf: section(27) .symtab, size 456, link 1, flags 0, type=2
+libbpf: looking for externs among 19 symbols...
+libbpf: collected 0 externs total
+libbpf: map 'data_heap': at sec_idx 5, offset 0.
+libbpf: map 'data_heap': found type = 2.
+libbpf: map 'data_heap': found key [8], sz = 4.
+libbpf: map 'data_heap': found value [11], sz = 40.
+libbpf: map 'data_heap': found max_entries = 1.
+libbpf: map 'events': at sec_idx 5, offset 32.
+libbpf: map 'events': found type = 4.
+libbpf: map 'events': found key [2], sz = 4.
+libbpf: map 'events': found value [8], sz = 4.
+libbpf: map 'events': found max_entries = 0.
+libbpf: sec '.reltracepoint/syscalls/sys_enter_write': collecting relocation for section(3) 'tracepoint/syscalls/sys_enter_write'
+libbpf: sec '.reltracepoint/syscalls/sys_enter_write': relo #0: insn #5 against 'data_heap'
+libbpf: prog 'rs_tetragon_data_event_size_guard': found map 0 (data_heap, sec 5, off 0) for insn #5
+libbpf: sec '.reltracepoint/syscalls/sys_enter_write': relo #1: insn #29 against 'events'
+libbpf: prog 'rs_tetragon_data_event_size_guard': found map 1 (events, sec 5, off 32) for insn #29
+libbpf: object 'prog': failed (-95) to create BPF token from '/sys/fs/bpf', skipping optional step...
+libbpf: loaded kernel BTF from '/sys/kernel/btf/vmlinux'
+libbpf: sec 'tracepoint/syscalls/sys_enter_write': found 2 CO-RE relocations
+libbpf: CO-RE relocating [26] struct trace_event_raw_sys_enter: found target candidate [12041] struct trace_event_raw_sys_enter in [vmlinux]
+libbpf: prog 'rs_tetragon_data_event_size_guard': relo #0: <byte_off> [26] struct trace_event_raw_sys_enter.args[1] (0:2:1 @ offset 24)
+libbpf: prog 'rs_tetragon_data_event_size_guard': relo #0: matching candidate #0 <byte_off> [12041] struct trace_event_raw_sys_enter.args[1] (0:2:1 @ offset 24)
+libbpf: prog 'rs_tetragon_data_event_size_guard': relo #0: patched insn #10 (LDX/ST/STX) off 24 -> 24
+libbpf: prog 'rs_tetragon_data_event_size_guard': relo #1: <byte_off> [26] struct trace_event_raw_sys_enter.args[2] (0:2:2 @ offset 32)
+libbpf: prog 'rs_tetragon_data_event_size_guard': relo #1: matching candidate #0 <byte_off> [12041] struct trace_event_raw_sys_enter.args[2] (0:2:2 @ offset 32)
+libbpf: prog 'rs_tetragon_data_event_size_guard': relo #1: patched insn #11 (LDX/ST/STX) off 32 -> 32
+libbpf: map 'data_heap': created successfully, fd=0
+libbpf: map 'events': setting size to 24
+libbpf: map 'events': created successfully, fd=0
+libbpf: prog 'rs_tetragon_data_event_size_guard': BPF program load failed: -EACCES
+libbpf: prog 'rs_tetragon_data_event_size_guard': -- BEGIN PROG LOAD LOG --
+func#0 @0
+Live regs before insn:
+  0: .1........ (bf) r7 = r1
+  1: .......7.. (b7) r6 = 0
+  2: ......67.. (63) *(u32 *)(r10 -4) = r6
+  3: ......67.. (bf) r2 = r10
+  4: ..2...67.. (07) r2 += -4
+  5: ..2...67.. (18) r1 = 0xffff000000000000
+  7: .12...67.. (85) call bpf_map_lookup_elem#1
+  8: 0.....67.. (bf) r8 = r0
+  9: ......678. (15) if r8 == 0x0 goto pc+31
+ 10: .......78. (79) r3 = *(u64 *)(r7 +24)
+ 11: ...3...78. (79) r6 = *(u64 *)(r7 +32)
+ 12: ...3..678. (b7) r1 = 10
+ 13: .1.3..678. (63) *(u32 *)(r8 +0) = r1
+ 14: ...3..678. (57) r6 &= 2147483647
+ 15: ...3..678. (bf) r1 = r8
+ 16: .1.3..678. (07) r1 += 8
+ 17: .1.3..678. (bf) r2 = r6
+ 18: .123..678. (85) call bpf_probe_read_user#112
+ 19: 0.....678. (18) r9 = 0x80000000
+ 21: 0.....6789 (bf) r1 = r0
+ 22: 01....6789 (5f) r1 &= r9
+ 23: 01....6789 (15) if r1 == 0x0 goto pc+1
+ 24: 0......... (05) goto pc+13
+ 25: ......6789 (bf) r5 = r6
+ 26: .....56789 (07) r5 += 8
+ 27: .....56789 (63) *(u32 *)(r8 +4) = r5
+ 28: .....56789 (bf) r1 = r7
+ 29: .1...56.89 (18) r2 = 0xffff000000000000
+ 31: .12..56.89 (18) r3 = 0xffff000000000000
+ 33: .123.56.89 (bf) r4 = r8
+ 34: .123456..9 (85) call bpf_perf_event_output#25
+ 35: 0.....6..9 (bf) r1 = r0
+ 36: 01....6..9 (5f) r1 &= r9
+ 37: 01....6... (15) if r1 == 0x0 goto pc+3
+ 38: 0......... (67) r0 <<= 32
+ 39: 0......... (c7) r0 s>>= 32
+ 40: 0......... (bf) r6 = r0
+ 41: ......6... (bf) r0 = r6
+ 42: 0......... (95) exit
+0: R1=ctx() R10=fp0
+; int rs_tetragon_data_event_size_guard(struct trace_event_raw_sys_enter *ctx) @ buggy.bpf.c:75
+0: (bf) r7 = r1                       ; R1=ctx() R7_w=ctx()
+1: (b7) r6 = 0                        ; R6_w=0
+; __u32 zero = 0; @ buggy.bpf.c:77
+2: (63) *(u32 *)(r10 -4) = r6
+mark_precise: frame0: last_idx 2 first_idx 0 subseq_idx -1
+mark_precise: frame0: regs=r6 stack= before 1: (b7) r6 = 0
+3: R6_w=0 R10=fp0 fp-8=0000????
+3: (bf) r2 = r10                      ; R2_w=fp0 R10=fp0
+;  @ buggy.bpf.c:0
+4: (07) r2 += -4                      ; R2_w=fp-4
+; msg = bpf_map_lookup_elem(&data_heap, &zero); @ buggy.bpf.c:84
+5: (18) r1 = 0xffff000000000000       ; R1_w=map_ptr(map=data_heap,ks=4,vs=40)
+7: (85) call bpf_map_lookup_elem#1    ; R0_w=map_value(map=data_heap,ks=4,vs=40)
+8: (bf) r8 = r0                       ; R0_w=map_value(map=data_heap,ks=4,vs=40) R8_w=map_value(map=data_heap,ks=4,vs=40)
+; if (!msg) @ buggy.bpf.c:85
+9: (15) if r8 == 0x0 goto pc+31       ; R8_w=map_value(map=data_heap,ks=4,vs=40)
+; user_ptr = ctx->args[1]; @ buggy.bpf.c:88
+10: (79) r3 = *(u64 *)(r7 +24)        ; R3_w=scalar() R7_w=ctx()
+; raw_size = ctx->args[2]; @ buggy.bpf.c:89
+11: (79) r6 = *(u64 *)(r7 +32)        ; R6_w=scalar() R7_w=ctx()
+12: (b7) r1 = 10                      ; R1_w=10
+; msg->common.op = MSG_OP_DATA; @ buggy.bpf.c:50
+13: (63) *(u32 *)(r8 +0) = r1         ; R1_w=10 R8_w=map_value(map=data_heap,ks=4,vs=40)
+; raw_size &= 0x7fffffff; @ buggy.bpf.c:90
+14: (57) r6 &= 2147483647             ; R6_w=scalar(smin=smin32=0,smax=umax=umax32=0x7fffffff,var_off=(0x0; 0x7fffffff))
+; err = bpf_probe_read_user(&msg->arg[0], bytes, (const void *)user_ptr); @ buggy.bpf.c:51
+15: (bf) r1 = r8                      ; R1_w=map_value(map=data_heap,ks=4,vs=40) R8_w=map_value(map=data_heap,ks=4,vs=40)
+16: (07) r1 += 8                      ; R1_w=map_value(map=data_heap,ks=4,vs=40,off=8)
+17: (bf) r2 = r6                      ; R2_w=scalar(id=1,smin=smin32=0,smax=umax=umax32=0x7fffffff,var_off=(0x0; 0x7fffffff)) R6_w=scalar(id=1,smin=smin32=0,smax=umax=umax32=0x7fffffff,var_off=(0x0; 0x7fffffff))
+18: (85) call bpf_probe_read_user#112
+R2 unbounded memory access, use 'var &= const' or 'if (var < const)'
+verification time 0 usec
+stack depth 8
+processed 18 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0 mark_read 0
+-- END PROG LOAD LOG --
+libbpf: prog 'rs_tetragon_data_event_size_guard': failed to load: -EACCES
+libbpf: failed to load object '<work-dir>/prog.o'
+Error: failed to load object file
