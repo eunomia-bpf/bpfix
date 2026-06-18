@@ -1,0 +1,290 @@
+libbpf: loading object from <work-dir>/prog.o
+libbpf: elf: section(3) uretprobe/SSL_read, size 792, link 0, flags 6, type=1
+libbpf: sec 'uretprobe/SSL_read': found program 'rs_bpftime_sslsniff_perf_copy_len' at insn offset 0 (0 bytes), code size 99 insns (792 bytes)
+libbpf: elf: section(4) .reluretprobe/SSL_read, size 96, link 26, flags 40, type=9
+libbpf: elf: section(5) .maps, size 120, link 0, flags 3, type=1
+libbpf: elf: section(6) license, size 4, link 0, flags 3, type=1
+libbpf: license of <work-dir>/prog.o is GPL
+libbpf: elf: section(16) .BTF, size 3229, link 0, flags 0, type=1
+libbpf: elf: section(18) .BTF.ext, size 796, link 0, flags 0, type=1
+libbpf: elf: section(26) .symtab, size 480, link 1, flags 0, type=2
+libbpf: looking for externs among 20 symbols...
+libbpf: collected 0 externs total
+libbpf: map 'bufs': at sec_idx 5, offset 0.
+libbpf: map 'bufs': found type = 1.
+libbpf: map 'bufs': found key [8], sz = 4.
+libbpf: map 'bufs': found value [11], sz = 8.
+libbpf: map 'bufs': found max_entries = 10240.
+libbpf: map 'start_ns': at sec_idx 5, offset 32.
+libbpf: map 'start_ns': found type = 1.
+libbpf: map 'start_ns': found key [8], sz = 4.
+libbpf: map 'start_ns': found value [11], sz = 8.
+libbpf: map 'start_ns': found max_entries = 10240.
+libbpf: map 'ssl_data': at sec_idx 5, offset 64.
+libbpf: map 'ssl_data': found type = 6.
+libbpf: map 'ssl_data': found key [8], sz = 4.
+libbpf: map 'ssl_data': found value [20], sz = 64.
+libbpf: map 'ssl_data': found max_entries = 1.
+libbpf: map 'perf_SSL_events': at sec_idx 5, offset 96.
+libbpf: map 'perf_SSL_events': found type = 4.
+libbpf: map 'perf_SSL_events': found key_size = 4.
+libbpf: map 'perf_SSL_events': found value_size = 4.
+libbpf: sec '.reluretprobe/SSL_read': collecting relocation for section(3) 'uretprobe/SSL_read'
+libbpf: sec '.reluretprobe/SSL_read': relo #0: insn #19 against 'bufs'
+libbpf: prog 'rs_bpftime_sslsniff_perf_copy_len': found map 0 (bufs, sec 5, off 0) for insn #19
+libbpf: sec '.reluretprobe/SSL_read': relo #1: insn #26 against 'start_ns'
+libbpf: prog 'rs_bpftime_sslsniff_perf_copy_len': found map 1 (start_ns, sec 5, off 32) for insn #26
+libbpf: sec '.reluretprobe/SSL_read': relo #2: insn #33 against 'ssl_data'
+libbpf: prog 'rs_bpftime_sslsniff_perf_copy_len': found map 2 (ssl_data, sec 5, off 64) for insn #33
+libbpf: sec '.reluretprobe/SSL_read': relo #3: insn #81 against 'bufs'
+libbpf: prog 'rs_bpftime_sslsniff_perf_copy_len': found map 0 (bufs, sec 5, off 0) for insn #81
+libbpf: sec '.reluretprobe/SSL_read': relo #4: insn #85 against 'start_ns'
+libbpf: prog 'rs_bpftime_sslsniff_perf_copy_len': found map 1 (start_ns, sec 5, off 32) for insn #85
+libbpf: sec '.reluretprobe/SSL_read': relo #5: insn #90 against 'perf_SSL_events'
+libbpf: prog 'rs_bpftime_sslsniff_perf_copy_len': found map 3 (perf_SSL_events, sec 5, off 96) for insn #90
+libbpf: object 'prog': failed (-95) to create BPF token from '/sys/fs/bpf', skipping optional step...
+libbpf: loaded kernel BTF from '/sys/kernel/btf/vmlinux'
+libbpf: sec 'uretprobe/SSL_read': found 1 CO-RE relocations
+libbpf: CO-RE relocating [31] struct pt_regs: found target candidate [185] struct pt_regs in [vmlinux]
+libbpf: prog 'rs_bpftime_sslsniff_perf_copy_len': relo #0: <byte_off> [31] struct pt_regs.ax (0:10 @ offset 80)
+libbpf: prog 'rs_bpftime_sslsniff_perf_copy_len': relo #0: matching candidate #0 <byte_off> [185] struct pt_regs.ax (0:10 @ offset 80)
+libbpf: prog 'rs_bpftime_sslsniff_perf_copy_len': relo #0: patched insn #11 (LDX/ST/STX) off 80 -> 80
+libbpf: map 'bufs': created successfully, fd=0
+libbpf: map 'start_ns': created successfully, fd=0
+libbpf: map 'ssl_data': created successfully, fd=0
+libbpf: map 'perf_SSL_events': setting size to 24
+libbpf: map 'perf_SSL_events': created successfully, fd=0
+libbpf: prog 'rs_bpftime_sslsniff_perf_copy_len': BPF program load failed: -EACCES
+libbpf: prog 'rs_bpftime_sslsniff_perf_copy_len': -- BEGIN PROG LOAD LOG --
+func#0 @0
+Live regs before insn:
+  0: .1........ (bf) r7 = r1
+  1: .......7.. (85) call bpf_get_current_pid_tgid#14
+  2: 0......7.. (bf) r6 = r0
+  3: ......67.. (63) *(u32 *)(r10 -4) = r6
+  4: ......67.. (85) call bpf_get_current_uid_gid#15
+  5: 0.....67.. (7b) *(u64 *)(r10 -24) = r0
+  6: ......67.. (85) call bpf_ktime_get_ns#5
+  7: 0.....67.. (bf) r8 = r0
+  8: ......678. (b7) r1 = 0
+  9: .1....678. (63) *(u32 *)(r10 -8) = r1
+ 10: ......678. (7b) *(u64 *)(r10 -16) = r7
+ 11: ......678. (79) r7 = *(u64 *)(r7 +80)
+ 12: ......678. (bf) r1 = r7
+ 13: .1....678. (67) r1 <<= 32
+ 14: .1....678. (c7) r1 s>>= 32
+ 15: .1....678. (b7) r2 = 1
+ 16: .12...678. (6d) if r2 s> r1 goto pc+80
+ 17: ......678. (bf) r2 = r10
+ 18: ..2...678. (07) r2 += -4
+ 19: ..2...678. (18) r1 = 0xffff000000000000
+ 21: .12...678. (85) call bpf_map_lookup_elem#1
+ 22: 0.....678. (7b) *(u64 *)(r10 -32) = r0
+ 23: 0.....678. (15) if r0 == 0x0 goto pc+73
+ 24: ......678. (bf) r2 = r10
+ 25: ..2...678. (07) r2 += -4
+ 26: ..2...678. (18) r1 = 0xffff000000000000
+ 28: .12...678. (85) call bpf_map_lookup_elem#1
+ 29: 0.....678. (bf) r9 = r0
+ 30: ......6789 (15) if r9 == 0x0 goto pc+66
+ 31: ......6789 (bf) r2 = r10
+ 32: ..2...6789 (07) r2 += -8
+ 33: ..2...6789 (18) r1 = 0xffff000000000000
+ 35: .12...6789 (85) call bpf_map_lookup_elem#1
+ 36: 0.....6789 (15) if r0 == 0x0 goto pc+60
+ 37: 0.....6789 (77) r6 >>= 32
+ 38: 0.....6789 (bf) r2 = r0
+ 39: 0.2...6789 (7b) *(u64 *)(r2 +0) = r8
+ 40: 0.2...6789 (79) r1 = *(u64 *)(r9 +0)
+ 41: 012...678. (63) *(u32 *)(r2 +16) = r6
+ 42: 012....78. (1f) r8 -= r1
+ 43: 0.2....78. (7b) *(u64 *)(r2 +8) = r8
+ 44: 0.2....7.. (bf) r8 = r2
+ 45: 0......78. (61) r1 = *(u32 *)(r10 -4)
+ 46: 01.....78. (b7) r2 = 0
+ 47: 012....78. (7b) *(u64 *)(r8 +32) = r2
+ 48: 01.....78. (79) r2 = *(u64 *)(r10 -24)
+ 49: 012....78. (63) *(u32 *)(r8 +24) = r2
+ 50: 01.....78. (63) *(u32 *)(r8 +20) = r1
+ 51: 0......78. (63) *(u32 *)(r8 +28) = r7
+ 52: 0......78. (bf) r9 = r0
+ 53: 0......789 (bf) r1 = r0
+ 54: .1.....789 (07) r1 += 40
+ 55: .1.....789 (b7) r6 = 16
+ 56: .1....6789 (b7) r2 = 16
+ 57: .12...6789 (85) call bpf_get_current_comm#16
+ 58: ......6789 (67) r7 <<= 32
+ 59: ......6789 (77) r7 >>= 32
+ 60: ......6789 (2d) if r6 > r7 goto pc+1
+ 61: ........89 (b7) r7 = 16
+ 62: .......789 (bf) r2 = r9
+ 63: ..2....78. (07) r2 += 56
+ 64: ..2....78. (79) r1 = *(u64 *)(r10 -32)
+ 65: .12....78. (79) r3 = *(u64 *)(r1 +0)
+ 66: ..23...78. (bf) r1 = r2
+ 67: .1.3...78. (bf) r2 = r7
+ 68: .123...78. (85) call bpf_probe_read_user#112
+ 69: 0......78. (b7) r6 = 56
+ 70: 0.....678. (67) r0 <<= 32
+ 71: 0.....678. (77) r0 >>= 32
+ 72: 0.....678. (55) if r0 != 0x0 goto pc+6
+ 73: .......78. (b7) r1 = 1
+ 74: .1.....78. (63) *(u32 *)(r8 +32) = r1
+ 75: .......78. (07) r7 += 56
+ 76: .......78. (67) r7 <<= 32
+ 77: .......78. (77) r7 >>= 32
+ 78: .......78. (bf) r6 = r7
+ 79: ......6.8. (bf) r7 = r10
+ 80: ......678. (07) r7 += -4
+ 81: ......678. (18) r1 = 0xffff000000000000
+ 83: .1....678. (bf) r2 = r7
+ 84: .12...678. (85) call bpf_map_delete_elem#3
+ 85: ......678. (18) r1 = 0xffff000000000000
+ 87: .1....678. (bf) r2 = r7
+ 88: .12...6.8. (85) call bpf_map_delete_elem#3
+ 89: ......6.8. (79) r1 = *(u64 *)(r10 -16)
+ 90: .1....6.8. (18) r2 = 0xffff000000000000
+ 92: .12...6.8. (18) r3 = 0xffff000000000000
+ 94: .123..6.8. (bf) r4 = r8
+ 95: .1234.6... (bf) r5 = r6
+ 96: .12345.... (85) call bpf_perf_event_output#25
+ 97: .......... (b7) r0 = 0
+ 98: 0......... (95) exit
+0: R1=ctx() R10=fp0
+; int rs_bpftime_sslsniff_perf_copy_len(struct pt_regs *ctx) @ buggy.bpf.c:57
+0: (bf) r7 = r1                       ; R1=ctx() R7_w=ctx()
+; __u64 pid_tgid = bpf_get_current_pid_tgid(); @ buggy.bpf.c:59
+1: (85) call bpf_get_current_pid_tgid#14      ; R0_w=scalar()
+2: (bf) r6 = r0                       ; R0_w=scalar(id=1) R6_w=scalar(id=1)
+; __u32 tid = (__u32)pid_tgid; @ buggy.bpf.c:61
+3: (63) *(u32 *)(r10 -4) = r6         ; R6_w=scalar(id=1) R10=fp0 fp-8=mmmm????
+; __u32 uid = bpf_get_current_uid_gid(); @ buggy.bpf.c:62
+4: (85) call bpf_get_current_uid_gid#15       ; R0_w=scalar()
+5: (7b) *(u64 *)(r10 -24) = r0        ; R0_w=scalar(id=2) R10=fp0 fp-24_w=scalar(id=2)
+; __u64 ts = bpf_ktime_get_ns(); @ buggy.bpf.c:63
+6: (85) call bpf_ktime_get_ns#5       ; R0=scalar()
+7: (bf) r8 = r0                       ; R0=scalar(id=3) R8_w=scalar(id=3)
+8: (b7) r1 = 0                        ; R1_w=0
+; __u32 zero = 0; @ buggy.bpf.c:64
+9: (63) *(u32 *)(r10 -8) = r1         ; R1_w=0 R10=fp0 fp-8=mmmm0
+10: (7b) *(u64 *)(r10 -16) = r7       ; R7=ctx() R10=fp0 fp-16_w=ctx()
+; int len = PT_REGS_RC(ctx); @ buggy.bpf.c:70
+11: (79) r7 = *(u64 *)(r7 +80)        ; R7_w=scalar()
+12: (bf) r1 = r7                      ; R1_w=scalar(id=4) R7_w=scalar(id=4)
+13: (67) r1 <<= 32                    ; R1_w=scalar(smax=0x7fffffff00000000,umax=0xffff000000000000,smin32=0,smax32=umax32=0,var_off=(0x0; 0xffff000000000000))
+14: (c7) r1 s>>= 32                   ; R1_w=scalar(smin=0xffff000000000000,smax=0x7fffffff)
+15: (b7) r2 = 1                       ; R2_w=1
+; if (len <= 0) @ buggy.bpf.c:72
+16: (6d) if r2 s> r1 goto pc+80       ; R1_w=scalar(smin=umin=smin32=umin32=1,smax=umax=umax32=0x7fffffff,var_off=(0x0; 0x7fffffff)) R2_w=1
+17: (bf) r2 = r10                     ; R2_w=fp0 R10=fp0
+;  @ buggy.bpf.c:0
+18: (07) r2 += -4                     ; R2_w=fp-4
+; bufp = bpf_map_lookup_elem(&bufs, &tid); @ buggy.bpf.c:75
+19: (18) r1 = 0xffff000000000000      ; R1_w=map_ptr(map=bufs,ks=4,vs=8)
+21: (85) call bpf_map_lookup_elem#1   ; R0=map_value_or_null(id=5,map=bufs,ks=4,vs=8)
+22: (7b) *(u64 *)(r10 -32) = r0       ; R0=map_value_or_null(id=5,map=bufs,ks=4,vs=8) R10=fp0 fp-32_w=map_value_or_null(id=5,map=bufs,ks=4,vs=8)
+; if (!bufp) @ buggy.bpf.c:76
+23: (15) if r0 == 0x0 goto pc+73      ; R0=map_value(map=bufs,ks=4,vs=8)
+24: (bf) r2 = r10                     ; R2_w=fp0 R10=fp0
+;  @ buggy.bpf.c:0
+25: (07) r2 += -4                     ; R2_w=fp-4
+; tsp = bpf_map_lookup_elem(&start_ns, &tid); @ buggy.bpf.c:79
+26: (18) r1 = 0xffff000000000000      ; R1_w=map_ptr(map=start_ns,ks=4,vs=8)
+28: (85) call bpf_map_lookup_elem#1   ; R0_w=map_value_or_null(id=6,map=start_ns,ks=4,vs=8)
+29: (bf) r9 = r0                      ; R0_w=map_value_or_null(id=6,map=start_ns,ks=4,vs=8) R9_w=map_value_or_null(id=6,map=start_ns,ks=4,vs=8)
+; if (!tsp) @ buggy.bpf.c:80
+30: (15) if r9 == 0x0 goto pc+66      ; R9_w=map_value(map=start_ns,ks=4,vs=8)
+31: (bf) r2 = r10                     ; R2_w=fp0 R10=fp0
+;  @ buggy.bpf.c:0
+32: (07) r2 += -8                     ; R2_w=fp-8
+; data = bpf_map_lookup_elem(&ssl_data, &zero); @ buggy.bpf.c:83
+33: (18) r1 = 0xffff000000000000      ; R1_w=map_ptr(map=ssl_data,ks=4,vs=64)
+35: (85) call bpf_map_lookup_elem#1
+mark_precise: frame0: last_idx 35 first_idx 22 subseq_idx -1 
+mark_precise: frame0: regs= stack=-8 before 33: (18) r1 = 0xffff000000000000
+mark_precise: frame0: regs= stack=-8 before 32: (07) r2 += -8
+mark_precise: frame0: regs= stack=-8 before 31: (bf) r2 = r10
+mark_precise: frame0: regs= stack=-8 before 30: (15) if r9 == 0x0 goto pc+66
+mark_precise: frame0: regs= stack=-8 before 29: (bf) r9 = r0
+mark_precise: frame0: regs= stack=-8 before 28: (85) call bpf_map_lookup_elem#1
+mark_precise: frame0: regs= stack=-8 before 26: (18) r1 = 0xffff000000000000
+mark_precise: frame0: regs= stack=-8 before 25: (07) r2 += -4
+mark_precise: frame0: regs= stack=-8 before 24: (bf) r2 = r10
+mark_precise: frame0: regs= stack=-8 before 23: (15) if r0 == 0x0 goto pc+73
+mark_precise: frame0: regs= stack=-8 before 22: (7b) *(u64 *)(r10 -32) = r0
+mark_precise: frame0: parent state regs= stack=-8:  R0_rw=map_value_or_null(id=5,map=bufs,ks=4,vs=8) R6=scalar(id=1) R7_w=scalar(id=4) R8_w=scalar(id=3) R10=fp0 fp-8_r=mmmmP0 fp-16_w=ctx() fp-24=scalar(id=2)
+mark_precise: frame0: last_idx 21 first_idx 7 subseq_idx 22 
+mark_precise: frame0: regs= stack=-8 before 21: (85) call bpf_map_lookup_elem#1
+mark_precise: frame0: regs= stack=-8 before 19: (18) r1 = 0xffff000000000000
+mark_precise: frame0: regs= stack=-8 before 18: (07) r2 += -4
+mark_precise: frame0: regs= stack=-8 before 17: (bf) r2 = r10
+mark_precise: frame0: regs= stack=-8 before 16: (6d) if r2 s> r1 goto pc+80
+mark_precise: frame0: regs= stack=-8 before 15: (b7) r2 = 1
+mark_precise: frame0: regs= stack=-8 before 14: (c7) r1 s>>= 32
+mark_precise: frame0: regs= stack=-8 before 13: (67) r1 <<= 32
+mark_precise: frame0: regs= stack=-8 before 12: (bf) r1 = r7
+mark_precise: frame0: regs= stack=-8 before 11: (79) r7 = *(u64 *)(r7 +80)
+mark_precise: frame0: regs= stack=-8 before 10: (7b) *(u64 *)(r10 -16) = r7
+mark_precise: frame0: regs= stack=-8 before 9: (63) *(u32 *)(r10 -8) = r1
+mark_precise: frame0: regs=r1 stack= before 8: (b7) r1 = 0
+36: R0=map_value(map=ssl_data,ks=4,vs=64)
+; if (!data) @ buggy.bpf.c:84
+36: (15) if r0 == 0x0 goto pc+60      ; R0=map_value(map=ssl_data,ks=4,vs=64)
+;  @ buggy.bpf.c:0
+37: (77) r6 >>= 32                    ; R6_w=scalar(smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000))
+38: (bf) r2 = r0                      ; R0=map_value(map=ssl_data,ks=4,vs=64) R2_w=map_value(map=ssl_data,ks=4,vs=64)
+; data->timestamp_ns = ts; @ buggy.bpf.c:87
+39: (7b) *(u64 *)(r2 +0) = r8         ; R2_w=map_value(map=ssl_data,ks=4,vs=64) R8=scalar(id=3)
+; data->delta_ns = ts - *tsp; @ buggy.bpf.c:88
+40: (79) r1 = *(u64 *)(r9 +0)         ; R1_w=scalar() R9=map_value(map=start_ns,ks=4,vs=8)
+; data->pid = pid; @ buggy.bpf.c:89
+41: (63) *(u32 *)(r2 +16) = r6        ; R2_w=map_value(map=ssl_data,ks=4,vs=64) R6_w=scalar(smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000))
+; data->delta_ns = ts - *tsp; @ buggy.bpf.c:88
+42: (1f) r8 -= r1                     ; R1_w=scalar() R8_w=scalar()
+43: (7b) *(u64 *)(r2 +8) = r8         ; R2_w=map_value(map=ssl_data,ks=4,vs=64) R8_w=scalar()
+44: (bf) r8 = r2                      ; R2_w=map_value(map=ssl_data,ks=4,vs=64) R8_w=map_value(map=ssl_data,ks=4,vs=64)
+; data->tid = tid; @ buggy.bpf.c:90
+45: (61) r1 = *(u32 *)(r10 -4)        ; R1_w=scalar(smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) R10=fp0 fp-8=mmmm0
+46: (b7) r2 = 0                       ; R2_w=0
+; data->buf_filled = 0; @ buggy.bpf.c:93
+47: (7b) *(u64 *)(r8 +32) = r2        ; R2_w=0 R8_w=map_value(map=ssl_data,ks=4,vs=64)
+; data->uid = uid; @ buggy.bpf.c:91
+48: (79) r2 = *(u64 *)(r10 -24)       ; R2_w=scalar(id=2) R10=fp0 fp-24=scalar(id=2)
+49: (63) *(u32 *)(r8 +24) = r2        ; R2_w=scalar(id=2) R8_w=map_value(map=ssl_data,ks=4,vs=64)
+; data->tid = tid; @ buggy.bpf.c:90
+50: (63) *(u32 *)(r8 +20) = r1        ; R1_w=scalar(smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) R8_w=map_value(map=ssl_data,ks=4,vs=64)
+; data->len = (__u32)len; @ buggy.bpf.c:92
+51: (63) *(u32 *)(r8 +28) = r7        ; R7=scalar(id=4) R8_w=map_value(map=ssl_data,ks=4,vs=64)
+52: (bf) r9 = r0                      ; R0=map_value(map=ssl_data,ks=4,vs=64) R9_w=map_value(map=ssl_data,ks=4,vs=64)
+; bpf_get_current_comm(data->comm, sizeof(data->comm)); @ buggy.bpf.c:95
+53: (bf) r1 = r0                      ; R0=map_value(map=ssl_data,ks=4,vs=64) R1_w=map_value(map=ssl_data,ks=4,vs=64)
+54: (07) r1 += 40                     ; R1_w=map_value(map=ssl_data,ks=4,vs=64,off=40)
+55: (b7) r6 = 16                      ; R6_w=16
+56: (b7) r2 = 16                      ; R2_w=16
+57: (85) call bpf_get_current_comm#16
+mark_precise: frame0: last_idx 57 first_idx 36 subseq_idx -1 
+mark_precise: frame0: regs=r2 stack= before 56: (b7) r2 = 16
+58: R0=scalar()
+; int len = PT_REGS_RC(ctx); @ buggy.bpf.c:70
+58: (67) r7 <<= 32                    ; R7_w=scalar(smax=0x7fffffff00000000,umax=0xffff000000000000,smin32=0,smax32=umax32=0,var_off=(0x0; 0xffff000000000000))
+59: (77) r7 >>= 32                    ; R7_w=scalar(smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000))
+; if (copy_size > MAX_BUF_SIZE) @ buggy.bpf.c:98
+60: (2d) if r6 > r7 goto pc+1         ; R6=16 R7_w=scalar(smin=umin=umin32=16,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000))
+61: (b7) r7 = 16                      ; R7_w=16
+62: (bf) r2 = r9                      ; R2_w=map_value(map=ssl_data,ks=4,vs=64) R9=map_value(map=ssl_data,ks=4,vs=64)
+; ret = bpf_probe_read_user(data->buf, copy_size, (void *)*bufp); @ buggy.bpf.c:101
+63: (07) r2 += 56                     ; R2_w=map_value(map=ssl_data,ks=4,vs=64,off=56)
+64: (79) r1 = *(u64 *)(r10 -32)       ; R1_w=map_value(map=bufs,ks=4,vs=8) R10=fp0 fp-32=map_value(map=bufs,ks=4,vs=8)
+65: (79) r3 = *(u64 *)(r1 +0)         ; R1_w=map_value(map=bufs,ks=4,vs=8) R3_w=scalar()
+66: (bf) r1 = r2                      ; R1_w=map_value(map=ssl_data,ks=4,vs=64,off=56) R2_w=map_value(map=ssl_data,ks=4,vs=64,off=56)
+67: (bf) r2 = r7                      ; R2_w=16 R7_w=16
+68: (85) call bpf_probe_read_user#112
+invalid access to map value, value_size=64 off=56 size=16
+R1 min value is outside of the allowed memory range
+verification time 0 usec
+stack depth 32
+processed 66 insns (limit 1000000) max_states_per_insn 0 total_states 4 peak_states 4 mark_read 3
+-- END PROG LOAD LOG --
+libbpf: prog 'rs_bpftime_sslsniff_perf_copy_len': failed to load: -EACCES
+libbpf: failed to load object '<work-dir>/prog.o'
+Error: failed to load object file

@@ -107,6 +107,14 @@
             "decision_made_before_model_eval": true,
             "model_result_used": false,
             "notes": "Minimized the browsertrace syscall-exit map lookup, timestamp delta, user-copy, ringbuf, and cleanup workflow into a branch-merge map-value proof-lifecycle case; no LLM repair outcomes were used for admission."
+        },
+        {
+            "seed": "bpftime@3a0572b45c98ccac96a05bfa1adf08b98d78f2c9:example/tracing/sslsniff/sslsniff.bpf.c",
+            "decision": "admitted",
+            "case_id": "rs_bpftime_sslsniff_perf_copy_len_001",
+            "decision_made_before_model_eval": true,
+            "model_result_used": false,
+            "notes": "Minimized the sslsniff uretprobe saved-buffer, timestamp, scratch-map, user-copy, cleanup, and perf-output workflow into a helper-memory contract case; no LLM repair outcomes were used for admission."
         }
   ],
   "seed_exclusion_ledger": [
@@ -721,6 +729,62 @@
                     "successful verifier log shows two map lookups, ringbuf reserve, bpf_probe_read_user, two map deletes, and ringbuf submit in browsertrace exit order",
                     "successful verifier log proves the start_ns map-value read happens after a verifier-visible non-null proof and is stored into the event delta field",
                     "successful verifier log proves the user-copy source comes from the saved bufs map value and remains bounded by MAX_BUF_SIZE"
+                ]
+            }
+        },
+        {
+            "case_id": "rs_bpftime_sslsniff_perf_copy_len_001",
+            "bucket": "helper_memory_contract",
+            "prog_type": "other",
+            "origin": "real-project seed from bpftime sslsniff uretprobe perf-event workflow",
+            "oracle_kind": [
+                "compile",
+                "verifier_load",
+                "custom_oracle",
+                "helper_state",
+                "proof_predicate"
+            ],
+            "requires_helper_or_state": true,
+            "uses_success_predicate": true,
+            "case_sha256": "0b8e5cf017fef06b4c88212bfccb7d909154c235001f5fdfb7815922ba7d5fa8",
+            "buggy_source_sha256": "8dbcba034c9b6d72e95c27153d27d971c6d41159acd07d5c2375385f125ca287",
+            "review": {
+                "reviewer": "Franklin subagent 019ed837-af4b-7182-b504-c53aafd12f63",
+                "reviewed_at": "2026-06-17",
+                "bug_confirmed": true,
+                "oracle_adequate": true,
+                "not_seen_in_prior_eval": true,
+                "bug_summary": "The sslsniff-style SSL_read uretprobe keeps a per-CPU ssl_data scratch event whose buggy layout has an 8-byte buf field at offset 56 while copy_size is bounded by MAX_BUF_SIZE=16. The verifier reaches bpf_probe_read_user with R1 at ssl_data+56 and R2 possibly 16, so the helper write can exceed the 64-byte map value.",
+                "oracle_rationale": "The custom oracle requires compile and kprobe verifier load, preservation of saved-buffer lookup, start timestamp lookup, ssl_data scratch lookup, timestamp delta, bounded bpf_probe_read_user into data->buf, cleanup of both saved maps, and bpf_perf_event_output. Its proof predicates track verifier registers per path so the probe-read destination must be ssl_data.buf at offset 56 with offset+copy length within value_size, R3 must come from the saved bufs map value, and perf output must submit the ssl_data event after the copy path. Negative controls for removed copy, removed perf output, wrong output data, and wrong copy destination fail.",
+                "provenance_rationale": "Seed was derived from bpftime's sslsniff uretprobe program at the pinned commit/path. The minimized harness preserves the upstream saved buffer/start timestamp maps, per-CPU scratch event, metadata fill, user copy, cleanup, and perf-event output while shrinking the scratch buffer so the heldout case isolates helper-memory range proof."
+            },
+            "provenance": {
+                "seed_type": "minimized real-project seed in uretprobe perf-event harness",
+                "source": "https://github.com/eunomia-bpf/bpftime/blob/3a0572b45c98ccac96a05bfa1adf08b98d78f2c9/example/tracing/sslsniff/sslsniff.bpf.c",
+                "license": "(LGPL-2.1 OR BSD-2-Clause)",
+                "minimization": "Preserved the sslsniff return-probe workflow: saved user buffer lookup, start timestamp lookup, per-CPU ssl_data scratch lookup, metadata fill, bounded bpf_probe_read_user copy, cleanup of saved maps, and bpf_perf_event_output. The minimized harness shrinks the scratch buffer so the helper-memory range proof fails while keeping the original perf-output shape.",
+                "upstream_project": "https://github.com/eunomia-bpf/bpftime",
+                "upstream_ref": "3a0572b45c98ccac96a05bfa1adf08b98d78f2c9",
+                "upstream_path": "example/tracing/sslsniff/sslsniff.bpf.c",
+                "upstream_license": "(LGPL-2.1 OR BSD-2-Clause)",
+                "upstream_file_sha256": "da47b2924643dd39fea29fcf30e3eaf1b83f48782de2be671ad351f4c6395aab",
+                "derived_from_dev40": false,
+                "model_result_used": false
+            },
+            "oracle_obligation": {
+                "functional_semantics": [
+                    "repair must load as an SSL_read uretprobe/kprobe program",
+                    "repair must preserve saved-buffer lookup, start timestamp lookup, ssl_data scratch lookup, timestamp delta, bounded user-memory copy, cleanup of both saved maps, and perf-event output"
+                ],
+                "verifier_reject_reason": [
+                    "the ssl_data per-CPU map value is 64 bytes, with buf starting at offset 56",
+                    "buggy program lets bpf_probe_read_user copy up to 16 bytes into an 8-byte buf field"
+                ],
+                "success_criteria": [
+                    "candidate compiles and verifier-loads as a kprobe/uretprobe program",
+                    "successful verifier log shows three map lookups, bpf_probe_read_user, two map deletes, and bpf_perf_event_output in sslsniff exit order",
+                    "successful verifier log proves the probe-read destination is ssl_data.buf and the range fits within the ssl_data map value",
+                    "successful verifier log proves perf output submits the ssl_data event after the user-copy path"
                 ]
             }
         }
