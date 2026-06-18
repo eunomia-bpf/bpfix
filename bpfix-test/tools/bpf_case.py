@@ -76,12 +76,21 @@ def compile_bpf(source: Path, obj: Path) -> CommandResult:
     return run(argv)
 
 
-def load_bpf(obj: Path, pin: Path, *, debug: bool = True, pin_maps: Path | None = None) -> CommandResult:
+def load_bpf(
+    obj: Path,
+    pin: Path,
+    *,
+    debug: bool = True,
+    pin_maps: Path | None = None,
+    prog_type: str | None = "xdp",
+) -> CommandResult:
     bpftool = split_tool("BPFTOOL", "sudo bpftool")
     argv = [*bpftool]
     if debug:
         argv.append("-d")
-    argv.extend(["prog", "load", str(obj), str(pin), "type", "xdp"])
+    argv.extend(["prog", "load", str(obj), str(pin)])
+    if prog_type is not None:
+        argv.extend(["type", prog_type])
     if pin_maps is not None:
         argv.extend(["pinmaps", str(pin_maps)])
     return run(argv)
@@ -550,6 +559,7 @@ def run_case(
     required_success_substrings: list[str] | None = None,
     required_success_predicates: list[tuple[str, Callable[[str], bool]]] | None = None,
     map_updates: list[MapUpdate] | None = None,
+    prog_type: str | None = "xdp",
 ) -> int:
     args = parse_args(argv)
     work_dir_obj: tempfile.TemporaryDirectory[str] | None = None
@@ -591,7 +601,7 @@ def run_case(
                 print(json.dumps(report, indent=2, sort_keys=True))
                 return 1
 
-        load_result = load_bpf(obj, pin, pin_maps=map_pin_dir)
+        load_result = load_bpf(obj, pin, pin_maps=map_pin_dir, prog_type=prog_type)
         report["load"] = load_result.to_json()
         if args.save_log is not None:
             args.save_log.write_text(
