@@ -35,9 +35,24 @@
       "decision_made_before_model_eval": true,
       "model_result_used": false,
       "notes": "Minimized the map-backed policy decision and branch-merge proof shape into a deterministic TC harness; no LLM repair outcomes were used for admission."
+    },
+    {
+      "seed": "cilium@3a3646386538766d6edd5ada929b427728dbfafd:bpf/bpf_overlay.c",
+      "decision": "admitted",
+      "case_id": "rs_cilium_change_proto_stale_001",
+      "decision_made_before_model_eval": true,
+      "model_result_used": false,
+      "notes": "Minimized the Cilium overlay datapath packet-revalidation pattern into a deterministic TC harness that concretizes the invalidating helper with bpf_skb_change_proto; no LLM repair outcomes were used for admission."
     }
   ],
-  "seed_exclusion_ledger": [],
+  "seed_exclusion_ledger": [
+    {
+      "seed": "namei_ext@6fe308aa3a16a9ea160f634f60ed76427dcc1b7c:kernel/tools/testing/selftests/net/nat6to4.bpf.c",
+      "reason": "not_reproducible",
+      "model_result_used": false,
+      "notes": "Rejected before admission because the file lives in a nested kernel submodule and the default provenance gate cannot verify it from the namei_ext top-level pinned ref/path; no LLM repair outcomes were inspected."
+    }
+  ],
   "case_defaults": {
     "source_category": "real_project_seed",
     "prog_type": "tc",
@@ -142,6 +157,53 @@
           "candidate compiles and verifier-loads",
           "bpftool prog run returns expected TC actions for IPv4 and ARP under two map configurations",
           "successful verifier log shows drop_proto read from map value and seen_ipv4 state update"
+        ]
+      }
+    },
+    {
+      "case_id": "rs_cilium_change_proto_stale_001",
+      "bucket": "helper_memory_contract",
+      "origin": "real-project seed from Cilium overlay datapath packet revalidation after packet rewrites",
+      "case_sha256": "da1872aba3eb8659dd068e53d42b911fbc5e2ccec71dc2fff62c6a5282caba00",
+      "buggy_source_sha256": "6a64ded7cd472db5d18252e27e8d51494bae1b93004671c0a7eafc737f024c93",
+      "review": {
+        "reviewer": "Franklin subagent 019ed837-af4b-7182-b504-c53aafd12f63",
+        "reviewed_at": "2026-06-17",
+        "bug_confirmed": true,
+        "oracle_adequate": true,
+        "not_seen_in_prior_eval": true,
+        "bug_summary": "The program calls bpf_skb_change_proto and then writes through a stale pre-helper skb packet pointer.",
+        "oracle_rationale": "The oracle requires compile, verifier load, three TC functional returns, bpf_skb_change_proto presence, and a successful-verifier proof predicate that the IPv4 ethertype is stored through a reloaded packet pointer after the helper.",
+        "provenance_rationale": "Seed was derived from Cilium's overlay datapath pattern of revalidating packet data after packet rewrites; the harness concretizes that production provenance rule with bpf_skb_change_proto in a deterministic TC program."
+      },
+      "provenance": {
+        "seed_type": "minimized real-project seed in deterministic TC harness",
+        "source": "https://github.com/cilium/cilium/blob/3a3646386538766d6edd5ada929b427728dbfafd/bpf/bpf_overlay.c",
+        "license": "(GPL-2.0-only OR BSD-2-Clause)",
+        "minimization": "Preserved Cilium's production pattern of reacquiring and revalidating skb packet data/data_end after datapath rewrites while replacing the full overlay pipeline with a small bpf_skb_change_proto TC harness.",
+        "upstream_project": "https://github.com/cilium/cilium",
+        "upstream_ref": "3a3646386538766d6edd5ada929b427728dbfafd",
+        "upstream_path": "bpf/bpf_overlay.c",
+        "upstream_license": "(GPL-2.0-only OR BSD-2-Clause)",
+        "upstream_file_sha256": "55d54efcb753d41f633b711435214144456ec62c4658a9e6c37bca8c7b6877d4",
+        "derived_from_dev40": false,
+        "model_result_used": false
+      },
+      "oracle_obligation": {
+        "functional_semantics": [
+          "IPv6 UDP packet returns TC_ACT_SHOT after the protocol rewrite path",
+          "IPv6 TCP packet returns TC_ACT_OK",
+          "IPv4 packet returns TC_ACT_OK",
+          "repair must keep the post-helper Ethernet protocol rewrite"
+        ],
+        "verifier_reject_reason": [
+          "bpf_skb_change_proto invalidates existing skb packet pointers",
+          "buggy program writes eth->h_proto through the stale pre-helper packet pointer"
+        ],
+        "success_criteria": [
+          "candidate compiles and verifier-loads",
+          "bpftool prog run returns expected TC actions for IPv6 UDP, IPv6 TCP, and IPv4 packets",
+          "successful verifier log shows bpf_skb_change_proto and a later ethertype store through a reloaded packet pointer"
         ]
       }
     }

@@ -251,6 +251,23 @@ def map_value_register_updates(state: str) -> dict[str, bool]:
     return updates
 
 
+def packet_register_updates(state: str) -> dict[str, bool]:
+    updates: dict[str, bool] = {}
+    for register, value in re.findall(r"\bR(\d+)(?:_w)?=([^\s;]+)", state):
+        updates[register] = value.startswith("pkt(")
+    return updates
+
+
+def packet_register_offsets(state: str) -> dict[str, int]:
+    offsets: dict[str, int] = {}
+    for register, value in re.findall(r"\bR(\d+)(?:_w)?=([^\s;]+)", state):
+        if not value.startswith("pkt("):
+            continue
+        offset = re.search(r"\boff=(-?\d+)", value)
+        offsets[register] = int(offset.group(1)) if offset is not None else 0
+    return offsets
+
+
 def scalar_values_for_register(state: str, register: str) -> set[int]:
     values: set[int] = set()
     for raw in re.findall(rf"\bR{register}(?:_w)?=(-?(?:0x[0-9a-fA-F]+|\d+))\b", state):
@@ -489,6 +506,69 @@ def loaded_map_value_u32_offset4(load_output: str) -> bool:
 
 def stored_map_value_u32_offset4(load_output: str) -> bool:
     return stored_map_value_u32_offset(load_output, 4)
+
+
+def packet_store_after_helper_call(
+    load_output: str,
+    helper_call: str,
+    *,
+    store_width: str,
+    expected_store_offset: int,
+    expected_values: set[int] | None = None,
+) -> bool:
+    in_annotated_trace = False
+    saw_helper = False
+    packet_offsets: dict[str, int] = {}
+    store_re = re.compile(
+        rf"\*\({re.escape(store_width)} \*\)\(r(\d+)\s*([+-])\s*(\d+)\)\s*=\s*r(\d+)"
+    )
+
+    for line in load_output.splitlines():
+        if not line.strip():
+            packet_offsets = {}
+            continue
+        if line.startswith("0: R1="):
+            in_annotated_trace = True
+            packet_offsets = packet_register_offsets(line)
+            continue
+        if not in_annotated_trace:
+            continue
+
+        if helper_call in line:
+            saw_helper = True
+            packet_offsets = {}
+            continue
+        if not saw_helper:
+            continue
+
+        line_packet_offsets = packet_register_offsets(line)
+        for register, is_packet in packet_register_updates(line).items():
+            if is_packet:
+                packet_offsets[register] = line_packet_offsets.get(register, 0)
+            else:
+                packet_offsets.pop(register, None)
+
+        store = store_re.search(line)
+        if store is None:
+            continue
+        sign = -1 if store.group(2) == "-" else 1
+        store_offset = sign * int(store.group(3))
+        base_offset = packet_offsets.get(store.group(1))
+        if base_offset is None or base_offset + store_offset != expected_store_offset:
+            continue
+        if expected_values is None or expected_values & scalar_values_for_register(line, store.group(4)):
+            return True
+    return False
+
+
+def packet_eth_proto_store_after_skb_change_proto(load_output: str) -> bool:
+    return packet_store_after_helper_call(
+        load_output,
+        "call bpf_skb_change_proto#31",
+        store_width="u16",
+        expected_store_offset=12,
+        expected_values={8},
+    )
 
 
 def submitted_written_ringbuf_record(load_output: str) -> bool:
