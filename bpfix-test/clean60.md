@@ -118,6 +118,8 @@ dry-run，不能作为 paper-grade 结果依据。
    exclusion，但 exclusion 原因必须是 verifier 接受、不稳定、不可复现、oracle 不足、
    或当前 BPFix unsupported，而不是“模型修得太容易/太难”。
 7. 独立 reviewer 至少审核每个 case 的 bug、oracle 覆盖和 provenance。
+8. admission gate 会扫描本地 `bpfix-test/results/**/summary.json`；任何已经出现在
+   本机 prior LLM run 里的 case id 都不能进入 clean60。
 
 `clean60.manifest.json` 必须把这些原则写成机器可审计字段：
 
@@ -136,6 +138,11 @@ dry-run，不能作为 paper-grade 结果依据。
   `review.not_seen_in_prior_eval` 指这个 case 没有被本项目先前的 prompt tuning、
   diagnostic development 或 LLM evaluation 使用；它不声称模型预训练中从未见过
   相关公开代码。
+- 每个 case 必须有 `challenge_flags` 对象：
+  `source_correlation_difficulty`、`misleading_final_line` 和
+  `semantic_duplicate_reviewed`。其中 `semantic_duplicate_reviewed` 必须为
+  `true`，表示独立 reviewer 已检查该 case 不是对 dev40、bpfix-bench 或同 split
+  其他 case 的语义近重复。
 
 允许的 exclusion reasons 是：`verifier_accepts`、`unstable`、
 `not_reproducible`、`oracle_insufficient`、`bpfix_unsupported`、
@@ -228,6 +235,11 @@ cases/<case_id>/
 - 至少 10/60 是 modern BPF protocol 或 environment/config boundary；
 - 每个 bucket 至少包含 3 个 raw verifier final line 不能直接推出完整修复的 case。
 
+这些约束不只是文档要求：`audit_splits.py --profile clean60` 会检查
+`challenge_flags.source_correlation_difficulty` 的全局计数、每个 bucket 的
+`challenge_flags.misleading_final_line` 计数，以及每个 case 的
+`semantic_duplicate_reviewed: true`。
+
 ## Baseline 和模型矩阵
 
 主表至少报告：
@@ -289,8 +301,9 @@ python3 bpfix-test/tools/run_suite.py \
 
 ## Result Integrity Gate
 
-每个模型的一组 clean60 结果必须在报告前通过 result gate。这个 gate 只读取
-`summary.json`，检查：
+每个模型的一组 clean60 结果必须在报告前通过 `make bpfix-test-result-gate`。
+这个 Makefile gate 会先运行 clean60 admission gate 和 prompt gate，再调用底层
+`audit_results.py` 读取 `summary.json`，检查：
 
 - 所有 summary 来自同一个 `clean60.txt` hash 和 60 个 case；
 - source-only/raw/trimmed-raw/structured 四个模式都存在；
@@ -308,7 +321,7 @@ python3 bpfix-test/tools/run_suite.py \
 - `prompt_written` dry-run 不能当 benchmark result；
 - 每个失败都有机器可读的 `failure_stage`。
 
-示例：
+底层 result-audit 工具示例，仅用于调试单个审计步骤，不能单独作为正式报告入口：
 
 ```bash
 python3 bpfix-test/tools/audit_results.py \
@@ -325,7 +338,7 @@ python3 bpfix-test/tools/audit_results.py \
   /path/to/structured/summary.json
 ```
 
-等价 Makefile 入口：
+正式 Makefile 入口：
 
 ```bash
 make bpfix-test-result-gate RESULT_SUMMARIES='\
@@ -336,7 +349,8 @@ make bpfix-test-result-gate RESULT_SUMMARIES='\
   PROMPT_MANIFEST=bpfix-test/splits/clean60.prompts.json
 ```
 
-这个 gate 不能替代 split admission gate；正式 clean result 必须两个都通过。
+正式 clean result 必须使用 Makefile 组合 gate，不能只跑底层 `audit_results.py`
+后就报告。
 
 ## 报告规则
 

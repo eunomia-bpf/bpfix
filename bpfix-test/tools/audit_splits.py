@@ -80,6 +80,8 @@ CLEAN60_BUCKET_TARGETS = {
     "helper_memory_contract": 8,
     "environment_config_boundary": 7,
 }
+CLEAN60_MIN_SOURCE_CORRELATION_DIFFICULTY = 15
+CLEAN60_MIN_MISLEADING_FINAL_LINE_PER_BUCKET = 3
 C_NEAR_DUPLICATE_SHINGLE_SIZE = 7
 C_NEAR_DUPLICATE_JACCARD_THRESHOLD = 0.82
 C_NEAR_DUPLICATE_CONTAINMENT_THRESHOLD = 0.92
@@ -693,6 +695,28 @@ def require_nonempty_string(value: Any) -> bool:
     return isinstance(value, str) and bool(value.strip())
 
 
+def local_prior_result_cases(root: Path) -> dict[str, list[str]]:
+    prior_cases: dict[str, list[str]] = {}
+    results_dir = root / "bpfix-test" / "results"
+    if not results_dir.exists():
+        return prior_cases
+    for summary_path in sorted(results_dir.glob("**/summary.json")):
+        try:
+            payload = json.loads(summary_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        results = payload.get("results")
+        if not isinstance(results, list):
+            continue
+        for result in results:
+            if not isinstance(result, dict):
+                continue
+            case_id = result.get("case")
+            if isinstance(case_id, str) and case_id:
+                prior_cases.setdefault(case_id, []).append(str(summary_path.relative_to(root)))
+    return prior_cases
+
+
 def audit_selection_protocol(
     *,
     manifest: dict[str, Any],
@@ -1050,6 +1074,8 @@ def audit_manifest(
     prog_type_counts: dict[str, int] = {}
     helper_or_state_count = 0
     realish_count = 0
+    source_correlation_difficulty_count = 0
+    misleading_final_line_counts = {bucket: 0 for bucket in BUCKETS}
     hash_mismatches: list[str] = []
     per_case_reports: list[dict[str, Any]] = []
     clean_buggy_source_hashes: dict[str, str] = {}
@@ -1134,6 +1160,20 @@ def audit_manifest(
                 errors.append(f"{case_id}: {bool_field} must be boolean")
         if case.get("requires_helper_or_state") is True:
             helper_or_state_count += 1
+        if profile == "clean60":
+            challenge_flags = case.get("challenge_flags")
+            if not isinstance(challenge_flags, dict):
+                errors.append(f"{case_id}: clean60 challenge_flags must be an object")
+                challenge_flags = {}
+            for flag in ["source_correlation_difficulty", "misleading_final_line", "semantic_duplicate_reviewed"]:
+                if not require_bool(challenge_flags.get(flag)):
+                    errors.append(f"{case_id}: clean60 challenge_flags.{flag} must be boolean")
+            if challenge_flags.get("semantic_duplicate_reviewed") is not True:
+                errors.append(f"{case_id}: clean60 challenge_flags.semantic_duplicate_reviewed must be true")
+            if challenge_flags.get("source_correlation_difficulty") is True:
+                source_correlation_difficulty_count += 1
+            if challenge_flags.get("misleading_final_line") is True and bucket in misleading_final_line_counts:
+                misleading_final_line_counts[bucket] += 1
 
         computed_hash = None
         computed_buggy_source_hash = None
@@ -1224,6 +1264,18 @@ def audit_manifest(
             errors.append("clean60 must use real_project_seed provenance for every case")
         if helper_or_state_count < 20:
             errors.append("clean60 must include at least 20 helper/state-obligation cases")
+        if source_correlation_difficulty_count < CLEAN60_MIN_SOURCE_CORRELATION_DIFFICULTY:
+            errors.append(
+                "clean60 must include at least "
+                f"{CLEAN60_MIN_SOURCE_CORRELATION_DIFFICULTY} source-correlation difficulty cases"
+            )
+        for bucket in sorted(BUCKETS):
+            count = misleading_final_line_counts.get(bucket, 0)
+            if count < CLEAN60_MIN_MISLEADING_FINAL_LINE_PER_BUCKET:
+                errors.append(
+                    f"clean60 bucket {bucket} must include at least "
+                    f"{CLEAN60_MIN_MISLEADING_FINAL_LINE_PER_BUCKET} misleading-final-line cases"
+                )
 
     return (
         {
@@ -1236,6 +1288,8 @@ def audit_manifest(
             "prog_type_counts": prog_type_counts,
             "helper_or_state_count": helper_or_state_count,
             "realish_count": realish_count,
+            "source_correlation_difficulty_count": source_correlation_difficulty_count,
+            "misleading_final_line_counts": misleading_final_line_counts,
             "hash_mismatches": hash_mismatches,
             "selection_protocol": selection_protocol,
             "candidate_seed_ledger": candidate_seed_summary,
@@ -1382,6 +1436,18 @@ def audit_split(args: argparse.Namespace) -> dict[str, Any]:
 
     errors: list[str] = []
     errors.extend(profile_errors)
+    prior_eval_overlap: dict[str, list[str]] = {}
+    if profile == "clean60":
+        local_prior_cases = local_prior_result_cases(root)
+        prior_eval_overlap = {
+            case_id: local_prior_cases[case_id]
+            for case_id in sorted(set(case_ids) & set(local_prior_cases))
+        }
+        if prior_eval_overlap:
+            formatted = ", ".join(
+                f"{case_id}~{paths[0]}" for case_id, paths in prior_eval_overlap.items()
+            )
+            errors.append(f"clean60 case appears in local prior LLM results: {formatted}")
     if expected_count is not None and len(case_ids) != expected_count:
         errors.append(f"expected {expected_count} cases, found {len(case_ids)}")
     if split_duplicates:
@@ -1524,6 +1590,7 @@ def audit_split(args: argparse.Namespace) -> dict[str, Any]:
         "overlap": overlap,
         "bpfix_bench_overlap": bpfix_bench_overlap,
         "near_duplicates": near_duplicates,
+        "prior_eval_overlap": prior_eval_overlap,
         "manifest": manifest_summary,
         "audit": {
             "enabled": bool(args.audit_cases),

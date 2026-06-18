@@ -48,7 +48,9 @@ BPF helper/action/protocol tokens and macro bodies. It fails on Jaccard
 similarity >= 0.82 or containment >= 0.92.
 For clean60, the manifest audit also requires machine-readable case review,
 provenance, oracle-obligation, selection-protocol, candidate-seed-ledger, and
-exclusion-ledger fields.
+exclusion-ledger fields. Each case must also carry `challenge_flags` for
+source-correlation difficulty, misleading final verifier lines, and independent
+semantic near-duplicate review; clean60 gates enforce the documented counts.
 For candidate and clean60 audits with `--audit-cases`, manifest oracle claims
 are cross-checked against `test.py`: `bpftool_prog_run` must have functional
 tests, `proof_predicate` must have success predicates, and helper/state
@@ -58,6 +60,8 @@ Clean splits are also checked for exact `buggy.bpf.c` source overlap with
 Clean splits must contain no duplicate `buggy.bpf.c` hashes inside the split
 itself. All 60 clean60 cases must be `real_project_seed` cases with structured
 upstream project, pinned ref, path, license, and file sha256 provenance.
+Clean60 admission scans local `bpfix-test/results/**/summary.json` and rejects
+case ids that already appeared in prior local LLM runs.
 Candidate/clean60 gates verify each real-project seed against a local upstream
 checkout: the commit must exist, the path must resolve at that commit, the file
 sha256 must match, and the SPDX license in the upstream file must match

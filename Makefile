@@ -40,7 +40,7 @@ help:
 	@echo "  make bpfix-test-clean60-gate Run the clean60 heldout gate; fails until admitted"
 	@echo "  make bpfix-test-clean60-paper-gate PROMPT_MANIFEST=... Run clean60 admission + prompt gates"
 	@echo "  make bpfix-test-prompt-gate PROMPT_MANIFEST=... Verify clean60 prompt manifest"
-	@echo "  make bpfix-test-result-gate RESULT_SUMMARIES='...' PROMPT_MANIFEST=... Audit clean60 result summaries"
+	@echo "  make bpfix-test-result-gate RESULT_SUMMARIES='...' PROMPT_MANIFEST=... Run clean60 admission, prompt, and result gates"
 	@echo "  make release-check     Run packaging, example, benchmark, and object-analysis gates"
 	@echo ""
 	@echo "Utilities"
@@ -139,11 +139,8 @@ bpfix-test-clean60-paper-gate: bpfix-test-clean60-gate bpfix-test-prompt-gate
 bpfix-test-result-gate:
 	@test -n "$(RESULT_SUMMARIES)" || (echo "Set RESULT_SUMMARIES to clean60 summary.json paths"; exit 2)
 	@test -n "$(PROMPT_MANIFEST)" || (echo "Set PROMPT_MANIFEST to the clean60 prompt manifest"; exit 2)
-	@echo "[bpfix-test-result-gate] Auditing clean60 result summaries..."
-	cd $(CURDIR) && python3 bpfix-test/tools/prompt_manifest.py \
-		--split bpfix-test/splits/clean60.txt \
-		--expected-count 60 \
-		--verify $(PROMPT_MANIFEST)
+	@echo "[bpfix-test-result-gate] Running clean60 admission, prompt, and result gates..."
+	$(MAKE) bpfix-test-clean60-paper-gate PROMPT_MANIFEST=$(PROMPT_MANIFEST)
 	cd $(CURDIR) && python3 bpfix-test/tools/audit_results.py \
 		--split bpfix-test/splits/clean60.txt \
 		--expected-count 60 \

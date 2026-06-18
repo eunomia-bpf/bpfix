@@ -136,6 +136,11 @@ frozen fingerprint 状态。
 Candidate/clean60 审计还会对 `buggy.bpf.c` 做 normalized token-shingle 近重复检查，
 比较当前 split、`dev40` 和 `bpfix-bench` 源文件，防止复制、改名或轻微包装的污染样本
 进入 paper split。
+clean60 admission 还会扫描本地 `bpfix-test/results/**/summary.json`，拒绝任何已经在
+本机 prior LLM run 中出现过的 case id。
+clean60 还会检查每个 case 的 `challenge_flags`，强制 source-correlation 难点数量、
+每个 bucket 的 misleading-final-line 数量，以及 independent semantic
+near-duplicate review。
 clean60 要求 60/60 都是 `real_project_seed`；candidate/clean60 gate 会验证 upstream
 commit、path、SPDX license 和 `upstream_file_sha256`。默认从当前仓库的 sibling
 目录查找 upstream checkout；如果 upstream repos 放在其他位置，设置
@@ -163,24 +168,19 @@ python3 bpfix-test/tools/prompt_manifest.py \
 检查 LLM 结果矩阵是否可报告：
 
 ```bash
-python3 bpfix-test/tools/audit_results.py \
-  --split bpfix-test/splits/clean60.txt \
-  --expected-count 60 \
-  --prompt-manifest bpfix-test/splits/clean60.prompts.json \
-  --required-mode source-only \
-  --required-mode raw \
-  --required-mode trimmed-raw \
-  --required-mode structured \
+make bpfix-test-result-gate \
+  PROMPT_MANIFEST=bpfix-test/splits/clean60.prompts.json \
+  RESULT_SUMMARIES='\
   /path/to/source-only/summary.json \
   /path/to/raw/summary.json \
   /path/to/trimmed-raw/summary.json \
-  /path/to/structured/summary.json
+  /path/to/structured/summary.json'
 ```
 
-这个 result gate 会拒绝混用不同 split、缺 baseline、case 顺序不一致、prompt hash
-和 frozen manifest 不一致、不同模型或工具链配置、缺模型 digest、dirty worktree、
-prompt-only dry run、以及没有 `failure_stage` 的失败结果。正式 clean60 报数必须
-先通过 admission gate，再通过 prompt gate 和 result gate。
+这个 result gate 会先运行 admission gate 和 prompt gate，然后拒绝混用不同 split、
+缺 baseline、case 顺序不一致、prompt hash 和 frozen manifest 不一致、不同模型或
+工具链配置、缺模型 digest、dirty worktree、prompt-only dry run、以及没有
+`failure_stage` 的失败结果。
 
 重新抓取 raw log 和 structured diagnostic：
 
