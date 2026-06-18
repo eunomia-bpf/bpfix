@@ -259,6 +259,14 @@
             "decision_made_before_model_eval": true,
             "model_result_used": false,
             "notes": "Minimized ActPlane's mmap-exit pending-state workflow into an XDP proof-lifecycle case where the pending mmap record is checked only on a packet-selected branch before p->fd is used after a branch merge; no LLM repair outcomes were used for admission."
+        },
+        {
+            "seed": "agentsight@e758c69761c52abd16eefdc8dded6643f5669bdb:bpf/process_ext/bpf_write.h#write-ctx-merge",
+            "decision": "admitted",
+            "case_id": "rs_agentsight_write_ctx_merge_001",
+            "decision_made_before_model_eval": true,
+            "model_result_used": false,
+            "notes": "Minimized AgentSight's write-family enter/exit pending-context workflow into an XDP proof-lifecycle case where the saved fd pointer from write_ctx_map is checked only on a packet-selected branch before *fd_ptr is used after a branch merge; no LLM repair outcomes were used for admission."
         }
   ],
   "seed_exclusion_ledger": [
@@ -2007,6 +2015,72 @@
                     "post-run map lookup confirms ts_mmap stores fd path/fid and pending len/prot/flags, and ts_mmap_index remembers the start address",
                     "successful verifier log shows ts_mmappend lookup, pending fd load at offset 0 before ts_fd lookup, ts_mmap_index update, ts_mmap update, and pending delete",
                     "oracle rejects repairs that use the packet fd instead of p->fd, return constant actions, skip mmap/index updates, or only delete the pending entry"
+                ]
+            }
+        },
+        {
+            "case_id": "rs_agentsight_write_ctx_merge_001",
+            "bucket": "proof_lifecycle",
+            "prog_type": "xdp",
+            "origin": "real-project seed from AgentSight write-family pending-context workflow",
+            "oracle_kind": [
+                "compile",
+                "verifier_load",
+                "bpftool_prog_run",
+                "helper_state",
+                "proof_predicate"
+            ],
+            "requires_helper_or_state": true,
+            "uses_success_predicate": true,
+            "case_sha256": "b0c6bcf3ec8acbaf3045de11fcff76c639d1ce7ebae363ade9674c5850eb9ef4",
+            "buggy_source_sha256": "f39ac345873d611aceb6bec4e73c3f220c5f62bda74d551a895d7e267ce2028a",
+            "review": {
+                "reviewer": "Godel subagent 019edca9-0eaf-7530-b83b-d3cbea5ef6d8",
+                "reviewed_at": "2026-06-18",
+                "bug_confirmed": true,
+                "oracle_adequate": true,
+                "not_seen_in_prior_eval": true,
+                "bug_summary": "The minimized XDP harness preserves AgentSight's write-family pending-context workflow but proves the write_ctx_map fd pointer only on a packet-selected guarded branch, then reads *fd_ptr after the branch merge. The verifier rejects the unguarded path as invalid mem access 'map_value_or_null'.",
+                "oracle_rationale": "The oracle requires buggy rejection with the nullable map-value verifier error, then requires repaired sources to compile and verifier-load while preserving write_ctx_map lookup keyed by pid/tid, saved-fd load before pending-context delete, aggregate key construction from the saved fd, and event_agg_map update. Four bpftool prog run inputs distinguish unguarded stored fd, guarded stored fd with existing aggregate, missing pending context, and zero-return early exit. The positive tests use packet decoy fd values different from the saved fd, and post-run checks require aggregate updates under the saved fd key while the decoy aggregate remains absent, rejecting packet-fd bypass, constant-action, and delete-only repairs.",
+                "provenance_rationale": "Seed verified against local AgentSight commit e758c69761c52abd16eefdc8dded6643f5669bdb, path bpf/process_ext/bpf_write.h, remote https://github.com/eunomia-bpf/agentsight, sha256 cfa9dfd41337183a7bd1acc650b3efd5340264439907d1b93eddb49b4983e859, SPDX GPL-2.0 OR BSD-3-Clause. The case is a minimized mutation of the upstream write enter/exit pending-context workflow, not a claim that upstream contains this exact bug, and no LLM repair result was used for admission."
+            },
+            "provenance": {
+                "seed_type": "minimized real-project seed in AgentSight XDP write-exit pending-context harness",
+                "source": "https://github.com/eunomia-bpf/agentsight/blob/e758c69761c52abd16eefdc8dded6643f5669bdb/bpf/process_ext/bpf_write.h",
+                "license": "GPL-2.0 OR BSD-3-Clause",
+                "minimization": "Preserved the upstream write-family enter/exit state machine: save fd in write_ctx_map on enter, consume it on exit, delete the pending context, construct an EVENT_TYPE_WRITE aggregate key from fd=N, and update count/total_bytes in event_agg_map. The minimized XDP harness injects only the branch-local nullable proof bug before the saved fd field is used.",
+                "upstream_project": "https://github.com/eunomia-bpf/agentsight",
+                "upstream_ref": "e758c69761c52abd16eefdc8dded6643f5669bdb",
+                "upstream_path": "bpf/process_ext/bpf_write.h",
+                "upstream_license": "GPL-2.0 OR BSD-3-Clause",
+                "upstream_file_sha256": "cfa9dfd41337183a7bd1acc650b3efd5340264439907d1b93eddb49b4983e859",
+                "derived_from_dev40": false,
+                "model_result_used": false
+            },
+            "oracle_obligation": {
+                "functional_semantics": [
+                    "repair must load as an XDP program",
+                    "repair must preserve write_ctx_map lookup keyed by packet pid/tid",
+                    "repair must use the fd stored in write_ctx_map, not the packet decoy fd, for aggregate key construction",
+                    "repair must delete the pending write_ctx_map entry after consuming a positive write exit",
+                    "repair must increment existing event_agg_map count and total_bytes when the aggregate key already exists",
+                    "repair must create a fresh aggregate for a new saved fd key",
+                    "repair must return XDP_DROP only when the saved fd context is consumed and aggregated, and XDP_PASS for missing context or zero return"
+                ],
+                "verifier_reject_reason": [
+                    "buggy program receives map_value_or_null from bpf_map_lookup_elem(&write_ctx_map, &id)",
+                    "the non-null proof is established only when the packet-selected guarded branch is taken",
+                    "after the branch merge, the unchecked path reaches *fd_ptr with the saved fd pointer still nullable"
+                ],
+                "success_criteria": [
+                    "candidate compiles and verifier-loads as an XDP program",
+                    "bpftool prog run returns XDP_DROP and writes correct aggregate state for unguarded and guarded saved fd records",
+                    "bpftool prog run returns XDP_PASS for missing pending context and zero-return cases",
+                    "post-run map lookup confirms consumed write_ctx_map entries are deleted",
+                    "post-run map lookup confirms zero-return leaves the pending write context untouched",
+                    "post-run map lookup confirms event_agg_map count, total_bytes, and last_fd are derived from the saved fd and return value",
+                    "successful verifier log shows write_ctx_map lookup, saved fd load before delete, pending-context delete, event_agg_map lookup/update, and aggregate field updates",
+                    "oracle rejects repairs that use the packet decoy fd instead of *fd_ptr, return constant actions, skip aggregate updates, or only delete the pending entry"
                 ]
             }
         }
