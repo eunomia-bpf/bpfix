@@ -1,0 +1,51 @@
+libbpf: loading object from <work-dir>/prog.o
+libbpf: elf: section(3) xdp, size 144, link 0, flags 6, type=1
+libbpf: sec 'xdp': found program 'rs_xdp_tools_load_bytes_stack_len' at insn offset 0 (0 bytes), code size 18 insns (144 bytes)
+libbpf: elf: section(4) license, size 4, link 0, flags 3, type=1
+libbpf: license of <work-dir>/prog.o is GPL
+libbpf: elf: section(14) .BTF, size 762, link 0, flags 0, type=1
+libbpf: elf: section(16) .BTF.ext, size 208, link 0, flags 0, type=1
+libbpf: elf: section(24) .symtab, size 360, link 1, flags 0, type=2
+libbpf: looking for externs among 15 symbols...
+libbpf: collected 0 externs total
+libbpf: object 'prog': failed (-95) to create BPF token from '/sys/fs/bpf', skipping optional step...
+libbpf: prog 'rs_xdp_tools_load_bytes_stack_len': BPF program load failed: -EINVAL
+libbpf: prog 'rs_xdp_tools_load_bytes_stack_len': -- BEGIN PROG LOAD LOG --
+func#0 @0
+Live regs before insn:
+  0: .1........ (b7) r6 = 0
+  1: .1....6... (bf) r3 = r10
+  2: .1.3..6... (07) r3 += -10
+  3: .1.3..6... (b7) r2 = 0
+  4: .123..6... (b7) r4 = 14
+  5: .1234.6... (85) call bpf_xdp_load_bytes#189
+  6: 0.....6... (67) r0 <<= 32
+  7: 0.....6... (77) r0 >>= 32
+  8: 0.....6... (55) if r0 != 0x0 goto pc+7
+  9: .......... (b7) r6 = 1
+ 10: ......6... (71) r1 = *(u8 *)(r10 -1)
+ 11: .1....6... (15) if r1 == 0x58 goto pc+1
+ 12: .......... (b7) r6 = 2
+ 13: ......6... (71) r1 = *(u8 *)(r10 -10)
+ 14: .1....6... (15) if r1 == 0x42 goto pc+1
+ 15: .......... (b7) r6 = 2
+ 16: ......6... (bf) r0 = r6
+ 17: 0......... (95) exit
+0: R1=ctx() R10=fp0
+; int rs_xdp_tools_load_bytes_stack_len(struct xdp_md *ctx) @ buggy.bpf.c:21
+0: (b7) r6 = 0                        ; R6_w=0
+1: (bf) r3 = r10                      ; R3_w=fp0 R10=fp0
+;  @ buggy.bpf.c:0
+2: (07) r3 += -10                     ; R3_w=fp-10
+; err = bpf_xdp_load_bytes(ctx, 0, buf, PROBE_BYTES + 4); @ buggy.bpf.c:26
+3: (b7) r2 = 0                        ; R2_w=0
+4: (b7) r4 = 14                       ; R4_w=14
+5: (85) call bpf_xdp_load_bytes#189
+invalid write to stack R3 off=-10 size=14
+verification time 0 usec
+stack depth 0
+processed 6 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0 mark_read 0
+-- END PROG LOAD LOG --
+libbpf: prog 'rs_xdp_tools_load_bytes_stack_len': failed to load: -EINVAL
+libbpf: failed to load object '<work-dir>/prog.o'
+Error: failed to load object file

@@ -139,6 +139,14 @@
             "decision_made_before_model_eval": true,
             "model_result_used": false,
             "notes": "Minimized the ActPlane taint-engine bpf_loop tokenizer shape into an XDP loop-callback bound case where the callback receives an unbounded loop index and must prove the stack scratch-slot bound locally; no LLM repair outcomes were used for admission."
+        },
+        {
+            "seed": "xdp-tools@e9469501622aa22a7e452a671000bec8685edcde:lib/util/xdp_load_bytes.bpf.c",
+            "decision": "admitted",
+            "case_id": "rs_xdp_tools_load_bytes_stack_len_001",
+            "decision_made_before_model_eval": true,
+            "model_result_used": false,
+            "notes": "Minimized the xdp-tools xdp_load_bytes helper probe into an XDP helper-memory contract case where bpf_xdp_load_bytes is asked to write beyond the stack scratch buffer; no LLM repair outcomes were used for admission."
         }
   ],
   "seed_exclusion_ledger": [
@@ -985,6 +993,64 @@
                     "bpftool prog run distinguishes in-slot marker, no-marker, and out-of-slot marker packets",
                     "successful verifier log reaches bpf_loop and shows a callback-local idx <= 7 proof before the variable-offset stack read",
                     "successful verifier log shows the callback updates the hit counter used by the final XDP action"
+                ]
+            }
+        },
+        {
+            "case_id": "rs_xdp_tools_load_bytes_stack_len_001",
+            "bucket": "helper_memory_contract",
+            "prog_type": "xdp",
+            "origin": "real-project seed from xdp-tools xdp_load_bytes helper probe",
+            "oracle_kind": [
+                "compile",
+                "verifier_load",
+                "bpftool_prog_run",
+                "custom_oracle",
+                "helper_state",
+                "proof_predicate"
+            ],
+            "requires_helper_or_state": true,
+            "uses_success_predicate": true,
+            "case_sha256": "7a46f5e57723ebbb7b72bc18c75694309c42f41ea3d9f220cc8dac3f46dc25a9",
+            "buggy_source_sha256": "c385a447cb0296244f4fd1059fcfa80cef82b55aa4a2eaa7028d050e20899eaa",
+            "review": {
+                "reviewer": "Rawls subagent 019ed94f-dd5b-7a31-a34b-30b353b29411",
+                "reviewed_at": "2026-06-17",
+                "bug_confirmed": true,
+                "oracle_adequate": true,
+                "not_seen_in_prior_eval": true,
+                "bug_summary": "The xdp-tools-style XDP helper probe allocates a ten-byte stack scratch buffer, then calls bpf_xdp_load_bytes with a fourteen-byte length. The verifier rejects the helper write with invalid write to stack R3 off=-10 size=14, so the failure is a helper memory-contract reject rather than a compile or environment artifact.",
+                "oracle_rationale": "The oracle requires compile, XDP verifier load, three bpftool prog run marker outcomes, bpf_xdp_load_bytes presence, R4=10 at the helper call, and post-helper marker reads from r10 -1 and r10 -10. Negative controls that remove the helper or change marker semantics fail, so the oracle rejects repairs that only make the verifier load while bypassing the helper-filled stack buffer semantics.",
+                "provenance_rationale": "Seed was derived from xdp-tools lib/util/xdp_load_bytes.bpf.c at the pinned commit and path. The minimized harness preserves the upstream XDP helper-load shape, stack scratch destination, marker-based branch on copied packet bytes, and XDP return behavior while isolating the helper length versus stack buffer failure in a runnable XDP program."
+            },
+            "provenance": {
+                "seed_type": "minimized real-project seed in xdp_load_bytes XDP helper harness",
+                "source": "https://github.com/xdp-project/xdp-tools/blob/e9469501622aa22a7e452a671000bec8685edcde/lib/util/xdp_load_bytes.bpf.c",
+                "license": "GPL-2.0",
+                "minimization": "Preserved the upstream XDP helper probe shape: use bpf_xdp_load_bytes to copy packet bytes into a stack scratch buffer, branch on the copied marker bytes, and return an XDP action from the copied contents. The minimized harness intentionally passes a helper length larger than the stack destination buffer to isolate the helper memory contract failure.",
+                "upstream_project": "https://github.com/xdp-project/xdp-tools.git",
+                "upstream_ref": "e9469501622aa22a7e452a671000bec8685edcde",
+                "upstream_path": "lib/util/xdp_load_bytes.bpf.c",
+                "upstream_license": "GPL-2.0",
+                "upstream_file_sha256": "5d981f8de1998aaa8f9822351509c4bc919399a7073abbe5c2ebb43acba99767",
+                "derived_from_dev40": false,
+                "model_result_used": false
+            },
+            "oracle_obligation": {
+                "functional_semantics": [
+                    "repair must load as an XDP program",
+                    "repair must preserve the helper-based xdp_load_bytes path and classify packets using the first and tenth copied bytes"
+                ],
+                "verifier_reject_reason": [
+                    "buggy program allocates a ten-byte stack scratch buffer",
+                    "bpf_xdp_load_bytes is asked to write fourteen bytes through the stack destination pointer"
+                ],
+                "success_criteria": [
+                    "candidate compiles and verifier-loads as an XDP program",
+                    "bpftool prog run drops packets whose first byte is B and tenth byte is X while passing packets with either marker changed",
+                    "successful verifier log reaches bpf_xdp_load_bytes",
+                    "successful verifier log shows the helper length register R4 equals the ten-byte stack buffer size",
+                    "successful verifier log shows the marker checks read from the helper-filled stack buffer at r10 -1 and r10 -10"
                 ]
             }
         }
