@@ -34,3 +34,4 @@ rs_actplane_mmap_pending_merge_001
 rs_agentsight_write_ctx_merge_001
 rs_agentsight_fs_overflow_counter_merge_001
 rs_eunomia_http_doff_copy_bound_001
+rs_eunomia_energy_runtime_merge_001

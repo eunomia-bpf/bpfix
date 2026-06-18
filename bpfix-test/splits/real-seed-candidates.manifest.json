@@ -283,6 +283,14 @@
             "decision_made_before_model_eval": true,
             "model_result_used": false,
             "notes": "Minimized eunomia.dev's HTTP socket-filter TCP doff parser and ringbuf event workflow into an XDP source/object-correlation case where a doff-governed source copy lowers to many packet loads after only the fixed TCP header is bounded; no LLM repair outcomes were used for admission."
+        },
+        {
+            "seed": "eunomia.dev@3b8626b1f7836dedfe295fe79070b170ba347e3f:docs/tutorials/48-energy/energy_monitor.bpf.c#runtime-merge",
+            "decision": "admitted",
+            "case_id": "rs_eunomia_energy_runtime_merge_001",
+            "decision_made_before_model_eval": true,
+            "model_result_used": false,
+            "notes": "Minimized eunomia.dev's sched_switch energy runtime accounting workflow into an XDP proof-lifecycle case where the old timestamp map value is checked only on a packet-selected branch before delta calculation after a branch merge; no LLM repair outcomes were used for admission."
         }
   ],
   "seed_exclusion_ledger": [
@@ -2230,6 +2238,70 @@
                     "bpftool prog run passes truncated TCP options, UDP, and ARP without capture",
                     "successful verifier log shows ringbuf reserve/submit and at least 20 packet-byte loads copied into the ringbuf record",
                     "oracle rejects constant-action repairs, ringbuf-submit deletion/reference leaks, and repairs that bypass the TCP doff/ringbuf capture workflow"
+                ]
+            }
+        },
+        {
+            "case_id": "rs_eunomia_energy_runtime_merge_001",
+            "bucket": "proof_lifecycle",
+            "prog_type": "xdp",
+            "origin": "real-project seed from eunomia.dev energy monitor runtime accounting",
+            "oracle_kind": [
+                "compile",
+                "verifier_load",
+                "bpftool_prog_run",
+                "helper_state",
+                "proof_predicate"
+            ],
+            "requires_helper_or_state": true,
+            "uses_success_predicate": true,
+            "case_sha256": "f00c40485cc8288f78df411e25bee3fbc0c79e124f8f6ccf716a7abbaf1228db",
+            "buggy_source_sha256": "0a0ae07975ff577c11ee62eb3645e587df7113362692513aad2fcfcaf0f04c9b",
+            "review": {
+                "reviewer": "Gauss subagent 019edce0-4c58-7b43-92bc-dc420d6153a0",
+                "reviewed_at": "2026-06-18",
+                "bug_confirmed": true,
+                "oracle_adequate": true,
+                "not_seen_in_prior_eval": true,
+                "bug_summary": "The minimized XDP harness preserves eunomia.dev's energy-monitor runtime accounting workflow: it looks up the previous process timestamp, computes elapsed runtime, updates a runtime aggregation map, emits a ringbuf event, and records the next process timestamp. The injected proof-lifecycle bug proves the time_lookup result non-null only under a packet-selected branch, then dereferences it after the branch merge, where the verifier still tracks the pointer as map_value_or_null.",
+                "oracle_rationale": "Adequate: the oracle requires compile, verifier load, bpftool prog run behavior, exact map postconditions for accumulated runtime, newly created runtime, guarded missing timestamp, unguarded existing timestamp, and stale timestamp paths, plus accepted-log predicates requiring time_lookup dereference, runtime map update, ringbuf reserve/submit, and next timestamp update. A minimal reference fix passes; constant-action repairs, deleting runtime persistence, and deleting ringbuf submit are rejected. The oracle validates ringbuf emission as a side effect, not full ringbuf payload consumption.",
+                "provenance_rationale": "Clean real-project seed: verified against eunomia.dev commit 3b8626b1f7836dedfe295fe79070b170ba347e3f, path docs/tutorials/48-energy/energy_monitor.bpf.c, SPDX GPL-2.0 OR BSD-3-Clause, sha256 913f95f408165b8b9998b37a7f00effa786ab1354bec17a7f2755ffe96c61047. The minimized harness preserves the upstream timestamp/runtime-map/ringbuf/next-timestamp workflow while using deterministic XDP input for functional oracle execution; no bpfix-bench/dev40 source or LLM repair outcome was used for admission."
+            },
+            "provenance": {
+                "seed_type": "minimized real-project seed in eunomia.dev energy monitor runtime accounting harness",
+                "source": "https://github.com/eunomia-bpf/eunomia.dev/blob/3b8626b1f7836dedfe295fe79070b170ba347e3f/docs/tutorials/48-energy/energy_monitor.bpf.c",
+                "license": "GPL-2.0 OR BSD-3-Clause",
+                "minimization": "Preserved the upstream energy monitor's timestamp lookup, runtime aggregation, ringbuf event emission, and next-process timestamp update workflow while replacing sched_switch context and ktime with deterministic XDP packet fields. The minimized harness injects only the branch-local nullable timestamp proof bug before runtime delta calculation.",
+                "upstream_project": "https://github.com/eunomia-bpf/eunomia.dev",
+                "upstream_ref": "3b8626b1f7836dedfe295fe79070b170ba347e3f",
+                "upstream_path": "docs/tutorials/48-energy/energy_monitor.bpf.c",
+                "upstream_license": "GPL-2.0 OR BSD-3-Clause",
+                "upstream_file_sha256": "913f95f408165b8b9998b37a7f00effa786ab1354bec17a7f2755ffe96c61047",
+                "derived_from_dev40": false,
+                "model_result_used": false
+            },
+            "oracle_obligation": {
+                "functional_semantics": [
+                    "repair must load as an XDP program",
+                    "repair must preserve time_lookup lookup keyed by previous process id",
+                    "repair must compute runtime delta from the stored previous timestamp and packet timestamp",
+                    "repair must update runtime_lookup for existing and new previous-process runtime records",
+                    "repair must preserve ringbuf runtime-event emission as a side effect",
+                    "repair must update time_lookup for the next process timestamp on processed, guarded-missing, and stale-timestamp paths",
+                    "repair must return XDP_DROP for processed runtime events and XDP_PASS for missing or stale timestamps"
+                ],
+                "verifier_reject_reason": [
+                    "buggy program receives map_value_or_null from bpf_map_lookup_elem(&time_lookup, &prev_pid)",
+                    "the non-null proof is established only when the packet-selected require_known_ts branch is taken",
+                    "after the branch merge, the unchecked path reaches *old_ts with the timestamp pointer still nullable"
+                ],
+                "success_criteria": [
+                    "candidate compiles and verifier-loads as an XDP program",
+                    "bpftool prog run accumulates an existing runtime record and creates a new runtime record with exact map values",
+                    "bpftool prog run passes guarded missing-timestamp and stale-timestamp inputs while still recording the next timestamp",
+                    "bpftool prog run processes an unguarded path when a timestamp exists, rejecting repairs that simply return on require_known_ts == 0",
+                    "successful verifier log shows time_lookup dereference, runtime_lookup update, ringbuf reserve/submit, and next time_lookup update",
+                    "oracle rejects constant-action repairs, runtime persistence deletion, and ringbuf-submit deletion"
                 ]
             }
         }
