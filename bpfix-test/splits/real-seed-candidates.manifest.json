@@ -91,6 +91,14 @@
             "decision_made_before_model_eval": true,
             "model_result_used": false,
             "notes": "Minimized the sched_switch CPU-contention observer into a tracepoint proof-lifecycle case where a nullable per-CPU hash slot proof is lost across a branch merge; no LLM repair outcomes were used for admission."
+        },
+        {
+            "seed": "bpf-developer-tutorial@3a722c03d5129ac212935bf5ecce118e64efcdd8:src/35-user-ringbuf/user_ringbuf.bpf.c",
+            "decision": "admitted",
+            "case_id": "rs_tutorial_user_ringbuf_dynptr_merge_001",
+            "decision_made_before_model_eval": true,
+            "model_result_used": false,
+            "notes": "Minimized the user-ringbuf drain callback and added a small payload-copy step to create a dynptr payload proof-lifecycle case where bpf_dynptr_data returns mem_or_null and the proof is branch-local; no LLM repair outcomes were used for admission."
         }
   ],
   "seed_exclusion_ledger": [
@@ -592,6 +600,63 @@
                     "successful verifier log shows map lookup, ktime, CPU id, and state_map update helpers in observer order",
                     "successful verifier log proves slot field updates happen after a verifier-visible non-null proof",
                     "successful verifier log shows state_map updated from a stack-built contention state"
+                ]
+            }
+        },
+        {
+            "case_id": "rs_tutorial_user_ringbuf_dynptr_merge_001",
+            "bucket": "modern_bpf_protocol",
+            "prog_type": "tracepoint",
+            "origin": "real-project seed from bpf-developer-tutorial user-ringbuf dynptr callback",
+            "oracle_kind": [
+                "compile",
+                "verifier_load",
+                "custom_oracle",
+                "helper_state",
+                "proof_predicate"
+            ],
+            "requires_helper_or_state": true,
+            "uses_success_predicate": true,
+            "case_sha256": "62bee1ce6fd276d63a18940f1c221f23ce7e7f7eb2bbadc3a3dcbf0ceb1fa2dd",
+            "buggy_source_sha256": "096b122069fed043ac51fa9d6a77f9fd1be2c066930ddfec485d4e4c9aa8c850",
+            "review": {
+                "reviewer": "Franklin subagent 019ed837-af4b-7182-b504-c53aafd12f63",
+                "reviewed_at": "2026-06-17",
+                "bug_confirmed": true,
+                "oracle_adequate": true,
+                "not_seen_in_prior_eval": true,
+                "bug_summary": "The user-ringbuf dynptr callback obtains a 24-byte payload pointer with bpf_dynptr_data; the non-null proof is established only on the current_pid == 0 branch, then msg->op and msg->comm are read after the branch merge where the verifier still tracks the pointer as mem_or_null.",
+                "oracle_rationale": "The custom oracle requires compile and tracepoint verifier load, preservation of user-ringbuf drain, dynptr payload consumption via bpf_dynptr_data or checked bpf_dynptr_read, kernel-ringbuf reserve/submit, PID attribution, exact op/comm payload-offset to record-offset flow, and submit of the reserved ringbuf reference. The dynptr_read alternative requires a verifier-visible successful return check before reserve/copy.",
+                "provenance_rationale": "Seed was derived from bpf-developer-tutorial's GPL user-ringbuf example at the pinned commit/path. The minimized harness preserves the upstream user-ringbuf drain callback and kernel-ringbuf event workflow, and explicitly adds a small payload-copy step so the heldout case exercises dynptr payload proof lifecycle rather than only helper availability."
+            },
+            "provenance": {
+                "seed_type": "minimized real-project seed in user-ringbuf dynptr callback harness",
+                "source": "https://github.com/eunomia-bpf/bpf-developer-tutorial/blob/3a722c03d5129ac212935bf5ecce118e64efcdd8/src/35-user-ringbuf/user_ringbuf.bpf.c",
+                "license": "GPL-2.0",
+                "minimization": "Preserved the user-ringbuf drain, dynptr callback, kernel-ringbuf reserve/submit, and PID attribution while adding a small user-payload copy so the minimized callback becomes a branch-merge nullable dynptr payload failure.",
+                "upstream_project": "https://github.com/eunomia-bpf/bpf-developer-tutorial",
+                "upstream_ref": "3a722c03d5129ac212935bf5ecce118e64efcdd8",
+                "upstream_path": "src/35-user-ringbuf/user_ringbuf.bpf.c",
+                "upstream_license": "GPL-2.0",
+                "upstream_file_sha256": "2ddd1f4b0bee48eabcb8453b858a1b9d9e102800cb95c32fdbecf1cdc26c454f",
+                "derived_from_dev40": false,
+                "model_result_used": false
+            },
+            "oracle_obligation": {
+                "functional_semantics": [
+                    "repair must load as a sys_exit_kill tracepoint program",
+                    "repair must preserve user_ringbuf drain into a dynptr callback",
+                    "repair must preserve kernel_ringbuf reserve/submit, PID attribution, and the injected op/comm payload copy"
+                ],
+                "verifier_reject_reason": [
+                    "bpf_dynptr_data returns mem_or_null for the user-ringbuf payload",
+                    "buggy callback checks the payload pointer only on one current_pid branch and reads msg fields after the branch merge"
+                ],
+                "success_criteria": [
+                    "candidate compiles and verifier-loads as a tracepoint program",
+                    "successful verifier log shows bpf_user_ringbuf_drain, bpf_dynptr_data or bpf_dynptr_read, bpf_ringbuf_reserve, and bpf_ringbuf_submit",
+                    "successful verifier log proves op/comm payload values flow into the kernel ringbuf record after a verifier-visible non-null proof or dynptr_read copy",
+                    "successful verifier log shows the kernel ringbuf record submitted from the reserved ringbuf reference"
                 ]
             }
         }

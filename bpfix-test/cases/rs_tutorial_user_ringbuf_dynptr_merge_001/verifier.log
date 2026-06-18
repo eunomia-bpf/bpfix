@@ -1,0 +1,173 @@
+libbpf: loading object from <work-dir>/prog.o
+libbpf: elf: section(2) .text, size 288, link 0, flags 6, type=1
+libbpf: sec '.text': found program 'handle_user_sample' at insn offset 0 (0 bytes), code size 36 insns (288 bytes)
+libbpf: elf: section(3) .rel.text, size 16, link 28, flags 40, type=9
+libbpf: elf: section(4) tracepoint/syscalls/sys_exit_kill, size 64, link 0, flags 6, type=1
+libbpf: sec 'tracepoint/syscalls/sys_exit_kill': found program 'rs_tutorial_user_ringbuf_dynptr_merge' at insn offset 0 (0 bytes), code size 8 insns (64 bytes)
+libbpf: elf: section(5) .reltracepoint/syscalls/sys_exit_kill, size 32, link 28, flags 40, type=9
+libbpf: elf: section(6) .maps, size 32, link 0, flags 3, type=1
+libbpf: elf: section(7) license, size 4, link 0, flags 3, type=1
+libbpf: license of <work-dir>/prog.o is GPL
+libbpf: elf: section(18) .BTF, size 1763, link 0, flags 0, type=1
+libbpf: elf: section(20) .BTF.ext, size 360, link 0, flags 0, type=1
+libbpf: elf: section(28) .symtab, size 504, link 1, flags 0, type=2
+libbpf: looking for externs among 21 symbols...
+libbpf: collected 0 externs total
+libbpf: map 'user_ringbuf': at sec_idx 6, offset 0.
+libbpf: map 'user_ringbuf': found type = 31.
+libbpf: map 'user_ringbuf': found max_entries = 262144.
+libbpf: map 'kernel_ringbuf': at sec_idx 6, offset 16.
+libbpf: map 'kernel_ringbuf': found type = 27.
+libbpf: map 'kernel_ringbuf': found max_entries = 262144.
+libbpf: sec '.rel.text': collecting relocation for section(2) '.text'
+libbpf: sec '.rel.text': relo #0: insn #6 against 'kernel_ringbuf'
+libbpf: prog 'handle_user_sample': found map 1 (kernel_ringbuf, sec 6, off 16) for insn #6
+libbpf: sec '.reltracepoint/syscalls/sys_exit_kill': collecting relocation for section(4) 'tracepoint/syscalls/sys_exit_kill'
+libbpf: sec '.reltracepoint/syscalls/sys_exit_kill': relo #0: insn #0 against 'user_ringbuf'
+libbpf: prog 'rs_tutorial_user_ringbuf_dynptr_merge': found map 0 (user_ringbuf, sec 6, off 0) for insn #0
+libbpf: sec '.reltracepoint/syscalls/sys_exit_kill': relo #1: insn #2 against '.text'
+libbpf: object 'prog': failed (-95) to create BPF token from '/sys/fs/bpf', skipping optional step...
+libbpf: prog 'rs_tutorial_user_ringbuf_dynptr_merge': added 36 insns from sub-prog 'handle_user_sample'
+libbpf: prog 'rs_tutorial_user_ringbuf_dynptr_merge': insn #2 relocated, imm 5 points to subprog 'handle_user_sample' (now at 8 offset)
+libbpf: map 'user_ringbuf': created successfully, fd=0
+libbpf: map 'kernel_ringbuf': created successfully, fd=0
+libbpf: prog 'rs_tutorial_user_ringbuf_dynptr_merge': BPF program load failed: -EACCES
+libbpf: prog 'rs_tutorial_user_ringbuf_dynptr_merge': -- BEGIN PROG LOAD LOG --
+func#0 @0
+func#1 @8
+Live regs before insn:
+  0: .......... (18) r1 = 0xffff000000000000
+  2: .1........ (18) r2 = 0x5
+  4: .12....... (b7) r3 = 0
+  5: .123...... (b7) r4 = 0
+  6: .1234..... (85) call bpf_user_ringbuf_drain#209
+  7: 0......... (95) exit
+  8: .1........ (b7) r2 = 0
+  9: .12....... (b7) r3 = 24
+ 10: .123...... (85) call bpf_dynptr_data#203
+ 11: 0......... (bf) r6 = r0
+ 12: ......6... (85) call bpf_get_current_pid_tgid#14
+ 13: 0.....6... (bf) r7 = r0
+ 14: ......67.. (18) r1 = 0xffff000000000000
+ 16: .1....67.. (b7) r2 = 24
+ 17: .12...67.. (b7) r3 = 0
+ 18: .123..67.. (85) call bpf_ringbuf_reserve#131
+ 19: 0.....67.. (15) if r0 == 0x0 goto pc+22
+ 20: 0.....67.. (77) r7 >>= 32
+ 21: 0.....67.. (55) if r7 != 0x0 goto pc+6
+ 22: 0.....6... (55) if r6 != 0x0 goto pc+4
+ 23: 0......... (bf) r1 = r0
+ 24: .1........ (b7) r2 = 0
+ 25: .12....... (85) call bpf_ringbuf_discard#133
+ 26: .......... (05) goto pc+15
+ 27: 0.....6... (61) r7 = *(u32 *)(r6 +0)
+ 28: 0.....67.. (63) *(u32 *)(r0 +0) = r7
+ 29: 0.....6... (61) r1 = *(u32 *)(r6 +4)
+ 30: 01....6... (63) *(u32 *)(r0 +4) = r1
+ 31: 0.....6... (61) r1 = *(u32 *)(r6 +12)
+ 32: 01....6... (63) *(u32 *)(r0 +12) = r1
+ 33: 0.....6... (61) r1 = *(u32 *)(r6 +8)
+ 34: 01....6... (63) *(u32 *)(r0 +8) = r1
+ 35: 0.....6... (61) r1 = *(u32 *)(r6 +20)
+ 36: 01....6... (63) *(u32 *)(r0 +20) = r1
+ 37: 0.....6... (61) r1 = *(u32 *)(r6 +16)
+ 38: 01........ (63) *(u32 *)(r0 +16) = r1
+ 39: 0......... (bf) r1 = r0
+ 40: .1........ (b7) r2 = 0
+ 41: .12....... (85) call bpf_ringbuf_submit#132
+ 42: .......... (b7) r0 = 0
+ 43: 0......... (95) exit
+0: R1=ctx() R10=fp0
+; return bpf_user_ringbuf_drain(&user_ringbuf, handle_user_sample, NULL, 0); @ buggy.bpf.c:59
+0: (18) r1 = 0xffff000000000000       ; R1_w=map_ptr(map=user_ringbuf,ks=0,vs=0)
+2: (18) r2 = 0x5                      ; R2_w=func()
+4: (b7) r3 = 0                        ; R3_w=0
+5: (b7) r4 = 0                        ; R4=0
+6: (85) call bpf_user_ringbuf_drain#209       ; R0_w=scalar() R10=fp0
+7: (95) exit
+
+from 6 to 8: frame1: R1=dynptr_ptr(id=1,type=local) R2=0 R10=fp0 cb
+8: frame1: R1=dynptr_ptr(id=1,type=local) R2=0 R10=fp0 cb
+; struct user_msg *msg = bpf_dynptr_data(dynptr, 0, sizeof(*msg)); @ buggy.bpf.c:32
+8: (b7) r2 = 0                        ; frame1: R2_w=0 cb
+9: (b7) r3 = 24                       ; frame1: R3_w=24 cb
+10: (85) call bpf_dynptr_data#203
+mark_precise: frame1: last_idx 10 first_idx 6 subseq_idx -1 
+mark_precise: frame1: regs=r3 stack= before 9: (b7) r3 = 24
+11: frame1: R0_w=mem_or_null(id=2,sz=24) cb
+11: (bf) r6 = r0                      ; frame1: R0_w=mem_or_null(id=2,sz=24) R6_w=mem_or_null(id=2,sz=24) cb
+; __u32 current_pid = bpf_get_current_pid_tgid() >> 32; @ buggy.bpf.c:34
+12: (85) call bpf_get_current_pid_tgid#14     ; frame1: R0_w=scalar() cb
+13: (bf) r7 = r0                      ; frame1: R0_w=scalar(id=3) R7_w=scalar(id=3) cb
+; out = bpf_ringbuf_reserve(&kernel_ringbuf, sizeof(*out), 0); @ buggy.bpf.c:36
+14: (18) r1 = 0xffff000000000000      ; frame1: R1_w=map_ptr(map=kernel_ringbuf,ks=0,vs=0) cb
+16: (b7) r2 = 24                      ; frame1: R2_w=24 cb
+17: (b7) r3 = 0                       ; frame1: R3_w=0 cb
+18: (85) call bpf_ringbuf_reserve#131
+mark_precise: frame1: last_idx 18 first_idx 6 subseq_idx -1 
+mark_precise: frame1: regs=r2 stack= before 17: (b7) r3 = 0
+mark_precise: frame1: regs=r2 stack= before 16: (b7) r2 = 24
+19: frame1: R0=ringbuf_mem_or_null(id=5,ref_obj_id=5,sz=24) refs=5 cb
+; if (!out) @ buggy.bpf.c:37
+19: (15) if r0 == 0x0 goto pc+22      ; frame1: R0=ringbuf_mem(ref_obj_id=5,sz=24) refs=5 cb
+; __u32 current_pid = bpf_get_current_pid_tgid() >> 32; @ buggy.bpf.c:34
+20: (77) r7 >>= 32                    ; frame1: R7_w=scalar(smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) refs=5 cb
+; if (current_pid == 0) { @ buggy.bpf.c:40
+21: (55) if r7 != 0x0 goto pc+6       ; frame1: R7_w=0 refs=5 cb
+; if (!msg) { @ buggy.bpf.c:41
+22: (55) if r6 != 0x0 goto pc+4       ; frame1: R6=0 refs=5 cb
+; bpf_ringbuf_discard(out, 0); @ buggy.bpf.c:42
+23: (bf) r1 = r0                      ; frame1: R0=ringbuf_mem(ref_obj_id=5,sz=24) R1_w=ringbuf_mem(ref_obj_id=5,sz=24) refs=5 cb
+24: (b7) r2 = 0                       ; frame1: R2_w=0 refs=5 cb
+25: (85) call bpf_ringbuf_discard#133         ; frame1: cb
+26: (05) goto pc+15
+; } @ buggy.bpf.c:54
+42: (b7) r0 = 0                       ; frame1: R0_w=0 cb
+43: (95) exit
+mark_precise: frame1: last_idx 43 first_idx 42 subseq_idx -1 
+mark_precise: frame1: regs=r0 stack= before 42: (b7) r0 = 0
+returning from callee:
+ frame1: R0_w=0 R6=0 R7=0 R10=fp0 cb
+to caller at 6:
+ R1=map_ptr(map=user_ringbuf,ks=0,vs=0) R2=func() R3=0 R4=0 R10=fp0
+
+from 43 to 6: safe
+
+from 22 to 27: frame1: R0=ringbuf_mem(ref_obj_id=5,sz=24) R6=mem(sz=24) R7_w=0 R10=fp0 refs=5 cb
+27: frame1: R0=ringbuf_mem(ref_obj_id=5,sz=24) R6=mem(sz=24) R7_w=0 R10=fp0 refs=5 cb
+; out->pid = msg->pid; @ buggy.bpf.c:45
+27: (61) r7 = *(u32 *)(r6 +0)         ; frame1: R6=mem(sz=24) R7_w=scalar(smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) refs=5 cb
+;  @ buggy.bpf.c:0
+28: (63) *(u32 *)(r0 +0) = r7         ; frame1: R0=ringbuf_mem(ref_obj_id=5,sz=24) R7_w=scalar(smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) refs=5 cb
+; out->op = msg->op; @ buggy.bpf.c:50
+29: (61) r1 = *(u32 *)(r6 +4)         ; frame1: R1_w=scalar(smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) R6=mem(sz=24) refs=5 cb
+30: (63) *(u32 *)(r0 +4) = r1         ; frame1: R0=ringbuf_mem(ref_obj_id=5,sz=24) R1_w=scalar(smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) refs=5 cb
+; __builtin_memcpy(out->comm, msg->comm, sizeof(out->comm)); @ buggy.bpf.c:51
+31: (61) r1 = *(u32 *)(r6 +12)        ; frame1: R1_w=scalar(smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) R6=mem(sz=24) refs=5 cb
+32: (63) *(u32 *)(r0 +12) = r1        ; frame1: R0=ringbuf_mem(ref_obj_id=5,sz=24) R1_w=scalar(smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) refs=5 cb
+33: (61) r1 = *(u32 *)(r6 +8)         ; frame1: R1_w=scalar(smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) R6=mem(sz=24) refs=5 cb
+34: (63) *(u32 *)(r0 +8) = r1         ; frame1: R0=ringbuf_mem(ref_obj_id=5,sz=24) R1_w=scalar(smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) refs=5 cb
+35: (61) r1 = *(u32 *)(r6 +20)        ; frame1: R1_w=scalar(smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) R6=mem(sz=24) refs=5 cb
+36: (63) *(u32 *)(r0 +20) = r1        ; frame1: R0=ringbuf_mem(ref_obj_id=5,sz=24) R1_w=scalar(smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) refs=5 cb
+37: (61) r1 = *(u32 *)(r6 +16)        ; frame1: R1_w=scalar(smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) R6=mem(sz=24) refs=5 cb
+38: (63) *(u32 *)(r0 +16) = r1        ; frame1: R0=ringbuf_mem(ref_obj_id=5,sz=24) R1_w=scalar(smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) refs=5 cb
+; bpf_ringbuf_submit(out, 0); @ buggy.bpf.c:52
+39: (bf) r1 = r0                      ; frame1: R0=ringbuf_mem(ref_obj_id=5,sz=24) R1_w=ringbuf_mem(ref_obj_id=5,sz=24) refs=5 cb
+40: (b7) r2 = 0                       ; frame1: R2_w=0 refs=5 cb
+41: (85) call bpf_ringbuf_submit#132
+42: safe
+
+from 21 to 28: frame1: R0=ringbuf_mem(ref_obj_id=5,sz=24) R6=mem_or_null(id=2,sz=24) R7=scalar(smin=umin=umin32=1,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) R10=fp0 refs=5 cb
+28: frame1: R0=ringbuf_mem(ref_obj_id=5,sz=24) R6=mem_or_null(id=2,sz=24) R7=scalar(smin=umin=umin32=1,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) R10=fp0 refs=5 cb
+;  @ buggy.bpf.c:0
+28: (63) *(u32 *)(r0 +0) = r7         ; frame1: R0=ringbuf_mem(ref_obj_id=5,sz=24) R7=scalar(smin=umin=umin32=1,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) refs=5 cb
+; out->op = msg->op; @ buggy.bpf.c:50
+29: (61) r1 = *(u32 *)(r6 +4)
+R6 invalid mem access 'mem_or_null'
+verification time 0 usec
+stack depth 0+0
+processed 45 insns (limit 1000000) max_states_per_insn 0 total_states 4 peak_states 4 mark_read 1
+-- END PROG LOAD LOG --
+libbpf: prog 'rs_tutorial_user_ringbuf_dynptr_merge': failed to load: -EACCES
+libbpf: failed to load object '<work-dir>/prog.o'
+Error: failed to load object file
