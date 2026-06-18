@@ -78,6 +78,7 @@
         "upstream_ref": "77a7ea3fdde28e93da935af883aff295613551e9",
         "upstream_path": "bpf/process.bpf.c",
         "upstream_license": "GPL-2.0 OR BSD-3-Clause",
+        "upstream_file_sha256": "b049fbcc7195b06c29a2455c51f205a29043ddfe1282f80c76bc16ccf057bf2b",
         "derived_from_dev40": false,
         "model_result_used": false
       },
@@ -123,6 +124,7 @@
         "upstream_ref": "5e9cbaba5fbc51af6b693b2d80cad6af69be5f9f",
         "upstream_path": "bpf/process.bpf.c",
         "upstream_license": "GPL-2.0 OR BSD-3-Clause",
+        "upstream_file_sha256": "c76b74e5890c7d5b6b78eb63a2fca076a18949039e059ef3f0af160fb1125579",
         "derived_from_dev40": false,
         "model_result_used": false
       },

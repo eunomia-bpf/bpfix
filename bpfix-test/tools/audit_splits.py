@@ -6,9 +6,14 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import re
+import subprocess
 from pathlib import Path
+from pathlib import PurePosixPath
 from typing import Any
+from urllib.parse import unquote
+from urllib.parse import urlparse
 
 import audit_cases
 import run_suite
@@ -119,6 +124,137 @@ def file_digest(path: Path) -> str:
     digest = hashlib.sha256()
     digest.update(path.read_bytes())
     return digest.hexdigest()
+
+
+def bytes_digest(payload: bytes) -> str:
+    digest = hashlib.sha256()
+    digest.update(payload)
+    return digest.hexdigest()
+
+
+def upstream_repo_basename(upstream_project: str) -> str:
+    project = upstream_project.rstrip("/")
+    basename = project.rsplit("/", 1)[-1]
+    return basename.removesuffix(".git")
+
+
+def project_url_parts(url: str) -> tuple[str, list[str]] | None:
+    if url.startswith("git@"):
+        try:
+            host, path = url[4:].split(":", 1)
+        except ValueError:
+            return None
+        host = host.lower()
+        raw_parts = path.split("/")
+    else:
+        parsed = urlparse(url)
+        if not parsed.netloc:
+            return None
+        host = parsed.netloc.split("@")[-1].lower()
+        raw_parts = parsed.path.strip("/").split("/")
+    parts = [unquote(part) for part in raw_parts if part]
+    if parts and parts[-1].endswith(".git"):
+        parts[-1] = parts[-1][:-4]
+    if not host or len(parts) < 2:
+        return None
+    return host, parts
+
+
+def project_url_key(url: str) -> str | None:
+    parts = project_url_parts(url)
+    if parts is None:
+        return None
+    host, path_parts = parts
+    return host + "/" + "/".join(part.lower() for part in path_parts)
+
+
+def source_url_matches_provenance(
+    source_url: str,
+    *,
+    upstream_project: str,
+    upstream_ref: str,
+    upstream_path: str,
+) -> bool:
+    parsed_source = urlparse(source_url)
+    if parsed_source.query or parsed_source.fragment:
+        return False
+    source_parts = project_url_parts(source_url)
+    upstream_parts = project_url_parts(upstream_project)
+    if source_parts is None or upstream_parts is None:
+        return False
+    source_host, source_path = source_parts
+    upstream_host, upstream_repo_path = upstream_parts
+    if source_host != upstream_host:
+        return False
+
+    file_path = list(PurePosixPath(upstream_path).parts)
+    accepted_paths = [
+        upstream_repo_path + ["blob", upstream_ref] + file_path,
+        upstream_repo_path + ["-", "blob", upstream_ref] + file_path,
+    ]
+    return source_path in accepted_paths
+
+
+def upstream_root(root: Path) -> Path:
+    return Path(os.environ.get("BPFIX_TEST_UPSTREAM_ROOT", root.parent)).resolve()
+
+
+def resolve_local_upstream_repo(root: Path, upstream_project: str) -> Path | None:
+    base = upstream_repo_basename(upstream_project)
+    if not base:
+        return None
+    search_root = upstream_root(root)
+    direct = search_root / base
+    if (direct / ".git").exists():
+        return direct
+    if search_root.exists():
+        lower_base = base.lower()
+        for child in search_root.iterdir():
+            if child.is_dir() and child.name.lower() == lower_base and (child / ".git").exists():
+                return child
+    return None
+
+
+def git_bytes(repo: Path, args: list[str]) -> subprocess.CompletedProcess[bytes]:
+    return subprocess.run(
+        ["git", "-C", str(repo), *args],
+        capture_output=True,
+        check=False,
+    )
+
+
+def local_repo_matches_upstream_project(repo: Path, upstream_project: str) -> tuple[bool, list[str]]:
+    expected = project_url_key(upstream_project)
+    if expected is None:
+        return False, []
+    remote = git_bytes(repo, ["remote", "get-url", "--all", "origin"])
+    urls = [
+        line.strip()
+        for line in remote.stdout.decode("utf-8", errors="replace").splitlines()
+        if line.strip()
+    ]
+    all_remotes = git_bytes(repo, ["remote", "-v"])
+    urls.extend(
+        line.split()[1]
+        for line in all_remotes.stdout.decode("utf-8", errors="replace").splitlines()
+        if len(line.split()) >= 2
+    )
+    urls = sorted(set(urls))
+    return any(project_url_key(url) == expected for url in urls), urls
+
+
+def safe_upstream_path(value: str) -> bool:
+    path = PurePosixPath(value)
+    return bool(value.strip()) and not path.is_absolute() and ".." not in path.parts
+
+
+def spdx_license_from_source(payload: bytes) -> str | None:
+    text = payload[:4096].decode("utf-8", errors="replace")
+    for line in text.splitlines()[:20]:
+        match = re.search(r"SPDX-License-Identifier:\s*(.+)$", line)
+        if match:
+            return match.group(1).strip()
+    return None
 
 
 def bpfix_bench_source_fingerprints(root: Path) -> dict[str, list[str]]:
@@ -402,11 +538,102 @@ def audit_candidate_seed_ledger(
     }
 
 
+def audit_real_project_upstream(
+    *,
+    root: Path,
+    case_id: str,
+    provenance: dict[str, Any],
+    errors: list[str],
+    label: str,
+) -> dict[str, Any]:
+    error_count = len(errors)
+    report: dict[str, Any] = {
+        "verified": False,
+        "repo": None,
+        "remote_urls": [],
+        "source_sha256": None,
+        "spdx_license": None,
+    }
+    upstream_project = provenance.get("upstream_project")
+    upstream_ref = provenance.get("upstream_ref")
+    upstream_path = provenance.get("upstream_path")
+    upstream_license = provenance.get("upstream_license")
+    upstream_file_sha256 = provenance.get("upstream_file_sha256")
+    source_url = provenance.get("source")
+
+    if not isinstance(upstream_ref, str) or not re.fullmatch(r"[0-9a-f]{40}", upstream_ref):
+        errors.append(f"{case_id}: {label} real_project_seed provenance.upstream_ref must be a pinned 40-hex commit")
+    if not isinstance(upstream_path, str) or not safe_upstream_path(upstream_path):
+        errors.append(f"{case_id}: {label} real_project_seed provenance.upstream_path must be a safe relative path")
+        return report
+    if not isinstance(upstream_file_sha256, str) or not re.fullmatch(r"[0-9a-f]{64}", upstream_file_sha256):
+        errors.append(f"{case_id}: {label} real_project_seed provenance.upstream_file_sha256 must be a 64-hex sha256")
+        return report
+    if not isinstance(upstream_project, str) or not upstream_project.strip():
+        return report
+    if isinstance(source_url, str) and isinstance(upstream_ref, str) and isinstance(upstream_path, str):
+        if not source_url_matches_provenance(
+            source_url,
+            upstream_project=upstream_project,
+            upstream_ref=upstream_ref,
+            upstream_path=upstream_path,
+        ):
+            errors.append(
+                f"{case_id}: {label} provenance.source must be the canonical upstream blob URL"
+            )
+
+    repo = resolve_local_upstream_repo(root, upstream_project)
+    if repo is None:
+        errors.append(
+            f"{case_id}: {label} upstream repo {upstream_project!r} not found under {upstream_root(root)}; "
+            "set BPFIX_TEST_UPSTREAM_ROOT for paper-grade provenance checks"
+        )
+        return report
+    report["repo"] = str(repo)
+    remote_matches, remote_urls = local_repo_matches_upstream_project(repo, upstream_project)
+    report["remote_urls"] = remote_urls
+    if not remote_matches:
+        errors.append(
+            f"{case_id}: {label} local upstream repo remote does not match provenance.upstream_project"
+        )
+
+    commit_check = git_bytes(repo, ["cat-file", "-e", f"{upstream_ref}^{{commit}}"])
+    if commit_check.returncode != 0:
+        errors.append(f"{case_id}: {label} upstream_ref {upstream_ref} is not a commit in {repo}")
+        return report
+
+    source = git_bytes(repo, ["show", f"{upstream_ref}:{upstream_path}"])
+    if source.returncode != 0:
+        errors.append(f"{case_id}: {label} upstream_path {upstream_path!r} not found at {upstream_ref} in {repo}")
+        return report
+
+    computed_sha = bytes_digest(source.stdout)
+    report["source_sha256"] = computed_sha
+    if computed_sha != upstream_file_sha256:
+        errors.append(
+            f"{case_id}: {label} upstream_file_sha256 mismatch: recorded {upstream_file_sha256}, computed {computed_sha}"
+        )
+
+    spdx = spdx_license_from_source(source.stdout)
+    report["spdx_license"] = spdx
+    if spdx is None:
+        errors.append(f"{case_id}: {label} upstream source is missing an SPDX-License-Identifier header")
+    elif spdx != upstream_license:
+        errors.append(f"{case_id}: {label} upstream_license {upstream_license!r} does not match SPDX {spdx!r}")
+
+    if provenance.get("license") != upstream_license:
+        errors.append(f"{case_id}: {label} provenance.license must match upstream_license for real_project_seed")
+
+    report["verified"] = len(errors) == error_count
+    return report
+
+
 def audit_case_review_contract(
     case_id: str,
     case: dict[str, Any],
     errors: list[str],
     *,
+    root: Path,
     label: str,
 ) -> dict[str, Any]:
     source_category = case.get("source_category")
@@ -432,9 +659,18 @@ def audit_case_review_contract(
         if not require_nonempty_string(provenance.get(field)):
             errors.append(f"{case_id}: {label} provenance.{field} must be a non-empty string")
     if source_category == "real_project_seed":
-        for field in ["upstream_project", "upstream_ref", "upstream_path", "upstream_license"]:
+        for field in ["upstream_project", "upstream_ref", "upstream_path", "upstream_license", "upstream_file_sha256"]:
             if not require_nonempty_string(provenance.get(field)):
                 errors.append(f"{case_id}: {label} real_project_seed provenance.{field} must be a non-empty string")
+        upstream_report = audit_real_project_upstream(
+            root=root,
+            case_id=case_id,
+            provenance=provenance,
+            errors=errors,
+            label=label,
+        )
+    else:
+        upstream_report = None
     if provenance.get("derived_from_dev40") is not False:
         errors.append(f"{case_id}: {label} provenance.derived_from_dev40 must be false")
     if provenance.get("model_result_used") is not False:
@@ -454,6 +690,7 @@ def audit_case_review_contract(
         "reviewed_at": review.get("reviewed_at"),
         "source": provenance.get("source"),
         "seed_type": provenance.get("seed_type"),
+        "upstream": upstream_report,
     }
 
 
@@ -466,6 +703,7 @@ def audit_manifest(
     known_cases: dict[str, Path],
     profile: str,
 ) -> tuple[dict[str, Any], list[str]]:
+    root = repo_root()
     errors: list[str] = []
     warnings: list[str] = []
     defaults = manifest.get("case_defaults", {})
@@ -633,7 +871,7 @@ def audit_manifest(
         recorded_buggy_source_hash = case.get("buggy_source_sha256")
         if profile in {"candidate", "clean60"}:
             label = "candidate" if profile == "candidate" else "clean60"
-            review_report = audit_case_review_contract(case_id, case, errors, label=label)
+            review_report = audit_case_review_contract(case_id, case, errors, root=root, label=label)
             if not require_nonempty_string(case.get("origin")):
                 errors.append(f"{case_id}: {label} origin must be a non-empty string")
             allowed_review_statuses = (

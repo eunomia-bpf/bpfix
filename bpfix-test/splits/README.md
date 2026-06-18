@@ -51,8 +51,17 @@ Clean splits are also checked for exact `buggy.bpf.c` source overlap with
 `bpfix-bench/cases/**/*.c`.
 Clean splits must contain no duplicate `buggy.bpf.c` hashes inside the split
 itself. At least 20 cases must be `real_project_seed` cases with structured
-upstream project, ref, path, and license provenance; `minimized_upstream_style`
-is useful for diversity but does not count toward that real-project minimum.
+upstream project, pinned ref, path, license, and file sha256 provenance.
+Candidate/clean60 gates verify each real-project seed against a local upstream
+checkout: the commit must exist, the path must resolve at that commit, the file
+sha256 must match, and the SPDX license in the upstream file must match
+`upstream_license`. The local checkout must also have a git remote matching
+`provenance.upstream_project`, and `provenance.source` must be the canonical
+GitHub/GitLab blob URL for the same commit and path. By default, upstream repos
+are discovered next to this repo; set `BPFIX_TEST_UPSTREAM_ROOT` when they live
+elsewhere.
+`minimized_upstream_style` is useful for diversity but does not count toward
+that real-project minimum.
 When auditing clean cases directly, pass the manifest to `audit_cases.py` so
 custom, attach/runtime, and environment/config oracles are not forced through
 the `bpftool prog run` fixture shape. A case that also declares

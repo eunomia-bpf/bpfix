@@ -132,6 +132,11 @@ python3 bpfix-test/tools/audit_splits.py \
 不会退回到全量 discovered cases。这是保护主 benchmark 不被 dev cases 污染的
 gate。Manifest 审计还会检查 split/manifest 一致性、clean freeze 状态、source
 category、bucket、program type、review status、oracle obligation 和 case hash。
+对 `real_project_seed`，candidate/clean60 gate 还会验证 upstream commit、path、
+SPDX license 和 `upstream_file_sha256`。默认从当前仓库的 sibling 目录查找 upstream
+checkout；如果 upstream repos 放在其他位置，设置 `BPFIX_TEST_UPSTREAM_ROOT`。
+本地 checkout 的 git remote 必须匹配 `provenance.upstream_project`，`source` 必须是
+指向同一 commit/path 的 canonical GitHub/GitLab blob URL。
 
 生成并验证 frozen prompt manifest：
 
