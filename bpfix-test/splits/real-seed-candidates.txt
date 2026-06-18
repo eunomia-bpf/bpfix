@@ -2,6 +2,7 @@
 # These cases are not part of clean60 until independent review, provenance
 # audit, and final 60-case freeze are complete.
 rs_agentsight_process_ringbuf_null_001
+rs_agentsight_stdiocap_user_copy_len_001
 rs_actplane_policy_map_merge_001
 rs_actplane_lsm_bpf_ringbuf_merge_001
 rs_cilium_change_proto_stale_001

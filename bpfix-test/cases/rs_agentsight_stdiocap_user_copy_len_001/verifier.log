@@ -1,0 +1,143 @@
+libbpf: loading object from <work-dir>/prog.o
+libbpf: elf: section(3) tp/syscalls/sys_exit_read, size 352, link 0, flags 6, type=1
+libbpf: sec 'tp/syscalls/sys_exit_read': found program 'rs_agentsight_stdiocap_user_copy_len' at insn offset 0 (0 bytes), code size 44 insns (352 bytes)
+libbpf: elf: section(4) .reltp/syscalls/sys_exit_read, size 48, link 26, flags 40, type=9
+libbpf: elf: section(5) .maps, size 48, link 0, flags 3, type=1
+libbpf: elf: section(6) license, size 4, link 0, flags 3, type=1
+libbpf: license of <work-dir>/prog.o is GPL
+libbpf: elf: section(16) .BTF, size 1840, link 0, flags 0, type=1
+libbpf: elf: section(18) .BTF.ext, size 524, link 0, flags 0, type=1
+libbpf: elf: section(26) .symtab, size 408, link 1, flags 0, type=2
+libbpf: looking for externs among 17 symbols...
+libbpf: collected 0 externs total
+libbpf: map 'io_args': at sec_idx 5, offset 0.
+libbpf: map 'io_args': found type = 1.
+libbpf: map 'io_args': found key [8], sz = 8.
+libbpf: map 'io_args': found value [11], sz = 16.
+libbpf: map 'io_args': found max_entries = 1024.
+libbpf: map 'rb': at sec_idx 5, offset 32.
+libbpf: map 'rb': found type = 27.
+libbpf: map 'rb': found max_entries = 4096.
+libbpf: sec '.reltp/syscalls/sys_exit_read': collecting relocation for section(3) 'tp/syscalls/sys_exit_read'
+libbpf: sec '.reltp/syscalls/sys_exit_read': relo #0: insn #5 against 'io_args'
+libbpf: prog 'rs_agentsight_stdiocap_user_copy_len': found map 0 (io_args, sec 5, off 0) for insn #5
+libbpf: sec '.reltp/syscalls/sys_exit_read': relo #1: insn #13 against 'rb'
+libbpf: prog 'rs_agentsight_stdiocap_user_copy_len': found map 1 (rb, sec 5, off 32) for insn #13
+libbpf: sec '.reltp/syscalls/sys_exit_read': relo #2: insn #39 against 'io_args'
+libbpf: prog 'rs_agentsight_stdiocap_user_copy_len': found map 0 (io_args, sec 5, off 0) for insn #39
+libbpf: object 'prog': failed (-95) to create BPF token from '/sys/fs/bpf', skipping optional step...
+libbpf: loaded kernel BTF from '/sys/kernel/btf/vmlinux'
+libbpf: sec 'tp/syscalls/sys_exit_read': found 2 CO-RE relocations
+libbpf: CO-RE relocating [24] struct trace_event_raw_sys_exit: found target candidate [12042] struct trace_event_raw_sys_exit in [vmlinux]
+libbpf: prog 'rs_agentsight_stdiocap_user_copy_len': relo #0: <byte_off> [24] struct trace_event_raw_sys_exit.ret (0:2 @ offset 16)
+libbpf: prog 'rs_agentsight_stdiocap_user_copy_len': relo #0: matching candidate #0 <byte_off> [12042] struct trace_event_raw_sys_exit.ret (0:2 @ offset 16)
+libbpf: prog 'rs_agentsight_stdiocap_user_copy_len': relo #0: patched insn #10 (LDX/ST/STX) off 16 -> 16
+libbpf: prog 'rs_agentsight_stdiocap_user_copy_len': relo #1: <byte_off> [24] struct trace_event_raw_sys_exit.ret (0:2 @ offset 16)
+libbpf: prog 'rs_agentsight_stdiocap_user_copy_len': relo #1: matching candidate #0 <byte_off> [12042] struct trace_event_raw_sys_exit.ret (0:2 @ offset 16)
+libbpf: prog 'rs_agentsight_stdiocap_user_copy_len': relo #1: patched insn #24 (LDX/ST/STX) off 16 -> 16
+libbpf: map 'io_args': created successfully, fd=0
+libbpf: map 'rb': created successfully, fd=0
+libbpf: prog 'rs_agentsight_stdiocap_user_copy_len': BPF program load failed: -EACCES
+libbpf: prog 'rs_agentsight_stdiocap_user_copy_len': -- BEGIN PROG LOAD LOG --
+func#0 @0
+Live regs before insn:
+  0: .1........ (bf) r6 = r1
+  1: ......6... (85) call bpf_get_current_pid_tgid#14
+  2: 0.....6... (7b) *(u64 *)(r10 -8) = r0
+  3: ......6... (bf) r2 = r10
+  4: ..2...6... (07) r2 += -8
+  5: ..2...6... (18) r1 = 0xffff000000000000
+  7: .12...6... (85) call bpf_map_lookup_elem#1
+  8: 0.....6... (bf) r7 = r0
+  9: ......67.. (15) if r7 == 0x0 goto pc+32
+ 10: ......67.. (79) r1 = *(u64 *)(r6 +16)
+ 11: .1....67.. (b7) r2 = 1
+ 12: .12...67.. (6d) if r2 s> r1 goto pc+24
+ 13: ......67.. (18) r1 = 0xffff000000000000
+ 15: .1....67.. (b7) r2 = 24
+ 16: .12...67.. (b7) r3 = 0
+ 17: .123..67.. (85) call bpf_ringbuf_reserve#131
+ 18: 0.....67.. (15) if r0 == 0x0 goto pc+18
+ 19: 0.....67.. (79) r1 = *(u64 *)(r10 -8)
+ 20: 01....67.. (77) r1 >>= 32
+ 21: 01....67.. (63) *(u32 *)(r0 +0) = r1
+ 22: 0.....67.. (61) r1 = *(u32 *)(r7 +8)
+ 23: 01....67.. (63) *(u32 *)(r0 +4) = r1
+ 24: 0.....67.. (79) r1 = *(u64 *)(r6 +16)
+ 25: 01.....7.. (63) *(u32 *)(r0 +8) = r1
+ 26: 0......7.. (71) r1 = *(u8 *)(r7 +12)
+ 27: 01.....7.. (73) *(u8 *)(r0 +12) = r1
+ 28: 0......7.. (79) r3 = *(u64 *)(r7 +0)
+ 29: 0..3...... (bf) r1 = r0
+ 30: 01.3...... (07) r1 += 16
+ 31: 01.3...... (b7) r2 = 16
+ 32: 0123...... (bf) r6 = r0
+ 33: .123..6... (85) call bpf_probe_read_user#112
+ 34: ......6... (bf) r1 = r6
+ 35: .1........ (b7) r2 = 0
+ 36: .12....... (85) call bpf_ringbuf_submit#132
+ 37: .......... (bf) r2 = r10
+ 38: ..2....... (07) r2 += -8
+ 39: ..2....... (18) r1 = 0xffff000000000000
+ 41: .12....... (85) call bpf_map_delete_elem#3
+ 42: .......... (b7) r0 = 0
+ 43: 0......... (95) exit
+0: R1=ctx() R10=fp0
+; int rs_agentsight_stdiocap_user_copy_len(struct trace_event_raw_sys_exit *ctx) @ buggy.bpf.c:36
+0: (bf) r6 = r1                       ; R1=ctx() R6_w=ctx()
+; __u64 pid_tgid = bpf_get_current_pid_tgid(); @ buggy.bpf.c:38
+1: (85) call bpf_get_current_pid_tgid#14      ; R0_w=scalar()
+2: (7b) *(u64 *)(r10 -8) = r0         ; R0_w=scalar(id=1) R10=fp0 fp-8_w=scalar(id=1)
+3: (bf) r2 = r10                      ; R2_w=fp0 R10=fp0
+;  @ buggy.bpf.c:0
+4: (07) r2 += -8                      ; R2_w=fp-8
+; args = bpf_map_lookup_elem(&io_args, &pid_tgid); @ buggy.bpf.c:43
+5: (18) r1 = 0xffff000000000000       ; R1_w=map_ptr(map=io_args,ks=8,vs=16)
+7: (85) call bpf_map_lookup_elem#1    ; R0=map_value_or_null(id=2,map=io_args,ks=8,vs=16)
+8: (bf) r7 = r0                       ; R0=map_value_or_null(id=2,map=io_args,ks=8,vs=16) R7_w=map_value_or_null(id=2,map=io_args,ks=8,vs=16)
+; if (!args) @ buggy.bpf.c:44
+9: (15) if r7 == 0x0 goto pc+32       ; R7_w=map_value(map=io_args,ks=8,vs=16)
+; if (ctx->ret <= 0) @ buggy.bpf.c:46
+10: (79) r1 = *(u64 *)(r6 +16)        ; R1_w=scalar() R6=ctx()
+11: (b7) r2 = 1                       ; R2_w=1
+12: (6d) if r2 s> r1 goto pc+24       ; R1_w=scalar(smin=umin=1,umax=0x7fffffffffffffff,var_off=(0x0; 0x7fffffffffffffff)) R2_w=1
+; event = bpf_ringbuf_reserve(&rb, sizeof(*event), 0); @ buggy.bpf.c:49
+13: (18) r1 = 0xffff000000000000      ; R1_w=map_ptr(map=rb,ks=0,vs=0)
+15: (b7) r2 = 24                      ; R2_w=24
+16: (b7) r3 = 0                       ; R3_w=0
+17: (85) call bpf_ringbuf_reserve#131
+mark_precise: frame0: last_idx 17 first_idx 8 subseq_idx -1 
+mark_precise: frame0: regs=r2 stack= before 16: (b7) r3 = 0
+mark_precise: frame0: regs=r2 stack= before 15: (b7) r2 = 24
+18: R0=ringbuf_mem_or_null(id=4,ref_obj_id=4,sz=24) refs=4
+; if (!event) @ buggy.bpf.c:50
+18: (15) if r0 == 0x0 goto pc+18      ; R0=ringbuf_mem(ref_obj_id=4,sz=24) refs=4
+; event->pid = pid_tgid >> 32; @ buggy.bpf.c:53
+19: (79) r1 = *(u64 *)(r10 -8)        ; R1_w=scalar(id=1) R10=fp0 fp-8=scalar(id=1) refs=4
+20: (77) r1 >>= 32                    ; R1_w=scalar(smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) refs=4
+21: (63) *(u32 *)(r0 +0) = r1         ; R0=ringbuf_mem(ref_obj_id=4,sz=24) R1_w=scalar(smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) refs=4
+; event->fd = args->fd; @ buggy.bpf.c:54
+22: (61) r1 = *(u32 *)(r7 +8)         ; R1_w=scalar(smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) R7=map_value(map=io_args,ks=8,vs=16) refs=4
+23: (63) *(u32 *)(r0 +4) = r1         ; R0=ringbuf_mem(ref_obj_id=4,sz=24) R1_w=scalar(smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) refs=4
+; event->len = (__u32)ctx->ret; @ buggy.bpf.c:55
+24: (79) r1 = *(u64 *)(r6 +16)        ; R1_w=scalar() R6=ctx() refs=4
+25: (63) *(u32 *)(r0 +8) = r1         ; R0=ringbuf_mem(ref_obj_id=4,sz=24) R1_w=scalar() refs=4
+; event->is_read = args->is_read; @ buggy.bpf.c:56
+26: (71) r1 = *(u8 *)(r7 +12)         ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R7=map_value(map=io_args,ks=8,vs=16) refs=4
+27: (73) *(u8 *)(r0 +12) = r1         ; R0=ringbuf_mem(ref_obj_id=4,sz=24) R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) refs=4
+; bpf_probe_read_user(event->buf, copy_size, (const void *)args->buf); @ buggy.bpf.c:57
+28: (79) r3 = *(u64 *)(r7 +0)         ; R3_w=scalar() R7=map_value(map=io_args,ks=8,vs=16) refs=4
+29: (bf) r1 = r0                      ; R0=ringbuf_mem(ref_obj_id=4,sz=24) R1_w=ringbuf_mem(ref_obj_id=4,sz=24) refs=4
+30: (07) r1 += 16                     ; R1_w=ringbuf_mem(ref_obj_id=4,off=16,sz=24) refs=4
+31: (b7) r2 = 16                      ; R2_w=16 refs=4
+32: (bf) r6 = r0                      ; R0=ringbuf_mem(ref_obj_id=4,sz=24) R6_w=ringbuf_mem(ref_obj_id=4,sz=24) refs=4
+33: (85) call bpf_probe_read_user#112
+invalid access to memory, mem_size=24 off=16 size=16
+R1 min value is outside of the allowed memory range
+verification time 0 usec
+stack depth 8
+processed 32 insns (limit 1000000) max_states_per_insn 0 total_states 2 peak_states 2 mark_read 2
+-- END PROG LOAD LOG --
+libbpf: prog 'rs_agentsight_stdiocap_user_copy_len': failed to load: -EACCES
+libbpf: failed to load object '<work-dir>/prog.o'
+Error: failed to load object file

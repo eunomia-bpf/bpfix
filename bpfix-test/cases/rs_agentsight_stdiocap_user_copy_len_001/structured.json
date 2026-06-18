@@ -1,0 +1,67 @@
+{
+  "diagnostic_version": "bpfix.diagnostic/v3",
+  "error_id": "BPFIX-E005",
+  "failure_class": "source_bug",
+  "confidence": "medium",
+  "diagnostic_kind": "supported",
+  "help_safety": "repair_hint",
+  "next_action": "bounds",
+  "span_confidence": "exact_pc",
+  "message": "scalar range proof is missing: invalid access to memory, mem_size=24 off=16 size=16; R1 min value is outside of the allowed memory range",
+  "required_proof": "prove R1 has a bounded non-negative scalar range before this pointer arithmetic or helper memory access; verifier sees scalar with unknown bounds",
+  "source_span": {
+    "path": "buggy.bpf.c",
+    "line_start": 57,
+    "line_end": 57,
+    "instruction_pc": 33,
+    "source_text": "bpf_probe_read_user(event->buf, copy_size, (const void *)args->buf);"
+  },
+  "related_spans": [
+    {
+      "path": "buggy.bpf.c",
+      "line_start": 46,
+      "line_end": 46,
+      "instruction_pc": 10,
+      "source_text": "if (ctx->ret <= 0)",
+      "label": "nearby source context for scalar range"
+    },
+    {
+      "path": "buggy.bpf.c",
+      "line_start": 56,
+      "line_end": 56,
+      "instruction_pc": 27,
+      "source_text": "event->is_read = args->is_read;",
+      "label": "verifier still sees R1 as scalar(smin=0,smax=255,umax=255), so the required scalar or map-value bound is not available at the use"
+    }
+  ],
+  "evidence": [
+    {
+      "kind": "terminal_verifier_error",
+      "detail": "invalid access to memory, mem_size=24 off=16 size=16; R1 min value is outside of the allowed memory range",
+      "line": 94
+    },
+    {
+      "kind": "instruction_pc",
+      "detail": "nearest verifier instruction pc 33",
+      "line": 94
+    },
+    {
+      "kind": "verifier_trace",
+      "detail": "parsed 29 per-instruction verifier state snapshots",
+      "line": null
+    }
+  ],
+  "help": [
+    "Clamp the index or length with explicit upper and lower bounds.",
+    "Keep the bounded scalar in the same SSA value used for pointer arithmetic or helper length."
+  ],
+  "metadata": {
+    "case_id": null,
+    "input_kind": "verifier-log-region",
+    "object_path": null,
+    "object_programs": [],
+    "object_analysis_error": null,
+    "trace_state_count": 29,
+    "analysis_error": null
+  }
+}

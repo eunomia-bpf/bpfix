@@ -29,6 +29,14 @@
       "notes": "Minimized the process-event ringbuf reserve/fill/submit pattern into a deterministic TC harness; no LLM repair outcomes were used for admission."
     },
     {
+      "seed": "agentsight@77a7ea3fdde28e93da935af883aff295613551e9:bpf/stdiocap.bpf.c",
+      "decision": "admitted",
+      "case_id": "rs_agentsight_stdiocap_user_copy_len_001",
+      "decision_made_before_model_eval": true,
+      "model_result_used": false,
+      "notes": "Minimized the stdiocap syscall-exit map/ringbuf/user-copy workflow into a tracepoint helper-memory contract case; no LLM repair outcomes were used for admission."
+    },
+    {
       "seed": "ActPlane@5e9cbaba5fbc51af6b693b2d80cad6af69be5f9f:bpf/process.bpf.c",
       "decision": "admitted",
       "case_id": "rs_actplane_policy_map_merge_001",
@@ -83,7 +91,7 @@
       "notes": "Rejected before admission because the candidate file exists in a nested or dirty worktree but not at that path in the top-level pinned ref, so the default provenance gate cannot verify the source; no LLM repair outcomes were inspected."
     },
     {
-      "seed": "agentsight@77a7ea3fdde28e93da935af883aff295613551e9:bpf/stdiocap.bpf.c",
+      "seed": "agentsight@77a7ea3fdde28e93da935af883aff295613551e9:bpf/stdiocap.bpf.c#xdp-boundary-attempt",
       "reason": "verifier_accepts",
       "model_result_used": false,
       "notes": "Rejected before admission for this environment-boundary shape because the attempted XDP bpf_probe_read_user variant verifier-loads on the pinned kernel/toolchain; no LLM repair outcomes were inspected."
@@ -147,6 +155,62 @@
           "candidate compiles and verifier-loads",
           "bpftool prog run returns the expected TC actions",
           "successful verifier log shows a 16-byte ringbuf_mem record with mark=7 stored at offset 12 before bpf_ringbuf_submit"
+        ]
+      }
+    },
+    {
+      "case_id": "rs_agentsight_stdiocap_user_copy_len_001",
+      "bucket": "helper_memory_contract",
+      "prog_type": "tracepoint",
+      "origin": "real-project seed from agentsight stdiocap syscall-exit user-buffer capture",
+      "oracle_kind": [
+        "compile",
+        "verifier_load",
+        "custom_oracle",
+        "helper_state",
+        "proof_predicate"
+      ],
+      "requires_helper_or_state": true,
+      "uses_success_predicate": true,
+      "case_sha256": "46becf4c2fbc7a216226103214ca436de6cc62700803fb2d805061756fa68a9d",
+      "buggy_source_sha256": "5c10b7457ddb37795283eeca88caf3409071878dc2adfac9e92b10a269e32086",
+      "review": {
+        "reviewer": "Franklin subagent 019ed837-af4b-7182-b504-c53aafd12f63",
+        "reviewed_at": "2026-06-17",
+        "bug_confirmed": true,
+        "oracle_adequate": true,
+        "not_seen_in_prior_eval": true,
+        "bug_summary": "The syscall-exit tracepoint copies 16 bytes into an 8-byte ring-buffer payload at offset 16, so the verifier rejects bpf_probe_read_user with mem_size=24 off=16 size=16.",
+        "oracle_rationale": "The custom oracle requires compile, tracepoint verifier load, source-level preservation of the io_args lookup, ringbuf reserve, bpf_probe_read_user, submit, and cleanup delete, plus successful-verifier predicates proving the probe destination range fits the reserved event and that metadata plus user copy are submitted.",
+        "provenance_rationale": "Seed was derived from agentsight stdiocap.bpf.c, which stores syscall arguments in a map, reserves a ringbuf event on exit, copies user data into the event, submits it, and deletes pending state. The minimized harness preserves that workflow while isolating the helper length contract."
+      },
+      "provenance": {
+        "seed_type": "minimized real-project seed in tracepoint harness",
+        "source": "https://github.com/eunomia-bpf/agentsight/blob/77a7ea3fdde28e93da935af883aff295613551e9/bpf/stdiocap.bpf.c",
+        "license": "GPL-2.0 OR BSD-3-Clause",
+        "minimization": "Preserved stdiocap's syscall-exit map lookup, ringbuf event emission, user-memory copy into event payload, submit, and cleanup delete while reducing the full tracer to a single helper-memory-contract failure.",
+        "upstream_project": "https://github.com/eunomia-bpf/agentsight",
+        "upstream_ref": "77a7ea3fdde28e93da935af883aff295613551e9",
+        "upstream_path": "bpf/stdiocap.bpf.c",
+        "upstream_license": "GPL-2.0 OR BSD-3-Clause",
+        "upstream_file_sha256": "f27bf25a8cdf36c49435fcdedbe8f4bbe3ba5189f5c7aa65562a3c65e8ae0504",
+        "derived_from_dev40": false,
+        "model_result_used": false
+      },
+      "oracle_obligation": {
+        "functional_semantics": [
+          "repair must load as a syscall-exit tracepoint, not as XDP or TC",
+          "repair must preserve io_args lookup and cleanup delete",
+          "repair must preserve ringbuf event emission and the bpf_probe_read_user copy into the event payload"
+        ],
+        "verifier_reject_reason": [
+          "bpf_probe_read_user writes size bytes into the destination pointer supplied in R1",
+          "buggy program passes size 16 for event->buf even though the ringbuf event has only 8 bytes available at offset 16"
+        ],
+        "success_criteria": [
+          "candidate compiles and verifier-loads as a tracepoint program",
+          "successful verifier log shows io_args lookup before ringbuf reserve before bpf_probe_read_user before ringbuf submit before io_args delete",
+          "successful verifier log proves the bpf_probe_read_user destination range fits inside the reserved ringbuf event"
         ]
       }
     },
