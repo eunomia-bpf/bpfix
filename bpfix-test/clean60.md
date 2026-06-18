@@ -140,6 +140,11 @@ dry-run，不能作为 paper-grade 结果依据。
 `environment_config` 或 `custom_oracle`。这允许 LSM、tracepoint、cgroup 和
 environment/config boundary cases 使用 attach/runtime 或配置型 oracle，而不是被
 强行塞进 `bpftool prog run`。
+当 admission gate 带 `--audit-cases` 运行时，manifest 里的 oracle 声明还会和
+`test.py` 交叉检查：`bpftool_prog_run` 必须真的有 functional tests，
+`proof_predicate` 必须有 `required_success_predicates`，helper/state obligation
+必须有 success substring 或 predicate。这样避免 manifest 声称有强 oracle，但
+实际 `test.py` 只做编译或 smoke。
 
 `source_category: real_project_seed` 必须有结构化 upstream provenance：
 `provenance.upstream_project`、`provenance.upstream_ref`、

@@ -191,6 +191,24 @@ def manifest_case_oracle_kinds(manifest: dict[str, Any]) -> dict[str, list[str]]
     return values
 
 
+def manifest_cases_by_id(manifest: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    defaults = manifest.get("case_defaults", {})
+    if not isinstance(defaults, dict):
+        defaults = {}
+    cases = manifest.get("cases", [])
+    if not isinstance(cases, list):
+        return {}
+    values: dict[str, dict[str, Any]] = {}
+    for raw_case in cases:
+        if not isinstance(raw_case, dict):
+            continue
+        case = {**defaults, **raw_case}
+        case_id = case.get("case_id")
+        if isinstance(case_id, str):
+            values[case_id] = case
+    return values
+
+
 def missing_manifest_fingerprints(path: Path, case_ids: list[str]) -> list[str]:
     if not path.exists():
         return []
@@ -717,6 +735,67 @@ def audit_manifest(
     )
 
 
+def positive_count(value: Any) -> bool:
+    return isinstance(value, int) and value > 0
+
+
+def audit_manifest_oracle_alignment(
+    *,
+    manifest: dict[str, Any],
+    case_reports: list[dict[str, Any]],
+    errors: list[str],
+    label: str,
+) -> None:
+    manifest_cases = manifest_cases_by_id(manifest)
+    reports_by_case = {
+        report.get("case"): report
+        for report in case_reports
+        if isinstance(report.get("case"), str)
+    }
+    for case_id, case in manifest_cases.items():
+        report = reports_by_case.get(case_id)
+        if report is None:
+            errors.append(f"{case_id}: {label} oracle alignment requires a case audit report")
+            continue
+        test = report.get("test")
+        if not isinstance(test, dict):
+            errors.append(f"{case_id}: {label} oracle alignment requires parseable test.py summary")
+            continue
+
+        oracle_kind = case.get("oracle_kind")
+        oracle_kind_set = set(oracle_kind) if isinstance(oracle_kind, list) else set()
+        uses_success_predicate = case.get("uses_success_predicate")
+        requires_helper_or_state = case.get("requires_helper_or_state")
+        success_predicates = test.get("required_success_predicates")
+        success_substrings = test.get("required_success_substrings")
+        functional_tests = test.get("functional_tests")
+        has_success_predicate = positive_count(success_predicates)
+        has_success_substring = positive_count(success_substrings)
+        has_functional_tests = positive_count(functional_tests)
+        has_custom_oracle = test.get("custom_oracle") is True
+
+        if "bpftool_prog_run" in oracle_kind_set and not has_functional_tests:
+            errors.append(f"{case_id}: {label} oracle_kind bpftool_prog_run requires functional_tests in test.py")
+        if "proof_predicate" in oracle_kind_set and not has_success_predicate:
+            errors.append(
+                f"{case_id}: {label} oracle_kind proof_predicate requires required_success_predicates in test.py"
+            )
+        if uses_success_predicate is True and not has_success_predicate:
+            errors.append(f"{case_id}: {label} uses_success_predicate requires required_success_predicates")
+        if uses_success_predicate is False and has_success_predicate:
+            errors.append(f"{case_id}: {label} test.py has success predicates but manifest uses_success_predicate is false")
+        if has_success_predicate and "proof_predicate" not in oracle_kind_set:
+            errors.append(f"{case_id}: {label} success predicates require oracle_kind proof_predicate")
+        if requires_helper_or_state is True and not (has_success_predicate or has_success_substring):
+            errors.append(
+                f"{case_id}: {label} requires_helper_or_state needs required_success_substrings or predicates"
+            )
+        if "helper_state" in oracle_kind_set and not (has_success_predicate or has_success_substring):
+            errors.append(f"{case_id}: {label} oracle_kind helper_state needs success substring or predicate checks")
+        if "custom_oracle" in oracle_kind_set and not has_custom_oracle:
+            errors.append(f"{case_id}: {label} oracle_kind custom_oracle requires custom_oracle test summary")
+
+
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--split", type=Path, required=True, help="Split file containing case ids.")
@@ -869,6 +948,13 @@ def audit_split(args: argparse.Namespace) -> dict[str, Any]:
         failed_cases = [report["case"] for report in case_reports if not report["passed"]]
         if failed_cases:
             errors.append(f"case audit failed: {', '.join(failed_cases)}")
+        if manifest_payload is not None and profile in {"candidate", "clean60"}:
+            audit_manifest_oracle_alignment(
+                manifest=manifest_payload,
+                case_reports=case_reports,
+                errors=errors,
+                label=profile,
+            )
 
     passed = not errors
     return {

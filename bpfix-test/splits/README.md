@@ -43,6 +43,10 @@ manifest, the recorded fingerprints are used as the contamination baseline;
 For clean60, the manifest audit also requires machine-readable case review,
 provenance, oracle-obligation, selection-protocol, candidate-seed-ledger, and
 exclusion-ledger fields.
+For candidate and clean60 audits with `--audit-cases`, manifest oracle claims
+are cross-checked against `test.py`: `bpftool_prog_run` must have functional
+tests, `proof_predicate` must have success predicates, and helper/state
+obligations must have success substrings or predicates.
 Clean splits are also checked for exact `buggy.bpf.c` source overlap with
 `bpfix-bench/cases/**/*.c`.
 Clean splits must contain no duplicate `buggy.bpf.c` hashes inside the split
