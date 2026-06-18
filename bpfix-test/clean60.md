@@ -75,8 +75,13 @@ benchmark 运行。`run_suite.py --split bpfix-test/splits/clean60.txt` 对空 s
 和 `buggy.bpf.c` hash。若被比较 split 有 sibling manifest，审计使用 manifest 里的
 记录 hash 作为污染基线，而不是只依赖当前 live 文件。命令行里的
 `--disallow-overlap` 是显式记录，不是唯一防线。
-这个 hash gate 只能阻止精确复制或改名复制；语义近重复仍必须由 provenance 记录和
-independent review 拒绝。
+除了 exact hash，`audit_splits.py` 还会对 candidate/clean60 的 `buggy.bpf.c`
+做 normalized token-shingle 近重复检查：当前 split 内部、`dev40` 和
+`bpfix-bench/cases/**/*.c` 都会进入比较。当前 fail 条件是 Jaccard >= 0.82 或
+containment >= 0.92，普通变量名、数字和字符串会归一化，BPF helper、program
+action、协议常量和宏体 token 会保留。这个 gate 能挡住复制、改名、常见轻微包装和
+boilerplate 级改写；更高层语义近重复仍必须由 provenance 记录和 independent review
+拒绝。
 审计 `dev40.txt` 本身也必须携带 `dev40.manifest.json`，否则 frozen fingerprint
 baseline 不成立。
 

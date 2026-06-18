@@ -80,6 +80,53 @@ CLEAN60_BUCKET_TARGETS = {
     "helper_memory_contract": 8,
     "environment_config_boundary": 7,
 }
+C_NEAR_DUPLICATE_SHINGLE_SIZE = 7
+C_NEAR_DUPLICATE_JACCARD_THRESHOLD = 0.82
+C_NEAR_DUPLICATE_CONTAINMENT_THRESHOLD = 0.92
+C_KEYWORDS_AND_STABLE_IDENTIFIERS = {
+    "SEC",
+    "__always_inline",
+    "__builtin_memcpy",
+    "__u8",
+    "__u16",
+    "__u32",
+    "__u64",
+    "bool",
+    "break",
+    "case",
+    "char",
+    "const",
+    "continue",
+    "default",
+    "do",
+    "else",
+    "enum",
+    "for",
+    "goto",
+    "if",
+    "int",
+    "long",
+    "return",
+    "short",
+    "signed",
+    "sizeof",
+    "static",
+    "struct",
+    "switch",
+    "union",
+    "unsigned",
+    "void",
+    "volatile",
+    "while",
+}
+STABLE_IDENTIFIER_PREFIXES = (
+    "BPF_",
+    "ETH_",
+    "IPPROTO_",
+    "TC_",
+    "XDP_",
+    "bpf_",
+)
 MANIFEST_PROFILES = {
     "dev": "dev_calibration",
     "candidate": "candidate_staging",
@@ -124,6 +171,79 @@ def file_digest(path: Path) -> str:
     digest = hashlib.sha256()
     digest.update(path.read_bytes())
     return digest.hexdigest()
+
+
+def strip_c_comments_and_literals(text: str) -> str:
+    text = re.sub(r"/\*.*?\*/", " ", text, flags=re.DOTALL)
+    text = re.sub(r"//.*", " ", text)
+    text = re.sub(r'"(?:\\.|[^"\\])*"', " STR ", text)
+    text = re.sub(r"'(?:\\.|[^'\\])*'", " CHR ", text)
+    return text
+
+
+def normalized_c_tokens(path: Path) -> list[str]:
+    text = strip_c_comments_and_literals(path.read_text(encoding="utf-8", errors="replace"))
+    tokens: list[str] = []
+    token_re = re.compile(
+        r"[A-Za-z_][A-Za-z0-9_]*"
+        r"|0x[0-9a-fA-F]+"
+        r"|\d+"
+        r"|==|!=|<=|>=|->|&&|\|\||<<|>>"
+        r"|[-+*/%&|^~!<>=?:;,.(){}\[\]]"
+    )
+    for line in text.splitlines():
+        stripped = line.lstrip()
+        if re.match(r"#\s*include\b", stripped):
+            continue
+        if stripped.startswith("#"):
+            line = stripped[1:]
+        for token in token_re.findall(line):
+            if re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", token):
+                if token in C_KEYWORDS_AND_STABLE_IDENTIFIERS or token.startswith(STABLE_IDENTIFIER_PREFIXES):
+                    tokens.append(token)
+                else:
+                    tokens.append("ID")
+            elif re.fullmatch(r"0x[0-9a-fA-F]+|\d+", token):
+                tokens.append("NUM")
+            else:
+                tokens.append(token)
+    return tokens
+
+
+def token_shingles(tokens: list[str], size: int = C_NEAR_DUPLICATE_SHINGLE_SIZE) -> set[tuple[str, ...]]:
+    if len(tokens) < size:
+        return {tuple(tokens)} if tokens else set()
+    return {tuple(tokens[index : index + size]) for index in range(len(tokens) - size + 1)}
+
+
+def c_source_shingles(path: Path) -> set[tuple[str, ...]]:
+    return token_shingles(normalized_c_tokens(path))
+
+
+def jaccard(left: set[tuple[str, ...]], right: set[tuple[str, ...]]) -> float:
+    if not left or not right:
+        return 0.0
+    return len(left & right) / len(left | right)
+
+
+def containment(left: set[tuple[str, ...]], right: set[tuple[str, ...]]) -> float:
+    if not left or not right:
+        return 0.0
+    return len(left & right) / min(len(left), len(right))
+
+
+def near_duplicate_scores(
+    left: set[tuple[str, ...]],
+    right: set[tuple[str, ...]],
+) -> tuple[float, float]:
+    return jaccard(left, right), containment(left, right)
+
+
+def is_near_duplicate(jaccard_score: float, containment_score: float) -> bool:
+    return (
+        jaccard_score >= C_NEAR_DUPLICATE_JACCARD_THRESHOLD
+        or containment_score >= C_NEAR_DUPLICATE_CONTAINMENT_THRESHOLD
+    )
 
 
 def bytes_digest(payload: bytes) -> str:
@@ -268,6 +388,13 @@ def bpfix_bench_source_fingerprints(root: Path) -> dict[str, list[str]]:
     return fingerprints
 
 
+def bpfix_bench_source_paths(root: Path) -> list[Path]:
+    cases_root = root / "bpfix-bench" / "cases"
+    if not cases_root.exists():
+        return []
+    return sorted(cases_root.rglob("*.c"))
+
+
 def case_fingerprints(case_ids: list[str], known_cases: dict[str, Path]) -> dict[str, dict[str, str]]:
     fingerprints: dict[str, dict[str, str]] = {}
     for case_id in case_ids:
@@ -279,6 +406,105 @@ def case_fingerprints(case_ids: list[str], known_cases: dict[str, Path]) -> dict
             "buggy_source_sha256": file_digest(case_dir / "buggy.bpf.c"),
         }
     return fingerprints
+
+
+def source_path_label(path: Path, root: Path) -> str:
+    try:
+        return str(path.relative_to(root))
+    except ValueError:
+        return str(path)
+
+
+def case_source_paths(case_ids: list[str], known_cases: dict[str, Path]) -> dict[str, Path]:
+    return {
+        case_id: known_cases[case_id] / "buggy.bpf.c"
+        for case_id in case_ids
+        if case_id in known_cases and (known_cases[case_id] / "buggy.bpf.c").exists()
+    }
+
+
+def near_duplicate_source_matches(
+    *,
+    current_ids: list[str],
+    known_cases: dict[str, Path],
+    root: Path,
+    other_case_ids: list[str] | None = None,
+    other_sources: list[Path] | None = None,
+    other_label: str,
+) -> list[dict[str, Any]]:
+    current_sources = case_source_paths(current_ids, known_cases)
+    current_shingles = {
+        case_id: c_source_shingles(source)
+        for case_id, source in current_sources.items()
+    }
+    matches: list[dict[str, Any]] = []
+
+    if other_case_ids is None and other_sources is None:
+        items: list[tuple[str, Path, set[tuple[str, ...]]]] = [
+            (case_id, current_sources[case_id], shingles)
+            for case_id, shingles in current_shingles.items()
+        ]
+        for left_index, (left_case, left_source, left_shingles) in enumerate(items):
+            for right_case, right_source, right_shingles in items[left_index + 1 :]:
+                jaccard_score, containment_score = near_duplicate_scores(left_shingles, right_shingles)
+                if is_near_duplicate(jaccard_score, containment_score):
+                    matches.append(
+                        {
+                            "case": left_case,
+                            "source": source_path_label(left_source, root),
+                            "overlaps_case": right_case,
+                            "overlaps_source": source_path_label(right_source, root),
+                            "corpus": other_label,
+                            "jaccard": round(jaccard_score, 4),
+                            "containment": round(containment_score, 4),
+                        }
+                    )
+        return matches
+
+    compared: list[tuple[str, Path, set[tuple[str, ...]]]] = []
+    if other_case_ids is not None:
+        other_case_sources = case_source_paths(other_case_ids, known_cases)
+        compared.extend(
+            (
+                case_id,
+                source,
+                c_source_shingles(source),
+            )
+            for case_id, source in other_case_sources.items()
+        )
+    if other_sources is not None:
+        compared.extend(
+            (
+                source_path_label(source, root),
+                source,
+                c_source_shingles(source),
+            )
+            for source in other_sources
+            if source.exists()
+        )
+
+    for case_id, source in current_sources.items():
+        left_shingles = current_shingles[case_id]
+        for other_id, other_source, right_shingles in compared:
+            if source.resolve() == other_source.resolve():
+                continue
+            jaccard_score, containment_score = near_duplicate_scores(left_shingles, right_shingles)
+            if is_near_duplicate(jaccard_score, containment_score):
+                matches.append(
+                    {
+                        "case": case_id,
+                        "source": source_path_label(source, root),
+                        "overlaps_case": other_id,
+                        "overlaps_source": source_path_label(other_source, root),
+                        "corpus": other_label,
+                        "jaccard": round(jaccard_score, 4),
+                        "containment": round(containment_score, 4),
+                    }
+                )
+    return sorted(
+        matches,
+        key=lambda match: (-match["containment"], -match["jaccard"], match["case"], match["overlaps_case"]),
+    )
 
 
 def manifest_case_fingerprints(path: Path) -> dict[str, dict[str, str]]:
@@ -401,6 +627,16 @@ def overlapping_fingerprints(
                     }
                 )
     return {name: matches for name, matches in overlaps.items() if matches}
+
+
+def format_near_duplicate_matches(matches: list[dict[str, Any]], *, limit: int = 5) -> str:
+    formatted = []
+    for match in matches[:limit]:
+        formatted.append(
+            f"{match['case']}~{match['overlaps_case']}@j={match['jaccard']:.4f}/c={match['containment']:.4f}"
+        )
+    suffix = "" if len(matches) <= limit else f", ... {len(matches) - limit} more"
+    return ", ".join(formatted) + suffix
 
 
 def read_manifest(path: Path) -> dict[str, Any]:
@@ -1082,6 +1318,7 @@ def audit_split(args: argparse.Namespace) -> dict[str, Any]:
     split_duplicates = duplicates(case_ids)
     missing_cases = sorted(set(case_ids) - set(known_cases))
     overlap: dict[str, dict[str, Any]] = {}
+    near_duplicates: dict[str, list[dict[str, Any]]] = {}
     disallow_overlap_paths = list(args.disallow_overlap)
     if profile in {"candidate", "clean60"}:
         dev40_split = root / "bpfix-test" / "splits" / "dev40.txt"
@@ -1134,6 +1371,49 @@ def audit_split(args: argparse.Namespace) -> dict[str, Any]:
                 f"{match['case']}~{match['bpfix_bench_sources'][0]}" for match in bpfix_bench_overlap
             )
             errors.append(f"buggy.bpf.c content overlap with bpfix-bench: {formatted}")
+    if profile in {"candidate", "clean60"} and not missing_cases and not split_duplicates:
+        within_matches = near_duplicate_source_matches(
+            current_ids=case_ids,
+            known_cases=known_cases,
+            root=root,
+            other_label="current split",
+        )
+        if within_matches:
+            near_duplicates["current_split"] = within_matches
+            errors.append(
+                "near-duplicate buggy.bpf.c sources within split: "
+                + format_near_duplicate_matches(within_matches)
+            )
+
+        dev40_split = root / "bpfix-test" / "splits" / "dev40.txt"
+        if args.split.resolve() != dev40_split.resolve():
+            dev40_matches = near_duplicate_source_matches(
+                current_ids=case_ids,
+                known_cases=known_cases,
+                root=root,
+                other_case_ids=run_suite.read_split_file(dev40_split),
+                other_label="dev40",
+            )
+            if dev40_matches:
+                near_duplicates["dev40"] = dev40_matches
+                errors.append(
+                    "near-duplicate buggy.bpf.c sources with dev40: "
+                    + format_near_duplicate_matches(dev40_matches)
+                )
+
+        bench_matches = near_duplicate_source_matches(
+            current_ids=case_ids,
+            known_cases=known_cases,
+            root=root,
+            other_sources=bpfix_bench_source_paths(root),
+            other_label="bpfix-bench",
+        )
+        if bench_matches:
+            near_duplicates["bpfix_bench"] = bench_matches
+            errors.append(
+                "near-duplicate buggy.bpf.c sources with bpfix-bench: "
+                + format_near_duplicate_matches(bench_matches)
+            )
     for other_split, overlap_report in overlap.items():
         shared = overlap_report["case_ids"]
         if shared:
@@ -1205,6 +1485,7 @@ def audit_split(args: argparse.Namespace) -> dict[str, Any]:
         "missing_cases": missing_cases,
         "overlap": overlap,
         "bpfix_bench_overlap": bpfix_bench_overlap,
+        "near_duplicates": near_duplicates,
         "manifest": manifest_summary,
         "audit": {
             "enabled": bool(args.audit_cases),

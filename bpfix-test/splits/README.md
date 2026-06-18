@@ -40,6 +40,12 @@ frozen fingerprints are part of the contamination baseline.
 id, full case hash, and `buggy.bpf.c` hash. When a compared split has a sibling
 manifest, the recorded fingerprints are used as the contamination baseline;
 `--disallow-overlap` keeps that comparison explicit in documented commands.
+For candidate and clean60 profiles, `audit_splits.py` also runs normalized
+token-shingle near-duplicate checks over `buggy.bpf.c` sources inside the
+current split, against `dev40.txt`, and against `bpfix-bench/cases/**/*.c`.
+The gate normalizes ordinary identifiers, numbers, and literals while keeping
+BPF helper/action/protocol tokens and macro bodies. It fails on Jaccard
+similarity >= 0.82 or containment >= 0.92.
 For clean60, the manifest audit also requires machine-readable case review,
 provenance, oracle-obligation, selection-protocol, candidate-seed-ledger, and
 exclusion-ledger fields.
