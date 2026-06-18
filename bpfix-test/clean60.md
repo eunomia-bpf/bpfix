@@ -44,6 +44,9 @@ calibration/dev evidence，不能作为 clean benchmark。
 当前 split 文件：
 
 - `splits/dev40.txt`：现有 40 个 calibration cases；
+- `splits/real-seed-candidates.txt`：real-project seed staging split。它配套
+  `real-seed-candidates.manifest.json` 做 candidate-level provenance、review、
+  oracle obligation 和 fingerprint 审计，但不是 clean benchmark denominator；
 - `splits/clean60.txt`：clean benchmark 占位，当前必须为空，直到 60 个新 case
   admission 完成。
 - `splits/*.manifest.json`：split 的机器可审计元数据。`clean60.manifest.json`
@@ -76,6 +79,13 @@ benchmark 运行。`run_suite.py --split bpfix-test/splits/clean60.txt` 对空 s
 independent review 拒绝。
 审计 `dev40.txt` 本身也必须携带 `dev40.manifest.json`，否则 frozen fingerprint
 baseline 不成立。
+
+real-project seed 候选可以先用较轻的 candidate gate 预审；这个 gate 只证明候选
+具备进入 clean60 的基本 provenance/review/oracle 条件，不产生论文主结果：
+
+```bash
+make bpfix-test-real-seed-candidate-gate
+```
 
 正式论文结果还必须通过 paper gate，它把 split admission 和 prompt freeze 绑定起来：
 

@@ -35,6 +35,7 @@ help:
 	@echo "  make bpfix-test-audit  Audit bpfix-test fixture structure and prompts"
 	@echo "                          Optional: SPLIT=... MANIFEST=... SMOKE=1 for custom clean oracles"
 	@echo "  make bpfix-test-smoke  Validate bpfix-test fixtures and buggy rejects"
+	@echo "  make bpfix-test-real-seed-candidate-gate Audit real-project seed staging candidates"
 	@echo "  make bpfix-test-dev40-gate   Run the full dev40 split quality gate"
 	@echo "  make bpfix-test-clean60-gate Run the clean60 heldout gate; fails until admitted"
 	@echo "  make bpfix-test-clean60-paper-gate PROMPT_MANIFEST=... Run clean60 admission + prompt gates"
@@ -99,6 +100,16 @@ bpfix-test-dev40-gate:
 		--manifest bpfix-test/splits/dev40.manifest.json \
 		--profile dev \
 		--expected-count 40 \
+		--audit-cases --smoke
+
+.PHONY: bpfix-test-real-seed-candidate-gate
+bpfix-test-real-seed-candidate-gate:
+	@echo "[bpfix-test-real-seed-candidate-gate] Auditing real-project seed staging candidates..."
+	cd $(CURDIR) && python3 bpfix-test/tools/audit_splits.py \
+		--split bpfix-test/splits/real-seed-candidates.txt \
+		--manifest bpfix-test/splits/real-seed-candidates.manifest.json \
+		--profile candidate \
+		--disallow-overlap bpfix-test/splits/dev40.txt \
 		--audit-cases --smoke
 
 .PHONY: bpfix-test-clean60-gate

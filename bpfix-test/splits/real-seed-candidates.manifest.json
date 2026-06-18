@@ -1,0 +1,147 @@
+{
+  "schema_version": "bpfix.test.split-manifest/v1",
+  "split_id": "real-seed-candidates",
+  "profile": "candidate_staging",
+  "freeze": {
+    "frozen": false,
+    "reason": "staging split for real-project seeds; promotion to clean60 requires 60 admitted cases, final independent review, and prompt freeze",
+    "fingerprints_frozen": true
+  },
+  "admission_policy": {
+    "model_result_used_for_admission": false,
+    "case_ids_opaque_in_prompt": true,
+    "result_blind_case_selection": true
+  },
+  "selection_protocol": {
+    "case_source_policy": "Stage only real-project seeds with upstream project, commit, path, and license provenance.",
+    "admission_order_policy": "Review and smoke candidates before any clean LLM evaluation; promotion to clean60 happens only after the full 60-case split is assembled.",
+    "review_policy": "Require independent review of every candidate's bug, oracle coverage, provenance, and clean-split eligibility before promotion.",
+    "model_result_blinding_policy": "Do not run or inspect source-only, raw, trimmed-raw, or structured repair outcomes while admitting or excluding candidates.",
+    "near_duplicate_policy": "Reject semantic near-duplicates of dev40, bpfix-bench replay cases, or already staged candidates even when exact file hashes differ."
+  },
+  "candidate_seed_ledger": [
+    {
+      "seed": "agentsight@77a7ea3fdde28e93da935af883aff295613551e9:bpf/process.bpf.c",
+      "decision": "admitted",
+      "case_id": "rs_agentsight_process_ringbuf_null_001",
+      "decision_made_before_model_eval": true,
+      "model_result_used": false,
+      "notes": "Minimized the process-event ringbuf reserve/fill/submit pattern into a deterministic TC harness; no LLM repair outcomes were used for admission."
+    },
+    {
+      "seed": "ActPlane@5e9cbaba5fbc51af6b693b2d80cad6af69be5f9f:bpf/process.bpf.c",
+      "decision": "admitted",
+      "case_id": "rs_actplane_policy_map_merge_001",
+      "decision_made_before_model_eval": true,
+      "model_result_used": false,
+      "notes": "Minimized the map-backed policy decision and branch-merge proof shape into a deterministic TC harness; no LLM repair outcomes were used for admission."
+    }
+  ],
+  "seed_exclusion_ledger": [],
+  "case_defaults": {
+    "source_category": "real_project_seed",
+    "prog_type": "tc",
+    "review_status": "candidate_reviewed",
+    "oracle_kind": [
+      "compile",
+      "verifier_load",
+      "bpftool_prog_run",
+      "helper_state",
+      "proof_predicate"
+    ],
+    "requires_helper_or_state": true,
+    "uses_success_predicate": true
+  },
+  "cases": [
+    {
+      "case_id": "rs_agentsight_process_ringbuf_null_001",
+      "bucket": "modern_bpf_protocol",
+      "origin": "real-project seed from agentsight process tracer ring-buffer event emission",
+      "case_sha256": "f7e104f7aaa2e6bb1907e00387ec143257d52cad8b0c1b5c662165c31ae1a27f",
+      "buggy_source_sha256": "0da982f7287f87da7259887fb8beb737076743fae09dceb6559a5b1c7f93c1bd",
+      "review": {
+        "reviewer": "Franklin subagent 019ed837-af4b-7182-b504-c53aafd12f63",
+        "reviewed_at": "2026-06-17",
+        "bug_confirmed": true,
+        "oracle_adequate": true,
+        "not_seen_in_prior_eval": true,
+        "bug_summary": "The program writes a reserved process_event before proving bpf_ringbuf_reserve returned non-null.",
+        "oracle_rationale": "The oracle requires compile, verifier load, TC functional returns, bpf_ringbuf_reserve/submit presence, and a successful-verifier proof predicate that the same 16-byte ringbuf record has mark=7 written at offset 12 before submit.",
+        "provenance_rationale": "Seed was derived from agentsight process.bpf.c ringbuf event emission and minimized into a deterministic TC harness; README and manifest distinguish this from an original TC bug."
+      },
+      "provenance": {
+        "seed_type": "minimized real-project seed in deterministic TC harness",
+        "source": "https://github.com/eunomia-bpf/agentsight/blob/77a7ea3fdde28e93da935af883aff295613551e9/bpf/process.bpf.c",
+        "license": "GPL-2.0 OR BSD-3-Clause",
+        "minimization": "Preserved ringbuf reserve/fill/submit process-event shape while replacing tracepoint context with a deterministic TC packet harness.",
+        "upstream_project": "https://github.com/eunomia-bpf/agentsight",
+        "upstream_ref": "77a7ea3fdde28e93da935af883aff295613551e9",
+        "upstream_path": "bpf/process.bpf.c",
+        "upstream_license": "GPL-2.0 OR BSD-3-Clause",
+        "derived_from_dev40": false,
+        "model_result_used": false
+      },
+      "oracle_obligation": {
+        "functional_semantics": [
+          "IPv4 packet returns TC_ACT_SHOT",
+          "non-IPv4 packet returns TC_ACT_OK",
+          "repair must keep process-event ringbuf submit path"
+        ],
+        "verifier_reject_reason": [
+          "R0 is ringbuf_mem_or_null after bpf_ringbuf_reserve",
+          "buggy program writes to the ringbuf record before a null check"
+        ],
+        "success_criteria": [
+          "candidate compiles and verifier-loads",
+          "bpftool prog run returns the expected TC actions",
+          "successful verifier log shows a 16-byte ringbuf_mem record with mark=7 stored at offset 12 before bpf_ringbuf_submit"
+        ]
+      }
+    },
+    {
+      "case_id": "rs_actplane_policy_map_merge_001",
+      "bucket": "proof_lifecycle",
+      "origin": "real-project seed from ActPlane map-backed policy state and branch-dependent decision",
+      "case_sha256": "6e19efb2cd0c31b2d1272da1b5b302677cd49737aa87edd161d815f55b753ce0",
+      "buggy_source_sha256": "f242cf1f27b17e0126d0c4a828452e866de9c63c0c0d8140a72022b872278226",
+      "review": {
+        "reviewer": "Franklin subagent 019ed837-af4b-7182-b504-c53aafd12f63",
+        "reviewed_at": "2026-06-17",
+        "bug_confirmed": true,
+        "oracle_adequate": true,
+        "not_seen_in_prior_eval": true,
+        "bug_summary": "The map lookup is proved non-null only on the IPv4 branch, then the same map-value pointer is read after a branch merge.",
+        "oracle_rationale": "The oracle requires compile, verifier load, four TC functional tests with different configured drop_proto values, and successful-verifier predicates proving the repair keeps map-value read and state update behavior.",
+        "provenance_rationale": "Seed was derived from ActPlane process.bpf.c policy/map state patterns and minimized into a deterministic TC harness; README and manifest distinguish this from an original TC bug."
+      },
+      "provenance": {
+        "seed_type": "minimized real-project seed in deterministic TC harness",
+        "source": "https://github.com/eunomia-bpf/ActPlane/blob/5e9cbaba5fbc51af6b693b2d80cad6af69be5f9f/bpf/process.bpf.c",
+        "license": "GPL-2.0 OR BSD-3-Clause",
+        "minimization": "Preserved map-backed policy lookup, state update, and branch-dependent decision shape while replacing LSM/tracepoint context with a deterministic TC packet harness.",
+        "upstream_project": "https://github.com/eunomia-bpf/ActPlane",
+        "upstream_ref": "5e9cbaba5fbc51af6b693b2d80cad6af69be5f9f",
+        "upstream_path": "bpf/process.bpf.c",
+        "upstream_license": "GPL-2.0 OR BSD-3-Clause",
+        "derived_from_dev40": false,
+        "model_result_used": false
+      },
+      "oracle_obligation": {
+        "functional_semantics": [
+          "packet action depends on the configured policy_map drop_proto value",
+          "IPv4 path updates seen_ipv4 state",
+          "non-matching protocol returns TC_ACT_OK"
+        ],
+        "verifier_reject_reason": [
+          "R0 is map_value_or_null after bpf_map_lookup_elem",
+          "buggy program reads policy->drop_proto after a branch merge where the non-null proof is not available on every path"
+        ],
+        "success_criteria": [
+          "candidate compiles and verifier-loads",
+          "bpftool prog run returns expected TC actions for IPv4 and ARP under two map configurations",
+          "successful verifier log shows drop_proto read from map value and seen_ipv4 state update"
+        ]
+      }
+    }
+  ]
+}

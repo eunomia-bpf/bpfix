@@ -95,6 +95,9 @@ make bpfix-test-audit \
 ```bash
 make bpfix-test-dev40-gate
 
+# Audit real-project seed staging candidates. This is not a paper benchmark.
+make bpfix-test-real-seed-candidate-gate
+
 # Expected to fail until 60 heldout cases are admitted.
 make bpfix-test-clean60-gate
 ```
@@ -102,6 +105,13 @@ make bpfix-test-clean60-gate
 等价的底层命令是：
 
 ```bash
+python3 bpfix-test/tools/audit_splits.py \
+  --split bpfix-test/splits/real-seed-candidates.txt \
+  --manifest bpfix-test/splits/real-seed-candidates.manifest.json \
+  --profile candidate \
+  --disallow-overlap bpfix-test/splits/dev40.txt \
+  --audit-cases --smoke
+
 python3 bpfix-test/tools/audit_splits.py \
   --split bpfix-test/splits/dev40.txt \
   --manifest bpfix-test/splits/dev40.manifest.json \
@@ -118,7 +128,7 @@ python3 bpfix-test/tools/audit_splits.py \
   --audit-cases --smoke
 ```
 
-第二个命令在 `clean60` 填满前应该失败；runner 直接使用空 `--split` 也会失败，
+`clean60` 命令在 split 填满前应该失败；runner 直接使用空 `--split` 也会失败，
 不会退回到全量 discovered cases。这是保护主 benchmark 不被 dev cases 污染的
 gate。Manifest 审计还会检查 split/manifest 一致性、clean freeze 状态、source
 category、bucket、program type、review status、oracle obligation 和 case hash。
