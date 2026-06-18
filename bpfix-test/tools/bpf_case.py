@@ -17,8 +17,11 @@ from typing import Callable, TypeAlias
 
 
 MapUpdate: TypeAlias = tuple[str, bytes, bytes]
+MapPostCheck: TypeAlias = tuple[str, Callable[[Path], bool]]
 FunctionalTest: TypeAlias = (
-    tuple[str, Callable[[], bytes], int] | tuple[str, Callable[[], bytes], int, list[MapUpdate]]
+    tuple[str, Callable[[], bytes], int]
+    | tuple[str, Callable[[], bytes], int, list[MapUpdate]]
+    | tuple[str, Callable[[], bytes], int, list[MapUpdate], list[MapPostCheck]]
 )
 
 
@@ -163,8 +166,47 @@ def update_pinned_map(map_dir: Path, map_name: str, key: bytes, value: bytes) ->
     )
 
 
+def lookup_pinned_map(map_dir: Path, map_name: str, key: bytes) -> CommandResult:
+    bpftool = split_tool("BPFTOOL", "sudo bpftool")
+    return run(
+        [
+            *bpftool,
+            "-j",
+            "map",
+            "lookup",
+            "pinned",
+            str(map_dir / map_name),
+            "key",
+            "hex",
+            *hex_bytes(key),
+        ],
+        timeout=10,
+    )
+
+
+def lookup_pinned_map_value(map_dir: Path, map_name: str, key: bytes) -> tuple[bytes | None, CommandResult]:
+    result = lookup_pinned_map(map_dir, map_name, key)
+    if result.returncode != 0:
+        return None, result
+    try:
+        payload = json.loads(result.stdout)
+    except json.JSONDecodeError:
+        return None, result
+    value = payload.get("value") if isinstance(payload, dict) else None
+    if not isinstance(value, list):
+        return None, result
+    try:
+        return bytes(int(str(item), 0) for item in value), result
+    except ValueError:
+        return None, result
+
+
 def functional_test_map_updates(test: FunctionalTest) -> list[MapUpdate]:
-    return test[3] if len(test) == 4 else []
+    return test[3] if len(test) >= 4 else []
+
+
+def functional_test_post_checks(test: FunctionalTest) -> list[MapPostCheck]:
+    return test[4] if len(test) == 5 else []
 
 
 def pin_name_for(source: Path) -> str:
@@ -694,7 +736,10 @@ def run_case(
     source = args.source.resolve()
     obj = work_dir / "prog.o"
     pin = Path("/sys/fs/bpf") / pin_name_for(source)
-    needs_pinned_maps = bool(map_updates) or any(functional_test_map_updates(test) for test in functional_tests)
+    needs_pinned_maps = bool(map_updates) or any(
+        functional_test_map_updates(test) or functional_test_post_checks(test)
+        for test in functional_tests
+    )
     map_pin_dir = Path("/sys/fs/bpf") / f"{pin.name}_maps" if needs_pinned_maps else None
 
     report: dict[str, object] = {
@@ -787,7 +832,27 @@ def run_case(
                 if not ok:
                     break
             retval, prog_run = run_pinned(pin, packet_fn())
-            passed = retval == expected_retval
+            post_check_results: list[dict[str, object]] = []
+            post_checks = functional_test_post_checks(test)
+            post_checks_passed = True
+            if post_checks:
+                assert map_pin_dir is not None
+                for check_name, check_fn in post_checks:
+                    try:
+                        check_passed = bool(check_fn(map_pin_dir))
+                        error = None
+                    except Exception as exc:  # pragma: no cover - defensive oracle reporting
+                        check_passed = False
+                        error = str(exc)
+                    post_check: dict[str, object] = {
+                        "name": check_name,
+                        "passed": check_passed,
+                    }
+                    if error is not None:
+                        post_check["error"] = error
+                    post_check_results.append(post_check)
+                    post_checks_passed = post_checks_passed and check_passed
+            passed = retval == expected_retval and post_checks_passed
             functional_results.append(
                 {
                     "name": name,
@@ -795,6 +860,7 @@ def run_case(
                     "actual_retval": retval,
                     "passed": passed,
                     "map_updates": map_update_results,
+                    "post_run_checks": post_check_results,
                     "run": prog_run.to_json(),
                 }
             )

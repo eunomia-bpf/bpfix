@@ -227,6 +227,14 @@
             "decision_made_before_model_eval": true,
             "model_result_used": false,
             "notes": "Minimized DatRail's cgroup-child filter workflow into an XDP helper-memory contract case where a 32-bit child key is passed to a tracked_cgroups map whose helper contract requires an initialized 64-bit key; no LLM repair outcomes were used for admission."
+        },
+        {
+            "seed": "bpf-developer-tutorial@3a722c03d5129ac212935bf5ecce118e64efcdd8:src/16-memleak/memleak.bpf.c#free-info-merge",
+            "decision": "admitted",
+            "case_id": "rs_tutorial_memleak_free_info_merge_001",
+            "decision_made_before_model_eval": true,
+            "model_result_used": false,
+            "notes": "Minimized the memleak free-path allocs lookup/delete and combined_allocs statistics workflow into an XDP proof-lifecycle case where the allocation-info non-null proof is branch-local before a merge; no LLM repair outcomes were used for admission."
         }
   ],
   "seed_exclusion_ledger": [
@@ -1727,6 +1735,70 @@
                     "successful verifier log shows the tracked map value controls the drop/pass decision",
                     "successful verifier log shows aggregate .bss state updates on the tracked-child path",
                     "oracle rejects repairs that delete the lookup, change the map key schema to 32 bits, or replace the workflow with a constant action"
+                ]
+            }
+        },
+        {
+            "case_id": "rs_tutorial_memleak_free_info_merge_001",
+            "bucket": "proof_lifecycle",
+            "prog_type": "xdp",
+            "origin": "real-project seed from bpf-developer-tutorial memleak free-path workflow",
+            "oracle_kind": [
+                "compile",
+                "verifier_load",
+                "bpftool_prog_run",
+                "helper_state",
+                "proof_predicate"
+            ],
+            "requires_helper_or_state": true,
+            "uses_success_predicate": true,
+            "case_sha256": "ff36b1684498727786a98e01a0458bf0bd2577cebf5e95d1c1a3b40af896ddc7",
+            "buggy_source_sha256": "8e46eed4cf281d6cfbdab963b45e89a0932516ec77fff7d4b060bb0b3fb9ae50",
+            "review": {
+                "reviewer": "Mendel subagent 019edc70-ca00-76f2-b88d-86d4c841c116",
+                "reviewed_at": "2026-06-18",
+                "bug_confirmed": true,
+                "oracle_adequate": true,
+                "not_seen_in_prior_eval": true,
+                "bug_summary": "The minimized XDP harness preserves the tutorial memleak free path but checks the allocs lookup result only on one packet-selected branch, then deletes the allocation and uses info->stack_id/info->size after a branch merge. The verifier rejects the unchecked path as R6 invalid mem access 'map_value_or_null'.",
+                "oracle_rationale": "The oracle requires buggy rejection with the nullable map-value verifier error, then requires repaired sources to compile and verifier-load while preserving allocs lookup, allocs delete, combined_allocs lookup, and combined statistics decrement. Four bpftool prog run inputs distinguish known free, guarded known free, missing free, and zero-selector behavior. Post-run map assertions require allocs[7] to be deleted and combined_allocs[3] to change from total_size=256,count=4 to total_size=192,count=3, rejecting repairs that keep verifier-log shape but delete the wrong key or compute the wrong decrement.",
+                "provenance_rationale": "Seed verified against local bpf-developer-tutorial commit 3a722c03d5129ac212935bf5ecce118e64efcdd8, path src/16-memleak/memleak.bpf.c, remote https://github.com/eunomia-bpf/bpf-developer-tutorial, sha256 c14d322c985475e98f1f9033d9df938eebc9c405269010bc5e03b7bcf2ac25aa, SPDX GPL-2.0. The case is a minimized mutation of the upstream memleak free-path workflow, not a claim that upstream contains this exact bug. It is intentionally part of the nullable map-value proof-after-branch-merge family and no LLM repair result was used for admission."
+            },
+            "provenance": {
+                "seed_type": "minimized real-project seed in bpf-developer-tutorial XDP memleak free-path harness",
+                "source": "https://github.com/eunomia-bpf/bpf-developer-tutorial/blob/3a722c03d5129ac212935bf5ecce118e64efcdd8/src/16-memleak/memleak.bpf.c",
+                "license": "GPL-2.0",
+                "minimization": "Preserved the upstream tutorial memleak free path: look up an allocation record in allocs, delete the freed allocation, and decrement combined_allocs total size and allocation count using the saved stack id and size. The minimized XDP harness injects only the branch-local nullable proof bug before the alloc_info fields are used.",
+                "upstream_project": "https://github.com/eunomia-bpf/bpf-developer-tutorial",
+                "upstream_ref": "3a722c03d5129ac212935bf5ecce118e64efcdd8",
+                "upstream_path": "src/16-memleak/memleak.bpf.c",
+                "upstream_license": "GPL-2.0",
+                "upstream_file_sha256": "c14d322c985475e98f1f9033d9df938eebc9c405269010bc5e03b7bcf2ac25aa",
+                "derived_from_dev40": false,
+                "model_result_used": false
+            },
+            "oracle_obligation": {
+                "functional_semantics": [
+                    "repair must load as an XDP program",
+                    "repair must preserve the memleak-style allocs lookup and delete workflow",
+                    "repair must copy allocation size and stack_id before deleting the allocs entry",
+                    "repair must preserve combined_allocs statistics decrement using the copied size and stack_id",
+                    "repair must return XDP_DROP for known frees and XDP_PASS for missing frees"
+                ],
+                "verifier_reject_reason": [
+                    "buggy program receives map_value_or_null from bpf_map_lookup_elem(&allocs, &addr)",
+                    "the non-null proof is established only when guarded_path is set",
+                    "after the branch merge, the unchecked path reaches info->stack_id and info->size with the pointer still nullable"
+                ],
+                "success_criteria": [
+                    "candidate compiles and verifier-loads as an XDP program",
+                    "bpftool prog run returns XDP_DROP for known free and guarded known free",
+                    "bpftool prog run returns XDP_PASS for missing free and zero-selector missing free",
+                    "post-run map lookup confirms allocs[7] was deleted on known free paths",
+                    "post-run map lookup confirms combined_allocs[3] changed from total_size=256,count=4 to total_size=192,count=3",
+                    "successful verifier log shows allocation size and stack_id loaded before allocs delete",
+                    "successful verifier log shows allocs delete before combined_allocs update and the combined statistics decrement",
+                    "oracle rejects repairs that delete allocs cleanup, delete combined statistics, delete the workflow, delete the wrong key, or compute the wrong decrement"
                 ]
             }
         }
