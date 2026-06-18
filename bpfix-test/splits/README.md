@@ -4,6 +4,10 @@
 cases, prompts, diagnostics, and oracle checks, so it must not be reported as
 the final clean paper benchmark.
 
+`real-seed-candidates.txt` is a staging split for real-project seed candidates.
+It is useful for repeated audit/smoke runs while the cases are being reviewed,
+but it is not a paper benchmark split and must not be reported as clean60.
+
 `clean60.txt` is reserved for the heldout benchmark. It is intentionally empty
 until 60 new cases are admitted. A valid clean split must:
 
@@ -51,6 +55,10 @@ test contract.
 Run the gates:
 
 ```bash
+python3 bpfix-test/tools/audit_splits.py \
+  --split bpfix-test/splits/real-seed-candidates.txt \
+  --audit-cases --smoke
+
 python3 bpfix-test/tools/audit_splits.py \
   --split bpfix-test/splits/dev40.txt \
   --manifest bpfix-test/splits/dev40.manifest.json \

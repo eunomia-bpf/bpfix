@@ -1,0 +1,103 @@
+libbpf: loading object from <work-dir>/prog.o
+libbpf: elf: section(3) tc, size 240, link 0, flags 6, type=1
+libbpf: sec 'tc': found program 'rs_agentsight_process_ringbuf_null' at insn offset 0 (0 bytes), code size 30 insns (240 bytes)
+libbpf: elf: section(4) .reltc, size 16, link 26, flags 40, type=9
+libbpf: elf: section(5) .maps, size 16, link 0, flags 3, type=1
+libbpf: elf: section(6) license, size 4, link 0, flags 3, type=1
+libbpf: license of <work-dir>/prog.o is GPL
+libbpf: elf: section(16) .BTF, size 2238, link 0, flags 0, type=1
+libbpf: elf: section(18) .BTF.ext, size 412, link 0, flags 0, type=1
+libbpf: elf: section(26) .symtab, size 384, link 1, flags 0, type=2
+libbpf: looking for externs among 16 symbols...
+libbpf: collected 0 externs total
+libbpf: map 'rb': at sec_idx 5, offset 0.
+libbpf: map 'rb': found type = 27.
+libbpf: map 'rb': found max_entries = 4096.
+libbpf: sec '.reltc': collecting relocation for section(3) 'tc'
+libbpf: sec '.reltc': relo #0: insn #8 against 'rb'
+libbpf: prog 'rs_agentsight_process_ringbuf_null': found map 0 (rb, sec 5, off 0) for insn #8
+libbpf: object 'prog': failed (-95) to create BPF token from '/sys/fs/bpf', skipping optional step...
+libbpf: loaded kernel BTF from '/sys/kernel/btf/vmlinux'
+libbpf: sec 'tc': found 4 CO-RE relocations
+libbpf: CO-RE relocating [10] struct __sk_buff: found target candidate [15151] struct __sk_buff in [vmlinux]
+libbpf: prog 'rs_agentsight_process_ringbuf_null': relo #0: <byte_off> [10] struct __sk_buff.data_end (0:16 @ offset 80)
+libbpf: prog 'rs_agentsight_process_ringbuf_null': relo #0: matching candidate #0 <byte_off> [15151] struct __sk_buff.data_end (0:16 @ offset 80)
+libbpf: prog 'rs_agentsight_process_ringbuf_null': relo #0: patched insn #2 (LDX/ST/STX) off 80 -> 80
+libbpf: prog 'rs_agentsight_process_ringbuf_null': relo #1: <byte_off> [10] struct __sk_buff.data (0:15 @ offset 76)
+libbpf: prog 'rs_agentsight_process_ringbuf_null': relo #1: matching candidate #0 <byte_off> [15151] struct __sk_buff.data (0:15 @ offset 76)
+libbpf: prog 'rs_agentsight_process_ringbuf_null': relo #1: patched insn #3 (LDX/ST/STX) off 76 -> 76
+libbpf: CO-RE relocating [25] struct ethhdr: found target candidate [23410] struct ethhdr in [vmlinux]
+libbpf: prog 'rs_agentsight_process_ringbuf_null': relo #2: <byte_off> [25] struct ethhdr.h_proto (0:2 @ offset 12)
+libbpf: prog 'rs_agentsight_process_ringbuf_null': relo #2: matching candidate #0 <byte_off> [23410] struct ethhdr.h_proto (0:2 @ offset 12)
+libbpf: prog 'rs_agentsight_process_ringbuf_null': relo #2: patched insn #7 (LDX/ST/STX) off 12 -> 12
+libbpf: prog 'rs_agentsight_process_ringbuf_null': relo #3: <byte_off> [10] struct __sk_buff.mark (0:2 @ offset 8)
+libbpf: prog 'rs_agentsight_process_ringbuf_null': relo #3: matching candidate #0 <byte_off> [15151] struct __sk_buff.mark (0:2 @ offset 8)
+libbpf: prog 'rs_agentsight_process_ringbuf_null': relo #3: patched insn #15 (LDX/ST/STX) off 8 -> 8
+libbpf: map 'rb': created successfully, fd=0
+libbpf: prog 'rs_agentsight_process_ringbuf_null': BPF program load failed: -EACCES
+libbpf: prog 'rs_agentsight_process_ringbuf_null': -- BEGIN PROG LOAD LOG --
+func#0 @0
+Live regs before insn:
+  0: .1........ (bf) r7 = r1
+  1: .......7.. (b7) r6 = 0
+  2: ......67.. (61) r2 = *(u32 *)(r7 +80)
+  3: ..2...67.. (61) r1 = *(u32 *)(r7 +76)
+  4: .12...67.. (bf) r3 = r1
+  5: .123..67.. (07) r3 += 14
+  6: .123..67.. (2d) if r3 > r2 goto pc+21
+  7: .1.....7.. (69) r8 = *(u16 *)(r1 +12)
+  8: .......78. (18) r1 = 0xffff000000000000
+ 10: .1.....78. (b7) r2 = 16
+ 11: .12....78. (b7) r3 = 0
+ 12: .123...78. (85) call bpf_ringbuf_reserve#131
+ 13: 0......78. (b7) r6 = 1
+ 14: 0.....678. (63) *(u32 *)(r0 +0) = r6
+ 15: 0.....678. (61) r1 = *(u32 *)(r7 +8)
+ 16: 01....6.8. (63) *(u32 *)(r0 +4) = r1
+ 17: 0.....6.8. (bf) r1 = r8
+ 18: 01....6.8. (dc) r1 = be16 r1
+ 19: 01....6.8. (63) *(u32 *)(r0 +8) = r1
+ 20: 0.....6.8. (b7) r1 = 7
+ 21: 01....6.8. (63) *(u32 *)(r0 +12) = r1
+ 22: 0.....6.8. (bf) r1 = r0
+ 23: .1....6.8. (b7) r2 = 0
+ 24: .12...6.8. (85) call bpf_ringbuf_submit#132
+ 25: ......6.8. (15) if r8 == 0x8 goto pc+1
+ 26: .......... (b7) r6 = 0
+ 27: ......6... (67) r6 <<= 1
+ 28: ......6... (bf) r0 = r6
+ 29: 0......... (95) exit
+0: R1=ctx() R10=fp0
+; int rs_agentsight_process_ringbuf_null(struct __sk_buff *skb) @ buggy.bpf.c:32
+0: (bf) r7 = r1                       ; R1=ctx() R7_w=ctx()
+1: (b7) r6 = 0                        ; R6_w=0
+; void *data_end = (void *)(long)skb->data_end; @ buggy.bpf.c:35
+2: (61) r2 = *(u32 *)(r7 +80)         ; R2_w=pkt_end() R7_w=ctx()
+; void *data = (void *)(long)skb->data; @ buggy.bpf.c:34
+3: (61) r1 = *(u32 *)(r7 +76)         ; R1_w=pkt(r=0) R7_w=ctx()
+; if ((void *)(eth + 1) > data_end) @ buggy.bpf.c:40
+4: (bf) r3 = r1                       ; R1_w=pkt(r=0) R3_w=pkt(r=0)
+5: (07) r3 += 14                      ; R3_w=pkt(off=14,r=0)
+6: (2d) if r3 > r2 goto pc+21         ; R2_w=pkt_end() R3_w=pkt(off=14,r=14)
+; proto = bpf_ntohs(eth->h_proto); @ buggy.bpf.c:43
+7: (69) r8 = *(u16 *)(r1 +12)         ; R1_w=pkt(r=14) R8_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=0xffff,var_off=(0x0; 0xffff))
+; e = bpf_ringbuf_reserve(&rb, sizeof(*e), 0); @ buggy.bpf.c:44
+8: (18) r1 = 0xffff000000000000       ; R1_w=map_ptr(map=rb,ks=0,vs=0)
+10: (b7) r2 = 16                      ; R2_w=16
+11: (b7) r3 = 0                       ; R3_w=0
+12: (85) call bpf_ringbuf_reserve#131
+mark_precise: frame0: last_idx 12 first_idx 0 subseq_idx -1
+mark_precise: frame0: regs=r2 stack= before 11: (b7) r3 = 0
+mark_precise: frame0: regs=r2 stack= before 10: (b7) r2 = 16
+13: R0=ringbuf_mem_or_null(id=2,ref_obj_id=2,sz=16) refs=2
+13: (b7) r6 = 1                       ; R6_w=1 refs=2
+; e->type = 1; @ buggy.bpf.c:45
+14: (63) *(u32 *)(r0 +0) = r6
+R0 invalid mem access 'ringbuf_mem_or_null'
+verification time 0 usec
+stack depth 0
+processed 14 insns (limit 1000000) max_states_per_insn 0 total_states 1 peak_states 1 mark_read 1
+-- END PROG LOAD LOG --
+libbpf: prog 'rs_agentsight_process_ringbuf_null': failed to load: -EACCES
+libbpf: failed to load object '<work-dir>/prog.o'
+Error: failed to load object file
