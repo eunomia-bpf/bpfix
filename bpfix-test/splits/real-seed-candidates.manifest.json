@@ -171,6 +171,14 @@
             "decision_made_before_model_eval": true,
             "model_result_used": false,
             "notes": "Minimized ActPlane's tag-dispatched capability dynptr request parser into an XDP harness where the tag slice is checked but larger payload struct slices are read without their own proof; no LLM repair outcomes were used for admission."
+        },
+        {
+            "seed": "xdp-tools@e9469501622aa22a7e452a671000bec8685edcde:lib/util/xdpsock.bpf.c",
+            "decision": "admitted",
+            "case_id": "rs_xdp_tools_xdpsock_redirect_map_type_001",
+            "decision_made_before_model_eval": true,
+            "model_result_used": false,
+            "notes": "Minimized xdp-tools' AF_XDP redirect program into an XDP helper/config boundary case where xsks_map is declared as a normal array before bpf_redirect_map; no LLM repair outcomes were used for admission."
         }
   ],
   "seed_exclusion_ledger": [
@@ -1246,6 +1254,66 @@
                     "candidate compiles and verifier-loads as an XDP program",
                     "bpftool prog run returns XDP_DROP for matching reload-update and reload-rule requests and XDP_PASS for nonmatching or malformed requests",
                     "successful verifier log shows bpf_dynptr_from_mem and bpf_dynptr_data payload reads from proven dynptr memory"
+                ]
+            }
+        },
+        {
+            "case_id": "rs_xdp_tools_xdpsock_redirect_map_type_001",
+            "bucket": "environment_config_boundary",
+            "prog_type": "xdp",
+            "origin": "real-project seed from xdp-tools AF_XDP socket redirect",
+            "oracle_kind": [
+                "compile",
+                "verifier_load",
+                "bpftool_prog_run",
+                "environment_config",
+                "helper_state",
+                "proof_predicate"
+            ],
+            "requires_helper_or_state": true,
+            "uses_success_predicate": true,
+            "case_sha256": "2ffc2660511f61c5930d06deb9c0fd551bec9c8967c35a0197ab7acbe3a2000e",
+            "buggy_source_sha256": "b746b98088e688d369213b78f57f738e630cf9e95802d46da1bee93164a6d102",
+            "review": {
+                "reviewer": "Anscombe subagent 019ed9aa-e7ea-72e1-b7c7-4250ff5f06f1",
+                "reviewed_at": "2026-06-18",
+                "bug_confirmed": true,
+                "oracle_adequate": true,
+                "not_seen_in_prior_eval": true,
+                "bug_summary": "The minimized xdp-tools AF_XDP redirect harness preserves the upstream xsks_map plus round-robin bpf_redirect_map workflow, but intentionally declares xsks_map as BPF_MAP_TYPE_ARRAY. The program compiles and reaches verifier load; the verifier rejects the helper call with cannot pass map_type 2 into func bpf_redirect_map#51, so the failure is a real helper/map contract reject rather than a build, privilege, or environment artifact.",
+                "oracle_rationale": "The oracle accepts the minimal repair that changes xsks_map to BPF_MAP_TYPE_XSKMAP and verifies both observable XDP behavior and proof-state obligations: redirect-path fallback returns XDP_DROP, sentinel packets return XDP_PASS, bpf_redirect_map remains reachable with xsks_map, R3 carries XDP_DROP, and R2 at the helper is still the bounded round-robin slot written through .bss. Negative controls that remove the helper or replace the slot with a constant index are rejected, so the oracle checks the AF_XDP redirect semantics rather than only verifier loadability.",
+                "provenance_rationale": "The seed is pinned to xdp-tools commit e9469501622aa22a7e452a671000bec8685edcde at lib/util/xdpsock.bpf.c, SPDX GPL-2.0, with upstream sha256 7c683427dd6fb02d9ab22063876eaab8f75841fa515b7980799d977755d3f2bf verified against the local /home/yunwei37/workspace/xdp-tools checkout. It is not a semantic near-duplicate of existing dev40, bpfix-bench, or staged map-type cases because it exercises AF_XDP XSKMAP redirect semantics rather than perf-event output or tail-call prog-array dispatch, and no LLM repair outcomes were used for admission."
+            },
+            "provenance": {
+                "seed_type": "minimized real-project seed in xdp-tools AF_XDP redirect harness",
+                "source": "https://github.com/xdp-project/xdp-tools/blob/e9469501622aa22a7e452a671000bec8685edcde/lib/util/xdpsock.bpf.c",
+                "license": "GPL-2.0",
+                "minimization": "Preserved the upstream AF_XDP redirect shape: an xsks_map, a per-packet round-robin socket index, and bpf_redirect_map with XDP_DROP fallback. The minimized harness adds deterministic packet branches so bpftool prog run can exercise both redirect and pass paths.",
+                "upstream_project": "https://github.com/xdp-project/xdp-tools.git",
+                "upstream_ref": "e9469501622aa22a7e452a671000bec8685edcde",
+                "upstream_path": "lib/util/xdpsock.bpf.c",
+                "upstream_license": "GPL-2.0",
+                "upstream_file_sha256": "7c683427dd6fb02d9ab22063876eaab8f75841fa515b7980799d977755d3f2bf",
+                "derived_from_dev40": false,
+                "model_result_used": false
+            },
+            "oracle_obligation": {
+                "functional_semantics": [
+                    "repair must load as an XDP program",
+                    "repair must preserve the sentinel pass path",
+                    "repair must preserve the round-robin socket index update and bpf_redirect_map helper path",
+                    "repair must use XDP_DROP as the redirect helper fallback when no AF_XDP socket is installed"
+                ],
+                "verifier_reject_reason": [
+                    "buggy xsks_map is declared as BPF_MAP_TYPE_ARRAY",
+                    "bpf_redirect_map in this AF_XDP redirect path requires a redirect-capable map, specifically BPF_MAP_TYPE_XSKMAP for socket redirects"
+                ],
+                "success_criteria": [
+                    "candidate compiles and verifier-loads as an XDP program",
+                    "bpftool prog run returns XDP_DROP on the redirect path with an empty XSK map and XDP_PASS on the sentinel pass path",
+                    "successful verifier log reaches bpf_redirect_map with xsks_map",
+                    "successful verifier log shows the rr state update and bounded slot index before the helper",
+                    "successful verifier log shows XDP_DROP passed as the redirect helper fallback"
                 ]
             }
         }

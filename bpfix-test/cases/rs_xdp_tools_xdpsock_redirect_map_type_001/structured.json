@@ -1,0 +1,62 @@
+{
+  "diagnostic_version": "bpfix.diagnostic/v3",
+  "error_id": "BPFIX-E011",
+  "failure_class": "environment_config_boundary",
+  "confidence": "medium",
+  "diagnostic_kind": "supported",
+  "help_safety": "repair_hint",
+  "next_action": "map_type_contract",
+  "span_confidence": "exact_pc",
+  "message": "bpf_redirect_map reaches the helper with xsks_map declared as a normal array, but XDP socket redirect requires BPF_MAP_TYPE_XSKMAP",
+  "required_proof": "the map passed as argument 1 to bpf_redirect_map must be redirect-capable while the round-robin socket index and fallback action are preserved",
+  "source_span": {
+    "path": "buggy.bpf.c",
+    "line_start": 38,
+    "line_end": 38,
+    "instruction_pc": 17,
+    "source_text": "return bpf_redirect_map(&xsks_map, rr, XDP_DROP);"
+  },
+  "related_spans": [
+    {
+      "path": "buggy.bpf.c",
+      "line_start": 18,
+      "line_end": 18,
+      "instruction_pc": null,
+      "source_text": "__uint(type, BPF_MAP_TYPE_ARRAY);",
+      "label": "map declaration does not match the XDP socket redirect helper contract"
+    },
+    {
+      "path": "buggy.bpf.c",
+      "line_start": 37,
+      "line_end": 37,
+      "instruction_pc": 13,
+      "source_text": "rr = (rr + 1) & (MAX_SOCKS - 1);",
+      "label": "round-robin socket slot state must still feed the redirect helper"
+    }
+  ],
+  "evidence": [
+    {
+      "kind": "terminal_verifier_error",
+      "detail": "cannot pass map_type 2 into func bpf_redirect_map#51",
+      "line": 38
+    },
+    {
+      "kind": "helper_contract",
+      "detail": "bpf_redirect_map in an XDP socket redirect path must receive BPF_MAP_TYPE_XSKMAP, not BPF_MAP_TYPE_ARRAY",
+      "line": 18
+    }
+  ],
+  "help": [
+    "Change xsks_map to BPF_MAP_TYPE_XSKMAP.",
+    "Keep the round-robin rr update and the bpf_redirect_map call with XDP_DROP fallback; replacing the redirect with a direct XDP_DROP is not an equivalent xdpsock repair."
+  ],
+  "metadata": {
+    "case_id": null,
+    "input_kind": "verifier-log-region",
+    "object_path": null,
+    "object_programs": [],
+    "object_analysis_error": null,
+    "trace_state_count": null,
+    "analysis_error": null
+  }
+}

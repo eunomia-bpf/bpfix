@@ -1,0 +1,90 @@
+libbpf: loading object from <work-dir>/prog.o
+libbpf: elf: section(3) xdp, size 152, link 0, flags 6, type=1
+libbpf: sec 'xdp': found program 'rs_xdp_tools_xdpsock_redirect_map_type' at insn offset 0 (0 bytes), code size 19 insns (152 bytes)
+libbpf: elf: section(4) .relxdp, size 32, link 27, flags 40, type=9
+libbpf: elf: section(5) .bss, size 4, link 0, flags 3, type=8
+libbpf: elf: section(6) .maps, size 32, link 0, flags 3, type=1
+libbpf: elf: section(7) license, size 4, link 0, flags 3, type=1
+libbpf: license of <work-dir>/prog.o is GPL
+libbpf: elf: section(17) .BTF, size 1187, link 0, flags 0, type=1
+libbpf: elf: section(19) .BTF.ext, size 316, link 0, flags 0, type=1
+libbpf: elf: section(27) .symtab, size 408, link 1, flags 0, type=2
+libbpf: looking for externs among 17 symbols...
+libbpf: collected 0 externs total
+libbpf: map 'xsks_map': at sec_idx 6, offset 0.
+libbpf: map 'xsks_map': found type = 2.
+libbpf: map 'xsks_map': found key_size = 4.
+libbpf: map 'xsks_map': found value_size = 4.
+libbpf: map 'xsks_map': found max_entries = 4.
+libbpf: map 'prog.bss' (global data): at sec_idx 5, offset 0, flags 0.
+libbpf: map 1 is "prog.bss"
+libbpf: sec '.relxdp': collecting relocation for section(3) 'xdp'
+libbpf: sec '.relxdp': relo #0: insn #8 against '.bss'
+libbpf: prog 'rs_xdp_tools_xdpsock_redirect_map_type': found data map 1 (prog.bss, sec 5, off 0) for insn 8
+libbpf: sec '.relxdp': relo #1: insn #14 against 'xsks_map'
+libbpf: prog 'rs_xdp_tools_xdpsock_redirect_map_type': found map 0 (xsks_map, sec 6, off 0) for insn #14
+libbpf: object 'prog': failed (-95) to create BPF token from '/sys/fs/bpf', skipping optional step...
+libbpf: loaded kernel BTF from '/sys/kernel/btf/vmlinux'
+libbpf: sec 'xdp': found 2 CO-RE relocations
+libbpf: CO-RE relocating [10] struct xdp_md: found target candidate [14922] struct xdp_md in [vmlinux]
+libbpf: prog 'rs_xdp_tools_xdpsock_redirect_map_type': relo #0: <byte_off> [10] struct xdp_md.data_end (0:1 @ offset 4)
+libbpf: prog 'rs_xdp_tools_xdpsock_redirect_map_type': relo #0: matching candidate #0 <byte_off> [14922] struct xdp_md.data_end (0:1 @ offset 4)
+libbpf: prog 'rs_xdp_tools_xdpsock_redirect_map_type': relo #0: patched insn #1 (LDX/ST/STX) off 4 -> 4
+libbpf: prog 'rs_xdp_tools_xdpsock_redirect_map_type': relo #1: <byte_off> [10] struct xdp_md.data (0:0 @ offset 0)
+libbpf: prog 'rs_xdp_tools_xdpsock_redirect_map_type': relo #1: matching candidate #0 <byte_off> [14922] struct xdp_md.data (0:0 @ offset 0)
+libbpf: prog 'rs_xdp_tools_xdpsock_redirect_map_type': relo #1: patched insn #2 (LDX/ST/STX) off 0 -> 0
+libbpf: map 'xsks_map': created successfully, fd=0
+libbpf: map 'prog.bss': created successfully, fd=0
+libbpf: prog 'rs_xdp_tools_xdpsock_redirect_map_type': BPF program load failed: -EINVAL
+libbpf: prog 'rs_xdp_tools_xdpsock_redirect_map_type': -- BEGIN PROG LOAD LOG --
+func#0 @0
+Live regs before insn:
+  0: .1........ (b7) r0 = 2
+  1: 01........ (61) r2 = *(u32 *)(r1 +4)
+  2: 012....... (61) r1 = *(u32 *)(r1 +0)
+  3: 012....... (bf) r3 = r1
+  4: 0123...... (07) r3 += 1
+  5: 0123...... (2d) if r3 > r2 goto pc+12
+  6: 01........ (71) r1 = *(u8 *)(r1 +0)
+  7: 01........ (15) if r1 == 0xff goto pc+10
+  8: .......... (18) r1 = 0xffff000000000000
+ 10: .1........ (61) r2 = *(u32 *)(r1 +0)
+ 11: .12....... (07) r2 += 1
+ 12: .12....... (57) r2 &= 3
+ 13: .12....... (63) *(u32 *)(r1 +0) = r2
+ 14: ..2....... (18) r1 = 0xffff000000000000
+ 16: .12....... (b7) r3 = 1
+ 17: .123...... (85) call bpf_redirect_map#51
+ 18: 0......... (95) exit
+0: R1=ctx() R10=fp0
+; int rs_xdp_tools_xdpsock_redirect_map_type(struct xdp_md *ctx) @ buggy.bpf.c:27
+0: (b7) r0 = 2                        ; R0_w=2
+; void *data_end = (void *)(long)ctx->data_end; @ buggy.bpf.c:30
+1: (61) r2 = *(u32 *)(r1 +4)          ; R1=ctx() R2_w=pkt_end()
+; void *data = (void *)(long)ctx->data; @ buggy.bpf.c:29
+2: (61) r1 = *(u32 *)(r1 +0)          ; R1_w=pkt(r=0)
+; if (data + 1 > data_end) @ buggy.bpf.c:32
+3: (bf) r3 = r1                       ; R1_w=pkt(r=0) R3_w=pkt(r=0)
+4: (07) r3 += 1                       ; R3_w=pkt(off=1,r=0)
+5: (2d) if r3 > r2 goto pc+12         ; R2_w=pkt_end() R3_w=pkt(off=1,r=1)
+; if (*(__u8 *)data == 0xff) @ buggy.bpf.c:34
+6: (71) r1 = *(u8 *)(r1 +0)           ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+7: (15) if r1 == 0xff goto pc+10      ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=254,var_off=(0x0; 0xff))
+; rr = (rr + 1) & (MAX_SOCKS - 1); @ buggy.bpf.c:37
+8: (18) r1 = 0xffff000000000000       ; R1_w=map_value(map=prog.bss,ks=4,vs=4)
+10: (61) r2 = *(u32 *)(r1 +0)         ; R1_w=map_value(map=prog.bss,ks=4,vs=4) R2_w=scalar(smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000))
+11: (07) r2 += 1                      ; R2_w=scalar(smin=umin=1,smax=umax=0x100000000,var_off=(0x0; 0x1ffffffff))
+12: (57) r2 &= 3                      ; R2_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=3,var_off=(0x0; 0x3))
+13: (63) *(u32 *)(r1 +0) = r2         ; R1_w=map_value(map=prog.bss,ks=4,vs=4) R2_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=3,var_off=(0x0; 0x3))
+; return bpf_redirect_map(&xsks_map, rr, XDP_DROP); @ buggy.bpf.c:38
+14: (18) r1 = 0xffff000000000000      ; R1_w=map_ptr(map=xsks_map,ks=4,vs=4)
+16: (b7) r3 = 1                       ; R3_w=1
+17: (85) call bpf_redirect_map#51
+cannot pass map_type 2 into func bpf_redirect_map#51
+verification time 0 usec
+stack depth 0
+processed 16 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0 mark_read 0
+-- END PROG LOAD LOG --
+libbpf: prog 'rs_xdp_tools_xdpsock_redirect_map_type': failed to load: -EINVAL
+libbpf: failed to load object '<work-dir>/prog.o'
+Error: failed to load object file
