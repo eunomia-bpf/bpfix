@@ -147,8 +147,21 @@ def verify_manifest(
         errors.append("prompt manifest differs from current prompts: " + ", ".join(mismatches))
 
     git = manifest.get("git")
-    if isinstance(git, dict) and git.get("dirty") is True:
-        message = "manifest was generated from a dirty worktree"
+    if not isinstance(git, dict):
+        errors.append("git must be an object")
+    else:
+        if not isinstance(git.get("commit"), str) or not git["commit"].strip():
+            errors.append("git.commit is required")
+        if git.get("dirty") is not False:
+            message = "manifest was not generated from a clean worktree"
+            if allow_dirty_manifest:
+                warnings.append(message)
+            else:
+                errors.append(message)
+
+    current_git = current.get("git")
+    if isinstance(current_git, dict) and current_git.get("dirty") is True:
+        message = "current worktree is dirty during prompt manifest verification"
         if allow_dirty_manifest:
             warnings.append(message)
         else:
@@ -176,7 +189,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--allow-dirty-manifest",
         action="store_true",
-        help="Allow a manifest generated from a dirty worktree. Not valid for paper-grade clean reporting.",
+        help=(
+            "Allow a manifest generated from, or verified against, a dirty worktree. "
+            "Not valid for paper-grade clean reporting."
+        ),
     )
     return parser.parse_args(argv)
 

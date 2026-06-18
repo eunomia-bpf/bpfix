@@ -37,6 +37,7 @@ help:
 	@echo "  make bpfix-test-smoke  Validate bpfix-test fixtures and buggy rejects"
 	@echo "  make bpfix-test-dev40-gate   Run the full dev40 split quality gate"
 	@echo "  make bpfix-test-clean60-gate Run the clean60 heldout gate; fails until admitted"
+	@echo "  make bpfix-test-clean60-paper-gate PROMPT_MANIFEST=... Run clean60 admission + prompt gates"
 	@echo "  make bpfix-test-prompt-gate PROMPT_MANIFEST=... Verify clean60 prompt manifest"
 	@echo "  make bpfix-test-result-gate RESULT_SUMMARIES='...' PROMPT_MANIFEST=... Audit clean60 result summaries"
 	@echo "  make release-check     Run packaging, example, benchmark, and object-analysis gates"
@@ -119,6 +120,9 @@ bpfix-test-prompt-gate:
 		--split bpfix-test/splits/clean60.txt \
 		--expected-count 60 \
 		--verify $(PROMPT_MANIFEST)
+
+.PHONY: bpfix-test-clean60-paper-gate
+bpfix-test-clean60-paper-gate: bpfix-test-clean60-gate bpfix-test-prompt-gate
 
 .PHONY: bpfix-test-result-gate
 bpfix-test-result-gate:

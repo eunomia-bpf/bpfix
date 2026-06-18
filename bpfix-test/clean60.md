@@ -77,6 +77,17 @@ independent review 拒绝。
 审计 `dev40.txt` 本身也必须携带 `dev40.manifest.json`，否则 frozen fingerprint
 baseline 不成立。
 
+正式论文结果还必须通过 paper gate，它把 split admission 和 prompt freeze 绑定起来：
+
+```bash
+make bpfix-test-clean60-paper-gate \
+  PROMPT_MANIFEST=bpfix-test/splits/clean60.prompts.json
+```
+
+`clean60.prompts.json` 必须来自干净 worktree，验证 prompt manifest 时当前
+checkout 也必须是干净的；带 `dirty: true` 的 prompt manifest 只能用于本地
+dry-run，不能作为 paper-grade 结果依据。
+
 ## 污染控制
 
 `clean60` 必须满足：
@@ -119,6 +130,11 @@ baseline 不成立。
 `environment_config` 或 `custom_oracle`。这允许 LSM、tracepoint、cgroup 和
 environment/config boundary cases 使用 attach/runtime 或配置型 oracle，而不是被
 强行塞进 `bpftool prog run`。
+
+`source_category: real_project_seed` 必须有结构化 upstream provenance：
+`provenance.upstream_project`、`provenance.upstream_ref`、
+`provenance.upstream_path` 和 `provenance.upstream_license`。仅仅是
+`minimized_upstream_style` 或 clean-room synthetic 不计入真实项目种子数量。
 
 ## Case 格式
 
@@ -173,7 +189,8 @@ cases/<case_id>/
 约束：
 
 - XDP 不能超过 25/60；
-- 至少 20/60 源于真实项目结构或真实 bug 形态的 minimized reproducer；
+- 至少 20/60 必须是有 upstream project/ref/path/license provenance 的
+  `real_project_seed`；
 - 至少 20/60 的正确修复需要保留 helper side effect 或 map/ringbuf state；
 - 至少 15/60 包含 source correlation 难点，而不是只修最后一行；
 - 至少 10/60 是 modern BPF protocol 或 environment/config boundary；

@@ -371,6 +371,7 @@ def audit_clean_candidate_seed_ledger(
 
 
 def audit_clean_case_review(case_id: str, case: dict[str, Any], errors: list[str]) -> dict[str, Any]:
+    source_category = case.get("source_category")
     review = case.get("review")
     if not isinstance(review, dict):
         errors.append(f"{case_id}: clean60 review must be an object")
@@ -392,6 +393,10 @@ def audit_clean_case_review(case_id: str, case: dict[str, Any], errors: list[str
     for field in ["seed_type", "source", "license", "minimization"]:
         if not require_nonempty_string(provenance.get(field)):
             errors.append(f"{case_id}: clean60 provenance.{field} must be a non-empty string")
+    if source_category == "real_project_seed":
+        for field in ["upstream_project", "upstream_ref", "upstream_path", "upstream_license"]:
+            if not require_nonempty_string(provenance.get(field)):
+                errors.append(f"{case_id}: clean60 real_project_seed provenance.{field} must be a non-empty string")
     if provenance.get("derived_from_dev40") is not False:
         errors.append(f"{case_id}: clean60 provenance.derived_from_dev40 must be false")
     if provenance.get("model_result_used") is not False:
@@ -634,7 +639,7 @@ def audit_manifest(
         if prog_type_counts.get("xdp", 0) > 25:
             errors.append("clean60 xdp prog_type count must be <= 25")
         if realish_count < 20:
-            errors.append("clean60 must include at least 20 real_project_seed/minimized_upstream_style cases")
+            errors.append("clean60 must include at least 20 real_project_seed cases")
         if helper_or_state_count < 20:
             errors.append("clean60 must include at least 20 helper/state-obligation cases")
 

@@ -38,6 +38,10 @@ provenance, oracle-obligation, selection-protocol, candidate-seed-ledger, and
 exclusion-ledger fields.
 Clean splits are also checked for exact `buggy.bpf.c` source overlap with
 `bpfix-bench/cases/**/*.c`.
+Clean splits must contain no duplicate `buggy.bpf.c` hashes inside the split
+itself. At least 20 cases must be `real_project_seed` cases with structured
+upstream project, ref, path, and license provenance; `minimized_upstream_style`
+is useful for diversity but does not count toward that real-project minimum.
 When auditing clean cases directly, pass the manifest to `audit_cases.py` so
 custom, attach/runtime, and environment/config oracles are not forced through
 the `bpftool prog run` fixture shape. A case that also declares
@@ -61,4 +65,13 @@ python3 bpfix-test/tools/audit_splits.py \
   --expected-count 60 \
   --disallow-overlap bpfix-test/splits/dev40.txt \
   --audit-cases --smoke
+```
+
+Before any paper-grade clean run is reported, also verify the frozen prompt
+manifest from a clean worktree. Verification itself must also run from a clean
+checkout:
+
+```bash
+make bpfix-test-clean60-paper-gate \
+  PROMPT_MANIFEST=bpfix-test/splits/clean60.prompts.json
 ```
