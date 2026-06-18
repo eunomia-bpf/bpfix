@@ -267,6 +267,14 @@
             "decision_made_before_model_eval": true,
             "model_result_used": false,
             "notes": "Minimized AgentSight's write-family enter/exit pending-context workflow into an XDP proof-lifecycle case where the saved fd pointer from write_ctx_map is checked only on a packet-selected branch before *fd_ptr is used after a branch merge; no LLM repair outcomes were used for admission."
+        },
+        {
+            "seed": "agentsight@900ae4a31658a265646f7b477b20260063d20f38:bpf/process_ext/bpf_fs.h#overflow-counter-merge",
+            "decision": "admitted",
+            "case_id": "rs_agentsight_fs_overflow_counter_merge_001",
+            "decision_made_before_model_eval": true,
+            "model_result_used": false,
+            "notes": "Minimized AgentSight's filesystem path aggregation workflow into an XDP proof-lifecycle case where the overflow counter pointer is checked only on a packet-selected branch before the atomic increment after a branch merge; no LLM repair outcomes were used for admission."
         }
   ],
   "seed_exclusion_ledger": [
@@ -2081,6 +2089,71 @@
                     "post-run map lookup confirms event_agg_map count, total_bytes, and last_fd are derived from the saved fd and return value",
                     "successful verifier log shows write_ctx_map lookup, saved fd load before delete, pending-context delete, event_agg_map lookup/update, and aggregate field updates",
                     "oracle rejects repairs that use the packet decoy fd instead of *fd_ptr, return constant actions, skip aggregate updates, or only delete the pending entry"
+                ]
+            }
+        },
+        {
+            "case_id": "rs_agentsight_fs_overflow_counter_merge_001",
+            "bucket": "proof_lifecycle",
+            "prog_type": "xdp",
+            "origin": "real-project seed from AgentSight filesystem path aggregation overflow accounting",
+            "oracle_kind": [
+                "compile",
+                "verifier_load",
+                "bpftool_prog_run",
+                "helper_state",
+                "proof_predicate"
+            ],
+            "requires_helper_or_state": true,
+            "uses_success_predicate": true,
+            "case_sha256": "5cd6a0d853f7bc8921fb8f475215e7e2d6202196ac422d1148103d5033a7db1a",
+            "buggy_source_sha256": "45a4d8b5554586da532f3ffb1340d82adadf5c4f16d03ea355588bb97e20840d",
+            "review": {
+                "reviewer": "Ptolemy subagent 019edcbc-ac0b-7070-98ec-1a2456f2f01c",
+                "reviewed_at": "2026-06-18",
+                "bug_confirmed": true,
+                "oracle_adequate": true,
+                "not_seen_in_prior_eval": true,
+                "bug_summary": "The minimized XDP harness preserves AgentSight's filesystem path aggregation overflow accounting workflow but proves the agg_overflow_count pointer only on a packet-selected guarded branch, then performs the atomic increment after the branch merge. The verifier rejects the unguarded path as R1 invalid mem access 'map_value_or_null'.",
+                "oracle_rationale": "The oracle requires buggy rejection with the nullable map-value verifier error, then requires repaired sources to compile and verifier-load while preserving directory-prefix key construction, existing aggregate in-place updates, new aggregate insertion, failed-insert overflow accounting, and disabled-selector no-op behavior. Four bpftool prog run inputs distinguish existing aggregate update, fresh path insertion, full-map overflow counter increment, and disabled selector. Successful-verifier predicates require event_agg_map lookup/update, agg_overflow_count lookup followed by the atomic increment, and existing aggregate value mutation, rejecting repairs that delete overflow accounting, replace the workflow with constant actions, or skip aggregate updates.",
+                "provenance_rationale": "Seed verified against local AgentSight commit 900ae4a31658a265646f7b477b20260063d20f38, path bpf/process_ext/bpf_fs.h, remote https://github.com/eunomia-bpf/agentsight, sha256 a852625c514cde7c0da0b7db37528ae229521da14a9e992a48727343b0e6afcd, SPDX GPL-2.0 OR BSD-3-Clause. The case is a minimized mutation of the upstream filesystem aggregation overflow-counter workflow, not a claim that upstream contains this exact bug, and no LLM repair result was used for admission."
+            },
+            "provenance": {
+                "seed_type": "minimized real-project seed in AgentSight XDP filesystem aggregation harness",
+                "source": "https://github.com/eunomia-bpf/agentsight/blob/900ae4a31658a265646f7b477b20260063d20f38/bpf/process_ext/bpf_fs.h",
+                "license": "GPL-2.0 OR BSD-3-Clause",
+                "minimization": "Preserved the upstream filesystem aggregation shape: trace_fs_mutations gating, path-to-directory-prefix key construction, event_agg_map lookup/update, and agg_overflow_count increment when inserting a new aggregate fails. The minimized XDP harness injects only the branch-local nullable proof bug before the overflow counter is atomically incremented.",
+                "upstream_project": "https://github.com/eunomia-bpf/agentsight",
+                "upstream_ref": "900ae4a31658a265646f7b477b20260063d20f38",
+                "upstream_path": "bpf/process_ext/bpf_fs.h",
+                "upstream_license": "GPL-2.0 OR BSD-3-Clause",
+                "upstream_file_sha256": "a852625c514cde7c0da0b7db37528ae229521da14a9e992a48727343b0e6afcd",
+                "derived_from_dev40": false,
+                "model_result_used": false
+            },
+            "oracle_obligation": {
+                "functional_semantics": [
+                    "repair must load as an XDP program",
+                    "repair must preserve filesystem path aggregation keyed by packet pid and extracted directory prefix",
+                    "repair must update existing event_agg_map values in place, including count, marker, and copied prefix detail",
+                    "repair must insert a new aggregate value when the aggregate map has capacity",
+                    "repair must increment agg_overflow_count when inserting a new aggregate fails because the aggregate map is full",
+                    "repair must leave aggregate and overflow maps unchanged when the event selector disables the path",
+                    "repair must return XDP_DROP only for processed filesystem events and XDP_PASS for disabled or truncated inputs"
+                ],
+                "verifier_reject_reason": [
+                    "buggy program receives map_value_or_null from bpf_map_lookup_elem(&agg_overflow_count, &zero)",
+                    "the non-null proof is established only when the packet-selected guarded_overflow branch is taken",
+                    "after the branch merge, the unchecked path reaches __sync_fetch_and_add(overflow, 1) with the overflow pointer still nullable"
+                ],
+                "success_criteria": [
+                    "candidate compiles and verifier-loads as an XDP program",
+                    "bpftool prog run updates an existing aggregate in place",
+                    "bpftool prog run inserts a new aggregate without changing the overflow counter when capacity remains",
+                    "bpftool prog run increments agg_overflow_count when event_agg_map is full and does not insert the overflowed key",
+                    "bpftool prog run leaves maps unchanged for the disabled-selector path",
+                    "successful verifier log shows event_agg_map lookup/update, agg_overflow_count lookup, overflow atomic increment, and existing aggregate field updates",
+                    "oracle rejects repairs that delete the overflow counter path, return constant actions, skip aggregate updates, or update the wrong aggregate key"
                 ]
             }
         }
