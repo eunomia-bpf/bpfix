@@ -1,0 +1,1011 @@
+libbpf: loading object from <work-dir>/prog.o
+libbpf: elf: section(3) xdp, size 1984, link 0, flags 6, type=1
+libbpf: sec 'xdp': found program 'rs_eunomia_http_doff_copy_bound' at insn offset 0 (0 bytes), code size 248 insns (1984 bytes)
+libbpf: elf: section(4) .relxdp, size 176, link 27, flags 40, type=9
+libbpf: elf: section(5) .maps, size 48, link 0, flags 3, type=1
+libbpf: elf: section(6) license, size 4, link 0, flags 3, type=1
+libbpf: license of <work-dir>/prog.o is GPL
+libbpf: elf: section(17) .BTF, size 3418, link 0, flags 0, type=1
+libbpf: elf: section(19) .BTF.ext, size 2700, link 0, flags 0, type=1
+libbpf: elf: section(27) .symtab, size 1032, link 1, flags 0, type=2
+libbpf: looking for externs among 43 symbols...
+libbpf: collected 0 externs total
+libbpf: map 'rb': at sec_idx 5, offset 0.
+libbpf: map 'rb': found type = 27.
+libbpf: map 'rb': found max_entries = 1048576.
+libbpf: map 'stats': at sec_idx 5, offset 16.
+libbpf: map 'stats': found type = 2.
+libbpf: map 'stats': found key [14], sz = 4.
+libbpf: map 'stats': found value [17], sz = 40.
+libbpf: map 'stats': found max_entries = 1.
+libbpf: sec '.relxdp': collecting relocation for section(3) 'xdp'
+libbpf: sec '.relxdp': relo #0: insn #10 against 'stats'
+libbpf: prog 'rs_eunomia_http_doff_copy_bound': found map 1 (stats, sec 5, off 16) for insn #10
+libbpf: sec '.relxdp': relo #1: insn #21 against 'stats'
+libbpf: prog 'rs_eunomia_http_doff_copy_bound': found map 1 (stats, sec 5, off 16) for insn #21
+libbpf: sec '.relxdp': relo #2: insn #32 against 'stats'
+libbpf: prog 'rs_eunomia_http_doff_copy_bound': found map 1 (stats, sec 5, off 16) for insn #32
+libbpf: sec '.relxdp': relo #3: insn #46 against 'stats'
+libbpf: prog 'rs_eunomia_http_doff_copy_bound': found map 1 (stats, sec 5, off 16) for insn #46
+libbpf: sec '.relxdp': relo #4: insn #62 against 'stats'
+libbpf: prog 'rs_eunomia_http_doff_copy_bound': found map 1 (stats, sec 5, off 16) for insn #62
+libbpf: sec '.relxdp': relo #5: insn #73 against 'stats'
+libbpf: prog 'rs_eunomia_http_doff_copy_bound': found map 1 (stats, sec 5, off 16) for insn #73
+libbpf: sec '.relxdp': relo #6: insn #85 against 'stats'
+libbpf: prog 'rs_eunomia_http_doff_copy_bound': found map 1 (stats, sec 5, off 16) for insn #85
+libbpf: sec '.relxdp': relo #7: insn #100 against 'stats'
+libbpf: prog 'rs_eunomia_http_doff_copy_bound': found map 1 (stats, sec 5, off 16) for insn #100
+libbpf: sec '.relxdp': relo #8: insn #106 against 'rb'
+libbpf: prog 'rs_eunomia_http_doff_copy_bound': found map 0 (rb, sec 5, off 0) for insn #106
+libbpf: sec '.relxdp': relo #9: insn #116 against 'stats'
+libbpf: prog 'rs_eunomia_http_doff_copy_bound': found map 1 (stats, sec 5, off 16) for insn #116
+libbpf: sec '.relxdp': relo #10: insn #221 against 'stats'
+libbpf: prog 'rs_eunomia_http_doff_copy_bound': found map 1 (stats, sec 5, off 16) for insn #221
+libbpf: object 'prog': failed (-95) to create BPF token from '/sys/fs/bpf', skipping optional step...
+libbpf: loaded kernel BTF from '/sys/kernel/btf/vmlinux'
+libbpf: sec 'xdp': found 9 CO-RE relocations
+libbpf: CO-RE relocating [28] struct xdp_md: found target candidate [14922] struct xdp_md in [vmlinux]
+libbpf: prog 'rs_eunomia_http_doff_copy_bound': relo #0: <byte_off> [28] struct xdp_md.data_end (0:1 @ offset 4)
+libbpf: prog 'rs_eunomia_http_doff_copy_bound': relo #0: matching candidate #0 <byte_off> [14922] struct xdp_md.data_end (0:1 @ offset 4)
+libbpf: prog 'rs_eunomia_http_doff_copy_bound': relo #0: patched insn #0 (LDX/ST/STX) off 4 -> 4
+libbpf: prog 'rs_eunomia_http_doff_copy_bound': relo #1: <byte_off> [28] struct xdp_md.data (0:0 @ offset 0)
+libbpf: prog 'rs_eunomia_http_doff_copy_bound': relo #1: matching candidate #0 <byte_off> [14922] struct xdp_md.data (0:0 @ offset 0)
+libbpf: prog 'rs_eunomia_http_doff_copy_bound': relo #1: patched insn #1 (LDX/ST/STX) off 0 -> 0
+libbpf: CO-RE relocating [31] struct ethhdr: found target candidate [23410] struct ethhdr in [vmlinux]
+libbpf: prog 'rs_eunomia_http_doff_copy_bound': relo #2: <byte_off> [31] struct ethhdr.h_proto (0:2 @ offset 12)
+libbpf: prog 'rs_eunomia_http_doff_copy_bound': relo #2: matching candidate #0 <byte_off> [23410] struct ethhdr.h_proto (0:2 @ offset 12)
+libbpf: prog 'rs_eunomia_http_doff_copy_bound': relo #2: patched insn #15 (LDX/ST/STX) off 12 -> 12
+libbpf: CO-RE relocating [34] struct iphdr: found target candidate [23765] struct iphdr in [vmlinux]
+libbpf: prog 'rs_eunomia_http_doff_copy_bound': relo #3: <byte_off> [34] struct iphdr.version (0:1 @ offset 0.4)
+libbpf: prog 'rs_eunomia_http_doff_copy_bound': relo #3: matching candidate #0 <byte_off> [23765] struct iphdr.version (0:1 @ offset 0.4)
+libbpf: prog 'rs_eunomia_http_doff_copy_bound': relo #3: patched insn #37 (LDX/ST/STX) off 0 -> 0
+libbpf: prog 'rs_eunomia_http_doff_copy_bound': relo #4: <byte_off> [34] struct iphdr.protocol (0:7 @ offset 9)
+libbpf: prog 'rs_eunomia_http_doff_copy_bound': relo #4: matching candidate #0 <byte_off> [23765] struct iphdr.protocol (0:7 @ offset 9)
+libbpf: prog 'rs_eunomia_http_doff_copy_bound': relo #4: patched insn #40 (LDX/ST/STX) off 9 -> 9
+libbpf: prog 'rs_eunomia_http_doff_copy_bound': relo #5: <byte_off> [34] struct iphdr.ihl (0:0 @ offset 0)
+libbpf: prog 'rs_eunomia_http_doff_copy_bound': relo #5: matching candidate #0 <byte_off> [23765] struct iphdr.ihl (0:0 @ offset 0)
+libbpf: prog 'rs_eunomia_http_doff_copy_bound': relo #5: patched insn #54 (LDX/ST/STX) off 0 -> 0
+libbpf: CO-RE relocating [40] struct tcphdr: found target candidate [23763] struct tcphdr in [vmlinux]
+libbpf: prog 'rs_eunomia_http_doff_copy_bound': relo #6: <byte_off> [40] struct tcphdr.doff (0:5 @ offset 12.4)
+libbpf: prog 'rs_eunomia_http_doff_copy_bound': relo #6: matching candidate #0 <byte_off> [23763] struct tcphdr.doff (0:6 @ offset 12.4)
+libbpf: prog 'rs_eunomia_http_doff_copy_bound': relo #6: patched insn #90 (LDX/ST/STX) off 12 -> 12
+libbpf: prog 'rs_eunomia_http_doff_copy_bound': relo #7: <byte_off> [40] struct tcphdr.source (0:0 @ offset 0)
+libbpf: prog 'rs_eunomia_http_doff_copy_bound': relo #7: matching candidate #0 <byte_off> [23763] struct tcphdr.source (0:0 @ offset 0)
+libbpf: prog 'rs_eunomia_http_doff_copy_bound': relo #7: patched insn #124 (LDX/ST/STX) off 0 -> 0
+libbpf: prog 'rs_eunomia_http_doff_copy_bound': relo #8: <byte_off> [40] struct tcphdr.dest (0:1 @ offset 2)
+libbpf: prog 'rs_eunomia_http_doff_copy_bound': relo #8: matching candidate #0 <byte_off> [23763] struct tcphdr.dest (0:1 @ offset 2)
+libbpf: prog 'rs_eunomia_http_doff_copy_bound': relo #8: patched insn #127 (LDX/ST/STX) off 2 -> 2
+libbpf: map 'rb': created successfully, fd=0
+libbpf: map 'stats': created successfully, fd=0
+libbpf: prog 'rs_eunomia_http_doff_copy_bound': BPF program load failed: -EACCES
+libbpf: prog 'rs_eunomia_http_doff_copy_bound': -- BEGIN PROG LOAD LOG --
+func#0 @0
+Live regs before insn:
+  0: .1........ (61) r2 = *(u32 *)(r1 +4)
+  1: .12....... (61) r1 = *(u32 *)(r1 +0)
+  2: .12....... (b7) r3 = 0
+  3: .123...... (63) *(u32 *)(r10 -8) = r3
+  4: .123...... (bf) r8 = r1
+  5: .123....8. (07) r8 += 14
+  6: .123....8. (3d) if r2 >= r8 goto pc+8
+  7: ...3...... (63) *(u32 *)(r10 -4) = r3
+  8: .......... (bf) r2 = r10
+  9: ..2....... (07) r2 += -4
+ 10: ..2....... (18) r1 = 0xffff000000000000
+ 12: .12....... (85) call bpf_map_lookup_elem#1
+ 13: 0......... (15) if r0 == 0x0 goto pc+38
+ 14: 0......... (05) goto pc+35
+ 15: .12.....8. (69) r3 = *(u16 *)(r1 +12)
+ 16: .123....8. (15) if r3 == 0x8 goto pc+9
+ 17: .......... (b7) r1 = 0
+ 18: .1........ (63) *(u32 *)(r10 -4) = r1
+ 19: .......... (bf) r2 = r10
+ 20: ..2....... (07) r2 += -4
+ 21: ..2....... (18) r1 = 0xffff000000000000
+ 23: .12....... (85) call bpf_map_lookup_elem#1
+ 24: 0......... (15) if r0 == 0x0 goto pc+27
+ 25: 0......... (05) goto pc+24
+ 26: .12.....8. (07) r1 += 34
+ 27: .12.....8. (3d) if r2 >= r1 goto pc+9
+ 28: .......... (b7) r1 = 0
+ 29: .1........ (63) *(u32 *)(r10 -4) = r1
+ 30: .......... (bf) r2 = r10
+ 31: ..2....... (07) r2 += -4
+ 32: ..2....... (18) r1 = 0xffff000000000000
+ 34: .12....... (85) call bpf_map_lookup_elem#1
+ 35: 0......... (15) if r0 == 0x0 goto pc+16
+ 36: 0......... (05) goto pc+13
+ 37: ..2.....8. (71) r1 = *(u8 *)(r8 +0)
+ 38: .12.....8. (57) r1 &= 240
+ 39: .12.....8. (55) if r1 != 0x40 goto pc+2
+ 40: ..2.....8. (71) r1 = *(u8 *)(r8 +9)
+ 41: .12.....8. (15) if r1 == 0x6 goto pc+12
+ 42: .......... (b7) r1 = 0
+ 43: .1........ (63) *(u32 *)(r10 -4) = r1
+ 44: .......... (bf) r2 = r10
+ 45: ..2....... (07) r2 += -4
+ 46: ..2....... (18) r1 = 0xffff000000000000
+ 48: .12....... (85) call bpf_map_lookup_elem#1
+ 49: 0......... (15) if r0 == 0x0 goto pc+2
+ 50: 0......... (b7) r1 = 1
+ 51: 01........ (db) lock *(u64 *)(r0 +8) += r1
+ 52: .......... (b7) r0 = 2
+ 53: 0......... (95) exit
+ 54: ..2.....8. (71) r1 = *(u8 *)(r8 +0)
+ 55: .12.....8. (67) r1 <<= 2
+ 56: .12.....8. (57) r1 &= 60
+ 57: .12.....8. (25) if r1 > 0x13 goto pc+9
+ 58: .......... (b7) r1 = 0
+ 59: .1........ (63) *(u32 *)(r10 -4) = r1
+ 60: .......... (bf) r2 = r10
+ 61: ..2....... (07) r2 += -4
+ 62: ..2....... (18) r1 = 0xffff000000000000
+ 64: .12....... (85) call bpf_map_lookup_elem#1
+ 65: 0......... (15) if r0 == 0x0 goto pc-14
+ 66: 0......... (05) goto pc-17
+ 67: .12.....8. (0f) r8 += r1
+ 68: ..2.....8. (3d) if r2 >= r8 goto pc+9
+ 69: .......... (b7) r1 = 0
+ 70: .1........ (63) *(u32 *)(r10 -4) = r1
+ 71: .......... (bf) r2 = r10
+ 72: ..2....... (07) r2 += -4
+ 73: ..2....... (18) r1 = 0xffff000000000000
+ 75: .12....... (85) call bpf_map_lookup_elem#1
+ 76: 0......... (15) if r0 == 0x0 goto pc-25
+ 77: 0......... (05) goto pc-28
+ 78: ..2.....8. (bf) r1 = r8
+ 79: .12.....8. (07) r1 += 20
+ 80: .12.....8. (3d) if r2 >= r1 goto pc+9
+ 81: .......... (b7) r1 = 0
+ 82: .1........ (63) *(u32 *)(r10 -4) = r1
+ 83: .......... (bf) r2 = r10
+ 84: ..2....... (07) r2 += -4
+ 85: ..2....... (18) r1 = 0xffff000000000000
+ 87: .12....... (85) call bpf_map_lookup_elem#1
+ 88: 0......... (15) if r0 == 0x0 goto pc-37
+ 89: 0......... (05) goto pc-40
+ 90: ........8. (69) r7 = *(u16 *)(r8 +12)
+ 91: .......78. (77) r7 >>= 2
+ 92: .......78. (57) r7 &= 60
+ 93: .......78. (bf) r1 = r7
+ 94: .1.....78. (07) r1 += -33
+ 95: .1.....78. (25) if r1 > 0xffff000000000000 goto pc+9
+ 96: .......... (b7) r1 = 0
+ 97: .1........ (63) *(u32 *)(r10 -4) = r1
+ 98: .......... (bf) r2 = r10
+ 99: ..2....... (07) r2 += -4
+100: ..2....... (18) r1 = 0xffff000000000000
+102: .12....... (85) call bpf_map_lookup_elem#1
+103: 0......... (15) if r0 == 0x0 goto pc-52
+104: 0......... (05) goto pc-55
+105: .......78. (b7) r9 = 0
+106: .......789 (18) r1 = 0xffff000000000000
+108: .1.....789 (b7) r2 = 44
+109: .12....789 (b7) r3 = 0
+110: .123...789 (85) call bpf_ringbuf_reserve#131
+111: 0......789 (bf) r6 = r0
+112: ......6789 (55) if r6 != 0x0 goto pc+8
+113: .........9 (63) *(u32 *)(r10 -4) = r9
+114: .......... (bf) r2 = r10
+115: ..2....... (07) r2 += -4
+116: ..2....... (18) r1 = 0xffff000000000000
+118: .12....... (85) call bpf_map_lookup_elem#1
+119: 0......... (15) if r0 == 0x0 goto pc-68
+120: 0......... (05) goto pc-71
+121: ......678. (b7) r1 = 1414546244
+122: .1....678. (63) *(u32 *)(r6 +0) = r1
+123: ......678. (63) *(u32 *)(r6 +4) = r7
+124: ......678. (69) r1 = *(u16 *)(r8 +0)
+125: .1....678. (dc) r1 = be16 r1
+126: .1....678. (6b) *(u16 *)(r6 +8) = r1
+127: ......678. (69) r1 = *(u16 *)(r8 +2)
+128: .1....678. (dc) r1 = be16 r1
+129: .1....678. (6b) *(u16 *)(r6 +10) = r1
+130: ......678. (71) r1 = *(u8 *)(r8 +0)
+131: .1....678. (73) *(u8 *)(r6 +12) = r1
+132: ......678. (71) r1 = *(u8 *)(r8 +1)
+133: .1....678. (73) *(u8 *)(r6 +13) = r1
+134: ......678. (71) r1 = *(u8 *)(r8 +2)
+135: .1....678. (73) *(u8 *)(r6 +14) = r1
+136: ......678. (71) r1 = *(u8 *)(r8 +3)
+137: .1....678. (73) *(u8 *)(r6 +15) = r1
+138: ......678. (71) r1 = *(u8 *)(r8 +4)
+139: .1....678. (73) *(u8 *)(r6 +16) = r1
+140: ......678. (71) r1 = *(u8 *)(r8 +5)
+141: .1....678. (73) *(u8 *)(r6 +17) = r1
+142: ......678. (71) r1 = *(u8 *)(r8 +6)
+143: .1....678. (73) *(u8 *)(r6 +18) = r1
+144: ......678. (71) r1 = *(u8 *)(r8 +7)
+145: .1....678. (73) *(u8 *)(r6 +19) = r1
+146: ......678. (71) r1 = *(u8 *)(r8 +8)
+147: .1....678. (73) *(u8 *)(r6 +20) = r1
+148: ......678. (71) r1 = *(u8 *)(r8 +9)
+149: .1....678. (73) *(u8 *)(r6 +21) = r1
+150: ......678. (71) r1 = *(u8 *)(r8 +10)
+151: .1....678. (73) *(u8 *)(r6 +22) = r1
+152: ......678. (71) r1 = *(u8 *)(r8 +11)
+153: .1....678. (73) *(u8 *)(r6 +23) = r1
+154: ......678. (71) r1 = *(u8 *)(r8 +12)
+155: .1....678. (73) *(u8 *)(r6 +24) = r1
+156: ......678. (71) r1 = *(u8 *)(r8 +13)
+157: .1....678. (73) *(u8 *)(r6 +25) = r1
+158: ......678. (71) r1 = *(u8 *)(r8 +14)
+159: .1....678. (73) *(u8 *)(r6 +26) = r1
+160: ......678. (71) r1 = *(u8 *)(r8 +15)
+161: .1....678. (73) *(u8 *)(r6 +27) = r1
+162: ......678. (71) r1 = *(u8 *)(r8 +16)
+163: .1....678. (73) *(u8 *)(r6 +28) = r1
+164: ......678. (71) r1 = *(u8 *)(r8 +17)
+165: .1....678. (73) *(u8 *)(r6 +29) = r1
+166: ......678. (71) r1 = *(u8 *)(r8 +18)
+167: .1....678. (73) *(u8 *)(r6 +30) = r1
+168: ......678. (71) r1 = *(u8 *)(r8 +19)
+169: .1....678. (73) *(u8 *)(r6 +31) = r1
+170: ......678. (25) if r7 > 0x14 goto pc+4
+171: ......67.. (b7) r1 = 0
+172: .1....67.. (73) *(u8 *)(r6 +33) = r1
+173: .1....67.. (73) *(u8 *)(r6 +32) = r1
+174: ......67.. (05) goto pc+5
+175: ......678. (71) r1 = *(u8 *)(r8 +20)
+176: .1....678. (73) *(u8 *)(r6 +32) = r1
+177: ......678. (71) r1 = *(u8 *)(r8 +21)
+178: .1....678. (73) *(u8 *)(r6 +33) = r1
+179: ......678. (25) if r7 > 0x16 goto pc+4
+180: ......67.. (b7) r1 = 0
+181: .1....67.. (73) *(u8 *)(r6 +35) = r1
+182: .1....67.. (73) *(u8 *)(r6 +34) = r1
+183: ......67.. (05) goto pc+5
+184: ......678. (71) r1 = *(u8 *)(r8 +22)
+185: .1....678. (73) *(u8 *)(r6 +34) = r1
+186: ......678. (71) r1 = *(u8 *)(r8 +23)
+187: .1....678. (73) *(u8 *)(r6 +35) = r1
+188: ......678. (25) if r7 > 0x18 goto pc+4
+189: ......67.. (b7) r1 = 0
+190: .1....67.. (73) *(u8 *)(r6 +37) = r1
+191: .1....67.. (73) *(u8 *)(r6 +36) = r1
+192: ......67.. (05) goto pc+5
+193: ......678. (71) r1 = *(u8 *)(r8 +24)
+194: .1....678. (73) *(u8 *)(r6 +36) = r1
+195: ......678. (71) r1 = *(u8 *)(r8 +25)
+196: .1....678. (73) *(u8 *)(r6 +37) = r1
+197: ......678. (25) if r7 > 0x1a goto pc+4
+198: ......67.. (b7) r1 = 0
+199: .1....67.. (73) *(u8 *)(r6 +39) = r1
+200: .1....67.. (73) *(u8 *)(r6 +38) = r1
+201: ......67.. (05) goto pc+5
+202: ......678. (71) r1 = *(u8 *)(r8 +26)
+203: .1....678. (73) *(u8 *)(r6 +38) = r1
+204: ......678. (71) r1 = *(u8 *)(r8 +27)
+205: .1....678. (73) *(u8 *)(r6 +39) = r1
+206: ......678. (25) if r7 > 0x1c goto pc+4
+207: ......67.. (b7) r1 = 0
+208: .1....67.. (73) *(u8 *)(r6 +41) = r1
+209: .1....67.. (73) *(u8 *)(r6 +40) = r1
+210: ......67.. (05) goto pc+5
+211: ......678. (71) r1 = *(u8 *)(r8 +28)
+212: .1....678. (73) *(u8 *)(r6 +40) = r1
+213: ......678. (71) r1 = *(u8 *)(r8 +29)
+214: .1....678. (73) *(u8 *)(r6 +41) = r1
+215: ......678. (25) if r7 > 0x1e goto pc+28
+216: ......67.. (b7) r1 = 0
+217: .1....67.. (73) *(u8 *)(r6 +42) = r1
+218: .1....67.. (73) *(u8 *)(r6 +43) = r1
+219: ......67.. (bf) r2 = r10
+220: ..2...67.. (07) r2 += -8
+221: ..2...67.. (18) r1 = 0xffff000000000000
+223: .12...67.. (85) call bpf_map_lookup_elem#1
+224: 0.....67.. (15) if r0 == 0x0 goto pc+14
+225: 0.....67.. (b7) r1 = 1
+226: 01....67.. (db) lock *(u64 *)(r0 +0) += r1
+227: 0.....67.. (b7) r1 = 43
+228: 01....67.. (15) if r7 == 0x20 goto pc+1
+229: 0.....67.. (b7) r1 = 31
+230: 01....67.. (63) *(u32 *)(r0 +16) = r7
+231: 01....6... (69) r2 = *(u16 *)(r6 +10)
+232: 012...6... (6b) *(u16 *)(r0 +20) = r2
+233: 01....6... (71) r2 = *(u8 *)(r6 +12)
+234: 012...6... (73) *(u8 *)(r0 +22) = r2
+235: 01....6... (bf) r2 = r6
+236: 012...6... (0f) r2 += r1
+237: 0.2...6... (71) r1 = *(u8 *)(r2 +0)
+238: 01....6... (73) *(u8 *)(r0 +23) = r1
+239: ......6... (bf) r1 = r6
+240: .1........ (b7) r2 = 0
+241: .12....... (85) call bpf_ringbuf_submit#132
+242: .......... (b7) r0 = 1
+243: 0......... (05) goto pc-191
+244: ......678. (71) r1 = *(u8 *)(r8 +30)
+245: .1....678. (73) *(u8 *)(r6 +42) = r1
+246: ......678. (71) r1 = *(u8 *)(r8 +31)
+247: .1....67.. (05) goto pc-30
+0: R1=ctx() R10=fp0
+; void *data_end = (void *)(long)ctx->data_end; @ buggy.bpf.c:67
+0: (61) r2 = *(u32 *)(r1 +4)          ; R1=ctx() R2_w=pkt_end()
+; void *data = (void *)(long)ctx->data; @ buggy.bpf.c:66
+1: (61) r1 = *(u32 *)(r1 +0)          ; R1_w=pkt(r=0)
+2: (b7) r3 = 0                        ; R3_w=0
+; __u32 zero = 0; @ buggy.bpf.c:73
+3: (63) *(u32 *)(r10 -8) = r3         ; R3_w=0 R10=fp0 fp-8=????0
+; if ((void *)(eth + 1) > data_end) { @ buggy.bpf.c:77
+4: (bf) r8 = r1                       ; R1_w=pkt(r=0) R8_w=pkt(r=0)
+5: (07) r8 += 14                      ; R8_w=pkt(off=14,r=0)
+6: (3d) if r2 >= r8 goto pc+8         ; R2_w=pkt_end() R8_w=pkt(off=14,r=0xffff000000000000)
+; __u32 zero = 0; @ buggy.bpf.c:57
+7: (63) *(u32 *)(r10 -4) = r3
+mark_precise: frame0: last_idx 7 first_idx 0 subseq_idx -1
+mark_precise: frame0: regs=r3 stack= before 6: (3d) if r2 >= r8 goto pc+8
+mark_precise: frame0: regs=r3 stack= before 5: (07) r8 += 14
+mark_precise: frame0: regs=r3 stack= before 4: (bf) r8 = r1
+mark_precise: frame0: regs=r3 stack= before 3: (63) *(u32 *)(r10 -8) = r3
+mark_precise: frame0: regs=r3 stack= before 2: (b7) r3 = 0
+8: R3_w=0 R10=fp0 fp-8=0000mmmm
+8: (bf) r2 = r10                      ; R2_w=fp0 R10=fp0
+;  @ buggy.bpf.c:0
+9: (07) r2 += -4                      ; R2_w=fp-4
+; struct tcp_stats *st = bpf_map_lookup_elem(&stats, &zero); @ buggy.bpf.c:58
+10: (18) r1 = 0xffff000000000000      ; R1_w=map_ptr(map=stats,ks=4,vs=40)
+12: (85) call bpf_map_lookup_elem#1   ; R0=map_value(map=stats,ks=4,vs=40)
+; if (st) @ buggy.bpf.c:59
+13: (15) if r0 == 0x0 goto pc+38      ; R0=map_value(map=stats,ks=4,vs=40)
+14: (05) goto pc+35
+50: (b7) r1 = 1                       ; R1_w=1
+; __sync_fetch_and_add(&st->passed, 1); @ buggy.bpf.c:60
+51: (db) lock *(u64 *)(r0 +8) += r1   ; R0=map_value(map=stats,ks=4,vs=40) R1_w=1
+52: (b7) r0 = 2                       ; R0_w=2
+; } @ buggy.bpf.c:150
+53: (95) exit
+
+from 6 to 15: R1_w=pkt(r=14) R2_w=pkt_end() R3_w=0 R8_w=pkt(off=14,r=14) R10=fp0 fp-8=????0
+15: R1_w=pkt(r=14) R2_w=pkt_end() R3_w=0 R8_w=pkt(off=14,r=14) R10=fp0 fp-8=????0
+; if (eth->h_proto != bpf_htons(ETH_P_IP)) { @ buggy.bpf.c:81
+15: (69) r3 = *(u16 *)(r1 +12)        ; R1_w=pkt(r=14) R3_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=0xffff,var_off=(0x0; 0xffff))
+16: (15) if r3 == 0x8 goto pc+9       ; R3_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=0xffff,var_off=(0x0; 0xffff))
+17: (b7) r1 = 0                       ; R1_w=0
+; __u32 zero = 0; @ buggy.bpf.c:57
+18: (63) *(u32 *)(r10 -4) = r1
+mark_precise: frame0: last_idx 18 first_idx 0 subseq_idx -1
+mark_precise: frame0: regs=r1 stack= before 17: (b7) r1 = 0
+19: R1_w=0 R10=fp0 fp-8=0000mmmm
+19: (bf) r2 = r10                     ; R2_w=fp0 R10=fp0
+;  @ buggy.bpf.c:0
+20: (07) r2 += -4                     ; R2_w=fp-4
+; struct tcp_stats *st = bpf_map_lookup_elem(&stats, &zero); @ buggy.bpf.c:58
+21: (18) r1 = 0xffff000000000000      ; R1_w=map_ptr(map=stats,ks=4,vs=40)
+23: (85) call bpf_map_lookup_elem#1   ; R0=map_value(map=stats,ks=4,vs=40)
+; if (st) @ buggy.bpf.c:59
+24: (15) if r0 == 0x0 goto pc+27      ; R0=map_value(map=stats,ks=4,vs=40)
+25: (05) goto pc+24
+50: (b7) r1 = 1                       ; R1_w=1
+; __sync_fetch_and_add(&st->passed, 1); @ buggy.bpf.c:60
+51: (db) lock *(u64 *)(r0 +8) += r1   ; R0=map_value(map=stats,ks=4,vs=40) R1_w=1
+52: (b7) r0 = 2                       ; R0_w=2
+; } @ buggy.bpf.c:150
+53: (95) exit
+
+from 16 to 26: R1_w=pkt(r=14) R2_w=pkt_end() R3_w=8 R8_w=pkt(off=14,r=14) R10=fp0 fp-8=????0
+26: R1_w=pkt(r=14) R2_w=pkt_end() R3_w=8 R8_w=pkt(off=14,r=14) R10=fp0 fp-8=????0
+; if ((void *)(ip + 1) > data_end) { @ buggy.bpf.c:87
+26: (07) r1 += 34                     ; R1_w=pkt(off=34,r=14)
+27: (3d) if r2 >= r1 goto pc+9        ; R1_w=pkt(off=34,r=0xffff000000000000) R2_w=pkt_end()
+28: (b7) r1 = 0                       ; R1_w=0
+; __u32 zero = 0; @ buggy.bpf.c:57
+29: (63) *(u32 *)(r10 -4) = r1
+mark_precise: frame0: last_idx 29 first_idx 0 subseq_idx -1
+mark_precise: frame0: regs=r1 stack= before 28: (b7) r1 = 0
+30: R1_w=0 R10=fp0 fp-8=0000mmmm
+30: (bf) r2 = r10                     ; R2_w=fp0 R10=fp0
+;  @ buggy.bpf.c:0
+31: (07) r2 += -4                     ; R2_w=fp-4
+; struct tcp_stats *st = bpf_map_lookup_elem(&stats, &zero); @ buggy.bpf.c:58
+32: (18) r1 = 0xffff000000000000      ; R1_w=map_ptr(map=stats,ks=4,vs=40)
+34: (85) call bpf_map_lookup_elem#1   ; R0=map_value(map=stats,ks=4,vs=40)
+; if (st) @ buggy.bpf.c:59
+35: (15) if r0 == 0x0 goto pc+16      ; R0=map_value(map=stats,ks=4,vs=40)
+36: (05) goto pc+13
+50: (b7) r1 = 1                       ; R1_w=1
+; __sync_fetch_and_add(&st->passed, 1); @ buggy.bpf.c:60
+51: (db) lock *(u64 *)(r0 +8) += r1   ; R0=map_value(map=stats,ks=4,vs=40) R1_w=1
+52: (b7) r0 = 2                       ; R0_w=2
+; } @ buggy.bpf.c:150
+53: (95) exit
+
+from 27 to 37: R1_w=pkt(off=34,r=34) R2_w=pkt_end() R3_w=8 R8_w=pkt(off=14,r=34) R10=fp0 fp-8=????0
+37: R1_w=pkt(off=34,r=34) R2_w=pkt_end() R3_w=8 R8_w=pkt(off=14,r=34) R10=fp0 fp-8=????0
+; if (ip->version != 4 || ip->protocol != IPPROTO_TCP) { @ buggy.bpf.c:91
+37: (71) r1 = *(u8 *)(r8 +0)          ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8_w=pkt(off=14,r=34)
+38: (57) r1 &= 240                    ; R1=scalar(smin=smin32=0,smax=umax=smax32=umax32=240,var_off=(0x0; 0xf0))
+39: (55) if r1 != 0x40 goto pc+2      ; R1=64
+40: (71) r1 = *(u8 *)(r8 +9)          ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=pkt(off=14,r=34)
+41: (15) if r1 == 0x6 goto pc+12      ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+42: (b7) r1 = 0                       ; R1_w=0
+; __u32 zero = 0; @ buggy.bpf.c:57
+43: (63) *(u32 *)(r10 -4) = r1
+mark_precise: frame0: last_idx 43 first_idx 39 subseq_idx -1
+mark_precise: frame0: regs=r1 stack= before 42: (b7) r1 = 0
+44: R1_w=0 R10=fp0 fp-8=0000mmmm
+44: (bf) r2 = r10                     ; R2_w=fp0 R10=fp0
+;  @ buggy.bpf.c:0
+45: (07) r2 += -4                     ; R2_w=fp-4
+; struct tcp_stats *st = bpf_map_lookup_elem(&stats, &zero); @ buggy.bpf.c:58
+46: (18) r1 = 0xffff000000000000      ; R1_w=map_ptr(map=stats,ks=4,vs=40)
+48: (85) call bpf_map_lookup_elem#1   ; R0=map_value(map=stats,ks=4,vs=40)
+; if (st) @ buggy.bpf.c:59
+49: (15) if r0 == 0x0 goto pc+2       ; R0=map_value(map=stats,ks=4,vs=40)
+50: (b7) r1 = 1                       ; R1_w=1
+; __sync_fetch_and_add(&st->passed, 1); @ buggy.bpf.c:60
+51: (db) lock *(u64 *)(r0 +8) += r1   ; R0=map_value(map=stats,ks=4,vs=40) R1_w=1
+52: (b7) r0 = 2                       ; R0_w=2
+; } @ buggy.bpf.c:150
+53: (95) exit
+
+from 41 to 54: R1_w=6 R2=pkt_end() R3=8 R8=pkt(off=14,r=34) R10=fp0 fp-8=????0
+54: R1_w=6 R2=pkt_end() R3=8 R8=pkt(off=14,r=34) R10=fp0 fp-8=????0
+; ip_hdr_len = (__u32)ip->ihl * 4; @ buggy.bpf.c:96
+54: (71) r1 = *(u8 *)(r8 +0)          ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=pkt(off=14,r=34)
+55: (67) r1 <<= 2                     ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=1020,var_off=(0x0; 0x3fc))
+56: (57) r1 &= 60                     ; R1=scalar(smin=smin32=0,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c))
+; if (ip_hdr_len < sizeof(*ip) || ip_hdr_len > 60) { @ buggy.bpf.c:97
+57: (25) if r1 > 0x13 goto pc+9       ; R1=scalar(smin=smin32=0,smax=umax=smax32=umax32=19,var_off=(0x0; 0x1c))
+58: (b7) r1 = 0                       ; R1_w=0
+; __u32 zero = 0; @ buggy.bpf.c:57
+59: (63) *(u32 *)(r10 -4) = r1
+mark_precise: frame0: last_idx 59 first_idx 57 subseq_idx -1
+mark_precise: frame0: regs=r1 stack= before 58: (b7) r1 = 0
+60: R1_w=0 R10=fp0 fp-8=0000mmmm
+60: (bf) r2 = r10                     ; R2_w=fp0 R10=fp0
+;  @ buggy.bpf.c:0
+61: (07) r2 += -4                     ; R2_w=fp-4
+; struct tcp_stats *st = bpf_map_lookup_elem(&stats, &zero); @ buggy.bpf.c:58
+62: (18) r1 = 0xffff000000000000      ; R1_w=map_ptr(map=stats,ks=4,vs=40)
+64: (85) call bpf_map_lookup_elem#1   ; R0_w=map_value(map=stats,ks=4,vs=40)
+; if (st) @ buggy.bpf.c:59
+65: (15) if r0 == 0x0 goto pc-14      ; R0_w=map_value(map=stats,ks=4,vs=40)
+66: (05) goto pc-17
+50: (b7) r1 = 1                       ; R1_w=1
+; __sync_fetch_and_add(&st->passed, 1); @ buggy.bpf.c:60
+51: (db) lock *(u64 *)(r0 +8) += r1   ; R0=map_value(map=stats,ks=4,vs=40) R1_w=1
+52: (b7) r0 = 2                       ; R0_w=2
+; } @ buggy.bpf.c:150
+53: (95) exit
+
+from 57 to 67: R1=scalar(smin=umin=smin32=umin32=20,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c)) R2=pkt_end() R3=8 R8=pkt(off=14,r=34) R10=fp0 fp-8=????0
+67: R1=scalar(smin=umin=smin32=umin32=20,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c)) R2=pkt_end() R3=8 R8=pkt(off=14,r=34) R10=fp0 fp-8=????0
+; if ((void *)ip + ip_hdr_len > data_end) { @ buggy.bpf.c:101
+67: (0f) r8 += r1
+mark_precise: frame0: last_idx 67 first_idx 57 subseq_idx -1
+mark_precise: frame0: regs=r1 stack= before 57: (25) if r1 > 0x13 goto pc+9
+mark_precise: frame0: parent state regs=r1 stack=:  R1_rw=Pscalar(smin=smin32=0,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c)) R2=pkt_end() R3=8 R8_r=pkt(off=14,r=34) R10=fp0 fp-8_r=????0
+mark_precise: frame0: last_idx 56 first_idx 39 subseq_idx 57
+mark_precise: frame0: regs=r1 stack= before 56: (57) r1 &= 60
+mark_precise: frame0: regs=r1 stack= before 55: (67) r1 <<= 2
+mark_precise: frame0: regs=r1 stack= before 54: (71) r1 = *(u8 *)(r8 +0)
+68: R1=scalar(smin=umin=smin32=umin32=20,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c)) R8_w=pkt(id=1,off=14,r=0,smin=umin=smin32=umin32=20,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c))
+68: (3d) if r2 >= r8 goto pc+9        ; R2=pkt_end() R8_w=pkt(id=1,off=14,r=0xffff000000000000,smin=umin=smin32=umin32=20,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c))
+69: (b7) r1 = 0                       ; R1_w=0
+; __u32 zero = 0; @ buggy.bpf.c:57
+70: (63) *(u32 *)(r10 -4) = r1
+mark_precise: frame0: last_idx 70 first_idx 57 subseq_idx -1
+mark_precise: frame0: regs=r1 stack= before 69: (b7) r1 = 0
+71: R1_w=0 R10=fp0 fp-8=0000mmmm
+71: (bf) r2 = r10                     ; R2_w=fp0 R10=fp0
+;  @ buggy.bpf.c:0
+72: (07) r2 += -4                     ; R2_w=fp-4
+; struct tcp_stats *st = bpf_map_lookup_elem(&stats, &zero); @ buggy.bpf.c:58
+73: (18) r1 = 0xffff000000000000      ; R1_w=map_ptr(map=stats,ks=4,vs=40)
+75: (85) call bpf_map_lookup_elem#1   ; R0=map_value(map=stats,ks=4,vs=40)
+; if (st) @ buggy.bpf.c:59
+76: (15) if r0 == 0x0 goto pc-25      ; R0=map_value(map=stats,ks=4,vs=40)
+77: (05) goto pc-28
+50: safe
+
+from 68 to 78: R1=scalar(smin=umin=smin32=umin32=20,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c)) R2=pkt_end() R3=8 R8_w=pkt(id=1,off=14,r=14,smin=umin=smin32=umin32=20,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c)) R10=fp0 fp-8=????0
+78: R1=scalar(smin=umin=smin32=umin32=20,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c)) R2=pkt_end() R3=8 R8_w=pkt(id=1,off=14,r=14,smin=umin=smin32=umin32=20,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c)) R10=fp0 fp-8=????0
+; if ((void *)(tcp + 1) > data_end) { @ buggy.bpf.c:107
+78: (bf) r1 = r8                      ; R1_w=pkt(id=1,off=14,r=14,smin=umin=smin32=umin32=20,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c)) R8_w=pkt(id=1,off=14,r=14,smin=umin=smin32=umin32=20,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c))
+79: (07) r1 += 20                     ; R1_w=pkt(id=1,off=34,r=14,smin=umin=smin32=umin32=20,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c))
+80: (3d) if r2 >= r1 goto pc+9        ; R1_w=pkt(id=1,off=34,r=0xffff000000000000,smin=umin=smin32=umin32=20,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c)) R2=pkt_end()
+81: (b7) r1 = 0                       ; R1_w=0
+; __u32 zero = 0; @ buggy.bpf.c:57
+82: (63) *(u32 *)(r10 -4) = r1
+mark_precise: frame0: last_idx 82 first_idx 57 subseq_idx -1
+mark_precise: frame0: regs=r1 stack= before 81: (b7) r1 = 0
+83: R1_w=0 R10=fp0 fp-8=0000mmmm
+83: (bf) r2 = r10                     ; R2_w=fp0 R10=fp0
+;  @ buggy.bpf.c:0
+84: (07) r2 += -4                     ; R2_w=fp-4
+; struct tcp_stats *st = bpf_map_lookup_elem(&stats, &zero); @ buggy.bpf.c:58
+85: (18) r1 = 0xffff000000000000      ; R1_w=map_ptr(map=stats,ks=4,vs=40)
+87: (85) call bpf_map_lookup_elem#1   ; R0=map_value(map=stats,ks=4,vs=40)
+; if (st) @ buggy.bpf.c:59
+88: (15) if r0 == 0x0 goto pc-37      ; R0=map_value(map=stats,ks=4,vs=40)
+89: (05) goto pc-40
+50: safe
+
+from 80 to 90: R1_w=pkt(id=1,off=34,r=34,smin=umin=smin32=umin32=20,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c)) R2=pkt_end() R3=8 R8_w=pkt(id=1,off=14,r=34,smin=umin=smin32=umin32=20,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c)) R10=fp0 fp-8=????0
+90: R1_w=pkt(id=1,off=34,r=34,smin=umin=smin32=umin32=20,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c)) R2=pkt_end() R3=8 R8_w=pkt(id=1,off=14,r=34,smin=umin=smin32=umin32=20,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c)) R10=fp0 fp-8=????0
+; tcp_header_bytes = (__u32)tcp->doff * 4; @ buggy.bpf.c:112
+90: (69) r7 = *(u16 *)(r8 +12)        ; R7_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=0xffff,var_off=(0x0; 0xffff)) R8_w=pkt(id=1,off=14,r=34,smin=umin=smin32=umin32=20,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c))
+91: (77) r7 >>= 2                     ; R7_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=16383,var_off=(0x0; 0x3fff))
+92: (57) r7 &= 60                     ; R7_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c))
+; if (tcp_header_bytes < sizeof(*tcp) || tcp_header_bytes > TCP_CAPTURE_MAX) { @ buggy.bpf.c:113
+93: (bf) r1 = r7                      ; R1_w=scalar(id=2,smin=smin32=0,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c)) R7_w=scalar(id=2,smin=smin32=0,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c))
+94: (07) r1 += -33                    ; R1=scalar(smin=smin32=-33,smax=smax32=27,umin=umin32=3,var_off=(0x3; 0xffff000000000000))
+95: (25) if r1 > 0xffff000000000000 goto pc+9         ; R1=scalar(smin=smin32=-33,smax=smax32=27,umin=umin32=3,umax=0xffff000000000000,var_off=(0x3; 0xffff000000000000))
+96: (b7) r1 = 0                       ; R1_w=0
+; __u32 zero = 0; @ buggy.bpf.c:57
+97: (63) *(u32 *)(r10 -4) = r1
+mark_precise: frame0: last_idx 97 first_idx 95 subseq_idx -1
+mark_precise: frame0: regs=r1 stack= before 96: (b7) r1 = 0
+98: R1_w=0 R10=fp0 fp-8=0000mmmm
+98: (bf) r2 = r10                     ; R2_w=fp0 R10=fp0
+;  @ buggy.bpf.c:0
+99: (07) r2 += -4                     ; R2_w=fp-4
+; struct tcp_stats *st = bpf_map_lookup_elem(&stats, &zero); @ buggy.bpf.c:58
+100: (18) r1 = 0xffff000000000000     ; R1_w=map_ptr(map=stats,ks=4,vs=40)
+102: (85) call bpf_map_lookup_elem#1          ; R0_w=map_value(map=stats,ks=4,vs=40)
+; if (st) @ buggy.bpf.c:59
+103: (15) if r0 == 0x0 goto pc-52     ; R0_w=map_value(map=stats,ks=4,vs=40)
+104: (05) goto pc-55
+50: safe
+
+from 95 to 105: R1=scalar(smin=smin32=-13,smax=smax32=-1,umin=0xffff000000000000,umin32=0xffff000000000000,var_off=(0xffff000000000000; 0xc)) R2=pkt_end() R3=8 R7=scalar(id=2,smin=smin32=0,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c)) R8=pkt(id=1,off=14,r=34,smin=umin=smin32=umin32=20,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c)) R10=fp0 fp-8=????0
+105: R1=scalar(smin=smin32=-13,smax=smax32=-1,umin=0xffff000000000000,umin32=0xffff000000000000,var_off=(0xffff000000000000; 0xc)) R2=pkt_end() R3=8 R7=scalar(id=2,smin=smin32=0,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c)) R8=pkt(id=1,off=14,r=34,smin=umin=smin32=umin32=20,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c)) R10=fp0 fp-8=????0
+105: (b7) r9 = 0                      ; R9_w=0
+; rec = bpf_ringbuf_reserve(&rb, sizeof(*rec), 0); @ buggy.bpf.c:118
+106: (18) r1 = 0xffff000000000000     ; R1_w=map_ptr(map=rb,ks=0,vs=0)
+108: (b7) r2 = 44                     ; R2_w=44
+109: (b7) r3 = 0                      ; R3_w=0
+110: (85) call bpf_ringbuf_reserve#131
+mark_precise: frame0: last_idx 110 first_idx 105 subseq_idx -1
+mark_precise: frame0: regs=r2 stack= before 109: (b7) r3 = 0
+mark_precise: frame0: regs=r2 stack= before 108: (b7) r2 = 44
+111: R0_w=ringbuf_mem_or_null(id=4,ref_obj_id=4,sz=44) refs=4
+111: (bf) r6 = r0                     ; R0_w=ringbuf_mem_or_null(id=4,ref_obj_id=4,sz=44) R6_w=ringbuf_mem_or_null(id=4,ref_obj_id=4,sz=44) refs=4
+; if (!rec) { @ buggy.bpf.c:119
+112: (55) if r6 != 0x0 goto pc+8      ; R6_w=0
+; __u32 zero = 0; @ buggy.bpf.c:57
+113: (63) *(u32 *)(r10 -4) = r9
+mark_precise: frame0: last_idx 113 first_idx 105 subseq_idx -1
+mark_precise: frame0: regs=r9 stack= before 112: (55) if r6 != 0x0 goto pc+8
+mark_precise: frame0: regs=r9 stack= before 111: (bf) r6 = r0
+mark_precise: frame0: regs=r9 stack= before 110: (85) call bpf_ringbuf_reserve#131
+mark_precise: frame0: regs=r9 stack= before 109: (b7) r3 = 0
+mark_precise: frame0: regs=r9 stack= before 108: (b7) r2 = 44
+mark_precise: frame0: regs=r9 stack= before 106: (18) r1 = 0xffff000000000000
+mark_precise: frame0: regs=r9 stack= before 105: (b7) r9 = 0
+114: R9_w=0 R10=fp0 fp-8=0000mmmm
+114: (bf) r2 = r10                    ; R2_w=fp0 R10=fp0
+;  @ buggy.bpf.c:0
+115: (07) r2 += -4                    ; R2_w=fp-4
+; struct tcp_stats *st = bpf_map_lookup_elem(&stats, &zero); @ buggy.bpf.c:58
+116: (18) r1 = 0xffff000000000000     ; R1_w=map_ptr(map=stats,ks=4,vs=40)
+118: (85) call bpf_map_lookup_elem#1          ; R0=map_value(map=stats,ks=4,vs=40)
+; if (st) @ buggy.bpf.c:59
+119: (15) if r0 == 0x0 goto pc-68     ; R0=map_value(map=stats,ks=4,vs=40)
+120: (05) goto pc-71
+50: safe
+
+from 112 to 121: R0_w=ringbuf_mem(ref_obj_id=4,sz=44) R6_w=ringbuf_mem(ref_obj_id=4,sz=44) R7=scalar(id=2,smin=smin32=0,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c)) R8=pkt(id=1,off=14,r=34,smin=umin=smin32=umin32=20,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c)) R9_w=0 R10=fp0 fp-8=????0 refs=4
+121: R0_w=ringbuf_mem(ref_obj_id=4,sz=44) R6_w=ringbuf_mem(ref_obj_id=4,sz=44) R7=scalar(id=2,smin=smin32=0,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c)) R8=pkt(id=1,off=14,r=34,smin=umin=smin32=umin32=20,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c)) R9_w=0 R10=fp0 fp-8=????0 refs=4
+121: (b7) r1 = 1414546244             ; R1_w=0x54504344 refs=4
+; rec->mark = 0x54504344; @ buggy.bpf.c:124
+122: (63) *(u32 *)(r6 +0) = r1        ; R1_w=0x54504344 R6_w=ringbuf_mem(ref_obj_id=4,sz=44) refs=4
+; rec->tcp_header_bytes = tcp_header_bytes; @ buggy.bpf.c:125
+123: (63) *(u32 *)(r6 +4) = r7        ; R6_w=ringbuf_mem(ref_obj_id=4,sz=44) R7=scalar(id=2,smin=smin32=0,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c)) refs=4
+; rec->sport = bpf_ntohs(tcp->source); @ buggy.bpf.c:126
+124: (69) r1 = *(u16 *)(r8 +0)        ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=0xffff,var_off=(0x0; 0xffff)) R8=pkt(id=1,off=14,r=34,smin=umin=smin32=umin32=20,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c)) refs=4
+125: (dc) r1 = be16 r1                ; R1_w=scalar() refs=4
+126: (6b) *(u16 *)(r6 +8) = r1        ; R1_w=scalar() R6_w=ringbuf_mem(ref_obj_id=4,sz=44) refs=4
+; rec->dport = bpf_ntohs(tcp->dest); @ buggy.bpf.c:127
+127: (69) r1 = *(u16 *)(r8 +2)        ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=0xffff,var_off=(0x0; 0xffff)) R8=pkt(id=1,off=14,r=34,smin=umin=smin32=umin32=20,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c)) refs=4
+128: (dc) r1 = be16 r1                ; R1_w=scalar() refs=4
+129: (6b) *(u16 *)(r6 +10) = r1       ; R1_w=scalar() R6_w=ringbuf_mem(ref_obj_id=4,sz=44) refs=4
+; rec->bytes[i] = *((__u8 *)tcp + i); @ buggy.bpf.c:131
+130: (71) r1 = *(u8 *)(r8 +0)         ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=pkt(id=1,off=14,r=34,smin=umin=smin32=umin32=20,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c)) refs=4
+;  @ buggy.bpf.c:0
+131: (73) *(u8 *)(r6 +12) = r1        ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R6_w=ringbuf_mem(ref_obj_id=4,sz=44) refs=4
+; rec->bytes[i] = *((__u8 *)tcp + i); @ buggy.bpf.c:131
+132: (71) r1 = *(u8 *)(r8 +1)         ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=pkt(id=1,off=14,r=34,smin=umin=smin32=umin32=20,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c)) refs=4
+;  @ buggy.bpf.c:0
+133: (73) *(u8 *)(r6 +13) = r1        ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R6_w=ringbuf_mem(ref_obj_id=4,sz=44) refs=4
+; rec->bytes[i] = *((__u8 *)tcp + i); @ buggy.bpf.c:131
+134: (71) r1 = *(u8 *)(r8 +2)         ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=pkt(id=1,off=14,r=34,smin=umin=smin32=umin32=20,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c)) refs=4
+;  @ buggy.bpf.c:0
+135: (73) *(u8 *)(r6 +14) = r1        ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R6_w=ringbuf_mem(ref_obj_id=4,sz=44) refs=4
+; rec->bytes[i] = *((__u8 *)tcp + i); @ buggy.bpf.c:131
+136: (71) r1 = *(u8 *)(r8 +3)         ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=pkt(id=1,off=14,r=34,smin=umin=smin32=umin32=20,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c)) refs=4
+;  @ buggy.bpf.c:0
+137: (73) *(u8 *)(r6 +15) = r1        ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R6_w=ringbuf_mem(ref_obj_id=4,sz=44) refs=4
+; rec->bytes[i] = *((__u8 *)tcp + i); @ buggy.bpf.c:131
+138: (71) r1 = *(u8 *)(r8 +4)         ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=pkt(id=1,off=14,r=34,smin=umin=smin32=umin32=20,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c)) refs=4
+;  @ buggy.bpf.c:0
+139: (73) *(u8 *)(r6 +16) = r1        ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R6_w=ringbuf_mem(ref_obj_id=4,sz=44) refs=4
+; rec->bytes[i] = *((__u8 *)tcp + i); @ buggy.bpf.c:131
+140: (71) r1 = *(u8 *)(r8 +5)         ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=pkt(id=1,off=14,r=34,smin=umin=smin32=umin32=20,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c)) refs=4
+;  @ buggy.bpf.c:0
+141: (73) *(u8 *)(r6 +17) = r1        ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R6_w=ringbuf_mem(ref_obj_id=4,sz=44) refs=4
+; rec->bytes[i] = *((__u8 *)tcp + i); @ buggy.bpf.c:131
+142: (71) r1 = *(u8 *)(r8 +6)         ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=pkt(id=1,off=14,r=34,smin=umin=smin32=umin32=20,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c)) refs=4
+;  @ buggy.bpf.c:0
+143: (73) *(u8 *)(r6 +18) = r1        ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R6_w=ringbuf_mem(ref_obj_id=4,sz=44) refs=4
+; rec->bytes[i] = *((__u8 *)tcp + i); @ buggy.bpf.c:131
+144: (71) r1 = *(u8 *)(r8 +7)         ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=pkt(id=1,off=14,r=34,smin=umin=smin32=umin32=20,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c)) refs=4
+;  @ buggy.bpf.c:0
+145: (73) *(u8 *)(r6 +19) = r1        ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R6_w=ringbuf_mem(ref_obj_id=4,sz=44) refs=4
+; rec->bytes[i] = *((__u8 *)tcp + i); @ buggy.bpf.c:131
+146: (71) r1 = *(u8 *)(r8 +8)         ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=pkt(id=1,off=14,r=34,smin=umin=smin32=umin32=20,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c)) refs=4
+;  @ buggy.bpf.c:0
+147: (73) *(u8 *)(r6 +20) = r1        ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R6_w=ringbuf_mem(ref_obj_id=4,sz=44) refs=4
+; rec->bytes[i] = *((__u8 *)tcp + i); @ buggy.bpf.c:131
+148: (71) r1 = *(u8 *)(r8 +9)         ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=pkt(id=1,off=14,r=34,smin=umin=smin32=umin32=20,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c)) refs=4
+;  @ buggy.bpf.c:0
+149: (73) *(u8 *)(r6 +21) = r1        ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R6_w=ringbuf_mem(ref_obj_id=4,sz=44) refs=4
+; rec->bytes[i] = *((__u8 *)tcp + i); @ buggy.bpf.c:131
+150: (71) r1 = *(u8 *)(r8 +10)        ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=pkt(id=1,off=14,r=34,smin=umin=smin32=umin32=20,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c)) refs=4
+;  @ buggy.bpf.c:0
+151: (73) *(u8 *)(r6 +22) = r1        ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R6_w=ringbuf_mem(ref_obj_id=4,sz=44) refs=4
+; rec->bytes[i] = *((__u8 *)tcp + i); @ buggy.bpf.c:131
+152: (71) r1 = *(u8 *)(r8 +11)        ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=pkt(id=1,off=14,r=34,smin=umin=smin32=umin32=20,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c)) refs=4
+;  @ buggy.bpf.c:0
+153: (73) *(u8 *)(r6 +23) = r1        ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R6_w=ringbuf_mem(ref_obj_id=4,sz=44) refs=4
+; rec->bytes[i] = *((__u8 *)tcp + i); @ buggy.bpf.c:131
+154: (71) r1 = *(u8 *)(r8 +12)        ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=pkt(id=1,off=14,r=34,smin=umin=smin32=umin32=20,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c)) refs=4
+;  @ buggy.bpf.c:0
+155: (73) *(u8 *)(r6 +24) = r1        ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R6_w=ringbuf_mem(ref_obj_id=4,sz=44) refs=4
+; rec->bytes[i] = *((__u8 *)tcp + i); @ buggy.bpf.c:131
+156: (71) r1 = *(u8 *)(r8 +13)        ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=pkt(id=1,off=14,r=34,smin=umin=smin32=umin32=20,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c)) refs=4
+;  @ buggy.bpf.c:0
+157: (73) *(u8 *)(r6 +25) = r1        ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R6_w=ringbuf_mem(ref_obj_id=4,sz=44) refs=4
+; rec->bytes[i] = *((__u8 *)tcp + i); @ buggy.bpf.c:131
+158: (71) r1 = *(u8 *)(r8 +14)        ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=pkt(id=1,off=14,r=34,smin=umin=smin32=umin32=20,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c)) refs=4
+;  @ buggy.bpf.c:0
+159: (73) *(u8 *)(r6 +26) = r1        ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R6_w=ringbuf_mem(ref_obj_id=4,sz=44) refs=4
+; rec->bytes[i] = *((__u8 *)tcp + i); @ buggy.bpf.c:131
+160: (71) r1 = *(u8 *)(r8 +15)        ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=pkt(id=1,off=14,r=34,smin=umin=smin32=umin32=20,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c)) refs=4
+;  @ buggy.bpf.c:0
+161: (73) *(u8 *)(r6 +27) = r1        ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R6_w=ringbuf_mem(ref_obj_id=4,sz=44) refs=4
+; rec->bytes[i] = *((__u8 *)tcp + i); @ buggy.bpf.c:131
+162: (71) r1 = *(u8 *)(r8 +16)        ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=pkt(id=1,off=14,r=34,smin=umin=smin32=umin32=20,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c)) refs=4
+;  @ buggy.bpf.c:0
+163: (73) *(u8 *)(r6 +28) = r1        ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R6_w=ringbuf_mem(ref_obj_id=4,sz=44) refs=4
+; rec->bytes[i] = *((__u8 *)tcp + i); @ buggy.bpf.c:131
+164: (71) r1 = *(u8 *)(r8 +17)        ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=pkt(id=1,off=14,r=34,smin=umin=smin32=umin32=20,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c)) refs=4
+;  @ buggy.bpf.c:0
+165: (73) *(u8 *)(r6 +29) = r1        ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R6_w=ringbuf_mem(ref_obj_id=4,sz=44) refs=4
+; rec->bytes[i] = *((__u8 *)tcp + i); @ buggy.bpf.c:131
+166: (71) r1 = *(u8 *)(r8 +18)        ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=pkt(id=1,off=14,r=34,smin=umin=smin32=umin32=20,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c)) refs=4
+;  @ buggy.bpf.c:0
+167: (73) *(u8 *)(r6 +30) = r1        ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R6_w=ringbuf_mem(ref_obj_id=4,sz=44) refs=4
+; rec->bytes[i] = *((__u8 *)tcp + i); @ buggy.bpf.c:131
+168: (71) r1 = *(u8 *)(r8 +19)        ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=pkt(id=1,off=14,r=34,smin=umin=smin32=umin32=20,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c)) refs=4
+;  @ buggy.bpf.c:0
+169: (73) *(u8 *)(r6 +31) = r1        ; R1=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R6=ringbuf_mem(ref_obj_id=4,sz=44) refs=4
+; if (i < tcp_header_bytes) @ buggy.bpf.c:130
+170: (25) if r7 > 0x14 goto pc+4      ; R7=scalar(id=2,smin=smin32=0,smax=umax=smax32=umax32=20,var_off=(0x0; 0x1c)) refs=4
+171: (b7) r1 = 0                      ; R1_w=0 refs=4
+;  @ buggy.bpf.c:0
+172: (73) *(u8 *)(r6 +33) = r1        ; R1_w=0 R6=ringbuf_mem(ref_obj_id=4,sz=44) refs=4
+173: (73) *(u8 *)(r6 +32) = r1        ; R1_w=0 R6=ringbuf_mem(ref_obj_id=4,sz=44) refs=4
+174: (05) goto pc+5
+; if (i < tcp_header_bytes) @ buggy.bpf.c:130
+180: (b7) r1 = 0                      ; R1_w=0 refs=4
+;  @ buggy.bpf.c:0
+181: (73) *(u8 *)(r6 +35) = r1        ; R1_w=0 R6=ringbuf_mem(ref_obj_id=4,sz=44) refs=4
+182: (73) *(u8 *)(r6 +34) = r1        ; R1_w=0 R6=ringbuf_mem(ref_obj_id=4,sz=44) refs=4
+183: (05) goto pc+5
+; if (i < tcp_header_bytes) @ buggy.bpf.c:130
+189: (b7) r1 = 0                      ; R1_w=0 refs=4
+;  @ buggy.bpf.c:0
+190: (73) *(u8 *)(r6 +37) = r1        ; R1_w=0 R6=ringbuf_mem(ref_obj_id=4,sz=44) refs=4
+191: (73) *(u8 *)(r6 +36) = r1        ; R1_w=0 R6=ringbuf_mem(ref_obj_id=4,sz=44) refs=4
+192: (05) goto pc+5
+; if (i < tcp_header_bytes) @ buggy.bpf.c:130
+198: (b7) r1 = 0                      ; R1_w=0 refs=4
+;  @ buggy.bpf.c:0
+199: (73) *(u8 *)(r6 +39) = r1        ; R1_w=0 R6=ringbuf_mem(ref_obj_id=4,sz=44) refs=4
+200: (73) *(u8 *)(r6 +38) = r1        ; R1_w=0 R6=ringbuf_mem(ref_obj_id=4,sz=44) refs=4
+201: (05) goto pc+5
+; if (i < tcp_header_bytes) @ buggy.bpf.c:130
+207: (b7) r1 = 0                      ; R1_w=0 refs=4
+;  @ buggy.bpf.c:0
+208: (73) *(u8 *)(r6 +41) = r1        ; R1_w=0 R6=ringbuf_mem(ref_obj_id=4,sz=44) refs=4
+209: (73) *(u8 *)(r6 +40) = r1        ; R1_w=0 R6=ringbuf_mem(ref_obj_id=4,sz=44) refs=4
+210: (05) goto pc+5
+; if (i < tcp_header_bytes) @ buggy.bpf.c:130
+216: (b7) r1 = 0                      ; R1_w=0 refs=4
+;  @ buggy.bpf.c:0
+217: (73) *(u8 *)(r6 +42) = r1        ; R1_w=0 R6=ringbuf_mem(ref_obj_id=4,sz=44) refs=4
+218: (73) *(u8 *)(r6 +43) = r1        ; R1_w=0 R6=ringbuf_mem(ref_obj_id=4,sz=44) refs=4
+219: (bf) r2 = r10                    ; R2_w=fp0 R10=fp0 refs=4
+220: (07) r2 += -8                    ; R2_w=fp-8 refs=4
+; st = bpf_map_lookup_elem(&stats, &zero); @ buggy.bpf.c:136
+221: (18) r1 = 0xffff000000000000     ; R1_w=map_ptr(map=stats,ks=4,vs=40) refs=4
+223: (85) call bpf_map_lookup_elem#1
+mark_precise: frame0: last_idx 223 first_idx 207 subseq_idx -1
+mark_precise: frame0: regs= stack=-8 before 221: (18) r1 = 0xffff000000000000
+mark_precise: frame0: regs= stack=-8 before 220: (07) r2 += -8
+mark_precise: frame0: regs= stack=-8 before 219: (bf) r2 = r10
+mark_precise: frame0: regs= stack=-8 before 218: (73) *(u8 *)(r6 +43) = r1
+mark_precise: frame0: regs= stack=-8 before 217: (73) *(u8 *)(r6 +42) = r1
+mark_precise: frame0: regs= stack=-8 before 216: (b7) r1 = 0
+mark_precise: frame0: regs= stack=-8 before 210: (05) goto pc+5
+mark_precise: frame0: regs= stack=-8 before 209: (73) *(u8 *)(r6 +40) = r1
+mark_precise: frame0: regs= stack=-8 before 208: (73) *(u8 *)(r6 +41) = r1
+mark_precise: frame0: regs= stack=-8 before 207: (b7) r1 = 0
+mark_precise: frame0: parent state regs= stack=-8:  R0=ringbuf_mem(ref_obj_id=4,sz=44) R1_w=0 R6_r=ringbuf_mem(ref_obj_id=4,sz=44) R7=scalar(id=2,smin=smin32=0,smax=umax=smax32=umax32=20,var_off=(0x0; 0x1c)) R8=pkt(id=1,off=14,r=34,smin=umin=smin32=umin32=20,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c)) R9=0 R10=fp0 fp-8_r=????P0 refs=4
+mark_precise: frame0: last_idx 201 first_idx 189 subseq_idx 207
+mark_precise: frame0: regs= stack=-8 before 201: (05) goto pc+5
+mark_precise: frame0: regs= stack=-8 before 200: (73) *(u8 *)(r6 +38) = r1
+mark_precise: frame0: regs= stack=-8 before 199: (73) *(u8 *)(r6 +39) = r1
+mark_precise: frame0: regs= stack=-8 before 198: (b7) r1 = 0
+mark_precise: frame0: regs= stack=-8 before 192: (05) goto pc+5
+mark_precise: frame0: regs= stack=-8 before 191: (73) *(u8 *)(r6 +36) = r1
+mark_precise: frame0: regs= stack=-8 before 190: (73) *(u8 *)(r6 +37) = r1
+mark_precise: frame0: regs= stack=-8 before 189: (b7) r1 = 0
+mark_precise: frame0: parent state regs= stack=-8:  R0=ringbuf_mem(ref_obj_id=4,sz=44) R1_w=0 R6_r=ringbuf_mem(ref_obj_id=4,sz=44) R7=scalar(id=2,smin=smin32=0,smax=umax=smax32=umax32=20,var_off=(0x0; 0x1c)) R8=pkt(id=1,off=14,r=34,smin=umin=smin32=umin32=20,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c)) R9=0 R10=fp0 fp-8_r=????P0 refs=4
+mark_precise: frame0: last_idx 183 first_idx 170 subseq_idx 189
+mark_precise: frame0: regs= stack=-8 before 183: (05) goto pc+5
+mark_precise: frame0: regs= stack=-8 before 182: (73) *(u8 *)(r6 +34) = r1
+mark_precise: frame0: regs= stack=-8 before 181: (73) *(u8 *)(r6 +35) = r1
+mark_precise: frame0: regs= stack=-8 before 180: (b7) r1 = 0
+mark_precise: frame0: regs= stack=-8 before 174: (05) goto pc+5
+mark_precise: frame0: regs= stack=-8 before 173: (73) *(u8 *)(r6 +32) = r1
+mark_precise: frame0: regs= stack=-8 before 172: (73) *(u8 *)(r6 +33) = r1
+mark_precise: frame0: regs= stack=-8 before 171: (b7) r1 = 0
+mark_precise: frame0: regs= stack=-8 before 170: (25) if r7 > 0x14 goto pc+4
+mark_precise: frame0: parent state regs= stack=-8:  R0_w=ringbuf_mem(ref_obj_id=4,sz=44) R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R6_rw=ringbuf_mem(ref_obj_id=4,sz=44) R7_r=scalar(id=2,smin=smin32=0,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c)) R8=pkt(id=1,off=14,r=34,smin=umin=smin32=umin32=20,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c)) R9_w=0 R10=fp0 fp-8_r=????P0 refs=4
+mark_precise: frame0: last_idx 169 first_idx 105 subseq_idx 170
+mark_precise: frame0: regs= stack=-8 before 169: (73) *(u8 *)(r6 +31) = r1
+mark_precise: frame0: regs= stack=-8 before 168: (71) r1 = *(u8 *)(r8 +19)
+mark_precise: frame0: regs= stack=-8 before 167: (73) *(u8 *)(r6 +30) = r1
+mark_precise: frame0: regs= stack=-8 before 166: (71) r1 = *(u8 *)(r8 +18)
+mark_precise: frame0: regs= stack=-8 before 165: (73) *(u8 *)(r6 +29) = r1
+mark_precise: frame0: regs= stack=-8 before 164: (71) r1 = *(u8 *)(r8 +17)
+mark_precise: frame0: regs= stack=-8 before 163: (73) *(u8 *)(r6 +28) = r1
+mark_precise: frame0: regs= stack=-8 before 162: (71) r1 = *(u8 *)(r8 +16)
+mark_precise: frame0: regs= stack=-8 before 161: (73) *(u8 *)(r6 +27) = r1
+mark_precise: frame0: regs= stack=-8 before 160: (71) r1 = *(u8 *)(r8 +15)
+mark_precise: frame0: regs= stack=-8 before 159: (73) *(u8 *)(r6 +26) = r1
+mark_precise: frame0: regs= stack=-8 before 158: (71) r1 = *(u8 *)(r8 +14)
+mark_precise: frame0: regs= stack=-8 before 157: (73) *(u8 *)(r6 +25) = r1
+mark_precise: frame0: regs= stack=-8 before 156: (71) r1 = *(u8 *)(r8 +13)
+mark_precise: frame0: regs= stack=-8 before 155: (73) *(u8 *)(r6 +24) = r1
+mark_precise: frame0: regs= stack=-8 before 154: (71) r1 = *(u8 *)(r8 +12)
+mark_precise: frame0: regs= stack=-8 before 153: (73) *(u8 *)(r6 +23) = r1
+mark_precise: frame0: regs= stack=-8 before 152: (71) r1 = *(u8 *)(r8 +11)
+mark_precise: frame0: regs= stack=-8 before 151: (73) *(u8 *)(r6 +22) = r1
+mark_precise: frame0: regs= stack=-8 before 150: (71) r1 = *(u8 *)(r8 +10)
+mark_precise: frame0: regs= stack=-8 before 149: (73) *(u8 *)(r6 +21) = r1
+mark_precise: frame0: regs= stack=-8 before 148: (71) r1 = *(u8 *)(r8 +9)
+mark_precise: frame0: regs= stack=-8 before 147: (73) *(u8 *)(r6 +20) = r1
+mark_precise: frame0: regs= stack=-8 before 146: (71) r1 = *(u8 *)(r8 +8)
+mark_precise: frame0: regs= stack=-8 before 145: (73) *(u8 *)(r6 +19) = r1
+mark_precise: frame0: regs= stack=-8 before 144: (71) r1 = *(u8 *)(r8 +7)
+mark_precise: frame0: regs= stack=-8 before 143: (73) *(u8 *)(r6 +18) = r1
+mark_precise: frame0: regs= stack=-8 before 142: (71) r1 = *(u8 *)(r8 +6)
+mark_precise: frame0: regs= stack=-8 before 141: (73) *(u8 *)(r6 +17) = r1
+mark_precise: frame0: regs= stack=-8 before 140: (71) r1 = *(u8 *)(r8 +5)
+mark_precise: frame0: regs= stack=-8 before 139: (73) *(u8 *)(r6 +16) = r1
+mark_precise: frame0: regs= stack=-8 before 138: (71) r1 = *(u8 *)(r8 +4)
+mark_precise: frame0: regs= stack=-8 before 137: (73) *(u8 *)(r6 +15) = r1
+mark_precise: frame0: regs= stack=-8 before 136: (71) r1 = *(u8 *)(r8 +3)
+mark_precise: frame0: regs= stack=-8 before 135: (73) *(u8 *)(r6 +14) = r1
+mark_precise: frame0: regs= stack=-8 before 134: (71) r1 = *(u8 *)(r8 +2)
+mark_precise: frame0: regs= stack=-8 before 133: (73) *(u8 *)(r6 +13) = r1
+mark_precise: frame0: regs= stack=-8 before 132: (71) r1 = *(u8 *)(r8 +1)
+mark_precise: frame0: regs= stack=-8 before 131: (73) *(u8 *)(r6 +12) = r1
+mark_precise: frame0: regs= stack=-8 before 130: (71) r1 = *(u8 *)(r8 +0)
+mark_precise: frame0: regs= stack=-8 before 129: (6b) *(u16 *)(r6 +10) = r1
+mark_precise: frame0: regs= stack=-8 before 128: (dc) r1 = be16 r1
+mark_precise: frame0: regs= stack=-8 before 127: (69) r1 = *(u16 *)(r8 +2)
+mark_precise: frame0: regs= stack=-8 before 126: (6b) *(u16 *)(r6 +8) = r1
+mark_precise: frame0: regs= stack=-8 before 125: (dc) r1 = be16 r1
+mark_precise: frame0: regs= stack=-8 before 124: (69) r1 = *(u16 *)(r8 +0)
+mark_precise: frame0: regs= stack=-8 before 123: (63) *(u32 *)(r6 +4) = r7
+mark_precise: frame0: regs= stack=-8 before 122: (63) *(u32 *)(r6 +0) = r1
+mark_precise: frame0: regs= stack=-8 before 121: (b7) r1 = 1414546244
+mark_precise: frame0: regs= stack=-8 before 112: (55) if r6 != 0x0 goto pc+8
+mark_precise: frame0: regs= stack=-8 before 111: (bf) r6 = r0
+mark_precise: frame0: regs= stack=-8 before 110: (85) call bpf_ringbuf_reserve#131
+mark_precise: frame0: regs= stack=-8 before 109: (b7) r3 = 0
+mark_precise: frame0: regs= stack=-8 before 108: (b7) r2 = 44
+mark_precise: frame0: regs= stack=-8 before 106: (18) r1 = 0xffff000000000000
+mark_precise: frame0: regs= stack=-8 before 105: (b7) r9 = 0
+mark_precise: frame0: parent state regs= stack=-8:  R1=scalar(smin=smin32=-13,smax=smax32=-1,umin=0xffff000000000000,umin32=0xffff000000000000,var_off=(0xffff000000000000; 0xc)) R2=pkt_end() R3=8 R7_r=scalar(id=2,smin=smin32=0,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c)) R8_r=pkt(id=1,off=14,r=34,smin=umin=smin32=umin32=20,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c)) R10=fp0 fp-8_r=????P0
+mark_precise: frame0: last_idx 95 first_idx 95 subseq_idx 105
+mark_precise: frame0: regs= stack=-8 before 95: (25) if r1 > 0xffff000000000000 goto pc+9
+mark_precise: frame0: parent state regs= stack=-8:  R1_rw=scalar(smin=smin32=-33,smax=smax32=27,umin=umin32=3,var_off=(0x3; 0xffff000000000000)) R2=pkt_end() R3=8 R7_rw=scalar(id=2,smin=smin32=0,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c)) R8_rw=pkt(id=1,off=14,r=34,smin=umin=smin32=umin32=20,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c)) R10=fp0 fp-8_r=????P0
+mark_precise: frame0: last_idx 94 first_idx 57 subseq_idx 95
+mark_precise: frame0: regs= stack=-8 before 94: (07) r1 += -33
+mark_precise: frame0: regs= stack=-8 before 93: (bf) r1 = r7
+mark_precise: frame0: regs= stack=-8 before 92: (57) r7 &= 60
+mark_precise: frame0: regs= stack=-8 before 91: (77) r7 >>= 2
+mark_precise: frame0: regs= stack=-8 before 90: (69) r7 = *(u16 *)(r8 +12)
+mark_precise: frame0: regs= stack=-8 before 80: (3d) if r2 >= r1 goto pc+9
+mark_precise: frame0: regs= stack=-8 before 79: (07) r1 += 20
+mark_precise: frame0: regs= stack=-8 before 78: (bf) r1 = r8
+mark_precise: frame0: regs= stack=-8 before 68: (3d) if r2 >= r8 goto pc+9
+mark_precise: frame0: regs= stack=-8 before 67: (0f) r8 += r1
+mark_precise: frame0: regs= stack=-8 before 57: (25) if r1 > 0x13 goto pc+9
+mark_precise: frame0: parent state regs= stack=-8:  R1_rw=Pscalar(smin=smin32=0,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c)) R2_r=pkt_end() R3=8 R8_r=pkt(off=14,r=34) R10=fp0 fp-8_r=????P0
+mark_precise: frame0: last_idx 56 first_idx 39 subseq_idx 57
+mark_precise: frame0: regs= stack=-8 before 56: (57) r1 &= 60
+mark_precise: frame0: regs= stack=-8 before 55: (67) r1 <<= 2
+mark_precise: frame0: regs= stack=-8 before 54: (71) r1 = *(u8 *)(r8 +0)
+mark_precise: frame0: regs= stack=-8 before 41: (15) if r1 == 0x6 goto pc+12
+mark_precise: frame0: regs= stack=-8 before 40: (71) r1 = *(u8 *)(r8 +9)
+mark_precise: frame0: regs= stack=-8 before 39: (55) if r1 != 0x40 goto pc+2
+mark_precise: frame0: parent state regs= stack=-8:  R1_rw=scalar(smin=smin32=0,smax=umax=smax32=umax32=240,var_off=(0x0; 0xf0)) R2_rw=pkt_end() R3_w=8 R8_rw=pkt(off=14,r=34) R10=fp0 fp-8_r=????P0
+mark_precise: frame0: last_idx 38 first_idx 0 subseq_idx 39
+mark_precise: frame0: regs= stack=-8 before 38: (57) r1 &= 240
+mark_precise: frame0: regs= stack=-8 before 37: (71) r1 = *(u8 *)(r8 +0)
+mark_precise: frame0: regs= stack=-8 before 27: (3d) if r2 >= r1 goto pc+9
+mark_precise: frame0: regs= stack=-8 before 26: (07) r1 += 34
+mark_precise: frame0: regs= stack=-8 before 16: (15) if r3 == 0x8 goto pc+9
+mark_precise: frame0: regs= stack=-8 before 15: (69) r3 = *(u16 *)(r1 +12)
+mark_precise: frame0: regs= stack=-8 before 6: (3d) if r2 >= r8 goto pc+8
+mark_precise: frame0: regs= stack=-8 before 5: (07) r8 += 14
+mark_precise: frame0: regs= stack=-8 before 4: (bf) r8 = r1
+mark_precise: frame0: regs= stack=-8 before 3: (63) *(u32 *)(r10 -8) = r3
+mark_precise: frame0: regs=r3 stack= before 2: (b7) r3 = 0
+224: R0=map_value(map=stats,ks=4,vs=40) refs=4
+; if (st) { @ buggy.bpf.c:137
+224: (15) if r0 == 0x0 goto pc+14     ; R0=map_value(map=stats,ks=4,vs=40) refs=4
+225: (b7) r1 = 1                      ; R1_w=1 refs=4
+; __sync_fetch_and_add(&st->captured, 1); @ buggy.bpf.c:138
+226: (db) lock *(u64 *)(r0 +0) += r1          ; R0=map_value(map=stats,ks=4,vs=40) R1_w=1 refs=4
+227: (b7) r1 = 43                     ; R1_w=43 refs=4
+228: (15) if r7 == 0x20 goto pc+1
+mark_precise: frame0: last_idx 228 first_idx 224 subseq_idx -1
+mark_precise: frame0: regs=r7 stack= before 227: (b7) r1 = 43
+mark_precise: frame0: regs=r7 stack= before 226: (db) lock *(u64 *)(r0 +0) += r1
+mark_precise: frame0: regs=r7 stack= before 225: (b7) r1 = 1
+mark_precise: frame0: regs=r7 stack= before 224: (15) if r0 == 0x0 goto pc+14
+mark_precise: frame0: parent state regs=r7 stack=:  R0_rw=map_value(map=stats,ks=4,vs=40) R6=ringbuf_mem(ref_obj_id=4,sz=44) R7_r=Pscalar(id=2,smin=smin32=0,smax=umax=smax32=umax32=20,var_off=(0x0; 0x1c)) R8=pkt(id=1,off=14,r=34,smin=umin=smin32=umin32=20,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c)) R9=0 R10=fp0 fp-8=????0 refs=4
+mark_precise: frame0: last_idx 223 first_idx 207 subseq_idx 224
+mark_precise: frame0: regs=r7 stack= before 223: (85) call bpf_map_lookup_elem#1
+mark_precise: frame0: regs=r7 stack= before 221: (18) r1 = 0xffff000000000000
+mark_precise: frame0: regs=r7 stack= before 220: (07) r2 += -8
+mark_precise: frame0: regs=r7 stack= before 219: (bf) r2 = r10
+mark_precise: frame0: regs=r7 stack= before 218: (73) *(u8 *)(r6 +43) = r1
+mark_precise: frame0: regs=r7 stack= before 217: (73) *(u8 *)(r6 +42) = r1
+mark_precise: frame0: regs=r7 stack= before 216: (b7) r1 = 0
+mark_precise: frame0: regs=r7 stack= before 210: (05) goto pc+5
+mark_precise: frame0: regs=r7 stack= before 209: (73) *(u8 *)(r6 +40) = r1
+mark_precise: frame0: regs=r7 stack= before 208: (73) *(u8 *)(r6 +41) = r1
+mark_precise: frame0: regs=r7 stack= before 207: (b7) r1 = 0
+mark_precise: frame0: parent state regs=r7 stack=:  R0=ringbuf_mem(ref_obj_id=4,sz=44) R1_w=0 R6_r=ringbuf_mem(ref_obj_id=4,sz=44) R7_r=Pscalar(id=2,smin=smin32=0,smax=umax=smax32=umax32=20,var_off=(0x0; 0x1c)) R8=pkt(id=1,off=14,r=34,smin=umin=smin32=umin32=20,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c)) R9=0 R10=fp0 fp-8_r=????P0 refs=4
+mark_precise: frame0: last_idx 201 first_idx 189 subseq_idx 207
+mark_precise: frame0: regs=r7 stack= before 201: (05) goto pc+5
+mark_precise: frame0: regs=r7 stack= before 200: (73) *(u8 *)(r6 +38) = r1
+mark_precise: frame0: regs=r7 stack= before 199: (73) *(u8 *)(r6 +39) = r1
+mark_precise: frame0: regs=r7 stack= before 198: (b7) r1 = 0
+mark_precise: frame0: regs=r7 stack= before 192: (05) goto pc+5
+mark_precise: frame0: regs=r7 stack= before 191: (73) *(u8 *)(r6 +36) = r1
+mark_precise: frame0: regs=r7 stack= before 190: (73) *(u8 *)(r6 +37) = r1
+mark_precise: frame0: regs=r7 stack= before 189: (b7) r1 = 0
+mark_precise: frame0: parent state regs=r7 stack=:  R0=ringbuf_mem(ref_obj_id=4,sz=44) R1_w=0 R6_r=ringbuf_mem(ref_obj_id=4,sz=44) R7_r=Pscalar(id=2,smin=smin32=0,smax=umax=smax32=umax32=20,var_off=(0x0; 0x1c)) R8=pkt(id=1,off=14,r=34,smin=umin=smin32=umin32=20,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c)) R9=0 R10=fp0 fp-8_r=????P0 refs=4
+mark_precise: frame0: last_idx 183 first_idx 170 subseq_idx 189
+mark_precise: frame0: regs=r7 stack= before 183: (05) goto pc+5
+mark_precise: frame0: regs=r7 stack= before 182: (73) *(u8 *)(r6 +34) = r1
+mark_precise: frame0: regs=r7 stack= before 181: (73) *(u8 *)(r6 +35) = r1
+mark_precise: frame0: regs=r7 stack= before 180: (b7) r1 = 0
+mark_precise: frame0: regs=r7 stack= before 174: (05) goto pc+5
+mark_precise: frame0: regs=r7 stack= before 173: (73) *(u8 *)(r6 +32) = r1
+mark_precise: frame0: regs=r7 stack= before 172: (73) *(u8 *)(r6 +33) = r1
+mark_precise: frame0: regs=r7 stack= before 171: (b7) r1 = 0
+mark_precise: frame0: regs=r7 stack= before 170: (25) if r7 > 0x14 goto pc+4
+mark_precise: frame0: parent state regs=r7 stack=:  R0_w=ringbuf_mem(ref_obj_id=4,sz=44) R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R6_rw=ringbuf_mem(ref_obj_id=4,sz=44) R7_r=Pscalar(id=2,smin=smin32=0,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c)) R8=pkt(id=1,off=14,r=34,smin=umin=smin32=umin32=20,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c)) R9_w=0 R10=fp0 fp-8_r=????P0 refs=4
+mark_precise: frame0: last_idx 169 first_idx 105 subseq_idx 170
+mark_precise: frame0: regs=r7 stack= before 169: (73) *(u8 *)(r6 +31) = r1
+mark_precise: frame0: regs=r7 stack= before 168: (71) r1 = *(u8 *)(r8 +19)
+mark_precise: frame0: regs=r7 stack= before 167: (73) *(u8 *)(r6 +30) = r1
+mark_precise: frame0: regs=r7 stack= before 166: (71) r1 = *(u8 *)(r8 +18)
+mark_precise: frame0: regs=r7 stack= before 165: (73) *(u8 *)(r6 +29) = r1
+mark_precise: frame0: regs=r7 stack= before 164: (71) r1 = *(u8 *)(r8 +17)
+mark_precise: frame0: regs=r7 stack= before 163: (73) *(u8 *)(r6 +28) = r1
+mark_precise: frame0: regs=r7 stack= before 162: (71) r1 = *(u8 *)(r8 +16)
+mark_precise: frame0: regs=r7 stack= before 161: (73) *(u8 *)(r6 +27) = r1
+mark_precise: frame0: regs=r7 stack= before 160: (71) r1 = *(u8 *)(r8 +15)
+mark_precise: frame0: regs=r7 stack= before 159: (73) *(u8 *)(r6 +26) = r1
+mark_precise: frame0: regs=r7 stack= before 158: (71) r1 = *(u8 *)(r8 +14)
+mark_precise: frame0: regs=r7 stack= before 157: (73) *(u8 *)(r6 +25) = r1
+mark_precise: frame0: regs=r7 stack= before 156: (71) r1 = *(u8 *)(r8 +13)
+mark_precise: frame0: regs=r7 stack= before 155: (73) *(u8 *)(r6 +24) = r1
+mark_precise: frame0: regs=r7 stack= before 154: (71) r1 = *(u8 *)(r8 +12)
+mark_precise: frame0: regs=r7 stack= before 153: (73) *(u8 *)(r6 +23) = r1
+mark_precise: frame0: regs=r7 stack= before 152: (71) r1 = *(u8 *)(r8 +11)
+mark_precise: frame0: regs=r7 stack= before 151: (73) *(u8 *)(r6 +22) = r1
+mark_precise: frame0: regs=r7 stack= before 150: (71) r1 = *(u8 *)(r8 +10)
+mark_precise: frame0: regs=r7 stack= before 149: (73) *(u8 *)(r6 +21) = r1
+mark_precise: frame0: regs=r7 stack= before 148: (71) r1 = *(u8 *)(r8 +9)
+mark_precise: frame0: regs=r7 stack= before 147: (73) *(u8 *)(r6 +20) = r1
+mark_precise: frame0: regs=r7 stack= before 146: (71) r1 = *(u8 *)(r8 +8)
+mark_precise: frame0: regs=r7 stack= before 145: (73) *(u8 *)(r6 +19) = r1
+mark_precise: frame0: regs=r7 stack= before 144: (71) r1 = *(u8 *)(r8 +7)
+mark_precise: frame0: regs=r7 stack= before 143: (73) *(u8 *)(r6 +18) = r1
+mark_precise: frame0: regs=r7 stack= before 142: (71) r1 = *(u8 *)(r8 +6)
+mark_precise: frame0: regs=r7 stack= before 141: (73) *(u8 *)(r6 +17) = r1
+mark_precise: frame0: regs=r7 stack= before 140: (71) r1 = *(u8 *)(r8 +5)
+mark_precise: frame0: regs=r7 stack= before 139: (73) *(u8 *)(r6 +16) = r1
+mark_precise: frame0: regs=r7 stack= before 138: (71) r1 = *(u8 *)(r8 +4)
+mark_precise: frame0: regs=r7 stack= before 137: (73) *(u8 *)(r6 +15) = r1
+mark_precise: frame0: regs=r7 stack= before 136: (71) r1 = *(u8 *)(r8 +3)
+mark_precise: frame0: regs=r7 stack= before 135: (73) *(u8 *)(r6 +14) = r1
+mark_precise: frame0: regs=r7 stack= before 134: (71) r1 = *(u8 *)(r8 +2)
+mark_precise: frame0: regs=r7 stack= before 133: (73) *(u8 *)(r6 +13) = r1
+mark_precise: frame0: regs=r7 stack= before 132: (71) r1 = *(u8 *)(r8 +1)
+mark_precise: frame0: regs=r7 stack= before 131: (73) *(u8 *)(r6 +12) = r1
+mark_precise: frame0: regs=r7 stack= before 130: (71) r1 = *(u8 *)(r8 +0)
+mark_precise: frame0: regs=r7 stack= before 129: (6b) *(u16 *)(r6 +10) = r1
+mark_precise: frame0: regs=r7 stack= before 128: (dc) r1 = be16 r1
+mark_precise: frame0: regs=r7 stack= before 127: (69) r1 = *(u16 *)(r8 +2)
+mark_precise: frame0: regs=r7 stack= before 126: (6b) *(u16 *)(r6 +8) = r1
+mark_precise: frame0: regs=r7 stack= before 125: (dc) r1 = be16 r1
+mark_precise: frame0: regs=r7 stack= before 124: (69) r1 = *(u16 *)(r8 +0)
+mark_precise: frame0: regs=r7 stack= before 123: (63) *(u32 *)(r6 +4) = r7
+mark_precise: frame0: regs=r7 stack= before 122: (63) *(u32 *)(r6 +0) = r1
+mark_precise: frame0: regs=r7 stack= before 121: (b7) r1 = 1414546244
+mark_precise: frame0: regs=r7 stack= before 112: (55) if r6 != 0x0 goto pc+8
+mark_precise: frame0: regs=r7 stack= before 111: (bf) r6 = r0
+mark_precise: frame0: regs=r7 stack= before 110: (85) call bpf_ringbuf_reserve#131
+mark_precise: frame0: regs=r7 stack= before 109: (b7) r3 = 0
+mark_precise: frame0: regs=r7 stack= before 108: (b7) r2 = 44
+mark_precise: frame0: regs=r7 stack= before 106: (18) r1 = 0xffff000000000000
+mark_precise: frame0: regs=r7 stack= before 105: (b7) r9 = 0
+mark_precise: frame0: parent state regs=r7 stack=:  R1=scalar(smin=smin32=-13,smax=smax32=-1,umin=0xffff000000000000,umin32=0xffff000000000000,var_off=(0xffff000000000000; 0xc)) R2=pkt_end() R3=8 R7_r=Pscalar(id=2,smin=smin32=0,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c)) R8_r=pkt(id=1,off=14,r=34,smin=umin=smin32=umin32=20,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c)) R10=fp0 fp-8_r=????P0
+mark_precise: frame0: last_idx 95 first_idx 95 subseq_idx 105
+mark_precise: frame0: regs=r7 stack= before 95: (25) if r1 > 0xffff000000000000 goto pc+9
+mark_precise: frame0: parent state regs=r7 stack=:  R1_rw=scalar(smin=smin32=-33,smax=smax32=27,umin=umin32=3,var_off=(0x3; 0xffff000000000000)) R2=pkt_end() R3=8 R7_rw=Pscalar(id=2,smin=smin32=0,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c)) R8_rw=pkt(id=1,off=14,r=34,smin=umin=smin32=umin32=20,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c)) R10=fp0 fp-8_r=????P0
+mark_precise: frame0: last_idx 94 first_idx 57 subseq_idx 95
+mark_precise: frame0: regs=r7 stack= before 94: (07) r1 += -33
+mark_precise: frame0: regs=r7 stack= before 93: (bf) r1 = r7
+mark_precise: frame0: regs=r7 stack= before 92: (57) r7 &= 60
+mark_precise: frame0: regs=r7 stack= before 91: (77) r7 >>= 2
+mark_precise: frame0: regs=r7 stack= before 90: (69) r7 = *(u16 *)(r8 +12)
+228: R7=scalar(id=2,smin=smin32=0,smax=umax=smax32=umax32=20,var_off=(0x0; 0x1c)) refs=4
+229: (b7) r1 = 31                     ; R1_w=31 refs=4
+; st->last_tcp_header_bytes = tcp_header_bytes; @ buggy.bpf.c:139
+230: (63) *(u32 *)(r0 +16) = r7       ; R0=map_value(map=stats,ks=4,vs=40) R7=scalar(id=2,smin=smin32=0,smax=umax=smax32=umax32=20,var_off=(0x0; 0x1c)) refs=4
+; st->last_dport = rec->dport; @ buggy.bpf.c:140
+231: (69) r2 = *(u16 *)(r6 +10)       ; R2_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=0xffff,var_off=(0x0; 0xffff)) R6=ringbuf_mem(ref_obj_id=4,sz=44) refs=4
+232: (6b) *(u16 *)(r0 +20) = r2       ; R0=map_value(map=stats,ks=4,vs=40) R2_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=0xffff,var_off=(0x0; 0xffff)) refs=4
+; st->first_byte = rec->bytes[0]; @ buggy.bpf.c:141
+233: (71) r2 = *(u8 *)(r6 +12)        ; R2_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R6=ringbuf_mem(ref_obj_id=4,sz=44) refs=4
+234: (73) *(u8 *)(r0 +22) = r2        ; R0=map_value(map=stats,ks=4,vs=40) R2_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) refs=4
+;  @ buggy.bpf.c:0
+235: (bf) r2 = r6                     ; R2_w=ringbuf_mem(ref_obj_id=4,sz=44) R6=ringbuf_mem(ref_obj_id=4,sz=44) refs=4
+236: (0f) r2 += r1
+mark_precise: frame0: last_idx 236 first_idx 224 subseq_idx -1
+mark_precise: frame0: regs=r1 stack= before 235: (bf) r2 = r6
+mark_precise: frame0: regs=r1 stack= before 234: (73) *(u8 *)(r0 +22) = r2
+mark_precise: frame0: regs=r1 stack= before 233: (71) r2 = *(u8 *)(r6 +12)
+mark_precise: frame0: regs=r1 stack= before 232: (6b) *(u16 *)(r0 +20) = r2
+mark_precise: frame0: regs=r1 stack= before 231: (69) r2 = *(u16 *)(r6 +10)
+mark_precise: frame0: regs=r1 stack= before 230: (63) *(u32 *)(r0 +16) = r7
+mark_precise: frame0: regs=r1 stack= before 229: (b7) r1 = 31
+237: R1_w=31 R2_w=ringbuf_mem(ref_obj_id=4,off=31,sz=44) refs=4
+237: (71) r1 = *(u8 *)(r2 +0)         ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R2_w=ringbuf_mem(ref_obj_id=4,off=31,sz=44) refs=4
+238: (73) *(u8 *)(r0 +23) = r1        ; R0=map_value(map=stats,ks=4,vs=40) R1=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) refs=4
+; bpf_ringbuf_submit(rec, 0); @ buggy.bpf.c:148
+239: (bf) r1 = r6                     ; R1_w=ringbuf_mem(ref_obj_id=4,sz=44) R6=ringbuf_mem(ref_obj_id=4,sz=44) refs=4
+240: (b7) r2 = 0                      ; R2_w=0 refs=4
+241: (85) call bpf_ringbuf_submit#132         ;
+242: (b7) r0 = 1                      ; R0_w=1
+243: (05) goto pc-191
+; } @ buggy.bpf.c:150
+53: (95) exit
+
+from 170 to 175: R0=ringbuf_mem(ref_obj_id=4,sz=44) R1=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R6=ringbuf_mem(ref_obj_id=4,sz=44) R7=scalar(id=2,smin=umin=smin32=umin32=21,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c)) R8=pkt(id=1,off=14,r=34,smin=umin=smin32=umin32=20,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c)) R9=0 R10=fp0 fp-8=????0 refs=4
+175: R0=ringbuf_mem(ref_obj_id=4,sz=44) R1=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R6=ringbuf_mem(ref_obj_id=4,sz=44) R7=scalar(id=2,smin=umin=smin32=umin32=21,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c)) R8=pkt(id=1,off=14,r=34,smin=umin=smin32=umin32=20,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c)) R9=0 R10=fp0 fp-8=????0 refs=4
+; rec->bytes[i] = *((__u8 *)tcp + i); @ buggy.bpf.c:131
+175: (71) r1 = *(u8 *)(r8 +20)
+invalid access to packet, off=34 size=1, R8(id=1,off=34,r=34)
+R8 offset is outside of the packet
+verification time 0 usec
+stack depth 8
+processed 230 insns (limit 1000000) max_states_per_insn 0 total_states 17 peak_states 17 mark_read 3
+-- END PROG LOAD LOG --
+libbpf: prog 'rs_eunomia_http_doff_copy_bound': failed to load: -EACCES
+libbpf: failed to load object '<work-dir>/prog.o'
+Error: failed to load object file

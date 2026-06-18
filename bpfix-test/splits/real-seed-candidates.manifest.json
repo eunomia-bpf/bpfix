@@ -275,6 +275,14 @@
             "decision_made_before_model_eval": true,
             "model_result_used": false,
             "notes": "Minimized AgentSight's filesystem path aggregation workflow into an XDP proof-lifecycle case where the overflow counter pointer is checked only on a packet-selected branch before the atomic increment after a branch merge; no LLM repair outcomes were used for admission."
+        },
+        {
+            "seed": "eunomia.dev@3b8626b1f7836dedfe295fe79070b170ba347e3f:docs/tutorials/23-http/sockfilter.bpf.c#doff-copy-bound",
+            "decision": "admitted",
+            "case_id": "rs_eunomia_http_doff_copy_bound_001",
+            "decision_made_before_model_eval": true,
+            "model_result_used": false,
+            "notes": "Minimized eunomia.dev's HTTP socket-filter TCP doff parser and ringbuf event workflow into an XDP source/object-correlation case where a doff-governed source copy lowers to many packet loads after only the fixed TCP header is bounded; no LLM repair outcomes were used for admission."
         }
   ],
   "seed_exclusion_ledger": [
@@ -304,6 +312,12 @@
     },
     {
       "seed": "bpf-developer-tutorial@3a722c03d5129ac212935bf5ecce118e64efcdd8:src/42-xdp-loadbalancer/xdp_lb.bpf.c",
+      "reason": "license_unclear",
+      "model_result_used": false,
+      "notes": "Rejected before admission because the upstream source file lacks an SPDX-License-Identifier header required by the real-project provenance gate; no LLM repair outcomes were inspected."
+    },
+    {
+      "seed": "bpf-developer-tutorial@3a722c03d5129ac212935bf5ecce118e64efcdd8:src/41-xdp-tcpdump/xdp-tcpdump.bpf.c#doff-copy-bound",
       "reason": "license_unclear",
       "model_result_used": false,
       "notes": "Rejected before admission because the upstream source file lacks an SPDX-License-Identifier header required by the real-project provenance gate; no LLM repair outcomes were inspected."
@@ -2154,6 +2168,68 @@
                     "bpftool prog run leaves maps unchanged for the disabled-selector path",
                     "successful verifier log shows event_agg_map lookup/update, agg_overflow_count lookup, overflow atomic increment, and existing aggregate field updates",
                     "oracle rejects repairs that delete the overflow counter path, return constant actions, skip aggregate updates, or update the wrong aggregate key"
+                ]
+            }
+        },
+        {
+            "case_id": "rs_eunomia_http_doff_copy_bound_001",
+            "bucket": "source_object_correlation",
+            "prog_type": "xdp",
+            "origin": "real-project seed from eunomia.dev HTTP socket-filter doff parser and ringbuf event workflow",
+            "oracle_kind": [
+                "compile",
+                "verifier_load",
+                "bpftool_prog_run",
+                "helper_state",
+                "proof_predicate"
+            ],
+            "requires_helper_or_state": true,
+            "uses_success_predicate": true,
+            "case_sha256": "7515c8497dbaa7e021c3a1c78f4c6e2f6c074a274d517e4e18368bcdb12d2799",
+            "buggy_source_sha256": "d1f02580ea43f107c1150793293ccd00715fde3a21ba58a7bb449196816a60cd",
+            "review": {
+                "reviewer": "Maxwell subagent 019edcd2-f057-7030-b210-26a44809947d",
+                "reviewed_at": "2026-06-18",
+                "bug_confirmed": true,
+                "oracle_adequate": true,
+                "not_seen_in_prior_eval": true,
+                "bug_summary": "The minimized XDP harness preserves eunomia.dev's HTTP parser shape but proves only the fixed 20-byte TCP header before a doff-governed unrolled ringbuf copy can read up to the 32-byte capture window. The verifier rejects the copy line with invalid packet access at off=34 size=1; this fits source_object_correlation because the final line is the expanded copy load while the missing proof is the earlier capture-window bound.",
+                "oracle_rationale": "Adequate: the oracle requires compile, verifier load, bpftool prog run behavior, stats-map postconditions, ringbuf reserve/submit evidence, and verifier-log proof predicates. The six packet tests cover fixed TCP, TCP options, IPv4 options plus TCP options, truncated TCP options, UDP, and ARP; stats checks require doff-derived header length, dport, first copied byte, and final copied option byte. Constant actions, deleting ringbuf submit, reference leaks, and bypassing doff/copy semantics fail.",
+                "provenance_rationale": "Clean after seed replacement: verified against eunomia.dev commit 3b8626b1f7836dedfe295fe79070b170ba347e3f, path docs/tutorials/23-http/sockfilter.bpf.c, SPDX GPL-2.0 OR BSD-3-Clause, sha256 6b77e7511e8f8906aa7db1c87d65456126b6e5837cd0dbbdd3953c8ad0dba653. The earlier bpf-developer-tutorial xdp-tcpdump seed remains rejected for missing SPDX and is not the admitted provenance."
+            },
+            "provenance": {
+                "seed_type": "minimized real-project seed in eunomia.dev HTTP parser XDP harness",
+                "source": "https://github.com/eunomia-bpf/eunomia.dev/blob/3b8626b1f7836dedfe295fe79070b170ba347e3f/docs/tutorials/23-http/sockfilter.bpf.c",
+                "license": "GPL-2.0 OR BSD-3-Clause",
+                "minimization": "Preserved the upstream HTTP socket-filter shape: Ethernet/IPv4/TCP parsing, IPv4 header-length handling, TCP doff-derived payload offset, ringbuf reserve/fill/submit, and captured TCP metadata. The minimized XDP harness replaces skb_load_bytes with direct packet access and injects only the missing verifier-visible capture-window bound before the unrolled TCP byte copy. This is a source/object-correlation case because one source-level doff-governed copy lowers to many BPF packet loads, BTF/source line info maps the final rejection to the copy line, and the real missing proof is the earlier capture-window bound.",
+                "upstream_project": "https://github.com/eunomia-bpf/eunomia.dev",
+                "upstream_ref": "3b8626b1f7836dedfe295fe79070b170ba347e3f",
+                "upstream_path": "docs/tutorials/23-http/sockfilter.bpf.c",
+                "upstream_license": "GPL-2.0 OR BSD-3-Clause",
+                "upstream_file_sha256": "6b77e7511e8f8906aa7db1c87d65456126b6e5837cd0dbbdd3953c8ad0dba653",
+                "derived_from_dev40": false,
+                "model_result_used": false
+            },
+            "oracle_obligation": {
+                "functional_semantics": [
+                    "repair must load as an XDP program",
+                    "repair must preserve Ethernet/IPv4/TCP parsing and IPv4 header-length handling",
+                    "repair must preserve TCP doff-derived header length metadata",
+                    "repair must reserve, fill, and submit the ringbuf record",
+                    "repair must update the stats map for captured and pass-through packets",
+                    "repair must return XDP_DROP only for valid captured TCP packets and XDP_PASS for truncated TCP options, UDP, and ARP"
+                ],
+                "verifier_reject_reason": [
+                    "buggy program proves Ethernet, IPv4, variable IP header, and fixed 20-byte TCP header are inside data_end",
+                    "buggy program derives tcp_header_bytes from tcp->doff and uses it to gate an unrolled ringbuf byte copy",
+                    "buggy program does not prove the full 32-byte capture window is inside data_end, so the verifier rejects a later byte load with packet range 34"
+                ],
+                "success_criteria": [
+                    "candidate compiles and verifier-loads as an XDP program",
+                    "bpftool prog run captures fixed-header TCP, TCP with options, and TCP after IPv4 options, with expected stats map values",
+                    "bpftool prog run passes truncated TCP options, UDP, and ARP without capture",
+                    "successful verifier log shows ringbuf reserve/submit and at least 20 packet-byte loads copied into the ringbuf record",
+                    "oracle rejects constant-action repairs, ringbuf-submit deletion/reference leaks, and repairs that bypass the TCP doff/ringbuf capture workflow"
                 ]
             }
         }

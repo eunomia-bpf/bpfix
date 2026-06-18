@@ -1,0 +1,63 @@
+{
+  "diagnostic_version": "bpfix.diagnostic/v3",
+  "error_id": "BPFIX-E001",
+  "failure_class": "source_bug",
+  "confidence": "medium",
+  "diagnostic_kind": "supported",
+  "help_safety": "repair_hint",
+  "next_action": "bounds",
+  "span_confidence": "exact_pc",
+  "message": "packet access reaches the use before the verifier has enough packet range: invalid access to packet, off=34 size=1, R8(id=1,off=34,r=34); R8 offset is outside of the packet",
+  "required_proof": "prove this packet register has range at least off + size at the rejected load, store, or helper call",
+  "source_span": {
+    "path": "buggy.bpf.c",
+    "line_start": 131,
+    "line_end": 131,
+    "instruction_pc": 175,
+    "source_text": "rec->bytes[i] = *((__u8 *)tcp + i);"
+  },
+  "related_spans": [
+    {
+      "path": "buggy.bpf.c",
+      "line_start": 107,
+      "line_end": 107,
+      "instruction_pc": 78,
+      "source_text": "if ((void *)(tcp + 1) > data_end) {",
+      "label": "nearby source context for packet bounds"
+    }
+  ],
+  "evidence": [
+    {
+      "kind": "terminal_verifier_error",
+      "detail": "invalid access to packet, off=34 size=1, R8(id=1,off=34,r=34); R8 offset is outside of the packet",
+      "line": 922
+    },
+    {
+      "kind": "instruction_pc",
+      "detail": "nearest verifier instruction pc 175",
+      "line": 922
+    },
+    {
+      "kind": "verifier_trace",
+      "detail": "parsed 204 per-instruction verifier state snapshots",
+      "line": null
+    },
+    {
+      "kind": "verifier_state_signal",
+      "detail": "verifier state shows the packet register's proven range is shorter than the rejected access requires at this instruction",
+      "line": 922
+    }
+  ],
+  "help": [
+    "Move or add a data_end bounds check for the exact packet pointer and access width immediately before the load, store, or helper call that consumes it."
+  ],
+  "metadata": {
+    "case_id": null,
+    "input_kind": "verifier-log-region",
+    "object_path": null,
+    "object_programs": [],
+    "object_analysis_error": null,
+    "trace_state_count": 204,
+    "analysis_error": null
+  }
+}
