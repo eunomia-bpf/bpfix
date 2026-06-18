@@ -70,6 +70,26 @@ python3 bpfix-test/tools/run_suite.py --smoke
 python3 bpfix-test/tools/audit_cases.py --smoke
 ```
 
+对于声明 `attach_or_runtime`、`environment_config` 或 `custom_oracle` 的 clean cases，
+case audit 需要 manifest 提供 oracle 类型上下文。混合声明 `bpftool_prog_run` 的 case
+仍然必须使用标准 `run_case(... functional_tests=...)` fixture：
+
+```bash
+python3 bpfix-test/tools/audit_cases.py \
+  --split bpfix-test/splits/clean60.txt \
+  --manifest bpfix-test/splits/clean60.manifest.json \
+  --smoke
+```
+
+等价 Makefile 入口：
+
+```bash
+make bpfix-test-audit \
+  SPLIT=bpfix-test/splits/clean60.txt \
+  MANIFEST=bpfix-test/splits/clean60.manifest.json \
+  SMOKE=1
+```
+
 检查 split 和污染规则：
 
 ```bash

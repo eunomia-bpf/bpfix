@@ -5,6 +5,16 @@ CURDIR := $(shell pwd)
 CARGO := cargo
 BENCH_DIR := $(CURDIR)/bpfix-bench
 CASE ?= bpfix-bench/cases/stackoverflow-60053570/replay-verifier.log
+BPFIX_TEST_AUDIT_ARGS :=
+ifneq ($(strip $(SPLIT)),)
+BPFIX_TEST_AUDIT_ARGS += --split $(SPLIT)
+endif
+ifneq ($(strip $(MANIFEST)),)
+BPFIX_TEST_AUDIT_ARGS += --manifest $(MANIFEST)
+endif
+ifneq ($(strip $(SMOKE)),)
+BPFIX_TEST_AUDIT_ARGS += --smoke
+endif
 
 .DEFAULT_GOAL := help
 
@@ -23,6 +33,7 @@ help:
 	@echo "  make bench-smoke       Run the CLI against one benchmark case"
 	@echo "  make bench-eval        Run bpfix over bpfix-bench and print metrics"
 	@echo "  make bpfix-test-audit  Audit bpfix-test fixture structure and prompts"
+	@echo "                          Optional: SPLIT=... MANIFEST=... SMOKE=1 for custom clean oracles"
 	@echo "  make bpfix-test-smoke  Validate bpfix-test fixtures and buggy rejects"
 	@echo "  make bpfix-test-dev40-gate   Run the full dev40 split quality gate"
 	@echo "  make bpfix-test-clean60-gate Run the clean60 heldout gate; fails until admitted"
@@ -77,7 +88,7 @@ bpfix-test-smoke:
 .PHONY: bpfix-test-audit
 bpfix-test-audit:
 	@echo "[bpfix-test-audit] Auditing LLM repair stress fixtures..."
-	cd $(CURDIR) && python3 bpfix-test/tools/audit_cases.py
+	cd $(CURDIR) && python3 bpfix-test/tools/audit_cases.py $(BPFIX_TEST_AUDIT_ARGS)
 
 .PHONY: bpfix-test-dev40-gate
 bpfix-test-dev40-gate:

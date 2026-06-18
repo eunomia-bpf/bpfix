@@ -38,6 +38,11 @@ provenance, oracle-obligation, selection-protocol, candidate-seed-ledger, and
 exclusion-ledger fields.
 Clean splits are also checked for exact `buggy.bpf.c` source overlap with
 `bpfix-bench/cases/**/*.c`.
+When auditing clean cases directly, pass the manifest to `audit_cases.py` so
+custom, attach/runtime, and environment/config oracles are not forced through
+the `bpftool prog run` fixture shape. A case that also declares
+`bpftool_prog_run` still has to satisfy the standard `run_case(...)` functional
+test contract.
 
 Run the gates:
 
