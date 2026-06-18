@@ -219,6 +219,14 @@
             "decision_made_before_model_eval": true,
             "model_result_used": false,
             "notes": "Minimized Cilium's FIB lookup, L2 rewrite, and redirect workflow into an XDP helper-memory contract case where bpf_fib_lookup is given a length larger than the initialized stack parameter object; no LLM repair outcomes were used for admission."
+        },
+        {
+            "seed": "datrail-agent-monitor@cfd94492b336c70c680718ad6d91ca2a81cc048d:bpf/process_ext/bpf_common.h#cgroup-filter-key-width",
+            "decision": "admitted",
+            "case_id": "rs_datrail_cgroup_filter_key_width_001",
+            "decision_made_before_model_eval": true,
+            "model_result_used": false,
+            "notes": "Minimized DatRail's cgroup-child filter workflow into an XDP helper-memory contract case where a 32-bit child key is passed to a tracked_cgroups map whose helper contract requires an initialized 64-bit key; no LLM repair outcomes were used for admission."
         }
   ],
   "seed_exclusion_ledger": [
@@ -1656,6 +1664,69 @@
                     "successful verifier log shows FIB family/src/dst/ifindex fields derived from packet and context state",
                     "successful verifier log shows lookup-success-guarded L2 rewrite followed by bpf_redirect",
                     "oracle rejects repairs that delete FIB lookup, delete redirect, or replace the workflow with unconditional XDP_PASS"
+                ]
+            }
+        },
+        {
+            "case_id": "rs_datrail_cgroup_filter_key_width_001",
+            "bucket": "helper_memory_contract",
+            "prog_type": "xdp",
+            "origin": "real-project seed from DatRail cgroup-child filter workflow",
+            "oracle_kind": [
+                "compile",
+                "verifier_load",
+                "bpftool_prog_run",
+                "helper_state",
+                "proof_predicate"
+            ],
+            "requires_helper_or_state": true,
+            "uses_success_predicate": true,
+            "case_sha256": "9adcc9e7ec443bb03be817760131e3649568994a1ee81d9f3ddb1d9abfef2c04",
+            "buggy_source_sha256": "1ddbe5576611105a9e5a03e8532cab9a099edf34da577485a0dc95d26f869b20",
+            "review": {
+                "reviewer": "Descartes subagent 019edc66-d16a-7c22-9839-79247468372d",
+                "reviewed_at": "2026-06-18",
+                "bug_confirmed": true,
+                "oracle_adequate": true,
+                "not_seen_in_prior_eval": true,
+                "bug_summary": "The minimized XDP harness preserves DatRail's cgroup-child filtering workflow but stores the child cgroup id in a 32-bit stack slot before passing it to bpf_map_lookup_elem for a tracked_cgroups map with an 8-byte key. The verifier rejects the helper call as invalid read from stack R2 off=-4 size=8.",
+                "oracle_rationale": "The oracle requires buggy rejection with the stack-read verifier error, then requires repaired sources to compile and verifier-load while preserving packet-driven child selection, tracked_cgroups lookup with key size 8, map-value-controlled drop/pass behavior, and aggregate .bss state updates on the tracked-child path. Four bpftool prog run inputs distinguish tracked nonzero, tracked zero, untracked, and zero-selector behavior. Successful-verifier predicates reject repairs that delete the lookup, change the map schema to a 32-bit key, or replace the workflow with a constant action.",
+                "provenance_rationale": "Seed verified against local DatRail commit cfd94492b336c70c680718ad6d91ca2a81cc048d, path bpf/process_ext/bpf_common.h, remote https://github.com/DatRail/datrail-agent-monitor, sha256 f4d8232d42745a2ed3f6f31ecc67ca850ffec0a398539465ea79ad3a71d7a552, SPDX GPL-2.0 OR BSD-3-Clause. The case is a minimized mutation of the upstream cgroup filter helper shape, not a claim that upstream contains this exact bug, and no LLM repair result was used for admission."
+            },
+            "provenance": {
+                "seed_type": "minimized real-project seed in DatRail XDP cgroup filter harness",
+                "source": "https://github.com/DatRail/datrail-agent-monitor/blob/cfd94492b336c70c680718ad6d91ca2a81cc048d/bpf/process_ext/bpf_common.h",
+                "license": "GPL-2.0 OR BSD-3-Clause",
+                "minimization": "Preserved the upstream DatRail filter shape: respect filter_cgroup, accept target_cgroup_id directly, require filter_cgroup_children before consulting tracked_cgroups, use the tracked map value to decide whether the event is tracked, and update aggregate state only on tracked children. The minimized XDP harness injects only the key-width proof bug by passing a 32-bit child key to a map whose helper contract requires an initialized 64-bit key.",
+                "upstream_project": "https://github.com/DatRail/datrail-agent-monitor",
+                "upstream_ref": "cfd94492b336c70c680718ad6d91ca2a81cc048d",
+                "upstream_path": "bpf/process_ext/bpf_common.h",
+                "upstream_license": "GPL-2.0 OR BSD-3-Clause",
+                "upstream_file_sha256": "f4d8232d42745a2ed3f6f31ecc67ca850ffec0a398539465ea79ad3a71d7a552",
+                "derived_from_dev40": false,
+                "model_result_used": false
+            },
+            "oracle_obligation": {
+                "functional_semantics": [
+                    "repair must load as an XDP program",
+                    "repair must preserve DatRail-style filter_cgroup and filter_cgroup_children gating",
+                    "repair must preserve tracked_cgroups lookup using a 64-bit child key",
+                    "repair must return XDP_DROP only when the tracked_cgroups value for the selected child is nonzero",
+                    "repair must keep aggregate state updates on the tracked-child path"
+                ],
+                "verifier_reject_reason": [
+                    "buggy program declares tracked_cgroups with an 8-byte key",
+                    "buggy program initializes only a 32-bit child_cgroup_id stack slot from the packet selector",
+                    "bpf_map_lookup_elem asks the verifier to prove an 8-byte helper read from that 4-byte stack slot and is rejected as invalid read from stack R2 off=-4 size=8"
+                ],
+                "success_criteria": [
+                    "candidate compiles and verifier-loads as an XDP program",
+                    "bpftool prog run returns XDP_DROP for a tracked child with value 1",
+                    "bpftool prog run returns XDP_PASS for tracked value 0, untracked child, and zero selector",
+                    "successful verifier log shows tracked_cgroups retains key size 8 and the lookup key is initialized with a 64-bit stack store",
+                    "successful verifier log shows the tracked map value controls the drop/pass decision",
+                    "successful verifier log shows aggregate .bss state updates on the tracked-child path",
+                    "oracle rejects repairs that delete the lookup, change the map key schema to 32 bits, or replace the workflow with a constant action"
                 ]
             }
         }
