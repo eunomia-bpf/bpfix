@@ -215,6 +215,12 @@
   ],
   "seed_exclusion_ledger": [
     {
+      "seed": "agentsight@1d063722bc631bef77cc6046c214e2583ba5c7e4:bpf/stdiocap.bpf.c#wrong-prog-type",
+      "reason": "duplicate_or_near_duplicate",
+      "model_result_used": false,
+      "notes": "Rejected after independent review and before model evaluation because the candidate gate found a normalized buggy-source near duplicate with rs_agentsight_stdiocap_user_copy_len_001 (j=0.9317/c=0.9737). Although the verifier symptom differs, it shares the same minimized stdiocap workflow too closely for clean60/candidate admission."
+    },
+    {
       "seed": "namei_ext@6fe308aa3a16a9ea160f634f60ed76427dcc1b7c:kernel/tools/testing/selftests/net/nat6to4.bpf.c",
       "reason": "not_reproducible",
       "model_result_used": false,
