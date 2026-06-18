@@ -99,6 +99,14 @@
             "decision_made_before_model_eval": true,
             "model_result_used": false,
             "notes": "Minimized the user-ringbuf drain callback and added a small payload-copy step to create a dynptr payload proof-lifecycle case where bpf_dynptr_data returns mem_or_null and the proof is branch-local; no LLM repair outcomes were used for admission."
+        },
+        {
+            "seed": "datrail-agent-monitor@cfd94492b336c70c680718ad6d91ca2a81cc048d:bpf/browsertrace.bpf.c",
+            "decision": "admitted",
+            "case_id": "rs_datrail_browsertrace_start_ns_merge_001",
+            "decision_made_before_model_eval": true,
+            "model_result_used": false,
+            "notes": "Minimized the browsertrace syscall-exit map lookup, timestamp delta, user-copy, ringbuf, and cleanup workflow into a branch-merge map-value proof-lifecycle case; no LLM repair outcomes were used for admission."
         }
   ],
   "seed_exclusion_ledger": [
@@ -657,6 +665,62 @@
                     "successful verifier log shows bpf_user_ringbuf_drain, bpf_dynptr_data or bpf_dynptr_read, bpf_ringbuf_reserve, and bpf_ringbuf_submit",
                     "successful verifier log proves op/comm payload values flow into the kernel ringbuf record after a verifier-visible non-null proof or dynptr_read copy",
                     "successful verifier log shows the kernel ringbuf record submitted from the reserved ringbuf reference"
+                ]
+            }
+        },
+        {
+            "case_id": "rs_datrail_browsertrace_start_ns_merge_001",
+            "bucket": "proof_lifecycle",
+            "prog_type": "tracepoint",
+            "origin": "real-project seed from datrail-agent-monitor browsertrace syscall-exit workflow",
+            "oracle_kind": [
+                "compile",
+                "verifier_load",
+                "custom_oracle",
+                "helper_state",
+                "proof_predicate"
+            ],
+            "requires_helper_or_state": true,
+            "uses_success_predicate": true,
+            "case_sha256": "add00091ff1ca593360d1df56e0b60c09c1e161ba0369041d9d30151a3b6e414",
+            "buggy_source_sha256": "64399086ee4f173f68b996eadb74d60203fe60c447ee2fe90f7ed9a613a807e9",
+            "review": {
+                "reviewer": "Franklin subagent 019ed837-af4b-7182-b504-c53aafd12f63",
+                "reviewed_at": "2026-06-17",
+                "bug_confirmed": true,
+                "oracle_adequate": true,
+                "not_seen_in_prior_eval": true,
+                "bug_summary": "The browsertrace-style syscall-exit program looks up start_ns and proves it non-null only on the pid == 0 branch, then computes event->delta_ns = ts - *tsp after the branch merge. For normal user PIDs the verifier still tracks the timestamp pointer as map_value_or_null, so the final reject is the elapsed-time dereference rather than the earlier proof-loss branch.",
+                "oracle_rationale": "The custom oracle requires compile and tracepoint verifier load, preservation of the two map lookups, timestamp delta, ringbuf reserve/submit, bounded bpf_probe_read_user, and cleanup of both maps. Its proof predicates track verifier registers per path: the start_ns map-value load must flow into the ringbuf delta field, and the saved bufs map-value pointer must be the current R3 at bpf_probe_read_user while R1 is the ringbuf payload destination and R2 is the bounded copy length. Negative controls for constant delta, removed user copy, register clobber, and cross-path taint fail.",
+                "provenance_rationale": "Seed was derived from DatRail's browsertrace BPF program at the pinned commit/path. The minimized harness preserves the upstream syscall-exit buffer lookup, start timestamp lookup, elapsed-time event field, bounded user copy, ringbuf event, and cleanup workflow while removing browser/NSS filters so the heldout case isolates branch-merge loss of the start_ns map-value proof."
+            },
+            "provenance": {
+                "seed_type": "minimized real-project seed in browsertrace syscall-exit harness",
+                "source": "https://github.com/DatRail/datrail-agent-monitor/blob/cfd94492b336c70c680718ad6d91ca2a81cc048d/bpf/browsertrace.bpf.c",
+                "license": "(LGPL-2.1 OR BSD-2-Clause)",
+                "minimization": "Preserved the browsertrace exit workflow shape: saved user buffer lookup, start timestamp lookup, elapsed-time event field, bounded bpf_probe_read_user copy, ringbuf submit, and cleanup of both maps. The minimized harness removes browser-specific filters and NSS bookkeeping so the heldout case isolates branch-merge loss of the start_ns map-value proof.",
+                "upstream_project": "https://github.com/DatRail/datrail-agent-monitor",
+                "upstream_ref": "cfd94492b336c70c680718ad6d91ca2a81cc048d",
+                "upstream_path": "bpf/browsertrace.bpf.c",
+                "upstream_license": "(LGPL-2.1 OR BSD-2-Clause)",
+                "upstream_file_sha256": "b7c1db188bc90bd73faba7b30ab357470f19f8614af5d2a7192bc94665a6cbc3",
+                "derived_from_dev40": false,
+                "model_result_used": false
+            },
+            "oracle_obligation": {
+                "functional_semantics": [
+                    "repair must load as a sys_exit_read tracepoint program",
+                    "repair must preserve saved-buffer map lookup, start timestamp lookup, timestamp delta, bounded user-memory copy, ringbuf submit, and cleanup of both maps"
+                ],
+                "verifier_reject_reason": [
+                    "bpf_map_lookup_elem returns map_value_or_null for the start_ns timestamp pointer",
+                    "buggy program proves the start_ns pointer non-null only on the pid == 0 branch and reads *tsp after the branch merge"
+                ],
+                "success_criteria": [
+                    "candidate compiles and verifier-loads as a tracepoint program",
+                    "successful verifier log shows two map lookups, ringbuf reserve, bpf_probe_read_user, two map deletes, and ringbuf submit in browsertrace exit order",
+                    "successful verifier log proves the start_ns map-value read happens after a verifier-visible non-null proof and is stored into the event delta field",
+                    "successful verifier log proves the user-copy source comes from the saved bufs map value and remains bounded by MAX_BUF_SIZE"
                 ]
             }
         }
