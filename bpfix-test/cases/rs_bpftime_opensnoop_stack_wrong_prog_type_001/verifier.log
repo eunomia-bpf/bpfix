@@ -1,0 +1,132 @@
+libbpf: loading object from <work-dir>/prog.o
+libbpf: elf: section(3) xdp, size 344, link 0, flags 6, type=1
+libbpf: sec 'xdp': found program 'rs_bpftime_opensnoop_stack_wrong_prog_type' at insn offset 0 (0 bytes), code size 43 insns (344 bytes)
+libbpf: elf: section(4) .relxdp, size 32, link 27, flags 40, type=9
+libbpf: elf: section(5) license, size 4, link 0, flags 3, type=1
+libbpf: license of <work-dir>/prog.o is GPL
+libbpf: elf: section(6) .maps, size 56, link 0, flags 3, type=1
+libbpf: elf: section(17) .BTF, size 1541, link 0, flags 0, type=1
+libbpf: elf: section(19) .BTF.ext, size 416, link 0, flags 0, type=1
+libbpf: elf: section(27) .symtab, size 456, link 1, flags 0, type=2
+libbpf: looking for externs among 19 symbols...
+libbpf: collected 0 externs total
+libbpf: map 'start': at sec_idx 6, offset 0.
+libbpf: map 'start': found type = 1.
+libbpf: map 'start': found key [8], sz = 4.
+libbpf: map 'start': found value [11], sz = 4.
+libbpf: map 'start': found max_entries = 1024.
+libbpf: map 'events': at sec_idx 6, offset 32.
+libbpf: map 'events': found type = 4.
+libbpf: map 'events': found key_size = 4.
+libbpf: map 'events': found value_size = 4.
+libbpf: sec '.relxdp': collecting relocation for section(3) 'xdp'
+libbpf: sec '.relxdp': relo #0: insn #5 against 'start'
+libbpf: prog 'rs_bpftime_opensnoop_stack_wrong_prog_type': found map 0 (start, sec 6, off 0) for insn #5
+libbpf: sec '.relxdp': relo #1: insn #32 against 'events'
+libbpf: prog 'rs_bpftime_opensnoop_stack_wrong_prog_type': found map 1 (events, sec 6, off 32) for insn #32
+libbpf: object 'prog': failed (-95) to create BPF token from '/sys/fs/bpf', skipping optional step...
+libbpf: map 'start': created successfully, fd=0
+libbpf: map 'events': setting size to 24
+libbpf: map 'events': created successfully, fd=0
+libbpf: prog 'rs_bpftime_opensnoop_stack_wrong_prog_type': BPF program load failed: -EINVAL
+libbpf: prog 'rs_bpftime_opensnoop_stack_wrong_prog_type': -- BEGIN PROG LOAD LOG --
+func#0 @0
+Live regs before insn:
+  0: .1........ (bf) r6 = r1
+  1: ......6... (85) call bpf_get_current_pid_tgid#14
+  2: 0.....6... (63) *(u32 *)(r10 -4) = r0
+  3: ......6... (bf) r2 = r10
+  4: ..2...6... (07) r2 += -4
+  5: ..2...6... (18) r1 = 0xffff000000000000
+  7: .12...6... (85) call bpf_map_lookup_elem#1
+  8: 0.....6... (bf) r7 = r0
+  9: ......67.. (b7) r8 = 0
+ 10: ......678. (7b) *(u64 *)(r10 -40) = r8
+ 11: ......678. (7b) *(u64 *)(r10 -48) = r8
+ 12: ......678. (7b) *(u64 *)(r10 -56) = r8
+ 13: ......678. (55) if r7 != 0x0 goto pc+1
+ 14: .......... (05) goto pc+26
+ 15: ......678. (85) call bpf_get_current_pid_tgid#14
+ 16: 0....5678. (63) *(u32 *)(r10 -28) = r8
+ 17: 0....567.. (77) r0 >>= 32
+ 18: 0....567.. (63) *(u32 *)(r10 -32) = r0
+ 19: .....567.. (bf) r2 = r10
+ 20: ..2..567.. (07) r2 += -56
+ 21: ..2..567.. (bf) r1 = r6
+ 22: .12..567.. (b7) r3 = 24
+ 23: .123.567.. (b7) r4 = 256
+ 24: .1234567.. (85) call bpf_get_stack#67
+ 25: ......67.. (79) r1 = *(u64 *)(r10 -48)
+ 26: .1....67.. (7b) *(u64 *)(r10 -24) = r1
+ 27: ......67.. (79) r1 = *(u64 *)(r10 -40)
+ 28: .1....67.. (7b) *(u64 *)(r10 -16) = r1
+ 29: ......67.. (bf) r4 = r10
+ 30: ....4.67.. (07) r4 += -32
+ 31: ....4.67.. (bf) r1 = r6
+ 32: .1..4..7.. (18) r2 = 0xffff000000000000
+ 34: .12.4..7.. (18) r3 = 0xffff000000000000
+ 36: .1234..7.. (b7) r5 = 24
+ 37: .12345.7.. (85) call bpf_perf_event_output#25
+ 38: .......7.. (b7) r0 = 1
+ 39: 0......7.. (61) r1 = *(u32 *)(r7 +0)
+ 40: 01........ (55) if r1 != 0x0 goto pc+1
+ 41: .......... (b7) r0 = 2
+ 42: 0......... (95) exit
+0: R1=ctx() R10=fp0
+; int rs_bpftime_opensnoop_stack_wrong_prog_type(struct xdp_md *ctx) @ buggy.bpf.c:58
+0: (bf) r6 = r1                       ; R1=ctx() R6_w=ctx()
+; __u32 pid = bpf_get_current_pid_tgid(); @ buggy.bpf.c:40
+1: (85) call bpf_get_current_pid_tgid#14      ; R0_w=scalar()
+2: (63) *(u32 *)(r10 -4) = r0         ; R0_w=scalar() R10=fp0 fp-8=mmmm????
+3: (bf) r2 = r10                      ; R2_w=fp0 R10=fp0
+;  @ buggy.bpf.c:0
+4: (07) r2 += -4                      ; R2_w=fp-4
+; struct args_t *args = bpf_map_lookup_elem(&start, &pid); @ buggy.bpf.c:41
+5: (18) r1 = 0xffff000000000000       ; R1_w=map_ptr(map=start,ks=4,vs=4)
+7: (85) call bpf_map_lookup_elem#1    ; R0=map_value_or_null(id=1,map=start,ks=4,vs=4)
+8: (bf) r7 = r0                       ; R0=map_value_or_null(id=1,map=start,ks=4,vs=4) R7_w=map_value_or_null(id=1,map=start,ks=4,vs=4)
+9: (b7) r8 = 0                        ; R8_w=0
+; __u64 stack[3] = {}; @ buggy.bpf.c:43
+10: (7b) *(u64 *)(r10 -40) = r8       ; R8_w=0 R10=fp0 fp-40_w=0
+11: (7b) *(u64 *)(r10 -48) = r8       ; R8_w=0 R10=fp0 fp-48_w=0
+12: (7b) *(u64 *)(r10 -56) = r8       ; R8_w=0 R10=fp0 fp-56_w=0
+; if (!args) @ buggy.bpf.c:45
+13: (55) if r7 != 0x0 goto pc+1       ; R7_w=0
+14: (05) goto pc+26
+;  @ buggy.bpf.c:0
+41: (b7) r0 = 2                       ; R0=2
+; } @ buggy.bpf.c:63
+42: (95) exit
+
+from 13 to 15: R0=map_value(map=start,ks=4,vs=4) R6=ctx() R7_w=map_value(map=start,ks=4,vs=4) R8_w=0 R10=fp0 fp-8=mmmm???? fp-40_w=0 fp-48_w=0 fp-56_w=0
+15: R0=map_value(map=start,ks=4,vs=4) R6=ctx() R7_w=map_value(map=start,ks=4,vs=4) R8_w=0 R10=fp0 fp-8=mmmm???? fp-40_w=0 fp-48_w=0 fp-56_w=0
+; event.pid = bpf_get_current_pid_tgid() >> 32; @ buggy.bpf.c:48
+15: (85) call bpf_get_current_pid_tgid#14     ; R0_w=scalar()
+; event.ret = ret; @ buggy.bpf.c:49
+16: (63) *(u32 *)(r10 -28) = r8
+mark_precise: frame0: last_idx 16 first_idx 8 subseq_idx -1 
+mark_precise: frame0: regs=r8 stack= before 15: (85) call bpf_get_current_pid_tgid#14
+mark_precise: frame0: regs=r8 stack= before 13: (55) if r7 != 0x0 goto pc+1
+mark_precise: frame0: regs=r8 stack= before 12: (7b) *(u64 *)(r10 -56) = r8
+mark_precise: frame0: regs=r8 stack= before 11: (7b) *(u64 *)(r10 -48) = r8
+mark_precise: frame0: regs=r8 stack= before 10: (7b) *(u64 *)(r10 -40) = r8
+mark_precise: frame0: regs=r8 stack= before 9: (b7) r8 = 0
+17: R8_w=0 R10=fp0 fp-32=0000????
+; event.pid = bpf_get_current_pid_tgid() >> 32; @ buggy.bpf.c:48
+17: (77) r0 >>= 32                    ; R0_w=scalar(smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000))
+18: (63) *(u32 *)(r10 -32) = r0       ; R0_w=scalar(id=2,smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) R10=fp0 fp-32=0000scalar(id=2,smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000))
+19: (bf) r2 = r10                     ; R2_w=fp0 R10=fp0
+20: (07) r2 += -56                    ; R2_w=fp-56
+; bpf_get_stack(ctx, &stack, sizeof(stack), BPF_F_USER_STACK); @ buggy.bpf.c:50
+21: (bf) r1 = r6                      ; R1_w=ctx() R6=ctx()
+22: (b7) r3 = 24                      ; R3_w=24
+23: (b7) r4 = 256                     ; R4_w=256
+24: (85) call bpf_get_stack#67
+program of this type cannot use helper bpf_get_stack#67
+verification time 0 usec
+stack depth 56
+processed 26 insns (limit 1000000) max_states_per_insn 0 total_states 2 peak_states 2 mark_read 1
+-- END PROG LOAD LOG --
+libbpf: prog 'rs_bpftime_opensnoop_stack_wrong_prog_type': failed to load: -EINVAL
+libbpf: failed to load object '<work-dir>/prog.o'
+Error: failed to load object file

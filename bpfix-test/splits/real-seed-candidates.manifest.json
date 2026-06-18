@@ -51,6 +51,14 @@
       "decision_made_before_model_eval": true,
       "model_result_used": false,
       "notes": "Minimized the xdp-filter macro and inline parser shape into a deterministic XDP harness where the macro proves bounds for a fixed L4 pointer but the rejected read uses an IHL-derived pointer; no LLM repair outcomes were used for admission."
+    },
+    {
+      "seed": "bpftime@fac864e5c0775756323794ff44e03ab79a11e753:example/tracing/opensnoop/opensnoop.bpf.c",
+      "decision": "admitted",
+      "case_id": "rs_bpftime_opensnoop_stack_wrong_prog_type_001",
+      "decision_made_before_model_eval": true,
+      "model_result_used": false,
+      "notes": "Minimized the opensnoop tracepoint stack-capture workflow into a single XDP-section boundary failure where bpf_get_stack is rejected by program type; no LLM repair outcomes were used for admission."
     }
   ],
   "seed_exclusion_ledger": [
@@ -59,6 +67,18 @@
       "reason": "not_reproducible",
       "model_result_used": false,
       "notes": "Rejected before admission because the file lives in a nested kernel submodule and the default provenance gate cannot verify it from the namei_ext top-level pinned ref/path; no LLM repair outcomes were inspected."
+    },
+    {
+      "seed": "datrail@7b9f689fda9fba997cb4c6d7b2c52e804b513928:datrail-agent-monitor/bpf/stdiocap.bpf.c",
+      "reason": "not_reproducible",
+      "model_result_used": false,
+      "notes": "Rejected before admission because the candidate file exists in a nested or dirty worktree but not at that path in the top-level pinned ref, so the default provenance gate cannot verify the source; no LLM repair outcomes were inspected."
+    },
+    {
+      "seed": "agentsight@77a7ea3fdde28e93da935af883aff295613551e9:bpf/stdiocap.bpf.c",
+      "reason": "verifier_accepts",
+      "model_result_used": false,
+      "notes": "Rejected before admission for this environment-boundary shape because the attempted XDP bpf_probe_read_user variant verifier-loads on the pinned kernel/toolchain; no LLM repair outcomes were inspected."
     }
   ],
   "case_defaults": {
@@ -268,6 +288,61 @@
           "candidate compiles and verifier-loads",
           "bpftool prog run returns expected XDP actions for seven packet fixtures",
           "successful verifier log shows a u16 UDP destination load at offset +2 from a variable IHL-derived packet pointer"
+        ]
+      }
+    },
+    {
+      "case_id": "rs_bpftime_opensnoop_stack_wrong_prog_type_001",
+      "bucket": "environment_config_boundary",
+      "prog_type": "xdp",
+      "origin": "real-project seed from bpftime opensnoop tracepoint stack capture and perf-event output",
+      "oracle_kind": [
+        "compile",
+        "verifier_load",
+        "environment_config",
+        "custom_oracle"
+      ],
+      "requires_helper_or_state": false,
+      "uses_success_predicate": false,
+      "case_sha256": "6aeabb501ca29cfd70514a954bf8b4d78ac77559a4070952bf75f46cb742d423",
+      "buggy_source_sha256": "010fd5833407aea0ac3a2115c74935e279b9a49fc60c359b85d1d2b6cba89ec9",
+      "review": {
+        "reviewer": "Franklin subagent 019ed837-af4b-7182-b504-c53aafd12f63",
+        "reviewed_at": "2026-06-17",
+        "bug_confirmed": true,
+        "oracle_adequate": true,
+        "not_seen_in_prior_eval": true,
+        "bug_summary": "The minimized opensnoop workflow calls bpf_get_stack with BPF_F_USER_STACK from an XDP section, where the verifier rejects the helper by program type.",
+        "oracle_rationale": "The custom oracle requires compile, verifier reject for the buggy XDP helper capability error, and a successful repair that loads as a syscall-exit tracepoint while the verifier log shows start-map lookup, bpf_get_stack#67 with r4=256, and bpf_perf_event_output#25 in lookup-stack-output order.",
+        "provenance_rationale": "Seed was derived from bpftime opensnoop.bpf.c, which stores open arguments, captures a user stack, and emits an event; the minimized harness preserves that tracing workflow while moving it into a deterministic program-type boundary failure."
+      },
+      "provenance": {
+        "seed_type": "minimized real-project seed in environment-boundary harness",
+        "source": "https://github.com/eunomia-bpf/bpftime/blob/fac864e5c0775756323794ff44e03ab79a11e753/example/tracing/opensnoop/opensnoop.bpf.c",
+        "license": "GPL-2.0",
+        "minimization": "Preserved opensnoop's start-map lookup, user-stack capture through bpf_get_stack, and perf-event output while replacing the full multi-section tracer with a single XDP-section program-type boundary failure.",
+        "upstream_project": "https://github.com/eunomia-bpf/bpftime",
+        "upstream_ref": "fac864e5c0775756323794ff44e03ab79a11e753",
+        "upstream_path": "example/tracing/opensnoop/opensnoop.bpf.c",
+        "upstream_license": "GPL-2.0",
+        "upstream_file_sha256": "8c322242892208993e5df9cf221049d481447e8d7436c7cdba202c3c25c6b3f3",
+        "derived_from_dev40": false,
+        "model_result_used": false
+      },
+      "oracle_obligation": {
+        "functional_semantics": [
+          "repair must load as a syscall-exit tracepoint, not as XDP",
+          "repair must preserve opensnoop-style start-map lookup before stack capture",
+          "repair must preserve user-stack capture and perf-event output"
+        ],
+        "verifier_reject_reason": [
+          "buggy program places a tracing stack-capture workflow in an XDP section",
+          "current verifier rejects bpf_get_stack#67 with program of this type cannot use helper"
+        ],
+        "success_criteria": [
+          "candidate compiles and verifier-loads",
+          "successful verifier log shows call bpf_map_lookup_elem#1 before call bpf_get_stack#67 before call bpf_perf_event_output#25",
+          "successful verifier log shows bpf_get_stack receives BPF_F_USER_STACK via r4=256"
         ]
       }
     }

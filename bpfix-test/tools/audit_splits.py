@@ -324,14 +324,23 @@ def resolve_local_upstream_repo(root: Path, upstream_project: str) -> Path | Non
     if not base:
         return None
     search_root = upstream_root(root)
-    direct = search_root / base
-    if (direct / ".git").exists():
-        return direct
     if search_root.exists():
         lower_base = base.lower()
+        direct = search_root / base
+        if (direct / ".git").exists():
+            return direct
         for child in search_root.iterdir():
             if child.is_dir() and child.name.lower() == lower_base and (child / ".git").exists():
                 return child
+        for parent in search_root.iterdir():
+            if not parent.is_dir():
+                continue
+            candidate = parent / base
+            if (candidate / ".git").exists():
+                return candidate
+            for child in parent.iterdir():
+                if child.is_dir() and child.name.lower() == lower_base and (child / ".git").exists():
+                    return child
     return None
 
 
