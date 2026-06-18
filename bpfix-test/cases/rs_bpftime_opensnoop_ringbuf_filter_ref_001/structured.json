@@ -1,0 +1,74 @@
+{
+  "diagnostic_version": "bpfix.diagnostic/v3",
+  "error_id": "BPFIX-E004",
+  "failure_class": "source_bug",
+  "confidence": "high",
+  "diagnostic_kind": "supported",
+  "help_safety": "repair_hint",
+  "next_action": "release",
+  "span_confidence": "exact_pc",
+  "message": "program exits while a verifier-tracked ring-buffer reference is still live",
+  "required_proof": "after bpf_ringbuf_reserve succeeds, every possible exit path must release the same reference with bpf_ringbuf_submit or bpf_ringbuf_discard",
+  "source_span": {
+    "path": "buggy.bpf.c",
+    "line_start": 67,
+    "line_end": 68,
+    "instruction_pc": null,
+    "source_text": "if (ret >= 0)\\n        return 0;"
+  },
+  "related_spans": [
+    {
+      "path": "buggy.bpf.c",
+      "line_start": 63,
+      "line_end": 63,
+      "instruction_pc": null,
+      "source_text": "event = bpf_ringbuf_reserve(&rb, sizeof(*event), 0);",
+      "label": "reference acquired"
+    },
+    {
+      "path": "buggy.bpf.c",
+      "line_start": 77,
+      "line_end": 77,
+      "instruction_pc": null,
+      "source_text": "bpf_ringbuf_submit(event, 0);",
+      "label": "reference released only on the event path"
+    },
+    {
+      "path": "buggy.bpf.c",
+      "line_start": 80,
+      "line_end": 80,
+      "instruction_pc": null,
+      "source_text": "bpf_map_delete_elem(&start, &pid);",
+      "label": "cleanup skipped by the filtered return path"
+    }
+  ],
+  "evidence": [
+    {
+      "kind": "terminal_verifier_error",
+      "detail": "Unreleased reference is reported at exit after the ring-buffer reserve helper",
+      "line": null
+    },
+    {
+      "kind": "verifier_state_signal",
+      "detail": "the rejected path reaches BPF_EXIT with the ring-buffer reserve ref still present in the refs set",
+      "line": null
+    },
+    {
+      "kind": "source_context",
+      "detail": "the ret >= 0 filter is evaluated after reserve and returns before submit, discard, or map cleanup",
+      "line": 67
+    }
+  ],
+  "help": [
+    "Move the filter before the reserve or route the filtered path through cleanup that discards the reserved ring-buffer record before returning."
+  ],
+  "metadata": {
+    "case_id": null,
+    "input_kind": "verifier-log-region",
+    "object_path": null,
+    "object_programs": [],
+    "object_analysis_error": null,
+    "trace_state_count": null,
+    "analysis_error": null
+  }
+}

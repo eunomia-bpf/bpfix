@@ -187,6 +187,14 @@
             "decision_made_before_model_eval": true,
             "model_result_used": false,
             "notes": "Minimized xdp-tools' xdp-filter macro and inline parser workflow into an XDP source/object-correlation case where UDP destination is read after variable IPv4 parsing without a UDP header proof; no LLM repair outcomes were used for admission."
+        },
+        {
+            "seed": "bpftime@fac864e5c0775756323794ff44e03ab79a11e753:example/tracing/opensnoop_ring_buf/opensnoop.bpf.c",
+            "decision": "admitted",
+            "case_id": "rs_bpftime_opensnoop_ringbuf_filter_ref_001",
+            "decision_made_before_model_eval": true,
+            "model_result_used": false,
+            "notes": "Minimized bpftime's opensnoop ring-buffer syscall-entry/exit workflow into a tracepoint case where a failed-only ret filter returns after bpf_ringbuf_reserve without releasing the reference or cleaning saved arguments; no LLM repair outcomes were used for admission."
         }
   ],
   "seed_exclusion_ledger": [
@@ -1378,6 +1386,65 @@
                     "bpftool prog run returns XDP_DROP for UDP/53 with normal and option-bearing IPv4 headers",
                     "bpftool prog run returns XDP_PASS for non-DNS UDP, TCP, truncated UDP, and ARP packets",
                     "successful verifier log shows the UDP destination load after both the variable IPv4-IHL proof and a UDP-header packet bound"
+                ]
+            }
+        },
+        {
+            "case_id": "rs_bpftime_opensnoop_ringbuf_filter_ref_001",
+            "bucket": "modern_bpf_protocol",
+            "prog_type": "tracepoint",
+            "origin": "real-project seed from bpftime opensnoop ring-buffer syscall-entry/exit workflow",
+            "oracle_kind": [
+                "compile",
+                "verifier_load",
+                "custom_oracle",
+                "helper_state",
+                "proof_predicate"
+            ],
+            "requires_helper_or_state": true,
+            "uses_success_predicate": true,
+            "case_sha256": "fc2c403c94bce63607096ed32bba03addb42adf9c487f60d92e354245e190fb0",
+            "buggy_source_sha256": "72148e46e389bd3dc663c46100a7f771caadd97bd17e3e69b16e68440d2664a3",
+            "review": {
+                "reviewer": "Pauli subagent 019ed9c5-7e81-7ac0-866d-50c7c78f8ae9",
+                "reviewed_at": "2026-06-18",
+                "bug_confirmed": true,
+                "oracle_adequate": true,
+                "not_seen_in_prior_eval": true,
+                "bug_summary": "The opensnoop exit tracepoint reserves a ring-buffer event before applying the ret >= 0 failed-only filter. The filtered path returns directly after reserve, leaving the verifier-tracked ring-buffer reference unreleased and also skipping deletion of the saved syscall-entry arguments.",
+                "oracle_rationale": "The oracle requires compile and tracepoint verifier load, preserves the openat entry/exit workflow, start-map update/lookup/cleanup, failed-only ret >= 0 filter, ringbuf reserve/submit, and user filename copy. Its source predicate requires the filtered branch either to run before reserve and jump to cleanup, or to run after reserve with bpf_ringbuf_discard plus cleanup and no submit. Its verifier-CFG predicate parses the exit program load log and proves the ret-filtered successor reaches bpf_map_delete_elem without passing through bpf_ringbuf_submit, and requires bpf_ringbuf_discard when reserve occurred before the filter; negative controls for empty filter, removed filter, and cleanup without discard fail.",
+                "provenance_rationale": "Verified against the local bpftime checkout at commit fac864e5c0775756323794ff44e03ab79a11e753, path example/tracing/opensnoop_ring_buf/opensnoop.bpf.c, SPDX GPL-2.0, and upstream file sha256 08714f5745087275ab4ebb9b56c983f4f9847f5f8f185127c5fe24281d72ee78. The minimized case preserves the upstream opensnoop syscall-entry argument map and syscall-exit ringbuf event workflow while isolating a ringbuf reference-lifecycle and cleanup obligation; it is not a semantic near-duplicate of staged/dev40/bpfix-bench cases, and no model repair result was used for admission."
+            },
+            "provenance": {
+                "seed_type": "minimized real-project seed in bpftime opensnoop ring-buffer tracepoint harness",
+                "source": "https://github.com/eunomia-bpf/bpftime/blob/fac864e5c0775756323794ff44e03ab79a11e753/example/tracing/opensnoop_ring_buf/opensnoop.bpf.c",
+                "license": "GPL-2.0",
+                "minimization": "Preserved the upstream opensnoop two-stage tracepoint workflow: openat entry stores filename and flags in a start map, and openat exit looks up the saved arguments, applies failed-only filtering, emits a ring-buffer event with current comm and user filename, and deletes the saved state. The minimized harness isolates a reserve-after-filter reference release and cleanup obligation.",
+                "upstream_project": "https://github.com/eunomia-bpf/bpftime",
+                "upstream_ref": "fac864e5c0775756323794ff44e03ab79a11e753",
+                "upstream_path": "example/tracing/opensnoop_ring_buf/opensnoop.bpf.c",
+                "upstream_license": "GPL-2.0",
+                "upstream_file_sha256": "08714f5745087275ab4ebb9b56c983f4f9847f5f8f185127c5fe24281d72ee78",
+                "derived_from_dev40": false,
+                "model_result_used": false
+            },
+            "oracle_obligation": {
+                "functional_semantics": [
+                    "repair must load as tracepoint programs for openat entry and exit",
+                    "repair must preserve the start-map update on syscall entry and lookup/delete cleanup on syscall exit",
+                    "repair must preserve failed-only ret >= 0 filtering, user filename copy, and ring-buffer event submission for failed opens",
+                    "repair must not submit a success-path event while satisfying verifier reference-release rules"
+                ],
+                "verifier_reject_reason": [
+                    "buggy program calls bpf_ringbuf_reserve before the ret >= 0 failed-only filter",
+                    "the ret >= 0 filtered path returns directly after reserve without bpf_ringbuf_submit or bpf_ringbuf_discard",
+                    "the same filtered path also bypasses deletion of the saved start-map argument state"
+                ],
+                "success_criteria": [
+                    "candidate compiles and verifier-loads as tracepoint programs",
+                    "successful verifier log reaches start-map lookup, bpf_ringbuf_reserve, bpf_probe_read_user_str, bpf_ringbuf_submit, and bpf_map_delete_elem",
+                    "source predicate proves the ret-filtered branch either runs before reserve and jumps to cleanup, or discards the reserved record before cleanup",
+                    "verifier-CFG predicate proves the ret-filtered successor reaches cleanup without submit, and requires discard if reserve happened before the branch"
                 ]
             }
         }
