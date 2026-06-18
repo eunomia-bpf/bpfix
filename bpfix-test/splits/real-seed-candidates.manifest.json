@@ -147,6 +147,14 @@
             "decision_made_before_model_eval": true,
             "model_result_used": false,
             "notes": "Minimized the xdp-tools xdp_load_bytes helper probe into an XDP helper-memory contract case where bpf_xdp_load_bytes is asked to write beyond the stack scratch buffer; no LLM repair outcomes were used for admission."
+        },
+        {
+            "seed": "bpf-developer-tutorial@3a722c03d5129ac212935bf5ecce118e64efcdd8:src/24-hide/pidhide.bpf.c",
+            "decision": "admitted",
+            "case_id": "rs_tutorial_pidhide_tailcall_map_type_001",
+            "decision_made_before_model_eval": true,
+            "model_result_used": false,
+            "notes": "Minimized the pidhide tail-call dispatch and prog-array workflow into a runnable XDP multi-program harness where bpf_tail_call receives a normal array map; no LLM repair outcomes were used for admission."
         }
   ],
   "seed_exclusion_ledger": [
@@ -1051,6 +1059,66 @@
                     "successful verifier log reaches bpf_xdp_load_bytes",
                     "successful verifier log shows the helper length register R4 equals the ten-byte stack buffer size",
                     "successful verifier log shows the marker checks read from the helper-filled stack buffer at r10 -1 and r10 -10"
+                ]
+            }
+        },
+        {
+            "case_id": "rs_tutorial_pidhide_tailcall_map_type_001",
+            "bucket": "environment_config_boundary",
+            "prog_type": "xdp",
+            "origin": "real-project seed from bpf-developer-tutorial pidhide tail-call dispatch",
+            "oracle_kind": [
+                "compile",
+                "verifier_load",
+                "bpftool_prog_run",
+                "custom_oracle",
+                "environment_config",
+                "helper_state",
+                "proof_predicate"
+            ],
+            "requires_helper_or_state": true,
+            "uses_success_predicate": true,
+            "case_sha256": "64415edde76ab5148a960f6fd09de8acc4c7d514630d2050199aee4d782efb31",
+            "buggy_source_sha256": "f6cfd76bfef8877319b3f97a534f32d80d08a64b781a3891015035c3a8e63dcb",
+            "review": {
+                "reviewer": "Harvey subagent 019ed97f-b537-7be0-9fda-61d18ed16446",
+                "reviewed_at": "2026-06-17",
+                "bug_confirmed": true,
+                "oracle_adequate": true,
+                "not_seen_in_prior_eval": true,
+                "bug_summary": "buggy.bpf.c declares map_prog_array as BPF_MAP_TYPE_ARRAY and then passes it to bpf_tail_call(ctx, &map_prog_array, PROG_01); the saved verifier log shows map type 2, call bpf_tail_call#12, slot register r3 = 1, and terminal kernel subsystem misconfigured verifier.",
+                "oracle_rationale": "The custom test loads all XDP programs with pinmaps, fetches the tail_target_drop program id, updates prog-array slot 1, and runs marker and non-marker packets. The success predicate requires prog-array type 3, the bpf_tail_call helper before the target program load, r3 = 1, and the target program load, so direct-return and wrong-slot repairs are rejected.",
+                "provenance_rationale": "The seed is auditable at bpf-developer-tutorial commit 3a722c03d5129ac212935bf5ecce118e64efcdd8, path src/24-hide/pidhide.bpf.c, SPDX BSD-3-Clause, upstream file sha256 e63f11222df61958fe300558b8957fe09eef9f4a422f80eb3e49c126b831840e. The local dirty tutorial deletions are unrelated to this source file."
+            },
+            "provenance": {
+                "seed_type": "minimized real-project seed in pidhide XDP tail-call dispatch harness",
+                "source": "https://github.com/eunomia-bpf/bpf-developer-tutorial/blob/3a722c03d5129ac212935bf5ecce118e64efcdd8/src/24-hide/pidhide.bpf.c",
+                "license": "BSD-3-Clause",
+                "minimization": "Preserved the upstream pidhide multi-program tail-call shape: a prog-array map, an entry program that conditionally dispatches by bpf_tail_call, and a second target program reached through the prog array. The minimized harness uses XDP packets as deterministic inputs so bpftool prog run can exercise both fallback and tail-call paths.",
+                "upstream_project": "https://github.com/eunomia-bpf/bpf-developer-tutorial",
+                "upstream_ref": "3a722c03d5129ac212935bf5ecce118e64efcdd8",
+                "upstream_path": "src/24-hide/pidhide.bpf.c",
+                "upstream_license": "BSD-3-Clause",
+                "upstream_file_sha256": "e63f11222df61958fe300558b8957fe09eef9f4a422f80eb3e49c126b831840e",
+                "derived_from_dev40": false,
+                "model_result_used": false
+            },
+            "oracle_obligation": {
+                "functional_semantics": [
+                    "repair must load all programs in the object as XDP programs",
+                    "repair must preserve prog-array tail-call dispatch from the entry program to the drop target",
+                    "repair must drop marker packets through the populated tail-call slot and pass non-marker packets through the fallback path"
+                ],
+                "verifier_reject_reason": [
+                    "buggy map_prog_array is declared as BPF_MAP_TYPE_ARRAY",
+                    "bpf_tail_call requires argument 2 to be a BPF_MAP_TYPE_PROG_ARRAY map"
+                ],
+                "success_criteria": [
+                    "candidate compiles and verifier-loads with bpftool prog loadall",
+                    "successful verifier log shows map_prog_array has type BPF_MAP_TYPE_PROG_ARRAY",
+                    "successful verifier log reaches bpf_tail_call with slot register R3 equal to 1",
+                    "successful verifier log loads and pins the tail_target_drop program",
+                    "bpftool prog run returns XDP_DROP for marker packets after map slot setup and XDP_PASS for non-marker packets"
                 ]
             }
         }

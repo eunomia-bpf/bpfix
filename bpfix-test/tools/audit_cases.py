@@ -119,9 +119,33 @@ def module_literal_dict(tree: ast.Module, name: str) -> dict[str, Any] | None:
     return None
 
 
+def module_literal_list_count(tree: ast.Module, name: str) -> int | None:
+    for node in tree.body:
+        value: ast.AST | None = None
+        if isinstance(node, ast.Assign) and any(
+            isinstance(target, ast.Name) and target.id == name for target in node.targets
+        ):
+            value = node.value
+        elif isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name) and node.target.id == name:
+            value = node.value
+        if value is None:
+            continue
+        try:
+            parsed = ast.literal_eval(value)
+        except (ValueError, SyntaxError):
+            return None
+        return literal_list_count(parsed)
+    return None
+
+
 def custom_oracle_coverage(tree: ast.Module) -> dict[str, int | None]:
     coverage = module_literal_dict(tree, "CUSTOM_ORACLE_COVERAGE") or {}
+    expected_reject_substrings = literal_list_count(coverage.get("expected_reject_substrings"))
+    if expected_reject_substrings is None:
+        expected_reject_substrings = module_literal_list_count(tree, "EXPECTED_REJECT_SUBSTRINGS")
     return {
+        "expected_reject_substrings": expected_reject_substrings,
+        "functional_tests": literal_list_count(coverage.get("functional_tests")),
         "required_success_substrings": literal_list_count(coverage.get("required_success_substrings")),
         "required_success_predicates": literal_list_count(coverage.get("required_success_predicates")),
     }
@@ -173,13 +197,16 @@ def audit_test_py(
     bpftool_prog_run = oracle_kind is None or BPFTOOL_PROG_RUN_ORACLE in oracle_kind_set
     if keywords is None:
         coverage = custom_oracle_coverage(tree) if custom_oracle and tree is not None else {}
-        if bpftool_prog_run:
-            errors.append("test.py does not contain a parseable run_case(...) call")
-        elif not custom_oracle:
+        if not custom_oracle:
             errors.append("test.py must either contain run_case(...) or declare a custom oracle kind")
+        else:
+            if not coverage.get("expected_reject_substrings"):
+                errors.append("custom oracle must declare expected_reject_substrings coverage")
+            if bpftool_prog_run and not coverage.get("functional_tests"):
+                errors.append("custom oracle with bpftool_prog_run must declare functional_tests coverage")
         return {
-            "expected_reject_substrings": None,
-            "functional_tests": None,
+            "expected_reject_substrings": coverage.get("expected_reject_substrings"),
+            "functional_tests": coverage.get("functional_tests"),
             "required_success_substrings": coverage.get("required_success_substrings"),
             "required_success_predicates": coverage.get("required_success_predicates"),
             "custom_oracle": custom_oracle,
