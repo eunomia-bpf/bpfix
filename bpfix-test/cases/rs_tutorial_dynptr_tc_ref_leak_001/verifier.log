@@ -1,0 +1,613 @@
+libbpf: loading object from <work-dir>/prog.o
+libbpf: elf: section(3) tc, size 1288, link 0, flags 6, type=1
+libbpf: sec 'tc': found program 'rs_tutorial_dynptr_tc_ref_leak' at insn offset 0 (0 bytes), code size 161 insns (1288 bytes)
+libbpf: elf: section(4) .reltc, size 96, link 26, flags 40, type=9
+libbpf: elf: section(5) .maps, size 48, link 0, flags 3, type=1
+libbpf: elf: section(6) license, size 4, link 0, flags 3, type=1
+libbpf: license of <work-dir>/prog.o is GPL
+libbpf: elf: section(16) .BTF, size 4722, link 0, flags 0, type=1
+libbpf: elf: section(18) .BTF.ext, size 1372, link 0, flags 0, type=1
+libbpf: elf: section(26) .symtab, size 600, link 1, flags 0, type=2
+libbpf: looking for externs among 25 symbols...
+libbpf: collected 2 externs total
+libbpf: extern (ksym) #0: symbol 21, name bpf_dynptr_from_skb
+libbpf: extern (ksym) #1: symbol 22, name bpf_dynptr_slice
+libbpf: map 'cfg_map': at sec_idx 5, offset 0.
+libbpf: map 'cfg_map': found type = 2.
+libbpf: map 'cfg_map': found key [8], sz = 4.
+libbpf: map 'cfg_map': found value [11], sz = 12.
+libbpf: map 'cfg_map': found max_entries = 1.
+libbpf: map 'events': at sec_idx 5, offset 32.
+libbpf: map 'events': found type = 27.
+libbpf: map 'events': found max_entries = 1048576.
+libbpf: sec '.reltc': collecting relocation for section(3) 'tc'
+libbpf: sec '.reltc': relo #0: insn #5 against 'cfg_map'
+libbpf: prog 'rs_tutorial_dynptr_tc_ref_leak': found map 0 (cfg_map, sec 5, off 0) for insn #5
+libbpf: sec '.reltc': relo #1: insn #18 against 'bpf_dynptr_from_skb'
+libbpf: prog 'rs_tutorial_dynptr_tc_ref_leak': found extern #0 'bpf_dynptr_from_skb' (sym 21) for insn #18
+libbpf: sec '.reltc': relo #2: insn #28 against 'bpf_dynptr_slice'
+libbpf: prog 'rs_tutorial_dynptr_tc_ref_leak': found extern #1 'bpf_dynptr_slice' (sym 22) for insn #28
+libbpf: sec '.reltc': relo #3: insn #38 against 'bpf_dynptr_slice'
+libbpf: prog 'rs_tutorial_dynptr_tc_ref_leak': found extern #1 'bpf_dynptr_slice' (sym 22) for insn #38
+libbpf: sec '.reltc': relo #4: insn #59 against 'bpf_dynptr_slice'
+libbpf: prog 'rs_tutorial_dynptr_tc_ref_leak': found extern #1 'bpf_dynptr_slice' (sym 22) for insn #59
+libbpf: sec '.reltc': relo #5: insn #123 against 'events'
+libbpf: prog 'rs_tutorial_dynptr_tc_ref_leak': found map 1 (events, sec 5, off 32) for insn #123
+libbpf: object 'prog': failed (-95) to create BPF token from '/sys/fs/bpf', skipping optional step...
+libbpf: loaded kernel BTF from '/sys/kernel/btf/vmlinux'
+libbpf: extern (func ksym) 'bpf_dynptr_from_skb': resolved to vmlinux [71549]
+libbpf: extern (func ksym) 'bpf_dynptr_slice': resolved to vmlinux [71567]
+libbpf: sec 'tc': found 11 CO-RE relocations
+libbpf: CO-RE relocating [47] struct ethhdr: found target candidate [23410] struct ethhdr in [vmlinux]
+libbpf: prog 'rs_tutorial_dynptr_tc_ref_leak': relo #0: <byte_off> [47] struct ethhdr.h_proto (0:2 @ offset 12)
+libbpf: prog 'rs_tutorial_dynptr_tc_ref_leak': relo #0: matching candidate #0 <byte_off> [23410] struct ethhdr.h_proto (0:2 @ offset 12)
+libbpf: prog 'rs_tutorial_dynptr_tc_ref_leak': relo #0: patched insn #30 (LDX/ST/STX) off 12 -> 12
+libbpf: CO-RE relocating [50] struct iphdr: found target candidate [23765] struct iphdr in [vmlinux]
+libbpf: prog 'rs_tutorial_dynptr_tc_ref_leak': relo #1: <byte_off> [50] struct iphdr.version (0:1 @ offset 0.4)
+libbpf: prog 'rs_tutorial_dynptr_tc_ref_leak': relo #1: matching candidate #0 <byte_off> [23765] struct iphdr.version (0:1 @ offset 0.4)
+libbpf: prog 'rs_tutorial_dynptr_tc_ref_leak': relo #1: patched insn #40 (LDX/ST/STX) off 0 -> 0
+libbpf: prog 'rs_tutorial_dynptr_tc_ref_leak': relo #2: <byte_off> [50] struct iphdr.ihl (0:0 @ offset 0)
+libbpf: prog 'rs_tutorial_dynptr_tc_ref_leak': relo #2: matching candidate #0 <byte_off> [23765] struct iphdr.ihl (0:0 @ offset 0)
+libbpf: prog 'rs_tutorial_dynptr_tc_ref_leak': relo #2: patched insn #43 (LDX/ST/STX) off 0 -> 0
+libbpf: prog 'rs_tutorial_dynptr_tc_ref_leak': relo #3: <byte_off> [50] struct iphdr.protocol (0:7 @ offset 9)
+libbpf: prog 'rs_tutorial_dynptr_tc_ref_leak': relo #3: matching candidate #0 <byte_off> [23765] struct iphdr.protocol (0:7 @ offset 9)
+libbpf: prog 'rs_tutorial_dynptr_tc_ref_leak': relo #3: patched insn #47 (LDX/ST/STX) off 9 -> 9
+libbpf: prog 'rs_tutorial_dynptr_tc_ref_leak': relo #4: <byte_off> [50] struct iphdr.ihl (0:0 @ offset 0)
+libbpf: prog 'rs_tutorial_dynptr_tc_ref_leak': relo #4: matching candidate #0 <byte_off> [23765] struct iphdr.ihl (0:0 @ offset 0)
+libbpf: prog 'rs_tutorial_dynptr_tc_ref_leak': relo #4: patched insn #49 (LDX/ST/STX) off 0 -> 0
+libbpf: CO-RE relocating [56] struct tcphdr: found target candidate [23763] struct tcphdr in [vmlinux]
+libbpf: prog 'rs_tutorial_dynptr_tc_ref_leak': relo #5: <byte_off> [56] struct tcphdr.doff (0:5 @ offset 12.4)
+libbpf: prog 'rs_tutorial_dynptr_tc_ref_leak': relo #5: matching candidate #0 <byte_off> [23763] struct tcphdr.doff (0:6 @ offset 12.4)
+libbpf: prog 'rs_tutorial_dynptr_tc_ref_leak': relo #5: patched insn #61 (LDX/ST/STX) off 12 -> 12
+libbpf: prog 'rs_tutorial_dynptr_tc_ref_leak': relo #6: <byte_off> [56] struct tcphdr.dest (0:1 @ offset 2)
+libbpf: prog 'rs_tutorial_dynptr_tc_ref_leak': relo #6: matching candidate #0 <byte_off> [23763] struct tcphdr.dest (0:1 @ offset 2)
+libbpf: prog 'rs_tutorial_dynptr_tc_ref_leak': relo #6: patched insn #65 (LDX/ST/STX) off 2 -> 2
+libbpf: prog 'rs_tutorial_dynptr_tc_ref_leak': relo #7: <byte_off> [56] struct tcphdr.source (0:0 @ offset 0)
+libbpf: prog 'rs_tutorial_dynptr_tc_ref_leak': relo #7: matching candidate #0 <byte_off> [23763] struct tcphdr.source (0:0 @ offset 0)
+libbpf: prog 'rs_tutorial_dynptr_tc_ref_leak': relo #7: patched insn #78 (LDX/ST/STX) off 0 -> 0
+libbpf: prog 'rs_tutorial_dynptr_tc_ref_leak': relo #8: <byte_off> [56] struct tcphdr.doff (0:5 @ offset 12.4)
+libbpf: prog 'rs_tutorial_dynptr_tc_ref_leak': relo #8: matching candidate #0 <byte_off> [23763] struct tcphdr.doff (0:6 @ offset 12.4)
+libbpf: prog 'rs_tutorial_dynptr_tc_ref_leak': relo #8: patched insn #87 (LDX/ST/STX) off 12 -> 12
+libbpf: CO-RE relocating [26] struct __sk_buff: found target candidate [15151] struct __sk_buff in [vmlinux]
+libbpf: prog 'rs_tutorial_dynptr_tc_ref_leak': relo #9: <byte_off> [26] struct __sk_buff.len (0:0 @ offset 0)
+libbpf: prog 'rs_tutorial_dynptr_tc_ref_leak': relo #9: matching candidate #0 <byte_off> [15151] struct __sk_buff.len (0:0 @ offset 0)
+libbpf: prog 'rs_tutorial_dynptr_tc_ref_leak': relo #9: patched insn #91 (LDX/ST/STX) off 0 -> 0
+libbpf: prog 'rs_tutorial_dynptr_tc_ref_leak': relo #10: <byte_off> [26] struct __sk_buff.len (0:0 @ offset 0)
+libbpf: prog 'rs_tutorial_dynptr_tc_ref_leak': relo #10: matching candidate #0 <byte_off> [15151] struct __sk_buff.len (0:0 @ offset 0)
+libbpf: prog 'rs_tutorial_dynptr_tc_ref_leak': relo #10: patched insn #111 (LDX/ST/STX) off 0 -> 0
+libbpf: map 'cfg_map': created successfully, fd=0
+libbpf: map 'events': created successfully, fd=0
+libbpf: prog 'rs_tutorial_dynptr_tc_ref_leak': BPF program load failed: -EINVAL
+libbpf: prog 'rs_tutorial_dynptr_tc_ref_leak': -- BEGIN PROG LOAD LOG --
+func#0 @0
+Live regs before insn:
+  0: .1........ (bf) r7 = r1
+  1: .......7.. (b7) r6 = 0
+  2: ......67.. (63) *(u32 *)(r10 -4) = r6
+  3: ......67.. (bf) r2 = r10
+  4: ..2...67.. (07) r2 += -4
+  5: ..2...67.. (18) r1 = 0xffff000000000000
+  7: .12...67.. (85) call bpf_map_lookup_elem#1
+  8: 0.....67.. (bf) r8 = r0
+  9: ......678. (7b) *(u64 *)(r10 -88) = r6
+ 10: ......678. (7b) *(u64 *)(r10 -96) = r6
+ 11: ......678. (7b) *(u64 *)(r10 -104) = r6
+ 12: ......678. (7b) *(u64 *)(r10 -112) = r6
+ 13: ......678. (15) if r8 == 0x0 goto pc+145
+ 14: ......678. (bf) r3 = r10
+ 15: ...3..678. (07) r3 += -24
+ 16: ...3..678. (bf) r1 = r7
+ 17: .1.3..678. (b7) r2 = 0
+ 18: .123..678. (85) call bpf_dynptr_from_skb#71549
+ 19: 0.....678. (67) r0 <<= 32
+ 20: 0.....678. (77) r0 >>= 32
+ 21: 0.....678. (55) if r0 != 0x0 goto pc+137
+ 22: ......678. (bf) r1 = r10
+ 23: .1....678. (07) r1 += -24
+ 24: .1....678. (bf) r3 = r10
+ 25: .1.3..678. (07) r3 += -38
+ 26: .1.3..678. (b7) r2 = 0
+ 27: .123..678. (b7) r4 = 14
+ 28: .1234.678. (85) call bpf_dynptr_slice#71567
+ 29: 0.....678. (15) if r0 == 0x0 goto pc+129
+ 30: 0.....678. (69) r1 = *(u16 *)(r0 +12)
+ 31: .1....678. (55) if r1 != 0x8 goto pc+127
+ 32: ......678. (bf) r1 = r10
+ 33: .1....678. (07) r1 += -24
+ 34: .1....678. (bf) r3 = r10
+ 35: .1.3..678. (07) r3 += -60
+ 36: .1.3..678. (b7) r2 = 14
+ 37: .123..678. (b7) r4 = 20
+ 38: .1234.678. (85) call bpf_dynptr_slice#71567
+ 39: 0.....678. (15) if r0 == 0x0 goto pc+119
+ 40: 0.....678. (71) r1 = *(u8 *)(r0 +0)
+ 41: 01....678. (57) r1 &= 240
+ 42: 01....678. (55) if r1 != 0x40 goto pc+116
+ 43: 0.....678. (71) r1 = *(u8 *)(r0 +0)
+ 44: 01....678. (57) r1 &= 15
+ 45: 01....678. (b7) r2 = 5
+ 46: 012...678. (2d) if r2 > r1 goto pc+112
+ 47: 0.....678. (71) r1 = *(u8 *)(r0 +9)
+ 48: 01....678. (55) if r1 != 0x6 goto pc+110
+ 49: 0.....678. (71) r9 = *(u8 *)(r0 +0)
+ 50: ......6789 (67) r9 <<= 2
+ 51: ......6789 (57) r9 &= 60
+ 52: ......6789 (07) r9 += 14
+ 53: ......6789 (bf) r1 = r10
+ 54: .1....6789 (07) r1 += -24
+ 55: .1....6789 (bf) r3 = r10
+ 56: .1.3..6789 (07) r3 += -80
+ 57: .1.3..6789 (bf) r2 = r9
+ 58: .123..6789 (b7) r4 = 20
+ 59: .1234.6789 (85) call bpf_dynptr_slice#71567
+ 60: 0.....6789 (15) if r0 == 0x0 goto pc+98
+ 61: 0.....6789 (69) r1 = *(u16 *)(r0 +12)
+ 62: 01....6789 (57) r1 &= 240
+ 63: 01....6789 (b7) r2 = 80
+ 64: 012...6789 (2d) if r2 > r1 goto pc+94
+ 65: 0......789 (69) r3 = *(u16 *)(r0 +2)
+ 66: 0..3...789 (dc) r3 = be16 r3
+ 67: 0..3...789 (69) r2 = *(u16 *)(r8 +0)
+ 68: 0.23...789 (b7) r1 = 1
+ 69: 0123...789 (b7) r4 = 1
+ 70: 01234..789 (55) if r2 != 0x0 goto pc+1
+ 71: 0123...789 (b7) r4 = 0
+ 72: 01234..789 (1d) if r3 == r2 goto pc+1
+ 73: 0..34..789 (b7) r1 = 0
+ 74: 01.34..789 (5f) r4 &= r1
+ 75: 0..34..789 (b7) r6 = 2
+ 76: 0..34.6789 (55) if r4 != 0x0 goto pc+1
+ 77: 0..34..789 (b7) r6 = 0
+ 78: 0..34.6789 (69) r5 = *(u16 *)(r0 +0)
+ 79: 0..3456789 (71) r1 = *(u8 *)(r8 +8)
+ 80: 01.3456789 (15) if r1 == 0x0 goto pc+78
+ 81: 0..3456789 (7b) *(u64 *)(r10 -168) = r4
+ 82: 0..3.56789 (7b) *(u64 *)(r10 -160) = r3
+ 83: 0....56789 (61) r1 = *(u32 *)(r8 +4)
+ 84: 01...567.9 (b7) r2 = 32
+ 85: 012..567.9 (2d) if r2 > r1 goto pc+1
+ 86: 0....567.9 (b7) r1 = 32
+ 87: 01...567.9 (69) r4 = *(u16 *)(r0 +12)
+ 88: .1..4567.9 (77) r4 >>= 2
+ 89: .1..4567.9 (57) r4 &= 60
+ 90: .1..4567.9 (0f) r4 += r9
+ 91: .1..4567.. (61) r2 = *(u32 *)(r7 +0)
+ 92: .12.4567.. (bf) r3 = r4
+ 93: .1234567.. (0f) r3 += r1
+ 94: .1234567.. (b7) r8 = 0
+ 95: .12345678. (2d) if r3 > r2 goto pc+1
+ 96: .1..4567.. (bf) r8 = r1
+ 97: ....45678. (dc) r5 = be16 r5
+ 98: ....45678. (bf) r9 = r5
+ 99: ....4.6789 (15) if r8 == 0x0 goto pc+7
+100: ....4.6789 (bf) r1 = r10
+101: .1..4.6789 (07) r1 += -112
+102: .1..4.6789 (bf) r3 = r10
+103: .1.34.6789 (07) r3 += -24
+104: .1.34.6789 (bf) r2 = r8
+105: .1234.6789 (b7) r5 = 0
+106: .123456789 (85) call bpf_dynptr_read#201
+107: ......6789 (b7) r1 = 0
+108: .1....6789 (7b) *(u64 *)(r10 -120) = r1
+109: ......6789 (85) call bpf_ktime_get_ns#5
+110: 0.....6789 (7b) *(u64 *)(r10 -136) = r0
+111: ......6789 (61) r1 = *(u32 *)(r7 +0)
+112: .1....6.89 (79) r2 = *(u64 *)(r10 -168)
+113: .12...6.89 (73) *(u8 *)(r10 -120) = r2
+114: .1....6.89 (79) r2 = *(u64 *)(r10 -160)
+115: .12...6.89 (6b) *(u16 *)(r10 -122) = r2
+116: .1....6.89 (6b) *(u16 *)(r10 -124) = r9
+117: .1....6.8. (63) *(u32 *)(r10 -128) = r1
+118: ......6.8. (6b) *(u16 *)(r10 -118) = r8
+119: ......6.8. (bf) r2 = r8
+120: ..2...6.8. (07) r2 += 24
+121: ..2...6.8. (bf) r4 = r10
+122: ..2.4.6.8. (07) r4 += -152
+123: ..2.4.6.8. (18) r1 = 0xffff000000000000
+125: .12.4.6.8. (b7) r3 = 0
+126: .1234.6.8. (85) call bpf_ringbuf_reserve_dynptr#198
+127: 0.....6.8. (55) if r0 != 0x0 goto pc+31
+128: ......6.8. (bf) r1 = r10
+129: .1....6.8. (07) r1 += -152
+130: .1....6.8. (bf) r3 = r10
+131: .1.3..6.8. (07) r3 += -136
+132: .1.3..6.8. (b7) r2 = 0
+133: .123..6.8. (b7) r4 = 24
+134: .1234.6.8. (b7) r5 = 0
+135: .123456.8. (85) call bpf_dynptr_write#202
+136: 0.....6.8. (55) if r0 != 0x0 goto pc+22
+137: ......6.8. (bf) r1 = r8
+138: .1....6.8. (67) r1 <<= 32
+139: .1....6.8. (77) r1 >>= 32
+140: .1....6.8. (15) if r1 == 0x0 goto pc+14
+141: ......6.8. (bf) r1 = r10
+142: .1....6.8. (07) r1 += -152
+143: .1....6.8. (bf) r3 = r10
+144: .1.3..6.8. (07) r3 += -112
+145: .1.3..6.8. (b7) r2 = 24
+146: .123..6.8. (bf) r4 = r8
+147: .1234.6... (b7) r5 = 0
+148: .123456... (85) call bpf_dynptr_write#202
+149: 0.....6... (15) if r0 == 0x0 goto pc+5
+150: ......6... (bf) r1 = r10
+151: .1....6... (07) r1 += -152
+152: .1....6... (b7) r2 = 0
+153: .12...6... (85) call bpf_ringbuf_discard_dynptr#200
+154: ......6... (05) goto pc+4
+155: ......6... (bf) r1 = r10
+156: .1....6... (07) r1 += -152
+157: .1....6... (b7) r2 = 0
+158: .12...6... (85) call bpf_ringbuf_submit_dynptr#199
+159: ......6... (bf) r0 = r6
+160: 0......... (95) exit
+0: R1=ctx() R10=fp0
+; int rs_tutorial_dynptr_tc_ref_leak(struct __sk_buff *ctx) @ buggy.bpf.c:48
+0: (bf) r7 = r1                       ; R1=ctx() R7_w=ctx()
+1: (b7) r6 = 0                        ; R6_w=0
+; __u32 key = 0; @ buggy.bpf.c:50
+2: (63) *(u32 *)(r10 -4) = r6
+mark_precise: frame0: last_idx 2 first_idx 0 subseq_idx -1 
+mark_precise: frame0: regs=r6 stack= before 1: (b7) r6 = 0
+3: R6_w=0 R10=fp0 fp-8=0000????
+3: (bf) r2 = r10                      ; R2_w=fp0 R10=fp0
+;  @ buggy.bpf.c:0
+4: (07) r2 += -4                      ; R2_w=fp-4
+; const struct dynptr_cfg *cfg = bpf_map_lookup_elem(&cfg_map, &key); @ buggy.bpf.c:51
+5: (18) r1 = 0xffff000000000000       ; R1_w=map_ptr(map=cfg_map,ks=4,vs=12)
+7: (85) call bpf_map_lookup_elem#1    ; R0_w=map_value(map=cfg_map,ks=4,vs=12)
+8: (bf) r8 = r0                       ; R0_w=map_value(map=cfg_map,ks=4,vs=12) R8_w=map_value(map=cfg_map,ks=4,vs=12)
+; __u8 payload[MAX_SNAPLEN] = {}; @ buggy.bpf.c:63
+9: (7b) *(u64 *)(r10 -88) = r6        ; R6_w=0 R10=fp0 fp-88_w=0
+10: (7b) *(u64 *)(r10 -96) = r6       ; R6_w=0 R10=fp0 fp-96_w=0
+11: (7b) *(u64 *)(r10 -104) = r6      ; R6_w=0 R10=fp0 fp-104_w=0
+12: (7b) *(u64 *)(r10 -112) = r6      ; R6_w=0 R10=fp0 fp-112_w=0
+; if (!cfg) @ buggy.bpf.c:70
+13: (15) if r8 == 0x0 goto pc+145     ; R8_w=map_value(map=cfg_map,ks=4,vs=12)
+14: (bf) r3 = r10                     ; R3_w=fp0 R10=fp0
+; if (bpf_dynptr_from_skb(ctx, 0, &skb_ptr)) @ buggy.bpf.c:73
+15: (07) r3 += -24                    ; R3_w=fp-24
+16: (bf) r1 = r7                      ; R1_w=ctx() R7_w=ctx()
+17: (b7) r2 = 0                       ; R2_w=0
+18: (85) call bpf_dynptr_from_skb#71549       ; R0=scalar() fp-24=dynptr_skb(id=1,dynptr_id=1)
+19: (67) r0 <<= 32                    ; R0_w=scalar(smax=0x7fffffff00000000,umax=0xffff000000000000,smin32=0,smax32=umax32=0,var_off=(0x0; 0xffff000000000000))
+20: (77) r0 >>= 32                    ; R0_w=scalar(smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000))
+21: (55) if r0 != 0x0 goto pc+137     ; R0_w=0
+22: (bf) r1 = r10                     ; R1_w=fp0 R10=fp0
+; eth = bpf_dynptr_slice(&skb_ptr, 0, &eth_buf, sizeof(eth_buf)); @ buggy.bpf.c:76
+23: (07) r1 += -24                    ; R1_w=fp-24
+24: (bf) r3 = r10                     ; R3_w=fp0 R10=fp0
+25: (07) r3 += -38                    ; R3_w=fp-38
+26: (b7) r2 = 0                       ; R2_w=0
+27: (b7) r4 = 14                      ; R4_w=14
+28: (85) call bpf_dynptr_slice#71567
+mark_precise: frame0: last_idx 28 first_idx 19 subseq_idx -1 
+mark_precise: frame0: regs=r4 stack= before 27: (b7) r4 = 14
+mark_precise: frame0: last_idx 28 first_idx 19 subseq_idx -1 
+mark_precise: frame0: regs=r4 stack= before 27: (b7) r4 = 14
+29: R0=rdonly_mem_or_null(id=2,sz=14) fp-24=dynptr_skb(id=1,dynptr_id=1)
+; if (!eth || eth->h_proto != bpf_htons(ETH_P_IP)) @ buggy.bpf.c:77
+29: (15) if r0 == 0x0 goto pc+129     ; R0=rdonly_mem(sz=14)
+30: (69) r1 = *(u16 *)(r0 +12)        ; R0=rdonly_mem(sz=14) R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=0xffff,var_off=(0x0; 0xffff))
+31: (55) if r1 != 0x8 goto pc+127     ; R1_w=8
+32: (bf) r1 = r10                     ; R1_w=fp0 R10=fp0
+; iph = bpf_dynptr_slice(&skb_ptr, ip_off, &ip_buf, sizeof(ip_buf)); @ buggy.bpf.c:80
+33: (07) r1 += -24                    ; R1_w=fp-24
+34: (bf) r3 = r10                     ; R3_w=fp0 R10=fp0
+35: (07) r3 += -60                    ; R3_w=fp-60
+36: (b7) r2 = 14                      ; R2_w=14
+37: (b7) r4 = 20                      ; R4_w=20
+38: (85) call bpf_dynptr_slice#71567
+mark_precise: frame0: last_idx 38 first_idx 29 subseq_idx -1 
+mark_precise: frame0: regs=r4 stack= before 37: (b7) r4 = 20
+mark_precise: frame0: last_idx 38 first_idx 29 subseq_idx -1 
+mark_precise: frame0: regs=r4 stack= before 37: (b7) r4 = 20
+39: R0=rdonly_mem_or_null(id=3,sz=20) fp-24=dynptr_skb(id=1,dynptr_id=1)
+; if (!iph || iph->version != 4 || iph->ihl < 5 || iph->protocol != IPPROTO_TCP) @ buggy.bpf.c:81
+39: (15) if r0 == 0x0 goto pc+119     ; R0=rdonly_mem(sz=20)
+40: (71) r1 = *(u8 *)(r0 +0)          ; R0=rdonly_mem(sz=20) R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+41: (57) r1 &= 240                    ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=240,var_off=(0x0; 0xf0))
+42: (55) if r1 != 0x40 goto pc+116    ; R1_w=64
+43: (71) r1 = *(u8 *)(r0 +0)          ; R0=rdonly_mem(sz=20) R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+44: (57) r1 &= 15                     ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=15,var_off=(0x0; 0xf))
+45: (b7) r2 = 5                       ; R2_w=5
+46: (2d) if r2 > r1 goto pc+112       ; R1_w=scalar(smin=umin=smin32=umin32=5,smax=umax=smax32=umax32=15,var_off=(0x0; 0xf)) R2_w=5
+47: (71) r1 = *(u8 *)(r0 +9)          ; R0=rdonly_mem(sz=20) R1=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+48: (55) if r1 != 0x6 goto pc+110     ; R1=6
+; tcp_off = ip_off + ((__u32)iph->ihl * 4); @ buggy.bpf.c:84
+49: (71) r9 = *(u8 *)(r0 +0)          ; R0=rdonly_mem(sz=20) R9_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+50: (67) r9 <<= 2                     ; R9_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=1020,var_off=(0x0; 0x3fc))
+51: (57) r9 &= 60                     ; R9_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c))
+52: (07) r9 += 14                     ; R9_w=scalar(smin=umin=smin32=umin32=14,smax=umax=smax32=umax32=74,var_off=(0x2; 0x7c))
+53: (bf) r1 = r10                     ; R1_w=fp0 R10=fp0
+54: (07) r1 += -24                    ; R1_w=fp-24
+55: (bf) r3 = r10                     ; R3_w=fp0 R10=fp0
+56: (07) r3 += -80                    ; R3_w=fp-80
+; tcp = bpf_dynptr_slice(&skb_ptr, tcp_off, &tcp_buf, sizeof(tcp_buf)); @ buggy.bpf.c:85
+57: (bf) r2 = r9                      ; R2_w=scalar(id=4,smin=umin=smin32=umin32=14,smax=umax=smax32=umax32=74,var_off=(0x2; 0x7c)) R9_w=scalar(id=4,smin=umin=smin32=umin32=14,smax=umax=smax32=umax32=74,var_off=(0x2; 0x7c))
+58: (b7) r4 = 20                      ; R4_w=20
+59: (85) call bpf_dynptr_slice#71567
+mark_precise: frame0: last_idx 59 first_idx 48 subseq_idx -1 
+mark_precise: frame0: regs=r4 stack= before 58: (b7) r4 = 20
+mark_precise: frame0: last_idx 59 first_idx 48 subseq_idx -1 
+mark_precise: frame0: regs=r4 stack= before 58: (b7) r4 = 20
+60: R0=rdonly_mem_or_null(id=5,sz=20) fp-24=dynptr_skb(id=1,dynptr_id=1)
+; if (!tcp || tcp->doff < 5) @ buggy.bpf.c:86
+60: (15) if r0 == 0x0 goto pc+98      ; R0=rdonly_mem(sz=20)
+61: (69) r1 = *(u16 *)(r0 +12)        ; R0=rdonly_mem(sz=20) R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=0xffff,var_off=(0x0; 0xffff))
+62: (57) r1 &= 240                    ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=240,var_off=(0x0; 0xf0))
+63: (b7) r2 = 80                      ; R2_w=80
+64: (2d) if r2 > r1 goto pc+94        ; R1_w=scalar(smin=umin=smin32=umin32=80,smax=umax=smax32=umax32=240,var_off=(0x0; 0xf0)) R2_w=80
+; dport = bpf_ntohs(tcp->dest); @ buggy.bpf.c:90
+65: (69) r3 = *(u16 *)(r0 +2)         ; R0=rdonly_mem(sz=20) R3_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=0xffff,var_off=(0x0; 0xffff))
+66: (dc) r3 = be16 r3                 ; R3_w=scalar()
+; if (cfg->blocked_port && dport == cfg->blocked_port) { @ buggy.bpf.c:91
+67: (69) r2 = *(u16 *)(r8 +0)         ; R2_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=0xffff,var_off=(0x0; 0xffff)) R8=map_value(map=cfg_map,ks=4,vs=12)
+68: (b7) r1 = 1                       ; R1_w=1
+69: (b7) r4 = 1                       ; R4=1
+70: (55) if r2 != 0x0 goto pc+1       ; R2=0
+71: (b7) r4 = 0                       ; R4_w=0
+72: (1d) if r3 == r2 goto pc+1        ; R2=0 R3=scalar(umin=1)
+73: (b7) r1 = 0                       ; R1_w=0
+74: (5f) r4 &= r1                     ; R1_w=0 R4_w=0
+75: (b7) r6 = 2                       ; R6_w=2
+76: (55) if r4 != 0x0 goto pc+1
+mark_precise: frame0: last_idx 76 first_idx 70 subseq_idx -1 
+mark_precise: frame0: regs=r4 stack= before 75: (b7) r6 = 2
+mark_precise: frame0: regs=r4 stack= before 74: (5f) r4 &= r1
+mark_precise: frame0: regs=r1,r4 stack= before 73: (b7) r1 = 0
+mark_precise: frame0: regs=r4 stack= before 72: (1d) if r3 == r2 goto pc+1
+mark_precise: frame0: regs=r4 stack= before 71: (b7) r4 = 0
+76: R4_w=0
+77: (b7) r6 = 0                       ; R6=0
+; sport = bpf_ntohs(tcp->source); @ buggy.bpf.c:89
+78: (69) r5 = *(u16 *)(r0 +0)         ; R0=rdonly_mem(sz=20) R5_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=0xffff,var_off=(0x0; 0xffff))
+; if (!cfg->enable_ringbuf) @ buggy.bpf.c:96
+79: (71) r1 = *(u8 *)(r8 +8)          ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=map_value(map=cfg_map,ks=4,vs=12)
+80: (15) if r1 == 0x0 goto pc+78      ; R1_w=scalar(smin=umin=smin32=umin32=1,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+81: (7b) *(u64 *)(r10 -168) = r4      ; R4=0 R10=fp0 fp-168_w=0
+82: (7b) *(u64 *)(r10 -160) = r3      ; R3=scalar(id=6,umin=1) R10=fp0 fp-160_w=scalar(id=6,umin=1)
+; snap_len = cfg->snap_len; @ buggy.bpf.c:99
+83: (61) r1 = *(u32 *)(r8 +4)         ; R1_w=scalar(smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) R8=map_value(map=cfg_map,ks=4,vs=12)
+84: (b7) r2 = 32                      ; R2_w=32
+; if (snap_len > MAX_SNAPLEN) @ buggy.bpf.c:100
+85: (2d) if r2 > r1 goto pc+1         ; R1_w=scalar(smin=umin=umin32=32,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) R2_w=32
+86: (b7) r1 = 32                      ; R1=32
+; payload_off = tcp_off + ((__u32)tcp->doff * 4); @ buggy.bpf.c:103
+87: (69) r4 = *(u16 *)(r0 +12)        ; R0=rdonly_mem(sz=20) R4_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=0xffff,var_off=(0x0; 0xffff))
+88: (77) r4 >>= 2                     ; R4_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=16383,var_off=(0x0; 0x3fff))
+89: (57) r4 &= 60                     ; R4_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c))
+90: (0f) r4 += r9                     ; R4_w=scalar(smin=umin=smin32=umin32=14,smax=umax=smax32=umax32=134,var_off=(0x2; 0xfc)) R9=scalar(id=4,smin=umin=smin32=umin32=14,smax=umax=smax32=umax32=74,var_off=(0x2; 0x7c))
+; if (payload_off + snap_len > ctx->len) @ buggy.bpf.c:104
+91: (61) r2 = *(u32 *)(r7 +0)         ; R2_w=scalar(smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) R7=ctx()
+92: (bf) r3 = r4                      ; R3_w=scalar(id=7,smin=umin=smin32=umin32=14,smax=umax=smax32=umax32=134,var_off=(0x2; 0xfc)) R4_w=scalar(id=7,smin=umin=smin32=umin32=14,smax=umax=smax32=umax32=134,var_off=(0x2; 0xfc))
+93: (0f) r3 += r1                     ; R1=32 R3_w=scalar(id=7+32,smin=umin=smin32=umin32=46,smax=umax=smax32=umax32=166,var_off=(0x2; 0xfc))
+94: (b7) r8 = 0                       ; R8_w=0
+95: (2d) if r3 > r2 goto pc+1         ; R2_w=scalar(smin=umin=umin32=46,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) R3_w=scalar(id=7+32,smin=umin=smin32=umin32=46,smax=umax=smax32=umax32=166,var_off=(0x2; 0xfc))
+96: (bf) r8 = r1                      ; R1=32 R8_w=32
+;  @ buggy.bpf.c:0
+97: (dc) r5 = be16 r5                 ; R5_w=scalar()
+98: (bf) r9 = r5                      ; R5_w=scalar(id=8) R9_w=scalar(id=8)
+; if (snap_len) @ buggy.bpf.c:107
+99: (15) if r8 == 0x0 goto pc+7
+mark_precise: frame0: last_idx 99 first_idx 87 subseq_idx -1 
+mark_precise: frame0: regs=r8 stack= before 98: (bf) r9 = r5
+mark_precise: frame0: regs=r8 stack= before 97: (dc) r5 = be16 r5
+mark_precise: frame0: regs=r8 stack= before 96: (bf) r8 = r1
+mark_precise: frame0: regs=r1 stack= before 95: (2d) if r3 > r2 goto pc+1
+mark_precise: frame0: regs=r1 stack= before 94: (b7) r8 = 0
+mark_precise: frame0: regs=r1 stack= before 93: (0f) r3 += r1
+mark_precise: frame0: regs=r1 stack= before 92: (bf) r3 = r4
+mark_precise: frame0: regs=r1 stack= before 91: (61) r2 = *(u32 *)(r7 +0)
+mark_precise: frame0: regs=r1 stack= before 90: (0f) r4 += r9
+mark_precise: frame0: regs=r1 stack= before 89: (57) r4 &= 60
+mark_precise: frame0: regs=r1 stack= before 88: (77) r4 >>= 2
+mark_precise: frame0: regs=r1 stack= before 87: (69) r4 = *(u16 *)(r0 +12)
+mark_precise: frame0: parent state regs=r1 stack=:  R0_r=rdonly_mem(sz=20) R1_rw=P32 R2_w=32 R3=scalar(id=6,umin=1) R4=0 R5_rw=scalar(smin=smin32=0,smax=umax=smax32=umax32=0xffff,var_off=(0x0; 0xffff)) R6=0 R7_r=ctx() R8=map_value(map=cfg_map,ks=4,vs=12) R9_r=scalar(id=4,smin=umin=smin32=umin32=14,smax=umax=smax32=umax32=74,var_off=(0x2; 0x7c)) R10=fp0 fp-8=0000???? fp-24=dynptr_skb(id=1,dynptr_id=1) fp-32=mmmmmmmm fp-40=mmmmmm?? fp-48=mmmmmmmm fp-56=mmmmmmmm fp-64=mmmmmmmm fp-72=mmmmmmmm fp-80=mmmmmmmm fp-88=0 fp-96=0 fp-104=0 fp-112=0 fp-160_w=scalar(id=6,umin=1) fp-168_w=0
+mark_precise: frame0: last_idx 86 first_idx 78 subseq_idx 87 
+mark_precise: frame0: regs=r1 stack= before 86: (b7) r1 = 32
+99: R8_w=32
+100: (bf) r1 = r10                    ; R1_w=fp0 R10=fp0
+; bpf_dynptr_read(payload, snap_len, &skb_ptr, payload_off, 0); @ buggy.bpf.c:108
+101: (07) r1 += -112                  ; R1_w=fp-112
+102: (bf) r3 = r10                    ; R3_w=fp0 R10=fp0
+103: (07) r3 += -24                   ; R3_w=fp-24
+104: (bf) r2 = r8                     ; R2_w=32 R8_w=32
+105: (b7) r5 = 0                      ; R5_w=0
+106: (85) call bpf_dynptr_read#201
+mark_precise: frame0: last_idx 106 first_idx 87 subseq_idx -1 
+mark_precise: frame0: regs=r2 stack= before 105: (b7) r5 = 0
+mark_precise: frame0: regs=r2 stack= before 104: (bf) r2 = r8
+mark_precise: frame0: regs=r8 stack= before 103: (07) r3 += -24
+mark_precise: frame0: regs=r8 stack= before 102: (bf) r3 = r10
+mark_precise: frame0: regs=r8 stack= before 101: (07) r1 += -112
+mark_precise: frame0: regs=r8 stack= before 100: (bf) r1 = r10
+mark_precise: frame0: regs=r8 stack= before 99: (15) if r8 == 0x0 goto pc+7
+mark_precise: frame0: regs=r8 stack= before 98: (bf) r9 = r5
+mark_precise: frame0: regs=r8 stack= before 97: (dc) r5 = be16 r5
+mark_precise: frame0: regs=r8 stack= before 96: (bf) r8 = r1
+mark_precise: frame0: regs=r1 stack= before 95: (2d) if r3 > r2 goto pc+1
+mark_precise: frame0: regs=r1 stack= before 94: (b7) r8 = 0
+mark_precise: frame0: regs=r1 stack= before 93: (0f) r3 += r1
+mark_precise: frame0: regs=r1 stack= before 92: (bf) r3 = r4
+mark_precise: frame0: regs=r1 stack= before 91: (61) r2 = *(u32 *)(r7 +0)
+mark_precise: frame0: regs=r1 stack= before 90: (0f) r4 += r9
+mark_precise: frame0: regs=r1 stack= before 89: (57) r4 &= 60
+mark_precise: frame0: regs=r1 stack= before 88: (77) r4 >>= 2
+mark_precise: frame0: regs=r1 stack= before 87: (69) r4 = *(u16 *)(r0 +12)
+mark_precise: frame0: parent state regs= stack=:  R0_r=rdonly_mem(sz=20) R1_rw=P32 R2_w=32 R3=scalar(id=6,umin=1) R4=0 R5_rw=scalar(smin=smin32=0,smax=umax=smax32=umax32=0xffff,var_off=(0x0; 0xffff)) R6=0 R7_r=ctx() R8=map_value(map=cfg_map,ks=4,vs=12) R9_r=scalar(id=4,smin=umin=smin32=umin32=14,smax=umax=smax32=umax32=74,var_off=(0x2; 0x7c)) R10=fp0 fp-8=0000???? fp-24=dynptr_skb(id=1,dynptr_id=1) fp-32=mmmmmmmm fp-40=mmmmmm?? fp-48=mmmmmmmm fp-56=mmmmmmmm fp-64=mmmmmmmm fp-72=mmmmmmmm fp-80=mmmmmmmm fp-88=0 fp-96=0 fp-104=0 fp-112=0 fp-160_w=scalar(id=6,umin=1) fp-168_w=0
+107: R0=scalar() fp-24=dynptr_skb(id=1,dynptr_id=1) fp-88=mmmmmmmm fp-96=mmmmmmmm fp-104=mmmmmmmm fp-112=mmmmmmmm
+107: (b7) r1 = 0                      ; R1_w=0
+; struct event_hdr hdr = {}; @ buggy.bpf.c:110
+108: (7b) *(u64 *)(r10 -120) = r1     ; R1_w=0 R10=fp0 fp-120_w=0
+; hdr.ts_ns = bpf_ktime_get_ns(); @ buggy.bpf.c:111
+109: (85) call bpf_ktime_get_ns#5     ; R0_w=scalar()
+110: (7b) *(u64 *)(r10 -136) = r0     ; R0_w=scalar(id=9) R10=fp0 fp-136_w=scalar(id=9)
+; hdr.pkt_len = ctx->len; @ buggy.bpf.c:112
+111: (61) r1 = *(u32 *)(r7 +0)        ; R1_w=scalar(smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) R7=ctx()
+; hdr.drop = drop; @ buggy.bpf.c:115
+112: (79) r2 = *(u64 *)(r10 -168)     ; R2_w=0 R10=fp0 fp-168=0
+113: (73) *(u8 *)(r10 -120) = r2      ; R2_w=0 R10=fp0 fp-120_w=mmmmmmm0
+; hdr.dport = dport; @ buggy.bpf.c:114
+114: (79) r2 = *(u64 *)(r10 -160)     ; R2_w=scalar(id=6,umin=1) R10=fp0 fp-160=scalar(id=6,umin=1)
+115: (6b) *(u16 *)(r10 -122) = r2     ; R2_w=scalar(id=6,umin=1) R10=fp0 fp-128=mm??????
+; hdr.sport = sport; @ buggy.bpf.c:113
+116: (6b) *(u16 *)(r10 -124) = r9     ; R9=scalar(id=8) R10=fp0 fp-128=mmmm????
+; hdr.pkt_len = ctx->len; @ buggy.bpf.c:112
+117: (63) *(u32 *)(r10 -128) = r1     ; R1_w=scalar(id=10,smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) R10=fp0 fp-128=mmmmscalar(id=10,smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000))
+; hdr.snap_len = snap_len; @ buggy.bpf.c:116
+118: (6b) *(u16 *)(r10 -118) = r8     ; R8=32 R10=fp0 fp-120_w=mmmmmmmm
+; err = bpf_ringbuf_reserve_dynptr(&events, sizeof(hdr) + snap_len, 0, &rb); @ buggy.bpf.c:119
+119: (bf) r2 = r8                     ; R2_w=32 R8=32
+120: (07) r2 += 24                    ; R2_w=56
+121: (bf) r4 = r10                    ; R4_w=fp0 R10=fp0
+; struct event_hdr hdr = {}; @ buggy.bpf.c:110
+122: (07) r4 += -152                  ; R4_w=fp-152
+; err = bpf_ringbuf_reserve_dynptr(&events, sizeof(hdr) + snap_len, 0, &rb); @ buggy.bpf.c:119
+123: (18) r1 = 0xffff000000000000     ; R1_w=map_ptr(map=events,ks=0,vs=0)
+125: (b7) r3 = 0                      ; R3_w=0
+126: (85) call bpf_ringbuf_reserve_dynptr#198         ; R0=scalar() fp-152=dynptr_ringbuf(id=11,ref_id=12,dynptr_id=1) refs=12
+; if (err) @ buggy.bpf.c:120
+127: (55) if r0 != 0x0 goto pc+31     ; R0=0 refs=12
+128: (bf) r1 = r10                    ; R1_w=fp0 R10=fp0 refs=12
+; err = bpf_dynptr_write(&rb, 0, &hdr, sizeof(hdr), 0); @ buggy.bpf.c:123
+129: (07) r1 += -152                  ; R1_w=fp-152 refs=12
+130: (bf) r3 = r10                    ; R3_w=fp0 R10=fp0 refs=12
+131: (07) r3 += -136                  ; R3_w=fp-136 refs=12
+132: (b7) r2 = 0                      ; R2_w=0 refs=12
+133: (b7) r4 = 24                     ; R4_w=24 refs=12
+134: (b7) r5 = 0                      ; R5_w=0 refs=12
+135: (85) call bpf_dynptr_write#202
+mark_precise: frame0: last_idx 135 first_idx 127 subseq_idx -1 
+mark_precise: frame0: regs=r4 stack= before 134: (b7) r5 = 0
+mark_precise: frame0: regs=r4 stack= before 133: (b7) r4 = 24
+136: R0=scalar() fp-152=dynptr_ringbuf(id=11,ref_id=12,dynptr_id=1) refs=12
+; if (err) @ buggy.bpf.c:124
+136: (55) if r0 != 0x0 goto pc+22     ; R0=0 refs=12
+; if (snap_len) @ buggy.bpf.c:107
+137: (bf) r1 = r8                     ; R1_w=32 R8=32 refs=12
+138: (67) r1 <<= 32                   ; R1_w=0x2000000000 refs=12
+139: (77) r1 >>= 32                   ; R1_w=32 refs=12
+; if (snap_len) { @ buggy.bpf.c:127
+140: (15) if r1 == 0x0 goto pc+14
+mark_precise: frame0: last_idx 140 first_idx 136 subseq_idx -1 
+mark_precise: frame0: regs=r1 stack= before 139: (77) r1 >>= 32
+mark_precise: frame0: regs=r1 stack= before 138: (67) r1 <<= 32
+mark_precise: frame0: regs=r1 stack= before 137: (bf) r1 = r8
+mark_precise: frame0: regs=r8 stack= before 136: (55) if r0 != 0x0 goto pc+22
+mark_precise: frame0: parent state regs=r8 stack=:  R0_rw=scalar() R6=0 R7=ctx() R8_r=P32 R9=scalar(id=8) R10=fp0 fp-8=0000???? fp-24=dynptr_skb(id=1,dynptr_id=1) fp-32=mmmmmmmm fp-40=mmmmmm?? fp-48=mmmmmmmm fp-56=mmmmmmmm fp-64=mmmmmmmm fp-72=mmmmmmmm fp-80=mmmmmmmm fp-88=mmmmmmmm fp-96=mmmmmmmm fp-104=mmmmmmmm fp-112=mmmmmmmm fp-120=mmmmmmmm fp-128=mmmmscalar(id=10,smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) fp-136=scalar(id=9) fp-152=dynptr_ringbuf(id=11,ref_id=12,dynptr_id=1) fp-160=scalar(id=6,umin=1) fp-168=0 refs=12
+mark_precise: frame0: last_idx 135 first_idx 127 subseq_idx 136 
+mark_precise: frame0: regs=r8 stack= before 135: (85) call bpf_dynptr_write#202
+mark_precise: frame0: regs=r8 stack= before 134: (b7) r5 = 0
+mark_precise: frame0: regs=r8 stack= before 133: (b7) r4 = 24
+mark_precise: frame0: regs=r8 stack= before 132: (b7) r2 = 0
+mark_precise: frame0: regs=r8 stack= before 131: (07) r3 += -136
+mark_precise: frame0: regs=r8 stack= before 130: (bf) r3 = r10
+mark_precise: frame0: regs=r8 stack= before 129: (07) r1 += -152
+mark_precise: frame0: regs=r8 stack= before 128: (bf) r1 = r10
+mark_precise: frame0: regs=r8 stack= before 127: (55) if r0 != 0x0 goto pc+31
+mark_precise: frame0: parent state regs=r8 stack=:  R0_rw=scalar() R6=0 R7=ctx() R8_r=P32 R9=scalar(id=8) R10=fp0 fp-8=0000???? fp-24=dynptr_skb(id=1,dynptr_id=1) fp-32=mmmmmmmm fp-40=mmmmmm?? fp-48=mmmmmmmm fp-56=mmmmmmmm fp-64=mmmmmmmm fp-72=mmmmmmmm fp-80=mmmmmmmm fp-88=mmmmmmmm fp-96=mmmmmmmm fp-104=mmmmmmmm fp-112=mmmmmmmm fp-120_rw=mmmmmmmm fp-128_r=mmmmscalar(id=10,smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) fp-136_rw=scalar(id=9) fp-152_rw=dynptr_ringbuf(id=11,ref_id=12,dynptr_id=1) fp-160=scalar(id=6,umin=1) fp-168=0 refs=12
+mark_precise: frame0: last_idx 126 first_idx 107 subseq_idx 127 
+mark_precise: frame0: regs=r8 stack= before 126: (85) call bpf_ringbuf_reserve_dynptr#198
+mark_precise: frame0: regs=r8 stack= before 125: (b7) r3 = 0
+mark_precise: frame0: regs=r8 stack= before 123: (18) r1 = 0xffff000000000000
+mark_precise: frame0: regs=r8 stack= before 122: (07) r4 += -152
+mark_precise: frame0: regs=r8 stack= before 121: (bf) r4 = r10
+mark_precise: frame0: regs=r8 stack= before 120: (07) r2 += 24
+mark_precise: frame0: regs=r8 stack= before 119: (bf) r2 = r8
+mark_precise: frame0: regs=r8 stack= before 118: (6b) *(u16 *)(r10 -118) = r8
+mark_precise: frame0: regs=r8 stack= before 117: (63) *(u32 *)(r10 -128) = r1
+mark_precise: frame0: regs=r8 stack= before 116: (6b) *(u16 *)(r10 -124) = r9
+mark_precise: frame0: regs=r8 stack= before 115: (6b) *(u16 *)(r10 -122) = r2
+mark_precise: frame0: regs=r8 stack= before 114: (79) r2 = *(u64 *)(r10 -160)
+mark_precise: frame0: regs=r8 stack= before 113: (73) *(u8 *)(r10 -120) = r2
+mark_precise: frame0: regs=r8 stack= before 112: (79) r2 = *(u64 *)(r10 -168)
+mark_precise: frame0: regs=r8 stack= before 111: (61) r1 = *(u32 *)(r7 +0)
+mark_precise: frame0: regs=r8 stack= before 110: (7b) *(u64 *)(r10 -136) = r0
+mark_precise: frame0: regs=r8 stack= before 109: (85) call bpf_ktime_get_ns#5
+mark_precise: frame0: regs=r8 stack= before 108: (7b) *(u64 *)(r10 -120) = r1
+mark_precise: frame0: regs=r8 stack= before 107: (b7) r1 = 0
+mark_precise: frame0: parent state regs=r8 stack=:  R0_w=scalar() R6=0 R7_r=ctx() R8_rw=P32 R9_rw=scalar(id=8) R10=fp0 fp-8=0000???? fp-24=dynptr_skb(id=1,dynptr_id=1) fp-32=mmmmmmmm fp-40=mmmmmm?? fp-48=mmmmmmmm fp-56=mmmmmmmm fp-64=mmmmmmmm fp-72=mmmmmmmm fp-80=mmmmmmmm fp-88=mmmmmmmm fp-96=mmmmmmmm fp-104=mmmmmmmm fp-112=mmmmmmmm fp-160_r=scalar(id=6,umin=1) fp-168_r=0
+mark_precise: frame0: last_idx 106 first_idx 87 subseq_idx 107 
+mark_precise: frame0: regs=r8 stack= before 106: (85) call bpf_dynptr_read#201
+mark_precise: frame0: regs=r8 stack= before 105: (b7) r5 = 0
+mark_precise: frame0: regs=r8 stack= before 104: (bf) r2 = r8
+mark_precise: frame0: regs=r8 stack= before 103: (07) r3 += -24
+mark_precise: frame0: regs=r8 stack= before 102: (bf) r3 = r10
+mark_precise: frame0: regs=r8 stack= before 101: (07) r1 += -112
+mark_precise: frame0: regs=r8 stack= before 100: (bf) r1 = r10
+mark_precise: frame0: regs=r8 stack= before 99: (15) if r8 == 0x0 goto pc+7
+mark_precise: frame0: regs=r8 stack= before 98: (bf) r9 = r5
+mark_precise: frame0: regs=r8 stack= before 97: (dc) r5 = be16 r5
+mark_precise: frame0: regs=r8 stack= before 96: (bf) r8 = r1
+mark_precise: frame0: regs=r1 stack= before 95: (2d) if r3 > r2 goto pc+1
+mark_precise: frame0: regs=r1 stack= before 94: (b7) r8 = 0
+mark_precise: frame0: regs=r1 stack= before 93: (0f) r3 += r1
+mark_precise: frame0: regs=r1 stack= before 92: (bf) r3 = r4
+mark_precise: frame0: regs=r1 stack= before 91: (61) r2 = *(u32 *)(r7 +0)
+mark_precise: frame0: regs=r1 stack= before 90: (0f) r4 += r9
+mark_precise: frame0: regs=r1 stack= before 89: (57) r4 &= 60
+mark_precise: frame0: regs=r1 stack= before 88: (77) r4 >>= 2
+mark_precise: frame0: regs=r1 stack= before 87: (69) r4 = *(u16 *)(r0 +12)
+mark_precise: frame0: parent state regs= stack=:  R0_r=rdonly_mem(sz=20) R1_rw=P32 R2_w=32 R3=scalar(id=6,umin=1) R4=0 R5_rw=scalar(smin=smin32=0,smax=umax=smax32=umax32=0xffff,var_off=(0x0; 0xffff)) R6=0 R7_r=ctx() R8=map_value(map=cfg_map,ks=4,vs=12) R9_r=scalar(id=4,smin=umin=smin32=umin32=14,smax=umax=smax32=umax32=74,var_off=(0x2; 0x7c)) R10=fp0 fp-8=0000???? fp-24_r=dynptr_skb(id=1,dynptr_id=1) fp-32=mmmmmmmm fp-40=mmmmmm?? fp-48=mmmmmmmm fp-56=mmmmmmmm fp-64=mmmmmmmm fp-72=mmmmmmmm fp-80=mmmmmmmm fp-88=0 fp-96=0 fp-104=0 fp-112=0 fp-160_rw=scalar(id=6,umin=1) fp-168_rw=0
+140: R1_w=32 refs=12
+141: (bf) r1 = r10                    ; R1_w=fp0 R10=fp0 refs=12
+; err = bpf_dynptr_write(&rb, sizeof(hdr), payload, snap_len, 0); @ buggy.bpf.c:128
+142: (07) r1 += -152                  ; R1_w=fp-152 refs=12
+143: (bf) r3 = r10                    ; R3_w=fp0 R10=fp0 refs=12
+144: (07) r3 += -112                  ; R3_w=fp-112 refs=12
+145: (b7) r2 = 24                     ; R2_w=24 refs=12
+146: (bf) r4 = r8                     ; R4_w=32 R8=32 refs=12
+147: (b7) r5 = 0                      ; R5_w=0 refs=12
+148: (85) call bpf_dynptr_write#202
+mark_precise: frame0: last_idx 148 first_idx 136 subseq_idx -1 
+mark_precise: frame0: regs=r4 stack= before 147: (b7) r5 = 0
+mark_precise: frame0: regs=r4 stack= before 146: (bf) r4 = r8
+mark_precise: frame0: regs=r8 stack= before 145: (b7) r2 = 24
+mark_precise: frame0: regs=r8 stack= before 144: (07) r3 += -112
+mark_precise: frame0: regs=r8 stack= before 143: (bf) r3 = r10
+mark_precise: frame0: regs=r8 stack= before 142: (07) r1 += -152
+mark_precise: frame0: regs=r8 stack= before 141: (bf) r1 = r10
+mark_precise: frame0: regs=r8 stack= before 140: (15) if r1 == 0x0 goto pc+14
+mark_precise: frame0: regs=r8 stack= before 139: (77) r1 >>= 32
+mark_precise: frame0: regs=r8 stack= before 138: (67) r1 <<= 32
+mark_precise: frame0: regs=r8 stack= before 137: (bf) r1 = r8
+mark_precise: frame0: regs=r8 stack= before 136: (55) if r0 != 0x0 goto pc+22
+mark_precise: frame0: parent state regs= stack=:  R0_rw=scalar() R6=0 R7=ctx() R8_r=P32 R9=scalar(id=8) R10=fp0 fp-8=0000???? fp-24=dynptr_skb(id=1,dynptr_id=1) fp-32=mmmmmmmm fp-40=mmmmmm?? fp-48=mmmmmmmm fp-56=mmmmmmmm fp-64=mmmmmmmm fp-72=mmmmmmmm fp-80=mmmmmmmm fp-88_r=mmmmmmmm fp-96_r=mmmmmmmm fp-104_r=mmmmmmmm fp-112_r=mmmmmmmm fp-120=mmmmmmmm fp-128=mmmmscalar(id=10,smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) fp-136=scalar(id=9) fp-152_r=dynptr_ringbuf(id=11,ref_id=12,dynptr_id=1) fp-160=scalar(id=6,umin=1) fp-168=0 refs=12
+149: R0=scalar() fp-152=dynptr_ringbuf(id=11,ref_id=12,dynptr_id=1) refs=12
+; if (err) { @ buggy.bpf.c:129
+149: (15) if r0 == 0x0 goto pc+5      ; R0=scalar(umin=1) refs=12
+150: (bf) r1 = r10                    ; R1_w=fp0 R10=fp0 refs=12
+; bpf_ringbuf_discard_dynptr(&rb, 0); @ buggy.bpf.c:130
+151: (07) r1 += -152                  ; R1_w=fp-152 refs=12
+152: (b7) r2 = 0                      ; R2_w=0 refs=12
+153: (85) call bpf_ringbuf_discard_dynptr#200         ;
+154: (05) goto pc+4
+; } @ buggy.bpf.c:137
+159: (bf) r0 = r6                     ; R0_w=0 R6=0
+160: (95) exit
+
+from 149 to 155: R0=0 R6=0 R7=ctx() R8=32 R9=scalar(id=8) R10=fp0 fp-8=0000???? fp-24=dynptr_skb(id=1,dynptr_id=1) fp-32=mmmmmmmm fp-40=mmmmmm?? fp-48=mmmmmmmm fp-56=mmmmmmmm fp-64=mmmmmmmm fp-72=mmmmmmmm fp-80=mmmmmmmm fp-88=mmmmmmmm fp-96=mmmmmmmm fp-104=mmmmmmmm fp-112=mmmmmmmm fp-120=mmmmmmmm fp-128=mmmmscalar(id=10,smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) fp-136=scalar(id=9) fp-152=dynptr_ringbuf(id=11,ref_id=12,dynptr_id=1) fp-160=scalar(id=6,umin=1) fp-168=0 refs=12
+155: R0=0 R6=0 R7=ctx() R8=32 R9=scalar(id=8) R10=fp0 fp-8=0000???? fp-24=dynptr_skb(id=1,dynptr_id=1) fp-32=mmmmmmmm fp-40=mmmmmm?? fp-48=mmmmmmmm fp-56=mmmmmmmm fp-64=mmmmmmmm fp-72=mmmmmmmm fp-80=mmmmmmmm fp-88=mmmmmmmm fp-96=mmmmmmmm fp-104=mmmmmmmm fp-112=mmmmmmmm fp-120=mmmmmmmm fp-128=mmmmscalar(id=10,smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) fp-136=scalar(id=9) fp-152=dynptr_ringbuf(id=11,ref_id=12,dynptr_id=1) fp-160=scalar(id=6,umin=1) fp-168=0 refs=12
+; bpf_ringbuf_discard_dynptr(&rb, 0); @ buggy.bpf.c:130
+155: (bf) r1 = r10                    ; R1_w=fp0 R10=fp0 refs=12
+; bpf_ringbuf_submit_dynptr(&rb, 0); @ buggy.bpf.c:135
+156: (07) r1 += -152                  ; R1_w=fp-152 refs=12
+157: (b7) r2 = 0                      ; R2_w=0 refs=12
+158: (85) call bpf_ringbuf_submit_dynptr#199          ;
+; } @ buggy.bpf.c:137
+159: (bf) r0 = r6                     ; R0_w=0 R6=0
+160: (95) exit
+
+from 136 to 159: R0=scalar(umin=1) R6=0 R7=ctx() R8=32 R9=scalar(id=8) R10=fp0 fp-8=0000???? fp-24=dynptr_skb(id=1,dynptr_id=1) fp-32=mmmmmmmm fp-40=mmmmmm?? fp-48=mmmmmmmm fp-56=mmmmmmmm fp-64=mmmmmmmm fp-72=mmmmmmmm fp-80=mmmmmmmm fp-88=mmmmmmmm fp-96=mmmmmmmm fp-104=mmmmmmmm fp-112=mmmmmmmm fp-120=mmmmmmmm fp-128=mmmmscalar(id=10,smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) fp-136=scalar(id=9) fp-152=dynptr_ringbuf(id=11,ref_id=12,dynptr_id=1) fp-160=scalar(id=6,umin=1) fp-168=0 refs=12
+159: R0=scalar(umin=1) R6=0 R7=ctx() R8=32 R9=scalar(id=8) R10=fp0 fp-8=0000???? fp-24=dynptr_skb(id=1,dynptr_id=1) fp-32=mmmmmmmm fp-40=mmmmmm?? fp-48=mmmmmmmm fp-56=mmmmmmmm fp-64=mmmmmmmm fp-72=mmmmmmmm fp-80=mmmmmmmm fp-88=mmmmmmmm fp-96=mmmmmmmm fp-104=mmmmmmmm fp-112=mmmmmmmm fp-120=mmmmmmmm fp-128=mmmmscalar(id=10,smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) fp-136=scalar(id=9) fp-152=dynptr_ringbuf(id=11,ref_id=12,dynptr_id=1) fp-160=scalar(id=6,umin=1) fp-168=0 refs=12
+159: (bf) r0 = r6                     ; R0_w=0 R6=0 refs=12
+160: (95) exit
+Unreleased reference id=12 alloc_insn=126
+BPF_EXIT instruction in main prog would lead to reference leak
+verification time 0 usec
+stack depth 168
+processed 163 insns (limit 1000000) max_states_per_insn 0 total_states 13 peak_states 13 mark_read 11
+-- END PROG LOAD LOG --
+libbpf: prog 'rs_tutorial_dynptr_tc_ref_leak': failed to load: -EINVAL
+libbpf: failed to load object '<work-dir>/prog.o'
+Error: failed to load object file

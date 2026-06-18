@@ -319,6 +319,24 @@ def upstream_root(root: Path) -> Path:
     return Path(os.environ.get("BPFIX_TEST_UPSTREAM_ROOT", root.parent)).resolve()
 
 
+def is_usable_git_checkout(candidate: Path) -> bool:
+    if not (candidate / ".git").exists():
+        return False
+    result = subprocess.run(
+        ["git", "-C", str(candidate), "rev-parse", "--git-dir"],
+        capture_output=True,
+        check=False,
+    )
+    return result.returncode == 0
+
+
+def checkout_matches_upstream_remote(candidate: Path, upstream_project: str) -> bool:
+    if not is_usable_git_checkout(candidate):
+        return False
+    remote_matches, _ = local_repo_matches_upstream_project(candidate, upstream_project)
+    return remote_matches
+
+
 def resolve_local_upstream_repo(root: Path, upstream_project: str) -> Path | None:
     base = upstream_repo_basename(upstream_project)
     if not base:
@@ -327,19 +345,28 @@ def resolve_local_upstream_repo(root: Path, upstream_project: str) -> Path | Non
     if search_root.exists():
         lower_base = base.lower()
         direct = search_root / base
-        if (direct / ".git").exists():
+        if is_usable_git_checkout(direct):
             return direct
         for child in search_root.iterdir():
-            if child.is_dir() and child.name.lower() == lower_base and (child / ".git").exists():
+            if child.is_dir() and child.name.lower() == lower_base and is_usable_git_checkout(child):
                 return child
         for parent in search_root.iterdir():
             if not parent.is_dir():
                 continue
             candidate = parent / base
-            if (candidate / ".git").exists():
+            if is_usable_git_checkout(candidate):
                 return candidate
             for child in parent.iterdir():
-                if child.is_dir() and child.name.lower() == lower_base and (child / ".git").exists():
+                if child.is_dir() and child.name.lower() == lower_base and is_usable_git_checkout(child):
+                    return child
+        for child in search_root.iterdir():
+            if child.is_dir() and checkout_matches_upstream_remote(child, upstream_project):
+                return child
+        for parent in search_root.iterdir():
+            if not parent.is_dir():
+                continue
+            for child in parent.iterdir():
+                if child.is_dir() and checkout_matches_upstream_remote(child, upstream_project):
                     return child
     return None
 

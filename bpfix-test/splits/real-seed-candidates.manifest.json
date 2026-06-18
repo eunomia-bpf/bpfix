@@ -68,14 +68,22 @@
       "model_result_used": false,
       "notes": "Minimized the xdp-filter macro and inline parser shape into a deterministic XDP harness where the macro proves bounds for a fixed L4 pointer but the rejected read uses an IHL-derived pointer; no LLM repair outcomes were used for admission."
     },
-    {
-      "seed": "bpftime@fac864e5c0775756323794ff44e03ab79a11e753:example/tracing/opensnoop/opensnoop.bpf.c",
-      "decision": "admitted",
-      "case_id": "rs_bpftime_opensnoop_stack_wrong_prog_type_001",
-      "decision_made_before_model_eval": true,
-      "model_result_used": false,
-      "notes": "Minimized the opensnoop tracepoint stack-capture workflow into a single XDP-section boundary failure where bpf_get_stack is rejected by program type; no LLM repair outcomes were used for admission."
-    }
+        {
+            "seed": "bpftime@fac864e5c0775756323794ff44e03ab79a11e753:example/tracing/opensnoop/opensnoop.bpf.c",
+            "decision": "admitted",
+            "case_id": "rs_bpftime_opensnoop_stack_wrong_prog_type_001",
+            "decision_made_before_model_eval": true,
+            "model_result_used": false,
+            "notes": "Minimized the opensnoop tracepoint stack-capture workflow into a single XDP-section boundary failure where bpf_get_stack is rejected by program type; no LLM repair outcomes were used for admission."
+        },
+        {
+            "seed": "bpf-developer-tutorial@3a722c03d5129ac212935bf5ecce118e64efcdd8:src/features/dynptr/dynptr_tc.bpf.c",
+            "decision": "admitted",
+            "case_id": "rs_tutorial_dynptr_tc_ref_leak_001",
+            "decision_made_before_model_eval": true,
+            "model_result_used": false,
+            "notes": "Minimized the dynptr TC parser and ring-buffer dynptr workflow into a reference-lifecycle case requiring discard or submit on every ringbuf dynptr path; no LLM repair outcomes were used for admission."
+        }
   ],
   "seed_exclusion_ledger": [
     {
@@ -419,11 +427,11 @@
         ]
       }
     },
-    {
-      "case_id": "rs_bpftime_opensnoop_stack_wrong_prog_type_001",
-      "bucket": "environment_config_boundary",
-      "prog_type": "xdp",
-      "origin": "real-project seed from bpftime opensnoop tracepoint stack capture and perf-event output",
+        {
+            "case_id": "rs_bpftime_opensnoop_stack_wrong_prog_type_001",
+            "bucket": "environment_config_boundary",
+            "prog_type": "xdp",
+            "origin": "real-project seed from bpftime opensnoop tracepoint stack capture and perf-event output",
       "oracle_kind": [
         "compile",
         "verifier_load",
@@ -471,8 +479,56 @@
           "candidate compiles and verifier-loads",
           "successful verifier log shows call bpf_map_lookup_elem#1 before call bpf_get_stack#67 before call bpf_perf_event_output#25",
           "successful verifier log shows bpf_get_stack receives BPF_F_USER_STACK via r4=256"
-        ]
-      }
-    }
-  ]
+                ]
+            }
+        },
+        {
+            "case_id": "rs_tutorial_dynptr_tc_ref_leak_001",
+            "bucket": "modern_bpf_protocol",
+            "origin": "real-project seed from bpf-developer-tutorial dynptr TC parser and ring-buffer dynptr event emission",
+            "case_sha256": "42f7a21cab83b86a4ed6361021f21f6576fda2d4139963489e7034b0055f0016",
+            "buggy_source_sha256": "fde8a1f6d67ff6d7dbbf02cec7383391790e69a15781c369a8622173ed1319d0",
+            "review": {
+                "reviewer": "Franklin subagent 019ed837-af4b-7182-b504-c53aafd12f63",
+                "reviewed_at": "2026-06-17",
+                "bug_confirmed": true,
+                "oracle_adequate": true,
+                "not_seen_in_prior_eval": true,
+                "bug_summary": "The program reserves a ring-buffer dynptr and can return from reserve and header-write error paths without submitting or discarding the dynptr, so the verifier rejects the exit with an unreleased reference.",
+                "oracle_rationale": "The oracle requires compile, TC verifier load, four packet-run outcomes under map configurations, dynptr skb parse/read helper presence, ringbuf dynptr reserve/write/submit presence, and proof predicates that reserve and write error paths reach bpf_ringbuf_discard_dynptr.",
+                "provenance_rationale": "Seed was derived from bpf-developer-tutorial dynptr_tc.bpf.c, which demonstrates TC parsing with skb dynptrs, payload snapshot reads, and ring-buffer dynptr records. The minimized harness preserves that workflow while isolating the reference lifecycle contract."
+            },
+            "provenance": {
+                "seed_type": "minimized real-project seed in deterministic TC dynptr harness",
+                "source": "https://github.com/eunomia-bpf/bpf-developer-tutorial/blob/3a722c03d5129ac212935bf5ecce118e64efcdd8/src/features/dynptr/dynptr_tc.bpf.c",
+                "license": "GPL-2.0",
+                "minimization": "Preserved TC dynptr packet parsing, config-map policy, payload snapshot read, and ring-buffer dynptr reserve/write/submit workflow while reducing the tutorial example to a reference-lifecycle verifier failure.",
+                "upstream_project": "https://github.com/eunomia-bpf/bpf-developer-tutorial",
+                "upstream_ref": "3a722c03d5129ac212935bf5ecce118e64efcdd8",
+                "upstream_path": "src/features/dynptr/dynptr_tc.bpf.c",
+                "upstream_license": "GPL-2.0",
+                "upstream_file_sha256": "b49cebb253e9cfd34b34a3fcde4a28276d8c6dea75b54dfd2909e795c4b4b304",
+                "derived_from_dev40": false,
+                "model_result_used": false
+            },
+            "oracle_obligation": {
+                "functional_semantics": [
+                    "configured TCP destination port returns TC_ACT_SHOT",
+                    "non-matching TCP destination port returns TC_ACT_OK",
+                    "non-IPv4 packets return TC_ACT_OK",
+                    "ring-buffer disabled config preserves the drop decision without exercising the event path"
+                ],
+                "verifier_reject_reason": [
+                    "bpf_ringbuf_reserve_dynptr creates a dynptr reference that must be submitted or discarded even on reserve failure",
+                    "buggy program returns from reserve and header-write error paths with the dynptr reference still live"
+                ],
+                "success_criteria": [
+                    "candidate compiles and verifier-loads",
+                    "bpftool prog run returns expected TC actions for blocked TCP, unblocked TCP, ringbuf-disabled blocked TCP, and non-IPv4 packets",
+                    "successful verifier log shows bpf_dynptr_from_skb, bpf_dynptr_slice, bpf_dynptr_read, bpf_ringbuf_reserve_dynptr, bpf_dynptr_write, bpf_ringbuf_discard_dynptr, and bpf_ringbuf_submit_dynptr",
+                    "successful verifier log proves reserve-error and write-error paths reach bpf_ringbuf_discard_dynptr"
+                ]
+            }
+        }
+    ]
 }
