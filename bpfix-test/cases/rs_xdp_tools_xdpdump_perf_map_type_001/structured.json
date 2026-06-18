@@ -1,0 +1,62 @@
+{
+  "diagnostic_version": "bpfix.diagnostic/v3",
+  "error_id": "BPFIX-E011",
+  "failure_class": "environment_config_boundary",
+  "confidence": "medium",
+  "diagnostic_kind": "supported",
+  "help_safety": "repair_hint",
+  "next_action": "map_type_contract",
+  "span_confidence": "exact_pc",
+  "message": "bpf_perf_event_output reaches the helper with xdpdump_perf_map declared as a normal array, but the helper requires BPF_MAP_TYPE_PERF_EVENT_ARRAY",
+  "required_proof": "the map passed as argument 2 to bpf_perf_event_output must be a perf event array while the packet metadata remains on the stack",
+  "source_span": {
+    "path": "buggy.bpf.c",
+    "line_start": 62,
+    "line_end": 63,
+    "instruction_pc": 29,
+    "source_text": "bpf_perf_event_output(ctx, &xdpdump_perf_map, flags, &metadata, sizeof(metadata));"
+  },
+  "related_spans": [
+    {
+      "path": "buggy.bpf.c",
+      "line_start": 29,
+      "line_end": 29,
+      "instruction_pc": null,
+      "source_text": "__uint(type, BPF_MAP_TYPE_ARRAY);",
+      "label": "map declaration does not match the perf-output helper contract"
+    },
+    {
+      "path": "buggy.bpf.c",
+      "line_start": 61,
+      "line_end": 61,
+      "instruction_pc": 20,
+      "source_text": "flags = ((__u64)metadata.cap_len << 32) | BPF_F_CURRENT_CPU;",
+      "label": "xdpdump encodes captured packet length in the perf-output flags"
+    }
+  ],
+  "evidence": [
+    {
+      "kind": "terminal_verifier_error",
+      "detail": "cannot pass map_type 2 into func bpf_perf_event_output#25",
+      "line": 29
+    },
+    {
+      "kind": "helper_contract",
+      "detail": "bpf_perf_event_output argument 2 must be BPF_MAP_TYPE_PERF_EVENT_ARRAY",
+      "line": 29
+    }
+  ],
+  "help": [
+    "Change xdpdump_perf_map to BPF_MAP_TYPE_PERF_EVENT_ARRAY.",
+    "Keep the bpf_perf_event_output call and the metadata/cap_len flag calculation; returning XDP_PASS without emitting metadata is not an equivalent xdpdump repair."
+  ],
+  "metadata": {
+    "case_id": null,
+    "input_kind": "verifier-log-region",
+    "object_path": null,
+    "object_programs": [],
+    "object_analysis_error": null,
+    "trace_state_count": null,
+    "analysis_error": null
+  }
+}

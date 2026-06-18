@@ -123,6 +123,14 @@
             "decision_made_before_model_eval": true,
             "model_result_used": false,
             "notes": "Minimized Cilium's IPv6 extension-header inline parsing into an XDP source/object-correlation case where a fixed L4 bounds check does not prove the extension-derived variable L4 UDP read; no LLM repair outcomes were used for admission."
+        },
+        {
+            "seed": "xdp-tools@e9469501622aa22a7e452a671000bec8685edcde:xdp-dump/xdpdump_xdp.c",
+            "decision": "admitted",
+            "case_id": "rs_xdp_tools_xdpdump_perf_map_type_001",
+            "decision_made_before_model_eval": true,
+            "model_result_used": false,
+            "notes": "Minimized the xdpdump XDP packet metadata capture path into a helper/config boundary case where bpf_perf_event_output receives a non-perf-event-array map; no LLM repair outcomes were used for admission."
         }
   ],
   "seed_exclusion_ledger": [
@@ -143,6 +151,12 @@
       "reason": "verifier_accepts",
       "model_result_used": false,
       "notes": "Rejected before admission for this environment-boundary shape because the attempted XDP bpf_probe_read_user variant verifier-loads on the pinned kernel/toolchain; no LLM repair outcomes were inspected."
+    },
+    {
+      "seed": "bpf-developer-tutorial@3a722c03d5129ac212935bf5ecce118e64efcdd8:src/42-xdp-loadbalancer/xdp_lb.bpf.c",
+      "reason": "license_unclear",
+      "model_result_used": false,
+      "notes": "Rejected before admission because the upstream source file lacks an SPDX-License-Identifier header required by the real-project provenance gate; no LLM repair outcomes were inspected."
     }
   ],
   "case_defaults": {
@@ -848,6 +862,63 @@
                     "candidate compiles and verifier-loads as an XDP program",
                     "bpftool prog run drops UDP/53 packets with and without a hop-by-hop extension and passes non-DNS, non-UDP, truncated, and IPv4 packets",
                     "successful verifier log proves the UDP destination is loaded from a packet pointer with extension-derived variable offset"
+                ]
+            }
+        },
+        {
+            "case_id": "rs_xdp_tools_xdpdump_perf_map_type_001",
+            "bucket": "environment_config_boundary",
+            "prog_type": "xdp",
+            "origin": "real-project seed from xdp-tools xdpdump XDP perf-event output path",
+            "oracle_kind": [
+                "compile",
+                "verifier_load",
+                "bpftool_prog_run",
+                "custom_oracle",
+                "helper_state",
+                "proof_predicate"
+            ],
+            "requires_helper_or_state": true,
+            "uses_success_predicate": true,
+            "case_sha256": "9343a27b6f9414198da2d1632e66f944c62a513434acaf1d0f8a1ad1d4149350",
+            "buggy_source_sha256": "3def4bf39e2d2828e9b42e0bce584c2960e35db06d8fe53b04c62864bf7236e1",
+            "review": {
+                "reviewer": "Helmholtz subagent 019ed93e-0d5f-7bd2-aeb5-f0ba11147347",
+                "reviewed_at": "2026-06-17",
+                "bug_confirmed": true,
+                "oracle_adequate": true,
+                "not_seen_in_prior_eval": true,
+                "bug_summary": "The xdpdump-style XDP metadata path computes packet metadata and cap_len flags, then calls bpf_perf_event_output with xdpdump_perf_map. The buggy map is declared BPF_MAP_TYPE_ARRAY, so the verifier rejects the helper call because argument 2 has map_type 2 instead of the perf-event-array contract required by bpf_perf_event_output.",
+                "oracle_rationale": "The oracle requires compile, XDP verifier load, bpftool prog run on short, snaplen-sized, and header-only packets returning XDP_PASS, plus load-log checks that the program still reaches bpf_perf_event_output with the xdpdump perf map and a proof predicate showing stack metadata writes and cap_len shifted into the perf-output flags. Negative controls that remove perf output or drop cap_len flag encoding fail, so the oracle rejects repairs that only make the verifier load while losing xdpdump metadata output semantics.",
+                "provenance_rationale": "Seed was derived from xdp-tools xdpdump_xdp.c at the pinned commit and path. The minimized harness preserves the upstream XDP packet metadata capture shape, cap_len clamp, BPF_F_CURRENT_CPU perf-output flags, and bpf_perf_event_output workflow while isolating the map-type contract failure in a runnable XDP program."
+            },
+            "provenance": {
+                "seed_type": "minimized real-project seed in xdpdump XDP perf-output harness",
+                "source": "https://github.com/xdp-project/xdp-tools/blob/e9469501622aa22a7e452a671000bec8685edcde/xdp-dump/xdpdump_xdp.c",
+                "license": "GPL-2.0",
+                "minimization": "Preserved the upstream xdpdump XDP packet metadata capture shape: packet length calculation, cap_len clamping, stack metadata record, BPF_F_CURRENT_CPU perf-output flags, and bpf_perf_event_output. The minimized harness intentionally declares the perf-output map as a plain array to isolate the helper map-type contract failure.",
+                "upstream_project": "https://github.com/xdp-project/xdp-tools.git",
+                "upstream_ref": "e9469501622aa22a7e452a671000bec8685edcde",
+                "upstream_path": "xdp-dump/xdpdump_xdp.c",
+                "upstream_license": "GPL-2.0",
+                "upstream_file_sha256": "14ce8dc259b7d95ef26543c99f60a945dc4734056a4ee3fb53a211ad210bb4ab",
+                "derived_from_dev40": false,
+                "model_result_used": false
+            },
+            "oracle_obligation": {
+                "functional_semantics": [
+                    "repair must load as an XDP program",
+                    "repair must preserve the xdpdump metadata capture path and return XDP_PASS for representative packet sizes"
+                ],
+                "verifier_reject_reason": [
+                    "buggy xdpdump_perf_map is declared as BPF_MAP_TYPE_ARRAY",
+                    "bpf_perf_event_output requires argument 2 to be a BPF_MAP_TYPE_PERF_EVENT_ARRAY map"
+                ],
+                "success_criteria": [
+                    "candidate compiles and verifier-loads as an XDP program",
+                    "bpftool prog run returns XDP_PASS for short, snaplen-sized, and header-only packets",
+                    "successful verifier log reaches bpf_perf_event_output with the xdpdump perf map",
+                    "successful verifier log shows stack metadata writes and cap_len shifted into the perf-output flags"
                 ]
             }
         }
