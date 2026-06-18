@@ -1,0 +1,162 @@
+libbpf: loading object from <work-dir>/prog.o
+libbpf: elf: section(2) .text, size 88, link 0, flags 6, type=1
+libbpf: sec '.text': found program 'scan_slot_cb' at insn offset 0 (0 bytes), code size 11 insns (88 bytes)
+libbpf: elf: section(3) xdp, size 288, link 0, flags 6, type=1
+libbpf: sec 'xdp': found program 'rs_actplane_taint_loop_count_bound' at insn offset 0 (0 bytes), code size 36 insns (288 bytes)
+libbpf: elf: section(4) .relxdp, size 16, link 26, flags 40, type=9
+libbpf: elf: section(5) license, size 4, link 0, flags 3, type=1
+libbpf: license of <work-dir>/prog.o is GPL
+libbpf: elf: section(16) .BTF, size 1091, link 0, flags 0, type=1
+libbpf: elf: section(18) .BTF.ext, size 612, link 0, flags 0, type=1
+libbpf: elf: section(26) .symtab, size 432, link 1, flags 0, type=2
+libbpf: looking for externs among 18 symbols...
+libbpf: collected 0 externs total
+libbpf: sec '.relxdp': collecting relocation for section(3) 'xdp'
+libbpf: sec '.relxdp': relo #0: insn #27 against '.text'
+libbpf: object 'prog': failed (-95) to create BPF token from '/sys/fs/bpf', skipping optional step...
+libbpf: loaded kernel BTF from '/sys/kernel/btf/vmlinux'
+libbpf: sec 'xdp': found 2 CO-RE relocations
+libbpf: CO-RE relocating [2] struct xdp_md: found target candidate [14922] struct xdp_md in [vmlinux]
+libbpf: prog 'rs_actplane_taint_loop_count_bound': relo #0: <byte_off> [2] struct xdp_md.data_end (0:1 @ offset 4)
+libbpf: prog 'rs_actplane_taint_loop_count_bound': relo #0: matching candidate #0 <byte_off> [14922] struct xdp_md.data_end (0:1 @ offset 4)
+libbpf: prog 'rs_actplane_taint_loop_count_bound': relo #0: patched insn #0 (LDX/ST/STX) off 4 -> 4
+libbpf: prog 'rs_actplane_taint_loop_count_bound': relo #1: <byte_off> [2] struct xdp_md.data (0:0 @ offset 0)
+libbpf: prog 'rs_actplane_taint_loop_count_bound': relo #1: matching candidate #0 <byte_off> [14922] struct xdp_md.data (0:0 @ offset 0)
+libbpf: prog 'rs_actplane_taint_loop_count_bound': relo #1: patched insn #1 (LDX/ST/STX) off 0 -> 0
+libbpf: prog 'rs_actplane_taint_loop_count_bound': added 11 insns from sub-prog 'scan_slot_cb'
+libbpf: prog 'rs_actplane_taint_loop_count_bound': insn #27 relocated, imm 8 points to subprog 'scan_slot_cb' (now at 36 offset)
+libbpf: prog 'rs_actplane_taint_loop_count_bound': BPF program load failed: -EACCES
+libbpf: prog 'rs_actplane_taint_loop_count_bound': -- BEGIN PROG LOAD LOG --
+func#0 @0
+func#1 @36
+Live regs before insn:
+  0: .1........ (61) r2 = *(u32 *)(r1 +4)
+  1: .12....... (61) r1 = *(u32 *)(r1 +0)
+  2: .12....... (b7) r3 = 0
+  3: .123...... (63) *(u32 *)(r10 -12) = r3
+  4: .12....... (b7) r0 = 2
+  5: 012....... (bf) r3 = r1
+  6: 0123...... (07) r3 += 8
+  7: 0123...... (2d) if r3 > r2 goto pc+27
+  8: .1........ (71) r2 = *(u8 *)(r1 +0)
+  9: .12....... (73) *(u8 *)(r10 -8) = r2
+ 10: .1........ (71) r2 = *(u8 *)(r1 +1)
+ 11: .12....... (73) *(u8 *)(r10 -7) = r2
+ 12: .1........ (71) r2 = *(u8 *)(r1 +2)
+ 13: .12....... (73) *(u8 *)(r10 -6) = r2
+ 14: .1........ (71) r2 = *(u8 *)(r1 +3)
+ 15: .12....... (73) *(u8 *)(r10 -5) = r2
+ 16: .1........ (71) r2 = *(u8 *)(r1 +4)
+ 17: .12....... (73) *(u8 *)(r10 -4) = r2
+ 18: .1........ (71) r2 = *(u8 *)(r1 +5)
+ 19: .12....... (73) *(u8 *)(r10 -3) = r2
+ 20: .1........ (71) r2 = *(u8 *)(r1 +6)
+ 21: .12....... (73) *(u8 *)(r10 -2) = r2
+ 22: .1........ (71) r1 = *(u8 *)(r1 +7)
+ 23: .1........ (73) *(u8 *)(r10 -1) = r1
+ 24: .......... (bf) r3 = r10
+ 25: ...3...... (07) r3 += -12
+ 26: ...3...... (b7) r1 = 16
+ 27: .1.3...... (18) r2 = 0x8
+ 29: .123...... (b7) r4 = 0
+ 30: .1234..... (85) call bpf_loop#181
+ 31: .......... (b7) r0 = 2
+ 32: 0......... (61) r1 = *(u32 *)(r10 -12)
+ 33: 01........ (15) if r1 == 0x0 goto pc+1
+ 34: .......... (b7) r0 = 1
+ 35: 0......... (95) exit
+ 36: .12....... (67) r1 <<= 32
+ 37: .12....... (77) r1 >>= 32
+ 38: .12....... (bf) r3 = r2
+ 39: .123...... (0f) r3 += r1
+ 40: ..23...... (71) r1 = *(u8 *)(r3 +4)
+ 41: .12....... (55) if r1 != 0xaa goto pc+3
+ 42: ..2....... (61) r1 = *(u32 *)(r2 +0)
+ 43: .12....... (07) r1 += 1
+ 44: .12....... (63) *(u32 *)(r2 +0) = r1
+ 45: .......... (b7) r0 = 0
+ 46: 0......... (95) exit
+0: R1=ctx() R10=fp0
+; void *data_end = (void *)(long)ctx->data_end; @ buggy.bpf.c:40
+0: (61) r2 = *(u32 *)(r1 +4)          ; R1=ctx() R2_w=pkt_end()
+; void *data = (void *)(long)ctx->data; @ buggy.bpf.c:39
+1: (61) r1 = *(u32 *)(r1 +0)          ; R1_w=pkt(r=0)
+2: (b7) r3 = 0                        ; R3_w=0
+; struct scan_ctx scan = {}; @ buggy.bpf.c:42
+3: (63) *(u32 *)(r10 -12) = r3
+mark_precise: frame0: last_idx 3 first_idx 0 subseq_idx -1 
+mark_precise: frame0: regs=r3 stack= before 2: (b7) r3 = 0
+4: R3_w=0 R10=fp0 fp-16=0000????
+4: (b7) r0 = 2                        ; R0_w=2
+; if ((void *)(bytes + SLOT_COUNT) > data_end) @ buggy.bpf.c:44
+5: (bf) r3 = r1                       ; R1_w=pkt(r=0) R3_w=pkt(r=0)
+6: (07) r3 += 8                       ; R3_w=pkt(off=8,r=0)
+7: (2d) if r3 > r2 goto pc+27         ; R2_w=pkt_end() R3_w=pkt(off=8,r=8)
+; scan.slots[i] = bytes[i]; @ buggy.bpf.c:49
+8: (71) r2 = *(u8 *)(r1 +0)           ; R1_w=pkt(r=8) R2_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+9: (73) *(u8 *)(r10 -8) = r2          ; R2_w=scalar(id=1,smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R10=fp0 fp-8=???????scalar(id=1,smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+10: (71) r2 = *(u8 *)(r1 +1)          ; R1_w=pkt(r=8) R2_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+11: (73) *(u8 *)(r10 -7) = r2         ; R2_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R10=fp0 fp-8=??????mm
+12: (71) r2 = *(u8 *)(r1 +2)          ; R1_w=pkt(r=8) R2_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+13: (73) *(u8 *)(r10 -6) = r2         ; R2_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R10=fp0 fp-8=?????mmm
+14: (71) r2 = *(u8 *)(r1 +3)          ; R1_w=pkt(r=8) R2_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+15: (73) *(u8 *)(r10 -5) = r2         ; R2_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R10=fp0 fp-8=????mmmm
+16: (71) r2 = *(u8 *)(r1 +4)          ; R1_w=pkt(r=8) R2_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+17: (73) *(u8 *)(r10 -4) = r2         ; R2_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R10=fp0 fp-8=???mmmmm
+18: (71) r2 = *(u8 *)(r1 +5)          ; R1_w=pkt(r=8) R2_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+19: (73) *(u8 *)(r10 -3) = r2         ; R2_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R10=fp0 fp-8=??mmmmmm
+20: (71) r2 = *(u8 *)(r1 +6)          ; R1_w=pkt(r=8) R2_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+21: (73) *(u8 *)(r10 -2) = r2         ; R2_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R10=fp0 fp-8=?mmmmmmm
+22: (71) r1 = *(u8 *)(r1 +7)          ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+23: (73) *(u8 *)(r10 -1) = r1         ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R10=fp0 fp-8=mmmmmmmm
+24: (bf) r3 = r10                     ; R3_w=fp0 R10=fp0
+;  @ buggy.bpf.c:0
+25: (07) r3 += -12                    ; R3_w=fp-12
+; bpf_loop(LOOP_COUNT, scan_slot_cb, &scan, 0); @ buggy.bpf.c:51
+26: (b7) r1 = 16                      ; R1_w=16
+27: (18) r2 = 0x8                     ; R2_w=func()
+29: (b7) r4 = 0                       ; R4=0
+30: (85) call bpf_loop#181
+mark_precise: frame0: last_idx 30 first_idx 30 subseq_idx -1 
+mark_precise: frame0: parent state regs=r4 stack=:  R0_w=2 R1_rw=16 R2_rw=func() R3_rw=fp-12 R4_rw=P0 R10=fp0 fp-8=mmmmmmmm fp-16=0000????
+mark_precise: frame0: last_idx 29 first_idx 0 subseq_idx 30 
+mark_precise: frame0: regs=r4 stack= before 29: (b7) r4 = 0
+mark_precise: frame0: last_idx 30 first_idx 30 subseq_idx -1 
+mark_precise: frame0: parent state regs=r1 stack=:  R0_w=2 R1_rw=P16 R2_rw=func() R3_rw=fp-12 R4_rw=P0 R10=fp0 fp-8=mmmmmmmm fp-16=0000????
+mark_precise: frame0: last_idx 29 first_idx 0 subseq_idx 30 
+mark_precise: frame0: regs=r1 stack= before 29: (b7) r4 = 0
+mark_precise: frame0: regs=r1 stack= before 27: (18) r2 = 0x8
+mark_precise: frame0: regs=r1 stack= before 26: (b7) r1 = 16
+31: R0_w=scalar() R10=fp0 fp-8=mmmmmmmm fp-16=0000????
+31: (b7) r0 = 2                       ; R0_w=2
+; return scan.hits ? XDP_DROP : XDP_PASS; @ buggy.bpf.c:52
+32: (61) r1 = *(u32 *)(r10 -12)       ; R1_w=0 R10=fp0 fp-16=0000????
+33: (15) if r1 == 0x0 goto pc+1
+mark_precise: frame0: last_idx 33 first_idx 30 subseq_idx -1 
+mark_precise: frame0: regs=r1 stack= before 32: (61) r1 = *(u32 *)(r10 -12)
+33: R1_w=0
+; } @ buggy.bpf.c:53
+35: (95) exit
+
+from 30 to 36: frame1: R1=scalar() R2=fp[0]-12 R10=fp0 cb
+36: frame1: R1=scalar() R2=fp[0]-12 R10=fp0 cb
+; __u8 marker = ctx->slots[idx]; @ buggy.bpf.c:29
+36: (67) r1 <<= 32                    ; frame1: R1_w=scalar(smax=0x7fffffff00000000,umax=0xffff000000000000,smin32=0,smax32=umax32=0,var_off=(0x0; 0xffff000000000000)) cb
+37: (77) r1 >>= 32                    ; frame1: R1_w=scalar(smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) cb
+38: (bf) r3 = r2                      ; frame1: R2=fp[0]-12 R3_w=fp[0]-12 cb
+39: (0f) r3 += r1
+mark_precise: frame1: last_idx 39 first_idx 30 subseq_idx -1 
+mark_precise: frame1: regs=r1 stack= before 38: (bf) r3 = r2
+mark_precise: frame1: regs=r1 stack= before 37: (77) r1 >>= 32
+mark_precise: frame1: regs=r1 stack= before 36: (67) r1 <<= 32
+mark_precise: frame1: regs=r1 stack= before 30: (85) call bpf_loop#181
+40: frame1: R1_w=scalar(smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) R3_w=fp[0](off=-12,smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) cb
+40: (71) r1 = *(u8 *)(r3 +4)
+invalid unbounded variable-offset read from stack R3
+verification time 0 usec
+stack depth 16+0
+processed 39 insns (limit 1000000) max_states_per_insn 1 total_states 1 peak_states 1 mark_read 1
+-- END PROG LOAD LOG --
+libbpf: prog 'rs_actplane_taint_loop_count_bound': failed to load: -EACCES
+libbpf: failed to load object '<work-dir>/prog.o'
+Error: failed to load object file

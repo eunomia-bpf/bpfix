@@ -131,6 +131,14 @@
             "decision_made_before_model_eval": true,
             "model_result_used": false,
             "notes": "Minimized the xdpdump XDP packet metadata capture path into a helper/config boundary case where bpf_perf_event_output receives a non-perf-event-array map; no LLM repair outcomes were used for admission."
+        },
+        {
+            "seed": "ActPlane@84169ce6a22a302afdf64427a0b7ffbab773b6e1:bpf/taint_engine.bpf.h",
+            "decision": "admitted",
+            "case_id": "rs_actplane_taint_loop_count_bound_001",
+            "decision_made_before_model_eval": true,
+            "model_result_used": false,
+            "notes": "Minimized the ActPlane taint-engine bpf_loop tokenizer shape into an XDP loop-callback bound case where the callback receives an unbounded loop index and must prove the stack scratch-slot bound locally; no LLM repair outcomes were used for admission."
         }
   ],
   "seed_exclusion_ledger": [
@@ -919,6 +927,64 @@
                     "bpftool prog run returns XDP_PASS for short, snaplen-sized, and header-only packets",
                     "successful verifier log reaches bpf_perf_event_output with the xdpdump perf map",
                     "successful verifier log shows stack metadata writes and cap_len shifted into the perf-output flags"
+                ]
+            }
+        },
+        {
+            "case_id": "rs_actplane_taint_loop_count_bound_001",
+            "bucket": "modern_bpf_protocol",
+            "prog_type": "xdp",
+            "origin": "real-project seed from ActPlane taint-engine bpf_loop tokenizer",
+            "oracle_kind": [
+                "compile",
+                "verifier_load",
+                "bpftool_prog_run",
+                "custom_oracle",
+                "helper_state",
+                "proof_predicate"
+            ],
+            "requires_helper_or_state": true,
+            "uses_success_predicate": true,
+            "case_sha256": "fac6af6cea9a8f65be4cf7a1981cfec6690705bbfbf7d137aef12ac7999fe72a",
+            "buggy_source_sha256": "8335a387263f5ce7422d065a83de3c3bb4879acc2515cb11148f526c869c77d3",
+            "review": {
+                "reviewer": "Nash subagent 019ed946-543a-75e3-a2dc-87d44b1a0cb5",
+                "reviewed_at": "2026-06-17",
+                "bug_confirmed": true,
+                "oracle_adequate": true,
+                "not_seen_in_prior_eval": true,
+                "bug_summary": "The ActPlane-style taint tokenizer uses bpf_loop to verify a callback once, but the callback reads ctx->slots[idx] from a fixed stack scratch array while idx is an unbounded callback argument. The verifier rejects the variable-offset stack read because the callback does not establish idx < SLOT_COUNT before the read.",
+                "oracle_rationale": "The oracle requires verifier load, bpf_loop to remain in the accepted program, a callback-local idx <= 7 branch proof before the stack read, callback hit-counter update, and functional packet outcomes that drop an in-slot marker while passing no-marker and out-of-slot-marker packets. Negative controls that remove bpf_loop fail the oracle, and reducing the loop trip count alone still rejects, so the case tests the callback-local proof rather than a terminal-message regex.",
+                "provenance_rationale": "Seed was derived from ActPlane taint_engine.bpf.h at the pinned commit and path. The minimized harness preserves the upstream bpf_loop tokenizer structure, callback-local scratch access, fixed slot array, marker-style scan, and result-dependent action while isolating the callback index-bound verifier failure in a runnable XDP program."
+            },
+            "provenance": {
+                "seed_type": "minimized real-project seed in ActPlane bpf_loop tokenizer harness",
+                "source": "https://github.com/eunomia-bpf/ActPlane/blob/84169ce6a22a302afdf64427a0b7ffbab773b6e1/bpf/taint_engine.bpf.h",
+                "license": "GPL-2.0 OR BSD-3-Clause",
+                "minimization": "Preserved the upstream taint-engine tokenizer shape: bpf_loop callback verification, callback-local scratch access, fixed slot array, marker-style scan, and result-dependent action. The minimized harness intentionally scans more loop iterations than the fixed stack scratch array can prove without a callback-local index bound.",
+                "upstream_project": "https://github.com/eunomia-bpf/ActPlane",
+                "upstream_ref": "84169ce6a22a302afdf64427a0b7ffbab773b6e1",
+                "upstream_path": "bpf/taint_engine.bpf.h",
+                "upstream_license": "GPL-2.0 OR BSD-3-Clause",
+                "upstream_file_sha256": "452ecef50627762c60272a8249d446711fdf986b37d365a6e20eedee01d339dc",
+                "derived_from_dev40": false,
+                "model_result_used": false
+            },
+            "oracle_obligation": {
+                "functional_semantics": [
+                    "repair must load as an XDP program",
+                    "repair must preserve callback-driven bpf_loop scanning over the first eight scratch slots",
+                    "repair must drop packets whose first eight bytes contain marker 0xaa and pass packets without a marker or with a marker outside the scanned slots"
+                ],
+                "verifier_reject_reason": [
+                    "bpf_loop verifies the callback with idx as an unbounded scalar",
+                    "buggy callback directly reads ctx->slots[idx] from a fixed stack scratch array without a callback-local bound proof"
+                ],
+                "success_criteria": [
+                    "candidate compiles and verifier-loads as an XDP program",
+                    "bpftool prog run distinguishes in-slot marker, no-marker, and out-of-slot marker packets",
+                    "successful verifier log reaches bpf_loop and shows a callback-local idx <= 7 proof before the variable-offset stack read",
+                    "successful verifier log shows the callback updates the hit counter used by the final XDP action"
                 ]
             }
         }
