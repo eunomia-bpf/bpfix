@@ -1,0 +1,20 @@
+error[BPFIX-E005]: map-value access exceeds the verifier-visible value size
+  = class: source_bug
+  = confidence: medium
+  = diagnostic: supported, help: repair_hint, span: exact_pc
+  = next action: bounds
+  --> buggy.bpf.c:101
+   |
+ 90 | data->tid = tid;
+    | ---------------- verifier still sees R1 as scalar(smin=0,smax=-281474976710656,umax=18446462598732840960), so the required scalar or map-value bound is not available at the use
+ 98 | if (copy_size > MAX_BUF_SIZE)
+    | ----------------------------- nearby source context for scalar range
+101 | ret = bpf_probe_read_user(data->buf, copy_size, (void *)*bufp);
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this map-value access crosses the declared value size
+   |
+   = verifier[224]: invalid access to map value, value_size=64 off=56 size=16; R1 min value is outside of the allowed memory range
+   = note: nearest BPF instruction pc 68
+   = note: parsed 61 verifier state snapshots
+   = note[verifier-state]: verifier state shows the rejected map-value pointer access crosses the declared value size
+   = required proof: prove the map-value field offset plus access width stays below the declared map value size at the rejected access
+help: Keep map-value field offsets, array indexes, and helper lengths inside the declared map value size; resize the map value or clamp the access before the load, store, or helper call.

@@ -165,7 +165,7 @@ Purpose:
 - separates BPFix's structured analysis from the capability of a strong model
   reading raw verifier output.
 
-### B4: LLM + Structured BPFix
+### B4: LLM + BPFix Diagnostic
 
 Use this method only if the evaluation includes an LLM-assisted diagnosis or
 repair workflow that consumes BPFix output. It is not a replacement for the non-LLM
@@ -174,22 +174,22 @@ BPFix pipeline; it is a downstream-consumer baseline.
 Allowed input:
 
 - fresh verifier log from replay;
-- BPFix structured diagnostic JSON produced from that same log;
+- BPFix plain-text diagnostic produced from that same log;
 - case source file if the corresponding raw-log LLM source variant also gets it.
 
 Output:
 
 - same schema as `LLM+raw-log` so that the difference is attributable to the
-  structured BPFix diagnostic.
+  BPFix diagnostic.
 
 Purpose:
 
-- measures whether BPFix's structured output improves an LLM consumer over raw
+- measures whether BPFix's diagnostic output improves an LLM consumer over raw
   logs alone.
 
 Reporting rule:
 
-- never compare `LLM+structured BPFix` only against non-LLM baselines. Pair it
+- never compare `LLM+BPFix diagnostic` only against non-LLM baselines. Pair it
   with `LLM+raw-log` under the same model, prompt budget, temperature, source
   access, and retry policy.
 
@@ -212,11 +212,11 @@ Expected output:
 - rejected span;
 - proof-lost or causal spans when present;
 - source-correlated spans when available;
-- rendered diagnostic text backed by structured JSON.
+- rendered diagnostic text backed by verifier-state and object-analysis proof signals.
 
 Purpose:
 
-- tests the full claim: BPFix turns verifier traces into structured,
+- tests the full claim: BPFix turns verifier traces into
   source-correlated, actionable diagnostics.
 
 ## Ablation Matrix
@@ -233,7 +233,7 @@ the pipeline, input logs, output schema, and evaluation harness unchanged.
 | `A4-no-controlflow-slice` | control-dependence slice only | keep data dependencies but omit branch/control predicates | branch-guard contribution |
 | `A5-no-dataflow-slice` | data-dependence slice only | keep control predicates but omit register/value provenance | value provenance contribution |
 | `A6-no-source-correlation` | BTF/log/source correlator | instruction-level spans only | source-level usability |
-| `A7-no-taxonomy-renderer` | taxonomy-specific renderer and explanation templates | generic structured JSON converted to plain text | presentation and taxonomy-specific guidance |
+| `A7-no-taxonomy-renderer` | taxonomy-specific renderer and explanation templates | generic plain-text rendering over the same proof signals | presentation and taxonomy-specific guidance |
 
 The minimum ablation set for a full evaluation should include `A1`, `A2`, `A3`, `A6`,
 and `A7`. `A4` and `A5` should be included if space permits or if the slicer is

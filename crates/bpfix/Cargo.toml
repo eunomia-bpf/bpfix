@@ -17,8 +17,6 @@ path = "src/main.rs"
 anyhow.workspace = true
 bpfanalysis = { version = "0.1.0", path = "../bpfanalysis", default-features = false }
 clap.workspace = true
-serde.workspace = true
-serde_json.workspace = true
 
 [features]
 default = []

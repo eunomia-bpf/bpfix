@@ -1,11 +1,10 @@
-# Editor and Agent JSON
+# Editor and Agent Diagnostics
 
-Editors and agents should use BPFix JSON instead of scraping the text output:
+Editors and agents should consume BPFix's plain-text diagnostic as the stable
+handoff format:
 
 ```bash
-bpfix --format json verifier.log > bpfix-diagnostic.json
+bpfix verifier.log > bpfix-diagnostic.txt
 ```
 
-`json-output.sh` is a minimal wrapper. `diagnostic.schema.example.json` is a
-copyable example payload. The formal JSON Schema for the same contract lives at
-`docs/evaluation/diagnostic.schema.json`.
+`write-diagnostic.sh` is a minimal wrapper for tools that want a file artifact.

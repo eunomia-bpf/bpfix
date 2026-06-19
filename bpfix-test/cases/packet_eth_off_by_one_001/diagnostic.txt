@@ -1,0 +1,20 @@
+error[BPFIX-E001]: packet bounds check is narrower than the later packet access
+  = class: source_bug
+  = confidence: medium
+  = diagnostic: supported, help: repair_hint, span: exact_pc
+  = next action: bounds
+  --> buggy.bpf.c:29
+   |
+26 | if (data + 13 > data_end)
+   | ------------------------- verifier only proves packet range 0 bytes on this path, but the rejected access requires 14 bytes
+29 | proto = *(__u16 *)(data + 12);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ rejected here: verifier needs R1 packet range >= 14, but only 13 bytes are proven
+   |
+   = verifier[27]: invalid access to packet, off=12 size=2, R1(id=0,off=12,r=13); R1 offset is outside of the packet
+   = note: nearest BPF instruction pc 6
+   = note: parsed 6 verifier state snapshots
+   = note[verifier-state]: source has a packet bounds check, but verifier state after that check proves only a shorter packet range than the rejected access needs
+   = required proof: prove R1 has packet range at least 14 bytes before this access; verifier currently has range 13
+help: Move the data_end check to the final pointer expression and include the access width, for example check pointer + size before dereferencing pointer.
+help: Add or move a packet bounds check immediately before the access or helper argument use.
+help: Check the exact pointer and byte length passed to the helper, not only an earlier header pointer.

@@ -1,0 +1,20 @@
+error[BPFIX-E011]: skb/xdp packet pointer is reused after a helper invalidates it
+  = class: source_bug
+  = confidence: medium
+  = diagnostic: supported, help: repair_hint, span: exact_pc
+  = next action: provenance
+  --> buggy.bpf.c:44
+   |
+37 | if (bpf_xdp_adjust_head(ctx, (int)sizeof(*eth)) < 0)
+   | ---------------------------------------------------- nearby source context for pointer provenance
+41 | if ((void *)(iph + 1) > data_end)
+   | --------------------------------- nearby source context for pointer provenance
+44 | return iph->protocol == IPPROTO_UDP ? XDP_DROP : XDP_PASS;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this access reuses a pointer invalidated by an earlier helper call
+   |
+   = verifier[50]: R6 invalid mem access 'scalar'
+   = note: nearest BPF instruction pc 16
+   = note: parsed 13 verifier state snapshots
+   = note[verifier-state]: verifier state shows this register previously held an skb/xdp packet pointer, but an intervening packet-mutating helper invalidated that pointer before the rejected memory access
+   = required proof: preserve pointer provenance by reacquiring and rechecking the skb/xdp packet pointer after the helper that invalidates existing packet data pointers
+help: After helpers that move or rewrite skb/xdp data, reload packet data/data_end, recheck the packet range, and derive a fresh packet pointer before dereferencing. For bpf_xdp_adjust_head, account for the adjusted packet head: a positive delta strips bytes, so the new ctx->data starts after the removed header.

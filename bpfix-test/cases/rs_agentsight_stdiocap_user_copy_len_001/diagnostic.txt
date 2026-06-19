@@ -1,0 +1,20 @@
+error[BPFIX-E005]: scalar range proof is missing
+  = class: source_bug
+  = confidence: medium
+  = diagnostic: supported, help: repair_hint, span: exact_pc
+  = next action: bounds
+  --> buggy.bpf.c:57
+   |
+46 | if (ctx->ret <= 0)
+   | ------------------ nearby source context for scalar range
+56 | event->is_read = args->is_read;
+   | ------------------------------- verifier still sees R1 as scalar(smin=0,smax=255,umax=255), so the required scalar or map-value bound is not available at the use
+57 | bpf_probe_read_user(event->buf, copy_size, (const void *)args->buf);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ rejected here: verifier still sees R1 as scalar with unknown bounds
+   |
+   = verifier[94]: invalid access to memory, mem_size=24 off=16 size=16; R1 min value is outside of the allowed memory range
+   = note: nearest BPF instruction pc 33
+   = note: parsed 29 verifier state snapshots
+   = required proof: prove R1 has a bounded non-negative scalar range before this pointer arithmetic or helper memory access; verifier sees scalar with unknown bounds
+help: Clamp the index or length with explicit upper and lower bounds.
+help: Keep the bounded scalar in the same SSA value used for pointer arithmetic or helper length.

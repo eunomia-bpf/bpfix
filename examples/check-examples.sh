@@ -16,8 +16,7 @@ bpftool/load-and-diagnose.sh
 ci/README.md
 ci/github-actions.yml
 editor/README.md
-editor/diagnostic.schema.example.json
-editor/json-output.sh
+editor/write-diagnostic.sh
 libbpf-c/README.md
 libbpf-c/loader-snippet.c
 libbpf-rs/README.md
@@ -48,9 +47,6 @@ import sys
 path = pathlib.Path(sys.argv[1])
 compile(path.read_text(encoding="utf-8"), str(path), "exec")
 PY
-python3 -m json.tool "$examples_dir/editor/diagnostic.schema.example.json" >/dev/null
-python3 -m json.tool "$repo_root/docs/evaluation/diagnostic.schema.json" >/dev/null
-
 obsolete_pattern='bpfix capt(ure)?|capt(ure)? --|case\.yaml|BPFIX-UNK[N]OWN'
 if rg -n "$obsolete_pattern" "$examples_dir" --glob '!check-examples.sh'; then
     echo "examples mention an obsolete public entrypoint or runtime benchmark artifact" >&2

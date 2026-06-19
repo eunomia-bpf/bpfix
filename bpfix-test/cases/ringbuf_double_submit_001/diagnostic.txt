@@ -1,0 +1,16 @@
+error[BPFIX-E008]: helper or kfunc argument has the wrong verifier-visible type
+  = class: source_bug
+  = confidence: medium
+  = diagnostic: supported, help: repair_hint, span: exact_pc
+  = next action: protocol
+  --> buggy.bpf.c:49
+   |
+49 | bpf_ringbuf_submit(rec, 0);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ helper or kfunc argument has the wrong verifier-visible type
+   |
+   = verifier[70]: R1 type=scalar expected=ringbuf_mem
+   = note: nearest BPF instruction pc 24
+   = note: parsed 19 verifier state snapshots
+   = note[verifier-state]: verifier state at the call site confirms the rejected argument register has the printed actual type, while the helper or kfunc contract requires a different verifier-visible type
+   = required proof: pass the helper or kfunc argument register the exact verifier-visible type required by its contract at this call site
+help: Pass the helper or kfunc the exact verifier-visible argument type it requires; use a real map pointer, stack pointer, packet pointer, ringbuf memory pointer, or trusted object pointer rather than casting or reusing a different pointer class.

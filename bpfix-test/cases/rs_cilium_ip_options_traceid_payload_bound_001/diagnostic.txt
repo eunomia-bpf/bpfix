@@ -1,0 +1,18 @@
+error[BPFIX-E001]: packet access reaches the use before the verifier has enough packet range
+  = class: source_bug
+  = confidence: medium
+  = diagnostic: supported, help: repair_hint, span: exact_pc
+  = next action: bounds
+  --> buggy.bpf.c:37
+   |
+34 | if (optlen == OPT16_LEN) {
+   | -------------------------- verifier only proves packet range 36 bytes on this path, but the rejected access requires 38 bytes
+37 | *value = bpf_ntohs(*raw);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^ packet range proof is too short for this access
+   |
+   = verifier[232]: invalid access to packet, off=36 size=2, R4(id=4,off=36,r=36); R4 offset is outside of the packet
+   = note: nearest BPF instruction pc 67
+   = note: parsed 44 verifier state snapshots
+   = note[verifier-state]: verifier state shows the packet register's proven range is shorter than the rejected access requires at this instruction
+   = required proof: prove this packet register has range at least off + size at the rejected load, store, or helper call
+help: Move or add a data_end bounds check for the exact packet pointer and access width immediately before the load, store, or helper call that consumes it.

@@ -1,16 +1,16 @@
 # CI
 
 CI should keep the original build or load step visible, then upload both the
-raw verifier log and BPFix JSON when the load fails.
+raw verifier log and BPFix diagnostic text when the load fails.
 
 The GitHub Actions example does three things:
 
 1. Runs the normal build/load command.
-2. On failure, runs `bpfix --format json --fail-on-unsupported`.
-3. Uploads `verifier.log` and `bpfix-diagnostic.json` as artifacts.
+2. On failure, runs `bpfix --fail-on-unsupported`.
+3. Uploads `verifier.log` and `bpfix-diagnostic.txt` as artifacts.
 
 The diagnostic step uses `continue-on-error` so unsupported input still leaves a
-JSON diagnostic artifact behind. The final step fails the job after upload,
+diagnostic artifact behind. The final step fails the job after upload,
 preserving the original verifier failure while making BPFix's own diagnostic
 status visible.
 

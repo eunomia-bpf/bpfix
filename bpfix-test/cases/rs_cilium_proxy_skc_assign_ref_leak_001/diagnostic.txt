@@ -1,0 +1,20 @@
+error[BPFIX-E004]: reference lifecycle proof is missing
+  = class: source_bug
+  = confidence: medium
+  = diagnostic: supported, help: repair_hint, span: exact_pc
+  = next action: release
+  --> buggy.bpf.c:34
+   |
+24 | sk = bpf_skc_lookup_tcp(skb, &tuple, sizeof(tuple.ipv4), BPF_F_CURRENT_NETNS, 0);
+   | -------------------------------------------------------------------------------- nearby source context for reference lifecycle
+32 | bpf_sk_release(sk);
+   | ------------------- nearby source context for reference lifecycle
+34 | }
+   | ^ rejected here: reference id 2 is not released on every path
+   |
+   = verifier[99]: Unreleased reference id=2 alloc_insn=21
+   = note: nearest BPF instruction pc 35
+   = note: parsed 36 verifier state snapshots
+   = required proof: release verifier-tracked reference id 2 on every path before exit
+help: Call the matching release helper before each return.
+help: Restructure error paths so acquired references share one cleanup block.

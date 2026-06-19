@@ -15,7 +15,7 @@ from your existing workflow and turns them into:
 - a short explanation of what the verifier could not prove
 - the nearest instruction or source location when the log contains one
 - actionable `help:` guidance
-- JSON output for editors, CI, and other tools
+- plain-text output for terminals, CI, editors, and agents
 
 ## Motivating Example
 
@@ -134,31 +134,22 @@ bpfix build-or-load.log
 
 Optionally pass the BPF object when BPFix is built with object analysis enabled.
 This is an experimental enhancement: BPFix reads BPF instruction sections,
-reports object metadata in JSON, and keeps log-only diagnostics working if object
-analysis fails. BTF-backed source correlation will build on the same explicit
-opt-in shape:
+uses that metadata to enrich the plain-text diagnostic, and keeps log-only
+diagnostics working if object analysis fails. BTF-backed source correlation will
+build on the same explicit opt-in shape:
 
 ```bash
 cargo install --path crates/bpfix --features object-analysis
 bpfix --object xdp.o verifier.log
 ```
 
-Get JSON for CI or editor integration:
-
-```bash
-bpfix --format json verifier.log
-```
-
-Tooling should read `next_action` for a stable action family and `help` for
-human-readable guidance; it should not infer actions by scraping prose.
-
 For CI pipelines that want to fail when BPFix cannot produce a supported
-diagnostic, add `--fail-on-unsupported`. BPFix still renders the requested
-output first, then exits with code 2 for `unsupported_input` or
+diagnostic, add `--fail-on-unsupported`. BPFix still renders the plain-text
+diagnostic first, then exits with code 2 for `unsupported_input` or
 `unsupported_verifier_message`:
 
 ```bash
-bpfix --format json --fail-on-unsupported verifier.log
+bpfix --fail-on-unsupported verifier.log
 ```
 
 The CLI shape is intentionally small:
@@ -172,8 +163,8 @@ is omitted or `-`, BPFix reads stdin. Positional input and stdin are always log
 text. BPFix does not execute loader commands in the default path, and there is
 no default command-execution workflow. Benchmark YAML and Docker-based execution
 are explicit non-default modes; if Docker support is added, it should be selected
-with an option such as `--docker`, not inferred from `LOG`. The default output is
-plain text; use `--format json` only for tools.
+with an option such as `--docker`, not inferred from `LOG`. The output is always
+plain text.
 
 ## Best Workflow
 
@@ -302,7 +293,7 @@ cargo fmt --all
 Run a smoke test:
 
 ```bash
-cargo run -p bpfix -- bpfix-bench/cases/stackoverflow-60053570/replay-verifier.log --format both
+cargo run -p bpfix -- bpfix-bench/cases/stackoverflow-60053570/replay-verifier.log
 ```
 
 Check release packaging:

@@ -1,0 +1,18 @@
+error[BPFIX-E002]: nullable pointer is used before the verifier sees a non-null proof
+  = class: source_bug
+  = confidence: medium
+  = diagnostic: supported, help: repair_hint, span: exact_pc
+  = next action: null
+  --> buggy.bpf.c:87
+   |
+64 | scratch = bpf_map_lookup_elem(&scratch_map, &key);
+   | -------------------------------------------------- nearby source context for nullable pointer
+87 | if (r->index >= MAX_TAINT_UPDATES)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ nullable pointer reaches this use without a non-null proof
+   |
+   = verifier[1421]: R0 invalid mem access 'mem_or_null'
+   = note: nearest BPF instruction pc 253
+   = note: parsed 214 verifier state snapshots
+   = note[verifier-state]: verifier state shows the rejected pointer register is still a nullable helper result at the dereference, arithmetic, or helper-use site
+   = required proof: prove the nullable helper result is non-null in the same verifier-visible branch as this use
+help: Check the helper result for null and keep the dereference, pointer arithmetic, or helper argument inside the same verifier-visible non-null branch.

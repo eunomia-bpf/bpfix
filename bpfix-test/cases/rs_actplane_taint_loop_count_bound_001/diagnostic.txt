@@ -1,0 +1,18 @@
+error[BPFIX-E005]: scalar range proof is missing
+  = class: source_bug
+  = confidence: medium
+  = diagnostic: supported, help: repair_hint, span: exact_pc
+  = next action: bounds
+  --> buggy.bpf.c:29
+   |
+29 | __u8 marker = ctx->slots[idx];
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ rejected here: verifier still sees R3 as scalar with unknown bounds
+42 | struct scan_ctx scan = {};
+   | -------------------------- verifier still sees R3 as scalar exact 0, so the required scalar or map-value bound is not available at the use
+   |
+   = verifier[126]: invalid unbounded variable-offset read from stack R3
+   = note: nearest BPF instruction pc 40
+   = note: parsed 39 verifier state snapshots
+   = required proof: prove R3 has a bounded non-negative scalar range before this pointer arithmetic or helper memory access; verifier sees scalar with unknown bounds
+help: Clamp the index or length with explicit upper and lower bounds.
+help: Keep the bounded scalar in the same SSA value used for pointer arithmetic or helper length.

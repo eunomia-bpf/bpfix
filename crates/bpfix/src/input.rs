@@ -12,7 +12,6 @@ use crate::source::parse_source_comment;
 pub(crate) struct LoadedInput {
     pub(crate) log: String,
     pub(crate) full_log: String,
-    pub(crate) input_kind: &'static str,
 }
 
 #[derive(Clone, Debug)]
@@ -34,15 +33,11 @@ pub(crate) fn load_input(path: Option<&Path>) -> Result<LoadedInput> {
             .with_context(|| format!("failed to read {}", path.display()))?,
     };
     let full_log = normalize_log_wrappers(&raw);
-    let (log, input_kind) = match extract_verifier_log_region(&full_log) {
-        Some(region) => (region, "verifier-log-region"),
-        None => (full_log.clone(), "verifier-log"),
+    let log = match extract_verifier_log_region(&full_log) {
+        Some(region) => region,
+        None => full_log.clone(),
     };
-    Ok(LoadedInput {
-        log,
-        full_log,
-        input_kind,
-    })
+    Ok(LoadedInput { log, full_log })
 }
 
 fn read_stdin() -> Result<String> {

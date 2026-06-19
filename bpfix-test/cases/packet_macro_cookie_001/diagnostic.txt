@@ -1,0 +1,22 @@
+error[BPFIX-E006]: verifier-visible compiler lowering hides the required proof
+  = class: lowering_artifact
+  = confidence: medium
+  = diagnostic: supported, help: repair_hint, span: exact_pc
+  = next action: provenance
+  --> buggy.bpf.c:39
+   |
+29 | if ((void *)(iph + 1) > data_end)
+   | --------------------------------- nearby source context for pointer provenance
+31 | if (iph->protocol != IPPROTO_UDP)
+   | --------------------------------- nearby source context for pointer provenance
+39 | asm volatile("%[cookie] <<= 32; %[cookie] >>= 32" : [cookie] "+r"(cookie));
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ rejected here: verifier sees a scalar where a pointer is required
+   |
+   = verifier[50]: R3 pointer arithmetic with <<= operator prohibited
+   = note: nearest BPF instruction pc 15
+   = note: parsed 11 verifier state snapshots
+   = note[lowering]: a verifier-tracked pointer reaches a left-shift instruction, which the verifier rejects because the operation destroys pointer provenance
+   = required proof: preserve a verifier-recognized pointer type at the operation that requires a pointer
+help: The rejected pointer-shift line must not remain as-is. Do not cast a verifier pointer through __u64/long, shift or mask that integer cookie, and cast it back. Delete the cookie/shadow round trip and use the original checked pointer variable for the packet, map-value, dynptr-slice, or ringbuf-record access.
+help: Avoid integer casts or arithmetic that turn the pointer into a scalar before the access.
+help: Recompute the pointer from a verifier-tracked base after scalar manipulation.

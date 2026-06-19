@@ -60,39 +60,27 @@ cargo install --path crates/bpfix --features object-analysis
 bpfix --object xdp.o verifier.log
 ```
 
-Use it when you want JSON metadata about BPF object sections and verifier-state
-attachment. Do not rely on it as complete BTF-backed source correlation yet.
-If you pass `--object` to a default build, BPFix still emits the log diagnostic
-and reports that object analysis is disabled.
+Use it when you want object-section metadata to enrich the same plain-text
+diagnostic. Do not rely on it as complete BTF-backed source correlation yet. If
+you pass `--object` to a default build, BPFix still emits the log diagnostic and
+reports that object analysis is disabled.
 
-## Output Modes
+## Output
 
-Human-readable text is the default:
+BPFix emits human-readable text:
 
 ```bash
 bpfix verifier.log
 ```
 
-JSON is for CI, editors, and agents:
-
-```bash
-bpfix --format json verifier.log
-```
-
 If CI should fail when the input is not a supported verifier diagnostic, use:
 
 ```bash
-bpfix --format json --fail-on-unsupported verifier.log
+bpfix --fail-on-unsupported verifier.log
 ```
 
-With that flag, BPFix still prints the diagnostic JSON first, then exits with
-code 2 for `unsupported_input` or `unsupported_verifier_message`.
-
-Both outputs:
-
-```bash
-bpfix --format both verifier.log
-```
+With that flag, BPFix still prints the plain-text diagnostic first, then exits
+with code 2 for `unsupported_input` or `unsupported_verifier_message`.
 
 ## Reading A Diagnostic
 
@@ -177,19 +165,18 @@ Current log-first diagnostics cover:
 - verifier complexity and loop/stack limits
 
 Some families have exact PC/source spans; others are terminal-line or nearby
-source-context diagnostics. JSON consumers should read `span_confidence` before
-automatically highlighting source. They should read `next_action` for a stable
-machine-readable action family instead of scraping `help` text.
+source-context diagnostics. Tooling should treat the text output as a diagnostic
+for humans, not as a stable machine-readable API.
 
 ## CI Pattern
 
-One simple CI pattern is to preserve the loader log as an artifact and emit JSON:
+One simple CI pattern is to preserve the loader log and BPFix diagnostic as
+artifacts:
 
 ```bash
 make load 2>&1 | tee verifier.log
-bpfix --format json --fail-on-unsupported verifier.log > bpfix-diagnostic.json
+bpfix --fail-on-unsupported verifier.log | tee bpfix-diagnostic.txt
 ```
 
-If `bpfix` exits with code 2, the JSON was still written; treat that as a log
-collection or unsupported-message problem and upload both files before failing
-the job.
+If `bpfix` exits with code 2, treat that as a log collection or
+unsupported-message problem and upload both files before failing the job.

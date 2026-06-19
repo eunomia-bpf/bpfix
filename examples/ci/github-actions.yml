@@ -31,7 +31,7 @@ jobs:
         if: steps.load.outcome == 'failure'
         id: diagnose
         continue-on-error: true
-        run: bpfix --format json --fail-on-unsupported verifier.log > bpfix-diagnostic.json
+        run: bpfix --fail-on-unsupported verifier.log > bpfix-diagnostic.txt
 
       - uses: actions/upload-artifact@v4
         if: always() && steps.load.outcome == 'failure'
@@ -39,12 +39,12 @@ jobs:
           name: bpfix-diagnostic
           path: |
             verifier.log
-            bpfix-diagnostic.json
+            bpfix-diagnostic.txt
 
       - name: Fail after diagnostic upload
         if: steps.load.outcome == 'failure'
         run: |
           if [ "${{ steps.diagnose.outcome }}" != "success" ]; then
-            echo "BPFix could not produce a supported diagnostic; inspect bpfix-diagnostic.json" >&2
+            echo "BPFix could not produce a supported diagnostic; inspect bpfix-diagnostic.txt" >&2
           fi
           exit 1

@@ -13,12 +13,6 @@ bpfix verifier.log
 make load 2>&1 | bpfix
 ```
 
-Use JSON only when another tool consumes the result:
-
-```bash
-bpfix --format json verifier.log
-```
-
 ## Directory Map
 
 | path | audience | what it shows |
@@ -29,8 +23,8 @@ bpfix --format json verifier.log
 | `libbpf-rs/` | Rust loaders using libbpf-rs | stderr/log capture around an existing loader binary |
 | `aya/` | Aya users | Rust loader snippet and logging wrapper |
 | `bcc/` | Python/BCC users | Python error capture plus optional `bpfix` subprocess call |
-| `ci/` | CI maintainers | GitHub Actions artifact flow for `verifier.log` and JSON |
-| `editor/` | editor and agent integrations | stable JSON diagnostic handoff |
+| `ci/` | CI maintainers | GitHub Actions artifact flow for `verifier.log` and BPFix text |
+| `editor/` | editor and agent integrations | plain-text diagnostic handoff |
 
 The examples intentionally keep placeholders such as `xdp.o`, `./loader`, and
 `cargo run --bin loader`. Replace them with the command that already fails in
@@ -43,7 +37,6 @@ rewrite the loader just to get a useful diagnostic.
 | --- | --- | --- |
 | File or stdin verifier/build/load log | stable default | `bpfix verifier.log` |
 | Plain text diagnostic | stable default | `bpfix verifier.log` |
-| JSON diagnostic | stable for tools | `bpfix --format json verifier.log` |
 | Existing bpftool/libbpf/Aya/BCC output | stable when the log includes the verifier region | capture stderr/stdout, then run `bpfix` |
 | Object metadata | experimental, feature-gated | build with `--features object-analysis`, then pass `--object prog.o` |
 | Docker or command execution | not a default example path | use only if a future explicit option is implemented |

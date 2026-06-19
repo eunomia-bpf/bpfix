@@ -30,13 +30,13 @@ calibration/dev evidence，不能作为 clean benchmark。
 
 - 从 `bpfix-bench` 的 235 个 replay logs 里抽样；
 - 从当前 `dev40` 里挑 60 个、复制 60 个、或换名扩容；
-- 用 Qwen27B 跑一遍后只保留 raw 失败、structured 成功的 case；
+- 用 Qwen27B 跑一遍后只保留 raw 失败、bpfix diagnostic 成功的 case；
 - 用 label agreement、error id、regex 命中率当修复成功；
 - 只证明 BPFix 能分类 verifier log。
 
 `clean60` 要回答的是：
 
-> 在模型、prompt、BPFix diagnostic 和 case split 冻结后，BPFix structured
+> 在模型、prompt、BPFix diagnostic 和 case split 冻结后，BPFix plain-text
 > diagnostic 是否能稳定提高 LLM 对真实 eBPF verifier reject 的一次修复成功率？
 
 ## Split 规则
@@ -114,7 +114,7 @@ dry-run，不能作为 paper-grade 结果依据。
 4. 如果 freeze 后修 oracle bug，必须记录 bug、影响范围，并从头重跑所有 baseline。
 5. 不允许把 reference fix、oracle expected return、success predicate、README hints
    放进 prompt。
-6. 不允许用 raw/structured model result 作为 admission 条件。可以记录 seed
+6. 不允许用 raw/bpfix model result 作为 admission 条件。可以记录 seed
    exclusion，但 exclusion 原因必须是 verifier 接受、不稳定、不可复现、oracle 不足、
    或当前 BPFix unsupported，而不是“模型修得太容易/太难”。
 7. 独立 reviewer 至少审核每个 case 的 bug、oracle 覆盖和 provenance。
@@ -184,12 +184,12 @@ cases/<case_id>/
   README.md
   buggy.bpf.c
   verifier.log
-  structured.json
+  diagnostic.txt
   test.py
 ```
 
 `buggy.bpf.c` 是唯一给模型的源文件。`verifier.log` 是 raw baseline 输入。
-`structured.json` 是 BPFix 输入。`test.py` 是唯一自动 oracle。
+`diagnostic.txt` 是 BPFix plain-text diagnostic 输入。`test.py` 是唯一自动 oracle。
 
 `README.md` 只给人类 reviewer 使用，不进入 prompt。它必须说明：
 
@@ -248,8 +248,8 @@ cases/<case_id>/
 | --- | --- | --- |
 | source-only | `buggy.bpf.c` | 测试只看代码能否猜出修法。 |
 | raw | `buggy.bpf.c` + `verifier.log` | 真实开发者常见输入。 |
-| trimmed-raw | `buggy.bpf.c` + 自动截取 verifier region | 控制 structured 是否只是更短。 |
-| structured | `buggy.bpf.c` + `structured.json` | 测试 BPFix proof signal 的贡献。 |
+| trimmed-raw | `buggy.bpf.c` + 自动截取 verifier region | 控制 BPFix 提升是否只是更短。 |
+| bpfix | `buggy.bpf.c` + `diagnostic.txt` | 测试 BPFix proof signal 的贡献。 |
 
 至少跑 3 个模型族或大小档位，避免只对 Qwen27B 调参：
 
@@ -294,7 +294,7 @@ python3 bpfix-test/tools/run_suite.py \
 python3 bpfix-test/tools/run_suite.py \
   --split bpfix-test/splits/clean60.txt \
   --expected-count 60 \
-  --mode structured \
+  --mode bpfix \
   --base-url http://127.0.0.1:18080/v1 \
   --model Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M
 ```
@@ -306,7 +306,7 @@ python3 bpfix-test/tools/run_suite.py \
 `audit_results.py` 读取 `summary.json`，检查：
 
 - 所有 summary 来自同一个 `clean60.txt` hash 和 60 个 case；
-- source-only/raw/trimmed-raw/structured 四个模式都存在；
+- source-only/raw/trimmed-raw/bpfix 四个模式都存在；
 - 四个模式的 case 顺序一致，不能混入 dev40、单 case debug 或旧 split；
 - 每个 result 的 prompt hash、prompt length、source length 和 diagnostic length
   都匹配冻结的 prompt manifest；
@@ -331,11 +331,11 @@ python3 bpfix-test/tools/audit_results.py \
   --required-mode source-only \
   --required-mode raw \
   --required-mode trimmed-raw \
-  --required-mode structured \
+  --required-mode bpfix \
   /path/to/source-only/summary.json \
   /path/to/raw/summary.json \
   /path/to/trimmed-raw/summary.json \
-  /path/to/structured/summary.json
+  /path/to/bpfix/summary.json
 ```
 
 正式 Makefile 入口：
@@ -345,7 +345,7 @@ make bpfix-test-result-gate RESULT_SUMMARIES='\
   /path/to/source-only/summary.json \
   /path/to/raw/summary.json \
   /path/to/trimmed-raw/summary.json \
-  /path/to/structured/summary.json' \
+  /path/to/bpfix/summary.json' \
   PROMPT_MANIFEST=bpfix-test/splits/clean60.prompts.json
 ```
 
@@ -372,7 +372,7 @@ make bpfix-test-result-gate RESULT_SUMMARIES='\
 
 - 把 `dev40` 的 9/40、23/40 当作 clean benchmark；
 - 把 post-hoc 删除 case 后的新 denominator 当主结果；
-- 只报告 structured 成功 case；
+- 只报告 bpfix diagnostic 成功 case；
 - 把 proof predicate failure 直接说成“功能错误”，必须区分功能 oracle 和辅助
   proof predicate。
 
@@ -381,9 +381,9 @@ make bpfix-test-result-gate RESULT_SUMMARIES='\
 截至 2026-06-17：
 
 - `dev40` 已完成：40/40 audit pass，40/40 smoke pass；
-- `dev40` Qwen27B 结果：raw 9/40，structured 23/40；
+- `dev40` Qwen27B 结果：raw 9/40，bpfix diagnostic 23/40；
 - `clean60` 尚未 admitted：0/60；
 - clean benchmark 主结果尚不存在。
 
 下一步不是把 `dev40` 扩写成 paper claim，而是按本协议新增 60 个无重叠 heldout
-case，freeze 后再跑 source-only/raw/trimmed-raw/structured 和多模型矩阵。
+case，freeze 后再跑 source-only/raw/trimmed-raw/bpfix 和多模型矩阵。

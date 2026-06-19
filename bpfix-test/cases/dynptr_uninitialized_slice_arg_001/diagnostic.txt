@@ -1,0 +1,16 @@
+error[BPFIX-E012]: dynptr helper argument is not an initialized verifier-tracked dynptr slot
+  = class: source_bug
+  = confidence: medium
+  = diagnostic: supported, help: repair_hint, span: exact_pc
+  = next action: protocol
+  --> buggy.bpf.c:27
+   |
+27 | eth = bpf_dynptr_slice(&ptr, 0, 0, sizeof(*eth));
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this helper argument is not an initialized dynptr stack slot
+   |
+   = verifier[26]: Expected an initialized dynptr as arg #0
+   = note: nearest BPF instruction pc 5
+   = note: parsed 6 verifier state snapshots
+   = note[verifier-state]: verifier state shows the helper receives a stable stack pointer, but that stack slot is not the current initialized dynptr object
+   = required proof: pass the exact verifier-tracked initialized dynptr stack slot to this helper argument
+help: Initialize the dynptr stack slot through a dynptr creation helper and pass that exact slot to later dynptr helpers; do not pass zeroed, clobbered, or unrelated stack bytes.

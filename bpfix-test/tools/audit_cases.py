@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import ast
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -18,7 +19,7 @@ REQUIRED_FILES = {
     "README.md",
     "buggy.bpf.c",
     "verifier.log",
-    "structured.json",
+    "diagnostic.txt",
     "test.py",
 }
 
@@ -151,37 +152,32 @@ def custom_oracle_coverage(tree: ast.Module) -> dict[str, int | None]:
     }
 
 
-def audit_structured_json(case_dir: Path, errors: list[str], warnings: list[str]) -> dict[str, Any] | None:
-    path = case_dir / "structured.json"
-    try:
-        payload = json.loads(path.read_text(encoding="utf-8"))
-    except json.JSONDecodeError as exc:
-        errors.append(f"structured.json is not valid JSON: {exc}")
+def audit_diagnostic_text(case_dir: Path, errors: list[str]) -> dict[str, Any] | None:
+    path = case_dir / "diagnostic.txt"
+    text = path.read_text(encoding="utf-8")
+    error = re.search(r"^error\[(BPFIX-E\d+)\]:", text, re.MULTILINE)
+    failure_class = re.search(r"^\s+= class: ([^\n]+)$", text, re.MULTILINE)
+    diagnostic = re.search(r"^\s+= diagnostic: ([^,\n]+)", text, re.MULTILINE)
+    if error is None:
+        errors.append("diagnostic.txt missing BPFix error header")
+    if failure_class is None:
+        errors.append("diagnostic.txt missing class line")
+    if diagnostic is None:
+        errors.append("diagnostic.txt missing diagnostic line")
+    elif diagnostic.group(1) != "supported":
+        errors.append(f"diagnostic.txt diagnostic is {diagnostic.group(1)!r}, expected supported")
+    if "--> buggy.bpf.c:" not in text:
+        errors.append("diagnostic.txt missing buggy.bpf.c source span")
+    if "help:" not in text:
+        errors.append("diagnostic.txt missing help text")
+    if "required proof:" not in text:
+        errors.append("diagnostic.txt missing required proof")
+    if errors:
         return None
-
-    for field in ["diagnostic_version", "error_id", "failure_class", "diagnostic_kind", "required_proof"]:
-        if not payload.get(field):
-            errors.append(f"structured.json missing {field}")
-    if payload.get("diagnostic_kind") != "supported":
-        errors.append(f"structured.json diagnostic_kind is {payload.get('diagnostic_kind')!r}, expected supported")
-
-    source_span = payload.get("source_span")
-    if not isinstance(source_span, dict):
-        errors.append("structured.json missing source_span object")
-    else:
-        if source_span.get("path") != "buggy.bpf.c":
-            errors.append(f"source_span.path is {source_span.get('path')!r}, expected 'buggy.bpf.c'")
-        if not isinstance(source_span.get("line_start"), int):
-            errors.append("source_span.line_start is missing or not an integer")
-
-    for field in ["help", "evidence"]:
-        value = payload.get(field)
-        if not isinstance(value, list) or not value:
-            errors.append(f"structured.json {field} must be a non-empty list")
-
-    if payload.get("diagnostic_version") != "bpfix.diagnostic/v3":
-        warnings.append(f"diagnostic_version is {payload.get('diagnostic_version')!r}")
-    return payload
+    return {
+        "error_id": error.group(1),
+        "failure_class": failure_class.group(1),
+    }
 
 
 def audit_test_py(
@@ -262,10 +258,10 @@ def audit_case(
     if extra:
         warnings.append(f"extra files: {', '.join(extra)}")
 
-    structured = None
+    diagnostic = None
     test_summary: dict[str, int | None | bool] = {}
     if not missing:
-        structured = audit_structured_json(case_dir, errors, warnings)
+        diagnostic = audit_diagnostic_text(case_dir, errors)
         test_summary = audit_test_py(case_dir, errors, oracle_kind=oracle_kind)
         audit_prompt(case_dir, errors)
         if "BEGIN PROG LOAD LOG" not in (case_dir / "verifier.log").read_text(encoding="utf-8"):
@@ -296,8 +292,8 @@ def audit_case(
         "passed": not errors,
         "errors": errors,
         "warnings": warnings,
-        "error_id": structured.get("error_id") if isinstance(structured, dict) else None,
-        "failure_class": structured.get("failure_class") if isinstance(structured, dict) else None,
+        "error_id": diagnostic.get("error_id") if isinstance(diagnostic, dict) else None,
+        "failure_class": diagnostic.get("failure_class") if isinstance(diagnostic, dict) else None,
         "test": test_summary,
         "smoke": smoke_report,
     }

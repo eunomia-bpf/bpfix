@@ -1,0 +1,20 @@
+error[BPFIX-E004]: program exits while a verifier-tracked reference is still live
+  = class: source_bug
+  = confidence: medium
+  = diagnostic: supported, help: repair_hint, span: exact_pc
+  = next action: release
+  --> buggy.bpf.c:82
+   |
+63 | event = bpf_ringbuf_reserve(&rb, sizeof(*event), 0);
+   | ---------------------------------------------------- nearby source context for reference lifecycle
+77 | bpf_ringbuf_submit(event, 0);
+   | ----------------------------- nearby source context for reference lifecycle
+82 | }
+   | ^ this exit is reachable with a verifier-tracked reference still live
+   |
+   = verifier[140]: Unreleased reference id=4 alloc_insn=16
+   = note: nearest BPF instruction pc 50
+   = note: parsed 47 verifier state snapshots
+   = note[verifier-state]: verifier state reaches BPF_EXIT with the terminal reference id still live in the refs set
+   = required proof: release every verifier-tracked reference before each BPF_EXIT path can leave the program
+help: Release every verifier-tracked reference on all return paths; route success and error exits through cleanup blocks that release the exact live reference id before BPF_EXIT.

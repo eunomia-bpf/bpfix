@@ -97,22 +97,10 @@ cargo install --path crates/bpfix --features object-analysis
 bpfix --object xdp.o verifier.log
 ```
 
-Emit JSON:
+Fail CI on unsupported inputs while still emitting the diagnostic:
 
 ```bash
-bpfix --format json verifier.log
-```
-
-Fail CI on unsupported inputs while still emitting the requested output:
-
-```bash
-bpfix --format json --fail-on-unsupported verifier.log
-```
-
-Emit both text and JSON:
-
-```bash
-bpfix --format both verifier.log
+bpfix --fail-on-unsupported verifier.log
 ```
 
 The public CLI model is:
@@ -169,41 +157,17 @@ Text output is Rust-style and human-readable:
 - required proof
 - `help:` guidance
 
-JSON output is for tools. Version `bpfix.diagnostic/v3` contains:
-
-- `diagnostic_version`
-- `error_id`
-- `failure_class`
-- `confidence`
-- `diagnostic_kind`
-- `help_safety`
-- `next_action`
-- `span_confidence`
-- `message`
-- `required_proof`
-- `source_span`
-- `related_spans`
-- `evidence`
-- `help`
-- `metadata`
-
-`next_action` is a coarse action family for CI, editors, and agents:
-`bounds`, `provenance`, `null`, `initialize`, `release`, `environment`,
-`budget`, `protocol`, `context`, or `other`. `protocol` covers verifier-managed
-object and lifecycle protocols such as dynptr, iterator, kfunc, IRQ, callback,
-and helper contracts. `context` covers program/context ABI and sleepability
-constraints. Human-facing guidance remains in `required_proof` and `help`. The
-JSON field is `help` because BPFix explains what proof the verifier needs. It
-does not synthesize source patches.
-
-The formal schema is tracked at `docs/evaluation/diagnostic.schema.json`.
+The primary user-facing surface is the rendered `help:` text because BPFix
+explains what proof the verifier needs. It does not synthesize source patches.
+Internal evaluation code may parse this output, but there is no public JSON mode
+or schema contract.
 
 ## Product Boundaries
 
 BPFix is:
 
 - a userspace verifier-log diagnostic tool
-- a structured JSON producer for CI/editor/agent integrations
+- a plain-text diagnostic producer for terminal, CI, editor, and agent workflows
 - a benchmarked diagnostic engine for verifier proof failures
 
 BPFix is not:
@@ -217,11 +181,10 @@ BPFix is not:
 ## Near-Term Hardening
 
 - Keep `cargo test --workspace` passing.
-- Keep `docs/evaluation/diagnostic.schema.json` aligned with the Rust JSON
-  renderer before external examples depend on it.
+- Keep any internal evaluation schema separate from the public CLI contract.
 - Keep `scripts/check-release.sh` passing so the workspace remains installable
   and releaseable in the right crate order.
-- Add golden text and JSON fixtures for representative proof families.
+- Add golden text fixtures for representative proof families.
 - Implement BTF-backed source correlation behind `object-analysis` without
   changing the log-only CLI shape.
 - Publish examples for `bpftool`, libbpf/Aya logs, CI annotations, and editor

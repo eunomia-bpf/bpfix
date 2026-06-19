@@ -1,0 +1,16 @@
+error[BPFIX-E003]: stack initialization proof is missing
+  = class: source_bug
+  = confidence: medium
+  = diagnostic: supported, help: repair_hint, span: exact_pc
+  = next action: initialize
+  --> buggy.bpf.c:42
+   |
+42 | __u8 *tracked = bpf_map_lookup_elem(&tracked_cgroups, &child_cgroup_id);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ rejected here: stack memory reachable from R2 is not fully initialized
+   |
+   = verifier[81]: invalid read from stack R2 off=-4 size=8
+   = note: nearest BPF instruction pc 25
+   = note: parsed 19 verifier state snapshots
+   = required proof: initialize every stack byte reachable from R2 before it is read or passed to a helper
+help: Initialize the full stack object before the helper call or load.
+help: Reduce the helper length argument so it covers only initialized bytes.

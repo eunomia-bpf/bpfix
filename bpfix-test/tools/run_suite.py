@@ -20,7 +20,7 @@ from typing import Any
 
 DEFAULT_BASE_URL = "http://127.0.0.1:18080/v1"
 DEFAULT_MODEL = "Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M"
-MODES = ["source-only", "raw", "trimmed-raw", "structured"]
+MODES = ["source-only", "raw", "trimmed-raw", "bpfix"]
 
 
 def repo_root() -> Path:
@@ -192,18 +192,11 @@ def diagnostic_input(case_dir: Path, mode: str) -> tuple[str | None, str, str]:
     if mode == "trimmed-raw":
         raw_log = (case_dir / "verifier.log").read_text(encoding="utf-8")
         return "trimmed raw verifier log", trim_verifier_log(raw_log), ""
-    if mode == "structured":
+    if mode == "bpfix":
         return (
-            "BPFix structured diagnostic JSON",
-            (case_dir / "structured.json").read_text(encoding="utf-8"),
-            """
-Use the structured diagnostic fields directly:
-- `source_span` is the verifier-rejected operation to repair.
-- `related_spans` are supporting proof context, not necessarily the only edits.
-- `required_proof` and `help` are constraints the replacement source must satisfy.
-- If `help` says an operation must not remain or must be rewritten, do not leave
-  that operation in the replacement source, even if it appears unused.
-""",
+            "BPFix plain-text diagnostic",
+            (case_dir / "diagnostic.txt").read_text(encoding="utf-8"),
+            "",
         )
     raise ValueError(f"unknown mode: {mode}")
 
@@ -338,16 +331,19 @@ def oracle_failure_stage(completed: subprocess.CompletedProcess[str]) -> str:
 def smoke_case(case_dir: Path) -> dict[str, object]:
     missing = [
         name
-        for name in ["buggy.bpf.c", "verifier.log", "structured.json", "test.py"]
+        for name in ["buggy.bpf.c", "verifier.log", "diagnostic.txt", "test.py"]
         if not (case_dir / name).exists()
     ]
     report: dict[str, object] = {"case": case_dir.name, "missing": missing, "passed": False}
     if missing:
         return report
     try:
-        json.loads((case_dir / "structured.json").read_text(encoding="utf-8"))
-    except json.JSONDecodeError as exc:
-        report["structured_json_error"] = str(exc)
+        diagnostic = (case_dir / "diagnostic.txt").read_text(encoding="utf-8")
+        if "error[BPFIX-" not in diagnostic:
+            report["diagnostic_error"] = "diagnostic.txt does not look like a BPFix diagnostic"
+            return report
+    except OSError as exc:
+        report["diagnostic_error"] = str(exc)
         return report
 
     completed = run(

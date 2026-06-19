@@ -13,6 +13,7 @@ import collections
 import hashlib
 import json
 import pathlib
+import re
 import subprocess
 import sys
 import time
@@ -365,7 +366,7 @@ def run_bpfix(
     log_path: pathlib.Path,
     object_path: pathlib.Path | None,
 ) -> Prediction:
-    cmd = [str(bpfix_bin), "--format", "json"]
+    cmd = [str(bpfix_bin)]
     if object_path is not None:
         cmd.extend(["--object", str(object_path)])
     cmd.append(str(log_path))
@@ -378,7 +379,7 @@ def run_bpfix(
         text=True,
     )
     duration_ms = (time.perf_counter() - started) * 1000.0
-    diagnostic = json.loads(completed.stdout)
+    diagnostic = parse_bpfix_text(completed.stdout)
     prose_action = bpfix_prose_action(diagnostic)
     pc_candidates: list[int] = []
     source_span = diagnostic.get("source_span") or {}
@@ -388,7 +389,6 @@ def run_bpfix(
         if span.get("instruction_pc") is not None:
             pc_candidates.append(span["instruction_pc"])
     metadata = diagnostic.get("metadata") or {}
-    object_programs = metadata.get("object_programs") or []
     return Prediction(
         error_id=diagnostic["error_id"],
         failure_class=diagnostic["failure_class"],
@@ -399,19 +399,70 @@ def run_bpfix(
         pc_candidates=pc_candidates,
         analysis_error=metadata.get("analysis_error"),
         object_requested=object_path is not None,
-        object_programs=len(object_programs),
-        object_site_count=sum(program.get("site_count") or 0 for program in object_programs),
-        object_state_site_count=sum(
-            program.get("verifier_state_site_count") or 0 for program in object_programs
-        ),
-        object_attach_errors=sum(
-            1
-            for program in object_programs
-            if program.get("verifier_state_attach_error") is not None
-        ),
+        object_programs=0,
+        object_site_count=0,
+        object_state_site_count=0,
+        object_attach_errors=0,
         object_analysis_error=metadata.get("object_analysis_error"),
         duration_ms=duration_ms,
     )
+
+
+def parse_bpfix_text(text: str) -> dict:
+    lines = text.splitlines()
+    header = re.match(r"error\[(?P<id>[^\]]+)\]:\s*(?P<message>.*)", lines[0] if lines else "")
+    if header is None:
+        raise ValueError("bpfix output did not start with an error header")
+
+    diagnostic: dict[str, object] = {
+        "error_id": header.group("id"),
+        "message": header.group("message"),
+        "failure_class": "source_bug",
+        "next_action": None,
+        "required_proof": "",
+        "help": [],
+        "source_span": {},
+        "related_spans": [],
+        "metadata": {},
+    }
+    metadata: dict[str, object] = {}
+    pc_candidates: list[int] = []
+
+    for line in lines[1:]:
+        stripped = line.strip()
+        if stripped.startswith("= class:"):
+            diagnostic["failure_class"] = stripped.removeprefix("= class:").strip()
+        elif stripped.startswith("= next action:"):
+            diagnostic["next_action"] = stripped.removeprefix("= next action:").strip()
+        elif stripped.startswith("= required proof:"):
+            diagnostic["required_proof"] = stripped.removeprefix("= required proof:").strip()
+        elif stripped.startswith("--> "):
+            location = stripped.removeprefix("--> ").rsplit(":", 1)
+            if len(location) == 2 and location[1].isdigit():
+                diagnostic["source_span"] = {
+                    "path": location[0],
+                    "line_start": int(location[1]),
+                }
+        elif stripped.startswith("= note: nearest BPF instruction pc "):
+            pc = stripped.removeprefix("= note: nearest BPF instruction pc ")
+            if pc.isdigit():
+                pc_candidates.append(int(pc))
+        elif stripped.startswith("= warning: object analysis:"):
+            metadata["object_analysis_error"] = stripped.removeprefix(
+                "= warning: object analysis:"
+            ).strip()
+        elif stripped.startswith("= warning:"):
+            metadata["analysis_error"] = stripped.removeprefix("= warning:").strip()
+        elif stripped.startswith("help:"):
+            diagnostic["help"].append(stripped.removeprefix("help:").strip())
+        elif stripped.startswith("| -"):
+            diagnostic["related_spans"].append({})
+
+    if pc_candidates:
+        diagnostic["source_span"]["instruction_pc"] = pc_candidates[0]
+        diagnostic["related_spans"].extend({"instruction_pc": pc} for pc in pc_candidates[1:])
+    diagnostic["metadata"] = metadata
+    return diagnostic
 
 
 def load_rows(

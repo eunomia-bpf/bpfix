@@ -26,7 +26,7 @@ that evidence into:
 - a primary failure class
 - the required verifier proof
 - source or bytecode spans suitable for Rust-style diagnostics
-- JSON output for downstream tooling
+- plain-text output for downstream tooling
 
 ## Comparison With Rust Diagnostics
 
@@ -174,7 +174,7 @@ cargo test -p bpfix --features object-analysis --test cli
 Quick diagnostic smoke:
 
 ```bash
-cargo run -p bpfix -- bpfix-bench/cases/stackoverflow-60053570/replay-verifier.log --format both
+cargo run -p bpfix -- bpfix-bench/cases/stackoverflow-60053570/replay-verifier.log
 ```
 
 Run the current log-only benchmark diagnostic gate:
@@ -217,7 +217,7 @@ Current evaluation TODO:
 2. Treat `bpfix-bench/manifest.yaml` and `bpfix-bench/raw/index.yaml` as the
    source of benchmark facts.
 3. Expand `crates/bpfix` classification coverage from current benchmark gaps
-   while keeping JSON output stable.
+   while keeping the plain-text diagnostic contract stable.
 4. Expose more typed analysis from `bpfanalysis` instead of relying on final
    verifier-message matching.
 5. Keep repair synthesis out of the active API until it is implemented,

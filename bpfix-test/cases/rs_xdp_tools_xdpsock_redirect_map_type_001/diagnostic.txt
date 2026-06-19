@@ -1,0 +1,16 @@
+error[BPFIX-E099]: verifier rejection needs manual triage
+  = class: unsupported_verifier_message
+  = confidence: low
+  = diagnostic: unsupported_verifier_message, help: triage_only, span: exact_pc
+  = next action: other
+  --> buggy.bpf.c:38
+   |
+38 | return bpf_redirect_map(&xsks_map, rr, XDP_DROP);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ rejected here: required verifier proof is missing
+   |
+   = verifier[44]: cannot pass map_type 2 into func bpf_redirect_map#51
+   = note: nearest BPF instruction pc 17
+   = note: parsed 14 verifier state snapshots
+   = required proof: inspect the terminal verifier message and collect a full verifier log for this unsupported message shape
+help: Pass the full verifier log with instruction states and source annotations if available.
+help: File an issue with the terminal verifier message so BPFix can add a safe diagnostic family.

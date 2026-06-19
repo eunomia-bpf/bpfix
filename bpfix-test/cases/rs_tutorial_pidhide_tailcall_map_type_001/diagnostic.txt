@@ -1,0 +1,12 @@
+error[BPFIX-E000]: no verifier rejection was found
+  = class: input_error
+  = confidence: low
+  = diagnostic: unsupported_input, help: triage_only, span: terminal_line_only
+  = next action: other
+  --> <verifier-log>:34
+   |
+   |
+   = verifier[34]: no verifier rejection was found in this input
+   = required proof: provide a full verifier/build/load log that contains the verifier rejection region
+help: Re-run the failing load with bpftool -d or enable libbpf verifier logging.
+help: Pass the full stderr from the failing load command, not only the final loader error.

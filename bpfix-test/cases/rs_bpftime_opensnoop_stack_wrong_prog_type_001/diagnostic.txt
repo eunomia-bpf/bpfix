@@ -1,0 +1,16 @@
+error[BPFIX-E009]: kernel or program-type capability is unavailable
+  = class: environment_or_configuration
+  = confidence: medium
+  = diagnostic: supported, help: triage_only, span: exact_pc
+  = next action: environment
+  --> buggy.bpf.c:50
+   |
+50 | bpf_get_stack(ctx, &stack, sizeof(stack), BPF_F_USER_STACK);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ rejected here: this program type cannot use bpf_get_stack#67
+   |
+   = verifier[93]: program of this type cannot use helper bpf_get_stack#67
+   = note: nearest BPF instruction pc 24
+   = note: parsed 25 verifier state snapshots
+   = required proof: load this program with an attach type and kernel environment that allow bpf_get_stack#67, or avoid that helper on this path
+help: Check kernel version, program type, attach type, capabilities, and BTF availability.
+help: Use a supported helper or gate the code path by target kernel capabilities.

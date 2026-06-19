@@ -10,7 +10,7 @@ VERIFIER_LOG ?= verifier.log
 BPFIX ?= bpfix
 SHELL := /bin/bash
 
-.PHONY: bpfix-load bpfix-json
+.PHONY: bpfix-load bpfix-diagnostic
 
 bpfix-load:
 	@set -o pipefail; \
@@ -25,5 +25,5 @@ bpfix-load:
 	fi; \
 	exit $$status
 
-bpfix-json:
-	$(BPFIX) --format json $(VERIFIER_LOG) > bpfix-diagnostic.json
+bpfix-diagnostic:
+	$(BPFIX) $(VERIFIER_LOG) > bpfix-diagnostic.txt

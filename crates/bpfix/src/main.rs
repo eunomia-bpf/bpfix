@@ -3,14 +3,14 @@ use std::path::{Path, PathBuf};
 #[cfg(feature = "object-analysis")]
 use anyhow::Context;
 use anyhow::Result;
-use clap::{Parser, ValueEnum};
+use clap::Parser;
 use classifier::{classify_with_context, no_verifier_rejection_classification};
 use diagnostic::{ProofEventEvidence, ProofEventRole, ProofSignal};
 use family::ProofObligation;
 use input::{find_terminal_error, load_input, LoadedInput, TerminalError};
 use output::{
-    render_json, render_text, Diagnostic, Evidence, Metadata, NextAction, ObjectProgramMetadata,
-    RelatedSpan, SourceSpan,
+    render_text, Diagnostic, Evidence, Metadata, NextAction, ObjectProgramMetadata, RelatedSpan,
+    SourceSpan,
 };
 
 mod classifier;
@@ -29,48 +29,23 @@ struct Cli {
     /// Experimental compiled BPF object metadata. Requires --features object-analysis.
     #[arg(long)]
     object: Option<PathBuf>,
-    /// Output format.
-    #[arg(short, long, value_enum, default_value_t = OutputFormat::Text)]
-    format: OutputFormat,
-    /// Override diagnostic case ID.
-    #[arg(long)]
-    case_id: Option<String>,
     /// Exit with code 2 after rendering if the input cannot be diagnosed.
     #[arg(long)]
     fail_on_unsupported: bool,
 }
 
-#[derive(Clone, Copy, Debug, ValueEnum)]
-enum OutputFormat {
-    Text,
-    Json,
-    Both,
-}
-
 fn main() -> Result<()> {
     let cli = Cli::parse();
     let loaded = load_input(cli.input.as_deref())?;
-    let (object_path, object_programs, object_analysis_error) =
-        object_metadata(cli.object.as_deref(), &loaded);
+    let (object_programs, object_analysis_error) = object_metadata(cli.object.as_deref(), &loaded);
     let diagnostic = build_diagnostic(
         &loaded.log,
         &loaded.full_log,
-        cli.case_id,
-        loaded.input_kind,
-        object_path,
         object_programs,
         object_analysis_error,
     );
 
-    match cli.format {
-        OutputFormat::Text => println!("{}", render_text(&diagnostic)),
-        OutputFormat::Json => println!("{}", render_json(&diagnostic)?),
-        OutputFormat::Both => {
-            println!("{}", render_text(&diagnostic));
-            println!();
-            println!("{}", render_json(&diagnostic)?);
-        }
-    }
+    print!("{}", render_text(&diagnostic));
 
     if cli.fail_on_unsupported && diagnostic.diagnostic_kind != "supported" {
         std::process::exit(2);
@@ -82,27 +57,27 @@ fn main() -> Result<()> {
 fn object_metadata(
     explicit_object: Option<&Path>,
     loaded: &LoadedInput,
-) -> (Option<String>, Vec<ObjectProgramMetadata>, Option<String>) {
-    let Some(path) = explicit_object else {
-        return (None, Vec::new(), None);
-    };
-    let object_path = path.display().to_string();
+) -> (Vec<ObjectProgramMetadata>, Option<String>) {
+    if explicit_object.is_none() {
+        return (Vec::new(), None);
+    }
 
     #[cfg(feature = "object-analysis")]
     {
+        let path = explicit_object.expect("checked above");
         match validate_object_path(path)
             .and_then(|validated| load_object_program_metadata(Path::new(&validated), &loaded.log))
         {
-            Ok(programs) => (Some(object_path), programs, None),
-            Err(err) => (Some(object_path), Vec::new(), Some(err.to_string())),
+            Ok(programs) => (programs, None),
+            Err(err) => (Vec::new(), Some(err.to_string())),
         }
     }
 
     #[cfg(not(feature = "object-analysis"))]
     {
+        let _ = explicit_object;
         let _ = loaded;
         (
-            Some(object_path),
             Vec::new(),
             Some(
                 "object analysis is disabled in this bpfix build; rebuild with --features object-analysis"
@@ -119,9 +94,6 @@ fn load_object_program_metadata(path: &Path, log: &str) -> Result<Vec<ObjectProg
         .into_iter()
         .map(|summary| ObjectProgramMetadata {
             section_name: summary.section_name,
-            instruction_count: summary.instruction_count,
-            block_count: summary.block_count,
-            site_count: summary.site_count,
             verifier_state_site_count: summary.verifier_state_site_count,
             verifier_state_attach_error: summary.verifier_state_attach_error,
         })
@@ -141,9 +113,6 @@ fn validate_object_path(path: &Path) -> Result<String> {
 fn build_diagnostic(
     log: &str,
     full_log: &str,
-    case_id: Option<String>,
-    input_kind: &'static str,
-    object_path: Option<String>,
     object_programs: Vec<ObjectProgramMetadata>,
     object_analysis_error: Option<String>,
 ) -> Diagnostic {
@@ -282,7 +251,6 @@ fn build_diagnostic(
                 .clone()
                 .unwrap_or_else(|| "<verifier-log>".to_string()),
             line_start: terminal.source_line.or(Some(terminal.line)),
-            line_end: terminal.source_line.or(Some(terminal.line)),
             instruction_pc: terminal.pc,
             source_text: terminal.source_text.clone(),
         });
@@ -304,7 +272,6 @@ fn build_diagnostic(
     add_proof_event_help(&mut help, &proof_events);
 
     Diagnostic {
-        diagnostic_version: "bpfix.diagnostic/v3",
         error_id: error_id.clone(),
         failure_class,
         confidence,
@@ -324,10 +291,6 @@ fn build_diagnostic(
             .or(rejected_detail)
             .unwrap_or_else(|| format!("rejected here: {}", class.summary)),
         metadata: Metadata {
-            case_id,
-            input_kind,
-            object_path,
-            object_programs,
             object_analysis_error,
             trace_state_count,
             analysis_error,
@@ -397,7 +360,6 @@ fn source_span_from_proof_event(event: &diagnostic::ProofEvent) -> Option<Source
     Some(SourceSpan {
         path: source.path.clone(),
         line_start: Some(source.line),
-        line_end: Some(source.line),
         instruction_pc: event.pc,
         source_text: Some(source.text.clone()),
     })
@@ -413,8 +375,6 @@ fn related_spans_from_proof_events(events: &[diagnostic::ProofEvent]) -> Vec<Rel
                 RelatedSpan {
                     path: source.path.clone(),
                     line_start: Some(source.line),
-                    line_end: Some(source.line),
-                    instruction_pc: event.pc,
                     source_text: Some(source.text.clone()),
                     label: related_span_label(event),
                 },
@@ -514,9 +474,6 @@ mod tests {
     ) -> ObjectProgramMetadata {
         ObjectProgramMetadata {
             section_name: section_name.to_string(),
-            instruction_count: 1,
-            block_count: 1,
-            site_count: 1,
             verifier_state_site_count,
             verifier_state_attach_error: None,
         }
