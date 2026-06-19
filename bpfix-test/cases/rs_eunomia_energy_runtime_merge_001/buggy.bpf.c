@@ -116,11 +116,15 @@ int rs_eunomia_energy_runtime_merge(struct xdp_md *ctx)
     __u32 emit_event = pkt->emit_event;
 
     __u64 *old_ts = bpf_map_lookup_elem(&time_lookup, &prev_pid);
-    if (require_known_ts & 1) {
-        if (!old_ts) {
-            remember_pass(prev_pid, next_pid, now_ns);
-            return XDP_PASS;
-        }
+    if (!old_ts) {
+        remember_pass(prev_pid, next_pid, now_ns);
+        return XDP_PASS;
+    }
+
+    if (!(require_known_ts & 1)) {
+        __u32 shadow_pid = prev_pid + next_pid;
+
+        old_ts = bpf_map_lookup_elem(&time_lookup, &shadow_pid);
     }
 
     __u64 old_ns = *old_ts;

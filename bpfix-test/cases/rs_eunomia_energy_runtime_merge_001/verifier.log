@@ -1,14 +1,14 @@
 libbpf: loading object from <work-dir>/prog.o
-libbpf: elf: section(3) xdp, size 1088, link 0, flags 6, type=1
-libbpf: sec 'xdp': found program 'rs_eunomia_energy_runtime_merge' at insn offset 0 (0 bytes), code size 136 insns (1088 bytes)
-libbpf: elf: section(4) .relxdp, size 144, link 27, flags 40, type=9
+libbpf: elf: section(3) xdp, size 1160, link 0, flags 6, type=1
+libbpf: sec 'xdp': found program 'rs_eunomia_energy_runtime_merge' at insn offset 0 (0 bytes), code size 145 insns (1160 bytes)
+libbpf: elf: section(4) .relxdp, size 160, link 27, flags 40, type=9
 libbpf: elf: section(5) .maps, size 112, link 0, flags 3, type=1
 libbpf: elf: section(6) license, size 13, link 0, flags 3, type=1
 libbpf: license of <work-dir>/prog.o is Dual BSD/GPL
-libbpf: elf: section(17) .BTF, size 3198, link 0, flags 0, type=1
-libbpf: elf: section(19) .BTF.ext, size 1228, link 0, flags 0, type=1
-libbpf: elf: section(27) .symtab, size 624, link 1, flags 0, type=2
-libbpf: looking for externs among 26 symbols...
+libbpf: elf: section(17) .BTF, size 3278, link 0, flags 0, type=1
+libbpf: elf: section(19) .BTF.ext, size 1324, link 0, flags 0, type=1
+libbpf: elf: section(27) .symtab, size 648, link 1, flags 0, type=2
+libbpf: looking for externs among 27 symbols...
 libbpf: collected 0 externs total
 libbpf: map 'time_lookup': at sec_idx 5, offset 0.
 libbpf: map 'time_lookup': found type = 1.
@@ -31,22 +31,24 @@ libbpf: map 'stats': found max_entries = 1.
 libbpf: sec '.relxdp': collecting relocation for section(3) 'xdp'
 libbpf: sec '.relxdp': relo #0: insn #16 against 'time_lookup'
 libbpf: prog 'rs_eunomia_energy_runtime_merge': found map 0 (time_lookup, sec 5, off 0) for insn #16
-libbpf: sec '.relxdp': relo #1: insn #29 against 'stats'
-libbpf: prog 'rs_eunomia_energy_runtime_merge': found map 3 (stats, sec 5, off 80) for insn #29
-libbpf: sec '.relxdp': relo #2: insn #46 against 'time_lookup'
-libbpf: prog 'rs_eunomia_energy_runtime_merge': found map 0 (time_lookup, sec 5, off 0) for insn #46
-libbpf: sec '.relxdp': relo #3: insn #61 against 'stats'
-libbpf: prog 'rs_eunomia_energy_runtime_merge': found map 3 (stats, sec 5, off 80) for insn #61
-libbpf: sec '.relxdp': relo #4: insn #71 against 'runtime_lookup'
-libbpf: prog 'rs_eunomia_energy_runtime_merge': found map 1 (runtime_lookup, sec 5, off 32) for insn #71
-libbpf: sec '.relxdp': relo #5: insn #83 against 'runtime_lookup'
-libbpf: prog 'rs_eunomia_energy_runtime_merge': found map 1 (runtime_lookup, sec 5, off 32) for insn #83
-libbpf: sec '.relxdp': relo #6: insn #89 against 'rb'
-libbpf: prog 'rs_eunomia_energy_runtime_merge': found map 2 (rb, sec 5, off 64) for insn #89
-libbpf: sec '.relxdp': relo #7: insn #107 against 'time_lookup'
-libbpf: prog 'rs_eunomia_energy_runtime_merge': found map 0 (time_lookup, sec 5, off 0) for insn #107
-libbpf: sec '.relxdp': relo #8: insn #120 against 'stats'
-libbpf: prog 'rs_eunomia_energy_runtime_merge': found map 3 (stats, sec 5, off 80) for insn #120
+libbpf: sec '.relxdp': relo #1: insn #27 against 'stats'
+libbpf: prog 'rs_eunomia_energy_runtime_merge': found map 3 (stats, sec 5, off 80) for insn #27
+libbpf: sec '.relxdp': relo #2: insn #44 against 'time_lookup'
+libbpf: prog 'rs_eunomia_energy_runtime_merge': found map 0 (time_lookup, sec 5, off 0) for insn #44
+libbpf: sec '.relxdp': relo #3: insn #58 against 'time_lookup'
+libbpf: prog 'rs_eunomia_energy_runtime_merge': found map 0 (time_lookup, sec 5, off 0) for insn #58
+libbpf: sec '.relxdp': relo #4: insn #70 against 'stats'
+libbpf: prog 'rs_eunomia_energy_runtime_merge': found map 3 (stats, sec 5, off 80) for insn #70
+libbpf: sec '.relxdp': relo #5: insn #80 against 'runtime_lookup'
+libbpf: prog 'rs_eunomia_energy_runtime_merge': found map 1 (runtime_lookup, sec 5, off 32) for insn #80
+libbpf: sec '.relxdp': relo #6: insn #92 against 'runtime_lookup'
+libbpf: prog 'rs_eunomia_energy_runtime_merge': found map 1 (runtime_lookup, sec 5, off 32) for insn #92
+libbpf: sec '.relxdp': relo #7: insn #98 against 'rb'
+libbpf: prog 'rs_eunomia_energy_runtime_merge': found map 2 (rb, sec 5, off 64) for insn #98
+libbpf: sec '.relxdp': relo #8: insn #116 against 'time_lookup'
+libbpf: prog 'rs_eunomia_energy_runtime_merge': found map 0 (time_lookup, sec 5, off 0) for insn #116
+libbpf: sec '.relxdp': relo #9: insn #129 against 'stats'
+libbpf: prog 'rs_eunomia_energy_runtime_merge': found map 3 (stats, sec 5, off 80) for insn #129
 libbpf: object 'prog': failed (-95) to create BPF token from '/sys/fs/bpf', skipping optional step...
 libbpf: loaded kernel BTF from '/sys/kernel/btf/vmlinux'
 libbpf: sec 'xdp': found 2 CO-RE relocations
@@ -70,7 +72,7 @@ Live regs before insn:
   2: 012....... (61) r1 = *(u32 *)(r1 +0)
   3: 012....... (bf) r3 = r1
   4: 0123...... (07) r3 += 24
-  5: 0123...... (2d) if r3 > r2 goto pc+129
+  5: 0123...... (2d) if r3 > r2 goto pc+138
   6: .1........ (61) r2 = *(u32 *)(r1 +0)
   7: .12....... (63) *(u32 *)(r10 -24) = r2
   8: .1........ (61) r7 = *(u32 *)(r1 +4)
@@ -83,115 +85,123 @@ Live regs before insn:
  15: ..2...6789 (07) r2 += -24
  16: ..2...6789 (18) r1 = 0xffff000000000000
  18: .12...6789 (85) call bpf_map_lookup_elem#1
- 19: 0.....6789 (57) r8 &= 1
- 20: 0.....6789 (15) if r8 == 0x0 goto pc+31
- 21: 0.....67.9 (55) if r0 != 0x0 goto pc+30
- 22: ......67.. (61) r8 = *(u32 *)(r10 -24)
- 23: ......678. (63) *(u32 *)(r10 -4) = r7
- 24: ......678. (7b) *(u64 *)(r10 -16) = r6
- 25: ......678. (b7) r9 = 0
- 26: ......6789 (63) *(u32 *)(r10 -20) = r9
- 27: ......6789 (bf) r2 = r10
- 28: ..2...6789 (07) r2 += -20
- 29: ..2...6789 (18) r1 = 0xffff000000000000
- 31: .12...6789 (85) call bpf_map_lookup_elem#1
- 32: 0.....6789 (15) if r0 == 0x0 goto pc+9
- 33: 0.....6789 (7b) *(u64 *)(r0 +24) = r7
- 34: 0.....6.89 (7b) *(u64 *)(r0 +16) = r8
- 35: 0.....6..9 (7b) *(u64 *)(r0 +32) = r9
- 36: 0.....6..9 (7b) *(u64 *)(r0 +40) = r9
- 37: 0.....6..9 (7b) *(u64 *)(r0 +48) = r9
- 38: 0.....6... (7b) *(u64 *)(r0 +56) = r6
- 39: 0......... (79) r1 = *(u64 *)(r0 +8)
- 40: 01........ (07) r1 += 1
- 41: 01........ (7b) *(u64 *)(r0 +8) = r1
- 42: .......... (bf) r2 = r10
- 43: ..2....... (07) r2 += -4
- 44: ..2....... (bf) r3 = r10
- 45: ..23...... (07) r3 += -16
- 46: ..23...... (18) r1 = 0xffff000000000000
- 48: .123...... (b7) r4 = 0
- 49: .1234..... (85) call bpf_map_update_elem#2
- 50: .......... (b7) r0 = 2
- 51: 0......... (05) goto pc+83
- 52: 0.....67.9 (79) r1 = *(u64 *)(r0 +0)
- 53: .1....67.9 (3d) if r6 >= r1 goto pc+12
- 54: ......67.. (61) r8 = *(u32 *)(r10 -24)
- 55: ......678. (63) *(u32 *)(r10 -4) = r7
- 56: ......678. (7b) *(u64 *)(r10 -16) = r6
- 57: ......678. (b7) r9 = 0
- 58: ......6789 (63) *(u32 *)(r10 -20) = r9
- 59: ......6789 (bf) r2 = r10
- 60: ..2...6789 (07) r2 += -20
- 61: ..2...6789 (18) r1 = 0xffff000000000000
- 63: .12...6789 (85) call bpf_map_lookup_elem#1
- 64: 0.....6789 (15) if r0 == 0x0 goto pc-23
- 65: 0.....6789 (05) goto pc-33
- 66: .1....67.9 (bf) r8 = r6
- 67: .1....6789 (1f) r8 -= r1
- 68: ......6789 (7b) *(u64 *)(r10 -16) = r8
- 69: ......6789 (bf) r2 = r10
- 70: ..2...6789 (07) r2 += -24
- 71: ..2...6789 (18) r1 = 0xffff000000000000
- 73: .12...6789 (85) call bpf_map_lookup_elem#1
- 74: 0.....6789 (15) if r0 == 0x0 goto pc+4
- 75: 0.....6789 (79) r1 = *(u64 *)(r0 +0)
- 76: .1....6789 (bf) r2 = r8
- 77: .12...6789 (0f) r2 += r1
- 78: ..2...6789 (7b) *(u64 *)(r10 -16) = r2
- 79: ......6789 (bf) r2 = r10
- 80: ..2...6789 (07) r2 += -24
- 81: ..2...6789 (bf) r3 = r10
- 82: ..23..6789 (07) r3 += -16
- 83: ..23..6789 (18) r1 = 0xffff000000000000
- 85: .123..6789 (b7) r4 = 0
- 86: .1234.6789 (85) call bpf_map_update_elem#2
- 87: ......6789 (57) r9 &= 1
- 88: ......6789 (15) if r9 == 0x0 goto pc+14
- 89: ......678. (18) r1 = 0xffff000000000000
- 91: .1....678. (b7) r2 = 24
- 92: .12...678. (b7) r3 = 0
- 93: .123..678. (85) call bpf_ringbuf_reserve#131
- 94: 0.....678. (15) if r0 == 0x0 goto pc+8
- 95: 0.....678. (7b) *(u64 *)(r0 +8) = r8
- 96: 0.....678. (7b) *(u64 *)(r0 +0) = r6
- 97: 0......78. (61) r1 = *(u32 *)(r10 -24)
- 98: 01.....78. (63) *(u32 *)(r0 +20) = r7
- 99: 01......8. (63) *(u32 *)(r0 +16) = r1
-100: 0.......8. (bf) r1 = r0
-101: .1......8. (b7) r2 = 0
-102: .12.....8. (85) call bpf_ringbuf_submit#132
-103: ........8. (bf) r2 = r10
-104: ..2.....8. (07) r2 += -28
-105: ..2.....8. (bf) r3 = r10
-106: ..23....8. (07) r3 += -40
-107: ..23....8. (18) r1 = 0xffff000000000000
-109: .123....8. (b7) r4 = 0
-110: .1234...8. (85) call bpf_map_update_elem#2
-111: ........8. (61) r6 = *(u32 *)(r10 -24)
-112: ......6.8. (61) r1 = *(u32 *)(r10 -28)
-113: .1....6.8. (7b) *(u64 *)(r10 -48) = r1
-114: ......6.8. (79) r9 = *(u64 *)(r10 -40)
-115: ......6.89 (79) r7 = *(u64 *)(r10 -16)
-116: ......6789 (b7) r1 = 0
-117: .1....6789 (63) *(u32 *)(r10 -4) = r1
-118: ......6789 (bf) r2 = r10
-119: ..2...6789 (07) r2 += -4
-120: ..2...6789 (18) r1 = 0xffff000000000000
-122: .12...6789 (85) call bpf_map_lookup_elem#1
-123: 0.....6789 (15) if r0 == 0x0 goto pc+10
-124: 0.....6789 (7b) *(u64 *)(r0 +56) = r9
-125: 0.....678. (7b) *(u64 *)(r0 +40) = r7
-126: 0.....6.8. (7b) *(u64 *)(r0 +32) = r8
-127: 0.....6... (79) r1 = *(u64 *)(r10 -48)
-128: 01....6... (7b) *(u64 *)(r0 +24) = r1
-129: 0.....6... (7b) *(u64 *)(r0 +48) = r6
-130: 0.....6... (7b) *(u64 *)(r0 +16) = r6
-131: 0......... (79) r1 = *(u64 *)(r0 +0)
-132: 01........ (07) r1 += 1
-133: 01........ (7b) *(u64 *)(r0 +0) = r1
-134: .......... (b7) r0 = 1
-135: 0......... (95) exit
+ 19: 0.....6789 (55) if r0 != 0x0 goto pc+30
+ 20: ......67.. (61) r8 = *(u32 *)(r10 -24)
+ 21: ......678. (63) *(u32 *)(r10 -4) = r7
+ 22: ......678. (7b) *(u64 *)(r10 -16) = r6
+ 23: ......678. (b7) r9 = 0
+ 24: ......6789 (63) *(u32 *)(r10 -20) = r9
+ 25: ......6789 (bf) r2 = r10
+ 26: ..2...6789 (07) r2 += -20
+ 27: ..2...6789 (18) r1 = 0xffff000000000000
+ 29: .12...6789 (85) call bpf_map_lookup_elem#1
+ 30: 0.....6789 (15) if r0 == 0x0 goto pc+9
+ 31: 0.....6789 (7b) *(u64 *)(r0 +24) = r7
+ 32: 0.....6.89 (7b) *(u64 *)(r0 +16) = r8
+ 33: 0.....6..9 (7b) *(u64 *)(r0 +32) = r9
+ 34: 0.....6..9 (7b) *(u64 *)(r0 +40) = r9
+ 35: 0.....6..9 (7b) *(u64 *)(r0 +48) = r9
+ 36: 0.....6... (7b) *(u64 *)(r0 +56) = r6
+ 37: 0......... (79) r1 = *(u64 *)(r0 +8)
+ 38: 01........ (07) r1 += 1
+ 39: 01........ (7b) *(u64 *)(r0 +8) = r1
+ 40: .......... (bf) r2 = r10
+ 41: ..2....... (07) r2 += -4
+ 42: ..2....... (bf) r3 = r10
+ 43: ..23...... (07) r3 += -16
+ 44: ..23...... (18) r1 = 0xffff000000000000
+ 46: .123...... (b7) r4 = 0
+ 47: .1234..... (85) call bpf_map_update_elem#2
+ 48: .......... (b7) r0 = 2
+ 49: 0......... (05) goto pc+94
+ 50: 0.....6789 (57) r8 &= 1
+ 51: 0.....6789 (55) if r8 != 0x0 goto pc+9
+ 52: ......67.9 (61) r1 = *(u32 *)(r10 -24)
+ 53: .1....67.9 (bf) r2 = r7
+ 54: .12...67.9 (0f) r2 += r1
+ 55: ..2...67.9 (63) *(u32 *)(r10 -16) = r2
+ 56: ......67.9 (bf) r2 = r10
+ 57: ..2...67.9 (07) r2 += -16
+ 58: ..2...67.9 (18) r1 = 0xffff000000000000
+ 60: .12...67.9 (85) call bpf_map_lookup_elem#1
+ 61: 0.....67.9 (79) r1 = *(u64 *)(r0 +0)
+ 62: .1....67.9 (3d) if r6 >= r1 goto pc+12
+ 63: ......67.. (61) r8 = *(u32 *)(r10 -24)
+ 64: ......678. (63) *(u32 *)(r10 -4) = r7
+ 65: ......678. (7b) *(u64 *)(r10 -16) = r6
+ 66: ......678. (b7) r9 = 0
+ 67: ......6789 (63) *(u32 *)(r10 -20) = r9
+ 68: ......6789 (bf) r2 = r10
+ 69: ..2...6789 (07) r2 += -20
+ 70: ..2...6789 (18) r1 = 0xffff000000000000
+ 72: .12...6789 (85) call bpf_map_lookup_elem#1
+ 73: 0.....6789 (15) if r0 == 0x0 goto pc-34
+ 74: 0.....6789 (05) goto pc-44
+ 75: .1....67.9 (bf) r8 = r6
+ 76: .1....6789 (1f) r8 -= r1
+ 77: ......6789 (7b) *(u64 *)(r10 -16) = r8
+ 78: ......6789 (bf) r2 = r10
+ 79: ..2...6789 (07) r2 += -24
+ 80: ..2...6789 (18) r1 = 0xffff000000000000
+ 82: .12...6789 (85) call bpf_map_lookup_elem#1
+ 83: 0.....6789 (15) if r0 == 0x0 goto pc+4
+ 84: 0.....6789 (79) r1 = *(u64 *)(r0 +0)
+ 85: .1....6789 (bf) r2 = r8
+ 86: .12...6789 (0f) r2 += r1
+ 87: ..2...6789 (7b) *(u64 *)(r10 -16) = r2
+ 88: ......6789 (bf) r2 = r10
+ 89: ..2...6789 (07) r2 += -24
+ 90: ..2...6789 (bf) r3 = r10
+ 91: ..23..6789 (07) r3 += -16
+ 92: ..23..6789 (18) r1 = 0xffff000000000000
+ 94: .123..6789 (b7) r4 = 0
+ 95: .1234.6789 (85) call bpf_map_update_elem#2
+ 96: ......6789 (57) r9 &= 1
+ 97: ......6789 (15) if r9 == 0x0 goto pc+14
+ 98: ......678. (18) r1 = 0xffff000000000000
+100: .1....678. (b7) r2 = 24
+101: .12...678. (b7) r3 = 0
+102: .123..678. (85) call bpf_ringbuf_reserve#131
+103: 0.....678. (15) if r0 == 0x0 goto pc+8
+104: 0.....678. (7b) *(u64 *)(r0 +8) = r8
+105: 0.....678. (7b) *(u64 *)(r0 +0) = r6
+106: 0......78. (61) r1 = *(u32 *)(r10 -24)
+107: 01.....78. (63) *(u32 *)(r0 +20) = r7
+108: 01......8. (63) *(u32 *)(r0 +16) = r1
+109: 0.......8. (bf) r1 = r0
+110: .1......8. (b7) r2 = 0
+111: .12.....8. (85) call bpf_ringbuf_submit#132
+112: ........8. (bf) r2 = r10
+113: ..2.....8. (07) r2 += -28
+114: ..2.....8. (bf) r3 = r10
+115: ..23....8. (07) r3 += -40
+116: ..23....8. (18) r1 = 0xffff000000000000
+118: .123....8. (b7) r4 = 0
+119: .1234...8. (85) call bpf_map_update_elem#2
+120: ........8. (61) r6 = *(u32 *)(r10 -24)
+121: ......6.8. (61) r1 = *(u32 *)(r10 -28)
+122: .1....6.8. (7b) *(u64 *)(r10 -48) = r1
+123: ......6.8. (79) r9 = *(u64 *)(r10 -40)
+124: ......6.89 (79) r7 = *(u64 *)(r10 -16)
+125: ......6789 (b7) r1 = 0
+126: .1....6789 (63) *(u32 *)(r10 -4) = r1
+127: ......6789 (bf) r2 = r10
+128: ..2...6789 (07) r2 += -4
+129: ..2...6789 (18) r1 = 0xffff000000000000
+131: .12...6789 (85) call bpf_map_lookup_elem#1
+132: 0.....6789 (15) if r0 == 0x0 goto pc+10
+133: 0.....6789 (7b) *(u64 *)(r0 +56) = r9
+134: 0.....678. (7b) *(u64 *)(r0 +40) = r7
+135: 0.....6.8. (7b) *(u64 *)(r0 +32) = r8
+136: 0.....6... (79) r1 = *(u64 *)(r10 -48)
+137: 01....6... (7b) *(u64 *)(r0 +24) = r1
+138: 0.....6... (7b) *(u64 *)(r0 +48) = r6
+139: 0.....6... (7b) *(u64 *)(r0 +16) = r6
+140: 0......... (79) r1 = *(u64 *)(r0 +0)
+141: 01........ (07) r1 += 1
+142: 01........ (7b) *(u64 *)(r0 +0) = r1
+143: .......... (b7) r0 = 1
+144: 0......... (95) exit
 0: R1=ctx() R10=fp0
 ; int rs_eunomia_energy_runtime_merge(struct xdp_md *ctx) @ buggy.bpf.c:103
 0: (b7) r0 = 2                        ; R0_w=2
@@ -202,7 +212,7 @@ Live regs before insn:
 ; if (data + sizeof(struct sched_packet) > data_end) @ buggy.bpf.c:108
 3: (bf) r3 = r1                       ; R1_w=pkt(r=0) R3_w=pkt(r=0)
 4: (07) r3 += 24                      ; R3_w=pkt(off=24,r=0)
-5: (2d) if r3 > r2 goto pc+129        ; R2_w=pkt_end() R3_w=pkt(off=24,r=24)
+5: (2d) if r3 > r2 goto pc+138        ; R2_w=pkt_end() R3_w=pkt(off=24,r=24)
 ; __u32 prev_pid = pkt->prev_pid; @ buggy.bpf.c:112
 6: (61) r2 = *(u32 *)(r1 +0)          ; R1_w=pkt(r=24) R2_w=scalar(smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000))
 7: (63) *(u32 *)(r10 -24) = r2        ; R2_w=scalar(id=1,smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) R10=fp0 fp-24=????scalar(id=1,smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000))
@@ -222,234 +232,74 @@ Live regs before insn:
 ; __u64 *old_ts = bpf_map_lookup_elem(&time_lookup, &prev_pid); @ buggy.bpf.c:118
 16: (18) r1 = 0xffff000000000000      ; R1_w=map_ptr(map=time_lookup,ks=4,vs=8)
 18: (85) call bpf_map_lookup_elem#1   ; R0=map_value_or_null(id=3,map=time_lookup,ks=4,vs=8)
-; if (require_known_ts & 1) { @ buggy.bpf.c:119
-19: (57) r8 &= 1                      ; R8_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=1,var_off=(0x0; 0x1))
-20: (15) if r8 == 0x0 goto pc+31      ; R8_w=1
-21: (55) if r0 != 0x0 goto pc+30      ; R0=0
-; remember_pass(prev_pid, next_pid, now_ns); @ buggy.bpf.c:121
-22: (61) r8 = *(u32 *)(r10 -24)       ; R8_w=scalar(id=1,smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) R10=fp0 fp-24=????scalar(id=1,smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000))
-23: (63) *(u32 *)(r10 -4) = r7        ; R7=scalar(smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) R10=fp0 fp-8=mmmm????
-24: (7b) *(u64 *)(r10 -16) = r6       ; R6=scalar(id=2) R10=fp0 fp-16_w=scalar(id=2)
-25: (b7) r9 = 0                       ; R9_w=0
+; if (!old_ts) { @ buggy.bpf.c:119
+19: (55) if r0 != 0x0 goto pc+30      ; R0=0
+; remember_pass(prev_pid, next_pid, now_ns); @ buggy.bpf.c:120
+20: (61) r8 = *(u32 *)(r10 -24)       ; R8_w=scalar(id=1,smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) R10=fp0 fp-24=????scalar(id=1,smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000))
+21: (63) *(u32 *)(r10 -4) = r7        ; R7=scalar(smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) R10=fp0 fp-8=mmmm????
+22: (7b) *(u64 *)(r10 -16) = r6       ; R6=scalar(id=2) R10=fp0 fp-16_w=scalar(id=2)
+23: (b7) r9 = 0                       ; R9_w=0
 ; __u32 zero = 0; @ buggy.bpf.c:70
-26: (63) *(u32 *)(r10 -20) = r9
-mark_precise: frame0: last_idx 26 first_idx 19 subseq_idx -1
-mark_precise: frame0: regs=r9 stack= before 25: (b7) r9 = 0
-27: R9_w=0 R10=fp0 fp-24=0000mmmm
-27: (bf) r2 = r10                     ; R2_w=fp0 R10=fp0
-; remember_pass(prev_pid, next_pid, now_ns); @ buggy.bpf.c:121
-28: (07) r2 += -20                    ; R2_w=fp-20
+24: (63) *(u32 *)(r10 -20) = r9
+mark_precise: frame0: last_idx 24 first_idx 19 subseq_idx -1
+mark_precise: frame0: regs=r9 stack= before 23: (b7) r9 = 0
+25: R9_w=0 R10=fp0 fp-24=0000mmmm
+25: (bf) r2 = r10                     ; R2_w=fp0 R10=fp0
+; remember_pass(prev_pid, next_pid, now_ns); @ buggy.bpf.c:120
+26: (07) r2 += -20                    ; R2_w=fp-20
 ; struct run_stats *s = bpf_map_lookup_elem(&stats, &zero); @ buggy.bpf.c:71
-29: (18) r1 = 0xffff000000000000      ; R1_w=map_ptr(map=stats,ks=4,vs=64)
-31: (85) call bpf_map_lookup_elem#1   ; R0=map_value(map=stats,ks=4,vs=64)
+27: (18) r1 = 0xffff000000000000      ; R1_w=map_ptr(map=stats,ks=4,vs=64)
+29: (85) call bpf_map_lookup_elem#1   ; R0=map_value(map=stats,ks=4,vs=64)
 ; if (s) { @ buggy.bpf.c:73
-32: (15) if r0 == 0x0 goto pc+9       ; R0=map_value(map=stats,ks=4,vs=64)
+30: (15) if r0 == 0x0 goto pc+9       ; R0=map_value(map=stats,ks=4,vs=64)
 ; s->last_next_pid = next_pid; @ buggy.bpf.c:76
-33: (7b) *(u64 *)(r0 +24) = r7        ; R0=map_value(map=stats,ks=4,vs=64) R7=scalar(smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000))
+31: (7b) *(u64 *)(r0 +24) = r7        ; R0=map_value(map=stats,ks=4,vs=64) R7=scalar(smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000))
 ; s->last_prev_pid = prev_pid; @ buggy.bpf.c:75
-34: (7b) *(u64 *)(r0 +16) = r8        ; R0=map_value(map=stats,ks=4,vs=64) R8=scalar(id=1,smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000))
+32: (7b) *(u64 *)(r0 +16) = r8        ; R0=map_value(map=stats,ks=4,vs=64) R8=scalar(id=1,smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000))
 ; s->last_runtime = 0; @ buggy.bpf.c:78
-35: (7b) *(u64 *)(r0 +32) = r9        ; R0=map_value(map=stats,ks=4,vs=64) R9=0
-36: (7b) *(u64 *)(r0 +40) = r9        ; R0=map_value(map=stats,ks=4,vs=64) R9=0
-37: (7b) *(u64 *)(r0 +48) = r9        ; R0=map_value(map=stats,ks=4,vs=64) R9=0
+33: (7b) *(u64 *)(r0 +32) = r9        ; R0=map_value(map=stats,ks=4,vs=64) R9=0
+34: (7b) *(u64 *)(r0 +40) = r9        ; R0=map_value(map=stats,ks=4,vs=64) R9=0
+35: (7b) *(u64 *)(r0 +48) = r9        ; R0=map_value(map=stats,ks=4,vs=64) R9=0
 ; s->last_next_ts = now_ns; @ buggy.bpf.c:80
-38: (7b) *(u64 *)(r0 +56) = r6        ; R0=map_value(map=stats,ks=4,vs=64) R6=scalar(id=2)
+36: (7b) *(u64 *)(r0 +56) = r6        ; R0=map_value(map=stats,ks=4,vs=64) R6=scalar(id=2)
 ; s->passed += 1; @ buggy.bpf.c:74
-39: (79) r1 = *(u64 *)(r0 +8)         ; R0=map_value(map=stats,ks=4,vs=64) R1_w=scalar()
-40: (07) r1 += 1                      ; R1_w=scalar()
-41: (7b) *(u64 *)(r0 +8) = r1         ; R0=map_value(map=stats,ks=4,vs=64) R1_w=scalar()
-42: (bf) r2 = r10                     ; R2_w=fp0 R10=fp0
+37: (79) r1 = *(u64 *)(r0 +8)         ; R0=map_value(map=stats,ks=4,vs=64) R1_w=scalar()
+38: (07) r1 += 1                      ; R1_w=scalar()
+39: (7b) *(u64 *)(r0 +8) = r1         ; R0=map_value(map=stats,ks=4,vs=64) R1_w=scalar()
+40: (bf) r2 = r10                     ; R2_w=fp0 R10=fp0
 ; bpf_map_update_elem(&time_lookup, &next_pid, &now_ns, BPF_ANY); @ buggy.bpf.c:82
-43: (07) r2 += -4                     ; R2_w=fp-4
-44: (bf) r3 = r10                     ; R3_w=fp0 R10=fp0
-45: (07) r3 += -16                    ; R3_w=fp-16
-46: (18) r1 = 0xffff000000000000      ; R1_w=map_ptr(map=time_lookup,ks=4,vs=8)
-48: (b7) r4 = 0                       ; R4_w=0
-49: (85) call bpf_map_update_elem#2   ; R0=scalar()
-50: (b7) r0 = 2                       ; R0_w=2
-51: (05) goto pc+83
-; } @ buggy.bpf.c:157
-135: (95) exit
+41: (07) r2 += -4                     ; R2_w=fp-4
+42: (bf) r3 = r10                     ; R3_w=fp0 R10=fp0
+43: (07) r3 += -16                    ; R3_w=fp-16
+44: (18) r1 = 0xffff000000000000      ; R1_w=map_ptr(map=time_lookup,ks=4,vs=8)
+46: (b7) r4 = 0                       ; R4_w=0
+47: (85) call bpf_map_update_elem#2   ; R0=scalar()
+48: (b7) r0 = 2                       ; R0_w=2
+49: (05) goto pc+94
+; } @ buggy.bpf.c:161
+144: (95) exit
 
-from 21 to 52: R0=map_value(map=time_lookup,ks=4,vs=8) R6=scalar(id=2) R7=scalar(smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) R8_w=1 R9=scalar(smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) R10=fp0 fp-24=????scalar(id=1,smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) fp-32=mmmm???? fp-40=scalar(id=2)
-52: R0=map_value(map=time_lookup,ks=4,vs=8) R6=scalar(id=2) R7=scalar(smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) R8_w=1 R9=scalar(smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) R10=fp0 fp-24=????scalar(id=1,smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) fp-32=mmmm???? fp-40=scalar(id=2)
-; __u64 old_ns = *old_ts; @ buggy.bpf.c:126
-52: (79) r1 = *(u64 *)(r0 +0)         ; R0=map_value(map=time_lookup,ks=4,vs=8) R1_w=scalar()
-; if (now_ns < old_ns) { @ buggy.bpf.c:127
-53: (3d) if r6 >= r1 goto pc+12       ; R1_w=scalar(umin=1) R6=scalar(id=2,umax=0xffff000000000000)
-; remember_pass(prev_pid, next_pid, now_ns); @ buggy.bpf.c:128
-54: (61) r8 = *(u32 *)(r10 -24)       ; R8_w=scalar(id=1,smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) R10=fp0 fp-24=????scalar(id=1,smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000))
-55: (63) *(u32 *)(r10 -4) = r7        ; R7=scalar(smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) R10=fp0 fp-8=mmmm????
-56: (7b) *(u64 *)(r10 -16) = r6       ; R6=scalar(id=2,umax=0xffff000000000000) R10=fp0 fp-16_w=scalar(id=2,umax=0xffff000000000000)
-57: (b7) r9 = 0                       ; R9_w=0
-; __u32 zero = 0; @ buggy.bpf.c:70
-58: (63) *(u32 *)(r10 -20) = r9
-mark_precise: frame0: last_idx 58 first_idx 19 subseq_idx -1
-mark_precise: frame0: regs=r9 stack= before 57: (b7) r9 = 0
-59: R9_w=0 R10=fp0 fp-24=0000mmmm
-59: (bf) r2 = r10                     ; R2_w=fp0 R10=fp0
-; remember_pass(prev_pid, next_pid, now_ns); @ buggy.bpf.c:128
-60: (07) r2 += -20                    ; R2_w=fp-20
-; struct run_stats *s = bpf_map_lookup_elem(&stats, &zero); @ buggy.bpf.c:71
-61: (18) r1 = 0xffff000000000000      ; R1_w=map_ptr(map=stats,ks=4,vs=64)
-63: (85) call bpf_map_lookup_elem#1   ; R0=map_value(map=stats,ks=4,vs=64)
-; if (s) { @ buggy.bpf.c:73
-64: (15) if r0 == 0x0 goto pc-23      ; R0=map_value(map=stats,ks=4,vs=64)
-65: (05) goto pc-33
-; s->last_next_pid = next_pid; @ buggy.bpf.c:76
-33: (7b) *(u64 *)(r0 +24) = r7        ; R0=map_value(map=stats,ks=4,vs=64) R7=scalar(smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000))
-; s->last_prev_pid = prev_pid; @ buggy.bpf.c:75
-34: (7b) *(u64 *)(r0 +16) = r8        ; R0=map_value(map=stats,ks=4,vs=64) R8=scalar(id=1,smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000))
-; s->last_runtime = 0; @ buggy.bpf.c:78
-35: (7b) *(u64 *)(r0 +32) = r9        ; R0=map_value(map=stats,ks=4,vs=64) R9=0
-36: (7b) *(u64 *)(r0 +40) = r9        ; R0=map_value(map=stats,ks=4,vs=64) R9=0
-37: (7b) *(u64 *)(r0 +48) = r9        ; R0=map_value(map=stats,ks=4,vs=64) R9=0
-; s->last_next_ts = now_ns; @ buggy.bpf.c:80
-38: (7b) *(u64 *)(r0 +56) = r6        ; R0=map_value(map=stats,ks=4,vs=64) R6=scalar(id=2,umax=0xffff000000000000)
-; s->passed += 1; @ buggy.bpf.c:74
-39: (79) r1 = *(u64 *)(r0 +8)         ; R0=map_value(map=stats,ks=4,vs=64) R1_w=scalar()
-40: (07) r1 += 1                      ; R1_w=scalar()
-41: (7b) *(u64 *)(r0 +8) = r1         ; R0=map_value(map=stats,ks=4,vs=64) R1=scalar()
-42: (bf) r2 = r10                     ; R2_w=fp0 R10=fp0
-; bpf_map_update_elem(&time_lookup, &next_pid, &now_ns, BPF_ANY); @ buggy.bpf.c:82
-43: (07) r2 += -4                     ; R2_w=fp-4
-44: (bf) r3 = r10                     ; R3_w=fp0 R10=fp0
-45: (07) r3 += -16                    ; R3_w=fp-16
-46: (18) r1 = 0xffff000000000000      ; R1_w=map_ptr(map=time_lookup,ks=4,vs=8)
-48: (b7) r4 = 0                       ; R4_w=0
-49: (85) call bpf_map_update_elem#2
-50: safe
-
-from 53 to 66: R0=map_value(map=time_lookup,ks=4,vs=8) R1_w=scalar() R6=scalar(id=2) R7=scalar(smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) R8_w=1 R9=scalar(smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) R10=fp0 fp-24=????scalar(id=1,smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) fp-32=mmmm???? fp-40=scalar(id=2)
-66: R0=map_value(map=time_lookup,ks=4,vs=8) R1_w=scalar() R6=scalar(id=2) R7=scalar(smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) R8_w=1 R9=scalar(smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) R10=fp0 fp-24=????scalar(id=1,smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) fp-32=mmmm???? fp-40=scalar(id=2)
-; __u64 delta = now_ns - old_ns; @ buggy.bpf.c:132
-66: (bf) r8 = r6                      ; R6=scalar(id=2) R8_w=scalar(id=2)
-67: (1f) r8 -= r1                     ; R1_w=scalar() R8_w=scalar()
-; __u64 total = delta; @ buggy.bpf.c:133
-68: (7b) *(u64 *)(r10 -16) = r8       ; R8_w=scalar(id=4) R10=fp0 fp-16_w=scalar(id=4)
-69: (bf) r2 = r10                     ; R2_w=fp0 R10=fp0
-; __u64 delta = now_ns - old_ns; @ buggy.bpf.c:132
-70: (07) r2 += -24                    ; R2_w=fp-24
-; __u64 *current = bpf_map_lookup_elem(&runtime_lookup, &prev_pid); @ buggy.bpf.c:134
-71: (18) r1 = 0xffff000000000000      ; R1_w=map_ptr(map=runtime_lookup,ks=4,vs=8)
-73: (85) call bpf_map_lookup_elem#1   ; R0=map_value_or_null(id=5,map=runtime_lookup,ks=4,vs=8)
-; if (current) @ buggy.bpf.c:136
-74: (15) if r0 == 0x0 goto pc+4       ; R0=map_value(map=runtime_lookup,ks=4,vs=8)
-; total += *current; @ buggy.bpf.c:137
-75: (79) r1 = *(u64 *)(r0 +0)         ; R0=map_value(map=runtime_lookup,ks=4,vs=8) R1_w=scalar()
-76: (bf) r2 = r8                      ; R2_w=scalar(id=4) R8=scalar(id=4)
-77: (0f) r2 += r1                     ; R1_w=scalar() R2_w=scalar()
-78: (7b) *(u64 *)(r10 -16) = r2       ; R2_w=scalar(id=6) R10=fp0 fp-16_w=scalar(id=6)
-79: (bf) r2 = r10                     ; R2_w=fp0 R10=fp0
-; bpf_map_update_elem(&runtime_lookup, &prev_pid, &total, BPF_ANY); @ buggy.bpf.c:139
-80: (07) r2 += -24                    ; R2_w=fp-24
-81: (bf) r3 = r10                     ; R3_w=fp0 R10=fp0
-82: (07) r3 += -16                    ; R3_w=fp-16
-83: (18) r1 = 0xffff000000000000      ; R1_w=map_ptr(map=runtime_lookup,ks=4,vs=8)
-85: (b7) r4 = 0                       ; R4_w=0
-86: (85) call bpf_map_update_elem#2   ; R0=scalar()
-; if (emit_event & 1) { @ buggy.bpf.c:141
-87: (57) r9 &= 1                      ; R9_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=1,var_off=(0x0; 0x1))
-88: (15) if r9 == 0x0 goto pc+14      ; R9_w=1
-; struct runtime_event *e = bpf_ringbuf_reserve(&rb, sizeof(*e), 0); @ buggy.bpf.c:142
-89: (18) r1 = 0xffff000000000000      ; R1_w=map_ptr(map=rb,ks=0,vs=0)
-91: (b7) r2 = 24                      ; R2_w=24
-92: (b7) r3 = 0                       ; R3_w=0
-93: (85) call bpf_ringbuf_reserve#131
-mark_precise: frame0: last_idx 93 first_idx 87 subseq_idx -1
-mark_precise: frame0: regs=r2 stack= before 92: (b7) r3 = 0
-mark_precise: frame0: regs=r2 stack= before 91: (b7) r2 = 24
-94: R0_w=ringbuf_mem_or_null(id=8,ref_obj_id=8,sz=24) refs=8
-; if (e) { @ buggy.bpf.c:144
-94: (15) if r0 == 0x0 goto pc+8       ; R0_w=ringbuf_mem(ref_obj_id=8,sz=24) refs=8
-; e->runtime_ns = delta; @ buggy.bpf.c:146
-95: (7b) *(u64 *)(r0 +8) = r8         ; R0_w=ringbuf_mem(ref_obj_id=8,sz=24) R8=scalar(id=4) refs=8
-; e->ts = now_ns; @ buggy.bpf.c:145
-96: (7b) *(u64 *)(r0 +0) = r6         ; R0_w=ringbuf_mem(ref_obj_id=8,sz=24) R6=scalar(id=2) refs=8
-; e->prev_pid = prev_pid; @ buggy.bpf.c:147
-97: (61) r1 = *(u32 *)(r10 -24)       ; R1_w=scalar(id=1,smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) R10=fp0 fp-24=????scalar(id=1,smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) refs=8
-; e->next_pid = next_pid; @ buggy.bpf.c:148
-98: (63) *(u32 *)(r0 +20) = r7        ; R0_w=ringbuf_mem(ref_obj_id=8,sz=24) R7=scalar(smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) refs=8
-; e->prev_pid = prev_pid; @ buggy.bpf.c:147
-99: (63) *(u32 *)(r0 +16) = r1        ; R0_w=ringbuf_mem(ref_obj_id=8,sz=24) R1_w=scalar(id=1,smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) refs=8
-; bpf_ringbuf_submit(e, 0); @ buggy.bpf.c:149
-100: (bf) r1 = r0                     ; R0_w=ringbuf_mem(ref_obj_id=8,sz=24) R1_w=ringbuf_mem(ref_obj_id=8,sz=24) refs=8
-101: (b7) r2 = 0                      ; R2_w=0 refs=8
-102: (85) call bpf_ringbuf_submit#132         ;
-103: (bf) r2 = r10                    ; R2_w=fp0 R10=fp0
-; bpf_map_update_elem(&time_lookup, &next_pid, &now_ns, BPF_ANY); @ buggy.bpf.c:153
-104: (07) r2 += -28                   ; R2_w=fp-28
-105: (bf) r3 = r10                    ; R3_w=fp0 R10=fp0
-106: (07) r3 += -40                   ; R3_w=fp-40
-107: (18) r1 = 0xffff000000000000     ; R1_w=map_ptr(map=time_lookup,ks=4,vs=8)
-109: (b7) r4 = 0                      ; R4_w=0
-110: (85) call bpf_map_update_elem#2          ; R0_w=scalar()
-; remember_runtime(prev_pid, next_pid, now_ns, delta, total); @ buggy.bpf.c:154
-111: (61) r6 = *(u32 *)(r10 -24)      ; R6_w=scalar(id=1,smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) R10=fp0 fp-24=????scalar(id=1,smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000))
-112: (61) r1 = *(u32 *)(r10 -28)      ; R1_w=scalar(smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) R10=fp0 fp-32=mmmm????
-113: (7b) *(u64 *)(r10 -48) = r1      ; R1_w=scalar(id=9,smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) R10=fp0 fp-48_w=scalar(id=9,smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000))
-114: (79) r9 = *(u64 *)(r10 -40)      ; R9_w=scalar(id=2) R10=fp0 fp-40=scalar(id=2)
-115: (79) r7 = *(u64 *)(r10 -16)      ; R7_w=scalar(id=6) R10=fp0 fp-16=scalar(id=6)
-; __u32 zero = 0; @ buggy.bpf.c:88
-116: (b7) r1 = 0                      ; R1_w=0
-117: (63) *(u32 *)(r10 -4) = r1
-mark_precise: frame0: last_idx 117 first_idx 103 subseq_idx -1
-mark_precise: frame0: regs=r1 stack= before 116: (b7) r1 = 0
-118: R1_w=0 R10=fp0 fp-8=0000????
-118: (bf) r2 = r10                    ; R2_w=fp0 R10=fp0
-; bpf_map_update_elem(&time_lookup, &next_pid, &now_ns, BPF_ANY); @ buggy.bpf.c:153
-119: (07) r2 += -4                    ; R2_w=fp-4
-; struct run_stats *s = bpf_map_lookup_elem(&stats, &zero); @ buggy.bpf.c:89
-120: (18) r1 = 0xffff000000000000     ; R1_w=map_ptr(map=stats,ks=4,vs=64)
-122: (85) call bpf_map_lookup_elem#1          ; R0=map_value(map=stats,ks=4,vs=64)
-; if (s) { @ buggy.bpf.c:91
-123: (15) if r0 == 0x0 goto pc+10     ; R0=map_value(map=stats,ks=4,vs=64)
-; s->last_next_ts = now_ns; @ buggy.bpf.c:98
-124: (7b) *(u64 *)(r0 +56) = r9       ; R0=map_value(map=stats,ks=4,vs=64) R9=scalar(id=2)
-; s->last_runtime = total; @ buggy.bpf.c:96
-125: (7b) *(u64 *)(r0 +40) = r7       ; R0=map_value(map=stats,ks=4,vs=64) R7=scalar(id=6)
-; s->last_delta = delta; @ buggy.bpf.c:95
-126: (7b) *(u64 *)(r0 +32) = r8       ; R0=map_value(map=stats,ks=4,vs=64) R8=scalar(id=4)
-; s->last_next_pid = next_pid; @ buggy.bpf.c:94
-127: (79) r1 = *(u64 *)(r10 -48)      ; R1_w=scalar(id=9,smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) R10=fp0 fp-48=scalar(id=9,smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000))
-128: (7b) *(u64 *)(r0 +24) = r1       ; R0=map_value(map=stats,ks=4,vs=64) R1_w=scalar(id=9,smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000))
-; s->last_event_pid = prev_pid; @ buggy.bpf.c:97
-129: (7b) *(u64 *)(r0 +48) = r6       ; R0=map_value(map=stats,ks=4,vs=64) R6=scalar(id=1,smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000))
-; s->last_prev_pid = prev_pid; @ buggy.bpf.c:93
-130: (7b) *(u64 *)(r0 +16) = r6       ; R0=map_value(map=stats,ks=4,vs=64) R6=scalar(id=1,smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000))
-; s->processed += 1; @ buggy.bpf.c:92
-131: (79) r1 = *(u64 *)(r0 +0)        ; R0=map_value(map=stats,ks=4,vs=64) R1_w=scalar()
-132: (07) r1 += 1                     ; R1_w=scalar()
-133: (7b) *(u64 *)(r0 +0) = r1        ; R0=map_value(map=stats,ks=4,vs=64) R1_w=scalar()
-134: (b7) r0 = 1                      ; R0_w=1
-; } @ buggy.bpf.c:157
-135: (95) exit
-
-from 94 to 103: safe
-
-from 88 to 103: safe
-
-from 74 to 79: R0=0 R6=scalar(id=2) R7=scalar(smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) R8=scalar(id=4) R9=scalar(smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) R10=fp0 fp-16=scalar(id=4) fp-24=????scalar(id=1,smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) fp-32=mmmm???? fp-40=scalar(id=2)
-79: R0=0 R6=scalar(id=2) R7=scalar(smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) R8=scalar(id=4) R9=scalar(smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) R10=fp0 fp-16=scalar(id=4) fp-24=????scalar(id=1,smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) fp-32=mmmm???? fp-40=scalar(id=2)
-; total += *current; @ buggy.bpf.c:137
-79: (bf) r2 = r10                     ; R2_w=fp0 R10=fp0
-; bpf_map_update_elem(&runtime_lookup, &prev_pid, &total, BPF_ANY); @ buggy.bpf.c:139
-80: (07) r2 += -24                    ; R2_w=fp-24
-81: (bf) r3 = r10                     ; R3_w=fp0 R10=fp0
-82: (07) r3 += -16                    ; R3_w=fp-16
-83: (18) r1 = 0xffff000000000000      ; R1_w=map_ptr(map=runtime_lookup,ks=4,vs=8)
-85: (b7) r4 = 0                       ; R4_w=0
-86: (85) call bpf_map_update_elem#2
-87: safe
-
-from 20 to 52: R0=map_value_or_null(id=3,map=time_lookup,ks=4,vs=8) R6=scalar(id=2) R7=scalar(smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) R8_w=0 R9=scalar(smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) R10=fp0 fp-24=????scalar(id=1,smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) fp-32=mmmm???? fp-40=scalar(id=2)
-52: R0=map_value_or_null(id=3,map=time_lookup,ks=4,vs=8) R6=scalar(id=2) R7=scalar(smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) R8_w=0 R9=scalar(smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) R10=fp0 fp-24=????scalar(id=1,smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) fp-32=mmmm???? fp-40=scalar(id=2)
-; __u64 old_ns = *old_ts; @ buggy.bpf.c:126
-52: (79) r1 = *(u64 *)(r0 +0)
+from 19 to 50: R0=map_value(map=time_lookup,ks=4,vs=8) R6=scalar(id=2) R7=scalar(smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) R8=scalar(smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) R9=scalar(smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) R10=fp0 fp-24=????scalar(id=1,smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) fp-32=mmmm???? fp-40=scalar(id=2)
+50: R0=map_value(map=time_lookup,ks=4,vs=8) R6=scalar(id=2) R7=scalar(smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) R8=scalar(smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) R9=scalar(smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) R10=fp0 fp-24=????scalar(id=1,smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) fp-32=mmmm???? fp-40=scalar(id=2)
+; if (!(require_known_ts & 1)) { @ buggy.bpf.c:124
+50: (57) r8 &= 1                      ; R8_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=1,var_off=(0x0; 0x1))
+51: (55) if r8 != 0x0 goto pc+9       ; R8_w=0
+; __u32 shadow_pid = prev_pid + next_pid; @ buggy.bpf.c:125
+52: (61) r1 = *(u32 *)(r10 -24)       ; R1_w=scalar(id=1,smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) R10=fp0 fp-24=????scalar(id=1,smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000))
+53: (bf) r2 = r7                      ; R2_w=scalar(id=4,smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) R7=scalar(id=4,smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000))
+54: (0f) r2 += r1                     ; R1_w=scalar(id=1,smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) R2_w=scalar(smin=0,smax=umax=0x1fffffffe,var_off=(0x0; 0x1ffffffff))
+55: (63) *(u32 *)(r10 -16) = r2       ; R2_w=scalar(smin=0,smax=umax=0x1fffffffe,var_off=(0x0; 0x1ffffffff)) R10=fp0 fp-16=????scalar(smin=0,smax=umax=0x1fffffffe,var_off=(0x0; 0x1ffffffff))
+56: (bf) r2 = r10                     ; R2_w=fp0 R10=fp0
+57: (07) r2 += -16                    ; R2_w=fp-16
+; old_ts = bpf_map_lookup_elem(&time_lookup, &shadow_pid); @ buggy.bpf.c:127
+58: (18) r1 = 0xffff000000000000      ; R1_w=map_ptr(map=time_lookup,ks=4,vs=8)
+60: (85) call bpf_map_lookup_elem#1   ; R0=map_value_or_null(id=5,map=time_lookup,ks=4,vs=8)
+; __u64 old_ns = *old_ts; @ buggy.bpf.c:130
+61: (79) r1 = *(u64 *)(r0 +0)
 R0 invalid mem access 'map_value_or_null'
 verification time 0 usec
-stack depth 48
-processed 156 insns (limit 1000000) max_states_per_insn 0 total_states 10 peak_states 10 mark_read 4
+stack depth 40
+processed 59 insns (limit 1000000) max_states_per_insn 0 total_states 4 peak_states 4 mark_read 2
 -- END PROG LOAD LOG --
 libbpf: prog 'rs_eunomia_energy_runtime_merge': failed to load: -EACCES
 libbpf: failed to load object '<work-dir>/prog.o'
