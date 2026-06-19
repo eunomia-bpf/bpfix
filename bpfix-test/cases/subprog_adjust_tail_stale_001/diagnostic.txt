@@ -18,4 +18,4 @@ error[BPFIX-E011]: skb/xdp packet pointer is reused after a helper invalidates i
    = note[verifier-state]: verifier state shows this register previously held an skb/xdp packet pointer, but an intervening packet-mutating helper invalidated that pointer before the rejected memory access
    = required proof: preserve pointer provenance by reacquiring and rechecking the skb/xdp packet pointer after the helper that invalidates existing packet data pointers
 help: Preserve pointer provenance across the failing path, or rederive the pointer from a checked base immediately before dereferencing it.
-help: After helpers that move or rewrite skb/xdp data, reload packet data/data_end, recheck the packet range, and derive a fresh packet pointer before dereferencing. For bpf_xdp_adjust_head, account for the adjusted packet head: a positive delta strips bytes, so the new ctx->data starts after the removed header.
+help: After the packet-mutating helper, reload data/data_end, account for any head adjustment, recheck bounds, and derive a fresh packet pointer.

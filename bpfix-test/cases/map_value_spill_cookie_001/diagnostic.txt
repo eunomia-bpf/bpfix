@@ -17,6 +17,6 @@ error[BPFIX-E006]: verifier-visible compiler lowering hides the required proof
    = note: parsed 14 verifier state snapshots
    = note[lowering]: a verifier-tracked pointer reaches a left-shift instruction, which the verifier rejects because the operation destroys pointer provenance
    = required proof: preserve a verifier-recognized pointer type at the operation that requires a pointer
-help: The rejected pointer-shift line must not remain as-is. Do not cast a verifier pointer through __u64/long, shift or mask that integer cookie, and cast it back. Delete the cookie/shadow round trip and use the original checked pointer variable for the packet, map-value, dynptr-slice, or ringbuf-record access.
+help: Remove the integer cookie round trip; keep the verifier-tracked pointer value and use that checked pointer for the final memory access.
 help: Avoid integer casts or arithmetic that turn the pointer into a scalar before the access.
 help: Recompute the pointer from a verifier-tracked base after scalar manipulation.
