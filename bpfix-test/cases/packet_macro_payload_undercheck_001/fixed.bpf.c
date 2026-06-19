@@ -30,6 +30,7 @@ int packet_macro_payload_undercheck(struct xdp_md *ctx)
     struct ethhdr *eth = data;
     struct iphdr *iph;
     struct udphdr *udp;
+    __u32 ihl;
     __u16 check;
 
     REQUIRE_BYTES(eth, sizeof(*eth));
@@ -38,10 +39,14 @@ int packet_macro_payload_undercheck(struct xdp_md *ctx)
 
     iph = data + sizeof(*eth);
     REQUIRE_BYTES(iph, sizeof(*iph));
+    ihl = iph->ihl * 4;
+    if (ihl < sizeof(*iph))
+        return XDP_PASS;
+    REQUIRE_BYTES(iph, ihl);
     if (iph->protocol != IPPROTO_UDP)
         return XDP_PASS;
 
-    udp = (void *)iph + sizeof(*iph);
+    udp = (void *)iph + ihl;
     REQUIRE_BYTES(udp, sizeof(*udp));
 
     check = udp->check;

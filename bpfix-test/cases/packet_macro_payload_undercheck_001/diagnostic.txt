@@ -3,16 +3,16 @@ error[BPFIX-E001]: packet bounds proof is missing
   = confidence: medium
   = diagnostic: supported, help: repair_hint, span: exact_pc
   = next action: bounds
-  --> buggy.bpf.c:47
+  --> buggy.bpf.c:52
    |
-40 | REQUIRE_BYTES(iph, sizeof(*iph));
-   | --------------------------------- verifier only proves packet range 14 bytes on this path, but the rejected access requires 42 bytes
-47 | check = udp->check;
-   | ^^^^^^^^^^^^^^^^^^^ rejected here: verifier needs R3 packet range >= 42, but only 41 bytes are proven
+46 | if (iph->protocol != IPPROTO_UDP)
+   | --------------------------------- verifier only proves packet range 14 bytes on this path, but the rejected access requires 22 bytes
+52 | check = udp->check;
+   | ^^^^^^^^^^^^^^^^^^^ rejected here: verifier needs R3 packet range >= 22, but only 21 bytes are proven
    |
-   = verifier[48]: invalid access to packet, off=40 size=2, R3(id=0,off=40,r=41); R3 offset is outside of the packet
-   = note: nearest BPF instruction pc 15
-   = note: parsed 11 verifier state snapshots
-   = required proof: prove R3 has packet range at least 42 bytes before this access; verifier currently has range 41
+   = verifier[74]: invalid access to packet, off=20 size=2, R3(id=1,off=20,r=21); R3 offset is outside of the packet
+   = note: nearest BPF instruction pc 23
+   = note: parsed 17 verifier state snapshots
+   = required proof: prove R3 has packet range at least 22 bytes before this access; verifier currently has range 21
 help: Add or move a packet bounds check immediately before the access or helper argument use.
 help: Check the exact pointer and byte length passed to the helper, not only an earlier header pointer.

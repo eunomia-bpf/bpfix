@@ -10,9 +10,23 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools"))
 from bpf_case import run_case
 
 
-def udp_packet(check: int, *, truncate_udp_to: int | None = None) -> bytes:
+def udp_packet(check: int, *, ihl_words: int = 5, truncate_udp_to: int | None = None) -> bytes:
     eth = bytes.fromhex("00112233445566778899aabb0800")
-    ip = struct.pack("!BBHHHBBHII", 0x45, 0, 28, 0, 0, 64, 17, 0, 0x0A000001, 0x0A000002)
+    option_len = (ihl_words - 5) * 4
+    ip_len = 20 + option_len
+    ip = struct.pack(
+        "!BBHHHBBHII",
+        0x40 | ihl_words,
+        0,
+        ip_len + 8,
+        0,
+        0,
+        64,
+        17,
+        0,
+        0x0A000001,
+        0x0A000002,
+    ) + (b"\x01" * option_len)
     udp = struct.pack("!HHHH", 10000, 53, 8, check)
     if truncate_udp_to is not None:
         udp = udp[:truncate_udp_to]
@@ -34,6 +48,7 @@ if __name__ == "__main__":
             ],
             functional_tests=[
                 ("marked_udp_drops", lambda: udp_packet(0xBEEF), 1),
+                ("marked_udp_with_ip_options_drops", lambda: udp_packet(0xBEEF, ihl_words=6), 1),
                 ("ordinary_udp_passes", lambda: udp_packet(0x1234), 2),
                 ("truncated_udp_passes", lambda: udp_packet(0xBEEF, truncate_udp_to=7), 2),
                 ("tcp_passes", tcp_packet, 2),
