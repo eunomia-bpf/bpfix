@@ -10,8 +10,8 @@ change loaders, rewrite source code, or run a patched kernel.
 Primary users:
 
 - kernel/eBPF developers debugging verifier rejections locally
-- CI systems that want structured failure annotations
-- editor or agent integrations that need machine-readable verifier diagnostics
+- CI systems that want stable diagnostic artifacts
+- editor or agent integrations that consume plain-text verifier diagnostics
 - benchmark/evaluation scripts using `bpfix-bench`
 
 ## Product Use Cases
@@ -24,8 +24,8 @@ The main user-visible workflows are:
 - local debugger: paste or pipe a `bpftool`, libbpf, Aya, BCC, or build log and
   get the rejected operation, required verifier proof, and concrete `help`
   guidance
-- CI annotator: run BPFix on failed verifier logs and publish stable JSON as
-  build annotations, review comments, or artifacts
+- CI annotator: run BPFix on failed verifier logs and publish plain-text
+  diagnostics as build annotations, review comments, or artifacts
 - editor/agent backend: expose diagnostic spans, verifier evidence, and
   machine-readable failure classes to tools that can show or reason over them
 - maintainer triage aid: distinguish source bugs from environment problems,
@@ -44,7 +44,7 @@ of these surfaces:
 - accepting logs from real eBPF workflows without custom wrappers
 - better localization of the rejected source or bytecode site
 - clearer proof-oriented `help` messages
-- stable JSON for CI, editors, and agents
+- stable plain-text diagnostics for CI, editors, and agents
 - examples that users can run outside the benchmark harness
 
 Pure evaluation work belongs in `docs/evaluation/` until it is connected to one
@@ -53,7 +53,7 @@ of those user-visible surfaces.
 ## Documentation Surfaces
 
 - `README.md`: user-facing overview, quick start, examples, current status
-- `docs/open-source-tool-design.md`: public CLI, JSON, and product boundaries
+- `docs/open-source-tool-design.md`: public CLI and product boundaries
 - `bpfix-bench/README.md`: replayable benchmark setup and validation
 - `docs/project-status.md`: roadmap and current implementation status
 
@@ -118,7 +118,7 @@ exit status after rendering: it exits with code 2 for `unsupported_input` or
 Docker execution, if supported, must be an explicit option such as `--docker`;
 benchmark YAML and repository workspace analysis also stay outside the
 positional argument. Plain text is the default because the common path is human
-debugging; JSON is opt-in for CI, editors, and agents.
+debugging; there is no public JSON output mode.
 
 ## Input Policy
 

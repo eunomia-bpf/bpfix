@@ -35,12 +35,9 @@ help:
 	@echo "  make bpfix-test-audit  Audit bpfix-test fixture structure and prompts"
 	@echo "                          Optional: SPLIT=... MANIFEST=... SMOKE=1 for custom clean oracles"
 	@echo "  make bpfix-test-smoke  Validate bpfix-test fixtures and buggy rejects"
+	@echo "  make bpfix-test-main-gate Run the combined 61-case bpfix-test gate"
 	@echo "  make bpfix-test-real-seed-candidate-gate Audit real-project seed staging candidates"
 	@echo "  make bpfix-test-dev40-gate   Run the full dev40 split quality gate"
-	@echo "  make bpfix-test-clean60-gate Run the clean60 heldout gate; fails until admitted"
-	@echo "  make bpfix-test-clean60-paper-gate PROMPT_MANIFEST=... Run clean60 admission + prompt gates"
-	@echo "  make bpfix-test-prompt-gate PROMPT_MANIFEST=... Verify clean60 prompt manifest"
-	@echo "  make bpfix-test-result-gate RESULT_SUMMARIES='...' PROMPT_MANIFEST=... Run clean60 admission, prompt, and result gates"
 	@echo "  make release-check     Run packaging, example, benchmark, and object-analysis gates"
 	@echo ""
 	@echo "Utilities"
@@ -70,12 +67,12 @@ fmt:
 .PHONY: cli
 cli:
 	@echo "[cli] Running bpfix on $(CASE)..."
-	cd $(CURDIR) && $(CARGO) run -p bpfix -- $(CASE) --format both
+	cd $(CURDIR) && $(CARGO) run -p bpfix -- $(CASE)
 
 .PHONY: bench-smoke
 bench-smoke:
 	@echo "[bench-smoke] Running bpfix benchmark smoke case..."
-	cd $(CURDIR) && $(CARGO) run -q -p bpfix -- bpfix-bench/cases/stackoverflow-60053570/replay-verifier.log --format json
+	cd $(CURDIR) && $(CARGO) run -q -p bpfix -- bpfix-bench/cases/stackoverflow-60053570/replay-verifier.log
 
 .PHONY: bench-eval
 bench-eval:
@@ -91,6 +88,12 @@ bpfix-test-smoke:
 bpfix-test-audit:
 	@echo "[bpfix-test-audit] Auditing LLM repair stress fixtures..."
 	cd $(CURDIR) && python3 bpfix-test/tools/audit_cases.py $(BPFIX_TEST_AUDIT_ARGS)
+
+.PHONY: bpfix-test-main-gate
+bpfix-test-main-gate:
+	@echo "[bpfix-test-main-gate] Auditing combined bpfix-test working suite..."
+	cd $(CURDIR) && python3 bpfix-test/tools/audit_cases.py \
+		--split bpfix-test/splits/main.txt
 
 .PHONY: bpfix-test-dev40-gate
 bpfix-test-dev40-gate:
@@ -137,9 +140,9 @@ bpfix-test-clean60-paper-gate: bpfix-test-clean60-gate bpfix-test-prompt-gate
 
 .PHONY: bpfix-test-result-gate
 bpfix-test-result-gate:
-	@test -n "$(RESULT_SUMMARIES)" || (echo "Set RESULT_SUMMARIES to clean60 summary.json paths"; exit 2)
-	@test -n "$(PROMPT_MANIFEST)" || (echo "Set PROMPT_MANIFEST to the clean60 prompt manifest"; exit 2)
-	@echo "[bpfix-test-result-gate] Running clean60 admission, prompt, and result gates..."
+	@test -n "$(RESULT_SUMMARIES)" || (echo "Set RESULT_SUMMARIES to legacy clean60 summary.json paths"; exit 2)
+	@test -n "$(PROMPT_MANIFEST)" || (echo "Set PROMPT_MANIFEST to the legacy clean60 prompt manifest"; exit 2)
+	@echo "[bpfix-test-result-gate] Running legacy clean60 admission, prompt, and result gates..."
 	$(MAKE) bpfix-test-clean60-paper-gate PROMPT_MANIFEST=$(PROMPT_MANIFEST)
 	cd $(CURDIR) && python3 bpfix-test/tools/audit_results.py \
 		--split bpfix-test/splits/clean60.txt \
@@ -148,7 +151,7 @@ bpfix-test-result-gate:
 		--required-mode source-only \
 		--required-mode raw \
 		--required-mode trimmed-raw \
-		--required-mode structured \
+		--required-mode bpfix \
 		$(RESULT_SUMMARIES)
 
 .PHONY: release-check

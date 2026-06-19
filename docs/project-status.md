@@ -69,7 +69,7 @@ The architectural consequence is:
 - `bpfanalysis` stays a neutral analysis library for verifier logs, bytecode,
   CFGs, and low-level program facts.
 - `bpfix` owns the product diagnostic layer: required proof, failure class,
-  source labels, notes, help text, and JSON rendering.
+  source labels, notes, help text, and plain-text rendering.
 - Evaluation should measure whether users can understand the missing verifier
   proof and relevant code region, not only whether a terminal error string was
   classified correctly.
