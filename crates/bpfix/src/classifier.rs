@@ -491,10 +491,7 @@ impl VerifierRejectionKind {
                 ProofObligation::PointerProvenance,
                 "source_bug",
                 "pointer type proof is missing",
-                &[
-                    "Avoid integer casts or arithmetic that turn the pointer into a scalar before the access.",
-                    "Recompute the pointer from a verifier-tracked base after scalar manipulation.",
-                ],
+                &["Keep the final access on a verifier-tracked pointer; rederive it from a checked base after scalar work."],
             ),
             Self::LoopBound => Classification::supported(
                 "BPFIX-E018",

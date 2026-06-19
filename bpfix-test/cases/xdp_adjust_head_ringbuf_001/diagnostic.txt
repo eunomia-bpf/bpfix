@@ -19,5 +19,5 @@ error[BPFIX-E011]: skb/xdp packet pointer is reused after a helper invalidates i
    = note: parsed 27 verifier state snapshots
    = note[verifier-state]: verifier state shows this register previously held an skb/xdp packet pointer, but an intervening packet-mutating helper invalidated that pointer before the rejected memory access
    = required proof: preserve pointer provenance by reacquiring and rechecking the skb/xdp packet pointer after the helper that invalidates existing packet data pointers
-help: Preserve pointer provenance across the failing path, or rederive the pointer from a checked base immediately before dereferencing it.
+help: Reacquire a verifier-tracked pointer before the rejected dereference.
 help: After the packet-mutating helper, reload data/data_end, account for any head adjustment, recheck bounds, and derive a fresh packet pointer.

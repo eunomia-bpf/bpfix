@@ -85,10 +85,9 @@ error[BPFIX-E006]: verifier-visible compiler lowering hides the required proof
    = note: parsed 60 verifier state snapshots
    = note[lowering]: compiler-lowered control flow hides an established packet-pointer proof
    = required proof: preserve a verifier-recognized pointer type at the operation that requires a pointer
-help: Preserve pointer provenance across the failing path, or rederive the pointer from a checked base immediately before dereferencing it.
-help: Keep the checked packet pointer derivation in the same verifier-visible path as the dereference, or rederive it from a checked base immediately before use.
-help: Avoid integer casts or arithmetic that turn the pointer into a scalar before the access.
-help: Recompute the pointer from a verifier-tracked base after scalar manipulation.
+help: Reacquire a verifier-tracked pointer before the rejected dereference.
+help: Use the packet pointer that received the data_end proof, or rederive and recheck it before the load.
+help: Keep the final access on a verifier-tracked pointer; rederive it from a checked base after scalar work.
 ```
 
 This is the kind of failure that motivates the project: the program is not
@@ -212,8 +211,8 @@ scripts that remain under `bpfix-bench/tools/` are benchmark replay and corpus
 maintenance helpers, not a second BPFix implementation and not part of the
 public CLI.
 
-The public CLI/JSON design lives in `docs/open-source-tool-design.md`, and the
-full user workflow is in `docs/user-guide.md`. Benchmark methodology and
+The public CLI design lives in `docs/open-source-tool-design.md`, and the full
+user workflow is in `docs/user-guide.md`. Benchmark methodology and
 project planning notes live under `docs/evaluation/` and
 `docs/project-status.md`; they are supporting material, not required reading for
 normal use.
@@ -316,7 +315,7 @@ crates/bpfanalysis Rust analysis library
 crates/bpfix       user-facing CLI
 docs/project-status.md project planning and benchmark notes
 docs/user-guide.md    install, getting logs, output, and CI usage
-docs/open-source-tool-design.md public CLI and JSON contract
+docs/open-source-tool-design.md public CLI contract
 examples/          bpftool, libbpf, Aya, BCC, CI, and editor integration snippets
 docs/evaluation/   benchmark and metric notes
 bpfix-bench/tools/ benchmark replay and corpus-maintenance tools

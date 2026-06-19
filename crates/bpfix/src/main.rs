@@ -431,7 +431,7 @@ fn add_proof_event_help(help: &mut Vec<String>, events: &[diagnostic::ProofEvent
         if event.obligation == ProofObligation::PointerProvenance {
             insert_help(
                 help,
-                "Preserve pointer provenance across the failing path, or rederive the pointer from a checked base immediately before dereferencing it.",
+                "Reacquire a verifier-tracked pointer before the rejected dereference.",
             );
         }
     }
