@@ -10,12 +10,16 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools"))
 from bpf_case import run_case
 
 
-def packet(selector: int) -> bytes:
-    return bytes([selector]) + (b"\x00" * 63)
+def packet(tenant: int, selector: int) -> bytes:
+    return bytes([tenant, selector]) + (b"\x00" * 62)
 
 
 def key64(value: int) -> bytes:
     return value.to_bytes(8, "little")
+
+
+def cgroup_key(tenant: int, selector: int) -> bytes:
+    return key64((tenant << 32) | selector)
 
 
 def tracked_value(value: int) -> bytes:
@@ -74,18 +78,25 @@ if __name__ == "__main__":
             functional_tests=[
                 (
                     "tracked_child_drops",
-                    lambda: packet(7),
+                    lambda: packet(3, 7),
                     1,
-                    [("tracked_cgroups", key64(7), tracked_value(1))],
+                    [("tracked_cgroups", cgroup_key(3, 7), tracked_value(1))],
                 ),
                 (
                     "tracked_zero_value_passes",
-                    lambda: packet(8),
+                    lambda: packet(3, 8),
                     2,
-                    [("tracked_cgroups", key64(8), tracked_value(0))],
+                    [("tracked_cgroups", cgroup_key(3, 8), tracked_value(0))],
                 ),
-                ("untracked_child_passes", lambda: packet(9), 2),
-                ("zero_selector_passes", lambda: packet(0), 2),
+                (
+                    "same_child_different_tenant_passes",
+                    lambda: packet(4, 7),
+                    2,
+                    [("tracked_cgroups", cgroup_key(3, 7), tracked_value(1))],
+                ),
+                ("direct_target_drops_without_map", lambda: packet(0x42, 7), 1),
+                ("untracked_child_passes", lambda: packet(3, 9), 2),
+                ("zero_selector_passes", lambda: packet(3, 0), 2),
             ],
             required_success_substrings=[
                 "call bpf_map_lookup_elem#1",

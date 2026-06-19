@@ -22,23 +22,23 @@ struct {
 
 const volatile bool filter_cgroup = true;
 const volatile bool filter_cgroup_children = true;
-const volatile __u64 target_cgroup_id = 0x42;
+const volatile __u64 target_cgroup_id = (0x42ULL << 32) | 0x07;
 volatile __u64 child_hit_count;
 volatile __u32 last_child_selector;
 
-static __always_inline int datrail_is_cgroup_tracked_from_packet(__u8 selector)
+static __always_inline int datrail_is_cgroup_tracked_from_packet(__u8 tenant, __u8 selector)
 {
     if (!filter_cgroup)
         return 1;
 
-    __u64 current_cgroup_id = selector;
+    __u64 current_cgroup_id = ((__u64)tenant << 32) | selector;
     if (current_cgroup_id == target_cgroup_id)
         return 1;
 
     if (!filter_cgroup_children)
         return 0;
 
-    __u64 child_cgroup_id = selector;
+    __u64 child_cgroup_id = ((__u64)tenant << 32) | selector;
     __u8 *tracked = bpf_map_lookup_elem(&tracked_cgroups, &child_cgroup_id);
 
     if (!tracked)
@@ -58,14 +58,15 @@ int rs_datrail_cgroup_filter_key_width(struct xdp_md *ctx)
     void *data = (void *)(long)ctx->data;
     void *data_end = (void *)(long)ctx->data_end;
 
-    if (data + 1 > data_end)
+    if (data + 2 > data_end)
         return XDP_PASS;
 
-    __u8 selector = *(__u8 *)data;
+    __u8 tenant = *(__u8 *)data;
+    __u8 selector = *((__u8 *)data + 1);
     if (selector == 0)
         return XDP_PASS;
 
-    if (!datrail_is_cgroup_tracked_from_packet(selector))
+    if (!datrail_is_cgroup_tracked_from_packet(tenant, selector))
         return XDP_PASS;
 
     datrail_update_agg(selector);

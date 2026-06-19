@@ -16,15 +16,19 @@ harness so the oracle can run deterministic packets.
 It is a minimized mutation of that workflow, not a claim that the upstream
 DatRail source contains this exact bug.
 
-The bug narrows the child cgroup id into a 32-bit stack slot, then passes that
-address to `bpf_map_lookup_elem()` for a map whose key is 64 bits. The verifier
-therefore rejects an 8-byte helper read from a stack slot that only has a
-4-byte initialization proof. The final error points at the helper's indirect
-stack read, but the source mistake is the key-width proof loss before the map
-lookup.
+The harness models a tenant-scoped child-cgroup table: the packet carries a
+tenant byte and a child selector byte, and the child lookup key is the 64-bit
+pair `(tenant << 32) | selector`. The bug narrows the child lookup key into a
+32-bit stack slot, then passes that address to `bpf_map_lookup_elem()` for a map
+whose key is 64 bits. The verifier therefore rejects an 8-byte helper read from
+a stack slot that only has a 4-byte initialization proof. The final error points
+at the helper's indirect stack read, but the source mistake is the key-width
+proof loss before the tenant-scoped map lookup.
 
-A correct repair must initialize a 64-bit key for the child lookup while
-preserving the `filter_cgroup_children` workflow, the `tracked_cgroups` map
-lookup, packet-driven allow/drop behavior, and the aggregate state update on
-tracked children. Removing the lookup, changing the map schema, or returning a
-constant action is not a valid repair.
+A correct repair must initialize the same tenant-scoped 64-bit key for the child
+lookup while preserving the `filter_cgroup_children` workflow, the
+`tracked_cgroups` map lookup, packet-driven allow/drop behavior, and the
+aggregate state update on tracked children. Merely widening the selector to
+64 bits without carrying the tenant namespace loads but breaks the oracle.
+Removing the lookup, changing the map schema, or returning a constant action is
+not a valid repair.
