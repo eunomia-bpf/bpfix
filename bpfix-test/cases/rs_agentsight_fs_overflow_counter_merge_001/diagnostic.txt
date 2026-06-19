@@ -3,18 +3,18 @@ error[BPFIX-E002]: nullable pointer is used before the verifier sees a non-null 
   = confidence: medium
   = diagnostic: supported, help: repair_hint, span: exact_pc
   = next action: null
-  --> buggy.bpf.c:119
+  --> buggy.bpf.c:123
    |
  84 | if (event_selector == 0)
     | ------------------------ nearby source context for nullable pointer
-112 | __u64 *overflow = bpf_map_lookup_elem(&agg_overflow_count, &zero);
+120 | overflow = bpf_map_lookup_elem(&agg_overflow_count, &shadow_zero);
     | ------------------------------------------------------------------ nearby source context for nullable pointer
-119 | __sync_fetch_and_add(overflow, 1);
+123 | __sync_fetch_and_add(overflow, 1);
     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ nullable pointer reaches this use without a non-null proof
    |
-   = verifier[366]: R1 invalid mem access 'map_value_or_null'
-   = note: nearest BPF instruction pc 128
-   = note: parsed 109 verifier state snapshots
+   = verifier[367]: R1 invalid mem access 'map_value_or_null'
+   = note: nearest BPF instruction pc 136
+   = note: parsed 108 verifier state snapshots
    = note[verifier-state]: verifier state shows the rejected pointer register is still a nullable helper result at the dereference, arithmetic, or helper-use site
    = required proof: prove the nullable helper result is non-null in the same verifier-visible branch as this use
 help: Check the helper result for null and keep the dereference, pointer arithmetic, or helper argument inside the same verifier-visible non-null branch.

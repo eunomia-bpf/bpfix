@@ -1,12 +1,12 @@
 libbpf: loading object from <work-dir>/prog.o
-libbpf: elf: section(3) xdp, size 1056, link 0, flags 6, type=1
-libbpf: sec 'xdp': found program 'rs_agentsight_fs_overflow_counter_merge' at insn offset 0 (0 bytes), code size 132 insns (1056 bytes)
-libbpf: elf: section(4) .relxdp, size 48, link 27, flags 40, type=9
+libbpf: elf: section(3) xdp, size 1120, link 0, flags 6, type=1
+libbpf: sec 'xdp': found program 'rs_agentsight_fs_overflow_counter_merge' at insn offset 0 (0 bytes), code size 140 insns (1120 bytes)
+libbpf: elf: section(4) .relxdp, size 64, link 27, flags 40, type=9
 libbpf: elf: section(5) license, size 4, link 0, flags 3, type=1
 libbpf: license of <work-dir>/prog.o is GPL
 libbpf: elf: section(6) .maps, size 64, link 0, flags 3, type=1
-libbpf: elf: section(17) .BTF, size 2317, link 0, flags 0, type=1
-libbpf: elf: section(19) .BTF.ext, size 1196, link 0, flags 0, type=1
+libbpf: elf: section(17) .BTF, size 2469, link 0, flags 0, type=1
+libbpf: elf: section(19) .BTF.ext, size 1244, link 0, flags 0, type=1
 libbpf: elf: section(27) .symtab, size 672, link 1, flags 0, type=2
 libbpf: looking for externs among 28 symbols...
 libbpf: collected 0 externs total
@@ -27,6 +27,8 @@ libbpf: sec '.relxdp': relo #1: insn #108 against 'event_agg_map'
 libbpf: prog 'rs_agentsight_fs_overflow_counter_merge': found map 0 (event_agg_map, sec 6, off 0) for insn #108
 libbpf: sec '.relxdp': relo #2: insn #119 against 'agg_overflow_count'
 libbpf: prog 'rs_agentsight_fs_overflow_counter_merge': found map 1 (agg_overflow_count, sec 6, off 32) for insn #119
+libbpf: sec '.relxdp': relo #3: insn #130 against 'agg_overflow_count'
+libbpf: prog 'rs_agentsight_fs_overflow_counter_merge': found map 1 (agg_overflow_count, sec 6, off 32) for insn #130
 libbpf: object 'prog': failed (-95) to create BPF token from '/sys/fs/bpf', skipping optional step...
 libbpf: loaded kernel BTF from '/sys/kernel/btf/vmlinux'
 libbpf: sec 'xdp': found 2 CO-RE relocations
@@ -163,21 +165,28 @@ Live regs before insn:
 119: ..2...6... (18) r1 = 0xffff000000000000
 121: .12...6... (85) call bpf_map_lookup_elem#1
 122: 0.....6... (bf) r1 = r0
-123: .1....6... (57) r6 &= 1
-124: .1....6... (15) if r6 == 0x0 goto pc+1
-125: .1........ (15) if r1 == 0x0 goto pc+4
-126: .1........ (b7) r0 = 1
-127: 01........ (b7) r2 = 1
-128: 012....... (db) lock *(u64 *)(r1 +0) += r2
-129: 0......... (05) goto pc-35
-130: .......... (b7) r0 = 2
-131: 0......... (05) goto pc-37
+123: .1....6... (15) if r1 == 0x0 goto pc+14
+124: .1....6... (bf) r2 = r6
+125: .12...6... (57) r2 &= 1
+126: .12...6... (15) if r2 == 0x0 goto pc+7
+127: ......6... (63) *(u32 *)(r10 -48) = r6
+128: .......... (bf) r2 = r10
+129: ..2....... (07) r2 += -48
+130: ..2....... (18) r1 = 0xffff000000000000
+132: .12....... (85) call bpf_map_lookup_elem#1
+133: 0......... (bf) r1 = r0
+134: .1........ (b7) r0 = 1
+135: 01........ (b7) r2 = 1
+136: 012....... (db) lock *(u64 *)(r1 +0) += r2
+137: 0......... (05) goto pc-43
+138: .......... (b7) r0 = 2
+139: 0......... (05) goto pc-45
 0: R1=ctx() R10=fp0
-; int rs_agentsight_fs_overflow_counter_merge(struct xdp_md *ctx) @ buggy.bpf.c:126
+; int rs_agentsight_fs_overflow_counter_merge(struct xdp_md *ctx) @ buggy.bpf.c:130
 0: (b7) r0 = 2                        ; R0_w=2
-; void *data_end = (void *)(long)ctx->data_end; @ buggy.bpf.c:129
+; void *data_end = (void *)(long)ctx->data_end; @ buggy.bpf.c:133
 1: (61) r2 = *(u32 *)(r1 +4)          ; R1=ctx() R2_w=pkt_end()
-; void *data = (void *)(long)ctx->data; @ buggy.bpf.c:128
+; void *data = (void *)(long)ctx->data; @ buggy.bpf.c:132
 2: (61) r4 = *(u32 *)(r1 +0)          ; R1=ctx() R4_w=pkt(r=0)
 ; if (data + 3 + MAX_FILENAME_LEN > data_end) @ buggy.bpf.c:76
 3: (bf) r1 = r4                       ; R1_w=pkt(r=0) R4_w=pkt(r=0)
@@ -342,7 +351,7 @@ mark_precise: frame0: regs=r4 stack= before 28: (b7) r4 = 0
 92: (73) *(u8 *)(r1 +22) = r2         ; R1_w=map_value(map=event_agg_map,ks=16,vs=24) R2_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
 93: (71) r2 = *(u8 *)(r10 -1)         ; R2_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R10=fp0 fp-8=mmmmmmmm
 94: (73) *(u8 *)(r1 +23) = r2         ; R1=map_value(map=event_agg_map,ks=16,vs=24) R2=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
-; return aggregate_path_event(data, data_end); @ buggy.bpf.c:131
+; return aggregate_path_event(data, data_end); @ buggy.bpf.c:135
 95: (95) exit
 
 from 74 to 96: R0_w=0 R1_w=0 R6=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R7=scalar(id=1,smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=0 R9=15 R10=fp0 fp-8=mmmmmmmm fp-16=mmmmscalar(id=1,smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
@@ -382,34 +391,28 @@ mark_precise: frame0: regs=r1 stack= before 115: (b7) r1 = 0
 119: (18) r1 = 0xffff000000000000     ; R1_w=map_ptr(map=agg_overflow_co,ks=4,vs=8)
 121: (85) call bpf_map_lookup_elem#1          ; R0=map_value_or_null(id=6,map=agg_overflow_co,ks=4,vs=8)
 122: (bf) r1 = r0                     ; R0=map_value_or_null(id=6,map=agg_overflow_co,ks=4,vs=8) R1_w=map_value_or_null(id=6,map=agg_overflow_co,ks=4,vs=8)
-; if (guarded_overflow & 1) { @ buggy.bpf.c:114
-123: (57) r6 &= 1                     ; R6_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=1,var_off=(0x0; 0x1))
-124: (15) if r6 == 0x0 goto pc+1      ; R6_w=1
-125: (15) if r1 == 0x0 goto pc+4      ; R1_w=map_value(map=agg_overflow_co,ks=4,vs=8)
-126: (b7) r0 = 1                      ; R0_w=1
-; __sync_fetch_and_add(overflow, 1); @ buggy.bpf.c:119
-127: (b7) r2 = 1                      ; R2_w=1
-128: (db) lock *(u64 *)(r1 +0) += r2          ; R1_w=map_value(map=agg_overflow_co,ks=4,vs=8) R2_w=1
-129: (05) goto pc-35
-95: safe
-
-from 125 to 130: R0=0 R1=0 R6=1 R7=scalar(id=1,smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=0 R9=15 R10=fp0 fp-8=mmmmmmmm fp-16=mmmmscalar(id=1,smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) fp-24=scalar(id=4) fp-32=scalar(id=1,smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) fp-40=1 fp-48=0000????
-130: R0=0 R1=0 R6=1 R7=scalar(id=1,smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=0 R9=15 R10=fp0 fp-8=mmmmmmmm fp-16=mmmmscalar(id=1,smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) fp-24=scalar(id=4) fp-32=scalar(id=1,smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) fp-40=1 fp-48=0000????
-130: (b7) r0 = 2                      ; R0_w=2
-131: (05) goto pc-37
-95: safe
-
-from 124 to 126: R0=map_value_or_null(id=6,map=agg_overflow_co,ks=4,vs=8) R1_w=map_value_or_null(id=6,map=agg_overflow_co,ks=4,vs=8) R6_w=0 R7=scalar(id=1,smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=0 R9=15 R10=fp0 fp-8=mmmmmmmm fp-16=mmmmscalar(id=1,smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) fp-24=scalar(id=4) fp-32=scalar(id=1,smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) fp-40=1 fp-48=0000????
-126: R0=map_value_or_null(id=6,map=agg_overflow_co,ks=4,vs=8) R1_w=map_value_or_null(id=6,map=agg_overflow_co,ks=4,vs=8) R6_w=0 R7=scalar(id=1,smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8=0 R9=15 R10=fp0 fp-8=mmmmmmmm fp-16=mmmmscalar(id=1,smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) fp-24=scalar(id=4) fp-32=scalar(id=1,smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) fp-40=1 fp-48=0000????
-; if (guarded_overflow & 1) { @ buggy.bpf.c:114
-126: (b7) r0 = 1                      ; R0_w=1
-; __sync_fetch_and_add(overflow, 1); @ buggy.bpf.c:119
-127: (b7) r2 = 1                      ; R2_w=1
-128: (db) lock *(u64 *)(r1 +0) += r2
+; if (!overflow) @ buggy.bpf.c:114
+123: (15) if r1 == 0x0 goto pc+14     ; R1_w=map_value(map=agg_overflow_co,ks=4,vs=8)
+; if (guarded_overflow & 1) { @ buggy.bpf.c:117
+124: (bf) r2 = r6                     ; R2_w=scalar(id=7,smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R6=scalar(id=7,smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+125: (57) r2 &= 1                     ; R2_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=1,var_off=(0x0; 0x1))
+126: (15) if r2 == 0x0 goto pc+7      ; R2_w=1
+; __u32 shadow_zero = guarded_overflow; @ buggy.bpf.c:118
+127: (63) *(u32 *)(r10 -48) = r6      ; R6=scalar(id=7,smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R10=fp0 fp-48=0000scalar(id=7,smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+128: (bf) r2 = r10                    ; R2_w=fp0 R10=fp0
+129: (07) r2 += -48                   ; R2_w=fp-48
+; overflow = bpf_map_lookup_elem(&agg_overflow_count, &shadow_zero); @ buggy.bpf.c:120
+130: (18) r1 = 0xffff000000000000     ; R1_w=map_ptr(map=agg_overflow_co,ks=4,vs=8)
+132: (85) call bpf_map_lookup_elem#1          ; R0=map_value_or_null(id=8,map=agg_overflow_co,ks=4,vs=8)
+133: (bf) r1 = r0                     ; R0=map_value_or_null(id=8,map=agg_overflow_co,ks=4,vs=8) R1_w=map_value_or_null(id=8,map=agg_overflow_co,ks=4,vs=8)
+134: (b7) r0 = 1                      ; R0_w=1
+; __sync_fetch_and_add(overflow, 1); @ buggy.bpf.c:123
+135: (b7) r2 = 1                      ; R2_w=1
+136: (db) lock *(u64 *)(r1 +0) += r2
 R1 invalid mem access 'map_value_or_null'
 verification time 0 usec
 stack depth 48
-processed 127 insns (limit 1000000) max_states_per_insn 0 total_states 9 peak_states 9 mark_read 7
+processed 126 insns (limit 1000000) max_states_per_insn 0 total_states 9 peak_states 9 mark_read 7
 -- END PROG LOAD LOG --
 libbpf: prog 'rs_agentsight_fs_overflow_counter_merge': failed to load: -EACCES
 libbpf: failed to load object '<work-dir>/prog.o'
