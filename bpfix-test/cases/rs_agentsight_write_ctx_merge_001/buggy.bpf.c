@@ -120,9 +120,13 @@ int rs_agentsight_write_ctx_merge(struct xdp_md *ctx)
         return XDP_PASS;
 
     fd_ptr = bpf_map_lookup_elem(&write_ctx_map, &id);
-    if (guarded & 1) {
-        if (!fd_ptr)
-            return XDP_PASS;
+    if (!fd_ptr)
+        return XDP_PASS;
+
+    if (!(guarded & 1)) {
+        __u64 shadow_id = id + bytes[4];
+
+        fd_ptr = bpf_map_lookup_elem(&write_ctx_map, &shadow_id);
     }
 
     fd = *fd_ptr;
