@@ -43,10 +43,15 @@ int rs_actplane_policy_map_merge(struct __sk_buff *skb)
 
     proto = bpf_ntohs(eth->h_proto);
     policy = bpf_map_lookup_elem(&policy_map, &key);
+    if (!policy)
+        return TC_ACT_OK;
+
     if (proto == ETH_P_IP) {
-        if (!policy)
-            return TC_ACT_OK;
         policy->seen_ipv4 += 1;
+    } else {
+        __u32 shadow_key = proto;
+
+        policy = bpf_map_lookup_elem(&policy_map, &shadow_key);
     }
 
     return policy->drop_proto == proto ? TC_ACT_SHOT : TC_ACT_OK;

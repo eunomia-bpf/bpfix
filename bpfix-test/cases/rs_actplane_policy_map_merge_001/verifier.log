@@ -1,14 +1,14 @@
 libbpf: loading object from <work-dir>/prog.o
-libbpf: elf: section(3) tc, size 208, link 0, flags 6, type=1
-libbpf: sec 'tc': found program 'rs_actplane_policy_map_merge' at insn offset 0 (0 bytes), code size 26 insns (208 bytes)
-libbpf: elf: section(4) .reltc, size 16, link 26, flags 40, type=9
+libbpf: elf: section(3) tc, size 272, link 0, flags 6, type=1
+libbpf: sec 'tc': found program 'rs_actplane_policy_map_merge' at insn offset 0 (0 bytes), code size 34 insns (272 bytes)
+libbpf: elf: section(4) .reltc, size 32, link 26, flags 40, type=9
 libbpf: elf: section(5) .maps, size 32, link 0, flags 3, type=1
 libbpf: elf: section(6) license, size 4, link 0, flags 3, type=1
 libbpf: license of <work-dir>/prog.o is GPL
-libbpf: elf: section(16) .BTF, size 2305, link 0, flags 0, type=1
-libbpf: elf: section(18) .BTF.ext, size 348, link 0, flags 0, type=1
-libbpf: elf: section(26) .symtab, size 408, link 1, flags 0, type=2
-libbpf: looking for externs among 17 symbols...
+libbpf: elf: section(16) .BTF, size 2399, link 0, flags 0, type=1
+libbpf: elf: section(18) .BTF.ext, size 380, link 0, flags 0, type=1
+libbpf: elf: section(26) .symtab, size 432, link 1, flags 0, type=2
+libbpf: looking for externs among 18 symbols...
 libbpf: collected 0 externs total
 libbpf: map 'policy_map': at sec_idx 5, offset 0.
 libbpf: map 'policy_map': found type = 1.
@@ -18,6 +18,8 @@ libbpf: map 'policy_map': found max_entries = 16.
 libbpf: sec '.reltc': collecting relocation for section(3) 'tc'
 libbpf: sec '.reltc': relo #0: insn #10 against 'policy_map'
 libbpf: prog 'rs_actplane_policy_map_merge': found map 0 (policy_map, sec 5, off 0) for insn #10
+libbpf: sec '.reltc': relo #1: insn #24 against 'policy_map'
+libbpf: prog 'rs_actplane_policy_map_merge': found map 0 (policy_map, sec 5, off 0) for insn #24
 libbpf: object 'prog': failed (-95) to create BPF token from '/sys/fs/bpf', skipping optional step...
 libbpf: loaded kernel BTF from '/sys/kernel/btf/vmlinux'
 libbpf: sec 'tc': found 3 CO-RE relocations
@@ -43,25 +45,32 @@ Live regs before insn:
   3: .12...6... (63) *(u32 *)(r10 -4) = r6
   4: .12...6... (bf) r3 = r1
   5: .123..6... (07) r3 += 14
-  6: .123..6... (2d) if r3 > r2 goto pc+17
-  7: .1....6... (69) r7 = *(u16 *)(r1 +12)
-  8: ......67.. (bf) r2 = r10
-  9: ..2...67.. (07) r2 += -4
- 10: ..2...67.. (18) r1 = 0xffff000000000000
- 12: .12...67.. (85) call bpf_map_lookup_elem#1
- 13: 0.....67.. (55) if r7 != 0x8 goto pc+4
- 14: 0.....67.. (15) if r0 == 0x0 goto pc+9
- 15: 0......7.. (61) r1 = *(u32 *)(r0 +4)
- 16: 01.....7.. (07) r1 += 1
- 17: 01.....7.. (63) *(u32 *)(r0 +4) = r1
- 18: 0......7.. (dc) r7 = be16 r7
- 19: 0......7.. (61) r1 = *(u32 *)(r0 +0)
- 20: .1.....7.. (b7) r6 = 1
- 21: .1....67.. (1d) if r1 == r7 goto pc+1
- 22: .......... (b7) r6 = 0
- 23: ......6... (67) r6 <<= 1
- 24: ......6... (bf) r0 = r6
- 25: 0......... (95) exit
+  6: .123..6... (2d) if r3 > r2 goto pc+25
+  7: .1....6... (69) r8 = *(u16 *)(r1 +12)
+  8: ......6.8. (bf) r2 = r10
+  9: ..2...6.8. (07) r2 += -4
+ 10: ..2...6.8. (18) r1 = 0xffff000000000000
+ 12: .12...6.8. (85) call bpf_map_lookup_elem#1
+ 13: 0.....6.8. (15) if r0 == 0x0 goto pc+18
+ 14: 0.......8. (bf) r7 = r8
+ 15: 0......78. (dc) r7 = be16 r7
+ 16: 0......78. (55) if r8 != 0x8 goto pc+4
+ 17: 0......7.. (61) r1 = *(u32 *)(r0 +4)
+ 18: 01.....7.. (07) r1 += 1
+ 19: 01.....7.. (63) *(u32 *)(r0 +4) = r1
+ 20: 0......7.. (05) goto pc+6
+ 21: .......7.. (63) *(u32 *)(r10 -8) = r7
+ 22: .......7.. (bf) r2 = r10
+ 23: ..2....7.. (07) r2 += -8
+ 24: ..2....7.. (18) r1 = 0xffff000000000000
+ 26: .12....7.. (85) call bpf_map_lookup_elem#1
+ 27: 0......7.. (61) r1 = *(u32 *)(r0 +0)
+ 28: .1.....7.. (b7) r6 = 1
+ 29: .1....67.. (1d) if r1 == r7 goto pc+1
+ 30: .......... (b7) r6 = 0
+ 31: ......6... (67) r6 <<= 1
+ 32: ......6... (bf) r0 = r6
+ 33: 0......... (95) exit
 0: R1=ctx() R10=fp0
 ; void *data_end = (void *)(long)skb->data_end; @ buggy.bpf.c:35
 0: (61) r2 = *(u32 *)(r1 +80)         ; R1=ctx() R2_w=pkt_end()
@@ -76,57 +85,59 @@ mark_precise: frame0: regs=r6 stack= before 2: (b7) r6 = 0
 ; if ((void *)(eth + 1) > data_end) @ buggy.bpf.c:41
 4: (bf) r3 = r1                       ; R1_w=pkt(r=0) R3_w=pkt(r=0)
 5: (07) r3 += 14                      ; R3_w=pkt(off=14,r=0)
-6: (2d) if r3 > r2 goto pc+17         ; R2_w=pkt_end() R3_w=pkt(off=14,r=14)
+6: (2d) if r3 > r2 goto pc+25         ; R2_w=pkt_end() R3_w=pkt(off=14,r=14)
 ; proto = bpf_ntohs(eth->h_proto); @ buggy.bpf.c:44
-7: (69) r7 = *(u16 *)(r1 +12)         ; R1_w=pkt(r=14) R7_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=0xffff,var_off=(0x0; 0xffff))
+7: (69) r8 = *(u16 *)(r1 +12)         ; R1_w=pkt(r=14) R8_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=0xffff,var_off=(0x0; 0xffff))
 8: (bf) r2 = r10                      ; R2_w=fp0 R10=fp0
 9: (07) r2 += -4                      ; R2_w=fp-4
 ; policy = bpf_map_lookup_elem(&policy_map, &key); @ buggy.bpf.c:45
 10: (18) r1 = 0xffff000000000000      ; R1_w=map_ptr(map=policy_map,ks=4,vs=8)
 12: (85) call bpf_map_lookup_elem#1   ; R0=map_value_or_null(id=1,map=policy_map,ks=4,vs=8)
-; if (proto == ETH_P_IP) { @ buggy.bpf.c:46
-13: (55) if r7 != 0x8 goto pc+4       ; R7=8
-; if (!policy) @ buggy.bpf.c:47
-14: (15) if r0 == 0x0 goto pc+9       ; R0=map_value(map=policy_map,ks=4,vs=8)
-; policy->seen_ipv4 += 1; @ buggy.bpf.c:49
-15: (61) r1 = *(u32 *)(r0 +4)         ; R0=map_value(map=policy_map,ks=4,vs=8) R1_w=scalar(smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000))
-16: (07) r1 += 1                      ; R1_w=scalar(smin=umin=1,smax=umax=0x100000000,var_off=(0x0; 0x1ffffffff))
-17: (63) *(u32 *)(r0 +4) = r1         ; R0=map_value(map=policy_map,ks=4,vs=8) R1_w=scalar(smin=umin=1,smax=umax=0x100000000,var_off=(0x0; 0x1ffffffff))
+; if (!policy) @ buggy.bpf.c:46
+13: (15) if r0 == 0x0 goto pc+18      ; R0=map_value(map=policy_map,ks=4,vs=8)
 ;  @ buggy.bpf.c:0
-18: (dc) r7 = be16 r7                 ; R7_w=scalar()
-; return policy->drop_proto == proto ? TC_ACT_SHOT : TC_ACT_OK; @ buggy.bpf.c:52
-19: (61) r1 = *(u32 *)(r0 +0)         ; R0=map_value(map=policy_map,ks=4,vs=8) R1_w=scalar(smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000))
-20: (b7) r6 = 1                       ; R6=1
-21: (1d) if r1 == r7 goto pc+1        ; R1=scalar(smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) R7=scalar()
-22: (b7) r6 = 0                       ; R6_w=0
-23: (67) r6 <<= 1                     ; R6_w=0
-; } @ buggy.bpf.c:53
-24: (bf) r0 = r6                      ; R0_w=0 R6_w=0
-25: (95) exit
+14: (bf) r7 = r8                      ; R7_w=scalar(id=2,smin=smin32=0,smax=umax=smax32=umax32=0xffff,var_off=(0x0; 0xffff)) R8=scalar(id=2,smin=smin32=0,smax=umax=smax32=umax32=0xffff,var_off=(0x0; 0xffff))
+15: (dc) r7 = be16 r7                 ; R7_w=scalar()
+; if (proto == ETH_P_IP) { @ buggy.bpf.c:49
+16: (55) if r8 != 0x8 goto pc+4       ; R8=8
+; policy->seen_ipv4 += 1; @ buggy.bpf.c:50
+17: (61) r1 = *(u32 *)(r0 +4)         ; R0=map_value(map=policy_map,ks=4,vs=8) R1_w=scalar(smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000))
+18: (07) r1 += 1                      ; R1_w=scalar(smin=umin=1,smax=umax=0x100000000,var_off=(0x0; 0x1ffffffff))
+19: (63) *(u32 *)(r0 +4) = r1         ; R0=map_value(map=policy_map,ks=4,vs=8) R1_w=scalar(smin=umin=1,smax=umax=0x100000000,var_off=(0x0; 0x1ffffffff))
+20: (05) goto pc+6
+; return policy->drop_proto == proto ? TC_ACT_SHOT : TC_ACT_OK; @ buggy.bpf.c:57
+27: (61) r1 = *(u32 *)(r0 +0)         ; R0=map_value(map=policy_map,ks=4,vs=8) R1_w=scalar(smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000))
+28: (b7) r6 = 1                       ; R6_w=1
+29: (1d) if r1 == r7 goto pc+1        ; R1_w=scalar(smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) R7=scalar()
+30: (b7) r6 = 0                       ; R6_w=0
+31: (67) r6 <<= 1                     ; R6_w=0
+; } @ buggy.bpf.c:58
+32: (bf) r0 = r6                      ; R0_w=0 R6_w=0
+33: (95) exit
 
-from 21 to 23: R0=map_value(map=policy_map,ks=4,vs=8) R1=scalar(smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) R6=1 R7=scalar(smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) R10=fp0 fp-8=0000????
-23: R0=map_value(map=policy_map,ks=4,vs=8) R1=scalar(smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) R6=1 R7=scalar(smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) R10=fp0 fp-8=0000????
-; return policy->drop_proto == proto ? TC_ACT_SHOT : TC_ACT_OK; @ buggy.bpf.c:52
-23: (67) r6 <<= 1                     ; R6_w=2
-; } @ buggy.bpf.c:53
-24: (bf) r0 = r6                      ; R0_w=2 R6_w=2
-25: (95) exit
+from 29 to 31: R0=map_value(map=policy_map,ks=4,vs=8) R1_w=scalar(smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) R6_w=1 R7=scalar(smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) R8=8 R10=fp0 fp-8=0000????
+31: R0=map_value(map=policy_map,ks=4,vs=8) R1_w=scalar(smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) R6_w=1 R7=scalar(smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) R8=8 R10=fp0 fp-8=0000????
+; return policy->drop_proto == proto ? TC_ACT_SHOT : TC_ACT_OK; @ buggy.bpf.c:57
+31: (67) r6 <<= 1                     ; R6=2
+; } @ buggy.bpf.c:58
+32: (bf) r0 = r6                      ; R0_w=2 R6=2
+33: (95) exit
 
-from 14 to 24: R0=0 R6=0 R7=8 R10=fp0 fp-8=0000????
-24: R0=0 R6=0 R7=8 R10=fp0 fp-8=0000????
-24: (bf) r0 = r6                      ; R0_w=0 R6=0
-25: (95) exit
-
-from 13 to 18: R0=map_value_or_null(id=1,map=policy_map,ks=4,vs=8) R6=0 R7=scalar(smin=smin32=0,smax=umax=smax32=umax32=0xffff,var_off=(0x0; 0xffff)) R10=fp0 fp-8=0000????
-18: R0=map_value_or_null(id=1,map=policy_map,ks=4,vs=8) R6=0 R7=scalar(smin=smin32=0,smax=umax=smax32=umax32=0xffff,var_off=(0x0; 0xffff)) R10=fp0 fp-8=0000????
-;  @ buggy.bpf.c:0
-18: (dc) r7 = be16 r7                 ; R7_w=scalar()
-; return policy->drop_proto == proto ? TC_ACT_SHOT : TC_ACT_OK; @ buggy.bpf.c:52
-19: (61) r1 = *(u32 *)(r0 +0)
+from 16 to 21: R0=map_value(map=policy_map,ks=4,vs=8) R6=0 R7_w=scalar() R8=scalar(id=2,smin=smin32=0,smax=umax=smax32=umax32=0xffff,var_off=(0x0; 0xffff)) R10=fp0 fp-8=0000????
+21: R0=map_value(map=policy_map,ks=4,vs=8) R6=0 R7_w=scalar() R8=scalar(id=2,smin=smin32=0,smax=umax=smax32=umax32=0xffff,var_off=(0x0; 0xffff)) R10=fp0 fp-8=0000????
+; __u32 shadow_key = proto; @ buggy.bpf.c:52
+21: (63) *(u32 *)(r10 -8) = r7        ; R7_w=scalar() R10=fp0 fp-8=0000scalar()
+22: (bf) r2 = r10                     ; R2_w=fp0 R10=fp0
+23: (07) r2 += -8                     ; R2_w=fp-8
+; policy = bpf_map_lookup_elem(&policy_map, &shadow_key); @ buggy.bpf.c:54
+24: (18) r1 = 0xffff000000000000      ; R1_w=map_ptr(map=policy_map,ks=4,vs=8)
+26: (85) call bpf_map_lookup_elem#1   ; R0_w=map_value_or_null(id=3,map=policy_map,ks=4,vs=8)
+; return policy->drop_proto == proto ? TC_ACT_SHOT : TC_ACT_OK; @ buggy.bpf.c:57
+27: (61) r1 = *(u32 *)(r0 +0)
 R0 invalid mem access 'map_value_or_null'
 verification time 0 usec
 stack depth 8
-processed 32 insns (limit 1000000) max_states_per_insn 0 total_states 3 peak_states 3 mark_read 2
+processed 36 insns (limit 1000000) max_states_per_insn 1 total_states 3 peak_states 3 mark_read 1
 -- END PROG LOAD LOG --
 libbpf: prog 'rs_actplane_policy_map_merge': failed to load: -EACCES
 libbpf: failed to load object '<work-dir>/prog.o'
