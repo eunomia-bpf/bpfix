@@ -11,13 +11,13 @@ Current case inventory:
   `diagnostic.txt`, and `test.py`.
 - `splits/dev40.txt`: 40 admitted calibration cases.
 - `splits/real-seed-candidates.txt`: 34 real-project seed staging cases.
-- `splits/main.txt`: 61-case combined working suite: all 40 `dev40` cases plus
-  the currently passing real-seed staging cases.
+- `splits/main.txt`: 75-case combined working suite: all runnable fixtures.
+- `splits/main.manifest.json`: oracle metadata for the combined suite.
 - `splits/clean60.txt`: legacy empty heldout placeholder, kept only so older
   scripts do not break.
 
-The remaining untracked draft case is not part of any split until it passes
-review and audit.
+The two non-runnable directories are placeholders without `buggy.bpf.c` and are
+not part of any split.
 
 ## Case Format
 
@@ -44,10 +44,10 @@ Audit the 40 admitted calibration cases:
 python3 bpfix-test/tools/audit_cases.py --split bpfix-test/splits/dev40.txt
 ```
 
-Audit the combined 61-case working suite:
+Audit the combined 75-case working suite:
 
 ```bash
-python3 bpfix-test/tools/audit_cases.py --split bpfix-test/splits/main.txt
+python3 bpfix-test/tools/audit_cases.py --split bpfix-test/splits/main.txt --manifest bpfix-test/splits/main.manifest.json
 ```
 
 Generate prompts without calling a model:
@@ -55,7 +55,7 @@ Generate prompts without calling a model:
 ```bash
 python3 bpfix-test/tools/run_suite.py \
   --split bpfix-test/splits/main.txt \
-  --expected-count 61 \
+  --expected-count 75 \
   --mode bpfix \
   --prompt-only
 ```
@@ -65,7 +65,7 @@ Run an OpenAI-compatible model server, for example llama.cpp:
 ```bash
 python3 bpfix-test/tools/run_suite.py \
   --split bpfix-test/splits/main.txt \
-  --expected-count 61 \
+  --expected-count 75 \
   --mode raw \
   --base-url http://127.0.0.1:18080/v1 \
   --model Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M

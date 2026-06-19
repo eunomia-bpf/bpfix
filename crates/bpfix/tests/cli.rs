@@ -58,7 +58,8 @@ fn stdin_renders_plain_text_diagnostic() {
 
 #[test]
 fn path_input_renders_plain_text_diagnostic() {
-    let path = workspace_root().join("bpfix-bench/cases/stackoverflow-53136145/replay-verifier.log");
+    let path =
+        workspace_root().join("bpfix-bench/cases/stackoverflow-53136145/replay-verifier.log");
     let output = Command::new(env!("CARGO_BIN_EXE_bpfix"))
         .arg(path)
         .output()
@@ -82,7 +83,10 @@ fn format_flag_is_not_a_public_interface() {
 
 #[test]
 fn fail_on_unsupported_exits_after_rendering_plain_text() {
-    let output = run_stdin("build succeeded without a verifier log\n", &["-", "--fail-on-unsupported"]);
+    let output = run_stdin(
+        "build succeeded without a verifier log\n",
+        &["-", "--fail-on-unsupported"],
+    );
     assert_eq!(output.status.code(), Some(2));
 
     let text = stdout(&output);

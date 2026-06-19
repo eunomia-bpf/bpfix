@@ -1,16 +1,16 @@
-error[BPFIX-E099]: verifier rejection needs manual triage
-  = class: unsupported_verifier_message
-  = confidence: low
-  = diagnostic: unsupported_verifier_message, help: triage_only, span: exact_pc
-  = next action: other
+error[BPFIX-E009]: kernel or program-type capability is unavailable
+  = class: environment_or_configuration
+  = confidence: medium
+  = diagnostic: supported, help: triage_only, span: exact_pc
+  = next action: environment
   --> buggy.bpf.c:62
    |
 62 | bpf_perf_event_output(ctx, &xdpdump_perf_map, flags,
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ rejected here: required verifier proof is missing
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ rejected here: this program type cannot use bpf_perf_event_output#25
    |
    = verifier[83]: cannot pass map_type 2 into func bpf_perf_event_output#25
    = note: nearest BPF instruction pc 29
    = note: parsed 26 verifier state snapshots
-   = required proof: inspect the terminal verifier message and collect a full verifier log for this unsupported message shape
-help: Pass the full verifier log with instruction states and source annotations if available.
-help: File an issue with the terminal verifier message so BPFix can add a safe diagnostic family.
+   = required proof: load this program with an attach type and kernel environment that allow bpf_perf_event_output#25, or avoid that helper on this path
+help: Check kernel version, program type, attach type, capabilities, and BTF availability.
+help: Use a supported helper or gate the code path by target kernel capabilities.

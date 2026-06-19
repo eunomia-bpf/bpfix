@@ -185,6 +185,7 @@ const TERMINAL_ERROR_MARKERS: &[&str] = &[
     "helper access to the packet is not allowed",
     "cannot use helper",
     "calling kernel function",
+    "kernel subsystem misconfigured verifier",
     "jit does not support",
     "cannot ",
     "permission denied",

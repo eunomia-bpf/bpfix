@@ -1,0 +1,188 @@
+{
+  "schema_version": "bpfix.test.split-manifest/v1",
+  "split_id": "main",
+  "profile": "working_combined",
+  "freeze": {
+    "frozen": false,
+    "reason": "combined engineering split used for bpfix-test iteration; not a contamination-free heldout benchmark",
+    "fingerprints_frozen": false
+  },
+  "admission_policy": {
+    "model_result_used_for_admission": true,
+    "case_ids_opaque_in_prompt": true
+  },
+  "case_defaults": {
+    "oracle_kind": [
+      "compile",
+      "verifier_load",
+      "bpftool_prog_run"
+    ]
+  },
+  "cases": [
+    {
+      "case_id": "rs_actplane_lsm_bpf_ringbuf_merge_001",
+      "oracle_kind": [
+        "compile",
+        "verifier_load",
+        "custom_oracle",
+        "helper_state",
+        "proof_predicate"
+      ]
+    },
+    {
+      "case_id": "rs_actplane_taint_loop_count_bound_001",
+      "oracle_kind": [
+        "compile",
+        "verifier_load",
+        "bpftool_prog_run",
+        "custom_oracle",
+        "helper_state",
+        "proof_predicate"
+      ]
+    },
+    {
+      "case_id": "rs_agentsight_stdiocap_user_copy_len_001",
+      "oracle_kind": [
+        "compile",
+        "verifier_load",
+        "custom_oracle",
+        "helper_state",
+        "proof_predicate"
+      ]
+    },
+    {
+      "case_id": "rs_bpftime_opensnoop_ringbuf_filter_ref_001",
+      "oracle_kind": [
+        "compile",
+        "verifier_load",
+        "custom_oracle",
+        "helper_state",
+        "proof_predicate"
+      ]
+    },
+    {
+      "case_id": "rs_bpftime_opensnoop_stack_wrong_prog_type_001",
+      "oracle_kind": [
+        "compile",
+        "verifier_load",
+        "environment_config",
+        "custom_oracle"
+      ]
+    },
+    {
+      "case_id": "rs_bpftime_sslsniff_perf_copy_len_001",
+      "oracle_kind": [
+        "compile",
+        "verifier_load",
+        "custom_oracle",
+        "helper_state",
+        "proof_predicate"
+      ]
+    },
+    {
+      "case_id": "rs_cilium_ipv6_exthdr_l4_offset_001",
+      "oracle_kind": [
+        "compile",
+        "verifier_load",
+        "bpftool_prog_run",
+        "custom_oracle",
+        "proof_predicate"
+      ]
+    },
+    {
+      "case_id": "rs_cilium_proxy_skc_assign_ref_leak_001",
+      "oracle_kind": [
+        "compile",
+        "verifier_load",
+        "custom_oracle",
+        "helper_state",
+        "proof_predicate"
+      ]
+    },
+    {
+      "case_id": "rs_datrail_browsertrace_start_ns_merge_001",
+      "oracle_kind": [
+        "compile",
+        "verifier_load",
+        "custom_oracle",
+        "helper_state",
+        "proof_predicate"
+      ]
+    },
+    {
+      "case_id": "rs_nccl_cpu_observer_slot_merge_001",
+      "oracle_kind": [
+        "compile",
+        "verifier_load",
+        "custom_oracle",
+        "helper_state",
+        "proof_predicate"
+      ]
+    },
+    {
+      "case_id": "rs_tetragon_data_event_size_guard_001",
+      "oracle_kind": [
+        "compile",
+        "verifier_load",
+        "custom_oracle",
+        "helper_state",
+        "proof_predicate"
+      ]
+    },
+    {
+      "case_id": "rs_tutorial_pidhide_tailcall_map_type_001",
+      "oracle_kind": [
+        "compile",
+        "verifier_load",
+        "bpftool_prog_run",
+        "custom_oracle",
+        "environment_config",
+        "helper_state",
+        "proof_predicate"
+      ]
+    },
+    {
+      "case_id": "rs_tutorial_user_ringbuf_dynptr_merge_001",
+      "oracle_kind": [
+        "compile",
+        "verifier_load",
+        "custom_oracle",
+        "helper_state",
+        "proof_predicate"
+      ]
+    },
+    {
+      "case_id": "rs_xdp_tools_load_bytes_stack_len_001",
+      "oracle_kind": [
+        "compile",
+        "verifier_load",
+        "bpftool_prog_run",
+        "custom_oracle",
+        "helper_state",
+        "proof_predicate"
+      ]
+    },
+    {
+      "case_id": "rs_xdp_tools_xdpdump_perf_map_type_001",
+      "oracle_kind": [
+        "compile",
+        "verifier_load",
+        "bpftool_prog_run",
+        "custom_oracle",
+        "helper_state",
+        "proof_predicate"
+      ]
+    },
+    {
+      "case_id": "rs_xdp_tools_xdpsock_redirect_map_type_001",
+      "oracle_kind": [
+        "compile",
+        "verifier_load",
+        "bpftool_prog_run",
+        "environment_config",
+        "helper_state",
+        "proof_predicate"
+      ]
+    }
+  ]
+}

@@ -35,7 +35,7 @@ help:
 	@echo "  make bpfix-test-audit  Audit bpfix-test fixture structure and prompts"
 	@echo "                          Optional: SPLIT=... MANIFEST=... SMOKE=1 for custom clean oracles"
 	@echo "  make bpfix-test-smoke  Validate bpfix-test fixtures and buggy rejects"
-	@echo "  make bpfix-test-main-gate Run the combined 61-case bpfix-test gate"
+	@echo "  make bpfix-test-main-gate Run the combined 75-case bpfix-test gate"
 	@echo "  make bpfix-test-real-seed-candidate-gate Audit real-project seed staging candidates"
 	@echo "  make bpfix-test-dev40-gate   Run the full dev40 split quality gate"
 	@echo "  make release-check     Run packaging, example, benchmark, and object-analysis gates"
@@ -93,7 +93,8 @@ bpfix-test-audit:
 bpfix-test-main-gate:
 	@echo "[bpfix-test-main-gate] Auditing combined bpfix-test working suite..."
 	cd $(CURDIR) && python3 bpfix-test/tools/audit_cases.py \
-		--split bpfix-test/splits/main.txt
+		--split bpfix-test/splits/main.txt \
+		--manifest bpfix-test/splits/main.manifest.json
 
 .PHONY: bpfix-test-dev40-gate
 bpfix-test-dev40-gate:

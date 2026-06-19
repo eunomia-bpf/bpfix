@@ -228,7 +228,12 @@ pub fn zero_based_arg_register_after(message: &str, marker: &str) -> Option<u8> 
 /// The returned token may include the verifier helper id suffix, for example
 /// `bpf_probe_read#4`.
 pub fn helper_name_from_verifier_error(message: &str) -> Option<String> {
-    for marker in ["cannot use helper ", "helper call ", "unknown func "] {
+    for marker in [
+        "cannot use helper ",
+        "helper call ",
+        "unknown func ",
+        "into func ",
+    ] {
         let Some(start) = message.find(marker).map(|idx| idx + marker.len()) else {
             continue;
         };

@@ -299,6 +299,8 @@ const REJECTION_PATTERNS: &[RejectionPattern] = &[
             "helper call is not allowed",
             "program of this type cannot use helper",
             "cannot use helper",
+            "cannot pass map_type",
+            "kernel subsystem misconfigured verifier",
             "missing btf",
             "cannot call",
             "permission denied",
@@ -584,6 +586,14 @@ mod tests {
             VerifierRejectionKind::parse(
                 "program of this type cannot use helper bpf_xdp_adjust_head"
             ),
+            Some(VerifierRejectionKind::EnvironmentCapability)
+        );
+        assert_eq!(
+            VerifierRejectionKind::parse("cannot pass map_type 2 into func bpf_redirect_map#51"),
+            Some(VerifierRejectionKind::EnvironmentCapability)
+        );
+        assert_eq!(
+            VerifierRejectionKind::parse("kernel subsystem misconfigured verifier"),
             Some(VerifierRejectionKind::EnvironmentCapability)
         );
     }

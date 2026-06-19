@@ -1,12 +1,16 @@
-error[BPFIX-E000]: no verifier rejection was found
-  = class: input_error
-  = confidence: low
-  = diagnostic: unsupported_input, help: triage_only, span: terminal_line_only
-  = next action: other
-  --> <verifier-log>:34
+error[BPFIX-E009]: kernel or program-type capability is unavailable
+  = class: environment_or_configuration
+  = confidence: medium
+  = diagnostic: supported, help: triage_only, span: exact_pc
+  = next action: environment
+  --> buggy.bpf.c:34
    |
+34 | bpf_tail_call(ctx, &map_prog_array, PROG_01);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ rejected here: kernel or program type does not expose this capability
    |
-   = verifier[34]: no verifier rejection was found in this input
-   = required proof: provide a full verifier/build/load log that contains the verifier rejection region
-help: Re-run the failing load with bpftool -d or enable libbpf verifier logging.
-help: Pass the full stderr from the failing load command, not only the final loader error.
+   = verifier[31]: kernel subsystem misconfigured verifier
+   = note: nearest BPF instruction pc 10
+   = note: parsed 8 verifier state snapshots
+   = required proof: load the program with a kernel, program type, attach point, and privileges that support the requested helper or kfunc
+help: Check kernel version, program type, attach type, capabilities, and BTF availability.
+help: Use a supported helper or gate the code path by target kernel capabilities.

@@ -303,6 +303,9 @@ fn identifies_verifier_error_lines_and_fragments() {
     assert!(is_verifier_error_line(
         "processed 1000001 insns (limit exceeded)"
     ));
+    assert!(is_verifier_error_line(
+        "kernel subsystem misconfigured verifier"
+    ));
     assert!(!is_verifier_error_line("12: (71) r1 = *(u8 *)(r2 +0)"));
     assert!(!is_verifier_error_line("12: R1=ctx() R10=fp0"));
     assert!(!is_verifier_error_line("processed 18 insns"));

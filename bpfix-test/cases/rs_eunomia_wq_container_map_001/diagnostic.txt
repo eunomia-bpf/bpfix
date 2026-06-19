@@ -1,0 +1,16 @@
+error[BPFIX-E010]: helper or subprogram argument contract is not satisfied
+  = class: source_bug
+  = confidence: medium
+  = diagnostic: supported, help: repair_hint, span: exact_pc
+  = next action: protocol
+  --> buggy.bpf.c:99
+   |
+99 | if (bpf_wq_init(wq, &work_items, 0))
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ rejected here: helper or subprogram argument contract is not satisfied
+   |
+   = verifier[184]: arg#0 doesn't point to a map value
+   = note: nearest BPF instruction pc 56
+   = note: parsed 49 verifier state snapshots
+   = required proof: pass verifier-recognized argument types, ranges, and pointer lifetimes to the helper, kfunc, or subprogram
+help: Check the exact register passed as each helper or subprogram argument.
+help: Keep argument range, nullability, and pointer type refinements visible at the call site.
