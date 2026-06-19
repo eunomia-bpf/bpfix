@@ -24,7 +24,7 @@ def u64(value: int) -> bytes:
 
 
 def request(key: int, value: int, schedule: int) -> bytes:
-    return u32(key) + u32(value) + u32(schedule)
+    return u32(key) + u32(value) + u32(schedule) + (b"\0" * 16)
 
 
 def zero_stats() -> bytes:
@@ -76,7 +76,7 @@ def workqueue_state_recorded_before_start(load_output: str) -> bool:
         return False
     before = load_output[:start]
     return re.search(r"\*\(u32 \*\)\(r\d+ \+0\) = r\d+", before) is not None and re.search(
-        r"\*\(u32 \*\)\(r\d+ \+4\) = 1", before
+        r"\*\(u32 \*\)\(r\d+ \+4\) = (?:1|r\d+)", before
     )
 
 

@@ -230,6 +230,94 @@ Source file:
 """
 
 
+def truncate_middle(text: str, limit: int) -> str:
+    if len(text) <= limit:
+        return text
+    head = limit // 2
+    tail = limit - head
+    return text[:head] + "\n... <truncated> ...\n" + text[-tail:]
+
+
+def oracle_retry_context(completed: subprocess.CompletedProcess[str], candidate_source: str) -> str:
+    try:
+        report = json.loads(completed.stdout)
+    except json.JSONDecodeError:
+        report = {}
+    failure_stage = oracle_failure_stage(completed)
+    chunks = [
+        "Previous repair attempt failed.",
+        f"Failure stage: {failure_stage}",
+        "",
+        "Previous candidate source:",
+        "```c",
+        truncate_middle(candidate_source, 20000),
+        "```",
+    ]
+    if isinstance(report, dict):
+        compile_report = report.get("compile")
+        if isinstance(compile_report, dict) and compile_report.get("returncode") != 0:
+            chunks.extend(
+                [
+                    "",
+                    "Compiler stderr from previous attempt:",
+                    "```text",
+                    truncate_middle(str(compile_report.get("stderr", "")), 12000),
+                    "```",
+                ]
+            )
+        load_report = report.get("load")
+        if isinstance(load_report, dict) and load_report.get("returncode") != 0:
+            chunks.extend(
+                [
+                    "",
+                    "Verifier/load output from previous attempt:",
+                    "```text",
+                    truncate_middle(str(load_report.get("stderr", "")) + str(load_report.get("stdout", "")), 20000),
+                    "```",
+                ]
+            )
+        failed_checks = []
+        for check in report.get("success_log_checks", []):
+            if isinstance(check, dict) and check.get("passed") is not True:
+                failed_checks.append(check)
+        for functional in report.get("functional", []):
+            if isinstance(functional, dict) and functional.get("passed") is not True:
+                failed_checks.append(functional)
+        if failed_checks:
+            chunks.extend(
+                [
+                    "",
+                    "Failed oracle checks from previous attempt:",
+                    "```json",
+                    truncate_middle(json.dumps(failed_checks, indent=2, sort_keys=True), 16000),
+                    "```",
+                ]
+            )
+    elif completed.stdout or completed.stderr:
+        chunks.extend(
+            [
+                "",
+                "Oracle output from previous attempt:",
+                "```text",
+                truncate_middle(completed.stdout + completed.stderr, 16000),
+                "```",
+            ]
+        )
+    chunks.extend(
+        [
+            "",
+            "Try again. Return only one complete replacement C source file in a fenced ```c block.",
+        ]
+    )
+    return "\n".join(chunks)
+
+
+def append_retry_context(prompt: str, retry_context: str | None) -> str:
+    if retry_context is None:
+        return prompt
+    return f"{prompt}\n\nRetry context:\n{retry_context}\n"
+
+
 def call_openai_compatible(
     *,
     base_url: str,
@@ -328,12 +416,15 @@ def oracle_failure_stage(completed: subprocess.CompletedProcess[str]) -> str:
     return "oracle"
 
 
-def smoke_case(case_dir: Path) -> dict[str, object]:
+def smoke_case(case_dir: Path, *, fixed: bool = False) -> dict[str, object]:
     missing = [
         name
         for name in ["buggy.bpf.c", "verifier.log", "diagnostic.txt", "test.py"]
         if not (case_dir / name).exists()
     ]
+    source_name = "fixed.bpf.c" if fixed else "buggy.bpf.c"
+    if fixed and not (case_dir / source_name).exists():
+        missing.append(source_name)
     report: dict[str, object] = {"case": case_dir.name, "missing": missing, "passed": False}
     if missing:
         return report
@@ -351,8 +442,8 @@ def smoke_case(case_dir: Path) -> dict[str, object]:
             sys.executable,
             str(case_dir / "test.py"),
             "--source",
-            str(case_dir / "buggy.bpf.c"),
-            "--expect-reject",
+            str(case_dir / source_name),
+            *(["--expect-reject"] if not fixed else []),
         ],
         cwd=repo_root(),
     )
@@ -369,7 +460,18 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     default_llama_cpp_dir = os.environ.get("LLAMA_CPP_DIR")
     parser.add_argument("--mode", choices=MODES, default="raw")
     parser.add_argument("--smoke", action="store_true", help="Validate fixtures and buggy rejection only.")
+    parser.add_argument(
+        "--fixed-smoke",
+        action="store_true",
+        help="Validate fixed.bpf.c repairs with each case's success oracle.",
+    )
     parser.add_argument("--prompt-only", action="store_true", help="Write prompts without calling a model.")
+    parser.add_argument(
+        "--repair-attempts",
+        type=int,
+        default=1,
+        help="Maximum model repair attempts per case. Attempts after the first append prior failure context.",
+    )
     parser.add_argument("--split", type=Path, help="Run case ids listed in a split file.")
     parser.add_argument(
         "--allow-empty-split",
@@ -419,6 +521,8 @@ def select_cases(root: Path, wanted: list[str] | None) -> list[Path]:
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     root = repo_root()
+    if args.repair_attempts < 1:
+        raise SystemExit("--repair-attempts must be >= 1")
     if args.split is not None and args.case:
         raise SystemExit("--split and --case cannot be combined; use --case without --split for single-case debug runs")
 
@@ -437,9 +541,13 @@ def main(argv: list[str] | None = None) -> int:
     else:
         cases = select_cases(root, wanted_cases or None)
 
-    if args.smoke:
-        reports = [smoke_case(case) for case in cases]
-        print(json.dumps({"smoke": reports}, indent=2, sort_keys=True))
+    if args.smoke and args.fixed_smoke:
+        raise SystemExit("--smoke and --fixed-smoke cannot be combined")
+
+    if args.smoke or args.fixed_smoke:
+        reports = [smoke_case(case, fixed=args.fixed_smoke) for case in cases]
+        key = "fixed_smoke" if args.fixed_smoke else "smoke"
+        print(json.dumps({key: reports}, indent=2, sort_keys=True))
         return 0 if all(report["passed"] for report in reports) else 1
 
     if args.candidate is not None and len(cases) != 1:
@@ -457,11 +565,11 @@ def main(argv: list[str] | None = None) -> int:
     for case_dir in cases:
         case_out = run_dir / case_dir.name
         case_out.mkdir(parents=True, exist_ok=True)
-        prompt = build_prompt(case_dir, args.mode)
-        (case_out / "prompt.txt").write_text(prompt, encoding="utf-8")
+        base_prompt = build_prompt(case_dir, args.mode)
+        (case_out / "prompt.txt").write_text(base_prompt, encoding="utf-8")
         prompt_info = {
-            "prompt_sha256": sha256_text(prompt),
-            "prompt_chars": len(prompt),
+            "prompt_sha256": sha256_text(base_prompt),
+            "prompt_chars": len(base_prompt),
             "source_chars": len((case_dir / "buggy.bpf.c").read_text(encoding="utf-8")),
             "diagnostic_chars": len(diagnostic_input(case_dir, args.mode)[1]),
         }
@@ -471,54 +579,109 @@ def main(argv: list[str] | None = None) -> int:
             continue
 
         if args.candidate is None:
-            try:
-                response = call_openai_compatible(
-                    base_url=args.base_url,
-                    api_key=api_key,
-                    model=args.model,
-                    prompt=prompt,
-                    timeout=args.timeout,
-                    max_tokens=args.max_tokens,
-                    temperature=args.temperature,
+            retry_context = None
+            attempts: list[dict[str, Any]] = []
+            final_result: dict[str, Any] | None = None
+            for attempt in range(1, args.repair_attempts + 1):
+                attempt_out = case_out / f"attempt-{attempt}"
+                attempt_out.mkdir(parents=True, exist_ok=True)
+                prompt = append_retry_context(base_prompt, retry_context)
+                (attempt_out / "prompt.txt").write_text(prompt, encoding="utf-8")
+                try:
+                    response = call_openai_compatible(
+                        base_url=args.base_url,
+                        api_key=api_key,
+                        model=args.model,
+                        prompt=prompt,
+                        timeout=args.timeout,
+                        max_tokens=args.max_tokens,
+                        temperature=args.temperature,
+                    )
+                    (attempt_out / "response.txt").write_text(response, encoding="utf-8")
+                except (
+                    json.JSONDecodeError,
+                    urllib.error.URLError,
+                    TimeoutError,
+                    KeyError,
+                    ConnectionError,
+                    http.client.HTTPException,
+                ) as exc:
+                    final_result = {
+                        "case": case_dir.name,
+                        "status": "model_error",
+                        "failure_stage": "model_call",
+                        "error": str(exc),
+                        "attempt": attempt,
+                        "attempts": attempts,
+                        "mode": args.mode,
+                        "model": args.model,
+                        **prompt_info,
+                    }
+                    break
+                try:
+                    candidate_source = extract_source(response)
+                    candidate_path = attempt_out / "candidate.bpf.c"
+                    candidate_path.write_text(candidate_source, encoding="utf-8")
+                except ValueError as exc:
+                    attempt_result = {
+                        "attempt": attempt,
+                        "status": "model_error",
+                        "failure_stage": "extract_source",
+                        "error": str(exc),
+                    }
+                    attempts.append(attempt_result)
+                    final_result = {
+                        "case": case_dir.name,
+                        **attempt_result,
+                        "attempts": attempts,
+                        "mode": args.mode,
+                        "model": args.model,
+                        **prompt_info,
+                    }
+                    break
+
+                completed = run_oracle(case_dir, candidate_path, attempt_out / "work")
+                attempt_result = {
+                    "attempt": attempt,
+                    "status": "pass" if completed.returncode == 0 else "fail",
+                    "failure_stage": oracle_failure_stage(completed),
+                    "candidate": str(candidate_path),
+                    "oracle_stdout": completed.stdout,
+                    "oracle_stderr": completed.stderr,
+                    "oracle_returncode": completed.returncode,
+                    "prompt_sha256": sha256_text(prompt),
+                    "prompt_chars": len(prompt),
+                }
+                (attempt_out / "result.json").write_text(
+                    json.dumps(attempt_result, indent=2, sort_keys=True) + "\n",
+                    encoding="utf-8",
                 )
-                (case_out / "response.txt").write_text(response, encoding="utf-8")
-            except (
-                json.JSONDecodeError,
-                urllib.error.URLError,
-                TimeoutError,
-                KeyError,
-                ConnectionError,
-                http.client.HTTPException,
-            ) as exc:
-                result = {
+                attempts.append(attempt_result)
+                if completed.returncode == 0:
+                    final_result = {
+                        "case": case_dir.name,
+                        **attempt_result,
+                        "attempts": attempts,
+                        "mode": args.mode,
+                        "model": args.model,
+                        **prompt_info,
+                    }
+                    break
+                retry_context = oracle_retry_context(completed, candidate_source)
+
+            if final_result is None:
+                last_attempt = attempts[-1]
+                final_result = {
                     "case": case_dir.name,
-                    "status": "model_error",
-                    "failure_stage": "model_call",
-                    "error": str(exc),
+                    **last_attempt,
+                    "attempts": attempts,
                     "mode": args.mode,
                     "model": args.model,
                     **prompt_info,
                 }
-                (case_out / "result.json").write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
-                summary.append(result)
-                continue
-            try:
-                candidate_source = extract_source(response)
-                candidate_path = case_out / "candidate.bpf.c"
-                candidate_path.write_text(candidate_source, encoding="utf-8")
-            except ValueError as exc:
-                result = {
-                    "case": case_dir.name,
-                    "status": "model_error",
-                    "failure_stage": "extract_source",
-                    "error": str(exc),
-                    "mode": args.mode,
-                    "model": args.model,
-                    **prompt_info,
-                }
-                (case_out / "result.json").write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
-                summary.append(result)
-                continue
+            (case_out / "result.json").write_text(json.dumps(final_result, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+            summary.append(final_result)
+            continue
         else:
             candidate_path = args.candidate.resolve()
 

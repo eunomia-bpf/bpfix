@@ -27,6 +27,7 @@ Each case is a directory:
 cases/<case_id>/
   README.md
   buggy.bpf.c
+  fixed.bpf.c
   verifier.log
   diagnostic.txt
   test.py
@@ -34,7 +35,8 @@ cases/<case_id>/
 
 `buggy.bpf.c` is the source given to the model. `verifier.log` is the raw
 verifier/load log. `diagnostic.txt` is BPFix plain-text output generated from
-that same log. `test.py` is the only oracle for repair success.
+that same log. `fixed.bpf.c` is a checked-in reference repair that must pass the
+same oracle. `test.py` is the only oracle for repair success.
 
 ## Main Commands
 
@@ -48,6 +50,18 @@ Audit the combined 75-case working suite:
 
 ```bash
 python3 bpfix-test/tools/audit_cases.py --split bpfix-test/splits/main.txt --manifest bpfix-test/splits/main.manifest.json
+```
+
+Verify that all buggy sources still reject:
+
+```bash
+python3 bpfix-test/tools/run_suite.py --split bpfix-test/splits/main.txt --expected-count 75 --smoke
+```
+
+Verify checked-in repairs when a case has `fixed.bpf.c`:
+
+```bash
+python3 bpfix-test/tools/run_suite.py --split bpfix-test/splits/main.txt --expected-count 75 --fixed-smoke
 ```
 
 Generate prompts without calling a model:
@@ -71,6 +85,19 @@ python3 bpfix-test/tools/run_suite.py \
   --model Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M
 ```
 
+Allow one repair retry without BPFix. The second prompt appends the previous
+candidate source and the compile/load/verifier/oracle failure context:
+
+```bash
+python3 bpfix-test/tools/run_suite.py \
+  --split bpfix-test/splits/main.txt \
+  --expected-count 75 \
+  --mode raw \
+  --repair-attempts 2 \
+  --base-url http://127.0.0.1:18080/v1 \
+  --model Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M
+```
+
 Available modes are `source-only`, `raw`, `trimmed-raw`, and `bpfix`.
 
 Refresh diagnostics from existing logs without recapturing verifier output:
@@ -90,6 +117,8 @@ python3 bpfix-test/tools/refresh_case_artifacts.py
 ## How To Report Results
 
 Report `main` as an evolving working suite, not as a clean heldout benchmark.
+When reporting LLM repair results, separate one-shot from retry and separate
+raw verifier-log prompts from BPFix-assisted prompts.
 The remaining real-seed staging cases should be fixed and promoted only after
 their diagnostics and oracles pass `audit_cases.py`.
 If a paper later needs a frozen benchmark, freeze a new split from the current
