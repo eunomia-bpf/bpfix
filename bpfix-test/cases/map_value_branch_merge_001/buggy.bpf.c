@@ -23,7 +23,7 @@ struct config {
 
 struct {
     __uint(type, BPF_MAP_TYPE_HASH);
-    __uint(max_entries, 1);
+    __uint(max_entries, 2);
     __type(key, __u32);
     __type(value, struct config);
 } configs SEC(".maps");
@@ -38,6 +38,9 @@ int map_value_branch_merge(struct xdp_md *ctx)
     __u32 key = 0;
     struct config *cfg = bpf_map_lookup_elem(&configs, &key);
 
+    if (!cfg)
+        return XDP_PASS;
+
     if ((void *)(eth + 1) > data_end)
         return XDP_PASS;
     if (bpf_ntohs(eth->h_proto) != ETH_P_IP)
@@ -49,9 +52,14 @@ int map_value_branch_merge(struct xdp_md *ctx)
     proto = iph->protocol;
 
     if (proto == IPPROTO_UDP) {
-        if (!cfg)
-            return XDP_PASS;
-        cfg->seen_udp = 1;
+        key = IPPROTO_UDP;
+        cfg = bpf_map_lookup_elem(&configs, &key);
+        if (cfg)
+            cfg->seen_udp = 1;
+        key = IPPROTO_UDP;
+        cfg = bpf_map_lookup_elem(&configs, &key);
+    } else if (proto == IPPROTO_TCP) {
+        cfg->seen_udp = 0;
     }
 
     return cfg->drop_proto == proto ? XDP_DROP : XDP_PASS;

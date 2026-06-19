@@ -1,39 +1,43 @@
 libbpf: loading object from <work-dir>/prog.o
-libbpf: elf: section(3) xdp, size 224, link 0, flags 6, type=1
-libbpf: sec 'xdp': found program 'map_value_branch_merge' at insn offset 0 (0 bytes), code size 28 insns (224 bytes)
-libbpf: elf: section(4) .relxdp, size 16, link 26, flags 40, type=9
+libbpf: elf: section(3) xdp, size 368, link 0, flags 6, type=1
+libbpf: sec 'xdp': found program 'map_value_branch_merge' at insn offset 0 (0 bytes), code size 46 insns (368 bytes)
+libbpf: elf: section(4) .relxdp, size 48, link 26, flags 40, type=9
 libbpf: elf: section(5) .maps, size 32, link 0, flags 3, type=1
 libbpf: elf: section(6) license, size 4, link 0, flags 3, type=1
 libbpf: license of <work-dir>/prog.o is GPL
-libbpf: elf: section(16) .BTF, size 1844, link 0, flags 0, type=1
-libbpf: elf: section(18) .BTF.ext, size 396, link 0, flags 0, type=1
-libbpf: elf: section(26) .symtab, size 384, link 1, flags 0, type=2
-libbpf: looking for externs among 16 symbols...
+libbpf: elf: section(16) .BTF, size 2002, link 0, flags 0, type=1
+libbpf: elf: section(18) .BTF.ext, size 492, link 0, flags 0, type=1
+libbpf: elf: section(26) .symtab, size 432, link 1, flags 0, type=2
+libbpf: looking for externs among 18 symbols...
 libbpf: collected 0 externs total
 libbpf: map 'configs': at sec_idx 5, offset 0.
 libbpf: map 'configs': found type = 1.
-libbpf: map 'configs': found key [6], sz = 4.
-libbpf: map 'configs': found value [9], sz = 8.
-libbpf: map 'configs': found max_entries = 1.
+libbpf: map 'configs': found key [8], sz = 4.
+libbpf: map 'configs': found value [11], sz = 8.
+libbpf: map 'configs': found max_entries = 2.
 libbpf: sec '.relxdp': collecting relocation for section(3) 'xdp'
 libbpf: sec '.relxdp': relo #0: insn #6 against 'configs'
 libbpf: prog 'map_value_branch_merge': found map 0 (configs, sec 5, off 0) for insn #6
+libbpf: sec '.relxdp': relo #1: insn #25 against 'configs'
+libbpf: prog 'map_value_branch_merge': found map 0 (configs, sec 5, off 0) for insn #25
+libbpf: sec '.relxdp': relo #2: insn #34 against 'configs'
+libbpf: prog 'map_value_branch_merge': found map 0 (configs, sec 5, off 0) for insn #34
 libbpf: object 'prog': failed (-95) to create BPF token from '/sys/fs/bpf', skipping optional step...
 libbpf: loaded kernel BTF from '/sys/kernel/btf/vmlinux'
 libbpf: sec 'xdp': found 4 CO-RE relocations
-libbpf: CO-RE relocating [13] struct xdp_md: found target candidate [14922] struct xdp_md in [vmlinux]
-libbpf: prog 'map_value_branch_merge': relo #0: <byte_off> [13] struct xdp_md.data_end (0:1 @ offset 4)
+libbpf: CO-RE relocating [15] struct xdp_md: found target candidate [14922] struct xdp_md in [vmlinux]
+libbpf: prog 'map_value_branch_merge': relo #0: <byte_off> [15] struct xdp_md.data_end (0:1 @ offset 4)
 libbpf: prog 'map_value_branch_merge': relo #0: matching candidate #0 <byte_off> [14922] struct xdp_md.data_end (0:1 @ offset 4)
 libbpf: prog 'map_value_branch_merge': relo #0: patched insn #0 (LDX/ST/STX) off 4 -> 4
-libbpf: prog 'map_value_branch_merge': relo #1: <byte_off> [13] struct xdp_md.data (0:0 @ offset 0)
+libbpf: prog 'map_value_branch_merge': relo #1: <byte_off> [15] struct xdp_md.data (0:0 @ offset 0)
 libbpf: prog 'map_value_branch_merge': relo #1: matching candidate #0 <byte_off> [14922] struct xdp_md.data (0:0 @ offset 0)
 libbpf: prog 'map_value_branch_merge': relo #1: patched insn #1 (LDX/ST/STX) off 0 -> 0
-libbpf: CO-RE relocating [16] struct ethhdr: found target candidate [23410] struct ethhdr in [vmlinux]
-libbpf: prog 'map_value_branch_merge': relo #2: <byte_off> [16] struct ethhdr.h_proto (0:2 @ offset 12)
+libbpf: CO-RE relocating [18] struct ethhdr: found target candidate [23410] struct ethhdr in [vmlinux]
+libbpf: prog 'map_value_branch_merge': relo #2: <byte_off> [18] struct ethhdr.h_proto (0:2 @ offset 12)
 libbpf: prog 'map_value_branch_merge': relo #2: matching candidate #0 <byte_off> [23410] struct ethhdr.h_proto (0:2 @ offset 12)
 libbpf: prog 'map_value_branch_merge': relo #2: patched insn #14 (LDX/ST/STX) off 12 -> 12
-libbpf: CO-RE relocating [22] struct iphdr: found target candidate [23765] struct iphdr in [vmlinux]
-libbpf: prog 'map_value_branch_merge': relo #3: <byte_off> [22] struct iphdr.protocol (0:7 @ offset 9)
+libbpf: CO-RE relocating [24] struct iphdr: found target candidate [23765] struct iphdr in [vmlinux]
+libbpf: prog 'map_value_branch_merge': relo #3: <byte_off> [24] struct iphdr.protocol (0:7 @ offset 9)
 libbpf: prog 'map_value_branch_merge': relo #3: matching candidate #0 <byte_off> [23765] struct iphdr.protocol (0:7 @ offset 9)
 libbpf: prog 'map_value_branch_merge': relo #3: patched insn #18 (LDX/ST/STX) off 9 -> 9
 libbpf: map 'configs': created successfully, fd=0
@@ -49,25 +53,41 @@ Live regs before insn:
   5: ..2...67.. (07) r2 += -4
   6: ..2...67.. (18) r1 = 0xffff000000000000
   8: .12...67.. (85) call bpf_map_lookup_elem#1
-  9: 0.....67.. (bf) r1 = r0
- 10: .1....67.. (b7) r0 = 2
+  9: 0.....67.. (b7) r1 = 2
+ 10: 01....67.. (15) if r0 == 0x0 goto pc+33
  11: 01....67.. (bf) r2 = r7
  12: 012...67.. (07) r2 += 14
- 13: 012...67.. (2d) if r2 > r6 goto pc+13
+ 13: 012...67.. (2d) if r2 > r6 goto pc+30
  14: 012...67.. (69) r3 = *(u16 *)(r7 +12)
- 15: 0123..67.. (55) if r3 != 0x8 goto pc+11
+ 15: 0123..67.. (55) if r3 != 0x8 goto pc+28
  16: 012...67.. (07) r7 += 34
- 17: 012...67.. (2d) if r7 > r6 goto pc+9
- 18: 012....... (71) r2 = *(u8 *)(r2 +9)
- 19: 012....... (55) if r2 != 0x11 goto pc+3
- 20: 012....... (15) if r1 == 0x0 goto pc+6
- 21: .12....... (b7) r3 = 1
- 22: .123...... (63) *(u32 *)(r1 +4) = r3
- 23: .12....... (61) r1 = *(u32 *)(r1 +0)
- 24: .12....... (b7) r0 = 1
- 25: 012....... (1d) if r1 == r2 goto pc+1
- 26: .......... (b7) r0 = 2
- 27: 0......... (95) exit
+ 17: 012...67.. (2d) if r7 > r6 goto pc+26
+ 18: 0.2....... (71) r6 = *(u8 *)(r2 +9)
+ 19: 0.....6... (15) if r6 == 0x6 goto pc+18
+ 20: 0.....6... (55) if r6 != 0x11 goto pc+19
+ 21: ......6... (b7) r7 = 17
+ 22: ......67.. (63) *(u32 *)(r10 -4) = r7
+ 23: ......67.. (bf) r2 = r10
+ 24: ..2...67.. (07) r2 += -4
+ 25: ..2...67.. (18) r1 = 0xffff000000000000
+ 27: .12...67.. (85) call bpf_map_lookup_elem#1
+ 28: 0.....67.. (15) if r0 == 0x0 goto pc+2
+ 29: 0.....67.. (b7) r1 = 1
+ 30: 01....67.. (63) *(u32 *)(r0 +4) = r1
+ 31: ......67.. (63) *(u32 *)(r10 -4) = r7
+ 32: ......6... (bf) r2 = r10
+ 33: ..2...6... (07) r2 += -4
+ 34: ..2...6... (18) r1 = 0xffff000000000000
+ 36: .12...6... (85) call bpf_map_lookup_elem#1
+ 37: 0.....6... (05) goto pc+2
+ 38: 0.....6... (b7) r1 = 0
+ 39: 01....6... (63) *(u32 *)(r0 +4) = r1
+ 40: 0.....6... (61) r2 = *(u32 *)(r0 +0)
+ 41: ..2...6... (b7) r1 = 1
+ 42: .12...6... (1d) if r2 == r6 goto pc+1
+ 43: .......... (b7) r1 = 2
+ 44: .1........ (bf) r0 = r1
+ 45: 0......... (95) exit
 0: R1=ctx() R10=fp0
 ; void *data_end = (void *)(long)ctx->data_end; @ buggy.bpf.c:35
 0: (61) r6 = *(u32 *)(r1 +4)          ; R1=ctx() R6_w=pkt_end()
@@ -76,7 +96,7 @@ Live regs before insn:
 2: (b7) r1 = 0                        ; R1_w=0
 ; __u32 key = 0; @ buggy.bpf.c:38
 3: (63) *(u32 *)(r10 -4) = r1
-mark_precise: frame0: last_idx 3 first_idx 0 subseq_idx -1 
+mark_precise: frame0: last_idx 3 first_idx 0 subseq_idx -1
 mark_precise: frame0: regs=r1 stack= before 2: (b7) r1 = 0
 4: R1_w=0 R10=fp0 fp-8=0000????
 4: (bf) r2 = r10                      ; R2_w=fp0 R10=fp0
@@ -85,50 +105,50 @@ mark_precise: frame0: regs=r1 stack= before 2: (b7) r1 = 0
 ; struct config *cfg = bpf_map_lookup_elem(&configs, &key); @ buggy.bpf.c:39
 6: (18) r1 = 0xffff000000000000       ; R1_w=map_ptr(map=configs,ks=4,vs=8)
 8: (85) call bpf_map_lookup_elem#1    ; R0_w=map_value_or_null(id=1,map=configs,ks=4,vs=8)
-9: (bf) r1 = r0                       ; R0_w=map_value_or_null(id=1,map=configs,ks=4,vs=8) R1_w=map_value_or_null(id=1,map=configs,ks=4,vs=8)
-10: (b7) r0 = 2                       ; R0_w=2
-; if ((void *)(eth + 1) > data_end) @ buggy.bpf.c:41
+9: (b7) r1 = 2                        ; R1_w=2
+; if (!cfg) @ buggy.bpf.c:41
+10: (15) if r0 == 0x0 goto pc+33      ; R0_w=map_value(map=configs,ks=4,vs=8)
+; if ((void *)(eth + 1) > data_end) @ buggy.bpf.c:44
 11: (bf) r2 = r7                      ; R2_w=pkt(r=0) R7_w=pkt(r=0)
-12: (07) r2 += 14                     ; R2_w=pkt(off=14,r=0)
-13: (2d) if r2 > r6 goto pc+13        ; R2_w=pkt(off=14,r=14) R6_w=pkt_end()
-; if (bpf_ntohs(eth->h_proto) != ETH_P_IP) @ buggy.bpf.c:43
-14: (69) r3 = *(u16 *)(r7 +12)        ; R3=scalar(smin=smin32=0,smax=umax=smax32=umax32=0xffff,var_off=(0x0; 0xffff)) R7=pkt(r=14)
-15: (55) if r3 != 0x8 goto pc+11      ; R3=8
+12: (07) r2 += 14                     ; R2=pkt(off=14,r=0)
+13: (2d) if r2 > r6 goto pc+30        ; R2=pkt(off=14,r=14) R6=pkt_end()
+; if (bpf_ntohs(eth->h_proto) != ETH_P_IP) @ buggy.bpf.c:46
+14: (69) r3 = *(u16 *)(r7 +12)        ; R3_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=0xffff,var_off=(0x0; 0xffff)) R7=pkt(r=14)
+15: (55) if r3 != 0x8 goto pc+28      ; R3_w=8
 16: (07) r7 += 34                     ; R7_w=pkt(off=34,r=14)
-17: (2d) if r7 > r6 goto pc+9         ; R6=pkt_end() R7_w=pkt(off=34,r=34)
-; proto = iph->protocol; @ buggy.bpf.c:49
-18: (71) r2 = *(u8 *)(r2 +9)          ; R2_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
-; if (proto == IPPROTO_UDP) { @ buggy.bpf.c:51
-19: (55) if r2 != 0x11 goto pc+3      ; R2_w=17
-; if (!cfg) @ buggy.bpf.c:52
-20: (15) if r1 == 0x0 goto pc+6       ; R1=map_value(map=configs,ks=4,vs=8)
-21: (b7) r3 = 1                       ; R3_w=1
-; cfg->seen_udp = 1; @ buggy.bpf.c:54
-22: (63) *(u32 *)(r1 +4) = r3         ; R1=map_value(map=configs,ks=4,vs=8) R3=1
-; return cfg->drop_proto == proto ? XDP_DROP : XDP_PASS; @ buggy.bpf.c:57
-23: (61) r1 = *(u32 *)(r1 +0)         ; R1_w=scalar(smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000))
-24: (b7) r0 = 1                       ; R0_w=1
-25: (1d) if r1 == r2 goto pc+1        ; R1_w=scalar(smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000)) R2=17
-26: (b7) r0 = 2                       ; R0_w=2
-; } @ buggy.bpf.c:58
-27: (95) exit
-
-from 25 to 27: R0_w=1 R1_w=17 R2=17 R3=1 R6=pkt_end() R7=pkt(off=34,r=34) R10=fp0 fp-8=0000????
-27: R0_w=1 R1_w=17 R2=17 R3=1 R6=pkt_end() R7=pkt(off=34,r=34) R10=fp0 fp-8=0000????
-27: (95) exit
-
-from 20 to 27: R0=2 R1=0 R2_w=17 R3=8 R6=pkt_end() R7_w=pkt(off=34,r=34) R10=fp0 fp-8=0000????
-27: R0=2 R1=0 R2_w=17 R3=8 R6=pkt_end() R7_w=pkt(off=34,r=34) R10=fp0 fp-8=0000????
-27: (95) exit
-
-from 19 to 23: R0=2 R1=map_value_or_null(id=1,map=configs,ks=4,vs=8) R2_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R3=8 R6=pkt_end() R7_w=pkt(off=34,r=34) R10=fp0 fp-8=0000????
-23: R0=2 R1=map_value_or_null(id=1,map=configs,ks=4,vs=8) R2_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R3=8 R6=pkt_end() R7_w=pkt(off=34,r=34) R10=fp0 fp-8=0000????
-; return cfg->drop_proto == proto ? XDP_DROP : XDP_PASS; @ buggy.bpf.c:57
-23: (61) r1 = *(u32 *)(r1 +0)
-R1 invalid mem access 'map_value_or_null'
+17: (2d) if r7 > r6 goto pc+26        ; R6=pkt_end() R7_w=pkt(off=34,r=34)
+; proto = iph->protocol; @ buggy.bpf.c:52
+18: (71) r6 = *(u8 *)(r2 +9)          ; R2=pkt(off=14,r=34) R6_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+; if (proto == IPPROTO_UDP) { @ buggy.bpf.c:54
+19: (15) if r6 == 0x6 goto pc+18      ; R6_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+20: (55) if r6 != 0x11 goto pc+19     ; R6_w=17
+21: (b7) r7 = 17                      ; R7_w=17
+; key = IPPROTO_UDP; @ buggy.bpf.c:55
+22: (63) *(u32 *)(r10 -4) = r7        ; R7_w=17 R10=fp0 fp-8=mmmm????
+23: (bf) r2 = r10                     ; R2_w=fp0 R10=fp0
+24: (07) r2 += -4                     ; R2_w=fp-4
+; cfg = bpf_map_lookup_elem(&configs, &key); @ buggy.bpf.c:56
+25: (18) r1 = 0xffff000000000000      ; R1_w=map_ptr(map=configs,ks=4,vs=8)
+27: (85) call bpf_map_lookup_elem#1   ; R0=map_value_or_null(id=2,map=configs,ks=4,vs=8)
+; if (cfg) @ buggy.bpf.c:57
+28: (15) if r0 == 0x0 goto pc+2       ; R0=map_value(map=configs,ks=4,vs=8)
+29: (b7) r1 = 1                       ; R1_w=1
+; cfg->seen_udp = 1; @ buggy.bpf.c:58
+30: (63) *(u32 *)(r0 +4) = r1         ; R0=map_value(map=configs,ks=4,vs=8) R1_w=1
+; key = IPPROTO_UDP; @ buggy.bpf.c:59
+31: (63) *(u32 *)(r10 -4) = r7        ; R7=17 R10=fp0 fp-8=mmmm????
+32: (bf) r2 = r10                     ; R2_w=fp0 R10=fp0
+33: (07) r2 += -4                     ; R2_w=fp-4
+; cfg = bpf_map_lookup_elem(&configs, &key); @ buggy.bpf.c:60
+34: (18) r1 = 0xffff000000000000      ; R1_w=map_ptr(map=configs,ks=4,vs=8)
+36: (85) call bpf_map_lookup_elem#1   ; R0=map_value_or_null(id=3,map=configs,ks=4,vs=8)
+37: (05) goto pc+2
+; return cfg->drop_proto == proto ? XDP_DROP : XDP_PASS; @ buggy.bpf.c:65
+40: (61) r2 = *(u32 *)(r0 +0)
+R0 invalid mem access 'map_value_or_null'
 verification time 0 usec
 stack depth 8
-processed 30 insns (limit 1000000) max_states_per_insn 1 total_states 2 peak_states 2 mark_read 1
+processed 36 insns (limit 1000000) max_states_per_insn 0 total_states 3 peak_states 3 mark_read 1
 -- END PROG LOAD LOG --
 libbpf: prog 'map_value_branch_merge': failed to load: -EACCES
 libbpf: failed to load object '<work-dir>/prog.o'
