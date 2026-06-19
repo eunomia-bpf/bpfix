@@ -192,6 +192,7 @@ int rs_actplane_mmap_pending_merge(struct xdp_md *ctx)
     __s32 pid;
     __s32 fd;
     __u8 guarded;
+    struct rs_mmap_pend *pending;
 
     if ((void *)(bytes + 5) > data_end)
         return XDP_PASS;
@@ -203,17 +204,22 @@ int rs_actplane_mmap_pending_merge(struct xdp_md *ctx)
     start = RS_MMAP_BASE + ((__u64)bytes[4] << 12);
 
     p = bpf_map_lookup_elem(&ts_mmappend, &tid);
-    if (guarded & 1) {
-        if (!p)
-            return XDP_PASS;
+    if (!p)
+        return XDP_PASS;
+
+    pending = p;
+    if (!(guarded & 1)) {
+        __u64 shadow_tid = tid + 1;
+
+        pending = bpf_map_lookup_elem(&ts_mmappend, &shadow_tid);
     }
 
-    fd = p->fd;
+    fd = pending->fd;
     fkey.pid = pid;
     fkey.fd = fd;
     ref = bpf_map_lookup_elem(&ts_fd, &fkey);
     if (ref)
-        rs_store_mmap_ref(pid, start, p, ref);
+        rs_store_mmap_ref(pid, start, pending, ref);
     bpf_map_delete_elem(&ts_mmappend, &tid);
 
     return ref ? XDP_DROP : XDP_PASS;
