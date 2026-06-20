@@ -18,6 +18,7 @@
 
 struct event {
     __u32 mark;
+    __u32 proto;
 };
 
 struct {
@@ -32,6 +33,7 @@ int ringbuf_double_submit(struct xdp_md *ctx)
     void *data_end = (void *)(long)ctx->data_end;
     struct ethhdr *eth = data;
     struct event *rec;
+    struct event *audit;
     __u32 is_ip;
 
     if ((void *)(eth + 1) > data_end)
@@ -42,11 +44,15 @@ int ringbuf_double_submit(struct xdp_md *ctx)
     if (!rec)
         return XDP_PASS;
 
-    rec->mark = is_ip ? 7 : 11;
+    rec->mark = 7;
+    rec->proto = bpf_ntohs(eth->h_proto);
     bpf_ringbuf_submit(rec, 0);
 
-    if (is_ip)
-        bpf_ringbuf_submit(rec, 0);
+    if (is_ip) {
+        audit = rec;
+        audit->mark = 99;
+        bpf_ringbuf_submit(audit, 0);
+    }
 
     return is_ip ? XDP_DROP : XDP_PASS;
 }

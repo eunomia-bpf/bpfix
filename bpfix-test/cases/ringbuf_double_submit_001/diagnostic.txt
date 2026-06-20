@@ -1,16 +1,19 @@
-error[BPFIX-E008]: helper or kfunc argument has the wrong verifier-visible type
+error[BPFIX-E006]: pointer type proof is missing
   = class: source_bug
   = confidence: medium
   = diagnostic: supported, help: repair_hint, span: exact_pc
-  = next action: protocol
-  --> buggy.bpf.c:49
+  = next action: provenance
+  --> buggy.bpf.c:53
    |
-49 | bpf_ringbuf_submit(rec, 0);
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ helper or kfunc argument has the wrong verifier-visible type
+39 | if ((void *)(eth + 1) > data_end)
+   | --------------------------------- nearby source context for pointer provenance
+51 | if (is_ip) {
+   | ------------ nearby source context for pointer provenance
+53 | audit->mark = 99;
+   | ^^^^^^^^^^^^^^^^^ rejected here: verifier sees a scalar where a pointer is required
    |
-   = verifier[70]: R1 type=scalar expected=ringbuf_mem
+   = verifier[74]: R7 invalid mem access 'scalar'
    = note: nearest BPF instruction pc 24
-   = note: parsed 19 verifier state snapshots
-   = note[verifier-state]: verifier state at the call site confirms the rejected argument register has the printed actual type, while the helper or kfunc contract requires a different verifier-visible type
-   = required proof: pass the helper or kfunc argument register the exact verifier-visible type required by its contract at this call site
-help: Pass the helper or kfunc the required verifier-visible pointer type; do not cast or reuse a different pointer class.
+   = note: parsed 20 verifier state snapshots
+   = required proof: preserve a verifier-recognized pointer type at the operation that requires a pointer
+help: Keep the final access on a verifier-tracked pointer; rederive it from a checked base after scalar work.

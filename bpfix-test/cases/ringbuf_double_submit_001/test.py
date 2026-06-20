@@ -6,7 +6,11 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools"))
 
-from bpf_case import run_case, submitted_ringbuf_record_with_mark7_or_11
+from bpf_case import (
+    ringbuf_refs_written_with_u32_value,
+    run_case,
+    submitted_ringbuf_refs,
+)
 
 
 def frame(eth_type: int) -> bytes:
@@ -17,16 +21,30 @@ def truncated_packet() -> bytes:
     return bytes.fromhex("00112233445566778899aabb")
 
 
+def submitted_primary_mark7_record(log: str) -> bool:
+    written = ringbuf_refs_written_with_u32_value(log, 7, expected_ringbuf_size=8)
+    return bool(written & submitted_ringbuf_refs(log, expected_ringbuf_size=8))
+
+
+def submitted_audit_mark99_record(log: str) -> bool:
+    written = ringbuf_refs_written_with_u32_value(log, 99, expected_ringbuf_size=8)
+    return bool(written & submitted_ringbuf_refs(log, expected_ringbuf_size=8))
+
+
+def submitted_two_distinct_8byte_records(log: str) -> bool:
+    return len(submitted_ringbuf_refs(log, expected_ringbuf_size=8)) >= 2
+
+
 if __name__ == "__main__":
     raise SystemExit(
         run_case(
             argv=sys.argv[1:],
             expected_reject_substrings=[
-                "expected=ringbuf_mem",
+                "invalid mem access 'scalar'",
             ],
             functional_tests=[
-                ("ipv4_submits_once_and_drops", lambda: frame(0x0800), 1),
-                ("arp_submits_once_and_passes", lambda: frame(0x0806), 2),
+                ("ipv4_submits_primary_and_audit_then_drops", lambda: frame(0x0800), 1),
+                ("arp_submits_primary_once_and_passes", lambda: frame(0x0806), 2),
                 ("truncated_passes", truncated_packet, 2),
             ],
             required_success_substrings=[
@@ -34,7 +52,9 @@ if __name__ == "__main__":
                 "call bpf_ringbuf_submit#132",
             ],
             required_success_predicates=[
-                ("submit mark=7 or mark=11 record", submitted_ringbuf_record_with_mark7_or_11),
+                ("submit primary mark=7 ringbuf record", submitted_primary_mark7_record),
+                ("submit audit mark=99 ringbuf record", submitted_audit_mark99_record),
+                ("submit at least two distinct ringbuf records", submitted_two_distinct_8byte_records),
             ],
         )
     )
