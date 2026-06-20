@@ -23,7 +23,7 @@ struct config {
 
 struct {
     __uint(type, BPF_MAP_TYPE_HASH);
-    __uint(max_entries, 1);
+    __uint(max_entries, 3);
     __type(key, __u32);
     __type(value, struct config);
 } configs SEC(".maps");
@@ -36,6 +36,7 @@ int map_value_spill_cookie(struct xdp_md *ctx)
     struct ethhdr *eth = data;
     __u32 key = 0;
     struct config *cfg = bpf_map_lookup_elem(&configs, &key);
+    __u8 proto;
 
     if ((void *)(eth + 1) > data_end)
         return XDP_PASS;
@@ -43,20 +44,22 @@ int map_value_spill_cookie(struct xdp_md *ctx)
         return XDP_PASS;
 
     struct iphdr *iph = data + sizeof(*eth);
+    struct config *saved;
     if ((void *)(iph + 1) > data_end)
         return XDP_PASS;
+    proto = iph->protocol;
 
     if (!cfg)
         return XDP_PASS;
 
-    struct config *saved = cfg;
-    __u64 cookie = (__u64)(long)saved;
-    asm volatile("%[cookie] <<= 32; %[cookie] >>= 32" : [cookie] "+r"(cookie));
+    saved = cfg;
+    if (proto == IPPROTO_ICMP || proto == IPPROTO_UDP) {
+        key = proto;
+        cfg = bpf_map_lookup_elem(&configs, &key);
+    }
 
-    struct config *shadow = (void *)(long)cookie;
-    shadow->seen_packets += 1;
-
-    return shadow->drop_proto == iph->protocol ? XDP_DROP : XDP_PASS;
+    cfg->seen_packets += 1;
+    return cfg->drop_proto == proto ? XDP_DROP : XDP_PASS;
 }
 
 char _license[] SEC("license") = "GPL";
