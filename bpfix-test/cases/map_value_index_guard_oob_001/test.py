@@ -26,17 +26,18 @@ if __name__ == "__main__":
                 "invalid access to map value",
             ],
             functional_tests=[
-                ("idx0_drops_from_map_slot0", lambda: frame(0x0800), 1),
-                ("idx1_passes_from_map_slot1", lambda: frame(0x0801), 2),
-                ("idx2_is_out_of_range_and_passes", lambda: frame(0x0806), 2),
+                ("selector0_drops_from_slot0", lambda: frame(0x0800), 1),
+                ("selector2_passes_from_slot1", lambda: frame(0x0802), 2),
+                ("selector5_drops_from_slot2", lambda: frame(0x0805), 1),
+                ("selector1_is_unmanaged_and_passes", lambda: frame(0x0801), 2),
+                ("selector6_is_unmanaged_and_passes", lambda: frame(0x0806), 2),
                 ("truncated_passes", truncated_packet, 2),
             ],
             required_success_substrings=[
                 "call bpf_map_lookup_elem#1",
-                "map_value_or_null",
             ],
             map_updates=[
-                ("configs", struct.pack("<I", 0), struct.pack("<II", 1, 0)),
+                ("configs", struct.pack("<I", 0), struct.pack("<III", 1, 0, 1)),
             ],
         )
     )

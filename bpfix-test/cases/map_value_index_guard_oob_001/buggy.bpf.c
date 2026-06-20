@@ -14,7 +14,7 @@
 #endif
 
 struct config {
-    __u32 slots[2];
+    __u32 slots[3];
 };
 
 struct {
@@ -32,20 +32,20 @@ int map_value_index_guard_oob(struct xdp_md *ctx)
     struct ethhdr *eth = data;
     struct config *cfg;
     __u32 key = 0;
-    __u32 idx;
+    __u32 selector;
 
     if ((void *)(eth + 1) > data_end)
         return XDP_PASS;
 
-    idx = bpf_ntohs(eth->h_proto) & 3;
-    if (idx > 2)
+    selector = bpf_ntohs(eth->h_proto) & 7;
+    if (selector != 0 && selector != 2 && selector != 5)
         return XDP_PASS;
 
     cfg = bpf_map_lookup_elem(&configs, &key);
     if (!cfg)
         return XDP_PASS;
 
-    return cfg->slots[idx] ? XDP_DROP : XDP_PASS;
+    return cfg->slots[selector] ? XDP_DROP : XDP_PASS;
 }
 
 char _license[] SEC("license") = "GPL";

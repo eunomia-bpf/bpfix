@@ -1,23 +1,23 @@
 libbpf: loading object from <work-dir>/prog.o
-libbpf: elf: section(3) xdp, size 208, link 0, flags 6, type=1
-libbpf: sec 'xdp': found program 'map_value_index_guard_oob' at insn offset 0 (0 bytes), code size 26 insns (208 bytes)
+libbpf: elf: section(3) xdp, size 232, link 0, flags 6, type=1
+libbpf: sec 'xdp': found program 'map_value_index_guard_oob' at insn offset 0 (0 bytes), code size 29 insns (232 bytes)
 libbpf: elf: section(4) .relxdp, size 16, link 26, flags 40, type=9
 libbpf: elf: section(5) .maps, size 32, link 0, flags 3, type=1
 libbpf: elf: section(6) license, size 4, link 0, flags 3, type=1
 libbpf: license of <work-dir>/prog.o is GPL
-libbpf: elf: section(16) .BTF, size 1402, link 0, flags 0, type=1
+libbpf: elf: section(16) .BTF, size 1452, link 0, flags 0, type=1
 libbpf: elf: section(18) .BTF.ext, size 316, link 0, flags 0, type=1
-libbpf: elf: section(26) .symtab, size 360, link 1, flags 0, type=2
-libbpf: looking for externs among 15 symbols...
+libbpf: elf: section(26) .symtab, size 384, link 1, flags 0, type=2
+libbpf: looking for externs among 16 symbols...
 libbpf: collected 0 externs total
 libbpf: map 'configs': at sec_idx 5, offset 0.
 libbpf: map 'configs': found type = 2.
 libbpf: map 'configs': found key [8], sz = 4.
-libbpf: map 'configs': found value [11], sz = 8.
+libbpf: map 'configs': found value [11], sz = 12.
 libbpf: map 'configs': found max_entries = 1.
 libbpf: sec '.relxdp': collecting relocation for section(3) 'xdp'
-libbpf: sec '.relxdp': relo #0: insn #14 against 'configs'
-libbpf: prog 'map_value_index_guard_oob': found map 0 (configs, sec 5, off 0) for insn #14
+libbpf: sec '.relxdp': relo #0: insn #17 against 'configs'
+libbpf: prog 'map_value_index_guard_oob': found map 0 (configs, sec 5, off 0) for insn #17
 libbpf: object 'prog': failed (-95) to create BPF token from '/sys/fs/bpf', skipping optional step...
 libbpf: loaded kernel BTF from '/sys/kernel/btf/vmlinux'
 libbpf: sec 'xdp': found 3 CO-RE relocations
@@ -44,24 +44,27 @@ Live regs before insn:
   4: .12....... (b7) r0 = 2
   5: 012....... (bf) r3 = r1
   6: 0123...... (07) r3 += 14
-  7: 0123...... (2d) if r3 > r2 goto pc+17
-  8: 01........ (69) r6 = *(u16 *)(r1 +12)
-  9: 0.....6... (77) r6 >>= 8
- 10: 0.....6... (57) r6 &= 3
- 11: 0.....6... (15) if r6 == 0x3 goto pc+13
- 12: ......6... (bf) r2 = r10
- 13: ..2...6... (07) r2 += -4
- 14: ..2...6... (18) r1 = 0xffff000000000000
- 16: .12...6... (85) call bpf_map_lookup_elem#1
- 17: 0.....6... (bf) r1 = r0
- 18: .1....6... (b7) r0 = 2
- 19: 01....6... (15) if r1 == 0x0 goto pc+5
- 20: 01....6... (67) r6 <<= 2
- 21: 01....6... (0f) r1 += r6
- 22: 01........ (61) r1 = *(u32 *)(r1 +0)
- 23: 01........ (15) if r1 == 0x0 goto pc+1
- 24: .......... (b7) r0 = 1
- 25: 0......... (95) exit
+  7: 0123...... (2d) if r3 > r2 goto pc+20
+  8: 01........ (69) r1 = *(u16 *)(r1 +12)
+  9: 01........ (dc) r1 = be16 r1
+ 10: 01........ (bf) r6 = r1
+ 11: 01....6... (57) r6 &= 7
+ 12: 01....6... (57) r1 &= 5
+ 13: 01....6... (15) if r1 == 0x0 goto pc+1
+ 14: 0.....6... (55) if r6 != 0x5 goto pc+13
+ 15: ......6... (bf) r2 = r10
+ 16: ..2...6... (07) r2 += -4
+ 17: ..2...6... (18) r1 = 0xffff000000000000
+ 19: .12...6... (85) call bpf_map_lookup_elem#1
+ 20: 0.....6... (bf) r1 = r0
+ 21: .1....6... (b7) r0 = 2
+ 22: 01....6... (15) if r1 == 0x0 goto pc+5
+ 23: 01....6... (67) r6 <<= 2
+ 24: 01....6... (0f) r1 += r6
+ 25: 01........ (61) r1 = *(u32 *)(r1 +0)
+ 26: 01........ (15) if r1 == 0x0 goto pc+1
+ 27: .......... (b7) r0 = 1
+ 28: 0......... (95) exit
 0: R1=ctx() R10=fp0
 ; void *data_end = (void *)(long)ctx->data_end; @ buggy.bpf.c:31
 0: (61) r2 = *(u32 *)(r1 +4)          ; R1=ctx() R2_w=pkt_end()
@@ -70,54 +73,60 @@ Live regs before insn:
 2: (b7) r3 = 0                        ; R3_w=0
 ; __u32 key = 0; @ buggy.bpf.c:34
 3: (63) *(u32 *)(r10 -4) = r3
-mark_precise: frame0: last_idx 3 first_idx 0 subseq_idx -1 
+mark_precise: frame0: last_idx 3 first_idx 0 subseq_idx -1
 mark_precise: frame0: regs=r3 stack= before 2: (b7) r3 = 0
 4: R3_w=0 R10=fp0 fp-8=0000????
 4: (b7) r0 = 2                        ; R0_w=2
 ; if ((void *)(eth + 1) > data_end) @ buggy.bpf.c:37
 5: (bf) r3 = r1                       ; R1_w=pkt(r=0) R3_w=pkt(r=0)
 6: (07) r3 += 14                      ; R3_w=pkt(off=14,r=0)
-7: (2d) if r3 > r2 goto pc+17         ; R2_w=pkt_end() R3_w=pkt(off=14,r=14)
-; idx = bpf_ntohs(eth->h_proto) & 3; @ buggy.bpf.c:40
-8: (69) r6 = *(u16 *)(r1 +12)         ; R1_w=pkt(r=14) R6_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=0xffff,var_off=(0x0; 0xffff))
-9: (77) r6 >>= 8                      ; R6_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
-10: (57) r6 &= 3                      ; R6_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=3,var_off=(0x0; 0x3))
-; if (idx > 2) @ buggy.bpf.c:41
-11: (15) if r6 == 0x3 goto pc+13      ; R6_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=2,var_off=(0x0; 0x3))
-12: (bf) r2 = r10                     ; R2_w=fp0 R10=fp0
+7: (2d) if r3 > r2 goto pc+20         ; R2_w=pkt_end() R3_w=pkt(off=14,r=14)
+; selector = bpf_ntohs(eth->h_proto) & 7; @ buggy.bpf.c:40
+8: (69) r1 = *(u16 *)(r1 +12)         ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=0xffff,var_off=(0x0; 0xffff))
+9: (dc) r1 = be16 r1                  ; R1_w=scalar()
+10: (bf) r6 = r1                      ; R1_w=scalar(id=1) R6_w=scalar(id=1)
+11: (57) r6 &= 7                      ; R6_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=7,var_off=(0x0; 0x7))
+; if (selector != 0 && selector != 2 && selector != 5) @ buggy.bpf.c:41
+12: (57) r1 &= 5                      ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=5,var_off=(0x0; 0x5))
+13: (15) if r1 == 0x0 goto pc+1       ; R1_w=scalar(smin=umin=smin32=umin32=1,smax=umax=smax32=umax32=5,var_off=(0x0; 0x5))
+14: (55) if r6 != 0x5 goto pc+13      ; R6=5
+15: (bf) r2 = r10                     ; R2_w=fp0 R10=fp0
 ; cfg = bpf_map_lookup_elem(&configs, &key); @ buggy.bpf.c:44
-13: (07) r2 += -4                     ; R2_w=fp-4
-14: (18) r1 = 0xffff000000000000      ; R1_w=map_ptr(map=configs,ks=4,vs=8)
-16: (85) call bpf_map_lookup_elem#1   ; R0=map_value(map=configs,ks=4,vs=8)
-17: (bf) r1 = r0                      ; R0=map_value(map=configs,ks=4,vs=8) R1_w=map_value(map=configs,ks=4,vs=8)
-18: (b7) r0 = 2                       ; R0_w=2
+16: (07) r2 += -4                     ; R2_w=fp-4
+17: (18) r1 = 0xffff000000000000      ; R1_w=map_ptr(map=configs,ks=4,vs=12)
+19: (85) call bpf_map_lookup_elem#1   ; R0_w=map_value(map=configs,ks=4,vs=12)
+20: (bf) r1 = r0                      ; R0_w=map_value(map=configs,ks=4,vs=12) R1_w=map_value(map=configs,ks=4,vs=12)
+21: (b7) r0 = 2                       ; R0_w=2
 ; if (!cfg) @ buggy.bpf.c:45
-19: (15) if r1 == 0x0 goto pc+5       ; R1_w=map_value(map=configs,ks=4,vs=8)
-; return cfg->slots[idx] ? XDP_DROP : XDP_PASS; @ buggy.bpf.c:48
-20: (67) r6 <<= 2                     ; R6_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=8,var_off=(0x0; 0xc))
-21: (0f) r1 += r6
-mark_precise: frame0: last_idx 21 first_idx 17 subseq_idx -1 
-mark_precise: frame0: regs=r6 stack= before 20: (67) r6 <<= 2
-mark_precise: frame0: regs=r6 stack= before 19: (15) if r1 == 0x0 goto pc+5
-mark_precise: frame0: regs=r6 stack= before 18: (b7) r0 = 2
-mark_precise: frame0: regs=r6 stack= before 17: (bf) r1 = r0
-mark_precise: frame0: parent state regs=r6 stack=:  R0_rw=map_value(map=configs,ks=4,vs=8) R6_rw=Pscalar(smin=smin32=0,smax=umax=smax32=umax32=2,var_off=(0x0; 0x3)) R10=fp0 fp-8=0000????
-mark_precise: frame0: last_idx 16 first_idx 0 subseq_idx 17 
-mark_precise: frame0: regs=r6 stack= before 16: (85) call bpf_map_lookup_elem#1
-mark_precise: frame0: regs=r6 stack= before 14: (18) r1 = 0xffff000000000000
-mark_precise: frame0: regs=r6 stack= before 13: (07) r2 += -4
-mark_precise: frame0: regs=r6 stack= before 12: (bf) r2 = r10
-mark_precise: frame0: regs=r6 stack= before 11: (15) if r6 == 0x3 goto pc+13
-mark_precise: frame0: regs=r6 stack= before 10: (57) r6 &= 3
-mark_precise: frame0: regs=r6 stack= before 9: (77) r6 >>= 8
-mark_precise: frame0: regs=r6 stack= before 8: (69) r6 = *(u16 *)(r1 +12)
-22: R1_w=map_value(map=configs,ks=4,vs=8,smin=smin32=0,smax=umax=smax32=umax32=8,var_off=(0x0; 0xc)) R6_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=8,var_off=(0x0; 0xc))
-22: (61) r1 = *(u32 *)(r1 +0)
-invalid access to map value, value_size=8 off=8 size=4
-R1 max value is outside of the allowed memory range
+22: (15) if r1 == 0x0 goto pc+5       ; R1_w=map_value(map=configs,ks=4,vs=12)
+; return cfg->slots[selector] ? XDP_DROP : XDP_PASS; @ buggy.bpf.c:48
+23: (67) r6 <<= 2                     ; R6_w=20
+24: (0f) r1 += r6
+mark_precise: frame0: last_idx 24 first_idx 14 subseq_idx -1
+mark_precise: frame0: regs=r6 stack= before 23: (67) r6 <<= 2
+mark_precise: frame0: regs=r6 stack= before 22: (15) if r1 == 0x0 goto pc+5
+mark_precise: frame0: regs=r6 stack= before 21: (b7) r0 = 2
+mark_precise: frame0: regs=r6 stack= before 20: (bf) r1 = r0
+mark_precise: frame0: regs=r6 stack= before 19: (85) call bpf_map_lookup_elem#1
+mark_precise: frame0: regs=r6 stack= before 17: (18) r1 = 0xffff000000000000
+mark_precise: frame0: regs=r6 stack= before 16: (07) r2 += -4
+mark_precise: frame0: regs=r6 stack= before 15: (bf) r2 = r10
+mark_precise: frame0: regs=r6 stack= before 14: (55) if r6 != 0x5 goto pc+13
+mark_precise: frame0: parent state regs=r6 stack=:  R0_w=2 R1_w=scalar(smin=umin=smin32=umin32=1,smax=umax=smax32=umax32=5,var_off=(0x0; 0x5)) R2_w=pkt_end() R3_w=pkt(off=14,r=14) R6_rw=Pscalar(smin=smin32=0,smax=umax=smax32=umax32=7,var_off=(0x0; 0x7)) R10=fp0 fp-8_r=0000????
+mark_precise: frame0: last_idx 13 first_idx 0 subseq_idx 14
+mark_precise: frame0: regs=r6 stack= before 13: (15) if r1 == 0x0 goto pc+1
+mark_precise: frame0: regs=r6 stack= before 12: (57) r1 &= 5
+mark_precise: frame0: regs=r6 stack= before 11: (57) r6 &= 7
+mark_precise: frame0: regs=r6 stack= before 10: (bf) r6 = r1
+mark_precise: frame0: regs=r1 stack= before 9: (dc) r1 = be16 r1
+mark_precise: frame0: regs=r1 stack= before 8: (69) r1 = *(u16 *)(r1 +12)
+25: R1_w=map_value(map=configs,ks=4,vs=12,off=20) R6_w=20
+25: (61) r1 = *(u32 *)(r1 +0)
+invalid access to map value, value_size=12 off=20 size=4
+R1 min value is outside of the allowed memory range
 verification time 0 usec
 stack depth 8
-processed 22 insns (limit 1000000) max_states_per_insn 0 total_states 1 peak_states 1 mark_read 1
+processed 25 insns (limit 1000000) max_states_per_insn 0 total_states 1 peak_states 1 mark_read 1
 -- END PROG LOAD LOG --
 libbpf: prog 'map_value_index_guard_oob': failed to load: -EACCES
 libbpf: failed to load object '<work-dir>/prog.o'

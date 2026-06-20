@@ -1,18 +1,18 @@
-error[BPFIX-E005]: scalar range at the rejected use is still verifier-unsafe
+error[BPFIX-E005]: map-value access exceeds the verifier-visible value size
   = class: source_bug
   = confidence: medium
   = diagnostic: supported, help: repair_hint, span: exact_pc
   = next action: bounds
   --> buggy.bpf.c:48
    |
-41 | if (idx > 2)
-   | ------------ nearby source context for scalar range
-48 | return cfg->slots[idx] ? XDP_DROP : XDP_PASS;
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ rejected here: R1 map-value access off=8 size=4 reaches byte 12, past value_size=8
+41 | if (selector != 0 && selector != 2 && selector != 5)
+   | ---------------------------------------------------- nearby source context for scalar range
+48 | return cfg->slots[selector] ? XDP_DROP : XDP_PASS;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this map-value access crosses the declared value size
    |
-   = verifier[79]: invalid access to map value, value_size=8 off=8 size=4; R1 max value is outside of the allowed memory range
-   = note: nearest BPF instruction pc 22
-   = note: parsed 19 verifier state snapshots
-   = note[verifier-state]: verifier state shows the rejected scalar or pointer-offset register still has an unsafe range at the use
-   = required proof: prove R1's map-value byte range off=8 size=4 stays within value_size=8; verifier sees map_value(value_size=8,range(smin=0,smax=8,umax=8))
-help: Clamp or branch-check the exact scalar used by this helper, pointer arithmetic, stack access, or map-value access immediately before the rejected operation.
+   = verifier[88]: invalid access to map value, value_size=12 off=20 size=4; R1 min value is outside of the allowed memory range
+   = note: nearest BPF instruction pc 25
+   = note: parsed 21 verifier state snapshots
+   = note[verifier-state]: verifier state shows the rejected map-value pointer access crosses the declared value size
+   = required proof: prove the map-value field offset plus access width stays below the declared map value size at the rejected access
+help: Keep map-value field offsets, array indexes, and helper lengths inside the declared map value size; resize the map value or clamp the access before the load, store, or helper call.
