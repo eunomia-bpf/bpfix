@@ -13,7 +13,7 @@
 #endif
 
 struct config {
-    __u32 slots[2];
+    __u32 slots[3];
 };
 
 struct {
@@ -31,20 +31,22 @@ int map_value_signed_index(struct xdp_md *ctx)
     struct ethhdr *eth = data;
     struct config *cfg;
     __s32 idx;
+    __u32 slot;
     __u32 key = 0;
 
     if ((void *)(eth + 1) > data_end)
         return XDP_PASS;
 
     idx = (__s8)eth->h_dest[5];
-    if (idx < 0 || idx >= 2)
+    if (idx < -1 || idx > 1)
         return XDP_PASS;
+    slot = (__u32)(idx + 1);
 
     cfg = bpf_map_lookup_elem(&configs, &key);
     if (!cfg)
         return XDP_PASS;
 
-    return cfg->slots[idx] ? XDP_DROP : XDP_PASS;
+    return cfg->slots[slot] ? XDP_DROP : XDP_PASS;
 }
 
 char _license[] SEC("license") = "GPL";

@@ -13,7 +13,7 @@
 #endif
 
 struct config {
-    __u32 slots[2];
+    __u32 slots[3];
 };
 
 struct {
@@ -37,7 +37,7 @@ int map_value_signed_index(struct xdp_md *ctx)
         return XDP_PASS;
 
     idx = (__s8)eth->h_dest[5];
-    if (idx >= 2)
+    if (idx < -1 || idx > 1)
         return XDP_PASS;
 
     cfg = bpf_map_lookup_elem(&configs, &key);

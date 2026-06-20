@@ -5,14 +5,14 @@ error[BPFIX-E005]: scalar range at the rejected use is still verifier-unsafe
   = next action: bounds
   --> buggy.bpf.c:47
    |
-40 | if (idx >= 2)
-   | ------------- nearby source context for scalar range
+40 | if (idx < -1 || idx > 1)
+   | ------------------------ nearby source context for scalar range
 47 | return cfg->slots[idx] ? XDP_DROP : XDP_PASS;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ rejected here: verifier still sees R6 as scalar(smax=9223372036854775804,umax=18446462598732840960)
    |
-   = verifier[77]: math between map_value pointer and register with unbounded min value is not allowed
-   = note: nearest BPF instruction pc 21
-   = note: parsed 18 verifier state snapshots
+   = verifier[83]: math between map_value pointer and register with unbounded min value is not allowed
+   = note: nearest BPF instruction pc 23
+   = note: parsed 19 verifier state snapshots
    = note[verifier-state]: verifier state shows the rejected scalar or pointer-offset register still has an unsafe range at the use
    = required proof: prove R6 has a bounded non-negative scalar range before this pointer arithmetic or helper memory access; verifier sees scalar(smax=9223372036854775804,umax=18446462598732840960)
 help: Clamp or branch-check the exact scalar used by this helper, pointer arithmetic, stack access, or map-value access immediately before the rejected operation.

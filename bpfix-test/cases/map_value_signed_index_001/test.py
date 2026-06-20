@@ -27,16 +27,18 @@ if __name__ == "__main__":
                 "unbounded min value",
             ],
             functional_tests=[
-                ("slot0_drops", lambda: frame(0), 1),
-                ("slot1_passes", lambda: frame(1), 2),
-                ("negative_index_passes", lambda: frame(0xFF), 2),
+                ("negative_bucket_drops", lambda: frame(0xFF), 1),
+                ("zero_bucket_passes", lambda: frame(0), 2),
+                ("positive_bucket_drops", lambda: frame(1), 1),
+                ("out_of_range_negative_passes", lambda: frame(0xFE), 2),
+                ("out_of_range_positive_passes", lambda: frame(2), 2),
                 ("truncated_passes", truncated_packet, 2),
             ],
             required_success_substrings=[
                 "call bpf_map_lookup_elem#1",
             ],
             map_updates=[
-                ("configs", struct.pack("<I", 0), struct.pack("<II", 1, 0)),
+                ("configs", struct.pack("<I", 0), struct.pack("<III", 1, 0, 1)),
             ],
         )
     )
