@@ -15,6 +15,9 @@
 #ifndef ETH_P_IP
 #define ETH_P_IP 0x0800
 #endif
+#ifndef ETH_P_ARP
+#define ETH_P_ARP 0x0806
+#endif
 
 struct config {
     __u32 drop_proto;
@@ -25,7 +28,14 @@ struct {
     __uint(max_entries, 1);
     __type(key, __u32);
     __type(value, struct config);
-} configs SEC(".maps");
+} ip_configs SEC(".maps");
+
+struct {
+    __uint(type, BPF_MAP_TYPE_ARRAY);
+    __uint(max_entries, 1);
+    __type(key, __u32);
+    __type(value, struct config);
+} arp_configs SEC(".maps");
 
 SEC("xdp")
 int helper_map_arg_stack(struct xdp_md *ctx)
@@ -41,6 +51,9 @@ int helper_map_arg_stack(struct xdp_md *ctx)
         return XDP_PASS;
 
     proto = bpf_ntohs(eth->h_proto);
+    if (proto != ETH_P_IP && proto != ETH_P_ARP)
+        return XDP_PASS;
+
     cfg = bpf_map_lookup_elem(&key, &key);
     if (!cfg)
         return XDP_PASS;
