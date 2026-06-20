@@ -3,18 +3,18 @@ error[BPFIX-E011]: skb/xdp packet pointer is reused after a helper invalidates i
   = confidence: medium
   = diagnostic: supported, help: repair_hint, span: exact_pc
   = next action: provenance
-  --> buggy.bpf.c:32
+  --> buggy.bpf.c:43
    |
-26 | if ((void *)(eth + 1) > data_end)
+32 | if ((void *)(eth + 1) > data_end)
    | --------------------------------- nearby source context for pointer provenance
-29 | if (bpf_xdp_adjust_tail(ctx, -4))
+37 | if (bpf_xdp_adjust_tail(ctx, -4))
    | --------------------------------- nearby source context for pointer provenance
-32 | return bpf_ntohs(eth->h_proto) == ETH_P_IP ? XDP_DROP : XDP_PASS;
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this access reuses a pointer invalidated by an earlier helper call
+43 | if (iph->protocol != IPPROTO_UDP)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this access reuses a pointer invalidated by an earlier helper call
    |
-   = verifier[35]: R7 invalid mem access 'scalar'
-   = note: nearest BPF instruction pc 10
-   = note: parsed 8 verifier state snapshots
+   = verifier[59]: R6 invalid mem access 'scalar'
+   = note: nearest BPF instruction pc 16
+   = note: parsed 12 verifier state snapshots
    = note[verifier-state]: verifier state shows this register previously held an skb/xdp packet pointer, but an intervening packet-mutating helper invalidated that pointer before the rejected memory access
    = required proof: preserve pointer provenance by reacquiring and rechecking the skb/xdp packet pointer after the helper that invalidates existing packet data pointers
 help: After the packet-mutating helper, reload data/data_end, account for any head adjustment, recheck bounds, and derive a fresh packet pointer.

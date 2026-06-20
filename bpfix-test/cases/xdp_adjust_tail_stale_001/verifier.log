@@ -1,16 +1,16 @@
 libbpf: loading object from <work-dir>/prog.o
-libbpf: elf: section(3) xdp, size 128, link 0, flags 6, type=1
-libbpf: sec 'xdp': found program 'xdp_adjust_tail_stale' at insn offset 0 (0 bytes), code size 16 insns (128 bytes)
+libbpf: elf: section(3) xdp, size 264, link 0, flags 6, type=1
+libbpf: sec 'xdp': found program 'xdp_adjust_tail_stale' at insn offset 0 (0 bytes), code size 33 insns (264 bytes)
 libbpf: elf: section(4) license, size 4, link 0, flags 3, type=1
 libbpf: license of <work-dir>/prog.o is GPL
-libbpf: elf: section(14) .BTF, size 1064, link 0, flags 0, type=1
-libbpf: elf: section(16) .BTF.ext, size 268, link 0, flags 0, type=1
+libbpf: elf: section(14) .BTF, size 1716, link 0, flags 0, type=1
+libbpf: elf: section(16) .BTF.ext, size 460, link 0, flags 0, type=1
 libbpf: elf: section(24) .symtab, size 336, link 1, flags 0, type=2
 libbpf: looking for externs among 14 symbols...
 libbpf: collected 0 externs total
 libbpf: object 'prog': failed (-95) to create BPF token from '/sys/fs/bpf', skipping optional step...
 libbpf: loaded kernel BTF from '/sys/kernel/btf/vmlinux'
-libbpf: sec 'xdp': found 3 CO-RE relocations
+libbpf: sec 'xdp': found 6 CO-RE relocations
 libbpf: CO-RE relocating [2] struct xdp_md: found target candidate [14922] struct xdp_md in [vmlinux]
 libbpf: prog 'xdp_adjust_tail_stale': relo #0: <byte_off> [2] struct xdp_md.data_end (0:1 @ offset 4)
 libbpf: prog 'xdp_adjust_tail_stale': relo #0: matching candidate #0 <byte_off> [14922] struct xdp_md.data_end (0:1 @ offset 4)
@@ -21,47 +21,82 @@ libbpf: prog 'xdp_adjust_tail_stale': relo #1: patched insn #2 (LDX/ST/STX) off 
 libbpf: CO-RE relocating [8] struct ethhdr: found target candidate [23410] struct ethhdr in [vmlinux]
 libbpf: prog 'xdp_adjust_tail_stale': relo #2: <byte_off> [8] struct ethhdr.h_proto (0:2 @ offset 12)
 libbpf: prog 'xdp_adjust_tail_stale': relo #2: matching candidate #0 <byte_off> [23410] struct ethhdr.h_proto (0:2 @ offset 12)
-libbpf: prog 'xdp_adjust_tail_stale': relo #2: patched insn #10 (LDX/ST/STX) off 12 -> 12
+libbpf: prog 'xdp_adjust_tail_stale': relo #2: patched insn #6 (LDX/ST/STX) off 12 -> 12
+libbpf: CO-RE relocating [15] struct iphdr: found target candidate [23765] struct iphdr in [vmlinux]
+libbpf: prog 'xdp_adjust_tail_stale': relo #3: <byte_off> [15] struct iphdr.protocol (0:7 @ offset 9)
+libbpf: prog 'xdp_adjust_tail_stale': relo #3: matching candidate #0 <byte_off> [23765] struct iphdr.protocol (0:7 @ offset 9)
+libbpf: prog 'xdp_adjust_tail_stale': relo #3: patched insn #16 (LDX/ST/STX) off 9 -> 9
+libbpf: prog 'xdp_adjust_tail_stale': relo #4: <byte_off> [15] struct iphdr.ihl (0:0 @ offset 0)
+libbpf: prog 'xdp_adjust_tail_stale': relo #4: matching candidate #0 <byte_off> [23765] struct iphdr.ihl (0:0 @ offset 0)
+libbpf: prog 'xdp_adjust_tail_stale': relo #4: patched insn #18 (LDX/ST/STX) off 0 -> 0
+libbpf: CO-RE relocating [22] struct udphdr: found target candidate [23773] struct udphdr in [vmlinux]
+libbpf: prog 'xdp_adjust_tail_stale': relo #5: <byte_off> [22] struct udphdr.dest (0:1 @ offset 2)
+libbpf: prog 'xdp_adjust_tail_stale': relo #5: matching candidate #0 <byte_off> [23773] struct udphdr.dest (0:1 @ offset 2)
+libbpf: prog 'xdp_adjust_tail_stale': relo #5: patched insn #28 (LDX/ST/STX) off 2 -> 2
 libbpf: prog 'xdp_adjust_tail_stale': BPF program load failed: -EACCES
 libbpf: prog 'xdp_adjust_tail_stale': -- BEGIN PROG LOAD LOG --
 func#0 @0
 Live regs before insn:
-  0: .1........ (b7) r6 = 2
-  1: .1....6... (61) r2 = *(u32 *)(r1 +4)
-  2: .12...6... (61) r7 = *(u32 *)(r1 +0)
-  3: .12...67.. (bf) r3 = r7
-  4: .123..67.. (07) r3 += 14
-  5: .123..67.. (2d) if r3 > r2 goto pc+8
-  6: .1....67.. (18) r2 = 0xffff000000000000
-  8: .12...67.. (85) call bpf_xdp_adjust_tail#65
-  9: 0.....67.. (55) if r0 != 0x0 goto pc+4
- 10: .......7.. (69) r1 = *(u16 *)(r7 +12)
- 11: .1........ (b7) r6 = 1
- 12: .1....6... (15) if r1 == 0x8 goto pc+1
- 13: .......... (b7) r6 = 2
- 14: ......6... (bf) r0 = r6
- 15: 0......... (95) exit
+  0: .1........ (b7) r0 = 2
+  1: 01........ (61) r7 = *(u32 *)(r1 +4)
+  2: 01.....7.. (61) r8 = *(u32 *)(r1 +0)
+  3: 01.....78. (bf) r6 = r8
+  4: 01....678. (07) r6 += 14
+  5: 01....678. (2d) if r6 > r7 goto pc+26
+  6: 01....678. (69) r2 = *(u16 *)(r8 +12)
+  7: 012...678. (55) if r2 != 0x8 goto pc+24
+  8: .1....678. (18) r2 = 0xffff000000000000
+ 10: .12...678. (85) call bpf_xdp_adjust_tail#65
+ 11: 0.....678. (bf) r1 = r0
+ 12: .1....678. (b7) r0 = 2
+ 13: 01....678. (55) if r1 != 0x0 goto pc+18
+ 14: 0.....678. (07) r8 += 34
+ 15: 0.....678. (2d) if r8 > r7 goto pc+16
+ 16: 0.....67.. (71) r1 = *(u8 *)(r6 +9)
+ 17: 01....67.. (55) if r1 != 0x11 goto pc+14
+ 18: 0.....67.. (71) r1 = *(u8 *)(r6 +0)
+ 19: 01....67.. (67) r1 <<= 2
+ 20: 01....67.. (57) r1 &= 60
+ 21: 01....67.. (b7) r2 = 20
+ 22: 012...67.. (2d) if r2 > r1 goto pc+9
+ 23: 01....67.. (0f) r6 += r1
+ 24: 0.....67.. (2d) if r6 > r7 goto pc+7
+ 25: 0.....67.. (bf) r1 = r6
+ 26: 01....67.. (07) r1 += 8
+ 27: 01....67.. (2d) if r1 > r7 goto pc+4
+ 28: ......6... (69) r1 = *(u16 *)(r6 +2)
+ 29: .1........ (b7) r0 = 1
+ 30: 01........ (15) if r1 == 0x3500 goto pc+1
+ 31: .......... (b7) r0 = 2
+ 32: 0......... (95) exit
 0: R1=ctx() R10=fp0
-; int xdp_adjust_tail_stale(struct xdp_md *ctx) @ buggy.bpf.c:20
-0: (b7) r6 = 2                        ; R6_w=2
-; void *data_end = (void *)(long)ctx->data_end; @ buggy.bpf.c:23
-1: (61) r2 = *(u32 *)(r1 +4)          ; R1=ctx() R2_w=pkt_end()
-; void *data = (void *)(long)ctx->data; @ buggy.bpf.c:22
-2: (61) r7 = *(u32 *)(r1 +0)          ; R1=ctx() R7_w=pkt(r=0)
-; if ((void *)(eth + 1) > data_end) @ buggy.bpf.c:26
-3: (bf) r3 = r7                       ; R3_w=pkt(r=0) R7_w=pkt(r=0)
-4: (07) r3 += 14                      ; R3_w=pkt(off=14,r=0)
-5: (2d) if r3 > r2 goto pc+8          ; R2_w=pkt_end() R3_w=pkt(off=14,r=14)
-; if (bpf_xdp_adjust_tail(ctx, -4)) @ buggy.bpf.c:29
-6: (18) r2 = 0xffff000000000000               ; R2_w=0xffff000000000000
-8: (85) call bpf_xdp_adjust_tail#65   ; R0=scalar()
-9: (55) if r0 != 0x0 goto pc+4        ; R0=0
-; return bpf_ntohs(eth->h_proto) == ETH_P_IP ? XDP_DROP : XDP_PASS; @ buggy.bpf.c:32
-10: (69) r1 = *(u16 *)(r7 +12)
-R7 invalid mem access 'scalar'
+; int xdp_adjust_tail_stale(struct xdp_md *ctx) @ buggy.bpf.c:23
+0: (b7) r0 = 2                        ; R0_w=2
+; void *data_end = (void *)(long)ctx->data_end; @ buggy.bpf.c:26
+1: (61) r7 = *(u32 *)(r1 +4)          ; R1=ctx() R7_w=pkt_end()
+; void *data = (void *)(long)ctx->data; @ buggy.bpf.c:25
+2: (61) r8 = *(u32 *)(r1 +0)          ; R1=ctx() R8_w=pkt(r=0)
+; if ((void *)(eth + 1) > data_end) @ buggy.bpf.c:32
+3: (bf) r6 = r8                       ; R6_w=pkt(r=0) R8_w=pkt(r=0)
+4: (07) r6 += 14                      ; R6_w=pkt(off=14,r=0)
+5: (2d) if r6 > r7 goto pc+26         ; R6_w=pkt(off=14,r=14) R7_w=pkt_end()
+; if (bpf_ntohs(eth->h_proto) != ETH_P_IP) @ buggy.bpf.c:34
+6: (69) r2 = *(u16 *)(r8 +12)         ; R2_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=0xffff,var_off=(0x0; 0xffff)) R8_w=pkt(r=14)
+7: (55) if r2 != 0x8 goto pc+24       ; R2_w=8
+; if (bpf_xdp_adjust_tail(ctx, -4)) @ buggy.bpf.c:37
+8: (18) r2 = 0xffff000000000000               ; R2_w=0xffff000000000000
+10: (85) call bpf_xdp_adjust_tail#65          ; R0=scalar()
+11: (bf) r1 = r0                      ; R0=scalar(id=1) R1_w=scalar(id=1)
+12: (b7) r0 = 2                       ; R0_w=2
+13: (55) if r1 != 0x0 goto pc+18      ; R1_w=0
+14: (07) r8 += 34                     ; R8_w=scalar()
+15: (2d) if r8 > r7 goto pc+16        ; R7=scalar() R8_w=scalar()
+; if (iph->protocol != IPPROTO_UDP) @ buggy.bpf.c:43
+16: (71) r1 = *(u8 *)(r6 +9)
+R6 invalid mem access 'scalar'
 verification time 0 usec
 stack depth 0
-processed 10 insns (limit 1000000) max_states_per_insn 0 total_states 1 peak_states 1 mark_read 1
+processed 16 insns (limit 1000000) max_states_per_insn 0 total_states 1 peak_states 1 mark_read 1
 -- END PROG LOAD LOG --
 libbpf: prog 'xdp_adjust_tail_stale': failed to load: -EACCES
 libbpf: failed to load object '<work-dir>/prog.o'
