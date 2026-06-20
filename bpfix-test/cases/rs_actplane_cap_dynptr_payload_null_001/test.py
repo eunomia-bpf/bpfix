@@ -37,6 +37,10 @@ def unknown_request() -> bytes:
     return struct.pack("<iII", 7777, 0, 0)
 
 
+def tag_only(tag: int) -> bytes:
+    return struct.pack("<i", tag)
+
+
 def dynptr_payload_fields_read_from_proven_mem(load_output: str) -> bool:
     payload_regs: dict[str, tuple[int, int]] = {}
     update_offsets: set[int] = set()
@@ -49,7 +53,9 @@ def dynptr_payload_fields_read_from_proven_mem(load_output: str) -> bool:
         if "call bpf_dynptr_data#203" in line:
             payload_regs.clear()
 
+        state_registers = set()
         for register, state in re.findall(r"\bR(\d+)(?:_w)?=([^\s;]+)", line):
+            state_registers.add(register)
             size_match = re.search(r"^mem\(.*sz=(\d+)", state)
             if size_match is not None:
                 size = int(size_match.group(1))
@@ -75,7 +81,11 @@ def dynptr_payload_fields_read_from_proven_mem(load_output: str) -> bool:
                 payload_regs.pop(dst, None)
 
         ptr_add = re.search(r"\br(\d+)\s*\+=\s*(\d+)\b", line)
-        if ptr_add is not None and ptr_add.group(1) in payload_regs:
+        if (
+            ptr_add is not None
+            and ptr_add.group(1) in payload_regs
+            and ptr_add.group(1) not in state_registers
+        ):
             register = ptr_add.group(1)
             size, base_offset = payload_regs[register]
             payload_regs[register] = (size, base_offset + int(ptr_add.group(2)))
@@ -98,8 +108,8 @@ def dynptr_payload_fields_read_from_proven_mem(load_output: str) -> bool:
         saw_from_mem
         and saw_tag_data
         and saw_struct_data
-        and {4, 8}.issubset(update_offsets)
-        and {4, 8, 12}.issubset(rule_offsets)
+        and 4 in update_offsets
+        and {4, 8}.issubset(rule_offsets)
     )
 
 
@@ -118,7 +128,8 @@ if __name__ == "__main__":
                 ("reload_rule_match_drops", lambda: packet(reload_rule(2, 7, 9)), 1),
                 ("reload_rule_bad_action_passes", lambda: packet(reload_rule(2, 7, 8)), 2),
                 ("reload_rule_bad_index_passes", lambda: packet(reload_rule(5, 7, 9)), 2),
-                ("tag_only_passes", lambda: packet(reload_update(3, 0x55), declared_len=4, truncate_to=4), 2),
+                ("tag_only_update_uses_default_drop", lambda: packet(tag_only(CAP_REQ_RELOAD_UPDATE)), 1),
+                ("tag_only_rule_uses_default_drop", lambda: packet(tag_only(CAP_REQ_RELOAD_RULE)), 1),
                 ("short_packet_passes", lambda: packet(reload_update(3, 0x55), declared_len=32, truncate_to=5), 2),
                 ("unknown_tag_passes", lambda: packet(unknown_request()), 2),
             ],

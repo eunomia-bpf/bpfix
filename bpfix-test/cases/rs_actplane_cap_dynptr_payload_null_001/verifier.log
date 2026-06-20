@@ -5,8 +5,8 @@ libbpf: elf: section(4) .relxdp, size 16, link 26, flags 40, type=9
 libbpf: elf: section(5) .maps, size 32, link 0, flags 3, type=1
 libbpf: elf: section(6) license, size 13, link 0, flags 3, type=1
 libbpf: license of <work-dir>/prog.o is Dual BSD/GPL
-libbpf: elf: section(16) .BTF, size 1923, link 0, flags 0, type=1
-libbpf: elf: section(18) .BTF.ext, size 3116, link 0, flags 0, type=1
+libbpf: elf: section(16) .BTF, size 1808, link 0, flags 0, type=1
+libbpf: elf: section(18) .BTF.ext, size 3148, link 0, flags 0, type=1
 libbpf: elf: section(26) .symtab, size 456, link 1, flags 0, type=2
 libbpf: looking for externs among 19 symbols...
 libbpf: collected 0 externs total
@@ -1440,8 +1440,9 @@ mark_precise: frame0: regs=r3 stack= before 240: (b7) r3 = 4
 245: (15) if r1 == 0x3ea goto pc+12   ; R1_w=scalar(smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000))
 246: (55) if r1 != 0x3e9 goto pc+27   ; R1_w=1001
 247: (bf) r1 = r10                    ; R1_w=fp0 R10=fp0
-; const struct cap_reload_update *r = bpf_dynptr_data(&dynptr, 0, sizeof(*r)); @ buggy.bpf.c:85
+;  @ buggy.bpf.c:0
 248: (07) r1 += -16                   ; R1_w=fp-16
+; r = bpf_dynptr_data(&dynptr, 0, sizeof(*r)); @ buggy.bpf.c:92
 249: (b7) r2 = 0                      ; R2_w=0
 250: (b7) r3 = 12                     ; R3_w=12
 251: (85) call bpf_dynptr_data#203
@@ -1449,7 +1450,7 @@ mark_precise: frame0: last_idx 251 first_idx 242 subseq_idx -1
 mark_precise: frame0: regs=r3 stack= before 250: (b7) r3 = 12
 252: R0=mem_or_null(id=4,sz=12) fp-16=dynptr_local(id=2,dynptr_id=1)
 252: (b7) r3 = 2                      ; R3_w=2
-; if (r->index >= MAX_TAINT_UPDATES) @ buggy.bpf.c:87
+; if (r->index >= MAX_TAINT_UPDATES) @ buggy.bpf.c:94
 253: (61) r1 = *(u32 *)(r0 +4)
 R0 invalid mem access 'mem_or_null'
 verification time 0 usec

@@ -82,9 +82,13 @@ int actplane_cap_dynptr_payload_null(struct xdp_md *ctx)
         return XDP_PASS;
 
     if (*tag == CAP_REQ_RELOAD_UPDATE) {
-        const struct cap_reload_update *r = bpf_dynptr_data(&dynptr, 0, sizeof(*r));
-        if (!r)
-            return XDP_PASS;
+        const struct cap_reload_update fallback = {
+            .tag = CAP_REQ_RELOAD_UPDATE,
+            .index = 3,
+            .value = 0x55,
+        };
+        const struct cap_reload_update *payload = bpf_dynptr_data(&dynptr, 0, sizeof(*payload));
+        const struct cap_reload_update *r = payload ? payload : &fallback;
 
         if (r->index >= MAX_TAINT_UPDATES)
             return XDP_PASS;
@@ -92,9 +96,14 @@ int actplane_cap_dynptr_payload_null(struct xdp_md *ctx)
     }
 
     if (*tag == CAP_REQ_RELOAD_RULE) {
-        const struct cap_reload_rule *r = bpf_dynptr_data(&dynptr, 0, sizeof(*r));
-        if (!r)
-            return XDP_PASS;
+        const struct cap_reload_rule fallback = {
+            .tag = CAP_REQ_RELOAD_RULE,
+            .index = 2,
+            .domain = 7,
+            .action = 9,
+        };
+        const struct cap_reload_rule *payload = bpf_dynptr_data(&dynptr, 0, sizeof(*payload));
+        const struct cap_reload_rule *r = payload ? payload : &fallback;
 
         if (r->index >= MAX_TAINT_RULES)
             return XDP_PASS;

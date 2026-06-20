@@ -3,14 +3,14 @@ error[BPFIX-E002]: nullable pointer is used before the verifier sees a non-null 
   = confidence: medium
   = diagnostic: supported, help: repair_hint, span: exact_pc
   = next action: null
-  --> buggy.bpf.c:87
+  --> buggy.bpf.c:94
    |
 64 | scratch = bpf_map_lookup_elem(&scratch_map, &key);
    | -------------------------------------------------- nearby source context for nullable pointer
-87 | if (r->index >= MAX_TAINT_UPDATES)
+94 | if (r->index >= MAX_TAINT_UPDATES)
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ nullable pointer reaches this use without a non-null proof
    |
-   = verifier[1421]: R0 invalid mem access 'mem_or_null'
+   = verifier[1422]: R0 invalid mem access 'mem_or_null'
    = note: nearest BPF instruction pc 253
    = note: parsed 214 verifier state snapshots
    = note[verifier-state]: verifier state shows the rejected pointer register is still a nullable helper result at the dereference, arithmetic, or helper-use site
