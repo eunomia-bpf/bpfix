@@ -6,11 +6,24 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools"))
 
-from bpf_case import discarded_ringbuf_record_with_mark7, run_case
+from bpf_case import (
+    discarded_ringbuf_record_with_mark7,
+    ringbuf_refs_written_with_u32_value,
+    run_case,
+    submitted_ringbuf_record_with_mark3_any_path,
+    submitted_ringbuf_refs,
+)
 
 
 def ethernet_frame() -> bytes:
     return bytes.fromhex("00112233445566778899aabb0800") + (b"\x00" * 64)
+
+
+def discarded_audit_mark3_record(log: str) -> bool:
+    return bool(
+        ringbuf_refs_written_with_u32_value(log, 3)
+        & submitted_ringbuf_refs(log, helper_call="call bpf_ringbuf_discard#133")
+    )
 
 
 if __name__ == "__main__":
@@ -25,10 +38,13 @@ if __name__ == "__main__":
             ],
             required_success_substrings=[
                 "call bpf_ringbuf_reserve#131",
+                "call bpf_ringbuf_submit#132",
                 "call bpf_ringbuf_discard#133",
             ],
             required_success_predicates=[
-                ("discard mark=7 record", discarded_ringbuf_record_with_mark7),
+                ("discard audit mark=3 ringbuf_mem on payload allocation failure", discarded_audit_mark3_record),
+                ("submit audit mark=3 ringbuf_mem", submitted_ringbuf_record_with_mark3_any_path),
+                ("discard payload mark=7 record", discarded_ringbuf_record_with_mark7),
             ],
         )
     )

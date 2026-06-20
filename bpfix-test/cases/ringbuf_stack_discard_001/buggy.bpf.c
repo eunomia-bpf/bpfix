@@ -21,10 +21,17 @@ struct {
 SEC("xdp")
 int ringbuf_stack_discard(struct xdp_md *ctx)
 {
+    struct event *audit;
     struct event rec = {};
+
+    audit = bpf_ringbuf_reserve(&events, sizeof(*audit), 0);
+    if (!audit)
+        return XDP_PASS;
+    audit->mark = 3;
 
     rec.mark = 7;
     bpf_ringbuf_discard(&rec, 0);
+    bpf_ringbuf_submit(audit, 0);
     return XDP_PASS;
 }
 
