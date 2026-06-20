@@ -38,6 +38,8 @@ def map_value(drop_proto: int, seen_packets: int = 0) -> bytes:
 
 
 CONFIG_KEY0 = struct.pack("<I", 0)
+CONFIG_KEY_ICMP = struct.pack("<I", 1)
+CONFIG_KEY_UDP = struct.pack("<I", 17)
 
 
 if __name__ == "__main__":
@@ -45,13 +47,23 @@ if __name__ == "__main__":
         run_case(
             argv=sys.argv[1:],
             expected_reject_substrings=[
-                "pointer arithmetic with <<= operator prohibited",
+                "invalid mem access 'map_value_or_null'",
             ],
             functional_tests=[
-                ("icmp_drops_when_map_drop_proto_is_icmp", lambda: ipv4_packet(1), 1, [("configs", CONFIG_KEY0, map_value(1))]),
-                ("icmp_passes_when_map_drop_proto_is_udp", lambda: ipv4_packet(1), 2, [("configs", CONFIG_KEY0, map_value(17))]),
-                ("udp_drops_when_map_drop_proto_is_udp", lambda: ipv4_packet(17), 1, [("configs", CONFIG_KEY0, map_value(17))]),
-                ("udp_passes_when_map_drop_proto_is_icmp", lambda: ipv4_packet(17), 2, [("configs", CONFIG_KEY0, map_value(1))]),
+                ("icmp_drops_from_default_when_override_missing", lambda: ipv4_packet(1), 1, [("configs", CONFIG_KEY0, map_value(1))]),
+                (
+                    "icmp_passes_when_override_changes_policy",
+                    lambda: ipv4_packet(1),
+                    2,
+                    [("configs", CONFIG_KEY0, map_value(1)), ("configs", CONFIG_KEY_ICMP, map_value(17))],
+                ),
+                ("udp_drops_from_default_when_override_missing", lambda: ipv4_packet(17), 1, [("configs", CONFIG_KEY0, map_value(17))]),
+                (
+                    "udp_passes_when_override_changes_policy",
+                    lambda: ipv4_packet(17),
+                    2,
+                    [("configs", CONFIG_KEY0, map_value(17)), ("configs", CONFIG_KEY_UDP, map_value(1))],
+                ),
                 (
                     "non_ip_pass_even_with_icmp_offset_byte",
                     non_ip_packet_with_icmp_protocol_offset,

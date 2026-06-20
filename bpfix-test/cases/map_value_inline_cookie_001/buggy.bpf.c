@@ -29,14 +29,13 @@ struct config {
 
 struct {
     __uint(type, BPF_MAP_TYPE_HASH);
-    __uint(max_entries, 1);
+    __uint(max_entries, 3);
     __type(key, __u32);
     __type(value, struct config);
 } configs SEC(".maps");
 
-static __always_inline struct config *lookup_config(__u8 protocol)
+static __always_inline struct config *lookup_config(__u32 key)
 {
-    __u32 key = protocol == IPPROTO_UDP || protocol == IPPROTO_ICMP ? 0 : 0;
     return bpf_map_lookup_elem(&configs, &key);
 }
 
@@ -57,16 +56,14 @@ int map_value_inline_cookie(struct xdp_md *ctx)
         return XDP_PASS;
 
     __u8 proto = iph->protocol;
-    struct config *cfg = lookup_config(proto);
+    struct config *cfg = lookup_config(0);
     if (!cfg)
         return XDP_PASS;
 
+    if (proto == IPPROTO_UDP || proto == IPPROTO_ICMP)
+        cfg = lookup_config(proto);
+
     cfg->seen_packets += 1;
-
-    __u64 cookie = (__u64)(long)cfg;
-    asm volatile("%[cookie] <<= 32; %[cookie] >>= 32" : [cookie] "+r"(cookie));
-    cfg = (struct config *)(long)cookie;
-
     return cfg->drop_proto == proto ? XDP_DROP : XDP_PASS;
 }
 
