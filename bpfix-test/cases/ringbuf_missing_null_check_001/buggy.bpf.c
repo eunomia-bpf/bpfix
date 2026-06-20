@@ -21,9 +21,14 @@ struct {
 SEC("xdp")
 int ringbuf_missing_null(struct xdp_md *ctx)
 {
-    struct event *rec = bpf_ringbuf_reserve(&events, sizeof(*rec), 0);
+    struct event *audit = bpf_ringbuf_reserve(&events, sizeof(*audit), 0);
+    if (!audit)
+        return XDP_PASS;
+    audit->mark = 3;
 
+    struct event *rec = bpf_ringbuf_reserve(&events, sizeof(*rec), 0);
     rec->mark = 7;
+    bpf_ringbuf_submit(audit, 0);
     bpf_ringbuf_submit(rec, 0);
     return XDP_PASS;
 }
