@@ -49,7 +49,7 @@ int rs_actplane_taint_loop_count_bound(struct xdp_md *ctx)
         scan.slots[i] = bytes[i];
 
     bpf_loop(LOOP_COUNT, scan_slot_cb, &scan, 0);
-    return scan.hits ? XDP_DROP : XDP_PASS;
+    return scan.hits >= 2 ? XDP_DROP : XDP_PASS;
 }
 
 char _license[] SEC("license") = "GPL";

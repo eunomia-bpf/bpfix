@@ -16,7 +16,7 @@ def packet(payload: bytes) -> bytes:
 
 def loop_scan_reaches_marker_drop(load_output: str) -> bool:
     in_callback = False
-    saw_bound = False
+    saw_bounded_index = False
     saw_stack_read = False
     saw_hit_update = False
 
@@ -25,14 +25,14 @@ def loop_scan_reaches_marker_drop(load_output: str) -> bool:
             in_callback = True
         if not in_callback:
             continue
-        if re.search(r"\bif r\d+ > 0x7 goto\b", line):
-            saw_bound = True
+        if re.search(r"\bif r\d+ > 0x7 goto\b", line) or re.search(r"\br\d+ &= 7\b", line):
+            saw_bounded_index = True
         if re.search(r"=\s*\*\(u8 \*\)\(r\d+ \+4\)", line):
             saw_stack_read = True
         if re.search(r"\*\(u32 \*\)\(r\d+ \+0\) = r\d+", line):
             saw_hit_update = True
 
-    return "call bpf_loop#181" in load_output and saw_bound and saw_stack_read and saw_hit_update
+    return "call bpf_loop#181" in load_output and saw_bounded_index and saw_stack_read and saw_hit_update
 
 
 if __name__ == "__main__":
@@ -43,7 +43,7 @@ if __name__ == "__main__":
                 "invalid unbounded variable-offset read from stack",
             ],
             functional_tests=[
-                ("marker_in_first_slots_drops", lambda: packet(b"\x00\x01\xaa\x03\x04\x05\x06\x07"), 1),
+                ("single_marker_wraps_and_drops", lambda: packet(b"\x00\x01\xaa\x03\x04\x05\x06\x07"), 1),
                 ("no_marker_passes", lambda: packet(b"\x00\x01\x02\x03\x04\x05\x06\x07"), 2),
                 ("late_marker_passes", lambda: packet(b"\x00\x01\x02\x03\x04\x05\x06\x07\xaa"), 2),
             ],
