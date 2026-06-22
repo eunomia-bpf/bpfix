@@ -173,6 +173,7 @@ def run_metadata(args: argparse.Namespace, root: Path) -> dict[str, object]:
             "max_tokens": args.max_tokens,
             "timeout_sec": args.timeout,
             "api_key_env": args.api_key_env,
+            "extra_body": args.extra_body,
             "model_file": model_file_metadata(args.model_path, args.model_sha256),
             "llama_cpp": llama_cpp_metadata(args.llama_cpp_dir),
             "server": server_model_metadata(args.base_url),
@@ -327,6 +328,7 @@ def call_openai_compatible(
     timeout: float,
     max_tokens: int,
     temperature: float,
+    extra_body: dict[str, Any] | None = None,
 ) -> str:
     url = base_url.rstrip("/") + "/chat/completions"
     body = {
@@ -341,6 +343,8 @@ def call_openai_compatible(
         "temperature": temperature,
         "max_tokens": max_tokens,
     }
+    if extra_body:
+        body.update(extra_body)
     request = urllib.request.Request(
         url,
         data=json.dumps(body).encode("utf-8"),
@@ -499,7 +503,24 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--timeout", type=float, default=180.0)
     parser.add_argument("--max-tokens", type=int, default=8192)
     parser.add_argument("--temperature", type=float, default=0.0)
+    parser.add_argument(
+        "--extra-body-json",
+        default=os.environ.get("LLM_EXTRA_BODY_JSON"),
+        help="JSON object merged into each OpenAI-compatible chat/completions request body.",
+    )
     return parser.parse_args(argv)
+
+
+def parse_extra_body_json(raw: str | None) -> dict[str, Any] | None:
+    if not raw:
+        return None
+    try:
+        parsed = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise SystemExit(f"--extra-body-json is not valid JSON: {exc}") from exc
+    if not isinstance(parsed, dict):
+        raise SystemExit("--extra-body-json must decode to a JSON object")
+    return parsed
 
 
 def select_cases(root: Path, wanted: list[str] | None) -> list[Path]:
@@ -524,6 +545,7 @@ def select_cases(root: Path, wanted: list[str] | None) -> list[Path]:
 
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
+    args.extra_body = parse_extra_body_json(args.extra_body_json)
     root = repo_root()
     if args.repair_attempts < 1:
         raise SystemExit("--repair-attempts must be >= 1")
@@ -600,6 +622,7 @@ def main(argv: list[str] | None = None) -> int:
                         timeout=args.timeout,
                         max_tokens=args.max_tokens,
                         temperature=args.temperature,
+                        extra_body=args.extra_body,
                     )
                     (attempt_out / "response.txt").write_text(response, encoding="utf-8")
                 except (
