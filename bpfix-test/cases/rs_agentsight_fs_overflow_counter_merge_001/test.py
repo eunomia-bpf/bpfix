@@ -96,6 +96,31 @@ def overflow_lookup_precedes_atomic_add(load_output: str) -> bool:
     return atomic is not None
 
 
+def guarded_overflow_keeps_base_increment(load_output: str) -> bool:
+    live_start = load_output.find("Live regs before insn:")
+    if live_start == -1:
+        return False
+    annotated_start = load_output.find("0: R1=ctx()", live_start)
+    if annotated_start == -1:
+        return False
+    trace = load_output[live_start:annotated_start]
+    update = trace.find("call bpf_map_update_elem#2")
+    if update == -1:
+        return False
+
+    overflow_lookups = [
+        match.start()
+        for match in re.finditer(r"call bpf_map_lookup_elem#1", trace)
+        if match.start() > update
+    ]
+    if len(overflow_lookups) < 2:
+        return False
+
+    guarded_region = trace[overflow_lookups[1] :]
+    atomic_adds = re.findall(r"(?:lock )?\*\(u64 \*\)\(r\d+ \+0\) \+=", guarded_region)
+    return len(atomic_adds) >= 2
+
+
 def event_update_failure_path_preserved(load_output: str) -> bool:
     trace = trace_region(load_output)
     update = trace.find("call bpf_map_update_elem#2")
@@ -173,6 +198,7 @@ if __name__ == "__main__":
             required_success_predicates=[
                 ("event update failure path reaches overflow accounting", event_update_failure_path_preserved),
                 ("overflow lookup is followed by the atomic increment", overflow_lookup_precedes_atomic_add),
+                ("guarded overflow keeps base counter increment", guarded_overflow_keeps_base_increment),
                 ("existing aggregate value is updated in place", existing_aggregate_is_updated),
             ],
         )

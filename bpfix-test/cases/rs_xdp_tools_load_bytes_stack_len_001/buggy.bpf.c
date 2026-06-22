@@ -15,19 +15,23 @@
 #define XDP_PASS 2
 #endif
 
-#define PROBE_BYTES 10
+#define HEAD_BYTES 12
+#define TAIL_BYTES 6
+#define WIRE_OFFSET 2
+#define WIRE_BYTES (HEAD_BYTES + TAIL_BYTES)
 
 SEC("xdp")
 int rs_xdp_tools_load_bytes_stack_len(struct xdp_md *ctx)
 {
-    __u8 buf[PROBE_BYTES];
+    __u8 head[HEAD_BYTES];
+    __u8 tail[TAIL_BYTES];
     int err;
 
-    err = bpf_xdp_load_bytes(ctx, 0, buf, PROBE_BYTES + 4);
+    err = bpf_xdp_load_bytes(ctx, WIRE_OFFSET, head, WIRE_BYTES);
     if (err)
         return XDP_ABORTED;
 
-    if (buf[0] == 'B' && buf[9] == 'X')
+    if (head[0] == 'B' && head[9] == 'X' && tail[1] == 'Z' && tail[5] == '!')
         return XDP_DROP;
     return XDP_PASS;
 }

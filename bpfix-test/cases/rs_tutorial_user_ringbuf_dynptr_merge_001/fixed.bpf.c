@@ -30,15 +30,17 @@ struct {
 static long handle_user_sample(struct bpf_dynptr *dynptr, void *ctx)
 {
     struct user_msg *msg = bpf_dynptr_data(dynptr, 0, sizeof(*msg));
-    if (!msg)
-        return 0;
-
     struct kernel_msg *out;
     __u32 current_pid = bpf_get_current_pid_tgid() >> 32;
 
     out = bpf_ringbuf_reserve(&kernel_ringbuf, sizeof(*out), 0);
     if (!out)
         return 0;
+
+    if (!msg) {
+        bpf_ringbuf_discard(out, 0);
+        return 0;
+    }
 
     if (current_pid == 0) {
         out->pid = msg->pid;

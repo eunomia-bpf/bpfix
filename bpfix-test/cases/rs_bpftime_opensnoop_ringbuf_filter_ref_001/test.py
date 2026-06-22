@@ -91,11 +91,7 @@ def filtered_source_semantics_are_preserved(text: str) -> bool:
 
     body_has_submit = "bpf_ringbuf_submit" in body
     body_has_cleanup = "goto cleanup" in body or "bpf_map_delete_elem" in body
-    if filter_pos < reserve_pos:
-        return body_has_cleanup and not body_has_submit and "bpf_ringbuf_reserve" not in body
-
-    body_releases_ref = "bpf_ringbuf_discard" in body
-    return body_releases_ref and body_has_cleanup and not body_has_submit
+    return filter_pos < reserve_pos and body_has_cleanup and not body_has_submit and "bpf_ringbuf_reserve" not in body
 
 
 def source_semantics(source: Path) -> list[dict[str, object]]:

@@ -1,11 +1,11 @@
 libbpf: loading object from <work-dir>/prog.o
-libbpf: elf: section(3) xdp, size 200, link 0, flags 6, type=1
-libbpf: sec 'xdp': found program 'dynptr_stack_copy' at insn offset 0 (0 bytes), code size 25 insns (200 bytes)
-libbpf: elf: section(4) .relxdp, size 32, link 25, flags 40, type=9
+libbpf: elf: section(3) xdp, size 272, link 0, flags 6, type=1
+libbpf: sec 'xdp': found program 'dynptr_stack_copy' at insn offset 0 (0 bytes), code size 34 insns (272 bytes)
+libbpf: elf: section(4) .relxdp, size 48, link 25, flags 40, type=9
 libbpf: elf: section(5) license, size 4, link 0, flags 3, type=1
 libbpf: license of <work-dir>/prog.o is GPL
-libbpf: elf: section(15) .BTF, size 1390, link 0, flags 0, type=1
-libbpf: elf: section(17) .BTF.ext, size 236, link 0, flags 0, type=1
+libbpf: elf: section(15) .BTF, size 1887, link 0, flags 0, type=1
+libbpf: elf: section(17) .BTF.ext, size 332, link 0, flags 0, type=1
 libbpf: elf: section(25) .symtab, size 384, link 1, flags 0, type=2
 libbpf: looking for externs among 16 symbols...
 libbpf: collected 2 externs total
@@ -16,15 +16,21 @@ libbpf: sec '.relxdp': relo #0: insn #3 against 'bpf_dynptr_from_xdp'
 libbpf: prog 'dynptr_stack_copy': found extern #0 'bpf_dynptr_from_xdp' (sym 13) for insn #3
 libbpf: sec '.relxdp': relo #1: insn #17 against 'bpf_dynptr_slice'
 libbpf: prog 'dynptr_stack_copy': found extern #1 'bpf_dynptr_slice' (sym 14) for insn #17
+libbpf: sec '.relxdp': relo #2: insn #26 against 'bpf_dynptr_slice'
+libbpf: prog 'dynptr_stack_copy': found extern #1 'bpf_dynptr_slice' (sym 14) for insn #26
 libbpf: object 'prog': failed (-95) to create BPF token from '/sys/fs/bpf', skipping optional step...
 libbpf: loaded kernel BTF from '/sys/kernel/btf/vmlinux'
 libbpf: extern (func ksym) 'bpf_dynptr_from_xdp': resolved to vmlinux [71553]
 libbpf: extern (func ksym) 'bpf_dynptr_slice': resolved to vmlinux [71567]
-libbpf: sec 'xdp': found 1 CO-RE relocations
+libbpf: sec 'xdp': found 2 CO-RE relocations
 libbpf: CO-RE relocating [21] struct ethhdr: found target candidate [23410] struct ethhdr in [vmlinux]
 libbpf: prog 'dynptr_stack_copy': relo #0: <byte_off> [21] struct ethhdr.h_proto (0:2 @ offset 12)
 libbpf: prog 'dynptr_stack_copy': relo #0: matching candidate #0 <byte_off> [23410] struct ethhdr.h_proto (0:2 @ offset 12)
 libbpf: prog 'dynptr_stack_copy': relo #0: patched insn #19 (LDX/ST/STX) off 12 -> 12
+libbpf: CO-RE relocating [27] struct iphdr: found target candidate [23765] struct iphdr in [vmlinux]
+libbpf: prog 'dynptr_stack_copy': relo #1: <byte_off> [27] struct iphdr.protocol (0:7 @ offset 9)
+libbpf: prog 'dynptr_stack_copy': relo #1: matching candidate #0 <byte_off> [23765] struct iphdr.protocol (0:7 @ offset 9)
+libbpf: prog 'dynptr_stack_copy': relo #1: patched insn #28 (LDX/ST/STX) off 9 -> 9
 libbpf: prog 'dynptr_stack_copy': BPF program load failed: -EACCES
 libbpf: prog 'dynptr_stack_copy': -- BEGIN PROG LOAD LOG --
 func#0 @0
@@ -36,7 +42,7 @@ Live regs before insn:
   4: 0......... (b7) r6 = 2
   5: 0.....6... (67) r0 <<= 32
   6: 0.....6... (77) r0 >>= 32
-  7: 0.....6... (55) if r0 != 0x0 goto pc+15
+  7: 0.....6... (55) if r0 != 0x0 goto pc+24
   8: ......6... (79) r1 = *(u64 *)(r10 -8)
   9: .1....6... (7b) *(u64 *)(r10 -24) = r1
  10: ......6... (79) r1 = *(u64 *)(r10 -16)
@@ -47,26 +53,35 @@ Live regs before insn:
  15: .12...6... (b7) r3 = 0
  16: .123..6... (b7) r4 = 14
  17: .1234.6... (85) call bpf_dynptr_slice#71567
- 18: 0.....6... (15) if r0 == 0x0 goto pc+4
- 19: 0......... (69) r1 = *(u16 *)(r0 +12)
- 20: .1........ (b7) r6 = 1
- 21: .1....6... (15) if r1 == 0x8 goto pc+1
- 22: .......... (b7) r6 = 2
- 23: ......6... (bf) r0 = r6
- 24: 0......... (95) exit
+ 18: 0.....6... (15) if r0 == 0x0 goto pc+13
+ 19: 0.....6... (69) r1 = *(u16 *)(r0 +12)
+ 20: .1....6... (55) if r1 != 0x8 goto pc+11
+ 21: ......6... (bf) r1 = r10
+ 22: .1....6... (07) r1 += -32
+ 23: .1....6... (b7) r2 = 14
+ 24: .12...6... (b7) r3 = 0
+ 25: .123..6... (b7) r4 = 20
+ 26: .1234.6... (85) call bpf_dynptr_slice#71567
+ 27: 0.....6... (15) if r0 == 0x0 goto pc+4
+ 28: 0......... (71) r1 = *(u8 *)(r0 +9)
+ 29: .1........ (b7) r6 = 1
+ 30: .1....6... (15) if r1 == 0x11 goto pc+1
+ 31: .......... (b7) r6 = 2
+ 32: ......6... (bf) r0 = r6
+ 33: 0......... (95) exit
 0: R1=ctx() R10=fp0
-; int dynptr_stack_copy(struct xdp_md *ctx) @ buggy.bpf.c:23
+; int dynptr_stack_copy(struct xdp_md *ctx) @ buggy.bpf.c:26
 0: (bf) r3 = r10                      ; R3_w=fp0 R10=fp0
 ;  @ buggy.bpf.c:0
 1: (07) r3 += -16                     ; R3_w=fp-16
-; if (bpf_dynptr_from_xdp(ctx, 0, &ptr)) @ buggy.bpf.c:29
+; if (bpf_dynptr_from_xdp(ctx, 0, &ptr)) @ buggy.bpf.c:33
 2: (b7) r2 = 0                        ; R2_w=0
 3: (85) call bpf_dynptr_from_xdp#71553        ; R0_w=scalar() fp-16_w=dynptr_xdp(id=1,dynptr_id=1)
 4: (b7) r6 = 2                        ; R6_w=2
 5: (67) r0 <<= 32                     ; R0_w=scalar(smax=0x7fffffff00000000,umax=0xffff000000000000,smin32=0,smax32=umax32=0,var_off=(0x0; 0xffff000000000000))
 6: (77) r0 >>= 32                     ; R0_w=scalar(smin=0,smax=umax=0xffff000000000000,var_off=(0x0; 0xffff000000000000))
-7: (55) if r0 != 0x0 goto pc+15       ; R0_w=0
-; __builtin_memcpy(&copy, &ptr, sizeof(copy)); @ buggy.bpf.c:32
+7: (55) if r0 != 0x0 goto pc+24       ; R0_w=0
+; __builtin_memcpy(&copy, &ptr, sizeof(copy)); @ buggy.bpf.c:36
 8: (79) r1 = *(u64 *)(r10 -8)
 invalid read from stack off -8+0 size 8
 verification time 0 usec

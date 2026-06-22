@@ -41,6 +41,15 @@ def strip_comments(text: str) -> str:
     return re.sub(r"//.*", " ", text)
 
 
+def releases_socket_before_return_branches(text: str) -> bool:
+    assign = re.search(r"\bresult\s*=\s*bpf_sk_assign\s*\([^;]+;", text, flags=re.DOTALL)
+    if assign is None:
+        return False
+    branch = re.search(r"\bif\s*\(\s*result\s*==\s*0\s*&&\s*skb\s*->\s*mark\s*==\s*PROXY_MARK\s*\)", text[assign.end() :])
+    release = re.search(r"\bbpf_sk_release\s*\(\s*sk\s*\)\s*;", text[assign.end() :])
+    return release is not None and (branch is None or release.start() < branch.start())
+
+
 def source_semantics(source: Path) -> list[dict[str, object]]:
     text = strip_comments(source.read_text(encoding="utf-8"))
     checks = [
@@ -51,6 +60,7 @@ def source_semantics(source: Path) -> list[dict[str, object]]:
         ("keeps marked-packet branch", re.search(r"\bskb\s*->\s*mark\s*==\s*PROXY_MARK\b", text) is not None),
         ("keeps current netns lookup", "BPF_F_CURRENT_NETNS" in text),
         ("keeps proxy port tuple", "PROXY_PORT" in text and "dport" in text),
+        ("case source invariant A", releases_socket_before_return_branches(text)),
     ]
     return [{"name": name, "passed": bool(passed)} for name, passed in checks]
 

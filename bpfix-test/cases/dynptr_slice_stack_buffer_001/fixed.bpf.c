@@ -22,9 +22,11 @@ int dynptr_slice_stack_buffer(struct xdp_md *ctx)
     void *data_end = (void *)(long)ctx->data_end;
     struct bpf_dynptr ptr;
     __u8 scratch[9] = {};
+    __u8 trailer[3] = {};
     void *bytes;
+    void *tail;
 
-    if (data + sizeof(scratch) > data_end)
+    if (data + 12 + sizeof(trailer) > data_end)
         return XDP_PASS;
 
     if (bpf_dynptr_from_xdp(ctx, 0, &ptr))
@@ -34,7 +36,11 @@ int dynptr_slice_stack_buffer(struct xdp_md *ctx)
     if (!bytes)
         return XDP_PASS;
 
-    return XDP_DROP;
+    tail = bpf_dynptr_slice(&ptr, 12, trailer, sizeof(trailer));
+    if (!tail)
+        return XDP_PASS;
+
+    return ((__u8 *)tail)[0] == 0x08 ? XDP_DROP : XDP_PASS;
 }
 
 char _license[] SEC("license") = "GPL";

@@ -2,21 +2,21 @@ libbpf: loading object from <work-dir>/prog.o
 libbpf: elf: section(2) .text, size 64, link 0, flags 6, type=1
 libbpf: sec '.text': found program 'lookup_config' at insn offset 0 (0 bytes), code size 8 insns (64 bytes)
 libbpf: elf: section(3) .rel.text, size 16, link 28, flags 40, type=9
-libbpf: elf: section(4) xdp, size 112, link 0, flags 6, type=1
-libbpf: sec 'xdp': found program 'subprog_map_value_null' at insn offset 0 (0 bytes), code size 14 insns (112 bytes)
+libbpf: elf: section(4) xdp, size 144, link 0, flags 6, type=1
+libbpf: sec 'xdp': found program 'subprog_map_value_null' at insn offset 0 (0 bytes), code size 18 insns (144 bytes)
 libbpf: elf: section(5) .relxdp, size 16, link 28, flags 40, type=9
 libbpf: elf: section(6) license, size 4, link 0, flags 3, type=1
 libbpf: license of <work-dir>/prog.o is GPL
 libbpf: elf: section(7) .maps, size 32, link 0, flags 3, type=1
-libbpf: elf: section(18) .BTF, size 1489, link 0, flags 0, type=1
-libbpf: elf: section(20) .BTF.ext, size 372, link 0, flags 0, type=1
-libbpf: elf: section(28) .symtab, size 432, link 1, flags 0, type=2
-libbpf: looking for externs among 18 symbols...
+libbpf: elf: section(18) .BTF, size 1542, link 0, flags 0, type=1
+libbpf: elf: section(20) .BTF.ext, size 388, link 0, flags 0, type=1
+libbpf: elf: section(28) .symtab, size 456, link 1, flags 0, type=2
+libbpf: looking for externs among 19 symbols...
 libbpf: collected 0 externs total
 libbpf: map 'configs': at sec_idx 7, offset 0.
 libbpf: map 'configs': found type = 1.
 libbpf: map 'configs': found key [6], sz = 4.
-libbpf: map 'configs': found value [9], sz = 4.
+libbpf: map 'configs': found value [9], sz = 8.
 libbpf: map 'configs': found max_entries = 1.
 libbpf: sec '.rel.text': collecting relocation for section(2) '.text'
 libbpf: sec '.rel.text': relo #0: insn #4 against 'configs'
@@ -38,80 +38,86 @@ libbpf: prog 'subprog_map_value_null': relo #2: <byte_off> [16] struct ethhdr.h_
 libbpf: prog 'subprog_map_value_null': relo #2: matching candidate #0 <byte_off> [23410] struct ethhdr.h_proto (0:2 @ offset 12)
 libbpf: prog 'subprog_map_value_null': relo #2: patched insn #6 (LDX/ST/STX) off 12 -> 12
 libbpf: prog 'subprog_map_value_null': added 8 insns from sub-prog 'lookup_config'
-libbpf: prog 'subprog_map_value_null': insn #8 relocated, imm 5 points to subprog 'lookup_config' (now at 14 offset)
+libbpf: prog 'subprog_map_value_null': insn #8 relocated, imm 9 points to subprog 'lookup_config' (now at 18 offset)
 libbpf: map 'configs': created successfully, fd=0
 libbpf: prog 'subprog_map_value_null': BPF program load failed: -EACCES
 libbpf: prog 'subprog_map_value_null': -- BEGIN PROG LOAD LOG --
 func#0 @0
-func#1 @14
+func#1 @18
 Live regs before insn:
   0: .1..45.... (b7) r0 = 2
   1: 01..45.... (61) r2 = *(u32 *)(r1 +4)
   2: 012.45.... (61) r1 = *(u32 *)(r1 +0)
   3: 012.45.... (bf) r3 = r1
   4: 012345.... (07) r3 += 14
-  5: 012345.... (2d) if r3 > r2 goto pc+7
+  5: 012345.... (2d) if r3 > r2 goto pc+11
   6: .12345.... (69) r6 = *(u16 *)(r1 +12)
   7: .123456... (dc) r6 = be16 r6
-  8: .123456... (85) call pc+5
-  9: 0.....6... (61) r1 = *(u32 *)(r0 +0)
- 10: .1....6... (b7) r0 = 1
- 11: 01....6... (1d) if r1 == r6 goto pc+1
- 12: .......... (b7) r0 = 2
- 13: 0......... (95) exit
- 14: .......... (b7) r1 = 0
- 15: .1........ (63) *(u32 *)(r10 -4) = r1
- 16: .......... (bf) r2 = r10
- 17: ..2....... (07) r2 += -4
- 18: ..2....... (18) r1 = 0xffff000000000000
- 20: .12....... (85) call bpf_map_lookup_elem#1
- 21: 0......... (95) exit
+  8: .123456... (85) call pc+9
+  9: 0.....6... (bf) r1 = r0
+ 10: .1....6... (61) r2 = *(u32 *)(r1 +0)
+ 11: .12...6... (b7) r0 = 1
+ 12: 012...6... (1d) if r2 == r6 goto pc+1
+ 13: .1........ (b7) r0 = 2
+ 14: 01........ (61) r2 = *(u32 *)(r1 +4)
+ 15: 012....... (07) r2 += 1
+ 16: 012....... (63) *(u32 *)(r1 +4) = r2
+ 17: 0......... (95) exit
+ 18: .......... (b7) r1 = 0
+ 19: .1........ (63) *(u32 *)(r10 -4) = r1
+ 20: .......... (bf) r2 = r10
+ 21: ..2....... (07) r2 += -4
+ 22: ..2....... (18) r1 = 0xffff000000000000
+ 24: .12....... (85) call bpf_map_lookup_elem#1
+ 25: 0......... (95) exit
 0: R1=ctx() R10=fp0
-; int subprog_map_value_null(struct xdp_md *ctx) @ buggy.bpf.c:38
+; int subprog_map_value_null(struct xdp_md *ctx) @ buggy.bpf.c:39
 0: (b7) r0 = 2                        ; R0_w=2
-; void *data_end = (void *)(long)ctx->data_end; @ buggy.bpf.c:41
+; void *data_end = (void *)(long)ctx->data_end; @ buggy.bpf.c:42
 1: (61) r2 = *(u32 *)(r1 +4)          ; R1=ctx() R2_w=pkt_end()
-; void *data = (void *)(long)ctx->data; @ buggy.bpf.c:40
+; void *data = (void *)(long)ctx->data; @ buggy.bpf.c:41
 2: (61) r1 = *(u32 *)(r1 +0)          ; R1_w=pkt(r=0)
-; if ((void *)(eth + 1) > data_end) @ buggy.bpf.c:46
+; if ((void *)(eth + 1) > data_end) @ buggy.bpf.c:47
 3: (bf) r3 = r1                       ; R1_w=pkt(r=0) R3_w=pkt(r=0)
 4: (07) r3 += 14                      ; R3_w=pkt(off=14,r=0)
-5: (2d) if r3 > r2 goto pc+7          ; R2_w=pkt_end() R3_w=pkt(off=14,r=14)
-; proto = bpf_ntohs(eth->h_proto); @ buggy.bpf.c:49
+5: (2d) if r3 > r2 goto pc+11         ; R2_w=pkt_end() R3_w=pkt(off=14,r=14)
+; proto = bpf_ntohs(eth->h_proto); @ buggy.bpf.c:50
 6: (69) r6 = *(u16 *)(r1 +12)         ; R1_w=pkt(r=14) R6_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=0xffff,var_off=(0x0; 0xffff))
 7: (dc) r6 = be16 r6                  ; R6_w=scalar()
-; cfg = lookup_config(); @ buggy.bpf.c:50
-8: (85) call pc+5
+; cfg = lookup_config(); @ buggy.bpf.c:51
+8: (85) call pc+9
 caller:
  R6_w=scalar() R10=fp0
 callee:
  frame1: R1_w=pkt(r=14) R2_w=pkt_end() R3_w=pkt(off=14,r=14) R10=fp0
-14: frame1: R1=pkt(r=14) R2=pkt_end() R3=pkt(off=14,r=14) R10=fp0
-; static __noinline struct config *lookup_config(void) @ buggy.bpf.c:30
-14: (b7) r1 = 0                       ; frame1: R1_w=0
-; __u32 key = 0; @ buggy.bpf.c:32
-15: (63) *(u32 *)(r10 -4) = r1
-mark_precise: frame1: last_idx 15 first_idx 14 subseq_idx -1 
-mark_precise: frame1: regs=r1 stack= before 14: (b7) r1 = 0
-16: frame1: R1_w=0 R10=fp0 fp-8=0000????
-16: (bf) r2 = r10                     ; frame1: R2_w=fp0 R10=fp0
-17: (07) r2 += -4                     ; frame1: R2_w=fp-4
-; return bpf_map_lookup_elem(&configs, &key); @ buggy.bpf.c:34
-18: (18) r1 = 0xffff000000000000      ; frame1: R1_w=map_ptr(map=configs,ks=4,vs=4)
-20: (85) call bpf_map_lookup_elem#1   ; frame1: R0_w=map_value_or_null(id=1,map=configs,ks=4,vs=4)
-21: (95) exit
+18: frame1: R1=pkt(r=14) R2=pkt_end() R3=pkt(off=14,r=14) R10=fp0
+; static __noinline struct config *lookup_config(void) @ buggy.bpf.c:31
+18: (b7) r1 = 0                       ; frame1: R1_w=0
+; __u32 key = 0; @ buggy.bpf.c:33
+19: (63) *(u32 *)(r10 -4) = r1
+mark_precise: frame1: last_idx 19 first_idx 18 subseq_idx -1
+mark_precise: frame1: regs=r1 stack= before 18: (b7) r1 = 0
+20: frame1: R1_w=0 R10=fp0 fp-8=0000????
+20: (bf) r2 = r10                     ; frame1: R2_w=fp0 R10=fp0
+21: (07) r2 += -4                     ; frame1: R2_w=fp-4
+; return bpf_map_lookup_elem(&configs, &key); @ buggy.bpf.c:35
+22: (18) r1 = 0xffff000000000000      ; frame1: R1_w=map_ptr(map=configs,ks=4,vs=8)
+24: (85) call bpf_map_lookup_elem#1   ; frame1: R0_w=map_value_or_null(id=1,map=configs,ks=4,vs=8)
+25: (95) exit
 returning from callee:
- frame1: R0_w=map_value_or_null(id=1,map=configs,ks=4,vs=4) R10=fp0 fp-8=0000????
+ frame1: R0_w=map_value_or_null(id=1,map=configs,ks=4,vs=8) R10=fp0 fp-8=0000????
 to caller at 9:
- R0_w=map_value_or_null(id=1,map=configs,ks=4,vs=4) R6=scalar() R10=fp0
+ R0_w=map_value_or_null(id=1,map=configs,ks=4,vs=8) R6=scalar() R10=fp0
 
-from 21 to 9: R0_w=map_value_or_null(id=1,map=configs,ks=4,vs=4) R6=scalar() R10=fp0
-; return cfg->drop_proto == proto ? XDP_DROP : XDP_PASS; @ buggy.bpf.c:51
-9: (61) r1 = *(u32 *)(r0 +0)
-R0 invalid mem access 'map_value_or_null'
+from 25 to 9: R0_w=map_value_or_null(id=1,map=configs,ks=4,vs=8) R6=scalar() R10=fp0
+; cfg = lookup_config(); @ buggy.bpf.c:51
+9: (bf) r1 = r0                       ; R0_w=map_value_or_null(id=1,map=configs,ks=4,vs=8) R1_w=map_value_or_null(id=1,map=configs,ks=4,vs=8)
+; return cfg->drop_proto == proto ? XDP_DROP : XDP_PASS; @ buggy.bpf.c:53
+10: (61) r2 = *(u32 *)(r1 +0)
+R1 invalid mem access 'map_value_or_null'
 verification time 0 usec
 stack depth 0+8
-processed 17 insns (limit 1000000) max_states_per_insn 0 total_states 1 peak_states 1 mark_read 0
+processed 18 insns (limit 1000000) max_states_per_insn 0 total_states 1 peak_states 1 mark_read 0
 -- END PROG LOAD LOG --
 libbpf: prog 'subprog_map_value_null': failed to load: -EACCES
 libbpf: failed to load object '<work-dir>/prog.o'

@@ -4,9 +4,13 @@
 
 #include <vmlinux.h>
 #include <bpf/bpf_helpers.h>
+#include <bpf/bpf_endian.h>
 
 #ifndef XDP_PASS
 #define XDP_PASS 2
+#endif
+#ifndef ETH_P_IP
+#define ETH_P_IP 0x0800
 #endif
 
 struct event {
@@ -21,6 +25,8 @@ struct {
 SEC("xdp")
 int ringbuf_missing_null(struct xdp_md *ctx)
 {
+    void *data = (void *)(long)ctx->data;
+    void *data_end = (void *)(long)ctx->data_end;
     struct event *audit = bpf_ringbuf_reserve(&events, sizeof(*audit), 0);
     if (!audit)
         return XDP_PASS;
@@ -32,8 +38,25 @@ int ringbuf_missing_null(struct xdp_md *ctx)
         return XDP_PASS;
     }
     rec->mark = 7;
+    if (data + 14 > data_end) {
+        bpf_ringbuf_discard(rec, 0);
+        bpf_ringbuf_discard(audit, 0);
+        return XDP_PASS;
+    }
+    __u16 proto = *(__u16 *)(data + 12);
+    struct event *tail = bpf_ringbuf_reserve(&events, sizeof(*tail), 0);
+    if (!tail) {
+        bpf_ringbuf_discard(rec, 0);
+        bpf_ringbuf_discard(audit, 0);
+        return XDP_PASS;
+    }
+    if (bpf_ntohs(proto) == ETH_P_IP)
+        tail->mark = 11;
+    else
+        tail->mark = 13;
     bpf_ringbuf_submit(audit, 0);
     bpf_ringbuf_submit(rec, 0);
+    bpf_ringbuf_submit(tail, 0);
     return XDP_PASS;
 }
 

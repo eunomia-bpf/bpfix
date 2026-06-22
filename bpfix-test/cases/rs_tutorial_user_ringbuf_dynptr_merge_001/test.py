@@ -49,6 +49,16 @@ def source_semantics(source: Path) -> list[dict[str, object]]:
         ),
         ("keeps kernel ringbuf reserve", re.search(r"\bbpf_ringbuf_reserve\s*\(\s*&kernel_ringbuf\b", text) is not None),
         ("keeps kernel ringbuf submit", re.search(r"\bbpf_ringbuf_submit\s*\(", text) is not None),
+        (
+            "preserves reserve/discard lifecycle for null dynptr payload",
+            re.search(
+                r"bpf_ringbuf_reserve\s*\(\s*&kernel_ringbuf\b.*?if\s*\(\s*!\s*msg\s*\)\s*\{[^}]*"
+                r"bpf_ringbuf_discard\s*\(\s*out\s*,\s*0\s*\)",
+                text,
+                flags=re.DOTALL,
+            )
+            is not None,
+        ),
         ("keeps current pid attribution", "bpf_get_current_pid_tgid" in text and "current_pid" in text),
         (
             "keeps user payload field propagation",

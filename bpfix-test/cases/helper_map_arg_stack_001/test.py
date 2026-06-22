@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import re
 import struct
 import sys
 from pathlib import Path
@@ -16,6 +17,26 @@ def frame(eth_type: int) -> bytes:
 
 def truncated_packet() -> bytes:
     return bytes.fromhex("00112233445566778899aabb")
+
+
+def strip_comments(text: str) -> str:
+    text = re.sub(r"/\*.*?\*/", " ", text, flags=re.DOTALL)
+    return re.sub(r"//.*", " ", text)
+
+
+def ip_policy_map_remains_hash(source: Path) -> bool:
+    text = strip_comments(source.read_text(encoding="utf-8"))
+    block = re.search(r"struct\s*\{(?P<body>.*?)\}\s*ip_configs\s+SEC", text, flags=re.DOTALL)
+    return block is not None and "BPF_MAP_TYPE_HASH" in block.group("body")
+
+
+def lookup_uses_selected_policy_map(source: Path) -> bool:
+    text = strip_comments(source.read_text(encoding="utf-8"))
+    return (
+        "bpf_map_lookup_elem(&ip_configs" in text
+        and "bpf_map_lookup_elem(&arp_configs" in text
+        and "bpf_map_lookup_elem(&key" not in text
+    )
 
 
 if __name__ == "__main__":
@@ -52,6 +73,10 @@ if __name__ == "__main__":
             ],
             required_success_predicates=[
                 ("load drop_proto from map_value offset 0", loaded_map_value_u32_offset0),
+            ],
+            source_success_predicates=[
+                ("case source invariant A", ip_policy_map_remains_hash),
+                ("case source invariant B", lookup_uses_selected_policy_map),
             ],
         )
     )

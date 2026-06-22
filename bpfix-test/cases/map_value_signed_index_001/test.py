@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import re
 import struct
 import sys
 from pathlib import Path
@@ -17,6 +18,26 @@ def frame(index_byte: int) -> bytes:
 
 def truncated_packet() -> bytes:
     return bytes.fromhex("00112233445566778899aabb")
+
+
+def strip_comments(text: str) -> str:
+    text = re.sub(r"/\*.*?\*/", " ", text, flags=re.DOTALL)
+    return re.sub(r"//.*", " ", text)
+
+
+def preserves_slot_normalization(source: Path) -> bool:
+    text = strip_comments(source.read_text(encoding="utf-8"))
+    slot_decl = re.search(r"\b__u32\s+slot\s*;", text)
+    slot_assign = re.search(r"\bslot\s*=\s*\(\s*__u32\s*\)\s*\(\s*idx\s*\+\s*1\s*\)\s*;", text)
+    slot_use = re.search(r"\bcfg->slots\s*\[\s*slot\s*\]", text)
+    lookup = text.find("bpf_map_lookup_elem(&configs")
+    return (
+        slot_decl is not None
+        and slot_assign is not None
+        and slot_use is not None
+        and lookup != -1
+        and slot_assign.start() < lookup
+    )
 
 
 if __name__ == "__main__":
@@ -39,6 +60,9 @@ if __name__ == "__main__":
             ],
             map_updates=[
                 ("configs", struct.pack("<I", 0), struct.pack("<III", 1, 0, 1)),
+            ],
+            source_success_predicates=[
+                ("case source invariant A", preserves_slot_normalization),
             ],
         )
     )

@@ -21,3 +21,4 @@ error[BPFIX-E011]: skb/xdp packet pointer is reused after a helper invalidates i
    = required proof: preserve pointer provenance by reacquiring and rechecking the skb/xdp packet pointer after the helper that invalidates existing packet data pointers
 help: Reacquire a verifier-tracked pointer before the rejected dereference.
 help: After the packet-mutating helper, reload data/data_end, account for any head adjustment, recheck bounds, and derive a fresh packet pointer.
+help: Keep the reserved ringbuf record live across the adjust; if the post-adjust packet recheck fails, discard it, and submit only after the fresh pointer has been rechecked.

@@ -105,6 +105,22 @@ def first_sid_tag_load_is_preserved(load_output: str) -> bool:
     return False
 
 
+def strip_comments(text: str) -> str:
+    text = re.sub(r"/\*.*?\*/", " ", text, flags=re.DOTALL)
+    return re.sub(r"//.*", " ", text)
+
+
+def first_segment_window_is_proved_before_srh_fields(source: Path) -> bool:
+    text = strip_comments(source.read_text(encoding="utf-8"))
+    bound = re.search(
+        r"if\s*\(\s*\(\s*void\s*\*\s*\)\s*\(\s*srh\s*\+\s*1\s*\)\s*\+\s*sizeof\s*\(\s*struct\s+in6_addr\s*\)\s*>\s*data_end\s*\)",
+        text,
+    )
+    type_use = text.find("srh->type")
+    left_use = text.find("srh->segments_left")
+    return bound is not None and type_use != -1 and left_use != -1 and bound.start() < type_use < left_use
+
+
 if __name__ == "__main__":
     raise SystemExit(
         run_case(
@@ -123,6 +139,9 @@ if __name__ == "__main__":
             ],
             required_success_predicates=[
                 ("first SID tag load after segment-list bound", first_sid_tag_load_is_preserved),
+            ],
+            source_success_predicates=[
+                ("case source invariant A", first_segment_window_is_proved_before_srh_fields),
             ],
         )
     )

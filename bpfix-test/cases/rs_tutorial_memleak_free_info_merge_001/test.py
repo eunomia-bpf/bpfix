@@ -79,6 +79,28 @@ def combined_stats_are_decremented(load_output: str) -> bool:
     )
 
 
+def strip_comments(text: str) -> str:
+    text = re.sub(r"/\*.*?\*/", " ", text, flags=re.DOTALL)
+    return re.sub(r"//.*", " ", text)
+
+
+def preserves_alloc_info_snapshot_shape(source: Path) -> bool:
+    text = strip_comments(source.read_text(encoding="utf-8"))
+    stack = re.search(r"\b__u64\s+stack_id\s*=\s*info->stack_id\s*;", text)
+    size = re.search(r"\b__u64\s+sz\s*=\s*info->size\s*;", text)
+    delete = text.find("bpf_map_delete_elem(&allocs")
+    update = text.find("update_statistics_del(stack_id, sz)")
+    return (
+        stack is not None
+        and size is not None
+        and delete != -1
+        and update != -1
+        and stack.start() < delete < update
+        and size.start() < delete
+        and "guarded_path & 1" not in text[text.find("if (!info)") :]
+    )
+
+
 if __name__ == "__main__":
     raise SystemExit(
         run_case(
@@ -125,6 +147,9 @@ if __name__ == "__main__":
                 ("allocation size and stack_id loaded before delete", alloc_info_fields_loaded_before_delete),
                 ("alloc delete precedes combined stats update", alloc_delete_precedes_combined_update),
                 ("combined allocation statistics are decremented", combined_stats_are_decremented),
+            ],
+            source_success_predicates=[
+                ("case source invariant A", preserves_alloc_info_snapshot_shape),
             ],
         )
     )

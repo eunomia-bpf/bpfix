@@ -55,7 +55,9 @@ int ringbuf_branch_cookie(struct xdp_md *ctx)
         return XDP_PASS;
 
     rec->mark = mark;
-    bpf_ringbuf_submit(rec, 0);
+    __u64 cookie = (__u64)(long)rec;
+    struct event *shadow = (void *)(long)cookie;
+    bpf_ringbuf_submit(shadow, 0);
 
     return mark == 7 ? XDP_DROP : XDP_PASS;
 }

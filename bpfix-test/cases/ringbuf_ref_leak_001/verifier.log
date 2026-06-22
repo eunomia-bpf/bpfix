@@ -1,14 +1,14 @@
 libbpf: loading object from <work-dir>/prog.o
-libbpf: elf: section(3) xdp, size 216, link 0, flags 6, type=1
-libbpf: sec 'xdp': found program 'ringbuf_ref_leak' at insn offset 0 (0 bytes), code size 27 insns (216 bytes)
-libbpf: elf: section(4) .relxdp, size 16, link 26, flags 40, type=9
+libbpf: elf: section(3) xdp, size 328, link 0, flags 6, type=1
+libbpf: sec 'xdp': found program 'ringbuf_ref_leak' at insn offset 0 (0 bytes), code size 41 insns (328 bytes)
+libbpf: elf: section(4) .relxdp, size 32, link 26, flags 40, type=9
 libbpf: elf: section(5) .maps, size 16, link 0, flags 3, type=1
 libbpf: elf: section(6) license, size 4, link 0, flags 3, type=1
 libbpf: license of <work-dir>/prog.o is GPL
-libbpf: elf: section(16) .BTF, size 1023, link 0, flags 0, type=1
-libbpf: elf: section(18) .BTF.ext, size 316, link 0, flags 0, type=1
-libbpf: elf: section(26) .symtab, size 408, link 1, flags 0, type=2
-libbpf: looking for externs among 17 symbols...
+libbpf: elf: section(16) .BTF, size 1124, link 0, flags 0, type=1
+libbpf: elf: section(18) .BTF.ext, size 380, link 0, flags 0, type=1
+libbpf: elf: section(26) .symtab, size 456, link 1, flags 0, type=2
+libbpf: looking for externs among 19 symbols...
 libbpf: collected 0 externs total
 libbpf: map 'events': at sec_idx 5, offset 0.
 libbpf: map 'events': found type = 27.
@@ -16,6 +16,8 @@ libbpf: map 'events': found max_entries = 4096.
 libbpf: sec '.relxdp': collecting relocation for section(3) 'xdp'
 libbpf: sec '.relxdp': relo #0: insn #2 against 'events'
 libbpf: prog 'ringbuf_ref_leak': found map 0 (events, sec 5, off 0) for insn #2
+libbpf: sec '.relxdp': relo #1: insn #17 against 'events'
+libbpf: prog 'ringbuf_ref_leak': found map 0 (events, sec 5, off 0) for insn #17
 libbpf: object 'prog': failed (-95) to create BPF token from '/sys/fs/bpf', skipping optional step...
 libbpf: loaded kernel BTF from '/sys/kernel/btf/vmlinux'
 libbpf: sec 'xdp': found 2 CO-RE relocations
@@ -31,38 +33,51 @@ libbpf: prog 'ringbuf_ref_leak': BPF program load failed: -EINVAL
 libbpf: prog 'ringbuf_ref_leak': -- BEGIN PROG LOAD LOG --
 func#0 @0
 Live regs before insn:
-  0: .1........ (61) r7 = *(u32 *)(r1 +4)
-  1: .1.....7.. (61) r6 = *(u32 *)(r1 +0)
-  2: ......67.. (18) r1 = 0xffff000000000000
-  4: .1....67.. (b7) r2 = 4
-  5: .12...67.. (b7) r3 = 0
-  6: .123..67.. (85) call bpf_ringbuf_reserve#131
-  7: 0.....67.. (bf) r1 = r6
-  8: 01....67.. (07) r1 += 1
-  9: 01....67.. (2d) if r1 > r7 goto pc+2
- 10: 0.....6... (71) r1 = *(u8 *)(r6 +0)
- 11: 01........ (15) if r1 == 0x0 goto pc+9
- 12: 0......... (b7) r6 = 2
- 13: 0.....6... (15) if r0 == 0x0 goto pc+5
- 14: 0.....6... (b7) r1 = 7
- 15: 01....6... (63) *(u32 *)(r0 +0) = r1
- 16: 0.....6... (bf) r1 = r0
- 17: .1....6... (b7) r2 = 0
- 18: .12...6... (85) call bpf_ringbuf_submit#132
- 19: ......6... (bf) r0 = r6
- 20: 0......... (95) exit
- 21: 0......... (b7) r6 = 2
- 22: 0.....6... (15) if r0 == 0x0 goto pc-4
- 23: 0......... (b7) r1 = 7
- 24: 01........ (63) *(u32 *)(r0 +0) = r1
- 25: .......... (b7) r6 = 1
- 26: ......6... (05) goto pc-8
+  0: .1........ (61) r8 = *(u32 *)(r1 +4)
+  1: .1......8. (61) r6 = *(u32 *)(r1 +0)
+  2: ......6.8. (18) r1 = 0xffff000000000000
+  4: .1....6.8. (b7) r2 = 4
+  5: .12...6.8. (b7) r3 = 0
+  6: .123..6.8. (85) call bpf_ringbuf_reserve#131
+  7: 0.....6.8. (bf) r7 = r0
+  8: ......678. (bf) r1 = r6
+  9: .1....678. (07) r1 += 1
+ 10: .1....678. (2d) if r1 > r8 goto pc+2
+ 11: ......67.. (71) r1 = *(u8 *)(r6 +0)
+ 12: .1.....7.. (15) if r1 == 0x0 goto pc+22
+ 13: .......7.. (b7) r6 = 2
+ 14: ......67.. (15) if r7 == 0x0 goto pc+18
+ 15: ......67.. (b7) r1 = 7
+ 16: .1....67.. (63) *(u32 *)(r7 +0) = r1
+ 17: ......67.. (18) r1 = 0xffff000000000000
+ 19: .1....67.. (b7) r2 = 4
+ 20: .12...67.. (b7) r3 = 0
+ 21: .123..67.. (85) call bpf_ringbuf_reserve#131
+ 22: 0.....67.. (55) if r0 != 0x0 goto pc+1
+ 23: ......67.. (05) goto pc+6
+ 24: 0.....67.. (b7) r1 = 11
+ 25: 01....67.. (63) *(u32 *)(r0 +0) = r1
+ 26: 0.....67.. (bf) r1 = r7
+ 27: 01....6... (b7) r2 = 0
+ 28: 012...6... (bf) r7 = r0
+ 29: .12...67.. (85) call bpf_ringbuf_submit#132
+ 30: ......67.. (bf) r1 = r7
+ 31: .1....6... (b7) r2 = 0
+ 32: .12...6... (85) call bpf_ringbuf_submit#132
+ 33: ......6... (bf) r0 = r6
+ 34: 0......... (95) exit
+ 35: .......7.. (b7) r6 = 2
+ 36: ......67.. (15) if r7 == 0x0 goto pc-4
+ 37: .......7.. (b7) r1 = 7
+ 38: .1.....7.. (63) *(u32 *)(r7 +0) = r1
+ 39: .......... (b7) r6 = 1
+ 40: ......6... (05) goto pc-8
 0: R1=ctx() R10=fp0
 ; void *data_end = (void *)(long)ctx->data_end; @ buggy.bpf.c:28
-0: (61) r7 = *(u32 *)(r1 +4)          ; R1=ctx() R7_w=pkt_end()
+0: (61) r8 = *(u32 *)(r1 +4)          ; R1=ctx() R8_w=pkt_end()
 ; void *data = (void *)(long)ctx->data; @ buggy.bpf.c:27
 1: (61) r6 = *(u32 *)(r1 +0)          ; R1=ctx() R6_w=pkt(r=0)
-; struct event *rec = bpf_ringbuf_reserve(&events, sizeof(*rec), 0); @ buggy.bpf.c:30
+; struct event *rec = bpf_ringbuf_reserve(&events, sizeof(*rec), 0); @ buggy.bpf.c:31
 2: (18) r1 = 0xffff000000000000       ; R1_w=map_ptr(map=events,ks=0,vs=0)
 4: (b7) r2 = 4                        ; R2_w=4
 5: (b7) r3 = 0                        ; R3_w=0
@@ -71,46 +86,81 @@ mark_precise: frame0: last_idx 6 first_idx 0 subseq_idx -1
 mark_precise: frame0: regs=r2 stack= before 5: (b7) r3 = 0
 mark_precise: frame0: regs=r2 stack= before 4: (b7) r2 = 4
 7: R0_w=ringbuf_mem_or_null(id=2,ref_obj_id=2,sz=4) refs=2
-; if (data + 1 <= data_end && *(__u8 *)data == 0) @ buggy.bpf.c:32
-7: (bf) r1 = r6                       ; R1_w=pkt(r=0) R6_w=pkt(r=0) refs=2
-8: (07) r1 += 1                       ; R1_w=pkt(off=1,r=0) refs=2
-9: (2d) if r1 > r7 goto pc+2          ; R1_w=pkt(off=1,r=1) R7_w=pkt_end() refs=2
-10: (71) r1 = *(u8 *)(r6 +0)          ; R1=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R6=pkt(r=1) refs=2
-11: (15) if r1 == 0x0 goto pc+9       ; R1=scalar(smin=umin=smin32=umin32=1,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) refs=2
-12: (b7) r6 = 2                       ; R6_w=2 refs=2
-; if (!rec) @ buggy.bpf.c:35
-13: (15) if r0 == 0x0 goto pc+5       ; R0=ringbuf_mem(ref_obj_id=2,sz=4) refs=2
-14: (b7) r1 = 7                       ; R1_w=7 refs=2
-; rec->mark = 7; @ buggy.bpf.c:38
-15: (63) *(u32 *)(r0 +0) = r1         ; R0=ringbuf_mem(ref_obj_id=2,sz=4) R1_w=7 refs=2
-; bpf_ringbuf_submit(rec, 0); @ buggy.bpf.c:42
-16: (bf) r1 = r0                      ; R0=ringbuf_mem(ref_obj_id=2,sz=4) R1_w=ringbuf_mem(ref_obj_id=2,sz=4) refs=2
-17: (b7) r2 = 0                       ; R2_w=0 refs=2
-18: (85) call bpf_ringbuf_submit#132          ;
-; } @ buggy.bpf.c:44
-19: (bf) r0 = r6                      ; R0_w=2 R6=2
-20: (95) exit
+7: (bf) r7 = r0                       ; R0_w=ringbuf_mem_or_null(id=2,ref_obj_id=2,sz=4) R7_w=ringbuf_mem_or_null(id=2,ref_obj_id=2,sz=4) refs=2
+; if (data + 1 <= data_end && *(__u8 *)data == 0) @ buggy.bpf.c:33
+8: (bf) r1 = r6                       ; R1_w=pkt(r=0) R6_w=pkt(r=0) refs=2
+9: (07) r1 += 1                       ; R1_w=pkt(off=1,r=0) refs=2
+10: (2d) if r1 > r8 goto pc+2         ; R1_w=pkt(off=1,r=1) R8_w=pkt_end() refs=2
+11: (71) r1 = *(u8 *)(r6 +0)          ; R1=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R6=pkt(r=1) refs=2
+12: (15) if r1 == 0x0 goto pc+22      ; R1=scalar(smin=umin=smin32=umin32=1,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) refs=2
+13: (b7) r6 = 2                       ; R6_w=2 refs=2
+; if (!rec) @ buggy.bpf.c:36
+14: (15) if r7 == 0x0 goto pc+18      ; R7=ringbuf_mem(ref_obj_id=2,sz=4) refs=2
+15: (b7) r1 = 7                       ; R1_w=7 refs=2
+; rec->mark = 7; @ buggy.bpf.c:39
+16: (63) *(u32 *)(r7 +0) = r1         ; R1_w=7 R7=ringbuf_mem(ref_obj_id=2,sz=4) refs=2
+; audit = bpf_ringbuf_reserve(&events, sizeof(*audit), 0); @ buggy.bpf.c:43
+17: (18) r1 = 0xffff000000000000      ; R1_w=map_ptr(map=events,ks=0,vs=0) refs=2
+19: (b7) r2 = 4                       ; R2_w=4 refs=2
+20: (b7) r3 = 0                       ; R3_w=0 refs=2
+21: (85) call bpf_ringbuf_reserve#131
+mark_precise: frame0: last_idx 21 first_idx 12 subseq_idx -1
+mark_precise: frame0: regs=r2 stack= before 20: (b7) r3 = 0
+mark_precise: frame0: regs=r2 stack= before 19: (b7) r2 = 4
+22: R0=ringbuf_mem_or_null(id=4,ref_obj_id=4,sz=4) refs=2,4
+; if (!audit) { @ buggy.bpf.c:44
+22: (55) if r0 != 0x0 goto pc+1       ; R0=0 refs=2
+23: (05) goto pc+6
+;  @ buggy.bpf.c:0
+30: (bf) r1 = r7                      ; R1_w=ringbuf_mem(ref_obj_id=2,sz=4) R7=ringbuf_mem(ref_obj_id=2,sz=4) refs=2
+31: (b7) r2 = 0                       ; R2_w=0 refs=2
+32: (85) call bpf_ringbuf_submit#132          ;
+; } @ buggy.bpf.c:53
+33: (bf) r0 = r6                      ; R0_w=2 R6=2
+34: (95) exit
 
-from 13 to 19: safe
+from 22 to 24: R0=ringbuf_mem(ref_obj_id=4,sz=4) R6=2 R7=ringbuf_mem(ref_obj_id=2,sz=4) R8=pkt_end() R10=fp0 refs=2,4
+24: R0=ringbuf_mem(ref_obj_id=4,sz=4) R6=2 R7=ringbuf_mem(ref_obj_id=2,sz=4) R8=pkt_end() R10=fp0 refs=2,4
+; if (!audit) { @ buggy.bpf.c:44
+24: (b7) r1 = 11                      ; R1_w=11 refs=2,4
+; audit->mark = 11; @ buggy.bpf.c:48
+25: (63) *(u32 *)(r0 +0) = r1         ; R0=ringbuf_mem(ref_obj_id=4,sz=4) R1_w=11 refs=2,4
+; bpf_ringbuf_submit(rec, 0); @ buggy.bpf.c:50
+26: (bf) r1 = r7                      ; R1_w=ringbuf_mem(ref_obj_id=2,sz=4) R7=ringbuf_mem(ref_obj_id=2,sz=4) refs=2,4
+27: (b7) r2 = 0                       ; R2_w=0 refs=2,4
+28: (bf) r7 = r0                      ; R0=ringbuf_mem(ref_obj_id=4,sz=4) R7_w=ringbuf_mem(ref_obj_id=4,sz=4) refs=2,4
+29: (85) call bpf_ringbuf_submit#132          ; refs=4
+;  @ buggy.bpf.c:0
+30: (bf) r1 = r7                      ; R1_w=ringbuf_mem(ref_obj_id=4,sz=4) R7=ringbuf_mem(ref_obj_id=4,sz=4) refs=4
+31: (b7) r2 = 0                       ; R2_w=0 refs=4
+32: (85) call bpf_ringbuf_submit#132          ;
+; } @ buggy.bpf.c:53
+33: (bf) r0 = r6                      ; R0_w=2 R6=2
+34: (95) exit
 
-from 11 to 21: R0=ringbuf_mem_or_null(id=2,ref_obj_id=2,sz=4) R1=0 R6=pkt(r=1) R7=pkt_end() R10=fp0 refs=2
-21: R0=ringbuf_mem_or_null(id=2,ref_obj_id=2,sz=4) R1=0 R6=pkt(r=1) R7=pkt_end() R10=fp0 refs=2
-21: (b7) r6 = 2                       ; R6_w=2 refs=2
-; if (!rec) @ buggy.bpf.c:35
-22: (15) if r0 == 0x0 goto pc-4       ; R0=ringbuf_mem(ref_obj_id=2,sz=4) refs=2
-23: (b7) r1 = 7                       ; R1_w=7 refs=2
-; rec->mark = 7; @ buggy.bpf.c:38
-24: (63) *(u32 *)(r0 +0) = r1         ; R0=ringbuf_mem(ref_obj_id=2,sz=4) R1_w=7 refs=2
-25: (b7) r6 = 1                       ; R6_w=1 refs=2
-26: (05) goto pc-8
-; } @ buggy.bpf.c:44
-19: (bf) r0 = r6                      ; R0_w=1 R6=1 refs=2
-20: (95) exit
+from 14 to 33: R0=0 R1=scalar(smin=umin=smin32=umin32=1,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R6_w=2 R7=0 R8=pkt_end() R10=fp0
+33: R0=0 R1=scalar(smin=umin=smin32=umin32=1,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R6_w=2 R7=0 R8=pkt_end() R10=fp0
+33: (bf) r0 = r6                      ; R0_w=2 R6_w=2
+34: (95) exit
+
+from 12 to 35: R0=ringbuf_mem_or_null(id=2,ref_obj_id=2,sz=4) R1=0 R6=pkt(r=1) R7=ringbuf_mem_or_null(id=2,ref_obj_id=2,sz=4) R8=pkt_end() R10=fp0 refs=2
+35: R0=ringbuf_mem_or_null(id=2,ref_obj_id=2,sz=4) R1=0 R6=pkt(r=1) R7=ringbuf_mem_or_null(id=2,ref_obj_id=2,sz=4) R8=pkt_end() R10=fp0 refs=2
+35: (b7) r6 = 2                       ; R6=2 refs=2
+; if (!rec) @ buggy.bpf.c:36
+36: (15) if r7 == 0x0 goto pc-4       ; R7=ringbuf_mem(ref_obj_id=2,sz=4) refs=2
+37: (b7) r1 = 7                       ; R1_w=7 refs=2
+; rec->mark = 7; @ buggy.bpf.c:39
+38: (63) *(u32 *)(r7 +0) = r1         ; R1_w=7 R7=ringbuf_mem(ref_obj_id=2,sz=4) refs=2
+39: (b7) r6 = 1                       ; R6_w=1 refs=2
+40: (05) goto pc-8
+; } @ buggy.bpf.c:53
+33: (bf) r0 = r6                      ; R0_w=1 R6_w=1 refs=2
+34: (95) exit
 Unreleased reference id=2 alloc_insn=6
 BPF_EXIT instruction in main prog would lead to reference leak
 verification time 0 usec
 stack depth 0
-processed 29 insns (limit 1000000) max_states_per_insn 1 total_states 3 peak_states 3 mark_read 1
+processed 48 insns (limit 1000000) max_states_per_insn 0 total_states 4 peak_states 4 mark_read 1
 -- END PROG LOAD LOG --
 libbpf: prog 'ringbuf_ref_leak': failed to load: -EINVAL
 libbpf: failed to load object '<work-dir>/prog.o'

@@ -12,5 +12,4 @@ error[BPFIX-E009]: kernel or program-type capability is unavailable
    = note: nearest BPF instruction pc 29
    = note: parsed 26 verifier state snapshots
    = required proof: load this program with an attach type and kernel environment that allow bpf_perf_event_output#25, or avoid that helper on this path
-help: Check kernel version, program type, attach type, capabilities, and BTF availability.
-help: Use a supported helper or gate the code path by target kernel capabilities.
+help: This is a map definition mismatch, not an XDP helper capability issue: make xdpdump_perf_map a BPF_MAP_TYPE_PERF_EVENT_ARRAY and preserve its __u32 key/value ABI while keeping the perf-event output metadata path intact.

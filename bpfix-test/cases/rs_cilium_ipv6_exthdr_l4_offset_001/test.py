@@ -82,6 +82,23 @@ def udp_dest_load_from_extension_derived_l4(load_output: str) -> bool:
     return False
 
 
+def strip_comments(text: str) -> str:
+    text = re.sub(r"/\*.*?\*/", " ", text, flags=re.DOTALL)
+    return re.sub(r"//.*", " ", text)
+
+
+def direct_udp_pointer_bound_from_l4(source: Path) -> bool:
+    text = strip_comments(source.read_text(encoding="utf-8"))
+    assign = re.search(r"\budp\s*=\s*l4\s*;", text)
+    bound = re.search(r"if\s*\(\s*\(\s*void\s*\*\s*\)\s*\(\s*udp\s*\+\s*1\s*\)\s*>\s*data_end\s*\)", text)
+    return (
+        assign is not None
+        and bound is not None
+        and assign.start() < bound.start()
+        and "checked_udp" not in text
+    )
+
+
 if __name__ == "__main__":
     raise SystemExit(
         run_case(
@@ -103,6 +120,9 @@ if __name__ == "__main__":
                     "load UDP destination from extension-derived variable L4 pointer",
                     udp_dest_load_from_extension_derived_l4,
                 ),
+            ],
+            source_success_predicates=[
+                ("case source invariant A", direct_udp_pointer_bound_from_l4),
             ],
         )
     )

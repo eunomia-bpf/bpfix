@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import re
 import struct
 import sys
 from pathlib import Path
@@ -28,6 +29,27 @@ def truncated_ipv4_packet_with_udp_protocol_offset() -> bytes:
     return bytes(packet)
 
 
+def strip_comments(text: str) -> str:
+    text = re.sub(r"/\*.*?\*/", " ", text, flags=re.DOTALL)
+    return re.sub(r"//.*", " ", text)
+
+
+def submit_after_post_adjust_recheck(source: Path) -> bool:
+    text = strip_comments(source.read_text(encoding="utf-8"))
+    adjust_pos = text.find("bpf_xdp_adjust_head")
+    if adjust_pos == -1:
+        return False
+    after = text[adjust_pos:]
+    submit_pos = after.find("bpf_ringbuf_submit")
+    reload_data_pos = after.find("data = (void *)(long)ctx->data")
+    reload_end_pos = after.find("data_end = (void *)(long)ctx->data_end")
+    recheck = re.search(r"\bif\s*\([^;\n]*iph\s*\+\s*1[^;\n]*>\s*data_end\s*\)", after)
+    if submit_pos == -1 or reload_data_pos == -1 or reload_end_pos == -1 or recheck is None:
+        return False
+    discard_pos = after.find("bpf_ringbuf_discard(rec, 0)", recheck.end(), submit_pos)
+    return reload_data_pos < recheck.start() < submit_pos and reload_end_pos < recheck.start() and discard_pos != -1
+
+
 if __name__ == "__main__":
     raise SystemExit(
         run_case(
@@ -50,6 +72,9 @@ if __name__ == "__main__":
             required_success_predicates=[
                 ("call bpf_xdp_adjust_head with delta 14", xdp_adjust_head_called_with_delta14),
                 ("write mark=7 into submitted ringbuf_mem", submitted_ringbuf_record_with_mark7),
+            ],
+            source_success_predicates=[
+                ("case source invariant A", submit_after_post_adjust_recheck),
             ],
         )
     )

@@ -17,4 +17,4 @@ error[BPFIX-E001]: packet bounds check is narrower than the later packet access
    = required proof: prove R3 has packet range at least 78 bytes before this access; verifier currently has range 62
 help: Move the data_end check to the final pointer expression and include the access width, for example check pointer + size before dereferencing pointer.
 help: Add or move a packet bounds check immediately before the access or helper argument use.
-help: Check the exact pointer and byte length passed to the helper, not only an earlier header pointer.
+help: In the SRH helper, prove the complete fixed header plus first SID window with (void *)(srh + 1) + sizeof(struct in6_addr) > data_end before reading srh fields or the SID tag.

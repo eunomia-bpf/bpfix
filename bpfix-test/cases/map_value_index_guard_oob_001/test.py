@@ -34,6 +34,7 @@ if __name__ == "__main__":
                 ("truncated_passes", truncated_packet, 2),
             ],
             required_success_substrings=[
+                "map 'configs': found type = 1",
                 "call bpf_map_lookup_elem#1",
             ],
             map_updates=[

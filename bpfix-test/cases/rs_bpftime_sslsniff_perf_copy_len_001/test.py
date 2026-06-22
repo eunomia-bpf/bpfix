@@ -41,6 +41,14 @@ def strip_comments(text: str) -> str:
     return re.sub(r"//.*", " ", text)
 
 
+def preserves_ssl_capture_buffer_abi(text: str) -> bool:
+    return (
+        re.search(r"#\s*define\s+MAX_BUF_SIZE\s+16\b", text) is not None
+        and re.search(r"#\s*define\s+DATA_BUF_SIZE\s+16\b", text) is not None
+        and re.search(r"\bcopy_size\s*>\s*DATA_BUF_SIZE\b", text) is None
+    )
+
+
 def source_semantics(source: Path) -> list[dict[str, object]]:
     text = strip_comments(source.read_text(encoding="utf-8"))
     checks = [
@@ -53,6 +61,7 @@ def source_semantics(source: Path) -> list[dict[str, object]]:
         ("keeps perf-event output", re.search(r"\bbpf_perf_event_output\s*\(", text) is not None),
         ("cleans bufs map", re.search(r"\bbpf_map_delete_elem\s*\(\s*&bufs\b", text) is not None),
         ("cleans start_ns map", re.search(r"\bbpf_map_delete_elem\s*\(\s*&start_ns\b", text) is not None),
+        ("case source invariant A", preserves_ssl_capture_buffer_abi(text)),
     ]
     return [{"name": name, "passed": bool(passed)} for name, passed in checks]
 

@@ -1,16 +1,16 @@
 libbpf: loading object from <work-dir>/prog.o
-libbpf: elf: section(3) xdp, size 168, link 0, flags 6, type=1
-libbpf: sec 'xdp': found program 'xdp_adjust_head_stale' at insn offset 0 (0 bytes), code size 21 insns (168 bytes)
+libbpf: elf: section(3) xdp, size 264, link 0, flags 6, type=1
+libbpf: sec 'xdp': found program 'xdp_adjust_head_stale' at insn offset 0 (0 bytes), code size 33 insns (264 bytes)
 libbpf: elf: section(4) license, size 4, link 0, flags 3, type=1
 libbpf: license of <work-dir>/prog.o is GPL
-libbpf: elf: section(14) .BTF, size 1538, link 0, flags 0, type=1
-libbpf: elf: section(16) .BTF.ext, size 364, link 0, flags 0, type=1
+libbpf: elf: section(14) .BTF, size 1773, link 0, flags 0, type=1
+libbpf: elf: section(16) .BTF.ext, size 492, link 0, flags 0, type=1
 libbpf: elf: section(24) .symtab, size 336, link 1, flags 0, type=2
 libbpf: looking for externs among 14 symbols...
 libbpf: collected 0 externs total
 libbpf: object 'prog': failed (-95) to create BPF token from '/sys/fs/bpf', skipping optional step...
 libbpf: loaded kernel BTF from '/sys/kernel/btf/vmlinux'
-libbpf: sec 'xdp': found 4 CO-RE relocations
+libbpf: sec 'xdp': found 6 CO-RE relocations
 libbpf: CO-RE relocating [2] struct xdp_md: found target candidate [14922] struct xdp_md in [vmlinux]
 libbpf: prog 'xdp_adjust_head_stale': relo #0: <byte_off> [2] struct xdp_md.data_end (0:1 @ offset 4)
 libbpf: prog 'xdp_adjust_head_stale': relo #0: matching candidate #0 <byte_off> [14922] struct xdp_md.data_end (0:1 @ offset 4)
@@ -26,6 +26,13 @@ libbpf: CO-RE relocating [15] struct iphdr: found target candidate [23765] struc
 libbpf: prog 'xdp_adjust_head_stale': relo #3: <byte_off> [15] struct iphdr.protocol (0:7 @ offset 9)
 libbpf: prog 'xdp_adjust_head_stale': relo #3: matching candidate #0 <byte_off> [23765] struct iphdr.protocol (0:7 @ offset 9)
 libbpf: prog 'xdp_adjust_head_stale': relo #3: patched insn #16 (LDX/ST/STX) off 9 -> 9
+libbpf: prog 'xdp_adjust_head_stale': relo #4: <byte_off> [15] struct iphdr.ihl (0:0 @ offset 0)
+libbpf: prog 'xdp_adjust_head_stale': relo #4: matching candidate #0 <byte_off> [23765] struct iphdr.ihl (0:0 @ offset 0)
+libbpf: prog 'xdp_adjust_head_stale': relo #4: patched insn #18 (LDX/ST/STX) off 0 -> 0
+libbpf: CO-RE relocating [22] struct udphdr: found target candidate [23773] struct udphdr in [vmlinux]
+libbpf: prog 'xdp_adjust_head_stale': relo #5: <byte_off> [22] struct udphdr.dest (0:1 @ offset 2)
+libbpf: prog 'xdp_adjust_head_stale': relo #5: matching candidate #0 <byte_off> [23773] struct udphdr.dest (0:1 @ offset 2)
+libbpf: prog 'xdp_adjust_head_stale': relo #5: patched insn #28 (LDX/ST/STX) off 2 -> 2
 libbpf: prog 'xdp_adjust_head_stale': BPF program load failed: -EACCES
 libbpf: prog 'xdp_adjust_head_stale': -- BEGIN PROG LOAD LOG --
 func#0 @0
@@ -35,22 +42,34 @@ Live regs before insn:
   2: 01.....7.. (61) r8 = *(u32 *)(r1 +0)
   3: 01.....78. (bf) r6 = r8
   4: 01....678. (07) r6 += 14
-  5: 01....678. (2d) if r6 > r7 goto pc+14
+  5: 01....678. (2d) if r6 > r7 goto pc+26
   6: 01....678. (69) r2 = *(u16 *)(r8 +12)
-  7: 012...678. (55) if r2 != 0x8 goto pc+12
+  7: 012...678. (55) if r2 != 0x8 goto pc+24
   8: .1....678. (b7) r2 = 14
   9: .12...678. (85) call bpf_xdp_adjust_head#44
  10: 0.....678. (bf) r1 = r0
  11: .1....678. (b7) r0 = 0
- 12: 01....678. (6d) if r0 s> r1 goto pc+7
+ 12: 01....678. (6d) if r0 s> r1 goto pc+19
  13: ......678. (07) r8 += 34
  14: ......678. (b7) r0 = 2
- 15: 0.....678. (2d) if r8 > r7 goto pc+4
- 16: ......6... (71) r1 = *(u8 *)(r6 +9)
- 17: .1........ (b7) r0 = 1
- 18: 01........ (15) if r1 == 0x11 goto pc+1
- 19: .......... (b7) r0 = 2
- 20: 0......... (95) exit
+ 15: 0.....678. (2d) if r8 > r7 goto pc+16
+ 16: 0.....67.. (71) r1 = *(u8 *)(r6 +9)
+ 17: 01....67.. (55) if r1 != 0x11 goto pc+14
+ 18: 0.....67.. (71) r1 = *(u8 *)(r6 +0)
+ 19: 01....67.. (67) r1 <<= 2
+ 20: 01....67.. (57) r1 &= 60
+ 21: 01....67.. (b7) r2 = 20
+ 22: 012...67.. (2d) if r2 > r1 goto pc+9
+ 23: 01....67.. (0f) r6 += r1
+ 24: 0.....67.. (2d) if r6 > r7 goto pc+7
+ 25: 0.....67.. (bf) r1 = r6
+ 26: 01....67.. (07) r1 += 8
+ 27: 01....67.. (2d) if r1 > r7 goto pc+4
+ 28: ......6... (69) r1 = *(u16 *)(r6 +2)
+ 29: .1........ (b7) r0 = 1
+ 30: 01........ (15) if r1 == 0x3500 goto pc+1
+ 31: .......... (b7) r0 = 2
+ 32: 0......... (95) exit
 0: R1=ctx() R10=fp0
 ; int xdp_adjust_head_stale(struct xdp_md *ctx) @ buggy.bpf.c:26
 0: (b7) r0 = 2                        ; R0_w=2
@@ -58,24 +77,24 @@ Live regs before insn:
 1: (61) r7 = *(u32 *)(r1 +4)          ; R1=ctx() R7_w=pkt_end()
 ; void *data = (void *)(long)ctx->data; @ buggy.bpf.c:28
 2: (61) r8 = *(u32 *)(r1 +0)          ; R1=ctx() R8_w=pkt(r=0)
-; if ((void *)(eth + 1) > data_end) @ buggy.bpf.c:32
+; if ((void *)(eth + 1) > data_end) @ buggy.bpf.c:35
 3: (bf) r6 = r8                       ; R6_w=pkt(r=0) R8_w=pkt(r=0)
 4: (07) r6 += 14                      ; R6_w=pkt(off=14,r=0)
-5: (2d) if r6 > r7 goto pc+14         ; R6_w=pkt(off=14,r=14) R7_w=pkt_end()
-; if (bpf_ntohs(eth->h_proto) != ETH_P_IP) @ buggy.bpf.c:34
+5: (2d) if r6 > r7 goto pc+26         ; R6_w=pkt(off=14,r=14) R7_w=pkt_end()
+; if (bpf_ntohs(eth->h_proto) != ETH_P_IP) @ buggy.bpf.c:37
 6: (69) r2 = *(u16 *)(r8 +12)         ; R2_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=0xffff,var_off=(0x0; 0xffff)) R8_w=pkt(r=14)
-7: (55) if r2 != 0x8 goto pc+12       ; R2_w=8
-; if (bpf_xdp_adjust_head(ctx, (int)sizeof(*eth)) < 0) @ buggy.bpf.c:37
+7: (55) if r2 != 0x8 goto pc+24       ; R2_w=8
+; if (bpf_xdp_adjust_head(ctx, (int)sizeof(*eth)) < 0) @ buggy.bpf.c:40
 8: (b7) r2 = 14                       ; R2_w=14
 9: (85) call bpf_xdp_adjust_head#44   ; R0=scalar()
 10: (bf) r1 = r0                      ; R0=scalar(id=1) R1_w=scalar(id=1)
 11: (b7) r0 = 0                       ; R0_w=0
-12: (6d) if r0 s> r1 goto pc+7        ; R0_w=0 R1_w=scalar(id=1,smin=0,umax=0x7fffffffffffffff,var_off=(0x0; 0x7fffffffffffffff))
-; if ((void *)(iph + 1) > data_end) @ buggy.bpf.c:41
+12: (6d) if r0 s> r1 goto pc+19       ; R0_w=0 R1_w=scalar(id=1,smin=0,umax=0x7fffffffffffffff,var_off=(0x0; 0x7fffffffffffffff))
+; if ((void *)(iph + 1) > data_end) @ buggy.bpf.c:44
 13: (07) r8 += 34                     ; R8_w=scalar()
 14: (b7) r0 = 2                       ; R0_w=2
-15: (2d) if r8 > r7 goto pc+4         ; R7=scalar() R8_w=scalar()
-; return iph->protocol == IPPROTO_UDP ? XDP_DROP : XDP_PASS; @ buggy.bpf.c:44
+15: (2d) if r8 > r7 goto pc+16        ; R7=scalar() R8_w=scalar()
+; if (iph->protocol != IPPROTO_UDP) @ buggy.bpf.c:46
 16: (71) r1 = *(u8 *)(r6 +9)
 R6 invalid mem access 'scalar'
 verification time 0 usec

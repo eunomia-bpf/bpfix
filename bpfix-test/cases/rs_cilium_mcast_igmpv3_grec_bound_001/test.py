@@ -109,6 +109,36 @@ def group_record_load_from_record_pointer(load_output: str) -> bool:
     return False
 
 
+def indexed_unrolled_record_loads(load_output: str) -> bool:
+    """Prefer the fixed proof shape: each unrolled record is derived from the report base plus i*sizeof(record)."""
+    in_annotated_trace = False
+    required_offsets = {12, 20, 28, 36}
+    seen_offsets: set[int] = set()
+
+    for line in load_output.splitlines():
+        if line.startswith("0: R1="):
+            in_annotated_trace = True
+        if not in_annotated_trace:
+            continue
+        load = re.search(r"=\s*\*\(u32 \*\)\(r1\s*\+\s*(12|20|28|36)\)", line)
+        if load is not None:
+            seen_offsets.add(int(load.group(1)))
+    return required_offsets.issubset(seen_offsets)
+
+
+def strip_comments(text: str) -> str:
+    text = re.sub(r"/\*.*?\*/", " ", text, flags=re.DOTALL)
+    return re.sub(r"//.*", " ", text)
+
+
+def record_bound_uses_byte_length(source: Path) -> bool:
+    text = strip_comments(source.read_text(encoding="utf-8"))
+    return re.search(
+        r"if\s*\(\s*\(\s*void\s*\*\s*\)\s*rec\s*\+\s*sizeof\s*\(\s*\*\s*rec\s*\)\s*>\s*data_end\s*\)",
+        text,
+    ) is not None
+
+
 if __name__ == "__main__":
     raise SystemExit(
         run_case(
@@ -149,6 +179,13 @@ if __name__ == "__main__":
                     "load IGMPv3 group address from record pointer after record bound",
                     group_record_load_from_record_pointer,
                 ),
+                (
+                    "unrolled IGMPv3 records use indexed loads from the report base",
+                    indexed_unrolled_record_loads,
+                ),
+            ],
+            source_success_predicates=[
+                ("case source invariant A", record_bound_uses_byte_length),
             ],
         )
     )

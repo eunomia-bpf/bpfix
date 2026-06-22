@@ -14,3 +14,4 @@ error[BPFIX-E008]: helper or kfunc argument has the wrong verifier-visible type
    = note[verifier-state]: verifier state at the call site confirms the rejected argument register has the printed actual type, while the helper or kfunc contract requires a different verifier-visible type
    = required proof: pass the helper or kfunc argument register the exact verifier-visible type required by its contract at this call site
 help: Pass the helper or kfunc the required verifier-visible pointer type; do not cast or reuse a different pointer class.
+help: Preserve the original two-map policy shape: ip_configs stays a hash map, arp_configs stays an array map, and only the first helper argument changes to the selected map pointer.

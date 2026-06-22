@@ -23,8 +23,8 @@ def u64(value: int) -> bytes:
     return value.to_bytes(8, "little", signed=False)
 
 
-def request(key: int, value: int, schedule: int) -> bytes:
-    return u32(key) + u32(value) + u32(schedule) + (b"\0" * 16)
+def request(key: int, value: int, schedule: int, priority: int = 0) -> bytes:
+    return u32(key) + u32(value) + u32(schedule) + u32(priority) + (b"\0" * 16)
 
 
 def zero_stats() -> bytes:
@@ -134,6 +134,27 @@ if __name__ == "__main__":
                             ),
                         ),
                         ("work item is initialized before start", work_item_value(2, 77, 1)),
+                    ],
+                ),
+                (
+                    "priority_remaps_work_item_and_stats",
+                    lambda: request(6, 88, 1, priority=1),
+                    XDP_DROP,
+                    [("stats_map", u32(0), zero_stats())],
+                    [
+                        (
+                            "priority remap updates stats",
+                            stats_matches(
+                                stats_value(
+                                    processed=1,
+                                    skipped=0,
+                                    scheduled=1,
+                                    last_key=3,
+                                    last_value=89,
+                                )
+                            ),
+                        ),
+                        ("priority remap initializes selected work item", work_item_value(3, 88, 1)),
                     ],
                 ),
             ],

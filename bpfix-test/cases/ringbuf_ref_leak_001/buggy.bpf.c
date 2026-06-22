@@ -27,6 +27,7 @@ int ringbuf_ref_leak(struct xdp_md *ctx)
     void *data = (void *)(long)ctx->data;
     void *data_end = (void *)(long)ctx->data_end;
     bool drop_branch = false;
+    struct event *audit;
     struct event *rec = bpf_ringbuf_reserve(&events, sizeof(*rec), 0);
 
     if (data + 1 <= data_end && *(__u8 *)data == 0)
@@ -39,7 +40,15 @@ int ringbuf_ref_leak(struct xdp_md *ctx)
     if (drop_branch)
         return XDP_DROP;
 
+    audit = bpf_ringbuf_reserve(&events, sizeof(*audit), 0);
+    if (!audit) {
+        bpf_ringbuf_submit(rec, 0);
+        return XDP_PASS;
+    }
+    audit->mark = 11;
+
     bpf_ringbuf_submit(rec, 0);
+    bpf_ringbuf_submit(audit, 0);
     return XDP_PASS;
 }
 

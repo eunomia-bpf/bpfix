@@ -405,6 +405,10 @@ def oracle_failure_stage(completed: subprocess.CompletedProcess[str]) -> str:
         if isinstance(check, dict) and check.get("passed") is not True:
             return "auxiliary_proof_predicate"
 
+    for check in report.get("source_semantics", []):
+        if isinstance(check, dict) and check.get("passed") is not True:
+            return "auxiliary_proof_predicate"
+
     for functional in report.get("functional", []):
         if isinstance(functional, dict):
             for update in functional.get("map_updates", []):

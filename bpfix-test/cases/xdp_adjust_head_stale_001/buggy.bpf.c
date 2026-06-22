@@ -28,6 +28,10 @@ int xdp_adjust_head_stale(struct xdp_md *ctx)
     void *data = (void *)(long)ctx->data;
     void *data_end = (void *)(long)ctx->data_end;
     struct ethhdr *eth = data;
+    struct iphdr *iph;
+    struct udphdr *udp;
+    __u8 *payload;
+    __u32 ihl_bytes;
 
     if ((void *)(eth + 1) > data_end)
         return XDP_PASS;
@@ -37,11 +41,26 @@ int xdp_adjust_head_stale(struct xdp_md *ctx)
     if (bpf_xdp_adjust_head(ctx, (int)sizeof(*eth)) < 0)
         return XDP_ABORTED;
 
-    struct iphdr *iph = data + sizeof(*eth);
+    iph = data + sizeof(*eth);
     if ((void *)(iph + 1) > data_end)
         return XDP_PASS;
+    if (iph->protocol != IPPROTO_UDP)
+        return XDP_PASS;
+    ihl_bytes = (__u32)iph->ihl << 2;
+    if (ihl_bytes < sizeof(*iph))
+        return XDP_PASS;
+    if ((void *)iph + ihl_bytes > data_end)
+        return XDP_PASS;
 
-    return iph->protocol == IPPROTO_UDP ? XDP_DROP : XDP_PASS;
+    udp = (void *)iph + ihl_bytes;
+    if ((void *)(udp + 1) > data_end)
+        return XDP_PASS;
+
+    payload = (void *)(udp + 1);
+    if ((void *)(payload + 1) > data_end)
+        return XDP_PASS;
+
+    return bpf_ntohs(udp->dest) == 53 && *payload == 0x42 ? XDP_DROP : XDP_PASS;
 }
 
 char _license[] SEC("license") = "GPL";

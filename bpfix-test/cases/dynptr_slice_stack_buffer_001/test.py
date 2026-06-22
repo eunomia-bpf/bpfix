@@ -17,6 +17,10 @@ def short_packet() -> bytes:
     return bytes.fromhex("00112233")
 
 
+def ethernet_only_packet() -> bytes:
+    return bytes.fromhex("00112233445566778899aabb0800")
+
+
 if __name__ == "__main__":
     raise SystemExit(
         run_case(
@@ -27,6 +31,7 @@ if __name__ == "__main__":
             ],
             functional_tests=[
                 ("long_packet_drops", long_packet, 1),
+                ("ethernet_only_packet_passes", ethernet_only_packet, 2),
                 ("short_packet_passes", short_packet, 2),
             ],
             required_success_substrings=[

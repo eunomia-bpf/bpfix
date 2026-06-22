@@ -117,6 +117,24 @@ def verifier_visible_window_bound(load_output: str) -> bool:
     )
 
 
+def strip_comments(text: str) -> str:
+    text = re.sub(r"/\*.*?\*/", " ", text, flags=re.DOTALL)
+    return re.sub(r"//.*", " ", text)
+
+
+def declared_tcp_header_bound_precedes_capture_window(source: Path) -> bool:
+    text = strip_comments(source.read_text(encoding="utf-8"))
+    declared = re.search(
+        r"if\s*\(\s*\(\s*void\s*\*\s*\)\s*tcp\s*\+\s*tcp_header_bytes\s*>\s*data_end\s*\)",
+        text,
+    )
+    capture = re.search(
+        r"if\s*\(\s*\(\s*void\s*\*\s*\)\s*tcp\s*\+\s*TCP_CAPTURE_MAX\s*>\s*data_end\s*\)",
+        text,
+    )
+    return declared is not None and capture is not None and declared.start() < capture.start()
+
+
 if __name__ == "__main__":
     options = bytes(range(0xA0, 0xAC))
     raise SystemExit(
@@ -187,6 +205,9 @@ if __name__ == "__main__":
             required_success_predicates=[
                 ("TCP header bytes are copied into the ringbuf record", tcp_header_copy_contract),
                 ("verifier-visible TCP capture window bound is present", verifier_visible_window_bound),
+            ],
+            source_success_predicates=[
+                ("case source invariant A", declared_tcp_header_bound_precedes_capture_window),
             ],
         )
     )

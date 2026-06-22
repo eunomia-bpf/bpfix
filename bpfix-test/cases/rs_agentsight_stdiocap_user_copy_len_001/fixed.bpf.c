@@ -38,7 +38,7 @@ int rs_agentsight_stdiocap_user_copy_len(struct trace_event_raw_sys_exit *ctx)
     __u64 pid_tgid = bpf_get_current_pid_tgid();
     struct io_args_t *args;
     struct stdio_event_t *event;
-    __u32 copy_size = 8;
+    __u32 copy_size = 16;
 
     args = bpf_map_lookup_elem(&io_args, &pid_tgid);
     if (!args)
@@ -54,6 +54,8 @@ int rs_agentsight_stdiocap_user_copy_len(struct trace_event_raw_sys_exit *ctx)
     event->fd = args->fd;
     event->len = (__u32)ctx->ret;
     event->is_read = args->is_read;
+    if (copy_size > sizeof(event->buf))
+        copy_size = sizeof(event->buf);
     bpf_probe_read_user(event->buf, copy_size, (const void *)args->buf);
     bpf_ringbuf_submit(event, 0);
 

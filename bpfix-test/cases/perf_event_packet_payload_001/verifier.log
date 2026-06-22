@@ -1,12 +1,12 @@
 libbpf: loading object from <work-dir>/prog.o
-libbpf: elf: section(3) xdp, size 136, link 0, flags 6, type=1
-libbpf: sec 'xdp': found program 'perf_event_packet_payload' at insn offset 0 (0 bytes), code size 17 insns (136 bytes)
+libbpf: elf: section(3) xdp, size 160, link 0, flags 6, type=1
+libbpf: sec 'xdp': found program 'perf_event_packet_payload' at insn offset 0 (0 bytes), code size 20 insns (160 bytes)
 libbpf: elf: section(4) .relxdp, size 16, link 26, flags 40, type=9
 libbpf: elf: section(5) .maps, size 32, link 0, flags 3, type=1
 libbpf: elf: section(6) license, size 4, link 0, flags 3, type=1
 libbpf: license of <work-dir>/prog.o is GPL
-libbpf: elf: section(16) .BTF, size 1325, link 0, flags 0, type=1
-libbpf: elf: section(18) .BTF.ext, size 268, link 0, flags 0, type=1
+libbpf: elf: section(16) .BTF, size 1365, link 0, flags 0, type=1
+libbpf: elf: section(18) .BTF.ext, size 300, link 0, flags 0, type=1
 libbpf: elf: section(26) .symtab, size 360, link 1, flags 0, type=2
 libbpf: looking for externs among 15 symbols...
 libbpf: collected 0 externs total
@@ -16,8 +16,8 @@ libbpf: map 'events': found key [6], sz = 4.
 libbpf: map 'events': found value [6], sz = 4.
 libbpf: map 'events': found max_entries = 4.
 libbpf: sec '.relxdp': collecting relocation for section(3) 'xdp'
-libbpf: sec '.relxdp': relo #0: insn #7 against 'events'
-libbpf: prog 'perf_event_packet_payload': found map 0 (events, sec 5, off 0) for insn #7
+libbpf: sec '.relxdp': relo #0: insn #10 against 'events'
+libbpf: prog 'perf_event_packet_payload': found map 0 (events, sec 5, off 0) for insn #10
 libbpf: object 'prog': failed (-95) to create BPF token from '/sys/fs/bpf', skipping optional step...
 libbpf: loaded kernel BTF from '/sys/kernel/btf/vmlinux'
 libbpf: sec 'xdp': found 3 CO-RE relocations
@@ -31,7 +31,7 @@ libbpf: prog 'perf_event_packet_payload': relo #1: patched insn #2 (LDX/ST/STX) 
 libbpf: CO-RE relocating [14] struct ethhdr: found target candidate [23410] struct ethhdr in [vmlinux]
 libbpf: prog 'perf_event_packet_payload': relo #2: <byte_off> [14] struct ethhdr.h_proto (0:2 @ offset 12)
 libbpf: prog 'perf_event_packet_payload': relo #2: matching candidate #0 <byte_off> [23410] struct ethhdr.h_proto (0:2 @ offset 12)
-libbpf: prog 'perf_event_packet_payload': relo #2: patched insn #6 (LDX/ST/STX) off 12 -> 12
+libbpf: prog 'perf_event_packet_payload': relo #2: patched insn #9 (LDX/ST/STX) off 12 -> 12
 libbpf: map 'events': created successfully, fd=0
 libbpf: prog 'perf_event_packet_payload': BPF program load failed: -EACCES
 libbpf: prog 'perf_event_packet_payload': -- BEGIN PROG LOAD LOG --
@@ -42,38 +42,45 @@ Live regs before insn:
   2: 012....... (61) r4 = *(u32 *)(r1 +0)
   3: 012.4..... (bf) r3 = r4
   4: 01234..... (07) r3 += 14
-  5: 01234..... (2d) if r3 > r2 goto pc+10
-  6: .1..4..... (69) r6 = *(u16 *)(r4 +12)
-  7: .1..4.6... (18) r2 = 0xffff000000000000
-  9: .12.4.6... (18) r3 = 0xffff000000000000
- 11: .1234.6... (b7) r5 = 14
- 12: .123456... (85) call bpf_perf_event_output#25
- 13: ......6... (b7) r0 = 1
- 14: 0.....6... (15) if r6 == 0x8 goto pc+1
- 15: .......... (b7) r0 = 2
- 16: 0......... (95) exit
+  5: 01234..... (2d) if r3 > r2 goto pc+13
+  6: 012.4..... (bf) r3 = r4
+  7: 01234..... (07) r3 += 18
+  8: 01234..... (2d) if r3 > r2 goto pc+10
+  9: .1..4..... (69) r6 = *(u16 *)(r4 +12)
+ 10: .1..4.6... (18) r2 = 0xffff000000000000
+ 12: .12.4.6... (18) r3 = 0xffff000000000000
+ 14: .1234.6... (b7) r5 = 18
+ 15: .123456... (85) call bpf_perf_event_output#25
+ 16: ......6... (b7) r0 = 1
+ 17: 0.....6... (15) if r6 == 0x8 goto pc+1
+ 18: .......... (b7) r0 = 2
+ 19: 0......... (95) exit
 0: R1=ctx() R10=fp0
-; int perf_event_packet_payload(struct xdp_md *ctx) @ buggy.bpf.c:27
+; int perf_event_packet_payload(struct xdp_md *ctx) @ buggy.bpf.c:29
 0: (b7) r0 = 2                        ; R0_w=2
-; void *data_end = (void *)(long)ctx->data_end; @ buggy.bpf.c:30
+; void *data_end = (void *)(long)ctx->data_end; @ buggy.bpf.c:32
 1: (61) r2 = *(u32 *)(r1 +4)          ; R1=ctx() R2_w=pkt_end()
-; void *data = (void *)(long)ctx->data; @ buggy.bpf.c:29
+; void *data = (void *)(long)ctx->data; @ buggy.bpf.c:31
 2: (61) r4 = *(u32 *)(r1 +0)          ; R1=ctx() R4_w=pkt(r=0)
-; if ((void *)(eth + 1) > data_end) @ buggy.bpf.c:34
+; if ((void *)(eth + 1) > data_end) @ buggy.bpf.c:36
 3: (bf) r3 = r4                       ; R3_w=pkt(r=0) R4_w=pkt(r=0)
 4: (07) r3 += 14                      ; R3_w=pkt(off=14,r=0)
-5: (2d) if r3 > r2 goto pc+10         ; R2_w=pkt_end() R3_w=pkt(off=14,r=14)
-; proto = bpf_ntohs(eth->h_proto); @ buggy.bpf.c:37
-6: (69) r6 = *(u16 *)(r4 +12)         ; R4_w=pkt(r=14) R6_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=0xffff,var_off=(0x0; 0xffff))
-; bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, data, sizeof(*eth)); @ buggy.bpf.c:38
-7: (18) r2 = 0xffff000000000000       ; R2_w=map_ptr(map=events,ks=4,vs=4)
-9: (18) r3 = 0xffff000000000000               ; R3_w=0xffff000000000000
-11: (b7) r5 = 14                      ; R5_w=14
-12: (85) call bpf_perf_event_output#25
+5: (2d) if r3 > r2 goto pc+13         ; R2_w=pkt_end() R3_w=pkt(off=14,r=14)
+; if (data + SAMPLE_BYTES > data_end) @ buggy.bpf.c:40
+6: (bf) r3 = r4                       ; R3_w=pkt(r=14) R4_w=pkt(r=14)
+7: (07) r3 += 18                      ; R3_w=pkt(off=18,r=14)
+8: (2d) if r3 > r2 goto pc+10         ; R2_w=pkt_end() R3_w=pkt(off=18,r=18)
+; proto = bpf_ntohs(eth->h_proto); @ buggy.bpf.c:39
+9: (69) r6 = *(u16 *)(r4 +12)         ; R4_w=pkt(r=18) R6_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=0xffff,var_off=(0x0; 0xffff))
+; bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, data, SAMPLE_BYTES); @ buggy.bpf.c:43
+10: (18) r2 = 0xffff000000000000      ; R2_w=map_ptr(map=events,ks=4,vs=4)
+12: (18) r3 = 0xffff000000000000              ; R3_w=0xffff000000000000
+14: (b7) r5 = 18                      ; R5_w=18
+15: (85) call bpf_perf_event_output#25
 helper access to the packet is not allowed
 verification time 0 usec
 stack depth 0
-processed 11 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0 mark_read 0
+processed 14 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0 mark_read 0
 -- END PROG LOAD LOG --
 libbpf: prog 'perf_event_packet_payload': failed to load: -EACCES
 libbpf: failed to load object '<work-dir>/prog.o'

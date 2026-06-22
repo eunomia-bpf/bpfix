@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import re
 import struct
 import sys
 from pathlib import Path
@@ -28,6 +29,21 @@ def truncated_ipv4_packet_with_udp_protocol_offset() -> bytes:
     return bytes(packet)
 
 
+def strip_comments(text: str) -> str:
+    text = re.sub(r"/\*.*?\*/", " ", text, flags=re.DOTALL)
+    return re.sub(r"//.*", " ", text)
+
+
+def preserves_shadow_cookie_without_pointer_arithmetic(source: Path) -> bool:
+    text = strip_comments(source.read_text(encoding="utf-8"))
+    return (
+        "asm volatile" not in text
+        and re.search(r"\b__u64\s+cookie\s*=\s*\(\s*__u64\s*\)\s*\(\s*long\s*\)\s*rec\s*;", text) is not None
+        and re.search(r"\bstruct\s+event\s*\*\s*shadow\s*=\s*\(\s*void\s*\*\s*\)\s*\(\s*long\s*\)\s*cookie\s*;", text) is not None
+        and re.search(r"\bbpf_ringbuf_submit\s*\(\s*shadow\s*,\s*0\s*\)", text) is not None
+    )
+
+
 if __name__ == "__main__":
     raise SystemExit(
         run_case(
@@ -49,6 +65,9 @@ if __name__ == "__main__":
             required_success_predicates=[
                 ("mark=7 branch reaches ringbuf reserve", ringbuf_reserve_reachable_with_mark7),
                 ("write mark=11 into submitted ringbuf_mem", submitted_ringbuf_record_with_mark11),
+            ],
+            source_success_predicates=[
+                ("case source invariant A", preserves_shadow_cookie_without_pointer_arithmetic),
             ],
         )
     )

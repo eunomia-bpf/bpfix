@@ -20,6 +20,7 @@ struct wq_request {
 	__u32 key;
 	__u32 value;
 	__u32 schedule;
+	__u32 priority;
 };
 
 struct elem {
@@ -85,7 +86,7 @@ int rs_eunomia_wq_container_map(struct xdp_md *ctx)
 		return XDP_PASS;
 	}
 
-	key = req->key & 3;
+	key = (req->key ^ req->priority) & 3;
 	init.value = req->value;
 	if (bpf_map_update_elem(&work_items, &key, &init, BPF_ANY))
 		return XDP_PASS;
@@ -108,7 +109,7 @@ int rs_eunomia_wq_container_map(struct xdp_md *ctx)
 
 	stats->scheduled++;
 	stats->last_key = key;
-	stats->last_value = elem->value;
+	stats->last_value = elem->value + req->priority;
 	return XDP_DROP;
 }
 

@@ -1,55 +1,109 @@
 libbpf: loading object from <work-dir>/prog.o
-libbpf: elf: section(3) xdp, size 96, link 0, flags 6, type=1
-libbpf: sec 'xdp': found program 'ringbuf_missing_null' at insn offset 0 (0 bytes), code size 12 insns (96 bytes)
-libbpf: elf: section(4) .relxdp, size 16, link 26, flags 40, type=9
+libbpf: elf: section(3) xdp, size 320, link 0, flags 6, type=1
+libbpf: sec 'xdp': found program 'ringbuf_missing_null' at insn offset 0 (0 bytes), code size 40 insns (320 bytes)
+libbpf: elf: section(4) .relxdp, size 48, link 26, flags 40, type=9
 libbpf: elf: section(5) .maps, size 16, link 0, flags 3, type=1
 libbpf: elf: section(6) license, size 4, link 0, flags 3, type=1
 libbpf: license of <work-dir>/prog.o is GPL
-libbpf: elf: section(16) .BTF, size 890, link 0, flags 0, type=1
-libbpf: elf: section(18) .BTF.ext, size 128, link 0, flags 0, type=1
-libbpf: elf: section(26) .symtab, size 336, link 1, flags 0, type=2
-libbpf: looking for externs among 14 symbols...
+libbpf: elf: section(16) .BTF, size 1248, link 0, flags 0, type=1
+libbpf: elf: section(18) .BTF.ext, size 316, link 0, flags 0, type=1
+libbpf: elf: section(26) .symtab, size 384, link 1, flags 0, type=2
+libbpf: looking for externs among 16 symbols...
 libbpf: collected 0 externs total
 libbpf: map 'events': at sec_idx 5, offset 0.
 libbpf: map 'events': found type = 27.
 libbpf: map 'events': found max_entries = 4096.
 libbpf: sec '.relxdp': collecting relocation for section(3) 'xdp'
-libbpf: sec '.relxdp': relo #0: insn #0 against 'events'
-libbpf: prog 'ringbuf_missing_null': found map 0 (events, sec 5, off 0) for insn #0
+libbpf: sec '.relxdp': relo #0: insn #1 against 'events'
+libbpf: prog 'ringbuf_missing_null': found map 0 (events, sec 5, off 0) for insn #1
+libbpf: sec '.relxdp': relo #1: insn #10 against 'events'
+libbpf: prog 'ringbuf_missing_null': found map 0 (events, sec 5, off 0) for insn #10
+libbpf: sec '.relxdp': relo #2: insn #19 against 'events'
+libbpf: prog 'ringbuf_missing_null': found map 0 (events, sec 5, off 0) for insn #19
 libbpf: object 'prog': failed (-95) to create BPF token from '/sys/fs/bpf', skipping optional step...
+libbpf: loaded kernel BTF from '/sys/kernel/btf/vmlinux'
+libbpf: sec 'xdp': found 1 CO-RE relocations
+libbpf: CO-RE relocating [10] struct xdp_md: found target candidate [14922] struct xdp_md in [vmlinux]
+libbpf: prog 'ringbuf_missing_null': relo #0: <byte_off> [10] struct xdp_md.data (0:0 @ offset 0)
+libbpf: prog 'ringbuf_missing_null': relo #0: matching candidate #0 <byte_off> [14922] struct xdp_md.data (0:0 @ offset 0)
+libbpf: prog 'ringbuf_missing_null': relo #0: patched insn #0 (LDX/ST/STX) off 0 -> 0
 libbpf: map 'events': created successfully, fd=0
 libbpf: prog 'ringbuf_missing_null': BPF program load failed: -EACCES
 libbpf: prog 'ringbuf_missing_null': -- BEGIN PROG LOAD LOG --
 func#0 @0
 Live regs before insn:
-  0: .......... (18) r1 = 0xffff000000000000
-  2: .1........ (b7) r2 = 4
-  3: .12....... (b7) r3 = 0
-  4: .123...... (85) call bpf_ringbuf_reserve#131
-  5: 0......... (b7) r1 = 7
-  6: 01........ (63) *(u32 *)(r0 +0) = r1
-  7: 0......... (bf) r1 = r0
-  8: .1........ (b7) r2 = 0
-  9: .12....... (85) call bpf_ringbuf_submit#132
- 10: .......... (b7) r0 = 2
- 11: 0......... (95) exit
+  0: .1........ (61) r8 = *(u32 *)(r1 +0)
+  1: ........8. (18) r1 = 0xffff000000000000
+  3: .1......8. (b7) r2 = 4
+  4: .12.....8. (b7) r3 = 0
+  5: .123....8. (85) call bpf_ringbuf_reserve#131
+  6: 0.......8. (bf) r6 = r0
+  7: ......6.8. (15) if r6 == 0x0 goto pc+30
+  8: ......6.8. (b7) r1 = 3
+  9: .1....6.8. (63) *(u32 *)(r6 +0) = r1
+ 10: ......6.8. (18) r1 = 0xffff000000000000
+ 12: .1....6.8. (b7) r2 = 4
+ 13: .12...6.8. (b7) r3 = 0
+ 14: .123..6.8. (85) call bpf_ringbuf_reserve#131
+ 15: 0.....6.8. (bf) r7 = r0
+ 16: ......678. (b7) r1 = 7
+ 17: .1....678. (63) *(u32 *)(r7 +0) = r1
+ 18: ......678. (69) r9 = *(u16 *)(r8 +12)
+ 19: ......67.9 (18) r1 = 0xffff000000000000
+ 21: .1....67.9 (b7) r2 = 4
+ 22: .12...67.9 (b7) r3 = 0
+ 23: .123..67.9 (85) call bpf_ringbuf_reserve#131
+ 24: 0.....67.9 (bf) r8 = r0
+ 25: ......6789 (b7) r1 = 11
+ 26: .1....6789 (15) if r9 == 0x8 goto pc+1
+ 27: ......678. (b7) r1 = 13
+ 28: .1....678. (63) *(u32 *)(r8 +0) = r1
+ 29: ......678. (bf) r1 = r6
+ 30: .1.....78. (b7) r2 = 0
+ 31: .12....78. (85) call bpf_ringbuf_submit#132
+ 32: .......78. (bf) r1 = r7
+ 33: .1......8. (b7) r2 = 0
+ 34: .12.....8. (85) call bpf_ringbuf_submit#132
+ 35: ........8. (bf) r1 = r8
+ 36: .1........ (b7) r2 = 0
+ 37: .12....... (85) call bpf_ringbuf_submit#132
+ 38: .......... (b7) r0 = 2
+ 39: 0......... (95) exit
 0: R1=ctx() R10=fp0
-; struct event *rec = bpf_ringbuf_reserve(&events, sizeof(*rec), 0); @ buggy.bpf.c:24
-0: (18) r1 = 0xffff000000000000       ; R1_w=map_ptr(map=events,ks=0,vs=0)
-2: (b7) r2 = 4                        ; R2_w=4
-3: (b7) r3 = 0                        ; R3_w=0
-4: (85) call bpf_ringbuf_reserve#131
-mark_precise: frame0: last_idx 4 first_idx 0 subseq_idx -1 
-mark_precise: frame0: regs=r2 stack= before 3: (b7) r3 = 0
-mark_precise: frame0: regs=r2 stack= before 2: (b7) r2 = 4
-5: R0_w=ringbuf_mem_or_null(id=2,ref_obj_id=2,sz=4) refs=2
-5: (b7) r1 = 7                        ; R1_w=7 refs=2
-; rec->mark = 7; @ buggy.bpf.c:26
-6: (63) *(u32 *)(r0 +0) = r1
-R0 invalid mem access 'ringbuf_mem_or_null'
+; void *data = (void *)(long)ctx->data; @ buggy.bpf.c:28
+0: (61) r8 = *(u32 *)(r1 +0)          ; R1=ctx() R8_w=pkt(r=0)
+; struct event *audit = bpf_ringbuf_reserve(&events, sizeof(*audit), 0); @ buggy.bpf.c:29
+1: (18) r1 = 0xffff000000000000       ; R1_w=map_ptr(map=events,ks=0,vs=0)
+3: (b7) r2 = 4                        ; R2_w=4
+4: (b7) r3 = 0                        ; R3_w=0
+5: (85) call bpf_ringbuf_reserve#131
+mark_precise: frame0: last_idx 5 first_idx 0 subseq_idx -1
+mark_precise: frame0: regs=r2 stack= before 4: (b7) r3 = 0
+mark_precise: frame0: regs=r2 stack= before 3: (b7) r2 = 4
+6: R0_w=ringbuf_mem_or_null(id=2,ref_obj_id=2,sz=4) refs=2
+6: (bf) r6 = r0                       ; R0_w=ringbuf_mem_or_null(id=2,ref_obj_id=2,sz=4) R6_w=ringbuf_mem_or_null(id=2,ref_obj_id=2,sz=4) refs=2
+; if (!audit) @ buggy.bpf.c:30
+7: (15) if r6 == 0x0 goto pc+30       ; R6_w=ringbuf_mem(ref_obj_id=2,sz=4) refs=2
+8: (b7) r1 = 3                        ; R1_w=3 refs=2
+; audit->mark = 3; @ buggy.bpf.c:32
+9: (63) *(u32 *)(r6 +0) = r1          ; R1_w=3 R6_w=ringbuf_mem(ref_obj_id=2,sz=4) refs=2
+; struct event *rec = bpf_ringbuf_reserve(&events, sizeof(*rec), 0); @ buggy.bpf.c:34
+10: (18) r1 = 0xffff000000000000      ; R1_w=map_ptr(map=events,ks=0,vs=0) refs=2
+12: (b7) r2 = 4                       ; R2_w=4 refs=2
+13: (b7) r3 = 0                       ; R3_w=0 refs=2
+14: (85) call bpf_ringbuf_reserve#131
+mark_precise: frame0: last_idx 14 first_idx 0 subseq_idx -1
+mark_precise: frame0: regs=r2 stack= before 13: (b7) r3 = 0
+mark_precise: frame0: regs=r2 stack= before 12: (b7) r2 = 4
+15: R0=ringbuf_mem_or_null(id=4,ref_obj_id=4,sz=4) refs=2,4
+15: (bf) r7 = r0                      ; R0=ringbuf_mem_or_null(id=4,ref_obj_id=4,sz=4) R7_w=ringbuf_mem_or_null(id=4,ref_obj_id=4,sz=4) refs=2,4
+16: (b7) r1 = 7                       ; R1_w=7 refs=2,4
+; rec->mark = 7; @ buggy.bpf.c:35
+17: (63) *(u32 *)(r7 +0) = r1
+R7 invalid mem access 'ringbuf_mem_or_null'
 verification time 0 usec
 stack depth 0
-processed 6 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0 mark_read 0
+processed 16 insns (limit 1000000) max_states_per_insn 0 total_states 1 peak_states 1 mark_read 1
 -- END PROG LOAD LOG --
 libbpf: prog 'ringbuf_missing_null': failed to load: -EACCES
 libbpf: failed to load object '<work-dir>/prog.o'

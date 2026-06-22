@@ -173,6 +173,22 @@ if __name__ == "__main__":
                     ],
                 ),
                 (
+                    "unguarded_ignores_shadow_pending_entry",
+                    lambda: packet(9, 15, 97, 0, 3),
+                    1,
+                    [
+                        ("ts_mmappend", u64(15), pending_value(3, 64, 1, 2)),
+                        ("ts_mmappend", u64(16), pending_value(4, 128, 3, 4)),
+                        ("ts_fd", fd_key(9, 3), fd_ref_value("alpha.so", 0xABC, 0x11)),
+                        ("ts_fd", fd_key(9, 4), fd_ref_value("beta.bin", 0xDEF, 0x22)),
+                    ],
+                    [
+                        ("current pending entry deleted", pending_deleted(15)),
+                        ("mmap ref uses current pending, not shadow", mmap_ref_matches(9, start_a, mmap_a)),
+                        ("current pending mmap index remembers start", index_matches(9, start_a)),
+                    ],
+                ),
+                (
                     "missing_pending_passes",
                     lambda: packet(7, 13, 3, 0, 3),
                     2,

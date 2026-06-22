@@ -1,12 +1,12 @@
 libbpf: loading object from <work-dir>/prog.o
-libbpf: elf: section(3) xdp, size 88, link 0, flags 6, type=1
-libbpf: sec 'xdp': found program 'packet_eth_off_by_one' at insn offset 0 (0 bytes), code size 11 insns (88 bytes)
+libbpf: elf: section(3) xdp, size 152, link 0, flags 6, type=1
+libbpf: sec 'xdp': found program 'packet_eth_off_by_one' at insn offset 0 (0 bytes), code size 19 insns (152 bytes)
 libbpf: elf: section(4) license, size 4, link 0, flags 3, type=1
 libbpf: license of <work-dir>/prog.o is GPL
-libbpf: elf: section(14) .BTF, size 841, link 0, flags 0, type=1
-libbpf: elf: section(16) .BTF.ext, size 236, link 0, flags 0, type=1
-libbpf: elf: section(24) .symtab, size 336, link 1, flags 0, type=2
-libbpf: looking for externs among 14 symbols...
+libbpf: elf: section(14) .BTF, size 893, link 0, flags 0, type=1
+libbpf: elf: section(16) .BTF.ext, size 300, link 0, flags 0, type=1
+libbpf: elf: section(24) .symtab, size 360, link 1, flags 0, type=2
+libbpf: looking for externs among 15 symbols...
 libbpf: collected 0 externs total
 libbpf: object 'prog': failed (-95) to create BPF token from '/sys/fs/bpf', skipping optional step...
 libbpf: loaded kernel BTF from '/sys/kernel/btf/vmlinux'
@@ -14,43 +14,51 @@ libbpf: sec 'xdp': found 2 CO-RE relocations
 libbpf: CO-RE relocating [2] struct xdp_md: found target candidate [14922] struct xdp_md in [vmlinux]
 libbpf: prog 'packet_eth_off_by_one': relo #0: <byte_off> [2] struct xdp_md.data_end (0:1 @ offset 4)
 libbpf: prog 'packet_eth_off_by_one': relo #0: matching candidate #0 <byte_off> [14922] struct xdp_md.data_end (0:1 @ offset 4)
-libbpf: prog 'packet_eth_off_by_one': relo #0: patched insn #1 (LDX/ST/STX) off 4 -> 4
+libbpf: prog 'packet_eth_off_by_one': relo #0: patched insn #0 (LDX/ST/STX) off 4 -> 4
 libbpf: prog 'packet_eth_off_by_one': relo #1: <byte_off> [2] struct xdp_md.data (0:0 @ offset 0)
 libbpf: prog 'packet_eth_off_by_one': relo #1: matching candidate #0 <byte_off> [14922] struct xdp_md.data (0:0 @ offset 0)
-libbpf: prog 'packet_eth_off_by_one': relo #1: patched insn #2 (LDX/ST/STX) off 0 -> 0
+libbpf: prog 'packet_eth_off_by_one': relo #1: patched insn #1 (LDX/ST/STX) off 0 -> 0
 libbpf: prog 'packet_eth_off_by_one': BPF program load failed: -EACCES
 libbpf: prog 'packet_eth_off_by_one': -- BEGIN PROG LOAD LOG --
 func#0 @0
 Live regs before insn:
-  0: .1........ (b7) r0 = 2
-  1: 01........ (61) r2 = *(u32 *)(r1 +4)
-  2: 012....... (61) r1 = *(u32 *)(r1 +0)
-  3: 012....... (bf) r3 = r1
-  4: 0123...... (07) r3 += 13
-  5: 0123...... (2d) if r3 > r2 goto pc+4
-  6: .1........ (69) r1 = *(u16 *)(r1 +12)
-  7: .1........ (b7) r0 = 1
-  8: 01........ (15) if r1 == 0x8 goto pc+1
-  9: .......... (b7) r0 = 2
- 10: 0......... (95) exit
+  0: .1........ (61) r2 = *(u32 *)(r1 +4)
+  1: .12....... (61) r1 = *(u32 *)(r1 +0)
+  2: .12....... (bf) r3 = r1
+  3: .123...... (07) r3 += 13
+  4: .123...... (b7) r0 = 2
+  5: 0123...... (2d) if r3 > r2 goto pc+12
+  6: .12....... (b7) r0 = 1
+  7: 012....... (69) r3 = *(u16 *)(r1 +12)
+  8: 0123...... (dc) r3 = be16 r3
+  9: 0123...... (15) if r3 == 0x800 goto pc+8
+ 10: .123...... (55) if r3 != 0x86dd goto pc+6
+ 11: .12....... (07) r1 += 20
+ 12: .12....... (b7) r0 = 2
+ 13: 012....... (2d) if r1 > r2 goto pc+4
+ 14: .1........ (71) r1 = *(u8 *)(r1 +0)
+ 15: .1........ (b7) r0 = 1
+ 16: 01........ (15) if r1 == 0x11 goto pc+1
+ 17: .......... (b7) r0 = 2
+ 18: 0......... (95) exit
 0: R1=ctx() R10=fp0
-; int packet_eth_off_by_one(struct xdp_md *ctx) @ buggy.bpf.c:20
-0: (b7) r0 = 2                        ; R0_w=2
-; void *data_end = (void *)(long)ctx->data_end; @ buggy.bpf.c:23
-1: (61) r2 = *(u32 *)(r1 +4)          ; R1=ctx() R2_w=pkt_end()
-; void *data = (void *)(long)ctx->data; @ buggy.bpf.c:22
-2: (61) r1 = *(u32 *)(r1 +0)          ; R1_w=pkt(r=0)
-; if (data + 13 > data_end) @ buggy.bpf.c:26
-3: (bf) r3 = r1                       ; R1_w=pkt(r=0) R3_w=pkt(r=0)
-4: (07) r3 += 13                      ; R3_w=pkt(off=13,r=0)
-5: (2d) if r3 > r2 goto pc+4          ; R2_w=pkt_end() R3_w=pkt(off=13,r=13)
-; proto = *(__u16 *)(data + 12); @ buggy.bpf.c:29
-6: (69) r1 = *(u16 *)(r1 +12)
+; void *data_end = (void *)(long)ctx->data_end; @ buggy.bpf.c:29
+0: (61) r2 = *(u32 *)(r1 +4)          ; R1=ctx() R2_w=pkt_end()
+; void *data = (void *)(long)ctx->data; @ buggy.bpf.c:28
+1: (61) r1 = *(u32 *)(r1 +0)          ; R1_w=pkt(r=0)
+; if (data + 13 > data_end) @ buggy.bpf.c:33
+2: (bf) r3 = r1                       ; R1_w=pkt(r=0) R3_w=pkt(r=0)
+3: (07) r3 += 13                      ; R3_w=pkt(off=13,r=0)
+4: (b7) r0 = 2                        ; R0_w=2
+5: (2d) if r3 > r2 goto pc+12         ; R2_w=pkt_end() R3_w=pkt(off=13,r=13)
+6: (b7) r0 = 1                        ; R0_w=1
+; proto = *(__u16 *)(data + 12); @ buggy.bpf.c:36
+7: (69) r3 = *(u16 *)(r1 +12)
 invalid access to packet, off=12 size=2, R1(id=0,off=12,r=13)
 R1 offset is outside of the packet
 verification time 0 usec
 stack depth 0
-processed 7 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0 mark_read 0
+processed 8 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0 mark_read 0
 -- END PROG LOAD LOG --
 libbpf: prog 'packet_eth_off_by_one': failed to load: -EACCES
 libbpf: failed to load object '<work-dir>/prog.o'

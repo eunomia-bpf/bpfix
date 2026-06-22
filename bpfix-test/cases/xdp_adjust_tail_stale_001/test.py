@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import struct
+import re
 import sys
 from pathlib import Path
 
@@ -45,6 +46,35 @@ def arp_packet_with_dns_offset() -> bytes:
     return bytes(packet)
 
 
+def reloads_and_rechecks_eth_after_tail_adjust(load_output: str) -> bool:
+    in_annotated_trace = False
+    after_adjust = False
+    saw_l2_bound = False
+
+    for line in load_output.splitlines():
+        if line.startswith("0: R1="):
+            in_annotated_trace = True
+        if not in_annotated_trace:
+            continue
+
+        if "call bpf_xdp_adjust_tail#65" in line:
+            after_adjust = True
+            saw_l2_bound = False
+            continue
+        if not after_adjust:
+            continue
+
+        if re.search(r"\br\d+\s*\+=\s*14\b", line) and "pkt(" in line:
+            saw_l2_bound = False
+            continue
+        if re.search(r"\(2d\)\s+if r\d+ > r\d+", line) and "pkt(off=14" in line:
+            saw_l2_bound = True
+            continue
+        if saw_l2_bound and re.search(r"=\s*\*\(u16 \*\)\(r\d+\s*\+12\)", line) and "pkt(" in line:
+            return True
+    return False
+
+
 if __name__ == "__main__":
     raise SystemExit(
         run_case(
@@ -68,6 +98,12 @@ if __name__ == "__main__":
             ],
             required_success_substrings=[
                 "call bpf_xdp_adjust_tail#65",
+            ],
+            required_success_predicates=[
+                (
+                    "reload data/data_end and recheck Ethernet after tail adjust",
+                    reloads_and_rechecks_eth_after_tail_adjust,
+                ),
             ],
         )
     )

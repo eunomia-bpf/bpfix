@@ -5,12 +5,12 @@ error[BPFIX-E005]: memory-object access exceeds the verifier-visible object size
   = next action: bounds
   --> buggy.bpf.c:35
    |
-28 | if (bpf_dynptr_from_xdp(ctx, 0, &ptr))
+29 | if (bpf_dynptr_from_xdp(ctx, 0, &ptr))
    | -------------------------------------- verifier still sees R0 as scalar(smin=0,smax=-281474976710656,umax=18446462598732840960), so the required scalar or map-value bound is not available at the use
-35 | return bpf_ntohs(eth->h_proto) == ETH_P_IP ? XDP_DROP : XDP_PASS;
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this memory access crosses the verifier-reported object size
+35 | if (bpf_ntohs(eth->h_proto) != ETH_P_IP)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this memory access crosses the verifier-reported object size
    |
-   = verifier[47]: invalid access to memory, mem_size=13 off=12 size=2; R0 min value is outside of the allowed memory range
+   = verifier[56]: invalid access to memory, mem_size=13 off=12 size=2; R0 min value is outside of the allowed memory range
    = note: nearest BPF instruction pc 15
    = note: parsed 14 verifier state snapshots
    = note[verifier-state]: verifier state shows the rejected memory pointer has a fixed object size and the access crosses that object boundary

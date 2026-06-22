@@ -18,19 +18,20 @@
 
 struct config {
     __u32 drop_proto;
+    __u32 seen_packets;
+    __u32 pass_proto;
+    __u32 key_xor;
 };
 
 struct {
     __uint(type, BPF_MAP_TYPE_HASH);
-    __uint(max_entries, 1);
+    __uint(max_entries, 2);
     __type(key, __u32);
     __type(value, struct config);
 } configs SEC(".maps");
 
-static __noinline struct config *lookup_config(void)
+static __noinline struct config *lookup_config(__u32 key)
 {
-    __u32 key = 0;
-
     return bpf_map_lookup_elem(&configs, &key);
 }
 
@@ -41,14 +42,22 @@ int subprog_map_value_null(struct xdp_md *ctx)
     void *data_end = (void *)(long)ctx->data_end;
     struct ethhdr *eth = data;
     struct config *cfg;
+    __u32 key;
     __u16 proto;
 
     if ((void *)(eth + 1) > data_end)
         return XDP_PASS;
 
     proto = bpf_ntohs(eth->h_proto);
-    cfg = lookup_config();
-    return cfg->drop_proto == proto ? XDP_DROP : XDP_PASS;
+    key = eth->h_dest[5] & 1;
+    cfg = lookup_config(key);
+    cfg->seen_packets += 1;
+    cfg->key_xor ^= key;
+    if (cfg->drop_proto == proto)
+        return XDP_DROP;
+    if (cfg->pass_proto == proto)
+        return XDP_PASS;
+    return XDP_DROP;
 }
 
 char _license[] SEC("license") = "GPL";

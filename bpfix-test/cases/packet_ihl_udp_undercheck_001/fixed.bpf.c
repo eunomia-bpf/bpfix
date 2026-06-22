@@ -16,6 +16,19 @@
 #define ETH_P_IP 0x0800
 #endif
 
+struct dns_policy {
+    __u16 checksum;
+    __u8 tag;
+    __u8 pad;
+};
+
+struct {
+    __uint(type, BPF_MAP_TYPE_HASH);
+    __uint(max_entries, 1);
+    __type(key, __u32);
+    __type(value, struct dns_policy);
+} policies SEC(".maps");
+
 SEC("xdp")
 int packet_ihl_udp_undercheck(struct xdp_md *ctx)
 {
@@ -26,6 +39,10 @@ int packet_ihl_udp_undercheck(struct xdp_md *ctx)
     void *udp;
     __u32 ihl;
     __u16 dport;
+    __u16 checksum;
+    __u8 tag;
+    struct dns_policy *policy;
+    __u32 key = 0;
 
     if ((void *)(eth + 1) > data_end)
         return XDP_PASS;
@@ -43,11 +60,20 @@ int packet_ihl_udp_undercheck(struct xdp_md *ctx)
         return XDP_PASS;
 
     udp = data + sizeof(*eth) + ihl;
-    if (udp + 4 > data_end)
+    if (udp + 9 > data_end)
         return XDP_PASS;
 
     dport = *(__u16 *)(udp + 2);
-    return bpf_ntohs(dport) == 53 ? XDP_DROP : XDP_PASS;
+    checksum = *(__u16 *)(udp + 6);
+    tag = *(__u8 *)(udp + 8);
+    if (bpf_ntohs(dport) != 53)
+        return XDP_PASS;
+
+    policy = bpf_map_lookup_elem(&policies, &key);
+    if (!policy)
+        return XDP_PASS;
+
+    return bpf_ntohs(checksum) == policy->checksum && tag == policy->tag ? XDP_DROP : XDP_PASS;
 }
 
 char _license[] SEC("license") = "GPL";

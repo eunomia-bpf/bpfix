@@ -47,6 +47,12 @@ def source_semantics(source: Path) -> list[dict[str, object]]:
         ("keeps user-memory copy", re.search(r"\bbpf_probe_read_user\s*\(", text) is not None),
         ("keeps ringbuf submit", re.search(r"\bbpf_ringbuf_submit\s*\(", text) is not None),
         ("keeps io_args cleanup", re.search(r"\bbpf_map_delete_elem\s*\(\s*&io_args\b", text) is not None),
+        (
+            "keeps original copy length intent and clamps to event buffer",
+            re.search(r"\bcopy_size\s*=\s*16\b", text) is not None
+            and re.search(r"\bcopy_size\s*>\s*sizeof\s*\(\s*event\s*->\s*buf\s*\)", text) is not None
+            and re.search(r"\bcopy_size\s*=\s*sizeof\s*\(\s*event\s*->\s*buf\s*\)", text) is not None,
+        ),
     ]
     return [{"name": name, "passed": bool(passed)} for name, passed in checks]
 

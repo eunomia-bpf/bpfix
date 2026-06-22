@@ -17,6 +17,15 @@ def policy_value(proto: int) -> bytes:
     return proto.to_bytes(4, "little") + (0).to_bytes(4, "little")
 
 
+def annotated_trace(load_output: str) -> str:
+    marker = load_output.find("0: R1=")
+    return load_output[marker:] if marker != -1 else load_output
+
+
+def exactly_one_policy_lookup(load_output: str) -> bool:
+    return annotated_trace(load_output).count("call bpf_map_lookup_elem#1") == 1
+
+
 if __name__ == "__main__":
     raise SystemExit(
         run_case(
@@ -54,6 +63,7 @@ if __name__ == "__main__":
                 "call bpf_map_lookup_elem#1",
             ],
             required_success_predicates=[
+                ("per-packet policy lookup is not duplicated", exactly_one_policy_lookup),
                 ("loaded policy drop_proto from map value", loaded_map_value_u32_offset0),
                 ("updated policy seen_ipv4 state", stored_map_value_u32_offset4),
             ],

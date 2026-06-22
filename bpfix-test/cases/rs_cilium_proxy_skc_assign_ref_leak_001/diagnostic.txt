@@ -16,5 +16,5 @@ error[BPFIX-E004]: reference lifecycle proof is missing
    = note: nearest BPF instruction pc 35
    = note: parsed 36 verifier state snapshots
    = required proof: release verifier-tracked reference id 2 on every path before exit
-help: Call the matching release helper before each return.
-help: Restructure error paths so acquired references share one cleanup block.
+help: Release the looked-up socket once immediately after bpf_sk_assign stores its return value, then evaluate the PROXY_MARK and final return branches using that saved result.
+help: Restructure error paths so acquired references share one cleanup point before return decisions.

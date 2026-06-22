@@ -16,6 +16,8 @@
 #define ETH_P_IP 0x0800
 #endif
 
+#define SAMPLE_BYTES 18
+
 struct {
     __uint(type, BPF_MAP_TYPE_PERF_EVENT_ARRAY);
     __uint(max_entries, 4);
@@ -35,7 +37,10 @@ int perf_event_packet_payload(struct xdp_md *ctx)
         return XDP_PASS;
 
     proto = bpf_ntohs(eth->h_proto);
-    bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, data, sizeof(*eth));
+    if (data + SAMPLE_BYTES > data_end)
+        return XDP_PASS;
+
+    bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, data, SAMPLE_BYTES);
     return proto == ETH_P_IP ? XDP_DROP : XDP_PASS;
 }
 

@@ -23,6 +23,7 @@ FunctionalTest: TypeAlias = (
     | tuple[str, Callable[[], bytes], int, list[MapUpdate]]
     | tuple[str, Callable[[], bytes], int, list[MapUpdate], list[MapPostCheck]]
 )
+SourcePredicate: TypeAlias = tuple[str, Callable[[Path], bool]]
 
 
 @dataclass
@@ -273,6 +274,26 @@ def evaluate_success_log_checks(
             error = str(exc)
         check: dict[str, object] = {
             "kind": "predicate",
+            "name": name,
+            "passed": bool(passed),
+        }
+        if error is not None:
+            check["error"] = error
+        checks.append(check)
+    return checks
+
+
+def evaluate_source_checks(source: Path, predicates: list[SourcePredicate]) -> list[dict[str, object]]:
+    checks: list[dict[str, object]] = []
+    for name, predicate in predicates:
+        try:
+            passed = predicate(source)
+            error = None
+        except Exception as exc:  # pragma: no cover - defensive oracle reporting
+            passed = False
+            error = str(exc)
+        check: dict[str, object] = {
+            "kind": "source_predicate",
             "name": name,
             "passed": bool(passed),
         }
@@ -713,6 +734,7 @@ def run_case(
     functional_tests: list[FunctionalTest],
     required_success_substrings: list[str] | None = None,
     required_success_predicates: list[tuple[str, Callable[[str], bool]]] | None = None,
+    source_success_predicates: list[SourcePredicate] | None = None,
     map_updates: list[MapUpdate] | None = None,
     prog_type: str | None = "xdp",
 ) -> int:
@@ -740,6 +762,7 @@ def run_case(
         "compile": None,
         "load": None,
         "map_setup": [],
+        "source_semantics": [],
         "functional": [],
         "success_log_checks": [],
         "passed": False,
@@ -795,6 +818,12 @@ def run_case(
         checks = evaluate_success_log_checks(load_result, required, predicates)
         report["success_log_checks"] = checks
         if not all(check["passed"] for check in checks):
+            print(json.dumps(report, indent=2, sort_keys=True))
+            return 1
+
+        source_checks = evaluate_source_checks(source, source_success_predicates or [])
+        report["source_semantics"] = source_checks
+        if not all(check["passed"] for check in source_checks):
             print(json.dumps(report, indent=2, sort_keys=True))
             return 1
 

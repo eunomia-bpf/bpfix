@@ -3,14 +3,14 @@ error[BPFIX-E010]: perf event output helper receives packet memory directly
   = confidence: medium
   = diagnostic: supported, help: repair_hint, span: exact_pc
   = next action: protocol
-  --> buggy.bpf.c:38
+  --> buggy.bpf.c:43
    |
-38 | bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, data, sizeof(*eth));
+43 | bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, data, SAMPLE_BYTES);
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this helper call passes packet memory as the output payload
    |
-   = verifier[36]: helper access to the packet is not allowed
-   = note: nearest BPF instruction pc 12
-   = note: parsed 10 verifier state snapshots
+   = verifier[43]: helper access to the packet is not allowed
+   = note: nearest BPF instruction pc 15
+   = note: parsed 12 verifier state snapshots
    = note[verifier-state]: verifier state at bpf_perf_event_output passes a packet pointer and scalar length as the data/size pair, but this helper cannot read packet memory directly
    = required proof: pass bpf_perf_event_output helper-readable stack or map memory, not a live packet pointer, as its data payload
 help: Copy packet bytes into stack or map storage first, or use a helper path that supports packet data instead of passing the packet pointer directly as the perf-event payload.

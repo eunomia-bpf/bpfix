@@ -4,10 +4,12 @@ from __future__ import annotations
 import re
 import sys
 from pathlib import Path
+import json
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools"))
 
 from bpf_case import (
+    parse_args,
     ringbuf_refs_for_register,
     ringbuf_refs_written_with_u32_value,
     run_case,
@@ -52,7 +54,48 @@ def submitted_two_distinct_8byte_records(log: str) -> bool:
     return len(submitted_ringbuf_refs(log, expected_ringbuf_size=8)) >= 2
 
 
+def strip_comments(text: str) -> str:
+    text = re.sub(r"/\*.*?\*/", " ", text, flags=re.DOTALL)
+    return re.sub(r"//.*", " ", text)
+
+
+def audit_reserve_failure_drops(text: str) -> bool:
+    text = strip_comments(text)
+    reserve = re.search(r"\baudit\s*=\s*bpf_ringbuf_reserve\s*\([^;]+;", text)
+    if reserve is None:
+        return False
+    after_reserve = text[reserve.end() :]
+    check = re.search(r"\bif\s*\(\s*!\s*audit\s*\)\s*(?:\{(?P<braced>.*?)\}|(?P<stmt>[^;]+;))", after_reserve, re.DOTALL)
+    if check is None:
+        return False
+    body = check.group("braced") if check.group("braced") is not None else check.group("stmt")
+    return re.search(r"\breturn\s+XDP_DROP\s*;", body) is not None
+
+
+def source_semantics(source: Path) -> list[dict[str, object]]:
+    text = source.read_text(encoding="utf-8")
+    return [{"name": "audit reserve failure keeps IPv4 drop semantics", "passed": audit_reserve_failure_drops(text)}]
+
+
 if __name__ == "__main__":
+    args = parse_args(sys.argv[1:])
+    if not args.expect_reject:
+        checks = source_semantics(args.source)
+        if not all(check["passed"] for check in checks):
+            print(
+                json.dumps(
+                    {
+                        "source": str(args.source.resolve()),
+                        "expect_reject": args.expect_reject,
+                        "source_semantics": checks,
+                        "passed": False,
+                    },
+                    indent=2,
+                    sort_keys=True,
+                )
+            )
+            raise SystemExit(1)
+
     raise SystemExit(
         run_case(
             argv=sys.argv[1:],

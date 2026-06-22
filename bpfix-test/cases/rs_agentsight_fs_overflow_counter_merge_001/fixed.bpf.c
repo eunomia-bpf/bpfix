@@ -115,7 +115,11 @@ static __always_inline int aggregate_path_event(void *data, void *data_end)
             return XDP_PASS;
 
         if (guarded_overflow & 1) {
-            // guarded logic placeholder
+            __u32 shadow_zero = guarded_overflow;
+            __u64 *shadow_overflow = bpf_map_lookup_elem(&agg_overflow_count, &shadow_zero);
+
+            if (shadow_overflow)
+                __sync_fetch_and_add(shadow_overflow, 1);
         }
 
         __sync_fetch_and_add(overflow, 1);

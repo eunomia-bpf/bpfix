@@ -16,3 +16,4 @@ error[BPFIX-E005]: scalar range at the rejected use is still verifier-unsafe
    = note[verifier-state]: verifier state shows the rejected scalar or pointer-offset register still has an unsafe range at the use
    = required proof: prove R6 has a bounded non-negative scalar range before this pointer arithmetic or helper memory access; verifier sees scalar(smax=9223372036854775804,umax=18446462598732840960)
 help: Clamp or branch-check the exact scalar used by this helper, pointer arithmetic, stack access, or map-value access immediately before the rejected operation.
+help: Preserve the source-level normalized slot variable: compute slot = (__u32)(idx + 1) after the signed range check and use cfg->slots[slot].

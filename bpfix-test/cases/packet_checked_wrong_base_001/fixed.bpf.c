@@ -21,12 +21,13 @@ int packet_checked_wrong_base(struct xdp_md *ctx)
 {
     void *data = (void *)(long)ctx->data;
     void *data_end = (void *)(long)ctx->data_end;
+    struct ethhdr *eth = data;
     __u16 proto;
 
-    if (data + 14 > data_end)
+    if ((void *)(eth + 1) > data_end)
         return XDP_PASS;
 
-    proto = *(__u16 *)(data + 12);
+    proto = eth->h_proto;
     return bpf_ntohs(proto) == ETH_P_IP ? XDP_DROP : XDP_PASS;
 }
 

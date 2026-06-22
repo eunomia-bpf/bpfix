@@ -10,6 +10,8 @@ Current case inventory:
 - runnable tracked fixtures: 75 with `buggy.bpf.c`, `verifier.log`,
   `diagnostic.txt`, and `test.py`.
 - `splits/dev40.txt`: 40 admitted calibration cases.
+- `splits/hard40.txt`: 40-case high-difficulty calibration subset retained
+  from main-suite hardening.
 - `splits/real-seed-candidates.txt`: 34 real-project seed staging cases.
 - `splits/main.txt`: 75-case combined working suite: all runnable fixtures.
 - `splits/main.manifest.json`: oracle metadata for the combined suite.
@@ -100,6 +102,10 @@ python3 bpfix-test/tools/run_suite.py \
 
 Available modes are `source-only`, `raw`, `trimmed-raw`, and `bpfix`.
 
+The current Qwen3.6 27B main75 calibration result is documented in
+`docs/tmp/bpfix-test/qwen27b-main75-repair-results.md`: raw one-shot 22/75,
+BPFix one-shot 38/75, raw retry 30/75, and BPFix retry 44/75.
+
 Refresh diagnostics from existing logs without recapturing verifier output:
 
 ```bash
@@ -124,6 +130,8 @@ their diagnostics and oracles pass `audit_cases.py`.
 If a paper later needs a frozen benchmark, freeze a new split from the current
 suite, record the exact case ids and prompt hashes, and do not change that split
 after model results are collected.
+The calibrated `main` suite is useful for engineering and model comparison, but
+it should not be described as a contamination-free heldout result.
 
 The old dev40/clean60 design notes and pilot result writeups have been moved to
 `docs/tmp/bpfix-test/`. They are useful historical context, but they are no

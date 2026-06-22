@@ -26,8 +26,9 @@ int dynptr_slice_short_mem(struct xdp_md *ctx)
     void *data_end = (void *)(long)ctx->data_end;
     struct bpf_dynptr ptr;
     struct ethhdr *eth;
+    struct iphdr *iph;
 
-    if (data + sizeof(*eth) > data_end)
+    if (data + sizeof(*eth) + sizeof(*iph) > data_end)
         return XDP_PASS;
 
     if (bpf_dynptr_from_xdp(ctx, 0, &ptr))
@@ -36,8 +37,14 @@ int dynptr_slice_short_mem(struct xdp_md *ctx)
     eth = bpf_dynptr_slice(&ptr, 0, 0, sizeof(*eth));
     if (!eth)
         return XDP_PASS;
+    if (bpf_ntohs(eth->h_proto) != ETH_P_IP)
+        return XDP_PASS;
 
-    return bpf_ntohs(eth->h_proto) == ETH_P_IP ? XDP_DROP : XDP_PASS;
+    iph = bpf_dynptr_slice(&ptr, sizeof(*eth), 0, sizeof(*iph));
+    if (!iph)
+        return XDP_PASS;
+
+    return iph->daddr == bpf_htonl(0x0A000002) ? XDP_DROP : XDP_PASS;
 }
 
 char _license[] SEC("license") = "GPL";

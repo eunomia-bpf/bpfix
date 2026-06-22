@@ -3,16 +3,16 @@ error[BPFIX-E011]: skb/xdp packet pointer is reused after a helper invalidates i
   = confidence: medium
   = diagnostic: supported, help: repair_hint, span: exact_pc
   = next action: provenance
-  --> buggy.bpf.c:44
+  --> buggy.bpf.c:46
    |
-37 | if (bpf_xdp_adjust_head(ctx, (int)sizeof(*eth)) < 0)
+40 | if (bpf_xdp_adjust_head(ctx, (int)sizeof(*eth)) < 0)
    | ---------------------------------------------------- nearby source context for pointer provenance
-41 | if ((void *)(iph + 1) > data_end)
+44 | if ((void *)(iph + 1) > data_end)
    | --------------------------------- nearby source context for pointer provenance
-44 | return iph->protocol == IPPROTO_UDP ? XDP_DROP : XDP_PASS;
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this access reuses a pointer invalidated by an earlier helper call
+46 | if (iph->protocol != IPPROTO_UDP)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this access reuses a pointer invalidated by an earlier helper call
    |
-   = verifier[50]: R6 invalid mem access 'scalar'
+   = verifier[62]: R6 invalid mem access 'scalar'
    = note: nearest BPF instruction pc 16
    = note: parsed 13 verifier state snapshots
    = note[verifier-state]: verifier state shows this register previously held an skb/xdp packet pointer, but an intervening packet-mutating helper invalidated that pointer before the rejected memory access

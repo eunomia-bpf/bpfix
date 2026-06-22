@@ -17,4 +17,4 @@ error[BPFIX-E005]: map-value access exceeds the verifier-visible value size
    = note: parsed 61 verifier state snapshots
    = note[verifier-state]: verifier state shows the rejected map-value pointer access crosses the declared value size
    = required proof: prove the map-value field offset plus access width stays below the declared map value size at the rejected access
-help: Keep map-value field offsets, array indexes, and helper lengths inside the declared map value size; resize the map value or clamp the access before the load, store, or helper call.
+help: Preserve the 16-byte SSL payload capture ABI: keep DATA_BUF_SIZE equal to MAX_BUF_SIZE, enlarge the ssl_data map value accordingly, and keep the helper length bounded by the 16-byte capture size rather than shrinking the captured buffer.

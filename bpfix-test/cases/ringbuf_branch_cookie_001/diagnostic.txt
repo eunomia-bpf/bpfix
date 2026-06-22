@@ -20,5 +20,6 @@ error[BPFIX-E006]: verifier-visible compiler lowering hides the required proof
    = note[lowering]: a verifier-tracked pointer reaches a left-shift instruction, which the verifier rejects because the operation destroys pointer provenance
    = required proof: preserve a verifier-recognized pointer type at the operation that requires a pointer
 help: Reacquire a verifier-tracked pointer before the rejected dereference.
-help: Remove the integer cookie round trip; keep the verifier-tracked pointer value and use that checked pointer for the final memory access.
+help: Remove only the pointer-destroying asm shift; keep the verifier-tracked pointer value and use that checked pointer for the final memory access.
+help: Preserve the source-level cookie/shadow alias by casting the reserved ringbuf record to cookie and back without arithmetic before submit.
 help: Keep the final access on a verifier-tracked pointer; rederive it from a checked base after scalar work.

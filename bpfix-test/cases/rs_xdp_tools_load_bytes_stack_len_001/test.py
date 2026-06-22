@@ -1,27 +1,41 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import re
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools"))
 
-from bpf_case import helper_calls_use_register_value, run_case
+from bpf_case import helper_reachable_with_register_value, run_case
 
 
-def packet(prefix: bytes) -> bytes:
-    return prefix + (b"\x00" * (14 - len(prefix)))
+def packet(window: bytes) -> bytes:
+    return b"\xaa\xbb" + window + (b"\x00" * (18 - len(window)))
 
 
-def xdp_load_bytes_uses_probe_len(load_output: str) -> bool:
-    return helper_calls_use_register_value(load_output, "call bpf_xdp_load_bytes#189", "4", 10)
+def two_stage_xdp_load_bytes(load_output: str) -> bool:
+    helper_count = load_output.count("call bpf_xdp_load_bytes#189")
+    return (
+        helper_count >= 2
+        and helper_reachable_with_register_value(load_output, "call bpf_xdp_load_bytes#189", "2", 2)
+        and helper_reachable_with_register_value(load_output, "call bpf_xdp_load_bytes#189", "4", 12)
+        and helper_reachable_with_register_value(load_output, "call bpf_xdp_load_bytes#189", "2", 14)
+        and helper_reachable_with_register_value(load_output, "call bpf_xdp_load_bytes#189", "4", 6)
+    )
 
 
-def marker_reads_use_loaded_stack_buffer(load_output: str) -> bool:
-    helper = load_output.find("call bpf_xdp_load_bytes#189")
-    first = load_output.find("*(u8 *)(r10 -1)", helper)
-    tenth = load_output.find("*(u8 *)(r10 -10)", helper)
-    return helper != -1 and first != -1 and tenth != -1 and helper < first < tenth
+def strip_comments(text: str) -> str:
+    text = re.sub(r"/\*.*?\*/", " ", text, flags=re.DOTALL)
+    return re.sub(r"//.*", " ", text)
+
+
+def load_lengths_use_stack_object_sizes(source: Path) -> bool:
+    text = strip_comments(source.read_text(encoding="utf-8"))
+    return (
+        "bpf_xdp_load_bytes(ctx, WIRE_OFFSET, head, sizeof(head))" in text
+        and "bpf_xdp_load_bytes(ctx, WIRE_OFFSET + sizeof(head), tail, sizeof(tail))" in text
+    )
 
 
 if __name__ == "__main__":
@@ -32,16 +46,20 @@ if __name__ == "__main__":
                 "invalid write to stack",
             ],
             functional_tests=[
-                ("magic_marker_drops", lambda: packet(b"B12345678X"), 1),
-                ("wrong_tail_passes", lambda: packet(b"B123456789"), 2),
-                ("wrong_head_passes", lambda: packet(b"A12345678X"), 2),
+                ("magic_marker_drops", lambda: packet(b"B12345678XABCZ123!"), 1),
+                ("wrong_middle_passes", lambda: packet(b"B123456789ABCZ123!"), 2),
+                ("wrong_tail_passes", lambda: packet(b"B12345678XABCY123!"), 2),
+                ("wrong_guard_passes", lambda: packet(b"B12345678XABCZ123?"), 2),
+                ("wrong_head_passes", lambda: packet(b"A12345678XABCZ123!"), 2),
             ],
             required_success_substrings=[
                 "call bpf_xdp_load_bytes#189",
             ],
             required_success_predicates=[
-                ("xdp_load_bytes helper uses the 10-byte probe stack buffer length", xdp_load_bytes_uses_probe_len),
-                ("marker checks read bytes from the helper-filled stack buffer", marker_reads_use_loaded_stack_buffer),
+                ("xdp_load_bytes uses two bounded helper loads for the 18-byte wire window", two_stage_xdp_load_bytes),
+            ],
+            source_success_predicates=[
+                ("case source invariant A", load_lengths_use_stack_object_sizes),
             ],
         )
     )

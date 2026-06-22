@@ -1,10 +1,10 @@
 libbpf: loading object from <work-dir>/prog.o
-libbpf: elf: section(3) xdp, size 144, link 0, flags 6, type=1
-libbpf: sec 'xdp': found program 'rs_xdp_tools_load_bytes_stack_len' at insn offset 0 (0 bytes), code size 18 insns (144 bytes)
+libbpf: elf: section(3) xdp, size 152, link 0, flags 6, type=1
+libbpf: sec 'xdp': found program 'rs_xdp_tools_load_bytes_stack_len' at insn offset 0 (0 bytes), code size 19 insns (152 bytes)
 libbpf: elf: section(4) license, size 4, link 0, flags 3, type=1
 libbpf: license of <work-dir>/prog.o is GPL
-libbpf: elf: section(14) .BTF, size 762, link 0, flags 0, type=1
-libbpf: elf: section(16) .BTF.ext, size 208, link 0, flags 0, type=1
+libbpf: elf: section(14) .BTF, size 775, link 0, flags 0, type=1
+libbpf: elf: section(16) .BTF.ext, size 224, link 0, flags 0, type=1
 libbpf: elf: section(24) .symtab, size 360, link 1, flags 0, type=2
 libbpf: looking for externs among 15 symbols...
 libbpf: collected 0 externs total
@@ -21,23 +21,24 @@ Live regs before insn:
   5: .1234.6... (85) call bpf_xdp_load_bytes#189
   6: 0.....6... (67) r0 <<= 32
   7: 0.....6... (77) r0 >>= 32
-  8: 0.....6... (55) if r0 != 0x0 goto pc+7
-  9: .......... (b7) r6 = 1
- 10: ......6... (71) r1 = *(u8 *)(r10 -1)
- 11: .1....6... (15) if r1 == 0x58 goto pc+1
- 12: .......... (b7) r6 = 2
- 13: ......6... (71) r1 = *(u8 *)(r10 -10)
- 14: .1....6... (15) if r1 == 0x42 goto pc+1
- 15: .......... (b7) r6 = 2
- 16: ......6... (bf) r0 = r6
- 17: 0......... (95) exit
+  8: 0.....6... (55) if r0 != 0x0 goto pc+8
+  9: .......... (71) r1 = *(u8 *)(r10 -10)
+ 10: .1........ (55) if r1 != 0x42 goto pc+5
+ 11: .......... (71) r1 = *(u8 *)(r10 -1)
+ 12: .1........ (55) if r1 != 0x58 goto pc+3
+ 13: .......... (b7) r6 = 1
+ 14: ......6... (71) r1 = *(u8 *)(r10 +3)
+ 15: .1....6... (15) if r1 == 0x5a goto pc+1
+ 16: .......... (b7) r6 = 2
+ 17: ......6... (bf) r0 = r6
+ 18: 0......... (95) exit
 0: R1=ctx() R10=fp0
-; int rs_xdp_tools_load_bytes_stack_len(struct xdp_md *ctx) @ buggy.bpf.c:21
+; int rs_xdp_tools_load_bytes_stack_len(struct xdp_md *ctx) @ buggy.bpf.c:22
 0: (b7) r6 = 0                        ; R6_w=0
 1: (bf) r3 = r10                      ; R3_w=fp0 R10=fp0
 ;  @ buggy.bpf.c:0
 2: (07) r3 += -10                     ; R3_w=fp-10
-; err = bpf_xdp_load_bytes(ctx, 0, buf, PROBE_BYTES + 4); @ buggy.bpf.c:26
+; err = bpf_xdp_load_bytes(ctx, 0, buf, WIRE_BYTES); @ buggy.bpf.c:27
 3: (b7) r2 = 0                        ; R2_w=0
 4: (b7) r4 = 14                       ; R4_w=14
 5: (85) call bpf_xdp_load_bytes#189

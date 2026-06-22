@@ -3,12 +3,12 @@ error[BPFIX-E012]: dynptr stack storage is being used as ordinary memory
   = confidence: medium
   = diagnostic: supported, help: repair_hint, span: exact_pc
   = next action: protocol
-  --> buggy.bpf.c:32
+  --> buggy.bpf.c:36
    |
-32 | __builtin_memcpy(&copy, &ptr, sizeof(copy));
+36 | __builtin_memcpy(&copy, &ptr, sizeof(copy));
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ dynptr stack storage is read as ordinary memory
    |
-   = verifier[42]: invalid read from stack off -8+0 size 8
+   = verifier[51]: invalid read from stack off -8+0 size 8
    = note: nearest BPF instruction pc 8
    = note: parsed 8 verifier state snapshots
    = note[verifier-state]: verifier state shows this stack slot contains dynptr state, but the rejected instruction reads it as ordinary stack bytes

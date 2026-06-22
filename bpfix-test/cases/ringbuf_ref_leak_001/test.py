@@ -6,7 +6,13 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools"))
 
-from bpf_case import discarded_ringbuf_record_with_mark7, run_case, submitted_ringbuf_record_with_mark7
+from bpf_case import (
+    discarded_ringbuf_record_with_mark7,
+    run_case,
+    submitted_at_least_two_distinct_ringbuf_records,
+    submitted_ringbuf_record_with_mark7,
+    submitted_ringbuf_record_with_mark11,
+)
 
 
 def ethernet_frame_with_first_byte(value: int) -> bytes:
@@ -34,6 +40,8 @@ if __name__ == "__main__":
             required_success_predicates=[
                 ("discard mark=7 ringbuf_mem on early branch", discarded_ringbuf_record_with_mark7),
                 ("submit mark=7 ringbuf_mem on normal branch", submitted_ringbuf_record_with_mark7),
+                ("submit audit mark=11 ringbuf_mem on normal branch", submitted_ringbuf_record_with_mark11),
+                ("submit at least two distinct ringbuf records", submitted_at_least_two_distinct_ringbuf_records),
             ],
         )
     )

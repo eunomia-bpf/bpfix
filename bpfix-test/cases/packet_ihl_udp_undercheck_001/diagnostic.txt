@@ -1,20 +1,16 @@
-error[BPFIX-E001]: packet bounds check is narrower than the later packet access
+error[BPFIX-E001]: packet access reaches the use before the verifier has enough packet range
   = class: source_bug
   = confidence: medium
   = diagnostic: supported, help: repair_hint, span: exact_pc
   = next action: bounds
-  --> buggy.bpf.c:49
+  --> buggy.bpf.c:0
    |
-46 | if (udp + 3 > data_end)
-   | ----------------------- verifier only proves packet range 0 bytes on this path, but the rejected access requires 18 bytes
-49 | dport = *(__u16 *)(udp + 2);
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ rejected here: verifier needs R1 packet range >= 18, but only 17 bytes are proven
+66 | dport = *(__u16 *)(udp + 2);
+   | ---------------------------- verifier only proves packet range 21 bytes on this path, but the rejected access requires 23 bytes
    |
-   = verifier[70]: invalid access to packet, off=16 size=2, R1(id=1,off=16,r=17); R1 offset is outside of the packet
-   = note: nearest BPF instruction pc 21
-   = note: parsed 16 verifier state snapshots
-   = note[verifier-state]: source has a packet bounds check, but verifier state after that check proves only a shorter packet range than the rejected access needs
-   = required proof: prove R1 has packet range at least 18 bytes before this access; verifier currently has range 17
-help: Move the data_end check to the final pointer expression and include the access width, for example check pointer + size before dereferencing pointer.
-help: Add or move a packet bounds check immediately before the access or helper argument use.
-help: Check the exact pointer and byte length passed to the helper, not only an earlier header pointer.
+   = verifier[100]: invalid access to packet, off=22 size=1, R1(id=1,off=22,r=21); R1 offset is outside of the packet
+   = note: nearest BPF instruction pc 28
+   = note: parsed 21 verifier state snapshots
+   = note[verifier-state]: verifier state shows the packet register's proven range is shorter than the rejected access requires at this instruction
+   = required proof: prove this packet register has range at least off + size at the rejected load, store, or helper call
+help: Move or add a data_end bounds check for the exact packet pointer and access width immediately before the load, store, or helper call that consumes it.

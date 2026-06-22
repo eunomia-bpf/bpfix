@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import re
 import struct
 import sys
 from pathlib import Path
@@ -32,6 +33,20 @@ def truncated_udp_packet_with_dns_offset_byte() -> bytes:
     return bytes(packet)
 
 
+def strip_comments(text: str) -> str:
+    text = re.sub(r"/\*.*?\*/", " ", text, flags=re.DOTALL)
+    return re.sub(r"//.*", " ", text)
+
+
+def preserves_cookie_alias_without_pointer_arithmetic(source: Path) -> bool:
+    text = strip_comments(source.read_text(encoding="utf-8"))
+    return (
+        "asm volatile" not in text
+        and re.search(r"\b__u64\s+cookie\s*=\s*\(\s*__u64\s*\)\s*\(\s*long\s*\)\s*udp\s*;", text) is not None
+        and re.search(r"\budp\s*=\s*\(\s*struct\s+udphdr\s*\*\s*\)\s*\(\s*long\s*\)\s*cookie\s*;", text) is not None
+    )
+
+
 if __name__ == "__main__":
     raise SystemExit(
         run_case(
@@ -44,6 +59,9 @@ if __name__ == "__main__":
                 ("udp_http_pass", lambda: udp_packet(80), 2),
                 ("tcp_pass_even_with_dns_offset_byte", tcp_packet_with_dns_offset_byte, 2),
                 ("truncated_udp_header_pass", truncated_udp_packet_with_dns_offset_byte, 2),
+            ],
+            source_success_predicates=[
+                ("case source invariant A", preserves_cookie_alias_without_pointer_arithmetic),
             ],
         )
     )
