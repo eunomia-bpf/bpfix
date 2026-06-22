@@ -26,15 +26,15 @@ loads through the verifier, and passes the executable case oracle.
 
 | Claim | Scope | Evidence in this document | Status |
 | --- | --- | --- | --- |
-| C1: Raw verifier logs are insufficient for hard one-shot eBPF repair. | `bpfix-test/splits/main.txt`, Qwen3.6 27B, temperature 0, one attempt. | Raw one-shot passes 22/75 cases. | Supported for the calibrated working suite. |
+| C1: Raw verifier logs are insufficient for hard one-shot eBPF repair. | `bpfix-test/splits/main.txt`, Qwen3.6 27B, temperature 0, one attempt. | Raw one-shot passes 22/75 cases. | Supported for the current main75 suite. |
 | C2: BPFix diagnostics improve LLM repair success over raw verifier logs. | Same cases, model, prompt budget, temperature, timeout, and oracle as C1. | BPFix one-shot passes 38/75, a +16 case / +21.4 percentage-point gain over raw. | Supported for Qwen3.6 27B. |
 | C3: Retry helps both modes but does not erase the BPFix advantage. | Qwen3.6 27B, at most two attempts; retry prompt includes prior candidate and ordinary failure context. | Raw rises from 22/75 to 30/75; BPFix rises from 38/75 to 44/75. | Supported for Qwen3.6 27B. |
 | C4: The benchmark is hard enough to distinguish model capacity from diagnostic signal. | Qwen2.5 3B capacity stress run, one attempt. | 3B raw passes 0/75; 3B+BPFix passes 8/75. | Supported as a stress baseline, not as a headline claim. |
-| C5: The current suite is a calibrated working suite, not a clean heldout benchmark. | `main.txt` after hardening. | The split was edited during calibration; result metadata records dirty=false only after the calibration commit. | Supported; paper claims must not call this a heldout result. |
+| C5: The current suite is a working suite, not a clean heldout benchmark. | `main.txt` after hardening. | The split was revised during benchmark development; `main.manifest.json` marks it as `frozen=false`. | Supported; paper claims must not call this a heldout result. |
 
 The strongest claim currently justified is narrow:
 
-> On the calibrated 75-case `bpfix-test` working suite, under a fixed Qwen3.6
+> On the current 75-case `bpfix-test` main suite, under a fixed Qwen3.6
 > 27B local configuration, BPFix plain-text diagnostics improve executable eBPF
 > repair success over raw verifier logs by 16/75 cases in one shot and by 14/75
 > cases with one retry.
@@ -91,17 +91,17 @@ reported splits.
 
 | Split | Count | Purpose | Current paper status |
 | --- | ---: | --- | --- |
-| `dev40.txt` | 40 | Original admitted calibration split used while developing prompts, diagnostics, and oracles. | Calibration data only. |
+| `dev40.txt` | 40 | Legacy development subset used while building prompts, diagnostics, and oracles. | Historical development data only. |
 | `hard40.txt` | 40 | High-difficulty subset retained from main-suite hardening. | Useful for quick checks, not heldout. |
 | `real-seed-candidates.txt` | 34 | Staging ledger for real-project seed candidates with upstream provenance. | Candidate/staging metadata. |
 | `main.txt` | 75 | Combined working suite used for the reported model comparisons. | Primary working suite in this document, not heldout. |
 | `clean60.txt` | 0 | Legacy placeholder for a future clean heldout split. | Empty; not used in reported results. |
 
-`main.txt` is intentionally broader than `dev40.txt`: it combines the original
-40 calibration cases with 35 `rs_*` real-project/minimized cases. This gives a
-larger working suite for model comparison, but it also means the split is not a
-contamination-free heldout benchmark. Its manifest explicitly marks it as
-`working_combined`, `frozen=false`, and `model_result_used_for_admission=true`.
+The reported experiment treats `main.txt` as one unified 75-case suite. The
+older split names are retained for provenance and fast checks, not as separate
+evaluation strata. The main split is not a contamination-free heldout benchmark:
+its manifest explicitly marks it as `working_combined`, `frozen=false`, and
+`model_result_used_for_admission=true`.
 
 ### Construction Protocol
 
@@ -136,19 +136,16 @@ The resulting cases are intentionally small enough for repeated model
 evaluation but not toy string-edit tasks. A successful candidate must satisfy
 the kernel verifier and the case-specific semantic contract.
 
-### Source Mix
+### Source-Family Coverage
 
-The 75-case main split has two source strata:
+The suite is best described by source family rather than by historical split.
+Some cases are mechanism-designed standalone programs; others are minimized
+from project or tutorial sources while preserving the relevant eBPF source
+shape. All of them are evaluated together as main75.
 
-| Source stratum | Count | Selection logic | Representative role |
-| --- | ---: | --- | --- |
-| `dev40` synthetic calibration | 40 | Production-shaped synthetic cases designed from verifier failure mechanisms and used during prompt/oracle calibration. | Provides controlled coverage of mechanism families and known-hard proof obligations. |
-| Real-project/minimized `rs_*` cases | 35 | Minimized from real eBPF projects, tutorials, or upstream-style examples while preserving the relevant source shape. | Tests whether the same mechanisms appear in realistic source contexts. |
-
-The real-project/minimized stratum covers these project families:
-
-| Project family | Cases |
+| Source family | Cases |
 | --- | ---: |
+| Mechanism-designed standalone cases | 40 |
 | Cilium | 7 |
 | ActPlane | 5 |
 | xdp-tools | 5 |
@@ -168,9 +165,9 @@ metadata completeness gap to fix before freezing a paper benchmark.
 
 ### Failure-Mechanism Coverage
 
-The current working classification uses `dev40.manifest.json` for the original
-40 cases and the real-seed ledger/README contracts for the `rs_*` cases. It is
-not yet encoded as a complete frozen metadata table in `main.manifest.json`.
+The current working classification uses the existing split manifests, real-seed
+ledger, case READMEs, and audit-script output. It is not yet encoded as a
+complete frozen metadata table in `main.manifest.json`.
 
 | Mechanism bucket | Count | What the bucket means | Example failure shape |
 | --- | ---: | --- | --- |
@@ -332,14 +329,14 @@ The workload is `bpfix-test/splits/main.txt`.
 
 | Field | Value | Why it is configured this way |
 | --- | --- | --- |
-| Split path | `bpfix-test/splits/main.txt` | This is the current 75-case combined working suite used for calibration and model comparison. |
+| Split path | `bpfix-test/splits/main.txt` | This is the current 75-case working suite used for model comparison and benchmark development. |
 | Expected count | `75` | The runner rejects accidental partial runs by requiring the split to contain exactly 75 cases. |
 | Split SHA-256 | `fe1c7329c41c5a94d84ab6077539640082404d0cdef6bda0796440ec1e99d5a8` | Records the exact case list used for the run. |
 | Case format | One directory per case with `buggy.bpf.c`, `verifier.log`, `diagnostic.txt`, `fixed.bpf.c`, and `test.py`. | Keeps each repair task source-first and independently executable. The file-level roles are defined in the dataset-construction section above. |
 | Case admission rule | The buggy source must reproduce a verifier rejection; the checked-in fixed source must satisfy the same oracle; the diagnostic must be supported; prompts must not leak case ids or oracle internals. | Prevents non-reproducible, oracle-less, unsupported, or answer-leaking cases from entering the denominator. |
-| Suite status | Calibrated working suite, not heldout. | The suite was hardened to reach the target difficulty distribution; a paper-ready heldout must be frozen later. |
+| Suite status | Current working suite, not heldout. | The suite was revised during benchmark development to reach the target difficulty distribution; a paper-ready heldout must be frozen later. |
 
-The suite includes synthetic proof-obligation cases and real-project inspired
+The suite includes mechanism-designed proof-obligation cases and real-project inspired
 cases from Cilium, bpftime, eunomia.dev, xdp-tools, ActPlane, AgentSight,
 DatRail, NCCL-eBPF, Tetragon, tutorials, and related eBPF sources. The
 difficulty comes from proof-lifecycle bugs, source/object correlation, modern
@@ -400,7 +397,7 @@ python3 bpfix-test/tools/run_suite.py \
 
 | Field | Value | Explanation |
 | --- | --- | --- |
-| Model | `Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M.gguf` | Primary strong local model used for benchmark calibration. |
+| Model | `Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M.gguf` | Primary strong local model used for main75 model-comparison runs. |
 | Model path | `/home/yunwei37/.cache/huggingface/hub/models--DevQuasar--Qwen.Qwen3.6-27B-GGUF/snapshots/b19fa7e8538a1a5f66452eb3b3167e026177be1d/Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M.gguf` | Records the exact local artifact. |
 | Model SHA-256 | `f7da7eee0f1ffa280742a293f02052d1f58d3253c9e109c1be8fb0067eb1b3a9` | Detects model-file drift. |
 | llama.cpp commit | `57819b8d4b39d893408e51520dff3d47d1ebb757` | Pins the local inference backend. |
@@ -444,10 +441,10 @@ No API key value is printed or recorded in this document.
 
 | Field | Value | Explanation |
 | --- | --- | --- |
-| Calibrated-suite commit | `f151473d945b0608709bc32505caf5f18becbe37` | Clean commit containing the calibrated suite and source-semantics predicates used by the 3B runs. Result directories are stored as local run artifacts rather than committed source files. |
+| Main-suite commit | `f151473d945b0608709bc32505caf5f18becbe37` | Clean commit containing the main75 suite and source-semantics predicates used by the 3B runs. Result directories are stored as local run artifacts rather than committed source files. |
 | Provider-extra-body commit | `560509fe7d9be6600e74482fd6962ec9bde5e2f0` | Adds `--extra-body-json`, used for clean GLM 5.2 retry runs. |
-| Dirty bit for reported 3B runs | `false` | Confirms the 3B runs were collected after the calibration commit. |
-| Dirty bit for reported 27B runs | `true` in run metadata | The 27B calibration runs were collected before committing the final suite; the committed diff contains that calibration. |
+| Dirty bit for reported 3B runs | `false` | Confirms the 3B runs were collected after the main-suite commit. |
+| Dirty bit for reported 27B runs | `true` in run metadata | The 27B main75 development runs were collected before committing the final suite; the committed diff contains those case/oracle updates. |
 | Dirty bit for GLM 5.2 one-shot runs | `true` in run metadata | The one-shot GLM runs were collected while `--extra-body-json` support was uncommitted. |
 | Dirty bit for GLM 5.2 retry runs | `false` in run metadata | The retry GLM runs were collected after committing the provider-extra-body support. |
 | Kernel | `Linux lab 6.15.11-061511-generic #202508201748 ... x86_64` | The verifier is kernel-dependent; this identifies the verifier used by the oracle. |
@@ -467,7 +464,7 @@ No API key value is printed or recorded in this document.
 | Raw verifier log | 2 | 30/75 | 40.0% | 0 | baseline |
 | BPFix diagnostic | 2 | 44/75 | 58.7% | 0 | +14 cases / +18.7 pp |
 
-Takeaway: BPFix substantially improves repair success for the primary calibrated
+Takeaway: BPFix substantially improves repair success for the primary local
 model. Retry helps both prompt modes, but the BPFix advantage remains after
 retry.
 
@@ -567,7 +564,7 @@ rescuing eight cases.
 BPFix helps because it changes the repair problem from "infer the missing proof
 obligation from a verifier trace" to "apply a stated proof obligation to the
 source while preserving behavior." The 27B raw baseline can solve 29.3% of the
-calibrated suite in one shot, which means some verifier logs are already
+main75 suite in one shot, which means some verifier logs are already
 sufficient for a strong model. The BPFix prompt raises that to 50.7%, showing
 that the diagnostic adds useful signal on hard cases.
 
@@ -594,15 +591,15 @@ small-context model-call failures triggered by very long raw logs.
 Using the OSDI evaluation rubric, this result is:
 
 - Level 3 for the narrow claim that BPFix improves Qwen3.6 27B repair success on
-  this calibrated working suite.
+  this current main75 suite.
 - Level 2 for any benchmark-quality or generalization claim, because the split
-  was calibrated in place, the GLM one-shot runs are dirty-provenance runs, and
-  retry compresses the hosted-model gap.
+  was revised during benchmark development, the GLM one-shot runs are
+  dirty-provenance runs, and retry compresses the hosted-model gap.
 
 Before a paper can make final OSDI-level claims, the evaluation needs:
 
-1. A frozen heldout split created after this calibration, with no post-result
-   case hardening.
+1. A frozen heldout split created after finalizing the current case set, with no
+   post-result case hardening.
 2. Clean reruns for every headline model/configuration, including GLM 5.2
    one-shot after committing provider-extra-body support.
 3. A repetition or determinism policy. If temperature 0 is treated as
@@ -622,10 +619,10 @@ documented intended use, limitations, and a broader model leaderboard.
 
 ## Threats to Validity
 
-- The main split is not heldout. It is valid for calibration and internal
+- The main split is not heldout. It is valid for benchmark development and internal
   comparison, but not for final generalization claims.
 - The 27B run metadata is dirty because the run happened before committing the
-  final calibrated state. The committed tree now contains the calibrated cases,
+  final main75 state. The committed tree now contains the current cases,
   but a final paper run should be collected from a clean commit.
 - The GLM 5.2 one-shot metadata is dirty because the run happened before
   committing `--extra-body-json` support. The retry GLM runs are clean.
@@ -635,8 +632,8 @@ documented intended use, limitations, and a broader model leaderboard.
 - `main.manifest.json` currently records oracle metadata for special cases, but
   it does not yet encode full source, bucket, program-type, and review metadata
   for all 75 cases. The document therefore reports some dataset statistics from
-  `dev40.manifest.json`, `real-seed-candidates.manifest.json`, case READMEs, and
-  audit-script output rather than from one frozen manifest.
+  existing split manifests, the real-seed ledger, case READMEs, and audit-script
+  output rather than from one frozen manifest.
 - The benchmark uses executable oracles, which are stricter than text matching
   but still incomplete approximations of full production semantics.
 - Source-semantics predicates reduce false positives but can introduce
