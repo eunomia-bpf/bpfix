@@ -102,15 +102,16 @@ python3 bpfix-test/tools/run_suite.py \
   --model <model name> \
   --model-path <local GGUF path when applicable> \
   --model-sha256 <GGUF sha256 when applicable> \
-  --llama-cpp-dir /home/yunwei37/workspace/llama.cpp-latest \
+  --llama-cpp-dir <local llama.cpp path when applicable> \
   --timeout 900 \
   --max-tokens 8192 \
-  --temperature 0
+  --temperature 0 \
+  --extra-body-json <provider-specific JSON object when required>
 ```
 
 | Configuration | Value | Explanation |
 | --- | --- | --- |
-| API protocol | OpenAI-compatible `/v1/chat/completions` | `run_suite.py` uses one API shape for local llama.cpp and compatible hosted providers. |
+| API protocol | OpenAI-compatible chat completions. | `run_suite.py` appends `/chat/completions` to `--base-url`; llama.cpp uses a `/v1` base URL, while Z.ai uses `/api/coding/paas/v4`. |
 | Temperature | `0` | Removes sampling as a controlled variable and makes the run as deterministic as the backend allows. |
 | Max output tokens | `8192` | Large enough for full replacement C files, including verbose includes or helper definitions, while bounding runaway output. |
 | Per-call timeout | `900` seconds | Allows long prompts and slow verifier-oriented generations without masking server hangs forever. |
@@ -118,6 +119,7 @@ python3 bpfix-test/tools/run_suite.py \
 | Attempts, retry | `--repair-attempts 2` | Tests a practical repair loop where the second prompt sees the previous candidate and ordinary compile/load/oracle failure context. |
 | Retry context | Previous candidate source plus compile/load/verifier/oracle failure output. | Models a local developer retry loop while keeping raw and BPFix modes paired. |
 | Retry exclusions | No hidden source predicate implementation and no `fixed.bpf.c`. | Prevents the retry from learning the answer from oracle internals. |
+| Provider extra body | `--extra-body-json` when needed. | Records nonstandard but explicit provider settings, such as disabling GLM 5.2 deep thinking for direct source generation. |
 | Result metadata | Git commit, dirty bit, split hash, toolchain versions, model path/hash, llama.cpp commit, prompt hash. | Makes each number auditable back to a run artifact. |
 
 ### Qwen3.6 27B Configuration
@@ -147,18 +149,20 @@ python3 bpfix-test/tools/run_suite.py \
 The 3B run is one-shot only. It is included to test whether BPFix diagnostics
 help a much smaller model at all; it is not used for the retry claim.
 
-### GLM 5.2 Status
+### GLM 5.2 Configuration
 
-GLM 5.2 was checked but not run.
+GLM 5.2 was run through the Z.ai OpenAI-compatible coding endpoint.
 
 | Field | Value | Explanation |
 | --- | --- | --- |
-| Intended model | `glm-5.2` | Official Z.ai docs list this as the coding model code for GLM 5.2. |
-| Intended endpoint | `https://api.z.ai/api/coding/paas/v4` | Official Z.ai docs list this as the OpenAI-compatible coding endpoint. |
-| Alternate endpoint checked | `https://open.bigmodel.cn/api/coding/paas/v4` | BigModel/Zhipu-compatible coding endpoint also returns an authentication error without a key. |
-| Credential status | Not found in current environment or ActPlane `.env`. | Environment variables exposed no Z.ai/GLM/BIGMODEL key; ActPlane `.env` contained Langfuse and DeepSeek key names only. |
-| Endpoint check | `/models` returned missing-Authorization errors. | Confirms the endpoint is reachable but unusable without a credential. |
-| Reporting rule | Excluded from result tables. | A missing credential is an execution blocker, not a model result. |
+| Model | `glm-5.2` | Official Z.ai docs list this as the GLM 5.2 coding model code. |
+| Endpoint | `https://api.z.ai/api/coding/paas/v4` | Official Z.ai docs list this as the OpenAI-compatible coding endpoint; the runner appends `/chat/completions`. |
+| Endpoint check | Authenticated `/models` returned `glm-5.2` in the model list. | Confirms that the credential and endpoint selected the intended model family. |
+| API key handling | Environment variable `ZAI_API_KEY`, passed via `--api-key-env ZAI_API_KEY`. | The runner records only the environment-variable name. The credential value is not printed, not written to result metadata, and not committed. |
+| Extra request body | `{"thinking":{"type":"disabled"},"reasoning_effort":"none"}` | GLM 5.2 otherwise spends output budget on hidden `reasoning_content`; a minimal API check with `max_tokens=16` returned empty visible content under default thinking and visible `ok` with thinking disabled. |
+| Why disable thinking | Match the benchmark contract: return one complete C source file under a fixed visible-output budget. | This keeps GLM from consuming the repair budget on hidden reasoning tokens and makes its outputs comparable to local direct-generation models. |
+| One-shot provenance | Commit `d4440e5427143f294b9388db859a00f2f11119c6`, dirty=true. | These runs used the new `--extra-body-json` support before it was committed. |
+| Retry provenance | Commit `560509fe7d9be6600e74482fd6962ec9bde5e2f0`, dirty=false. | The provider-extra-body runner support was committed before collecting retry runs. |
 
 No API key value is printed or recorded in this document.
 
@@ -166,9 +170,12 @@ No API key value is printed or recorded in this document.
 
 | Field | Value | Explanation |
 | --- | --- | --- |
-| Git commit | `f151473d945b0608709bc32505caf5f18becbe37` | Clean commit containing the calibrated suite and source-semantics predicates used by the 3B runs. Result directories are stored as local run artifacts rather than committed source files. |
+| Calibrated-suite commit | `f151473d945b0608709bc32505caf5f18becbe37` | Clean commit containing the calibrated suite and source-semantics predicates used by the 3B runs. Result directories are stored as local run artifacts rather than committed source files. |
+| Provider-extra-body commit | `560509fe7d9be6600e74482fd6962ec9bde5e2f0` | Adds `--extra-body-json`, used for clean GLM 5.2 retry runs. |
 | Dirty bit for reported 3B runs | `false` | Confirms the 3B runs were collected after the calibration commit. |
 | Dirty bit for reported 27B runs | `true` in run metadata | The 27B calibration runs were collected before committing the final suite; the committed diff contains that calibration. |
+| Dirty bit for GLM 5.2 one-shot runs | `true` in run metadata | The one-shot GLM runs were collected while `--extra-body-json` support was uncommitted. |
+| Dirty bit for GLM 5.2 retry runs | `false` in run metadata | The retry GLM runs were collected after committing the provider-extra-body support. |
 | Kernel | `Linux lab 6.15.11-061511-generic #202508201748 ... x86_64` | The verifier is kernel-dependent; this identifies the verifier used by the oracle. |
 | Clang | `Ubuntu clang version 18.1.3` | BPF bytecode depends on compiler version. |
 | bpftool/libbpf | `bpftool v7.7.0`, `libbpf v1.7` | Program load, verifier logs, and `prog run` behavior depend on these tools. |
@@ -189,6 +196,20 @@ No API key value is printed or recorded in this document.
 Takeaway: BPFix substantially improves repair success for the primary calibrated
 model. Retry helps both prompt modes, but the BPFix advantage remains after
 retry.
+
+### Hosted Result: GLM 5.2
+
+| Prompt mode | Attempts | Passed | Rate | Model errors | Gain over raw |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Raw verifier log | 1 | 28/75 | 37.3% | 0 | baseline |
+| BPFix diagnostic | 1 | 38/75 | 50.7% | 0 | +10 cases / +13.4 pp |
+| Raw verifier log | 2 | 47/75 | 62.7% | 0 | baseline |
+| BPFix diagnostic | 2 | 52/75 | 69.3% | 0 | +5 cases / +6.7 pp |
+
+Takeaway: GLM 5.2 confirms a one-shot BPFix gain, but retry compresses the
+diagnostic gap. The raw retry prompt recovers 18 cases and reaches 62.7%, so
+the current retry loop is a strong intervention for this hosted model rather
+than a small +10 point correction.
 
 ### Capacity Stress Result: Qwen2.5 3B
 
@@ -230,6 +251,10 @@ The 3B+BPFix pass cases were:
 | Qwen3.6 27B | BPFix | 1 | 1 | 10 | 10 | 16 | 0 |
 | Qwen3.6 27B | raw | 2 | 2 | 8 | 10 | 25 | 0 |
 | Qwen3.6 27B | BPFix | 2 | 0 | 7 | 9 | 15 | 0 |
+| GLM 5.2 | raw | 1 | 1 | 10 | 11 | 25 | 0 |
+| GLM 5.2 | BPFix | 1 | 1 | 5 | 9 | 22 | 0 |
+| GLM 5.2 | raw | 2 | 1 | 7 | 4 | 16 | 0 |
+| GLM 5.2 | BPFix | 2 | 1 | 3 | 7 | 12 | 0 |
 | Qwen2.5 3B | raw | 1 | 7 | 62 | 0 | 3 | 3 |
 | Qwen2.5 3B | BPFix | 1 | 14 | 39 | 6 | 8 | 0 |
 
@@ -237,6 +262,11 @@ The 27B rows show that BPFix removes a meaningful number of verifier-load and
 auxiliary proof failures, but not all failures. The remaining failures are often
 semantic: candidates compile or load but fail functional or proof/source
 contracts. That is the intended behavior of the stricter oracle.
+
+The GLM 5.2 rows show that a hosted coding model can exploit retry context much
+more aggressively than Qwen3.6 27B. BPFix still reduces verifier-load and
+auxiliary proof failures, but the raw retry baseline becomes strong enough that
+the retry gap shrinks to five cases.
 
 The 3B rows show a different regime. The small model usually fails before
 semantic repair quality becomes the main issue: raw outputs often fail verifier
@@ -251,6 +281,10 @@ rescuing eight cases.
 | Qwen3.6 27B BPFix one-shot | `bpfix-test/results/bpfix-main-qwen36-27b-hardened2-current/20260622T101050360741Z-pid2167585/bpfix/summary.json` |
 | Qwen3.6 27B raw retry | `bpfix-test/results/raw-main-qwen36-27b-hardened2-retry2-current/20260622T102327736469Z-pid2187731/raw/summary.json` |
 | Qwen3.6 27B BPFix retry | `bpfix-test/results/bpfix-main-qwen36-27b-hardened2-retry2-current/20260622T105116447851Z-pid2222732/bpfix/summary.json` |
+| GLM 5.2 raw one-shot | `bpfix-test/results/raw-main-glm52-thinking-disabled-current/20260622T211028217458Z-pid3229818/raw/summary.json` |
+| GLM 5.2 BPFix one-shot | `bpfix-test/results/bpfix-main-glm52-thinking-disabled-current/20260622T211937511394Z-pid3244079/bpfix/summary.json` |
+| GLM 5.2 raw retry | `bpfix-test/results/raw-main-glm52-thinking-disabled-retry2-current/20260622T212905484904Z-pid3277599/raw/summary.json` |
+| GLM 5.2 BPFix retry | `bpfix-test/results/bpfix-main-glm52-thinking-disabled-retry2-current/20260622T214359370783Z-pid3313330/bpfix/summary.json` |
 | Qwen2.5 3B raw one-shot | `bpfix-test/results/raw-main-qwen25-3b-current/20260622T204546033632Z-pid3194167/raw/summary.json` |
 | Qwen2.5 3B BPFix one-shot | `bpfix-test/results/bpfix-main-qwen25-3b-current/20260622T204935041847Z-pid3198374/bpfix/summary.json` |
 
@@ -268,6 +302,14 @@ a first-attempt artifact. It is not: raw retry recovers 8 more cases, BPFix retr
 recovers 6 more cases, and BPFix remains ahead by 14 cases after both modes get
 one failure-informed retry.
 
+GLM 5.2 adds a caution. It agrees with the one-shot claim: BPFix improves
+visible repair success from 28/75 to 38/75. However, retry changes the
+distribution: raw rises to 47/75 and BPFix to 52/75. That means the current
+retry prompt is powerful enough to solve many raw-log failures for this hosted
+model, reducing diagnostic separation after retry. A paper should therefore
+present one-shot and retry as different regimes, not as interchangeable
+measurements of the same effect.
+
 The 3B result is not intended to prove broad model generality. It shows two
 useful stress facts. First, the suite is beyond the capacity of a small local
 model in raw mode. Second, BPFix still rescues some cases and avoids the
@@ -280,14 +322,15 @@ Using the OSDI evaluation rubric, this result is:
 - Level 3 for the narrow claim that BPFix improves Qwen3.6 27B repair success on
   this calibrated working suite.
 - Level 2 for any benchmark-quality or generalization claim, because the split
-  was calibrated in place and the model matrix is still thin.
+  was calibrated in place, the GLM one-shot runs are dirty-provenance runs, and
+  retry compresses the hosted-model gap.
 
 Before a paper can make final OSDI-level claims, the evaluation needs:
 
 1. A frozen heldout split created after this calibration, with no post-result
    case hardening.
-2. A multi-model matrix that includes at least one hosted frontier model, one
-   strong open/local model, and one small local model.
+2. Clean reruns for every headline model/configuration, including GLM 5.2
+   one-shot after committing provider-extra-body support.
 3. A repetition or determinism policy. If temperature 0 is treated as
    deterministic, the paper must still state backend determinism assumptions.
 4. An ablation that separates BPFix's proof-obligation content from mere
@@ -307,8 +350,11 @@ documented intended use, limitations, and a broader model leaderboard.
 - The 27B run metadata is dirty because the run happened before committing the
   final calibrated state. The committed tree now contains the calibrated cases,
   but a final paper run should be collected from a clean commit.
-- The local model matrix is narrow. Qwen3.6 27B is a strong local model, but the
-  result should be checked on hosted frontier models and other open models.
+- The GLM 5.2 one-shot metadata is dirty because the run happened before
+  committing `--extra-body-json` support. The retry GLM runs are clean.
+- The model matrix now includes one hosted model, one strong local model, and one
+  small local model, but it is still too narrow for broad model-generalization
+  claims.
 - The benchmark uses executable oracles, which are stricter than text matching
   but still incomplete approximations of full production semantics.
 - Source-semantics predicates reduce false positives but can introduce
@@ -323,7 +369,7 @@ documented intended use, limitations, and a broader model leaderboard.
 | Priority | Run | Decision gate |
 | --- | --- | --- |
 | Must | Freeze a new heldout split and rerun Qwen3.6 27B raw/BPFix one-shot and retry from a clean commit. | Confirms the headline result survives no-touch evaluation. |
-| Must | Run GLM 5.2 when a Z.ai/GLM credential is available. | Tests hosted coding-model generality. |
+| Must | Clean-rerun GLM 5.2 one-shot now that provider-extra-body support is committed. | Removes dirty-provenance caveat from the hosted-model one-shot result. |
 | Should | Run a trimmed-raw baseline with the same model and prompt budget. | Separates BPFix proof signal from prompt-length reduction. |
 | Should | Add one more strong open model. | Reduces model-specific risk. |
 | Appendix | Run Qwen2.5 3B retry. | Shows whether small-model failures are recoverable or capacity-bound. |
@@ -336,3 +382,4 @@ documented intended use, limitations, and a broader model leaderboard.
 - NeurIPS 2026 Evaluations & Datasets Reviewer Guidelines: https://neurips.cc/Conferences/2026/EvaluationsDatasetsReviewerGuidelines
 - Z.ai OpenAI-compatible coding endpoint documentation: https://docs.z.ai/devpack/tool/others
 - Z.ai quick-start and GLM-5.2 model documentation: https://docs.z.ai/guides/overview/quick-start
+- Z.ai deep-thinking parameter documentation: https://docs.z.ai/guides/capabilities/thinking
