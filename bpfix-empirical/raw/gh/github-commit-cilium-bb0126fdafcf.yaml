@@ -1,0 +1,84 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-bb0126fdafcf
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/bb0126fdafcf959626d25de4f0c013fea13806a1
+  title: 'bpf: dsr: fix IPIP health-encap on older kernels'
+  repository: https://github.com/cilium/cilium
+  commit: bb0126fdafcf959626d25de4f0c013fea13806a1
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-bb0126fdafcf.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: environment_required
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: 'Raw title is "bpf: dsr: fix IPIP health-encap on older kernels"; snippets
+    change ctx_set_tunnel_key() size from sizeof(key) to TUNNEL_KEY_WITHOUT_SRC_IP.
+    This is explicitly older-kernel helper/verifier behavior and lacks a local current-kernel
+    reject log.'
+raw:
+  case_id: github-commit-cilium-bb0126fdafcf
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: bb0126fdafcf959626d25de4f0c013fea13806a1
+  commit_message: 'bpf: dsr: fix IPIP health-encap on older kernels'
+  commit_date: '2023-07-04'
+  fix_type: inline_hint
+  buggy_code: "// FILE: bpf/lib/nodeport.h\n// CONTEXT: int tail_handle_nat_fwd_ipv4(struct\
+    \ __ctx_buff *ctx)\n\tsend_trace_notify(ctx, obs_point, 0, 0, 0, 0, trace.reason,\n\
+    \t\t\t  trace.monitor);\n\n\treturn ret;\n}\n#endif /* ENABLE_IPV4 */\n\n#ifdef\
+    \ ENABLE_HEALTH_CHECK\nstatic __always_inline int\nhealth_encap_v4(struct __ctx_buff\
+    \ *ctx, __u32 tunnel_ep,\n\t\t__u32 seclabel)\n{\n\tstruct bpf_tunnel_key key;\n\
+    \n\t/* When encapsulating, a packet originating from the local\n\t * host is being\
+    \ considered as a packet from a remote node\n\t * as it is being received.\n\t\
+    \ */\n\tmemset(&key, 0, sizeof(key));\n\tkey.tunnel_id = seclabel == HOST_ID ?\
+    \ LOCAL_NODE_ID : seclabel;\n\tkey.remote_ipv4 = bpf_htonl(tunnel_ep);\n\tkey.tunnel_ttl\
+    \ = IPDEFTTL;\n\n\tif (unlikely(ctx_set_tunnel_key(ctx, &key, sizeof(key),\n\t\
+    \t\t\t\tBPF_F_ZERO_CSUM_TX) < 0))\n\t\treturn DROP_WRITE_ERROR;\n\treturn 0;\n\
+    }\n\nstatic __always_inline int\nhealth_encap_v6(struct __ctx_buff *ctx, const\
+    \ union v6addr *tunnel_ep,\n\t\t__u32 seclabel)\n{\n\tstruct bpf_tunnel_key key;\n\
+    \n\tmemset(&key, 0, sizeof(key));\n\tkey.tunnel_id = seclabel == HOST_ID ? LOCAL_NODE_ID\
+    \ : seclabel;\n\tkey.remote_ipv6[0] = tunnel_ep->p1;\n\tkey.remote_ipv6[1] = tunnel_ep->p2;\n\
+    \tkey.remote_ipv6[2] = tunnel_ep->p3;\n\tkey.remote_ipv6[3] = tunnel_ep->p4;\n\
+    \tkey.tunnel_ttl = IPDEFTTL;\n\n\tif (unlikely(ctx_set_tunnel_key(ctx, &key, sizeof(key),\n\
+    \t\t\t\t\tBPF_F_ZERO_CSUM_TX |\n\t\t\t\t\tBPF_F_TUNINFO_IPV6) < 0))\n\t\treturn\
+    \ DROP_WRITE_ERROR;\n\treturn 0;\n}\n\nstatic __always_inline int\nlb_handle_health(struct\
+    \ __ctx_buff *ctx __maybe_unused)\n{\n\tvoid *data __maybe_unused, *data_end __maybe_unused;\n\
+    \t__sock_cookie key __maybe_unused;\n\tint ret __maybe_unused;"
+  fixed_code: "// FILE: bpf/lib/nodeport.h\n// CONTEXT: int tail_handle_nat_fwd_ipv4(struct\
+    \ __ctx_buff *ctx)\n\tsend_trace_notify(ctx, obs_point, 0, 0, 0, 0, trace.reason,\n\
+    \t\t\t  trace.monitor);\n\n\treturn ret;\n}\n#endif /* ENABLE_IPV4 */\n\n#ifdef\
+    \ ENABLE_HEALTH_CHECK\nstatic __always_inline int\nhealth_encap_v4(struct __ctx_buff\
+    \ *ctx, __u32 tunnel_ep,\n\t\t__u32 seclabel)\n{\n\t__u32 key_size = TUNNEL_KEY_WITHOUT_SRC_IP;\n\
+    \tstruct bpf_tunnel_key key;\n\n\t/* When encapsulating, a packet originating\
+    \ from the local\n\t * host is being considered as a packet from a remote node\n\
+    \t * as it is being received.\n\t */\n\tmemset(&key, 0, sizeof(key));\n\tkey.tunnel_id\
+    \ = seclabel == HOST_ID ? LOCAL_NODE_ID : seclabel;\n\tkey.remote_ipv4 = bpf_htonl(tunnel_ep);\n\
+    \tkey.tunnel_ttl = IPDEFTTL;\n\n\tif (unlikely(ctx_set_tunnel_key(ctx, &key, key_size,\n\
+    \t\t\t\t\tBPF_F_ZERO_CSUM_TX) < 0))\n\t\treturn DROP_WRITE_ERROR;\n\treturn 0;\n\
+    }\n\nstatic __always_inline int\nhealth_encap_v6(struct __ctx_buff *ctx, const\
+    \ union v6addr *tunnel_ep,\n\t\t__u32 seclabel)\n{\n\t__u32 key_size = TUNNEL_KEY_WITHOUT_SRC_IP;\n\
+    \tstruct bpf_tunnel_key key;\n\n\tmemset(&key, 0, sizeof(key));\n\tkey.tunnel_id\
+    \ = seclabel == HOST_ID ? LOCAL_NODE_ID : seclabel;\n\tkey.remote_ipv6[0] = tunnel_ep->p1;\n\
+    \tkey.remote_ipv6[1] = tunnel_ep->p2;\n\tkey.remote_ipv6[2] = tunnel_ep->p3;\n\
+    \tkey.remote_ipv6[3] = tunnel_ep->p4;\n\tkey.tunnel_ttl = IPDEFTTL;\n\n\tif (unlikely(ctx_set_tunnel_key(ctx,\
+    \ &key, key_size,\n\t\t\t\t\tBPF_F_ZERO_CSUM_TX |\n\t\t\t\t\tBPF_F_TUNINFO_IPV6)\
+    \ < 0))\n\t\treturn DROP_WRITE_ERROR;\n\treturn 0;\n}\n\nstatic __always_inline\
+    \ int\nlb_handle_health(struct __ctx_buff *ctx __maybe_unused)\n{\n\tvoid *data\
+    \ __maybe_unused, *data_end __maybe_unused;\n\t__sock_cookie key __maybe_unused;\n\
+    \tint ret __maybe_unused;"
+  diff_summary: |-
+    bpf/lib/nodeport.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: int tail_handle_nat_fwd_ipv4(struct __ctx_buff *ctx).
+    - Commit subject: bpf: dsr: fix IPIP health-encap on older kernels.

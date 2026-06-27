@@ -1,0 +1,53 @@
+schema_version: bpfix.case/v1
+case_id: github-aya-rs-aya-521
+source:
+  kind: github_issue
+  url: https://github.com/aya-rs/aya/issues/521
+  repository: https://github.com/aya-rs/aya
+  commit: null
+  upstream_file: null
+  collected_at: '2026-03-11T16:01:50+00:00'
+  raw_excerpt_files:
+  - bpfix-empirical/raw/gh/github-aya-rs-aya-521.yaml
+reproducer:
+  reconstruction: reconstructed
+  notes: Imported from reconstructed external source into bpfix-empirical; replay logs are generated
+    as replay-verifier.log.
+capture:
+  capture_id: github-aya-rs-aya-521__kernel-6.15.11-clang-18-log2
+  terminal_error: missing btf func_info
+  rejected_insn_idx: 5
+external_match:
+  status: exact
+  policy: terminal_error
+  matched_messages:
+  - missing btf func_info
+  - missing btf func_info
+  notes: Imported only because verifier_error_match was exact/partial in the verified SO/GH
+    artifact.
+label:
+  capture_id: github-aya-rs-aya-521__kernel-6.15.11-clang-18-log2
+  taxonomy_class: environment_or_configuration
+  mechanism_tags:
+  - btf_metadata
+  - func_info_metadata
+  - subprogram_metadata
+  obligation_ids:
+  - BPFIX-O021
+  evidence_tags:
+  - terminal_error_missing_btf_func_info
+  - callback_subprogram_requires_func_info
+  - fix_requires_build_metadata
+  error_id: BPFIX-E021
+  confidence: medium
+  label_source: external_replay_reconstruction
+  root_cause_description: Subprogram/callback call lacks BTF func_info required by the verifier.
+  root_cause_insn_idx: null
+  localization_confidence: medium
+  fix_type: build_metadata
+  fix_direction: Compile/load with the BTF function metadata required for the subprogram call
+    pattern.
+reporting:
+  family_id: github-aya-rs-aya-521
+  representative: true
+  notes: External SO/GH case imported from verified exact/partial artifact.

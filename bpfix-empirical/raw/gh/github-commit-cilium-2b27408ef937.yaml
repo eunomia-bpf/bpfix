@@ -1,0 +1,85 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-2b27408ef937
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/2b27408ef9377effceef4cce64c1a5d9918b5237
+  title: 'cilium, bpf: fix panic when run with newer LLVM'
+  repository: https://github.com/cilium/cilium
+  commit: 2b27408ef9377effceef4cce64c1a5d9918b5237
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-2b27408ef937.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Fixes user-space ELF map migration logic for newer LLVM symbol types; the
+    failure is a Cilium userspace panic/map metadata issue, not a BPF verifier rejection.
+raw:
+  case_id: github-commit-cilium-2b27408ef937
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: 2b27408ef9377effceef4cce64c1a5d9918b5237
+  commit_message: 'cilium, bpf: fix panic when run with newer LLVM'
+  commit_date: '2019-04-09'
+  fix_type: other
+  buggy_code: "// FILE: bpf/cilium-map-migrate.c\n// CONTEXT: static int bpf_map_verify_all_offs(struct\
+    \ bpf_elf_ctx *ctx, int end)\n{\n\tGElf_Sym sym;\n\tint off, i;\n\n\tfor (off\
+    \ = 0; off < end; off += ctx->map_len) {\n\t\t/* Order doesn't need to be linear\
+    \ here, hence we walk\n\t\t * the table again.\n\t\t */\n\t\tfor (i = 0; i < ctx->sym_num;\
+    \ i++) {\n\t\t\tif (gelf_getsym(ctx->sym_tab, i, &sym) != &sym)\n\t\t\t\tcontinue;\n\
+    \t\t\tif (GELF_ST_BIND(sym.st_info) != STB_GLOBAL ||\n\t\t\t    GELF_ST_TYPE(sym.st_info)\
+    \ != STT_NOTYPE ||\n\t\t\t    sym.st_shndx != ctx->map_sec)\n\t\t\t\tcontinue;\n\
+    \t\t\tif (sym.st_value == off)\n\t\t\t\tbreak;\n\t\t\tif (i == ctx->sym_num -\
+    \ 1)\n\t\t\t\treturn -1;\n\t\t}\n\t}\n\n\treturn off == end ? 0 : -1;\n}\n\nstatic\
+    \ const char *bpf_map_fetch_name(struct bpf_elf_ctx *ctx, unsigned long off)\n\
+    {\n\tGElf_Sym sym;\n\tint i;\n\n\tfor (i = 0; i < ctx->sym_num; i++) {\n\t\tif\
+    \ (gelf_getsym(ctx->sym_tab, i, &sym) != &sym)\n\t\t\tcontinue;\n\n\t\tif (GELF_ST_BIND(sym.st_info)\
+    \ != STB_GLOBAL ||\n\t\t    GELF_ST_TYPE(sym.st_info) != STT_NOTYPE ||\n\t\t \
+    \   sym.st_shndx != ctx->map_sec ||\n\t\t    sym.st_value != off)\n\t\t\tcontinue;\n\
+    \t\treturn bpf_str_tab_name(ctx, &sym);\n\t}\n\n\treturn NULL;\n}\n\nstatic int\
+    \ bpf_map_num_sym(struct bpf_elf_ctx *ctx)\n{\n\tint i, num = 0;\n\tGElf_Sym sym;\n\
+    \n\tfor (i = 0; i < ctx->sym_num; i++) {\n\t\tif (gelf_getsym(ctx->sym_tab, i,\
+    \ &sym) != &sym)\n\t\t\tcontinue;\n\n\t\tif (GELF_ST_BIND(sym.st_info) != STB_GLOBAL\
+    \ ||\n\t\t    GELF_ST_TYPE(sym.st_info) != STT_NOTYPE ||\n\t\t    sym.st_shndx\
+    \ != ctx->map_sec)\n\t\t\tcontinue;\n\t\tnum++;\n\t}\n\n\treturn num;\n}\n\nstatic\
+    \ int bpf_derive_elf_map_from_fdinfo(int fd, struct bpf_elf_map *map)\n{\n\tchar\
+    \ file[PATH_MAX], buff[256];\n\tunsigned int val;"
+  fixed_code: "// FILE: bpf/cilium-map-migrate.c\n// CONTEXT: static int bpf_map_verify_all_offs(struct\
+    \ bpf_elf_ctx *ctx, int end)\n{\n\tGElf_Sym sym;\n\tint off, i;\n\n\tfor (off\
+    \ = 0; off < end; off += ctx->map_len) {\n\t\t/* Order doesn't need to be linear\
+    \ here, hence we walk\n\t\t * the table again.\n\t\t */\n\t\tfor (i = 0; i < ctx->sym_num;\
+    \ i++) {\n\t\t\tif (gelf_getsym(ctx->sym_tab, i, &sym) != &sym)\n\t\t\t\tcontinue;\n\
+    \t\t\tif (GELF_ST_BIND(sym.st_info) != STB_GLOBAL ||\n\t\t\t    !(GELF_ST_TYPE(sym.st_info)\
+    \ == STT_NOTYPE ||\n\t\t\t      GELF_ST_TYPE(sym.st_info) == STT_OBJECT) ||\n\t\
+    \t\t    sym.st_shndx != ctx->map_sec)\n\t\t\t\tcontinue;\n\t\t\tif (sym.st_value\
+    \ == off)\n\t\t\t\tbreak;\n\t\t\tif (i == ctx->sym_num - 1)\n\t\t\t\treturn -1;\n\
+    \t\t}\n\t}\n\n\treturn off == end ? 0 : -1;\n}\n\nstatic const char *bpf_map_fetch_name(struct\
+    \ bpf_elf_ctx *ctx, unsigned long off)\n{\n\tGElf_Sym sym;\n\tint i;\n\n\tfor\
+    \ (i = 0; i < ctx->sym_num; i++) {\n\t\tif (gelf_getsym(ctx->sym_tab, i, &sym)\
+    \ != &sym)\n\t\t\tcontinue;\n\n\t\tif (GELF_ST_BIND(sym.st_info) != STB_GLOBAL\
+    \ ||\n\t\t    !(GELF_ST_TYPE(sym.st_info) == STT_NOTYPE ||\n\t\t      GELF_ST_TYPE(sym.st_info)\
+    \ == STT_OBJECT) ||\n\t\t    sym.st_shndx != ctx->map_sec ||\n\t\t    sym.st_value\
+    \ != off)\n\t\t\tcontinue;\n\t\treturn bpf_str_tab_name(ctx, &sym);\n\t}\n\n\t\
+    return NULL;\n}\n\nstatic int bpf_map_num_sym(struct bpf_elf_ctx *ctx)\n{\n\t\
+    int i, num = 0;\n\tGElf_Sym sym;\n\n\tfor (i = 0; i < ctx->sym_num; i++) {\n\t\
+    \tif (gelf_getsym(ctx->sym_tab, i, &sym) != &sym)\n\t\t\tcontinue;\n\n\t\tif (GELF_ST_BIND(sym.st_info)\
+    \ != STB_GLOBAL ||\n\t\t    !(GELF_ST_TYPE(sym.st_info) == STT_NOTYPE ||\n\t\t\
+    \      GELF_ST_TYPE(sym.st_info) == STT_OBJECT) ||\n\t\t    sym.st_shndx != ctx->map_sec)\n\
+    \t\t\tcontinue;\n\t\tnum++;\n\t}\n\n\treturn num;\n}\n\nstatic int bpf_derive_elf_map_from_fdinfo(int\
+    \ fd, struct bpf_elf_map *map)\n{\n\tchar file[PATH_MAX], buff[256];\n\tunsigned\
+    \ int val;"
+  diff_summary: |-
+    bpf/cilium-map-migrate.c:
+    - Applied a small verifier-related code change captured by the exact before/after snippets below.
+    - Affected context: static int bpf_map_verify_all_offs(struct bpf_elf_ctx *ctx, int end).
+    - Commit subject: cilium, bpf: fix panic when run with newer LLVM.

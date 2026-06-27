@@ -1,0 +1,93 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-8eb389403823
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/8eb389403823188d809021653bb73f2c598b4def
+  title: 'bpf: Use struct __ctx_buff * for ctx to work around a verifier error'
+  repository: https://github.com/cilium/cilium
+  commit: 8eb389403823188d809021653bb73f2c598b4def
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-8eb389403823.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: replay_valid
+  case_id: github-commit-cilium-8eb389403823
+  case_path: cases/github-commit-cilium-8eb389403823
+  artifact_path: cases/github-commit-cilium-8eb389403823
+  reason: admitted_to_bpfix_bench_cases
+raw:
+  case_id: github-commit-cilium-8eb389403823
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: 8eb389403823188d809021653bb73f2c598b4def
+  commit_message: 'bpf: Use struct __ctx_buff * for ctx to work around a verifier
+    error'
+  commit_date: '2024-08-27'
+  fix_type: type_cast
+  buggy_code: |-
+    // FILE: bpf/tests/tc_nodeport_lb4_nat_lb.c
+    // CONTEXT: struct mock_settings {
+            bool fail_fib;
+    };
+
+    struct {
+            __uint(type, BPF_MAP_TYPE_ARRAY);
+            __uint(key_size, sizeof(__u32));
+            __uint(value_size, sizeof(struct mock_settings));
+            __uint(max_entries, 1);
+    } settings_map __section_maps_btf;
+
+    #define fib_lookup mock_fib_lookup
+
+    long mock_fib_lookup(__maybe_unused void *ctx, struct bpf_fib_lookup *params,
+                         __maybe_unused int plen, __maybe_unused __u32 flags)
+    {
+            __u32 key = 0;
+            struct mock_settings *settings = map_lookup_elem(&settings_map, &key);
+
+            if (settings && settings->fail_fib)
+                    return BPF_FIB_LKUP_RET_NO_NEIGH;
+
+            params->ifindex = DEFAULT_IFACE;
+
+            if (params->ipv4_dst == BACKEND_IP_REMOTE) {
+                    __bpf_memcpy_builtin(params->smac, (__u8 *)lb_mac, ETH_ALEN);
+  fixed_code: |-
+    // FILE: bpf/tests/tc_nodeport_lb4_nat_lb.c
+    // CONTEXT: struct mock_settings {
+            bool fail_fib;
+    };
+
+    struct {
+            __uint(type, BPF_MAP_TYPE_ARRAY);
+            __uint(key_size, sizeof(__u32));
+            __uint(value_size, sizeof(struct mock_settings));
+            __uint(max_entries, 1);
+    } settings_map __section_maps_btf;
+
+    #define fib_lookup mock_fib_lookup
+
+    long mock_fib_lookup(__maybe_unused struct __ctx_buff *ctx, struct bpf_fib_lookup *params,
+                         __maybe_unused int plen, __maybe_unused __u32 flags)
+    {
+            __u32 key = 0;
+            struct mock_settings *settings = map_lookup_elem(&settings_map, &key);
+
+            if (settings && settings->fail_fib)
+                    return BPF_FIB_LKUP_RET_NO_NEIGH;
+
+            params->ifindex = DEFAULT_IFACE;
+
+            if (params->ipv4_dst == BACKEND_IP_REMOTE) {
+                    __bpf_memcpy_builtin(params->smac, (__u8 *)lb_mac, ETH_ALEN);
+  diff_summary: |-
+    bpf/tests/tc_nodeport_lb4_nat_lb.c:
+    - Changed `mock_fib_lookup()` from `void *ctx` to `struct __ctx_buff *ctx` so verifier type checking can infer PTR_TO_CTX.

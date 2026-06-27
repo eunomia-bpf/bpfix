@@ -1,0 +1,94 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-4dee1580a096
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/4dee1580a0965bb5f6e8c6a7925abd20cfd23287
+  title: 'bpf: Reduce the number of supported IPv6 extension headers'
+  repository: https://github.com/cilium/cilium
+  commit: 4dee1580a0965bb5f6e8c6a7925abd20cfd23287
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-4dee1580a096.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: environment_required
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Reduces supported IPv6 extension-header skip count from 10 to 4 for historical
+    verifier complexity. Replay would require the old full IPv6 parser and historical
+    verifier behavior; no raw verifier log is present.
+raw:
+  case_id: github-commit-cilium-4dee1580a096
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: 4dee1580a0965bb5f6e8c6a7925abd20cfd23287
+  commit_message: 'bpf: Reduce the number of supported IPv6 extension headers'
+  commit_date: '2018-02-08'
+  fix_type: loop_rewrite
+  buggy_code: |-
+    // FILE: bpf/lib/ipv6.h
+
+    #include <linux/ipv6.h>
+
+    #include "dbg.h"
+    #define IPV6_FLOWINFO_MASK              bpf_htonl(0x0FFFFFFF)
+    #define IPV6_FLOWLABEL_MASK             bpf_htonl(0x000FFFFF)
+    #define IPV6_FLOWLABEL_STATELESS_FLAG   bpf_htonl(0x00080000)
+
+    #define IPV6_TCLASS_MASK (IPV6_FLOWINFO_MASK & ~IPV6_FLOWLABEL_MASK)
+    #define IPV6_TCLASS_SHIFT       20
+
+    /* Number of extension headers that can be skipped */
+    #define IPV6_MAX_HEADERS 10
+
+    #define NEXTHDR_HOP             0       /* Hop-by-hop option header. */
+    #define NEXTHDR_TCP             6       /* TCP segment. */
+    #define NEXTHDR_UDP             17      /* UDP message. */
+    #define NEXTHDR_IPV6            41      /* IPv6 in IPv6 */
+    #define NEXTHDR_ROUTING         43      /* Routing header. */
+    #define NEXTHDR_FRAGMENT        44      /* Fragmentation/reassembly header. */
+    #define NEXTHDR_GRE             47      /* GRE header. */
+    #define NEXTHDR_ESP             50      /* Encapsulating security payload. */
+    #define NEXTHDR_AUTH            51      /* Authentication header. */
+    #define NEXTHDR_ICMP            58      /* ICMP for IPv6. */
+    #define NEXTHDR_NONE            59      /* No next header */
+  fixed_code: |-
+    // FILE: bpf/lib/ipv6.h
+
+    #include <linux/ipv6.h>
+
+    #include "dbg.h"
+    #define IPV6_FLOWINFO_MASK              bpf_htonl(0x0FFFFFFF)
+    #define IPV6_FLOWLABEL_MASK             bpf_htonl(0x000FFFFF)
+    #define IPV6_FLOWLABEL_STATELESS_FLAG   bpf_htonl(0x00080000)
+
+    #define IPV6_TCLASS_MASK (IPV6_FLOWINFO_MASK & ~IPV6_FLOWLABEL_MASK)
+    #define IPV6_TCLASS_SHIFT       20
+
+    /* Number of extension headers that can be skipped */
+    #define IPV6_MAX_HEADERS 4
+
+    #define NEXTHDR_HOP             0       /* Hop-by-hop option header. */
+    #define NEXTHDR_TCP             6       /* TCP segment. */
+    #define NEXTHDR_UDP             17      /* UDP message. */
+    #define NEXTHDR_IPV6            41      /* IPv6 in IPv6 */
+    #define NEXTHDR_ROUTING         43      /* Routing header. */
+    #define NEXTHDR_FRAGMENT        44      /* Fragmentation/reassembly header. */
+    #define NEXTHDR_GRE             47      /* GRE header. */
+    #define NEXTHDR_ESP             50      /* Encapsulating security payload. */
+    #define NEXTHDR_AUTH            51      /* Authentication header. */
+    #define NEXTHDR_ICMP            58      /* ICMP for IPv6. */
+    #define NEXTHDR_NONE            59      /* No next header */
+  diff_summary: |-
+    bpf/lib/ipv6.h:
+    - Reworked loop or branch structure to reduce verifier complexity and keep the path bounded.
+    - Affected context: the touched section.
+    - Commit subject: bpf: Reduce the number of supported IPv6 extension headers.

@@ -1,0 +1,123 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-libbpf-3db758537866
+source_kind: github_commit
+source:
+  url: https://github.com/libbpf/libbpf/commit/3db758537866ea2848387ec0aeb95964946e911d
+  title: 'libbpf: Add names for auxiliary maps'
+  repository: https://github.com/libbpf/libbpf
+  commit: 3db758537866ea2848387ec0aeb95964946e911d
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-libbpf-3db758537866.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Adds names to libbpf auxiliary maps used by feature probes. The embedded
+    probes are capability checks and map-name compatibility changes, not a captured
+    verifier-reject empirical case.
+raw:
+  case_id: github-commit-libbpf-3db758537866
+  source: github_commits
+  repository: https://github.com/libbpf/libbpf
+  commit_hash: 3db758537866ea2848387ec0aeb95964946e911d
+  commit_message: 'libbpf: Add names for auxiliary maps'
+  commit_date: '2022-08-11'
+  fix_type: helper_switch
+  buggy_code: "// FILE: src/bpf.c\n// CONTEXT: int bpf_map_create(enum bpf_map_type\
+    \ map_type,\n\tconst size_t attr_sz = offsetofend(union bpf_attr, map_extra);\n\
+    \tunion bpf_attr attr;\n\tint fd;\n\n\tbump_rlimit_memlock();\n\n\tmemset(&attr,\
+    \ 0, attr_sz);\n\n\tif (!OPTS_VALID(opts, bpf_map_create_opts))\n\t\treturn libbpf_err(-EINVAL);\n\
+    \n\tattr.map_type = map_type;\n\tif (map_name)\n\t\tlibbpf_strlcpy(attr.map_name,\
+    \ map_name, sizeof(attr.map_name));\n\tattr.key_size = key_size;\n\tattr.value_size\
+    \ = value_size;\n\tattr.max_entries = max_entries;\n\n\tattr.btf_fd = OPTS_GET(opts,\
+    \ btf_fd, 0);\n\tattr.btf_key_type_id = OPTS_GET(opts, btf_key_type_id, 0);\n\t\
+    attr.btf_value_type_id = OPTS_GET(opts, btf_value_type_id, 0);\n\tattr.btf_vmlinux_value_type_id\
+    \ = OPTS_GET(opts, btf_vmlinux_value_type_id, 0);\n\n\tattr.inner_map_fd = OPTS_GET(opts,\
+    \ inner_map_fd, 0);\n\tattr.map_flags = OPTS_GET(opts, map_flags, 0);\n\n// FILE:\
+    \ src/libbpf.c\n// CONTEXT: static int probe_kern_prog_name(void)\n\nstatic int\
+    \ probe_kern_global_data(void)\n{\n\tchar *cp, errmsg[STRERR_BUFSIZE];\n\tstruct\
+    \ bpf_insn insns[] = {\n\t\tBPF_LD_MAP_VALUE(BPF_REG_1, 0, 16),\n\t\tBPF_ST_MEM(BPF_DW,\
+    \ BPF_REG_1, 0, 42),\n\t\tBPF_MOV64_IMM(BPF_REG_0, 0),\n\t\tBPF_EXIT_INSN(),\n\
+    \t};\n\tint ret, map, insn_cnt = ARRAY_SIZE(insns);\n\n\tmap = bpf_map_create(BPF_MAP_TYPE_ARRAY,\
+    \ NULL, sizeof(int), 32, 1, NULL);\n\tif (map < 0) {\n\t\tret = -errno;\n\t\t\
+    cp = libbpf_strerror_r(ret, errmsg, sizeof(errmsg));\n\t\tpr_warn(\"Error in %s():%s(%d).\
+    \ Couldn't create simple array map.\\n\",\n\t\t\t__func__, cp, -ret);\n\t\treturn\
+    \ ret;\n\t}\n\n\tinsns[0].imm = map;\n\n\tret = bpf_prog_load(BPF_PROG_TYPE_SOCKET_FILTER,\
+    \ NULL, \"GPL\", insns, insn_cnt, NULL);\n\tclose(map);\n\n// CONTEXT: static\
+    \ int probe_kern_btf_type_tag(void)\n\t\tBTF_TYPE_ENC(0, BTF_INFO_ENC(BTF_KIND_PTR,\
+    \ 0, 0), 2),\t/* [3] */\n\t};\n\n\treturn probe_fd(libbpf__load_raw_btf((char\
+    \ *)types, sizeof(types),\n\t\t\t\t\t     strs, sizeof(strs)));\n}\n\nstatic int\
+    \ probe_kern_array_mmap(void)\n{\n\tLIBBPF_OPTS(bpf_map_create_opts, opts, .map_flags\
+    \ = BPF_F_MMAPABLE);\n\tint fd;\n\n\tfd = bpf_map_create(BPF_MAP_TYPE_ARRAY, NULL,\
+    \ sizeof(int), sizeof(int), 1, &opts);\n\treturn probe_fd(fd);\n}\n\nstatic int\
+    \ probe_kern_exp_attach_type(void)\n{\n\tLIBBPF_OPTS(bpf_prog_load_opts, opts,\
+    \ .expected_attach_type = BPF_CGROUP_INET_SOCK_CREATE);\n\tstruct bpf_insn insns[]\
+    \ = {\n\t\tBPF_MOV64_IMM(BPF_REG_0, 0),\n\t\tBPF_EXIT_INSN(),\n\t};\n\tint fd,\
+    \ insn_cnt = ARRAY_SIZE(insns);\n\n\n// CONTEXT: static int probe_kern_probe_read_kernel(void)\n\
+    \treturn probe_fd(fd);\n}\n\nstatic int probe_prog_bind_map(void)\n{\n\tchar *cp,\
+    \ errmsg[STRERR_BUFSIZE];\n\tstruct bpf_insn insns[] = {\n\t\tBPF_MOV64_IMM(BPF_REG_0,\
+    \ 0),\n\t\tBPF_EXIT_INSN(),\n\t};\n\tint ret, map, prog, insn_cnt = ARRAY_SIZE(insns);\n\
+    \n\tmap = bpf_map_create(BPF_MAP_TYPE_ARRAY, NULL, sizeof(int), 32, 1, NULL);\n\
+    \tif (map < 0) {\n\t\tret = -errno;\n\t\tcp = libbpf_strerror_r(ret, errmsg, sizeof(errmsg));\n\
+    \t\tpr_warn(\"Error in %s():%s(%d). Couldn't create simple array map.\\n\",\n\t\
+    \t\t__func__, cp, -ret);\n\t\treturn ret;\n\t}\n\n\tprog = bpf_prog_load(BPF_PROG_TYPE_SOCKET_FILTER,\
+    \ NULL, \"GPL\", insns, insn_cnt, NULL);\n\tif (prog < 0) {\n\t\tclose(map);\n\
+    \t\treturn 0;"
+  fixed_code: "// FILE: src/bpf.c\n// CONTEXT: int bpf_map_create(enum bpf_map_type\
+    \ map_type,\n\tconst size_t attr_sz = offsetofend(union bpf_attr, map_extra);\n\
+    \tunion bpf_attr attr;\n\tint fd;\n\n\tbump_rlimit_memlock();\n\n\tmemset(&attr,\
+    \ 0, attr_sz);\n\n\tif (!OPTS_VALID(opts, bpf_map_create_opts))\n\t\treturn libbpf_err(-EINVAL);\n\
+    \n\tattr.map_type = map_type;\n\tif (map_name && kernel_supports(NULL, FEAT_PROG_NAME))\n\
+    \t\tlibbpf_strlcpy(attr.map_name, map_name, sizeof(attr.map_name));\n\tattr.key_size\
+    \ = key_size;\n\tattr.value_size = value_size;\n\tattr.max_entries = max_entries;\n\
+    \n\tattr.btf_fd = OPTS_GET(opts, btf_fd, 0);\n\tattr.btf_key_type_id = OPTS_GET(opts,\
+    \ btf_key_type_id, 0);\n\tattr.btf_value_type_id = OPTS_GET(opts, btf_value_type_id,\
+    \ 0);\n\tattr.btf_vmlinux_value_type_id = OPTS_GET(opts, btf_vmlinux_value_type_id,\
+    \ 0);\n\n\tattr.inner_map_fd = OPTS_GET(opts, inner_map_fd, 0);\n\tattr.map_flags\
+    \ = OPTS_GET(opts, map_flags, 0);\n\n// FILE: src/libbpf.c\n// CONTEXT: static\
+    \ int probe_kern_prog_name(void)\n\nstatic int probe_kern_global_data(void)\n\
+    {\n\tchar *cp, errmsg[STRERR_BUFSIZE];\n\tstruct bpf_insn insns[] = {\n\t\tBPF_LD_MAP_VALUE(BPF_REG_1,\
+    \ 0, 16),\n\t\tBPF_ST_MEM(BPF_DW, BPF_REG_1, 0, 42),\n\t\tBPF_MOV64_IMM(BPF_REG_0,\
+    \ 0),\n\t\tBPF_EXIT_INSN(),\n\t};\n\tint ret, map, insn_cnt = ARRAY_SIZE(insns);\n\
+    \n\tmap = bpf_map_create(BPF_MAP_TYPE_ARRAY, \"libbpf_global\", sizeof(int), 32,\
+    \ 1, NULL);\n\tif (map < 0) {\n\t\tret = -errno;\n\t\tcp = libbpf_strerror_r(ret,\
+    \ errmsg, sizeof(errmsg));\n\t\tpr_warn(\"Error in %s():%s(%d). Couldn't create\
+    \ simple array map.\\n\",\n\t\t\t__func__, cp, -ret);\n\t\treturn ret;\n\t}\n\n\
+    \tinsns[0].imm = map;\n\n\tret = bpf_prog_load(BPF_PROG_TYPE_SOCKET_FILTER, NULL,\
+    \ \"GPL\", insns, insn_cnt, NULL);\n\tclose(map);\n\n// CONTEXT: static int probe_kern_btf_type_tag(void)\n\
+    \t\tBTF_TYPE_ENC(0, BTF_INFO_ENC(BTF_KIND_PTR, 0, 0), 2),\t/* [3] */\n\t};\n\n\
+    \treturn probe_fd(libbpf__load_raw_btf((char *)types, sizeof(types),\n\t\t\t\t\
+    \t     strs, sizeof(strs)));\n}\n\nstatic int probe_kern_array_mmap(void)\n{\n\
+    \tLIBBPF_OPTS(bpf_map_create_opts, opts, .map_flags = BPF_F_MMAPABLE);\n\tint\
+    \ fd;\n\n\tfd = bpf_map_create(BPF_MAP_TYPE_ARRAY, \"libbpf_mmap\", sizeof(int),\
+    \ sizeof(int), 1, &opts);\n\treturn probe_fd(fd);\n}\n\nstatic int probe_kern_exp_attach_type(void)\n\
+    {\n\tLIBBPF_OPTS(bpf_prog_load_opts, opts, .expected_attach_type = BPF_CGROUP_INET_SOCK_CREATE);\n\
+    \tstruct bpf_insn insns[] = {\n\t\tBPF_MOV64_IMM(BPF_REG_0, 0),\n\t\tBPF_EXIT_INSN(),\n\
+    \t};\n\tint fd, insn_cnt = ARRAY_SIZE(insns);\n\n\n// CONTEXT: static int probe_kern_probe_read_kernel(void)\n\
+    \treturn probe_fd(fd);\n}\n\nstatic int probe_prog_bind_map(void)\n{\n\tchar *cp,\
+    \ errmsg[STRERR_BUFSIZE];\n\tstruct bpf_insn insns[] = {\n\t\tBPF_MOV64_IMM(BPF_REG_0,\
+    \ 0),\n\t\tBPF_EXIT_INSN(),\n\t};\n\tint ret, map, prog, insn_cnt = ARRAY_SIZE(insns);\n\
+    \n\tmap = bpf_map_create(BPF_MAP_TYPE_ARRAY, \"libbpf_det_bind\", sizeof(int),\
+    \ 32, 1, NULL);\n\tif (map < 0) {\n\t\tret = -errno;\n\t\tcp = libbpf_strerror_r(ret,\
+    \ errmsg, sizeof(errmsg));\n\t\tpr_warn(\"Error in %s():%s(%d). Couldn't create\
+    \ simple array map.\\n\",\n\t\t\t__func__, cp, -ret);\n\t\treturn ret;\n\t}\n\n\
+    \tprog = bpf_prog_load(BPF_PROG_TYPE_SOCKET_FILTER, NULL, \"GPL\", insns, insn_cnt,\
+    \ NULL);\n\tif (prog < 0) {\n\t\tclose(map);\n\t\treturn 0;"
+  diff_summary: |-
+    src/bpf.c:
+    - Gated or switched helper usage so unsupported helpers do not reach kernels that reject them.
+    - Affected context: int bpf_map_create(enum bpf_map_type map_type,.
+    src/libbpf.c:
+    - Gated or switched helper usage so unsupported helpers do not reach kernels that reject them.
+    - Affected context: static int probe_kern_prog_name(void), static int probe_kern_btf_type_tag(void), static int probe_kern_probe_read_kernel(void).
+    - Commit subject: libbpf: Add names for auxiliary maps.

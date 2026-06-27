@@ -1,0 +1,101 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-239711b71174
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/239711b711740f515f301766ef20e45bbbf5621d
+  title: 'bpf: implement unaligned builtin memcmp for small sizes'
+  repository: https://github.com/cilium/cilium
+  commit: 239711b711740f515f301766ef20e45bbbf5621d
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-239711b71174.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: environment_required
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Replaces direct builtin memcmp use with Cilium's custom small-size implementation
+    for compiler/verifier compatibility. Faithful replay depends on historical clang
+    code generation and Cilium builtins context.
+raw:
+  case_id: github-commit-cilium-239711b71174
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: 239711b711740f515f301766ef20e45bbbf5621d
+  commit_message: 'bpf: implement unaligned builtin memcmp for small sizes'
+  commit_date: '2020-05-19'
+  fix_type: inline_hint
+  buggy_code: "// FILE: bpf/include/bpf/builtins.h\n#include \"compiler.h\"\n\n#ifndef\
+    \ __non_bpf_context\n\n#ifndef lock_xadd\n# define lock_xadd(P, V)\t((void) __sync_fetch_and_add((P),\
+    \ (V)))\n#endif\n\n/* Memory iterators used below. */\n#define __it(x, op) (x\
+    \ -= sizeof(__u##op))\n#define __it_set(a, op) (*(__u##op *)__it(a, op)) = 0\n\
+    #define __it_mov(a, b, op) (*(__u##op *)__it(a, op)) = (*(__u##op *)__it(b, op))\n\
+    \nstatic __always_inline __maybe_unused void\n__bpf_memset_builtin(void *d, __u8\
+    \ c, __u64 len)\n{\n\t/* Everything non-zero or non-const (currently unsupported)\
+    \ as c\n\t * gets handled here.\n\t */\n\t__builtin_memset(d, c, len);\n}\n\n\
+    static __always_inline void __bpf_memzero(void *d, __u64 len)\n{\n\n// CONTEXT:\
+    \ __bpf_no_builtin_memcpy(void *d __maybe_unused, const void *s __maybe_unused,\n\
+    \ */\n#define __align_stack_8\t\t__aligned(8)\n\n/* Redirect any direct use in\
+    \ our code to throw an error. */\n#define __builtin_memcpy\t__bpf_no_builtin_memcpy\n\
+    \nstatic __always_inline __nobuiltin(\"memcpy\") void memcpy(void *d, const void\
+    \ *s,\n\t\t\t\t\t\t\t __u64 len)\n{\n\treturn __bpf_memcpy(d, s, len);\n}\n\n\
+    #ifndef memmove\n# define memmove(D, S, N)\t__builtin_memmove((D), (S), (N))\n\
+    #endif\n\n/* NOTE: https://llvm.org/bugs/show_bug.cgi?id=26218 */\n#ifndef memcmp\n\
+    # define memcmp(A, B, N)\t__builtin_memcmp((A), (B), (N))\n#endif\n\n#endif /*\
+    \ __non_bpf_context */\n#endif /* __BPF_BUILTINS__ */"
+  fixed_code: "// FILE: bpf/include/bpf/builtins.h\n#include \"compiler.h\"\n\n#ifndef\
+    \ __non_bpf_context\n\n#ifndef lock_xadd\n# define lock_xadd(P, V)\t((void) __sync_fetch_and_add((P),\
+    \ (V)))\n#endif\n\n/* Memory iterators used below. */\n#define __it(x, op) (x\
+    \ -= sizeof(__u##op))\n#define __it_set(a, op) (*(__u##op *)__it(a, op)) = 0\n\
+    #define __it_mov(a, b, op) (*(__u##op *)__it(a, op)) = (*(__u##op *)__it(b, op))\n\
+    #define __it_xor(a, b, r, op) r |= (*(__u##op *)__it(a, op)) ^ (*(__u##op *)__it(b,\
+    \ op))\n\nstatic __always_inline __maybe_unused void\n__bpf_memset_builtin(void\
+    \ *d, __u8 c, __u64 len)\n{\n\t/* Everything non-zero or non-const (currently\
+    \ unsupported) as c\n\t * gets handled here.\n\t */\n\t__builtin_memset(d, c,\
+    \ len);\n}\n\nstatic __always_inline void __bpf_memzero(void *d, __u64 len)\n\
+    {\n\n// CONTEXT: __bpf_no_builtin_memcpy(void *d __maybe_unused, const void *s\
+    \ __maybe_unused,\n */\n#define __align_stack_8\t\t__aligned(8)\n\n/* Redirect\
+    \ any direct use in our code to throw an error. */\n#define __builtin_memcpy\t\
+    __bpf_no_builtin_memcpy\n\nstatic __always_inline __nobuiltin(\"memcpy\") void\
+    \ memcpy(void *d, const void *s,\n\t\t\t\t\t\t\t __u64 len)\n{\n\treturn __bpf_memcpy(d,\
+    \ s, len);\n}\n\nstatic __always_inline __maybe_unused __u64\n__bpf_memcmp_builtin(const\
+    \ void *x, const void *y, __u64 len)\n{\n\t/* Explicit opt-in for __builtin_memcmp().\
+    \ */\n\treturn __builtin_memcmp(x, y, len);\n}\n\nstatic __always_inline __u64\
+    \ __bpf_memcmp(const void *x, const void *y,\n\t\t\t\t\t  __u64 len)\n{\n#if __clang_major__\
+    \ >= 10\n\t__u64 r = 0;\n\n\tif (!__builtin_constant_p(len))\n\t\t__throw_build_bug();\n\
+    \n\tx += len;\n\ty += len;\n\n\tswitch (len) {\n\tcase 32:         __it_xor(x,\
+    \ y, r, 64);\n\tcase 24: jmp_24: __it_xor(x, y, r, 64);\n\tcase 16: jmp_16: __it_xor(x,\
+    \ y, r, 64);\n\tcase  8: jmp_8:  __it_xor(x, y, r, 64);\n\t\tbreak;\n\n\tcase\
+    \ 30: __it_xor(x, y, r, 16); __it_xor(x, y, r, 32); goto jmp_24;\n\tcase 22: __it_xor(x,\
+    \ y, r, 16); __it_xor(x, y, r, 32); goto jmp_16;\n\tcase 14: __it_xor(x, y, r,\
+    \ 16); __it_xor(x, y, r, 32); goto jmp_8;\n\tcase  6: __it_xor(x, y, r, 16); __it_xor(x,\
+    \ y, r, 32);\n\t\t break;\n\n\tcase 28: __it_xor(x, y, r, 32); goto jmp_24;\n\t\
+    case 20: __it_xor(x, y, r, 32); goto jmp_16;\n\tcase 12: __it_xor(x, y, r, 32);\
+    \ goto jmp_8;\n\tcase  4: __it_xor(x, y, r, 32);\n\t\t break;\n\n\tcase 26: __it_xor(x,\
+    \ y, r, 16); goto jmp_24;\n\tcase 18: __it_xor(x, y, r, 16); goto jmp_16;\n\t\
+    case 10: __it_xor(x, y, r, 16); goto jmp_8;\n\tcase  2: __it_xor(x, y, r, 16);\n\
+    \t\t break;\n\n\tcase  1: __it_xor(x, y, r, 8);\n\t\tbreak;\n\n\tdefault:\n\t\t\
+    __throw_build_bug();\n\t}\n\n\treturn r;\n#else\n\treturn __bpf_memcmp_builtin(x,\
+    \ y, len);\n#endif\n}\n\nstatic __always_inline __maybe_unused __u64\n__bpf_no_builtin_memcmp(const\
+    \ void *x __maybe_unused,\n\t\t\tconst void *y __maybe_unused, __u64 len __maybe_unused)\n\
+    {\n\t__throw_build_bug();\n\treturn 0;\n}\n\n/* Redirect any direct use in our\
+    \ code to throw an error. */\n#define __builtin_memcmp\t__bpf_no_builtin_memcmp\n\
+    \n/* Modified for our needs in that we only return either zero (x and y\n * are\
+    \ equal) or non-zero (x and y are non-equal).\n */\nstatic __always_inline __nobuiltin(\"\
+    memcmp\") __u64 memcmp(const void *x,\n\t\t\t\t\t\t\t  const void *y,\n\t\t\t\t\
+    \t\t\t  __u64 len)\n{\n\treturn __bpf_memcmp(x, y, len);\n}\n\n#ifndef memmove\n\
+    # define memmove(D, S, N)\t__builtin_memmove((D), (S), (N))\n#endif\n\n#endif\
+    \ /* __non_bpf_context */\n#endif /* __BPF_BUILTINS__ */"
+  diff_summary: |-
+    bpf/include/bpf/builtins.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: __bpf_no_builtin_memcpy(void *d __maybe_unused, const void *s __maybe_unused,.
+    - Commit subject: bpf: implement unaligned builtin memcmp for small sizes.

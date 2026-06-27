@@ -1,0 +1,81 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-libbpf-d9f9fd5b2222
+source_kind: github_commit
+source:
+  url: https://github.com/libbpf/libbpf/commit/d9f9fd5b22223ae69c62e083da6093d95a0db799
+  title: 'libbpf: detect broken PID filtering logic for multi-uprobe'
+  repository: https://github.com/libbpf/libbpf
+  commit: d9f9fd5b22223ae69c62e083da6093d95a0db799
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-libbpf-d9f9fd5b2222.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: environment_required
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Raw has_verifier_log=false, source_snippet_count=0. The change probes kernel
+    multi-uprobe PID filtering by loading a tiny program and attempting an invalid
+    uprobe_multi attach; reproduction depends on a kernel with the broken/fixed PID-filtering
+    behavior and is attach-feature validation, not a captured verifier reject.
+raw:
+  case_id: github-commit-libbpf-d9f9fd5b2222
+  source: github_commits
+  repository: https://github.com/libbpf/libbpf
+  commit_hash: d9f9fd5b22223ae69c62e083da6093d95a0db799
+  commit_message: 'libbpf: detect broken PID filtering logic for multi-uprobe'
+  commit_date: '2024-05-21'
+  fix_type: bounds_check
+  buggy_code: "// FILE: src/features.c\n// CONTEXT: static int probe_uprobe_multi_link(int\
+    \ token_fd)\n\t\t\t\tinsns, ARRAY_SIZE(insns), &load_opts);\n\tif (prog_fd < 0)\n\
+    \t\treturn -errno;\n\n\t/* Creating uprobe in '/' binary should fail with -EBADF.\
+    \ */\n\tlink_opts.uprobe_multi.path = \"/\";\n\tlink_opts.uprobe_multi.offsets\
+    \ = &offset;\n\tlink_opts.uprobe_multi.cnt = 1;\n\n\tlink_fd = bpf_link_create(prog_fd,\
+    \ -1, BPF_TRACE_UPROBE_MULTI, &link_opts);\n\terr = -errno; /* close() can clobber\
+    \ errno */\n\n\tif (link_fd >= 0)\n\t\tclose(link_fd);\n\tclose(prog_fd);\n\n\t\
+    return link_fd < 0 && err == -EBADF;\n}\n\nstatic int probe_kern_bpf_cookie(int\
+    \ token_fd)\n{\n\tstruct bpf_insn insns[] = {\n\t\tBPF_RAW_INSN(BPF_JMP | BPF_CALL,\
+    \ 0, 0, 0, BPF_FUNC_get_attach_cookie),\n\t\tBPF_EXIT_INSN(),\n\t};\n\tLIBBPF_OPTS(bpf_prog_load_opts,\
+    \ opts,\n\t\t.token_fd = token_fd,\n\t\t.prog_flags = token_fd ? BPF_F_TOKEN_FD\
+    \ : 0,\n\t);"
+  fixed_code: "// FILE: src/features.c\n// CONTEXT: static int probe_uprobe_multi_link(int\
+    \ token_fd)\n\t\t\t\tinsns, ARRAY_SIZE(insns), &load_opts);\n\tif (prog_fd < 0)\n\
+    \t\treturn -errno;\n\n\t/* Creating uprobe in '/' binary should fail with -EBADF.\
+    \ */\n\tlink_opts.uprobe_multi.path = \"/\";\n\tlink_opts.uprobe_multi.offsets\
+    \ = &offset;\n\tlink_opts.uprobe_multi.cnt = 1;\n\n\tlink_fd = bpf_link_create(prog_fd,\
+    \ -1, BPF_TRACE_UPROBE_MULTI, &link_opts);\n\terr = -errno; /* close() can clobber\
+    \ errno */\n\n\tif (link_fd >= 0 || err != -EBADF) {\n\t\tclose(link_fd);\n\t\t\
+    close(prog_fd);\n\t\treturn 0;\n\t}\n\n\t/* Initial multi-uprobe support in kernel\
+    \ didn't handle PID filtering\n\t * correctly (it was doing thread filtering,\
+    \ not process filtering).\n\t * So now we'll detect if PID filtering logic was\
+    \ fixed, and, if not,\n\t * we'll pretend multi-uprobes are not supported, if\
+    \ not.\n\t * Multi-uprobes are used in USDT attachment logic, and we need to be\n\
+    \t * conservative here, because multi-uprobe selection happens early at\n\t *\
+    \ load time, while the use of PID filtering is known late at\n\t * attachment\
+    \ time, at which point it's too late to undo multi-uprobe\n\t * selection.\n\t\
+    \ *\n\t * Creating uprobe with pid == -1 for (invalid) '/' binary will fail\n\t\
+    \ * early with -EINVAL on kernels with fixed PID filtering logic;\n\t * otherwise\
+    \ -ESRCH would be returned if passed correct binary path\n\t * (but we'll just\
+    \ get -BADF, of course).\n\t */\n\tlink_opts.uprobe_multi.pid = -1; /* invalid\
+    \ PID */\n\tlink_opts.uprobe_multi.path = \"/\"; /* invalid path */\n\tlink_opts.uprobe_multi.offsets\
+    \ = &offset;\n\tlink_opts.uprobe_multi.cnt = 1;\n\n\tlink_fd = bpf_link_create(prog_fd,\
+    \ -1, BPF_TRACE_UPROBE_MULTI, &link_opts);\n\terr = -errno; /* close() can clobber\
+    \ errno */\n\n\tif (link_fd >= 0)\n\t\tclose(link_fd);\n\tclose(prog_fd);\n\n\t\
+    return link_fd < 0 && err == -EINVAL;\n}\n\nstatic int probe_kern_bpf_cookie(int\
+    \ token_fd)\n{\n\tstruct bpf_insn insns[] = {\n\t\tBPF_RAW_INSN(BPF_JMP | BPF_CALL,\
+    \ 0, 0, 0, BPF_FUNC_get_attach_cookie),\n\t\tBPF_EXIT_INSN(),\n\t};\n\tLIBBPF_OPTS(bpf_prog_load_opts,\
+    \ opts,\n\t\t.token_fd = token_fd,\n\t\t.prog_flags = token_fd ? BPF_F_TOKEN_FD\
+    \ : 0,\n\t);"
+  diff_summary: |-
+    src/features.c:
+    - Added explicit bounds or range guards so the verifier can prove the access size and offset.
+    - Affected context: static int probe_uprobe_multi_link(int token_fd).
+    - Commit subject: libbpf: detect broken PID filtering logic for multi-uprobe.

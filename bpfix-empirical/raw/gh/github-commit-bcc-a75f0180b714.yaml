@@ -1,0 +1,63 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-bcc-a75f0180b714
+source_kind: github_commit
+source:
+  url: https://github.com/iovisor/bcc/commit/a75f0180b71484c82855a8e9f98a9393fcaa5e22
+  title: 'libbpf-tools/tcprtt: Fix out-of-bounds accessing of inet_sock struct.'
+  repository: https://github.com/iovisor/bcc
+  commit: a75f0180b71484c82855a8e9f98a9393fcaa5e22
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-bcc-a75f0180b714.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: replay_valid
+  case_id: github-commit-bcc-a75f0180b714
+  case_path: cases/github-commit-bcc-a75f0180b714
+  artifact_path: cases/github-commit-bcc-a75f0180b714
+  reason: admitted_to_bpfix_bench_cases
+  verifier_status: null
+  captured_error: null
+  verifier_error_match: null
+raw:
+  case_id: github-commit-bcc-a75f0180b714
+  source: github_commits
+  repository: https://github.com/iovisor/bcc
+  commit_hash: a75f0180b71484c82855a8e9f98a9393fcaa5e22
+  commit_message: 'libbpf-tools/tcprtt: Fix out-of-bounds accessing of inet_sock struct.'
+  commit_date: '2023-03-21'
+  fix_type: bounds_check
+  buggy_code: "// FILE: libbpf-tools/tcprtt.bpf.c\n// CONTEXT: struct {\n\nstatic\
+    \ struct hist zero;\n\nSEC(\"fentry/tcp_rcv_established\")\nint BPF_PROG(tcp_rcv,\
+    \ struct sock *sk)\n{\n\tconst struct inet_sock *inet = (struct inet_sock *)(sk);\n\
+    \tstruct tcp_sock *ts;\n\tstruct hist *histp;\n\tu64 key, slot;\n\tu32 srtt;\n\
+    \n\tif (targ_sport && targ_sport != inet->inet_sport)\n\t\treturn 0;\n\tif (targ_dport\
+    \ && targ_dport != sk->__sk_common.skc_dport)\n\t\treturn 0;\n\tif (targ_saddr\
+    \ && targ_saddr != inet->inet_saddr)\n\t\treturn 0;\n\tif (targ_daddr && targ_daddr\
+    \ != sk->__sk_common.skc_daddr)\n\t\treturn 0;\n\n\tif (targ_laddr_hist)\n\t\t\
+    key = inet->inet_saddr;\n\telse if (targ_raddr_hist)\n\t\tkey = inet->sk.__sk_common.skc_daddr;\n\
+    \telse\n\t\tkey = 0;\n\thistp = bpf_map_lookup_or_try_init(&hists, &key, &zero);\n\
+    \tif (!histp)"
+  fixed_code: "// FILE: libbpf-tools/tcprtt.bpf.c\n// CONTEXT: struct {\n\nstatic\
+    \ struct hist zero;\n\nSEC(\"fentry/tcp_rcv_established\")\nint BPF_PROG(tcp_rcv,\
+    \ struct sock *sk)\n{\n\tconst struct inet_sock *inet = (struct inet_sock *)(sk);\n\
+    \tstruct tcp_sock *ts;\n\tstruct hist *histp;\n\tu64 key, slot;\n\tu32 srtt;\n\
+    \n\tif (targ_sport && targ_sport != BPF_CORE_READ(inet, inet_sport))\n\t\treturn\
+    \ 0;\n\tif (targ_dport && targ_dport != sk->__sk_common.skc_dport)\n\t\treturn\
+    \ 0;\n\tif (targ_saddr && targ_saddr != BPF_CORE_READ(inet, inet_saddr))\n\t\t\
+    return 0;\n\tif (targ_daddr && targ_daddr != sk->__sk_common.skc_daddr)\n\t\t\
+    return 0;\n\n\tif (targ_laddr_hist)\n\t\tkey = inet->inet_saddr;\n\telse if (targ_raddr_hist)\n\
+    \t\tkey = inet->sk.__sk_common.skc_daddr;\n\telse\n\t\tkey = 0;\n\thistp = bpf_map_lookup_or_try_init(&hists,\
+    \ &key, &zero);\n\tif (!histp)"
+  diff_summary: |-
+    libbpf-tools/tcprtt.bpf.c:
+    - Added explicit bounds or range guards so the verifier can prove the access size and offset.
+    - Affected context: struct {.
+    - Commit subject: libbpf-tools/tcprtt: Fix out-of-bounds accessing of inet_sock struct..

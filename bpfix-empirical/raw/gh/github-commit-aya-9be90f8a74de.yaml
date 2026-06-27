@@ -1,0 +1,95 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-aya-9be90f8a74de
+source_kind: github_commit
+source:
+  url: https://github.com/aya-rs/aya/commit/9be90f8a74de26de16a5cb79206f027d0cbed377
+  title: 'ebpf: Ensure the bounds of log buffer'
+  repository: https://github.com/aya-rs/aya
+  commit: 9be90f8a74de26de16a5cb79206f027d0cbed377
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-aya-9be90f8a74de.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: replay_valid
+  case_id: github-commit-aya-9be90f8a74de
+  case_path: cases/github-commit-aya-9be90f8a74de
+  artifact_path: cases/github-commit-aya-9be90f8a74de
+  reason: admitted_to_bpfix_bench_cases
+raw:
+  case_id: github-commit-aya-9be90f8a74de
+  source: github_commits
+  repository: https://github.com/aya-rs/aya
+  commit_hash: 9be90f8a74de26de16a5cb79206f027d0cbed377
+  commit_message: 'ebpf: Ensure the bounds of log buffer'
+  commit_date: '2022-05-26'
+  fix_type: other
+  buggy_code: |-
+    // FILE: ebpf/aya-log-ebpf-macros/src/expand.rs
+    // CONTEXT: pub(crate) fn log(args: LogArgs, level: Option<TokenStream>) -> Result<TokenStre
+            ));
+        };
+        let format_string = args.format_string;
+
+        let (num_args, write_args) = match args.formatting_args {
+            Some(formatting_args) => {
+                let formatting_exprs = formatting_args.iter();
+                let num_args = formatting_exprs.len();
+
+                let write_args = quote! {{
+                    use ::aya_log_ebpf::WriteToBuf;
+                    Ok::<_, ()>(record_len) #( .and_then(|record_len| {
+                        { #formatting_exprs }.write(&mut buf.buf[record_len..]).map(|len| record_len + len)
+                    }) )*
+                }};
+
+                (num_args, write_args)
+            }
+            None => (0, quote! {}),
+        };
+
+        // The way of writing to the perf buffer is different depending on whether
+        // we have variadic arguments or not.
+        let write_to_perf_buffer = if num_args > 0 {
+  fixed_code: |-
+    // FILE: ebpf/aya-log-ebpf-macros/src/expand.rs
+    // CONTEXT: pub(crate) fn log(args: LogArgs, level: Option<TokenStream>) -> Result<TokenStre
+            ));
+        };
+        let format_string = args.format_string;
+
+        let (num_args, write_args) = match args.formatting_args {
+            Some(formatting_args) => {
+                let formatting_exprs = formatting_args.iter();
+                let num_args = formatting_exprs.len();
+
+                let write_args = quote! {{
+                    use ::aya_log_ebpf::WriteToBuf;
+                    Ok::<_, ()>(record_len) #( .and_then(|record_len| {
+                        if record_len >= buf.buf.len() {
+                            return Err(());
+                        }
+                        { #formatting_exprs }.write(&mut buf.buf[record_len..]).map(|len| record_len + len)
+                    }) )*
+                }};
+
+                (num_args, write_args)
+            }
+            None => (0, quote! {}),
+        };
+
+        // The way of writing to the perf buffer is different depending on whether
+        // we have variadic arguments or not.
+        let write_to_perf_buffer = if num_args > 0 {
+  diff_summary: |-
+    ebpf/aya-log-ebpf-macros/src/expand.rs:
+    - Applied a small verifier-related code change captured by the exact before/after snippets below.
+    - Affected context: pub(crate) fn log(args: LogArgs, level: Option<TokenStream>) -> Result<TokenStre.
+    - Commit subject: ebpf: Ensure the bounds of log buffer.

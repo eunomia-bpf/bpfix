@@ -1,0 +1,74 @@
+schema_version: bpfix.raw_external/v1
+raw_id: stackoverflow-72554292
+source_kind: stackoverflow
+source:
+  url: https://stackoverflow.com/questions/72554292/how-to-generate-delay-using-ebpf-kernel-program
+  title: How to generate delay using eBPF kernel program
+  repository: null
+  commit: null
+  collected_at: '2026-04-30T00:51:16+00:00'
+collector:
+  original_path: bpfix-empirical/raw/so/stackoverflow-72554292.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: true
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: false
+  has_fixed_code: false
+  has_fix_description: false
+reproduction:
+  status: missing_verifier_log
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: no_captured_verifier_log_or_concrete_source
+raw:
+  case_id: stackoverflow-72554292
+  source: stackoverflow
+  collected_at: '2026-04-30T00:51:16+00:00'
+  question:
+    question_id: 72554292
+    title: How to generate delay using eBPF kernel program
+    url: https://stackoverflow.com/questions/72554292/how-to-generate-delay-using-ebpf-kernel-program
+    tags:
+    - ebpf
+    - xdp-ebpf
+    score: 0
+    answer_count: 1
+    is_answered: true
+  verifier_log:
+    blocks: []
+    combined: ''
+  source_snippets: []
+  question_body_text: "I'm trying to generate delay in acknowledgement using eBPF\
+    \ kernel program for egress packet.\nI'm running the python+c program using bcc.\n\
+    i tried mdelay/msleep/udelay etc functions with delay.h library in c, it gives\
+    \ me LLVM error that \"Program using external function which can't be resolved\"\
+    .\nThen I tried implementing sleep functionality :\nTaking 3 variables:\ntprev\
+    \ (which get the current time at starting of prog)\ntnow(this gets current time\
+    \ as the loop starts and gets updates in each iteration with current time)\ntimer:\
+    \ this is the duration for which we want program to be delayed.\nthe while loop\
+    \ is: while((tnow - tprev) \u2264 timer)\nbut ebpf prog treat it as n infinite\
+    \ loop and gives error that infinite loop detected.\nWhereas it's not an infinite\
+    \ loop.\nIs there a way to introduce delay in Ack or delay in general in eBPF\
+    \ program and How?"
+  selected_answer:
+    answer_id: 72560284
+    url: https://stackoverflow.com/questions/72554292/how-to-generate-delay-using-ebpf-kernel-program#72560284
+    is_accepted: false
+    score: 3
+    body_text: |-
+      The short answer is no(not in eBPF). At least not as of kernel 5.18. This is because eBPF programs, particularly those running in the network stack are often called from code that should never sleep.
+      What perhaps is most useful in your case is that TC(Traffic Control) programs can ask TC to delay a packet for you. The actual delay happens outside of the eBPF program, in the TC subsystem. You can request TC to send the packet at a given time by setting __sk_buff->tstamp. Note: this only works for Egress(outgoing) traffic not Ingress(incomming) traffic. This behavior can also be triggered via TC configuration without using eBPF.
+      tried mdelay/msleep/udelay etc functions with delay.h library in c, it gives me LLVM error that "Program using external function which can't be resolved".
+      Yes, you can't use the stdlib in eBPF programs since they use kernel facilities which are unavailable in eBPF.
+      Side notes:
+      We do have "sleepable" programs, but only syscall, LSM and tracing programs can be sleepable. "sleepable" doesn't mean we can call some sort of sleep helper with a duration, it means we can call helper functions which in turn may sleep(for example bpf_copy_from_user_stack). So you don't have control over how long the program will sleep.
+      Another time related feature is BPF timers, which actually allow you to set a timer and execute a callback after a given time. The limitation here is that you can't pass any arguments to this callback, and it is called without a context. So after setting the timer, the original program will continue and return as usual.
+    fix_description: The short answer is no(not in eBPF). At least not as of kernel
+      5.18. This is because eBPF programs, particularly those running in the network
+      stack are often called from code that should never sleep. tried mdelay/msleep/udelay
+      etc functions with delay.h library in c, it gives me LLVM error that "Program
+      using external function which can't be resolved". Yes, you can't use the stdlib
+      in eBPF programs since they use kernel facilities which are unavailable in eBPF.

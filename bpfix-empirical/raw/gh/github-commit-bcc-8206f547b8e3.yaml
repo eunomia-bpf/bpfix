@@ -1,0 +1,189 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-bcc-8206f547b8e3
+source_kind: github_commit
+source:
+  url: https://github.com/iovisor/bcc/commit/8206f547b8e3a669db49a3326affbef7012fec49
+  title: generate proper usdt code to prevent llvm meddling with ctx->#fields
+  repository: https://github.com/iovisor/bcc
+  commit: 8206f547b8e3a669db49a3326affbef7012fec49
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-bcc-8206f547b8e3.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: environment_required
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: USDT generated-code barrier/volatile change for LLVM optimization behavior.
+    Raw record has no captured verifier log and no standalone generated rejected program.
+  verifier_status: null
+  captured_error: null
+  verifier_error_match: null
+raw:
+  case_id: github-commit-bcc-8206f547b8e3
+  source: github_commits
+  repository: https://github.com/iovisor/bcc
+  commit_hash: 8206f547b8e3a669db49a3326affbef7012fec49
+  commit_message: generate proper usdt code to prevent llvm meddling with ctx->#fields
+  commit_date: '2017-07-18'
+  fix_type: volatile_hack
+  buggy_code: |-
+    // FILE: src/cc/usdt.h
+
+    struct bcc_usdt;
+
+    namespace USDT {
+
+    using std::experimental::optional;
+    using std::experimental::nullopt;
+    class ArgumentParser;
+
+    static const std::string USDT_PROGRAM_HEADER =
+        "#include <uapi/linux/ptrace.h>\n";
+
+    class Argument {
+    private:
+      optional<int> arg_size_;
+      optional<int> constant_;
+      optional<int> deref_offset_;
+      optional<std::string> deref_ident_;
+      optional<std::string> base_register_name_;
+      optional<std::string> index_register_name_;
+      optional<int> scale_;
+
+      bool get_global_address(uint64_t *address, const std::string &binpath,
+                              const optional<int> &pid) const;
+
+    // FILE: src/cc/usdt_args.cc
+    // CONTEXT: bool Argument::get_global_address(uint64_t *address, const std::string &binpath,
+    }
+
+    bool Argument::assign_to_local(std::ostream &stream,
+                                   const std::string &local_name,
+                                   const std::string &binpath,
+                                   const optional<int> &pid) const {
+      if (constant_) {
+        tfm::format(stream, "%s = %d;", local_name, *constant_);
+        return true;
+      }
+
+      if (!deref_offset_) {
+        tfm::format(stream, "%s = *(volatile %s *)&ctx->%s;", local_name, ctype(),
+                    *base_register_name_);
+        return true;
+      }
+
+      if (deref_offset_ && !deref_ident_) {
+        tfm::format(stream, "{ u64 __addr = (*(volatile u64 *)&ctx->%s) + (%d)",
+                    *base_register_name_, *deref_offset_);
+        if (index_register_name_) {
+          int scale = scale_.value_or(1);
+          tfm::format(stream, " + ((*(volatile u64 *)&ctx->%s) * %d);", *index_register_name_, scale);
+        } else {
+          tfm::format(stream, ";");
+        }
+        tfm::format(stream,
+                    "%s __res = 0x0; "
+                    "bpf_probe_read(&__res, sizeof(__res), (void *)__addr); "
+                    "%s = __res; }",
+                    ctype(), local_name);
+        return true;
+      }
+
+      if (deref_offset_ && deref_ident_ && *base_register_name_ == "ip") {
+        uint64_t global_address;
+        if (!get_global_address(&global_address, binpath, pid))
+          return false;
+  fixed_code: |-
+    // FILE: src/cc/usdt.h
+
+    struct bcc_usdt;
+
+    namespace USDT {
+
+    using std::experimental::optional;
+    using std::experimental::nullopt;
+    class ArgumentParser;
+
+    static const std::string USDT_PROGRAM_HEADER =
+        "#include <uapi/linux/ptrace.h>\n";
+
+    static const std::string COMPILER_BARRIER =
+        "__asm__ __volatile__(\"\": : :\"memory\");";
+
+    class Argument {
+    private:
+      optional<int> arg_size_;
+      optional<int> constant_;
+      optional<int> deref_offset_;
+      optional<std::string> deref_ident_;
+      optional<std::string> base_register_name_;
+      optional<std::string> index_register_name_;
+      optional<int> scale_;
+
+      bool get_global_address(uint64_t *address, const std::string &binpath,
+                              const optional<int> &pid) const;
+
+    // FILE: src/cc/usdt_args.cc
+    // CONTEXT: bool Argument::get_global_address(uint64_t *address, const std::string &binpath,
+    }
+
+    bool Argument::assign_to_local(std::ostream &stream,
+                                   const std::string &local_name,
+                                   const std::string &binpath,
+                                   const optional<int> &pid) const {
+      if (constant_) {
+        tfm::format(stream, "%s = %d;", local_name, *constant_);
+        return true;
+      }
+
+      if (!deref_offset_) {
+        tfm::format(stream, "%s = ctx->%s;", local_name, *base_register_name_);
+        // Put a compiler barrier to prevent optimization
+        // like llvm SimplifyCFG SinkThenElseCodeToEnd
+        // Volatile marking is not sufficient to prevent such optimization.
+        tfm::format(stream, " %s", COMPILER_BARRIER);
+        return true;
+      }
+
+      if (deref_offset_ && !deref_ident_) {
+        tfm::format(stream, "{ u64 __addr = ctx->%s + %d",
+                    *base_register_name_, *deref_offset_);
+        if (index_register_name_) {
+          int scale = scale_.value_or(1);
+          tfm::format(stream, " + (ctx->%s * %d);", *index_register_name_, scale);
+        } else {
+          tfm::format(stream, ";");
+        }
+        // Theoretically, llvm SimplifyCFG SinkThenElseCodeToEnd may still
+        // sink bpf_probe_read call, so put a barrier here to prevent sinking
+        // of ctx->#fields.
+        tfm::format(stream, " %s ", COMPILER_BARRIER);
+        tfm::format(stream,
+                    "%s __res = 0x0; "
+                    "bpf_probe_read(&__res, sizeof(__res), (void *)__addr); "
+                    "%s = __res; }",
+                    ctype(), local_name);
+        return true;
+      }
+
+      if (deref_offset_ && deref_ident_ && *base_register_name_ == "ip") {
+        uint64_t global_address;
+        if (!get_global_address(&global_address, binpath, pid))
+          return false;
+  diff_summary: |-
+    src/cc/usdt.h:
+    - Added or changed a volatile qualifier to force verifier-friendly code generation.
+    - Affected context: the touched section.
+    src/cc/usdt_args.cc:
+    - Added or changed a volatile qualifier to force verifier-friendly code generation.
+    - Affected context: bool Argument::get_global_address(uint64_t *address, const std::string &binpath,.
+    - Commit subject: generate proper usdt code to prevent llvm meddling with ctx->#fields.

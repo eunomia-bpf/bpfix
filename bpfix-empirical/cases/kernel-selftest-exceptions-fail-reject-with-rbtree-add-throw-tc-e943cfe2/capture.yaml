@@ -1,0 +1,20 @@
+schema_version: bpfix.capture/v1
+capture_id: kernel-selftest-exceptions-fail-reject-with-rbtree-add-throw-tc-e943cfe2__kernel-6.15.11-clang-18-log2
+case_id: kernel-selftest-exceptions-fail-reject-with-rbtree-add-throw-tc-e943cfe2
+environment_id: kernel-6.15.11-clang-18-log2
+imported_at: '2026-04-29T22:43:53+00:00'
+source_artifact:
+  path: bpfix-empirical/cases/kernel-selftest-exceptions-fail-reject-with-rbtree-add-throw-tc-e943cfe2
+  source_file: tools/testing/selftests/bpf/progs/exceptions_fail.c
+  target_function: reject_with_rbtree_add_throw
+  section: ?tc
+  compile_ok: true
+  load_attempted: true
+  verifier_rejected: true
+  verifier_log_captured: true
+  source_record: bpfix-empirical/raw/kernel_selftests/kernel-selftest-exceptions-fail-reject-with-rbtree-add-throw-tc-e943cfe2.yaml
+replay:
+  build_command: make
+  load_command: make replay-verify
+  verifier_log: replay-verifier.log
+  expected_load_status: verifier_reject

@@ -1,0 +1,106 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-d7f58e84d878
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/d7f58e84d8785ae322abe3d310f7917e7fd25b99
+  title: Fix up ipcache access in datapath
+  repository: https://github.com/cilium/cilium
+  commit: d7f58e84d8785ae322abe3d310f7917e7fd25b99
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-d7f58e84d878.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: environment_required
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Replaces ipcache lookup helpers for older-kernel support; reconstruction
+    would require the unsupported historical helper/map-value behavior.
+raw:
+  case_id: github-commit-cilium-d7f58e84d878
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: d7f58e84d8785ae322abe3d310f7917e7fd25b99
+  commit_message: Fix up ipcache access in datapath
+  commit_date: '2020-05-14'
+  fix_type: inline_hint
+  buggy_code: "// FILE: bpf/bpf_lxc.c\n#include \"lib/dbg.h\"\n#include \"lib/l3.h\"\
+    \n#include \"lib/lxc.h\"\n#include \"lib/nat46.h\"\n#include \"lib/identity.h\"\
+    \n#include \"lib/policy.h\"\n#include \"lib/lb.h\"\n#include \"lib/drop.h\"\n\
+    #include \"lib/dbg.h\"\n#include \"lib/trace.h\"\n#include \"lib/csum.h\"\n#include\
+    \ \"lib/encap.h\"\n#include \"lib/nat.h\"\n#include \"lib/nodeport.h\"\n#include\
+    \ \"lib/policy_log.h\"\n\n#if defined(ENABLE_ARP_PASSTHROUGH) && defined(ENABLE_ARP_RESPONDER)\n\
+    #error \"Either ENABLE_ARP_PASSTHROUGH or ENABLE_ARP_RESPONDER can be defined\"\
+    \n#endif\n\n#if defined(ENABLE_IPV4) || defined(ENABLE_IPV6)\nstatic __always_inline\
+    \ bool redirect_to_proxy(int verdict, __u8 dir)\n{\n\treturn is_defined(ENABLE_HOST_REDIRECT)\
+    \ && verdict > 0 &&\n\n// CONTEXT: int tail_ipv6_to_endpoint(struct __ctx_buff\
+    \ *ctx)\n\tint ret;\n\n\tif (!revalidate_data(ctx, &data, &data_end, &ip6)) {\n\
+    \t\tret = DROP_INVALID;\n\t\tgoto out;\n\t}\n\n\t/* Packets from the proxy will\
+    \ already have a real identity. */\n\tif (identity_is_reserved(src_identity))\
+    \ {\n\t\tunion v6addr *src = (union v6addr *) &ip6->saddr;\n\t\tstruct remote_endpoint_info\
+    \ *info;\n\n\t\tinfo = ipcache_lookup6(&IPCACHE_MAP, src, V6_CACHE_KEY_LEN);\n\
+    \t\tif (info != NULL) {\n\t\t\t__u32 sec_label = info->sec_label;\n\t\t\tif (sec_label)\
+    \ {\n\t\t\t\t/* When SNAT is enabled on traffic ingressing\n\t\t\t\t * into Cilium,\
+    \ all traffic from the world will\n\t\t\t\t * have a source IP of the host. It\
+    \ will only\n\t\t\t\t * actually be from the host if \"src_identity\"\n\t\t\t\t\
+    \ * (passed into this function) reports the src\n\t\t\t\t * as the host. So we\
+    \ can ignore the ipcache\n\t\t\t\t * if it reports the source as HOST_ID.\n\t\t\
+    \t\t */\n\t\t\t\tif (sec_label != HOST_ID)\n\n// CONTEXT: int tail_ipv4_to_endpoint(struct\
+    \ __ctx_buff *ctx)\n\t__u8 reason;\n\tint ret;\n\n\tif (!revalidate_data(ctx,\
+    \ &data, &data_end, &ip4)) {\n\t\tret = DROP_INVALID;\n\t\tgoto out;\n\t}\n\n\t\
+    /* Packets from the proxy will already have a real identity. */\n\tif (identity_is_reserved(src_identity))\
+    \ {\n\t\tstruct remote_endpoint_info *info;\n\n\t\tinfo = ipcache_lookup4(&IPCACHE_MAP,\
+    \ ip4->saddr, V4_CACHE_KEY_LEN);\n\t\tif (info != NULL) {\n\t\t\t__u32 sec_label\
+    \ = info->sec_label;\n\t\t\tif (sec_label) {\n\t\t\t\t/* When SNAT is enabled\
+    \ on traffic ingressing\n\t\t\t\t * into Cilium, all traffic from the world will\n\
+    \t\t\t\t * have a source IP of the host. It will only\n\t\t\t\t * actually be\
+    \ from the host if \"src_identity\"\n\t\t\t\t * (passed into this function) reports\
+    \ the src\n\t\t\t\t * as the host. So we can ignore the ipcache\n\t\t\t\t * if\
+    \ it reports the source as HOST_ID.\n\t\t\t\t */\n\t\t\t\tif (sec_label != HOST_ID)"
+  fixed_code: "// FILE: bpf/bpf_lxc.c\n#include \"lib/dbg.h\"\n#include \"lib/l3.h\"\
+    \n#include \"lib/lxc.h\"\n#include \"lib/nat46.h\"\n#include \"lib/identity.h\"\
+    \n#include \"lib/policy.h\"\n#include \"lib/lb.h\"\n#include \"lib/drop.h\"\n\
+    #include \"lib/dbg.h\"\n#include \"lib/trace.h\"\n#include \"lib/csum.h\"\n#include\
+    \ \"lib/encap.h\"\n#include \"lib/eps.h\"\n#include \"lib/nat.h\"\n#include \"\
+    lib/nodeport.h\"\n#include \"lib/policy_log.h\"\n\n#if defined(ENABLE_ARP_PASSTHROUGH)\
+    \ && defined(ENABLE_ARP_RESPONDER)\n#error \"Either ENABLE_ARP_PASSTHROUGH or\
+    \ ENABLE_ARP_RESPONDER can be defined\"\n#endif\n\n#if defined(ENABLE_IPV4) ||\
+    \ defined(ENABLE_IPV6)\nstatic __always_inline bool redirect_to_proxy(int verdict,\
+    \ __u8 dir)\n{\n\treturn is_defined(ENABLE_HOST_REDIRECT) && verdict > 0 &&\n\n\
+    // CONTEXT: int tail_ipv6_to_endpoint(struct __ctx_buff *ctx)\n\tint ret;\n\n\t\
+    if (!revalidate_data(ctx, &data, &data_end, &ip6)) {\n\t\tret = DROP_INVALID;\n\
+    \t\tgoto out;\n\t}\n\n\t/* Packets from the proxy will already have a real identity.\
+    \ */\n\tif (identity_is_reserved(src_identity)) {\n\t\tunion v6addr *src = (union\
+    \ v6addr *) &ip6->saddr;\n\t\tstruct remote_endpoint_info *info;\n\n\t\tinfo =\
+    \ lookup_ip6_remote_endpoint(src);\n\t\tif (info != NULL) {\n\t\t\t__u32 sec_label\
+    \ = info->sec_label;\n\t\t\tif (sec_label) {\n\t\t\t\t/* When SNAT is enabled\
+    \ on traffic ingressing\n\t\t\t\t * into Cilium, all traffic from the world will\n\
+    \t\t\t\t * have a source IP of the host. It will only\n\t\t\t\t * actually be\
+    \ from the host if \"src_identity\"\n\t\t\t\t * (passed into this function) reports\
+    \ the src\n\t\t\t\t * as the host. So we can ignore the ipcache\n\t\t\t\t * if\
+    \ it reports the source as HOST_ID.\n\t\t\t\t */\n\t\t\t\tif (sec_label != HOST_ID)\n\
+    \n// CONTEXT: int tail_ipv4_to_endpoint(struct __ctx_buff *ctx)\n\t__u8 reason;\n\
+    \tint ret;\n\n\tif (!revalidate_data(ctx, &data, &data_end, &ip4)) {\n\t\tret\
+    \ = DROP_INVALID;\n\t\tgoto out;\n\t}\n\n\t/* Packets from the proxy will already\
+    \ have a real identity. */\n\tif (identity_is_reserved(src_identity)) {\n\t\t\
+    struct remote_endpoint_info *info;\n\n\t\tinfo = lookup_ip4_remote_endpoint(ip4->saddr);\n\
+    \t\tif (info != NULL) {\n\t\t\t__u32 sec_label = info->sec_label;\n\t\t\tif (sec_label)\
+    \ {\n\t\t\t\t/* When SNAT is enabled on traffic ingressing\n\t\t\t\t * into Cilium,\
+    \ all traffic from the world will\n\t\t\t\t * have a source IP of the host. It\
+    \ will only\n\t\t\t\t * actually be from the host if \"src_identity\"\n\t\t\t\t\
+    \ * (passed into this function) reports the src\n\t\t\t\t * as the host. So we\
+    \ can ignore the ipcache\n\t\t\t\t * if it reports the source as HOST_ID.\n\t\t\
+    \t\t */\n\t\t\t\tif (sec_label != HOST_ID)"
+  diff_summary: |-
+    bpf/bpf_lxc.c:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: int tail_ipv6_to_endpoint(struct __ctx_buff *ctx), int tail_ipv4_to_endpoint(struct __ctx_buff *ctx).
+    - Commit subject: Fix up ipcache access in datapath.

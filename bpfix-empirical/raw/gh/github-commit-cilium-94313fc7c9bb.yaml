@@ -1,0 +1,88 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-94313fc7c9bb
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/94313fc7c9bbd013306a61a3e0c75c9759d80e8f
+  title: 'bpf: Enable monitor aggregation in complexity tests'
+  repository: https://github.com/cilium/cilium
+  commit: 94313fc7c9bbd013306a61a3e0c75c9759d80e8f
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-94313fc7c9bb.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Makes monitor aggregation flags configurable in complexity-test node config.
+    This is test/config generation, not a replayable rejected BPF program.
+raw:
+  case_id: github-commit-cilium-94313fc7c9bb
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: 94313fc7c9bbd013306a61a3e0c75c9759d80e8f
+  commit_message: 'bpf: Enable monitor aggregation in complexity tests'
+  commit_date: '2021-02-16'
+  fix_type: loop_rewrite
+  buggy_code: "// FILE: bpf/node_config.h\n// CONTEXT: DEFINE_IPV6(HOST_IP, 0xbe,\
+    \ 0xef, 0x0, 0x0, 0x0, 0x0, 0x0, 0x1, 0x0, 0x0, 0xa, 0x\n#define NODEPORT_PORT_MIN\
+    \ 30000\n#define NODEPORT_PORT_MAX 32767\n#define NODEPORT_PORT_MIN_NAT (NODEPORT_PORT_MAX\
+    \ + 1)\n#define NODEPORT_PORT_MAX_NAT 43835\n\n#define CT_CONNECTION_LIFETIME_TCP\t\
+    21600\n#define CT_CONNECTION_LIFETIME_NONTCP\t60\n#define CT_SERVICE_LIFETIME_TCP\t\
+    \t21600\n#define CT_SERVICE_LIFETIME_NONTCP\t60\n#define CT_SYN_TIMEOUT\t\t\t\
+    60\n#define CT_CLOSE_TIMEOUT\t\t10\n#define CT_REPORT_INTERVAL\t\t5\n#define CT_REPORT_FLAGS\t\
+    \t\t0xff\n\n#define KERNEL_HZ 250   /* warp: 0 jiffies */\n\n#define ENABLE_IDENTITY_MARK\
+    \ 1\n\n#define HASH_INIT4_SEED 0xcafe\n#define HASH_INIT6_SEED 0xeb9f\n\n#ifdef\
+    \ ENABLE_IPV4\n#define IPV4_MASK 0xffff\n#define IPV4_GATEWAY 0xfffff50a\n#define\
+    \ IPV4_LOOPBACK 0x1ffff50a\n\n// CONTEXT: DEFINE_IPV6(HOST_IP, 0xbe, 0xef, 0x0,\
+    \ 0x0, 0x0, 0x0, 0x0, 0x1, 0x0, 0x0, 0xa, 0x\n#define CILIUM_NET_MAC  { .addr\
+    \ = { 0xce, 0x72, 0xa7, 0x03, 0x88, 0x57 } }\n#define LB_REDIRECT 1\n#define LB_DST_MAC\
+    \ { .addr = { 0xce, 0x72, 0xa7, 0x03, 0x88, 0x58 } }\n#define CILIUM_LB_MAP_MAX_ENTRIES\t\
+    65536\n#define POLICY_MAP_SIZE 16384\n#define IPCACHE_MAP_SIZE 512000\n#define\
+    \ POLICY_PROG_MAP_SIZE ENDPOINTS_MAP_SIZE\n#define IPV4_FRAG_DATAGRAMS_MAP test_cilium_ipv4_frag_datagrams\n\
+    #define CILIUM_IPV4_FRAG_MAP_MAX_ENTRIES 8192\n#ifndef SKIP_DEBUG\n#define LB_DEBUG\n\
+    #endif\n#define MONITOR_AGGREGATION 5\n#define MTU 1500\n#define EPHEMERAL_MIN\
+    \ 32768\n#if defined(ENABLE_NODEPORT) || defined(ENABLE_HOST_FIREWALL) || defined(ENABLE_NAT46)\n\
+    #define CT_MAP_TCP6 test_cilium_ct_tcp6_65535\n#define CT_MAP_ANY6 test_cilium_ct_any6_65535\n\
+    #define CT_MAP_TCP4 test_cilium_ct_tcp4_65535\n#define CT_MAP_ANY4 test_cilium_ct_any4_65535\n\
+    #define CT_MAP_SIZE_TCP 4096\n#define CT_MAP_SIZE_ANY 4096\n#define CONNTRACK\n\
+    #define CONNTRACK_ACCOUNTING\n#endif /* ENABLE_NODEPORT || ENABLE_HOST_FIREWALL\
+    \ */"
+  fixed_code: "// FILE: bpf/node_config.h\n// CONTEXT: DEFINE_IPV6(HOST_IP, 0xbe,\
+    \ 0xef, 0x0, 0x0, 0x0, 0x0, 0x0, 0x1, 0x0, 0x0, 0xa, 0x\n#define NODEPORT_PORT_MIN\
+    \ 30000\n#define NODEPORT_PORT_MAX 32767\n#define NODEPORT_PORT_MIN_NAT (NODEPORT_PORT_MAX\
+    \ + 1)\n#define NODEPORT_PORT_MAX_NAT 43835\n\n#define CT_CONNECTION_LIFETIME_TCP\t\
+    21600\n#define CT_CONNECTION_LIFETIME_NONTCP\t60\n#define CT_SERVICE_LIFETIME_TCP\t\
+    \t21600\n#define CT_SERVICE_LIFETIME_NONTCP\t60\n#define CT_SYN_TIMEOUT\t\t\t\
+    60\n#define CT_CLOSE_TIMEOUT\t\t10\n#define CT_REPORT_INTERVAL\t\t5\n#ifndef CT_REPORT_FLAGS\n\
+    # define CT_REPORT_FLAGS\t\t0xff\n#endif\n\n#define KERNEL_HZ 250   /* warp: 0\
+    \ jiffies */\n\n#define ENABLE_IDENTITY_MARK 1\n\n#define HASH_INIT4_SEED 0xcafe\n\
+    #define HASH_INIT6_SEED 0xeb9f\n\n#ifdef ENABLE_IPV4\n#define IPV4_MASK 0xffff\n\
+    #define IPV4_GATEWAY 0xfffff50a\n#define IPV4_LOOPBACK 0x1ffff50a\n\n// CONTEXT:\
+    \ DEFINE_IPV6(HOST_IP, 0xbe, 0xef, 0x0, 0x0, 0x0, 0x0, 0x0, 0x1, 0x0, 0x0, 0xa,\
+    \ 0x\n#define CILIUM_NET_MAC  { .addr = { 0xce, 0x72, 0xa7, 0x03, 0x88, 0x57 }\
+    \ }\n#define LB_REDIRECT 1\n#define LB_DST_MAC { .addr = { 0xce, 0x72, 0xa7, 0x03,\
+    \ 0x88, 0x58 } }\n#define CILIUM_LB_MAP_MAX_ENTRIES\t65536\n#define POLICY_MAP_SIZE\
+    \ 16384\n#define IPCACHE_MAP_SIZE 512000\n#define POLICY_PROG_MAP_SIZE ENDPOINTS_MAP_SIZE\n\
+    #define IPV4_FRAG_DATAGRAMS_MAP test_cilium_ipv4_frag_datagrams\n#define CILIUM_IPV4_FRAG_MAP_MAX_ENTRIES\
+    \ 8192\n#ifndef SKIP_DEBUG\n#define LB_DEBUG\n#endif\n#ifndef MONITOR_AGGREGATION\n\
+    #define MONITOR_AGGREGATION 5\n#endif\n#define MTU 1500\n#define EPHEMERAL_MIN\
+    \ 32768\n#if defined(ENABLE_NODEPORT) || defined(ENABLE_HOST_FIREWALL) || defined(ENABLE_NAT46)\n\
+    #define CT_MAP_TCP6 test_cilium_ct_tcp6_65535\n#define CT_MAP_ANY6 test_cilium_ct_any6_65535\n\
+    #define CT_MAP_TCP4 test_cilium_ct_tcp4_65535\n#define CT_MAP_ANY4 test_cilium_ct_any4_65535\n\
+    #define CT_MAP_SIZE_TCP 4096\n#define CT_MAP_SIZE_ANY 4096\n#define CONNTRACK\n\
+    #define CONNTRACK_ACCOUNTING\n#endif /* ENABLE_NODEPORT || ENABLE_HOST_FIREWALL\
+    \ */"
+  diff_summary: |-
+    bpf/node_config.h:
+    - Reworked loop or branch structure to reduce verifier complexity and keep the path bounded.
+    - Affected context: DEFINE_IPV6(HOST_IP, 0xbe, 0xef, 0x0, 0x0, 0x0, 0x0, 0x0, 0x1, 0x0, 0x0, 0xa, 0x.
+    - Commit subject: bpf: Enable monitor aggregation in complexity tests.

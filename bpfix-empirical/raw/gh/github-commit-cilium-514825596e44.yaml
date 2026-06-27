@@ -1,0 +1,64 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-514825596e44
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/514825596e446961c7d9bf4f52a0be253a8edf2a
+  title: 'bpf: Add missing __align_stack_8 in encap_geneve_dsr_opt4'
+  repository: https://github.com/cilium/cilium
+  commit: 514825596e446961c7d9bf4f52a0be253a8edf2a
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-514825596e44.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: replay_valid
+  case_id: github-commit-cilium-514825596e44
+  case_path: cases/github-commit-cilium-514825596e44
+  artifact_path: cases/github-commit-cilium-514825596e44
+  reason: admitted_to_bpfix_bench_cases
+raw:
+  case_id: github-commit-cilium-514825596e44
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: 514825596e446961c7d9bf4f52a0be253a8edf2a
+  commit_message: 'bpf: Add missing __align_stack_8 in encap_geneve_dsr_opt4'
+  commit_date: '2024-10-28'
+  fix_type: inline_hint
+  buggy_code: "// FILE: bpf/lib/nodeport.h\n// CONTEXT: static __always_inline int\
+    \ dsr_set_opt4(struct __ctx_buff *ctx,\n\t\treturn DROP_INVALID;\n\tif (ipv4_csum_update_by_diff(ctx,\
+    \ ETH_HLEN, sum) < 0)\n\t\treturn DROP_CSUM_L3;\n\n\treturn 0;\n}\n#elif DSR_ENCAP_MODE\
+    \ == DSR_ENCAP_GENEVE\nstatic __always_inline int encap_geneve_dsr_opt4(struct\
+    \ __ctx_buff *ctx, int l3_off __maybe_unused,\n\t\t\t\t\t\t struct iphdr *ip4,\
+    \ __be32 svc_addr,\n\t\t\t\t\t\t __be16 svc_port, int *ifindex, __be16 *ohead)\n\
+    {\n\tstruct remote_endpoint_info *info __maybe_unused;\n\tstruct geneve_dsr_opt4\
+    \ gopt;\n\tbool need_opt = true;\n\t__u16 encap_len = sizeof(struct iphdr) + sizeof(struct\
+    \ udphdr) +\n\t\tsizeof(struct genevehdr) + ETH_HLEN;\n\t__u16 total_len = bpf_ntohs(ip4->tot_len);\n\
+    \t__u32 src_sec_identity = WORLD_IPV4_ID;\n\t__u32 dst_sec_identity;\n\t__be32\
+    \ tunnel_endpoint;\n\t__be16 src_port = 0;\n#if __ctx_is == __ctx_xdp\n\tbool\
+    \ has_encap = l3_off > ETH_HLEN;\n\tstruct iphdr *outer_ip4 = ip4;\n\tvoid *data,\
+    \ *data_end;"
+  fixed_code: "// FILE: bpf/lib/nodeport.h\n// CONTEXT: static __always_inline int\
+    \ dsr_set_opt4(struct __ctx_buff *ctx,\n\t\treturn DROP_INVALID;\n\tif (ipv4_csum_update_by_diff(ctx,\
+    \ ETH_HLEN, sum) < 0)\n\t\treturn DROP_CSUM_L3;\n\n\treturn 0;\n}\n#elif DSR_ENCAP_MODE\
+    \ == DSR_ENCAP_GENEVE\nstatic __always_inline int encap_geneve_dsr_opt4(struct\
+    \ __ctx_buff *ctx, int l3_off __maybe_unused,\n\t\t\t\t\t\t struct iphdr *ip4,\
+    \ __be32 svc_addr,\n\t\t\t\t\t\t __be16 svc_port, int *ifindex, __be16 *ohead)\n\
+    {\n\tstruct remote_endpoint_info *info __maybe_unused;\n\tstruct geneve_dsr_opt4\
+    \ gopt __align_stack_8;\n\tbool need_opt = true;\n\t__u16 encap_len = sizeof(struct\
+    \ iphdr) + sizeof(struct udphdr) +\n\t\tsizeof(struct genevehdr) + ETH_HLEN;\n\
+    \t__u16 total_len = bpf_ntohs(ip4->tot_len);\n\t__u32 src_sec_identity = WORLD_IPV4_ID;\n\
+    \t__u32 dst_sec_identity;\n\t__be32 tunnel_endpoint;\n\t__be16 src_port = 0;\n\
+    #if __ctx_is == __ctx_xdp\n\tbool has_encap = l3_off > ETH_HLEN;\n\tstruct iphdr\
+    \ *outer_ip4 = ip4;\n\tvoid *data, *data_end;"
+  diff_summary: |-
+    bpf/lib/nodeport.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: static __always_inline int dsr_set_opt4(struct __ctx_buff *ctx,.
+    - Commit subject: bpf: Add missing __align_stack_8 in encap_geneve_dsr_opt4.

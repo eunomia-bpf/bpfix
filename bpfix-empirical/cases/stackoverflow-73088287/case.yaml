@@ -1,0 +1,46 @@
+schema_version: bpfix.case/v1
+case_id: stackoverflow-73088287
+source:
+  kind: stackoverflow
+  url: https://stackoverflow.com/questions/73088287
+  repository: null
+  commit: null
+  upstream_file: null
+  raw_excerpt_files:
+  - bpfix-empirical/raw/so/stackoverflow-73088287.yaml
+reproducer:
+  reconstruction: reconstructed
+  notes: Imported from reconstructed external source into bpfix-empirical; replay logs are generated
+    as replay-verifier.log.
+capture:
+  capture_id: stackoverflow-73088287__kernel-6.15.11-clang-18-log2
+  terminal_error: invalid access to packet, off=58 size=1, R2(id=0,off=58,r=43)
+  rejected_insn_idx: 31
+external_match:
+  status: partial
+  policy: terminal_error
+  matched_messages:
+  - invalid access to packet, off=120 size=1, R4(id=0,off=135,r=120)
+  - invalid access to packet, off=58 size=1, R2(id=0,off=58,r=43)
+  notes: Imported only because verifier_error_match was exact/partial in the verified SO/GH
+    artifact.
+label:
+  capture_id: stackoverflow-73088287__kernel-6.15.11-clang-18-log2
+  taxonomy_class: source_bug
+  error_id: BPFIX-E001
+  confidence: medium
+  label_source: external_replay_reconstruction
+  root_cause_description: Payload copy loop reads past the packet range proven by the preceding
+    bounds check.
+  root_cause_insn_idx: null
+  localization_confidence: medium
+  fix_type: bounds_check
+  fix_direction: Tie the loop bound to the checked packet length and recheck before each packet
+    byte load.
+repair:
+  eligible: true
+reporting:
+  family_id: stackoverflow-73088287
+  representative: true
+  notes: Current replay artifact checks payload + i + 1 but reads payload + i + 16, so the
+    executable case is labelled as a source bug rather than a lowering artifact.

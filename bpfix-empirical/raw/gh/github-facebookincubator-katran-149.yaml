@@ -1,0 +1,74 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-facebookincubator-katran-149
+source_kind: github_issue
+source:
+  url: https://github.com/facebookincubator/katran/issues/149
+  title: "Load balancer_kern.o error\uFF1AProg section 'xdp-balancer' rejected: Permission\
+    \ denied (13)!"
+  repository: https://github.com/facebookincubator/katran
+  commit: null
+  collected_at: '2026-03-11T16:02:14+00:00'
+collector:
+  original_path: bpfix-empirical/raw/gh/github-facebookincubator-katran-149.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: true
+  verifier_log_block_count: 1
+  source_snippet_count: 0
+  has_buggy_code: false
+  has_fixed_code: false
+  has_fix_description: false
+reproduction:
+  status: missing_source
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: External raw log is trace-rich (R1 type=inv expected=map_ptr, rejected insn
+    553), but source_snippet_count=0 and no buggy/fixed code are present; the full
+    Katran xdp-balancer program is not reconstructable from the issue text alone.
+  verifier_status: not_run
+  captured_error: <none>
+  verifier_error_match: mismatch
+raw:
+  case_id: github-facebookincubator-katran-149
+  source: github_issues
+  collected_at: '2026-03-11T16:02:14+00:00'
+  issue:
+    repository: facebookincubator/katran
+    number: 149
+    title: "Load balancer_kern.o error\uFF1AProg section 'xdp-balancer' rejected:\
+      \ Permission denied (13)!"
+    url: https://github.com/facebookincubator/katran/issues/149
+    state: closed
+    state_reason: completed
+    labels: []
+    created_at: '2021-12-21T13:10:01Z'
+    updated_at: '2022-04-07T21:39:13Z'
+    author: qingfenghanghua
+  verifier_log:
+    blocks:
+    - |-
+      549: (bf) r2 = r10
+      550: (07) r2 += -96
+      551: (18) r1 = 0x0
+      553: (85) call bpf_map_lookup_elem#1
+      R1 type=inv expected=map_ptr
+    combined: |-
+      549: (bf) r2 = r10
+      550: (07) r2 += -96
+      551: (18) r1 = 0x0
+      553: (85) call bpf_map_lookup_elem#1
+      R1 type=inv expected=map_ptr
+  source_snippets: []
+  issue_body_text: "Load balancer_kern.o by iproute2: ip link set dev enp178s0 xdp\
+    \ obj balancer_kern.o sec xdp-balancer\nThe output is as follows\uFF1A\nBTF debug\
+    \ data section '.BTF' rejected: Invalid argument (22)!\n- Length: 11525\nVerifier\
+    \ analysis:\nmagic: 0xeb9f\nversion: 1\nflags: 0x0\nhdr_len: 24\ntype_off: 0\n\
+    type_len: 2476\nstr_off: 2476\nstr_len: 9025\nbtf_total_size: 11525\n...\n[20]\
+    \ STRUCT (anon) size=40 vlen=5\n[21] Invalid kind:14\nProg section 'xdp-balancer'\
+    \ rejected: Permission denied (13)!\n- Type: 6\n- Instructions: 1853 (0 over limit)\n\
+    - License: GPL\nVerifier analysis:\n...\n549: (bf) r2 = r10\n550: (07) r2 += -96\n\
+    551: (18) r1 = 0x0\n553: (85) call bpf_map_lookup_elem#1\nR1 type=inv expected=map_ptr\n\
+    Error fetching program/map!\nuname -r\n4.18.16-1.el7.elrepo.x86_64\nI amn't sure\
+    \ if there is something wrong with my environment"
+  fix: {}

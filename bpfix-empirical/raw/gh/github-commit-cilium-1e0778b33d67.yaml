@@ -1,0 +1,96 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-1e0778b33d67
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/1e0778b33d670e6cddff86e58ce1a524345eb033
+  title: 'bpf/complexity-tests: Fix EVENTS_MAP_RATE_LIMIT'
+  repository: https://github.com/cilium/cilium
+  commit: 1e0778b33d670e6cddff86e58ce1a524345eb033
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-1e0778b33d67.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: environment_required
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Complexity-test EVENTS_MAP_RATE_LIMIT config override change. The raw record
+    has no verifier log or concrete rejected program; faithful replay would require
+    the generated Cilium complexity-test datapath and its load-time configuration.
+raw:
+  case_id: github-commit-cilium-1e0778b33d67
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: 1e0778b33d670e6cddff86e58ce1a524345eb033
+  commit_message: 'bpf/complexity-tests: Fix EVENTS_MAP_RATE_LIMIT'
+  commit_date: '2025-03-28'
+  fix_type: loop_rewrite
+  buggy_code: |-
+    // FILE: bpf/node_config.h
+    # endif /* ENABLE_MASQUERADE_IPV6 */
+    #ifdef ENABLE_NODEPORT
+    #define SNAT_MAPPING_IPV6_SIZE 524288
+    #define NODEPORT_NEIGH6_SIZE 524288
+    #endif /* ENABLE_NODEPORT */
+    #define CAPTURE6_SIZE 16384
+    #endif /* ENABLE_IPV6 */
+
+    #ifdef ENABLE_NODEPORT
+    #define SNAT_COLLISION_RETRIES 32
+    #endif
+
+    #define EVENTS_MAP_RATE_LIMIT 0
+    #define EVENTS_MAP_BURST_LIMIT 0
+    #define POLICY_STATS_MAP_SIZE 200
+    #define LB6_REVERSE_NAT_SK_MAP_SIZE 262144
+    #define LB4_REVERSE_NAT_SK_MAP_SIZE 262144
+
+    #define LB_MAGLEV_LUT_SIZE 32749
+    #define THROTTLE_MAP_SIZE 65536
+    #define ENABLE_ARP_RESPONDER
+    #define TUNNEL_ENDPOINT_MAP_SIZE 65536
+    #define VTEP_MAP_SIZE 8
+    #define ENDPOINTS_MAP_SIZE 65536
+    #define METRICS_MAP_SIZE 65536
+  fixed_code: |-
+    // FILE: bpf/node_config.h
+    # endif /* ENABLE_MASQUERADE_IPV6 */
+    #ifdef ENABLE_NODEPORT
+    #define SNAT_MAPPING_IPV6_SIZE 524288
+    #define NODEPORT_NEIGH6_SIZE 524288
+    #endif /* ENABLE_NODEPORT */
+    #define CAPTURE6_SIZE 16384
+    #endif /* ENABLE_IPV6 */
+
+    #ifdef ENABLE_NODEPORT
+    #define SNAT_COLLISION_RETRIES 32
+    #endif
+
+    #ifndef EVENTS_MAP_RATE_LIMIT
+    # define EVENTS_MAP_RATE_LIMIT 0
+    #endif
+    #define EVENTS_MAP_BURST_LIMIT 0
+    #define POLICY_STATS_MAP_SIZE 200
+    #define LB6_REVERSE_NAT_SK_MAP_SIZE 262144
+    #define LB4_REVERSE_NAT_SK_MAP_SIZE 262144
+
+    #define LB_MAGLEV_LUT_SIZE 32749
+    #define THROTTLE_MAP_SIZE 65536
+    #define ENABLE_ARP_RESPONDER
+    #define TUNNEL_ENDPOINT_MAP_SIZE 65536
+    #define VTEP_MAP_SIZE 8
+    #define ENDPOINTS_MAP_SIZE 65536
+    #define METRICS_MAP_SIZE 65536
+  diff_summary: |-
+    bpf/node_config.h:
+    - Reworked loop or branch structure to reduce verifier complexity and keep the path bounded.
+    - Affected context: the touched section.
+    - Commit subject: bpf/complexity-tests: Fix EVENTS_MAP_RATE_LIMIT.

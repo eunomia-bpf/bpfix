@@ -1,0 +1,209 @@
+schema_version: bpfix.raw_external/v1
+raw_id: stackoverflow-70402992
+source_kind: stackoverflow
+source:
+  url: https://stackoverflow.com/questions/70402992/sharing-ebpf-function-parameters-with-usespace-or-atleast-accessing-parameters
+  title: sharing ebpf function parameters with usespace or atleast accessing parameters
+  repository: null
+  commit: null
+  collected_at: '2026-04-30T00:51:15+00:00'
+collector:
+  original_path: bpfix-empirical/raw/so/stackoverflow-70402992.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: true
+  verifier_log_block_count: 1
+  source_snippet_count: 1
+  has_buggy_code: false
+  has_fixed_code: false
+  has_fix_description: false
+reproduction:
+  status: replay_valid
+  case_id: stackoverflow-70402992
+  case_path: cases/stackoverflow-70402992
+  artifact_path: cases/stackoverflow-70402992
+  reason: admitted_to_bpfix_bench_cases
+raw:
+  case_id: stackoverflow-70402992
+  source: stackoverflow
+  collected_at: '2026-04-30T00:51:15+00:00'
+  question:
+    question_id: 70402992
+    title: sharing ebpf function parameters with usespace or atleast accessing parameters
+    url: https://stackoverflow.com/questions/70402992/sharing-ebpf-function-parameters-with-usespace-or-atleast-accessing-parameters
+    tags:
+    - c
+    - linux
+    - parameters
+    - ebpf
+    score: 0
+    answer_count: 1
+    is_answered: true
+  verifier_log:
+    blocks:
+    - |-
+      root@this:/home/ubuntu/Desktop/ebpf/Linux-exFilter-main/pkg/probe/bpf# ./trace
+      libbpf: load bpf program failed: Permission denied
+      libbpf: -- BEGIN DUMP LOG ---
+      libbpf:
+      R1 type=ctx expected=fp
+      ; int bpf_prog1(struct pt_regs *ctx,int fd, const char *buf, size_t count)
+      0: (bf) r6 = r1
+      1: (b7) r1 = 0
+      ; } data={1,""};
+      2: (7b) *(u64 *)(r10 -8) = r1
+      last_idx 2 first_idx 0
+      regs=2 stack=0 before 1: (b7) r1 = 0
+      3: (7b) *(u64 *)(r10 -16) = r1
+      4: (7b) *(u64 *)(r10 -24) = r1
+      5: (7b) *(u64 *)(r10 -32) = r1
+      6: (7b) *(u64 *)(r10 -40) = r1
+      7: (7b) *(u64 *)(r10 -48) = r1
+      8: (7b) *(u64 *)(r10 -56) = r1
+      9: (7b) *(u64 *)(r10 -64) = r1
+      10: (7b) *(u64 *)(r10 -72) = r1
+      11: (b7) r1 = 1
+      12: (63) *(u32 *)(r10 -96) = r1
+      ; memcpy(data.cookie,buf,20);
+      13: (71) r4 = *(u8 *)(r3 +1)
+      R3 !read_ok
+      processed 14 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0 mark_read 0
+
+      libbpf: -- END LOG --
+      libbpf: failed to load program 'bpf_prog1'
+      libbpf: failed to load object './kprobe_send.o'
+      ERROR: loading BPF object file failed
+    combined: |-
+      root@this:/home/ubuntu/Desktop/ebpf/Linux-exFilter-main/pkg/probe/bpf# ./trace
+      libbpf: load bpf program failed: Permission denied
+      libbpf: -- BEGIN DUMP LOG ---
+      libbpf:
+      R1 type=ctx expected=fp
+      ; int bpf_prog1(struct pt_regs *ctx,int fd, const char *buf, size_t count)
+      0: (bf) r6 = r1
+      1: (b7) r1 = 0
+      ; } data={1,""};
+      2: (7b) *(u64 *)(r10 -8) = r1
+      last_idx 2 first_idx 0
+      regs=2 stack=0 before 1: (b7) r1 = 0
+      3: (7b) *(u64 *)(r10 -16) = r1
+      4: (7b) *(u64 *)(r10 -24) = r1
+      5: (7b) *(u64 *)(r10 -32) = r1
+      6: (7b) *(u64 *)(r10 -40) = r1
+      7: (7b) *(u64 *)(r10 -48) = r1
+      8: (7b) *(u64 *)(r10 -56) = r1
+      9: (7b) *(u64 *)(r10 -64) = r1
+      10: (7b) *(u64 *)(r10 -72) = r1
+      11: (b7) r1 = 1
+      12: (63) *(u32 *)(r10 -96) = r1
+      ; memcpy(data.cookie,buf,20);
+      13: (71) r4 = *(u8 *)(r3 +1)
+      R3 !read_ok
+      processed 14 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0 mark_read 0
+
+      libbpf: -- END LOG --
+      libbpf: failed to load program 'bpf_prog1'
+      libbpf: failed to load object './kprobe_send.o'
+      ERROR: loading BPF object file failed
+  source_snippets:
+  - |-
+    SEC("kprobe/__x64_sys_recvfrom")
+    int bpf_prog1(struct pt_regs *ctx,int fd, const char *buf, size_t count)
+    {
+        struct S {
+            int pid;
+            char cookie[90];
+        } data={1,""};
+
+        //data.pid =count;// bpf_get_current_pid_tgid();
+        //if(buf==NULL)
+    //  memcpy(data.cookie,buf,20);
+
+     //       data.cookie[0]=buf[0];
+
+            bpf_get_current_comm(&data.cookie, sizeof(data.cookie));
+            int i=0;
+
+        bpf_perf_event_output(ctx, &my_map, 1, &data, sizeof(data));
+
+        return 0;
+    }
+  question_body_text: |-
+    I have this ebpf program that I am trying to do. Basically, I am trapping recvfrom function call and trying to share my recvfrom buffer to my userspace application. This is the code:
+    SEC("kprobe/__x64_sys_recvfrom")
+    int bpf_prog1(struct pt_regs *ctx,int fd, const char *buf, size_t count)
+    {
+    struct S {
+    int pid;
+    char cookie[90];
+    } data={1,""};
+    //data.pid =count;// bpf_get_current_pid_tgid();
+    //if(buf==NULL)
+    // memcpy(data.cookie,buf,20);
+    // data.cookie[0]=buf[0];
+    bpf_get_current_comm(&data.cookie, sizeof(data.cookie));
+    int i=0;
+    bpf_perf_event_output(ctx, &my_map, 1, &data, sizeof(data));
+    return 0;
+    }
+    So, it seems like I have signature of bpf_prog function and in it, I have buffer from recvfrom function but when I try to access it, I simply can't because my program is loading complains.
+    root@this:/home/ubuntu/Desktop/ebpf/Linux-exFilter-main/pkg/probe/bpf# ./trace
+    libbpf: load bpf program failed: Permission denied
+    libbpf: -- BEGIN DUMP LOG ---
+    libbpf:
+    R1 type=ctx expected=fp
+    ; int bpf_prog1(struct pt_regs *ctx,int fd, const char *buf, size_t count)
+    0: (bf) r6 = r1
+    1: (b7) r1 = 0
+    ; } data={1,""};
+    2: (7b) *(u64 *)(r10 -8) = r1
+    last_idx 2 first_idx 0
+    regs=2 stack=0 before 1: (b7) r1 = 0
+    3: (7b) *(u64 *)(r10 -16) = r1
+    4: (7b) *(u64 *)(r10 -24) = r1
+    5: (7b) *(u64 *)(r10 -32) = r1
+    6: (7b) *(u64 *)(r10 -40) = r1
+    7: (7b) *(u64 *)(r10 -48) = r1
+    8: (7b) *(u64 *)(r10 -56) = r1
+    9: (7b) *(u64 *)(r10 -64) = r1
+    10: (7b) *(u64 *)(r10 -72) = r1
+    11: (b7) r1 = 1
+    12: (63) *(u32 *)(r10 -96) = r1
+    ; memcpy(data.cookie,buf,20);
+    13: (71) r4 = *(u8 *)(r3 +1)
+    R3 !read_ok
+    processed 14 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0 mark_read 0
+    libbpf: -- END LOG --
+    libbpf: failed to load program 'bpf_prog1'
+    libbpf: failed to load object './kprobe_send.o'
+    ERROR: loading BPF object file failed
+    And there is a function like bpf_get_current_comm(&data.cookie, sizeof(data.cookie)); and bpf_perf_event_output(ctx, &my_map, 1, &data, sizeof(data)); and use of these functions giving me garbage data. So I like to know how to read the function parameters in ebpf programs. Is there any conventional way of doing it
+    I know ebpf is having maps and maps are to share info between ebpf program and userspace application. Sharing parameters is a basic thing but I dont know why I haven't seen it on the internet
+  selected_answer:
+    answer_id: 70403370
+    url: https://stackoverflow.com/questions/70402992/sharing-ebpf-function-parameters-with-usespace-or-atleast-accessing-parameters#70403370
+    is_accepted: true
+    score: 2
+    body_text: |-
+      You can read the parameters of recvfrom by using the PT_REGS_PARM macros, in this case PT_REGS_PARM2(ctx). This is an example from the tracex4 sample:
+      SEC("kprobe/kmem_cache_free")
+      int bpf_prog1(struct pt_regs *ctx)
+      {
+      long ptr = PT_REGS_PARM2(ctx);
+      bpf_map_delete_elem(&my_map, &ptr);
+      return 0;
+      }
+      In the case of recvfrom, the second param should be a pointer to the buffer:
+      ssize_t recvfrom(int sockfd, void *buf, size_t len, int flags,
+      struct sockaddr *src_addr, socklen_t *addrlen);
+      To communicate from kernel to userspace you indeed need a map. You will notice that your call to bpf_perf_event_output also takes a pointer to a map: &my_map.
+      The bpf_perf_event_output helper function requires a map of type BPF_MAP_TYPE_PERF_EVENT_ARRAY to function. But unlike most map types this map type works like a uni-directional stream of data from the eBPF program to the userspace.
+      I believe your code is loosly based on the trace_output_kern sample in the kernel. You will notice they define a map here as well:
+      struct {
+      __uint(type, BPF_MAP_TYPE_PERF_EVENT_ARRAY);
+      __uint(key_size, sizeof(int));
+      __uint(value_size, sizeof(u32));
+      __uint(max_entries, 2);
+      } my_map SEC(".maps");
+    fix_description: 'In the case of recvfrom, the second param should be a pointer
+      to the buffer:'

@@ -1,0 +1,143 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-c3b65fce8b84
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/c3b65fce8b8405f913bfaa11351fc931a1499362
+  title: 'bpf: fix asm volatile ctx->data assumptions to always init reg'
+  repository: https://github.com/cilium/cilium
+  commit: c3b65fce8b8405f913bfaa11351fc931a1499362
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-c3b65fce8b84.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: replay_valid
+  case_id: github-commit-cilium-c3b65fce8b84
+  case_path: cases/github-commit-cilium-c3b65fce8b84
+  artifact_path: cases/github-commit-cilium-c3b65fce8b84
+  reason: admitted_to_bpfix_bench_cases
+raw:
+  case_id: github-commit-cilium-c3b65fce8b84
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: c3b65fce8b8405f913bfaa11351fc931a1499362
+  commit_message: 'bpf: fix asm volatile ctx->data assumptions to always init reg'
+  commit_date: '2020-04-25'
+  fix_type: inline_hint
+  buggy_code: "// FILE: bpf/include/bpf/ctx/xdp.h\n#include \"../builtins.h\"\n\n\
+    #define CTX_ACT_OK\t\t\tXDP_PASS\n#define CTX_ACT_DROP\t\t\tXDP_DROP\n#define\
+    \ CTX_ACT_TX\t\t\tXDP_TX\t/* hairpin only */\n\n#define CTX_DIRECT_WRITE_OK\t\t\
+    1\n\n\t\t\t\t\t/* cb + RECIRC_MARKER + XFER_MARKER */\n#define META_PIVOT\t\t\t\
+    ((int)(field_sizeof(struct __sk_buff, cb) + \\\n\t\t\t\t\t       sizeof(__u32)\
+    \ * 2))\n\n#define __CTX_OFF_MAX\t\t\t0xff\n\nstatic __always_inline __maybe_unused\
+    \ int\nxdp_load_bytes(struct xdp_md *ctx, __u64 off, void *to, const __u64 len)\n\
+    {\n\tvoid *from;\n\tint ret;\n\t/* LLVM tends to generate code that verifier doesn't\
+    \ understand,\n\t * so force it the way we want it in order to open up a range\n\
+    \t * on the reg.\n\t */\n\tasm volatile(\"r1 = *(u32 *)(%[ctx] +0)\\n\\t\"\n\t\
+    \t     \"r2 = *(u32 *)(%[ctx] +4)\\n\\t\"\n\t\t     \"if %[off] > %[offmax] goto\
+    \ +6\\n\\t\"\n\t\t     \"r1 += %[off]\\n\\t\"\n\t\t     \"%[from] = r1\\n\\t\"\
+    \n\t\t     \"r1 += %[len]\\n\\t\"\n\t\t     \"if r1 > r2 goto +2\\n\\t\"\n\t\t\
+    \     \"%[ret] = 0\\n\\t\"\n\t\t     \"goto +1\\n\\t\"\n\t\t     \"%[ret] = %[errno]\\\
+    n\\t\"\n\t\t     : [ret]\"=r\"(ret), [from]\"=r\"(from)\n\t\t     : [ctx]\"r\"\
+    (ctx), [off]\"r\"(off), [len]\"ri\"(len),\n\t\t       [offmax]\"i\"(__CTX_OFF_MAX),\
+    \ [errno]\"i\"(-EINVAL)\n\t\t     : \"r1\", \"r2\");\n\tif (!ret)\n\n// CONTEXT:\
+    \ xdp_load_bytes(struct xdp_md *ctx, __u64 off, void *to, const __u64 len)\n\t\
+    return ret;\n}\n\nstatic __always_inline __maybe_unused int\nxdp_store_bytes(struct\
+    \ xdp_md *ctx, __u64 off, const void *from,\n\t\tconst __u64 len, __u64 flags\
+    \ __maybe_unused)\n{\n\tvoid *to;\n\tint ret;\n\t/* See xdp_load_bytes(). */\n\
+    \tasm volatile(\"r1 = *(u32 *)(%[ctx] +0)\\n\\t\"\n\t\t     \"r2 = *(u32 *)(%[ctx]\
+    \ +4)\\n\\t\"\n\t\t     \"if %[off] > %[offmax] goto +6\\n\\t\"\n\t\t     \"r1\
+    \ += %[off]\\n\\t\"\n\t\t     \"%[to] = r1\\n\\t\"\n\t\t     \"r1 += %[len]\\\
+    n\\t\"\n\t\t     \"if r1 > r2 goto +2\\n\\t\"\n\t\t     \"%[ret] = 0\\n\\t\"\n\
+    \t\t     \"goto +1\\n\\t\"\n\t\t     \"%[ret] = %[errno]\\n\\t\"\n\t\t     : [ret]\"\
+    =r\"(ret), [to]\"=r\"(to)\n\t\t     : [ctx]\"r\"(ctx), [off]\"r\"(off), [len]\"\
+    ri\"(len),\n\t\t       [offmax]\"i\"(__CTX_OFF_MAX), [errno]\"i\"(-EINVAL)\n\t\
+    \t     : \"r1\", \"r2\");\n\tif (!ret)\n\n// CONTEXT: l3_csum_replace(struct xdp_md\
+    \ *ctx, __u64 off, const __u32 from, __u32 to,\n{\n\t__u32 size = flags & BPF_F_HDR_FIELD_MASK;\n\
+    \t__sum16 *sum;\n\tint ret;\n\n\tif (unlikely(flags & ~(BPF_F_HDR_FIELD_MASK)))\n\
+    \t\treturn -EINVAL;\n\tif (unlikely(size != 0 && size != 2))\n\t\treturn -EINVAL;\n\
+    \t/* See xdp_load_bytes(). */\n\tasm volatile(\"r1 = *(u32 *)(%[ctx] +0)\\n\\\
+    t\"\n\t\t     \"r2 = *(u32 *)(%[ctx] +4)\\n\\t\"\n\t\t     \"if %[off] > %[offmax]\
+    \ goto +6\\n\\t\"\n\t\t     \"r1 += %[off]\\n\\t\"\n\t\t     \"%[sum] = r1\\n\\\
+    t\"\n\t\t     \"r1 += 2\\n\\t\"\n\t\t     \"if r1 > r2 goto +2\\n\\t\"\n\t\t \
+    \    \"%[ret] = 0\\n\\t\"\n\t\t     \"goto +1\\n\\t\"\n\t\t     \"%[ret] = %[errno]\\\
+    n\\t\"\n\t\t     : [ret]\"=r\"(ret), [sum]\"=r\"(sum)\n\t\t     : [ctx]\"r\"(ctx),\
+    \ [off]\"r\"(off),\n\t\t       [offmax]\"i\"(__CTX_OFF_MAX), [errno]\"i\"(-EINVAL)\n\
+    \t\t     : \"r1\", \"r2\");\n\tif (!ret)\n\n// CONTEXT: l4_csum_replace(struct\
+    \ xdp_md *ctx, __u64 off, __u32 from, __u32 to,\n\t__u32 size = flags & BPF_F_HDR_FIELD_MASK;\n\
+    \t__sum16 *sum;\n\tint ret;\n\n\tif (unlikely(flags & ~(BPF_F_MARK_MANGLED_0 |\
+    \ BPF_F_PSEUDO_HDR |\n\t\t\t       BPF_F_HDR_FIELD_MASK)))\n\t\treturn -EINVAL;\n\
+    \tif (unlikely(size != 0 && size != 2))\n\t\treturn -EINVAL;\n\t/* See xdp_load_bytes().\
+    \ */\n\tasm volatile(\"r1 = *(u32 *)(%[ctx] +0)\\n\\t\"\n\t\t     \"r2 = *(u32\
+    \ *)(%[ctx] +4)\\n\\t\"\n\t\t     \"if %[off] > %[offmax] goto +6\\n\\t\"\n\t\t\
+    \     \"r1 += %[off]\\n\\t\"\n\t\t     \"%[sum] = r1\\n\\t\"\n\t\t     \"r1 +=\
+    \ 2\\n\\t\"\n\t\t     \"if r1 > r2 goto +2\\n\\t\"\n\t\t     \"%[ret] = 0\\n\\\
+    t\"\n\t\t     \"goto +1\\n\\t\"\n\t\t     \"%[ret] = %[errno]\\n\\t\"\n\t\t  \
+    \   : [ret]\"=r\"(ret), [sum]\"=r\"(sum)\n\t\t     : [ctx]\"r\"(ctx), [off]\"\
+    r\"(off),\n\t\t       [offmax]\"i\"(__CTX_OFF_MAX), [errno]\"i\"(-EINVAL)\n\t\t\
+    \     : \"r1\", \"r2\");\n\tif (!ret) {"
+  fixed_code: "// FILE: bpf/include/bpf/ctx/xdp.h\n#include \"../builtins.h\"\n\n\
+    #define CTX_ACT_OK\t\t\tXDP_PASS\n#define CTX_ACT_DROP\t\t\tXDP_DROP\n#define\
+    \ CTX_ACT_TX\t\t\tXDP_TX\t/* hairpin only */\n\n#define CTX_DIRECT_WRITE_OK\t\t\
+    1\n\n\t\t\t\t\t/* cb + RECIRC_MARKER + XFER_MARKER */\n#define META_PIVOT\t\t\t\
+    ((int)(field_sizeof(struct __sk_buff, cb) + \\\n\t\t\t\t\t       sizeof(__u32)\
+    \ * 2))\n\n/* This must be a mask and all offsets guaranteed to be less than that.\
+    \ */\n#define __CTX_OFF_MAX\t\t\t0xff\n\nstatic __always_inline __maybe_unused\
+    \ int\nxdp_load_bytes(struct xdp_md *ctx, __u64 off, void *to, const __u64 len)\n\
+    {\n\tvoid *from;\n\tint ret;\n\t/* LLVM tends to generate code that verifier doesn't\
+    \ understand,\n\t * so force it the way we want it in order to open up a range\n\
+    \t * on the reg.\n\t */\n\tasm volatile(\"r1 = *(u32 *)(%[ctx] +0)\\n\\t\"\n\t\
+    \t     \"r2 = *(u32 *)(%[ctx] +4)\\n\\t\"\n\t\t     \"%[off] &= %[offmax]\\n\\\
+    t\"\n\t\t     \"r1 += %[off]\\n\\t\"\n\t\t     \"%[from] = r1\\n\\t\"\n\t\t  \
+    \   \"r1 += %[len]\\n\\t\"\n\t\t     \"if r1 > r2 goto +2\\n\\t\"\n\t\t     \"\
+    %[ret] = 0\\n\\t\"\n\t\t     \"goto +1\\n\\t\"\n\t\t     \"%[ret] = %[errno]\\\
+    n\\t\"\n\t\t     : [ret]\"=r\"(ret), [from]\"=r\"(from)\n\t\t     : [ctx]\"r\"\
+    (ctx), [off]\"r\"(off), [len]\"ri\"(len),\n\t\t       [offmax]\"i\"(__CTX_OFF_MAX),\
+    \ [errno]\"i\"(-EINVAL)\n\t\t     : \"r1\", \"r2\");\n\tif (!ret)\n\n// CONTEXT:\
+    \ xdp_load_bytes(struct xdp_md *ctx, __u64 off, void *to, const __u64 len)\n\t\
+    return ret;\n}\n\nstatic __always_inline __maybe_unused int\nxdp_store_bytes(struct\
+    \ xdp_md *ctx, __u64 off, const void *from,\n\t\tconst __u64 len, __u64 flags\
+    \ __maybe_unused)\n{\n\tvoid *to;\n\tint ret;\n\t/* See xdp_load_bytes(). */\n\
+    \tasm volatile(\"r1 = *(u32 *)(%[ctx] +0)\\n\\t\"\n\t\t     \"r2 = *(u32 *)(%[ctx]\
+    \ +4)\\n\\t\"\n\t\t     \"%[off] &= %[offmax]\\n\\t\"\n\t\t     \"r1 += %[off]\\\
+    n\\t\"\n\t\t     \"%[to] = r1\\n\\t\"\n\t\t     \"r1 += %[len]\\n\\t\"\n\t\t \
+    \    \"if r1 > r2 goto +2\\n\\t\"\n\t\t     \"%[ret] = 0\\n\\t\"\n\t\t     \"\
+    goto +1\\n\\t\"\n\t\t     \"%[ret] = %[errno]\\n\\t\"\n\t\t     : [ret]\"=r\"\
+    (ret), [to]\"=r\"(to)\n\t\t     : [ctx]\"r\"(ctx), [off]\"r\"(off), [len]\"ri\"\
+    (len),\n\t\t       [offmax]\"i\"(__CTX_OFF_MAX), [errno]\"i\"(-EINVAL)\n\t\t \
+    \    : \"r1\", \"r2\");\n\tif (!ret)\n\n// CONTEXT: l3_csum_replace(struct xdp_md\
+    \ *ctx, __u64 off, const __u32 from, __u32 to,\n{\n\t__u32 size = flags & BPF_F_HDR_FIELD_MASK;\n\
+    \t__sum16 *sum;\n\tint ret;\n\n\tif (unlikely(flags & ~(BPF_F_HDR_FIELD_MASK)))\n\
+    \t\treturn -EINVAL;\n\tif (unlikely(size != 0 && size != 2))\n\t\treturn -EINVAL;\n\
+    \t/* See xdp_load_bytes(). */\n\tasm volatile(\"r1 = *(u32 *)(%[ctx] +0)\\n\\\
+    t\"\n\t\t     \"r2 = *(u32 *)(%[ctx] +4)\\n\\t\"\n\t\t     \"%[off] &= %[offmax]\\\
+    n\\t\"\n\t\t     \"r1 += %[off]\\n\\t\"\n\t\t     \"%[sum] = r1\\n\\t\"\n\t\t\
+    \     \"r1 += 2\\n\\t\"\n\t\t     \"if r1 > r2 goto +2\\n\\t\"\n\t\t     \"%[ret]\
+    \ = 0\\n\\t\"\n\t\t     \"goto +1\\n\\t\"\n\t\t     \"%[ret] = %[errno]\\n\\t\"\
+    \n\t\t     : [ret]\"=r\"(ret), [sum]\"=r\"(sum)\n\t\t     : [ctx]\"r\"(ctx), [off]\"\
+    r\"(off),\n\t\t       [offmax]\"i\"(__CTX_OFF_MAX), [errno]\"i\"(-EINVAL)\n\t\t\
+    \     : \"r1\", \"r2\");\n\tif (!ret)\n\n// CONTEXT: l4_csum_replace(struct xdp_md\
+    \ *ctx, __u64 off, __u32 from, __u32 to,\n\t__u32 size = flags & BPF_F_HDR_FIELD_MASK;\n\
+    \t__sum16 *sum;\n\tint ret;\n\n\tif (unlikely(flags & ~(BPF_F_MARK_MANGLED_0 |\
+    \ BPF_F_PSEUDO_HDR |\n\t\t\t       BPF_F_HDR_FIELD_MASK)))\n\t\treturn -EINVAL;\n\
+    \tif (unlikely(size != 0 && size != 2))\n\t\treturn -EINVAL;\n\t/* See xdp_load_bytes().\
+    \ */\n\tasm volatile(\"r1 = *(u32 *)(%[ctx] +0)\\n\\t\"\n\t\t     \"r2 = *(u32\
+    \ *)(%[ctx] +4)\\n\\t\"\n\t\t     \"%[off] &= %[offmax]\\n\\t\"\n\t\t     \"r1\
+    \ += %[off]\\n\\t\"\n\t\t     \"%[sum] = r1\\n\\t\"\n\t\t     \"r1 += 2\\n\\t\"\
+    \n\t\t     \"if r1 > r2 goto +2\\n\\t\"\n\t\t     \"%[ret] = 0\\n\\t\"\n\t\t \
+    \    \"goto +1\\n\\t\"\n\t\t     \"%[ret] = %[errno]\\n\\t\"\n\t\t     : [ret]\"\
+    =r\"(ret), [sum]\"=r\"(sum)\n\t\t     : [ctx]\"r\"(ctx), [off]\"r\"(off),\n\t\t\
+    \       [offmax]\"i\"(__CTX_OFF_MAX), [errno]\"i\"(-EINVAL)\n\t\t     : \"r1\"\
+    , \"r2\");\n\tif (!ret) {"
+  diff_summary: |-
+    bpf/include/bpf/ctx/xdp.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: xdp_load_bytes(struct xdp_md *ctx, __u64 off, void *to, const __u64 len), l3_csum_replace(struct xdp_md *ctx, __u64 off, const __u32 from, __u32 to,, l4_csum_replace(struct xdp_md *ctx, __u64 off, __u32 from, __u32 to,.
+    - Commit subject: bpf: fix asm volatile ctx->data assumptions to always init reg.

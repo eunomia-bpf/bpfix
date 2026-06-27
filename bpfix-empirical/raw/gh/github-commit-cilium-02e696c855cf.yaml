@@ -1,0 +1,57 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-02e696c855cf
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/02e696c855cf9ec4809c03620b15282767df8cb4
+  title: 'bpf: fix obscure llvm codegen bug in port clamping'
+  repository: https://github.com/cilium/cilium
+  commit: 02e696c855cf9ec4809c03620b15282767df8cb4
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-02e696c855cf.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Commit fixes an LLVM signed-division/codegen failure in port clamping, not
+    a kernel verifier rejection; no replayable verifier log is present.
+raw:
+  case_id: github-commit-cilium-02e696c855cf
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: 02e696c855cf9ec4809c03620b15282767df8cb4
+  commit_message: 'bpf: fix obscure llvm codegen bug in port clamping'
+  commit_date: '2019-07-24'
+  fix_type: inline_hint
+  buggy_code: "// FILE: bpf/lib/nat.h\n// CONTEXT: struct nat_entry {\n#define NAT_CONTINUE_XLATE\
+    \ \t0\n#define NAT_PUNT_TO_STACK\t1\n\n#ifdef HAVE_LRU_MAP_TYPE\n#define NAT_MAP_TYPE\
+    \ BPF_MAP_TYPE_LRU_HASH\n#else\n#define NAT_MAP_TYPE BPF_MAP_TYPE_HASH\n#endif\n\
+    \nstatic __always_inline __be16 __snat_clamp_port_range(__u16 start, __u16 end,\n\
+    \t\t\t\t\t\t      __u16 val)\n{\n\treturn (val % (end - start)) + start;\n}\n\n\
+    #define GOLDEN_RATIO_32 0x61C88647\n\nstatic __always_inline __be16 __snat_hash(__u16\
+    \ val)\n{\n\t/* High bits are more random, so use them. */\n\treturn ((__u32)val\
+    \ * GOLDEN_RATIO_32) >> 16;\n}\n\nstatic __always_inline void *__snat_lookup(void\
+    \ *map, void *tuple)\n{"
+  fixed_code: "// FILE: bpf/lib/nat.h\n// CONTEXT: struct nat_entry {\n#define NAT_CONTINUE_XLATE\
+    \ \t0\n#define NAT_PUNT_TO_STACK\t1\n\n#ifdef HAVE_LRU_MAP_TYPE\n#define NAT_MAP_TYPE\
+    \ BPF_MAP_TYPE_LRU_HASH\n#else\n#define NAT_MAP_TYPE BPF_MAP_TYPE_HASH\n#endif\n\
+    \nstatic __always_inline __be16 __snat_clamp_port_range(__u16 start, __u16 end,\n\
+    \t\t\t\t\t\t      __u16 val)\n{\n\treturn (val % (__u16)(end - start)) + start;\n\
+    }\n\n#define GOLDEN_RATIO_32 0x61C88647\n\nstatic __always_inline __be16 __snat_hash(__u16\
+    \ val)\n{\n\t/* High bits are more random, so use them. */\n\treturn ((__u32)val\
+    \ * GOLDEN_RATIO_32) >> 16;\n}\n\nstatic __always_inline void *__snat_lookup(void\
+    \ *map, void *tuple)\n{"
+  diff_summary: |-
+    bpf/lib/nat.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: struct nat_entry {.
+    - Commit subject: bpf: fix obscure llvm codegen bug in port clamping.

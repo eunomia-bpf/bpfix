@@ -1,0 +1,146 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-1915b7348367
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/1915b7348367cd5083335ccea5f08dd002a82073
+  title: 'bpf: do not reset csum on adjust room for newer kernels'
+  repository: https://github.com/cilium/cilium
+  commit: 1915b7348367cd5083335ccea5f08dd002a82073
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-1915b7348367.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: environment_required
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Changes XDP adjust-room checksum flag handling for newer kernels and nodeport
+    DSR helpers. Reproduction depends on helper/kernel feature behavior and full nodeport
+    context.
+raw:
+  case_id: github-commit-cilium-1915b7348367
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: 1915b7348367cd5083335ccea5f08dd002a82073
+  commit_message: 'bpf: do not reset csum on adjust room for newer kernels'
+  commit_date: '2020-06-05'
+  fix_type: inline_hint
+  buggy_code: "// FILE: bpf/include/bpf/ctx/xdp.h\n// CONTEXT: l4_csum_replace(const\
+    \ struct xdp_md *ctx, __u64 off, __u32 from, __u32 to,\n\t\tif (is_mmzero && !*sum)\n\
+    \t\t\treturn 0;\n\t\tfrom ? __csum_replace_by_4(sum, from, to) :\n\t\t       __csum_replace_by_diff(sum,\
+    \ to);\n\t\tif (is_mmzero && !*sum)\n\t\t\t*sum = CSUM_MANGLED_0;\n\t}\n\treturn\
+    \ ret;\n}\n\nstatic __always_inline __maybe_unused int\nctx_adjust_room(struct\
+    \ xdp_md *ctx, const __s32 len_diff, const __u32 mode,\n\t\tconst __u64 flags)\n\
+    {\n\tconst __u32 move_len_v4 = 14 + 20;\n\tconst __u32 move_len_v6 = 14 + 40;\n\
+    \tvoid *data, *data_end;\n\tint ret;\n\n\tbuild_bug_on(len_diff <= 0 || len_diff\
+    \ >= 64);\n\tbuild_bug_on(mode != BPF_ADJ_ROOM_NET);\n\tbuild_bug_on(flags !=\
+    \ 0);\n\n\tret = xdp_adjust_head(ctx, -len_diff);\n\n\t/* XXX: Note, this hack\
+    \ is currently tailored to NodePort DSR\n\t * requirements and not a generic helper.\
+    \ If needed elsewhere,\n\t * this must be made more generic.\n\t */\n\tif (!ret)\
+    \ {\n\t\tdata_end = ctx_data_end(ctx);\n\t\tdata = ctx_data(ctx);\n\t\tif (len_diff\
+    \ == 8) {\n\t\t\tif (data + move_len_v4 + len_diff <= data_end)\n\n// FILE: bpf/include/bpf/features.h\n\
+    \n#if HAVE_PROG_TYPE_HELPER(cgroup_sock_addr, bpf_get_socket_cookie)\n# define\
+    \ BPF_HAVE_SOCKET_COOKIE 1\n#endif\n\n#if HAVE_PROG_TYPE_HELPER(cgroup_sock_addr,\
+    \ bpf_jiffies64) && \\\n    HAVE_PROG_TYPE_HELPER(cgroup_sock,      bpf_jiffies64)\
+    \ && \\\n    HAVE_PROG_TYPE_HELPER(sched_cls,        bpf_jiffies64) && \\\n  \
+    \  HAVE_PROG_TYPE_HELPER(xdp,              bpf_jiffies64)\n# define BPF_HAVE_JIFFIES\
+    \ 1\n#endif\n\n#endif /* ____BPF_FEATURES____ */\n\n// FILE: bpf/lib/nodeport.h\n\
+    // CONTEXT: static __always_inline bool\nbpf_skip_recirculation(const struct __ctx_buff\
+    \ *ctx __maybe_unused)\n{\n\t/* From XDP layer, we do not go through an egress\
+    \ hook from\n\t * here, hence nothing to be skipped.\n\t */\n#if __ctx_is == __ctx_skb\n\
+    \treturn ctx->tc_index & TC_INDEX_F_SKIP_RECIRCULATION;\n#else\n\treturn false;\n\
+    #endif\n}\n\n#ifdef ENABLE_IPV6\nstatic __always_inline bool nodeport_uses_dsr6(const\
+    \ struct ipv6_ct_tuple *tuple)\n{\n\treturn nodeport_uses_dsr(tuple->nexthdr);\n\
+    }\n\nstatic __always_inline bool nodeport_nat_ipv6_needed(struct __ctx_buff *ctx,\n\
+    \t\t\t\t\t\t     union v6addr *addr, int dir)\n{\n\tvoid *data, *data_end;\n\t\
+    struct ipv6hdr *ip6;\n\n\n// CONTEXT: static __always_inline int set_dsr_ext6(struct\
+    \ __ctx_buff *ctx,\n\tstruct dsr_opt_v6 opt __align_stack_8 = {};\n\n\topt.nexthdr\
+    \ = ip6->nexthdr;\n\tip6->nexthdr = NEXTHDR_DEST;\n\tip6->payload_len = bpf_htons(bpf_ntohs(ip6->payload_len)\
+    \ + 24);\n\n\topt.len = DSR_IPV6_EXT_LEN;\n\topt.opt_type = DSR_IPV6_OPT_TYPE;\n\
+    \topt.opt_len = DSR_IPV6_OPT_LEN;\n\tipv6_addr_copy(&opt.addr, svc_addr);\n\t\
+    opt.port = svc_port;\n\n\tif (ctx_adjust_room(ctx, sizeof(opt), BPF_ADJ_ROOM_NET,\
+    \ 0))\n\t\treturn DROP_INVALID;\n\n\tif (ctx_store_bytes(ctx, ETH_HLEN + sizeof(*ip6),\
+    \ &opt, sizeof(opt), 0) < 0)\n\t\treturn DROP_INVALID;\n\n\treturn 0;\n}\n\nstatic\
+    \ __always_inline int find_dsr_v6(struct __ctx_buff *ctx, __u8 nexthdr,\n\t\t\t\
+    \t       struct dsr_opt_v6 *dsr_opt, bool *found)\n{\n\tstruct ipv6_opt_hdr opthdr\
+    \ __align_stack_8;\n\n// CONTEXT: static __always_inline int set_dsr_opt4(struct\
+    \ __ctx_buff *ctx,\n\n\tiph_old = *(__u32 *)ip4;\n\tip4->ihl += 0x2; /* To accommodate\
+    \ u64 option. */\n\tip4->tot_len = bpf_htons(bpf_ntohs(ip4->tot_len) + 0x8);\n\
+    \tiph_new = *(__u32 *)ip4;\n\n\topt[0] = bpf_htonl(DSR_IPV4_OPT_32 | svc_port);\n\
+    \topt[1] = bpf_htonl(svc_addr);\n\n\tsum = csum_diff(&iph_old, 4, &iph_new, 4,\
+    \ 0);\n\tsum = csum_diff(NULL, 0, &opt, sizeof(opt), sum);\n\n\tif (ctx_adjust_room(ctx,\
+    \ 0x8, BPF_ADJ_ROOM_NET, 0))\n\t\treturn DROP_INVALID;\n\n\tif (ctx_store_bytes(ctx,\
+    \ ETH_HLEN + sizeof(*ip4),\n\t\t\t    &opt, sizeof(opt), 0) < 0)\n\t\treturn DROP_INVALID;\n\
+    \tif (l3_csum_replace(ctx, ETH_HLEN + offsetof(struct iphdr, check),\n\t\t\t \
+    \   0, sum, 0) < 0)\n\t\treturn DROP_CSUM_L3;\n\n\treturn 0;\n}"
+  fixed_code: "// FILE: bpf/include/bpf/ctx/xdp.h\n// CONTEXT: l4_csum_replace(const\
+    \ struct xdp_md *ctx, __u64 off, __u32 from, __u32 to,\n\t\tif (is_mmzero && !*sum)\n\
+    \t\t\treturn 0;\n\t\tfrom ? __csum_replace_by_4(sum, from, to) :\n\t\t       __csum_replace_by_diff(sum,\
+    \ to);\n\t\tif (is_mmzero && !*sum)\n\t\t\t*sum = CSUM_MANGLED_0;\n\t}\n\treturn\
+    \ ret;\n}\n\nstatic __always_inline __maybe_unused int\nctx_adjust_room(struct\
+    \ xdp_md *ctx, const __s32 len_diff, const __u32 mode,\n\t\tconst __u64 flags\
+    \ __maybe_unused)\n{\n\tconst __u32 move_len_v4 = 14 + 20;\n\tconst __u32 move_len_v6\
+    \ = 14 + 40;\n\tvoid *data, *data_end;\n\tint ret;\n\n\tbuild_bug_on(len_diff\
+    \ <= 0 || len_diff >= 64);\n\tbuild_bug_on(mode != BPF_ADJ_ROOM_NET);\n\n\tret\
+    \ = xdp_adjust_head(ctx, -len_diff);\n\n\t/* XXX: Note, this hack is currently\
+    \ tailored to NodePort DSR\n\t * requirements and not a generic helper. If needed\
+    \ elsewhere,\n\t * this must be made more generic.\n\t */\n\tif (!ret) {\n\t\t\
+    data_end = ctx_data_end(ctx);\n\t\tdata = ctx_data(ctx);\n\t\tif (len_diff ==\
+    \ 8) {\n\t\t\tif (data + move_len_v4 + len_diff <= data_end)\n\n// FILE: bpf/include/bpf/features.h\n\
+    \n#if HAVE_PROG_TYPE_HELPER(cgroup_sock_addr, bpf_get_socket_cookie)\n# define\
+    \ BPF_HAVE_SOCKET_COOKIE 1\n#endif\n\n#if HAVE_PROG_TYPE_HELPER(cgroup_sock_addr,\
+    \ bpf_jiffies64) && \\\n    HAVE_PROG_TYPE_HELPER(cgroup_sock,      bpf_jiffies64)\
+    \ && \\\n    HAVE_PROG_TYPE_HELPER(sched_cls,        bpf_jiffies64) && \\\n  \
+    \  HAVE_PROG_TYPE_HELPER(xdp,              bpf_jiffies64)\n# define BPF_HAVE_JIFFIES\
+    \ 1\n#endif\n\n#if HAVE_PROG_TYPE_HELPER(sched_cls, bpf_csum_level)\n# define\
+    \ BPF_HAVE_CSUM_LEVEL 1\n#endif\n\n#endif /* ____BPF_FEATURES____ */\n\n// FILE:\
+    \ bpf/lib/nodeport.h\n// CONTEXT: static __always_inline bool\nbpf_skip_recirculation(const\
+    \ struct __ctx_buff *ctx __maybe_unused)\n{\n\t/* From XDP layer, we do not go\
+    \ through an egress hook from\n\t * here, hence nothing to be skipped.\n\t */\n\
+    #if __ctx_is == __ctx_skb\n\treturn ctx->tc_index & TC_INDEX_F_SKIP_RECIRCULATION;\n\
+    #else\n\treturn false;\n#endif\n}\n\nstatic __always_inline __u64 ctx_adjust_room_dsr_flags(void)\n\
+    {\n#ifdef BPF_HAVE_CSUM_LEVEL\n\treturn BPF_F_ADJ_ROOM_NO_CSUM_RESET;\n#else\n\
+    \treturn 0;\n#endif\n}\n\n#ifdef ENABLE_IPV6\nstatic __always_inline bool nodeport_uses_dsr6(const\
+    \ struct ipv6_ct_tuple *tuple)\n{\n\treturn nodeport_uses_dsr(tuple->nexthdr);\n\
+    }\n\nstatic __always_inline bool nodeport_nat_ipv6_needed(struct __ctx_buff *ctx,\n\
+    \t\t\t\t\t\t     union v6addr *addr, int dir)\n{\n\tvoid *data, *data_end;\n\t\
+    struct ipv6hdr *ip6;\n\n\n// CONTEXT: static __always_inline int set_dsr_ext6(struct\
+    \ __ctx_buff *ctx,\n\tstruct dsr_opt_v6 opt __align_stack_8 = {};\n\n\topt.nexthdr\
+    \ = ip6->nexthdr;\n\tip6->nexthdr = NEXTHDR_DEST;\n\tip6->payload_len = bpf_htons(bpf_ntohs(ip6->payload_len)\
+    \ + 24);\n\n\topt.len = DSR_IPV6_EXT_LEN;\n\topt.opt_type = DSR_IPV6_OPT_TYPE;\n\
+    \topt.opt_len = DSR_IPV6_OPT_LEN;\n\tipv6_addr_copy(&opt.addr, svc_addr);\n\t\
+    opt.port = svc_port;\n\n\tif (ctx_adjust_room(ctx, sizeof(opt), BPF_ADJ_ROOM_NET,\n\
+    \t\t\t    ctx_adjust_room_dsr_flags()))\n\t\treturn DROP_INVALID;\n\n\tif (ctx_store_bytes(ctx,\
+    \ ETH_HLEN + sizeof(*ip6), &opt, sizeof(opt), 0) < 0)\n\t\treturn DROP_INVALID;\n\
+    \n\treturn 0;\n}\n\nstatic __always_inline int find_dsr_v6(struct __ctx_buff *ctx,\
+    \ __u8 nexthdr,\n\t\t\t\t       struct dsr_opt_v6 *dsr_opt, bool *found)\n{\n\t\
+    struct ipv6_opt_hdr opthdr __align_stack_8;\n\n// CONTEXT: static __always_inline\
+    \ int set_dsr_opt4(struct __ctx_buff *ctx,\n\n\tiph_old = *(__u32 *)ip4;\n\tip4->ihl\
+    \ += 0x2; /* To accommodate u64 option. */\n\tip4->tot_len = bpf_htons(bpf_ntohs(ip4->tot_len)\
+    \ + 0x8);\n\tiph_new = *(__u32 *)ip4;\n\n\topt[0] = bpf_htonl(DSR_IPV4_OPT_32\
+    \ | svc_port);\n\topt[1] = bpf_htonl(svc_addr);\n\n\tsum = csum_diff(&iph_old,\
+    \ 4, &iph_new, 4, 0);\n\tsum = csum_diff(NULL, 0, &opt, sizeof(opt), sum);\n\n\
+    \tif (ctx_adjust_room(ctx, 0x8, BPF_ADJ_ROOM_NET,\n\t\t\t    ctx_adjust_room_dsr_flags()))\n\
+    \t\treturn DROP_INVALID;\n\n\tif (ctx_store_bytes(ctx, ETH_HLEN + sizeof(*ip4),\n\
+    \t\t\t    &opt, sizeof(opt), 0) < 0)\n\t\treturn DROP_INVALID;\n\tif (l3_csum_replace(ctx,\
+    \ ETH_HLEN + offsetof(struct iphdr, check),\n\t\t\t    0, sum, 0) < 0)\n\t\treturn\
+    \ DROP_CSUM_L3;\n\n\treturn 0;\n}"
+  diff_summary: |-
+    bpf/include/bpf/ctx/xdp.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: l4_csum_replace(const struct xdp_md *ctx, __u64 off, __u32 from, __u32 to,.
+    bpf/include/bpf/features.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: the touched section.
+    bpf/lib/nodeport.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: static __always_inline bool, static __always_inline int set_dsr_ext6(struct __ctx_buff *ctx,, static __always_inline int set_dsr_opt4(struct __ctx_buff *ctx,.
+    - Commit subject: bpf: do not reset csum on adjust room for newer kernels.

@@ -1,0 +1,144 @@
+schema_version: bpfix.raw_external/v1
+raw_id: stackoverflow-79873405
+source_kind: stackoverflow
+source:
+  url: https://stackoverflow.com/questions/79873405/how-do-you-load-an-ebpf-program-that-probes-an-nfs-function
+  title: How do you load an eBPF program that probes an NFS function?
+  repository: null
+  commit: null
+  collected_at: '2026-04-30T00:51:12+00:00'
+collector:
+  original_path: bpfix-empirical/raw/so/stackoverflow-79873405.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: true
+  verifier_log_block_count: 1
+  source_snippet_count: 0
+  has_buggy_code: false
+  has_fixed_code: false
+  has_fix_description: false
+reproduction:
+  status: replay_valid
+  case_id: stackoverflow-79873405
+  case_path: cases/stackoverflow-79873405
+  artifact_path: cases/stackoverflow-79873405
+  reason: admitted_to_bpfix_bench_cases
+raw:
+  case_id: stackoverflow-79873405
+  source: stackoverflow
+  collected_at: '2026-04-30T00:51:12+00:00'
+  question:
+    question_id: 79873405
+    title: How do you load an eBPF program that probes an NFS function?
+    url: https://stackoverflow.com/questions/79873405/how-do-you-load-an-ebpf-program-that-probes-an-nfs-function
+    tags:
+    - linux
+    - go
+    - nfs
+    - ebpf
+    - bpftrace
+    score: 1
+    answer_count: 1
+    is_answered: true
+  verifier_log:
+    blocks:
+    - 'permission denied: 0: (bf) r3 = r2: R2 !read_ok'
+    combined: 'permission denied: 0: (bf) r3 = r2: R2 !read_ok'
+  source_snippets: []
+  question_body_text: |-
+    I am trying to replicate the behavior of a bpftrace script I recently made (I reckon the bpftrace code itself is not very important, but rather the fact it works proves that eBPF and NFSDv4 are properly set on my Linux 5.14 machine):
+    fentry:nfsd:nfsd4_write {
+    $dentry = args->cstate->current_fh.fh_dentry;
+    $ino = $dentry->d_inode->i_ino;
+    $uid = args->rqstp->rq_cred.cr_uid.val;
+    printf("UID: %u, Write to Inode: %lu, Filename: %s/%s\n",
+    $uid,
+    $ino,
+    str($dentry->d_parent->d_name.name),
+    str($dentry->d_name.name),
+    );
+    }
+    I am rewriting it using ebpf-go. However, I keep getting Loading eBPF objects:field WriteOps: program write_ops: load program: permission denied: 0: (bf) r3 = r2: R2 !read_ok (3 line(s) omitted) which I am interpreting as the verifier not accepting my program. As in, R2 !read_ok means that it could not verify that reading from the second argument is safe?
+    The following is the C code skeleton I am trying, and I'll describe the weird behavior I am seeing.
+    #include "nfsd-btf.h"
+    #include "vmlinux.h"
+    #include <bpf/bpf_core_read.h>
+    #include <bpf/bpf_helpers.h>
+    SEC("fentry/nfsd4_write")
+    int write_ops(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+    union nfsd4_op_u *u) {
+    ....
+    }
+    Note: I generate vmlinux.h through bpftool btf dump file /sys/kernel/btf/vmlinux format c > vmlinux.h and I generate nfsd-btf.h through bpftool btf dump file /sys/kernel/btf/nfsd format c > nfsd-btf.h
+    Here's what I am observing:
+    If I do nothing with the arguments, then it loads without issues
+    If I try accessing rqstp, then it loads without issues, though on a closer inspection I might be getting trash values (?). For example, the verifier doesn't complain attaching with this code in write_ops
+    bpf_printk("nfs write %u\n", BPF_CORE_READ(rqstp, rq_cred.cr_uid.val));
+    but the printed value is not my actual uid (it gives me 3243852586, regardless of user or even root)
+    If I try accessing cstate, I get the permission denied: 0: (bf) r3 = r2: R2 !read_ok error (or similar errors). For example, I have tried inside the write_ops function:
+    struct dentry *dentry_ptr = BPF_CORE_READ(cstate, current_fh.fh_dentry);
+    bpf_printk("%p\n", cstate);
+    if (!cstate) {
+    bpf_printk("cstate NULL");
+    return 0;
+    } else {
+    bpf_printk("cstate valid");
+    }
+    For reference, this is the main.go program
+    import (
+    "log"
+    "time"
+    "github.com/cilium/ebpf/link"
+    )
+    func main() {
+    // Load eBPF objects to the objs struct (not the kernel yet!)
+    var objs collectorObjects
+    if err := loadCollectorObjects(&objs, nil); err != nil {
+    log.Fatal("Loading eBPF objects:", err)
+    }
+    defer objs.Close()
+    link, err := link.AttachTracing(link.TracingOptions{
+    Program: objs.WriteOps,
+    })
+    if err != nil {
+    log.Fatal("Attaching Fentry:", err)
+    }
+    defer link.Close()
+    log.Printf("Program Loaded!\n")
+    time.Sleep(10*time.Seconds)
+    }
+    As to what is going wrong, I am inferring it has to do with how nfsd-btf.h is being loaded (since that's where nfsd4_compound_state and nfsd4_op_u live) or the kernel not recognizing the BTF in the arguments. Is this the reason? I have tried removing "nfsd-btf.h", but then go generate complains. Is there an usual way to load programs that attach to functions, when the function arguments structures are not in vmlinux.h?
+  selected_answer:
+    answer_id: 79874063
+    url: https://stackoverflow.com/questions/79873405/how-do-you-load-an-ebpf-program-that-probes-an-nfs-function#79874063
+    is_accepted: true
+    score: 2
+    body_text: |-
+      TL;DR. Your program prototype is incorrect as BPF programs can only take one argument.
+      Verifier Error Explanation
+      permission denied: 0: (bf) r3 = r2: R2 !read_ok
+      This error message means that you're trying to access register R2 even though it has never been initialized.
+      As you mentioned in your post, that instruction corresponds to your access to cstate, the second argument of your program. That's the issue. BPF programs can only take a single argument, R1. So any access to R2-R9 at the beginning of the program is going to be rejected because those registers haven't been initialized yet.
+      BPF Programs with Multiple Arguments
+      I'm guessing that'll come as a surprise to you because you've seen examples of BPF programs taking multiple arguments. Well, not really.
+      You may have seen two things:
+      bcc programs where some C-to-C rewriting is happening behind the curtain to turn your function prototype into a correct BPF program with a single argument.
+      Programs using the BPF_PROG macro to define BPF programs. That also gets rewritten into a proper BPF program with a single argument.
+      Possible Solutions
+      I think you have two solutions here:
+      You could use BPF_PROG. The simplest example of a program that does that is probably fentry_recursive.c. That would require you to include bpf_tracing.h.
+      You could manually rewrite your function/program to have a single argument. That would look something as below:
+      SEC("fentry/nfsd4_write")
+      int write_ops(void *ctx) {
+      struct nfsd4_compound_state *cstate;
+      u64 ret;
+      ret = bpf_get_func_arg(ctx, 1, &cstate);
+      if (ret)
+      /* Handle error */
+    fix_description: As you mentioned in your post, that instruction corresponds to
+      your access to cstate, the second argument of your program. That's the issue.
+      BPF programs can only take a single argument, R1. So any access to R2-R9 at
+      the beginning of the program is going to be rejected because those registers
+      haven't been initialized yet. I'm guessing that'll come as a surprise to you
+      because you've seen examples of BPF programs taking multiple arguments. Well,
+      not really. Possible Solutions

@@ -1,0 +1,226 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-libbpf-05acce9e03d9
+source_kind: github_commit
+source:
+  url: https://github.com/libbpf/libbpf/commit/05acce9e03d9b25ea909be35fd67782d88a21ba3
+  title: 'libbpf: Add bpf_program__attach_kprobe_multi_opts function'
+  repository: https://github.com/libbpf/libbpf
+  commit: 05acce9e03d9b25ea909be35fd67782d88a21ba3
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-libbpf-05acce9e03d9.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Adds kprobe-multi attach support and libbpf API/section handling. The raw
+    evidence is attach-time user-space library code and has no verifier rejected instruction.
+raw:
+  case_id: github-commit-libbpf-05acce9e03d9
+  source: github_commits
+  repository: https://github.com/libbpf/libbpf
+  commit_hash: 05acce9e03d9b25ea909be35fd67782d88a21ba3
+  commit_message: 'libbpf: Add bpf_program__attach_kprobe_multi_opts function'
+  commit_date: '2022-03-16'
+  fix_type: null_check
+  buggy_code: "// FILE: src/libbpf.c\n// CONTEXT: int bpf_program__set_log_buf(struct\
+    \ bpf_program *prog, char *log_buf, size_t log\n\t.sec = (char *)sec_pfx,\t\t\t\
+    \t\t\t    \\\n\t.prog_type = BPF_PROG_TYPE_##ptype,\t\t\t\t    \\\n\t.expected_attach_type\
+    \ = atype,\t\t\t\t\t    \\\n\t.cookie = (long)(flags),\t\t\t\t\t    \\\n\t.prog_prepare_load_fn\
+    \ = libbpf_prepare_prog_load,\t\t    \\\n\t__VA_ARGS__\t\t\t\t\t\t\t    \\\n}\n\
+    \nstatic int attach_kprobe(const struct bpf_program *prog, long cookie, struct\
+    \ bpf_link **link);\nstatic int attach_tp(const struct bpf_program *prog, long\
+    \ cookie, struct bpf_link **link);\nstatic int attach_raw_tp(const struct bpf_program\
+    \ *prog, long cookie, struct bpf_link **link);\nstatic int attach_trace(const\
+    \ struct bpf_program *prog, long cookie, struct bpf_link **link);\nstatic int\
+    \ attach_lsm(const struct bpf_program *prog, long cookie, struct bpf_link **link);\n\
+    static int attach_iter(const struct bpf_program *prog, long cookie, struct bpf_link\
+    \ **link);\n\nstatic const struct bpf_sec_def section_defs[] = {\n\tSEC_DEF(\"\
+    socket\",\t\tSOCKET_FILTER, 0, SEC_NONE | SEC_SLOPPY_PFX),\n\tSEC_DEF(\"sk_reuseport/migrate\"\
+    ,\tSK_REUSEPORT, BPF_SK_REUSEPORT_SELECT_OR_MIGRATE, SEC_ATTACHABLE | SEC_SLOPPY_PFX),\n\
+    \tSEC_DEF(\"sk_reuseport\",\t\tSK_REUSEPORT, BPF_SK_REUSEPORT_SELECT, SEC_ATTACHABLE\
+    \ | SEC_SLOPPY_PFX),\n\tSEC_DEF(\"kprobe/\",\t\tKPROBE,\t0, SEC_NONE, attach_kprobe),\n\
+    \tSEC_DEF(\"uprobe/\",\t\tKPROBE,\t0, SEC_NONE),\n\tSEC_DEF(\"kretprobe/\",\t\t\
+    KPROBE, 0, SEC_NONE, attach_kprobe),\n\tSEC_DEF(\"uretprobe/\",\t\tKPROBE, 0,\
+    \ SEC_NONE),\n\tSEC_DEF(\"tc\",\t\t\tSCHED_CLS, 0, SEC_NONE),\n\tSEC_DEF(\"classifier\"\
+    ,\t\tSCHED_CLS, 0, SEC_NONE | SEC_SLOPPY_PFX | SEC_DEPRECATED),\n\tSEC_DEF(\"\
+    action\",\t\tSCHED_ACT, 0, SEC_NONE | SEC_SLOPPY_PFX),\n\tSEC_DEF(\"tracepoint/\"\
+    ,\t\tTRACEPOINT, 0, SEC_NONE, attach_tp),\n\tSEC_DEF(\"tp/\",\t\t\tTRACEPOINT,\
+    \ 0, SEC_NONE, attach_tp),\n\tSEC_DEF(\"raw_tracepoint/\",\tRAW_TRACEPOINT, 0,\
+    \ SEC_NONE, attach_raw_tp),\n\tSEC_DEF(\"raw_tp/\",\t\tRAW_TRACEPOINT, 0, SEC_NONE,\
+    \ attach_raw_tp),\n\tSEC_DEF(\"raw_tracepoint.w/\",\tRAW_TRACEPOINT_WRITABLE,\
+    \ 0, SEC_NONE, attach_raw_tp),\n\tSEC_DEF(\"raw_tp.w/\",\t\tRAW_TRACEPOINT_WRITABLE,\
+    \ 0, SEC_NONE, attach_raw_tp),\n\tSEC_DEF(\"tp_btf/\",\t\tTRACING, BPF_TRACE_RAW_TP,\
+    \ SEC_ATTACH_BTF, attach_trace),\n\tSEC_DEF(\"fentry/\",\t\tTRACING, BPF_TRACE_FENTRY,\
+    \ SEC_ATTACH_BTF, attach_trace),\n\tSEC_DEF(\"fmod_ret/\",\t\tTRACING, BPF_MODIFY_RETURN,\
+    \ SEC_ATTACH_BTF, attach_trace),\n\n// CONTEXT: err_out:\n\nstruct bpf_link *bpf_program__attach_kprobe(const\
+    \ struct bpf_program *prog,\n\t\t\t\t\t    bool retprobe,\n\t\t\t\t\t    const\
+    \ char *func_name)\n{\n\tDECLARE_LIBBPF_OPTS(bpf_kprobe_opts, opts,\n\t\t.retprobe\
+    \ = retprobe,\n\t);\n\n\treturn bpf_program__attach_kprobe_opts(prog, func_name,\
+    \ &opts);\n}\n\nstatic int attach_kprobe(const struct bpf_program *prog, long\
+    \ cookie, struct bpf_link **link)\n{\n\tDECLARE_LIBBPF_OPTS(bpf_kprobe_opts, opts);\n\
+    \tunsigned long offset = 0;\n\tconst char *func_name;\n\tchar *func;\n\tint n;\n\
+    \n\topts.retprobe = str_has_pfx(prog->sec_name, \"kretprobe/\");\n\tif (opts.retprobe)\n\
+    \t\tfunc_name = prog->sec_name + sizeof(\"kretprobe/\") - 1;\n\telse\n\n// CONTEXT:\
+    \ static int attach_kprobe(const struct bpf_program *prog, long cookie, struct\
+    \ bpf\n\tif (opts.retprobe && offset != 0) {\n\t\tfree(func);\n\t\tpr_warn(\"\
+    kretprobes do not support offset specification\\n\");\n\t\treturn -EINVAL;\n\t\
+    }\n\n\topts.offset = offset;\n\t*link = bpf_program__attach_kprobe_opts(prog,\
+    \ func, &opts);\n\tfree(func);\n\treturn libbpf_get_error(*link);\n}\n\nstatic\
+    \ void gen_uprobe_legacy_event_name(char *buf, size_t buf_sz,\n\t\t\t\t\t const\
+    \ char *binary_path, uint64_t offset)\n{\n\tint i;\n\n\tsnprintf(buf, buf_sz,\
+    \ \"libbpf_%u_%s_0x%zx\", getpid(), binary_path, (size_t)offset);\n\n\t/* sanitize\
+    \ binary_path in the probe name */\n\tfor (i = 0; buf[i]; i++) {\n\t\tif (!isalnum(buf[i]))\n\
+    \t\t\tbuf[i] = '_';\n\t}\n\n// FILE: src/libbpf.h\n// CONTEXT: struct bpf_kprobe_opts\
+    \ {\n\tsize_t :0;\n};\n#define bpf_kprobe_opts__last_field retprobe\n\nLIBBPF_API\
+    \ struct bpf_link *\nbpf_program__attach_kprobe(const struct bpf_program *prog,\
+    \ bool retprobe,\n\t\t\t   const char *func_name);\nLIBBPF_API struct bpf_link\
+    \ *\nbpf_program__attach_kprobe_opts(const struct bpf_program *prog,\n       \
+    \                         const char *func_name,\n                           \
+    \     const struct bpf_kprobe_opts *opts);\n\nstruct bpf_uprobe_opts {\n\t/* size\
+    \ of this struct, for forward/backward compatiblity */\n\tsize_t sz;\n\t/* offset\
+    \ of kernel reference counted USDT semaphore, added in\n\t * a6ca88b241d5 (\"\
+    trace_uprobe: support reference counter in fd-based uprobe\")\n\t */\n\tsize_t\
+    \ ref_ctr_offset;\n\t/* custom user-provided value fetchable through bpf_get_attach_cookie()\
+    \ */\n\t__u64 bpf_cookie;\n\t/* uprobe is return probe, invoked at function return\
+    \ time */\n\tbool retprobe;\n\tsize_t :0;"
+  fixed_code: "// FILE: src/libbpf.c\n// CONTEXT: int bpf_program__set_log_buf(struct\
+    \ bpf_program *prog, char *log_buf, size_t log\n\t.sec = (char *)sec_pfx,\t\t\t\
+    \t\t\t    \\\n\t.prog_type = BPF_PROG_TYPE_##ptype,\t\t\t\t    \\\n\t.expected_attach_type\
+    \ = atype,\t\t\t\t\t    \\\n\t.cookie = (long)(flags),\t\t\t\t\t    \\\n\t.prog_prepare_load_fn\
+    \ = libbpf_prepare_prog_load,\t\t    \\\n\t__VA_ARGS__\t\t\t\t\t\t\t    \\\n}\n\
+    \nstatic int attach_kprobe(const struct bpf_program *prog, long cookie, struct\
+    \ bpf_link **link);\nstatic int attach_tp(const struct bpf_program *prog, long\
+    \ cookie, struct bpf_link **link);\nstatic int attach_raw_tp(const struct bpf_program\
+    \ *prog, long cookie, struct bpf_link **link);\nstatic int attach_trace(const\
+    \ struct bpf_program *prog, long cookie, struct bpf_link **link);\nstatic int\
+    \ attach_kprobe_multi(const struct bpf_program *prog, long cookie, struct bpf_link\
+    \ **link);\nstatic int attach_lsm(const struct bpf_program *prog, long cookie,\
+    \ struct bpf_link **link);\nstatic int attach_iter(const struct bpf_program *prog,\
+    \ long cookie, struct bpf_link **link);\n\nstatic const struct bpf_sec_def section_defs[]\
+    \ = {\n\tSEC_DEF(\"socket\",\t\tSOCKET_FILTER, 0, SEC_NONE | SEC_SLOPPY_PFX),\n\
+    \tSEC_DEF(\"sk_reuseport/migrate\",\tSK_REUSEPORT, BPF_SK_REUSEPORT_SELECT_OR_MIGRATE,\
+    \ SEC_ATTACHABLE | SEC_SLOPPY_PFX),\n\tSEC_DEF(\"sk_reuseport\",\t\tSK_REUSEPORT,\
+    \ BPF_SK_REUSEPORT_SELECT, SEC_ATTACHABLE | SEC_SLOPPY_PFX),\n\tSEC_DEF(\"kprobe/\"\
+    ,\t\tKPROBE,\t0, SEC_NONE, attach_kprobe),\n\tSEC_DEF(\"uprobe/\",\t\tKPROBE,\t\
+    0, SEC_NONE),\n\tSEC_DEF(\"kretprobe/\",\t\tKPROBE, 0, SEC_NONE, attach_kprobe),\n\
+    \tSEC_DEF(\"uretprobe/\",\t\tKPROBE, 0, SEC_NONE),\n\tSEC_DEF(\"kprobe.multi/\"\
+    ,\tKPROBE,\tBPF_TRACE_KPROBE_MULTI, SEC_NONE, attach_kprobe_multi),\n\tSEC_DEF(\"\
+    kretprobe.multi/\",\tKPROBE,\tBPF_TRACE_KPROBE_MULTI, SEC_NONE, attach_kprobe_multi),\n\
+    \tSEC_DEF(\"tc\",\t\t\tSCHED_CLS, 0, SEC_NONE),\n\tSEC_DEF(\"classifier\",\t\t\
+    SCHED_CLS, 0, SEC_NONE | SEC_SLOPPY_PFX | SEC_DEPRECATED),\n\tSEC_DEF(\"action\"\
+    ,\t\tSCHED_ACT, 0, SEC_NONE | SEC_SLOPPY_PFX),\n\tSEC_DEF(\"tracepoint/\",\t\t\
+    TRACEPOINT, 0, SEC_NONE, attach_tp),\n\tSEC_DEF(\"tp/\",\t\t\tTRACEPOINT, 0, SEC_NONE,\
+    \ attach_tp),\n\tSEC_DEF(\"raw_tracepoint/\",\tRAW_TRACEPOINT, 0, SEC_NONE, attach_raw_tp),\n\
+    \tSEC_DEF(\"raw_tp/\",\t\tRAW_TRACEPOINT, 0, SEC_NONE, attach_raw_tp),\n\tSEC_DEF(\"\
+    raw_tracepoint.w/\",\tRAW_TRACEPOINT_WRITABLE, 0, SEC_NONE, attach_raw_tp),\n\t\
+    SEC_DEF(\"raw_tp.w/\",\t\tRAW_TRACEPOINT_WRITABLE, 0, SEC_NONE, attach_raw_tp),\n\
+    \tSEC_DEF(\"tp_btf/\",\t\tTRACING, BPF_TRACE_RAW_TP, SEC_ATTACH_BTF, attach_trace),\n\
+    \tSEC_DEF(\"fentry/\",\t\tTRACING, BPF_TRACE_FENTRY, SEC_ATTACH_BTF, attach_trace),\n\
+    \tSEC_DEF(\"fmod_ret/\",\t\tTRACING, BPF_MODIFY_RETURN, SEC_ATTACH_BTF, attach_trace),\n\
+    \n// CONTEXT: err_out:\n\nstruct bpf_link *bpf_program__attach_kprobe(const struct\
+    \ bpf_program *prog,\n\t\t\t\t\t    bool retprobe,\n\t\t\t\t\t    const char *func_name)\n\
+    {\n\tDECLARE_LIBBPF_OPTS(bpf_kprobe_opts, opts,\n\t\t.retprobe = retprobe,\n\t\
+    );\n\n\treturn bpf_program__attach_kprobe_opts(prog, func_name, &opts);\n}\n\n\
+    /* Adapted from perf/util/string.c */\nstatic bool glob_match(const char *str,\
+    \ const char *pat)\n{\n\twhile (*str && *pat && *pat != '*') {\n\t\tif (*pat ==\
+    \ '?') {      /* Matches any single character */\n\t\t\tstr++;\n\t\t\tpat++;\n\
+    \t\t\tcontinue;\n\t\t}\n\t\tif (*str != *pat)\n\t\t\treturn false;\n\t\tstr++;\n\
+    \t\tpat++;\n\t}\n\t/* Check wild card */\n\tif (*pat == '*') {\n\t\twhile (*pat\
+    \ == '*')\n\t\t\tpat++;\n\t\tif (!*pat) /* Tail wild card matches all */\n\t\t\
+    \treturn true;\n\t\twhile (*str)\n\t\t\tif (glob_match(str++, pat))\n\t\t\t\t\
+    return true;\n\t}\n\treturn !*str && !*pat;\n}\n\nstruct kprobe_multi_resolve\
+    \ {\n\tconst char *pattern;\n\tunsigned long *addrs;\n\tsize_t cap;\n\tsize_t\
+    \ cnt;\n};\n\nstatic int\nresolve_kprobe_multi_cb(unsigned long long sym_addr,\
+    \ char sym_type,\n\t\t\tconst char *sym_name, void *ctx)\n{\n\tstruct kprobe_multi_resolve\
+    \ *res = ctx;\n\tint err;\n\n\tif (!glob_match(sym_name, res->pattern))\n\t\t\
+    return 0;\n\n\terr = libbpf_ensure_mem((void **) &res->addrs, &res->cap, sizeof(unsigned\
+    \ long),\n\t\t\t\tres->cnt + 1);\n\tif (err)\n\t\treturn err;\n\n\tres->addrs[res->cnt++]\
+    \ = (unsigned long) sym_addr;\n\treturn 0;\n}\n\nstruct bpf_link *\nbpf_program__attach_kprobe_multi_opts(const\
+    \ struct bpf_program *prog,\n\t\t\t\t      const char *pattern,\n\t\t\t\t    \
+    \  const struct bpf_kprobe_multi_opts *opts)\n{\n\tLIBBPF_OPTS(bpf_link_create_opts,\
+    \ lopts);\n\tstruct kprobe_multi_resolve res = {\n\t\t.pattern = pattern,\n\t\
+    };\n\tstruct bpf_link *link = NULL;\n\tchar errmsg[STRERR_BUFSIZE];\n\tconst unsigned\
+    \ long *addrs;\n\tint err, link_fd, prog_fd;\n\tconst __u64 *cookies;\n\tconst\
+    \ char **syms;\n\tbool retprobe;\n\tsize_t cnt;\n\n\tif (!OPTS_VALID(opts, bpf_kprobe_multi_opts))\n\
+    \t\treturn libbpf_err_ptr(-EINVAL);\n\n\tsyms    = OPTS_GET(opts, syms, false);\n\
+    \taddrs   = OPTS_GET(opts, addrs, false);\n\tcnt     = OPTS_GET(opts, cnt, false);\n\
+    \tcookies = OPTS_GET(opts, cookies, false);\n\n\tif (!pattern && !addrs && !syms)\n\
+    \t\treturn libbpf_err_ptr(-EINVAL);\n\tif (pattern && (addrs || syms || cookies\
+    \ || cnt))\n\t\treturn libbpf_err_ptr(-EINVAL);\n\tif (!pattern && !cnt)\n\t\t\
+    return libbpf_err_ptr(-EINVAL);\n\tif (addrs && syms)\n\t\treturn libbpf_err_ptr(-EINVAL);\n\
+    \n\tif (pattern) {\n\t\terr = libbpf_kallsyms_parse(resolve_kprobe_multi_cb, &res);\n\
+    \t\tif (err)\n\t\t\tgoto error;\n\t\tif (!res.cnt) {\n\t\t\terr = -ENOENT;\n\t\
+    \t\tgoto error;\n\t\t}\n\t\taddrs = res.addrs;\n\t\tcnt = res.cnt;\n\t}\n\n\t\
+    retprobe = OPTS_GET(opts, retprobe, false);\n\n\tlopts.kprobe_multi.syms = syms;\n\
+    \tlopts.kprobe_multi.addrs = addrs;\n\tlopts.kprobe_multi.cookies = cookies;\n\
+    \tlopts.kprobe_multi.cnt = cnt;\n\tlopts.kprobe_multi.flags = retprobe ? BPF_F_KPROBE_MULTI_RETURN\
+    \ : 0;\n\n\tlink = calloc(1, sizeof(*link));\n\tif (!link) {\n\t\terr = -ENOMEM;\n\
+    \t\tgoto error;\n\t}\n\tlink->detach = &bpf_link__detach_fd;\n\n\tprog_fd = bpf_program__fd(prog);\n\
+    \tlink_fd = bpf_link_create(prog_fd, 0, BPF_TRACE_KPROBE_MULTI, &lopts);\n\tif\
+    \ (link_fd < 0) {\n\t\terr = -errno;\n\t\tpr_warn(\"prog '%s': failed to attach:\
+    \ %s\\n\",\n\t\t\tprog->name, libbpf_strerror_r(err, errmsg, sizeof(errmsg)));\n\
+    \t\tgoto error;\n\t}\n\tlink->fd = link_fd;\n\tfree(res.addrs);\n\treturn link;\n\
+    \nerror:\n\tfree(link);\n\tfree(res.addrs);\n\treturn libbpf_err_ptr(err);\n}\n\
+    \nstatic int attach_kprobe(const struct bpf_program *prog, long cookie, struct\
+    \ bpf_link **link)\n{\n\tDECLARE_LIBBPF_OPTS(bpf_kprobe_opts, opts);\n\tunsigned\
+    \ long offset = 0;\n\tconst char *func_name;\n\tchar *func;\n\tint n;\n\n\topts.retprobe\
+    \ = str_has_pfx(prog->sec_name, \"kretprobe/\");\n\tif (opts.retprobe)\n\t\tfunc_name\
+    \ = prog->sec_name + sizeof(\"kretprobe/\") - 1;\n\telse\n\n// CONTEXT: static\
+    \ int attach_kprobe(const struct bpf_program *prog, long cookie, struct bpf\n\t\
+    if (opts.retprobe && offset != 0) {\n\t\tfree(func);\n\t\tpr_warn(\"kretprobes\
+    \ do not support offset specification\\n\");\n\t\treturn -EINVAL;\n\t}\n\n\topts.offset\
+    \ = offset;\n\t*link = bpf_program__attach_kprobe_opts(prog, func, &opts);\n\t\
+    free(func);\n\treturn libbpf_get_error(*link);\n}\n\nstatic int attach_kprobe_multi(const\
+    \ struct bpf_program *prog, long cookie, struct bpf_link **link)\n{\n\tLIBBPF_OPTS(bpf_kprobe_multi_opts,\
+    \ opts);\n\tconst char *spec;\n\tchar *pattern;\n\tint n;\n\n\topts.retprobe =\
+    \ str_has_pfx(prog->sec_name, \"kretprobe.multi/\");\n\tif (opts.retprobe)\n\t\
+    \tspec = prog->sec_name + sizeof(\"kretprobe.multi/\") - 1;\n\telse\n\t\tspec\
+    \ = prog->sec_name + sizeof(\"kprobe.multi/\") - 1;\n\n\tn = sscanf(spec, \"%m[a-zA-Z0-9_.*?]\"\
+    , &pattern);\n\tif (n < 1) {\n\t\tpr_warn(\"kprobe multi pattern is invalid: %s\\\
+    n\", pattern);\n\t\treturn -EINVAL;\n\t}\n\n\t*link = bpf_program__attach_kprobe_multi_opts(prog,\
+    \ pattern, &opts);\n\tfree(pattern);\n\treturn libbpf_get_error(*link);\n}\n\n\
+    static void gen_uprobe_legacy_event_name(char *buf, size_t buf_sz,\n\t\t\t\t\t\
+    \ const char *binary_path, uint64_t offset)\n{\n\tint i;\n\n\tsnprintf(buf, buf_sz,\
+    \ \"libbpf_%u_%s_0x%zx\", getpid(), binary_path, (size_t)offset);\n\n\t/* sanitize\
+    \ binary_path in the probe name */\n\tfor (i = 0; buf[i]; i++) {\n\t\tif (!isalnum(buf[i]))\n\
+    \t\t\tbuf[i] = '_';\n\t}\n\n// FILE: src/libbpf.h\n// CONTEXT: struct bpf_kprobe_opts\
+    \ {\n\tsize_t :0;\n};\n#define bpf_kprobe_opts__last_field retprobe\n\nLIBBPF_API\
+    \ struct bpf_link *\nbpf_program__attach_kprobe(const struct bpf_program *prog,\
+    \ bool retprobe,\n\t\t\t   const char *func_name);\nLIBBPF_API struct bpf_link\
+    \ *\nbpf_program__attach_kprobe_opts(const struct bpf_program *prog,\n       \
+    \                         const char *func_name,\n                           \
+    \     const struct bpf_kprobe_opts *opts);\n\nstruct bpf_kprobe_multi_opts {\n\
+    \t/* size of this struct, for forward/backward compatibility */\n\tsize_t sz;\n\
+    \t/* array of function symbols to attach */\n\tconst char **syms;\n\t/* array\
+    \ of function addresses to attach */\n\tconst unsigned long *addrs;\n\t/* array\
+    \ of user-provided values fetchable through bpf_get_attach_cookie */\n\tconst\
+    \ __u64 *cookies;\n\t/* number of elements in syms/addrs/cookies arrays */\n\t\
+    size_t cnt;\n\t/* create return kprobes */\n\tbool retprobe;\n\tsize_t :0;\n};\n\
+    \n#define bpf_kprobe_multi_opts__last_field retprobe\n\nLIBBPF_API struct bpf_link\
+    \ *\nbpf_program__attach_kprobe_multi_opts(const struct bpf_program *prog,\n\t\
+    \t\t\t      const char *pattern,\n\t\t\t\t      const struct bpf_kprobe_multi_opts\
+    \ *opts);\n\nstruct bpf_uprobe_opts {\n\t/* size of this struct, for forward/backward\
+    \ compatiblity */\n\tsize_t sz;\n\t/* offset of kernel reference counted USDT\
+    \ semaphore, added in\n\t * a6ca88b241d5 (\"trace_uprobe: support reference counter\
+    \ in fd-based uprobe\")\n\t */\n\tsize_t ref_ctr_offset;\n\t/* custom user-provided\
+    \ value fetchable through bpf_get_attach_cookie() */\n\t__u64 bpf_cookie;\n\t\
+    /* uprobe is return probe, invoked at function return time */\n\tbool retprobe;\n\
+    \tsize_t :0;"
+  diff_summary: |-
+    src/libbpf.c:
+    - Added an explicit null guard before the dereference on all verifier-visible paths.
+    - Affected context: int bpf_program__set_log_buf(struct bpf_program *prog, char *log_buf, size_t log, err_out:, static int attach_kprobe(const struct bpf_program *prog, long cookie, struct bpf.
+    src/libbpf.h:
+    - Added an explicit null guard before the dereference on all verifier-visible paths.
+    - Affected context: struct bpf_kprobe_opts {.
+    - Commit subject: libbpf: Add bpf_program__attach_kprobe_multi_opts function.

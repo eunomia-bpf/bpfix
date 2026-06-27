@@ -1,0 +1,134 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-libbpf-f11708030716
+source_kind: github_commit
+source:
+  url: https://github.com/libbpf/libbpf/commit/f117080307163d7057034341aa8ff6b201041599
+  title: 'libbpf: Fix realloc API handling in zero-sized edge cases'
+  repository: https://github.com/libbpf/libbpf
+  commit: f117080307163d7057034341aa8ff6b201041599
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-libbpf-f11708030716.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Raw has_verifier_log=false. The commit fixes libbpf realloc handling for
+    zero-sized edge cases in libbpf.c and usdt.c; this is user-space memory/API handling,
+    not a verifier reject.
+raw:
+  case_id: github-commit-libbpf-f11708030716
+  source: github_commits
+  repository: https://github.com/libbpf/libbpf
+  commit_hash: f117080307163d7057034341aa8ff6b201041599
+  commit_message: 'libbpf: Fix realloc API handling in zero-sized edge cases'
+  commit_date: '2023-07-10'
+  fix_type: bounds_check
+  buggy_code: "// FILE: src/libbpf.c\n// CONTEXT: static struct reloc_desc *find_prog_insn_relo(const\
+    \ struct bpf_program *prog, si\n\t\t       sizeof(*prog->reloc_desc), cmp_relo_by_insn_idx);\n\
+    }\n\nstatic int append_subprog_relos(struct bpf_program *main_prog, struct bpf_program\
+    \ *subprog)\n{\n\tint new_cnt = main_prog->nr_reloc + subprog->nr_reloc;\n\tstruct\
+    \ reloc_desc *relos;\n\tint i;\n\n\tif (main_prog == subprog)\n\t\treturn 0;\n\
+    \trelos = libbpf_reallocarray(main_prog->reloc_desc, new_cnt, sizeof(*relos));\n\
+    \tif (!relos)\n\t\treturn -ENOMEM;\n\tif (subprog->nr_reloc)\n\t\tmemcpy(relos\
+    \ + main_prog->nr_reloc, subprog->reloc_desc,\n\t\t       sizeof(*relos) * subprog->nr_reloc);\n\
+    \n\tfor (i = main_prog->nr_reloc; i < new_cnt; i++)\n\t\trelos[i].insn_idx +=\
+    \ subprog->sub_insn_off;\n\t/* After insn_idx adjustment the 'relos' array is\
+    \ still sorted\n\t * by insn_idx and doesn't break bsearch.\n\t */\n\tmain_prog->reloc_desc\
+    \ = relos;\n\tmain_prog->nr_reloc = new_cnt;\n\n// CONTEXT: size_t bpf_program__insn_cnt(const\
+    \ struct bpf_program *prog)\n\treturn prog->insns_cnt;\n}\n\nint bpf_program__set_insns(struct\
+    \ bpf_program *prog,\n\t\t\t   struct bpf_insn *new_insns, size_t new_insn_cnt)\n\
+    {\n\tstruct bpf_insn *insns;\n\n\tif (prog->obj->loaded)\n\t\treturn -EBUSY;\n\
+    \n\tinsns = libbpf_reallocarray(prog->insns, new_insn_cnt, sizeof(*insns));\n\t\
+    if (!insns) {\n\t\tpr_warn(\"prog '%s': failed to realloc prog code\\n\", prog->name);\n\
+    \t\treturn -ENOMEM;\n\t}\n\tmemcpy(insns, new_insns, new_insn_cnt * sizeof(*insns));\n\
+    \n\tprog->insns = insns;\n\tprog->insns_cnt = new_insn_cnt;\n\treturn 0;\n}\n\n\
+    int bpf_program__fd(const struct bpf_program *prog)\n{\n\n// CONTEXT: int libbpf_unregister_prog_handler(int\
+    \ handler_id)\n\t}\n\n\tif (i == custom_sec_def_cnt)\n\t\treturn libbpf_err(-ENOENT);\n\
+    \n\tfree(custom_sec_defs[i].sec);\n\tfor (i = i + 1; i < custom_sec_def_cnt; i++)\n\
+    \t\tcustom_sec_defs[i - 1] = custom_sec_defs[i];\n\tcustom_sec_def_cnt--;\n\n\t\
+    /* try to shrink the array, but it's ok if we couldn't */\n\tsec_defs = libbpf_reallocarray(custom_sec_defs,\
+    \ custom_sec_def_cnt, sizeof(*sec_defs));\n\tif (sec_defs)\n\t\tcustom_sec_defs\
+    \ = sec_defs;\n\n\treturn 0;\n}\n\nstatic bool sec_def_matches(const struct bpf_sec_def\
+    \ *sec_def, const char *sec_name)\n{\n\tsize_t len = strlen(sec_def->sec);\n\n\
+    \t/* \"type/\" always has to have proper SEC(\"type/extras\") form */\n\tif (sec_def->sec[len\
+    \ - 1] == '/') {\n\t\tif (str_has_pfx(sec_name, sec_def->sec))\n\n// FILE: src/usdt.c\n\
+    // CONTEXT: static int bpf_link_usdt_detach(struct bpf_link *link)\n\t} else {\n\
+    \t\t/* otherwise concat IDs */\n\t\tsize_t new_cnt = man->free_spec_cnt + usdt_link->spec_cnt;\n\
+    \t\tint *new_free_ids;\n\n\t\tnew_free_ids = libbpf_reallocarray(man->free_spec_ids,\
+    \ new_cnt,\n\t\t\t\t\t\t   sizeof(*new_free_ids));\n\t\t/* If we couldn't resize\
+    \ free_spec_ids, we'll just leak\n\t\t * a bunch of free IDs; this is very unlikely\
+    \ to happen and if\n\t\t * system is so exhausted on memory, it's the least of\
+    \ user's\n\t\t * concerns, probably.\n\t\t * So just do our best here to return\
+    \ those IDs to usdt_manager.\n\t\t */\n\t\tif (new_free_ids) {\n\t\t\tmemcpy(new_free_ids\
+    \ + man->free_spec_cnt, usdt_link->spec_ids,\n\t\t\t       usdt_link->spec_cnt\
+    \ * sizeof(*usdt_link->spec_ids));\n\t\t\tman->free_spec_ids = new_free_ids;\n\
+    \t\t\tman->free_spec_cnt = new_cnt;\n\t\t}\n\t}\n\n\treturn 0;\n}\n\nstatic void\
+    \ bpf_link_usdt_dealloc(struct bpf_link *link)\n{"
+  fixed_code: "// FILE: src/libbpf.c\n// CONTEXT: static struct reloc_desc *find_prog_insn_relo(const\
+    \ struct bpf_program *prog, si\n\t\t       sizeof(*prog->reloc_desc), cmp_relo_by_insn_idx);\n\
+    }\n\nstatic int append_subprog_relos(struct bpf_program *main_prog, struct bpf_program\
+    \ *subprog)\n{\n\tint new_cnt = main_prog->nr_reloc + subprog->nr_reloc;\n\tstruct\
+    \ reloc_desc *relos;\n\tint i;\n\n\tif (main_prog == subprog)\n\t\treturn 0;\n\
+    \trelos = libbpf_reallocarray(main_prog->reloc_desc, new_cnt, sizeof(*relos));\n\
+    \t/* if new count is zero, reallocarray can return a valid NULL result;\n\t *\
+    \ in this case the previous pointer will be freed, so we *have to*\n\t * reassign\
+    \ old pointer to the new value (even if it's NULL)\n\t */\n\tif (!relos && new_cnt)\n\
+    \t\treturn -ENOMEM;\n\tif (subprog->nr_reloc)\n\t\tmemcpy(relos + main_prog->nr_reloc,\
+    \ subprog->reloc_desc,\n\t\t       sizeof(*relos) * subprog->nr_reloc);\n\n\t\
+    for (i = main_prog->nr_reloc; i < new_cnt; i++)\n\t\trelos[i].insn_idx += subprog->sub_insn_off;\n\
+    \t/* After insn_idx adjustment the 'relos' array is still sorted\n\t * by insn_idx\
+    \ and doesn't break bsearch.\n\t */\n\tmain_prog->reloc_desc = relos;\n\tmain_prog->nr_reloc\
+    \ = new_cnt;\n\n// CONTEXT: size_t bpf_program__insn_cnt(const struct bpf_program\
+    \ *prog)\n\treturn prog->insns_cnt;\n}\n\nint bpf_program__set_insns(struct bpf_program\
+    \ *prog,\n\t\t\t   struct bpf_insn *new_insns, size_t new_insn_cnt)\n{\n\tstruct\
+    \ bpf_insn *insns;\n\n\tif (prog->obj->loaded)\n\t\treturn -EBUSY;\n\n\tinsns\
+    \ = libbpf_reallocarray(prog->insns, new_insn_cnt, sizeof(*insns));\n\t/* NULL\
+    \ is a valid return from reallocarray if the new count is zero */\n\tif (!insns\
+    \ && new_insn_cnt) {\n\t\tpr_warn(\"prog '%s': failed to realloc prog code\\n\"\
+    , prog->name);\n\t\treturn -ENOMEM;\n\t}\n\tmemcpy(insns, new_insns, new_insn_cnt\
+    \ * sizeof(*insns));\n\n\tprog->insns = insns;\n\tprog->insns_cnt = new_insn_cnt;\n\
+    \treturn 0;\n}\n\nint bpf_program__fd(const struct bpf_program *prog)\n{\n\n//\
+    \ CONTEXT: int libbpf_unregister_prog_handler(int handler_id)\n\t}\n\n\tif (i\
+    \ == custom_sec_def_cnt)\n\t\treturn libbpf_err(-ENOENT);\n\n\tfree(custom_sec_defs[i].sec);\n\
+    \tfor (i = i + 1; i < custom_sec_def_cnt; i++)\n\t\tcustom_sec_defs[i - 1] = custom_sec_defs[i];\n\
+    \tcustom_sec_def_cnt--;\n\n\t/* try to shrink the array, but it's ok if we couldn't\
+    \ */\n\tsec_defs = libbpf_reallocarray(custom_sec_defs, custom_sec_def_cnt, sizeof(*sec_defs));\n\
+    \t/* if new count is zero, reallocarray can return a valid NULL result;\n\t *\
+    \ in this case the previous pointer will be freed, so we *have to*\n\t * reassign\
+    \ old pointer to the new value (even if it's NULL)\n\t */\n\tif (sec_defs || custom_sec_def_cnt\
+    \ == 0)\n\t\tcustom_sec_defs = sec_defs;\n\n\treturn 0;\n}\n\nstatic bool sec_def_matches(const\
+    \ struct bpf_sec_def *sec_def, const char *sec_name)\n{\n\tsize_t len = strlen(sec_def->sec);\n\
+    \n\t/* \"type/\" always has to have proper SEC(\"type/extras\") form */\n\tif\
+    \ (sec_def->sec[len - 1] == '/') {\n\t\tif (str_has_pfx(sec_name, sec_def->sec))\n\
+    \n// FILE: src/usdt.c\n// CONTEXT: static int bpf_link_usdt_detach(struct bpf_link\
+    \ *link)\n\t} else {\n\t\t/* otherwise concat IDs */\n\t\tsize_t new_cnt = man->free_spec_cnt\
+    \ + usdt_link->spec_cnt;\n\t\tint *new_free_ids;\n\n\t\tnew_free_ids = libbpf_reallocarray(man->free_spec_ids,\
+    \ new_cnt,\n\t\t\t\t\t\t   sizeof(*new_free_ids));\n\t\t/* If we couldn't resize\
+    \ free_spec_ids, we'll just leak\n\t\t * a bunch of free IDs; this is very unlikely\
+    \ to happen and if\n\t\t * system is so exhausted on memory, it's the least of\
+    \ user's\n\t\t * concerns, probably.\n\t\t * So just do our best here to return\
+    \ those IDs to usdt_manager.\n\t\t * Another edge case when we can legitimately\
+    \ get NULL is when\n\t\t * new_cnt is zero, which can happen in some edge cases,\
+    \ so we\n\t\t * need to be careful about that.\n\t\t */\n\t\tif (new_free_ids\
+    \ || new_cnt == 0) {\n\t\t\tmemcpy(new_free_ids + man->free_spec_cnt, usdt_link->spec_ids,\n\
+    \t\t\t       usdt_link->spec_cnt * sizeof(*usdt_link->spec_ids));\n\t\t\tman->free_spec_ids\
+    \ = new_free_ids;\n\t\t\tman->free_spec_cnt = new_cnt;\n\t\t}\n\t}\n\n\treturn\
+    \ 0;\n}\n\nstatic void bpf_link_usdt_dealloc(struct bpf_link *link)\n{"
+  diff_summary: |-
+    src/libbpf.c:
+    - Added explicit bounds or range guards so the verifier can prove the access size and offset.
+    - Affected context: static struct reloc_desc *find_prog_insn_relo(const struct bpf_program *prog, si, size_t bpf_program__insn_cnt(const struct bpf_program *prog), int libbpf_unregister_prog_handler(int handler_id).
+    src/usdt.c:
+    - Added explicit bounds or range guards so the verifier can prove the access size and offset.
+    - Affected context: static int bpf_link_usdt_detach(struct bpf_link *link).
+    - Commit subject: libbpf: Fix realloc API handling in zero-sized edge cases.

@@ -1,0 +1,164 @@
+schema_version: bpfix.raw_external/v1
+raw_id: stackoverflow-79108889
+source_kind: stackoverflow
+source:
+  url: https://stackoverflow.com/questions/79108889/hook-file-deletion-with-ebpf
+  title: Hook file deletion with EBPF
+  repository: null
+  commit: null
+  collected_at: '2026-04-30T00:51:14+00:00'
+collector:
+  original_path: bpfix-empirical/raw/so/stackoverflow-79108889.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: true
+  verifier_log_block_count: 1
+  source_snippet_count: 1
+  has_buggy_code: false
+  has_fixed_code: false
+  has_fix_description: false
+reproduction:
+  status: environment_required
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: requires_arm64_kprobe_lsm_hook_and_kernel_btf_details
+raw:
+  case_id: stackoverflow-79108889
+  source: stackoverflow
+  collected_at: '2026-04-30T00:51:14+00:00'
+  question:
+    question_id: 79108889
+    title: Hook file deletion with EBPF
+    url: https://stackoverflow.com/questions/79108889/hook-file-deletion-with-ebpf
+    tags:
+    - ebpf
+    score: 0
+    answer_count: 2
+    is_answered: true
+  verifier_log:
+    blocks:
+    - |-
+      libbpf: prog 'do_unlinkat': BPF program load failed: Permission denied
+      libbpf: prog 'do_unlinkat': -- BEGIN PROG LOAD LOG -- arg#0 reference
+      type('FWD pt_regs') size cannot be determined: -22 0: R1=ctx() R10=fp0
+    combined: |-
+      libbpf: prog 'do_unlinkat': BPF program load failed: Permission denied
+      libbpf: prog 'do_unlinkat': -- BEGIN PROG LOAD LOG -- arg#0 reference
+      type('FWD pt_regs') size cannot be determined: -22 0: R1=ctx() R10=fp0
+  source_snippets:
+  - |-
+    #define __TARGET_ARCH_arm64
+
+    #include <linux/ptrace.h>
+    #include <bpf/bpf_tracing.h>
+    #include <bpf/bpf_core_read.h>
+
+    char LICENSE[] SEC("license") = "Dual BSD/GPL";
+
+    typedef struct {
+            int counter;
+    } atomic_t;
+
+    struct filename {
+            const char *name;
+            const char *uptr;
+            atomic_t refcnt;
+            struct audit_names *aname;
+            const char iname[0];
+    };
+
+    SEC("kprobe/do_unlinkat")
+    int BPF_KPROBE(do_unlinkat, int dfd, struct filename *name)
+    {
+        char filename[128];
+        const char *ptr_filename = BPF_CORE_READ(name, name);
+        int ret = bpf_probe_read_kernel_str(filename, sizeof(filename), ptr_filename);
+        if (filename[0]=='t')
+        {
+            bpf_printk("This file starts by 't'");
+
+            // return 1;   <- returning 1 or -1 does not "cancel" the syscall...
+
+            // I have also tried to change filename on the fly...
+            filename[0]='w';
+            bpf_copy_from_user((void *) ptr_filename, 1, filename);
+            // bpf_copy_from_user((void *) name->name, 1, filename); // Also tried this...
+       }
+
+        bpf_printk("Deleting this file:%s", filename);
+        return 0;
+    }
+  question_body_text: |-
+    I want to deny file deletion on a linux machine if the filename starts by "t".
+    Here is what I've done:
+    #define __TARGET_ARCH_arm64
+    #include <linux/ptrace.h>
+    #include <bpf/bpf_tracing.h>
+    #include <bpf/bpf_core_read.h>
+    char LICENSE[] SEC("license") = "Dual BSD/GPL";
+    typedef struct {
+    int counter;
+    } atomic_t;
+    struct filename {
+    const char *name;
+    const char *uptr;
+    atomic_t refcnt;
+    struct audit_names *aname;
+    const char iname[0];
+    };
+    SEC("kprobe/do_unlinkat")
+    int BPF_KPROBE(do_unlinkat, int dfd, struct filename *name)
+    {
+    char filename[128];
+    const char *ptr_filename = BPF_CORE_READ(name, name);
+    int ret = bpf_probe_read_kernel_str(filename, sizeof(filename), ptr_filename);
+    if (filename[0]=='t')
+    {
+    bpf_printk("This file starts by 't'");
+    // return 1; <- returning 1 or -1 does not "cancel" the syscall...
+    // I have also tried to change filename on the fly...
+    filename[0]='w';
+    bpf_copy_from_user((void *) ptr_filename, 1, filename);
+    // bpf_copy_from_user((void *) name->name, 1, filename); // Also tried this...
+    }
+    bpf_printk("Deleting this file:%s", filename);
+    return 0;
+    }
+    The first thing I don't understand is what's the return value of BPF_KPROBE ?
+    I was expecting returning something else than 0 will cancel the syscall.
+    But my file is still deleted...
+    I have tried to change the filename. But bpf_copy_from_user causes an error when I try to compile eBPF:
+    libbpf: prog 'do_unlinkat': BPF program load failed: Permission denied
+    libbpf: prog 'do_unlinkat': -- BEGIN PROG LOAD LOG -- arg#0 reference
+    type('FWD pt_regs') size cannot be determined: -22 0: R1=ctx() R10=fp0
+    Any idea ?
+  selected_answer:
+    answer_id: 79121166
+    url: https://stackoverflow.com/questions/79108889/hook-file-deletion-with-ebpf#79121166
+    is_accepted: true
+    score: 2
+    body_text: |-
+      The first thing I don't understand is what's the return value of BPF_KPROBE ?
+      I was expecting returning something else than 0 will cancel the syscall. But my file is still deleted...
+      The return value of a kprobe is meaningless, it has no effect. A kprobe is meant to be an observation tool, not to implement features, hence this design.
+      Some exceptions made its way into eBPF such as bpf_override_return which is a helper that set the return value and exits the probed function early. It does require your kernel to be compiled with the CONFIG_BPF_KPROBE_OVERRIDE=y kconfig. This is a technique known to work and is also used by https://tetragon.io/ to implement runtime security enforcement.
+      If the above is not a solution for you for any reason you can consider LSM programs. LSM programs allow you to hook eBPF code into LSM hooks also used by SELinux/AppArmor. These are meant for enforcement, and depending on the specific hook you can return a boolean or an error code. This feature requires least kernel version v5.7 and that your kernel be compiled with the CONFIG_BPF_LSM=y kconfig.
+      I think the path_unlink hook is what you are after. Its description:
+      @path_unlink:
+      Check the permission to remove a hard link to a file.
+      @dir contains the path structure of parent directory of the file.
+      @dentry contains the dentry structure for file to be unlinked.
+      Return 0 if permission is granted.
+      So this hook expects you to return 0 to allow deletion or an error code which will be passed to the user. See the callsite of security_path_unlink in fs/namei.c.
+      It is gated behind the CONFIG_SECURITY_PATH kconfig. If you kernel does not have it them inode_unlink is a similar hook, but does not give you the path directly, so more work.
+      I have tried to change the filename. But bpf_copy_from_user causes an error when I try to compile eBPF:
+      Does not seem to be related to bpf_copy_from_user.
+      arg#0 reference type('FWD pt_regs') size cannot be determined: -22 0: R1=ctx() R10=fp0
+      It is trying to tell you that you are using struct pt_regs but it only has a forward declaration, while the verifier wants type info for the full type. You typically see this when the bpf/bpf_helpers.h is included but not bpf/bpf_tracing.h.
+    fix_description: If the above is not a solution for you for any reason you can
+      consider LSM programs. LSM programs allow you to hook eBPF code into LSM hooks
+      also used by SELinux/AppArmor. These are meant for enforcement, and depending
+      on the specific hook you can return a boolean or an error code. This feature
+      requires least kernel version v5.7 and that your kernel be compiled with the
+      CONFIG_BPF_LSM=y kconfig.

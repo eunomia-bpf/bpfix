@@ -1,0 +1,66 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-abd3a3c88c14
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/abd3a3c88c1448f81519283c2e4833f6ec985c5f
+  title: 'cilium: remove unecessary zero''ing of ip6 endpoint key'
+  repository: https://github.com/cilium/cilium
+  commit: abd3a3c88c1448f81519283c2e4833f6ec985c5f
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-abd3a3c88c14.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: not_reconstructable_from_diff
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Raw diff removes key.ip6.p4 = 0 from an IPv6 endpoint-key path before encap_and_redirect().
+    It is described as reducing complexity, but the collected snippet lacks the surrounding
+    datapath path or a verifier message to reconstruct a strict reject.
+raw:
+  case_id: github-commit-cilium-abd3a3c88c14
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: abd3a3c88c1448f81519283c2e4833f6ec985c5f
+  commit_message: 'cilium: remove unecessary zero''ing of ip6 endpoint key'
+  commit_date: '2019-04-11'
+  fix_type: loop_rewrite
+  buggy_code: "// FILE: bpf/bpf_lxc.c\n// CONTEXT: skip_service_lookup:\n\t\tstruct\
+    \ endpoint_key key = {};\n\n\t\t/* Lookup the destination prefix in the list of\
+    \ known\n\t\t * destination prefixes. If there is a match, the packet will\n\t\
+    \t * be encapsulated to that node and then routed by the agent on\n\t\t * the\
+    \ remote node.\n\t\t *\n\t\t * IPv6 lookup key: daddr/96\n\t\t */\n\t\tkey.ip6.p1\
+    \ = daddr->p1;\n\t\tkey.ip6.p2 = daddr->p2;\n\t\tkey.ip6.p3 = daddr->p3;\n\t\t\
+    key.ip6.p4 = 0;\n\t\tkey.family = ENDPOINT_KEY_IPV6;\n\n\t\t/* Three cases exist\
+    \ here either (a) the encap and redirect could\n\t\t * not find the tunnel so\
+    \ fallthrough to nat46 and stack, (b)\n\t\t * the packet needs IPSec encap so\
+    \ push skb to stack for encap, or\n\t\t * (c) packet was redirected to tunnel\
+    \ device so return.\n\t\t */\n\t\tret = encap_and_redirect(skb, &key, SECLABEL,\
+    \ monitor, false);\n\t\tif (ret == IPSEC_ENDPOINT)\n\t\t\tgoto pass_to_stack;\n\
+    \t\telse if (ret != DROP_NO_TUNNEL_ENDPOINT)\n\t\t\treturn ret;"
+  fixed_code: "// FILE: bpf/bpf_lxc.c\n// CONTEXT: skip_service_lookup:\n\t\tstruct\
+    \ endpoint_key key = {};\n\n\t\t/* Lookup the destination prefix in the list of\
+    \ known\n\t\t * destination prefixes. If there is a match, the packet will\n\t\
+    \t * be encapsulated to that node and then routed by the agent on\n\t\t * the\
+    \ remote node.\n\t\t *\n\t\t * IPv6 lookup key: daddr/96\n\t\t */\n\t\tkey.ip6.p1\
+    \ = daddr->p1;\n\t\tkey.ip6.p2 = daddr->p2;\n\t\tkey.ip6.p3 = daddr->p3;\n\t\t\
+    key.family = ENDPOINT_KEY_IPV6;\n\n\t\t/* Three cases exist here either (a) the\
+    \ encap and redirect could\n\t\t * not find the tunnel so fallthrough to nat46\
+    \ and stack, (b)\n\t\t * the packet needs IPSec encap so push skb to stack for\
+    \ encap, or\n\t\t * (c) packet was redirected to tunnel device so return.\n\t\t\
+    \ */\n\t\tret = encap_and_redirect(skb, &key, SECLABEL, monitor, false);\n\t\t\
+    if (ret == IPSEC_ENDPOINT)\n\t\t\tgoto pass_to_stack;\n\t\telse if (ret != DROP_NO_TUNNEL_ENDPOINT)\n\
+    \t\t\treturn ret;"
+  diff_summary: |-
+    bpf/bpf_lxc.c:
+    - Reworked loop or branch structure to reduce verifier complexity and keep the path bounded.
+    - Affected context: skip_service_lookup:.
+    - Commit subject: cilium: remove unecessary zero'ing of ip6 endpoint key.

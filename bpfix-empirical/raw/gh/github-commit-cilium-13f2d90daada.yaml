@@ -1,0 +1,118 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-13f2d90daada
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/13f2d90daada803443be36e1c9634edfb823738a
+  title: 'bpf: remove redundant IPcache lookup in from-host path'
+  repository: https://github.com/cilium/cilium
+  commit: 13f2d90daada803443be36e1c9634edfb823738a
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-13f2d90daada.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Removes a redundant IPcache lookup in the from-host path. The change is
+    datapath lookup/control-flow behavior with no captured verifier failure.
+raw:
+  case_id: github-commit-cilium-13f2d90daada
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: 13f2d90daada803443be36e1c9634edfb823738a
+  commit_message: 'bpf: remove redundant IPcache lookup in from-host path'
+  commit_date: '2023-02-17'
+  fix_type: inline_hint
+  buggy_code: "// FILE: bpf/bpf_host.c\n// CONTEXT: skip_host_firewall:\n\t\t\treturn\
+    \ CTX_ACT_OK;\n\n\t\treturn ipv6_local_delivery(ctx, l3_off, secctx, ep,\n\t\t\
+    \t\t\t   METRIC_INGRESS, from_host, false);\n\t}\n\n\t/* Below remainder is only\
+    \ relevant when traffic is pushed via cilium_host.\n\t * For traffic coming from\
+    \ external, we're done here.\n\t */\n\tif (!from_host)\n\t\treturn CTX_ACT_OK;\n\
+    \n#ifdef TUNNEL_MODE\n\tdst = (union v6addr *) &ip6->daddr;\n\tinfo = ipcache_lookup6(&IPCACHE_MAP,\
+    \ dst, V6_CACHE_KEY_LEN);\n\tif (info != NULL && info->tunnel_endpoint != 0) {\n\
+    \t\treturn encap_and_redirect_with_nodeid(ctx, info->tunnel_endpoint,\n\t\t\t\t\
+    \t\t      secctx, info->sec_label,\n\t\t\t\t\t\t      &trace);\n\t} else {\n\t\
+    \tstruct tunnel_key key = {};\n\n\t\t/* IPv6 lookup key: daddr/96 */\n\t\tdst\
+    \ = (union v6addr *) &ip6->daddr;\n\t\tkey.ip6.p1 = dst->p1;\n\t\tkey.ip6.p2 =\
+    \ dst->p2;\n\t\tkey.ip6.p3 = dst->p3;\n\t\tkey.ip6.p4 = 0;\n\t\tkey.family = ENDPOINT_KEY_IPV6;\n\
+    \n\t\tret = encap_and_redirect_netdev(ctx, &key, secctx, &trace);\n\t\tif (ret\
+    \ != DROP_NO_TUNNEL_ENDPOINT)\n\t\t\treturn ret;\n\t}\n#endif\n\n\tdst = (union\
+    \ v6addr *) &ip6->daddr;\n\tinfo = ipcache_lookup6(&IPCACHE_MAP, dst, V6_CACHE_KEY_LEN);\n\
+    \tif (info == NULL || info->sec_label == WORLD_ID) {\n\t\t/* See IPv4 comment.\
+    \ */\n\t\treturn DROP_UNROUTABLE;\n\t}\n\treturn CTX_ACT_OK;\n}\n\nstatic __always_inline\
+    \ int\ntail_handle_ipv6(struct __ctx_buff *ctx, const bool from_host)\n{\n\t__u32\
+    \ proxy_identity = ctx_load_meta(ctx, CB_SRC_LABEL);\n\tint ret;\n\n// CONTEXT:\
+    \ handle_ipv4(struct __ctx_buff *ctx, __u32 secctx,\n\t\t\tgoto skip_vtep;\n\n\
+    \t\tif (vtep->vtep_mac && vtep->tunnel_endpoint) {\n\t\t\tif (eth_store_daddr(ctx,\
+    \ (__u8 *)&vtep->vtep_mac, 0) < 0)\n\t\t\t\treturn DROP_WRITE_ERROR;\n\t\t\treturn\
+    \ __encap_and_redirect_with_nodeid(ctx, vtep->tunnel_endpoint,\n\t\t\t\t\t\t\t\
+    \tsecctx, WORLD_ID, WORLD_ID, &trace);\n\t\t}\n\t}\nskip_vtep:\n#endif\n\n#ifdef\
+    \ TUNNEL_MODE\n\tinfo = ipcache_lookup4(&IPCACHE_MAP, ip4->daddr, V4_CACHE_KEY_LEN);\n\
+    \tif (info != NULL && info->tunnel_endpoint != 0) {\n\t\treturn encap_and_redirect_with_nodeid(ctx,\
+    \ info->tunnel_endpoint,\n\t\t\t\t\t\t      secctx, info->sec_label,\n\t\t\t\t\
+    \t\t      &trace);\n\t} else {\n\t\t/* IPv4 lookup key: daddr & IPV4_MASK */\n\
+    \t\tstruct tunnel_key key = {};\n\n\t\tkey.ip4 = ip4->daddr & IPV4_MASK;\n\t\t\
+    key.family = ENDPOINT_KEY_IPV4;\n\n\t\tcilium_dbg(ctx, DBG_NETDEV_ENCAP4, key.ip4,\
+    \ secctx);\n\t\tret = encap_and_redirect_netdev(ctx, &key, secctx, &trace);\n\t\
+    \tif (ret != DROP_NO_TUNNEL_ENDPOINT)\n\t\t\treturn ret;\n\t}\n#endif\n\n\tinfo\
+    \ = ipcache_lookup4(&IPCACHE_MAP, ip4->daddr, V4_CACHE_KEY_LEN);\n\tif (info ==\
+    \ NULL || info->sec_label == WORLD_ID) {\n\t\t/* We have received a packet for\
+    \ which no ipcache entry exists,\n\t\t * we do not know what to do with this packet,\
+    \ drop it.\n\t\t *\n\t\t * The info == NULL test is soley to satisfy verifier\
+    \ requirements\n\t\t * as in Cilium case we'll always hit the 0.0.0.0/32 catch-all\n\
+    \t\t * entry. Therefore we need to test for WORLD_ID. It is clearly\n\t\t * wrong\
+    \ to route a ctx to cilium_host for which we don't know\n\t\t * anything about\
+    \ it as otherwise we'll run into a routing loop.\n\t\t */\n\t\treturn DROP_UNROUTABLE;\n\
+    \t}"
+  fixed_code: "// FILE: bpf/bpf_host.c\n// CONTEXT: skip_host_firewall:\n\t\t\treturn\
+    \ CTX_ACT_OK;\n\n\t\treturn ipv6_local_delivery(ctx, l3_off, secctx, ep,\n\t\t\
+    \t\t\t   METRIC_INGRESS, from_host, false);\n\t}\n\n\t/* Below remainder is only\
+    \ relevant when traffic is pushed via cilium_host.\n\t * For traffic coming from\
+    \ external, we're done here.\n\t */\n\tif (!from_host)\n\t\treturn CTX_ACT_OK;\n\
+    \n\tdst = (union v6addr *) &ip6->daddr;\n\tinfo = ipcache_lookup6(&IPCACHE_MAP,\
+    \ dst, V6_CACHE_KEY_LEN);\n\n#ifdef TUNNEL_MODE\n\tif (info != NULL && info->tunnel_endpoint\
+    \ != 0) {\n\t\treturn encap_and_redirect_with_nodeid(ctx, info->tunnel_endpoint,\n\
+    \t\t\t\t\t\t      secctx, info->sec_label,\n\t\t\t\t\t\t      &trace);\n\t} else\
+    \ {\n\t\tstruct tunnel_key key = {};\n\n\t\t/* IPv6 lookup key: daddr/96 */\n\t\
+    \tkey.ip6.p1 = dst->p1;\n\t\tkey.ip6.p2 = dst->p2;\n\t\tkey.ip6.p3 = dst->p3;\n\
+    \t\tkey.ip6.p4 = 0;\n\t\tkey.family = ENDPOINT_KEY_IPV6;\n\n\t\tret = encap_and_redirect_netdev(ctx,\
+    \ &key, secctx, &trace);\n\t\tif (ret != DROP_NO_TUNNEL_ENDPOINT)\n\t\t\treturn\
+    \ ret;\n\t}\n#endif\n\n\tif (info == NULL || info->sec_label == WORLD_ID) {\n\t\
+    \t/* See IPv4 comment. */\n\t\treturn DROP_UNROUTABLE;\n\t}\n\treturn CTX_ACT_OK;\n\
+    }\n\nstatic __always_inline int\ntail_handle_ipv6(struct __ctx_buff *ctx, const\
+    \ bool from_host)\n{\n\t__u32 proxy_identity = ctx_load_meta(ctx, CB_SRC_LABEL);\n\
+    \tint ret;\n\n// CONTEXT: handle_ipv4(struct __ctx_buff *ctx, __u32 secctx,\n\t\
+    \t\tgoto skip_vtep;\n\n\t\tif (vtep->vtep_mac && vtep->tunnel_endpoint) {\n\t\t\
+    \tif (eth_store_daddr(ctx, (__u8 *)&vtep->vtep_mac, 0) < 0)\n\t\t\t\treturn DROP_WRITE_ERROR;\n\
+    \t\t\treturn __encap_and_redirect_with_nodeid(ctx, vtep->tunnel_endpoint,\n\t\t\
+    \t\t\t\t\t\tsecctx, WORLD_ID, WORLD_ID, &trace);\n\t\t}\n\t}\nskip_vtep:\n#endif\n\
+    \n\tinfo = ipcache_lookup4(&IPCACHE_MAP, ip4->daddr, V4_CACHE_KEY_LEN);\n\n#ifdef\
+    \ TUNNEL_MODE\n\tif (info != NULL && info->tunnel_endpoint != 0) {\n\t\treturn\
+    \ encap_and_redirect_with_nodeid(ctx, info->tunnel_endpoint,\n\t\t\t\t\t\t   \
+    \   secctx, info->sec_label,\n\t\t\t\t\t\t      &trace);\n\t} else {\n\t\t/* IPv4\
+    \ lookup key: daddr & IPV4_MASK */\n\t\tstruct tunnel_key key = {};\n\n\t\tkey.ip4\
+    \ = ip4->daddr & IPV4_MASK;\n\t\tkey.family = ENDPOINT_KEY_IPV4;\n\n\t\tcilium_dbg(ctx,\
+    \ DBG_NETDEV_ENCAP4, key.ip4, secctx);\n\t\tret = encap_and_redirect_netdev(ctx,\
+    \ &key, secctx, &trace);\n\t\tif (ret != DROP_NO_TUNNEL_ENDPOINT)\n\t\t\treturn\
+    \ ret;\n\t}\n#endif\n\n\tif (info == NULL || info->sec_label == WORLD_ID) {\n\t\
+    \t/* We have received a packet for which no ipcache entry exists,\n\t\t * we do\
+    \ not know what to do with this packet, drop it.\n\t\t *\n\t\t * The info == NULL\
+    \ test is soley to satisfy verifier requirements\n\t\t * as in Cilium case we'll\
+    \ always hit the 0.0.0.0/32 catch-all\n\t\t * entry. Therefore we need to test\
+    \ for WORLD_ID. It is clearly\n\t\t * wrong to route a ctx to cilium_host for\
+    \ which we don't know\n\t\t * anything about it as otherwise we'll run into a\
+    \ routing loop.\n\t\t */\n\t\treturn DROP_UNROUTABLE;\n\t}"
+  diff_summary: |-
+    bpf/bpf_host.c:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: skip_host_firewall:, handle_ipv4(struct __ctx_buff *ctx, __u32 secctx,.
+    - Commit subject: bpf: remove redundant IPcache lookup in from-host path.

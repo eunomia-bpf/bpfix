@@ -1,0 +1,96 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-libbpf-18922504c336
+source_kind: github_commit
+source:
+  url: https://github.com/libbpf/libbpf/commit/18922504c3366d5738322466a53c172c025097a0
+  title: 'libbpf: Modify bpf_printk to choose helper based on arg count'
+  repository: https://github.com/libbpf/libbpf
+  commit: 18922504c3366d5738322466a53c172c025097a0
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-libbpf-18922504c336.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: missing_source
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Header change splits bpf_printk() between bpf_trace_printk and bpf_trace_vprintk
+    based on argument count. No BPF call site with too many printk arguments, object,
+    or terminal verifier log is captured.
+raw:
+  case_id: github-commit-libbpf-18922504c336
+  source: github_commits
+  repository: https://github.com/libbpf/libbpf
+  commit_hash: 18922504c3366d5738322466a53c172c025097a0
+  commit_message: 'libbpf: Modify bpf_printk to choose helper based on arg count'
+  commit_date: '2021-09-17'
+  fix_type: helper_switch
+  buggy_code: "// FILE: src/bpf_helpers.h\n/*\n * Note that bpf programs need to include\
+    \ either\n * vmlinux.h (auto-generated from BTF) or linux/types.h\n * in advance\
+    \ since bpf_helper_defs.h uses such types\n * as __u64.\n */\n#include \"bpf_helper_defs.h\"\
+    \n\n#define __uint(name, val) int (*name)[val]\n#define __type(name, val) typeof(val)\
+    \ *name\n#define __array(name, val) typeof(val) *name[]\n\n/* Helper macro to\
+    \ print out debug messages */\n#define bpf_printk(fmt, ...)\t\t\t\t\\\n({\t\t\t\
+    \t\t\t\t\\\n\tchar ____fmt[] = fmt;\t\t\t\t\\\n\tbpf_trace_printk(____fmt, sizeof(____fmt),\t\
+    \\\n\t\t\t ##__VA_ARGS__);\t\t\\\n})\n\n/*\n * Helper macro to place programs,\
+    \ maps, license in\n * different sections in elf_bpf file. Section names\n * are\
+    \ interpreted by libbpf depending on the context (BPF programs, BPF maps,\n *\
+    \ extern variables, etc).\n * To allow use of SEC() with externs (e.g., for extern\
+    \ .maps declarations),\n * make sure __attribute__((unused)) doesn't trigger compilation\
+    \ warning.\n */\n#define SEC(name) \\\n\t_Pragma(\"GCC diagnostic push\")\t\t\t\
+    \t\t    \\\n\t_Pragma(\"GCC diagnostic ignored \\\"-Wignored-attributes\\\"\"\
+    )\t    \\\n\t__attribute__((section(name), used))\t\t\t\t    \\\n\n// CONTEXT:\
+    \ enum libbpf_tristate {\n\tstatic const char ___fmt[] = fmt;\t\t\t\\\n\tunsigned\
+    \ long long ___param[___bpf_narg(args)];\t\t\\\n\t\t\t\t\t\t\t\t\\\n\t_Pragma(\"\
+    GCC diagnostic push\")\t\t\t\t\\\n\t_Pragma(\"GCC diagnostic ignored \\\"-Wint-conversion\\\
+    \"\")\t\\\n\t___bpf_fill(___param, args);\t\t\t\t\\\n\t_Pragma(\"GCC diagnostic\
+    \ pop\")\t\t\t\t\\\n\t\t\t\t\t\t\t\t\\\n\tbpf_snprintf(out, out_size, ___fmt,\t\
+    \t\t\\\n\t\t     ___param, sizeof(___param));\t\t\\\n})\n\n#endif"
+  fixed_code: "// FILE: src/bpf_helpers.h\n/*\n * Note that bpf programs need to include\
+    \ either\n * vmlinux.h (auto-generated from BTF) or linux/types.h\n * in advance\
+    \ since bpf_helper_defs.h uses such types\n * as __u64.\n */\n#include \"bpf_helper_defs.h\"\
+    \n\n#define __uint(name, val) int (*name)[val]\n#define __type(name, val) typeof(val)\
+    \ *name\n#define __array(name, val) typeof(val) *name[]\n\n/*\n * Helper macro\
+    \ to place programs, maps, license in\n * different sections in elf_bpf file.\
+    \ Section names\n * are interpreted by libbpf depending on the context (BPF programs,\
+    \ BPF maps,\n * extern variables, etc).\n * To allow use of SEC() with externs\
+    \ (e.g., for extern .maps declarations),\n * make sure __attribute__((unused))\
+    \ doesn't trigger compilation warning.\n */\n#define SEC(name) \\\n\t_Pragma(\"\
+    GCC diagnostic push\")\t\t\t\t\t    \\\n\t_Pragma(\"GCC diagnostic ignored \\\"\
+    -Wignored-attributes\\\"\")\t    \\\n\t__attribute__((section(name), used))\t\t\
+    \t\t    \\\n\n// CONTEXT: enum libbpf_tristate {\n\tstatic const char ___fmt[]\
+    \ = fmt;\t\t\t\\\n\tunsigned long long ___param[___bpf_narg(args)];\t\t\\\n\t\t\
+    \t\t\t\t\t\t\\\n\t_Pragma(\"GCC diagnostic push\")\t\t\t\t\\\n\t_Pragma(\"GCC\
+    \ diagnostic ignored \\\"-Wint-conversion\\\"\")\t\\\n\t___bpf_fill(___param,\
+    \ args);\t\t\t\t\\\n\t_Pragma(\"GCC diagnostic pop\")\t\t\t\t\\\n\t\t\t\t\t\t\t\
+    \t\\\n\tbpf_snprintf(out, out_size, ___fmt,\t\t\t\\\n\t\t     ___param, sizeof(___param));\t\
+    \t\\\n})\n\n#define __bpf_printk(fmt, ...)\t\t\t\t\\\n({\t\t\t\t\t\t\t\\\n\tchar\
+    \ ____fmt[] = fmt;\t\t\t\t\\\n\tbpf_trace_printk(____fmt, sizeof(____fmt),\t\\\
+    \n\t\t\t ##__VA_ARGS__);\t\t\\\n})\n\n/*\n * __bpf_vprintk wraps the bpf_trace_vprintk\
+    \ helper with variadic arguments\n * instead of an array of u64.\n */\n#define\
+    \ __bpf_vprintk(fmt, args...)\t\t\t\t\\\n({\t\t\t\t\t\t\t\t\\\n\tstatic const\
+    \ char ___fmt[] = fmt;\t\t\t\\\n\tunsigned long long ___param[___bpf_narg(args)];\t\
+    \t\\\n\t\t\t\t\t\t\t\t\\\n\t_Pragma(\"GCC diagnostic push\")\t\t\t\t\\\n\t_Pragma(\"\
+    GCC diagnostic ignored \\\"-Wint-conversion\\\"\")\t\\\n\t___bpf_fill(___param,\
+    \ args);\t\t\t\t\\\n\t_Pragma(\"GCC diagnostic pop\")\t\t\t\t\\\n\t\t\t\t\t\t\t\
+    \t\\\n\tbpf_trace_vprintk(___fmt, sizeof(___fmt),\t\t\\\n\t\t\t  ___param, sizeof(___param));\t\
+    \t\\\n})\n\n/* Use __bpf_printk when bpf_printk call has 3 or fewer fmt args\n\
+    \ * Otherwise use __bpf_vprintk\n */\n#define ___bpf_pick_printk(...) \\\n\t___bpf_nth(_,\
+    \ ##__VA_ARGS__, __bpf_vprintk, __bpf_vprintk, __bpf_vprintk,\t\\\n\t\t   __bpf_vprintk,\
+    \ __bpf_vprintk, __bpf_vprintk, __bpf_vprintk,\t\t\\\n\t\t   __bpf_vprintk, __bpf_vprintk,\
+    \ __bpf_printk /*3*/, __bpf_printk /*2*/,\\\n\t\t   __bpf_printk /*1*/, __bpf_printk\
+    \ /*0*/)\n\n/* Helper macro to print out debug messages */\n#define bpf_printk(fmt,\
+    \ args...) ___bpf_pick_printk(args)(fmt, ##args)\n\n#endif"
+  diff_summary: |-
+    src/bpf_helpers.h:
+    - Gated or switched helper usage so unsupported helpers do not reach kernels that reject them.
+    - Affected context: enum libbpf_tristate {.
+    - Commit subject: libbpf: Modify bpf_printk to choose helper based on arg count.

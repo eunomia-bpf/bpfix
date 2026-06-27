@@ -1,0 +1,93 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-06c6520c57ad
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/06c6520c57adc7890e5263469713de7deb569ce6
+  title: 'bpf: fix verifier error due to repulling of skb->data/end'
+  repository: https://github.com/cilium/cilium
+  commit: 06c6520c57adc7890e5263469713de7deb569ce6
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-06c6520c57ad.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: replay_valid
+  case_id: github-commit-cilium-06c6520c57ad
+  case_path: cases/github-commit-cilium-06c6520c57ad
+  artifact_path: cases/github-commit-cilium-06c6520c57ad
+  reason: admitted_to_bpfix_bench_cases
+raw:
+  case_id: github-commit-cilium-06c6520c57ad
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: 06c6520c57adc7890e5263469713de7deb569ce6
+  commit_message: 'bpf: fix verifier error due to repulling of skb->data/end'
+  commit_date: '2019-08-08'
+  fix_type: bounds_check
+  buggy_code: "// FILE: bpf/lib/common.h\n// CONTEXT: static inline bool validate_ethertype(struct\
+    \ __sk_buff *skb, __u16 *proto)\n\n\tstruct ethhdr *eth = data;\n\t*proto = eth->h_proto;\n\
+    \n\tif (bpf_ntohs(*proto) < ETH_P_802_3_MIN)\n\t\treturn false; // non-Ethernet\
+    \ II unsupported\n\n\treturn true;\n}\n\nstatic inline bool __revalidate_data(struct\
+    \ __sk_buff *skb, void **data_,\n\t\t\t\t     void **data_end_, void **l3,\n\t\
+    \t\t\t     size_t l3_len)\n{\n\tvoid *data = (void *) (long) skb->data;\n\tvoid\
+    \ *data_end = (void *) (long) skb->data_end;\n\n\tif (data + ETH_HLEN + l3_len\
+    \ > data_end)\n\t\treturn false;\n\n\t*data_ = data;\n\t*data_end_ = data_end;\n\
+    \t*l3 = data + ETH_HLEN;\n\treturn true;\n}\n\nstatic inline bool __revalidate_data_first(struct\
+    \ __sk_buff *skb, void **data_,\n\t\t\t\t     void **data_end_, void **l3,\n\t\
+    \t\t\t     size_t l3_len)\n{\n\tif (!__revalidate_data(skb, data_, data_end_,\
+    \ l3, l3_len)) {\n\t\tint err = skb_pull_data(skb, ETH_HLEN + l3_len);\n\t\tif\
+    \ (err || !__revalidate_data(skb, data_, data_end_, l3, l3_len))\n\t\t\treturn\
+    \ false;\n\t}\n\n\treturn true;\n}\n\n/* revalidate_data_first() initializes the\
+    \ provided pointers from the skb and\n * ensures that the data is pulled in for\
+    \ access. Should be used the first\n * time that the skb data is accessed, subsequent\
+    \ calls can be made to\n * revalidate_data() which is cheaper.\n * Returns true\
+    \ if 'skb' is long enough for an IP header of the provided type,\n * false otherwise.\
+    \ */\n#define revalidate_data_first(skb, data, data_end, ip)\t\t\t\\\n\t__revalidate_data_first(skb,\
+    \ data, data_end, (void **)ip, sizeof(**ip))\n\n/* revalidate_data() initializes\
+    \ the provided pointers from the skb.\n * Returns true if 'skb' is long enough\
+    \ for an IP header of the provided type,\n * false otherwise. */\n#define revalidate_data(skb,\
+    \ data, data_end, ip)\t\\\n\t__revalidate_data(skb, data, data_end, (void **)ip,\
+    \ sizeof(**ip))\n\n/* Macros for working with L3 cilium defined IPV6 addresses\
+    \ */\n#define BPF_V6(dst, ...)\tBPF_V6_1(dst, fetch_ipv6(__VA_ARGS__))\n#define\
+    \ BPF_V6_1(dst, ...)\tBPF_V6_4(dst, __VA_ARGS__)\n#define BPF_V6_4(dst, a1, a2,\
+    \ a3, a4)\t\t\\\n\t({\t\t\t\t\t\\\n\t\tdst.p1 = a1;\t\t\t\\\n\t\tdst.p2 = a2;\t\
+    \t\t\\\n\t\tdst.p3 = a3;\t\t\t\\\n\t\tdst.p4 = a4;\t\t\t\\\n\t})"
+  fixed_code: "// FILE: bpf/lib/common.h\n// CONTEXT: static inline bool validate_ethertype(struct\
+    \ __sk_buff *skb, __u16 *proto)\n\n\tstruct ethhdr *eth = data;\n\t*proto = eth->h_proto;\n\
+    \n\tif (bpf_ntohs(*proto) < ETH_P_802_3_MIN)\n\t\treturn false; // non-Ethernet\
+    \ II unsupported\n\n\treturn true;\n}\n\nstatic inline bool __revalidate_data(struct\
+    \ __sk_buff *skb, void **data_,\n\t\t\t\t     void **data_end_, void **l3,\n\t\
+    \t\t\t     const size_t l3_len, const bool pull)\n{\n\tconst size_t tot_len =\
+    \ ETH_HLEN + l3_len;\n\tvoid *data_end;\n\tvoid *data;\n\n\t/* Verifier workaround,\
+    \ do this unconditionally: invalid size of register spill. */\n\tif (pull)\n\t\
+    \tskb_pull_data(skb, tot_len);\n\tdata_end = (void *)(long)skb->data_end;\n\t\
+    data = (void *)(long)skb->data;\n\tif (data + tot_len > data_end)\n\t\treturn\
+    \ false;\n\n\t/* Verifier workaround: pointer arithmetic on pkt_end prohibited.\
+    \ */\n\t*data_ = data;\n\t*data_end_ = data_end;\n\n\t*l3 = data + ETH_HLEN;\n\
+    \treturn true;\n}\n\n/* revalidate_data_first() initializes the provided pointers\
+    \ from the skb and\n * ensures that the data is pulled in for access. Should be\
+    \ used the first\n * time that the skb data is accessed, subsequent calls can\
+    \ be made to\n * revalidate_data() which is cheaper.\n * Returns true if 'skb'\
+    \ is long enough for an IP header of the provided type,\n * false otherwise. */\n\
+    #define revalidate_data_first(skb, data, data_end, ip)\t\t\t\\\n\t__revalidate_data(skb,\
+    \ data, data_end, (void **)ip, sizeof(**ip), true)\n\n/* revalidate_data() initializes\
+    \ the provided pointers from the skb.\n * Returns true if 'skb' is long enough\
+    \ for an IP header of the provided type,\n * false otherwise. */\n#define revalidate_data(skb,\
+    \ data, data_end, ip)\t\t\t\\\n\t__revalidate_data(skb, data, data_end, (void\
+    \ **)ip, sizeof(**ip), false)\n\n/* Macros for working with L3 cilium defined\
+    \ IPV6 addresses */\n#define BPF_V6(dst, ...)\tBPF_V6_1(dst, fetch_ipv6(__VA_ARGS__))\n\
+    #define BPF_V6_1(dst, ...)\tBPF_V6_4(dst, __VA_ARGS__)\n#define BPF_V6_4(dst,\
+    \ a1, a2, a3, a4)\t\t\\\n\t({\t\t\t\t\t\\\n\t\tdst.p1 = a1;\t\t\t\\\n\t\tdst.p2\
+    \ = a2;\t\t\t\\\n\t\tdst.p3 = a3;\t\t\t\\\n\t\tdst.p4 = a4;\t\t\t\\\n\t})"
+  diff_summary: |-
+    bpf/lib/common.h:
+    - Added explicit bounds or range guards so the verifier can prove the access size and offset.
+    - Affected context: static inline bool validate_ethertype(struct __sk_buff *skb, __u16 *proto).
+    - Commit subject: bpf: fix verifier error due to repulling of skb->data/end.

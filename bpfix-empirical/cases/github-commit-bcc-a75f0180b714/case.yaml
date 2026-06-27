@@ -1,0 +1,44 @@
+schema_version: bpfix.case/v1
+case_id: github-commit-bcc-a75f0180b714
+source:
+  kind: github_commit
+  url: https://github.com/iovisor/bcc/commit/a75f0180b71484c82855a8e9f98a9393fcaa5e22
+  repository: https://github.com/iovisor/bcc
+  commit: a75f0180b71484c82855a8e9f98a9393fcaa5e22
+  upstream_file: libbpf-tools/tcprtt.bpf.c
+  raw_excerpt_files:
+  - bpfix-empirical/raw/gh/github-commit-bcc-a75f0180b714.yaml
+reproducer:
+  reconstruction: reconstructed
+  notes: Standalone reconstruction of the tcprtt direct inet_sock field access fixed upstream
+    by replacing direct loads with BPF_CORE_READ().
+capture:
+  capture_id: github-commit-bcc-a75f0180b714__kernel-6.15.11-clang-18-log2
+  terminal_error: access beyond struct sock at off 798 size 2
+  rejected_insn_idx: 1
+external_match:
+  status: not_applicable
+  policy: terminal_error
+  matched_messages:
+  - inet->inet_sport
+  - BPF_CORE_READ
+  - access beyond struct sock
+  notes: Raw commit has no verifier log; replay validates the direct field read shape described
+    by the commit.
+label:
+  capture_id: github-commit-bcc-a75f0180b714__kernel-6.15.11-clang-18-log2
+  taxonomy_class: source_bug
+  error_id: BPFIX-E011
+  confidence: medium
+  label_source: external_replay_reconstruction
+  root_cause_description: The program casts a struct sock pointer to struct inet_sock and
+    directly loads inet_sock fields past the verifier-known sock object bounds.
+  root_cause_insn_idx: null
+  localization_confidence: medium
+  fix_type: helper_api
+  fix_direction: Read inet_sock fields through BPF_CORE_READ() so the verifier sees a supported
+    kernel-memory access.
+reporting:
+  family_id: github-commit-bcc-a75f0180b714
+  representative: true
+  notes: Reconstructed from a raw GitHub commit diff without an external verifier log.

@@ -1,0 +1,91 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-d8b783be3808
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/d8b783be3808c3ee527f7ce3db54f830cf7a436c
+  title: 'bpf: Cache skb->protocol to help compiler'
+  repository: https://github.com/cilium/cilium
+  commit: d8b783be3808c3ee527f7ce3db54f830cf7a436c
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-d8b783be3808.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: environment_required
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Caches skb->protocol to help an old compiler/verifier full datapath stay
+    tractable; no isolated current-kernel terminal reject is available.
+raw:
+  case_id: github-commit-cilium-d8b783be3808
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: d8b783be3808c3ee527f7ce3db54f830cf7a436c
+  commit_message: 'bpf: Cache skb->protocol to help compiler'
+  commit_date: '2016-05-09'
+  fix_type: loop_rewrite
+  buggy_code: "// FILE: bpf/bpf_netdev.c\n// CONTEXT: static inline __u32 derive_sec_ctx(struct\
+    \ __sk_buff *skb, const union v6addr *no\n\t\tflowlabel = ntohl(flowlabel);\n\t\
+    }\n\n\treturn flowlabel;\n#endif\n}\n\n\n__section(\"from-netdev\")\nint from_netdev(struct\
+    \ __sk_buff *skb)\n{\n\tunion v6addr node_ip = { . addr = ROUTER_IP };\n\n#ifdef\
+    \ ENABLE_ARP_RESPONDER\n\tif (unlikely(skb->protocol == __constant_htons(ETH_P_ARP)))\
+    \ {\n\t\tunion macaddr responder_mac = HOST_IFINDEX_MAC;\n\t\tif (unlikely(arp_check(skb,\
+    \ IPV4_GW, &responder_mac) == 1)) {\n\t\t\ttail_call(skb, &cilium_proto, CILIUM_MAP_PROTO_ARP);\n\
+    \t\t\treturn TC_ACT_SHOT;\n\t\t}\n\t}\n#endif\n\n#ifdef ENABLE_NAT46\n\t/* First\
+    \ try to do v46 nat */\n\tif (skb->protocol == __constant_htons(ETH_P_IP)) {\n\
+    \t\tunion v6addr sp = NAT46_SRC_PREFIX;\n\t\tunion v6addr dp = HOST_IP;\n\t\t\
+    __u32 dst;\n\n\t\tif (ipv4_load_daddr(skb, ETH_HLEN, &dst) < 0)\n\t\t\treturn\
+    \ TC_ACT_SHOT;\n\n\t\tif ((dst & IPV4_MASK) != IPV4_RANGE)\n\t\t\treturn TC_ACT_OK;\n\
+    \n\t\tif (ipv4_to_ipv6(skb, 14, &sp, &dp) < 0) {\n#ifdef DEBUG_NAT46\n\t\t\tprintk(\"\
+    ipv4_to_ipv6 failed\\n\");\n#endif\n\t\t\treturn TC_ACT_SHOT;\n\t\t}\n\t\tskb->tc_index\
+    \ = 1;\n\t}\n#endif\n\n\tif (likely(skb->protocol == __constant_htons(ETH_P_IPV6)))\
+    \ {\n\t\tunion v6addr dst;\n\t\t__u32 flowlabel;\n\n#ifdef HANDLE_NS\n\t\t__u8\
+    \ nexthdr;\n\n\t\tnexthdr = load_byte(skb, ETH_HLEN + offsetof(struct ipv6hdr,\
+    \ nexthdr));\n\t\tif (unlikely(nexthdr == IPPROTO_ICMPV6)) {\n\t\t\tint ret =\
+    \ icmp6_handle(skb, ETH_HLEN);\n\t\t\tif (ret != REDIRECT_TO_LXC)\n\t\t\t\treturn\
+    \ ret;\n\t\t}\n#endif\n\n\t\tprintk(\"From netdev skb %p len %d\\n\", skb, skb->len);\n\
+    \n\t\tipv6_load_daddr(skb, ETH_HLEN, &dst);\n\t\tflowlabel = derive_sec_ctx(skb,\
+    \ &node_ip);\n\n\t\tif (likely(is_node_subnet(&dst, &node_ip))) {\n\t\t\tint ret;\n\
+    \n#ifdef DEBUG_FLOW\n\t\t\tprintk(\"Targeted for a local container, src label:\
+    \ %d\\n\", flowlabel);\n#endif\n\n\t\t\tswitch ((ret = local_delivery(skb, ETH_HLEN,\
+    \ &dst, flowlabel))) {"
+  fixed_code: "// FILE: bpf/bpf_netdev.c\n// CONTEXT: static inline __u32 derive_sec_ctx(struct\
+    \ __sk_buff *skb, const union v6addr *no\n\t\tflowlabel = ntohl(flowlabel);\n\t\
+    }\n\n\treturn flowlabel;\n#endif\n}\n\n\n__section(\"from-netdev\")\nint from_netdev(struct\
+    \ __sk_buff *skb)\n{\n\tunion v6addr node_ip = { . addr = ROUTER_IP };\n\t__u32\
+    \ proto = skb->protocol;\n\n#ifdef ENABLE_ARP_RESPONDER\n\tif (unlikely(proto\
+    \ == __constant_htons(ETH_P_ARP))) {\n\t\tunion macaddr responder_mac = HOST_IFINDEX_MAC;\n\
+    \t\tif (unlikely(arp_check(skb, IPV4_GW, &responder_mac) == 1)) {\n\t\t\ttail_call(skb,\
+    \ &cilium_proto, CILIUM_MAP_PROTO_ARP);\n\t\t\treturn TC_ACT_SHOT;\n\t\t}\n\n\t\
+    \t/* Pass any unknown ARP requests to the Linux stack */\n\t\treturn TC_ACT_OK;\n\
+    \t}\n#endif\n\n#ifdef ENABLE_NAT46\n\t/* First try to do v46 nat */\n\tif (proto\
+    \ == __constant_htons(ETH_P_IP)) {\n\t\tunion v6addr sp = NAT46_SRC_PREFIX;\n\t\
+    \tunion v6addr dp = HOST_IP;\n\t\t__u32 dst;\n\n\t\tif (ipv4_load_daddr(skb, ETH_HLEN,\
+    \ &dst) < 0)\n\t\t\treturn TC_ACT_SHOT;\n\n\t\tif ((dst & IPV4_MASK) != IPV4_RANGE)\n\
+    \t\t\treturn TC_ACT_OK;\n\n\t\tif (ipv4_to_ipv6(skb, 14, &sp, &dp) < 0) {\n#ifdef\
+    \ DEBUG_NAT46\n\t\t\tprintk(\"ipv4_to_ipv6 failed\\n\");\n#endif\n\t\t\treturn\
+    \ TC_ACT_SHOT;\n\t\t}\n\t\tproto = __constant_htons(ETH_P_IPV6);\n\t\tskb->tc_index\
+    \ = 1;\n\t}\n#endif\n\n\tif (likely(proto == __constant_htons(ETH_P_IPV6))) {\n\
+    \t\tunion v6addr dst;\n\t\t__u32 flowlabel;\n\n#ifdef HANDLE_NS\n\t\t__u8 nexthdr;\n\
+    \n\t\tnexthdr = load_byte(skb, ETH_HLEN + offsetof(struct ipv6hdr, nexthdr));\n\
+    \t\tif (unlikely(nexthdr == IPPROTO_ICMPV6)) {\n\t\t\tint ret = icmp6_handle(skb,\
+    \ ETH_HLEN);\n\t\t\tif (ret != REDIRECT_TO_LXC)\n\t\t\t\treturn ret;\n\t\t}\n\
+    #endif\n\n#ifdef DEBUG_FLOW\n\t\tprintk(\"From netdev skb %p len %d\\n\", skb,\
+    \ skb->len);\n#endif\n\n\t\tipv6_load_daddr(skb, ETH_HLEN, &dst);\n\t\tflowlabel\
+    \ = derive_sec_ctx(skb, &node_ip);\n\n\t\tif (likely(is_node_subnet(&dst, &node_ip)))\
+    \ {\n\t\t\tint ret;\n\n#ifdef DEBUG_FLOW\n\t\t\tprintk(\"Targeted for a local\
+    \ container, src label: %d\\n\", flowlabel);\n#endif\n\n\t\t\tswitch ((ret = local_delivery(skb,\
+    \ ETH_HLEN, &dst, flowlabel))) {"
+  diff_summary: |-
+    bpf/bpf_netdev.c:
+    - Reworked loop or branch structure to reduce verifier complexity and keep the path bounded.
+    - Affected context: static inline __u32 derive_sec_ctx(struct __sk_buff *skb, const union v6addr *no.
+    - Commit subject: bpf: Cache skb->protocol to help compiler.

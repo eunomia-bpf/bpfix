@@ -1,24 +1,24 @@
 # Raw Backlog Triage
 
-This document explains external raw records under `bpfix-bench/raw/`. Raw
+This document explains external raw records under `bpfix-empirical/raw/`. Raw
 records are audit material and future expansion candidates. Primary diagnostic
-claims must use only cases listed in `bpfix-bench/manifest.yaml`, where each
+claims must use only cases listed in `bpfix-empirical/manifest.yaml`, where each
 case locally builds and replays to a verifier rejection.
 
-Current raw facts come from `bpfix-bench/raw/index.yaml`.
+Current raw facts come from `bpfix-empirical/raw/index.yaml`.
 
 ## Status Definitions
 
 | status | meaning |
 | --- | --- |
-| `replay_valid` | Reconstructed and admitted to the replayable benchmark. |
+| `replay_valid` | Reconstructed and admitted to the replayable empirical corpus. |
 | `replay_reject_no_rejected_insn` | Replays to a reject, but the log lacks a parseable rejected instruction index. |
 | `attempted_accepted` | The reconstructed program loads successfully in the pinned environment. |
 | `environment_required` | Reproduction depends on a larger framework, kernel feature, loader setup, architecture, or runtime environment not captured locally. |
 | `missing_source` | Verifier-like evidence exists, but source or harness context is missing. |
 | `missing_verifier_log` | Source/context exists, but the raw record lacks a concrete verifier log. |
-| `not_reconstructable_from_diff` | A commit/diff exists, but it does not provide enough standalone verifier-failure context to reconstruct a benchmark case. |
-| `out_of_scope_non_verifier` | The record is not a verifier-reject benchmark candidate. |
+| `not_reconstructable_from_diff` | A commit/diff exists, but it does not provide enough standalone verifier-failure context to reconstruct an empirical corpus case. |
+| `out_of_scope_non_verifier` | The record is not a verifier-reject empirical corpus candidate. |
 
 ## Current Counts
 
@@ -47,11 +47,11 @@ By source:
 
 ## Admission Rule
 
-To become a primary benchmark case, a raw record must be converted into a
+To become a primary empirical corpus case, a raw record must be converted into a
 self-contained directory:
 
 ```text
-bpfix-bench/cases/<case_id>/
+bpfix-empirical/cases/<case_id>/
   Makefile
   prog.c
   case.yaml
@@ -60,11 +60,11 @@ bpfix-bench/cases/<case_id>/
 and pass:
 
 ```bash
-python3 bpfix-bench/tools/validate_benchmark.py --replay bpfix-bench --timeout-sec 60
+python3 bpfix-empirical/tools/validate_empirical.py --replay bpfix-empirical --timeout-sec 60
 ```
 
 Records marked `environment_required`, `missing_source`, `missing_verifier_log`,
-or `not_reconstructable_from_diff` should not be counted as benchmark cases
+or `not_reconstructable_from_diff` should not be counted as empirical corpus cases
 until those missing pieces are resolved.
 
 ## Audit Command
@@ -75,7 +75,7 @@ from pathlib import Path
 from collections import Counter, defaultdict
 import yaml
 
-idx = yaml.safe_load(Path("bpfix-bench/raw/index.yaml").read_text())
+idx = yaml.safe_load(Path("bpfix-empirical/raw/index.yaml").read_text())
 print(Counter(e["reproduction_status"] for e in idx["entries"]))
 by_source = defaultdict(Counter)
 for entry in idx["entries"]:

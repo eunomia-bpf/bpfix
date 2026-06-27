@@ -49,7 +49,7 @@ compile(path.read_text(encoding="utf-8"), str(path), "exec")
 PY
 obsolete_pattern='bpfix capt(ure)?|capt(ure)? --|case\.yaml|BPFIX-UNK[N]OWN'
 if rg -n "$obsolete_pattern" "$examples_dir" --glob '!check-examples.sh'; then
-    echo "examples mention an obsolete public entrypoint or runtime benchmark artifact" >&2
+    echo "examples mention an obsolete public entrypoint or runtime evaluation artifact" >&2
     exit 1
 fi
 

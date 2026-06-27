@@ -1,0 +1,108 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-95bc719aede5
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/95bc719aede5e8dd4e494a695c8963bf73588980
+  title: 'bpf: small tmo on graceful connection close'
+  repository: https://github.com/cilium/cilium
+  commit: 95bc719aede5e8dd4e494a695c8963bf73588980
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-95bc719aede5.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Adds graceful-close connection-tracking timeout behavior. The snippet updates
+    map value fields and timers; it does not identify a verifier rejection.
+raw:
+  case_id: github-commit-cilium-95bc719aede5
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: 95bc719aede5e8dd4e494a695c8963bf73588980
+  commit_message: 'bpf: small tmo on graceful connection close'
+  commit_date: '2017-07-15'
+  fix_type: bounds_check
+  buggy_code: "// FILE: bpf/lib/conntrack.h\n\n#include <linux/icmpv6.h>\n#include\
+    \ <linux/icmp.h>\n\n#include <stdbool.h>\n\n#include \"common.h\"\n#include \"\
+    utils.h\"\n#include \"ipv6.h\"\n#include \"dbg.h\"\n#include \"l4.h\"\n\n#define\
+    \ CT_DEFAULT_LIFEIME 360\n\nenum {\n\tCT_NEW,\n\tCT_ESTABLISHED,\n\tCT_REPLY,\n\
+    \tCT_RELATED,\n};\n\n#ifdef CONNTRACK\n\n#define TUPLE_F_OUT\t\t0\t/* Outgoing\
+    \ flow */\n#define TUPLE_F_IN\t\t1\t/* Incoming flow */\n#define TUPLE_F_RELATED\t\
+    \t2\t/* Flow represents related packets */\n\nenum {\n\tACTION_UNSPEC,\n\tACTION_CREATE,\n\
+    \tACTION_CLOSE,\n\tACTION_DELETE,\n};\n\nstatic inline void __inline__ ct_update_timeout(struct\
+    \ ct_entry *entry)\n{\n#ifdef NEEDS_TIMEOUT\n\tentry->lifetime = bpf_ktime_get_sec()\
+    \ + CT_DEFAULT_LIFEIME;\n#endif\n}\n\nstatic inline int __inline__ __ct_lookup(void\
+    \ *map, struct __sk_buff *skb,\n\t\t\t\t\t void *tuple, int action, int dir,\n\
+    \t\t\t\t\t struct ct_state *ct_state)\n{\n\tstruct ct_entry *entry;\n\tint ret;\n\
+    \n\tif ((entry = map_lookup_elem(map, tuple))) {\n\t\tcilium_trace(skb, DBG_CT_MATCH,\
+    \ entry->lifetime,\n\t\t\tentry->proxy_port << 16 | entry->rev_nat_index);\n\t\
+    \tct_update_timeout(entry);\n\t\tif (ct_state) {\n\t\t\tct_state->rev_nat_index\
+    \ = entry->rev_nat_index;\n\t\t\tct_state->loopback = entry->lb_loopback;\n\t\t\
+    \tct_state->proxy_port = entry->proxy_port;\n\t\t}\n\n#ifdef LXC_NAT46\n\t\t/*\
+    \ This packet needs nat46 translation */\n\t\tif (entry->nat46 && !skb->cb[CB_NAT46_STATE])\n\
+    \t\t\tskb->cb[CB_NAT46_STATE] = NAT46;\n#endif\n\n#ifdef CONNTRACK_ACCOUNTING\n\
+    \t\t/* FIXME: This is slow, per-cpu counters? */\n\t\tif (dir == CT_INGRESS) {\n\
+    \t\t\t__sync_fetch_and_add(&entry->rx_packets, 1);\n\t\t\t__sync_fetch_and_add(&entry->rx_bytes,\
+    \ skb->len);\n\t\t} else {\n\t\t\t__sync_fetch_and_add(&entry->tx_packets, 1);\n\
+    \t\t\t__sync_fetch_and_add(&entry->tx_bytes, skb->len);\n\t\t}\n#endif\n\n\t\t\
+    switch (action) {\n\t\tcase ACTION_CLOSE:\n\t\t\t/* RST or similar, immediately\
+    \ delete ct entry */\n\t\t\tif (dir == CT_INGRESS)\n\t\t\t\tentry->rx_closing\
+    \ = 1;\n\t\t\telse\n\t\t\t\tentry->tx_closing = 1;\n\n\t\t\tif (!entry->rx_closing\
+    \ || !entry->tx_closing)\n\t\t\t\tbreak;\n\t\t\t/* fall through */\n\n\t\tcase\
+    \ ACTION_DELETE:\n\t\t\tif ((ret = map_delete_elem(map, tuple)) < 0)\n\t\t\t\t\
+    cilium_trace(skb, DBG_ERROR_RET, BPF_FUNC_map_delete_elem, ret);\n\t\t\tbreak;\n\
+    \t\t}\n\n\t\treturn CT_ESTABLISHED;\n\t}\n\n\treturn CT_NEW;\n}"
+  fixed_code: "// FILE: bpf/lib/conntrack.h\n\n#include <linux/icmpv6.h>\n#include\
+    \ <linux/icmp.h>\n\n#include <stdbool.h>\n\n#include \"common.h\"\n#include \"\
+    utils.h\"\n#include \"ipv6.h\"\n#include \"dbg.h\"\n#include \"l4.h\"\n\n#define\
+    \ CT_DEFAULT_LIFEIME\t360\n#define CT_CLOSE_TIMEOUT\t10\n\nenum {\n\tCT_NEW,\n\
+    \tCT_ESTABLISHED,\n\tCT_REPLY,\n\tCT_RELATED,\n};\n\n#ifdef CONNTRACK\n\n#define\
+    \ TUPLE_F_OUT\t\t0\t/* Outgoing flow */\n#define TUPLE_F_IN\t\t1\t/* Incoming\
+    \ flow */\n#define TUPLE_F_RELATED\t\t2\t/* Flow represents related packets */\n\
+    \nenum {\n\tACTION_UNSPEC,\n\tACTION_CREATE,\n\tACTION_CLOSE,\n\tACTION_DELETE,\n\
+    };\n\nstatic inline void __inline__ __ct_update_timeout(struct ct_entry *entry,\n\
+    \t\t\t\t\t\t  __u32 lifetime)\n{\n#ifdef NEEDS_TIMEOUT\n\tentry->lifetime = bpf_ktime_get_sec()\
+    \ + lifetime;\n#endif\n}\n\nstatic inline void __inline__ ct_update_timeout(struct\
+    \ ct_entry *entry)\n{\n\t__ct_update_timeout(entry, CT_DEFAULT_LIFEIME);\n}\n\n\
+    static inline void __inline__ ct_reset_closing(struct ct_entry *entry)\n{\n\t\
+    entry->rx_closing = 0;\n\tentry->tx_closing = 0;\n}\n\nstatic inline bool __inline__\
+    \ ct_entry_alive(const struct ct_entry *entry)\n{\n\treturn !entry->rx_closing\
+    \ || !entry->tx_closing;\n}\n\nstatic inline int __inline__ __ct_lookup(void *map,\
+    \ struct __sk_buff *skb,\n\t\t\t\t\t void *tuple, int action, int dir,\n\t\t\t\
+    \t\t struct ct_state *ct_state)\n{\n\tstruct ct_entry *entry;\n\tint ret;\n\n\t\
+    if ((entry = map_lookup_elem(map, tuple))) {\n\t\tcilium_trace(skb, DBG_CT_MATCH,\
+    \ entry->lifetime,\n\t\t\tentry->proxy_port << 16 | entry->rev_nat_index);\n\t\
+    \tif (ct_entry_alive(entry))\n\t\t\tct_update_timeout(entry);\n\t\tif (ct_state)\
+    \ {\n\t\t\tct_state->rev_nat_index = entry->rev_nat_index;\n\t\t\tct_state->loopback\
+    \ = entry->lb_loopback;\n\t\t\tct_state->proxy_port = entry->proxy_port;\n\t\t\
+    }\n\n#ifdef LXC_NAT46\n\t\t/* This packet needs nat46 translation */\n\t\tif (entry->nat46\
+    \ && !skb->cb[CB_NAT46_STATE])\n\t\t\tskb->cb[CB_NAT46_STATE] = NAT46;\n#endif\n\
+    \n#ifdef CONNTRACK_ACCOUNTING\n\t\t/* FIXME: This is slow, per-cpu counters? */\n\
+    \t\tif (dir == CT_INGRESS) {\n\t\t\t__sync_fetch_and_add(&entry->rx_packets, 1);\n\
+    \t\t\t__sync_fetch_and_add(&entry->rx_bytes, skb->len);\n\t\t} else {\n\t\t\t\
+    __sync_fetch_and_add(&entry->tx_packets, 1);\n\t\t\t__sync_fetch_and_add(&entry->tx_bytes,\
+    \ skb->len);\n\t\t}\n#endif\n\n\t\tswitch (action) {\n\t\tcase ACTION_CREATE:\n\
+    \t\t\tret = entry->rx_closing + entry->tx_closing;\n\t\t\tif (unlikely(ret >=\
+    \ 1)) {\n\t\t\t\tct_reset_closing(entry);\n\t\t\t\tct_update_timeout(entry);\n\
+    \t\t\t}\n\t\t\tbreak;\n\t\tcase ACTION_CLOSE:\n\t\t\t/* RST or similar, immediately\
+    \ delete ct entry */\n\t\t\tif (dir == CT_INGRESS)\n\t\t\t\tentry->rx_closing\
+    \ = 1;\n\t\t\telse\n\t\t\t\tentry->tx_closing = 1;\n\n\t\t\tif (ct_entry_alive(entry))\n\
+    \t\t\t\tbreak;\n\t\t\t__ct_update_timeout(entry, CT_CLOSE_TIMEOUT);\n\t\t\tbreak;\n\
+    \t\tcase ACTION_DELETE:\n\t\t\tif ((ret = map_delete_elem(map, tuple)) < 0)\n\t\
+    \t\t\tcilium_trace(skb, DBG_ERROR_RET, BPF_FUNC_map_delete_elem, ret);\n\t\t\t\
+    break;\n\t\t}\n\n\t\treturn CT_ESTABLISHED;\n\t}\n\n\treturn CT_NEW;\n}"
+  diff_summary: |-
+    bpf/lib/conntrack.h:
+    - Added explicit bounds or range guards so the verifier can prove the access size and offset.
+    - Affected context: the touched section.
+    - Commit subject: bpf: small tmo on graceful connection close.

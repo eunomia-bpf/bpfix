@@ -1,0 +1,171 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-aya-rs-aya-440
+source_kind: github_issue
+source:
+  url: https://github.com/aya-rs/aya/issues/440
+  title: dump packet data as &[u8] from XdpContext, return helper access to the packet
+    is not allowed
+  repository: https://github.com/aya-rs/aya
+  commit: null
+  collected_at: '2026-03-11T16:02:10+00:00'
+collector:
+  original_path: bpfix-empirical/raw/gh/github-aya-rs-aya-440.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: true
+  verifier_log_block_count: 1
+  source_snippet_count: 9
+  has_buggy_code: false
+  has_fixed_code: false
+  has_fix_description: false
+reproduction:
+  status: replay_valid
+  case_id: github-aya-rs-aya-440
+  case_path: cases/github-aya-rs-aya-440
+  artifact_path: cases/github-aya-rs-aya-440
+  reason: admitted_to_bpfix_bench_cases
+raw:
+  case_id: github-aya-rs-aya-440
+  source: github_issues
+  collected_at: '2026-03-11T16:02:10+00:00'
+  issue:
+    repository: aya-rs/aya
+    number: 440
+    title: dump packet data as &[u8] from XdpContext, return helper access to the
+      packet is not allowed
+    url: https://github.com/aya-rs/aya/issues/440
+    state: closed
+    state_reason: completed
+    labels: []
+    created_at: '2022-11-16T02:52:23Z'
+    updated_at: '2022-11-21T05:59:12Z'
+    author: czxichen
+  verifier_log:
+    blocks:
+    - |-
+      Error: the BPF_PROG_LOAD syscall failed. Verifier output: func#0 @0
+      0: R1=ctx(id=0,off=0,imm=0) R10=fp0
+      0: (61) r5 = *(u32 *)(r1 +4)
+      1: R1=ctx(id=0,off=0,imm=0) R5_w=pkt_end(id=0,off=0,imm=0) R10=fp0
+      1: (61) r4 = *(u32 *)(r1 +0)
+      2: R1=ctx(id=0,off=0,imm=0) R4_w=pkt(id=0,off=0,r=0,imm=0) R5_w=pkt_end(id=0,off=0,imm=0) R10=fp0
+      2: (3d) if r4 >= r5 goto pc+6
+      R1=ctx(id=0,off=0,imm=0) R4_w=pkt(id=0,off=0,r=0,imm=0) R5_w=pkt_end(id=0,off=0,imm=0) R10=fp0
+      3: R1=ctx(id=0,off=0,imm=0) R4_w=pkt(id=0,off=0,r=0,imm=0) R5_w=pkt_end(id=0,off=0,imm=0) R10=fp0
+      3: (1f) r5 -= r4
+      4: R1=ctx(id=0,off=0,imm=0) R4_w=pkt(id=0,off=0,r=0,imm=0) R5_w=inv(id=0) R10=fp0
+      4: (18) r2 = 0xffff0000c5cd0000
+      6: R1=ctx(id=0,off=0,imm=0) R2_w=map_ptr(id=0,off=0,ks=4,vs=4,imm=0) R4_w=pkt(id=0,off=0,r=0,imm=0) R5_w=inv(id=0) R10=fp0
+      6: (18) r3 = 0xffffffff
+      8: R1=ctx(id=0,off=0,imm=0) R2_w=map_ptr(id=0,off=0,ks=4,vs=4,imm=0) R3_w=inv4294967295 R4_w=pkt(id=0,off=0,r=0,imm=0) R5_w=inv(id=0) R10=fp0
+      8: (85) call bpf_perf_event_output#25
+      helper access to the packet is not allowed
+      verification time 31 usec
+      stack depth 0
+      processed 7 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0 mark_read 0
+    combined: |-
+      Error: the BPF_PROG_LOAD syscall failed. Verifier output: func#0 @0
+      0: R1=ctx(id=0,off=0,imm=0) R10=fp0
+      0: (61) r5 = *(u32 *)(r1 +4)
+      1: R1=ctx(id=0,off=0,imm=0) R5_w=pkt_end(id=0,off=0,imm=0) R10=fp0
+      1: (61) r4 = *(u32 *)(r1 +0)
+      2: R1=ctx(id=0,off=0,imm=0) R4_w=pkt(id=0,off=0,r=0,imm=0) R5_w=pkt_end(id=0,off=0,imm=0) R10=fp0
+      2: (3d) if r4 >= r5 goto pc+6
+      R1=ctx(id=0,off=0,imm=0) R4_w=pkt(id=0,off=0,r=0,imm=0) R5_w=pkt_end(id=0,off=0,imm=0) R10=fp0
+      3: R1=ctx(id=0,off=0,imm=0) R4_w=pkt(id=0,off=0,r=0,imm=0) R5_w=pkt_end(id=0,off=0,imm=0) R10=fp0
+      3: (1f) r5 -= r4
+      4: R1=ctx(id=0,off=0,imm=0) R4_w=pkt(id=0,off=0,r=0,imm=0) R5_w=inv(id=0) R10=fp0
+      4: (18) r2 = 0xffff0000c5cd0000
+      6: R1=ctx(id=0,off=0,imm=0) R2_w=map_ptr(id=0,off=0,ks=4,vs=4,imm=0) R4_w=pkt(id=0,off=0,r=0,imm=0) R5_w=inv(id=0) R10=fp0
+      6: (18) r3 = 0xffffffff
+      8: R1=ctx(id=0,off=0,imm=0) R2_w=map_ptr(id=0,off=0,ks=4,vs=4,imm=0) R3_w=inv4294967295 R4_w=pkt(id=0,off=0,r=0,imm=0) R5_w=inv(id=0) R10=fp0
+      8: (85) call bpf_perf_event_output#25
+      helper access to the packet is not allowed
+      verification time 31 usec
+      stack depth 0
+      processed 7 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0 mark_read 0
+  source_snippets:
+  - |-
+    use aya_bpf::maps::perf::PerfEventByteArray;
+    use aya_bpf::{bindings::xdp_action, macros::map, macros::xdp, programs::XdpContext};
+  - |-
+    #[xdp(name = "xdp")]
+    pub fn xdp(ctx: XdpContext) -> u32 {
+        let start = ctx.data();
+        let end = ctx.data_end();
+        if end <= start {
+            return xdp_action::XDP_PASS;
+        }
+  - |-
+    unsafe {
+            let packet = core::slice::from_raw_parts(start as *const u8, end - start);
+            PACKET.output(&ctx, packet, 0);
+        }
+        return xdp_action::XDP_PASS;
+    }
+  - |-
+    use anyhow::Context;
+    use aya::maps::perf::AsyncPerfEventArray;
+    use aya::programs::{Xdp, XdpFlags};
+    use aya::util::online_cpus;
+    use aya::{include_bytes_aligned, Bpf};
+    use aya_log::BpfLogger;
+    use bytes::BytesMut;
+    use clap::Parser;
+    use log::{info, warn};
+    use tokio::signal;
+  - |-
+    #[derive(Debug, Parser)]
+    struct Opt {
+        #[clap(short, long, default_value = "eth0")]
+        iface: String,
+    }
+  - |-
+    // This will include your eBPF object file as raw bytes at compile-time and load it at
+        // runtime. This approach is recommended for most real-world use cases. If you would
+        // like to specify the eBPF program at runtime rather than at compile-time, you can
+        // reach for `Bpf::load_file` instead.
+        #[cfg(debug_assertions)]
+        let mut bpf = Bpf::load(include_bytes_aligned!(
+            "../../target/bpfel-unknown-none/debug/xdp"
+        ))?;
+        #[cfg(not(debug_assertions))]
+        let mut bpf = Bpf::load(include_bytes_aligned!(
+            "../../target/bpfel-unknown-none/release/xdp"
+        ))?;
+        if let Err(e) = BpfLogger::init(&mut bpf) {
+            // This can happen if you remove all log statements from your eBPF program.
+            warn!("failed to initialize eBPF logger: {}", e);
+        }
+  - |-
+    for idx in online_cpus()? {
+            let mut buffer = packet.open(idx, None)?;
+            tokio::spawn(async move {
+                let idx = idx.clone();
+                let mut buffers = (0..128)
+                    .map(|_| BytesMut::with_capacity(2408))
+                    .collect::<Vec<_>>();
+  - |-
+    loop {
+                    let events = buffer.read_events(&mut buffers).await.unwrap();
+                    for i in 0..events.read {
+                        let buf = &mut buffers[i];
+                        let size = buf.len();
+                        let data = unsafe { core::slice::from_raw_parts(buf.as_ptr(), size) };
+                        println!("index:{} {:?}", idx, data);
+                    }
+                }
+            });
+        }
+        let program: &mut Xdp = bpf.program_mut("xdp").unwrap().try_into()?;
+        program.load()?;
+        program.attach(&opt.iface, XdpFlags::default())
+            .context("failed to attach the XDP program with default flags - try changing XdpFlags::default() to XdpFlags::SKB_MODE")?;
+  - |-
+    info!("Waiting for Ctrl-C...");
+        signal::ctrl_c().await?;
+        info!("Exiting...");
+  issue_body_text: |-
+    Userspace code:
+    Run attach xdp command return this error:
+  fix: {}

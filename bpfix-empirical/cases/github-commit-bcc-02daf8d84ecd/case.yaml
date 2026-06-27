@@ -1,0 +1,43 @@
+schema_version: bpfix.case/v1
+case_id: github-commit-bcc-02daf8d84ecd
+source:
+  kind: github_commit
+  url: https://github.com/iovisor/bcc/commit/02daf8d84ecd23d4b8c55ccf5b4a0246abe38765
+  repository: https://github.com/iovisor/bcc
+  commit: 02daf8d84ecd23d4b8c55ccf5b4a0246abe38765
+  upstream_file: libbpf-tools/biosnoop.bpf.c
+  raw_excerpt_files:
+  - bpfix-empirical/raw/gh/github-commit-bcc-02daf8d84ecd.yaml
+reproducer:
+  reconstruction: reconstructed
+  notes: Standalone reconstruction of the direct request-field access fixed by replacing rq->__field
+    loads with BPF_CORE_READ().
+capture:
+  capture_id: github-commit-bcc-02daf8d84ecd__kernel-6.15.11-clang-18-log2
+  terminal_error: R1 invalid mem access 'scalar'
+  rejected_insn_idx: 1
+external_match:
+  status: not_applicable
+  policy: terminal_error
+  matched_messages:
+  - rq->__sector
+  - R1 invalid mem access 'scalar'
+  notes: Raw commit has no verifier log; replay validates that directly dereferencing the
+    kernel request pointer is rejected.
+label:
+  capture_id: github-commit-bcc-02daf8d84ecd__kernel-6.15.11-clang-18-log2
+  taxonomy_class: source_bug
+  error_id: BPFIX-E011
+  confidence: medium
+  label_source: external_replay_reconstruction
+  root_cause_description: The program directly dereferences a kernel pointer from kprobe context
+    instead of using a verifier-supported probe/CO-RE read.
+  root_cause_insn_idx: null
+  localization_confidence: medium
+  fix_type: helper_api
+  fix_direction: Read request fields with BPF_CORE_READ() or another verifier-supported kernel-memory
+    read helper.
+reporting:
+  family_id: github-commit-bcc-02daf8d84ecd
+  representative: true
+  notes: Reconstructed from a raw GitHub commit diff without an external verifier log.

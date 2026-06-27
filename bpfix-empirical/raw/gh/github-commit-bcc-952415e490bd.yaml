@@ -1,0 +1,158 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-bcc-952415e490bd
+source_kind: github_commit
+source:
+  url: https://github.com/iovisor/bcc/commit/952415e490bdbbf6261fe2908ce32c0d779d7593
+  title: 'libbpf-tools: Check biolatency tracepoints using BTF'
+  repository: https://github.com/iovisor/bcc
+  commit: 952415e490bdbbf6261fe2908ce32c0d779d7593
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-bcc-952415e490bd.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: environment_required
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Biolatency change selects tracepoint layouts using BTF instead of LINUX_KERNEL_VERSION;
+    raw record has no verifier log and depends on kernel tracepoint ABI availability.
+  verifier_status: null
+  captured_error: null
+  verifier_error_match: null
+raw:
+  case_id: github-commit-bcc-952415e490bd
+  source: github_commits
+  repository: https://github.com/iovisor/bcc
+  commit_hash: 952415e490bdbbf6261fe2908ce32c0d779d7593
+  commit_message: 'libbpf-tools: Check biolatency tracepoints using BTF'
+  commit_date: '2023-09-22'
+  fix_type: volatile_hack
+  buggy_code: "// FILE: libbpf-tools/biolatency.bpf.c\n\n#define MAX_ENTRIES\t10240\n\
+    \nextern int LINUX_KERNEL_VERSION __kconfig;\n\nconst volatile bool filter_cg\
+    \ = false;\nconst volatile bool targ_per_disk = false;\nconst volatile bool targ_per_flag\
+    \ = false;\nconst volatile bool targ_queued = false;\nconst volatile bool targ_ms\
+    \ = false;\nconst volatile bool filter_dev = false;\nconst volatile __u32 targ_dev\
+    \ = 0;\n\nstruct {\n\t__uint(type, BPF_MAP_TYPE_CGROUP_ARRAY);\n\t__type(key,\
+    \ u32);\n\t__type(value, u32);\n\t__uint(max_entries, 1);\n} cgroup_map SEC(\"\
+    .maps\");\n\nstruct {\n\t__uint(type, BPF_MAP_TYPE_HASH);\n\t__uint(max_entries,\
+    \ MAX_ENTRIES);\n\t__type(key, struct request *);\n\n// CONTEXT: static int __always_inline\
+    \ trace_rq_start(struct request *rq, int issue)\n\t}\n\tbpf_map_update_elem(&start,\
+    \ &rq, &ts, 0);\n\treturn 0;\n}\n\nstatic int handle_block_rq_insert(__u64 *ctx)\n\
+    {\n\t/**\n\t * commit a54895fa (v5.11-rc1) changed tracepoint argument list\n\t\
+    \ * from TP_PROTO(struct request_queue *q, struct request *rq)\n\t * to TP_PROTO(struct\
+    \ request *rq)\n\t */\n\tif (LINUX_KERNEL_VERSION < KERNEL_VERSION(5, 11, 0))\n\
+    \t\treturn trace_rq_start((void *)ctx[1], false);\n\telse\n\t\treturn trace_rq_start((void\
+    \ *)ctx[0], false);\n}\n\nstatic int handle_block_rq_issue(__u64 *ctx)\n{\n\t\
+    /**\n\t * commit a54895fa (v5.11-rc1) changed tracepoint argument list\n\t * from\
+    \ TP_PROTO(struct request_queue *q, struct request *rq)\n\t * to TP_PROTO(struct\
+    \ request *rq)\n\t */\n\tif (LINUX_KERNEL_VERSION < KERNEL_VERSION(5, 11, 0))\n\
+    \t\treturn trace_rq_start((void *)ctx[1], true);\n\telse\n\t\treturn trace_rq_start((void\
+    \ *)ctx[0], true);\n}\n\nstatic int handle_block_rq_complete(struct request *rq,\
+    \ int error, unsigned int nr_bytes)\n{\n\tu64 slot, *tsp, ts = bpf_ktime_get_ns();\n\
+    \tstruct hist_key hkey = {};\n\tstruct hist *histp;\n\ts64 delta;\n\n// FILE:\
+    \ libbpf-tools/biolatency.c\n//\n// Based on biolatency(8) from BCC by Brendan\
+    \ Gregg.\n// 15-Jun-2020   Wenbo Zhang   Created this.\n#include <argp.h>\n#include\
+    \ <signal.h>\n#include <stdio.h>\n#include <unistd.h>\n#include <fcntl.h>\n#include\
+    \ <time.h>\n#include <bpf/libbpf.h>\n#include <sys/resource.h>\n#include <bpf/bpf.h>\n\
+    #include \"blk_types.h\"\n#include \"biolatency.h\"\n#include \"biolatency.skel.h\"\
+    \n#include \"trace_helpers.h\"\n\n#define ARRAY_SIZE(x) (sizeof(x) / sizeof(*(x)))\n\
+    \nstatic struct env {\n\tchar *disk;\n\ttime_t interval;\n\tint times;\n\tbool\
+    \ timestamp;\n\n// CONTEXT: static int print_log2_hists(struct bpf_map *hists,\
+    \ struct partitions *partitions\n\twhile (!bpf_map_get_next_key(fd, &lookup_key,\
+    \ &next_key)) {\n\t\terr = bpf_map_delete_elem(fd, &next_key);\n\t\tif (err <\
+    \ 0) {\n\t\t\tfprintf(stderr, \"failed to cleanup hist : %d\\n\", err);\n\t\t\t\
+    return -1;\n\t\t}\n\t\tlookup_key = next_key;\n\t}\n\n\treturn 0;\n}\n\nint main(int\
+    \ argc, char **argv)\n{\n\tstruct partitions *partitions = NULL;\n\tconst struct\
+    \ partition *partition;\n\tstatic const struct argp argp = {\n\t\t.options = opts,\n\
+    \t\t.parser = parse_arg,\n\t\t.doc = argp_program_doc,\n\t};\n\tstruct biolatency_bpf\
+    \ *obj;\n\tstruct tm *tm;\n\tchar ts[32];\n\n// CONTEXT: int main(int argc, char\
+    \ **argv)\n\t\tif (!partition) {\n\t\t\tfprintf(stderr, \"invaild partition name:\
+    \ not exist\\n\");\n\t\t\tgoto cleanup;\n\t\t}\n\t\tobj->rodata->filter_dev =\
+    \ true;\n\t\tobj->rodata->targ_dev = partition->dev;\n\t}\n\tobj->rodata->targ_per_disk\
+    \ = env.per_disk;\n\tobj->rodata->targ_per_flag = env.per_flag;\n\tobj->rodata->targ_ms\
+    \ = env.milliseconds;\n\tobj->rodata->targ_queued = env.queued;\n\tobj->rodata->filter_cg\
+    \ = env.cg;\n\n\tif (probe_tp_btf(\"block_rq_insert\")) {\n\t\tbpf_program__set_autoload(obj->progs.block_rq_insert,\
+    \ false);\n\t\tbpf_program__set_autoload(obj->progs.block_rq_issue, false);\n\t\
+    \tbpf_program__set_autoload(obj->progs.block_rq_complete, false);\n\t\tif (!env.queued)\n\
+    \t\t\tbpf_program__set_autoload(obj->progs.block_rq_insert_btf, false);\n\t} else\
+    \ {\n\t\tbpf_program__set_autoload(obj->progs.block_rq_insert_btf, false);\n\t\
+    \tbpf_program__set_autoload(obj->progs.block_rq_issue_btf, false);\n\t\tbpf_program__set_autoload(obj->progs.block_rq_complete_btf,\
+    \ false);\n\t\tif (!env.queued)"
+  fixed_code: "// FILE: libbpf-tools/biolatency.bpf.c\n\n#define MAX_ENTRIES\t10240\n\
+    \nextern int LINUX_KERNEL_VERSION __kconfig;\n\nconst volatile bool filter_cg\
+    \ = false;\nconst volatile bool targ_per_disk = false;\nconst volatile bool targ_per_flag\
+    \ = false;\nconst volatile bool targ_queued = false;\nconst volatile bool targ_ms\
+    \ = false;\nconst volatile bool filter_dev = false;\nconst volatile __u32 targ_dev\
+    \ = 0;\nconst volatile bool targ_single = true;\n\nstruct {\n\t__uint(type, BPF_MAP_TYPE_CGROUP_ARRAY);\n\
+    \t__type(key, u32);\n\t__type(value, u32);\n\t__uint(max_entries, 1);\n} cgroup_map\
+    \ SEC(\".maps\");\n\nstruct {\n\t__uint(type, BPF_MAP_TYPE_HASH);\n\t__uint(max_entries,\
+    \ MAX_ENTRIES);\n\t__type(key, struct request *);\n\n// CONTEXT: static int __always_inline\
+    \ trace_rq_start(struct request *rq, int issue)\n\t}\n\tbpf_map_update_elem(&start,\
+    \ &rq, &ts, 0);\n\treturn 0;\n}\n\nstatic int handle_block_rq_insert(__u64 *ctx)\n\
+    {\n\t/**\n\t * commit a54895fa (v5.11-rc1) changed tracepoint argument list\n\t\
+    \ * from TP_PROTO(struct request_queue *q, struct request *rq)\n\t * to TP_PROTO(struct\
+    \ request *rq)\n\t */\n\tif (!targ_single)\n\t\treturn trace_rq_start((void *)ctx[1],\
+    \ false);\n\telse\n\t\treturn trace_rq_start((void *)ctx[0], false);\n}\n\nstatic\
+    \ int handle_block_rq_issue(__u64 *ctx)\n{\n\t/**\n\t * commit a54895fa (v5.11-rc1)\
+    \ changed tracepoint argument list\n\t * from TP_PROTO(struct request_queue *q,\
+    \ struct request *rq)\n\t * to TP_PROTO(struct request *rq)\n\t */\n\tif (!targ_single)\n\
+    \t\treturn trace_rq_start((void *)ctx[1], true);\n\telse\n\t\treturn trace_rq_start((void\
+    \ *)ctx[0], true);\n}\n\nstatic int handle_block_rq_complete(struct request *rq,\
+    \ int error, unsigned int nr_bytes)\n{\n\tu64 slot, *tsp, ts = bpf_ktime_get_ns();\n\
+    \tstruct hist_key hkey = {};\n\tstruct hist *histp;\n\ts64 delta;\n\n// FILE:\
+    \ libbpf-tools/biolatency.c\n//\n// Based on biolatency(8) from BCC by Brendan\
+    \ Gregg.\n// 15-Jun-2020   Wenbo Zhang   Created this.\n#include <argp.h>\n#include\
+    \ <signal.h>\n#include <stdio.h>\n#include <unistd.h>\n#include <fcntl.h>\n#include\
+    \ <time.h>\n#include <bpf/libbpf.h>\n#include <sys/resource.h>\n#include <bpf/bpf.h>\n\
+    #include <bpf/btf.h>\n#include \"blk_types.h\"\n#include \"biolatency.h\"\n#include\
+    \ \"biolatency.skel.h\"\n#include \"trace_helpers.h\"\n\n#define ARRAY_SIZE(x)\
+    \ (sizeof(x) / sizeof(*(x)))\n\nstatic struct env {\n\tchar *disk;\n\ttime_t interval;\n\
+    \tint times;\n\tbool timestamp;\n\n// CONTEXT: static int print_log2_hists(struct\
+    \ bpf_map *hists, struct partitions *partitions\n\twhile (!bpf_map_get_next_key(fd,\
+    \ &lookup_key, &next_key)) {\n\t\terr = bpf_map_delete_elem(fd, &next_key);\n\t\
+    \tif (err < 0) {\n\t\t\tfprintf(stderr, \"failed to cleanup hist : %d\\n\", err);\n\
+    \t\t\treturn -1;\n\t\t}\n\t\tlookup_key = next_key;\n\t}\n\n\treturn 0;\n}\n\n\
+    /*\n * BTF has a func proto for each tracepoint, let's check it like\n *   typedef\
+    \ void (*btf_trace_block_rq_issue)(void *, struct request *);\n *\n * Actually\
+    \ it's a typedef for a pointer to the func proto.\n */\nstatic bool has_block_rq_issue_single_arg(void)\n\
+    {\n\tconst struct btf *btf = btf__load_vmlinux_btf();\n\tconst struct btf_type\
+    \ *t1, *t2, *t3;\n\t__u32 type_id;\n\tbool ret = true;  // assuming recent kernels\n\
+    \n\ttype_id = btf__find_by_name_kind(btf, \"btf_trace_block_rq_issue\",\n\t\t\t\
+    \t\t BTF_KIND_TYPEDEF);\n\tif ((__s32)type_id < 0)\n\t\treturn ret;\n\n\tt1 =\
+    \ btf__type_by_id(btf, type_id);\n\tif (t1 == NULL)\n\t\treturn ret;\n\n\tt2 =\
+    \ btf__type_by_id(btf, t1->type);\n\tif (t2 == NULL || !btf_is_ptr(t2))\n\t\t\
+    return ret;\n\n\tt3 = btf__type_by_id(btf, t2->type);\n\tif (t3 && btf_is_func_proto(t3))\n\
+    \t\tret = (btf_vlen(t3) == 2); // ctx + arg\n\n\treturn ret;\n}\n\nint main(int\
+    \ argc, char **argv)\n{\n\tstruct partitions *partitions = NULL;\n\tconst struct\
+    \ partition *partition;\n\tstatic const struct argp argp = {\n\t\t.options = opts,\n\
+    \t\t.parser = parse_arg,\n\t\t.doc = argp_program_doc,\n\t};\n\tstruct biolatency_bpf\
+    \ *obj;\n\tstruct tm *tm;\n\tchar ts[32];\n\n// CONTEXT: int main(int argc, char\
+    \ **argv)\n\t\tif (!partition) {\n\t\t\tfprintf(stderr, \"invaild partition name:\
+    \ not exist\\n\");\n\t\t\tgoto cleanup;\n\t\t}\n\t\tobj->rodata->filter_dev =\
+    \ true;\n\t\tobj->rodata->targ_dev = partition->dev;\n\t}\n\tobj->rodata->targ_per_disk\
+    \ = env.per_disk;\n\tobj->rodata->targ_per_flag = env.per_flag;\n\tobj->rodata->targ_ms\
+    \ = env.milliseconds;\n\tobj->rodata->targ_queued = env.queued;\n\tobj->rodata->filter_cg\
+    \ = env.cg;\n\tobj->rodata->targ_single = has_block_rq_issue_single_arg();\n\n\
+    \tif (probe_tp_btf(\"block_rq_insert\")) {\n\t\tbpf_program__set_autoload(obj->progs.block_rq_insert,\
+    \ false);\n\t\tbpf_program__set_autoload(obj->progs.block_rq_issue, false);\n\t\
+    \tbpf_program__set_autoload(obj->progs.block_rq_complete, false);\n\t\tif (!env.queued)\n\
+    \t\t\tbpf_program__set_autoload(obj->progs.block_rq_insert_btf, false);\n\t} else\
+    \ {\n\t\tbpf_program__set_autoload(obj->progs.block_rq_insert_btf, false);\n\t\
+    \tbpf_program__set_autoload(obj->progs.block_rq_issue_btf, false);\n\t\tbpf_program__set_autoload(obj->progs.block_rq_complete_btf,\
+    \ false);\n\t\tif (!env.queued)"
+  diff_summary: |-
+    libbpf-tools/biolatency.bpf.c:
+    - Added or changed a volatile qualifier to force verifier-friendly code generation.
+    - Affected context: static int __always_inline trace_rq_start(struct request *rq, int issue).
+    libbpf-tools/biolatency.c:
+    - Added or changed a volatile qualifier to force verifier-friendly code generation.
+    - Affected context: static int print_log2_hists(struct bpf_map *hists, struct partitions *partitions, int main(int argc, char **argv).
+    - Commit subject: libbpf-tools: Check biolatency tracepoints using BTF.

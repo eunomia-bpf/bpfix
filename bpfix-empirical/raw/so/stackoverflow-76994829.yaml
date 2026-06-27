@@ -1,0 +1,142 @@
+schema_version: bpfix.raw_external/v1
+raw_id: stackoverflow-76994829
+source_kind: stackoverflow
+source:
+  url: https://stackoverflow.com/questions/76994829/ebpf-properly-passing-fixed-length-strings-from-userspace-using-ebpf-array-maps
+  title: 'eBPF: Properly passing fixed length strings from userspace using eBPF array
+    maps'
+  repository: null
+  commit: null
+  collected_at: '2026-03-11T16:03:02+00:00'
+collector:
+  original_path: bpfix-empirical/raw/so/stackoverflow-76994829.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: true
+  verifier_log_block_count: 1
+  source_snippet_count: 4
+  has_buggy_code: false
+  has_fixed_code: false
+  has_fix_description: false
+reproduction:
+  status: replay_valid
+  case_id: stackoverflow-76994829
+  case_path: cases/stackoverflow-76994829
+  artifact_path: cases/stackoverflow-76994829
+  reason: admitted_to_bpfix_bench_cases
+raw:
+  case_id: stackoverflow-76994829
+  source: stackoverflow
+  collected_at: '2026-03-11T16:03:02+00:00'
+  question:
+    question_id: 76994829
+    title: 'eBPF: Properly passing fixed length strings from userspace using eBPF
+      array maps'
+    url: https://stackoverflow.com/questions/76994829/ebpf-properly-passing-fixed-length-strings-from-userspace-using-ebpf-array-maps
+    tags:
+    - ebpf
+    - bpf
+    - xdp-bpf
+    - libbpf
+    score: 1
+    answer_count: 1
+    is_answered: true
+  verifier_log:
+    blocks:
+    - |-
+      invalid access to map value, value_size=8 off=8 size=1
+          R5 min value is outside of the allowed memory range
+    combined: |-
+      invalid access to map value, value_size=8 off=8 size=1
+          R5 min value is outside of the allowed memory range
+  source_snippets:
+  - |-
+    struct target_d_name {
+            unsigned long int len;
+            char name[PID_LEN_MAX]; //PID_LEN_MAX = 8, it is a macro
+        };
+  - |-
+    struct {
+            __uint(type, BPF_MAP_TYPE_ARRAY);
+            __uint(max_entries, 8);
+            __type(key, u32);
+            __type(value, sizeof(struct target_d_name));
+        } map_d_name_tgts SEC(".maps");
+  - |-
+    //iterator_limit is either len(filename) or PID_LEN_MAX, whichever is smallest
+        for (k = 0; k < iterator_limit; ++k) {
+          if (filename[k] != target_d_name_instance->name[k]) break;
+        }
+  - |-
+    u32 index = 0;
+        struct target_d_name * current_d_name
+            = bpf_map_lookup_elem(&map_d_name_tgts, &index);
+        if (current_d_name == 0) return -1;
+
+        for (int i = 0; i < PID_LEN_MAX; ++i) {
+            current_d_name->name[i] = 'u';
+        }
+        return 0;
+  question_body_text: |-
+    I have a BPF_MAP_TYPE_ARRAY map that stores instances of this struct:
+    struct target_d_name {
+    unsigned long int len;
+    char name[PID_LEN_MAX]; //PID_LEN_MAX = 8, it is a macro
+    };
+    Here is the map definition:
+    struct {
+    __uint(type, BPF_MAP_TYPE_ARRAY);
+    __uint(max_entries, 8);
+    __type(key, u32);
+    __type(value, sizeof(struct target_d_name));
+    } map_d_name_tgts SEC(".maps");
+    What I am doing can be summarised as the following:
+    Hook exit of getents64
+    Loop through all dirent64 structures being returned
+    See if any of dirent64->d_name strings match anything in target_d_name->name
+    Here is the code that does the actual string comparison between the dirent64 strings and the strings in my map:
+    //iterator_limit is either len(filename) or PID_LEN_MAX, whichever is smallest
+    for (k = 0; k < iterator_limit; ++k) {
+    if (filename[k] != target_d_name_instance->name[k]) break;
+    }
+    As you can see, everything is in bounds. However at load time the eBPF verifier errors out with:
+    invalid access to map value, value_size=8 off=8 size=1
+    R5 min value is outside of the allowed memory range
+    Where R5 attempts to dereference the address of target_d_name_instance->name[k].
+    At first I expected this to work since everything is in bounds. Upon further investigation however I found numerous other people who have come across this problem. Namely:
+    eBPF: invalid access to map value even with bounds check
+    https://github.com/iovisor/bcc/issues/3269
+    https://lore.kernel.org/bpf/f9c2ab1f-42a9-f5eb-f9bf-63402c6a8a62@uliege.be/T/
+    From these links I gathered that the eBPF verifier fails to keep track of the size of the character buffers in my struct. As such, when I iterate with 0 <= k <= PID_LEN_MAX, at some point k may fall outside the allowed memory range. While this is impossible, the eBPF verifier isn't aware of this.
+    However I still don't know how what my new approach should be. How else can I pass strings to my eBPF programs from userspace? What if I need to carry out string comparisons on them and hence iterate over them? I noticed the existence of the bpf_strncmp() helper, but it only works on constants and is therefore not very useful if the strings are being dynamically generated.
+    UPDATE:
+    Here is a minimal example that produces an identical error:
+    u32 index = 0;
+    struct target_d_name * current_d_name
+    = bpf_map_lookup_elem(&map_d_name_tgts, &index);
+    if (current_d_name == 0) return -1;
+    for (int i = 0; i < PID_LEN_MAX; ++i) {
+    current_d_name->name[i] = 'u';
+    }
+    return 0;
+  selected_answer:
+    answer_id: 77009051
+    url: https://stackoverflow.com/questions/76994829/ebpf-properly-passing-fixed-length-strings-from-userspace-using-ebpf-array-maps#77009051
+    is_accepted: true
+    score: 1
+    body_text: |-
+      how about change
+      struct {
+      __uint(type, BPF_MAP_TYPE_ARRAY);
+      __uint(max_entries, 8);
+      __type(key, u32);
+      __type(value, sizeof(struct target_d_name));
+      } map_d_name_tgts SEC(".maps");
+      to
+      struct {
+      __uint(type, BPF_MAP_TYPE_ARRAY);
+      __uint(max_entries, 8);
+      __type(key, u32);
+      __type(value, struct target_d_name); // changed
+      } map_d_name_tgts SEC(".maps");
+    fix_description: how about change struct { __uint(type, BPF_MAP_TYPE_ARRAY);

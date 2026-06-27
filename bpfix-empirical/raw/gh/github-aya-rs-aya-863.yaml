@@ -1,0 +1,135 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-aya-rs-aya-863
+source_kind: github_issue
+source:
+  url: https://github.com/aya-rs/aya/issues/863
+  title: BPF verify failed with "Permission denied (os error 13)"
+  repository: https://github.com/aya-rs/aya
+  commit: null
+  collected_at: '2026-03-11T16:02:01+00:00'
+collector:
+  original_path: bpfix-empirical/raw/gh/github-aya-rs-aya-863.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: true
+  verifier_log_block_count: 1
+  source_snippet_count: 5
+  has_buggy_code: false
+  has_fixed_code: false
+  has_fix_description: false
+reproduction:
+  status: replay_valid
+  case_id: github-aya-rs-aya-863
+  case_path: cases/github-aya-rs-aya-863
+  artifact_path: cases/github-aya-rs-aya-863
+  reason: admitted_to_bpfix_bench_cases
+raw:
+  case_id: github-aya-rs-aya-863
+  source: github_issues
+  collected_at: '2026-03-11T16:02:01+00:00'
+  issue:
+    repository: aya-rs/aya
+    number: 863
+    title: BPF verify failed with "Permission denied (os error 13)"
+    url: https://github.com/aya-rs/aya/issues/863
+    state: closed
+    state_reason: completed
+    labels: []
+    created_at: '2024-01-12T08:54:41Z'
+    updated_at: '2024-02-01T08:05:55Z'
+    author: driftli
+  verifier_log:
+    blocks:
+    - |-
+      Error: the BPF_PROG_LOAD syscall failed. Verifier output: 0: (bf) r6 = r1
+
+      ......(skiped)
+
+      302: (85) call bpf_perf_event_output#25
+      R5 min value is negative, either use unsigned or 'var &= const'
+      verification time 1899 usec
+      stack depth 24+0+0+0
+      processed 351 insns (limit 1000000) max_states_per_insn 1 total_states 14 peak_states 14 mark_read 13
+
+      Caused by:
+          Permission denied (os error 13)
+      Failed to run `sudo -E target/debug/test`
+    combined: |-
+      Error: the BPF_PROG_LOAD syscall failed. Verifier output: 0: (bf) r6 = r1
+
+      ......(skiped)
+
+      302: (85) call bpf_perf_event_output#25
+      R5 min value is negative, either use unsigned or 'var &= const'
+      verification time 1899 usec
+      stack depth 24+0+0+0
+      processed 351 insns (limit 1000000) max_states_per_insn 1 total_states 14 peak_states 14 mark_read 13
+
+      Caused by:
+          Permission denied (os error 13)
+      Failed to run `sudo -E target/debug/test`
+  source_snippets:
+  - |-
+    fn try_test(ctx: ProbeContext) -> Result<c_long, c_long> {
+        info!(&ctx, "running into monitor function");
+        let pid = ctx.pid();
+        let ret_ptr: *const u8 = ctx.ret().unwrap();
+
+        let mut limit_buf = [0u8; 16];
+        let cmd = unsafe {
+            bpf_probe_read_user_buf(ret_ptr, &mut limit_buf)?;
+            core::str::from_utf8_unchecked(&limit_buf)
+        };
+
+        info!(&ctx, "/usr/bin/bash pid: {}, cmd: {}", pid, cmd);
+        Ok(0)
+    }
+  - |-
+    #[repr(C)]
+    pub struct Buf {
+        pub buf: [u8; 64],
+    }
+
+    #[map]
+    pub static mut BUF: PerCpuArray<Buf> = PerCpuArray::with_max_entries(1, 0);
+
+    fn try_test(ctx: ProbeContext) -> Result<c_long, c_long> {
+        info!(&ctx, "running into monitor function");
+        let pid = ctx.pid();
+        let ret_ptr: *const u8 = ctx.ret().unwrap();
+
+        let buf = unsafe {
+            let ptr = BUF.get_ptr_mut(0).ok_or(0)?;
+            &mut *ptr
+        };
+        let cmd = unsafe {
+            core::str::from_utf8_unchecked(bpf_probe_read_user_str_bytes(ret_ptr, &mut buf.buf)?)
+        };
+
+        info!(&ctx, "/usr/bin/bash pid: {}, cmd: {}", pid, cmd);
+        Ok(0)
+    }
+  - |-
+    let mut limit_buf = [0u8; 16];
+    let cmd = unsafe {
+        bpf_probe_read_user_buf(ret_ptr, &mut limit_buf)?;
+        core::str::from_utf8_unchecked(&limit_buf)
+    };
+  - |-
+    info!(&ctx, "/usr/bin/bash pid: {}, cmd: {}", pid, cmd);
+    Ok(0)
+  - |-
+    let buf = unsafe {
+        let ptr = BUF.get_ptr_mut(0).ok_or(0)?;
+        &mut *ptr
+    };
+    let cmd = unsafe {
+        core::str::from_utf8_unchecked(bpf_probe_read_user_str_bytes(ret_ptr, &mut buf.buf)?)
+    };
+  issue_body_text: |-
+    I want to hook readline function for /usr/bin/bash with uretprobe.
+    There are two copies of the code. The first one ran normally, here is:
+    The next one failed to start, which took me a long time to figure out and still failed.
+    And here is the error message:
+    Can someone help point out my mistake?
+  fix: {}

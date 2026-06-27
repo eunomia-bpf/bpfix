@@ -1,0 +1,202 @@
+schema_version: bpfix.raw_external/v1
+raw_id: stackoverflow-79616493
+source_kind: stackoverflow
+source:
+  url: https://stackoverflow.com/questions/79616493/how-to-use-bpf-d-path-correctly-in-rust-aya-bpf-fentry-program-verifier-rejects
+  title: How to use bpf_d_path correctly in rust aya-bpf fentry program? Verifier
+    rejects pointer with &quot;R1 type=fp expected=ptr_&quot;
+  repository: null
+  commit: null
+  collected_at: '2026-03-11T16:03:19+00:00'
+collector:
+  original_path: bpfix-empirical/raw/so/stackoverflow-79616493.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: true
+  verifier_log_block_count: 0
+  source_snippet_count: 2
+  has_buggy_code: false
+  has_fixed_code: false
+  has_fix_description: false
+reproduction:
+  status: environment_required
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: requires_aya_rust_fentry_framework_and_kernel_trusted_pointer_behavior
+raw:
+  case_id: stackoverflow-79616493
+  source: stackoverflow
+  collected_at: '2026-03-11T16:03:19+00:00'
+  question:
+    question_id: 79616493
+    title: How to use bpf_d_path correctly in rust aya-bpf fentry program? Verifier
+      rejects pointer with &quot;R1 type=fp expected=ptr_&quot;
+    url: https://stackoverflow.com/questions/79616493/how-to-use-bpf-d-path-correctly-in-rust-aya-bpf-fentry-program-verifier-rejects
+    tags:
+    - rust
+    - linux-kernel
+    - ebpf
+    score: 0
+    answer_count: 1
+    is_answered: true
+  verifier_log:
+    blocks: []
+    combined: ''
+  source_snippets:
+  - |-
+    SEC("lsm.s/file_open")
+    __success
+    int BPF_PROG(path_d_path_from_file_argument, struct file *file)
+    {
+        int ret;
+        struct path *path;
+
+        /* The f_path member is a path which is embedded directly within a
+         * file. Therefore, a pointer to such embedded members are still
+         * recognized by the BPF verifier as being PTR_TRUSTED as it's
+         * essentially PTR_TRUSTED w/ a non-zero fixed offset.
+         */
+        path = &file->f_path;
+        ret = bpf_path_d_path(path, buf, sizeof(buf));
+        __sink(ret);
+        return 0;
+    }
+  - |-
+    const INIT_ENENT: Event = Event {
+        pid: 0,
+        path: [0; 1024],
+    };
+
+    #[map]
+    pub static TT: LruHashMap<u64, Event> = LruHashMap::with_max_entries(16, 0);
+
+    fn try_ff(ctx: &FEntryContext) -> Result<(), i64> {
+        let file_ptr: *const file = unsafe { ctx.arg(0) };
+
+        let addr = file_ptr as u64;
+        TT.insert(&addr, &INIT_ENENT, 0).map_err(|_| -6)?;
+        let event = unsafe { &mut *TT.get_ptr_mut(&addr).ok_or(-7)? };
+
+        unsafe {
+            bpf_d_path(
+                &mut file_val.f_path as *mut bindgen::path as *mut aya_ebpf::bindings::path,
+                event.path.as_mut_ptr() as *mut i8,
+                0,
+            );
+            info!(ctx, "bpf_d_path");
+        };
+
+        info!(ctx, "function filp_close called");
+        Ok(())
+    }
+  question_body_text: |-
+    I'm writing an eBPF program using the aya framework in Rust. I'm attaching a fentry hook to the filp_close function and trying to obtain the file path using bpf_d_path. Here's a simplified version of the eBPF code:
+    const INIT_ENENT: Event = Event {
+    pid: 0,
+    path: [0; 1024],
+    };
+    #[map]
+    pub static TT: LruHashMap<u64, Event> = LruHashMap::with_max_entries(16, 0);
+    fn try_ff(ctx: &FEntryContext) -> Result<(), i64> {
+    let file_ptr: *const file = unsafe { ctx.arg(0) };
+    let addr = file_ptr as u64;
+    TT.insert(&addr, &INIT_ENENT, 0).map_err(|_| -6)?;
+    let event = unsafe { &mut *TT.get_ptr_mut(&addr).ok_or(-7)? };
+    // let file_ptr = file_addr as *const file;
+    let file_val = unsafe { bpf_probe_read_kernel::<file>(file_ptr).map_err(|_| -8)? };
+    let mut path_ptr = file_val.f_path;
+    unsafe {
+    bpf_d_path(
+    &mut path_ptr as *mut bindgen::path as *mut aya_ebpf::bindings::path,
+    event.path.as_mut_ptr() as *mut i8,
+    0,
+    );
+    info!(ctx, "bpf_d_path");
+    };
+    info!(ctx, "function filp_close called");
+    Ok(())
+    }
+    The idea is to read the file struct using bpf_probe_read_kernel, extract the f_path, and then pass it to bpf_d_path to resolve the file path. However, loading the program fails with the following verifier error:
+    Error: the BPF_PROG_LOAD syscall failed. Verifier output: 0: R1=ctx() R10=fp0
+    0: (7b) *(u64 *)(r10 -256) = r1 ; R1=ctx() R10=fp0 fp-256_w=ctx()
+    1: (79) r8 = *(u64 *)(r1 +0)
+    func 'filp_close' arg0 has btf_id 659 type STRUCT 'file'
+    2: R1=ctx() R8_w=ptr_file()
+    ...
+    37: (bf) r2 = r9 ; R2_w=map_value(map=TT,ks=8,vs=1048,off=8) R9_w=map_value(map=TT,ks=8,vs=1048,off=8)
+    38: (b7) r3 = 0 ; R3_w=0
+    39: (85) call bpf_d_path#147
+    R1 type=fp expected=ptr_, trusted_ptr_, rcu_ptr_
+    verification time 130 usec
+    stack depth 256+0+0
+    processed 37 insns (limit 1000000) max_states_per_insn 0 total_states 2 peak_states 2 mark_read 2
+    Caused by:
+    Permission denied (os error 13)
+    It looks like the verifier is rejecting the first argument to bpf_d_path, saying that it must be a trusted pointer and not a frame pointer (fp). I'm not sure how to fix this in aya.
+    My questions:
+    What is the correct way to call bpf_d_path in an aya fentry program?
+    Is bpf_d_path only usable in certain hook types like LSM or kprobe instead of fentry?
+    Is there a better/allowed way to get the full path from a file pointer in an fentry hook?
+    Environment:
+    Kernel: 6.x
+    Rust: aya 0.12
+    Hook: fentry(filp_close)
+  selected_answer:
+    answer_id: 79617584
+    url: https://stackoverflow.com/questions/79616493/how-to-use-bpf-d-path-correctly-in-rust-aya-bpf-fentry-program-verifier-rejects#79617584
+    is_accepted: false
+    score: 1
+    body_text: |-
+      It looks like the verifier is rejecting the first argument to bpf_d_path, saying that it must be a trusted pointer and not a frame pointer (fp). I'm not sure how to fix this in aya.
+      The idea behind a trusted pointer is that the verifier can track the data type of a pointer using BTF. Program types such as fentry and LSM programs which attach to known function signatures can make use of this. (so no kprobes since they can attach to any instruction, not just the start of a function, and without BTF)
+      Essentially, any pointer passed into an fentry program can be used directly, without bpf_probe_read_kernel as long as what you are doing aligns with the type info the verifier has. So you are allowed to de-reference a pointer, as long as the verifier can track that its a valid pointer. And ironically using bpf_probe_read_kernel causes the verifier to lose track of the true type.
+      That is what this line of the verifier log means: func 'filp_close' arg0 has btf_id 659 type STRUCT 'file' it is aware that the first argument is a trusted pointer to type file and when you access a field on that struct it will keep tracking.
+      The following is a test from the kernel, its an LSM program, but the idea is the same for fentry.
+      SEC("lsm.s/file_open")
+      __success
+      int BPF_PROG(path_d_path_from_file_argument, struct file *file)
+      {
+      int ret;
+      struct path *path;
+      /* The f_path member is a path which is embedded directly within a
+      * file. Therefore, a pointer to such embedded members are still
+      * recognized by the BPF verifier as being PTR_TRUSTED as it's
+      * essentially PTR_TRUSTED w/ a non-zero fixed offset.
+      */
+      path = &file->f_path;
+      ret = bpf_path_d_path(path, buf, sizeof(buf));
+      __sink(ret);
+      return 0;
+      }
+      So you should be able to pass file_ptr.f_path directly to bpf_path_d_path. I think this (not a rust user, not sure if its 100% right):
+      const INIT_ENENT: Event = Event {
+      pid: 0,
+      path: [0; 1024],
+      };
+      #[map]
+      pub static TT: LruHashMap<u64, Event> = LruHashMap::with_max_entries(16, 0);
+      fn try_ff(ctx: &FEntryContext) -> Result<(), i64> {
+      let file_ptr: *const file = unsafe { ctx.arg(0) };
+      let addr = file_ptr as u64;
+      TT.insert(&addr, &INIT_ENENT, 0).map_err(|_| -6)?;
+      let event = unsafe { &mut *TT.get_ptr_mut(&addr).ok_or(-7)? };
+      unsafe {
+      bpf_d_path(
+      &mut file_val.f_path as *mut bindgen::path as *mut aya_ebpf::bindings::path,
+      event.path.as_mut_ptr() as *mut i8,
+      0,
+      );
+      info!(ctx, "bpf_d_path");
+      };
+      info!(ctx, "function filp_close called");
+      Ok(())
+      }
+    fix_description: It looks like the verifier is rejecting the first argument to
+      bpf_d_path, saying that it must be a trusted pointer and not a frame pointer
+      (fp). I'm not sure how to fix this in aya. The idea behind a trusted pointer
+      is that the verifier can track the data type of a pointer using BTF. Program
+      types such as fentry and LSM programs which attach to known function signatures
+      can make use of this. (so no kprobes since they can attach to any instruction,
+      not just the start of a function, and without BTF) essentially PTR_TRUSTED w/
+      a non-zero fixed offset.

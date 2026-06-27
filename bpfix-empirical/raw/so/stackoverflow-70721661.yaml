@@ -1,0 +1,428 @@
+schema_version: bpfix.raw_external/v1
+raw_id: stackoverflow-70721661
+source_kind: stackoverflow
+source:
+  url: https://stackoverflow.com/questions/70721661/is-there-a-way-i-can-share-some-ebpf-map-between-ebpf-program-and-userspace-prog
+  title: is there a way I can share some ebpf map between ebpf program and userspace
+    program that has value struct using libbpf for keys
+  repository: null
+  commit: null
+  collected_at: '2026-03-11T16:02:56+00:00'
+collector:
+  original_path: bpfix-empirical/raw/so/stackoverflow-70721661.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: true
+  verifier_log_block_count: 2
+  source_snippet_count: 4
+  has_buggy_code: false
+  has_fixed_code: false
+  has_fix_description: false
+reproduction:
+  status: replay_valid
+  case_id: stackoverflow-70721661
+  case_path: cases/stackoverflow-70721661
+  artifact_path: cases/stackoverflow-70721661
+  reason: admitted_to_bpfix_bench_cases
+raw:
+  case_id: stackoverflow-70721661
+  source: stackoverflow
+  collected_at: '2026-03-11T16:02:56+00:00'
+  question:
+    question_id: 70721661
+    title: is there a way I can share some ebpf map between ebpf program and userspace
+      program that has value struct using libbpf for keys
+    url: https://stackoverflow.com/questions/70721661/is-there-a-way-i-can-share-some-ebpf-map-between-ebpf-program-and-userspace-prog
+    tags:
+    - c
+    - linux
+    - ebpf
+    score: 1
+    answer_count: 1
+    is_answered: true
+  original_verifier_log:
+    blocks:
+    - |-
+      libbpf: load bpf program failed: Permission denied
+      libbpf: -- BEGIN DUMP LOG ---
+      libbpf:
+      ; int index = ctx->rx_queue_index;
+      0: (61) r2 = *(u32 *)(r1 +16)
+      ; int index = ctx->rx_queue_index;
+      1: (63) *(u32 *)(r10 -4) = r2
+      ; void *data_end = (void *)(long)ctx->data_end;
+      2: (61) r2 = *(u32 *)(r1 +4)
+      ; void *data = (void *)(long)ctx->data;
+      3: (61) r1 = *(u32 *)(r1 +0)
+      ; if ((void *)eth + sizeof(*eth) <= data_end)
+      4: (07) r1 += 14
+      ; if ((void *)eth + sizeof(*eth) <= data_end)
+      5: (2d) if r1 > r2 goto pc+25
+       R1_w=pkt(id=0,off=14,r=14,imm=0) R2_w=pkt_end(id=0,off=0,imm=0) R10=fp0 fp-8=mmmm????
+      ; memcpy(&me.dest_ip,ip,sizeof(struct iphdr));
+      6: (61) r2 = *(u32 *)(r1 +16)
+      invalid access to packet, off=30 size=4, R1(id=0,off=30,r=14)
+      R1 offset is outside of the packet
+      processed 7 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0 mark_read 0
+
+      libbpf: -- END LOG --
+      libbpf: failed to load program 'xdp_sock'
+      libbpf: failed to load object 'af_xdp_kern.o'
+      ERR: loading BPF-OBJ file(af_xdp_kern.o) (-22): Invalid argument
+      ERR: loading file: af_xdp_kern.o
+    - |-
+      ; memcpy(&me.dest_ip,ip,sizeof(struct iphdr));
+      6: (61) r2 = *(u32 *)(r1 +16)
+      invalid access to packet, off=30 size=4, R1(id=0,off=30,r=14)
+      R1 offset is outside of the packet
+    combined: |-
+      libbpf: load bpf program failed: Permission denied
+      libbpf: -- BEGIN DUMP LOG ---
+      libbpf:
+      ; int index = ctx->rx_queue_index;
+      0: (61) r2 = *(u32 *)(r1 +16)
+      ; int index = ctx->rx_queue_index;
+      1: (63) *(u32 *)(r10 -4) = r2
+      ; void *data_end = (void *)(long)ctx->data_end;
+      2: (61) r2 = *(u32 *)(r1 +4)
+      ; void *data = (void *)(long)ctx->data;
+      3: (61) r1 = *(u32 *)(r1 +0)
+      ; if ((void *)eth + sizeof(*eth) <= data_end)
+      4: (07) r1 += 14
+      ; if ((void *)eth + sizeof(*eth) <= data_end)
+      5: (2d) if r1 > r2 goto pc+25
+       R1_w=pkt(id=0,off=14,r=14,imm=0) R2_w=pkt_end(id=0,off=0,imm=0) R10=fp0 fp-8=mmmm????
+      ; memcpy(&me.dest_ip,ip,sizeof(struct iphdr));
+      6: (61) r2 = *(u32 *)(r1 +16)
+      invalid access to packet, off=30 size=4, R1(id=0,off=30,r=14)
+      R1 offset is outside of the packet
+      processed 7 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0 mark_read 0
+
+      libbpf: -- END LOG --
+      libbpf: failed to load program 'xdp_sock'
+      libbpf: failed to load object 'af_xdp_kern.o'
+      ERR: loading BPF-OBJ file(af_xdp_kern.o) (-22): Invalid argument
+      ERR: loading file: af_xdp_kern.o
+
+      ; memcpy(&me.dest_ip,ip,sizeof(struct iphdr));
+      6: (61) r2 = *(u32 *)(r1 +16)
+      invalid access to packet, off=30 size=4, R1(id=0,off=30,r=14)
+      R1 offset is outside of the packet
+  verifier_log:
+    blocks:
+    - |-
+      libbpf: load bpf program failed: Permission denied
+      libbpf: -- BEGIN DUMP LOG ---
+      libbpf:
+      ; int index = ctx->rx_queue_index;
+      0: (61) r2 = *(u32 *)(r1 +16)
+      ; int index = ctx->rx_queue_index;
+      1: (63) *(u32 *)(r10 -4) = r2
+      ; void *data_end = (void *)(long)ctx->data_end;
+      2: (61) r2 = *(u32 *)(r1 +4)
+      ; void *data = (void *)(long)ctx->data;
+      3: (61) r1 = *(u32 *)(r1 +0)
+      ; if ((void *)eth + sizeof(*eth) <= data_end)
+      4: (07) r1 += 14
+      ; if ((void *)eth + sizeof(*eth) <= data_end)
+      5: (2d) if r1 > r2 goto pc+25
+       R1_w=pkt(id=0,off=14,r=14,imm=0) R2_w=pkt_end(id=0,off=0,imm=0) R10=fp0 fp-8=mmmm????
+      ; memcpy(&me.dest_ip,ip,sizeof(struct iphdr));
+      6: (61) r2 = *(u32 *)(r1 +16)
+      invalid access to packet, off=30 size=4, R1(id=0,off=30,r=14)
+      R1 offset is outside of the packet
+      processed 7 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0 mark_read 0
+
+      libbpf: -- END LOG --
+      libbpf: failed to load program 'xdp_sock'
+      libbpf: failed to load object 'af_xdp_kern.o'
+      ERR: loading BPF-OBJ file(af_xdp_kern.o) (-22): Invalid argument
+      ERR: loading file: af_xdp_kern.o
+    - |-
+      ; memcpy(&me.dest_ip,ip,sizeof(struct iphdr));
+      6: (61) r2 = *(u32 *)(r1 +16)
+      invalid access to packet, off=30 size=4, R1(id=0,off=30,r=14)
+      R1 offset is outside of the packet
+    combined: |-
+      libbpf: loading object from <legacy-so-gh-reproducer>/stackoverflow-70721661/prog.o
+      libbpf: elf: section(3) xdp, size 248, link 0, flags 6, type=1
+      libbpf: sec 'xdp': found program 'xdp_sock_prog' at insn offset 0 (0 bytes), code size 31 insns (248 bytes)
+      libbpf: elf: section(4) .relxdp, size 16, link 26, flags 40, type=9
+      libbpf: elf: section(5) maps, size 20, link 0, flags 3, type=1
+      libbpf: elf: legacy map definitions in 'maps' section are not supported by libbpf v1.0+
+      Error: failed to open object file
+  verifier_log_source: captured_on_6.15.11
+  verifier_log_captured_at: '2026-03-20'
+  source_snippets:
+  - |-
+    struct share_me
+    {
+
+        struct iphdr dest_ip;
+    };
+
+    struct bpf_map_def SEC("maps") ip_map = {
+        .type = BPF_MAP_TYPE_ARRAY,
+        .key_size = sizeof(int),
+        .value_size = sizeof(struct share_me),
+        .max_entries = 64,  /* Assume netdev has no more than 64 queues */
+    };
+  - |-
+    SEC("xdp_sock")
+    int xdp_sock_prog(struct xdp_md *ctx)
+    {
+        int index = ctx->rx_queue_index;
+        __u32 *pkt_count;
+
+        void *data = (void *)(long)ctx->data;
+        void *data_end = (void *)(long)ctx->data_end;
+        struct ethhdr *eth = data;
+        struct share_me me;
+
+        if ((void *)eth + sizeof(*eth) <= data_end)
+        {
+
+            struct iphdr *ip = data + sizeof(*eth);
+            //me.dest_ip=ip;
+            memcpy(&me.dest_ip,ip,sizeof(struct iphdr));
+            bpf_map_lookup_elem(&ip_map, &index);
+            bpf_map_update_elem(&ip_map,&index,&me,0);
+  - |-
+    bpf_obj = load_bpf_and_xdp_attach(&cfg);
+            if (!bpf_obj) {
+                /* Error handling done in load_bpf_and_xdp_attach() */
+                exit(EXIT_FAILURE);
+            }
+
+            /* We also need to load the xsks_map */
+
+            map1 = bpf_object__find_map_by_name(bpf_obj, "ip_map");
+            xsks_map_fd = bpf_map__fd(map);
+            map_fd = bpf_map__fd(map1);
+            if(map_fd<0)
+            {
+                printf("map_fd <0\n");
+                exit(0);
+            }
+
+            if (xsks_map_fd < 0) {
+                fprintf(stderr, "ERROR: no xsks map found: %s\n",
+                    strerror(xsks_map_fd));
+                exit(EXIT_FAILURE);
+            }
+  - |-
+    struct bpf_object *load_bpf_and_xdp_attach(struct config *cfg)
+    {
+        struct bpf_program *bpf_prog;
+        struct bpf_object *bpf_obj;
+        int offload_ifindex = 0;
+        int prog_fd = -1;
+        int err;
+
+        /* If flags indicate hardware offload, supply ifindex */
+        if (cfg->xdp_flags & XDP_FLAGS_HW_MODE)
+            offload_ifindex = cfg->ifindex;
+
+        /* Load the BPF-ELF object file and get back libbpf bpf_object */
+        if (cfg->reuse_maps)
+            bpf_obj = load_bpf_object_file_reuse_maps(cfg->filename,
+                                  offload_ifindex,
+                                  cfg->pin_dir);
+        else
+            bpf_obj = load_bpf_object_file(cfg->filename, offload_ifindex);
+        if (!bpf_obj) {
+            fprintf(stderr, "ERR: loading file: %s\n", cfg->filename);
+            exit(EXIT_FAIL_BPF);
+        }
+        /* At this point: All XDP/BPF programs from the cfg->filename have been
+         * loaded into the kernel, and evaluated by the verifier. Only one of
+         * these gets attached to XDP hook, the others will get freed once this
+         * process exit.
+         */
+
+        if (cfg->progsec[0])
+            /* Find a matching BPF prog section name */
+            bpf_prog = bpf_object__find_program_by_title(bpf_obj, cfg->progsec);
+        else
+            /* Find the first program */
+            bpf_prog = bpf_program__next(NULL, bpf_obj);
+
+        if (!bpf_prog) {
+            fprintf(stderr, "ERR: couldn't find a program in ELF section '%s'\n", cfg->progsec);
+            exit(EXIT_FAIL_BPF);
+        }
+
+        strncpy(cfg->progsec, bpf_program__title(bpf_prog, false), sizeof(cfg->progsec));
+
+        prog_fd = bpf_program__fd(bpf_prog);
+        if (prog_fd <= 0) {
+            fprintf(stderr, "ERR: bpf_program__fd failed\n");
+            exit(EXIT_FAIL_BPF);
+        }
+
+        /* At this point: BPF-progs are (only) loaded by the kernel, and prog_fd
+         * is our select file-descriptor handle. Next step is attaching this FD
+         * to a kernel hook point, in this case XDP net_device link-level hook.
+         */
+        err = xdp_link_attach(cfg->ifindex, cfg->xdp_flags, prog_fd);
+        if (err)
+            exit(err);
+
+        return bpf_obj;
+    }
+  question_body_text: |-
+    So I created a map of type BPF_MAP_TYPE_ARRAY.
+    struct share_me
+    {
+    struct iphdr dest_ip;
+    };
+    struct bpf_map_def SEC("maps") ip_map = {
+    .type = BPF_MAP_TYPE_ARRAY,
+    .key_size = sizeof(int),
+    .value_size = sizeof(struct share_me),
+    .max_entries = 64, /* Assume netdev has no more than 64 queues */
+    };
+    so ip_map is my map and its defined and SEC elf sections used to create the map in above defination
+    In my ebpf program function I am doing
+    SEC("xdp_sock")
+    int xdp_sock_prog(struct xdp_md *ctx)
+    {
+    int index = ctx->rx_queue_index;
+    __u32 *pkt_count;
+    void *data = (void *)(long)ctx->data;
+    void *data_end = (void *)(long)ctx->data_end;
+    struct ethhdr *eth = data;
+    struct share_me me;
+    if ((void *)eth + sizeof(*eth) <= data_end)
+    {
+    struct iphdr *ip = data + sizeof(*eth);
+    //me.dest_ip=ip;
+    memcpy(&me.dest_ip,ip,sizeof(struct iphdr));
+    bpf_map_lookup_elem(&ip_map, &index);
+    bpf_map_update_elem(&ip_map,&index,&me,0);
+    so with I am updating currrent value of ip_map key with my struct object
+    And this is what I am doing in usespace program
+    bpf_obj = load_bpf_and_xdp_attach(&cfg);
+    if (!bpf_obj) {
+    /* Error handling done in load_bpf_and_xdp_attach() */
+    exit(EXIT_FAILURE);
+    }
+    /* We also need to load the xsks_map */
+    map1 = bpf_object__find_map_by_name(bpf_obj, "ip_map");
+    xsks_map_fd = bpf_map__fd(map);
+    map_fd = bpf_map__fd(map1);
+    if(map_fd<0)
+    {
+    printf("map_fd <0\n");
+    exit(0);
+    }
+    if (xsks_map_fd < 0) {
+    fprintf(stderr, "ERROR: no xsks map found: %s\n",
+    strerror(xsks_map_fd));
+    exit(EXIT_FAILURE);
+    }
+    This is load_bpf_and_xdp_attach function just a wrapper around bpf/libbpf so calls load_bpf_object_file etc,
+    struct bpf_object *load_bpf_and_xdp_attach(struct config *cfg)
+    {
+    struct bpf_program *bpf_prog;
+    struct bpf_object *bpf_obj;
+    int offload_ifindex = 0;
+    int prog_fd = -1;
+    int err;
+    /* If flags indicate hardware offload, supply ifindex */
+    if (cfg->xdp_flags & XDP_FLAGS_HW_MODE)
+    offload_ifindex = cfg->ifindex;
+    /* Load the BPF-ELF object file and get back libbpf bpf_object */
+    if (cfg->reuse_maps)
+    bpf_obj = load_bpf_object_file_reuse_maps(cfg->filename,
+    offload_ifindex,
+    cfg->pin_dir);
+    else
+    bpf_obj = load_bpf_object_file(cfg->filename, offload_ifindex);
+    if (!bpf_obj) {
+    fprintf(stderr, "ERR: loading file: %s\n", cfg->filename);
+    exit(EXIT_FAIL_BPF);
+    }
+    /* At this point: All XDP/BPF programs from the cfg->filename have been
+    * loaded into the kernel, and evaluated by the verifier. Only one of
+    * these gets attached to XDP hook, the others will get freed once this
+    * process exit.
+    */
+    if (cfg->progsec[0])
+    /* Find a matching BPF prog section name */
+    bpf_prog = bpf_object__find_program_by_title(bpf_obj, cfg->progsec);
+    else
+    /* Find the first program */
+    bpf_prog = bpf_program__next(NULL, bpf_obj);
+    if (!bpf_prog) {
+    fprintf(stderr, "ERR: couldn't find a program in ELF section '%s'\n", cfg->progsec);
+    exit(EXIT_FAIL_BPF);
+    }
+    strncpy(cfg->progsec, bpf_program__title(bpf_prog, false), sizeof(cfg->progsec));
+    prog_fd = bpf_program__fd(bpf_prog);
+    if (prog_fd <= 0) {
+    fprintf(stderr, "ERR: bpf_program__fd failed\n");
+    exit(EXIT_FAIL_BPF);
+    }
+    /* At this point: BPF-progs are (only) loaded by the kernel, and prog_fd
+    * is our select file-descriptor handle. Next step is attaching this FD
+    * to a kernel hook point, in this case XDP net_device link-level hook.
+    */
+    err = xdp_link_attach(cfg->ifindex, cfg->xdp_flags, prog_fd);
+    if (err)
+    exit(err);
+    return bpf_obj;
+    }
+    But I am getting error that
+    libbpf: load bpf program failed: Permission denied
+    libbpf: -- BEGIN DUMP LOG ---
+    libbpf:
+    ; int index = ctx->rx_queue_index;
+    0: (61) r2 = *(u32 *)(r1 +16)
+    ; int index = ctx->rx_queue_index;
+    1: (63) *(u32 *)(r10 -4) = r2
+    ; void *data_end = (void *)(long)ctx->data_end;
+    2: (61) r2 = *(u32 *)(r1 +4)
+    ; void *data = (void *)(long)ctx->data;
+    3: (61) r1 = *(u32 *)(r1 +0)
+    ; if ((void *)eth + sizeof(*eth) <= data_end)
+    4: (07) r1 += 14
+    ; if ((void *)eth + sizeof(*eth) <= data_end)
+    5: (2d) if r1 > r2 goto pc+25
+    R1_w=pkt(id=0,off=14,r=14,imm=0) R2_w=pkt_end(id=0,off=0,imm=0) R10=fp0 fp-8=mmmm????
+    ; memcpy(&me.dest_ip,ip,sizeof(struct iphdr));
+    6: (61) r2 = *(u32 *)(r1 +16)
+    invalid access to packet, off=30 size=4, R1(id=0,off=30,r=14)
+    R1 offset is outside of the packet
+    processed 7 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0 mark_read 0
+    libbpf: -- END LOG --
+    libbpf: failed to load program 'xdp_sock'
+    libbpf: failed to load object 'af_xdp_kern.o'
+    ERR: loading BPF-OBJ file(af_xdp_kern.o) (-22): Invalid argument
+    ERR: loading file: af_xdp_kern.o
+    so I am getting invalid access to packet, off=30 size=4, R1(id=0,off=30,r=14) R1 offset is outside of the packet when load my ebpf program I am kind of sure that the error caused because of I am using struct value as map of type BPF_MAP_TYPE_ARRY value
+    So I like to know is there any other MAP type there if I am using libbpf that allows struct as map key's value
+  selected_answer:
+    answer_id: 70729496
+    url: https://stackoverflow.com/questions/70721661/is-there-a-way-i-can-share-some-ebpf-map-between-ebpf-program-and-userspace-prog#70729496
+    is_accepted: true
+    score: 1
+    body_text: |-
+      TL;DR. The issue is that you're making an out-of-bound access to the packet from the verifier's point of view. You need to check the packet is long enough to actually contain the IP header first.
+      Reading the verifier error message.
+      ; memcpy(&me.dest_ip,ip,sizeof(struct iphdr));
+      6: (61) r2 = *(u32 *)(r1 +16)
+      invalid access to packet, off=30 size=4, R1(id=0,off=30,r=14)
+      R1 offset is outside of the packet
+      The verifier errors on instruction 6, which corresponds to the memcpy statement. It states that you are making an invalid access to the packet, with the offset hold in R1 being outside the known bounds of the packet.
+      You checked that the packet is at least long enough to hold the Ethernet header, but you never checked that it's long enough to hold the IP header. So the verifier sees you trying to access bytes beyond the Ethernet header (up to offset 30) and errors.
+      Updating the packet bounds check.
+      If you already know from the start you'll need to read both the Ethernet and IP headers, you can update your check from:
+      if ((void *)eth + sizeof(*eth) <= data_end)
+      to:
+      if ((void *)eth + sizeof(*eth) + sizeof(struct iphdr) <= data_end)
+    fix_description: 'TL;DR. The issue is that you''re making an out-of-bound access
+      to the packet from the verifier''s point of view. You need to check the packet
+      is long enough to actually contain the IP header first. If you already know
+      from the start you''ll need to read both the Ethernet and IP headers, you can
+      update your check from:'

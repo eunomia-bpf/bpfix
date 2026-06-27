@@ -1,0 +1,100 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-9100ffbef979
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/9100ffbef97968f8bf27edc1e489829a73129f99
+  title: 'bpf: Fix stack alignment in sock6_xlate_fwd to prevent verifier errors'
+  repository: https://github.com/cilium/cilium
+  commit: 9100ffbef97968f8bf27edc1e489829a73129f99
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-9100ffbef979.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: replay_valid
+  case_id: github-commit-cilium-9100ffbef979
+  case_path: cases/github-commit-cilium-9100ffbef979
+  artifact_path: cases/github-commit-cilium-9100ffbef979
+  reason: admitted_to_bpfix_bench_cases
+raw:
+  case_id: github-commit-cilium-9100ffbef979
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: 9100ffbef97968f8bf27edc1e489829a73129f99
+  commit_message: 'bpf: Fix stack alignment in sock6_xlate_fwd to prevent verifier
+    errors'
+  commit_date: '2025-11-17'
+  fix_type: other
+  buggy_code: |-
+    // FILE: bpf/bpf_sock.c
+    // CONTEXT: int cil_sock6_pre_bind(struct bpf_sock_addr *ctx)
+
+    static __always_inline int __sock6_xlate_fwd(struct bpf_sock_addr *ctx,
+                                                 const bool udp_only,
+                                                 const bool is_connect)
+    {
+    #ifdef ENABLE_IPV6
+            union lb6_affinity_client_id id;
+            const bool in_hostns = ctx_in_hostns(ctx, &id.client_cookie);
+            const struct lb6_backend *backend;
+            const struct lb6_service *svc;
+            __u16 dst_port = ctx_dst_port(ctx);
+            __u8 protocol = ctx_protocol(ctx);
+            struct lb6_key key = {
+                    .dport          = dst_port,
+                    .proto          = protocol,
+            }, orig_key;
+            const struct lb6_service *backend_slot;
+            bool backend_from_affinity = false;
+            __u32 backend_id = 0;
+    #ifdef ENABLE_L7_LB
+            struct lb6_backend l7backend;
+    #endif
+
+            if (is_defined(ENABLE_SOCKET_LB_HOST_ONLY) && !in_hostns)
+                    return -ENXIO;
+
+            if (!udp_only && !sock_proto_enabled(protocol))
+                    return -ENOTSUP;
+  fixed_code: |-
+    // FILE: bpf/bpf_sock.c
+    // CONTEXT: int cil_sock6_pre_bind(struct bpf_sock_addr *ctx)
+
+    static __always_inline int __sock6_xlate_fwd(struct bpf_sock_addr *ctx,
+                                                 const bool udp_only,
+                                                 const bool is_connect)
+    {
+    #ifdef ENABLE_IPV6
+            union lb6_affinity_client_id id;
+            const bool in_hostns = ctx_in_hostns(ctx, &id.client_cookie);
+            const struct lb6_backend *backend;
+            const struct lb6_service *svc;
+            __u16 dst_port = ctx_dst_port(ctx);
+            __u8 protocol = ctx_protocol(ctx);
+            struct lb6_key key __align_stack_8 = {
+                    .dport          = dst_port,
+                    .proto          = protocol,
+            }, orig_key __align_stack_8;
+            const struct lb6_service *backend_slot;
+            bool backend_from_affinity = false;
+            __u32 backend_id = 0;
+    #ifdef ENABLE_L7_LB
+            struct lb6_backend l7backend;
+    #endif
+
+            if (is_defined(ENABLE_SOCKET_LB_HOST_ONLY) && !in_hostns)
+                    return -ENXIO;
+
+            if (!udp_only && !sock_proto_enabled(protocol))
+                    return -ENOTSUP;
+  diff_summary: |-
+    bpf/bpf_sock.c:
+    - Added `__align_stack_8` to `lb6_key` stack variables in `__sock6_xlate_fwd()`.
+    - Left logic unchanged while forcing 8-byte-aligned stack slots for LLVM-emitted 64-bit loads.

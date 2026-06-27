@@ -1,0 +1,136 @@
+schema_version: bpfix.raw_external/v1
+raw_id: stackoverflow-73282201
+source_kind: stackoverflow
+source:
+  url: https://stackoverflow.com/questions/73282201/counting-byte-occurrence-in-read-files-in-bpf
+  title: Counting Byte Occurrence in Read Files in BPF
+  repository: null
+  commit: null
+  collected_at: '2026-04-30T00:51:17+00:00'
+collector:
+  original_path: bpfix-empirical/raw/so/stackoverflow-73282201.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: true
+  verifier_log_block_count: 0
+  source_snippet_count: 2
+  has_buggy_code: false
+  has_fixed_code: false
+  has_fix_description: false
+reproduction:
+  status: replay_valid
+  case_id: stackoverflow-73282201
+  case_path: cases/stackoverflow-73282201
+  artifact_path: cases/stackoverflow-73282201
+  reason: admitted_to_bpfix_bench_cases
+raw:
+  case_id: stackoverflow-73282201
+  source: stackoverflow
+  collected_at: '2026-04-30T00:51:17+00:00'
+  question:
+    question_id: 73282201
+    title: Counting Byte Occurrence in Read Files in BPF
+    url: https://stackoverflow.com/questions/73282201/counting-byte-occurrence-in-read-files-in-bpf
+    tags:
+    - linux-kernel
+    - ebpf
+    - bpf
+    - bcc-bpf
+    score: 0
+    answer_count: 1
+    is_answered: true
+  verifier_log:
+    blocks: []
+    combined: ''
+  source_snippets:
+  - |-
+    struct data_t {
+        u8 data[4096];
+    };
+
+    struct counter_t {
+        u32 data[256];
+    };
+
+    BPF_PERCPU_ARRAY(storage, struct data_t, 1); //to store the buffer
+    BPF_PERCPU_ARRAY(countarr, struct counter_t, 1); //to count occurrences
+  - |-
+    //set both arrays to zero
+    int zero = 0;
+    struct data_t *pstorage = storage.lookup(&zero);
+    struct counter_t *pcountarr = countarr.lookup(&zero);
+
+    //check if init worked
+    if (!pstorage)
+        return 0;
+    if (!pcountarr)
+        return 0;
+
+    //copy data to storage
+    bpf_probe_read((void*)&pstorage->data, sizeof(pstorage->data), (void*)buf);
+
+    u8 tmpint = 0;
+    for(i = 0; i < 4095; i++){
+        if (i == count){
+            break;
+        }
+        tmpint = pstorage->data[i];
+
+        //TROUBLE IS HERE
+        //bpf_trace_printk("Current Byte: %d", (int)tmpint); //THIS IS LINE A
+        //pcountarr->data[tmpint]++; //THIS IS LINE B
+    }
+  question_body_text: |-
+    I am relatively new to BPF and trying to write a program that counts the occurrence of each byte read from a file (later will calculate entropy).
+    The idea is to have two BPF_PERCPU_ARRAYS to circumvent stack size limitations. To one, I will copy the first 4096 bytes of the content of the written file, and with the other, I will count the occurrence of each possible value of a byte.
+    The described arrays are initialized like this:
+    struct data_t {
+    u8 data[4096];
+    };
+    struct counter_t {
+    u32 data[256];
+    };
+    BPF_PERCPU_ARRAY(storage, struct data_t, 1); //to store the buffer
+    BPF_PERCPU_ARRAY(countarr, struct counter_t, 1); //to count occurrences
+    and used later in a function:
+    //set both arrays to zero
+    int zero = 0;
+    struct data_t *pstorage = storage.lookup(&zero);
+    struct counter_t *pcountarr = countarr.lookup(&zero);
+    //check if init worked
+    if (!pstorage)
+    return 0;
+    if (!pcountarr)
+    return 0;
+    //copy data to storage
+    bpf_probe_read((void*)&pstorage->data, sizeof(pstorage->data), (void*)buf);
+    u8 tmpint = 0;
+    for(i = 0; i < 4095; i++){
+    if (i == count){
+    break;
+    }
+    tmpint = pstorage->data[i];
+    //TROUBLE IS HERE
+    //bpf_trace_printk("Current Byte: %d", (int)tmpint); //THIS IS LINE A
+    //pcountarr->data[tmpint]++; //THIS IS LINE B
+    }
+    The last two lines that are commented out are the ones giving me trouble. Uncommenting line A gives me the error
+    invalid access to map value, value_size=4096 off=4096 size=1
+    R8 min value is outside of the allowed memory range
+    processed 102513 insns (limit 1000000) max_states_per_insn 4 total_states 981 peak_states 977 mark_read 459
+    with R8 (are R8 and R8_w the same?) being
+    R8_w=map_value(id=0,off=4096,ks=4,vs=4096,imm=0)
+    Doing so with Line B results in pretty much the same problem. At this point im decently lost with my experience and wish i had posted this several days ago :D...
+    Any help is appreciated :)
+  selected_answer:
+    answer_id: 73291267
+    url: https://stackoverflow.com/questions/73282201/counting-byte-occurrence-in-read-files-in-bpf#73291267
+    is_accepted: false
+    score: 2
+    body_text: |-
+      You are assigning zero to i but it is defined outside of the loop. for(i = 0; i < 4095; i++){. I suspect that i is not an unsigned number and thus can have a negative minimum value according to the verifier. Would define i as a u16 and see if that fixes the issue:
+      for(u16 i = 0; i < 4095; i++){
+    fix_description: 'You are assigning zero to i but it is defined outside of the
+      loop. for(i = 0; i < 4095; i++){. I suspect that i is not an unsigned number
+      and thus can have a negative minimum value according to the verifier. Would
+      define i as a u16 and see if that fixes the issue:'

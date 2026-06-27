@@ -1,0 +1,343 @@
+schema_version: bpfix.raw_external/v1
+raw_id: stackoverflow-79513583
+source_kind: stackoverflow
+source:
+  url: https://stackoverflow.com/questions/79513583/why-can-i-not-add-the-return-value-of-fetch-and-sync-to-a-map-in-an-ebpf-progr
+  title: Why can I not add the return value of __fetch_and_sync to a map in an eBPF
+    program?
+  repository: null
+  commit: null
+  collected_at: '2026-04-30T00:51:05+00:00'
+collector:
+  original_path: bpfix-empirical/raw/so/stackoverflow-79513583.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: true
+  verifier_log_block_count: 1
+  source_snippet_count: 3
+  has_buggy_code: false
+  has_fixed_code: false
+  has_fix_description: false
+reproduction:
+  status: attempted_accepted
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Raw includes full BPF snippet plus demo.h and reports BPF_STX uses reserved
+    fields, but parser quality is no_terminal_error. The local reconstruction built
+    and replayed; clang 18 generated atomic64_fetch_add, the verifier log marked the
+    path safe, ended with processed 27 insns, and had no terminal verifier error.
+    It was not a fresh reject on kernel 6.15.
+raw:
+  case_id: stackoverflow-79513583
+  source: stackoverflow
+  collected_at: '2026-04-30T00:51:05+00:00'
+  question:
+    question_id: 79513583
+    title: Why can I not add the return value of __fetch_and_sync to a map in an eBPF
+      program?
+    url: https://stackoverflow.com/questions/79513583/why-can-i-not-add-the-return-value-of-fetch-and-sync-to-a-map-in-an-ebpf-progr
+    tags:
+    - c
+    - linux-kernel
+    - ebpf
+    - bpf
+    score: 2
+    answer_count: 0
+    is_answered: false
+  verifier_log:
+    blocks:
+    - |-
+      libbpf: prog 'do_entry_point': BPF program load failed: Invalid argument
+      libbpf: prog 'do_entry_point': -- BEGIN PROG LOAD LOG --
+      BPF_STX uses reserved fields
+      processed 0 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0 mark_read 0
+      -- END PROG LOAD LOG --
+      libbpf: prog 'do_entry_point': failed to load: -22
+      libbpf: failed to load object 'demo_bpf'
+      libbpf: failed to load BPF skeleton 'demo_bpf': -22
+      Failed to open and load BPF skeleton
+    combined: |-
+      libbpf: prog 'do_entry_point': BPF program load failed: Invalid argument
+      libbpf: prog 'do_entry_point': -- BEGIN PROG LOAD LOG --
+      BPF_STX uses reserved fields
+      processed 0 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0 mark_read 0
+      -- END PROG LOAD LOG --
+      libbpf: prog 'do_entry_point': failed to load: -22
+      libbpf: failed to load object 'demo_bpf'
+      libbpf: failed to load BPF skeleton 'demo_bpf': -22
+      Failed to open and load BPF skeleton
+  source_snippets:
+  - |-
+    #include <vmlinux.h>
+    #include <bpf/bpf_helpers.h>
+    #include <bpf/bpf_tracing.h>
+    #include <bpf/bpf_core_read.h>
+
+    #include "demo.h"
+
+    struct
+    {
+        __uint(type, BPF_MAP_TYPE_RINGBUF);
+        __uint(max_entries, 1024 * 1024);
+    } traceevents SEC(".maps");
+
+    struct
+    {
+        __uint(type, BPF_MAP_TYPE_ARRAY);
+        __uint(max_entries, 1);
+        __type(key, u32);
+        __type(value, u64);
+    } counters SEC(".maps");
+
+    static void fill_and_submit(struct pt_regs *ctx, u8 entry)
+    {
+        struct event *e = bpf_ringbuf_reserve(&traceevents,
+                                              sizeof(struct event),
+                                              0);
+        if (!e)
+        {
+            return;
+        }
+
+        u32 key = 0;
+        u64 *count = bpf_map_lookup_elem(&counters, &key);
+        e->id = 0;
+        if (count)
+        {
+            e->id = __sync_fetch_and_add(count, 1);
+        }
+
+        e->timestamp = bpf_ktime_get_ns();
+        e->entry = entry;
+        bpf_ringbuf_submit(e, 0);
+    }
+
+    SEC("uprobe")
+    int do_entry_point(struct pt_regs *ctx)
+    {
+        fill_and_submit(ctx, 1);
+        return 0;
+    }
+
+    char LICENSE[] SEC("license") = "GPL";
+  - |-
+    #include <stdio.h>
+    #include <unistd.h>
+    #include <signal.h>
+    #include <getopt.h>
+    #include <bpf/libbpf.h>
+    #include <bpf/bpf.h>
+    #include <sys/mman.h>
+
+    #include "demo.skel.h"
+    #include "demo.h"
+    #include <linux/limits.h>
+
+    static volatile bool exiting = false;
+
+    static void sig_handler(int sig)
+    {
+        exiting = true;
+    }
+
+    static int handle_event(void *ctx, void *data, size_t data_sz)
+    {
+        printf("Read event\n");
+        return 0;
+    }
+
+    int main(int argc, char **argv)
+    {
+        struct ring_buffer *rb_event = NULL;
+        struct demo_bpf *skel;
+        int err = 0;
+
+        skel = demo_bpf__open_and_load();
+        if (!skel)
+        {
+            fprintf(stderr, "Failed to open and load BPF skeleton\n");
+            return 1;
+        }
+
+        LIBBPF_OPTS(bpf_uprobe_opts, uprobe_opts);
+        uprobe_opts.func_name = "my_func";
+        uprobe_opts.retprobe = false;
+
+        skel->links.do_entry_point = bpf_program__attach_uprobe_opts(skel->progs.do_entry_point,
+                                                                     -1,
+                                                                     argv[1],
+                                                                     0,
+                                                                     &uprobe_opts);
+
+        signal(SIGINT, sig_handler);
+        signal(SIGTERM, sig_handler);
+
+        rb_event = ring_buffer__new(bpf_map__fd(skel->maps.traceevents),
+                                    handle_event, NULL, NULL);
+        if (!rb_event)
+        {
+            err = -1;
+            fprintf(stderr, "Failed to create trace_event ring buffer\n");
+            return -1;
+        }
+
+        printf("Successfully started! Tracing functions....\n");
+
+        while (!exiting)
+        {
+            err = ring_buffer__poll(rb_event, 100);
+            if (err < 0 && err != -EINTR)
+            {
+                fprintf(stderr, "Error polling ring buffer: %d\n", err);
+                break;
+            }
+        }
+
+        demo_bpf__destroy(skel);
+
+        return 0;
+    }
+  - |-
+    struct event
+    {
+        // identity
+        __u64 id;
+        __u64 timestamp;
+        __u8 entry;
+    };
+  question_body_text: |-
+    Title pretty much sums it up. I'm trying to run this eBPF program but I keep getting the following error when running:
+    libbpf: prog 'do_entry_point': BPF program load failed: Invalid argument
+    libbpf: prog 'do_entry_point': -- BEGIN PROG LOAD LOG --
+    BPF_STX uses reserved fields
+    processed 0 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0 mark_read 0
+    -- END PROG LOAD LOG --
+    libbpf: prog 'do_entry_point': failed to load: -22
+    libbpf: failed to load object 'demo_bpf'
+    libbpf: failed to load BPF skeleton 'demo_bpf': -22
+    Failed to open and load BPF skeleton
+    I've narrowed it down that it does not like the when I add the return of __sync_fetch_and_add to the event struct and load it in the map but I can't figure out why or how to do this. I'm running on kernel 5.10.
+    Here is the repro code:
+    demo.bpf.c
+    #include <vmlinux.h>
+    #include <bpf/bpf_helpers.h>
+    #include <bpf/bpf_tracing.h>
+    #include <bpf/bpf_core_read.h>
+    #include "demo.h"
+    struct
+    {
+    __uint(type, BPF_MAP_TYPE_RINGBUF);
+    __uint(max_entries, 1024 * 1024);
+    } traceevents SEC(".maps");
+    struct
+    {
+    __uint(type, BPF_MAP_TYPE_ARRAY);
+    __uint(max_entries, 1);
+    __type(key, u32);
+    __type(value, u64);
+    } counters SEC(".maps");
+    static void fill_and_submit(struct pt_regs *ctx, u8 entry)
+    {
+    struct event *e = bpf_ringbuf_reserve(&traceevents,
+    sizeof(struct event),
+    0);
+    if (!e)
+    {
+    return;
+    }
+    u32 key = 0;
+    u64 *count = bpf_map_lookup_elem(&counters, &key);
+    e->id = 0;
+    if (count)
+    {
+    e->id = __sync_fetch_and_add(count, 1);
+    }
+    e->timestamp = bpf_ktime_get_ns();
+    e->entry = entry;
+    bpf_ringbuf_submit(e, 0);
+    }
+    SEC("uprobe")
+    int do_entry_point(struct pt_regs *ctx)
+    {
+    fill_and_submit(ctx, 1);
+    return 0;
+    }
+    char LICENSE[] SEC("license") = "GPL";
+    demo.c
+    #include <stdio.h>
+    #include <unistd.h>
+    #include <signal.h>
+    #include <getopt.h>
+    #include <bpf/libbpf.h>
+    #include <bpf/bpf.h>
+    #include <sys/mman.h>
+    #include "demo.skel.h"
+    #include "demo.h"
+    #include <linux/limits.h>
+    static volatile bool exiting = false;
+    static void sig_handler(int sig)
+    {
+    exiting = true;
+    }
+    static int handle_event(void *ctx, void *data, size_t data_sz)
+    {
+    printf("Read event\n");
+    return 0;
+    }
+    int main(int argc, char **argv)
+    {
+    struct ring_buffer *rb_event = NULL;
+    struct demo_bpf *skel;
+    int err = 0;
+    skel = demo_bpf__open_and_load();
+    if (!skel)
+    {
+    fprintf(stderr, "Failed to open and load BPF skeleton\n");
+    return 1;
+    }
+    LIBBPF_OPTS(bpf_uprobe_opts, uprobe_opts);
+    uprobe_opts.func_name = "my_func";
+    uprobe_opts.retprobe = false;
+    skel->links.do_entry_point = bpf_program__attach_uprobe_opts(skel->progs.do_entry_point,
+    -1,
+    argv[1],
+    0,
+    &uprobe_opts);
+    signal(SIGINT, sig_handler);
+    signal(SIGTERM, sig_handler);
+    rb_event = ring_buffer__new(bpf_map__fd(skel->maps.traceevents),
+    handle_event, NULL, NULL);
+    if (!rb_event)
+    {
+    err = -1;
+    fprintf(stderr, "Failed to create trace_event ring buffer\n");
+    return -1;
+    }
+    printf("Successfully started! Tracing functions....\n");
+    while (!exiting)
+    {
+    err = ring_buffer__poll(rb_event, 100);
+    if (err < 0 && err != -EINTR)
+    {
+    fprintf(stderr, "Error polling ring buffer: %d\n", err);
+    break;
+    }
+    }
+    demo_bpf__destroy(skel);
+    return 0;
+    }
+    demo.h
+    struct event
+    {
+    // identity
+    __u64 id;
+    __u64 timestamp;
+    __u8 entry;
+    };
+    Edit:
+    Build commands
+    clang -g -O2 -target bpf -D__TARGET_ARCH_x86 -I. -c demo/demo.bpf.c -o demo/demo.bpf.o
+    bpftool gen skeleton demo/demo.bpf.o > demo/demo.skel.h
+    clang -Wchar-subscripts -Wcomment -Wformat -Winit-self -Wmain -Wmissing-braces -Wno-pragmas -Wparentheses -Wreturn-type -Wsequence-point -Wstrict-aliasing -Wswitch -Wtrigraphs -Wuninitialized -Wunknown-pragmas -Wunused-label -Wunused-variable -Wunused-value -Wpointer-sign -Wimplicit -pthread -fdiagnostics-color=auto -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS -fuse-init-array -O3 -msse -mfpmath=sse -march=core2 -g -fPIC -I./demo -o demo demo/demo.o -pthread -Wl,-lpthread -Wl,--enable-new-dtags -Wl,--as-needed -g -lelf -lz -lbpf -ldw
+  selected_answer: {}

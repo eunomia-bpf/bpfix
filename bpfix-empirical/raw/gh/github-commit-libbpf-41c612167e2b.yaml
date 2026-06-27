@@ -1,0 +1,116 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-libbpf-41c612167e2b
+source_kind: github_commit
+source:
+  url: https://github.com/libbpf/libbpf/commit/41c612167e2b644e22e1accb14bbf6c139823ad3
+  title: 'libbpf: Reject legacy ''maps'' ELF section'
+  repository: https://github.com/libbpf/libbpf
+  commit: 41c612167e2b644e22e1accb14bbf6c139823ad3
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-libbpf-41c612167e2b.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Rejects legacy maps ELF sections in libbpf object parsing before normal
+    program load. The behavior is libbpf policy/diagnostics rather than kernel verifier
+    rejection.
+raw:
+  case_id: github-commit-libbpf-41c612167e2b
+  source: github_commits
+  repository: https://github.com/libbpf/libbpf
+  commit_hash: 41c612167e2b644e22e1accb14bbf6c139823ad3
+  commit_message: 'libbpf: Reject legacy ''maps'' ELF section'
+  commit_date: '2022-08-03'
+  fix_type: other
+  buggy_code: "// FILE: src/libbpf.c\n// CONTEXT: struct elf_sec_desc {\nstruct elf_state\
+    \ {\n\tint fd;\n\tconst void *obj_buf;\n\tsize_t obj_buf_sz;\n\tElf *elf;\n\t\
+    Elf64_Ehdr *ehdr;\n\tElf_Data *symbols;\n\tElf_Data *st_ops_data;\n\tsize_t shstrndx;\
+    \ /* section index for section name strings */\n\tsize_t strtabidx;\n\tstruct\
+    \ elf_sec_desc *secs;\n\tint sec_cnt;\n\tint maps_shndx;\n\tint btf_maps_shndx;\n\
+    \t__u32 btf_maps_sec_btf_id;\n\tint text_shndx;\n\tint symbols_shndx;\n\tint st_ops_shndx;\n\
+    };\n\nstruct usdt_manager;\n\nstruct bpf_object {\n\tchar name[BPF_OBJ_NAME_LEN];\n\
+    \tchar license[64];\n\n// CONTEXT: static struct bpf_object *bpf_object__new(const\
+    \ char *path,\n\t\t\t*end = 0;\n\t}\n\n\tobj->efile.fd = -1;\n\t/*\n\t * Caller\
+    \ of this function should also call\n\t * bpf_object__elf_finish() after data\
+    \ collection to return\n\t * obj_buf to user. If not, we should duplicate the\
+    \ buffer to\n\t * avoid user freeing them before elf finish.\n\t */\n\tobj->efile.obj_buf\
+    \ = obj_buf;\n\tobj->efile.obj_buf_sz = obj_buf_sz;\n\tobj->efile.maps_shndx =\
+    \ -1;\n\tobj->efile.btf_maps_shndx = -1;\n\tobj->efile.st_ops_shndx = -1;\n\t\
+    obj->kconfig_map_idx = -1;\n\n\tobj->kern_version = get_kernel_version();\n\t\
+    obj->loaded = false;\n\n\treturn obj;\n}\n\nstatic void bpf_object__elf_finish(struct\
+    \ bpf_object *obj)\n{\n\n// CONTEXT: static int bpf_object__elf_collect(struct\
+    \ bpf_object *obj)\n\t\t\t (int)sh->sh_link, (unsigned long)sh->sh_flags,\n\t\t\
+    \t (int)sh->sh_type);\n\n\t\tif (strcmp(name, \"license\") == 0) {\n\t\t\terr\
+    \ = bpf_object__init_license(obj, data->d_buf, data->d_size);\n\t\t\tif (err)\n\
+    \t\t\t\treturn err;\n\t\t} else if (strcmp(name, \"version\") == 0) {\n\t\t\t\
+    err = bpf_object__init_kversion(obj, data->d_buf, data->d_size);\n\t\t\tif (err)\n\
+    \t\t\t\treturn err;\n\t\t} else if (strcmp(name, \"maps\") == 0) {\n\t\t\tobj->efile.maps_shndx\
+    \ = idx;\n\t\t} else if (strcmp(name, MAPS_ELF_SEC) == 0) {\n\t\t\tobj->efile.btf_maps_shndx\
+    \ = idx;\n\t\t} else if (strcmp(name, BTF_ELF_SEC) == 0) {\n\t\t\tif (sh->sh_type\
+    \ != SHT_PROGBITS)\n\t\t\t\treturn -LIBBPF_ERRNO__FORMAT;\n\t\t\tbtf_data = data;\n\
+    \t\t} else if (strcmp(name, BTF_EXT_ELF_SEC) == 0) {\n\t\t\tif (sh->sh_type !=\
+    \ SHT_PROGBITS)\n\t\t\t\treturn -LIBBPF_ERRNO__FORMAT;\n\t\t\tbtf_ext_data = data;\n\
+    \t\t} else if (sh->sh_type == SHT_SYMTAB) {\n\t\t\t/* already processed during\
+    \ the first pass above */\n\n// CONTEXT: static bool bpf_object__shndx_is_data(const\
+    \ struct bpf_object *obj,\n\tcase SEC_BSS:\n\tcase SEC_DATA:\n\tcase SEC_RODATA:\n\
+    \t\treturn true;\n\tdefault:\n\t\treturn false;\n\t}\n}\n\nstatic bool bpf_object__shndx_is_maps(const\
+    \ struct bpf_object *obj,\n\t\t\t\t      int shndx)\n{\n\treturn shndx == obj->efile.maps_shndx\
+    \ ||\n\t       shndx == obj->efile.btf_maps_shndx;\n}\n\nstatic enum libbpf_map_type\n\
+    bpf_object__section_to_libbpf_map_type(const struct bpf_object *obj, int shndx)\n\
+    {\n\tif (shndx == obj->efile.symbols_shndx)\n\t\treturn LIBBPF_MAP_KCONFIG;\n\n\
+    \tswitch (obj->efile.secs[shndx].sec_type) {\n\tcase SEC_BSS:\n\t\treturn LIBBPF_MAP_BSS;\n\
+    \tcase SEC_DATA:"
+  fixed_code: "// FILE: src/libbpf.c\n// CONTEXT: struct elf_sec_desc {\nstruct elf_state\
+    \ {\n\tint fd;\n\tconst void *obj_buf;\n\tsize_t obj_buf_sz;\n\tElf *elf;\n\t\
+    Elf64_Ehdr *ehdr;\n\tElf_Data *symbols;\n\tElf_Data *st_ops_data;\n\tsize_t shstrndx;\
+    \ /* section index for section name strings */\n\tsize_t strtabidx;\n\tstruct\
+    \ elf_sec_desc *secs;\n\tint sec_cnt;\n\tint btf_maps_shndx;\n\t__u32 btf_maps_sec_btf_id;\n\
+    \tint text_shndx;\n\tint symbols_shndx;\n\tint st_ops_shndx;\n};\n\nstruct usdt_manager;\n\
+    \nstruct bpf_object {\n\tchar name[BPF_OBJ_NAME_LEN];\n\tchar license[64];\n\n\
+    // CONTEXT: static struct bpf_object *bpf_object__new(const char *path,\n\t\t\t\
+    *end = 0;\n\t}\n\n\tobj->efile.fd = -1;\n\t/*\n\t * Caller of this function should\
+    \ also call\n\t * bpf_object__elf_finish() after data collection to return\n\t\
+    \ * obj_buf to user. If not, we should duplicate the buffer to\n\t * avoid user\
+    \ freeing them before elf finish.\n\t */\n\tobj->efile.obj_buf = obj_buf;\n\t\
+    obj->efile.obj_buf_sz = obj_buf_sz;\n\tobj->efile.btf_maps_shndx = -1;\n\tobj->efile.st_ops_shndx\
+    \ = -1;\n\tobj->kconfig_map_idx = -1;\n\n\tobj->kern_version = get_kernel_version();\n\
+    \tobj->loaded = false;\n\n\treturn obj;\n}\n\nstatic void bpf_object__elf_finish(struct\
+    \ bpf_object *obj)\n{\n\n// CONTEXT: static int bpf_object__elf_collect(struct\
+    \ bpf_object *obj)\n\t\t\t (int)sh->sh_link, (unsigned long)sh->sh_flags,\n\t\t\
+    \t (int)sh->sh_type);\n\n\t\tif (strcmp(name, \"license\") == 0) {\n\t\t\terr\
+    \ = bpf_object__init_license(obj, data->d_buf, data->d_size);\n\t\t\tif (err)\n\
+    \t\t\t\treturn err;\n\t\t} else if (strcmp(name, \"version\") == 0) {\n\t\t\t\
+    err = bpf_object__init_kversion(obj, data->d_buf, data->d_size);\n\t\t\tif (err)\n\
+    \t\t\t\treturn err;\n\t\t} else if (strcmp(name, \"maps\") == 0) {\n\t\t\tpr_warn(\"\
+    elf: legacy map definitions in 'maps' section are not supported by libbpf v1.0+\\\
+    n\");\n\t\t\treturn -ENOTSUP;\n\t\t} else if (strcmp(name, MAPS_ELF_SEC) == 0)\
+    \ {\n\t\t\tobj->efile.btf_maps_shndx = idx;\n\t\t} else if (strcmp(name, BTF_ELF_SEC)\
+    \ == 0) {\n\t\t\tif (sh->sh_type != SHT_PROGBITS)\n\t\t\t\treturn -LIBBPF_ERRNO__FORMAT;\n\
+    \t\t\tbtf_data = data;\n\t\t} else if (strcmp(name, BTF_EXT_ELF_SEC) == 0) {\n\
+    \t\t\tif (sh->sh_type != SHT_PROGBITS)\n\t\t\t\treturn -LIBBPF_ERRNO__FORMAT;\n\
+    \t\t\tbtf_ext_data = data;\n\t\t} else if (sh->sh_type == SHT_SYMTAB) {\n\t\t\t\
+    /* already processed during the first pass above */\n\n// CONTEXT: static bool\
+    \ bpf_object__shndx_is_data(const struct bpf_object *obj,\n\tcase SEC_BSS:\n\t\
+    case SEC_DATA:\n\tcase SEC_RODATA:\n\t\treturn true;\n\tdefault:\n\t\treturn false;\n\
+    \t}\n}\n\nstatic bool bpf_object__shndx_is_maps(const struct bpf_object *obj,\n\
+    \t\t\t\t      int shndx)\n{\n\treturn shndx == obj->efile.btf_maps_shndx;\n}\n\
+    \nstatic enum libbpf_map_type\nbpf_object__section_to_libbpf_map_type(const struct\
+    \ bpf_object *obj, int shndx)\n{\n\tif (shndx == obj->efile.symbols_shndx)\n\t\
+    \treturn LIBBPF_MAP_KCONFIG;\n\n\tswitch (obj->efile.secs[shndx].sec_type) {\n\
+    \tcase SEC_BSS:\n\t\treturn LIBBPF_MAP_BSS;\n\tcase SEC_DATA:"
+  diff_summary: |-
+    src/libbpf.c:
+    - Applied a small verifier-related code change captured by the exact before/after snippets below.
+    - Affected context: struct elf_sec_desc {, static struct bpf_object *bpf_object__new(const char *path,, static int bpf_object__elf_collect(struct bpf_object *obj).
+    - Commit subject: libbpf: Reject legacy 'maps' ELF section.

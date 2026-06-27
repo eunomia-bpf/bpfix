@@ -1,0 +1,74 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-108aa4212f8e
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/108aa4212f8e64b448466b378b9898bc2c42a16f
+  title: 'bpf: Fix implicit cast for BPF TPROXY debug message'
+  repository: https://github.com/cilium/cilium
+  commit: 108aa4212f8e64b448466b378b9898bc2c42a16f
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-108aa4212f8e.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Fixes an implicit cast in TPROXY debug-message context (dbg_ctx). The raw
+    record contains no verifier rejection and the change is not a standalone verifier-reject
+    pattern.
+raw:
+  case_id: github-commit-cilium-108aa4212f8e
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: 108aa4212f8e64b448466b378b9898bc2c42a16f
+  commit_message: 'bpf: Fix implicit cast for BPF TPROXY debug message'
+  commit_date: '2022-01-10'
+  fix_type: inline_hint
+  buggy_code: "// FILE: bpf/lib/proxy.h\n\n#if !(__ctx_is == __ctx_skb)\n#error \"\
+    Proxy redirection is only supported from skb context\"\n#endif\n\n#ifdef ENABLE_TPROXY\n\
+    static __always_inline int\nassign_socket_tcp(struct __ctx_buff *ctx,\n\t\t  struct\
+    \ bpf_sock_tuple *tuple, __u32 len, bool established)\n{\n\tint result = DROP_PROXY_LOOKUP_FAILED;\n\
+    \tstruct bpf_sock *sk;\n\t__u16 dbg_ctx;\n\n\tsk = skc_lookup_tcp(ctx, tuple,\
+    \ len, BPF_F_CURRENT_NETNS, 0);\n\tif (!sk)\n\t\tgoto out;\n\n\tif (established\
+    \ && sk->state == BPF_TCP_TIME_WAIT)\n\t\tgoto release;\n\tif (established &&\
+    \ sk->state == BPF_TCP_LISTEN)\n\t\tgoto release;\n\n\tdbg_ctx = sk->family <<\
+    \ 16 | ctx->protocol;\n\tresult = sk_assign(ctx, sk, 0);\n\n// CONTEXT: release:\n\
+    \tsk_release(sk);\nout:\n\treturn result;\n}\n\nstatic __always_inline int\nassign_socket_udp(struct\
+    \ __ctx_buff *ctx,\n\t\t  struct bpf_sock_tuple *tuple, __u32 len,\n\t\t  bool\
+    \ established __maybe_unused)\n{\n\tint result = DROP_PROXY_LOOKUP_FAILED;\n\t\
+    struct bpf_sock *sk;\n\t__u16 dbg_ctx;\n\n\tsk = sk_lookup_udp(ctx, tuple, len,\
+    \ BPF_F_CURRENT_NETNS, 0);\n\tif (!sk)\n\t\tgoto out;\n\n\tdbg_ctx = sk->family\
+    \ << 16 | ctx->protocol;\n\tresult = sk_assign(ctx, sk, 0);\n\tcilium_dbg(ctx,\
+    \ DBG_SK_ASSIGN, -result, dbg_ctx);\n\tif (result == 0)\n\t\tresult = CTX_ACT_OK;\n\
+    \telse\n\t\tresult = DROP_PROXY_SET_FAILED;"
+  fixed_code: "// FILE: bpf/lib/proxy.h\n\n#if !(__ctx_is == __ctx_skb)\n#error \"\
+    Proxy redirection is only supported from skb context\"\n#endif\n\n#ifdef ENABLE_TPROXY\n\
+    static __always_inline int\nassign_socket_tcp(struct __ctx_buff *ctx,\n\t\t  struct\
+    \ bpf_sock_tuple *tuple, __u32 len, bool established)\n{\n\tint result = DROP_PROXY_LOOKUP_FAILED;\n\
+    \tstruct bpf_sock *sk;\n\t__u32 dbg_ctx;\n\n\tsk = skc_lookup_tcp(ctx, tuple,\
+    \ len, BPF_F_CURRENT_NETNS, 0);\n\tif (!sk)\n\t\tgoto out;\n\n\tif (established\
+    \ && sk->state == BPF_TCP_TIME_WAIT)\n\t\tgoto release;\n\tif (established &&\
+    \ sk->state == BPF_TCP_LISTEN)\n\t\tgoto release;\n\n\tdbg_ctx = sk->family <<\
+    \ 16 | ctx->protocol;\n\tresult = sk_assign(ctx, sk, 0);\n\n// CONTEXT: release:\n\
+    \tsk_release(sk);\nout:\n\treturn result;\n}\n\nstatic __always_inline int\nassign_socket_udp(struct\
+    \ __ctx_buff *ctx,\n\t\t  struct bpf_sock_tuple *tuple, __u32 len,\n\t\t  bool\
+    \ established __maybe_unused)\n{\n\tint result = DROP_PROXY_LOOKUP_FAILED;\n\t\
+    struct bpf_sock *sk;\n\t__u32 dbg_ctx;\n\n\tsk = sk_lookup_udp(ctx, tuple, len,\
+    \ BPF_F_CURRENT_NETNS, 0);\n\tif (!sk)\n\t\tgoto out;\n\n\tdbg_ctx = sk->family\
+    \ << 16 | ctx->protocol;\n\tresult = sk_assign(ctx, sk, 0);\n\tcilium_dbg(ctx,\
+    \ DBG_SK_ASSIGN, -result, dbg_ctx);\n\tif (result == 0)\n\t\tresult = CTX_ACT_OK;\n\
+    \telse\n\t\tresult = DROP_PROXY_SET_FAILED;"
+  diff_summary: |-
+    bpf/lib/proxy.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: release:.
+    - Commit subject: bpf: Fix implicit cast for BPF TPROXY debug message.

@@ -1,0 +1,265 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-66b60bcad811
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/66b60bcad81109447a50e1f58e6d536cff0a6835
+  title: 'bpf:classifiers: optimize overlay based on observation point'
+  repository: https://github.com/cilium/cilium
+  commit: 66b60bcad81109447a50e1f58e6d536cff0a6835
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-66b60bcad811.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: environment_required
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Optimizes classifier computation by observation point to control full-datapath
+    complexity. Replaying any verifier benefit requires generated trace/drop/classifier
+    programs and Cilium feature configuration.
+raw:
+  case_id: github-commit-cilium-66b60bcad811
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: 66b60bcad81109447a50e1f58e6d536cff0a6835
+  commit_message: 'bpf:classifiers: optimize overlay based on observation point'
+  commit_date: '2025-06-04'
+  fix_type: inline_hint
+  buggy_code: "// FILE: bpf/lib/classifiers.h\n// CONTEXT: enum {\n#define CLS_FLAG_TUNNEL\
+    \                               \\\n\t(__builtin_constant_p(TUNNEL_PROTOCOL) ?\
+    \              \\\n\t\t((TUNNEL_PROTOCOL) == TUNNEL_PROTOCOL_VXLAN ? CLS_FLAG_VXLAN\
+    \ : \\\n\t\t (TUNNEL_PROTOCOL) == TUNNEL_PROTOCOL_GENEVE ? CLS_FLAG_GENEVE : \\\
+    \n\t\t (__throw_build_bug(), 0))                        \\\n\t: (__throw_build_bug(),\
+    \ 0))\n#endif\n\n/**\n * ctx_classify\n * @ctx: socket buffer\n * @proto: the\
+    \ layer 3 protocol (ETH_P_IP, ETH_P_IPV6).\n *\n * Compute classifiers (CLS_FLAG_*)\
+    \ for the given packet to be used during\n * trace/drop notification events. There\
+    \ exists two main computation methods:\n *\n * 1. inspecting ctx->mark for known\
+    \ magic values (ex. MARK_MAGIC_OVERLAY).\n * 3. inspecting L3/L4 headers for known\
+    \ traffic patterns (ex. UDP+OverlayPort).\n */\nstatic __always_inline cls_flags_t\n\
+    ctx_classify(struct __ctx_buff *ctx, __be16 proto)\n{\n\tcls_flags_t flags = CLS_FLAG_NONE;\n\
+    \tbool parse_overlay = false;\n\tvoid __maybe_unused *data;\n\tvoid __maybe_unused\
+    \ *data_end;\n\tstruct ipv6hdr __maybe_unused *ip6;\n\tstruct iphdr __maybe_unused\
+    \ *ip4;\n\t__be16 __maybe_unused dport;\n\t__u8 __maybe_unused l4_proto;\n\tint\
+    \ __maybe_unused l3_hdrlen;\n\n\t/*\n\n// CONTEXT: ctx_classify(struct __ctx_buff\
+    \ *ctx, __be16 proto)\n\t/* Check whether the packet comes from a L3 device (no\
+    \ ethernet). */\n\tif (ETH_HLEN == 0)\n\t\tflags |= CLS_FLAG_L3_DEV;\n\n\t/* Check\
+    \ if IPv6 packet. */\n\tif (proto == bpf_htons(ETH_P_IPV6))\n\t\tflags |= CLS_FLAG_IPV6;\n\
+    \n/* ctx->mark not available in XDP. */\n#if __ctx_is == __ctx_skb\n# ifdef HAVE_ENCAP\n\
+    \t/* MARK_MAGIC_OVERLAY is used in to-{netdev,wireguard}. */\n\tif ((is_defined(IS_BPF_HOST)\
+    \ || is_defined(IS_BPF_WIREGUARD)) &&\n\t    (ctx->mark & MARK_MAGIC_HOST_MASK)\
+    \ == MARK_MAGIC_OVERLAY) {\n\t\tflags |= CLS_FLAG_TUNNEL;\n\t\tgoto out;\n\t}\n\
+    # endif /* HAVE_ENCAP */\n#endif /* __ctx_skb */\n\n#ifdef HAVE_ENCAP\n\t/* Enable\
+    \ parsing packet headers for Overlay in from-{netdev,wireguard} and to-stack.\
+    \ */\n\tif (is_defined(IS_BPF_HOST) || is_defined(IS_BPF_WIREGUARD))\n\t\tparse_overlay\
+    \ = true;\n#endif /* HAVE_ENCAP */\n\n\t/*\n\t * Skip subsequent logic that parses\
+    \ the packet L3/L4 headers\n\t * when not needed. For new classifiers, let's use\
+    \ other variables `parse_*`.\n\t */\n\tif (!parse_overlay)\n\t\tgoto out;\n\n\t\
+    /*\n\t * Inspect the L3 protocol, and retrieve l4_proto and l3_hdrlen.\n\n// FILE:\
+    \ bpf/lib/drop.h\n// CONTEXT: int tail_drop_notify(struct __ctx_buff *ctx)\n\t\
+    struct ratelimit_settings settings = {\n\t\t.topup_interval_ns = NSEC_PER_SEC,\n\
+    \t};\n\tstruct drop_notify msg;\n\n\tif (EVENTS_MAP_RATE_LIMIT > 0) {\n\t\tsettings.bucket_size\
+    \ = EVENTS_MAP_BURST_LIMIT;\n\t\tsettings.tokens_per_topup = EVENTS_MAP_RATE_LIMIT;\n\
+    \t\tif (!ratelimit_check_and_take(&rkey, &settings))\n\t\t\treturn exitcode;\n\
+    \t}\n\n\tflags = ctx_classify(ctx, 0);\n\n\tmsg = (typeof(msg)) {\n\t\t__notify_common_hdr(CILIUM_NOTIFY_DROP,\
+    \ (__u8)error),\n\t\t__notify_pktcap_hdr((__u32)ctx_len, (__u16)cap_len, NOTIFY_DROP_VER),\n\
+    \t\t.src_label\t= ctx_load_meta(ctx, 0),\n\t\t.dst_label\t= ctx_load_meta(ctx,\
+    \ 1),\n\t\t.dst_id\t\t= ctx_load_meta(ctx, 3),\n\t\t.line           = line,\n\t\
+    \t.file           = file,\n\t\t.ext_error      = (__s8)(__u8)(error >> 8),\n\t\
+    \t.ifindex        = ctx_get_ifindex(ctx),\n\t\t.flags          = flags,\n\n//\
+    \ FILE: bpf/lib/trace.h\n// CONTEXT: _send_trace_notify(struct __ctx_buff *ctx,\
+    \ enum trace_point obs_point,\n\t_update_trace_metrics(ctx, obs_point, reason,\
+    \ line, file);\n\n\tif (!emit_trace_notify(obs_point, monitor))\n\t\treturn;\n\
+    \n\tif (EVENTS_MAP_RATE_LIMIT > 0) {\n\t\tsettings.bucket_size = EVENTS_MAP_BURST_LIMIT;\n\
+    \t\tsettings.tokens_per_topup = EVENTS_MAP_RATE_LIMIT;\n\t\tif (!ratelimit_check_and_take(&rkey,\
+    \ &settings))\n\t\t\treturn;\n\t}\n\n\tflags = ctx_classify(ctx, proto);\n\n\t\
+    msg = (typeof(msg)) {\n\t\t__notify_common_hdr(CILIUM_NOTIFY_TRACE, obs_point),\n\
+    \t\t__notify_pktcap_hdr((__u32)ctx_len, (__u16)cap_len, NOTIFY_CAPTURE_VER),\n\
+    \t\t.src_label\t= src,\n\t\t.dst_label\t= dst,\n\t\t.dst_id\t\t= dst_id,\n\t\t\
+    .reason\t\t= reason,\n\t\t.flags\t\t= flags,\n\t\t.ifindex\t= ifindex,\n\t};\n\
+    \tmemset(&msg.orig_ip6, 0, sizeof(union v6addr));\n\n// CONTEXT: _send_trace_notify4(struct\
+    \ __ctx_buff *ctx, enum trace_point obs_point,\n\t_update_trace_metrics(ctx, obs_point,\
+    \ reason, line, file);\n\n\tif (!emit_trace_notify(obs_point, monitor))\n\t\t\
+    return;\n\n\tif (EVENTS_MAP_RATE_LIMIT > 0) {\n\t\tsettings.bucket_size = EVENTS_MAP_BURST_LIMIT;\n\
+    \t\tsettings.tokens_per_topup = EVENTS_MAP_RATE_LIMIT;\n\t\tif (!ratelimit_check_and_take(&rkey,\
+    \ &settings))\n\t\t\treturn;\n\t}\n\n\tflags = ctx_classify(ctx, bpf_htons(ETH_P_IP));\n\
+    \n\tmsg = (typeof(msg)) {\n\t\t__notify_common_hdr(CILIUM_NOTIFY_TRACE, obs_point),\n\
+    \t\t__notify_pktcap_hdr((__u32)ctx_len, (__u16)cap_len, NOTIFY_CAPTURE_VER),\n\
+    \t\t.src_label\t= src,\n\t\t.dst_label\t= dst,\n\t\t.dst_id\t\t= dst_id,\n\t\t\
+    .reason\t\t= reason,\n\t\t.ifindex\t= ifindex,\n\t\t.flags\t\t= flags,\n\t\t.orig_ip4\t\
+    = orig_addr,\n\t};\n\n// CONTEXT: _send_trace_notify6(struct __ctx_buff *ctx,\
+    \ enum trace_point obs_point,\n\t_update_trace_metrics(ctx, obs_point, reason,\
+    \ line, file);\n\n\tif (!emit_trace_notify(obs_point, monitor))\n\t\treturn;\n\
+    \n\tif (EVENTS_MAP_RATE_LIMIT > 0) {\n\t\tsettings.bucket_size = EVENTS_MAP_BURST_LIMIT;\n\
+    \t\tsettings.tokens_per_topup = EVENTS_MAP_RATE_LIMIT;\n\t\tif (!ratelimit_check_and_take(&rkey,\
+    \ &settings))\n\t\t\treturn;\n\t}\n\n\tflags = ctx_classify(ctx, bpf_htons(ETH_P_IPV6));\n\
+    \n\tmsg = (typeof(msg)) {\n\t\t__notify_common_hdr(CILIUM_NOTIFY_TRACE, obs_point),\n\
+    \t\t__notify_pktcap_hdr((__u32)ctx_len, (__u16)cap_len, NOTIFY_CAPTURE_VER),\n\
+    \t\t.src_label\t= src,\n\t\t.dst_label\t= dst,\n\t\t.dst_id\t\t= dst_id,\n\t\t\
+    .reason\t\t= reason,\n\t\t.ifindex\t= ifindex,\n\t\t.flags\t\t= flags,\n\t};\n\
+    \n// FILE: bpf/tests/classifiers_common.h\n/* SPDX-License-Identifier: (GPL-2.0-only\
+    \ OR BSD-2-Clause) */\n/* Copyright Authors of Cilium */\n\n#define ENABLE_IPV4\n\
+    #define ENABLE_IPV6\n#define TUNNEL_MODE\n#define ENCAP_IFINDEX   1\n#define TUNNEL_PROTOCOL\
+    \ TUNNEL_PROTOCOL_VXLAN\n\n/* For testing L2/L3 devices, we make use of ETH_HLEN:\n\
+    \ * IS_BPF_WIREGUARD -> 0\n * IS_BPF_HOST      -> 14 by default\n */\n#if defined(IS_BPF_WIREGUARD)\n\
+    # undef IS_BPF_WIREGUARD\n# include \"bpf_wireguard.c\"\n#elif defined(IS_BPF_HOST)\n\
+    # undef IS_BPF_HOST\n\n// CONTEXT: pktgen(struct __ctx_buff *ctx, bool is_ipv4)\n\
+    static __always_inline int\ncheck(struct __ctx_buff *ctx, bool is_ipv4)\n{\n\t\
+    test_init();\n\n\tadjust_l2(ctx);\n\n\tvoid *data, *data_end;\n\tstruct iphdr\
+    \ *ip4;\n\tstruct ipv6hdr *ip6;\n\tstruct udphdr *udp;\n\tcls_flags_t flags;\n\
+    \t__be16 proto;\n\n\t/* Parse L3/L4 once. */\n\tif (is_ipv4) {\n\t\tassert(revalidate_data(ctx,\
+    \ &data, &data_end, &ip4));\n\t\tudp = (void *)ip4 + sizeof(struct iphdr);\n\t\
+    \tassert((void *)udp + sizeof(struct udphdr) <= data_end);\n\t\tproto = bpf_htons(ETH_P_IP);\n\
+    \t} else {\n\t\tassert(revalidate_data(ctx, &data, &data_end, &ip6));\n\t\tudp\
+    \ = (void *)ip6 + sizeof(struct ipv6hdr);\n\t\tassert((void *)udp + sizeof(struct\
+    \ udphdr) <= data_end);\n\t\tproto = bpf_htons(ETH_P_IPV6);\n\t}\n\n\t/*\n\t *\
+    \ Ensure L3_DEVICE_CHECK:\n\t * - CLS_FLAG_L3_DEV is set only when ETH_HLEN is\
+    \ zero.\n\t * - CLS_FLAG_IPv6 is set with IPv6 packets and ETH_HLEN is zero.\n\
+    \t */\n\tTEST(\"native\", {\n\t\tflags = ctx_classify(ctx, proto);\n\t\tL3_DEVICE_CHECK(flags,\
+    \ is_ipv4);\n\t})\n\n\t/*\n\t * Ensure CLS_FLAG_VXLAN is set with MARK_MAGIC_OVERLAY.\n\
+    \t */\n\tTEST(\"overlay-by-mark\", {\n\t\tctx->mark = MARK_MAGIC_OVERLAY;\n\t\t\
+    flags = ctx_classify(ctx, proto);\n\t\tL3_DEVICE_CHECK(flags, is_ipv4);\n\t\t\
+    assert(flags & CLS_FLAG_VXLAN);\n\t})\n\n\t/*\n\t * Ensure CLS_FLAG_VXLAN is set\
+    \ with UDP and TUNNEL_PORT.\n\t */\n\tTEST(\"overlay-by-headers\", {\n\t\tctx->mark\
+    \ = 0;\n\t\tudp->dest = bpf_htons(TUNNEL_PORT);\n\t\tflags = ctx_classify(ctx,\
+    \ proto);\n\t\tL3_DEVICE_CHECK(flags, is_ipv4);\n\t\tassert(flags & CLS_FLAG_VXLAN);\n\
+    \t})\n\n\ttest_finish();\n}\n\nPKTGEN(\"tc\", \"ctx_classify4\")\nstatic __always_inline\
+    \ int\nctx_classify4_pktgen(struct __ctx_buff *ctx) {\n\treturn pktgen(ctx, true);\n\
+    }"
+  fixed_code: "// FILE: bpf/lib/classifiers.h\n// CONTEXT: enum {\n#define CLS_FLAG_TUNNEL\
+    \                               \\\n\t(__builtin_constant_p(TUNNEL_PROTOCOL) ?\
+    \              \\\n\t\t((TUNNEL_PROTOCOL) == TUNNEL_PROTOCOL_VXLAN ? CLS_FLAG_VXLAN\
+    \ : \\\n\t\t (TUNNEL_PROTOCOL) == TUNNEL_PROTOCOL_GENEVE ? CLS_FLAG_GENEVE : \\\
+    \n\t\t (__throw_build_bug(), 0))                        \\\n\t: (__throw_build_bug(),\
+    \ 0))\n#endif\n\n/**\n * ctx_classify\n * @ctx: socket buffer\n * @proto: the\
+    \ layer 3 protocol (ETH_P_IP, ETH_P_IPV6).\n * @obs_point: the observation point\
+    \ (TRACE_{FROM,TO}_*).\n *\n * Compute classifiers (CLS_FLAG_*) for the given\
+    \ packet to be used during\n * trace/drop notification events. There exists two\
+    \ main computation methods:\n *\n * 1. inspecting ctx->mark for known magic values\
+    \ (ex. MARK_MAGIC_OVERLAY).\n * 3. inspecting L3/L4 headers for known traffic\
+    \ patterns (ex. UDP+OverlayPort).\n *\n * Both the two methods are optimized based\
+    \ on the observation point to preserve\n * performance and verifier complexity.\n\
+    \ */\nstatic __always_inline cls_flags_t\nctx_classify(struct __ctx_buff *ctx,\
+    \ __be16 proto, enum trace_point obs_point __maybe_unused)\n{\n\tcls_flags_t flags\
+    \ = CLS_FLAG_NONE;\n\tbool parse_overlay = false;\n\tvoid __maybe_unused *data;\n\
+    \tvoid __maybe_unused *data_end;\n\tstruct ipv6hdr __maybe_unused *ip6;\n\tstruct\
+    \ iphdr __maybe_unused *ip4;\n\t__be16 __maybe_unused dport;\n\t__u8 __maybe_unused\
+    \ l4_proto;\n\tint __maybe_unused l3_hdrlen;\n\n\t/*\n\n// CONTEXT: ctx_classify(struct\
+    \ __ctx_buff *ctx, __be16 proto)\n\t/* Check whether the packet comes from a L3\
+    \ device (no ethernet). */\n\tif (ETH_HLEN == 0)\n\t\tflags |= CLS_FLAG_L3_DEV;\n\
+    \n\t/* Check if IPv6 packet. */\n\tif (proto == bpf_htons(ETH_P_IPV6))\n\t\tflags\
+    \ |= CLS_FLAG_IPV6;\n\n/* ctx->mark not available in XDP. */\n#if __ctx_is ==\
+    \ __ctx_skb\n# ifdef HAVE_ENCAP\n\t/* MARK_MAGIC_OVERLAY is used in to-{netdev,wireguard}.\
+    \ */\n\tif (((is_defined(IS_BPF_HOST) &&\n\t      (obs_point == TRACE_TO_NETWORK\
+    \ || obs_point == TRACE_POINT_UNKNOWN)) ||\n\t     (is_defined(IS_BPF_WIREGUARD)\
+    \ &&\n\t      (obs_point == TRACE_TO_CRYPTO || obs_point == TRACE_POINT_UNKNOWN)))\
+    \ &&\n\t    (ctx->mark & MARK_MAGIC_HOST_MASK) == MARK_MAGIC_OVERLAY) {\n\t\t\
+    flags |= CLS_FLAG_TUNNEL;\n\t\tgoto out;\n\t}\n# endif /* HAVE_ENCAP */\n#endif\
+    \ /* __ctx_skb */\n\n#ifdef HAVE_ENCAP\n\t/* Enable parsing packet headers for\
+    \ Overlay in from-{netdev,wireguard} and to-stack. */\n\tif ((is_defined(IS_BPF_HOST)\
+    \ &&\n\t     (obs_point == TRACE_FROM_NETWORK || obs_point == TRACE_POINT_UNKNOWN\
+    \ ||\n\t      (is_defined(ENABLE_IPSEC) && obs_point == TRACE_TO_STACK))) ||\n\
+    \t    (is_defined(IS_BPF_WIREGUARD) &&\n\t     (obs_point == TRACE_FROM_CRYPTO\
+    \ || obs_point == TRACE_POINT_UNKNOWN)))\n\t\tparse_overlay = true;\n#endif /*\
+    \ HAVE_ENCAP */\n\n\t/*\n\t * Skip subsequent logic that parses the packet L3/L4\
+    \ headers\n\t * when not needed. For new classifiers, let's use other variables\
+    \ `parse_*`.\n\t */\n\tif (!parse_overlay)\n\t\tgoto out;\n\n\t/*\n\t * Inspect\
+    \ the L3 protocol, and retrieve l4_proto and l3_hdrlen.\n\n// FILE: bpf/lib/drop.h\n\
+    // CONTEXT: int tail_drop_notify(struct __ctx_buff *ctx)\n\tstruct ratelimit_settings\
+    \ settings = {\n\t\t.topup_interval_ns = NSEC_PER_SEC,\n\t};\n\tstruct drop_notify\
+    \ msg;\n\n\tif (EVENTS_MAP_RATE_LIMIT > 0) {\n\t\tsettings.bucket_size = EVENTS_MAP_BURST_LIMIT;\n\
+    \t\tsettings.tokens_per_topup = EVENTS_MAP_RATE_LIMIT;\n\t\tif (!ratelimit_check_and_take(&rkey,\
+    \ &settings))\n\t\t\treturn exitcode;\n\t}\n\n\tflags = ctx_classify(ctx, 0, TRACE_POINT_UNKNOWN);\n\
+    \n\tmsg = (typeof(msg)) {\n\t\t__notify_common_hdr(CILIUM_NOTIFY_DROP, (__u8)error),\n\
+    \t\t__notify_pktcap_hdr((__u32)ctx_len, (__u16)cap_len, NOTIFY_DROP_VER),\n\t\t\
+    .src_label\t= ctx_load_meta(ctx, 0),\n\t\t.dst_label\t= ctx_load_meta(ctx, 1),\n\
+    \t\t.dst_id\t\t= ctx_load_meta(ctx, 3),\n\t\t.line           = line,\n\t\t.file\
+    \           = file,\n\t\t.ext_error      = (__s8)(__u8)(error >> 8),\n\t\t.ifindex\
+    \        = ctx_get_ifindex(ctx),\n\t\t.flags          = flags,\n\n// FILE: bpf/lib/trace.h\n\
+    // CONTEXT: _send_trace_notify(struct __ctx_buff *ctx, enum trace_point obs_point,\n\
+    \t_update_trace_metrics(ctx, obs_point, reason, line, file);\n\n\tif (!emit_trace_notify(obs_point,\
+    \ monitor))\n\t\treturn;\n\n\tif (EVENTS_MAP_RATE_LIMIT > 0) {\n\t\tsettings.bucket_size\
+    \ = EVENTS_MAP_BURST_LIMIT;\n\t\tsettings.tokens_per_topup = EVENTS_MAP_RATE_LIMIT;\n\
+    \t\tif (!ratelimit_check_and_take(&rkey, &settings))\n\t\t\treturn;\n\t}\n\n\t\
+    flags = ctx_classify(ctx, proto, obs_point);\n\n\tmsg = (typeof(msg)) {\n\t\t\
+    __notify_common_hdr(CILIUM_NOTIFY_TRACE, obs_point),\n\t\t__notify_pktcap_hdr((__u32)ctx_len,\
+    \ (__u16)cap_len, NOTIFY_CAPTURE_VER),\n\t\t.src_label\t= src,\n\t\t.dst_label\t\
+    = dst,\n\t\t.dst_id\t\t= dst_id,\n\t\t.reason\t\t= reason,\n\t\t.flags\t\t= flags,\n\
+    \t\t.ifindex\t= ifindex,\n\t};\n\tmemset(&msg.orig_ip6, 0, sizeof(union v6addr));\n\
+    \n// CONTEXT: _send_trace_notify4(struct __ctx_buff *ctx, enum trace_point obs_point,\n\
+    \t_update_trace_metrics(ctx, obs_point, reason, line, file);\n\n\tif (!emit_trace_notify(obs_point,\
+    \ monitor))\n\t\treturn;\n\n\tif (EVENTS_MAP_RATE_LIMIT > 0) {\n\t\tsettings.bucket_size\
+    \ = EVENTS_MAP_BURST_LIMIT;\n\t\tsettings.tokens_per_topup = EVENTS_MAP_RATE_LIMIT;\n\
+    \t\tif (!ratelimit_check_and_take(&rkey, &settings))\n\t\t\treturn;\n\t}\n\n\t\
+    flags = ctx_classify(ctx, bpf_htons(ETH_P_IP), obs_point);\n\n\tmsg = (typeof(msg))\
+    \ {\n\t\t__notify_common_hdr(CILIUM_NOTIFY_TRACE, obs_point),\n\t\t__notify_pktcap_hdr((__u32)ctx_len,\
+    \ (__u16)cap_len, NOTIFY_CAPTURE_VER),\n\t\t.src_label\t= src,\n\t\t.dst_label\t\
+    = dst,\n\t\t.dst_id\t\t= dst_id,\n\t\t.reason\t\t= reason,\n\t\t.ifindex\t= ifindex,\n\
+    \t\t.flags\t\t= flags,\n\t\t.orig_ip4\t= orig_addr,\n\t};\n\n// CONTEXT: _send_trace_notify6(struct\
+    \ __ctx_buff *ctx, enum trace_point obs_point,\n\t_update_trace_metrics(ctx, obs_point,\
+    \ reason, line, file);\n\n\tif (!emit_trace_notify(obs_point, monitor))\n\t\t\
+    return;\n\n\tif (EVENTS_MAP_RATE_LIMIT > 0) {\n\t\tsettings.bucket_size = EVENTS_MAP_BURST_LIMIT;\n\
+    \t\tsettings.tokens_per_topup = EVENTS_MAP_RATE_LIMIT;\n\t\tif (!ratelimit_check_and_take(&rkey,\
+    \ &settings))\n\t\t\treturn;\n\t}\n\n\tflags = ctx_classify(ctx, bpf_htons(ETH_P_IPV6),\
+    \ obs_point);\n\n\tmsg = (typeof(msg)) {\n\t\t__notify_common_hdr(CILIUM_NOTIFY_TRACE,\
+    \ obs_point),\n\t\t__notify_pktcap_hdr((__u32)ctx_len, (__u16)cap_len, NOTIFY_CAPTURE_VER),\n\
+    \t\t.src_label\t= src,\n\t\t.dst_label\t= dst,\n\t\t.dst_id\t\t= dst_id,\n\t\t\
+    .reason\t\t= reason,\n\t\t.ifindex\t= ifindex,\n\t\t.flags\t\t= flags,\n\t};\n\
+    \n// FILE: bpf/tests/classifiers_common.h\n/* SPDX-License-Identifier: (GPL-2.0-only\
+    \ OR BSD-2-Clause) */\n/* Copyright Authors of Cilium */\n\n#define ENABLE_IPV4\n\
+    #define ENABLE_IPV6\n#define TUNNEL_MODE\n#define ENABLE_IPSEC 1\n#define ENCAP_IFINDEX\
+    \   1\n#define TUNNEL_PROTOCOL TUNNEL_PROTOCOL_VXLAN\n\n/* For testing L2/L3 devices,\
+    \ we make use of ETH_HLEN:\n * IS_BPF_WIREGUARD -> 0\n * IS_BPF_HOST      -> 14\
+    \ by default\n */\n#if defined(IS_BPF_WIREGUARD)\n# undef IS_BPF_WIREGUARD\n#\
+    \ include \"bpf_wireguard.c\"\n#elif defined(IS_BPF_HOST)\n# undef IS_BPF_HOST\n\
+    \n// CONTEXT: pktgen(struct __ctx_buff *ctx, bool is_ipv4)\nstatic __always_inline\
+    \ int\ncheck(struct __ctx_buff *ctx, bool is_ipv4)\n{\n\ttest_init();\n\n\tadjust_l2(ctx);\n\
+    \n\tvoid *data, *data_end;\n\tstruct iphdr *ip4;\n\tstruct ipv6hdr *ip6;\n\tstruct\
+    \ udphdr *udp;\n\tcls_flags_t flags;\n\tenum trace_point obs_point;\n\t__be16\
+    \ proto;\n\n\t/* Parse L3/L4 once. */\n\tif (is_ipv4) {\n\t\tassert(revalidate_data(ctx,\
+    \ &data, &data_end, &ip4));\n\t\tudp = (void *)ip4 + sizeof(struct iphdr);\n\t\
+    \tassert((void *)udp + sizeof(struct udphdr) <= data_end);\n\t\tproto = bpf_htons(ETH_P_IP);\n\
+    \t} else {\n\t\tassert(revalidate_data(ctx, &data, &data_end, &ip6));\n\t\tudp\
+    \ = (void *)ip6 + sizeof(struct ipv6hdr);\n\t\tassert((void *)udp + sizeof(struct\
+    \ udphdr) <= data_end);\n\t\tproto = bpf_htons(ETH_P_IPV6);\n\t}\n\n\t/*\n\t *\
+    \ Ensure L3_DEVICE_CHECK:\n\t * - CLS_FLAG_L3_DEV is set only when ETH_HLEN is\
+    \ zero.\n\t * - CLS_FLAG_IPv6 is set with IPv6 packets and ETH_HLEN is zero.\n\
+    \t *\n\t * Trace observation point here does not matter.\n\t */\n\tTEST(\"native\"\
+    , {\n\t\tobs_point = TRACE_POINT_UNKNOWN;\n\t\tflags = ctx_classify(ctx, proto,\
+    \ obs_point);\n\t\tL3_DEVICE_CHECK(flags, is_ipv4);\n\t})\n\n\t/*\n\t * Ensure\
+    \ CLS_FLAG_VXLAN is set with MARK_MAGIC_OVERLAY.\n\t * Use TRACE_TO_{NETWORK,CRYPTO}\
+    \ based on IS_BPF_{HOST,WIREGUARD}.\n\t */\n\tTEST(\"overlay-by-mark\", {\n\t\t\
+    ctx->mark = MARK_MAGIC_OVERLAY;\n\t\tobs_point = is_defined(IS_BPF_HOST) ? TRACE_TO_NETWORK\
+    \ :\n\t\t\t    is_defined(IS_BPF_WIREGUARD) ? TRACE_TO_CRYPTO : TRACE_POINT_UNKNOWN;\n\
+    \t\tflags = ctx_classify(ctx, proto, obs_point);\n\t\tL3_DEVICE_CHECK(flags, is_ipv4);\n\
+    \t\tassert(flags & CLS_FLAG_VXLAN);\n\t})\n\n\t/*\n\t * Ensure CLS_FLAG_VXLAN\
+    \ is set with UDP and TUNNEL_PORT.\n\t * Use TRACE_FROM_{NETWORK,CRYPTO} based\
+    \ on IS_BPF_{HOST,WIREGUARD}.\n\t */\n\tTEST(\"overlay-by-headers\", {\n\t\tctx->mark\
+    \ = 0;\n\t\tudp->dest = bpf_htons(TUNNEL_PORT);\n\t\tobs_point = is_defined(IS_BPF_HOST)\
+    \ ? TRACE_FROM_NETWORK :\n\t\t\t    is_defined(IS_BPF_WIREGUARD) ? TRACE_FROM_CRYPTO\
+    \ : TRACE_POINT_UNKNOWN;\n\t\tflags = ctx_classify(ctx, proto, obs_point);\n\t\
+    \tL3_DEVICE_CHECK(flags, is_ipv4);\n\t\tassert(flags & CLS_FLAG_VXLAN);\n\t})\n\
+    \n\ttest_finish();\n}\n\nPKTGEN(\"tc\", \"ctx_classify4\")\nstatic __always_inline\
+    \ int\nctx_classify4_pktgen(struct __ctx_buff *ctx) {\n\treturn pktgen(ctx, true);\n\
+    }"
+  diff_summary: |-
+    bpf/lib/classifiers.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: enum {, ctx_classify(struct __ctx_buff *ctx, __be16 proto).
+    bpf/lib/drop.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: int tail_drop_notify(struct __ctx_buff *ctx).
+    bpf/lib/trace.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: _send_trace_notify(struct __ctx_buff *ctx, enum trace_point obs_point,, _send_trace_notify4(struct __ctx_buff *ctx, enum trace_point obs_point,, _send_trace_notify6(struct __ctx_buff *ctx, enum trace_point obs_point,.
+    bpf/tests/classifiers_common.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: pktgen(struct __ctx_buff *ctx, bool is_ipv4).
+    - Commit subject: bpf:classifiers: optimize overlay based on observation point.

@@ -1,0 +1,49 @@
+schema_version: bpfix.case/v1
+case_id: stackoverflow-77967675
+source:
+  kind: stackoverflow
+  url: https://stackoverflow.com/questions/77967675/is-it-possible-to-access-the-packet-when-using-bpf-loop
+  repository: null
+  commit: null
+  upstream_file: null
+  collected_at: '2026-03-11T16:02:51+00:00'
+  raw_excerpt_files:
+  - bpfix-empirical/raw/so/stackoverflow-77967675.yaml
+reproducer:
+  reconstruction: reconstructed
+  notes: Imported from reconstructed external source into bpfix-empirical; replay logs are generated
+    as replay-verifier.log.
+capture:
+  capture_id: stackoverflow-77967675__kernel-6.15.11-clang-18-log2
+  terminal_error: invalid access to packet, off=0 size=1, R2(id=1,off=0,r=0)
+  rejected_insn_idx: 17
+external_match:
+  status: partial
+  policy: terminal_error
+  matched_messages:
+  - invalid access to packet, off=0 size=1, R2(id=2,off=0,r=0)
+  - invalid access to packet, off=0 size=1, R2(id=1,off=0,r=0)
+  notes: Imported only because verifier_error_match was exact/partial in the verified SO/GH
+    artifact.
+label:
+  capture_id: stackoverflow-77967675__kernel-6.15.11-clang-18-log2
+  taxonomy_class: source_bug
+  mechanism_tags:
+  - packet_bounds
+  evidence_tags:
+  - callback_access_without_data_end_check
+  error_id: BPFIX-E001
+  confidence: medium
+  label_source: external_replay_reconstruction
+  root_cause_description: The current replay callback reads pkt[index] without a callback-local
+    data_end check; the bpf_loop iteration bound alone does not prove packet length.
+  root_cause_insn_idx: null
+  localization_confidence: medium
+  fix_type: bounds_check
+  fix_direction: Keep packet offset bounds tied to data_end and recheck before the access.
+reporting:
+  family_id: stackoverflow-77967675
+  representative: true
+  notes: Current replay artifact reads pkt[index] inside the bpf_loop callback without a callback-local
+    data_end check, so the executable case is labelled as a source bug rather than a verifier
+    false positive.

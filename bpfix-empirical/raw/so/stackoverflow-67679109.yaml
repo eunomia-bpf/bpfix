@@ -1,0 +1,697 @@
+schema_version: bpfix.raw_external/v1
+raw_id: stackoverflow-67679109
+source_kind: stackoverflow
+source:
+  url: https://stackoverflow.com/questions/67679109/keep-getting-bpf-failed-to-load-program-permission-denied-when-trying-to-run-e
+  title: 'Keep getting bpf: Failed to load program: Permission denied when trying
+    to run eBPF code'
+  repository: null
+  commit: null
+  collected_at: '2026-03-11T16:02:42+00:00'
+collector:
+  original_path: bpfix-empirical/raw/so/stackoverflow-67679109.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: true
+  verifier_log_block_count: 2
+  source_snippet_count: 1
+  has_buggy_code: false
+  has_fixed_code: false
+  has_fix_description: false
+reproduction:
+  status: replay_valid
+  case_id: stackoverflow-67679109
+  case_path: cases/stackoverflow-67679109
+  artifact_path: cases/stackoverflow-67679109
+  reason: admitted_to_bpfix_bench_cases
+raw:
+  case_id: stackoverflow-67679109
+  source: stackoverflow
+  collected_at: '2026-03-11T16:02:42+00:00'
+  question:
+    question_id: 67679109
+    title: 'Keep getting bpf: Failed to load program: Permission denied when trying
+      to run eBPF code'
+    url: https://stackoverflow.com/questions/67679109/keep-getting-bpf-failed-to-load-program-permission-denied-when-trying-to-run-e
+    tags:
+    - ebpf
+    - bcc-bpf
+    score: 4
+    answer_count: 1
+    is_answered: true
+  original_verifier_log:
+    blocks:
+    - |-
+      > Compiling BPF
+      Attaching to uretprobe
+      bpf: Failed to load program: Permission denied
+      btf_vmlinux is malformed
+      Unrecognized arg#0 type PTR
+      ; int crc32(struct pt_regs *ctx) {
+      0: (b7) r8 = 0
+      ; char str[256] = {};
+      1: (7b) *(u64 *)(r10 -8) = r8
+      last_idx 1 first_idx 0
+      regs=100 stack=0 before 0: (b7) r8 = 0
+      2: (7b) *(u64 *)(r10 -16) = r8
+      3: (7b) *(u64 *)(r10 -24) = r8
+      4: (7b) *(u64 *)(r10 -32) = r8
+      5: (7b) *(u64 *)(r10 -40) = r8
+      6: (7b) *(u64 *)(r10 -48) = r8
+      7: (7b) *(u64 *)(r10 -56) = r8
+      8: (7b) *(u64 *)(r10 -64) = r8
+      9: (7b) *(u64 *)(r10 -72) = r8
+      10: (7b) *(u64 *)(r10 -80) = r8
+      11: (7b) *(u64 *)(r10 -88) = r8
+      12: (7b) *(u64 *)(r10 -96) = r8
+      13: (7b) *(u64 *)(r10 -104) = r8
+      14: (7b) *(u64 *)(r10 -112) = r8
+      15: (7b) *(u64 *)(r10 -120) = r8
+      16: (7b) *(u64 *)(r10 -128) = r8
+      17: (7b) *(u64 *)(r10 -136) = r8
+      18: (7b) *(u64 *)(r10 -144) = r8
+      19: (7b) *(u64 *)(r10 -152) = r8
+      20: (7b) *(u64 *)(r10 -160) = r8
+      21: (7b) *(u64 *)(r10 -168) = r8
+      22: (7b) *(u64 *)(r10 -176) = r8
+      23: (7b) *(u64 *)(r10 -184) = r8
+      24: (7b) *(u64 *)(r10 -192) = r8
+      25: (7b) *(u64 *)(r10 -200) = r8
+      26: (7b) *(u64 *)(r10 -208) = r8
+      27: (7b) *(u64 *)(r10 -216) = r8
+      28: (7b) *(u64 *)(r10 -224) = r8
+      29: (7b) *(u64 *)(r10 -232) = r8
+      30: (7b) *(u64 *)(r10 -240) = r8
+      31: (7b) *(u64 *)(r10 -248) = r8
+      32: (7b) *(u64 *)(r10 -256) = r8
+      ; bpf_probe_read(&str, sizeof(str), (void *)PT_REGS_RC(ctx));
+      33: (79) r3 = *(u64 *)(r1 +0)
+      34: (bf) r1 = r10
+      ;
+      35: (07) r1 += -256
+      ; bpf_probe_read(&str, sizeof(str), (void *)PT_REGS_RC(ctx));
+      36: (b7) r2 = 256
+      37: (85) call bpf_probe_read#4
+      last_idx 37 first_idx 0
+      regs=4 stack=0 before 36: (b7) r2 = 256
+      38: (18) r7 = 0xffffffff
+      40: (18) r9 = 0xffffff00
+      ; u64 startTime = bpf_ktime_get_ns();
+      42: (85) call bpf_ktime_get_ns#5
+      43: (7b) *(u64 *)(r10 -304) = r0
+      44: (18) r1 = 0xfffffffe
+      46: (18) r2 = 0xedb88320
+      ; crc ^= *current++;
+      48: (71) r3 = *(u8 *)(r8 +0)
+      R8 invalid mem access 'inv'
+      processed 45 insns (limit 1000000) max_states_per_insn 0 total_states 1 peak_states 1 mark_read 1
+      >
+      > HINT: The invalid mem access 'inv' error can happen if you try to
+      > dereference memory without first using bpf_probe_read() to copy it to
+      > the BPF stack. Sometimes the bpf_probe_read is automatic by the bcc
+      > rewriter, other times you'll need to be explicit.
+    - |-
+      ; crc ^= *current++;
+      48: (71) r3 = *(u8 *)(r8 +0)
+      R8 invalid mem access 'inv'
+    combined: |-
+      > Compiling BPF
+      Attaching to uretprobe
+      bpf: Failed to load program: Permission denied
+      btf_vmlinux is malformed
+      Unrecognized arg#0 type PTR
+      ; int crc32(struct pt_regs *ctx) {
+      0: (b7) r8 = 0
+      ; char str[256] = {};
+      1: (7b) *(u64 *)(r10 -8) = r8
+      last_idx 1 first_idx 0
+      regs=100 stack=0 before 0: (b7) r8 = 0
+      2: (7b) *(u64 *)(r10 -16) = r8
+      3: (7b) *(u64 *)(r10 -24) = r8
+      4: (7b) *(u64 *)(r10 -32) = r8
+      5: (7b) *(u64 *)(r10 -40) = r8
+      6: (7b) *(u64 *)(r10 -48) = r8
+      7: (7b) *(u64 *)(r10 -56) = r8
+      8: (7b) *(u64 *)(r10 -64) = r8
+      9: (7b) *(u64 *)(r10 -72) = r8
+      10: (7b) *(u64 *)(r10 -80) = r8
+      11: (7b) *(u64 *)(r10 -88) = r8
+      12: (7b) *(u64 *)(r10 -96) = r8
+      13: (7b) *(u64 *)(r10 -104) = r8
+      14: (7b) *(u64 *)(r10 -112) = r8
+      15: (7b) *(u64 *)(r10 -120) = r8
+      16: (7b) *(u64 *)(r10 -128) = r8
+      17: (7b) *(u64 *)(r10 -136) = r8
+      18: (7b) *(u64 *)(r10 -144) = r8
+      19: (7b) *(u64 *)(r10 -152) = r8
+      20: (7b) *(u64 *)(r10 -160) = r8
+      21: (7b) *(u64 *)(r10 -168) = r8
+      22: (7b) *(u64 *)(r10 -176) = r8
+      23: (7b) *(u64 *)(r10 -184) = r8
+      24: (7b) *(u64 *)(r10 -192) = r8
+      25: (7b) *(u64 *)(r10 -200) = r8
+      26: (7b) *(u64 *)(r10 -208) = r8
+      27: (7b) *(u64 *)(r10 -216) = r8
+      28: (7b) *(u64 *)(r10 -224) = r8
+      29: (7b) *(u64 *)(r10 -232) = r8
+      30: (7b) *(u64 *)(r10 -240) = r8
+      31: (7b) *(u64 *)(r10 -248) = r8
+      32: (7b) *(u64 *)(r10 -256) = r8
+      ; bpf_probe_read(&str, sizeof(str), (void *)PT_REGS_RC(ctx));
+      33: (79) r3 = *(u64 *)(r1 +0)
+      34: (bf) r1 = r10
+      ;
+      35: (07) r1 += -256
+      ; bpf_probe_read(&str, sizeof(str), (void *)PT_REGS_RC(ctx));
+      36: (b7) r2 = 256
+      37: (85) call bpf_probe_read#4
+      last_idx 37 first_idx 0
+      regs=4 stack=0 before 36: (b7) r2 = 256
+      38: (18) r7 = 0xffffffff
+      40: (18) r9 = 0xffffff00
+      ; u64 startTime = bpf_ktime_get_ns();
+      42: (85) call bpf_ktime_get_ns#5
+      43: (7b) *(u64 *)(r10 -304) = r0
+      44: (18) r1 = 0xfffffffe
+      46: (18) r2 = 0xedb88320
+      ; crc ^= *current++;
+      48: (71) r3 = *(u8 *)(r8 +0)
+      R8 invalid mem access 'inv'
+      processed 45 insns (limit 1000000) max_states_per_insn 0 total_states 1 peak_states 1 mark_read 1
+      >
+      > HINT: The invalid mem access 'inv' error can happen if you try to
+      > dereference memory without first using bpf_probe_read() to copy it to
+      > the BPF stack. Sometimes the bpf_probe_read is automatic by the bcc
+      > rewriter, other times you'll need to be explicit.
+
+      ; crc ^= *current++;
+      48: (71) r3 = *(u8 *)(r8 +0)
+      R8 invalid mem access 'inv'
+  verifier_log:
+    blocks:
+    - |-
+      > Compiling BPF
+      Attaching to uretprobe
+      bpf: Failed to load program: Permission denied
+      btf_vmlinux is malformed
+      Unrecognized arg#0 type PTR
+      ; int crc32(struct pt_regs *ctx) {
+      0: (b7) r8 = 0
+      ; char str[256] = {};
+      1: (7b) *(u64 *)(r10 -8) = r8
+      last_idx 1 first_idx 0
+      regs=100 stack=0 before 0: (b7) r8 = 0
+      2: (7b) *(u64 *)(r10 -16) = r8
+      3: (7b) *(u64 *)(r10 -24) = r8
+      4: (7b) *(u64 *)(r10 -32) = r8
+      5: (7b) *(u64 *)(r10 -40) = r8
+      6: (7b) *(u64 *)(r10 -48) = r8
+      7: (7b) *(u64 *)(r10 -56) = r8
+      8: (7b) *(u64 *)(r10 -64) = r8
+      9: (7b) *(u64 *)(r10 -72) = r8
+      10: (7b) *(u64 *)(r10 -80) = r8
+      11: (7b) *(u64 *)(r10 -88) = r8
+      12: (7b) *(u64 *)(r10 -96) = r8
+      13: (7b) *(u64 *)(r10 -104) = r8
+      14: (7b) *(u64 *)(r10 -112) = r8
+      15: (7b) *(u64 *)(r10 -120) = r8
+      16: (7b) *(u64 *)(r10 -128) = r8
+      17: (7b) *(u64 *)(r10 -136) = r8
+      18: (7b) *(u64 *)(r10 -144) = r8
+      19: (7b) *(u64 *)(r10 -152) = r8
+      20: (7b) *(u64 *)(r10 -160) = r8
+      21: (7b) *(u64 *)(r10 -168) = r8
+      22: (7b) *(u64 *)(r10 -176) = r8
+      23: (7b) *(u64 *)(r10 -184) = r8
+      24: (7b) *(u64 *)(r10 -192) = r8
+      25: (7b) *(u64 *)(r10 -200) = r8
+      26: (7b) *(u64 *)(r10 -208) = r8
+      27: (7b) *(u64 *)(r10 -216) = r8
+      28: (7b) *(u64 *)(r10 -224) = r8
+      29: (7b) *(u64 *)(r10 -232) = r8
+      30: (7b) *(u64 *)(r10 -240) = r8
+      31: (7b) *(u64 *)(r10 -248) = r8
+      32: (7b) *(u64 *)(r10 -256) = r8
+      ; bpf_probe_read(&str, sizeof(str), (void *)PT_REGS_RC(ctx));
+      33: (79) r3 = *(u64 *)(r1 +0)
+      34: (bf) r1 = r10
+      ;
+      35: (07) r1 += -256
+      ; bpf_probe_read(&str, sizeof(str), (void *)PT_REGS_RC(ctx));
+      36: (b7) r2 = 256
+      37: (85) call bpf_probe_read#4
+      last_idx 37 first_idx 0
+      regs=4 stack=0 before 36: (b7) r2 = 256
+      38: (18) r7 = 0xffffffff
+      40: (18) r9 = 0xffffff00
+      ; u64 startTime = bpf_ktime_get_ns();
+      42: (85) call bpf_ktime_get_ns#5
+      43: (7b) *(u64 *)(r10 -304) = r0
+      44: (18) r1 = 0xfffffffe
+      46: (18) r2 = 0xedb88320
+      ; crc ^= *current++;
+      48: (71) r3 = *(u8 *)(r8 +0)
+      R8 invalid mem access 'inv'
+      processed 45 insns (limit 1000000) max_states_per_insn 0 total_states 1 peak_states 1 mark_read 1
+      >
+      > HINT: The invalid mem access 'inv' error can happen if you try to
+      > dereference memory without first using bpf_probe_read() to copy it to
+      > the BPF stack. Sometimes the bpf_probe_read is automatic by the bcc
+      > rewriter, other times you'll need to be explicit.
+    - |-
+      ; crc ^= *current++;
+      48: (71) r3 = *(u8 *)(r8 +0)
+      R8 invalid mem access 'inv'
+    combined: |-
+      libbpf: loading object from <legacy-so-gh-reproducer>/stackoverflow-67679109/prog.o
+      libbpf: elf: section(3) uretprobe/crc32, size 1064, link 0, flags 6, type=1
+      libbpf: sec 'uretprobe/crc32': found program 'crc32' at insn offset 0 (0 bytes), code size 133 insns (1064 bytes)
+      libbpf: elf: section(4) .rodata.str1.1, size 23, link 0, flags 32, type=1
+      libbpf: elf: section(5) license, size 4, link 0, flags 3, type=1
+      libbpf: license of <legacy-so-gh-reproducer>/stackoverflow-67679109/prog.o is GPL
+      libbpf: elf: section(15) .BTF, size 1783, link 0, flags 0, type=1
+      libbpf: elf: section(17) .BTF.ext, size 732, link 0, flags 0, type=1
+      libbpf: elf: section(25) .symtab, size 336, link 1, flags 0, type=2
+      libbpf: looking for externs among 14 symbols...
+      libbpf: collected 0 externs total
+      libbpf: map '.rodata.str1.1' (global data): at sec_idx 4, offset 0, flags 80.
+      libbpf: map 0 is ".rodata.str1.1"
+      libbpf: object 'prog': failed (-95) to create BPF token from '/sys/fs/bpf', skipping optional step...
+      libbpf: loaded kernel BTF from '/sys/kernel/btf/vmlinux'
+      libbpf: sec 'uretprobe/crc32': found 1 CO-RE relocations
+      libbpf: CO-RE relocating [2] struct pt_regs: found target candidate [185] struct pt_regs in [vmlinux]
+      libbpf: prog 'crc32': relo #0: <byte_off> [2] struct pt_regs.ax (0:10 @ offset 80)
+      libbpf: prog 'crc32': relo #0: matching candidate #0 <byte_off> [185] struct pt_regs.ax (0:10 @ offset 80)
+      libbpf: prog 'crc32': relo #0: patched insn #47 (LDX/ST/STX) off 80 -> 80
+      libbpf: map '.rodata.str1.1': created successfully, fd=4
+      libbpf: prog 'crc32': BPF program load failed: -EACCES
+      libbpf: prog 'crc32': -- BEGIN PROG LOAD LOG --
+      func#0 @0
+      Live regs before insn:
+        0: .1........ (bf) r7 = r1
+        1: .......7.. (b7) r8 = 0
+        2: .......78. (7b) *(u64 *)(r10 -8) = r8
+        3: .......78. (7b) *(u64 *)(r10 -16) = r8
+        4: .......78. (7b) *(u64 *)(r10 -24) = r8
+        5: .......78. (7b) *(u64 *)(r10 -32) = r8
+        6: .......78. (7b) *(u64 *)(r10 -40) = r8
+        7: .......78. (7b) *(u64 *)(r10 -48) = r8
+        8: .......78. (7b) *(u64 *)(r10 -56) = r8
+        9: .......78. (7b) *(u64 *)(r10 -64) = r8
+       10: .......78. (7b) *(u64 *)(r10 -72) = r8
+       11: .......78. (7b) *(u64 *)(r10 -80) = r8
+       12: .......78. (7b) *(u64 *)(r10 -88) = r8
+       13: .......78. (7b) *(u64 *)(r10 -96) = r8
+       14: .......78. (7b) *(u64 *)(r10 -104) = r8
+       15: .......78. (7b) *(u64 *)(r10 -112) = r8
+       16: .......78. (7b) *(u64 *)(r10 -120) = r8
+       17: .......78. (7b) *(u64 *)(r10 -128) = r8
+       18: .......78. (7b) *(u64 *)(r10 -136) = r8
+       19: .......78. (7b) *(u64 *)(r10 -144) = r8
+       20: .......78. (7b) *(u64 *)(r10 -152) = r8
+       21: .......78. (7b) *(u64 *)(r10 -160) = r8
+       22: .......78. (7b) *(u64 *)(r10 -168) = r8
+       23: .......78. (7b) *(u64 *)(r10 -176) = r8
+       24: .......78. (7b) *(u64 *)(r10 -184) = r8
+       25: .......78. (7b) *(u64 *)(r10 -192) = r8
+       26: .......78. (7b) *(u64 *)(r10 -200) = r8
+       27: .......78. (7b) *(u64 *)(r10 -208) = r8
+       28: .......78. (7b) *(u64 *)(r10 -216) = r8
+       29: .......78. (7b) *(u64 *)(r10 -224) = r8
+       30: .......78. (7b) *(u64 *)(r10 -232) = r8
+       31: .......78. (7b) *(u64 *)(r10 -240) = r8
+       32: .......78. (7b) *(u64 *)(r10 -248) = r8
+       33: .......78. (7b) *(u64 *)(r10 -256) = r8
+       34: .......78. (85) call bpf_ktime_get_ns#5
+       35: 0......78. (bf) r6 = r0
+       36: ......678. (b7) r1 = 10
+       37: .1....678. (6b) *(u16 *)(r10 -264) = r1
+       38: ......678. (18) r1 = 0x782578303d637263
+       40: .1....678. (7b) *(u64 *)(r10 -272) = r1
+       41: ......678. (b7) r1 = 175467628
+       42: .1....678. (63) *(u32 *)(r10 -280) = r1
+       43: ......678. (18) r1 = 0x253d73656c637963
+       45: .1....678. (7b) *(u64 *)(r10 -288) = r1
+       46: ......678. (73) *(u8 *)(r10 -276) = r8
+       47: ......678. (79) r3 = *(u64 *)(r7 +80)
+       48: ...3..6.8. (bf) r1 = r10
+       49: .1.3..6.8. (07) r1 += -256
+       50: .1.3..6.8. (b7) r2 = 256
+       51: .123..6.8. (85) call bpf_probe_read#4
+       52: ......6.8. (18) r3 = 0xffffffff
+       54: ...3..6.8. (18) r1 = 0xfffffffe
+       56: .1.3..6.8. (18) r2 = 0xffffffc0
+       58: .123..6.8. (71) r4 = *(u8 *)(r8 +0)
+       59: .1234.6.8. (af) r3 ^= r4
+       60: .123..6.8. (bf) r5 = r3
+       61: .123.56.8. (5f) r5 &= r1
+       62: .123.56.8. (77) r5 >>= 1
+       63: .123.56.8. (bf) r4 = r3
+       64: .123456.8. (57) r4 &= 1
+       65: .123456.8. (87) r4 = -r4
+       66: .123456.8. (57) r4 &= -306674912
+       67: .123456.8. (af) r4 ^= r5
+       68: .1234.6.8. (bf) r5 = r4
+       69: .123456.8. (5f) r5 &= r1
+       70: .123456.8. (77) r5 >>= 1
+       71: .123456.8. (bf) r7 = r3
+       72: .12345678. (67) r7 <<= 62
+       73: .12345678. (c7) r7 s>>= 63
+       74: .12345678. (57) r7 &= -306674912
+       75: .12345678. (af) r7 ^= r5
+       76: .1234.678. (bf) r0 = r7
+       77: 01234.678. (5f) r0 &= r2
+       78: 01234.678. (bf) r5 = r3
+       79: 012345678. (67) r5 <<= 61
+       80: 012345678. (c7) r5 s>>= 32
+       81: 012345678. (77) r0 >>= 6
+       82: 012345678. (77) r5 >>= 31
+       83: 012345678. (57) r5 &= 124634137
+       84: 012345678. (af) r5 ^= r0
+       85: .12345678. (bf) r0 = r3
+       86: 012345678. (67) r0 <<= 60
+       87: 012345678. (c7) r0 s>>= 32
+       88: 012345678. (77) r0 >>= 31
+       89: 012345678. (57) r0 &= 249268274
+       90: 012345678. (af) r0 ^= r5
+       91: 01234.678. (bf) r5 = r3
+       92: 012345678. (67) r5 <<= 59
+       93: 012345678. (c7) r5 s>>= 32
+       94: 012345678. (77) r5 >>= 31
+       95: 012345678. (57) r5 &= 498536548
+       96: 012345678. (af) r5 ^= r0
+       97: .12345678. (67) r3 <<= 58
+       98: .12345678. (c7) r3 s>>= 32
+       99: .12345678. (77) r3 >>= 31
+      100: .12345678. (57) r3 &= 997073096
+      101: .12345678. (af) r3 ^= r5
+      102: .1234.678. (67) r4 <<= 58
+      103: .1234.678. (c7) r4 s>>= 32
+      104: .1234.678. (77) r4 >>= 31
+      105: .1234.678. (57) r4 &= 1994146192
+      106: .1234.678. (af) r4 ^= r3
+      107: .12.4.678. (67) r7 <<= 58
+      108: .12.4.678. (c7) r7 s>>= 63
+      109: .12.4.678. (57) r7 &= -306674912
+      110: .12.4.678. (af) r7 ^= r4
+      111: .12...678. (07) r8 += 1
+      112: .12...678. (bf) r4 = r8
+      113: .12.4.678. (67) r4 <<= 32
+      114: .12.4.678. (77) r4 >>= 32
+      115: .12.4.678. (bf) r3 = r7
+      116: .1234.678. (55) if r4 != 0x100 goto pc-59
+      117: ......67.. (85) call bpf_ktime_get_ns#5
+      118: 0.....67.. (bf) r8 = r0
+      119: ......678. (a7) r7 ^= -1
+      120: ......678. (bf) r1 = r10
+      121: .1....678. (07) r1 += -272
+      122: .1....678. (b7) r2 = 10
+      123: .12...678. (bf) r3 = r7
+      124: .12...6.8. (85) call bpf_trace_printk#6
+      125: ......6.8. (1f) r8 -= r6
+      126: ........8. (bf) r1 = r10
+      127: .1......8. (07) r1 += -288
+      128: .1......8. (b7) r2 = 13
+      129: .12.....8. (bf) r3 = r8
+      130: .12....... (85) call bpf_trace_printk#6
+      131: .......... (b7) r0 = 0
+      132: 0......... (95) exit
+      0: R1=ctx() R10=fp0
+      ; int crc32(struct pt_regs *ctx) @ prog.c:207
+      0: (bf) r7 = r1                       ; R1=ctx() R7_w=ctx()
+      1: (b7) r8 = 0                        ; R8_w=0
+      ; char str[256] = {}; @ prog.c:209
+      2: (7b) *(u64 *)(r10 -8) = r8         ; R8_w=0 R10=fp0 fp-8_w=0
+      3: (7b) *(u64 *)(r10 -16) = r8        ; R8_w=0 R10=fp0 fp-16_w=0
+      4: (7b) *(u64 *)(r10 -24) = r8        ; R8_w=0 R10=fp0 fp-24_w=0
+      5: (7b) *(u64 *)(r10 -32) = r8        ; R8_w=0 R10=fp0 fp-32_w=0
+      6: (7b) *(u64 *)(r10 -40) = r8        ; R8_w=0 R10=fp0 fp-40_w=0
+      7: (7b) *(u64 *)(r10 -48) = r8        ; R8_w=0 R10=fp0 fp-48_w=0
+      8: (7b) *(u64 *)(r10 -56) = r8        ; R8_w=0 R10=fp0 fp-56_w=0
+      9: (7b) *(u64 *)(r10 -64) = r8        ; R8_w=0 R10=fp0 fp-64_w=0
+      10: (7b) *(u64 *)(r10 -72) = r8       ; R8_w=0 R10=fp0 fp-72_w=0
+      11: (7b) *(u64 *)(r10 -80) = r8       ; R8_w=0 R10=fp0 fp-80_w=0
+      12: (7b) *(u64 *)(r10 -88) = r8       ; R8_w=0 R10=fp0 fp-88_w=0
+      13: (7b) *(u64 *)(r10 -96) = r8       ; R8_w=0 R10=fp0 fp-96_w=0
+      14: (7b) *(u64 *)(r10 -104) = r8      ; R8_w=0 R10=fp0 fp-104_w=0
+      15: (7b) *(u64 *)(r10 -112) = r8      ; R8_w=0 R10=fp0 fp-112_w=0
+      16: (7b) *(u64 *)(r10 -120) = r8      ; R8_w=0 R10=fp0 fp-120_w=0
+      17: (7b) *(u64 *)(r10 -128) = r8      ; R8_w=0 R10=fp0 fp-128_w=0
+      18: (7b) *(u64 *)(r10 -136) = r8      ; R8_w=0 R10=fp0 fp-136_w=0
+      19: (7b) *(u64 *)(r10 -144) = r8      ; R8_w=0 R10=fp0 fp-144_w=0
+      20: (7b) *(u64 *)(r10 -152) = r8      ; R8_w=0 R10=fp0 fp-152_w=0
+      21: (7b) *(u64 *)(r10 -160) = r8      ; R8_w=0 R10=fp0 fp-160_w=0
+      22: (7b) *(u64 *)(r10 -168) = r8      ; R8_w=0 R10=fp0 fp-168_w=0
+      23: (7b) *(u64 *)(r10 -176) = r8      ; R8_w=0 R10=fp0 fp-176_w=0
+      24: (7b) *(u64 *)(r10 -184) = r8      ; R8_w=0 R10=fp0 fp-184_w=0
+      25: (7b) *(u64 *)(r10 -192) = r8      ; R8_w=0 R10=fp0 fp-192_w=0
+      26: (7b) *(u64 *)(r10 -200) = r8      ; R8_w=0 R10=fp0 fp-200_w=0
+      27: (7b) *(u64 *)(r10 -208) = r8      ; R8_w=0 R10=fp0 fp-208_w=0
+      28: (7b) *(u64 *)(r10 -216) = r8      ; R8_w=0 R10=fp0 fp-216_w=0
+      29: (7b) *(u64 *)(r10 -224) = r8      ; R8_w=0 R10=fp0 fp-224_w=0
+      30: (7b) *(u64 *)(r10 -232) = r8      ; R8_w=0 R10=fp0 fp-232_w=0
+      31: (7b) *(u64 *)(r10 -240) = r8      ; R8_w=0 R10=fp0 fp-240_w=0
+      32: (7b) *(u64 *)(r10 -248) = r8      ; R8_w=0 R10=fp0 fp-248_w=0
+      33: (7b) *(u64 *)(r10 -256) = r8      ; R8_w=0 R10=fp0 fp-256_w=0
+      ; u64 startTime = bpf_ktime_get_ns(); @ prog.c:211
+      34: (85) call bpf_ktime_get_ns#5      ; R0_w=scalar()
+      35: (bf) r6 = r0                      ; R0_w=scalar(id=1) R6_w=scalar(id=1)
+      36: (b7) r1 = 10                      ; R1_w=10
+      ; char crc_fmt[] = "crc=0x%x\n"; @ prog.c:218
+      37: (6b) *(u16 *)(r10 -264) = r1      ; R1_w=10 R10=fp0 fp-264=??????10
+      38: (18) r1 = 0x782578303d637263      ; R1_w=0x782578303d637263
+      40: (7b) *(u64 *)(r10 -272) = r1      ; R1_w=0x782578303d637263 R10=fp0 fp-272_w=0x782578303d637263
+      41: (b7) r1 = 175467628               ; R1_w=0xa756c6c
+      ; char time_fmt[] = "cycles=%llu\n"; @ prog.c:219
+      42: (63) *(u32 *)(r10 -280) = r1      ; R1_w=0xa756c6c R10=fp0 fp-280=????0xa756c6c
+      43: (18) r1 = 0x253d73656c637963      ; R1_w=0x253d73656c637963
+      45: (7b) *(u64 *)(r10 -288) = r1      ; R1_w=0x253d73656c637963 R10=fp0 fp-288_w=0x253d73656c637963
+      46: (73) *(u8 *)(r10 -276) = r8
+      mark_precise: frame0: last_idx 46 first_idx 0 subseq_idx -1
+      mark_precise: frame0: regs=r8 stack= before 45: (7b) *(u64 *)(r10 -288) = r1
+      mark_precise: frame0: regs=r8 stack= before 43: (18) r1 = 0x253d73656c637963
+      mark_precise: frame0: regs=r8 stack= before 42: (63) *(u32 *)(r10 -280) = r1
+      mark_precise: frame0: regs=r8 stack= before 41: (b7) r1 = 175467628
+      mark_precise: frame0: regs=r8 stack= before 40: (7b) *(u64 *)(r10 -272) = r1
+      mark_precise: frame0: regs=r8 stack= before 38: (18) r1 = 0x782578303d637263
+      mark_precise: frame0: regs=r8 stack= before 37: (6b) *(u16 *)(r10 -264) = r1
+      mark_precise: frame0: regs=r8 stack= before 36: (b7) r1 = 10
+      mark_precise: frame0: regs=r8 stack= before 35: (bf) r6 = r0
+      mark_precise: frame0: regs=r8 stack= before 34: (85) call bpf_ktime_get_ns#5
+      mark_precise: frame0: regs=r8 stack= before 33: (7b) *(u64 *)(r10 -256) = r8
+      mark_precise: frame0: regs=r8 stack= before 32: (7b) *(u64 *)(r10 -248) = r8
+      mark_precise: frame0: regs=r8 stack= before 31: (7b) *(u64 *)(r10 -240) = r8
+      mark_precise: frame0: regs=r8 stack= before 30: (7b) *(u64 *)(r10 -232) = r8
+      mark_precise: frame0: regs=r8 stack= before 29: (7b) *(u64 *)(r10 -224) = r8
+      mark_precise: frame0: regs=r8 stack= before 28: (7b) *(u64 *)(r10 -216) = r8
+      mark_precise: frame0: regs=r8 stack= before 27: (7b) *(u64 *)(r10 -208) = r8
+      mark_precise: frame0: regs=r8 stack= before 26: (7b) *(u64 *)(r10 -200) = r8
+      mark_precise: frame0: regs=r8 stack= before 25: (7b) *(u64 *)(r10 -192) = r8
+      mark_precise: frame0: regs=r8 stack= before 24: (7b) *(u64 *)(r10 -184) = r8
+      mark_precise: frame0: regs=r8 stack= before 23: (7b) *(u64 *)(r10 -176) = r8
+      mark_precise: frame0: regs=r8 stack= before 22: (7b) *(u64 *)(r10 -168) = r8
+      mark_precise: frame0: regs=r8 stack= before 21: (7b) *(u64 *)(r10 -160) = r8
+      mark_precise: frame0: regs=r8 stack= before 20: (7b) *(u64 *)(r10 -152) = r8
+      mark_precise: frame0: regs=r8 stack= before 19: (7b) *(u64 *)(r10 -144) = r8
+      mark_precise: frame0: regs=r8 stack= before 18: (7b) *(u64 *)(r10 -136) = r8
+      mark_precise: frame0: regs=r8 stack= before 17: (7b) *(u64 *)(r10 -128) = r8
+      mark_precise: frame0: regs=r8 stack= before 16: (7b) *(u64 *)(r10 -120) = r8
+      mark_precise: frame0: regs=r8 stack= before 15: (7b) *(u64 *)(r10 -112) = r8
+      mark_precise: frame0: regs=r8 stack= before 14: (7b) *(u64 *)(r10 -104) = r8
+      mark_precise: frame0: regs=r8 stack= before 13: (7b) *(u64 *)(r10 -96) = r8
+      mark_precise: frame0: regs=r8 stack= before 12: (7b) *(u64 *)(r10 -88) = r8
+      mark_precise: frame0: regs=r8 stack= before 11: (7b) *(u64 *)(r10 -80) = r8
+      mark_precise: frame0: regs=r8 stack= before 10: (7b) *(u64 *)(r10 -72) = r8
+      mark_precise: frame0: regs=r8 stack= before 9: (7b) *(u64 *)(r10 -64) = r8
+      mark_precise: frame0: regs=r8 stack= before 8: (7b) *(u64 *)(r10 -56) = r8
+      mark_precise: frame0: regs=r8 stack= before 7: (7b) *(u64 *)(r10 -48) = r8
+      mark_precise: frame0: regs=r8 stack= before 6: (7b) *(u64 *)(r10 -40) = r8
+      mark_precise: frame0: regs=r8 stack= before 5: (7b) *(u64 *)(r10 -32) = r8
+      mark_precise: frame0: regs=r8 stack= before 4: (7b) *(u64 *)(r10 -24) = r8
+      mark_precise: frame0: regs=r8 stack= before 3: (7b) *(u64 *)(r10 -16) = r8
+      mark_precise: frame0: regs=r8 stack= before 2: (7b) *(u64 *)(r10 -8) = r8
+      mark_precise: frame0: regs=r8 stack= before 1: (b7) r8 = 0
+      47: R8_w=0 R10=fp0 fp-280=???0mmmm
+      ; bpf_probe_read(&str, sizeof(str), (void *)PT_REGS_RC(ctx)); @ prog.c:221
+      47: (79) r3 = *(u64 *)(r7 +80)        ; R3_w=scalar() R7_w=ctx()
+      48: (bf) r1 = r10                     ; R1_w=fp0 R10=fp0
+      ;  @ prog.c:0
+      49: (07) r1 += -256                   ; R1_w=fp-256
+      ; bpf_probe_read(&str, sizeof(str), (void *)PT_REGS_RC(ctx)); @ prog.c:221
+      50: (b7) r2 = 256                     ; R2_w=256
+      51: (85) call bpf_probe_read#4
+      mark_precise: frame0: last_idx 51 first_idx 0 subseq_idx -1
+      mark_precise: frame0: regs=r2 stack= before 50: (b7) r2 = 256
+      52: R0=scalar() fp-8=mmmmmmmm fp-16=mmmmmmmm fp-24=mmmmmmmm fp-32=mmmmmmmm fp-40=mmmmmmmm fp-48=mmmmmmmm fp-56=mmmmmmmm fp-64=mmmmmmmm fp-72=mmmmmmmm fp-80=mmmmmmmm fp-88=mmmmmmmm fp-96=mmmmmmmm fp-104=mmmmmmmm fp-112=mmmmmmmm fp-120=mmmmmmmm fp-128=mmmmmmmm fp-136=mmmmmmmm fp-144=mmmmmmmm fp-152=mmmmmmmm fp-160=mmmmmmmm fp-168=mmmmmmmm fp-176=mmmmmmmm fp-184=mmmmmmmm fp-192=mmmmmmmm fp-200=mmmmmmmm fp-208=mmmmmmmm fp-216=mmmmmmmm fp-224=mmmmmmmm fp-232=mmmmmmmm fp-240=mmmmmmmm fp-248=mmmmmmmm fp-256=mmmmmmmm
+      52: (18) r3 = 0xffffffff              ; R3_w=0xffffffff
+      54: (18) r1 = 0xfffffffe              ; R1_w=0xfffffffe
+      56: (18) r2 = 0xffffffc0              ; R2_w=0xffffffc0
+      ; crc ^= *current++; @ prog.c:224
+      58: (71) r4 = *(u8 *)(r8 +0)
+      R8 invalid mem access 'scalar'
+      verification time 398 usec
+      stack depth 288
+      processed 54 insns (limit 1000000) max_states_per_insn 0 total_states 1 peak_states 1 mark_read 1
+      -- END PROG LOAD LOG --
+      libbpf: prog 'crc32': failed to load: -EACCES
+      libbpf: failed to load object '<legacy-so-gh-reproducer>/stackoverflow-67679109/prog.o'
+      Error: failed to load object file
+  verifier_log_source: captured_on_6.15.11
+  verifier_log_captured_at: '2026-03-20'
+  source_snippets:
+  - |-
+    bpf_text2 = """
+    #include <uapi/linux/ptrace.h>
+
+    int crc32(struct pt_regs *ctx) {
+    char str[256] = {};
+    bpf_probe_read(&str, sizeof(str), (void *)PT_REGS_RC(ctx));
+    const uint32_t Polynomial = 0xEDB88320;
+
+    u64 startTime = bpf_ktime_get_ns();
+
+    uint32_t previousCrc32 = 0;
+    uint32_t crc = ~previousCrc32;
+    unsigned char* current = 0;
+
+    int maxVal = sizeof(str);
+    while (maxVal--) {
+        crc ^= *current++;
+        for (unsigned int j = 0; j < 8; j++) {
+            crc = (crc >> 1) ^ ((0 - (crc & 1)) & Polynomial);
+        }
+    }
+    int result = ~crc;
+    u64 totalTime = bpf_ktime_get_ns() - startTime;
+
+    bpf_trace_printk(">> BCC - CRC of `\\"%s\\" is: 0x%x \\n",str, result);
+    bpf_trace_printk(">> BCC - CRC took: %lu cycles\\n", totalTime);
+    bpf_trace_printk("BCC - Test Complete.\\n\\n\\n");
+
+    return 0;
+    }
+    """
+  question_body_text: |-
+    Sorry, I am really new to writing eBPF code, so I came upon an error that I can't seem to shake off. Running in sudo does not seem to help. And I wrote a slower crc32 program that compiles but this one does not want to execute no matter what. I am wondering if I'm breaking any convention that I am just not seeing.
+    bpf_text2 = """
+    #include <uapi/linux/ptrace.h>
+    int crc32(struct pt_regs *ctx) {
+    char str[256] = {};
+    bpf_probe_read(&str, sizeof(str), (void *)PT_REGS_RC(ctx));
+    const uint32_t Polynomial = 0xEDB88320;
+    u64 startTime = bpf_ktime_get_ns();
+    uint32_t previousCrc32 = 0;
+    uint32_t crc = ~previousCrc32;
+    unsigned char* current = 0;
+    int maxVal = sizeof(str);
+    while (maxVal--) {
+    crc ^= *current++;
+    for (unsigned int j = 0; j < 8; j++) {
+    crc = (crc >> 1) ^ ((0 - (crc & 1)) & Polynomial);
+    }
+    }
+    int result = ~crc;
+    u64 totalTime = bpf_ktime_get_ns() - startTime;
+    bpf_trace_printk(">> BCC - CRC of `\\"%s\\" is: 0x%x \\n",str, result);
+    bpf_trace_printk(">> BCC - CRC took: %lu cycles\\n", totalTime);
+    bpf_trace_printk("BCC - Test Complete.\\n\\n\\n");
+    return 0;
+    }
+    """
+    Here's a quick look at the error message below aswell.
+    > Compiling BPF
+    Attaching to uretprobe
+    bpf: Failed to load program: Permission denied
+    btf_vmlinux is malformed
+    Unrecognized arg#0 type PTR
+    ; int crc32(struct pt_regs *ctx) {
+    0: (b7) r8 = 0
+    ; char str[256] = {};
+    1: (7b) *(u64 *)(r10 -8) = r8
+    last_idx 1 first_idx 0
+    regs=100 stack=0 before 0: (b7) r8 = 0
+    2: (7b) *(u64 *)(r10 -16) = r8
+    3: (7b) *(u64 *)(r10 -24) = r8
+    4: (7b) *(u64 *)(r10 -32) = r8
+    5: (7b) *(u64 *)(r10 -40) = r8
+    6: (7b) *(u64 *)(r10 -48) = r8
+    7: (7b) *(u64 *)(r10 -56) = r8
+    8: (7b) *(u64 *)(r10 -64) = r8
+    9: (7b) *(u64 *)(r10 -72) = r8
+    10: (7b) *(u64 *)(r10 -80) = r8
+    11: (7b) *(u64 *)(r10 -88) = r8
+    12: (7b) *(u64 *)(r10 -96) = r8
+    13: (7b) *(u64 *)(r10 -104) = r8
+    14: (7b) *(u64 *)(r10 -112) = r8
+    15: (7b) *(u64 *)(r10 -120) = r8
+    16: (7b) *(u64 *)(r10 -128) = r8
+    17: (7b) *(u64 *)(r10 -136) = r8
+    18: (7b) *(u64 *)(r10 -144) = r8
+    19: (7b) *(u64 *)(r10 -152) = r8
+    20: (7b) *(u64 *)(r10 -160) = r8
+    21: (7b) *(u64 *)(r10 -168) = r8
+    22: (7b) *(u64 *)(r10 -176) = r8
+    23: (7b) *(u64 *)(r10 -184) = r8
+    24: (7b) *(u64 *)(r10 -192) = r8
+    25: (7b) *(u64 *)(r10 -200) = r8
+    26: (7b) *(u64 *)(r10 -208) = r8
+    27: (7b) *(u64 *)(r10 -216) = r8
+    28: (7b) *(u64 *)(r10 -224) = r8
+    29: (7b) *(u64 *)(r10 -232) = r8
+    30: (7b) *(u64 *)(r10 -240) = r8
+    31: (7b) *(u64 *)(r10 -248) = r8
+    32: (7b) *(u64 *)(r10 -256) = r8
+    ; bpf_probe_read(&str, sizeof(str), (void *)PT_REGS_RC(ctx));
+    33: (79) r3 = *(u64 *)(r1 +0)
+    34: (bf) r1 = r10
+    ;
+    35: (07) r1 += -256
+    ; bpf_probe_read(&str, sizeof(str), (void *)PT_REGS_RC(ctx));
+    36: (b7) r2 = 256
+    37: (85) call bpf_probe_read#4
+    last_idx 37 first_idx 0
+    regs=4 stack=0 before 36: (b7) r2 = 256
+    38: (18) r7 = 0xffffffff
+    40: (18) r9 = 0xffffff00
+    ; u64 startTime = bpf_ktime_get_ns();
+    42: (85) call bpf_ktime_get_ns#5
+    43: (7b) *(u64 *)(r10 -304) = r0
+    44: (18) r1 = 0xfffffffe
+    46: (18) r2 = 0xedb88320
+    ; crc ^= *current++;
+    48: (71) r3 = *(u8 *)(r8 +0)
+    R8 invalid mem access 'inv'
+    processed 45 insns (limit 1000000) max_states_per_insn 0 total_states 1 peak_states 1 mark_read 1
+    >
+    > HINT: The invalid mem access 'inv' error can happen if you try to
+    > dereference memory without first using bpf_probe_read() to copy it to
+    > the BPF stack. Sometimes the bpf_probe_read is automatic by the bcc
+    > rewriter, other times you'll need to be explicit.
+    HINT: The invalid mem access 'inv' error can happen if you try to dereference memory without first using bpf_probe_read() to copy it to the BPF stack. Sometimes the bpf_probe_read is automatic by the bcc rewriter, other times you'll need to be explicit.
+    Traceback (most recent call last):
+    File "/home/pi/Desktop/crc32.py", line 116, in <module>
+    b.attach_uretprobe(name="/bin/bash", sym="readline", fn_name="crc32")
+    File "/usr/lib/python3/dist-packages/bcc/__init__.py", line 1058, in attach_uretprobe
+    fn = self.load_func(fn_name, BPF.KPROBE)
+    File "/usr/lib/python3/dist-packages/bcc/__init__.py", line 394, in load_func
+    raise Exception("Failed to load BPF program %s: %s" %
+    Exception: Failed to load BPF program b'crc32': Permission denied
+  selected_answer:
+    answer_id: 67679291
+    url: https://stackoverflow.com/questions/67679109/keep-getting-bpf-failed-to-load-program-permission-denied-when-trying-to-run-e#67679291
+    is_accepted: true
+    score: 2
+    body_text: |-
+      From the verifier's logs, you have some invalid access here:
+      ; crc ^= *current++;
+      48: (71) r3 = *(u8 *)(r8 +0)
+      R8 invalid mem access 'inv'
+      This is likely caused by your pointer being initialised at 0 (the pointer itself, not the value it points to!), and then trying to dereference it without having ever initialized its content (which wouldn't be possible anyway for a null pointer).
+      unsigned char* current = 0; // current is 0
+      [...]
+      while (maxVal--) {
+      crc ^= *current++; // read at address 0 and increment this value??
+      ...
+      }
+      Why not use a regular variable for current, instead of a pointer?
+    fix_description: Why not use a regular variable for current, instead of a pointer?

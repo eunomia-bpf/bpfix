@@ -1,0 +1,44 @@
+schema_version: bpfix.case/v1
+case_id: github-commit-cilium-06c6520c57ad
+source:
+  kind: github_commit
+  url: https://github.com/cilium/cilium/commit/06c6520c57adc7890e5263469713de7deb569ce6
+  repository: https://github.com/cilium/cilium
+  commit: 06c6520c57adc7890e5263469713de7deb569ce6
+  upstream_file: bpf/lib/common.h
+  raw_excerpt_files:
+  - bpfix-empirical/raw/gh/github-commit-cilium-06c6520c57ad.yaml
+reproducer:
+  reconstruction: reconstructed
+  notes: Minimal replay of the Cilium packet data revalidation shape before the fix. The program
+    may call bpf_skb_pull_data() and then reuses packet pointer state from the earlier data/data_end
+    proof, leaving the final packet read outside the range proven to the verifier.
+capture:
+  capture_id: github-commit-cilium-06c6520c57ad__kernel-6.15.11-clang-18-log2
+  terminal_error: invalid access to packet, off=14 size=1, R1(id=0,off=14,r=0)
+  rejected_insn_idx: 24
+external_match:
+  status: not_applicable
+  policy: terminal_error
+  matched_messages:
+  - invalid access to packet, off=14 size=1
+  notes: Commit-derived semantic reconstruction; the raw record has no external verifier log
+    block to match exactly.
+label:
+  capture_id: github-commit-cilium-06c6520c57ad__kernel-6.15.11-clang-18-log2
+  taxonomy_class: source_bug
+  error_id: BPFIX-E001
+  confidence: medium
+  label_source: manual_reconstruction
+  root_cause_description: Packet data is accessed after a helper path that can invalidate
+    packet pointer range information, without establishing a verifier proof for the exact
+    final access.
+  root_cause_insn_idx: 24
+  localization_confidence: medium
+  fix_type: packet_bounds_check
+  fix_direction: Re-fetch packet data/data_end after skb_pull_data() and make the final accessed
+    range explicit to the verifier.
+reporting:
+  family_id: github-commit-cilium-06c6520c57ad
+  representative: true
+  notes: Reconstruction Batch 24.

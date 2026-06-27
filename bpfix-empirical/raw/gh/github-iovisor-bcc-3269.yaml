@@ -1,0 +1,226 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-iovisor-bcc-3269
+source_kind: github_issue
+source:
+  url: https://github.com/iovisor/bcc/issues/3269
+  title: invalid access to map value, R3 min value is outside of the allowed memory
+    range
+  repository: https://github.com/iovisor/bcc
+  commit: null
+  collected_at: '2026-04-30T01:41:23+00:00'
+collector:
+  original_path: bpfix-empirical/raw/gh/github-iovisor-bcc-3269.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: true
+  verifier_log_block_count: 1
+  source_snippet_count: 4
+  has_buggy_code: false
+  has_fixed_code: false
+  has_fix_description: false
+reproduction:
+  status: replay_valid
+  case_id: github-iovisor-bcc-3269
+  case_path: cases/github-iovisor-bcc-3269
+  artifact_path: cases/github-iovisor-bcc-3269
+  reason: admitted_to_bpfix_bench_cases
+raw:
+  case_id: github-iovisor-bcc-3269
+  source: github_issues
+  collected_at: '2026-04-30T01:41:23+00:00'
+  issue:
+    repository: iovisor/bcc
+    number: 3269
+    title: invalid access to map value, R3 min value is outside of the allowed memory
+      range
+    url: https://github.com/iovisor/bcc/issues/3269
+    state: OPEN
+    labels: []
+    created_at: '2021-02-12T14:54:32Z'
+    updated_at: '2024-08-15T06:35:55Z'
+    author: sbezverk
+  verifier_log:
+    blocks:
+    - invalid access to map value, value_size=1024 off=0 size=0; R3 min value is outside
+      of the allowed memory range
+    combined: invalid access to map value, value_size=1024 off=0 size=0; R3 min value
+      is outside of the allowed memory range
+  source_snippets:
+  - "#define MAX_PACKET_LENGTH 1024\r\n\r\n  // Use per CPU array map to be able to\
+    \ store 1k data buffer\r\n   __u32 packet_data_map_id = 0;\r\n    void *packet_data_buffer\
+    \ = NULL;\r\n    packet_data_buffer = bpf_map_lookup_elem(&packet_data_map, &packet_data_map_id);\r\
+    \n    if (!packet_data_buffer)\r\n    {\r\n        return;\r\n    }\r\n // Calculate\
+    \ actual length of  L4+data portion \r\n   __u32 data_length = (__u32)(data_end\
+    \ - (data + sizeof(struct ethhdr) + sizeof(struct ipv6hdr)));\r\n    // To make\
+    \ verifier happy Start block\r\n    data_length &= 1023;\r\n    int tmp = MAX_PACKET_LENGTH\
+    \ - data_length;\r\n    if (tmp < 0)\r\n    {\r\n        return;\r\n    }\r\n\
+    \    if (data_length <= 0)\r\n    {\r\n        return;\r\n    }\r\n    // To make\
+    \ verifier happy End block\r\n    ret = bpf_skb_load_bytes(skb, sizeof(struct\
+    \ ethhdr) + sizeof(struct ipv6hdr), (void *)&packet_data_buffer[0], data_length);\r\
+    \n    if (ret < 0)\r\n    {\r\n        return;\r\n    }"
+  - "; ret = bpf_skb_load_bytes(skb, 0, &eth_copy, sizeof(eth_copy));\r\n174: (bf)\
+    \ r1 = r6\r\n175: (b4) w2 = 0\r\n176: (b4) w4 = 14\r\n177: (85) call bpf_skb_load_bytes#26\r\
+    \nlast_idx 177 first_idx 171\r\nregs=10 stack=0 before 176: (b4) w4 = 14\r\n;\
+    \ if (ret < 0)\r\n178: (c6) if w0 s< 0x0 goto pc+56\r\n R0_w=inv(id=0,smax_value=9223372034707292159,umax_value=18446744071562067967,var_off=(0x0;\
+    \ 0xffffffff7fffffff),s32_min_value=0,u32_max_value=2147483647) R6=ctx(id=0,off=0,imm=0)\
+    \ R7=pkt_end(id=0,off=0,imm=0) R8=map_value(id=0,off=0,ks=19,vs=256,imm=0) R9=pkt(id=0,off=54,r=54,imm=0)\
+    \ R10=fp0 fp-144=?????mmm fp-152=mmmmmmmm fp-160=mmmmmmmm fp-176=???????m fp-184=mmmmmmmm\
+    \ fp-192=mmmmmmmm fp-200=????mmmm\r\n; __u32 packet_data_map_id = 0;\r\n179: (b4)\
+    \ w1 = 0\r\n180: (63) *(u32 *)(r10 -4) = r1\r\nlast_idx 180 first_idx 171\r\n\
+    regs=2 stack=0 before 179: (b4) w1 = 0\r\n181: (bf) r2 = r10\r\n; \r\n182: (07)\
+    \ r2 += -4\r\n; packet_data_buffer = bpf_map_lookup_elem(&packet_data_map, &packet_data_map_id);\r\
+    \n183: (18) r1 = 0xffff9c5bf6bc4a00\r\n185: (85) call bpf_map_lookup_elem#1\r\n\
+    186: (7b) *(u64 *)(r10 -200) = r0\r\n; if (!packet_data_buffer)\r\n187: (15) if\
+    \ r0 == 0x0 goto pc+47\r\n R0=map_value(id=0,off=0,ks=4,vs=1024,imm=0) R6=ctx(id=0,off=0,imm=0)\
+    \ R7=pkt_end(id=0,off=0,imm=0) R8=map_value(id=0,off=0,ks=19,vs=256,imm=0) R9=pkt(id=0,off=54,r=54,imm=0)\
+    \ R10=fp0 fp-8=mmmm???? fp-144=?????mmm fp-152=mmmmmmmm fp-160=mmmmmmmm fp-176=???????m\
+    \ fp-184=mmmmmmmm fp-192=mmmmmmmm fp-200_w=map_value\r\n; __u32 data_length =\
+    \ (__u32)(data_end - (data + sizeof(struct ethhdr) + sizeof(struct ipv6hdr)));\r\
+    \n!\r\n188: (1c) w7 -= w9               < ----  data_length is treated as a pointer\r\
+    \n!\r\n; data_length &= 1023;\r\n189: (54) w7 &= 1023\r\n; ret = bpf_skb_load_bytes(skb,\
+    \ sizeof(struct ethhdr) + sizeof(struct ipv6hdr), packet_data_buffer, data_length);\r\
+    \n190: (bf) r1 = r6\r\n191: (b4) w2 = 54\r\n192: (79) r3 = *(u64 *)(r10 -200)\r\
+    \n!\r\n193: (bc) w4 = w7    < --- If I read it right then it should contain the\
+    \ u32 data length\r\n!\r\n194: (85) call bpf_skb_load_bytes#26\r\n R0=map_value(id=0,off=0,ks=4,vs=1024,imm=0)\
+    \ R1_w=ctx(id=0,off=0,imm=0) R2_w=inv54 R3_w=map_value(id=0,off=0,ks=4,vs=1024,imm=0)\
+    \ R4_w=inv(id=0,umax_value=1023,var_off=(0x0; 0x3ff)) R6=ctx(id=0,off=0,imm=0)\
+    \ R7_w=inv(id=0,umax_value=1023,var_off=(0x0; 0x3ff)) R8=map_value(id=0,off=0,ks=19,vs=256,imm=0)\
+    \ R9=pkt(id=0,off=54,r=54,imm=0) R10=fp0 fp-8=mmmm???? fp-144=?????mmm fp-152=mmmmmmmm\
+    \ fp-160=mmmmmmmm fp-176=???????m fp-184=mmmmmmmm fp-192=mmmmmmmm fp-200_w=map_value\r\
+    \ninvalid access to map value, value_size=1024 off=0 size=0\r\nR3 min value is\
+    \ outside of the allowed memory range\r\nprocessed 183 insns (limit 1000000) max_states_per_insn\
+    \ 0 total_states 12 peak_states 12 mark_read 10"
+  - "; packet_data_buffer = bpf_map_lookup_elem(&packet_data_map, &packet_data_map_id);\r\
+    \n183: (18) r1 = 0xffff9c59c3a34800\r\n185: (85) call bpf_map_lookup_elem#1\r\n\
+    186: (7b) *(u64 *)(r10 -200) = r0\r\n; if (!packet_data_buffer)\r\n187: (15) if\
+    \ r0 == 0x0 goto pc+50\r\n R0=map_value(id=0,off=0,ks=4,vs=1024,imm=0) R6=ctx(id=0,off=0,imm=0)\
+    \ R7=pkt(id=0,off=54,r=54,imm=0) R8=map_value(id=0,off=0,ks=19,vs=256,imm=0) R9=pkt_end(id=0,off=0,imm=0)\
+    \ R10=fp0 fp-8=mmmm???? fp-144=?????mmm fp-152=mmmmmmmm fp-160=mmmmmmmm fp-176=???????m\
+    \ fp-184=mmmmmmmm fp-192=mmmmmmmm fp-200_w=map_value\r\n; ret = bpf_skb_load_bytes(skb,\
+    \ sizeof(struct ethhdr) + sizeof(struct ipv6hdr), packet_data_buffer, dl);\r\n\
+    188: (bf) r1 = r6\r\n189: (b4) w2 = 54\r\n190: (79) r3 = *(u64 *)(r10 -200)\r\n\
+    191: (b4) w4 = 64                                      < ----- parameter passed\
+    \ as length\r\n192: (85) call bpf_skb_load_bytes#26\r\n R0=map_value(id=0,off=0,ks=4,vs=1024,imm=0)\
+    \ R1_w=ctx(id=0,off=0,imm=0) R2_w=inv54 R3_w=map_value(id=0,off=0,ks=4,vs=1024,imm=0)\
+    \ R4_w=inv64 R6=ctx(id=0,off=0,imm=0) R7=pkt(id=0,off=54,r=54,imm=0) R8=map_value(id=0,off=0,ks=19,vs=256,imm=0)\
+    \ R9=pkt_end(id=0,off=0,imm=0) R10=fp0 fp-8=mmmm???? fp-144=?????mmm fp-152=mmmmmmmm\
+    \ fp-160=mmmmmmmm fp-176=???????m fp-184=mmmmmmmm fp-192=mmmmmmmm fp-200_w=map_value\r\
+    \nlast_idx 192 first_idx 186\r\nregs=10 stack=0 before 191: (b4) w4 = 64\r\n;\
+    \ if (ret < 0)\r\n193: (c6) if w0 s< 0x0 goto pc+44"
+  - R4_w=inv(id=0,umax_value=1023,var_off=(0x0; 0x3ff))
+  issue_body_text: "Hello,\r\n\r\nI am getting verifier failure despite of using suggested\
+    \ workarounds to make verifier happy. Here is the fragment of the code triggering\
+    \ verifier failure:\r\n```\r\n#define MAX_PACKET_LENGTH 1024\r\n\r\n  // Use per\
+    \ CPU array map to be able to store 1k data buffer\r\n   __u32 packet_data_map_id\
+    \ = 0;\r\n    void *packet_data_buffer = NULL;\r\n    packet_data_buffer = bpf_map_lookup_elem(&packet_data_map,\
+    \ &packet_data_map_id);\r\n    if (!packet_data_buffer)\r\n    {\r\n        return;\r\
+    \n    }\r\n // Calculate actual length of  L4+data portion \r\n   __u32 data_length\
+    \ = (__u32)(data_end - (data + sizeof(struct ethhdr) + sizeof(struct ipv6hdr)));\r\
+    \n    // To make verifier happy Start block\r\n    data_length &= 1023;\r\n  \
+    \  int tmp = MAX_PACKET_LENGTH - data_length;\r\n    if (tmp < 0)\r\n    {\r\n\
+    \        return;\r\n    }\r\n    if (data_length <= 0)\r\n    {\r\n        return;\r\
+    \n    }\r\n    // To make verifier happy End block\r\n    ret = bpf_skb_load_bytes(skb,\
+    \ sizeof(struct ethhdr) + sizeof(struct ipv6hdr), (void *)&packet_data_buffer[0],\
+    \ data_length);\r\n    if (ret < 0)\r\n    {\r\n        return;\r\n    }\r\n```\r\
+    \n\r\nVerifier error:\r\n\r\n```\r\n; ret = bpf_skb_load_bytes(skb, 0, &eth_copy,\
+    \ sizeof(eth_copy));\r\n174: (bf) r1 = r6\r\n175: (b4) w2 = 0\r\n176: (b4) w4\
+    \ = 14\r\n177: (85) call bpf_skb_load_bytes#26\r\nlast_idx 177 first_idx 171\r\
+    \nregs=10 stack=0 before 176: (b4) w4 = 14\r\n; if (ret < 0)\r\n178: (c6) if w0\
+    \ s< 0x0 goto pc+56\r\n R0_w=inv(id=0,smax_value=9223372034707292159,umax_value=18446744071562067967,var_off=(0x0;\
+    \ 0xffffffff7fffffff),s32_min_value=0,u32_max_value=2147483647) R6=ctx(id=0,off=0,imm=0)\
+    \ R7=pkt_end(id=0,off=0,imm=0) R8=map_value(id=0,off=0,ks=19,vs=256,imm=0) R9=pkt(id=0,off=54,r=54,imm=0)\
+    \ R10=fp0 fp-144=?????mmm fp-152=mmmmmmmm fp-160=mmmmmmmm fp-176=???????m fp-184=mmmmmmmm\
+    \ fp-192=mmmmmmmm fp-200=????mmmm\r\n; __u32 packet_data_map_id = 0;\r\n179: (b4)\
+    \ w1 = 0\r\n180: (63) *(u32 *)(r10 -4) = r1\r\nlast_idx 180 first_idx 171\r\n\
+    regs=2 stack=0 before 179: (b4) w1 = 0\r\n181: (bf) r2 = r10\r\n; \r\n182: (07)\
+    \ r2 += -4\r\n; packet_data_buffer = bpf_map_lookup_elem(&packet_data_map, &packet_data_map_id);\r\
+    \n183: (18) r1 = 0xffff9c5bf6bc4a00\r\n185: (85) call bpf_map_lookup_elem#1\r\n\
+    186: (7b) *(u64 *)(r10 -200) = r0\r\n; if (!packet_data_buffer)\r\n187: (15) if\
+    \ r0 == 0x0 goto pc+47\r\n R0=map_value(id=0,off=0,ks=4,vs=1024,imm=0) R6=ctx(id=0,off=0,imm=0)\
+    \ R7=pkt_end(id=0,off=0,imm=0) R8=map_value(id=0,off=0,ks=19,vs=256,imm=0) R9=pkt(id=0,off=54,r=54,imm=0)\
+    \ R10=fp0 fp-8=mmmm???? fp-144=?????mmm fp-152=mmmmmmmm fp-160=mmmmmmmm fp-176=???????m\
+    \ fp-184=mmmmmmmm fp-192=mmmmmmmm fp-200_w=map_value\r\n; __u32 data_length =\
+    \ (__u32)(data_end - (data + sizeof(struct ethhdr) + sizeof(struct ipv6hdr)));\r\
+    \n!\r\n188: (1c) w7 -= w9               < ----  data_length is treated as a pointer\r\
+    \n!\r\n; data_length &= 1023;\r\n189: (54) w7 &= 1023\r\n; ret = bpf_skb_load_bytes(skb,\
+    \ sizeof(struct ethhdr) + sizeof(struct ipv6hdr), packet_data_buffer, data_length);\r\
+    \n190: (bf) r1 = r6\r\n191: (b4) w2 = 54\r\n192: (79) r3 = *(u64 *)(r10 -200)\r\
+    \n!\r\n193: (bc) w4 = w7    < --- If I read it right then it should contain the\
+    \ u32 data length\r\n!\r\n194: (85) call bpf_skb_load_bytes#26\r\n R0=map_value(id=0,off=0,ks=4,vs=1024,imm=0)\
+    \ R1_w=ctx(id=0,off=0,imm=0) R2_w=inv54 R3_w=map_value(id=0,off=0,ks=4,vs=1024,imm=0)\
+    \ R4_w=inv(id=0,umax_value=1023,var_off=(0x0; 0x3ff)) R6=ctx(id=0,off=0,imm=0)\
+    \ R7_w=inv(id=0,umax_value=1023,var_off=(0x0; 0x3ff)) R8=map_value(id=0,off=0,ks=19,vs=256,imm=0)\
+    \ R9=pkt(id=0,off=54,r=54,imm=0) R10=fp0 fp-8=mmmm???? fp-144=?????mmm fp-152=mmmmmmmm\
+    \ fp-160=mmmmmmmm fp-176=???????m fp-184=mmmmmmmm fp-192=mmmmmmmm fp-200_w=map_value\r\
+    \ninvalid access to map value, value_size=1024 off=0 size=0\r\nR3 min value is\
+    \ outside of the allowed memory range\r\nprocessed 183 insns (limit 1000000) max_states_per_insn\
+    \ 0 total_states 12 peak_states 12 mark_read 10\r\n\r\n```\r\n\r\nWhen I use a\
+    \ constant instead of a `data_length` variable verifier passes:\r\n```\r\n; packet_data_buffer\
+    \ = bpf_map_lookup_elem(&packet_data_map, &packet_data_map_id);\r\n183: (18) r1\
+    \ = 0xffff9c59c3a34800\r\n185: (85) call bpf_map_lookup_elem#1\r\n186: (7b) *(u64\
+    \ *)(r10 -200) = r0\r\n; if (!packet_data_buffer)\r\n187: (15) if r0 == 0x0 goto\
+    \ pc+50\r\n R0=map_value(id=0,off=0,ks=4,vs=1024,imm=0) R6=ctx(id=0,off=0,imm=0)\
+    \ R7=pkt(id=0,off=54,r=54,imm=0) R8=map_value(id=0,off=0,ks=19,vs=256,imm=0) R9=pkt_end(id=0,off=0,imm=0)\
+    \ R10=fp0 fp-8=mmmm???? fp-144=?????mmm fp-152=mmmmmmmm fp-160=mmmmmmmm fp-176=???????m\
+    \ fp-184=mmmmmmmm fp-192=mmmmmmmm fp-200_w=map_value\r\n; ret = bpf_skb_load_bytes(skb,\
+    \ sizeof(struct ethhdr) + sizeof(struct ipv6hdr), packet_data_buffer, dl);\r\n\
+    188: (bf) r1 = r6\r\n189: (b4) w2 = 54\r\n190: (79) r3 = *(u64 *)(r10 -200)\r\n\
+    191: (b4) w4 = 64                                      < ----- parameter passed\
+    \ as length\r\n192: (85) call bpf_skb_load_bytes#26\r\n R0=map_value(id=0,off=0,ks=4,vs=1024,imm=0)\
+    \ R1_w=ctx(id=0,off=0,imm=0) R2_w=inv54 R3_w=map_value(id=0,off=0,ks=4,vs=1024,imm=0)\
+    \ R4_w=inv64 R6=ctx(id=0,off=0,imm=0) R7=pkt(id=0,off=54,r=54,imm=0) R8=map_value(id=0,off=0,ks=19,vs=256,imm=0)\
+    \ R9=pkt_end(id=0,off=0,imm=0) R10=fp0 fp-8=mmmm???? fp-144=?????mmm fp-152=mmmmmmmm\
+    \ fp-160=mmmmmmmm fp-176=???????m fp-184=mmmmmmmm fp-192=mmmmmmmm fp-200_w=map_value\r\
+    \nlast_idx 192 first_idx 186\r\nregs=10 stack=0 before 191: (b4) w4 = 64\r\n;\
+    \ if (ret < 0)\r\n193: (c6) if w0 s< 0x0 goto pc+44\r\n```\r\nIn both working\
+    \ and non working cases R3 looks exactly the same: `R3_w=map_value(id=0,off=0,ks=4,vs=1024,imm=0)`\
+    \ the difference is how length parameter is viewed:\r\n- non working case R4_w\
+    \ get value from `R7=invP(id=0,umax_value=1023,var_off=(0x0; 0x3ff))` which make\
+    \ sense and \r\n- working case `R4_w=inv64`\r\n\r\nI would appreciate if somebody\
+    \ could suggest what else can be done to make verifier happy.  "
+  comments:
+  - url: https://github.com/iovisor/bcc/issues/3269#issuecomment-778243446
+    author: sbezverk
+    author_association: NONE
+    created_at: '2021-02-12T14:55:47Z'
+    body_text: '@yonghong-song  Appreciate if you could check, I found some of your
+      suggestion to work around similar issues, unfortunately in my case they do not
+      work. Thanks a lot!'
+  - url: https://github.com/iovisor/bcc/issues/3269#issuecomment-780800856
+    author: yonghong-song
+    author_association: COLLABORATOR
+    created_at: '2021-02-17T19:36:46Z'
+    body_text: "Could you construct a self-contained example so I can take a look?\
+      \ Which kernel version did you use? I am asking since recent kernel improved\
+      \ alu32 tracking (32-bit register tracking like w7 above). For example, for\r\
+      \n```\r\nR4_w=inv(id=0,umax_value=1023,var_off=(0x0; 0x3ff))\r\n```\r\nI did\
+      \ not see update for {s, u}32_max/min_value, s{min, max}_value etc. Maybe some\
+      \ verifier improvements are needed."
+  - url: https://github.com/iovisor/bcc/issues/3269#issuecomment-784662214
+    author: sbezverk
+    author_association: NONE
+    created_at: '2021-02-24T01:21:53Z'
+    body_text: "@yonghong-song  It is a bit hard to build self contained example,\r\
+      \n\r\nhere is my kernel version:\r\n`Linux dev-ubuntu-1 5.10.10-051010-generic\
+      \ #202101231639 SMP Sat Jan 23 17:16:37 UTC 2021 x86_64 x86_64 x86_64 GNU/Linux`\r\
+      \n\r\nIf you could think of a way to improve verifier, please let me know, I\
+      \ can easily test it."
+  - url: https://github.com/iovisor/bcc/issues/3269#issuecomment-786103734
+    author: yonghong-song
+    author_association: COLLABORATOR
+    created_at: '2021-02-25T18:18:44Z'
+    body_text: maybe you could post your bpf program? It may not work out of box,
+      but people may be able to tweak your program to reproduce the issue?
+  - url: https://github.com/iovisor/bcc/issues/3269#issuecomment-2290758538
+    author: stgraham2000
+    author_association: NONE
+    created_at: '2024-08-15T06:35:53Z'
+    body_text: '@sbezverk did you ever figure this one out? I''m having the same problem
+      using Rust + Aya. Even out of the box examples are failing. I also find that
+      if I make the length a constant then the problem goes away.'
+  reconstruction_seed:
+    source_origin: GitHub issue semantic reconstruction
+    captured_error: 'R4 invalid zero-sized read: u64=[0,1023]'
+    verifier_error_match: mismatch
+    notes: Semantic C reconstruction of the skb_load_bytes variable-length copy into
+      a 1024-byte per-CPU array map from iovisor/bcc#3269.

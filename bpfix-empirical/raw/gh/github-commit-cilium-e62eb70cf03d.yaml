@@ -1,0 +1,190 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-e62eb70cf03d
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/e62eb70cf03d2ac055a9bf6828b224aa01060948
+  title: 'bpf: Additional tail call for IPvX-only setups'
+  repository: https://github.com/cilium/cilium
+  commit: e62eb70cf03d2ac055a9bf6828b224aa01060948
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-e62eb70cf03d.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: environment_required
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Adds tail calls for IPv4-only/IPv6-only setups to control generated datapath
+    complexity; a generic stack-limit reject was not admitted because it does not
+    match the raw complexity failure.
+raw:
+  case_id: github-commit-cilium-e62eb70cf03d
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: e62eb70cf03d2ac055a9bf6828b224aa01060948
+  commit_message: 'bpf: Additional tail call for IPvX-only setups'
+  commit_date: '2021-10-04'
+  fix_type: inline_hint
+  buggy_code: "// FILE: bpf/bpf_lxc.c\n// CONTEXT: static __always_inline int handle_ipv6(struct\
+    \ __ctx_buff *ctx, __u32 *dstID)\n\t\t\treturn DROP_INVALID;\n\n\t\tret = icmp6_handle(ctx,\
+    \ ETH_HLEN, ip6, METRIC_EGRESS);\n\t\tif (IS_ERR(ret))\n\t\t\treturn ret;\n\t\
+    }\n\n\t/* Perform L3 action on the frame */\n\ttuple.nexthdr = ip6->nexthdr;\n\
+    \treturn ipv6_l3_from_lxc(ctx, &tuple, ETH_HLEN, ip6, dstID);\n}\n\ndeclare_tailcall_if(__or(__and(is_defined(ENABLE_IPV4),\
+    \ is_defined(ENABLE_IPV6)),\n\t\t\t is_defined(DEBUG)), CILIUM_CALL_IPV6_FROM_LXC)\n\
+    int tail_handle_ipv6(struct __ctx_buff *ctx)\n{\n\t__u32 dstID = 0;\n\tint ret\
+    \ = handle_ipv6(ctx, &dstID);\n\n\tif (IS_ERR(ret)) {\n\t\treturn send_drop_notify(ctx,\
+    \ SECLABEL, dstID, 0, ret,\n\t\t\t\t\tCTX_ACT_DROP, METRIC_EGRESS);\n\t}\n\n\t\
+    return ret;\n}\n\n// CONTEXT: pass_to_stack:\n#endif\n\t}\n\n#ifdef ENCAP_IFINDEX\n\
+    encrypt_to_stack:\n#endif\n\tsend_trace_notify(ctx, TRACE_TO_STACK, SECLABEL,\
+    \ *dstID, 0, 0,\n\t\t\t  reason, monitor);\n\tcilium_dbg_capture(ctx, DBG_CAPTURE_DELIVERY,\
+    \ 0);\n\treturn CTX_ACT_OK;\n}\n\ndeclare_tailcall_if(__or(__and(is_defined(ENABLE_IPV4),\
+    \ is_defined(ENABLE_IPV6)),\n\t\t\t is_defined(DEBUG)), CILIUM_CALL_IPV4_FROM_LXC)\n\
+    int tail_handle_ipv4(struct __ctx_buff *ctx)\n{\n\t__u32 dstID = 0;\n\tint ret\
+    \ = handle_ipv4_from_lxc(ctx, &dstID);\n\n\tif (IS_ERR(ret))\n\t\treturn send_drop_notify(ctx,\
+    \ SECLABEL, dstID, 0, ret,\n\t\t\t\t\tCTX_ACT_DROP, METRIC_EGRESS);\n\n\treturn\
+    \ ret;\n}\n\n\n// CONTEXT: int handle_xgress(struct __ctx_buff *ctx)\n\tsend_trace_notify(ctx,\
+    \ TRACE_FROM_LXC, SECLABEL, 0, 0, 0, 0,\n\t\t\t  TRACE_PAYLOAD_LEN);\n\n\tif (!validate_ethertype(ctx,\
+    \ &proto)) {\n\t\tret = DROP_UNSUPPORTED_L2;\n\t\tgoto out;\n\t}\n\n\tswitch (proto)\
+    \ {\n#ifdef ENABLE_IPV6\n\tcase bpf_htons(ETH_P_IPV6):\n\t\tedt_set_aggregate(ctx,\
+    \ LXC_ID);\n\t\tinvoke_tailcall_if(__or(__and(is_defined(ENABLE_IPV4), is_defined(ENABLE_IPV6)),\n\
+    \t\t\t\t\tis_defined(DEBUG)),\n\t\t\t\t   CILIUM_CALL_IPV6_FROM_LXC, tail_handle_ipv6);\n\
+    \t\tbreak;\n#endif /* ENABLE_IPV6 */\n#ifdef ENABLE_IPV4\n\tcase bpf_htons(ETH_P_IP):\n\
+    \t\tedt_set_aggregate(ctx, LXC_ID);\n\t\tinvoke_tailcall_if(__or(__and(is_defined(ENABLE_IPV4),\
+    \ is_defined(ENABLE_IPV6)),\n\t\t\t\t\tis_defined(DEBUG)),\n\t\t\t\t   CILIUM_CALL_IPV4_FROM_LXC,\
+    \ tail_handle_ipv4);\n\t\tbreak;\n#ifdef ENABLE_ARP_PASSTHROUGH\n\tcase bpf_htons(ETH_P_ARP):\n\
+    \t\tret = CTX_ACT_OK;\n\t\tbreak;\n#elif defined(ENABLE_ARP_RESPONDER)\n\tcase\
+    \ bpf_htons(ETH_P_ARP):\n\t\tep_tail_call(ctx, CILIUM_CALL_ARP);\n\t\tret = DROP_MISSED_TAIL_CALL;\n\
+    \t\tbreak;\n#endif /* ENABLE_ARP_RESPONDER */\n\n// CONTEXT: int tail_ipv6_policy(struct\
+    \ __ctx_buff *ctx)\n\t\t\t  &proxy_port, from_host);\n\tif (ret == POLICY_ACT_PROXY_REDIRECT)\n\
+    \t\tret = ctx_redirect_to_proxy6(ctx, &tuple, proxy_port, from_host);\n\tif (IS_ERR(ret))\n\
+    \t\treturn send_drop_notify(ctx, src_label, SECLABEL, LXC_ID,\n\t\t\t\t\tret,\
+    \ CTX_ACT_DROP, METRIC_INGRESS);\n\n\t/* Store meta: essential for proxy ingress,\
+    \ see bpf_host.c */\n\tctx_store_meta(ctx, CB_PROXY_MAGIC, ctx->mark);\n\treturn\
+    \ ret;\n}\n\ndeclare_tailcall_if(__and(is_defined(ENABLE_IPV4), is_defined(ENABLE_IPV6)),\n\
+    \t\t    CILIUM_CALL_IPV6_TO_ENDPOINT)\nint tail_ipv6_to_endpoint(struct __ctx_buff\
+    \ *ctx)\n{\n\t__u32 src_identity = ctx_load_meta(ctx, CB_SRC_LABEL);\n\tvoid *data,\
+    \ *data_end;\n\tstruct ipv6hdr *ip6;\n\t__u16 proxy_port = 0;\n\t__u8 reason;\n\
+    \tint ret;\n\n\tif (!revalidate_data(ctx, &data, &data_end, &ip6)) {\n\t\tret\
+    \ = DROP_INVALID;\n\n// CONTEXT: int tail_ipv4_policy(struct __ctx_buff *ctx)\n\
+    \t\t\t  &proxy_port, from_host);\n\tif (ret == POLICY_ACT_PROXY_REDIRECT)\n\t\t\
+    ret = ctx_redirect_to_proxy4(ctx, &tuple, proxy_port, from_host);\n\tif (IS_ERR(ret))\n\
+    \t\treturn send_drop_notify(ctx, src_label, SECLABEL, LXC_ID,\n\t\t\t\t\tret,\
+    \ CTX_ACT_DROP, METRIC_INGRESS);\n\n\t/* Store meta: essential for proxy ingress,\
+    \ see bpf_host.c */\n\tctx_store_meta(ctx, CB_PROXY_MAGIC, ctx->mark);\n\treturn\
+    \ ret;\n}\n\ndeclare_tailcall_if(__and(is_defined(ENABLE_IPV4), is_defined(ENABLE_IPV6)),\n\
+    \t\t    CILIUM_CALL_IPV4_TO_ENDPOINT)\nint tail_ipv4_to_endpoint(struct __ctx_buff\
+    \ *ctx)\n{\n\t__u32 src_identity = ctx_load_meta(ctx, CB_SRC_LABEL);\n\tvoid *data,\
+    \ *data_end;\n\tstruct iphdr *ip4;\n\t__u16 proxy_port = 0;\n\t__u8 reason;\n\t\
+    int ret;\n\n\tif (!revalidate_data(ctx, &data, &data_end, &ip4)) {\n\t\tret =\
+    \ DROP_INVALID;\n\n// CONTEXT: int handle_to_container(struct __ctx_buff *ctx)\n\
+    \t\t\t  ctx->ingress_ifindex, 0, TRACE_PAYLOAD_LEN);\n\n\tctx_store_meta(ctx,\
+    \ CB_SRC_LABEL, identity);\n\n\tswitch (proto) {\n#if defined(ENABLE_ARP_PASSTHROUGH)\
+    \ || defined(ENABLE_ARP_RESPONDER)\n\tcase bpf_htons(ETH_P_ARP):\n\t\tret = CTX_ACT_OK;\n\
+    \t\tbreak;\n#endif\n#ifdef ENABLE_IPV6\n\tcase bpf_htons(ETH_P_IPV6):\n\t\tinvoke_tailcall_if(__and(is_defined(ENABLE_IPV4),\
+    \ is_defined(ENABLE_IPV6)),\n\t\t\t\t   CILIUM_CALL_IPV6_TO_ENDPOINT, tail_ipv6_to_endpoint);\n\
+    \t\tbreak;\n#endif /* ENABLE_IPV6 */\n#ifdef ENABLE_IPV4\n\tcase bpf_htons(ETH_P_IP):\n\
+    \t\tinvoke_tailcall_if(__and(is_defined(ENABLE_IPV4), is_defined(ENABLE_IPV6)),\n\
+    \t\t\t\t   CILIUM_CALL_IPV4_TO_ENDPOINT, tail_ipv4_to_endpoint);\n\t\tbreak;\n\
+    #endif /* ENABLE_IPV4 */\n\tdefault:\n\t\tret = DROP_UNKNOWN_L3;\n\t\tbreak;\n\
+    \t}\n\nout:\n\tif (IS_ERR(ret))\n\t\treturn send_drop_notify(ctx, identity, SECLABEL,\
+    \ LXC_ID,\n\t\t\t\t\tret, CTX_ACT_DROP, METRIC_INGRESS);\n\n// FILE: bpf/lib/tailcall.h\n\
+    #define __and_0(y)  __eval(__and_0, y)\n#define __and_1(y)  __eval(__and_1, y)\n\
+    #define __and(x, y) __eval(__and_, x)(y)\n\n#define __or_00 0\n#define __or_01\
+    \ 1\n#define __or_10 1\n#define __or_11 1\n#define __or_0(y)  __eval(__or_0, y)\n\
+    #define __or_1(y)  __eval(__or_1, y)\n#define __or(x, y) __eval(__or_, x)(y)\n\
+    \n/* declare_tailcall_if() and invoke_tailcall_if() is a pair\n * of helpers which\
+    \ based on COND either selects to emit a\n * tail call for the underlying function\
+    \ when true or emits\n * it as inlined when false. COND can be selected by one\
+    \ or\n * multiple compile time flags.\n *\n * Usage example:\n *\n * 1) Declaration:\n\
+    \ *\n * declare_tailcall_if(__and(is_defined(ENABLE_IPV4), is_defined(ENABLE_IPV6)),\n\
+    \ *                     CILIUM_CALL_FOO)"
+  fixed_code: "// FILE: bpf/bpf_lxc.c\n// CONTEXT: static __always_inline int handle_ipv6(struct\
+    \ __ctx_buff *ctx, __u32 *dstID)\n\t\t\treturn DROP_INVALID;\n\n\t\tret = icmp6_handle(ctx,\
+    \ ETH_HLEN, ip6, METRIC_EGRESS);\n\t\tif (IS_ERR(ret))\n\t\t\treturn ret;\n\t\
+    }\n\n\t/* Perform L3 action on the frame */\n\ttuple.nexthdr = ip6->nexthdr;\n\
+    \treturn ipv6_l3_from_lxc(ctx, &tuple, ETH_HLEN, ip6, dstID);\n}\n\ndeclare_tailcall_if(__or3(is_defined(ENABLE_IPV4),\
+    \ is_defined(ENABLE_IPV6),\n\t\t\t  is_defined(DEBUG)), CILIUM_CALL_IPV6_FROM_LXC)\n\
+    int tail_handle_ipv6(struct __ctx_buff *ctx)\n{\n\t__u32 dstID = 0;\n\tint ret\
+    \ = handle_ipv6(ctx, &dstID);\n\n\tif (IS_ERR(ret)) {\n\t\treturn send_drop_notify(ctx,\
+    \ SECLABEL, dstID, 0, ret,\n\t\t\t\t\tCTX_ACT_DROP, METRIC_EGRESS);\n\t}\n\n\t\
+    return ret;\n}\n\n// CONTEXT: pass_to_stack:\n#endif\n\t}\n\n#ifdef ENCAP_IFINDEX\n\
+    encrypt_to_stack:\n#endif\n\tsend_trace_notify(ctx, TRACE_TO_STACK, SECLABEL,\
+    \ *dstID, 0, 0,\n\t\t\t  reason, monitor);\n\tcilium_dbg_capture(ctx, DBG_CAPTURE_DELIVERY,\
+    \ 0);\n\treturn CTX_ACT_OK;\n}\n\ndeclare_tailcall_if(__or3(is_defined(ENABLE_IPV4),\
+    \ is_defined(ENABLE_IPV6),\n\t\t\t  is_defined(DEBUG)), CILIUM_CALL_IPV4_FROM_LXC)\n\
+    int tail_handle_ipv4(struct __ctx_buff *ctx)\n{\n\t__u32 dstID = 0;\n\tint ret\
+    \ = handle_ipv4_from_lxc(ctx, &dstID);\n\n\tif (IS_ERR(ret))\n\t\treturn send_drop_notify(ctx,\
+    \ SECLABEL, dstID, 0, ret,\n\t\t\t\t\tCTX_ACT_DROP, METRIC_EGRESS);\n\n\treturn\
+    \ ret;\n}\n\n\n// CONTEXT: int handle_xgress(struct __ctx_buff *ctx)\n\tsend_trace_notify(ctx,\
+    \ TRACE_FROM_LXC, SECLABEL, 0, 0, 0, 0,\n\t\t\t  TRACE_PAYLOAD_LEN);\n\n\tif (!validate_ethertype(ctx,\
+    \ &proto)) {\n\t\tret = DROP_UNSUPPORTED_L2;\n\t\tgoto out;\n\t}\n\n\tswitch (proto)\
+    \ {\n#ifdef ENABLE_IPV6\n\tcase bpf_htons(ETH_P_IPV6):\n\t\tedt_set_aggregate(ctx,\
+    \ LXC_ID);\n\t\tinvoke_tailcall_if(__or3(is_defined(ENABLE_IPV4), is_defined(ENABLE_IPV6),\n\
+    \t\t\t\t\t is_defined(DEBUG)),\n\t\t\t\t   CILIUM_CALL_IPV6_FROM_LXC, tail_handle_ipv6);\n\
+    \t\tbreak;\n#endif /* ENABLE_IPV6 */\n#ifdef ENABLE_IPV4\n\tcase bpf_htons(ETH_P_IP):\n\
+    \t\tedt_set_aggregate(ctx, LXC_ID);\n\t\tinvoke_tailcall_if(__or3(is_defined(ENABLE_IPV4),\
+    \ is_defined(ENABLE_IPV6),\n\t\t\t\t\t is_defined(DEBUG)),\n\t\t\t\t   CILIUM_CALL_IPV4_FROM_LXC,\
+    \ tail_handle_ipv4);\n\t\tbreak;\n#ifdef ENABLE_ARP_PASSTHROUGH\n\tcase bpf_htons(ETH_P_ARP):\n\
+    \t\tret = CTX_ACT_OK;\n\t\tbreak;\n#elif defined(ENABLE_ARP_RESPONDER)\n\tcase\
+    \ bpf_htons(ETH_P_ARP):\n\t\tep_tail_call(ctx, CILIUM_CALL_ARP);\n\t\tret = DROP_MISSED_TAIL_CALL;\n\
+    \t\tbreak;\n#endif /* ENABLE_ARP_RESPONDER */\n\n// CONTEXT: int tail_ipv6_policy(struct\
+    \ __ctx_buff *ctx)\n\t\t\t  &proxy_port, from_host);\n\tif (ret == POLICY_ACT_PROXY_REDIRECT)\n\
+    \t\tret = ctx_redirect_to_proxy6(ctx, &tuple, proxy_port, from_host);\n\tif (IS_ERR(ret))\n\
+    \t\treturn send_drop_notify(ctx, src_label, SECLABEL, LXC_ID,\n\t\t\t\t\tret,\
+    \ CTX_ACT_DROP, METRIC_INGRESS);\n\n\t/* Store meta: essential for proxy ingress,\
+    \ see bpf_host.c */\n\tctx_store_meta(ctx, CB_PROXY_MAGIC, ctx->mark);\n\treturn\
+    \ ret;\n}\n\ndeclare_tailcall_if(__or(is_defined(ENABLE_IPV4), is_defined(ENABLE_IPV6)),\n\
+    \t\t    CILIUM_CALL_IPV6_TO_ENDPOINT)\nint tail_ipv6_to_endpoint(struct __ctx_buff\
+    \ *ctx)\n{\n\t__u32 src_identity = ctx_load_meta(ctx, CB_SRC_LABEL);\n\tvoid *data,\
+    \ *data_end;\n\tstruct ipv6hdr *ip6;\n\t__u16 proxy_port = 0;\n\t__u8 reason;\n\
+    \tint ret;\n\n\tif (!revalidate_data(ctx, &data, &data_end, &ip6)) {\n\t\tret\
+    \ = DROP_INVALID;\n\n// CONTEXT: int tail_ipv4_policy(struct __ctx_buff *ctx)\n\
+    \t\t\t  &proxy_port, from_host);\n\tif (ret == POLICY_ACT_PROXY_REDIRECT)\n\t\t\
+    ret = ctx_redirect_to_proxy4(ctx, &tuple, proxy_port, from_host);\n\tif (IS_ERR(ret))\n\
+    \t\treturn send_drop_notify(ctx, src_label, SECLABEL, LXC_ID,\n\t\t\t\t\tret,\
+    \ CTX_ACT_DROP, METRIC_INGRESS);\n\n\t/* Store meta: essential for proxy ingress,\
+    \ see bpf_host.c */\n\tctx_store_meta(ctx, CB_PROXY_MAGIC, ctx->mark);\n\treturn\
+    \ ret;\n}\n\ndeclare_tailcall_if(__or(is_defined(ENABLE_IPV4), is_defined(ENABLE_IPV6)),\n\
+    \t\t    CILIUM_CALL_IPV4_TO_ENDPOINT)\nint tail_ipv4_to_endpoint(struct __ctx_buff\
+    \ *ctx)\n{\n\t__u32 src_identity = ctx_load_meta(ctx, CB_SRC_LABEL);\n\tvoid *data,\
+    \ *data_end;\n\tstruct iphdr *ip4;\n\t__u16 proxy_port = 0;\n\t__u8 reason;\n\t\
+    int ret;\n\n\tif (!revalidate_data(ctx, &data, &data_end, &ip4)) {\n\t\tret =\
+    \ DROP_INVALID;\n\n// CONTEXT: int handle_to_container(struct __ctx_buff *ctx)\n\
+    \t\t\t  ctx->ingress_ifindex, 0, TRACE_PAYLOAD_LEN);\n\n\tctx_store_meta(ctx,\
+    \ CB_SRC_LABEL, identity);\n\n\tswitch (proto) {\n#if defined(ENABLE_ARP_PASSTHROUGH)\
+    \ || defined(ENABLE_ARP_RESPONDER)\n\tcase bpf_htons(ETH_P_ARP):\n\t\tret = CTX_ACT_OK;\n\
+    \t\tbreak;\n#endif\n#ifdef ENABLE_IPV6\n\tcase bpf_htons(ETH_P_IPV6):\n\t\tinvoke_tailcall_if(__or(is_defined(ENABLE_IPV4),\
+    \ is_defined(ENABLE_IPV6)),\n\t\t\t\t   CILIUM_CALL_IPV6_TO_ENDPOINT, tail_ipv6_to_endpoint);\n\
+    \t\tbreak;\n#endif /* ENABLE_IPV6 */\n#ifdef ENABLE_IPV4\n\tcase bpf_htons(ETH_P_IP):\n\
+    \t\tinvoke_tailcall_if(__or(is_defined(ENABLE_IPV4), is_defined(ENABLE_IPV6)),\n\
+    \t\t\t\t   CILIUM_CALL_IPV4_TO_ENDPOINT, tail_ipv4_to_endpoint);\n\t\tbreak;\n\
+    #endif /* ENABLE_IPV4 */\n\tdefault:\n\t\tret = DROP_UNKNOWN_L3;\n\t\tbreak;\n\
+    \t}\n\nout:\n\tif (IS_ERR(ret))\n\t\treturn send_drop_notify(ctx, identity, SECLABEL,\
+    \ LXC_ID,\n\t\t\t\t\tret, CTX_ACT_DROP, METRIC_INGRESS);\n\n// FILE: bpf/lib/tailcall.h\n\
+    #define __and_0(y)  __eval(__and_0, y)\n#define __and_1(y)  __eval(__and_1, y)\n\
+    #define __and(x, y) __eval(__and_, x)(y)\n\n#define __or_00 0\n#define __or_01\
+    \ 1\n#define __or_10 1\n#define __or_11 1\n#define __or_0(y)  __eval(__or_0, y)\n\
+    #define __or_1(y)  __eval(__or_1, y)\n#define __or(x, y) __eval(__or_, x)(y)\n\
+    \n#define __or3_1(y, z)  1\n#define __or3_0(y, z)  __or(y, z)\n#define __or3(x,\
+    \ y, z) __eval(__or3_, x)(y, z)\n\n/* declare_tailcall_if() and invoke_tailcall_if()\
+    \ is a pair\n * of helpers which based on COND either selects to emit a\n * tail\
+    \ call for the underlying function when true or emits\n * it as inlined when false.\
+    \ COND can be selected by one or\n * multiple compile time flags.\n *\n * Usage\
+    \ example:\n *\n * 1) Declaration:\n *\n * declare_tailcall_if(__and(is_defined(ENABLE_IPV4),\
+    \ is_defined(ENABLE_IPV6)),\n *                     CILIUM_CALL_FOO)"
+  diff_summary: |-
+    bpf/bpf_lxc.c:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: static __always_inline int handle_ipv6(struct __ctx_buff *ctx, __u32 *dstID), pass_to_stack:, int handle_xgress(struct __ctx_buff *ctx).
+    bpf/lib/tailcall.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: the touched section.
+    - Commit subject: bpf: Additional tail call for IPvX-only setups.

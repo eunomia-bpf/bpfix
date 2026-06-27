@@ -1,0 +1,57 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-libbpf-0e3971339f06
+source_kind: github_commit
+source:
+  url: https://github.com/libbpf/libbpf/commit/0e3971339f06c23aa9402a33057ecb3aac7795aa
+  title: 'libbpf: fix sym_is_subprog() logic for weak global subprogs'
+  repository: https://github.com/libbpf/libbpf
+  commit: 0e3971339f06c23aa9402a33057ecb3aac7795aa
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-libbpf-0e3971339f06.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: missing_source
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Fixes sym_is_subprog() recognition for weak global subprogram symbols. A
+    replay would need a BPF object exercising that symbol layout; the raw record contains
+    only libbpf implementation snippets and no verifier log.
+raw:
+  case_id: github-commit-libbpf-0e3971339f06
+  source: github_commits
+  repository: https://github.com/libbpf/libbpf
+  commit_hash: 0e3971339f06c23aa9402a33057ecb3aac7795aa
+  commit_message: 'libbpf: fix sym_is_subprog() logic for weak global subprogs'
+  commit_date: '2024-10-08'
+  fix_type: other
+  buggy_code: "// FILE: src/libbpf.c\n// CONTEXT: static bool sym_is_subprog(const\
+    \ Elf64_Sym *sym, int text_shndx)\n\tint bind = ELF64_ST_BIND(sym->st_info);\n\
+    \tint type = ELF64_ST_TYPE(sym->st_info);\n\n\t/* in .text section */\n\tif (sym->st_shndx\
+    \ != text_shndx)\n\t\treturn false;\n\n\t/* local function */\n\tif (bind == STB_LOCAL\
+    \ && type == STT_SECTION)\n\t\treturn true;\n\n\t/* global function */\n\treturn\
+    \ bind == STB_GLOBAL && type == STT_FUNC;\n}\n\nstatic int find_extern_btf_id(const\
+    \ struct btf *btf, const char *ext_name)\n{\n\tconst struct btf_type *t;\n\tconst\
+    \ char *tname;\n\tint i, n;\n\n\tif (!btf)\n\t\treturn -ESRCH;\n\n\tn = btf__type_cnt(btf);"
+  fixed_code: "// FILE: src/libbpf.c\n// CONTEXT: static bool sym_is_subprog(const\
+    \ Elf64_Sym *sym, int text_shndx)\n\tint bind = ELF64_ST_BIND(sym->st_info);\n\
+    \tint type = ELF64_ST_TYPE(sym->st_info);\n\n\t/* in .text section */\n\tif (sym->st_shndx\
+    \ != text_shndx)\n\t\treturn false;\n\n\t/* local function */\n\tif (bind == STB_LOCAL\
+    \ && type == STT_SECTION)\n\t\treturn true;\n\n\t/* global function */\n\treturn\
+    \ (bind == STB_GLOBAL || bind == STB_WEAK) && type == STT_FUNC;\n}\n\nstatic int\
+    \ find_extern_btf_id(const struct btf *btf, const char *ext_name)\n{\n\tconst\
+    \ struct btf_type *t;\n\tconst char *tname;\n\tint i, n;\n\n\tif (!btf)\n\t\t\
+    return -ESRCH;\n\n\tn = btf__type_cnt(btf);"
+  diff_summary: |-
+    src/libbpf.c:
+    - Applied a small verifier-related code change captured by the exact before/after snippets below.
+    - Affected context: static bool sym_is_subprog(const Elf64_Sym *sym, int text_shndx).
+    - Commit subject: libbpf: fix sym_is_subprog() logic for weak global subprogs.

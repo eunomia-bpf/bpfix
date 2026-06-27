@@ -1,0 +1,57 @@
+schema_version: bpfix.case/v1
+case_id: stackoverflow-72606055
+source:
+  kind: stackoverflow
+  url: https://stackoverflow.com/questions/72606055
+  repository: null
+  commit: null
+  upstream_file: null
+  raw_excerpt_files:
+  - bpfix-empirical/raw/so/stackoverflow-72606055.yaml
+reproducer:
+  reconstruction: reconstructed
+  notes: Imported from reconstructed external source into bpfix-empirical; replay logs are generated
+    as replay-verifier.log.
+capture:
+  capture_id: stackoverflow-72606055__kernel-6.15.11-clang-18-log2
+  terminal_error: R1 type=scalar expected=map_ptr
+  rejected_insn_idx: 4
+external_match:
+  status: partial
+  policy: terminal_error
+  matched_messages:
+  - R1 type=inv expected=map_ptr
+  - R1 type=scalar expected=map_ptr
+  notes: Imported only because verifier_error_match was exact/partial in the verified SO/GH
+    artifact.
+label:
+  capture_id: stackoverflow-72606055__kernel-6.15.11-clang-18-log2
+  taxonomy_class: environment_or_configuration
+  mechanism_tags:
+  - loader_relocation
+  - map_relocation
+  - helper_argument_type
+  obligation_ids:
+  - BPFIX-O023
+  evidence_tags:
+  - terminal_error_scalar_expected_map_ptr
+  - raw_ebpf_loaded_without_map_relocation
+  - fix_requires_loader_relocation
+  error_id: BPFIX-E021
+  confidence: medium
+  label_source: external_replay_reconstruction
+  root_cause_description: External StackOverflow report loaded raw eBPF instructions without
+    applying the map relocation, so the helper received a scalar zero instead of a map pointer.
+  root_cause_insn_idx: 4
+  rejected_line: value = bpf_map_lookup_elem(missing_relocation, &index);
+  root_cause_line: value = bpf_map_lookup_elem(missing_relocation, &index);
+  localization_confidence: high
+  fix_type: loader_fix
+  fix_direction: Load the ELF through libbpf or otherwise apply map relocations so bpf_map_lookup_elem
+    receives a verifier-tracked map pointer.
+repair:
+  eligible: true
+reporting:
+  family_id: stackoverflow-72606055
+  representative: true
+  notes: External SO/GH case imported from verified exact/partial artifact.

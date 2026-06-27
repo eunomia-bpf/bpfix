@@ -1,0 +1,94 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-321ec097bcf1
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/321ec097bcf14f76502c2f731017504c72c20cfc
+  title: 'bpf: Remove DNS quirk for monitor aggregation'
+  repository: https://github.com/cilium/cilium
+  commit: 321ec097bcf14f76502c2f731017504c72c20cfc
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-321ec097bcf1.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: environment_required
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Conntrack inline/complexity workaround lacks a captured verifier log and
+    appears dependent on historical verifier limits.
+raw:
+  case_id: github-commit-cilium-321ec097bcf1
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: 321ec097bcf14f76502c2f731017504c72c20cfc
+  commit_message: 'bpf: Remove DNS quirk for monitor aggregation'
+  commit_date: '2022-03-10'
+  fix_type: inline_hint
+  buggy_code: "// FILE: bpf/lib/conntrack.h\n#include \"ipv6.h\"\n#include \"dbg.h\"\
+    \n#include \"l4.h\"\n#include \"nat46.h\"\n#include \"signal.h\"\n\nenum {\n\t\
+    ACTION_UNSPEC,\n\tACTION_CREATE,\n\tACTION_CLOSE,\n};\n\n/* conn_is_dns returns\
+    \ true if the connection is DNS, false otherwise.\n *\n * @dport: Connection destination\
+    \ port.\n *\n * To reduce program complexity, we ignore nexthdr and dir here:\n\
+    \ * nexthdr: The parser will not fill dport if nexthdr is not TCP/UDP.\n * dir:\
+    \     Ideally we would only consider responses, but requests are likely\n *  \
+    \        to be small anyway.\n */\nstatic __always_inline bool conn_is_dns(__u16\
+    \ dport)\n{\n\treturn dport == bpf_htons(53);\n}\n\nstatic __always_inline bool\
+    \ ct_entry_seen_both_syns(const struct ct_entry *entry)\n{\n\tbool rx_syn = entry->rx_flags_seen\
+    \ & TCP_FLAG_SYN;\n\tbool tx_syn = entry->tx_flags_seen & TCP_FLAG_SYN;\n\n\t\
+    return rx_syn && tx_syn;\n}\n\nunion tcp_flags {\n\tstruct {\n\t\t__u8 upper_bits;\n\
+    \t\t__u8 lower_bits;\n\n// CONTEXT: static __always_inline int ct_lookup6(const\
+    \ void *map,\n\t/* Lookup entry in forward direction */\n\tif (dir != CT_SERVICE)\
+    \ {\n\t\tipv6_ct_tuple_reverse(tuple);\n\t\tret = __ct_lookup(map, ctx, tuple,\
+    \ action, dir, ct_state,\n\t\t\t\t  is_tcp, tcp_flags, monitor);\n\t}\n\n#ifdef\
+    \ ENABLE_NAT46\n\tctx_store_meta(ctx, CB_NAT46_STATE, NAT46_CLEAR);\n#endif\n\
+    out:\n\tcilium_dbg(ctx, DBG_CT_VERDICT, ret < 0 ? -ret : ret, ct_state->rev_nat_index);\n\
+    \tif (conn_is_dns(tuple->dport))\n\t\t*monitor = MTU;\n\treturn ret;\n}\n\nstatic\
+    \ __always_inline int\nipv4_extract_tuple(struct __ctx_buff *ctx, struct ipv4_ct_tuple\
+    \ *tuple,\n\t\t   int *l4_off)\n{\n\tint l3_off = ETH_HLEN;\n\tvoid *data, *data_end;\n\
+    \tstruct iphdr *ip4;\n\n\tif (!revalidate_data(ctx, &data, &data_end, &ip4))\n\
+    \n// CONTEXT: static __always_inline int ct_lookup4(const void *map,\n\t}\n\n\t\
+    relax_verifier();\n\n\t/* Lookup entry in forward direction */\n\tif (dir != CT_SERVICE)\
+    \ {\n\t\tipv4_ct_tuple_reverse(tuple);\n\t\tret = __ct_lookup(map, ctx, tuple,\
+    \ action, dir, ct_state,\n\t\t\t\t  is_tcp, tcp_flags, monitor);\n\t}\nout:\n\t\
+    cilium_dbg(ctx, DBG_CT_VERDICT, ret < 0 ? -ret : ret, ct_state->rev_nat_index);\n\
+    \tif (conn_is_dns(tuple->dport))\n\t\t*monitor = MTU;\n\treturn ret;\n}\n\nstatic\
+    \ __always_inline void\nct_update6_backend_id(const void *map, const struct ipv6_ct_tuple\
+    \ *tuple,\n\t\t      const struct ct_state *state)\n{\n\tstruct ct_entry *entry;\n\
+    \n\tentry = map_lookup_elem(map, tuple);\n\tif (!entry)\n\t\treturn;"
+  fixed_code: "// FILE: bpf/lib/conntrack.h\n#include \"ipv6.h\"\n#include \"dbg.h\"\
+    \n#include \"l4.h\"\n#include \"nat46.h\"\n#include \"signal.h\"\n\nenum {\n\t\
+    ACTION_UNSPEC,\n\tACTION_CREATE,\n\tACTION_CLOSE,\n};\n\nstatic __always_inline\
+    \ bool ct_entry_seen_both_syns(const struct ct_entry *entry)\n{\n\tbool rx_syn\
+    \ = entry->rx_flags_seen & TCP_FLAG_SYN;\n\tbool tx_syn = entry->tx_flags_seen\
+    \ & TCP_FLAG_SYN;\n\n\treturn rx_syn && tx_syn;\n}\n\nunion tcp_flags {\n\tstruct\
+    \ {\n\t\t__u8 upper_bits;\n\t\t__u8 lower_bits;\n\n// CONTEXT: static __always_inline\
+    \ int ct_lookup6(const void *map,\n\t/* Lookup entry in forward direction */\n\
+    \tif (dir != CT_SERVICE) {\n\t\tipv6_ct_tuple_reverse(tuple);\n\t\tret = __ct_lookup(map,\
+    \ ctx, tuple, action, dir, ct_state,\n\t\t\t\t  is_tcp, tcp_flags, monitor);\n\
+    \t}\n\n#ifdef ENABLE_NAT46\n\tctx_store_meta(ctx, CB_NAT46_STATE, NAT46_CLEAR);\n\
+    #endif\nout:\n\tcilium_dbg(ctx, DBG_CT_VERDICT, ret < 0 ? -ret : ret, ct_state->rev_nat_index);\n\
+    \treturn ret;\n}\n\nstatic __always_inline int\nipv4_extract_tuple(struct __ctx_buff\
+    \ *ctx, struct ipv4_ct_tuple *tuple,\n\t\t   int *l4_off)\n{\n\tint l3_off = ETH_HLEN;\n\
+    \tvoid *data, *data_end;\n\tstruct iphdr *ip4;\n\n\tif (!revalidate_data(ctx,\
+    \ &data, &data_end, &ip4))\n\n// CONTEXT: static __always_inline int ct_lookup4(const\
+    \ void *map,\n\t}\n\n\trelax_verifier();\n\n\t/* Lookup entry in forward direction\
+    \ */\n\tif (dir != CT_SERVICE) {\n\t\tipv4_ct_tuple_reverse(tuple);\n\t\tret =\
+    \ __ct_lookup(map, ctx, tuple, action, dir, ct_state,\n\t\t\t\t  is_tcp, tcp_flags,\
+    \ monitor);\n\t}\nout:\n\tcilium_dbg(ctx, DBG_CT_VERDICT, ret < 0 ? -ret : ret,\
+    \ ct_state->rev_nat_index);\n\treturn ret;\n}\n\nstatic __always_inline void\n\
+    ct_update6_backend_id(const void *map, const struct ipv6_ct_tuple *tuple,\n\t\t\
+    \      const struct ct_state *state)\n{\n\tstruct ct_entry *entry;\n\n\tentry\
+    \ = map_lookup_elem(map, tuple);\n\tif (!entry)\n\t\treturn;"
+  diff_summary: |-
+    bpf/lib/conntrack.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: static __always_inline int ct_lookup6(const void *map,, static __always_inline int ct_lookup4(const void *map,.
+    - Commit subject: bpf: Remove DNS quirk for monitor aggregation.

@@ -1,0 +1,79 @@
+schema_version: bpfix.raw_external/v1
+raw_id: stackoverflow-58978414
+source_kind: stackoverflow
+source:
+  url: https://stackoverflow.com/questions/58978414/making-comparison-using-ebpf-map-in-the-kernel-space
+  title: Making comparison using eBPF map in the kernel space
+  repository: null
+  commit: null
+  collected_at: '2026-04-30T00:51:12+00:00'
+collector:
+  original_path: bpfix-empirical/raw/so/stackoverflow-58978414.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: true
+  verifier_log_block_count: 1
+  source_snippet_count: 1
+  has_buggy_code: false
+  has_fixed_code: false
+  has_fix_description: false
+reproduction:
+  status: replay_valid
+  case_id: stackoverflow-58978414
+  case_path: cases/stackoverflow-58978414
+  artifact_path: cases/stackoverflow-58978414
+  reason: admitted_to_bpfix_bench_cases
+raw:
+  case_id: stackoverflow-58978414
+  source: stackoverflow
+  collected_at: '2026-04-30T00:51:12+00:00'
+  question:
+    question_id: 58978414
+    title: Making comparison using eBPF map in the kernel space
+    url: https://stackoverflow.com/questions/58978414/making-comparison-using-ebpf-map-in-the-kernel-space
+    tags:
+    - ebpf
+    - bcc-bpf
+    score: 1
+    answer_count: 0
+    is_answered: false
+  verifier_log:
+    blocks:
+    - R3 type=map_value_or_null expected=fp
+    combined: R3 type=map_value_or_null expected=fp
+  source_snippets:
+  - |-
+    BPF_ARRAY(test,u64, 12);
+    u64 key0 = 0;
+    u64 test = 1234;
+    test.update(&key0, &test);
+    u64 comparer = 0;
+    u64 compared = 1234;
+    u64 replace_value = 1111;
+    comparer = test.lookup(&key0);
+    if (comparer == compared)
+        test.update(&key0, &replace_value);
+  question_body_text: |-
+    I'm experimenting with eBPF map and I have trouble using values retrieved from eBPF maps in the 'if' clause.
+    I'm also using BCC to experiment with this code!
+    So, when I run the code, I try to do this :
+    BPF_ARRAY(test,u64, 12);
+    u64 key0 = 0;
+    u64 test = 1234;
+    test.update(&key0, &test);
+    and I have checked after running the code that the 1234 has been appropriately inserted.
+    and when I try to read the value from the eBPF map and make comparison using 'if', it gives me an error such as :
+    BPF_ARRAY(test,u64, 12);
+    u64 key0 = 0;
+    u64 test = 1234;
+    test.update(&key0, &test);
+    u64 comparer = 0;
+    u64 compared = 1234;
+    u64 replace_value = 1111;
+    comparer = test.lookup(&key0);
+    if (comparer == compared)
+    test.update(&key0, &replace_value);
+    and this gives me an error such as :
+    R3 type=map_value_or_null expected=fp
+    I think I'm doing legitimate actions, just reading the value from the eBPF map and comparing it with another value in the kernel space but this doesn't seem to work.
+  selected_answer: {}

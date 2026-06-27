@@ -1,0 +1,60 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-libbpf-2c6f445a8ea4
+source_kind: github_commit
+source:
+  url: https://github.com/libbpf/libbpf/commit/2c6f445a8ea43686d20d08c2fc3c9f2d16ff0973
+  title: 'libbpf: Fix misaligned array closing bracket'
+  repository: https://github.com/libbpf/libbpf
+  commit: 2c6f445a8ea43686d20d08c2fc3c9f2d16ff0973
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-libbpf-2c6f445a8ea4.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Adds btf_dump_type_values(d, "'\\0'") before terminating array dump output.
+    This is BTF dump formatting, not a verifier load failure.
+raw:
+  case_id: github-commit-libbpf-2c6f445a8ea4
+  source: github_commits
+  repository: https://github.com/libbpf/libbpf
+  commit_hash: 2c6f445a8ea43686d20d08c2fc3c9f2d16ff0973
+  commit_message: 'libbpf: Fix misaligned array closing bracket'
+  commit_date: '2024-04-13'
+  fix_type: alignment
+  buggy_code: "// FILE: src/btf_dump.c\n// CONTEXT: static int btf_dump_int_data(struct\
+    \ btf_dump *d,\n\tcase 2:\n\t\tif (sign)\n\t\t\tbtf_dump_type_values(d, \"%d\"\
+    , *(__s16 *)data);\n\t\telse\n\t\t\tbtf_dump_type_values(d, \"%u\", *(__u16 *)data);\n\
+    \t\tbreak;\n\tcase 1:\n\t\tif (d->typed_dump->is_array_char) {\n\t\t\t/* check\
+    \ for null terminator */\n\t\t\tif (d->typed_dump->is_array_terminated)\n\t\t\t\
+    \tbreak;\n\t\t\tif (*(char *)data == '\\0') {\n\t\t\t\td->typed_dump->is_array_terminated\
+    \ = true;\n\t\t\t\tbreak;\n\t\t\t}\n\t\t\tif (isprint(*(char *)data)) {\n\t\t\t\
+    \tbtf_dump_type_values(d, \"'%c'\", *(char *)data);\n\t\t\t\tbreak;\n\t\t\t}\n\
+    \t\t}\n\t\tif (sign)\n\t\t\tbtf_dump_type_values(d, \"%d\", *(__s8 *)data);\n\t\
+    \telse\n\t\t\tbtf_dump_type_values(d, \"%u\", *(__u8 *)data);"
+  fixed_code: "// FILE: src/btf_dump.c\n// CONTEXT: static int btf_dump_int_data(struct\
+    \ btf_dump *d,\n\tcase 2:\n\t\tif (sign)\n\t\t\tbtf_dump_type_values(d, \"%d\"\
+    , *(__s16 *)data);\n\t\telse\n\t\t\tbtf_dump_type_values(d, \"%u\", *(__u16 *)data);\n\
+    \t\tbreak;\n\tcase 1:\n\t\tif (d->typed_dump->is_array_char) {\n\t\t\t/* check\
+    \ for null terminator */\n\t\t\tif (d->typed_dump->is_array_terminated)\n\t\t\t\
+    \tbreak;\n\t\t\tif (*(char *)data == '\\0') {\n\t\t\t\tbtf_dump_type_values(d,\
+    \ \"'\\\\0'\");\n\t\t\t\td->typed_dump->is_array_terminated = true;\n\t\t\t\t\
+    break;\n\t\t\t}\n\t\t\tif (isprint(*(char *)data)) {\n\t\t\t\tbtf_dump_type_values(d,\
+    \ \"'%c'\", *(char *)data);\n\t\t\t\tbreak;\n\t\t\t}\n\t\t}\n\t\tif (sign)\n\t\
+    \t\tbtf_dump_type_values(d, \"%d\", *(__s8 *)data);\n\t\telse\n\t\t\tbtf_dump_type_values(d,\
+    \ \"%u\", *(__u8 *)data);"
+  diff_summary: |-
+    src/btf_dump.c:
+    - Adjusted alignment declarations or stack layout to avoid misaligned accesses.
+    - Affected context: static int btf_dump_int_data(struct btf_dump *d,.
+    - Commit subject: libbpf: Fix misaligned array closing bracket.

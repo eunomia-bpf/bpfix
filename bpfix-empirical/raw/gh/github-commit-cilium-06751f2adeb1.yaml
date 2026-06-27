@@ -1,0 +1,61 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-06751f2adeb1
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/06751f2adeb17d1136e990d7ffdb513194879d17
+  title: 'bpf: fix lb6 load balancing wrt ct_lookup6''s ct_state'
+  repository: https://github.com/cilium/cilium
+  commit: 06751f2adeb17d1136e990d7ffdb513194879d17
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-06751f2adeb1.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: not_reconstructable_from_diff
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Conntrack ct_state forwarding change lacks the full map/value and caller
+    context needed to reproduce the verifier-visible behavior.
+raw:
+  case_id: github-commit-cilium-06751f2adeb1
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: 06751f2adeb17d1136e990d7ffdb513194879d17
+  commit_message: 'bpf: fix lb6 load balancing wrt ct_lookup6''s ct_state'
+  commit_date: '2017-05-19'
+  fix_type: other
+  buggy_code: "// FILE: bpf/lib/conntrack.h\n// CONTEXT: static inline int __inline__\
+    \ ct_lookup6(void *map, struct ipv6_ct_tuple *tuple,\n\t\t\tif (unlikely(tuple->flags\
+    \ & TUPLE_F_RELATED))\n\t\t\t\tret = CT_RELATED;\n\t\t\telse\n\t\t\t\tret = CT_REPLY;\n\
+    \t\t}\n\t\tgoto out;\n\t}\n\n\t/* Lookup entry in forward direction */\n\tipv6_ct_tuple_reverse(tuple);\n\
+    \tcilium_trace(skb, DBG_CT_LOOKUP, (bpf_ntohs(tuple->sport) << 16) |\n\t\t   \
+    \  bpf_ntohs(tuple->dport), (tuple->nexthdr << 8) | tuple->flags);\n\tret = __ct_lookup(map,\
+    \ skb, tuple, action, dir, ct_state);\n\n#ifdef LXC_NAT46\n\tskb->cb[CB_NAT46_STATE]\
+    \ = NAT46_CLEAR;\n#endif\n\t/* No entries found, packet must be eligible for creating\
+    \ a CT entry */\n\tif (ret == CT_NEW && action != ACTION_CREATE)\n\t\tret = DROP_CT_CANT_CREATE;\n\
+    \nout:\n\tcilium_trace(skb, DBG_CT_VERDICT, ret < 0 ? -ret : ret,\n\t\tct_state->proxy_port\
+    \ << 16 | ct_state->rev_nat_index);\n\treturn ret;"
+  fixed_code: "// FILE: bpf/lib/conntrack.h\n// CONTEXT: static inline int __inline__\
+    \ ct_lookup6(void *map, struct ipv6_ct_tuple *tuple,\n\t\t\tif (unlikely(tuple->flags\
+    \ & TUPLE_F_RELATED))\n\t\t\t\tret = CT_RELATED;\n\t\t\telse\n\t\t\t\tret = CT_REPLY;\n\
+    \t\t}\n\t\tgoto out;\n\t}\n\n\t/* Lookup entry in forward direction */\n\tipv6_ct_tuple_reverse(tuple);\n\
+    \tcilium_trace(skb, DBG_CT_LOOKUP, (bpf_ntohs(tuple->sport) << 16) |\n\t\t   \
+    \  bpf_ntohs(tuple->dport), (tuple->nexthdr << 8) | tuple->flags);\n\tret = __ct_lookup(map,\
+    \ skb, tuple, action, dir, NULL);\n\n#ifdef LXC_NAT46\n\tskb->cb[CB_NAT46_STATE]\
+    \ = NAT46_CLEAR;\n#endif\n\t/* No entries found, packet must be eligible for creating\
+    \ a CT entry */\n\tif (ret == CT_NEW && action != ACTION_CREATE)\n\t\tret = DROP_CT_CANT_CREATE;\n\
+    \nout:\n\tcilium_trace(skb, DBG_CT_VERDICT, ret < 0 ? -ret : ret,\n\t\tct_state->proxy_port\
+    \ << 16 | ct_state->rev_nat_index);\n\treturn ret;"
+  diff_summary: |-
+    bpf/lib/conntrack.h:
+    - Applied a small verifier-related code change captured by the exact before/after snippets below.
+    - Affected context: static inline int __inline__ ct_lookup6(void *map, struct ipv6_ct_tuple *tuple,.
+    - Commit subject: bpf: fix lb6 load balancing wrt ct_lookup6's ct_state.

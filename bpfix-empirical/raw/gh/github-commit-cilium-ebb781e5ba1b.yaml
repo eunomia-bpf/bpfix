@@ -1,0 +1,74 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-ebb781e5ba1b
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/ebb781e5ba1bb4b7c4f99c215799eaf8ed37620e
+  title: 'bpf: Fix sockops compile on newer LLVM'
+  repository: https://github.com/cilium/cilium
+  commit: ebb781e5ba1bb4b7c4f99c215799eaf8ed37620e
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-ebb781e5ba1b.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: attempted_accepted
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Raw has_verifier_log=false. A temporary sockops probe of ops->remote_port
+    >> 16 built and loaded on the local kernel; current clang emitted a 32-bit context
+    load and make replay-verify returned 0.
+raw:
+  case_id: github-commit-cilium-ebb781e5ba1b
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: ebb781e5ba1bb4b7c4f99c215799eaf8ed37620e
+  commit_message: 'bpf: Fix sockops compile on newer LLVM'
+  commit_date: '2019-10-03'
+  fix_type: inline_hint
+  buggy_code: "// FILE: bpf/sockops/bpf_sockops.h\n// CONTEXT: struct bpf_elf_map\
+    \ __section_maps SOCK_OPS_MAP = {\n\t.pinning        = PIN_GLOBAL_NS,\n\t.max_elem\
+    \       = SOCKOPS_MAP_SIZE,\n};\n\nstatic __always_inline void sk_extract4_key(struct\
+    \ bpf_sock_ops *ops,\n\t\t\t\t\t    struct sock_key *key)\n{\n\tkey->dip4 = ops->remote_ip4;\n\
+    \tkey->sip4 = ops->local_ip4;\n\tkey->family = ENDPOINT_KEY_IPV4;\n\n\tkey->sport\
+    \ = (bpf_ntohl(ops->local_port) >> 16);\n\tkey->dport = ops->remote_port >> 16;\n\
+    }\n\nstatic __always_inline void sk_msg_extract4_key(struct sk_msg_md *msg,\n\t\
+    \t\t\t\t\tstruct sock_key *key)\n{\n\tkey->dip4 = msg->remote_ip4;\n\tkey->sip4\
+    \ = msg->local_ip4;\n\tkey->family = ENDPOINT_KEY_IPV4;\n\n\tkey->sport = (bpf_ntohl(msg->local_port)\
+    \ >> 16);\n\tkey->dport = msg->remote_port >> 16;\n}\n\nstatic __always_inline\
+    \ void sk_lb4_key_v2(struct lb4_key_v2 *lb4,\n\t\t\t\t\t  struct sock_key *key)\n\
+    {\n\t/* SK MSG is always egress, so use daddr */\n\tlb4->address = key->dip4;\n\
+    \tlb4->dport = key->dport;\n}\n\nstatic __always_inline bool redirect_to_proxy(int\
+    \ verdict)\n{"
+  fixed_code: "// FILE: bpf/sockops/bpf_sockops.h\n// CONTEXT: struct bpf_elf_map\
+    \ __section_maps SOCK_OPS_MAP = {\n\t.pinning        = PIN_GLOBAL_NS,\n\t.max_elem\
+    \       = SOCKOPS_MAP_SIZE,\n};\n\nstatic __always_inline void sk_extract4_key(struct\
+    \ bpf_sock_ops *ops,\n\t\t\t\t\t    struct sock_key *key)\n{\n\tkey->dip4 = ops->remote_ip4;\n\
+    \tkey->sip4 = ops->local_ip4;\n\tkey->family = ENDPOINT_KEY_IPV4;\n\n\tkey->sport\
+    \ = (bpf_ntohl(ops->local_port) >> 16);\n\t/* clang-7.1 or higher seems to think\
+    \ it can do a 16-bit read here\n\t * which unfortunately most kernels (as of October\
+    \ 2019) do not\n\t * support, which leads to verifier failures. Insert a READ_ONCE\n\
+    \t * to make sure that a 32-bit read followed by shift is generated. */\n\tkey->dport\
+    \ = READ_ONCE(ops->remote_port) >> 16;\n}\n\nstatic __always_inline void sk_msg_extract4_key(struct\
+    \ sk_msg_md *msg,\n\t\t\t\t\t\tstruct sock_key *key)\n{\n\tkey->dip4 = msg->remote_ip4;\n\
+    \tkey->sip4 = msg->local_ip4;\n\tkey->family = ENDPOINT_KEY_IPV4;\n\n\tkey->sport\
+    \ = (bpf_ntohl(msg->local_port) >> 16);\n\t/* clang-7.1 or higher seems to think\
+    \ it can do a 16-bit read here\n\t * which unfortunately most kernels (as of October\
+    \ 2019) do not\n\t * support, which leads to verifier failures. Insert a READ_ONCE\n\
+    \t * to make sure that a 32-bit read followed by shift is generated. */\n\tkey->dport\
+    \ = READ_ONCE(msg->remote_port) >> 16;\n}\n\nstatic __always_inline void sk_lb4_key_v2(struct\
+    \ lb4_key_v2 *lb4,\n\t\t\t\t\t  struct sock_key *key)\n{\n\t/* SK MSG is always\
+    \ egress, so use daddr */\n\tlb4->address = key->dip4;\n\tlb4->dport = key->dport;\n\
+    }\n\nstatic __always_inline bool redirect_to_proxy(int verdict)\n{"
+  diff_summary: |-
+    bpf/sockops/bpf_sockops.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: struct bpf_elf_map __section_maps SOCK_OPS_MAP = {.
+    - Commit subject: bpf: Fix sockops compile on newer LLVM.

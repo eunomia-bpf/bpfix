@@ -1,0 +1,58 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-3df7fb4313ee
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/3df7fb4313eeb9bf13a54fd32cc55d2d4ed56437
+  title: 'cilium: clean up bpf_network includes'
+  repository: https://github.com/cilium/cilium
+  commit: 3df7fb4313eeb9bf13a54fd32cc55d2d4ed56437
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-3df7fb4313ee.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Include cleanup in bpf_network.c does not identify a verifier rejection
+    or standalone failing program.
+raw:
+  case_id: github-commit-cilium-3df7fb4313ee
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: 3df7fb4313eeb9bf13a54fd32cc55d2d4ed56437
+  commit_message: 'cilium: clean up bpf_network includes'
+  commit_date: '2021-03-23'
+  fix_type: inline_hint
+  buggy_code: "// FILE: bpf/bpf_network.c\n// SPDX-License-Identifier: GPL-2.0\n/*\
+    \ Copyright (C) 2019-2020 Authors of Cilium */\n\n#include <bpf/ctx/skb.h>\n#include\
+    \ <bpf/api.h>\n\n#include <node_config.h>\n#include <netdev_config.h>\n\n#include\
+    \ \"lib/utils.h\"\n#include \"lib/common.h\"\n#include \"lib/maps.h\"\n#include\
+    \ \"lib/ipv6.h\"\n#include \"lib/eth.h\"\n#include \"lib/dbg.h\"\n#include \"\
+    lib/trace.h\"\n#include \"lib/l3.h\"\n#include \"lib/drop.h\"\n\n#ifdef ENABLE_IPV6\n\
+    static __always_inline int handle_ipv6(struct __ctx_buff *ctx)\n{\n#ifdef ENABLE_IPSEC\n\
+    \tvoid *data_end, *data;\n\tstruct ipv6hdr *ip6;\n\tbool decrypted;\n\n\tdecrypted\
+    \ = ((ctx->mark & MARK_MAGIC_HOST_MASK) == MARK_MAGIC_DECRYPT);\n\tif (!revalidate_data_pull(ctx,\
+    \ &data, &data_end, &ip6))"
+  fixed_code: "// FILE: bpf/bpf_network.c\n// SPDX-License-Identifier: GPL-2.0\n/*\
+    \ Copyright (C) 2019-2020 Authors of Cilium */\n\n#include <bpf/ctx/skb.h>\n#include\
+    \ <bpf/api.h>\n#include <linux/ip.h>\n\n#include <node_config.h>\n#include <netdev_config.h>\n\
+    \n#include \"lib/utils.h\"\n#include \"lib/common.h\"\n#include \"lib/maps.h\"\
+    \n#include \"lib/ipv6.h\"\n#include \"lib/trace.h\"\n#include \"lib/drop.h\"\n\
+    \n#ifdef ENABLE_IPV6\nstatic __always_inline int handle_ipv6(struct __ctx_buff\
+    \ *ctx)\n{\n#ifdef ENABLE_IPSEC\n\tvoid *data_end, *data;\n\tstruct ipv6hdr *ip6;\n\
+    \tbool decrypted;\n\n\tdecrypted = ((ctx->mark & MARK_MAGIC_HOST_MASK) == MARK_MAGIC_DECRYPT);\n\
+    \tif (!revalidate_data_pull(ctx, &data, &data_end, &ip6))"
+  diff_summary: |-
+    bpf/bpf_network.c:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: the touched section.
+    - Commit subject: cilium: clean up bpf_network includes.

@@ -1,0 +1,129 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-c7083543e993
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/c7083543e993c01f00adf60d2ffa35bcdb5662b4
+  title: 'bpf: Deduplicate ct_lookup4 in ipv4_host_policy_egress'
+  repository: https://github.com/cilium/cilium
+  commit: c7083543e993c01f00adf60d2ffa35bcdb5662b4
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-c7083543e993.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: environment_required
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Deduplicates Cilium host-firewall conntrack lookups and adjusts error checks
+    because the full program could confuse the verifier; no isolated current-kernel
+    terminal log is available.
+raw:
+  case_id: github-commit-cilium-c7083543e993
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: c7083543e993c01f00adf60d2ffa35bcdb5662b4
+  commit_message: 'bpf: Deduplicate ct_lookup4 in ipv4_host_policy_egress'
+  commit_date: '2023-02-15'
+  fix_type: inline_hint
+  buggy_code: "// FILE: bpf/lib/host_firewall.h\n// CONTEXT: ipv6_host_policy_ingress(struct\
+    \ __ctx_buff *ctx, __u32 *src_sec_identity,\n\tif (!ipv6_host_policy_ingress_lookup(ctx,\
+    \ ip6, &ct_buffer))\n\t\treturn CTX_ACT_OK;\n\tif (ct_buffer.ret < 0)\n\t\treturn\
+    \ ct_buffer.ret;\n\n\treturn __ipv6_host_policy_ingress(ctx, ip6, &ct_buffer,\
+    \ src_sec_identity, trace, ext_err);\n}\n# endif /* ENABLE_IPV6 */\n\n# ifdef\
+    \ ENABLE_IPV4\n#  ifndef ENABLE_MASQUERADE\nstatic __always_inline int\nwhitelist_snated_egress_connections(struct\
+    \ __ctx_buff *ctx, __u32 ipcache_srcid,\n\t\t\t\t    struct trace_ctx *trace,\
+    \ __s8 *ext_err)\n{\n\tstruct ct_state ct_state_new = {}, ct_state = {};\n\tstruct\
+    \ ipv4_ct_tuple tuple = {};\n\tvoid *data, *data_end;\n\tstruct iphdr *ip4;\n\t\
+    int ret, l4_off;\n\n\t/* If kube-proxy is in use (no BPF-based masquerading),\
+    \ packets from\n\t * pods may be SNATed. The response packet will therefore have\
+    \ a host\n\t * IP as the destination IP.\n\t * To avoid enforcing host policies\
+    \ for response packets to pods, we\n\t * need to create a CT entry for the forward,\
+    \ SNATed packet from the\n\t * pod. Response packets will thus match this CT entry\
+    \ and bypass host\n\t * policies.\n\t * We know the packet is a SNATed packet\
+    \ if the srcid from ipcache is\n\t * HOST_ID, but the actual srcid (derived from\
+    \ the packet mark) isn't.\n\t */\n\tif (ipcache_srcid == HOST_ID) {\n\t\tif (!revalidate_data(ctx,\
+    \ &data, &data_end, &ip4))\n\t\t\treturn DROP_INVALID;\n\n\t\ttuple.nexthdr =\
+    \ ip4->protocol;\n\t\ttuple.daddr = ip4->daddr;\n\t\ttuple.saddr = ip4->saddr;\n\
+    \t\tl4_off = ETH_HLEN + ipv4_hdrlen(ip4);\n\t\tret = ct_lookup4(get_ct_map4(&tuple),\
+    \ &tuple, ctx, l4_off,\n\t\t\t\t CT_EGRESS, &ct_state, &trace->monitor);\n\t\t\
+    if (ret < 0)\n\t\t\treturn ret;\n\n\t\ttrace->reason = (enum trace_reason)ret;\n\
+    \n\t\tif (ret == CT_NEW) {\n\t\t\tret = ct_create4(get_ct_map4(&tuple), &CT_MAP_ANY4,\n\
+    \t\t\t\t\t &tuple, ctx, CT_EGRESS, &ct_state_new,\n\t\t\t\t\t false, false, ext_err);\n\
+    \t\t\tif (IS_ERR(ret))\n\t\t\t\treturn ret;\n\t\t}\n\t}\n\n\treturn CTX_ACT_OK;\n\
+    }\n#   endif\n\nstatic __always_inline int\nipv4_host_policy_egress(struct __ctx_buff\
+    \ *ctx, __u32 src_sec_identity,\n\t\t\t__u32 ipcache_srcid __maybe_unused,\n\t\
+    \t\tstruct iphdr *ip4, struct trace_ctx *trace,\n\t\t\t__s8 *ext_err)\n{\n\tstruct\
+    \ ct_state ct_state_new = {}, ct_state = {};\n\tint ret, verdict, l4_off, l3_off\
+    \ = ETH_HLEN;\n\t__u8 policy_match_type = POLICY_MATCH_NONE;\n\t__u8 audited =\
+    \ 0;\n\tstruct remote_endpoint_info *info;\n\tstruct ipv4_ct_tuple tuple = {};\n\
+    \t__u32 dst_sec_identity = 0;\n\t__u16 node_id = 0;\n\t__u16 proxy_port = 0;\n\
+    \n\tif (src_sec_identity != HOST_ID) {\n#  ifndef ENABLE_MASQUERADE\n\t\treturn\
+    \ whitelist_snated_egress_connections(ctx, ipcache_srcid,\n\t\t\t\t\t\t\t   trace,\
+    \ ext_err);\n#  else\n\t\t/* Only enforce host policies for packets from host\
+    \ IPs. */\n\t\treturn CTX_ACT_OK;\n#  endif\n\t}\n\n\t/* Lookup connection in\
+    \ conntrack map. */\n\ttuple.nexthdr = ip4->protocol;\n\ttuple.daddr = ip4->daddr;\n\
+    \ttuple.saddr = ip4->saddr;\n\tl4_off = l3_off + ipv4_hdrlen(ip4);\n\tret = ct_lookup4(get_ct_map4(&tuple),\
+    \ &tuple, ctx, l4_off, CT_EGRESS,\n\t\t\t &ct_state, &trace->monitor);\n\tif (ret\
+    \ < 0)\n\t\treturn ret;\n\n\ttrace->reason = (enum trace_reason)ret;\n\n\t/* Retrieve\
+    \ destination identity. */\n\tinfo = lookup_ip4_remote_endpoint(ip4->daddr, 0);\n\
+    \tif (info && info->sec_identity) {\n\t\tdst_sec_identity = info->sec_identity;\n\
+    \t\tnode_id = info->node_id;\n\t}\n\tcilium_dbg(ctx, info ? DBG_IP_ID_MAP_SUCCEED4\
+    \ : DBG_IP_ID_MAP_FAILED4,\n\t\t   ip4->daddr, dst_sec_identity);\n\n\t/* Reply\
+    \ traffic and related are allowed regardless of policy verdict. */\n\tif (ret\
+    \ == CT_REPLY || ret == CT_RELATED)\n\t\treturn CTX_ACT_OK;"
+  fixed_code: "// FILE: bpf/lib/host_firewall.h\n// CONTEXT: ipv6_host_policy_ingress(struct\
+    \ __ctx_buff *ctx, __u32 *src_sec_identity,\n\tif (!ipv6_host_policy_ingress_lookup(ctx,\
+    \ ip6, &ct_buffer))\n\t\treturn CTX_ACT_OK;\n\tif (ct_buffer.ret < 0)\n\t\treturn\
+    \ ct_buffer.ret;\n\n\treturn __ipv6_host_policy_ingress(ctx, ip6, &ct_buffer,\
+    \ src_sec_identity, trace, ext_err);\n}\n# endif /* ENABLE_IPV6 */\n\n# ifdef\
+    \ ENABLE_IPV4\n#  ifndef ENABLE_MASQUERADE\nstatic __always_inline int\nwhitelist_snated_egress_connections(struct\
+    \ __ctx_buff *ctx, struct ipv4_ct_tuple *tuple,\n\t\t\t\t    enum ct_status ct_ret,\
+    \ __s8 *ext_err)\n{\n\tstruct ct_state ct_state_new = {};\n\n\t/* If kube-proxy\
+    \ is in use (no BPF-based masquerading), packets from\n\t * pods may be SNATed.\
+    \ The response packet will therefore have a host\n\t * IP as the destination IP.\n\
+    \t * To avoid enforcing host policies for response packets to pods, we\n\t * need\
+    \ to create a CT entry for the forward, SNATed packet from the\n\t * pod. Response\
+    \ packets will thus match this CT entry and bypass host\n\t * policies.\n\t *\
+    \ We know the packet is a SNATed packet if the srcid from ipcache is\n\t * HOST_ID,\
+    \ but the actual srcid (derived from the packet mark) isn't.\n\t */\n\tif (ct_ret\
+    \ == CT_NEW) {\n\t\tint ret = ct_create4(get_ct_map4(tuple), &CT_MAP_ANY4,\n\t\
+    \t\t\t     tuple, ctx, CT_EGRESS, &ct_state_new,\n\t\t\t\t     false, false, ext_err);\n\
+    \t\tif (unlikely(ret < 0))\n\t\t\treturn ret;\n\t}\n\n\treturn CTX_ACT_OK;\n}\n\
+    #  endif\n\nstatic __always_inline int\nipv4_host_policy_egress(struct __ctx_buff\
+    \ *ctx, __u32 src_sec_identity,\n\t\t\t__u32 ipcache_srcid, struct iphdr *ip4,\n\
+    \t\t\tstruct trace_ctx *trace, __s8 *ext_err)\n{\n\tstruct ct_state ct_state_new\
+    \ = {}, ct_state = {};\n\tint ret, verdict, l4_off, l3_off = ETH_HLEN;\n\t__u8\
+    \ policy_match_type = POLICY_MATCH_NONE;\n\t__u8 audited = 0;\n\tstruct remote_endpoint_info\
+    \ *info;\n\tstruct ipv4_ct_tuple tuple = {};\n\t__u32 dst_sec_identity = 0;\n\t\
+    __u16 node_id = 0;\n\t__u16 proxy_port = 0;\n\n\t/* Further action is needed in\
+    \ two cases:\n\t * 1. Packets from host IPs: need to enforce host policies.\n\t\
+    \ * 2. SNATed packets from pods: need to create a CT entry to skip\n\t *    applying\
+    \ host policies to reply packets.\n\t */\n\tif (src_sec_identity != HOST_ID &&\n\
+    \t    (is_defined(ENABLE_MASQUERADE) || ipcache_srcid != HOST_ID))\n\t\treturn\
+    \ CTX_ACT_OK;\n\n\t/* Lookup connection in conntrack map. */\n\ttuple.nexthdr\
+    \ = ip4->protocol;\n\ttuple.daddr = ip4->daddr;\n\ttuple.saddr = ip4->saddr;\n\
+    \tl4_off = l3_off + ipv4_hdrlen(ip4);\n\tret = ct_lookup4(get_ct_map4(&tuple),\
+    \ &tuple, ctx, l4_off, CT_EGRESS,\n\t\t\t &ct_state, &trace->monitor);\n\tif (ret\
+    \ < 0)\n\t\treturn ret;\n\n\ttrace->reason = (enum trace_reason)ret;\n\n#  ifndef\
+    \ ENABLE_MASQUERADE\n\tif (src_sec_identity != HOST_ID)\n\t\t/* Checked above:\
+    \ ipcache_srcid == HOST_ID. */\n\t\treturn whitelist_snated_egress_connections(ctx,\
+    \ &tuple, (enum ct_status)ret,\n\t\t\t\t\t\t\t   ext_err);\n#  endif\n\n\t/* Retrieve\
+    \ destination identity. */\n\tinfo = lookup_ip4_remote_endpoint(ip4->daddr, 0);\n\
+    \tif (info && info->sec_identity) {\n\t\tdst_sec_identity = info->sec_identity;\n\
+    \t\tnode_id = info->node_id;\n\t}\n\tcilium_dbg(ctx, info ? DBG_IP_ID_MAP_SUCCEED4\
+    \ : DBG_IP_ID_MAP_FAILED4,\n\t\t   ip4->daddr, dst_sec_identity);\n\n\t/* Reply\
+    \ traffic and related are allowed regardless of policy verdict. */\n\tif (ret\
+    \ == CT_REPLY || ret == CT_RELATED)\n\t\treturn CTX_ACT_OK;"
+  diff_summary: |-
+    bpf/lib/host_firewall.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: ipv6_host_policy_ingress(struct __ctx_buff *ctx, __u32 *src_sec_identity,.
+    - Commit subject: bpf: Deduplicate ct_lookup4 in ipv4_host_policy_egress.

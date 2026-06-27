@@ -1,0 +1,46 @@
+schema_version: bpfix.case/v1
+case_id: stackoverflow-58978414
+source:
+  kind: stackoverflow
+  url: https://stackoverflow.com/questions/58978414/making-comparison-using-ebpf-map-in-the-kernel-space
+  repository: null
+  commit: null
+  upstream_file: null
+  collected_at: '2026-04-30T00:51:12+00:00'
+  raw_excerpt_files:
+  - bpfix-empirical/raw/so/stackoverflow-58978414.yaml
+reproducer:
+  reconstruction: reconstructed
+  notes: Imported from reconstructed external source into bpfix-empirical; replay logs are generated
+    as replay-verifier.log.
+capture:
+  capture_id: stackoverflow-58978414__kernel-6.15.11-clang-18-log2
+  terminal_error: R3 type=map_value_or_null expected=fp, pkt, pkt_meta, map_key, map_value,
+    mem, ringbuf_mem, buf, trusted_ptr_
+  rejected_insn_idx: 13
+external_match:
+  status: partial
+  policy: terminal_error
+  matched_messages:
+  - R3 type=map_value_or_null expected=fp
+  - R3 type=map_value_or_null expected=fp, pkt, pkt_meta, map_key, map_value, mem, ringbuf_mem,
+    buf, trusted_ptr_
+  notes: Imported only because verifier_error_match was exact/partial in the verified SO/GH
+    artifact.
+label:
+  capture_id: stackoverflow-58978414__kernel-6.15.11-clang-18-log2
+  taxonomy_class: source_bug
+  error_id: BPFIX-E015
+  confidence: medium
+  label_source: external_replay_reconstruction
+  root_cause_description: Map lookup result may be NULL and is passed to a helper before the
+    verifier can prove non-nullness.
+  root_cause_insn_idx: null
+  localization_confidence: medium
+  fix_type: null_check
+  fix_direction: Check the map lookup result and keep the checked pointer in the same verifier-visible
+    scope.
+reporting:
+  family_id: stackoverflow-58978414
+  representative: true
+  notes: External SO/GH case imported from verified exact/partial artifact.

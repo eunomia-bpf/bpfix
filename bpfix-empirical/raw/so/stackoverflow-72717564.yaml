@@ -1,0 +1,227 @@
+schema_version: bpfix.raw_external/v1
+raw_id: stackoverflow-72717564
+source_kind: stackoverflow
+source:
+  url: https://stackoverflow.com/questions/72717564/cannot-access-skb-buff-in-ebpf
+  title: Cannot access __skb_buff in eBPF
+  repository: null
+  commit: null
+  collected_at: '2026-04-30T00:51:16+00:00'
+collector:
+  original_path: bpfix-empirical/raw/so/stackoverflow-72717564.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: true
+  verifier_log_block_count: 2
+  source_snippet_count: 0
+  has_buggy_code: false
+  has_fixed_code: false
+  has_fix_description: false
+reproduction:
+  status: replay_valid
+  case_id: stackoverflow-72717564
+  case_path: cases/stackoverflow-72717564
+  artifact_path: cases/stackoverflow-72717564
+  reason: admitted_to_bpfix_bench_cases
+raw:
+  case_id: stackoverflow-72717564
+  source: stackoverflow
+  collected_at: '2026-04-30T00:51:16+00:00'
+  question:
+    question_id: 72717564
+    title: Cannot access __skb_buff in eBPF
+    url: https://stackoverflow.com/questions/72717564/cannot-access-skb-buff-in-ebpf
+    tags:
+    - c
+    - linux
+    - linux-kernel
+    - ebpf
+    - bpf
+    score: 0
+    answer_count: 1
+    is_answered: true
+  verifier_log:
+    blocks:
+    - |-
+      libbpf: prog 'handle_skb': BPF program load failed: Permission denied
+      libbpf: prog 'handle_skb': -- BEGIN PROG LOAD LOG --
+      ; void *data = (void *)(long)skb->data;
+      0: (61) r2 = *(u32 *)(r1 +76)
+      ; void *data_end = (void *)(long)skb->data_end;
+      1: (61) r1 = *(u32 *)(r1 +80)
+      ; struct iphdr *iph = data + sizeof(*eth);
+      2: (bf) r3 = r2
+      3: (07) r3 += 14
+      ; if (data + sizeof(*eth) > data_end)
+      4: (2d) if r3 > r1 goto pc+7
+       R1_w=inv(id=0,umax_value=4294967295,var_off=(0x0; 0xffffffff)) R2_w=inv(id=0,umax_value=4294967295,var_off=(0x0; 0xffffffff)) R3_w=inv(id=0,umin_value=14,umax_value=4294967309,var_off=(0x0; 0x1ffffffff)) R10=fp0
+      ;
+      5: (bf) r3 = r2
+      6: (07) r3 += 34
+      ; if (data + sizeof(*eth) > data_end)
+      7: (2d) if r3 > r1 goto pc+4
+       R1_w=inv(id=0,umax_value=4294967295,var_off=(0x0; 0xffffffff)) R2_w=inv(id=0,umax_value=4294967295,var_off=(0x0; 0xffffffff)) R3_w=inv(id=0,umin_value=34,umax_value=4294967329,var_off=(0x0; 0x1ffffffff)) R10=fp0
+      ; bpf_trace_printk("%x\n", eth->h_proto);
+      8: (69) r2 = *(u16 *)(r2 +12)
+      R2 invalid mem access 'inv'
+      processed 9 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0 mark_read 0
+      -- END PROG LOAD LOG --
+      libbpf: failed to load program 'handle_skb'
+      libbpf: failed to load object 'skb_bpf'
+      libbpf: failed to load BPF skeleton 'skb_bpf': -13
+      Failed to load and verify BPF skeleton
+    - |-
+      libbpf: prog 'handle_skb': BPF program load failed: Invalid argument
+      libbpf: prog 'handle_skb': -- BEGIN PROG LOAD LOG --
+      ; ret = bpf_skb_load_bytes(skb, 0, eth, sizeof(struct ethhdr));
+      0: (b7) r2 = 0
+      1: (b7) r4 = 14
+      2: (85) call bpf_skb_load_bytes#26
+      unknown func bpf_skb_load_bytes#26
+      processed 3 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0 mark_read 0
+      -- END PROG LOAD LOG --
+      libbpf: failed to load program 'handle_skb'
+      libbpf: failed to load object 'skb_bpf'
+      libbpf: failed to load BPF skeleton 'skb_bpf': -22
+      Failed to load and verify BPF skeleton
+    combined: |-
+      libbpf: prog 'handle_skb': BPF program load failed: Permission denied
+      libbpf: prog 'handle_skb': -- BEGIN PROG LOAD LOG --
+      ; void *data = (void *)(long)skb->data;
+      0: (61) r2 = *(u32 *)(r1 +76)
+      ; void *data_end = (void *)(long)skb->data_end;
+      1: (61) r1 = *(u32 *)(r1 +80)
+      ; struct iphdr *iph = data + sizeof(*eth);
+      2: (bf) r3 = r2
+      3: (07) r3 += 14
+      ; if (data + sizeof(*eth) > data_end)
+      4: (2d) if r3 > r1 goto pc+7
+       R1_w=inv(id=0,umax_value=4294967295,var_off=(0x0; 0xffffffff)) R2_w=inv(id=0,umax_value=4294967295,var_off=(0x0; 0xffffffff)) R3_w=inv(id=0,umin_value=14,umax_value=4294967309,var_off=(0x0; 0x1ffffffff)) R10=fp0
+      ;
+      5: (bf) r3 = r2
+      6: (07) r3 += 34
+      ; if (data + sizeof(*eth) > data_end)
+      7: (2d) if r3 > r1 goto pc+4
+       R1_w=inv(id=0,umax_value=4294967295,var_off=(0x0; 0xffffffff)) R2_w=inv(id=0,umax_value=4294967295,var_off=(0x0; 0xffffffff)) R3_w=inv(id=0,umin_value=34,umax_value=4294967329,var_off=(0x0; 0x1ffffffff)) R10=fp0
+      ; bpf_trace_printk("%x\n", eth->h_proto);
+      8: (69) r2 = *(u16 *)(r2 +12)
+      R2 invalid mem access 'inv'
+      processed 9 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0 mark_read 0
+      -- END PROG LOAD LOG --
+      libbpf: failed to load program 'handle_skb'
+      libbpf: failed to load object 'skb_bpf'
+      libbpf: failed to load BPF skeleton 'skb_bpf': -13
+      Failed to load and verify BPF skeleton
+
+      libbpf: prog 'handle_skb': BPF program load failed: Invalid argument
+      libbpf: prog 'handle_skb': -- BEGIN PROG LOAD LOG --
+      ; ret = bpf_skb_load_bytes(skb, 0, eth, sizeof(struct ethhdr));
+      0: (b7) r2 = 0
+      1: (b7) r4 = 14
+      2: (85) call bpf_skb_load_bytes#26
+      unknown func bpf_skb_load_bytes#26
+      processed 3 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0 mark_read 0
+      -- END PROG LOAD LOG --
+      libbpf: failed to load program 'handle_skb'
+      libbpf: failed to load object 'skb_bpf'
+      libbpf: failed to load BPF skeleton 'skb_bpf': -22
+      Failed to load and verify BPF skeleton
+  source_snippets: []
+  question_body_text: |-
+    I am trying to access the __sk_buff struct passed within the consume_skb tracepoint. However nothing I tried has worked so far. I am running the kernel version 5.4.0. This is what I tried so far, and in what it resulted:
+    Loader
+    gist
+    Direct access
+    SEC("tracepoint/skb/consume_skb")
+    int handle_skb(struct __sk_buff *skb)
+    {
+    void *data = (void *)(long)skb->data;
+    void *data_end = (void *)(long)skb->data_end;
+    struct ethhdr *eth = data;
+    struct iphdr *iph = data + sizeof(*eth);
+    if (data + sizeof(*eth) > data_end)
+    return 0;
+    if (data + sizeof(*eth) + sizeof(*iph) > data_end)
+    return 0;
+    bpf_trace_printk("%x\n", eth->h_proto);
+    return 0;
+    }
+    results in:
+    libbpf: prog 'handle_skb': BPF program load failed: Permission denied
+    libbpf: prog 'handle_skb': -- BEGIN PROG LOAD LOG --
+    ; void *data = (void *)(long)skb->data;
+    0: (61) r2 = *(u32 *)(r1 +76)
+    ; void *data_end = (void *)(long)skb->data_end;
+    1: (61) r1 = *(u32 *)(r1 +80)
+    ; struct iphdr *iph = data + sizeof(*eth);
+    2: (bf) r3 = r2
+    3: (07) r3 += 14
+    ; if (data + sizeof(*eth) > data_end)
+    4: (2d) if r3 > r1 goto pc+7
+    R1_w=inv(id=0,umax_value=4294967295,var_off=(0x0; 0xffffffff)) R2_w=inv(id=0,umax_value=4294967295,var_off=(0x0; 0xffffffff)) R3_w=inv(id=0,umin_value=14,umax_value=4294967309,var_off=(0x0; 0x1ffffffff)) R10=fp0
+    ;
+    5: (bf) r3 = r2
+    6: (07) r3 += 34
+    ; if (data + sizeof(*eth) > data_end)
+    7: (2d) if r3 > r1 goto pc+4
+    R1_w=inv(id=0,umax_value=4294967295,var_off=(0x0; 0xffffffff)) R2_w=inv(id=0,umax_value=4294967295,var_off=(0x0; 0xffffffff)) R3_w=inv(id=0,umin_value=34,umax_value=4294967329,var_off=(0x0; 0x1ffffffff)) R10=fp0
+    ; bpf_trace_printk("%x\n", eth->h_proto);
+    8: (69) r2 = *(u16 *)(r2 +12)
+    R2 invalid mem access 'inv'
+    processed 9 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0 mark_read 0
+    -- END PROG LOAD LOG --
+    libbpf: failed to load program 'handle_skb'
+    libbpf: failed to load object 'skb_bpf'
+    libbpf: failed to load BPF skeleton 'skb_bpf': -13
+    Failed to load and verify BPF skeleton
+    The way I understand it, is that direct access to skb is not allowed in this context (why?).
+    bpf_skb_load_bytes
+    SEC("tracepoint/skb/consume_skb")
+    int handle_skb(struct __sk_buff *skb)
+    {
+    struct ethhdr *eth;
+    int ret;
+    ret = skb_load_bytes(skb, 0, eth, sizeof(struct ethhdr));
+    //Or alternatively
+    //ret = bpf_skb_load_bytes(skb, 0, eth, sizeof(struct ethhdr));
+    if (!ret)
+    {
+    return 0;
+    }
+    bpf_trace_printk("%x\n", eth->h_proto);
+    return 0;
+    }
+    which results in:
+    libbpf: prog 'handle_skb': BPF program load failed: Invalid argument
+    libbpf: prog 'handle_skb': -- BEGIN PROG LOAD LOG --
+    ; ret = bpf_skb_load_bytes(skb, 0, eth, sizeof(struct ethhdr));
+    0: (b7) r2 = 0
+    1: (b7) r4 = 14
+    2: (85) call bpf_skb_load_bytes#26
+    unknown func bpf_skb_load_bytes#26
+    processed 3 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0 mark_read 0
+    -- END PROG LOAD LOG --
+    libbpf: failed to load program 'handle_skb'
+    libbpf: failed to load object 'skb_bpf'
+    libbpf: failed to load BPF skeleton 'skb_bpf': -22
+    Failed to load and verify BPF skeleton
+    This confuses me even more, as bpf_skb_load_bytes should be an available helper function.
+    Now I am doubting how to even access and read (not even write) the __sk_buff.
+    Is there just no way? Or have I missed something?
+  selected_answer:
+    answer_id: 72731161
+    url: https://stackoverflow.com/questions/72717564/cannot-access-skb-buff-in-ebpf#72731161
+    is_accepted: true
+    score: 1
+    body_text: |-
+      There are a few things going on here. First is that the argument to the tracepoint is of type struct sk_buff, not struct __sk_buff. I believe you have to use thebpf_probe_read helper to read memory the pointer is pointing to.
+      Second is that bpf_skb_load_bytes would only work with a __sk_buff. Besides, not all helpers are available for each program type, tracing programs can't use the bpf_skb_load_bytes helper. Here is the code that lists all available helpers for tracepoint programs:
+      https://elixir.bootlin.com/linux/v5.18.1/source/kernel/trace/bpf_trace.c#L1415
+      https://elixir.bootlin.com/linux/v5.18.1/source/kernel/trace/bpf_trace.c#L1167
+    fix_description: 'There are a few things going on here. First is that the argument
+      to the tracepoint is of type struct sk_buff, not struct __sk_buff. I believe
+      you have to use thebpf_probe_read helper to read memory the pointer is pointing
+      to. Second is that bpf_skb_load_bytes would only work with a __sk_buff. Besides,
+      not all helpers are available for each program type, tracing programs can''t
+      use the bpf_skb_load_bytes helper. Here is the code that lists all available
+      helpers for tracepoint programs:'

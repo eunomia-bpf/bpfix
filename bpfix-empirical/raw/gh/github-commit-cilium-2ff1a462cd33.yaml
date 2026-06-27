@@ -1,0 +1,129 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-2ff1a462cd33
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/2ff1a462cd33deeb2af9eb67d56230eb51a537ee
+  title: 'bpf: implement ctx_adjust_room for nodeport dsr in xdp'
+  repository: https://github.com/cilium/cilium
+  commit: 2ff1a462cd33deeb2af9eb67d56230eb51a537ee
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-2ff1a462cd33.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: replay_valid
+  case_id: github-commit-cilium-2ff1a462cd33
+  case_path: cases/github-commit-cilium-2ff1a462cd33
+  artifact_path: cases/github-commit-cilium-2ff1a462cd33
+  reason: admitted_to_bpfix_bench_cases
+raw:
+  case_id: github-commit-cilium-2ff1a462cd33
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: 2ff1a462cd33deeb2af9eb67d56230eb51a537ee
+  commit_message: 'bpf: implement ctx_adjust_room for nodeport dsr in xdp'
+  commit_date: '2020-04-07'
+  fix_type: inline_hint
+  buggy_code: "// FILE: bpf/include/bpf/ctx/xdp.h\n/* Copyright (C) 2020 Authors of\
+    \ Cilium */\n\n#ifndef __BPF_CTX_XDP_H_\n#define __BPF_CTX_XDP_H_\n\n#include\
+    \ <linux/if_ether.h>\n\n#define __ctx_buff\t\t\txdp_md\n#define __ctx_is\t\t\t\
+    __ctx_xdp\n\n#include \"common.h\"\n#include \"../helpers_xdp.h\"\n\n#define CTX_ACT_OK\t\
+    \t\tXDP_PASS\n#define CTX_ACT_DROP\t\t\tXDP_DROP\n#define CTX_ACT_TX\t\t\tXDP_TX\t\
+    /* hairpin only */\n\n#define META_PIVOT\t\t\t((int)(field_sizeof(struct __sk_buff,\
+    \ cb) + \\\n\t\t\t\t\t       sizeof(__u32))) /* cb + RECIRC_MARKER */\n\n#define\
+    \ __CTX_OFF_MAX\t\t\t0xff\n\nstatic __always_inline __maybe_unused int\nxdp_load_bytes(struct\
+    \ xdp_md *ctx, __u64 off, void *to, const __u64 len)\n\n// CONTEXT: xdp_store_bytes(struct\
+    \ xdp_md *ctx, __u64 off, const void *from,\n\t\t     : \"r1\", \"r2\");\n\tif\
+    \ (!ret)\n\t\t__builtin_memcpy(to, from, len);\n\treturn ret;\n}\n\n#define ctx_load_bytes\t\
+    \t\txdp_load_bytes\n#define ctx_store_bytes\t\t\txdp_store_bytes\n\n/* Fyi, remapping\
+    \ to stubs helps to assert that the code is not in\n * use since it otherwise\
+    \ triggers a verifier error.\n */\n#define ctx_adjust_room\t\t\txdp_adjust_room__stub\t\
+    /* TODO */\n\n#define ctx_change_type\t\t\txdp_change_type__stub\n#define ctx_change_proto\t\
+    \txdp_change_proto__stub\n#define ctx_change_tail\t\t\txdp_change_tail__stub\n\
+    \n#define ctx_pull_data(ctx, ...)\t\tdo { /* Already linear. */ } while (0)\n\n\
+    #define ctx_get_tunnel_key\t\txdp_get_tunnel_key__stub\n#define ctx_set_tunnel_key\t\
+    \txdp_set_tunnel_key__stub\n\n#define ctx_event_output\t\txdp_event_output\n\n\
+    \n// CONTEXT: l4_csum_replace(struct xdp_md *ctx, __u64 off, __u32 from, __u32\
+    \ to,\n\t\t     : \"r1\", \"r2\");\n\tif (!ret) {\n\t\tif (is_mmzero && !*sum)\n\
+    \t\t\treturn 0;\n\t\tfrom ? __csum_replace_by_4(sum, from, to) :\n\t\t       __csum_replace_by_diff(sum,\
+    \ to);\n\t\tif (is_mmzero && !*sum)\n\t\t\t*sum = CSUM_MANGLED_0;\n\t}\n\treturn\
+    \ ret;\n}\n\n#define redirect\t\t\tredirect__stub\n\nstatic __always_inline __maybe_unused\
+    \ int\nctx_redirect(struct xdp_md *ctx, int ifindex, const __u32 flags)\n{\n\t\
+    if (unlikely(flags))\n\t\treturn -ENOTSUPP;\n\tif ((__u32)ifindex != ctx->ingress_ifindex)\n\
+    \t\treturn -ENOTSUPP;\n\treturn XDP_TX;\n}\n\n// FILE: bpf/include/bpf/helpers_xdp.h\n\
+    \n#ifndef __BPF_HELPERS_XDP__\n#define __BPF_HELPERS_XDP__\n\n#include <linux/bpf.h>\n\
+    \n#include \"compiler.h\"\n#include \"helpers.h\"\n#include \"features_xdp.h\"\
+    \n\n/* Only used helpers in Cilium go below. */\n\n/* Packet misc meta data */\n\
+    static int BPF_FUNC(xdp_adjust_meta, struct xdp_md *xdp, int delta);\n\n/* Packet\
+    \ redirection */\nstatic int BPF_STUB(redirect, int ifindex, __u32 flags);\n\n\
+    /* Packet manipulation */\nstatic int BPF_STUB(xdp_load_bytes, struct xdp_md *xdp,\
+    \ __u32 off,\n\t\t    void *to, __u32 len);\nstatic int BPF_STUB(xdp_store_bytes,\
+    \ struct xdp_md *xdp, __u32 off,\n\t\t    const void *from, __u32 len, __u32 flags);\n\
+    \nstatic int BPF_STUB(l3_csum_replace, struct xdp_md *xdp, __u32 off,\n\t\t  \
+    \  __u32 from, __u32 to, __u32 flags);"
+  fixed_code: "// FILE: bpf/include/bpf/ctx/xdp.h\n/* Copyright (C) 2020 Authors of\
+    \ Cilium */\n\n#ifndef __BPF_CTX_XDP_H_\n#define __BPF_CTX_XDP_H_\n\n#include\
+    \ <linux/if_ether.h>\n\n#define __ctx_buff\t\t\txdp_md\n#define __ctx_is\t\t\t\
+    __ctx_xdp\n\n#include \"common.h\"\n#include \"../helpers_xdp.h\"\n#include \"\
+    ../builtins.h\"\n\n#define CTX_ACT_OK\t\t\tXDP_PASS\n#define CTX_ACT_DROP\t\t\t\
+    XDP_DROP\n#define CTX_ACT_TX\t\t\tXDP_TX\t/* hairpin only */\n\n#define META_PIVOT\t\
+    \t\t((int)(field_sizeof(struct __sk_buff, cb) + \\\n\t\t\t\t\t       sizeof(__u32)))\
+    \ /* cb + RECIRC_MARKER */\n\n#define __CTX_OFF_MAX\t\t\t0xff\n\nstatic __always_inline\
+    \ __maybe_unused int\nxdp_load_bytes(struct xdp_md *ctx, __u64 off, void *to,\
+    \ const __u64 len)\n\n// CONTEXT: xdp_store_bytes(struct xdp_md *ctx, __u64 off,\
+    \ const void *from,\n\t\t     : \"r1\", \"r2\");\n\tif (!ret)\n\t\t__builtin_memcpy(to,\
+    \ from, len);\n\treturn ret;\n}\n\n#define ctx_load_bytes\t\t\txdp_load_bytes\n\
+    #define ctx_store_bytes\t\t\txdp_store_bytes\n\n/* Fyi, remapping to stubs helps\
+    \ to assert that the code is not in\n * use since it otherwise triggers a verifier\
+    \ error.\n */\n\n#define ctx_change_type\t\t\txdp_change_type__stub\n#define ctx_change_proto\t\
+    \txdp_change_proto__stub\n#define ctx_change_tail\t\t\txdp_change_tail__stub\n\
+    \n#define ctx_pull_data(ctx, ...)\t\tdo { /* Already linear. */ } while (0)\n\n\
+    #define ctx_get_tunnel_key\t\txdp_get_tunnel_key__stub\n#define ctx_set_tunnel_key\t\
+    \txdp_set_tunnel_key__stub\n\n#define ctx_event_output\t\txdp_event_output\n\n\
+    \n// CONTEXT: l4_csum_replace(struct xdp_md *ctx, __u64 off, __u32 from, __u32\
+    \ to,\n\t\t     : \"r1\", \"r2\");\n\tif (!ret) {\n\t\tif (is_mmzero && !*sum)\n\
+    \t\t\treturn 0;\n\t\tfrom ? __csum_replace_by_4(sum, from, to) :\n\t\t       __csum_replace_by_diff(sum,\
+    \ to);\n\t\tif (is_mmzero && !*sum)\n\t\t\t*sum = CSUM_MANGLED_0;\n\t}\n\treturn\
+    \ ret;\n}\n\nstatic __always_inline __maybe_unused int\nctx_adjust_room(struct\
+    \ xdp_md *ctx, const __s32 len_diff, const __u32 mode,\n\t\tconst __u64 flags)\n\
+    {\n\tconst __u32 move_len_v4 = 14 + 20;\n\tconst __u32 move_len_v6 = 14 + 40;\n\
+    \tvoid *data, *data_end;\n\tint ret;\n\n\tbuild_bug_on(len_diff <= 0 || len_diff\
+    \ >= 64);\n\tbuild_bug_on(mode != BPF_ADJ_ROOM_NET);\n\tbuild_bug_on(flags !=\
+    \ 0);\n\n\tret = xdp_adjust_head(ctx, -len_diff);\n\n\t/* XXX: Note, this hack\
+    \ is currently tailored to NodePort DSR\n\t * requirements and not a generic helper.\
+    \ If needed elsewhere,\n\t * this must be made more generic.\n\t */\n\tif (!ret)\
+    \ {\n\t\tdata_end = ctx_data_end(ctx);\n\t\tdata = ctx_data(ctx);\n\t\tif (len_diff\
+    \ == 8) {\n\t\t\tif (data + move_len_v4 + len_diff <= data_end)\n\t\t\t\tmemmove(data,\
+    \ data + len_diff,\n\t\t\t\t\tmove_len_v4);\n\t\t\telse\n\t\t\t\tret = -EFAULT;\n\
+    \t\t} else {\n\t\t\tif (data + move_len_v6 + len_diff <= data_end)\n\t\t\t\tmemmove(data,\
+    \ data + len_diff,\n\t\t\t\t\tmove_len_v6);\n\t\t\telse\n\t\t\t\tret = -EFAULT;\n\
+    \t\t}\n\t}\n\treturn ret;\n}\n\n#define redirect\t\t\tredirect__stub\n\nstatic\
+    \ __always_inline __maybe_unused int\nctx_redirect(struct xdp_md *ctx, int ifindex,\
+    \ const __u32 flags)\n{\n\tif (unlikely(flags))\n\t\treturn -ENOTSUPP;\n\tif ((__u32)ifindex\
+    \ != ctx->ingress_ifindex)\n\t\treturn -ENOTSUPP;\n\treturn XDP_TX;\n}\n\n// FILE:\
+    \ bpf/include/bpf/helpers_xdp.h\n\n#ifndef __BPF_HELPERS_XDP__\n#define __BPF_HELPERS_XDP__\n\
+    \n#include <linux/bpf.h>\n\n#include \"compiler.h\"\n#include \"helpers.h\"\n\
+    #include \"features_xdp.h\"\n\n/* Only used helpers in Cilium go below. */\n\n\
+    /* Packet misc meta data & encapsulation helper */\nstatic int BPF_FUNC(xdp_adjust_meta,\
+    \ struct xdp_md *xdp, int delta);\nstatic int BPF_FUNC(xdp_adjust_head, struct\
+    \ xdp_md *xdp, int delta);\n\n/* Packet redirection */\nstatic int BPF_STUB(redirect,\
+    \ int ifindex, __u32 flags);\n\n/* Packet manipulation */\nstatic int BPF_STUB(xdp_load_bytes,\
+    \ struct xdp_md *xdp, __u32 off,\n\t\t    void *to, __u32 len);\nstatic int BPF_STUB(xdp_store_bytes,\
+    \ struct xdp_md *xdp, __u32 off,\n\t\t    const void *from, __u32 len, __u32 flags);\n\
+    \nstatic int BPF_STUB(l3_csum_replace, struct xdp_md *xdp, __u32 off,\n\t\t  \
+    \  __u32 from, __u32 to, __u32 flags);"
+  diff_summary: |-
+    bpf/include/bpf/ctx/xdp.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: xdp_store_bytes(struct xdp_md *ctx, __u64 off, const void *from,, l4_csum_replace(struct xdp_md *ctx, __u64 off, __u32 from, __u32 to,.
+    bpf/include/bpf/helpers_xdp.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: the touched section.
+    - Commit subject: bpf: implement ctx_adjust_room for nodeport dsr in xdp.

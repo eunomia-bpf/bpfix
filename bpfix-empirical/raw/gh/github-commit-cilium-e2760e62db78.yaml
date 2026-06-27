@@ -1,0 +1,66 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-e2760e62db78
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/e2760e62db7851d6459e3cea84f9b57aa55ddd92
+  title: 'bpf: egressgw: tolerate missing L2 resolution on FIB lookup'
+  repository: https://github.com/cilium/cilium
+  commit: e2760e62db7851d6459e3cea84f9b57aa55ddd92
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-e2760e62db78.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Changes egress-gateway FIB handling for BPF_FIB_LKUP_RET_NO_NEIGH when no
+    neighbor resolver exists; this is runtime forwarding behavior with no terminal
+    verifier error.
+raw:
+  case_id: github-commit-cilium-e2760e62db78
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: e2760e62db7851d6459e3cea84f9b57aa55ddd92
+  commit_message: 'bpf: egressgw: tolerate missing L2 resolution on FIB lookup'
+  commit_date: '2023-12-13'
+  fix_type: inline_hint
+  buggy_code: "// FILE: bpf/lib/egress_gateway.h\n#define EGRESS_GATEWAY_NO_GATEWAY\
+    \ (0)\n#define EGRESS_GATEWAY_EXCLUDED_CIDR bpf_htonl(1)\n\nstatic __always_inline\n\
+    int egress_gw_fib_lookup_and_redirect(struct __ctx_buff *ctx, __be32 egress_ip,\
+    \ __be32 daddr,\n\t\t\t\t      __s8 *ext_err)\n{\n\tstruct bpf_fib_lookup_padded\
+    \ fib_params = {};\n\t__u32 old_oif = ctx_get_ifindex(ctx);\n\n\t*ext_err = (__s8)fib_lookup_v4(ctx,\
+    \ &fib_params, egress_ip, daddr, 0);\n\n\tif (*ext_err != BPF_FIB_LKUP_RET_SUCCESS\
+    \ && *ext_err != BPF_FIB_LKUP_RET_NO_NEIGH)\n\t\treturn DROP_NO_FIB;\n\n\tif (old_oif\
+    \ == fib_params.l.ifindex)\n\t\treturn CTX_ACT_OK;\n\n\treturn fib_do_redirect(ctx,\
+    \ true, &fib_params, false, ext_err, (int *)&old_oif);\n}\n\n#ifdef ENABLE_EGRESS_GATEWAY\n\
+    static __always_inline\nstruct egress_gw_policy_entry *lookup_ip4_egress_gw_policy(__be32\
+    \ saddr, __be32 daddr)\n{\n\tstruct egress_gw_policy_key key = {\n\t\t.lpm_key\
+    \ = { EGRESS_IPV4_PREFIX, {} },\n\t\t.saddr = saddr,"
+  fixed_code: "// FILE: bpf/lib/egress_gateway.h\n#define EGRESS_GATEWAY_NO_GATEWAY\
+    \ (0)\n#define EGRESS_GATEWAY_EXCLUDED_CIDR bpf_htonl(1)\n\nstatic __always_inline\n\
+    int egress_gw_fib_lookup_and_redirect(struct __ctx_buff *ctx, __be32 egress_ip,\
+    \ __be32 daddr,\n\t\t\t\t      __s8 *ext_err)\n{\n\tstruct bpf_fib_lookup_padded\
+    \ fib_params = {};\n\t__u32 old_oif = ctx_get_ifindex(ctx);\n\n\t*ext_err = (__s8)fib_lookup_v4(ctx,\
+    \ &fib_params, egress_ip, daddr, 0);\n\n\tswitch (*ext_err) {\n\tcase BPF_FIB_LKUP_RET_SUCCESS:\n\
+    \tcase BPF_FIB_LKUP_RET_NO_NEIGH:\n\t\tif (old_oif == fib_params.l.ifindex)\n\t\
+    \t\treturn CTX_ACT_OK;\n\t\tbreak;\n\tdefault:\n\t\treturn DROP_NO_FIB;\n\t}\n\
+    \n\t/* Don't redirect if we can't update the L2 DMAC: */\n\tif (*ext_err == BPF_FIB_LKUP_RET_NO_NEIGH\
+    \ &&\n\t    !neigh_resolver_available())\n\t\treturn CTX_ACT_OK;\n\n\treturn fib_do_redirect(ctx,\
+    \ true, &fib_params, false, ext_err, (int *)&old_oif);\n}\n\n#ifdef ENABLE_EGRESS_GATEWAY\n\
+    static __always_inline\nstruct egress_gw_policy_entry *lookup_ip4_egress_gw_policy(__be32\
+    \ saddr, __be32 daddr)\n{\n\tstruct egress_gw_policy_key key = {\n\t\t.lpm_key\
+    \ = { EGRESS_IPV4_PREFIX, {} },\n\t\t.saddr = saddr,"
+  diff_summary: |-
+    bpf/lib/egress_gateway.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: the touched section.
+    - Commit subject: bpf: egressgw: tolerate missing L2 resolution on FIB lookup.

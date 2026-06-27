@@ -1,0 +1,81 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-a2086bcc5b3c
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/a2086bcc5b3c6071db4078c95fc2dc0d6093de36
+  title: 'bpf: only compile-in scope-switch for svc lookup on nodeport'
+  repository: https://github.com/cilium/cilium
+  commit: a2086bcc5b3c6071db4078c95fc2dc0d6093de36
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-a2086bcc5b3c.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: environment_required
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Compiles out NodePort scope-switch code to reduce 4.9 complexity; faithful
+    replay requires old full Cilium program generation.
+raw:
+  case_id: github-commit-cilium-a2086bcc5b3c
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: a2086bcc5b3c6071db4078c95fc2dc0d6093de36
+  commit_message: 'bpf: only compile-in scope-switch for svc lookup on nodeport'
+  commit_date: '2020-09-11'
+  fix_type: inline_hint
+  buggy_code: "// FILE: bpf/bpf_lxc.c\n// CONTEXT: static __always_inline int ipv6_l3_from_lxc(struct\
+    \ __ctx_buff *ctx,\n\t\t\t\tgoto skip_service_lookup;\n\t\t\telse\n\t\t\t\treturn\
+    \ ret;\n\t\t}\n\n\t\t/*\n\t\t * Check if the destination address is among the\
+    \ address that should\n\t\t * be load balanced. This operation is performed before\
+    \ we go through\n\t\t * the connection tracker to allow storing the reverse nat\
+    \ index in\n\t\t * the CT entry for destination endpoints where we can't encode\
+    \ the\n\t\t * state in the address.\n\t\t */\n\t\tsvc = lb6_lookup_service(&key,\
+    \ true);\n\t\tif (svc) {\n\t\t\tret = lb6_local(get_ct_map6(tuple), ctx, l3_off,\
+    \ l4_off,\n\t\t\t\t\t&csum_off, &key, tuple, svc, &ct_state_new);\n\t\t\tif (IS_ERR(ret))\n\
+    \t\t\t\treturn ret;\n\t\t\thairpin_flow |= ct_state_new.loopback;\n\t\t}\n\t}\n\
+    \nskip_service_lookup:\n#endif /* ENABLE_SERVICES && !ENABLE_HOST_SERVICES_FULL\
+    \ */\n\n\n// CONTEXT: static __always_inline int handle_ipv4_from_lxc(struct __ctx_buff\
+    \ *ctx,\n\t\tstruct lb4_service *svc;\n\t\tstruct lb4_key key = {};\n\n\t\tret\
+    \ = lb4_extract_key(ctx, ip4, l4_off, &key, &csum_off,\n\t\t\t\t      CT_EGRESS);\n\
+    \t\tif (IS_ERR(ret)) {\n\t\t\tif (ret == DROP_UNKNOWN_L4)\n\t\t\t\tgoto skip_service_lookup;\n\
+    \t\t\telse\n\t\t\t\treturn ret;\n\t\t}\n\n\t\tsvc = lb4_lookup_service(&key, true);\n\
+    \t\tif (svc) {\n\t\t\tret = lb4_local(get_ct_map4(&tuple), ctx, l3_off, l4_off,\n\
+    \t\t\t\t\t&csum_off, &key, &tuple, svc, &ct_state_new,\n\t\t\t\t\tip4->saddr);\n\
+    \t\t\tif (IS_ERR(ret))\n\t\t\t\treturn ret;\n\t\t\thairpin_flow |= ct_state_new.loopback;\n\
+    \t\t}\n\t}\n\nskip_service_lookup:\n#endif /* ENABLE_SERVICES && !ENABLE_HOST_SERVICES_FULL\
+    \ */"
+  fixed_code: "// FILE: bpf/bpf_lxc.c\n// CONTEXT: static __always_inline int ipv6_l3_from_lxc(struct\
+    \ __ctx_buff *ctx,\n\t\t\t\tgoto skip_service_lookup;\n\t\t\telse\n\t\t\t\treturn\
+    \ ret;\n\t\t}\n\n\t\t/*\n\t\t * Check if the destination address is among the\
+    \ address that should\n\t\t * be load balanced. This operation is performed before\
+    \ we go through\n\t\t * the connection tracker to allow storing the reverse nat\
+    \ index in\n\t\t * the CT entry for destination endpoints where we can't encode\
+    \ the\n\t\t * state in the address.\n\t\t */\n\t\tsvc = lb6_lookup_service(&key,\
+    \ is_defined(ENABLE_NODEPORT));\n\t\tif (svc) {\n\t\t\tret = lb6_local(get_ct_map6(tuple),\
+    \ ctx, l3_off, l4_off,\n\t\t\t\t\t&csum_off, &key, tuple, svc, &ct_state_new);\n\
+    \t\t\tif (IS_ERR(ret))\n\t\t\t\treturn ret;\n\t\t\thairpin_flow |= ct_state_new.loopback;\n\
+    \t\t}\n\t}\n\nskip_service_lookup:\n#endif /* ENABLE_SERVICES && !ENABLE_HOST_SERVICES_FULL\
+    \ */\n\n\n// CONTEXT: static __always_inline int handle_ipv4_from_lxc(struct __ctx_buff\
+    \ *ctx,\n\t\tstruct lb4_service *svc;\n\t\tstruct lb4_key key = {};\n\n\t\tret\
+    \ = lb4_extract_key(ctx, ip4, l4_off, &key, &csum_off,\n\t\t\t\t      CT_EGRESS);\n\
+    \t\tif (IS_ERR(ret)) {\n\t\t\tif (ret == DROP_UNKNOWN_L4)\n\t\t\t\tgoto skip_service_lookup;\n\
+    \t\t\telse\n\t\t\t\treturn ret;\n\t\t}\n\n\t\tsvc = lb4_lookup_service(&key, is_defined(ENABLE_NODEPORT));\n\
+    \t\tif (svc) {\n\t\t\tret = lb4_local(get_ct_map4(&tuple), ctx, l3_off, l4_off,\n\
+    \t\t\t\t\t&csum_off, &key, &tuple, svc, &ct_state_new,\n\t\t\t\t\tip4->saddr);\n\
+    \t\t\tif (IS_ERR(ret))\n\t\t\t\treturn ret;\n\t\t\thairpin_flow |= ct_state_new.loopback;\n\
+    \t\t}\n\t}\n\nskip_service_lookup:\n#endif /* ENABLE_SERVICES && !ENABLE_HOST_SERVICES_FULL\
+    \ */"
+  diff_summary: |-
+    bpf/bpf_lxc.c:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: static __always_inline int ipv6_l3_from_lxc(struct __ctx_buff *ctx,, static __always_inline int handle_ipv4_from_lxc(struct __ctx_buff *ctx,.
+    - Commit subject: bpf: only compile-in scope-switch for svc lookup on nodeport.

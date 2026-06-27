@@ -1,0 +1,164 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-libbpf-d9b3fae39124
+source_kind: github_commit
+source:
+  url: https://github.com/libbpf/libbpf/commit/d9b3fae391240645f6493dd2cac6b9d4bf0ea7ba
+  title: 'libbpf: Improve logging around BPF program loading'
+  repository: https://github.com/libbpf/libbpf
+  commit: d9b3fae391240645f6493dd2cac6b9d4bf0ea7ba
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-libbpf-d9b3fae39124.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Raw has_verifier_log=false, source_snippet_count=0. The diff improves libbpf
+    logging around bpf_prog_load() and program names; it changes how failures are
+    reported, but includes no captured verifier reject or replay source.
+raw:
+  case_id: github-commit-libbpf-d9b3fae39124
+  source: github_commits
+  repository: https://github.com/libbpf/libbpf
+  commit_hash: d9b3fae391240645f6493dd2cac6b9d4bf0ea7ba
+  commit_message: 'libbpf: Improve logging around BPF program loading'
+  commit_date: '2021-12-09'
+  fix_type: bounds_check
+  buggy_code: "// FILE: src/libbpf.c\n// CONTEXT: retry_load:\n\t\tlog_buf = malloc(log_buf_size);\n\
+    \t\tif (!log_buf)\n\t\t\treturn -ENOMEM;\n\n\t\t*log_buf = 0;\n\t}\n\n\tload_attr.log_buf\
+    \ = log_buf;\n\tload_attr.log_size = log_buf_size;\n\tret = bpf_prog_load(prog->type,\
+    \ prog_name, license, insns, insns_cnt, &load_attr);\n\n\tif (ret >= 0) {\n\t\t\
+    if (log_buf && load_attr.log_level)\n\t\t\tpr_debug(\"verifier log:\\n%s\", log_buf);\n\
+    \n\t\tif (obj->has_rodata && kernel_supports(obj, FEAT_PROG_BIND_MAP)) {\n\t\t\
+    \tstruct bpf_map *map;\n\t\t\tint i;\n\n\t\t\tfor (i = 0; i < obj->nr_maps; i++)\
+    \ {\n\t\t\t\tmap = &prog->obj->maps[i];\n\t\t\t\tif (map->libbpf_type != LIBBPF_MAP_RODATA)\n\
+    \t\t\t\t\tcontinue;\n\n\t\t\t\tif (bpf_prog_bind_map(ret, bpf_map__fd(map), NULL))\
+    \ {\n\t\t\t\t\tcp = libbpf_strerror_r(errno, errmsg, sizeof(errmsg));\n\t\t\t\t\
+    \tpr_warn(\"prog '%s': failed to bind .rodata map: %s\\n\",\n\t\t\t\t\t\tprog->name,\
+    \ cp);\n\t\t\t\t\t/* Don't fail hard if can't bind rodata. */\n\t\t\t\t}\n\t\t\
+    \t}\n\t\t}\n\n\t\t*prog_fd = ret;\n\t\tret = 0;\n\t\tgoto out;\n\t}\n\n\tif (!log_buf\
+    \ || errno == ENOSPC) {\n\t\tlog_buf_size = max((size_t)BPF_LOG_BUF_SIZE,\n\t\t\
+    \t\t   log_buf_size << 1);\n\n\t\tfree(log_buf);\n\t\tgoto retry_load;\n\t}\n\t\
+    ret = errno ? -errno : -LIBBPF_ERRNO__LOAD;\n\tcp = libbpf_strerror_r(errno, errmsg,\
+    \ sizeof(errmsg));\n\tpr_warn(\"load bpf program failed: %s\\n\", cp);\n\tpr_perm_msg(ret);\n\
+    \n\tif (log_buf && log_buf[0] != '\\0') {\n\t\tret = -LIBBPF_ERRNO__VERIFY;\n\t\
+    \tpr_warn(\"-- BEGIN DUMP LOG ---\\n\");\n\t\tpr_warn(\"\\n%s\\n\", log_buf);\n\
+    \t\tpr_warn(\"-- END LOG --\\n\");\n\t} else if (insns_cnt >= BPF_MAXINSNS) {\n\
+    \t\tpr_warn(\"Program too large (%d insns), at most %d insns\\n\",\n\t\t\tinsns_cnt,\
+    \ BPF_MAXINSNS);\n\t\tret = -LIBBPF_ERRNO__PROG2BIG;\n\t} else if (prog->type\
+    \ != BPF_PROG_TYPE_KPROBE) {\n\t\t/* Wrong program type? */\n\t\tint fd;\n\n\t\
+    \tload_attr.expected_attach_type = 0;\n\t\tload_attr.log_buf = NULL;\n\t\tload_attr.log_size\
+    \ = 0;\n\t\tfd = bpf_prog_load(BPF_PROG_TYPE_KPROBE, prog_name, license,\n\t\t\
+    \t\t   insns, insns_cnt, &load_attr);\n\t\tif (fd >= 0) {\n\t\t\tclose(fd);\n\n\
+    // CONTEXT: static int bpf_object_init_progs(struct bpf_object *obj, const struct\
+    \ bpf_object\n\t\t\terr = prog->sec_def->init_fn(prog, prog->sec_def->cookie);\n\
+    \t\t\tif (err < 0) {\n\t\t\t\tpr_warn(\"prog '%s': failed to initialize: %d\\\
+    n\",\n\t\t\t\t\tprog->name, err);\n\t\t\t\treturn err;\n\t\t\t}\n\t\t}\n\t}\n\n\
+    \treturn 0;\n}\n\nstatic struct bpf_object *\n__bpf_object__open(const char *path,\
+    \ const void *obj_buf, size_t obj_buf_sz,\n\t\t   const struct bpf_object_open_opts\
+    \ *opts)\n{\n\tconst char *obj_name, *kconfig, *btf_tmp_path;\n\tstruct bpf_object\
+    \ *obj;\n\tchar tmp_name[64];\n\tint err;\n\tchar *log_buf;\n\tsize_t log_size;\n\
+    \t__u32 log_level;\n\n\tif (elf_version(EV_CURRENT) == EV_NONE) {\n\t\tpr_warn(\"\
+    failed to init libelf for %s\\n\",\n\t\t\tpath ? : \"(mem buf)\");\n\n// CONTEXT:\
+    \ out:\nstatic struct bpf_object *\n__bpf_object__open_xattr(struct bpf_object_open_attr\
+    \ *attr, int flags)\n{\n\tDECLARE_LIBBPF_OPTS(bpf_object_open_opts, opts,\n\t\t\
+    .relaxed_maps = flags & MAPS_RELAX_COMPAT,\n\t);\n\n\t/* param validation */\n\
+    \tif (!attr->file)\n\t\treturn NULL;\n\n\tpr_debug(\"loading %s\\n\", attr->file);\n\
+    \treturn __bpf_object__open(attr->file, NULL, 0, &opts);\n}\n\nstruct bpf_object\
+    \ *bpf_object__open_xattr(struct bpf_object_open_attr *attr)\n{\n\treturn libbpf_ptr(__bpf_object__open_xattr(attr,\
+    \ 0));\n}\n\nstruct bpf_object *bpf_object__open(const char *path)\n{\n\tstruct\
+    \ bpf_object_open_attr attr = {\n\t\t.file\t\t= path,\n\t\t.prog_type\t= BPF_PROG_TYPE_UNSPEC,\n\
+    \n// CONTEXT: struct bpf_object *bpf_object__open(const char *path)\n\n\treturn\
+    \ libbpf_ptr(__bpf_object__open_xattr(&attr, 0));\n}\n\nstruct bpf_object *\n\
+    bpf_object__open_file(const char *path, const struct bpf_object_open_opts *opts)\n\
+    {\n\tif (!path)\n\t\treturn libbpf_err_ptr(-EINVAL);\n\n\tpr_debug(\"loading %s\\\
+    n\", path);\n\n\treturn libbpf_ptr(__bpf_object__open(path, NULL, 0, opts));\n\
+    }\n\nstruct bpf_object *\nbpf_object__open_mem(const void *obj_buf, size_t obj_buf_sz,\n\
+    \t\t     const struct bpf_object_open_opts *opts)\n{\n\tif (!obj_buf || obj_buf_sz\
+    \ == 0)\n\t\treturn libbpf_err_ptr(-EINVAL);\n\n\treturn libbpf_ptr(__bpf_object__open(NULL,\
+    \ obj_buf, obj_buf_sz, opts));\n}\n\nstruct bpf_object *\nbpf_object__open_buffer(const\
+    \ void *obj_buf, size_t obj_buf_sz,\n\t\t\tconst char *name)\n{\n\tDECLARE_LIBBPF_OPTS(bpf_object_open_opts,\
+    \ opts,\n\t\t.object_name = name,\n\t\t/* wrong default, but backwards-compatible\
+    \ */\n\t\t.relaxed_maps = true,\n\t);\n\n\t/* returning NULL is wrong, but backwards-compatible\
+    \ */\n\tif (!obj_buf || obj_buf_sz == 0)\n\t\treturn errno = EINVAL, NULL;\n\n\
+    \treturn libbpf_ptr(__bpf_object__open(NULL, obj_buf, obj_buf_sz, &opts));\n}\n\
+    \nstatic int bpf_object_unload(struct bpf_object *obj)\n{\n\tsize_t i;\n\n\tif\
+    \ (!obj)\n\t\treturn libbpf_err(-EINVAL);\n\n\tfor (i = 0; i < obj->nr_maps; i++)\
+    \ {\n\t\tzclose(obj->maps[i].fd);\n\t\tif (obj->maps[i].st_ops)"
+  fixed_code: "// FILE: src/libbpf.c\n// CONTEXT: retry_load:\n\t\tlog_buf = malloc(log_buf_size);\n\
+    \t\tif (!log_buf)\n\t\t\treturn -ENOMEM;\n\n\t\t*log_buf = 0;\n\t}\n\n\tload_attr.log_buf\
+    \ = log_buf;\n\tload_attr.log_size = log_buf_size;\n\tret = bpf_prog_load(prog->type,\
+    \ prog_name, license, insns, insns_cnt, &load_attr);\n\n\tif (ret >= 0) {\n\t\t\
+    if (log_buf && load_attr.log_level) {\n\t\t\tpr_debug(\"prog '%s': -- BEGIN PROG\
+    \ LOAD LOG --\\n%s-- END PROG LOAD LOG --\\n\",\n\t\t\t\t prog->name, log_buf);\n\
+    \t\t}\n\n\t\tif (obj->has_rodata && kernel_supports(obj, FEAT_PROG_BIND_MAP))\
+    \ {\n\t\t\tstruct bpf_map *map;\n\t\t\tint i;\n\n\t\t\tfor (i = 0; i < obj->nr_maps;\
+    \ i++) {\n\t\t\t\tmap = &prog->obj->maps[i];\n\t\t\t\tif (map->libbpf_type !=\
+    \ LIBBPF_MAP_RODATA)\n\t\t\t\t\tcontinue;\n\n\t\t\t\tif (bpf_prog_bind_map(ret,\
+    \ bpf_map__fd(map), NULL)) {\n\t\t\t\t\tcp = libbpf_strerror_r(errno, errmsg,\
+    \ sizeof(errmsg));\n\t\t\t\t\tpr_warn(\"prog '%s': failed to bind map '%s': %s\\\
+    n\",\n\t\t\t\t\t\tprog->name, map->real_name, cp);\n\t\t\t\t\t/* Don't fail hard\
+    \ if can't bind rodata. */\n\t\t\t\t}\n\t\t\t}\n\t\t}\n\n\t\t*prog_fd = ret;\n\
+    \t\tret = 0;\n\t\tgoto out;\n\t}\n\n\tif (!log_buf || errno == ENOSPC) {\n\t\t\
+    log_buf_size = max((size_t)BPF_LOG_BUF_SIZE,\n\t\t\t\t   log_buf_size << 1);\n\
+    \t\tfree(log_buf);\n\t\tgoto retry_load;\n\t}\n\tret = errno ? -errno : -LIBBPF_ERRNO__LOAD;\n\
+    \tcp = libbpf_strerror_r(errno, errmsg, sizeof(errmsg));\n\tpr_warn(\"prog '%s':\
+    \ BPF program load failed: %s\\n\", prog->name, cp);\n\tpr_perm_msg(ret);\n\n\t\
+    if (log_buf && log_buf[0] != '\\0') {\n\t\tret = -LIBBPF_ERRNO__VERIFY;\n\t\t\
+    pr_warn(\"prog '%s': -- BEGIN PROG LOAD LOG --\\n%s-- END PROG LOAD LOG --\\n\"\
+    ,\n\t\t\tprog->name, log_buf);\n\t}\n\tif (insns_cnt >= BPF_MAXINSNS) {\n\t\t\
+    pr_warn(\"prog '%s': program too large (%d insns), at most %d insns\\n\",\n\t\t\
+    \tprog->name, insns_cnt, BPF_MAXINSNS);\n\t\tret = -LIBBPF_ERRNO__PROG2BIG;\n\t\
+    } else if (prog->type != BPF_PROG_TYPE_KPROBE) {\n\t\t/* Wrong program type? */\n\
+    \t\tint fd;\n\n\t\tload_attr.expected_attach_type = 0;\n\t\tload_attr.log_buf\
+    \ = NULL;\n\t\tload_attr.log_size = 0;\n\t\tfd = bpf_prog_load(BPF_PROG_TYPE_KPROBE,\
+    \ prog_name, license,\n\t\t\t\t   insns, insns_cnt, &load_attr);\n\t\tif (fd >=\
+    \ 0) {\n\t\t\tclose(fd);\n\n// CONTEXT: static int bpf_object_init_progs(struct\
+    \ bpf_object *obj, const struct bpf_object\n\t\t\terr = prog->sec_def->init_fn(prog,\
+    \ prog->sec_def->cookie);\n\t\t\tif (err < 0) {\n\t\t\t\tpr_warn(\"prog '%s':\
+    \ failed to initialize: %d\\n\",\n\t\t\t\t\tprog->name, err);\n\t\t\t\treturn\
+    \ err;\n\t\t\t}\n\t\t}\n\t}\n\n\treturn 0;\n}\n\nstatic struct bpf_object *bpf_object_open(const\
+    \ char *path, const void *obj_buf, size_t obj_buf_sz,\n\t\t\t\t\t  const struct\
+    \ bpf_object_open_opts *opts)\n{\n\tconst char *obj_name, *kconfig, *btf_tmp_path;\n\
+    \tstruct bpf_object *obj;\n\tchar tmp_name[64];\n\tint err;\n\tchar *log_buf;\n\
+    \tsize_t log_size;\n\t__u32 log_level;\n\n\tif (elf_version(EV_CURRENT) == EV_NONE)\
+    \ {\n\t\tpr_warn(\"failed to init libelf for %s\\n\",\n\t\t\tpath ? : \"(mem buf)\"\
+    );\n\n// CONTEXT: out:\nstatic struct bpf_object *\n__bpf_object__open_xattr(struct\
+    \ bpf_object_open_attr *attr, int flags)\n{\n\tDECLARE_LIBBPF_OPTS(bpf_object_open_opts,\
+    \ opts,\n\t\t.relaxed_maps = flags & MAPS_RELAX_COMPAT,\n\t);\n\n\t/* param validation\
+    \ */\n\tif (!attr->file)\n\t\treturn NULL;\n\n\tpr_debug(\"loading %s\\n\", attr->file);\n\
+    \treturn bpf_object_open(attr->file, NULL, 0, &opts);\n}\n\nstruct bpf_object\
+    \ *bpf_object__open_xattr(struct bpf_object_open_attr *attr)\n{\n\treturn libbpf_ptr(__bpf_object__open_xattr(attr,\
+    \ 0));\n}\n\nstruct bpf_object *bpf_object__open(const char *path)\n{\n\tstruct\
+    \ bpf_object_open_attr attr = {\n\t\t.file\t\t= path,\n\t\t.prog_type\t= BPF_PROG_TYPE_UNSPEC,\n\
+    \n// CONTEXT: struct bpf_object *bpf_object__open(const char *path)\n\n\treturn\
+    \ libbpf_ptr(__bpf_object__open_xattr(&attr, 0));\n}\n\nstruct bpf_object *\n\
+    bpf_object__open_file(const char *path, const struct bpf_object_open_opts *opts)\n\
+    {\n\tif (!path)\n\t\treturn libbpf_err_ptr(-EINVAL);\n\n\tpr_debug(\"loading %s\\\
+    n\", path);\n\n\treturn libbpf_ptr(bpf_object_open(path, NULL, 0, opts));\n}\n\
+    \nstruct bpf_object *\nbpf_object__open_mem(const void *obj_buf, size_t obj_buf_sz,\n\
+    \t\t     const struct bpf_object_open_opts *opts)\n{\n\tif (!obj_buf || obj_buf_sz\
+    \ == 0)\n\t\treturn libbpf_err_ptr(-EINVAL);\n\n\treturn libbpf_ptr(bpf_object_open(NULL,\
+    \ obj_buf, obj_buf_sz, opts));\n}\n\nstruct bpf_object *\nbpf_object__open_buffer(const\
+    \ void *obj_buf, size_t obj_buf_sz,\n\t\t\tconst char *name)\n{\n\tDECLARE_LIBBPF_OPTS(bpf_object_open_opts,\
+    \ opts,\n\t\t.object_name = name,\n\t\t/* wrong default, but backwards-compatible\
+    \ */\n\t\t.relaxed_maps = true,\n\t);\n\n\t/* returning NULL is wrong, but backwards-compatible\
+    \ */\n\tif (!obj_buf || obj_buf_sz == 0)\n\t\treturn errno = EINVAL, NULL;\n\n\
+    \treturn libbpf_ptr(bpf_object_open(NULL, obj_buf, obj_buf_sz, &opts));\n}\n\n\
+    static int bpf_object_unload(struct bpf_object *obj)\n{\n\tsize_t i;\n\n\tif (!obj)\n\
+    \t\treturn libbpf_err(-EINVAL);\n\n\tfor (i = 0; i < obj->nr_maps; i++) {\n\t\t\
+    zclose(obj->maps[i].fd);\n\t\tif (obj->maps[i].st_ops)"
+  diff_summary: |-
+    src/libbpf.c:
+    - Added explicit bounds or range guards so the verifier can prove the access size and offset.
+    - Affected context: retry_load:, static int bpf_object_init_progs(struct bpf_object *obj, const struct bpf_object, out:.
+    - Commit subject: libbpf: Improve logging around BPF program loading.

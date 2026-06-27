@@ -1,0 +1,96 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-c08e72af878b
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/c08e72af878b9cac5711f6665edd4ca29f1d76f0
+  title: 'bpf: Fix name for example map'
+  repository: https://github.com/cilium/cilium
+  commit: c08e72af878b9cac5711f6665edd4ca29f1d76f0
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-c08e72af878b.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Raw has_verifier_log=false. The diff renames example SNAT map macros to
+    test_cilium_*; this is test/example map naming, not a verifier-reject case.
+raw:
+  case_id: github-commit-cilium-c08e72af878b
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: c08e72af878b9cac5711f6665edd4ca29f1d76f0
+  commit_message: 'bpf: Fix name for example map'
+  commit_date: '2020-03-30'
+  fix_type: other
+  buggy_code: "// FILE: bpf/node_config.h\n// CONTEXT: DEFINE_IPV6(HOST_IP, 0xbe,\
+    \ 0xef, 0x0, 0x0, 0x0, 0x0, 0x0, 0x1, 0x0, 0x0, 0xa, 0x\n\n#ifdef ENABLE_MASQUERADE\n\
+    #define SNAT_MAPPING_MIN_PORT 1024\n#define SNAT_MAPPING_MAX_PORT 65535\n#endif\n\
+    \n#ifdef ENABLE_IPV4\n#define IPV4_MASK 0xffff\n#define IPV4_GATEWAY 0xfffff50a\n\
+    #define IPV4_LOOPBACK 0x1ffff50a\n#if defined ENABLE_MASQUERADE || defined ENABLE_NODEPORT\n\
+    #define SNAT_IPV4_EXTERNAL IPV4_GATEWAY\n#define SNAT_MAPPING_IPV4 cilium_snat_v4_external\n\
+    #define SNAT_MAPPING_IPV4_SIZE 524288\n#endif /* ENABLE_MASQUERADE */\n#endif\
+    \ /* ENABLE_IPV4 */\n\n#ifdef ENABLE_IPV6\n#if defined ENABLE_MASQUERADE || defined\
+    \ ENABLE_NODEPORT\nDEFINE_IPV6(SNAT_IPV6_EXTERNAL, 0xbe, 0xef, 0x0, 0x0, 0x0,\
+    \ 0x0, 0x0, 0x1, 0x0, 0x0, 0x0, 0x1, 0x0, 0x1, 0x0, 0x0);\n#define SNAT_MAPPING_IPV6\
+    \ cilium_snat_v6_external\n#define SNAT_MAPPING_IPV6_SIZE 524288\n#endif /* ENABLE_MASQUERADE\
+    \ */\n#endif /* ENABLE_IPV6 */\n\n#define ENCAP_GENEVE 1\n#define ENDPOINTS_MAP\
+    \ test_cilium_lxc\n#define EVENTS_MAP test_cilium_events\n#define SIGNAL_MAP test_cilium_signals\n\
+    #define METRICS_MAP test_cilium_metrics\n#define POLICY_CALL_MAP test_cilium_policy\n\
+    #define SOCK_OPS_MAP test_sock_ops_map\n#define IPCACHE_MAP test_cilium_ipcache\n\
+    #define ENCRYPT_MAP test_cilium_encrypt_state\n#define TUNNEL_MAP test_cilium_tunnel_map\n\
+    #define EP_POLICY_MAP test_cilium_ep_to_policy\n#define LB6_REVERSE_NAT_MAP test_cilium_lb6_reverse_nat\n\
+    #define LB6_SERVICES_MAP_V2 test_cilium_lb6_services\n#define LB6_BACKEND_MAP\
+    \ test_cilium_lb6_backends\n#define LB6_REVERSE_NAT_SK_MAP cilium_lb6_reverse_sk\n\
+    #define LB6_REVERSE_NAT_SK_MAP_SIZE 262144\n#define LB4_REVERSE_NAT_MAP test_cilium_lb4_reverse_nat\n\
+    #define LB4_SERVICES_MAP_V2 test_cilium_lb4_services\n#define LB4_BACKEND_MAP\
+    \ test_cilium_lb4_backends\n#define LB4_REVERSE_NAT_SK_MAP cilium_lb4_reverse_sk\n\
+    #define LB4_REVERSE_NAT_SK_MAP_SIZE 262144\n#define ENABLE_ARP_RESPONDER\n#define\
+    \ TUNNEL_ENDPOINT_MAP_SIZE 65536\n#define ENDPOINTS_MAP_SIZE 65536\n#define METRICS_MAP_SIZE\
+    \ 65536\n#define CILIUM_NET_MAC  { .addr = { 0xce, 0x72, 0xa7, 0x03, 0x88, 0x57\
+    \ } }\n#define LB_REDIRECT 1\n#define LB_DST_MAC { .addr = { 0xce, 0x72, 0xa7,\
+    \ 0x03, 0x88, 0x58 } }\n#define CILIUM_LB_MAP_MAX_ENTRIES\t65536\n#define POLICY_MAP_SIZE\
+    \ 16384\n#define IPCACHE_MAP_SIZE 512000\n#define POLICY_PROG_MAP_SIZE ENDPOINTS_MAP_SIZE"
+  fixed_code: "// FILE: bpf/node_config.h\n// CONTEXT: DEFINE_IPV6(HOST_IP, 0xbe,\
+    \ 0xef, 0x0, 0x0, 0x0, 0x0, 0x0, 0x1, 0x0, 0x0, 0xa, 0x\n\n#ifdef ENABLE_MASQUERADE\n\
+    #define SNAT_MAPPING_MIN_PORT 1024\n#define SNAT_MAPPING_MAX_PORT 65535\n#endif\n\
+    \n#ifdef ENABLE_IPV4\n#define IPV4_MASK 0xffff\n#define IPV4_GATEWAY 0xfffff50a\n\
+    #define IPV4_LOOPBACK 0x1ffff50a\n#if defined ENABLE_MASQUERADE || defined ENABLE_NODEPORT\n\
+    #define SNAT_IPV4_EXTERNAL IPV4_GATEWAY\n#define SNAT_MAPPING_IPV4 test_cilium_snat_v4_external\n\
+    #define SNAT_MAPPING_IPV4_SIZE 524288\n#endif /* ENABLE_MASQUERADE */\n#endif\
+    \ /* ENABLE_IPV4 */\n\n#ifdef ENABLE_IPV6\n#if defined ENABLE_MASQUERADE || defined\
+    \ ENABLE_NODEPORT\nDEFINE_IPV6(SNAT_IPV6_EXTERNAL, 0xbe, 0xef, 0x0, 0x0, 0x0,\
+    \ 0x0, 0x0, 0x1, 0x0, 0x0, 0x0, 0x1, 0x0, 0x1, 0x0, 0x0);\n#define SNAT_MAPPING_IPV6\
+    \ test_cilium_snat_v6_external\n#define SNAT_MAPPING_IPV6_SIZE 524288\n#endif\
+    \ /* ENABLE_MASQUERADE */\n#endif /* ENABLE_IPV6 */\n\n#define ENCAP_GENEVE 1\n\
+    #define ENDPOINTS_MAP test_cilium_lxc\n#define EVENTS_MAP test_cilium_events\n\
+    #define SIGNAL_MAP test_cilium_signals\n#define METRICS_MAP test_cilium_metrics\n\
+    #define POLICY_CALL_MAP test_cilium_policy\n#define SOCK_OPS_MAP test_sock_ops_map\n\
+    #define IPCACHE_MAP test_cilium_ipcache\n#define ENCRYPT_MAP test_cilium_encrypt_state\n\
+    #define TUNNEL_MAP test_cilium_tunnel_map\n#define EP_POLICY_MAP test_cilium_ep_to_policy\n\
+    #define LB6_REVERSE_NAT_MAP test_cilium_lb6_reverse_nat\n#define LB6_SERVICES_MAP_V2\
+    \ test_cilium_lb6_services\n#define LB6_BACKEND_MAP test_cilium_lb6_backends\n\
+    #define LB6_REVERSE_NAT_SK_MAP test_cilium_lb6_reverse_sk\n#define LB6_REVERSE_NAT_SK_MAP_SIZE\
+    \ 262144\n#define LB4_REVERSE_NAT_MAP test_cilium_lb4_reverse_nat\n#define LB4_SERVICES_MAP_V2\
+    \ test_cilium_lb4_services\n#define LB4_BACKEND_MAP test_cilium_lb4_backends\n\
+    #define LB4_REVERSE_NAT_SK_MAP test_cilium_lb4_reverse_sk\n#define LB4_REVERSE_NAT_SK_MAP_SIZE\
+    \ 262144\n#define ENABLE_ARP_RESPONDER\n#define TUNNEL_ENDPOINT_MAP_SIZE 65536\n\
+    #define ENDPOINTS_MAP_SIZE 65536\n#define METRICS_MAP_SIZE 65536\n#define CILIUM_NET_MAC\
+    \  { .addr = { 0xce, 0x72, 0xa7, 0x03, 0x88, 0x57 } }\n#define LB_REDIRECT 1\n\
+    #define LB_DST_MAC { .addr = { 0xce, 0x72, 0xa7, 0x03, 0x88, 0x58 } }\n#define\
+    \ CILIUM_LB_MAP_MAX_ENTRIES\t65536\n#define POLICY_MAP_SIZE 16384\n#define IPCACHE_MAP_SIZE\
+    \ 512000\n#define POLICY_PROG_MAP_SIZE ENDPOINTS_MAP_SIZE"
+  diff_summary: |-
+    bpf/node_config.h:
+    - Applied a small verifier-related code change captured by the exact before/after snippets below.
+    - Affected context: DEFINE_IPV6(HOST_IP, 0xbe, 0xef, 0x0, 0x0, 0x0, 0x0, 0x0, 0x1, 0x0, 0x0, 0xa, 0x.
+    - Commit subject: bpf: Fix name for example map.

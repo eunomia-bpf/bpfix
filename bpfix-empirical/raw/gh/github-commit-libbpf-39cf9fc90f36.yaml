@@ -1,0 +1,158 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-libbpf-39cf9fc90f36
+source_kind: github_commit
+source:
+  url: https://github.com/libbpf/libbpf/commit/39cf9fc90f3665808ef337e6ca35e8097a53a107
+  title: 'libbpf: Auto-detect btf_id of BTF-based raw_tracepoints'
+  repository: https://github.com/libbpf/libbpf
+  commit: 39cf9fc90f3665808ef337e6ca35e8097a53a107
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-libbpf-39cf9fc90f36.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Auto-detects BTF IDs for BTF-based raw tracepoints through libbpf load/section
+    metadata paths. The snippets are loader API changes and contain no verifier rejection
+    evidence.
+raw:
+  case_id: github-commit-libbpf-39cf9fc90f36
+  source: github_commits
+  repository: https://github.com/libbpf/libbpf
+  commit_hash: 39cf9fc90f3665808ef337e6ca35e8097a53a107
+  commit_message: 'libbpf: Auto-detect btf_id of BTF-based raw_tracepoints'
+  commit_date: '2019-10-15'
+  fix_type: bounds_check
+  buggy_code: "// FILE: src/bpf.c\n// CONTEXT: int bpf_load_program_xattr(const struct\
+    \ bpf_load_program_attr *load_attr,\n\tint fd;\n\n\tif (!load_attr || !log_buf\
+    \ != !log_buf_sz)\n\t\treturn -EINVAL;\n\n\tlog_level = load_attr->log_level;\n\
+    \tif (log_level > (4 | 2 | 1) || (log_level && !log_buf))\n\t\treturn -EINVAL;\n\
+    \n\tmemset(&attr, 0, sizeof(attr));\n\tattr.prog_type = load_attr->prog_type;\n\
+    \tattr.expected_attach_type = load_attr->expected_attach_type;\n\tattr.insn_cnt\
+    \ = (__u32)load_attr->insns_cnt;\n\tattr.insns = ptr_to_u64(load_attr->insns);\n\
+    \tattr.license = ptr_to_u64(load_attr->license);\n\n\tattr.log_level = log_level;\n\
+    \tif (log_level) {\n\t\tattr.log_buf = ptr_to_u64(log_buf);\n\t\tattr.log_size\
+    \ = log_buf_sz;\n\t} else {\n\t\tattr.log_buf = ptr_to_u64(NULL);\n\t\tattr.log_size\
+    \ = 0;\n\t}\n\n// FILE: src/libbpf.c\n// CONTEXT: BPF_PROG_TYPE_FNS(sched_cls,\
+    \ BPF_PROG_TYPE_SCHED_CLS);\nBPF_PROG_TYPE_FNS(sched_act, BPF_PROG_TYPE_SCHED_ACT);\n\
+    BPF_PROG_TYPE_FNS(tracepoint, BPF_PROG_TYPE_TRACEPOINT);\nBPF_PROG_TYPE_FNS(raw_tracepoint,\
+    \ BPF_PROG_TYPE_RAW_TRACEPOINT);\nBPF_PROG_TYPE_FNS(xdp, BPF_PROG_TYPE_XDP);\n\
+    BPF_PROG_TYPE_FNS(perf_event, BPF_PROG_TYPE_PERF_EVENT);\n\nvoid bpf_program__set_expected_attach_type(struct\
+    \ bpf_program *prog,\n\t\t\t\t\t   enum bpf_attach_type type)\n{\n\tprog->expected_attach_type\
+    \ = type;\n}\n\n#define BPF_PROG_SEC_IMPL(string, ptype, eatype, is_attachable,\
+    \ atype) \\\n\t{ string, sizeof(string) - 1, ptype, eatype, is_attachable, atype\
+    \ }\n\n/* Programs that can NOT be attached. */\n#define BPF_PROG_SEC(string,\
+    \ ptype) BPF_PROG_SEC_IMPL(string, ptype, 0, 0, 0)\n\n/* Programs that can be\
+    \ attached. */\n#define BPF_APROG_SEC(string, ptype, atype) \\\n\tBPF_PROG_SEC_IMPL(string,\
+    \ ptype, 0, 1, atype)\n\n/* Programs that must specify expected attach type at\
+    \ load time. */\n#define BPF_EAPROG_SEC(string, ptype, eatype) \\\n\tBPF_PROG_SEC_IMPL(string,\
+    \ ptype, eatype, 1, eatype)\n\n/* Programs that can be attached but attach type\
+    \ can't be identified by section\n * name. Kept for backward compatibility.\n\
+    \ */\n#define BPF_APROG_COMPAT(string, ptype) BPF_PROG_SEC(string, ptype)\n\n\
+    static const struct {\n\tconst char *sec;\n\tsize_t len;\n\tenum bpf_prog_type\
+    \ prog_type;\n\tenum bpf_attach_type expected_attach_type;\n\tint is_attachable;\n\
+    \tenum bpf_attach_type attach_type;\n} section_names[] = {\n\tBPF_PROG_SEC(\"\
+    socket\",\t\t\tBPF_PROG_TYPE_SOCKET_FILTER),\n\tBPF_PROG_SEC(\"kprobe/\",\t\t\t\
+    BPF_PROG_TYPE_KPROBE),\n\tBPF_PROG_SEC(\"kretprobe/\",\t\tBPF_PROG_TYPE_KPROBE),\n\
+    \tBPF_PROG_SEC(\"classifier\",\t\tBPF_PROG_TYPE_SCHED_CLS),\n\tBPF_PROG_SEC(\"\
+    action\",\t\t\tBPF_PROG_TYPE_SCHED_ACT),\n\tBPF_PROG_SEC(\"tracepoint/\",\t\t\
+    BPF_PROG_TYPE_TRACEPOINT),\n\tBPF_PROG_SEC(\"raw_tracepoint/\",\t\tBPF_PROG_TYPE_RAW_TRACEPOINT),\n\
+    \tBPF_PROG_SEC(\"xdp\",\t\t\tBPF_PROG_TYPE_XDP),\n\tBPF_PROG_SEC(\"perf_event\"\
+    ,\t\tBPF_PROG_TYPE_PERF_EVENT),\n\tBPF_PROG_SEC(\"lwt_in\",\t\t\tBPF_PROG_TYPE_LWT_IN),\n\
+    \tBPF_PROG_SEC(\"lwt_out\",\t\t\tBPF_PROG_TYPE_LWT_OUT),\n\tBPF_PROG_SEC(\"lwt_xmit\"\
+    ,\t\tBPF_PROG_TYPE_LWT_XMIT),\n\tBPF_PROG_SEC(\"lwt_seg6local\",\t\tBPF_PROG_TYPE_LWT_SEG6LOCAL),\n\
+    \tBPF_APROG_SEC(\"cgroup_skb/ingress\",\tBPF_PROG_TYPE_CGROUP_SKB,\n\t\t\t\t\t\
+    \tBPF_CGROUP_INET_INGRESS),\n\tBPF_APROG_SEC(\"cgroup_skb/egress\",\tBPF_PROG_TYPE_CGROUP_SKB,\n\
+    \t\t\t\t\t\tBPF_CGROUP_INET_EGRESS),\n\tBPF_APROG_COMPAT(\"cgroup/skb\",\t\tBPF_PROG_TYPE_CGROUP_SKB),\n\
+    \tBPF_APROG_SEC(\"cgroup/sock\",\t\tBPF_PROG_TYPE_CGROUP_SOCK,\n\n// CONTEXT:\
+    \ int libbpf_prog_type_by_name(const char *name, enum bpf_prog_type *prog_type,\n\
+    {\n\tchar *type_names;\n\tint i;\n\n\tif (!name)\n\t\treturn -EINVAL;\n\n\tfor\
+    \ (i = 0; i < ARRAY_SIZE(section_names); i++) {\n\t\tif (strncmp(name, section_names[i].sec,\
+    \ section_names[i].len))\n\t\t\tcontinue;\n\t\t*prog_type = section_names[i].prog_type;\n\
+    \t\t*expected_attach_type = section_names[i].expected_attach_type;\n\t\treturn\
+    \ 0;\n\t}\n\tpr_warning(\"failed to guess program type based on ELF section name\
+    \ '%s'\\n\", name);\n\ttype_names = libbpf_get_type_names(false);\n\tif (type_names\
+    \ != NULL) {\n\t\tpr_info(\"supported section(type) names are:%s\\n\", type_names);\n\
+    \t\tfree(type_names);\n\t}\n\n\treturn -EINVAL;\n}"
+  fixed_code: "// FILE: src/bpf.c\n// CONTEXT: int bpf_load_program_xattr(const struct\
+    \ bpf_load_program_attr *load_attr,\n\tint fd;\n\n\tif (!load_attr || !log_buf\
+    \ != !log_buf_sz)\n\t\treturn -EINVAL;\n\n\tlog_level = load_attr->log_level;\n\
+    \tif (log_level > (4 | 2 | 1) || (log_level && !log_buf))\n\t\treturn -EINVAL;\n\
+    \n\tmemset(&attr, 0, sizeof(attr));\n\tattr.prog_type = load_attr->prog_type;\n\
+    \tattr.expected_attach_type = load_attr->expected_attach_type;\n\tif (attr.prog_type\
+    \ == BPF_PROG_TYPE_RAW_TRACEPOINT)\n\t\t/* expected_attach_type is ignored for\
+    \ tracing progs */\n\t\tattr.attach_btf_id = attr.expected_attach_type;\n\tattr.insn_cnt\
+    \ = (__u32)load_attr->insns_cnt;\n\tattr.insns = ptr_to_u64(load_attr->insns);\n\
+    \tattr.license = ptr_to_u64(load_attr->license);\n\n\tattr.log_level = log_level;\n\
+    \tif (log_level) {\n\t\tattr.log_buf = ptr_to_u64(log_buf);\n\t\tattr.log_size\
+    \ = log_buf_sz;\n\t} else {\n\t\tattr.log_buf = ptr_to_u64(NULL);\n\t\tattr.log_size\
+    \ = 0;\n\t}\n\n// FILE: src/libbpf.c\n// CONTEXT: BPF_PROG_TYPE_FNS(sched_cls,\
+    \ BPF_PROG_TYPE_SCHED_CLS);\nBPF_PROG_TYPE_FNS(sched_act, BPF_PROG_TYPE_SCHED_ACT);\n\
+    BPF_PROG_TYPE_FNS(tracepoint, BPF_PROG_TYPE_TRACEPOINT);\nBPF_PROG_TYPE_FNS(raw_tracepoint,\
+    \ BPF_PROG_TYPE_RAW_TRACEPOINT);\nBPF_PROG_TYPE_FNS(xdp, BPF_PROG_TYPE_XDP);\n\
+    BPF_PROG_TYPE_FNS(perf_event, BPF_PROG_TYPE_PERF_EVENT);\n\nvoid bpf_program__set_expected_attach_type(struct\
+    \ bpf_program *prog,\n\t\t\t\t\t   enum bpf_attach_type type)\n{\n\tprog->expected_attach_type\
+    \ = type;\n}\n\n#define BPF_PROG_SEC_IMPL(string, ptype, eatype, is_attachable,\
+    \ btf, atype) \\\n\t{ string, sizeof(string) - 1, ptype, eatype, is_attachable,\
+    \ btf, atype }\n\n/* Programs that can NOT be attached. */\n#define BPF_PROG_SEC(string,\
+    \ ptype) BPF_PROG_SEC_IMPL(string, ptype, 0, 0, 0, 0)\n\n/* Programs that can\
+    \ be attached. */\n#define BPF_APROG_SEC(string, ptype, atype) \\\n\tBPF_PROG_SEC_IMPL(string,\
+    \ ptype, 0, 1, 0, atype)\n\n/* Programs that must specify expected attach type\
+    \ at load time. */\n#define BPF_EAPROG_SEC(string, ptype, eatype) \\\n\tBPF_PROG_SEC_IMPL(string,\
+    \ ptype, eatype, 1, 0, eatype)\n\n/* Programs that use BTF to identify attach\
+    \ point */\n#define BPF_PROG_BTF(string, ptype) BPF_PROG_SEC_IMPL(string, ptype,\
+    \ 0, 0, 1, 0)\n\n/* Programs that can be attached but attach type can't be identified\
+    \ by section\n * name. Kept for backward compatibility.\n */\n#define BPF_APROG_COMPAT(string,\
+    \ ptype) BPF_PROG_SEC(string, ptype)\n\nstatic const struct {\n\tconst char *sec;\n\
+    \tsize_t len;\n\tenum bpf_prog_type prog_type;\n\tenum bpf_attach_type expected_attach_type;\n\
+    \tbool is_attachable;\n\tbool is_attach_btf;\n\tenum bpf_attach_type attach_type;\n\
+    } section_names[] = {\n\tBPF_PROG_SEC(\"socket\",\t\t\tBPF_PROG_TYPE_SOCKET_FILTER),\n\
+    \tBPF_PROG_SEC(\"kprobe/\",\t\t\tBPF_PROG_TYPE_KPROBE),\n\tBPF_PROG_SEC(\"kretprobe/\"\
+    ,\t\tBPF_PROG_TYPE_KPROBE),\n\tBPF_PROG_SEC(\"classifier\",\t\tBPF_PROG_TYPE_SCHED_CLS),\n\
+    \tBPF_PROG_SEC(\"action\",\t\t\tBPF_PROG_TYPE_SCHED_ACT),\n\tBPF_PROG_SEC(\"tracepoint/\"\
+    ,\t\tBPF_PROG_TYPE_TRACEPOINT),\n\tBPF_PROG_SEC(\"raw_tracepoint/\",\t\tBPF_PROG_TYPE_RAW_TRACEPOINT),\n\
+    \tBPF_PROG_BTF(\"tp_btf/\",\t\t\tBPF_PROG_TYPE_RAW_TRACEPOINT),\n\tBPF_PROG_SEC(\"\
+    xdp\",\t\t\tBPF_PROG_TYPE_XDP),\n\tBPF_PROG_SEC(\"perf_event\",\t\tBPF_PROG_TYPE_PERF_EVENT),\n\
+    \tBPF_PROG_SEC(\"lwt_in\",\t\t\tBPF_PROG_TYPE_LWT_IN),\n\tBPF_PROG_SEC(\"lwt_out\"\
+    ,\t\t\tBPF_PROG_TYPE_LWT_OUT),\n\tBPF_PROG_SEC(\"lwt_xmit\",\t\tBPF_PROG_TYPE_LWT_XMIT),\n\
+    \tBPF_PROG_SEC(\"lwt_seg6local\",\t\tBPF_PROG_TYPE_LWT_SEG6LOCAL),\n\tBPF_APROG_SEC(\"\
+    cgroup_skb/ingress\",\tBPF_PROG_TYPE_CGROUP_SKB,\n\t\t\t\t\t\tBPF_CGROUP_INET_INGRESS),\n\
+    \tBPF_APROG_SEC(\"cgroup_skb/egress\",\tBPF_PROG_TYPE_CGROUP_SKB,\n\t\t\t\t\t\t\
+    BPF_CGROUP_INET_EGRESS),\n\tBPF_APROG_COMPAT(\"cgroup/skb\",\t\tBPF_PROG_TYPE_CGROUP_SKB),\n\
+    \tBPF_APROG_SEC(\"cgroup/sock\",\t\tBPF_PROG_TYPE_CGROUP_SOCK,\n\n// CONTEXT:\
+    \ int libbpf_prog_type_by_name(const char *name, enum bpf_prog_type *prog_type,\n\
+    {\n\tchar *type_names;\n\tint i;\n\n\tif (!name)\n\t\treturn -EINVAL;\n\n\tfor\
+    \ (i = 0; i < ARRAY_SIZE(section_names); i++) {\n\t\tif (strncmp(name, section_names[i].sec,\
+    \ section_names[i].len))\n\t\t\tcontinue;\n\t\t*prog_type = section_names[i].prog_type;\n\
+    \t\t*expected_attach_type = section_names[i].expected_attach_type;\n\t\tif (section_names[i].is_attach_btf)\
+    \ {\n\t\t\tstruct btf *btf = bpf_core_find_kernel_btf();\n\t\t\tchar raw_tp_btf_name[128]\
+    \ = \"btf_trace_\";\n\t\t\tchar *dst = raw_tp_btf_name + sizeof(\"btf_trace_\"\
+    ) - 1;\n\t\t\tint ret;\n\n\t\t\tif (IS_ERR(btf)) {\n\t\t\t\tpr_warning(\"vmlinux\
+    \ BTF is not found\\n\");\n\t\t\t\treturn -EINVAL;\n\t\t\t}\n\t\t\t/* prepend\
+    \ \"btf_trace_\" prefix per kernel convention */\n\t\t\tstrncat(dst, name + section_names[i].len,\n\
+    \t\t\t\tsizeof(raw_tp_btf_name) - (dst - raw_tp_btf_name));\n\t\t\tret = btf__find_by_name(btf,\
+    \ raw_tp_btf_name);\n\t\t\tbtf__free(btf);\n\t\t\tif (ret <= 0) {\n\t\t\t\tpr_warning(\"\
+    %s is not found in vmlinux BTF\\n\", dst);\n\t\t\t\treturn -EINVAL;\n\t\t\t}\n\
+    \t\t\t*expected_attach_type = ret;\n\t\t}\n\t\treturn 0;\n\t}\n\tpr_warning(\"\
+    failed to guess program type based on ELF section name '%s'\\n\", name);\n\ttype_names\
+    \ = libbpf_get_type_names(false);\n\tif (type_names != NULL) {\n\t\tpr_info(\"\
+    supported section(type) names are:%s\\n\", type_names);\n\t\tfree(type_names);\n\
+    \t}\n\n\treturn -EINVAL;\n}"
+  diff_summary: |-
+    src/bpf.c:
+    - Added explicit bounds or range guards so the verifier can prove the access size and offset.
+    - Affected context: int bpf_load_program_xattr(const struct bpf_load_program_attr *load_attr,.
+    src/libbpf.c:
+    - Added explicit bounds or range guards so the verifier can prove the access size and offset.
+    - Affected context: BPF_PROG_TYPE_FNS(sched_cls, BPF_PROG_TYPE_SCHED_CLS);, int libbpf_prog_type_by_name(const char *name, enum bpf_prog_type *prog_type,.
+    - Commit subject: libbpf: Auto-detect btf_id of BTF-based raw_tracepoints.

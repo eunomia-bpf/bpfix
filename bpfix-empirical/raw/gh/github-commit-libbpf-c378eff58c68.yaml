@@ -1,0 +1,66 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-libbpf-c378eff58c68
+source_kind: github_commit
+source:
+  url: https://github.com/libbpf/libbpf/commit/c378eff58c68e870e896eafb4d4cdf493c3ae06a
+  title: 'libbpf: add __arg_xxx macros for annotating global func args'
+  repository: https://github.com/libbpf/libbpf
+  commit: c378eff58c68e870e896eafb4d4cdf493c3ae06a
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-libbpf-c378eff58c68.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Raw has_verifier_log=false, source_snippet_count=0. The header change adds
+    __arg_ctx and __arg_nonnull BTF declaration-tag macros to bpf_helpers.h; no BPF
+    call site, object, or verifier terminal error is present.
+raw:
+  case_id: github-commit-libbpf-c378eff58c68
+  source: github_commits
+  repository: https://github.com/libbpf/libbpf
+  commit_hash: c378eff58c68e870e896eafb4d4cdf493c3ae06a
+  commit_message: 'libbpf: add __arg_xxx macros for annotating global func args'
+  commit_date: '2023-12-14'
+  fix_type: attribute_annotation
+  buggy_code: "// FILE: src/bpf_helpers.h\n// CONTEXT: enum libbpf_tristate {\n\n\
+    #define __kconfig __attribute__((section(\".kconfig\")))\n#define __ksym __attribute__((section(\"\
+    .ksyms\")))\n#define __kptr_untrusted __attribute__((btf_type_tag(\"kptr_untrusted\"\
+    )))\n#define __kptr __attribute__((btf_type_tag(\"kptr\")))\n#define __percpu_kptr\
+    \ __attribute__((btf_type_tag(\"percpu_kptr\")))\n\n#define bpf_ksym_exists(sym)\
+    \ ({\t\t\t\t\t\t\t\t\t\\\n\t_Static_assert(!__builtin_constant_p(!!sym), #sym\
+    \ \" should be marked as __weak\");\t\\\n\t!!sym;\t\t\t\t\t\t\t\t\t\t\t\\\n})\n\
+    \n#ifndef ___bpf_concat\n#define ___bpf_concat(a, b) a ## b\n#endif\n#ifndef ___bpf_apply\n\
+    #define ___bpf_apply(fn, n) ___bpf_concat(fn, n)\n#endif\n#ifndef ___bpf_nth\n\
+    #define ___bpf_nth(_, _1, _2, _3, _4, _5, _6, _7, _8, _9, _a, _b, _c, N, ...)\
+    \ N\n#endif\n#ifndef ___bpf_narg\n#define ___bpf_narg(...) \\\n\t___bpf_nth(_,\
+    \ ##__VA_ARGS__, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0)"
+  fixed_code: "// FILE: src/bpf_helpers.h\n// CONTEXT: enum libbpf_tristate {\n\n\
+    #define __kconfig __attribute__((section(\".kconfig\")))\n#define __ksym __attribute__((section(\"\
+    .ksyms\")))\n#define __kptr_untrusted __attribute__((btf_type_tag(\"kptr_untrusted\"\
+    )))\n#define __kptr __attribute__((btf_type_tag(\"kptr\")))\n#define __percpu_kptr\
+    \ __attribute__((btf_type_tag(\"percpu_kptr\")))\n\n#define bpf_ksym_exists(sym)\
+    \ ({\t\t\t\t\t\t\t\t\t\\\n\t_Static_assert(!__builtin_constant_p(!!sym), #sym\
+    \ \" should be marked as __weak\");\t\\\n\t!!sym;\t\t\t\t\t\t\t\t\t\t\t\\\n})\n\
+    \n#define __arg_ctx __attribute__((btf_decl_tag(\"arg:ctx\")))\n#define __arg_nonnull\
+    \ __attribute((btf_decl_tag(\"arg:nonnull\")))\n\n#ifndef ___bpf_concat\n#define\
+    \ ___bpf_concat(a, b) a ## b\n#endif\n#ifndef ___bpf_apply\n#define ___bpf_apply(fn,\
+    \ n) ___bpf_concat(fn, n)\n#endif\n#ifndef ___bpf_nth\n#define ___bpf_nth(_, _1,\
+    \ _2, _3, _4, _5, _6, _7, _8, _9, _a, _b, _c, N, ...) N\n#endif\n#ifndef ___bpf_narg\n\
+    #define ___bpf_narg(...) \\\n\t___bpf_nth(_, ##__VA_ARGS__, 12, 11, 10, 9, 8,\
+    \ 7, 6, 5, 4, 3, 2, 1, 0)"
+  diff_summary: |-
+    src/bpf_helpers.h:
+    - Changed verifier-relevant attributes or annotations on the affected declarations.
+    - Affected context: enum libbpf_tristate {.
+    - Commit subject: libbpf: add __arg_xxx macros for annotating global func args.

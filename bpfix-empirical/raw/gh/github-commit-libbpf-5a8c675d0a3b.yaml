@@ -1,0 +1,60 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-libbpf-5a8c675d0a3b
+source_kind: github_commit
+source:
+  url: https://github.com/libbpf/libbpf/commit/5a8c675d0a3be4106e269e727824055134d6e0b7
+  title: 'libbpf: fix SIGSEGV when BTF loading fails, but .BTF.ext exists'
+  repository: https://github.com/libbpf/libbpf
+  commit: 5a8c675d0a3be4106e269e727824055134d6e0b7
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-libbpf-5a8c675d0a3b.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Raw diff frees obj->btf_ext after btf__load() fails to avoid a libbpf SIGSEGV.
+    The evidence is loader cleanup after BTF load failure, with no verifier trace
+    or rejected instruction.
+raw:
+  case_id: github-commit-libbpf-5a8c675d0a3b
+  source: github_commits
+  repository: https://github.com/libbpf/libbpf
+  commit_hash: 5a8c675d0a3be4106e269e727824055134d6e0b7
+  commit_message: 'libbpf: fix SIGSEGV when BTF loading fails, but .BTF.ext exists'
+  commit_date: '2019-07-19'
+  fix_type: other
+  buggy_code: "// FILE: src/libbpf.c\n// CONTEXT: static int bpf_object__sanitize_and_load_btf(struct\
+    \ bpf_object *obj)\n\tif (!obj->btf)\n\t\treturn 0;\n\n\tbpf_object__sanitize_btf(obj);\n\
+    \tbpf_object__sanitize_btf_ext(obj);\n\n\terr = btf__load(obj->btf);\n\tif (err)\
+    \ {\n\t\tpr_warning(\"Error loading %s into kernel: %d.\\n\",\n\t\t\t   BTF_ELF_SEC,\
+    \ err);\n\t\tbtf__free(obj->btf);\n\t\tobj->btf = NULL;\n\t\tif (bpf_object__is_btf_mandatory(obj))\n\
+    \t\t\treturn err;\n\t}\n\treturn 0;\n}\n\nstatic int bpf_object__elf_collect(struct\
+    \ bpf_object *obj, int flags)\n{\n\tElf *elf = obj->efile.elf;\n\tGElf_Ehdr *ep\
+    \ = &obj->efile.ehdr;\n\tElf_Data *btf_ext_data = NULL;\n\tElf_Data *btf_data\
+    \ = NULL;"
+  fixed_code: "// FILE: src/libbpf.c\n// CONTEXT: static int bpf_object__sanitize_and_load_btf(struct\
+    \ bpf_object *obj)\n\tif (!obj->btf)\n\t\treturn 0;\n\n\tbpf_object__sanitize_btf(obj);\n\
+    \tbpf_object__sanitize_btf_ext(obj);\n\n\terr = btf__load(obj->btf);\n\tif (err)\
+    \ {\n\t\tpr_warning(\"Error loading %s into kernel: %d.\\n\",\n\t\t\t   BTF_ELF_SEC,\
+    \ err);\n\t\tbtf__free(obj->btf);\n\t\tobj->btf = NULL;\n\t\t/* btf_ext can't\
+    \ exist without btf, so free it as well */\n\t\tif (obj->btf_ext) {\n\t\t\tbtf_ext__free(obj->btf_ext);\n\
+    \t\t\tobj->btf_ext = NULL;\n\t\t}\n\n\t\tif (bpf_object__is_btf_mandatory(obj))\n\
+    \t\t\treturn err;\n\t}\n\treturn 0;\n}\n\nstatic int bpf_object__elf_collect(struct\
+    \ bpf_object *obj, int flags)\n{\n\tElf *elf = obj->efile.elf;\n\tGElf_Ehdr *ep\
+    \ = &obj->efile.ehdr;\n\tElf_Data *btf_ext_data = NULL;\n\tElf_Data *btf_data\
+    \ = NULL;"
+  diff_summary: |-
+    src/libbpf.c:
+    - Applied a small verifier-related code change captured by the exact before/after snippets below.
+    - Affected context: static int bpf_object__sanitize_and_load_btf(struct bpf_object *obj).
+    - Commit subject: libbpf: fix SIGSEGV when BTF loading fails, but .BTF.ext exists.

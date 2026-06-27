@@ -1,0 +1,166 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-789eef0d148d
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/789eef0d148d0aa590d2a1b2da7fd69da6dafc47
+  title: 'bpf,maps: convert Maglev maps to BPF map definition'
+  repository: https://github.com/cilium/cilium
+  commit: 789eef0d148d0aa590d2a1b2da7fd69da6dafc47
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-789eef0d148d.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Converts Maglev maps from legacy loader definitions to BTF map definitions.
+    This is map-definition/loader compatibility, not a verifier-rejected program body.
+raw:
+  case_id: github-commit-cilium-789eef0d148d
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: 789eef0d148d0aa590d2a1b2da7fd69da6dafc47
+  commit_message: 'bpf,maps: convert Maglev maps to BPF map definition'
+  commit_date: '2021-10-22'
+  fix_type: other
+  buggy_code: "// FILE: bpf/include/bpf/loader.h\nstruct bpf_elf_map {\n\t__u32 type;\n\
+    \t__u32 size_key;\n\t__u32 size_value;\n\t__u32 max_elem;\n\t__u32 flags;\n\t\
+    __u32 id;\n\t__u32 pinning;\n\t__u32 inner_id;\n\t__u32 inner_idx;\n};\n\n#define\
+    \ NO_PREPOPULATE\t\t-1\n\n#endif /* __BPF_LOADER__ */\n\n// FILE: bpf/lib/ids.h\n\
+    /* SPDX-License-Identifier: GPL-2.0 */\n/* Copyright (C) 2016-2021 Authors of\
+    \ Cilium */\n\n#ifndef __LIB_IDS_H_\n#define __LIB_IDS_H_\n\n#define CILIUM_MAP_POLICY\t\
+    1\n#define CILIUM_MAP_CALLS\t2\n#define CILIUM_MAP_MAGLEV4\t3\n#define CILIUM_MAP_MAGLEV6\t\
+    4\n#define CILIUM_MAP_CUSTOM_CALLS\t5\n\n#endif /* __LIB_IDS_H_ */\n\n// FILE:\
+    \ bpf/lib/lb.h\n// CONTEXT: struct {\n\n#ifdef ENABLE_HEALTH_CHECK\nstruct {\n\
+    \t__uint(type, BPF_MAP_TYPE_LRU_HASH);\n\t__type(key, __sock_cookie);\n\t__type(value,\
+    \ struct lb6_health);\n\t__uint(pinning, LIBBPF_PIN_BY_NAME);\n\t__uint(max_entries,\
+    \ CILIUM_LB_MAP_MAX_ENTRIES);\n} LB6_HEALTH_MAP __section_maps_btf;\n#endif\n\n\
+    #if LB_SELECTION == LB_SELECTION_MAGLEV\nstruct bpf_elf_map __section_maps LB6_MAGLEV_MAP_INNER\
+    \ = {\n\t.type\t\t= BPF_MAP_TYPE_ARRAY,\n\t.size_key\t= sizeof(__u32),\n\t.size_value\t\
+    = sizeof(__u32) * LB_MAGLEV_LUT_SIZE,\n\t.pinning\t= PIN_NONE,\n\t.max_elem\t\
+    = 1,\n\t.inner_idx\t= NO_PREPOPULATE,\n\t.id\t\t= CILIUM_MAP_MAGLEV6,\n};\n\n\
+    struct bpf_elf_map __section_maps LB6_MAGLEV_MAP_OUTER = {\n\t.type\t\t= BPF_MAP_TYPE_HASH_OF_MAPS,\n\
+    \t.size_key\t= sizeof(__u16),\n\t.size_value\t= sizeof(__u32),\n\t.pinning\t=\
+    \ PIN_GLOBAL_NS,\n\t.inner_id\t= CILIUM_MAP_MAGLEV6,\n\t.max_elem\t= CILIUM_LB_MAP_MAX_ENTRIES,\n\
+    \t.flags\t\t= CONDITIONAL_PREALLOC,\n};\n#endif /* LB_SELECTION == LB_SELECTION_MAGLEV\
+    \ */\n#endif /* ENABLE_IPV6 */\n\n#ifdef ENABLE_IPV4\nstruct {\n\t__uint(type,\
+    \ BPF_MAP_TYPE_HASH);\n\t__type(key, __u16);\n\t__type(value, struct lb4_reverse_nat);\n\
+    \t__uint(pinning, LIBBPF_PIN_BY_NAME);\n\t__uint(max_entries, CILIUM_LB_MAP_MAX_ENTRIES);\n\
+    \t__uint(map_flags, CONDITIONAL_PREALLOC);\n} LB4_REVERSE_NAT_MAP __section_maps_btf;\n\
+    \n// CONTEXT: struct {\n\n#ifdef ENABLE_HEALTH_CHECK\nstruct {\n\t__uint(type,\
+    \ BPF_MAP_TYPE_LRU_HASH);\n\t__type(key, __sock_cookie);\n\t__type(value, struct\
+    \ lb4_health);\n\t__uint(pinning, LIBBPF_PIN_BY_NAME);\n\t__uint(max_entries,\
+    \ CILIUM_LB_MAP_MAX_ENTRIES);\n} LB4_HEALTH_MAP __section_maps_btf;\n#endif\n\n\
+    #if LB_SELECTION == LB_SELECTION_MAGLEV\nstruct bpf_elf_map __section_maps LB4_MAGLEV_MAP_INNER\
+    \ = {\n\t.type\t\t= BPF_MAP_TYPE_ARRAY,\n\t.size_key\t= sizeof(__u32),\n\t.size_value\t\
+    = sizeof(__u32) * LB_MAGLEV_LUT_SIZE,\n\t.pinning\t= PIN_NONE,\n\t.max_elem\t\
+    = 1,\n\t.inner_idx\t= NO_PREPOPULATE,\n\t.id\t\t= CILIUM_MAP_MAGLEV4,\n};\n\n\
+    struct bpf_elf_map __section_maps LB4_MAGLEV_MAP_OUTER = {\n\t.type\t\t= BPF_MAP_TYPE_HASH_OF_MAPS,\n\
+    \t.size_key\t= sizeof(__u16),\n\t.size_value\t= sizeof(__u32),\n\t.pinning\t=\
+    \ PIN_GLOBAL_NS,\n\t.inner_id\t= CILIUM_MAP_MAGLEV4,\n\t.max_elem\t= CILIUM_LB_MAP_MAX_ENTRIES,\n\
+    \t.flags\t\t= CONDITIONAL_PREALLOC,\n};\n#endif /* LB_SELECTION == LB_SELECTION_MAGLEV\
+    \ */\n#endif /* ENABLE_IPV4 */\n\n#ifdef ENABLE_SESSION_AFFINITY\nstruct {\n\t\
+    __uint(type, BPF_MAP_TYPE_HASH);\n\t__type(key, struct lb_affinity_match);\n\t\
+    __type(value, __u8);\n\t__uint(pinning, LIBBPF_PIN_BY_NAME);\n\t__uint(max_entries,\
+    \ CILIUM_LB_MAP_MAX_ENTRIES);\n\t__uint(map_flags, CONDITIONAL_PREALLOC);\n} LB_AFFINITY_MATCH_MAP\
+    \ __section_maps_btf;\n\n// FILE: bpf/node_config.h\n/* SPDX-License-Identifier:\
+    \ GPL-2.0 */\n/* Copyright (C) 2016-2020 Authors of Cilium */\n\n/*\n *\n *\n\
+    \ *                     **** WARNING ****\n * This is just a dummy header with\
+    \ dummy values to allow for test\n * compilation without the full code generation\
+    \ engine backend.\n *\n *\n *\n */\n#include \"lib/utils.h\"\n\n// CONTEXT: DEFINE_IPV6(HOST_IP,\
+    \ 0xbe, 0xef, 0x0, 0x0, 0x0, 0x0, 0x0, 0x1, 0x0, 0x0, 0xa, 0x\n#define LB6_BACKEND_MAP_V2\
+    \ test_cilium_lb6_backends\n#define LB6_REVERSE_NAT_SK_MAP test_cilium_lb6_reverse_sk\n\
+    #define LB6_REVERSE_NAT_SK_MAP_SIZE 262144\n#define LB4_REVERSE_NAT_MAP test_cilium_lb4_reverse_nat\n\
+    #define LB4_SERVICES_MAP_V2 test_cilium_lb4_services\n#define LB4_BACKEND_MAP_V2\
+    \ test_cilium_lb4_backends\n#define LB4_REVERSE_NAT_SK_MAP test_cilium_lb4_reverse_sk\n\
+    #define LB4_REVERSE_NAT_SK_MAP_SIZE 262144\n#define LB4_AFFINITY_MAP test_cilium_lb4_affinity\n\
+    #define LB6_AFFINITY_MAP test_cilium_lb6_affinity\n#define LB_AFFINITY_MATCH_MAP\
+    \ test_cilium_lb_affinity_match\n#define LB_MAGLEV_LUT_SIZE 32749\n#define LB4_MAGLEV_MAP_INNER\
+    \ test_cilium_lb4_maglev_inner\n#define LB4_MAGLEV_MAP_OUTER test_cilium_lb4_maglev_outer\n\
+    #define LB6_MAGLEV_MAP_INNER test_cilium_lb6_maglev_inner\n#define LB6_MAGLEV_MAP_OUTER\
+    \ test_cilium_lb6_maglev_outer\n#define THROTTLE_MAP test_cilium_throttle\n#define\
+    \ THROTTLE_MAP_SIZE 65536\n#define ENABLE_ARP_RESPONDER\n#define TUNNEL_ENDPOINT_MAP_SIZE\
+    \ 65536\n#define ENDPOINTS_MAP_SIZE 65536\n#define METRICS_MAP_SIZE 65536\n#define\
+    \ CILIUM_NET_MAC  { .addr = { 0xce, 0x72, 0xa7, 0x03, 0x88, 0x57 } }\n#define\
+    \ CILIUM_LB_MAP_MAX_ENTRIES\t65536\n#define POLICY_MAP_SIZE 16384\n#define IPCACHE_MAP_SIZE\
+    \ 512000\n#define EGRESS_MAP_SIZE 16384"
+  fixed_code: "// FILE: bpf/include/bpf/loader.h\nstruct bpf_elf_map {\n\t__u32 type;\n\
+    \t__u32 size_key;\n\t__u32 size_value;\n\t__u32 max_elem;\n\t__u32 flags;\n\t\
+    __u32 id;\n\t__u32 pinning;\n\t__u32 inner_id;\n\t__u32 inner_idx;\n};\n\n#endif\
+    \ /* __BPF_LOADER__ */\n\n// FILE: bpf/lib/ids.h\n/* SPDX-License-Identifier:\
+    \ GPL-2.0 */\n/* Copyright (C) 2016-2021 Authors of Cilium */\n\n#ifndef __LIB_IDS_H_\n\
+    #define __LIB_IDS_H_\n\n#define CILIUM_MAP_POLICY\t1\n#define CILIUM_MAP_CALLS\t\
+    2\n#define CILIUM_MAP_CUSTOM_CALLS\t3\n\n#endif /* __LIB_IDS_H_ */\n\n// FILE:\
+    \ bpf/lib/lb.h\n// CONTEXT: struct {\n\n#ifdef ENABLE_HEALTH_CHECK\nstruct {\n\
+    \t__uint(type, BPF_MAP_TYPE_LRU_HASH);\n\t__type(key, __sock_cookie);\n\t__type(value,\
+    \ struct lb6_health);\n\t__uint(pinning, LIBBPF_PIN_BY_NAME);\n\t__uint(max_entries,\
+    \ CILIUM_LB_MAP_MAX_ENTRIES);\n} LB6_HEALTH_MAP __section_maps_btf;\n#endif\n\n\
+    #if LB_SELECTION == LB_SELECTION_MAGLEV\nstruct {\n\t__uint(type, BPF_MAP_TYPE_HASH_OF_MAPS);\n\
+    \t__type(key, __u16);\n\t__type(value, __u32);\n\t__uint(pinning, LIBBPF_PIN_BY_NAME);\n\
+    \t__uint(max_entries, CILIUM_LB_MAP_MAX_ENTRIES);\n\t__uint(map_flags, CONDITIONAL_PREALLOC);\n\
+    \t/* Maglev inner map definition */\n\t__array(values, struct {\n\t\t__uint(type,\
+    \ BPF_MAP_TYPE_ARRAY);\n\t\t__type(key, __u32);\n\t\t__uint(value_size, sizeof(__u32)\
+    \ * LB_MAGLEV_LUT_SIZE);\n\t\t__uint(max_entries, 1);\n\t});\n} LB6_MAGLEV_MAP_OUTER\
+    \ __section_maps_btf;\n#endif /* LB_SELECTION == LB_SELECTION_MAGLEV */\n#endif\
+    \ /* ENABLE_IPV6 */\n\n#ifdef ENABLE_IPV4\nstruct {\n\t__uint(type, BPF_MAP_TYPE_HASH);\n\
+    \t__type(key, __u16);\n\t__type(value, struct lb4_reverse_nat);\n\t__uint(pinning,\
+    \ LIBBPF_PIN_BY_NAME);\n\t__uint(max_entries, CILIUM_LB_MAP_MAX_ENTRIES);\n\t\
+    __uint(map_flags, CONDITIONAL_PREALLOC);\n} LB4_REVERSE_NAT_MAP __section_maps_btf;\n\
+    \n// CONTEXT: struct {\n\n#ifdef ENABLE_HEALTH_CHECK\nstruct {\n\t__uint(type,\
+    \ BPF_MAP_TYPE_LRU_HASH);\n\t__type(key, __sock_cookie);\n\t__type(value, struct\
+    \ lb4_health);\n\t__uint(pinning, LIBBPF_PIN_BY_NAME);\n\t__uint(max_entries,\
+    \ CILIUM_LB_MAP_MAX_ENTRIES);\n} LB4_HEALTH_MAP __section_maps_btf;\n#endif\n\n\
+    #if LB_SELECTION == LB_SELECTION_MAGLEV\nstruct {\n\t__uint(type, BPF_MAP_TYPE_HASH_OF_MAPS);\n\
+    \t__type(key, __u16);\n\t__type(value, __u32);\n\t__uint(pinning, LIBBPF_PIN_BY_NAME);\n\
+    \t__uint(max_entries, CILIUM_LB_MAP_MAX_ENTRIES);\n\t__uint(map_flags, CONDITIONAL_PREALLOC);\n\
+    \t/* Maglev inner map definition */\n\t__array(values, struct {\n\t\t__uint(type,\
+    \ BPF_MAP_TYPE_ARRAY);\n\t\t__type(key, __u32);\n\t\t__uint(value_size, sizeof(__u32)\
+    \ * LB_MAGLEV_LUT_SIZE);\n\t\t__uint(max_entries, 1);\n\t});\n} LB4_MAGLEV_MAP_OUTER\
+    \ __section_maps_btf;\n#endif /* LB_SELECTION == LB_SELECTION_MAGLEV */\n#endif\
+    \ /* ENABLE_IPV4 */\n\n#ifdef ENABLE_SESSION_AFFINITY\nstruct {\n\t__uint(type,\
+    \ BPF_MAP_TYPE_HASH);\n\t__type(key, struct lb_affinity_match);\n\t__type(value,\
+    \ __u8);\n\t__uint(pinning, LIBBPF_PIN_BY_NAME);\n\t__uint(max_entries, CILIUM_LB_MAP_MAX_ENTRIES);\n\
+    \t__uint(map_flags, CONDITIONAL_PREALLOC);\n} LB_AFFINITY_MATCH_MAP __section_maps_btf;\n\
+    \n// FILE: bpf/node_config.h\n/* SPDX-License-Identifier: GPL-2.0 */\n/* Copyright\
+    \ (C) 2016-2021 Authors of Cilium */\n\n/*\n *\n *\n *                     ****\
+    \ WARNING ****\n * This is just a dummy header with dummy values to allow for\
+    \ test\n * compilation without the full code generation engine backend.\n *\n\
+    \ *\n *\n */\n#include \"lib/utils.h\"\n\n// CONTEXT: DEFINE_IPV6(HOST_IP, 0xbe,\
+    \ 0xef, 0x0, 0x0, 0x0, 0x0, 0x0, 0x1, 0x0, 0x0, 0xa, 0x\n#define LB6_BACKEND_MAP_V2\
+    \ test_cilium_lb6_backends\n#define LB6_REVERSE_NAT_SK_MAP test_cilium_lb6_reverse_sk\n\
+    #define LB6_REVERSE_NAT_SK_MAP_SIZE 262144\n#define LB4_REVERSE_NAT_MAP test_cilium_lb4_reverse_nat\n\
+    #define LB4_SERVICES_MAP_V2 test_cilium_lb4_services\n#define LB4_BACKEND_MAP_V2\
+    \ test_cilium_lb4_backends\n#define LB4_REVERSE_NAT_SK_MAP test_cilium_lb4_reverse_sk\n\
+    #define LB4_REVERSE_NAT_SK_MAP_SIZE 262144\n#define LB4_AFFINITY_MAP test_cilium_lb4_affinity\n\
+    #define LB6_AFFINITY_MAP test_cilium_lb6_affinity\n#define LB_AFFINITY_MATCH_MAP\
+    \ test_cilium_lb_affinity_match\n#define LB_MAGLEV_LUT_SIZE 32749\n#define LB4_MAGLEV_MAP_OUTER\
+    \ test_cilium_lb4_maglev_outer\n#define LB6_MAGLEV_MAP_OUTER test_cilium_lb6_maglev_outer\n\
+    #define THROTTLE_MAP test_cilium_throttle\n#define THROTTLE_MAP_SIZE 65536\n#define\
+    \ ENABLE_ARP_RESPONDER\n#define TUNNEL_ENDPOINT_MAP_SIZE 65536\n#define ENDPOINTS_MAP_SIZE\
+    \ 65536\n#define METRICS_MAP_SIZE 65536\n#define CILIUM_NET_MAC  { .addr = { 0xce,\
+    \ 0x72, 0xa7, 0x03, 0x88, 0x57 } }\n#define CILIUM_LB_MAP_MAX_ENTRIES\t65536\n\
+    #define POLICY_MAP_SIZE 16384\n#define IPCACHE_MAP_SIZE 512000\n#define EGRESS_MAP_SIZE\
+    \ 16384"
+  diff_summary: |-
+    bpf/include/bpf/loader.h:
+    - Applied a small verifier-related code change captured by the exact before/after snippets below.
+    - Affected context: the touched section.
+    bpf/lib/ids.h:
+    - Applied a small verifier-related code change captured by the exact before/after snippets below.
+    - Affected context: the touched section.
+    bpf/lib/lb.h:
+    - Applied a small verifier-related code change captured by the exact before/after snippets below.
+    - Affected context: struct {.
+    bpf/node_config.h:
+    - Applied a small verifier-related code change captured by the exact before/after snippets below.
+    - Affected context: DEFINE_IPV6(HOST_IP, 0xbe, 0xef, 0x0, 0x0, 0x0, 0x0, 0x0, 0x1, 0x0, 0x0, 0xa, 0x.
+    - Commit subject: bpf,maps: convert Maglev maps to BPF map definition.

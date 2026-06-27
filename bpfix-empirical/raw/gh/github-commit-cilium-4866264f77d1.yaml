@@ -1,0 +1,1148 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-4866264f77d1
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/4866264f77d130f3fb85502db833cbe277d9b38c
+  title: 'bpf:trace: send_trace_notify accept L3 protocol'
+  repository: https://github.com/cilium/cilium
+  commit: 4866264f77d130f3fb85502db833cbe277d9b38c
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-4866264f77d1.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: not_reconstructable_from_diff
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: The trace-notification API change spans many Cilium programs and helper
+    wrappers. Without a verifier log or complete generated program, the snippets do
+    not isolate a faithful standalone reject.
+raw:
+  case_id: github-commit-cilium-4866264f77d1
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: 4866264f77d130f3fb85502db833cbe277d9b38c
+  commit_message: 'bpf:trace: send_trace_notify accept L3 protocol'
+  commit_date: '2025-05-30'
+  fix_type: inline_hint
+  buggy_code: "// FILE: bpf/bpf_host.c\n// CONTEXT: do_netdev(struct __ctx_buff *ctx,\
+    \ __u16 proto, __u32 __maybe_unused identity,\n\tint __maybe_unused hdrlen = 0;\n\
+    \t__u8 __maybe_unused next_proto = 0;\n\t__s8 __maybe_unused ext_err = 0;\n\t\
+    int ret;\n\n\tbpf_clear_meta(ctx);\n\n\tswitch (proto) {\n# if defined ENABLE_ARP_PASSTHROUGH\
+    \ || defined ENABLE_ARP_RESPONDER || \\\n     defined ENABLE_L2_ANNOUNCEMENTS\n\
+    \tcase bpf_htons(ETH_P_ARP):\n\t\tsend_trace_notify(ctx, obs_point, UNKNOWN_ID,\
+    \ UNKNOWN_ID, TRACE_EP_ID_UNKNOWN,\n\t\t\t\t  ctx->ingress_ifindex, trace.reason,\
+    \ trace.monitor);\n\t\t#ifdef ENABLE_L2_ANNOUNCEMENTS\n\t\t\tret = handle_l2_announcement(ctx);\n\
+    \t\t#else\n\t\t\tret = CTX_ACT_OK;\n\t\t#endif\n\t\tbreak;\n# endif\n#ifdef ENABLE_IPV6\n\
+    \tcase bpf_htons(ETH_P_IPV6):\n\t\tif (!revalidate_data_pull(ctx, &data, &data_end,\
+    \ &ip6))\n\t\t\treturn send_drop_notify_error(ctx, identity, DROP_INVALID,\n\t\
+    \t\t\t\t\t      METRIC_INGRESS);\n\n// CONTEXT: do_netdev(struct __ctx_buff *ctx,\
+    \ __u16 proto, __u32 __maybe_unused identity,\n\n# ifdef ENABLE_WIREGUARD\n\t\t\
+    if (!from_host) {\n\t\t\tnext_proto = ip6->nexthdr;\n\t\t\thdrlen = ipv6_hdrlen(ctx,\
+    \ &next_proto);\n\t\t\tif (likely(hdrlen > 0) &&\n\t\t\t    ctx_is_wireguard(ctx,\
+    \ ETH_HLEN + hdrlen, next_proto, ipcache_srcid))\n\t\t\t\ttrace.reason = TRACE_REASON_ENCRYPTED;\n\
+    \t\t}\n# endif /* ENABLE_WIREGUARD */\n\n\t\tsend_trace_notify(ctx, obs_point,\
+    \ ipcache_srcid, UNKNOWN_ID, TRACE_EP_ID_UNKNOWN,\n\t\t\t\t  ctx->ingress_ifindex,\
+    \ trace.reason, trace.monitor);\n\n\t\tret = tail_call_internal(ctx, from_host\
+    \ ? CILIUM_CALL_IPV6_FROM_HOST :\n\t\t\t\t\t\t\t  CILIUM_CALL_IPV6_FROM_NETDEV,\n\
+    \t\t\t\t\t &ext_err);\n\t\t/* See comment below for IPv4. */\n\t\treturn send_drop_notify_error_with_exitcode_ext(ctx,\
+    \ identity, ret, ext_err,\n\t\t\t\t\t\t\t\tCTX_ACT_OK, METRIC_INGRESS);\n#endif\n\
+    #ifdef ENABLE_IPV4\n\tcase bpf_htons(ETH_P_IP):\n\t\t/* This is the first time\
+    \ revalidate_data() is going to be called.\n\t\t * Make sure that we don't legitimately\
+    \ drop the packet if the skb\n\n// CONTEXT: do_netdev(struct __ctx_buff *ctx,\
+    \ __u16 proto, __u32 __maybe_unused identity,\n# endif /* defined(ENABLE_HOST_FIREWALL)\
+    \ && !defined(ENABLE_MASQUERADE_IPV4) */\n\n#ifdef ENABLE_WIREGUARD\n\t\tif (!from_host)\
+    \ {\n\t\t\tnext_proto = ip4->protocol;\n\t\t\thdrlen = ipv4_hdrlen(ip4);\n\t\t\
+    \tif (ctx_is_wireguard(ctx, ETH_HLEN + hdrlen, next_proto, ipcache_srcid))\n\t\
+    \t\t\ttrace.reason = TRACE_REASON_ENCRYPTED;\n\t\t}\n#endif /* ENABLE_WIREGUARD\
+    \ */\n\n\t\tsend_trace_notify(ctx, obs_point, ipcache_srcid, UNKNOWN_ID, TRACE_EP_ID_UNKNOWN,\n\
+    \t\t\t\t  ctx->ingress_ifindex, trace.reason, trace.monitor);\n\n\t\tret = tail_call_internal(ctx,\
+    \ from_host ? CILIUM_CALL_IPV4_FROM_HOST :\n\t\t\t\t\t\t\t  CILIUM_CALL_IPV4_FROM_NETDEV,\n\
+    \t\t\t\t\t &ext_err);\n\t\t/* We are not returning an error here to always allow\
+    \ traffic to\n\t\t * the stack in case maps have become unavailable.\n\t\t *\n\
+    \t\t * Note: Since drop notification requires a tail call as well,\n\t\t * this\
+    \ notification is unlikely to succeed.\n\t\t */\n\t\treturn send_drop_notify_error_with_exitcode_ext(ctx,\
+    \ identity, ret, ext_err,\n\t\t\t\t\t\t\t\tCTX_ACT_OK, METRIC_INGRESS);\n#endif\
+    \ /* ENABLE_IPV4 */\n\tdefault:\n\t\tsend_trace_notify(ctx, obs_point, UNKNOWN_ID,\
+    \ UNKNOWN_ID, TRACE_EP_ID_UNKNOWN,\n\t\t\t\t  ctx->ingress_ifindex, trace.reason,\
+    \ trace.monitor);\n#ifdef ENABLE_HOST_FIREWALL\n\t\tret = send_drop_notify_error(ctx,\
+    \ identity, DROP_UNKNOWN_L3,\n\t\t\t\t\t     METRIC_INGRESS);\n#else\n\t\t/* Pass\
+    \ unknown traffic to the stack */\n\t\tret = CTX_ACT_OK;\n#endif /* ENABLE_HOST_FIREWALL\
+    \ */\n\t}\n\n\treturn ret;\n}\n\n\n// CONTEXT: int cil_from_netdev(struct __ctx_buff\
+    \ *ctx)\n#ifdef HAVE_ENCAP\n\tif (flags & XFER_PKT_SNAT_DONE)\n\t\tctx_snat_done_set(ctx);\n\
+    #endif\n#endif\n\n\tif (!validate_ethertype(ctx, &proto)) {\n#ifdef ENABLE_HOST_FIREWALL\n\
+    \t\tret = DROP_UNSUPPORTED_L2;\n\t\tgoto drop_err;\n#else\n\t\tsend_trace_notify(ctx,\
+    \ TRACE_TO_STACK, src_id, UNKNOWN_ID,\n\t\t\t\t  TRACE_EP_ID_UNKNOWN,\n\t\t\t\t\
+    \  TRACE_IFINDEX_UNKNOWN, TRACE_REASON_UNKNOWN, 0);\n\t\t/* Pass unknown traffic\
+    \ to the stack */\n\t\treturn CTX_ACT_OK;\n#endif /* ENABLE_HOST_FIREWALL */\n\
+    \t}\n\n#ifdef ENABLE_IPSEC\n\t/* If the packet needs decryption, we want to send\
+    \ it straight to the\n\t * stack. There's no need to run service handling logic,\
+    \ host firewall,\n\t * etc. on an encrypted packet.\n\t * In all other cases (packet\
+    \ doesn't need decryption or already\n\t * decrypted), we want to run all subsequent\
+    \ logic here. We therefore\n\t * ignore the return value from do_decrypt.\n\n\
+    // CONTEXT: int cil_from_host(struct __ctx_buff *ctx)\n\tedt_set_aggregate(ctx,\
+    \ 0);\n\n\tif (!validate_ethertype(ctx, &proto)) {\n\t\t__u32 dst_sec_identity\
+    \ = UNKNOWN_ID;\n\t\t__u32 src_sec_identity = HOST_ID;\n\n#ifdef ENABLE_HOST_FIREWALL\n\
+    \t\treturn send_drop_notify(ctx, src_sec_identity, dst_sec_identity,\n\t\t\t\t\
+    \tTRACE_EP_ID_UNKNOWN, DROP_UNSUPPORTED_L2,\n\t\t\t\t\tMETRIC_EGRESS);\n#else\n\
+    \t\tsend_trace_notify(ctx, TRACE_TO_STACK, src_sec_identity, dst_sec_identity,\n\
+    \t\t\t\t  TRACE_EP_ID_UNKNOWN,\n\t\t\t\t  TRACE_IFINDEX_UNKNOWN, TRACE_REASON_UNKNOWN,\
+    \ 0);\n\t\t/* Pass unknown traffic to the stack */\n\t\treturn CTX_ACT_OK;\n#endif\
+    \ /* ENABLE_HOST_FIREWALL */\n\t}\n\n#if defined(ENABLE_L7_LB)\n\tif ((ctx->mark\
+    \ & MARK_MAGIC_HOST_MASK) == MARK_MAGIC_PROXY_EGRESS_EPID) {\n\t\t__u16 lxc_id\
+    \ = get_epid(ctx);\n\n\t\tctx->mark = 0;\n\t\tret = tail_call_egress_policy(ctx,\
+    \ lxc_id);\n\t\treturn send_drop_notify_error(ctx, UNKNOWN_ID, ret, METRIC_EGRESS);\n\
+    \t}\n#endif\n\n\tmagic = inherit_identity_from_host(ctx, &identity);\n\tif (magic\
+    \ == MARK_MAGIC_PROXY_INGRESS ||  magic == MARK_MAGIC_PROXY_EGRESS)\n\t\tobs_point\
+    \ = TRACE_FROM_PROXY;\n\n#ifdef ENABLE_IPSEC\n\tif (magic == MARK_MAGIC_ENCRYPT)\
+    \ {\n\t\tret = CTX_ACT_OK;\n\n\t\tsend_trace_notify(ctx, TRACE_FROM_STACK, identity,\
+    \ UNKNOWN_ID,\n\t\t\t\t  TRACE_EP_ID_UNKNOWN,\n\t\t\t\t  ctx->ingress_ifindex,\
+    \ TRACE_REASON_ENCRYPTED, 0);\n\n# ifdef TUNNEL_MODE\n\t\tret = do_netdev_encrypt_encap(ctx,\
+    \ proto, identity);\n\t\tif (IS_ERR(ret))\n\t\t\treturn send_drop_notify_error(ctx,\
+    \ identity, ret, METRIC_EGRESS);\n# endif /* TUNNEL_MODE */\n\t\treturn ret;\n\
+    \t}\n#endif /* ENABLE_IPSEC */\n\n\treturn do_netdev(ctx, proto, identity, obs_point,\
+    \ true);\n}\n\n// CONTEXT: skip_egress_gateway:\n\t\tif (ret == CTX_ACT_REDIRECT)\n\
+    \t\t\treturn ret;\n\t}\n#endif\n\n#ifdef ENABLE_HEALTH_CHECK\nexit:\n#endif\n\t\
+    if (IS_ERR(ret))\n\t\tgoto drop_err;\n\n\tsend_trace_notify(ctx, TRACE_TO_NETWORK,\
+    \ src_sec_identity, dst_sec_identity,\n\t\t\t  TRACE_EP_ID_UNKNOWN,\n\t\t\t  THIS_INTERFACE_IFINDEX,\
+    \ trace.reason, trace.monitor);\n\n\treturn ret;\n\ndrop_err:\n\treturn send_drop_notify_error_ext(ctx,\
+    \ src_sec_identity, ret, ext_err,\n\t\t\t\t\t  METRIC_EGRESS);\n}\n\n/*\n * to-host\
+    \ is attached as a tc ingress filter to both the 'cilium_host' and\n * 'cilium_net'\
+    \ devices if present.\n */\n\n// CONTEXT: skip_ipsec_nodeport_revdnat:\n\t}\n\
+    #else\n\tret = CTX_ACT_OK;\n#endif /* ENABLE_HOST_FIREWALL */\n\nout:\n\tif (IS_ERR(ret))\n\
+    \t\treturn send_drop_notify_error_ext(ctx, src_id, ret, ext_err,\n\t\t\t\t\t\t\
+    \  METRIC_INGRESS);\n\n\tif (!traced)\n\t\tsend_trace_notify(ctx, TRACE_TO_STACK,\
+    \ src_id, UNKNOWN_ID,\n\t\t\t\t  TRACE_EP_ID_UNKNOWN,\n\t\t\t\t  CILIUM_HOST_IFINDEX,\
+    \ trace.reason, trace.monitor);\n\n\treturn ret;\n}\n\n#if defined(ENABLE_HOST_FIREWALL)\n\
+    #ifdef ENABLE_IPV6\n__declare_tail(CILIUM_CALL_IPV6_TO_HOST_POLICY_ONLY)\nstatic\
+    \ __always_inline\nint tail_ipv6_host_policy_ingress(struct __ctx_buff *ctx)\n\
+    {\n\tstruct trace_ctx trace = {\n\t\t.reason = TRACE_REASON_UNKNOWN,\n\n// CONTEXT:\
+    \ int tail_ipv6_host_policy_ingress(struct __ctx_buff *ctx)\n\t__u32 src_id =\
+    \ ctx_load_meta(ctx, CB_SRC_LABEL);\n\tbool traced = ctx_load_meta(ctx, CB_TRACED);\n\
+    \tint ret;\n\t__s8 ext_err = 0;\n\n\tret = ipv6_host_policy_ingress(ctx, &src_id,\
+    \ &trace, &ext_err);\n\tif (IS_ERR(ret))\n\t\treturn send_drop_notify_error_ext(ctx,\
+    \ src_id, ret, ext_err,\n\t\t\t\t\t\t  METRIC_INGRESS);\n\n\tif (!traced)\n\t\t\
+    send_trace_notify(ctx, TRACE_TO_STACK, src_id, UNKNOWN_ID,\n\t\t\t\t  TRACE_EP_ID_UNKNOWN,\n\
+    \t\t\t\t  CILIUM_HOST_IFINDEX, trace.reason, trace.monitor);\n\n\treturn ret;\n\
+    }\n#endif /* ENABLE_IPV6 */\n\n#ifdef ENABLE_IPV4\n__declare_tail(CILIUM_CALL_IPV4_TO_HOST_POLICY_ONLY)\n\
+    static __always_inline\nint tail_ipv4_host_policy_ingress(struct __ctx_buff *ctx)\n\
+    {\n\tstruct trace_ctx trace = {\n\t\t.reason = TRACE_REASON_UNKNOWN,\n\n// CONTEXT:\
+    \ int tail_ipv4_host_policy_ingress(struct __ctx_buff *ctx)\n\t__u32 src_id =\
+    \ ctx_load_meta(ctx, CB_SRC_LABEL);\n\tbool traced = ctx_load_meta(ctx, CB_TRACED);\n\
+    \tint ret;\n\t__s8 ext_err = 0;\n\n\tret = ipv4_host_policy_ingress(ctx, &src_id,\
+    \ &trace, &ext_err);\n\tif (IS_ERR(ret))\n\t\treturn send_drop_notify_error_ext(ctx,\
+    \ src_id, ret, ext_err,\n\t\t\t\t\t\t  METRIC_INGRESS);\n\n\tif (!traced)\n\t\t\
+    send_trace_notify(ctx, TRACE_TO_STACK, src_id, UNKNOWN_ID,\n\t\t\t\t  TRACE_EP_ID_UNKNOWN,\n\
+    \t\t\t\t  CILIUM_HOST_IFINDEX, trace.reason, trace.monitor);\n\n\treturn ret;\n\
+    }\n#endif /* ENABLE_IPV4 */\n\nstatic __always_inline int\n/* Handles packet from\
+    \ a local endpoint entering the host namespace. Applies\n * ingress host policies.\n\
+    \ */\nto_host_from_lxc(struct __ctx_buff *ctx)\n{\n\tint ret = CTX_ACT_OK;\n\n\
+    // FILE: bpf/bpf_lxc.c\n// CONTEXT: static __always_inline int handle_ipv6_from_lxc(struct\
+    \ __ctx_buff *ctx, __u32 *d\n\t\t\treturn verdict;\n\n\t\tbreak;\n\tcase CT_RELATED:\n\
+    \tcase CT_REPLY:\n\t\t/* Skip policy enforcement for return traffic. */\n\n\t\t\
+    /* Check if this is return traffic to an ingress proxy. */\n\t\tif (ct_state->proxy_redirect)\
+    \ {\n\t\t\tsend_trace_notify(ctx, TRACE_TO_PROXY, SECLABEL_IPV6,\n\t\t\t\t\t \
+    \ UNKNOWN_ID, TRACE_EP_ID_UNKNOWN,\n\t\t\t\t\t  TRACE_IFINDEX_UNKNOWN, trace.reason,\n\
+    \t\t\t\t\t  trace.monitor);\n\t\t\t/* Stack will do a socket match and deliver\
+    \ locally. */\n\t\t\treturn ctx_redirect_to_proxy6(ctx, tuple, 0, false);\n\t\t\
+    }\n\t\t/* proxy_port remains 0 in this case */\n\n\t\tbreak;\n\tdefault:\n\t\t\
+    return DROP_UNKNOWN_CT;\n\t}\n\n\tswitch (ct_status) {\n\tcase CT_NEW:\n\n// CONTEXT:\
+    \ ct_recreate6:\n\t\tif (unlikely(ct_state->proxy_redirect != ct_state_new.proxy_redirect))\n\
+    \t\t\tgoto ct_recreate6;\n\t\tbreak;\n\n\tcase CT_RELATED:\n\tcase CT_REPLY:\n\
+    #ifdef ENABLE_NODEPORT\n\t\t/* See comment in handle_ipv4_from_lxc(). */\n\t\t\
+    if (ct_state->node_port && lb_is_svc_proto(tuple->nexthdr)) {\n\t\t\tsend_trace_notify(ctx,\
+    \ TRACE_TO_NETWORK, SECLABEL_IPV6,\n\t\t\t\t\t  *dst_sec_identity, TRACE_EP_ID_UNKNOWN,\n\
+    \t\t\t\t\t  TRACE_IFINDEX_UNKNOWN,\n\t\t\t\t\t  trace.reason, trace.monitor);\n\
+    \t\t\treturn tail_call_internal(ctx, CILIUM_CALL_IPV6_NODEPORT_REVNAT_EGRESS,\n\
+    \t\t\t\t\t\t  ext_err);\n\t\t}\n#endif /* ENABLE_NODEPORT */\n\t\tbreak;\n\tdefault:\n\
+    \t\treturn DROP_UNKNOWN_CT;\n\t}\n\n#ifdef ENABLE_SRV6\n\t{\n\t\t__u32 *vrf_id;\n\
+    \n// CONTEXT: ct_recreate6:\n\t\t\t}\n\t\t}\n\t}\n#endif /* ENABLE_SRV6 */\n\n\
+    \t/* L7 LB does L7 policy enforcement, so we only redirect packets\n\t * NOT from\
+    \ L7 LB.\n\t */\n\tif (!from_l7lb && proxy_port > 0) {\n\t\t/* Trace the packet\
+    \ before it is forwarded to proxy */\n\t\tsend_trace_notify(ctx, TRACE_TO_PROXY,\
+    \ SECLABEL_IPV6, UNKNOWN_ID,\n\t\t\t\t  bpf_ntohs(proxy_port), TRACE_IFINDEX_UNKNOWN,\n\
+    \t\t\t\t  trace.reason, trace.monitor);\n\t\treturn ctx_redirect_to_proxy6(ctx,\
+    \ tuple, proxy_port, false);\n\t}\n\n#if defined(ENABLE_HOST_FIREWALL) && !defined(ENABLE_ROUTING)\n\
+    \t/* If the destination is the local host and per-endpoint routes are\n\t * enabled,\
+    \ jump to the bpf_host program to enforce ingress host policies.\n\t */\n\tif\
+    \ (*dst_sec_identity == HOST_ID) {\n\t\tctx_store_meta(ctx, CB_FROM_HOST, 0);\n\
+    \t\tret = tail_call_policy(ctx, HOST_EP_ID);\n\n\t\t/* return fine-grained error:\
+    \ */\n\n// CONTEXT: ct_recreate6:\n\t\t\t\treturn ret;\n\t\t\t}\n\t\t}\n\t}\n\
+    #endif\n\tif (is_defined(ENABLE_HOST_ROUTING)) {\n\t\tint oif = 0;\n\n\t\tret\
+    \ = fib_redirect_v6(ctx, ETH_HLEN, ip6, false, false, ext_err, &oif);\n\t\tif\
+    \ (fib_ok(ret))\n\t\t\tsend_trace_notify(ctx, TRACE_TO_NETWORK, SECLABEL_IPV6,\n\
+    \t\t\t\t\t  *dst_sec_identity, TRACE_EP_ID_UNKNOWN, oif,\n\t\t\t\t\t  trace.reason,\
+    \ trace.monitor);\n\t\treturn ret;\n\t}\n\n\tgoto pass_to_stack;\n\n#if defined(ENABLE_HOST_ROUTING)\
+    \ || defined(ENABLE_ROUTING)\nto_host:\n#endif\n#ifdef ENABLE_ROUTING\n\tif (is_defined(ENABLE_HOST_FIREWALL)\
+    \ && *dst_sec_identity == HOST_ID) {\n\t\tsend_trace_notify(ctx, TRACE_TO_HOST,\
+    \ SECLABEL_IPV6, HOST_ID,\n\t\t\t\t  TRACE_EP_ID_UNKNOWN,\n\t\t\t\t  CILIUM_NET_IFINDEX,\
+    \ trace.reason, trace.monitor);\n\t\treturn ctx_redirect(ctx, CILIUM_NET_IFINDEX,\
+    \ BPF_F_INGRESS);\n\t}\n#endif\n\npass_to_stack:\n#ifdef ENABLE_ROUTING\n\tret\
+    \ = ipv6_l3(ctx, ETH_HLEN, NULL, (__u8 *)&router_mac.addr, METRIC_EGRESS);\n\t\
+    if (unlikely(ret != CTX_ACT_OK))\n\t\treturn ret;\n#endif\n\n#ifdef ENABLE_IDENTITY_MARK\n\
+    \t/* Always encode the source identity when passing to the stack.\n\t * If the\
+    \ stack hairpins the packet back to a local endpoint the\n\t * source identity\
+    \ can still be derived even if SNAT is\n\t * performed by a component such as\
+    \ portmap.\n\t */\n\tset_identity_mark(ctx, SECLABEL_IPV6, MARK_MAGIC_IDENTITY);\n\
+    #endif\n\n#ifdef TUNNEL_MODE\nencrypt_to_stack:\n#endif\n\tsend_trace_notify(ctx,\
+    \ TRACE_TO_STACK, SECLABEL_IPV6, *dst_sec_identity,\n\t\t\t  TRACE_EP_ID_UNKNOWN,\n\
+    \t\t\t  TRACE_IFINDEX_UNKNOWN, trace.reason, trace.monitor);\n\n\tcilium_dbg_capture(ctx,\
+    \ DBG_CAPTURE_DELIVERY, 0);\n\n\treturn CTX_ACT_OK;\n}\n\n__declare_tail(CILIUM_CALL_IPV6_FROM_LXC_CONT)\n\
+    static __always_inline\nint tail_handle_ipv6_cont(struct __ctx_buff *ctx)\n{\n\
+    \t__u32 dst_sec_identity = 0;\n\t__s8 ext_err = 0;\n\n// CONTEXT: static __always_inline\
+    \ int handle_ipv4_from_lxc(struct __ctx_buff *ctx, __u32 *d\n\t\t\treturn verdict;\n\
+    \n\t\tbreak;\n\tcase CT_RELATED:\n\tcase CT_REPLY:\n\t\t/* Skip policy enforcement\
+    \ for return traffic. */\n\n\t\t/* Check if this is return traffic to an ingress\
+    \ proxy. */\n\t\tif (ct_state->proxy_redirect) {\n\t\t\tsend_trace_notify(ctx,\
+    \ TRACE_TO_PROXY, SECLABEL_IPV4,\n\t\t\t\t\t  UNKNOWN_ID, TRACE_EP_ID_UNKNOWN,\n\
+    \t\t\t\t\t  TRACE_IFINDEX_UNKNOWN, trace.reason,\n\t\t\t\t\t  trace.monitor);\n\
+    \t\t\t/* Stack will do a socket match and deliver locally. */\n\t\t\treturn ctx_redirect_to_proxy4(ctx,\
+    \ tuple, 0, false);\n\t\t}\n\t\t/* proxy_port remains 0 in this case */\n\n\t\t\
+    break;\n\tdefault:\n\t\treturn DROP_UNKNOWN_CT;\n\t}\n\n\tswitch (ct_status) {\n\
+    \tcase CT_NEW:\n\n// CONTEXT: ct_recreate4:\n#ifdef ENABLE_NODEPORT\n\t\t/* This\
+    \ handles reply traffic for the case where the nodeport EP\n\t\t * is local to\
+    \ the node. We'll do the tail call to perform\n\t\t * the reverse DNAT.\n\t\t\
+    \ *\n\t\t * This codepath currently doesn't support revDNAT for ICMP,\n\t\t *\
+    \ so make sure that we only send TCP/UDP/SCTP down this way.\n\t\t */\n\t\tif\
+    \ (ct_state->node_port && lb_is_svc_proto(tuple->nexthdr)) {\n\t\t\tsend_trace_notify(ctx,\
+    \ TRACE_TO_NETWORK, SECLABEL_IPV4,\n\t\t\t\t\t  *dst_sec_identity, TRACE_EP_ID_UNKNOWN,\n\
+    \t\t\t\t\t  TRACE_IFINDEX_UNKNOWN,\n\t\t\t\t\t  trace.reason, trace.monitor);\n\
+    \t\t\treturn tail_call_internal(ctx, CILIUM_CALL_IPV4_NODEPORT_REVNAT,\n\t\t\t\
+    \t\t\t  ext_err);\n\t\t}\n#endif /* ENABLE_NODEPORT */\n\n\t\tbreak;\n\tdefault:\n\
+    \t\treturn DROP_UNKNOWN_CT;\n\t}\n\n#ifdef ENABLE_SRV6\n\t{\n\n// CONTEXT: ct_recreate4:\n\
+    \t}\n#endif /* ENABLE_SRV6 */\n\n\thairpin_flow |= ct_state->loopback;\n\n\t/*\
+    \ L7 LB does L7 policy enforcement, so we only redirect packets\n\t * NOT from\
+    \ L7 LB.\n\t */\n\tif (!from_l7lb && proxy_port > 0) {\n\t\t/* Trace the packet\
+    \ before it is forwarded to proxy */\n\t\tsend_trace_notify(ctx, TRACE_TO_PROXY,\
+    \ SECLABEL_IPV4, UNKNOWN_ID,\n\t\t\t\t  bpf_ntohs(proxy_port), TRACE_IFINDEX_UNKNOWN,\n\
+    \t\t\t\t  trace.reason, trace.monitor);\n\t\treturn ctx_redirect_to_proxy4(ctx,\
+    \ tuple, proxy_port, false);\n\t}\n\n#if defined(ENABLE_HOST_FIREWALL) && !defined(ENABLE_ROUTING)\n\
+    \t/* If the destination is the local host and per-endpoint routes are\n\t * enabled,\
+    \ jump to the bpf_host program to enforce ingress host policies.\n\t * Note that\
+    \ bpf_lxc can be loaded before bpf_host, so bpf_host's policy\n\t * program may\
+    \ not yet be present at this time.\n\t */\n\tif (*dst_sec_identity == HOST_ID)\
+    \ {\n\t\tctx_store_meta(ctx, CB_FROM_HOST, 0);\n\t\tret = tail_call_policy(ctx,\
+    \ HOST_EP_ID);\n\n// CONTEXT: skip_vtep:\n\t\t\t}\n\t\t}\n\t}\n#endif /* TUNNEL_MODE\
+    \ */\n\n\tif (is_defined(ENABLE_HOST_ROUTING)) {\n\t\tint oif = 0;\n\n\t\tret\
+    \ = fib_redirect_v4(ctx, ETH_HLEN, ip4, false, false, ext_err, &oif);\n\t\tif\
+    \ (fib_ok(ret))\n\t\t\tsend_trace_notify(ctx, TRACE_TO_NETWORK, SECLABEL_IPV4,\n\
+    \t\t\t\t\t  *dst_sec_identity, TRACE_EP_ID_UNKNOWN, oif,\n\t\t\t\t\t  trace.reason,\
+    \ trace.monitor);\n\t\treturn ret;\n\t}\n\n\tgoto pass_to_stack;\n\n#if defined(ENABLE_HOST_ROUTING)\
+    \ || defined(ENABLE_ROUTING)\nto_host:\n#endif\n#ifdef ENABLE_ROUTING\n\tif (is_defined(ENABLE_HOST_FIREWALL)\
+    \ && *dst_sec_identity == HOST_ID) {\n\t\tsend_trace_notify(ctx, TRACE_TO_HOST,\
+    \ SECLABEL_IPV4, HOST_ID,\n\t\t\t\t  TRACE_EP_ID_UNKNOWN,\n\t\t\t\t  CILIUM_NET_IFINDEX,\
+    \ trace.reason, trace.monitor);\n\t\treturn ctx_redirect(ctx, CILIUM_NET_IFINDEX,\
+    \ BPF_F_INGRESS);\n\t}\n#endif\n\npass_to_stack:\n#ifdef ENABLE_ROUTING\n\tret\
+    \ = ipv4_l3(ctx, ETH_HLEN, NULL, (__u8 *)&router_mac.addr, ip4);\n\tif (unlikely(ret\
+    \ != CTX_ACT_OK))\n\t\treturn ret;\n#endif\n\n#ifdef ENABLE_IDENTITY_MARK\n\t\
+    /* Always encode the source identity when passing to the stack.\n\t * If the stack\
+    \ hairpins the packet back to a local endpoint the\n\t * source identity can still\
+    \ be derived even if SNAT is\n\t * performed by a component such as portmap.\n\
+    \t */\n\tset_identity_mark(ctx, SECLABEL_IPV4, MARK_MAGIC_IDENTITY);\n#endif\n\
+    \n#if defined(TUNNEL_MODE)\nencrypt_to_stack:\n#endif\n\tsend_trace_notify(ctx,\
+    \ TRACE_TO_STACK, SECLABEL_IPV4, *dst_sec_identity,\n\t\t\t  TRACE_EP_ID_UNKNOWN,\n\
+    \t\t\t  TRACE_IFINDEX_UNKNOWN, trace.reason, trace.monitor);\n\tcilium_dbg_capture(ctx,\
+    \ DBG_CAPTURE_DELIVERY, 0);\n\treturn CTX_ACT_OK;\n}\n\n__declare_tail(CILIUM_CALL_IPV4_FROM_LXC_CONT)\n\
+    static __always_inline\nint tail_handle_ipv4_cont(struct __ctx_buff *ctx)\n{\n\
+    \t__u32 dst_sec_identity = 0;\n\t__s8 ext_err = 0;\n\n\tint ret = handle_ipv4_from_lxc(ctx,\
+    \ &dst_sec_identity, &ext_err);\n\n// CONTEXT: int tail_handle_arp(struct __ctx_buff\
+    \ *ctx)\n#endif /* ENABLE_IPV4 */\n\n/* Attachment/entry point is ingress for\
+    \ veth.\n * It corresponds to packets leaving the container.\n */\n__section_entry\n\
+    int cil_from_container(struct __ctx_buff *ctx)\n{\n\t__u16 proto;\n\t__u32 sec_label\
+    \ = SECLABEL;\n\t__s8 ext_err = 0;\n\tint ret;\n\n\tbpf_clear_meta(ctx);\n\n\t\
+    /* Workaround for GH-18311 where veth driver might have recorded\n\t * veth's\
+    \ RX queue mapping instead of leaving it at 0. This can\n\t * cause issues on\
+    \ the phys device where all traffic would only\n\t * hit a single TX queue (given\
+    \ veth device had a single one and\n\t * mapping was left at 1). Reset so that\
+    \ stack picks a fresh queue.\n\t * Kernel fix is at 710ad98c363a (\"veth: Do not\
+    \ record rx queue\n\t * hint in veth_xmit\").\n\t */\n\tctx->queue_mapping = 0;\n\
+    \n\tsend_trace_notify(ctx, TRACE_FROM_LXC, sec_label, UNKNOWN_ID,\n\t\t\t  TRACE_EP_ID_UNKNOWN,\
+    \ TRACE_IFINDEX_UNKNOWN,\n\t\t\t  TRACE_REASON_UNKNOWN, TRACE_PAYLOAD_LEN);\n\n\
+    \tif (!validate_ethertype(ctx, &proto)) {\n\t\tret = DROP_UNSUPPORTED_L2;\n\t\t\
+    goto out;\n\t}\n\n\tswitch (proto) {\n#ifdef ENABLE_IPV6\n\tcase bpf_htons(ETH_P_IPV6):\n\
+    \t\tedt_set_aggregate(ctx, LXC_ID);\n\t\tret = tail_call_internal(ctx, CILIUM_CALL_IPV6_FROM_LXC,\
+    \ &ext_err);\n\t\tsec_label = SECLABEL_IPV6;\n\t\tbreak;\n#endif /* ENABLE_IPV6\
+    \ */\n\n// CONTEXT: int cil_lxc_policy_egress(struct __ctx_buff *ctx __maybe_unused)\n\
+    \t__s8 ext_err = 0;\n\n\tif (!validate_ethertype(ctx, &proto)) {\n\t\tret = DROP_UNSUPPORTED_L2;\n\
+    \t\tgoto out;\n\t}\n\n\tctx_store_meta(ctx, CB_FROM_HOST, FROM_HOST_L7_LB);\n\n\
+    \tedt_set_aggregate(ctx, 0); /* do not count this traffic again */\n\tsend_trace_notify(ctx,\
+    \ TRACE_FROM_PROXY, SECLABEL, UNKNOWN_ID,\n\t\t\t  TRACE_EP_ID_UNKNOWN, TRACE_IFINDEX_UNKNOWN,\n\
+    \t\t\t  TRACE_REASON_UNKNOWN, TRACE_PAYLOAD_LEN);\n\n\tswitch (proto) {\n#ifdef\
+    \ ENABLE_IPV6\n\tcase bpf_htons(ETH_P_IPV6):\n\t\tret = tail_call_internal(ctx,\
+    \ CILIUM_CALL_IPV6_FROM_LXC, &ext_err);\n\t\tsec_label = SECLABEL_IPV6;\n\t\t\
+    break;\n#endif /* ENABLE_IPV6 */\n#ifdef ENABLE_IPV4\n\tcase bpf_htons(ETH_P_IP):\n\
+    \t\tret = tail_call_internal(ctx, CILIUM_CALL_IPV4_FROM_LXC, &ext_err);\n\t\t\
+    sec_label = SECLABEL_IPV4;\n\n// CONTEXT: int cil_to_container(struct __ctx_buff\
+    \ *ctx)\n\t\tctx->mark = 0;\n\t\tret = tail_call_egress_policy(ctx, lxc_id);\n\
+    \t\treturn send_drop_notify(ctx, lxc_id, sec_label, LXC_ID,\n\t\t\t\t\tret, METRIC_INGRESS);\n\
+    \t}\n#endif\n\n\tmagic = inherit_identity_from_host(ctx, &identity);\n\tif (magic\
+    \ == MARK_MAGIC_PROXY_INGRESS || magic == MARK_MAGIC_PROXY_EGRESS)\n\t\ttrace\
+    \ = TRACE_FROM_PROXY;\n\n\tsend_trace_notify(ctx, trace, identity, sec_label,\
+    \ LXC_ID,\n\t\t\t  ctx->ingress_ifindex, TRACE_REASON_UNKNOWN, TRACE_PAYLOAD_LEN);\n\
+    \n#if defined(ENABLE_HOST_FIREWALL) && !defined(ENABLE_ROUTING)\n\t/* If the packet\
+    \ comes from the hostns and per-endpoint routes are enabled,\n\t * jump to bpf_host\
+    \ to enforce egress host policies before anything else.\n\t *\n\t * We will jump\
+    \ back to bpf_lxc once host policies are enforced. Whenever\n\t * we call inherit_identity_from_host,\
+    \ the packet mark is cleared. Thus,\n\t * when we jump back, the packet mark will\
+    \ have been cleared and the\n\t * identity won't match HOST_ID anymore.\n\t */\n\
+    \tif (identity == HOST_ID) {\n\t\tctx_store_meta(ctx, CB_FROM_HOST, 1);\n\n//\
+    \ FILE: bpf/bpf_network.c\n// CONTEXT: int cil_from_network(struct __ctx_buff\
+    \ *ctx)\n\t\ttrace.reason = TRACE_REASON_ENCRYPTED;\n\n\t/* Only possible redirect\
+    \ in here is the one in the do_decrypt\n\t * which redirects to cilium_host.\n\
+    \t */\n\tif (ret == CTX_ACT_REDIRECT)\n\t\tobs_point_to = TRACE_TO_HOST;\n#endif\n\
+    \nout:\n\tsend_trace_notify(ctx, obs_point_from, UNKNOWN_ID, UNKNOWN_ID,\n\t\t\
+    \t  TRACE_EP_ID_UNKNOWN, ingress_ifindex,\n\t\t\t  trace.reason, trace.monitor);\n\
+    \n\tsend_trace_notify(ctx, obs_point_to, UNKNOWN_ID, UNKNOWN_ID,\n\t\t\t  TRACE_EP_ID_UNKNOWN,\
+    \ ingress_ifindex,\n\t\t\t  trace.reason, trace.monitor);\n\n\treturn ret;\n}\n\
+    \nBPF_LICENSE(\"Dual BSD/GPL\");\n\n// FILE: bpf/bpf_overlay.c\n// CONTEXT: static\
+    \ __always_inline int handle_ipv6(struct __ctx_buff *ctx,\n\t\t\treturn DROP_NO_NODE_ID;\n\
+    \t\tset_ipsec_decrypt_mark(ctx, node_id);\n\n\t\t/* To IPSec stack on cilium_vxlan\
+    \ we are going to pass\n\t\t * this up the stack but eth_type_trans has already\
+    \ labeled\n\t\t * this as an OTHERHOST type packet. To avoid being dropped\n\t\
+    \t * by IP stack before IPSec can be processed mark as a HOST\n\t\t * packet.\n\
+    \t\t */\n\t\tctx_change_type(ctx, PACKET_HOST);\n\n\t\tsend_trace_notify(ctx,\
+    \ TRACE_TO_STACK, *identity, UNKNOWN_ID,\n\t\t\t\t  TRACE_EP_ID_UNKNOWN,\n\t\t\
+    \t\t  ctx->ingress_ifindex, TRACE_REASON_ENCRYPTED, 0);\n\n\t\treturn CTX_ACT_OK;\n\
+    \t}\n\tctx->mark = 0;\nnot_esp:\n#endif\n\n#if defined(ENABLE_EGRESS_GATEWAY_COMMON)\n\
+    \t{\n\t\t__u32 egress_ifindex = 0;\n\t\tunion v6addr snat_addr, daddr;\n\n\n//\
+    \ CONTEXT: skip_vtep:\n\t\t\treturn DROP_NO_NODE_ID;\n\t\tset_ipsec_decrypt_mark(ctx,\
+    \ node_id);\n\n\t\t/* To IPSec stack on cilium_vxlan we are going to pass\n\t\t\
+    \ * this up the stack but eth_type_trans has already labeled\n\t\t * this as an\
+    \ OTHERHOST type packet. To avoid being dropped\n\t\t * by IP stack before IPSec\
+    \ can be processed mark as a HOST\n\t\t * packet.\n\t\t */\n\t\tctx_change_type(ctx,\
+    \ PACKET_HOST);\n\n\t\tsend_trace_notify(ctx, TRACE_TO_STACK, *identity, UNKNOWN_ID,\n\
+    \t\t\t\t  TRACE_EP_ID_UNKNOWN,\n\t\t\t\t  ctx->ingress_ifindex, TRACE_REASON_ENCRYPTED,\
+    \ 0);\n\n\t\treturn CTX_ACT_OK;\n\t}\n\tctx->mark = 0;\nnot_esp:\n#endif\n\n#if\
+    \ defined(ENABLE_EGRESS_GATEWAY_COMMON)\n\t{\n\t\t__u32 egress_ifindex = 0;\n\t\
+    \t__be32 snat_addr, daddr;\n\n\n// CONTEXT: int tail_handle_arp(struct __ctx_buff\
+    \ *ctx)\n\t\t\tgoto drop_err;\n\n\t\treturn ret;\n\t}\n\n\tret = DROP_UNKNOWN_L3;\n\
+    drop_err:\n\treturn send_drop_notify_error(ctx, UNKNOWN_ID, ret, METRIC_EGRESS);\n\
+    \npass_to_stack:\n\tsend_trace_notify(ctx, TRACE_TO_STACK, UNKNOWN_ID, UNKNOWN_ID,\n\
+    \t\t\t  TRACE_EP_ID_UNKNOWN, ctx->ingress_ifindex,\n\t\t\t  trace.reason, trace.monitor);\n\
+    \treturn CTX_ACT_OK;\n}\n#endif /* ENABLE_VTEP */\n\n#endif /* ENABLE_IPV4 */\n\
+    \n#ifdef ENABLE_IPSEC\nstatic __always_inline bool is_esp(struct __ctx_buff *ctx,\
+    \ __u16 proto)\n{\n\tvoid *data, *data_end;\n\t__u8 protocol = 0;\n\tstruct ipv6hdr\
+    \ *ip6 __maybe_unused;\n\n// CONTEXT: int cil_from_overlay(struct __ctx_buff *ctx)\n\
+    \n\t\t\tctx_store_meta(ctx, CB_SRC_LABEL, src_sec_identity);\n\t\t}\n\t\tbreak;\n\
+    #endif /* ENABLE_IPV4 || ENABLE_IPV6 */\n\tdefault:\n\t\tbreak;\n\t}\n\n#ifdef\
+    \ ENABLE_IPSEC\n\tif (is_esp(ctx, proto))\n\t\tsend_trace_notify(ctx, TRACE_FROM_OVERLAY,\
+    \ src_sec_identity, UNKNOWN_ID,\n\t\t\t\t  TRACE_EP_ID_UNKNOWN,\n\t\t\t\t  ctx->ingress_ifindex,\
+    \ TRACE_REASON_ENCRYPTED, 0);\n\telse\n#endif\n\t{\n\t\tenum trace_point obs_point\
+    \ = TRACE_FROM_OVERLAY;\n\n\t\t/* Non-ESP packet marked with MARK_MAGIC_DECRYPT\
+    \ is a packet\n\t\t * re-inserted from the stack.\n\t\t */\n\t\tif (decrypted)\n\
+    \t\t\tobs_point = TRACE_FROM_STACK;\n\n\t\tsend_trace_notify(ctx, obs_point, src_sec_identity,\
+    \ UNKNOWN_ID,\n\t\t\t\t  TRACE_EP_ID_UNKNOWN, ctx->ingress_ifindex,\n\t\t\t\t\
+    \  TRACE_REASON_UNKNOWN, TRACE_PAYLOAD_LEN);\n\t}\n\n\tswitch (proto) {\n\tcase\
+    \ bpf_htons(ETH_P_IPV6):\n#ifdef ENABLE_IPV6\n\t\tret = tail_call_internal(ctx,\
+    \ CILIUM_CALL_IPV6_FROM_OVERLAY, &ext_err);\n#else\n\t\tret = DROP_UNKNOWN_L3;\n\
+    #endif\n\t\tbreak;\n\n\tcase bpf_htons(ETH_P_IP):\n\n// FILE: bpf/bpf_wireguard.c\n\
+    // CONTEXT: int cil_from_wireguard(struct __ctx_buff *ctx)\n\n\tswitch (proto)\
+    \ {\n#ifdef ENABLE_IPV6\n\tcase bpf_htons(ETH_P_IPV6):\n\t\tif (!revalidate_data_pull(ctx,\
+    \ &data, &data_end, &ip6))\n\t\t\treturn send_drop_notify_error(ctx, identity,\
+    \ DROP_INVALID, METRIC_INGRESS);\n\n\t\tidentity = resolve_srcid_ipv6(ctx, ip6);\n\
+    \t\tctx_store_meta(ctx, CB_SRC_LABEL, identity);\n\n\t\tsend_trace_notify(ctx,\
+    \ TRACE_FROM_CRYPTO, identity, UNKNOWN_ID,\n\t\t\t\t  TRACE_EP_ID_UNKNOWN, ctx->ingress_ifindex,\n\
+    \t\t\t\t  TRACE_REASON_UNKNOWN, TRACE_PAYLOAD_LEN);\n\n\t\tret = tail_call_internal(ctx,\
+    \ CILIUM_CALL_IPV6_FROM_WIREGUARD, &ext_err);\n\t\t/* See the equivalent v4 path\
+    \ for comments */\n\t\treturn send_drop_notify_error_with_exitcode_ext(ctx, identity,\
+    \ ret, ext_err,\n\t\t\t\t\t\t\t\tCTX_ACT_OK, METRIC_INGRESS);\n#endif\n\n#ifdef\
+    \ ENABLE_IPV4\n\tcase bpf_htons(ETH_P_IP):\n\t\tif (!revalidate_data_pull(ctx,\
+    \ &data, &data_end, &ip4))\n\t\t\treturn send_drop_notify_error(ctx, identity,\
+    \ DROP_INVALID, METRIC_INGRESS);\n\n\t\tidentity = resolve_srcid_ipv4(ctx, ip4);\n\
+    \t\tctx_store_meta(ctx, CB_SRC_LABEL, identity);\n\n\t\tsend_trace_notify(ctx,\
+    \ TRACE_FROM_CRYPTO, identity, UNKNOWN_ID,\n\t\t\t\t  TRACE_EP_ID_UNKNOWN, ctx->ingress_ifindex,\n\
+    \t\t\t\t  TRACE_REASON_UNKNOWN, TRACE_PAYLOAD_LEN);\n\n\t\tret = tail_call_internal(ctx,\
+    \ CILIUM_CALL_IPV4_FROM_WIREGUARD, &ext_err);\n\t\t/* We are not returning an\
+    \ error here to always allow traffic to\n\t\t * the stack in case maps have become\
+    \ unavailable.\n\t\t *\n\t\t * Note: Since drop notification requires a tail call\
+    \ as well,\n\t\t * this notification is unlikely to succeed.\n\t\t */\n\t\treturn\
+    \ send_drop_notify_error_with_exitcode_ext(ctx, identity, ret, ext_err,\n\t\t\t\
+    \t\t\t\t\tCTX_ACT_OK, METRIC_INGRESS);\n#endif\n\t}\n\n\tsend_trace_notify(ctx,\
+    \ TRACE_FROM_CRYPTO, UNKNOWN_ID, UNKNOWN_ID,\n\t\t\t  TRACE_EP_ID_UNKNOWN, ctx->ingress_ifindex,\n\
+    \t\t\t  TRACE_REASON_UNKNOWN, TRACE_PAYLOAD_LEN);\n\n\t/* Pass unknown traffic\
+    \ to the stack */\n\treturn TC_ACT_OK;\n}\n\n/* to-wireguard is attached as a\
+    \ tc egress filter to the cilium_wg0 device. */\n__section_entry\nint cil_to_wireguard(struct\
+    \ __ctx_buff *ctx)\n{\n\tint __maybe_unused ret;\n\t__s8 __maybe_unused ext_err\
+    \ = 0;\n\t__u16 __maybe_unused proto = ctx_get_protocol(ctx);\n\n// CONTEXT: int\
+    \ cil_to_wireguard(struct __ctx_buff *ctx)\n\t\tgoto out;\n\n\tret = handle_nat_fwd(ctx,\
+    \ 0, src_sec_identity, proto, true, &trace, &ext_err);\n\tif (IS_ERR(ret))\n\t\
+    \treturn send_drop_notify_error_ext(ctx, src_sec_identity, ret, ext_err,\n\t\t\
+    \t\t\t\t  METRIC_EGRESS);\n\nout:\n#endif /* ENABLE_NODEPORT */\n\n\tsend_trace_notify(ctx,\
+    \ TRACE_TO_CRYPTO, src_sec_identity, UNKNOWN_ID,\n\t\t\t  TRACE_EP_ID_UNKNOWN,\
+    \ THIS_INTERFACE_IFINDEX,\n\t\t\t  trace.reason, trace.monitor);\n\n\treturn TC_ACT_OK;\n\
+    }\n\nBPF_LICENSE(\"Dual BSD/GPL\");\n\n// FILE: bpf/lib/encap.h\n\n#include \"\
+    common.h\"\n#include \"dbg.h\"\n#include \"hash.h\"\n#include \"trace.h\"\n\n\
+    #ifdef HAVE_ENCAP\nstatic __always_inline int\n__encap_with_nodeid4(struct __ctx_buff\
+    \ *ctx, __u32 src_ip, __be16 src_port,\n\t\t     __be32 tunnel_endpoint,\n\t\t\
+    \     __u32 seclabel, __u32 dstid, __u32 vni,\n\t\t     enum trace_reason ct_reason,\
+    \ __u32 monitor, int *ifindex,\n\t\t     __be16 proto __maybe_unused)\n{\n\t/*\
+    \ When encapsulating, a packet originating from the local host is\n\t * being\
+    \ considered as a packet from a remote node as it is being\n\t * received.\n\t\
+    \ */\n\tif (seclabel == HOST_ID)\n\t\tseclabel = LOCAL_NODE_ID;\n\n\tcilium_dbg(ctx,\
+    \ DBG_ENCAP, tunnel_endpoint, seclabel);\n\n#if __ctx_is == __ctx_skb\n\t*ifindex\
+    \ = ENCAP_IFINDEX;\n#else\n\t*ifindex = 0;\n#endif\n\n\tsend_trace_notify(ctx,\
+    \ TRACE_TO_OVERLAY, seclabel, dstid, TRACE_EP_ID_UNKNOWN,\n\t\t\t  *ifindex, ct_reason,\
+    \ monitor);\n\n\treturn ctx_set_encap_info4(ctx, src_ip, src_port, tunnel_endpoint,\
+    \ seclabel, vni,\n\t\t\t\t   NULL, 0);\n}\n\nstatic __always_inline int\n__encap_with_nodeid6(struct\
+    \ __ctx_buff *ctx, const union v6addr *tunnel_endpoint,\n\t\t     __u32 seclabel,\
+    \ __u32 dstid, enum trace_reason ct_reason,\n\t\t     __u32 monitor, int *ifindex,\
+    \ __be16 proto __maybe_unused)\n{\n\t/* When encapsulating, a packet originating\
+    \ from the local host is\n\t * being considered as a packet from a remote node\
+    \ as it is being\n\t * received.\n\t */\n\tif (seclabel == HOST_ID)\n\t\tseclabel\
+    \ = LOCAL_NODE_ID;\n\n#if __ctx_is == __ctx_skb\n\t*ifindex = ENCAP_IFINDEX;\n\
+    #else\n\t*ifindex = 0;\n#endif\n\n\tsend_trace_notify(ctx, TRACE_TO_OVERLAY, seclabel,\
+    \ dstid, TRACE_EP_ID_UNKNOWN,\n\t\t\t  *ifindex, ct_reason, monitor);\n\n\treturn\
+    \ ctx_set_encap_info6(ctx, tunnel_endpoint, seclabel, NULL, 0);\n}\n\nstatic __always_inline\
+    \ int\n__encap_and_redirect_with_nodeid(struct __ctx_buff *ctx,\n\t\t\t\t const\
+    \ struct remote_endpoint_info *info,\n\t\t\t\t __u32 seclabel, __u32 dstid, __u32\
+    \ vni,\n\t\t\t\t const struct trace_ctx *trace, __be16 proto)\n{\n\tint ifindex;\n\
+    \tint ret = 0;\n\n// CONTEXT: tunnel_gen_src_port_v6(struct ipv6_ct_tuple *tuple\
+    \ __maybe_unused)\n#else\n\treturn 0;\n#endif\n}\n\n#if defined(ENABLE_DSR) &&\
+    \ DSR_ENCAP_MODE == DSR_ENCAP_GENEVE\nstatic __always_inline int\n__encap_with_nodeid_opt4(struct\
+    \ __ctx_buff *ctx, __u32 src_ip, __be16 src_port,\n\t\t\t __u32 tunnel_endpoint,\n\
+    \t\t\t __u32 seclabel, __u32 dstid, __u32 vni,\n\t\t\t void *opt, __u32 opt_len,\n\
+    \t\t\t enum trace_reason ct_reason,\n\t\t\t __u32 monitor, int *ifindex, __be16\
+    \ proto __maybe_unused)\n{\n\t/* When encapsulating, a packet originating from\
+    \ the local host is\n\t * being considered as a packet from a remote node as it\
+    \ is being\n\t * received.\n\t */\n\tif (seclabel == HOST_ID)\n\t\tseclabel =\
+    \ LOCAL_NODE_ID;\n\n\tcilium_dbg(ctx, DBG_ENCAP, tunnel_endpoint, seclabel);\n\
+    \n#if __ctx_is == __ctx_skb\n\t*ifindex = ENCAP_IFINDEX;\n#else\n\t*ifindex =\
+    \ 0;\n#endif\n\n\tsend_trace_notify(ctx, TRACE_TO_OVERLAY, seclabel, dstid, TRACE_EP_ID_UNKNOWN,\n\
+    \t\t\t  *ifindex, ct_reason, monitor);\n\n\treturn ctx_set_encap_info4(ctx, src_ip,\
+    \ src_port, tunnel_endpoint, seclabel, vni, opt,\n\t\t\t\t   opt_len);\n}\n\n\
+    static __always_inline int\n__encap_with_nodeid_opt6(struct __ctx_buff *ctx,\n\
+    \t\t\t const union v6addr *tunnel_endpoint, __u32 seclabel,\n\t\t\t __u32 dstid,\
+    \ void *opt, __u32 opt_len,\n\t\t\t enum trace_reason ct_reason, __u32 monitor,\n\
+    \t\t\t int *ifindex, __be16 proto __maybe_unused)\n{\n\t/* When encapsulating,\
+    \ a packet originating from the local host is\n\t * being considered as a packet\
+    \ from a remote node as it is being\n\t * received.\n\t */\n\tif (seclabel ==\
+    \ HOST_ID)\n\t\tseclabel = LOCAL_NODE_ID;\n\n#if __ctx_is == __ctx_skb\n\t*ifindex\
+    \ = ENCAP_IFINDEX;\n#else\n\t*ifindex = 0;\n#endif\n\n\tsend_trace_notify(ctx,\
+    \ TRACE_TO_OVERLAY, seclabel, dstid, TRACE_EP_ID_UNKNOWN,\n\t\t\t  *ifindex, ct_reason,\
+    \ monitor);\n\n\treturn ctx_set_encap_info6(ctx, tunnel_endpoint, seclabel, opt,\
+    \ opt_len);\n}\n\nstatic __always_inline void\nset_geneve_dsr_opt4(__be16 port,\
+    \ __be32 addr, struct geneve_dsr_opt4 *gopt)\n{\n\tmemset(gopt, 0, sizeof(*gopt));\n\
+    \tgopt->hdr.opt_class = bpf_htons(DSR_GENEVE_OPT_CLASS);\n\tgopt->hdr.type = DSR_GENEVE_OPT_TYPE;\n\
+    \tgopt->hdr.length = DSR_IPV4_GENEVE_OPT_LEN;\n\tgopt->addr = addr;\n\n// FILE:\
+    \ bpf/lib/host_firewall.h\n// CONTEXT: __ipv6_host_policy_egress(struct __ctx_buff\
+    \ *ctx, bool is_host_id __maybe_unused\n\n\t/* Emit verdict if drop or if allow\
+    \ for CT_NEW. */\n\tif (verdict != CTX_ACT_OK || ret != CT_ESTABLISHED)\n\t\t\
+    send_policy_verdict_notify(ctx, dst_sec_identity, tuple->dport,\n\t\t\t\t\t  \
+    \ tuple->nexthdr, POLICY_EGRESS, 1,\n\t\t\t\t\t   verdict, proxy_port, policy_match_type,\
+    \ audited,\n\t\t\t\t\t   auth_type);\n\n\tif (proxy_port > 0 && (ret == CT_NEW\
+    \ || ret == CT_ESTABLISHED)) {\n\t\t/* Trace the packet before it is forwarded\
+    \ to proxy */\n\t\tsend_trace_notify(ctx, TRACE_TO_PROXY, SECLABEL_IPV6, UNKNOWN_ID,\n\
+    \t\t\t\t  bpf_ntohs(proxy_port), TRACE_IFINDEX_UNKNOWN,\n\t\t\t\t  trace->reason,\
+    \ trace->monitor);\n\t\treturn ctx_redirect_to_proxy_host_egress(ctx, proxy_port);\n\
+    \t}\n\n\treturn verdict;\n}\n\nstatic __always_inline int\nipv6_host_policy_egress(struct\
+    \ __ctx_buff *ctx, __u32 src_id,\n\t\t\t__u32 ipcache_srcid, struct ipv6hdr *ip6,\n\
+    \t\t\tstruct trace_ctx *trace, __s8 *ext_err)\n{\n\tstruct ct_buffer6 ct_buffer\
+    \ = {};\n\n// CONTEXT: __ipv4_host_policy_egress(struct __ctx_buff *ctx, bool\
+    \ is_host_id __maybe_unused\n\n\t/* Emit verdict if drop or if allow for CT_NEW.\
+    \ */\n\tif (verdict != CTX_ACT_OK || ret != CT_ESTABLISHED)\n\t\tsend_policy_verdict_notify(ctx,\
+    \ dst_sec_identity, tuple->dport,\n\t\t\t\t\t   tuple->nexthdr, POLICY_EGRESS,\
+    \ 0,\n\t\t\t\t\t   verdict, proxy_port, policy_match_type, audited,\n\t\t\t\t\t\
+    \   auth_type);\n\n\tif (proxy_port > 0 && (ret == CT_NEW || ret == CT_ESTABLISHED))\
+    \ {\n\t\t/* Trace the packet before it is forwarded to proxy */\n\t\tsend_trace_notify(ctx,\
+    \ TRACE_TO_PROXY, SECLABEL_IPV4, UNKNOWN_ID,\n\t\t\t\t  bpf_ntohs(proxy_port),\
+    \ TRACE_IFINDEX_UNKNOWN,\n\t\t\t\t  trace->reason, trace->monitor);\n\t\treturn\
+    \ ctx_redirect_to_proxy_host_egress(ctx, proxy_port);\n\t}\n\n\treturn verdict;\n\
+    }\n\nstatic __always_inline int\nipv4_host_policy_egress(struct __ctx_buff *ctx,\
+    \ __u32 src_id,\n\t\t\t__u32 ipcache_srcid, struct iphdr *ip4,\n\t\t\tstruct trace_ctx\
+    \ *trace, __s8 *ext_err)\n{\n\tstruct ct_buffer4 ct_buffer = {};\n\n// FILE: bpf/lib/nodeport.h\n\
+    // CONTEXT: static __always_inline int nodeport_svc_lb6(struct __ctx_buff *ctx,\n\
+    \t\treturn DROP_NOT_IN_SRC_RANGE;\n\n\tif (!lb6_svc_is_routable(svc))\n\t\treturn\
+    \ DROP_IS_CLUSTER_IP;\n\n#if defined(ENABLE_L7_LB)\n\tif (lb6_svc_is_l7_loadbalancer(svc))\
+    \ {\n# if !defined(IS_BPF_XDP)\n\t\t__be16 proxy_port = (__be16)svc->l7_lb_proxy_port;\n\
+    \n\t\tsend_trace_notify(ctx, TRACE_TO_PROXY, src_sec_identity, UNKNOWN_ID,\n\t\
+    \t\t\t  bpf_ntohs((__u16)svc->l7_lb_proxy_port),\n\t\t\t\t  THIS_INTERFACE_IFINDEX,\
+    \ TRACE_REASON_POLICY, monitor);\n\n#  if defined(ENABLE_TPROXY)\n\t\treturn ctx_redirect_to_proxy_hairpin_ipv6(ctx,\
+    \ proxy_port);\n#  else\n\t\tcilium_dbg_capture(ctx, DBG_CAPTURE_PROXY_PRE, proxy_port);\n\
+    \t\tctx->mark = MARK_MAGIC_TO_PROXY | (proxy_port << 16);\n\t\tcilium_dbg_capture(ctx,\
+    \ DBG_CAPTURE_PROXY_POST, proxy_port);\n\n\t\t*punt_to_stack = true;\n#  endif\
+    \ /* ENABLE_TPROXY */\n# endif /* IS_BPF_XDP */\n\t\treturn CTX_ACT_OK;\n\n//\
+    \ CONTEXT: static __always_inline int nodeport_svc_lb4(struct __ctx_buff *ctx,\n\
+    \n#if defined(ENABLE_L7_LB)\n\tif (lb4_svc_is_l7_loadbalancer(svc)) {\n\t\t/*\
+    \ We cannot redirect from the XDP layer to cilium_host.\n\t\t * Therefore, let\
+    \ the bpf_host to handle the L7 ingress\n\t\t * request.\n\t\t */\n# if !defined(IS_BPF_XDP)\n\
+    \t\t__be16 proxy_port = (__be16)svc->l7_lb_proxy_port;\n\n\t\tsend_trace_notify(ctx,\
+    \ TRACE_TO_PROXY, src_sec_identity, UNKNOWN_ID,\n\t\t\t\t  bpf_ntohs(proxy_port),\n\
+    \t\t\t\t  THIS_INTERFACE_IFINDEX, TRACE_REASON_POLICY, monitor);\n\n#  if defined(ENABLE_TPROXY)\n\
+    \t\treturn ctx_redirect_to_proxy_hairpin_ipv4(ctx, ip4, proxy_port);\n#  else\n\
+    \t\t/* Pass the packet straight to the proxy, without redirecting via\n\t\t *\
+    \ cilium_host.\n\t\t */\n\t\tcilium_dbg_capture(ctx, DBG_CAPTURE_PROXY_PRE, proxy_port);\n\
+    \t\tctx->mark = MARK_MAGIC_TO_PROXY | (proxy_port << 16);\n\t\tcilium_dbg_capture(ctx,\
+    \ DBG_CAPTURE_PROXY_POST, proxy_port);\n\n\t\t*punt_to_stack = true;\n\n// FILE:\
+    \ bpf/lib/nodeport_egress.h\n// CONTEXT: int tail_handle_nat_fwd_ipv6(struct __ctx_buff\
+    \ *ctx)\n\t\t.monitor = TRACE_PAYLOAD_LEN,\n\t};\n\tint ret;\n\t__s8 ext_err =\
+    \ 0;\n\n\tret = handle_nat_fwd_ipv6(ctx, &trace, &ext_err);\n\tif (IS_ERR(ret))\n\
+    \t\treturn send_drop_notify_error_ext(ctx, src_id, ret, ext_err, METRIC_EGRESS);\n\
+    \n\tif (ret == CTX_ACT_OK)\n\t\tsend_trace_notify(ctx, NODEPORT_OBS_POINT_EGRESS,\
+    \ src_id, UNKNOWN_ID,\n\t\t\t\t  TRACE_EP_ID_UNKNOWN, THIS_INTERFACE_IFINDEX,\n\
+    \t\t\t\t  trace.reason, trace.monitor);\n\n\treturn ret;\n}\n#endif /* ENABLE_IPV6\
+    \ */\n\n#ifdef ENABLE_IPV4\nstatic __always_inline bool\nnodeport_has_nat_conflict_ipv4(const\
+    \ struct iphdr *ip4 __maybe_unused,\n\t\t\t       struct ipv4_nat_target *target\
+    \ __maybe_unused)\n{\n#if defined(TUNNEL_MODE) && defined(IS_BPF_OVERLAY)\n\t\
+    if (ip4->saddr == IPV4_GATEWAY) {\n\n// CONTEXT: int tail_handle_nat_fwd_ipv4(struct\
+    \ __ctx_buff *ctx)\n\t\t.monitor = TRACE_PAYLOAD_LEN,\n\t};\n\tint ret;\n\t__s8\
+    \ ext_err = 0;\n\n\tret = handle_nat_fwd_ipv4(ctx, &trace, &ext_err);\n\tif (IS_ERR(ret))\n\
+    \t\treturn send_drop_notify_error_ext(ctx, src_id, ret, ext_err, METRIC_EGRESS);\n\
+    \n\tif (ret == CTX_ACT_OK)\n\t\tsend_trace_notify(ctx, NODEPORT_OBS_POINT_EGRESS,\
+    \ src_id, UNKNOWN_ID,\n\t\t\t\t  TRACE_EP_ID_UNKNOWN, THIS_INTERFACE_IFINDEX,\n\
+    \t\t\t\t  trace.reason, trace.monitor);\n\n\treturn ret;\n}\n#endif /* ENABLE_IPV4\
+    \ */\n\n#ifdef ENABLE_HEALTH_CHECK\nstatic __always_inline int\nhealth_encap_v4(struct\
+    \ __ctx_buff *ctx, __u32 tunnel_ep,\n\t\t__u32 seclabel)\n{\n\t__u32 key_size\
+    \ = TUNNEL_KEY_WITHOUT_SRC_IP;\n\tstruct bpf_tunnel_key key;\n\n// FILE: bpf/lib/srv6.h\n\
+    // CONTEXT: __declare_tail(CILIUM_CALL_SRV6_ENCAP)\nint tail_srv6_encap(struct\
+    \ __ctx_buff *ctx)\n{\n\tstruct in6_addr dst_sid;\n\tint ret = 0;\n\tint __maybe_unused\
+    \ ext_err = 0;\n\n\tsrv6_load_meta_sid(ctx, &dst_sid);\n\tret = srv6_handling(ctx,\
+    \ &dst_sid);\n\tif (ret < 0)\n\t\treturn send_drop_notify_error(ctx, SECLABEL_IPV6,\
+    \ ret, METRIC_EGRESS);\n\n\tsend_trace_notify(ctx, TRACE_TO_STACK, SECLABEL_IPV6,\
+    \ UNKNOWN_ID,\n\t\t\t  TRACE_EP_ID_UNKNOWN,\n\t\t\t  TRACE_IFINDEX_UNKNOWN, TRACE_REASON_SRV6_ENCAP,\
+    \ 0);\n\n\treturn ret;\n}\n\n__declare_tail(CILIUM_CALL_SRV6_DECAP)\nint tail_srv6_decap(struct\
+    \ __ctx_buff *ctx)\n{\n\tint ret = 0;\n\t__u8 nexthdr = 0;\n\t__s8 ext_err = 0;\n\
+    \n\tret = srv6_decapsulation(ctx, &nexthdr);\n\n// CONTEXT: int tail_srv6_decap(struct\
+    \ __ctx_buff *ctx)\n\t/* Clear all metadata before recirculation to avoid the\
+    \ accidental use. */\n\tctx_store_meta(ctx, 0, 0);\n\tctx_store_meta(ctx, 1, 0);\n\
+    \tctx_store_meta(ctx, 2, 0);\n\tctx_store_meta(ctx, 3, 0);\n\tctx_store_meta(ctx,\
+    \ 4, 0);\n\n\tswitch (nexthdr) {\n#ifdef ENABLE_IPV4\n\tcase IPPROTO_IPIP:\n\t\
+    \tsend_trace_notify(ctx, TRACE_FROM_NETWORK, SECLABEL_IPV4, UNKNOWN_ID,\n\t\t\t\
+    \t  TRACE_EP_ID_UNKNOWN, TRACE_IFINDEX_UNKNOWN,\n\t\t\t\t  TRACE_REASON_SRV6_DECAP,\
+    \ 0);\n\t\tret = tail_call_internal(ctx, CILIUM_CALL_IPV4_FROM_NETDEV, &ext_err);\n\
+    \t\treturn send_drop_notify_error_ext(ctx, SECLABEL_IPV6, ret, ext_err,\n\t\t\t\
+    \t\t\t  METRIC_INGRESS);\n#endif /* ENABLE_IPV4 */\n#ifdef ENABLE_IPV6\n\tcase\
+    \ IPPROTO_IPV6:\n\t\tsend_trace_notify(ctx, TRACE_FROM_NETWORK, SECLABEL_IPV6,\
+    \ UNKNOWN_ID,\n\t\t\t\t  TRACE_EP_ID_UNKNOWN, TRACE_IFINDEX_UNKNOWN,\n\t\t\t\t\
+    \  TRACE_REASON_SRV6_DECAP, 0);\n\t\tret = tail_call_internal(ctx, CILIUM_CALL_IPV6_FROM_NETDEV,\
+    \ &ext_err);\n\t\treturn send_drop_notify_error_ext(ctx, SECLABEL_IPV6, ret, ext_err,\n\
+    \t\t\t\t\t\t  METRIC_INGRESS);\n#endif /* ENABLE_IPV6 */\n\tdefault:\n\t\tret\
+    \ = DROP_UNKNOWN_L3;\n\t}\nerror_drop:\n\treturn send_drop_notify_error(ctx, SECLABEL_IPV6,\
+    \ ret, METRIC_EGRESS);\n}\n# endif /* SKIP_SRV6_HANDLING */\n#endif /* ENABLE_SRV6\
+    \ */\n\n// FILE: bpf/lib/trace.h\n// CONTEXT: emit_trace_notify(enum trace_point\
+    \ obs_point, __u32 monitor)\n\t * then 'monitor' will be set to 0 to avoid emitting\
+    \ trace notifications\n\t * when aggregation is enabled (the default).\n\t */\n\
+    \tif (MONITOR_AGGREGATION >= TRACE_AGGREGATE_ACTIVE_CT && !monitor)\n\t\treturn\
+    \ false;\n\n\treturn true;\n}\n\nstatic __always_inline void\n_send_trace_notify(struct\
+    \ __ctx_buff *ctx, enum trace_point obs_point,\n\t\t   __u32 src, __u32 dst, __u16\
+    \ dst_id, __u32 ifindex,\n\t\t   enum trace_reason reason, __u32 monitor, __u16\
+    \ line, __u8 file)\n{\n\t__u64 ctx_len = ctx_full_len(ctx);\n\t__u64 cap_len =\
+    \ min_t(__u64, monitor ? : TRACE_PAYLOAD_LEN,\n\t\t\t      ctx_len);\n\tstruct\
+    \ ratelimit_key rkey = {\n\t\t.usage = RATELIMIT_USAGE_EVENTS_MAP,\n\t};\n\tstruct\
+    \ ratelimit_settings settings = {\n\t\t.topup_interval_ns = NSEC_PER_SEC,\n\t\
+    };\n\tstruct trace_notify msg __align_stack_8;\n\tcls_flags_t flags = CLS_FLAG_NONE;\n\
+    \n// CONTEXT: _send_trace_notify6(struct __ctx_buff *ctx, enum trace_point obs_point,\n\
+    \tipv6_addr_copy(&msg.orig_ip6, orig_addr);\n\n\tctx_event_output(ctx, &cilium_events,\n\
+    \t\t\t (cap_len << 32) | BPF_F_CURRENT_CPU,\n\t\t\t &msg, sizeof(msg));\n}\n#else\n\
+    static __always_inline void\n_send_trace_notify(struct __ctx_buff *ctx, enum trace_point\
+    \ obs_point,\n\t\t   __u32 src __maybe_unused, __u32 dst __maybe_unused,\n\t\t\
+    \   __u16 dst_id __maybe_unused, __u32 ifindex __maybe_unused,\n\t\t   enum trace_reason\
+    \ reason, __u32 monitor __maybe_unused,\n\t\t   __u16 line, __u8 file)\n{\n\t\
+    _update_trace_metrics(ctx, obs_point, reason, line, file);\n}\n\nstatic __always_inline\
+    \ void\n_send_trace_notify4(struct __ctx_buff *ctx, enum trace_point obs_point,\n\
+    \t\t    __u32 src __maybe_unused, __u32 dst __maybe_unused,\n\t\t    __be32 orig_addr\
+    \ __maybe_unused, __u16 dst_id __maybe_unused,\n\t\t    __u32 ifindex __maybe_unused,\
+    \ enum trace_reason reason,\n\t\t    __u32 monitor __maybe_unused,\n\t\t    __u16\
+    \ line, __u8 file)\n{\n\n// CONTEXT: static __always_inline void\n_send_trace_notify6(struct\
+    \ __ctx_buff *ctx, enum trace_point obs_point,\n\t\t    __u32 src __maybe_unused,\
+    \ __u32 dst __maybe_unused,\n\t\t    union v6addr *orig_addr __maybe_unused,\n\
+    \t\t    __u16 dst_id __maybe_unused, __u32 ifindex __maybe_unused,\n\t\t    enum\
+    \ trace_reason reason, __u32 monitor __maybe_unused,\n\t\t    __u16 line, __u8\
+    \ file)\n{\n\t_update_trace_metrics(ctx, obs_point, reason, line, file);\n}\n\
+    #endif /* TRACE_NOTIFY */\n\n/* send_trace_notify emits a generic trace notify.\
+    \ */\n#define send_trace_notify(ctx, obs_point, src, dst, dst_id, ifindex, reason,\
+    \ monitor) \\\n\t_send_trace_notify(ctx, obs_point, src, dst, dst_id, ifindex,\
+    \ reason, monitor, \\\n\t__MAGIC_LINE__, __MAGIC_FILE__)\n\n/* send_trace_notify4\
+    \ emits a trace notify with the original IPv4 address before translation. */\n\
+    #define send_trace_notify4(ctx, obs_point, src, dst, orig_addr, dst_id, ifindex,\
+    \ reason, monitor) \\\n\t_send_trace_notify4(ctx, obs_point, src, dst, orig_addr,\
+    \ dst_id, ifindex, reason, monitor, \\\n\t__MAGIC_LINE__, __MAGIC_FILE__)\n\n\
+    /* send_trace_notify6 emits a trace notify with the original IPv6 address before\
+    \ translation. */\n#define send_trace_notify6(ctx, obs_point, src, dst, orig_addr,\
+    \ dst_id, ifindex, reason, monitor) \\\n\t_send_trace_notify6(ctx, obs_point,\
+    \ src, dst, orig_addr, dst_id, ifindex, reason, monitor, \\\n\t__MAGIC_LINE__,\
+    \ __MAGIC_FILE__)"
+  fixed_code: "// FILE: bpf/bpf_host.c\n// CONTEXT: do_netdev(struct __ctx_buff *ctx,\
+    \ __u16 proto, __u32 __maybe_unused identity,\n\tint __maybe_unused hdrlen = 0;\n\
+    \t__u8 __maybe_unused next_proto = 0;\n\t__s8 __maybe_unused ext_err = 0;\n\t\
+    int ret;\n\n\tbpf_clear_meta(ctx);\n\n\tswitch (proto) {\n# if defined ENABLE_ARP_PASSTHROUGH\
+    \ || defined ENABLE_ARP_RESPONDER || \\\n     defined ENABLE_L2_ANNOUNCEMENTS\n\
+    \tcase bpf_htons(ETH_P_ARP):\n\t\tsend_trace_notify(ctx, obs_point, UNKNOWN_ID,\
+    \ UNKNOWN_ID, TRACE_EP_ID_UNKNOWN,\n\t\t\t\t  ctx->ingress_ifindex, trace.reason,\
+    \ trace.monitor, proto);\n\t\t#ifdef ENABLE_L2_ANNOUNCEMENTS\n\t\t\tret = handle_l2_announcement(ctx);\n\
+    \t\t#else\n\t\t\tret = CTX_ACT_OK;\n\t\t#endif\n\t\tbreak;\n# endif\n#ifdef ENABLE_IPV6\n\
+    \tcase bpf_htons(ETH_P_IPV6):\n\t\tif (!revalidate_data_pull(ctx, &data, &data_end,\
+    \ &ip6))\n\t\t\treturn send_drop_notify_error(ctx, identity, DROP_INVALID,\n\t\
+    \t\t\t\t\t      METRIC_INGRESS);\n\n// CONTEXT: do_netdev(struct __ctx_buff *ctx,\
+    \ __u16 proto, __u32 __maybe_unused identity,\n\n# ifdef ENABLE_WIREGUARD\n\t\t\
+    if (!from_host) {\n\t\t\tnext_proto = ip6->nexthdr;\n\t\t\thdrlen = ipv6_hdrlen(ctx,\
+    \ &next_proto);\n\t\t\tif (likely(hdrlen > 0) &&\n\t\t\t    ctx_is_wireguard(ctx,\
+    \ ETH_HLEN + hdrlen, next_proto, ipcache_srcid))\n\t\t\t\ttrace.reason = TRACE_REASON_ENCRYPTED;\n\
+    \t\t}\n# endif /* ENABLE_WIREGUARD */\n\n\t\tsend_trace_notify(ctx, obs_point,\
+    \ ipcache_srcid, UNKNOWN_ID, TRACE_EP_ID_UNKNOWN,\n\t\t\t\t  ctx->ingress_ifindex,\
+    \ trace.reason, trace.monitor, proto);\n\n\t\tret = tail_call_internal(ctx, from_host\
+    \ ? CILIUM_CALL_IPV6_FROM_HOST :\n\t\t\t\t\t\t\t  CILIUM_CALL_IPV6_FROM_NETDEV,\n\
+    \t\t\t\t\t &ext_err);\n\t\t/* See comment below for IPv4. */\n\t\treturn send_drop_notify_error_with_exitcode_ext(ctx,\
+    \ identity, ret, ext_err,\n\t\t\t\t\t\t\t\tCTX_ACT_OK, METRIC_INGRESS);\n#endif\n\
+    #ifdef ENABLE_IPV4\n\tcase bpf_htons(ETH_P_IP):\n\t\t/* This is the first time\
+    \ revalidate_data() is going to be called.\n\t\t * Make sure that we don't legitimately\
+    \ drop the packet if the skb\n\n// CONTEXT: do_netdev(struct __ctx_buff *ctx,\
+    \ __u16 proto, __u32 __maybe_unused identity,\n# endif /* defined(ENABLE_HOST_FIREWALL)\
+    \ && !defined(ENABLE_MASQUERADE_IPV4) */\n\n#ifdef ENABLE_WIREGUARD\n\t\tif (!from_host)\
+    \ {\n\t\t\tnext_proto = ip4->protocol;\n\t\t\thdrlen = ipv4_hdrlen(ip4);\n\t\t\
+    \tif (ctx_is_wireguard(ctx, ETH_HLEN + hdrlen, next_proto, ipcache_srcid))\n\t\
+    \t\t\ttrace.reason = TRACE_REASON_ENCRYPTED;\n\t\t}\n#endif /* ENABLE_WIREGUARD\
+    \ */\n\n\t\tsend_trace_notify(ctx, obs_point, ipcache_srcid, UNKNOWN_ID, TRACE_EP_ID_UNKNOWN,\n\
+    \t\t\t\t  ctx->ingress_ifindex, trace.reason, trace.monitor, proto);\n\n\t\tret\
+    \ = tail_call_internal(ctx, from_host ? CILIUM_CALL_IPV4_FROM_HOST :\n\t\t\t\t\
+    \t\t\t  CILIUM_CALL_IPV4_FROM_NETDEV,\n\t\t\t\t\t &ext_err);\n\t\t/* We are not\
+    \ returning an error here to always allow traffic to\n\t\t * the stack in case\
+    \ maps have become unavailable.\n\t\t *\n\t\t * Note: Since drop notification\
+    \ requires a tail call as well,\n\t\t * this notification is unlikely to succeed.\n\
+    \t\t */\n\t\treturn send_drop_notify_error_with_exitcode_ext(ctx, identity, ret,\
+    \ ext_err,\n\t\t\t\t\t\t\t\tCTX_ACT_OK, METRIC_INGRESS);\n#endif /* ENABLE_IPV4\
+    \ */\n\tdefault:\n\t\tsend_trace_notify(ctx, obs_point, UNKNOWN_ID, UNKNOWN_ID,\
+    \ TRACE_EP_ID_UNKNOWN,\n\t\t\t\t  ctx->ingress_ifindex, trace.reason, trace.monitor,\
+    \ proto);\n#ifdef ENABLE_HOST_FIREWALL\n\t\tret = send_drop_notify_error(ctx,\
+    \ identity, DROP_UNKNOWN_L3,\n\t\t\t\t\t     METRIC_INGRESS);\n#else\n\t\t/* Pass\
+    \ unknown traffic to the stack */\n\t\tret = CTX_ACT_OK;\n#endif /* ENABLE_HOST_FIREWALL\
+    \ */\n\t}\n\n\treturn ret;\n}\n\n\n// CONTEXT: int cil_from_netdev(struct __ctx_buff\
+    \ *ctx)\n#ifdef HAVE_ENCAP\n\tif (flags & XFER_PKT_SNAT_DONE)\n\t\tctx_snat_done_set(ctx);\n\
+    #endif\n#endif\n\n\tif (!validate_ethertype(ctx, &proto)) {\n#ifdef ENABLE_HOST_FIREWALL\n\
+    \t\tret = DROP_UNSUPPORTED_L2;\n\t\tgoto drop_err;\n#else\n\t\tsend_trace_notify(ctx,\
+    \ TRACE_TO_STACK, src_id, UNKNOWN_ID,\n\t\t\t\t  TRACE_EP_ID_UNKNOWN, TRACE_IFINDEX_UNKNOWN,\n\
+    \t\t\t\t  TRACE_REASON_UNKNOWN, 0, proto);\n\t\t/* Pass unknown traffic to the\
+    \ stack */\n\t\treturn CTX_ACT_OK;\n#endif /* ENABLE_HOST_FIREWALL */\n\t}\n\n\
+    #ifdef ENABLE_IPSEC\n\t/* If the packet needs decryption, we want to send it straight\
+    \ to the\n\t * stack. There's no need to run service handling logic, host firewall,\n\
+    \t * etc. on an encrypted packet.\n\t * In all other cases (packet doesn't need\
+    \ decryption or already\n\t * decrypted), we want to run all subsequent logic\
+    \ here. We therefore\n\t * ignore the return value from do_decrypt.\n\n// CONTEXT:\
+    \ int cil_from_host(struct __ctx_buff *ctx)\n\tedt_set_aggregate(ctx, 0);\n\n\t\
+    if (!validate_ethertype(ctx, &proto)) {\n\t\t__u32 dst_sec_identity = UNKNOWN_ID;\n\
+    \t\t__u32 src_sec_identity = HOST_ID;\n\n#ifdef ENABLE_HOST_FIREWALL\n\t\treturn\
+    \ send_drop_notify(ctx, src_sec_identity, dst_sec_identity,\n\t\t\t\t\tTRACE_EP_ID_UNKNOWN,\
+    \ DROP_UNSUPPORTED_L2,\n\t\t\t\t\tMETRIC_EGRESS);\n#else\n\t\tsend_trace_notify(ctx,\
+    \ TRACE_TO_STACK, src_sec_identity, dst_sec_identity,\n\t\t\t\t  TRACE_EP_ID_UNKNOWN,\
+    \ TRACE_IFINDEX_UNKNOWN,\n\t\t\t\t  TRACE_REASON_UNKNOWN, 0, proto);\n\t\t/* Pass\
+    \ unknown traffic to the stack */\n\t\treturn CTX_ACT_OK;\n#endif /* ENABLE_HOST_FIREWALL\
+    \ */\n\t}\n\n#if defined(ENABLE_L7_LB)\n\tif ((ctx->mark & MARK_MAGIC_HOST_MASK)\
+    \ == MARK_MAGIC_PROXY_EGRESS_EPID) {\n\t\t__u16 lxc_id = get_epid(ctx);\n\n\t\t\
+    ctx->mark = 0;\n\t\tret = tail_call_egress_policy(ctx, lxc_id);\n\t\treturn send_drop_notify_error(ctx,\
+    \ UNKNOWN_ID, ret, METRIC_EGRESS);\n\t}\n#endif\n\n\tmagic = inherit_identity_from_host(ctx,\
+    \ &identity);\n\tif (magic == MARK_MAGIC_PROXY_INGRESS ||  magic == MARK_MAGIC_PROXY_EGRESS)\n\
+    \t\tobs_point = TRACE_FROM_PROXY;\n\n#ifdef ENABLE_IPSEC\n\tif (magic == MARK_MAGIC_ENCRYPT)\
+    \ {\n\t\tret = CTX_ACT_OK;\n\n\t\tsend_trace_notify(ctx, TRACE_FROM_STACK, identity,\
+    \ UNKNOWN_ID,\n\t\t\t\t  TRACE_EP_ID_UNKNOWN, ctx->ingress_ifindex,\n\t\t\t\t\
+    \  TRACE_REASON_ENCRYPTED, 0, proto);\n\n# ifdef TUNNEL_MODE\n\t\tret = do_netdev_encrypt_encap(ctx,\
+    \ proto, identity);\n\t\tif (IS_ERR(ret))\n\t\t\treturn send_drop_notify_error(ctx,\
+    \ identity, ret, METRIC_EGRESS);\n# endif /* TUNNEL_MODE */\n\t\treturn ret;\n\
+    \t}\n#endif /* ENABLE_IPSEC */\n\n\treturn do_netdev(ctx, proto, identity, obs_point,\
+    \ true);\n}\n\n// CONTEXT: skip_egress_gateway:\n\t\tif (ret == CTX_ACT_REDIRECT)\n\
+    \t\t\treturn ret;\n\t}\n#endif\n\n#ifdef ENABLE_HEALTH_CHECK\nexit:\n#endif\n\t\
+    if (IS_ERR(ret))\n\t\tgoto drop_err;\n\n\tsend_trace_notify(ctx, TRACE_TO_NETWORK,\
+    \ src_sec_identity, dst_sec_identity,\n\t\t\t  TRACE_EP_ID_UNKNOWN, THIS_INTERFACE_IFINDEX,\n\
+    \t\t\t  trace.reason, trace.monitor, proto);\n\n\treturn ret;\n\ndrop_err:\n\t\
+    return send_drop_notify_error_ext(ctx, src_sec_identity, ret, ext_err,\n\t\t\t\
+    \t\t  METRIC_EGRESS);\n}\n\n/*\n * to-host is attached as a tc ingress filter\
+    \ to both the 'cilium_host' and\n * 'cilium_net' devices if present.\n */\n\n\
+    // CONTEXT: skip_ipsec_nodeport_revdnat:\n\t}\n#else\n\tret = CTX_ACT_OK;\n#endif\
+    \ /* ENABLE_HOST_FIREWALL */\n\nout:\n\tif (IS_ERR(ret))\n\t\treturn send_drop_notify_error_ext(ctx,\
+    \ src_id, ret, ext_err,\n\t\t\t\t\t\t  METRIC_INGRESS);\n\n\tif (!traced)\n\t\t\
+    send_trace_notify(ctx, TRACE_TO_STACK, src_id, UNKNOWN_ID,\n\t\t\t\t  TRACE_EP_ID_UNKNOWN,\
+    \ CILIUM_HOST_IFINDEX,\n\t\t\t\t  trace.reason, trace.monitor, proto);\n\n\treturn\
+    \ ret;\n}\n\n#if defined(ENABLE_HOST_FIREWALL)\n#ifdef ENABLE_IPV6\n__declare_tail(CILIUM_CALL_IPV6_TO_HOST_POLICY_ONLY)\n\
+    static __always_inline\nint tail_ipv6_host_policy_ingress(struct __ctx_buff *ctx)\n\
+    {\n\tstruct trace_ctx trace = {\n\t\t.reason = TRACE_REASON_UNKNOWN,\n\n// CONTEXT:\
+    \ int tail_ipv6_host_policy_ingress(struct __ctx_buff *ctx)\n\t__u32 src_id =\
+    \ ctx_load_meta(ctx, CB_SRC_LABEL);\n\tbool traced = ctx_load_meta(ctx, CB_TRACED);\n\
+    \tint ret;\n\t__s8 ext_err = 0;\n\n\tret = ipv6_host_policy_ingress(ctx, &src_id,\
+    \ &trace, &ext_err);\n\tif (IS_ERR(ret))\n\t\treturn send_drop_notify_error_ext(ctx,\
+    \ src_id, ret, ext_err,\n\t\t\t\t\t\t  METRIC_INGRESS);\n\n\tif (!traced)\n\t\t\
+    send_trace_notify(ctx, TRACE_TO_STACK, src_id, UNKNOWN_ID,\n\t\t\t\t  TRACE_EP_ID_UNKNOWN,\
+    \ CILIUM_HOST_IFINDEX,\n\t\t\t\t  trace.reason, trace.monitor, bpf_htons(ETH_P_IPV6));\n\
+    \n\treturn ret;\n}\n#endif /* ENABLE_IPV6 */\n\n#ifdef ENABLE_IPV4\n__declare_tail(CILIUM_CALL_IPV4_TO_HOST_POLICY_ONLY)\n\
+    static __always_inline\nint tail_ipv4_host_policy_ingress(struct __ctx_buff *ctx)\n\
+    {\n\tstruct trace_ctx trace = {\n\t\t.reason = TRACE_REASON_UNKNOWN,\n\n// CONTEXT:\
+    \ int tail_ipv4_host_policy_ingress(struct __ctx_buff *ctx)\n\t__u32 src_id =\
+    \ ctx_load_meta(ctx, CB_SRC_LABEL);\n\tbool traced = ctx_load_meta(ctx, CB_TRACED);\n\
+    \tint ret;\n\t__s8 ext_err = 0;\n\n\tret = ipv4_host_policy_ingress(ctx, &src_id,\
+    \ &trace, &ext_err);\n\tif (IS_ERR(ret))\n\t\treturn send_drop_notify_error_ext(ctx,\
+    \ src_id, ret, ext_err,\n\t\t\t\t\t\t  METRIC_INGRESS);\n\n\tif (!traced)\n\t\t\
+    send_trace_notify(ctx, TRACE_TO_STACK, src_id, UNKNOWN_ID,\n\t\t\t\t  TRACE_EP_ID_UNKNOWN,\
+    \ CILIUM_HOST_IFINDEX,\n\t\t\t\t  trace.reason, trace.monitor, bpf_htons(ETH_P_IP));\n\
+    \n\treturn ret;\n}\n#endif /* ENABLE_IPV4 */\n\nstatic __always_inline int\n/*\
+    \ Handles packet from a local endpoint entering the host namespace. Applies\n\
+    \ * ingress host policies.\n */\nto_host_from_lxc(struct __ctx_buff *ctx)\n{\n\
+    \tint ret = CTX_ACT_OK;\n\n// FILE: bpf/bpf_lxc.c\n// CONTEXT: static __always_inline\
+    \ int handle_ipv6_from_lxc(struct __ctx_buff *ctx, __u32 *d\n\t\t\treturn verdict;\n\
+    \n\t\tbreak;\n\tcase CT_RELATED:\n\tcase CT_REPLY:\n\t\t/* Skip policy enforcement\
+    \ for return traffic. */\n\n\t\t/* Check if this is return traffic to an ingress\
+    \ proxy. */\n\t\tif (ct_state->proxy_redirect) {\n\t\t\tsend_trace_notify(ctx,\
+    \ TRACE_TO_PROXY, SECLABEL_IPV6,\n\t\t\t\t\t  UNKNOWN_ID, TRACE_EP_ID_UNKNOWN,\n\
+    \t\t\t\t\t  TRACE_IFINDEX_UNKNOWN, trace.reason,\n\t\t\t\t\t  trace.monitor, bpf_htons(ETH_P_IPV6));\n\
+    \t\t\t/* Stack will do a socket match and deliver locally. */\n\t\t\treturn ctx_redirect_to_proxy6(ctx,\
+    \ tuple, 0, false);\n\t\t}\n\t\t/* proxy_port remains 0 in this case */\n\n\t\t\
+    break;\n\tdefault:\n\t\treturn DROP_UNKNOWN_CT;\n\t}\n\n\tswitch (ct_status) {\n\
+    \tcase CT_NEW:\n\n// CONTEXT: ct_recreate6:\n\t\tif (unlikely(ct_state->proxy_redirect\
+    \ != ct_state_new.proxy_redirect))\n\t\t\tgoto ct_recreate6;\n\t\tbreak;\n\n\t\
+    case CT_RELATED:\n\tcase CT_REPLY:\n#ifdef ENABLE_NODEPORT\n\t\t/* See comment\
+    \ in handle_ipv4_from_lxc(). */\n\t\tif (ct_state->node_port && lb_is_svc_proto(tuple->nexthdr))\
+    \ {\n\t\t\tsend_trace_notify(ctx, TRACE_TO_NETWORK, SECLABEL_IPV6,\n\t\t\t\t\t\
+    \  *dst_sec_identity, TRACE_EP_ID_UNKNOWN,\n\t\t\t\t\t  TRACE_IFINDEX_UNKNOWN,\n\
+    \t\t\t\t\t  trace.reason, trace.monitor,\n\t\t\t\t\t  bpf_htons(ETH_P_IPV6));\n\
+    \t\t\treturn tail_call_internal(ctx, CILIUM_CALL_IPV6_NODEPORT_REVNAT_EGRESS,\n\
+    \t\t\t\t\t\t  ext_err);\n\t\t}\n#endif /* ENABLE_NODEPORT */\n\t\tbreak;\n\tdefault:\n\
+    \t\treturn DROP_UNKNOWN_CT;\n\t}\n\n#ifdef ENABLE_SRV6\n\t{\n\t\t__u32 *vrf_id;\n\
+    \n// CONTEXT: ct_recreate6:\n\t\t\t}\n\t\t}\n\t}\n#endif /* ENABLE_SRV6 */\n\n\
+    \t/* L7 LB does L7 policy enforcement, so we only redirect packets\n\t * NOT from\
+    \ L7 LB.\n\t */\n\tif (!from_l7lb && proxy_port > 0) {\n\t\t/* Trace the packet\
+    \ before it is forwarded to proxy */\n\t\tsend_trace_notify(ctx, TRACE_TO_PROXY,\
+    \ SECLABEL_IPV6, UNKNOWN_ID,\n\t\t\t\t  bpf_ntohs(proxy_port), TRACE_IFINDEX_UNKNOWN,\n\
+    \t\t\t\t  trace.reason, trace.monitor, bpf_htons(ETH_P_IPV6));\n\t\treturn ctx_redirect_to_proxy6(ctx,\
+    \ tuple, proxy_port, false);\n\t}\n\n#if defined(ENABLE_HOST_FIREWALL) && !defined(ENABLE_ROUTING)\n\
+    \t/* If the destination is the local host and per-endpoint routes are\n\t * enabled,\
+    \ jump to the bpf_host program to enforce ingress host policies.\n\t */\n\tif\
+    \ (*dst_sec_identity == HOST_ID) {\n\t\tctx_store_meta(ctx, CB_FROM_HOST, 0);\n\
+    \t\tret = tail_call_policy(ctx, HOST_EP_ID);\n\n\t\t/* return fine-grained error:\
+    \ */\n\n// CONTEXT: ct_recreate6:\n\t\t\t\treturn ret;\n\t\t\t}\n\t\t}\n\t}\n\
+    #endif\n\tif (is_defined(ENABLE_HOST_ROUTING)) {\n\t\tint oif = 0;\n\n\t\tret\
+    \ = fib_redirect_v6(ctx, ETH_HLEN, ip6, false, false, ext_err, &oif);\n\t\tif\
+    \ (fib_ok(ret))\n\t\t\tsend_trace_notify(ctx, TRACE_TO_NETWORK, SECLABEL_IPV6,\n\
+    \t\t\t\t\t  *dst_sec_identity, TRACE_EP_ID_UNKNOWN, oif,\n\t\t\t\t\t  trace.reason,\
+    \ trace.monitor, bpf_htons(ETH_P_IPV6));\n\t\treturn ret;\n\t}\n\n\tgoto pass_to_stack;\n\
+    \n#if defined(ENABLE_HOST_ROUTING) || defined(ENABLE_ROUTING)\nto_host:\n#endif\n\
+    #ifdef ENABLE_ROUTING\n\tif (is_defined(ENABLE_HOST_FIREWALL) && *dst_sec_identity\
+    \ == HOST_ID) {\n\t\tsend_trace_notify(ctx, TRACE_TO_HOST, SECLABEL_IPV6, HOST_ID,\n\
+    \t\t\t\t  TRACE_EP_ID_UNKNOWN, CILIUM_NET_IFINDEX,\n\t\t\t\t  trace.reason, trace.monitor,\
+    \ bpf_htons(ETH_P_IPV6));\n\t\treturn ctx_redirect(ctx, CILIUM_NET_IFINDEX, BPF_F_INGRESS);\n\
+    \t}\n#endif\n\npass_to_stack:\n#ifdef ENABLE_ROUTING\n\tret = ipv6_l3(ctx, ETH_HLEN,\
+    \ NULL, (__u8 *)&router_mac.addr, METRIC_EGRESS);\n\tif (unlikely(ret != CTX_ACT_OK))\n\
+    \t\treturn ret;\n#endif\n\n#ifdef ENABLE_IDENTITY_MARK\n\t/* Always encode the\
+    \ source identity when passing to the stack.\n\t * If the stack hairpins the packet\
+    \ back to a local endpoint the\n\t * source identity can still be derived even\
+    \ if SNAT is\n\t * performed by a component such as portmap.\n\t */\n\tset_identity_mark(ctx,\
+    \ SECLABEL_IPV6, MARK_MAGIC_IDENTITY);\n#endif\n\n#ifdef TUNNEL_MODE\nencrypt_to_stack:\n\
+    #endif\n\tsend_trace_notify(ctx, TRACE_TO_STACK, SECLABEL_IPV6, *dst_sec_identity,\n\
+    \t\t\t  TRACE_EP_ID_UNKNOWN, TRACE_IFINDEX_UNKNOWN,\n\t\t\t  trace.reason, trace.monitor,\
+    \ bpf_htons(ETH_P_IPV6));\n\n\tcilium_dbg_capture(ctx, DBG_CAPTURE_DELIVERY, 0);\n\
+    \n\treturn CTX_ACT_OK;\n}\n\n__declare_tail(CILIUM_CALL_IPV6_FROM_LXC_CONT)\n\
+    static __always_inline\nint tail_handle_ipv6_cont(struct __ctx_buff *ctx)\n{\n\
+    \t__u32 dst_sec_identity = 0;\n\t__s8 ext_err = 0;\n\n// CONTEXT: static __always_inline\
+    \ int handle_ipv4_from_lxc(struct __ctx_buff *ctx, __u32 *d\n\t\t\treturn verdict;\n\
+    \n\t\tbreak;\n\tcase CT_RELATED:\n\tcase CT_REPLY:\n\t\t/* Skip policy enforcement\
+    \ for return traffic. */\n\n\t\t/* Check if this is return traffic to an ingress\
+    \ proxy. */\n\t\tif (ct_state->proxy_redirect) {\n\t\t\tsend_trace_notify(ctx,\
+    \ TRACE_TO_PROXY, SECLABEL_IPV4,\n\t\t\t\t\t  UNKNOWN_ID, TRACE_EP_ID_UNKNOWN,\n\
+    \t\t\t\t\t  TRACE_IFINDEX_UNKNOWN, trace.reason,\n\t\t\t\t\t  trace.monitor, bpf_htons(ETH_P_IP));\n\
+    \t\t\t/* Stack will do a socket match and deliver locally. */\n\t\t\treturn ctx_redirect_to_proxy4(ctx,\
+    \ tuple, 0, false);\n\t\t}\n\t\t/* proxy_port remains 0 in this case */\n\n\t\t\
+    break;\n\tdefault:\n\t\treturn DROP_UNKNOWN_CT;\n\t}\n\n\tswitch (ct_status) {\n\
+    \tcase CT_NEW:\n\n// CONTEXT: ct_recreate4:\n#ifdef ENABLE_NODEPORT\n\t\t/* This\
+    \ handles reply traffic for the case where the nodeport EP\n\t\t * is local to\
+    \ the node. We'll do the tail call to perform\n\t\t * the reverse DNAT.\n\t\t\
+    \ *\n\t\t * This codepath currently doesn't support revDNAT for ICMP,\n\t\t *\
+    \ so make sure that we only send TCP/UDP/SCTP down this way.\n\t\t */\n\t\tif\
+    \ (ct_state->node_port && lb_is_svc_proto(tuple->nexthdr)) {\n\t\t\tsend_trace_notify(ctx,\
+    \ TRACE_TO_NETWORK, SECLABEL_IPV4,\n\t\t\t\t\t  *dst_sec_identity, TRACE_EP_ID_UNKNOWN,\n\
+    \t\t\t\t\t  TRACE_IFINDEX_UNKNOWN,\n\t\t\t\t\t  trace.reason, trace.monitor,\n\
+    \t\t\t\t\t  bpf_htons(ETH_P_IP));\n\t\t\treturn tail_call_internal(ctx, CILIUM_CALL_IPV4_NODEPORT_REVNAT,\n\
+    \t\t\t\t\t\t  ext_err);\n\t\t}\n#endif /* ENABLE_NODEPORT */\n\n\t\tbreak;\n\t\
+    default:\n\t\treturn DROP_UNKNOWN_CT;\n\t}\n\n#ifdef ENABLE_SRV6\n\t{\n\n// CONTEXT:\
+    \ ct_recreate4:\n\t}\n#endif /* ENABLE_SRV6 */\n\n\thairpin_flow |= ct_state->loopback;\n\
+    \n\t/* L7 LB does L7 policy enforcement, so we only redirect packets\n\t * NOT\
+    \ from L7 LB.\n\t */\n\tif (!from_l7lb && proxy_port > 0) {\n\t\t/* Trace the\
+    \ packet before it is forwarded to proxy */\n\t\tsend_trace_notify(ctx, TRACE_TO_PROXY,\
+    \ SECLABEL_IPV4, UNKNOWN_ID,\n\t\t\t\t  bpf_ntohs(proxy_port), TRACE_IFINDEX_UNKNOWN,\n\
+    \t\t\t\t  trace.reason, trace.monitor, bpf_htons(ETH_P_IP));\n\t\treturn ctx_redirect_to_proxy4(ctx,\
+    \ tuple, proxy_port, false);\n\t}\n\n#if defined(ENABLE_HOST_FIREWALL) && !defined(ENABLE_ROUTING)\n\
+    \t/* If the destination is the local host and per-endpoint routes are\n\t * enabled,\
+    \ jump to the bpf_host program to enforce ingress host policies.\n\t * Note that\
+    \ bpf_lxc can be loaded before bpf_host, so bpf_host's policy\n\t * program may\
+    \ not yet be present at this time.\n\t */\n\tif (*dst_sec_identity == HOST_ID)\
+    \ {\n\t\tctx_store_meta(ctx, CB_FROM_HOST, 0);\n\t\tret = tail_call_policy(ctx,\
+    \ HOST_EP_ID);\n\n// CONTEXT: skip_vtep:\n\t\t\t}\n\t\t}\n\t}\n#endif /* TUNNEL_MODE\
+    \ */\n\n\tif (is_defined(ENABLE_HOST_ROUTING)) {\n\t\tint oif = 0;\n\n\t\tret\
+    \ = fib_redirect_v4(ctx, ETH_HLEN, ip4, false, false, ext_err, &oif);\n\t\tif\
+    \ (fib_ok(ret))\n\t\t\tsend_trace_notify(ctx, TRACE_TO_NETWORK, SECLABEL_IPV4,\n\
+    \t\t\t\t\t  *dst_sec_identity, TRACE_EP_ID_UNKNOWN, oif,\n\t\t\t\t\t  trace.reason,\
+    \ trace.monitor, bpf_htons(ETH_P_IP));\n\t\treturn ret;\n\t}\n\n\tgoto pass_to_stack;\n\
+    \n#if defined(ENABLE_HOST_ROUTING) || defined(ENABLE_ROUTING)\nto_host:\n#endif\n\
+    #ifdef ENABLE_ROUTING\n\tif (is_defined(ENABLE_HOST_FIREWALL) && *dst_sec_identity\
+    \ == HOST_ID) {\n\t\tsend_trace_notify(ctx, TRACE_TO_HOST, SECLABEL_IPV4, HOST_ID,\n\
+    \t\t\t\t  TRACE_EP_ID_UNKNOWN, CILIUM_NET_IFINDEX,\n\t\t\t\t  trace.reason, trace.monitor,\
+    \ bpf_htons(ETH_P_IP));\n\t\treturn ctx_redirect(ctx, CILIUM_NET_IFINDEX, BPF_F_INGRESS);\n\
+    \t}\n#endif\n\npass_to_stack:\n#ifdef ENABLE_ROUTING\n\tret = ipv4_l3(ctx, ETH_HLEN,\
+    \ NULL, (__u8 *)&router_mac.addr, ip4);\n\tif (unlikely(ret != CTX_ACT_OK))\n\t\
+    \treturn ret;\n#endif\n\n#ifdef ENABLE_IDENTITY_MARK\n\t/* Always encode the source\
+    \ identity when passing to the stack.\n\t * If the stack hairpins the packet back\
+    \ to a local endpoint the\n\t * source identity can still be derived even if SNAT\
+    \ is\n\t * performed by a component such as portmap.\n\t */\n\tset_identity_mark(ctx,\
+    \ SECLABEL_IPV4, MARK_MAGIC_IDENTITY);\n#endif\n\n#if defined(TUNNEL_MODE)\nencrypt_to_stack:\n\
+    #endif\n\tsend_trace_notify(ctx, TRACE_TO_STACK, SECLABEL_IPV4, *dst_sec_identity,\n\
+    \t\t\t  TRACE_EP_ID_UNKNOWN, TRACE_IFINDEX_UNKNOWN,\n\t\t\t  trace.reason, trace.monitor,\
+    \ bpf_htons(ETH_P_IP));\n\tcilium_dbg_capture(ctx, DBG_CAPTURE_DELIVERY, 0);\n\
+    \treturn CTX_ACT_OK;\n}\n\n__declare_tail(CILIUM_CALL_IPV4_FROM_LXC_CONT)\nstatic\
+    \ __always_inline\nint tail_handle_ipv4_cont(struct __ctx_buff *ctx)\n{\n\t__u32\
+    \ dst_sec_identity = 0;\n\t__s8 ext_err = 0;\n\n\tint ret = handle_ipv4_from_lxc(ctx,\
+    \ &dst_sec_identity, &ext_err);\n\n// CONTEXT: int tail_handle_arp(struct __ctx_buff\
+    \ *ctx)\n#endif /* ENABLE_IPV4 */\n\n/* Attachment/entry point is ingress for\
+    \ veth.\n * It corresponds to packets leaving the container.\n */\n__section_entry\n\
+    int cil_from_container(struct __ctx_buff *ctx)\n{\n\t__u16 proto;\n\t__u32 sec_label\
+    \ = SECLABEL;\n\t__s8 ext_err = 0;\n\tint ret;\n\tbool valid_ethertype = validate_ethertype(ctx,\
+    \ &proto);\n\n\tbpf_clear_meta(ctx);\n\n\t/* Workaround for GH-18311 where veth\
+    \ driver might have recorded\n\t * veth's RX queue mapping instead of leaving\
+    \ it at 0. This can\n\t * cause issues on the phys device where all traffic would\
+    \ only\n\t * hit a single TX queue (given veth device had a single one and\n\t\
+    \ * mapping was left at 1). Reset so that stack picks a fresh queue.\n\t * Kernel\
+    \ fix is at 710ad98c363a (\"veth: Do not record rx queue\n\t * hint in veth_xmit\"\
+    ).\n\t */\n\tctx->queue_mapping = 0;\n\n\tsend_trace_notify(ctx, TRACE_FROM_LXC,\
+    \ sec_label, UNKNOWN_ID,\n\t\t\t  TRACE_EP_ID_UNKNOWN, TRACE_IFINDEX_UNKNOWN,\n\
+    \t\t\t  TRACE_REASON_UNKNOWN, TRACE_PAYLOAD_LEN, proto);\n\n\tif (!valid_ethertype)\
+    \ {\n\t\tret = DROP_UNSUPPORTED_L2;\n\t\tgoto out;\n\t}\n\n\tswitch (proto) {\n\
+    #ifdef ENABLE_IPV6\n\tcase bpf_htons(ETH_P_IPV6):\n\t\tedt_set_aggregate(ctx,\
+    \ LXC_ID);\n\t\tret = tail_call_internal(ctx, CILIUM_CALL_IPV6_FROM_LXC, &ext_err);\n\
+    \t\tsec_label = SECLABEL_IPV6;\n\t\tbreak;\n#endif /* ENABLE_IPV6 */\n\n// CONTEXT:\
+    \ int cil_lxc_policy_egress(struct __ctx_buff *ctx __maybe_unused)\n\t__s8 ext_err\
+    \ = 0;\n\n\tif (!validate_ethertype(ctx, &proto)) {\n\t\tret = DROP_UNSUPPORTED_L2;\n\
+    \t\tgoto out;\n\t}\n\n\tctx_store_meta(ctx, CB_FROM_HOST, FROM_HOST_L7_LB);\n\n\
+    \tedt_set_aggregate(ctx, 0); /* do not count this traffic again */\n\tsend_trace_notify(ctx,\
+    \ TRACE_FROM_PROXY, SECLABEL, UNKNOWN_ID,\n\t\t\t  TRACE_EP_ID_UNKNOWN, TRACE_IFINDEX_UNKNOWN,\n\
+    \t\t\t  TRACE_REASON_UNKNOWN, TRACE_PAYLOAD_LEN, proto);\n\n\tswitch (proto) {\n\
+    #ifdef ENABLE_IPV6\n\tcase bpf_htons(ETH_P_IPV6):\n\t\tret = tail_call_internal(ctx,\
+    \ CILIUM_CALL_IPV6_FROM_LXC, &ext_err);\n\t\tsec_label = SECLABEL_IPV6;\n\t\t\
+    break;\n#endif /* ENABLE_IPV6 */\n#ifdef ENABLE_IPV4\n\tcase bpf_htons(ETH_P_IP):\n\
+    \t\tret = tail_call_internal(ctx, CILIUM_CALL_IPV4_FROM_LXC, &ext_err);\n\t\t\
+    sec_label = SECLABEL_IPV4;\n\n// CONTEXT: int cil_to_container(struct __ctx_buff\
+    \ *ctx)\n\t\tctx->mark = 0;\n\t\tret = tail_call_egress_policy(ctx, lxc_id);\n\
+    \t\treturn send_drop_notify(ctx, lxc_id, sec_label, LXC_ID,\n\t\t\t\t\tret, METRIC_INGRESS);\n\
+    \t}\n#endif\n\n\tmagic = inherit_identity_from_host(ctx, &identity);\n\tif (magic\
+    \ == MARK_MAGIC_PROXY_INGRESS || magic == MARK_MAGIC_PROXY_EGRESS)\n\t\ttrace\
+    \ = TRACE_FROM_PROXY;\n\n\tsend_trace_notify(ctx, trace, identity, sec_label,\
+    \ LXC_ID,\n\t\t\t  ctx->ingress_ifindex, TRACE_REASON_UNKNOWN,\n\t\t\t  TRACE_PAYLOAD_LEN,\
+    \ proto);\n\n#if defined(ENABLE_HOST_FIREWALL) && !defined(ENABLE_ROUTING)\n\t\
+    /* If the packet comes from the hostns and per-endpoint routes are enabled,\n\t\
+    \ * jump to bpf_host to enforce egress host policies before anything else.\n\t\
+    \ *\n\t * We will jump back to bpf_lxc once host policies are enforced. Whenever\n\
+    \t * we call inherit_identity_from_host, the packet mark is cleared. Thus,\n\t\
+    \ * when we jump back, the packet mark will have been cleared and the\n\t * identity\
+    \ won't match HOST_ID anymore.\n\t */\n\tif (identity == HOST_ID) {\n\t\tctx_store_meta(ctx,\
+    \ CB_FROM_HOST, 1);\n\n// FILE: bpf/bpf_network.c\n// CONTEXT: int cil_from_network(struct\
+    \ __ctx_buff *ctx)\n\t\ttrace.reason = TRACE_REASON_ENCRYPTED;\n\n\t/* Only possible\
+    \ redirect in here is the one in the do_decrypt\n\t * which redirects to cilium_host.\n\
+    \t */\n\tif (ret == CTX_ACT_REDIRECT)\n\t\tobs_point_to = TRACE_TO_HOST;\n#endif\n\
+    \nout:\n\tsend_trace_notify(ctx, obs_point_from, UNKNOWN_ID, UNKNOWN_ID,\n\t\t\
+    \t  TRACE_EP_ID_UNKNOWN, ingress_ifindex,\n\t\t\t  trace.reason, trace.monitor,\
+    \ proto);\n\n\tsend_trace_notify(ctx, obs_point_to, UNKNOWN_ID, UNKNOWN_ID,\n\t\
+    \t\t  TRACE_EP_ID_UNKNOWN, ingress_ifindex,\n\t\t\t  trace.reason, trace.monitor,\
+    \ proto);\n\n\treturn ret;\n}\n\nBPF_LICENSE(\"Dual BSD/GPL\");\n\n// FILE: bpf/bpf_overlay.c\n\
+    // CONTEXT: static __always_inline int handle_ipv6(struct __ctx_buff *ctx,\n\t\
+    \t\treturn DROP_NO_NODE_ID;\n\t\tset_ipsec_decrypt_mark(ctx, node_id);\n\n\t\t\
+    /* To IPSec stack on cilium_vxlan we are going to pass\n\t\t * this up the stack\
+    \ but eth_type_trans has already labeled\n\t\t * this as an OTHERHOST type packet.\
+    \ To avoid being dropped\n\t\t * by IP stack before IPSec can be processed mark\
+    \ as a HOST\n\t\t * packet.\n\t\t */\n\t\tctx_change_type(ctx, PACKET_HOST);\n\
+    \n\t\tsend_trace_notify(ctx, TRACE_TO_STACK, *identity, UNKNOWN_ID,\n\t\t\t\t\
+    \  TRACE_EP_ID_UNKNOWN, ctx->ingress_ifindex,\n\t\t\t\t  TRACE_REASON_ENCRYPTED,\
+    \ 0, bpf_htons(ETH_P_IPV6));\n\n\t\treturn CTX_ACT_OK;\n\t}\n\tctx->mark = 0;\n\
+    not_esp:\n#endif\n\n#if defined(ENABLE_EGRESS_GATEWAY_COMMON)\n\t{\n\t\t__u32\
+    \ egress_ifindex = 0;\n\t\tunion v6addr snat_addr, daddr;\n\n\n// CONTEXT: skip_vtep:\n\
+    \t\t\treturn DROP_NO_NODE_ID;\n\t\tset_ipsec_decrypt_mark(ctx, node_id);\n\n\t\
+    \t/* To IPSec stack on cilium_vxlan we are going to pass\n\t\t * this up the stack\
+    \ but eth_type_trans has already labeled\n\t\t * this as an OTHERHOST type packet.\
+    \ To avoid being dropped\n\t\t * by IP stack before IPSec can be processed mark\
+    \ as a HOST\n\t\t * packet.\n\t\t */\n\t\tctx_change_type(ctx, PACKET_HOST);\n\
+    \n\t\tsend_trace_notify(ctx, TRACE_TO_STACK, *identity, UNKNOWN_ID,\n\t\t\t\t\
+    \  TRACE_EP_ID_UNKNOWN, ctx->ingress_ifindex,\n\t\t\t\t  TRACE_REASON_ENCRYPTED,\
+    \ 0, bpf_htons(ETH_P_IP));\n\n\t\treturn CTX_ACT_OK;\n\t}\n\tctx->mark = 0;\n\
+    not_esp:\n#endif\n\n#if defined(ENABLE_EGRESS_GATEWAY_COMMON)\n\t{\n\t\t__u32\
+    \ egress_ifindex = 0;\n\t\t__be32 snat_addr, daddr;\n\n\n// CONTEXT: int tail_handle_arp(struct\
+    \ __ctx_buff *ctx)\n\t\t\tgoto drop_err;\n\n\t\treturn ret;\n\t}\n\n\tret = DROP_UNKNOWN_L3;\n\
+    drop_err:\n\treturn send_drop_notify_error(ctx, UNKNOWN_ID, ret, METRIC_EGRESS);\n\
+    \npass_to_stack:\n\tsend_trace_notify(ctx, TRACE_TO_STACK, UNKNOWN_ID, UNKNOWN_ID,\n\
+    \t\t\t  TRACE_EP_ID_UNKNOWN, ctx->ingress_ifindex,\n\t\t\t  trace.reason, trace.monitor,\
+    \ bpf_htons(ETH_P_ARP));\n\treturn CTX_ACT_OK;\n}\n#endif /* ENABLE_VTEP */\n\n\
+    #endif /* ENABLE_IPV4 */\n\n#ifdef ENABLE_IPSEC\nstatic __always_inline bool is_esp(struct\
+    \ __ctx_buff *ctx, __u16 proto)\n{\n\tvoid *data, *data_end;\n\t__u8 protocol\
+    \ = 0;\n\tstruct ipv6hdr *ip6 __maybe_unused;\n\n// CONTEXT: int cil_from_overlay(struct\
+    \ __ctx_buff *ctx)\n\n\t\t\tctx_store_meta(ctx, CB_SRC_LABEL, src_sec_identity);\n\
+    \t\t}\n\t\tbreak;\n#endif /* ENABLE_IPV4 || ENABLE_IPV6 */\n\tdefault:\n\t\tbreak;\n\
+    \t}\n\n#ifdef ENABLE_IPSEC\n\tif (is_esp(ctx, proto))\n\t\tsend_trace_notify(ctx,\
+    \ TRACE_FROM_OVERLAY, src_sec_identity, UNKNOWN_ID,\n\t\t\t\t  TRACE_EP_ID_UNKNOWN,\
+    \ ctx->ingress_ifindex,\n\t\t\t\t  TRACE_REASON_ENCRYPTED, 0, proto);\n\telse\n\
+    #endif\n\t{\n\t\tenum trace_point obs_point = TRACE_FROM_OVERLAY;\n\n\t\t/* Non-ESP\
+    \ packet marked with MARK_MAGIC_DECRYPT is a packet\n\t\t * re-inserted from the\
+    \ stack.\n\t\t */\n\t\tif (decrypted)\n\t\t\tobs_point = TRACE_FROM_STACK;\n\n\
+    \t\tsend_trace_notify(ctx, obs_point, src_sec_identity, UNKNOWN_ID,\n\t\t\t\t\
+    \  TRACE_EP_ID_UNKNOWN, ctx->ingress_ifindex,\n\t\t\t\t  TRACE_REASON_UNKNOWN,\
+    \ TRACE_PAYLOAD_LEN, proto);\n\t}\n\n\tswitch (proto) {\n\tcase bpf_htons(ETH_P_IPV6):\n\
+    #ifdef ENABLE_IPV6\n\t\tret = tail_call_internal(ctx, CILIUM_CALL_IPV6_FROM_OVERLAY,\
+    \ &ext_err);\n#else\n\t\tret = DROP_UNKNOWN_L3;\n#endif\n\t\tbreak;\n\n\tcase\
+    \ bpf_htons(ETH_P_IP):\n\n// FILE: bpf/bpf_wireguard.c\n// CONTEXT: int cil_from_wireguard(struct\
+    \ __ctx_buff *ctx)\n\n\tswitch (proto) {\n#ifdef ENABLE_IPV6\n\tcase bpf_htons(ETH_P_IPV6):\n\
+    \t\tif (!revalidate_data_pull(ctx, &data, &data_end, &ip6))\n\t\t\treturn send_drop_notify_error(ctx,\
+    \ identity, DROP_INVALID, METRIC_INGRESS);\n\n\t\tidentity = resolve_srcid_ipv6(ctx,\
+    \ ip6);\n\t\tctx_store_meta(ctx, CB_SRC_LABEL, identity);\n\n\t\tsend_trace_notify(ctx,\
+    \ TRACE_FROM_CRYPTO, identity, UNKNOWN_ID,\n\t\t\t\t  TRACE_EP_ID_UNKNOWN, ctx->ingress_ifindex,\n\
+    \t\t\t\t  TRACE_REASON_UNKNOWN, TRACE_PAYLOAD_LEN, proto);\n\n\t\tret = tail_call_internal(ctx,\
+    \ CILIUM_CALL_IPV6_FROM_WIREGUARD, &ext_err);\n\t\t/* See the equivalent v4 path\
+    \ for comments */\n\t\treturn send_drop_notify_error_with_exitcode_ext(ctx, identity,\
+    \ ret, ext_err,\n\t\t\t\t\t\t\t\tCTX_ACT_OK, METRIC_INGRESS);\n#endif\n\n#ifdef\
+    \ ENABLE_IPV4\n\tcase bpf_htons(ETH_P_IP):\n\t\tif (!revalidate_data_pull(ctx,\
+    \ &data, &data_end, &ip4))\n\t\t\treturn send_drop_notify_error(ctx, identity,\
+    \ DROP_INVALID, METRIC_INGRESS);\n\n\t\tidentity = resolve_srcid_ipv4(ctx, ip4);\n\
+    \t\tctx_store_meta(ctx, CB_SRC_LABEL, identity);\n\n\t\tsend_trace_notify(ctx,\
+    \ TRACE_FROM_CRYPTO, identity, UNKNOWN_ID,\n\t\t\t\t  TRACE_EP_ID_UNKNOWN, ctx->ingress_ifindex,\n\
+    \t\t\t\t  TRACE_REASON_UNKNOWN, TRACE_PAYLOAD_LEN, proto);\n\n\t\tret = tail_call_internal(ctx,\
+    \ CILIUM_CALL_IPV4_FROM_WIREGUARD, &ext_err);\n\t\t/* We are not returning an\
+    \ error here to always allow traffic to\n\t\t * the stack in case maps have become\
+    \ unavailable.\n\t\t *\n\t\t * Note: Since drop notification requires a tail call\
+    \ as well,\n\t\t * this notification is unlikely to succeed.\n\t\t */\n\t\treturn\
+    \ send_drop_notify_error_with_exitcode_ext(ctx, identity, ret, ext_err,\n\t\t\t\
+    \t\t\t\t\tCTX_ACT_OK, METRIC_INGRESS);\n#endif\n\t}\n\n\tsend_trace_notify(ctx,\
+    \ TRACE_FROM_CRYPTO, UNKNOWN_ID, UNKNOWN_ID,\n\t\t\t  TRACE_EP_ID_UNKNOWN, ctx->ingress_ifindex,\n\
+    \t\t\t  TRACE_REASON_UNKNOWN, TRACE_PAYLOAD_LEN, proto);\n\n\t/* Pass unknown\
+    \ traffic to the stack */\n\treturn TC_ACT_OK;\n}\n\n/* to-wireguard is attached\
+    \ as a tc egress filter to the cilium_wg0 device. */\n__section_entry\nint cil_to_wireguard(struct\
+    \ __ctx_buff *ctx)\n{\n\tint __maybe_unused ret;\n\t__s8 __maybe_unused ext_err\
+    \ = 0;\n\t__u16 __maybe_unused proto = ctx_get_protocol(ctx);\n\n// CONTEXT: int\
+    \ cil_to_wireguard(struct __ctx_buff *ctx)\n\t\tgoto out;\n\n\tret = handle_nat_fwd(ctx,\
+    \ 0, src_sec_identity, proto, true, &trace, &ext_err);\n\tif (IS_ERR(ret))\n\t\
+    \treturn send_drop_notify_error_ext(ctx, src_sec_identity, ret, ext_err,\n\t\t\
+    \t\t\t\t  METRIC_EGRESS);\n\nout:\n#endif /* ENABLE_NODEPORT */\n\n\tsend_trace_notify(ctx,\
+    \ TRACE_TO_CRYPTO, src_sec_identity, UNKNOWN_ID,\n\t\t\t  TRACE_EP_ID_UNKNOWN,\
+    \ THIS_INTERFACE_IFINDEX,\n\t\t\t  trace.reason, trace.monitor, proto);\n\n\t\
+    return TC_ACT_OK;\n}\n\nBPF_LICENSE(\"Dual BSD/GPL\");\n\n// FILE: bpf/lib/encap.h\n\
+    \n#include \"common.h\"\n#include \"dbg.h\"\n#include \"hash.h\"\n#include \"\
+    trace.h\"\n\n#ifdef HAVE_ENCAP\nstatic __always_inline int\n__encap_with_nodeid4(struct\
+    \ __ctx_buff *ctx, __u32 src_ip, __be16 src_port,\n\t\t     __be32 tunnel_endpoint,\n\
+    \t\t     __u32 seclabel, __u32 dstid, __u32 vni,\n\t\t     enum trace_reason ct_reason,\
+    \ __u32 monitor, int *ifindex,\n\t\t     __be16 proto)\n{\n\t/* When encapsulating,\
+    \ a packet originating from the local host is\n\t * being considered as a packet\
+    \ from a remote node as it is being\n\t * received.\n\t */\n\tif (seclabel ==\
+    \ HOST_ID)\n\t\tseclabel = LOCAL_NODE_ID;\n\n\tcilium_dbg(ctx, DBG_ENCAP, tunnel_endpoint,\
+    \ seclabel);\n\n#if __ctx_is == __ctx_skb\n\t*ifindex = ENCAP_IFINDEX;\n#else\n\
+    \t*ifindex = 0;\n#endif\n\n\tsend_trace_notify(ctx, TRACE_TO_OVERLAY, seclabel,\
+    \ dstid, TRACE_EP_ID_UNKNOWN,\n\t\t\t  *ifindex, ct_reason, monitor, proto);\n\
+    \n\treturn ctx_set_encap_info4(ctx, src_ip, src_port, tunnel_endpoint, seclabel,\
+    \ vni,\n\t\t\t\t   NULL, 0);\n}\n\nstatic __always_inline int\n__encap_with_nodeid6(struct\
+    \ __ctx_buff *ctx, const union v6addr *tunnel_endpoint,\n\t\t     __u32 seclabel,\
+    \ __u32 dstid, enum trace_reason ct_reason,\n\t\t     __u32 monitor, int *ifindex,\
+    \ __be16 proto)\n{\n\t/* When encapsulating, a packet originating from the local\
+    \ host is\n\t * being considered as a packet from a remote node as it is being\n\
+    \t * received.\n\t */\n\tif (seclabel == HOST_ID)\n\t\tseclabel = LOCAL_NODE_ID;\n\
+    \n#if __ctx_is == __ctx_skb\n\t*ifindex = ENCAP_IFINDEX;\n#else\n\t*ifindex =\
+    \ 0;\n#endif\n\n\tsend_trace_notify(ctx, TRACE_TO_OVERLAY, seclabel, dstid, TRACE_EP_ID_UNKNOWN,\n\
+    \t\t\t  *ifindex, ct_reason, monitor, proto);\n\n\treturn ctx_set_encap_info6(ctx,\
+    \ tunnel_endpoint, seclabel, NULL, 0);\n}\n\nstatic __always_inline int\n__encap_and_redirect_with_nodeid(struct\
+    \ __ctx_buff *ctx,\n\t\t\t\t const struct remote_endpoint_info *info,\n\t\t\t\t\
+    \ __u32 seclabel, __u32 dstid, __u32 vni,\n\t\t\t\t const struct trace_ctx *trace,\
+    \ __be16 proto)\n{\n\tint ifindex;\n\tint ret = 0;\n\n// CONTEXT: tunnel_gen_src_port_v6(struct\
+    \ ipv6_ct_tuple *tuple __maybe_unused)\n#else\n\treturn 0;\n#endif\n}\n\n#if defined(ENABLE_DSR)\
+    \ && DSR_ENCAP_MODE == DSR_ENCAP_GENEVE\nstatic __always_inline int\n__encap_with_nodeid_opt4(struct\
+    \ __ctx_buff *ctx, __u32 src_ip, __be16 src_port,\n\t\t\t __u32 tunnel_endpoint,\n\
+    \t\t\t __u32 seclabel, __u32 dstid, __u32 vni,\n\t\t\t void *opt, __u32 opt_len,\n\
+    \t\t\t enum trace_reason ct_reason,\n\t\t\t __u32 monitor, int *ifindex, __be16\
+    \ proto)\n{\n\t/* When encapsulating, a packet originating from the local host\
+    \ is\n\t * being considered as a packet from a remote node as it is being\n\t\
+    \ * received.\n\t */\n\tif (seclabel == HOST_ID)\n\t\tseclabel = LOCAL_NODE_ID;\n\
+    \n\tcilium_dbg(ctx, DBG_ENCAP, tunnel_endpoint, seclabel);\n\n#if __ctx_is ==\
+    \ __ctx_skb\n\t*ifindex = ENCAP_IFINDEX;\n#else\n\t*ifindex = 0;\n#endif\n\n\t\
+    send_trace_notify(ctx, TRACE_TO_OVERLAY, seclabel, dstid, TRACE_EP_ID_UNKNOWN,\n\
+    \t\t\t  *ifindex, ct_reason, monitor, proto);\n\n\treturn ctx_set_encap_info4(ctx,\
+    \ src_ip, src_port, tunnel_endpoint, seclabel, vni, opt,\n\t\t\t\t   opt_len);\n\
+    }\n\nstatic __always_inline int\n__encap_with_nodeid_opt6(struct __ctx_buff *ctx,\n\
+    \t\t\t const union v6addr *tunnel_endpoint, __u32 seclabel,\n\t\t\t __u32 dstid,\
+    \ void *opt, __u32 opt_len,\n\t\t\t enum trace_reason ct_reason, __u32 monitor,\n\
+    \t\t\t int *ifindex, __be16 proto)\n{\n\t/* When encapsulating, a packet originating\
+    \ from the local host is\n\t * being considered as a packet from a remote node\
+    \ as it is being\n\t * received.\n\t */\n\tif (seclabel == HOST_ID)\n\t\tseclabel\
+    \ = LOCAL_NODE_ID;\n\n#if __ctx_is == __ctx_skb\n\t*ifindex = ENCAP_IFINDEX;\n\
+    #else\n\t*ifindex = 0;\n#endif\n\n\tsend_trace_notify(ctx, TRACE_TO_OVERLAY, seclabel,\
+    \ dstid, TRACE_EP_ID_UNKNOWN,\n\t\t\t  *ifindex, ct_reason, monitor, proto);\n\
+    \n\treturn ctx_set_encap_info6(ctx, tunnel_endpoint, seclabel, opt, opt_len);\n\
+    }\n\nstatic __always_inline void\nset_geneve_dsr_opt4(__be16 port, __be32 addr,\
+    \ struct geneve_dsr_opt4 *gopt)\n{\n\tmemset(gopt, 0, sizeof(*gopt));\n\tgopt->hdr.opt_class\
+    \ = bpf_htons(DSR_GENEVE_OPT_CLASS);\n\tgopt->hdr.type = DSR_GENEVE_OPT_TYPE;\n\
+    \tgopt->hdr.length = DSR_IPV4_GENEVE_OPT_LEN;\n\tgopt->addr = addr;\n\n// FILE:\
+    \ bpf/lib/host_firewall.h\n// CONTEXT: __ipv6_host_policy_egress(struct __ctx_buff\
+    \ *ctx, bool is_host_id __maybe_unused\n\n\t/* Emit verdict if drop or if allow\
+    \ for CT_NEW. */\n\tif (verdict != CTX_ACT_OK || ret != CT_ESTABLISHED)\n\t\t\
+    send_policy_verdict_notify(ctx, dst_sec_identity, tuple->dport,\n\t\t\t\t\t  \
+    \ tuple->nexthdr, POLICY_EGRESS, 1,\n\t\t\t\t\t   verdict, proxy_port, policy_match_type,\
+    \ audited,\n\t\t\t\t\t   auth_type);\n\n\tif (proxy_port > 0 && (ret == CT_NEW\
+    \ || ret == CT_ESTABLISHED)) {\n\t\t/* Trace the packet before it is forwarded\
+    \ to proxy */\n\t\tsend_trace_notify(ctx, TRACE_TO_PROXY, SECLABEL_IPV6, UNKNOWN_ID,\n\
+    \t\t\t\t  bpf_ntohs(proxy_port), TRACE_IFINDEX_UNKNOWN,\n\t\t\t\t  trace->reason,\
+    \ trace->monitor, bpf_htons(ETH_P_IPV6));\n\t\treturn ctx_redirect_to_proxy_host_egress(ctx,\
+    \ proxy_port);\n\t}\n\n\treturn verdict;\n}\n\nstatic __always_inline int\nipv6_host_policy_egress(struct\
+    \ __ctx_buff *ctx, __u32 src_id,\n\t\t\t__u32 ipcache_srcid, struct ipv6hdr *ip6,\n\
+    \t\t\tstruct trace_ctx *trace, __s8 *ext_err)\n{\n\tstruct ct_buffer6 ct_buffer\
+    \ = {};\n\n// CONTEXT: __ipv4_host_policy_egress(struct __ctx_buff *ctx, bool\
+    \ is_host_id __maybe_unused\n\n\t/* Emit verdict if drop or if allow for CT_NEW.\
+    \ */\n\tif (verdict != CTX_ACT_OK || ret != CT_ESTABLISHED)\n\t\tsend_policy_verdict_notify(ctx,\
+    \ dst_sec_identity, tuple->dport,\n\t\t\t\t\t   tuple->nexthdr, POLICY_EGRESS,\
+    \ 0,\n\t\t\t\t\t   verdict, proxy_port, policy_match_type, audited,\n\t\t\t\t\t\
+    \   auth_type);\n\n\tif (proxy_port > 0 && (ret == CT_NEW || ret == CT_ESTABLISHED))\
+    \ {\n\t\t/* Trace the packet before it is forwarded to proxy */\n\t\tsend_trace_notify(ctx,\
+    \ TRACE_TO_PROXY, SECLABEL_IPV4, UNKNOWN_ID,\n\t\t\t\t  bpf_ntohs(proxy_port),\
+    \ TRACE_IFINDEX_UNKNOWN,\n\t\t\t\t  trace->reason, trace->monitor, bpf_htons(ETH_P_IP));\n\
+    \t\treturn ctx_redirect_to_proxy_host_egress(ctx, proxy_port);\n\t}\n\n\treturn\
+    \ verdict;\n}\n\nstatic __always_inline int\nipv4_host_policy_egress(struct __ctx_buff\
+    \ *ctx, __u32 src_id,\n\t\t\t__u32 ipcache_srcid, struct iphdr *ip4,\n\t\t\tstruct\
+    \ trace_ctx *trace, __s8 *ext_err)\n{\n\tstruct ct_buffer4 ct_buffer = {};\n\n\
+    // FILE: bpf/lib/nodeport.h\n// CONTEXT: static __always_inline int nodeport_svc_lb6(struct\
+    \ __ctx_buff *ctx,\n\t\treturn DROP_NOT_IN_SRC_RANGE;\n\n\tif (!lb6_svc_is_routable(svc))\n\
+    \t\treturn DROP_IS_CLUSTER_IP;\n\n#if defined(ENABLE_L7_LB)\n\tif (lb6_svc_is_l7_loadbalancer(svc))\
+    \ {\n# if !defined(IS_BPF_XDP)\n\t\t__be16 proxy_port = (__be16)svc->l7_lb_proxy_port;\n\
+    \n\t\tsend_trace_notify(ctx, TRACE_TO_PROXY, src_sec_identity, UNKNOWN_ID,\n\t\
+    \t\t\t  bpf_ntohs((__u16)svc->l7_lb_proxy_port),\n\t\t\t\t  THIS_INTERFACE_IFINDEX,\
+    \ TRACE_REASON_POLICY, monitor,\n\t\t\t\t  bpf_htons(ETH_P_IPV6));\n\n#  if defined(ENABLE_TPROXY)\n\
+    \t\treturn ctx_redirect_to_proxy_hairpin_ipv6(ctx, proxy_port);\n#  else\n\t\t\
+    cilium_dbg_capture(ctx, DBG_CAPTURE_PROXY_PRE, proxy_port);\n\t\tctx->mark = MARK_MAGIC_TO_PROXY\
+    \ | (proxy_port << 16);\n\t\tcilium_dbg_capture(ctx, DBG_CAPTURE_PROXY_POST, proxy_port);\n\
+    \n\t\t*punt_to_stack = true;\n#  endif /* ENABLE_TPROXY */\n# endif /* IS_BPF_XDP\
+    \ */\n\t\treturn CTX_ACT_OK;\n\n// CONTEXT: static __always_inline int nodeport_svc_lb4(struct\
+    \ __ctx_buff *ctx,\n\n#if defined(ENABLE_L7_LB)\n\tif (lb4_svc_is_l7_loadbalancer(svc))\
+    \ {\n\t\t/* We cannot redirect from the XDP layer to cilium_host.\n\t\t * Therefore,\
+    \ let the bpf_host to handle the L7 ingress\n\t\t * request.\n\t\t */\n# if !defined(IS_BPF_XDP)\n\
+    \t\t__be16 proxy_port = (__be16)svc->l7_lb_proxy_port;\n\n\t\tsend_trace_notify(ctx,\
+    \ TRACE_TO_PROXY, src_sec_identity, UNKNOWN_ID,\n\t\t\t\t  bpf_ntohs(proxy_port),\n\
+    \t\t\t\t  THIS_INTERFACE_IFINDEX, TRACE_REASON_POLICY, monitor,\n\t\t\t\t  bpf_htons(ETH_P_IP));\n\
+    \n#  if defined(ENABLE_TPROXY)\n\t\treturn ctx_redirect_to_proxy_hairpin_ipv4(ctx,\
+    \ ip4, proxy_port);\n#  else\n\t\t/* Pass the packet straight to the proxy, without\
+    \ redirecting via\n\t\t * cilium_host.\n\t\t */\n\t\tcilium_dbg_capture(ctx, DBG_CAPTURE_PROXY_PRE,\
+    \ proxy_port);\n\t\tctx->mark = MARK_MAGIC_TO_PROXY | (proxy_port << 16);\n\t\t\
+    cilium_dbg_capture(ctx, DBG_CAPTURE_PROXY_POST, proxy_port);\n\n\t\t*punt_to_stack\
+    \ = true;\n\n// FILE: bpf/lib/nodeport_egress.h\n// CONTEXT: int tail_handle_nat_fwd_ipv6(struct\
+    \ __ctx_buff *ctx)\n\t\t.monitor = TRACE_PAYLOAD_LEN,\n\t};\n\tint ret;\n\t__s8\
+    \ ext_err = 0;\n\n\tret = handle_nat_fwd_ipv6(ctx, &trace, &ext_err);\n\tif (IS_ERR(ret))\n\
+    \t\treturn send_drop_notify_error_ext(ctx, src_id, ret, ext_err, METRIC_EGRESS);\n\
+    \n\tif (ret == CTX_ACT_OK)\n\t\tsend_trace_notify(ctx, NODEPORT_OBS_POINT_EGRESS,\
+    \ src_id, UNKNOWN_ID,\n\t\t\t\t  TRACE_EP_ID_UNKNOWN, THIS_INTERFACE_IFINDEX,\n\
+    \t\t\t\t  trace.reason, trace.monitor, bpf_htons(ETH_P_IPV6));\n\n\treturn ret;\n\
+    }\n#endif /* ENABLE_IPV6 */\n\n#ifdef ENABLE_IPV4\nstatic __always_inline bool\n\
+    nodeport_has_nat_conflict_ipv4(const struct iphdr *ip4 __maybe_unused,\n\t\t\t\
+    \       struct ipv4_nat_target *target __maybe_unused)\n{\n#if defined(TUNNEL_MODE)\
+    \ && defined(IS_BPF_OVERLAY)\n\tif (ip4->saddr == IPV4_GATEWAY) {\n\n// CONTEXT:\
+    \ int tail_handle_nat_fwd_ipv4(struct __ctx_buff *ctx)\n\t\t.monitor = TRACE_PAYLOAD_LEN,\n\
+    \t};\n\tint ret;\n\t__s8 ext_err = 0;\n\n\tret = handle_nat_fwd_ipv4(ctx, &trace,\
+    \ &ext_err);\n\tif (IS_ERR(ret))\n\t\treturn send_drop_notify_error_ext(ctx, src_id,\
+    \ ret, ext_err, METRIC_EGRESS);\n\n\tif (ret == CTX_ACT_OK)\n\t\tsend_trace_notify(ctx,\
+    \ NODEPORT_OBS_POINT_EGRESS, src_id, UNKNOWN_ID,\n\t\t\t\t  TRACE_EP_ID_UNKNOWN,\
+    \ THIS_INTERFACE_IFINDEX,\n\t\t\t\t  trace.reason, trace.monitor, bpf_htons(ETH_P_IP));\n\
+    \n\treturn ret;\n}\n#endif /* ENABLE_IPV4 */\n\n#ifdef ENABLE_HEALTH_CHECK\nstatic\
+    \ __always_inline int\nhealth_encap_v4(struct __ctx_buff *ctx, __u32 tunnel_ep,\n\
+    \t\t__u32 seclabel)\n{\n\t__u32 key_size = TUNNEL_KEY_WITHOUT_SRC_IP;\n\tstruct\
+    \ bpf_tunnel_key key;\n\n// FILE: bpf/lib/srv6.h\n// CONTEXT: __declare_tail(CILIUM_CALL_SRV6_ENCAP)\n\
+    int tail_srv6_encap(struct __ctx_buff *ctx)\n{\n\tstruct in6_addr dst_sid;\n\t\
+    int ret = 0;\n\tint __maybe_unused ext_err = 0;\n\n\tsrv6_load_meta_sid(ctx, &dst_sid);\n\
+    \tret = srv6_handling(ctx, &dst_sid);\n\tif (ret < 0)\n\t\treturn send_drop_notify_error(ctx,\
+    \ SECLABEL_IPV6, ret, METRIC_EGRESS);\n\n\tsend_trace_notify(ctx, TRACE_TO_STACK,\
+    \ SECLABEL_IPV6, UNKNOWN_ID,\n\t\t\t  TRACE_EP_ID_UNKNOWN, TRACE_IFINDEX_UNKNOWN,\n\
+    \t\t\t  TRACE_REASON_SRV6_ENCAP, 0, bpf_htons(ETH_P_IPV6));\n\n\treturn ret;\n\
+    }\n\n__declare_tail(CILIUM_CALL_SRV6_DECAP)\nint tail_srv6_decap(struct __ctx_buff\
+    \ *ctx)\n{\n\tint ret = 0;\n\t__u8 nexthdr = 0;\n\t__s8 ext_err = 0;\n\n\tret\
+    \ = srv6_decapsulation(ctx, &nexthdr);\n\n// CONTEXT: int tail_srv6_decap(struct\
+    \ __ctx_buff *ctx)\n\t/* Clear all metadata before recirculation to avoid the\
+    \ accidental use. */\n\tctx_store_meta(ctx, 0, 0);\n\tctx_store_meta(ctx, 1, 0);\n\
+    \tctx_store_meta(ctx, 2, 0);\n\tctx_store_meta(ctx, 3, 0);\n\tctx_store_meta(ctx,\
+    \ 4, 0);\n\n\tswitch (nexthdr) {\n#ifdef ENABLE_IPV4\n\tcase IPPROTO_IPIP:\n\t\
+    \tsend_trace_notify(ctx, TRACE_FROM_NETWORK, SECLABEL_IPV4, UNKNOWN_ID,\n\t\t\t\
+    \t  TRACE_EP_ID_UNKNOWN, TRACE_IFINDEX_UNKNOWN,\n\t\t\t\t  TRACE_REASON_SRV6_DECAP,\
+    \ 0, bpf_htons(ETH_P_IP));\n\t\tret = tail_call_internal(ctx, CILIUM_CALL_IPV4_FROM_NETDEV,\
+    \ &ext_err);\n\t\treturn send_drop_notify_error_ext(ctx, SECLABEL_IPV6, ret, ext_err,\n\
+    \t\t\t\t\t\t  METRIC_INGRESS);\n#endif /* ENABLE_IPV4 */\n#ifdef ENABLE_IPV6\n\
+    \tcase IPPROTO_IPV6:\n\t\tsend_trace_notify(ctx, TRACE_FROM_NETWORK, SECLABEL_IPV6,\
+    \ UNKNOWN_ID,\n\t\t\t\t  TRACE_EP_ID_UNKNOWN, TRACE_IFINDEX_UNKNOWN,\n\t\t\t\t\
+    \  TRACE_REASON_SRV6_DECAP, 0, bpf_htons(ETH_P_IPV6));\n\t\tret = tail_call_internal(ctx,\
+    \ CILIUM_CALL_IPV6_FROM_NETDEV, &ext_err);\n\t\treturn send_drop_notify_error_ext(ctx,\
+    \ SECLABEL_IPV6, ret, ext_err,\n\t\t\t\t\t\t  METRIC_INGRESS);\n#endif /* ENABLE_IPV6\
+    \ */\n\tdefault:\n\t\tret = DROP_UNKNOWN_L3;\n\t}\nerror_drop:\n\treturn send_drop_notify_error(ctx,\
+    \ SECLABEL_IPV6, ret, METRIC_EGRESS);\n}\n# endif /* SKIP_SRV6_HANDLING */\n#endif\
+    \ /* ENABLE_SRV6 */\n\n// FILE: bpf/lib/trace.h\n// CONTEXT: emit_trace_notify(enum\
+    \ trace_point obs_point, __u32 monitor)\n\t * then 'monitor' will be set to 0\
+    \ to avoid emitting trace notifications\n\t * when aggregation is enabled (the\
+    \ default).\n\t */\n\tif (MONITOR_AGGREGATION >= TRACE_AGGREGATE_ACTIVE_CT &&\
+    \ !monitor)\n\t\treturn false;\n\n\treturn true;\n}\n\nstatic __always_inline\
+    \ void\n_send_trace_notify(struct __ctx_buff *ctx, enum trace_point obs_point,\n\
+    \t\t   __u32 src, __u32 dst, __u16 dst_id, __u32 ifindex,\n\t\t   enum trace_reason\
+    \ reason, __u32 monitor,\n\t\t   __be16 proto __maybe_unused, __u16 line, __u8\
+    \ file)\n{\n\t__u64 ctx_len = ctx_full_len(ctx);\n\t__u64 cap_len = min_t(__u64,\
+    \ monitor ? : TRACE_PAYLOAD_LEN,\n\t\t\t      ctx_len);\n\tstruct ratelimit_key\
+    \ rkey = {\n\t\t.usage = RATELIMIT_USAGE_EVENTS_MAP,\n\t};\n\tstruct ratelimit_settings\
+    \ settings = {\n\t\t.topup_interval_ns = NSEC_PER_SEC,\n\t};\n\tstruct trace_notify\
+    \ msg __align_stack_8;\n\tcls_flags_t flags = CLS_FLAG_NONE;\n\n// CONTEXT: _send_trace_notify6(struct\
+    \ __ctx_buff *ctx, enum trace_point obs_point,\n\tipv6_addr_copy(&msg.orig_ip6,\
+    \ orig_addr);\n\n\tctx_event_output(ctx, &cilium_events,\n\t\t\t (cap_len << 32)\
+    \ | BPF_F_CURRENT_CPU,\n\t\t\t &msg, sizeof(msg));\n}\n#else\nstatic __always_inline\
+    \ void\n_send_trace_notify(struct __ctx_buff *ctx, enum trace_point obs_point,\n\
+    \t\t   __u32 src __maybe_unused, __u32 dst __maybe_unused,\n\t\t   __u16 dst_id\
+    \ __maybe_unused, __u32 ifindex __maybe_unused,\n\t\t   enum trace_reason reason,\
+    \ __u32 monitor __maybe_unused,\n\t\t   __be16 proto __maybe_unused, __u16 line,\
+    \ __u8 file)\n{\n\t_update_trace_metrics(ctx, obs_point, reason, line, file);\n\
+    }\n\nstatic __always_inline void\n_send_trace_notify4(struct __ctx_buff *ctx,\
+    \ enum trace_point obs_point,\n\t\t    __u32 src __maybe_unused, __u32 dst __maybe_unused,\n\
+    \t\t    __be32 orig_addr __maybe_unused, __u16 dst_id __maybe_unused,\n\t\t  \
+    \  __u32 ifindex __maybe_unused, enum trace_reason reason,\n\t\t    __u32 monitor\
+    \ __maybe_unused,\n\t\t    __u16 line, __u8 file)\n{\n\n// CONTEXT: static __always_inline\
+    \ void\n_send_trace_notify6(struct __ctx_buff *ctx, enum trace_point obs_point,\n\
+    \t\t    __u32 src __maybe_unused, __u32 dst __maybe_unused,\n\t\t    union v6addr\
+    \ *orig_addr __maybe_unused,\n\t\t    __u16 dst_id __maybe_unused, __u32 ifindex\
+    \ __maybe_unused,\n\t\t    enum trace_reason reason, __u32 monitor __maybe_unused,\n\
+    \t\t    __u16 line, __u8 file)\n{\n\t_update_trace_metrics(ctx, obs_point, reason,\
+    \ line, file);\n}\n#endif /* TRACE_NOTIFY */\n\n/* send_trace_notify emits a generic\
+    \ trace notify. */\n#define send_trace_notify(ctx, obs_point, src, dst, dst_id,\
+    \ ifindex, reason, monitor, proto) \\\n\t_send_trace_notify(ctx, obs_point, src,\
+    \ dst, dst_id, ifindex, reason, monitor, proto, \\\n\t__MAGIC_LINE__, __MAGIC_FILE__)\n\
+    \n/* send_trace_notify4 emits a trace notify with the original IPv4 address before\
+    \ translation. */\n#define send_trace_notify4(ctx, obs_point, src, dst, orig_addr,\
+    \ dst_id, ifindex, reason, monitor) \\\n\t_send_trace_notify4(ctx, obs_point,\
+    \ src, dst, orig_addr, dst_id, ifindex, reason, monitor, \\\n\t__MAGIC_LINE__,\
+    \ __MAGIC_FILE__)\n\n/* send_trace_notify6 emits a trace notify with the original\
+    \ IPv6 address before translation. */\n#define send_trace_notify6(ctx, obs_point,\
+    \ src, dst, orig_addr, dst_id, ifindex, reason, monitor) \\\n\t_send_trace_notify6(ctx,\
+    \ obs_point, src, dst, orig_addr, dst_id, ifindex, reason, monitor, \\\n\t__MAGIC_LINE__,\
+    \ __MAGIC_FILE__)"
+  diff_summary: |-
+    bpf/bpf_host.c:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: do_netdev(struct __ctx_buff *ctx, __u16 proto, __u32 __maybe_unused identity,, int cil_from_netdev(struct __ctx_buff *ctx), int cil_from_host(struct __ctx_buff *ctx).
+    bpf/bpf_lxc.c:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: static __always_inline int handle_ipv6_from_lxc(struct __ctx_buff *ctx, __u32 *d, ct_recreate6:, static __always_inline int handle_ipv4_from_lxc(struct __ctx_buff *ctx, __u32 *d.
+    bpf/bpf_network.c:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: int cil_from_network(struct __ctx_buff *ctx).
+    bpf/bpf_overlay.c:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: static __always_inline int handle_ipv6(struct __ctx_buff *ctx,, skip_vtep:, int tail_handle_arp(struct __ctx_buff *ctx).
+    bpf/bpf_wireguard.c:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: int cil_from_wireguard(struct __ctx_buff *ctx), int cil_to_wireguard(struct __ctx_buff *ctx).
+    bpf/lib/encap.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: tunnel_gen_src_port_v6(struct ipv6_ct_tuple *tuple __maybe_unused).
+    bpf/lib/host_firewall.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: __ipv6_host_policy_egress(struct __ctx_buff *ctx, bool is_host_id __maybe_unused, __ipv4_host_policy_egress(struct __ctx_buff *ctx, bool is_host_id __maybe_unused.
+    bpf/lib/nodeport.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: static __always_inline int nodeport_svc_lb6(struct __ctx_buff *ctx,, static __always_inline int nodeport_svc_lb4(struct __ctx_buff *ctx,.
+    bpf/lib/nodeport_egress.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: int tail_handle_nat_fwd_ipv6(struct __ctx_buff *ctx), int tail_handle_nat_fwd_ipv4(struct __ctx_buff *ctx).
+    bpf/lib/srv6.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: __declare_tail(CILIUM_CALL_SRV6_ENCAP), int tail_srv6_decap(struct __ctx_buff *ctx).
+    bpf/lib/trace.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: emit_trace_notify(enum trace_point obs_point, __u32 monitor), _send_trace_notify6(struct __ctx_buff *ctx, enum trace_point obs_point,, static __always_inline void.
+    - Commit subject: bpf:trace: send_trace_notify accept L3 protocol.

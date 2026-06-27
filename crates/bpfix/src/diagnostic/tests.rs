@@ -121,8 +121,9 @@ fn unsupported_terminal_replacement_is_an_explicit_signal_whitelist() {
 
 #[test]
 fn branch_merge_case_produces_proof_lifecycle_events() {
-    let log =
-        include_str!("../../../../bpfix-bench/cases/stackoverflow-53136145/replay-verifier.log");
+    let log = include_str!(
+        "../../../../bpfix-empirical/cases/stackoverflow-53136145/replay-verifier.log"
+    );
     let analysis = analyze_verifier_log(
         log,
         Some(37),
@@ -156,8 +157,9 @@ fn branch_merge_case_produces_proof_lifecycle_events() {
 
 #[test]
 fn scalar_range_case_identifies_obligation_and_rejection() {
-    let log =
-        include_str!("../../../../bpfix-bench/cases/stackoverflow-70750259/replay-verifier.log");
+    let log = include_str!(
+        "../../../../bpfix-empirical/cases/stackoverflow-70750259/replay-verifier.log"
+    );
     let analysis = analyze_verifier_log(
         log,
         Some(33),
@@ -186,8 +188,9 @@ fn scalar_range_case_identifies_obligation_and_rejection() {
 
 #[test]
 fn map_value_access_case_describes_value_size_bounds() {
-    let log =
-        include_str!("../../../../bpfix-bench/cases/stackoverflow-78196801/replay-verifier.log");
+    let log = include_str!(
+        "../../../../bpfix-empirical/cases/stackoverflow-78196801/replay-verifier.log"
+    );
     let analysis = analyze_verifier_log(
             log,
             Some(13),
@@ -266,8 +269,9 @@ fn map_value_wide_access_accepts_signed_offsets() {
 
 #[test]
 fn packet_bounds_case_instantiates_required_range() {
-    let log =
-        include_str!("../../../../bpfix-bench/cases/stackoverflow-60053570/replay-verifier.log");
+    let log = include_str!(
+        "../../../../bpfix-empirical/cases/stackoverflow-60053570/replay-verifier.log"
+    );
     let analysis = analyze_verifier_log(
         log,
         Some(26),
@@ -291,8 +295,9 @@ fn packet_bounds_case_instantiates_required_range() {
             && event.source.as_ref().unwrap().line == 52
     }));
 
-    let derived_header_log =
-        include_str!("../../../../bpfix-bench/cases/stackoverflow-76277872/replay-verifier.log");
+    let derived_header_log = include_str!(
+        "../../../../bpfix-empirical/cases/stackoverflow-76277872/replay-verifier.log"
+    );
     let analysis = analyze_verifier_log(
             derived_header_log,
             Some(6),
@@ -314,7 +319,7 @@ fn packet_bounds_case_instantiates_required_range() {
 #[test]
 fn nullable_pointer_case_points_at_unchecked_helper_result() {
     let log =
-        include_str!("../../../../bpfix-bench/cases/github-iovisor-bcc-10/replay-verifier.log");
+        include_str!("../../../../bpfix-empirical/cases/github-iovisor-bcc-10/replay-verifier.log");
     let analysis = analyze_verifier_log(
         log,
         Some(7),
@@ -340,8 +345,9 @@ fn nullable_pointer_case_points_at_unchecked_helper_result() {
 
 #[test]
 fn environment_case_instantiates_helper_contract() {
-    let log =
-        include_str!("../../../../bpfix-bench/cases/github-aya-rs-aya-1233/replay-verifier.log");
+    let log = include_str!(
+        "../../../../bpfix-empirical/cases/github-aya-rs-aya-1233/replay-verifier.log"
+    );
     let analysis = analyze_verifier_log(
         log,
         Some(8),
@@ -393,8 +399,9 @@ fn stack_readability_case_instantiates_register_requirement() {
 
 #[test]
 fn unreadable_program_entry_argument_is_a_source_state_signal() {
-    let log =
-        include_str!("../../../../bpfix-bench/cases/stackoverflow-69506785/replay-verifier.log");
+    let log = include_str!(
+        "../../../../bpfix-empirical/cases/stackoverflow-69506785/replay-verifier.log"
+    );
     let analysis = analyze_verifier_log(
         log,
         Some(0),
@@ -413,7 +420,7 @@ fn unreadable_program_entry_argument_is_a_source_state_signal() {
 #[test]
 fn unreadable_helper_argument_is_a_source_state_signal() {
     let log = include_str!(
-        "../../../../bpfix-bench/cases/github-commit-cilium-6b3c9f16c99f/replay-verifier.log"
+        "../../../../bpfix-empirical/cases/github-commit-cilium-6b3c9f16c99f/replay-verifier.log"
     );
     let analysis = analyze_verifier_log(
         log,
@@ -433,7 +440,7 @@ fn unreadable_helper_argument_is_a_source_state_signal() {
 #[test]
 fn scalar_pointer_dereference_is_a_source_state_signal() {
     let log = include_str!(
-        "../../../../bpfix-bench/cases/github-commit-bcc-02daf8d84ecd/replay-verifier.log"
+        "../../../../bpfix-empirical/cases/github-commit-bcc-02daf8d84ecd/replay-verifier.log"
     );
     let analysis = analyze_verifier_log(
         log,
@@ -453,7 +460,7 @@ fn scalar_pointer_dereference_is_a_source_state_signal() {
 #[test]
 fn stale_packet_pointer_after_helper_is_a_source_state_signal() {
     let log = include_str!(
-        "../../../../bpfix-bench/cases/github-commit-cilium-2ff1a462cd33/replay-verifier.log"
+        "../../../../bpfix-empirical/cases/github-commit-cilium-2ff1a462cd33/replay-verifier.log"
     );
     let analysis = analyze_verifier_log(
         log,
@@ -476,7 +483,7 @@ fn stale_packet_pointer_after_helper_is_a_source_state_signal() {
 #[test]
 fn stale_dynptr_data_after_reinit_helper_is_a_source_state_signal() {
     let log = include_str!(
-            "../../../../bpfix-bench/cases/kernel-selftest-dynptr-fail-dynptr-invalidate-slice-reinit-raw-tp-f5b71f50/replay-verifier.log"
+            "../../../../bpfix-empirical/cases/kernel-selftest-dynptr-fail-dynptr-invalidate-slice-reinit-raw-tp-f5b71f50/replay-verifier.log"
         );
     let analysis = analyze_verifier_log(
         log,
@@ -498,8 +505,9 @@ fn stale_dynptr_data_after_reinit_helper_is_a_source_state_signal() {
 
 #[test]
 fn prohibited_pointer_arithmetic_is_a_source_state_signal() {
-    let log =
-        include_str!("../../../../bpfix-bench/cases/stackoverflow-68460177/replay-verifier.log");
+    let log = include_str!(
+        "../../../../bpfix-empirical/cases/stackoverflow-68460177/replay-verifier.log"
+    );
     let analysis = analyze_verifier_log(
         log,
         Some(37),
@@ -963,7 +971,7 @@ R2 !read_ok
 #[test]
 fn helper_stack_write_beyond_frame_is_a_source_state_signal() {
     let log = include_str!(
-        "../../../../bpfix-bench/cases/github-commit-cilium-31a01b994f8b/replay-verifier.log"
+        "../../../../bpfix-empirical/cases/github-commit-cilium-31a01b994f8b/replay-verifier.log"
     );
     let analysis = analyze_verifier_log(
         log,

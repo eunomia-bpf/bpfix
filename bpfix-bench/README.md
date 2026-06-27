@@ -1,126 +1,138 @@
-# bpfix-bench
+# BPFix-Bench
 
-`bpfix-bench` is the replayable verifier-failure corpus used by BPFix. The only
-discovery entry point is `manifest.yaml`. A case belongs in `cases/` only if it
-is self-contained and can be rebuilt, loaded, rejected by the local verifier, and
-parsed again by the validator.
+`bpfix-bench/` is the source-first LLM repair stress suite for BPFix. It is not
+`bpfix-empirical/`: success here means a candidate replacement `buggy.bpf.c` builds,
+loads through the verifier, and passes the case oracle.
 
-External Stack Overflow, GitHub issue, and GitHub commit material is archived
-under `raw/`. Raw records are audit material and expansion candidates; they are
-not part of primary diagnostic metrics unless they have been admitted to
-`cases/` and listed in `manifest.yaml`.
+Current case inventory:
 
-## Current Snapshot
+- `cases/`: 77 directories on disk.
+- runnable tracked fixtures: 75 with `buggy.bpf.c`, `verifier.log`,
+  `diagnostic.txt`, and `test.py`.
+- `splits/dev40.txt`: 40 admitted calibration cases.
+- `splits/hard40.txt`: 40-case high-difficulty calibration subset retained
+  from main-suite hardening.
+- `splits/real-seed-candidates.txt`: 34 real-project seed staging cases.
+- `splits/main.txt`: 75-case combined working suite: all runnable fixtures.
+- `splits/main.manifest.json`: oracle metadata for the combined suite.
+- `splits/clean60.txt`: legacy empty heldout placeholder, kept only so older
+  scripts do not break.
 
-`manifest.yaml` lists 235 replayable cases for
-`environment_id: kernel-6.15.11-clang-18-log2`.
+The two non-runnable directories are placeholders without `buggy.bpf.c` and are
+not part of any split.
 
-| source_kind | cases |
-| --- | ---: |
-| `github_issue` | 18 |
-| `github_commit` | 46 |
-| `kernel_selftest` | 85 |
-| `stackoverflow` | 86 |
-| **total** | **235** |
+## Case Format
 
-Primary taxonomy labels:
-
-| taxonomy_class | cases |
-| --- | ---: |
-| `source_bug` | 194 |
-| `lowering_artifact` | 19 |
-| `environment_or_configuration` | 11 |
-| `verifier_false_positive` | 7 |
-| `verifier_limit` | 4 |
-
-Raw external audit records:
-
-| source_kind | records |
-| --- | ---: |
-| `github_commit` | 591 |
-| `github_issue` | 31 |
-| `stackoverflow` | 114 |
-| **total** | **736** |
-
-The raw directory also contains 201 kernel-selftest raw log fixtures under
-`raw/kernel_selftests/`.
-
-## Required Validation
-
-Run the validator before treating this checkout as a valid local benchmark:
-
-```bash
-python3 bpfix-bench/tools/validate_benchmark.py --replay bpfix-bench --timeout-sec 60
-```
-
-Expected result on a fully provisioned pinned environment:
+Each case is a directory:
 
 ```text
-passed: 235
-failed: 0
+cases/<case_id>/
+  README.md
+  buggy.bpf.c
+  fixed.bpf.c
+  verifier.log
+  diagnostic.txt
+  test.py
 ```
 
-The benchmark is environment-sensitive. A case can be valid on one kernel,
-compiler, libbpf, and BTF setup and fail to reproduce on another.
+`buggy.bpf.c` is the source given to the model. `verifier.log` is the raw
+verifier/load log. `diagnostic.txt` is BPFix plain-text output generated from
+that same log. `fixed.bpf.c` is a checked-in reference repair that must pass the
+same oracle. `test.py` is the only oracle for repair success.
 
-Instruction labels use the checked-in local replay log numbering. The reject
-site lives only in `capture.rejected_insn_idx`; label blocks do not duplicate
-that field. A non-null `label.root_cause_insn_idx` must name an instruction PC
-present in the stored `replay-verifier.log`, otherwise the case is not eligible
-for root-PC localization metrics. For external cases with migrated legacy
-numbering, the validator also rejects root PCs that still shadow the original
-raw-log rejected PC when the local replay source line proves the label is using
-the wrong numbering space.
+## Main Commands
 
-`manifest.yaml` defines the fixed per-case defaults for this frozen benchmark:
-`prog.c`, `prog.o`, `make`, `make replay-verify`, `replay-verifier.log`,
-`capture.yaml`, and `trace_rich`. Case files only carry fields that vary across
-cases plus the replay terminal error and rejected instruction.
-
-Latest local validation on this checkout:
-
-```text
-passed: 235
-failed: 0
-```
-
-The `kernel_selftest` loader builds link against the local
-`vendor/libbpf` submodule through `bpfix-bench/libbpf.mk`, so replay does not
-depend on a host `libbpf` install for `-lbpf`. The host still needs the normal
-replay toolchain dependencies, including clang, bpftool, libelf, zlib, sudo,
-kernel BTF, and a compatible kernel.
-
-## Diagnostic Evaluation
-
-Run BPFix over every admitted replay log in the benchmark:
+Audit the 40 admitted calibration cases:
 
 ```bash
-python3 bpfix-bench/run-bpfix-eval.py --confusion --coverage --reject-fallback
+python3 bpfix-bench/tools/audit_cases.py --split bpfix-bench/splits/dev40.txt
 ```
 
-The driver builds the Rust `bpfix` CLI by default, reads `manifest.yaml`, and
-invokes `bpfix --format json` for each case log through the shared metric
-implementation in `docs/evaluation/evaluate_diagnostics.py`. `--reject-fallback`
-fails the run if any admitted replay case emits `BPFIX-UNKNOWN`, `BPFIX-E000`,
-or `BPFIX-E099`. Use `--bpfix-bin /path/to/bpfix --no-build` to evaluate an
-existing binary. The summary also reports BPFix CLI wall-clock time
-median/p95/max over the same run; this measures the diagnostic invocation only,
-not replay build or loader time.
-
-To include object/CFG attachment coverage, run:
+Audit the combined 75-case working suite:
 
 ```bash
-python3 bpfix-bench/run-bpfix-eval.py --coverage --object-if-available
+python3 bpfix-bench/tools/audit_cases.py --split bpfix-bench/splits/main.txt --manifest bpfix-bench/splits/main.manifest.json
 ```
 
-That mode builds `bpfix` with `--features object-analysis` unless
-`--bpfix-bin` is supplied, passes each case's checked-in `prog.o`, and reports
-parsed object programs, CFG sites, attached verifier states, and non-fatal
-object-analysis errors.
+Verify that all buggy sources still reject:
 
-## Raw Audit
+```bash
+python3 bpfix-bench/tools/run_suite.py --split bpfix-bench/splits/main.txt --expected-count 75 --smoke
+```
 
-`raw/index.yaml` records reproduction status for external raw material, including
-`replay_valid`, `attempted_accepted`, `environment_required`,
-`missing_source`, `missing_verifier_log`, `not_reconstructable_from_diff`,
-`out_of_scope_non_verifier`, and `replay_reject_no_rejected_insn`.
+Verify checked-in repairs when a case has `fixed.bpf.c`:
+
+```bash
+python3 bpfix-bench/tools/run_suite.py --split bpfix-bench/splits/main.txt --expected-count 75 --fixed-smoke
+```
+
+Generate prompts without calling a model:
+
+```bash
+python3 bpfix-bench/tools/run_suite.py \
+  --split bpfix-bench/splits/main.txt \
+  --expected-count 75 \
+  --mode bpfix \
+  --prompt-only
+```
+
+Run an OpenAI-compatible model server, for example llama.cpp:
+
+```bash
+python3 bpfix-bench/tools/run_suite.py \
+  --split bpfix-bench/splits/main.txt \
+  --expected-count 75 \
+  --mode raw \
+  --base-url http://127.0.0.1:18080/v1 \
+  --model Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M
+```
+
+Allow one repair retry without BPFix. The second prompt appends the previous
+candidate source and the compile/load/verifier/oracle failure context:
+
+```bash
+python3 bpfix-bench/tools/run_suite.py \
+  --split bpfix-bench/splits/main.txt \
+  --expected-count 75 \
+  --mode raw \
+  --repair-attempts 2 \
+  --base-url http://127.0.0.1:18080/v1 \
+  --model Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M
+```
+
+Available modes are `source-only`, `raw`, `trimmed-raw`, and `bpfix`.
+
+The current Qwen3.6 27B main75 calibration result is documented in
+`docs/tmp/bpfix-bench/qwen27b-main75-repair-results.md`: raw one-shot 22/75,
+BPFix one-shot 38/75, raw retry 30/75, and BPFix retry 44/75.
+
+Refresh diagnostics from existing logs without recapturing verifier output:
+
+```bash
+cargo build -p bpfix
+python3 bpfix-bench/tools/refresh_case_artifacts.py --diagnostic-only
+```
+
+Use full refresh only when the local kernel/toolchain/replay environment is
+ready:
+
+```bash
+python3 bpfix-bench/tools/refresh_case_artifacts.py
+```
+
+## How To Report Results
+
+Report `main` as an evolving working suite, not as a clean heldout benchmark.
+When reporting LLM repair results, separate one-shot from retry and separate
+raw verifier-log prompts from BPFix-assisted prompts.
+The remaining real-seed staging cases should be fixed and promoted only after
+their diagnostics and oracles pass `audit_cases.py`.
+If a paper later needs a frozen benchmark, freeze a new split from the current
+suite, record the exact case ids and prompt hashes, and do not change that split
+after model results are collected.
+The calibrated `main` suite is useful for engineering and model comparison, but
+it should not be described as a contamination-free heldout result.
+
+The old dev40/clean60 design notes and pilot result writeups have been moved to
+`docs/tmp/bpfix-bench/`. They are useful historical context, but they are no
+longer the primary user-facing benchmark contract.

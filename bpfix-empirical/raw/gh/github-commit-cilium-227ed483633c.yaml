@@ -1,0 +1,240 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-227ed483633c
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/227ed483633c12e94969e2cf760fa0854b97b987
+  title: 'bpf: Introduce SRv6 tail call'
+  repository: https://github.com/cilium/cilium
+  commit: 227ed483633c12e94969e2cf760fa0854b97b987
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-227ed483633c.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: environment_required
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Introduces SRv6 tail-call structure across host, LXC, overlay, XDP, and
+    egress policy code. Reproduction requires full Cilium build/tail-call environment
+    and no standalone verifier log is available.
+raw:
+  case_id: github-commit-cilium-227ed483633c
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: 227ed483633c12e94969e2cf760fa0854b97b987
+  commit_message: 'bpf: Introduce SRv6 tail call'
+  commit_date: '2022-04-16'
+  fix_type: inline_hint
+  buggy_code: "// FILE: bpf/bpf_host.c\n// CONTEXT: handle_srv6(struct __ctx_buff\
+    \ *ctx)\n\n\t\tif (identity_is_cluster(dst_id))\n\t\t\treturn CTX_ACT_OK;\n\n\t\
+    \tvrf_id = srv6_lookup_vrf6(&ip6->saddr, &ip6->daddr);\n\t\tif (!vrf_id)\n\t\t\
+    \treturn CTX_ACT_OK;\n\n\t\tsid = srv6_lookup_policy6(*vrf_id, &ip6->daddr);\n\
+    \t\tif (!sid)\n\t\t\treturn CTX_ACT_OK;\n\n\t\t/* TODO: Implement SRv6 encapsulation.\
+    \ */\n\t\tbreak;\n# ifdef ENABLE_IPV4\n\tcase bpf_htons(ETH_P_IP):\n\t\tif (!revalidate_data(ctx,\
+    \ &data, &data_end, &ip4))\n\t\t\treturn DROP_INVALID;\n\n\t\tep = lookup_ip4_remote_endpoint(ip4->daddr);\n\
+    \t\tif (ep) {\n\t\t\ttunnel_ep = ep->tunnel_endpoint;\n\t\t\tdst_id = ep->sec_label;\n\
+    \t\t} else {\n\t\t\tdst_id = WORLD_ID;\n\t\t}\n\n\t\tif (identity_is_cluster(dst_id))\n\
+    \t\t\treturn CTX_ACT_OK;\n\n\t\tvrf_id = srv6_lookup_vrf4(ip4->saddr, ip4->daddr);\n\
+    \t\tif (!vrf_id)\n\t\t\treturn CTX_ACT_OK;\n\n\t\tsid = srv6_lookup_policy4(*vrf_id,\
+    \ ip4->daddr);\n\t\tif (!sid)\n\t\t\treturn CTX_ACT_OK;\n\n\t\t/* TODO: Implement\
+    \ SRv6 encapsulation. */\n\t\tbreak;\n# endif\n\t}\n\n\treturn CTX_ACT_OK;\n}\n\
+    #endif /* ENABLE_SRV6 */\n\n/*\n * from-netdev is attached as a tc ingress filter\
+    \ to one or more physical devices\n * managed by Cilium (e.g., eth0). This program\
+    \ is only attached when:\n * - the host firewall is enabled, or\n\n// FILE: bpf/bpf_lxc.c\n\
+    /* Copyright Authors of Cilium */\n\n#include <bpf/ctx/skb.h>\n#include <bpf/api.h>\n\
+    \n#include <ep_config.h>\n#include <node_config.h>\n\n#include <bpf/verifier.h>\n\
+    \n#include <linux/icmpv6.h>\n\n#define EVENT_SOURCE LXC_ID\n\n#include \"lib/tailcall.h\"\
+    \n#include \"lib/common.h\"\n#include \"lib/config.h\"\n#include \"lib/maps.h\"\
+    \n#include \"lib/arp.h\"\n#include \"lib/edt.h\"\n#include \"lib/qm.h\"\n#include\
+    \ \"lib/ipv6.h\"\n#include \"lib/ipv4.h\"\n#include \"lib/icmp6.h\"\n\n// FILE:\
+    \ bpf/bpf_overlay.c\n#define IS_BPF_OVERLAY 1\n\n/* Controls the inclusion of\
+    \ the CILIUM_CALL_HANDLE_ICMP6_NS section in the\n * bpf_lxc object file.\n */\n\
+    #define SKIP_ICMPV6_NS_HANDLING\n\n/* Controls the inclusion of the CILIUM_CALL_SEND_ICMP6_ECHO_REPLY\
+    \ section in\n * the bpf_lxc object file.\n */\n#define SKIP_ICMPV6_ECHO_HANDLING\n\
+    \n#include \"lib/tailcall.h\"\n#include \"lib/common.h\"\n#include \"lib/edt.h\"\
+    \n#include \"lib/maps.h\"\n#include \"lib/ipv6.h\"\n#include \"lib/eth.h\"\n#include\
+    \ \"lib/dbg.h\"\n#include \"lib/trace.h\"\n#include \"lib/l3.h\"\n#include \"\
+    lib/drop.h\"\n#include \"lib/identity.h\"\n#include \"lib/nodeport.h\"\n\n// FILE:\
+    \ bpf/bpf_xdp.c\n\n/* Controls the inclusion of the CILIUM_CALL_SEND_ICMP6_TIME_EXCEEDED\
+    \ section\n * in the bpf_lxc object file. This is needed for all callers of\n\
+    \ * ipv6_local_delivery, which calls into the IPv6 L3 handling.\n */\n#define\
+    \ SKIP_ICMPV6_HOPLIMIT_HANDLING\n\n/* Controls the inclusion of the CILIUM_CALL_SEND_ICMP6_ECHO_REPLY\
+    \ section in\n * the bpf_lxc object file.\n */\n#define SKIP_ICMPV6_ECHO_HANDLING\n\
+    \n/* The XDP datapath does not take care of health probes from the local node,\n\
+    \ * thus do not compile it in.\n */\n#undef ENABLE_HEALTH_CHECK\n\n#include \"\
+    lib/common.h\"\n#include \"lib/maps.h\"\n#include \"lib/eps.h\"\n#include \"lib/events.h\"\
+    \n#include \"lib/nodeport.h\"\n\n#ifdef ENABLE_PREFILTER\n\n// FILE: bpf/lib/common.h\n\
+    #define CILIUM_CALL_IPV6_NODEPORT_DSR\t\t21\n#define CILIUM_CALL_IPV4_FROM_HOST\t\
+    \t22\n#define CILIUM_CALL_IPV6_FROM_HOST\t\t23\n#define CILIUM_CALL_IPV6_ENCAP_NODEPORT_NAT\t\
+    24\n#define CILIUM_CALL_IPV4_FROM_LXC_CONT\t\t25\n#define CILIUM_CALL_IPV6_FROM_LXC_CONT\t\
+    \t26\n#define CILIUM_CALL_IPV4_CT_INGRESS\t\t27\n#define CILIUM_CALL_IPV4_CT_INGRESS_POLICY_ONLY\t\
+    28\n#define CILIUM_CALL_IPV4_CT_EGRESS\t\t29\n#define CILIUM_CALL_IPV6_CT_INGRESS\t\
+    \t30\n#define CILIUM_CALL_IPV6_CT_INGRESS_POLICY_ONLY\t31\n#define CILIUM_CALL_IPV6_CT_EGRESS\t\
+    \t32\n#define CILIUM_CALL_SIZE\t\t\t33\n\ntypedef __u64 mac_t;\n\nunion v6addr\
+    \ {\n\tstruct {\n\t\t__u32 p1;\n\t\t__u32 p2;\n\t\t__u32 p3;\n\t\t__u32 p4;\n\t\
+    };\n\tstruct {\n\t\t__u64 d1;\n\n// CONTEXT: static __always_inline __u32 or_encrypt_key(__u8\
+    \ key)\n * Take care to not clobber slots used by other functions in the same\n\
+    \ * code path.\n */\n/* ctx_{load,store}_meta() usage: */\nenum {\n\tCB_SRC_LABEL,\n\
+    #define\tCB_PORT\t\t\tCB_SRC_LABEL\t/* Alias, non-overlapping */\n#define\tCB_HINT\t\
+    \t\tCB_SRC_LABEL\t/* Alias, non-overlapping */\n#define\tCB_NAT_46X64\t\tCB_SRC_LABEL\t\
+    /* Alias, non-overlapping */\n#define\tCB_PROXY_MAGIC\t\tCB_SRC_LABEL\t/* Alias,\
+    \ non-overlapping */\n#define\tCB_ENCRYPT_MAGIC\tCB_SRC_LABEL\t/* Alias, non-overlapping\
+    \ */\n#define\tCB_DST_ENDPOINT_ID\tCB_SRC_LABEL    /* Alias, non-overlapping */\n\
+    \tCB_IFINDEX,\n#define\tCB_ADDR_V4\t\tCB_IFINDEX\t/* Alias, non-overlapping */\n\
+    #define\tCB_ADDR_V6_1\t\tCB_IFINDEX\t/* Alias, non-overlapping */\n#define\tCB_ENCRYPT_IDENTITY\t\
+    CB_IFINDEX\t/* Alias, non-overlapping */\n#define\tCB_IPCACHE_SRC_LABEL\tCB_IFINDEX\t\
+    /* Alias, non-overlapping */\n\tCB_POLICY,\n#define\tCB_ADDR_V6_2\t\tCB_POLICY\t\
+    /* Alias, non-overlapping */\n#define\tCB_BACKEND_ID\t\tCB_POLICY\t/* Alias, non-overlapping\
+    \ */\n\tCB_NAT,\n#define\tCB_ADDR_V6_3\t\tCB_NAT\t\t/* Alias, non-overlapping\
+    \ */\n#define\tCB_FROM_HOST\t\tCB_NAT\t\t/* Alias, non-overlapping */\n\tCB_CT_STATE,\n\
+    #define\tCB_ADDR_V6_4\t\tCB_CT_STATE\t/* Alias, non-overlapping */\n#define\t\
+    CB_ENCRYPT_DST\t\tCB_CT_STATE\t/* Alias, non-overlapping,\n\t\t\t\t\t\t * Not\
+    \ used by xfrm.\n\t\t\t\t\t\t */\n#define\tCB_CUSTOM_CALLS\t\tCB_CT_STATE\t/*\
+    \ Alias, non-overlapping */\n};\n\n/* Magic values for CB_FROM_HOST.\n * CB_FROM_HOST\
+    \ overlaps with CB_NAT46_STATE, so this value must be distinct\n * from any in\
+    \ enum NAT46 below!\n */\n#define FROM_HOST_L7_LB 0xFACADE42\n\n#define TUPLE_F_OUT\t\
+    \t0\t/* Outgoing flow */\n#define TUPLE_F_IN\t\t1\t/* Incoming flow */\n#define\
+    \ TUPLE_F_RELATED\t\t2\t/* Flow represents related packets */\n#define TUPLE_F_SERVICE\t\
+    \t4\t/* Flow represents packets to service */\n\n// FILE: bpf/lib/egress_policies.h\n\
+    // CONTEXT: srv6_lookup_vrf6(const struct in6_addr *sip, const struct in6_addr\
+    \ *dip)\n# define SRV6_POLICY_IPV6_PREFIX SRV6_POLICY_PREFIX6_LEN(128)\n\nstatic\
+    \ __always_inline union v6addr *\nsrv6_lookup_policy6(__u32 vrf_id, const struct\
+    \ in6_addr *dip)\n{\n\tstruct srv6_policy_key6 key = {\n\t\t.lpm = { SRV6_POLICY_IPV6_PREFIX,\
+    \ {} },\n\t\t.vrf_id = vrf_id,\n\t\t.dst_cidr = *(union v6addr *)dip,\n\t};\n\t\
+    return map_lookup_elem(&SRV6_POLICY_MAP6, &key);\n}\n#endif /* ENABLE_SRV6 */\n\
+    #endif /* __LIB_EGRESS_POLICIES_H_ */"
+  fixed_code: "// FILE: bpf/bpf_host.c\n// CONTEXT: handle_srv6(struct __ctx_buff\
+    \ *ctx)\n\n\t\tif (identity_is_cluster(dst_id))\n\t\t\treturn CTX_ACT_OK;\n\n\t\
+    \tvrf_id = srv6_lookup_vrf6(&ip6->saddr, &ip6->daddr);\n\t\tif (!vrf_id)\n\t\t\
+    \treturn CTX_ACT_OK;\n\n\t\tsid = srv6_lookup_policy6(*vrf_id, &ip6->daddr);\n\
+    \t\tif (!sid)\n\t\t\treturn CTX_ACT_OK;\n\n\t\tsrv6_store_meta_sid(ctx, sid);\n\
+    \t\tctx_store_meta(ctx, CB_SRV6_VRF_ID, *vrf_id);\n\t\tep_tail_call(ctx, CILIUM_CALL_SRV6_ENCAP);\n\
+    \t\treturn DROP_MISSED_TAIL_CALL;\n# ifdef ENABLE_IPV4\n\tcase bpf_htons(ETH_P_IP):\n\
+    \t\tif (!revalidate_data(ctx, &data, &data_end, &ip4))\n\t\t\treturn DROP_INVALID;\n\
+    \n\t\tep = lookup_ip4_remote_endpoint(ip4->daddr);\n\t\tif (ep) {\n\t\t\ttunnel_ep\
+    \ = ep->tunnel_endpoint;\n\t\t\tdst_id = ep->sec_label;\n\t\t} else {\n\t\t\t\
+    dst_id = WORLD_ID;\n\t\t}\n\n\t\tif (identity_is_cluster(dst_id))\n\t\t\treturn\
+    \ CTX_ACT_OK;\n\n\t\tvrf_id = srv6_lookup_vrf4(ip4->saddr, ip4->daddr);\n\t\t\
+    if (!vrf_id)\n\t\t\treturn CTX_ACT_OK;\n\n\t\tsid = srv6_lookup_policy4(*vrf_id,\
+    \ ip4->daddr);\n\t\tif (!sid)\n\t\t\treturn CTX_ACT_OK;\n\n\t\tsrv6_store_meta_sid(ctx,\
+    \ sid);\n\t\tctx_store_meta(ctx, CB_SRV6_VRF_ID, *vrf_id);\n\t\tep_tail_call(ctx,\
+    \ CILIUM_CALL_SRV6_ENCAP);\n\t\treturn DROP_MISSED_TAIL_CALL;\n\t\tbreak;\n# endif\n\
+    \t}\n\n\treturn CTX_ACT_OK;\n}\n#endif /* ENABLE_SRV6 */\n\n/*\n * from-netdev\
+    \ is attached as a tc ingress filter to one or more physical devices\n * managed\
+    \ by Cilium (e.g., eth0). This program is only attached when:\n * - the host firewall\
+    \ is enabled, or\n\n// FILE: bpf/bpf_lxc.c\n/* Copyright Authors of Cilium */\n\
+    \n#include <bpf/ctx/skb.h>\n#include <bpf/api.h>\n\n#include <ep_config.h>\n#include\
+    \ <node_config.h>\n\n#include <bpf/verifier.h>\n\n#include <linux/icmpv6.h>\n\n\
+    /* Controls the inclusion of the CILIUM_CALL_SRV6 section in the object file.\n\
+    \ */\n#define SKIP_SRV6_HANDLING\n\n#define EVENT_SOURCE LXC_ID\n\n#include \"\
+    lib/tailcall.h\"\n#include \"lib/common.h\"\n#include \"lib/config.h\"\n#include\
+    \ \"lib/maps.h\"\n#include \"lib/arp.h\"\n#include \"lib/edt.h\"\n#include \"\
+    lib/qm.h\"\n#include \"lib/ipv6.h\"\n#include \"lib/ipv4.h\"\n#include \"lib/icmp6.h\"\
+    \n\n// FILE: bpf/bpf_overlay.c\n#define IS_BPF_OVERLAY 1\n\n/* Controls the inclusion\
+    \ of the CILIUM_CALL_HANDLE_ICMP6_NS section in the\n * bpf_lxc object file.\n\
+    \ */\n#define SKIP_ICMPV6_NS_HANDLING\n\n/* Controls the inclusion of the CILIUM_CALL_SEND_ICMP6_ECHO_REPLY\
+    \ section in\n * the bpf_lxc object file.\n */\n#define SKIP_ICMPV6_ECHO_HANDLING\n\
+    \n/* Controls the inclusion of the CILIUM_CALL_SRV6 section in the object file.\n\
+    \ */\n#define SKIP_SRV6_HANDLING\n\n#include \"lib/tailcall.h\"\n#include \"lib/common.h\"\
+    \n#include \"lib/edt.h\"\n#include \"lib/maps.h\"\n#include \"lib/ipv6.h\"\n#include\
+    \ \"lib/eth.h\"\n#include \"lib/dbg.h\"\n#include \"lib/trace.h\"\n#include \"\
+    lib/l3.h\"\n#include \"lib/drop.h\"\n#include \"lib/identity.h\"\n#include \"\
+    lib/nodeport.h\"\n\n// FILE: bpf/bpf_xdp.c\n\n/* Controls the inclusion of the\
+    \ CILIUM_CALL_SEND_ICMP6_TIME_EXCEEDED section\n * in the bpf_lxc object file.\
+    \ This is needed for all callers of\n * ipv6_local_delivery, which calls into\
+    \ the IPv6 L3 handling.\n */\n#define SKIP_ICMPV6_HOPLIMIT_HANDLING\n\n/* Controls\
+    \ the inclusion of the CILIUM_CALL_SEND_ICMP6_ECHO_REPLY section in\n * the bpf_lxc\
+    \ object file.\n */\n#define SKIP_ICMPV6_ECHO_HANDLING\n\n/* Controls the inclusion\
+    \ of the CILIUM_CALL_SRV6 section in the object file.\n */\n#define SKIP_SRV6_HANDLING\n\
+    \n/* The XDP datapath does not take care of health probes from the local node,\n\
+    \ * thus do not compile it in.\n */\n#undef ENABLE_HEALTH_CHECK\n\n#include \"\
+    lib/common.h\"\n#include \"lib/maps.h\"\n#include \"lib/eps.h\"\n#include \"lib/events.h\"\
+    \n#include \"lib/nodeport.h\"\n\n#ifdef ENABLE_PREFILTER\n\n// FILE: bpf/lib/common.h\n\
+    #define CILIUM_CALL_IPV6_NODEPORT_DSR\t\t21\n#define CILIUM_CALL_IPV4_FROM_HOST\t\
+    \t22\n#define CILIUM_CALL_IPV6_FROM_HOST\t\t23\n#define CILIUM_CALL_IPV6_ENCAP_NODEPORT_NAT\t\
+    24\n#define CILIUM_CALL_IPV4_FROM_LXC_CONT\t\t25\n#define CILIUM_CALL_IPV6_FROM_LXC_CONT\t\
+    \t26\n#define CILIUM_CALL_IPV4_CT_INGRESS\t\t27\n#define CILIUM_CALL_IPV4_CT_INGRESS_POLICY_ONLY\t\
+    28\n#define CILIUM_CALL_IPV4_CT_EGRESS\t\t29\n#define CILIUM_CALL_IPV6_CT_INGRESS\t\
+    \t30\n#define CILIUM_CALL_IPV6_CT_INGRESS_POLICY_ONLY\t31\n#define CILIUM_CALL_IPV6_CT_EGRESS\t\
+    \t32\n#define CILIUM_CALL_SRV6_ENCAP\t\t\t33\n#define CILIUM_CALL_SIZE\t\t\t34\n\
+    \ntypedef __u64 mac_t;\n\nunion v6addr {\n\tstruct {\n\t\t__u32 p1;\n\t\t__u32\
+    \ p2;\n\t\t__u32 p3;\n\t\t__u32 p4;\n\t};\n\tstruct {\n\t\t__u64 d1;\n\n// CONTEXT:\
+    \ static __always_inline __u32 or_encrypt_key(__u8 key)\n * Take care to not clobber\
+    \ slots used by other functions in the same\n * code path.\n */\n/* ctx_{load,store}_meta()\
+    \ usage: */\nenum {\n\tCB_SRC_LABEL,\n#define\tCB_PORT\t\t\tCB_SRC_LABEL\t/* Alias,\
+    \ non-overlapping */\n#define\tCB_HINT\t\t\tCB_SRC_LABEL\t/* Alias, non-overlapping\
+    \ */\n#define\tCB_NAT_46X64\t\tCB_SRC_LABEL\t/* Alias, non-overlapping */\n#define\t\
+    CB_PROXY_MAGIC\t\tCB_SRC_LABEL\t/* Alias, non-overlapping */\n#define\tCB_ENCRYPT_MAGIC\t\
+    CB_SRC_LABEL\t/* Alias, non-overlapping */\n#define\tCB_DST_ENDPOINT_ID\tCB_SRC_LABEL\
+    \    /* Alias, non-overlapping */\n#define CB_SRV6_SID_1\t\tCB_SRC_LABEL\t/* Alias,\
+    \ non-overlapping */\n\tCB_IFINDEX,\n#define\tCB_ADDR_V4\t\tCB_IFINDEX\t/* Alias,\
+    \ non-overlapping */\n#define\tCB_ADDR_V6_1\t\tCB_IFINDEX\t/* Alias, non-overlapping\
+    \ */\n#define\tCB_ENCRYPT_IDENTITY\tCB_IFINDEX\t/* Alias, non-overlapping */\n\
+    #define\tCB_IPCACHE_SRC_LABEL\tCB_IFINDEX\t/* Alias, non-overlapping */\n#define\
+    \ CB_SRV6_SID_2\t\tCB_IFINDEX\t/* Alias, non-overlapping */\n\tCB_POLICY,\n#define\t\
+    CB_ADDR_V6_2\t\tCB_POLICY\t/* Alias, non-overlapping */\n#define\tCB_BACKEND_ID\t\
+    \tCB_POLICY\t/* Alias, non-overlapping */\n#define CB_SRV6_SID_3\t\tCB_POLICY\t\
+    /* Alias, non-overlapping */\n\tCB_NAT,\n#define\tCB_ADDR_V6_3\t\tCB_NAT\t\t/*\
+    \ Alias, non-overlapping */\n#define\tCB_FROM_HOST\t\tCB_NAT\t\t/* Alias, non-overlapping\
+    \ */\n#define CB_SRV6_SID_4\t\tCB_NAT\t\t/* Alias, non-overlapping */\n\tCB_CT_STATE,\n\
+    #define\tCB_ADDR_V6_4\t\tCB_CT_STATE\t/* Alias, non-overlapping */\n#define\t\
+    CB_ENCRYPT_DST\t\tCB_CT_STATE\t/* Alias, non-overlapping,\n\t\t\t\t\t\t * Not\
+    \ used by xfrm.\n\t\t\t\t\t\t */\n#define\tCB_CUSTOM_CALLS\t\tCB_CT_STATE\t/*\
+    \ Alias, non-overlapping */\n#define\tCB_SRV6_VRF_ID\t\tCB_CT_STATE\t/* Alias,\
+    \ non-overlapping */\n};\n\n/* Magic values for CB_FROM_HOST.\n * CB_FROM_HOST\
+    \ overlaps with CB_NAT46_STATE, so this value must be distinct\n * from any in\
+    \ enum NAT46 below!\n */\n#define FROM_HOST_L7_LB 0xFACADE42\n\n#define TUPLE_F_OUT\t\
+    \t0\t/* Outgoing flow */\n#define TUPLE_F_IN\t\t1\t/* Incoming flow */\n#define\
+    \ TUPLE_F_RELATED\t\t2\t/* Flow represents related packets */\n#define TUPLE_F_SERVICE\t\
+    \t4\t/* Flow represents packets to service */\n\n// FILE: bpf/lib/egress_policies.h\n\
+    // CONTEXT: srv6_lookup_vrf6(const struct in6_addr *sip, const struct in6_addr\
+    \ *dip)\n# define SRV6_POLICY_IPV6_PREFIX SRV6_POLICY_PREFIX6_LEN(128)\n\nstatic\
+    \ __always_inline union v6addr *\nsrv6_lookup_policy6(__u32 vrf_id, const struct\
+    \ in6_addr *dip)\n{\n\tstruct srv6_policy_key6 key = {\n\t\t.lpm = { SRV6_POLICY_IPV6_PREFIX,\
+    \ {} },\n\t\t.vrf_id = vrf_id,\n\t\t.dst_cidr = *(union v6addr *)dip,\n\t};\n\t\
+    return map_lookup_elem(&SRV6_POLICY_MAP6, &key);\n}\n\n# ifndef SKIP_SRV6_HANDLING\n\
+    static __always_inline void\nsrv6_load_meta_sid(struct __ctx_buff *ctx, struct\
+    \ in6_addr *sid)\n{\n\tsid->s6_addr32[0] = ctx_load_meta(ctx, CB_SRV6_SID_1);\n\
+    \tsid->s6_addr32[1] = ctx_load_meta(ctx, CB_SRV6_SID_2);\n\tsid->s6_addr32[2]\
+    \ = ctx_load_meta(ctx, CB_SRV6_SID_3);\n\tsid->s6_addr32[3] = ctx_load_meta(ctx,\
+    \ CB_SRV6_SID_4);\n}\n\nstatic __always_inline void\nsrv6_store_meta_sid(struct\
+    \ __ctx_buff *ctx, const union v6addr *sid)\n{\n\tctx_store_meta(ctx, CB_SRV6_SID_1,\
+    \ sid->p1);\n\tctx_store_meta(ctx, CB_SRV6_SID_2, sid->p2);\n\tctx_store_meta(ctx,\
+    \ CB_SRV6_SID_3, sid->p3);\n\tctx_store_meta(ctx, CB_SRV6_SID_4, sid->p4);\n}\n\
+    \n__section_tail(CILIUM_MAP_CALLS, CILIUM_CALL_SRV6_ENCAP)\nint tail_srv6_encap(struct\
+    \ __ctx_buff *ctx)\n{\n\tstruct in6_addr dst_sid;\n\t__u32 vrf_id;\n\tint ret\
+    \ = 0;\n\n\tsrv6_load_meta_sid(ctx, &dst_sid);\n\tvrf_id = ctx_load_meta(ctx,\
+    \ CB_SRV6_VRF_ID);\n\n\t/* TODO: Perform SRv6 encapsulation. */\n\n\tif (ret <\
+    \ 0)\n\t\treturn send_drop_notify_error(ctx, SECLABEL, ret, CTX_ACT_DROP,\n\t\t\
+    \t\t\t      METRIC_EGRESS);\n\n\tsend_trace_notify(ctx, TRACE_TO_STACK, SECLABEL,\
+    \ 0, 0, 0,\n\t\t\t  TRACE_REASON_UNKNOWN, 0);\n\treturn CTX_ACT_OK;\n}\n# endif\
+    \ /* SKIP_SRV6_HANDLING */\n#endif /* ENABLE_SRV6 */\n#endif /* __LIB_EGRESS_POLICIES_H_\
+    \ */"
+  diff_summary: |-
+    bpf/bpf_host.c:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: handle_srv6(struct __ctx_buff *ctx).
+    bpf/bpf_lxc.c:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: the touched section.
+    bpf/bpf_overlay.c:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: the touched section.
+    bpf/bpf_xdp.c:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: the touched section.
+    bpf/lib/common.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: static __always_inline __u32 or_encrypt_key(__u8 key).
+    bpf/lib/egress_policies.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: srv6_lookup_vrf6(const struct in6_addr *sip, const struct in6_addr *dip).
+    - Commit subject: bpf: Introduce SRv6 tail call.

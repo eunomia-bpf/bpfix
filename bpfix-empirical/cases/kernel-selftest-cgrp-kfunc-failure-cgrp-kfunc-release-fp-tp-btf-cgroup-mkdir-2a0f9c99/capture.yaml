@@ -1,0 +1,20 @@
+schema_version: bpfix.capture/v1
+capture_id: kernel-selftest-cgrp-kfunc-failure-cgrp-kfunc-release-fp-tp-btf-cgroup-mkdir-2a0f9c99__kernel-6.15.11-clang-18-log2
+case_id: kernel-selftest-cgrp-kfunc-failure-cgrp-kfunc-release-fp-tp-btf-cgroup-mkdir-2a0f9c99
+environment_id: kernel-6.15.11-clang-18-log2
+imported_at: '2026-04-29T22:43:42+00:00'
+source_artifact:
+  path: bpfix-empirical/cases/kernel-selftest-cgrp-kfunc-failure-cgrp-kfunc-release-fp-tp-btf-cgroup-mkdir-2a0f9c99
+  source_file: tools/testing/selftests/bpf/progs/cgrp_kfunc_failure.c
+  target_function: cgrp_kfunc_release_fp
+  section: tp_btf/cgroup_mkdir
+  compile_ok: true
+  load_attempted: true
+  verifier_rejected: true
+  verifier_log_captured: true
+  source_record: bpfix-empirical/raw/kernel_selftests/kernel-selftest-cgrp-kfunc-failure-cgrp-kfunc-release-fp-tp-btf-cgroup-mkdir-2a0f9c99.yaml
+replay:
+  build_command: make
+  load_command: make replay-verify
+  verifier_log: replay-verifier.log
+  expected_load_status: verifier_reject

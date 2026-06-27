@@ -1,0 +1,60 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-libbpf-f8faf2b33d5f
+source_kind: github_commit
+source:
+  url: https://github.com/libbpf/libbpf/commit/f8faf2b33d5f91720f075633a892d019d0369609
+  title: 'libbpf: Fix false uninitialized variable warning'
+  repository: https://github.com/libbpf/libbpf
+  commit: f8faf2b33d5f91720f075633a892d019d0369609
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-libbpf-f8faf2b33d5f.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Raw has_verifier_log=false. The fix initializes a local btf_var_secinfo
+    * pointer to silence a false uninitialized-variable warning in libbpf relocation
+    code; no replayable verifier failure is present.
+raw:
+  case_id: github-commit-libbpf-f8faf2b33d5f
+  source: github_commits
+  repository: https://github.com/libbpf/libbpf
+  commit_hash: f8faf2b33d5f91720f075633a892d019d0369609
+  commit_message: 'libbpf: Fix false uninitialized variable warning'
+  commit_date: '2020-04-29'
+  fix_type: other
+  buggy_code: "// FILE: src/libbpf.c\n// CONTEXT: bpf_object__relocate(struct bpf_object\
+    \ *obj, const char *targ_btf_path)\n\t\t}\n\t}\n\treturn 0;\n}\n\nstatic int bpf_object__collect_st_ops_relos(struct\
+    \ bpf_object *obj,\n\t\t\t\t\t    GElf_Shdr *shdr, Elf_Data *data);\n\nstatic\
+    \ int bpf_object__collect_map_relos(struct bpf_object *obj,\n\t\t\t\t\t GElf_Shdr\
+    \ *shdr, Elf_Data *data)\n{\n\tint i, j, nrels, new_sz, ptr_sz = sizeof(void *);\n\
+    \tconst struct btf_type *sec, *var, *def;\n\tconst struct btf_var_secinfo *vi;\n\
+    \tconst struct btf_member *member;\n\tstruct bpf_map *map, *targ_map;\n\tconst\
+    \ char *name, *mname;\n\tElf_Data *symbols;\n\tunsigned int moff;\n\tGElf_Sym\
+    \ sym;\n\tGElf_Rel rel;\n\tvoid *tmp;\n\n\tif (!obj->efile.btf_maps_sec_btf_id\
+    \ || !obj->btf)\n\t\treturn -EINVAL;\n\tsec = btf__type_by_id(obj->btf, obj->efile.btf_maps_sec_btf_id);"
+  fixed_code: "// FILE: src/libbpf.c\n// CONTEXT: bpf_object__relocate(struct bpf_object\
+    \ *obj, const char *targ_btf_path)\n\t\t}\n\t}\n\treturn 0;\n}\n\nstatic int bpf_object__collect_st_ops_relos(struct\
+    \ bpf_object *obj,\n\t\t\t\t\t    GElf_Shdr *shdr, Elf_Data *data);\n\nstatic\
+    \ int bpf_object__collect_map_relos(struct bpf_object *obj,\n\t\t\t\t\t GElf_Shdr\
+    \ *shdr, Elf_Data *data)\n{\n\tint i, j, nrels, new_sz, ptr_sz = sizeof(void *);\n\
+    \tconst struct btf_var_secinfo *vi = NULL;\n\tconst struct btf_type *sec, *var,\
+    \ *def;\n\tconst struct btf_member *member;\n\tstruct bpf_map *map, *targ_map;\n\
+    \tconst char *name, *mname;\n\tElf_Data *symbols;\n\tunsigned int moff;\n\tGElf_Sym\
+    \ sym;\n\tGElf_Rel rel;\n\tvoid *tmp;\n\n\tif (!obj->efile.btf_maps_sec_btf_id\
+    \ || !obj->btf)\n\t\treturn -EINVAL;\n\tsec = btf__type_by_id(obj->btf, obj->efile.btf_maps_sec_btf_id);"
+  diff_summary: |-
+    src/libbpf.c:
+    - Applied a small verifier-related code change captured by the exact before/after snippets below.
+    - Affected context: bpf_object__relocate(struct bpf_object *obj, const char *targ_btf_path).
+    - Commit subject: libbpf: Fix false uninitialized variable warning.

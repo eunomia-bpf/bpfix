@@ -1,0 +1,92 @@
+schema_version: bpfix.raw_external/v1
+raw_id: stackoverflow-56526650
+source_kind: stackoverflow
+source:
+  url: https://stackoverflow.com/questions/56526650/ebpf-how-can-the-sockaddr-struct-be-read-when-hooking-into-security-socket-conn
+  title: 'eBPF: How can the sockaddr struct be read when hooking into security_socket_connect'
+  repository: null
+  commit: null
+  collected_at: '2026-04-30T00:51:06+00:00'
+collector:
+  original_path: bpfix-empirical/raw/so/stackoverflow-56526650.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: true
+  verifier_log_block_count: 1
+  source_snippet_count: 2
+  has_buggy_code: false
+  has_fixed_code: false
+  has_fix_description: false
+reproduction:
+  status: replay_valid
+  case_id: stackoverflow-56526650
+  case_path: cases/stackoverflow-56526650
+  artifact_path: cases/stackoverflow-56526650
+  reason: admitted_to_bpfix_bench_cases
+raw:
+  case_id: stackoverflow-56526650
+  source: stackoverflow
+  collected_at: '2026-04-30T00:51:06+00:00'
+  question:
+    question_id: 56526650
+    title: 'eBPF: How can the sockaddr struct be read when hooking into security_socket_connect'
+    url: https://stackoverflow.com/questions/56526650/ebpf-how-can-the-sockaddr-struct-be-read-when-hooking-into-security-socket-conn
+    tags:
+    - c
+    - linux-kernel
+    - bpf
+    - ebpf
+    - bcc-bpf
+    score: 1
+    answer_count: 1
+    is_answered: true
+  verifier_log:
+    blocks:
+    - |-
+      R9 invalid mem access 'inv'
+
+      HINT: The invalid mem access 'inv' error can happen if you try to dereference memory without first using bpf_probe_read() to copy it to the BPF stack. Sometimes the bpf_probe_read is automatic by the bcc rewriter, other times you'll need to be explicit.
+    combined: |-
+      R9 invalid mem access 'inv'
+
+      HINT: The invalid mem access 'inv' error can happen if you try to dereference memory without first using bpf_probe_read() to copy it to the BPF stack. Sometimes the bpf_probe_read is automatic by the bcc rewriter, other times you'll need to be explicit.
+  source_snippets:
+  - |-
+    int security_socket_connect_entry(struct pt_regs *ctx, struct socket *sock, struct sockaddr *address, int addrlen)
+    {
+        u32 address_family = address->sa_family;
+        if (address_family == AF_INET) {
+            struct ipv4_data_t data4 = {.pid = pid};
+
+            struct sockaddr_in *addr2 = (struct sockaddr_in *)address;
+  - bpf_probe_read(&data4.daddr, sizeof(data4.daddr), (void *)((long)addr2->sin_addr.s_addr));
+  question_body_text: |-
+    As proposed in the presentation Security Monitoring with eBPF I'm trying to hook into security_socket_connect.
+    While my gobpf/bcc based code partly works, I seem not be able to read the IP address in the sockaddr struct.
+    The relevant part looks like this:
+    int security_socket_connect_entry(struct pt_regs *ctx, struct socket *sock, struct sockaddr *address, int addrlen)
+    {
+    u32 address_family = address->sa_family;
+    if (address_family == AF_INET) {
+    struct ipv4_data_t data4 = {.pid = pid};
+    struct sockaddr_in *addr2 = (struct sockaddr_in *)address;
+    After that I try to read the IP address in addr2. The first try was:
+    data4.daddr = addr2->sin_addr.s_addr;
+    The second try was with bpf_probe_read:
+    bpf_probe_read(&data4.daddr, sizeof(data4.daddr), (void *)((long)addr2->sin_addr.s_addr));
+    Both options present the same error:
+    R9 invalid mem access 'inv'
+    HINT: The invalid mem access 'inv' error can happen if you try to dereference memory without first using bpf_probe_read() to copy it to the BPF stack. Sometimes the bpf_probe_read is automatic by the bcc rewriter, other times you'll need to be explicit.
+    A repo with a buildable sample can be found here: socket-connect-bpf
+  selected_answer:
+    answer_id: 56548320
+    url: https://stackoverflow.com/questions/56526650/ebpf-how-can-the-sockaddr-struct-be-read-when-hooking-into-security-socket-conn#56548320
+    is_accepted: true
+    score: 2
+    body_text: |-
+      I figured it out thanks to an answer to issue #1858 in the bcc repo.
+      We have to operate on the pointer, so the IP address can be read like this:
+      bpf_probe_read(&data4.daddr, sizeof(data4.daddr), &addr2->sin_addr.s_addr);
+    fix_description: 'I figured it out thanks to an answer to issue #1858 in the bcc
+      repo. We have to operate on the pointer, so the IP address can be read like
+      this: bpf_probe_read(&data4.daddr, sizeof(data4.daddr), &addr2->sin_addr.s_addr);'

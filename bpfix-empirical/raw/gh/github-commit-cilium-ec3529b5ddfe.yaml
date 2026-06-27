@@ -1,0 +1,1006 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-ec3529b5ddfe
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/ec3529b5ddfe40d7bbbe0d00981c53585db3b96a
+  title: 'bpf: Change ipv6_addrcmp() into ipv6_addr_equals()'
+  repository: https://github.com/cilium/cilium
+  commit: ec3529b5ddfe40d7bbbe0d00981c53585db3b96a
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-ec3529b5ddfe.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: environment_required
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Raw has_verifier_log=false. The diff replaces subtraction-based ipv6_addrcmp()
+    with boolean equality across socket, ICMPv6, NAT, LXC, and nodeport tests; no
+    single rejected verifier trace is available outside full Cilium contexts.
+raw:
+  case_id: github-commit-cilium-ec3529b5ddfe
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: ec3529b5ddfe40d7bbbe0d00981c53585db3b96a
+  commit_message: 'bpf: Change ipv6_addrcmp() into ipv6_addr_equals()'
+  commit_date: '2023-05-31'
+  fix_type: refactor
+  buggy_code: |-
+    // FILE: bpf/bpf_sock.c
+
+    static __always_inline __maybe_unused bool is_v4_loopback(__be32 daddr)
+    {
+            /* Check for 127.0.0.0/8 range, RFC3330. */
+            return (daddr & bpf_htonl(0x7f000000)) == bpf_htonl(0x7f000000);
+    }
+
+    static __always_inline __maybe_unused bool is_v6_loopback(const union v6addr *daddr)
+    {
+            /* Check for ::1/128, RFC4291. */
+            union v6addr loopback = { .addr[15] = 1, };
+
+            return ipv6_addrcmp(&loopback, daddr) == 0;
+    }
+
+    /* Hack due to missing narrow ctx access. */
+    static __always_inline __maybe_unused __be16
+    ctx_dst_port(const struct bpf_sock_addr *ctx)
+    {
+            volatile __u32 dport = ctx->user_port;
+
+            return (__be16)dport;
+    }
+
+    static __always_inline __maybe_unused __be16
+
+    // FILE: bpf/lib/icmp6.h
+    // CONTEXT: static __always_inline int __icmp6_handle_ns(struct __ctx_buff *ctx, int nh_off)
+    {
+            union v6addr target, router;
+            struct endpoint_info *ep;
+
+            if (ctx_load_bytes(ctx, nh_off + ICMP6_ND_TARGET_OFFSET, target.addr,
+                               sizeof(((struct ipv6hdr *)NULL)->saddr)) < 0)
+                    return DROP_INVALID;
+
+            cilium_dbg(ctx, DBG_ICMP6_NS, target.p3, target.p4);
+
+            BPF_V6(router, ROUTER_IP);
+
+            if (ipv6_addrcmp(&target, &router) == 0) {
+                    union macaddr router_mac = NODE_MAC;
+
+                    return send_icmp6_ndisc_adv(ctx, nh_off, &router_mac, true);
+            }
+
+            ep = __lookup_ip6_endpoint(&target);
+            if (ep) {
+                    union macaddr router_mac = NODE_MAC;
+
+                    return send_icmp6_ndisc_adv(ctx, nh_off, &router_mac, false);
+            }
+
+    // FILE: bpf/lib/ipv6.h
+    // CONTEXT: static __always_inline int ipv6_hdrlen_offset(struct __ctx_buff *ctx, __u8 *next
+    static __always_inline int ipv6_hdrlen(struct __ctx_buff *ctx, __u8 *nexthdr)
+    {
+            return ipv6_hdrlen_offset(ctx, nexthdr, ETH_HLEN);
+    }
+
+    static __always_inline void ipv6_addr_copy(union v6addr *dst,
+                                               const union v6addr *src)
+    {
+            dst->d1 = src->d1;
+            dst->d2 = src->d2;
+    }
+
+    static __always_inline __u64 ipv6_addrcmp(const union v6addr *a,
+                                              const union v6addr *b)
+    {
+            __u64 tmp;
+
+            tmp = a->d1 - b->d1;
+            if (!tmp)
+                    tmp = a->d2 - b->d2;
+            return tmp;
+    }
+
+    /* Only works with contiguous masks. */
+    static __always_inline int ipv6_addr_in_net(const union v6addr *addr,
+                                                const union v6addr *net,
+                                                const union v6addr *mask)
+    {
+            return ((addr->p1 & mask->p1) == net->p1)
+                    && (!mask->p2
+                        || (((addr->p2 & mask->p2) == net->p2)
+                            && (!mask->p3
+                                || (((addr->p3 & mask->p3) == net->p3)
+
+    // FILE: bpf/lib/lxc.h
+
+    #define TEMPLATE_LXC_ID 0xffff
+
+    #ifdef ENABLE_SIP_VERIFICATION
+    static __always_inline
+    int is_valid_lxc_src_ip(struct ipv6hdr *ip6 __maybe_unused)
+    {
+    #ifdef ENABLE_IPV6
+            union v6addr valid = {};
+
+            BPF_V6(valid, LXC_IP);
+
+            return !ipv6_addrcmp((union v6addr *) &ip6->saddr, &valid);
+    #else
+            return 0;
+    #endif
+    }
+
+    static __always_inline
+    int is_valid_lxc_src_ipv4(const struct iphdr *ip4 __maybe_unused)
+    {
+    #ifdef ENABLE_IPV4
+            return ip4->saddr == LXC_IPV4;
+    #else
+            /* Can't send IPv4 if no IPv4 address is configured */
+
+    // FILE: bpf/lib/nat.h
+    // CONTEXT: static __always_inline int snat_v6_new_mapping(struct __ctx_buff *ctx,
+                    rtuple.dport = ostate->to_sport = bpf_htons(port);
+            }
+
+            if (retries > SNAT_SIGNAL_THRES)
+                    send_signal_nat_fill_up(ctx, SIGNAL_PROTO_V6);
+            return !ret ? 0 : DROP_NAT_NO_MAPPING;
+    }
+
+    static __always_inline bool
+    snat_v6_needs_ct(struct ipv6_ct_tuple *tuple,
+                     const struct ipv6_nat_target *target)
+    {
+            if (!ipv6_addrcmp(&tuple->saddr, &target->addr)) {
+                    /* Host-local connection. */
+                    return true;
+            }
+
+            return false;
+    }
+
+    static __always_inline int
+    snat_v6_nat_handle_mapping(struct __ctx_buff *ctx,
+                               struct ipv6_ct_tuple *tuple,
+                               enum ct_action ct_action,
+                               struct ipv6_nat_entry **state,
+
+    // CONTEXT: snat_v6_rev_nat_handle_mapping(struct __ctx_buff *ctx,
+                    return tuple->nexthdr != IPPROTO_ICMPV6 &&
+                           bpf_ntohs(tuple->dport) < target->min_port ?
+                           NAT_PUNT_TO_STACK : DROP_NAT_NO_MAPPING;
+    }
+
+    static __always_inline int snat_v6_icmp_rewrite_embedded(struct __ctx_buff *ctx,
+                                                             struct ipv6_ct_tuple *tuple,
+                                                             struct ipv6_nat_entry *state,
+                                                             __u32 l4_off, __u32 inner_l4_off)
+    {
+            struct csum_offset csum = {};
+
+            if (ipv6_addrcmp(&state->to_daddr, &tuple->daddr) == 0 &&
+                state->to_dport == tuple->dport)
+                    return 0;
+
+            csum_l4_offset_and_flags(tuple->nexthdr, &csum);
+            if (state->to_dport != tuple->dport) {
+                    __be32 suml4 = 0;
+
+                    switch (tuple->nexthdr) {
+                    case IPPROTO_TCP:
+                    case IPPROTO_UDP:
+                            /* In case that the destination port has been NATed from
+                             * target to dest. We want the embedded packet which
+
+    // CONTEXT: static __always_inline int snat_v6_icmp_rewrite_embedded(struct __ctx_buff *ctx,
+            return 0;
+    }
+
+    static __always_inline int snat_v6_rewrite_egress(struct __ctx_buff *ctx,
+                                                      struct ipv6_ct_tuple *tuple,
+                                                      struct ipv6_nat_entry *state,
+                                                      __u32 off)
+    {
+            struct csum_offset csum = {};
+            __be32 sum;
+            int ret;
+
+            if (!ipv6_addrcmp(&state->to_saddr, &tuple->saddr) &&
+                state->to_sport == tuple->sport)
+                    return 0;
+            sum = csum_diff(&tuple->saddr, 16, &state->to_saddr, 16, 0);
+            csum_l4_offset_and_flags(tuple->nexthdr, &csum);
+            if (state->to_sport != tuple->sport) {
+                    switch (tuple->nexthdr) {
+                    case IPPROTO_TCP:
+                    case IPPROTO_UDP:
+                            ret = l4_modify_port(ctx, off, offsetof(struct tcphdr, source),
+                                                 &csum, state->to_sport, tuple->sport);
+                            if (ret < 0)
+                                    return ret;
+
+    // CONTEXT: static __always_inline int snat_v6_rewrite_egress(struct __ctx_buff *ctx,
+            return 0;
+    }
+
+    static __always_inline int snat_v6_rewrite_ingress(struct __ctx_buff *ctx,
+                                                       struct ipv6_ct_tuple *tuple,
+                                                       struct ipv6_nat_entry *state,
+                                                       __u32 off)
+    {
+            struct csum_offset csum = {};
+            __be32 sum;
+            int ret;
+
+            if (!ipv6_addrcmp(&state->to_daddr, &tuple->daddr) &&
+                state->to_dport == tuple->dport)
+                    return 0;
+            sum = csum_diff(&tuple->daddr, 16, &state->to_daddr, 16, 0);
+            csum_l4_offset_and_flags(tuple->nexthdr, &csum);
+            if (state->to_dport != tuple->dport) {
+                    switch (tuple->nexthdr) {
+                    case IPPROTO_TCP:
+                    case IPPROTO_UDP:
+                            ret = l4_modify_port(ctx, off,
+                                                 offsetof(struct tcphdr, dest),
+                                                 &csum, state->to_dport,
+                                                 tuple->dport);
+
+    // CONTEXT: static __always_inline bool snat_v6_needed(struct __ctx_buff *ctx,
+            {
+                    __u8 nexthdr = ip6->nexthdr;
+                    int ret;
+
+                    ret = ipv6_hdrlen(ctx, &nexthdr);
+                    if (ret > 0) {
+                            if (nodeport_uses_dsr(nexthdr))
+                                    return false;
+                    }
+            }
+    #endif /* ENABLE_DSR_HYBRID */
+            /* See snat_v4_prepare_state(). */
+            return !ipv6_addrcmp((union v6addr *)&ip6->saddr, addr);
+    }
+
+    static __always_inline __maybe_unused int
+    snat_v6_nat(struct __ctx_buff *ctx, const struct ipv6_nat_target *target, __s8 *ext_err)
+    {
+            enum ct_action ct_action = ACTION_UNSPEC;
+            struct icmp6hdr icmp6hdr __align_stack_8;
+            struct ipv6_nat_entry *state, tmp;
+            struct ipv6_ct_tuple tuple = {};
+            void *data, *data_end;
+            struct ipv6hdr *ip6;
+            int ret, hdrlen;
+
+    // FILE: bpf/lib/nat_46x64.h
+    static __always_inline __maybe_unused bool is_v4_in_v6(const union v6addr *daddr)
+    {
+            /* Check for ::FFFF:<IPv4 address>. */
+            union v6addr dprobe  = {
+                    .addr[10] = 0xff,
+                    .addr[11] = 0xff,
+            };
+            union v6addr dmasked = {
+                    .d1 = daddr->d1,
+            };
+
+            dmasked.p3 = daddr->p3;
+            return ipv6_addrcmp(&dprobe, &dmasked) == 0;
+    }
+
+    static __always_inline __maybe_unused bool is_v4_in_v6_rfc8215(const union v6addr *daddr)
+    {
+            union v6addr dprobe  = {
+                    .addr[0] = NAT_46X64_PREFIX_0,
+                    .addr[1] = NAT_46X64_PREFIX_1,
+                    .addr[2] = NAT_46X64_PREFIX_2,
+                    .addr[3] = NAT_46X64_PREFIX_3,
+            };
+            union v6addr dmasked = {
+                    .d1 = daddr->d1,
+            };
+
+            dmasked.p3 = daddr->p3;
+            return ipv6_addrcmp(&dprobe, &dmasked) == 0;
+    }
+
+    static __always_inline __maybe_unused
+    void build_v4_in_v6(union v6addr *daddr, __be32 v4)
+    {
+            memset(daddr, 0, sizeof(*daddr));
+            daddr->addr[10] = 0xff;
+            daddr->addr[11] = 0xff;
+            daddr->p4 = v4;
+    }
+
+    static __always_inline __maybe_unused
+
+    // FILE: bpf/tests/tc_nodeport_lb6_dsr_backend.c
+    // CONTEXT: int nodeport_dsr_backend_check(struct __ctx_buff *ctx)
+            if ((void *)opt + sizeof(*opt) > data_end)
+                    test_fatal("l3 DSR option out of bounds");
+
+            l4 = (void *)opt + sizeof(*opt);
+            if ((void *)l4 + sizeof(struct tcphdr) > data_end)
+                    test_fatal("l4 out of bounds");
+
+            if (memcmp(l2->h_source, (__u8 *)node_mac, ETH_ALEN) != 0)
+                    test_fatal("src MAC is not the node MAC")
+            if (memcmp(l2->h_dest, (__u8 *)backend_mac, ETH_ALEN) != 0)
+                    test_fatal("dst MAC is not the endpoint MAC")
+
+            if (ipv6_addrcmp((union v6addr *)&l3->saddr, &client_ip) != 0)
+                    test_fatal("src IP has changed");
+
+            if (ipv6_addrcmp((union v6addr *)&l3->daddr, &backend_ip) != 0)
+                    test_fatal("dst IP has changed");
+
+            if (l3->nexthdr != NEXTHDR_DEST)
+                    test_fatal("nexthdr in IPv6 header has changed")
+
+            if (opt->hdr.nexthdr != IPPROTO_TCP)
+                    test_fatal("nexthdr in DSR extension has changed")
+            if (opt->hdr.hdrlen != DSR_IPV6_EXT_LEN)
+                    test_fatal("length in DSR extension has changed")
+            if (opt->opt_type != DSR_IPV6_OPT_TYPE)
+                    test_fatal("opt_type in DSR extension has changed")
+            if (opt->opt_len != DSR_IPV6_OPT_LEN)
+                    test_fatal("opt_len in DSR extension has changed")
+
+            if (opt->port != FRONTEND_PORT)
+                    test_fatal("port in DSR extension has changed")
+            if (ipv6_addrcmp((union v6addr *)&opt->addr, &frontend_ip) != 0)
+                    test_fatal("addr in DSR extension has changed")
+
+            if (l4->source != CLIENT_PORT)
+                    test_fatal("src port has changed");
+
+            if (l4->dest != BACKEND_PORT)
+                    test_fatal("dst port has changed");
+
+            struct ipv6_ct_tuple tuple;
+            struct ct_entry *ct_entry;
+            int l4_off, ret;
+
+
+    // CONTEXT: int nodeport_dsr_backend_check(struct __ctx_buff *ctx)
+                    test_fatal("no CT entry for DSR found");
+            if (!ct_entry->dsr)
+                    test_fatal("CT entry doesn't have the .dsr flag set");
+
+            struct ipv6_nat_entry *nat_entry;
+
+            tuple.sport = BACKEND_PORT;
+            tuple.dport = CLIENT_PORT;
+
+            nat_entry = snat_v6_lookup(&tuple);
+            if (!nat_entry)
+                    test_fatal("no SNAT entry for DSR found");
+            if (ipv6_addrcmp((union v6addr *)&nat_entry->to_saddr, &frontend_ip) != 0)
+                    test_fatal("SNAT entry has wrong address");
+            if (nat_entry->to_sport != FRONTEND_PORT)
+                    test_fatal("SNAT entry has wrong port");
+
+            test_finish();
+    }
+
+    int build_reply(struct __ctx_buff *ctx)
+    {
+            union v6addr backend_ip = BACKEND_IP;
+            union v6addr client_ip = CLIENT_IP;
+            struct pktgen builder;
+
+    // CONTEXT: int check_reply(const struct __ctx_buff *ctx)
+            if ((void *)l3 + sizeof(struct ipv6hdr) > data_end)
+                    test_fatal("l3 out of bounds");
+
+            l4 = (void *)l3 + sizeof(struct ipv6hdr);
+            if ((void *)l4 + sizeof(struct tcphdr) > data_end)
+                    test_fatal("l4 out of bounds");
+
+            if (memcmp(l2->h_source, (__u8 *)node_mac, ETH_ALEN) != 0)
+                    test_fatal("src MAC is not the node MAC")
+            if (memcmp(l2->h_dest, (__u8 *)client_mac, ETH_ALEN) != 0)
+                    test_fatal("dst MAC is not the client MAC")
+
+            if (ipv6_addrcmp((union v6addr *)&l3->saddr, &frontend_ip) != 0)
+                    test_fatal("src IP hasn't been RevNATed to frontend IP");
+
+            if (ipv6_addrcmp((union v6addr *)&l3->daddr, &client_ip) != 0)
+                    test_fatal("dst IP has changed");
+
+            if (l4->source != FRONTEND_PORT)
+                    test_fatal("src port hasn't been RevNATed to frontend port");
+
+            if (l4->dest != CLIENT_PORT)
+                    test_fatal("dst port has changed");
+
+            test_finish();
+    }
+
+    /* Test that the backend node revDNATs a reply from the
+
+    // FILE: bpf/tests/tc_nodeport_lb6_dsr_lb.c
+    // CONTEXT: int nodeport_dsr_fwd_check(__maybe_unused const struct __ctx_buff *ctx)
+            l4 = (void *)opt + sizeof(*opt);
+            if ((void *)l4 + sizeof(struct tcphdr) > data_end)
+                    test_fatal("l4 out of bounds");
+
+            if (memcmp(l2->h_source, (__u8 *)lb_mac, ETH_ALEN) != 0)
+                    test_fatal("src MAC is not the LB MAC")
+            if (memcmp(l2->h_dest, (__u8 *)remote_backend_mac, ETH_ALEN) != 0)
+                    test_fatal("dst MAC is not the backend MAC")
+
+            if (l3->nexthdr != NEXTHDR_DEST)
+                    test_fatal("l3 header doesn't indicate DSR extension");
+
+            if (ipv6_addrcmp((union v6addr *)&l3->saddr, &client_ip) != 0)
+                    test_fatal("src IP has changed");
+            if (ipv6_addrcmp((union v6addr *)&l3->daddr, &backend_ip) != 0)
+                    test_fatal("dst IP hasn't been NATed to remote backend IP");
+
+            if (opt->hdr.nexthdr != IPPROTO_TCP)
+                    test_fatal("nexthdr in DSR extension is bad")
+            if (opt->hdr.hdrlen != DSR_IPV6_EXT_LEN)
+                    test_fatal("length in DSR extension is bad")
+            if (opt->opt_type != DSR_IPV6_OPT_TYPE)
+                    test_fatal("opt_type in DSR extension is bad")
+            if (opt->opt_len != DSR_IPV6_OPT_LEN)
+                    test_fatal("opt_len in DSR extension is bad")
+
+            if (opt->port != FRONTEND_PORT)
+                    test_fatal("port in DSR extension is bad")
+            if (ipv6_addrcmp((union v6addr *)&opt->addr, &frontend_ip) != 0)
+                    test_fatal("addr in DSR extension is bad")
+
+            if (l4->source != CLIENT_PORT)
+                    test_fatal("src port has changed");
+
+            if (l4->dest != BACKEND_PORT)
+                    test_fatal("dst port hasn't been NATed to backend port");
+
+            test_finish();
+    }
+
+    // FILE: bpf/tests/xdp_nodeport_lb6_dsr_lb.c
+    // CONTEXT: int nodeport_dsr_fwd_check(__maybe_unused const struct __ctx_buff *ctx)
+            l4 = (void *)opt + sizeof(*opt);
+            if ((void *)l4 + sizeof(struct tcphdr) > data_end)
+                    test_fatal("l4 out of bounds");
+
+            if (memcmp(l2->h_source, (__u8 *)lb_mac, ETH_ALEN) != 0)
+                    test_fatal("src MAC is not the LB MAC")
+            if (memcmp(l2->h_dest, (__u8 *)remote_backend_mac, ETH_ALEN) != 0)
+                    test_fatal("dst MAC is not the backend MAC")
+
+            if (l3->nexthdr != NEXTHDR_DEST)
+                    test_fatal("l3 header doesn't indicate DSR extension");
+
+            if (ipv6_addrcmp((union v6addr *)&l3->saddr, &client_ip) != 0)
+                    test_fatal("src IP has changed");
+            if (ipv6_addrcmp((union v6addr *)&l3->daddr, &backend_ip) != 0)
+                    test_fatal("dst IP hasn't been NATed to remote backend IP");
+
+            if (opt->hdr.nexthdr != IPPROTO_TCP)
+                    test_fatal("nexthdr in DSR extension is bad")
+            if (opt->hdr.hdrlen != DSR_IPV6_EXT_LEN)
+                    test_fatal("length in DSR extension is bad")
+            if (opt->opt_type != DSR_IPV6_OPT_TYPE)
+                    test_fatal("opt_type in DSR extension is bad")
+            if (opt->opt_len != DSR_IPV6_OPT_LEN)
+                    test_fatal("opt_len in DSR extension is bad")
+
+            if (opt->port != FRONTEND_PORT)
+                    test_fatal("port in DSR extension is bad")
+            if (ipv6_addrcmp((union v6addr *)&opt->addr, &frontend_ip) != 0)
+                    test_fatal("addr in DSR extension is bad")
+
+            if (l4->source != CLIENT_PORT)
+                    test_fatal("src port has changed");
+
+            if (l4->dest != BACKEND_PORT)
+                    test_fatal("dst port hasn't been NATed to backend port");
+
+            test_finish();
+    }
+  fixed_code: |-
+    // FILE: bpf/bpf_sock.c
+
+    static __always_inline __maybe_unused bool is_v4_loopback(__be32 daddr)
+    {
+            /* Check for 127.0.0.0/8 range, RFC3330. */
+            return (daddr & bpf_htonl(0x7f000000)) == bpf_htonl(0x7f000000);
+    }
+
+    static __always_inline __maybe_unused bool is_v6_loopback(const union v6addr *daddr)
+    {
+            /* Check for ::1/128, RFC4291. */
+            union v6addr loopback = { .addr[15] = 1, };
+
+            return ipv6_addr_equals(&loopback, daddr);
+    }
+
+    /* Hack due to missing narrow ctx access. */
+    static __always_inline __maybe_unused __be16
+    ctx_dst_port(const struct bpf_sock_addr *ctx)
+    {
+            volatile __u32 dport = ctx->user_port;
+
+            return (__be16)dport;
+    }
+
+    static __always_inline __maybe_unused __be16
+
+    // FILE: bpf/lib/icmp6.h
+    // CONTEXT: static __always_inline int __icmp6_handle_ns(struct __ctx_buff *ctx, int nh_off)
+    {
+            union v6addr target, router;
+            struct endpoint_info *ep;
+
+            if (ctx_load_bytes(ctx, nh_off + ICMP6_ND_TARGET_OFFSET, target.addr,
+                               sizeof(((struct ipv6hdr *)NULL)->saddr)) < 0)
+                    return DROP_INVALID;
+
+            cilium_dbg(ctx, DBG_ICMP6_NS, target.p3, target.p4);
+
+            BPF_V6(router, ROUTER_IP);
+
+            if (ipv6_addr_equals(&target, &router)) {
+                    union macaddr router_mac = NODE_MAC;
+
+                    return send_icmp6_ndisc_adv(ctx, nh_off, &router_mac, true);
+            }
+
+            ep = __lookup_ip6_endpoint(&target);
+            if (ep) {
+                    union macaddr router_mac = NODE_MAC;
+
+                    return send_icmp6_ndisc_adv(ctx, nh_off, &router_mac, false);
+            }
+
+    // FILE: bpf/lib/ipv6.h
+    // CONTEXT: static __always_inline int ipv6_hdrlen_offset(struct __ctx_buff *ctx, __u8 *next
+    static __always_inline int ipv6_hdrlen(struct __ctx_buff *ctx, __u8 *nexthdr)
+    {
+            return ipv6_hdrlen_offset(ctx, nexthdr, ETH_HLEN);
+    }
+
+    static __always_inline void ipv6_addr_copy(union v6addr *dst,
+                                               const union v6addr *src)
+    {
+            dst->d1 = src->d1;
+            dst->d2 = src->d2;
+    }
+
+    static __always_inline bool ipv6_addr_equals(const union v6addr *a,
+                                                 const union v6addr *b)
+    {
+            if (a->d1 != b->d1)
+                    return false;
+            return a->d2 == b->d2;
+    }
+
+    /* Only works with contiguous masks. */
+    static __always_inline int ipv6_addr_in_net(const union v6addr *addr,
+                                                const union v6addr *net,
+                                                const union v6addr *mask)
+    {
+            return ((addr->p1 & mask->p1) == net->p1)
+                    && (!mask->p2
+                        || (((addr->p2 & mask->p2) == net->p2)
+                            && (!mask->p3
+                                || (((addr->p3 & mask->p3) == net->p3)
+
+    // FILE: bpf/lib/lxc.h
+
+    #define TEMPLATE_LXC_ID 0xffff
+
+    #ifdef ENABLE_SIP_VERIFICATION
+    static __always_inline
+    int is_valid_lxc_src_ip(struct ipv6hdr *ip6 __maybe_unused)
+    {
+    #ifdef ENABLE_IPV6
+            union v6addr valid = {};
+
+            BPF_V6(valid, LXC_IP);
+
+            return ipv6_addr_equals((union v6addr *)&ip6->saddr, &valid);
+    #else
+            return 0;
+    #endif
+    }
+
+    static __always_inline
+    int is_valid_lxc_src_ipv4(const struct iphdr *ip4 __maybe_unused)
+    {
+    #ifdef ENABLE_IPV4
+            return ip4->saddr == LXC_IPV4;
+    #else
+            /* Can't send IPv4 if no IPv4 address is configured */
+
+    // FILE: bpf/lib/nat.h
+    // CONTEXT: static __always_inline int snat_v6_new_mapping(struct __ctx_buff *ctx,
+                    rtuple.dport = ostate->to_sport = bpf_htons(port);
+            }
+
+            if (retries > SNAT_SIGNAL_THRES)
+                    send_signal_nat_fill_up(ctx, SIGNAL_PROTO_V6);
+            return !ret ? 0 : DROP_NAT_NO_MAPPING;
+    }
+
+    static __always_inline bool
+    snat_v6_needs_ct(struct ipv6_ct_tuple *tuple,
+                     const struct ipv6_nat_target *target)
+    {
+            if (ipv6_addr_equals(&tuple->saddr, &target->addr)) {
+                    /* Host-local connection. */
+                    return true;
+            }
+
+            return false;
+    }
+
+    static __always_inline int
+    snat_v6_nat_handle_mapping(struct __ctx_buff *ctx,
+                               struct ipv6_ct_tuple *tuple,
+                               enum ct_action ct_action,
+                               struct ipv6_nat_entry **state,
+
+    // CONTEXT: snat_v6_rev_nat_handle_mapping(struct __ctx_buff *ctx,
+                    return tuple->nexthdr != IPPROTO_ICMPV6 &&
+                           bpf_ntohs(tuple->dport) < target->min_port ?
+                           NAT_PUNT_TO_STACK : DROP_NAT_NO_MAPPING;
+    }
+
+    static __always_inline int snat_v6_icmp_rewrite_embedded(struct __ctx_buff *ctx,
+                                                             struct ipv6_ct_tuple *tuple,
+                                                             struct ipv6_nat_entry *state,
+                                                             __u32 l4_off, __u32 inner_l4_off)
+    {
+            struct csum_offset csum = {};
+
+            if (ipv6_addr_equals(&state->to_daddr, &tuple->daddr) &&
+                state->to_dport == tuple->dport)
+                    return 0;
+
+            csum_l4_offset_and_flags(tuple->nexthdr, &csum);
+            if (state->to_dport != tuple->dport) {
+                    __be32 suml4 = 0;
+
+                    switch (tuple->nexthdr) {
+                    case IPPROTO_TCP:
+                    case IPPROTO_UDP:
+                            /* In case that the destination port has been NATed from
+                             * target to dest. We want the embedded packet which
+
+    // CONTEXT: static __always_inline int snat_v6_icmp_rewrite_embedded(struct __ctx_buff *ctx,
+            return 0;
+    }
+
+    static __always_inline int snat_v6_rewrite_egress(struct __ctx_buff *ctx,
+                                                      struct ipv6_ct_tuple *tuple,
+                                                      struct ipv6_nat_entry *state,
+                                                      __u32 off)
+    {
+            struct csum_offset csum = {};
+            __be32 sum;
+            int ret;
+
+            if (ipv6_addr_equals(&state->to_saddr, &tuple->saddr) &&
+                state->to_sport == tuple->sport)
+                    return 0;
+            sum = csum_diff(&tuple->saddr, 16, &state->to_saddr, 16, 0);
+            csum_l4_offset_and_flags(tuple->nexthdr, &csum);
+            if (state->to_sport != tuple->sport) {
+                    switch (tuple->nexthdr) {
+                    case IPPROTO_TCP:
+                    case IPPROTO_UDP:
+                            ret = l4_modify_port(ctx, off, offsetof(struct tcphdr, source),
+                                                 &csum, state->to_sport, tuple->sport);
+                            if (ret < 0)
+                                    return ret;
+
+    // CONTEXT: static __always_inline int snat_v6_rewrite_egress(struct __ctx_buff *ctx,
+            return 0;
+    }
+
+    static __always_inline int snat_v6_rewrite_ingress(struct __ctx_buff *ctx,
+                                                       struct ipv6_ct_tuple *tuple,
+                                                       struct ipv6_nat_entry *state,
+                                                       __u32 off)
+    {
+            struct csum_offset csum = {};
+            __be32 sum;
+            int ret;
+
+            if (ipv6_addr_equals(&state->to_daddr, &tuple->daddr) &&
+                state->to_dport == tuple->dport)
+                    return 0;
+            sum = csum_diff(&tuple->daddr, 16, &state->to_daddr, 16, 0);
+            csum_l4_offset_and_flags(tuple->nexthdr, &csum);
+            if (state->to_dport != tuple->dport) {
+                    switch (tuple->nexthdr) {
+                    case IPPROTO_TCP:
+                    case IPPROTO_UDP:
+                            ret = l4_modify_port(ctx, off,
+                                                 offsetof(struct tcphdr, dest),
+                                                 &csum, state->to_dport,
+                                                 tuple->dport);
+
+    // CONTEXT: static __always_inline bool snat_v6_needed(struct __ctx_buff *ctx,
+            {
+                    __u8 nexthdr = ip6->nexthdr;
+                    int ret;
+
+                    ret = ipv6_hdrlen(ctx, &nexthdr);
+                    if (ret > 0) {
+                            if (nodeport_uses_dsr(nexthdr))
+                                    return false;
+                    }
+            }
+    #endif /* ENABLE_DSR_HYBRID */
+            /* See snat_v4_prepare_state(). */
+            return ipv6_addr_equals((union v6addr *)&ip6->saddr, addr);
+    }
+
+    static __always_inline __maybe_unused int
+    snat_v6_nat(struct __ctx_buff *ctx, const struct ipv6_nat_target *target, __s8 *ext_err)
+    {
+            enum ct_action ct_action = ACTION_UNSPEC;
+            struct icmp6hdr icmp6hdr __align_stack_8;
+            struct ipv6_nat_entry *state, tmp;
+            struct ipv6_ct_tuple tuple = {};
+            void *data, *data_end;
+            struct ipv6hdr *ip6;
+            int ret, hdrlen;
+
+    // FILE: bpf/lib/nat_46x64.h
+    static __always_inline __maybe_unused bool is_v4_in_v6(const union v6addr *daddr)
+    {
+            /* Check for ::FFFF:<IPv4 address>. */
+            union v6addr dprobe  = {
+                    .addr[10] = 0xff,
+                    .addr[11] = 0xff,
+            };
+            union v6addr dmasked = {
+                    .d1 = daddr->d1,
+            };
+
+            dmasked.p3 = daddr->p3;
+            return ipv6_addr_equals(&dprobe, &dmasked);
+    }
+
+    static __always_inline __maybe_unused bool is_v4_in_v6_rfc8215(const union v6addr *daddr)
+    {
+            union v6addr dprobe  = {
+                    .addr[0] = NAT_46X64_PREFIX_0,
+                    .addr[1] = NAT_46X64_PREFIX_1,
+                    .addr[2] = NAT_46X64_PREFIX_2,
+                    .addr[3] = NAT_46X64_PREFIX_3,
+            };
+            union v6addr dmasked = {
+                    .d1 = daddr->d1,
+            };
+
+            dmasked.p3 = daddr->p3;
+            return ipv6_addr_equals(&dprobe, &dmasked);
+    }
+
+    static __always_inline __maybe_unused
+    void build_v4_in_v6(union v6addr *daddr, __be32 v4)
+    {
+            memset(daddr, 0, sizeof(*daddr));
+            daddr->addr[10] = 0xff;
+            daddr->addr[11] = 0xff;
+            daddr->p4 = v4;
+    }
+
+    static __always_inline __maybe_unused
+
+    // FILE: bpf/tests/tc_nodeport_lb6_dsr_backend.c
+    // CONTEXT: int nodeport_dsr_backend_check(struct __ctx_buff *ctx)
+            if ((void *)opt + sizeof(*opt) > data_end)
+                    test_fatal("l3 DSR option out of bounds");
+
+            l4 = (void *)opt + sizeof(*opt);
+            if ((void *)l4 + sizeof(struct tcphdr) > data_end)
+                    test_fatal("l4 out of bounds");
+
+            if (memcmp(l2->h_source, (__u8 *)node_mac, ETH_ALEN) != 0)
+                    test_fatal("src MAC is not the node MAC")
+            if (memcmp(l2->h_dest, (__u8 *)backend_mac, ETH_ALEN) != 0)
+                    test_fatal("dst MAC is not the endpoint MAC")
+
+            if (!ipv6_addr_equals((union v6addr *)&l3->saddr, &client_ip))
+                    test_fatal("src IP has changed");
+
+            if (!ipv6_addr_equals((union v6addr *)&l3->daddr, &backend_ip))
+                    test_fatal("dst IP has changed");
+
+            if (l3->nexthdr != NEXTHDR_DEST)
+                    test_fatal("nexthdr in IPv6 header has changed")
+
+            if (opt->hdr.nexthdr != IPPROTO_TCP)
+                    test_fatal("nexthdr in DSR extension has changed")
+            if (opt->hdr.hdrlen != DSR_IPV6_EXT_LEN)
+                    test_fatal("length in DSR extension has changed")
+            if (opt->opt_type != DSR_IPV6_OPT_TYPE)
+                    test_fatal("opt_type in DSR extension has changed")
+            if (opt->opt_len != DSR_IPV6_OPT_LEN)
+                    test_fatal("opt_len in DSR extension has changed")
+
+            if (opt->port != FRONTEND_PORT)
+                    test_fatal("port in DSR extension has changed")
+            if (!ipv6_addr_equals((union v6addr *)&opt->addr, &frontend_ip))
+                    test_fatal("addr in DSR extension has changed")
+
+            if (l4->source != CLIENT_PORT)
+                    test_fatal("src port has changed");
+
+            if (l4->dest != BACKEND_PORT)
+                    test_fatal("dst port has changed");
+
+            struct ipv6_ct_tuple tuple;
+            struct ct_entry *ct_entry;
+            int l4_off, ret;
+
+
+    // CONTEXT: int nodeport_dsr_backend_check(struct __ctx_buff *ctx)
+                    test_fatal("no CT entry for DSR found");
+            if (!ct_entry->dsr)
+                    test_fatal("CT entry doesn't have the .dsr flag set");
+
+            struct ipv6_nat_entry *nat_entry;
+
+            tuple.sport = BACKEND_PORT;
+            tuple.dport = CLIENT_PORT;
+
+            nat_entry = snat_v6_lookup(&tuple);
+            if (!nat_entry)
+                    test_fatal("no SNAT entry for DSR found");
+            if (!ipv6_addr_equals((union v6addr *)&nat_entry->to_saddr, &frontend_ip))
+                    test_fatal("SNAT entry has wrong address");
+            if (nat_entry->to_sport != FRONTEND_PORT)
+                    test_fatal("SNAT entry has wrong port");
+
+            test_finish();
+    }
+
+    int build_reply(struct __ctx_buff *ctx)
+    {
+            union v6addr backend_ip = BACKEND_IP;
+            union v6addr client_ip = CLIENT_IP;
+            struct pktgen builder;
+
+    // CONTEXT: int check_reply(const struct __ctx_buff *ctx)
+            if ((void *)l3 + sizeof(struct ipv6hdr) > data_end)
+                    test_fatal("l3 out of bounds");
+
+            l4 = (void *)l3 + sizeof(struct ipv6hdr);
+            if ((void *)l4 + sizeof(struct tcphdr) > data_end)
+                    test_fatal("l4 out of bounds");
+
+            if (memcmp(l2->h_source, (__u8 *)node_mac, ETH_ALEN) != 0)
+                    test_fatal("src MAC is not the node MAC")
+            if (memcmp(l2->h_dest, (__u8 *)client_mac, ETH_ALEN) != 0)
+                    test_fatal("dst MAC is not the client MAC")
+
+            if (!ipv6_addr_equals((union v6addr *)&l3->saddr, &frontend_ip))
+                    test_fatal("src IP hasn't been RevNATed to frontend IP");
+
+            if (!ipv6_addr_equals((union v6addr *)&l3->daddr, &client_ip))
+                    test_fatal("dst IP has changed");
+
+            if (l4->source != FRONTEND_PORT)
+                    test_fatal("src port hasn't been RevNATed to frontend port");
+
+            if (l4->dest != CLIENT_PORT)
+                    test_fatal("dst port has changed");
+
+            test_finish();
+    }
+
+    /* Test that the backend node revDNATs a reply from the
+
+    // FILE: bpf/tests/tc_nodeport_lb6_dsr_lb.c
+    // CONTEXT: int nodeport_dsr_fwd_check(__maybe_unused const struct __ctx_buff *ctx)
+            l4 = (void *)opt + sizeof(*opt);
+            if ((void *)l4 + sizeof(struct tcphdr) > data_end)
+                    test_fatal("l4 out of bounds");
+
+            if (memcmp(l2->h_source, (__u8 *)lb_mac, ETH_ALEN) != 0)
+                    test_fatal("src MAC is not the LB MAC")
+            if (memcmp(l2->h_dest, (__u8 *)remote_backend_mac, ETH_ALEN) != 0)
+                    test_fatal("dst MAC is not the backend MAC")
+
+            if (l3->nexthdr != NEXTHDR_DEST)
+                    test_fatal("l3 header doesn't indicate DSR extension");
+
+            if (!ipv6_addr_equals((union v6addr *)&l3->saddr, &client_ip))
+                    test_fatal("src IP has changed");
+            if (!ipv6_addr_equals((union v6addr *)&l3->daddr, &backend_ip))
+                    test_fatal("dst IP hasn't been NATed to remote backend IP");
+
+            if (opt->hdr.nexthdr != IPPROTO_TCP)
+                    test_fatal("nexthdr in DSR extension is bad")
+            if (opt->hdr.hdrlen != DSR_IPV6_EXT_LEN)
+                    test_fatal("length in DSR extension is bad")
+            if (opt->opt_type != DSR_IPV6_OPT_TYPE)
+                    test_fatal("opt_type in DSR extension is bad")
+            if (opt->opt_len != DSR_IPV6_OPT_LEN)
+                    test_fatal("opt_len in DSR extension is bad")
+
+            if (opt->port != FRONTEND_PORT)
+                    test_fatal("port in DSR extension is bad")
+            if (!ipv6_addr_equals((union v6addr *)&opt->addr, &frontend_ip))
+                    test_fatal("addr in DSR extension is bad")
+
+            if (l4->source != CLIENT_PORT)
+                    test_fatal("src port has changed");
+
+            if (l4->dest != BACKEND_PORT)
+                    test_fatal("dst port hasn't been NATed to backend port");
+
+            test_finish();
+    }
+
+    // FILE: bpf/tests/xdp_nodeport_lb6_dsr_lb.c
+    // CONTEXT: int nodeport_dsr_fwd_check(__maybe_unused const struct __ctx_buff *ctx)
+            l4 = (void *)opt + sizeof(*opt);
+            if ((void *)l4 + sizeof(struct tcphdr) > data_end)
+                    test_fatal("l4 out of bounds");
+
+            if (memcmp(l2->h_source, (__u8 *)lb_mac, ETH_ALEN) != 0)
+                    test_fatal("src MAC is not the LB MAC")
+            if (memcmp(l2->h_dest, (__u8 *)remote_backend_mac, ETH_ALEN) != 0)
+                    test_fatal("dst MAC is not the backend MAC")
+
+            if (l3->nexthdr != NEXTHDR_DEST)
+                    test_fatal("l3 header doesn't indicate DSR extension");
+
+            if (!ipv6_addr_equals((union v6addr *)&l3->saddr, &client_ip))
+                    test_fatal("src IP has changed");
+            if (!ipv6_addr_equals((union v6addr *)&l3->daddr, &backend_ip))
+                    test_fatal("dst IP hasn't been NATed to remote backend IP");
+
+            if (opt->hdr.nexthdr != IPPROTO_TCP)
+                    test_fatal("nexthdr in DSR extension is bad")
+            if (opt->hdr.hdrlen != DSR_IPV6_EXT_LEN)
+                    test_fatal("length in DSR extension is bad")
+            if (opt->opt_type != DSR_IPV6_OPT_TYPE)
+                    test_fatal("opt_type in DSR extension is bad")
+            if (opt->opt_len != DSR_IPV6_OPT_LEN)
+                    test_fatal("opt_len in DSR extension is bad")
+
+            if (opt->port != FRONTEND_PORT)
+                    test_fatal("port in DSR extension is bad")
+            if (!ipv6_addr_equals((union v6addr *)&opt->addr, &frontend_ip))
+                    test_fatal("addr in DSR extension is bad")
+
+            if (l4->source != CLIENT_PORT)
+                    test_fatal("src port has changed");
+
+            if (l4->dest != BACKEND_PORT)
+                    test_fatal("dst port hasn't been NATed to backend port");
+
+            test_finish();
+    }
+  diff_summary: |-
+    bpf/bpf_sock.c, bpf/lib/icmp6.h, bpf/lib/ipv6.h, bpf/lib/lxc.h, bpf/lib/nat.h, bpf/lib/nat_46x64.h, bpf/tests/tc_nodeport_lb6_dsr_backend.c, bpf/tests/tc_nodeport_lb6_dsr_lb.c, bpf/tests/xdp_nodeport_lb6_dsr_lb.c:
+    - Replaced subtraction-based `ipv6_addrcmp()` with boolean `ipv6_addr_equals()`.
+    - Removed arithmetic patterns that verifier treated as pointer/math with unbounded values across the IPv6 datapath and tests.

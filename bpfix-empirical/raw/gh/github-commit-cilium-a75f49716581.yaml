@@ -1,0 +1,83 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-a75f49716581
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/a75f49716581e933969cdda381c5d107fa5b61e5
+  title: 'bpf: Use bounded loop in PCAP wcard classifier if possible'
+  repository: https://github.com/cilium/cilium
+  commit: a75f49716581e933969cdda381c5d107fa5b61e5
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-a75f49716581.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: not_reconstructable_from_diff
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: A local wildcard-classifier loop probe rejected with The sequence of 8193
+    jumps is too complex, but the fresh log did not parse as trace_rich; the raw record
+    has no verifier log to anchor an admissible terminal error.
+raw:
+  case_id: github-commit-cilium-a75f49716581
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: a75f49716581e933969cdda381c5d107fa5b61e5
+  commit_message: 'bpf: Use bounded loop in PCAP wcard classifier if possible'
+  commit_date: '2022-01-24'
+  fix_type: inline_hint
+  buggy_code: "// FILE: bpf/lib/pcap.h\n/* SPDX-License-Identifier: GPL-2.0 */\n/*\
+    \ Copyright (C) 2021 Authors of Cilium */\n\n#ifndef __LIB_PCAP_H_\n#define __LIB_PCAP_H_\n\
+    \n#include <bpf/ctx/ctx.h>\n#include <bpf/api.h>\n\n#ifdef ENABLE_CAPTURE\n#include\
+    \ \"common.h\"\n#include \"time_cache.h\"\n#include \"lb.h\"\n\nstruct pcap_timeval\
+    \ {\n\t__u32 tv_sec;\n\t__u32 tv_usec;\n};\n\nstruct pcap_timeoff {\n\t__u64 tv_boot;\n\
+    };\n\nstruct pcap_pkthdr {\n\n// CONTEXT: cilium_capture4_classify_wcard(struct\
+    \ __ctx_buff *ctx)\n\tokey.nexthdr = ip4->protocol;\n\n\tif (ip4->protocol !=\
+    \ IPPROTO_TCP &&\n\t    ip4->protocol != IPPROTO_UDP)\n\t\treturn NULL;\n\tif\
+    \ (ctx_load_bytes(ctx, ETH_HLEN + ipv4_hdrlen(ip4),\n\t\t\t   &okey.sport, 4)\
+    \ < 0)\n\t\treturn NULL;\n\n\tokey.flags = 0;\n\tlkey.flags = 0;\n\n_Pragma(\"\
+    unroll\")\n\tfor (i = 0; i < size; i++) {\n\t\tcilium_capture4_masked_key(&okey,\
+    \ &prefix_masks[i], &lkey);\n\t\tmatch = map_lookup_elem(&CAPTURE4_RULES, &lkey);\n\
+    \t\tif (match)\n\t\t\treturn match;\n\t}\n\n\treturn NULL;\n}\n#endif /* ENABLE_IPV4\
+    \ */\n\n#ifdef ENABLE_IPV6\n\n// CONTEXT: cilium_capture6_classify_wcard(struct\
+    \ __ctx_buff *ctx)\n\tif (ret < 0)\n\t\treturn NULL;\n\tif (okey.nexthdr != IPPROTO_TCP\
+    \ &&\n\t    okey.nexthdr != IPPROTO_UDP)\n\t\treturn NULL;\n\tif (ctx_load_bytes(ctx,\
+    \ l3_off + ret,\n\t\t\t   &okey.sport, 4) < 0)\n\t\treturn NULL;\n\n\tokey.flags\
+    \ = 0;\n\tlkey.flags = 0;\n\n_Pragma(\"unroll\")\n\tfor (i = 0; i < size; i++)\
+    \ {\n\t\tcilium_capture6_masked_key(&okey, &prefix_masks[i], &lkey);\n\t\tmatch\
+    \ = map_lookup_elem(&CAPTURE6_RULES, &lkey);\n\t\tif (match)\n\t\t\treturn match;\n\
+    \t}\n\n\treturn NULL;\n}\n#endif /* ENABLE_IPV6 */\n\nstatic __always_inline struct\
+    \ capture_rule *"
+  fixed_code: "// FILE: bpf/lib/pcap.h\n/* SPDX-License-Identifier: GPL-2.0 */\n/*\
+    \ Copyright (C) 2021 Authors of Cilium */\n\n#ifndef __LIB_PCAP_H_\n#define __LIB_PCAP_H_\n\
+    \n#include <bpf/ctx/ctx.h>\n#include <bpf/api.h>\n\n#ifdef ENABLE_CAPTURE\n#include\
+    \ \"common.h\"\n#include \"time_cache.h\"\n#include \"loop.h\"\n#include \"lb.h\"\
+    \n\nstruct pcap_timeval {\n\t__u32 tv_sec;\n\t__u32 tv_usec;\n};\n\nstruct pcap_timeoff\
+    \ {\n\t__u64 tv_boot;\n};\n\nstruct pcap_pkthdr {\n\n// CONTEXT: cilium_capture4_classify_wcard(struct\
+    \ __ctx_buff *ctx)\n\tokey.nexthdr = ip4->protocol;\n\n\tif (ip4->protocol !=\
+    \ IPPROTO_TCP &&\n\t    ip4->protocol != IPPROTO_UDP)\n\t\treturn NULL;\n\tif\
+    \ (ctx_load_bytes(ctx, ETH_HLEN + ipv4_hdrlen(ip4),\n\t\t\t   &okey.sport, 4)\
+    \ < 0)\n\t\treturn NULL;\n\n\tokey.flags = 0;\n\tlkey.flags = 0;\n\n__bounded_loop\n\
+    \tfor (i = 0; i < size; i++) {\n\t\tcilium_capture4_masked_key(&okey, &prefix_masks[i],\
+    \ &lkey);\n\t\tmatch = map_lookup_elem(&CAPTURE4_RULES, &lkey);\n\t\tif (match)\n\
+    \t\t\treturn match;\n\t}\n\n\treturn NULL;\n}\n#endif /* ENABLE_IPV4 */\n\n#ifdef\
+    \ ENABLE_IPV6\n\n// CONTEXT: cilium_capture6_classify_wcard(struct __ctx_buff\
+    \ *ctx)\n\tif (ret < 0)\n\t\treturn NULL;\n\tif (okey.nexthdr != IPPROTO_TCP &&\n\
+    \t    okey.nexthdr != IPPROTO_UDP)\n\t\treturn NULL;\n\tif (ctx_load_bytes(ctx,\
+    \ l3_off + ret,\n\t\t\t   &okey.sport, 4) < 0)\n\t\treturn NULL;\n\n\tokey.flags\
+    \ = 0;\n\tlkey.flags = 0;\n\n__bounded_loop\n\tfor (i = 0; i < size; i++) {\n\t\
+    \tcilium_capture6_masked_key(&okey, &prefix_masks[i], &lkey);\n\t\tmatch = map_lookup_elem(&CAPTURE6_RULES,\
+    \ &lkey);\n\t\tif (match)\n\t\t\treturn match;\n\t}\n\n\treturn NULL;\n}\n#endif\
+    \ /* ENABLE_IPV6 */\n\nstatic __always_inline struct capture_rule *"
+  diff_summary: |-
+    bpf/lib/pcap.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: cilium_capture4_classify_wcard(struct __ctx_buff *ctx), cilium_capture6_classify_wcard(struct __ctx_buff *ctx).
+    - Commit subject: bpf: Use bounded loop in PCAP wcard classifier if possible.

@@ -1,0 +1,316 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-libbpf-a8bc578af92e
+source_kind: github_commit
+source:
+  url: https://github.com/libbpf/libbpf/commit/a8bc578af92eaa9dd105ec7451a95a49d9fabdca
+  title: 'libbpf: Allow to opt-out from creating BPF maps'
+  repository: https://github.com/libbpf/libbpf
+  commit: a8bc578af92eaa9dd105ec7451a95a49d9fabdca
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-libbpf-a8bc578af92e.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Raw has_verifier_log=false. The snippets add map auto-create opt-out behavior
+    and associated libbpf map iteration/creation checks; this is loader/map lifecycle
+    behavior without a captured verifier reject.
+raw:
+  case_id: github-commit-libbpf-a8bc578af92e
+  source: github_commits
+  repository: https://github.com/libbpf/libbpf
+  commit_hash: a8bc578af92eaa9dd105ec7451a95a49d9fabdca
+  commit_message: 'libbpf: Allow to opt-out from creating BPF maps'
+  commit_date: '2022-04-27'
+  fix_type: null_check
+  buggy_code: "// FILE: src/libbpf.c\n// CONTEXT: struct bpf_struct_ops {\n#define\
+    \ KSYMS_SEC \".ksyms\"\n#define STRUCT_OPS_SEC \".struct_ops\"\n\nenum libbpf_map_type\
+    \ {\n\tLIBBPF_MAP_UNSPEC,\n\tLIBBPF_MAP_DATA,\n\tLIBBPF_MAP_BSS,\n\tLIBBPF_MAP_RODATA,\n\
+    \tLIBBPF_MAP_KCONFIG,\n};\n\nstruct bpf_map {\n\tchar *name;\n\t/* real_name is\
+    \ defined for special internal maps (.rodata*,\n\t * .data*, .bss, .kconfig) and\
+    \ preserves their original ELF section\n\t * name. This is important to be be\
+    \ able to find corresponding BTF\n\t * DATASEC information.\n\t */\n\tchar *real_name;\n\
+    \tint fd;\n\tint sec_idx;\n\tsize_t sec_offset;\n\tint map_ifindex;\n\tint inner_map_fd;\n\
+    \n// CONTEXT: struct bpf_map {\n\t__u32 btf_vmlinux_value_type_id;\n\tvoid *priv;\n\
+    \tbpf_map_clear_priv_t clear_priv;\n\tenum libbpf_map_type libbpf_type;\n\tvoid\
+    \ *mmaped;\n\tstruct bpf_struct_ops *st_ops;\n\tstruct bpf_map *inner_map;\n\t\
+    void **init_slots;\n\tint init_slots_sz;\n\tchar *pin_path;\n\tbool pinned;\n\t\
+    bool reused;\n\tbool skipped;\n\t__u64 map_extra;\n};\n\nenum extern_type {\n\t\
+    EXT_UNKNOWN,\n\tEXT_KCFG,\n\tEXT_KSYM,\n};\n\nenum kcfg_type {\n\tKCFG_UNKNOWN,\n\
+    \tKCFG_CHAR,\n\n// CONTEXT: static int find_elf_var_offset(const struct bpf_object\
+    \ *obj, const char *name, _\n\nstatic struct bpf_map *bpf_object__add_map(struct\
+    \ bpf_object *obj)\n{\n\tstruct bpf_map *map;\n\tint err;\n\n\terr = libbpf_ensure_mem((void\
+    \ **)&obj->maps, &obj->maps_cap,\n\t\t\t\tsizeof(*obj->maps), obj->nr_maps + 1);\n\
+    \tif (err)\n\t\treturn ERR_PTR(err);\n\n\tmap = &obj->maps[obj->nr_maps++];\n\t\
+    map->fd = -1;\n\tmap->inner_map_fd = -1;\n\n\treturn map;\n}\n\nstatic size_t\
+    \ bpf_map_mmap_sz(const struct bpf_map *map)\n{\n\tlong page_sz = sysconf(_SC_PAGE_SIZE);\n\
+    \tsize_t map_sz;\n\n\tmap_sz = (size_t)roundup(map->def.value_size, 8) * map->def.max_entries;\n\
+    \tmap_sz = roundup(map_sz, page_sz);\n\treturn map_sz;\n\n// CONTEXT: static int\
+    \ bpf_get_map_info_from_fdinfo(int fd, struct bpf_map_info *info)\n\t\t\tinfo->value_size\
+    \ = val;\n\t\telse if (sscanf(buff, \"max_entries:\\t%u\", &val) == 1)\n\t\t\t\
+    info->max_entries = val;\n\t\telse if (sscanf(buff, \"map_flags:\\t%i\", &val)\
+    \ == 1)\n\t\t\tinfo->map_flags = val;\n\t}\n\n\tfclose(fp);\n\n\treturn 0;\n}\n\
+    \nint bpf_map__reuse_fd(struct bpf_map *map, int fd)\n{\n\tstruct bpf_map_info\
+    \ info = {};\n\t__u32 len = sizeof(info);\n\tint new_fd, err;\n\tchar *new_name;\n\
+    \n\terr = bpf_obj_get_info_by_fd(fd, &info, &len);\n\tif (err && errno == EINVAL)\n\
+    \t\terr = bpf_get_map_info_from_fdinfo(fd, &info);\n\tif (err)\n\t\treturn libbpf_err(err);\n\
+    \n// CONTEXT: bpf_object__create_maps(struct bpf_object *obj)\n\t\t * loading,\
+    \ if we detect that at least one of the to-be-loaded\n\t\t * programs is referencing\
+    \ any global data map, we'll error\n\t\t * out with program name and relocation\
+    \ index logged.\n\t\t * This approach allows to accommodate Clang emitting\n\t\
+    \t * unnecessary .rodata.str1.1 sections for string literals,\n\t\t * but also\
+    \ it allows to have CO-RE applications that use\n\t\t * global variables in some\
+    \ of BPF programs, but not others.\n\t\t * If those global variable-using programs\
+    \ are not loaded at\n\t\t * runtime due to bpf_program__set_autoload(prog, false),\n\
+    \t\t * bpf_object loading will succeed just fine even on old\n\t\t * kernels.\n\
+    \t\t */\n\t\tif (bpf_map__is_internal(map) &&\n\t\t    !kernel_supports(obj, FEAT_GLOBAL_DATA))\
+    \ {\n\t\t\tmap->skipped = true;\n\t\t\tcontinue;\n\t\t}\n\n\t\terr = map_set_def_max_entries(map);\n\
+    \t\tif (err)\n\t\t\tgoto err_out;\n\n\t\tretried = false;\nretry:\n\t\tif (map->pin_path)\
+    \ {\n\t\t\terr = bpf_object__reuse_map(map);\n\t\t\tif (err) {\n\n// CONTEXT:\
+    \ out:\n\tbtf__free(obj->btf_vmlinux_override);\n\tobj->btf_vmlinux_override =\
+    \ NULL;\n\n\tif (!IS_ERR_OR_NULL(cand_cache)) {\n\t\thashmap__for_each_entry(cand_cache,\
+    \ entry, i) {\n\t\t\tbpf_core_free_cands(entry->value);\n\t\t}\n\t\thashmap__free(cand_cache);\n\
+    \t}\n\treturn err;\n}\n\n/* Relocate data references within program code:\n *\
+    \  - map references;\n *  - global variable references;\n *  - extern references.\n\
+    \ */\nstatic int\nbpf_object__relocate_data(struct bpf_object *obj, struct bpf_program\
+    \ *prog)\n{\n\tint i;\n\n\tfor (i = 0; i < prog->nr_reloc; i++) {\n\t\tstruct\
+    \ reloc_desc *relo = &prog->reloc_desc[i];\n\t\tstruct bpf_insn *insn = &prog->insns[relo->insn_idx];\n\
+    \t\tstruct extern_desc *ext;\n\n\t\tswitch (relo->type) {\n\t\tcase RELO_LD64:\n\
+    \t\t\tif (obj->gen_loader) {\n\t\t\t\tinsn[0].src_reg = BPF_PSEUDO_MAP_IDX;\n\t\
+    \t\t\tinsn[0].imm = relo->map_idx;\n\t\t\t} else {\n\t\t\t\tinsn[0].src_reg =\
+    \ BPF_PSEUDO_MAP_FD;\n\t\t\t\tinsn[0].imm = obj->maps[relo->map_idx].fd;\n\t\t\
+    \t}\n\t\t\tbreak;\n\t\tcase RELO_DATA:\n\t\t\tinsn[1].imm = insn[0].imm + relo->sym_off;\n\
+    \t\t\tif (obj->gen_loader) {\n\t\t\t\tinsn[0].src_reg = BPF_PSEUDO_MAP_IDX_VALUE;\n\
+    \t\t\t\tinsn[0].imm = relo->map_idx;\n\t\t\t} else {\n\t\t\t\tconst struct bpf_map\
+    \ *map = &obj->maps[relo->map_idx];\n\n\t\t\t\tif (map->skipped) {\n\t\t\t\t\t\
+    pr_warn(\"prog '%s': relo #%d: kernel doesn't support global data\\n\",\n\t\t\t\
+    \t\t\tprog->name, i);\n\t\t\t\t\treturn -ENOTSUP;\n\t\t\t\t}\n\t\t\t\tinsn[0].src_reg\
+    \ = BPF_PSEUDO_MAP_VALUE;\n\t\t\t\tinsn[0].imm = obj->maps[relo->map_idx].fd;\n\
+    \t\t\t}\n\t\t\tbreak;\n\t\tcase RELO_EXTERN_VAR:\n\t\t\text = &obj->externs[relo->sym_off];\n\
+    \t\t\tif (ext->type == EXT_KCFG) {\n\t\t\t\tif (obj->gen_loader) {\n\t\t\t\t\t\
+    insn[0].src_reg = BPF_PSEUDO_MAP_IDX_VALUE;\n\t\t\t\t\tinsn[0].imm = obj->kconfig_map_idx;\n\
+    \t\t\t\t} else {\n\t\t\t\t\tinsn[0].src_reg = BPF_PSEUDO_MAP_VALUE;\n\t\t\t\t\t\
+    insn[0].imm = obj->maps[obj->kconfig_map_idx].fd;\n\t\t\t\t}\n\n// CONTEXT: static\
+    \ void fixup_log_failed_core_relo(struct bpf_program *prog,\n\tif (err)\n\t\t\
+    return;\n\n\tspec_len = bpf_core_format_spec(spec_buf, sizeof(spec_buf), &spec);\n\
+    \tsnprintf(patch, sizeof(patch),\n\t\t \"%d: <invalid CO-RE relocation>\\n\"\n\
+    \t\t \"failed to resolve CO-RE relocation %s%s\\n\",\n\t\t insn_idx, spec_buf,\
+    \ spec_len >= sizeof(spec_buf) ? \"...\" : \"\");\n\n\tpatch_log(buf, buf_sz,\
+    \ log_sz, line1, line3 - line1, patch);\n}\n\nstatic void fixup_verifier_log(struct\
+    \ bpf_program *prog, char *buf, size_t buf_sz)\n{\n\t/* look for familiar error\
+    \ patterns in last N lines of the log */\n\tconst size_t max_last_line_cnt = 10;\n\
+    \tchar *prev_line, *cur_line, *next_line;\n\tsize_t log_sz;\n\tint i;\n\n\tif\
+    \ (!buf)\n\t\treturn;\n\n\tlog_sz = strlen(buf) + 1;\n\n// CONTEXT: static void\
+    \ fixup_verifier_log(struct bpf_program *prog, char *buf, size_t buf_s\n\t\tif\
+    \ (!cur_line)\n\t\t\treturn;\n\n\t\t/* failed CO-RE relocation case */\n\t\tif\
+    \ (str_has_pfx(cur_line, \"invalid func unknown#195896080\\n\")) {\n\t\t\tprev_line\
+    \ = find_prev_line(buf, cur_line);\n\t\t\tif (!prev_line)\n\t\t\t\tcontinue;\n\
+    \n\t\t\tfixup_log_failed_core_relo(prog, buf, buf_sz, log_sz,\n\t\t\t\t\t\t  \
+    \ prev_line, cur_line, next_line);\n\t\t\treturn;\n\t\t}\n\t}\n}\n\nstatic int\
+    \ bpf_program_record_relos(struct bpf_program *prog)\n{\n\tstruct bpf_object *obj\
+    \ = prog->obj;\n\tint i;\n\n\tfor (i = 0; i < prog->nr_reloc; i++) {\n\t\tstruct\
+    \ reloc_desc *relo = &prog->reloc_desc[i];\n\t\tstruct extern_desc *ext = &obj->externs[relo->sym_off];\n\
+    \n// CONTEXT: int bpf_object__pin_maps(struct bpf_object *obj, const char *path)\n\
+    \tif (!obj)\n\t\treturn libbpf_err(-ENOENT);\n\n\tif (!obj->loaded) {\n\t\tpr_warn(\"\
+    object not yet loaded; load it first\\n\");\n\t\treturn libbpf_err(-ENOENT);\n\
+    \t}\n\n\tbpf_object__for_each_map(map, obj) {\n\t\tchar *pin_path = NULL;\n\t\t\
+    char buf[PATH_MAX];\n\n\t\tif (map->skipped)\n\t\t\tcontinue;\n\n\t\tif (path)\
+    \ {\n\t\t\tint len;\n\n\t\t\tlen = snprintf(buf, PATH_MAX, \"%s/%s\", path,\n\t\
+    \t\t\t       bpf_map__name(map));\n\t\t\tif (len < 0) {\n\t\t\t\terr = -EINVAL;\n\
+    \t\t\t\tgoto err_unpin_maps;\n\t\t\t} else if (len >= PATH_MAX) {\n\t\t\t\terr\
+    \ = -ENAMETOOLONG;\n\n// FILE: src/libbpf.h\n// CONTEXT: bpf_object__next_map(const\
+    \ struct bpf_object *obj, const struct bpf_map *map);\n\n#define bpf_object__for_each_map(pos,\
+    \ obj)\t\t\\\n\tfor ((pos) = bpf_object__next_map((obj), NULL);\t\\\n\t     (pos)\
+    \ != NULL;\t\t\t\t\\\n\t     (pos) = bpf_object__next_map((obj), (pos)))\n#define\
+    \ bpf_map__for_each bpf_object__for_each_map\n\nLIBBPF_API LIBBPF_DEPRECATED_SINCE(0,\
+    \ 7, \"use bpf_object__prev_map() instead\")\nstruct bpf_map *bpf_map__prev(const\
+    \ struct bpf_map *map, const struct bpf_object *obj);\nLIBBPF_API struct bpf_map\
+    \ *\nbpf_object__prev_map(const struct bpf_object *obj, const struct bpf_map *map);\n\
+    \n/**\n * @brief **bpf_map__fd()** gets the file descriptor of the passed\n *\
+    \ BPF map\n * @param map the BPF map instance\n * @return the file descriptor;\
+    \ or -EINVAL in case of an error\n */\nLIBBPF_API int bpf_map__fd(const struct\
+    \ bpf_map *map);\nLIBBPF_API int bpf_map__reuse_fd(struct bpf_map *map, int fd);\n\
+    /* get map definition */\nLIBBPF_API LIBBPF_DEPRECATED_SINCE(0, 8, \"use appropriate\
+    \ getters or setters instead\")\nconst struct bpf_map_def *bpf_map__def(const\
+    \ struct bpf_map *map);\n/* get map name */"
+  fixed_code: "// FILE: src/libbpf.c\n// CONTEXT: struct bpf_struct_ops {\n#define\
+    \ KSYMS_SEC \".ksyms\"\n#define STRUCT_OPS_SEC \".struct_ops\"\n\nenum libbpf_map_type\
+    \ {\n\tLIBBPF_MAP_UNSPEC,\n\tLIBBPF_MAP_DATA,\n\tLIBBPF_MAP_BSS,\n\tLIBBPF_MAP_RODATA,\n\
+    \tLIBBPF_MAP_KCONFIG,\n};\n\nstruct bpf_map {\n\tstruct bpf_object *obj;\n\tchar\
+    \ *name;\n\t/* real_name is defined for special internal maps (.rodata*,\n\t *\
+    \ .data*, .bss, .kconfig) and preserves their original ELF section\n\t * name.\
+    \ This is important to be be able to find corresponding BTF\n\t * DATASEC information.\n\
+    \t */\n\tchar *real_name;\n\tint fd;\n\tint sec_idx;\n\tsize_t sec_offset;\n\t\
+    int map_ifindex;\n\tint inner_map_fd;\n\n// CONTEXT: struct bpf_map {\n\t__u32\
+    \ btf_vmlinux_value_type_id;\n\tvoid *priv;\n\tbpf_map_clear_priv_t clear_priv;\n\
+    \tenum libbpf_map_type libbpf_type;\n\tvoid *mmaped;\n\tstruct bpf_struct_ops\
+    \ *st_ops;\n\tstruct bpf_map *inner_map;\n\tvoid **init_slots;\n\tint init_slots_sz;\n\
+    \tchar *pin_path;\n\tbool pinned;\n\tbool reused;\n\tbool autocreate;\n\t__u64\
+    \ map_extra;\n};\n\nenum extern_type {\n\tEXT_UNKNOWN,\n\tEXT_KCFG,\n\tEXT_KSYM,\n\
+    };\n\nenum kcfg_type {\n\tKCFG_UNKNOWN,\n\tKCFG_CHAR,\n\n// CONTEXT: static int\
+    \ find_elf_var_offset(const struct bpf_object *obj, const char *name, _\n\nstatic\
+    \ struct bpf_map *bpf_object__add_map(struct bpf_object *obj)\n{\n\tstruct bpf_map\
+    \ *map;\n\tint err;\n\n\terr = libbpf_ensure_mem((void **)&obj->maps, &obj->maps_cap,\n\
+    \t\t\t\tsizeof(*obj->maps), obj->nr_maps + 1);\n\tif (err)\n\t\treturn ERR_PTR(err);\n\
+    \n\tmap = &obj->maps[obj->nr_maps++];\n\tmap->obj = obj;\n\tmap->fd = -1;\n\t\
+    map->inner_map_fd = -1;\n\tmap->autocreate = true;\n\n\treturn map;\n}\n\nstatic\
+    \ size_t bpf_map_mmap_sz(const struct bpf_map *map)\n{\n\tlong page_sz = sysconf(_SC_PAGE_SIZE);\n\
+    \tsize_t map_sz;\n\n\tmap_sz = (size_t)roundup(map->def.value_size, 8) * map->def.max_entries;\n\
+    \tmap_sz = roundup(map_sz, page_sz);\n\treturn map_sz;\n\n// CONTEXT: static int\
+    \ bpf_get_map_info_from_fdinfo(int fd, struct bpf_map_info *info)\n\t\t\tinfo->value_size\
+    \ = val;\n\t\telse if (sscanf(buff, \"max_entries:\\t%u\", &val) == 1)\n\t\t\t\
+    info->max_entries = val;\n\t\telse if (sscanf(buff, \"map_flags:\\t%i\", &val)\
+    \ == 1)\n\t\t\tinfo->map_flags = val;\n\t}\n\n\tfclose(fp);\n\n\treturn 0;\n}\n\
+    \nbool bpf_map__autocreate(const struct bpf_map *map)\n{\n\treturn map->autocreate;\n\
+    }\n\nint bpf_map__set_autocreate(struct bpf_map *map, bool autocreate)\n{\n\t\
+    if (map->obj->loaded)\n\t\treturn libbpf_err(-EBUSY);\n\n\tmap->autocreate = autocreate;\n\
+    \treturn 0;\n}\n\nint bpf_map__reuse_fd(struct bpf_map *map, int fd)\n{\n\tstruct\
+    \ bpf_map_info info = {};\n\t__u32 len = sizeof(info);\n\tint new_fd, err;\n\t\
+    char *new_name;\n\n\terr = bpf_obj_get_info_by_fd(fd, &info, &len);\n\tif (err\
+    \ && errno == EINVAL)\n\t\terr = bpf_get_map_info_from_fdinfo(fd, &info);\n\t\
+    if (err)\n\t\treturn libbpf_err(err);\n\n// CONTEXT: bpf_object__create_maps(struct\
+    \ bpf_object *obj)\n\t\t * loading, if we detect that at least one of the to-be-loaded\n\
+    \t\t * programs is referencing any global data map, we'll error\n\t\t * out with\
+    \ program name and relocation index logged.\n\t\t * This approach allows to accommodate\
+    \ Clang emitting\n\t\t * unnecessary .rodata.str1.1 sections for string literals,\n\
+    \t\t * but also it allows to have CO-RE applications that use\n\t\t * global variables\
+    \ in some of BPF programs, but not others.\n\t\t * If those global variable-using\
+    \ programs are not loaded at\n\t\t * runtime due to bpf_program__set_autoload(prog,\
+    \ false),\n\t\t * bpf_object loading will succeed just fine even on old\n\t\t\
+    \ * kernels.\n\t\t */\n\t\tif (bpf_map__is_internal(map) && !kernel_supports(obj,\
+    \ FEAT_GLOBAL_DATA))\n\t\t\tmap->autocreate = false;\n\n\t\tif (!map->autocreate)\
+    \ {\n\t\t\tpr_debug(\"map '%s': skipped auto-creating...\\n\", map->name);\n\t\
+    \t\tcontinue;\n\t\t}\n\n\t\terr = map_set_def_max_entries(map);\n\t\tif (err)\n\
+    \t\t\tgoto err_out;\n\n\t\tretried = false;\nretry:\n\t\tif (map->pin_path) {\n\
+    \t\t\terr = bpf_object__reuse_map(map);\n\t\t\tif (err) {\n\n// CONTEXT: out:\n\
+    \tbtf__free(obj->btf_vmlinux_override);\n\tobj->btf_vmlinux_override = NULL;\n\
+    \n\tif (!IS_ERR_OR_NULL(cand_cache)) {\n\t\thashmap__for_each_entry(cand_cache,\
+    \ entry, i) {\n\t\t\tbpf_core_free_cands(entry->value);\n\t\t}\n\t\thashmap__free(cand_cache);\n\
+    \t}\n\treturn err;\n}\n\n/* base map load ldimm64 special constant, used also\
+    \ for log fixup logic */\n#define MAP_LDIMM64_POISON_BASE 2001000000\n#define\
+    \ MAP_LDIMM64_POISON_PFX \"200100\"\n\nstatic void poison_map_ldimm64(struct bpf_program\
+    \ *prog, int relo_idx,\n\t\t\t       int insn_idx, struct bpf_insn *insn,\n\t\t\
+    \t       int map_idx, const struct bpf_map *map)\n{\n\tint i;\n\n\tpr_debug(\"\
+    prog '%s': relo #%d: poisoning insn #%d that loads map #%d '%s'\\n\",\n\t\t prog->name,\
+    \ relo_idx, insn_idx, map_idx, map->name);\n\n\t/* we turn single ldimm64 into\
+    \ two identical invalid calls */\n\tfor (i = 0; i < 2; i++) {\n\t\tinsn->code\
+    \ = BPF_JMP | BPF_CALL;\n\t\tinsn->dst_reg = 0;\n\t\tinsn->src_reg = 0;\n\t\t\
+    insn->off = 0;\n\t\t/* if this instruction is reachable (not a dead code),\n\t\
+    \t * verifier will complain with something like:\n\t\t * invalid func unknown#2001000123\n\
+    \t\t * where lower 123 is map index into obj->maps[] array\n\t\t */\n\t\tinsn->imm\
+    \ = MAP_LDIMM64_POISON_BASE + map_idx;\n\n\t\tinsn++;\n\t}\n}\n\n/* Relocate data\
+    \ references within program code:\n *  - map references;\n *  - global variable\
+    \ references;\n *  - extern references.\n */\nstatic int\nbpf_object__relocate_data(struct\
+    \ bpf_object *obj, struct bpf_program *prog)\n{\n\tint i;\n\n\tfor (i = 0; i <\
+    \ prog->nr_reloc; i++) {\n\t\tstruct reloc_desc *relo = &prog->reloc_desc[i];\n\
+    \t\tstruct bpf_insn *insn = &prog->insns[relo->insn_idx];\n\t\tconst struct bpf_map\
+    \ *map;\n\t\tstruct extern_desc *ext;\n\n\t\tswitch (relo->type) {\n\t\tcase RELO_LD64:\n\
+    \t\t\tmap = &obj->maps[relo->map_idx];\n\t\t\tif (obj->gen_loader) {\n\t\t\t\t\
+    insn[0].src_reg = BPF_PSEUDO_MAP_IDX;\n\t\t\t\tinsn[0].imm = relo->map_idx;\n\t\
+    \t\t} else if (map->autocreate) {\n\t\t\t\tinsn[0].src_reg = BPF_PSEUDO_MAP_FD;\n\
+    \t\t\t\tinsn[0].imm = map->fd;\n\t\t\t} else {\n\t\t\t\tpoison_map_ldimm64(prog,\
+    \ i, relo->insn_idx, insn,\n\t\t\t\t\t\t   relo->map_idx, map);\n\t\t\t}\n\t\t\
+    \tbreak;\n\t\tcase RELO_DATA:\n\t\t\tmap = &obj->maps[relo->map_idx];\n\t\t\t\
+    insn[1].imm = insn[0].imm + relo->sym_off;\n\t\t\tif (obj->gen_loader) {\n\t\t\
+    \t\tinsn[0].src_reg = BPF_PSEUDO_MAP_IDX_VALUE;\n\t\t\t\tinsn[0].imm = relo->map_idx;\n\
+    \t\t\t} else if (map->autocreate) {\n\t\t\t\tinsn[0].src_reg = BPF_PSEUDO_MAP_VALUE;\n\
+    \t\t\t\tinsn[0].imm = map->fd;\n\t\t\t} else {\n\t\t\t\tpoison_map_ldimm64(prog,\
+    \ i, relo->insn_idx, insn,\n\t\t\t\t\t\t   relo->map_idx, map);\n\t\t\t}\n\t\t\
+    \tbreak;\n\t\tcase RELO_EXTERN_VAR:\n\t\t\text = &obj->externs[relo->sym_off];\n\
+    \t\t\tif (ext->type == EXT_KCFG) {\n\t\t\t\tif (obj->gen_loader) {\n\t\t\t\t\t\
+    insn[0].src_reg = BPF_PSEUDO_MAP_IDX_VALUE;\n\t\t\t\t\tinsn[0].imm = obj->kconfig_map_idx;\n\
+    \t\t\t\t} else {\n\t\t\t\t\tinsn[0].src_reg = BPF_PSEUDO_MAP_VALUE;\n\t\t\t\t\t\
+    insn[0].imm = obj->maps[obj->kconfig_map_idx].fd;\n\t\t\t\t}\n\n// CONTEXT: static\
+    \ void fixup_log_failed_core_relo(struct bpf_program *prog,\n\tif (err)\n\t\t\
+    return;\n\n\tspec_len = bpf_core_format_spec(spec_buf, sizeof(spec_buf), &spec);\n\
+    \tsnprintf(patch, sizeof(patch),\n\t\t \"%d: <invalid CO-RE relocation>\\n\"\n\
+    \t\t \"failed to resolve CO-RE relocation %s%s\\n\",\n\t\t insn_idx, spec_buf,\
+    \ spec_len >= sizeof(spec_buf) ? \"...\" : \"\");\n\n\tpatch_log(buf, buf_sz,\
+    \ log_sz, line1, line3 - line1, patch);\n}\n\nstatic void fixup_log_missing_map_load(struct\
+    \ bpf_program *prog,\n\t\t\t\t       char *buf, size_t buf_sz, size_t log_sz,\n\
+    \t\t\t\t       char *line1, char *line2, char *line3)\n{\n\t/* Expected log for\
+    \ failed and not properly guarded CO-RE relocation:\n\t * line1 -> 123: (85) call\
+    \ unknown#2001000345\n\t * line2 -> invalid func unknown#2001000345\n\t * line3\
+    \ -> <anything else or end of buffer>\n\t *\n\t * \"123\" is the index of the\
+    \ instruction that was poisoned.\n\t * \"345\" in \"2001000345\" are map index\
+    \ in obj->maps to fetch map name.\n\t */\n\tstruct bpf_object *obj = prog->obj;\n\
+    \tconst struct bpf_map *map;\n\tint insn_idx, map_idx;\n\tchar patch[128];\n\n\
+    \tif (sscanf(line1, \"%d: (%*d) call unknown#%d\\n\", &insn_idx, &map_idx) !=\
+    \ 2)\n\t\treturn;\n\n\tmap_idx -= MAP_LDIMM64_POISON_BASE;\n\tif (map_idx < 0\
+    \ || map_idx >= obj->nr_maps)\n\t\treturn;\n\tmap = &obj->maps[map_idx];\n\n\t\
+    snprintf(patch, sizeof(patch),\n\t\t \"%d: <invalid BPF map reference>\\n\"\n\t\
+    \t \"BPF map '%s' is referenced but wasn't created\\n\",\n\t\t insn_idx, map->name);\n\
+    \n\tpatch_log(buf, buf_sz, log_sz, line1, line3 - line1, patch);\n}\n\nstatic\
+    \ void fixup_verifier_log(struct bpf_program *prog, char *buf, size_t buf_sz)\n\
+    {\n\t/* look for familiar error patterns in last N lines of the log */\n\tconst\
+    \ size_t max_last_line_cnt = 10;\n\tchar *prev_line, *cur_line, *next_line;\n\t\
+    size_t log_sz;\n\tint i;\n\n\tif (!buf)\n\t\treturn;\n\n\tlog_sz = strlen(buf)\
+    \ + 1;\n\n// CONTEXT: static void fixup_verifier_log(struct bpf_program *prog,\
+    \ char *buf, size_t buf_s\n\t\tif (!cur_line)\n\t\t\treturn;\n\n\t\t/* failed\
+    \ CO-RE relocation case */\n\t\tif (str_has_pfx(cur_line, \"invalid func unknown#195896080\\\
+    n\")) {\n\t\t\tprev_line = find_prev_line(buf, cur_line);\n\t\t\tif (!prev_line)\n\
+    \t\t\t\tcontinue;\n\n\t\t\tfixup_log_failed_core_relo(prog, buf, buf_sz, log_sz,\n\
+    \t\t\t\t\t\t   prev_line, cur_line, next_line);\n\t\t\treturn;\n\t\t} else if\
+    \ (str_has_pfx(cur_line, \"invalid func unknown#\"MAP_LDIMM64_POISON_PFX)) {\n\
+    \t\t\tprev_line = find_prev_line(buf, cur_line);\n\t\t\tif (!prev_line)\n\t\t\t\
+    \tcontinue;\n\n\t\t\tfixup_log_missing_map_load(prog, buf, buf_sz, log_sz,\n\t\
+    \t\t\t\t\t   prev_line, cur_line, next_line);\n\t\t\treturn;\n\t\t}\n\t}\n}\n\n\
+    static int bpf_program_record_relos(struct bpf_program *prog)\n{\n\tstruct bpf_object\
+    \ *obj = prog->obj;\n\tint i;\n\n\tfor (i = 0; i < prog->nr_reloc; i++) {\n\t\t\
+    struct reloc_desc *relo = &prog->reloc_desc[i];\n\t\tstruct extern_desc *ext =\
+    \ &obj->externs[relo->sym_off];\n\n// CONTEXT: int bpf_object__pin_maps(struct\
+    \ bpf_object *obj, const char *path)\n\tif (!obj)\n\t\treturn libbpf_err(-ENOENT);\n\
+    \n\tif (!obj->loaded) {\n\t\tpr_warn(\"object not yet loaded; load it first\\\
+    n\");\n\t\treturn libbpf_err(-ENOENT);\n\t}\n\n\tbpf_object__for_each_map(map,\
+    \ obj) {\n\t\tchar *pin_path = NULL;\n\t\tchar buf[PATH_MAX];\n\n\t\tif (!map->autocreate)\n\
+    \t\t\tcontinue;\n\n\t\tif (path) {\n\t\t\tint len;\n\n\t\t\tlen = snprintf(buf,\
+    \ PATH_MAX, \"%s/%s\", path,\n\t\t\t\t       bpf_map__name(map));\n\t\t\tif (len\
+    \ < 0) {\n\t\t\t\terr = -EINVAL;\n\t\t\t\tgoto err_unpin_maps;\n\t\t\t} else if\
+    \ (len >= PATH_MAX) {\n\t\t\t\terr = -ENAMETOOLONG;\n\n// FILE: src/libbpf.h\n\
+    // CONTEXT: bpf_object__next_map(const struct bpf_object *obj, const struct bpf_map\
+    \ *map);\n\n#define bpf_object__for_each_map(pos, obj)\t\t\\\n\tfor ((pos) = bpf_object__next_map((obj),\
+    \ NULL);\t\\\n\t     (pos) != NULL;\t\t\t\t\\\n\t     (pos) = bpf_object__next_map((obj),\
+    \ (pos)))\n#define bpf_map__for_each bpf_object__for_each_map\n\nLIBBPF_API LIBBPF_DEPRECATED_SINCE(0,\
+    \ 7, \"use bpf_object__prev_map() instead\")\nstruct bpf_map *bpf_map__prev(const\
+    \ struct bpf_map *map, const struct bpf_object *obj);\nLIBBPF_API struct bpf_map\
+    \ *\nbpf_object__prev_map(const struct bpf_object *obj, const struct bpf_map *map);\n\
+    \n/**\n * @brief **bpf_map__set_autocreate()** sets whether libbpf has to auto-create\n\
+    \ * BPF map during BPF object load phase.\n * @param map the BPF map instance\n\
+    \ * @param autocreate whether to create BPF map during BPF object load\n * @return\
+    \ 0 on success; -EBUSY if BPF object was already loaded\n *\n * **bpf_map__set_autocreate()**\
+    \ allows to opt-out from libbpf auto-creating\n * BPF map. By default, libbpf\
+    \ will attempt to create every single BPF map\n * defined in BPF object file using\
+    \ BPF_MAP_CREATE command of bpf() syscall\n * and fill in map FD in BPF instructions.\n\
+    \ *\n * This API allows to opt-out of this process for specific map instance.\
+    \ This\n * can be useful if host kernel doesn't support such BPF map type or used\n\
+    \ * combination of flags and user application wants to avoid creating such\n *\
+    \ a map in the first place. User is still responsible to make sure that their\n\
+    \ * BPF-side code that expects to use such missing BPF map is recognized by BPF\n\
+    \ * verifier as dead code, otherwise BPF verifier will reject such BPF program.\n\
+    \ */\nLIBBPF_API int bpf_map__set_autocreate(struct bpf_map *map, bool autocreate);\n\
+    LIBBPF_API bool bpf_map__autocreate(const struct bpf_map *map);\n\n/**\n * @brief\
+    \ **bpf_map__fd()** gets the file descriptor of the passed\n * BPF map\n * @param\
+    \ map the BPF map instance\n * @return the file descriptor; or -EINVAL in case\
+    \ of an error\n */\nLIBBPF_API int bpf_map__fd(const struct bpf_map *map);\nLIBBPF_API\
+    \ int bpf_map__reuse_fd(struct bpf_map *map, int fd);\n/* get map definition */\n\
+    LIBBPF_API LIBBPF_DEPRECATED_SINCE(0, 8, \"use appropriate getters or setters\
+    \ instead\")\nconst struct bpf_map_def *bpf_map__def(const struct bpf_map *map);\n\
+    /* get map name */"
+  diff_summary: |-
+    src/libbpf.c:
+    - Added an explicit null guard before the dereference on all verifier-visible paths.
+    - Affected context: struct bpf_struct_ops {, struct bpf_map {, static int find_elf_var_offset(const struct bpf_object *obj, const char *name, _.
+    src/libbpf.h:
+    - Added an explicit null guard before the dereference on all verifier-visible paths.
+    - Affected context: bpf_object__next_map(const struct bpf_object *obj, const struct bpf_map *map);.
+    - Commit subject: libbpf: Allow to opt-out from creating BPF maps.

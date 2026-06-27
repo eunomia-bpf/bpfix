@@ -1,0 +1,66 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-libbpf-e152510d72b2
+source_kind: github_commit
+source:
+  url: https://github.com/libbpf/libbpf/commit/e152510d72b2a3dc40b994d0e054caf3a19eccc4
+  title: 'libbpf: Fix strncat bounds error in libbpf_prog_type_by_name'
+  repository: https://github.com/libbpf/libbpf
+  commit: e152510d72b2a3dc40b994d0e054caf3a19eccc4
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-libbpf-e152510d72b2.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Raw has_verifier_log=false, source_snippet_count=0. The diff fixes strncat
+    bounds while deriving raw tracepoint BTF names in libbpf_prog_type_by_name();
+    it is user-space string handling, not a verifier rejection.
+raw:
+  case_id: github-commit-libbpf-e152510d72b2
+  source: github_commits
+  repository: https://github.com/libbpf/libbpf
+  commit_hash: e152510d72b2a3dc40b994d0e054caf3a19eccc4
+  commit_message: 'libbpf: Fix strncat bounds error in libbpf_prog_type_by_name'
+  commit_date: '2019-10-23'
+  fix_type: other
+  buggy_code: "// FILE: src/libbpf.c\n// CONTEXT: int libbpf_prog_type_by_name(const\
+    \ char *name, enum bpf_prog_type *prog_type,\n\t\tif (section_names[i].is_attach_btf)\
+    \ {\n\t\t\tstruct btf *btf = bpf_core_find_kernel_btf();\n\t\t\tchar raw_tp_btf_name[128]\
+    \ = \"btf_trace_\";\n\t\t\tchar *dst = raw_tp_btf_name + sizeof(\"btf_trace_\"\
+    ) - 1;\n\t\t\tint ret;\n\n\t\t\tif (IS_ERR(btf)) {\n\t\t\t\tpr_warn(\"vmlinux\
+    \ BTF is not found\\n\");\n\t\t\t\treturn -EINVAL;\n\t\t\t}\n\t\t\t/* prepend\
+    \ \"btf_trace_\" prefix per kernel convention */\n\t\t\tstrncat(dst, name + section_names[i].len,\n\
+    \t\t\t\tsizeof(raw_tp_btf_name) - (dst - raw_tp_btf_name));\n\t\t\tret = btf__find_by_name(btf,\
+    \ raw_tp_btf_name);\n\t\t\tbtf__free(btf);\n\t\t\tif (ret <= 0) {\n\t\t\t\tpr_warn(\"\
+    %s is not found in vmlinux BTF\\n\", dst);\n\t\t\t\treturn -EINVAL;\n\t\t\t}\n\
+    \t\t\t*expected_attach_type = ret;\n\t\t}\n\t\treturn 0;\n\t}\n\tpr_warn(\"failed\
+    \ to guess program type based on ELF section name '%s'\\n\", name);\n\ttype_names\
+    \ = libbpf_get_type_names(false);"
+  fixed_code: "// FILE: src/libbpf.c\n// CONTEXT: int libbpf_prog_type_by_name(const\
+    \ char *name, enum bpf_prog_type *prog_type,\n\t\tif (section_names[i].is_attach_btf)\
+    \ {\n\t\t\tstruct btf *btf = bpf_core_find_kernel_btf();\n\t\t\tchar raw_tp_btf_name[128]\
+    \ = \"btf_trace_\";\n\t\t\tchar *dst = raw_tp_btf_name + sizeof(\"btf_trace_\"\
+    ) - 1;\n\t\t\tint ret;\n\n\t\t\tif (IS_ERR(btf)) {\n\t\t\t\tpr_warn(\"vmlinux\
+    \ BTF is not found\\n\");\n\t\t\t\treturn -EINVAL;\n\t\t\t}\n\t\t\t/* prepend\
+    \ \"btf_trace_\" prefix per kernel convention */\n\t\t\tstrncat(dst, name + section_names[i].len,\n\
+    \t\t\t\tsizeof(raw_tp_btf_name) - sizeof(\"btf_trace_\"));\n\t\t\tret = btf__find_by_name(btf,\
+    \ raw_tp_btf_name);\n\t\t\tbtf__free(btf);\n\t\t\tif (ret <= 0) {\n\t\t\t\tpr_warn(\"\
+    %s is not found in vmlinux BTF\\n\", dst);\n\t\t\t\treturn -EINVAL;\n\t\t\t}\n\
+    \t\t\t*expected_attach_type = ret;\n\t\t}\n\t\treturn 0;\n\t}\n\tpr_warn(\"failed\
+    \ to guess program type based on ELF section name '%s'\\n\", name);\n\ttype_names\
+    \ = libbpf_get_type_names(false);"
+  diff_summary: |-
+    src/libbpf.c:
+    - Applied a small verifier-related code change captured by the exact before/after snippets below.
+    - Affected context: int libbpf_prog_type_by_name(const char *name, enum bpf_prog_type *prog_type,.
+    - Commit subject: libbpf: Fix strncat bounds error in libbpf_prog_type_by_name.

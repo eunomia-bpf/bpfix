@@ -1,0 +1,1161 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-aya-rs-aya-1267
+source_kind: github_issue
+source:
+  url: https://github.com/aya-rs/aya/issues/1267
+  title: Receiving Permission denied (os error 13)
+  repository: https://github.com/aya-rs/aya
+  commit: null
+  collected_at: '2026-03-11T16:01:35+00:00'
+collector:
+  original_path: bpfix-empirical/raw/gh/github-aya-rs-aya-1267.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: true
+  verifier_log_block_count: 1
+  source_snippet_count: 1
+  has_buggy_code: false
+  has_fixed_code: false
+  has_fix_description: false
+reproduction:
+  status: replay_valid
+  case_id: github-aya-rs-aya-1267
+  case_path: cases/github-aya-rs-aya-1267
+  artifact_path: cases/github-aya-rs-aya-1267
+  reason: admitted_to_bpfix_bench_cases
+raw:
+  case_id: github-aya-rs-aya-1267
+  source: github_issues
+  collected_at: '2026-03-11T16:01:35+00:00'
+  issue:
+    repository: aya-rs/aya
+    number: 1267
+    title: Receiving Permission denied (os error 13)
+    url: https://github.com/aya-rs/aya/issues/1267
+    state: closed
+    state_reason: completed
+    labels: []
+    created_at: '2025-05-17T16:38:29Z'
+    updated_at: '2025-05-17T20:56:13Z'
+    author: hanshal101
+  verifier_log:
+    blocks:
+    - |-
+      hanshal101@lol:~/ebpf/rust/egmon$ sudo RUST_LOG=debug cargo run
+         Compiling proc-macro2 v1.0.95
+         Compiling unicode-ident v1.0.18
+         Compiling version_check v0.9.5
+         Compiling memchr v2.7.4
+         Compiling serde v1.0.219
+         Compiling rustversion v1.0.20
+         Compiling libc v0.2.172
+         Compiling aya-ebpf-cty v0.2.2
+         Compiling rustix v0.38.44
+         Compiling bitflags v2.9.1
+         Compiling equivalent v1.0.2
+         Compiling foldhash v0.1.5
+         Compiling allocator-api2 v0.2.21
+         Compiling aya-ebpf-bindings v0.1.1
+         Compiling linux-raw-sys v0.4.15
+         Compiling thiserror v1.0.69
+         Compiling either v1.15.0
+         Compiling object v0.36.7
+         Compiling home v0.5.11
+         Compiling thiserror v2.0.12
+         Compiling cfg-if v1.0.0
+         Compiling serde_json v1.0.140
+         Compiling log v0.4.27
+         Compiling camino v1.1.9
+         Compiling semver v1.0.26
+         Compiling crc32fast v1.4.2
+         Compiling proc-macro-error-attr v1.0.4
+         Compiling proc-macro-error v1.0.4
+         Compiling core-error v0.0.0
+         Compiling hashbrown v0.15.3
+         Compiling ryu v1.0.20
+         Compiling anyhow v1.0.98
+         Compiling itoa v1.0.15
+         Compiling bytes v1.10.1
+         Compiling pin-project-lite v0.2.16
+         Compiling once_cell v1.21.3
+         Compiling egmon-common v0.1.0 (/home/hanshal101/ebpf/rust/egmon/egmon-common)
+         Compiling network-types v0.0.8
+         Compiling assert_matches v1.5.0
+         Compiling heck v0.5.0
+         Compiling anstyle v1.0.10
+         Compiling clap_lex v0.7.4
+         Compiling env_filter v0.1.3
+         Compiling env_logger v0.11.8
+         Compiling clap_builder v4.5.38
+         Compiling aya-ebpf v0.1.1
+         Compiling quote v1.0.40
+         Compiling syn v2.0.101
+         Compiling socket2 v0.5.9
+         Compiling signal-hook-registry v1.4.5
+         Compiling mio v1.0.3
+         Compiling indexmap v2.9.0
+         Compiling which v6.0.3
+         Compiling egmon-ebpf v0.1.0 (/home/hanshal101/ebpf/rust/egmon/egmon-ebpf)
+         Compiling num_enum_derive v0.7.3
+         Compiling serde_derive v1.0.219
+         Compiling thiserror-impl v1.0.69
+         Compiling aya-ebpf-macros v0.1.1
+         Compiling thiserror-impl v2.0.12
+         Compiling tokio-macros v2.5.0
+         Compiling clap_derive v4.5.32
+         Compiling tokio v1.45.0
+         Compiling num_enum v0.7.3
+         Compiling aya-log-common v0.1.15
+         Compiling aya-log-parser v0.1.13
+         Compiling aya-log-ebpf-macros v0.1.0
+         Compiling aya-log-ebpf v0.1.1
+         Compiling clap v4.5.38
+         Compiling aya-obj v0.2.1
+         Compiling aya v0.13.1
+         Compiling aya-log v0.2.1
+         Compiling cargo-platform v0.1.9
+         Compiling cargo_metadata v0.19.2
+         Compiling aya-build v0.1.2
+         Compiling egmon v0.1.0 (/home/hanshal101/ebpf/rust/egmon/egmon)
+      warning: egmon@0.1.0:    Compiling proc-macro2 v1.0.95
+      warning: egmon@0.1.0:    Compiling unicode-ident v1.0.18
+      warning: egmon@0.1.0:    Compiling compiler_builtins v0.1.159
+      warning: egmon@0.1.0:    Compiling core v0.0.0 (/root/.rustup/toolchains/nightly-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core)
+      warning: egmon@0.1.0:    Compiling version_check v0.9.5
+      warning: egmon@0.1.0:    Compiling rustversion v1.0.20
+      warning: egmon@0.1.0:    Compiling aya-ebpf-cty v0.2.2
+      warning: egmon@0.1.0:    Compiling rustix v0.38.44
+      warning: egmon@0.1.0:    Compiling aya-ebpf-bindings v0.1.1
+      warning: egmon@0.1.0:    Compiling linux-raw-sys v0.4.15
+      warning: egmon@0.1.0:    Compiling bitflags v2.9.1
+      warning: egmon@0.1.0:    Compiling home v0.5.11
+      warning: egmon@0.1.0:    Compiling either v1.15.0
+      warning: egmon@0.1.0:    Compiling proc-macro-error-attr v1.0.4
+      warning: egmon@0.1.0:    Compiling proc-macro-error v1.0.4
+      warning: egmon@0.1.0:    Compiling aya-ebpf v0.1.1
+      warning: egmon@0.1.0:    Compiling quote v1.0.40
+      warning: egmon@0.1.0:    Compiling syn v2.0.101
+      warning: egmon@0.1.0:    Compiling which v6.0.3
+      warning: egmon@0.1.0:    Compiling egmon-ebpf v0.1.0 (/home/hanshal101/ebpf/rust/egmon/egmon-ebpf)
+      warning: egmon@0.1.0:    Compiling num_enum_derive v0.7.3
+      warning: egmon@0.1.0:    Compiling aya-ebpf-macros v0.1.1
+      warning: egmon@0.1.0:    Compiling num_enum v0.7.3
+      warning: egmon@0.1.0:    Compiling aya-log-common v0.1.15
+      warning: egmon@0.1.0:    Compiling aya-log-parser v0.1.13
+      warning: egmon@0.1.0:    Compiling aya-log-ebpf-macros v0.1.0
+      warning: egmon@0.1.0:    Compiling rustc-std-workspace-core v1.99.0 (/root/.rustup/toolchains/nightly-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/rustc-std-workspace-core)
+      warning: egmon@0.1.0:    Compiling egmon-common v0.1.0 (/home/hanshal101/ebpf/rust/egmon/egmon-common)
+      warning: egmon@0.1.0:    Compiling network-types v0.0.8
+      warning: egmon@0.1.0:    Compiling aya-log-ebpf v0.1.1
+      warning: egmon@0.1.0: warning: unused import: `RingBuf`
+      warning: egmon@0.1.0:  --> egmon-ebpf/src/main.rs:7:21
+      warning: egmon@0.1.0:   |
+      warning: egmon@0.1.0: 7 |     maps::{HashMap, RingBuf},
+      warning: egmon@0.1.0:   |                     ^^^^^^^
+      warning: egmon@0.1.0:   |
+      warning: egmon@0.1.0:   = note: `#[warn(unused_imports)]` on by default
+      warning: egmon@0.1.0:
+      warning: egmon@0.1.0:
+      warning: egmon@0.1.0: warning: unused variable: `payload`
+      warning: egmon@0.1.0:   --> egmon-ebpf/src/main.rs:79:9
+      warning: egmon@0.1.0:    |
+      warning: egmon@0.1.0: 79 |     let payload = ctx
+      warning: egmon@0.1.0:    |         ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_payload`
+      warning: egmon@0.1.0:    |
+      warning: egmon@0.1.0:    = note: `#[warn(unused_variables)]` on by default
+      warning: egmon@0.1.0:
+      warning: egmon@0.1.0:
+      warning: egmon@0.1.0: warning: creating a shared reference to mutable static
+      warning: egmon@0.1.0:   --> egmon-ebpf/src/main.rs:41:29
+      warning: egmon@0.1.0:    |
+      warning: egmon@0.1.0: 41 |     let is_block = unsafe { BLOCK_LIST.get(&destination).is_some() };
+      warning: egmon@0.1.0:    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ shared reference to mutable static
+      warning: egmon@0.1.0:    |
+      warning: egmon@0.1.0:    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/static-mut-references.html>
+      warning: egmon@0.1.0:    = note: shared references to mutable statics are dangerous; it's undefined behavior if the static is mutated or if a mutable reference is created for it while the shared reference lives
+      warning: egmon@0.1.0:    = note: `#[warn(static_mut_refs)]` on by default
+      warning: egmon@0.1.0:
+      warning: egmon@0.1.0:
+      warning: egmon@0.1.0:     Finished `release` profile [optimized] target(s) in 10.52s
+      warning: unused import: `std::net::Ipv4Addr`
+        --> egmon/src/main.rs:14:5
+         |
+      14 | use std::net::Ipv4Addr;
+         |     ^^^^^^^^^^^^^^^^^^
+         |
+         = note: `#[warn(unused_imports)]` on by default
+
+      warning: unused variable: `hmap`
+        --> egmon/src/main.rs:43:13
+         |
+      43 |     let mut hmap: HashMap<_, u32, u8> = HashMap::try_from(ebpf.map_mut("BLOCK_LIST").unwrap())?;
+         |             ^^^^ help: if this is intentional, prefix it with an underscore: `_hmap`
+         |
+         = note: `#[warn(unused_variables)]` on by default
+
+      warning: variable does not need to be mutable
+        --> egmon/src/main.rs:43:9
+         |
+      43 |     let mut hmap: HashMap<_, u32, u8> = HashMap::try_from(ebpf.map_mut("BLOCK_LIST").unwrap())?;
+         |         ----^^^^
+         |         |
+         |         help: remove this `mut`
+         |
+         = note: `#[warn(unused_mut)]` on by default
+
+      warning: `egmon` (bin "egmon") generated 3 warnings (run `cargo fix --bin "egmon"` to apply 2 suggestions)
+          Finished `dev` profile [unoptimized + debuginfo] target(s) in 23.88s
+           Running `target/debug/egmon`
+      [DEBUG aya::bpf] BPF Feature Detection: Features {
+              bpf_name: true,
+              bpf_probe_read_kernel: true,
+              bpf_perf_link: true,
+              bpf_global_data: true,
+              bpf_cookie: true,
+              cpumap_prog_id: true,
+              devmap_prog_id: true,
+              prog_info_map_ids: true,
+              prog_info_gpl_compatible: true,
+              btf: Some(
+                  BtfFeatures {
+                      btf_func: true,
+                      btf_func_global: true,
+                      btf_datasec: true,
+                      btf_float: true,
+                      btf_decl_tag: true,
+                      btf_type_tag: true,
+                      btf_enum64: true,
+                  },
+              ),
+          }
+      [DEBUG aya_obj::relocation] relocating map by section index 7, kind Rodata at insn 74 in section 3
+      [DEBUG aya_obj::relocation] relocating map by symbol index Some(13), kind Maps at insn 61 in section 3
+      [DEBUG aya_obj::relocation] relocating map by symbol index Some(14), kind Maps at insn 352 in section 3
+      [DEBUG aya_obj::relocation] relocating map by section index 7, kind Rodata at insn 665 in section 3
+      [DEBUG aya_obj::relocation] relocating map by section index 7, kind Rodata at insn 429 in section 3
+      [DEBUG aya_obj::relocation] relocating map by symbol index Some(12), kind Maps at insn 48 in section 3
+      [DEBUG aya_obj::relocation] relocating map by section index 7, kind Rodata at insn 113 in section 3
+      [DEBUG aya_obj::relocation] relocating map by symbol index Some(14), kind Maps at insn 732 in section 3
+      [DEBUG aya_obj::relocation] relocating map by section index 7, kind Rodata at insn 188 in section 3
+      [DEBUG aya_obj::relocation] relocating map by symbol index Some(13), kind Maps at insn 417 in section 3
+      [DEBUG aya_obj::relocation] relocating map by section index 7, kind Rodata at insn 469 in section 3
+      [DEBUG aya_obj::relocation] relocating program `egmon` function `egmon` size 741
+      [DEBUG aya_obj::relocation] relocating call to callee address 0x0 in section 2 (relocation) at instruction 251
+      [DEBUG aya_obj::relocation] callee is `_ZN74_$LT$aya_log_common..DisplayHint$u20$as$u20$aya_log_common..WriteToBuf$GT$5write17h603271e41b5eb817E`
+      [DEBUG aya_obj::relocation] linked function `_ZN74_$LT$aya_log_common..DisplayHint$u20$as$u20$aya_log_common..WriteToBuf$GT$5write17h603271e41b5eb817E` at instruction 741
+      [DEBUG aya_obj::relocation] relocating program `egmon` function `_ZN74_$LT$aya_log_common..DisplayHint$u20$as$u20$aya_log_common..WriteToBuf$GT$5write17h603271e41b5eb817E` size 12
+      [DEBUG aya_obj::relocation] finished relocating program `egmon` function `_ZN74_$LT$aya_log_common..DisplayHint$u20$as$u20$aya_log_common..WriteToBuf$GT$5write17h603271e41b5eb817E`
+      [DEBUG aya_obj::relocation] callee `_ZN74_$LT$aya_log_common..DisplayHint$u20$as$u20$aya_log_common..WriteToBuf$GT$5write17h603271e41b5eb817E` is at ins 741, 489 from current instruction 251
+      [DEBUG aya_obj::relocation] relocating call to callee address 0x60 in section 2 (relocation) at instruction 260
+      [DEBUG aya_obj::relocation] callee is `_ZN49_$LT$u8$u20$as$u20$aya_log_common..WriteToBuf$GT$5write17h13224fa265308122E`
+      [DEBUG aya_obj::relocation] linked function `_ZN49_$LT$u8$u20$as$u20$aya_log_common..WriteToBuf$GT$5write17h13224fa265308122E` at instruction 753
+      [DEBUG aya_obj::relocation] relocating program `egmon` function `_ZN49_$LT$u8$u20$as$u20$aya_log_common..WriteToBuf$GT$5write17h13224fa265308122E` size 13
+      [DEBUG aya_obj::relocation] finished relocating program `egmon` function `_ZN49_$LT$u8$u20$as$u20$aya_log_common..WriteToBuf$GT$5write17h13224fa265308122E`
+      [DEBUG aya_obj::relocation] callee `_ZN49_$LT$u8$u20$as$u20$aya_log_common..WriteToBuf$GT$5write17h13224fa265308122E` is at ins 753, 492 from current instruction 260
+      [DEBUG aya_obj::relocation] relocating call to callee address 0x0 in section 2 (relocation) at instruction 279
+      [DEBUG aya_obj::relocation] callee is `_ZN74_$LT$aya_log_common..DisplayHint$u20$as$u20$aya_log_common..WriteToBuf$GT$5write17h603271e41b5eb817E`
+      [DEBUG aya_obj::relocation] callee `_ZN74_$LT$aya_log_common..DisplayHint$u20$as$u20$aya_log_common..WriteToBuf$GT$5write17h603271e41b5eb817E` is at ins 741, 461 from current instruction 279
+      [DEBUG aya_obj::relocation] relocating call to callee address 0x60 in section 2 (relocation) at instruction 289
+      [DEBUG aya_obj::relocation] callee is `_ZN49_$LT$u8$u20$as$u20$aya_log_common..WriteToBuf$GT$5write17h13224fa265308122E`
+      [DEBUG aya_obj::relocation] callee `_ZN49_$LT$u8$u20$as$u20$aya_log_common..WriteToBuf$GT$5write17h13224fa265308122E` is at ins 753, 463 from current instruction 289
+      [DEBUG aya_obj::relocation] relocating call to callee address 0x0 in section 2 (relocation) at instruction 309
+      [DEBUG aya_obj::relocation] callee is `_ZN74_$LT$aya_log_common..DisplayHint$u20$as$u20$aya_log_common..WriteToBuf$GT$5write17h603271e41b5eb817E`
+      [DEBUG aya_obj::relocation] callee `_ZN74_$LT$aya_log_common..DisplayHint$u20$as$u20$aya_log_common..WriteToBuf$GT$5write17h603271e41b5eb817E` is at ins 741, 431 from current instruction 309
+      [DEBUG aya_obj::relocation] relocating call to callee address 0x60 in section 2 (relocation) at instruction 318
+      [DEBUG aya_obj::relocation] callee is `_ZN49_$LT$u8$u20$as$u20$aya_log_common..WriteToBuf$GT$5write17h13224fa265308122E`
+      [DEBUG aya_obj::relocation] callee `_ZN49_$LT$u8$u20$as$u20$aya_log_common..WriteToBuf$GT$5write17h13224fa265308122E` is at ins 753, 434 from current instruction 318
+      [DEBUG aya_obj::relocation] relocating call to callee address 0x0 in section 2 (relocation) at instruction 338
+      [DEBUG aya_obj::relocation] callee is `_ZN74_$LT$aya_log_common..DisplayHint$u20$as$u20$aya_log_common..WriteToBuf$GT$5write17h603271e41b5eb817E`
+      [DEBUG aya_obj::relocation] callee `_ZN74_$LT$aya_log_common..DisplayHint$u20$as$u20$aya_log_common..WriteToBuf$GT$5write17h603271e41b5eb817E` is at ins 741, 402 from current instruction 338
+      [DEBUG aya_obj::relocation] relocating call to callee address 0x60 in section 2 (relocation) at instruction 347
+      [DEBUG aya_obj::relocation] callee is `_ZN49_$LT$u8$u20$as$u20$aya_log_common..WriteToBuf$GT$5write17h13224fa265308122E`
+      [DEBUG aya_obj::relocation] callee `_ZN49_$LT$u8$u20$as$u20$aya_log_common..WriteToBuf$GT$5write17h13224fa265308122E` is at ins 753, 405 from current instruction 347
+      [DEBUG aya_obj::relocation] relocating call to callee address 0x178 in section 2 (relocation) at instruction 393
+      [DEBUG aya_obj::relocation] callee is `memset`
+      [DEBUG aya_obj::relocation] linked function `memset` at instruction 766
+      [DEBUG aya_obj::relocation] relocating program `egmon` function `memset` size 8
+      [DEBUG aya_obj::relocation] finished relocating program `egmon` function `memset`
+      [DEBUG aya_obj::relocation] callee `memset` is at ins 766, 372 from current instruction 393
+      [DEBUG aya_obj::relocation] relocating call to callee address 0x0 in section 2 (relocation) at instruction 559
+      [DEBUG aya_obj::relocation] callee is `_ZN74_$LT$aya_log_common..DisplayHint$u20$as$u20$aya_log_common..WriteToBuf$GT$5write17h603271e41b5eb817E`
+      [DEBUG aya_obj::relocation] callee `_ZN74_$LT$aya_log_common..DisplayHint$u20$as$u20$aya_log_common..WriteToBuf$GT$5write17h603271e41b5eb817E` is at ins 741, 181 from current instruction 559
+      [DEBUG aya_obj::relocation] relocating call to callee address 0x60 in section 2 (relocation) at instruction 568
+      [DEBUG aya_obj::relocation] callee is `_ZN49_$LT$u8$u20$as$u20$aya_log_common..WriteToBuf$GT$5write17h13224fa265308122E`
+      [DEBUG aya_obj::relocation] callee `_ZN49_$LT$u8$u20$as$u20$aya_log_common..WriteToBuf$GT$5write17h13224fa265308122E` is at ins 753, 184 from current instruction 568
+      [DEBUG aya_obj::relocation] relocating call to callee address 0x0 in section 2 (relocation) at instruction 587
+      [DEBUG aya_obj::relocation] callee is `_ZN74_$LT$aya_log_common..DisplayHint$u20$as$u20$aya_log_common..WriteToBuf$GT$5write17h603271e41b5eb817E`
+      [DEBUG aya_obj::relocation] callee `_ZN74_$LT$aya_log_common..DisplayHint$u20$as$u20$aya_log_common..WriteToBuf$GT$5write17h603271e41b5eb817E` is at ins 741, 153 from current instruction 587
+      [DEBUG aya_obj::relocation] relocating call to callee address 0x60 in section 2 (relocation) at instruction 596
+      [DEBUG aya_obj::relocation] callee is `_ZN49_$LT$u8$u20$as$u20$aya_log_common..WriteToBuf$GT$5write17h13224fa265308122E`
+      [DEBUG aya_obj::relocation] callee `_ZN49_$LT$u8$u20$as$u20$aya_log_common..WriteToBuf$GT$5write17h13224fa265308122E` is at ins 753, 156 from current instruction 596
+      [DEBUG aya_obj::relocation] relocating call to callee address 0x0 in section 2 (relocation) at instruction 615
+      [DEBUG aya_obj::relocation] callee is `_ZN74_$LT$aya_log_common..DisplayHint$u20$as$u20$aya_log_common..WriteToBuf$GT$5write17h603271e41b5eb817E`
+      [DEBUG aya_obj::relocation] callee `_ZN74_$LT$aya_log_common..DisplayHint$u20$as$u20$aya_log_common..WriteToBuf$GT$5write17h603271e41b5eb817E` is at ins 741, 125 from current instruction 615
+      [DEBUG aya_obj::relocation] relocating call to callee address 0x60 in section 2 (relocation) at instruction 624
+      [DEBUG aya_obj::relocation] callee is `_ZN49_$LT$u8$u20$as$u20$aya_log_common..WriteToBuf$GT$5write17h13224fa265308122E`
+      [DEBUG aya_obj::relocation] callee `_ZN49_$LT$u8$u20$as$u20$aya_log_common..WriteToBuf$GT$5write17h13224fa265308122E` is at ins 753, 128 from current instruction 624
+      [DEBUG aya_obj::relocation] relocating call to callee address 0x0 in section 2 (relocation) at instruction 643
+      [DEBUG aya_obj::relocation] callee is `_ZN74_$LT$aya_log_common..DisplayHint$u20$as$u20$aya_log_common..WriteToBuf$GT$5write17h603271e41b5eb817E`
+      [DEBUG aya_obj::relocation] callee `_ZN74_$LT$aya_log_common..DisplayHint$u20$as$u20$aya_log_common..WriteToBuf$GT$5write17h603271e41b5eb817E` is at ins 741, 97 from current instruction 643
+      [DEBUG aya_obj::relocation] relocating call to callee address 0x60 in section 2 (relocation) at instruction 652
+      [DEBUG aya_obj::relocation] callee is `_ZN49_$LT$u8$u20$as$u20$aya_log_common..WriteToBuf$GT$5write17h13224fa265308122E`
+      [DEBUG aya_obj::relocation] callee `_ZN49_$LT$u8$u20$as$u20$aya_log_common..WriteToBuf$GT$5write17h13224fa265308122E` is at ins 753, 100 from current instruction 652
+      [DEBUG aya_obj::relocation] relocating call to callee address 0x0 in section 2 (relocation) at instruction 716
+      [DEBUG aya_obj::relocation] callee is `_ZN74_$LT$aya_log_common..DisplayHint$u20$as$u20$aya_log_common..WriteToBuf$GT$5write17h603271e41b5eb817E`
+      [DEBUG aya_obj::relocation] callee `_ZN74_$LT$aya_log_common..DisplayHint$u20$as$u20$aya_log_common..WriteToBuf$GT$5write17h603271e41b5eb817E` is at ins 741, 24 from current instruction 716
+      [DEBUG aya_obj::relocation] relocating call to callee address 0xc8 in section 2 (relocation) at instruction 728
+      [DEBUG aya_obj::relocation] callee is `_ZN50_$LT$u32$u20$as$u20$aya_log_common..WriteToBuf$GT$5write17h9392c548e73a9c3cE`
+      [DEBUG aya_obj::relocation] linked function `_ZN50_$LT$u32$u20$as$u20$aya_log_common..WriteToBuf$GT$5write17h9392c548e73a9c3cE` at instruction 774
+      [DEBUG aya_obj::relocation] relocating program `egmon` function `_ZN50_$LT$u32$u20$as$u20$aya_log_common..WriteToBuf$GT$5write17h9392c548e73a9c3cE` size 22
+      [DEBUG aya_obj::relocation] finished relocating program `egmon` function `_ZN50_$LT$u32$u20$as$u20$aya_log_common..WriteToBuf$GT$5write17h9392c548e73a9c3cE`
+      [DEBUG aya_obj::relocation] callee `_ZN50_$LT$u32$u20$as$u20$aya_log_common..WriteToBuf$GT$5write17h9392c548e73a9c3cE` is at ins 774, 45 from current instruction 728
+      [DEBUG aya_obj::relocation] finished relocating program `egmon` function `egmon`
+      Error: the BPF_PROG_LOAD syscall failed. Verifier output: 0: R1=ctx() R10=fp0
+      0: (bf) r6 = r1                       ; R1=ctx() R6_w=ctx()
+      1: (bf) r3 = r10                      ; R3_w=fp0 R10=fp0
+      2: (07) r3 += -40                     ; R3_w=fp-40
+      3: (b7) r2 = 0                        ; R2_w=0
+      4: (b7) r4 = 14                       ; R4_w=14
+      5: (85) call bpf_skb_load_bytes#26    ; R0_w=scalar() fp-32=??mmmmmm fp-40=mmmmmmmm
+      6: (bf) r7 = r0                       ; R0_w=scalar(id=1) R7_w=scalar(id=1)
+      7: (79) r1 = *(u64 *)(r10 -40)        ; R1_w=scalar() R10=fp0 fp-40=mmmmmmmm
+      8: (55) if r7 != 0x0 goto pc+2        ; R7_w=0
+      9: (69) r2 = *(u16 *)(r10 -28)        ; R2=scalar(smin=smin32=0,smax=umax=smax32=umax32=0xffff,var_off=(0x0; 0xffff)) R10=fp0 fp-32=??mmmmmm
+      10: (55) if r2 != 0x7 goto pc+3 14: R0=0 R1=scalar() R2=scalar(smin=smin32=0,smax=umax=smax32=umax32=0xffff,var_off=(0x0; 0xffff)) R6=ctx() R7=0 R10=fp0 fp-32=??mmmmmm fp-40=mmmmmmmm
+      14: (b7) r7 = 3                       ; R7_w=3
+      15: (55) if r2 != 0x8 goto pc+8       ; R2=8
+      16: (bf) r3 = r10                     ; R3_w=fp0 R10=fp0
+      17: (07) r3 += -40                    ; R3_w=fp-40
+      18: (bf) r1 = r6                      ; R1_w=ctx() R6=ctx()
+      19: (b7) r2 = 14                      ; R2_w=14
+      20: (b7) r4 = 20                      ; R4_w=20
+      21: (85) call bpf_skb_load_bytes#26   ; R0=scalar() fp-24=????mmmm fp-32=mmmmmmmm fp-40=mmmmmmmm
+      22: (bf) r7 = r0                      ; R0=scalar(id=3) R7_w=scalar(id=3)
+      23: (15) if r7 == 0x0 goto pc+2 26: R0=0 R6=ctx() R7_w=0 R10=fp0 fp-24=????mmmm fp-32=mmmmmmmm fp-40=mmmmmmmm
+      26: (71) r1 = *(u8 *)(r10 -24)        ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R10=fp0 fp-24=????mmmm
+      27: (67) r1 <<= 8                     ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=0xff00,var_off=(0x0; 0xff00))
+      28: (71) r2 = *(u8 *)(r10 -25)        ; R2_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R10=fp0 fp-32=mmmmmmmm
+      29: (4f) r1 |= r2                     ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=0xffff,var_off=(0x0; 0xffff)) R2_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+      30: (71) r2 = *(u8 *)(r10 -23)        ; R2_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R10=fp0 fp-24=????mmmm
+      31: (67) r2 <<= 16                    ; R2_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=0xff0000,var_off=(0x0; 0xff0000))
+      32: (71) r7 = *(u8 *)(r10 -22)        ; R7_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R10=fp0 fp-24=????mmmm
+      33: (67) r7 <<= 24                    ; R7_w=scalar(smin=0,smax=umax=umax32=0xff000000,smax32=0x7f000000,var_off=(0x0; 0xff000000))
+      34: (4f) r7 |= r2                     ; R2_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=0xff0000,var_off=(0x0; 0xff0000)) R7_w=scalar(smin=0,smax=umax=umax32=0xffff0000,smax32=0x7fff0000,var_off=(0x0; 0xffff0000))
+      35: (4f) r7 |= r1                     ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=0xffff,var_off=(0x0; 0xffff)) R7_w=scalar(smin=0,smax=umax=0xffffffff,var_off=(0x0; 0xffffffff))
+      36: (71) r1 = *(u8 *)(r10 -21)        ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R10=fp0 fp-24=????mmmm
+      37: (7b) *(u64 *)(r10 -80) = r1       ; R1_w=scalar(id=4,smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R10=fp0 fp-80_w=scalar(id=4,smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+      38: (67) r1 <<= 32                    ; R1_w=scalar(smin=smin32=0,smax=umax=0xff00000000,smax32=umax32=0,var_off=(0x0; 0xff00000000))
+      39: (4f) r7 |= r1                     ; R1_w=scalar(smin=smin32=0,smax=umax=0xff00000000,smax32=umax32=0,var_off=(0x0; 0xff00000000)) R7_w=scalar(smin=0,smax=umax=0xffffffffff,var_off=(0x0; 0xffffffffff))
+      40: (71) r8 = *(u8 *)(r10 -40)        ; R8_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R10=fp0 fp-40=mmmmmmmm
+      41: (bf) r1 = r7                      ; R1_w=scalar(id=5,smin=0,smax=umax=0xffffffffff,var_off=(0x0; 0xffffffffff)) R7_w=scalar(id=5,smin=0,smax=umax=0xffffffffff,var_off=(0x0; 0xffffffffff))
+      42: (77) r1 >>= 8                     ; R1_w=scalar(smin=0,smax=umax=0xffffffff,var_off=(0x0; 0xffffffff))
+      43: (7b) *(u64 *)(r10 -56) = r1       ; R1_w=scalar(id=6,smin=0,smax=umax=0xffffffff,var_off=(0x0; 0xffffffff)) R10=fp0 fp-56_w=scalar(id=6,smin=0,smax=umax=0xffffffff,var_off=(0x0; 0xffffffff))
+      44: (dc) r1 = be32 r1                 ; R1_w=scalar()
+      45: (63) *(u32 *)(r10 -44) = r1       ; R1_w=scalar() R10=fp0 fp-48=mmmm????
+      46: (bf) r2 = r10                     ; R2_w=fp0 R10=fp0
+      47: (07) r2 += -44                    ; R2_w=fp-44
+      48: (18) r1 = 0xffff8fc950d36000      ; R1_w=map_ptr(map=BLOCK_LIST,ks=4,vs=1)
+      50: (85) call bpf_map_lookup_elem#1   ; R0=map_value_or_null(id=7,map=BLOCK_LIST,ks=4,vs=1)
+      51: (bf) r1 = r7                      ; R1_w=scalar(id=5,smin=0,smax=umax=0xffffffffff,var_off=(0x0; 0xffffffffff)) R7=scalar(id=5,smin=0,smax=umax=0xffffffffff,var_off=(0x0; 0xffffffffff))
+      52: (77) r1 >>= 24                    ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=0xffff,var_off=(0x0; 0xffff))
+      53: (7b) *(u64 *)(r10 -72) = r1       ; R1_w=scalar(id=8,smin=smin32=0,smax=umax=smax32=umax32=0xffff,var_off=(0x0; 0xffff)) R10=fp0 fp-72_w=scalar(id=8,smin=smin32=0,smax=umax=smax32=umax32=0xffff,var_off=(0x0; 0xffff))
+      54: (77) r7 >>= 16                    ; R7_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=0xffffff,var_off=(0x0; 0xffffff))
+      55: (7b) *(u64 *)(r10 -64) = r7       ; R7_w=scalar(id=9,smin=smin32=0,smax=umax=smax32=umax32=0xffffff,var_off=(0x0; 0xffffff)) R10=fp0 fp-64_w=scalar(id=9,smin=smin32=0,smax=umax=smax32=umax32=0xffffff,var_off=(0x0; 0xffffff))
+      56: (15) if r0 == 0x0 goto pc+303 360: R0=0 R1_w=scalar(id=8,smin=smin32=0,smax=umax=smax32=umax32=0xffff,var_off=(0x0; 0xffff)) R6=ctx() R7_w=scalar(id=9,smin=smin32=0,smax=umax=smax32=umax32=0xffffff,var_off=(0x0; 0xffffff)) R8=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R10=fp0 fp-24=????mmmm fp-32=mmmmmmmm fp-40=mmmmmmmm fp-48=mmmm???? fp-56=scalar(id=6,smin=0,smax=umax=0xffffffff,var_off=(0x0; 0xffffffff)) fp-64_w=scalar(id=9,smin=smin32=0,smax=umax=smax32=umax32=0xffffff,var_off=(0x0; 0xffffff)) fp-72_w=scalar(id=8,smin=smin32=0,smax=umax=smax32=umax32=0xffff,var_off=(0x0; 0xffff)) fp-80=scalar(id=4,smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+      360: (67) r8 <<= 2                    ; R8_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=1020,var_off=(0x0; 0x3fc))
+      361: (57) r8 &= 60                    ; R8_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c))
+      362: (07) r8 += 14                    ; R8_w=scalar(smin=umin=smin32=umin32=14,smax=umax=smax32=umax32=74,var_off=(0x2; 0x7c))
+      363: (bf) r3 = r10                    ; R3_w=fp0 R10=fp0
+      364: (07) r3 += -40                   ; R3_w=fp-40
+      365: (bf) r1 = r6                     ; R1_w=ctx() R6=ctx()
+      366: (bf) r2 = r8                     ; R2_w=scalar(id=11,smin=umin=smin32=umin32=14,smax=umax=smax32=umax32=74,var_off=(0x2; 0x7c)) R8_w=scalar(id=11,smin=umin=smin32=umin32=14,smax=umax=smax32=umax32=74,var_off=(0x2; 0x7c))
+      367: (b7) r4 = 20                     ; R4_w=20
+      368: (85) call bpf_skb_load_bytes#26          ; R0=scalar() fp-24=????mmmm fp-32=mmmmmmmm fp-40=mmmmmmmm
+      369: (61) r7 = *(u32 *)(r10 -32)      ; R7_w=scalar(smin=0,smax=umax=0xffffffff,var_off=(0x0; 0xffffffff)) R10=fp0 fp-32=mmmmmmmm
+      370: (67) r7 <<= 32                   ; R7_w=scalar(smax=0x7fffffff00000000,umax=0xffffffff00000000,smin32=0,smax32=umax32=0,var_off=(0x0; 0xffffffff00000000))
+      371: (61) r1 = *(u32 *)(r10 -36)      ; R1_w=scalar(smin=0,smax=umax=0xffffffff,var_off=(0x0; 0xffffffff)) R10=fp0 fp-40=mmmmmmmm
+      372: (4f) r7 |= r1                    ; R1_w=scalar(smin=0,smax=umax=0xffffffff,var_off=(0x0; 0xffffffff)) R7_w=scalar()
+      373: (15) if r0 == 0x0 goto pc+1 375: R0=0 R1_w=scalar(smin=0,smax=umax=0xffffffff,var_off=(0x0; 0xffffffff)) R6=ctx() R7_w=scalar() R8=scalar(id=11,smin=umin=smin32=umin32=14,smax=umax=smax32=umax32=74,var_off=(0x2; 0x7c)) R10=fp0 fp-24=????mmmm fp-32=mmmmmmmm fp-40=mmmmmmmm fp-48=mmmm???? fp-56=scalar(id=6,smin=0,smax=umax=0xffffffff,var_off=(0x0; 0xffffffff)) fp-64=scalar(id=9,smin=smin32=0,smax=umax=smax32=umax32=0xffffff,var_off=(0x0; 0xffffff)) fp-72=scalar(id=8,smin=smin32=0,smax=umax=smax32=umax32=0xffff,var_off=(0x0; 0xffff)) fp-80=scalar(id=4,smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+      375: (15) if r0 == 0x0 goto pc+1      ; R0=0
+      377: (61) r9 = *(u32 *)(r10 -24)      ; R9_w=scalar(smin=0,smax=umax=0xffffffff,var_off=(0x0; 0xffffffff)) R10=fp0 fp-24=????mmmm
+      378: (67) r9 <<= 32                   ; R9_w=scalar(smax=0x7fffffff00000000,umax=0xffffffff00000000,smin32=0,smax32=umax32=0,var_off=(0x0; 0xffffffff00000000))
+      379: (61) r1 = *(u32 *)(r10 -28)      ; R1_w=scalar(smin=0,smax=umax=0xffffffff,var_off=(0x0; 0xffffffff)) R10=fp0 fp-32=mmmmmmmm
+      380: (4f) r9 |= r1                    ; R1_w=scalar(smin=0,smax=umax=0xffffffff,var_off=(0x0; 0xffffffff)) R9_w=scalar()
+      381: (67) r9 <<= 2                    ; R9_w=scalar(smax=0x7ffffffffffffffc,umax=0xfffffffffffffffc,smax32=0x7ffffffc,umax32=0xfffffffc,var_off=(0x0; 0xfffffffffffffffc))
+      382: (57) r9 &= 60                    ; R9_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c))
+      383: (0f) r9 += r8                    ; R8=scalar(id=11,smin=umin=smin32=umin32=14,smax=umax=smax32=umax32=74,var_off=(0x2; 0x7c)) R9_w=scalar(smin=umin=smin32=umin32=14,smax=umax=smax32=umax32=134,var_off=(0x2; 0xfc))
+      384: (b7) r7 = 0                      ; R7_w=0
+      385: (61) r1 = *(u32 *)(r6 +0)        ; R1=scalar(smin=0,smax=umax=0xffffffff,var_off=(0x0; 0xffffffff)) R6=ctx()
+      386: (1d) if r1 == r9 goto pc-363     ; R1=scalar(smin=0,smax=umax=0xffffffff,var_off=(0x0; 0xffffffff)) R9=scalar(smin=umin=smin32=umin32=14,smax=umax=smax32=umax32=134,var_off=(0x2; 0xfc))
+      387: (7b) *(u64 *)(r10 -88) = r1      ; R1=scalar(id=13,smin=0,smax=umax=0xffffffff,var_off=(0x0; 0xffffffff)) R10=fp0 fp-88_w=scalar(id=13,smin=0,smax=umax=0xffffffff,var_off=(0x0; 0xffffffff))
+      388: (bf) r1 = r10                    ; R1_w=fp0 R10=fp0
+      389: (07) r1 += -40                   ; R1_w=fp-40
+      390: (b7) r8 = 32                     ; R8_w=32
+      391: (b7) r2 = 0                      ; R2_w=0
+      392: (b7) r3 = 32                     ; R3_w=32
+      393: (85) call pc+372
+      caller:
+       R6=ctx() R7=0 R8_w=32 R9=scalar(smin=umin=smin32=umin32=14,smax=umax=smax32=umax32=134,var_off=(0x2; 0xfc)) R10=fp0 fp-24=????mmmm fp-32=mmmmmmmm fp-40=mmmmmmmm fp-48=mmmm???? fp-56=scalar(id=6,smin=0,smax=umax=0xffffffff,var_off=(0x0; 0xffffffff)) fp-64=scalar(id=9,smin=smin32=0,smax=umax=smax32=umax32=0xffffff,var_off=(0x0; 0xffffff)) fp-72=scalar(id=8,smin=smin32=0,smax=umax=smax32=umax32=0xffff,var_off=(0x0; 0xffff)) fp-80=scalar(id=4,smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) fp-88_w=scalar(id=13,smin=0,smax=umax=0xffffffff,var_off=(0x0; 0xffffffff))
+      callee:
+       frame1: R1_w=fp[0]-40 R2_w=0 R3_w=32 R10=fp0
+      766: frame1: R1=fp[0]-40 R2=0 R3=32 R10=fp0
+      766: (15) if r3 == 0x0 goto pc+6      ; frame1: R3=32
+      767: (b7) r4 = 0                      ; frame1: R4_w=0
+      768: (bf) r5 = r1                     ; frame1: R1=fp[0]-40 R5_w=fp[0]-40
+      769: (0f) r5 += r4                    ; frame1: R4_w=0 R5_w=fp[0]-40
+      770: (73) *(u8 *)(r5 +0) = r2         ; frame1: R2=0 R5_w=fp[0]-40
+      771: (07) r4 += 1                     ; frame1: R4_w=1
+      772: (2d) if r3 > r4 goto pc-5        ; frame1: R3=32 R4_w=1
+      768: (bf) r5 = r1                     ; frame1: R1=fp[0]-40 R5_w=fp[0]-40
+      769: (0f) r5 += r4                    ; frame1: R4_w=1 R5_w=fp[0]-39
+      770: (73) *(u8 *)(r5 +0) = r2         ; frame1: R2=0 R5_w=fp[0]-39
+      771: (07) r4 += 1                     ; frame1: R4=2
+      772: (2d) if r3 > r4 goto pc-5        ; frame1: R3=32 R4=2
+      768: (bf) r5 = r1                     ; frame1: R1=fp[0]-40 R5_w=fp[0]-40
+      769: (0f) r5 += r4                    ; frame1: R4=2 R5_w=fp[0]-38
+      770: (73) *(u8 *)(r5 +0) = r2         ; frame1: R2=0 R5_w=fp[0]-38
+      771: (07) r4 += 1                     ; frame1: R4_w=3
+      772: (2d) if r3 > r4 goto pc-5        ; frame1: R3=32 R4_w=3
+      768: (bf) r5 = r1                     ; frame1: R1=fp[0]-40 R5_w=fp[0]-40
+      769: (0f) r5 += r4                    ; frame1: R4_w=3 R5_w=fp[0]-37
+      770: (73) *(u8 *)(r5 +0) = r2         ; frame1: R2=0 R5_w=fp[0]-37
+      771: (07) r4 += 1                     ; frame1: R4_w=4
+      772: (2d) if r3 > r4 goto pc-5        ; frame1: R3=32 R4_w=4
+      768: (bf) r5 = r1                     ; frame1: R1=fp[0]-40 R5_w=fp[0]-40
+      769: (0f) r5 += r4                    ; frame1: R4=4 R5_w=fp[0]-36
+      770: (73) *(u8 *)(r5 +0) = r2         ; frame1: R2=0 R5_w=fp[0]-36
+      771: (07) r4 += 1                     ; frame1: R4_w=5
+      772: (2d) if r3 > r4 goto pc-5        ; frame1: R3=32 R4_w=5
+      768: (bf) r5 = r1                     ; frame1: R1=fp[0]-40 R5_w=fp[0]-40
+      769: (0f) r5 += r4                    ; frame1: R4_w=5 R5_w=fp[0]-35
+      770: (73) *(u8 *)(r5 +0) = r2         ; frame1: R2=0 R5_w=fp[0]-35
+      771: (07) r4 += 1                     ; frame1: R4_w=6
+      772: (2d) if r3 > r4 goto pc-5        ; frame1: R3=32 R4_w=6
+      768: (bf) r5 = r1                     ; frame1: R1=fp[0]-40 R5_w=fp[0]-40
+      769: (0f) r5 += r4                    ; frame1: R4_w=6 R5_w=fp[0]-34
+      770: (73) *(u8 *)(r5 +0) = r2         ; frame1: R2=0 R5_w=fp[0]-34
+      771: (07) r4 += 1                     ; frame1: R4_w=7
+      772: (2d) if r3 > r4 goto pc-5        ; frame1: R3=32 R4_w=7
+      768: (bf) r5 = r1                     ; frame1: R1=fp[0]-40 R5_w=fp[0]-40
+      769: (0f) r5 += r4                    ; frame1: R4_w=7 R5_w=fp[0]-33
+      770: (73) *(u8 *)(r5 +0) = r2         ; frame1: R2=0 R5_w=fp[0]-33
+      771: (07) r4 += 1                     ; frame1: R4_w=8
+      772: (2d) if r3 > r4 goto pc-5        ; frame1: R3=32 R4_w=8
+      768: (bf) r5 = r1                     ; frame1: R1=fp[0]-40 R5_w=fp[0]-40
+      769: (0f) r5 += r4                    ; frame1: R4_w=8 R5_w=fp[0]-32
+      770: (73) *(u8 *)(r5 +0) = r2         ; frame1: R2=0 R5_w=fp[0]-32
+      771: (07) r4 += 1                     ; frame1: R4_w=9
+      772: (2d) if r3 > r4 goto pc-5        ; frame1: R3=32 R4_w=9
+      768: (bf) r5 = r1                     ; frame1: R1=fp[0]-40 R5_w=fp[0]-40
+      769: (0f) r5 += r4                    ; frame1: R4_w=9 R5_w=fp[0]-31
+      770: (73) *(u8 *)(r5 +0) = r2         ; frame1: R2=0 R5_w=fp[0]-31
+      771: (07) r4 += 1                     ; frame1: R4_w=10
+      772: (2d) if r3 > r4 goto pc-5        ; frame1: R3=32 R4_w=10
+      768: (bf) r5 = r1                     ; frame1: R1=fp[0]-40 R5_w=fp[0]-40
+      769: (0f) r5 += r4                    ; frame1: R4_w=10 R5_w=fp[0]-30
+      770: (73) *(u8 *)(r5 +0) = r2         ; frame1: R2=0 R5_w=fp[0]-30
+      771: (07) r4 += 1                     ; frame1: R4_w=11
+      772: (2d) if r3 > r4 goto pc-5        ; frame1: R3=32 R4_w=11
+      768: (bf) r5 = r1                     ; frame1: R1=fp[0]-40 R5_w=fp[0]-40
+      769: (0f) r5 += r4                    ; frame1: R4_w=11 R5_w=fp[0]-29
+      770: (73) *(u8 *)(r5 +0) = r2         ; frame1: R2=0 R5_w=fp[0]-29
+      771: (07) r4 += 1                     ; frame1: R4_w=12
+      772: (2d) if r3 > r4 goto pc-5        ; frame1: R3=32 R4_w=12
+      768: (bf) r5 = r1                     ; frame1: R1=fp[0]-40 R5_w=fp[0]-40
+      769: (0f) r5 += r4                    ; frame1: R4_w=12 R5_w=fp[0]-28
+      770: (73) *(u8 *)(r5 +0) = r2         ; frame1: R2=0 R5_w=fp[0]-28
+      771: (07) r4 += 1                     ; frame1: R4_w=13
+      772: (2d) if r3 > r4 goto pc-5        ; frame1: R3=32 R4_w=13
+      768: (bf) r5 = r1                     ; frame1: R1=fp[0]-40 R5_w=fp[0]-40
+      769: (0f) r5 += r4                    ; frame1: R4_w=13 R5_w=fp[0]-27
+      770: (73) *(u8 *)(r5 +0) = r2         ; frame1: R2=0 R5_w=fp[0]-27
+      771: (07) r4 += 1                     ; frame1: R4_w=14
+      772: (2d) if r3 > r4 goto pc-5        ; frame1: R3=32 R4_w=14
+      768: (bf) r5 = r1                     ; frame1: R1=fp[0]-40 R5_w=fp[0]-40
+      769: (0f) r5 += r4                    ; frame1: R4_w=14 R5_w=fp[0]-26
+      770: (73) *(u8 *)(r5 +0) = r2         ; frame1: R2=0 R5_w=fp[0]-26
+      771: (07) r4 += 1                     ; frame1: R4_w=15
+      772: (2d) if r3 > r4 goto pc-5        ; frame1: R3=32 R4_w=15
+      768: (bf) r5 = r1                     ; frame1: R1=fp[0]-40 R5_w=fp[0]-40
+      769: (0f) r5 += r4                    ; frame1: R4_w=15 R5_w=fp[0]-25
+      770: (73) *(u8 *)(r5 +0) = r2         ; frame1: R2=0 R5_w=fp[0]-25
+      771: (07) r4 += 1                     ; frame1: R4_w=16
+      772: (2d) if r3 > r4 goto pc-5        ; frame1: R3=32 R4_w=16
+      768: (bf) r5 = r1                     ; frame1: R1=fp[0]-40 R5_w=fp[0]-40
+      769: (0f) r5 += r4                    ; frame1: R4_w=16 R5_w=fp[0]-24
+      770: (73) *(u8 *)(r5 +0) = r2         ; frame1: R2=0 R5_w=fp[0]-24
+      771: (07) r4 += 1                     ; frame1: R4_w=17
+      772: (2d) if r3 > r4 goto pc-5        ; frame1: R3=32 R4_w=17
+      768: (bf) r5 = r1                     ; frame1: R1=fp[0]-40 R5_w=fp[0]-40
+      769: (0f) r5 += r4                    ; frame1: R4_w=17 R5_w=fp[0]-23
+      770: (73) *(u8 *)(r5 +0) = r2         ; frame1: R2=0 R5_w=fp[0]-23
+      771: (07) r4 += 1                     ; frame1: R4_w=18
+      772: (2d) if r3 > r4 goto pc-5        ; frame1: R3=32 R4_w=18
+      768: (bf) r5 = r1                     ; frame1: R1=fp[0]-40 R5_w=fp[0]-40
+      769: (0f) r5 += r4                    ; frame1: R4_w=18 R5_w=fp[0]-22
+      770: (73) *(u8 *)(r5 +0) = r2         ; frame1: R2=0 R5_w=fp[0]-22
+      771: (07) r4 += 1                     ; frame1: R4_w=19
+      772: (2d) if r3 > r4 goto pc-5        ; frame1: R3=32 R4_w=19
+      768: (bf) r5 = r1                     ; frame1: R1=fp[0]-40 R5_w=fp[0]-40
+      769: (0f) r5 += r4                    ; frame1: R4_w=19 R5_w=fp[0]-21
+      770: (73) *(u8 *)(r5 +0) = r2         ; frame1: R2=0 R5_w=fp[0]-21
+      771: (07) r4 += 1                     ; frame1: R4_w=20
+      772: (2d) if r3 > r4 goto pc-5        ; frame1: R3=32 R4_w=20
+      768: (bf) r5 = r1                     ; frame1: R1=fp[0]-40 R5_w=fp[0]-40
+      769: (0f) r5 += r4                    ; frame1: R4_w=20 R5_w=fp[0]-20
+      770: (73) *(u8 *)(r5 +0) = r2         ; frame1: R2=0 R5_w=fp[0]-20
+      771: (07) r4 += 1                     ; frame1: R4_w=21
+      772: (2d) if r3 > r4 goto pc-5        ; frame1: R3=32 R4_w=21
+      768: (bf) r5 = r1                     ; frame1: R1=fp[0]-40 R5_w=fp[0]-40
+      769: (0f) r5 += r4                    ; frame1: R4_w=21 R5_w=fp[0]-19
+      770: (73) *(u8 *)(r5 +0) = r2         ; frame1: R2=0 R5_w=fp[0]-19
+      771: (07) r4 += 1                     ; frame1: R4_w=22
+      772: (2d) if r3 > r4 goto pc-5        ; frame1: R3=32 R4_w=22
+      768: (bf) r5 = r1                     ; frame1: R1=fp[0]-40 R5_w=fp[0]-40
+      769: (0f) r5 += r4                    ; frame1: R4_w=22 R5_w=fp[0]-18
+      770: (73) *(u8 *)(r5 +0) = r2         ; frame1: R2=0 R5_w=fp[0]-18
+      771: (07) r4 += 1                     ; frame1: R4_w=23
+      772: (2d) if r3 > r4 goto pc-5        ; frame1: R3=32 R4_w=23
+      768: (bf) r5 = r1                     ; frame1: R1=fp[0]-40 R5_w=fp[0]-40
+      769: (0f) r5 += r4                    ; frame1: R4_w=23 R5_w=fp[0]-17
+      770: (73) *(u8 *)(r5 +0) = r2         ; frame1: R2=0 R5_w=fp[0]-17
+      771: (07) r4 += 1                     ; frame1: R4_w=24
+      772: (2d) if r3 > r4 goto pc-5        ; frame1: R3=32 R4_w=24
+      768: (bf) r5 = r1                     ; frame1: R1=fp[0]-40 R5_w=fp[0]-40
+      769: (0f) r5 += r4                    ; frame1: R4=24 R5_w=fp[0]-16
+      770: (73) *(u8 *)(r5 +0) = r2         ; frame1: R2=0 R5_w=fp[0]-16
+      771: (07) r4 += 1                     ; frame1: R4_w=25
+      772: (2d) if r3 > r4 goto pc-5        ; frame1: R3=32 R4_w=25
+      768: (bf) r5 = r1                     ; frame1: R1=fp[0]-40 R5_w=fp[0]-40
+      769: (0f) r5 += r4                    ; frame1: R4_w=25 R5_w=fp[0]-15
+      770: (73) *(u8 *)(r5 +0) = r2         ; frame1: R2=0 R5_w=fp[0]-15
+      771: (07) r4 += 1                     ; frame1: R4_w=26
+      772: (2d) if r3 > r4 goto pc-5        ; frame1: R3=32 R4_w=26
+      768: (bf) r5 = r1                     ; frame1: R1=fp[0]-40 R5_w=fp[0]-40
+      769: (0f) r5 += r4                    ; frame1: R4_w=26 R5_w=fp[0]-14
+      770: (73) *(u8 *)(r5 +0) = r2         ; frame1: R2=0 R5_w=fp[0]-14
+      771: (07) r4 += 1                     ; frame1: R4_w=27
+      772: (2d) if r3 > r4 goto pc-5        ; frame1: R3=32 R4_w=27
+      768: (bf) r5 = r1                     ; frame1: R1=fp[0]-40 R5_w=fp[0]-40
+      769: (0f) r5 += r4                    ; frame1: R4_w=27 R5_w=fp[0]-13
+      770: (73) *(u8 *)(r5 +0) = r2         ; frame1: R2=0 R5_w=fp[0]-13
+      771: (07) r4 += 1                     ; frame1: R4_w=28
+      772: (2d) if r3 > r4 goto pc-5        ; frame1: R3=32 R4_w=28
+      768: (bf) r5 = r1                     ; frame1: R1=fp[0]-40 R5_w=fp[0]-40
+      769: (0f) r5 += r4                    ; frame1: R4_w=28 R5_w=fp[0]-12
+      770: (73) *(u8 *)(r5 +0) = r2         ; frame1: R2=0 R5_w=fp[0]-12
+      771: (07) r4 += 1                     ; frame1: R4_w=29
+      772: (2d) if r3 > r4 goto pc-5        ; frame1: R3=32 R4_w=29
+      768: (bf) r5 = r1                     ; frame1: R1=fp[0]-40 R5_w=fp[0]-40
+      769: (0f) r5 += r4                    ; frame1: R4_w=29 R5_w=fp[0]-11
+      770: (73) *(u8 *)(r5 +0) = r2         ; frame1: R2=0 R5_w=fp[0]-11
+      771: (07) r4 += 1                     ; frame1: R4_w=30
+      772: (2d) if r3 > r4 goto pc-5        ; frame1: R3=32 R4_w=30
+      768: (bf) r5 = r1                     ; frame1: R1=fp[0]-40 R5_w=fp[0]-40
+      769: (0f) r5 += r4                    ; frame1: R4_w=30 R5_w=fp[0]-10
+      770: (73) *(u8 *)(r5 +0) = r2         ; frame1: R2=0 R5_w=fp[0]-10
+      771: (07) r4 += 1                     ; frame1: R4_w=31
+      772: (2d) if r3 > r4 goto pc-5        ; frame1: R3=32 R4_w=31
+      768: (bf) r5 = r1                     ; frame1: R1=fp[0]-40 R5_w=fp[0]-40
+      769: (0f) r5 += r4                    ; frame1: R4_w=31 R5_w=fp[0]-9
+      770: (73) *(u8 *)(r5 +0) = r2         ; frame1: R2=0 R5_w=fp[0]-9
+      771: (07) r4 += 1                     ; frame1: R4_w=32
+      772: (2d) if r3 > r4 goto pc-5        ; frame1: R3=32 R4_w=32
+      773: (95) exit
+      returning from callee:
+       frame1: R1=fp[0]-40 R2=0 R3=32 R4=32 R5=fp[0]-9 R10=fp0
+      to caller at 394:
+       R6=ctx() R7=0 R8=32 R9=scalar(smin=umin=smin32=umin32=14,smax=umax=smax32=umax32=134,var_off=(0x2; 0xfc)) R10=fp0 fp-16=0000000m fp-24=0000000m fp-32=0000000m fp-40=0000000m fp-48=mmmm???? fp-56=scalar(id=6,smin=0,smax=umax=0xffffffff,var_off=(0x0; 0xffffffff)) fp-64=scalar(id=9,smin=smin32=0,smax=umax=smax32=umax32=0xffffff,var_off=(0x0; 0xffffff)) fp-72=scalar(id=8,smin=smin32=0,smax=umax=smax32=umax32=0xffff,var_off=(0x0; 0xffff)) fp-80=scalar(id=4,smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) fp-88=scalar(id=13,smin=0,smax=umax=0xffffffff,var_off=(0x0; 0xffffffff))
+      394: (79) r1 = *(u64 *)(r10 -88)      ; R1_w=scalar(id=13,smin=0,smax=umax=0xffffffff,var_off=(0x0; 0xffffffff)) R10=fp0 fp-88=scalar(id=13,smin=0,smax=umax=0xffffffff,var_off=(0x0; 0xffffffff))
+      395: (18) r7 = 0xffffffff             ; R7_w=0xffffffff
+      397: (2d) if r9 > r1 goto pc+13       ; R1_w=scalar(id=13,smin=umin=umin32=14,smax=umax=0xffffffff,var_off=(0x0; 0xffffffff)) R9=scalar(smin=umin=smin32=umin32=14,smax=umax=smax32=umax32=134,var_off=(0x2; 0xfc))
+      398: (bf) r7 = r1                     ; R1_w=scalar(id=13,smin=umin=umin32=14,smax=umax=0xffffffff,var_off=(0x0; 0xffffffff)) R7_w=scalar(id=13,smin=umin=umin32=14,smax=umax=0xffffffff,var_off=(0x0; 0xffffffff))
+      399: (1f) r7 -= r9                    ; R7_w=scalar(smin=-120,smax=0xfffffff1) R9=scalar(smin=umin=smin32=umin32=14,smax=umax=smax32=umax32=134,var_off=(0x2; 0xfc))
+      400: (2d) if r8 > r7 goto pc+1 402: R1_w=scalar(id=13,smin=umin=umin32=14,smax=umax=0xffffffff,var_off=(0x0; 0xffffffff)) R6=ctx() R7_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=31,var_off=(0x0; 0x1f)) R8=32 R9=scalar(smin=umin=smin32=umin32=14,smax=umax=smax32=umax32=134,var_off=(0x2; 0xfc)) R10=fp0 fp-16=0000000m fp-24=0000000m fp-32=0000000m fp-40=0000000m fp-48=mmmm???? fp-56=scalar(id=6,smin=0,smax=umax=0xffffffff,var_off=(0x0; 0xffffffff)) fp-64=scalar(id=9,smin=smin32=0,smax=umax=smax32=umax32=0xffffff,var_off=(0x0; 0xffffff)) fp-72=scalar(id=8,smin=smin32=0,smax=umax=smax32=umax32=0xffff,var_off=(0x0; 0xffff)) fp-80=scalar(id=4,smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) fp-88=scalar(id=13,smin=umin=umin32=14,smax=umax=0xffffffff,var_off=(0x0; 0xffffffff))
+      402: (bf) r3 = r10                    ; R3_w=fp0 R10=fp0
+      403: (07) r3 += -40                   ; R3_w=fp-40
+      404: (bf) r1 = r6                     ; R1_w=ctx() R6=ctx()
+      405: (bf) r2 = r9                     ; R2_w=scalar(id=18,smin=umin=smin32=umin32=14,smax=umax=smax32=umax32=134,var_off=(0x2; 0xfc)) R9=scalar(id=18,smin=umin=smin32=umin32=14,smax=umax=smax32=umax32=134,var_off=(0x2; 0xfc))
+      406: (bf) r4 = r7                     ; R4_w=scalar(id=19,smin=smin32=0,smax=umax=smax32=umax32=31,var_off=(0x0; 0x1f)) R7_w=scalar(id=19,smin=smin32=0,smax=umax=smax32=umax32=31,var_off=(0x0; 0x1f))
+      407: (85) call bpf_skb_load_bytes#26
+      R4 invalid zero-sized read: u64=[0,31]
+      verification time 3790 usec
+      stack depth 96+0+0+0+0
+      processed 1143 insns (limit 1000000) max_states_per_insn 2 total_states 54 peak_states 54 mark_read 23
+
+      Caused by:
+          Permission denied (os error 13)
+    combined: |-
+      hanshal101@lol:~/ebpf/rust/egmon$ sudo RUST_LOG=debug cargo run
+         Compiling proc-macro2 v1.0.95
+         Compiling unicode-ident v1.0.18
+         Compiling version_check v0.9.5
+         Compiling memchr v2.7.4
+         Compiling serde v1.0.219
+         Compiling rustversion v1.0.20
+         Compiling libc v0.2.172
+         Compiling aya-ebpf-cty v0.2.2
+         Compiling rustix v0.38.44
+         Compiling bitflags v2.9.1
+         Compiling equivalent v1.0.2
+         Compiling foldhash v0.1.5
+         Compiling allocator-api2 v0.2.21
+         Compiling aya-ebpf-bindings v0.1.1
+         Compiling linux-raw-sys v0.4.15
+         Compiling thiserror v1.0.69
+         Compiling either v1.15.0
+         Compiling object v0.36.7
+         Compiling home v0.5.11
+         Compiling thiserror v2.0.12
+         Compiling cfg-if v1.0.0
+         Compiling serde_json v1.0.140
+         Compiling log v0.4.27
+         Compiling camino v1.1.9
+         Compiling semver v1.0.26
+         Compiling crc32fast v1.4.2
+         Compiling proc-macro-error-attr v1.0.4
+         Compiling proc-macro-error v1.0.4
+         Compiling core-error v0.0.0
+         Compiling hashbrown v0.15.3
+         Compiling ryu v1.0.20
+         Compiling anyhow v1.0.98
+         Compiling itoa v1.0.15
+         Compiling bytes v1.10.1
+         Compiling pin-project-lite v0.2.16
+         Compiling once_cell v1.21.3
+         Compiling egmon-common v0.1.0 (/home/hanshal101/ebpf/rust/egmon/egmon-common)
+         Compiling network-types v0.0.8
+         Compiling assert_matches v1.5.0
+         Compiling heck v0.5.0
+         Compiling anstyle v1.0.10
+         Compiling clap_lex v0.7.4
+         Compiling env_filter v0.1.3
+         Compiling env_logger v0.11.8
+         Compiling clap_builder v4.5.38
+         Compiling aya-ebpf v0.1.1
+         Compiling quote v1.0.40
+         Compiling syn v2.0.101
+         Compiling socket2 v0.5.9
+         Compiling signal-hook-registry v1.4.5
+         Compiling mio v1.0.3
+         Compiling indexmap v2.9.0
+         Compiling which v6.0.3
+         Compiling egmon-ebpf v0.1.0 (/home/hanshal101/ebpf/rust/egmon/egmon-ebpf)
+         Compiling num_enum_derive v0.7.3
+         Compiling serde_derive v1.0.219
+         Compiling thiserror-impl v1.0.69
+         Compiling aya-ebpf-macros v0.1.1
+         Compiling thiserror-impl v2.0.12
+         Compiling tokio-macros v2.5.0
+         Compiling clap_derive v4.5.32
+         Compiling tokio v1.45.0
+         Compiling num_enum v0.7.3
+         Compiling aya-log-common v0.1.15
+         Compiling aya-log-parser v0.1.13
+         Compiling aya-log-ebpf-macros v0.1.0
+         Compiling aya-log-ebpf v0.1.1
+         Compiling clap v4.5.38
+         Compiling aya-obj v0.2.1
+         Compiling aya v0.13.1
+         Compiling aya-log v0.2.1
+         Compiling cargo-platform v0.1.9
+         Compiling cargo_metadata v0.19.2
+         Compiling aya-build v0.1.2
+         Compiling egmon v0.1.0 (/home/hanshal101/ebpf/rust/egmon/egmon)
+      warning: egmon@0.1.0:    Compiling proc-macro2 v1.0.95
+      warning: egmon@0.1.0:    Compiling unicode-ident v1.0.18
+      warning: egmon@0.1.0:    Compiling compiler_builtins v0.1.159
+      warning: egmon@0.1.0:    Compiling core v0.0.0 (/root/.rustup/toolchains/nightly-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core)
+      warning: egmon@0.1.0:    Compiling version_check v0.9.5
+      warning: egmon@0.1.0:    Compiling rustversion v1.0.20
+      warning: egmon@0.1.0:    Compiling aya-ebpf-cty v0.2.2
+      warning: egmon@0.1.0:    Compiling rustix v0.38.44
+      warning: egmon@0.1.0:    Compiling aya-ebpf-bindings v0.1.1
+      warning: egmon@0.1.0:    Compiling linux-raw-sys v0.4.15
+      warning: egmon@0.1.0:    Compiling bitflags v2.9.1
+      warning: egmon@0.1.0:    Compiling home v0.5.11
+      warning: egmon@0.1.0:    Compiling either v1.15.0
+      warning: egmon@0.1.0:    Compiling proc-macro-error-attr v1.0.4
+      warning: egmon@0.1.0:    Compiling proc-macro-error v1.0.4
+      warning: egmon@0.1.0:    Compiling aya-ebpf v0.1.1
+      warning: egmon@0.1.0:    Compiling quote v1.0.40
+      warning: egmon@0.1.0:    Compiling syn v2.0.101
+      warning: egmon@0.1.0:    Compiling which v6.0.3
+      warning: egmon@0.1.0:    Compiling egmon-ebpf v0.1.0 (/home/hanshal101/ebpf/rust/egmon/egmon-ebpf)
+      warning: egmon@0.1.0:    Compiling num_enum_derive v0.7.3
+      warning: egmon@0.1.0:    Compiling aya-ebpf-macros v0.1.1
+      warning: egmon@0.1.0:    Compiling num_enum v0.7.3
+      warning: egmon@0.1.0:    Compiling aya-log-common v0.1.15
+      warning: egmon@0.1.0:    Compiling aya-log-parser v0.1.13
+      warning: egmon@0.1.0:    Compiling aya-log-ebpf-macros v0.1.0
+      warning: egmon@0.1.0:    Compiling rustc-std-workspace-core v1.99.0 (/root/.rustup/toolchains/nightly-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/rustc-std-workspace-core)
+      warning: egmon@0.1.0:    Compiling egmon-common v0.1.0 (/home/hanshal101/ebpf/rust/egmon/egmon-common)
+      warning: egmon@0.1.0:    Compiling network-types v0.0.8
+      warning: egmon@0.1.0:    Compiling aya-log-ebpf v0.1.1
+      warning: egmon@0.1.0: warning: unused import: `RingBuf`
+      warning: egmon@0.1.0:  --> egmon-ebpf/src/main.rs:7:21
+      warning: egmon@0.1.0:   |
+      warning: egmon@0.1.0: 7 |     maps::{HashMap, RingBuf},
+      warning: egmon@0.1.0:   |                     ^^^^^^^
+      warning: egmon@0.1.0:   |
+      warning: egmon@0.1.0:   = note: `#[warn(unused_imports)]` on by default
+      warning: egmon@0.1.0:
+      warning: egmon@0.1.0:
+      warning: egmon@0.1.0: warning: unused variable: `payload`
+      warning: egmon@0.1.0:   --> egmon-ebpf/src/main.rs:79:9
+      warning: egmon@0.1.0:    |
+      warning: egmon@0.1.0: 79 |     let payload = ctx
+      warning: egmon@0.1.0:    |         ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_payload`
+      warning: egmon@0.1.0:    |
+      warning: egmon@0.1.0:    = note: `#[warn(unused_variables)]` on by default
+      warning: egmon@0.1.0:
+      warning: egmon@0.1.0:
+      warning: egmon@0.1.0: warning: creating a shared reference to mutable static
+      warning: egmon@0.1.0:   --> egmon-ebpf/src/main.rs:41:29
+      warning: egmon@0.1.0:    |
+      warning: egmon@0.1.0: 41 |     let is_block = unsafe { BLOCK_LIST.get(&destination).is_some() };
+      warning: egmon@0.1.0:    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ shared reference to mutable static
+      warning: egmon@0.1.0:    |
+      warning: egmon@0.1.0:    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/static-mut-references.html>
+      warning: egmon@0.1.0:    = note: shared references to mutable statics are dangerous; it's undefined behavior if the static is mutated or if a mutable reference is created for it while the shared reference lives
+      warning: egmon@0.1.0:    = note: `#[warn(static_mut_refs)]` on by default
+      warning: egmon@0.1.0:
+      warning: egmon@0.1.0:
+      warning: egmon@0.1.0:     Finished `release` profile [optimized] target(s) in 10.52s
+      warning: unused import: `std::net::Ipv4Addr`
+        --> egmon/src/main.rs:14:5
+         |
+      14 | use std::net::Ipv4Addr;
+         |     ^^^^^^^^^^^^^^^^^^
+         |
+         = note: `#[warn(unused_imports)]` on by default
+
+      warning: unused variable: `hmap`
+        --> egmon/src/main.rs:43:13
+         |
+      43 |     let mut hmap: HashMap<_, u32, u8> = HashMap::try_from(ebpf.map_mut("BLOCK_LIST").unwrap())?;
+         |             ^^^^ help: if this is intentional, prefix it with an underscore: `_hmap`
+         |
+         = note: `#[warn(unused_variables)]` on by default
+
+      warning: variable does not need to be mutable
+        --> egmon/src/main.rs:43:9
+         |
+      43 |     let mut hmap: HashMap<_, u32, u8> = HashMap::try_from(ebpf.map_mut("BLOCK_LIST").unwrap())?;
+         |         ----^^^^
+         |         |
+         |         help: remove this `mut`
+         |
+         = note: `#[warn(unused_mut)]` on by default
+
+      warning: `egmon` (bin "egmon") generated 3 warnings (run `cargo fix --bin "egmon"` to apply 2 suggestions)
+          Finished `dev` profile [unoptimized + debuginfo] target(s) in 23.88s
+           Running `target/debug/egmon`
+      [DEBUG aya::bpf] BPF Feature Detection: Features {
+              bpf_name: true,
+              bpf_probe_read_kernel: true,
+              bpf_perf_link: true,
+              bpf_global_data: true,
+              bpf_cookie: true,
+              cpumap_prog_id: true,
+              devmap_prog_id: true,
+              prog_info_map_ids: true,
+              prog_info_gpl_compatible: true,
+              btf: Some(
+                  BtfFeatures {
+                      btf_func: true,
+                      btf_func_global: true,
+                      btf_datasec: true,
+                      btf_float: true,
+                      btf_decl_tag: true,
+                      btf_type_tag: true,
+                      btf_enum64: true,
+                  },
+              ),
+          }
+      [DEBUG aya_obj::relocation] relocating map by section index 7, kind Rodata at insn 74 in section 3
+      [DEBUG aya_obj::relocation] relocating map by symbol index Some(13), kind Maps at insn 61 in section 3
+      [DEBUG aya_obj::relocation] relocating map by symbol index Some(14), kind Maps at insn 352 in section 3
+      [DEBUG aya_obj::relocation] relocating map by section index 7, kind Rodata at insn 665 in section 3
+      [DEBUG aya_obj::relocation] relocating map by section index 7, kind Rodata at insn 429 in section 3
+      [DEBUG aya_obj::relocation] relocating map by symbol index Some(12), kind Maps at insn 48 in section 3
+      [DEBUG aya_obj::relocation] relocating map by section index 7, kind Rodata at insn 113 in section 3
+      [DEBUG aya_obj::relocation] relocating map by symbol index Some(14), kind Maps at insn 732 in section 3
+      [DEBUG aya_obj::relocation] relocating map by section index 7, kind Rodata at insn 188 in section 3
+      [DEBUG aya_obj::relocation] relocating map by symbol index Some(13), kind Maps at insn 417 in section 3
+      [DEBUG aya_obj::relocation] relocating map by section index 7, kind Rodata at insn 469 in section 3
+      [DEBUG aya_obj::relocation] relocating program `egmon` function `egmon` size 741
+      [DEBUG aya_obj::relocation] relocating call to callee address 0x0 in section 2 (relocation) at instruction 251
+      [DEBUG aya_obj::relocation] callee is `_ZN74_$LT$aya_log_common..DisplayHint$u20$as$u20$aya_log_common..WriteToBuf$GT$5write17h603271e41b5eb817E`
+      [DEBUG aya_obj::relocation] linked function `_ZN74_$LT$aya_log_common..DisplayHint$u20$as$u20$aya_log_common..WriteToBuf$GT$5write17h603271e41b5eb817E` at instruction 741
+      [DEBUG aya_obj::relocation] relocating program `egmon` function `_ZN74_$LT$aya_log_common..DisplayHint$u20$as$u20$aya_log_common..WriteToBuf$GT$5write17h603271e41b5eb817E` size 12
+      [DEBUG aya_obj::relocation] finished relocating program `egmon` function `_ZN74_$LT$aya_log_common..DisplayHint$u20$as$u20$aya_log_common..WriteToBuf$GT$5write17h603271e41b5eb817E`
+      [DEBUG aya_obj::relocation] callee `_ZN74_$LT$aya_log_common..DisplayHint$u20$as$u20$aya_log_common..WriteToBuf$GT$5write17h603271e41b5eb817E` is at ins 741, 489 from current instruction 251
+      [DEBUG aya_obj::relocation] relocating call to callee address 0x60 in section 2 (relocation) at instruction 260
+      [DEBUG aya_obj::relocation] callee is `_ZN49_$LT$u8$u20$as$u20$aya_log_common..WriteToBuf$GT$5write17h13224fa265308122E`
+      [DEBUG aya_obj::relocation] linked function `_ZN49_$LT$u8$u20$as$u20$aya_log_common..WriteToBuf$GT$5write17h13224fa265308122E` at instruction 753
+      [DEBUG aya_obj::relocation] relocating program `egmon` function `_ZN49_$LT$u8$u20$as$u20$aya_log_common..WriteToBuf$GT$5write17h13224fa265308122E` size 13
+      [DEBUG aya_obj::relocation] finished relocating program `egmon` function `_ZN49_$LT$u8$u20$as$u20$aya_log_common..WriteToBuf$GT$5write17h13224fa265308122E`
+      [DEBUG aya_obj::relocation] callee `_ZN49_$LT$u8$u20$as$u20$aya_log_common..WriteToBuf$GT$5write17h13224fa265308122E` is at ins 753, 492 from current instruction 260
+      [DEBUG aya_obj::relocation] relocating call to callee address 0x0 in section 2 (relocation) at instruction 279
+      [DEBUG aya_obj::relocation] callee is `_ZN74_$LT$aya_log_common..DisplayHint$u20$as$u20$aya_log_common..WriteToBuf$GT$5write17h603271e41b5eb817E`
+      [DEBUG aya_obj::relocation] callee `_ZN74_$LT$aya_log_common..DisplayHint$u20$as$u20$aya_log_common..WriteToBuf$GT$5write17h603271e41b5eb817E` is at ins 741, 461 from current instruction 279
+      [DEBUG aya_obj::relocation] relocating call to callee address 0x60 in section 2 (relocation) at instruction 289
+      [DEBUG aya_obj::relocation] callee is `_ZN49_$LT$u8$u20$as$u20$aya_log_common..WriteToBuf$GT$5write17h13224fa265308122E`
+      [DEBUG aya_obj::relocation] callee `_ZN49_$LT$u8$u20$as$u20$aya_log_common..WriteToBuf$GT$5write17h13224fa265308122E` is at ins 753, 463 from current instruction 289
+      [DEBUG aya_obj::relocation] relocating call to callee address 0x0 in section 2 (relocation) at instruction 309
+      [DEBUG aya_obj::relocation] callee is `_ZN74_$LT$aya_log_common..DisplayHint$u20$as$u20$aya_log_common..WriteToBuf$GT$5write17h603271e41b5eb817E`
+      [DEBUG aya_obj::relocation] callee `_ZN74_$LT$aya_log_common..DisplayHint$u20$as$u20$aya_log_common..WriteToBuf$GT$5write17h603271e41b5eb817E` is at ins 741, 431 from current instruction 309
+      [DEBUG aya_obj::relocation] relocating call to callee address 0x60 in section 2 (relocation) at instruction 318
+      [DEBUG aya_obj::relocation] callee is `_ZN49_$LT$u8$u20$as$u20$aya_log_common..WriteToBuf$GT$5write17h13224fa265308122E`
+      [DEBUG aya_obj::relocation] callee `_ZN49_$LT$u8$u20$as$u20$aya_log_common..WriteToBuf$GT$5write17h13224fa265308122E` is at ins 753, 434 from current instruction 318
+      [DEBUG aya_obj::relocation] relocating call to callee address 0x0 in section 2 (relocation) at instruction 338
+      [DEBUG aya_obj::relocation] callee is `_ZN74_$LT$aya_log_common..DisplayHint$u20$as$u20$aya_log_common..WriteToBuf$GT$5write17h603271e41b5eb817E`
+      [DEBUG aya_obj::relocation] callee `_ZN74_$LT$aya_log_common..DisplayHint$u20$as$u20$aya_log_common..WriteToBuf$GT$5write17h603271e41b5eb817E` is at ins 741, 402 from current instruction 338
+      [DEBUG aya_obj::relocation] relocating call to callee address 0x60 in section 2 (relocation) at instruction 347
+      [DEBUG aya_obj::relocation] callee is `_ZN49_$LT$u8$u20$as$u20$aya_log_common..WriteToBuf$GT$5write17h13224fa265308122E`
+      [DEBUG aya_obj::relocation] callee `_ZN49_$LT$u8$u20$as$u20$aya_log_common..WriteToBuf$GT$5write17h13224fa265308122E` is at ins 753, 405 from current instruction 347
+      [DEBUG aya_obj::relocation] relocating call to callee address 0x178 in section 2 (relocation) at instruction 393
+      [DEBUG aya_obj::relocation] callee is `memset`
+      [DEBUG aya_obj::relocation] linked function `memset` at instruction 766
+      [DEBUG aya_obj::relocation] relocating program `egmon` function `memset` size 8
+      [DEBUG aya_obj::relocation] finished relocating program `egmon` function `memset`
+      [DEBUG aya_obj::relocation] callee `memset` is at ins 766, 372 from current instruction 393
+      [DEBUG aya_obj::relocation] relocating call to callee address 0x0 in section 2 (relocation) at instruction 559
+      [DEBUG aya_obj::relocation] callee is `_ZN74_$LT$aya_log_common..DisplayHint$u20$as$u20$aya_log_common..WriteToBuf$GT$5write17h603271e41b5eb817E`
+      [DEBUG aya_obj::relocation] callee `_ZN74_$LT$aya_log_common..DisplayHint$u20$as$u20$aya_log_common..WriteToBuf$GT$5write17h603271e41b5eb817E` is at ins 741, 181 from current instruction 559
+      [DEBUG aya_obj::relocation] relocating call to callee address 0x60 in section 2 (relocation) at instruction 568
+      [DEBUG aya_obj::relocation] callee is `_ZN49_$LT$u8$u20$as$u20$aya_log_common..WriteToBuf$GT$5write17h13224fa265308122E`
+      [DEBUG aya_obj::relocation] callee `_ZN49_$LT$u8$u20$as$u20$aya_log_common..WriteToBuf$GT$5write17h13224fa265308122E` is at ins 753, 184 from current instruction 568
+      [DEBUG aya_obj::relocation] relocating call to callee address 0x0 in section 2 (relocation) at instruction 587
+      [DEBUG aya_obj::relocation] callee is `_ZN74_$LT$aya_log_common..DisplayHint$u20$as$u20$aya_log_common..WriteToBuf$GT$5write17h603271e41b5eb817E`
+      [DEBUG aya_obj::relocation] callee `_ZN74_$LT$aya_log_common..DisplayHint$u20$as$u20$aya_log_common..WriteToBuf$GT$5write17h603271e41b5eb817E` is at ins 741, 153 from current instruction 587
+      [DEBUG aya_obj::relocation] relocating call to callee address 0x60 in section 2 (relocation) at instruction 596
+      [DEBUG aya_obj::relocation] callee is `_ZN49_$LT$u8$u20$as$u20$aya_log_common..WriteToBuf$GT$5write17h13224fa265308122E`
+      [DEBUG aya_obj::relocation] callee `_ZN49_$LT$u8$u20$as$u20$aya_log_common..WriteToBuf$GT$5write17h13224fa265308122E` is at ins 753, 156 from current instruction 596
+      [DEBUG aya_obj::relocation] relocating call to callee address 0x0 in section 2 (relocation) at instruction 615
+      [DEBUG aya_obj::relocation] callee is `_ZN74_$LT$aya_log_common..DisplayHint$u20$as$u20$aya_log_common..WriteToBuf$GT$5write17h603271e41b5eb817E`
+      [DEBUG aya_obj::relocation] callee `_ZN74_$LT$aya_log_common..DisplayHint$u20$as$u20$aya_log_common..WriteToBuf$GT$5write17h603271e41b5eb817E` is at ins 741, 125 from current instruction 615
+      [DEBUG aya_obj::relocation] relocating call to callee address 0x60 in section 2 (relocation) at instruction 624
+      [DEBUG aya_obj::relocation] callee is `_ZN49_$LT$u8$u20$as$u20$aya_log_common..WriteToBuf$GT$5write17h13224fa265308122E`
+      [DEBUG aya_obj::relocation] callee `_ZN49_$LT$u8$u20$as$u20$aya_log_common..WriteToBuf$GT$5write17h13224fa265308122E` is at ins 753, 128 from current instruction 624
+      [DEBUG aya_obj::relocation] relocating call to callee address 0x0 in section 2 (relocation) at instruction 643
+      [DEBUG aya_obj::relocation] callee is `_ZN74_$LT$aya_log_common..DisplayHint$u20$as$u20$aya_log_common..WriteToBuf$GT$5write17h603271e41b5eb817E`
+      [DEBUG aya_obj::relocation] callee `_ZN74_$LT$aya_log_common..DisplayHint$u20$as$u20$aya_log_common..WriteToBuf$GT$5write17h603271e41b5eb817E` is at ins 741, 97 from current instruction 643
+      [DEBUG aya_obj::relocation] relocating call to callee address 0x60 in section 2 (relocation) at instruction 652
+      [DEBUG aya_obj::relocation] callee is `_ZN49_$LT$u8$u20$as$u20$aya_log_common..WriteToBuf$GT$5write17h13224fa265308122E`
+      [DEBUG aya_obj::relocation] callee `_ZN49_$LT$u8$u20$as$u20$aya_log_common..WriteToBuf$GT$5write17h13224fa265308122E` is at ins 753, 100 from current instruction 652
+      [DEBUG aya_obj::relocation] relocating call to callee address 0x0 in section 2 (relocation) at instruction 716
+      [DEBUG aya_obj::relocation] callee is `_ZN74_$LT$aya_log_common..DisplayHint$u20$as$u20$aya_log_common..WriteToBuf$GT$5write17h603271e41b5eb817E`
+      [DEBUG aya_obj::relocation] callee `_ZN74_$LT$aya_log_common..DisplayHint$u20$as$u20$aya_log_common..WriteToBuf$GT$5write17h603271e41b5eb817E` is at ins 741, 24 from current instruction 716
+      [DEBUG aya_obj::relocation] relocating call to callee address 0xc8 in section 2 (relocation) at instruction 728
+      [DEBUG aya_obj::relocation] callee is `_ZN50_$LT$u32$u20$as$u20$aya_log_common..WriteToBuf$GT$5write17h9392c548e73a9c3cE`
+      [DEBUG aya_obj::relocation] linked function `_ZN50_$LT$u32$u20$as$u20$aya_log_common..WriteToBuf$GT$5write17h9392c548e73a9c3cE` at instruction 774
+      [DEBUG aya_obj::relocation] relocating program `egmon` function `_ZN50_$LT$u32$u20$as$u20$aya_log_common..WriteToBuf$GT$5write17h9392c548e73a9c3cE` size 22
+      [DEBUG aya_obj::relocation] finished relocating program `egmon` function `_ZN50_$LT$u32$u20$as$u20$aya_log_common..WriteToBuf$GT$5write17h9392c548e73a9c3cE`
+      [DEBUG aya_obj::relocation] callee `_ZN50_$LT$u32$u20$as$u20$aya_log_common..WriteToBuf$GT$5write17h9392c548e73a9c3cE` is at ins 774, 45 from current instruction 728
+      [DEBUG aya_obj::relocation] finished relocating program `egmon` function `egmon`
+      Error: the BPF_PROG_LOAD syscall failed. Verifier output: 0: R1=ctx() R10=fp0
+      0: (bf) r6 = r1                       ; R1=ctx() R6_w=ctx()
+      1: (bf) r3 = r10                      ; R3_w=fp0 R10=fp0
+      2: (07) r3 += -40                     ; R3_w=fp-40
+      3: (b7) r2 = 0                        ; R2_w=0
+      4: (b7) r4 = 14                       ; R4_w=14
+      5: (85) call bpf_skb_load_bytes#26    ; R0_w=scalar() fp-32=??mmmmmm fp-40=mmmmmmmm
+      6: (bf) r7 = r0                       ; R0_w=scalar(id=1) R7_w=scalar(id=1)
+      7: (79) r1 = *(u64 *)(r10 -40)        ; R1_w=scalar() R10=fp0 fp-40=mmmmmmmm
+      8: (55) if r7 != 0x0 goto pc+2        ; R7_w=0
+      9: (69) r2 = *(u16 *)(r10 -28)        ; R2=scalar(smin=smin32=0,smax=umax=smax32=umax32=0xffff,var_off=(0x0; 0xffff)) R10=fp0 fp-32=??mmmmmm
+      10: (55) if r2 != 0x7 goto pc+3 14: R0=0 R1=scalar() R2=scalar(smin=smin32=0,smax=umax=smax32=umax32=0xffff,var_off=(0x0; 0xffff)) R6=ctx() R7=0 R10=fp0 fp-32=??mmmmmm fp-40=mmmmmmmm
+      14: (b7) r7 = 3                       ; R7_w=3
+      15: (55) if r2 != 0x8 goto pc+8       ; R2=8
+      16: (bf) r3 = r10                     ; R3_w=fp0 R10=fp0
+      17: (07) r3 += -40                    ; R3_w=fp-40
+      18: (bf) r1 = r6                      ; R1_w=ctx() R6=ctx()
+      19: (b7) r2 = 14                      ; R2_w=14
+      20: (b7) r4 = 20                      ; R4_w=20
+      21: (85) call bpf_skb_load_bytes#26   ; R0=scalar() fp-24=????mmmm fp-32=mmmmmmmm fp-40=mmmmmmmm
+      22: (bf) r7 = r0                      ; R0=scalar(id=3) R7_w=scalar(id=3)
+      23: (15) if r7 == 0x0 goto pc+2 26: R0=0 R6=ctx() R7_w=0 R10=fp0 fp-24=????mmmm fp-32=mmmmmmmm fp-40=mmmmmmmm
+      26: (71) r1 = *(u8 *)(r10 -24)        ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R10=fp0 fp-24=????mmmm
+      27: (67) r1 <<= 8                     ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=0xff00,var_off=(0x0; 0xff00))
+      28: (71) r2 = *(u8 *)(r10 -25)        ; R2_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R10=fp0 fp-32=mmmmmmmm
+      29: (4f) r1 |= r2                     ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=0xffff,var_off=(0x0; 0xffff)) R2_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+      30: (71) r2 = *(u8 *)(r10 -23)        ; R2_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R10=fp0 fp-24=????mmmm
+      31: (67) r2 <<= 16                    ; R2_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=0xff0000,var_off=(0x0; 0xff0000))
+      32: (71) r7 = *(u8 *)(r10 -22)        ; R7_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R10=fp0 fp-24=????mmmm
+      33: (67) r7 <<= 24                    ; R7_w=scalar(smin=0,smax=umax=umax32=0xff000000,smax32=0x7f000000,var_off=(0x0; 0xff000000))
+      34: (4f) r7 |= r2                     ; R2_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=0xff0000,var_off=(0x0; 0xff0000)) R7_w=scalar(smin=0,smax=umax=umax32=0xffff0000,smax32=0x7fff0000,var_off=(0x0; 0xffff0000))
+      35: (4f) r7 |= r1                     ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=0xffff,var_off=(0x0; 0xffff)) R7_w=scalar(smin=0,smax=umax=0xffffffff,var_off=(0x0; 0xffffffff))
+      36: (71) r1 = *(u8 *)(r10 -21)        ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R10=fp0 fp-24=????mmmm
+      37: (7b) *(u64 *)(r10 -80) = r1       ; R1_w=scalar(id=4,smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R10=fp0 fp-80_w=scalar(id=4,smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+      38: (67) r1 <<= 32                    ; R1_w=scalar(smin=smin32=0,smax=umax=0xff00000000,smax32=umax32=0,var_off=(0x0; 0xff00000000))
+      39: (4f) r7 |= r1                     ; R1_w=scalar(smin=smin32=0,smax=umax=0xff00000000,smax32=umax32=0,var_off=(0x0; 0xff00000000)) R7_w=scalar(smin=0,smax=umax=0xffffffffff,var_off=(0x0; 0xffffffffff))
+      40: (71) r8 = *(u8 *)(r10 -40)        ; R8_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R10=fp0 fp-40=mmmmmmmm
+      41: (bf) r1 = r7                      ; R1_w=scalar(id=5,smin=0,smax=umax=0xffffffffff,var_off=(0x0; 0xffffffffff)) R7_w=scalar(id=5,smin=0,smax=umax=0xffffffffff,var_off=(0x0; 0xffffffffff))
+      42: (77) r1 >>= 8                     ; R1_w=scalar(smin=0,smax=umax=0xffffffff,var_off=(0x0; 0xffffffff))
+      43: (7b) *(u64 *)(r10 -56) = r1       ; R1_w=scalar(id=6,smin=0,smax=umax=0xffffffff,var_off=(0x0; 0xffffffff)) R10=fp0 fp-56_w=scalar(id=6,smin=0,smax=umax=0xffffffff,var_off=(0x0; 0xffffffff))
+      44: (dc) r1 = be32 r1                 ; R1_w=scalar()
+      45: (63) *(u32 *)(r10 -44) = r1       ; R1_w=scalar() R10=fp0 fp-48=mmmm????
+      46: (bf) r2 = r10                     ; R2_w=fp0 R10=fp0
+      47: (07) r2 += -44                    ; R2_w=fp-44
+      48: (18) r1 = 0xffff8fc950d36000      ; R1_w=map_ptr(map=BLOCK_LIST,ks=4,vs=1)
+      50: (85) call bpf_map_lookup_elem#1   ; R0=map_value_or_null(id=7,map=BLOCK_LIST,ks=4,vs=1)
+      51: (bf) r1 = r7                      ; R1_w=scalar(id=5,smin=0,smax=umax=0xffffffffff,var_off=(0x0; 0xffffffffff)) R7=scalar(id=5,smin=0,smax=umax=0xffffffffff,var_off=(0x0; 0xffffffffff))
+      52: (77) r1 >>= 24                    ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=0xffff,var_off=(0x0; 0xffff))
+      53: (7b) *(u64 *)(r10 -72) = r1       ; R1_w=scalar(id=8,smin=smin32=0,smax=umax=smax32=umax32=0xffff,var_off=(0x0; 0xffff)) R10=fp0 fp-72_w=scalar(id=8,smin=smin32=0,smax=umax=smax32=umax32=0xffff,var_off=(0x0; 0xffff))
+      54: (77) r7 >>= 16                    ; R7_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=0xffffff,var_off=(0x0; 0xffffff))
+      55: (7b) *(u64 *)(r10 -64) = r7       ; R7_w=scalar(id=9,smin=smin32=0,smax=umax=smax32=umax32=0xffffff,var_off=(0x0; 0xffffff)) R10=fp0 fp-64_w=scalar(id=9,smin=smin32=0,smax=umax=smax32=umax32=0xffffff,var_off=(0x0; 0xffffff))
+      56: (15) if r0 == 0x0 goto pc+303 360: R0=0 R1_w=scalar(id=8,smin=smin32=0,smax=umax=smax32=umax32=0xffff,var_off=(0x0; 0xffff)) R6=ctx() R7_w=scalar(id=9,smin=smin32=0,smax=umax=smax32=umax32=0xffffff,var_off=(0x0; 0xffffff)) R8=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R10=fp0 fp-24=????mmmm fp-32=mmmmmmmm fp-40=mmmmmmmm fp-48=mmmm???? fp-56=scalar(id=6,smin=0,smax=umax=0xffffffff,var_off=(0x0; 0xffffffff)) fp-64_w=scalar(id=9,smin=smin32=0,smax=umax=smax32=umax32=0xffffff,var_off=(0x0; 0xffffff)) fp-72_w=scalar(id=8,smin=smin32=0,smax=umax=smax32=umax32=0xffff,var_off=(0x0; 0xffff)) fp-80=scalar(id=4,smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+      360: (67) r8 <<= 2                    ; R8_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=1020,var_off=(0x0; 0x3fc))
+      361: (57) r8 &= 60                    ; R8_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c))
+      362: (07) r8 += 14                    ; R8_w=scalar(smin=umin=smin32=umin32=14,smax=umax=smax32=umax32=74,var_off=(0x2; 0x7c))
+      363: (bf) r3 = r10                    ; R3_w=fp0 R10=fp0
+      364: (07) r3 += -40                   ; R3_w=fp-40
+      365: (bf) r1 = r6                     ; R1_w=ctx() R6=ctx()
+      366: (bf) r2 = r8                     ; R2_w=scalar(id=11,smin=umin=smin32=umin32=14,smax=umax=smax32=umax32=74,var_off=(0x2; 0x7c)) R8_w=scalar(id=11,smin=umin=smin32=umin32=14,smax=umax=smax32=umax32=74,var_off=(0x2; 0x7c))
+      367: (b7) r4 = 20                     ; R4_w=20
+      368: (85) call bpf_skb_load_bytes#26          ; R0=scalar() fp-24=????mmmm fp-32=mmmmmmmm fp-40=mmmmmmmm
+      369: (61) r7 = *(u32 *)(r10 -32)      ; R7_w=scalar(smin=0,smax=umax=0xffffffff,var_off=(0x0; 0xffffffff)) R10=fp0 fp-32=mmmmmmmm
+      370: (67) r7 <<= 32                   ; R7_w=scalar(smax=0x7fffffff00000000,umax=0xffffffff00000000,smin32=0,smax32=umax32=0,var_off=(0x0; 0xffffffff00000000))
+      371: (61) r1 = *(u32 *)(r10 -36)      ; R1_w=scalar(smin=0,smax=umax=0xffffffff,var_off=(0x0; 0xffffffff)) R10=fp0 fp-40=mmmmmmmm
+      372: (4f) r7 |= r1                    ; R1_w=scalar(smin=0,smax=umax=0xffffffff,var_off=(0x0; 0xffffffff)) R7_w=scalar()
+      373: (15) if r0 == 0x0 goto pc+1 375: R0=0 R1_w=scalar(smin=0,smax=umax=0xffffffff,var_off=(0x0; 0xffffffff)) R6=ctx() R7_w=scalar() R8=scalar(id=11,smin=umin=smin32=umin32=14,smax=umax=smax32=umax32=74,var_off=(0x2; 0x7c)) R10=fp0 fp-24=????mmmm fp-32=mmmmmmmm fp-40=mmmmmmmm fp-48=mmmm???? fp-56=scalar(id=6,smin=0,smax=umax=0xffffffff,var_off=(0x0; 0xffffffff)) fp-64=scalar(id=9,smin=smin32=0,smax=umax=smax32=umax32=0xffffff,var_off=(0x0; 0xffffff)) fp-72=scalar(id=8,smin=smin32=0,smax=umax=smax32=umax32=0xffff,var_off=(0x0; 0xffff)) fp-80=scalar(id=4,smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+      375: (15) if r0 == 0x0 goto pc+1      ; R0=0
+      377: (61) r9 = *(u32 *)(r10 -24)      ; R9_w=scalar(smin=0,smax=umax=0xffffffff,var_off=(0x0; 0xffffffff)) R10=fp0 fp-24=????mmmm
+      378: (67) r9 <<= 32                   ; R9_w=scalar(smax=0x7fffffff00000000,umax=0xffffffff00000000,smin32=0,smax32=umax32=0,var_off=(0x0; 0xffffffff00000000))
+      379: (61) r1 = *(u32 *)(r10 -28)      ; R1_w=scalar(smin=0,smax=umax=0xffffffff,var_off=(0x0; 0xffffffff)) R10=fp0 fp-32=mmmmmmmm
+      380: (4f) r9 |= r1                    ; R1_w=scalar(smin=0,smax=umax=0xffffffff,var_off=(0x0; 0xffffffff)) R9_w=scalar()
+      381: (67) r9 <<= 2                    ; R9_w=scalar(smax=0x7ffffffffffffffc,umax=0xfffffffffffffffc,smax32=0x7ffffffc,umax32=0xfffffffc,var_off=(0x0; 0xfffffffffffffffc))
+      382: (57) r9 &= 60                    ; R9_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c))
+      383: (0f) r9 += r8                    ; R8=scalar(id=11,smin=umin=smin32=umin32=14,smax=umax=smax32=umax32=74,var_off=(0x2; 0x7c)) R9_w=scalar(smin=umin=smin32=umin32=14,smax=umax=smax32=umax32=134,var_off=(0x2; 0xfc))
+      384: (b7) r7 = 0                      ; R7_w=0
+      385: (61) r1 = *(u32 *)(r6 +0)        ; R1=scalar(smin=0,smax=umax=0xffffffff,var_off=(0x0; 0xffffffff)) R6=ctx()
+      386: (1d) if r1 == r9 goto pc-363     ; R1=scalar(smin=0,smax=umax=0xffffffff,var_off=(0x0; 0xffffffff)) R9=scalar(smin=umin=smin32=umin32=14,smax=umax=smax32=umax32=134,var_off=(0x2; 0xfc))
+      387: (7b) *(u64 *)(r10 -88) = r1      ; R1=scalar(id=13,smin=0,smax=umax=0xffffffff,var_off=(0x0; 0xffffffff)) R10=fp0 fp-88_w=scalar(id=13,smin=0,smax=umax=0xffffffff,var_off=(0x0; 0xffffffff))
+      388: (bf) r1 = r10                    ; R1_w=fp0 R10=fp0
+      389: (07) r1 += -40                   ; R1_w=fp-40
+      390: (b7) r8 = 32                     ; R8_w=32
+      391: (b7) r2 = 0                      ; R2_w=0
+      392: (b7) r3 = 32                     ; R3_w=32
+      393: (85) call pc+372
+      caller:
+       R6=ctx() R7=0 R8_w=32 R9=scalar(smin=umin=smin32=umin32=14,smax=umax=smax32=umax32=134,var_off=(0x2; 0xfc)) R10=fp0 fp-24=????mmmm fp-32=mmmmmmmm fp-40=mmmmmmmm fp-48=mmmm???? fp-56=scalar(id=6,smin=0,smax=umax=0xffffffff,var_off=(0x0; 0xffffffff)) fp-64=scalar(id=9,smin=smin32=0,smax=umax=smax32=umax32=0xffffff,var_off=(0x0; 0xffffff)) fp-72=scalar(id=8,smin=smin32=0,smax=umax=smax32=umax32=0xffff,var_off=(0x0; 0xffff)) fp-80=scalar(id=4,smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) fp-88_w=scalar(id=13,smin=0,smax=umax=0xffffffff,var_off=(0x0; 0xffffffff))
+      callee:
+       frame1: R1_w=fp[0]-40 R2_w=0 R3_w=32 R10=fp0
+      766: frame1: R1=fp[0]-40 R2=0 R3=32 R10=fp0
+      766: (15) if r3 == 0x0 goto pc+6      ; frame1: R3=32
+      767: (b7) r4 = 0                      ; frame1: R4_w=0
+      768: (bf) r5 = r1                     ; frame1: R1=fp[0]-40 R5_w=fp[0]-40
+      769: (0f) r5 += r4                    ; frame1: R4_w=0 R5_w=fp[0]-40
+      770: (73) *(u8 *)(r5 +0) = r2         ; frame1: R2=0 R5_w=fp[0]-40
+      771: (07) r4 += 1                     ; frame1: R4_w=1
+      772: (2d) if r3 > r4 goto pc-5        ; frame1: R3=32 R4_w=1
+      768: (bf) r5 = r1                     ; frame1: R1=fp[0]-40 R5_w=fp[0]-40
+      769: (0f) r5 += r4                    ; frame1: R4_w=1 R5_w=fp[0]-39
+      770: (73) *(u8 *)(r5 +0) = r2         ; frame1: R2=0 R5_w=fp[0]-39
+      771: (07) r4 += 1                     ; frame1: R4=2
+      772: (2d) if r3 > r4 goto pc-5        ; frame1: R3=32 R4=2
+      768: (bf) r5 = r1                     ; frame1: R1=fp[0]-40 R5_w=fp[0]-40
+      769: (0f) r5 += r4                    ; frame1: R4=2 R5_w=fp[0]-38
+      770: (73) *(u8 *)(r5 +0) = r2         ; frame1: R2=0 R5_w=fp[0]-38
+      771: (07) r4 += 1                     ; frame1: R4_w=3
+      772: (2d) if r3 > r4 goto pc-5        ; frame1: R3=32 R4_w=3
+      768: (bf) r5 = r1                     ; frame1: R1=fp[0]-40 R5_w=fp[0]-40
+      769: (0f) r5 += r4                    ; frame1: R4_w=3 R5_w=fp[0]-37
+      770: (73) *(u8 *)(r5 +0) = r2         ; frame1: R2=0 R5_w=fp[0]-37
+      771: (07) r4 += 1                     ; frame1: R4_w=4
+      772: (2d) if r3 > r4 goto pc-5        ; frame1: R3=32 R4_w=4
+      768: (bf) r5 = r1                     ; frame1: R1=fp[0]-40 R5_w=fp[0]-40
+      769: (0f) r5 += r4                    ; frame1: R4=4 R5_w=fp[0]-36
+      770: (73) *(u8 *)(r5 +0) = r2         ; frame1: R2=0 R5_w=fp[0]-36
+      771: (07) r4 += 1                     ; frame1: R4_w=5
+      772: (2d) if r3 > r4 goto pc-5        ; frame1: R3=32 R4_w=5
+      768: (bf) r5 = r1                     ; frame1: R1=fp[0]-40 R5_w=fp[0]-40
+      769: (0f) r5 += r4                    ; frame1: R4_w=5 R5_w=fp[0]-35
+      770: (73) *(u8 *)(r5 +0) = r2         ; frame1: R2=0 R5_w=fp[0]-35
+      771: (07) r4 += 1                     ; frame1: R4_w=6
+      772: (2d) if r3 > r4 goto pc-5        ; frame1: R3=32 R4_w=6
+      768: (bf) r5 = r1                     ; frame1: R1=fp[0]-40 R5_w=fp[0]-40
+      769: (0f) r5 += r4                    ; frame1: R4_w=6 R5_w=fp[0]-34
+      770: (73) *(u8 *)(r5 +0) = r2         ; frame1: R2=0 R5_w=fp[0]-34
+      771: (07) r4 += 1                     ; frame1: R4_w=7
+      772: (2d) if r3 > r4 goto pc-5        ; frame1: R3=32 R4_w=7
+      768: (bf) r5 = r1                     ; frame1: R1=fp[0]-40 R5_w=fp[0]-40
+      769: (0f) r5 += r4                    ; frame1: R4_w=7 R5_w=fp[0]-33
+      770: (73) *(u8 *)(r5 +0) = r2         ; frame1: R2=0 R5_w=fp[0]-33
+      771: (07) r4 += 1                     ; frame1: R4_w=8
+      772: (2d) if r3 > r4 goto pc-5        ; frame1: R3=32 R4_w=8
+      768: (bf) r5 = r1                     ; frame1: R1=fp[0]-40 R5_w=fp[0]-40
+      769: (0f) r5 += r4                    ; frame1: R4_w=8 R5_w=fp[0]-32
+      770: (73) *(u8 *)(r5 +0) = r2         ; frame1: R2=0 R5_w=fp[0]-32
+      771: (07) r4 += 1                     ; frame1: R4_w=9
+      772: (2d) if r3 > r4 goto pc-5        ; frame1: R3=32 R4_w=9
+      768: (bf) r5 = r1                     ; frame1: R1=fp[0]-40 R5_w=fp[0]-40
+      769: (0f) r5 += r4                    ; frame1: R4_w=9 R5_w=fp[0]-31
+      770: (73) *(u8 *)(r5 +0) = r2         ; frame1: R2=0 R5_w=fp[0]-31
+      771: (07) r4 += 1                     ; frame1: R4_w=10
+      772: (2d) if r3 > r4 goto pc-5        ; frame1: R3=32 R4_w=10
+      768: (bf) r5 = r1                     ; frame1: R1=fp[0]-40 R5_w=fp[0]-40
+      769: (0f) r5 += r4                    ; frame1: R4_w=10 R5_w=fp[0]-30
+      770: (73) *(u8 *)(r5 +0) = r2         ; frame1: R2=0 R5_w=fp[0]-30
+      771: (07) r4 += 1                     ; frame1: R4_w=11
+      772: (2d) if r3 > r4 goto pc-5        ; frame1: R3=32 R4_w=11
+      768: (bf) r5 = r1                     ; frame1: R1=fp[0]-40 R5_w=fp[0]-40
+      769: (0f) r5 += r4                    ; frame1: R4_w=11 R5_w=fp[0]-29
+      770: (73) *(u8 *)(r5 +0) = r2         ; frame1: R2=0 R5_w=fp[0]-29
+      771: (07) r4 += 1                     ; frame1: R4_w=12
+      772: (2d) if r3 > r4 goto pc-5        ; frame1: R3=32 R4_w=12
+      768: (bf) r5 = r1                     ; frame1: R1=fp[0]-40 R5_w=fp[0]-40
+      769: (0f) r5 += r4                    ; frame1: R4_w=12 R5_w=fp[0]-28
+      770: (73) *(u8 *)(r5 +0) = r2         ; frame1: R2=0 R5_w=fp[0]-28
+      771: (07) r4 += 1                     ; frame1: R4_w=13
+      772: (2d) if r3 > r4 goto pc-5        ; frame1: R3=32 R4_w=13
+      768: (bf) r5 = r1                     ; frame1: R1=fp[0]-40 R5_w=fp[0]-40
+      769: (0f) r5 += r4                    ; frame1: R4_w=13 R5_w=fp[0]-27
+      770: (73) *(u8 *)(r5 +0) = r2         ; frame1: R2=0 R5_w=fp[0]-27
+      771: (07) r4 += 1                     ; frame1: R4_w=14
+      772: (2d) if r3 > r4 goto pc-5        ; frame1: R3=32 R4_w=14
+      768: (bf) r5 = r1                     ; frame1: R1=fp[0]-40 R5_w=fp[0]-40
+      769: (0f) r5 += r4                    ; frame1: R4_w=14 R5_w=fp[0]-26
+      770: (73) *(u8 *)(r5 +0) = r2         ; frame1: R2=0 R5_w=fp[0]-26
+      771: (07) r4 += 1                     ; frame1: R4_w=15
+      772: (2d) if r3 > r4 goto pc-5        ; frame1: R3=32 R4_w=15
+      768: (bf) r5 = r1                     ; frame1: R1=fp[0]-40 R5_w=fp[0]-40
+      769: (0f) r5 += r4                    ; frame1: R4_w=15 R5_w=fp[0]-25
+      770: (73) *(u8 *)(r5 +0) = r2         ; frame1: R2=0 R5_w=fp[0]-25
+      771: (07) r4 += 1                     ; frame1: R4_w=16
+      772: (2d) if r3 > r4 goto pc-5        ; frame1: R3=32 R4_w=16
+      768: (bf) r5 = r1                     ; frame1: R1=fp[0]-40 R5_w=fp[0]-40
+      769: (0f) r5 += r4                    ; frame1: R4_w=16 R5_w=fp[0]-24
+      770: (73) *(u8 *)(r5 +0) = r2         ; frame1: R2=0 R5_w=fp[0]-24
+      771: (07) r4 += 1                     ; frame1: R4_w=17
+      772: (2d) if r3 > r4 goto pc-5        ; frame1: R3=32 R4_w=17
+      768: (bf) r5 = r1                     ; frame1: R1=fp[0]-40 R5_w=fp[0]-40
+      769: (0f) r5 += r4                    ; frame1: R4_w=17 R5_w=fp[0]-23
+      770: (73) *(u8 *)(r5 +0) = r2         ; frame1: R2=0 R5_w=fp[0]-23
+      771: (07) r4 += 1                     ; frame1: R4_w=18
+      772: (2d) if r3 > r4 goto pc-5        ; frame1: R3=32 R4_w=18
+      768: (bf) r5 = r1                     ; frame1: R1=fp[0]-40 R5_w=fp[0]-40
+      769: (0f) r5 += r4                    ; frame1: R4_w=18 R5_w=fp[0]-22
+      770: (73) *(u8 *)(r5 +0) = r2         ; frame1: R2=0 R5_w=fp[0]-22
+      771: (07) r4 += 1                     ; frame1: R4_w=19
+      772: (2d) if r3 > r4 goto pc-5        ; frame1: R3=32 R4_w=19
+      768: (bf) r5 = r1                     ; frame1: R1=fp[0]-40 R5_w=fp[0]-40
+      769: (0f) r5 += r4                    ; frame1: R4_w=19 R5_w=fp[0]-21
+      770: (73) *(u8 *)(r5 +0) = r2         ; frame1: R2=0 R5_w=fp[0]-21
+      771: (07) r4 += 1                     ; frame1: R4_w=20
+      772: (2d) if r3 > r4 goto pc-5        ; frame1: R3=32 R4_w=20
+      768: (bf) r5 = r1                     ; frame1: R1=fp[0]-40 R5_w=fp[0]-40
+      769: (0f) r5 += r4                    ; frame1: R4_w=20 R5_w=fp[0]-20
+      770: (73) *(u8 *)(r5 +0) = r2         ; frame1: R2=0 R5_w=fp[0]-20
+      771: (07) r4 += 1                     ; frame1: R4_w=21
+      772: (2d) if r3 > r4 goto pc-5        ; frame1: R3=32 R4_w=21
+      768: (bf) r5 = r1                     ; frame1: R1=fp[0]-40 R5_w=fp[0]-40
+      769: (0f) r5 += r4                    ; frame1: R4_w=21 R5_w=fp[0]-19
+      770: (73) *(u8 *)(r5 +0) = r2         ; frame1: R2=0 R5_w=fp[0]-19
+      771: (07) r4 += 1                     ; frame1: R4_w=22
+      772: (2d) if r3 > r4 goto pc-5        ; frame1: R3=32 R4_w=22
+      768: (bf) r5 = r1                     ; frame1: R1=fp[0]-40 R5_w=fp[0]-40
+      769: (0f) r5 += r4                    ; frame1: R4_w=22 R5_w=fp[0]-18
+      770: (73) *(u8 *)(r5 +0) = r2         ; frame1: R2=0 R5_w=fp[0]-18
+      771: (07) r4 += 1                     ; frame1: R4_w=23
+      772: (2d) if r3 > r4 goto pc-5        ; frame1: R3=32 R4_w=23
+      768: (bf) r5 = r1                     ; frame1: R1=fp[0]-40 R5_w=fp[0]-40
+      769: (0f) r5 += r4                    ; frame1: R4_w=23 R5_w=fp[0]-17
+      770: (73) *(u8 *)(r5 +0) = r2         ; frame1: R2=0 R5_w=fp[0]-17
+      771: (07) r4 += 1                     ; frame1: R4_w=24
+      772: (2d) if r3 > r4 goto pc-5        ; frame1: R3=32 R4_w=24
+      768: (bf) r5 = r1                     ; frame1: R1=fp[0]-40 R5_w=fp[0]-40
+      769: (0f) r5 += r4                    ; frame1: R4=24 R5_w=fp[0]-16
+      770: (73) *(u8 *)(r5 +0) = r2         ; frame1: R2=0 R5_w=fp[0]-16
+      771: (07) r4 += 1                     ; frame1: R4_w=25
+      772: (2d) if r3 > r4 goto pc-5        ; frame1: R3=32 R4_w=25
+      768: (bf) r5 = r1                     ; frame1: R1=fp[0]-40 R5_w=fp[0]-40
+      769: (0f) r5 += r4                    ; frame1: R4_w=25 R5_w=fp[0]-15
+      770: (73) *(u8 *)(r5 +0) = r2         ; frame1: R2=0 R5_w=fp[0]-15
+      771: (07) r4 += 1                     ; frame1: R4_w=26
+      772: (2d) if r3 > r4 goto pc-5        ; frame1: R3=32 R4_w=26
+      768: (bf) r5 = r1                     ; frame1: R1=fp[0]-40 R5_w=fp[0]-40
+      769: (0f) r5 += r4                    ; frame1: R4_w=26 R5_w=fp[0]-14
+      770: (73) *(u8 *)(r5 +0) = r2         ; frame1: R2=0 R5_w=fp[0]-14
+      771: (07) r4 += 1                     ; frame1: R4_w=27
+      772: (2d) if r3 > r4 goto pc-5        ; frame1: R3=32 R4_w=27
+      768: (bf) r5 = r1                     ; frame1: R1=fp[0]-40 R5_w=fp[0]-40
+      769: (0f) r5 += r4                    ; frame1: R4_w=27 R5_w=fp[0]-13
+      770: (73) *(u8 *)(r5 +0) = r2         ; frame1: R2=0 R5_w=fp[0]-13
+      771: (07) r4 += 1                     ; frame1: R4_w=28
+      772: (2d) if r3 > r4 goto pc-5        ; frame1: R3=32 R4_w=28
+      768: (bf) r5 = r1                     ; frame1: R1=fp[0]-40 R5_w=fp[0]-40
+      769: (0f) r5 += r4                    ; frame1: R4_w=28 R5_w=fp[0]-12
+      770: (73) *(u8 *)(r5 +0) = r2         ; frame1: R2=0 R5_w=fp[0]-12
+      771: (07) r4 += 1                     ; frame1: R4_w=29
+      772: (2d) if r3 > r4 goto pc-5        ; frame1: R3=32 R4_w=29
+      768: (bf) r5 = r1                     ; frame1: R1=fp[0]-40 R5_w=fp[0]-40
+      769: (0f) r5 += r4                    ; frame1: R4_w=29 R5_w=fp[0]-11
+      770: (73) *(u8 *)(r5 +0) = r2         ; frame1: R2=0 R5_w=fp[0]-11
+      771: (07) r4 += 1                     ; frame1: R4_w=30
+      772: (2d) if r3 > r4 goto pc-5        ; frame1: R3=32 R4_w=30
+      768: (bf) r5 = r1                     ; frame1: R1=fp[0]-40 R5_w=fp[0]-40
+      769: (0f) r5 += r4                    ; frame1: R4_w=30 R5_w=fp[0]-10
+      770: (73) *(u8 *)(r5 +0) = r2         ; frame1: R2=0 R5_w=fp[0]-10
+      771: (07) r4 += 1                     ; frame1: R4_w=31
+      772: (2d) if r3 > r4 goto pc-5        ; frame1: R3=32 R4_w=31
+      768: (bf) r5 = r1                     ; frame1: R1=fp[0]-40 R5_w=fp[0]-40
+      769: (0f) r5 += r4                    ; frame1: R4_w=31 R5_w=fp[0]-9
+      770: (73) *(u8 *)(r5 +0) = r2         ; frame1: R2=0 R5_w=fp[0]-9
+      771: (07) r4 += 1                     ; frame1: R4_w=32
+      772: (2d) if r3 > r4 goto pc-5        ; frame1: R3=32 R4_w=32
+      773: (95) exit
+      returning from callee:
+       frame1: R1=fp[0]-40 R2=0 R3=32 R4=32 R5=fp[0]-9 R10=fp0
+      to caller at 394:
+       R6=ctx() R7=0 R8=32 R9=scalar(smin=umin=smin32=umin32=14,smax=umax=smax32=umax32=134,var_off=(0x2; 0xfc)) R10=fp0 fp-16=0000000m fp-24=0000000m fp-32=0000000m fp-40=0000000m fp-48=mmmm???? fp-56=scalar(id=6,smin=0,smax=umax=0xffffffff,var_off=(0x0; 0xffffffff)) fp-64=scalar(id=9,smin=smin32=0,smax=umax=smax32=umax32=0xffffff,var_off=(0x0; 0xffffff)) fp-72=scalar(id=8,smin=smin32=0,smax=umax=smax32=umax32=0xffff,var_off=(0x0; 0xffff)) fp-80=scalar(id=4,smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) fp-88=scalar(id=13,smin=0,smax=umax=0xffffffff,var_off=(0x0; 0xffffffff))
+      394: (79) r1 = *(u64 *)(r10 -88)      ; R1_w=scalar(id=13,smin=0,smax=umax=0xffffffff,var_off=(0x0; 0xffffffff)) R10=fp0 fp-88=scalar(id=13,smin=0,smax=umax=0xffffffff,var_off=(0x0; 0xffffffff))
+      395: (18) r7 = 0xffffffff             ; R7_w=0xffffffff
+      397: (2d) if r9 > r1 goto pc+13       ; R1_w=scalar(id=13,smin=umin=umin32=14,smax=umax=0xffffffff,var_off=(0x0; 0xffffffff)) R9=scalar(smin=umin=smin32=umin32=14,smax=umax=smax32=umax32=134,var_off=(0x2; 0xfc))
+      398: (bf) r7 = r1                     ; R1_w=scalar(id=13,smin=umin=umin32=14,smax=umax=0xffffffff,var_off=(0x0; 0xffffffff)) R7_w=scalar(id=13,smin=umin=umin32=14,smax=umax=0xffffffff,var_off=(0x0; 0xffffffff))
+      399: (1f) r7 -= r9                    ; R7_w=scalar(smin=-120,smax=0xfffffff1) R9=scalar(smin=umin=smin32=umin32=14,smax=umax=smax32=umax32=134,var_off=(0x2; 0xfc))
+      400: (2d) if r8 > r7 goto pc+1 402: R1_w=scalar(id=13,smin=umin=umin32=14,smax=umax=0xffffffff,var_off=(0x0; 0xffffffff)) R6=ctx() R7_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=31,var_off=(0x0; 0x1f)) R8=32 R9=scalar(smin=umin=smin32=umin32=14,smax=umax=smax32=umax32=134,var_off=(0x2; 0xfc)) R10=fp0 fp-16=0000000m fp-24=0000000m fp-32=0000000m fp-40=0000000m fp-48=mmmm???? fp-56=scalar(id=6,smin=0,smax=umax=0xffffffff,var_off=(0x0; 0xffffffff)) fp-64=scalar(id=9,smin=smin32=0,smax=umax=smax32=umax32=0xffffff,var_off=(0x0; 0xffffff)) fp-72=scalar(id=8,smin=smin32=0,smax=umax=smax32=umax32=0xffff,var_off=(0x0; 0xffff)) fp-80=scalar(id=4,smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) fp-88=scalar(id=13,smin=umin=umin32=14,smax=umax=0xffffffff,var_off=(0x0; 0xffffffff))
+      402: (bf) r3 = r10                    ; R3_w=fp0 R10=fp0
+      403: (07) r3 += -40                   ; R3_w=fp-40
+      404: (bf) r1 = r6                     ; R1_w=ctx() R6=ctx()
+      405: (bf) r2 = r9                     ; R2_w=scalar(id=18,smin=umin=smin32=umin32=14,smax=umax=smax32=umax32=134,var_off=(0x2; 0xfc)) R9=scalar(id=18,smin=umin=smin32=umin32=14,smax=umax=smax32=umax32=134,var_off=(0x2; 0xfc))
+      406: (bf) r4 = r7                     ; R4_w=scalar(id=19,smin=smin32=0,smax=umax=smax32=umax32=31,var_off=(0x0; 0x1f)) R7_w=scalar(id=19,smin=smin32=0,smax=umax=smax32=umax32=31,var_off=(0x0; 0x1f))
+      407: (85) call bpf_skb_load_bytes#26
+      R4 invalid zero-sized read: u64=[0,31]
+      verification time 3790 usec
+      stack depth 96+0+0+0+0
+      processed 1143 insns (limit 1000000) max_states_per_insn 2 total_states 54 peak_states 54 mark_read 23
+
+      Caused by:
+          Permission denied (os error 13)
+  source_snippets:
+  - |-
+    bpf_name: true,
+        bpf_probe_read_kernel: true,
+        bpf_perf_link: true,
+        bpf_global_data: true,
+        bpf_cookie: true,
+        cpumap_prog_id: true,
+        devmap_prog_id: true,
+        prog_info_map_ids: true,
+        prog_info_gpl_compatible: true,
+        btf: Some(
+            BtfFeatures {
+                btf_func: true,
+                btf_func_global: true,
+                btf_datasec: true,
+                btf_float: true,
+                btf_decl_tag: true,
+                btf_type_tag: true,
+                btf_enum64: true,
+            },
+        ),
+    }
+  issue_body_text: |-
+    Error Message:
+    What I tried?
+    cargo clean and then cargo build
+    re-installing cargo
+  fix: {}

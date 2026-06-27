@@ -1,0 +1,72 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-libbpf-4ec5e360ae01
+source_kind: github_commit
+source:
+  url: https://github.com/libbpf/libbpf/commit/4ec5e360ae01e8be78e63d7b7e3111e242ba2d21
+  title: 'libbpf: Fix bpf_ksym_exists() in GCC'
+  repository: https://github.com/libbpf/libbpf
+  commit: 4ec5e360ae01e8be78e63d7b7e3111e242ba2d21
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-libbpf-4ec5e360ae01.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Fixes bpf_ksym_exists() macro behavior for GCC by changing compile-time
+    attribute checks. The issue is compiler/header compatibility and no verifier terminal
+    error is provided.
+raw:
+  case_id: github-commit-libbpf-4ec5e360ae01
+  source: github_commits
+  repository: https://github.com/libbpf/libbpf
+  commit_hash: 4ec5e360ae01e8be78e63d7b7e3111e242ba2d21
+  commit_message: 'libbpf: Fix bpf_ksym_exists() in GCC'
+  commit_date: '2024-04-28'
+  fix_type: attribute_annotation
+  buggy_code: "// FILE: src/bpf_helpers.h\n// CONTEXT: enum libbpf_pin_type {\nenum\
+    \ libbpf_tristate {\n\tTRI_NO = 0,\n\tTRI_YES = 1,\n\tTRI_MODULE = 2,\n};\n\n\
+    #define __kconfig __attribute__((section(\".kconfig\")))\n#define __ksym __attribute__((section(\"\
+    .ksyms\")))\n#define __kptr_untrusted __attribute__((btf_type_tag(\"kptr_untrusted\"\
+    )))\n#define __kptr __attribute__((btf_type_tag(\"kptr\")))\n#define __percpu_kptr\
+    \ __attribute__((btf_type_tag(\"percpu_kptr\")))\n\n#define bpf_ksym_exists(sym)\
+    \ ({\t\t\t\t\t\t\t\t\t\\\n\t_Static_assert(!__builtin_constant_p(!!sym), #sym\
+    \ \" should be marked as __weak\");\t\\\n\t!!sym;\t\t\t\t\t\t\t\t\t\t\t\\\n})\n\
+    \n#define __arg_ctx __attribute__((btf_decl_tag(\"arg:ctx\")))\n#define __arg_nonnull\
+    \ __attribute((btf_decl_tag(\"arg:nonnull\")))\n#define __arg_nullable __attribute((btf_decl_tag(\"\
+    arg:nullable\")))\n#define __arg_trusted __attribute((btf_decl_tag(\"arg:trusted\"\
+    )))\n#define __arg_arena __attribute((btf_decl_tag(\"arg:arena\")))\n\n#ifndef\
+    \ ___bpf_concat\n#define ___bpf_concat(a, b) a ## b\n#endif\n#ifndef ___bpf_apply\n\
+    #define ___bpf_apply(fn, n) ___bpf_concat(fn, n)"
+  fixed_code: "// FILE: src/bpf_helpers.h\n// CONTEXT: enum libbpf_pin_type {\nenum\
+    \ libbpf_tristate {\n\tTRI_NO = 0,\n\tTRI_YES = 1,\n\tTRI_MODULE = 2,\n};\n\n\
+    #define __kconfig __attribute__((section(\".kconfig\")))\n#define __ksym __attribute__((section(\"\
+    .ksyms\")))\n#define __kptr_untrusted __attribute__((btf_type_tag(\"kptr_untrusted\"\
+    )))\n#define __kptr __attribute__((btf_type_tag(\"kptr\")))\n#define __percpu_kptr\
+    \ __attribute__((btf_type_tag(\"percpu_kptr\")))\n\n#if defined (__clang__)\n\
+    #define bpf_ksym_exists(sym) ({\t\t\t\t\t\t\\\n\t_Static_assert(!__builtin_constant_p(!!sym),\t\
+    \t\t\\\n\t\t       #sym \" should be marked as __weak\");\t\t\\\n\t!!sym;\t\t\t\
+    \t\t\t\t\t\\\n})\n#elif __GNUC__ > 8\n#define bpf_ksym_exists(sym) ({\t\t\t\t\t\
+    \t\\\n\t_Static_assert(__builtin_has_attribute (*sym, __weak__),\t\\\n\t\t   \
+    \    #sym \" should be marked as __weak\");\t\t\\\n\t!!sym;\t\t\t\t\t\t\t\t\\\n\
+    })\n#else\n#define bpf_ksym_exists(sym) !!sym\n#endif\n\n#define __arg_ctx __attribute__((btf_decl_tag(\"\
+    arg:ctx\")))\n#define __arg_nonnull __attribute((btf_decl_tag(\"arg:nonnull\"\
+    )))\n#define __arg_nullable __attribute((btf_decl_tag(\"arg:nullable\")))\n#define\
+    \ __arg_trusted __attribute((btf_decl_tag(\"arg:trusted\")))\n#define __arg_arena\
+    \ __attribute((btf_decl_tag(\"arg:arena\")))\n\n#ifndef ___bpf_concat\n#define\
+    \ ___bpf_concat(a, b) a ## b\n#endif\n#ifndef ___bpf_apply\n#define ___bpf_apply(fn,\
+    \ n) ___bpf_concat(fn, n)"
+  diff_summary: |-
+    src/bpf_helpers.h:
+    - Changed verifier-relevant attributes or annotations on the affected declarations.
+    - Affected context: enum libbpf_pin_type {.
+    - Commit subject: libbpf: Fix bpf_ksym_exists() in GCC.

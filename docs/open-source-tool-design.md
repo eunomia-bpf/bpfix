@@ -12,7 +12,7 @@ Primary users:
 - kernel/eBPF developers debugging verifier rejections locally
 - CI systems that want stable diagnostic artifacts
 - editor or agent integrations that consume plain-text verifier diagnostics
-- benchmark/evaluation scripts using `bpfix-bench`
+- empirical/evaluation scripts using `bpfix-empirical`
 
 ## Product Use Cases
 
@@ -31,7 +31,7 @@ The main user-visible workflows are:
 - maintainer triage aid: distinguish source bugs from environment problems,
   lowering artifacts, verifier limits, and likely verifier false positives
 
-The benchmark is supporting infrastructure for these workflows. It should catch
+The empirical corpus is supporting infrastructure for these workflows. It should catch
 regressions, measure coverage, and supply examples, but it should not become
 the only documented way to use the project.
 
@@ -45,7 +45,7 @@ of these surfaces:
 - better localization of the rejected source or bytecode site
 - clearer proof-oriented `help` messages
 - stable plain-text diagnostics for CI, editors, and agents
-- examples that users can run outside the benchmark harness
+- examples that users can run outside the empirical replay harness
 
 Pure evaluation work belongs in `docs/evaluation/` until it is connected to one
 of those user-visible surfaces.
@@ -54,7 +54,7 @@ of those user-visible surfaces.
 
 - `README.md`: user-facing overview, quick start, examples, current status
 - `docs/open-source-tool-design.md`: public CLI and product boundaries
-- `bpfix-bench/README.md`: replayable benchmark setup and validation
+- `bpfix-empirical/README.md`: replayable empirical corpus setup and validation
 - `docs/project-status.md`: roadmap and current implementation status
 
 ## CLI Contract
@@ -116,7 +116,7 @@ command-execution shortcut. `--fail-on-unsupported` only changes BPFix's own
 exit status after rendering: it exits with code 2 for `unsupported_input` or
 `unsupported_verifier_message`, and leaves supported diagnostics at exit code 0.
 Docker execution, if supported, must be an explicit option such as `--docker`;
-benchmark YAML and repository workspace analysis also stay outside the
+empirical corpus YAML and repository workspace analysis also stay outside the
 positional argument. Plain text is the default because the common path is human
 debugging; there is no public JSON output mode.
 
@@ -135,7 +135,7 @@ Optional:
 
 Evaluation-only:
 
-- `bpfix-bench` YAML records and labels, consumed by evaluation scripts rather
+- `bpfix-empirical` YAML records and labels, consumed by evaluation scripts rather
   than the public default CLI
 
 Not required:
@@ -143,7 +143,7 @@ Not required:
 - source repository checkout
 - kernel patch
 - replay environment
-- benchmark case metadata
+- empirical corpus case metadata
 
 ## Output Policy
 
@@ -168,7 +168,7 @@ BPFix is:
 
 - a userspace verifier-log diagnostic tool
 - a plain-text diagnostic producer for terminal, CI, editor, and agent workflows
-- a benchmarked diagnostic engine for verifier proof failures
+- an evaluated diagnostic engine for verifier proof failures
 
 BPFix is not:
 

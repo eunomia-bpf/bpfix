@@ -1,0 +1,90 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-746fb2a17d4c
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/746fb2a17d4c5807790b5ea21b4ad0724e11be8d
+  title: 'bpf: lxc: remove kube-proxy workaround in to-container program'
+  repository: https://github.com/cilium/cilium
+  commit: 746fb2a17d4c5807790b5ea21b4ad0724e11be8d
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-746fb2a17d4c.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Removes a kube-proxy workaround in to-container paths. The diff does not
+    identify a verifier-load rejection.
+raw:
+  case_id: github-commit-cilium-746fb2a17d4c
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: 746fb2a17d4c5807790b5ea21b4ad0724e11be8d
+  commit_message: 'bpf: lxc: remove kube-proxy workaround in to-container program'
+  commit_date: '2023-09-02'
+  fix_type: type_cast
+  buggy_code: "// FILE: bpf/bpf_lxc.c\n// CONTEXT: int tail_ipv6_to_endpoint(struct\
+    \ __ctx_buff *ctx)\n\tupdate_metrics(ctx_full_len(ctx), METRIC_INGRESS, REASON_FORWARDED);\n\
+    #endif\n\tctx_store_meta(ctx, CB_SRC_LABEL, 0);\n\n\tret = ipv6_policy(ctx, ip6,\
+    \ 0, src_sec_identity, NULL, &ext_err,\n\t\t\t  &proxy_port);\n\tswitch (ret)\
+    \ {\n\tcase POLICY_ACT_PROXY_REDIRECT:\n\t\tret = ctx_redirect_to_proxy_hairpin_ipv6(ctx,\
+    \ proxy_port);\n\t\tproxy_redirect = true;\n\t\tbreak;\n\tcase CTX_ACT_OK:\n#if\
+    \ !defined(ENABLE_ROUTING) && defined(TUNNEL_MODE) && !defined(ENABLE_NODEPORT)\n\
+    \t\t/* See comment in IPv4 path. */\n\t\tctx_change_type(ctx, PACKET_HOST);\n\
+    #endif /* !ENABLE_ROUTING && TUNNEL_MODE && !ENABLE_NODEPORT */\n\t\tbreak;\n\t\
+    default:\n\t\tbreak;\n\t}\nout:\n\tif (IS_ERR(ret))\n\t\treturn send_drop_notify_ext(ctx,\
+    \ src_sec_identity, SECLABEL_IPV6, LXC_ID,\n\t\t\t\t\tret, ext_err, CTX_ACT_DROP,\
+    \ METRIC_INGRESS);\n\n#ifdef ENABLE_CUSTOM_CALLS\n\t/* Make sure we skip the tail\
+    \ call when the packet is being redirected\n\t * to a L7 proxy, to avoid running\
+    \ the custom program twice on the\n\n// CONTEXT: int tail_ipv4_to_endpoint(struct\
+    \ __ctx_buff *ctx)\n\t\t\t  &proxy_port, false);\n\tswitch (ret) {\n\tcase POLICY_ACT_PROXY_REDIRECT:\n\
+    \t\tif (!revalidate_data(ctx, &data, &data_end, &ip4)) {\n\t\t\tret = DROP_INVALID;\n\
+    \t\t\tgoto out;\n\t\t}\n\n\t\tret = ctx_redirect_to_proxy_hairpin_ipv4(ctx, ip4,\
+    \ proxy_port);\n\t\tproxy_redirect = true;\n\t\tbreak;\n\tcase CTX_ACT_OK:\n#if\
+    \ !defined(ENABLE_ROUTING) && defined(TUNNEL_MODE) && !defined(ENABLE_NODEPORT)\n\
+    \t\t/* In tunneling mode, we execute this code to send the packet from\n\t\t *\
+    \ cilium_vxlan to lxc*. If we're using kube-proxy, we don't want to use\n\t\t\
+    \ * redirect() because that would bypass conntrack and the reverse DNAT.\n\t\t\
+    \ * Thus, we send packets to the stack, but since they have the wrong\n\t\t *\
+    \ Ethernet addresses, we need to mark them as PACKET_HOST or the kernel\n\t\t\
+    \ * will drop them.\n\t\t * See #14646 for details.\n\t\t */\n\t\tctx_change_type(ctx,\
+    \ PACKET_HOST);\n#endif /* !ENABLE_ROUTING && TUNNEL_MODE && !ENABLE_NODEPORT\
+    \ */\n\t\tbreak;\n\tdefault:\n\t\tbreak;\n\t}\nout:\n\tif (IS_ERR(ret))\n\t\t\
+    return send_drop_notify_ext(ctx, src_sec_identity, SECLABEL_IPV4, LXC_ID,\n\t\t\
+    \t\t\tret, ext_err, CTX_ACT_DROP, METRIC_INGRESS);\n\n#ifdef ENABLE_CUSTOM_CALLS\n\
+    \t/* Make sure we skip the tail call when the packet is being redirected\n\t *\
+    \ to a L7 proxy, to avoid running the custom program twice on the"
+  fixed_code: "// FILE: bpf/bpf_lxc.c\n// CONTEXT: int tail_ipv6_to_endpoint(struct\
+    \ __ctx_buff *ctx)\n\tupdate_metrics(ctx_full_len(ctx), METRIC_INGRESS, REASON_FORWARDED);\n\
+    #endif\n\tctx_store_meta(ctx, CB_SRC_LABEL, 0);\n\n\tret = ipv6_policy(ctx, ip6,\
+    \ 0, src_sec_identity, NULL, &ext_err,\n\t\t\t  &proxy_port);\n\tswitch (ret)\
+    \ {\n\tcase POLICY_ACT_PROXY_REDIRECT:\n\t\tret = ctx_redirect_to_proxy_hairpin_ipv6(ctx,\
+    \ proxy_port);\n\t\tproxy_redirect = true;\n\t\tbreak;\n\tcase CTX_ACT_OK:\n\t\
+    \tbreak;\n\tdefault:\n\t\tbreak;\n\t}\nout:\n\tif (IS_ERR(ret))\n\t\treturn send_drop_notify_ext(ctx,\
+    \ src_sec_identity, SECLABEL_IPV6, LXC_ID,\n\t\t\t\t\tret, ext_err, CTX_ACT_DROP,\
+    \ METRIC_INGRESS);\n\n#ifdef ENABLE_CUSTOM_CALLS\n\t/* Make sure we skip the tail\
+    \ call when the packet is being redirected\n\t * to a L7 proxy, to avoid running\
+    \ the custom program twice on the\n\n// CONTEXT: int tail_ipv4_to_endpoint(struct\
+    \ __ctx_buff *ctx)\n\t\t\t  &proxy_port, false);\n\tswitch (ret) {\n\tcase POLICY_ACT_PROXY_REDIRECT:\n\
+    \t\tif (!revalidate_data(ctx, &data, &data_end, &ip4)) {\n\t\t\tret = DROP_INVALID;\n\
+    \t\t\tgoto out;\n\t\t}\n\n\t\tret = ctx_redirect_to_proxy_hairpin_ipv4(ctx, ip4,\
+    \ proxy_port);\n\t\tproxy_redirect = true;\n\t\tbreak;\n\tcase CTX_ACT_OK:\n\t\
+    \tbreak;\n\tdefault:\n\t\tbreak;\n\t}\nout:\n\tif (IS_ERR(ret))\n\t\treturn send_drop_notify_ext(ctx,\
+    \ src_sec_identity, SECLABEL_IPV4, LXC_ID,\n\t\t\t\t\tret, ext_err, CTX_ACT_DROP,\
+    \ METRIC_INGRESS);\n\n#ifdef ENABLE_CUSTOM_CALLS\n\t/* Make sure we skip the tail\
+    \ call when the packet is being redirected\n\t * to a L7 proxy, to avoid running\
+    \ the custom program twice on the"
+  diff_summary: |-
+    bpf/bpf_lxc.c:
+    - Adjusted types or casts so the verifier sees the intended pointer or value kind.
+    - Affected context: int tail_ipv6_to_endpoint(struct __ctx_buff *ctx), int tail_ipv4_to_endpoint(struct __ctx_buff *ctx).
+    - Commit subject: bpf: lxc: remove kube-proxy workaround in to-container program.

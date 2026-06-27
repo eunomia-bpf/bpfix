@@ -1,0 +1,122 @@
+schema_version: bpfix.raw_external/v1
+raw_id: stackoverflow-78266602
+source_kind: stackoverflow
+source:
+  url: https://stackoverflow.com/questions/78266602/using-a-program-of-type-raw-tracepoint-to-trace-sched-wakeup-bpf-verifies-that-t
+  title: Using a program of type raw_tracepoint to trace sched_wakeup,bpf verifies
+    that task_struct *p is empty
+  repository: null
+  commit: null
+  collected_at: '2026-03-11T16:03:15+00:00'
+collector:
+  original_path: bpfix-empirical/raw/so/stackoverflow-78266602.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: true
+  verifier_log_block_count: 0
+  source_snippet_count: 3
+  has_buggy_code: false
+  has_fixed_code: false
+  has_fix_description: false
+reproduction:
+  status: replay_valid
+  case_id: stackoverflow-78266602
+  case_path: cases/stackoverflow-78266602
+  artifact_path: cases/stackoverflow-78266602
+  reason: admitted_to_bpfix_bench_cases
+raw:
+  case_id: stackoverflow-78266602
+  source: stackoverflow
+  collected_at: '2026-03-11T16:03:15+00:00'
+  question:
+    question_id: 78266602
+    title: Using a program of type raw_tracepoint to trace sched_wakeup,bpf verifies
+      that task_struct *p is empty
+    url: https://stackoverflow.com/questions/78266602/using-a-program-of-type-raw-tracepoint-to-trace-sched-wakeup-bpf-verifies-that-t
+    tags:
+    - ebpf
+    - raw
+    - cilium
+    - tracepoint
+    score: 0
+    answer_count: 1
+    is_answered: true
+  verifier_log:
+    blocks: []
+    combined: ''
+  source_snippets:
+  - |-
+    SEC("raw_tracepoint/sched_wakeup")
+    int trace_sched_wakeup(struct bpf_raw_tracepoint_args *ctx) {
+        struct task_struct *p ;
+        p=(struct task_struct *) ctx->args[0];
+        u64 ntime = bpf_ktime_get_ns();
+        struct data_t r_p_data={0};
+        r_p_data.pid = p->pid;
+        r_p_data.currtime=ntime;
+        bpf_perf_event_output(ctx, &output_events, BPF_F_CURRENT_CPU, &r_p_data, sizeof(r_p_data));
+        return 0;
+    }
+  - |-
+    if err := rlimit.RemoveMemlock(); err != nil {
+        return err
+    }
+
+    opts := ebpf.CollectionOptions{}
+
+    opts.Programs = ebpf.ProgramOptions{
+        KernelTypes: bpfutil.LoadBTFSpecOrNil(),
+    }
+
+    if err := loadBpfObjects(&objs, &opts); err != nil {
+        return fmt.Errorf("loading objects: %v", err)
+    }
+    progentry,err:=link.AttachRawTracepoint(link.RawTracepointOptions{Name:"sched_wakeup",Program:objs.TraceSchedWakeup})
+    if err != nil {
+        return fmt.Errorf("link softirq_entry: %s", err.Error())
+    }
+    links = append(links, progentry)
+  - |-
+    reader, err := perf.NewReader(objs.bpfMaps.OutputEvents, 10000 * int(unsafe.Sizeof(bpfSchedEventT{})))
+    if err != nil {
+        fmt.Println(err)
+        return
+    }
+    for {
+        record, err := reader.Read()
+        ....
+    }
+  question_body_text: "I used the program type tracepoint, tracepoint /sched/sched_wakeup,\
+    \ and the function parameter tracepoint format\u3002But I changed the raw_tracepoint\
+    \ type, it is not useful, error\uFF1Aloading objects: field TraceSchedWakeup:\
+    \ program trace_sched_wakeup: load program: permission denied: 5: (61) r1 = *(u32\
+    \ *)(r7 +2784): R7 invalid mem access 'inv' (5 line(s) omitted\u3002\nI know that\
+    \ task_struct *p is empty, which causes this error, but I don't know why I try\
+    \ to empty it\nbpf file\nSEC(\"raw_tracepoint/sched_wakeup\")\nint trace_sched_wakeup(struct\
+    \ bpf_raw_tracepoint_args *ctx) {\nstruct task_struct *p ;\np=(struct task_struct\
+    \ *) ctx->args[0];\nu64 ntime = bpf_ktime_get_ns();\nstruct data_t r_p_data={0};\n\
+    r_p_data.pid = p->pid;\nr_p_data.currtime=ntime;\nbpf_perf_event_output(ctx, &output_events,\
+    \ BPF_F_CURRENT_CPU, &r_p_data, sizeof(r_p_data));\nreturn 0;\n}\n#go file\nload\
+    \ program\nif err := rlimit.RemoveMemlock(); err != nil {\nreturn err\n}\nopts\
+    \ := ebpf.CollectionOptions{}\nopts.Programs = ebpf.ProgramOptions{\nKernelTypes:\
+    \ bpfutil.LoadBTFSpecOrNil(),\n}\nif err := loadBpfObjects(&objs, &opts); err\
+    \ != nil {\nreturn fmt.Errorf(\"loading objects: %v\", err)\n}\nprogentry,err:=link.AttachRawTracepoint(link.RawTracepointOptions{Name:\"\
+    sched_wakeup\",Program:objs.TraceSchedWakeup})\nif err != nil {\nreturn fmt.Errorf(\"\
+    link softirq_entry: %s\", err.Error())\n}\nlinks = append(links, progentry)\n\
+    perf read\nreader, err := perf.NewReader(objs.bpfMaps.OutputEvents, 10000 * int(unsafe.Sizeof(bpfSchedEventT{})))\n\
+    if err != nil {\nfmt.Println(err)\nreturn\n}\nfor {\nrecord, err := reader.Read()\n\
+    ....\n}\nWhy is the raw tracepoint class line empty"
+  selected_answer:
+    answer_id: 78271287
+    url: https://stackoverflow.com/questions/78266602/using-a-program-of-type-raw-tracepoint-to-trace-sched-wakeup-bpf-verifies-that-t#78271287
+    is_accepted: true
+    score: 0
+    body_text: |-
+      The task_struct *p is not empty. The error is caused by p->pid.
+      You can't directly read it, try to change it to:
+      r_p_data.pid = BPF_CORE_READ(p, pid);
+      or
+      bpf_probe_read_kernel(&r_p_data.pid, sizeof(r_p_data.pid), &p->pid);
+    fix_description: 'The task_struct *p is not empty. The error is caused by p->pid.
+      You can''t directly read it, try to change it to: r_p_data.pid = BPF_CORE_READ(p,
+      pid);'

@@ -1,0 +1,156 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-cf88cad9bbdb
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/cf88cad9bbdbaf6704219559ece9be20e3ec9e45
+  title: VXLAN Tunnel Endpoint (VTEP) Integration
+  repository: https://github.com/cilium/cilium
+  commit: cf88cad9bbdbaf6704219559ece9be20e3ec9e45
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-cf88cad9bbdb.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: attempted_accepted
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: The upstream message mentions a development-time R1 invalid mem access 'inv',
+    but the committed diff already initializes vtep_mac; a local VTEP helper-access
+    probe accepted.
+raw:
+  case_id: github-commit-cilium-cf88cad9bbdb
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: cf88cad9bbdbaf6704219559ece9be20e3ec9e45
+  commit_message: VXLAN Tunnel Endpoint (VTEP) Integration
+  commit_date: '2021-10-19'
+  fix_type: inline_hint
+  buggy_code: "// FILE: bpf/bpf_lxc.c\n// CONTEXT: ct_recreate4:\n\t\t * direct to\
+    \ external interface.\n\t\t */\n\t\tret = encap_and_redirect_lxc(ctx, egress_gw_policy->gateway_ip,\
+    \ encrypt_key,\n\t\t\t\t\t     &key, SECLABEL, monitor);\n\t\tif (ret == IPSEC_ENDPOINT)\n\
+    \t\t\tgoto encrypt_to_stack;\n\t\telse\n\t\t\treturn ret;\n\t}\nskip_egress_gateway:\n\
+    #endif\n\n#ifdef TUNNEL_MODE\n# ifdef ENABLE_WIREGUARD\n\t/* In the tunnel mode\
+    \ we encapsulate pod2pod traffic only via Wireguard\n\t * device, i.e. we do not\
+    \ encapsulate twice.\n\t */\n\tif (!dst_remote_ep)\n# endif /* ENABLE_WIREGUARD\
+    \ */\n\t{\n\t\tstruct endpoint_key key = {};\n\n\t\tkey.ip4 = orig_dip & IPV4_MASK;\n\
+    \t\tkey.family = ENDPOINT_KEY_IPV4;\n\n// FILE: bpf/bpf_overlay.c\n// CONTEXT:\
+    \ static __always_inline int handle_ipv4(struct __ctx_buff *ctx, __u32 *identity)\n\
+    \n\tdecrypted = ((ctx->mark & MARK_MAGIC_HOST_MASK) == MARK_MAGIC_DECRYPT);\n\t\
+    /* If packets are decrypted the key has already been pushed into metadata. */\n\
+    \tif (decrypted) {\n\t\t*identity = key.tunnel_id = get_identity(ctx);\n\t} else\
+    \ {\n\t\tif (unlikely(ctx_get_tunnel_key(ctx, &key, sizeof(key), 0) < 0))\n\t\t\
+    \treturn DROP_NO_TUNNEL_KEY;\n\t\t*identity = key.tunnel_id;\n\n\t\tif (*identity\
+    \ == HOST_ID)\n\t\t\treturn DROP_INVALID_IDENTITY;\n\n\t\t/* See comment at equivalent\
+    \ code in handle_ipv6() */\n\t\tif (identity_is_remote_node(*identity)) {\n\t\t\
+    \tstruct remote_endpoint_info *info;\n\n\t\t\tinfo = ipcache_lookup4(&IPCACHE_MAP,\
+    \ ip4->saddr,\n\t\t\t\t\t       V4_CACHE_KEY_LEN);\n\t\t\tif (info)\n\t\t\t\t\
+    *identity = info->sec_label;\n\t\t}\n\t}\n\n\tcilium_dbg(ctx, DBG_DECAP, key.tunnel_id,\
+    \ key.tunnel_label);\n\n// FILE: bpf/lib/common.h\n// CONTEXT: enum {\n#define\
+    \ DROP_INVALID_IDENTITY\t-171\n#define DROP_UNKNOWN_SENDER\t-172\n#define DROP_NAT_NOT_NEEDED\t\
+    -173 /* Mapped as drop code, though drop not necessary. */\n#define DROP_IS_CLUSTER_IP\t\
+    -174\n#define DROP_FRAG_NOT_FOUND\t-175\n#define DROP_FORBIDDEN_ICMP6\t-176\n\
+    #define DROP_NOT_IN_SRC_RANGE\t-177\n#define DROP_PROXY_LOOKUP_FAILED\t-178\n\
+    #define DROP_PROXY_SET_FAILED\t-179\n#define DROP_PROXY_UNKNOWN_PROTO\t-180\n\
+    #define DROP_POLICY_DENY\t-181\n#define DROP_VLAN_FILTERED\t-182\n\n#define NAT_PUNT_TO_STACK\t\
+    DROP_NAT_NOT_NEEDED\n\n/* Cilium metrics reasons for forwarding packets and other\
+    \ stats.\n * If reason is larger than below then this is a drop reason and\n *\
+    \ value corresponds to -(DROP_*), see above.\n *\n * These are shared with pkg/monitor/api/drop.go.\n\
+    \ * When modifying any of the below, those files should also be updated.\n */\n\
+    #define REASON_FORWARDED\t\t0\n#define REASON_PLAINTEXT\t\t3\n\n// FILE: bpf/node_config.h\n\
+    // CONTEXT: DEFINE_IPV6(HOST_IP, 0xbe, 0xef, 0x0, 0x0, 0x0, 0x0, 0x0, 0x1, 0x0,\
+    \ 0x0, 0xa, 0x\n# define LB4_SRC_RANGE_MAP\ttest_cilium_lb4_source_range\n# define\
+    \ LB4_SRC_RANGE_MAP_SIZE\t1000\n# define LB6_SRC_RANGE_MAP\ttest_cilium_lb6_source_range\n\
+    # define LB6_SRC_RANGE_MAP_SIZE\t1000\n#endif\n\n#ifndef LB_SELECTION\n# define\
+    \ LB_SELECTION_RANDOM\t1\n# define LB_SELECTION_MAGLEV\t2\n# define LB_SELECTION\t\
+    \tLB_SELECTION_RANDOM\n#endif\n\n/* It appears that we can support around the\
+    \ below number of prefixes in an\n * unrolled loop for LPM CIDR handling in older\
+    \ kernels along with the rest of\n * the logic in the datapath, hence the defines\
+    \ below. This number was arrived\n * to by adjusting the number of prefixes and\
+    \ running:\n *\n *    $ make -C bpf && sudo test/bpf/verifier-test.sh\n *\n *\
+    \  If you're from a future where all supported kernels include LPM map type,\n\
+    \ *  consider deprecating the hash-based CIDR lookup and removing the below.\n\
+    \ */\n#define IPCACHE4_PREFIXES 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6,\
+    \ 5, \\\n4, 3, 2, 1"
+  fixed_code: "// FILE: bpf/bpf_lxc.c\n// CONTEXT: ct_recreate4:\n\t\t * direct to\
+    \ external interface.\n\t\t */\n\t\tret = encap_and_redirect_lxc(ctx, egress_gw_policy->gateway_ip,\
+    \ encrypt_key,\n\t\t\t\t\t     &key, SECLABEL, monitor);\n\t\tif (ret == IPSEC_ENDPOINT)\n\
+    \t\t\tgoto encrypt_to_stack;\n\t\telse\n\t\t\treturn ret;\n\t}\nskip_egress_gateway:\n\
+    #endif\n\n#ifdef ENABLE_VTEP\n\t{\n\t\tint i;\n\t\tmac_t vtep_mac = 0;\n\n\t\t\
+    for (i = 0; i < VTEP_NUMS; i++) {\n\t\t\tif (tunnel_endpoint == VTEP_ENDPOINT[i])\
+    \ {\n\t\t\t\tvtep_mac = VTEP_MAC[i];\n\t\t\t\tbreak;\n\t\t\t}\n\t\t}\n\n\t\tif\
+    \ (vtep_mac && tunnel_endpoint) {\n\t\t\tif (eth_store_daddr(ctx, (__u8 *)&vtep_mac,\
+    \ 0) < 0)\n\t\t\t\treturn DROP_WRITE_ERROR;\n\t\t\treturn __encap_and_redirect_with_nodeid(ctx,\
+    \ tunnel_endpoint,\n\t\t\t\t\t\t\t\t\tWORLD_ID, monitor);\n\t\t}\n\t}\n#endif\n\
+    \n#ifdef TUNNEL_MODE\n# ifdef ENABLE_WIREGUARD\n\t/* In the tunnel mode we encapsulate\
+    \ pod2pod traffic only via Wireguard\n\t * device, i.e. we do not encapsulate\
+    \ twice.\n\t */\n\tif (!dst_remote_ep)\n# endif /* ENABLE_WIREGUARD */\n\t{\n\t\
+    \tstruct endpoint_key key = {};\n\n\t\tkey.ip4 = orig_dip & IPV4_MASK;\n\t\tkey.family\
+    \ = ENDPOINT_KEY_IPV4;\n\n// FILE: bpf/bpf_overlay.c\n// CONTEXT: static __always_inline\
+    \ int handle_ipv4(struct __ctx_buff *ctx, __u32 *identity)\n\n\tdecrypted = ((ctx->mark\
+    \ & MARK_MAGIC_HOST_MASK) == MARK_MAGIC_DECRYPT);\n\t/* If packets are decrypted\
+    \ the key has already been pushed into metadata. */\n\tif (decrypted) {\n\t\t\
+    *identity = key.tunnel_id = get_identity(ctx);\n\t} else {\n\t\tif (unlikely(ctx_get_tunnel_key(ctx,\
+    \ &key, sizeof(key), 0) < 0))\n\t\t\treturn DROP_NO_TUNNEL_KEY;\n\t\t*identity\
+    \ = key.tunnel_id;\n\n\t\tif (*identity == HOST_ID)\n\t\t\treturn DROP_INVALID_IDENTITY;\n\
+    #ifdef ENABLE_VTEP\n\t\t{\n\t\t\tstruct remote_endpoint_info *info;\n\t\t\tint\
+    \ i;\n\n\t\t\tinfo = lookup_ip4_remote_endpoint(ip4->saddr);\n\t\t\tif (!info)\n\
+    \t\t\t\treturn DROP_NO_TUNNEL_ENDPOINT;\n\t\t\tfor (i = 0; i < VTEP_NUMS; i++)\
+    \ {\n\t\t\t\tif (info->tunnel_endpoint == VTEP_ENDPOINT[i]) {\n\t\t\t\t\tif (*identity\
+    \ != WORLD_ID)\n\t\t\t\t\t\treturn DROP_INVALID_VNI;\n\t\t\t\t}\n\t\t\t}\n\t\t\
+    }\n#endif\n\t\t/* See comment at equivalent code in handle_ipv6() */\n\t\tif (identity_is_remote_node(*identity))\
+    \ {\n\t\t\tstruct remote_endpoint_info *info;\n\n\t\t\tinfo = ipcache_lookup4(&IPCACHE_MAP,\
+    \ ip4->saddr,\n\t\t\t\t\t       V4_CACHE_KEY_LEN);\n\t\t\tif (info)\n\t\t\t\t\
+    *identity = info->sec_label;\n\t\t}\n\t}\n\n\tcilium_dbg(ctx, DBG_DECAP, key.tunnel_id,\
+    \ key.tunnel_label);\n\n// FILE: bpf/lib/common.h\n// CONTEXT: enum {\n#define\
+    \ DROP_INVALID_IDENTITY\t-171\n#define DROP_UNKNOWN_SENDER\t-172\n#define DROP_NAT_NOT_NEEDED\t\
+    -173 /* Mapped as drop code, though drop not necessary. */\n#define DROP_IS_CLUSTER_IP\t\
+    -174\n#define DROP_FRAG_NOT_FOUND\t-175\n#define DROP_FORBIDDEN_ICMP6\t-176\n\
+    #define DROP_NOT_IN_SRC_RANGE\t-177\n#define DROP_PROXY_LOOKUP_FAILED\t-178\n\
+    #define DROP_PROXY_SET_FAILED\t-179\n#define DROP_PROXY_UNKNOWN_PROTO\t-180\n\
+    #define DROP_POLICY_DENY\t-181\n#define DROP_VLAN_FILTERED\t-182\n#define DROP_INVALID_VNI\t\
+    -183\n\n#define NAT_PUNT_TO_STACK\tDROP_NAT_NOT_NEEDED\n\n/* Cilium metrics reasons\
+    \ for forwarding packets and other stats.\n * If reason is larger than below then\
+    \ this is a drop reason and\n * value corresponds to -(DROP_*), see above.\n *\n\
+    \ * These are shared with pkg/monitor/api/drop.go.\n * When modifying any of the\
+    \ below, those files should also be updated.\n */\n#define REASON_FORWARDED\t\t\
+    0\n#define REASON_PLAINTEXT\t\t3\n\n// FILE: bpf/node_config.h\n// CONTEXT: DEFINE_IPV6(HOST_IP,\
+    \ 0xbe, 0xef, 0x0, 0x0, 0x0, 0x0, 0x0, 0x1, 0x0, 0x0, 0xa, 0x\n# define LB4_SRC_RANGE_MAP\t\
+    test_cilium_lb4_source_range\n# define LB4_SRC_RANGE_MAP_SIZE\t1000\n# define\
+    \ LB6_SRC_RANGE_MAP\ttest_cilium_lb6_source_range\n# define LB6_SRC_RANGE_MAP_SIZE\t\
+    1000\n#endif\n\n#ifndef LB_SELECTION\n# define LB_SELECTION_RANDOM\t1\n# define\
+    \ LB_SELECTION_MAGLEV\t2\n# define LB_SELECTION\t\tLB_SELECTION_RANDOM\n#endif\n\
+    \n#ifdef ENABLE_VTEP\n#define VTEP_ENDPOINT (__u32[]){0xeb48a90a, 0xec48a90a,\
+    \ 0xed48a90a, 0xee48a90a, }\n/* HEX representation of VTEP IP\n * 10.169.72.235,\
+    \ 10.169.72.236, 10.169.72.237, 10.169.72.238\n */\n#define VTEP_MAC (__u64[]){0x562e984c3682,\
+    \ 0x552e984c3682, 0x542e984c3682, 0x532e984c3682}\n/* VTEP MAC address\n * 82:36:4c:89:2e:56,\
+    \ 82:36:4c:89:2e:55, 82:36:4c:89:2e:54, 82:36:4c:89:2e:53\n */\n#define VTEP_NUMS\
+    \ 4\n#endif\n\n/* It appears that we can support around the below number of prefixes\
+    \ in an\n * unrolled loop for LPM CIDR handling in older kernels along with the\
+    \ rest of\n * the logic in the datapath, hence the defines below. This number\
+    \ was arrived\n * to by adjusting the number of prefixes and running:\n *\n *\
+    \    $ make -C bpf && sudo test/bpf/verifier-test.sh\n *\n *  If you're from a\
+    \ future where all supported kernels include LPM map type,\n *  consider deprecating\
+    \ the hash-based CIDR lookup and removing the below.\n */\n#define IPCACHE4_PREFIXES\
+    \ 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, \\\n4, 3, 2, 1"
+  diff_summary: |-
+    bpf/bpf_lxc.c:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: ct_recreate4:.
+    bpf/bpf_overlay.c:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: static __always_inline int handle_ipv4(struct __ctx_buff *ctx, __u32 *identity).
+    bpf/lib/common.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: enum {.
+    bpf/node_config.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: DEFINE_IPV6(HOST_IP, 0xbe, 0xef, 0x0, 0x0, 0x0, 0x0, 0x0, 0x1, 0x0, 0x0, 0xa, 0x.
+    - Commit subject: VXLAN Tunnel Endpoint (VTEP) Integration.

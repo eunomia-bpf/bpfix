@@ -1,0 +1,92 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-ebc32309be74
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/ebc32309be74b59186fd9119b1d8275e8bbab00e
+  title: 'bpf: nodeport: fix a potential complexity issue'
+  repository: https://github.com/cilium/cilium
+  commit: ebc32309be74b59186fd9119b1d8275e8bbab00e
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-ebc32309be74.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: environment_required
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Raw title says potential nodeport complexity issue, but has_verifier_log=false.
+    The change only narrows DSR preprocessor conditions inside skip_service_lookup;
+    replay requires the full nodeport/generated-feature matrix.
+raw:
+  case_id: github-commit-cilium-ebc32309be74
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: ebc32309be74b59186fd9119b1d8275e8bbab00e
+  commit_message: 'bpf: nodeport: fix a potential complexity issue'
+  commit_date: '2025-10-15'
+  fix_type: loop_rewrite
+  buggy_code: "// FILE: bpf/lib/nodeport.h\n// CONTEXT: skip_service_lookup:\n\t\t\
+    \t\treturn tail_call_internal(ctx, CILIUM_CALL_IPV64_RFC6052,\n\t\t\t\t\t\t\t\
+    \  ext_err);\n\t\t\tctx_store_meta(ctx, CB_NAT_46X64, NAT46x64_MODE_XLATE);\n\t\
+    \t\treturn tail_call_internal(ctx, CILIUM_CALL_IPV6_NODEPORT_NAT_EGRESS,\n\t\t\
+    \t\t\t\t  ext_err);\n\t\t}\n#endif\n\t\tctx_set_xfer(ctx, XFER_PKT_NO_SVC);\n\n\
+    #ifdef ENABLE_DSR\n#if (defined(IS_BPF_OVERLAY) && DSR_ENCAP_MODE == DSR_ENCAP_GENEVE)\
+    \ || \\\n    ((defined(IS_BPF_XDP) || defined(IS_BPF_HOST) || defined(IS_BPF_WIREGUARD))\
+    \ && \\\n\t\tDSR_ENCAP_MODE != DSR_ENCAP_GENEVE)\n\t\tif (is_svc_proto) {\n\t\t\
+    \tret = nodeport_extract_dsr_v6(ctx, ip6, &tuple, l4_off,\n\t\t\t\t\t\t      &key.address,\n\
+    \t\t\t\t\t\t      &key.dport, dsr);\n\t\t\tif (IS_ERR(ret))\n\t\t\t\treturn ret;\n\
+    \t\t\tif (*dsr)\n\t\t\t\treturn nodeport_dsr_ingress_ipv6(ctx, &tuple, fraginfo,\
+    \ l4_off,\n\t\t\t\t\t\t\t\t &key.address, key.dport,\n\t\t\t\t\t\t\t\t ext_err);\n\
+    \t\t}\n#endif\n\n// CONTEXT: skip_service_lookup:\n\t\tif (ip4->daddr != IPV4_DIRECT_ROUTING)\n\
+    \t\t\treturn tail_call_internal(ctx, CILIUM_CALL_IPV46_RFC6052, ext_err);\n#endif\n\
+    \t\t/* The packet is not destined to a service but it can be a reply\n\t\t * packet\
+    \ from a remote backend, in which case we need to perform\n\t\t * the reverse\
+    \ NAT.\n\t\t */\n\t\tctx_set_xfer(ctx, XFER_PKT_NO_SVC);\n\n#ifdef ENABLE_DSR\n\
+    #if (defined(IS_BPF_OVERLAY) && DSR_ENCAP_MODE == DSR_ENCAP_GENEVE) || \\\n  \
+    \  ((defined(IS_BPF_XDP) || defined(IS_BPF_HOST) || defined(IS_BPF_WIREGUARD))\
+    \ && \\\n\t\tDSR_ENCAP_MODE != DSR_ENCAP_GENEVE)\n\t\tif (is_svc_proto) {\n\t\t\
+    \t/* Check if packet has embedded DSR info, or belongs to\n\t\t\t * an established\
+    \ DSR connection:\n\t\t\t */\n\t\t\tret = nodeport_extract_dsr_v4(ctx, ip4, &tuple,\n\
+    \t\t\t\t\t\t      l4_off, &key.address,\n\t\t\t\t\t\t      &key.dport, dsr);\n\
+    \t\t\tif (IS_ERR(ret))\n\t\t\t\treturn ret;\n\t\t\tif (*dsr)\n\t\t\t\t/* Packet\
+    \ continues on its way to local backend: */\n\t\t\t\treturn nodeport_dsr_ingress_ipv4(ctx,\
+    \ &tuple, fraginfo, l4_off,"
+  fixed_code: "// FILE: bpf/lib/nodeport.h\n// CONTEXT: skip_service_lookup:\n\t\t\
+    \t\treturn tail_call_internal(ctx, CILIUM_CALL_IPV64_RFC6052,\n\t\t\t\t\t\t\t\
+    \  ext_err);\n\t\t\tctx_store_meta(ctx, CB_NAT_46X64, NAT46x64_MODE_XLATE);\n\t\
+    \t\treturn tail_call_internal(ctx, CILIUM_CALL_IPV6_NODEPORT_NAT_EGRESS,\n\t\t\
+    \t\t\t\t  ext_err);\n\t\t}\n#endif\n\t\tctx_set_xfer(ctx, XFER_PKT_NO_SVC);\n\n\
+    #ifdef ENABLE_DSR\n#if (defined(IS_BPF_OVERLAY) && DSR_ENCAP_MODE == DSR_ENCAP_GENEVE)\
+    \ || \\\n    ((defined(IS_BPF_XDP) || defined(IS_BPF_HOST) || defined(IS_BPF_WIREGUARD))\
+    \ && \\\n\t\t(DSR_ENCAP_MODE != DSR_ENCAP_GENEVE && DSR_ENCAP_MODE != DSR_ENCAP_IPIP))\n\
+    \t\tif (is_svc_proto) {\n\t\t\tret = nodeport_extract_dsr_v6(ctx, ip6, &tuple,\
+    \ l4_off,\n\t\t\t\t\t\t      &key.address,\n\t\t\t\t\t\t      &key.dport, dsr);\n\
+    \t\t\tif (IS_ERR(ret))\n\t\t\t\treturn ret;\n\t\t\tif (*dsr)\n\t\t\t\treturn nodeport_dsr_ingress_ipv6(ctx,\
+    \ &tuple, fraginfo, l4_off,\n\t\t\t\t\t\t\t\t &key.address, key.dport,\n\t\t\t\
+    \t\t\t\t\t ext_err);\n\t\t}\n#endif\n\n// CONTEXT: skip_service_lookup:\n\t\t\
+    if (ip4->daddr != IPV4_DIRECT_ROUTING)\n\t\t\treturn tail_call_internal(ctx, CILIUM_CALL_IPV46_RFC6052,\
+    \ ext_err);\n#endif\n\t\t/* The packet is not destined to a service but it can\
+    \ be a reply\n\t\t * packet from a remote backend, in which case we need to perform\n\
+    \t\t * the reverse NAT.\n\t\t */\n\t\tctx_set_xfer(ctx, XFER_PKT_NO_SVC);\n\n\
+    #ifdef ENABLE_DSR\n#if (defined(IS_BPF_OVERLAY) && DSR_ENCAP_MODE == DSR_ENCAP_GENEVE)\
+    \ || \\\n    ((defined(IS_BPF_XDP) || defined(IS_BPF_HOST) || defined(IS_BPF_WIREGUARD))\
+    \ && \\\n\t\t(DSR_ENCAP_MODE != DSR_ENCAP_GENEVE && DSR_ENCAP_MODE != DSR_ENCAP_IPIP))\n\
+    \t\tif (is_svc_proto) {\n\t\t\t/* Check if packet has embedded DSR info, or belongs\
+    \ to\n\t\t\t * an established DSR connection:\n\t\t\t */\n\t\t\tret = nodeport_extract_dsr_v4(ctx,\
+    \ ip4, &tuple,\n\t\t\t\t\t\t      l4_off, &key.address,\n\t\t\t\t\t\t      &key.dport,\
+    \ dsr);\n\t\t\tif (IS_ERR(ret))\n\t\t\t\treturn ret;\n\t\t\tif (*dsr)\n\t\t\t\t\
+    /* Packet continues on its way to local backend: */\n\t\t\t\treturn nodeport_dsr_ingress_ipv4(ctx,\
+    \ &tuple, fraginfo, l4_off,"
+  diff_summary: |-
+    bpf/lib/nodeport.h:
+    - Reworked loop or branch structure to reduce verifier complexity and keep the path bounded.
+    - Affected context: skip_service_lookup:.
+    - Commit subject: bpf: nodeport: fix a potential complexity issue.

@@ -1,0 +1,72 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-libbpf-b062410166aa
+source_kind: github_commit
+source:
+  url: https://github.com/libbpf/libbpf/commit/b062410166aa02c59dc0ad969c9273e591ed8b06
+  title: 'bpf: improve error message for unsupported helper'
+  repository: https://github.com/libbpf/libbpf
+  commit: b062410166aa02c59dc0ad969c9273e591ed8b06
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-libbpf-b062410166aa.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: environment_required
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Raw has_verifier_log=false. The diff updates libbpf_probe_bpf_helper() parsing
+    of unsupported-helper verifier diagnostics from a probe load; replay depends on
+    kernel helper availability and exact verifier message text, with no captured log.
+raw:
+  case_id: github-commit-libbpf-b062410166aa
+  source: github_commits
+  repository: https://github.com/libbpf/libbpf
+  commit_hash: b062410166aa02c59dc0ad969c9273e591ed8b06
+  commit_message: 'bpf: improve error message for unsupported helper'
+  commit_date: '2024-03-25'
+  fix_type: type_cast
+  buggy_code: "// FILE: src/libbpf_probes.c\n// CONTEXT: int libbpf_probe_bpf_helper(enum\
+    \ bpf_prog_type prog_type, enum bpf_func_id helpe\n\tdefault:\n\t\tbreak;\n\t\
+    }\n\n\tbuf[0] = '\\0';\n\tret = probe_prog_load(prog_type, insns, insn_cnt, buf,\
+    \ sizeof(buf));\n\tif (ret < 0)\n\t\treturn libbpf_err(ret);\n\n\t/* If BPF verifier\
+    \ doesn't recognize BPF helper ID (enum bpf_func_id)\n\t * at all, it will emit\
+    \ something like \"invalid func unknown#181\".\n\t * If BPF verifier recognizes\
+    \ BPF helper but it's not supported for\n\t * given BPF program type, it will\
+    \ emit \"unknown func bpf_sys_bpf#166\".\n\t * In both cases, provided combination\
+    \ of BPF program type and BPF\n\t * helper is not supported by the kernel.\n\t\
+    \ * In all other cases, probe_prog_load() above will either succeed (e.g.,\n\t\
+    \ * because BPF helper happens to accept no input arguments or it\n\t * accepts\
+    \ one input argument and initial PTR_TO_CTX is fine for\n\t * that), or we'll\
+    \ get some more specific BPF verifier error about\n\t * some unsatisfied conditions.\n\
+    \t */\n\tif (ret == 0 && (strstr(buf, \"invalid func \") || strstr(buf, \"unknown\
+    \ func \")))\n\t\treturn 0;\n\treturn 1; /* assume supported */\n}"
+  fixed_code: "// FILE: src/libbpf_probes.c\n// CONTEXT: int libbpf_probe_bpf_helper(enum\
+    \ bpf_prog_type prog_type, enum bpf_func_id helpe\n\tdefault:\n\t\tbreak;\n\t\
+    }\n\n\tbuf[0] = '\\0';\n\tret = probe_prog_load(prog_type, insns, insn_cnt, buf,\
+    \ sizeof(buf));\n\tif (ret < 0)\n\t\treturn libbpf_err(ret);\n\n\t/* If BPF verifier\
+    \ doesn't recognize BPF helper ID (enum bpf_func_id)\n\t * at all, it will emit\
+    \ something like \"invalid func unknown#181\".\n\t * If BPF verifier recognizes\
+    \ BPF helper but it's not supported for\n\t * given BPF program type, it will\
+    \ emit \"unknown func bpf_sys_bpf#166\"\n\t * or \"program of this type cannot\
+    \ use helper bpf_sys_bpf#166\".\n\t * In both cases, provided combination of BPF\
+    \ program type and BPF\n\t * helper is not supported by the kernel.\n\t * In all\
+    \ other cases, probe_prog_load() above will either succeed (e.g.,\n\t * because\
+    \ BPF helper happens to accept no input arguments or it\n\t * accepts one input\
+    \ argument and initial PTR_TO_CTX is fine for\n\t * that), or we'll get some more\
+    \ specific BPF verifier error about\n\t * some unsatisfied conditions.\n\t */\n\
+    \tif (ret == 0 && (strstr(buf, \"invalid func \") || strstr(buf, \"unknown func\
+    \ \") ||\n\t\t\t strstr(buf, \"program of this type cannot use helper \")))\n\t\
+    \treturn 0;\n\treturn 1; /* assume supported */\n}"
+  diff_summary: |-
+    src/libbpf_probes.c:
+    - Adjusted types or casts so the verifier sees the intended pointer or value kind.
+    - Affected context: int libbpf_probe_bpf_helper(enum bpf_prog_type prog_type, enum bpf_func_id helpe.
+    - Commit subject: bpf: improve error message for unsupported helper.

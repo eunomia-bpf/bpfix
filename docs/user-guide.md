@@ -1,7 +1,7 @@
 # BPFix User Guide
 
 BPFix explains eBPF verifier rejections from logs you already have. It does not
-run your loader, mutate your program, or require benchmark metadata.
+run your loader, mutate your program, or require evaluation metadata.
 
 ## Install
 

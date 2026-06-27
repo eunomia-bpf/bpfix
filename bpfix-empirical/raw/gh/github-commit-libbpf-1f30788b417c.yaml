@@ -1,0 +1,62 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-libbpf-1f30788b417c
+source_kind: github_commit
+source:
+  url: https://github.com/libbpf/libbpf/commit/1f30788b417cb2946b2f700038632d28fec17e04
+  title: 'libbpf: Make __kptr and __kptr_ref unconditionally use btf_type_tag() attr'
+  repository: https://github.com/libbpf/libbpf
+  commit: 1f30788b417cb2946b2f700038632d28fec17e04
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-libbpf-1f30788b417c.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: missing_source
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Header change makes __kptr/__kptr_ref always emit btf_type_tag attributes.
+    A reproducer would need a BPF map/value type using these annotations; raw has
+    only macro definitions and no load log.
+raw:
+  case_id: github-commit-libbpf-1f30788b417c
+  source: github_commits
+  repository: https://github.com/libbpf/libbpf
+  commit_hash: 1f30788b417cb2946b2f700038632d28fec17e04
+  commit_message: 'libbpf: Make __kptr and __kptr_ref unconditionally use btf_type_tag()
+    attr'
+  commit_date: '2022-05-08'
+  fix_type: attribute_annotation
+  buggy_code: "// FILE: src/bpf_helpers.h\n// CONTEXT: enum libbpf_pin_type {\n\t\
+    /* PIN_BY_NAME: pin maps by name (in /sys/fs/bpf by default) */\n\tLIBBPF_PIN_BY_NAME,\n\
+    };\n\nenum libbpf_tristate {\n\tTRI_NO = 0,\n\tTRI_YES = 1,\n\tTRI_MODULE = 2,\n\
+    };\n\n#define __kconfig __attribute__((section(\".kconfig\")))\n#define __ksym\
+    \ __attribute__((section(\".ksyms\")))\n#if __has_attribute(btf_type_tag)\n#define\
+    \ __kptr __attribute__((btf_type_tag(\"kptr\")))\n#define __kptr_ref __attribute__((btf_type_tag(\"\
+    kptr_ref\")))\n#else\n#define __kptr\n#define __kptr_ref\n#endif\n\n#ifndef ___bpf_concat\n\
+    #define ___bpf_concat(a, b) a ## b\n#endif\n#ifndef ___bpf_apply\n#define ___bpf_apply(fn,\
+    \ n) ___bpf_concat(fn, n)\n#endif\n#ifndef ___bpf_nth\n#define ___bpf_nth(_, _1,\
+    \ _2, _3, _4, _5, _6, _7, _8, _9, _a, _b, _c, N, ...) N\n#endif\n#ifndef ___bpf_narg\n\
+    #define ___bpf_narg(...) \\"
+  fixed_code: "// FILE: src/bpf_helpers.h\n// CONTEXT: enum libbpf_pin_type {\n\t\
+    /* PIN_BY_NAME: pin maps by name (in /sys/fs/bpf by default) */\n\tLIBBPF_PIN_BY_NAME,\n\
+    };\n\nenum libbpf_tristate {\n\tTRI_NO = 0,\n\tTRI_YES = 1,\n\tTRI_MODULE = 2,\n\
+    };\n\n#define __kconfig __attribute__((section(\".kconfig\")))\n#define __ksym\
+    \ __attribute__((section(\".ksyms\")))\n#define __kptr __attribute__((btf_type_tag(\"\
+    kptr\")))\n#define __kptr_ref __attribute__((btf_type_tag(\"kptr_ref\")))\n\n\
+    #ifndef ___bpf_concat\n#define ___bpf_concat(a, b) a ## b\n#endif\n#ifndef ___bpf_apply\n\
+    #define ___bpf_apply(fn, n) ___bpf_concat(fn, n)\n#endif\n#ifndef ___bpf_nth\n\
+    #define ___bpf_nth(_, _1, _2, _3, _4, _5, _6, _7, _8, _9, _a, _b, _c, N, ...)\
+    \ N\n#endif\n#ifndef ___bpf_narg\n#define ___bpf_narg(...) \\"
+  diff_summary: |-
+    src/bpf_helpers.h:
+    - Changed verifier-relevant attributes or annotations on the affected declarations.
+    - Affected context: enum libbpf_pin_type {.
+    - Commit subject: libbpf: Make __kptr and __kptr_ref unconditionally use btf_type_tag() attr.

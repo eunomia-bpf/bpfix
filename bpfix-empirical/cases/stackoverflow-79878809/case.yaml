@@ -1,0 +1,44 @@
+schema_version: bpfix.case/v1
+case_id: stackoverflow-79878809
+source:
+  kind: stackoverflow
+  url: https://stackoverflow.com/questions/79878809/inconsistent-verifier-behavior-for-fentry-and-kprobe-ctx
+  repository: null
+  commit: null
+  upstream_file: null
+  collected_at: '2026-04-30T00:51:24+00:00'
+  raw_excerpt_files:
+  - bpfix-empirical/raw/so/stackoverflow-79878809.yaml
+reproducer:
+  reconstruction: reconstructed
+  notes: Imported from reconstructed external source into bpfix-empirical; replay logs are generated
+    as replay-verifier.log.
+capture:
+  capture_id: stackoverflow-79878809__kernel-6.15.11-clang-18-log2
+  terminal_error: invalid bpf_context access off=24 size=8
+  rejected_insn_idx: 0
+external_match:
+  status: exact
+  policy: terminal_error
+  matched_messages:
+  - invalid bpf_context access off=24 size=8
+  - invalid bpf_context access off=24 size=8
+  notes: Imported only because verifier_error_match was exact/partial in the verified SO/GH
+    artifact.
+label:
+  capture_id: stackoverflow-79878809__kernel-6.15.11-clang-18-log2
+  taxonomy_class: source_bug
+  error_id: BPFIX-E011
+  confidence: medium
+  label_source: external_replay_reconstruction
+  root_cause_description: fentry context is indexed as a generic u64 array at an argument
+    whose BTF type is not a struct pointer the verifier accepts.
+  root_cause_insn_idx: null
+  localization_confidence: medium
+  fix_type: use_correct_context
+  fix_direction: Use the typed fentry/BPF_PROG signature or access only verifier-supported
+    context arguments.
+reporting:
+  family_id: stackoverflow-79878809
+  representative: true
+  notes: External SO/GH case imported from verified exact/partial artifact.

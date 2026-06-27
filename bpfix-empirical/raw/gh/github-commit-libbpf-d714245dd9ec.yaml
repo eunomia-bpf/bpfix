@@ -1,0 +1,126 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-libbpf-d714245dd9ec
+source_kind: github_commit
+source:
+  url: https://github.com/libbpf/libbpf/commit/d714245dd9ec66e2100cceb0af0cef5e44f13335
+  title: 'libbpf: add bpf_object__load_xattr() API function to pass log_level'
+  repository: https://github.com/libbpf/libbpf
+  commit: d714245dd9ec66e2100cceb0af0cef5e44f13335
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-libbpf-d714245dd9ec.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Raw has_verifier_log=false, source_snippet_count=0. The change adds bpf_object__load_xattr()
+    so callers can pass log_level through libbpf load APIs; no rejected BPF program
+    or terminal verifier log is included.
+raw:
+  case_id: github-commit-libbpf-d714245dd9ec
+  source: github_commits
+  repository: https://github.com/libbpf/libbpf
+  commit_hash: d714245dd9ec66e2100cceb0af0cef5e44f13335
+  commit_message: 'libbpf: add bpf_object__load_xattr() API function to pass log_level'
+  commit_date: '2019-05-24'
+  fix_type: null_check
+  buggy_code: "// FILE: src/libbpf.c\n// CONTEXT: out:\n\tzfree(&prog->insns);\n\t\
+    prog->insns_cnt = 0;\n\treturn err;\n}\n\nstatic bool bpf_program__is_function_storage(struct\
+    \ bpf_program *prog,\n\t\t\t\t\t     struct bpf_object *obj)\n{\n\treturn prog->idx\
+    \ == obj->efile.text_shndx && obj->has_pseudo_calls;\n}\n\nstatic int\nbpf_object__load_progs(struct\
+    \ bpf_object *obj)\n{\n\tsize_t i;\n\tint err;\n\n\tfor (i = 0; i < obj->nr_programs;\
+    \ i++) {\n\t\tif (bpf_program__is_function_storage(&obj->programs[i], obj))\n\t\
+    \t\tcontinue;\n\t\terr = bpf_program__load(&obj->programs[i],\n\t\t\t\t\tobj->license,\n\
+    \t\t\t\t\tobj->kern_version);\n\t\tif (err)\n\t\t\treturn err;\n\t}\n\treturn\
+    \ 0;\n}\n\nstatic bool bpf_prog_type__needs_kver(enum bpf_prog_type type)\n{\n\
+    \tswitch (type) {\n\n// CONTEXT: int bpf_object__unload(struct bpf_object *obj)\n\
+    \tif (!obj)\n\t\treturn -EINVAL;\n\n\tfor (i = 0; i < obj->nr_maps; i++)\n\t\t\
+    zclose(obj->maps[i].fd);\n\n\tfor (i = 0; i < obj->nr_programs; i++)\n\t\tbpf_program__unload(&obj->programs[i]);\n\
+    \n\treturn 0;\n}\n\nint bpf_object__load(struct bpf_object *obj)\n{\n\tint err;\n\
+    \n\tif (!obj)\n\t\treturn -EINVAL;\n\n\tif (obj->loaded) {\n\t\tpr_warning(\"\
+    object should not be loaded twice\\n\");\n\t\treturn -EINVAL;\n\t}\n\n\tobj->loaded\
+    \ = true;\n\n\tCHECK_ERR(bpf_object__create_maps(obj), err, out);\n\tCHECK_ERR(bpf_object__relocate(obj),\
+    \ err, out);\n\tCHECK_ERR(bpf_object__load_progs(obj), err, out);\n\n\treturn\
+    \ 0;\nout:\n\tbpf_object__unload(obj);\n\tpr_warning(\"failed to load object '%s'\\\
+    n\", obj->path);\n\treturn err;\n}\n\nstatic int check_path(const char *path)\n\
+    {\n\tchar *cp, errmsg[STRERR_BUFSIZE];\n\tstruct statfs st_fs;\n\tchar *dname,\
+    \ *dir;\n\tint err = 0;\n\n\tif (path == NULL)\n\t\treturn -EINVAL;\n\n\tdname\
+    \ = strdup(path);\n\tif (dname == NULL)\n\n// FILE: src/libbpf.h\n// CONTEXT:\
+    \ int bpf_object__section_size(const struct bpf_object *obj, const char *name,\n\
+    int bpf_object__variable_offset(const struct bpf_object *obj, const char *name,\n\
+    \t\t\t\t__u32 *off);\nLIBBPF_API int bpf_object__pin_maps(struct bpf_object *obj,\
+    \ const char *path);\nLIBBPF_API int bpf_object__unpin_maps(struct bpf_object\
+    \ *obj,\n\t\t\t\t      const char *path);\nLIBBPF_API int bpf_object__pin_programs(struct\
+    \ bpf_object *obj,\n\t\t\t\t\tconst char *path);\nLIBBPF_API int bpf_object__unpin_programs(struct\
+    \ bpf_object *obj,\n\t\t\t\t\t  const char *path);\nLIBBPF_API int bpf_object__pin(struct\
+    \ bpf_object *object, const char *path);\nLIBBPF_API void bpf_object__close(struct\
+    \ bpf_object *object);\n\n/* Load/unload object into/from kernel */\nLIBBPF_API\
+    \ int bpf_object__load(struct bpf_object *obj);\nLIBBPF_API int bpf_object__unload(struct\
+    \ bpf_object *obj);\nLIBBPF_API const char *bpf_object__name(struct bpf_object\
+    \ *obj);\nLIBBPF_API unsigned int bpf_object__kversion(struct bpf_object *obj);\n\
+    \nstruct btf;\nLIBBPF_API struct btf *bpf_object__btf(struct bpf_object *obj);\n\
+    LIBBPF_API int bpf_object__btf_fd(const struct bpf_object *obj);\n\nLIBBPF_API\
+    \ struct bpf_program *\nbpf_object__find_program_by_title(struct bpf_object *obj,\
+    \ const char *title);\n\nLIBBPF_API struct bpf_object *bpf_object__next(struct\
+    \ bpf_object *prev);"
+  fixed_code: "// FILE: src/libbpf.c\n// CONTEXT: out:\n\tzfree(&prog->insns);\n\t\
+    prog->insns_cnt = 0;\n\treturn err;\n}\n\nstatic bool bpf_program__is_function_storage(struct\
+    \ bpf_program *prog,\n\t\t\t\t\t     struct bpf_object *obj)\n{\n\treturn prog->idx\
+    \ == obj->efile.text_shndx && obj->has_pseudo_calls;\n}\n\nstatic int\nbpf_object__load_progs(struct\
+    \ bpf_object *obj, int log_level)\n{\n\tsize_t i;\n\tint err;\n\n\tfor (i = 0;\
+    \ i < obj->nr_programs; i++) {\n\t\tif (bpf_program__is_function_storage(&obj->programs[i],\
+    \ obj))\n\t\t\tcontinue;\n\t\tobj->programs[i].log_level = log_level;\n\t\terr\
+    \ = bpf_program__load(&obj->programs[i],\n\t\t\t\t\tobj->license,\n\t\t\t\t\t\
+    obj->kern_version);\n\t\tif (err)\n\t\t\treturn err;\n\t}\n\treturn 0;\n}\n\n\
+    static bool bpf_prog_type__needs_kver(enum bpf_prog_type type)\n{\n\tswitch (type)\
+    \ {\n\n// CONTEXT: int bpf_object__unload(struct bpf_object *obj)\n\tif (!obj)\n\
+    \t\treturn -EINVAL;\n\n\tfor (i = 0; i < obj->nr_maps; i++)\n\t\tzclose(obj->maps[i].fd);\n\
+    \n\tfor (i = 0; i < obj->nr_programs; i++)\n\t\tbpf_program__unload(&obj->programs[i]);\n\
+    \n\treturn 0;\n}\n\nint bpf_object__load_xattr(struct bpf_object_load_attr *attr)\n\
+    {\n\tstruct bpf_object *obj;\n\tint err;\n\n\tif (!attr)\n\t\treturn -EINVAL;\n\
+    \tobj = attr->obj;\n\tif (!obj)\n\t\treturn -EINVAL;\n\n\tif (obj->loaded) {\n\
+    \t\tpr_warning(\"object should not be loaded twice\\n\");\n\t\treturn -EINVAL;\n\
+    \t}\n\n\tobj->loaded = true;\n\n\tCHECK_ERR(bpf_object__create_maps(obj), err,\
+    \ out);\n\tCHECK_ERR(bpf_object__relocate(obj), err, out);\n\tCHECK_ERR(bpf_object__load_progs(obj,\
+    \ attr->log_level), err, out);\n\n\treturn 0;\nout:\n\tbpf_object__unload(obj);\n\
+    \tpr_warning(\"failed to load object '%s'\\n\", obj->path);\n\treturn err;\n}\n\
+    \nint bpf_object__load(struct bpf_object *obj)\n{\n\tstruct bpf_object_load_attr\
+    \ attr = {\n\t\t.obj = obj,\n\t};\n\n\treturn bpf_object__load_xattr(&attr);\n\
+    }\n\nstatic int check_path(const char *path)\n{\n\tchar *cp, errmsg[STRERR_BUFSIZE];\n\
+    \tstruct statfs st_fs;\n\tchar *dname, *dir;\n\tint err = 0;\n\n\tif (path ==\
+    \ NULL)\n\t\treturn -EINVAL;\n\n\tdname = strdup(path);\n\tif (dname == NULL)\n\
+    \n// FILE: src/libbpf.h\n// CONTEXT: int bpf_object__section_size(const struct\
+    \ bpf_object *obj, const char *name,\nint bpf_object__variable_offset(const struct\
+    \ bpf_object *obj, const char *name,\n\t\t\t\t__u32 *off);\nLIBBPF_API int bpf_object__pin_maps(struct\
+    \ bpf_object *obj, const char *path);\nLIBBPF_API int bpf_object__unpin_maps(struct\
+    \ bpf_object *obj,\n\t\t\t\t      const char *path);\nLIBBPF_API int bpf_object__pin_programs(struct\
+    \ bpf_object *obj,\n\t\t\t\t\tconst char *path);\nLIBBPF_API int bpf_object__unpin_programs(struct\
+    \ bpf_object *obj,\n\t\t\t\t\t  const char *path);\nLIBBPF_API int bpf_object__pin(struct\
+    \ bpf_object *object, const char *path);\nLIBBPF_API void bpf_object__close(struct\
+    \ bpf_object *object);\n\nstruct bpf_object_load_attr {\n\tstruct bpf_object *obj;\n\
+    \tint log_level;\n};\n\n/* Load/unload object into/from kernel */\nLIBBPF_API\
+    \ int bpf_object__load(struct bpf_object *obj);\nLIBBPF_API int bpf_object__load_xattr(struct\
+    \ bpf_object_load_attr *attr);\nLIBBPF_API int bpf_object__unload(struct bpf_object\
+    \ *obj);\nLIBBPF_API const char *bpf_object__name(struct bpf_object *obj);\nLIBBPF_API\
+    \ unsigned int bpf_object__kversion(struct bpf_object *obj);\n\nstruct btf;\n\
+    LIBBPF_API struct btf *bpf_object__btf(struct bpf_object *obj);\nLIBBPF_API int\
+    \ bpf_object__btf_fd(const struct bpf_object *obj);\n\nLIBBPF_API struct bpf_program\
+    \ *\nbpf_object__find_program_by_title(struct bpf_object *obj, const char *title);\n\
+    \nLIBBPF_API struct bpf_object *bpf_object__next(struct bpf_object *prev);"
+  diff_summary: |-
+    src/libbpf.c:
+    - Added an explicit null guard before the dereference on all verifier-visible paths.
+    - Affected context: out:, int bpf_object__unload(struct bpf_object *obj).
+    src/libbpf.h:
+    - Added an explicit null guard before the dereference on all verifier-visible paths.
+    - Affected context: int bpf_object__section_size(const struct bpf_object *obj, const char *name,.
+    - Commit subject: libbpf: add bpf_object__load_xattr() API function to pass log_level.

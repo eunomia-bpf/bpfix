@@ -1,0 +1,180 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-libbpf-e2d8a820cb4c
+source_kind: github_commit
+source:
+  url: https://github.com/libbpf/libbpf/commit/e2d8a820cb4c7a5ffa09c60e176e61dcd009752c
+  title: 'libbpf: Refactor CO-RE relo human description formatting routine'
+  repository: https://github.com/libbpf/libbpf
+  commit: e2d8a820cb4c7a5ffa09c60e176e61dcd009752c
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-libbpf-e2d8a820cb4c.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Raw has_verifier_log=false, source_snippet_count=0. The diff refactors CO-RE
+    relocation human-description formatting in src/relo_core.c; it changes libbpf
+    diagnostic formatting and includes no triggering BPF program or verifier terminal
+    error.
+raw:
+  case_id: github-commit-libbpf-e2d8a820cb4c
+  source: github_commits
+  repository: https://github.com/libbpf/libbpf
+  commit_hash: e2d8a820cb4c7a5ffa09c60e176e61dcd009752c
+  commit_message: 'libbpf: Refactor CO-RE relo human description formatting routine'
+  commit_date: '2022-04-25'
+  fix_type: bounds_check
+  buggy_code: "// FILE: src/relo_core.c\n// CONTEXT: poison:\n\t\t\tprog_name, relo_idx,\
+    \ insn_idx, insn->code,\n\t\t\tinsn->src_reg, insn->dst_reg, insn->off, insn->imm);\n\
+    \t\treturn -EINVAL;\n\t}\n\n\treturn 0;\n}\n\n/* Output spec definition in the\
+    \ format:\n * [<type-id>] (<type-name>) + <raw-spec> => <offset>@<spec>,\n * where\
+    \ <spec> is a C-syntax view of recorded field access, e.g.: x.a[3].b\n */\nstatic\
+    \ void bpf_core_dump_spec(const char *prog_name, int level, const struct bpf_core_spec\
+    \ *spec)\n{\n\tconst struct btf_type *t;\n\tconst struct btf_enum *e;\n\tconst\
+    \ char *s;\n\t__u32 type_id;\n\tint i;\n\n\ttype_id = spec->root_type_id;\n\t\
+    t = btf_type_by_id(spec->btf, type_id);\n\ts = btf__name_by_offset(spec->btf,\
+    \ t->name_off);\n\n\tlibbpf_print(level, \"[%u] %s %s\", type_id, btf_kind_str(t),\
+    \ str_is_empty(s) ? \"<anon>\" : s);\n\n\tif (core_relo_is_type_based(spec->relo_kind))\n\
+    \t\treturn;\n\n\tif (core_relo_is_enumval_based(spec->relo_kind)) {\n\t\tt = skip_mods_and_typedefs(spec->btf,\
+    \ type_id, NULL);\n\t\te = btf_enum(t) + spec->raw_spec[0];\n\t\ts = btf__name_by_offset(spec->btf,\
+    \ e->name_off);\n\n\t\tlibbpf_print(level, \"::%s = %u\", s, e->val);\n\t\treturn;\n\
+    \t}\n\n\tif (core_relo_is_field_based(spec->relo_kind)) {\n\t\tfor (i = 0; i <\
+    \ spec->len; i++) {\n\t\t\tif (spec->spec[i].name)\n\t\t\t\tlibbpf_print(level,\
+    \ \".%s\", spec->spec[i].name);\n\t\t\telse if (i > 0 || spec->spec[i].idx > 0)\n\
+    \t\t\t\tlibbpf_print(level, \"[%u]\", spec->spec[i].idx);\n\t\t}\n\n\t\tlibbpf_print(level,\
+    \ \" (\");\n\t\tfor (i = 0; i < spec->raw_len; i++)\n\t\t\tlibbpf_print(level,\
+    \ \"%s%d\", i == 0 ? \"\" : \":\", spec->raw_spec[i]);\n\n\t\tif (spec->bit_offset\
+    \ % 8)\n\t\t\tlibbpf_print(level, \" @ offset %u.%u)\",\n\t\t\t\t     spec->bit_offset\
+    \ / 8, spec->bit_offset % 8);\n\t\telse\n\t\t\tlibbpf_print(level, \" @ offset\
+    \ %u)\", spec->bit_offset / 8);\n\t\treturn;\n\t}\n}\n\n/*\n * Calculate CO-RE\
+    \ relocation target result.\n *\n * The outline and important points of the algorithm:\n\
+    \ * 1. For given local type, find corresponding candidate target types.\n *  \
+    \  Candidate type is a type with the same \"essential\" name, ignoring\n *   \
+    \ everything after last triple underscore (___). E.g., `sample`,\n *    `sample___flavor_one`,\
+    \ `sample___flavor_another_one`, are all candidates\n *    for each other. Names\
+    \ with triple underscore are referred to as\n *    \"flavors\" and are useful,\
+    \ among other things, to allow to\n\n// CONTEXT: int bpf_core_calc_relo_insn(const\
+    \ char *prog_name,\n\t\t\t    struct bpf_core_cand_list *cands,\n\t\t\t    struct\
+    \ bpf_core_spec *specs_scratch,\n\t\t\t    struct bpf_core_relo_res *targ_res)\n\
+    {\n\tstruct bpf_core_spec *local_spec = &specs_scratch[0];\n\tstruct bpf_core_spec\
+    \ *cand_spec = &specs_scratch[1];\n\tstruct bpf_core_spec *targ_spec = &specs_scratch[2];\n\
+    \tstruct bpf_core_relo_res cand_res;\n\tconst struct btf_type *local_type;\n\t\
+    const char *local_name;\n\t__u32 local_id;\n\tconst char *spec_str;\n\tint i,\
+    \ j, err;\n\n\tlocal_id = relo->type_id;\n\tlocal_type = btf_type_by_id(local_btf,\
+    \ local_id);\n\tlocal_name = btf__name_by_offset(local_btf, local_type->name_off);\n\
+    \tif (!local_name)\n\t\treturn -EINVAL;\n\n\tspec_str = btf__name_by_offset(local_btf,\
+    \ relo->access_str_off);\n\tif (str_is_empty(spec_str))\n\t\treturn -EINVAL;\n\
+    \n\terr = bpf_core_parse_spec(prog_name, local_btf, local_id, spec_str,\n\t\t\t\
+    \t  relo->kind, local_spec);\n\tif (err) {\n\t\tpr_warn(\"prog '%s': relo #%d:\
+    \ parsing [%d] %s %s + %s failed: %d\\n\",\n\t\t\tprog_name, relo_idx, local_id,\
+    \ btf_kind_str(local_type),\n\t\t\tstr_is_empty(local_name) ? \"<anon>\" : local_name,\n\
+    \t\t\tspec_str, err);\n\t\treturn -EINVAL;\n\t}\n\n\tpr_debug(\"prog '%s': relo\
+    \ #%d: kind <%s> (%d), spec is \", prog_name,\n\t\t relo_idx, core_relo_kind_str(relo->kind),\
+    \ relo->kind);\n\tbpf_core_dump_spec(prog_name, LIBBPF_DEBUG, local_spec);\n\t\
+    libbpf_print(LIBBPF_DEBUG, \"\\n\");\n\n\t/* TYPE_ID_LOCAL relo is special and\
+    \ doesn't need candidate search */\n\tif (relo->kind == BPF_CORE_TYPE_ID_LOCAL)\
+    \ {\n\t\t/* bpf_insn's imm value could get out of sync during linking */\n\t\t\
+    memset(targ_res, 0, sizeof(*targ_res));\n\t\ttarg_res->validate = false;\n\t\t\
+    targ_res->poison = false;\n\t\ttarg_res->orig_val = local_spec->root_type_id;\n\
+    \t\ttarg_res->new_val = local_spec->root_type_id;\n\t\treturn 0;\n\t}\n\n\t/*\
+    \ libbpf doesn't support candidate search for anonymous types */\n\tif (str_is_empty(local_name))\
+    \ {\n\t\tpr_warn(\"prog '%s': relo #%d: <%s> (%d) relocation doesn't support anonymous\
+    \ types\\n\",\n\t\t\tprog_name, relo_idx, core_relo_kind_str(relo->kind), relo->kind);\n\
+    \t\treturn -EOPNOTSUPP;\n\t}\n\n\tfor (i = 0, j = 0; i < cands->len; i++) {\n\t\
+    \terr = bpf_core_spec_match(local_spec, cands->cands[i].btf,\n\t\t\t\t\t  cands->cands[i].id,\
+    \ cand_spec);\n\t\tif (err < 0) {\n\t\t\tpr_warn(\"prog '%s': relo #%d: error\
+    \ matching candidate #%d \",\n\t\t\t\tprog_name, relo_idx, i);\n\t\t\tbpf_core_dump_spec(prog_name,\
+    \ LIBBPF_WARN, cand_spec);\n\t\t\tlibbpf_print(LIBBPF_WARN, \": %d\\n\", err);\n\
+    \t\t\treturn err;\n\t\t}\n\n\t\tpr_debug(\"prog '%s': relo #%d: %s candidate #%d\
+    \ \", prog_name,\n\t\t\t relo_idx, err == 0 ? \"non-matching\" : \"matching\"\
+    , i);\n\t\tbpf_core_dump_spec(prog_name, LIBBPF_DEBUG, cand_spec);\n\t\tlibbpf_print(LIBBPF_DEBUG,\
+    \ \"\\n\");\n\n\t\tif (err == 0)\n\t\t\tcontinue;\n\n\t\terr = bpf_core_calc_relo(prog_name,\
+    \ relo, relo_idx, local_spec, cand_spec, &cand_res);\n\t\tif (err)\n\t\t\treturn\
+    \ err;\n\n\t\tif (j == 0) {\n\t\t\t*targ_res = cand_res;\n\t\t\t*targ_spec = *cand_spec;\n\
+    \t\t} else if (cand_spec->bit_offset != targ_spec->bit_offset) {"
+  fixed_code: "// FILE: src/relo_core.c\n// CONTEXT: poison:\n\t\t\tprog_name, relo_idx,\
+    \ insn_idx, insn->code,\n\t\t\tinsn->src_reg, insn->dst_reg, insn->off, insn->imm);\n\
+    \t\treturn -EINVAL;\n\t}\n\n\treturn 0;\n}\n\n/* Output spec definition in the\
+    \ format:\n * [<type-id>] (<type-name>) + <raw-spec> => <offset>@<spec>,\n * where\
+    \ <spec> is a C-syntax view of recorded field access, e.g.: x.a[3].b\n */\nstatic\
+    \ int bpf_core_format_spec(char *buf, size_t buf_sz, const struct bpf_core_spec\
+    \ *spec)\n{\n\tconst struct btf_type *t;\n\tconst struct btf_enum *e;\n\tconst\
+    \ char *s;\n\t__u32 type_id;\n\tint i, len = 0;\n\n#define append_buf(fmt, args...)\t\
+    \t\t\t\\\n\t({\t\t\t\t\t\t\t\\\n\t\tint r;\t\t\t\t\t\t\\\n\t\tr = snprintf(buf,\
+    \ buf_sz, fmt, ##args);\t\t\\\n\t\tlen += r;\t\t\t\t\t\\\n\t\tif (r >= buf_sz)\t\
+    \t\t\t\\\n\t\t\tr = buf_sz;\t\t\t\t\\\n\t\tbuf += r;\t\t\t\t\t\\\n\t\tbuf_sz -=\
+    \ r;\t\t\t\t\t\\\n\t})\n\n\ttype_id = spec->root_type_id;\n\tt = btf_type_by_id(spec->btf,\
+    \ type_id);\n\ts = btf__name_by_offset(spec->btf, t->name_off);\n\n\tappend_buf(\"\
+    <%s> [%u] %s %s\",\n\t\t   core_relo_kind_str(spec->relo_kind),\n\t\t   type_id,\
+    \ btf_kind_str(t), str_is_empty(s) ? \"<anon>\" : s);\n\n\tif (core_relo_is_type_based(spec->relo_kind))\n\
+    \t\treturn len;\n\n\tif (core_relo_is_enumval_based(spec->relo_kind)) {\n\t\t\
+    t = skip_mods_and_typedefs(spec->btf, type_id, NULL);\n\t\te = btf_enum(t) + spec->raw_spec[0];\n\
+    \t\ts = btf__name_by_offset(spec->btf, e->name_off);\n\n\t\tappend_buf(\"::%s\
+    \ = %u\", s, e->val);\n\t\treturn len;\n\t}\n\n\tif (core_relo_is_field_based(spec->relo_kind))\
+    \ {\n\t\tfor (i = 0; i < spec->len; i++) {\n\t\t\tif (spec->spec[i].name)\n\t\t\
+    \t\tappend_buf(\".%s\", spec->spec[i].name);\n\t\t\telse if (i > 0 || spec->spec[i].idx\
+    \ > 0)\n\t\t\t\tappend_buf(\"[%u]\", spec->spec[i].idx);\n\t\t}\n\n\t\tappend_buf(\"\
+    \ (\");\n\t\tfor (i = 0; i < spec->raw_len; i++)\n\t\t\tappend_buf(\"%s%d\", i\
+    \ == 0 ? \"\" : \":\", spec->raw_spec[i]);\n\n\t\tif (spec->bit_offset % 8)\n\t\
+    \t\tappend_buf(\" @ offset %u.%u)\", spec->bit_offset / 8, spec->bit_offset %\
+    \ 8);\n\t\telse\n\t\t\tappend_buf(\" @ offset %u)\", spec->bit_offset / 8);\n\t\
+    \treturn len;\n\t}\n\n\treturn len;\n#undef append_buf\n}\n\n/*\n * Calculate\
+    \ CO-RE relocation target result.\n *\n * The outline and important points of\
+    \ the algorithm:\n * 1. For given local type, find corresponding candidate target\
+    \ types.\n *    Candidate type is a type with the same \"essential\" name, ignoring\n\
+    \ *    everything after last triple underscore (___). E.g., `sample`,\n *    `sample___flavor_one`,\
+    \ `sample___flavor_another_one`, are all candidates\n *    for each other. Names\
+    \ with triple underscore are referred to as\n *    \"flavors\" and are useful,\
+    \ among other things, to allow to\n\n// CONTEXT: int bpf_core_calc_relo_insn(const\
+    \ char *prog_name,\n\t\t\t    struct bpf_core_cand_list *cands,\n\t\t\t    struct\
+    \ bpf_core_spec *specs_scratch,\n\t\t\t    struct bpf_core_relo_res *targ_res)\n\
+    {\n\tstruct bpf_core_spec *local_spec = &specs_scratch[0];\n\tstruct bpf_core_spec\
+    \ *cand_spec = &specs_scratch[1];\n\tstruct bpf_core_spec *targ_spec = &specs_scratch[2];\n\
+    \tstruct bpf_core_relo_res cand_res;\n\tconst struct btf_type *local_type;\n\t\
+    const char *local_name;\n\t__u32 local_id;\n\tconst char *spec_str;\n\tchar spec_buf[256];\n\
+    \tint i, j, err;\n\n\tlocal_id = relo->type_id;\n\tlocal_type = btf_type_by_id(local_btf,\
+    \ local_id);\n\tlocal_name = btf__name_by_offset(local_btf, local_type->name_off);\n\
+    \tif (!local_name)\n\t\treturn -EINVAL;\n\n\tspec_str = btf__name_by_offset(local_btf,\
+    \ relo->access_str_off);\n\tif (str_is_empty(spec_str))\n\t\treturn -EINVAL;\n\
+    \n\terr = bpf_core_parse_spec(prog_name, local_btf, local_id, spec_str,\n\t\t\t\
+    \t  relo->kind, local_spec);\n\tif (err) {\n\t\tpr_warn(\"prog '%s': relo #%d:\
+    \ parsing [%d] %s %s + %s failed: %d\\n\",\n\t\t\tprog_name, relo_idx, local_id,\
+    \ btf_kind_str(local_type),\n\t\t\tstr_is_empty(local_name) ? \"<anon>\" : local_name,\n\
+    \t\t\tspec_str, err);\n\t\treturn -EINVAL;\n\t}\n\n\tbpf_core_format_spec(spec_buf,\
+    \ sizeof(spec_buf), local_spec);\n\tpr_debug(\"prog '%s': relo #%d: %s\\n\", prog_name,\
+    \ relo_idx, spec_buf);\n\n\t/* TYPE_ID_LOCAL relo is special and doesn't need\
+    \ candidate search */\n\tif (relo->kind == BPF_CORE_TYPE_ID_LOCAL) {\n\t\t/* bpf_insn's\
+    \ imm value could get out of sync during linking */\n\t\tmemset(targ_res, 0, sizeof(*targ_res));\n\
+    \t\ttarg_res->validate = false;\n\t\ttarg_res->poison = false;\n\t\ttarg_res->orig_val\
+    \ = local_spec->root_type_id;\n\t\ttarg_res->new_val = local_spec->root_type_id;\n\
+    \t\treturn 0;\n\t}\n\n\t/* libbpf doesn't support candidate search for anonymous\
+    \ types */\n\tif (str_is_empty(local_name)) {\n\t\tpr_warn(\"prog '%s': relo #%d:\
+    \ <%s> (%d) relocation doesn't support anonymous types\\n\",\n\t\t\tprog_name,\
+    \ relo_idx, core_relo_kind_str(relo->kind), relo->kind);\n\t\treturn -EOPNOTSUPP;\n\
+    \t}\n\n\tfor (i = 0, j = 0; i < cands->len; i++) {\n\t\terr = bpf_core_spec_match(local_spec,\
+    \ cands->cands[i].btf,\n\t\t\t\t\t  cands->cands[i].id, cand_spec);\n\t\tif (err\
+    \ < 0) {\n\t\t\tbpf_core_format_spec(spec_buf, sizeof(spec_buf), cand_spec);\n\
+    \t\t\tpr_warn(\"prog '%s': relo #%d: error matching candidate #%d %s: %d\\n \"\
+    ,\n\t\t\t\tprog_name, relo_idx, i, spec_buf, err);\n\t\t\treturn err;\n\t\t}\n\
+    \n\t\tbpf_core_format_spec(spec_buf, sizeof(spec_buf), cand_spec);\n\t\tpr_debug(\"\
+    prog '%s': relo #%d: %s candidate #%d %s\\n\", prog_name,\n\t\t\t relo_idx, err\
+    \ == 0 ? \"non-matching\" : \"matching\", i, spec_buf);\n\n\t\tif (err == 0)\n\
+    \t\t\tcontinue;\n\n\t\terr = bpf_core_calc_relo(prog_name, relo, relo_idx, local_spec,\
+    \ cand_spec, &cand_res);\n\t\tif (err)\n\t\t\treturn err;\n\n\t\tif (j == 0) {\n\
+    \t\t\t*targ_res = cand_res;\n\t\t\t*targ_spec = *cand_spec;\n\t\t} else if (cand_spec->bit_offset\
+    \ != targ_spec->bit_offset) {"
+  diff_summary: |-
+    src/relo_core.c:
+    - Added explicit bounds or range guards so the verifier can prove the access size and offset.
+    - Affected context: poison:, int bpf_core_calc_relo_insn(const char *prog_name,.
+    - Commit subject: libbpf: Refactor CO-RE relo human description formatting routine.

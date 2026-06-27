@@ -1,0 +1,67 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-libbpf-2c5038dcf485
+source_kind: github_commit
+source:
+  url: https://github.com/libbpf/libbpf/commit/2c5038dcf4851b7b9136a0504667c9f5bfd0fd19
+  title: 'libbpf: Fix OOB read in btf_dump_get_bitfield_value'
+  repository: https://github.com/libbpf/libbpf
+  commit: 2c5038dcf4851b7b9136a0504667c9f5bfd0fd19
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-libbpf-2c5038dcf485.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Adds a typed-dump data-end bounds check in btf_dump_get_bitfield_value.
+    The affected code reads user-space dump buffers, not verifier-visible program
+    memory.
+raw:
+  case_id: github-commit-libbpf-2c5038dcf485
+  source: github_commits
+  repository: https://github.com/libbpf/libbpf
+  commit_hash: 2c5038dcf4851b7b9136a0504667c9f5bfd0fd19
+  commit_message: 'libbpf: Fix OOB read in btf_dump_get_bitfield_value'
+  commit_date: '2026-01-07'
+  fix_type: bounds_check
+  buggy_code: "// FILE: src/btf_dump.c\n// CONTEXT: static int btf_dump_unsupported_data(struct\
+    \ btf_dump *d,\n}\n\nstatic int btf_dump_get_bitfield_value(struct btf_dump *d,\n\
+    \t\t\t\t       const struct btf_type *t,\n\t\t\t\t       const void *data,\n\t\
+    \t\t\t       __u8 bits_offset,\n\t\t\t\t       __u8 bit_sz,\n\t\t\t\t       __u64\
+    \ *value)\n{\n\t__u16 left_shift_bits, right_shift_bits;\n\tconst __u8 *bytes\
+    \ = data;\n\t__u8 nr_copy_bits;\n\t__u64 num = 0;\n\tint i;\n\n\t/* Maximum supported\
+    \ bitfield size is 64 bits */\n\tif (t->size > 8) {\n\t\tpr_warn(\"unexpected\
+    \ bitfield size %d\\n\", t->size);\n\t\treturn -EINVAL;\n\t}\n\n\t/* Bitfield\
+    \ value retrieval is done in two steps; first relevant bytes are\n\t * stored\
+    \ in num, then we left/right shift num to eliminate irrelevant bits.\n\t */\n\
+    #if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__\n\tfor (i = t->size - 1; i >= 0;\
+    \ i--)\n\t\tnum = num * 256 + bytes[i];"
+  fixed_code: "// FILE: src/btf_dump.c\n// CONTEXT: static int btf_dump_unsupported_data(struct\
+    \ btf_dump *d,\n}\n\nstatic int btf_dump_get_bitfield_value(struct btf_dump *d,\n\
+    \t\t\t\t       const struct btf_type *t,\n\t\t\t\t       const void *data,\n\t\
+    \t\t\t       __u8 bits_offset,\n\t\t\t\t       __u8 bit_sz,\n\t\t\t\t       __u64\
+    \ *value)\n{\n\t__u16 left_shift_bits, right_shift_bits;\n\tconst __u8 *bytes\
+    \ = data;\n\t__u8 nr_copy_bits;\n\t__u8 start_bit, nr_bytes;\n\t__u64 num = 0;\n\
+    \tint i;\n\n\t/* Calculate how many bytes cover the bitfield */\n\tstart_bit =\
+    \ bits_offset % 8;\n\tnr_bytes = (start_bit + bit_sz + 7) / 8;\n\n\t/* Bound check\
+    \ */\n\tif (data + nr_bytes > d->typed_dump->data_end)\n\t\treturn -E2BIG;\n\n\
+    \t/* Maximum supported bitfield size is 64 bits */\n\tif (t->size > 8) {\n\t\t\
+    pr_warn(\"unexpected bitfield size %d\\n\", t->size);\n\t\treturn -EINVAL;\n\t\
+    }\n\n\t/* Bitfield value retrieval is done in two steps; first relevant bytes\
+    \ are\n\t * stored in num, then we left/right shift num to eliminate irrelevant\
+    \ bits.\n\t */\n#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__\n\tfor (i = t->size\
+    \ - 1; i >= 0; i--)\n\t\tnum = num * 256 + bytes[i];"
+  diff_summary: |-
+    src/btf_dump.c:
+    - Added explicit bounds or range guards so the verifier can prove the access size and offset.
+    - Affected context: static int btf_dump_unsupported_data(struct btf_dump *d,.
+    - Commit subject: libbpf: Fix OOB read in btf_dump_get_bitfield_value.

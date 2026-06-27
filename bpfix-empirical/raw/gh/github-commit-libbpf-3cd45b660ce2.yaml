@@ -1,0 +1,213 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-libbpf-3cd45b660ce2
+source_kind: github_commit
+source:
+  url: https://github.com/libbpf/libbpf/commit/3cd45b660ce26f3b6f80a6eac6f9fab7fb56bcb4
+  title: 'libbpf: only add BPF_F_MMAPABLE flag for data maps with global vars'
+  repository: https://github.com/libbpf/libbpf
+  commit: 3cd45b660ce26f3b6f80a6eac6f9fab7fb56bcb4
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-libbpf-3cd45b660ce2.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Changes libbpf's decision to add BPF_F_MMAPABLE only for data maps with
+    global variables. This is map-creation compatibility/user-space policy, not a
+    standalone verifier rejection.
+raw:
+  case_id: github-commit-libbpf-3cd45b660ce2
+  source: github_commits
+  repository: https://github.com/libbpf/libbpf
+  commit_hash: 3cd45b660ce26f3b6f80a6eac6f9fab7fb56bcb4
+  commit_message: 'libbpf: only add BPF_F_MMAPABLE flag for data maps with global
+    vars'
+  commit_date: '2022-10-18'
+  fix_type: loop_rewrite
+  buggy_code: "// FILE: src/libbpf.c\n// CONTEXT: static char *internal_map_name(struct\
+    \ bpf_object *obj, const char *real_name)\n\tsnprintf(map_name, sizeof(map_name),\
+    \ \"%.*s%.*s\", pfx_len, obj->name,\n\t\t sfx_len, real_name);\n\n\t/* sanitise\
+    \ map name to characters allowed by kernel */\n\tfor (p = map_name; *p && p <\
+    \ map_name + sizeof(map_name); p++)\n\t\tif (!isalnum(*p) && *p != '_' && *p !=\
+    \ '.')\n\t\t\t*p = '_';\n\n\treturn strdup(map_name);\n}\n\nstatic int\nbpf_map_find_btf_info(struct\
+    \ bpf_object *obj, struct bpf_map *map);\n\nstatic int\nbpf_object__init_internal_map(struct\
+    \ bpf_object *obj, enum libbpf_map_type type,\n\t\t\t      const char *real_name,\
+    \ int sec_idx, void *data, size_t data_sz)\n{\n\tstruct bpf_map_def *def;\n\t\
+    struct bpf_map *map;\n\tint err;\n\n\tmap = bpf_object__add_map(obj);\n\tif (IS_ERR(map))\n\
+    \t\treturn PTR_ERR(map);\n\n// CONTEXT: bpf_object__init_internal_map(struct bpf_object\
+    \ *obj, enum libbpf_map_type type,\n\t\tzfree(&map->real_name);\n\t\tzfree(&map->name);\n\
+    \t\treturn -ENOMEM;\n\t}\n\n\tdef = &map->def;\n\tdef->type = BPF_MAP_TYPE_ARRAY;\n\
+    \tdef->key_size = sizeof(int);\n\tdef->value_size = data_sz;\n\tdef->max_entries\
+    \ = 1;\n\tdef->map_flags = type == LIBBPF_MAP_RODATA || type == LIBBPF_MAP_KCONFIG\n\
+    \t\t\t ? BPF_F_RDONLY_PROG : 0;\n\tdef->map_flags |= BPF_F_MMAPABLE;\n\n\tpr_debug(\"\
+    map '%s' (global data): at sec_idx %d, offset %zu, flags %x.\\n\",\n\t\t map->name,\
+    \ map->sec_idx, map->sec_offset, def->map_flags);\n\n\tmap->mmaped = mmap(NULL,\
+    \ bpf_map_mmap_sz(map), PROT_READ | PROT_WRITE,\n\t\t\t   MAP_SHARED | MAP_ANONYMOUS,\
+    \ -1, 0);\n\tif (map->mmaped == MAP_FAILED) {\n\t\terr = -errno;\n\t\tmap->mmaped\
+    \ = NULL;\n\t\tpr_warn(\"failed to alloc map '%s' content buffer: %d\\n\",\n\t\
+    \t\tmap->name, err);\n\t\tzfree(&map->real_name);\n\t\tzfree(&map->name);\n\t\t\
+    return err;\n\t}\n\n\t/* failures are fine because of maps like .rodata.str1.1\
+    \ */\n\t(void) bpf_map_find_btf_info(obj, map);\n\n\tif (data)\n\t\tmemcpy(map->mmaped,\
+    \ data, data_sz);\n\n\tpr_debug(\"map %td is \\\"%s\\\"\\n\", map - obj->maps,\
+    \ map->name);\n\treturn 0;\n}\n\nstatic int bpf_object__init_global_data_maps(struct\
+    \ bpf_object *obj)\n{\n\tstruct elf_sec_desc *sec_desc;\n\tconst char *sec_name;\n\
+    \tint err = 0, sec_idx;\n\n// CONTEXT: static int bpf_object__init_user_btf_map(struct\
+    \ bpf_object *obj,\n\t\tif (!map->inner_map)\n\t\t\treturn -ENOMEM;\n\t\tmap->inner_map->fd\
+    \ = -1;\n\t\tmap->inner_map->sec_idx = sec_idx;\n\t\tmap->inner_map->name = malloc(strlen(map_name)\
+    \ + sizeof(\".inner\") + 1);\n\t\tif (!map->inner_map->name)\n\t\t\treturn -ENOMEM;\n\
+    \t\tsprintf(map->inner_map->name, \"%s.inner\", map_name);\n\n\t\tfill_map_from_def(map->inner_map,\
+    \ &inner_def);\n\t}\n\n\terr = bpf_map_find_btf_info(obj, map);\n\tif (err)\n\t\
+    \treturn err;\n\n\treturn 0;\n}\n\nstatic int bpf_object__init_user_btf_maps(struct\
+    \ bpf_object *obj, bool strict,\n\t\t\t\t\t  const char *pin_root_path)\n{\n\t\
+    const struct btf_type *sec = NULL;\n\tint nr_types, i, vlen, err;\n\tconst struct\
+    \ btf_type *t;\n\n// CONTEXT: static int compare_vsi_off(const void *_a, const\
+    \ void *_b)\n\tconst struct btf_var_secinfo *a = _a;\n\tconst struct btf_var_secinfo\
+    \ *b = _b;\n\n\treturn a->offset - b->offset;\n}\n\nstatic int btf_fixup_datasec(struct\
+    \ bpf_object *obj, struct btf *btf,\n\t\t\t     struct btf_type *t)\n{\n\t__u32\
+    \ size = 0, i, vars = btf_vlen(t);\n\tconst char *sec_name = btf__name_by_offset(btf,\
+    \ t->name_off);\n\tstruct btf_var_secinfo *vsi;\n\tint err;\n\n\tif (!sec_name)\
+    \ {\n\t\tpr_debug(\"No name found in string section for DATASEC kind.\\n\");\n\
+    \t\treturn -ENOENT;\n\t}\n\n\t/* extern-backing datasecs (.ksyms, .kconfig) have\
+    \ their size and\n\t * variable offsets set at the previous step, so we skip any\
+    \ fixups\n\t * for such sections\n\t */\n\tif (t->size)\n\t\tgoto sort_vars;\n\
+    \n\terr = find_elf_sec_sz(obj, sec_name, &size);\n\tif (err || !size) {\n\t\t\
+    pr_debug(\"sec '%s': failed to determine size from ELF: size %u, err %d\\n\",\n\
+    \t\t\t sec_name, size, err);\n\t\treturn -ENOENT;\n\t}\n\n\tt->size = size;\n\n\
+    \tfor (i = 0, vsi = btf_var_secinfos(t); i < vars; i++, vsi++) {\n\t\tconst struct\
+    \ btf_type *t_var;\n\t\tstruct btf_var *var;\n\t\tconst char *var_name;\n\t\t\
+    Elf64_Sym *sym;\n\n\t\tt_var = btf__type_by_id(btf, vsi->type);\n\t\tif (!t_var\
+    \ || !btf_is_var(t_var)) {\n\t\t\tpr_debug(\"sec '%s': unexpected non-VAR type\
+    \ found\\n\", sec_name);\n\t\t\treturn -EINVAL;\n\t\t}\n\n// CONTEXT: static int\
+    \ btf_fixup_datasec(struct bpf_object *obj, struct btf *btf,\n\t\t\tpr_debug(\"\
+    sec '%s': failed to find name of DATASEC's member #%d\\n\",\n\t\t\t\t sec_name,\
+    \ i);\n\t\t\treturn -ENOENT;\n\t\t}\n\n\t\tsym = find_elf_var_sym(obj, var_name);\n\
+    \t\tif (IS_ERR(sym)) {\n\t\t\tpr_debug(\"sec '%s': failed to find ELF symbol for\
+    \ VAR '%s'\\n\",\n\t\t\t\t sec_name, var_name);\n\t\t\treturn -ENOENT;\n\t\t}\n\
+    \n\t\tvsi->offset = sym->st_value;\n\t}\n\nsort_vars:\n\tqsort(btf_var_secinfos(t),\
+    \ vars, sizeof(*vsi), compare_vsi_off);\n\treturn 0;\n}\n\nstatic int bpf_object_fixup_btf(struct\
+    \ bpf_object *obj)\n{\n\tint i, n, err = 0;\n\n\tif (!obj->btf)\n\n// CONTEXT:\
+    \ bpf_object__collect_prog_relos(struct bpf_object *obj, Elf64_Shdr *shdr, Elf_Dat\n\
+    \t\t/* adjust insn_idx to local BPF program frame of reference */\n\t\tinsn_idx\
+    \ -= prog->sec_insn_off;\n\t\terr = bpf_program__record_reloc(prog, &relos[prog->nr_reloc],\n\
+    \t\t\t\t\t\tinsn_idx, sym_name, sym, rel);\n\t\tif (err)\n\t\t\treturn err;\n\n\
+    \t\tprog->nr_reloc++;\n\t}\n\treturn 0;\n}\n\nstatic int bpf_map_find_btf_info(struct\
+    \ bpf_object *obj, struct bpf_map *map)\n{\n\tint id;\n\n\tif (!obj->btf)\n\t\t\
+    return -ENOENT;\n\n\t/* if it's BTF-defined map, we don't need to search for type\
+    \ IDs.\n\t * For struct_ops map, it does not need btf_key_type_id and\n\t * btf_value_type_id.\n\
+    \t */\n\tif (map->sec_idx == obj->efile.btf_maps_shndx || bpf_map__is_struct_ops(map))\n\
+    \t\treturn 0;"
+  fixed_code: "// FILE: src/libbpf.c\n// CONTEXT: static char *internal_map_name(struct\
+    \ bpf_object *obj, const char *real_name)\n\tsnprintf(map_name, sizeof(map_name),\
+    \ \"%.*s%.*s\", pfx_len, obj->name,\n\t\t sfx_len, real_name);\n\n\t/* sanitise\
+    \ map name to characters allowed by kernel */\n\tfor (p = map_name; *p && p <\
+    \ map_name + sizeof(map_name); p++)\n\t\tif (!isalnum(*p) && *p != '_' && *p !=\
+    \ '.')\n\t\t\t*p = '_';\n\n\treturn strdup(map_name);\n}\n\nstatic int\nmap_fill_btf_type_info(struct\
+    \ bpf_object *obj, struct bpf_map *map);\n\n/* Internal BPF map is mmap()'able\
+    \ only if at least one of corresponding\n * DATASEC's VARs are to be exposed through\
+    \ BPF skeleton. I.e., it's a GLOBAL\n * variable and it's not marked as __hidden\
+    \ (which turns it into, effectively,\n * a STATIC variable).\n */\nstatic bool\
+    \ map_is_mmapable(struct bpf_object *obj, struct bpf_map *map)\n{\n\tconst struct\
+    \ btf_type *t, *vt;\n\tstruct btf_var_secinfo *vsi;\n\tint i, n;\n\n\tif (!map->btf_value_type_id)\n\
+    \t\treturn false;\n\n\tt = btf__type_by_id(obj->btf, map->btf_value_type_id);\n\
+    \tif (!btf_is_datasec(t))\n\t\treturn false;\n\n\tvsi = btf_var_secinfos(t);\n\
+    \tfor (i = 0, n = btf_vlen(t); i < n; i++, vsi++) {\n\t\tvt = btf__type_by_id(obj->btf,\
+    \ vsi->type);\n\t\tif (!btf_is_var(vt))\n\t\t\tcontinue;\n\n\t\tif (btf_var(vt)->linkage\
+    \ != BTF_VAR_STATIC)\n\t\t\treturn true;\n\t}\n\n\treturn false;\n}\n\nstatic\
+    \ int\nbpf_object__init_internal_map(struct bpf_object *obj, enum libbpf_map_type\
+    \ type,\n\t\t\t      const char *real_name, int sec_idx, void *data, size_t data_sz)\n\
+    {\n\tstruct bpf_map_def *def;\n\tstruct bpf_map *map;\n\tint err;\n\n\tmap = bpf_object__add_map(obj);\n\
+    \tif (IS_ERR(map))\n\t\treturn PTR_ERR(map);\n\n// CONTEXT: bpf_object__init_internal_map(struct\
+    \ bpf_object *obj, enum libbpf_map_type type,\n\t\tzfree(&map->real_name);\n\t\
+    \tzfree(&map->name);\n\t\treturn -ENOMEM;\n\t}\n\n\tdef = &map->def;\n\tdef->type\
+    \ = BPF_MAP_TYPE_ARRAY;\n\tdef->key_size = sizeof(int);\n\tdef->value_size = data_sz;\n\
+    \tdef->max_entries = 1;\n\tdef->map_flags = type == LIBBPF_MAP_RODATA || type\
+    \ == LIBBPF_MAP_KCONFIG\n\t\t\t ? BPF_F_RDONLY_PROG : 0;\n\n\t/* failures are\
+    \ fine because of maps like .rodata.str1.1 */\n\t(void) map_fill_btf_type_info(obj,\
+    \ map);\n\n\tif (map_is_mmapable(obj, map))\n\t\tdef->map_flags |= BPF_F_MMAPABLE;\n\
+    \n\tpr_debug(\"map '%s' (global data): at sec_idx %d, offset %zu, flags %x.\\\
+    n\",\n\t\t map->name, map->sec_idx, map->sec_offset, def->map_flags);\n\n\tmap->mmaped\
+    \ = mmap(NULL, bpf_map_mmap_sz(map), PROT_READ | PROT_WRITE,\n\t\t\t   MAP_SHARED\
+    \ | MAP_ANONYMOUS, -1, 0);\n\tif (map->mmaped == MAP_FAILED) {\n\t\terr = -errno;\n\
+    \t\tmap->mmaped = NULL;\n\t\tpr_warn(\"failed to alloc map '%s' content buffer:\
+    \ %d\\n\",\n\t\t\tmap->name, err);\n\t\tzfree(&map->real_name);\n\t\tzfree(&map->name);\n\
+    \t\treturn err;\n\t}\n\n\tif (data)\n\t\tmemcpy(map->mmaped, data, data_sz);\n\
+    \n\tpr_debug(\"map %td is \\\"%s\\\"\\n\", map - obj->maps, map->name);\n\treturn\
+    \ 0;\n}\n\nstatic int bpf_object__init_global_data_maps(struct bpf_object *obj)\n\
+    {\n\tstruct elf_sec_desc *sec_desc;\n\tconst char *sec_name;\n\tint err = 0, sec_idx;\n\
+    \n// CONTEXT: static int bpf_object__init_user_btf_map(struct bpf_object *obj,\n\
+    \t\tif (!map->inner_map)\n\t\t\treturn -ENOMEM;\n\t\tmap->inner_map->fd = -1;\n\
+    \t\tmap->inner_map->sec_idx = sec_idx;\n\t\tmap->inner_map->name = malloc(strlen(map_name)\
+    \ + sizeof(\".inner\") + 1);\n\t\tif (!map->inner_map->name)\n\t\t\treturn -ENOMEM;\n\
+    \t\tsprintf(map->inner_map->name, \"%s.inner\", map_name);\n\n\t\tfill_map_from_def(map->inner_map,\
+    \ &inner_def);\n\t}\n\n\terr = map_fill_btf_type_info(obj, map);\n\tif (err)\n\
+    \t\treturn err;\n\n\treturn 0;\n}\n\nstatic int bpf_object__init_user_btf_maps(struct\
+    \ bpf_object *obj, bool strict,\n\t\t\t\t\t  const char *pin_root_path)\n{\n\t\
+    const struct btf_type *sec = NULL;\n\tint nr_types, i, vlen, err;\n\tconst struct\
+    \ btf_type *t;\n\n// CONTEXT: static int compare_vsi_off(const void *_a, const\
+    \ void *_b)\n\tconst struct btf_var_secinfo *a = _a;\n\tconst struct btf_var_secinfo\
+    \ *b = _b;\n\n\treturn a->offset - b->offset;\n}\n\nstatic int btf_fixup_datasec(struct\
+    \ bpf_object *obj, struct btf *btf,\n\t\t\t     struct btf_type *t)\n{\n\t__u32\
+    \ size = 0, i, vars = btf_vlen(t);\n\tconst char *sec_name = btf__name_by_offset(btf,\
+    \ t->name_off);\n\tstruct btf_var_secinfo *vsi;\n\tbool fixup_offsets = false;\n\
+    \tint err;\n\n\tif (!sec_name) {\n\t\tpr_debug(\"No name found in string section\
+    \ for DATASEC kind.\\n\");\n\t\treturn -ENOENT;\n\t}\n\n\t/* Extern-backing datasecs\
+    \ (.ksyms, .kconfig) have their size and\n\t * variable offsets set at the previous\
+    \ step. Further, not every\n\t * extern BTF VAR has corresponding ELF symbol preserved,\
+    \ so we skip\n\t * all fixups altogether for such sections and go straight to\
+    \ sorting\n\t * VARs within their DATASEC.\n\t */\n\tif (strcmp(sec_name, KCONFIG_SEC)\
+    \ == 0 || strcmp(sec_name, KSYMS_SEC) == 0)\n\t\tgoto sort_vars;\n\n\t/* Clang\
+    \ leaves DATASEC size and VAR offsets as zeroes, so we need to\n\t * fix this\
+    \ up. But BPF static linker already fixes this up and fills\n\t * all the sizes\
+    \ and offsets during static linking. So this step has\n\t * to be optional. But\
+    \ the STV_HIDDEN handling is non-optional for any\n\t * non-extern DATASEC, so\
+    \ the variable fixup loop below handles both\n\t * functions at the same time,\
+    \ paying the cost of BTF VAR <-> ELF\n\t * symbol matching just once.\n\t */\n\
+    \tif (t->size == 0) {\n\t\terr = find_elf_sec_sz(obj, sec_name, &size);\n\t\t\
+    if (err || !size) {\n\t\t\tpr_debug(\"sec '%s': failed to determine size from\
+    \ ELF: size %u, err %d\\n\",\n\t\t\t\t sec_name, size, err);\n\t\t\treturn -ENOENT;\n\
+    \t\t}\n\n\t\tt->size = size;\n\t\tfixup_offsets = true;\n\t}\n\n\tfor (i = 0,\
+    \ vsi = btf_var_secinfos(t); i < vars; i++, vsi++) {\n\t\tconst struct btf_type\
+    \ *t_var;\n\t\tstruct btf_var *var;\n\t\tconst char *var_name;\n\t\tElf64_Sym\
+    \ *sym;\n\n\t\tt_var = btf__type_by_id(btf, vsi->type);\n\t\tif (!t_var || !btf_is_var(t_var))\
+    \ {\n\t\t\tpr_debug(\"sec '%s': unexpected non-VAR type found\\n\", sec_name);\n\
+    \t\t\treturn -EINVAL;\n\t\t}\n\n// CONTEXT: static int btf_fixup_datasec(struct\
+    \ bpf_object *obj, struct btf *btf,\n\t\t\tpr_debug(\"sec '%s': failed to find\
+    \ name of DATASEC's member #%d\\n\",\n\t\t\t\t sec_name, i);\n\t\t\treturn -ENOENT;\n\
+    \t\t}\n\n\t\tsym = find_elf_var_sym(obj, var_name);\n\t\tif (IS_ERR(sym)) {\n\t\
+    \t\tpr_debug(\"sec '%s': failed to find ELF symbol for VAR '%s'\\n\",\n\t\t\t\t\
+    \ sec_name, var_name);\n\t\t\treturn -ENOENT;\n\t\t}\n\n\t\tif (fixup_offsets)\n\
+    \t\t\tvsi->offset = sym->st_value;\n\n\t\t/* if variable is a global/weak symbol,\
+    \ but has restricted\n\t\t * (STV_HIDDEN or STV_INTERNAL) visibility, mark its\
+    \ BTF VAR\n\t\t * as static. This follows similar logic for functions (BPF\n\t\
+    \t * subprogs) and influences libbpf's further decisions about\n\t\t * whether\
+    \ to make global data BPF array maps as\n\t\t * BPF_F_MMAPABLE.\n\t\t */\n\t\t\
+    if (ELF64_ST_VISIBILITY(sym->st_other) == STV_HIDDEN\n\t\t    || ELF64_ST_VISIBILITY(sym->st_other)\
+    \ == STV_INTERNAL)\n\t\t\tvar->linkage = BTF_VAR_STATIC;\n\t}\n\nsort_vars:\n\t\
+    qsort(btf_var_secinfos(t), vars, sizeof(*vsi), compare_vsi_off);\n\treturn 0;\n\
+    }\n\nstatic int bpf_object_fixup_btf(struct bpf_object *obj)\n{\n\tint i, n, err\
+    \ = 0;\n\n\tif (!obj->btf)\n\n// CONTEXT: bpf_object__collect_prog_relos(struct\
+    \ bpf_object *obj, Elf64_Shdr *shdr, Elf_Dat\n\t\t/* adjust insn_idx to local\
+    \ BPF program frame of reference */\n\t\tinsn_idx -= prog->sec_insn_off;\n\t\t\
+    err = bpf_program__record_reloc(prog, &relos[prog->nr_reloc],\n\t\t\t\t\t\tinsn_idx,\
+    \ sym_name, sym, rel);\n\t\tif (err)\n\t\t\treturn err;\n\n\t\tprog->nr_reloc++;\n\
+    \t}\n\treturn 0;\n}\n\nstatic int map_fill_btf_type_info(struct bpf_object *obj,\
+    \ struct bpf_map *map)\n{\n\tint id;\n\n\tif (!obj->btf)\n\t\treturn -ENOENT;\n\
+    \n\t/* if it's BTF-defined map, we don't need to search for type IDs.\n\t * For\
+    \ struct_ops map, it does not need btf_key_type_id and\n\t * btf_value_type_id.\n\
+    \t */\n\tif (map->sec_idx == obj->efile.btf_maps_shndx || bpf_map__is_struct_ops(map))\n\
+    \t\treturn 0;"
+  diff_summary: |-
+    src/libbpf.c:
+    - Reworked loop or branch structure to reduce verifier complexity and keep the path bounded.
+    - Affected context: static char *internal_map_name(struct bpf_object *obj, const char *real_name), bpf_object__init_internal_map(struct bpf_object *obj, enum libbpf_map_type type,, static int bpf_object__init_user_btf_map(struct bpf_object *obj,.
+    - Commit subject: libbpf: only add BPF_F_MMAPABLE flag for data maps with global vars.

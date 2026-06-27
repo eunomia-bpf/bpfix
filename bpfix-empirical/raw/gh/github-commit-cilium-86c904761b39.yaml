@@ -1,0 +1,111 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-86c904761b39
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/86c904761b395508673524c9081341afe02b96ad
+  title: 'bpf: remove sock_addr ctx workaround causing different alignment'
+  repository: https://github.com/cilium/cilium
+  commit: 86c904761b395508673524c9081341afe02b96ad
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-86c904761b39.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: replay_valid
+  case_id: github-commit-cilium-86c904761b39
+  case_path: cases/github-commit-cilium-86c904761b39
+  artifact_path: cases/github-commit-cilium-86c904761b39
+  reason: admitted_to_bpfix_bench_cases
+raw:
+  case_id: github-commit-cilium-86c904761b39
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: 86c904761b395508673524c9081341afe02b96ad
+  commit_message: 'bpf: remove sock_addr ctx workaround causing different alignment'
+  commit_date: '2020-12-21'
+  fix_type: inline_hint
+  buggy_code: "// FILE: bpf/bpf_sock.c\n// CONTEXT: int sock6_update_revnat(struct\
+    \ bpf_sock_addr *ctx __maybe_unused,\n\t\t\tstruct lb6_key *orig_key __maybe_unused,\n\
+    \t\t\t__u16 rev_nat_index __maybe_unused)\n{\n\treturn 0;\n}\n#endif /* ENABLE_HOST_SERVICES_UDP\
+    \ || ENABLE_HOST_SERVICES_PEER */\n#endif /* ENABLE_IPV6 */\n\nstatic __always_inline\
+    \ void ctx_get_v6_address(const struct bpf_sock_addr *ctx,\n\t\t\t\t\t       union\
+    \ v6addr *addr)\n{\n\taddr->p1 = ctx->user_ip6[0];\n\taddr->p2 = ctx->user_ip6[1];\n\
+    \taddr->p3 = ctx->user_ip6[2];\n\taddr->p4 = ctx->user_ip6[3];\n}\n\n#ifdef ENABLE_NODEPORT\n\
+    static __always_inline void ctx_get_v6_src_address(const struct bpf_sock *ctx,\n\
+    \t\t\t\t\t\t   union v6addr *addr)\n{\n\taddr->p1 = ctx->src_ip6[0];\n\taddr->p2\
+    \ = ctx->src_ip6[1];\n\taddr->p3 = ctx->src_ip6[2];\n\taddr->p4 = ctx->src_ip6[3];\n\
+    }\n#endif /* ENABLE_NODEPORT */\n\nstatic __always_inline void ctx_set_v6_address(struct\
+    \ bpf_sock_addr *ctx,\n\t\t\t\t\t       const union v6addr *addr)\n{\n\tctx->user_ip6[0]\
+    \ = addr->p1;\n\tctx->user_ip6[1] = addr->p2;\n\tctx->user_ip6[2] = addr->p3;\n\
+    \tctx->user_ip6[3] = addr->p4;\n}\n\nstatic __always_inline __maybe_unused bool\n\
+    sock6_skip_xlate(struct lb6_service *svc, union v6addr *address)\n{\n\tif (lb6_svc_is_external_ip(svc)\
+    \ ||\n\t    (lb6_svc_is_hostport(svc) && !is_v6_loopback(address))) {\n\t\tstruct\
+    \ remote_endpoint_info *info;\n\n\t\tinfo = ipcache_lookup6(&IPCACHE_MAP, address,\n\
+    \t\t\t\t       V6_CACHE_KEY_LEN);\n\t\tif (info == NULL || info->sec_label !=\
+    \ HOST_ID)\n\n// FILE: bpf/include/linux/bpf.h\n// CONTEXT: struct bpf_sock_addr\
+    \ {\n\t__u32 user_port;\t/* Allows 1,2,4-byte read and 4-byte write.\n\t\t\t\t\
+    \ * Stored in network byte order\n\t\t\t\t */\n\t__u32 family;\t\t/* Allows 4-byte\
+    \ read, but no write */\n\t__u32 type;\t\t/* Allows 4-byte read, but no write\
+    \ */\n\t__u32 protocol;\t\t/* Allows 4-byte read, but no write */\n\t__u32 msg_src_ip4;\t\
+    /* Allows 1,2,4-byte read and 4-byte write.\n\t\t\t\t * Stored in network byte\
+    \ order.\n\t\t\t\t */\n\t__u32 msg_src_ip6[4];\t/* Allows 1,2,4,8-byte read and\
+    \ 4,8-byte write.\n\t\t\t\t * Stored in network byte order.\n\t\t\t\t */\n\n\t\
+    /* TODO: compiled out for now since this cases verifier breakage\n\t * on older\
+    \ kernels resulting in invalid bpf_context access. Needs\n\t * follow-up investigation.\n\
+    \t */\n#if 0\n\t__bpf_md_ptr(struct bpf_sock *, sk);\n#endif\n};\n\n/* User bpf_sock_ops\
+    \ struct to access socket values and specify request ops\n * and their replies.\n\
+    \ * Some of this fields are in network (bigendian) byte order and may need\n *\
+    \ to be converted before use (bpf_ntohl() defined in samples/bpf/bpf_endian.h).\n\
+    \ * New fields can only be added at the end of this structure\n */\nstruct bpf_sock_ops\
+    \ {\n\t__u32 op;\n\tunion {\n\t\t__u32 args[4];\t\t/* Optionally passed to bpf\
+    \ program */"
+  fixed_code: "// FILE: bpf/bpf_sock.c\n// CONTEXT: int sock6_update_revnat(struct\
+    \ bpf_sock_addr *ctx __maybe_unused,\n\t\t\tstruct lb6_key *orig_key __maybe_unused,\n\
+    \t\t\t__u16 rev_nat_index __maybe_unused)\n{\n\treturn 0;\n}\n#endif /* ENABLE_HOST_SERVICES_UDP\
+    \ || ENABLE_HOST_SERVICES_PEER */\n#endif /* ENABLE_IPV6 */\n\nstatic __always_inline\
+    \ void ctx_get_v6_address(const struct bpf_sock_addr *ctx,\n\t\t\t\t\t       union\
+    \ v6addr *addr)\n{\n\taddr->p1 = ctx->user_ip6[0];\n\tbarrier();\n\taddr->p2 =\
+    \ ctx->user_ip6[1];\n\tbarrier();\n\taddr->p3 = ctx->user_ip6[2];\n\tbarrier();\n\
+    \taddr->p4 = ctx->user_ip6[3];\n\tbarrier();\n}\n\n#ifdef ENABLE_NODEPORT\nstatic\
+    \ __always_inline void ctx_get_v6_src_address(const struct bpf_sock *ctx,\n\t\t\
+    \t\t\t\t   union v6addr *addr)\n{\n\taddr->p1 = ctx->src_ip6[0];\n\tbarrier();\n\
+    \taddr->p2 = ctx->src_ip6[1];\n\tbarrier();\n\taddr->p3 = ctx->src_ip6[2];\n\t\
+    barrier();\n\taddr->p4 = ctx->src_ip6[3];\n\tbarrier();\n}\n#endif /* ENABLE_NODEPORT\
+    \ */\n\nstatic __always_inline void ctx_set_v6_address(struct bpf_sock_addr *ctx,\n\
+    \t\t\t\t\t       const union v6addr *addr)\n{\n\tctx->user_ip6[0] = addr->p1;\n\
+    \tbarrier();\n\tctx->user_ip6[1] = addr->p2;\n\tbarrier();\n\tctx->user_ip6[2]\
+    \ = addr->p3;\n\tbarrier();\n\tctx->user_ip6[3] = addr->p4;\n\tbarrier();\n}\n\
+    \nstatic __always_inline __maybe_unused bool\nsock6_skip_xlate(struct lb6_service\
+    \ *svc, union v6addr *address)\n{\n\tif (lb6_svc_is_external_ip(svc) ||\n\t  \
+    \  (lb6_svc_is_hostport(svc) && !is_v6_loopback(address))) {\n\t\tstruct remote_endpoint_info\
+    \ *info;\n\n\t\tinfo = ipcache_lookup6(&IPCACHE_MAP, address,\n\t\t\t\t      \
+    \ V6_CACHE_KEY_LEN);\n\t\tif (info == NULL || info->sec_label != HOST_ID)\n\n\
+    // FILE: bpf/include/linux/bpf.h\n// CONTEXT: struct bpf_sock_addr {\n\t__u32\
+    \ user_port;\t/* Allows 1,2,4-byte read and 4-byte write.\n\t\t\t\t * Stored in\
+    \ network byte order\n\t\t\t\t */\n\t__u32 family;\t\t/* Allows 4-byte read, but\
+    \ no write */\n\t__u32 type;\t\t/* Allows 4-byte read, but no write */\n\t__u32\
+    \ protocol;\t\t/* Allows 4-byte read, but no write */\n\t__u32 msg_src_ip4;\t\
+    /* Allows 1,2,4-byte read and 4-byte write.\n\t\t\t\t * Stored in network byte\
+    \ order.\n\t\t\t\t */\n\t__u32 msg_src_ip6[4];\t/* Allows 1,2,4,8-byte read and\
+    \ 4,8-byte write.\n\t\t\t\t * Stored in network byte order.\n\t\t\t\t */\n\t__bpf_md_ptr(struct\
+    \ bpf_sock *, sk);\n};\n\n/* User bpf_sock_ops struct to access socket values\
+    \ and specify request ops\n * and their replies.\n * Some of this fields are in\
+    \ network (bigendian) byte order and may need\n * to be converted before use (bpf_ntohl()\
+    \ defined in samples/bpf/bpf_endian.h).\n * New fields can only be added at the\
+    \ end of this structure\n */\nstruct bpf_sock_ops {\n\t__u32 op;\n\tunion {\n\t\
+    \t__u32 args[4];\t\t/* Optionally passed to bpf program */"
+  diff_summary: |-
+    bpf/bpf_sock.c:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: int sock6_update_revnat(struct bpf_sock_addr *ctx __maybe_unused,.
+    bpf/include/linux/bpf.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: struct bpf_sock_addr {.
+    - Commit subject: bpf: remove sock_addr ctx workaround causing different alignment.

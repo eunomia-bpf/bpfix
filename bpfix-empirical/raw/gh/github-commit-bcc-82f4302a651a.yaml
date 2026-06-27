@@ -1,0 +1,462 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-bcc-82f4302a651a
+source_kind: github_commit
+source:
+  url: https://github.com/iovisor/bcc/commit/82f4302a651a6b46b0b090733d34af8201ecacb5
+  title: introduce map.lookup_or_try_init() (#2577)
+  repository: https://github.com/iovisor/bcc
+  commit: 82f4302a651a6b46b0b090733d34af8201ecacb5
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-bcc-82f4302a651a.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Introduces lookup_or_try_init()/rewriter support across examples and frontend
+    code; no captured verifier log or specific failing program source.
+raw:
+  case_id: github-commit-bcc-82f4302a651a
+  source: github_commits
+  repository: https://github.com/iovisor/bcc
+  commit_hash: 82f4302a651a6b46b0b090733d34af8201ecacb5
+  commit_message: introduce map.lookup_or_try_init() (#2577)
+  commit_date: '2019-10-31'
+  fix_type: other
+  buggy_code: "// FILE: examples/cpp/LLCStat.cc\n// CONTEXT: BPF_HASH(miss_count,\
+    \ struct event_t);\n\nstatic inline __attribute__((always_inline)) void get_key(struct\
+    \ event_t* key) {\n    key->cpu = bpf_get_smp_processor_id();\n    key->pid =\
+    \ bpf_get_current_pid_tgid();\n    bpf_get_current_comm(&(key->name), sizeof(key->name));\n\
+    }\n\nint on_cache_miss(struct bpf_perf_event_data *ctx) {\n    struct event_t\
+    \ key = {};\n    get_key(&key);\n\n    u64 zero = 0, *val;\n    val = miss_count.lookup_or_init(&key,\
+    \ &zero);\n    if (val) {\n        (*val) += ctx->sample_period;\n    }\n\n  \
+    \  return 0;\n}\n\nint on_cache_ref(struct bpf_perf_event_data *ctx) {\n    struct\
+    \ event_t key = {};\n    get_key(&key);\n\n    u64 zero = 0, *val;\n    val =\
+    \ ref_count.lookup_or_init(&key, &zero);\n    if (val) {\n        (*val) += ctx->sample_period;\n\
+    \    }\n\n    return 0;\n}\n)\";\n\nstruct event_t {\n  int cpu;\n  int pid;\n\
+    \  char name[16];\n\n// FILE: examples/cpp/TCPSendStack.cc\n// CONTEXT: struct\
+    \ stack_key_t {\n\nBPF_STACK_TRACE(stack_traces, 16384);\nBPF_HASH(counts, struct\
+    \ stack_key_t, uint64_t);\n\nint on_tcp_send(struct pt_regs *ctx) {\n  struct\
+    \ stack_key_t key = {};\n  key.pid = bpf_get_current_pid_tgid() >> 32;\n  bpf_get_current_comm(&key.name,\
+    \ sizeof(key.name));\n  key.kernel_stack = stack_traces.get_stackid(ctx, 0);\n\
+    \  key.user_stack = stack_traces.get_stackid(ctx, BPF_F_USER_STACK);\n\n  u64\
+    \ zero = 0, *val;\n  val = counts.lookup_or_init(&key, &zero);\n  if (val) {\n\
+    \    (*val)++;\n  }\n\n  return 0;\n}\n)\";\n\n// Define the same struct to use\
+    \ in user space.\nstruct stack_key_t {\n  int pid;\n  char name[16];\n\n// FILE:\
+    \ examples/cpp/UseExternalMap.cc\n// CONTEXT: int on_sched_switch(struct tracepoint__sched__sched_switch\
+    \ *args) {\n  u32 zero = 0, *val;\n\n  /* only do something when control is on\
+    \ */\n  val = control.lookup(&zero);\n  if (!val || *val == 0)\n    return 0;\n\
+    \n  /* record sched_switch info in counts table */\n  key.prev_pid = args->prev_pid;\n\
+    \  key.next_pid = args->next_pid;\n  __builtin_memcpy(&key.prev_comm, args->prev_comm,\
+    \ 16);\n  __builtin_memcpy(&key.next_comm, args->next_comm, 16);\n  val = counts.lookup_or_init(&key,\
+    \ &zero);\n  if (val) {\n    (*val)++;\n  }\n\n  return 0;\n}\n)\";\n\nstatic\
+    \ void print_counts(ebpf::BPF *bpfp, std::string msg) {\n  auto counts_table_hdl\
+    \ =\n      bpfp->get_hash_table<struct sched_switch_info, uint32_t>(\"counts\"\
+    );\n  printf(\"%s\\n\", msg.c_str());\n\n// FILE: examples/networking/distributed_bridge/tunnel.c\n\
+    // CONTEXT: int handle_ingress(struct __sk_buff *skb) {\n  u8 *cursor = 0;\n\n\
+    \  struct ethernet_t *ethernet = cursor_advance(cursor, sizeof(*ethernet));\n\n\
+    \  struct bpf_tunnel_key tkey = {};\n  bpf_skb_get_tunnel_key(skb, &tkey,\n  \
+    \    offsetof(struct bpf_tunnel_key, remote_ipv6[1]), 0);\n\n  int *ifindex =\
+    \ vni2if.lookup(&tkey.tunnel_id);\n  if (ifindex) {\n    //bpf_trace_printk(\"\
+    ingress tunnel_id=%d ifindex=%d\\n\", tkey.tunnel_id, *ifindex);\n    struct vni_key\
+    \ vk = {ethernet->src, *ifindex, 0};\n    struct host *src_host = mac2host.lookup_or_init(&vk,\n\
+    \        &(struct host){tkey.tunnel_id, tkey.remote_ipv4, 0, 0});\n    if (src_host)\
+    \ {\n      lock_xadd(&src_host->rx_pkts, 1);\n    }\n    bpf_clone_redirect(skb,\
+    \ *ifindex, 1/*ingress*/);\n  } else {\n    bpf_trace_printk(\"ingress invalid\
+    \ tunnel_id=%d\\n\", tkey.tunnel_id);\n  }\n\n  return 1;\n}\n\n// FILE: examples/networking/http_filter/http-parse-complete.c\n\
+    // CONTEXT: int http_filter(struct __sk_buff *skb) {\n\t//no HTTP match\n\t//check\
+    \ if packet belong to an HTTP session\n\tstruct Leaf * lookup_leaf = sessions.lookup(&key);\n\
+    \tif(lookup_leaf) {\n\t\t//send packet to userspace\n\t\tgoto KEEP;\n\t}\n\tgoto\
+    \ DROP;\n\n\t//keep the packet and send it to userspace retruning -1\n\tHTTP_MATCH:\n\
+    \t//if not already present, insert into map <Key, Leaf>\n\tsessions.lookup_or_init(&key,&zero);\n\
+    \n\t//send packet to userspace returning -1\n\tKEEP:\n\treturn -1;\n\n\t//drop\
+    \ the packet returning 0\n\tDROP:\n\treturn 0;\n\n}\n\n// FILE: examples/networking/tunnel_monitor/monitor.c\n\
+    // CONTEXT: int handle_inner(struct __sk_buff *skb) {\n    default: goto finish;\n\
+    \  }\nip: ;\n  struct ip_t *ip = cursor_advance(cursor, sizeof(*ip));\n  key.inner_sip\
+    \ = ip->src;\n  key.inner_dip = ip->dst;\n\nfinish:\n  // consistent ordering\n\
+    \  if (key.outer_dip < key.outer_sip)\n    swap_ipkey(&key);\n  struct counters\
+    \ zleaf = {0};\n  struct counters *leaf = stats.lookup_or_init(&key, &zleaf);\n\
+    \  if (leaf) {\n    if (is_ingress) {\n      lock_xadd(&leaf->rx_pkts, 1);\n \
+    \     lock_xadd(&leaf->rx_bytes, skb->len);\n    } else {\n      lock_xadd(&leaf->tx_pkts,\
+    \ 1);\n      lock_xadd(&leaf->tx_bytes, skb->len);\n    }\n  }\n  return 1;\n\
+    }\n\n// FILE: examples/networking/vlan_learning/vlan_learning.c\n// CONTEXT: int\
+    \ handle_phys2virt(struct __sk_buff *skb) {\n    return 1;\n  u8 *cursor = 0;\n\
+    \  ethernet: {\n    struct ethernet_t *ethernet = cursor_advance(cursor, sizeof(*ethernet));\n\
+    \    u64 src_mac = ethernet->src;\n    struct ifindex_leaf_t *leaf = ingress.lookup(&src_mac);\n\
+    \    if (leaf) {\n      lock_xadd(&leaf->tx_pkts, 1);\n      lock_xadd(&leaf->tx_bytes,\
+    \ skb->len);\n      // auto-program reverse direction table\n      int out_ifindex\
+    \ = leaf->out_ifindex;\n      struct ifindex_leaf_t zleaf = {0};\n      struct\
+    \ ifindex_leaf_t *out_leaf = egress.lookup_or_init(&out_ifindex, &zleaf);\n  \
+    \    if (out_leaf) {\n\t// to capture potential configuration changes\n\tout_leaf->out_ifindex\
+    \ = skb->ifindex;\n\tout_leaf->vlan_tci = skb->vlan_tci;\n\tout_leaf->vlan_proto\
+    \ = skb->vlan_proto;\n      }\n      // pop the vlan header and send to the destination\n\
+    \      bpf_skb_vlan_pop(skb);\n      bpf_clone_redirect(skb, leaf->out_ifindex,\
+    \ 0);\n    }\n  }\n  return 1;\n\n// FILE: examples/tracing/task_switch.c\n//\
+    \ CONTEXT: struct key_t {\n    u32 curr_pid;\n};\n\nBPF_HASH(stats, struct key_t,\
+    \ u64, 1024);\nint count_sched(struct pt_regs *ctx, struct task_struct *prev)\
+    \ {\n    struct key_t key = {};\n    u64 zero = 0, *val;\n\n    key.curr_pid =\
+    \ bpf_get_current_pid_tgid();\n    key.prev_pid = prev->pid;\n\n    // could also\
+    \ use `stats.increment(key);`\n    val = stats.lookup_or_init(&key, &zero);\n\
+    \    if (val) {\n        (*val)++;\n    }\n    return 0;\n}\n\n// FILE: src/cc/export/helpers.h\n\
+    // CONTEXT: R\"********(\n        };\t\t\t\t\t\t\\\n        struct ____btf_map_##name\t\
+    \t\t\\\n        __attribute__ ((section(\".maps.\" #name), used))\t\\\n      \
+    \          ____btf_map_##name = { }\n\n// Changes to the macro require changes\
+    \ in BFrontendAction classes\n#define BPF_F_TABLE(_table_type, _key_type, _leaf_type,\
+    \ _name, _max_entries, _flags) \\\nstruct _name##_table_t { \\\n  _key_type key;\
+    \ \\\n  _leaf_type leaf; \\\n  _leaf_type * (*lookup) (_key_type *); \\\n  _leaf_type\
+    \ * (*lookup_or_init) (_key_type *, _leaf_type *); \\\n  int (*update) (_key_type\
+    \ *, _leaf_type *); \\\n  int (*insert) (_key_type *, _leaf_type *); \\\n  int\
+    \ (*delete) (_key_type *); \\\n  void (*call) (void *, int index); \\\n  void\
+    \ (*increment) (_key_type, ...); \\\n  int (*get_stackid) (void *, u64); \\\n\
+    \  u32 max_entries; \\\n  int flags; \\\n}; \\\n__attribute__((section(\"maps/\"\
+    \ _table_type))) \\\nstruct _name##_table_t _name = { .flags = (_flags), .max_entries\
+    \ = (_max_entries) }; \\\nBPF_ANNOTATE_KV_PAIR(_name, _key_type, _leaf_type)\n\
+    \n// FILE: src/cc/frontends/clang/b_frontend_action.cc\n// CONTEXT: bool ProbeVisitor::assignsExtPtr(Expr\
+    \ *E, int *nbAddrOf) {\n    return true;\n  }\n\n  if (E->IgnoreParenCasts()->getStmtClass()\
+    \ == Stmt::CallExprClass) {\n    CallExpr *Call = dyn_cast<CallExpr>(E->IgnoreParenCasts());\n\
+    \    if (MemberExpr *Memb = dyn_cast<MemberExpr>(Call->getCallee()->IgnoreImplicit()))\
+    \ {\n      StringRef memb_name = Memb->getMemberDecl()->getName();\n      if (DeclRefExpr\
+    \ *Ref = dyn_cast<DeclRefExpr>(Memb->getBase())) {\n        if (SectionAttr *A\
+    \ = Ref->getDecl()->getAttr<SectionAttr>()) {\n          if (!A->getName().startswith(\"\
+    maps\"))\n            return false;\n\n          if (memb_name == \"lookup\" ||\
+    \ memb_name == \"lookup_or_init\") {\n            if (m_.find(Ref->getDecl())\
+    \ != m_.end()) {\n              // Retrieved an ext. pointer from a map, mark\
+    \ LHS as ext. pointer.\n              // Pointers from maps always need a single\
+    \ dereference to get the\n              // actual value.  The value may be an\
+    \ external pointer but cannot\n              // be a pointer to an external pointer\
+    \ as the verifier prohibits\n              // storing known pointers (to map values,\
+    \ context, the stack, or\n              // the packet) in maps.\n            \
+    \  *nbAddrOf = 1;\n              return true;\n            }\n          }\n  \
+    \      }\n\n// CONTEXT: bool BTypeVisitor::VisitCallExpr(CallExpr *Call) {\n \
+    \       Path global_path({Ref->getDecl()->getName()});\n        if (!fe_.table_storage().Find(local_path,\
+    \ desc)) {\n          if (!fe_.table_storage().Find(global_path, desc)) {\n  \
+    \          error(GET_ENDLOC(Ref), \"bpf_table %0 failed to open\") << Ref->getDecl()->getName();\n\
+    \            return false;\n          }\n        }\n        string fd = to_string(desc->second.fd\
+    \ >= 0 ? desc->second.fd : desc->second.fake_fd);\n        string prefix, suffix;\n\
+    \        string txt;\n        auto rewrite_start = GET_BEGINLOC(Call);\n     \
+    \   auto rewrite_end = GET_ENDLOC(Call);\n        if (memb_name == \"lookup_or_init\"\
+    ) {\n          string name = Ref->getDecl()->getName();\n          string arg0\
+    \ = rewriter_.getRewrittenText(expansionRange(Call->getArg(0)->getSourceRange()));\n\
+    \          string arg1 = rewriter_.getRewrittenText(expansionRange(Call->getArg(1)->getSourceRange()));\n\
+    \          string lookup = \"bpf_map_lookup_elem_(bpf_pseudo_fd(1, \" + fd + \"\
+    )\";\n          string update = \"bpf_map_update_elem_(bpf_pseudo_fd(1, \" + fd\
+    \ + \")\";\n          txt  = \"({typeof(\" + name + \".leaf) *leaf = \" + lookup\
+    \ + \", \" + arg0 + \"); \";\n          txt += \"if (!leaf) {\";\n          txt\
+    \ += \" \" + update + \", \" + arg0 + \", \" + arg1 + \", BPF_NOEXIST);\";\n \
+    \         txt += \" leaf = \" + lookup + \", \" + arg0 + \");\";\n          txt\
+    \ += \"}\";\n          txt += \"leaf;})\";\n        } else if (memb_name == \"\
+    increment\") {\n          string name = Ref->getDecl()->getName();\n         \
+    \ string arg0 = rewriter_.getRewrittenText(expansionRange(Call->getArg(0)->getSourceRange()));\n\
+    \n          string increment_value = \"1\";\n          if (Call->getNumArgs()\
+    \ == 2) {\n            increment_value = rewriter_.getRewrittenText(expansionRange(Call->getArg(1)->getSourceRange()));\n\
+    \n          }\n\n// FILE: tests/cc/test_bpf_table.cc\n// CONTEXT: TEST_CASE(\"\
+    test bpf hash table\", \"[bpf_hash_table]\") {\n  REQUIRE(values.size() == 0);\n\
+    }\n\nTEST_CASE(\"test bpf stack table\", \"[bpf_stack_table]\") {\n#if LINUX_VERSION_CODE\
+    \ >= KERNEL_VERSION(4, 6, 0)\n  const std::string BPF_PROGRAM = R\"(\n    BPF_HASH(id,\
+    \ int, int, 1);\n    BPF_STACK_TRACE(stack_traces, 8);\n\n    int on_sys_getuid(void\
+    \ *ctx) {\n      int stack_id = stack_traces.get_stackid(ctx, BPF_F_REUSE_STACKID);\n\
+    \      int zero = 0, *val;\n      val = id.lookup_or_init(&zero, &stack_id);\n\
+    \      if (val) {\n        (*val) = stack_id;\n      }\n\n      return 0;\n  \
+    \  }\n  )\";\n\n  ebpf::BPF bpf;\n  ebpf::StatusTuple res(0);\n  res = bpf.init(BPF_PROGRAM);\n\
+    \  REQUIRE(res.code() == 0);\n\n// CONTEXT: TEST_CASE(\"test bpf stack table\"\
+    , \"[bpf_stack_table]\") {\n#endif\n}\n\nTEST_CASE(\"test bpf stack_id table\"\
+    , \"[bpf_stack_table]\") {\n#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 17, 0)\n\
+    \  const std::string BPF_PROGRAM = R\"(\n    BPF_HASH(id, int, int, 1);\n    BPF_STACK_TRACE_BUILDID(stack_traces,\
+    \ 8);\n\n    int on_sys_getuid(void *ctx) {\n      int stack_id = stack_traces.get_stackid(ctx,\
+    \ BPF_F_USER_STACK);\n      int zero = 0, *val;\n      val = id.lookup_or_init(&zero,\
+    \ &stack_id);\n      if (val) {\n        (*val) = stack_id;\n      }\n\n     \
+    \ return 0;\n    }\n  )\";\n\n  ebpf::BPF bpf;\n  ebpf::StatusTuple res(0);\n\
+    \  res = bpf.init(BPF_PROGRAM);\n  REQUIRE(res.code() == 0);\n\n// FILE: tests/python/test_stat1.c\n\
+    // CONTEXT: int on_packet(struct __sk_buff *skb) {\n    int rx = 0, tx = 0;\n\
+    \    struct IPKey key;\n    if (ip->dst > ip->src) {\n      key.dip = ip->dst;\n\
+    \      key.sip = ip->src;\n      rx = 1;\n    } else {\n      key.dip = ip->src;\n\
+    \      key.sip = ip->dst;\n      tx = 1;\n    }\n    struct IPLeaf zleaf = {0};\n\
+    \    struct IPLeaf *leaf = stats.lookup_or_init(&key, &zleaf);\n    if (leaf)\
+    \ {\n      lock_xadd(&leaf->rx_pkts, rx);\n      lock_xadd(&leaf->tx_pkts, tx);\n\
+    \    }\n  }\n\nEOP:\n  return 0;\n}\n\n// FILE: tests/python/test_trace2.c\n//\
+    \ Copyright (c) PLUMgrid, Inc.\n// Licensed under the Apache License, Version\
+    \ 2.0 (the \"License\")\n#include <linux/ptrace.h>\nstruct Ptr { u64 ptr; };\n\
+    struct Counters { u64 stat1; };\nBPF_HASH(stats, struct Ptr, struct Counters,\
+    \ 1024);\n\nint count_sched(struct pt_regs *ctx) {\n  struct Ptr key = {.ptr =\
+    \ PT_REGS_PARM1(ctx)};\n  struct Counters zleaf = {0};\n  struct Counters *val\
+    \ = stats.lookup_or_init(&key, &zleaf);\n  if (val) {\n    val->stat1++;\n  }\n\
+    \  return 0;\n}\n\n// FILE: tests/python/test_trace3.c\n// CONTEXT: int probe_blk_update_request(struct\
+    \ pt_regs *ctx) {\n  struct Request rq = {.rq = PT_REGS_PARM1(ctx)};\n  struct\
+    \ Time *tm = requests.lookup(&rq);\n  if (!tm) return 0;\n  u64 delta = bpf_ktime_get_ns()\
+    \ - tm->start;\n  requests.delete(&rq);\n  u64 lg = log2l(delta);\n  u64 base\
+    \ = 1ull << lg;\n  u32 index = (lg * 64 + (delta - base) * 64 / base) * 3 / 64;\n\
+    \  if (index >= SLOTS)\n    index = SLOTS - 1;\n\n  u64 zero = 0;\n  u64 *val\
+    \ = latency.lookup_or_init(&index, &zero);\n  if (val) {\n    lock_xadd(val, 1);\n\
+    \  }\n  return 0;\n}\n\n// FILE: tools/deadlock.c\n// CONTEXT: BPF_STACK_TRACE(stack_traces,\
+    \ 655360);\n// is a pointer to the mutex M held by thread T.\n//\n// For all mutexes\
+    \ N held by mutexes_held[T]\n//   add edge N => M (held by T)\n// mutexes_held[T].add(M)\n\
+    int trace_mutex_acquire(struct pt_regs *ctx, void *mutex_addr) {\n  // Higher\
+    \ 32 bits is process ID, Lower 32 bits is thread ID\n  u32 pid = bpf_get_current_pid_tgid();\n\
+    \  u64 mutex = (u64)mutex_addr;\n\n  struct thread_to_held_mutex_leaf_t empty_leaf\
+    \ = {};\n  struct thread_to_held_mutex_leaf_t *leaf =\n      thread_to_held_mutexes.lookup_or_init(&pid,\
+    \ &empty_leaf);\n  if (!leaf) {\n    bpf_trace_printk(\n        \"could not add\
+    \ thread_to_held_mutex key, thread: %d, mutex: %p\\n\", pid,\n        mutex);\n\
+    \    return 1; // Could not insert, no more memory\n  }\n\n  // Recursive mutexes\
+    \ lock the same mutex multiple times. We cannot tell if\n  // the mutex is recursive\
+    \ after the mutex is already created. To avoid noisy\n  // reports, disallow self\
+    \ edges. Do one pass to check if we are already\n  // holding the mutex, and if\
+    \ we are, do nothing.\n  #pragma unroll\n\n// CONTEXT: int trace_clone(struct\
+    \ pt_regs *ctx, unsigned long flags, void *child_stack,\n  if (child_pid <= 0)\
+    \ {\n    return 1;\n  }\n\n  struct thread_created_leaf_t thread_created_leaf\
+    \ = {};\n  thread_created_leaf.parent_pid = bpf_get_current_pid_tgid();\n  thread_created_leaf.stack_id\
+    \ =\n      stack_traces.get_stackid(ctx, BPF_F_USER_STACK | BPF_F_REUSE_STACKID);\n\
+    \  bpf_get_current_comm(&thread_created_leaf.comm,\n                       sizeof(thread_created_leaf.comm));\n\
+    \n  struct thread_created_leaf_t *insert_result =\n      thread_to_parent.lookup_or_init(&child_pid,\
+    \ &thread_created_leaf);\n  if (!insert_result) {\n    bpf_trace_printk(\n   \
+    \     \"could not add thread_created_key, child: %d, parent: %d\\n\", child_pid,\n\
+    \        thread_created_leaf.parent_pid);\n    return 1; // Could not insert,\
+    \ no more memory\n  }\n  return 0;\n}"
+  fixed_code: "// FILE: examples/cpp/LLCStat.cc\n// CONTEXT: BPF_HASH(miss_count,\
+    \ struct event_t);\n\nstatic inline __attribute__((always_inline)) void get_key(struct\
+    \ event_t* key) {\n    key->cpu = bpf_get_smp_processor_id();\n    key->pid =\
+    \ bpf_get_current_pid_tgid();\n    bpf_get_current_comm(&(key->name), sizeof(key->name));\n\
+    }\n\nint on_cache_miss(struct bpf_perf_event_data *ctx) {\n    struct event_t\
+    \ key = {};\n    get_key(&key);\n\n    u64 zero = 0, *val;\n    val = miss_count.lookup_or_try_init(&key,\
+    \ &zero);\n    if (val) {\n        (*val) += ctx->sample_period;\n    }\n\n  \
+    \  return 0;\n}\n\nint on_cache_ref(struct bpf_perf_event_data *ctx) {\n    struct\
+    \ event_t key = {};\n    get_key(&key);\n\n    u64 zero = 0, *val;\n    val =\
+    \ ref_count.lookup_or_try_init(&key, &zero);\n    if (val) {\n        (*val) +=\
+    \ ctx->sample_period;\n    }\n\n    return 0;\n}\n)\";\n\nstruct event_t {\n \
+    \ int cpu;\n  int pid;\n  char name[16];\n\n// FILE: examples/cpp/TCPSendStack.cc\n\
+    // CONTEXT: struct stack_key_t {\n\nBPF_STACK_TRACE(stack_traces, 16384);\nBPF_HASH(counts,\
+    \ struct stack_key_t, uint64_t);\n\nint on_tcp_send(struct pt_regs *ctx) {\n \
+    \ struct stack_key_t key = {};\n  key.pid = bpf_get_current_pid_tgid() >> 32;\n\
+    \  bpf_get_current_comm(&key.name, sizeof(key.name));\n  key.kernel_stack = stack_traces.get_stackid(ctx,\
+    \ 0);\n  key.user_stack = stack_traces.get_stackid(ctx, BPF_F_USER_STACK);\n\n\
+    \  u64 zero = 0, *val;\n  val = counts.lookup_or_try_init(&key, &zero);\n  if\
+    \ (val) {\n    (*val)++;\n  }\n\n  return 0;\n}\n)\";\n\n// Define the same struct\
+    \ to use in user space.\nstruct stack_key_t {\n  int pid;\n  char name[16];\n\n\
+    // FILE: examples/cpp/UseExternalMap.cc\n// CONTEXT: int on_sched_switch(struct\
+    \ tracepoint__sched__sched_switch *args) {\n  u32 zero = 0, *val;\n\n  /* only\
+    \ do something when control is on */\n  val = control.lookup(&zero);\n  if (!val\
+    \ || *val == 0)\n    return 0;\n\n  /* record sched_switch info in counts table\
+    \ */\n  key.prev_pid = args->prev_pid;\n  key.next_pid = args->next_pid;\n  __builtin_memcpy(&key.prev_comm,\
+    \ args->prev_comm, 16);\n  __builtin_memcpy(&key.next_comm, args->next_comm, 16);\n\
+    \  val = counts.lookup_or_try_init(&key, &zero);\n  if (val) {\n    (*val)++;\n\
+    \  }\n\n  return 0;\n}\n)\";\n\nstatic void print_counts(ebpf::BPF *bpfp, std::string\
+    \ msg) {\n  auto counts_table_hdl =\n      bpfp->get_hash_table<struct sched_switch_info,\
+    \ uint32_t>(\"counts\");\n  printf(\"%s\\n\", msg.c_str());\n\n// FILE: examples/networking/distributed_bridge/tunnel.c\n\
+    // CONTEXT: int handle_ingress(struct __sk_buff *skb) {\n  u8 *cursor = 0;\n\n\
+    \  struct ethernet_t *ethernet = cursor_advance(cursor, sizeof(*ethernet));\n\n\
+    \  struct bpf_tunnel_key tkey = {};\n  bpf_skb_get_tunnel_key(skb, &tkey,\n  \
+    \    offsetof(struct bpf_tunnel_key, remote_ipv6[1]), 0);\n\n  int *ifindex =\
+    \ vni2if.lookup(&tkey.tunnel_id);\n  if (ifindex) {\n    //bpf_trace_printk(\"\
+    ingress tunnel_id=%d ifindex=%d\\n\", tkey.tunnel_id, *ifindex);\n    struct vni_key\
+    \ vk = {ethernet->src, *ifindex, 0};\n    struct host *src_host = mac2host.lookup_or_try_init(&vk,\n\
+    \        &(struct host){tkey.tunnel_id, tkey.remote_ipv4, 0, 0});\n    if (src_host)\
+    \ {\n      lock_xadd(&src_host->rx_pkts, 1);\n    }\n    bpf_clone_redirect(skb,\
+    \ *ifindex, 1/*ingress*/);\n  } else {\n    bpf_trace_printk(\"ingress invalid\
+    \ tunnel_id=%d\\n\", tkey.tunnel_id);\n  }\n\n  return 1;\n}\n\n// FILE: examples/networking/http_filter/http-parse-complete.c\n\
+    // CONTEXT: int http_filter(struct __sk_buff *skb) {\n\t//no HTTP match\n\t//check\
+    \ if packet belong to an HTTP session\n\tstruct Leaf * lookup_leaf = sessions.lookup(&key);\n\
+    \tif(lookup_leaf) {\n\t\t//send packet to userspace\n\t\tgoto KEEP;\n\t}\n\tgoto\
+    \ DROP;\n\n\t//keep the packet and send it to userspace retruning -1\n\tHTTP_MATCH:\n\
+    \t//if not already present, insert into map <Key, Leaf>\n\tsessions.lookup_or_try_init(&key,&zero);\n\
+    \n\t//send packet to userspace returning -1\n\tKEEP:\n\treturn -1;\n\n\t//drop\
+    \ the packet returning 0\n\tDROP:\n\treturn 0;\n\n}\n\n// FILE: examples/networking/tunnel_monitor/monitor.c\n\
+    // CONTEXT: int handle_inner(struct __sk_buff *skb) {\n    default: goto finish;\n\
+    \  }\nip: ;\n  struct ip_t *ip = cursor_advance(cursor, sizeof(*ip));\n  key.inner_sip\
+    \ = ip->src;\n  key.inner_dip = ip->dst;\n\nfinish:\n  // consistent ordering\n\
+    \  if (key.outer_dip < key.outer_sip)\n    swap_ipkey(&key);\n  struct counters\
+    \ zleaf = {0};\n  struct counters *leaf = stats.lookup_or_try_init(&key, &zleaf);\n\
+    \  if (leaf) {\n    if (is_ingress) {\n      lock_xadd(&leaf->rx_pkts, 1);\n \
+    \     lock_xadd(&leaf->rx_bytes, skb->len);\n    } else {\n      lock_xadd(&leaf->tx_pkts,\
+    \ 1);\n      lock_xadd(&leaf->tx_bytes, skb->len);\n    }\n  }\n  return 1;\n\
+    }\n\n// FILE: examples/networking/vlan_learning/vlan_learning.c\n// CONTEXT: int\
+    \ handle_phys2virt(struct __sk_buff *skb) {\n    return 1;\n  u8 *cursor = 0;\n\
+    \  ethernet: {\n    struct ethernet_t *ethernet = cursor_advance(cursor, sizeof(*ethernet));\n\
+    \    u64 src_mac = ethernet->src;\n    struct ifindex_leaf_t *leaf = ingress.lookup(&src_mac);\n\
+    \    if (leaf) {\n      lock_xadd(&leaf->tx_pkts, 1);\n      lock_xadd(&leaf->tx_bytes,\
+    \ skb->len);\n      // auto-program reverse direction table\n      int out_ifindex\
+    \ = leaf->out_ifindex;\n      struct ifindex_leaf_t zleaf = {0};\n      struct\
+    \ ifindex_leaf_t *out_leaf = egress.lookup_or_try_init(&out_ifindex, &zleaf);\n\
+    \      if (out_leaf) {\n\t// to capture potential configuration changes\n\tout_leaf->out_ifindex\
+    \ = skb->ifindex;\n\tout_leaf->vlan_tci = skb->vlan_tci;\n\tout_leaf->vlan_proto\
+    \ = skb->vlan_proto;\n      }\n      // pop the vlan header and send to the destination\n\
+    \      bpf_skb_vlan_pop(skb);\n      bpf_clone_redirect(skb, leaf->out_ifindex,\
+    \ 0);\n    }\n  }\n  return 1;\n\n// FILE: examples/tracing/task_switch.c\n//\
+    \ CONTEXT: struct key_t {\n    u32 curr_pid;\n};\n\nBPF_HASH(stats, struct key_t,\
+    \ u64, 1024);\nint count_sched(struct pt_regs *ctx, struct task_struct *prev)\
+    \ {\n    struct key_t key = {};\n    u64 zero = 0, *val;\n\n    key.curr_pid =\
+    \ bpf_get_current_pid_tgid();\n    key.prev_pid = prev->pid;\n\n    // could also\
+    \ use `stats.increment(key);`\n    val = stats.lookup_or_try_init(&key, &zero);\n\
+    \    if (val) {\n        (*val)++;\n    }\n    return 0;\n}\n\n// FILE: src/cc/export/helpers.h\n\
+    // CONTEXT: R\"********(\n        };\t\t\t\t\t\t\\\n        struct ____btf_map_##name\t\
+    \t\t\\\n        __attribute__ ((section(\".maps.\" #name), used))\t\\\n      \
+    \          ____btf_map_##name = { }\n\n// Changes to the macro require changes\
+    \ in BFrontendAction classes\n#define BPF_F_TABLE(_table_type, _key_type, _leaf_type,\
+    \ _name, _max_entries, _flags) \\\nstruct _name##_table_t { \\\n  _key_type key;\
+    \ \\\n  _leaf_type leaf; \\\n  _leaf_type * (*lookup) (_key_type *); \\\n  _leaf_type\
+    \ * (*lookup_or_init) (_key_type *, _leaf_type *); \\\n  _leaf_type * (*lookup_or_try_init)\
+    \ (_key_type *, _leaf_type *); \\\n  int (*update) (_key_type *, _leaf_type *);\
+    \ \\\n  int (*insert) (_key_type *, _leaf_type *); \\\n  int (*delete) (_key_type\
+    \ *); \\\n  void (*call) (void *, int index); \\\n  void (*increment) (_key_type,\
+    \ ...); \\\n  int (*get_stackid) (void *, u64); \\\n  u32 max_entries; \\\n  int\
+    \ flags; \\\n}; \\\n__attribute__((section(\"maps/\" _table_type))) \\\nstruct\
+    \ _name##_table_t _name = { .flags = (_flags), .max_entries = (_max_entries) };\
+    \ \\\nBPF_ANNOTATE_KV_PAIR(_name, _key_type, _leaf_type)\n\n// FILE: src/cc/frontends/clang/b_frontend_action.cc\n\
+    // CONTEXT: bool ProbeVisitor::assignsExtPtr(Expr *E, int *nbAddrOf) {\n    return\
+    \ true;\n  }\n\n  if (E->IgnoreParenCasts()->getStmtClass() == Stmt::CallExprClass)\
+    \ {\n    CallExpr *Call = dyn_cast<CallExpr>(E->IgnoreParenCasts());\n    if (MemberExpr\
+    \ *Memb = dyn_cast<MemberExpr>(Call->getCallee()->IgnoreImplicit())) {\n     \
+    \ StringRef memb_name = Memb->getMemberDecl()->getName();\n      if (DeclRefExpr\
+    \ *Ref = dyn_cast<DeclRefExpr>(Memb->getBase())) {\n        if (SectionAttr *A\
+    \ = Ref->getDecl()->getAttr<SectionAttr>()) {\n          if (!A->getName().startswith(\"\
+    maps\"))\n            return false;\n\n          if (memb_name == \"lookup\" ||\
+    \ memb_name == \"lookup_or_init\" ||\n              memb_name == \"lookup_or_try_init\"\
+    ) {\n            if (m_.find(Ref->getDecl()) != m_.end()) {\n              //\
+    \ Retrieved an ext. pointer from a map, mark LHS as ext. pointer.\n          \
+    \    // Pointers from maps always need a single dereference to get the\n     \
+    \         // actual value.  The value may be an external pointer but cannot\n\
+    \              // be a pointer to an external pointer as the verifier prohibits\n\
+    \              // storing known pointers (to map values, context, the stack, or\n\
+    \              // the packet) in maps.\n              *nbAddrOf = 1;\n       \
+    \       return true;\n            }\n          }\n        }\n\n// CONTEXT: bool\
+    \ BTypeVisitor::VisitCallExpr(CallExpr *Call) {\n        Path global_path({Ref->getDecl()->getName()});\n\
+    \        if (!fe_.table_storage().Find(local_path, desc)) {\n          if (!fe_.table_storage().Find(global_path,\
+    \ desc)) {\n            error(GET_ENDLOC(Ref), \"bpf_table %0 failed to open\"\
+    ) << Ref->getDecl()->getName();\n            return false;\n          }\n    \
+    \    }\n        string fd = to_string(desc->second.fd >= 0 ? desc->second.fd :\
+    \ desc->second.fake_fd);\n        string prefix, suffix;\n        string txt;\n\
+    \        auto rewrite_start = GET_BEGINLOC(Call);\n        auto rewrite_end =\
+    \ GET_ENDLOC(Call);\n        if (memb_name == \"lookup_or_init\" || memb_name\
+    \ == \"lookup_or_try_init\") {\n          string name = Ref->getDecl()->getName();\n\
+    \          string arg0 = rewriter_.getRewrittenText(expansionRange(Call->getArg(0)->getSourceRange()));\n\
+    \          string arg1 = rewriter_.getRewrittenText(expansionRange(Call->getArg(1)->getSourceRange()));\n\
+    \          string lookup = \"bpf_map_lookup_elem_(bpf_pseudo_fd(1, \" + fd + \"\
+    )\";\n          string update = \"bpf_map_update_elem_(bpf_pseudo_fd(1, \" + fd\
+    \ + \")\";\n          txt  = \"({typeof(\" + name + \".leaf) *leaf = \" + lookup\
+    \ + \", \" + arg0 + \"); \";\n          txt += \"if (!leaf) {\";\n          txt\
+    \ += \" \" + update + \", \" + arg0 + \", \" + arg1 + \", BPF_NOEXIST);\";\n \
+    \         txt += \" leaf = \" + lookup + \", \" + arg0 + \");\";\n          if\
+    \ (memb_name == \"lookup_or_init\") {\n            warning(GET_BEGINLOC(Call),\
+    \ \"lookup_or_init() may cause return from the function, \"\n                \
+    \                        \"use lookup_or_try_init() instead.\");\n           \
+    \ txt += \" if (!leaf) return 0;\";\n          }\n          txt += \"}\";\n  \
+    \        txt += \"leaf;})\";\n        } else if (memb_name == \"increment\") {\n\
+    \          string name = Ref->getDecl()->getName();\n          string arg0 = rewriter_.getRewrittenText(expansionRange(Call->getArg(0)->getSourceRange()));\n\
+    \n          string increment_value = \"1\";\n          if (Call->getNumArgs()\
+    \ == 2) {\n            increment_value = rewriter_.getRewrittenText(expansionRange(Call->getArg(1)->getSourceRange()));\n\
+    \n          }\n\n// FILE: tests/cc/test_bpf_table.cc\n// CONTEXT: TEST_CASE(\"\
+    test bpf hash table\", \"[bpf_hash_table]\") {\n  REQUIRE(values.size() == 0);\n\
+    }\n\nTEST_CASE(\"test bpf stack table\", \"[bpf_stack_table]\") {\n#if LINUX_VERSION_CODE\
+    \ >= KERNEL_VERSION(4, 6, 0)\n  const std::string BPF_PROGRAM = R\"(\n    BPF_HASH(id,\
+    \ int, int, 1);\n    BPF_STACK_TRACE(stack_traces, 8);\n\n    int on_sys_getuid(void\
+    \ *ctx) {\n      int stack_id = stack_traces.get_stackid(ctx, BPF_F_REUSE_STACKID);\n\
+    \      int zero = 0, *val;\n      val = id.lookup_or_try_init(&zero, &stack_id);\n\
+    \      if (val) {\n        (*val) = stack_id;\n      }\n\n      return 0;\n  \
+    \  }\n  )\";\n\n  ebpf::BPF bpf;\n  ebpf::StatusTuple res(0);\n  res = bpf.init(BPF_PROGRAM);\n\
+    \  REQUIRE(res.code() == 0);\n\n// CONTEXT: TEST_CASE(\"test bpf stack table\"\
+    , \"[bpf_stack_table]\") {\n#endif\n}\n\nTEST_CASE(\"test bpf stack_id table\"\
+    , \"[bpf_stack_table]\") {\n#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 17, 0)\n\
+    \  const std::string BPF_PROGRAM = R\"(\n    BPF_HASH(id, int, int, 1);\n    BPF_STACK_TRACE_BUILDID(stack_traces,\
+    \ 8);\n\n    int on_sys_getuid(void *ctx) {\n      int stack_id = stack_traces.get_stackid(ctx,\
+    \ BPF_F_USER_STACK);\n      int zero = 0, *val;\n      val = id.lookup_or_try_init(&zero,\
+    \ &stack_id);\n      if (val) {\n        (*val) = stack_id;\n      }\n\n     \
+    \ return 0;\n    }\n  )\";\n\n  ebpf::BPF bpf;\n  ebpf::StatusTuple res(0);\n\
+    \  res = bpf.init(BPF_PROGRAM);\n  REQUIRE(res.code() == 0);\n\n// FILE: tests/python/test_stat1.c\n\
+    // CONTEXT: int on_packet(struct __sk_buff *skb) {\n    int rx = 0, tx = 0;\n\
+    \    struct IPKey key;\n    if (ip->dst > ip->src) {\n      key.dip = ip->dst;\n\
+    \      key.sip = ip->src;\n      rx = 1;\n    } else {\n      key.dip = ip->src;\n\
+    \      key.sip = ip->dst;\n      tx = 1;\n    }\n    struct IPLeaf zleaf = {0};\n\
+    \    struct IPLeaf *leaf = stats.lookup_or_try_init(&key, &zleaf);\n    if (leaf)\
+    \ {\n      lock_xadd(&leaf->rx_pkts, rx);\n      lock_xadd(&leaf->tx_pkts, tx);\n\
+    \    }\n  }\n\nEOP:\n  return 0;\n}\n\n// FILE: tests/python/test_trace2.c\n//\
+    \ Copyright (c) PLUMgrid, Inc.\n// Licensed under the Apache License, Version\
+    \ 2.0 (the \"License\")\n#include <linux/ptrace.h>\nstruct Ptr { u64 ptr; };\n\
+    struct Counters { u64 stat1; };\nBPF_HASH(stats, struct Ptr, struct Counters,\
+    \ 1024);\n\nint count_sched(struct pt_regs *ctx) {\n  struct Ptr key = {.ptr =\
+    \ PT_REGS_PARM1(ctx)};\n  struct Counters zleaf = {0};\n  struct Counters *val\
+    \ = stats.lookup_or_try_init(&key, &zleaf);\n  if (val) {\n    val->stat1++;\n\
+    \  }\n  return 0;\n}\n\n// FILE: tests/python/test_trace3.c\n// CONTEXT: int probe_blk_update_request(struct\
+    \ pt_regs *ctx) {\n  struct Request rq = {.rq = PT_REGS_PARM1(ctx)};\n  struct\
+    \ Time *tm = requests.lookup(&rq);\n  if (!tm) return 0;\n  u64 delta = bpf_ktime_get_ns()\
+    \ - tm->start;\n  requests.delete(&rq);\n  u64 lg = log2l(delta);\n  u64 base\
+    \ = 1ull << lg;\n  u32 index = (lg * 64 + (delta - base) * 64 / base) * 3 / 64;\n\
+    \  if (index >= SLOTS)\n    index = SLOTS - 1;\n\n  u64 zero = 0;\n  u64 *val\
+    \ = latency.lookup_or_try_init(&index, &zero);\n  if (val) {\n    lock_xadd(val,\
+    \ 1);\n  }\n  return 0;\n}\n\n// FILE: tools/deadlock.c\n// CONTEXT: BPF_STACK_TRACE(stack_traces,\
+    \ 655360);\n// is a pointer to the mutex M held by thread T.\n//\n// For all mutexes\
+    \ N held by mutexes_held[T]\n//   add edge N => M (held by T)\n// mutexes_held[T].add(M)\n\
+    int trace_mutex_acquire(struct pt_regs *ctx, void *mutex_addr) {\n  // Higher\
+    \ 32 bits is process ID, Lower 32 bits is thread ID\n  u32 pid = bpf_get_current_pid_tgid();\n\
+    \  u64 mutex = (u64)mutex_addr;\n\n  struct thread_to_held_mutex_leaf_t empty_leaf\
+    \ = {};\n  struct thread_to_held_mutex_leaf_t *leaf =\n      thread_to_held_mutexes.lookup_or_try_init(&pid,\
+    \ &empty_leaf);\n  if (!leaf) {\n    bpf_trace_printk(\n        \"could not add\
+    \ thread_to_held_mutex key, thread: %d, mutex: %p\\n\", pid,\n        mutex);\n\
+    \    return 1; // Could not insert, no more memory\n  }\n\n  // Recursive mutexes\
+    \ lock the same mutex multiple times. We cannot tell if\n  // the mutex is recursive\
+    \ after the mutex is already created. To avoid noisy\n  // reports, disallow self\
+    \ edges. Do one pass to check if we are already\n  // holding the mutex, and if\
+    \ we are, do nothing.\n  #pragma unroll\n\n// CONTEXT: int trace_clone(struct\
+    \ pt_regs *ctx, unsigned long flags, void *child_stack,\n  if (child_pid <= 0)\
+    \ {\n    return 1;\n  }\n\n  struct thread_created_leaf_t thread_created_leaf\
+    \ = {};\n  thread_created_leaf.parent_pid = bpf_get_current_pid_tgid();\n  thread_created_leaf.stack_id\
+    \ =\n      stack_traces.get_stackid(ctx, BPF_F_USER_STACK | BPF_F_REUSE_STACKID);\n\
+    \  bpf_get_current_comm(&thread_created_leaf.comm,\n                       sizeof(thread_created_leaf.comm));\n\
+    \n  struct thread_created_leaf_t *insert_result =\n      thread_to_parent.lookup_or_try_init(&child_pid,\
+    \ &thread_created_leaf);\n  if (!insert_result) {\n    bpf_trace_printk(\n   \
+    \     \"could not add thread_created_key, child: %d, parent: %d\\n\", child_pid,\n\
+    \        thread_created_leaf.parent_pid);\n    return 1; // Could not insert,\
+    \ no more memory\n  }\n  return 0;\n}"
+  diff_summary: |-
+    examples/cpp/LLCStat.cc:
+    - Applied a small verifier-related code change captured by the exact before/after snippets below.
+    - Affected context: BPF_HASH(miss_count, struct event_t);.
+    examples/cpp/TCPSendStack.cc:
+    - Applied a small verifier-related code change captured by the exact before/after snippets below.
+    - Affected context: struct stack_key_t {.
+    examples/cpp/UseExternalMap.cc:
+    - Applied a small verifier-related code change captured by the exact before/after snippets below.
+    - Affected context: int on_sched_switch(struct tracepoint__sched__sched_switch *args) {.
+    examples/networking/distributed_bridge/tunnel.c:
+    - Applied a small verifier-related code change captured by the exact before/after snippets below.
+    - Affected context: int handle_ingress(struct __sk_buff *skb) {.
+    examples/networking/http_filter/http-parse-complete.c:
+    - Applied a small verifier-related code change captured by the exact before/after snippets below.
+    - Affected context: int http_filter(struct __sk_buff *skb) {.
+    examples/networking/tunnel_monitor/monitor.c:
+    - Applied a small verifier-related code change captured by the exact before/after snippets below.
+    - Affected context: int handle_inner(struct __sk_buff *skb) {.
+    examples/networking/vlan_learning/vlan_learning.c:
+    - Applied a small verifier-related code change captured by the exact before/after snippets below.
+    - Affected context: int handle_phys2virt(struct __sk_buff *skb) {.
+    examples/tracing/task_switch.c:
+    - Applied a small verifier-related code change captured by the exact before/after snippets below.
+    - Affected context: struct key_t {.
+    src/cc/export/helpers.h:
+    - Applied a small verifier-related code change captured by the exact before/after snippets below.
+    - Affected context: R"********(.
+    src/cc/frontends/clang/b_frontend_action.cc:
+    - Applied a small verifier-related code change captured by the exact before/after snippets below.
+    - Affected context: bool ProbeVisitor::assignsExtPtr(Expr *E, int *nbAddrOf) {, bool BTypeVisitor::VisitCallExpr(CallExpr *Call) {.
+    tests/cc/test_bpf_table.cc:
+    - Applied a small verifier-related code change captured by the exact before/after snippets below.
+    - Affected context: TEST_CASE("test bpf hash table", "[bpf_hash_table]") {, TEST_CASE("test bpf stack table", "[bpf_stack_table]") {.
+    tests/python/test_stat1.c:
+    - Applied a small verifier-related code change captured by the exact before/after snippets below.
+    - Affected context: int on_packet(struct __sk_buff *skb) {.
+    tests/python/test_trace2.c:
+    - Applied a small verifier-related code change captured by the exact before/after snippets below.
+    - Affected context: the touched section.
+    tests/python/test_trace3.c:
+    - Applied a small verifier-related code change captured by the exact before/after snippets below.
+    - Affected context: int probe_blk_update_request(struct pt_regs *ctx) {.
+    tools/deadlock.c:
+    - Applied a small verifier-related code change captured by the exact before/after snippets below.
+    - Affected context: BPF_STACK_TRACE(stack_traces, 655360);, int trace_clone(struct pt_regs *ctx, unsigned long flags, void *child_stack,.
+    - Commit subject: introduce map.lookup_or_try_init() (#2577).

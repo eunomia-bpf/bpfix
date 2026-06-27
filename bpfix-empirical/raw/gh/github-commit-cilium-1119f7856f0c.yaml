@@ -1,0 +1,66 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-1119f7856f0c
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/1119f7856f0c0dc743fba6370d88d10ffccb0b0d
+  title: 'bpf: fix complexity issue for bpf_xdp program'
+  repository: https://github.com/cilium/cilium
+  commit: 1119f7856f0c0dc743fba6370d88d10ffccb0b0d
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-1119f7856f0c.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: environment_required
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Adds relax_verifier() to reduce full XDP load-balancer complexity. The rejection
+    depends on the historical generated XDP program, not an isolated snippet.
+raw:
+  case_id: github-commit-cilium-1119f7856f0c
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: 1119f7856f0c0dc743fba6370d88d10ffccb0b0d
+  commit_message: 'bpf: fix complexity issue for bpf_xdp program'
+  commit_date: '2021-04-14'
+  fix_type: loop_rewrite
+  buggy_code: "// FILE: bpf/lib/lb.h\n/* SPDX-License-Identifier: GPL-2.0 */\n/* Copyright\
+    \ (C) 2016-2020 Authors of Cilium */\n\n#ifndef __LB_H_\n#define __LB_H_\n\n#include\
+    \ \"csum.h\"\n#include \"conntrack.h\"\n#include \"ipv4.h\"\n\n#define CILIUM_LB_MAP_MAX_FE\t\
+    \t256\n\n#ifdef ENABLE_IPV6\nstruct bpf_elf_map __section_maps LB6_REVERSE_NAT_MAP\
+    \ = {\n\t.type\t\t= BPF_MAP_TYPE_HASH,\n\t.size_key\t= sizeof(__u16),\n\t.size_value\t\
+    = sizeof(struct lb6_reverse_nat),\n\t.pinning\t= PIN_GLOBAL_NS,\n\n// CONTEXT:\
+    \ update_state:\n\t */\n\tif (saddr == backend->address) {\n\t\tnew_saddr = IPV4_LOOPBACK;\n\
+    \t\tstate->loopback = 1;\n\t\tstate->addr = new_saddr;\n\t\tstate->svc_addr =\
+    \ saddr;\n\t}\n\n\tif (!state->loopback)\n#endif\n\t\ttuple->daddr = backend->address;\n\
+    \n\treturn lb4_xlate(ctx, &new_daddr, &new_saddr, &saddr,\n\t\t\t tuple->nexthdr,\
+    \ l3_off, l4_off, csum_off, key,\n\t\t\t backend, has_l4_header);\ndrop_no_service:\n\
+    \t\ttuple->flags = flags;\n\t\treturn DROP_NO_SERVICE;\n}\n#endif /* ENABLE_IPV4\
+    \ */\n#endif /* __LB_H_ */"
+  fixed_code: "// FILE: bpf/lib/lb.h\n/* SPDX-License-Identifier: GPL-2.0 */\n/* Copyright\
+    \ (C) 2016-2020 Authors of Cilium */\n\n#ifndef __LB_H_\n#define __LB_H_\n\n#include\
+    \ <bpf/verifier.h>\n\n#include \"csum.h\"\n#include \"conntrack.h\"\n#include\
+    \ \"ipv4.h\"\n\n#define CILIUM_LB_MAP_MAX_FE\t\t256\n\n#ifdef ENABLE_IPV6\nstruct\
+    \ bpf_elf_map __section_maps LB6_REVERSE_NAT_MAP = {\n\t.type\t\t= BPF_MAP_TYPE_HASH,\n\
+    \t.size_key\t= sizeof(__u16),\n\t.size_value\t= sizeof(struct lb6_reverse_nat),\n\
+    \t.pinning\t= PIN_GLOBAL_NS,\n\n// CONTEXT: update_state:\n\t */\n\tif (saddr\
+    \ == backend->address) {\n\t\tnew_saddr = IPV4_LOOPBACK;\n\t\tstate->loopback\
+    \ = 1;\n\t\tstate->addr = new_saddr;\n\t\tstate->svc_addr = saddr;\n\t}\n\n\t\
+    if (!state->loopback)\n#endif\n\t\ttuple->daddr = backend->address;\n\n\trelax_verifier();\n\
+    \treturn lb4_xlate(ctx, &new_daddr, &new_saddr, &saddr,\n\t\t\t tuple->nexthdr,\
+    \ l3_off, l4_off, csum_off, key,\n\t\t\t backend, has_l4_header);\ndrop_no_service:\n\
+    \t\ttuple->flags = flags;\n\t\treturn DROP_NO_SERVICE;\n}\n#endif /* ENABLE_IPV4\
+    \ */\n#endif /* __LB_H_ */"
+  diff_summary: |-
+    bpf/lib/lb.h:
+    - Reworked loop or branch structure to reduce verifier complexity and keep the path bounded.
+    - Affected context: update_state:.
+    - Commit subject: bpf: fix complexity issue for bpf_xdp program.

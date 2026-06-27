@@ -1,0 +1,149 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-9d2aecfcaa92
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/9d2aecfcaa9231990c27e4f0db92cf4c1e1838ea
+  title: 'bpf: split tracing and processing logic'
+  repository: https://github.com/cilium/cilium
+  commit: 9d2aecfcaa9231990c27e4f0db92cf4c1e1838ea
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-9d2aecfcaa92.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: environment_required
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Splits tracing and processing into tail calls to simplify cil_from_netdev/cil_from_host;
+    no isolated rejected operation is present.
+raw:
+  case_id: github-commit-cilium-9d2aecfcaa92
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: 9d2aecfcaa9231990c27e4f0db92cf4c1e1838ea
+  commit_message: 'bpf: split tracing and processing logic'
+  commit_date: '2024-12-26'
+  fix_type: type_cast
+  buggy_code: "// FILE: bpf/bpf_host.c\n// CONTEXT: do_netdev(struct __ctx_buff *ctx,\
+    \ __u16 proto, __u32 __maybe_unused identity,\n * from-netdev is attached as a\
+    \ tc ingress filter to one or more physical devices\n * managed by Cilium (e.g.,\
+    \ eth0). This program is only attached when:\n * - the host firewall is enabled,\
+    \ or\n * - BPF NodePort is enabled, or\n * - L2 announcements are enabled, or\n\
+    \ * - WireGuard's host-to-host encryption and BPF NodePort are enabled\n */\n\
+    __section_entry\nint cil_from_netdev(struct __ctx_buff *ctx)\n{\n\t__u32 src_id\
+    \ = UNKNOWN_ID;\n\t__be16 proto = 0;\n\n#ifdef ENABLE_NODEPORT_ACCELERATION\n\t\
+    __u32 flags = ctx_get_xfer(ctx, XFER_FLAGS);\n#endif\n\tint ret;\n\n\t/* Filter\
+    \ allowed vlan id's and pass them back to kernel.\n\t * We will see the packet\
+    \ again in from-netdev@eth0.vlanXXX.\n\t */\n\tif (ctx->vlan_present) {\n\t\t\
+    __u32 vlan_id = ctx->vlan_tci & 0xfff;\n\n\n// CONTEXT: int cil_from_netdev(struct\
+    \ __ctx_buff *ctx)\n\t/* If the packet needs decryption, we want to send it straight\
+    \ to the\n\t * stack. There's no need to run service handling logic, host firewall,\n\
+    \t * etc. on an encrypted packet.\n\t * In all other cases (packet doesn't need\
+    \ decryption or already\n\t * decrypted), we want to run all subsequent logic\
+    \ here. We therefore\n\t * ignore the return value from do_decrypt.\n\t */\n\t\
+    do_decrypt(ctx, proto);\n\tif (ctx->mark == MARK_MAGIC_DECRYPT)\n\t\treturn CTX_ACT_OK;\n\
+    #endif\n\n\treturn do_netdev(ctx, proto, UNKNOWN_ID, TRACE_FROM_NETWORK, false);\n\
+    \ndrop_err:\n\treturn send_drop_notify_error(ctx, src_id, ret, CTX_ACT_DROP, METRIC_INGRESS);\n\
+    }\n\n/*\n * from-host is attached as a tc egress filter to the node's 'cilium_host'\n\
+    \ * interface if present.\n */\n__section_entry\nint cil_from_host(struct __ctx_buff\
+    \ *ctx)\n{\n\tenum trace_point obs_point = TRACE_FROM_HOST;\n\t__u32 identity\
+    \ = UNKNOWN_ID;\n\tint ret __maybe_unused;\n\t__be16 proto = 0;\n\t__u32 magic;\n\
+    \n\t/* Traffic from the host ns going through cilium_host device must\n\t * not\
+    \ be subject to EDT rate-limiting.\n\t */\n\tedt_set_aggregate(ctx, 0);\n\n\t\
+    if (!validate_ethertype(ctx, &proto)) {\n\t\t__u32 dst_sec_identity = UNKNOWN_ID;\n\
+    \t\t__u32 src_sec_identity = HOST_ID;\n\n#ifdef ENABLE_HOST_FIREWALL\n\t\treturn\
+    \ send_drop_notify(ctx, src_sec_identity, dst_sec_identity,\n\t\t\t\t\tTRACE_EP_ID_UNKNOWN,\
+    \ DROP_UNSUPPORTED_L2,\n\t\t\t\t\tCTX_ACT_DROP, METRIC_EGRESS);\n#else\n\t\tsend_trace_notify(ctx,\
+    \ TRACE_TO_STACK, src_sec_identity, dst_sec_identity,\n\t\t\t\t  TRACE_EP_ID_UNKNOWN,\n\
+    \t\t\t\t  TRACE_IFINDEX_UNKNOWN, TRACE_REASON_UNKNOWN, 0);\n\t\t/* Pass unknown\
+    \ traffic to the stack */\n\t\treturn CTX_ACT_OK;\n#endif /* ENABLE_HOST_FIREWALL\
+    \ */\n\t}\n\n\tmagic = inherit_identity_from_host(ctx, &identity);\n\tif (magic\
+    \ == MARK_MAGIC_PROXY_INGRESS ||  magic == MARK_MAGIC_PROXY_EGRESS)\n\t\tobs_point\
+    \ = TRACE_FROM_PROXY;\n\n#if defined(ENABLE_L7_LB)\n\tif (magic == MARK_MAGIC_PROXY_EGRESS_EPID)\
+    \ {\n\t\t/* extracted identity is actually the endpoint ID */\n\t\tret = tail_call_egress_policy(ctx,\
+    \ (__u16)identity);\n\t\treturn send_drop_notify_error(ctx, UNKNOWN_ID, ret, CTX_ACT_DROP,\n\
+    \t\t\t\t\t      METRIC_EGRESS);\n\t}\n#endif\n\n// FILE: bpf/lib/common.h\n//\
+    \ CONTEXT: enum {\n#define CILIUM_CALL_IPV6_NODEPORT_SNAT_FWD\t39\n/* Unused CILIUM_CALL_IPV4_NODEPORT_DSR_INGRESS\t\
+    40\n * Unused CILIUM_CALL_IPV6_NODEPORT_DSR_INGRESS\t41\n */\n#define CILIUM_CALL_IPV4_INTER_CLUSTER_REVSNAT\t\
+    42\n#define CILIUM_CALL_IPV4_CONT_FROM_HOST\t\t43\n#define CILIUM_CALL_IPV4_CONT_FROM_NETDEV\t\
+    44\n#define CILIUM_CALL_IPV6_CONT_FROM_HOST\t\t45\n#define CILIUM_CALL_IPV6_CONT_FROM_NETDEV\t\
+    46\n#define CILIUM_CALL_IPV4_NO_SERVICE\t\t47\n#define CILIUM_CALL_IPV6_NO_SERVICE\t\
+    \t48\n#define CILIUM_CALL_MULTICAST_EP_DELIVERY       49\n#define CILIUM_CALL_SIZE\t\
+    \t\t50\n\ntypedef __u64 mac_t;\n\nunion v6addr {\n\tstruct {\n\t\t__u32 p1;\n\t\
+    \t__u32 p2;\n\t\t__u32 p3;\n\t\t__u32 p4;\n\t};\n\tstruct {\n\t\t__u64 d1;"
+  fixed_code: "// FILE: bpf/bpf_host.c\n// CONTEXT: do_netdev(struct __ctx_buff *ctx,\
+    \ __u16 proto, __u32 __maybe_unused identity,\n * from-netdev is attached as a\
+    \ tc ingress filter to one or more physical devices\n * managed by Cilium (e.g.,\
+    \ eth0). This program is only attached when:\n * - the host firewall is enabled,\
+    \ or\n * - BPF NodePort is enabled, or\n * - L2 announcements are enabled, or\n\
+    \ * - WireGuard's host-to-host encryption and BPF NodePort are enabled\n */\n\
+    __section_entry\nint cil_from_netdev(struct __ctx_buff *ctx)\n{\n\t__u32 src_id\
+    \ = UNKNOWN_ID;\n\t__be16 proto = 0;\n\t__s8 ext_err = 0;\n\n#ifdef ENABLE_NODEPORT_ACCELERATION\n\
+    \t__u32 flags = ctx_get_xfer(ctx, XFER_FLAGS);\n#endif\n\tint ret;\n\n\t/* Filter\
+    \ allowed vlan id's and pass them back to kernel.\n\t * We will see the packet\
+    \ again in from-netdev@eth0.vlanXXX.\n\t */\n\tif (ctx->vlan_present) {\n\t\t\
+    __u32 vlan_id = ctx->vlan_tci & 0xfff;\n\n\n// CONTEXT: int cil_from_netdev(struct\
+    \ __ctx_buff *ctx)\n\t/* If the packet needs decryption, we want to send it straight\
+    \ to the\n\t * stack. There's no need to run service handling logic, host firewall,\n\
+    \t * etc. on an encrypted packet.\n\t * In all other cases (packet doesn't need\
+    \ decryption or already\n\t * decrypted), we want to run all subsequent logic\
+    \ here. We therefore\n\t * ignore the return value from do_decrypt.\n\t */\n\t\
+    do_decrypt(ctx, proto);\n\tif (ctx->mark == MARK_MAGIC_DECRYPT)\n\t\treturn CTX_ACT_OK;\n\
+    #endif\n\n\tret = tail_call_internal(ctx, CILIUM_CALL_DO_NETDEV_INGRESS, &ext_err);\n\
+    \treturn send_drop_notify_error_ext(ctx, src_id, ret, ext_err,\n\t\t\t\t\t\t\t\
+    \t   CTX_ACT_DROP, METRIC_INGRESS);\n\ndrop_err:\n\treturn send_drop_notify_error(ctx,\
+    \ src_id, ret, CTX_ACT_DROP, METRIC_INGRESS);\n}\n\n__section_tail(CILIUM_MAP_CALLS,\
+    \ CILIUM_CALL_DO_NETDEV_INGRESS)\nint tail_handle_do_netdev_ingress(struct __ctx_buff\
+    \ *ctx)\n{\n\t__be16 proto = 0;\n\n\t/* Just load ethertype, validation is already\
+    \ done */\n\tvalidate_ethertype(ctx, &proto);\n\n\treturn do_netdev(ctx, proto,\
+    \ UNKNOWN_ID, TRACE_FROM_NETWORK, false);\n}\n\n/*\n * from-host is attached as\
+    \ a tc egress filter to the node's 'cilium_host'\n * interface if present.\n */\n\
+    __section_entry\nint cil_from_host(struct __ctx_buff *ctx)\n{\n\tint ret __maybe_unused;\n\
+    \t__be16 proto = 0;\n\t__s8 ext_err __maybe_unused = 0;\n\n\t/* Traffic from the\
+    \ host ns going through cilium_host device must\n\t * not be subject to EDT rate-limiting.\n\
+    \t */\n\tedt_set_aggregate(ctx, 0);\n\n\tif (!validate_ethertype(ctx, &proto))\
+    \ {\n\t\t__u32 dst_sec_identity = UNKNOWN_ID;\n\t\t__u32 src_sec_identity = HOST_ID;\n\
+    \n#ifdef ENABLE_HOST_FIREWALL\n\t\treturn send_drop_notify(ctx, src_sec_identity,\
+    \ dst_sec_identity,\n\t\t\t\t\tTRACE_EP_ID_UNKNOWN, DROP_UNSUPPORTED_L2,\n\t\t\
+    \t\t\tCTX_ACT_DROP, METRIC_EGRESS);\n#else\n\t\tsend_trace_notify(ctx, TRACE_TO_STACK,\
+    \ src_sec_identity, dst_sec_identity,\n\t\t\t\t  TRACE_EP_ID_UNKNOWN,\n\t\t\t\t\
+    \  TRACE_IFINDEX_UNKNOWN, TRACE_REASON_UNKNOWN, 0);\n\t\t/* Pass unknown traffic\
+    \ to the stack */\n\t\treturn CTX_ACT_OK;\n#endif /* ENABLE_HOST_FIREWALL */\n\
+    \t}\n\n\tret = tail_call_internal(ctx, CILIUM_CALL_DO_NETDEV_EGRESS, &ext_err);\n\
+    \treturn send_drop_notify_error_ext(ctx, HOST_ID, ret, ext_err,\n\t\t\t\t\t\t\t\
+    \t   CTX_ACT_DROP, METRIC_EGRESS);\n}\n\n__section_tail(CILIUM_MAP_CALLS, CILIUM_CALL_DO_NETDEV_EGRESS)\n\
+    int tail_handle_do_netdev_egress(struct __ctx_buff *ctx)\n{\n\tenum trace_point\
+    \ obs_point = TRACE_FROM_HOST;\n\t__u32 identity = UNKNOWN_ID;\n\tint ret __maybe_unused;\n\
+    \t__be16 proto = 0;\n\t__u32 magic;\n\n\t/* Just load ethertype, validation is\
+    \ already done */\n\tvalidate_ethertype(ctx, &proto);\n\n\tmagic = inherit_identity_from_host(ctx,\
+    \ &identity);\n\tif (magic == MARK_MAGIC_PROXY_INGRESS ||  magic == MARK_MAGIC_PROXY_EGRESS)\n\
+    \t\tobs_point = TRACE_FROM_PROXY;\n\n#if defined(ENABLE_L7_LB)\n\tif (magic ==\
+    \ MARK_MAGIC_PROXY_EGRESS_EPID) {\n\t\t/* extracted identity is actually the endpoint\
+    \ ID */\n\t\tret = tail_call_egress_policy(ctx, (__u16)identity);\n\t\treturn\
+    \ send_drop_notify_error(ctx, UNKNOWN_ID, ret, CTX_ACT_DROP,\n\t\t\t\t\t     \
+    \ METRIC_EGRESS);\n\t}\n#endif\n\n// FILE: bpf/lib/common.h\n// CONTEXT: enum\
+    \ {\n#define CILIUM_CALL_IPV6_NODEPORT_SNAT_FWD\t39\n/* Unused CILIUM_CALL_IPV4_NODEPORT_DSR_INGRESS\t\
+    40\n * Unused CILIUM_CALL_IPV6_NODEPORT_DSR_INGRESS\t41\n */\n#define CILIUM_CALL_IPV4_INTER_CLUSTER_REVSNAT\t\
+    42\n#define CILIUM_CALL_IPV4_CONT_FROM_HOST\t\t43\n#define CILIUM_CALL_IPV4_CONT_FROM_NETDEV\t\
+    44\n#define CILIUM_CALL_IPV6_CONT_FROM_HOST\t\t45\n#define CILIUM_CALL_IPV6_CONT_FROM_NETDEV\t\
+    46\n#define CILIUM_CALL_IPV4_NO_SERVICE\t\t47\n#define CILIUM_CALL_IPV6_NO_SERVICE\t\
+    \t48\n#define CILIUM_CALL_MULTICAST_EP_DELIVERY       49\n#define CILIUM_CALL_DO_NETDEV_INGRESS\t\
+    \t50\n#define CILIUM_CALL_DO_NETDEV_EGRESS\t\t51\n#define CILIUM_CALL_SIZE\t\t\
+    \t52\n\ntypedef __u64 mac_t;\n\nunion v6addr {\n\tstruct {\n\t\t__u32 p1;\n\t\t\
+    __u32 p2;\n\t\t__u32 p3;\n\t\t__u32 p4;\n\t};\n\tstruct {\n\t\t__u64 d1;"
+  diff_summary: |-
+    bpf/bpf_host.c:
+    - Adjusted types or casts so the verifier sees the intended pointer or value kind.
+    - Affected context: do_netdev(struct __ctx_buff *ctx, __u16 proto, __u32 __maybe_unused identity,, int cil_from_netdev(struct __ctx_buff *ctx).
+    bpf/lib/common.h:
+    - Adjusted types or casts so the verifier sees the intended pointer or value kind.
+    - Affected context: enum {.
+    - Commit subject: bpf: split tracing and processing logic.

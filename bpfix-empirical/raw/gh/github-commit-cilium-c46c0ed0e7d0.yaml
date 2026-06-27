@@ -1,0 +1,294 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-c46c0ed0e7d0
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/c46c0ed0e7d023208c7f162090694e9c3d1c09d4
+  title: 'datapath: Store NodePort client MAC addr in LRU map'
+  repository: https://github.com/cilium/cilium
+  commit: c46c0ed0e7d023208c7f162090694e9c3d1c09d4
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-c46c0ed0e7d0.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Stores NodePort client MAC addresses in LRU maps to avoid runtime FIB/ARP
+    lookup misses; no verifier-load failure is present.
+raw:
+  case_id: github-commit-cilium-c46c0ed0e7d0
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: c46c0ed0e7d023208c7f162090694e9c3d1c09d4
+  commit_message: 'datapath: Store NodePort client MAC addr in LRU map'
+  commit_date: '2019-07-24'
+  fix_type: inline_hint
+  buggy_code: "// FILE: bpf/lib/nodeport.h\n#include \"conntrack.h\"\n#include \"\
+    csum.h\"\n#include \"encap.h\"\n\n#define CB_SRC_IDENTITY\t0\n\n/* No nodeport\
+    \ on cilium_host interface. */\n#ifdef FROM_HOST\n# undef ENABLE_NODEPORT\n# undef\
+    \ ENABLE_MASQUERADE\n#endif\n\nstatic inline void bpf_clear_nodeport(struct __sk_buff\
+    \ *skb)\n{\n#ifdef ENABLE_NODEPORT\n\tskb->tc_index &= ~TC_INDEX_F_SKIP_NODEPORT;\n\
+    #endif\n}\n\n#ifdef ENABLE_NODEPORT\nstatic inline bool __inline__ bpf_skip_nodeport(struct\
+    \ __sk_buff *skb)\n{\n\tvolatile __u32 tc_index = skb->tc_index;\n\tskb->tc_index\
+    \ &= ~TC_INDEX_F_SKIP_NODEPORT;\n\n// CONTEXT: static inline int nodeport_lb6(struct\
+    \ __sk_buff *skb, __u32 src_identity)\n\tint ret, l3_off = ETH_HLEN, l4_off, hdrlen;\n\
+    \tstruct ipv6_ct_tuple tuple = {};\n\tvoid *data, *data_end;\n\tstruct ipv6hdr\
+    \ *ip6;\n\tstruct csum_offset csum_off = {};\n\tstruct lb6_service_v2 *svc;\n\t\
+    struct lb6_key_v2 key = {};\n\tstruct ct_state ct_state_new = {};\n\tstruct ct_state\
+    \ ct_state = {};\n\tbool backend_local;\n\t__u32 monitor = 0;\n\t__u16 service_port;\n\
+    \n\tif (!revalidate_data(skb, &data, &data_end, &ip6))\n\t\treturn DROP_INVALID;\n\
+    \n\ttuple.nexthdr = ip6->nexthdr;\n\tipv6_addr_copy(&tuple.daddr, (union v6addr\
+    \ *) &ip6->daddr);\n\tipv6_addr_copy(&tuple.saddr, (union v6addr *) &ip6->saddr);\n\
+    \n\thdrlen = ipv6_hdrlen(skb, l3_off, &tuple.nexthdr);\n\tif (hdrlen < 0)\n\t\t\
+    return hdrlen;\n\n\n// CONTEXT: static inline int nodeport_lb6(struct __sk_buff\
+    \ *skb, __u32 src_identity)\n\t\t\t\treturn ret;\n\t\t}\n\t\tbreak;\n\n\tcase\
+    \ CT_ESTABLISHED:\n\tcase CT_REPLY:\n\t\tbreak;\n\n\tdefault:\n\t\treturn DROP_UNKNOWN_CT;\n\
+    \t}\n\n\tif (!backend_local) {\n\t\tskb->cb[CB_NAT] = NAT_DIR_EGRESS;\n\t\tep_tail_call(skb,\
+    \ CILIUM_CALL_IPV6_NODEPORT_NAT);\n\t\treturn DROP_MISSED_TAIL_CALL;\n\t}\n\n\t\
+    return TC_ACT_OK;\n}\n\n/* See comment in tail_rev_nodeport_lb4(). */\nstatic\
+    \ inline int rev_nodeport_lb6(struct __sk_buff *skb, int *ifindex)\n{\n\tint ret,\
+    \ ret2, l3_off = ETH_HLEN, l4_off, hdrlen;\n\tstruct ipv6_ct_tuple tuple = {};\n\
+    \tvoid *data, *data_end;\n\tstruct ipv6hdr *ip6;\n\tstruct csum_offset csum_off\
+    \ = {};\n\tstruct ct_state ct_state = {};\n\tstruct bpf_fib_lookup fib_params\
+    \ = {};\n\t__u32 monitor = 0;\n\n\tif (!revalidate_data(skb, &data, &data_end,\
+    \ &ip6))\n\t\treturn DROP_INVALID;\n\n\ttuple.nexthdr = ip6->nexthdr;\n\tipv6_addr_copy(&tuple.daddr,\
+    \ (union v6addr *) &ip6->daddr);\n\tipv6_addr_copy(&tuple.saddr, (union v6addr\
+    \ *) &ip6->saddr);\n\n\thdrlen = ipv6_hdrlen(skb, l3_off, &tuple.nexthdr);\n\t\
+    if (hdrlen < 0)\n\t\treturn hdrlen;\n\n// CONTEXT: static inline int rev_nodeport_lb6(struct\
+    \ __sk_buff *skb, int *ifindex)\n\t\t\t\t*ifindex = ENCAP_IFINDEX;\n\n\t\t\t\t\
+    /* fib lookup not necessary when going over tunnel. */\n\t\t\t\tif (eth_store_daddr(skb,\
+    \ fib_params.dmac, 0) < 0)\n\t\t\t\t\treturn DROP_WRITE_ERROR;\n\t\t\t\tif (eth_store_saddr(skb,\
+    \ fib_params.smac, 0) < 0)\n\t\t\t\t\treturn DROP_WRITE_ERROR;\n\n\t\t\t\treturn\
+    \ TC_ACT_OK;\n\t\t\t}\n\t\t}\n#endif\n\t\tfib_params.family = AF_INET6;\n\t\t\
+    fib_params.ifindex = *ifindex;\n\n\t\tipv6_addr_copy((union v6addr *) &fib_params.ipv6_src,\
+    \ &tuple.saddr);\n\t\tipv6_addr_copy((union v6addr *) &fib_params.ipv6_dst, &tuple.daddr);\n\
+    \n\t\tint rc = fib_lookup(skb, &fib_params, sizeof(fib_params),\n\t\t\t\t    BPF_FIB_LOOKUP_DIRECT\
+    \ | BPF_FIB_LOOKUP_OUTPUT);\n\t\tif (rc != 0)\n\t\t\treturn DROP_NO_FIB;\n\n\t\
+    \tif (eth_store_daddr(skb, fib_params.dmac, 0) < 0)\n\t\t\treturn DROP_WRITE_ERROR;\n\
+    \t\tif (eth_store_saddr(skb, fib_params.smac, 0) < 0)\n\t\t\treturn DROP_WRITE_ERROR;\n\
+    \t}\n\n\treturn TC_ACT_OK;\n}\n\n__section_tail(CILIUM_MAP_CALLS, CILIUM_CALL_IPV6_NODEPORT_REVNAT)\n\
+    int tail_rev_nodeport_lb6(struct __sk_buff *skb)\n{\n\tint ifindex = NATIVE_DEV_IFINDEX,\
+    \ ret = rev_nodeport_lb6(skb, &ifindex);\n\tif (IS_ERR(ret))\n\t\treturn send_drop_notify_error(skb,\
+    \ 0, ret, TC_ACT_SHOT, METRIC_EGRESS);\n\treturn redirect(ifindex, 0);\n}\n#endif\
+    \ /* ENABLE_IPV6 */\n\n#ifdef ENABLE_IPV4\nstatic __always_inline bool nodeport_nat_ipv4_needed(struct\
+    \ __sk_buff *skb,\n\t\t\t\t\t\t     __be32 addr, int dir)\n{\n\tvoid *data, *data_end;\n\
+    \tstruct iphdr *ip4;\n\n// CONTEXT: static inline int nodeport_lb4(struct __sk_buff\
+    \ *skb, __u32 src_identity)\n\tstruct ipv4_ct_tuple tuple = {};\n\tvoid *data,\
+    \ *data_end;\n\tstruct iphdr *ip4;\n\tint ret,  l3_off = ETH_HLEN, l4_off;\n\t\
+    struct csum_offset csum_off = {};\n\tstruct lb4_service_v2 *svc;\n\tstruct lb4_key_v2\
+    \ key = {};\n\tstruct ct_state ct_state_new = {};\n\tstruct ct_state ct_state\
+    \ = {};\n\tbool backend_local;\n\t__u32 monitor = 0;\n\t__u16 service_port;\n\n\
+    \tif (!revalidate_data(skb, &data, &data_end, &ip4))\n\t\treturn DROP_INVALID;\n\
+    \n\ttuple.nexthdr = ip4->protocol;\n\ttuple.daddr = ip4->daddr;\n\ttuple.saddr\
+    \ = ip4->saddr;\n\n\tl4_off = l3_off + ipv4_hdrlen(ip4);\n\n\tret = lb4_extract_key_v2(skb,\
+    \ &tuple, l4_off, &key, &csum_off, CT_EGRESS);\n\tif (IS_ERR(ret)) {\n\n// CONTEXT:\
+    \ static inline int nodeport_lb4(struct __sk_buff *skb, __u32 src_identity)\n\t\
+    \t\t\treturn ret;\n\t\t}\n\t\tbreak;\n\n\tcase CT_ESTABLISHED:\n\tcase CT_REPLY:\n\
+    \t\tbreak;\n\n\tdefault:\n\t\treturn DROP_UNKNOWN_CT;\n\t}\n\n\tif (!backend_local)\
+    \ {\n\t\tskb->cb[CB_NAT] = NAT_DIR_EGRESS;\n\t\tep_tail_call(skb, CILIUM_CALL_IPV4_NODEPORT_NAT);\n\
+    \t\treturn DROP_MISSED_TAIL_CALL;\n\t}\n\n\treturn TC_ACT_OK;\n}\n\n/* Reverse\
+    \ NAT handling of node-port traffic for the case where the\n * backend i) was\
+    \ a local EP and bpf_lxc redirected to us, ii) was\n * a remote backend and we\
+    \ got here after reverse SNAT from the\n * tail_nodeport_nat_ipv4().\n *\n * CILIUM_CALL_IPV{4,6}_NODEPORT_REVNAT\
+    \ is plugged into CILIUM_MAP_CALLS\n * of the bpf_netdev, bpf_overlay and of the\
+    \ bpf_lxc.\n */\nstatic inline int rev_nodeport_lb4(struct __sk_buff *skb, int\
+    \ *ifindex)\n{\n\tstruct ipv4_ct_tuple tuple = {};\n\tvoid *data, *data_end;\n\
+    \tstruct iphdr *ip4;\n\tstruct csum_offset csum_off = {};\n\tint ret, ret2, l3_off\
+    \ = ETH_HLEN, l4_off;\n\tstruct ct_state ct_state = {};\n\tstruct bpf_fib_lookup\
+    \ fib_params = {};\n\t__u32 monitor = 0;\n\n\tif (!revalidate_data(skb, &data,\
+    \ &data_end, &ip4))\n\t\treturn DROP_INVALID;\n\n\ttuple.nexthdr = ip4->protocol;\n\
+    \ttuple.daddr = ip4->daddr;\n\ttuple.saddr = ip4->saddr;\n\n\tl4_off = l3_off\
+    \ + ipv4_hdrlen(ip4);\n\tcsum_l4_offset_and_flags(tuple.nexthdr, &csum_off);\n\
+    \n\n// CONTEXT: static inline int rev_nodeport_lb4(struct __sk_buff *skb, int\
+    \ *ifindex)\n\t\t\t\t*ifindex = ENCAP_IFINDEX;\n\n\t\t\t\t/* fib lookup not necessary\
+    \ when going over tunnel. */\n\t\t\t\tif (eth_store_daddr(skb, fib_params.dmac,\
+    \ 0) < 0)\n\t\t\t\t\treturn DROP_WRITE_ERROR;\n\t\t\t\tif (eth_store_saddr(skb,\
+    \ fib_params.smac, 0) < 0)\n\t\t\t\t\treturn DROP_WRITE_ERROR;\n\n\t\t\t\treturn\
+    \ TC_ACT_OK;\n\t\t\t}\n\t\t}\n#endif\n\t\tfib_params.family = AF_INET;\n\t\tfib_params.ifindex\
+    \ = *ifindex;\n\n\t\tfib_params.ipv4_src = ip4->saddr;\n\t\tfib_params.ipv4_dst\
+    \ = ip4->daddr;\n\n\t\tint rc = fib_lookup(skb, &fib_params, sizeof(fib_params),\n\
+    \t\t\t\t    BPF_FIB_LOOKUP_DIRECT | BPF_FIB_LOOKUP_OUTPUT);\n\t\tif (rc != 0)\n\
+    \t\t\treturn DROP_NO_FIB;\n\n\t\tif (eth_store_daddr(skb, fib_params.dmac, 0)\
+    \ < 0)\n\t\t\treturn DROP_WRITE_ERROR;\n\t\tif (eth_store_saddr(skb, fib_params.smac,\
+    \ 0) < 0)\n\t\t\treturn DROP_WRITE_ERROR;\n\t}\n\n\treturn TC_ACT_OK;\n}\n\n__section_tail(CILIUM_MAP_CALLS,\
+    \ CILIUM_CALL_IPV4_NODEPORT_REVNAT)\nint tail_rev_nodeport_lb4(struct __sk_buff\
+    \ *skb)\n{\n\tint ifindex = NATIVE_DEV_IFINDEX, ret = rev_nodeport_lb4(skb, &ifindex);\n\
+    \tif (IS_ERR(ret))\n\t\treturn send_drop_notify_error(skb, 0, ret, TC_ACT_SHOT,\
+    \ METRIC_EGRESS);\n\treturn redirect(ifindex, 0);\n}\n#endif /* ENABLE_IPV4 */\n\
+    \nstatic __always_inline int nodeport_nat_fwd(struct __sk_buff *skb,\n\t\t\t\t\
+    \t    const bool encap)\n{\n\t__u16 proto;\n\n\tif (!validate_ethertype(skb, &proto))\n\
+    \n// FILE: bpf/node_config.h\n *\n */\n#include \"lib/utils.h\"\n\nDEFINE_MAC(NODE_MAC,\
+    \ 0xde, 0xad, 0xbe, 0xef, 0xc0, 0xde);\n#define NODE_MAC fetch_mac(NODE_MAC)\n\
+    \nDEFINE_IPV6(ROUTER_IP, 0xbe, 0xef, 0x0, 0x0, 0x0, 0x0, 0x0, 0x1, 0x0, 0x0, 0x0,\
+    \ 0x1, 0x0, 0x1, 0x0, 0x0);\n#define ENCAP_IFINDEX 1\n#define HOST_IFINDEX 1\n\
+    #define CILIUM_IFINDEX 1\n#define NATIVE_DEV_IFINDEX 1\nDEFINE_IPV6(HOST_IP, 0xbe,\
+    \ 0xef, 0x0, 0x0, 0x0, 0x0, 0x0, 0x1, 0x0, 0x0, 0xa, 0x0, 0x2, 0xf, 0xff, 0xff);\n\
+    #define HOST_ID 1\n#define WORLD_ID 2\n#define UNMANAGED_ID 3\n#define HEALTH_ID\
+    \ 4\n#define INIT_ID 5\n#define HOST_IFINDEX_MAC { .addr = { 0xce, 0x72, 0xa7,\
+    \ 0x03, 0x88, 0x56 } }\n#define NAT46_PREFIX { .addr = { 0xbe, 0xef, 0x0, 0x0,\
+    \ 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0xa, 0x0, 0x0, 0x0, 0x0, 0x0 } }\n#define ENABLE_MASQUERADE\
+    \ 1\n#define BPF_PKT_DIR 1\n#define NODEPORT_PORT_MIN 30000\n#define NODEPORT_PORT_MAX\
+    \ 32767\n\n// CONTEXT: DEFINE_IPV6(SNAT_IPV6_EXTERNAL, 0xbe, 0xef, 0x0, 0x0, 0x0,\
+    \ 0x0, 0x0, 0x1, 0x0, 0\n#define ENABLE_IPSEC\n#define EPHERMERAL_MIN 32768\n\
+    #ifdef ENABLE_MASQUERADE\n#define CT_MAP_TCP6 test_cilium_ct_tcp6_65535\n#define\
+    \ CT_MAP_ANY6 test_cilium_ct_any6_65535\n#define CT_MAP_TCP4 test_cilium_ct_tcp4_65535\n\
+    #define CT_MAP_ANY4 test_cilium_ct_any4_65535\n#define CT_MAP_SIZE_TCP 4096\n\
+    #define CT_MAP_SIZE_ANY 4096\n#define CONNTRACK\n#define CONNTRACK_ACCOUNTING\n\
+    #endif"
+  fixed_code: "// FILE: bpf/lib/nodeport.h\n#include \"conntrack.h\"\n#include \"\
+    csum.h\"\n#include \"encap.h\"\n\n#define CB_SRC_IDENTITY\t0\n\n/* No nodeport\
+    \ on cilium_host interface. */\n#ifdef FROM_HOST\n# undef ENABLE_NODEPORT\n# undef\
+    \ ENABLE_MASQUERADE\n#endif\n\n#ifdef ENABLE_NODEPORT\n\n#ifdef ENABLE_IPV4\n\
+    struct bpf_elf_map __section_maps NODEPORT_NEIGH4 = {\n\t.type\t\t= BPF_MAP_TYPE_LRU_HASH,\n\
+    \t.size_key\t= sizeof(__be32),\t\t// ipv4 addr\n\t.size_value\t= sizeof(union\
+    \ macaddr),\t// hw addr\n\t.pinning\t= PIN_GLOBAL_NS,\n\t.max_elem\t= 256 * 1024,\n\
+    };\n#endif /* ENABLE_IPV4 */\n\n#ifdef ENABLE_IPV6\nstruct bpf_elf_map __section_maps\
+    \ NODEPORT_NEIGH6 = {\n\t.type\t\t= BPF_MAP_TYPE_LRU_HASH,\n\t.size_key\t= sizeof(union\
+    \ v6addr),\t\t// ipv6 addr\n\t.size_value\t= sizeof(union macaddr),\t// hw addr\n\
+    \t.pinning\t= PIN_GLOBAL_NS,\n\t.max_elem\t= 256 * 1024,\n};\n#endif /* ENABLE_IPV6\
+    \ */\n\n#endif /* ENABLE_NODEPORT */\n\nstatic inline void bpf_clear_nodeport(struct\
+    \ __sk_buff *skb)\n{\n#ifdef ENABLE_NODEPORT\n\tskb->tc_index &= ~TC_INDEX_F_SKIP_NODEPORT;\n\
+    #endif\n}\n\n#ifdef ENABLE_NODEPORT\nstatic inline bool __inline__ bpf_skip_nodeport(struct\
+    \ __sk_buff *skb)\n{\n\tvolatile __u32 tc_index = skb->tc_index;\n\tskb->tc_index\
+    \ &= ~TC_INDEX_F_SKIP_NODEPORT;\n\n// CONTEXT: static inline int nodeport_lb6(struct\
+    \ __sk_buff *skb, __u32 src_identity)\n\tint ret, l3_off = ETH_HLEN, l4_off, hdrlen;\n\
+    \tstruct ipv6_ct_tuple tuple = {};\n\tvoid *data, *data_end;\n\tstruct ipv6hdr\
+    \ *ip6;\n\tstruct csum_offset csum_off = {};\n\tstruct lb6_service_v2 *svc;\n\t\
+    struct lb6_key_v2 key = {};\n\tstruct ct_state ct_state_new = {};\n\tstruct ct_state\
+    \ ct_state = {};\n\tbool backend_local;\n\t__u32 monitor = 0;\n\t__u16 service_port;\n\
+    \tunion macaddr smac;\n\n\tif (!revalidate_data(skb, &data, &data_end, &ip6))\n\
+    \t\treturn DROP_INVALID;\n\n\ttuple.nexthdr = ip6->nexthdr;\n\tipv6_addr_copy(&tuple.daddr,\
+    \ (union v6addr *) &ip6->daddr);\n\tipv6_addr_copy(&tuple.saddr, (union v6addr\
+    \ *) &ip6->saddr);\n\n\thdrlen = ipv6_hdrlen(skb, l3_off, &tuple.nexthdr);\n\t\
+    if (hdrlen < 0)\n\t\treturn hdrlen;\n\n\n// CONTEXT: static inline int nodeport_lb6(struct\
+    \ __sk_buff *skb, __u32 src_identity)\n\t\t\t\treturn ret;\n\t\t}\n\t\tbreak;\n\
+    \n\tcase CT_ESTABLISHED:\n\tcase CT_REPLY:\n\t\tbreak;\n\n\tdefault:\n\t\treturn\
+    \ DROP_UNKNOWN_CT;\n\t}\n\n\tif (!revalidate_data(skb, &data, &data_end, &ip6))\n\
+    \t\treturn DROP_INVALID;\n\tif (eth_load_saddr(skb, &smac.addr, 0) < 0)\n\t\t\
+    return DROP_INVALID;\n\tret = map_update_elem(&NODEPORT_NEIGH6, &ip6->saddr, &smac,\
+    \ 0);\n\tif (ret < 0) {\n\t\treturn ret;\n\t}\n\n\tif (!backend_local) {\n\t\t\
+    skb->cb[CB_NAT] = NAT_DIR_EGRESS;\n\t\tep_tail_call(skb, CILIUM_CALL_IPV6_NODEPORT_NAT);\n\
+    \t\treturn DROP_MISSED_TAIL_CALL;\n\t}\n\n\treturn TC_ACT_OK;\n}\n\n/* See comment\
+    \ in tail_rev_nodeport_lb4(). */\nstatic inline int rev_nodeport_lb6(struct __sk_buff\
+    \ *skb, int *ifindex,\n                                    union macaddr *mac)\n\
+    {\n\tint ret, ret2, l3_off = ETH_HLEN, l4_off, hdrlen;\n\tstruct ipv6_ct_tuple\
+    \ tuple = {};\n\tvoid *data, *data_end;\n\tstruct ipv6hdr *ip6;\n\tstruct csum_offset\
+    \ csum_off = {};\n\tstruct ct_state ct_state = {};\n\tstruct bpf_fib_lookup fib_params\
+    \ = {};\n\tunion macaddr *dmac;\n\t__u32 monitor = 0;\n\n\tif (!revalidate_data(skb,\
+    \ &data, &data_end, &ip6))\n\t\treturn DROP_INVALID;\n\n\ttuple.nexthdr = ip6->nexthdr;\n\
+    \tipv6_addr_copy(&tuple.daddr, (union v6addr *) &ip6->daddr);\n\tipv6_addr_copy(&tuple.saddr,\
+    \ (union v6addr *) &ip6->saddr);\n\n\thdrlen = ipv6_hdrlen(skb, l3_off, &tuple.nexthdr);\n\
+    \tif (hdrlen < 0)\n\t\treturn hdrlen;\n\n// CONTEXT: static inline int rev_nodeport_lb6(struct\
+    \ __sk_buff *skb, int *ifindex)\n\t\t\t\t*ifindex = ENCAP_IFINDEX;\n\n\t\t\t\t\
+    /* fib lookup not necessary when going over tunnel. */\n\t\t\t\tif (eth_store_daddr(skb,\
+    \ fib_params.dmac, 0) < 0)\n\t\t\t\t\treturn DROP_WRITE_ERROR;\n\t\t\t\tif (eth_store_saddr(skb,\
+    \ fib_params.smac, 0) < 0)\n\t\t\t\t\treturn DROP_WRITE_ERROR;\n\n\t\t\t\treturn\
+    \ TC_ACT_OK;\n\t\t\t}\n\t\t}\n#endif\n\n\t\tdmac = map_lookup_elem(&NODEPORT_NEIGH6,\
+    \ &tuple.daddr);\n\t\tif (dmac) {\n\t\t\tif (eth_store_daddr(skb, &dmac->addr,\
+    \ 0) < 0)\n\t\t\t\treturn DROP_WRITE_ERROR;\n\t\t\tif (eth_store_saddr(skb, &mac->addr,\
+    \ 0) < 0)\n\t\t\t\treturn DROP_WRITE_ERROR;\n\t\t} else {\n\t\t\tfib_params.family\
+    \ = AF_INET6;\n\t\t\tfib_params.ifindex = *ifindex;\n\n\t\t\tipv6_addr_copy((union\
+    \ v6addr *) &fib_params.ipv6_src, &tuple.saddr);\n\t\t\tipv6_addr_copy((union\
+    \ v6addr *) &fib_params.ipv6_dst, &tuple.daddr);\n\n\t\t\tint rc = fib_lookup(skb,\
+    \ &fib_params, sizeof(fib_params),\n\t\t\t\t\tBPF_FIB_LOOKUP_DIRECT | BPF_FIB_LOOKUP_OUTPUT);\n\
+    \t\t\tif (rc != 0)\n\t\t\t\treturn DROP_NO_FIB;\n\n\t\t\tif (eth_store_daddr(skb,\
+    \ fib_params.dmac, 0) < 0)\n\t\t\t\treturn DROP_WRITE_ERROR;\n\t\t\tif (eth_store_saddr(skb,\
+    \ fib_params.smac, 0) < 0)\n\t\t\t\treturn DROP_WRITE_ERROR;\n\t\t}\n\n\t}\n\n\
+    \treturn TC_ACT_OK;\n}\n\n__section_tail(CILIUM_MAP_CALLS, CILIUM_CALL_IPV6_NODEPORT_REVNAT)\n\
+    int tail_rev_nodeport_lb6(struct __sk_buff *skb)\n{\n\tint ifindex = NATIVE_DEV_IFINDEX;\n\
+    \tunion macaddr mac = NATIVE_DEV_MAC;\n\tint ret = 0;\n\n\tret = rev_nodeport_lb6(skb,\
+    \ &ifindex, &mac);\n\tif (IS_ERR(ret))\n\t\treturn send_drop_notify_error(skb,\
+    \ 0, ret, TC_ACT_SHOT, METRIC_EGRESS);\n\treturn redirect(ifindex, 0);\n}\n#endif\
+    \ /* ENABLE_IPV6 */\n\n#ifdef ENABLE_IPV4\nstatic __always_inline bool nodeport_nat_ipv4_needed(struct\
+    \ __sk_buff *skb,\n\t\t\t\t\t\t     __be32 addr, int dir)\n{\n\tvoid *data, *data_end;\n\
+    \tstruct iphdr *ip4;\n\n// CONTEXT: static inline int nodeport_lb4(struct __sk_buff\
+    \ *skb, __u32 src_identity)\n\tstruct ipv4_ct_tuple tuple = {};\n\tvoid *data,\
+    \ *data_end;\n\tstruct iphdr *ip4;\n\tint ret,  l3_off = ETH_HLEN, l4_off;\n\t\
+    struct csum_offset csum_off = {};\n\tstruct lb4_service_v2 *svc;\n\tstruct lb4_key_v2\
+    \ key = {};\n\tstruct ct_state ct_state_new = {};\n\tstruct ct_state ct_state\
+    \ = {};\n\tbool backend_local;\n\t__u32 monitor = 0;\n\t__u16 service_port;\n\t\
+    union macaddr smac;\n\n\tif (!revalidate_data(skb, &data, &data_end, &ip4))\n\t\
+    \treturn DROP_INVALID;\n\n\ttuple.nexthdr = ip4->protocol;\n\ttuple.daddr = ip4->daddr;\n\
+    \ttuple.saddr = ip4->saddr;\n\n\tl4_off = l3_off + ipv4_hdrlen(ip4);\n\n\tret\
+    \ = lb4_extract_key_v2(skb, &tuple, l4_off, &key, &csum_off, CT_EGRESS);\n\tif\
+    \ (IS_ERR(ret)) {\n\n// CONTEXT: static inline int nodeport_lb4(struct __sk_buff\
+    \ *skb, __u32 src_identity)\n\t\t\t\treturn ret;\n\t\t}\n\t\tbreak;\n\n\tcase\
+    \ CT_ESTABLISHED:\n\tcase CT_REPLY:\n\t\tbreak;\n\n\tdefault:\n\t\treturn DROP_UNKNOWN_CT;\n\
+    \t}\n\n\tif (!revalidate_data(skb, &data, &data_end, &ip4))\n\t\treturn DROP_INVALID;\n\
+    \tif (eth_load_saddr(skb, &smac.addr, 0) < 0)\n\t\treturn DROP_INVALID;\n\tret\
+    \ = map_update_elem(&NODEPORT_NEIGH4, &ip4->saddr, &smac, 0);\n\tif (ret < 0)\
+    \ {\n\t\treturn ret;\n\t}\n\n\tif (!backend_local) {\n\t\tskb->cb[CB_NAT] = NAT_DIR_EGRESS;\n\
+    \t\tep_tail_call(skb, CILIUM_CALL_IPV4_NODEPORT_NAT);\n\t\treturn DROP_MISSED_TAIL_CALL;\n\
+    \t}\n\n\treturn TC_ACT_OK;\n}\n\n/* Reverse NAT handling of node-port traffic\
+    \ for the case where the\n * backend i) was a local EP and bpf_lxc redirected\
+    \ to us, ii) was\n * a remote backend and we got here after reverse SNAT from\
+    \ the\n * tail_nodeport_nat_ipv4().\n *\n * CILIUM_CALL_IPV{4,6}_NODEPORT_REVNAT\
+    \ is plugged into CILIUM_MAP_CALLS\n * of the bpf_netdev, bpf_overlay and of the\
+    \ bpf_lxc.\n */\nstatic inline int rev_nodeport_lb4(struct __sk_buff *skb, int\
+    \ *ifindex,\n\t\t\t\t   union macaddr *mac)\n{\n\tstruct ipv4_ct_tuple tuple =\
+    \ {};\n\tvoid *data, *data_end;\n\tstruct iphdr *ip4;\n\tstruct csum_offset csum_off\
+    \ = {};\n\tint ret, ret2, l3_off = ETH_HLEN, l4_off;\n\tstruct ct_state ct_state\
+    \ = {};\n\tstruct bpf_fib_lookup fib_params = {};\n\tunion macaddr *dmac;\n\t\
+    __u32 monitor = 0;\n\n\tif (!revalidate_data(skb, &data, &data_end, &ip4))\n\t\
+    \treturn DROP_INVALID;\n\n\ttuple.nexthdr = ip4->protocol;\n\ttuple.daddr = ip4->daddr;\n\
+    \ttuple.saddr = ip4->saddr;\n\n\tl4_off = l3_off + ipv4_hdrlen(ip4);\n\tcsum_l4_offset_and_flags(tuple.nexthdr,\
+    \ &csum_off);\n\n\n// CONTEXT: static inline int rev_nodeport_lb4(struct __sk_buff\
+    \ *skb, int *ifindex)\n\t\t\t\t*ifindex = ENCAP_IFINDEX;\n\n\t\t\t\t/* fib lookup\
+    \ not necessary when going over tunnel. */\n\t\t\t\tif (eth_store_daddr(skb, fib_params.dmac,\
+    \ 0) < 0)\n\t\t\t\t\treturn DROP_WRITE_ERROR;\n\t\t\t\tif (eth_store_saddr(skb,\
+    \ fib_params.smac, 0) < 0)\n\t\t\t\t\treturn DROP_WRITE_ERROR;\n\n\t\t\t\treturn\
+    \ TC_ACT_OK;\n\t\t\t}\n\t\t}\n#endif\n\n\t\tdmac = map_lookup_elem(&NODEPORT_NEIGH4,\
+    \ &ip4->daddr);\n\t\tif (dmac) {\n\t\t    if (eth_store_daddr(skb, &dmac->addr,\
+    \ 0) < 0)\n\t\t\treturn DROP_WRITE_ERROR;\n\t\t    if (eth_store_saddr(skb, &mac->addr,\
+    \ 0) < 0)\n\t\t\treturn DROP_WRITE_ERROR;\n\t\t} else {\n\t\t    fib_params.family\
+    \ = AF_INET;\n\t\t    fib_params.ifindex = *ifindex;\n\n\t\t    fib_params.ipv4_src\
+    \ = ip4->saddr;\n\t\t    fib_params.ipv4_dst = ip4->daddr;\n\n\t\t    int rc =\
+    \ fib_lookup(skb, &fib_params, sizeof(fib_params),\n\t\t\t\tBPF_FIB_LOOKUP_DIRECT\
+    \ | BPF_FIB_LOOKUP_OUTPUT);\n\t\t    if (rc != 0)\n\t\t\treturn DROP_NO_FIB;\n\
+    \n\t\t    if (eth_store_daddr(skb, fib_params.dmac, 0) < 0)\n\t\t\treturn DROP_WRITE_ERROR;\n\
+    \t\t    if (eth_store_saddr(skb, fib_params.smac, 0) < 0)\n\t\t\treturn DROP_WRITE_ERROR;\n\
+    \t\t}\n\t}\n\n\treturn TC_ACT_OK;\n}\n\n__section_tail(CILIUM_MAP_CALLS, CILIUM_CALL_IPV4_NODEPORT_REVNAT)\n\
+    int tail_rev_nodeport_lb4(struct __sk_buff *skb)\n{\n\tint ifindex = NATIVE_DEV_IFINDEX;\n\
+    \tunion macaddr mac = NATIVE_DEV_MAC;\n\tint ret = 0;\n\n\tret = rev_nodeport_lb4(skb,\
+    \ &ifindex, &mac);\n\tif (IS_ERR(ret))\n\t\treturn send_drop_notify_error(skb,\
+    \ 0, ret, TC_ACT_SHOT, METRIC_EGRESS);\n\treturn redirect(ifindex, 0);\n}\n#endif\
+    \ /* ENABLE_IPV4 */\n\nstatic __always_inline int nodeport_nat_fwd(struct __sk_buff\
+    \ *skb,\n\t\t\t\t\t    const bool encap)\n{\n\t__u16 proto;\n\n\tif (!validate_ethertype(skb,\
+    \ &proto))\n\n// FILE: bpf/node_config.h\n *\n */\n#include \"lib/utils.h\"\n\n\
+    DEFINE_MAC(NODE_MAC, 0xde, 0xad, 0xbe, 0xef, 0xc0, 0xde);\n#define NODE_MAC fetch_mac(NODE_MAC)\n\
+    \nDEFINE_IPV6(ROUTER_IP, 0xbe, 0xef, 0x0, 0x0, 0x0, 0x0, 0x0, 0x1, 0x0, 0x0, 0x0,\
+    \ 0x1, 0x0, 0x1, 0x0, 0x0);\n#define ENCAP_IFINDEX 1\n#define HOST_IFINDEX 1\n\
+    #define CILIUM_IFINDEX 1\n#define NATIVE_DEV_IFINDEX 1\n#define NATIVE_DEV_MAC\
+    \ { .addr = { 0xce, 0x72, 0xa7, 0x03, 0x88, 0x56 } }\nDEFINE_IPV6(HOST_IP, 0xbe,\
+    \ 0xef, 0x0, 0x0, 0x0, 0x0, 0x0, 0x1, 0x0, 0x0, 0xa, 0x0, 0x2, 0xf, 0xff, 0xff);\n\
+    #define HOST_ID 1\n#define WORLD_ID 2\n#define UNMANAGED_ID 3\n#define HEALTH_ID\
+    \ 4\n#define INIT_ID 5\n#define HOST_IFINDEX_MAC { .addr = { 0xce, 0x72, 0xa7,\
+    \ 0x03, 0x88, 0x56 } }\n#define NAT46_PREFIX { .addr = { 0xbe, 0xef, 0x0, 0x0,\
+    \ 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0xa, 0x0, 0x0, 0x0, 0x0, 0x0 } }\n#define ENABLE_MASQUERADE\
+    \ 1\n#define BPF_PKT_DIR 1\n#define NODEPORT_PORT_MIN 30000\n#define NODEPORT_PORT_MAX\
+    \ 32767\n\n// CONTEXT: DEFINE_IPV6(SNAT_IPV6_EXTERNAL, 0xbe, 0xef, 0x0, 0x0, 0x0,\
+    \ 0x0, 0x0, 0x1, 0x0, 0\n#define ENABLE_IPSEC\n#define EPHERMERAL_MIN 32768\n\
+    #ifdef ENABLE_MASQUERADE\n#define CT_MAP_TCP6 test_cilium_ct_tcp6_65535\n#define\
+    \ CT_MAP_ANY6 test_cilium_ct_any6_65535\n#define CT_MAP_TCP4 test_cilium_ct_tcp4_65535\n\
+    #define CT_MAP_ANY4 test_cilium_ct_any4_65535\n#define CT_MAP_SIZE_TCP 4096\n\
+    #define CT_MAP_SIZE_ANY 4096\n#define CONNTRACK\n#define CONNTRACK_ACCOUNTING\n\
+    #endif\n\n#ifdef ENABLE_NODEPORT\n#ifdef ENABLE_IPV4\n#define NODEPORT_NEIGH4\
+    \ test_cilium_neigh4\n#endif\n#ifdef ENABLE_IPV6\n#define NODEPORT_NEIGH6 test_cilium_neigh6\n\
+    #endif\n#endif"
+  diff_summary: |-
+    bpf/lib/nodeport.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: static inline int nodeport_lb6(struct __sk_buff *skb, __u32 src_identity), static inline int rev_nodeport_lb6(struct __sk_buff *skb, int *ifindex), static inline int nodeport_lb4(struct __sk_buff *skb, __u32 src_identity).
+    bpf/node_config.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: DEFINE_IPV6(SNAT_IPV6_EXTERNAL, 0xbe, 0xef, 0x0, 0x0, 0x0, 0x0, 0x0, 0x1, 0x0, 0.
+    - Commit subject: datapath: Store NodePort client MAC addr in LRU map.

@@ -1,0 +1,81 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-efb5d6509fea
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/efb5d6509fea263bd6d36998f8e524d9942b8a79
+  title: 'bpf: Fix verifier issue in fib_redirect'
+  repository: https://github.com/cilium/cilium
+  commit: efb5d6509fea263bd6d36998f8e524d9942b8a79
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-efb5d6509fea.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: environment_required
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: 'Raw title is "bpf: Fix verifier issue in fib_redirect", but has_verifier_log=false;
+    the diff depends on full Cilium fib_redirect() state, FIB helper results, neighbor
+    maps, and feature macros, so the isolated snippets do not identify a faithful
+    rejected program.'
+raw:
+  case_id: github-commit-cilium-efb5d6509fea
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: efb5d6509fea263bd6d36998f8e524d9942b8a79
+  commit_message: 'bpf: Fix verifier issue in fib_redirect'
+  commit_date: '2023-03-16'
+  fix_type: type_cast
+  buggy_code: "// FILE: bpf/lib/fib.h\n// CONTEXT: fib_redirect(struct __ctx_buff\
+    \ *ctx, const bool needs_l2_check,\n\t\t\t * necessary.\n\t\t\t */\n\t\t\tif (!is_defined(HAVE_FIB_IFINDEX)\
+    \ && *oif > 0)\n\t\t\t\tgoto skip_oif;\n\t\t} else {\n\t\t\treturn DROP_NO_FIB;\n\
+    \t\t}\n\t}\n\t*oif = fib_params->l.ifindex;\nskip_oif:\n#else\n\t*oif = DIRECT_ROUTING_DEV_IFINDEX;\n\
+    \tnh_params.nh_family = fib_params->l.family;\n#endif /* ENABLE_SKIP_FIB */\n\t\
+    if (needs_l2_check) {\n\t\tbool l2_hdr_required = true;\n\n\t\tret = maybe_add_l2_hdr(ctx,\
+    \ *oif, &l2_hdr_required);\n\t\tif (ret != 0)\n\t\t\treturn ret;\n\t\tif (!l2_hdr_required)\n\
+    \t\t\tgoto out_send;\n\t}\n\tif (no_neigh) {\n\t\t/* If we are able to resolve\
+    \ neighbors on demand, always\n\n// CONTEXT: skip_oif:\n\t\t\tif (nh)\n\t\t\t\t\
+    return redirect_neigh(*oif, &nh_params,\n\t\t\t\t\t\t      sizeof(nh_params),\
+    \ 0);\n\t\t\telse\n\t\t\t\treturn redirect_neigh(*oif, NULL, 0, 0);\n\t\t} else\
+    \ {\n\t\t\tunion macaddr *dmac, smac = NATIVE_DEV_MAC_BY_IFINDEX(*oif);\n\n\t\t\
+    \t/* The neigh_record_ip{4,6} locations are mainly from\n\t\t\t * inbound client\
+    \ traffic on the load-balancer where we\n\t\t\t * know that replies need to go\
+    \ back to them.\n\t\t\t */\n\t\t\tdmac = nh_params.nh_family == AF_INET ?\n\t\t\
+    \t       neigh_lookup_ip4(&fib_params->l.ipv4_dst) :\n\t\t\t       neigh_lookup_ip6((void\
+    \ *)&fib_params->l.ipv6_dst);\n\t\t\tif (!dmac) {\n\t\t\t\t*fib_err = BPF_FIB_MAP_NO_NEIGH;\n\
+    \t\t\t\treturn DROP_NO_FIB;\n\t\t\t}\n\t\t\tif (eth_store_daddr_aligned(ctx, dmac->addr,\
+    \ 0) < 0)\n\t\t\t\treturn DROP_WRITE_ERROR;\n\t\t\tif (eth_store_saddr_aligned(ctx,\
+    \ smac.addr, 0) < 0)\n\t\t\t\treturn DROP_WRITE_ERROR;\n\t\t}\n\t} else {"
+  fixed_code: "// FILE: bpf/lib/fib.h\n// CONTEXT: fib_redirect(struct __ctx_buff\
+    \ *ctx, const bool needs_l2_check,\n\t\t\t * necessary.\n\t\t\t */\n\t\t\tif (!is_defined(HAVE_FIB_IFINDEX)\
+    \ && *oif > 0)\n\t\t\t\tgoto skip_oif;\n\t\t} else {\n\t\t\treturn DROP_NO_FIB;\n\
+    \t\t}\n\t}\n\t*oif = fib_params->l.ifindex;\nskip_oif:\n#else\n\t*oif = DIRECT_ROUTING_DEV_IFINDEX;\n\
+    #endif /* ENABLE_SKIP_FIB */\n\tif (needs_l2_check) {\n\t\tbool l2_hdr_required\
+    \ = true;\n\n\t\tret = maybe_add_l2_hdr(ctx, *oif, &l2_hdr_required);\n\t\tif\
+    \ (ret != 0)\n\t\t\treturn ret;\n\t\tif (!l2_hdr_required)\n\t\t\tgoto out_send;\n\
+    \t}\n\tif (no_neigh) {\n\t\t/* If we are able to resolve neighbors on demand,\
+    \ always\n\n// CONTEXT: skip_oif:\n\t\t\tif (nh)\n\t\t\t\treturn redirect_neigh(*oif,\
+    \ &nh_params,\n\t\t\t\t\t\t      sizeof(nh_params), 0);\n\t\t\telse\n\t\t\t\t\
+    return redirect_neigh(*oif, NULL, 0, 0);\n\t\t} else {\n\t\t\tunion macaddr *dmac,\
+    \ smac = NATIVE_DEV_MAC_BY_IFINDEX(*oif);\n\n\t\t\t/* The neigh_record_ip{4,6}\
+    \ locations are mainly from\n\t\t\t * inbound client traffic on the load-balancer\
+    \ where we\n\t\t\t * know that replies need to go back to them.\n\t\t\t */\n\t\
+    \t\tdmac = fib_params->l.family == AF_INET ?\n\t\t\t       neigh_lookup_ip4(&fib_params->l.ipv4_dst)\
+    \ :\n\t\t\t       neigh_lookup_ip6((void *)&fib_params->l.ipv6_dst);\n\t\t\tif\
+    \ (!dmac) {\n\t\t\t\t*fib_err = BPF_FIB_MAP_NO_NEIGH;\n\t\t\t\treturn DROP_NO_FIB;\n\
+    \t\t\t}\n\t\t\tif (eth_store_daddr_aligned(ctx, dmac->addr, 0) < 0)\n\t\t\t\t\
+    return DROP_WRITE_ERROR;\n\t\t\tif (eth_store_saddr_aligned(ctx, smac.addr, 0)\
+    \ < 0)\n\t\t\t\treturn DROP_WRITE_ERROR;\n\t\t}\n\t} else {"
+  diff_summary: |-
+    bpf/lib/fib.h:
+    - Adjusted types or casts so the verifier sees the intended pointer or value kind.
+    - Affected context: fib_redirect(struct __ctx_buff *ctx, const bool needs_l2_check,, skip_oif:.
+    - Commit subject: bpf: Fix verifier issue in fib_redirect.

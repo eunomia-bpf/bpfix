@@ -1,0 +1,505 @@
+schema_version: bpfix.raw_external/v1
+raw_id: stackoverflow-75643912
+source_kind: stackoverflow
+source:
+  url: https://stackoverflow.com/questions/75643912/invalid-access-to-packet-while-iterating-over-packet-in-ebpf-program
+  title: Invalid access to packet while iterating over packet in eBPF program
+  repository: null
+  commit: null
+  collected_at: '2026-03-11T16:03:12+00:00'
+collector:
+  original_path: bpfix-empirical/raw/so/stackoverflow-75643912.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: true
+  verifier_log_block_count: 1
+  source_snippet_count: 0
+  has_buggy_code: false
+  has_fixed_code: false
+  has_fix_description: false
+reproduction:
+  status: replay_valid
+  case_id: stackoverflow-75643912
+  case_path: cases/stackoverflow-75643912
+  artifact_path: cases/stackoverflow-75643912
+  reason: admitted_to_bpfix_bench_cases
+raw:
+  case_id: stackoverflow-75643912
+  source: stackoverflow
+  collected_at: '2026-03-11T16:03:12+00:00'
+  question:
+    question_id: 75643912
+    title: Invalid access to packet while iterating over packet in eBPF program
+    url: https://stackoverflow.com/questions/75643912/invalid-access-to-packet-while-iterating-over-packet-in-ebpf-program
+    tags:
+    - ebpf
+    score: 0
+    answer_count: 1
+    is_answered: true
+  original_verifier_log:
+    blocks:
+    - |-
+      libbpf: prog 'handle_tc_ingress': -- BEGIN PROG LOAD LOG --
+      0: R1=ctx(off=0,imm=0) R10=fp0
+      ; int handle_tc_ingress(struct __sk_buff *skb) {
+      0: (b7) r0 = 0                        ; R0_w=0
+      ; void *data_end = (void *)(long) skb->data_end;
+      1: (61) r2 = *(u32 *)(r1 +80)         ; R1=ctx(off=0,imm=0) R2_w=pkt_end(off=0,imm=0)
+      ; void *data = (void *)(long) skb->data;
+      2: (61) r1 = *(u32 *)(r1 +76)         ; R1_w=pkt(off=0,r=0,imm=0)
+      ; if ((void *) (eth_hdr + 1) > data_end) {
+      3: (bf) r3 = r1                       ; R1_w=pkt(off=0,r=0,imm=0) R3_w=pkt(off=0,r=0,imm=0)
+      4: (07) r3 += 14                      ; R3_w=pkt(off=14,r=0,imm=0)
+      ; if ((void *) (eth_hdr + 1) > data_end) {
+      5: (2d) if r3 > r2 goto pc+37         ; R2_w=pkt_end(off=0,imm=0) R3_w=pkt(off=14,r=14,imm=0)
+      ; if (eth_hdr->h_proto != bpf_htons(ETH_P_IP)) {
+      6: (69) r3 = *(u16 *)(r1 +12)         ; R1_w=pkt(off=0,r=14,imm=0) R3_w=scalar(umax=65535,var_off=(0x0; 0xffff))
+      ; if (eth_hdr->h_proto != bpf_htons(ETH_P_IP)) {
+      7: (55) if r3 != 0x8 goto pc+35       ; R3_w=8
+      8: (bf) r3 = r1                       ; R1_w=pkt(off=0,r=14,imm=0) R3_w=pkt(off=0,r=14,imm=0)
+      9: (07) r3 += 34                      ; R3=pkt(off=34,r=14,imm=0)
+      10: (2d) if r3 > r2 goto pc+32        ; R2=pkt_end(off=0,imm=0) R3=pkt(off=34,r=34,imm=0)
+      11: (bf) r4 = r1                      ; R1=pkt(off=0,r=34,imm=0) R4_w=pkt(off=0,r=34,imm=0)
+      12: (07) r4 += 14                     ; R4_w=pkt(off=14,r=34,imm=0)
+      ; struct tcphdr *tcp_hdr = (struct tcphdr *) ((__u8 *) ipv4_hdr + 4 * ipv4_hdr->ihl);
+      13: (71) r3 = *(u8 *)(r4 +0)          ; R3_w=scalar(umax=255,var_off=(0x0; 0xff)) R4_w=pkt(off=14,r=34,imm=0)
+      ; struct tcphdr *tcp_hdr = (struct tcphdr *) ((__u8 *) ipv4_hdr + 4 * ipv4_hdr->ihl);
+      14: (67) r3 <<= 2                     ; R3_w=scalar(umax=1020,var_off=(0x0; 0x3fc))
+      15: (57) r3 &= 60                     ; R3_w=scalar(umax=60,var_off=(0x0; 0x3c))
+      ; struct tcphdr *tcp_hdr = (struct tcphdr *) ((__u8 *) ipv4_hdr + 4 * ipv4_hdr->ihl);
+      16: (0f) r4 += r3                     ; R3_w=Pscalar(umax=60,var_off=(0x0; 0x3c)) R4_w=pkt(id=1,off=14,r=0,umax=60,var_off=(0x0; 0x3c))
+      ; if ((void *) (tcp_hdr + 1) > data_end) {
+      17: (bf) r5 = r4                      ; R4_w=pkt(id=1,off=14,r=0,umax=60,var_off=(0x0; 0x3c)) R5_w=pkt(id=1,off=14,r=0,umax=60,var_off=(0x0; 0x3c))
+      18: (07) r5 += 20                     ; R5_w=pkt(id=1,off=34,r=0,umax=60,var_off=(0x0; 0x3c))
+      ; if ((void *) (tcp_hdr + 1) > data_end) {
+      19: (2d) if r5 > r2 goto pc+23        ; R2=pkt_end(off=0,imm=0) R5_w=pkt(id=1,off=34,r=34,umax=60,var_off=(0x0; 0x3c))
+      ; __u8 *tcp_data = (__u8 *) tcp_hdr + 4 * tcp_hdr->doff;
+      20: (69) r5 = *(u16 *)(r4 +12)        ; R4_w=pkt(id=1,off=14,r=34,umax=60,var_off=(0x0; 0x3c)) R5_w=scalar(umax=65535,var_off=(0x0; 0xffff))
+      ; __u8 *tcp_data = (__u8 *) tcp_hdr + 4 * tcp_hdr->doff;
+      21: (77) r5 >>= 2                     ; R5_w=scalar(umax=16383,var_off=(0x0; 0x3fff))
+      22: (57) r5 &= 60                     ; R5_w=scalar(umax=60,var_off=(0x0; 0x3c))
+      ; __u8 *tcp_data = (__u8 *) tcp_hdr + 4 * tcp_hdr->doff;
+      23: (0f) r4 += r5                     ; R4=pkt(id=2,off=14,r=0,umax=120,var_off=(0x0; 0x7c),s32_max=124,u32_max=124) R5=Pscalar(umax=60,var_off=(0x0; 0x3c))
+      ; if ((void *) tcp_data > data_end) {
+      24: (2d) if r4 > r2 goto pc+18        ; R2=pkt_end(off=0,imm=0) R4=pkt(id=2,off=14,r=14,umax=120,var_off=(0x0; 0x7c),s32_max=124,u32_max=124)
+      ; for (int i = 0; i < MAX_PACKET_OFF && tcp_data + i <= data_end; ++i) {
+      25: (0f) r3 += r5                     ; R3_w=Pscalar(umax=120,var_off=(0x0; 0x7c)) R5=Pscalar(umax=60,var_off=(0x0; 0x3c))
+      26: (0f) r1 += r3                     ; R1_w=pkt(id=3,off=0,r=0,umax=120,var_off=(0x0; 0x7c),s32_max=124,u32_max=124) R3_w=Pscalar(umax=120,var_off=(0x0; 0x7c))
+      27: (b7) r0 = 0                       ; R0_w=0
+      28: (07) r1 += 14                     ; R1_w=pkt(id=3,off=14,r=0,umax=120,var_off=(0x0; 0x7c),s32_max=124,u32_max=124)
+      29: (b7) r3 = 0                       ; R3_w=0
+      30: (05) goto pc+2
+      ; for (int i = 0; i < MAX_PACKET_OFF && tcp_data + i <= data_end; ++i) {
+      33: (bf) r4 = r1                      ; R1_w=pkt(id=3,off=14,r=0,umax=120,var_off=(0x0; 0x7c),s32_max=124,u32_max=124) R4_w=pkt(id=3,off=14,r=0,umax=120,var_off=(0x0; 0x7c),s32_max=124,u32_max=124)
+      34: (0f) r4 += r3                     ; R3=P0 R4=pkt(id=3,off=14,r=0,umax=120,var_off=(0x0; 0x7c),s32_max=124,u32_max=124)
+      ; for (int i = 0; i < MAX_PACKET_OFF && tcp_data + i <= data_end; ++i) {
+      35: (2d) if r4 > r2 goto pc+7         ; R2=pkt_end(off=0,imm=0) R4=pkt(id=3,off=14,r=14,umax=120,var_off=(0x0; 0x7c),s32_max=124,u32_max=124)
+      ; if (tcp_data[i] == ' ') {
+      36: (71) r4 = *(u8 *)(r4 +0)
+      invalid access to packet, off=14 size=1, R4(id=3,off=14,r=14)
+      R4 offset is outside of the packet
+      processed 35 insns (limit 1000000) max_states_per_insn 0 total_states 3 peak_states 3 mark_read 1
+      -- END PROG LOAD LOG --
+    combined: |-
+      libbpf: prog 'handle_tc_ingress': -- BEGIN PROG LOAD LOG --
+      0: R1=ctx(off=0,imm=0) R10=fp0
+      ; int handle_tc_ingress(struct __sk_buff *skb) {
+      0: (b7) r0 = 0                        ; R0_w=0
+      ; void *data_end = (void *)(long) skb->data_end;
+      1: (61) r2 = *(u32 *)(r1 +80)         ; R1=ctx(off=0,imm=0) R2_w=pkt_end(off=0,imm=0)
+      ; void *data = (void *)(long) skb->data;
+      2: (61) r1 = *(u32 *)(r1 +76)         ; R1_w=pkt(off=0,r=0,imm=0)
+      ; if ((void *) (eth_hdr + 1) > data_end) {
+      3: (bf) r3 = r1                       ; R1_w=pkt(off=0,r=0,imm=0) R3_w=pkt(off=0,r=0,imm=0)
+      4: (07) r3 += 14                      ; R3_w=pkt(off=14,r=0,imm=0)
+      ; if ((void *) (eth_hdr + 1) > data_end) {
+      5: (2d) if r3 > r2 goto pc+37         ; R2_w=pkt_end(off=0,imm=0) R3_w=pkt(off=14,r=14,imm=0)
+      ; if (eth_hdr->h_proto != bpf_htons(ETH_P_IP)) {
+      6: (69) r3 = *(u16 *)(r1 +12)         ; R1_w=pkt(off=0,r=14,imm=0) R3_w=scalar(umax=65535,var_off=(0x0; 0xffff))
+      ; if (eth_hdr->h_proto != bpf_htons(ETH_P_IP)) {
+      7: (55) if r3 != 0x8 goto pc+35       ; R3_w=8
+      8: (bf) r3 = r1                       ; R1_w=pkt(off=0,r=14,imm=0) R3_w=pkt(off=0,r=14,imm=0)
+      9: (07) r3 += 34                      ; R3=pkt(off=34,r=14,imm=0)
+      10: (2d) if r3 > r2 goto pc+32        ; R2=pkt_end(off=0,imm=0) R3=pkt(off=34,r=34,imm=0)
+      11: (bf) r4 = r1                      ; R1=pkt(off=0,r=34,imm=0) R4_w=pkt(off=0,r=34,imm=0)
+      12: (07) r4 += 14                     ; R4_w=pkt(off=14,r=34,imm=0)
+      ; struct tcphdr *tcp_hdr = (struct tcphdr *) ((__u8 *) ipv4_hdr + 4 * ipv4_hdr->ihl);
+      13: (71) r3 = *(u8 *)(r4 +0)          ; R3_w=scalar(umax=255,var_off=(0x0; 0xff)) R4_w=pkt(off=14,r=34,imm=0)
+      ; struct tcphdr *tcp_hdr = (struct tcphdr *) ((__u8 *) ipv4_hdr + 4 * ipv4_hdr->ihl);
+      14: (67) r3 <<= 2                     ; R3_w=scalar(umax=1020,var_off=(0x0; 0x3fc))
+      15: (57) r3 &= 60                     ; R3_w=scalar(umax=60,var_off=(0x0; 0x3c))
+      ; struct tcphdr *tcp_hdr = (struct tcphdr *) ((__u8 *) ipv4_hdr + 4 * ipv4_hdr->ihl);
+      16: (0f) r4 += r3                     ; R3_w=Pscalar(umax=60,var_off=(0x0; 0x3c)) R4_w=pkt(id=1,off=14,r=0,umax=60,var_off=(0x0; 0x3c))
+      ; if ((void *) (tcp_hdr + 1) > data_end) {
+      17: (bf) r5 = r4                      ; R4_w=pkt(id=1,off=14,r=0,umax=60,var_off=(0x0; 0x3c)) R5_w=pkt(id=1,off=14,r=0,umax=60,var_off=(0x0; 0x3c))
+      18: (07) r5 += 20                     ; R5_w=pkt(id=1,off=34,r=0,umax=60,var_off=(0x0; 0x3c))
+      ; if ((void *) (tcp_hdr + 1) > data_end) {
+      19: (2d) if r5 > r2 goto pc+23        ; R2=pkt_end(off=0,imm=0) R5_w=pkt(id=1,off=34,r=34,umax=60,var_off=(0x0; 0x3c))
+      ; __u8 *tcp_data = (__u8 *) tcp_hdr + 4 * tcp_hdr->doff;
+      20: (69) r5 = *(u16 *)(r4 +12)        ; R4_w=pkt(id=1,off=14,r=34,umax=60,var_off=(0x0; 0x3c)) R5_w=scalar(umax=65535,var_off=(0x0; 0xffff))
+      ; __u8 *tcp_data = (__u8 *) tcp_hdr + 4 * tcp_hdr->doff;
+      21: (77) r5 >>= 2                     ; R5_w=scalar(umax=16383,var_off=(0x0; 0x3fff))
+      22: (57) r5 &= 60                     ; R5_w=scalar(umax=60,var_off=(0x0; 0x3c))
+      ; __u8 *tcp_data = (__u8 *) tcp_hdr + 4 * tcp_hdr->doff;
+      23: (0f) r4 += r5                     ; R4=pkt(id=2,off=14,r=0,umax=120,var_off=(0x0; 0x7c),s32_max=124,u32_max=124) R5=Pscalar(umax=60,var_off=(0x0; 0x3c))
+      ; if ((void *) tcp_data > data_end) {
+      24: (2d) if r4 > r2 goto pc+18        ; R2=pkt_end(off=0,imm=0) R4=pkt(id=2,off=14,r=14,umax=120,var_off=(0x0; 0x7c),s32_max=124,u32_max=124)
+      ; for (int i = 0; i < MAX_PACKET_OFF && tcp_data + i <= data_end; ++i) {
+      25: (0f) r3 += r5                     ; R3_w=Pscalar(umax=120,var_off=(0x0; 0x7c)) R5=Pscalar(umax=60,var_off=(0x0; 0x3c))
+      26: (0f) r1 += r3                     ; R1_w=pkt(id=3,off=0,r=0,umax=120,var_off=(0x0; 0x7c),s32_max=124,u32_max=124) R3_w=Pscalar(umax=120,var_off=(0x0; 0x7c))
+      27: (b7) r0 = 0                       ; R0_w=0
+      28: (07) r1 += 14                     ; R1_w=pkt(id=3,off=14,r=0,umax=120,var_off=(0x0; 0x7c),s32_max=124,u32_max=124)
+      29: (b7) r3 = 0                       ; R3_w=0
+      30: (05) goto pc+2
+      ; for (int i = 0; i < MAX_PACKET_OFF && tcp_data + i <= data_end; ++i) {
+      33: (bf) r4 = r1                      ; R1_w=pkt(id=3,off=14,r=0,umax=120,var_off=(0x0; 0x7c),s32_max=124,u32_max=124) R4_w=pkt(id=3,off=14,r=0,umax=120,var_off=(0x0; 0x7c),s32_max=124,u32_max=124)
+      34: (0f) r4 += r3                     ; R3=P0 R4=pkt(id=3,off=14,r=0,umax=120,var_off=(0x0; 0x7c),s32_max=124,u32_max=124)
+      ; for (int i = 0; i < MAX_PACKET_OFF && tcp_data + i <= data_end; ++i) {
+      35: (2d) if r4 > r2 goto pc+7         ; R2=pkt_end(off=0,imm=0) R4=pkt(id=3,off=14,r=14,umax=120,var_off=(0x0; 0x7c),s32_max=124,u32_max=124)
+      ; if (tcp_data[i] == ' ') {
+      36: (71) r4 = *(u8 *)(r4 +0)
+      invalid access to packet, off=14 size=1, R4(id=3,off=14,r=14)
+      R4 offset is outside of the packet
+      processed 35 insns (limit 1000000) max_states_per_insn 0 total_states 3 peak_states 3 mark_read 1
+      -- END PROG LOAD LOG --
+  verifier_log:
+    blocks:
+    - |-
+      libbpf: prog 'handle_tc_ingress': -- BEGIN PROG LOAD LOG --
+      0: R1=ctx(off=0,imm=0) R10=fp0
+      ; int handle_tc_ingress(struct __sk_buff *skb) {
+      0: (b7) r0 = 0                        ; R0_w=0
+      ; void *data_end = (void *)(long) skb->data_end;
+      1: (61) r2 = *(u32 *)(r1 +80)         ; R1=ctx(off=0,imm=0) R2_w=pkt_end(off=0,imm=0)
+      ; void *data = (void *)(long) skb->data;
+      2: (61) r1 = *(u32 *)(r1 +76)         ; R1_w=pkt(off=0,r=0,imm=0)
+      ; if ((void *) (eth_hdr + 1) > data_end) {
+      3: (bf) r3 = r1                       ; R1_w=pkt(off=0,r=0,imm=0) R3_w=pkt(off=0,r=0,imm=0)
+      4: (07) r3 += 14                      ; R3_w=pkt(off=14,r=0,imm=0)
+      ; if ((void *) (eth_hdr + 1) > data_end) {
+      5: (2d) if r3 > r2 goto pc+37         ; R2_w=pkt_end(off=0,imm=0) R3_w=pkt(off=14,r=14,imm=0)
+      ; if (eth_hdr->h_proto != bpf_htons(ETH_P_IP)) {
+      6: (69) r3 = *(u16 *)(r1 +12)         ; R1_w=pkt(off=0,r=14,imm=0) R3_w=scalar(umax=65535,var_off=(0x0; 0xffff))
+      ; if (eth_hdr->h_proto != bpf_htons(ETH_P_IP)) {
+      7: (55) if r3 != 0x8 goto pc+35       ; R3_w=8
+      8: (bf) r3 = r1                       ; R1_w=pkt(off=0,r=14,imm=0) R3_w=pkt(off=0,r=14,imm=0)
+      9: (07) r3 += 34                      ; R3=pkt(off=34,r=14,imm=0)
+      10: (2d) if r3 > r2 goto pc+32        ; R2=pkt_end(off=0,imm=0) R3=pkt(off=34,r=34,imm=0)
+      11: (bf) r4 = r1                      ; R1=pkt(off=0,r=34,imm=0) R4_w=pkt(off=0,r=34,imm=0)
+      12: (07) r4 += 14                     ; R4_w=pkt(off=14,r=34,imm=0)
+      ; struct tcphdr *tcp_hdr = (struct tcphdr *) ((__u8 *) ipv4_hdr + 4 * ipv4_hdr->ihl);
+      13: (71) r3 = *(u8 *)(r4 +0)          ; R3_w=scalar(umax=255,var_off=(0x0; 0xff)) R4_w=pkt(off=14,r=34,imm=0)
+      ; struct tcphdr *tcp_hdr = (struct tcphdr *) ((__u8 *) ipv4_hdr + 4 * ipv4_hdr->ihl);
+      14: (67) r3 <<= 2                     ; R3_w=scalar(umax=1020,var_off=(0x0; 0x3fc))
+      15: (57) r3 &= 60                     ; R3_w=scalar(umax=60,var_off=(0x0; 0x3c))
+      ; struct tcphdr *tcp_hdr = (struct tcphdr *) ((__u8 *) ipv4_hdr + 4 * ipv4_hdr->ihl);
+      16: (0f) r4 += r3                     ; R3_w=Pscalar(umax=60,var_off=(0x0; 0x3c)) R4_w=pkt(id=1,off=14,r=0,umax=60,var_off=(0x0; 0x3c))
+      ; if ((void *) (tcp_hdr + 1) > data_end) {
+      17: (bf) r5 = r4                      ; R4_w=pkt(id=1,off=14,r=0,umax=60,var_off=(0x0; 0x3c)) R5_w=pkt(id=1,off=14,r=0,umax=60,var_off=(0x0; 0x3c))
+      18: (07) r5 += 20                     ; R5_w=pkt(id=1,off=34,r=0,umax=60,var_off=(0x0; 0x3c))
+      ; if ((void *) (tcp_hdr + 1) > data_end) {
+      19: (2d) if r5 > r2 goto pc+23        ; R2=pkt_end(off=0,imm=0) R5_w=pkt(id=1,off=34,r=34,umax=60,var_off=(0x0; 0x3c))
+      ; __u8 *tcp_data = (__u8 *) tcp_hdr + 4 * tcp_hdr->doff;
+      20: (69) r5 = *(u16 *)(r4 +12)        ; R4_w=pkt(id=1,off=14,r=34,umax=60,var_off=(0x0; 0x3c)) R5_w=scalar(umax=65535,var_off=(0x0; 0xffff))
+      ; __u8 *tcp_data = (__u8 *) tcp_hdr + 4 * tcp_hdr->doff;
+      21: (77) r5 >>= 2                     ; R5_w=scalar(umax=16383,var_off=(0x0; 0x3fff))
+      22: (57) r5 &= 60                     ; R5_w=scalar(umax=60,var_off=(0x0; 0x3c))
+      ; __u8 *tcp_data = (__u8 *) tcp_hdr + 4 * tcp_hdr->doff;
+      23: (0f) r4 += r5                     ; R4=pkt(id=2,off=14,r=0,umax=120,var_off=(0x0; 0x7c),s32_max=124,u32_max=124) R5=Pscalar(umax=60,var_off=(0x0; 0x3c))
+      ; if ((void *) tcp_data > data_end) {
+      24: (2d) if r4 > r2 goto pc+18        ; R2=pkt_end(off=0,imm=0) R4=pkt(id=2,off=14,r=14,umax=120,var_off=(0x0; 0x7c),s32_max=124,u32_max=124)
+      ; for (int i = 0; i < MAX_PACKET_OFF && tcp_data + i <= data_end; ++i) {
+      25: (0f) r3 += r5                     ; R3_w=Pscalar(umax=120,var_off=(0x0; 0x7c)) R5=Pscalar(umax=60,var_off=(0x0; 0x3c))
+      26: (0f) r1 += r3                     ; R1_w=pkt(id=3,off=0,r=0,umax=120,var_off=(0x0; 0x7c),s32_max=124,u32_max=124) R3_w=Pscalar(umax=120,var_off=(0x0; 0x7c))
+      27: (b7) r0 = 0                       ; R0_w=0
+      28: (07) r1 += 14                     ; R1_w=pkt(id=3,off=14,r=0,umax=120,var_off=(0x0; 0x7c),s32_max=124,u32_max=124)
+      29: (b7) r3 = 0                       ; R3_w=0
+      30: (05) goto pc+2
+      ; for (int i = 0; i < MAX_PACKET_OFF && tcp_data + i <= data_end; ++i) {
+      33: (bf) r4 = r1                      ; R1_w=pkt(id=3,off=14,r=0,umax=120,var_off=(0x0; 0x7c),s32_max=124,u32_max=124) R4_w=pkt(id=3,off=14,r=0,umax=120,var_off=(0x0; 0x7c),s32_max=124,u32_max=124)
+      34: (0f) r4 += r3                     ; R3=P0 R4=pkt(id=3,off=14,r=0,umax=120,var_off=(0x0; 0x7c),s32_max=124,u32_max=124)
+      ; for (int i = 0; i < MAX_PACKET_OFF && tcp_data + i <= data_end; ++i) {
+      35: (2d) if r4 > r2 goto pc+7         ; R2=pkt_end(off=0,imm=0) R4=pkt(id=3,off=14,r=14,umax=120,var_off=(0x0; 0x7c),s32_max=124,u32_max=124)
+      ; if (tcp_data[i] == ' ') {
+      36: (71) r4 = *(u8 *)(r4 +0)
+      invalid access to packet, off=14 size=1, R4(id=3,off=14,r=14)
+      R4 offset is outside of the packet
+      processed 35 insns (limit 1000000) max_states_per_insn 0 total_states 3 peak_states 3 mark_read 1
+      -- END PROG LOAD LOG --
+    combined: |-
+      libbpf: loading object from <legacy-so-gh-reproducer>/stackoverflow-75643912/prog.o
+      libbpf: elf: section(3) classifier, size 296, link 0, flags 6, type=1
+      libbpf: sec 'classifier': found program 'handle_tc_ingress' at insn offset 0 (0 bytes), code size 37 insns (296 bytes)
+      libbpf: elf: section(4) .relclassifier, size 16, link 26, flags 40, type=9
+      libbpf: elf: section(5) .rodata, size 6, link 0, flags 2, type=1
+      libbpf: elf: section(6) license, size 4, link 0, flags 3, type=1
+      libbpf: license of <legacy-so-gh-reproducer>/stackoverflow-75643912/prog.o is GPL
+      libbpf: elf: section(16) .BTF, size 2969, link 0, flags 0, type=1
+      libbpf: elf: section(18) .BTF.ext, size 540, link 0, flags 0, type=1
+      libbpf: elf: section(26) .symtab, size 432, link 1, flags 0, type=2
+      libbpf: looking for externs among 18 symbols...
+      libbpf: collected 0 externs total
+      libbpf: map 'prog.rodata' (global data): at sec_idx 5, offset 0, flags 80.
+      libbpf: map 0 is "prog.rodata"
+      libbpf: sec '.relclassifier': collecting relocation for section(3) 'classifier'
+      libbpf: sec '.relclassifier': relo #0: insn #31 against '.rodata'
+      libbpf: prog 'handle_tc_ingress': found data map 0 (prog.rodata, sec 5, off 0) for insn 31
+      libbpf: object 'prog': failed (-95) to create BPF token from '/sys/fs/bpf', skipping optional step...
+      libbpf: loaded kernel BTF from '/sys/kernel/btf/vmlinux'
+      libbpf: sec 'classifier': found 5 CO-RE relocations
+      libbpf: CO-RE relocating [2] struct __sk_buff: found target candidate [15151] struct __sk_buff in [vmlinux]
+      libbpf: prog 'handle_tc_ingress': relo #0: <byte_off> [2] struct __sk_buff.data_end (0:16 @ offset 80)
+      libbpf: prog 'handle_tc_ingress': relo #0: matching candidate #0 <byte_off> [15151] struct __sk_buff.data_end (0:16 @ offset 80)
+      libbpf: prog 'handle_tc_ingress': relo #0: patched insn #1 (LDX/ST/STX) off 80 -> 80
+      libbpf: prog 'handle_tc_ingress': relo #1: <byte_off> [2] struct __sk_buff.data (0:15 @ offset 76)
+      libbpf: prog 'handle_tc_ingress': relo #1: matching candidate #0 <byte_off> [15151] struct __sk_buff.data (0:15 @ offset 76)
+      libbpf: prog 'handle_tc_ingress': relo #1: patched insn #2 (LDX/ST/STX) off 76 -> 76
+      libbpf: CO-RE relocating [19] struct ethhdr: found target candidate [23410] struct ethhdr in [vmlinux]
+      libbpf: prog 'handle_tc_ingress': relo #2: <byte_off> [19] struct ethhdr.h_proto (0:2 @ offset 12)
+      libbpf: prog 'handle_tc_ingress': relo #2: matching candidate #0 <byte_off> [23410] struct ethhdr.h_proto (0:2 @ offset 12)
+      libbpf: prog 'handle_tc_ingress': relo #2: patched insn #6 (LDX/ST/STX) off 12 -> 12
+      libbpf: CO-RE relocating [24] struct iphdr: found target candidate [23765] struct iphdr in [vmlinux]
+      libbpf: prog 'handle_tc_ingress': relo #3: <byte_off> [24] struct iphdr.ihl (0:0 @ offset 0)
+      libbpf: prog 'handle_tc_ingress': relo #3: matching candidate #0 <byte_off> [23765] struct iphdr.ihl (0:0 @ offset 0)
+      libbpf: prog 'handle_tc_ingress': relo #3: patched insn #10 (LDX/ST/STX) off 0 -> 0
+      libbpf: CO-RE relocating [30] struct tcphdr: found target candidate [23763] struct tcphdr in [vmlinux]
+      libbpf: prog 'handle_tc_ingress': relo #4: <byte_off> [30] struct tcphdr.doff (0:5 @ offset 12.4)
+      libbpf: prog 'handle_tc_ingress': relo #4: matching candidate #0 <byte_off> [23763] struct tcphdr.doff (0:6 @ offset 12.4)
+      libbpf: prog 'handle_tc_ingress': relo #4: patched insn #17 (LDX/ST/STX) off 12 -> 12
+      libbpf: map 'prog.rodata': created successfully, fd=4
+      libbpf: prog 'handle_tc_ingress': BPF program load failed: -EACCES
+      libbpf: prog 'handle_tc_ingress': -- BEGIN PROG LOAD LOG --
+      func#0 @0
+      Live regs before insn:
+        0: .1........ (b7) r0 = 0
+        1: 01........ (61) r2 = *(u32 *)(r1 +80)
+        2: 012....... (61) r3 = *(u32 *)(r1 +76)
+        3: 0.23...... (bf) r1 = r3
+        4: 0123...... (07) r1 += 14
+        5: 0123...... (2d) if r1 > r2 goto pc+30
+        6: 0123...... (69) r4 = *(u16 *)(r3 +12)
+        7: 01234..... (55) if r4 != 0x8 goto pc+28
+        8: 0123...... (07) r3 += 34
+        9: 0123...... (2d) if r3 > r2 goto pc+26
+       10: 012....... (71) r3 = *(u8 *)(r1 +0)
+       11: 0123...... (67) r3 <<= 2
+       12: 0123...... (57) r3 &= 60
+       13: 0123...... (0f) r1 += r3
+       14: 012....... (bf) r3 = r1
+       15: 0123...... (07) r3 += 20
+       16: 0123...... (2d) if r3 > r2 goto pc+19
+       17: 012....... (69) r3 = *(u16 *)(r1 +12)
+       18: 0123...... (77) r3 >>= 2
+       19: 0123...... (57) r3 &= 60
+       20: 0123...... (0f) r1 += r3
+       21: 012....... (2d) if r1 > r2 goto pc+14
+       22: 012....... (b7) r3 = 0
+       23: 0123...... (05) goto pc+2
+       24: 0123...... (07) r3 += 1
+       25: 0123...... (15) if r3 == 0xffff goto pc+10
+       26: 0123...... (bf) r4 = r1
+       27: 01234..... (0f) r4 += r3
+       28: 01234..... (2d) if r4 > r2 goto pc+7
+       29: 01234..... (71) r4 = *(u8 *)(r4 +0)
+       30: 01234..... (55) if r4 != 0x20 goto pc-7
+       31: .......... (18) r1 = 0xffff8f28ecef7908
+       33: .1........ (b7) r2 = 6
+       34: .12....... (85) call bpf_trace_printk#6
+       35: .......... (b7) r0 = 2
+       36: 0......... (95) exit
+      0: R1=ctx() R10=fp0
+      ; int handle_tc_ingress(struct __sk_buff *skb) @ prog.c:209
+      0: (b7) r0 = 0                        ; R0_w=0
+      ; void *data_end = (void *)(long)skb->data_end; @ prog.c:211
+      1: (61) r2 = *(u32 *)(r1 +80)         ; R1=ctx() R2_w=pkt_end()
+      ; void *data = (void *)(long)skb->data; @ prog.c:212
+      2: (61) r3 = *(u32 *)(r1 +76)         ; R1=ctx() R3_w=pkt(r=0)
+      ; if ((void *)(eth_hdr + 1) > data_end) @ prog.c:215
+      3: (bf) r1 = r3                       ; R1_w=pkt(r=0) R3_w=pkt(r=0)
+      4: (07) r1 += 14                      ; R1_w=pkt(off=14,r=0)
+      5: (2d) if r1 > r2 goto pc+30         ; R1_w=pkt(off=14,r=14) R2_w=pkt_end()
+      ; if (eth_hdr->h_proto != bpf_htons(ETH_P_IP)) @ prog.c:217
+      6: (69) r4 = *(u16 *)(r3 +12)         ; R3_w=pkt(r=14) R4_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=0xffff,var_off=(0x0; 0xffff))
+      7: (55) if r4 != 0x8 goto pc+28       ; R4_w=8
+      8: (07) r3 += 34                      ; R3=pkt(off=34,r=14)
+      9: (2d) if r3 > r2 goto pc+26         ; R2=pkt_end() R3=pkt(off=34,r=34)
+      ; struct tcphdr *tcp_hdr = (struct tcphdr *)((__u8 *)ipv4_hdr + 4 * ipv4_hdr->ihl); @ prog.c:224
+      10: (71) r3 = *(u8 *)(r1 +0)          ; R1=pkt(off=14,r=34) R3_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))
+      11: (67) r3 <<= 2                     ; R3_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=1020,var_off=(0x0; 0x3fc))
+      12: (57) r3 &= 60                     ; R3_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c))
+      13: (0f) r1 += r3
+      mark_precise: frame0: last_idx 13 first_idx 9 subseq_idx -1
+      mark_precise: frame0: regs=r3 stack= before 12: (57) r3 &= 60
+      mark_precise: frame0: regs=r3 stack= before 11: (67) r3 <<= 2
+      mark_precise: frame0: regs=r3 stack= before 10: (71) r3 = *(u8 *)(r1 +0)
+      14: R1_w=pkt(id=1,off=14,r=0,smin=smin32=0,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c)) R3_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c))
+      ; if ((void *)(tcp_hdr + 1) > data_end) @ prog.c:225
+      14: (bf) r3 = r1                      ; R1_w=pkt(id=1,off=14,r=0,smin=smin32=0,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c)) R3_w=pkt(id=1,off=14,r=0,smin=smin32=0,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c))
+      15: (07) r3 += 20                     ; R3_w=pkt(id=1,off=34,r=0,smin=smin32=0,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c))
+      16: (2d) if r3 > r2 goto pc+19        ; R2=pkt_end() R3_w=pkt(id=1,off=34,r=34,smin=smin32=0,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c))
+      ; __u8 *tcp_data = (__u8 *)tcp_hdr + 4 * tcp_hdr->doff; @ prog.c:228
+      17: (69) r3 = *(u16 *)(r1 +12)        ; R1_w=pkt(id=1,off=14,r=34,smin=smin32=0,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c)) R3_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=0xffff,var_off=(0x0; 0xffff))
+      18: (77) r3 >>= 2                     ; R3_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=16383,var_off=(0x0; 0x3fff))
+      19: (57) r3 &= 60                     ; R3_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c))
+      20: (0f) r1 += r3
+      mark_precise: frame0: last_idx 20 first_idx 9 subseq_idx -1
+      mark_precise: frame0: regs=r3 stack= before 19: (57) r3 &= 60
+      mark_precise: frame0: regs=r3 stack= before 18: (77) r3 >>= 2
+      mark_precise: frame0: regs=r3 stack= before 17: (69) r3 = *(u16 *)(r1 +12)
+      21: R1=pkt(id=2,off=14,r=0,smin=smin32=0,smax=umax=smax32=umax32=120,var_off=(0x0; 0x7c)) R3=scalar(smin=smin32=0,smax=umax=smax32=umax32=60,var_off=(0x0; 0x3c))
+      ; if ((void *)tcp_data > data_end) @ prog.c:229
+      21: (2d) if r1 > r2 goto pc+14        ; R1=pkt(id=2,off=14,r=14,smin=smin32=0,smax=umax=smax32=umax32=120,var_off=(0x0; 0x7c)) R2=pkt_end()
+      22: (b7) r3 = 0                       ; R3_w=0
+      23: (05) goto pc+2
+      ; for (int i = 0; i < MAX_PACKET_OFF && tcp_data + i <= data_end; ++i) { @ prog.c:232
+      26: (bf) r4 = r1                      ; R1=pkt(id=2,off=14,r=14,smin=smin32=0,smax=umax=smax32=umax32=120,var_off=(0x0; 0x7c)) R4_w=pkt(id=2,off=14,r=14,smin=smin32=0,smax=umax=smax32=umax32=120,var_off=(0x0; 0x7c))
+      27: (0f) r4 += r3
+      mark_precise: frame0: last_idx 27 first_idx 21 subseq_idx -1
+      mark_precise: frame0: regs=r3 stack= before 26: (bf) r4 = r1
+      mark_precise: frame0: regs=r3 stack= before 23: (05) goto pc+2
+      mark_precise: frame0: regs=r3 stack= before 22: (b7) r3 = 0
+      28: R3_w=0 R4_w=pkt(id=2,off=14,r=14,smin=smin32=0,smax=umax=smax32=umax32=120,var_off=(0x0; 0x7c))
+      28: (2d) if r4 > r2 goto pc+7         ; R2=pkt_end() R4_w=pkt(id=2,off=14,r=14,smin=smin32=0,smax=umax=smax32=umax32=120,var_off=(0x0; 0x7c))
+      ; if (tcp_data[i] == ' ') { @ prog.c:233
+      29: (71) r4 = *(u8 *)(r4 +0)
+      invalid access to packet, off=14 size=1, R4(id=2,off=14,r=14)
+      R4 offset is outside of the packet
+      verification time 251 usec
+      stack depth 0
+      processed 28 insns (limit 1000000) max_states_per_insn 0 total_states 2 peak_states 2 mark_read 1
+      -- END PROG LOAD LOG --
+      libbpf: prog 'handle_tc_ingress': failed to load: -EACCES
+      libbpf: failed to load object '<legacy-so-gh-reproducer>/stackoverflow-75643912/prog.o'
+      Error: failed to load object file
+  verifier_log_source: captured_on_6.15.11
+  verifier_log_captured_at: '2026-03-20'
+  source_snippets: []
+  question_body_text: |-
+    I'm trying to loop over part of a TCP payload in an eBPF program, and I'm running into the invalid access to packet error.
+    I thought I was taking measures to prevent the error -- guarding the access with pointer + offset > data_end, while ensuring that offset is less than or equal to the max u16 value (MAX_PACKET_OFF) (as indicated in the eBPF verifier docs). But apparently I'm doing this wrong or it's not enough.
+    The program:
+    #include "vmlinux.h"
+    #include <bpf/bpf_helpers.h>
+    #include <bpf/bpf_core_read.h>
+    #include <bpf/bpf_endian.h>
+    #define MAX_PACKET_OFF 0xFFFF
+    #define ETH_P_IP 0x0800
+    #define TC_ACT_OK 0
+    #define TC_ACT_SHOT 2
+    SEC("tc")
+    int handle_tc_ingress(struct __sk_buff *skb) {
+    void *data_end = (void *)(long) skb->data_end;
+    void *data = (void *)(long) skb->data;
+    struct ethhdr *eth_hdr = data;
+    if ((void *) (eth_hdr + 1) > data_end) {
+    return TC_ACT_OK;
+    }
+    if (eth_hdr->h_proto != bpf_htons(ETH_P_IP)) {
+    return TC_ACT_OK;
+    }
+    struct iphdr *ipv4_hdr = (struct iphdr *) (eth_hdr + 1);
+    if ((void *) (ipv4_hdr + 1) > data_end) {
+    return TC_ACT_OK;
+    }
+    struct tcphdr *tcp_hdr = (struct tcphdr *) ((__u8 *) ipv4_hdr + 4 * ipv4_hdr->ihl);
+    if ((void *) (tcp_hdr + 1) > data_end) {
+    return TC_ACT_OK;
+    }
+    __u8 *tcp_data = (__u8 *) tcp_hdr + 4 * tcp_hdr->doff;
+    if ((void *) tcp_data > data_end) {
+    return TC_ACT_OK;
+    }
+    // Ignore that this loop has too many iterations.
+    // Reducing `MAX_PACKET_OFF` doesn't help.
+    for (int i = 0; i < MAX_PACKET_OFF && tcp_data + i <= data_end; ++i) {
+    if (tcp_data[i] == ' ') {
+    bpf_printk("space");
+    return TC_ACT_SHOT;
+    }
+    }
+    return TC_ACT_OK;
+    }
+    The verifier output:
+    libbpf: prog 'handle_tc_ingress': -- BEGIN PROG LOAD LOG --
+    0: R1=ctx(off=0,imm=0) R10=fp0
+    ; int handle_tc_ingress(struct __sk_buff *skb) {
+    0: (b7) r0 = 0 ; R0_w=0
+    ; void *data_end = (void *)(long) skb->data_end;
+    1: (61) r2 = *(u32 *)(r1 +80) ; R1=ctx(off=0,imm=0) R2_w=pkt_end(off=0,imm=0)
+    ; void *data = (void *)(long) skb->data;
+    2: (61) r1 = *(u32 *)(r1 +76) ; R1_w=pkt(off=0,r=0,imm=0)
+    ; if ((void *) (eth_hdr + 1) > data_end) {
+    3: (bf) r3 = r1 ; R1_w=pkt(off=0,r=0,imm=0) R3_w=pkt(off=0,r=0,imm=0)
+    4: (07) r3 += 14 ; R3_w=pkt(off=14,r=0,imm=0)
+    ; if ((void *) (eth_hdr + 1) > data_end) {
+    5: (2d) if r3 > r2 goto pc+37 ; R2_w=pkt_end(off=0,imm=0) R3_w=pkt(off=14,r=14,imm=0)
+    ; if (eth_hdr->h_proto != bpf_htons(ETH_P_IP)) {
+    6: (69) r3 = *(u16 *)(r1 +12) ; R1_w=pkt(off=0,r=14,imm=0) R3_w=scalar(umax=65535,var_off=(0x0; 0xffff))
+    ; if (eth_hdr->h_proto != bpf_htons(ETH_P_IP)) {
+    7: (55) if r3 != 0x8 goto pc+35 ; R3_w=8
+    8: (bf) r3 = r1 ; R1_w=pkt(off=0,r=14,imm=0) R3_w=pkt(off=0,r=14,imm=0)
+    9: (07) r3 += 34 ; R3=pkt(off=34,r=14,imm=0)
+    10: (2d) if r3 > r2 goto pc+32 ; R2=pkt_end(off=0,imm=0) R3=pkt(off=34,r=34,imm=0)
+    11: (bf) r4 = r1 ; R1=pkt(off=0,r=34,imm=0) R4_w=pkt(off=0,r=34,imm=0)
+    12: (07) r4 += 14 ; R4_w=pkt(off=14,r=34,imm=0)
+    ; struct tcphdr *tcp_hdr = (struct tcphdr *) ((__u8 *) ipv4_hdr + 4 * ipv4_hdr->ihl);
+    13: (71) r3 = *(u8 *)(r4 +0) ; R3_w=scalar(umax=255,var_off=(0x0; 0xff)) R4_w=pkt(off=14,r=34,imm=0)
+    ; struct tcphdr *tcp_hdr = (struct tcphdr *) ((__u8 *) ipv4_hdr + 4 * ipv4_hdr->ihl);
+    14: (67) r3 <<= 2 ; R3_w=scalar(umax=1020,var_off=(0x0; 0x3fc))
+    15: (57) r3 &= 60 ; R3_w=scalar(umax=60,var_off=(0x0; 0x3c))
+    ; struct tcphdr *tcp_hdr = (struct tcphdr *) ((__u8 *) ipv4_hdr + 4 * ipv4_hdr->ihl);
+    16: (0f) r4 += r3 ; R3_w=Pscalar(umax=60,var_off=(0x0; 0x3c)) R4_w=pkt(id=1,off=14,r=0,umax=60,var_off=(0x0; 0x3c))
+    ; if ((void *) (tcp_hdr + 1) > data_end) {
+    17: (bf) r5 = r4 ; R4_w=pkt(id=1,off=14,r=0,umax=60,var_off=(0x0; 0x3c)) R5_w=pkt(id=1,off=14,r=0,umax=60,var_off=(0x0; 0x3c))
+    18: (07) r5 += 20 ; R5_w=pkt(id=1,off=34,r=0,umax=60,var_off=(0x0; 0x3c))
+    ; if ((void *) (tcp_hdr + 1) > data_end) {
+    19: (2d) if r5 > r2 goto pc+23 ; R2=pkt_end(off=0,imm=0) R5_w=pkt(id=1,off=34,r=34,umax=60,var_off=(0x0; 0x3c))
+    ; __u8 *tcp_data = (__u8 *) tcp_hdr + 4 * tcp_hdr->doff;
+    20: (69) r5 = *(u16 *)(r4 +12) ; R4_w=pkt(id=1,off=14,r=34,umax=60,var_off=(0x0; 0x3c)) R5_w=scalar(umax=65535,var_off=(0x0; 0xffff))
+    ; __u8 *tcp_data = (__u8 *) tcp_hdr + 4 * tcp_hdr->doff;
+    21: (77) r5 >>= 2 ; R5_w=scalar(umax=16383,var_off=(0x0; 0x3fff))
+    22: (57) r5 &= 60 ; R5_w=scalar(umax=60,var_off=(0x0; 0x3c))
+    ; __u8 *tcp_data = (__u8 *) tcp_hdr + 4 * tcp_hdr->doff;
+    23: (0f) r4 += r5 ; R4=pkt(id=2,off=14,r=0,umax=120,var_off=(0x0; 0x7c),s32_max=124,u32_max=124) R5=Pscalar(umax=60,var_off=(0x0; 0x3c))
+    ; if ((void *) tcp_data > data_end) {
+    24: (2d) if r4 > r2 goto pc+18 ; R2=pkt_end(off=0,imm=0) R4=pkt(id=2,off=14,r=14,umax=120,var_off=(0x0; 0x7c),s32_max=124,u32_max=124)
+    ; for (int i = 0; i < MAX_PACKET_OFF && tcp_data + i <= data_end; ++i) {
+    25: (0f) r3 += r5 ; R3_w=Pscalar(umax=120,var_off=(0x0; 0x7c)) R5=Pscalar(umax=60,var_off=(0x0; 0x3c))
+    26: (0f) r1 += r3 ; R1_w=pkt(id=3,off=0,r=0,umax=120,var_off=(0x0; 0x7c),s32_max=124,u32_max=124) R3_w=Pscalar(umax=120,var_off=(0x0; 0x7c))
+    27: (b7) r0 = 0 ; R0_w=0
+    28: (07) r1 += 14 ; R1_w=pkt(id=3,off=14,r=0,umax=120,var_off=(0x0; 0x7c),s32_max=124,u32_max=124)
+    29: (b7) r3 = 0 ; R3_w=0
+    30: (05) goto pc+2
+    ; for (int i = 0; i < MAX_PACKET_OFF && tcp_data + i <= data_end; ++i) {
+    33: (bf) r4 = r1 ; R1_w=pkt(id=3,off=14,r=0,umax=120,var_off=(0x0; 0x7c),s32_max=124,u32_max=124) R4_w=pkt(id=3,off=14,r=0,umax=120,var_off=(0x0; 0x7c),s32_max=124,u32_max=124)
+    34: (0f) r4 += r3 ; R3=P0 R4=pkt(id=3,off=14,r=0,umax=120,var_off=(0x0; 0x7c),s32_max=124,u32_max=124)
+    ; for (int i = 0; i < MAX_PACKET_OFF && tcp_data + i <= data_end; ++i) {
+    35: (2d) if r4 > r2 goto pc+7 ; R2=pkt_end(off=0,imm=0) R4=pkt(id=3,off=14,r=14,umax=120,var_off=(0x0; 0x7c),s32_max=124,u32_max=124)
+    ; if (tcp_data[i] == ' ') {
+    36: (71) r4 = *(u8 *)(r4 +0)
+    invalid access to packet, off=14 size=1, R4(id=3,off=14,r=14)
+    R4 offset is outside of the packet
+    processed 35 insns (limit 1000000) max_states_per_insn 0 total_states 3 peak_states 3 mark_read 1
+    -- END PROG LOAD LOG --
+    At first I thought the problem might be the goto pc+2 on line 30, which skips the check that i < MAX_PACKET_OFF. But the verifier knows that i is zero in this case (and given the loop unrolling, probably already knows that i < MAX_PACKET_OFF in every iteration), so I would think this would be fine.
+  selected_answer:
+    answer_id: 75645075
+    url: https://stackoverflow.com/questions/75643912/invalid-access-to-packet-while-iterating-over-packet-in-ebpf-program#75645075
+    is_accepted: true
+    score: 2
+    body_text: |-
+      I am not 100% certain if this is due to a off by one error in the condition or due to the way clang does the guard generation. In any case, it is easier to check that we programmed the correct behavior by moving the bounds check to inside the loop body:
+      for (int i = 0; i < MAX_PACKET_OFF; i++) {
+      __u8 *loop_data = tcp_data + i;
+      if (loop_data + 1 > data_end)
+      break;
+      if (loop_data == ' ') {
+      bpf_printk("space");
+      return TC_ACT_SHOT;
+      }
+      }
+    fix_description: 'I am not 100% certain if this is due to a off by one error in
+      the condition or due to the way clang does the guard generation. In any case,
+      it is easier to check that we programmed the correct behavior by moving the
+      bounds check to inside the loop body: for (int i = 0; i < MAX_PACKET_OFF; i++)
+      { __u8 *loop_data = tcp_data + i;'

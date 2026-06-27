@@ -1,0 +1,442 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-9f8b2a99a9d4
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/9f8b2a99a9d4090dbeb4da7217983d548921badd
+  title: 'bpf: Combine ipv6_hdrlen and ipv6_get_fraginfo where possible'
+  repository: https://github.com/cilium/cilium
+  commit: 9f8b2a99a9d4090dbeb4da7217983d548921badd
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-9f8b2a99a9d4.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: environment_required
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Combines IPv6 extension-header walks to reduce verifier complexity in full
+    Cilium programs; no terminal reject is isolated.
+raw:
+  case_id: github-commit-cilium-9f8b2a99a9d4
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: 9f8b2a99a9d4090dbeb4da7217983d548921badd
+  commit_message: 'bpf: Combine ipv6_hdrlen and ipv6_get_fraginfo where possible'
+  commit_date: '2025-03-27'
+  fix_type: inline_hint
+  buggy_code: "// FILE: bpf/bpf_lxc.c\n// CONTEXT: skip_service_lookup:\nstatic __always_inline\
+    \ int __per_packet_lb_svc_xlate_6(void *ctx, struct ipv6hdr *ip6,\n\t\t\t\t\t\t\
+    \       __s8 *ext_err)\n{\n\tstruct ipv6_ct_tuple tuple __align_stack_8 = {};\n\
+    \tstruct ct_state ct_state_new = {};\n\tfraginfo_t fraginfo;\n\tstruct lb6_service\
+    \ *svc;\n\tstruct lb6_key key = {};\n\t__u16 proxy_port = 0;\n\tint l4_off;\n\t\
+    int ret;\n\n\tfraginfo = ipv6_get_fraginfo(ctx, ip6);\n\tif (fraginfo < 0)\n\t\
+    \treturn (int)fraginfo;\n\n\ttuple.nexthdr = ip6->nexthdr;\n\tret = ipv6_hdrlen(ctx,\
+    \ &tuple.nexthdr);\n\tif (ret < 0)\n\t\treturn ret;\n\n\tl4_off = ETH_HLEN + ret;\n\
+    \n\tret = lb6_extract_tuple(ctx, ip6, fraginfo, l4_off, &tuple);\n\tif (IS_ERR(ret))\
+    \ {\n\t\tif (ret == DROP_UNSUPP_SERVICE_PROTO || ret == DROP_UNKNOWN_L4)\n\t\t\
+    \tgoto skip_service_lookup;\n\t\telse\n\t\t\treturn ret;\n\t}\n\n// FILE: bpf/lib/conntrack.h\n\
+    // CONTEXT: ct_is_reply ## FAMILY(const void *map,\t\t\t\t\t\t\\\n\nstatic __always_inline\
+    \ int\nipv6_extract_tuple(struct __ctx_buff *ctx, struct ipv6_ct_tuple *tuple)\n\
+    {\n\tvoid *data, *data_end;\n\tstruct ipv6hdr *ip6;\n\tfraginfo_t fraginfo;\n\t\
+    int ret;\n\n\tif (!revalidate_data(ctx, &data, &data_end, &ip6))\n\t\treturn DROP_INVALID;\n\
+    \n\tfraginfo = ipv6_get_fraginfo(ctx, ip6);\n\tif (fraginfo < 0)\n\t\treturn (int)fraginfo;\n\
+    \n\ttuple->nexthdr = ip6->nexthdr;\n\tipv6_addr_copy(&tuple->daddr, (union v6addr\
+    \ *)&ip6->daddr);\n\tipv6_addr_copy(&tuple->saddr, (union v6addr *)&ip6->saddr);\n\
+    \n\tret = ipv6_hdrlen(ctx, &tuple->nexthdr);\n\tif (ret < 0)\n\t\treturn ret;\n\
+    \n\tif (unlikely(tuple->nexthdr != IPPROTO_TCP &&\n#ifdef ENABLE_SCTP\n\t\t\t\
+    \ tuple->nexthdr != IPPROTO_SCTP &&\n#endif  /* ENABLE_SCTP */\n\t\t     tuple->nexthdr\
+    \ != IPPROTO_UDP))\n\t\treturn DROP_CT_UNKNOWN_PROTO;\n\n\treturn ipv6_load_l4_ports(ctx,\
+    \ ip6, fraginfo, ETH_HLEN + ret,\n\t\t\t\t  CT_EGRESS, &tuple->dport);\n\n// FILE:\
+    \ bpf/lib/ipv6.h\n// CONTEXT: static __always_inline int ipv6_skip_exthdr(struct\
+    \ __ctx_buff *ctx, __u8 *nexthd\n\n\tcase NEXTHDR_HOP:\n\tcase NEXTHDR_ROUTING:\n\
+    \tcase NEXTHDR_DEST:\n\t\treturn ipv6_optlen(&opthdr);\n\n\tdefault:\n\t\t/* Returned\
+    \ in the switch above. */\n\t\t__builtin_unreachable();\n\t}\n}\n\nstatic __always_inline\
+    \ int ipv6_hdrlen_offset(struct __ctx_buff *ctx, __u8 *nexthdr, int l3_off)\n\
+    {\n\tint i, len = sizeof(struct ipv6hdr);\n\t__u8 nh = *nexthdr;\n\n#pragma unroll\n\
+    \tfor (i = 0; i < IPV6_MAX_HEADERS; i++) {\n\t\tint hdrlen = ipv6_skip_exthdr(ctx,\
+    \ &nh, l3_off + len);\n\n\t\tif (hdrlen < 0)\n\t\t\treturn hdrlen;\n\n\t\tif (!hdrlen)\
+    \ {\n\t\t\t*nexthdr = nh;\n\t\t\treturn len;\n\t\t}\n\n\t\tlen += hdrlen;\n\t\
+    }\n\n\t/* Reached limit of supported extension headers */\n\treturn DROP_INVALID_EXTHDR;\n\
+    }\n\nstatic __always_inline int ipv6_hdrlen(struct __ctx_buff *ctx, __u8 *nexthdr)\n\
+    {\n\treturn ipv6_hdrlen_offset(ctx, nexthdr, ETH_HLEN);\n}\n\nstatic __always_inline\
+    \ void ipv6_addr_copy(union v6addr *dst,\n\t\t\t\t\t   const union v6addr *src)\n\
+    {\n\tmemcpy(dst, src, sizeof(*dst));\n}\n\nstatic __always_inline void ipv6_addr_copy_unaligned(union\
+    \ v6addr *dst,\n\t\t\t\t\t\t     const union v6addr *src)\n{\n\tdst->d1 = src->d1;\n\
+    \n// FILE: bpf/lib/nat.h\n// CONTEXT: snat_v6_needs_masquerade(struct __ctx_buff\
+    \ *ctx __maybe_unused,\n#endif /* ENABLE_MASQUERADE_IPV6 && IS_BPF_HOST */\n\n\
+    \treturn NAT_PUNT_TO_STACK;\n}\n\nstatic __always_inline __maybe_unused int\n\
+    snat_v6_nat_handle_icmp_error(struct __ctx_buff *ctx, __u64 off, bool has_l4_header)\n\
+    {\n\t__u32 inner_l3_off = (__u32)(off + sizeof(struct icmp6hdr));\n\tstruct ipv6_ct_tuple\
+    \ tuple = {};\n\tstruct ipv6_nat_entry *state;\n\tstruct ipv6hdr ip6;\n\t__u16\
+    \ port_off;\n\t__u32 icmpoff;\n\tint hdrlen;\n\tint ret;\n\n\t/* According to\
+    \ the RFC 5508, any networking equipment that is\n\t * responding with an ICMP\
+    \ Error packet should embed the original\n\t * packet in its response.\n\t */\n\
+    \tif (ctx_load_bytes(ctx, inner_l3_off, &ip6, sizeof(ip6)) < 0)\n\t\treturn DROP_INVALID;\n\
+    \n\t/* From the embedded IP headers we should be able to determine\n\t * corresponding\
+    \ protocol, IP src/dst of the packet sent to resolve\n\t * the NAT session.\n\t\
+    \ */\n\ttuple.nexthdr = ip6.nexthdr;\n\tipv6_addr_copy(&tuple.saddr, (union v6addr\
+    \ *)&ip6.daddr);\n\tipv6_addr_copy(&tuple.daddr, (union v6addr *)&ip6.saddr);\n\
+    \ttuple.flags = NAT_DIR_EGRESS;\n\n\thdrlen = ipv6_hdrlen_offset(ctx, &tuple.nexthdr,\
+    \ inner_l3_off);\n\tif (hdrlen < 0)\n\t\treturn hdrlen;\n\n\ticmpoff = inner_l3_off\
+    \ + hdrlen;\n\n\tswitch (tuple.nexthdr) {\n\tcase IPPROTO_TCP:\n\tcase IPPROTO_UDP:\n\
+    #ifdef ENABLE_SCTP\n\tcase IPPROTO_SCTP:\n#endif /* ENABLE_SCTP */\n\t\t/* No\
+    \ reasons to handle IP fragmentation for this case as it is\n\n// CONTEXT: snat_v6_nat(struct\
+    \ __ctx_buff *ctx, struct ipv6_ct_tuple *tuple,\n\t\treturn NAT_PUNT_TO_STACK;\n\
+    \n\treturn __snat_v6_nat(ctx, tuple, fraginfo, off, false, target, port_off, trace,\
+    \ ext_err);\n}\n\nstatic __always_inline __maybe_unused int\nsnat_v6_rev_nat_handle_icmp_pkt_toobig(struct\
+    \ __ctx_buff *ctx,\n\t\t\t\t       __u32 inner_l3_off,\n\t\t\t\t       struct\
+    \ ipv6_nat_entry **state)\n{\n\tstruct ipv6_ct_tuple tuple = {};\n\tstruct ipv6hdr\
+    \ iphdr;\n\t__u16 port_off;\n\t__u32 icmpoff;\n\t__u8 type;\n\tint hdrlen;\n\n\
+    \t/* According to the RFC 5508, any networking\n\t * equipment that is responding\
+    \ with an ICMP Error\n\t * packet should embed the original packet in its\n\t\
+    \ * response.\n\t */\n\n\tif (ctx_load_bytes(ctx, inner_l3_off, &iphdr, sizeof(iphdr))\
+    \ < 0)\n\t\treturn DROP_INVALID;\n\n\t/* From the embedded IP headers we should\
+    \ be able\n\t * to determine corresponding protocol, IP src/dst\n\t * of the packet\
+    \ sent to resolve the NAT session.\n\t */\n\n\ttuple.nexthdr = iphdr.nexthdr;\n\
+    \tipv6_addr_copy(&tuple.saddr, (union v6addr *)&iphdr.daddr);\n\tipv6_addr_copy(&tuple.daddr,\
+    \ (union v6addr *)&iphdr.saddr);\n\ttuple.flags = NAT_DIR_INGRESS;\n\n\thdrlen\
+    \ = ipv6_hdrlen_offset(ctx, &tuple.nexthdr, inner_l3_off);\n\tif (hdrlen < 0)\n\
+    \t\treturn hdrlen;\n\n\ticmpoff = inner_l3_off + hdrlen;\n\n\tswitch (tuple.nexthdr)\
+    \ {\n\tcase IPPROTO_TCP:\n\tcase IPPROTO_UDP:\n#ifdef ENABLE_SCTP\n\tcase IPPROTO_SCTP:\n\
+    #endif  /* ENABLE_SCTP */\n\t\t/* No reasons to handle IP fragmentation for this\
+    \ case\n\n// CONTEXT: snat_v6_rev_nat(struct __ctx_buff *ctx, const struct ipv6_nat_target\
+    \ *target,\n\tvoid *data, *data_end;\n\tstruct ipv6hdr *ip6;\n\tfraginfo_t fraginfo;\n\
+    \t__be16 to_dport = 0;\n\t__u16 port_off = 0;\n\tint ret, hdrlen;\n\n\tbuild_bug_on(sizeof(struct\
+    \ ipv6_nat_entry) > 64);\n\n\tif (!revalidate_data(ctx, &data, &data_end, &ip6))\n\
+    \t\treturn DROP_INVALID;\n\n\tfraginfo = ipv6_get_fraginfo(ctx, ip6);\n\tif (fraginfo\
+    \ < 0)\n\t\treturn (int)fraginfo;\n\n\ttuple.nexthdr = ip6->nexthdr;\n\thdrlen\
+    \ = ipv6_hdrlen(ctx, &tuple.nexthdr);\n\tif (hdrlen < 0)\n\t\treturn hdrlen;\n\
+    \n\tsnat_v6_init_tuple(ip6, NAT_DIR_INGRESS, &tuple);\n\n\toff = (__u32)(((void\
+    \ *)ip6 - data) + hdrlen);\n\tswitch (tuple.nexthdr) {\n\tcase IPPROTO_TCP:\n\t\
+    case IPPROTO_UDP:\n#ifdef ENABLE_SCTP\n\tcase IPPROTO_SCTP:\n#endif  /* ENABLE_SCTP\
+    \ */\n\n// FILE: bpf/lib/nodeport.h\n// CONTEXT: static __always_inline int encap_geneve_dsr_opt6(struct\
+    \ __ctx_buff *ctx,\n\tfraginfo_t fraginfo;\n\t__u16 total_len = 0;\n\t__be16 src_port;\n\
+    \tint l4_off, ret;\n\n\tbuild_bug_on((sizeof(gopt) % 4) != 0);\n\n\tdst = (union\
+    \ v6addr *)&ip6->daddr;\n\tinfo = lookup_ip6_remote_endpoint(dst, 0);\n\tif (!info\
+    \ || !info->flag_has_tunnel_ep)\n\t\treturn DROP_NO_TUNNEL_ENDPOINT;\n\n\tfraginfo\
+    \ = ipv6_get_fraginfo(ctx, ip6);\n\tif (fraginfo < 0)\n\t\treturn (int)fraginfo;\n\
+    \n\ttuple.nexthdr = ip6->nexthdr;\n\tret = ipv6_hdrlen(ctx, &tuple.nexthdr);\n\
+    \tif (ret < 0)\n\t\treturn ret;\n\n\tl4_off = ETH_HLEN + ret;\n\n\tret = lb6_extract_tuple(ctx,\
+    \ ip6, fraginfo, l4_off, &tuple);\n\tif (IS_ERR(ret))\n\t\treturn ret;\n\n\tsrc_port\
+    \ = tunnel_gen_src_port_v6(&tuple);\n\n\t/* See encap_geneve_dsr_opt4(): */\n\n\
+    // CONTEXT: nodeport_rev_dnat_ipv6(struct __ctx_buff *ctx, enum ct_dir dir,\n\t\
+    fraginfo_t fraginfo;\n\tint ifindex = 0;\n\t__u32 monitor = 0;\n\n\tif (!revalidate_data(ctx,\
+    \ &data, &data_end, &ip6))\n\t\treturn DROP_INVALID;\n\n#if !defined(IS_BPF_LXC)\
+    \ && defined(ENABLE_NAT_46X64_GATEWAY)\n\tif (nat46x64_cb_route(ctx))\n\t\tgoto\
+    \ fib_lookup;\n#endif\n\n\tfraginfo = ipv6_get_fraginfo(ctx, ip6);\n\tif (fraginfo\
+    \ < 0)\n\t\treturn (int)fraginfo;\n\n\ttuple.nexthdr = ip6->nexthdr;\n\tret =\
+    \ ipv6_hdrlen(ctx, &tuple.nexthdr);\n\tif (ret < 0)\n\t\treturn ret;\n\n\tl4_off\
+    \ = ETH_HLEN + ret;\n\n\tret = lb6_extract_tuple(ctx, ip6, fraginfo, l4_off, &tuple);\n\
+    \tif (ret < 0) {\n\t\tif (ret == DROP_UNSUPP_SERVICE_PROTO || ret == DROP_UNKNOWN_L4)\n\
+    \t\t\tgoto out;\n\t\treturn ret;\n\t}\n\n\n// CONTEXT: int tail_nodeport_nat_egress_ipv6(struct\
+    \ __ctx_buff *ctx)\n\tstruct remote_endpoint_info *info;\n\tunion v6addr *dst;\n\
+    #endif\n\n\tif (nat_46x64)\n\t\tbuild_v4_in_v6(&target.addr, IPV4_DIRECT_ROUTING);\n\
+    \n\tif (!revalidate_data(ctx, &data, &data_end, &ip6)) {\n\t\tret = DROP_INVALID;\n\
+    \t\tgoto drop_err;\n\t}\n\n\tfraginfo = ipv6_get_fraginfo(ctx, ip6);\n\tif (fraginfo\
+    \ < 0)\n\t\treturn (int)fraginfo;\n\n\ttuple.nexthdr = ip6->nexthdr;\n\tret =\
+    \ ipv6_hdrlen(ctx, &tuple.nexthdr);\n\tif (ret < 0)\n\t\treturn ret;\n\n\tl4_off\
+    \ = ETH_HLEN + ret;\n\n#ifdef TUNNEL_MODE\n\tdst = (union v6addr *)&ip6->daddr;\n\
+    \tinfo = lookup_ip6_remote_endpoint(dst, 0);\n\tif (info && info->flag_has_tunnel_ep\
+    \ && !info->flag_skip_tunnel)\n\t\ttarget.addr = CONFIG(router_ipv6);\n#endif\n\
+    \n\n// CONTEXT: static __always_inline int nodeport_lb6(struct __ctx_buff *ctx,\n\
+    \t\t\t\t\t__s8 *ext_err,\n\t\t\t\t\tbool __maybe_unused *dsr)\n{\n\tfraginfo_t\
+    \ fraginfo;\n\tbool is_svc_proto __maybe_unused = true;\n\tint ret, l3_off = ETH_HLEN,\
+    \ l4_off;\n\tstruct ipv6_ct_tuple tuple __align_stack_8 = {};\n\tstruct lb6_service\
+    \ *svc;\n\tstruct lb6_key key = {};\n\n\tcilium_capture_in(ctx);\n\n\tfraginfo\
+    \ = ipv6_get_fraginfo(ctx, ip6);\n\tif (fraginfo < 0)\n\t\treturn (int)fraginfo;\n\
+    \n\ttuple.nexthdr = ip6->nexthdr;\n\tret = ipv6_hdrlen(ctx, &tuple.nexthdr);\n\
+    \tif (ret < 0)\n\t\treturn ret;\n\n\tl4_off = ETH_HLEN + ret;\n\n\tret = lb6_extract_tuple(ctx,\
+    \ ip6, fraginfo, l4_off, &tuple);\n\tif (IS_ERR(ret)) {\n\t\tif (ret == DROP_UNSUPP_SERVICE_PROTO)\
+    \ {\n\t\t\tis_svc_proto = false;\n\t\t\tgoto skip_service_lookup;\n\t\t}\n\t\t\
+    if (ret == DROP_UNKNOWN_L4) {\n\n// FILE: bpf/lib/nodeport_egress.h\n// CONTEXT:\
+    \ static __always_inline int nodeport_snat_fwd_ipv6(struct __ctx_buff *ctx,\n\t\
+    \t.min_port = NODEPORT_PORT_MIN_NAT,\n\t\t.max_port = NODEPORT_PORT_MAX_NAT,\n\
+    \t};\n\tstruct ipv6_ct_tuple tuple = {};\n\tint hdrlen, l4_off, ret;\n\tvoid *data,\
+    \ *data_end;\n\tstruct ipv6hdr *ip6;\n\tfraginfo_t fraginfo;\n\n\tif (!revalidate_data(ctx,\
+    \ &data, &data_end, &ip6))\n\t\treturn DROP_INVALID;\n\n\tfraginfo = ipv6_get_fraginfo(ctx,\
+    \ ip6);\n\tif (fraginfo < 0)\n\t\treturn (int)fraginfo;\n\n\ttuple.nexthdr = ip6->nexthdr;\n\
+    \thdrlen = ipv6_hdrlen(ctx, &tuple.nexthdr);\n\tif (hdrlen < 0)\n\t\treturn hdrlen;\n\
+    \n\tsnat_v6_init_tuple(ip6, NAT_DIR_EGRESS, &tuple);\n\tl4_off = ETH_HLEN + hdrlen;\n\
+    \n\tif (lb_is_svc_proto(tuple.nexthdr) &&\n\t    nodeport_has_nat_conflict_ipv6(ip6,\
+    \ &target))\n\t\tgoto apply_snat;\n\n\tret = snat_v6_needs_masquerade(ctx, &tuple,\
+    \ ip6, fraginfo, l4_off, &target);\n\tif (IS_ERR(ret))\n\n// CONTEXT: nodeport_rev_dnat_fwd_ipv6(struct\
+    \ __ctx_buff *ctx, bool *snat_done,\n\tstruct bpf_fib_lookup_padded fib_params\
+    \ __maybe_unused = {};\n\tstruct lb6_reverse_nat *nat_info;\n\tstruct ipv6_ct_tuple\
+    \ tuple __align_stack_8 = {};\n\tvoid *data, *data_end;\n\tfraginfo_t fraginfo;\n\
+    \tstruct ipv6hdr *ip6;\n\t__u32 monitor = 0;\n\tint ret, l4_off;\n\n\tif (!revalidate_data(ctx,\
+    \ &data, &data_end, &ip6))\n\t\treturn DROP_INVALID;\n\n\tfraginfo = ipv6_get_fraginfo(ctx,\
+    \ ip6);\n\tif (fraginfo < 0)\n\t\treturn (int)fraginfo;\n\n\ttuple.nexthdr = ip6->nexthdr;\n\
+    \tret = ipv6_hdrlen(ctx, &tuple.nexthdr);\n\tif (ret < 0)\n\t\treturn ret;\n\n\
+    \tl4_off = ETH_HLEN + ret;\n\n\tret = lb6_extract_tuple(ctx, ip6, fraginfo, l4_off,\
+    \ &tuple);\n\tif (ret < 0) {\n\t\tif (ret == DROP_UNSUPP_SERVICE_PROTO || ret\
+    \ == DROP_UNKNOWN_L4)\n\t\t\treturn CTX_ACT_OK;\n\t\treturn ret;\n\t}\n\n// FILE:\
+    \ bpf/tests/ipfrag.c\n// CONTEXT: int test_ipfrag_helpers_ipv6_nofrag_pktgen(struct\
+    \ __ctx_buff *ctx)\n\n\tpktgen__finish(&builder);\n\n\treturn 0;\n}\n\nCHECK(\"\
+    tc\", \"ipfrag_helpers_ipv6_nofrag\")\nint test_ipfrag_helpers_ipv6_nofrag_check(struct\
+    \ __ctx_buff *ctx __maybe_unused)\n{\n\tvoid *data, *data_end;\n\tstruct ethhdr\
+    \ *l2;\n\tstruct ipv6hdr *l3;\n\tfraginfo_t fraginfo;\n\n\ttest_init();\n\n\t\
+    data = ctx_data(ctx);\n\tdata_end = ctx_data_end(ctx);\n\n\tl2 = data;\n\tif ((void\
+    \ *)(l2 + 1) > data_end)\n\t\ttest_fatal(\"l2 out of bounds\");\n\n\tl3 = (void\
+    \ *)(l2 + 1);\n\tif ((void *)(l3 + 1) > data_end)\n\t\ttest_fatal(\"l3 out of\
+    \ bounds\");\n\n\t/* Non-fragmented packet */\n\tfraginfo = ipv6_get_fraginfo(ctx,\
+    \ l3);\n\tif (fraginfo < 0)\n\t\ttest_fatal(\"ipv6_get_fraginfo failed\");\n\t\
+    assert(!ipfrag_is_fragment(fraginfo));\n\tassert(ipfrag_has_l4_header(fraginfo));\n\
+    \n\ttest_finish();\n}\n\nPKTGEN(\"tc\", \"ipfrag_helpers_ipv6\")\nint test_ipfrag_helpers_ipv6_pktgen(struct\
+    \ __ctx_buff *ctx)\n{\n\tstruct pktgen builder;\n\tstruct ethhdr *l2;\n\tstruct\
+    \ ipv6hdr *l3;\n\tstruct ipv6_frag_hdr *fraghdr;\n\tstruct udphdr *l4;\n\tvoid\
+    \ *data;\n\n// CONTEXT: int test_ipfrag_helpers_ipv6_pktgen(struct __ctx_buff\
+    \ *ctx)\n\tpktgen__finish(&builder);\n\n\treturn 0;\n}\n\nCHECK(\"tc\", \"ipfrag_helpers_ipv6\"\
+    )\nint test_ipfrag_helpers_ipv6_check(struct __ctx_buff *ctx __maybe_unused)\n\
+    {\n\tvoid *data, *data_end;\n\tstruct ethhdr *l2;\n\tstruct ipv6hdr *l3;\n\tstruct\
+    \ ipv6_frag_hdr *fraghdr;\n\tfraginfo_t fraginfo;\n\n\ttest_init();\n\n\tdata\
+    \ = ctx_data(ctx);\n\tdata_end = ctx_data_end(ctx);\n\n\tl2 = data;\n\tif ((void\
+    \ *)(l2 + 1) > data_end)\n\t\ttest_fatal(\"l2 out of bounds\");\n\n\tl3 = (void\
+    \ *)(l2 + 1);\n\tif ((void *)(l3 + 1) > data_end)\n\n// CONTEXT: int test_ipfrag_helpers_ipv6_check(struct\
+    \ __ctx_buff *ctx __maybe_unused)\n\tif ((void *)(fraghdr + 1) > data_end)\n\t\
+    \ttest_fatal(\"fraghdr out of bounds\");\n\n\t/* First fragment */\n\tfraginfo\
+    \ = ipv6_get_fraginfo(ctx, l3);\n\tif (fraginfo < 0)\n\t\ttest_fatal(\"ipv6_get_fraginfo\
+    \ failed\");\n\tassert(ipfrag_is_fragment(fraginfo));\n\tassert(ipfrag_has_l4_header(fraginfo));\n\
+    \tassert(ipfrag_get_protocol(fraginfo) == IPPROTO_UDP);\n\tassert(ipfrag_get_id(fraginfo)\
+    \ == (__be32)(0x12345678));\n\n\t/* Non-first fragment */\n\tfraghdr->frag_off\
+    \ = bpf_htons((0x100 << 3) | 1);\n\tfraginfo = ipv6_get_fraginfo(ctx, l3);\n\t\
+    if (fraginfo < 0)\n\t\ttest_fatal(\"ipv6_get_fraginfo failed\");\n\tassert(ipfrag_is_fragment(fraginfo));\n\
+    \tassert(!ipfrag_has_l4_header(fraginfo));\n\tassert(ipfrag_get_protocol(fraginfo)\
+    \ == IPPROTO_UDP);\n\tassert(ipfrag_get_id(fraginfo) == (__be32)(0x12345678));\n\
+    \n\t/* Last fragment */\n\tfraghdr->frag_off = bpf_htons(0x200 << 3);\n\tfraginfo\
+    \ = ipv6_get_fraginfo(ctx, l3);\n\tif (fraginfo < 0)\n\t\ttest_fatal(\"ipv6_get_fraginfo\
+    \ failed\");\n\tassert(ipfrag_is_fragment(fraginfo));\n\tassert(!ipfrag_has_l4_header(fraginfo));\n\
+    \tassert(ipfrag_get_protocol(fraginfo) == IPPROTO_UDP);\n\tassert(ipfrag_get_id(fraginfo)\
+    \ == (__be32)(0x12345678));\n\n\ttest_finish();\n}"
+  fixed_code: "// FILE: bpf/bpf_lxc.c\n// CONTEXT: skip_service_lookup:\nstatic __always_inline\
+    \ int __per_packet_lb_svc_xlate_6(void *ctx, struct ipv6hdr *ip6,\n\t\t\t\t\t\t\
+    \       __s8 *ext_err)\n{\n\tstruct ipv6_ct_tuple tuple __align_stack_8 = {};\n\
+    \tstruct ct_state ct_state_new = {};\n\tfraginfo_t fraginfo;\n\tstruct lb6_service\
+    \ *svc;\n\tstruct lb6_key key = {};\n\t__u16 proxy_port = 0;\n\tint l4_off;\n\t\
+    int ret;\n\n\ttuple.nexthdr = ip6->nexthdr;\n\tret = ipv6_hdrlen_with_fraginfo(ctx,\
+    \ &tuple.nexthdr, &fraginfo);\n\tif (ret < 0)\n\t\treturn ret;\n\n\tl4_off = ETH_HLEN\
+    \ + ret;\n\n\tret = lb6_extract_tuple(ctx, ip6, fraginfo, l4_off, &tuple);\n\t\
+    if (IS_ERR(ret)) {\n\t\tif (ret == DROP_UNSUPP_SERVICE_PROTO || ret == DROP_UNKNOWN_L4)\n\
+    \t\t\tgoto skip_service_lookup;\n\t\telse\n\t\t\treturn ret;\n\t}\n\n// FILE:\
+    \ bpf/lib/conntrack.h\n// CONTEXT: ct_is_reply ## FAMILY(const void *map,\t\t\t\
+    \t\t\t\\\n\nstatic __always_inline int\nipv6_extract_tuple(struct __ctx_buff *ctx,\
+    \ struct ipv6_ct_tuple *tuple)\n{\n\tvoid *data, *data_end;\n\tstruct ipv6hdr\
+    \ *ip6;\n\tfraginfo_t fraginfo;\n\tint ret;\n\n\tif (!revalidate_data(ctx, &data,\
+    \ &data_end, &ip6))\n\t\treturn DROP_INVALID;\n\n\ttuple->nexthdr = ip6->nexthdr;\n\
+    \tipv6_addr_copy(&tuple->daddr, (union v6addr *)&ip6->daddr);\n\tipv6_addr_copy(&tuple->saddr,\
+    \ (union v6addr *)&ip6->saddr);\n\n\tret = ipv6_hdrlen_with_fraginfo(ctx, &tuple->nexthdr,\
+    \ &fraginfo);\n\tif (ret < 0)\n\t\treturn ret;\n\n\tif (unlikely(tuple->nexthdr\
+    \ != IPPROTO_TCP &&\n#ifdef ENABLE_SCTP\n\t\t\t tuple->nexthdr != IPPROTO_SCTP\
+    \ &&\n#endif  /* ENABLE_SCTP */\n\t\t     tuple->nexthdr != IPPROTO_UDP))\n\t\t\
+    return DROP_CT_UNKNOWN_PROTO;\n\n\treturn ipv6_load_l4_ports(ctx, ip6, fraginfo,\
+    \ ETH_HLEN + ret,\n\t\t\t\t  CT_EGRESS, &tuple->dport);\n\n// FILE: bpf/lib/ipv6.h\n\
+    // CONTEXT: static __always_inline int ipv6_skip_exthdr(struct __ctx_buff *ctx,\
+    \ __u8 *nexthd\n\n\tcase NEXTHDR_HOP:\n\tcase NEXTHDR_ROUTING:\n\tcase NEXTHDR_DEST:\n\
+    \t\treturn ipv6_optlen(&opthdr);\n\n\tdefault:\n\t\t/* Returned in the switch\
+    \ above. */\n\t\t__builtin_unreachable();\n\t}\n}\n\nstatic __always_inline int\
+    \ ipv6_hdrlen_offset(struct __ctx_buff *ctx, int l3_off,\n\t\t\t\t\t      __u8\
+    \ *nexthdr, fraginfo_t *fraginfo)\n{\n\tint i, len = sizeof(struct ipv6hdr);\n\
+    \t__u8 nh = *nexthdr;\n\n\t/* 0 is a valid fraginfo that encodes:\n\t * - is_fragment\
+    \ = false\n\t * - has_l4_header = true\n\t * - protocol = 0 (unused when !is_fragment)\n\
+    \t * This is the default in case no NEXTHDR_FRAGMENT is found.\n\t */\n\t*fraginfo\
+    \ = 0;\n\n#pragma unroll\n\tfor (i = 0; i < IPV6_MAX_HEADERS; i++) {\n\t\t__u8\
+    \ newnh = nh;\n\t\tint hdrlen = ipv6_skip_exthdr(ctx, &newnh, l3_off + len);\n\
+    \n\t\tif (hdrlen < 0)\n\t\t\treturn hdrlen;\n\n\t\tif (!hdrlen) {\n\t\t\t*nexthdr\
+    \ = nh;\n\t\t\treturn len;\n\t\t}\n\n\t\tif (nh == NEXTHDR_FRAGMENT) {\n\t\t\t\
+    struct ipv6_frag_hdr frag;\n\n\t\t\tif (ctx_load_bytes(ctx, l3_off + len, &frag,\
+    \ sizeof(frag)) < 0)\n\t\t\t\treturn DROP_INVALID;\n\n\t\t\t*fraginfo = ipfrag_encode_ipv6(&frag);\n\
+    \t\t}\n\n\t\tlen += hdrlen;\n\t\tnh = newnh;\n\t}\n\n\t/* Reached limit of supported\
+    \ extension headers */\n\treturn DROP_INVALID_EXTHDR;\n}\n\nstatic __always_inline\
+    \ int ipv6_hdrlen_with_fraginfo(struct __ctx_buff *ctx,\n\t\t\t\t\t\t     __u8\
+    \ *nexthdr,\n\t\t\t\t\t\t     fraginfo_t *fraginfo)\n{\n\treturn ipv6_hdrlen_offset(ctx,\
+    \ ETH_HLEN, nexthdr, fraginfo);\n}\n\nstatic __always_inline int ipv6_hdrlen(struct\
+    \ __ctx_buff *ctx, __u8 *nexthdr)\n{\n\tfraginfo_t fraginfo;\n\n\treturn ipv6_hdrlen_offset(ctx,\
+    \ ETH_HLEN, nexthdr, &fraginfo);\n}\n\nstatic __always_inline void ipv6_addr_copy(union\
+    \ v6addr *dst,\n\t\t\t\t\t   const union v6addr *src)\n{\n\tmemcpy(dst, src, sizeof(*dst));\n\
+    }\n\nstatic __always_inline void ipv6_addr_copy_unaligned(union v6addr *dst,\n\
+    \t\t\t\t\t\t     const union v6addr *src)\n{\n\tdst->d1 = src->d1;\n\n// FILE:\
+    \ bpf/lib/nat.h\n// CONTEXT: snat_v6_needs_masquerade(struct __ctx_buff *ctx __maybe_unused,\n\
+    #endif /* ENABLE_MASQUERADE_IPV6 && IS_BPF_HOST */\n\n\treturn NAT_PUNT_TO_STACK;\n\
+    }\n\nstatic __always_inline __maybe_unused int\nsnat_v6_nat_handle_icmp_error(struct\
+    \ __ctx_buff *ctx, __u64 off, bool has_l4_header)\n{\n\t__u32 inner_l3_off = (__u32)(off\
+    \ + sizeof(struct icmp6hdr));\n\tstruct ipv6_ct_tuple tuple = {};\n\tstruct ipv6_nat_entry\
+    \ *state;\n\tstruct ipv6hdr ip6;\n\tfraginfo_t fraginfo;\n\t__u16 port_off;\n\t\
+    __u32 icmpoff;\n\tint hdrlen;\n\tint ret;\n\n\t/* According to the RFC 5508, any\
+    \ networking equipment that is\n\t * responding with an ICMP Error packet should\
+    \ embed the original\n\t * packet in its response.\n\t */\n\tif (ctx_load_bytes(ctx,\
+    \ inner_l3_off, &ip6, sizeof(ip6)) < 0)\n\t\treturn DROP_INVALID;\n\n\t/* From\
+    \ the embedded IP headers we should be able to determine\n\t * corresponding protocol,\
+    \ IP src/dst of the packet sent to resolve\n\t * the NAT session.\n\t */\n\ttuple.nexthdr\
+    \ = ip6.nexthdr;\n\tipv6_addr_copy(&tuple.saddr, (union v6addr *)&ip6.daddr);\n\
+    \tipv6_addr_copy(&tuple.daddr, (union v6addr *)&ip6.saddr);\n\ttuple.flags = NAT_DIR_EGRESS;\n\
+    \n\thdrlen = ipv6_hdrlen_offset(ctx, inner_l3_off, &tuple.nexthdr, &fraginfo);\n\
+    \tif (hdrlen < 0)\n\t\treturn hdrlen;\n\n\ticmpoff = inner_l3_off + hdrlen;\n\n\
+    \tswitch (tuple.nexthdr) {\n\tcase IPPROTO_TCP:\n\tcase IPPROTO_UDP:\n#ifdef ENABLE_SCTP\n\
+    \tcase IPPROTO_SCTP:\n#endif /* ENABLE_SCTP */\n\t\t/* No reasons to handle IP\
+    \ fragmentation for this case as it is\n\n// CONTEXT: snat_v6_nat(struct __ctx_buff\
+    \ *ctx, struct ipv6_ct_tuple *tuple,\n\t\treturn NAT_PUNT_TO_STACK;\n\n\treturn\
+    \ __snat_v6_nat(ctx, tuple, fraginfo, off, false, target, port_off, trace, ext_err);\n\
+    }\n\nstatic __always_inline __maybe_unused int\nsnat_v6_rev_nat_handle_icmp_pkt_toobig(struct\
+    \ __ctx_buff *ctx,\n\t\t\t\t       __u32 inner_l3_off,\n\t\t\t\t       struct\
+    \ ipv6_nat_entry **state)\n{\n\tstruct ipv6_ct_tuple tuple = {};\n\tstruct ipv6hdr\
+    \ iphdr;\n\tfraginfo_t fraginfo;\n\t__u16 port_off;\n\t__u32 icmpoff;\n\t__u8\
+    \ type;\n\tint hdrlen;\n\n\t/* According to the RFC 5508, any networking\n\t *\
+    \ equipment that is responding with an ICMP Error\n\t * packet should embed the\
+    \ original packet in its\n\t * response.\n\t */\n\n\tif (ctx_load_bytes(ctx, inner_l3_off,\
+    \ &iphdr, sizeof(iphdr)) < 0)\n\t\treturn DROP_INVALID;\n\n\t/* From the embedded\
+    \ IP headers we should be able\n\t * to determine corresponding protocol, IP src/dst\n\
+    \t * of the packet sent to resolve the NAT session.\n\t */\n\n\ttuple.nexthdr\
+    \ = iphdr.nexthdr;\n\tipv6_addr_copy(&tuple.saddr, (union v6addr *)&iphdr.daddr);\n\
+    \tipv6_addr_copy(&tuple.daddr, (union v6addr *)&iphdr.saddr);\n\ttuple.flags =\
+    \ NAT_DIR_INGRESS;\n\n\thdrlen = ipv6_hdrlen_offset(ctx, inner_l3_off, &tuple.nexthdr,\
+    \ &fraginfo);\n\tif (hdrlen < 0)\n\t\treturn hdrlen;\n\n\ticmpoff = inner_l3_off\
+    \ + hdrlen;\n\n\tswitch (tuple.nexthdr) {\n\tcase IPPROTO_TCP:\n\tcase IPPROTO_UDP:\n\
+    #ifdef ENABLE_SCTP\n\tcase IPPROTO_SCTP:\n#endif  /* ENABLE_SCTP */\n\t\t/* No\
+    \ reasons to handle IP fragmentation for this case\n\n// CONTEXT: snat_v6_rev_nat(struct\
+    \ __ctx_buff *ctx, const struct ipv6_nat_target *target,\n\tvoid *data, *data_end;\n\
+    \tstruct ipv6hdr *ip6;\n\tfraginfo_t fraginfo;\n\t__be16 to_dport = 0;\n\t__u16\
+    \ port_off = 0;\n\tint ret, hdrlen;\n\n\tbuild_bug_on(sizeof(struct ipv6_nat_entry)\
+    \ > 64);\n\n\tif (!revalidate_data(ctx, &data, &data_end, &ip6))\n\t\treturn DROP_INVALID;\n\
+    \n\ttuple.nexthdr = ip6->nexthdr;\n\thdrlen = ipv6_hdrlen_with_fraginfo(ctx, &tuple.nexthdr,\
+    \ &fraginfo);\n\tif (hdrlen < 0)\n\t\treturn hdrlen;\n\n\tsnat_v6_init_tuple(ip6,\
+    \ NAT_DIR_INGRESS, &tuple);\n\n\toff = (__u32)(((void *)ip6 - data) + hdrlen);\n\
+    \tswitch (tuple.nexthdr) {\n\tcase IPPROTO_TCP:\n\tcase IPPROTO_UDP:\n#ifdef ENABLE_SCTP\n\
+    \tcase IPPROTO_SCTP:\n#endif  /* ENABLE_SCTP */\n\n// FILE: bpf/lib/nodeport.h\n\
+    // CONTEXT: static __always_inline int encap_geneve_dsr_opt6(struct __ctx_buff\
+    \ *ctx,\n\tfraginfo_t fraginfo;\n\t__u16 total_len = 0;\n\t__be16 src_port;\n\t\
+    int l4_off, ret;\n\n\tbuild_bug_on((sizeof(gopt) % 4) != 0);\n\n\tdst = (union\
+    \ v6addr *)&ip6->daddr;\n\tinfo = lookup_ip6_remote_endpoint(dst, 0);\n\tif (!info\
+    \ || !info->flag_has_tunnel_ep)\n\t\treturn DROP_NO_TUNNEL_ENDPOINT;\n\n\ttuple.nexthdr\
+    \ = ip6->nexthdr;\n\tret = ipv6_hdrlen_with_fraginfo(ctx, &tuple.nexthdr, &fraginfo);\n\
+    \tif (ret < 0)\n\t\treturn ret;\n\n\tl4_off = ETH_HLEN + ret;\n\n\tret = lb6_extract_tuple(ctx,\
+    \ ip6, fraginfo, l4_off, &tuple);\n\tif (IS_ERR(ret))\n\t\treturn ret;\n\n\tsrc_port\
+    \ = tunnel_gen_src_port_v6(&tuple);\n\n\t/* See encap_geneve_dsr_opt4(): */\n\n\
+    // CONTEXT: nodeport_rev_dnat_ipv6(struct __ctx_buff *ctx, enum ct_dir dir,\n\t\
+    fraginfo_t fraginfo;\n\tint ifindex = 0;\n\t__u32 monitor = 0;\n\n\tif (!revalidate_data(ctx,\
+    \ &data, &data_end, &ip6))\n\t\treturn DROP_INVALID;\n\n#if !defined(IS_BPF_LXC)\
+    \ && defined(ENABLE_NAT_46X64_GATEWAY)\n\tif (nat46x64_cb_route(ctx))\n\t\tgoto\
+    \ fib_lookup;\n#endif\n\n\ttuple.nexthdr = ip6->nexthdr;\n\tret = ipv6_hdrlen_with_fraginfo(ctx,\
+    \ &tuple.nexthdr, &fraginfo);\n\tif (ret < 0)\n\t\treturn ret;\n\n\tl4_off = ETH_HLEN\
+    \ + ret;\n\n\tret = lb6_extract_tuple(ctx, ip6, fraginfo, l4_off, &tuple);\n\t\
+    if (ret < 0) {\n\t\tif (ret == DROP_UNSUPP_SERVICE_PROTO || ret == DROP_UNKNOWN_L4)\n\
+    \t\t\tgoto out;\n\t\treturn ret;\n\t}\n\n\n// CONTEXT: int tail_nodeport_nat_egress_ipv6(struct\
+    \ __ctx_buff *ctx)\n\tstruct remote_endpoint_info *info;\n\tunion v6addr *dst;\n\
+    #endif\n\n\tif (nat_46x64)\n\t\tbuild_v4_in_v6(&target.addr, IPV4_DIRECT_ROUTING);\n\
+    \n\tif (!revalidate_data(ctx, &data, &data_end, &ip6)) {\n\t\tret = DROP_INVALID;\n\
+    \t\tgoto drop_err;\n\t}\n\n\ttuple.nexthdr = ip6->nexthdr;\n\tret = ipv6_hdrlen_with_fraginfo(ctx,\
+    \ &tuple.nexthdr, &fraginfo);\n\tif (ret < 0)\n\t\treturn ret;\n\n\tl4_off = ETH_HLEN\
+    \ + ret;\n\n#ifdef TUNNEL_MODE\n\tdst = (union v6addr *)&ip6->daddr;\n\tinfo =\
+    \ lookup_ip6_remote_endpoint(dst, 0);\n\tif (info && info->flag_has_tunnel_ep\
+    \ && !info->flag_skip_tunnel)\n\t\ttarget.addr = CONFIG(router_ipv6);\n#endif\n\
+    \n\n// CONTEXT: static __always_inline int nodeport_lb6(struct __ctx_buff *ctx,\n\
+    \t\t\t\t\t__s8 *ext_err,\n\t\t\t\t\tbool __maybe_unused *dsr)\n{\n\tfraginfo_t\
+    \ fraginfo;\n\tbool is_svc_proto __maybe_unused = true;\n\tint ret, l3_off = ETH_HLEN,\
+    \ l4_off;\n\tstruct ipv6_ct_tuple tuple __align_stack_8 = {};\n\tstruct lb6_service\
+    \ *svc;\n\tstruct lb6_key key = {};\n\n\tcilium_capture_in(ctx);\n\n\ttuple.nexthdr\
+    \ = ip6->nexthdr;\n\tret = ipv6_hdrlen_with_fraginfo(ctx, &tuple.nexthdr, &fraginfo);\n\
+    \tif (ret < 0)\n\t\treturn ret;\n\n\tl4_off = ETH_HLEN + ret;\n\n\tret = lb6_extract_tuple(ctx,\
+    \ ip6, fraginfo, l4_off, &tuple);\n\tif (IS_ERR(ret)) {\n\t\tif (ret == DROP_UNSUPP_SERVICE_PROTO)\
+    \ {\n\t\t\tis_svc_proto = false;\n\t\t\tgoto skip_service_lookup;\n\t\t}\n\t\t\
+    if (ret == DROP_UNKNOWN_L4) {\n\n// FILE: bpf/lib/nodeport_egress.h\n// CONTEXT:\
+    \ static __always_inline int nodeport_snat_fwd_ipv6(struct __ctx_buff *ctx,\n\t\
+    \t.min_port = NODEPORT_PORT_MIN_NAT,\n\t\t.max_port = NODEPORT_PORT_MAX_NAT,\n\
+    \t};\n\tstruct ipv6_ct_tuple tuple = {};\n\tint hdrlen, l4_off, ret;\n\tvoid *data,\
+    \ *data_end;\n\tstruct ipv6hdr *ip6;\n\tfraginfo_t fraginfo;\n\n\tif (!revalidate_data(ctx,\
+    \ &data, &data_end, &ip6))\n\t\treturn DROP_INVALID;\n\n\ttuple.nexthdr = ip6->nexthdr;\n\
+    \thdrlen = ipv6_hdrlen_with_fraginfo(ctx, &tuple.nexthdr, &fraginfo);\n\tif (hdrlen\
+    \ < 0)\n\t\treturn hdrlen;\n\n\tsnat_v6_init_tuple(ip6, NAT_DIR_EGRESS, &tuple);\n\
+    \tl4_off = ETH_HLEN + hdrlen;\n\n\tif (lb_is_svc_proto(tuple.nexthdr) &&\n\t \
+    \   nodeport_has_nat_conflict_ipv6(ip6, &target))\n\t\tgoto apply_snat;\n\n\t\
+    ret = snat_v6_needs_masquerade(ctx, &tuple, ip6, fraginfo, l4_off, &target);\n\
+    \tif (IS_ERR(ret))\n\n// CONTEXT: nodeport_rev_dnat_fwd_ipv6(struct __ctx_buff\
+    \ *ctx, bool *snat_done,\n\tstruct bpf_fib_lookup_padded fib_params __maybe_unused\
+    \ = {};\n\tstruct lb6_reverse_nat *nat_info;\n\tstruct ipv6_ct_tuple tuple __align_stack_8\
+    \ = {};\n\tvoid *data, *data_end;\n\tfraginfo_t fraginfo;\n\tstruct ipv6hdr *ip6;\n\
+    \t__u32 monitor = 0;\n\tint ret, l4_off;\n\n\tif (!revalidate_data(ctx, &data,\
+    \ &data_end, &ip6))\n\t\treturn DROP_INVALID;\n\n\ttuple.nexthdr = ip6->nexthdr;\n\
+    \tret = ipv6_hdrlen_with_fraginfo(ctx, &tuple.nexthdr, &fraginfo);\n\tif (ret\
+    \ < 0)\n\t\treturn ret;\n\n\tl4_off = ETH_HLEN + ret;\n\n\tret = lb6_extract_tuple(ctx,\
+    \ ip6, fraginfo, l4_off, &tuple);\n\tif (ret < 0) {\n\t\tif (ret == DROP_UNSUPP_SERVICE_PROTO\
+    \ || ret == DROP_UNKNOWN_L4)\n\t\t\treturn CTX_ACT_OK;\n\t\treturn ret;\n\t}\n\
+    \n// FILE: bpf/tests/ipfrag.c\n// CONTEXT: int test_ipfrag_helpers_ipv6_nofrag_pktgen(struct\
+    \ __ctx_buff *ctx)\n\n\tpktgen__finish(&builder);\n\n\treturn 0;\n}\n\nCHECK(\"\
+    tc\", \"ipfrag_helpers_ipv6_nofrag\")\nint test_ipfrag_helpers_ipv6_nofrag_check(struct\
+    \ __ctx_buff *ctx __maybe_unused)\n{\n\tvoid *data, *data_end;\n\tstruct ethhdr\
+    \ *l2;\n\tstruct ipv6hdr *l3;\n\tfraginfo_t fraginfo, fraginfo2;\n\t__u8 nexthdr;\n\
+    \n\ttest_init();\n\n\tdata = ctx_data(ctx);\n\tdata_end = ctx_data_end(ctx);\n\
+    \n\tl2 = data;\n\tif ((void *)(l2 + 1) > data_end)\n\t\ttest_fatal(\"l2 out of\
+    \ bounds\");\n\n\tl3 = (void *)(l2 + 1);\n\tif ((void *)(l3 + 1) > data_end)\n\
+    \t\ttest_fatal(\"l3 out of bounds\");\n\n\t/* Non-fragmented packet */\n\tfraginfo\
+    \ = ipv6_get_fraginfo(ctx, l3);\n\tif (fraginfo < 0)\n\t\ttest_fatal(\"ipv6_get_fraginfo\
+    \ failed\");\n\tassert(!ipfrag_is_fragment(fraginfo));\n\tassert(ipfrag_has_l4_header(fraginfo));\n\
+    \n\t/* ipv6_hdrlen_with_fraginfo should return the same fraginfo. */\n\tnexthdr\
+    \ = l3->nexthdr;\n\tif (ipv6_hdrlen_with_fraginfo(ctx, &nexthdr, &fraginfo2) <\
+    \ 0)\n\t\ttest_fatal(\"ipv6_hdrlen_with_fraginfo failed\");\n\tassert(fraginfo\
+    \ == fraginfo2);\n\n\ttest_finish();\n}\n\nPKTGEN(\"tc\", \"ipfrag_helpers_ipv6\"\
+    )\nint test_ipfrag_helpers_ipv6_pktgen(struct __ctx_buff *ctx)\n{\n\tstruct pktgen\
+    \ builder;\n\tstruct ethhdr *l2;\n\tstruct ipv6hdr *l3;\n\tstruct ipv6_frag_hdr\
+    \ *fraghdr;\n\tstruct udphdr *l4;\n\tvoid *data;\n\n// CONTEXT: int test_ipfrag_helpers_ipv6_pktgen(struct\
+    \ __ctx_buff *ctx)\n\tpktgen__finish(&builder);\n\n\treturn 0;\n}\n\nCHECK(\"\
+    tc\", \"ipfrag_helpers_ipv6\")\nint test_ipfrag_helpers_ipv6_check(struct __ctx_buff\
+    \ *ctx __maybe_unused)\n{\n\tvoid *data, *data_end;\n\tstruct ethhdr *l2;\n\t\
+    struct ipv6hdr *l3;\n\tstruct ipv6_frag_hdr *fraghdr;\n\tfraginfo_t fraginfo,\
+    \ fraginfo2;\n\t__u8 nexthdr;\n\n\ttest_init();\n\n\tdata = ctx_data(ctx);\n\t\
+    data_end = ctx_data_end(ctx);\n\n\tl2 = data;\n\tif ((void *)(l2 + 1) > data_end)\n\
+    \t\ttest_fatal(\"l2 out of bounds\");\n\n\tl3 = (void *)(l2 + 1);\n\tif ((void\
+    \ *)(l3 + 1) > data_end)\n\n// CONTEXT: int test_ipfrag_helpers_ipv6_check(struct\
+    \ __ctx_buff *ctx __maybe_unused)\n\tif ((void *)(fraghdr + 1) > data_end)\n\t\
+    \ttest_fatal(\"fraghdr out of bounds\");\n\n\t/* First fragment */\n\tfraginfo\
+    \ = ipv6_get_fraginfo(ctx, l3);\n\tif (fraginfo < 0)\n\t\ttest_fatal(\"ipv6_get_fraginfo\
+    \ failed\");\n\tassert(ipfrag_is_fragment(fraginfo));\n\tassert(ipfrag_has_l4_header(fraginfo));\n\
+    \tassert(ipfrag_get_protocol(fraginfo) == IPPROTO_UDP);\n\tassert(ipfrag_get_id(fraginfo)\
+    \ == (__be32)(0x12345678));\n\n\t/* ipv6_hdrlen_with_fraginfo should return the\
+    \ same fraginfo. */\n\tnexthdr = l3->nexthdr;\n\tif (ipv6_hdrlen_with_fraginfo(ctx,\
+    \ &nexthdr, &fraginfo2) < 0)\n\t\ttest_fatal(\"ipv6_hdrlen_with_fraginfo failed\"\
+    );\n\tassert(fraginfo == fraginfo2);\n\n\t/* Non-first fragment */\n\tfraghdr->frag_off\
+    \ = bpf_htons((0x100 << 3) | 1);\n\tfraginfo = ipv6_get_fraginfo(ctx, l3);\n\t\
+    if (fraginfo < 0)\n\t\ttest_fatal(\"ipv6_get_fraginfo failed\");\n\tassert(ipfrag_is_fragment(fraginfo));\n\
+    \tassert(!ipfrag_has_l4_header(fraginfo));\n\tassert(ipfrag_get_protocol(fraginfo)\
+    \ == IPPROTO_UDP);\n\tassert(ipfrag_get_id(fraginfo) == (__be32)(0x12345678));\n\
+    \n\t/* ipv6_hdrlen_with_fraginfo should return the same fraginfo. */\n\tnexthdr\
+    \ = l3->nexthdr;\n\tif (ipv6_hdrlen_with_fraginfo(ctx, &nexthdr, &fraginfo2) <\
+    \ 0)\n\t\ttest_fatal(\"ipv6_hdrlen_with_fraginfo failed\");\n\tassert(fraginfo\
+    \ == fraginfo2);\n\n\t/* Last fragment */\n\tfraghdr->frag_off = bpf_htons(0x200\
+    \ << 3);\n\tfraginfo = ipv6_get_fraginfo(ctx, l3);\n\tif (fraginfo < 0)\n\t\t\
+    test_fatal(\"ipv6_get_fraginfo failed\");\n\tassert(ipfrag_is_fragment(fraginfo));\n\
+    \tassert(!ipfrag_has_l4_header(fraginfo));\n\tassert(ipfrag_get_protocol(fraginfo)\
+    \ == IPPROTO_UDP);\n\tassert(ipfrag_get_id(fraginfo) == (__be32)(0x12345678));\n\
+    \n\t/* ipv6_hdrlen_with_fraginfo should return the same fraginfo. */\n\tnexthdr\
+    \ = l3->nexthdr;\n\tif (ipv6_hdrlen_with_fraginfo(ctx, &nexthdr, &fraginfo2) <\
+    \ 0)\n\t\ttest_fatal(\"ipv6_hdrlen_with_fraginfo failed\");\n\tassert(fraginfo\
+    \ == fraginfo2);\n\n\ttest_finish();\n}"
+  diff_summary: "bpf/bpf_lxc.c:\n- Changed inlining annotations so verifier-visible\
+    \ state stays in a form older kernels accept.\n- Affected context: skip_service_lookup:.\n\
+    bpf/lib/conntrack.h:\n- Changed inlining annotations so verifier-visible state\
+    \ stays in a form older kernels accept.\n- Affected context: ct_is_reply ## FAMILY(const\
+    \ void *map,\t\t\t\t\t\t\\.\nbpf/lib/ipv6.h:\n- Changed inlining annotations so\
+    \ verifier-visible state stays in a form older kernels accept.\n- Affected context:\
+    \ static __always_inline int ipv6_skip_exthdr(struct __ctx_buff *ctx, __u8 *nexthd.\n\
+    bpf/lib/nat.h:\n- Changed inlining annotations so verifier-visible state stays\
+    \ in a form older kernels accept.\n- Affected context: snat_v6_needs_masquerade(struct\
+    \ __ctx_buff *ctx __maybe_unused,, snat_v6_nat(struct __ctx_buff *ctx, struct\
+    \ ipv6_ct_tuple *tuple,, snat_v6_rev_nat(struct __ctx_buff *ctx, const struct\
+    \ ipv6_nat_target *target,.\nbpf/lib/nodeport.h:\n- Changed inlining annotations\
+    \ so verifier-visible state stays in a form older kernels accept.\n- Affected\
+    \ context: static __always_inline int encap_geneve_dsr_opt6(struct __ctx_buff\
+    \ *ctx,, nodeport_rev_dnat_ipv6(struct __ctx_buff *ctx, enum ct_dir dir,, int\
+    \ tail_nodeport_nat_egress_ipv6(struct __ctx_buff *ctx).\nbpf/lib/nodeport_egress.h:\n\
+    - Changed inlining annotations so verifier-visible state stays in a form older\
+    \ kernels accept.\n- Affected context: static __always_inline int nodeport_snat_fwd_ipv6(struct\
+    \ __ctx_buff *ctx,, nodeport_rev_dnat_fwd_ipv6(struct __ctx_buff *ctx, bool *snat_done,.\n\
+    bpf/tests/ipfrag.c:\n- Changed inlining annotations so verifier-visible state\
+    \ stays in a form older kernels accept.\n- Affected context: int test_ipfrag_helpers_ipv6_nofrag_pktgen(struct\
+    \ __ctx_buff *ctx), int test_ipfrag_helpers_ipv6_pktgen(struct __ctx_buff *ctx),\
+    \ int test_ipfrag_helpers_ipv6_check(struct __ctx_buff *ctx __maybe_unused).\n\
+    - Commit subject: bpf: Combine ipv6_hdrlen and ipv6_get_fraginfo where possible."

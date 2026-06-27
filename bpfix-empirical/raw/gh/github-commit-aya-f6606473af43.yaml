@@ -1,0 +1,234 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-aya-f6606473af43
+source_kind: github_commit
+source:
+  url: https://github.com/aya-rs/aya/commit/f6606473af43090190337dd42f593df2f907ac0a
+  title: 'aya-log: properly hint log level to verifier'
+  repository: https://github.com/aya-rs/aya
+  commit: f6606473af43090190337dd42f593df2f907ac0a
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-aya-f6606473af43.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: environment_required
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Fix changes Aya log-level storage from mutable static to immutable rodata
+    and adds Rust integration coverage. The raw record has no verifier log; faithful
+    reproduction requires Aya/Rust global-data code generation and loader patching,
+    not a standalone C replay.
+raw:
+  case_id: github-commit-aya-f6606473af43
+  source: github_commits
+  repository: https://github.com/aya-rs/aya
+  commit_hash: f6606473af43090190337dd42f593df2f907ac0a
+  commit_message: 'aya-log: properly hint log level to verifier'
+  commit_date: '2025-09-05'
+  fix_type: refactor
+  buggy_code: |-
+    // FILE: ebpf/aya-log-ebpf/src/lib.rs
+    // CONTEXT: pub mod macro_support {
+
+        // This cfg_attr prevents compilation failures on macOS where the generated section name doesn't
+        // meet mach-o's requirements. We wouldn't ordinarily build this crate for macOS, but we do so
+        // because the integration-test crate depends on this crate transitively. See comment in
+        // test/integration-test/Cargo.toml.
+        #[cfg_attr(target_arch = "bpf", map)]
+        pub static AYA_LOGS: RingBuf = RingBuf::with_byte_size((LOG_BUF_CAPACITY as u32) << 4, 0);
+
+        /// Global log level controlling which log statements are active.
+        ///
+        /// Userspace may patch this symbol before load via `EbpfLoader::set_global`.
+        #[unsafe(no_mangle)]
+        pub static mut AYA_LOG_LEVEL: u8 = 0xff;
+
+        /// Returns `true` if the provided level is enabled according to [`AYA_LOG_LEVEL`].
+        #[inline(always)]
+        pub fn level_enabled(level: Level) -> bool {
+            #[expect(static_mut_refs)]
+            let current_level = unsafe { core::ptr::read_volatile(&AYA_LOG_LEVEL) };
+            level as u8 <= current_level
+        }
+    }
+
+    // FILE: test/integration-ebpf/src/log.rs
+    #![no_std]
+    #![no_main]
+
+    use core::net::{IpAddr, Ipv4Addr, Ipv6Addr};
+
+    use aya_ebpf::{macros::uprobe, programs::ProbeContext};
+    use aya_log_ebpf::{debug, error, info, trace, warn};
+    #[cfg(not(test))]
+    extern crate ebpf_panic;
+
+    #[uprobe]
+    pub fn test_log(ctx: ProbeContext) {
+        debug!(&ctx, "Hello from eBPF!");
+        error!(
+            &ctx,
+            "{}, {}, {}, {:x}",
+
+    // CONTEXT: pub fn test_log(ctx: ProbeContext) {
+
+            impl NoCopy {
+                fn consume(self) -> u64 {
+                    0xdeadbeef
+                }
+            }
+
+            let no_copy = NoCopy {};
+
+            debug!(&ctx, "{:x}", no_copy.consume());
+        }
+    }
+
+    // FILE: test/integration-test/src/tests/log.rs
+    // CONTEXT: fn log_level_only_error_warn() {
+
+        assert_eq!(
+            records.next(),
+            Some(&CapturedLog {
+                body: "hex lc: 2f, hex uc: 2F".into(),
+                level: Level::Warn,
+                target: "log".into(),
+            })
+        );
+
+        assert_eq!(records.next(), None);
+    }
+  fixed_code: |-
+    // FILE: ebpf/aya-log-ebpf/src/lib.rs
+    // CONTEXT: pub mod macro_support {
+
+        // This cfg_attr prevents compilation failures on macOS where the generated section name doesn't
+        // meet mach-o's requirements. We wouldn't ordinarily build this crate for macOS, but we do so
+        // because the integration-test crate depends on this crate transitively. See comment in
+        // test/integration-test/Cargo.toml.
+        #[cfg_attr(target_arch = "bpf", map)]
+        pub static AYA_LOGS: RingBuf = RingBuf::with_byte_size((LOG_BUF_CAPACITY as u32) << 4, 0);
+
+        /// Global log level controlling which log statements are active.
+        ///
+        /// Userspace may patch this symbol before load via `EbpfLoader::set_global`.
+        #[unsafe(no_mangle)]
+        pub static AYA_LOG_LEVEL: u8 = 0xff;
+
+        /// Returns `true` if the provided level is enabled according to [`AYA_LOG_LEVEL`].
+        #[inline(always)]
+        pub fn level_enabled(level: Level) -> bool {
+            let current_level = unsafe { core::ptr::read_volatile(&AYA_LOG_LEVEL) };
+            level as u8 <= current_level
+        }
+    }
+
+    // FILE: test/integration-ebpf/src/log.rs
+    #![no_std]
+    #![no_main]
+
+    use core::{
+        hint::black_box,
+        net::{IpAddr, Ipv4Addr, Ipv6Addr},
+    };
+
+    use aya_ebpf::{macros::uprobe, programs::ProbeContext};
+    use aya_log_ebpf::{debug, error, info, trace, warn};
+    #[cfg(not(test))]
+    extern crate ebpf_panic;
+
+    #[uprobe]
+    pub fn test_log(ctx: ProbeContext) {
+        debug!(&ctx, "Hello from eBPF!");
+        error!(
+            &ctx,
+            "{}, {}, {}, {:x}",
+
+    // CONTEXT: pub fn test_log(ctx: ProbeContext) {
+
+            impl NoCopy {
+                fn consume(self) -> u64 {
+                    0xdeadbeef
+                }
+            }
+
+            let no_copy = NoCopy {};
+
+            debug!(&ctx, "{:x}", no_copy.consume());
+        }
+    }
+
+    #[uprobe]
+    pub fn test_log_omission(ctx: ProbeContext) {
+        debug!(
+            &ctx,
+            "This is the last u32: {}",
+            black_box(0u32..).last().unwrap_or(u32::MAX)
+        );
+    }
+
+    // FILE: test/integration-test/src/tests/log.rs
+    // CONTEXT: fn log_level_only_error_warn() {
+
+        assert_eq!(
+            records.next(),
+            Some(&CapturedLog {
+                body: "hex lc: 2f, hex uc: 2F".into(),
+                level: Level::Warn,
+                target: "log".into(),
+            })
+        );
+
+        assert_eq!(records.next(), None);
+    }
+
+    #[test_log::test]
+    fn log_level_prevents_verif_fail() {
+        let level = aya_log::Level::Warn as u8;
+        let mut bpf = EbpfLoader::new()
+            .set_global(aya_log::LEVEL, &level, true /* must_exist */)
+            .load(crate::LOG)
+            .unwrap();
+
+        let mut captured_logs = Vec::new();
+        let logger = TestingLogger {
+            log: Mutex::new(|record: &Record| {
+                captured_logs.push(CapturedLog {
+                    body: format!("{}", record.args()).into(),
+                    level: record.level(),
+                    target: record.target().to_string().into(),
+                });
+            }),
+        };
+        let mut logger = EbpfLogger::init_with_logger(&mut bpf, &logger).unwrap();
+
+        let prog: &mut UProbe = bpf
+            .program_mut("test_log_omission")
+            .unwrap()
+            .try_into()
+            .unwrap();
+        prog.load().unwrap();
+        prog.attach("trigger_ebpf_program", "/proc/self/exe", None, None)
+            .unwrap();
+
+        trigger_ebpf_program();
+        logger.flush();
+
+        let mut records = captured_logs.iter();
+
+        assert_eq!(records.next(), None);
+    }
+  diff_summary: |-
+    ebpf/aya-log-ebpf/src/lib.rs:
+    - Made `AYA_LOG_LEVEL` immutable so LLVM emits it in read-only data.
+    - Kept the volatile read path but removed the mutable-static requirement.
+    test/integration-ebpf/src/log.rs, test/integration-test/src/tests/log.rs:
+    - Added a regression program and test proving disabled log levels no longer trigger verifier rejection.

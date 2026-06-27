@@ -1,0 +1,129 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-bcc-f2006eaa5901
+source_kind: github_commit
+source:
+  url: https://github.com/iovisor/bcc/commit/f2006eaa5901d6ccf51d24b18c644f2fb1d41757
+  title: 'libbpf-tools: fix cpufreq.bpf.c and update cpufreq for libbpf 1.0'
+  repository: https://github.com/iovisor/bcc
+  commit: f2006eaa5901d6ccf51d24b18c644f2fb1d41757
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-bcc-f2006eaa5901.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: attempted_accepted
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: A standalone reconstruction of the cpufreq global-array indexing shape built
+    and loaded locally without a verifier terminal error on kernel 6.15.11.
+  verifier_status: null
+  captured_error: null
+  verifier_error_match: null
+raw:
+  case_id: github-commit-bcc-f2006eaa5901
+  source: github_commits
+  repository: https://github.com/iovisor/bcc
+  commit_hash: f2006eaa5901d6ccf51d24b18c644f2fb1d41757
+  commit_message: 'libbpf-tools: fix cpufreq.bpf.c and update cpufreq for libbpf 1.0'
+  commit_date: '2021-12-17'
+  fix_type: volatile_hack
+  buggy_code: "// FILE: libbpf-tools/cpufreq.bpf.c\n\n__u32 freqs_mhz[MAX_CPU_NR]\
+    \ = {};\nstatic struct hist zero;\nstruct hist syswide = {};\n\nstruct {\n\t__uint(type,\
+    \ BPF_MAP_TYPE_HASH);\n\t__uint(max_entries, MAX_ENTRIES);\n\t__type(key, struct\
+    \ hkey);\n\t__type(value, struct hist);\n} hists SEC(\".maps\");\n\nSEC(\"tp_btf/cpu_frequency\"\
+    )\nint BPF_PROG(cpu_frequency, unsigned int state, unsigned int cpu_id)\n{\n\t\
+    if (cpu_id >= MAX_CPU_NR)\n\t\treturn 0;\n\tfreqs_mhz[cpu_id] = state / 1000;\n\
+    \treturn 0;\n}\n\nSEC(\"perf_event\")\nint do_sample(struct bpf_perf_event_data\
+    \ *ctx)\n{\n\tu32 freq_mhz, pid = bpf_get_current_pid_tgid();\n\tu64 slot, cpu\
+    \ = bpf_get_smp_processor_id();\n\tstruct hist *hist;\n\tstruct hkey hkey;\n\n\
+    \tif (cpu >= MAX_CPU_NR)\n\t\treturn 0;\n\tfreq_mhz = freqs_mhz[cpu];\n\tif (!freq_mhz)\n\
+    \t\treturn 0;\n\t/*\n\t * The range of the linear histogram is 0 ~ 5000mhz,\n\t\
+    \ * and the step size is 200.\n\t */\n\tslot = freq_mhz / HIST_STEP_SIZE;\n\t\
+    if (slot >= MAX_SLOTS)\n\t\tslot = MAX_SLOTS - 1;\n\t__sync_fetch_and_add(&syswide.slots[slot],\
+    \ 1);\n\tif (!pid)\n\n// FILE: libbpf-tools/cpufreq.c\n// CONTEXT: static int\
+    \ open_and_attach_perf_event(int freq, struct bpf_program *prog,\n\n\tfor (i =\
+    \ 0; i < nr_cpus; i++) {\n\t\tfd = syscall(__NR_perf_event_open, &attr, -1, i,\
+    \ -1, 0);\n\t\tif (fd < 0) {\n\t\t\t/* Ignore CPU that is offline */\n\t\t\tif\
+    \ (errno == ENODEV)\n\t\t\t\tcontinue;\n\t\t\tfprintf(stderr, \"failed to init\
+    \ perf sampling: %s\\n\",\n\t\t\t\tstrerror(errno));\n\t\t\treturn -1;\n\t\t}\n\
+    \t\tlinks[i] = bpf_program__attach_perf_event(prog, fd);\n\t\tif (libbpf_get_error(links[i]))\
+    \ {\n\t\t\tfprintf(stderr, \"failed to attach perf event on cpu: \"\n\t\t\t\t\"\
+    %d\\n\", i);\n\t\t\tlinks[i] = NULL;\n\t\t\tclose(fd);\n\t\t\treturn -1;\n\t\t\
+    }\n\t}\n\n\treturn 0;\n}\n\nint libbpf_print_fn(enum libbpf_print_level level,\n\
+    \t\t    const char *format, va_list args)\n{\n\tif (level == LIBBPF_DEBUG && !env.verbose)\n\
+    \n// CONTEXT: static void print_linear_hists(struct bpf_map *hists,\n\t\tif (err\
+    \ < 0) {\n\t\t\tfprintf(stderr, \"failed to lookup hist: %d\\n\", err);\n\t\t\t\
+    return;\n\t\t}\n\t\tprint_linear_hist(hist.slots, MAX_SLOTS, 0, HIST_STEP_SIZE,\n\
+    \t\t\t\tnext_key.comm);\n\t\tprintf(\"\\n\");\n\t\tlookup_key = next_key;\n\t\
+    }\n\n\tprintf(\"\\n\");\n\tprint_linear_hist(bss->syswide.slots, MAX_SLOTS, 0,\
+    \ HIST_STEP_SIZE,\n\t\t\t\"syswide\");\n}\n\nint main(int argc, char **argv)\n\
+    {\n\tstatic const struct argp argp = {\n\t\t.options = opts,\n\t\t.parser = parse_arg,\n\
+    \t\t.doc = argp_program_doc,\n\t};\n\tstruct bpf_link *links[MAX_CPU_NR] = {};\n\
+    \tstruct cpufreq_bpf *obj;\n\tint err, i;\n\n\terr = argp_parse(&argp, argc, argv,\
+    \ 0, NULL, NULL);\n\tif (err)\n\t\treturn err;\n\n\tlibbpf_set_print(libbpf_print_fn);\n\
+    \n\terr = bump_memlock_rlimit();\n\tif (err) {\n\t\tfprintf(stderr, \"failed to\
+    \ increase rlimit: %d\\n\", err);\n\t\treturn 1;\n\t}\n\n\tnr_cpus = libbpf_num_possible_cpus();\n\
+    \tif (nr_cpus < 0) {\n\t\tfprintf(stderr, \"failed to get # of possible cpus:\
+    \ '%s'!\\n\",\n\t\t\tstrerror(-nr_cpus));\n\t\treturn 1;\n\t}\n\tif (nr_cpus >\
+    \ MAX_CPU_NR) {\n\t\tfprintf(stderr, \"the number of cpu cores is too big, please\
+    \ \"\n\t\t\t\"increase MAX_CPU_NR's value and recompile\");\n\t\treturn 1;\n\t\
+    }"
+  fixed_code: "// FILE: libbpf-tools/cpufreq.bpf.c\n\n__u32 freqs_mhz[MAX_CPU_NR]\
+    \ = {};\nstatic struct hist zero;\nstruct hist syswide = {};\n\nstruct {\n\t__uint(type,\
+    \ BPF_MAP_TYPE_HASH);\n\t__uint(max_entries, MAX_ENTRIES);\n\t__type(key, struct\
+    \ hkey);\n\t__type(value, struct hist);\n} hists SEC(\".maps\");\n\n#define clamp_umax(VAR,\
+    \ UMAX)\t\t\t\t\t\t\\\n\tasm volatile (\t\t\t\t\t\t\t\\\n\t\t\"if %0 <= %[max]\
+    \ goto +1\\n\"\t\t\t\t\\\n\t\t\"%0 = %[max]\\n\"\t\t\t\t\t\t\\\n\t\t: \"+r\"(VAR)\t\
+    \t\t\t\t\t\\\n\t\t: [max]\"i\"(UMAX)\t\t\t\t\t\\\n\t)\n\nSEC(\"tp_btf/cpu_frequency\"\
+    )\nint BPF_PROG(cpu_frequency, unsigned int state, unsigned int cpu_id)\n{\n\t\
+    if (cpu_id >= MAX_CPU_NR)\n\t\treturn 0;\n\n\tclamp_umax(cpu_id, MAX_CPU_NR -\
+    \ 1);\n\tfreqs_mhz[cpu_id] = state / 1000;\n\treturn 0;\n}\n\nSEC(\"perf_event\"\
+    )\nint do_sample(struct bpf_perf_event_data *ctx)\n{\n\tu32 freq_mhz, pid = bpf_get_current_pid_tgid();\n\
+    \tu64 slot, cpu = bpf_get_smp_processor_id();\n\tstruct hist *hist;\n\tstruct\
+    \ hkey hkey;\n\n\tif (cpu >= MAX_CPU_NR)\n\t\treturn 0;\n\tclamp_umax(cpu, MAX_CPU_NR\
+    \ - 1);\n\tfreq_mhz = freqs_mhz[cpu];\n\tif (!freq_mhz)\n\t\treturn 0;\n\t/*\n\
+    \t * The range of the linear histogram is 0 ~ 5000mhz,\n\t * and the step size\
+    \ is 200.\n\t */\n\tslot = freq_mhz / HIST_STEP_SIZE;\n\tif (slot >= MAX_SLOTS)\n\
+    \t\tslot = MAX_SLOTS - 1;\n\t__sync_fetch_and_add(&syswide.slots[slot], 1);\n\t\
+    if (!pid)\n\n// FILE: libbpf-tools/cpufreq.c\n// CONTEXT: static int open_and_attach_perf_event(int\
+    \ freq, struct bpf_program *prog,\n\n\tfor (i = 0; i < nr_cpus; i++) {\n\t\tfd\
+    \ = syscall(__NR_perf_event_open, &attr, -1, i, -1, 0);\n\t\tif (fd < 0) {\n\t\
+    \t\t/* Ignore CPU that is offline */\n\t\t\tif (errno == ENODEV)\n\t\t\t\tcontinue;\n\
+    \t\t\tfprintf(stderr, \"failed to init perf sampling: %s\\n\",\n\t\t\t\tstrerror(errno));\n\
+    \t\t\treturn -1;\n\t\t}\n\t\tlinks[i] = bpf_program__attach_perf_event(prog, fd);\n\
+    \t\tif (!links[i]) {\n\t\t\tfprintf(stderr, \"failed to attach perf event on cpu:\
+    \ %d\\n\", i);\n\t\t\tclose(fd);\n\t\t\treturn -1;\n\t\t}\n\t}\n\n\treturn 0;\n\
+    }\n\nint libbpf_print_fn(enum libbpf_print_level level,\n\t\t    const char *format,\
+    \ va_list args)\n{\n\tif (level == LIBBPF_DEBUG && !env.verbose)\n\n// CONTEXT:\
+    \ static void print_linear_hists(struct bpf_map *hists,\n\t\tif (err < 0) {\n\t\
+    \t\tfprintf(stderr, \"failed to lookup hist: %d\\n\", err);\n\t\t\treturn;\n\t\
+    \t}\n\t\tprint_linear_hist(hist.slots, MAX_SLOTS, 0, HIST_STEP_SIZE,\n\t\t\t\t\
+    next_key.comm);\n\t\tprintf(\"\\n\");\n\t\tlookup_key = next_key;\n\t}\n\n\tprintf(\"\
+    \\n\");\n\tprint_linear_hist(bss->syswide.slots, MAX_SLOTS, 0, HIST_STEP_SIZE,\n\
+    \t\t\t  \"syswide\");\n}\n\nint main(int argc, char **argv)\n{\n\tstatic const\
+    \ struct argp argp = {\n\t\t.options = opts,\n\t\t.parser = parse_arg,\n\t\t.doc\
+    \ = argp_program_doc,\n\t};\n\tstruct bpf_link *links[MAX_CPU_NR] = {};\n\tstruct\
+    \ cpufreq_bpf *obj;\n\tint err, i;\n\n\terr = argp_parse(&argp, argc, argv, 0,\
+    \ NULL, NULL);\n\tif (err)\n\t\treturn err;\n\n\tlibbpf_set_strict_mode(LIBBPF_STRICT_ALL);\n\
+    \tlibbpf_set_print(libbpf_print_fn);\n\n\tnr_cpus = libbpf_num_possible_cpus();\n\
+    \tif (nr_cpus < 0) {\n\t\tfprintf(stderr, \"failed to get # of possible cpus:\
+    \ '%s'!\\n\",\n\t\t\tstrerror(-nr_cpus));\n\t\treturn 1;\n\t}\n\tif (nr_cpus >\
+    \ MAX_CPU_NR) {\n\t\tfprintf(stderr, \"the number of cpu cores is too big, please\
+    \ \"\n\t\t\t\"increase MAX_CPU_NR's value and recompile\");\n\t\treturn 1;\n\t\
+    }"
+  diff_summary: |-
+    libbpf-tools/cpufreq.bpf.c:
+    - Added or changed a volatile qualifier to force verifier-friendly code generation.
+    - Affected context: the touched section.
+    libbpf-tools/cpufreq.c:
+    - Added or changed a volatile qualifier to force verifier-friendly code generation.
+    - Affected context: static int open_and_attach_perf_event(int freq, struct bpf_program *prog,, static void print_linear_hists(struct bpf_map *hists,.
+    - Commit subject: libbpf-tools: fix cpufreq.bpf.c and update cpufreq for libbpf 1.0.

@@ -1,0 +1,75 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-4856e3829193
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/4856e3829193351712c1fc4958639bc34bbdf724
+  title: 'ipcache: Stop populating node IDs in ipcache'
+  repository: https://github.com/cilium/cilium
+  commit: 4856e3829193351712c1fc4958639bc34bbdf724
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-4856e3829193.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Removes/stops using node IDs in ipcache-related map values. This is datapath
+    data-layout/runtime behavior, not an isolated verifier rejection.
+raw:
+  case_id: github-commit-cilium-4856e3829193
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: 4856e3829193351712c1fc4958639bc34bbdf724
+  commit_message: 'ipcache: Stop populating node IDs in ipcache'
+  commit_date: '2023-07-24'
+  fix_type: loop_rewrite
+  buggy_code: "// FILE: bpf/lib/common.h\n// CONTEXT: struct tunnel_key {\nstruct\
+    \ tunnel_value {\n\tunion {\n\t\tstruct {\n\t\t\t__u32\t\tip4;\n\t\t\t__u32\t\t\
+    pad1;\n\t\t\t__u32\t\tpad2;\n\t\t\t__u32\t\tpad3;\n\t\t};\n\t\tunion v6addr\t\
+    ip6;\n\t};\n\t__u8 family;\n\t__u8 key;\n\t__u16 node_id;\n} __packed;\n\n#define\
+    \ ENDPOINT_F_HOST\t\t1 /* Special endpoint representing local host */\n\n/* Value\
+    \ of endpoint map */\nstruct endpoint_info {\n\t__u32\t\tifindex;\n\t__u16\t\t\
+    unused; /* used to be sec_label, no longer used */\n\t__u16\t\tlxc_id;\n\t__u32\t\
+    \tflags;\n\tmac_t\t\tmac;\n\tmac_t\t\tnode_mac;\n\n// CONTEXT: struct edt_id {\n\
+    };\n\nstruct edt_info {\n\t__u64\t\tbps;\n\t__u64\t\tt_last;\n\t__u64\t\tt_horizon_drop;\n\
+    \t__u64\t\tpad[4];\n};\n\nstruct remote_endpoint_info {\n\t__u32\t\tsec_identity;\n\
+    \t__u32\t\ttunnel_endpoint;\n\t__u16\t\tnode_id;\n\t__u8\t\tkey;\n};\n\n/*\n *\
+    \ Longest-prefix match map lookup only matches the number of bits from the\n *\
+    \ beginning of the key stored in the map indicated by the 'lpm_key' field in\n\
+    \ * the same stored map key, not including the 'lpm_key' field itself. Note that\n\
+    \ * the 'lpm_key' value passed in the lookup function argument needs to be a\n\
+    \ * \"full prefix\" (POLICY_FULL_PREFIX defined below).\n *\n * Since we need\
+    \ to be able to wildcard 'sec_label' independently on 'protocol'\n * and 'dport'\
+    \ fields, we'll need to do that explicitly with a separate lookup"
+  fixed_code: "// FILE: bpf/lib/common.h\n// CONTEXT: struct tunnel_key {\nstruct\
+    \ tunnel_value {\n\tunion {\n\t\tstruct {\n\t\t\t__u32\t\tip4;\n\t\t\t__u32\t\t\
+    pad1;\n\t\t\t__u32\t\tpad2;\n\t\t\t__u32\t\tpad3;\n\t\t};\n\t\tunion v6addr\t\
+    ip6;\n\t};\n\t__u8 family;\n\t__u8 key;\n\t__u16 pad;\n} __packed;\n\n#define\
+    \ ENDPOINT_F_HOST\t\t1 /* Special endpoint representing local host */\n\n/* Value\
+    \ of endpoint map */\nstruct endpoint_info {\n\t__u32\t\tifindex;\n\t__u16\t\t\
+    unused; /* used to be sec_label, no longer used */\n\t__u16\t\tlxc_id;\n\t__u32\t\
+    \tflags;\n\tmac_t\t\tmac;\n\tmac_t\t\tnode_mac;\n\n// CONTEXT: struct edt_id {\n\
+    };\n\nstruct edt_info {\n\t__u64\t\tbps;\n\t__u64\t\tt_last;\n\t__u64\t\tt_horizon_drop;\n\
+    \t__u64\t\tpad[4];\n};\n\nstruct remote_endpoint_info {\n\t__u32\t\tsec_identity;\n\
+    \t__u32\t\ttunnel_endpoint;\n\t__u16\t\tpad;\n\t__u8\t\tkey;\n};\n\n/*\n * Longest-prefix\
+    \ match map lookup only matches the number of bits from the\n * beginning of the\
+    \ key stored in the map indicated by the 'lpm_key' field in\n * the same stored\
+    \ map key, not including the 'lpm_key' field itself. Note that\n * the 'lpm_key'\
+    \ value passed in the lookup function argument needs to be a\n * \"full prefix\"\
+    \ (POLICY_FULL_PREFIX defined below).\n *\n * Since we need to be able to wildcard\
+    \ 'sec_label' independently on 'protocol'\n * and 'dport' fields, we'll need to\
+    \ do that explicitly with a separate lookup"
+  diff_summary: |-
+    bpf/lib/common.h:
+    - Reworked loop or branch structure to reduce verifier complexity and keep the path bounded.
+    - Affected context: struct tunnel_key {, struct edt_id {.
+    - Commit subject: ipcache: Stop populating node IDs in ipcache.

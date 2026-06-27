@@ -1,0 +1,641 @@
+schema_version: bpfix.raw_external/v1
+raw_id: stackoverflow-77205912
+source_kind: stackoverflow
+source:
+  url: https://stackoverflow.com/questions/77205912/ebpf-tc-failed-calling-bpf-csum-diff-a-second-time
+  title: ebpf tc failed calling bpf_csum_diff a second time
+  repository: null
+  commit: null
+  collected_at: '2026-03-11T16:03:03+00:00'
+collector:
+  original_path: bpfix-empirical/raw/so/stackoverflow-77205912.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: true
+  verifier_log_block_count: 1
+  source_snippet_count: 0
+  has_buggy_code: false
+  has_fixed_code: false
+  has_fix_description: false
+reproduction:
+  status: replay_valid
+  case_id: stackoverflow-77205912
+  case_path: cases/stackoverflow-77205912
+  artifact_path: cases/stackoverflow-77205912
+  reason: admitted_to_bpfix_bench_cases
+raw:
+  case_id: stackoverflow-77205912
+  source: stackoverflow
+  collected_at: '2026-03-11T16:03:03+00:00'
+  question:
+    question_id: 77205912
+    title: ebpf tc failed calling bpf_csum_diff a second time
+    url: https://stackoverflow.com/questions/77205912/ebpf-tc-failed-calling-bpf-csum-diff-a-second-time
+    tags:
+    - c
+    - linux-kernel
+    - ebpf
+    - bpf
+    score: 1
+    answer_count: 1
+    is_answered: true
+  original_verifier_log:
+    blocks:
+    - |-
+      libbpf: -- BEGIN DUMP LOG ---
+      libbpf:
+      0: R1=ctx(off=0,imm=0) R10=fp0
+      0: (bf) r6 = r1                       ; R1=ctx(off=0,imm=0) R6_w=ctx(off=0,imm=0)
+      1: (b7) r1 = 139192586                ; R1_w=139192586
+      2: (63) *(u32 *)(r10 -4) = r1         ; R1_w=139192586 R10=fp0 fp-8=mmmm????
+      3: (b7) r1 = 335587520                ; R1_w=335587520
+      4: (63) *(u32 *)(r10 -8) = r1         ; R1_w=335587520 R10=fp0 fp-8=335587520
+      5: (b7) r0 = 0                        ; R0_w=0
+      6: (61) r1 = *(u32 *)(r6 +80)         ; R1_w=pkt_end(off=0,imm=0) R6_w=ctx(off=0,imm=0)
+      7: (61) r7 = *(u32 *)(r6 +76)         ; R6_w=ctx(off=0,imm=0) R7_w=pkt(off=0,r=0,imm=0)
+      8: (bf) r2 = r7                       ; R2_w=pkt(off=0,r=0,imm=0) R7_w=pkt(off=0,r=0,imm=0)
+      9: (07) r2 += 34                      ; R2_w=pkt(off=34,r=0,imm=0)
+      10: (2d) if r2 > r1 goto pc+68        ; R1_w=pkt_end(off=0,imm=0) R2_w=pkt(off=34,r=34,imm=0)
+      11: (61) r2 = *(u32 *)(r7 +30)        ; R2_w=scalar(umax=4294967295,var_off=(0x0; 0xffffffff)) R7_w=pkt(off=0,r=34,imm=0)
+      12: (55) if r2 != 0x100007f goto pc+66        ; R2_w=16777343
+      13: (71) r2 = *(u8 *)(r7 +23)         ; R2=scalar(umax=255,var_off=(0x0; 0xff)) R7=pkt(off=0,r=34,imm=0)
+      14: (55) if r2 != 0x6 goto pc+64      ; R2=6
+      15: (bf) r2 = r7                      ; R2_w=pkt(off=0,r=34,imm=0) R7=pkt(off=0,r=34,imm=0)
+      16: (07) r2 += 54                     ; R2_w=pkt(off=54,r=34,imm=0)
+      17: (2d) if r2 > r1 goto pc+61        ; R1=pkt_end(off=0,imm=0) R2_w=pkt(off=54,r=54,imm=0)
+      18: (69) r1 = *(u16 *)(r7 +36)        ; R1_w=scalar(umax=65535,var_off=(0x0; 0xffff)) R7=pkt(off=0,r=54,imm= 0)
+      19: (55) if r1 != 0x7823 goto pc+59   ; R1_w=30755
+      20: (bf) r1 = r7                      ; R1_w=pkt(off=0,r=54,imm=0) R7=pkt(off=0,r=54,imm=0)
+      21: (07) r1 += 30                     ; R1_w=pkt(off=30,r=54,imm=0)
+      22: (07) r7 += 26                     ; R7_w=pkt(off=26,r=54,imm=0)
+      23: (bf) r9 = r10                     ; R9_w=fp0 R10=fp0
+      24: (07) r9 += -4                     ; R9_w=fp-4
+      25: (b7) r2 = 4                       ; R2_w=4
+      26: (bf) r3 = r9                      ; R3_w=fp-4 R9_w=fp-4
+      27: (b7) r4 = 4                       ; R4_w=4
+      28: (b7) r5 = 0                       ; R5_w=0
+      29: (85) call bpf_csum_diff#28        ; R0=scalar()
+      30: (bf) r8 = r0                      ; R0=scalar(id=1) R8_w=scalar(id=1)
+      31: (bf) r1 = r6                      ; R1_w=ctx(off=0,imm=0) R6=ctx(off=0,imm=0)
+      32: (b7) r2 = 30                      ; R2_w=30
+      33: (bf) r3 = r9                      ; R3_w=fp-4 R9=fp-4
+      34: (b7) r4 = 4                       ; R4_w=4
+      35: (b7) r5 = 0                       ; R5_w=0
+      36: (85) call bpf_skb_store_bytes#9   ; R0_w=scalar()
+      37: (bf) r1 = r6                      ; R1_w=ctx(off=0,imm=0) R6=ctx(off=0,imm=0)
+      38: (b7) r2 = 24                      ; R2_w=24
+      39: (b7) r3 = 0                       ; R3_w=0
+      40: (bf) r4 = r8                      ; R4_w=scalar(id=1) R8_w=scalar(id=1)
+      41: (b7) r5 = 0                       ; R5_w=0
+      42: (85) call bpf_l3_csum_replace#10          ; R0=scalar()
+      43: (bf) r1 = r6                      ; R1_w=ctx(off=0,imm=0) R6=ctx(off=0,imm=0)
+      44: (b7) r2 = 50                      ; R2_w=50
+      45: (b7) r3 = 0                       ; R3_w=0
+      46: (bf) r4 = r8                      ; R4_w=scalar(id=1) R8=scalar(id=1)
+      47: (b7) r5 = 16                      ; R5_w=16
+      48: (85) call bpf_l4_csum_replace#11          ; R0_w=scalar()
+      49: (bf) r8 = r10                     ; R8_w=fp0 R10=fp0
+      50: (07) r8 += -8                     ; R8_w=fp-8
+      51: (bf) r1 = r7                      ; R1_w=scalar(id=2) R7=scalar(id=2)
+      52: (b7) r2 = 4                       ; R2_w=4
+      53: (bf) r3 = r8                      ; R3_w=fp-8 R8_w=fp-8
+      54: (b7) r4 = 4                       ; R4_w=4
+      55: (b7) r5 = 0                       ; R5_w=0
+      56: (85) call bpf_csum_diff#28
+      R1 type=scalar expected=fp, pkt, pkt_meta, map_key, map_value, mem, ringbuf_mem, buf processed 57 insns (limit 1000000) max_states_per_insn 0 total_states 3 peak_states 3 mark_read 2
+    combined: |-
+      libbpf: -- BEGIN DUMP LOG ---
+      libbpf:
+      0: R1=ctx(off=0,imm=0) R10=fp0
+      0: (bf) r6 = r1                       ; R1=ctx(off=0,imm=0) R6_w=ctx(off=0,imm=0)
+      1: (b7) r1 = 139192586                ; R1_w=139192586
+      2: (63) *(u32 *)(r10 -4) = r1         ; R1_w=139192586 R10=fp0 fp-8=mmmm????
+      3: (b7) r1 = 335587520                ; R1_w=335587520
+      4: (63) *(u32 *)(r10 -8) = r1         ; R1_w=335587520 R10=fp0 fp-8=335587520
+      5: (b7) r0 = 0                        ; R0_w=0
+      6: (61) r1 = *(u32 *)(r6 +80)         ; R1_w=pkt_end(off=0,imm=0) R6_w=ctx(off=0,imm=0)
+      7: (61) r7 = *(u32 *)(r6 +76)         ; R6_w=ctx(off=0,imm=0) R7_w=pkt(off=0,r=0,imm=0)
+      8: (bf) r2 = r7                       ; R2_w=pkt(off=0,r=0,imm=0) R7_w=pkt(off=0,r=0,imm=0)
+      9: (07) r2 += 34                      ; R2_w=pkt(off=34,r=0,imm=0)
+      10: (2d) if r2 > r1 goto pc+68        ; R1_w=pkt_end(off=0,imm=0) R2_w=pkt(off=34,r=34,imm=0)
+      11: (61) r2 = *(u32 *)(r7 +30)        ; R2_w=scalar(umax=4294967295,var_off=(0x0; 0xffffffff)) R7_w=pkt(off=0,r=34,imm=0)
+      12: (55) if r2 != 0x100007f goto pc+66        ; R2_w=16777343
+      13: (71) r2 = *(u8 *)(r7 +23)         ; R2=scalar(umax=255,var_off=(0x0; 0xff)) R7=pkt(off=0,r=34,imm=0)
+      14: (55) if r2 != 0x6 goto pc+64      ; R2=6
+      15: (bf) r2 = r7                      ; R2_w=pkt(off=0,r=34,imm=0) R7=pkt(off=0,r=34,imm=0)
+      16: (07) r2 += 54                     ; R2_w=pkt(off=54,r=34,imm=0)
+      17: (2d) if r2 > r1 goto pc+61        ; R1=pkt_end(off=0,imm=0) R2_w=pkt(off=54,r=54,imm=0)
+      18: (69) r1 = *(u16 *)(r7 +36)        ; R1_w=scalar(umax=65535,var_off=(0x0; 0xffff)) R7=pkt(off=0,r=54,imm= 0)
+      19: (55) if r1 != 0x7823 goto pc+59   ; R1_w=30755
+      20: (bf) r1 = r7                      ; R1_w=pkt(off=0,r=54,imm=0) R7=pkt(off=0,r=54,imm=0)
+      21: (07) r1 += 30                     ; R1_w=pkt(off=30,r=54,imm=0)
+      22: (07) r7 += 26                     ; R7_w=pkt(off=26,r=54,imm=0)
+      23: (bf) r9 = r10                     ; R9_w=fp0 R10=fp0
+      24: (07) r9 += -4                     ; R9_w=fp-4
+      25: (b7) r2 = 4                       ; R2_w=4
+      26: (bf) r3 = r9                      ; R3_w=fp-4 R9_w=fp-4
+      27: (b7) r4 = 4                       ; R4_w=4
+      28: (b7) r5 = 0                       ; R5_w=0
+      29: (85) call bpf_csum_diff#28        ; R0=scalar()
+      30: (bf) r8 = r0                      ; R0=scalar(id=1) R8_w=scalar(id=1)
+      31: (bf) r1 = r6                      ; R1_w=ctx(off=0,imm=0) R6=ctx(off=0,imm=0)
+      32: (b7) r2 = 30                      ; R2_w=30
+      33: (bf) r3 = r9                      ; R3_w=fp-4 R9=fp-4
+      34: (b7) r4 = 4                       ; R4_w=4
+      35: (b7) r5 = 0                       ; R5_w=0
+      36: (85) call bpf_skb_store_bytes#9   ; R0_w=scalar()
+      37: (bf) r1 = r6                      ; R1_w=ctx(off=0,imm=0) R6=ctx(off=0,imm=0)
+      38: (b7) r2 = 24                      ; R2_w=24
+      39: (b7) r3 = 0                       ; R3_w=0
+      40: (bf) r4 = r8                      ; R4_w=scalar(id=1) R8_w=scalar(id=1)
+      41: (b7) r5 = 0                       ; R5_w=0
+      42: (85) call bpf_l3_csum_replace#10          ; R0=scalar()
+      43: (bf) r1 = r6                      ; R1_w=ctx(off=0,imm=0) R6=ctx(off=0,imm=0)
+      44: (b7) r2 = 50                      ; R2_w=50
+      45: (b7) r3 = 0                       ; R3_w=0
+      46: (bf) r4 = r8                      ; R4_w=scalar(id=1) R8=scalar(id=1)
+      47: (b7) r5 = 16                      ; R5_w=16
+      48: (85) call bpf_l4_csum_replace#11          ; R0_w=scalar()
+      49: (bf) r8 = r10                     ; R8_w=fp0 R10=fp0
+      50: (07) r8 += -8                     ; R8_w=fp-8
+      51: (bf) r1 = r7                      ; R1_w=scalar(id=2) R7=scalar(id=2)
+      52: (b7) r2 = 4                       ; R2_w=4
+      53: (bf) r3 = r8                      ; R3_w=fp-8 R8_w=fp-8
+      54: (b7) r4 = 4                       ; R4_w=4
+      55: (b7) r5 = 0                       ; R5_w=0
+      56: (85) call bpf_csum_diff#28
+      R1 type=scalar expected=fp, pkt, pkt_meta, map_key, map_value, mem, ringbuf_mem, buf processed 57 insns (limit 1000000) max_states_per_insn 0 total_states 3 peak_states 3 mark_read 2
+  verifier_log:
+    blocks:
+    - |-
+      libbpf: -- BEGIN DUMP LOG ---
+      libbpf:
+      0: R1=ctx(off=0,imm=0) R10=fp0
+      0: (bf) r6 = r1                       ; R1=ctx(off=0,imm=0) R6_w=ctx(off=0,imm=0)
+      1: (b7) r1 = 139192586                ; R1_w=139192586
+      2: (63) *(u32 *)(r10 -4) = r1         ; R1_w=139192586 R10=fp0 fp-8=mmmm????
+      3: (b7) r1 = 335587520                ; R1_w=335587520
+      4: (63) *(u32 *)(r10 -8) = r1         ; R1_w=335587520 R10=fp0 fp-8=335587520
+      5: (b7) r0 = 0                        ; R0_w=0
+      6: (61) r1 = *(u32 *)(r6 +80)         ; R1_w=pkt_end(off=0,imm=0) R6_w=ctx(off=0,imm=0)
+      7: (61) r7 = *(u32 *)(r6 +76)         ; R6_w=ctx(off=0,imm=0) R7_w=pkt(off=0,r=0,imm=0)
+      8: (bf) r2 = r7                       ; R2_w=pkt(off=0,r=0,imm=0) R7_w=pkt(off=0,r=0,imm=0)
+      9: (07) r2 += 34                      ; R2_w=pkt(off=34,r=0,imm=0)
+      10: (2d) if r2 > r1 goto pc+68        ; R1_w=pkt_end(off=0,imm=0) R2_w=pkt(off=34,r=34,imm=0)
+      11: (61) r2 = *(u32 *)(r7 +30)        ; R2_w=scalar(umax=4294967295,var_off=(0x0; 0xffffffff)) R7_w=pkt(off=0,r=34,imm=0)
+      12: (55) if r2 != 0x100007f goto pc+66        ; R2_w=16777343
+      13: (71) r2 = *(u8 *)(r7 +23)         ; R2=scalar(umax=255,var_off=(0x0; 0xff)) R7=pkt(off=0,r=34,imm=0)
+      14: (55) if r2 != 0x6 goto pc+64      ; R2=6
+      15: (bf) r2 = r7                      ; R2_w=pkt(off=0,r=34,imm=0) R7=pkt(off=0,r=34,imm=0)
+      16: (07) r2 += 54                     ; R2_w=pkt(off=54,r=34,imm=0)
+      17: (2d) if r2 > r1 goto pc+61        ; R1=pkt_end(off=0,imm=0) R2_w=pkt(off=54,r=54,imm=0)
+      18: (69) r1 = *(u16 *)(r7 +36)        ; R1_w=scalar(umax=65535,var_off=(0x0; 0xffff)) R7=pkt(off=0,r=54,imm= 0)
+      19: (55) if r1 != 0x7823 goto pc+59   ; R1_w=30755
+      20: (bf) r1 = r7                      ; R1_w=pkt(off=0,r=54,imm=0) R7=pkt(off=0,r=54,imm=0)
+      21: (07) r1 += 30                     ; R1_w=pkt(off=30,r=54,imm=0)
+      22: (07) r7 += 26                     ; R7_w=pkt(off=26,r=54,imm=0)
+      23: (bf) r9 = r10                     ; R9_w=fp0 R10=fp0
+      24: (07) r9 += -4                     ; R9_w=fp-4
+      25: (b7) r2 = 4                       ; R2_w=4
+      26: (bf) r3 = r9                      ; R3_w=fp-4 R9_w=fp-4
+      27: (b7) r4 = 4                       ; R4_w=4
+      28: (b7) r5 = 0                       ; R5_w=0
+      29: (85) call bpf_csum_diff#28        ; R0=scalar()
+      30: (bf) r8 = r0                      ; R0=scalar(id=1) R8_w=scalar(id=1)
+      31: (bf) r1 = r6                      ; R1_w=ctx(off=0,imm=0) R6=ctx(off=0,imm=0)
+      32: (b7) r2 = 30                      ; R2_w=30
+      33: (bf) r3 = r9                      ; R3_w=fp-4 R9=fp-4
+      34: (b7) r4 = 4                       ; R4_w=4
+      35: (b7) r5 = 0                       ; R5_w=0
+      36: (85) call bpf_skb_store_bytes#9   ; R0_w=scalar()
+      37: (bf) r1 = r6                      ; R1_w=ctx(off=0,imm=0) R6=ctx(off=0,imm=0)
+      38: (b7) r2 = 24                      ; R2_w=24
+      39: (b7) r3 = 0                       ; R3_w=0
+      40: (bf) r4 = r8                      ; R4_w=scalar(id=1) R8_w=scalar(id=1)
+      41: (b7) r5 = 0                       ; R5_w=0
+      42: (85) call bpf_l3_csum_replace#10          ; R0=scalar()
+      43: (bf) r1 = r6                      ; R1_w=ctx(off=0,imm=0) R6=ctx(off=0,imm=0)
+      44: (b7) r2 = 50                      ; R2_w=50
+      45: (b7) r3 = 0                       ; R3_w=0
+      46: (bf) r4 = r8                      ; R4_w=scalar(id=1) R8=scalar(id=1)
+      47: (b7) r5 = 16                      ; R5_w=16
+      48: (85) call bpf_l4_csum_replace#11          ; R0_w=scalar()
+      49: (bf) r8 = r10                     ; R8_w=fp0 R10=fp0
+      50: (07) r8 += -8                     ; R8_w=fp-8
+      51: (bf) r1 = r7                      ; R1_w=scalar(id=2) R7=scalar(id=2)
+      52: (b7) r2 = 4                       ; R2_w=4
+      53: (bf) r3 = r8                      ; R3_w=fp-8 R8_w=fp-8
+      54: (b7) r4 = 4                       ; R4_w=4
+      55: (b7) r5 = 0                       ; R5_w=0
+      56: (85) call bpf_csum_diff#28
+      R1 type=scalar expected=fp, pkt, pkt_meta, map_key, map_value, mem, ringbuf_mem, buf processed 57 insns (limit 1000000) max_states_per_insn 0 total_states 3 peak_states 3 mark_read 2
+    combined: |-
+      libbpf: loading object from <legacy-so-gh-reproducer>/stackoverflow-77205912/prog.o
+      libbpf: elf: section(3) classifier, size 720, link 0, flags 6, type=1
+      libbpf: sec 'classifier': found program 'tc_egress' at insn offset 0 (0 bytes), code size 90 insns (720 bytes)
+      libbpf: elf: section(4) license, size 4, link 0, flags 3, type=1
+      libbpf: license of <legacy-so-gh-reproducer>/stackoverflow-77205912/prog.o is GPL
+      libbpf: elf: section(14) .BTF, size 3058, link 0, flags 0, type=1
+      libbpf: elf: section(16) .BTF.ext, size 716, link 0, flags 0, type=1
+      libbpf: elf: section(24) .symtab, size 336, link 1, flags 0, type=2
+      libbpf: looking for externs among 14 symbols...
+      libbpf: collected 0 externs total
+      libbpf: object 'prog': failed (-95) to create BPF token from '/sys/fs/bpf', skipping optional step...
+      libbpf: loaded kernel BTF from '/sys/kernel/btf/vmlinux'
+      libbpf: sec 'classifier': found 10 CO-RE relocations
+      libbpf: CO-RE relocating [2] struct __sk_buff: found target candidate [15151] struct __sk_buff in [vmlinux]
+      libbpf: prog 'tc_egress': relo #0: <byte_off> [2] struct __sk_buff.data_end (0:16 @ offset 80)
+      libbpf: prog 'tc_egress': relo #0: matching candidate #0 <byte_off> [15151] struct __sk_buff.data_end (0:16 @ offset 80)
+      libbpf: prog 'tc_egress': relo #0: patched insn #3 (LDX/ST/STX) off 80 -> 80
+      libbpf: prog 'tc_egress': relo #1: <byte_off> [2] struct __sk_buff.data (0:15 @ offset 76)
+      libbpf: prog 'tc_egress': relo #1: matching candidate #0 <byte_off> [15151] struct __sk_buff.data (0:15 @ offset 76)
+      libbpf: prog 'tc_egress': relo #1: patched insn #4 (LDX/ST/STX) off 76 -> 76
+      libbpf: CO-RE relocating [19] struct iphdr: found target candidate [23765] struct iphdr in [vmlinux]
+      libbpf: prog 'tc_egress': relo #2: <byte_off> [19] struct iphdr.daddr (0:9:0:1 @ offset 16)
+      libbpf: prog 'tc_egress': relo #2: matching candidate #0 <byte_off> [23765] struct iphdr.daddr (0:9:0:1 @ offset 16)
+      libbpf: prog 'tc_egress': relo #2: patched insn #10 (LDX/ST/STX) off 16 -> 16
+      libbpf: prog 'tc_egress': relo #3: <byte_off> [19] struct iphdr.protocol (0:7 @ offset 9)
+      libbpf: prog 'tc_egress': relo #3: matching candidate #0 <byte_off> [23765] struct iphdr.protocol (0:7 @ offset 9)
+      libbpf: prog 'tc_egress': relo #3: patched insn #12 (LDX/ST/STX) off 9 -> 9
+      libbpf: CO-RE relocating [28] struct tcphdr: found target candidate [23763] struct tcphdr in [vmlinux]
+      libbpf: prog 'tc_egress': relo #4: <byte_off> [28] struct tcphdr.dest (0:1 @ offset 2)
+      libbpf: prog 'tc_egress': relo #4: matching candidate #0 <byte_off> [23763] struct tcphdr.dest (0:1 @ offset 2)
+      libbpf: prog 'tc_egress': relo #4: patched insn #16 (LDX/ST/STX) off 2 -> 2
+      libbpf: prog 'tc_egress': relo #5: <byte_off> [19] struct iphdr.daddr (0:9:0:1 @ offset 16)
+      libbpf: prog 'tc_egress': relo #5: matching candidate #0 <byte_off> [23765] struct iphdr.daddr (0:9:0:1 @ offset 16)
+      libbpf: prog 'tc_egress': relo #5: patched insn #18 (ALU/ALU64) imm 16 -> 16
+      libbpf: prog 'tc_egress': relo #6: <byte_off> [19] struct iphdr.daddr (0:9:0:1 @ offset 16)
+      libbpf: prog 'tc_egress': relo #6: matching candidate #0 <byte_off> [23765] struct iphdr.daddr (0:9:0:1 @ offset 16)
+      libbpf: prog 'tc_egress': relo #6: patched insn #31 (ALU/ALU64) imm 16 -> 16
+      libbpf: prog 'tc_egress': relo #7: <byte_off> [19] struct iphdr.check (0:8 @ offset 10)
+      libbpf: prog 'tc_egress': relo #7: matching candidate #0 <byte_off> [23765] struct iphdr.check (0:8 @ offset 10)
+      libbpf: prog 'tc_egress': relo #7: patched insn #40 (ALU/ALU64) imm 10 -> 10
+      libbpf: prog 'tc_egress': relo #8: <byte_off> [28] struct tcphdr.check (0:15 @ offset 16)
+      libbpf: prog 'tc_egress': relo #8: matching candidate #0 <byte_off> [23763] struct tcphdr.check (0:16 @ offset 16)
+      libbpf: prog 'tc_egress': relo #8: patched insn #48 (ALU/ALU64) imm 16 -> 16
+      libbpf: prog 'tc_egress': relo #9: <byte_off> [19] struct iphdr.saddr (0:9:0:0 @ offset 12)
+      libbpf: prog 'tc_egress': relo #9: matching candidate #0 <byte_off> [23765] struct iphdr.saddr (0:9:0:0 @ offset 12)
+      libbpf: prog 'tc_egress': relo #9: patched insn #56 (ALU/ALU64) imm 12 -> 12
+      libbpf: prog 'tc_egress': BPF program load failed: -EACCES
+      libbpf: prog 'tc_egress': -- BEGIN PROG LOAD LOG --
+      func#0 @0
+      Live regs before insn:
+        0: .1........ (b7) r2 = 0
+        1: .12....... (63) *(u32 *)(r10 -4) = r2
+        2: .12....... (63) *(u32 *)(r10 -8) = r2
+        3: .1........ (61) r3 = *(u32 *)(r1 +80)
+        4: .1.3...... (61) r4 = *(u32 *)(r1 +76)
+        5: .1.34..... (bf) r2 = r4
+        6: .1234..... (07) r2 += 34
+        7: .1234..... (2d) if r2 > r3 goto pc+80
+        8: .1234..... (bf) r7 = r4
+        9: .1234..7.. (07) r7 += 14
+       10: .1234..7.. (61) r5 = *(u32 *)(r7 +16)
+       11: .12345.7.. (55) if r5 != 0x0 goto pc+76
+       12: .1234..7.. (71) r5 = *(u8 *)(r7 +9)
+       13: .12345.7.. (55) if r5 != 0x6 goto pc+74
+       14: .1234..7.. (07) r4 += 54
+       15: .1234..7.. (2d) if r4 > r3 goto pc+72
+       16: .12....7.. (69) r2 = *(u16 *)(r2 +2)
+       17: .12....7.. (55) if r2 != 0x7823 goto pc+70
+       18: .1.....7.. (b7) r3 = 16
+       19: .1.3...7.. (bf) r2 = r7
+       20: .123...7.. (0f) r2 += r3
+       21: .12....7.. (bf) r9 = r10
+       22: .12....7.9 (07) r9 += -4
+       23: .12....7.9 (bf) r6 = r1
+       24: ..2...67.9 (bf) r1 = r2
+       25: .1....67.9 (b7) r2 = 4
+       26: .12...67.9 (bf) r3 = r9
+       27: .123..67.9 (b7) r4 = 4
+       28: .1234.67.9 (b7) r5 = 0
+       29: .1234567.9 (85) call bpf_csum_diff#28
+       30: 0.....67.9 (bf) r8 = r0
+       31: ......6789 (b7) r2 = 16
+       32: ..2...6789 (07) r2 += 14
+       33: ..2...6789 (bf) r1 = r6
+       34: .12...6789 (bf) r3 = r9
+       35: .123..678. (b7) r4 = 4
+       36: .1234.678. (b7) r5 = 0
+       37: .12345678. (85) call bpf_skb_store_bytes#9
+       38: ......678. (67) r8 <<= 32
+       39: ......678. (77) r8 >>= 32
+       40: ......678. (b7) r2 = 10
+       41: ..2...678. (07) r2 += 14
+       42: ..2...678. (7b) *(u64 *)(r10 -16) = r2
+       43: ..2...678. (bf) r1 = r6
+       44: .12...678. (b7) r3 = 0
+       45: .123..678. (bf) r4 = r8
+       46: .1234.678. (b7) r5 = 0
+       47: .12345678. (85) call bpf_l3_csum_replace#10
+       48: ......678. (b7) r2 = 16
+       49: ..2...678. (07) r2 += 34
+       50: ..2...678. (7b) *(u64 *)(r10 -24) = r2
+       51: ..2...678. (bf) r1 = r6
+       52: .12...678. (b7) r3 = 0
+       53: .123..678. (bf) r4 = r8
+       54: .1234.67.. (b7) r5 = 16
+       55: .1234567.. (85) call bpf_l4_csum_replace#11
+       56: ......67.. (b7) r8 = 12
+       57: ......678. (0f) r7 += r8
+       58: ......678. (bf) r9 = r10
+       59: ......6789 (07) r9 += -8
+       60: ......6789 (bf) r1 = r7
+       61: .1....6.89 (b7) r2 = 4
+       62: .12...6.89 (bf) r3 = r9
+       63: .123..6.89 (b7) r4 = 4
+       64: .1234.6.89 (b7) r5 = 0
+       65: .123456.89 (85) call bpf_csum_diff#28
+       66: 0.....6.89 (bf) r7 = r0
+       67: ......6789 (07) r8 += 14
+       68: ......6789 (bf) r1 = r6
+       69: .1....6789 (bf) r2 = r8
+       70: .12...67.9 (bf) r3 = r9
+       71: .123..67.. (b7) r4 = 4
+       72: .1234.67.. (b7) r5 = 0
+       73: .1234567.. (85) call bpf_skb_store_bytes#9
+       74: ......67.. (67) r7 <<= 32
+       75: ......67.. (77) r7 >>= 32
+       76: ......67.. (bf) r1 = r6
+       77: .1....67.. (79) r2 = *(u64 *)(r10 -16)
+       78: .12...67.. (b7) r3 = 0
+       79: .123..67.. (bf) r4 = r7
+       80: .1234.67.. (b7) r5 = 0
+       81: .1234567.. (85) call bpf_l3_csum_replace#10
+       82: ......67.. (bf) r1 = r6
+       83: .1.....7.. (79) r2 = *(u64 *)(r10 -24)
+       84: .12....7.. (b7) r3 = 0
+       85: .123...7.. (bf) r4 = r7
+       86: .1234..... (b7) r5 = 16
+       87: .12345.... (85) call bpf_l4_csum_replace#11
+       88: .......... (b7) r0 = 0
+       89: 0......... (95) exit
+      0: R1=ctx() R10=fp0
+      ; int tc_egress(struct __sk_buff *skb) @ prog.c:211
+      0: (b7) r2 = 0                        ; R2_w=0
+      ; const __be32 pod_ip = IBP_IP_ADDR; @ prog.c:214
+      1: (63) *(u32 *)(r10 -4) = r2
+      mark_precise: frame0: last_idx 1 first_idx 0 subseq_idx -1
+      mark_precise: frame0: regs=r2 stack= before 0: (b7) r2 = 0
+      2: R2_w=0 R10=fp0 fp-8=0000????
+      ; const __be32 loc_ip = LOC_IP_ADDR; @ prog.c:215
+      2: (63) *(u32 *)(r10 -8) = r2         ; R2_w=0 R10=fp0 fp-8=00000
+      ; void *data_end = (void *)(long)skb->data_end; @ prog.c:220
+      3: (61) r3 = *(u32 *)(r1 +80)         ; R1=ctx() R3_w=pkt_end()
+      ; void *data = (void *)(long)skb->data; @ prog.c:219
+      4: (61) r4 = *(u32 *)(r1 +76)         ; R1=ctx() R4_w=pkt(r=0)
+      ; if (data_end < data + l4_off) @ prog.c:222
+      5: (bf) r2 = r4                       ; R2_w=pkt(r=0) R4_w=pkt(r=0)
+      6: (07) r2 += 34                      ; R2_w=pkt(off=34,r=0)
+      7: (2d) if r2 > r3 goto pc+80         ; R2_w=pkt(off=34,r=34) R3_w=pkt_end()
+      ; struct iphdr *ip4 = (struct iphdr *)(data + l3_off); @ prog.c:225
+      8: (bf) r7 = r4                       ; R4_w=pkt(r=34) R7_w=pkt(r=34)
+      9: (07) r7 += 14                      ; R7_w=pkt(off=14,r=34)
+      ; if (ip4->daddr != cluster_ip || ip4->protocol != IPPROTO_TCP) @ prog.c:226
+      10: (61) r5 = *(u32 *)(r7 +16)        ; R5_w=scalar(smin=0,smax=umax=0xffffffff,var_off=(0x0; 0xffffffff)) R7_w=pkt(off=14,r=34)
+      11: (55) if r5 != 0x0 goto pc+76      ; R5_w=0
+      12: (71) r5 = *(u8 *)(r7 +9)          ; R5=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R7=pkt(off=14,r=34)
+      13: (55) if r5 != 0x6 goto pc+74      ; R5=6
+      14: (07) r4 += 54                     ; R4_w=pkt(off=54,r=34)
+      15: (2d) if r4 > r3 goto pc+72        ; R3=pkt_end() R4_w=pkt(off=54,r=54)
+      ; if (bpf_ntohs(tcph->dest) != 9080) @ prog.c:233
+      16: (69) r2 = *(u16 *)(r2 +2)         ; R2_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=0xffff,var_off=(0x0; 0xffff))
+      17: (55) if r2 != 0x7823 goto pc+70   ; R2_w=30755
+      18: (b7) r3 = 16                      ; R3_w=16
+      19: (bf) r2 = r7                      ; R2_w=pkt(off=14,r=54) R7=pkt(off=14,r=54)
+      20: (0f) r2 += r3
+      mark_precise: frame0: last_idx 20 first_idx 13 subseq_idx -1
+      mark_precise: frame0: regs=r3 stack= before 19: (bf) r2 = r7
+      mark_precise: frame0: regs=r3 stack= before 18: (b7) r3 = 16
+      21: R2_w=pkt(off=30,r=54) R3_w=16
+      21: (bf) r9 = r10                     ; R9_w=fp0 R10=fp0
+      ; sum = csum_diff((void *)&ip4->daddr, 4, (void *)&pod_ip, 4, 0); @ prog.c:236
+      22: (07) r9 += -4                     ; R9_w=fp-4
+      23: (bf) r6 = r1                      ; R1=ctx() R6_w=ctx()
+      24: (bf) r1 = r2                      ; R1_w=pkt(off=30,r=54) R2_w=pkt(off=30,r=54)
+      25: (b7) r2 = 4                       ; R2_w=4
+      26: (bf) r3 = r9                      ; R3_w=fp-4 R9_w=fp-4
+      27: (b7) r4 = 4                       ; R4_w=4
+      28: (b7) r5 = 0                       ; R5_w=0
+      29: (85) call bpf_csum_diff#28
+      mark_precise: frame0: last_idx 29 first_idx 13 subseq_idx -1
+      mark_precise: frame0: regs=r2 stack= before 28: (b7) r5 = 0
+      mark_precise: frame0: regs=r2 stack= before 27: (b7) r4 = 4
+      mark_precise: frame0: regs=r2 stack= before 26: (bf) r3 = r9
+      mark_precise: frame0: regs=r2 stack= before 25: (b7) r2 = 4
+      mark_precise: frame0: last_idx 29 first_idx 13 subseq_idx -1
+      mark_precise: frame0: regs=r4 stack= before 28: (b7) r5 = 0
+      mark_precise: frame0: regs=r4 stack= before 27: (b7) r4 = 4
+      30: R0=scalar()
+      30: (bf) r8 = r0                      ; R0=scalar(id=1) R8_w=scalar(id=1)
+      31: (b7) r2 = 16                      ; R2_w=16
+      ; skb_store_bytes(skb, l3_off + offsetof(struct iphdr, daddr), (void *)&pod_ip, 4, 0); @ prog.c:237
+      32: (07) r2 += 14                     ; R2_w=30
+      33: (bf) r1 = r6                      ; R1_w=ctx() R6=ctx()
+      34: (bf) r3 = r9                      ; R3_w=fp-4 R9=fp-4
+      35: (b7) r4 = 4                       ; R4_w=4
+      36: (b7) r5 = 0                       ; R5_w=0
+      37: (85) call bpf_skb_store_bytes#9
+      mark_precise: frame0: last_idx 37 first_idx 30 subseq_idx -1
+      mark_precise: frame0: regs=r4 stack= before 36: (b7) r5 = 0
+      mark_precise: frame0: regs=r4 stack= before 35: (b7) r4 = 4
+      38: R0_w=scalar()
+      ; l3_csum_replace(skb, l3_off + offsetof(struct iphdr, check), 0, sum, 0); @ prog.c:238
+      38: (67) r8 <<= 32                    ; R8_w=scalar(smax=0x7fffffff00000000,umax=0xffffffff00000000,smin32=0,smax32=umax32=0,var_off=(0x0; 0xffffffff00000000))
+      39: (77) r8 >>= 32                    ; R8_w=scalar(smin=0,smax=umax=0xffffffff,var_off=(0x0; 0xffffffff))
+      40: (b7) r2 = 10                      ; R2_w=10
+      41: (07) r2 += 14                     ; R2_w=24
+      42: (7b) *(u64 *)(r10 -16) = r2       ; R2_w=24 R10=fp0 fp-16_w=24
+      43: (bf) r1 = r6                      ; R1_w=ctx() R6=ctx()
+      44: (b7) r3 = 0                       ; R3_w=0
+      45: (bf) r4 = r8                      ; R4_w=scalar(id=2,smin=0,smax=umax=0xffffffff,var_off=(0x0; 0xffffffff)) R8_w=scalar(id=2,smin=0,smax=umax=0xffffffff,var_off=(0x0; 0xffffffff))
+      46: (b7) r5 = 0                       ; R5_w=0
+      47: (85) call bpf_l3_csum_replace#10          ; R0=scalar()
+      48: (b7) r2 = 16                      ; R2_w=16
+      ; l4_csum_replace(skb, l4_off + offsetof(struct tcphdr, check), 0, sum, BPF_F_PSEUDO_HDR); @ prog.c:239
+      49: (07) r2 += 34                     ; R2_w=50
+      50: (7b) *(u64 *)(r10 -24) = r2       ; R2_w=50 R10=fp0 fp-24_w=50
+      51: (bf) r1 = r6                      ; R1_w=ctx() R6=ctx()
+      52: (b7) r3 = 0                       ; R3_w=0
+      53: (bf) r4 = r8                      ; R4_w=scalar(id=2,smin=0,smax=umax=0xffffffff,var_off=(0x0; 0xffffffff)) R8=scalar(id=2,smin=0,smax=umax=0xffffffff,var_off=(0x0; 0xffffffff))
+      54: (b7) r5 = 16                      ; R5_w=16
+      55: (85) call bpf_l4_csum_replace#11          ; R0_w=scalar()
+      56: (b7) r8 = 12                      ; R8_w=12
+      57: (0f) r7 += r8                     ; R7_w=scalar() R8_w=12
+      58: (bf) r9 = r10                     ; R9_w=fp0 R10=fp0
+      ; sum = csum_diff((void *)&ip4->daddr, 4, (void *)&pod_ip, 4, 0); @ prog.c:236
+      59: (07) r9 += -8                     ; R9_w=fp-8
+      ; sum = csum_diff((void *)&ip4->saddr, 4, (void *)&loc_ip, 4, 0); @ prog.c:241
+      60: (bf) r1 = r7                      ; R1_w=scalar(id=3) R7_w=scalar(id=3)
+      61: (b7) r2 = 4                       ; R2_w=4
+      62: (bf) r3 = r9                      ; R3_w=fp-8 R9_w=fp-8
+      63: (b7) r4 = 4                       ; R4_w=4
+      64: (b7) r5 = 0                       ; R5_w=0
+      65: (85) call bpf_csum_diff#28
+      R1 type=scalar expected=fp, pkt, pkt_meta, map_key, map_value, mem, ringbuf_mem, buf, trusted_ptr_
+      verification time 193 usec
+      stack depth 24
+      processed 66 insns (limit 1000000) max_states_per_insn 0 total_states 3 peak_states 3 mark_read 2
+      -- END PROG LOAD LOG --
+      libbpf: prog 'tc_egress': failed to load: -EACCES
+      libbpf: failed to load object '<legacy-so-gh-reproducer>/stackoverflow-77205912/prog.o'
+      Error: failed to load object file
+  verifier_log_source: captured_on_6.15.11
+  verifier_log_captured_at: '2026-03-20'
+  source_snippets: []
+  question_body_text: |-
+    I was trying to modify both the source ip and dest ip using tc after reading this interesting blog.
+    Here is the code:
+    __section("egress")
+    int tc_egress(struct __sk_buff *skb)
+    {
+    const __be32 cluster_ip = SRC_IP_ADDR;
+    const __be32 pod_ip = IBP_IP_ADDR;
+    const __be32 loc_ip = LOC_IP_ADDR;
+    const int l3_off = ETH_HLEN; // IP header offset
+    const int l4_off = l3_off + 20; // TCP header offset: l3_off + sizeof(struct iphdr)
+    __be32 sum; // IP checksum
+    void *data = (void *)(long)skb->data;
+    void *data_end = (void *)(long)skb->data_end;
+    if (data_end < data + l4_off) { // not our packet
+    return TC_ACT_OK;
+    }
+    struct iphdr *ip4 = (struct iphdr *)(data + l3_off);
+    if (ip4->daddr != cluster_ip || ip4->protocol != IPPROTO_TCP /* || tcp->dport == 80 */) {
+    return TC_ACT_OK;
+    }
+    if (data_end < data + l4_off + sizeof(struct tcphdr)) { // have verifier give a enough range
+    return TC_ACT_OK;
+    }
+    struct tcphdr *tcph = (struct tcphdr *)(data + l4_off);
+    if (bpf_ntohs(tcph->dest) != 9080) {
+    return TC_ACT_OK;
+    }
+    // DNAT: cluster_ip -> pod_ip, then update L3 and L4 checksum
+    sum = csum_diff((void *)&ip4->daddr, 4, (void *)&pod_ip, 4, 0);
+    skb_store_bytes(skb, l3_off + offsetof(struct iphdr, daddr), (void *)&pod_ip, 4, 0);
+    l3_csum_replace(skb, l3_off + offsetof(struct iphdr, check), 0, sum, 0);
+    l4_csum_replace(skb, l4_off + offsetof(struct tcphdr, check), 0, sum, BPF_F_PSEUDO_HDR);
+    // modify source ip then update l3 and l4 checksum
+    sum = csum_diff((void *)&ip4->saddr, 4, (void *)&loc_ip, 4, 0);
+    skb_store_bytes(skb, l3_off + offsetof(struct iphdr, saddr), (void *)&loc_ip, 4, 0);
+    l3_csum_replace(skb, l3_off + offsetof(struct iphdr, check), 0, sum, 0);
+    l4_csum_replace(skb, l4_off + offsetof(struct tcphdr, check), 0, sum, BPF_F_PSEUDO_HDR);
+    return redirect(19, 0);
+    }
+    The blog author's original code worked fine, but mine, with a second csum_diff and its following, could not be loaded due to the verifier.
+    Here is the error message during loading:
+    libbpf: -- BEGIN DUMP LOG ---
+    libbpf:
+    0: R1=ctx(off=0,imm=0) R10=fp0
+    0: (bf) r6 = r1 ; R1=ctx(off=0,imm=0) R6_w=ctx(off=0,imm=0)
+    1: (b7) r1 = 139192586 ; R1_w=139192586
+    2: (63) *(u32 *)(r10 -4) = r1 ; R1_w=139192586 R10=fp0 fp-8=mmmm????
+    3: (b7) r1 = 335587520 ; R1_w=335587520
+    4: (63) *(u32 *)(r10 -8) = r1 ; R1_w=335587520 R10=fp0 fp-8=335587520
+    5: (b7) r0 = 0 ; R0_w=0
+    6: (61) r1 = *(u32 *)(r6 +80) ; R1_w=pkt_end(off=0,imm=0) R6_w=ctx(off=0,imm=0)
+    7: (61) r7 = *(u32 *)(r6 +76) ; R6_w=ctx(off=0,imm=0) R7_w=pkt(off=0,r=0,imm=0)
+    8: (bf) r2 = r7 ; R2_w=pkt(off=0,r=0,imm=0) R7_w=pkt(off=0,r=0,imm=0)
+    9: (07) r2 += 34 ; R2_w=pkt(off=34,r=0,imm=0)
+    10: (2d) if r2 > r1 goto pc+68 ; R1_w=pkt_end(off=0,imm=0) R2_w=pkt(off=34,r=34,imm=0)
+    11: (61) r2 = *(u32 *)(r7 +30) ; R2_w=scalar(umax=4294967295,var_off=(0x0; 0xffffffff)) R7_w=pkt(off=0,r=34,imm=0)
+    12: (55) if r2 != 0x100007f goto pc+66 ; R2_w=16777343
+    13: (71) r2 = *(u8 *)(r7 +23) ; R2=scalar(umax=255,var_off=(0x0; 0xff)) R7=pkt(off=0,r=34,imm=0)
+    14: (55) if r2 != 0x6 goto pc+64 ; R2=6
+    15: (bf) r2 = r7 ; R2_w=pkt(off=0,r=34,imm=0) R7=pkt(off=0,r=34,imm=0)
+    16: (07) r2 += 54 ; R2_w=pkt(off=54,r=34,imm=0)
+    17: (2d) if r2 > r1 goto pc+61 ; R1=pkt_end(off=0,imm=0) R2_w=pkt(off=54,r=54,imm=0)
+    18: (69) r1 = *(u16 *)(r7 +36) ; R1_w=scalar(umax=65535,var_off=(0x0; 0xffff)) R7=pkt(off=0,r=54,imm= 0)
+    19: (55) if r1 != 0x7823 goto pc+59 ; R1_w=30755
+    20: (bf) r1 = r7 ; R1_w=pkt(off=0,r=54,imm=0) R7=pkt(off=0,r=54,imm=0)
+    21: (07) r1 += 30 ; R1_w=pkt(off=30,r=54,imm=0)
+    22: (07) r7 += 26 ; R7_w=pkt(off=26,r=54,imm=0)
+    23: (bf) r9 = r10 ; R9_w=fp0 R10=fp0
+    24: (07) r9 += -4 ; R9_w=fp-4
+    25: (b7) r2 = 4 ; R2_w=4
+    26: (bf) r3 = r9 ; R3_w=fp-4 R9_w=fp-4
+    27: (b7) r4 = 4 ; R4_w=4
+    28: (b7) r5 = 0 ; R5_w=0
+    29: (85) call bpf_csum_diff#28 ; R0=scalar()
+    30: (bf) r8 = r0 ; R0=scalar(id=1) R8_w=scalar(id=1)
+    31: (bf) r1 = r6 ; R1_w=ctx(off=0,imm=0) R6=ctx(off=0,imm=0)
+    32: (b7) r2 = 30 ; R2_w=30
+    33: (bf) r3 = r9 ; R3_w=fp-4 R9=fp-4
+    34: (b7) r4 = 4 ; R4_w=4
+    35: (b7) r5 = 0 ; R5_w=0
+    36: (85) call bpf_skb_store_bytes#9 ; R0_w=scalar()
+    37: (bf) r1 = r6 ; R1_w=ctx(off=0,imm=0) R6=ctx(off=0,imm=0)
+    38: (b7) r2 = 24 ; R2_w=24
+    39: (b7) r3 = 0 ; R3_w=0
+    40: (bf) r4 = r8 ; R4_w=scalar(id=1) R8_w=scalar(id=1)
+    41: (b7) r5 = 0 ; R5_w=0
+    42: (85) call bpf_l3_csum_replace#10 ; R0=scalar()
+    43: (bf) r1 = r6 ; R1_w=ctx(off=0,imm=0) R6=ctx(off=0,imm=0)
+    44: (b7) r2 = 50 ; R2_w=50
+    45: (b7) r3 = 0 ; R3_w=0
+    46: (bf) r4 = r8 ; R4_w=scalar(id=1) R8=scalar(id=1)
+    47: (b7) r5 = 16 ; R5_w=16
+    48: (85) call bpf_l4_csum_replace#11 ; R0_w=scalar()
+    49: (bf) r8 = r10 ; R8_w=fp0 R10=fp0
+    50: (07) r8 += -8 ; R8_w=fp-8
+    51: (bf) r1 = r7 ; R1_w=scalar(id=2) R7=scalar(id=2)
+    52: (b7) r2 = 4 ; R2_w=4
+    53: (bf) r3 = r8 ; R3_w=fp-8 R8_w=fp-8
+    54: (b7) r4 = 4 ; R4_w=4
+    55: (b7) r5 = 0 ; R5_w=0
+    56: (85) call bpf_csum_diff#28
+    R1 type=scalar expected=fp, pkt, pkt_meta, map_key, map_value, mem, ringbuf_mem, buf processed 57 insns (limit 1000000) max_states_per_insn 0 total_states 3 peak_states 3 mark_read 2
+    According to the BPF Reference Guide, R7 is a callee-saved. And its last assignment before line 56 is at line 22, R7_w=pkt(off=26,r=54,imm=0). However, at line 51, when setting the first argument in R1 for bpf_csum_diff, it became a scalar which caused the verification failure at line 56.
+    Could someone tell me why it came to this, and any solution?
+  selected_answer:
+    answer_id: 77210096
+    url: https://stackoverflow.com/questions/77205912/ebpf-tc-failed-calling-bpf-csum-diff-a-second-time#77210096
+    is_accepted: true
+    score: 2
+    body_text: |-
+      TL;DR. Helpers skb_store_bytes, l3_csum_replace, and l4_csum_replace are known to the verifier as helpers that modify the packet's data. When such helpers are called, the verifier simply invalidates all packet pointers.
+      Solutions. You will therefore have to rebuild the packet pointers from the context argument (skb). Or you could compute checksum diff in one go, before making all writes to the packet.
+      Debugging
+      By moving the second call to csum_diff up by a few lines, we can confirm that a call to skb_store_bytes is enough to reproduce the issue.
+      Most of the static analysis of helper calls happens in function check_helper_call. That function checks if the analyzed helper is one of those known to modify packet data. If that is the case, it calls clear_all_pkt_pointers just before returning.
+      clear_all_pkt_pointers goes over all packet pointers known to the verifier and clears them. That ends up calling __mark_reg_unknown, which simply marks the register as an unknown scalar.
+      Putting it all together:
+      static int check_helper_call(struct bpf_verifier_env *env, struct bpf_insn *insn,
+      int *insn_idx_p)
+      {
+      [...]
+      changes_data = bpf_helper_changes_pkt_data(fn->func);
+      [...]
+      if (changes_data)
+      clear_all_pkt_pointers(env);
+      return 0;
+      }
+      static void clear_all_pkt_pointers(struct bpf_verifier_env *env)
+      {
+      struct bpf_func_state *state;
+      struct bpf_reg_state *reg;
+      bpf_for_each_reg_in_vstate(env->cur_state, state, reg, ({
+      if (reg_is_pkt_pointer_any(reg) || reg_is_dynptr_slice_pkt(reg))
+      mark_reg_invalid(env, reg);
+      }));
+      }
+      static void __mark_reg_unknown(const struct bpf_verifier_env *env,
+      struct bpf_reg_state *reg)
+      {
+      /*
+      * Clear type, off, and union(map_ptr, range) and
+      * padding between 'type' and union
+      */
+      memset(reg, 0, offsetof(struct bpf_reg_state, var_off));
+      reg->type = SCALAR_VALUE;
+      reg->id = 0;
+      reg->ref_obj_id = 0;
+      reg->var_off = tnum_unknown;
+      reg->frameno = 0;
+      reg->precise = !env->bpf_capable;
+      __mark_reg_unbounded(reg);
+      }
+    fix_description: Solutions. You will therefore have to rebuild the packet pointers
+      from the context argument (skb). Or you could compute checksum diff in one go,
+      before making all writes to the packet.

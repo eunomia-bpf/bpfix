@@ -1,0 +1,100 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-56ccb2a9d3bb
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/56ccb2a9d3bb811c47cc66b5734094ea40c9f3c6
+  title: 'bpf: Relax verifier in error cases'
+  repository: https://github.com/cilium/cilium
+  commit: 56ccb2a9d3bb811c47cc66b5734094ea40c9f3c6
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-56ccb2a9d3bb.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: environment_required
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Adds relax_verifier() on old error paths to help historical full-program
+    verifier complexity. No isolated rejected instruction or captured log is available.
+raw:
+  case_id: github-commit-cilium-56ccb2a9d3bb
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: 56ccb2a9d3bb811c47cc66b5734094ea40c9f3c6
+  commit_message: 'bpf: Relax verifier in error cases'
+  commit_date: '2018-08-16'
+  fix_type: loop_rewrite
+  buggy_code: "// FILE: bpf/bpf_lxc.c\n// CONTEXT: skip_service_lookup:\n\t\tbreak;\n\
+    \n\tcase CT_ESTABLISHED:\n\t\tbreak;\n\n\tcase CT_RELATED:\n\tcase CT_REPLY:\n\
+    \t\tpolicy_mark_skip(skb);\n\n\t\tif (ct_state.rev_nat_index) {\n\t\t\tret = lb4_rev_nat(skb,\
+    \ l3_off, l4_off, &csum_off,\n\t\t\t\t\t  &ct_state, &tuple, 0);\n\t\t\tif (IS_ERR(ret))\n\
+    \t\t\t\treturn ret;\n\t\t}\n\t\tbreak;\n\n\tdefault:\n\t\treturn DROP_POLICY;\n\
+    \t}\n\n\tif (redirect_to_proxy(verdict)) {\n\t\tunion macaddr host_mac = HOST_IFINDEX_MAC;\n\
+    \n\t\tret = ipv4_redirect_to_host_port(skb, &csum_off, l4_off,\n\t\t\t\t\t\t verdict,\
+    \ tuple.dport,\n\n// FILE: bpf/lib/conntrack.h\n// CONTEXT: static inline int\
+    \ __inline__ ct_lookup6(void *map, struct ipv6_ct_tuple *tuple,\n\t\tbreak;\n\n\
+    \tcase IPPROTO_UDP:\n\t\t/* load sport + dport into tuple */\n\t\tif (skb_load_bytes(skb,\
+    \ l4_off, &tuple->dport, 4) < 0)\n\t\t\treturn DROP_CT_INVALID_HDR;\n\n\t\taction\
+    \ = ACTION_CREATE;\n\t\tbreak;\n\n\tdefault:\n\t\t/* Can't handle extension headers\
+    \ yet */\n\t\treturn DROP_CT_UNKNOWN_PROTO;\n\t}\n\n\t/* Lookup the reverse direction\n\
+    \t *\n\t * This will find an existing flow in the reverse direction.\n\t * The\
+    \ reverse direction is the one where reverse nat index is stored.\n\t */\n\tcilium_dbg3(skb,\
+    \ DBG_CT_LOOKUP6_1, (__u32) tuple->saddr.p4, (__u32) tuple->daddr.p4,\n\t\t  \
+    \    (bpf_ntohs(tuple->sport) << 16) | bpf_ntohs(tuple->dport));\n\tcilium_dbg3(skb,\
+    \ DBG_CT_LOOKUP6_2, (tuple->nexthdr << 8) | tuple->flags, 0, 0);\n\tret = __ct_lookup(map,\
+    \ skb, tuple, action, dir, ct_state, is_tcp,\n\n// CONTEXT: static inline int\
+    \ __inline__ ct_lookup4(void *map, struct ipv4_ct_tuple *tuple,\n\t\tbreak;\n\n\
+    \tcase IPPROTO_UDP:\n\t\t/* load sport + dport into tuple */\n\t\tif (skb_load_bytes(skb,\
+    \ off, &tuple->dport, 4) < 0)\n\t\t\treturn DROP_CT_INVALID_HDR;\n\n\t\taction\
+    \ = ACTION_CREATE;\n\t\tbreak;\n\n\tdefault:\n\t\t/* Can't handle extension headers\
+    \ yet */\n\t\treturn DROP_CT_UNKNOWN_PROTO;\n\t}\n\n\t/* Lookup the reverse direction\n\
+    \t *\n\t * This will find an existing flow in the reverse direction.\n\t */\n\
+    #ifndef QUIET_CT\n\tcilium_dbg3(skb, DBG_CT_LOOKUP4_1, tuple->saddr, tuple->daddr,\n\
+    \t\t      (bpf_ntohs(tuple->sport) << 16) | bpf_ntohs(tuple->dport));\n\tcilium_dbg3(skb,\
+    \ DBG_CT_LOOKUP4_2, (tuple->nexthdr << 8) | tuple->flags, 0, 0);\n#endif"
+  fixed_code: "// FILE: bpf/bpf_lxc.c\n// CONTEXT: skip_service_lookup:\n\t\tbreak;\n\
+    \n\tcase CT_ESTABLISHED:\n\t\tbreak;\n\n\tcase CT_RELATED:\n\tcase CT_REPLY:\n\
+    \t\tpolicy_mark_skip(skb);\n\n\t\tif (ct_state.rev_nat_index) {\n\t\t\tret = lb4_rev_nat(skb,\
+    \ l3_off, l4_off, &csum_off,\n\t\t\t\t\t  &ct_state, &tuple, 0);\n\t\t\tif (IS_ERR(ret))\
+    \ {\n\t\t\t\trelax_verifier();\n\t\t\t\treturn ret;\n\t\t\t}\n\t\t}\n\t\tbreak;\n\
+    \n\tdefault:\n\t\treturn DROP_POLICY;\n\t}\n\n\tif (redirect_to_proxy(verdict))\
+    \ {\n\t\tunion macaddr host_mac = HOST_IFINDEX_MAC;\n\n\t\tret = ipv4_redirect_to_host_port(skb,\
+    \ &csum_off, l4_off,\n\t\t\t\t\t\t verdict, tuple.dport,\n\n// FILE: bpf/lib/conntrack.h\n\
+    // CONTEXT: static inline int __inline__ ct_lookup6(void *map, struct ipv6_ct_tuple\
+    \ *tuple,\n\t\tbreak;\n\n\tcase IPPROTO_UDP:\n\t\t/* load sport + dport into tuple\
+    \ */\n\t\tif (skb_load_bytes(skb, l4_off, &tuple->dport, 4) < 0)\n\t\t\treturn\
+    \ DROP_CT_INVALID_HDR;\n\n\t\taction = ACTION_CREATE;\n\t\tbreak;\n\n\tdefault:\n\
+    \t\t/* Can't handle extension headers yet */\n\t\trelax_verifier();\n\t\treturn\
+    \ DROP_CT_UNKNOWN_PROTO;\n\t}\n\n\t/* Lookup the reverse direction\n\t *\n\t *\
+    \ This will find an existing flow in the reverse direction.\n\t * The reverse\
+    \ direction is the one where reverse nat index is stored.\n\t */\n\tcilium_dbg3(skb,\
+    \ DBG_CT_LOOKUP6_1, (__u32) tuple->saddr.p4, (__u32) tuple->daddr.p4,\n\t\t  \
+    \    (bpf_ntohs(tuple->sport) << 16) | bpf_ntohs(tuple->dport));\n\tcilium_dbg3(skb,\
+    \ DBG_CT_LOOKUP6_2, (tuple->nexthdr << 8) | tuple->flags, 0, 0);\n\tret = __ct_lookup(map,\
+    \ skb, tuple, action, dir, ct_state, is_tcp,\n\n// CONTEXT: static inline int\
+    \ __inline__ ct_lookup4(void *map, struct ipv4_ct_tuple *tuple,\n\t\tbreak;\n\n\
+    \tcase IPPROTO_UDP:\n\t\t/* load sport + dport into tuple */\n\t\tif (skb_load_bytes(skb,\
+    \ off, &tuple->dport, 4) < 0)\n\t\t\treturn DROP_CT_INVALID_HDR;\n\n\t\taction\
+    \ = ACTION_CREATE;\n\t\tbreak;\n\n\tdefault:\n\t\t/* Can't handle extension headers\
+    \ yet */\n\t\trelax_verifier();\n\t\treturn DROP_CT_UNKNOWN_PROTO;\n\t}\n\n\t\
+    /* Lookup the reverse direction\n\t *\n\t * This will find an existing flow in\
+    \ the reverse direction.\n\t */\n#ifndef QUIET_CT\n\tcilium_dbg3(skb, DBG_CT_LOOKUP4_1,\
+    \ tuple->saddr, tuple->daddr,\n\t\t      (bpf_ntohs(tuple->sport) << 16) | bpf_ntohs(tuple->dport));\n\
+    \tcilium_dbg3(skb, DBG_CT_LOOKUP4_2, (tuple->nexthdr << 8) | tuple->flags, 0,\
+    \ 0);\n#endif"
+  diff_summary: |-
+    bpf/bpf_lxc.c:
+    - Reworked loop or branch structure to reduce verifier complexity and keep the path bounded.
+    - Affected context: skip_service_lookup:.
+    bpf/lib/conntrack.h:
+    - Reworked loop or branch structure to reduce verifier complexity and keep the path bounded.
+    - Affected context: static inline int __inline__ ct_lookup6(void *map, struct ipv6_ct_tuple *tuple,, static inline int __inline__ ct_lookup4(void *map, struct ipv4_ct_tuple *tuple,.
+    - Commit subject: bpf: Relax verifier in error cases.

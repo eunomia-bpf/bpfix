@@ -1,0 +1,54 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-e44296eda6e8
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/e44296eda6e89c5cf17604c50d468393ecc70f2d
+  title: 'bpf/tests: fix NULL iface MAC on ipv6 ND tests'
+  repository: https://github.com/cilium/cilium
+  commit: e44296eda6e89c5cf17604c50d468393ecc70f2d
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-e44296eda6e8.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Adds a missing test interface MAC assignment for IPv6 ND tests; this is
+    test setup/runtime behavior, not a verifier-load failure.
+raw:
+  case_id: github-commit-cilium-e44296eda6e8
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: e44296eda6e89c5cf17604c50d468393ecc70f2d
+  commit_message: 'bpf/tests: fix NULL iface MAC on ipv6 ND tests'
+  commit_date: '2025-09-05'
+  fix_type: other
+  buggy_code: "// FILE: bpf/tests/ipv6_ndp_from_netdev_test.c\n#include \"pktgen.h\"\
+    \n\n#define ENABLE_IPV4\n#define ENABLE_IPV6\n\n#include \"bpf_host.c\"\n\n#include\
+    \ \"lib/ipcache.h\"\n#include \"lib/endpoint.h\"\n\n#define FROM_NETDEV 0\n\n\
+    struct {\n\t__uint(type, BPF_MAP_TYPE_PROG_ARRAY);\n\t__uint(key_size, sizeof(__u32));\n\
+    \t__uint(max_entries, 1);\n\t__array(values, int());\n} entry_call_map __section(\"\
+    .maps\") = {\n\t.values = {\n\t\t[FROM_NETDEV] = &cil_from_netdev,\n\t},\n};\n\
+    \nstruct test_args {"
+  fixed_code: "// FILE: bpf/tests/ipv6_ndp_from_netdev_test.c\n#include \"pktgen.h\"\
+    \n\n#define ENABLE_IPV4\n#define ENABLE_IPV6\n\n#include \"bpf_host.c\"\n\n#include\
+    \ \"lib/ipcache.h\"\n#include \"lib/endpoint.h\"\n\n#define FROM_NETDEV 0\n\n\
+    ASSIGN_CONFIG(union macaddr, interface_mac, {.addr = mac_two_addr})\n\nstruct\
+    \ {\n\t__uint(type, BPF_MAP_TYPE_PROG_ARRAY);\n\t__uint(key_size, sizeof(__u32));\n\
+    \t__uint(max_entries, 1);\n\t__array(values, int());\n} entry_call_map __section(\"\
+    .maps\") = {\n\t.values = {\n\t\t[FROM_NETDEV] = &cil_from_netdev,\n\t},\n};\n\
+    \nstruct test_args {"
+  diff_summary: |-
+    bpf/tests/ipv6_ndp_from_netdev_test.c:
+    - Applied a small verifier-related code change captured by the exact before/after snippets below.
+    - Affected context: the touched section.
+    - Commit subject: bpf/tests: fix NULL iface MAC on ipv6 ND tests.

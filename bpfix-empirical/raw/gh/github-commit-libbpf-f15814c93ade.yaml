@@ -1,0 +1,56 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-libbpf-f15814c93ade
+source_kind: github_commit
+source:
+  url: https://github.com/libbpf/libbpf/commit/f15814c93ade62519c9ccb50a8ca5c8998010ac2
+  title: 'bpf, libbpf: Avoid unused function warning on bpf_tail_call_static'
+  repository: https://github.com/libbpf/libbpf
+  commit: f15814c93ade62519c9ccb50a8ca5c8998010ac2
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-libbpf-f15814c93ade.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Raw has_verifier_log=false. The diff changes __always_inline to include
+    inline to avoid an unused-function warning for bpf_tail_call_static; no verifier
+    terminal error is identified.
+raw:
+  case_id: github-commit-libbpf-f15814c93ade
+  source: github_commits
+  repository: https://github.com/libbpf/libbpf
+  commit_hash: f15814c93ade62519c9ccb50a8ca5c8998010ac2
+  commit_message: 'bpf, libbpf: Avoid unused function warning on bpf_tail_call_static'
+  commit_date: '2021-01-13'
+  fix_type: inline_hint
+  buggy_code: "// FILE: src/bpf_helpers.h\n\tbpf_trace_printk(____fmt, sizeof(____fmt),\t\
+    \\\n\t\t\t ##__VA_ARGS__);\t\t\\\n})\n\n/*\n * Helper macro to place programs,\
+    \ maps, license in\n * different sections in elf_bpf file. Section names\n * are\
+    \ interpreted by elf_bpf loader\n */\n#define SEC(NAME) __attribute__((section(NAME),\
+    \ used))\n\n#ifndef __always_inline\n#define __always_inline __attribute__((always_inline))\n\
+    #endif\n#ifndef __noinline\n#define __noinline __attribute__((noinline))\n#endif\n\
+    #ifndef __weak\n#define __weak __attribute__((weak))\n#endif\n\n/*\n * Helper\
+    \ macro to manipulate data structures\n */\n#ifndef offsetof"
+  fixed_code: "// FILE: src/bpf_helpers.h\n\tbpf_trace_printk(____fmt, sizeof(____fmt),\t\
+    \\\n\t\t\t ##__VA_ARGS__);\t\t\\\n})\n\n/*\n * Helper macro to place programs,\
+    \ maps, license in\n * different sections in elf_bpf file. Section names\n * are\
+    \ interpreted by elf_bpf loader\n */\n#define SEC(NAME) __attribute__((section(NAME),\
+    \ used))\n\n#ifndef __always_inline\n#define __always_inline inline __attribute__((always_inline))\n\
+    #endif\n#ifndef __noinline\n#define __noinline __attribute__((noinline))\n#endif\n\
+    #ifndef __weak\n#define __weak __attribute__((weak))\n#endif\n\n/*\n * Helper\
+    \ macro to manipulate data structures\n */\n#ifndef offsetof"
+  diff_summary: |-
+    src/bpf_helpers.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: the touched section.
+    - Commit subject: bpf, libbpf: Avoid unused function warning on bpf_tail_call_static.

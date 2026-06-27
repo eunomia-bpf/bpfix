@@ -1,0 +1,141 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-7a98029b6b2c
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/7a98029b6b2cbc3a026d48ab2cf3637e53a7d985
+  title: 'bpf: Split ingress L3 handlers into tail calls'
+  repository: https://github.com/cilium/cilium
+  commit: 7a98029b6b2cbc3a026d48ab2cf3637e53a7d985
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-7a98029b6b2c.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: not_reconstructable_from_diff
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Tail-call split for ingress L3 handlers is a large control-flow/complexity
+    refactor with no raw verifier log or minimal failing instruction.
+raw:
+  case_id: github-commit-cilium-7a98029b6b2c
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: 7a98029b6b2cbc3a026d48ab2cf3637e53a7d985
+  commit_message: 'bpf: Split ingress L3 handlers into tail calls'
+  commit_date: '2018-07-17'
+  fix_type: loop_rewrite
+  buggy_code: "// FILE: bpf/bpf_lxc.c\n// CONTEXT: static inline int __inline__ ipv6_policy(struct\
+    \ __sk_buff *skb, int ifindex, __u\n\t} else { // Not redirected to host / proxy.\n\
+    \t\tsend_trace_notify(skb, TRACE_TO_LXC, src_label, SECLABEL,\n\t\t\t\t  LXC_ID,\
+    \ ifindex, *forwarding_reason);\n\t}\n\n\tifindex = skb->cb[CB_IFINDEX];\n\tif\
+    \ (ifindex)\n\t\treturn redirect(ifindex, 0);\n\n\treturn TC_ACT_OK;\n}\n\n#ifdef\
+    \ LXC_IPV4\nstatic inline int __inline__ ipv4_policy(struct __sk_buff *skb, int\
+    \ ifindex, __u32 src_label,\n\t\t\t\t\t int *forwarding_reason)\n{\n\tstruct ipv4_ct_tuple\
+    \ tuple = {};\n\tvoid *data, *data_end;\n\tstruct iphdr *ip4;\n\tstruct csum_offset\
+    \ csum_off = {};\n\tint ret, verdict, l4_off;\n\tstruct ct_state ct_state = {};\n\
+    \tstruct ct_state ct_state_new = {};\n\tbool skip_proxy;\n\n// CONTEXT: static\
+    \ inline int __inline__ ipv4_policy(struct __sk_buff *skb, int ifindex, __u\n\t\
+    \tskb->cb[CB_IFINDEX] = HOST_IFINDEX;\n\t} else { // Not redirected to host /\
+    \ proxy.\n\t\tsend_trace_notify(skb, TRACE_TO_LXC, src_label, SECLABEL,\n\t\t\t\
+    \t  LXC_ID, ifindex, *forwarding_reason);\n\t}\n\n\tifindex = skb->cb[CB_IFINDEX];\n\
+    \tif (ifindex)\n\t\treturn redirect(ifindex, 0);\n\n\treturn TC_ACT_OK;\n}\n#endif\n\
+    \n/* Handle policy decisions as the packet makes its way towards the endpoint.\n\
+    \ * Previously, the packet may have come from another local endpoint, another\n\
+    \ * endpoint in the cluster, or from the big blue room (as identified by the\n\
+    \ * contents of skb->cb[CB_SRC_LABEL]). Determine whether the traffic may be\n\
+    \ * passed into the endpoint or if it needs further inspection by a userspace\n\
+    \ * proxy.\n */\n__section_tail(CILIUM_MAP_POLICY, LXC_ID) int handle_policy(struct\
+    \ __sk_buff *skb)\n{\n\tint ret, ifindex = skb->cb[CB_IFINDEX];\n\t__u32 src_label\
+    \ = skb->cb[CB_SRC_LABEL];\n\tint forwarding_reason = 0;\n\n#ifdef DROP_ALL\n\t\
+    ret = DROP_POLICY;\n\tif (0) {\n#endif\n\tswitch (skb->protocol) {\n\tcase bpf_htons(ETH_P_IPV6):\n\
+    \t\tret = ipv6_policy(skb, ifindex, src_label, &forwarding_reason);\n\t\tbreak;\n\
+    \n#ifdef LXC_IPV4\n\tcase bpf_htons(ETH_P_IP):\n\t\tret = ipv4_policy(skb, ifindex,\
+    \ src_label, &forwarding_reason);\n\t\tbreak;\n#endif\n\n\tdefault:\n\t\tret =\
+    \ DROP_UNKNOWN_L3;\n\t\tbreak;\n\t}\n#ifdef DROP_ALL\n\t}\n#endif\n\n\tif (IS_ERR(ret))\n\
+    \n// CONTEXT: static inline int __inline__ handle_ipv4_to_ipv6(struct __sk_buff\
+    \ *skb)\n\n}\n__section_tail(CILIUM_MAP_CALLS, CILIUM_CALL_NAT46) int tail_ipv4_to_ipv6(struct\
+    \ __sk_buff *skb)\n{\n\tint ret = handle_ipv4_to_ipv6(skb);\n\n\tif (IS_ERR(ret))\n\
+    \t\treturn send_drop_notify(skb, SECLABEL, 0, 0, 0, ret, TC_ACT_SHOT,\n\t\t\t\t\
+    METRIC_INGRESS);\n\n\tcilium_dbg_capture(skb, DBG_CAPTURE_AFTER_V46, skb->ingress_ifindex);\n\
+    \n\ttail_call(skb, &cilium_policy, LXC_ID);\n\treturn DROP_MISSED_TAIL_CALL;\n\
+    }\n#endif\nBPF_LICENSE(\"GPL\");\n\n// FILE: bpf/lib/common.h\n#define ARRAY_SIZE(arr)\
+    \ (sizeof(arr) / sizeof((arr)[0]))\n\n#define CILIUM_CALL_DROP_NOTIFY\t\t\t1\n\
+    #define CILIUM_CALL_ERROR_NOTIFY\t\t2\n#define CILIUM_CALL_SEND_ICMP6_ECHO_REPLY\t\
+    3\n#define CILIUM_CALL_HANDLE_ICMP6_NS\t\t4\n#define CILIUM_CALL_SEND_ICMP6_TIME_EXCEEDED\t\
+    5\n#define CILIUM_CALL_ARP\t\t\t\t6\n#define CILIUM_CALL_IPV4_FROM_LXC\t\t7\n\
+    #define CILIUM_CALL_NAT64\t\t\t8\n#define CILIUM_CALL_NAT46\t\t\t9\n#define CILIUM_CALL_IPV6_FROM_LXC\t\
+    \t10\n#define CILIUM_CALL_SIZE\t\t\t11\n\ntypedef __u64 mac_t;\n\nunion v6addr\
+    \ {\n        struct {\n                __u32 p1;\n                __u32 p2;\n\
+    \                __u32 p3;\n                __u32 p4;\n        };\n        __u8\
+    \ addr[16];\n};"
+  fixed_code: "// FILE: bpf/bpf_lxc.c\n// CONTEXT: static inline int __inline__ ipv6_policy(struct\
+    \ __sk_buff *skb, int ifindex, __u\n\t} else { // Not redirected to host / proxy.\n\
+    \t\tsend_trace_notify(skb, TRACE_TO_LXC, src_label, SECLABEL,\n\t\t\t\t  LXC_ID,\
+    \ ifindex, *forwarding_reason);\n\t}\n\n\tifindex = skb->cb[CB_IFINDEX];\n\tif\
+    \ (ifindex)\n\t\treturn redirect(ifindex, 0);\n\n\treturn TC_ACT_OK;\n}\n\n__section_tail(CILIUM_MAP_CALLS,\
+    \ CILIUM_CALL_IPV6_TO_LXC) int tail_ipv6_policy(struct __sk_buff *skb) {\n\tint\
+    \ ret, ifindex = skb->cb[CB_IFINDEX];\n\t__u32 src_label = skb->cb[CB_SRC_LABEL];\n\
+    \tint forwarding_reason = 0;\n\n\tret = ipv6_policy(skb, ifindex, src_label, &forwarding_reason);\n\
+    \tif (IS_ERR(ret))\n\t\treturn send_drop_notify(skb, src_label, SECLABEL, LXC_ID,\n\
+    \t\t\t\t\tifindex, ret, TC_ACT_SHOT, METRIC_INGRESS);\n\n\treturn ret;\n}\n\n\
+    #ifdef LXC_IPV4\nstatic inline int __inline__ ipv4_policy(struct __sk_buff *skb,\
+    \ int ifindex, __u32 src_label,\n\t\t\t\t\t int *forwarding_reason)\n{\n\tstruct\
+    \ ipv4_ct_tuple tuple = {};\n\tvoid *data, *data_end;\n\tstruct iphdr *ip4;\n\t\
+    struct csum_offset csum_off = {};\n\tint ret, verdict, l4_off;\n\tstruct ct_state\
+    \ ct_state = {};\n\tstruct ct_state ct_state_new = {};\n\tbool skip_proxy;\n\n\
+    // CONTEXT: static inline int __inline__ ipv4_policy(struct __sk_buff *skb, int\
+    \ ifindex, __u\n\t\tskb->cb[CB_IFINDEX] = HOST_IFINDEX;\n\t} else { // Not redirected\
+    \ to host / proxy.\n\t\tsend_trace_notify(skb, TRACE_TO_LXC, src_label, SECLABEL,\n\
+    \t\t\t\t  LXC_ID, ifindex, *forwarding_reason);\n\t}\n\n\tifindex = skb->cb[CB_IFINDEX];\n\
+    \tif (ifindex)\n\t\treturn redirect(ifindex, 0);\n\n\treturn TC_ACT_OK;\n}\n\n\
+    __section_tail(CILIUM_MAP_CALLS, CILIUM_CALL_IPV4_TO_LXC) int tail_ipv4_policy(struct\
+    \ __sk_buff *skb) {\n\tint ret, ifindex = skb->cb[CB_IFINDEX];\n\t__u32 src_label\
+    \ = skb->cb[CB_SRC_LABEL];\n\tint forwarding_reason = 0;\n\n\tret = ipv4_policy(skb,\
+    \ ifindex, src_label, &forwarding_reason);\n\tif (IS_ERR(ret))\n\t\treturn send_drop_notify(skb,\
+    \ src_label, SECLABEL, LXC_ID,\n\t\t\t\t\tifindex, ret, TC_ACT_SHOT, METRIC_INGRESS);\n\
+    \n\treturn ret;\n}\n\n#endif\n\n/* Handle policy decisions as the packet makes\
+    \ its way towards the endpoint.\n * Previously, the packet may have come from\
+    \ another local endpoint, another\n * endpoint in the cluster, or from the big\
+    \ blue room (as identified by the\n * contents of skb->cb[CB_SRC_LABEL]). Determine\
+    \ whether the traffic may be\n * passed into the endpoint or if it needs further\
+    \ inspection by a userspace\n * proxy.\n */\n__section_tail(CILIUM_MAP_POLICY,\
+    \ LXC_ID) int handle_policy(struct __sk_buff *skb)\n{\n\tint ret, ifindex = skb->cb[CB_IFINDEX];\n\
+    \t__u32 src_label = skb->cb[CB_SRC_LABEL];\n\n#ifdef DROP_ALL\n\tret = DROP_POLICY;\n\
+    \tif (0) {\n#endif\n\tswitch (skb->protocol) {\n\tcase bpf_htons(ETH_P_IPV6):\n\
+    \t\tep_tail_call(skb, CILIUM_CALL_IPV6_TO_LXC);\n\t\tret = DROP_MISSED_TAIL_CALL;\n\
+    \t\tbreak;\n\n#ifdef LXC_IPV4\n\tcase bpf_htons(ETH_P_IP):\n\t\tep_tail_call(skb,\
+    \ CILIUM_CALL_IPV4_TO_LXC);\n\t\tret = DROP_MISSED_TAIL_CALL;\n\t\tbreak;\n#endif\n\
+    \n\tdefault:\n\t\tret = DROP_UNKNOWN_L3;\n\t\tbreak;\n\t}\n#ifdef DROP_ALL\n\t\
+    }\n#endif\n\n\tif (IS_ERR(ret))\n\n// CONTEXT: static inline int __inline__ handle_ipv4_to_ipv6(struct\
+    \ __sk_buff *skb)\n\n}\n__section_tail(CILIUM_MAP_CALLS, CILIUM_CALL_NAT46) int\
+    \ tail_ipv4_to_ipv6(struct __sk_buff *skb)\n{\n\tint ret = handle_ipv4_to_ipv6(skb);\n\
+    \n\tif (IS_ERR(ret))\n\t\treturn send_drop_notify(skb, SECLABEL, 0, 0, 0, ret,\
+    \ TC_ACT_SHOT,\n\t\t\t\tMETRIC_INGRESS);\n\n\tcilium_dbg_capture(skb, DBG_CAPTURE_AFTER_V46,\
+    \ skb->ingress_ifindex);\n\n\tep_tail_call(skb, CILIUM_CALL_IPV6_TO_LXC);\n\t\
+    return DROP_MISSED_TAIL_CALL;\n}\n#endif\nBPF_LICENSE(\"GPL\");\n\n// FILE: bpf/lib/common.h\n\
+    #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]))\n\n#define CILIUM_CALL_DROP_NOTIFY\t\
+    \t\t1\n#define CILIUM_CALL_ERROR_NOTIFY\t\t2\n#define CILIUM_CALL_SEND_ICMP6_ECHO_REPLY\t\
+    3\n#define CILIUM_CALL_HANDLE_ICMP6_NS\t\t4\n#define CILIUM_CALL_SEND_ICMP6_TIME_EXCEEDED\t\
+    5\n#define CILIUM_CALL_ARP\t\t\t\t6\n#define CILIUM_CALL_IPV4_FROM_LXC\t\t7\n\
+    #define CILIUM_CALL_NAT64\t\t\t8\n#define CILIUM_CALL_NAT46\t\t\t9\n#define CILIUM_CALL_IPV6_FROM_LXC\t\
+    \t10\n#define CILIUM_CALL_IPV4_TO_LXC\t\t\t11\n#define CILIUM_CALL_IPV6_TO_LXC\t\
+    \t\t12\n#define CILIUM_CALL_SIZE\t\t\t13\n\ntypedef __u64 mac_t;\n\nunion v6addr\
+    \ {\n        struct {\n                __u32 p1;\n                __u32 p2;\n\
+    \                __u32 p3;\n                __u32 p4;\n        };\n        __u8\
+    \ addr[16];\n};"
+  diff_summary: |-
+    bpf/bpf_lxc.c:
+    - Reworked loop or branch structure to reduce verifier complexity and keep the path bounded.
+    - Affected context: static inline int __inline__ ipv6_policy(struct __sk_buff *skb, int ifindex, __u, static inline int __inline__ ipv4_policy(struct __sk_buff *skb, int ifindex, __u, static inline int __inline__ handle_ipv4_to_ipv6(struct __sk_buff *skb).
+    bpf/lib/common.h:
+    - Reworked loop or branch structure to reduce verifier complexity and keep the path bounded.
+    - Affected context: the touched section.
+    - Commit subject: bpf: Split ingress L3 handlers into tail calls.

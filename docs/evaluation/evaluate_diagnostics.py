@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Evaluate BPFix diagnostics against benchmark labels.
+"""Evaluate BPFix diagnostics against empirical labels.
 
 This is a label-proxy evaluation, not a user study.  It compares BPFix's
 full-log output with a terminal-message-only dictionary baseline on metrics that
-can be computed from checked-in benchmark labels.
+can be computed from checked-in empirical labels.
 """
 
 from __future__ import annotations
@@ -23,9 +23,9 @@ from typing import Iterable
 import yaml
 
 
-TOOLS_DIR = pathlib.Path(__file__).resolve().parents[2] / "bpfix-bench" / "tools"
+TOOLS_DIR = pathlib.Path(__file__).resolve().parents[2] / "bpfix-empirical" / "tools"
 sys.path.insert(0, str(TOOLS_DIR))
-from benchmark_metadata import with_case_defaults  # noqa: E402
+from empirical_metadata import with_case_defaults  # noqa: E402
 
 
 TAXONOMY_CLASSES = [
@@ -466,14 +466,14 @@ def parse_bpfix_text(text: str) -> dict:
 
 
 def load_rows(
-    bench_root: pathlib.Path,
+    empirical_root: pathlib.Path,
     bpfix_bin: pathlib.Path,
     object_if_available: bool = False,
 ) -> list[Row]:
-    manifest = yaml.safe_load((bench_root / "manifest.yaml").read_text())
+    manifest = yaml.safe_load((empirical_root / "manifest.yaml").read_text())
     source_by_case = {entry["case_id"]: entry["source_kind"] for entry in manifest["cases"]}
     rows: list[Row] = []
-    for case_yaml in sorted((bench_root / "cases").glob("*/case.yaml")):
+    for case_yaml in sorted((empirical_root / "cases").glob("*/case.yaml")):
         case_id = case_yaml.parent.name
         data = with_case_defaults(yaml.safe_load(case_yaml.read_text()), manifest)
         label = data["label"]
@@ -951,7 +951,7 @@ def emit_sample_audit(rows: list[Row], size: int, seed: str) -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--bench-root", default="bpfix-bench", type=pathlib.Path)
+    parser.add_argument("--empirical-root", default="bpfix-empirical", type=pathlib.Path)
     parser.add_argument("--bpfix-bin", default="target/debug/bpfix", type=pathlib.Path)
     parser.add_argument("--confusion", action="store_true")
     parser.add_argument("--coverage", action="store_true")
@@ -974,7 +974,7 @@ def main() -> int:
         print(f"missing bpfix binary: {args.bpfix_bin}", file=sys.stderr)
         return 2
 
-    rows = load_rows(args.bench_root, args.bpfix_bin, args.object_if_available)
+    rows = load_rows(args.empirical_root, args.bpfix_bin, args.object_if_available)
     emit_summary(rows)
     if args.confusion:
         print("\nBPFix confusion:\n")

@@ -1,0 +1,130 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-d3edaec19789
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/d3edaec1978939dd57314d6e637bbda186ba110a
+  title: 'bpf: Look up L4 before L3 and redirect to proxy if either L4 result redirects'
+  repository: https://github.com/cilium/cilium
+  commit: d3edaec1978939dd57314d6e637bbda186ba110a
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-d3edaec19789.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: not_reconstructable_from_diff
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: The commit design notes verifier constraints around keeping two policy lookup
+    results, but the diff intentionally avoids that shape and has no terminal reject
+    log.
+raw:
+  case_id: github-commit-cilium-d3edaec19789
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: d3edaec1978939dd57314d6e637bbda186ba110a
+  commit_message: 'bpf: Look up L4 before L3 and redirect to proxy if either L4 result
+    redirects'
+  commit_date: '2020-02-11'
+  fix_type: bounds_check
+  buggy_code: "// FILE: bpf/lib/policy.h\n// CONTEXT: policy_sk_egress(__u32 identity,\
+    \ __u32 ip,  __u16 dport)\n\tint dir = CT_EGRESS;\n\t__u8 proto = IPPROTO_TCP;\n\
+    \tstruct policy_entry *policy;\n\tstruct policy_key key = {\n\t\t.sec_label =\
+    \ identity,\n\t\t.dport = dport,\n\t\t.protocol = proto,\n\t\t.egress = !dir,\n\
+    \t\t.pad = 0,\n\t};\n\n\tif (!map)\n\t\treturn 0;\n\n\tpolicy = map_lookup_elem(map,\
+    \ &key);\n\tif (likely(policy)) {\n\t\t/* FIXME: Need byte counter */\n\t\t__sync_fetch_and_add(&policy->packets,\
+    \ 1);\n\t\tgoto get_proxy_port;\n\t}\n\n\t/* If L4 policy check misses, fall back\
+    \ to L3. */\n\tkey.dport = 0;\n\tkey.protocol = 0;\n\tpolicy = map_lookup_elem(map,\
+    \ &key);\n\tif (likely(policy)) {\n\t\t/* FIXME: Need byte counter */\n\t\t__sync_fetch_and_add(&policy->packets,\
+    \ 1);\n\t\treturn TC_ACT_OK;\n\t}\n\n\tkey.sec_label = 0;\n\tkey.dport = dport;\n\
+    \tkey.protocol = proto;\n\tpolicy = map_lookup_elem(map, &key);\n\tif (likely(policy))\
+    \ {\n\t\t/* FIXME: Use per cpu counters */\n\t\t__sync_fetch_and_add(&policy->packets,\
+    \ 1);\n\t\tgoto get_proxy_port;\n\t}\n\n\t/* Final fallback if allow-all policy\
+    \ is in place. */\n\tkey.dport = 0;\n\tkey.protocol = 0;\n\tpolicy = map_lookup_elem(map,\
+    \ &key);\n\tif (likely(policy)) {\n\t\t/* FIXME: Need byte counter */\n\t\t__sync_fetch_and_add(&policy->packets,\
+    \ 1);\n\t\treturn TC_ACT_OK;\n\t}\n\n\treturn DROP_POLICY;\nget_proxy_port:\n\t\
+    if (likely(policy)) {\n\t\treturn policy->proxy_port;\n\t}\n\treturn TC_ACT_OK;\n\
+    }\n#else\n\nstatic inline void __inline__\naccount(struct __sk_buff *skb, struct\
+    \ policy_entry *policy)\n{\n\t/* FIXME: Use per cpu counters */\n\t__sync_fetch_and_add(&policy->packets,\
+    \ 1);\n\t__sync_fetch_and_add(&policy->bytes, skb->len);\n}\n\nstatic inline int\
+    \ __inline__\n\n// CONTEXT: __policy_can_access(void *map, struct __sk_buff *skb,\
+    \ __u32 identity,\n#endif /* ALLOW_ICMP_FRAG_NEEDED */\n\n\tstruct policy_entry\
+    \ *policy;\n\n\tstruct policy_key key = {\n\t\t.sec_label = identity,\n\t\t.dport\
+    \ = dport,\n\t\t.protocol = proto,\n\t\t.egress = !dir,\n\t\t.pad = 0,\n\t};\n\
+    \n\tif (!is_fragment) {\n\t\tpolicy = map_lookup_elem(map, &key);\n\t\tif (likely(policy))\
+    \ {\n\t\t\tcilium_dbg3(skb, DBG_L4_CREATE, identity, SECLABEL,\n\t\t\t\t    dport\
+    \ << 16 | proto);\n\n\t\t\taccount(skb, policy);\n\t\t\tgoto get_proxy_port;\n\
+    \t\t}\n\t}\n\n\t/* If L4 policy check misses, fall back to L3. */\n\tkey.dport\
+    \ = 0;\n\tkey.protocol = 0;\n\tpolicy = map_lookup_elem(map, &key);\n\tif (likely(policy))\
+    \ {\n\t\taccount(skb, policy);\n\t\treturn TC_ACT_OK;\n\t}\n\n\tif (!is_fragment)\
+    \ {\n\t\tkey.sec_label = 0;\n\t\tkey.dport = dport;\n\t\tkey.protocol = proto;\n\
+    \t\tpolicy = map_lookup_elem(map, &key);\n\t\tif (likely(policy)) {\n\t\t\taccount(skb,\
+    \ policy);\n\t\t\tgoto get_proxy_port;\n\t\t}\n\t\tkey.dport = 0;\n\t\tkey.protocol\
+    \ = 0;\n\t}\n\n\t/* Final fallback if allow-all policy is in place. */\n\tkey.sec_label\
+    \ = 0;\n\tpolicy = map_lookup_elem(map, &key);\n\tif (policy) {\n\t\taccount(skb,\
+    \ policy);\n\t\treturn TC_ACT_OK;\n\t}\n\n\tif (skb->cb[CB_POLICY])\n\t\tgoto\
+    \ allow;\n\n\tif (is_fragment)\n\t\treturn DROP_FRAG_NOSUPPORT;\n\treturn DROP_POLICY;\n\
+    get_proxy_port:\n\tif (likely(policy)) {\n\t\treturn policy->proxy_port;\n\t}\n\
+    allow:\n\treturn TC_ACT_OK;\n}\n\n/**\n * Determine whether the policy allows\
+    \ this traffic on ingress.\n * @arg skb\t\tPacket to allow or deny\n * @arg src_identity\t\
+    Source security identity for this packet\n * @arg dport\t\tDestination port of\
+    \ this packet\n * @arg proto\t\tL3 Protocol of this packet\n *\n * Returns:\n\
+    \ *   - Positive integer indicating the proxy_port to handle this traffic\n *\
+    \   - TC_ACT_OK if the policy allows this traffic based only on labels/L3/L4"
+  fixed_code: "// FILE: bpf/lib/policy.h\n// CONTEXT: policy_sk_egress(__u32 identity,\
+    \ __u32 ip,  __u16 dport)\n\tint dir = CT_EGRESS;\n\t__u8 proto = IPPROTO_TCP;\n\
+    \tstruct policy_entry *policy;\n\tstruct policy_key key = {\n\t\t.sec_label =\
+    \ identity,\n\t\t.dport = dport,\n\t\t.protocol = proto,\n\t\t.egress = !dir,\n\
+    \t\t.pad = 0,\n\t};\n\n\tif (!map)\n\t\treturn TC_ACT_OK;\n\n\t/* Start with L3/L4\
+    \ lookup. */\n\tpolicy = map_lookup_elem(map, &key);\n\tif (likely(policy)) {\n\
+    \t\t/* FIXME: Need byte counter */\n\t\t__sync_fetch_and_add(&policy->packets,\
+    \ 1);\n\t\treturn policy->proxy_port;\n\t}\n\n\t/* L4-only lookup. */\n\tkey.sec_label\
+    \ = 0;\n\tpolicy = map_lookup_elem(map, &key);\n\tif (likely(policy)) {\n\t\t\
+    /* FIXME: Need byte counter */\n\t\t__sync_fetch_and_add(&policy->packets, 1);\n\
+    \t\treturn policy->proxy_port;\n\t}\n\tkey.sec_label = identity;\n\n\t/* If L4\
+    \ policy check misses, fall back to L3. */\n\tkey.dport = 0;\n\tkey.protocol =\
+    \ 0;\n\tpolicy = map_lookup_elem(map, &key);\n\tif (likely(policy)) {\n\t\t/*\
+    \ FIXME: Need byte counter */\n\t\t__sync_fetch_and_add(&policy->packets, 1);\n\
+    \t\treturn TC_ACT_OK;\n\t}\n\n\t/* Final fallback if allow-all policy is in place.\
+    \ */\n\tkey.sec_label = 0;\n\tpolicy = map_lookup_elem(map, &key);\n\tif (likely(policy))\
+    \ {\n\t\t/* FIXME: Need byte counter */\n\t\t__sync_fetch_and_add(&policy->packets,\
+    \ 1);\n\t\treturn TC_ACT_OK;\n\t}\n\n\treturn DROP_POLICY;\n}\n#else\n\nstatic\
+    \ inline void __inline__\naccount(struct __sk_buff *skb, struct policy_entry *policy)\n\
+    {\n\t/* FIXME: Use per cpu counters */\n\t__sync_fetch_and_add(&policy->packets,\
+    \ 1);\n\t__sync_fetch_and_add(&policy->bytes, skb->len);\n}\n\nstatic inline int\
+    \ __inline__\n\n// CONTEXT: __policy_can_access(void *map, struct __sk_buff *skb,\
+    \ __u32 identity,\n#endif /* ALLOW_ICMP_FRAG_NEEDED */\n\n\tstruct policy_entry\
+    \ *policy;\n\n\tstruct policy_key key = {\n\t\t.sec_label = identity,\n\t\t.dport\
+    \ = dport,\n\t\t.protocol = proto,\n\t\t.egress = !dir,\n\t\t.pad = 0,\n\t};\n\
+    \n\t/* L4 lookup can't be done on fragments. */\n\tif (!is_fragment) {\n\t\t/*\
+    \ Start with L3/L4 lookup. */\n\t\tpolicy = map_lookup_elem(map, &key);\n\t\t\
+    if (likely(policy)) {\n\t\t\tcilium_dbg3(skb, DBG_L4_CREATE, identity, SECLABEL,\n\
+    \t\t\t\t    dport << 16 | proto);\n\n\t\t\taccount(skb, policy);\n\t\t\treturn\
+    \ policy->proxy_port;\n\t\t}\n\n\t\t/* L4-only lookup. */\n\t\tkey.sec_label =\
+    \ 0;\n\t\tpolicy = map_lookup_elem(map, &key);\n\t\tif (likely(policy)) {\n\t\t\
+    \taccount(skb, policy);\n\t\t\treturn policy->proxy_port;\n\t\t}\n\t\tkey.sec_label\
+    \ = identity;\n\t}\n\n\t/* If L4 policy check misses, fall back to L3. */\n\t\
+    key.dport = 0;\n\tkey.protocol = 0;\n\tpolicy = map_lookup_elem(map, &key);\n\t\
+    if (likely(policy)) {\n\t\taccount(skb, policy);\n\t\treturn TC_ACT_OK;\n\t}\n\
+    \n\t/* Final fallback if allow-all policy is in place. */\n\tkey.sec_label = 0;\n\
+    \tpolicy = map_lookup_elem(map, &key);\n\tif (policy) {\n\t\taccount(skb, policy);\n\
+    \t\treturn TC_ACT_OK;\n\t}\n\n\tif (skb->cb[CB_POLICY])\n\t\treturn TC_ACT_OK;\n\
+    \n\tif (is_fragment)\n\t\treturn DROP_FRAG_NOSUPPORT;\n\treturn DROP_POLICY;\n\
+    }\n\n/**\n * Determine whether the policy allows this traffic on ingress.\n *\
+    \ @arg skb\t\tPacket to allow or deny\n * @arg src_identity\tSource security identity\
+    \ for this packet\n * @arg dport\t\tDestination port of this packet\n * @arg proto\t\
+    \tL3 Protocol of this packet\n *\n * Returns:\n *   - Positive integer indicating\
+    \ the proxy_port to handle this traffic\n *   - TC_ACT_OK if the policy allows\
+    \ this traffic based only on labels/L3/L4"
+  diff_summary: |-
+    bpf/lib/policy.h:
+    - Added explicit bounds or range guards so the verifier can prove the access size and offset.
+    - Affected context: policy_sk_egress(__u32 identity, __u32 ip,  __u16 dport), __policy_can_access(void *map, struct __sk_buff *skb, __u32 identity,.
+    - Commit subject: bpf: Look up L4 before L3 and redirect to proxy if either L4 result redirects.

@@ -1,0 +1,120 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-libbpf-bb14c6f5b581
+source_kind: github_commit
+source:
+  url: https://github.com/libbpf/libbpf/commit/bb14c6f5b58117b6b28e77777246dc406ac1cc79
+  title: 'libbpf: Add "bool skipped" to struct bpf_map'
+  repository: https://github.com/libbpf/libbpf
+  commit: bb14c6f5b58117b6b28e77777246dc406ac1cc79
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-libbpf-bb14c6f5b581.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Raw has_verifier_log=false, source_snippet_count=0. The snippets add bool
+    skipped to libbpf's struct bpf_map and skip user-space map creation/relocation/pinning
+    paths; this is loader map bookkeeping, not verifier bytecode rejection.
+raw:
+  case_id: github-commit-libbpf-bb14c6f5b581
+  source: github_commits
+  repository: https://github.com/libbpf/libbpf
+  commit_hash: bb14c6f5b58117b6b28e77777246dc406ac1cc79
+  commit_message: 'libbpf: Add "bool skipped" to struct bpf_map'
+  commit_date: '2021-12-10'
+  fix_type: bounds_check
+  buggy_code: "// FILE: src/libbpf.c\n// CONTEXT: struct bpf_map {\n\t__u32 btf_vmlinux_value_type_id;\n\
+    \tvoid *priv;\n\tbpf_map_clear_priv_t clear_priv;\n\tenum libbpf_map_type libbpf_type;\n\
+    \tvoid *mmaped;\n\tstruct bpf_struct_ops *st_ops;\n\tstruct bpf_map *inner_map;\n\
+    \tvoid **init_slots;\n\tint init_slots_sz;\n\tchar *pin_path;\n\tbool pinned;\n\
+    \tbool reused;\n\t__u64 map_extra;\n};\n\nenum extern_type {\n\tEXT_UNKNOWN,\n\
+    \tEXT_KCFG,\n\tEXT_KSYM,\n};\n\nenum kcfg_type {\n\tKCFG_UNKNOWN,\n\tKCFG_CHAR,\n\
+    \n// CONTEXT: bpf_object__create_maps(struct bpf_object *obj)\n\t\t * programs\
+    \ is referencing any global data map, we'll error\n\t\t * out with program name\
+    \ and relocation index logged.\n\t\t * This approach allows to accommodate Clang\
+    \ emitting\n\t\t * unnecessary .rodata.str1.1 sections for string literals,\n\t\
+    \t * but also it allows to have CO-RE applications that use\n\t\t * global variables\
+    \ in some of BPF programs, but not others.\n\t\t * If those global variable-using\
+    \ programs are not loaded at\n\t\t * runtime due to bpf_program__set_autoload(prog,\
+    \ false),\n\t\t * bpf_object loading will succeed just fine even on old\n\t\t\
+    \ * kernels.\n\t\t */\n\t\tif (bpf_map__is_internal(map) &&\n\t\t    !kernel_supports(obj,\
+    \ FEAT_GLOBAL_DATA))\n\t\t\tcontinue;\n\n\t\tretried = false;\nretry:\n\t\tif\
+    \ (map->pin_path) {\n\t\t\terr = bpf_object__reuse_map(map);\n\t\t\tif (err) {\n\
+    \t\t\t\tpr_warn(\"map '%s': error reusing pinned map\\n\",\n\t\t\t\t\tmap->name);\n\
+    \t\t\t\tgoto err_out;\n\t\t\t}\n\t\t\tif (retried && map->fd < 0) {\n\t\t\t\t\
+    pr_warn(\"map '%s': cannot find pinned map\\n\",\n\n// CONTEXT: bpf_object__relocate_data(struct\
+    \ bpf_object *obj, struct bpf_program *prog)\n\t\t\t\tinsn[0].src_reg = BPF_PSEUDO_MAP_FD;\n\
+    \t\t\t\tinsn[0].imm = obj->maps[relo->map_idx].fd;\n\t\t\t}\n\t\t\tbreak;\n\t\t\
+    case RELO_DATA:\n\t\t\tinsn[1].imm = insn[0].imm + relo->sym_off;\n\t\t\tif (obj->gen_loader)\
+    \ {\n\t\t\t\tinsn[0].src_reg = BPF_PSEUDO_MAP_IDX_VALUE;\n\t\t\t\tinsn[0].imm\
+    \ = relo->map_idx;\n\t\t\t} else {\n\t\t\t\tconst struct bpf_map *map = &obj->maps[relo->map_idx];\n\
+    \n\t\t\t\tif (bpf_map__is_internal(map) &&\n\t\t\t\t    !kernel_supports(obj,\
+    \ FEAT_GLOBAL_DATA)) {\n\t\t\t\t\tpr_warn(\"prog '%s': relo #%d: kernel doesn't\
+    \ support global data\\n\",\n\t\t\t\t\t\tprog->name, i);\n\t\t\t\t\treturn -ENOTSUP;\n\
+    \t\t\t\t}\n\t\t\t\tinsn[0].src_reg = BPF_PSEUDO_MAP_VALUE;\n\t\t\t\tinsn[0].imm\
+    \ = obj->maps[relo->map_idx].fd;\n\t\t\t}\n\t\t\tbreak;\n\t\tcase RELO_EXTERN_VAR:\n\
+    \t\t\text = &obj->externs[relo->sym_off];\n\t\t\tif (ext->type == EXT_KCFG) {\n\
+    \t\t\t\tif (obj->gen_loader) {\n\n// CONTEXT: int bpf_object__pin_maps(struct\
+    \ bpf_object *obj, const char *path)\n\tif (!obj)\n\t\treturn libbpf_err(-ENOENT);\n\
+    \n\tif (!obj->loaded) {\n\t\tpr_warn(\"object not yet loaded; load it first\\\
+    n\");\n\t\treturn libbpf_err(-ENOENT);\n\t}\n\n\tbpf_object__for_each_map(map,\
+    \ obj) {\n\t\tchar *pin_path = NULL;\n\t\tchar buf[PATH_MAX];\n\n\t\tif (path)\
+    \ {\n\t\t\tint len;\n\n\t\t\tlen = snprintf(buf, PATH_MAX, \"%s/%s\", path,\n\t\
+    \t\t\t       bpf_map__name(map));\n\t\t\tif (len < 0) {\n\t\t\t\terr = -EINVAL;\n\
+    \t\t\t\tgoto err_unpin_maps;\n\t\t\t} else if (len >= PATH_MAX) {\n\t\t\t\terr\
+    \ = -ENAMETOOLONG;\n\t\t\t\tgoto err_unpin_maps;\n\t\t\t}"
+  fixed_code: "// FILE: src/libbpf.c\n// CONTEXT: struct bpf_map {\n\t__u32 btf_vmlinux_value_type_id;\n\
+    \tvoid *priv;\n\tbpf_map_clear_priv_t clear_priv;\n\tenum libbpf_map_type libbpf_type;\n\
+    \tvoid *mmaped;\n\tstruct bpf_struct_ops *st_ops;\n\tstruct bpf_map *inner_map;\n\
+    \tvoid **init_slots;\n\tint init_slots_sz;\n\tchar *pin_path;\n\tbool pinned;\n\
+    \tbool reused;\n\tbool skipped;\n\t__u64 map_extra;\n};\n\nenum extern_type {\n\
+    \tEXT_UNKNOWN,\n\tEXT_KCFG,\n\tEXT_KSYM,\n};\n\nenum kcfg_type {\n\tKCFG_UNKNOWN,\n\
+    \tKCFG_CHAR,\n\n// CONTEXT: bpf_object__create_maps(struct bpf_object *obj)\n\t\
+    \t * programs is referencing any global data map, we'll error\n\t\t * out with\
+    \ program name and relocation index logged.\n\t\t * This approach allows to accommodate\
+    \ Clang emitting\n\t\t * unnecessary .rodata.str1.1 sections for string literals,\n\
+    \t\t * but also it allows to have CO-RE applications that use\n\t\t * global variables\
+    \ in some of BPF programs, but not others.\n\t\t * If those global variable-using\
+    \ programs are not loaded at\n\t\t * runtime due to bpf_program__set_autoload(prog,\
+    \ false),\n\t\t * bpf_object loading will succeed just fine even on old\n\t\t\
+    \ * kernels.\n\t\t */\n\t\tif (bpf_map__is_internal(map) &&\n\t\t    !kernel_supports(obj,\
+    \ FEAT_GLOBAL_DATA)) {\n\t\t\tmap->skipped = true;\n\t\t\tcontinue;\n\t\t}\n\n\
+    \t\tretried = false;\nretry:\n\t\tif (map->pin_path) {\n\t\t\terr = bpf_object__reuse_map(map);\n\
+    \t\t\tif (err) {\n\t\t\t\tpr_warn(\"map '%s': error reusing pinned map\\n\",\n\
+    \t\t\t\t\tmap->name);\n\t\t\t\tgoto err_out;\n\t\t\t}\n\t\t\tif (retried && map->fd\
+    \ < 0) {\n\t\t\t\tpr_warn(\"map '%s': cannot find pinned map\\n\",\n\n// CONTEXT:\
+    \ bpf_object__relocate_data(struct bpf_object *obj, struct bpf_program *prog)\n\
+    \t\t\t\tinsn[0].src_reg = BPF_PSEUDO_MAP_FD;\n\t\t\t\tinsn[0].imm = obj->maps[relo->map_idx].fd;\n\
+    \t\t\t}\n\t\t\tbreak;\n\t\tcase RELO_DATA:\n\t\t\tinsn[1].imm = insn[0].imm +\
+    \ relo->sym_off;\n\t\t\tif (obj->gen_loader) {\n\t\t\t\tinsn[0].src_reg = BPF_PSEUDO_MAP_IDX_VALUE;\n\
+    \t\t\t\tinsn[0].imm = relo->map_idx;\n\t\t\t} else {\n\t\t\t\tconst struct bpf_map\
+    \ *map = &obj->maps[relo->map_idx];\n\n\t\t\t\tif (map->skipped) {\n\t\t\t\t\t\
+    pr_warn(\"prog '%s': relo #%d: kernel doesn't support global data\\n\",\n\t\t\t\
+    \t\t\tprog->name, i);\n\t\t\t\t\treturn -ENOTSUP;\n\t\t\t\t}\n\t\t\t\tinsn[0].src_reg\
+    \ = BPF_PSEUDO_MAP_VALUE;\n\t\t\t\tinsn[0].imm = obj->maps[relo->map_idx].fd;\n\
+    \t\t\t}\n\t\t\tbreak;\n\t\tcase RELO_EXTERN_VAR:\n\t\t\text = &obj->externs[relo->sym_off];\n\
+    \t\t\tif (ext->type == EXT_KCFG) {\n\t\t\t\tif (obj->gen_loader) {\n\n// CONTEXT:\
+    \ int bpf_object__pin_maps(struct bpf_object *obj, const char *path)\n\tif (!obj)\n\
+    \t\treturn libbpf_err(-ENOENT);\n\n\tif (!obj->loaded) {\n\t\tpr_warn(\"object\
+    \ not yet loaded; load it first\\n\");\n\t\treturn libbpf_err(-ENOENT);\n\t}\n\
+    \n\tbpf_object__for_each_map(map, obj) {\n\t\tchar *pin_path = NULL;\n\t\tchar\
+    \ buf[PATH_MAX];\n\n\t\tif (map->skipped)\n\t\t\tcontinue;\n\n\t\tif (path) {\n\
+    \t\t\tint len;\n\n\t\t\tlen = snprintf(buf, PATH_MAX, \"%s/%s\", path,\n\t\t\t\
+    \t       bpf_map__name(map));\n\t\t\tif (len < 0) {\n\t\t\t\terr = -EINVAL;\n\t\
+    \t\t\tgoto err_unpin_maps;\n\t\t\t} else if (len >= PATH_MAX) {\n\t\t\t\terr =\
+    \ -ENAMETOOLONG;\n\t\t\t\tgoto err_unpin_maps;\n\t\t\t}"
+  diff_summary: |-
+    src/libbpf.c:
+    - Added explicit bounds or range guards so the verifier can prove the access size and offset.
+    - Affected context: struct bpf_map {, bpf_object__create_maps(struct bpf_object *obj), bpf_object__relocate_data(struct bpf_object *obj, struct bpf_program *prog).
+    - Commit subject: libbpf: Add "bool skipped" to struct bpf_map.

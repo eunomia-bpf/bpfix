@@ -1,0 +1,137 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-3e4604fb219a
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/3e4604fb219af51519b39a035abbbade084fb3e5
+  title: 'bpf: correctly encapsulate pod to node traffic with kube-proxy+hostfw'
+  repository: https://github.com/cilium/cilium
+  commit: 3e4604fb219af51519b39a035abbbade084fb3e5
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-3e4604fb219a.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: not_reconstructable_from_diff
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Pod-to-node encapsulation and host-firewall flow changes span Cilium CT/VTEP/encap
+    state; the raw snippets lack a verifier log and cannot be reduced faithfully.
+raw:
+  case_id: github-commit-cilium-3e4604fb219a
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: 3e4604fb219af51519b39a035abbbade084fb3e5
+  commit_message: 'bpf: correctly encapsulate pod to node traffic with kube-proxy+hostfw'
+  commit_date: '2024-02-16'
+  fix_type: type_cast
+  buggy_code: "// FILE: bpf/bpf_lxc.c\n// CONTEXT: ct_recreate6:\n\t\t/* Lookup the\
+    \ destination prefix in the list of known\n\t\t * destination prefixes. If there\
+    \ is a match, the packet will\n\t\t * be encapsulated to that node and then routed\
+    \ by the agent on\n\t\t * the remote node.\n\t\t *\n\t\t * IPv6 lookup key: daddr/96\n\
+    \t\t */\n\t\tkey.ip6.p1 = daddr->p1;\n\t\tkey.ip6.p2 = daddr->p2;\n\t\tkey.ip6.p3\
+    \ = daddr->p3;\n\t\tkey.family = ENDPOINT_KEY_IPV6;\n\n\t\t/* Three cases exist\
+    \ here either (a) the encap and redirect could\n\t\t * not find the tunnel so\
+    \ fallthrough to nat46 and stack, (b)\n\t\t * the packet needs IPSec encap so\
+    \ push ctx to stack for encap, or\n\t\t * (c) packet was redirected to tunnel\
+    \ device so return.\n\t\t */\n\t\tret = encap_and_redirect_lxc(ctx, tunnel_endpoint,\
+    \ 0, 0, encrypt_key,\n\t\t\t\t\t     &key, SECLABEL_IPV6, *dst_sec_identity,\n\
+    \t\t\t\t\t     &trace);\n\t\tif (ret == CTX_ACT_OK)\n\t\t\tgoto encrypt_to_stack;\n\
+    \t\telse if (ret != DROP_NO_TUNNEL_ENDPOINT)\n\t\t\treturn ret;\n\n// CONTEXT:\
+    \ skip_vtep:\n\n#if defined(TUNNEL_MODE) || defined(ENABLE_HIGH_SCALE_IPCACHE)\n\
+    \t{\n\t\tstruct tunnel_key key = {};\n\n\t\tif (cluster_id > UINT8_MAX)\n\t\t\t\
+    return DROP_INVALID_CLUSTER_ID;\n\n\t\tkey.ip4 = ip4->daddr & IPV4_MASK;\n\t\t\
+    key.family = ENDPOINT_KEY_IPV4;\n\t\tkey.cluster_id = (__u8)cluster_id;\n\n#ifdef\
+    \ ENABLE_CLUSTER_AWARE_ADDRESSING\n\t\t/*\n\t\t * The destination is remote node,\
+    \ but the connection is originated from tunnel.\n\t\t * Maybe the remote cluster\
+    \ performed SNAT for the inter-cluster communication\n\t\t * and this is the reply\
+    \ for that. In that case, we need to send it back to tunnel.\n\t\t */\n\t\tif\
+    \ (ct_status == CT_REPLY) {\n\t\t\tif (identity_is_remote_node(*dst_sec_identity)\
+    \ && ct_state->from_tunnel)\n\t\t\t\ttunnel_endpoint = ip4->daddr;\n\t\t}\n#endif\n\
+    \n// FILE: bpf/lib/encap.h\n// CONTEXT: __encap_and_redirect_lxc(struct __ctx_buff\
+    \ *ctx, __be32 tunnel_endpoint,\n\t\t\t __u8 encrypt_key __maybe_unused, __u32\
+    \ seclabel,\n\t\t\t __u32 dstid, const struct trace_ctx *trace)\n{\n\tint ifindex\
+    \ __maybe_unused;\n\tint ret __maybe_unused;\n\n#ifdef ENABLE_IPSEC\n\tif (encrypt_key)\n\
+    \t\treturn set_ipsec_encrypt(ctx, encrypt_key, tunnel_endpoint,\n\t\t\t\t\t seclabel,\
+    \ false);\n#endif\n\n#if !defined(ENABLE_NODEPORT) && defined(ENABLE_HOST_FIREWALL)\n\
+    \t/* For the host firewall, traffic from a pod to a remote node is sent\n\t *\
+    \ through the tunnel. In the case of node --> VIP@remote pod, packets may\n\t\
+    \ * be DNATed when they enter the remote node. If kube-proxy is used, the\n\t\
+    \ * response needs to go through the stack on the way to the tunnel, to\n\t *\
+    \ apply the correct reverse DNAT.\n\t * See #14674 for details.\n\t */\n\tret\
+    \ = __encap_with_nodeid(ctx, 0, 0, tunnel_endpoint, seclabel, dstid,\n\t\t\t\t\
+    \  NOT_VTEP_DST, trace->reason, trace->monitor,\n\t\t\t\t  &ifindex);\n\tif (ret\
+    \ != CTX_ACT_REDIRECT)\n\t\treturn ret;\n\n\t/* tell caller that this packet needs\
+    \ to go through the stack: */\n\treturn CTX_ACT_OK;\n#else\n\treturn encap_and_redirect_with_nodeid(ctx,\
+    \ tunnel_endpoint, 0, seclabel,\n\t\t\t\t\t      dstid, trace);\n#endif /* !ENABLE_NODEPORT\
+    \ && ENABLE_HOST_FIREWALL */\n}\n\n#if defined(TUNNEL_MODE) || defined(ENABLE_HIGH_SCALE_IPCACHE)\n\
+    /* encap_and_redirect_lxc adds IPSec metadata (if enabled) and returns the packet\n\
+    \ * so that it can be passed to the IP stack. Without IPSec the packet is\n *\
+    \ typically redirected to the output tunnel device and ctx will not be seen by\n\
+    \ * the IP stack.\n *\n * Returns CTX_ACT_OK when ctx needs to be handed to IP\
+    \ stack (eg. for IPSec\n * handling), a DROP_* reason on error, and finally on\
+    \ successful redirect returns\n * CTX_ACT_REDIRECT.\n */"
+  fixed_code: "// FILE: bpf/bpf_lxc.c\n// CONTEXT: ct_recreate6:\n\t\t/* Lookup the\
+    \ destination prefix in the list of known\n\t\t * destination prefixes. If there\
+    \ is a match, the packet will\n\t\t * be encapsulated to that node and then routed\
+    \ by the agent on\n\t\t * the remote node.\n\t\t *\n\t\t * IPv6 lookup key: daddr/96\n\
+    \t\t */\n\t\tkey.ip6.p1 = daddr->p1;\n\t\tkey.ip6.p2 = daddr->p2;\n\t\tkey.ip6.p3\
+    \ = daddr->p3;\n\t\tkey.family = ENDPOINT_KEY_IPV6;\n\n#if !defined(ENABLE_NODEPORT)\
+    \ && defined(ENABLE_HOST_FIREWALL)\n\t\t/* See comment in handle_ipv4_from_lxc().\
+    \ */\n\t\tif ((ct_status == CT_REPLY || ct_status == CT_RELATED) &&\n\t\t    identity_is_remote_node(*dst_sec_identity))\n\
+    \t\t\tgoto encrypt_to_stack;\n#endif /* !ENABLE_NODEPORT && ENABLE_HOST_FIREWALL\
+    \ */\n\n\t\t/* Three cases exist here either (a) the encap and redirect could\n\
+    \t\t * not find the tunnel so fallthrough to nat46 and stack, (b)\n\t\t * the\
+    \ packet needs IPSec encap so push ctx to stack for encap, or\n\t\t * (c) packet\
+    \ was redirected to tunnel device so return.\n\t\t */\n\t\tret = encap_and_redirect_lxc(ctx,\
+    \ tunnel_endpoint, 0, 0, encrypt_key,\n\t\t\t\t\t     &key, SECLABEL_IPV6, *dst_sec_identity,\n\
+    \t\t\t\t\t     &trace);\n\t\tif (ret == CTX_ACT_OK)\n\t\t\tgoto encrypt_to_stack;\n\
+    \t\telse if (ret != DROP_NO_TUNNEL_ENDPOINT)\n\t\t\treturn ret;\n\n// CONTEXT:\
+    \ skip_vtep:\n\n#if defined(TUNNEL_MODE) || defined(ENABLE_HIGH_SCALE_IPCACHE)\n\
+    \t{\n\t\tstruct tunnel_key key = {};\n\n\t\tif (cluster_id > UINT8_MAX)\n\t\t\t\
+    return DROP_INVALID_CLUSTER_ID;\n\n\t\tkey.ip4 = ip4->daddr & IPV4_MASK;\n\t\t\
+    key.family = ENDPOINT_KEY_IPV4;\n\t\tkey.cluster_id = (__u8)cluster_id;\n\n#if\
+    \ !defined(ENABLE_NODEPORT) && defined(ENABLE_HOST_FIREWALL)\n\t\t/*\n\t\t * For\
+    \ the host firewall, traffic from a pod to a remote node is sent\n\t\t * through\
+    \ the tunnel. In the case of node to remote pod traffic via\n\t\t * externalTrafficPolicy=Local\
+    \ services, packets may be DNATed when\n\t\t * they enter the remote node (without\
+    \ being SNATed at the same time).\n\t\t * If kube-proxy is used, the response\
+    \ needs to go through the stack\n\t\t * to apply the correct reverse DNAT, and\
+    \ then be routed accordingly.\n\t\t * See #14674 for details.\n\t\t */\n\t\tif\
+    \ ((ct_status == CT_REPLY || ct_status == CT_RELATED) &&\n\t\t    identity_is_remote_node(*dst_sec_identity))\n\
+    \t\t\tgoto encrypt_to_stack;\n#endif /* !ENABLE_NODEPORT && ENABLE_HOST_FIREWALL\
+    \ */\n\n#ifdef ENABLE_CLUSTER_AWARE_ADDRESSING\n\t\t/*\n\t\t * The destination\
+    \ is remote node, but the connection is originated from tunnel.\n\t\t * Maybe\
+    \ the remote cluster performed SNAT for the inter-cluster communication\n\t\t\
+    \ * and this is the reply for that. In that case, we need to send it back to tunnel.\n\
+    \t\t */\n\t\tif (ct_status == CT_REPLY) {\n\t\t\tif (identity_is_remote_node(*dst_sec_identity)\
+    \ && ct_state->from_tunnel)\n\t\t\t\ttunnel_endpoint = ip4->daddr;\n\t\t}\n#endif\n\
+    \n// FILE: bpf/lib/encap.h\n// CONTEXT: __encap_and_redirect_lxc(struct __ctx_buff\
+    \ *ctx, __be32 tunnel_endpoint,\n\t\t\t __u8 encrypt_key __maybe_unused, __u32\
+    \ seclabel,\n\t\t\t __u32 dstid, const struct trace_ctx *trace)\n{\n\tint ifindex\
+    \ __maybe_unused;\n\tint ret __maybe_unused;\n\n#ifdef ENABLE_IPSEC\n\tif (encrypt_key)\n\
+    \t\treturn set_ipsec_encrypt(ctx, encrypt_key, tunnel_endpoint,\n\t\t\t\t\t seclabel,\
+    \ false);\n#endif\n\n\treturn encap_and_redirect_with_nodeid(ctx, tunnel_endpoint,\
+    \ 0, seclabel,\n\t\t\t\t\t      dstid, trace);\n}\n\n#if defined(TUNNEL_MODE)\
+    \ || defined(ENABLE_HIGH_SCALE_IPCACHE)\n/* encap_and_redirect_lxc adds IPSec\
+    \ metadata (if enabled) and returns the packet\n * so that it can be passed to\
+    \ the IP stack. Without IPSec the packet is\n * typically redirected to the output\
+    \ tunnel device and ctx will not be seen by\n * the IP stack.\n *\n * Returns\
+    \ CTX_ACT_OK when ctx needs to be handed to IP stack (eg. for IPSec\n * handling),\
+    \ a DROP_* reason on error, and finally on successful redirect returns\n * CTX_ACT_REDIRECT.\n\
+    \ */"
+  diff_summary: |-
+    bpf/bpf_lxc.c:
+    - Adjusted types or casts so the verifier sees the intended pointer or value kind.
+    - Affected context: ct_recreate6:, skip_vtep:.
+    bpf/lib/encap.h:
+    - Adjusted types or casts so the verifier sees the intended pointer or value kind.
+    - Affected context: __encap_and_redirect_lxc(struct __ctx_buff *ctx, __be32 tunnel_endpoint,.
+    - Commit subject: bpf: correctly encapsulate pod to node traffic with kube-proxy+hostfw.

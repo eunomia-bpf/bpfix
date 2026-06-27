@@ -1,0 +1,107 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-c85648b24a08
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/c85648b24a089b2923aedc5c022017229edaeac4
+  title: 'bpf: usr prandom as slave selection in lb'
+  repository: https://github.com/cilium/cilium
+  commit: c85648b24a089b2923aedc5c022017229edaeac4
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-c85648b24a08.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: environment_required
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Replaces hash recalculation with get_prandom_u32() to reduce load-balancer
+    instruction complexity on older/full datapath builds.
+raw:
+  case_id: github-commit-cilium-c85648b24a08
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: c85648b24a089b2923aedc5c022017229edaeac4
+  commit_message: 'bpf: usr prandom as slave selection in lb'
+  commit_date: '2019-09-02'
+  fix_type: helper_switch
+  buggy_code: "// FILE: bpf/lib/lb.h\n// CONTEXT: static inline int lb_next_rr(struct\
+    \ __sk_buff *skb,\n\t__u8 offset = hash % seq->count;\n\n\tif (offset < LB_RR_MAX_SEQ)\
+    \ {\n\t\t/* Slave 0 is reserved for the master slot */\n\t\tslave = seq->idx[offset]\
+    \ + 1;\n\t\tcilium_dbg(skb, DBG_RR_SLAVE_SEL, hash, slave);\n\t}\n\n\treturn slave;\n\
+    }\n#endif\n\nstatic inline __u32 lb_enforce_rehash(struct __sk_buff *skb)\n{\n\
+    #ifdef HAVE_SET_HASH_INVALID\n\tset_hash_invalid(skb);\n#else\n\t/* Ugly workaround\
+    \ for 4.8 kernel where we don't have this function. */\n\t__u32 tmp;\n\n\tskb_load_bytes(skb,\
+    \  0, &tmp, sizeof(tmp));\n\tskb_store_bytes(skb, 0, &tmp, sizeof(tmp), BPF_F_INVALIDATE_HASH);\n\
+    #endif\n\treturn get_hash_recalc(skb);\n}\n\nstatic inline int lb6_select_slave(struct\
+    \ __sk_buff *skb,\n\t\t\t\t   __u16 count, __u16 weight)\n{\n\t__u32 hash = lb_enforce_rehash(skb);\n\
+    \tint slave = 0;\n\n/* Disabled for now since on older kernels dynamic map access\n\
+    \ * will cause a significant complexity increase for the entire\n * program due\
+    \ to pruning having less opportunities matching\n * register state in the verifier.\
+    \ For later kernels this is\n * less of a problem, so we can enabled to in future\
+    \ based on\n * changing the HAVE_MAP_VAL_ADJ probe. Thus just do the slave\n *\
+    \ selection based on hash instead of hash w/ weights.\n */\n#if 0 /* HAVE_MAP_VAL_ADJ\
+    \ */\n\tif (weight) {\n\t\tstruct lb_sequence *seq;\n\n\t\tseq = map_lookup_elem(&cilium_lb6_rr_seq,\
+    \ key);\n\t\tif (seq && seq->count != 0)\n\t\t\tslave = lb_next_rr(skb, seq, hash);\n\
+    \t}\n#endif\n\n\tif (slave == 0) {\n\t\t/* Slave 0 is reserved for the master\
+    \ slot */\n\t\tslave = (hash % count) + 1;\n\t\tcilium_dbg(skb, DBG_PKT_HASH,\
+    \ hash, slave);\n\t}\n\n\treturn slave;\n}\n\nstatic inline int lb4_select_slave(struct\
+    \ __sk_buff *skb,\n\t\t\t\t   __u16 count, __u16 weight)\n{\n\t__u32 hash = lb_enforce_rehash(skb);\n\
+    \tint slave = 0;\n\n/* Disabled for now since on older kernels dynamic map access\n\
+    \ * will cause a significant complexity increase for the entire\n * program due\
+    \ to pruning having less opportunities matching\n * register state in the verifier.\
+    \ For later kernels this is\n * less of a problem, so we can enabled to in future\
+    \ based on\n * changing the HAVE_MAP_VAL_ADJ probe. Thus just do the slave\n *\
+    \ selection based on hash instead of hash w/ weights.\n */\n#if 0 /* HAVE_MAP_VAL_ADJ\
+    \ */\n\tif (weight) {\n\t\tstruct lb_sequence *seq;\n\n\t\tseq = map_lookup_elem(&cilium_lb4_rr_seq,\
+    \ key);\n\t\tif (seq && seq->count != 0)\n\t\t\tslave = lb_next_rr(skb, seq, hash);\n\
+    \t}\n#endif\n\n\tif (slave == 0) {\n\t\t/* Slave 0 is reserved for the master\
+    \ slot */\n\t\tslave = (hash % count) + 1;\n\t\tcilium_dbg_lb(skb, DBG_PKT_HASH,\
+    \ hash, slave);\n\t}\n\n\treturn slave;\n}\n\nstatic inline int __inline__ extract_l4_port(struct\
+    \ __sk_buff *skb, __u8 nexthdr,\n\t\t\t\t\t     int l4_off, __be16 *port)\n{\n\
+    \tint ret;\n\n\tswitch (nexthdr) {\n\tcase IPPROTO_TCP:\n\tcase IPPROTO_UDP:\n\
+    \t\t/* Port offsets for UDP and TCP are the same */\n\t\tret = l4_load_port(skb,\
+    \ l4_off + TCP_DPORT_OFF, port);"
+  fixed_code: "// FILE: bpf/lib/lb.h\n// CONTEXT: static inline int lb_next_rr(struct\
+    \ __sk_buff *skb,\n\t__u8 offset = hash % seq->count;\n\n\tif (offset < LB_RR_MAX_SEQ)\
+    \ {\n\t\t/* Slave 0 is reserved for the master slot */\n\t\tslave = seq->idx[offset]\
+    \ + 1;\n\t\tcilium_dbg(skb, DBG_RR_SLAVE_SEL, hash, slave);\n\t}\n\n\treturn slave;\n\
+    }\n#endif\n\nstatic inline int lb6_select_slave(struct __sk_buff *skb,\n\t\t\t\
+    \t   __u16 count, __u16 weight)\n{\n/* Disabled for now since on older kernels\
+    \ dynamic map access\n * will cause a significant complexity increase for the\
+    \ entire\n * program due to pruning having less opportunities matching\n * register\
+    \ state in the verifier. For later kernels this is\n * less of a problem, so we\
+    \ can enabled to in future based on\n * changing the HAVE_MAP_VAL_ADJ probe. Thus\
+    \ just do the slave\n * selection based on hash instead of hash w/ weights.\n\
+    \ */\n#if 0 /* HAVE_MAP_VAL_ADJ */\n\tif (weight) {\n\t\tstruct lb_sequence *seq;\n\
+    \n\t\tseq = map_lookup_elem(&cilium_lb6_rr_seq, key);\n\t\tif (seq && seq->count\
+    \ != 0)\n\t\t\tslave = lb_next_rr(skb, seq, hash);\n\t}\n#endif\n\t/* Slave 0\
+    \ is reserved for the master slot */\n\treturn (get_prandom_u32() % count) + 1;\n\
+    }\n\nstatic inline int lb4_select_slave(struct __sk_buff *skb,\n\t\t\t\t   __u16\
+    \ count, __u16 weight)\n{\n/* Disabled for now since on older kernels dynamic\
+    \ map access\n * will cause a significant complexity increase for the entire\n\
+    \ * program due to pruning having less opportunities matching\n * register state\
+    \ in the verifier. For later kernels this is\n * less of a problem, so we can\
+    \ enabled to in future based on\n * changing the HAVE_MAP_VAL_ADJ probe. Thus\
+    \ just do the slave\n * selection based on hash instead of hash w/ weights.\n\
+    \ */\n#if 0 /* HAVE_MAP_VAL_ADJ */\n\tif (weight) {\n\t\tstruct lb_sequence *seq;\n\
+    \n\t\tseq = map_lookup_elem(&cilium_lb4_rr_seq, key);\n\t\tif (seq && seq->count\
+    \ != 0)\n\t\t\tslave = lb_next_rr(skb, seq, hash);\n\t}\n#endif\n\t/* Slave 0\
+    \ is reserved for the master slot */\n\treturn (get_prandom_u32() % count) + 1;\n\
+    }\n\nstatic inline int __inline__ extract_l4_port(struct __sk_buff *skb, __u8\
+    \ nexthdr,\n\t\t\t\t\t     int l4_off, __be16 *port)\n{\n\tint ret;\n\n\tswitch\
+    \ (nexthdr) {\n\tcase IPPROTO_TCP:\n\tcase IPPROTO_UDP:\n\t\t/* Port offsets for\
+    \ UDP and TCP are the same */\n\t\tret = l4_load_port(skb, l4_off + TCP_DPORT_OFF,\
+    \ port);"
+  diff_summary: |-
+    bpf/lib/lb.h:
+    - Gated or switched helper usage so unsupported helpers do not reach kernels that reject them.
+    - Affected context: static inline int lb_next_rr(struct __sk_buff *skb,.
+    - Commit subject: bpf: usr prandom as slave selection in lb.

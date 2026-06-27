@@ -1,0 +1,20 @@
+schema_version: bpfix.capture/v1
+capture_id: github-commit-bcc-02daf8d84ecd__kernel-6.15.11-clang-18-log2
+case_id: github-commit-bcc-02daf8d84ecd
+environment_id: kernel-6.15.11-clang-18-log2
+imported_at: '2026-04-30T04:52:23+00:00'
+source_artifact:
+  path: bpfix-empirical/cases/github-commit-bcc-02daf8d84ecd
+  source_origin: manual reconstruction from raw GitHub commit
+  source_bucket: github_commits
+  language: C
+  compile_ok: true
+  verifier_status: rejected
+  verifier_error_match: not_applicable
+  fixed_status: not_attempted
+  source_record: bpfix-empirical/raw/gh/github-commit-bcc-02daf8d84ecd.yaml
+replay:
+  build_command: make
+  load_command: make replay-verify
+  verifier_log: replay-verifier.log
+  expected_load_status: verifier_reject

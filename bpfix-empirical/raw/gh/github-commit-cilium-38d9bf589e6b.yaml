@@ -1,0 +1,59 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-38d9bf589e6b
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/38d9bf589e6be9db6694dada7c1a4f407098b40f
+  title: 'bpf: explicitly set ttl in tunnel key'
+  repository: https://github.com/cilium/cilium
+  commit: 38d9bf589e6be9db6694dada7c1a4f407098b40f
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-38d9bf589e6b.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: not_reconstructable_from_diff
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Tunnel-key TTL type/cast diff lacks a verifier log and enough source context
+    to reconstruct a faithful reject.
+raw:
+  case_id: github-commit-cilium-38d9bf589e6b
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: 38d9bf589e6be9db6694dada7c1a4f407098b40f
+  commit_message: 'bpf: explicitly set ttl in tunnel key'
+  commit_date: '2020-07-15'
+  fix_type: type_cast
+  buggy_code: "// FILE: bpf/lib/encap.h\n// CONTEXT: __encap_with_nodeid(struct __ctx_buff\
+    \ *ctx, __u32 tunnel_endpoint,\n\tint ret;\n\n\t/* When encapsulating, a packet\
+    \ originating from the local host is\n\t * being considered as a packet from a\
+    \ remote node as it is being\n\t * received.\n\t */\n\tif (seclabel == HOST_ID)\n\
+    \t\tseclabel = REMOTE_NODE_ID;\n\n\tnode_id = bpf_htonl(tunnel_endpoint);\n\t\
+    key.tunnel_id = seclabel;\n\tkey.remote_ipv4 = node_id;\n\n\tcilium_dbg(ctx, DBG_ENCAP,\
+    \ node_id, seclabel);\n\n\tret = ctx_set_tunnel_key(ctx, &key, sizeof(key), BPF_F_ZERO_CSUM_TX);\n\
+    \tif (unlikely(ret < 0))\n\t\treturn DROP_WRITE_ERROR;\n\n\tsend_trace_notify(ctx,\
+    \ TRACE_TO_OVERLAY, seclabel, 0, 0, ENCAP_IFINDEX,\n\t\t\t  0, monitor);\n\treturn\
+    \ 0;\n}"
+  fixed_code: "// FILE: bpf/lib/encap.h\n// CONTEXT: __encap_with_nodeid(struct __ctx_buff\
+    \ *ctx, __u32 tunnel_endpoint,\n\tint ret;\n\n\t/* When encapsulating, a packet\
+    \ originating from the local host is\n\t * being considered as a packet from a\
+    \ remote node as it is being\n\t * received.\n\t */\n\tif (seclabel == HOST_ID)\n\
+    \t\tseclabel = REMOTE_NODE_ID;\n\n\tnode_id = bpf_htonl(tunnel_endpoint);\n\t\
+    key.tunnel_id = seclabel;\n\tkey.remote_ipv4 = node_id;\n\tkey.tunnel_ttl = 64;\n\
+    \n\tcilium_dbg(ctx, DBG_ENCAP, node_id, seclabel);\n\n\tret = ctx_set_tunnel_key(ctx,\
+    \ &key, sizeof(key), BPF_F_ZERO_CSUM_TX);\n\tif (unlikely(ret < 0))\n\t\treturn\
+    \ DROP_WRITE_ERROR;\n\n\tsend_trace_notify(ctx, TRACE_TO_OVERLAY, seclabel, 0,\
+    \ 0, ENCAP_IFINDEX,\n\t\t\t  0, monitor);\n\treturn 0;\n}"
+  diff_summary: |-
+    bpf/lib/encap.h:
+    - Adjusted types or casts so the verifier sees the intended pointer or value kind.
+    - Affected context: __encap_with_nodeid(struct __ctx_buff *ctx, __u32 tunnel_endpoint,.
+    - Commit subject: bpf: explicitly set ttl in tunnel key.

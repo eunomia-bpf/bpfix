@@ -1,0 +1,112 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-aya-1f3acbcfe0fb
+source_kind: github_commit
+source:
+  url: https://github.com/aya-rs/aya/commit/1f3acbcfe0fb05968190060af965f0f5ab9092e4
+  title: 'bpf: add override for bpf_probe_read_user_str'
+  repository: https://github.com/aya-rs/aya
+  commit: 1f3acbcfe0fb05968190060af965f0f5ab9092e4
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-aya-1f3acbcfe0fb.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: missing_verifier_log
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: The commit adds a bounded bpf_probe_read_user_str wrapper, but the raw record
+    has no verifier log and no complete failing program to replay faithfully.
+raw:
+  case_id: github-commit-aya-1f3acbcfe0fb
+  source: github_commits
+  repository: https://github.com/aya-rs/aya
+  commit_hash: 1f3acbcfe0fb05968190060af965f0f5ab9092e4
+  commit_message: 'bpf: add override for bpf_probe_read_user_str'
+  commit_date: '2021-10-15'
+  fix_type: bounds_check
+  buggy_code: |-
+    // FILE: bpf/aya-bpf/src/helpers.rs
+    // CONTEXT: pub unsafe fn bpf_probe_read<T>(src: *const T) -> Result<T, c_long> {
+        let ret = gen::bpf_probe_read(
+            v.as_mut_ptr() as *mut c_void,
+            mem::size_of::<T>() as u32,
+            src as *const c_void,
+        );
+        if ret < 0 {
+            return Err(ret);
+        }
+
+        Ok(v.assume_init())
+    }
+
+    #[inline]
+    pub fn bpf_get_current_comm() -> Result<[c_char; 16], c_long> {
+        let mut comm: [c_char; 16usize] = [0; 16];
+        let ret = unsafe { gen::bpf_get_current_comm(&mut comm as *mut _ as *mut c_void, 16u32) };
+        if ret == 0 {
+            Ok(comm)
+        } else {
+            Err(ret)
+        }
+    }
+
+    #[inline]
+  fixed_code: |-
+    // FILE: bpf/aya-bpf/src/helpers.rs
+    // CONTEXT: pub unsafe fn bpf_probe_read<T>(src: *const T) -> Result<T, c_long> {
+        let ret = gen::bpf_probe_read(
+            v.as_mut_ptr() as *mut c_void,
+            mem::size_of::<T>() as u32,
+            src as *const c_void,
+        );
+        if ret < 0 {
+            return Err(ret);
+        }
+
+        Ok(v.assume_init())
+    }
+
+    #[inline]
+    pub unsafe fn bpf_probe_read_user_str(src: *const u8, dest: &mut [u8]) -> Result<usize, c_long> {
+        let len = gen::bpf_probe_read_user_str(
+            dest.as_mut_ptr() as *mut c_void,
+            dest.len() as u32,
+            src as *const c_void,
+        );
+        if len < 0 {
+            return Err(-1);
+        }
+
+        let mut len = len as usize;
+        if len > dest.len() {
+            // this can never happen, it's needed to tell the verifier that len is
+            // bounded
+            len = dest.len();
+        }
+        Ok(len as usize)
+    }
+
+    #[inline]
+    pub fn bpf_get_current_comm() -> Result<[c_char; 16], c_long> {
+        let mut comm: [c_char; 16usize] = [0; 16];
+        let ret = unsafe { gen::bpf_get_current_comm(&mut comm as *mut _ as *mut c_void, 16u32) };
+        if ret == 0 {
+            Ok(comm)
+        } else {
+            Err(ret)
+        }
+    }
+
+    #[inline]
+  diff_summary: |-
+    bpf/aya-bpf/src/helpers.rs:
+    - Added `bpf_probe_read_user_str()` with an explicit `len <= dest.len()` clamp before returning the helper result.
+    - Made the returned string length verifier-visible as a bounded value.

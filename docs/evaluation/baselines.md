@@ -1,7 +1,7 @@
 # Baseline and Ablation Design
 
 This document defines the baselines and ablations for an OSDI/EuroSys-style
-evaluation of BPFix on `bpfix-bench`. It is intentionally limited to diagnostic
+evaluation of BPFix on `bpfix-empirical`. It is intentionally limited to diagnostic
 evaluation design: what each method may consume, what it must produce, how
 failures are counted, and how results should be reported.
 
@@ -17,22 +17,22 @@ evaluation should therefore separate three sources of improvement:
   source correlation, and taxonomy rendering.
 
 The headline evaluation should run on the replayable cases listed by
-`bpfix-bench/manifest.yaml`. Non-replayable legacy excerpts may be used only for
+`bpfix-empirical/manifest.yaml`. Non-replayable legacy excerpts may be used only for
 background discussion or stress testing, not for primary claims.
 
 ## Input Policy
 
-All methods must use fresh replay logs captured from `bpfix-bench/cases`.
+All methods must use fresh replay logs captured from `bpfix-empirical/cases`.
 
 For each case, the harness must:
 
-1. build and load the case using the benchmark replay path;
+1. build and load the case using the empirical replay path;
 2. capture the verifier log emitted by that replay attempt;
 3. record the kernel/environment identifier, timeout, exit status, and log
    digest;
 4. pass the same captured log to every method in the comparison.
 
-Methods must not read preserved legacy logs from `bpfix-bench/raw`, historical
+Methods must not read preserved legacy logs from `bpfix-empirical/raw`, historical
 reports, previous evaluation outputs, or hand-copied verifier snippets. They may
 read case source files only when that method is explicitly source-aware in the
 baseline definition below. Ground-truth labels are evaluation-only data and must
@@ -42,7 +42,7 @@ If replay produces no verifier rejection log, the case is marked
 `replay_invalid` for that run and no diagnostic method is scored on it. The
 replay failure must be reported in the artifact-validity table. A final
 published evaluation run should have zero `replay_invalid` cases after running
-`bpfix-bench/tools/validate_benchmark.py --replay bpfix-bench`; otherwise the diagnostic
+`bpfix-empirical/tools/validate_empirical.py --replay bpfix-empirical`; otherwise the diagnostic
 denominator is smaller and the missing cases must be explained explicitly.
 
 ## Compared Methods
@@ -102,7 +102,7 @@ Purpose:
 Pretty Verifier, or a comparable public verifier-message explanation tool, should
 be included if it can be run reproducibly on the replay logs. If Pretty Verifier
 is used, pin the upstream commit, Python version, invocation, and any local
-compatibility patches. If it cannot run on a material fraction of the benchmark,
+compatibility patches. If it cannot run on a material fraction of the empirical corpus,
 report it as an external-tool feasibility baseline rather than silently dropping
 it.
 
@@ -200,7 +200,7 @@ This is the complete non-ablated BPFix diagnostic pipeline.
 Allowed input:
 
 - fresh verifier log from replay;
-- case source and replay artifacts that are part of `bpfix-bench/cases`;
+- case source and replay artifacts that are part of `bpfix-empirical/cases`;
 - frozen BPFix taxonomy, obligation catalog, parser, slicer, source correlator,
   and renderer versions.
 
@@ -269,13 +269,13 @@ metric is explicitly `log-annotated source hit`.
 - Same replay log: all methods receive the identical fresh log bytes for a case.
 - Same denominator: every successfully replayed manifest case remains in the
   denominator for every method. Replay-invalid cases are reported once as
-  benchmark/harness failures, not as method-specific diagnostic failures.
+  empirical replay failures, not as method-specific diagnostic failures.
 - Same source policy: if one source-aware method receives `prog.c`, all source
   variants must be named explicitly; raw-log-only methods must remain separate.
 - Same time budget: each method gets a fixed per-case timeout. LLM methods also
   get fixed retry and token budgets.
 - Frozen versions: record BPFix commit, external-tool commit, model name,
-  prompt version, kernel/environment ID, and benchmark manifest digest.
+  prompt version, kernel/environment ID, and empirical manifest digest.
 - No tuning on test labels: regex catalogs, prompts, and renderer rules must be
   frozen before the final run.
 - No hidden fallback: a method that fails may emit `unknown`, but it must not

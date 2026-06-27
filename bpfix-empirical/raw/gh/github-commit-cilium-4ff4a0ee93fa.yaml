@@ -1,0 +1,149 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-4ff4a0ee93fa
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/4ff4a0ee93fa44bfb17400f15d784cbb147c8950
+  title: 'bpf: nat: use rewrite helper for snat_v6_rewrite_ingress()'
+  repository: https://github.com/cilium/cilium
+  commit: 4ff4a0ee93fa44bfb17400f15d784cbb147c8950
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-4ff4a0ee93fa.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: not_reconstructable_from_diff
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Replaces the IPv6 SNAT ingress rewrite path with a shared rewrite helper.
+    The snippets omit the full NAT/CT/helper context needed to reproduce any verifier-visible
+    failure, and no log is captured.
+raw:
+  case_id: github-commit-cilium-4ff4a0ee93fa
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: 4ff4a0ee93fa44bfb17400f15d784cbb147c8950
+  commit_message: 'bpf: nat: use rewrite helper for snat_v6_rewrite_ingress()'
+  commit_date: '2023-11-27'
+  fix_type: inline_hint
+  buggy_code: "// FILE: bpf/lib/nat.h\n// CONTEXT: snat_v6_rewrite_headers(struct\
+    \ __ctx_buff *ctx, __u8 nexthdr, int l3_off, int l4\n\t\terr = l4_modify_port(ctx,\
+    \ l4_off, port_off, &csum, new_port, old_port);\n\t\tif (err < 0)\n\t\t\treturn\
+    \ err;\n\t}\n\n\tif (csum.offset &&\n\t    csum_l4_replace(ctx, l4_off, &csum,\
+    \ 0, sum, BPF_F_PSEUDO_HDR) < 0)\n\t\treturn DROP_CSUM_L4;\n\n\treturn 0;\n}\n\
+    \nstatic __always_inline int snat_v6_rewrite_ingress(struct __ctx_buff *ctx,\n\
+    \t\t\t\t\t\t   struct ipv6_ct_tuple *tuple,\n\t\t\t\t\t\t   struct ipv6_nat_entry\
+    \ *state,\n\t\t\t\t\t\t   __u32 off)\n{\n\tstruct csum_offset csum = {};\n\t__be32\
+    \ sum;\n\tint ret;\n\n\tif (ipv6_addr_equals(&state->to_daddr, &tuple->daddr)\
+    \ &&\n\t    state->to_dport == tuple->dport)\n\t\treturn 0;\n\tsum = csum_diff(&tuple->daddr,\
+    \ 16, &state->to_daddr, 16, 0);\n\tcsum_l4_offset_and_flags(tuple->nexthdr, &csum);\n\
+    \tif (state->to_dport != tuple->dport) {\n\t\tswitch (tuple->nexthdr) {\n\t\t\
+    case IPPROTO_TCP:\n\t\tcase IPPROTO_UDP:\n\t\t\tret = l4_modify_port(ctx, off,\n\
+    \t\t\t\t\t     offsetof(struct tcphdr, dest),\n\t\t\t\t\t     &csum, state->to_dport,\n\
+    \t\t\t\t\t     tuple->dport);\n\t\t\tif (ret < 0)\n\t\t\t\treturn ret;\n\t\t\t\
+    break;\n#ifdef ENABLE_SCTP\n\t\tcase IPPROTO_SCTP:\n\t\t\treturn DROP_CSUM_L4;\n\
+    #endif  /* ENABLE_SCTP */\n\t\tcase IPPROTO_ICMPV6: {\n\t\t\t__u8 type = 0;\n\t\
+    \t\t__be32 from, to;\n\n\t\t\tif (icmp6_load_type(ctx, off, &type) < 0)\n\t\t\t\
+    \treturn DROP_INVALID;\n\t\t\tif (type == ICMPV6_ECHO_REPLY) {\n\t\t\t\tif (ctx_store_bytes(ctx,\
+    \ off +\n\t\t\t\t\t\t    offsetof(struct icmp6hdr,\n\t\t\t\t\t\t\t     icmp6_dataun.u_echo.identifier),\n\
+    \t\t\t\t\t\t    &state->to_dport,\n\t\t\t\t\t\t    sizeof(state->to_dport), 0)\
+    \ < 0)\n\t\t\t\t\treturn DROP_WRITE_ERROR;\n\t\t\t\tfrom = tuple->dport;\n\t\t\
+    \t\tto = state->to_dport;\n\t\t\t\tsum = csum_diff(&from, 4, &to, 4, sum);\n\t\
+    \t\t}\n\t\t\tbreak;\n\t\t}}\n\t}\n\tif (ctx_store_bytes(ctx, ETH_HLEN + offsetof(struct\
+    \ ipv6hdr, daddr),\n\t\t\t    &state->to_daddr, 16, 0) < 0)\n\t\treturn DROP_WRITE_ERROR;\n\
+    \tif (csum.offset &&\n\t    csum_l4_replace(ctx, off, &csum, 0, sum, BPF_F_PSEUDO_HDR)\
+    \ < 0)\n\t\treturn DROP_CSUM_L4;\n\treturn 0;\n}\n\nstatic __always_inline bool\n\
+    snat_v6_nat_can_skip(const struct ipv6_nat_target *target,\n\t\t     const struct\
+    \ ipv6_ct_tuple *tuple)\n{\n\t__u16 sport = bpf_ntohs(tuple->sport);\n\n\treturn\
+    \ (!target->from_local_endpoint && sport < NAT_MIN_EGRESS);\n}\n\nstatic __always_inline\
+    \ bool\nsnat_v6_rev_nat_can_skip(const struct ipv6_nat_target *target, const struct\
+    \ ipv6_ct_tuple *tuple)\n{\n\n// CONTEXT: snat_v6_rev_nat_handle_icmp_pkt_toobig(struct\
+    \ __ctx_buff *ctx,\n}\n\nstatic __always_inline __maybe_unused int\nsnat_v6_rev_nat(struct\
+    \ __ctx_buff *ctx, const struct ipv6_nat_target *target,\n\t\tstruct trace_ctx\
+    \ *trace, __s8 *ext_err __maybe_unused)\n{\n\tstruct icmp6hdr icmp6hdr __align_stack_8;\n\
+    \tstruct ipv6_nat_entry *state = NULL;\n\tstruct ipv6_ct_tuple tuple = {};\n\t\
+    __u32 off, inner_l3_off;\n\tvoid *data, *data_end;\n\tstruct ipv6hdr *ip6;\n\t\
+    int ret, hdrlen;\n\tstruct {\n\t\t__be16 sport;\n\t\t__be16 dport;\n\t} l4hdr;\n\
+    \n\tbuild_bug_on(sizeof(struct ipv6_nat_entry) > 64);\n\n\tif (!revalidate_data(ctx,\
+    \ &data, &data_end, &ip6))\n\t\treturn DROP_INVALID;\n\n\ttuple.nexthdr = ip6->nexthdr;\n\
+    \n// CONTEXT: snat_v6_rev_nat(struct __ctx_buff *ctx, const struct ipv6_nat_target\
+    \ *target,\n\n\toff = ((void *)ip6 - data) + hdrlen;\n\tswitch (tuple.nexthdr)\
+    \ {\n\tcase IPPROTO_TCP:\n\tcase IPPROTO_UDP:\n#ifdef ENABLE_SCTP\n\tcase IPPROTO_SCTP:\n\
+    #endif  /* ENABLE_SCTP */\n\t\tif (l4_load_ports(ctx, off, (__be16 *)&l4hdr) <\
+    \ 0)\n\t\t\treturn DROP_INVALID;\n\t\ttuple.dport = l4hdr.dport;\n\t\ttuple.sport\
+    \ = l4hdr.sport;\n\t\tbreak;\n\tcase IPPROTO_ICMPV6:\n\t\tif (ctx_load_bytes(ctx,\
+    \ off, &icmp6hdr, sizeof(icmp6hdr)) < 0)\n\t\t\treturn DROP_INVALID;\n\t\tswitch\
+    \ (icmp6hdr.icmp6_type) {\n\t\tcase ICMPV6_ECHO_REPLY:\n\t\t\ttuple.dport = icmp6hdr.icmp6_dataun.u_echo.identifier;\n\
+    \t\t\ttuple.sport = 0;\n\t\t\tbreak;\n\t\tcase ICMPV6_PKT_TOOBIG:\n\t\t\t/* ICMPV6_PKT_TOOBIG\
+    \ does not include identifer and\n\t\t\t * sequence in its headers.\n\t\t\t */\n\
+    \t\t\tinner_l3_off = off + sizeof(struct icmp6hdr) -\n\t\t\t\t       field_sizeof(struct\
+    \ icmp6hdr, icmp6_dataun.u_echo);\n\n\t\t\tret = snat_v6_rev_nat_handle_icmp_pkt_toobig(ctx,\n\
+    \t\t\t\t\t\t\t\t     inner_l3_off,\n\t\t\t\t\t\t\t\t     &state);\n\t\t\tif (IS_ERR(ret))\n\
+    \n// CONTEXT: snat_v6_rev_nat(struct __ctx_buff *ctx, const struct ipv6_nat_target\
+    \ *target,\n\t\t}\n\t\tbreak;\n\tdefault:\n\t\treturn NAT_PUNT_TO_STACK;\n\t};\n\
+    \n\tif (snat_v6_rev_nat_can_skip(target, &tuple))\n\t\treturn NAT_PUNT_TO_STACK;\n\
+    \tret = snat_v6_rev_nat_handle_mapping(ctx, &tuple, &state, off, trace);\n\tif\
+    \ (ret < 0)\n\t\treturn ret;\n\nrewrite:\n\treturn snat_v6_rewrite_ingress(ctx,\
+    \ &tuple, state, off);\n}\n#else\nstatic __always_inline __maybe_unused\nint snat_v6_nat(struct\
+    \ __ctx_buff *ctx __maybe_unused,\n\t\tconst struct ipv6_nat_target *target __maybe_unused)\n\
+    {\n\treturn CTX_ACT_OK;\n}\n\nstatic __always_inline __maybe_unused\nint snat_v6_rev_nat(struct\
+    \ __ctx_buff *ctx __maybe_unused,\n\t\t    const struct ipv6_nat_target *target\
+    \ __maybe_unused)"
+  fixed_code: "// FILE: bpf/lib/nat.h\n// CONTEXT: snat_v6_rewrite_headers(struct\
+    \ __ctx_buff *ctx, __u8 nexthdr, int l3_off, int l4\n\t\terr = l4_modify_port(ctx,\
+    \ l4_off, port_off, &csum, new_port, old_port);\n\t\tif (err < 0)\n\t\t\treturn\
+    \ err;\n\t}\n\n\tif (csum.offset &&\n\t    csum_l4_replace(ctx, l4_off, &csum,\
+    \ 0, sum, BPF_F_PSEUDO_HDR) < 0)\n\t\treturn DROP_CSUM_L4;\n\n\treturn 0;\n}\n\
+    \nstatic __always_inline bool\nsnat_v6_nat_can_skip(const struct ipv6_nat_target\
+    \ *target,\n\t\t     const struct ipv6_ct_tuple *tuple)\n{\n\t__u16 sport = bpf_ntohs(tuple->sport);\n\
+    \n\treturn (!target->from_local_endpoint && sport < NAT_MIN_EGRESS);\n}\n\nstatic\
+    \ __always_inline bool\nsnat_v6_rev_nat_can_skip(const struct ipv6_nat_target\
+    \ *target, const struct ipv6_ct_tuple *tuple)\n{\n\n// CONTEXT: snat_v6_rev_nat_handle_icmp_pkt_toobig(struct\
+    \ __ctx_buff *ctx,\n}\n\nstatic __always_inline __maybe_unused int\nsnat_v6_rev_nat(struct\
+    \ __ctx_buff *ctx, const struct ipv6_nat_target *target,\n\t\tstruct trace_ctx\
+    \ *trace, __s8 *ext_err __maybe_unused)\n{\n\tstruct icmp6hdr icmp6hdr __align_stack_8;\n\
+    \tstruct ipv6_nat_entry *state = NULL;\n\tstruct ipv6_ct_tuple tuple = {};\n\t\
+    __u32 off, inner_l3_off;\n\tvoid *data, *data_end;\n\tstruct ipv6hdr *ip6;\n\t\
+    __be16 to_dport = 0;\n\t__u16 port_off = 0;\n\tint ret, hdrlen;\n\tstruct {\n\t\
+    \t__be16 sport;\n\t\t__be16 dport;\n\t} l4hdr;\n\n\tbuild_bug_on(sizeof(struct\
+    \ ipv6_nat_entry) > 64);\n\n\tif (!revalidate_data(ctx, &data, &data_end, &ip6))\n\
+    \t\treturn DROP_INVALID;\n\n\ttuple.nexthdr = ip6->nexthdr;\n\n// CONTEXT: snat_v6_rev_nat(struct\
+    \ __ctx_buff *ctx, const struct ipv6_nat_target *target,\n\n\toff = ((void *)ip6\
+    \ - data) + hdrlen;\n\tswitch (tuple.nexthdr) {\n\tcase IPPROTO_TCP:\n\tcase IPPROTO_UDP:\n\
+    #ifdef ENABLE_SCTP\n\tcase IPPROTO_SCTP:\n#endif  /* ENABLE_SCTP */\n\t\tif (l4_load_ports(ctx,\
+    \ off, (__be16 *)&l4hdr) < 0)\n\t\t\treturn DROP_INVALID;\n\t\ttuple.dport = l4hdr.dport;\n\
+    \t\ttuple.sport = l4hdr.sport;\n\t\tport_off = TCP_DPORT_OFF;\n\t\tbreak;\n\t\
+    case IPPROTO_ICMPV6:\n\t\tif (ctx_load_bytes(ctx, off, &icmp6hdr, sizeof(icmp6hdr))\
+    \ < 0)\n\t\t\treturn DROP_INVALID;\n\t\tswitch (icmp6hdr.icmp6_type) {\n\t\tcase\
+    \ ICMPV6_ECHO_REPLY:\n\t\t\ttuple.dport = icmp6hdr.icmp6_dataun.u_echo.identifier;\n\
+    \t\t\ttuple.sport = 0;\n\t\t\tport_off = offsetof(struct icmp6hdr,\n\t\t\t\t\t\
+    \    icmp6_dataun.u_echo.identifier);\n\t\t\tbreak;\n\t\tcase ICMPV6_PKT_TOOBIG:\n\
+    \t\t\t/* ICMPV6_PKT_TOOBIG does not include identifer and\n\t\t\t * sequence in\
+    \ its headers.\n\t\t\t */\n\t\t\tinner_l3_off = off + sizeof(struct icmp6hdr)\
+    \ -\n\t\t\t\t       field_sizeof(struct icmp6hdr, icmp6_dataun.u_echo);\n\n\t\t\
+    \tret = snat_v6_rev_nat_handle_icmp_pkt_toobig(ctx,\n\t\t\t\t\t\t\t\t     inner_l3_off,\n\
+    \t\t\t\t\t\t\t\t     &state);\n\t\t\tif (IS_ERR(ret))\n\n// CONTEXT: snat_v6_rev_nat(struct\
+    \ __ctx_buff *ctx, const struct ipv6_nat_target *target,\n\t\t}\n\t\tbreak;\n\t\
+    default:\n\t\treturn NAT_PUNT_TO_STACK;\n\t};\n\n\tif (snat_v6_rev_nat_can_skip(target,\
+    \ &tuple))\n\t\treturn NAT_PUNT_TO_STACK;\n\tret = snat_v6_rev_nat_handle_mapping(ctx,\
+    \ &tuple, &state, off, trace);\n\tif (ret < 0)\n\t\treturn ret;\n\n\t/* Skip port\
+    \ rewrite for ICMPV6_PKT_TOOBIG by passing old_port == new_port == 0. */\n\tto_dport\
+    \ = state->to_dport;\n\nrewrite:\n\treturn snat_v6_rewrite_headers(ctx, tuple.nexthdr,\
+    \ ETH_HLEN, off,\n\t\t\t\t       &tuple.daddr, &state->to_daddr, IPV6_DADDR_OFF,\n\
+    \t\t\t\t       tuple.dport, to_dport, port_off);\n}\n#else\nstatic __always_inline\
+    \ __maybe_unused\nint snat_v6_nat(struct __ctx_buff *ctx __maybe_unused,\n\t\t\
+    const struct ipv6_nat_target *target __maybe_unused)\n{\n\treturn CTX_ACT_OK;\n\
+    }\n\nstatic __always_inline __maybe_unused\nint snat_v6_rev_nat(struct __ctx_buff\
+    \ *ctx __maybe_unused,\n\t\t    const struct ipv6_nat_target *target __maybe_unused)"
+  diff_summary: |-
+    bpf/lib/nat.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: snat_v6_rewrite_headers(struct __ctx_buff *ctx, __u8 nexthdr, int l3_off, int l4, snat_v6_rev_nat_handle_icmp_pkt_toobig(struct __ctx_buff *ctx,, snat_v6_rev_nat(struct __ctx_buff *ctx, const struct ipv6_nat_target *target,.
+    - Commit subject: bpf: nat: use rewrite helper for snat_v6_rewrite_ingress().

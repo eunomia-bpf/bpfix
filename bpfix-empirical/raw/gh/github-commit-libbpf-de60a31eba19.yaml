@@ -1,0 +1,122 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-libbpf-de60a31eba19
+source_kind: github_commit
+source:
+  url: https://github.com/libbpf/libbpf/commit/de60a31eba192e42f25ef5c00d88c7018304bfe1
+  title: 'libbpf: Support stripping modifiers for btf_dump'
+  repository: https://github.com/libbpf/libbpf
+  commit: de60a31eba192e42f25ef5c00d88c7018304bfe1
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-libbpf-de60a31eba19.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Raw has_verifier_log=false, source_snippet_count=0. The change supports
+    stripping modifiers in btf_dump type declaration output through btf.h/btf_dump.c;
+    it is BTF-to-C formatting, not verifier replay material.
+raw:
+  case_id: github-commit-libbpf-de60a31eba19
+  source: github_commits
+  repository: https://github.com/libbpf/libbpf
+  commit_hash: de60a31eba192e42f25ef5c00d88c7018304bfe1
+  commit_message: 'libbpf: Support stripping modifiers for btf_dump'
+  commit_date: '2020-07-13'
+  fix_type: volatile_hack
+  buggy_code: "// FILE: src/btf.h\n// CONTEXT: struct btf_dump_emit_type_decl_opts\
+    \ {\n\t/* optional field name for type declaration, e.g.:\n\t * - struct my_struct\
+    \ <FNAME>\n\t * - void (*<FNAME>)(int)\n\t * - char (*<FNAME>)[123]\n\t */\n\t\
+    const char *field_name;\n\t/* extra indentation level (in number of tabs) to emit\
+    \ for multi-line\n\t * type declarations (e.g., anonymous struct); applies for\
+    \ lines\n\t * starting from the second one (first line is assumed to have\n\t\
+    \ * necessary indentation already\n\t */\n\tint indent_level;\n};\n#define btf_dump_emit_type_decl_opts__last_field\
+    \ indent_level\n\nLIBBPF_API int\nbtf_dump__emit_type_decl(struct btf_dump *d,\
+    \ __u32 id,\n\t\t\t const struct btf_dump_emit_type_decl_opts *opts);\n\n/*\n\
+    \ * A set of helpers for easier BTF types handling\n */\nstatic inline __u16 btf_kind(const\
+    \ struct btf_type *t)\n{\n\n// FILE: src/btf_dump.c\n// CONTEXT: struct btf_dump_type_aux_state\
+    \ {\n\t__u8 fwd_emitted: 1;\n\t/* whether unique non-duplicate name was already\
+    \ assigned */\n\t__u8 name_resolved: 1;\n\t/* whether type is referenced from\
+    \ any other type */\n\t__u8 referenced: 1;\n};\n\nstruct btf_dump {\n\tconst struct\
+    \ btf *btf;\n\tconst struct btf_ext *btf_ext;\n\tbtf_dump_printf_fn_t printf_fn;\n\
+    \tstruct btf_dump_opts opts;\n\n\t/* per-type auxiliary state */\n\tstruct btf_dump_type_aux_state\
+    \ *type_states;\n\t/* per-type optional cached unique name, must be freed, if\
+    \ present */\n\tconst char **cached_names;\n\n\t/* topo-sorted list of dependent\
+    \ type definitions */\n\t__u32 *emit_queue;\n\tint emit_queue_cap;\n\tint emit_queue_cnt;\n\
+    \n\t/*\n\n// CONTEXT: static int btf_dump_push_decl_stack_id(struct btf_dump *d,\
+    \ __u32 id)\n */\nint btf_dump__emit_type_decl(struct btf_dump *d, __u32 id,\n\
+    \t\t\t     const struct btf_dump_emit_type_decl_opts *opts)\n{\n\tconst char *fname;\n\
+    \tint lvl;\n\n\tif (!OPTS_VALID(opts, btf_dump_emit_type_decl_opts))\n\t\treturn\
+    \ -EINVAL;\n\n\tfname = OPTS_GET(opts, field_name, \"\");\n\tlvl = OPTS_GET(opts,\
+    \ indent_level, 0);\n\tbtf_dump_emit_type_decl(d, id, fname, lvl);\n\treturn 0;\n\
+    }\n\nstatic void btf_dump_emit_type_decl(struct btf_dump *d, __u32 id,\n\t\t\t\
+    \t    const char *fname, int lvl)\n{\n\tstruct id_stack decl_stack;\n\tconst struct\
+    \ btf_type *t;\n\tint err, stack_start;\n\n\tstack_start = d->decl_stack_cnt;\n\
+    \tfor (;;) {\n\t\terr = btf_dump_push_decl_stack_id(d, id);\n\t\tif (err < 0)\
+    \ {\n\t\t\t/*\n\t\t\t * if we don't have enough memory for entire type decl\n\t\
+    \t\t * chain, restore stack, emit warning, and try to\n\t\t\t * proceed nevertheless\n\
+    \t\t\t */\n\t\t\tpr_warn(\"not enough memory for decl stack:%d\", err);\n\t\t\t\
+    d->decl_stack_cnt = stack_start;\n\t\t\treturn;\n\t\t}\n\n\t\t/* VOID */\n\t\t\
+    if (id == 0)\n\t\t\tbreak;\n\n\t\tt = btf__type_by_id(d->btf, id);\n\t\tswitch\
+    \ (btf_kind(t)) {\n\t\tcase BTF_KIND_PTR:\n\t\tcase BTF_KIND_VOLATILE:\n\t\tcase\
+    \ BTF_KIND_CONST:\n\t\tcase BTF_KIND_RESTRICT:\n\t\tcase BTF_KIND_FUNC_PROTO:\n\
+    \t\t\tid = t->type;\n\t\t\tbreak;\n\t\tcase BTF_KIND_ARRAY:\n\t\t\tid = btf_array(t)->type;\n\
+    \t\t\tbreak;\n\t\tcase BTF_KIND_INT:"
+  fixed_code: "// FILE: src/btf.h\n// CONTEXT: struct btf_dump_emit_type_decl_opts\
+    \ {\n\t/* optional field name for type declaration, e.g.:\n\t * - struct my_struct\
+    \ <FNAME>\n\t * - void (*<FNAME>)(int)\n\t * - char (*<FNAME>)[123]\n\t */\n\t\
+    const char *field_name;\n\t/* extra indentation level (in number of tabs) to emit\
+    \ for multi-line\n\t * type declarations (e.g., anonymous struct); applies for\
+    \ lines\n\t * starting from the second one (first line is assumed to have\n\t\
+    \ * necessary indentation already\n\t */\n\tint indent_level;\n\t/* strip all\
+    \ the const/volatile/restrict mods */\n\tbool strip_mods;\n};\n#define btf_dump_emit_type_decl_opts__last_field\
+    \ indent_level\n\nLIBBPF_API int\nbtf_dump__emit_type_decl(struct btf_dump *d,\
+    \ __u32 id,\n\t\t\t const struct btf_dump_emit_type_decl_opts *opts);\n\n/*\n\
+    \ * A set of helpers for easier BTF types handling\n */\nstatic inline __u16 btf_kind(const\
+    \ struct btf_type *t)\n{\n\n// FILE: src/btf_dump.c\n// CONTEXT: struct btf_dump_type_aux_state\
+    \ {\n\t__u8 fwd_emitted: 1;\n\t/* whether unique non-duplicate name was already\
+    \ assigned */\n\t__u8 name_resolved: 1;\n\t/* whether type is referenced from\
+    \ any other type */\n\t__u8 referenced: 1;\n};\n\nstruct btf_dump {\n\tconst struct\
+    \ btf *btf;\n\tconst struct btf_ext *btf_ext;\n\tbtf_dump_printf_fn_t printf_fn;\n\
+    \tstruct btf_dump_opts opts;\n\tbool strip_mods;\n\n\t/* per-type auxiliary state\
+    \ */\n\tstruct btf_dump_type_aux_state *type_states;\n\t/* per-type optional cached\
+    \ unique name, must be freed, if present */\n\tconst char **cached_names;\n\n\t\
+    /* topo-sorted list of dependent type definitions */\n\t__u32 *emit_queue;\n\t\
+    int emit_queue_cap;\n\tint emit_queue_cnt;\n\n\t/*\n\n// CONTEXT: static int btf_dump_push_decl_stack_id(struct\
+    \ btf_dump *d, __u32 id)\n */\nint btf_dump__emit_type_decl(struct btf_dump *d,\
+    \ __u32 id,\n\t\t\t     const struct btf_dump_emit_type_decl_opts *opts)\n{\n\t\
+    const char *fname;\n\tint lvl;\n\n\tif (!OPTS_VALID(opts, btf_dump_emit_type_decl_opts))\n\
+    \t\treturn -EINVAL;\n\n\tfname = OPTS_GET(opts, field_name, \"\");\n\tlvl = OPTS_GET(opts,\
+    \ indent_level, 0);\n\td->strip_mods = OPTS_GET(opts, strip_mods, false);\n\t\
+    btf_dump_emit_type_decl(d, id, fname, lvl);\n\td->strip_mods = false;\n\treturn\
+    \ 0;\n}\n\nstatic void btf_dump_emit_type_decl(struct btf_dump *d, __u32 id,\n\
+    \t\t\t\t    const char *fname, int lvl)\n{\n\tstruct id_stack decl_stack;\n\t\
+    const struct btf_type *t;\n\tint err, stack_start;\n\n\tstack_start = d->decl_stack_cnt;\n\
+    \tfor (;;) {\n\t\tt = btf__type_by_id(d->btf, id);\n\t\tif (d->strip_mods && btf_is_mod(t))\n\
+    \t\t\tgoto skip_mod;\n\n\t\terr = btf_dump_push_decl_stack_id(d, id);\n\t\tif\
+    \ (err < 0) {\n\t\t\t/*\n\t\t\t * if we don't have enough memory for entire type\
+    \ decl\n\t\t\t * chain, restore stack, emit warning, and try to\n\t\t\t * proceed\
+    \ nevertheless\n\t\t\t */\n\t\t\tpr_warn(\"not enough memory for decl stack:%d\"\
+    , err);\n\t\t\td->decl_stack_cnt = stack_start;\n\t\t\treturn;\n\t\t}\nskip_mod:\n\
+    \t\t/* VOID */\n\t\tif (id == 0)\n\t\t\tbreak;\n\n\t\tswitch (btf_kind(t)) {\n\
+    \t\tcase BTF_KIND_PTR:\n\t\tcase BTF_KIND_VOLATILE:\n\t\tcase BTF_KIND_CONST:\n\
+    \t\tcase BTF_KIND_RESTRICT:\n\t\tcase BTF_KIND_FUNC_PROTO:\n\t\t\tid = t->type;\n\
+    \t\t\tbreak;\n\t\tcase BTF_KIND_ARRAY:\n\t\t\tid = btf_array(t)->type;\n\t\t\t\
+    break;\n\t\tcase BTF_KIND_INT:"
+  diff_summary: |-
+    src/btf.h:
+    - Added or changed a volatile or READ_ONCE-style access to force verifier-friendly code generation.
+    - Affected context: struct btf_dump_emit_type_decl_opts {.
+    src/btf_dump.c:
+    - Added or changed a volatile or READ_ONCE-style access to force verifier-friendly code generation.
+    - Affected context: struct btf_dump_type_aux_state {, static int btf_dump_push_decl_stack_id(struct btf_dump *d, __u32 id).
+    - Commit subject: libbpf: Support stripping modifiers for btf_dump.

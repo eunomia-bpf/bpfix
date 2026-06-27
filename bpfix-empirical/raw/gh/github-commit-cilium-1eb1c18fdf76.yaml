@@ -1,0 +1,128 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-1eb1c18fdf76
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/1eb1c18fdf76b144ccbe49703ed92578e1878290
+  title: 'bpf: Remove source MAC address validation'
+  repository: https://github.com/cilium/cilium
+  commit: 1eb1c18fdf76b144ccbe49703ed92578e1878290
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-1eb1c18fdf76.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: environment_required
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Removes source MAC validation from older full LXC IPv4/IPv6 paths to reduce
+    verifier complexity. No terminal verifier log or isolated rejected operation is
+    present; replay depends on the historical generated datapath.
+raw:
+  case_id: github-commit-cilium-1eb1c18fdf76
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: 1eb1c18fdf76b144ccbe49703ed92578e1878290
+  commit_message: 'bpf: Remove source MAC address validation'
+  commit_date: '2018-11-09'
+  fix_type: loop_rewrite
+  buggy_code: "// FILE: bpf/bpf_lxc.c\n// CONTEXT: static inline int ipv6_l3_from_lxc(struct\
+    \ __sk_buff *skb,\n\tint ret, verdict, l4_off, forwarding_reason, hdrlen;\n\t\
+    struct csum_offset csum_off = {};\n\tstruct endpoint_info *ep;\n\tstruct lb6_service\
+    \ *svc;\n\tstruct lb6_key key = {};\n\tstruct ct_state ct_state_new = {};\n\t\
+    struct ct_state ct_state = {};\n\tvoid *data, *data_end;\n\tunion v6addr *daddr,\
+    \ orig_dip;\n\t__u32 tunnel_endpoint = 0;\n\t__u32 monitor = 0;\n\n\tif (unlikely(!is_valid_lxc_src_mac(eth)))\n\
+    \t\treturn DROP_INVALID_SMAC;\n\telse if (unlikely(!is_valid_gw_dst_mac(eth)))\n\
+    \t\treturn DROP_INVALID_DMAC;\n\telse if (unlikely(!is_valid_lxc_src_ip(ip6)))\n\
+    \t\treturn DROP_INVALID_SIP;\n\n\tipv6_addr_copy(&tuple->daddr, (union v6addr\
+    \ *) &ip6->daddr);\n\tipv6_addr_copy(&tuple->saddr, (union v6addr *) &ip6->saddr);\n\
+    \n\thdrlen = ipv6_hdrlen(skb, l3_off, &tuple->nexthdr);\n\tif (hdrlen < 0)\n\t\
+    \treturn hdrlen;\n\n\tl4_off = l3_off + hdrlen;\n\n// CONTEXT: static inline int\
+    \ handle_ipv4_from_lxc(struct __sk_buff *skb, __u32 *dstID)\n\tstruct ct_state\
+    \ ct_state_new = {};\n\tstruct ct_state ct_state = {};\n\t__be32 orig_dip;\n\t\
+    __u32 tunnel_endpoint = 0;\n\t__u32 monitor = 0;\n\n\tif (!revalidate_data(skb,\
+    \ &data, &data_end, &ip4))\n\t\treturn DROP_INVALID;\n\n\ttuple.nexthdr = ip4->protocol;\n\
+    \n\teth = data;\n\tif (unlikely(!is_valid_lxc_src_mac(eth)))\n\t\treturn DROP_INVALID_SMAC;\n\
+    \telse if (unlikely(!is_valid_gw_dst_mac(eth)))\n\t\treturn DROP_INVALID_DMAC;\n\
+    \telse if (unlikely(!is_valid_lxc_src_ipv4(ip4)))\n\t\treturn DROP_INVALID_SIP;\n\
+    \n\ttuple.daddr = ip4->daddr;\n\ttuple.saddr = ip4->saddr;\n\n\tl4_off = l3_off\
+    \ + ipv4_hdrlen(ip4);\n\n\tret = lb4_extract_key(skb, &tuple, l4_off, &key, &csum_off,\
+    \ CT_EGRESS);\n\tif (IS_ERR(ret)) {\n\t\tif (ret == DROP_UNKNOWN_L4)\n\n// FILE:\
+    \ bpf/lib/lxc.h\n#define __LIB_LXC_H_\n\n#include \"common.h\"\n#include \"utils.h\"\
+    \n#include \"ipv6.h\"\n#include \"ipv4.h\"\n#include \"eth.h\"\n#include \"dbg.h\"\
+    \n#include \"trace.h\"\n#include \"csum.h\"\n#include \"l4.h\"\n\n#ifndef DISABLE_SMAC_VERIFICATION\n\
+    static inline int is_valid_lxc_src_mac(struct ethhdr *eth)\n{\n\tunion macaddr\
+    \ valid = LXC_MAC;\n\n\treturn !eth_addrcmp(&valid, (union macaddr *) &eth->h_source);\n\
+    }\n#else\nstatic inline int is_valid_lxc_src_mac(struct ethhdr *eth)\n{\n\treturn\
+    \ 1;\n}\n#endif\n\n#ifndef DISABLE_SIP_VERIFICATION\nstatic inline int is_valid_lxc_src_ip(struct\
+    \ ipv6hdr *ip6)\n{\n\tunion v6addr valid = {};\n\n\tBPF_V6(valid, LXC_IP);\n\n\
+    \treturn !ipv6_addrcmp((union v6addr *) &ip6->saddr, &valid);\n}\n\nstatic inline\
+    \ int is_valid_lxc_src_ipv4(struct iphdr *ip4)\n{\n\n// FILE: bpf/lxc_config.h\n\
+    \ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the\n *  GNU General\
+    \ Public License for more details.\n *\n *  You should have received a copy of\
+    \ the GNU General Public License\n *  along with this program; if not, write to\
+    \ the Free Software\n *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston,\
+    \ MA  02110-1301  USA\n */\n/*\n * This is just a dummy header with dummy values\
+    \ to allow for test\n * compilation without the full code generation engine backend.\n\
+    \ */\n\n#define LXC_MAC { .addr = { 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff } }\n#define\
+    \ LXC_IP 0xbe, 0xef, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x1, 0x1, 0x65, 0x82, 0xbc\n#define\
+    \ LXC_IPV4 0x10203040\n#define LXC_ID 0x1010\n#define LXC_ID_NB 0x1010\n#define\
+    \ ENABLE_NAT46\n#ifndef SECLABEL\n#define SECLABEL 0xfffff\n#define SECLABEL_NB\
+    \ 0xfffff\n#endif\n#define POLICY_MAP cilium_policy_foo\n#define NODE_MAC { .addr\
+    \ = { 0xde, 0xad, 0xbe, 0xef, 0xc0, 0xde } }\n#ifndef SKIP_DEBUG"
+  fixed_code: "// FILE: bpf/bpf_lxc.c\n// CONTEXT: static inline int ipv6_l3_from_lxc(struct\
+    \ __sk_buff *skb,\n\tint ret, verdict, l4_off, forwarding_reason, hdrlen;\n\t\
+    struct csum_offset csum_off = {};\n\tstruct endpoint_info *ep;\n\tstruct lb6_service\
+    \ *svc;\n\tstruct lb6_key key = {};\n\tstruct ct_state ct_state_new = {};\n\t\
+    struct ct_state ct_state = {};\n\tvoid *data, *data_end;\n\tunion v6addr *daddr,\
+    \ orig_dip;\n\t__u32 tunnel_endpoint = 0;\n\t__u32 monitor = 0;\n\n\tif (unlikely(!is_valid_gw_dst_mac(eth)))\n\
+    \t\treturn DROP_INVALID_DMAC;\n\telse if (unlikely(!is_valid_lxc_src_ip(ip6)))\n\
+    \t\treturn DROP_INVALID_SIP;\n\n\tipv6_addr_copy(&tuple->daddr, (union v6addr\
+    \ *) &ip6->daddr);\n\tipv6_addr_copy(&tuple->saddr, (union v6addr *) &ip6->saddr);\n\
+    \n\thdrlen = ipv6_hdrlen(skb, l3_off, &tuple->nexthdr);\n\tif (hdrlen < 0)\n\t\
+    \treturn hdrlen;\n\n\tl4_off = l3_off + hdrlen;\n\n// CONTEXT: static inline int\
+    \ handle_ipv4_from_lxc(struct __sk_buff *skb, __u32 *dstID)\n\tstruct ct_state\
+    \ ct_state_new = {};\n\tstruct ct_state ct_state = {};\n\t__be32 orig_dip;\n\t\
+    __u32 tunnel_endpoint = 0;\n\t__u32 monitor = 0;\n\n\tif (!revalidate_data(skb,\
+    \ &data, &data_end, &ip4))\n\t\treturn DROP_INVALID;\n\n\ttuple.nexthdr = ip4->protocol;\n\
+    \n\teth = data;\n\tif (unlikely(!is_valid_gw_dst_mac(eth)))\n\t\treturn DROP_INVALID_DMAC;\n\
+    \telse if (unlikely(!is_valid_lxc_src_ipv4(ip4)))\n\t\treturn DROP_INVALID_SIP;\n\
+    \n\ttuple.daddr = ip4->daddr;\n\ttuple.saddr = ip4->saddr;\n\n\tl4_off = l3_off\
+    \ + ipv4_hdrlen(ip4);\n\n\tret = lb4_extract_key(skb, &tuple, l4_off, &key, &csum_off,\
+    \ CT_EGRESS);\n\tif (IS_ERR(ret)) {\n\t\tif (ret == DROP_UNKNOWN_L4)\n\n// FILE:\
+    \ bpf/lib/lxc.h\n#define __LIB_LXC_H_\n\n#include \"common.h\"\n#include \"utils.h\"\
+    \n#include \"ipv6.h\"\n#include \"ipv4.h\"\n#include \"eth.h\"\n#include \"dbg.h\"\
+    \n#include \"trace.h\"\n#include \"csum.h\"\n#include \"l4.h\"\n\n#ifndef DISABLE_SIP_VERIFICATION\n\
+    static inline int is_valid_lxc_src_ip(struct ipv6hdr *ip6)\n{\n\tunion v6addr\
+    \ valid = {};\n\n\tBPF_V6(valid, LXC_IP);\n\n\treturn !ipv6_addrcmp((union v6addr\
+    \ *) &ip6->saddr, &valid);\n}\n\nstatic inline int is_valid_lxc_src_ipv4(struct\
+    \ iphdr *ip4)\n{\n\n// FILE: bpf/lxc_config.h\n *  MERCHANTABILITY or FITNESS\
+    \ FOR A PARTICULAR PURPOSE.  See the\n *  GNU General Public License for more\
+    \ details.\n *\n *  You should have received a copy of the GNU General Public\
+    \ License\n *  along with this program; if not, write to the Free Software\n *\
+    \  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA\n\
+    \ */\n/*\n * This is just a dummy header with dummy values to allow for test\n\
+    \ * compilation without the full code generation engine backend.\n */\n\n#define\
+    \ LXC_IP 0xbe, 0xef, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x1, 0x1, 0x65, 0x82, 0xbc\n#define\
+    \ LXC_IPV4 0x10203040\n#define LXC_ID 0x1010\n#define LXC_ID_NB 0x1010\n#define\
+    \ ENABLE_NAT46\n#ifndef SECLABEL\n#define SECLABEL 0xfffff\n#define SECLABEL_NB\
+    \ 0xfffff\n#endif\n#define POLICY_MAP cilium_policy_foo\n#define NODE_MAC { .addr\
+    \ = { 0xde, 0xad, 0xbe, 0xef, 0xc0, 0xde } }\n#ifndef SKIP_DEBUG"
+  diff_summary: |-
+    bpf/bpf_lxc.c:
+    - Reworked loop or branch structure to reduce verifier complexity and keep the path bounded.
+    - Affected context: static inline int ipv6_l3_from_lxc(struct __sk_buff *skb,, static inline int handle_ipv4_from_lxc(struct __sk_buff *skb, __u32 *dstID).
+    bpf/lib/lxc.h:
+    - Reworked loop or branch structure to reduce verifier complexity and keep the path bounded.
+    - Affected context: the touched section.
+    bpf/lxc_config.h:
+    - Reworked loop or branch structure to reduce verifier complexity and keep the path bounded.
+    - Affected context: the touched section.
+    - Commit subject: bpf: Remove source MAC address validation.

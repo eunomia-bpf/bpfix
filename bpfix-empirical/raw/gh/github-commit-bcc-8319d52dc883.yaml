@@ -1,0 +1,101 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-bcc-8319d52dc883
+source_kind: github_commit
+source:
+  url: https://github.com/iovisor/bcc/commit/8319d52dc8834daa0766f61487f75ed3c3c731fe
+  title: turn off x86 jump table optimization during jit compilation
+  repository: https://github.com/iovisor/bcc
+  commit: 8319d52dc8834daa0766f61487f75ed3c3c731fe
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-bcc-8319d52dc883.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: environment_required
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Adds -fno-jump-tables to BCC's x86 compile flags. This depends on historical
+    LLVM code generation and has no captured verifier log or replayable source.
+  verifier_status: null
+  captured_error: null
+  verifier_error_match: null
+raw:
+  case_id: github-commit-bcc-8319d52dc883
+  source: github_commits
+  repository: https://github.com/iovisor/bcc
+  commit_hash: 8319d52dc8834daa0766f61487f75ed3c3c731fe
+  commit_message: turn off x86 jump table optimization during jit compilation
+  commit_date: '2020-06-02'
+  fix_type: bounds_check
+  buggy_code: |-
+    // FILE: src/cc/frontends/clang/loader.cc
+    // CONTEXT: int ClangLoader::do_compile(unique_ptr<llvm::Module> *mod, TableStorage &ts,
+      // set up the error reporting class
+      IntrusiveRefCntPtr<DiagnosticOptions> diag_opts(new DiagnosticOptions());
+      auto diag_client = new TextDiagnosticPrinter(llvm::errs(), &*diag_opts);
+
+      IntrusiveRefCntPtr<DiagnosticIDs> DiagID(new DiagnosticIDs());
+      DiagnosticsEngine diags(DiagID, &*diag_opts, diag_client);
+
+      // set up the command line argument wrapper
+
+      string target_triple = get_clang_target();
+      driver::Driver drv("", target_triple, diags);
+
+      drv.setTitle("bcc-clang-driver");
+      drv.setCheckInputsExist(false);
+
+      unique_ptr<driver::Compilation> compilation(drv.BuildCompilation(flags_cstr));
+      if (!compilation)
+        return -1;
+
+      // expect exactly 1 job, otherwise error
+      const driver::JobList &jobs = compilation->getJobs();
+      if (jobs.size() != 1 || !isa<driver::Command>(*jobs.begin())) {
+        SmallString<256> msg;
+        llvm::raw_svector_ostream os(msg);
+  fixed_code: |-
+    // FILE: src/cc/frontends/clang/loader.cc
+    // CONTEXT: int ClangLoader::do_compile(unique_ptr<llvm::Module> *mod, TableStorage &ts,
+      // set up the error reporting class
+      IntrusiveRefCntPtr<DiagnosticOptions> diag_opts(new DiagnosticOptions());
+      auto diag_client = new TextDiagnosticPrinter(llvm::errs(), &*diag_opts);
+
+      IntrusiveRefCntPtr<DiagnosticIDs> DiagID(new DiagnosticIDs());
+      DiagnosticsEngine diags(DiagID, &*diag_opts, diag_client);
+
+      // set up the command line argument wrapper
+
+      string target_triple = get_clang_target();
+      driver::Driver drv("", target_triple, diags);
+
+    #if LLVM_MAJOR_VERSION >= 4
+      if (target_triple == "x86_64-unknown-linux-gnu")
+        flags_cstr.push_back("-fno-jump-tables");
+    #endif
+
+      drv.setTitle("bcc-clang-driver");
+      drv.setCheckInputsExist(false);
+
+      unique_ptr<driver::Compilation> compilation(drv.BuildCompilation(flags_cstr));
+      if (!compilation)
+        return -1;
+
+      // expect exactly 1 job, otherwise error
+      const driver::JobList &jobs = compilation->getJobs();
+      if (jobs.size() != 1 || !isa<driver::Command>(*jobs.begin())) {
+        SmallString<256> msg;
+        llvm::raw_svector_ostream os(msg);
+  diff_summary: |-
+    src/cc/frontends/clang/loader.cc:
+    - Added explicit bounds or range guards so the verifier can prove the access size and offset.
+    - Affected context: int ClangLoader::do_compile(unique_ptr<llvm::Module> *mod, TableStorage &ts,.
+    - Commit subject: turn off x86 jump table optimization during jit compilation.

@@ -11,7 +11,7 @@ Repair synthesis, verifier-oracle patch loops, and publication-only experiments
 are not part of the active product scope in this repository pass. Historical
 scratch reports are intentionally non-canonical and are not kept in the
 maintained documentation set. The previous Python implementation has been
-removed; `bpfix-bench/tools/` contains only benchmark replay and corpus
+removed; `bpfix-empirical/tools/` contains only empirical replay and corpus
 maintenance tools.
 
 ## Current Thesis
@@ -86,8 +86,8 @@ The active project is a Cargo workspace.
 | BPF instruction model | active | `crates/bpfanalysis/src/insn.rs` |
 | pass context/support types | active | `crates/bpfanalysis/src/pass.rs` |
 | libbpf source reference | active | `vendor/libbpf` submodule |
-| benchmark corpus | active | `bpfix-bench/` |
-| benchmark replay tools | corpus maintenance | `bpfix-bench/tools/` |
+| empirical corpus | active | `bpfix-empirical/` |
+| empirical replay tools | corpus maintenance | `bpfix-empirical/tools/` |
 
 The `bpfanalysis` crate imports the analysis implementation from the `bpfopt`
 analysis module and keeps the dependent instruction, verifier-log, and
@@ -107,9 +107,9 @@ source cues, but `main.rs` only renders structured classifications. The next
 cleanup is to derive more signals from verifier state and object analysis
 instead of adding more terminal-message patterns.
 
-## Benchmark Snapshot
+## Empirical Corpus Snapshot
 
-`bpfix-bench/manifest.yaml` is the primary benchmark discovery entry point.
+`bpfix-empirical/manifest.yaml` is the primary empirical corpus discovery entry point.
 
 Replayable cases: 235.
 
@@ -174,20 +174,20 @@ cargo test -p bpfix --features object-analysis --test cli
 Quick diagnostic smoke:
 
 ```bash
-cargo run -p bpfix -- bpfix-bench/cases/stackoverflow-60053570/replay-verifier.log
+cargo run -p bpfix -- bpfix-empirical/cases/stackoverflow-60053570/replay-verifier.log
 ```
 
-Run the current log-only benchmark diagnostic gate:
+Run the current log-only empirical diagnostic gate:
 
 ```bash
-python3 bpfix-bench/run-bpfix-eval.py --confusion --coverage --reject-fallback
+python3 bpfix-empirical/run-bpfix-eval.py --confusion --coverage --reject-fallback
 ```
 
-Run benchmark diagnostics with checked-in BPF objects and object-CFG attachment
+Run empirical corpus diagnostics with checked-in BPF objects and object-CFG attachment
 coverage:
 
 ```bash
-python3 bpfix-bench/run-bpfix-eval.py --coverage --object-if-available
+python3 bpfix-empirical/run-bpfix-eval.py --coverage --object-if-available
 ```
 
 Run the full local release gate:
@@ -199,7 +199,7 @@ make release-check
 Legacy replay validation remains available for corpus maintenance:
 
 ```bash
-python3 bpfix-bench/tools/validate_benchmark.py --replay bpfix-bench --timeout-sec 60
+python3 bpfix-empirical/tools/validate_empirical.py --replay bpfix-empirical --timeout-sec 60
 ```
 
 Current evaluation TODO:
@@ -214,9 +214,9 @@ Current evaluation TODO:
 
 1. Keep the project usable as an open-source Rust userspace tool: stable CLI,
    clear crate layout, and maintained docs.
-2. Treat `bpfix-bench/manifest.yaml` and `bpfix-bench/raw/index.yaml` as the
-   source of benchmark facts.
-3. Expand `crates/bpfix` classification coverage from current benchmark gaps
+2. Treat `bpfix-empirical/manifest.yaml` and `bpfix-empirical/raw/index.yaml` as the
+   source of empirical corpus facts.
+3. Expand `crates/bpfix` classification coverage from current empirical corpus gaps
    while keeping the plain-text diagnostic contract stable.
 4. Expose more typed analysis from `bpfanalysis` instead of relying on final
    verifier-message matching.
@@ -227,9 +227,9 @@ Current evaluation TODO:
 
 - automatic patch generation
 - semantic correctness oracle integration
-- cross-kernel benchmark claims
+- cross-kernel empirical corpus claims
 - claims based on historical scratch reports
-- treating raw records as primary benchmark cases before local replay admission
+- treating raw records as primary empirical corpus cases before local replay admission
 
 ## Documentation Ownership
 
@@ -240,9 +240,9 @@ Canonical current facts live in:
 - `docs/open-source-tool-design.md`
 - `docs/user-guide.md`
 - `docs/evaluation/`
-- `bpfix-bench/README.md`
-- `bpfix-bench/manifest.yaml`
-- `bpfix-bench/raw/index.yaml`
+- `bpfix-empirical/README.md`
+- `bpfix-empirical/manifest.yaml`
+- `bpfix-empirical/raw/index.yaml`
 
 Scratch reports and draft plans should stay outside the maintained
 documentation set unless they are promoted into one of the canonical documents

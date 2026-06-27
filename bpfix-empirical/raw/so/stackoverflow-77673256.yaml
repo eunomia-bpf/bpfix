@@ -1,0 +1,210 @@
+schema_version: bpfix.raw_external/v1
+raw_id: stackoverflow-77673256
+source_kind: stackoverflow
+source:
+  url: https://stackoverflow.com/questions/77673256/how-to-link-load-rodata-section-when-loading-bpf-program-with-raw-syscalls
+  title: How to link/load .rodata section when loading BPF program with raw syscalls?
+  repository: null
+  commit: null
+  collected_at: '2026-03-11T16:03:14+00:00'
+collector:
+  original_path: bpfix-empirical/raw/so/stackoverflow-77673256.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: true
+  verifier_log_block_count: 2
+  source_snippet_count: 1
+  has_buggy_code: false
+  has_fixed_code: false
+  has_fix_description: false
+reproduction:
+  status: replay_valid
+  case_id: stackoverflow-77673256
+  case_path: cases/stackoverflow-77673256
+  artifact_path: cases/stackoverflow-77673256
+  reason: admitted_to_bpfix_bench_cases
+raw:
+  case_id: stackoverflow-77673256
+  source: stackoverflow
+  collected_at: '2026-03-11T16:03:14+00:00'
+  question:
+    question_id: 77673256
+    title: How to link/load .rodata section when loading BPF program with raw syscalls?
+    url: https://stackoverflow.com/questions/77673256/how-to-link-load-rodata-section-when-loading-bpf-program-with-raw-syscalls
+    tags:
+    - rust
+    - ebpf
+    - xdp-bpf
+    score: 0
+    answer_count: 1
+    is_answered: false
+  verifier_log:
+    blocks:
+    - |-
+      0: R1=ctx(off=0,imm=0) R10=fp0
+      0: (18) r1 = 0x0                      ; R1_w=0
+      2: (b7) r2 = 20                       ; R2_w=20
+      3: (85) call bpf_trace_printk#6
+      R1 type=scalar expected=fp, pkt, pkt_meta, map_key, map_value, mem, ringbuf_mem, buf, trusted_ptr_
+      processed 3 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0 mark_read 0
+    - R1 type=scalar expected=fp, pkt, pkt_meta, map_key, map_value, mem, ringbuf_mem,
+      buf, trusted_ptr_
+    combined: |-
+      0: R1=ctx(off=0,imm=0) R10=fp0
+      0: (18) r1 = 0x0                      ; R1_w=0
+      2: (b7) r2 = 20                       ; R2_w=20
+      3: (85) call bpf_trace_printk#6
+      R1 type=scalar expected=fp, pkt, pkt_meta, map_key, map_value, mem, ringbuf_mem, buf, trusted_ptr_
+      processed 3 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0 mark_read 0
+
+      R1 type=scalar expected=fp, pkt, pkt_meta, map_key, map_value, mem, ringbuf_mem, buf, trusted_ptr_
+    generated:
+      log: "-- BEGIN PROG LOAD LOG --\nfunc#0 @0\nLive regs before insn:\n  0: ..........\
+        \ (b7) r1 = 681324\n  1: .1........ (63) *(u32 *)(r10 -8) = r1\n  2: ..........\
+        \ (18) r1 = 0x706d69735f676f72\n  4: .1........ (7b) *(u64 *)(r10 -16) = r1\n\
+        \  5: .......... (18) r1 = 0x705f706478206e49\n  7: .1........ (7b) *(u64\
+        \ *)(r10 -24) = r1\n  8: .......... (bf) r1 = r10\n  9: .1........ (07) r1\
+        \ += -24\n 10: .1........ (b7) r2 = 20\n 11: .12....... (85) call bpf_trace_printk#6\n\
+        \ 12: .......... (b7) r0 = 2\n 13: 0......... (95) exit\n0: R1=ctx() R10=fp0\n\
+        ; int xdp_prog_simple(struct xdp_md *ctx) @ bpfix_mjmpwdqb.c:8\n0: (b7) r1\
+        \ = 681324                   ; R1_w=0xa656c\n; char msg[] = \"In xdp_prog_simple\\\
+        n\"; @ bpfix_mjmpwdqb.c:10\n1: (63) *(u32 *)(r10 -8) = r1         ; R1_w=0xa656c\
+        \ R10=fp0 fp-8=????0xa656c\n2: (18) r1 = 0x706d69735f676f72       ; R1_w=0x706d69735f676f72\n\
+        4: (7b) *(u64 *)(r10 -16) = r1        ; R1_w=0x706d69735f676f72 R10=fp0 fp-16_w=0x706d69735f676f72\n\
+        5: (18) r1 = 0x705f706478206e49       ; R1_w=0x705f706478206e49\n7: (7b) *(u64\
+        \ *)(r10 -24) = r1        ; R1_w=0x705f706478206e49 R10=fp0 fp-24_w=0x705f706478206e49\n\
+        8: (bf) r1 = r10                      ; R1_w=fp0 R10=fp0\n9: (07) r1 += -24\
+        \                     ; R1_w=fp-24\n; bpf_trace_printk(msg, sizeof(msg));\
+        \ @ bpfix_mjmpwdqb.c:11\n10: (b7) r2 = 20                      ; R2_w=20\n\
+        11: (85) call bpf_trace_printk#6\nmark_precise: frame0: last_idx 11 first_idx\
+        \ 0 subseq_idx -1 \nmark_precise: frame0: regs=r2 stack= before 10: (b7) r2\
+        \ = 20\n12: R0_w=scalar()\n; return XDP_PASS; @ bpfix_mjmpwdqb.c:12\n12: (b7)\
+        \ r0 = 2                       ; R0_w=2\n13: (95) exit\nverification time\
+        \ 428 usec\nstack depth 24\nprocessed 12 insns (limit 1000000) max_states_per_insn\
+        \ 0 total_states 0 peak_states 0 mark_read 0\n-- END PROG LOAD LOG --"
+      verifier_pass: true
+      template_used: wrap-vmlinux
+      generated_at: '2026-03-13T21:13:52.437890+00:00'
+      old_log_len: 453
+      new_log_len: 1761
+  source_snippets:
+  - |-
+    SEC("xdp")
+    int xdp_prog_simple(struct xdp_md *ctx)
+    {
+        char msg[] = "In xdp_prog_simple\n";
+        bpf_trace_printk(msg, sizeof(msg));
+        return XDP_PASS;
+    }
+  question_body_text: "This question became longer than I expected. Since BPF is very\
+    \ new, it's possible there is no precise answer.\nI am trying to load a \"hello\
+    \ world\" eBPF program onto the XDP attachment point. I want to do this using\
+    \ raw syscalls and without using libbpf, bpftool, xdp-loader, etc.\nMy kernel\
+    \ release is 6.5.0-9-generic.\nThe BPF program is:\n#include <linux/types.h>\n\
+    #include <bpf/bpf_helpers.h>\n#include <linux/bpf.h>\n#include <linux/version.h>\n\
+    SEC(\"xdp\")\nint xdp_prog_simple(struct xdp_md *ctx)\n{\nbpf_printk(\"In xdp_prog_simple\\\
+    n\");\nreturn XDP_PASS;\n}\nchar _license[] SEC(\"license\") = \"GPL\";\n__u32\
+    \ _version SEC(\"version\") = LINUX_VERSION_CODE;\nAnd compiled with:\nclang -O2\
+    \ -g -Wall -target bpf -c bpf.c -o bpf.o\nAnd the output of llvm-objdump --no-show-raw-insn\
+    \ --dr bpf.o is:\nDisassembly of section xdp:\n0000000000000000 <xdp_prog_simple>:\n\
+    0: r1 = 0x0 ll\n0000000000000000: R_BPF_64_64 .rodata\n2: r2 = 0x14\n3: call 0x6\n\
+    4: r0 = 0x2\n5: exit\nI'm trying to load this bpf.o file using a Rust program.\
+    \ I extract the bytes from the xdp section and reference these in the attribute\
+    \ passed to the BPF_PROG_LOAD command of the SYS_bpf syscall:\n(This code is not\
+    \ the problem. Including it for context, and because I haven't seen many Rust\
+    \ examples on the internet, so it could be helpful for future readers)\nuse std::mem::size_of;\n\
+    use crate::ffi::bpf;\nuse crate::ffi::syscall::check_err;\nuse crate::Error;\n\
+    use object::{Object, ObjectSection};\nconst LOG_BUF_SIZE: usize = 65536;\nstatic\
+    \ mut BPF_LOG_BUF: [u8; LOG_BUF_SIZE] = [0; LOG_BUF_SIZE];\npub fn load_xdp_program(elf:\
+    \ &[u8], section: &str) -> Result<i32, Error> {\nlet obj = object::File::parse(elf).map_err(|err|\
+    \ Error::Boxed(Box::new(err)))?;\n// Extract bytes from the program section (\"\
+    xdp\" in this example)\nlet text = obj\n.section_by_name(section)\n.ok_or_else(||\
+    \ Error::NotFound(\"program section not found\"))?\n.data()\n.map_err(|err| Error::Boxed(Box::new(err)))?;\n\
+    // Extract the license bytes\nlet license = obj\n.section_by_name(\"license\"\
+    )\n.ok_or_else(|| Error::NotFound(\"section 'license' not found\"))?\n.data()\n\
+    .map_err(|err| Error::Boxed(Box::new(err)))?;\n// Extract the kernel version bytes\n\
+    let version = {\nlet data: [u8; 4] = obj\n.section_by_name(\"version\")\n.ok_or_else(||\
+    \ Error::NotFound(\"section 'version' not found\"))?\n.data()\n.map_err(|err|\
+    \ Error::Boxed(Box::new(err)))?\n.try_into()\n.map_err(|err| Error::Boxed(Box::new(err)))?;\n\
+    u32::from_le_bytes(data)\n};\nlet attr = &bpf::ProgramAttr {\nprog_type: XDP_PROG_TYPE,\n\
+    insn_cnt: (text.len() / size_of::<bpf::Insn>()) as u32,\ninsns: ptr_to_u64(text),\n\
+    license: ptr_to_u64(license),\nlog_level: 1,\nlog_size: LOG_BUF_SIZE as u32,\n\
+    log_buf: ptr_to_u64(unsafe { &BPF_LOG_BUF }),\nkern_version: version,\nprog_flags:\
+    \ 0,\nprog_name: *b\"xdp_prog_simple\\0\",\nprog_ifindex: 0,\nexpected_attach_type:\
+    \ 37, // BPF_XDP\nprog_btf_fd: 0,\nfunc_info_rec_size: 0,\nfunc_info: 0,\nfunc_info_cnt:\
+    \ 0,\nline_info_rec_size: 0,\nline_info: 0,\nline_info_cnt: 0,\nattach_btf_id:\
+    \ 0,\nattach: bpf::AttachFd { object_fd: 0 },\ncore_relo_cnt: 0,\nfd_array: 0,\n\
+    core_relos: 0,\ncore_relo_rec_size: 0,\n};\nlet prog_fd = check_err(unsafe {\n\
+    libc::syscall(\nlibc::SYS_bpf,\nbpf::cmd::PROG_LOAD,\nattr as *const _ as *const\
+    \ libc::c_void,\nsize_of::<bpf::BpfAttr>(),\n) as i32\n});\nmatch prog_fd {\n\
+    Ok(fd) => Ok(fd),\nErr(err) => {\nlet msg = String::from_utf8_lossy(unsafe { &BPF_LOG_BUF\
+    \ });\neprintln!(\"Failed to load BPF program. Log buffer:\\n\\n{msg}\");\nErr(err)\n\
+    }\n}\n}\nI build and call this as sudo to make sure it has root permissions:\n\
+    cargo build --release --bin xdp-loader\nsudo ./target/release/xdp-loader bpf.o\n\
+    Which returns an error from the log buffer:\n0: R1=ctx(off=0,imm=0) R10=fp0\n\
+    0: (18) r1 = 0x0 ; R1_w=0\n2: (b7) r2 = 20 ; R2_w=20\n3: (85) call bpf_trace_printk#6\n\
+    R1 type=scalar expected=fp, pkt, pkt_meta, map_key, map_value, mem, ringbuf_mem,\
+    \ buf, trusted_ptr_\nprocessed 3 insns (limit 1000000) max_states_per_insn 0 total_states\
+    \ 0 peak_states 0 mark_read 0\nAnd the BPF syscall return with error code 13:\
+    \ permission denied.\nThis seems to be implying that the register r1 is a type\
+    \ scalar when it should be type fp. This is confusing to me. As far as I understand,\
+    \ r1 should be carrying the address to context structure struct xdp_md *ctx, according\
+    \ to these docs. I am not performing any pointer arithmetic, so it should not\
+    \ be converted to a scalar.\nI think this is because struct xdp_md *ctx is not\
+    \ used, so it is compiled out. It is instead used for BPF calling convention to\
+    \ invoke the bpf_printk helper, which is actually a macro that is replaced by\
+    \ bpf_trace_printk.\nWhen invoked, register r1 is used to point at the \"In xdp_prog_simple\\\
+    n\" string. It loaded an immediate 64-bit 0x0 address which is a zero-offset address\
+    \ into the .rodata section, which contains that string. This is the first argument\
+    \ to bpf_printk. Register r2 is also loaded the immediate value 20 because that\
+    \ is the length of the \"In xdp_prog_simple\\n\" string \u2013 it's the second\
+    \ argument to bpf_trace_printk.\nBut this doesn't explain the error:\nR1 type=scalar\
+    \ expected=fp, pkt, pkt_meta, map_key, map_value, mem, ringbuf_mem, buf, trusted_ptr_\n\
+    It expect r1 to be a frame pointer, but it's a scalar.\nI think this is because\
+    \ while I'm loading the xdp section containing the program byte code, I'm not\
+    \ loading the .rodata section, so this doesn't point anywhere, and the verifier\
+    \ interprets the 0x0 address as a scalar.\nIt seems like there needs to be an\
+    \ intermediate linking/loading step in order to make .rodata accessible by the\
+    \ BPF JIT. This is corroborated by this SO answer, which implies that libbpf does\
+    \ it automatically. If I rewrite my code:\nSEC(\"xdp\")\nint xdp_prog_simple(struct\
+    \ xdp_md *ctx)\n{\nchar msg[] = \"In xdp_prog_simple\\n\";\nbpf_trace_printk(msg,\
+    \ sizeof(msg));\nreturn XDP_PASS;\n}\nThe string is stored inline, and not in\
+    \ a different section:\nDisassembly of section xdp:\n0000000000000000 <xdp_prog_simple>:\n\
+    0: r1 = 0xa656c\n1: *(u32 *)(r10 - 0x8) = r1\n2: r1 = 0x706d69735f676f72 ll\n\
+    4: *(u64 *)(r10 - 0x10) = r1\n5: r1 = 0x705f706478206e49 ll\n7: *(u64 *)(r10 -\
+    \ 0x18) = r1\n8: r1 = r10\n9: r1 += -0x18\n10: r2 = 0x14\n11: call 0x6\n12: r0\
+    \ = 0x2\n13: exit\nAnd the program loads successfully!\nOn my kernel version,\
+    \ bpf_printk doesn't seem to do this restructure automatically:\n/* Helper macro\
+    \ to print out debug messages */\n#define bpf_printk(fmt, args...) ___bpf_pick_printk(args)(fmt,\
+    \ ##args)\nMy question: how can I do this automatically without need to split\
+    \ the declaration of the string and invocation of bpf_trace_printk? I believe\
+    \ I need to somehow link/load the string in the .rodata section as identified\
+    \ by the R_BPF_64_64 relocation entry in the disassembly:\n(Snippet from earlier)\n\
+    0000000000000000 <xdp_prog_simple>:\n0: r1 = 0x0 ll\n0000000000000000: R_BPF_64_64\
+    \ .rodata\nSo that it's stored inline with the bytecode. Is that correct? If so,\
+    \ how do I do this?\n(My thinking is that I'll need scan the ELF file for relocation\
+    \ entries and use these to locate items in the .rodata section somehow, and then\
+    \ insert them into the bytecode directly)\nI understand BPF is rather new and\
+    \ has sharp edges. Happy with any answer that points me in the right direction."
+  selected_answer:
+    answer_id: 78800929
+    url: https://stackoverflow.com/questions/77673256/how-to-link-load-rodata-section-when-loading-bpf-program-with-raw-syscalls#78800929
+    is_accepted: false
+    score: 0
+    body_text: |-
+      I think you can find some processing in Aya's implementation. During the process of loading eBPF program, Aya will first parse the ELF file and find the .rodata section, .bss section, .data section and so on. After this, Aya will create map for these sections. The type of these maps is usually BPF_MAP_TYPE_ARRAY. After this step is completed, the instructions in the program that access the contents of these sections need to be relocated.The core relocation logic is as follows:
+      if !map.data().is_empty() {
+      instructions[ins_index].set_src_reg(BPF_PSEUDO_MAP_VALUE as u8);
+      instructions[ins_index + 1].imm = instructions[ins_index].imm + sym.address as i32;
+      } else {
+      instructions[ins_index].set_src_reg(BPF_PSEUDO_MAP_FD as u8);
+      }
+      instructions[ins_index].imm = *fd;
+      You can see why this is needed in the kernel documentation.
+    fix_description: 'I think you can find some processing in Aya''s implementation.
+      During the process of loading eBPF program, Aya will first parse the ELF file
+      and find the .rodata section, .bss section, .data section and so on. After this,
+      Aya will create map for these sections. The type of these maps is usually BPF_MAP_TYPE_ARRAY.
+      After this step is completed, the instructions in the program that access the
+      contents of these sections need to be relocated.The core relocation logic is
+      as follows:'

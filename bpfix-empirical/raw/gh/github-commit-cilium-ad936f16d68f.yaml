@@ -1,0 +1,109 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-ad936f16d68f
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/ad936f16d68fa2fc6f1249fba0079dbb8f25e6f4
+  title: 'bpf: add option for debug output to raw_main'
+  repository: https://github.com/cilium/cilium
+  commit: ad936f16d68fa2fc6f1249fba0079dbb8f25e6f4
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-ad936f16d68f.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: 'Raw title is "bpf: add option for debug output to raw_main"; snippets are
+    in the user-space bpf/probes/raw_main.c harness and add debug reporting around
+    bpf_prog_load(). This is collection/debug tooling, not a standalone BPF verifier
+    bug case.'
+raw:
+  case_id: github-commit-cilium-ad936f16d68f
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: ad936f16d68fa2fc6f1249fba0079dbb8f25e6f4
+  commit_message: 'bpf: add option for debug output to raw_main'
+  commit_date: '2017-03-22'
+  fix_type: bounds_check
+  buggy_code: "// FILE: bpf/probes/raw_main.c\n *  GNU General Public License for\
+    \ more details.\n *\n *  You should have received a copy of the GNU General Public\
+    \ License\n *  along with this program; if not, write to the Free Software\n *\
+    \  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA\n\
+    \ */\n\n#include <unistd.h>\n#include <stdio.h>\n#include <stdint.h>\n#include\
+    \ <string.h>\n#include <errno.h>\n#include <assert.h>\n\n#include <sys/resource.h>\n\
+    \n#include \"raw_insn.h\"\n\n#define BPF_MAX_FIXUPS\t64\n\n#define ARRAY_SIZE(arr)\
+    \ (sizeof(arr) / sizeof((arr)[0]))\n\nstruct bpf_map_fixup {\n\tint off;\n\tenum\
+    \ bpf_map_type type;\n\n// CONTEXT: static int bpf_map_create(enum bpf_map_type\
+    \ type, uint32_t size_key,\n\nstatic int bpf_test_length(const struct bpf_insn\
+    \ *insn)\n{\n\tint len;\n\n\tfor (len = BPF_MAXINSNS - 1; len > 0; --len)\n\t\t\
+    if (insn[len].code != 0 || insn[len].imm != 0)\n\t\t\tbreak;\n\n\treturn len +\
+    \ 1;\n}\n\nstatic void bpf_report_success(const struct bpf_test *test)\n{\n\t\
+    printf(\"#define %s\\n\\n\", test->emits);\n}\n\nstatic void bpf_report_failure(const\
+    \ struct bpf_test *test)\n{\n\tstatic char bpf_vlog[1U << 16];\n\tint fd;\n\n\t\
+    printf(\"// #define %s\\n\\n\", test->emits);\n\tprintf(\"#if 0\\n\");\n\tprintf(\"\
+    %s failed due to load error: \", test->emits);\n\n\tmemset(bpf_vlog, 0, sizeof(bpf_vlog));\n\
+    \tfd = bpf_prog_load(test->type, test->insns,\n\t\t\t   bpf_test_length(test->insns),\
+    \ \"GPL\",\n\t\t\t   bpf_vlog, sizeof(bpf_vlog));\n\tassert(fd < 0);\n\tprintf(\"\
+    %s\\n%s\", strerror(errno), bpf_vlog);\n\tprintf(\"#endif\\n\\n\");\n\n\tif (test->warn)\n\
+    \t\tfprintf(stderr, \"%s: %s\\n\", test->emits, test->warn);\n}\n\nstatic void\
+    \ bpf_run_test(struct bpf_test *test)\n{\n\tstruct bpf_map_fixup *map = test->fixup_map;\n\
+    \tint fd;\n\n\t/* We can use off here as it's never first insns. */\n\twhile (map->off)\
+    \ {\n\t\tfd = bpf_map_create(BPF_MAP_TYPE_HASH, map->size_key,\n\t\t\t\t    map->size_val,\
+    \ 1, 0);\n\t\tif (fd < 0)\n\t\t\t/* We fail in verifier eventually. */\n\t\t\t\
+    break;\n\t\ttest->insns[map->off].imm = fd;\n\t\tmap++;\n\t}\n\n\tfd = bpf_prog_load(test->type,\
+    \ test->insns,\n\t\t\t   bpf_test_length(test->insns), \"GPL\", NULL, 0);\n\t\
+    if (fd > 0) {\n\t\tbpf_report_success(test);\n\t\tclose(fd);\n\t} else {\n\t\t\
+    bpf_report_failure(test);\n\t}\n}\n\nint main(int argc, char **argv)\n{\n\tstruct\
+    \ rlimit rold, rinf = { RLIM_INFINITY, RLIM_INFINITY };\n\tint i;\n\n\tgetrlimit(RLIMIT_MEMLOCK,\
+    \ &rold);\n\tsetrlimit(RLIMIT_MEMLOCK, &rinf);\n\n\tfor (i = 0; i < ARRAY_SIZE(tests);\
+    \ i++)\n\t\tbpf_run_test(&tests[i]);\n\n\tsetrlimit(RLIMIT_MEMLOCK, &rold);\n\t\
+    return 0;\n}"
+  fixed_code: "// FILE: bpf/probes/raw_main.c\n *  GNU General Public License for\
+    \ more details.\n *\n *  You should have received a copy of the GNU General Public\
+    \ License\n *  along with this program; if not, write to the Free Software\n *\
+    \  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA\n\
+    \ */\n\n#include <unistd.h>\n#include <stdio.h>\n#include <stdint.h>\n#include\
+    \ <string.h>\n#include <errno.h>\n\n#include <sys/resource.h>\n\n#include \"raw_insn.h\"\
+    \n\n#define BPF_MAX_FIXUPS\t64\n\n#define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]))\n\
+    \nstruct bpf_map_fixup {\n\tint off;\n\tenum bpf_map_type type;\n\n// CONTEXT:\
+    \ static int bpf_map_create(enum bpf_map_type type, uint32_t size_key,\n\nstatic\
+    \ int bpf_test_length(const struct bpf_insn *insn)\n{\n\tint len;\n\n\tfor (len\
+    \ = BPF_MAXINSNS - 1; len > 0; --len)\n\t\tif (insn[len].code != 0 || insn[len].imm\
+    \ != 0)\n\t\t\tbreak;\n\n\treturn len + 1;\n}\n\nstatic void bpf_report(const\
+    \ struct bpf_test *test, int success,\n\t\t       int debug_mode)\n{\n\tstatic\
+    \ char bpf_vlog[1U << 16];\n\tint fd;\n\n\tprintf(\"%s#define %s\\n\\n\", success\
+    \ ? \"\" : \"// \", test->emits);\n\n\tif (!success || debug_mode) {\n\t\tprintf(\"\
+    #if 0\\n\");\n\t\tprintf(\"%s %s: \", test->emits, success ?\n\t\t       \"debug\
+    \ output\" : \"failed due to load error\");\n\n\t\tmemset(bpf_vlog, 0, sizeof(bpf_vlog));\n\
+    \t\tfd = bpf_prog_load(test->type, test->insns,\n\t\t\t\t   bpf_test_length(test->insns),\
+    \ \"GPL\",\n\t\t\t\t   bpf_vlog, sizeof(bpf_vlog));\n\t\tprintf(\"%s\\n%s\", strerror(errno),\
+    \ bpf_vlog);\n\t\tprintf(\"#endif\\n\\n\");\n\t\tif (fd > 0)\n\t\t\tclose(fd);\n\
+    \t}\n\n\tif (!success && test->warn)\n\t\tfprintf(stderr, \"%s: %s\\n\", test->emits,\
+    \ test->warn);\n}\n\nstatic void bpf_run_test(struct bpf_test *test, int debug_mode)\n\
+    {\n\tstruct bpf_map_fixup *map = test->fixup_map;\n\tint fd;\n\n\t/* We can use\
+    \ off here as it's never first insns. */\n\twhile (map->off) {\n\t\tfd = bpf_map_create(BPF_MAP_TYPE_HASH,\
+    \ map->size_key,\n\t\t\t\t    map->size_val, 1, 0);\n\t\tif (fd < 0)\n\t\t\t/*\
+    \ We fail in verifier eventually. */\n\t\t\tbreak;\n\t\ttest->insns[map->off].imm\
+    \ = fd;\n\t\tmap++;\n\t}\n\n\tfd = bpf_prog_load(test->type, test->insns,\n\t\t\
+    \t   bpf_test_length(test->insns), \"GPL\", NULL, 0);\n\tbpf_report(test, fd >\
+    \ 0, debug_mode);\n\tif (fd > 0)\n\t\tclose(fd);\n}\n\nint main(int argc, char\
+    \ **argv)\n{\n\tstruct rlimit rold, rinf = { RLIM_INFINITY, RLIM_INFINITY };\n\
+    \tint debug_mode = 0;\n\tint i;\n\n\tif (argc > 1 && !strncmp(argv[argc - 1],\
+    \ \"debug\", sizeof(\"debug\")))\n\t\tdebug_mode = 1;\n\n\tgetrlimit(RLIMIT_MEMLOCK,\
+    \ &rold);\n\tsetrlimit(RLIMIT_MEMLOCK, &rinf);\n\n\tfor (i = 0; i < ARRAY_SIZE(tests);\
+    \ i++)\n\t\tbpf_run_test(&tests[i], debug_mode);\n\n\tsetrlimit(RLIMIT_MEMLOCK,\
+    \ &rold);\n\treturn 0;\n}"
+  diff_summary: |-
+    bpf/probes/raw_main.c:
+    - Added explicit bounds or range guards so the verifier can prove the access size and offset.
+    - Affected context: static int bpf_map_create(enum bpf_map_type type, uint32_t size_key,.
+    - Commit subject: bpf: add option for debug output to raw_main.

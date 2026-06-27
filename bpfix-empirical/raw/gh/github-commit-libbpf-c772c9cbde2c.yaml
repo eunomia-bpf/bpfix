@@ -1,0 +1,82 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-libbpf-c772c9cbde2c
+source_kind: github_commit
+source:
+  url: https://github.com/libbpf/libbpf/commit/c772c9cbde2cb8d12674d67cc179ef3a5aa42159
+  title: 'libbpf: Sanitise internal map names so they are not rejected by the kernel'
+  repository: https://github.com/libbpf/libbpf
+  commit: c772c9cbde2cb8d12674d67cc179ef3a5aa42159
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-libbpf-c772c9cbde2c.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Raw has_verifier_log=false, source_snippet_count=0. The diff sanitizes internal
+    libbpf map names before BPF_MAP_CREATE so names are not rejected by kernel map-name
+    validation; this is map creation metadata, not program verifier rejection.
+raw:
+  case_id: github-commit-libbpf-c772c9cbde2c
+  source: github_commits
+  repository: https://github.com/libbpf/libbpf
+  commit_hash: c772c9cbde2cb8d12674d67cc179ef3a5aa42159
+  commit_message: 'libbpf: Sanitise internal map names so they are not rejected by
+    the kernel'
+  commit_date: '2020-02-17'
+  fix_type: other
+  buggy_code: "// FILE: src/libbpf.c\n#endif\n#include <stdlib.h>\n#include <stdio.h>\n\
+    #include <stdarg.h>\n#include <libgen.h>\n#include <inttypes.h>\n#include <limits.h>\n\
+    #include <string.h>\n#include <unistd.h>\n#include <endian.h>\n#include <fcntl.h>\n\
+    #include <errno.h>\n#include <asm/unistd.h>\n#include <linux/err.h>\n#include\
+    \ <linux/kernel.h>\n#include <linux/bpf.h>\n#include <linux/btf.h>\n#include <linux/filter.h>\n\
+    #include <linux/list.h>\n#include <linux/limits.h>\n#include <linux/perf_event.h>\n\
+    #include <linux/ring_buffer.h>\n#include <linux/version.h>\n#include <sys/epoll.h>\n\
+    \n// CONTEXT: static size_t bpf_map_mmap_sz(const struct bpf_map *map)\n{\n\t\
+    long page_sz = sysconf(_SC_PAGE_SIZE);\n\tsize_t map_sz;\n\n\tmap_sz = (size_t)roundup(map->def.value_size,\
+    \ 8) * map->def.max_entries;\n\tmap_sz = roundup(map_sz, page_sz);\n\treturn map_sz;\n\
+    }\n\nstatic char *internal_map_name(struct bpf_object *obj,\n\t\t\t       enum\
+    \ libbpf_map_type type)\n{\n\tchar map_name[BPF_OBJ_NAME_LEN];\n\tconst char *sfx\
+    \ = libbpf_type_to_btf_name[type];\n\tint sfx_len = max((size_t)7, strlen(sfx));\n\
+    \tint pfx_len = min((size_t)BPF_OBJ_NAME_LEN - sfx_len - 1,\n\t\t\t  strlen(obj->name));\n\
+    \n\tsnprintf(map_name, sizeof(map_name), \"%.*s%.*s\", pfx_len, obj->name,\n\t\
+    \t sfx_len, libbpf_type_to_btf_name[type]);\n\n\treturn strdup(map_name);\n}\n\
+    \nstatic int\nbpf_object__init_internal_map(struct bpf_object *obj, enum libbpf_map_type\
+    \ type,\n\t\t\t      int sec_idx, void *data, size_t data_sz)\n{\n\tstruct bpf_map_def\
+    \ *def;\n\tstruct bpf_map *map;\n\tint err;\n\n\tmap = bpf_object__add_map(obj);"
+  fixed_code: "// FILE: src/libbpf.c\n#endif\n#include <stdlib.h>\n#include <stdio.h>\n\
+    #include <stdarg.h>\n#include <libgen.h>\n#include <inttypes.h>\n#include <limits.h>\n\
+    #include <string.h>\n#include <unistd.h>\n#include <endian.h>\n#include <fcntl.h>\n\
+    #include <errno.h>\n#include <ctype.h>\n#include <asm/unistd.h>\n#include <linux/err.h>\n\
+    #include <linux/kernel.h>\n#include <linux/bpf.h>\n#include <linux/btf.h>\n#include\
+    \ <linux/filter.h>\n#include <linux/list.h>\n#include <linux/limits.h>\n#include\
+    \ <linux/perf_event.h>\n#include <linux/ring_buffer.h>\n#include <linux/version.h>\n\
+    #include <sys/epoll.h>\n\n// CONTEXT: static size_t bpf_map_mmap_sz(const struct\
+    \ bpf_map *map)\n{\n\tlong page_sz = sysconf(_SC_PAGE_SIZE);\n\tsize_t map_sz;\n\
+    \n\tmap_sz = (size_t)roundup(map->def.value_size, 8) * map->def.max_entries;\n\
+    \tmap_sz = roundup(map_sz, page_sz);\n\treturn map_sz;\n}\n\nstatic char *internal_map_name(struct\
+    \ bpf_object *obj,\n\t\t\t       enum libbpf_map_type type)\n{\n\tchar map_name[BPF_OBJ_NAME_LEN],\
+    \ *p;\n\tconst char *sfx = libbpf_type_to_btf_name[type];\n\tint sfx_len = max((size_t)7,\
+    \ strlen(sfx));\n\tint pfx_len = min((size_t)BPF_OBJ_NAME_LEN - sfx_len - 1,\n\
+    \t\t\t  strlen(obj->name));\n\n\tsnprintf(map_name, sizeof(map_name), \"%.*s%.*s\"\
+    , pfx_len, obj->name,\n\t\t sfx_len, libbpf_type_to_btf_name[type]);\n\n\t/* sanitise\
+    \ map name to characters allowed by kernel */\n\tfor (p = map_name; *p && p <\
+    \ map_name + sizeof(map_name); p++)\n\t\tif (!isalnum(*p) && *p != '_' && *p !=\
+    \ '.')\n\t\t\t*p = '_';\n\n\treturn strdup(map_name);\n}\n\nstatic int\nbpf_object__init_internal_map(struct\
+    \ bpf_object *obj, enum libbpf_map_type type,\n\t\t\t      int sec_idx, void *data,\
+    \ size_t data_sz)\n{\n\tstruct bpf_map_def *def;\n\tstruct bpf_map *map;\n\tint\
+    \ err;\n\n\tmap = bpf_object__add_map(obj);"
+  diff_summary: |-
+    src/libbpf.c:
+    - Applied a small verifier-related code change captured by the exact before/after snippets below.
+    - Affected context: static size_t bpf_map_mmap_sz(const struct bpf_map *map).
+    - Commit subject: libbpf: Sanitise internal map names so they are not rejected by the kernel.

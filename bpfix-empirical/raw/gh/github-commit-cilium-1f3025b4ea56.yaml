@@ -1,0 +1,93 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-1f3025b4ea56
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/1f3025b4ea5696ba82b0902f4b017cdf694d5367
+  title: 'bpf/test: Fix incorrect macro definition'
+  repository: https://github.com/cilium/cilium
+  commit: 1f3025b4ea5696ba82b0902f4b017cdf694d5367
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-1f3025b4ea56.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: BPF unit-test macro fix changes a mocked tail-call argument from b to NULL;
+    it is test harness correctness, not a verifier-rejected program.
+raw:
+  case_id: github-commit-cilium-1f3025b4ea56
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: 1f3025b4ea5696ba82b0902f4b017cdf694d5367
+  commit_message: 'bpf/test: Fix incorrect macro definition'
+  commit_date: '2022-01-28'
+  fix_type: other
+  buggy_code: |-
+    // FILE: bpf/tests/drop_notify_test.h
+    #include "mocks/mock_helpers_skb.h"
+
+    #include "bpf/ctx/skb.h"
+    #include "node_config.h"
+
+    // Include lib/metrics.h which contains the definition of ep_tail_call first to
+    // avoid it to be included again in lib/drop.h.
+    #include "lib/metrics.h"
+
+    // Define macros like the followings to make sure the original tailcall is redirected
+    // to the mock tailcall function, the last 0 does not matter because we do not
+    // actually use the arguments.
+    #define ep_tail_call(a, b) tail_call(a, b, 0)
+
+    // The file containing the functions to be tested must be included after
+    // defining the above macros.
+    #include "lib/drop.h"
+
+    // Undefine ep_tail_call to stop redirecting to the mock. It is not necessary
+    // unless you would like to include something else that might conflict with the
+    // redirection.
+    #undef ep_tail_call
+
+
+    // This is the function we use as the callback when stubbing the tailcall.
+  fixed_code: |-
+    // FILE: bpf/tests/drop_notify_test.h
+    #include "mocks/mock_helpers_skb.h"
+
+    #include "bpf/ctx/skb.h"
+    #include "node_config.h"
+
+    // Include lib/metrics.h which contains the definition of ep_tail_call first to
+    // avoid it to be included again in lib/drop.h.
+    #include "lib/metrics.h"
+
+    // Define macros like the followings to make sure the original tailcall is redirected
+    // to the mock tailcall function, the last 0 does not matter because we do not
+    // actually use the arguments.
+    #define ep_tail_call(a, b) tail_call(a, NULL, 0)
+
+    // The file containing the functions to be tested must be included after
+    // defining the above macros.
+    #include "lib/drop.h"
+
+    // Undefine ep_tail_call to stop redirecting to the mock. It is not necessary
+    // unless you would like to include something else that might conflict with the
+    // redirection.
+    #undef ep_tail_call
+
+
+    // This is the function we use as the callback when stubbing the tailcall.
+  diff_summary: |-
+    bpf/tests/drop_notify_test.h:
+    - Applied a small verifier-related code change captured by the exact before/after snippets below.
+    - Affected context: the touched section.
+    - Commit subject: bpf/test: Fix incorrect macro definition.

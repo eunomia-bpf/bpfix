@@ -1,0 +1,65 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-libbpf-fd28ca4b5bea
+source_kind: github_commit
+source:
+  url: https://github.com/libbpf/libbpf/commit/fd28ca4b5bea147a150cf937b7d9dbfa32dadb4a
+  title: 'libbpf: Fix relocation of kfunc ksym in ld_imm64 insn.'
+  repository: https://github.com/libbpf/libbpf
+  commit: fd28ca4b5bea147a150cf937b7d9dbfa32dadb4a
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-libbpf-fd28ca4b5bea.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: environment_required
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Raw has_verifier_log=false. The diff fixes kfunc ksym relocation for ld_imm64
+    by carrying kernel BTF object FD data; any reject depends on a specific kfunc
+    relocation and kernel/module BTF setup not captured by the raw record.
+raw:
+  case_id: github-commit-libbpf-fd28ca4b5bea
+  source: github_commits
+  repository: https://github.com/libbpf/libbpf
+  commit_hash: fd28ca4b5bea147a150cf937b7d9dbfa32dadb4a
+  commit_message: 'libbpf: Fix relocation of kfunc ksym in ld_imm64 insn.'
+  commit_date: '2023-03-17'
+  fix_type: other
+  buggy_code: "// FILE: src/libbpf.c\n// CONTEXT: static int bpf_object__resolve_ksym_func_btf_id(struct\
+    \ bpf_object *obj,\n\t\tret = libbpf_ensure_mem((void **)&obj->fd_array, &obj->fd_array_cap,\
+    \ sizeof(int),\n\t\t\t\t\tobj->fd_array_cnt + 1);\n\t\tif (ret)\n\t\t\treturn\
+    \ ret;\n\t\tmod_btf->fd_array_idx = obj->fd_array_cnt;\n\t\t/* we assume module\
+    \ BTF FD is always >0 */\n\t\tobj->fd_array[obj->fd_array_cnt++] = mod_btf->fd;\n\
+    \t}\n\n\text->is_set = true;\n\text->ksym.kernel_btf_id = kfunc_id;\n\text->ksym.btf_fd_idx\
+    \ = mod_btf ? mod_btf->fd_array_idx : 0;\n\tpr_debug(\"extern (func ksym) '%s':\
+    \ resolved to kernel [%d]\\n\",\n\t\t ext->name, kfunc_id);\n\n\treturn 0;\n}\n\
+    \nstatic int bpf_object__resolve_ksyms_btf_id(struct bpf_object *obj)\n{\n\tconst\
+    \ struct btf_type *t;\n\tstruct extern_desc *ext;\n\tint i, err;"
+  fixed_code: "// FILE: src/libbpf.c\n// CONTEXT: static int bpf_object__resolve_ksym_func_btf_id(struct\
+    \ bpf_object *obj,\n\t\tret = libbpf_ensure_mem((void **)&obj->fd_array, &obj->fd_array_cap,\
+    \ sizeof(int),\n\t\t\t\t\tobj->fd_array_cnt + 1);\n\t\tif (ret)\n\t\t\treturn\
+    \ ret;\n\t\tmod_btf->fd_array_idx = obj->fd_array_cnt;\n\t\t/* we assume module\
+    \ BTF FD is always >0 */\n\t\tobj->fd_array[obj->fd_array_cnt++] = mod_btf->fd;\n\
+    \t}\n\n\text->is_set = true;\n\text->ksym.kernel_btf_id = kfunc_id;\n\text->ksym.btf_fd_idx\
+    \ = mod_btf ? mod_btf->fd_array_idx : 0;\n\t/* Also set kernel_btf_obj_fd to make\
+    \ sure that bpf_object__relocate_data()\n\t * populates FD into ld_imm64 insn\
+    \ when it's used to point to kfunc.\n\t * {kernel_btf_id, btf_fd_idx} -> fixup\
+    \ bpf_call.\n\t * {kernel_btf_id, kernel_btf_obj_fd} -> fixup ld_imm64.\n\t */\n\
+    \text->ksym.kernel_btf_obj_fd = mod_btf ? mod_btf->fd : 0;\n\tpr_debug(\"extern\
+    \ (func ksym) '%s': resolved to kernel [%d]\\n\",\n\t\t ext->name, kfunc_id);\n\
+    \n\treturn 0;\n}\n\nstatic int bpf_object__resolve_ksyms_btf_id(struct bpf_object\
+    \ *obj)\n{\n\tconst struct btf_type *t;\n\tstruct extern_desc *ext;\n\tint i,\
+    \ err;"
+  diff_summary: |-
+    src/libbpf.c:
+    - Applied a small verifier-related code change captured by the exact before/after snippets below.
+    - Affected context: static int bpf_object__resolve_ksym_func_btf_id(struct bpf_object *obj,.
+    - Commit subject: libbpf: Fix relocation of kfunc ksym in ld_imm64 insn..

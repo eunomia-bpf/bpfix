@@ -1,0 +1,77 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-libbpf-e5146eff759a
+source_kind: github_commit
+source:
+  url: https://github.com/libbpf/libbpf/commit/e5146eff759a8bdce65c4391e6ba321d3dec0107
+  title: 'libbpf: improve early detection of doomed-to-fail BPF program loading'
+  repository: https://github.com/libbpf/libbpf
+  commit: e5146eff759a8bdce65c4391e6ba321d3dec0107
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-libbpf-e5146eff759a.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Raw has_verifier_log=false. The diff adds libbpf-side early rejection for
+    BPF_PROG_TYPE_STRUCT_OPS programs with attach_btf_id == 0; it is loader prevalidation
+    with no kernel verifier terminal error or standalone rejected program.
+raw:
+  case_id: github-commit-libbpf-e5146eff759a
+  source: github_commits
+  repository: https://github.com/libbpf/libbpf
+  commit_hash: e5146eff759a8bdce65c4391e6ba321d3dec0107
+  commit_message: 'libbpf: improve early detection of doomed-to-fail BPF program loading'
+  commit_date: '2024-05-06'
+  fix_type: other
+  buggy_code: "// FILE: src/libbpf.c\n// CONTEXT: static int bpf_object_load_prog(struct\
+    \ bpf_object *obj, struct bpf_program *prog\n\t\t\t\tstruct bpf_insn *insns, int\
+    \ insns_cnt,\n\t\t\t\tconst char *license, __u32 kern_version, int *prog_fd)\n\
+    {\n\tLIBBPF_OPTS(bpf_prog_load_opts, load_attr);\n\tconst char *prog_name = NULL;\n\
+    \tchar *cp, errmsg[STRERR_BUFSIZE];\n\tsize_t log_buf_size = 0;\n\tchar *log_buf\
+    \ = NULL, *tmp;\n\tbool own_log_buf = true;\n\t__u32 log_level = prog->log_level;\n\
+    \tint ret, err;\n\n\tif (prog->type == BPF_PROG_TYPE_UNSPEC) {\n\t\t/*\n\t\t *\
+    \ The program type must be set.  Most likely we couldn't find a proper\n\t\t *\
+    \ section definition at load time, and thus we didn't infer the type.\n\t\t */\n\
+    \t\tpr_warn(\"prog '%s': missing BPF prog type, check ELF section name '%s'\\\
+    n\",\n\t\t\tprog->name, prog->sec_name);\n\t\treturn -EINVAL;\n\t}\n\n\tif (!insns\
+    \ || !insns_cnt)\n\t\treturn -EINVAL;\n\n\tif (kernel_supports(obj, FEAT_PROG_NAME))\n\
+    \t\tprog_name = prog->name;\n\tload_attr.attach_prog_fd = prog->attach_prog_fd;\n\
+    \tload_attr.attach_btf_obj_fd = prog->attach_btf_obj_fd;\n\tload_attr.attach_btf_id\
+    \ = prog->attach_btf_id;\n\tload_attr.kern_version = kern_version;\n\tload_attr.prog_ifindex\
+    \ = prog->prog_ifindex;"
+  fixed_code: "// FILE: src/libbpf.c\n// CONTEXT: static int bpf_object_load_prog(struct\
+    \ bpf_object *obj, struct bpf_program *prog\n\t\t\t\tstruct bpf_insn *insns, int\
+    \ insns_cnt,\n\t\t\t\tconst char *license, __u32 kern_version, int *prog_fd)\n\
+    {\n\tLIBBPF_OPTS(bpf_prog_load_opts, load_attr);\n\tconst char *prog_name = NULL;\n\
+    \tchar *cp, errmsg[STRERR_BUFSIZE];\n\tsize_t log_buf_size = 0;\n\tchar *log_buf\
+    \ = NULL, *tmp;\n\tbool own_log_buf = true;\n\t__u32 log_level = prog->log_level;\n\
+    \tint ret, err;\n\n\t/* Be more helpful by rejecting programs that can't be validated\
+    \ early\n\t * with more meaningful and actionable error message.\n\t */\n\tswitch\
+    \ (prog->type) {\n\tcase BPF_PROG_TYPE_UNSPEC:\n\t\t/*\n\t\t * The program type\
+    \ must be set.  Most likely we couldn't find a proper\n\t\t * section definition\
+    \ at load time, and thus we didn't infer the type.\n\t\t */\n\t\tpr_warn(\"prog\
+    \ '%s': missing BPF prog type, check ELF section name '%s'\\n\",\n\t\t\tprog->name,\
+    \ prog->sec_name);\n\t\treturn -EINVAL;\n\tcase BPF_PROG_TYPE_STRUCT_OPS:\n\t\t\
+    if (prog->attach_btf_id == 0) {\n\t\t\tpr_warn(\"prog '%s': SEC(\\\"struct_ops\\\
+    \") program isn't referenced anywhere, did you forget to use it?\\n\",\n\t\t\t\
+    \tprog->name);\n\t\t\treturn -EINVAL;\n\t\t}\n\t\tbreak;\n\tdefault:\n\t\tbreak;\n\
+    \t}\n\n\tif (!insns || !insns_cnt)\n\t\treturn -EINVAL;\n\n\tif (kernel_supports(obj,\
+    \ FEAT_PROG_NAME))\n\t\tprog_name = prog->name;\n\tload_attr.attach_prog_fd =\
+    \ prog->attach_prog_fd;\n\tload_attr.attach_btf_obj_fd = prog->attach_btf_obj_fd;\n\
+    \tload_attr.attach_btf_id = prog->attach_btf_id;\n\tload_attr.kern_version = kern_version;\n\
+    \tload_attr.prog_ifindex = prog->prog_ifindex;"
+  diff_summary: |-
+    src/libbpf.c:
+    - Applied a small verifier-related code change captured by the exact before/after snippets below.
+    - Affected context: static int bpf_object_load_prog(struct bpf_object *obj, struct bpf_program *prog.
+    - Commit subject: libbpf: improve early detection of doomed-to-fail BPF program loading.

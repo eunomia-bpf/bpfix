@@ -1,0 +1,151 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-katran-996c74a07133
+source_kind: github_commit
+source:
+  url: https://github.com/facebookincubator/katran/commit/996c74a07133c0f84c22b36681f1b6766482b387
+  title: Remove loop unroll pragma
+  repository: https://github.com/facebookincubator/katran
+  commit: 996c74a07133c0f84c22b36681f1b6766482b387
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-katran-996c74a07133.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: environment_required
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: 'Removes #pragma clang loop unroll(full) from TCP option lookup loops. Any
+    rejection depends on Katran''s generated parser body, loop bounds, compiler output,
+    and kernel verifier version; no captured verifier error is present.'
+  verifier_status: null
+  captured_error: null
+  verifier_error_match: null
+raw:
+  case_id: github-commit-katran-996c74a07133
+  source: github_commits
+  repository: https://github.com/facebookincubator/katran
+  commit_hash: 996c74a07133c0f84c22b36681f1b6766482b387
+  commit_message: Remove loop unroll pragma
+  commit_date: '2025-03-21'
+  fix_type: loop_rewrite
+  buggy_code: |-
+    // FILE: katran/lib/bpf/pckt_parsing.h
+    // CONTEXT: tcp_hdr_opt_lookup_server_id(
+      tcp_offset = calc_offset(is_ipv6, false /* is_icmp */);
+      tcp_hdr = (struct tcphdr*)(data + tcp_offset);
+      if (tcp_hdr + 1 > data_end) {
+        return FURTHER_PROCESSING;
+      }
+      tcp_hdr_opt_len = (tcp_hdr->doff * 4) - sizeof(struct tcphdr);
+      if (tcp_hdr_opt_len < TCP_HDR_OPT_LEN_TPR) {
+        return FURTHER_PROCESSING;
+      }
+
+      opt_state.hdr_bytes_remaining = tcp_hdr_opt_len;
+      opt_state.byte_offset = sizeof(struct tcphdr) + tcp_offset;
+    #pragma clang loop unroll(full)
+      for (int i = 0; i < TCP_HDR_OPT_MAX_OPT_CHECKS; i++) {
+        err = parse_hdr_opt(xdp, &opt_state);
+        if (err || !opt_state.hdr_bytes_remaining) {
+          break;
+        }
+      }
+      if (!opt_state.server_id) {
+        return FURTHER_PROCESSING;
+      }
+      *server_id = opt_state.server_id;
+      return 0;
+    }
+
+    // CONTEXT: tcp_hdr_opt_lookup_server_id_skb(
+      tcp_offset = calc_offset(is_ipv6, false /* is_icmp */);
+      tcp_hdr = (struct tcphdr*)(data + tcp_offset);
+      if (tcp_hdr + 1 > data_end) {
+        return FURTHER_PROCESSING;
+      }
+      tcp_hdr_opt_len = (tcp_hdr->doff * 4) - sizeof(struct tcphdr);
+      if (tcp_hdr_opt_len < TCP_HDR_OPT_LEN_TPR) {
+        return FURTHER_PROCESSING;
+      }
+
+      opt_state.hdr_bytes_remaining = tcp_hdr_opt_len;
+      opt_state.byte_offset = sizeof(struct tcphdr) + tcp_offset;
+    #pragma clang loop unroll(full)
+      for (int i = 0; i < TCP_HDR_OPT_MAX_OPT_CHECKS; i++) {
+        err = parse_hdr_opt_skb(skb, &opt_state);
+        if (err || !opt_state.hdr_bytes_remaining) {
+          break;
+        }
+      }
+      if (!opt_state.server_id) {
+        return FURTHER_PROCESSING;
+      }
+      *server_id = opt_state.server_id;
+      return 0;
+    }
+  fixed_code: |-
+    // FILE: katran/lib/bpf/pckt_parsing.h
+    // CONTEXT: tcp_hdr_opt_lookup_server_id(
+      tcp_offset = calc_offset(is_ipv6, false /* is_icmp */);
+      tcp_hdr = (struct tcphdr*)(data + tcp_offset);
+      if (tcp_hdr + 1 > data_end) {
+        return FURTHER_PROCESSING;
+      }
+      tcp_hdr_opt_len = (tcp_hdr->doff * 4) - sizeof(struct tcphdr);
+      if (tcp_hdr_opt_len < TCP_HDR_OPT_LEN_TPR) {
+        return FURTHER_PROCESSING;
+      }
+
+      opt_state.hdr_bytes_remaining = tcp_hdr_opt_len;
+      opt_state.byte_offset = sizeof(struct tcphdr) + tcp_offset;
+      for (int i = 0; i < TCP_HDR_OPT_MAX_OPT_CHECKS; i++) {
+        err = parse_hdr_opt(xdp, &opt_state);
+        if (err || !opt_state.hdr_bytes_remaining) {
+          break;
+        }
+      }
+      if (!opt_state.server_id) {
+        return FURTHER_PROCESSING;
+      }
+      *server_id = opt_state.server_id;
+      return 0;
+    }
+
+    // CONTEXT: tcp_hdr_opt_lookup_server_id_skb(
+      tcp_offset = calc_offset(is_ipv6, false /* is_icmp */);
+      tcp_hdr = (struct tcphdr*)(data + tcp_offset);
+      if (tcp_hdr + 1 > data_end) {
+        return FURTHER_PROCESSING;
+      }
+      tcp_hdr_opt_len = (tcp_hdr->doff * 4) - sizeof(struct tcphdr);
+      if (tcp_hdr_opt_len < TCP_HDR_OPT_LEN_TPR) {
+        return FURTHER_PROCESSING;
+      }
+
+      opt_state.hdr_bytes_remaining = tcp_hdr_opt_len;
+      opt_state.byte_offset = sizeof(struct tcphdr) + tcp_offset;
+      for (int i = 0; i < TCP_HDR_OPT_MAX_OPT_CHECKS; i++) {
+        err = parse_hdr_opt_skb(skb, &opt_state);
+        if (err || !opt_state.hdr_bytes_remaining) {
+          break;
+        }
+      }
+      if (!opt_state.server_id) {
+        return FURTHER_PROCESSING;
+      }
+      *server_id = opt_state.server_id;
+      return 0;
+    }
+  diff_summary: |-
+    katran/lib/bpf/pckt_parsing.h:
+    - Reworked loop or branch structure to reduce verifier complexity and keep the path bounded.
+    - Affected context: tcp_hdr_opt_lookup_server_id(, tcp_hdr_opt_lookup_server_id_skb(.
+    - Commit subject: Remove loop unroll pragma.

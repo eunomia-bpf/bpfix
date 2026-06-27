@@ -1,0 +1,70 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-416456de4253
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/416456de42531235840fdd79ebfb3f53d017c9f1
+  title: 'bpf: Use optimized memset in send_trace_notify'
+  repository: https://github.com/cilium/cilium
+  commit: 416456de42531235840fdd79ebfb3f53d017c9f1
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-416456de4253.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: environment_required
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Optimized memset/stack alignment in send_trace_notify depends on compiler
+    lowering and Cilium trace-notify layout; no concrete verifier log is stored.
+raw:
+  case_id: github-commit-cilium-416456de4253
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: 416456de42531235840fdd79ebfb3f53d017c9f1
+  commit_message: 'bpf: Use optimized memset in send_trace_notify'
+  commit_date: '2020-12-18'
+  fix_type: inline_hint
+  buggy_code: "// FILE: bpf/lib/trace.h\n// CONTEXT: static __always_inline bool emit_trace_notify(__u8\
+    \ obs_point, __u32 monitor)\n\t\treturn false;\n\n\treturn true;\n}\n\nstatic\
+    \ __always_inline void\nsend_trace_notify(struct __ctx_buff *ctx, __u8 obs_point,\
+    \ __u32 src, __u32 dst,\n\t\t   __u16 dst_id, __u32 ifindex, __u8 reason, __u32\
+    \ monitor)\n{\n\t__u64 ctx_len = ctx_full_len(ctx);\n\t__u64 cap_len = min_t(__u64,\
+    \ monitor ? : TRACE_PAYLOAD_LEN,\n\t\t\t      ctx_len);\n\tstruct trace_notify\
+    \ msg;\n\n\tupdate_trace_metrics(ctx, obs_point, reason);\n\n\tif (!emit_trace_notify(obs_point,\
+    \ monitor))\n\t\treturn;\n\n\tmsg = (typeof(msg)) {\n\t\t__notify_common_hdr(CILIUM_NOTIFY_TRACE,\
+    \ obs_point),\n\t\t__notify_pktcap_hdr(ctx_len, cap_len),\n\t\t.src_label\t= src,\n\
+    \t\t.dst_label\t= dst,\n\t\t.dst_id\t\t= dst_id,\n\t\t.reason\t\t= reason,\n\t\
+    \t.ifindex\t= ifindex,\n\t};\n\n\tctx_event_output(ctx, &EVENTS_MAP,\n\t\t\t (cap_len\
+    \ << 32) | BPF_F_CURRENT_CPU,\n\t\t\t &msg, sizeof(msg));\n}\n\nstatic __always_inline\
+    \ void\nsend_trace_notify4(struct __ctx_buff *ctx, __u8 obs_point, __u32 src,\
+    \ __u32 dst,\n\t\t   __be32 orig_addr, __u16 dst_id, __u32 ifindex, __u8 reason,\n\
+    \t\t   __u32 monitor)\n{\n\t__u64 ctx_len = ctx_full_len(ctx);"
+  fixed_code: "// FILE: bpf/lib/trace.h\n// CONTEXT: static __always_inline bool emit_trace_notify(__u8\
+    \ obs_point, __u32 monitor)\n\t\treturn false;\n\n\treturn true;\n}\n\nstatic\
+    \ __always_inline void\nsend_trace_notify(struct __ctx_buff *ctx, __u8 obs_point,\
+    \ __u32 src, __u32 dst,\n\t\t   __u16 dst_id, __u32 ifindex, __u8 reason, __u32\
+    \ monitor)\n{\n\t__u64 ctx_len = ctx_full_len(ctx);\n\t__u64 cap_len = min_t(__u64,\
+    \ monitor ? : TRACE_PAYLOAD_LEN,\n\t\t\t      ctx_len);\n\tstruct trace_notify\
+    \ msg __align_stack_8;\n\n\tupdate_trace_metrics(ctx, obs_point, reason);\n\n\t\
+    if (!emit_trace_notify(obs_point, monitor))\n\t\treturn;\n\n\tmsg = (typeof(msg))\
+    \ {\n\t\t__notify_common_hdr(CILIUM_NOTIFY_TRACE, obs_point),\n\t\t__notify_pktcap_hdr(ctx_len,\
+    \ cap_len),\n\t\t.src_label\t= src,\n\t\t.dst_label\t= dst,\n\t\t.dst_id\t\t=\
+    \ dst_id,\n\t\t.reason\t\t= reason,\n\t\t.ifindex\t= ifindex,\n\t};\n\tmemset(&msg.orig_ip6,\
+    \ 0, sizeof(union v6addr));\n\n\tctx_event_output(ctx, &EVENTS_MAP,\n\t\t\t (cap_len\
+    \ << 32) | BPF_F_CURRENT_CPU,\n\t\t\t &msg, sizeof(msg));\n}\n\nstatic __always_inline\
+    \ void\nsend_trace_notify4(struct __ctx_buff *ctx, __u8 obs_point, __u32 src,\
+    \ __u32 dst,\n\t\t   __be32 orig_addr, __u16 dst_id, __u32 ifindex, __u8 reason,\n\
+    \t\t   __u32 monitor)\n{\n\t__u64 ctx_len = ctx_full_len(ctx);"
+  diff_summary: |-
+    bpf/lib/trace.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: static __always_inline bool emit_trace_notify(__u8 obs_point, __u32 monitor).
+    - Commit subject: bpf: Use optimized memset in send_trace_notify.

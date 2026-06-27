@@ -1,0 +1,123 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-aya-28abaece2af7
+source_kind: github_commit
+source:
+  url: https://github.com/aya-rs/aya/commit/28abaece2af732cf2b2b2f8b12aeb02439e76d4c
+  title: Fix the log buffer bounds
+  repository: https://github.com/aya-rs/aya
+  commit: 28abaece2af732cf2b2b2f8b12aeb02439e76d4c
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-aya-28abaece2af7.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: missing_verifier_log
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: The commit restores explicit log-buffer bounds in shared Aya log code, but
+    only before/after library snippets are available, not a failing verifier log or
+    complete eBPF source.
+raw:
+  case_id: github-commit-aya-28abaece2af7
+  source: github_commits
+  repository: https://github.com/aya-rs/aya
+  commit_hash: 28abaece2af732cf2b2b2f8b12aeb02439e76d4c
+  commit_message: Fix the log buffer bounds
+  commit_date: '2022-07-21'
+  fix_type: bounds_check
+  buggy_code: |-
+    // FILE: aya-log/aya-log-common/src/lib.rs
+    // CONTEXT: struct TagLenValue<'a, T> {
+
+    impl<'a, T> TagLenValue<'a, T>
+    where
+        T: Copy,
+    {
+        #[inline(always)]
+        pub(crate) fn new(tag: T, value: &'a [u8]) -> TagLenValue<'a, T> {
+            TagLenValue { tag, value }
+        }
+
+        pub(crate) fn write(&self, mut buf: &mut [u8]) -> Result<usize, ()> {
+            let size = mem::size_of::<T>() + mem::size_of::<usize>() + self.value.len();
+            // The verifier rejects the program if it can't see that `size` doesn't
+            // exceed the buffer size.
+            if size > LOG_BUF_CAPACITY {
+                return Err(());
+            }
+
+            unsafe { ptr::write_unaligned(buf.as_mut_ptr() as *mut _, self.tag) };
+            buf = &mut buf[mem::size_of::<T>()..];
+
+            unsafe { ptr::write_unaligned(buf.as_mut_ptr() as *mut _, self.value.len()) };
+            buf = &mut buf[mem::size_of::<usize>()..];
+
+            let len = cmp::min(buf.len(), self.value.len());
+            // The verifier rejects the program if it can't see that `size` doesn't
+            // exceed the buffer size.
+            if len > LOG_BUF_CAPACITY {
+                return Err(());
+            }
+            buf[..len].copy_from_slice(&self.value[..len]);
+            Ok(size)
+        }
+    }
+
+    pub trait WriteToBuf {
+        #[allow(clippy::result_unit_err)]
+        fn write(&self, buf: &mut [u8]) -> Result<usize, ()>;
+    }
+  fixed_code: |-
+    // FILE: aya-log/aya-log-common/src/lib.rs
+    // CONTEXT: struct TagLenValue<'a, T> {
+
+    impl<'a, T> TagLenValue<'a, T>
+    where
+        T: Copy,
+    {
+        #[inline(always)]
+        pub(crate) fn new(tag: T, value: &'a [u8]) -> TagLenValue<'a, T> {
+            TagLenValue { tag, value }
+        }
+
+        pub(crate) fn write(&self, mut buf: &mut [u8]) -> Result<usize, ()> {
+            let size = mem::size_of::<T>() + mem::size_of::<usize>() + self.value.len();
+            let remaining = cmp::min(buf.len(), LOG_BUF_CAPACITY);
+            // Check if the size doesn't exceed the buffer bounds.
+            if size > remaining {
+                return Err(());
+            }
+
+            unsafe { ptr::write_unaligned(buf.as_mut_ptr() as *mut _, self.tag) };
+            buf = &mut buf[mem::size_of::<T>()..];
+
+            unsafe { ptr::write_unaligned(buf.as_mut_ptr() as *mut _, self.value.len()) };
+            buf = &mut buf[mem::size_of::<usize>()..];
+
+            let len = cmp::min(buf.len(), self.value.len());
+            // The verifier isn't happy with `len` being unbounded, so compare it
+            // with `LOG_BUF_CAPACITY`.
+            if len > LOG_BUF_CAPACITY {
+                return Err(());
+            }
+            buf[..len].copy_from_slice(&self.value[..len]);
+            Ok(size)
+        }
+    }
+
+    pub trait WriteToBuf {
+        #[allow(clippy::result_unit_err)]
+        fn write(&self, buf: &mut [u8]) -> Result<usize, ()>;
+    }
+  diff_summary: |-
+    aya-log/aya-log-common/src/lib.rs:
+    - Replaced the removed `size > buf.len()` proof with an explicit `remaining = min(buf.len(), LOG_BUF_CAPACITY)` bound.
+    - Preserved the existing write logic while restoring a verifier-visible bound for log-buffer writes into subslices.

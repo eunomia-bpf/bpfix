@@ -1,0 +1,479 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-9e108c171ed1
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/9e108c171ed178e973faafcee86ef9c0098e96c4
+  title: 'nat46: Enable ipv6 containers to talk to an ipv4 container'
+  repository: https://github.com/cilium/cilium
+  commit: 9e108c171ed178e973faafcee86ef9c0098e96c4
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-9e108c171ed1.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: environment_required
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: NAT46 support was split into tail calls to stay under the old 4K instruction/complexity
+    limit; replay depends on the historical full datapath.
+raw:
+  case_id: github-commit-cilium-9e108c171ed1
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: 9e108c171ed178e973faafcee86ef9c0098e96c4
+  commit_message: 'nat46: Enable ipv6 containers to talk to an ipv4 container'
+  commit_date: '2016-11-06'
+  fix_type: loop_rewrite
+  buggy_code: "// FILE: bpf/bpf_lxc.c\n// CONTEXT: static inline int __inline__ lxc_encap(struct\
+    \ __sk_buff *skb, __u32 node_id)\n\tuint8_t buf[] = {};\n#endif\n\treturn do_encapsulation(skb,\
+    \ node_id, SECLABEL, buf, sizeof(buf));\n}\n#endif\n\nstatic inline int ipv6_l3_from_lxc(struct\
+    \ __sk_buff *skb,\n\t\t\t\t   struct ipv6_ct_tuple *tuple, int l3_off,\n\t\t\t\
+    \t   struct ethhdr *eth, struct ipv6hdr *ip6)\n{\n\tunion macaddr router_mac =\
+    \ NODE_MAC;\n\tunion v6addr host_ip = HOST_IP;\n\tint do_nat46 = 0, ret, l4_off;\n\
+    \tstruct csum_offset csum_off = {};\n\tstruct lb6_service *svc;\n\tstruct lb6_key\
+    \ key = {};\n\t__u16 rev_nat_index = 0, nat_index = 0;\n\n\tif (unlikely(!valid_src_mac(eth)))\n\
+    \t\treturn DROP_INVALID_SMAC;\n\telse if (unlikely(!valid_dst_mac(eth)))\n\t\t\
+    return DROP_INVALID_DMAC;\n\telse if (unlikely(!valid_src_ip(ip6)))\n\t\treturn\
+    \ DROP_INVALID_SIP;\n\n\n// CONTEXT: skip_service_lookup:\n\t\tif (tuple->addr.addr[14]\
+    \ == host_ip.addr[14] &&\n\t\t    tuple->addr.addr[15] == host_ip.addr[15])\n\t\
+    \t\tgoto to_host;\n#endif\n\n\t\tif (data + sizeof(struct ipv6hdr) + ETH_HLEN\
+    \ > data_end)\n\t\t\treturn DROP_INVALID;\n\n\t\tpolicy_clear_mark(skb);\n\n\t\
+    \treturn ipv6_local_delivery(skb, l3_off, l4_off, SECLABEL, ip6, tuple->nexthdr);\n\
+    \t} else {\n#ifdef ENABLE_NAT46\n\t\t/* FIXME: Derive from prefix constant */\n\
+    \t\tif (unlikely((tuple->addr.p1 & 0xffff) == 0xadde)) {\n\t\t\tdo_nat46 = 1;\n\
+    \t\t\tgoto to_host;\n\t\t}\n#endif\n\n#ifdef ALLOW_TO_WORLD\n\t\tpolicy_mark_skip(skb);\n\
+    #endif\n\t\tgoto pass_to_stack;\n\t}\n\nto_host:\n\tif (1) {\n\t\tunion macaddr\
+    \ host_mac = HOST_IFINDEX_MAC;\n\t\tint ret;\n\n\t\tcilium_trace(skb, DBG_TO_HOST,\
+    \ skb->cb[CB_POLICY], 0);\n\n\t\tret = ipv6_l3(skb, l3_off, (__u8 *) &router_mac.addr,\
+    \ (__u8 *) &host_mac.addr);\n\t\tif (ret != TC_ACT_OK)\n\t\t\treturn ret;\n\n\t\
+    \tif (do_nat46) {\n\t\t\tunion v6addr dp = NAT46_DST_PREFIX;\n\n\t\t\tret = ipv6_to_ipv4(skb,\
+    \ 14, &dp, IPV4_RANGE | (LXC_ID_NB <<16));\n\t\t\tif (IS_ERR(ret))\n\t\t\t\treturn\
+    \ ret;\n\t\t}\n\n#ifndef POLICY_ENFORCEMENT\n\t\tcilium_trace_capture(skb, DBG_CAPTURE_DELIVERY,\
+    \ HOST_IFINDEX);\n\t\treturn redirect(HOST_IFINDEX, 0);\n#else\n\t\tskb->cb[CB_SRC_LABEL]\
+    \ = SECLABEL;\n\t\tskb->cb[CB_IFINDEX] = HOST_IFINDEX;\n\n#ifdef ALLOW_TO_HOST\n\
+    \t\tpolicy_mark_skip(skb);\n#endif\n\n\t\ttail_call(skb, &cilium_reserved_policy,\
+    \ HOST_ID);\n\n// CONTEXT: static inline int __inline__ ipv4_policy(struct __sk_buff\
+    \ *skb, int ifindex, __u\n\n\tskb->cb[CB_POLICY] = 0;\n\ttuple.nexthdr = ip4->protocol;\n\
+    \ttuple.addr = ip4->saddr;\n\n\tl4_off = ETH_HLEN + ipv4_hdrlen(ip4);\n\tcsum_l4_offset_and_flags(tuple.nexthdr,\
+    \ &off);\n\n\tret = ct_lookup4(&CT_MAP4, &tuple, skb, l4_off, SECLABEL, 1, &src_rev_nat);\n\
+    \tif (ret < 0)\n\t\treturn ret;\n\n\tif (unlikely(src_rev_nat)) {\n\t\tint ret2;\n\
+    \n\t\tret2 = lb4_rev_nat(skb, ETH_HLEN, l4_off, &off, src_rev_nat, &tuple,\n\t\
+    \t\t\t  REV_NAT_F_TUPLE_SADDR);\n\t\tif (IS_ERR(ret2))\n\t\t\treturn ret2;\n\n\
+    \t}\n\n\t/* Policy lookup is done on every packet to account for packets that\n\
+    \t * passed through the allowed consumer. */\n\n// CONTEXT: __section_tail(CILIUM_MAP_POLICY,\
+    \ LXC_ID) int handle_policy(struct __sk_buff *sk\n\tif (IS_ERR(ret)) {\n\t\tif\
+    \ (ret == DROP_POLICY)\n\t\t\treturn send_drop_notify(skb, src_label, SECLABEL,\
+    \ LXC_ID,\n\t\t\t\t\t\tifindex, TC_ACT_SHOT);\n\t\telse\n\t\t\treturn send_drop_notify_error(skb,\
+    \ ret, TC_ACT_SHOT);\n\t}\n\n\tcilium_trace_capture(skb, DBG_CAPTURE_DELIVERY,\
+    \ ifindex);\n\treturn redirect(ifindex, 0);\n}\n\nBPF_LICENSE(\"GPL\");\n\n//\
+    \ FILE: bpf/bpf_netdev.c\n\n#include <stdint.h>\n#include <stdio.h>\n\n#include\
+    \ \"lib/common.h\"\n#include \"lib/maps.h\"\n#include \"lib/ipv6.h\"\n#include\
+    \ \"lib/ipv4.h\"\n#include \"lib/icmp6.h\"\n#include \"lib/eth.h\"\n#include \"\
+    lib/dbg.h\"\n#include \"lib/l3.h\"\n#include \"lib/nat46.h\"\n#include \"lib/policy.h\"\
+    \n#include \"lib/drop.h\"\n\nstatic inline __u32 derive_sec_ctx(struct __sk_buff\
+    \ *skb, const union v6addr *node_ip,\n\t\t\t\t   struct ipv6hdr *ip6)\n{\n#ifdef\
+    \ FIXED_SRC_SECCTX\n\treturn FIXED_SRC_SECCTX;\n#else\n\tif (ipv6_match_prefix_64((union\
+    \ v6addr *) &ip6->saddr, node_ip)) {\n\t\t/* Read initial 4 bytes of header and\
+    \ then extract flowlabel */\n\t\t__u32 *tmp = (__u32 *) ip6;\n\n// CONTEXT: static\
+    \ inline int handle_ipv4(struct __sk_buff *skb)\n\t\t__u32 secctx;\n\t\tint ret,\
+    \ l4_off;\n\n\t\tl4_off = ETH_HLEN + ipv4_hdrlen(ip4);\n\t\tsecctx = derive_ipv4_sec_ctx(skb,\
+    \ ip4);\n\t\ttuple.nexthdr = ip4->protocol;\n\t\tret = ipv4_local_delivery(skb,\
+    \ ETH_HLEN, l4_off, secctx, ip4);\n\t\tif (ret != DROP_NO_LXC)\n\t\t\treturn ret;\n\
+    \t}\n#endif\n\n#ifdef ENABLE_NAT46\n\tif (1) {\n\t\tunion v6addr sp = NAT46_SRC_PREFIX;\n\
+    \t\tunion v6addr dp = HOST_IP;\n\t\tint ret;\n\n\t\tif (data + sizeof(*ip) + ETH_HLEN\
+    \ > data_end)\n\t\t\treturn DROP_INVALID;\n\n\t\tif ((ip->daddr & IPV4_MASK) !=\
+    \ IPV4_RANGE)\n\t\t\treturn TC_ACT_OK;\n\n\t\tret = ipv4_to_ipv6(skb, ip4, 14,\
+    \ &sp, &dp);\n\t\tif (IS_ERR(ret))\n\t\t\treturn ret;\n\n\t\tproto = __constant_htons(ETH_P_IPV6);\n\
+    \t\tskb->tc_index = 1;\n\t}\n#endif\n\n\treturn TC_ACT_OK;\n}\n\n__section_tail(CILIUM_MAP_CALLS,\
+    \ CILIUM_CALL_IPV4) int tail_handle_ipv4(struct __sk_buff *skb)\n{\n\tint ret\
+    \ = handle_ipv4(skb);\n\n\tif (IS_ERR(ret))\n\t\treturn send_drop_notify_error(skb,\
+    \ ret, TC_ACT_SHOT);\n\n\treturn ret;\n}\n\n// CONTEXT: __section(\"from-netdev\"\
+    )\nint from_netdev(struct __sk_buff *skb)\n{\n\tint ret;\n\n\tcilium_trace_capture(skb,\
+    \ DBG_CAPTURE_FROM_NETDEV, skb->ingress_ifindex);\n\n\tswitch (skb->protocol)\
+    \ {\n\tcase __constant_htons(ETH_P_IPV6):\n\t\t/* This is considered the fast\
+    \ path, no tail call */\n\t\tret = handle_ipv6(skb);\n\t\tbreak;\n\n#if defined\
+    \ ENABLE_IPV4 || defined ENABLE_NAT46\n\tcase __constant_htons(ETH_P_IP):\n\t\t\
+    tail_call(skb, &cilium_calls, CILIUM_CALL_IPV4);\n\t\tret = DROP_MISSED_TAIL_CALL;\n\
+    \t\tbreak;\n#endif\n\n\tdefault:\n\t\t/* Pass unknown traffic to the stack */\n\
+    \t\treturn TC_ACT_OK;\n\t}\n\n\tif (IS_ERR(ret))\n\n// FILE: bpf/lib/common.h\n\
+    #define POLICY_MAP_SIZE\t65536\n#define RESERVED_POLICY_SIZE 128\n\n#define __inline__\
+    \ __attribute__((always_inline))\n\n#define CILIUM_CALL_DROP_NOTIFY\t\t\t1\n#define\
+    \ CILIUM_CALL_ERROR_NOTIFY\t\t2\n#define CILIUM_CALL_SEND_ICMP6_ECHO_REPLY\t3\n\
+    #define CILIUM_CALL_HANDLE_ICMP6_NS\t\t4\n#define CILIUM_CALL_SEND_ICMP6_TIME_EXCEEDED\t\
+    5\n#define CILIUM_CALL_ARP\t\t\t\t6\n#define CILIUM_CALL_IPV4\t\t\t7\n#define\
+    \ CILIUM_CALL_SIZE\t\t\t8\n\ntypedef __u64 mac_t;\n\nunion v6addr {\n        struct\
+    \ {\n                __u32 p1;\n                __u32 p2;\n                __u32\
+    \ p3;\n                __u32 p4;\n        };\n        __u8 addr[16];\n};\n\n//\
+    \ CONTEXT: struct drop_notify {\n#define DROP_CSUM_L3\t\t-153\n#define DROP_CSUM_L4\t\
+    \t-154\n#define DROP_CT_CREATE_FAILED\t-155\n#define DROP_INVALID_EXTHDR\t-156\n\
+    #define DROP_FRAG_NOSUPPORT\t-157\n#define DROP_NO_SERVICE\t\t-158\n\n/* skb->cb[]\
+    \ usage: */\nenum {\n\tCB_SRC_LABEL,\n\tCB_IFINDEX,\n\tCB_POLICY,\n};\n\n/* Flag\
+    \ values for CB_POLICY */\nenum {\n\tPOLICY_UNSPEC,\n\tPOLICY_SKIP,\n};\n\nstruct\
+    \ ipv6_ct_tuple {\n\tunion v6addr\taddr;\n\t/* The order of dport+sport must not\
+    \ be changed */\n\t__u16\t\tdport;\n\n// CONTEXT: struct ipv4_ct_tuple {\n\t__u8\t\
+    \tnexthdr;\n\t__u8\t\tflags;\n} __attribute__((packed));\n\nstruct ct_entry {\n\
+    \t__u64 rx_packets;\n\t__u64 rx_bytes;\n\t__u64 tx_packets;\n\t__u64 tx_bytes;\n\
+    \t__u16 lifetime;\n\t__u16 rx_closing:1,\n\t      tx_closing:1,\n\t      reserve:14;\n\
+    \t__u16 rev_nat_index;\n};\n\nstruct lb6_key {\n        union v6addr address;\n\
+    \        __u16 dport;\t\t/* L4 port filter, if unset, all ports apply */\n\t__u16\
+    \ slave;\t\t/* Backend iterator, 0 indicates the master service */\n} __attribute__((packed));\n\
+    \nstruct lb6_service {\n\tunion v6addr target;\n\t__u16 port;\n\n// FILE: bpf/lib/conntrack.h\n\
+    // CONTEXT: enum {\nstatic inline int __inline__ __ct_lookup(void *map, struct\
+    \ __sk_buff *skb,\n\t\t\t\t\t void *tuple, int action, int in, __u16 *rev_nat_index)\n\
+    {\n\tstruct ct_entry *entry;\n\tint ret;\n\n\tif ((entry = map_lookup_elem(map,\
+    \ tuple))) {\n\t\tcilium_trace(skb, DBG_CT_MATCH, entry->lifetime, entry->rev_nat_index);\n\
+    \t\tentry->lifetime = CT_DEFAULT_LIFEIME;\n\t\tif (rev_nat_index)\n\t\t\t*rev_nat_index\
+    \ = entry->rev_nat_index;;\n\n#ifdef CONNTRACK_ACCOUNTING\n\t\t/* FIXME: This\
+    \ is slow, per-cpu counters? */\n\t\tif (in) {\n\t\t\t__sync_fetch_and_add(&entry->rx_packets,\
+    \ 1);\n\t\t\t__sync_fetch_and_add(&entry->rx_bytes, skb->len);\n\t\t} else {\n\
+    \t\t\t__sync_fetch_and_add(&entry->tx_packets, 1);\n\t\t\t__sync_fetch_and_add(&entry->tx_bytes,\
+    \ skb->len);\n\t\t}\n#endif\n\n\t\tswitch (action) {\n\n// CONTEXT: static inline\
+    \ int __inline__ ct_lookup6(void *map, struct ipv6_ct_tuple *tuple,\n\t\t\telse\n\
+    \t\t\t\tret = CT_REPLY;\n\t\t}\n\t\tgoto out;\n\t}\n\n\t/* Lookup entry in forward\
+    \ direction */\n\tipv6_ct_tuple_reverse(tuple);\n\tcilium_trace(skb, DBG_CT_LOOKUP,\
+    \ (ntohs(tuple->sport) << 16) | ntohs(tuple->dport),\n\t\t     (tuple->nexthdr\
+    \ << 8) | tuple->flags);\n\tret = __ct_lookup(map, skb, tuple, action, in, NULL);\n\
+    \n\t/* No entries found, packet must be eligible for creating a CT entry */\n\t\
+    if (ret == CT_NEW && action != ACTION_CREATE)\n\t\tret = DROP_CT_CANT_CREATE;\n\
+    \nout:\n\tcilium_trace(skb, DBG_CT_VERDICT, ret < 0 ? -ret : ret, 0);\n\treturn\
+    \ ret;\n}\n\nstatic inline void __inline__ ipv4_ct_tuple_reverse(struct ipv4_ct_tuple\
+    \ *tuple)\n{\n\t/* The meaning of .addr switches without requiring to copy bits\n\
+    \n// CONTEXT: static inline int __inline__ ct_create4(void *map, struct ipv4_ct_tuple\
+    \ *tuple,\n\t};\n\n\tentry.rev_nat_index = rev_nat_index;\n\n\tif (in) {\n\t\t\
+    entry.rx_packets = 1;\n\t\tentry.rx_bytes = skb->len;\n\t} else {\n\t\tentry.tx_packets\
+    \ = 1;\n\t\tentry.tx_bytes = skb->len;\n\t}\n\n\tcilium_trace(skb, DBG_CT_CREATED,\
+    \ (ntohs(tuple->sport) << 16) | ntohs(tuple->dport),\n\t\t     (tuple->nexthdr\
+    \ << 8) | tuple->flags);\n\tcilium_trace(skb, DBG_CT_CREATED2, tuple->addr, rev_nat_index);\n\
+    \tif (map_update_elem(map, tuple, &entry, 0) < 0)\n\t\treturn DROP_CT_CREATE_FAILED;\n\
+    \n\t/* Create an ICMPv6 entry to relate errors */\n\t/* FIXME: We could do a lookup\
+    \ and check if an L3 entry already exists */\n\ttuple->nexthdr = IPPROTO_ICMP;\n\
+    \ttuple->sport = 0;\n\ttuple->dport = 0;\n\ttuple->flags |= TUPLE_F_RELATED;\n\
+    \n// FILE: bpf/lib/dbg.h\n// CONTEXT: enum {\n\tDBG_LB4_REVERSE_NAT_LOOKUP,\n\t\
+    DBG_LB4_REVERSE_NAT,\n};\n\n/* Capture types */\nenum {\n\tDBG_CAPTURE_UNSPEC,\n\
+    \tDBG_CAPTURE_FROM_LXC,\n\tDBG_CAPTURE_FROM_NETDEV,\n\tDBG_CAPTURE_FROM_OVERLAY,\n\
+    \tDBG_CAPTURE_DELIVERY,\n\tDBG_CAPTURE_FROM_LB,\n};\n\n#ifdef DEBUG\n#include\
+    \ \"events.h\"\n#include \"utils.h\"\n\n# define printk(fmt, ...)\t\t\t\t\t\\\n\
+    \t\t({\t\t\t\t\t\t\\\n\t\t\tchar ____fmt[] = fmt;\t\t\t\\\n\t\t\ttrace_printk(____fmt,\
+    \ sizeof(____fmt),\t\\\n\t\t\t\t     ##__VA_ARGS__);\t\t\\\n\t\t})\n\n// FILE:\
+    \ bpf/lib/ipv6.h\n// CONTEXT: static inline __be32 ipv6_pseudohdr_checksum(struct\
+    \ ipv6hdr *hdr,\n\t\t\t\t\t     __u16 payload_len, __be32 sum)\n{\n\t__u32 len\
+    \ = htonl((__u32)payload_len);\n\t__u32 nexthdr = htonl((__u32)next_hdr);\n\t\
+    sum = csum_diff(NULL, 0, &hdr->saddr, sizeof(struct in6_addr), sum);\n\tsum =\
+    \ csum_diff(NULL, 0, &hdr->daddr, sizeof(struct in6_addr), sum);\n\tsum = csum_diff(NULL,\
+    \ 0, &len, sizeof(len), sum);\n\tsum = csum_diff(NULL, 0, &nexthdr, sizeof(nexthdr),\
+    \ sum);\n\n\treturn sum;\n}\n\n#endif /* __LIB_IPV6__ */\n\n// FILE: bpf/lib/nat46.h\n\
+    \ */\n#ifndef __LIB_NAT46__\n#define __LIB_NAT46__\n\n#include <linux/ip.h>\n\
+    #include <linux/icmp.h>\n#include <linux/icmpv6.h>\n#include \"common.h\"\n#include\
+    \ \"ipv6.h\"\n#include \"eth.h\"\n#include \"dbg.h\"\n\nstatic inline int get_csum_offset(__u8\
+    \ protocol)\n{\n\tint csum_off;\n\n\tswitch (protocol) {\n\tcase IPPROTO_TCP:\n\
+    \t\tcsum_off = TCP_CSUM_OFF;\n\t\tbreak;\n\tcase IPPROTO_UDP:\n\t\tcsum_off =\
+    \ UDP_CSUM_OFF;\n\t\tbreak;\n\tcase IPPROTO_ICMP:\n\n// CONTEXT: static inline\
+    \ int ipv6_prefix_match(struct in6_addr *addr,\n{\n\tif (addr->in6_u.u6_addr32[0]\
+    \ == v6prefix->p1 &&\n\t    addr->in6_u.u6_addr32[1] == v6prefix->p2 &&\n\t  \
+    \  addr->in6_u.u6_addr32[2] == v6prefix->p3)\n\t\treturn 1;\n\telse\n\t\treturn\
+    \ 0;\n}\n\n/*\n * ipv4 to ipv6 stateless nat\n * (s4,d4) -> (s6,d6)\n * s6 = v6prefix_src<s4>\n\
+    \ * d6 = v6prefix_dst<d4>\n */\nstatic inline int ipv4_to_ipv6(struct __sk_buff\
+    \ *skb, struct iphdr *ip4,\n\t\t\t       int nh_off, union v6addr *v6prefix_src,\n\
+    \t\t\t       union v6addr *v6predix_dst)\n{\n\tstruct ipv6hdr v6 = {};\n\tstruct\
+    \ iphdr v4;\n\tint csum_off;\n\t__be32 csum;\n\t__be16 v4hdr_len;\n\t__be16 protocol\
+    \ = htons(ETH_P_IPV6);\n\t__u64 csum_flags = BPF_F_PSEUDO_HDR;\n\t\n\tif (skb_load_bytes(skb,\
+    \ nh_off, &v4, sizeof(v4)) < 0)\n\t\treturn DROP_INVALID;\n\n\tif (ipv4_hdrlen(ip4)\
+    \ != sizeof(v4))\n\t\treturn DROP_INVALID_EXTHDR;\n\n\t/* build v6 header */\n\
+    \tv6.version = 0x6;\n\tv6.saddr.in6_u.u6_addr32[0] = v6prefix_src->p1;\n\tv6.saddr.in6_u.u6_addr32[1]\
+    \ = v6prefix_src->p2;\n\tv6.saddr.in6_u.u6_addr32[2] = v6prefix_src->p3;\n\tv6.saddr.in6_u.u6_addr32[3]\
+    \ = v4.saddr;\n\n\tv6.daddr.in6_u.u6_addr32[0] = v6predix_dst->p1;\n\tv6.daddr.in6_u.u6_addr32[1]\
+    \ = v6predix_dst->p2;\n\tv6.daddr.in6_u.u6_addr32[2] = v6predix_dst->p3;\n\tv6.daddr.in6_u.u6_addr32[3]\
+    \ = htonl((ntohl(v6predix_dst->p4) & 0xFFFF0000) | (ntohl(v4.daddr) & 0xFFFF));\n\
+    \n\tif (v4.protocol == IPPROTO_ICMP)\n\t\tv6.nexthdr = IPPROTO_ICMPV6;\n\telse\n\
+    \t\tv6.nexthdr = v4.protocol;\n\tv6.hop_limit = v4.ttl;\n\tv4hdr_len = (v4.ihl\
+    \ << 2);\n\tv6.payload_len = htons(ntohs(v4.tot_len) - v4hdr_len);\n\n\tif (skb_change_proto(skb,\
+    \ htons(ETH_P_IPV6), 0) < 0) {\n#ifdef DEBUG_NAT46\n\t\tprintk(\"v46 NAT: skb_modify\
+    \ failed\\n\");\n\n// CONTEXT: static inline int ipv4_to_ipv6(struct __sk_buff\
+    \ *skb, struct iphdr *ip4,\n#ifdef DEBUG_NAT46\n\tprintk(\"v46 NAT: nh_off %d,\
+    \ csum_off %d\\n\", nh_off, csum_off);\n#endif\n\treturn 0;\n}\n\n/*\n * ipv6\
+    \ to ipv4 stateless nat\n * (s6,d6) -> (s4,d4)\n * s4 = <ipv4-range>.<lxc-id>\n\
+    \ * d4 = d6[96 .. 127]\n */\nstatic inline int ipv6_to_ipv4(struct __sk_buff *skb,\
+    \ int nh_off,\n\t\t\t       union v6addr *v6prefix_dst,\n\t\t\t       __u32 saddr)\n\
+    {\n\tstruct ipv6hdr v6;\n\tstruct iphdr v4 = {};\n\tint csum_off;\n\t__be32 csum\
+    \ = 0;\n\t__be16 protocol = htons(ETH_P_IP);\n\t__u64 csum_flags = BPF_F_PSEUDO_HDR;\n\
+    \n\tif (skb_load_bytes(skb, nh_off, &v6, sizeof(v6)) < 0)\n\t\treturn DROP_INVALID;\n\
+    \n\t/* Drop frames which carry extensions headers */\n\tif (ipv6_hdrlen(skb, nh_off,\
+    \ &v6.nexthdr) != sizeof(v6))\n\t\treturn DROP_INVALID_EXTHDR;\n\n\tif (!ipv6_prefix_match(&v6.daddr,\
+    \ v6prefix_dst)) {\n#ifdef DEBUG_NAT46\n\t\tprintk(\"v64 nat dst prefix mismatch\\\
+    n\");\n#endif\n\t\treturn 0;\n\t}\n\n\t/* build v4 header */\n\tv4.ihl = 0x5;\n\
+    \tv4.version = 0x4;\n\tv4.saddr = saddr;\n\tv4.daddr = v6.daddr.in6_u.u6_addr32[3];\n\
+    \tif (v6.nexthdr == IPPROTO_ICMPV6)\n\t\tv4.protocol = IPPROTO_ICMP;\n\telse\n\
+    \t\tv4.protocol = v6.nexthdr;\n\tv4.ttl = v6.hop_limit;\n\tv4.tot_len = htons(ntohs(v6.payload_len)\
+    \ + sizeof(v4));\n\tcsum_off = offsetof(struct iphdr, check);\n\n// CONTEXT: static\
+    \ inline int ipv6_to_ipv4(struct __sk_buff *skb, int nh_off,\n\telse\n\t\tcsum_off\
+    \ += sizeof(struct iphdr);\n\n\tif (l4_csum_replace(skb, nh_off + csum_off, 0,\
+    \ csum, csum_flags) < 0)\n\t\treturn DROP_CSUM_L4;\n\n#ifdef DEBUG_NAT46\n\tprintk(\"\
+    v64 NAT: nh_off %d, csum_off %d\\n\", nh_off, csum_off);\n#endif\n\n\treturn 0;\n\
+    }\n\n#endif /* __LIB_NAT46__ */\n\n// FILE: bpf/node_config.h\n * This is just\
+    \ a dummy header with dummy values to allow for test\n * compilation without the\
+    \ full code generation engine backend.\n */\n\n#define NODE_ID 0x10001\n#define\
+    \ ROUTER_IP { 0xbe, 0xef, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x1, 0x0,\
+    \ 0x1, 0x0, 0x0 }\n#define ENCAP_IFINDEX 1\n#define HOST_IFINDEX 1\n#define HOST_IP\
+    \ { .addr = { 0xbe, 0xef, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0xa, 0x0, 0x2,\
+    \ 0xf, 0xff, 0xff } }\n#define HOST_ID 1\n#define WORLD_ID 2\n#define HOST_IFINDEX_MAC\
+    \ { .addr = { 0xce, 0x72, 0xa7, 0x03, 0x88, 0x56 } }\n#define NAT46_SRC_PREFIX\
+    \ { .addr = { 0xbe, 0xef, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0xa, 0x0, 0x0,\
+    \ 0x0, 0x0, 0x0 } }\n#define NAT46_DST_PREFIX { .addr = { 0xbe, 0xef, 0x0, 0x0,\
+    \ 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0xa, 0x0, 0x0, 0x0, 0x0, 0x0 } }\n#define IPV4_RANGE\
+    \ 0xf50a\n#define IPV4_MASK 0xffff\n#define IPV4_CLUSTER_MASK 0xff0000\n#define\
+    \ IPV4_CLUSTER_RANGE 0x100000\n#define IPV4_GATEWAY 0xfffff50a\n#define ENCAP_GENEVE\
+    \ 1\n#define SECLABEL 2\n#define SECLABEL_NB 0xfffff\n#define ENABLE_ARP_RESPONDER\n\
+    #define NODE_MAC { .addr = { 0xde, 0xad, 0xbe, 0xef, 0xc0, 0xde } }"
+  fixed_code: "// FILE: bpf/bpf_lxc.c\n// CONTEXT: static inline int __inline__ lxc_encap(struct\
+    \ __sk_buff *skb, __u32 node_id)\n\tuint8_t buf[] = {};\n#endif\n\treturn do_encapsulation(skb,\
+    \ node_id, SECLABEL, buf, sizeof(buf));\n}\n#endif\n\nstatic inline int ipv6_l3_from_lxc(struct\
+    \ __sk_buff *skb,\n\t\t\t\t   struct ipv6_ct_tuple *tuple, int l3_off,\n\t\t\t\
+    \t   struct ethhdr *eth, struct ipv6hdr *ip6)\n{\n\tunion macaddr router_mac =\
+    \ NODE_MAC;\n\tunion v6addr host_ip = HOST_IP;\n\tint ret, l4_off;\n\tstruct csum_offset\
+    \ csum_off = {};\n\tstruct lb6_service *svc;\n\tstruct lb6_key key = {};\n\t__u16\
+    \ rev_nat_index = 0, nat_index = 0;\n\n\tif (unlikely(!valid_src_mac(eth)))\n\t\
+    \treturn DROP_INVALID_SMAC;\n\telse if (unlikely(!valid_dst_mac(eth)))\n\t\treturn\
+    \ DROP_INVALID_DMAC;\n\telse if (unlikely(!valid_src_ip(ip6)))\n\t\treturn DROP_INVALID_SIP;\n\
+    \n\n// CONTEXT: skip_service_lookup:\n\t\tif (tuple->addr.addr[14] == host_ip.addr[14]\
+    \ &&\n\t\t    tuple->addr.addr[15] == host_ip.addr[15])\n\t\t\tgoto to_host;\n\
+    #endif\n\n\t\tif (data + sizeof(struct ipv6hdr) + ETH_HLEN > data_end)\n\t\t\t\
+    return DROP_INVALID;\n\n\t\tpolicy_clear_mark(skb);\n\n\t\treturn ipv6_local_delivery(skb,\
+    \ l3_off, l4_off, SECLABEL, ip6, tuple->nexthdr);\n\t} else {\n#ifdef LXC_NAT46\n\
+    \t\tif (unlikely(ipv6_addr_is_mapped(&tuple->addr))) {\n\t\t\ttail_call(skb, &cilium_calls,\
+    \ CILIUM_CALL_NAT64);\n\t\t\treturn DROP_MISSED_TAIL_CALL;\n                }\n\
+    #endif\n\n#ifdef ALLOW_TO_WORLD\n\t\tpolicy_mark_skip(skb);\n#endif\n\t\tgoto\
+    \ pass_to_stack;\n\t}\n\nto_host:\n\tif (1) {\n\t\tunion macaddr host_mac = HOST_IFINDEX_MAC;\n\
+    \t\tint ret;\n\n\t\tcilium_trace(skb, DBG_TO_HOST, skb->cb[CB_POLICY], 0);\n\n\
+    \t\tret = ipv6_l3(skb, l3_off, (__u8 *) &router_mac.addr, (__u8 *) &host_mac.addr);\n\
+    \t\tif (ret != TC_ACT_OK)\n\t\t\treturn ret;\n\n#ifndef POLICY_ENFORCEMENT\n\t\
+    \tcilium_trace_capture(skb, DBG_CAPTURE_DELIVERY, HOST_IFINDEX);\n\t\treturn redirect(HOST_IFINDEX,\
+    \ 0);\n#else\n\t\tskb->cb[CB_SRC_LABEL] = SECLABEL;\n\t\tskb->cb[CB_IFINDEX] =\
+    \ HOST_IFINDEX;\n\n#ifdef ALLOW_TO_HOST\n\t\tpolicy_mark_skip(skb);\n#endif\n\n\
+    \t\ttail_call(skb, &cilium_reserved_policy, HOST_ID);\n\n// CONTEXT: static inline\
+    \ int __inline__ ipv4_policy(struct __sk_buff *skb, int ifindex, __u\n\n\tskb->cb[CB_POLICY]\
+    \ = 0;\n\ttuple.nexthdr = ip4->protocol;\n\ttuple.addr = ip4->saddr;\n\n\tl4_off\
+    \ = ETH_HLEN + ipv4_hdrlen(ip4);\n\tcsum_l4_offset_and_flags(tuple.nexthdr, &off);\n\
+    \n\tret = ct_lookup4(&CT_MAP4, &tuple, skb, l4_off, SECLABEL, 1, &src_rev_nat);\n\
+    \tif (ret < 0)\n\t\treturn ret;\n\n#ifdef LXC_NAT46\n\tif (skb->cb[CB_NAT46_STATE]\
+    \ == NAT46) {\n\t\ttail_call(skb, &cilium_calls, CILIUM_CALL_NAT46);\n\t\treturn\
+    \ DROP_MISSED_TAIL_CALL;\n\t}\n#endif\n\n\tif (unlikely(src_rev_nat)) {\n\t\t\
+    int ret2;\n\n\t\tret2 = lb4_rev_nat(skb, ETH_HLEN, l4_off, &off, src_rev_nat,\
+    \ &tuple,\n\t\t\t\t  REV_NAT_F_TUPLE_SADDR);\n\t\tif (IS_ERR(ret2))\n\t\t\treturn\
+    \ ret2;\n\n\t}\n\n\t/* Policy lookup is done on every packet to account for packets\
+    \ that\n\t * passed through the allowed consumer. */\n\n// CONTEXT: __section_tail(CILIUM_MAP_POLICY,\
+    \ LXC_ID) int handle_policy(struct __sk_buff *sk\n\tif (IS_ERR(ret)) {\n\t\tif\
+    \ (ret == DROP_POLICY)\n\t\t\treturn send_drop_notify(skb, src_label, SECLABEL,\
+    \ LXC_ID,\n\t\t\t\t\t\tifindex, TC_ACT_SHOT);\n\t\telse\n\t\t\treturn send_drop_notify_error(skb,\
+    \ ret, TC_ACT_SHOT);\n\t}\n\n\tcilium_trace_capture(skb, DBG_CAPTURE_DELIVERY,\
+    \ ifindex);\n\treturn redirect(ifindex, 0);\n}\n\n__section_tail(CILIUM_MAP_CALLS,\
+    \ CILIUM_CALL_NAT64) int tail_ipv6_to_ipv4(struct __sk_buff *skb)\n{\n\tint ret\
+    \ = ipv6_to_ipv4(skb, 14, htonl(LXC_IPV4));\n\tif (IS_ERR(ret))\n\t\treturn ret;\n\
+    \n\tcilium_trace_capture(skb, DBG_CAPTURE_AFTER_V64, skb->ingress_ifindex);\n\n\
+    \tskb->cb[CB_NAT46_STATE] = NAT64;\n\n\ttail_call(skb, &cilium_calls, CILIUM_CALL_IPV4);\n\
+    \treturn DROP_MISSED_TAIL_CALL;\n}\n\n__section_tail(CILIUM_MAP_CALLS, CILIUM_CALL_NAT46)\
+    \ int tail_ipv4_to_ipv6(struct __sk_buff *skb)\n{\n\tunion v6addr dp = LXC_IP;\n\
+    \tvoid *data = (void *) (long) skb->data;\n\tvoid *data_end = (void *) (long)\
+    \ skb->data_end;\n\tstruct iphdr *ip4 = data + ETH_HLEN;\n\tint ret;\n\n\tif (data\
+    \ + sizeof(*ip4) + ETH_HLEN > data_end)\n\t\treturn DROP_INVALID;\n\n\tret = ipv4_to_ipv6(skb,\
+    \ ip4, 14, &dp);\n\tif (IS_ERR(ret))\n\t\treturn ret;\n\n\tcilium_trace_capture(skb,\
+    \ DBG_CAPTURE_AFTER_V46, skb->ingress_ifindex);\n\n\ttail_call(skb, &cilium_policy,\
+    \ LXC_ID);\n\treturn DROP_MISSED_TAIL_CALL;\n}\nBPF_LICENSE(\"GPL\");\n\n// FILE:\
+    \ bpf/bpf_netdev.c\n\n#include <stdint.h>\n#include <stdio.h>\n\n#include \"lib/common.h\"\
+    \n#include \"lib/maps.h\"\n#include \"lib/ipv6.h\"\n#include \"lib/ipv4.h\"\n\
+    #include \"lib/icmp6.h\"\n#include \"lib/eth.h\"\n#include \"lib/dbg.h\"\n#include\
+    \ \"lib/l3.h\"\n#include \"lib/policy.h\"\n#include \"lib/drop.h\"\n\nstatic inline\
+    \ __u32 derive_sec_ctx(struct __sk_buff *skb, const union v6addr *node_ip,\n\t\
+    \t\t\t   struct ipv6hdr *ip6)\n{\n#ifdef FIXED_SRC_SECCTX\n\treturn FIXED_SRC_SECCTX;\n\
+    #else\n\tif (ipv6_match_prefix_64((union v6addr *) &ip6->saddr, node_ip)) {\n\t\
+    \t/* Read initial 4 bytes of header and then extract flowlabel */\n\t\t__u32 *tmp\
+    \ = (__u32 *) ip6;\n\n// CONTEXT: static inline int handle_ipv4(struct __sk_buff\
+    \ *skb)\n\t\t__u32 secctx;\n\t\tint ret, l4_off;\n\n\t\tl4_off = ETH_HLEN + ipv4_hdrlen(ip4);\n\
+    \t\tsecctx = derive_ipv4_sec_ctx(skb, ip4);\n\t\ttuple.nexthdr = ip4->protocol;\n\
+    \t\tret = ipv4_local_delivery(skb, ETH_HLEN, l4_off, secctx, ip4);\n\t\tif (ret\
+    \ != DROP_NO_LXC)\n\t\t\treturn ret;\n\t}\n#endif\n\n\treturn TC_ACT_OK;\n}\n\n\
+    __section_tail(CILIUM_MAP_CALLS, CILIUM_CALL_IPV4) int tail_handle_ipv4(struct\
+    \ __sk_buff *skb)\n{\n\tint ret = handle_ipv4(skb);\n\n\tif (IS_ERR(ret))\n\t\t\
+    return send_drop_notify_error(skb, ret, TC_ACT_SHOT);\n\n\treturn ret;\n}\n\n\
+    // CONTEXT: __section(\"from-netdev\")\nint from_netdev(struct __sk_buff *skb)\n\
+    {\n\tint ret;\n\n\tcilium_trace_capture(skb, DBG_CAPTURE_FROM_NETDEV, skb->ingress_ifindex);\n\
+    \n\tswitch (skb->protocol) {\n\tcase __constant_htons(ETH_P_IPV6):\n\t\t/* This\
+    \ is considered the fast path, no tail call */\n\t\tret = handle_ipv6(skb);\n\t\
+    \tbreak;\n\n#ifdef ENABLE_IPV4\n\tcase __constant_htons(ETH_P_IP):\n\t\ttail_call(skb,\
+    \ &cilium_calls, CILIUM_CALL_IPV4);\n\t\tret = DROP_MISSED_TAIL_CALL;\n\t\tbreak;\n\
+    #endif\n\n\tdefault:\n\t\t/* Pass unknown traffic to the stack */\n\t\treturn\
+    \ TC_ACT_OK;\n\t}\n\n\tif (IS_ERR(ret))\n\n// FILE: bpf/lib/common.h\n#define\
+    \ POLICY_MAP_SIZE\t65536\n#define RESERVED_POLICY_SIZE 128\n\n#define __inline__\
+    \ __attribute__((always_inline))\n\n#define CILIUM_CALL_DROP_NOTIFY\t\t\t1\n#define\
+    \ CILIUM_CALL_ERROR_NOTIFY\t\t2\n#define CILIUM_CALL_SEND_ICMP6_ECHO_REPLY\t3\n\
+    #define CILIUM_CALL_HANDLE_ICMP6_NS\t\t4\n#define CILIUM_CALL_SEND_ICMP6_TIME_EXCEEDED\t\
+    5\n#define CILIUM_CALL_ARP\t\t\t\t6\n#define CILIUM_CALL_IPV4\t\t\t7\n#define\
+    \ CILIUM_CALL_NAT64\t\t\t8\n#define CILIUM_CALL_NAT46\t\t\t9\n#define CILIUM_CALL_SIZE\t\
+    \t\t10\n\ntypedef __u64 mac_t;\n\nunion v6addr {\n        struct {\n         \
+    \       __u32 p1;\n                __u32 p2;\n                __u32 p3;\n    \
+    \            __u32 p4;\n        };\n        __u8 addr[16];\n};\n\n// CONTEXT:\
+    \ struct drop_notify {\n#define DROP_CSUM_L3\t\t-153\n#define DROP_CSUM_L4\t\t\
+    -154\n#define DROP_CT_CREATE_FAILED\t-155\n#define DROP_INVALID_EXTHDR\t-156\n\
+    #define DROP_FRAG_NOSUPPORT\t-157\n#define DROP_NO_SERVICE\t\t-158\n\n/* skb->cb[]\
+    \ usage: */\nenum {\n\tCB_SRC_LABEL,\n\tCB_IFINDEX,\n\tCB_POLICY,\n\tCB_NAT46_STATE,\n\
+    };\n\n/* State values for NAT46 */\nenum {\n\tNAT46_CLEAR,\n\tNAT64,\n\tNAT46,\n\
+    };\n\n/* Flag values for CB_POLICY */\nenum {\n\tPOLICY_UNSPEC,\n\tPOLICY_SKIP,\n\
+    };\n\nstruct ipv6_ct_tuple {\n\tunion v6addr\taddr;\n\t/* The order of dport+sport\
+    \ must not be changed */\n\t__u16\t\tdport;\n\n// CONTEXT: struct ipv4_ct_tuple\
+    \ {\n\t__u8\t\tnexthdr;\n\t__u8\t\tflags;\n} __attribute__((packed));\n\nstruct\
+    \ ct_entry {\n\t__u64 rx_packets;\n\t__u64 rx_bytes;\n\t__u64 tx_packets;\n\t\
+    __u64 tx_bytes;\n\t__u16 lifetime;\n\t__u16 rx_closing:1,\n\t      tx_closing:1,\n\
+    \t      nat46:1,\n\t      reserve:13;\n\t__u16 rev_nat_index;\n};\n\nstruct lb6_key\
+    \ {\n        union v6addr address;\n        __u16 dport;\t\t/* L4 port filter,\
+    \ if unset, all ports apply */\n\t__u16 slave;\t\t/* Backend iterator, 0 indicates\
+    \ the master service */\n} __attribute__((packed));\n\nstruct lb6_service {\n\t\
+    union v6addr target;\n\t__u16 port;\n\n// FILE: bpf/lib/conntrack.h\n// CONTEXT:\
+    \ enum {\nstatic inline int __inline__ __ct_lookup(void *map, struct __sk_buff\
+    \ *skb,\n\t\t\t\t\t void *tuple, int action, int in, __u16 *rev_nat_index)\n{\n\
+    \tstruct ct_entry *entry;\n\tint ret;\n\n\tif ((entry = map_lookup_elem(map, tuple)))\
+    \ {\n\t\tcilium_trace(skb, DBG_CT_MATCH, entry->lifetime, entry->rev_nat_index);\n\
+    \t\tentry->lifetime = CT_DEFAULT_LIFEIME;\n\t\tif (rev_nat_index)\n\t\t\t*rev_nat_index\
+    \ = entry->rev_nat_index;;\n\n#ifdef LXC_NAT46\n\t\t/* This packet needs nat46\
+    \ translation */\n\t\tif (entry->nat46 && !skb->cb[CB_NAT46_STATE])\n\t\t\tskb->cb[CB_NAT46_STATE]\
+    \ = NAT46;\n#endif\n\n#ifdef CONNTRACK_ACCOUNTING\n\t\t/* FIXME: This is slow,\
+    \ per-cpu counters? */\n\t\tif (in) {\n\t\t\t__sync_fetch_and_add(&entry->rx_packets,\
+    \ 1);\n\t\t\t__sync_fetch_and_add(&entry->rx_bytes, skb->len);\n\t\t} else {\n\
+    \t\t\t__sync_fetch_and_add(&entry->tx_packets, 1);\n\t\t\t__sync_fetch_and_add(&entry->tx_bytes,\
+    \ skb->len);\n\t\t}\n#endif\n\n\t\tswitch (action) {\n\n// CONTEXT: static inline\
+    \ int __inline__ ct_lookup6(void *map, struct ipv6_ct_tuple *tuple,\n\t\t\telse\n\
+    \t\t\t\tret = CT_REPLY;\n\t\t}\n\t\tgoto out;\n\t}\n\n\t/* Lookup entry in forward\
+    \ direction */\n\tipv6_ct_tuple_reverse(tuple);\n\tcilium_trace(skb, DBG_CT_LOOKUP,\
+    \ (ntohs(tuple->sport) << 16) | ntohs(tuple->dport),\n\t\t     (tuple->nexthdr\
+    \ << 8) | tuple->flags);\n\tret = __ct_lookup(map, skb, tuple, action, in, NULL);\n\
+    \n#ifdef LXC_NAT46\n\tskb->cb[CB_NAT46_STATE] = NAT46_CLEAR;\n#endif\n\n\t/* No\
+    \ entries found, packet must be eligible for creating a CT entry */\n\tif (ret\
+    \ == CT_NEW && action != ACTION_CREATE)\n\t\tret = DROP_CT_CANT_CREATE;\n\nout:\n\
+    \tcilium_trace(skb, DBG_CT_VERDICT, ret < 0 ? -ret : ret, 0);\n\treturn ret;\n\
+    }\n\nstatic inline void __inline__ ipv4_ct_tuple_reverse(struct ipv4_ct_tuple\
+    \ *tuple)\n{\n\t/* The meaning of .addr switches without requiring to copy bits\n\
+    \n// CONTEXT: static inline int __inline__ ct_create4(void *map, struct ipv4_ct_tuple\
+    \ *tuple,\n\t};\n\n\tentry.rev_nat_index = rev_nat_index;\n\n\tif (in) {\n\t\t\
+    entry.rx_packets = 1;\n\t\tentry.rx_bytes = skb->len;\n\t} else {\n\t\tentry.tx_packets\
+    \ = 1;\n\t\tentry.tx_bytes = skb->len;\n\t}\n\n#ifdef LXC_NAT46\n\tif (skb->cb[CB_NAT46_STATE]\
+    \ == NAT64)\n\t\tentry.nat46 = !in;\n#endif\n\n\tcilium_trace(skb, DBG_CT_CREATED,\
+    \ (ntohs(tuple->sport) << 16) | ntohs(tuple->dport),\n\t\t     (tuple->nexthdr\
+    \ << 8) | tuple->flags);\n\tcilium_trace(skb, DBG_CT_CREATED2, tuple->addr, rev_nat_index);\n\
+    \tif (map_update_elem(map, tuple, &entry, 0) < 0)\n\t\treturn DROP_CT_CREATE_FAILED;\n\
+    \n\t/* Create an ICMPv6 entry to relate errors */\n\t/* FIXME: We could do a lookup\
+    \ and check if an L3 entry already exists */\n\ttuple->nexthdr = IPPROTO_ICMP;\n\
+    \ttuple->sport = 0;\n\ttuple->dport = 0;\n\ttuple->flags |= TUPLE_F_RELATED;\n\
+    \n// FILE: bpf/lib/dbg.h\n// CONTEXT: enum {\n\tDBG_LB4_REVERSE_NAT_LOOKUP,\n\t\
+    DBG_LB4_REVERSE_NAT,\n};\n\n/* Capture types */\nenum {\n\tDBG_CAPTURE_UNSPEC,\n\
+    \tDBG_CAPTURE_FROM_LXC,\n\tDBG_CAPTURE_FROM_NETDEV,\n\tDBG_CAPTURE_FROM_OVERLAY,\n\
+    \tDBG_CAPTURE_DELIVERY,\n\tDBG_CAPTURE_FROM_LB,\n\tDBG_CAPTURE_AFTER_V46,\n\t\
+    DBG_CAPTURE_AFTER_V64,\n};\n\n#ifdef DEBUG\n#include \"events.h\"\n#include \"\
+    utils.h\"\n\n# define printk(fmt, ...)\t\t\t\t\t\\\n\t\t({\t\t\t\t\t\t\\\n\t\t\
+    \tchar ____fmt[] = fmt;\t\t\t\\\n\t\t\ttrace_printk(____fmt, sizeof(____fmt),\t\
+    \\\n\t\t\t\t     ##__VA_ARGS__);\t\t\\\n\t\t})\n\n// FILE: bpf/lib/ipv6.h\n//\
+    \ CONTEXT: static inline __be32 ipv6_pseudohdr_checksum(struct ipv6hdr *hdr,\n\
+    \t\t\t\t\t     __u16 payload_len, __be32 sum)\n{\n\t__u32 len = htonl((__u32)payload_len);\n\
+    \t__u32 nexthdr = htonl((__u32)next_hdr);\n\tsum = csum_diff(NULL, 0, &hdr->saddr,\
+    \ sizeof(struct in6_addr), sum);\n\tsum = csum_diff(NULL, 0, &hdr->daddr, sizeof(struct\
+    \ in6_addr), sum);\n\tsum = csum_diff(NULL, 0, &len, sizeof(len), sum);\n\tsum\
+    \ = csum_diff(NULL, 0, &nexthdr, sizeof(nexthdr), sum);\n\n\treturn sum;\n}\n\n\
+    /*\n * Ipv4 mapped address - 0:0:0:0:0:FFFF::/96\n */\nstatic inline int ipv6_addr_is_mapped(union\
+    \ v6addr *addr)\n{\n\treturn addr->p1 == 0 && addr->p2 == 0 && addr->p3 == 0xFFFF0000;\n\
+    }\n#endif /* __LIB_IPV6__ */\n\n// FILE: bpf/lib/nat46.h\n */\n#ifndef __LIB_NAT46__\n\
+    #define __LIB_NAT46__\n\n#include <linux/ip.h>\n#include <linux/icmp.h>\n#include\
+    \ <linux/icmpv6.h>\n#include \"common.h\"\n#include \"ipv6.h\"\n#include \"eth.h\"\
+    \n#include \"dbg.h\"\n\n#if defined ENABLE_NAT46\n#if defined ENABLE_IPV4 && defined\
+    \ CONNTRACK\n#define LXC_NAT46\n#else\n#warning \"ENABLE_NAT46 requires ENABLE_IPv4\
+    \ and CONNTRACK\"\n#undef LXC_NAT46\n#endif\n#else\n#undef LXC_NAT46\n#endif\n\
+    \nstatic inline int get_csum_offset(__u8 protocol)\n{\n\tint csum_off;\n\n\tswitch\
+    \ (protocol) {\n\tcase IPPROTO_TCP:\n\t\tcsum_off = TCP_CSUM_OFF;\n\t\tbreak;\n\
+    \tcase IPPROTO_UDP:\n\t\tcsum_off = UDP_CSUM_OFF;\n\t\tbreak;\n\tcase IPPROTO_ICMP:\n\
+    \n// CONTEXT: static inline int ipv6_prefix_match(struct in6_addr *addr,\n{\n\t\
+    if (addr->in6_u.u6_addr32[0] == v6prefix->p1 &&\n\t    addr->in6_u.u6_addr32[1]\
+    \ == v6prefix->p2 &&\n\t    addr->in6_u.u6_addr32[2] == v6prefix->p3)\n\t\treturn\
+    \ 1;\n\telse\n\t\treturn 0;\n}\n\n/*\n * ipv4 to ipv6 stateless nat\n * (s4,d4)\
+    \ -> (s6,d6)\n * s6 = nat46_prefix<s4>\n * d6 = nat46_prefix<d4> or v6_dst if\
+    \ non null\n */\nstatic inline int ipv4_to_ipv6(struct __sk_buff *skb, struct\
+    \ iphdr *ip4,\n\t\t\t       int nh_off, union v6addr *v6_dst)\n{\n\tstruct ipv6hdr\
+    \ v6 = {};\n\tstruct iphdr v4;\n\tint csum_off;\n\t__be32 csum;\n\t__be16 v4hdr_len;\n\
+    \t__be16 protocol = htons(ETH_P_IPV6);\n\t__u64 csum_flags = BPF_F_PSEUDO_HDR;\n\
+    \tunion v6addr nat46_prefix = NAT46_PREFIX;\n\t\n\tif (skb_load_bytes(skb, nh_off,\
+    \ &v4, sizeof(v4)) < 0)\n\t\treturn DROP_INVALID;\n\n\tif (ipv4_hdrlen(ip4) !=\
+    \ sizeof(v4))\n\t\treturn DROP_INVALID_EXTHDR;\n\n\t/* build v6 header */\n\t\
+    v6.version = 0x6;\n\tv6.saddr.in6_u.u6_addr32[0] = nat46_prefix.p1;\n\tv6.saddr.in6_u.u6_addr32[1]\
+    \ = nat46_prefix.p2;\n\tv6.saddr.in6_u.u6_addr32[2] = nat46_prefix.p3;\n\tv6.saddr.in6_u.u6_addr32[3]\
+    \ = v4.saddr;\n\n\tif (v6_dst) {\n\t\tv6.daddr.in6_u.u6_addr32[0] = v6_dst->p1;\n\
+    \t\tv6.daddr.in6_u.u6_addr32[1] = v6_dst->p2;\n\t\tv6.daddr.in6_u.u6_addr32[2]\
+    \ = v6_dst->p3;\n\t\tv6.daddr.in6_u.u6_addr32[3] = v6_dst->p4;\n\t} else {\n\t\
+    \tv6.daddr.in6_u.u6_addr32[0] = nat46_prefix.p1;\n\t\tv6.daddr.in6_u.u6_addr32[1]\
+    \ = nat46_prefix.p2;\n\t\tv6.daddr.in6_u.u6_addr32[2] = nat46_prefix.p3;\n\t\t\
+    v6.daddr.in6_u.u6_addr32[3] = htonl((ntohl(nat46_prefix.p4) & 0xFFFF0000) | (ntohl(v4.daddr)\
+    \ & 0xFFFF));\n\t}\n\n\tif (v4.protocol == IPPROTO_ICMP)\n\t\tv6.nexthdr = IPPROTO_ICMPV6;\n\
+    \telse\n\t\tv6.nexthdr = v4.protocol;\n\tv6.hop_limit = v4.ttl;\n\tv4hdr_len =\
+    \ (v4.ihl << 2);\n\tv6.payload_len = htons(ntohs(v4.tot_len) - v4hdr_len);\n\n\
+    \tif (skb_change_proto(skb, htons(ETH_P_IPV6), 0) < 0) {\n#ifdef DEBUG_NAT46\n\
+    \t\tprintk(\"v46 NAT: skb_modify failed\\n\");\n\n// CONTEXT: static inline int\
+    \ ipv4_to_ipv6(struct __sk_buff *skb, struct iphdr *ip4,\n#ifdef DEBUG_NAT46\n\
+    \tprintk(\"v46 NAT: nh_off %d, csum_off %d\\n\", nh_off, csum_off);\n#endif\n\t\
+    return 0;\n}\n\n/*\n * ipv6 to ipv4 stateless nat\n * (s6,d6) -> (s4,d4)\n * s4\
+    \ = <ipv4-range>.<lxc-id>\n * d4 = d6[96 .. 127]\n */\nstatic inline int ipv6_to_ipv4(struct\
+    \ __sk_buff *skb, int nh_off, __be32 saddr)\n{\n\tstruct ipv6hdr v6;\n\tstruct\
+    \ iphdr v4 = {};\n\tint csum_off;\n\t__be32 csum = 0;\n\t__be16 protocol = htons(ETH_P_IP);\n\
+    \t__u64 csum_flags = BPF_F_PSEUDO_HDR;\n\n\tif (skb_load_bytes(skb, nh_off, &v6,\
+    \ sizeof(v6)) < 0)\n\t\treturn DROP_INVALID;\n\n\t/* Drop frames which carry extensions\
+    \ headers */\n\tif (ipv6_hdrlen(skb, nh_off, &v6.nexthdr) != sizeof(v6))\n\t\t\
+    return DROP_INVALID_EXTHDR;\n\n\t/* build v4 header */\n\tv4.ihl = 0x5;\n\tv4.version\
+    \ = 0x4;\n\tv4.saddr = saddr;\n\tv4.daddr = v6.daddr.in6_u.u6_addr32[3];\n\tif\
+    \ (v6.nexthdr == IPPROTO_ICMPV6)\n\t\tv4.protocol = IPPROTO_ICMP;\n\telse\n\t\t\
+    v4.protocol = v6.nexthdr;\n\tv4.ttl = v6.hop_limit;\n\tv4.tot_len = htons(ntohs(v6.payload_len)\
+    \ + sizeof(v4));\n\tcsum_off = offsetof(struct iphdr, check);\n\n// CONTEXT: static\
+    \ inline int ipv6_to_ipv4(struct __sk_buff *skb, int nh_off,\n\telse\n\t\tcsum_off\
+    \ += sizeof(struct iphdr);\n\n\tif (l4_csum_replace(skb, nh_off + csum_off, 0,\
+    \ csum, csum_flags) < 0)\n\t\treturn DROP_CSUM_L4;\n\n#ifdef DEBUG_NAT46\n\tprintk(\"\
+    v64 NAT: nh_off %d, csum_off %d\\n\", nh_off, csum_off);\n#endif\n\n\treturn 0;\n\
+    }\n#endif /* __LIB_NAT46__ */\n\n// FILE: bpf/node_config.h\n * This is just a\
+    \ dummy header with dummy values to allow for test\n * compilation without the\
+    \ full code generation engine backend.\n */\n\n#define NODE_ID 0x10001\n#define\
+    \ ROUTER_IP { 0xbe, 0xef, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x1, 0x0,\
+    \ 0x1, 0x0, 0x0 }\n#define ENCAP_IFINDEX 1\n#define HOST_IFINDEX 1\n#define HOST_IP\
+    \ { .addr = { 0xbe, 0xef, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0xa, 0x0, 0x2,\
+    \ 0xf, 0xff, 0xff } }\n#define HOST_ID 1\n#define WORLD_ID 2\n#define HOST_IFINDEX_MAC\
+    \ { .addr = { 0xce, 0x72, 0xa7, 0x03, 0x88, 0x56 } }\n#define NAT46_PREFIX { .addr\
+    \ = { 0xbe, 0xef, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0xa, 0x0, 0x0, 0x0,\
+    \ 0x0, 0x0 } }\n#define IPV4_RANGE 0xf50a\n#define IPV4_MASK 0xffff\n#define IPV4_CLUSTER_MASK\
+    \ 0xff0000\n#define IPV4_CLUSTER_RANGE 0x100000\n#define IPV4_GATEWAY 0xfffff50a\n\
+    #define ENCAP_GENEVE 1\n#define SECLABEL 2\n#define SECLABEL_NB 0xfffff\n#define\
+    \ ENABLE_ARP_RESPONDER\n#define NODE_MAC { .addr = { 0xde, 0xad, 0xbe, 0xef, 0xc0,\
+    \ 0xde } }"
+  diff_summary: |-
+    bpf/bpf_lxc.c:
+    - Reworked loop or branch structure to reduce verifier complexity and keep the path bounded.
+    - Affected context: static inline int __inline__ lxc_encap(struct __sk_buff *skb, __u32 node_id), skip_service_lookup:, static inline int __inline__ ipv4_policy(struct __sk_buff *skb, int ifindex, __u.
+    bpf/bpf_netdev.c:
+    - Reworked loop or branch structure to reduce verifier complexity and keep the path bounded.
+    - Affected context: static inline int handle_ipv4(struct __sk_buff *skb), __section("from-netdev").
+    bpf/lib/common.h:
+    - Reworked loop or branch structure to reduce verifier complexity and keep the path bounded.
+    - Affected context: struct drop_notify {, struct ipv4_ct_tuple {.
+    bpf/lib/conntrack.h:
+    - Reworked loop or branch structure to reduce verifier complexity and keep the path bounded.
+    - Affected context: enum {, static inline int __inline__ ct_lookup6(void *map, struct ipv6_ct_tuple *tuple,, static inline int __inline__ ct_create4(void *map, struct ipv4_ct_tuple *tuple,.
+    bpf/lib/dbg.h:
+    - Reworked loop or branch structure to reduce verifier complexity and keep the path bounded.
+    - Affected context: enum {.
+    bpf/lib/ipv6.h:
+    - Reworked loop or branch structure to reduce verifier complexity and keep the path bounded.
+    - Affected context: static inline __be32 ipv6_pseudohdr_checksum(struct ipv6hdr *hdr,.
+    bpf/lib/nat46.h:
+    - Reworked loop or branch structure to reduce verifier complexity and keep the path bounded.
+    - Affected context: static inline int ipv6_prefix_match(struct in6_addr *addr,, static inline int ipv4_to_ipv6(struct __sk_buff *skb, struct iphdr *ip4,, static inline int ipv6_to_ipv4(struct __sk_buff *skb, int nh_off,.
+    bpf/node_config.h:
+    - Reworked loop or branch structure to reduce verifier complexity and keep the path bounded.
+    - Affected context: the touched section.
+    - Commit subject: nat46: Enable ipv6 containers to talk to an ipv4 container.

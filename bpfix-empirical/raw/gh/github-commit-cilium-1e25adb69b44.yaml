@@ -1,0 +1,62 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-1e25adb69b44
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/1e25adb69b44573ecaea42803fff7312fbfe9372
+  title: 'bpf: Fix verifier error when writing to skb->cb[0]'
+  repository: https://github.com/cilium/cilium
+  commit: 1e25adb69b44573ecaea42803fff7312fbfe9372
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-1e25adb69b44.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: attempted_accepted
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Tested a standalone tc reconstruction of the historical skb->cb[0] write
+    followed by packet revalidation. Local verifier accepted it, and the parsed fresh
+    log had no terminal error.
+raw:
+  case_id: github-commit-cilium-1e25adb69b44
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: 1e25adb69b44573ecaea42803fff7312fbfe9372
+  commit_message: 'bpf: Fix verifier error when writing to skb->cb[0]'
+  commit_date: '2019-06-14'
+  fix_type: volatile_hack
+  buggy_code: "// FILE: bpf/lib/lxc.h\n// CONTEXT: skb_redirect_to_proxy(struct __sk_buff\
+    \ *skb, __be16 proxy_port)\n */\nstatic inline int __inline__\nskb_redirect_to_proxy_hairpin(struct\
+    \ __sk_buff *skb, __be16 proxy_port)\n{\n\tunion macaddr host_mac = HOST_IFINDEX_MAC;\n\
+    \tunion macaddr router_mac = NODE_MAC;\n\tvoid *data_end = (void *) (long) skb->data_end;\n\
+    \tvoid *data = (void *) (long) skb->data;\n\tstruct iphdr *ip4;\n\tint ret;\n\n\
+    \tskb->cb[0] = MARK_MAGIC_TO_PROXY | (proxy_port << 16);\n\n\tif (!revalidate_data(skb,\
+    \ &data, &data_end, &ip4))\n\t\treturn DROP_INVALID;\n\n\tret = ipv4_l3(skb, ETH_HLEN,\
+    \ (__u8 *) &router_mac, (__u8 *) &host_mac, ip4);\n\tif (IS_ERR(ret))\n\t\treturn\
+    \ ret;\n\n\tcilium_dbg_capture(skb, DBG_CAPTURE_PROXY_POST, proxy_port);\n\n\t\
+    return redirect(HOST_IFINDEX, 0);\n}"
+  fixed_code: "// FILE: bpf/lib/lxc.h\n// CONTEXT: skb_redirect_to_proxy(struct __sk_buff\
+    \ *skb, __be16 proxy_port)\n */\nstatic inline int __inline__\nskb_redirect_to_proxy_hairpin(struct\
+    \ __sk_buff *skb, __be16 proxy_port)\n{\n\tunion macaddr host_mac = HOST_IFINDEX_MAC;\n\
+    \tunion macaddr router_mac = NODE_MAC;\n\tvoid *data_end = (void *) (long) skb->data_end;\n\
+    \tvoid *data = (void *) (long) skb->data;\n\tstruct iphdr *ip4;\n\tint ret;\n\n\
+    \tskb->cb[0] = MARK_MAGIC_TO_PROXY | (proxy_port << 16);\n\t/* Workaround to avoid\
+    \ verifier complaint:\n\t * dereference of modified ctx ptr R5 off=48+0, ctx+const\
+    \ is allowed, ctx+const+const is not */\n\tasm volatile(\"\": : :\"memory\");\n\
+    \n\tif (!revalidate_data(skb, &data, &data_end, &ip4))\n\t\treturn DROP_INVALID;\n\
+    \n\tret = ipv4_l3(skb, ETH_HLEN, (__u8 *) &router_mac, (__u8 *) &host_mac, ip4);\n\
+    \tif (IS_ERR(ret))\n\t\treturn ret;\n\n\tcilium_dbg_capture(skb, DBG_CAPTURE_PROXY_POST,\
+    \ proxy_port);\n\n\treturn redirect(HOST_IFINDEX, 0);\n}"
+  diff_summary: |-
+    bpf/lib/lxc.h:
+    - Added or changed a volatile or READ_ONCE-style access to force verifier-friendly code generation.
+    - Affected context: skb_redirect_to_proxy(struct __sk_buff *skb, __be16 proxy_port).
+    - Commit subject: bpf: Fix verifier error when writing to skb->cb[0].

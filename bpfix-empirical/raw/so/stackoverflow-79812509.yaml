@@ -1,0 +1,258 @@
+schema_version: bpfix.raw_external/v1
+raw_id: stackoverflow-79812509
+source_kind: stackoverflow
+source:
+  url: https://stackoverflow.com/questions/79812509/bpf-lsm-bpf-task-storage-get-expects-a-trusted-pointer
+  title: 'BPF LSM: bpf_task_storage_get expects a trusted pointer'
+  repository: null
+  commit: null
+  collected_at: '2026-03-11T16:03:04+00:00'
+collector:
+  original_path: bpfix-empirical/raw/so/stackoverflow-79812509.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: true
+  verifier_log_block_count: 2
+  source_snippet_count: 1
+  has_buggy_code: false
+  has_fixed_code: false
+  has_fix_description: false
+reproduction:
+  status: replay_valid
+  case_id: stackoverflow-79812509
+  case_path: cases/stackoverflow-79812509
+  artifact_path: cases/stackoverflow-79812509
+  reason: admitted_to_bpfix_bench_cases
+raw:
+  case_id: stackoverflow-79812509
+  source: stackoverflow
+  collected_at: '2026-03-11T16:03:04+00:00'
+  question:
+    question_id: 79812509
+    title: 'BPF LSM: bpf_task_storage_get expects a trusted pointer'
+    url: https://stackoverflow.com/questions/79812509/bpf-lsm-bpf-task-storage-get-expects-a-trusted-pointer
+    tags:
+    - ebpf
+    - bpf
+    - linux-security-module
+    score: 1
+    answer_count: 1
+    is_answered: true
+  original_verifier_log:
+    blocks:
+    - |-
+      libbpf: prog 'task_allocation': -- BEGIN PROG LOAD LOG --
+      0: R1=ctx() R10=fp0
+      ; struct task_struct *s_task = (void *)bpf_get_current_task(); @ provenance_tracing_programs.bpf.c:139
+      0: (85) call bpf_get_current_task#35          ; R0_w=scalar()
+      ; prov = bpf_task_storage_get(&provenance_structure_map_task, s_task, NULL, 0); @ provenance_tracing_programs.bpf.c:141
+      1: (18) r1 = 0xffff9a96d1220200       ; R1_w=map_ptr(map=provenance_stru,ks=4,vs=272)
+      3: (bf) r2 = r0                       ; R0_w=scalar(id=1) R2_w=scalar(id=1)
+      4: (b7) r3 = 0                        ; R3_w=0
+      5: (b7) r4 = 0                        ; R4_w=0
+      6: (85) call bpf_task_storage_get#156
+      R2 type=scalar expected=ptr_, trusted_ptr_, rcu_ptr_
+      processed 6 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0 mark_read 0
+      -- END PROG LOAD LOG --
+      libbpf: prog 'task_allocation': failed to load: -13
+      libbpf: failed to load object 'provenance_tracing_programs_bpf'
+      failed to load BPF object: -13
+    - |-
+      ; struct task_struct *s_task = (void *)bpf_get_current_task(); @ provenance_tracing_programs.bpf.c:139
+      0: (85) call bpf_get_current_task#35          ; R0_w=scalar()
+      [...]
+      3: (bf) r2 = r0                       ; R0_w=scalar(id=1) R2_w=scalar(id=1)
+      [...]
+      6: (85) call bpf_task_storage_get#156
+      R2 type=scalar expected=ptr_, trusted_ptr_, rcu_ptr_
+      processed 6 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0 mark_read 0
+    combined: |-
+      libbpf: prog 'task_allocation': -- BEGIN PROG LOAD LOG --
+      0: R1=ctx() R10=fp0
+      ; struct task_struct *s_task = (void *)bpf_get_current_task(); @ provenance_tracing_programs.bpf.c:139
+      0: (85) call bpf_get_current_task#35          ; R0_w=scalar()
+      ; prov = bpf_task_storage_get(&provenance_structure_map_task, s_task, NULL, 0); @ provenance_tracing_programs.bpf.c:141
+      1: (18) r1 = 0xffff9a96d1220200       ; R1_w=map_ptr(map=provenance_stru,ks=4,vs=272)
+      3: (bf) r2 = r0                       ; R0_w=scalar(id=1) R2_w=scalar(id=1)
+      4: (b7) r3 = 0                        ; R3_w=0
+      5: (b7) r4 = 0                        ; R4_w=0
+      6: (85) call bpf_task_storage_get#156
+      R2 type=scalar expected=ptr_, trusted_ptr_, rcu_ptr_
+      processed 6 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0 mark_read 0
+      -- END PROG LOAD LOG --
+      libbpf: prog 'task_allocation': failed to load: -13
+      libbpf: failed to load object 'provenance_tracing_programs_bpf'
+      failed to load BPF object: -13
+
+      ; struct task_struct *s_task = (void *)bpf_get_current_task(); @ provenance_tracing_programs.bpf.c:139
+      0: (85) call bpf_get_current_task#35          ; R0_w=scalar()
+      [...]
+      3: (bf) r2 = r0                       ; R0_w=scalar(id=1) R2_w=scalar(id=1)
+      [...]
+      6: (85) call bpf_task_storage_get#156
+      R2 type=scalar expected=ptr_, trusted_ptr_, rcu_ptr_
+      processed 6 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0 mark_read 0
+  verifier_log:
+    blocks:
+    - |-
+      libbpf: prog 'task_allocation': -- BEGIN PROG LOAD LOG --
+      0: R1=ctx() R10=fp0
+      ; struct task_struct *s_task = (void *)bpf_get_current_task(); @ provenance_tracing_programs.bpf.c:139
+      0: (85) call bpf_get_current_task#35          ; R0_w=scalar()
+      ; prov = bpf_task_storage_get(&provenance_structure_map_task, s_task, NULL, 0); @ provenance_tracing_programs.bpf.c:141
+      1: (18) r1 = 0xffff9a96d1220200       ; R1_w=map_ptr(map=provenance_stru,ks=4,vs=272)
+      3: (bf) r2 = r0                       ; R0_w=scalar(id=1) R2_w=scalar(id=1)
+      4: (b7) r3 = 0                        ; R3_w=0
+      5: (b7) r4 = 0                        ; R4_w=0
+      6: (85) call bpf_task_storage_get#156
+      R2 type=scalar expected=ptr_, trusted_ptr_, rcu_ptr_
+      processed 6 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0 mark_read 0
+      -- END PROG LOAD LOG --
+      libbpf: prog 'task_allocation': failed to load: -13
+      libbpf: failed to load object 'provenance_tracing_programs_bpf'
+      failed to load BPF object: -13
+    - |-
+      ; struct task_struct *s_task = (void *)bpf_get_current_task(); @ provenance_tracing_programs.bpf.c:139
+      0: (85) call bpf_get_current_task#35          ; R0_w=scalar()
+      [...]
+      3: (bf) r2 = r0                       ; R0_w=scalar(id=1) R2_w=scalar(id=1)
+      [...]
+      6: (85) call bpf_task_storage_get#156
+      R2 type=scalar expected=ptr_, trusted_ptr_, rcu_ptr_
+      processed 6 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0 mark_read 0
+    combined: |-
+      libbpf: loading object from <legacy-so-gh-reproducer>/stackoverflow-79812509/prog.o
+      libbpf: elf: section(3) lsm/task_alloc, size 152, link 0, flags 6, type=1
+      libbpf: sec 'lsm/task_alloc': found program 'task_allocation' at insn offset 0 (0 bytes), code size 19 insns (152 bytes)
+      libbpf: elf: section(4) .rellsm/task_alloc, size 16, link 26, flags 40, type=9
+      libbpf: elf: section(5) license, size 4, link 0, flags 3, type=1
+      libbpf: license of <legacy-so-gh-reproducer>/stackoverflow-79812509/prog.o is GPL
+      libbpf: elf: section(6) .maps, size 32, link 0, flags 3, type=1
+      libbpf: elf: section(16) .BTF, size 1203, link 0, flags 0, type=1
+      libbpf: elf: section(18) .BTF.ext, size 192, link 0, flags 0, type=1
+      libbpf: elf: section(26) .symtab, size 360, link 1, flags 0, type=2
+      libbpf: looking for externs among 15 symbols...
+      libbpf: collected 0 externs total
+      libbpf: map 'provenance_structure_map_task': at sec_idx 6, offset 0.
+      libbpf: map 'provenance_structure_map_task': found type = 29.
+      libbpf: map 'provenance_structure_map_task': found key [2], sz = 4.
+      libbpf: map 'provenance_structure_map_task': found value [9], sz = 8.
+      libbpf: map 'provenance_structure_map_task': found map_flags = 0x1.
+      libbpf: sec '.rellsm/task_alloc': collecting relocation for section(3) 'lsm/task_alloc'
+      libbpf: sec '.rellsm/task_alloc': relo #0: insn #1 against 'provenance_structure_map_task'
+      libbpf: prog 'task_allocation': found map 0 (provenance_structure_map_task, sec 6, off 0) for insn #1
+      libbpf: object 'prog': failed (-95) to create BPF token from '/sys/fs/bpf', skipping optional step...
+      libbpf: loaded kernel BTF from '/sys/kernel/btf/vmlinux'
+      libbpf: map 'provenance_structure_map_task': created successfully, fd=4
+      libbpf: prog 'task_allocation': BPF program load failed: -EACCES
+      libbpf: prog 'task_allocation': -- BEGIN PROG LOAD LOG --
+      func#0 @0
+      Live regs before insn:
+        0: .......... (85) call bpf_get_current_task#35
+        1: 0......... (18) r1 = 0xffff8f28ecef7000
+        3: 01........ (bf) r2 = r0
+        4: .12....... (b7) r3 = 0
+        5: .123...... (b7) r4 = 0
+        6: .1234..... (85) call bpf_task_storage_get#156
+        7: 0......... (15) if r0 == 0x0 goto pc+9
+        8: 0......... (bf) r6 = r0
+        9: 0.....6... (07) r6 += 4
+       10: 0.....6... (bf) r1 = r6
+       11: 01....6... (bf) r7 = r0
+       12: .1....67.. (85) call bpf_spin_lock#93
+       13: ......67.. (b7) r1 = 1
+       14: .1....67.. (73) *(u8 *)(r7 +0) = r1
+       15: ......6... (bf) r1 = r6
+       16: .1........ (85) call bpf_spin_unlock#94
+       17: .......... (b7) r0 = 0
+       18: 0......... (95) exit
+      0: R1=ctx() R10=fp0
+      ; struct task_struct *s_task = (void *)bpf_get_current_task(); @ prog.c:221
+      0: (85) call bpf_get_current_task#35          ; R0_w=scalar()
+      ; prov = bpf_task_storage_get(&provenance_structure_map_task, s_task, NULL, 0); @ prog.c:224
+      1: (18) r1 = 0xffff8f28ecef7000       ; R1_w=map_ptr(map=provenance_stru,ks=4,vs=8)
+      3: (bf) r2 = r0                       ; R0_w=scalar(id=1) R2_w=scalar(id=1)
+      4: (b7) r3 = 0                        ; R3_w=0
+      5: (b7) r4 = 0                        ; R4_w=0
+      6: (85) call bpf_task_storage_get#156
+      R2 type=scalar expected=ptr_, trusted_ptr_, rcu_ptr_
+      verification time 58 usec
+      stack depth 0
+      processed 6 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0 mark_read 0
+      -- END PROG LOAD LOG --
+      libbpf: prog 'task_allocation': failed to load: -EACCES
+      libbpf: failed to load object '<legacy-so-gh-reproducer>/stackoverflow-79812509/prog.o'
+      Error: failed to load object file
+  verifier_log_source: captured_on_6.15.11
+  verifier_log_captured_at: '2026-03-20'
+  source_snippets:
+  - |-
+    const struct bpf_func_proto bpf_get_current_task_proto = {
+        .func       = bpf_get_current_task,
+        .gpl_only   = true,
+        .ret_type   = RET_INTEGER,
+    };
+  question_body_text: "I'm working on an LSM BPF program and running into an issue\
+    \ with bpf_task_storage_get. Here\u2019s a minimal example that works:\nstruct\
+    \ provenance_structure {\n__u8 to_trace;\nstruct bpf_spin_lock lock;\n};\nstruct\
+    \ {\n__uint(type, BPF_MAP_TYPE_TASK_STORAGE);\n__uint(map_flags, BPF_F_NO_PREALLOC);\n\
+    __type(key, int);\n__type(value, struct provenance_structure);\n} provenance_structure_map_task\
+    \ SEC(\".maps\");\nSEC(\"lsm/task_alloc\")\nint BPF_PROG(task_allocation, struct\
+    \ task_struct *p, u64 clone_flags) {\nstruct provenance_structure *prov;\nprov\
+    \ = bpf_task_storage_get(&provenance_structure_map_task, p, NULL, 0);\nif(prov){\n\
+    bpf_spin_lock(&prov->lock);\nprov->to_trace = 1;\nbpf_spin_unlock(&prov->lock);\n\
+    }\nreturn 0;\n}\nHowever, if I try to get the BPF storage for the current task\
+    \ instead of the p argument, it fails to attach:\nSEC(\"lsm/task_alloc\")\nint\
+    \ BPF_PROG(task_allocation, struct task_struct *p, u64 clone_flags) {\n// casting\
+    \ the task to (struct task_struct *) yields the same error\nstruct task_struct\
+    \ *s_task = (void *)bpf_get_current_task();\nstruct provenance_structure *prov;\n\
+    prov = bpf_task_storage_get(&provenance_structure_map_task, s_task, NULL, 0);\n\
+    if(prov){\nbpf_spin_lock(&prov->lock);\n// store a provenance_structure to the\
+    \ inode, with the to_trace flag set to True\nprov->to_trace = 1; // true\nbpf_spin_unlock(&prov->lock);\n\
+    }\nreturn 0;\n}\nThe verifier log shows that, the function bpf_task_storage_get\
+    \ expects as second argument a pointer or a trusted pointer, instead it perceives\
+    \ s_task as a scalar:\nlibbpf: prog 'task_allocation': -- BEGIN PROG LOAD LOG\
+    \ --\n0: R1=ctx() R10=fp0\n; struct task_struct *s_task = (void *)bpf_get_current_task();\
+    \ @ provenance_tracing_programs.bpf.c:139\n0: (85) call bpf_get_current_task#35\
+    \ ; R0_w=scalar()\n; prov = bpf_task_storage_get(&provenance_structure_map_task,\
+    \ s_task, NULL, 0); @ provenance_tracing_programs.bpf.c:141\n1: (18) r1 = 0xffff9a96d1220200\
+    \ ; R1_w=map_ptr(map=provenance_stru,ks=4,vs=272)\n3: (bf) r2 = r0 ; R0_w=scalar(id=1)\
+    \ R2_w=scalar(id=1)\n4: (b7) r3 = 0 ; R3_w=0\n5: (b7) r4 = 0 ; R4_w=0\n6: (85)\
+    \ call bpf_task_storage_get#156\nR2 type=scalar expected=ptr_, trusted_ptr_, rcu_ptr_\n\
+    processed 6 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states\
+    \ 0 mark_read 0\n-- END PROG LOAD LOG --\nlibbpf: prog 'task_allocation': failed\
+    \ to load: -13\nlibbpf: failed to load object 'provenance_tracing_programs_bpf'\n\
+    failed to load BPF object: -13"
+  selected_answer:
+    answer_id: 79813194
+    url: https://stackoverflow.com/questions/79812509/bpf-lsm-bpf-task-storage-get-expects-a-trusted-pointer#79813194
+    is_accepted: true
+    score: 2
+    body_text: |-
+      TL;DR. This is happening because the bpf_get_current_task helper doesn't preserve the type of the returned pointer. Instead, you'll want to use bpf_get_current_task_btf.
+      Verifier Error Explanation
+      ; struct task_struct *s_task = (void *)bpf_get_current_task(); @ provenance_tracing_programs.bpf.c:139
+      0: (85) call bpf_get_current_task#35 ; R0_w=scalar()
+      [...]
+      3: (bf) r2 = r0 ; R0_w=scalar(id=1) R2_w=scalar(id=1)
+      [...]
+      6: (85) call bpf_task_storage_get#156
+      R2 type=scalar expected=ptr_, trusted_ptr_, rcu_ptr_
+      processed 6 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0 mark_read 0
+      The verifier complains that R2, the second argument to your bpf_task_storage_get call, contains a scalar instead of a trusted pointer. We can see that this is coherent with the verifier type infered for s_task: at instruction 0, R0 contains the return value from bpf_get_current_task and is identified as a scalar. That is then copied to R2 at instruction 3.
+      That is also coherent with the prototype information provided to the verifier for bpf_get_current_task:
+      const struct bpf_func_proto bpf_get_current_task_proto = {
+      .func = bpf_get_current_task,
+      .gpl_only = true,
+      .ret_type = RET_INTEGER,
+      };
+      Hence, bpf_get_current_task returns a scalar from the verifier's point of view.
+      Solutions
+      There is fortunately an easy solution to this. You can use a newer BPF helper instead, bpf_get_current_task_btf which allows the verifier to preserve the type information via BTF.
+      That is a direct replacement for bpf_get_current_task and, after that, your program will run.
+      Another solution could be to use the bpf_task_from_pid kfunc to retrieve a pointer to a refcounted struct task_struct. You would then need to release this refcounted object with kfunc bpf_task_release. I don't believe this slightly more complex solution is required in your case.
+    fix_description: TL;DR. This is happening because the bpf_get_current_task helper
+      doesn't preserve the type of the returned pointer. Instead, you'll want to use
+      bpf_get_current_task_btf. Solutions There is fortunately an easy solution to
+      this. You can use a newer BPF helper instead, bpf_get_current_task_btf which
+      allows the verifier to preserve the type information via BTF.

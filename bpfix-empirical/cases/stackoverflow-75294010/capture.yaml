@@ -1,0 +1,25 @@
+schema_version: bpfix.capture/v1
+capture_id: stackoverflow-75294010__kernel-6.15.11-clang-18-log2
+case_id: stackoverflow-75294010
+environment_id: kernel-6.15.11-clang-18-log2
+imported_at: '2026-04-30T00:59:55+00:00'
+source_artifact:
+  path: bpfix-empirical/cases/stackoverflow-75294010
+  source_origin: body[0] -> wrapped
+  source_bucket: stackoverflow
+  language: c
+  compile_ok: true
+  verifier_status: rejected
+  verifier_error_match: mismatch
+  fixed_status: not_attempted
+  compatibility_rewrites:
+  - reconstructed the full tracepoint program body because the verified artifact only
+    captured map declarations
+  - kept the original pointer-clearing memset pattern that triggers the reported invalid
+    memory access
+  source_record: bpfix-empirical/raw/so/stackoverflow-75294010.yaml
+replay:
+  build_command: make
+  load_command: make replay-verify
+  verifier_log: replay-verifier.log
+  expected_load_status: verifier_reject

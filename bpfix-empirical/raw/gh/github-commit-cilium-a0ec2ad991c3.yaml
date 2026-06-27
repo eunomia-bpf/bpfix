@@ -1,0 +1,150 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-a0ec2ad991c3
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/a0ec2ad991c36a35f7d6d05fa456f8c28e3e196a
+  title: 'datapath: Decouple IPV4_MASQUERADE from IPV4_NODEPORT'
+  repository: https://github.com/cilium/cilium
+  commit: a0ec2ad991c36a35f7d6d05fa456f8c28e3e196a
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-a0ec2ad991c3.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Decouples masquerade and NodePort address selection; the verifier note describes
+    missed constant optimization, not a load rejection.
+raw:
+  case_id: github-commit-cilium-a0ec2ad991c3
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: a0ec2ad991c36a35f7d6d05fa456f8c28e3e196a
+  commit_message: 'datapath: Decouple IPV4_MASQUERADE from IPV4_NODEPORT'
+  commit_date: '2020-10-22'
+  fix_type: inline_hint
+  buggy_code: "// FILE: bpf/lib/nodeport.h\n#include \"host_firewall.h\"\n\n#define\
+    \ CB_SRC_IDENTITY\t0\n\n#ifdef ENABLE_NODEPORT\n /* Define dummy values to make\
+    \ bpf_{lxc,overlay}.c to compile */\n#ifndef NATIVE_DEV_IFINDEX\n#define NATIVE_DEV_IFINDEX\
+    \ 0\n#endif\n#if defined(ENABLE_IPV4) && !defined(IPV4_NODEPORT)\n#define IPV4_NODEPORT\
+    \ 0\n#endif\n#if defined(ENABLE_IPV6) && !defined(IPV6_NODEPORT_V)\nDEFINE_IPV6(IPV6_NODEPORT,\n\
+    \t    0xbe, 0xef, 0x0, 0x0, 0x0, 0x0, 0x0, 0x1,\n\t    0x0, 0x0, 0x0, 0x1, 0x0,\
+    \ 0x1, 0x0, 0x0);\n# define IPV6_NODEPORT_V\n#endif\n#endif /* ENABLE_NODEPORT\
+    \ */\n\n#ifdef IPV6_NODEPORT_VAL\n# define BPF_V6_NODEPORT(dst)\t\t\t\t\\\n\t\
+    ({\t\t\t\t\t\t\\\n\t\tunion v6addr tmp = IPV6_NODEPORT_VAL;\t\\\n\n// CONTEXT:\
+    \ int tail_handle_nat_fwd_ipv6(struct __ctx_buff *ctx)\n\tBPF_V6_NODEPORT(addr);\n\
+    #endif\n\treturn nodeport_nat_ipv6_fwd(ctx, &addr);\n}\n#endif /* ENABLE_IPV6\
+    \ */\n\n#ifdef ENABLE_IPV4\nstatic __always_inline bool nodeport_uses_dsr4(const\
+    \ struct ipv4_ct_tuple *tuple)\n{\n\treturn nodeport_uses_dsr(tuple->nexthdr);\n\
+    }\n\n/* Returns true if the packet must be SNAT-ed */\nstatic __always_inline\
+    \ bool snat_v4_needed(struct __ctx_buff *ctx, __be32 addr,\n\t\t\t\t\t   bool\
+    \ *from_endpoint __maybe_unused)\n{\n\tstruct endpoint_info *ep __maybe_unused;\n\
+    \tvoid *data, *data_end;\n\tstruct iphdr *ip4;\n\n\tif (!revalidate_data(ctx,\
+    \ &data, &data_end, &ip4))\n\t\treturn false;\n\t/* Basic minimum is to only NAT\
+    \ when there is a potential of\n\t * overlapping tuples, e.g. applications in\
+    \ hostns reusing\n\t * source IPs we SNAT in node-port.\n\t */\n\tif (ip4->saddr\
+    \ == addr)\n\t\treturn true;\n\n#ifdef ENABLE_MASQUERADE /* SNAT local pod to\
+    \ world packets */\n# ifdef IS_BPF_OVERLAY\n\t/* Do not MASQ when this function\
+    \ is executed from bpf_overlay\n\t * (IS_BPF_OVERLAY denotes this fact). Otherwise,\
+    \ a packet will\n\t * be SNAT'd to cilium_host IP addr.\n\t */\n\treturn false;\n\
+    # endif\n#ifdef IPV4_SNAT_EXCLUSION_DST_CIDR\n\t/* Do not MASQ if a dst IP belongs\
+    \ to a pods CIDR\n\t * (native-routing-cidr if specified, otherwise local pod\
+    \ CIDR).\n\n// CONTEXT: static __always_inline bool snat_v4_needed(struct __ctx_buff\
+    \ *ctx, __be32 addr,\n\t\t\t * to a remote node is not encap'd, and is sent\n\t\
+    \t\t * via a native dev. Therefore, such packet has\n\t\t\t * to be MASQ'd. Otherwise,\
+    \ it might be dropped\n\t\t\t * either by underlying network (e.g. AWS drops\n\
+    \t\t\t * packets by default from unknown subnets) or\n\t\t\t * by the remote node\
+    \ if its native dev's\n\t\t\t * rp_filter=1.\n\t\t\t */\n\t\t\tif (info->sec_label\
+    \ == REMOTE_NODE_ID)\n\t\t\t\treturn false;\n#endif\n\n\t\t\treturn true;\n\t\t\
+    }\n\t}\n#endif /*ENABLE_MASQUERADE */\n\n\treturn false;\n}\n\nstatic __always_inline\
+    \ int nodeport_nat_ipv4_fwd(struct __ctx_buff *ctx,\n\t\t\t\t\t\t const __be32\
+    \ addr)\n{\n\tbool from_endpoint = false;\n\tstruct ipv4_nat_target target = {\n\
+    \t\t.min_port = NODEPORT_PORT_MIN_NAT,\n\t\t.max_port = NODEPORT_PORT_MAX_NAT,\n\
+    \t\t.addr = addr,\n\t};\n\tint ret = CTX_ACT_OK;\n\n\tif (snat_v4_needed(ctx,\
+    \ addr, &from_endpoint))\n\t\tret = snat_v4_process(ctx, NAT_DIR_EGRESS, &target,\n\
+    \t\t\t\t      from_endpoint);\n\tif (ret == NAT_PUNT_TO_STACK)\n\t\tret = CTX_ACT_OK;\n\
+    \n\treturn ret;\n}\n\n# ifdef ENABLE_DSR\n/* Helper function to set the IPv4 option\
+    \ for DSR when a backend is remote.\n * NOTE: Revalidate data after calling the\
+    \ function.\n */\n\n// CONTEXT: int tail_rev_nodeport_lb4(struct __ctx_buff *ctx)\n\
+    #endif\n\tret = rev_nodeport_lb4(ctx, &ifindex);\n\tif (IS_ERR(ret))\n\t\treturn\
+    \ send_drop_notify_error(ctx, 0, ret, CTX_ACT_DROP, METRIC_EGRESS);\n\tedt_set_aggregate(ctx,\
+    \ 0);\n\treturn ctx_redirect(ctx, ifindex, 0);\n}\n\ndeclare_tailcall_if(__and(is_defined(ENABLE_IPV4),\
+    \ is_defined(ENABLE_IPV6)),\n\t\t    CILIUM_CALL_IPV4_ENCAP_NODEPORT_NAT)\nint\
+    \ tail_handle_nat_fwd_ipv4(struct __ctx_buff *ctx)\n{\n\t__be32 addr = 0;\n#if\
+    \ defined(ENCAP_IFINDEX) && defined(IS_BPF_OVERLAY)\n\taddr = IPV4_GATEWAY;\n\
+    #else\n\taddr = IPV4_NODEPORT;\n#endif\n\n\treturn nodeport_nat_ipv4_fwd(ctx,\
+    \ addr);\n}\n#endif /* ENABLE_IPV4 */\n\nstatic __always_inline int nodeport_nat_fwd(struct\
+    \ __ctx_buff *ctx)\n{\n\tint ret = CTX_ACT_OK;\n\t__u16 proto;\n\n\tif (!validate_ethertype(ctx,\
+    \ &proto))\n\t\treturn CTX_ACT_OK;\n\tswitch (proto) {\n#ifdef ENABLE_IPV4"
+  fixed_code: "// FILE: bpf/lib/nodeport.h\n#include \"host_firewall.h\"\n\n#define\
+    \ CB_SRC_IDENTITY\t0\n\n#ifdef ENABLE_NODEPORT\n /* Define dummy values to make\
+    \ bpf_{lxc,overlay}.c to compile */\n#ifndef NATIVE_DEV_IFINDEX\n#define NATIVE_DEV_IFINDEX\
+    \ 0\n#endif\n#if defined(ENABLE_IPV4) && !defined(IPV4_NODEPORT)\n#define IPV4_NODEPORT\
+    \ 0\n#endif\n#if defined(ENABLE_IPV4) && defined(ENABLE_MASQUERADE) && !defined(IPV4_MASQUERADE)\n\
+    #define IPV4_MASQUERADE 0\n#endif\n\n#if defined(ENABLE_IPV6) && !defined(IPV6_NODEPORT_V)\n\
+    DEFINE_IPV6(IPV6_NODEPORT,\n\t    0xbe, 0xef, 0x0, 0x0, 0x0, 0x0, 0x0, 0x1,\n\t\
+    \    0x0, 0x0, 0x0, 0x1, 0x0, 0x1, 0x0, 0x0);\n# define IPV6_NODEPORT_V\n#endif\n\
+    #endif /* ENABLE_NODEPORT */\n\n#ifdef IPV6_NODEPORT_VAL\n# define BPF_V6_NODEPORT(dst)\t\
+    \t\t\t\\\n\t({\t\t\t\t\t\t\\\n\t\tunion v6addr tmp = IPV6_NODEPORT_VAL;\t\\\n\n\
+    // CONTEXT: int tail_handle_nat_fwd_ipv6(struct __ctx_buff *ctx)\n\tBPF_V6_NODEPORT(addr);\n\
+    #endif\n\treturn nodeport_nat_ipv6_fwd(ctx, &addr);\n}\n#endif /* ENABLE_IPV6\
+    \ */\n\n#ifdef ENABLE_IPV4\nstatic __always_inline bool nodeport_uses_dsr4(const\
+    \ struct ipv4_ct_tuple *tuple)\n{\n\treturn nodeport_uses_dsr(tuple->nexthdr);\n\
+    }\n\n/* Returns true if the packet must be SNAT-ed. In addition, sets \"addr\"\
+    \ to\n * SNAT IP addr, and if a packet is sent from an endpoint, sets \"from_endpoint\"\
+    \n * to true.\n */\nstatic __always_inline bool snat_v4_needed(struct __ctx_buff\
+    \ *ctx, __be32 *addr,\n\t\t\t\t\t   bool *from_endpoint __maybe_unused)\n{\n\t\
+    struct endpoint_info *ep __maybe_unused;\n\tvoid *data, *data_end;\n\tstruct iphdr\
+    \ *ip4;\n\n\tif (!revalidate_data(ctx, &data, &data_end, &ip4))\n\t\treturn false;\n\
+    \n\t/* Basic minimum is to only NAT when there is a potential of\n\t * overlapping\
+    \ tuples, e.g. applications in hostns reusing\n\t * source IPs we SNAT in NodePort\
+    \ and BPF-masq.\n\t */\n#if defined(ENCAP_IFINDEX) && defined(IS_BPF_OVERLAY)\n\
+    \tif (ip4->saddr == IPV4_GATEWAY) {\n\t\t*addr = IPV4_GATEWAY;\n\t\treturn true;\n\
+    \t}\n#else\n\tif (ip4->saddr == IPV4_NODEPORT) {\n\t\t*addr = IPV4_NODEPORT;\n\
+    \t\treturn true;\n\t}\n# ifdef ENABLE_MASQUERADE\n\tif (ip4->saddr == IPV4_MASQUERADE)\
+    \ {\n\t\t*addr = IPV4_MASQUERADE;\n\t\treturn true;\n\t}\n# endif\n#endif /* defined(ENCAP_IFINDEX)\
+    \ && defined(IS_BPF_OVERLAY) */\n\n\n#ifdef ENABLE_MASQUERADE /* SNAT local pod\
+    \ to world packets */\n# ifdef IS_BPF_OVERLAY\n\t/* Do not MASQ when this function\
+    \ is executed from bpf_overlay\n\t * (IS_BPF_OVERLAY denotes this fact). Otherwise,\
+    \ a packet will\n\t * be SNAT'd to cilium_host IP addr.\n\t */\n\treturn false;\n\
+    # endif\n#ifdef IPV4_SNAT_EXCLUSION_DST_CIDR\n\t/* Do not MASQ if a dst IP belongs\
+    \ to a pods CIDR\n\t * (native-routing-cidr if specified, otherwise local pod\
+    \ CIDR).\n\n// CONTEXT: static __always_inline bool snat_v4_needed(struct __ctx_buff\
+    \ *ctx, __be32 addr,\n\t\t\t * to a remote node is not encap'd, and is sent\n\t\
+    \t\t * via a native dev. Therefore, such packet has\n\t\t\t * to be MASQ'd. Otherwise,\
+    \ it might be dropped\n\t\t\t * either by underlying network (e.g. AWS drops\n\
+    \t\t\t * packets by default from unknown subnets) or\n\t\t\t * by the remote node\
+    \ if its native dev's\n\t\t\t * rp_filter=1.\n\t\t\t */\n\t\t\tif (info->sec_label\
+    \ == REMOTE_NODE_ID)\n\t\t\t\treturn false;\n#endif\n\n\t\t\t*addr = IPV4_MASQUERADE;\n\
+    \t\t\treturn true;\n\t\t}\n\t}\n#endif /*ENABLE_MASQUERADE */\n\n\treturn false;\n\
+    }\n\nstatic __always_inline int nodeport_nat_ipv4_fwd(struct __ctx_buff *ctx)\n\
+    {\n\tbool from_endpoint = false;\n\tstruct ipv4_nat_target target = {\n\t\t.min_port\
+    \ = NODEPORT_PORT_MIN_NAT,\n\t\t.max_port = NODEPORT_PORT_MAX_NAT,\n\t\t.addr\
+    \ = 0,\n\t};\n\tint ret = CTX_ACT_OK;\n\n\tif (snat_v4_needed(ctx, &target.addr,\
+    \ &from_endpoint))\n\t\tret = snat_v4_process(ctx, NAT_DIR_EGRESS, &target,\n\t\
+    \t\t\t      from_endpoint);\n\tif (ret == NAT_PUNT_TO_STACK)\n\t\tret = CTX_ACT_OK;\n\
+    \n\treturn ret;\n}\n\n# ifdef ENABLE_DSR\n/* Helper function to set the IPv4 option\
+    \ for DSR when a backend is remote.\n * NOTE: Revalidate data after calling the\
+    \ function.\n */\n\n// CONTEXT: int tail_rev_nodeport_lb4(struct __ctx_buff *ctx)\n\
+    #endif\n\tret = rev_nodeport_lb4(ctx, &ifindex);\n\tif (IS_ERR(ret))\n\t\treturn\
+    \ send_drop_notify_error(ctx, 0, ret, CTX_ACT_DROP, METRIC_EGRESS);\n\tedt_set_aggregate(ctx,\
+    \ 0);\n\treturn ctx_redirect(ctx, ifindex, 0);\n}\n\ndeclare_tailcall_if(__and(is_defined(ENABLE_IPV4),\
+    \ is_defined(ENABLE_IPV6)),\n\t\t    CILIUM_CALL_IPV4_ENCAP_NODEPORT_NAT)\nint\
+    \ tail_handle_nat_fwd_ipv4(struct __ctx_buff *ctx)\n{\n\treturn nodeport_nat_ipv4_fwd(ctx);\n\
+    }\n#endif /* ENABLE_IPV4 */\n\nstatic __always_inline int nodeport_nat_fwd(struct\
+    \ __ctx_buff *ctx)\n{\n\tint ret = CTX_ACT_OK;\n\t__u16 proto;\n\n\tif (!validate_ethertype(ctx,\
+    \ &proto))\n\t\treturn CTX_ACT_OK;\n\tswitch (proto) {\n#ifdef ENABLE_IPV4"
+  diff_summary: |-
+    bpf/lib/nodeport.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: int tail_handle_nat_fwd_ipv6(struct __ctx_buff *ctx), static __always_inline bool snat_v4_needed(struct __ctx_buff *ctx, __be32 addr,, int tail_rev_nodeport_lb4(struct __ctx_buff *ctx).
+    - Commit subject: datapath: Decouple IPV4_MASQUERADE from IPV4_NODEPORT.

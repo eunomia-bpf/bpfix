@@ -59,7 +59,7 @@ fn stdin_renders_plain_text_diagnostic() {
 #[test]
 fn path_input_renders_plain_text_diagnostic() {
     let path =
-        workspace_root().join("bpfix-bench/cases/stackoverflow-53136145/replay-verifier.log");
+        workspace_root().join("bpfix-empirical/cases/stackoverflow-53136145/replay-verifier.log");
     let output = Command::new(env!("CARGO_BIN_EXE_bpfix"))
         .arg(path)
         .output()

@@ -1,0 +1,64 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-0bf33f653d79
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/0bf33f653d79ae0b53ba060f5a1e28325c255f91
+  title: Update to use LLVM 7.
+  repository: https://github.com/cilium/cilium
+  commit: 0bf33f653d79ae0b53ba060f5a1e28325c255f91
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-0bf33f653d79.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: LLVM 7 migration/API macro change is a compiler/build-environment update,
+    not a specific verifier reject with a replayable log.
+raw:
+  case_id: github-commit-cilium-0bf33f653d79
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: 0bf33f653d79ae0b53ba060f5a1e28325c255f91
+  commit_message: Update to use LLVM 7.
+  commit_date: '2019-02-19'
+  fix_type: loop_rewrite
+  buggy_code: "// FILE: bpf/include/bpf/api.h\n\n/* Map access/manipulation */\nstatic\
+    \ void *BPF_FUNC(map_lookup_elem, void *map, const void *key);\nstatic int BPF_FUNC(map_update_elem,\
+    \ void *map, const void *key,\n\t\t    const void *value, uint32_t flags);\nstatic\
+    \ int BPF_FUNC(map_delete_elem, void *map, const void *key);\n\n/* Time access\
+    \ */\nstatic uint64_t BPF_FUNC(ktime_get_ns);\n\n/* Debugging */\n\n/* FIXME:\
+    \ __attribute__ ((format(printf, 1, 3))) not possible unless\n * llvm bug https://llvm.org/bugs/show_bug.cgi?id=26243\
+    \ gets resolved.\n * It would require ____fmt to be made const, which generates\
+    \ a reloc\n * entry (non-map).\n */\nstatic void BPF_FUNC(trace_printk, const\
+    \ char *fmt, int fmt_size, ...);\n\n#ifndef printt\n# define printt(fmt, ...)\t\
+    \t\t\t\t\t\\\n\t({\t\t\t\t\t\t\t\t\\\n\t\tchar ____fmt[] = fmt;\t\t\t\t\t\\\n\t\
+    \ttrace_printk(____fmt, sizeof(____fmt), ##__VA_ARGS__);\t\\\n\t})\n#endif\n\n\
+    /* Random numbers */\nstatic uint32_t BPF_FUNC(get_prandom_u32);\n\n/* Tail calls\
+    \ */\nstatic void BPF_FUNC(tail_call, struct __sk_buff *skb, void *map,\n\t\t\
+    \     uint32_t index);\n\n/* System helpers */\nstatic uint32_t BPF_FUNC(get_smp_processor_id);"
+  fixed_code: "// FILE: bpf/include/bpf/api.h\n\n/* Map access/manipulation */\nstatic\
+    \ void *BPF_FUNC(map_lookup_elem, void *map, const void *key);\nstatic int BPF_FUNC(map_update_elem,\
+    \ void *map, const void *key,\n\t\t    const void *value, uint32_t flags);\nstatic\
+    \ int BPF_FUNC(map_delete_elem, void *map, const void *key);\n\n/* Time access\
+    \ */\nstatic uint64_t BPF_FUNC(ktime_get_ns);\n\n/* Debugging */\n\n__attribute__((__format__(__printf__,\
+    \ 1, 3)))\nstatic void BPF_FUNC(trace_printk, const char *fmt, int fmt_size, ...);\n\
+    \n#ifndef printt\n# define printt(fmt, ...)\t\t\t\t\t\t\\\n\t({\t\t\t\t\t\t\t\t\
+    \\\n\t\ttrace_printk(____fmt, ##__VA_ARGS__);\t\t\t\\\n\t})\n#endif\n\n/* Random\
+    \ numbers */\nstatic uint32_t BPF_FUNC(get_prandom_u32);\n\n/* Tail calls */\n\
+    static void BPF_FUNC(tail_call, struct __sk_buff *skb, void *map,\n\t\t     uint32_t\
+    \ index);\n\n/* System helpers */\nstatic uint32_t BPF_FUNC(get_smp_processor_id);"
+  diff_summary: |-
+    bpf/include/bpf/api.h:
+    - Reworked loop or branch structure to reduce verifier complexity and keep the path bounded.
+    - Affected context: the touched section.
+    - Commit subject: Update to use LLVM 7..

@@ -1,0 +1,86 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-3d82a4b46517
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/3d82a4b46517bef70e867128ab3b34dd3d7322ff
+  title: 'maps: allow for migration when map properties change'
+  repository: https://github.com/cilium/cilium
+  commit: 3d82a4b46517bef70e867128ab3b34dd3d7322ff
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-3d82a4b46517.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Map migration changes libelf/gelf userspace handling for map properties,
+    not a kernel verifier-rejected BPF program.
+raw:
+  case_id: github-commit-cilium-3d82a4b46517
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: 3d82a4b46517bef70e867128ab3b34dd3d7322ff
+  commit_message: 'maps: allow for migration when map properties change'
+  commit_date: '2018-03-21'
+  fix_type: alignment
+  buggy_code: "// FILE: bpf/include/elf/gelf.h\n   elfutils is distributed in the\
+    \ hope that it will be useful, but\n   WITHOUT ANY WARRANTY; without even the\
+    \ implied warranty of\n   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\
+    \  See the GNU\n   General Public License for more details.\n\n   You should have\
+    \ received copies of the GNU General Public License and\n   the GNU Lesser General\
+    \ Public License along with this program.  If\n   not, see <http://www.gnu.org/licenses/>.\
+    \  */\n\n#ifndef _GELF_H\n#define\t_GELF_H 1\n\n#include <libelf.h>\n\n\n#ifdef\
+    \ __cplusplus\nextern \"C\" {\n#endif\n\n/* Class independent type definitions.\
+    \  Correctly speaking this is not\n   true.  We assume that 64-bit binaries are\
+    \ the largest class and\n   therefore all other classes can be represented without\
+    \ loss.  */\n\n/* Type for a 16-bit quantity.  */\ntypedef Elf64_Half GElf_Half;\n\
+    \n// FILE: bpf/include/elf/libelf.h\n\n   You should have received copies of the\
+    \ GNU General Public License and\n   the GNU Lesser General Public License along\
+    \ with this program.  If\n   not, see <http://www.gnu.org/licenses/>.  */\n\n\
+    #ifndef _LIBELF_H\n#define _LIBELF_H 1\n\n#include <stdint.h>\n#include <sys/types.h>\n\
+    \n/* Get the ELF types.  */\n#include <elf.h>\n\n#ifndef SHF_COMPRESSED\n /* Older\
+    \ glibc elf.h might not yet define the ELF compression types.  */\n #define SHF_COMPRESSED\
+    \      (1 << 11)  /* Section with compressed data. */\n\n /* Section compression\
+    \ header.  Used when SHF_COMPRESSED is set.  */\n\n typedef struct\n {\n   Elf32_Word\
+    \   ch_type;        /* Compression format.  */\n   Elf32_Word   ch_size;     \
+    \   /* Uncompressed data size.  */\n   Elf32_Word   ch_addralign;   /* Uncompressed\
+    \ data alignment.  */"
+  fixed_code: "// FILE: bpf/include/elf/gelf.h\n   elfutils is distributed in the\
+    \ hope that it will be useful, but\n   WITHOUT ANY WARRANTY; without even the\
+    \ implied warranty of\n   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\
+    \  See the GNU\n   General Public License for more details.\n\n   You should have\
+    \ received copies of the GNU General Public License and\n   the GNU Lesser General\
+    \ Public License along with this program.  If\n   not, see <http://www.gnu.org/licenses/>.\
+    \  */\n\n#ifndef _GELF_H\n#define\t_GELF_H 1\n\n#include \"libelf.h\"\n\n#ifdef\
+    \ __cplusplus\nextern \"C\" {\n#endif\n\n/* Class independent type definitions.\
+    \  Correctly speaking this is not\n   true.  We assume that 64-bit binaries are\
+    \ the largest class and\n   therefore all other classes can be represented without\
+    \ loss.  */\n\n/* Type for a 16-bit quantity.  */\ntypedef Elf64_Half GElf_Half;\n\
+    \n// FILE: bpf/include/elf/libelf.h\n\n   You should have received copies of the\
+    \ GNU General Public License and\n   the GNU Lesser General Public License along\
+    \ with this program.  If\n   not, see <http://www.gnu.org/licenses/>.  */\n\n\
+    #ifndef _LIBELF_H\n#define _LIBELF_H 1\n\n#include <stdint.h>\n#include <sys/types.h>\n\
+    \n/* Get the ELF types.  */\n#include \"elf.h\"\n\n#ifndef SHF_COMPRESSED\n /*\
+    \ Older glibc elf.h might not yet define the ELF compression types.  */\n #define\
+    \ SHF_COMPRESSED      (1 << 11)  /* Section with compressed data. */\n\n /* Section\
+    \ compression header.  Used when SHF_COMPRESSED is set.  */\n\n typedef struct\n\
+    \ {\n   Elf32_Word   ch_type;        /* Compression format.  */\n   Elf32_Word\
+    \   ch_size;        /* Uncompressed data size.  */\n   Elf32_Word   ch_addralign;\
+    \   /* Uncompressed data alignment.  */"
+  diff_summary: |-
+    bpf/include/elf/gelf.h:
+    - Adjusted alignment declarations or stack layout to avoid misaligned accesses.
+    - Affected context: the touched section.
+    bpf/include/elf/libelf.h:
+    - Adjusted alignment declarations or stack layout to avoid misaligned accesses.
+    - Affected context: the touched section.
+    - Commit subject: maps: allow for migration when map properties change.

@@ -1,0 +1,356 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-7e8aee152484
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/7e8aee152484dac91501f56dddcf86924246f4e3
+  title: 'datapath: Redirect nodeport L7 LB services'
+  repository: https://github.com/cilium/cilium
+  commit: 7e8aee152484dac91501f56dddcf86924246f4e3
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-7e8aee152484.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: not_reconstructable_from_diff
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: NodePort/L7 redirect changes span host, sock, LB, nodeport, and proxy hairpin
+    code; the diff is too broad for strict standalone reconstruction without a verifier
+    log.
+raw:
+  case_id: github-commit-cilium-7e8aee152484
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: 7e8aee152484dac91501f56dddcf86924246f4e3
+  commit_message: 'datapath: Redirect nodeport L7 LB services'
+  commit_date: '2021-10-20'
+  fix_type: inline_hint
+  buggy_code: "// FILE: bpf/bpf_host.c\n// CONTEXT: handle_ipv6(struct __ctx_buff\
+    \ *ctx, __u32 secctx, const bool from_host)\n\t\tret = icmp6_host_handle(ctx);\n\
+    \t\tif (ret == SKIP_HOST_FIREWALL)\n\t\t\tgoto skip_host_firewall;\n\t\tif (IS_ERR(ret))\n\
+    \t\t\treturn ret;\n\t}\n\n#ifdef ENABLE_NODEPORT\n\tif (!from_host) {\n\t\tif\
+    \ (ctx_get_xfer(ctx) != XFER_PKT_NO_SVC &&\n\t\t    !bpf_skip_nodeport(ctx)) {\n\
+    \t\t\tret = nodeport_lb6(ctx, secctx);\n\t\t\tif (ret < 0)\n\t\t\t\treturn ret;\n\
+    \t\t}\n\t\t/* Verifier workaround: modified ctx access. */\n\t\tif (!revalidate_data(ctx,\
+    \ &data, &data_end, &ip6))\n\t\t\treturn DROP_INVALID;\n\t}\n#endif /* ENABLE_NODEPORT\
+    \ */\n\n#if defined(NO_REDIRECT) && !defined(ENABLE_REDIRECT_FAST)\n\t/* See IPv4\
+    \ case for NO_REDIRECT/ENABLE_REDIRECT_FAST comments */\n\tif (!from_host)\n\t\
+    \tskip_redirect = true;\n\n// CONTEXT: handle_ipv4(struct __ctx_buff *ctx, __u32\
+    \ secctx,\n * then drop the packet.\n */\n#ifndef ENABLE_IPV4_FRAGMENTS\n\tif\
+    \ (ipv4_is_fragment(ip4))\n\t\treturn DROP_FRAG_NOSUPPORT;\n#endif\n\n#ifdef ENABLE_NODEPORT\n\
+    \tif (!from_host) {\n\t\tif (ctx_get_xfer(ctx) != XFER_PKT_NO_SVC &&\n\t\t   \
+    \ !bpf_skip_nodeport(ctx)) {\n\t\t\tret = nodeport_lb4(ctx, secctx);\n\t\t\tif\
+    \ (ret < 0)\n\t\t\t\treturn ret;\n\t\t}\n\t\t/* Verifier workaround: modified\
+    \ ctx access. */\n\t\tif (!revalidate_data(ctx, &data, &data_end, &ip4))\n\t\t\
+    \treturn DROP_INVALID;\n\t}\n#endif /* ENABLE_NODEPORT */\n\n#if defined(NO_REDIRECT)\
+    \ && !defined(ENABLE_REDIRECT_FAST)\n\t/* Without bpf_redirect_neigh() helper,\
+    \ we cannot redirect a\n\t * packet to a local endpoint in the direct routing\
+    \ mode, as\n\t * the redirect bypasses nf_conntrack table. This makes a\n\n//\
+    \ FILE: bpf/bpf_sock.c\n// CONTEXT: static __always_inline int __sock4_xlate_fwd(struct\
+    \ bpf_sock_addr *ctx,\n{\n\tunion lb4_affinity_client_id id;\n\tconst bool in_hostns\
+    \ = ctx_in_hostns(ctx_full, &id.client_cookie);\n\tstruct lb4_backend *backend;\n\
+    \tstruct lb4_service *svc;\n\tstruct lb4_key key = {\n\t\t.address\t= ctx->user_ip4,\n\
+    \t\t.dport\t\t= ctx_dst_port(ctx),\n\t}, orig_key = key;\n\tstruct lb4_service\
+    \ *backend_slot;\n\tbool backend_from_affinity = false;\n\t__u32 backend_id =\
+    \ 0;\n\n\tif (is_defined(ENABLE_SOCKET_LB_HOST_ONLY) && !in_hostns)\n\t\treturn\
+    \ -ENXIO;\n\n\tif (!udp_only && !sock_proto_enabled(ctx->protocol))\n\t\treturn\
+    \ -ENOTSUP;\n\n\t/* In case a direct match fails, we try to look-up surrogate\n\
+    \t * service entries via wildcarded lookup for NodePort and\n\t * HostPort services.\n\
+    \t */\n\tsvc = lb4_lookup_service(&key, true);\n\n// CONTEXT: static __always_inline\
+    \ int __sock4_xlate_fwd(struct bpf_sock_addr *ctx,\n\tif (!svc)\n\t\treturn -ENXIO;\n\
+    \n\t/* Do not perform service translation for external IPs\n\t * that are not\
+    \ a local address because we don't want\n\t * a k8s service to easily do MITM\
+    \ attacks for a public\n\t * IP address. But do the service translation if the\
+    \ IP\n\t * is from the host.\n\t */\n\tif (sock4_skip_xlate(svc, orig_key.address))\n\
+    \t\treturn -EPERM;\n\n\t/* Do not perform service translation at socker layer\
+    \ for services with\n\t * L7 load balancing as the l7 load balancer needs to see\
+    \ the service IP.\n\t */\n\tif (lb4_svc_is_l7loadbalancer(svc))\n\t\treturn 0;\n\
+    \n\tif (lb4_svc_is_affinity(svc)) {\n\t\t/* Note, for newly created affinity entries\
+    \ there is a\n\t\t * small race window. Two processes on two different\n\t\t *\
+    \ CPUs but the same netns may select different backends\n\t\t * for the same service:port.\
+    \ lb4_update_affinity_by_netns()\n\t\t * below would then override the first created\
+    \ one if it\n\t\t * didn't make it into the lookup yet for the other CPU.\n\t\t\
+    \ */\n\t\tbackend_id = lb4_affinity_backend_id_by_netns(svc, &id);\n\t\tbackend_from_affinity\
+    \ = true;\n\n\n// CONTEXT: static __always_inline int __sock4_xlate_fwd(struct\
+    \ bpf_sock_addr *ctx,\n\n\tif (!backend) {\n\t\tupdate_metrics(0, METRIC_EGRESS,\
+    \ REASON_LB_NO_BACKEND);\n\t\treturn -ENOENT;\n\t}\n\n\tif (lb4_svc_is_localredirect(svc)\
+    \ &&\n\t    sock4_skip_xlate_if_same_netns(ctx_full, backend))\n\t\treturn -ENXIO;\n\
+    \n\tif (lb4_svc_is_affinity(svc) && !backend_from_affinity)\n\t\tlb4_update_affinity_by_netns(svc,\
+    \ &id, backend_id);\n\n\tif (sock4_update_revnat(ctx_full, backend, &orig_key,\n\
+    \t\t\t\tsvc->rev_nat_index) < 0) {\n\t\tupdate_metrics(0, METRIC_EGRESS, REASON_LB_REVNAT_UPDATE);\n\
+    \t\treturn -ENOMEM;\n\t}\n\n\tctx->user_ip4 = backend->address;\n\tctx_set_port(ctx,\
+    \ backend->port);\n\n\treturn 0;\n}\n\n\n// CONTEXT: static __always_inline int\
+    \ __sock6_xlate_fwd(struct bpf_sock_addr *ctx,\n{\n#ifdef ENABLE_IPV6\n\tunion\
+    \ lb6_affinity_client_id id;\n\tconst bool in_hostns = ctx_in_hostns(ctx, &id.client_cookie);\n\
+    \tstruct lb6_backend *backend;\n\tstruct lb6_service *svc;\n\tstruct lb6_key key\
+    \ = {\n\t\t.dport\t\t= ctx_dst_port(ctx),\n\t}, orig_key;\n\tstruct lb6_service\
+    \ *backend_slot;\n\tbool backend_from_affinity = false;\n\t__u32 backend_id =\
+    \ 0;\n\n\tif (is_defined(ENABLE_SOCKET_LB_HOST_ONLY) && !in_hostns)\n\t\treturn\
+    \ -ENXIO;\n\n\tif (!udp_only && !sock_proto_enabled(ctx->protocol))\n\t\treturn\
+    \ -ENOTSUP;\n\n\tctx_get_v6_address(ctx, &key.address);\n\tmemcpy(&orig_key, &key,\
+    \ sizeof(key));\n\n\tsvc = lb6_lookup_service(&key, true);\n\tif (!svc)\n\t\t\
+    svc = sock6_wildcard_lookup_full(&key, in_hostns);\n\tif (!svc)\n\t\treturn sock6_xlate_v4_in_v6(ctx,\
+    \ udp_only);\n\n\tif (sock6_skip_xlate(svc, &orig_key.address))\n\t\treturn -EPERM;\n\
+    \n\t/* Do not perform service translation at socker layer for services with\n\t\
+    \ * L7 load balancing as the l7 load balancer needs to see the service IP.\n\t\
+    \ */\n\tif (lb6_svc_is_l7loadbalancer(svc))\n\t\treturn 0;\n\n\tif (lb6_svc_is_affinity(svc))\
+    \ {\n\t\tbackend_id = lb6_affinity_backend_id_by_netns(svc, &id);\n\t\tbackend_from_affinity\
+    \ = true;\n\n\t\tif (backend_id != 0) {\n\t\t\tbackend = __lb6_lookup_backend(backend_id);\n\
+    \t\t\tif (!backend)\n\t\t\t\tbackend_id = 0;\n\t\t}\n\t}\n\n\n// CONTEXT: static\
+    \ __always_inline int __sock6_xlate_fwd(struct bpf_sock_addr *ctx,\n\n\t\tbackend_id\
+    \ = backend_slot->backend_id;\n\t\tbackend = __lb6_lookup_backend(backend_id);\n\
+    \t}\n\n\tif (!backend) {\n\t\tupdate_metrics(0, METRIC_EGRESS, REASON_LB_NO_BACKEND);\n\
+    \t\treturn -ENOENT;\n\t}\n\n\tif (lb6_svc_is_affinity(svc) && !backend_from_affinity)\n\
+    \t\tlb6_update_affinity_by_netns(svc, &id, backend_id);\n\n\tif (sock6_update_revnat(ctx,\
+    \ backend, &orig_key,\n\t\t\t\tsvc->rev_nat_index) < 0) {\n\t\tupdate_metrics(0,\
+    \ METRIC_EGRESS, REASON_LB_REVNAT_UPDATE);\n\t\treturn -ENOMEM;\n\t}\n\n\tctx_set_v6_address(ctx,\
+    \ &backend->address);\n\tctx_set_port(ctx, backend->port);\n\n\treturn 0;\n#else\n\
+    \treturn sock6_xlate_v4_in_v6(ctx, udp_only);\n\n// FILE: bpf/lib/lb.h\n// CONTEXT:\
+    \ bool lb6_src_range_ok(const struct lb6_service *svc __maybe_unused,\n\nstatic\
+    \ __always_inline\nstruct lb6_service *lb6_lookup_service(struct lb6_key *key,\n\
+    \t\t\t\t       const bool scope_switch)\n{\n\tstruct lb6_service *svc;\n\n\tkey->scope\
+    \ = LB_LOOKUP_SCOPE_EXT;\n\tkey->backend_slot = 0;\n\tsvc = map_lookup_elem(&LB6_SERVICES_MAP_V2,\
+    \ key);\n\tif (svc) {\n\t\tif (!scope_switch || !lb6_svc_is_local_scope(svc))\n\
+    \t\t\treturn svc->count ? svc : NULL;\n\t\tkey->scope = LB_LOOKUP_SCOPE_INT;\n\
+    \t\tsvc = map_lookup_elem(&LB6_SERVICES_MAP_V2, key);\n\t\tif (svc && svc->count)\n\
+    \t\t\treturn svc;\n\t}\n\n\treturn NULL;\n}\n\nstatic __always_inline struct lb6_backend\
+    \ *__lb6_lookup_backend(__u32 backend_id)\n{\n\treturn map_lookup_elem(&LB6_BACKEND_MAP_V2,\
+    \ &backend_id);\n}\n\nstatic __always_inline struct lb6_backend *\n\n// CONTEXT:\
+    \ bool lb4_src_range_ok(const struct lb4_service *svc __maybe_unused,\n\nstatic\
+    \ __always_inline\nstruct lb4_service *lb4_lookup_service(struct lb4_key *key,\n\
+    \t\t\t\t       const bool scope_switch)\n{\n\tstruct lb4_service *svc;\n\n\tkey->scope\
+    \ = LB_LOOKUP_SCOPE_EXT;\n\tkey->backend_slot = 0;\n\tsvc = map_lookup_elem(&LB4_SERVICES_MAP_V2,\
+    \ key);\n\tif (svc) {\n\t\tif (!scope_switch || !lb4_svc_is_local_scope(svc))\n\
+    \t\t\treturn svc->count ? svc : NULL;\n\t\tkey->scope = LB_LOOKUP_SCOPE_INT;\n\
+    \t\tsvc = map_lookup_elem(&LB4_SERVICES_MAP_V2, key);\n\t\tif (svc && svc->count)\n\
+    \t\t\treturn svc;\n\t}\n\n\treturn NULL;\n}\n\nstatic __always_inline struct lb4_backend\
+    \ *__lb4_lookup_backend(__u32 backend_id)\n{\n\treturn map_lookup_elem(&LB4_BACKEND_MAP_V2,\
+    \ &backend_id);\n}\n\nstatic __always_inline struct lb4_backend *\n\n// FILE:\
+    \ bpf/lib/nodeport.h\n#include \"common.h\"\n#include \"overloadable.h\"\n#include\
+    \ \"egress_policies.h\"\n#include \"eps.h\"\n#include \"conntrack.h\"\n#include\
+    \ \"csum.h\"\n#include \"encap.h\"\n#include \"identity.h\"\n#include \"trace.h\"\
+    \n#include \"ghash.h\"\n#include \"pcap.h\"\n#include \"host_firewall.h\"\n\n\
+    #define CB_SRC_IDENTITY\t0\n\n#ifdef ENABLE_NODEPORT\n /* Define dummy values\
+    \ to make bpf_{lxc,overlay}.c to compile */\n#ifndef NATIVE_DEV_IFINDEX\n#define\
+    \ NATIVE_DEV_IFINDEX 0\n#endif\n#ifndef DSR_ENCAP_MODE\n#define DSR_ENCAP_MODE\
+    \ 0\n#define DSR_ENCAP_IPIP 2\n#endif\n\n// CONTEXT: static __always_inline int\
+    \ nodeport_lb6(struct __ctx_buff *ctx,\n\t\t\treturn CTX_ACT_OK;\n\t\telse\n\t\
+    \t\treturn ret;\n\t}\n\n\tsvc = lb6_lookup_service(&key, false);\n\tif (svc) {\n\
+    \t\tconst bool skip_l3_xlate = DSR_ENCAP_MODE == DSR_ENCAP_IPIP;\n\n\t\tif (!lb6_src_range_ok(svc,\
+    \ (union v6addr *)&ip6->saddr))\n\t\t\treturn DROP_NOT_IN_SRC_RANGE;\n\n\t\tret\
+    \ = lb6_local(get_ct_map6(&tuple), ctx, l3_off, l4_off,\n\t\t\t\t&csum_off, &key,\
+    \ &tuple, svc, &ct_state_new,\n\t\t\t\tskip_l3_xlate);\n\t\tif (IS_ERR(ret))\n\
+    \t\t\treturn ret;\n\t}\n\n\tif (!svc || !lb6_svc_is_routable(svc)) {\n\t\tif (svc)\n\
+    \t\t\treturn DROP_IS_CLUSTER_IP;\n\nskip_service_lookup:\n\n// CONTEXT: static\
+    \ __always_inline int nodeport_lb4(struct __ctx_buff *ctx,\n\t\t\treturn CTX_ACT_OK;\n\
+    \t\telse\n\t\t\treturn ret;\n\t}\n\n\tsvc = lb4_lookup_service(&key, false);\n\
+    \tif (svc) {\n\t\tconst bool skip_l3_xlate = DSR_ENCAP_MODE == DSR_ENCAP_IPIP;\n\
+    \n\t\tif (!lb4_src_range_ok(svc, ip4->saddr))\n\t\t\treturn DROP_NOT_IN_SRC_RANGE;\n\
+    \n\t\tret = lb4_local(get_ct_map4(&tuple), ctx, l3_off, l4_off,\n\t\t\t\t&csum_off,\
+    \ &key, &tuple, svc, &ct_state_new,\n\t\t\t\tip4->saddr, ipv4_has_l4_header(ip4),\n\
+    \t\t\t\tskip_l3_xlate);\n\t\tif (IS_ERR(ret))\n\t\t\treturn ret;\n\t}\n\n\tif\
+    \ (!svc || !lb4_svc_is_routable(svc)) {\n\t\tif (svc)\n\t\t\treturn DROP_IS_CLUSTER_IP;\n\
+    \n// FILE: bpf/lib/proxy_hairpin.h\n#define __LIB_PROXY_HAIRPIN_H_\n\n#include\
+    \ \"common.h\"\n#include \"utils.h\"\n#include \"ipv6.h\"\n#include \"ipv4.h\"\
+    \n#include \"eth.h\"\n#include \"dbg.h\"\n#include \"trace.h\"\n#include \"csum.h\"\
+    \n#include \"l4.h\"\n\n/**\n * ctx_redirect_to_proxy_hairpin redirects to the\
+    \ proxy by hairpining the\n * packet out the incoming interface\n */\nstatic __always_inline\
+    \ int\nctx_redirect_to_proxy_hairpin(struct __ctx_buff *ctx, __be16 proxy_port,\
+    \ const bool is_ipv6)\n{\n#if defined(ENABLE_IPV4) || defined(ENABLE_IPV6)\n\t\
+    union macaddr host_mac = HOST_IFINDEX_MAC;\n\tunion macaddr router_mac = NODE_MAC;\n\
+    #endif\n\tvoid *data_end = (void *)(long)ctx->data_end;\n\n// CONTEXT: ctx_redirect_to_proxy_hairpin_ipv4(struct\
+    \ __ctx_buff *ctx, __be16 proxy_port)\n\treturn ctx_redirect_to_proxy_hairpin(ctx,\
+    \ proxy_port, false);\n}\n#endif\n\n#ifdef ENABLE_IPV6\nstatic __always_inline\
+    \ int\nctx_redirect_to_proxy_hairpin_ipv6(struct __ctx_buff *ctx, __be16 proxy_port)\n\
+    {\n\treturn ctx_redirect_to_proxy_hairpin(ctx, proxy_port, true);\n}\n#endif\n\
+    \n#endif /* __LIB_PROXY_HAIRPIN_H_ */"
+  fixed_code: "// FILE: bpf/bpf_host.c\n// CONTEXT: handle_ipv6(struct __ctx_buff\
+    \ *ctx, __u32 secctx, const bool from_host)\n\t\tret = icmp6_host_handle(ctx);\n\
+    \t\tif (ret == SKIP_HOST_FIREWALL)\n\t\t\tgoto skip_host_firewall;\n\t\tif (IS_ERR(ret))\n\
+    \t\t\treturn ret;\n\t}\n\n#ifdef ENABLE_NODEPORT\n\tif (!from_host) {\n\t\tif\
+    \ (ctx_get_xfer(ctx) != XFER_PKT_NO_SVC &&\n\t\t    !bpf_skip_nodeport(ctx)) {\n\
+    \t\t\tret = nodeport_lb6(ctx, secctx);\n\t\t\tif (ret < 0 || ret == TC_ACT_REDIRECT)\n\
+    \t\t\t\treturn ret;\n\t\t}\n\t\t/* Verifier workaround: modified ctx access. */\n\
+    \t\tif (!revalidate_data(ctx, &data, &data_end, &ip6))\n\t\t\treturn DROP_INVALID;\n\
+    \t}\n#endif /* ENABLE_NODEPORT */\n\n#if defined(NO_REDIRECT) && !defined(ENABLE_REDIRECT_FAST)\n\
+    \t/* See IPv4 case for NO_REDIRECT/ENABLE_REDIRECT_FAST comments */\n\tif (!from_host)\n\
+    \t\tskip_redirect = true;\n\n// CONTEXT: handle_ipv4(struct __ctx_buff *ctx, __u32\
+    \ secctx,\n * then drop the packet.\n */\n#ifndef ENABLE_IPV4_FRAGMENTS\n\tif\
+    \ (ipv4_is_fragment(ip4))\n\t\treturn DROP_FRAG_NOSUPPORT;\n#endif\n\n#ifdef ENABLE_NODEPORT\n\
+    \tif (!from_host) {\n\t\tif (ctx_get_xfer(ctx) != XFER_PKT_NO_SVC &&\n\t\t   \
+    \ !bpf_skip_nodeport(ctx)) {\n\t\t\tret = nodeport_lb4(ctx, secctx);\n\t\t\tif\
+    \ (ret < 0 || ret == TC_ACT_REDIRECT)\n\t\t\t\treturn ret;\n\t\t}\n\t\t/* Verifier\
+    \ workaround: modified ctx access. */\n\t\tif (!revalidate_data(ctx, &data, &data_end,\
+    \ &ip4))\n\t\t\treturn DROP_INVALID;\n\t}\n#endif /* ENABLE_NODEPORT */\n\n#if\
+    \ defined(NO_REDIRECT) && !defined(ENABLE_REDIRECT_FAST)\n\t/* Without bpf_redirect_neigh()\
+    \ helper, we cannot redirect a\n\t * packet to a local endpoint in the direct\
+    \ routing mode, as\n\t * the redirect bypasses nf_conntrack table. This makes\
+    \ a\n\n// FILE: bpf/bpf_sock.c\n// CONTEXT: static __always_inline int __sock4_xlate_fwd(struct\
+    \ bpf_sock_addr *ctx,\n{\n\tunion lb4_affinity_client_id id;\n\tconst bool in_hostns\
+    \ = ctx_in_hostns(ctx_full, &id.client_cookie);\n\tstruct lb4_backend *backend;\n\
+    \tstruct lb4_service *svc;\n\tstruct lb4_key key = {\n\t\t.address\t= ctx->user_ip4,\n\
+    \t\t.dport\t\t= ctx_dst_port(ctx),\n\t}, orig_key = key;\n\tstruct lb4_service\
+    \ *backend_slot;\n\tbool backend_from_affinity = false;\n\t__u32 backend_id =\
+    \ 0;\n#ifdef ENABLE_L7_LB\n\tstruct lb4_backend l7backend;\n#endif\n\n\tif (is_defined(ENABLE_SOCKET_LB_HOST_ONLY)\
+    \ && !in_hostns)\n\t\treturn -ENXIO;\n\n\tif (!udp_only && !sock_proto_enabled(ctx->protocol))\n\
+    \t\treturn -ENOTSUP;\n\n\t/* In case a direct match fails, we try to look-up surrogate\n\
+    \t * service entries via wildcarded lookup for NodePort and\n\t * HostPort services.\n\
+    \t */\n\tsvc = lb4_lookup_service(&key, true);\n\n// CONTEXT: static __always_inline\
+    \ int __sock4_xlate_fwd(struct bpf_sock_addr *ctx,\n\tif (!svc)\n\t\treturn -ENXIO;\n\
+    \n\t/* Do not perform service translation for external IPs\n\t * that are not\
+    \ a local address because we don't want\n\t * a k8s service to easily do MITM\
+    \ attacks for a public\n\t * IP address. But do the service translation if the\
+    \ IP\n\t * is from the host.\n\t */\n\tif (sock4_skip_xlate(svc, orig_key.address))\n\
+    \t\treturn -EPERM;\n\n#ifdef ENABLE_L7_LB\n\t/* Do not perform service translation\
+    \ at socker layer for\n\t * services with L7 load balancing as we need to postpone\n\
+    \t * policy enforcement to take place after l7 load balancer and\n\t * we can't\
+    \ currently do that from the socket layer.\n\t */\n\tif (lb4_svc_is_l7loadbalancer(svc))\
+    \ {\n\t\t/* TC level eBPF datapath does not handle node local traffic,\n\t\t *\
+    \ but we need to redirect for L7 LB also in that case.\n\t\t */\n\t\tif (is_defined(BPF_HAVE_NETNS_COOKIE)\
+    \ && in_hostns) {\n\t\t\t/* Use the L7 LB proxy port as a backend. Normally this\n\
+    \t\t\t * would cause policy enforcement to be done before the\n\t\t\t * L7 LB\
+    \ (which should not be done), but in this case\n\t\t\t * (node-local nodeport)\
+    \ there is no policy enforcement\n\t\t\t * anyway.\n\t\t\t */\n\t\t\tl7backend.address\
+    \ = bpf_htonl(0x7f000001);\n\t\t\tl7backend.port = svc->l7_lb_proxy_port;\n\t\t\
+    \tl7backend.proto = 0;\n\t\t\tl7backend.pad = 0;\n\t\t\tbackend = &l7backend;\n\
+    \t\t\tgoto out;\n\t\t}\n\t\t/* Let the TC level eBPF datapath redirect to L7 LB.\
+    \ */\n\t\treturn 0;\n\t}\n#endif /* ENABLE_L7_LB */\n\n\tif (lb4_svc_is_affinity(svc))\
+    \ {\n\t\t/* Note, for newly created affinity entries there is a\n\t\t * small\
+    \ race window. Two processes on two different\n\t\t * CPUs but the same netns\
+    \ may select different backends\n\t\t * for the same service:port. lb4_update_affinity_by_netns()\n\
+    \t\t * below would then override the first created one if it\n\t\t * didn't make\
+    \ it into the lookup yet for the other CPU.\n\t\t */\n\t\tbackend_id = lb4_affinity_backend_id_by_netns(svc,\
+    \ &id);\n\t\tbackend_from_affinity = true;\n\n\n// CONTEXT: static __always_inline\
+    \ int __sock4_xlate_fwd(struct bpf_sock_addr *ctx,\n\n\tif (!backend) {\n\t\t\
+    update_metrics(0, METRIC_EGRESS, REASON_LB_NO_BACKEND);\n\t\treturn -ENOENT;\n\
+    \t}\n\n\tif (lb4_svc_is_localredirect(svc) &&\n\t    sock4_skip_xlate_if_same_netns(ctx_full,\
+    \ backend))\n\t\treturn -ENXIO;\n\n\tif (lb4_svc_is_affinity(svc) && !backend_from_affinity)\n\
+    \t\tlb4_update_affinity_by_netns(svc, &id, backend_id);\n#ifdef ENABLE_L7_LB\n\
+    out:\n#endif\n\tif (sock4_update_revnat(ctx_full, backend, &orig_key,\n\t\t\t\t\
+    svc->rev_nat_index) < 0) {\n\t\tupdate_metrics(0, METRIC_EGRESS, REASON_LB_REVNAT_UPDATE);\n\
+    \t\treturn -ENOMEM;\n\t}\n\n\tctx->user_ip4 = backend->address;\n\tctx_set_port(ctx,\
+    \ backend->port);\n\n\treturn 0;\n}\n\n\n// CONTEXT: static __always_inline int\
+    \ __sock6_xlate_fwd(struct bpf_sock_addr *ctx,\n{\n#ifdef ENABLE_IPV6\n\tunion\
+    \ lb6_affinity_client_id id;\n\tconst bool in_hostns = ctx_in_hostns(ctx, &id.client_cookie);\n\
+    \tstruct lb6_backend *backend;\n\tstruct lb6_service *svc;\n\tstruct lb6_key key\
+    \ = {\n\t\t.dport\t\t= ctx_dst_port(ctx),\n\t}, orig_key;\n\tstruct lb6_service\
+    \ *backend_slot;\n\tbool backend_from_affinity = false;\n\t__u32 backend_id =\
+    \ 0;\n#ifdef ENABLE_L7_LB\n\tstruct lb6_backend l7backend;\n#endif\n\n\tif (is_defined(ENABLE_SOCKET_LB_HOST_ONLY)\
+    \ && !in_hostns)\n\t\treturn -ENXIO;\n\n\tif (!udp_only && !sock_proto_enabled(ctx->protocol))\n\
+    \t\treturn -ENOTSUP;\n\n\tctx_get_v6_address(ctx, &key.address);\n\tmemcpy(&orig_key,\
+    \ &key, sizeof(key));\n\n\tsvc = lb6_lookup_service(&key, true);\n\tif (!svc)\n\
+    \t\tsvc = sock6_wildcard_lookup_full(&key, in_hostns);\n\tif (!svc)\n\t\treturn\
+    \ sock6_xlate_v4_in_v6(ctx, udp_only);\n\n\tif (sock6_skip_xlate(svc, &orig_key.address))\n\
+    \t\treturn -EPERM;\n\n#ifdef ENABLE_L7_LB\n\t/* See __sock4_xlate_fwd for commentary.\
+    \ */\n\tif (lb6_svc_is_l7loadbalancer(svc)) {\n\t\tif (is_defined(BPF_HAVE_NETNS_COOKIE)\
+    \ && in_hostns) {\n\t\t\tl7backend.address = { .addr[15] = 1, };\n\t\t\tl7backend.port\
+    \ = svc->l7_lb_proxy_port;\n\t\t\tl7backend.proto = 0;\n\t\t\tl7backend.pad =\
+    \ 0;\n\t\t\tbackend = &l7backend;\n\t\t\tgoto out;\n\t\t}\n\t\treturn 0;\n\t}\n\
+    #endif /* ENABLE_L7_LB */\n\n\tif (lb6_svc_is_affinity(svc)) {\n\t\tbackend_id\
+    \ = lb6_affinity_backend_id_by_netns(svc, &id);\n\t\tbackend_from_affinity = true;\n\
+    \n\t\tif (backend_id != 0) {\n\t\t\tbackend = __lb6_lookup_backend(backend_id);\n\
+    \t\t\tif (!backend)\n\t\t\t\tbackend_id = 0;\n\t\t}\n\t}\n\n\n// CONTEXT: static\
+    \ __always_inline int __sock6_xlate_fwd(struct bpf_sock_addr *ctx,\n\n\t\tbackend_id\
+    \ = backend_slot->backend_id;\n\t\tbackend = __lb6_lookup_backend(backend_id);\n\
+    \t}\n\n\tif (!backend) {\n\t\tupdate_metrics(0, METRIC_EGRESS, REASON_LB_NO_BACKEND);\n\
+    \t\treturn -ENOENT;\n\t}\n\n\tif (lb6_svc_is_affinity(svc) && !backend_from_affinity)\n\
+    \t\tlb6_update_affinity_by_netns(svc, &id, backend_id);\n#ifdef ENABLE_L7_LB\n\
+    out:\n#endif\n\tif (sock6_update_revnat(ctx, backend, &orig_key,\n\t\t\t\tsvc->rev_nat_index)\
+    \ < 0) {\n\t\tupdate_metrics(0, METRIC_EGRESS, REASON_LB_REVNAT_UPDATE);\n\t\t\
+    return -ENOMEM;\n\t}\n\n\tctx_set_v6_address(ctx, &backend->address);\n\tctx_set_port(ctx,\
+    \ backend->port);\n\n\treturn 0;\n#else\n\treturn sock6_xlate_v4_in_v6(ctx, udp_only);\n\
+    \n// FILE: bpf/lib/lb.h\n// CONTEXT: bool lb6_src_range_ok(const struct lb6_service\
+    \ *svc __maybe_unused,\n\nstatic __always_inline\nstruct lb6_service *lb6_lookup_service(struct\
+    \ lb6_key *key,\n\t\t\t\t       const bool scope_switch)\n{\n\tstruct lb6_service\
+    \ *svc;\n\n\tkey->scope = LB_LOOKUP_SCOPE_EXT;\n\tkey->backend_slot = 0;\n\tsvc\
+    \ = map_lookup_elem(&LB6_SERVICES_MAP_V2, key);\n\tif (svc) {\n\t\tif (!scope_switch\
+    \ || !lb6_svc_is_local_scope(svc))\n\t\t\treturn (svc->count || lb6_svc_is_l7loadbalancer(svc))\
+    \ ? svc : NULL;\n\t\tkey->scope = LB_LOOKUP_SCOPE_INT;\n\t\tsvc = map_lookup_elem(&LB6_SERVICES_MAP_V2,\
+    \ key);\n\t\tif (svc && (svc->count || lb6_svc_is_l7loadbalancer(svc)))\n\t\t\t\
+    return svc;\n\t}\n\n\treturn NULL;\n}\n\nstatic __always_inline struct lb6_backend\
+    \ *__lb6_lookup_backend(__u32 backend_id)\n{\n\treturn map_lookup_elem(&LB6_BACKEND_MAP_V2,\
+    \ &backend_id);\n}\n\nstatic __always_inline struct lb6_backend *\n\n// CONTEXT:\
+    \ bool lb4_src_range_ok(const struct lb4_service *svc __maybe_unused,\n\nstatic\
+    \ __always_inline\nstruct lb4_service *lb4_lookup_service(struct lb4_key *key,\n\
+    \t\t\t\t       const bool scope_switch)\n{\n\tstruct lb4_service *svc;\n\n\tkey->scope\
+    \ = LB_LOOKUP_SCOPE_EXT;\n\tkey->backend_slot = 0;\n\tsvc = map_lookup_elem(&LB4_SERVICES_MAP_V2,\
+    \ key);\n\tif (svc) {\n\t\tif (!scope_switch || !lb4_svc_is_local_scope(svc))\n\
+    \t\t\treturn (svc->count || lb4_svc_is_l7loadbalancer(svc)) ? svc : NULL;\n\t\t\
+    key->scope = LB_LOOKUP_SCOPE_INT;\n\t\tsvc = map_lookup_elem(&LB4_SERVICES_MAP_V2,\
+    \ key);\n\t\tif (svc && (svc->count || lb4_svc_is_l7loadbalancer(svc)))\n\t\t\t\
+    return svc;\n\t}\n\n\treturn NULL;\n}\n\nstatic __always_inline struct lb4_backend\
+    \ *__lb4_lookup_backend(__u32 backend_id)\n{\n\treturn map_lookup_elem(&LB4_BACKEND_MAP_V2,\
+    \ &backend_id);\n}\n\nstatic __always_inline struct lb4_backend *\n\n// FILE:\
+    \ bpf/lib/nodeport.h\n#include \"common.h\"\n#include \"overloadable.h\"\n#include\
+    \ \"egress_policies.h\"\n#include \"eps.h\"\n#include \"conntrack.h\"\n#include\
+    \ \"csum.h\"\n#include \"encap.h\"\n#include \"identity.h\"\n#include \"trace.h\"\
+    \n#include \"ghash.h\"\n#include \"pcap.h\"\n#include \"host_firewall.h\"\n#include\
+    \ \"proxy_hairpin.h\"\n\n#define CB_SRC_IDENTITY\t0\n\n#ifdef ENABLE_NODEPORT\n\
+    \ /* Define dummy values to make bpf_{lxc,overlay}.c to compile */\n#ifndef NATIVE_DEV_IFINDEX\n\
+    #define NATIVE_DEV_IFINDEX 0\n#endif\n#ifndef DSR_ENCAP_MODE\n#define DSR_ENCAP_MODE\
+    \ 0\n#define DSR_ENCAP_IPIP 2\n#endif\n\n// CONTEXT: static __always_inline int\
+    \ nodeport_lb6(struct __ctx_buff *ctx,\n\t\t\treturn CTX_ACT_OK;\n\t\telse\n\t\
+    \t\treturn ret;\n\t}\n\n\tsvc = lb6_lookup_service(&key, false);\n\tif (svc) {\n\
+    \t\tconst bool skip_l3_xlate = DSR_ENCAP_MODE == DSR_ENCAP_IPIP;\n\n\t\tif (!lb6_src_range_ok(svc,\
+    \ (union v6addr *)&ip6->saddr))\n\t\t\treturn DROP_NOT_IN_SRC_RANGE;\n\n#if defined(ENABLE_L7_LB)\n\
+    \t\tif (lb6_svc_is_l7loadbalancer(svc)) {\n\t\t\tif (svc->l7_lb_proxy_port > 0)\
+    \ {\n\t\t\t\tsend_trace_notify(ctx, TRACE_TO_PROXY, src_identity, 0,\n\t\t\t\t\
+    \t\t  bpf_ntohs(svc->l7_lb_proxy_port), 0, CT_NEW,\n\t\t\t\t\t\t  monitor);\n\t\
+    \t\t\treturn ctx_redirect_to_proxy_hairpin_ipv6(ctx,\n\t\t\t\t\t\t\t\t\t  svc->l7_lb_proxy_port);\n\
+    \t\t\t}\n\t\t}\n#endif\n\t\tret = lb6_local(get_ct_map6(&tuple), ctx, l3_off,\
+    \ l4_off,\n\t\t\t\t&csum_off, &key, &tuple, svc, &ct_state_new,\n\t\t\t\tskip_l3_xlate);\n\
+    \t\tif (IS_ERR(ret))\n\t\t\treturn ret;\n\t}\n\n\tif (!svc || !lb6_svc_is_routable(svc))\
+    \ {\n\t\tif (svc)\n\t\t\treturn DROP_IS_CLUSTER_IP;\n\nskip_service_lookup:\n\n\
+    // CONTEXT: static __always_inline int nodeport_lb4(struct __ctx_buff *ctx,\n\t\
+    \t\treturn CTX_ACT_OK;\n\t\telse\n\t\t\treturn ret;\n\t}\n\n\tsvc = lb4_lookup_service(&key,\
+    \ false);\n\tif (svc) {\n\t\tconst bool skip_l3_xlate = DSR_ENCAP_MODE == DSR_ENCAP_IPIP;\n\
+    \n\t\tif (!lb4_src_range_ok(svc, ip4->saddr))\n\t\t\treturn DROP_NOT_IN_SRC_RANGE;\n\
+    \n#if defined(ENABLE_L7_LB)\n\t\tif (lb4_svc_is_l7loadbalancer(svc)) {\n\t\t\t\
+    if (svc->l7_lb_proxy_port > 0) {\n\t\t\t\tsend_trace_notify(ctx, TRACE_TO_PROXY,\
+    \ src_identity, 0,\n\t\t\t\t\t\t  bpf_ntohs(svc->l7_lb_proxy_port), 0, CT_NEW,\n\
+    \t\t\t\t\t\t  monitor);\n\t\t\t\treturn ctx_redirect_to_proxy_hairpin_ipv4(ctx,\n\
+    \t\t\t\t\t\t\t\t\t  svc->l7_lb_proxy_port);\n\t\t\t}\n\t\t}\n#endif\n\t\tret =\
+    \ lb4_local(get_ct_map4(&tuple), ctx, l3_off, l4_off,\n\t\t\t\t&csum_off, &key,\
+    \ &tuple, svc, &ct_state_new,\n\t\t\t\tip4->saddr, ipv4_has_l4_header(ip4),\n\t\
+    \t\t\tskip_l3_xlate);\n\t\tif (IS_ERR(ret))\n\t\t\treturn ret;\n\t}\n\n\tif (!svc\
+    \ || !lb4_svc_is_routable(svc)) {\n\t\tif (svc)\n\t\t\treturn DROP_IS_CLUSTER_IP;\n\
+    \n// FILE: bpf/lib/proxy_hairpin.h\n#define __LIB_PROXY_HAIRPIN_H_\n\n#include\
+    \ \"common.h\"\n#include \"utils.h\"\n#include \"ipv6.h\"\n#include \"ipv4.h\"\
+    \n#include \"eth.h\"\n#include \"dbg.h\"\n#include \"trace.h\"\n#include \"csum.h\"\
+    \n#include \"l4.h\"\n\n#if defined(HOST_IFINDEX_MAC) && defined(HOST_IFINDEX)\n\
+    /**\n * ctx_redirect_to_proxy_hairpin redirects to the proxy by hairpining the\n\
+    \ * packet out the incoming interface\n */\nstatic __always_inline int\nctx_redirect_to_proxy_hairpin(struct\
+    \ __ctx_buff *ctx, __be16 proxy_port, const bool is_ipv6)\n{\n#if defined(ENABLE_IPV4)\
+    \ || defined(ENABLE_IPV6)\n\tunion macaddr host_mac = HOST_IFINDEX_MAC;\n\tunion\
+    \ macaddr router_mac = NODE_MAC;\n#endif\n\tvoid *data_end = (void *)(long)ctx->data_end;\n\
+    \n// CONTEXT: ctx_redirect_to_proxy_hairpin_ipv4(struct __ctx_buff *ctx, __be16\
+    \ proxy_port)\n\treturn ctx_redirect_to_proxy_hairpin(ctx, proxy_port, false);\n\
+    }\n#endif\n\n#ifdef ENABLE_IPV6\nstatic __always_inline int\nctx_redirect_to_proxy_hairpin_ipv6(struct\
+    \ __ctx_buff *ctx, __be16 proxy_port)\n{\n\treturn ctx_redirect_to_proxy_hairpin(ctx,\
+    \ proxy_port, true);\n}\n#endif\n\n#endif /* HOST_IFINDEX_MAC && HOST_IFINDEX\
+    \ */\n\n#endif /* __LIB_PROXY_HAIRPIN_H_ */"
+  diff_summary: |-
+    bpf/bpf_host.c:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: handle_ipv6(struct __ctx_buff *ctx, __u32 secctx, const bool from_host), handle_ipv4(struct __ctx_buff *ctx, __u32 secctx,.
+    bpf/bpf_sock.c:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: static __always_inline int __sock4_xlate_fwd(struct bpf_sock_addr *ctx,, static __always_inline int __sock6_xlate_fwd(struct bpf_sock_addr *ctx,.
+    bpf/lib/lb.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: bool lb6_src_range_ok(const struct lb6_service *svc __maybe_unused,, bool lb4_src_range_ok(const struct lb4_service *svc __maybe_unused,.
+    bpf/lib/nodeport.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: static __always_inline int nodeport_lb6(struct __ctx_buff *ctx,, static __always_inline int nodeport_lb4(struct __ctx_buff *ctx,.
+    bpf/lib/proxy_hairpin.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: ctx_redirect_to_proxy_hairpin_ipv4(struct __ctx_buff *ctx, __be16 proxy_port).
+    - Commit subject: datapath: Redirect nodeport L7 LB services.

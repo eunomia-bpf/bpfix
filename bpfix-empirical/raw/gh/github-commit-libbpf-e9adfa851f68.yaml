@@ -1,0 +1,93 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-libbpf-e9adfa851f68
+source_kind: github_commit
+source:
+  url: https://github.com/libbpf/libbpf/commit/e9adfa851f687d668d94b180f883bd43f2fdbcc4
+  title: 'libbpf: Fix libbpf_common.h when installing libbpf through ''make install'''
+  repository: https://github.com/libbpf/libbpf
+  commit: e9adfa851f687d668d94b180f883bd43f2fdbcc4
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-libbpf-e9adfa851f68.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Raw has_verifier_log=false. The fix adds <string.h> to libbpf_common.h for
+    installed-header memset() usage; this is a user-space/header build issue, not
+    verifier rejection.
+raw:
+  case_id: github-commit-libbpf-e9adfa851f68
+  source: github_commits
+  repository: https://github.com/libbpf/libbpf
+  commit_hash: e9adfa851f687d668d94b180f883bd43f2fdbcc4
+  commit_message: 'libbpf: Fix libbpf_common.h when installing libbpf through ''make
+    install'''
+  commit_date: '2019-12-17'
+  fix_type: attribute_annotation
+  buggy_code: |-
+    // FILE: src/libbpf_common.h
+    /* SPDX-License-Identifier: (LGPL-2.1 OR BSD-2-Clause) */
+
+    /*
+     * Common user-facing libbpf helpers.
+     *
+     * Copyright (c) 2019 Facebook
+     */
+
+    #ifndef __LIBBPF_LIBBPF_COMMON_H
+    #define __LIBBPF_LIBBPF_COMMON_H
+
+    #ifndef LIBBPF_API
+    #define LIBBPF_API __attribute__((visibility("default")))
+    #endif
+
+    /* Helper macro to declare and initialize libbpf options struct
+     *
+     * This dance with uninitialized declaration, followed by memset to zero,
+     * followed by assignment using compound literal syntax is done to preserve
+     * ability to use a nice struct field initialization syntax and **hopefully**
+     * have all the padding bytes initialized to zero. It's not guaranteed though,
+     * when copying literal, that compiler won't copy garbage in literal's padding
+     * bytes, but that's the best way I've found and it seems to work in practice.
+  fixed_code: |-
+    // FILE: src/libbpf_common.h
+    /* SPDX-License-Identifier: (LGPL-2.1 OR BSD-2-Clause) */
+
+    /*
+     * Common user-facing libbpf helpers.
+     *
+     * Copyright (c) 2019 Facebook
+     */
+
+    #ifndef __LIBBPF_LIBBPF_COMMON_H
+    #define __LIBBPF_LIBBPF_COMMON_H
+
+    #include <string.h>
+
+    #ifndef LIBBPF_API
+    #define LIBBPF_API __attribute__((visibility("default")))
+    #endif
+
+    /* Helper macro to declare and initialize libbpf options struct
+     *
+     * This dance with uninitialized declaration, followed by memset to zero,
+     * followed by assignment using compound literal syntax is done to preserve
+     * ability to use a nice struct field initialization syntax and **hopefully**
+     * have all the padding bytes initialized to zero. It's not guaranteed though,
+     * when copying literal, that compiler won't copy garbage in literal's padding
+     * bytes, but that's the best way I've found and it seems to work in practice.
+  diff_summary: |-
+    src/libbpf_common.h:
+    - Changed verifier-relevant attributes or annotations on the affected declarations.
+    - Affected context: the touched section.
+    - Commit subject: libbpf: Fix libbpf_common.h when installing libbpf through 'make install'.

@@ -1,0 +1,91 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-9b644fc3fb8f
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/9b644fc3fb8f18010afa48179803e0fb2e86bc8a
+  title: 'bpf: Make DEFINE_U*() macros use .data section for declarations'
+  repository: https://github.com/cilium/cilium
+  commit: 9b644fc3fb8f18010afa48179803e0fb2e86bc8a
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-9b644fc3fb8f.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: true
+  verifier_log_block_count: 1
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: environment_required
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: .data section handling targets older kernels that reject missing global-data
+    rewrites; the raw captured log is an object-without-program error, not a local
+    verifier trace.
+raw:
+  case_id: github-commit-cilium-9b644fc3fb8f
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: 9b644fc3fb8f18010afa48179803e0fb2e86bc8a
+  commit_message: 'bpf: Make DEFINE_U*() macros use .data section for declarations'
+  commit_date: '2023-06-06'
+  fix_type: volatile_hack
+  buggy_code: "// FILE: bpf/lib/static_data.h\n\n#include \"endian.h\"\n\n/* fetch_*\
+    \ macros assist in fetching variously sized static data */\n#define fetch_u16(x)\
+    \ (__u16)__fetch(x)\n#define fetch_u32(x) (__u32)__fetch(x)\n#define fetch_u32_i(x,\
+    \ i) fetch_u32(x ## _ ## i)\n#define fetch_u64(x) __fetch(x)\n#define fetch_u64_i(x,\
+    \ i) fetch_u64(x ## _ ## i)\n#define fetch_ipv6(x) fetch_u64_i(x, 1), fetch_u64_i(x,\
+    \ 2)\n#define fetch_mac(x) { { fetch_u32_i(x, 1), (__u16)fetch_u32_i(x, 2) } }\n\
+    \n/* DEFINE_* macros help to declare static data. */\n#define DEFINE_U16(NAME,\
+    \ value) volatile __u16 NAME = value\n#define DEFINE_U32(NAME, value) volatile\
+    \ __u32 NAME = value\n#define DEFINE_U32_I(NAME, i) volatile __u32 NAME ## _ ##\
+    \ i\n#define DEFINE_U64(NAME, value) volatile __u64 NAME = value\n#define DEFINE_U64_I(NAME,\
+    \ i) volatile __u64 NAME ## _ ## i\n\n#define DEFINE_IPV6(NAME, a1, a2, a3, a4,\
+    \ a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16) \\\nDEFINE_U64_I(NAME,\
+    \ 1) = bpf_cpu_to_be64( \\\n\t\t\t(__u64)(a1) << 56 | (__u64)(a2) << 48 | (__u64)(a3)\
+    \ << 40 | \\\n\t\t\t(__u64)(a4) << 32 | (a5) << 24 | (a6) << 16 | (a7) << 8 |\
+    \ (a8)); \\\nDEFINE_U64_I(NAME, 2) = bpf_cpu_to_be64( \\\n\t\t\t(__u64)(a9) <<\
+    \ 56 | (__u64)(a10) << 48 | (__u64)(a11) << 40 | \\\n\t\t\t(__u64)(a12) << 32\
+    \ | (a13) << 24 | (a14) << 16 | (a15) << 8 | (a16));\n\n#define DEFINE_MAC(NAME,\
+    \ a1, a2, a3, a4, a5, a6)\t\t\t\\\nDEFINE_U32_I(NAME, 1) = (a1) << 24 | (a2) <<\
+    \ 16 |  (a3) << 8 | (a4);\t\\\nDEFINE_U32_I(NAME, 2) =                       \
+    \     (a5) << 8 | (a6)"
+  fixed_code: "// FILE: bpf/lib/static_data.h\n\n#include \"endian.h\"\n\n/* fetch_*\
+    \ macros assist in fetching variously sized static data */\n#define fetch_u16(x)\
+    \ (__u16)__fetch(x)\n#define fetch_u32(x) (__u32)__fetch(x)\n#define fetch_u32_i(x,\
+    \ i) fetch_u32(x ## _ ## i)\n#define fetch_u64(x) __fetch(x)\n#define fetch_u64_i(x,\
+    \ i) fetch_u64(x ## _ ## i)\n#define fetch_ipv6(x) fetch_u64_i(x, 1), fetch_u64_i(x,\
+    \ 2)\n#define fetch_mac(x) { { fetch_u32_i(x, 1), (__u16)fetch_u32_i(x, 2) } }\n\
+    \n#define SEC_DEFINE __section(\".data\")\n/* DEFINE_* macros help to declare\
+    \ static data. */\n#define DEFINE_U16(NAME, value) SEC_DEFINE volatile __u16 NAME\
+    \ = value\n#define DEFINE_U32(NAME, value) SEC_DEFINE volatile __u32 NAME = value\n\
+    #define DEFINE_U32_I(NAME, i) SEC_DEFINE volatile __u32 NAME ## _ ## i\n#define\
+    \ DEFINE_U64(NAME, value) SEC_DEFINE volatile __u64 NAME = value\n#define DEFINE_U64_I(NAME,\
+    \ i) SEC_DEFINE volatile __u64 NAME ## _ ## i\n\n#define DEFINE_IPV6(NAME, a1,\
+    \ a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16) \\\nDEFINE_U64_I(NAME,\
+    \ 1) = bpf_cpu_to_be64( \\\n\t\t\t(__u64)(a1) << 56 | (__u64)(a2) << 48 | (__u64)(a3)\
+    \ << 40 | \\\n\t\t\t(__u64)(a4) << 32 | (a5) << 24 | (a6) << 16 | (a7) << 8 |\
+    \ (a8)); \\\nDEFINE_U64_I(NAME, 2) = bpf_cpu_to_be64( \\\n\t\t\t(__u64)(a9) <<\
+    \ 56 | (__u64)(a10) << 48 | (__u64)(a11) << 40 | \\\n\t\t\t(__u64)(a12) << 32\
+    \ | (a13) << 24 | (a14) << 16 | (a15) << 8 | (a16));\n\n#define DEFINE_MAC(NAME,\
+    \ a1, a2, a3, a4, a5, a6)\t\t\t\\\nDEFINE_U32_I(NAME, 1) = (a1) << 24 | (a2) <<\
+    \ 16 |  (a3) << 8 | (a4);\t\\\nDEFINE_U32_I(NAME, 2) =                       \
+    \     (a5) << 8 | (a6)"
+  diff_summary: |-
+    bpf/lib/static_data.h:
+    - Added or changed a volatile or READ_ONCE-style access to force verifier-friendly code generation.
+    - Affected context: the touched section.
+    - Commit subject: bpf: Make DEFINE_U*() macros use .data section for declarations.
+  verifier_log: |-
+    libbpf: loading object from /tmp/bpfix_oracle_it5j0rxf/prog_wrap-vmlinux.o
+    libbpf: elf: section(3) license, size 4, link 0, flags 3, type=1
+    libbpf: license of /tmp/bpfix_oracle_it5j0rxf/prog_wrap-vmlinux.o is GPL
+    libbpf: elf: section(12) .BTF, size 163, link 0, flags 0, type=1
+    libbpf: elf: section(18) .symtab, size 216, link 1, flags 0, type=2
+    libbpf: looking for externs among 9 symbols...
+    libbpf: collected 0 externs total
+    libbpf: object 'prog_wrap-vmlin': failed (-95) to create BPF token from '/sys/fs/bpf', skipping optional step...
+    Error: object file doesn't contain any bpf program

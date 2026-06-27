@@ -1,0 +1,538 @@
+schema_version: bpfix.raw_external/v1
+raw_id: stackoverflow-78186253
+source_kind: stackoverflow
+source:
+  url: https://stackoverflow.com/questions/78186253/invalid-access-to-packet-while-iterating-over-packet-in-ebpf-program-with-bpf
+  title: "Invalid access to packet while iterating over packet in eBPF program \uFF0C\
+    \ with \u201Cbpf_trace_printk\u201D"
+  repository: null
+  commit: null
+  collected_at: '2026-04-30T00:51:20+00:00'
+collector:
+  original_path: bpfix-empirical/raw/so/stackoverflow-78186253.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: true
+  verifier_log_block_count: 3
+  source_snippet_count: 0
+  has_buggy_code: false
+  has_fixed_code: false
+  has_fix_description: false
+reproduction:
+  status: replay_valid
+  case_id: stackoverflow-78186253
+  case_path: cases/stackoverflow-78186253
+  artifact_path: cases/stackoverflow-78186253
+  reason: admitted_to_bpfix_bench_cases
+raw:
+  case_id: stackoverflow-78186253
+  source: stackoverflow
+  collected_at: '2026-04-30T00:51:20+00:00'
+  question:
+    question_id: 78186253
+    title: "Invalid access to packet while iterating over packet in eBPF program \uFF0C\
+      \ with \u201Cbpf_trace_printk\u201D"
+    url: https://stackoverflow.com/questions/78186253/invalid-access-to-packet-while-iterating-over-packet-in-ebpf-program-with-bpf
+    tags:
+    - linux-kernel
+    - ebpf
+    - xdp-bpf
+    score: 0
+    answer_count: 1
+    is_answered: true
+  verifier_log:
+    blocks:
+    - |-
+      bpf: Failed to load program: Permission denied
+      ; void *data_end = (void *)(long)ctx->data_end;
+      0: (61) r6 = *(u32 *)(r1 +4)
+      ; void *data = (void *)(long)ctx->data;
+      1: (61) r7 = *(u32 *)(r1 +0)
+      ; if ((void *)(eth + 1) > data_end)
+      2: (bf) r1 = r7
+      3: (07) r1 += 14
+      ; if ((void *)(eth + 1) > data_end)
+      4: (2d) if r1 > r6 goto pc+41
+       R1_w=pkt(id=0,off=14,r=14,imm=0) R6_w=pkt_end(id=0,off=0,imm=0) R7_w=pkt(id=0,off=0,r=14,imm=0) R10=fp0
+      ; if (eth->h_proto != htons(ETH_P_IP))
+      5: (71) r1 = *(u8 *)(r7 +12)
+      6: (71) r2 = *(u8 *)(r7 +13)
+      7: (67) r2 <<= 8
+      8: (4f) r2 |= r1
+      ; if (eth->h_proto != htons(ETH_P_IP))
+      9: (55) if r2 != 0x8 goto pc+36
+       R1_w=inv(id=0,umax_value=255,var_off=(0x0; 0xff)) R2_w=inv8 R6_w=pkt_end(id=0,off=0,imm=0) R7_w=pkt(id=0,off=0,r=14,imm=0) R10=fp0
+      ; if ((void *)(ip + 1) > data_end || ip->protocol != IPPROTO_TCP)
+      10: (bf) r1 = r7
+      11: (07) r1 += 34
+      ; if ((void *)(ip + 1) > data_end || ip->protocol != IPPROTO_TCP)
+      12: (2d) if r1 > r6 goto pc+33
+       R1=pkt(id=0,off=34,r=34,imm=0) R2=inv8 R6=pkt_end(id=0,off=0,imm=0) R7=pkt(id=0,off=0,r=34,imm=0) R10=fp0
+      ; if ((void *)(ip + 1) > data_end || ip->protocol != IPPROTO_TCP)
+      13: (71) r1 = *(u8 *)(r7 +23)
+      ; if ((void *)(ip + 1) > data_end || ip->protocol != IPPROTO_TCP)
+      14: (55) if r1 != 0x6 goto pc+31
+       R1_w=inv6 R2=inv8 R6=pkt_end(id=0,off=0,imm=0) R7=pkt(id=0,off=0,r=34,imm=0) R10=fp0
+      ;
+      15: (bf) r1 = r7
+      16: (07) r1 += 14
+      ; struct tcphdr *tcp = (void *)ip + ip->ihl * 4;
+      17: (71) r8 = *(u8 *)(r1 +0)
+      ; struct tcphdr *tcp = (void *)ip + ip->ihl * 4;
+      18: (67) r8 <<= 2
+      19: (57) r8 &= 60
+      ; struct tcphdr *tcp = (void *)ip + ip->ihl * 4;
+      20: (0f) r1 += r8
+      last_idx 20 first_idx 12
+      regs=100 stack=0 before 19: (57) r8 &= 60
+      regs=100 stack=0 before 18: (67) r8 <<= 2
+      regs=100 stack=0 before 17: (71) r8 = *(u8 *)(r1 +0)
+      ; if ((void *)(tcp + 1) > data_end || tcp->dest != htons(TCP_PORT_HTTP))
+      21: (bf) r2 = r1
+      22: (07) r2 += 20
+      ; if ((void *)(tcp + 1) > data_end || tcp->dest != htons(TCP_PORT_HTTP))
+      23: (2d) if r2 > r6 goto pc+22
+       R1=pkt(id=1,off=14,r=34,umax_value=60,var_off=(0x0; 0x3c)) R2=pkt(id=1,off=34,r=34,umax_value=60,var_off=(0x0; 0x3c)) R6=pkt_end(id=0,off=0,imm=0) R7=pkt(id=0,off=0,r=34,imm=0) R8=inv(id=0,umax_value=60,var_off=(0x0; 0x3c)) R10=fp0
+      ; if ((void *)(tcp + 1) > data_end || tcp->dest != htons(TCP_PORT_HTTP))
+      24: (69) r2 = *(u16 *)(r1 +2)
+      ; if ((void *)(tcp + 1) > data_end || tcp->dest != htons(TCP_PORT_HTTP))
+      25: (55) if r2 != 0x401f goto pc+20
+       R1=pkt(id=1,off=14,r=34,umax_value=60,var_off=(0x0; 0x3c)) R2_w=inv16415 R6=pkt_end(id=0,off=0,imm=0) R7=pkt(id=0,off=0,r=34,imm=0) R8=inv(id=0,umax_value=60,var_off=(0x0; 0x3c)) R10=fp0
+      ; unsigned char *payload = (unsigned char *)tcp + (tcp->doff * 4);
+      26: (69) r5 = *(u16 *)(r1 +12)
+      ; unsigned char *payload = (unsigned char *)tcp + (tcp->doff * 4);
+      27: (77) r5 >>= 2
+      28: (57) r5 &= 60
+      ; unsigned char *payload = (unsigned char *)tcp + (tcp->doff * 4);
+      29: (0f) r1 += r5
+      last_idx 29 first_idx 23
+      regs=20 stack=0 before 28: (57) r5 &= 60
+      regs=20 stack=0 before 27: (77) r5 >>= 2
+      regs=20 stack=0 before 26: (69) r5 = *(u16 *)(r1 +12)
+      ; if ((void *)(payload + 1) > data_end)
+      30: (bf) r2 = r1
+      31: (07) r2 += 1
+      ; if ((void *)(payload + 1) > data_end)
+      32: (2d) if r2 > r6 goto pc+13
+       R1=pkt(id=2,off=14,r=15,umax_value=120,var_off=(0x0; 0x7c),s32_max_value=124,u32_max_value=124) R2=pkt(id=2,off=15,r=15,umax_value=120,var_off=(0x0; 0x7c),s32_max_value=124,u32_max_value=124) R5=inv(id=0,umax_value=60,var_off=(0x0; 0x3c)) R6=pkt_end(id=0,off=0,imm=0) R7=pkt(id=0,off=0,r=34,imm=0) R8=inv(id=0,umax_value=60,var_off=(0x0; 0x3c)) R10=fp0
+      33: (07) r1 += 4
+      34: (2d) if r1 > r6 goto pc+11
+       R1_w=pkt(id=2,off=18,r=18,umax_value=120,var_off=(0x0; 0x7c),s32_max_value=124,u32_max_value=124) R2=pkt(id=2,off=15,r=18,umax_value=120,var_off=(0x0; 0x7c),s32_max_value=124,u32_max_value=124) R5=inv(id=0,umax_value=60,var_off=(0x0; 0x3c)) R6=pkt_end(id=0,off=0,imm=0) R7=pkt(id=0,off=0,r=34,imm=0) R8=inv(id=0,umax_value=60,var_off=(0x0; 0x3c)) R10=fp0
+      ; for (int i = 0; i < MAX_ITERATIONS && (payload + i + 4) <= end; i++) {
+      35: (bf) r2 = r8
+      36: (0f) r2 += r5
+      37: (bf) r1 = r7
+      38: (0f) r1 += r2
+      last_idx 38 first_idx 32
+      regs=4 stack=0 before 37: (bf) r1 = r7
+      regs=4 stack=0 before 36: (0f) r2 += r5
+      regs=24 stack=0 before 35: (bf) r2 = r8
+      regs=120 stack=0 before 34: (2d) if r1 > r6 goto pc+11
+      regs=120 stack=0 before 33: (07) r1 += 4
+      regs=120 stack=0 before 32: (2d) if r2 > r6 goto pc+13
+       R1_rw=pkt(id=2,off=14,r=0,umax_value=120,var_off=(0x0; 0x7c),s32_max_value=124,u32_max_value=124) R2_rw=pkt(id=2,off=15,r=0,umax_value=120,var_off=(0x0; 0x7c),s32_max_value=124,u32_max_value=124) R5_rw=invP(id=0,umax_value=60,var_off=(0x0; 0x3c)) R6_r=pkt_end(id=0,off=0,imm=0) R7_r=pkt(id=0,off=0,r=34,imm=0) R8_r=invP(id=0,umax_value=60,var_off=(0x0; 0x3c)) R10=fp0
+      parent didn't have regs=120 stack=0 marks
+      last_idx 31 first_idx 23
+      regs=120 stack=0 before 31: (07) r2 += 1
+      regs=120 stack=0 before 30: (bf) r2 = r1
+      regs=120 stack=0 before 29: (0f) r1 += r5
+      regs=120 stack=0 before 28: (57) r5 &= 60
+      regs=120 stack=0 before 27: (77) r5 >>= 2
+      regs=120 stack=0 before 26: (69) r5 = *(u16 *)(r1 +12)
+      regs=100 stack=0 before 25: (55) if r2 != 0x401f goto pc+20
+      regs=100 stack=0 before 24: (69) r2 = *(u16 *)(r1 +2)
+      regs=100 stack=0 before 23: (2d) if r2 > r6 goto pc+22
+       R1_rw=pkt(id=1,off=14,r=0,umax_value=60,var_off=(0x0; 0x3c)) R2_rw=pkt(id=1,off=34,r=0,umax_value=60,var_off=(0x0; 0x3c)) R6_r=pkt_end(id=0,off=0,imm=0) R7_r=pkt(id=0,off=0,r=34,imm=0) R8_rw=invP(id=0,umax_value=60,var_off=(0x0; 0x3c)) R10=fp0
+      parent didn't have regs=100 stack=0 marks
+      last_idx 22 first_idx 12
+      regs=100 stack=0 before 22: (07) r2 += 20
+      regs=100 stack=0 before 21: (bf) r2 = r1
+      regs=100 stack=0 before 20: (0f) r1 += r8
+      regs=100 stack=0 before 19: (57) r8 &= 60
+      regs=100 stack=0 before 18: (67) r8 <<= 2
+      regs=100 stack=0 before 17: (71) r8 = *(u8 *)(r1 +0)
+      39: (b7) r9 = 0
+      40: (05) goto pc+7
+      ; if (payload[i] == 'c' && payload[i+1] == 'm' && payload[i+2] == 'd' && payload[i+3] == '=') {
+      48: (bf) r2 = r1
+      49: (0f) r2 += r9
+      last_idx 49 first_idx 48
+      regs=200 stack=0 before 48: (bf) r2 = r1
+       R1_rw=pkt(id=4,off=0,r=0,umax_value=120,var_off=(0x0; 0x7c),s32_max_value=124,u32_max_value=124) R2_w=inv(id=0,umax_value=120,var_off=(0x0; 0x7c)) R5=inv(id=0,umax_value=60,var_off=(0x0; 0x3c)) R6=pkt_end(id=0,off=0,imm=0) R7=pkt(id=0,off=0,r=34,imm=0) R8=inv(id=3,umax_value=60,var_off=(0x0; 0x3c)) R9_rw=invP0 R10=fp0
+      parent didn't have regs=200 stack=0 marks
+      last_idx 40 first_idx 32
+      regs=200 stack=0 before 40: (05) goto pc+7
+      regs=200 stack=0 before 39: (b7) r9 = 0
+      50: (71) r3 = *(u8 *)(r2 +14)
+      invalid access to packet, off=14 size=1, R2(id=4,off=14,r=0)
+      R2 offset is outside of the packet
+      processed 44 insns (limit 1000000) max_states_per_insn 0 total_states 4 peak_states 4 mark_read 2
+
+      Traceback (most recent call last):
+        File "/home/parallels/Desktop/test5.py", line 87, in <module>
+          main()
+        File "/home/parallels/Desktop/test5.py", line 71, in main
+          xdp_func = b.load_func("xdp_search_http_request", BPF.XDP)
+        File "/usr/lib/python3/dist-packages/bcc/__init__.py", line 526, in load_func
+          raise Exception("Failed to load BPF program %s: %s" %
+      Exception: Failed to load BPF program b'xdp_search_http_request': Permission denied
+    - |-
+      invalid access to packet, off=14 size=1, R2(id=4,off=14,r=0)
+      R2 offset is outside of the packet
+    - |-
+      33: (07) r1 += 4
+      34: (2d) if r1 > r6 goto pc+11
+       R1_w=pkt(id=2,off=18,r=18,umax_value=120,var_off=(0x0; 0x7c),s32_max_value=124,u32_max_value=124) R2=pkt(id=2,off=15,r=18,umax_value=120,var_off=(0x0; 0x7c),s32_max_value=124,u32_max_value=124) R5=inv(id=0,umax_value=60,var_off=(0x0; 0x3c)) R6=pkt_end(id=0,off=0,imm=0) R7=pkt(id=0,off=0,r=34,imm=0) R8=inv(id=0,umax_value=60,var_off=(0x0; 0x3c)) R10=fp0
+    combined: |-
+      bpf: Failed to load program: Permission denied
+      ; void *data_end = (void *)(long)ctx->data_end;
+      0: (61) r6 = *(u32 *)(r1 +4)
+      ; void *data = (void *)(long)ctx->data;
+      1: (61) r7 = *(u32 *)(r1 +0)
+      ; if ((void *)(eth + 1) > data_end)
+      2: (bf) r1 = r7
+      3: (07) r1 += 14
+      ; if ((void *)(eth + 1) > data_end)
+      4: (2d) if r1 > r6 goto pc+41
+       R1_w=pkt(id=0,off=14,r=14,imm=0) R6_w=pkt_end(id=0,off=0,imm=0) R7_w=pkt(id=0,off=0,r=14,imm=0) R10=fp0
+      ; if (eth->h_proto != htons(ETH_P_IP))
+      5: (71) r1 = *(u8 *)(r7 +12)
+      6: (71) r2 = *(u8 *)(r7 +13)
+      7: (67) r2 <<= 8
+      8: (4f) r2 |= r1
+      ; if (eth->h_proto != htons(ETH_P_IP))
+      9: (55) if r2 != 0x8 goto pc+36
+       R1_w=inv(id=0,umax_value=255,var_off=(0x0; 0xff)) R2_w=inv8 R6_w=pkt_end(id=0,off=0,imm=0) R7_w=pkt(id=0,off=0,r=14,imm=0) R10=fp0
+      ; if ((void *)(ip + 1) > data_end || ip->protocol != IPPROTO_TCP)
+      10: (bf) r1 = r7
+      11: (07) r1 += 34
+      ; if ((void *)(ip + 1) > data_end || ip->protocol != IPPROTO_TCP)
+      12: (2d) if r1 > r6 goto pc+33
+       R1=pkt(id=0,off=34,r=34,imm=0) R2=inv8 R6=pkt_end(id=0,off=0,imm=0) R7=pkt(id=0,off=0,r=34,imm=0) R10=fp0
+      ; if ((void *)(ip + 1) > data_end || ip->protocol != IPPROTO_TCP)
+      13: (71) r1 = *(u8 *)(r7 +23)
+      ; if ((void *)(ip + 1) > data_end || ip->protocol != IPPROTO_TCP)
+      14: (55) if r1 != 0x6 goto pc+31
+       R1_w=inv6 R2=inv8 R6=pkt_end(id=0,off=0,imm=0) R7=pkt(id=0,off=0,r=34,imm=0) R10=fp0
+      ;
+      15: (bf) r1 = r7
+      16: (07) r1 += 14
+      ; struct tcphdr *tcp = (void *)ip + ip->ihl * 4;
+      17: (71) r8 = *(u8 *)(r1 +0)
+      ; struct tcphdr *tcp = (void *)ip + ip->ihl * 4;
+      18: (67) r8 <<= 2
+      19: (57) r8 &= 60
+      ; struct tcphdr *tcp = (void *)ip + ip->ihl * 4;
+      20: (0f) r1 += r8
+      last_idx 20 first_idx 12
+      regs=100 stack=0 before 19: (57) r8 &= 60
+      regs=100 stack=0 before 18: (67) r8 <<= 2
+      regs=100 stack=0 before 17: (71) r8 = *(u8 *)(r1 +0)
+      ; if ((void *)(tcp + 1) > data_end || tcp->dest != htons(TCP_PORT_HTTP))
+      21: (bf) r2 = r1
+      22: (07) r2 += 20
+      ; if ((void *)(tcp + 1) > data_end || tcp->dest != htons(TCP_PORT_HTTP))
+      23: (2d) if r2 > r6 goto pc+22
+       R1=pkt(id=1,off=14,r=34,umax_value=60,var_off=(0x0; 0x3c)) R2=pkt(id=1,off=34,r=34,umax_value=60,var_off=(0x0; 0x3c)) R6=pkt_end(id=0,off=0,imm=0) R7=pkt(id=0,off=0,r=34,imm=0) R8=inv(id=0,umax_value=60,var_off=(0x0; 0x3c)) R10=fp0
+      ; if ((void *)(tcp + 1) > data_end || tcp->dest != htons(TCP_PORT_HTTP))
+      24: (69) r2 = *(u16 *)(r1 +2)
+      ; if ((void *)(tcp + 1) > data_end || tcp->dest != htons(TCP_PORT_HTTP))
+      25: (55) if r2 != 0x401f goto pc+20
+       R1=pkt(id=1,off=14,r=34,umax_value=60,var_off=(0x0; 0x3c)) R2_w=inv16415 R6=pkt_end(id=0,off=0,imm=0) R7=pkt(id=0,off=0,r=34,imm=0) R8=inv(id=0,umax_value=60,var_off=(0x0; 0x3c)) R10=fp0
+      ; unsigned char *payload = (unsigned char *)tcp + (tcp->doff * 4);
+      26: (69) r5 = *(u16 *)(r1 +12)
+      ; unsigned char *payload = (unsigned char *)tcp + (tcp->doff * 4);
+      27: (77) r5 >>= 2
+      28: (57) r5 &= 60
+      ; unsigned char *payload = (unsigned char *)tcp + (tcp->doff * 4);
+      29: (0f) r1 += r5
+      last_idx 29 first_idx 23
+      regs=20 stack=0 before 28: (57) r5 &= 60
+      regs=20 stack=0 before 27: (77) r5 >>= 2
+      regs=20 stack=0 before 26: (69) r5 = *(u16 *)(r1 +12)
+      ; if ((void *)(payload + 1) > data_end)
+      30: (bf) r2 = r1
+      31: (07) r2 += 1
+      ; if ((void *)(payload + 1) > data_end)
+      32: (2d) if r2 > r6 goto pc+13
+       R1=pkt(id=2,off=14,r=15,umax_value=120,var_off=(0x0; 0x7c),s32_max_value=124,u32_max_value=124) R2=pkt(id=2,off=15,r=15,umax_value=120,var_off=(0x0; 0x7c),s32_max_value=124,u32_max_value=124) R5=inv(id=0,umax_value=60,var_off=(0x0; 0x3c)) R6=pkt_end(id=0,off=0,imm=0) R7=pkt(id=0,off=0,r=34,imm=0) R8=inv(id=0,umax_value=60,var_off=(0x0; 0x3c)) R10=fp0
+      33: (07) r1 += 4
+      34: (2d) if r1 > r6 goto pc+11
+       R1_w=pkt(id=2,off=18,r=18,umax_value=120,var_off=(0x0; 0x7c),s32_max_value=124,u32_max_value=124) R2=pkt(id=2,off=15,r=18,umax_value=120,var_off=(0x0; 0x7c),s32_max_value=124,u32_max_value=124) R5=inv(id=0,umax_value=60,var_off=(0x0; 0x3c)) R6=pkt_end(id=0,off=0,imm=0) R7=pkt(id=0,off=0,r=34,imm=0) R8=inv(id=0,umax_value=60,var_off=(0x0; 0x3c)) R10=fp0
+      ; for (int i = 0; i < MAX_ITERATIONS && (payload + i + 4) <= end; i++) {
+      35: (bf) r2 = r8
+      36: (0f) r2 += r5
+      37: (bf) r1 = r7
+      38: (0f) r1 += r2
+      last_idx 38 first_idx 32
+      regs=4 stack=0 before 37: (bf) r1 = r7
+      regs=4 stack=0 before 36: (0f) r2 += r5
+      regs=24 stack=0 before 35: (bf) r2 = r8
+      regs=120 stack=0 before 34: (2d) if r1 > r6 goto pc+11
+      regs=120 stack=0 before 33: (07) r1 += 4
+      regs=120 stack=0 before 32: (2d) if r2 > r6 goto pc+13
+       R1_rw=pkt(id=2,off=14,r=0,umax_value=120,var_off=(0x0; 0x7c),s32_max_value=124,u32_max_value=124) R2_rw=pkt(id=2,off=15,r=0,umax_value=120,var_off=(0x0; 0x7c),s32_max_value=124,u32_max_value=124) R5_rw=invP(id=0,umax_value=60,var_off=(0x0; 0x3c)) R6_r=pkt_end(id=0,off=0,imm=0) R7_r=pkt(id=0,off=0,r=34,imm=0) R8_r=invP(id=0,umax_value=60,var_off=(0x0; 0x3c)) R10=fp0
+      parent didn't have regs=120 stack=0 marks
+      last_idx 31 first_idx 23
+      regs=120 stack=0 before 31: (07) r2 += 1
+      regs=120 stack=0 before 30: (bf) r2 = r1
+      regs=120 stack=0 before 29: (0f) r1 += r5
+      regs=120 stack=0 before 28: (57) r5 &= 60
+      regs=120 stack=0 before 27: (77) r5 >>= 2
+      regs=120 stack=0 before 26: (69) r5 = *(u16 *)(r1 +12)
+      regs=100 stack=0 before 25: (55) if r2 != 0x401f goto pc+20
+      regs=100 stack=0 before 24: (69) r2 = *(u16 *)(r1 +2)
+      regs=100 stack=0 before 23: (2d) if r2 > r6 goto pc+22
+       R1_rw=pkt(id=1,off=14,r=0,umax_value=60,var_off=(0x0; 0x3c)) R2_rw=pkt(id=1,off=34,r=0,umax_value=60,var_off=(0x0; 0x3c)) R6_r=pkt_end(id=0,off=0,imm=0) R7_r=pkt(id=0,off=0,r=34,imm=0) R8_rw=invP(id=0,umax_value=60,var_off=(0x0; 0x3c)) R10=fp0
+      parent didn't have regs=100 stack=0 marks
+      last_idx 22 first_idx 12
+      regs=100 stack=0 before 22: (07) r2 += 20
+      regs=100 stack=0 before 21: (bf) r2 = r1
+      regs=100 stack=0 before 20: (0f) r1 += r8
+      regs=100 stack=0 before 19: (57) r8 &= 60
+      regs=100 stack=0 before 18: (67) r8 <<= 2
+      regs=100 stack=0 before 17: (71) r8 = *(u8 *)(r1 +0)
+      39: (b7) r9 = 0
+      40: (05) goto pc+7
+      ; if (payload[i] == 'c' && payload[i+1] == 'm' && payload[i+2] == 'd' && payload[i+3] == '=') {
+      48: (bf) r2 = r1
+      49: (0f) r2 += r9
+      last_idx 49 first_idx 48
+      regs=200 stack=0 before 48: (bf) r2 = r1
+       R1_rw=pkt(id=4,off=0,r=0,umax_value=120,var_off=(0x0; 0x7c),s32_max_value=124,u32_max_value=124) R2_w=inv(id=0,umax_value=120,var_off=(0x0; 0x7c)) R5=inv(id=0,umax_value=60,var_off=(0x0; 0x3c)) R6=pkt_end(id=0,off=0,imm=0) R7=pkt(id=0,off=0,r=34,imm=0) R8=inv(id=3,umax_value=60,var_off=(0x0; 0x3c)) R9_rw=invP0 R10=fp0
+      parent didn't have regs=200 stack=0 marks
+      last_idx 40 first_idx 32
+      regs=200 stack=0 before 40: (05) goto pc+7
+      regs=200 stack=0 before 39: (b7) r9 = 0
+      50: (71) r3 = *(u8 *)(r2 +14)
+      invalid access to packet, off=14 size=1, R2(id=4,off=14,r=0)
+      R2 offset is outside of the packet
+      processed 44 insns (limit 1000000) max_states_per_insn 0 total_states 4 peak_states 4 mark_read 2
+
+      Traceback (most recent call last):
+        File "/home/parallels/Desktop/test5.py", line 87, in <module>
+          main()
+        File "/home/parallels/Desktop/test5.py", line 71, in main
+          xdp_func = b.load_func("xdp_search_http_request", BPF.XDP)
+        File "/usr/lib/python3/dist-packages/bcc/__init__.py", line 526, in load_func
+          raise Exception("Failed to load BPF program %s: %s" %
+      Exception: Failed to load BPF program b'xdp_search_http_request': Permission denied
+
+      invalid access to packet, off=14 size=1, R2(id=4,off=14,r=0)
+      R2 offset is outside of the packet
+
+      33: (07) r1 += 4
+      34: (2d) if r1 > r6 goto pc+11
+       R1_w=pkt(id=2,off=18,r=18,umax_value=120,var_off=(0x0; 0x7c),s32_max_value=124,u32_max_value=124) R2=pkt(id=2,off=15,r=18,umax_value=120,var_off=(0x0; 0x7c),s32_max_value=124,u32_max_value=124) R5=inv(id=0,umax_value=60,var_off=(0x0; 0x3c)) R6=pkt_end(id=0,off=0,imm=0) R7=pkt(id=0,off=0,r=34,imm=0) R8=inv(id=0,umax_value=60,var_off=(0x0; 0x3c)) R10=fp0
+  source_snippets: []
+  question_body_text: |-
+    I'm working on an eBPF program using the BCC framework to analyze HTTP requests. The program is designed to intercept TCP packets on port 8000 and search for a specific pattern ("cmd=") in the payload. Below is the simplified version of my eBPF code:
+    #include <uapi/linux/bpf.h>
+    #include <linux/if_ether.h>
+    #include <linux/ip.h>
+    #include <linux/tcp.h>
+    #define TCP_PORT_HTTP 8000
+    #define MAX_ITERATIONS 100
+    #define MAX_CMD_LENGTH 100
+    int xdp_search_http_request(struct xdp_md *ctx) {
+    void *data_end = (void *)(long)ctx->data_end;
+    void *data = (void *)(long)ctx->data;
+    struct ethhdr *eth = data;
+    if ((void *)(eth + 1) > data_end)
+    return XDP_PASS;
+    if (eth->h_proto != htons(ETH_P_IP))
+    return XDP_PASS;
+    struct iphdr *ip = (void *)eth + sizeof(*eth);
+    if ((void *)(ip + 1) > data_end || ip->protocol != IPPROTO_TCP)
+    return XDP_PASS;
+    struct tcphdr *tcp = (void *)ip + ip->ihl * 4;
+    if ((void *)(tcp + 1) > data_end || tcp->dest != htons(TCP_PORT_HTTP))
+    return XDP_PASS;
+    unsigned char *payload = (unsigned char *)tcp + (tcp->doff * 4);
+    if ((void *)(payload + 1) > data_end)
+    return XDP_PASS;
+    unsigned char *end = data_end;
+    int cmd_value_start = 0;
+    // Simple search for "cmd=" in the payload
+    for (int i = 0; i < MAX_ITERATIONS && (payload + i + 4) <= end; i++) {
+    if (payload[i] == 'c' && payload[i+1] == 'm' && payload[i+2] == 'd' && payload[i+3] == '=') {
+    // Found the "cmd=" string
+    bpf_trace_printk("Found cmd parameter in HTTP request\\n");
+    // Move the pointer to the value part of "cmd="
+    cmd_value_start = i + 4;
+    int j = 0;
+    char cmd [100] = {0};
+    for (j = cmd_value_start; (j < (cmd_value_start + MAX_CMD_LENGTH)) && ((payload + j) < end) && payload[j] != ' ' && payload[j] != '&'; j++) {
+    cmd[j - cmd_value_start] = payload[j];
+    }
+    bpf_trace_printk("cmd value: %s", cmd);
+    break; // Exit after finding the first occurrence
+    }
+    }
+    return XDP_PASS;
+    }
+    When I attempt to load and execute this program, I encounter the following error:
+    bpf: Failed to load program: Permission denied
+    ; void *data_end = (void *)(long)ctx->data_end;
+    0: (61) r6 = *(u32 *)(r1 +4)
+    ; void *data = (void *)(long)ctx->data;
+    1: (61) r7 = *(u32 *)(r1 +0)
+    ; if ((void *)(eth + 1) > data_end)
+    2: (bf) r1 = r7
+    3: (07) r1 += 14
+    ; if ((void *)(eth + 1) > data_end)
+    4: (2d) if r1 > r6 goto pc+41
+    R1_w=pkt(id=0,off=14,r=14,imm=0) R6_w=pkt_end(id=0,off=0,imm=0) R7_w=pkt(id=0,off=0,r=14,imm=0) R10=fp0
+    ; if (eth->h_proto != htons(ETH_P_IP))
+    5: (71) r1 = *(u8 *)(r7 +12)
+    6: (71) r2 = *(u8 *)(r7 +13)
+    7: (67) r2 <<= 8
+    8: (4f) r2 |= r1
+    ; if (eth->h_proto != htons(ETH_P_IP))
+    9: (55) if r2 != 0x8 goto pc+36
+    R1_w=inv(id=0,umax_value=255,var_off=(0x0; 0xff)) R2_w=inv8 R6_w=pkt_end(id=0,off=0,imm=0) R7_w=pkt(id=0,off=0,r=14,imm=0) R10=fp0
+    ; if ((void *)(ip + 1) > data_end || ip->protocol != IPPROTO_TCP)
+    10: (bf) r1 = r7
+    11: (07) r1 += 34
+    ; if ((void *)(ip + 1) > data_end || ip->protocol != IPPROTO_TCP)
+    12: (2d) if r1 > r6 goto pc+33
+    R1=pkt(id=0,off=34,r=34,imm=0) R2=inv8 R6=pkt_end(id=0,off=0,imm=0) R7=pkt(id=0,off=0,r=34,imm=0) R10=fp0
+    ; if ((void *)(ip + 1) > data_end || ip->protocol != IPPROTO_TCP)
+    13: (71) r1 = *(u8 *)(r7 +23)
+    ; if ((void *)(ip + 1) > data_end || ip->protocol != IPPROTO_TCP)
+    14: (55) if r1 != 0x6 goto pc+31
+    R1_w=inv6 R2=inv8 R6=pkt_end(id=0,off=0,imm=0) R7=pkt(id=0,off=0,r=34,imm=0) R10=fp0
+    ;
+    15: (bf) r1 = r7
+    16: (07) r1 += 14
+    ; struct tcphdr *tcp = (void *)ip + ip->ihl * 4;
+    17: (71) r8 = *(u8 *)(r1 +0)
+    ; struct tcphdr *tcp = (void *)ip + ip->ihl * 4;
+    18: (67) r8 <<= 2
+    19: (57) r8 &= 60
+    ; struct tcphdr *tcp = (void *)ip + ip->ihl * 4;
+    20: (0f) r1 += r8
+    last_idx 20 first_idx 12
+    regs=100 stack=0 before 19: (57) r8 &= 60
+    regs=100 stack=0 before 18: (67) r8 <<= 2
+    regs=100 stack=0 before 17: (71) r8 = *(u8 *)(r1 +0)
+    ; if ((void *)(tcp + 1) > data_end || tcp->dest != htons(TCP_PORT_HTTP))
+    21: (bf) r2 = r1
+    22: (07) r2 += 20
+    ; if ((void *)(tcp + 1) > data_end || tcp->dest != htons(TCP_PORT_HTTP))
+    23: (2d) if r2 > r6 goto pc+22
+    R1=pkt(id=1,off=14,r=34,umax_value=60,var_off=(0x0; 0x3c)) R2=pkt(id=1,off=34,r=34,umax_value=60,var_off=(0x0; 0x3c)) R6=pkt_end(id=0,off=0,imm=0) R7=pkt(id=0,off=0,r=34,imm=0) R8=inv(id=0,umax_value=60,var_off=(0x0; 0x3c)) R10=fp0
+    ; if ((void *)(tcp + 1) > data_end || tcp->dest != htons(TCP_PORT_HTTP))
+    24: (69) r2 = *(u16 *)(r1 +2)
+    ; if ((void *)(tcp + 1) > data_end || tcp->dest != htons(TCP_PORT_HTTP))
+    25: (55) if r2 != 0x401f goto pc+20
+    R1=pkt(id=1,off=14,r=34,umax_value=60,var_off=(0x0; 0x3c)) R2_w=inv16415 R6=pkt_end(id=0,off=0,imm=0) R7=pkt(id=0,off=0,r=34,imm=0) R8=inv(id=0,umax_value=60,var_off=(0x0; 0x3c)) R10=fp0
+    ; unsigned char *payload = (unsigned char *)tcp + (tcp->doff * 4);
+    26: (69) r5 = *(u16 *)(r1 +12)
+    ; unsigned char *payload = (unsigned char *)tcp + (tcp->doff * 4);
+    27: (77) r5 >>= 2
+    28: (57) r5 &= 60
+    ; unsigned char *payload = (unsigned char *)tcp + (tcp->doff * 4);
+    29: (0f) r1 += r5
+    last_idx 29 first_idx 23
+    regs=20 stack=0 before 28: (57) r5 &= 60
+    regs=20 stack=0 before 27: (77) r5 >>= 2
+    regs=20 stack=0 before 26: (69) r5 = *(u16 *)(r1 +12)
+    ; if ((void *)(payload + 1) > data_end)
+    30: (bf) r2 = r1
+    31: (07) r2 += 1
+    ; if ((void *)(payload + 1) > data_end)
+    32: (2d) if r2 > r6 goto pc+13
+    R1=pkt(id=2,off=14,r=15,umax_value=120,var_off=(0x0; 0x7c),s32_max_value=124,u32_max_value=124) R2=pkt(id=2,off=15,r=15,umax_value=120,var_off=(0x0; 0x7c),s32_max_value=124,u32_max_value=124) R5=inv(id=0,umax_value=60,var_off=(0x0; 0x3c)) R6=pkt_end(id=0,off=0,imm=0) R7=pkt(id=0,off=0,r=34,imm=0) R8=inv(id=0,umax_value=60,var_off=(0x0; 0x3c)) R10=fp0
+    33: (07) r1 += 4
+    34: (2d) if r1 > r6 goto pc+11
+    R1_w=pkt(id=2,off=18,r=18,umax_value=120,var_off=(0x0; 0x7c),s32_max_value=124,u32_max_value=124) R2=pkt(id=2,off=15,r=18,umax_value=120,var_off=(0x0; 0x7c),s32_max_value=124,u32_max_value=124) R5=inv(id=0,umax_value=60,var_off=(0x0; 0x3c)) R6=pkt_end(id=0,off=0,imm=0) R7=pkt(id=0,off=0,r=34,imm=0) R8=inv(id=0,umax_value=60,var_off=(0x0; 0x3c)) R10=fp0
+    ; for (int i = 0; i < MAX_ITERATIONS && (payload + i + 4) <= end; i++) {
+    35: (bf) r2 = r8
+    36: (0f) r2 += r5
+    37: (bf) r1 = r7
+    38: (0f) r1 += r2
+    last_idx 38 first_idx 32
+    regs=4 stack=0 before 37: (bf) r1 = r7
+    regs=4 stack=0 before 36: (0f) r2 += r5
+    regs=24 stack=0 before 35: (bf) r2 = r8
+    regs=120 stack=0 before 34: (2d) if r1 > r6 goto pc+11
+    regs=120 stack=0 before 33: (07) r1 += 4
+    regs=120 stack=0 before 32: (2d) if r2 > r6 goto pc+13
+    R1_rw=pkt(id=2,off=14,r=0,umax_value=120,var_off=(0x0; 0x7c),s32_max_value=124,u32_max_value=124) R2_rw=pkt(id=2,off=15,r=0,umax_value=120,var_off=(0x0; 0x7c),s32_max_value=124,u32_max_value=124) R5_rw=invP(id=0,umax_value=60,var_off=(0x0; 0x3c)) R6_r=pkt_end(id=0,off=0,imm=0) R7_r=pkt(id=0,off=0,r=34,imm=0) R8_r=invP(id=0,umax_value=60,var_off=(0x0; 0x3c)) R10=fp0
+    parent didn't have regs=120 stack=0 marks
+    last_idx 31 first_idx 23
+    regs=120 stack=0 before 31: (07) r2 += 1
+    regs=120 stack=0 before 30: (bf) r2 = r1
+    regs=120 stack=0 before 29: (0f) r1 += r5
+    regs=120 stack=0 before 28: (57) r5 &= 60
+    regs=120 stack=0 before 27: (77) r5 >>= 2
+    regs=120 stack=0 before 26: (69) r5 = *(u16 *)(r1 +12)
+    regs=100 stack=0 before 25: (55) if r2 != 0x401f goto pc+20
+    regs=100 stack=0 before 24: (69) r2 = *(u16 *)(r1 +2)
+    regs=100 stack=0 before 23: (2d) if r2 > r6 goto pc+22
+    R1_rw=pkt(id=1,off=14,r=0,umax_value=60,var_off=(0x0; 0x3c)) R2_rw=pkt(id=1,off=34,r=0,umax_value=60,var_off=(0x0; 0x3c)) R6_r=pkt_end(id=0,off=0,imm=0) R7_r=pkt(id=0,off=0,r=34,imm=0) R8_rw=invP(id=0,umax_value=60,var_off=(0x0; 0x3c)) R10=fp0
+    parent didn't have regs=100 stack=0 marks
+    last_idx 22 first_idx 12
+    regs=100 stack=0 before 22: (07) r2 += 20
+    regs=100 stack=0 before 21: (bf) r2 = r1
+    regs=100 stack=0 before 20: (0f) r1 += r8
+    regs=100 stack=0 before 19: (57) r8 &= 60
+    regs=100 stack=0 before 18: (67) r8 <<= 2
+    regs=100 stack=0 before 17: (71) r8 = *(u8 *)(r1 +0)
+    39: (b7) r9 = 0
+    40: (05) goto pc+7
+    ; if (payload[i] == 'c' && payload[i+1] == 'm' && payload[i+2] == 'd' && payload[i+3] == '=') {
+    48: (bf) r2 = r1
+    49: (0f) r2 += r9
+    last_idx 49 first_idx 48
+    regs=200 stack=0 before 48: (bf) r2 = r1
+    R1_rw=pkt(id=4,off=0,r=0,umax_value=120,var_off=(0x0; 0x7c),s32_max_value=124,u32_max_value=124) R2_w=inv(id=0,umax_value=120,var_off=(0x0; 0x7c)) R5=inv(id=0,umax_value=60,var_off=(0x0; 0x3c)) R6=pkt_end(id=0,off=0,imm=0) R7=pkt(id=0,off=0,r=34,imm=0) R8=inv(id=3,umax_value=60,var_off=(0x0; 0x3c)) R9_rw=invP0 R10=fp0
+    parent didn't have regs=200 stack=0 marks
+    last_idx 40 first_idx 32
+    regs=200 stack=0 before 40: (05) goto pc+7
+    regs=200 stack=0 before 39: (b7) r9 = 0
+    50: (71) r3 = *(u8 *)(r2 +14)
+    invalid access to packet, off=14 size=1, R2(id=4,off=14,r=0)
+    R2 offset is outside of the packet
+    processed 44 insns (limit 1000000) max_states_per_insn 0 total_states 4 peak_states 4 mark_read 2
+    Traceback (most recent call last):
+    File "/home/parallels/Desktop/test5.py", line 87, in <module>
+    main()
+    File "/home/parallels/Desktop/test5.py", line 71, in main
+    xdp_func = b.load_func("xdp_search_http_request", BPF.XDP)
+    File "/usr/lib/python3/dist-packages/bcc/__init__.py", line 526, in load_func
+    raise Exception("Failed to load BPF program %s: %s" %
+    Exception: Failed to load BPF program b'xdp_search_http_request': Permission denied
+    Interestingly, if I comment out the bpf_trace_printk("cmd value: %s", cmd); line, the program loads and executes without any issues. This leads me to believe that the problem might be related to the usage of bpf_trace_printk, especially with formatting strings.
+    I've ensured that the necessary kernel capabilities are enabled and have tried running the program with elevated privileges, but the issue persists. I'm currently using [Linux kernel version, BCC version, and any other relevant environment details].
+    Has anyone encountered a similar issue or can offer insights into why bpf_trace_printk might be causing the program to fail to load? Any suggestions on how to resolve this or alternative approaches for debugging within eBPF programs would be greatly appreciated.
+    I am using 5.15.0-100-generic kernel in ubuntu 22.04.
+  selected_answer:
+    answer_id: 78214359
+    url: https://stackoverflow.com/questions/78186253/invalid-access-to-packet-while-iterating-over-packet-in-ebpf-program-with-bpf#78214359
+    is_accepted: true
+    score: 0
+    body_text: |-
+      TL;DR. The verifier is loosing track of payload + i between when you bound check it and when you use it. I'd advise making that it's own variable.
+      Verifier Error Explanation
+      invalid access to packet, off=14 size=1, R2(id=4,off=14,r=0)
+      R2 offset is outside of the packet
+      Here, the verifier is complaining that you are trying to access the packet at offset 14 (off=14), but you haven't checked that the packet is actually big enough (r0).
+      That may be surprising because you did check the packet's length. We can see the corresponding bytecode at instruction 34:
+      33: (07) r1 += 4
+      34: (2d) if r1 > r6 goto pc+11
+      R1_w=pkt(id=2,off=18,r=18,umax_value=120,var_off=(0x0; 0x7c),s32_max_value=124,u32_max_value=124) R2=pkt(id=2,off=15,r=18,umax_value=120,var_off=(0x0; 0x7c),s32_max_value=124,u32_max_value=124) R5=inv(id=0,umax_value=60,var_off=(0x0; 0x3c)) R6=pkt_end(id=0,off=0,imm=0) R7=pkt(id=0,off=0,r=34,imm=0) R8=inv(id=0,umax_value=60,var_off=(0x0; 0x3c)) R10=fp0
+      Here r1 is payload + i + 4 and it is compared with r6, the pointer to the end of the packet. The packet's length is then correctly updated in the verifier state: r1's range is set to 18 (r=18).
+      However, when preparing the memory access for payload[i] == 'c', the compiler recomputes the pointer from scratch instead of using the just-verified r1 register. It thus loses track of the packet bounds.
+      Why does bpf_trace_printk Have an Impact?
+      If you remove calls to bpf_trace_printk, then the cmd variable is never used. The compiler therefore optimizes it away, along with any code to update it. In practice, that probably means that almost all your code is optimized away.
+      Solution
+      Working around this will probably require several iterations to "knead" your code into something that the verifier is able to track. I'd start by making payload + i its own iteration variable:
+      max_ptr = payload + MAX_ITERATIONS;
+      for (int ptr = payload; ptr < max_ptr && (ptr + 4) <= end; ptr++) {
+      if (*ptr == 'c' && ...
+    fix_description: 'TL;DR. The verifier is loosing track of payload + i between
+      when you bound check it and when you use it. I''d advise making that it''s own
+      variable. That may be surprising because you did check the packet''s length.
+      We can see the corresponding bytecode at instruction 34: Solution'

@@ -1,0 +1,951 @@
+schema_version: bpfix.raw_external/v1
+raw_id: stackoverflow-79525201
+source_kind: stackoverflow
+source:
+  url: https://stackoverflow.com/questions/79525201/is-it-possible-to-insert-new-option-into-packets-in-ebpf
+  title: Is it possible to insert new option into packets in eBPF?
+  repository: null
+  commit: null
+  collected_at: '2026-04-30T00:51:23+00:00'
+collector:
+  original_path: bpfix-empirical/raw/so/stackoverflow-79525201.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: true
+  verifier_log_block_count: 1
+  source_snippet_count: 0
+  has_buggy_code: false
+  has_fixed_code: false
+  has_fix_description: false
+reproduction:
+  status: replay_valid
+  case_id: stackoverflow-79525201
+  case_path: cases/stackoverflow-79525201
+  artifact_path: cases/stackoverflow-79525201
+  reason: admitted_to_bpfix_bench_cases
+raw:
+  case_id: stackoverflow-79525201
+  source: stackoverflow
+  collected_at: '2026-04-30T00:51:23+00:00'
+  question:
+    question_id: 79525201
+    title: Is it possible to insert new option into packets in eBPF?
+    url: https://stackoverflow.com/questions/79525201/is-it-possible-to-insert-new-option-into-packets-in-ebpf
+    tags:
+    - ebpf
+    - xdp-bpf
+    score: 0
+    answer_count: 1
+    is_answered: true
+  verifier_log:
+    blocks:
+    - |-
+      bpf: Failed to load program: Invalid argument
+      0: (bf) r6 = r1
+      1: (61) r4 = *(u32 *)(r6 +0)
+      2: (61) r1 = *(u32 *)(r6 +4)
+      3: (bf) r2 = r4
+      4: (07) r2 += 14
+      5: (2d) if r2 > r1 goto pc+179
+       R1_w=pkt_end(id=0,off=0,imm=0) R2_w=pkt(id=0,off=14,r=14,imm=0) R4_w=pkt(id=0,off=0,r=14,imm=0) R6_w=ctx(id=0,off=0,imm=0) R10=fp0
+      6: (bf) r3 = r4
+      7: (07) r3 += 34
+      8: (2d) if r3 > r1 goto pc+176
+       R1_w=pkt_end(id=0,off=0,imm=0) R2_w=pkt(id=0,off=14,r=34,imm=0) R3_w=pkt(id=0,off=34,r=34,imm=0) R4_w=pkt(id=0,off=0,r=34,imm=0) R6_w=ctx(id=0,off=0,imm=0) R10=fp0
+      9: (bf) r2 = r4
+      10: (07) r2 += 38
+      11: (3d) if r2 >= r1 goto pc+173
+       R1=pkt_end(id=0,off=0,imm=0) R2=pkt(id=0,off=38,r=39,imm=0) R3=pkt(id=0,off=34,r=39,imm=0) R4=pkt(id=0,off=0,r=39,imm=0) R6=ctx(id=0,off=0,imm=0) R10=fp0
+      12: (b7) r8 = 0
+      13: (b7) r5 = 1
+      14: (71) r7 = *(u8 *)(r3 +0)
+      15: (bf) r0 = r3
+      16: (55) if r7 != 0x1f goto pc+102
+       R0_w=pkt(id=0,off=34,r=39,imm=0) R1=pkt_end(id=0,off=0,imm=0) R2=pkt(id=0,off=38,r=39,imm=0) R3=pkt(id=0,off=34,r=39,imm=0) R4=pkt(id=0,off=0,r=39,imm=0) R5_w=inv1 R6=ctx(id=0,off=0,imm=0) R7_w=inv31 R8_w=inv0 R10=fp0
+      17: (69) r4 = *(u16 *)(r0 +2)
+      18: (15) if r4 == 0x0 goto pc+8
+       R0_w=pkt(id=0,off=34,r=39,imm=0) R1=pkt_end(id=0,off=0,imm=0) R2=pkt(id=0,off=38,r=39,imm=0) R3=pkt(id=0,off=34,r=39,imm=0) R4_w=inv(id=0,umax_value=65535,var_off=(0x0; 0xffff)) R5_w=inv1 R6=ctx(id=0,off=0,imm=0) R7_w=inv31 R8_w=inv0 R10=fp0
+      19: (0f) r3 += r5
+      last_idx 19 first_idx 11
+      regs=20 stack=0 before 18: (15) if r4 == 0x0 goto pc+8
+      regs=20 stack=0 before 17: (69) r4 = *(u16 *)(r0 +2)
+      regs=20 stack=0 before 16: (55) if r7 != 0x1f goto pc+102
+      regs=20 stack=0 before 15: (bf) r0 = r3
+      regs=20 stack=0 before 14: (71) r7 = *(u8 *)(r3 +0)
+      regs=20 stack=0 before 13: (b7) r5 = 1
+      20: (71) r3 = *(u8 *)(r3 +0)
+      21: (0f) r0 += r3
+      last_idx 21 first_idx 11
+      regs=8 stack=0 before 20: (71) r3 = *(u8 *)(r3 +0)
+      22: (3d) if r0 >= r1 goto pc+4
+       R0=pkt(id=1,off=34,r=35,umax_value=255,var_off=(0x0; 0xff)) R1=pkt_end(id=0,off=0,imm=0) R2=pkt(id=0,off=38,r=39,imm=0) R3=invP(id=0,umax_value=255,var_off=(0x0; 0xff)) R4=inv(id=0,umax_value=65535,var_off=(0x0; 0xffff)) R5=invP1 R6=ctx(id=0,off=0,imm=0) R7=inv31 R8=inv0 R10=fp0
+      23: (bf) r3 = r2
+      24: (07) r3 += 4
+      25: (2d) if r3 > r1 goto pc+1
+       R0=pkt(id=1,off=34,r=35,umax_value=255,var_off=(0x0; 0xff)) R1=pkt_end(id=0,off=0,imm=0) R2=pkt(id=0,off=38,r=42,imm=0) R3_w=pkt(id=0,off=42,r=42,imm=0) R4=inv(id=0,umax_value=65535,var_off=(0x0; 0xffff)) R5=invP1 R6=ctx(id=0,off=0,imm=0) R7=inv31 R8=inv0 R10=fp0
+      26: (05) goto pc+112
+      139: (71) r3 = *(u8 *)(r2 +3)
+      140: (15) if r3 == 0x1 goto pc+44
+       R0=pkt(id=1,off=34,r=35,umax_value=255,var_off=(0x0; 0xff)) R1=pkt_end(id=0,off=0,imm=0) R2=pkt(id=0,off=38,r=42,imm=0) R3_w=inv(id=0,umax_value=255,var_off=(0x0; 0xff)) R4=inv(id=0,umax_value=65535,var_off=(0x0; 0xffff)) R5=invP1 R6=ctx(id=0,off=0,imm=0) R7=inv31 R8=inv0 R10=fp0
+      141: (bf) r3 = r2
+      142: (07) r3 += 8
+      143: (2d) if r3 > r1 goto pc-117
+       R0=pkt(id=1,off=34,r=35,umax_value=255,var_off=(0x0; 0xff)) R1=pkt_end(id=0,off=0,imm=0) R2=pkt(id=0,off=38,r=46,imm=0) R3=pkt(id=0,off=46,r=46,imm=0) R4=inv(id=0,umax_value=65535,var_off=(0x0; 0xffff)) R5=invP1 R6=ctx(id=0,off=0,imm=0) R7=inv31 R8=inv0 R10=fp0
+      144: (dc) r4 = be16 r4
+      145: (b7) r3 = 2
+      146: (2d) if r3 > r4 goto pc-120
+       R0=pkt(id=1,off=34,r=35,umax_value=255,var_off=(0x0; 0xff)) R1=pkt_end(id=0,off=0,imm=0) R2=pkt(id=0,off=38,r=46,imm=0) R3_w=inv2 R4_w=inv(id=0,umin_value=2) R5=invP1 R6=ctx(id=0,off=0,imm=0) R7=inv31 R8=inv0 R10=fp0
+      147: (71) r3 = *(u8 *)(r2 +7)
+      148: (15) if r3 == 0x1 goto pc+36
+       R0=pkt(id=1,off=34,r=35,umax_value=255,var_off=(0x0; 0xff)) R1=pkt_end(id=0,off=0,imm=0) R2=pkt(id=0,off=38,r=46,imm=0) R3_w=inv(id=0,umax_value=255,var_off=(0x0; 0xff)) R4_w=inv(id=0,umin_value=2) R5=invP1 R6=ctx(id=0,off=0,imm=0) R7=inv31 R8=inv0 R10=fp0
+      149: (bf) r3 = r2
+      150: (07) r3 += 12
+      151: (2d) if r3 > r1 goto pc-125
+       R0=pkt(id=1,off=34,r=35,umax_value=255,var_off=(0x0; 0xff)) R1=pkt_end(id=0,off=0,imm=0) R2=pkt(id=0,off=38,r=50,imm=0) R3=pkt(id=0,off=50,r=50,imm=0) R4=inv(id=0,umin_value=2) R5=invP1 R6=ctx(id=0,off=0,imm=0) R7=inv31 R8=inv0 R10=fp0
+      152: (b7) r1 = 3
+      153: (2d) if r1 > r4 goto pc-127
+       R0=pkt(id=1,off=34,r=35,umax_value=255,var_off=(0x0; 0xff)) R1_w=inv3 R2=pkt(id=0,off=38,r=50,imm=0) R3=pkt(id=0,off=50,r=50,imm=0) R4=inv(id=0,umin_value=3) R5=invP1 R6=ctx(id=0,off=0,imm=0) R7=inv31 R8=inv0 R10=fp0
+      154: (71) r1 = *(u8 *)(r2 +11)
+      155: (15) if r1 == 0x1 goto pc+29
+       R0=pkt(id=1,off=34,r=35,umax_value=255,var_off=(0x0; 0xff)) R1_w=inv(id=0,umax_value=255,var_off=(0x0; 0xff)) R2=pkt(id=0,off=38,r=50,imm=0) R3=pkt(id=0,off=50,r=50,imm=0) R4=inv(id=0,umin_value=3) R5=invP1 R6=ctx(id=0,off=0,imm=0) R7=inv31 R8=inv0 R10=fp0
+      156: (05) goto pc-130
+      27: (bf) r1 = r6
+      28: (b7) r2 = 4
+      29: (85) call bpf_xdp_adjust_tail#65
+      30: (67) r0 <<= 32
+      31: (c7) r0 s>>= 32
+      32: (b7) r1 = 0
+      33: (6d) if r1 s> r0 goto pc+151
+       R0_w=inv(id=0,umax_value=2147483647,var_off=(0x0; 0x7fffffff)) R1_w=inv0 R6=ctx(id=0,off=0,imm=0) R7=inv31 R8=inv0 R10=fp0
+      34: (61) r9 = *(u32 *)(r6 +0)
+      35: (61) r7 = *(u32 *)(r6 +4)
+      36: (bf) r1 = r9
+      37: (07) r1 += 14
+      38: (2d) if r1 > r7 goto pc+146
+       R0_w=inv(id=0,umax_value=2147483647,var_off=(0x0; 0x7fffffff)) R1_w=pkt(id=0,off=14,r=14,imm=0) R6=ctx(id=0,off=0,imm=0) R7_w=pkt_end(id=0,off=0,imm=0) R8=inv0 R9_w=pkt(id=0,off=0,r=14,imm=0) R10=fp0
+      39: (bf) r2 = r9
+      40: (07) r2 += 34
+      41: (2d) if r2 > r7 goto pc+143
+       R0=inv(id=0,umax_value=2147483647,var_off=(0x0; 0x7fffffff)) R1=pkt(id=0,off=14,r=34,imm=0) R2=pkt(id=0,off=34,r=34,imm=0) R6=ctx(id=0,off=0,imm=0) R7=pkt_end(id=0,off=0,imm=0) R8=inv0 R9=pkt(id=0,off=0,r=34,imm=0) R10=fp0
+      42: (0f) r2 += r8
+      last_idx 42 first_idx 41
+      regs=100 stack=0 before 41: (2d) if r2 > r7 goto pc+143
+       R0_w=inv(id=0,umax_value=2147483647,var_off=(0x0; 0x7fffffff)) R1_w=pkt(id=0,off=14,r=14,imm=0) R2_rw=pkt(id=0,off=34,r=14,imm=0) R6=ctx(id=0,off=0,imm=0) R7_rw=pkt_end(id=0,off=0,imm=0) R8_r=invP0 R9_w=pkt(id=0,off=0,r=14,imm=0) R10=fp0
+      parent didn't have regs=100 stack=0 marks
+      last_idx 40 first_idx 30
+      regs=100 stack=0 before 40: (07) r2 += 34
+      regs=100 stack=0 before 39: (bf) r2 = r9
+      regs=100 stack=0 before 38: (2d) if r1 > r7 goto pc+146
+      regs=100 stack=0 before 37: (07) r1 += 14
+      regs=100 stack=0 before 36: (bf) r1 = r9
+      regs=100 stack=0 before 35: (61) r7 = *(u32 *)(r6 +4)
+      regs=100 stack=0 before 34: (61) r9 = *(u32 *)(r6 +0)
+      regs=100 stack=0 before 33: (6d) if r1 s> r0 goto pc+151
+      regs=100 stack=0 before 32: (b7) r1 = 0
+      regs=100 stack=0 before 31: (c7) r0 s>>= 32
+      regs=100 stack=0 before 30: (67) r0 <<= 32
+       R0_rw=inv(id=0) R6_r=ctx(id=0,off=0,imm=0) R7=inv31 R8_r=invP0 R10=fp0
+      parent didn't have regs=100 stack=0 marks
+      last_idx 29 first_idx 151
+      regs=100 stack=0 before 29: (85) call bpf_xdp_adjust_tail#65
+      regs=100 stack=0 before 28: (b7) r2 = 4
+      regs=100 stack=0 before 27: (bf) r1 = r6
+      regs=100 stack=0 before 156: (05) goto pc-130
+      regs=100 stack=0 before 155: (15) if r1 == 0x1 goto pc+29
+      regs=100 stack=0 before 154: (71) r1 = *(u8 *)(r2 +11)
+      regs=100 stack=0 before 153: (2d) if r1 > r4 goto pc-127
+      regs=100 stack=0 before 152: (b7) r1 = 3
+      regs=100 stack=0 before 151: (2d) if r3 > r1 goto pc-125
+       R0=pkt(id=1,off=34,r=35,umax_value=255,var_off=(0x0; 0xff)) R1_r=pkt_end(id=0,off=0,imm=0) R2_r=pkt(id=0,off=38,r=46,imm=0) R3_rw=pkt(id=0,off=50,r=46,imm=0) R4_rw=inv(id=0,umin_value=2) R5=invP1 R6_r=ctx(id=0,off=0,imm=0) R7=inv31 R8_r=invP0 R10=fp0
+      parent didn't have regs=100 stack=0 marks
+      last_idx 150 first_idx 143
+      regs=100 stack=0 before 150: (07) r3 += 12
+      regs=100 stack=0 before 149: (bf) r3 = r2
+      regs=100 stack=0 before 148: (15) if r3 == 0x1 goto pc+36
+      regs=100 stack=0 before 147: (71) r3 = *(u8 *)(r2 +7)
+      regs=100 stack=0 before 146: (2d) if r3 > r4 goto pc-120
+      regs=100 stack=0 before 145: (b7) r3 = 2
+      regs=100 stack=0 before 144: (dc) r4 = be16 r4
+      regs=100 stack=0 before 143: (2d) if r3 > r1 goto pc-117
+       R0=pkt(id=1,off=34,r=35,umax_value=255,var_off=(0x0; 0xff)) R1_r=pkt_end(id=0,off=0,imm=0) R2_r=pkt(id=0,off=38,r=42,imm=0) R3_rw=pkt(id=0,off=46,r=42,imm=0) R4_r=inv(id=0,umax_value=65535,var_off=(0x0; 0xffff)) R5=invP1 R6_r=ctx(id=0,off=0,imm=0) R7=inv31 R8_r=invP0 R10=fp0
+      parent didn't have regs=100 stack=0 marks
+      last_idx 142 first_idx 22
+      regs=100 stack=0 before 142: (07) r3 += 8
+      regs=100 stack=0 before 141: (bf) r3 = r2
+      regs=100 stack=0 before 140: (15) if r3 == 0x1 goto pc+44
+      regs=100 stack=0 before 139: (71) r3 = *(u8 *)(r2 +3)
+      regs=100 stack=0 before 26: (05) goto pc+112
+      regs=100 stack=0 before 25: (2d) if r3 > r1 goto pc+1
+      regs=100 stack=0 before 24: (07) r3 += 4
+      regs=100 stack=0 before 23: (bf) r3 = r2
+      regs=100 stack=0 before 22: (3d) if r0 >= r1 goto pc+4
+       R0_rw=pkt(id=1,off=34,r=0,umax_value=255,var_off=(0x0; 0xff)) R1_r=pkt_end(id=0,off=0,imm=0) R2_r=pkt(id=0,off=38,r=39,imm=0) R3_w=invP(id=0,umax_value=255,var_off=(0x0; 0xff)) R4_rw=inv(id=0,umax_value=65535,var_off=(0x0; 0xffff)) R5_w=invP1 R6_r=ctx(id=0,off=0,imm=0) R7_w=inv31 R8_rw=invP0 R10=fp0
+      parent didn't have regs=100 stack=0 marks
+      last_idx 21 first_idx 11
+      regs=100 stack=0 before 21: (0f) r0 += r3
+      regs=100 stack=0 before 20: (71) r3 = *(u8 *)(r3 +0)
+      regs=100 stack=0 before 19: (0f) r3 += r5
+      regs=100 stack=0 before 18: (15) if r4 == 0x0 goto pc+8
+      regs=100 stack=0 before 17: (69) r4 = *(u16 *)(r0 +2)
+      regs=100 stack=0 before 16: (55) if r7 != 0x1f goto pc+102
+      regs=100 stack=0 before 15: (bf) r0 = r3
+      regs=100 stack=0 before 14: (71) r7 = *(u8 *)(r3 +0)
+      regs=100 stack=0 before 13: (b7) r5 = 1
+      regs=100 stack=0 before 12: (b7) r8 = 0
+      43: (bf) r6 = r2
+      44: (07) r6 += 4
+      45: (2d) if r6 > r7 goto pc+139
+       R0=inv(id=0,umax_value=2147483647,var_off=(0x0; 0x7fffffff)) R1=pkt(id=0,off=14,r=38,imm=0) R2_w=pkt(id=0,off=34,r=38,imm=0) R6_w=pkt(id=0,off=38,r=38,imm=0) R7=pkt_end(id=0,off=0,imm=0) R8=invP0 R9=pkt(id=0,off=0,r=38,imm=0) R10=fp0
+      46: (71) r1 = *(u8 *)(r1 +0)
+      47: (7b) *(u64 *)(r10 -40) = r1
+      48: (71) r1 = *(u8 *)(r2 +1)
+      49: (7b) *(u64 *)(r10 -32) = r1
+      50: (71) r3 = *(u8 *)(r2 +0)
+      51: (69) r1 = *(u16 *)(r2 +2)
+      52: (7b) *(u64 *)(r10 -24) = r1
+      53: (18) r1 = 0x25206e6f6974704f
+      55: (7b) *(u64 *)(r10 -16) = r1
+      56: (b7) r1 = 117
+      57: (6b) *(u16 *)(r10 -8) = r1
+      58: (bf) r1 = r10
+      59: (07) r1 += -16
+      60: (b7) r2 = 10
+      61: (85) call bpf_trace_printk#6
+      last_idx 61 first_idx 41
+      regs=4 stack=0 before 60: (b7) r2 = 10
+      62: (b7) r1 = 117
+      63: (6b) *(u16 *)(r10 -8) = r1
+      64: (18) r1 = 0x25206874676e654c
+      66: (7b) *(u64 *)(r10 -16) = r1
+      67: (bf) r1 = r10
+      68: (07) r1 += -16
+      69: (b7) r2 = 10
+      70: (79) r3 = *(u64 *)(r10 -32)
+      71: (85) call bpf_trace_printk#6
+      last_idx 71 first_idx 62
+      regs=4 stack=0 before 70: (79) r3 = *(u64 *)(r10 -32)
+      regs=4 stack=0 before 69: (b7) r2 = 10
+      72: (b7) r1 = 0
+      73: (73) *(u8 *)(r10 -8) = r1
+      last_idx 73 first_idx 62
+      regs=2 stack=0 before 72: (b7) r1 = 0
+      74: (18) r1 = 0x642520746e756f43
+      76: (7b) *(u64 *)(r10 -16) = r1
+      77: (79) r3 = *(u64 *)(r10 -24)
+      78: (dc) r3 = be16 r3
+      79: (bf) r1 = r10
+      80: (07) r1 += -16
+      81: (b7) r2 = 9
+      82: (85) call bpf_trace_printk#6
+      last_idx 82 first_idx 62
+      regs=4 stack=0 before 81: (b7) r2 = 9
+      83: (bf) r1 = r6
+      84: (07) r1 += 4
+      85: (3d) if r1 >= r7 goto pc+99
+       R0=inv(id=0) R1_w=pkt(id=0,off=42,r=43,imm=0) R6=pkt(id=0,off=38,r=43,imm=0) R7=pkt_end(id=0,off=0,imm=0) R8=invP0 R9=pkt(id=0,off=0,r=43,imm=0) R10=fp0 fp-8=??????mm fp-16=mmmmmmmm fp-24=inv fp-32=inv fp-40=inv
+      86: (79) r2 = *(u64 *)(r10 -40)
+      87: (67) r2 <<= 2
+      88: (71) r1 = *(u8 *)(r9 +14)
+      89: (57) r1 &= 240
+      90: (07) r2 += 4
+      91: (77) r2 >>= 2
+      92: (57) r2 &= 15
+      93: (4f) r1 |= r2
+      94: (b7) r2 = 0
+      95: (6b) *(u16 *)(r9 +24) = r2
+      96: (73) *(u8 *)(r9 +14) = r1
+      97: (69) r1 = *(u16 *)(r9 +16)
+      98: (dc) r1 = be16 r1
+      99: (07) r1 += 4
+      100: (dc) r1 = be16 r1
+      101: (6b) *(u16 *)(r9 +16) = r1
+      102: (bf) r1 = r6
+      103: (07) r1 += 404
+      104: (2d) if r1 > r7 goto pc+80
+       R0=inv(id=0) R1_w=pkt(id=0,off=442,r=442,imm=0) R2_w=inv0 R6=pkt(id=0,off=38,r=442,imm=0) R7=pkt_end(id=0,off=0,imm=0) R8=invP0 R9=pkt(id=0,off=0,r=442,imm=0) R10=fp0 fp-8=??????mm fp-16=mmmmmmmm fp-24=inv fp-32=inv fp-40=inv
+      105: (bf) r0 = r6
+      106: (07) r0 += 400
+      107: (0f) r9 += r8
+      108: (18) r1 = 0x10000018f
+      110: (18) r2 = 0xffffffff0000002b
+      112: (18) r3 = 0xffffffff
+      114: (18) r4 = 0xffffffff0000002a
+      116: (18) r5 = 0xfffffffe
+      118: (05) goto pc+60
+      179: (bf) r8 = r9
+      180: (0f) r8 += r1
+      last_idx 180 first_idx 179
+      regs=2 stack=0 before 179: (bf) r8 = r9
+       R0_w=pkt(id=0,off=438,r=442,imm=0) R1_rw=invP4294967695 R2_w=inv-4294967253 R3_w=inv4294967295 R4_w=inv-4294967254 R5_w=inv4294967294 R6=pkt(id=0,off=38,r=442,imm=0) R7=pkt_end(id=0,off=0,imm=0) R8=invP0 R9_rw=pkt(id=0,off=0,r=442,imm=0) R10=fp0 fp-8=??????mm fp-16=mmmmmmmm fp-24=inv fp-32=inv fp-40=inv
+      parent didn't have regs=2 stack=0 marks
+      last_idx 118 first_idx 83
+      regs=2 stack=0 before 118: (05) goto pc+60
+      regs=2 stack=0 before 116: (18) r5 = 0xfffffffe
+      regs=2 stack=0 before 114: (18) r4 = 0xffffffff0000002a
+      regs=2 stack=0 before 112: (18) r3 = 0xffffffff
+      regs=2 stack=0 before 110: (18) r2 = 0xffffffff0000002b
+      regs=2 stack=0 before 108: (18) r1 = 0x10000018f
+      math between pkt pointer and 4294967695 is not allowed
+      processed 131 insns (limit 1000000) max_states_per_insn 0 total_states 9 peak_states 9 mark_read 5
+
+      Traceback (most recent call last):
+        File "a.py", line 6, in <module>
+          fn = b.load_func("op_ebpf", BPF.XDP)
+        File "/usr/lib/python3/dist-packages/bcc/__init__.py", line 523, in load_func
+          raise Exception("Failed to load BPF program %s: %s" %
+      Exception: Failed to load BPF program b'op_ebpf': Invalid argument
+    combined: |-
+      bpf: Failed to load program: Invalid argument
+      0: (bf) r6 = r1
+      1: (61) r4 = *(u32 *)(r6 +0)
+      2: (61) r1 = *(u32 *)(r6 +4)
+      3: (bf) r2 = r4
+      4: (07) r2 += 14
+      5: (2d) if r2 > r1 goto pc+179
+       R1_w=pkt_end(id=0,off=0,imm=0) R2_w=pkt(id=0,off=14,r=14,imm=0) R4_w=pkt(id=0,off=0,r=14,imm=0) R6_w=ctx(id=0,off=0,imm=0) R10=fp0
+      6: (bf) r3 = r4
+      7: (07) r3 += 34
+      8: (2d) if r3 > r1 goto pc+176
+       R1_w=pkt_end(id=0,off=0,imm=0) R2_w=pkt(id=0,off=14,r=34,imm=0) R3_w=pkt(id=0,off=34,r=34,imm=0) R4_w=pkt(id=0,off=0,r=34,imm=0) R6_w=ctx(id=0,off=0,imm=0) R10=fp0
+      9: (bf) r2 = r4
+      10: (07) r2 += 38
+      11: (3d) if r2 >= r1 goto pc+173
+       R1=pkt_end(id=0,off=0,imm=0) R2=pkt(id=0,off=38,r=39,imm=0) R3=pkt(id=0,off=34,r=39,imm=0) R4=pkt(id=0,off=0,r=39,imm=0) R6=ctx(id=0,off=0,imm=0) R10=fp0
+      12: (b7) r8 = 0
+      13: (b7) r5 = 1
+      14: (71) r7 = *(u8 *)(r3 +0)
+      15: (bf) r0 = r3
+      16: (55) if r7 != 0x1f goto pc+102
+       R0_w=pkt(id=0,off=34,r=39,imm=0) R1=pkt_end(id=0,off=0,imm=0) R2=pkt(id=0,off=38,r=39,imm=0) R3=pkt(id=0,off=34,r=39,imm=0) R4=pkt(id=0,off=0,r=39,imm=0) R5_w=inv1 R6=ctx(id=0,off=0,imm=0) R7_w=inv31 R8_w=inv0 R10=fp0
+      17: (69) r4 = *(u16 *)(r0 +2)
+      18: (15) if r4 == 0x0 goto pc+8
+       R0_w=pkt(id=0,off=34,r=39,imm=0) R1=pkt_end(id=0,off=0,imm=0) R2=pkt(id=0,off=38,r=39,imm=0) R3=pkt(id=0,off=34,r=39,imm=0) R4_w=inv(id=0,umax_value=65535,var_off=(0x0; 0xffff)) R5_w=inv1 R6=ctx(id=0,off=0,imm=0) R7_w=inv31 R8_w=inv0 R10=fp0
+      19: (0f) r3 += r5
+      last_idx 19 first_idx 11
+      regs=20 stack=0 before 18: (15) if r4 == 0x0 goto pc+8
+      regs=20 stack=0 before 17: (69) r4 = *(u16 *)(r0 +2)
+      regs=20 stack=0 before 16: (55) if r7 != 0x1f goto pc+102
+      regs=20 stack=0 before 15: (bf) r0 = r3
+      regs=20 stack=0 before 14: (71) r7 = *(u8 *)(r3 +0)
+      regs=20 stack=0 before 13: (b7) r5 = 1
+      20: (71) r3 = *(u8 *)(r3 +0)
+      21: (0f) r0 += r3
+      last_idx 21 first_idx 11
+      regs=8 stack=0 before 20: (71) r3 = *(u8 *)(r3 +0)
+      22: (3d) if r0 >= r1 goto pc+4
+       R0=pkt(id=1,off=34,r=35,umax_value=255,var_off=(0x0; 0xff)) R1=pkt_end(id=0,off=0,imm=0) R2=pkt(id=0,off=38,r=39,imm=0) R3=invP(id=0,umax_value=255,var_off=(0x0; 0xff)) R4=inv(id=0,umax_value=65535,var_off=(0x0; 0xffff)) R5=invP1 R6=ctx(id=0,off=0,imm=0) R7=inv31 R8=inv0 R10=fp0
+      23: (bf) r3 = r2
+      24: (07) r3 += 4
+      25: (2d) if r3 > r1 goto pc+1
+       R0=pkt(id=1,off=34,r=35,umax_value=255,var_off=(0x0; 0xff)) R1=pkt_end(id=0,off=0,imm=0) R2=pkt(id=0,off=38,r=42,imm=0) R3_w=pkt(id=0,off=42,r=42,imm=0) R4=inv(id=0,umax_value=65535,var_off=(0x0; 0xffff)) R5=invP1 R6=ctx(id=0,off=0,imm=0) R7=inv31 R8=inv0 R10=fp0
+      26: (05) goto pc+112
+      139: (71) r3 = *(u8 *)(r2 +3)
+      140: (15) if r3 == 0x1 goto pc+44
+       R0=pkt(id=1,off=34,r=35,umax_value=255,var_off=(0x0; 0xff)) R1=pkt_end(id=0,off=0,imm=0) R2=pkt(id=0,off=38,r=42,imm=0) R3_w=inv(id=0,umax_value=255,var_off=(0x0; 0xff)) R4=inv(id=0,umax_value=65535,var_off=(0x0; 0xffff)) R5=invP1 R6=ctx(id=0,off=0,imm=0) R7=inv31 R8=inv0 R10=fp0
+      141: (bf) r3 = r2
+      142: (07) r3 += 8
+      143: (2d) if r3 > r1 goto pc-117
+       R0=pkt(id=1,off=34,r=35,umax_value=255,var_off=(0x0; 0xff)) R1=pkt_end(id=0,off=0,imm=0) R2=pkt(id=0,off=38,r=46,imm=0) R3=pkt(id=0,off=46,r=46,imm=0) R4=inv(id=0,umax_value=65535,var_off=(0x0; 0xffff)) R5=invP1 R6=ctx(id=0,off=0,imm=0) R7=inv31 R8=inv0 R10=fp0
+      144: (dc) r4 = be16 r4
+      145: (b7) r3 = 2
+      146: (2d) if r3 > r4 goto pc-120
+       R0=pkt(id=1,off=34,r=35,umax_value=255,var_off=(0x0; 0xff)) R1=pkt_end(id=0,off=0,imm=0) R2=pkt(id=0,off=38,r=46,imm=0) R3_w=inv2 R4_w=inv(id=0,umin_value=2) R5=invP1 R6=ctx(id=0,off=0,imm=0) R7=inv31 R8=inv0 R10=fp0
+      147: (71) r3 = *(u8 *)(r2 +7)
+      148: (15) if r3 == 0x1 goto pc+36
+       R0=pkt(id=1,off=34,r=35,umax_value=255,var_off=(0x0; 0xff)) R1=pkt_end(id=0,off=0,imm=0) R2=pkt(id=0,off=38,r=46,imm=0) R3_w=inv(id=0,umax_value=255,var_off=(0x0; 0xff)) R4_w=inv(id=0,umin_value=2) R5=invP1 R6=ctx(id=0,off=0,imm=0) R7=inv31 R8=inv0 R10=fp0
+      149: (bf) r3 = r2
+      150: (07) r3 += 12
+      151: (2d) if r3 > r1 goto pc-125
+       R0=pkt(id=1,off=34,r=35,umax_value=255,var_off=(0x0; 0xff)) R1=pkt_end(id=0,off=0,imm=0) R2=pkt(id=0,off=38,r=50,imm=0) R3=pkt(id=0,off=50,r=50,imm=0) R4=inv(id=0,umin_value=2) R5=invP1 R6=ctx(id=0,off=0,imm=0) R7=inv31 R8=inv0 R10=fp0
+      152: (b7) r1 = 3
+      153: (2d) if r1 > r4 goto pc-127
+       R0=pkt(id=1,off=34,r=35,umax_value=255,var_off=(0x0; 0xff)) R1_w=inv3 R2=pkt(id=0,off=38,r=50,imm=0) R3=pkt(id=0,off=50,r=50,imm=0) R4=inv(id=0,umin_value=3) R5=invP1 R6=ctx(id=0,off=0,imm=0) R7=inv31 R8=inv0 R10=fp0
+      154: (71) r1 = *(u8 *)(r2 +11)
+      155: (15) if r1 == 0x1 goto pc+29
+       R0=pkt(id=1,off=34,r=35,umax_value=255,var_off=(0x0; 0xff)) R1_w=inv(id=0,umax_value=255,var_off=(0x0; 0xff)) R2=pkt(id=0,off=38,r=50,imm=0) R3=pkt(id=0,off=50,r=50,imm=0) R4=inv(id=0,umin_value=3) R5=invP1 R6=ctx(id=0,off=0,imm=0) R7=inv31 R8=inv0 R10=fp0
+      156: (05) goto pc-130
+      27: (bf) r1 = r6
+      28: (b7) r2 = 4
+      29: (85) call bpf_xdp_adjust_tail#65
+      30: (67) r0 <<= 32
+      31: (c7) r0 s>>= 32
+      32: (b7) r1 = 0
+      33: (6d) if r1 s> r0 goto pc+151
+       R0_w=inv(id=0,umax_value=2147483647,var_off=(0x0; 0x7fffffff)) R1_w=inv0 R6=ctx(id=0,off=0,imm=0) R7=inv31 R8=inv0 R10=fp0
+      34: (61) r9 = *(u32 *)(r6 +0)
+      35: (61) r7 = *(u32 *)(r6 +4)
+      36: (bf) r1 = r9
+      37: (07) r1 += 14
+      38: (2d) if r1 > r7 goto pc+146
+       R0_w=inv(id=0,umax_value=2147483647,var_off=(0x0; 0x7fffffff)) R1_w=pkt(id=0,off=14,r=14,imm=0) R6=ctx(id=0,off=0,imm=0) R7_w=pkt_end(id=0,off=0,imm=0) R8=inv0 R9_w=pkt(id=0,off=0,r=14,imm=0) R10=fp0
+      39: (bf) r2 = r9
+      40: (07) r2 += 34
+      41: (2d) if r2 > r7 goto pc+143
+       R0=inv(id=0,umax_value=2147483647,var_off=(0x0; 0x7fffffff)) R1=pkt(id=0,off=14,r=34,imm=0) R2=pkt(id=0,off=34,r=34,imm=0) R6=ctx(id=0,off=0,imm=0) R7=pkt_end(id=0,off=0,imm=0) R8=inv0 R9=pkt(id=0,off=0,r=34,imm=0) R10=fp0
+      42: (0f) r2 += r8
+      last_idx 42 first_idx 41
+      regs=100 stack=0 before 41: (2d) if r2 > r7 goto pc+143
+       R0_w=inv(id=0,umax_value=2147483647,var_off=(0x0; 0x7fffffff)) R1_w=pkt(id=0,off=14,r=14,imm=0) R2_rw=pkt(id=0,off=34,r=14,imm=0) R6=ctx(id=0,off=0,imm=0) R7_rw=pkt_end(id=0,off=0,imm=0) R8_r=invP0 R9_w=pkt(id=0,off=0,r=14,imm=0) R10=fp0
+      parent didn't have regs=100 stack=0 marks
+      last_idx 40 first_idx 30
+      regs=100 stack=0 before 40: (07) r2 += 34
+      regs=100 stack=0 before 39: (bf) r2 = r9
+      regs=100 stack=0 before 38: (2d) if r1 > r7 goto pc+146
+      regs=100 stack=0 before 37: (07) r1 += 14
+      regs=100 stack=0 before 36: (bf) r1 = r9
+      regs=100 stack=0 before 35: (61) r7 = *(u32 *)(r6 +4)
+      regs=100 stack=0 before 34: (61) r9 = *(u32 *)(r6 +0)
+      regs=100 stack=0 before 33: (6d) if r1 s> r0 goto pc+151
+      regs=100 stack=0 before 32: (b7) r1 = 0
+      regs=100 stack=0 before 31: (c7) r0 s>>= 32
+      regs=100 stack=0 before 30: (67) r0 <<= 32
+       R0_rw=inv(id=0) R6_r=ctx(id=0,off=0,imm=0) R7=inv31 R8_r=invP0 R10=fp0
+      parent didn't have regs=100 stack=0 marks
+      last_idx 29 first_idx 151
+      regs=100 stack=0 before 29: (85) call bpf_xdp_adjust_tail#65
+      regs=100 stack=0 before 28: (b7) r2 = 4
+      regs=100 stack=0 before 27: (bf) r1 = r6
+      regs=100 stack=0 before 156: (05) goto pc-130
+      regs=100 stack=0 before 155: (15) if r1 == 0x1 goto pc+29
+      regs=100 stack=0 before 154: (71) r1 = *(u8 *)(r2 +11)
+      regs=100 stack=0 before 153: (2d) if r1 > r4 goto pc-127
+      regs=100 stack=0 before 152: (b7) r1 = 3
+      regs=100 stack=0 before 151: (2d) if r3 > r1 goto pc-125
+       R0=pkt(id=1,off=34,r=35,umax_value=255,var_off=(0x0; 0xff)) R1_r=pkt_end(id=0,off=0,imm=0) R2_r=pkt(id=0,off=38,r=46,imm=0) R3_rw=pkt(id=0,off=50,r=46,imm=0) R4_rw=inv(id=0,umin_value=2) R5=invP1 R6_r=ctx(id=0,off=0,imm=0) R7=inv31 R8_r=invP0 R10=fp0
+      parent didn't have regs=100 stack=0 marks
+      last_idx 150 first_idx 143
+      regs=100 stack=0 before 150: (07) r3 += 12
+      regs=100 stack=0 before 149: (bf) r3 = r2
+      regs=100 stack=0 before 148: (15) if r3 == 0x1 goto pc+36
+      regs=100 stack=0 before 147: (71) r3 = *(u8 *)(r2 +7)
+      regs=100 stack=0 before 146: (2d) if r3 > r4 goto pc-120
+      regs=100 stack=0 before 145: (b7) r3 = 2
+      regs=100 stack=0 before 144: (dc) r4 = be16 r4
+      regs=100 stack=0 before 143: (2d) if r3 > r1 goto pc-117
+       R0=pkt(id=1,off=34,r=35,umax_value=255,var_off=(0x0; 0xff)) R1_r=pkt_end(id=0,off=0,imm=0) R2_r=pkt(id=0,off=38,r=42,imm=0) R3_rw=pkt(id=0,off=46,r=42,imm=0) R4_r=inv(id=0,umax_value=65535,var_off=(0x0; 0xffff)) R5=invP1 R6_r=ctx(id=0,off=0,imm=0) R7=inv31 R8_r=invP0 R10=fp0
+      parent didn't have regs=100 stack=0 marks
+      last_idx 142 first_idx 22
+      regs=100 stack=0 before 142: (07) r3 += 8
+      regs=100 stack=0 before 141: (bf) r3 = r2
+      regs=100 stack=0 before 140: (15) if r3 == 0x1 goto pc+44
+      regs=100 stack=0 before 139: (71) r3 = *(u8 *)(r2 +3)
+      regs=100 stack=0 before 26: (05) goto pc+112
+      regs=100 stack=0 before 25: (2d) if r3 > r1 goto pc+1
+      regs=100 stack=0 before 24: (07) r3 += 4
+      regs=100 stack=0 before 23: (bf) r3 = r2
+      regs=100 stack=0 before 22: (3d) if r0 >= r1 goto pc+4
+       R0_rw=pkt(id=1,off=34,r=0,umax_value=255,var_off=(0x0; 0xff)) R1_r=pkt_end(id=0,off=0,imm=0) R2_r=pkt(id=0,off=38,r=39,imm=0) R3_w=invP(id=0,umax_value=255,var_off=(0x0; 0xff)) R4_rw=inv(id=0,umax_value=65535,var_off=(0x0; 0xffff)) R5_w=invP1 R6_r=ctx(id=0,off=0,imm=0) R7_w=inv31 R8_rw=invP0 R10=fp0
+      parent didn't have regs=100 stack=0 marks
+      last_idx 21 first_idx 11
+      regs=100 stack=0 before 21: (0f) r0 += r3
+      regs=100 stack=0 before 20: (71) r3 = *(u8 *)(r3 +0)
+      regs=100 stack=0 before 19: (0f) r3 += r5
+      regs=100 stack=0 before 18: (15) if r4 == 0x0 goto pc+8
+      regs=100 stack=0 before 17: (69) r4 = *(u16 *)(r0 +2)
+      regs=100 stack=0 before 16: (55) if r7 != 0x1f goto pc+102
+      regs=100 stack=0 before 15: (bf) r0 = r3
+      regs=100 stack=0 before 14: (71) r7 = *(u8 *)(r3 +0)
+      regs=100 stack=0 before 13: (b7) r5 = 1
+      regs=100 stack=0 before 12: (b7) r8 = 0
+      43: (bf) r6 = r2
+      44: (07) r6 += 4
+      45: (2d) if r6 > r7 goto pc+139
+       R0=inv(id=0,umax_value=2147483647,var_off=(0x0; 0x7fffffff)) R1=pkt(id=0,off=14,r=38,imm=0) R2_w=pkt(id=0,off=34,r=38,imm=0) R6_w=pkt(id=0,off=38,r=38,imm=0) R7=pkt_end(id=0,off=0,imm=0) R8=invP0 R9=pkt(id=0,off=0,r=38,imm=0) R10=fp0
+      46: (71) r1 = *(u8 *)(r1 +0)
+      47: (7b) *(u64 *)(r10 -40) = r1
+      48: (71) r1 = *(u8 *)(r2 +1)
+      49: (7b) *(u64 *)(r10 -32) = r1
+      50: (71) r3 = *(u8 *)(r2 +0)
+      51: (69) r1 = *(u16 *)(r2 +2)
+      52: (7b) *(u64 *)(r10 -24) = r1
+      53: (18) r1 = 0x25206e6f6974704f
+      55: (7b) *(u64 *)(r10 -16) = r1
+      56: (b7) r1 = 117
+      57: (6b) *(u16 *)(r10 -8) = r1
+      58: (bf) r1 = r10
+      59: (07) r1 += -16
+      60: (b7) r2 = 10
+      61: (85) call bpf_trace_printk#6
+      last_idx 61 first_idx 41
+      regs=4 stack=0 before 60: (b7) r2 = 10
+      62: (b7) r1 = 117
+      63: (6b) *(u16 *)(r10 -8) = r1
+      64: (18) r1 = 0x25206874676e654c
+      66: (7b) *(u64 *)(r10 -16) = r1
+      67: (bf) r1 = r10
+      68: (07) r1 += -16
+      69: (b7) r2 = 10
+      70: (79) r3 = *(u64 *)(r10 -32)
+      71: (85) call bpf_trace_printk#6
+      last_idx 71 first_idx 62
+      regs=4 stack=0 before 70: (79) r3 = *(u64 *)(r10 -32)
+      regs=4 stack=0 before 69: (b7) r2 = 10
+      72: (b7) r1 = 0
+      73: (73) *(u8 *)(r10 -8) = r1
+      last_idx 73 first_idx 62
+      regs=2 stack=0 before 72: (b7) r1 = 0
+      74: (18) r1 = 0x642520746e756f43
+      76: (7b) *(u64 *)(r10 -16) = r1
+      77: (79) r3 = *(u64 *)(r10 -24)
+      78: (dc) r3 = be16 r3
+      79: (bf) r1 = r10
+      80: (07) r1 += -16
+      81: (b7) r2 = 9
+      82: (85) call bpf_trace_printk#6
+      last_idx 82 first_idx 62
+      regs=4 stack=0 before 81: (b7) r2 = 9
+      83: (bf) r1 = r6
+      84: (07) r1 += 4
+      85: (3d) if r1 >= r7 goto pc+99
+       R0=inv(id=0) R1_w=pkt(id=0,off=42,r=43,imm=0) R6=pkt(id=0,off=38,r=43,imm=0) R7=pkt_end(id=0,off=0,imm=0) R8=invP0 R9=pkt(id=0,off=0,r=43,imm=0) R10=fp0 fp-8=??????mm fp-16=mmmmmmmm fp-24=inv fp-32=inv fp-40=inv
+      86: (79) r2 = *(u64 *)(r10 -40)
+      87: (67) r2 <<= 2
+      88: (71) r1 = *(u8 *)(r9 +14)
+      89: (57) r1 &= 240
+      90: (07) r2 += 4
+      91: (77) r2 >>= 2
+      92: (57) r2 &= 15
+      93: (4f) r1 |= r2
+      94: (b7) r2 = 0
+      95: (6b) *(u16 *)(r9 +24) = r2
+      96: (73) *(u8 *)(r9 +14) = r1
+      97: (69) r1 = *(u16 *)(r9 +16)
+      98: (dc) r1 = be16 r1
+      99: (07) r1 += 4
+      100: (dc) r1 = be16 r1
+      101: (6b) *(u16 *)(r9 +16) = r1
+      102: (bf) r1 = r6
+      103: (07) r1 += 404
+      104: (2d) if r1 > r7 goto pc+80
+       R0=inv(id=0) R1_w=pkt(id=0,off=442,r=442,imm=0) R2_w=inv0 R6=pkt(id=0,off=38,r=442,imm=0) R7=pkt_end(id=0,off=0,imm=0) R8=invP0 R9=pkt(id=0,off=0,r=442,imm=0) R10=fp0 fp-8=??????mm fp-16=mmmmmmmm fp-24=inv fp-32=inv fp-40=inv
+      105: (bf) r0 = r6
+      106: (07) r0 += 400
+      107: (0f) r9 += r8
+      108: (18) r1 = 0x10000018f
+      110: (18) r2 = 0xffffffff0000002b
+      112: (18) r3 = 0xffffffff
+      114: (18) r4 = 0xffffffff0000002a
+      116: (18) r5 = 0xfffffffe
+      118: (05) goto pc+60
+      179: (bf) r8 = r9
+      180: (0f) r8 += r1
+      last_idx 180 first_idx 179
+      regs=2 stack=0 before 179: (bf) r8 = r9
+       R0_w=pkt(id=0,off=438,r=442,imm=0) R1_rw=invP4294967695 R2_w=inv-4294967253 R3_w=inv4294967295 R4_w=inv-4294967254 R5_w=inv4294967294 R6=pkt(id=0,off=38,r=442,imm=0) R7=pkt_end(id=0,off=0,imm=0) R8=invP0 R9_rw=pkt(id=0,off=0,r=442,imm=0) R10=fp0 fp-8=??????mm fp-16=mmmmmmmm fp-24=inv fp-32=inv fp-40=inv
+      parent didn't have regs=2 stack=0 marks
+      last_idx 118 first_idx 83
+      regs=2 stack=0 before 118: (05) goto pc+60
+      regs=2 stack=0 before 116: (18) r5 = 0xfffffffe
+      regs=2 stack=0 before 114: (18) r4 = 0xffffffff0000002a
+      regs=2 stack=0 before 112: (18) r3 = 0xffffffff
+      regs=2 stack=0 before 110: (18) r2 = 0xffffffff0000002b
+      regs=2 stack=0 before 108: (18) r1 = 0x10000018f
+      math between pkt pointer and 4294967695 is not allowed
+      processed 131 insns (limit 1000000) max_states_per_insn 0 total_states 9 peak_states 9 mark_read 5
+
+      Traceback (most recent call last):
+        File "a.py", line 6, in <module>
+          fn = b.load_func("op_ebpf", BPF.XDP)
+        File "/usr/lib/python3/dist-packages/bcc/__init__.py", line 523, in load_func
+          raise Exception("Failed to load BPF program %s: %s" %
+      Exception: Failed to load BPF program b'op_ebpf': Invalid argument
+  source_snippets: []
+  question_body_text: |-
+    I am trying to insert my new option field into packets using ebpf but I do not know what is the correct way to shift the rest of the payload after the IP header to the right without using a CONSTANT loop (it is impossible because the packet size is dynamic).
+    I am using python program to execute my C program.
+    Here is my Python program:
+    from bcc import BPF
+    from bcc.utils import printb
+    device = "vmnet8"
+    b = BPF(src_file="op_ebpf.c")
+    fn = b.load_func("op_ebpf", BPF.XDP)
+    b.attach_xdp(device, fn, 0)
+    try:
+    b.trace_print()
+    except KeyboardInterrupt:
+    dist = b.get_table("counter")
+    # Use k.value to extract the integer value for sorting
+    for k, v in sorted(dist.items(), key=lambda x: x\[0\].value):
+    print("DEST_PORT : %10d, COUNT : %10d" % (k.value, v.value))
+    b.remove_xdp(device, 0)
+    Here is my c code
+    #include <linux/bpf.h>
+    #include <linux/if_ether.h>
+    #include <linux/ip.h>
+    #include <linux/udp.h>
+    BPF_HISTOGRAM(counter, u64);
+    #define MY_OPTION_TYPE 31 // Custom option type
+    #define REGISTER 1
+    #define DROP 0
+    #define MAX_ENTRIES 64 // Max entries to store
+    #define MAX_PACKET_LENGTH 400
+    // CustomIPOption structure
+    struct CustomIPEntry
+    {
+    __u16 id_val;
+    __u8 inter_val;
+    __u8 cmd_val;
+    } __attribute__((packed));
+    int op_ebpf(struct xdp_md *ctx)
+    {
+    void *data = (void *)(long)ctx->data;
+    void *data_end = (void *)(long)ctx->data_end;
+    struct ethhdr *eth = data;
+    // Check if the Ethernet header is within bounds
+    if ((void *)eth + sizeof(*eth) > data_end)
+    return XDP_PASS;
+    struct iphdr *ip = data + sizeof(*eth);
+    // Check if the IP header is within bounds
+    if ((void *)ip + sizeof(*ip) > data_end)
+    return XDP_PASS;
+    // Check if the packet has IP options
+    int options_len = (ip->ihl * 4) - sizeof(struct iphdr);
+    __u8 *options = (__u8 *)(ip + 1);
+    // I do something here to find option_index of my OPTION_TYPE 31
+    // Then I extend the packet to 4 bytes to add one more entry into my existing option field
+    int ret = bpf_xdp_adjust_tail(ctx, sizeof(struct CustomIPEntry)); // Add 4 bytes at the end
+    if (ret < 0)
+    {
+    return XDP_PASS; // If adjustment fails, pass the packet
+    }
+    // Here is the length of the data I would like to shift, start from the end of my existing option field
+    int shift_data_length = data_end - ((void *)options + option_index + 4) - sizeof(struct CustomIPEntry);
+    // I need to do the verification again due to expanding the size
+    void *data = (void *)(long)ctx->data;
+    void *data_end = (void *)(long)ctx->data_end;
+    struct ethhdr *eth = data;
+    // Check if the Ethernet header is within bounds
+    if ((void *)eth + sizeof(*eth) > data_end)
+    return XDP_PASS;
+    struct iphdr *ip = data + sizeof(*eth);
+    // Check if the IP header is within bounds
+    if ((void *)ip + sizeof(*ip) > data_end)
+    return XDP_PASS;
+    // Check if the packet has IP options
+    int options_len = (ip->ihl * 4) - sizeof(struct iphdr);
+    __u8 *options = (__u8 *)(ip + 1);
+    if ((void *)(options + option_index + 4) > data_end)
+    return XDP_PASS;
+    // My option field contains [type, length, count, [array of entries]]
+    __u8 option_type = options[option_index];
+    __u8 option_length = options[option_index + 1];
+    __u16 option_count = bpf_ntohs(*((__u16 *)(options + option_index + 2)));
+    bpf_trace_printk("Option %u", option_type);
+    bpf_trace_printk("Length %u", option_length);
+    bpf_trace_printk("Count %d", (__u32)option_count);
+    if ((void *)(options + option_index + 4) > data_end)
+    return XDP_PASS;
+    // Parse entries
+    struct CustomIPEntry *entry = (struct CustomIPEntry *)(options + option_index + 4);
+    if ((void *)(entry + 1) >= data_end)
+    return XDP_PASS; // Ensure we don't access out of bounds
+    // This contains my first entry which has already existed in the original packet
+    __u16 id_val = bpf_ntohs(entry->id_val);
+    __u8 inter_val = entry->inter_val;
+    __u8 cmd_val = entry->cmd_val;
+    // Update size of packet header because I want to add one more entry (4 bytes)
+    int new_header_size = sizeof(struct iphdr) + options_len + sizeof(struct CustomIPEntry); // 20 + 8 = 28 bytes
+    ip->ihl = new_header_size / 4;
+    ip->tot_len = htons(ntohs(ip->tot_len) + sizeof(struct CustomIPEntry));
+    ip->check = 0; // Invalidate checksum
+    // The begining of the start pointer to shift
+    __u8 *shift_start = options + option_index + 4;
+    // The verifier force me to do check but the packet size is dynamic so I do not know how to avoid it
+    // if ((void *)(shift_start + MAX_PACKET_LENGTH + 5) > data_end)
+    // return XDP_PASS;
+    for (int i = MAX_PACKET_LENGTH; i > -1 ; i--)
+    {
+    // I even try this check but it does not work
+    if ((void *)(shift_start + i + 4) > data_end)
+    {
+    break;
+    }
+    shift_start[i + 4] = shift_start[i];
+    }
+    return XDP_PASS;
+    }
+    Here is the full error messages if you want to check
+    bpf: Failed to load program: Invalid argument
+    0: (bf) r6 = r1
+    1: (61) r4 = *(u32 *)(r6 +0)
+    2: (61) r1 = *(u32 *)(r6 +4)
+    3: (bf) r2 = r4
+    4: (07) r2 += 14
+    5: (2d) if r2 > r1 goto pc+179
+    R1_w=pkt_end(id=0,off=0,imm=0) R2_w=pkt(id=0,off=14,r=14,imm=0) R4_w=pkt(id=0,off=0,r=14,imm=0) R6_w=ctx(id=0,off=0,imm=0) R10=fp0
+    6: (bf) r3 = r4
+    7: (07) r3 += 34
+    8: (2d) if r3 > r1 goto pc+176
+    R1_w=pkt_end(id=0,off=0,imm=0) R2_w=pkt(id=0,off=14,r=34,imm=0) R3_w=pkt(id=0,off=34,r=34,imm=0) R4_w=pkt(id=0,off=0,r=34,imm=0) R6_w=ctx(id=0,off=0,imm=0) R10=fp0
+    9: (bf) r2 = r4
+    10: (07) r2 += 38
+    11: (3d) if r2 >= r1 goto pc+173
+    R1=pkt_end(id=0,off=0,imm=0) R2=pkt(id=0,off=38,r=39,imm=0) R3=pkt(id=0,off=34,r=39,imm=0) R4=pkt(id=0,off=0,r=39,imm=0) R6=ctx(id=0,off=0,imm=0) R10=fp0
+    12: (b7) r8 = 0
+    13: (b7) r5 = 1
+    14: (71) r7 = *(u8 *)(r3 +0)
+    15: (bf) r0 = r3
+    16: (55) if r7 != 0x1f goto pc+102
+    R0_w=pkt(id=0,off=34,r=39,imm=0) R1=pkt_end(id=0,off=0,imm=0) R2=pkt(id=0,off=38,r=39,imm=0) R3=pkt(id=0,off=34,r=39,imm=0) R4=pkt(id=0,off=0,r=39,imm=0) R5_w=inv1 R6=ctx(id=0,off=0,imm=0) R7_w=inv31 R8_w=inv0 R10=fp0
+    17: (69) r4 = *(u16 *)(r0 +2)
+    18: (15) if r4 == 0x0 goto pc+8
+    R0_w=pkt(id=0,off=34,r=39,imm=0) R1=pkt_end(id=0,off=0,imm=0) R2=pkt(id=0,off=38,r=39,imm=0) R3=pkt(id=0,off=34,r=39,imm=0) R4_w=inv(id=0,umax_value=65535,var_off=(0x0; 0xffff)) R5_w=inv1 R6=ctx(id=0,off=0,imm=0) R7_w=inv31 R8_w=inv0 R10=fp0
+    19: (0f) r3 += r5
+    last_idx 19 first_idx 11
+    regs=20 stack=0 before 18: (15) if r4 == 0x0 goto pc+8
+    regs=20 stack=0 before 17: (69) r4 = *(u16 *)(r0 +2)
+    regs=20 stack=0 before 16: (55) if r7 != 0x1f goto pc+102
+    regs=20 stack=0 before 15: (bf) r0 = r3
+    regs=20 stack=0 before 14: (71) r7 = *(u8 *)(r3 +0)
+    regs=20 stack=0 before 13: (b7) r5 = 1
+    20: (71) r3 = *(u8 *)(r3 +0)
+    21: (0f) r0 += r3
+    last_idx 21 first_idx 11
+    regs=8 stack=0 before 20: (71) r3 = *(u8 *)(r3 +0)
+    22: (3d) if r0 >= r1 goto pc+4
+    R0=pkt(id=1,off=34,r=35,umax_value=255,var_off=(0x0; 0xff)) R1=pkt_end(id=0,off=0,imm=0) R2=pkt(id=0,off=38,r=39,imm=0) R3=invP(id=0,umax_value=255,var_off=(0x0; 0xff)) R4=inv(id=0,umax_value=65535,var_off=(0x0; 0xffff)) R5=invP1 R6=ctx(id=0,off=0,imm=0) R7=inv31 R8=inv0 R10=fp0
+    23: (bf) r3 = r2
+    24: (07) r3 += 4
+    25: (2d) if r3 > r1 goto pc+1
+    R0=pkt(id=1,off=34,r=35,umax_value=255,var_off=(0x0; 0xff)) R1=pkt_end(id=0,off=0,imm=0) R2=pkt(id=0,off=38,r=42,imm=0) R3_w=pkt(id=0,off=42,r=42,imm=0) R4=inv(id=0,umax_value=65535,var_off=(0x0; 0xffff)) R5=invP1 R6=ctx(id=0,off=0,imm=0) R7=inv31 R8=inv0 R10=fp0
+    26: (05) goto pc+112
+    139: (71) r3 = *(u8 *)(r2 +3)
+    140: (15) if r3 == 0x1 goto pc+44
+    R0=pkt(id=1,off=34,r=35,umax_value=255,var_off=(0x0; 0xff)) R1=pkt_end(id=0,off=0,imm=0) R2=pkt(id=0,off=38,r=42,imm=0) R3_w=inv(id=0,umax_value=255,var_off=(0x0; 0xff)) R4=inv(id=0,umax_value=65535,var_off=(0x0; 0xffff)) R5=invP1 R6=ctx(id=0,off=0,imm=0) R7=inv31 R8=inv0 R10=fp0
+    141: (bf) r3 = r2
+    142: (07) r3 += 8
+    143: (2d) if r3 > r1 goto pc-117
+    R0=pkt(id=1,off=34,r=35,umax_value=255,var_off=(0x0; 0xff)) R1=pkt_end(id=0,off=0,imm=0) R2=pkt(id=0,off=38,r=46,imm=0) R3=pkt(id=0,off=46,r=46,imm=0) R4=inv(id=0,umax_value=65535,var_off=(0x0; 0xffff)) R5=invP1 R6=ctx(id=0,off=0,imm=0) R7=inv31 R8=inv0 R10=fp0
+    144: (dc) r4 = be16 r4
+    145: (b7) r3 = 2
+    146: (2d) if r3 > r4 goto pc-120
+    R0=pkt(id=1,off=34,r=35,umax_value=255,var_off=(0x0; 0xff)) R1=pkt_end(id=0,off=0,imm=0) R2=pkt(id=0,off=38,r=46,imm=0) R3_w=inv2 R4_w=inv(id=0,umin_value=2) R5=invP1 R6=ctx(id=0,off=0,imm=0) R7=inv31 R8=inv0 R10=fp0
+    147: (71) r3 = *(u8 *)(r2 +7)
+    148: (15) if r3 == 0x1 goto pc+36
+    R0=pkt(id=1,off=34,r=35,umax_value=255,var_off=(0x0; 0xff)) R1=pkt_end(id=0,off=0,imm=0) R2=pkt(id=0,off=38,r=46,imm=0) R3_w=inv(id=0,umax_value=255,var_off=(0x0; 0xff)) R4_w=inv(id=0,umin_value=2) R5=invP1 R6=ctx(id=0,off=0,imm=0) R7=inv31 R8=inv0 R10=fp0
+    149: (bf) r3 = r2
+    150: (07) r3 += 12
+    151: (2d) if r3 > r1 goto pc-125
+    R0=pkt(id=1,off=34,r=35,umax_value=255,var_off=(0x0; 0xff)) R1=pkt_end(id=0,off=0,imm=0) R2=pkt(id=0,off=38,r=50,imm=0) R3=pkt(id=0,off=50,r=50,imm=0) R4=inv(id=0,umin_value=2) R5=invP1 R6=ctx(id=0,off=0,imm=0) R7=inv31 R8=inv0 R10=fp0
+    152: (b7) r1 = 3
+    153: (2d) if r1 > r4 goto pc-127
+    R0=pkt(id=1,off=34,r=35,umax_value=255,var_off=(0x0; 0xff)) R1_w=inv3 R2=pkt(id=0,off=38,r=50,imm=0) R3=pkt(id=0,off=50,r=50,imm=0) R4=inv(id=0,umin_value=3) R5=invP1 R6=ctx(id=0,off=0,imm=0) R7=inv31 R8=inv0 R10=fp0
+    154: (71) r1 = *(u8 *)(r2 +11)
+    155: (15) if r1 == 0x1 goto pc+29
+    R0=pkt(id=1,off=34,r=35,umax_value=255,var_off=(0x0; 0xff)) R1_w=inv(id=0,umax_value=255,var_off=(0x0; 0xff)) R2=pkt(id=0,off=38,r=50,imm=0) R3=pkt(id=0,off=50,r=50,imm=0) R4=inv(id=0,umin_value=3) R5=invP1 R6=ctx(id=0,off=0,imm=0) R7=inv31 R8=inv0 R10=fp0
+    156: (05) goto pc-130
+    27: (bf) r1 = r6
+    28: (b7) r2 = 4
+    29: (85) call bpf_xdp_adjust_tail#65
+    30: (67) r0 <<= 32
+    31: (c7) r0 s>>= 32
+    32: (b7) r1 = 0
+    33: (6d) if r1 s> r0 goto pc+151
+    R0_w=inv(id=0,umax_value=2147483647,var_off=(0x0; 0x7fffffff)) R1_w=inv0 R6=ctx(id=0,off=0,imm=0) R7=inv31 R8=inv0 R10=fp0
+    34: (61) r9 = *(u32 *)(r6 +0)
+    35: (61) r7 = *(u32 *)(r6 +4)
+    36: (bf) r1 = r9
+    37: (07) r1 += 14
+    38: (2d) if r1 > r7 goto pc+146
+    R0_w=inv(id=0,umax_value=2147483647,var_off=(0x0; 0x7fffffff)) R1_w=pkt(id=0,off=14,r=14,imm=0) R6=ctx(id=0,off=0,imm=0) R7_w=pkt_end(id=0,off=0,imm=0) R8=inv0 R9_w=pkt(id=0,off=0,r=14,imm=0) R10=fp0
+    39: (bf) r2 = r9
+    40: (07) r2 += 34
+    41: (2d) if r2 > r7 goto pc+143
+    R0=inv(id=0,umax_value=2147483647,var_off=(0x0; 0x7fffffff)) R1=pkt(id=0,off=14,r=34,imm=0) R2=pkt(id=0,off=34,r=34,imm=0) R6=ctx(id=0,off=0,imm=0) R7=pkt_end(id=0,off=0,imm=0) R8=inv0 R9=pkt(id=0,off=0,r=34,imm=0) R10=fp0
+    42: (0f) r2 += r8
+    last_idx 42 first_idx 41
+    regs=100 stack=0 before 41: (2d) if r2 > r7 goto pc+143
+    R0_w=inv(id=0,umax_value=2147483647,var_off=(0x0; 0x7fffffff)) R1_w=pkt(id=0,off=14,r=14,imm=0) R2_rw=pkt(id=0,off=34,r=14,imm=0) R6=ctx(id=0,off=0,imm=0) R7_rw=pkt_end(id=0,off=0,imm=0) R8_r=invP0 R9_w=pkt(id=0,off=0,r=14,imm=0) R10=fp0
+    parent didn't have regs=100 stack=0 marks
+    last_idx 40 first_idx 30
+    regs=100 stack=0 before 40: (07) r2 += 34
+    regs=100 stack=0 before 39: (bf) r2 = r9
+    regs=100 stack=0 before 38: (2d) if r1 > r7 goto pc+146
+    regs=100 stack=0 before 37: (07) r1 += 14
+    regs=100 stack=0 before 36: (bf) r1 = r9
+    regs=100 stack=0 before 35: (61) r7 = *(u32 *)(r6 +4)
+    regs=100 stack=0 before 34: (61) r9 = *(u32 *)(r6 +0)
+    regs=100 stack=0 before 33: (6d) if r1 s> r0 goto pc+151
+    regs=100 stack=0 before 32: (b7) r1 = 0
+    regs=100 stack=0 before 31: (c7) r0 s>>= 32
+    regs=100 stack=0 before 30: (67) r0 <<= 32
+    R0_rw=inv(id=0) R6_r=ctx(id=0,off=0,imm=0) R7=inv31 R8_r=invP0 R10=fp0
+    parent didn't have regs=100 stack=0 marks
+    last_idx 29 first_idx 151
+    regs=100 stack=0 before 29: (85) call bpf_xdp_adjust_tail#65
+    regs=100 stack=0 before 28: (b7) r2 = 4
+    regs=100 stack=0 before 27: (bf) r1 = r6
+    regs=100 stack=0 before 156: (05) goto pc-130
+    regs=100 stack=0 before 155: (15) if r1 == 0x1 goto pc+29
+    regs=100 stack=0 before 154: (71) r1 = *(u8 *)(r2 +11)
+    regs=100 stack=0 before 153: (2d) if r1 > r4 goto pc-127
+    regs=100 stack=0 before 152: (b7) r1 = 3
+    regs=100 stack=0 before 151: (2d) if r3 > r1 goto pc-125
+    R0=pkt(id=1,off=34,r=35,umax_value=255,var_off=(0x0; 0xff)) R1_r=pkt_end(id=0,off=0,imm=0) R2_r=pkt(id=0,off=38,r=46,imm=0) R3_rw=pkt(id=0,off=50,r=46,imm=0) R4_rw=inv(id=0,umin_value=2) R5=invP1 R6_r=ctx(id=0,off=0,imm=0) R7=inv31 R8_r=invP0 R10=fp0
+    parent didn't have regs=100 stack=0 marks
+    last_idx 150 first_idx 143
+    regs=100 stack=0 before 150: (07) r3 += 12
+    regs=100 stack=0 before 149: (bf) r3 = r2
+    regs=100 stack=0 before 148: (15) if r3 == 0x1 goto pc+36
+    regs=100 stack=0 before 147: (71) r3 = *(u8 *)(r2 +7)
+    regs=100 stack=0 before 146: (2d) if r3 > r4 goto pc-120
+    regs=100 stack=0 before 145: (b7) r3 = 2
+    regs=100 stack=0 before 144: (dc) r4 = be16 r4
+    regs=100 stack=0 before 143: (2d) if r3 > r1 goto pc-117
+    R0=pkt(id=1,off=34,r=35,umax_value=255,var_off=(0x0; 0xff)) R1_r=pkt_end(id=0,off=0,imm=0) R2_r=pkt(id=0,off=38,r=42,imm=0) R3_rw=pkt(id=0,off=46,r=42,imm=0) R4_r=inv(id=0,umax_value=65535,var_off=(0x0; 0xffff)) R5=invP1 R6_r=ctx(id=0,off=0,imm=0) R7=inv31 R8_r=invP0 R10=fp0
+    parent didn't have regs=100 stack=0 marks
+    last_idx 142 first_idx 22
+    regs=100 stack=0 before 142: (07) r3 += 8
+    regs=100 stack=0 before 141: (bf) r3 = r2
+    regs=100 stack=0 before 140: (15) if r3 == 0x1 goto pc+44
+    regs=100 stack=0 before 139: (71) r3 = *(u8 *)(r2 +3)
+    regs=100 stack=0 before 26: (05) goto pc+112
+    regs=100 stack=0 before 25: (2d) if r3 > r1 goto pc+1
+    regs=100 stack=0 before 24: (07) r3 += 4
+    regs=100 stack=0 before 23: (bf) r3 = r2
+    regs=100 stack=0 before 22: (3d) if r0 >= r1 goto pc+4
+    R0_rw=pkt(id=1,off=34,r=0,umax_value=255,var_off=(0x0; 0xff)) R1_r=pkt_end(id=0,off=0,imm=0) R2_r=pkt(id=0,off=38,r=39,imm=0) R3_w=invP(id=0,umax_value=255,var_off=(0x0; 0xff)) R4_rw=inv(id=0,umax_value=65535,var_off=(0x0; 0xffff)) R5_w=invP1 R6_r=ctx(id=0,off=0,imm=0) R7_w=inv31 R8_rw=invP0 R10=fp0
+    parent didn't have regs=100 stack=0 marks
+    last_idx 21 first_idx 11
+    regs=100 stack=0 before 21: (0f) r0 += r3
+    regs=100 stack=0 before 20: (71) r3 = *(u8 *)(r3 +0)
+    regs=100 stack=0 before 19: (0f) r3 += r5
+    regs=100 stack=0 before 18: (15) if r4 == 0x0 goto pc+8
+    regs=100 stack=0 before 17: (69) r4 = *(u16 *)(r0 +2)
+    regs=100 stack=0 before 16: (55) if r7 != 0x1f goto pc+102
+    regs=100 stack=0 before 15: (bf) r0 = r3
+    regs=100 stack=0 before 14: (71) r7 = *(u8 *)(r3 +0)
+    regs=100 stack=0 before 13: (b7) r5 = 1
+    regs=100 stack=0 before 12: (b7) r8 = 0
+    43: (bf) r6 = r2
+    44: (07) r6 += 4
+    45: (2d) if r6 > r7 goto pc+139
+    R0=inv(id=0,umax_value=2147483647,var_off=(0x0; 0x7fffffff)) R1=pkt(id=0,off=14,r=38,imm=0) R2_w=pkt(id=0,off=34,r=38,imm=0) R6_w=pkt(id=0,off=38,r=38,imm=0) R7=pkt_end(id=0,off=0,imm=0) R8=invP0 R9=pkt(id=0,off=0,r=38,imm=0) R10=fp0
+    46: (71) r1 = *(u8 *)(r1 +0)
+    47: (7b) *(u64 *)(r10 -40) = r1
+    48: (71) r1 = *(u8 *)(r2 +1)
+    49: (7b) *(u64 *)(r10 -32) = r1
+    50: (71) r3 = *(u8 *)(r2 +0)
+    51: (69) r1 = *(u16 *)(r2 +2)
+    52: (7b) *(u64 *)(r10 -24) = r1
+    53: (18) r1 = 0x25206e6f6974704f
+    55: (7b) *(u64 *)(r10 -16) = r1
+    56: (b7) r1 = 117
+    57: (6b) *(u16 *)(r10 -8) = r1
+    58: (bf) r1 = r10
+    59: (07) r1 += -16
+    60: (b7) r2 = 10
+    61: (85) call bpf_trace_printk#6
+    last_idx 61 first_idx 41
+    regs=4 stack=0 before 60: (b7) r2 = 10
+    62: (b7) r1 = 117
+    63: (6b) *(u16 *)(r10 -8) = r1
+    64: (18) r1 = 0x25206874676e654c
+    66: (7b) *(u64 *)(r10 -16) = r1
+    67: (bf) r1 = r10
+    68: (07) r1 += -16
+    69: (b7) r2 = 10
+    70: (79) r3 = *(u64 *)(r10 -32)
+    71: (85) call bpf_trace_printk#6
+    last_idx 71 first_idx 62
+    regs=4 stack=0 before 70: (79) r3 = *(u64 *)(r10 -32)
+    regs=4 stack=0 before 69: (b7) r2 = 10
+    72: (b7) r1 = 0
+    73: (73) *(u8 *)(r10 -8) = r1
+    last_idx 73 first_idx 62
+    regs=2 stack=0 before 72: (b7) r1 = 0
+    74: (18) r1 = 0x642520746e756f43
+    76: (7b) *(u64 *)(r10 -16) = r1
+    77: (79) r3 = *(u64 *)(r10 -24)
+    78: (dc) r3 = be16 r3
+    79: (bf) r1 = r10
+    80: (07) r1 += -16
+    81: (b7) r2 = 9
+    82: (85) call bpf_trace_printk#6
+    last_idx 82 first_idx 62
+    regs=4 stack=0 before 81: (b7) r2 = 9
+    83: (bf) r1 = r6
+    84: (07) r1 += 4
+    85: (3d) if r1 >= r7 goto pc+99
+    R0=inv(id=0) R1_w=pkt(id=0,off=42,r=43,imm=0) R6=pkt(id=0,off=38,r=43,imm=0) R7=pkt_end(id=0,off=0,imm=0) R8=invP0 R9=pkt(id=0,off=0,r=43,imm=0) R10=fp0 fp-8=??????mm fp-16=mmmmmmmm fp-24=inv fp-32=inv fp-40=inv
+    86: (79) r2 = *(u64 *)(r10 -40)
+    87: (67) r2 <<= 2
+    88: (71) r1 = *(u8 *)(r9 +14)
+    89: (57) r1 &= 240
+    90: (07) r2 += 4
+    91: (77) r2 >>= 2
+    92: (57) r2 &= 15
+    93: (4f) r1 |= r2
+    94: (b7) r2 = 0
+    95: (6b) *(u16 *)(r9 +24) = r2
+    96: (73) *(u8 *)(r9 +14) = r1
+    97: (69) r1 = *(u16 *)(r9 +16)
+    98: (dc) r1 = be16 r1
+    99: (07) r1 += 4
+    100: (dc) r1 = be16 r1
+    101: (6b) *(u16 *)(r9 +16) = r1
+    102: (bf) r1 = r6
+    103: (07) r1 += 404
+    104: (2d) if r1 > r7 goto pc+80
+    R0=inv(id=0) R1_w=pkt(id=0,off=442,r=442,imm=0) R2_w=inv0 R6=pkt(id=0,off=38,r=442,imm=0) R7=pkt_end(id=0,off=0,imm=0) R8=invP0 R9=pkt(id=0,off=0,r=442,imm=0) R10=fp0 fp-8=??????mm fp-16=mmmmmmmm fp-24=inv fp-32=inv fp-40=inv
+    105: (bf) r0 = r6
+    106: (07) r0 += 400
+    107: (0f) r9 += r8
+    108: (18) r1 = 0x10000018f
+    110: (18) r2 = 0xffffffff0000002b
+    112: (18) r3 = 0xffffffff
+    114: (18) r4 = 0xffffffff0000002a
+    116: (18) r5 = 0xfffffffe
+    118: (05) goto pc+60
+    179: (bf) r8 = r9
+    180: (0f) r8 += r1
+    last_idx 180 first_idx 179
+    regs=2 stack=0 before 179: (bf) r8 = r9
+    R0_w=pkt(id=0,off=438,r=442,imm=0) R1_rw=invP4294967695 R2_w=inv-4294967253 R3_w=inv4294967295 R4_w=inv-4294967254 R5_w=inv4294967294 R6=pkt(id=0,off=38,r=442,imm=0) R7=pkt_end(id=0,off=0,imm=0) R8=invP0 R9_rw=pkt(id=0,off=0,r=442,imm=0) R10=fp0 fp-8=??????mm fp-16=mmmmmmmm fp-24=inv fp-32=inv fp-40=inv
+    parent didn't have regs=2 stack=0 marks
+    last_idx 118 first_idx 83
+    regs=2 stack=0 before 118: (05) goto pc+60
+    regs=2 stack=0 before 116: (18) r5 = 0xfffffffe
+    regs=2 stack=0 before 114: (18) r4 = 0xffffffff0000002a
+    regs=2 stack=0 before 112: (18) r3 = 0xffffffff
+    regs=2 stack=0 before 110: (18) r2 = 0xffffffff0000002b
+    regs=2 stack=0 before 108: (18) r1 = 0x10000018f
+    math between pkt pointer and 4294967695 is not allowed
+    processed 131 insns (limit 1000000) max_states_per_insn 0 total_states 9 peak_states 9 mark_read 5
+    Traceback (most recent call last):
+    File "a.py", line 6, in <module>
+    fn = b.load_func("op_ebpf", BPF.XDP)
+    File "/usr/lib/python3/dist-packages/bcc/__init__.py", line 523, in load_func
+    raise Exception("Failed to load BPF program %s: %s" %
+    Exception: Failed to load BPF program b'op_ebpf': Invalid argument
+    So my question is: is it possible to adding or removing information like options in packets using ebpf while I cannot control the size of packets?
+  selected_answer:
+    answer_id: 79526601
+    url: https://stackoverflow.com/questions/79525201/is-it-possible-to-insert-new-option-into-packets-in-ebpf#79526601
+    is_accepted: true
+    score: 2
+    body_text: |-
+      You're using bpf_xdp_adjust_tail to add room after the packet, then trying to move the transport header and payload back. Instead, you should use bpf_xdp_adjust_head to add room before the packet, then moving the Ethernet and IP headers forward.
+      You can do this as follows:
+      /* Adds space before your packet. */
+      if (bpf_xdp_adjust_head(ctx, 0 - sizeof(*entry)))
+      return XDP_PASS;
+      /* Perform bounds check again. */
+      void *new_eth = (void *)(long)xdp->data;
+      void *old_eth = new_eth + sizeof(struct CustomIPEntry);
+      void *data_end = (void *)(long)xdp->data_end;
+      size_t headers_to_move = sizeof(struct ethhdr) + sizeof(struct iphdr);
+      if (old_eth + headers_to_move + sizeof(*entry) > data_end)
+      return XDP_PASS;
+      /* Move the Ethernet and IP headers forward. */
+      memcpy(new_eth, old_eth, headers_to_move);
+      /* Write your IP option. */
+      memcpy(new_eth + headers_to_move, entry, sizeof(*entry));
+      Notice the negative second argument for bpf_xdp_adjust_head, as described in the documentation:
+      Note that it is possible to use a negative value for delta. This helper can be used to prepare the packet for pushing or popping headers.
+    fix_description: You're using bpf_xdp_adjust_tail to add room after the packet,
+      then trying to move the transport header and payload back. Instead, you should
+      use bpf_xdp_adjust_head to add room before the packet, then moving the Ethernet
+      and IP headers forward. Note that it is possible to use a negative value for
+      delta. This helper can be used to prepare the packet for pushing or popping
+      headers.

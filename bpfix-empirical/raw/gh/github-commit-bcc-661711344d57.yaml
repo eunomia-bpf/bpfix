@@ -1,0 +1,73 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-bcc-661711344d57
+source_kind: github_commit
+source:
+  url: https://github.com/iovisor/bcc/commit/661711344d577c506a552ac2adddac532793cf64
+  title: 'libbpf-tools: Fix misaligned pointer accesses in exitsnoop'
+  repository: https://github.com/iovisor/bcc
+  commit: 661711344d577c506a552ac2adddac532793cf64
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-bcc-661711344d57.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Fix copies perf-buffer event data in userspace exitsnoop.c before field
+    access; no BPF program verifier rejection is represented.
+raw:
+  case_id: github-commit-bcc-661711344d57
+  source: github_commits
+  repository: https://github.com/iovisor/bcc
+  commit_hash: 661711344d577c506a552ac2adddac532793cf64
+  commit_message: 'libbpf-tools: Fix misaligned pointer accesses in exitsnoop'
+  commit_date: '2023-10-12'
+  fix_type: alignment
+  buggy_code: "// FILE: libbpf-tools/exitsnoop.c\n// CONTEXT: static int libbpf_print_fn(enum\
+    \ libbpf_print_level level, const char *format, va\n\tif (level == LIBBPF_DEBUG\
+    \ && !verbose)\n\t\treturn 0;\n\treturn vfprintf(stderr, format, args);\n}\n\n\
+    static void sig_int(int signo)\n{\n\texiting = 1;\n}\n\nstatic void handle_event(void\
+    \ *ctx, int cpu, void *data, __u32 data_sz)\n{\n\tstruct event *e = data;\n\t\
+    time_t t;\n\tstruct tm *tm;\n\tchar ts[32];\n\tdouble age;\n\tint sig, coredump;\n\
+    \n\tif (emit_timestamp) {\n\t\ttime(&t);\n\t\ttm = localtime(&t);\n\t\tstrftime(ts,\
+    \ sizeof(ts), \"%H:%M:%S\", tm);\n\t\tprintf(\"%8s \", ts);\n\t}\n\n\tage = (e->exit_time\
+    \ - e->start_time) / 1e9;\n\tprintf(\"%-16s %-7d %-7d %-7d %-7.2f \",\n\t    \
+    \   e->comm, e->pid, e->ppid, e->tid, age);\n\n\tif (!e->sig) {\n\t\tif (!e->exit_code)\n\
+    \t\t\tprintf(\"0\\n\");\n\t\telse\n\t\t\tprintf(\"code %d\\n\", e->exit_code);\n\
+    \t} else {\n\t\tsig = e->sig & 0x7f;\n\t\tcoredump = e->sig & 0x80;\n\t\tif (sig)\n\
+    \t\t\tprintf(\"signal %d (%s)\", sig, strsignal(sig));\n\t\tif (coredump)\n\t\t\
+    \tprintf(\", core dumped\");\n\t\tprintf(\"\\n\");\n\t}\n}\n\nstatic void handle_lost_events(void\
+    \ *ctx, int cpu, __u64 lost_cnt)\n{\n\twarn(\"lost %llu events on CPU #%d\\n\"\
+    , lost_cnt, cpu);\n}"
+  fixed_code: "// FILE: libbpf-tools/exitsnoop.c\n// CONTEXT: static int libbpf_print_fn(enum\
+    \ libbpf_print_level level, const char *format, va\n\tif (level == LIBBPF_DEBUG\
+    \ && !verbose)\n\t\treturn 0;\n\treturn vfprintf(stderr, format, args);\n}\n\n\
+    static void sig_int(int signo)\n{\n\texiting = 1;\n}\n\nstatic void handle_event(void\
+    \ *ctx, int cpu, void *data, __u32 data_sz)\n{\n\tstruct event e;\n\ttime_t t;\n\
+    \tstruct tm *tm;\n\tchar ts[32];\n\tdouble age;\n\tint sig, coredump;\n\n\tif\
+    \ (data_sz < sizeof(e)) {\n\t\tprintf(\"Error: packet too small\\n\");\n\t\treturn;\n\
+    \t}\n\t/* Copy data as alignment in the perf buffer isn't guaranteed. */\n\tmemcpy(&e,\
+    \ data, sizeof(e));\n\n\tif (emit_timestamp) {\n\t\ttime(&t);\n\t\ttm = localtime(&t);\n\
+    \t\tstrftime(ts, sizeof(ts), \"%H:%M:%S\", tm);\n\t\tprintf(\"%8s \", ts);\n\t\
+    }\n\n\tage = (e.exit_time - e.start_time) / 1e9;\n\tprintf(\"%-16s %-7d %-7d %-7d\
+    \ %-7.2f \",\n\t       e.comm, e.pid, e.ppid, e.tid, age);\n\n\tif (!e.sig) {\n\
+    \t\tif (!e.exit_code)\n\t\t\tprintf(\"0\\n\");\n\t\telse\n\t\t\tprintf(\"code\
+    \ %d\\n\", e.exit_code);\n\t} else {\n\t\tsig = e.sig & 0x7f;\n\t\tcoredump =\
+    \ e.sig & 0x80;\n\t\tif (sig)\n\t\t\tprintf(\"signal %d (%s)\", sig, strsignal(sig));\n\
+    \t\tif (coredump)\n\t\t\tprintf(\", core dumped\");\n\t\tprintf(\"\\n\");\n\t\
+    }\n}\n\nstatic void handle_lost_events(void *ctx, int cpu, __u64 lost_cnt)\n{\n\
+    \twarn(\"lost %llu events on CPU #%d\\n\", lost_cnt, cpu);\n}"
+  diff_summary: |-
+    libbpf-tools/exitsnoop.c:
+    - Adjusted alignment declarations or stack layout to avoid misaligned accesses.
+    - Affected context: static int libbpf_print_fn(enum libbpf_print_level level, const char *format, va.
+    - Commit subject: libbpf-tools: Fix misaligned pointer accesses in exitsnoop.

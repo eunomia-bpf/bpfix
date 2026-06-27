@@ -1,0 +1,75 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-9f4d267c1edb
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/9f4d267c1edb57976e94bc9fa10f84d38175d71f
+  title: 'bpf: Fix alignment for tc_nodeport_lb6_dsr_backend.c'
+  repository: https://github.com/cilium/cilium
+  commit: 9f4d267c1edb57976e94bc9fa10f84d38175d71f
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-9f4d267c1edb.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Checkpatch formatting/alignment cleanup in a test file; not a BPF verifier
+    rejection.
+raw:
+  case_id: github-commit-cilium-9f4d267c1edb
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: 9f4d267c1edb57976e94bc9fa10f84d38175d71f
+  commit_message: 'bpf: Fix alignment for tc_nodeport_lb6_dsr_backend.c'
+  commit_date: '2025-12-19'
+  fix_type: inline_hint
+  buggy_code: "// FILE: bpf/tests/tc_nodeport_lb6_dsr_backend.c\n// CONTEXT: mock_tail_call_dynamic(struct\
+    \ __ctx_buff *ctx __maybe_unused,\n{\n\ttail_call(ctx, &mock_policy_call_map,\
+    \ slot);\n}\n\n#define fib_lookup mock_fib_lookup\nstatic __always_inline __maybe_unused\
+    \ long\nmock_fib_lookup(void *ctx __maybe_unused, struct bpf_fib_lookup *params\
+    \ __maybe_unused,\n\t\tint plen __maybe_unused, __u32 flags __maybe_unused);\n\
+    \n#define ctx_redirect mock_ctx_redirect\nstatic __always_inline __maybe_unused\
+    \ int\nmock_ctx_redirect(const struct __sk_buff *ctx __maybe_unused,\n\t\tint\
+    \ ifindex __maybe_unused, __u32 flags __maybe_unused);\n\n#include \"lib/bpf_host.h\"\
+    \n\n#include \"lib/endpoint.h\"\n#include \"lib/ipcache.h\"\n\nASSIGN_CONFIG(__u32,\
+    \ interface_ifindex, DEFAULT_IFACE)\n\nlong mock_fib_lookup(__maybe_unused void\
+    \ *ctx, struct bpf_fib_lookup *params,\n\t\t__maybe_unused int plen, __maybe_unused\
+    \ __u32 flags)\n{\n\tparams->ifindex = DEFAULT_IFACE;\n\n\treturn BPF_FIB_LKUP_RET_SUCCESS;\n\
+    }\n\nstatic __always_inline __maybe_unused int\nmock_ctx_redirect(const struct\
+    \ __sk_buff *ctx __maybe_unused,\n\t\tint ifindex __maybe_unused, __u32 flags\
+    \ __maybe_unused)\n{\n\tif (ifindex == BACKEND_IFACE)\n\t\treturn CTX_ACT_REDIRECT;\n\
+    \n\treturn CTX_ACT_DROP;\n}\n\n/* Test that a remote node\n * - doesn't touch\
+    \ a DSR request,\n * - redirects it to the pod (as ENABLE_HOST_ROUTING is set)\n\
+    \ * - creates a matching CT entry, and SNAT entry from the DSR info\n */"
+  fixed_code: "// FILE: bpf/tests/tc_nodeport_lb6_dsr_backend.c\n// CONTEXT: mock_tail_call_dynamic(struct\
+    \ __ctx_buff *ctx __maybe_unused,\n{\n\ttail_call(ctx, &mock_policy_call_map,\
+    \ slot);\n}\n\n#define fib_lookup mock_fib_lookup\nstatic __always_inline __maybe_unused\
+    \ long\nmock_fib_lookup(void *ctx __maybe_unused, struct bpf_fib_lookup *params\
+    \ __maybe_unused,\n\t\tint plen __maybe_unused, __u32 flags __maybe_unused);\n\
+    \n#define ctx_redirect mock_ctx_redirect\nstatic __always_inline __maybe_unused\
+    \ int\nmock_ctx_redirect(const struct __sk_buff *ctx __maybe_unused,\n\t\t  int\
+    \ ifindex __maybe_unused, __u32 flags __maybe_unused);\n\n#include \"lib/bpf_host.h\"\
+    \n\n#include \"lib/endpoint.h\"\n#include \"lib/ipcache.h\"\n\nASSIGN_CONFIG(__u32,\
+    \ interface_ifindex, DEFAULT_IFACE)\n\nlong mock_fib_lookup(__maybe_unused void\
+    \ *ctx, struct bpf_fib_lookup *params,\n\t\t     __maybe_unused int plen, __maybe_unused\
+    \ __u32 flags)\n{\n\tparams->ifindex = DEFAULT_IFACE;\n\n\treturn BPF_FIB_LKUP_RET_SUCCESS;\n\
+    }\n\nstatic __always_inline __maybe_unused int\nmock_ctx_redirect(const struct\
+    \ __sk_buff *ctx __maybe_unused,\n\t\t  int ifindex __maybe_unused, __u32 flags\
+    \ __maybe_unused)\n{\n\tif (ifindex == BACKEND_IFACE)\n\t\treturn CTX_ACT_REDIRECT;\n\
+    \n\treturn CTX_ACT_DROP;\n}\n\n/* Test that a remote node\n * - doesn't touch\
+    \ a DSR request,\n * - redirects it to the pod (as ENABLE_HOST_ROUTING is set)\n\
+    \ * - creates a matching CT entry, and SNAT entry from the DSR info\n */"
+  diff_summary: |-
+    bpf/tests/tc_nodeport_lb6_dsr_backend.c:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: mock_tail_call_dynamic(struct __ctx_buff *ctx __maybe_unused,.
+    - Commit subject: bpf: Fix alignment for tc_nodeport_lb6_dsr_backend.c.

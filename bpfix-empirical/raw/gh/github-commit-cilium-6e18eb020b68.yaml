@@ -1,0 +1,153 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-6e18eb020b68
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/6e18eb020b68c619dbd6e0f7dc4c194fa885a523
+  title: 'bpf: Fix compatibility with Clang 17 in __lb6_affinity_backend_id'
+  repository: https://github.com/cilium/cilium
+  commit: 6e18eb020b68c619dbd6e0f7dc4c194fa885a523
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-6e18eb020b68.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: attempted_accepted
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: A minimal affinity-key stack-initialization probe based on the diff built
+    and loaded locally; no fresh verifier reject was produced. The original issue
+    is Clang/Cilium-shape dependent.
+raw:
+  case_id: github-commit-cilium-6e18eb020b68
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: 6e18eb020b68c619dbd6e0f7dc4c194fa885a523
+  commit_message: 'bpf: Fix compatibility with Clang 17 in __lb6_affinity_backend_id'
+  commit_date: '2024-03-15'
+  fix_type: refactor
+  buggy_code: |-
+    // FILE: bpf/lib/lb.h
+    // CONTEXT: l4_xlate:
+
+    #ifdef ENABLE_SESSION_AFFINITY
+    static __always_inline __u32
+    __lb6_affinity_backend_id(const struct lb6_service *svc, bool netns_cookie,
+                              union lb6_affinity_client_id *id)
+    {
+            struct lb6_affinity_key key = {
+                    .rev_nat_id     = svc->rev_nat_index,
+                    .netns_cookie   = netns_cookie,
+            };
+            struct lb_affinity_val *val;
+
+            ipv6_addr_copy_unaligned(&key.client_id.client_ip, &id->client_ip);
+
+            val = map_lookup_elem(&LB6_AFFINITY_MAP, &key);
+            if (val != NULL) {
+                    __u32 now = bpf_mono_now();
+                    struct lb_affinity_match match = {
+                            .rev_nat_id     = svc->rev_nat_index,
+                            .backend_id     = val->backend_id,
+                    };
+
+                    if (READ_ONCE(val->last_used) +
+                        bpf_sec_to_mono(svc->affinity_timeout) <= now) {
+                            map_delete_elem(&LB6_AFFINITY_MAP, &key);
+
+    // CONTEXT: __lb6_update_affinity(const struct lb6_service *svc, bool netns_cookie,
+                          union lb6_affinity_client_id *id, __u32 backend_id)
+    {
+            __u32 now = bpf_mono_now();
+            struct lb6_affinity_key key = {
+                    .rev_nat_id     = svc->rev_nat_index,
+                    .netns_cookie   = netns_cookie,
+            };
+            struct lb_affinity_val val = {
+                    .backend_id     = backend_id,
+                    .last_used      = now,
+            };
+
+            ipv6_addr_copy_unaligned(&key.client_id.client_ip, &id->client_ip);
+
+            map_update_elem(&LB6_AFFINITY_MAP, &key, &val, 0);
+    }
+
+    static __always_inline void
+    lb6_update_affinity_by_addr(const struct lb6_service *svc,
+                                union lb6_affinity_client_id *id, __u32 backend_id)
+    {
+            __lb6_update_affinity(svc, false, id, backend_id);
+    }
+    #endif /* ENABLE_SESSION_AFFINITY */
+  fixed_code: |-
+    // FILE: bpf/lib/lb.h
+    // CONTEXT: l4_xlate:
+
+    #ifdef ENABLE_SESSION_AFFINITY
+    static __always_inline __u32
+    __lb6_affinity_backend_id(const struct lb6_service *svc, bool netns_cookie,
+                              union lb6_affinity_client_id *id)
+    {
+            struct lb6_affinity_key key = {
+                    .rev_nat_id     = svc->rev_nat_index,
+                    .netns_cookie   = netns_cookie,
+            };
+            struct lb_affinity_val *val;
+
+            if (netns_cookie)
+                    key.client_id.client_cookie = id->client_cookie;
+            else
+                    ipv6_addr_copy_unaligned(&key.client_id.client_ip, &id->client_ip);
+
+            val = map_lookup_elem(&LB6_AFFINITY_MAP, &key);
+            if (val != NULL) {
+                    __u32 now = bpf_mono_now();
+                    struct lb_affinity_match match = {
+                            .rev_nat_id     = svc->rev_nat_index,
+                            .backend_id     = val->backend_id,
+                    };
+
+                    if (READ_ONCE(val->last_used) +
+                        bpf_sec_to_mono(svc->affinity_timeout) <= now) {
+                            map_delete_elem(&LB6_AFFINITY_MAP, &key);
+
+    // CONTEXT: __lb6_update_affinity(const struct lb6_service *svc, bool netns_cookie,
+                          union lb6_affinity_client_id *id, __u32 backend_id)
+    {
+            __u32 now = bpf_mono_now();
+            struct lb6_affinity_key key = {
+                    .rev_nat_id     = svc->rev_nat_index,
+                    .netns_cookie   = netns_cookie,
+            };
+            struct lb_affinity_val val = {
+                    .backend_id     = backend_id,
+                    .last_used      = now,
+            };
+
+            if (netns_cookie)
+                    key.client_id.client_cookie = id->client_cookie;
+            else
+                    ipv6_addr_copy_unaligned(&key.client_id.client_ip, &id->client_ip);
+
+            map_update_elem(&LB6_AFFINITY_MAP, &key, &val, 0);
+    }
+
+    static __always_inline void
+    lb6_update_affinity_by_addr(const struct lb6_service *svc,
+                                union lb6_affinity_client_id *id, __u32 backend_id)
+    {
+            __lb6_update_affinity(svc, false, id, backend_id);
+    }
+    #endif /* ENABLE_SESSION_AFFINITY */
+  diff_summary: |-
+    bpf/lib/lb.h:
+    - Copied `client_cookie` or `client_ip` depending on which union field is actually active.
+    - Ensured the affinity-map key is fully initialized so Clang 17 no longer leaves verifier-visible stack bytes undefined.

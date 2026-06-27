@@ -1,0 +1,56 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-d21f65406f1a
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/d21f65406f1a6395873c509a2640e72df8955bda
+  title: 'bpf: test Wireguard with ENCRYPTION_STRICT_MODE'
+  repository: https://github.com/cilium/cilium
+  commit: d21f65406f1a6395873c509a2640e72df8955bda
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-d21f65406f1a.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Adds WireGuard strict-mode compile/complexity test configuration; no verifier-load
+    failure or buggy BPF operation is identified.
+raw:
+  case_id: github-commit-cilium-d21f65406f1a
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: d21f65406f1a6395873c509a2640e72df8955bda
+  commit_message: 'bpf: test Wireguard with ENCRYPTION_STRICT_MODE'
+  commit_date: '2024-06-13'
+  fix_type: loop_rewrite
+  buggy_code: "// FILE: bpf/node_config.h\n// CONTEXT: DEFINE_IPV6(HOST_IP, 0xbe,\
+    \ 0xef, 0x0, 0x0, 0x0, 0x0, 0x0, 0x1, 0x0, 0x0, 0xa, 0x\n# define LB6_SRC_RANGE_MAP_SIZE\t\
+    1000\n#endif\n\n#ifndef LB_SELECTION\n# define LB_SELECTION_RANDOM\t1\n# define\
+    \ LB_SELECTION_MAGLEV\t2\n# define LB_SELECTION_FIRST\t3\n# define LB_SELECTION\t\
+    \tLB_SELECTION_RANDOM\n#endif\n\n#ifdef ENABLE_WIREGUARD\n# define WG_IFINDEX\t\
+    42\n#endif\n\n#ifdef ENABLE_VTEP\n# define VTEP_MASK 0xffffff\n#endif\n\n#define\
+    \ VLAN_FILTER(ifindex, vlan_id) switch (ifindex) { \\\ncase 116: \\\nswitch (vlan_id)\
+    \ { \\\ncase 4000: \\\ncase 4001: \\\nreturn true; \\"
+  fixed_code: "// FILE: bpf/node_config.h\n// CONTEXT: DEFINE_IPV6(HOST_IP, 0xbe,\
+    \ 0xef, 0x0, 0x0, 0x0, 0x0, 0x0, 0x1, 0x0, 0x0, 0xa, 0x\n# define LB6_SRC_RANGE_MAP_SIZE\t\
+    1000\n#endif\n\n#ifndef LB_SELECTION\n# define LB_SELECTION_RANDOM\t1\n# define\
+    \ LB_SELECTION_MAGLEV\t2\n# define LB_SELECTION_FIRST\t3\n# define LB_SELECTION\t\
+    \tLB_SELECTION_RANDOM\n#endif\n\n#ifdef ENABLE_WIREGUARD\n# define WG_IFINDEX\t\
+    42\n# ifdef ENCRYPTION_STRICT_MODE\n#  define STRICT_IPV4_NET\t0\n#  define STRICT_IPV4_NET_SIZE\t\
+    8\n# endif\n#endif\n\n#ifdef ENABLE_VTEP\n# define VTEP_MASK 0xffffff\n#endif\n\
+    \n#define VLAN_FILTER(ifindex, vlan_id) switch (ifindex) { \\\ncase 116: \\\n\
+    switch (vlan_id) { \\\ncase 4000: \\\ncase 4001: \\\nreturn true; \\"
+  diff_summary: |-
+    bpf/node_config.h:
+    - Reworked loop or branch structure to reduce verifier complexity and keep the path bounded.
+    - Affected context: DEFINE_IPV6(HOST_IP, 0xbe, 0xef, 0x0, 0x0, 0x0, 0x0, 0x0, 0x1, 0x0, 0x0, 0xa, 0x.
+    - Commit subject: bpf: test Wireguard with ENCRYPTION_STRICT_MODE.

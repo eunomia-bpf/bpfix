@@ -1,0 +1,358 @@
+schema_version: bpfix.raw_external/v1
+raw_id: stackoverflow-70873332
+source_kind: stackoverflow
+source:
+  url: https://stackoverflow.com/questions/70873332/invalid-access-to-packet-even-though-check-made-before-access
+  title: Invalid access to packet even though check made before access
+  repository: null
+  commit: null
+  collected_at: '2026-03-11T16:02:45+00:00'
+collector:
+  original_path: bpfix-empirical/raw/so/stackoverflow-70873332.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: true
+  verifier_log_block_count: 2
+  source_snippet_count: 1
+  has_buggy_code: false
+  has_fixed_code: false
+  has_fix_description: false
+reproduction:
+  status: replay_valid
+  case_id: stackoverflow-70873332
+  case_path: cases/stackoverflow-70873332
+  artifact_path: cases/stackoverflow-70873332
+  reason: admitted_to_bpfix_bench_cases
+raw:
+  case_id: stackoverflow-70873332
+  source: stackoverflow
+  collected_at: '2026-03-11T16:02:45+00:00'
+  question:
+    question_id: 70873332
+    title: Invalid access to packet even though check made before access
+    url: https://stackoverflow.com/questions/70873332/invalid-access-to-packet-even-though-check-made-before-access
+    tags:
+    - c
+    - linux-kernel
+    - ebpf
+    - xdp-bpf
+    score: 2
+    answer_count: 2
+    is_answered: true
+  original_verifier_log:
+    blocks:
+    - |-
+      0: (61) r7 = *(u32 *)(r1 +0)
+      ; char *data_end = (char *)(long)ctx->data_end;
+      1: (61) r8 = *(u32 *)(r1 +4)
+      2: (b7) r6 = 0
+      ; __u32 index = 0;
+      3: (63) *(u32 *)(r10 -4) = r6
+      last_idx 3 first_idx 0
+      regs=40 stack=0 before 2: (b7) r6 = 0
+      4: (bf) r2 = r10
+      ;
+      5: (07) r2 += -4
+      ; struct packet_context *pkt_ctx = (struct packet_context *) bpf_map_lookup_elem(&context_table, &index);
+      6: (18) r1 = 0xffff9790029a2e00
+      8: (85) call bpf_map_lookup_elem#1
+      ; if (pkt_ctx == NULL) {
+      9: (15) if r0 == 0x0 goto pc+22
+       R0_w=map_value(id=0,off=0,ks=4,vs=2,imm=0) R6_w=invP0 R7_w=pkt(id=0,off=0,r=0,imm=0) R8_w=pkt_end(id=0,off=0,imm=0) R10=fp0 fp-8=mmmm????
+      10: (69) r1 = *(u16 *)(r0 +0)
+       R0_w=map_value(id=0,off=0,ks=4,vs=2,imm=0) R6_w=invP0 R7_w=pkt(id=0,off=0,r=0,imm=0) R8_w=pkt_end(id=0,off=0,imm=0) R10=fp0 fp-8=mmmm????
+      ; for (__u16 j = 0; j < 253; j++) {
+      11: (0f) r7 += r1
+      last_idx 11 first_idx 0
+      regs=2 stack=0 before 10: (69) r1 = *(u16 *)(r0 +0)
+      12: (b7) r3 = 253
+      ; if (data_end < data + pkt_ctx->pkt_offset + j + 1) {
+      13: (bf) r1 = r7
+      14: (0f) r1 += r6
+      15: (bf) r2 = r1
+      16: (07) r2 += 1
+      ; if (data_end < data + pkt_ctx->pkt_offset + j + 1) {
+      17: (2d) if r2 > r8 goto pc+14
+       R0=map_value(id=0,off=0,ks=4,vs=2,imm=0) R1_w=pkt(id=2,off=0,r=0,umax_value=65535,var_off=(0x0; 0xffff)) R2_w=pkt(id=2,off=1,r=0,umax_value=65535,var_off=(0x0; 0xffff)) R3=inv253 R6=invP0 R7=pkt(id=2,off=0,r=0,umax_value=65535,var_off=(0x0; 0xffff)) R8=pkt_end(id=0,off=0,imm=0) R10=fp0 fp-8=mmmm????
+      ; if (data[pkt_ctx->pkt_offset + j] == '\r') {
+      18: (71) r1 = *(u8 *)(r1 +0)
+      invalid access to packet, off=0 size=1, R1(id=2,off=0,r=0)
+      R1 offset is outside of the packet
+      processed 18 insns (limit 1000000) max_states_per_insn 0 total_states 1 peak_states 1 mark_read 1
+    - |-
+      13: (bf) r1 = r7
+      14: (0f) r1 += r6
+      15: (bf) r2 = r1
+      16: (07) r2 += 1
+      ; if (data_end < data + pkt_ctx->pkt_offset + j + 1) {
+      17: (2d) if r2 > r8 goto pc+14
+       R0=map_value(id=0,off=0,ks=4,vs=2,imm=0) R1_w=pkt(id=2,off=0,r=0,umax_value=65535,var_off=(0x0; 0xffff)) R2_w=pkt(id=2,off=1,r=0,umax_value=65535,var_off=(0x0; 0xffff)) R3=inv253 R6=invP0 R7=pkt(    id=2,off=0,r=0,umax_value=65535,var_off=(0x0; 0xffff)) R8=pkt_end(id=0,off=0,imm=0) R10=fp0 fp-8=mmmm????
+      ; if (data[pkt_ctx->pkt_offset + j] == '\r') {
+      18: (71) r1 = *(u8 *)(r1 +0)
+      invalid access to packet, off=0 size=1, R1(id=2,off=0,r=0)
+      R1 offset is outside of the packet
+    combined: |-
+      0: (61) r7 = *(u32 *)(r1 +0)
+      ; char *data_end = (char *)(long)ctx->data_end;
+      1: (61) r8 = *(u32 *)(r1 +4)
+      2: (b7) r6 = 0
+      ; __u32 index = 0;
+      3: (63) *(u32 *)(r10 -4) = r6
+      last_idx 3 first_idx 0
+      regs=40 stack=0 before 2: (b7) r6 = 0
+      4: (bf) r2 = r10
+      ;
+      5: (07) r2 += -4
+      ; struct packet_context *pkt_ctx = (struct packet_context *) bpf_map_lookup_elem(&context_table, &index);
+      6: (18) r1 = 0xffff9790029a2e00
+      8: (85) call bpf_map_lookup_elem#1
+      ; if (pkt_ctx == NULL) {
+      9: (15) if r0 == 0x0 goto pc+22
+       R0_w=map_value(id=0,off=0,ks=4,vs=2,imm=0) R6_w=invP0 R7_w=pkt(id=0,off=0,r=0,imm=0) R8_w=pkt_end(id=0,off=0,imm=0) R10=fp0 fp-8=mmmm????
+      10: (69) r1 = *(u16 *)(r0 +0)
+       R0_w=map_value(id=0,off=0,ks=4,vs=2,imm=0) R6_w=invP0 R7_w=pkt(id=0,off=0,r=0,imm=0) R8_w=pkt_end(id=0,off=0,imm=0) R10=fp0 fp-8=mmmm????
+      ; for (__u16 j = 0; j < 253; j++) {
+      11: (0f) r7 += r1
+      last_idx 11 first_idx 0
+      regs=2 stack=0 before 10: (69) r1 = *(u16 *)(r0 +0)
+      12: (b7) r3 = 253
+      ; if (data_end < data + pkt_ctx->pkt_offset + j + 1) {
+      13: (bf) r1 = r7
+      14: (0f) r1 += r6
+      15: (bf) r2 = r1
+      16: (07) r2 += 1
+      ; if (data_end < data + pkt_ctx->pkt_offset + j + 1) {
+      17: (2d) if r2 > r8 goto pc+14
+       R0=map_value(id=0,off=0,ks=4,vs=2,imm=0) R1_w=pkt(id=2,off=0,r=0,umax_value=65535,var_off=(0x0; 0xffff)) R2_w=pkt(id=2,off=1,r=0,umax_value=65535,var_off=(0x0; 0xffff)) R3=inv253 R6=invP0 R7=pkt(id=2,off=0,r=0,umax_value=65535,var_off=(0x0; 0xffff)) R8=pkt_end(id=0,off=0,imm=0) R10=fp0 fp-8=mmmm????
+      ; if (data[pkt_ctx->pkt_offset + j] == '\r') {
+      18: (71) r1 = *(u8 *)(r1 +0)
+      invalid access to packet, off=0 size=1, R1(id=2,off=0,r=0)
+      R1 offset is outside of the packet
+      processed 18 insns (limit 1000000) max_states_per_insn 0 total_states 1 peak_states 1 mark_read 1
+
+      13: (bf) r1 = r7
+      14: (0f) r1 += r6
+      15: (bf) r2 = r1
+      16: (07) r2 += 1
+      ; if (data_end < data + pkt_ctx->pkt_offset + j + 1) {
+      17: (2d) if r2 > r8 goto pc+14
+       R0=map_value(id=0,off=0,ks=4,vs=2,imm=0) R1_w=pkt(id=2,off=0,r=0,umax_value=65535,var_off=(0x0; 0xffff)) R2_w=pkt(id=2,off=1,r=0,umax_value=65535,var_off=(0x0; 0xffff)) R3=inv253 R6=invP0 R7=pkt(    id=2,off=0,r=0,umax_value=65535,var_off=(0x0; 0xffff)) R8=pkt_end(id=0,off=0,imm=0) R10=fp0 fp-8=mmmm????
+      ; if (data[pkt_ctx->pkt_offset + j] == '\r') {
+      18: (71) r1 = *(u8 *)(r1 +0)
+      invalid access to packet, off=0 size=1, R1(id=2,off=0,r=0)
+      R1 offset is outside of the packet
+  verifier_log:
+    blocks:
+    - |-
+      0: (61) r7 = *(u32 *)(r1 +0)
+      ; char *data_end = (char *)(long)ctx->data_end;
+      1: (61) r8 = *(u32 *)(r1 +4)
+      2: (b7) r6 = 0
+      ; __u32 index = 0;
+      3: (63) *(u32 *)(r10 -4) = r6
+      last_idx 3 first_idx 0
+      regs=40 stack=0 before 2: (b7) r6 = 0
+      4: (bf) r2 = r10
+      ;
+      5: (07) r2 += -4
+      ; struct packet_context *pkt_ctx = (struct packet_context *) bpf_map_lookup_elem(&context_table, &index);
+      6: (18) r1 = 0xffff9790029a2e00
+      8: (85) call bpf_map_lookup_elem#1
+      ; if (pkt_ctx == NULL) {
+      9: (15) if r0 == 0x0 goto pc+22
+       R0_w=map_value(id=0,off=0,ks=4,vs=2,imm=0) R6_w=invP0 R7_w=pkt(id=0,off=0,r=0,imm=0) R8_w=pkt_end(id=0,off=0,imm=0) R10=fp0 fp-8=mmmm????
+      10: (69) r1 = *(u16 *)(r0 +0)
+       R0_w=map_value(id=0,off=0,ks=4,vs=2,imm=0) R6_w=invP0 R7_w=pkt(id=0,off=0,r=0,imm=0) R8_w=pkt_end(id=0,off=0,imm=0) R10=fp0 fp-8=mmmm????
+      ; for (__u16 j = 0; j < 253; j++) {
+      11: (0f) r7 += r1
+      last_idx 11 first_idx 0
+      regs=2 stack=0 before 10: (69) r1 = *(u16 *)(r0 +0)
+      12: (b7) r3 = 253
+      ; if (data_end < data + pkt_ctx->pkt_offset + j + 1) {
+      13: (bf) r1 = r7
+      14: (0f) r1 += r6
+      15: (bf) r2 = r1
+      16: (07) r2 += 1
+      ; if (data_end < data + pkt_ctx->pkt_offset + j + 1) {
+      17: (2d) if r2 > r8 goto pc+14
+       R0=map_value(id=0,off=0,ks=4,vs=2,imm=0) R1_w=pkt(id=2,off=0,r=0,umax_value=65535,var_off=(0x0; 0xffff)) R2_w=pkt(id=2,off=1,r=0,umax_value=65535,var_off=(0x0; 0xffff)) R3=inv253 R6=invP0 R7=pkt(id=2,off=0,r=0,umax_value=65535,var_off=(0x0; 0xffff)) R8=pkt_end(id=0,off=0,imm=0) R10=fp0 fp-8=mmmm????
+      ; if (data[pkt_ctx->pkt_offset + j] == '\r') {
+      18: (71) r1 = *(u8 *)(r1 +0)
+      invalid access to packet, off=0 size=1, R1(id=2,off=0,r=0)
+      R1 offset is outside of the packet
+      processed 18 insns (limit 1000000) max_states_per_insn 0 total_states 1 peak_states 1 mark_read 1
+    - |-
+      13: (bf) r1 = r7
+      14: (0f) r1 += r6
+      15: (bf) r2 = r1
+      16: (07) r2 += 1
+      ; if (data_end < data + pkt_ctx->pkt_offset + j + 1) {
+      17: (2d) if r2 > r8 goto pc+14
+       R0=map_value(id=0,off=0,ks=4,vs=2,imm=0) R1_w=pkt(id=2,off=0,r=0,umax_value=65535,var_off=(0x0; 0xffff)) R2_w=pkt(id=2,off=1,r=0,umax_value=65535,var_off=(0x0; 0xffff)) R3=inv253 R6=invP0 R7=pkt(    id=2,off=0,r=0,umax_value=65535,var_off=(0x0; 0xffff)) R8=pkt_end(id=0,off=0,imm=0) R10=fp0 fp-8=mmmm????
+      ; if (data[pkt_ctx->pkt_offset + j] == '\r') {
+      18: (71) r1 = *(u8 *)(r1 +0)
+      invalid access to packet, off=0 size=1, R1(id=2,off=0,r=0)
+      R1 offset is outside of the packet
+    combined: |-
+      libbpf: loading object from <legacy-so-gh-reproducer>/stackoverflow-70873332/prog.o
+      libbpf: elf: section(3) xdp, size 240, link 0, flags 6, type=1
+      libbpf: sec 'xdp': found program 'collect_ips_prog' at insn offset 0 (0 bytes), code size 30 insns (240 bytes)
+      libbpf: elf: section(4) .relxdp, size 32, link 27, flags 40, type=9
+      libbpf: elf: section(5) maps, size 20, link 0, flags 3, type=1
+      libbpf: elf: legacy map definitions in 'maps' section are not supported by libbpf v1.0+
+      Error: failed to open object file
+  verifier_log_source: captured_on_6.15.11
+  verifier_log_captured_at: '2026-03-20'
+  source_snippets:
+  - |-
+    #include <linux/bpf.h>
+    #include <bpf/bpf_helpers.h>
+
+    struct packet_context {
+        __u16 pkt_offset;
+    };
+
+    struct bpf_map_def SEC("maps") context_table = {
+       .type = BPF_MAP_TYPE_ARRAY,
+       .key_size = sizeof(__u32),
+       .value_size = sizeof(struct packet_context),
+       .max_entries = 1,
+    };
+
+    SEC("xdp")
+    int collect_ips_prog(struct xdp_md *ctx) {
+        char *data_end = (char *)(long)ctx->data_end;
+        char *data = (char *)(long)ctx->data;
+        __u32 index = 0;
+        struct packet_context *pkt_ctx = (struct packet_context *) bpf_map_lookup_elem(&context_table, &index);
+
+        if (pkt_ctx == NULL) {
+            goto end;
+        }
+
+        __u32 length = 0;
+
+        for (__u16 j = 0; j < 253; j++) {
+            if (data_end < data + pkt_ctx->pkt_offset + j + 1) {
+                goto end;
+            }
+
+            if (data[pkt_ctx->pkt_offset + j] == '\r') {
+                break;
+            }
+
+            length++;
+        }
+
+        bpf_printk("%d", length);
+
+    end:
+        return XDP_PASS;
+    }
+  question_body_text: |-
+    I get invalid access to packet from the eBPF verifier even though I'm performing a check before accessing a byte from a packet. The offset is stored in a BPF_MAP_TYPE_ARRAY. The number of loop iterations don't matter because this problem happens even I do one iteration.
+    #include <linux/bpf.h>
+    #include <bpf/bpf_helpers.h>
+    struct packet_context {
+    __u16 pkt_offset;
+    };
+    struct bpf_map_def SEC("maps") context_table = {
+    .type = BPF_MAP_TYPE_ARRAY,
+    .key_size = sizeof(__u32),
+    .value_size = sizeof(struct packet_context),
+    .max_entries = 1,
+    };
+    SEC("xdp")
+    int collect_ips_prog(struct xdp_md *ctx) {
+    char *data_end = (char *)(long)ctx->data_end;
+    char *data = (char *)(long)ctx->data;
+    __u32 index = 0;
+    struct packet_context *pkt_ctx = (struct packet_context *) bpf_map_lookup_elem(&context_table, &index);
+    if (pkt_ctx == NULL) {
+    goto end;
+    }
+    __u32 length = 0;
+    for (__u16 j = 0; j < 253; j++) {
+    if (data_end < data + pkt_ctx->pkt_offset + j + 1) {
+    goto end;
+    }
+    if (data[pkt_ctx->pkt_offset + j] == '\r') {
+    break;
+    }
+    length++;
+    }
+    bpf_printk("%d", length);
+    end:
+    return XDP_PASS;
+    }
+    Here's the error. The error is happening at if (data[pkt_ctx->pkt_offset + j] == '\r') { when when j = 0.
+    0: (61) r7 = *(u32 *)(r1 +0)
+    ; char *data_end = (char *)(long)ctx->data_end;
+    1: (61) r8 = *(u32 *)(r1 +4)
+    2: (b7) r6 = 0
+    ; __u32 index = 0;
+    3: (63) *(u32 *)(r10 -4) = r6
+    last_idx 3 first_idx 0
+    regs=40 stack=0 before 2: (b7) r6 = 0
+    4: (bf) r2 = r10
+    ;
+    5: (07) r2 += -4
+    ; struct packet_context *pkt_ctx = (struct packet_context *) bpf_map_lookup_elem(&context_table, &index);
+    6: (18) r1 = 0xffff9790029a2e00
+    8: (85) call bpf_map_lookup_elem#1
+    ; if (pkt_ctx == NULL) {
+    9: (15) if r0 == 0x0 goto pc+22
+    R0_w=map_value(id=0,off=0,ks=4,vs=2,imm=0) R6_w=invP0 R7_w=pkt(id=0,off=0,r=0,imm=0) R8_w=pkt_end(id=0,off=0,imm=0) R10=fp0 fp-8=mmmm????
+    10: (69) r1 = *(u16 *)(r0 +0)
+    R0_w=map_value(id=0,off=0,ks=4,vs=2,imm=0) R6_w=invP0 R7_w=pkt(id=0,off=0,r=0,imm=0) R8_w=pkt_end(id=0,off=0,imm=0) R10=fp0 fp-8=mmmm????
+    ; for (__u16 j = 0; j < 253; j++) {
+    11: (0f) r7 += r1
+    last_idx 11 first_idx 0
+    regs=2 stack=0 before 10: (69) r1 = *(u16 *)(r0 +0)
+    12: (b7) r3 = 253
+    ; if (data_end < data + pkt_ctx->pkt_offset + j + 1) {
+    13: (bf) r1 = r7
+    14: (0f) r1 += r6
+    15: (bf) r2 = r1
+    16: (07) r2 += 1
+    ; if (data_end < data + pkt_ctx->pkt_offset + j + 1) {
+    17: (2d) if r2 > r8 goto pc+14
+    R0=map_value(id=0,off=0,ks=4,vs=2,imm=0) R1_w=pkt(id=2,off=0,r=0,umax_value=65535,var_off=(0x0; 0xffff)) R2_w=pkt(id=2,off=1,r=0,umax_value=65535,var_off=(0x0; 0xffff)) R3=inv253 R6=invP0 R7=pkt(id=2,off=0,r=0,umax_value=65535,var_off=(0x0; 0xffff)) R8=pkt_end(id=0,off=0,imm=0) R10=fp0 fp-8=mmmm????
+    ; if (data[pkt_ctx->pkt_offset + j] == '\r') {
+    18: (71) r1 = *(u8 *)(r1 +0)
+    invalid access to packet, off=0 size=1, R1(id=2,off=0,r=0)
+    R1 offset is outside of the packet
+    processed 18 insns (limit 1000000) max_states_per_insn 0 total_states 1 peak_states 1 mark_read 1
+    Even if pkt_ctx->pkt_offset == 0xffff, the if condition before the access should prevent accessing a byte beyond the first 0xffff bytes of the packet.
+  selected_answer:
+    answer_id: 70876740
+    url: https://stackoverflow.com/questions/70873332/invalid-access-to-packet-even-though-check-made-before-access#70876740
+    is_accepted: true
+    score: 3
+    body_text: |-
+      TL;DR. You are hitting a corner-case of the verifier. See https://stackoverflow.com/a/70731589/6884590. Adding a bounds check on pkt_ctx->pkt_offset will fix it, as noticed by @Qeole.
+      Verifier Error Explanation
+      13: (bf) r1 = r7
+      14: (0f) r1 += r6
+      15: (bf) r2 = r1
+      16: (07) r2 += 1
+      ; if (data_end < data + pkt_ctx->pkt_offset + j + 1) {
+      17: (2d) if r2 > r8 goto pc+14
+      R0=map_value(id=0,off=0,ks=4,vs=2,imm=0) R1_w=pkt(id=2,off=0,r=0,umax_value=65535,var_off=(0x0; 0xffff)) R2_w=pkt(id=2,off=1,r=0,umax_value=65535,var_off=(0x0; 0xffff)) R3=inv253 R6=invP0 R7=pkt( id=2,off=0,r=0,umax_value=65535,var_off=(0x0; 0xffff)) R8=pkt_end(id=0,off=0,imm=0) R10=fp0 fp-8=mmmm????
+      ; if (data[pkt_ctx->pkt_offset + j] == '\r') {
+      18: (71) r1 = *(u8 *)(r1 +0)
+      invalid access to packet, off=0 size=1, R1(id=2,off=0,r=0)
+      R1 offset is outside of the packet
+      The verifier is complaining because the packet access (insn. 18) is out-of-bounds. That seems unexpected because you check the packet's length (insn. 17) right before the access.
+      Unfortunately, the bounds check is not even considered by the verifier because you're hitting this condition. Basically, the maximum value for R2 is too high (by 1 only for the first iteration) and the verifier thinks there's a risk of overflow.
+      R2's maximum value is 65535 and its offset is 1 (for the first iteration), so the sum of both is above MAX_PACKET_OFF (65535). Considering this is an overflow risk, the verifier returns from find_good_pkt_pointers before it even updates the bounds of all packet pointers.
+      Solution
+      @Qeole is correct that adding a bounds check will help, although not exactly for the reason he states. By adding a bounds check on pkt_ctx->pkt_offset, R2's maximum value will be decreased and the verifier will take the packet length check into account.
+    fix_description: TL;DR. You are hitting a corner-case of the verifier. See https://stackoverflow.com/a/70731589/6884590.
+      Adding a bounds check on pkt_ctx->pkt_offset will fix it, as noticed by @Qeole.
+      The verifier is complaining because the packet access (insn. 18) is out-of-bounds.
+      That seems unexpected because you check the packet's length (insn. 17) right
+      before the access. Unfortunately, the bounds check is not even considered by
+      the verifier because you're hitting this condition. Basically, the maximum value
+      for R2 is too high (by 1 only for the first iteration) and the verifier thinks
+      there's a risk o...

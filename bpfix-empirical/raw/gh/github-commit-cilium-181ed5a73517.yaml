@@ -1,0 +1,104 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-181ed5a73517
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/181ed5a73517ba9e3ca0c64063202049d6f32321
+  title: 'bpf/encap: Avoid checking encrypt_key twice'
+  repository: https://github.com/cilium/cilium
+  commit: 181ed5a73517ba9e3ca0c64063202049d6f32321
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-181ed5a73517.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Avoids checking encrypt_key twice in encapsulation/IPsec handling. This
+    is runtime control-flow cleanup, not an identified verifier rejection.
+raw:
+  case_id: github-commit-cilium-181ed5a73517
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: 181ed5a73517ba9e3ca0c64063202049d6f32321
+  commit_message: 'bpf/encap: Avoid checking encrypt_key twice'
+  commit_date: '2024-12-07'
+  fix_type: inline_hint
+  buggy_code: "// FILE: bpf/lib/encap.h\n// CONTEXT: encap_and_redirect_with_nodeid(struct\
+    \ __ctx_buff *ctx, __be32 tunnel_endpoint,\n#endif\n\n\treturn __encap_and_redirect_with_nodeid(ctx,\
+    \ 0, tunnel_endpoint,\n\t\t\t\t\t\tseclabel, dstid, NOT_VTEP_DST,\n\t\t\t\t\t\t\
+    trace);\n}\n\n/* __encap_and_redirect_lxc() is a variant of encap_and_redirect_lxc()\n\
+    \ * that requires a valid tunnel_endpoint.\n */\nstatic __always_inline int\n\
+    __encap_and_redirect_lxc(struct __ctx_buff *ctx, __be32 tunnel_endpoint,\n\t\t\
+    \t __u8 encrypt_key __maybe_unused, __u32 seclabel,\n\t\t\t __u32 dstid, const\
+    \ struct trace_ctx *trace)\n{\n\tint ifindex __maybe_unused;\n\tint ret __maybe_unused;\n\
+    \n#ifdef ENABLE_IPSEC\n\tif (encrypt_key)\n\t\treturn set_ipsec_encrypt(ctx, encrypt_key,\
+    \ tunnel_endpoint,\n\t\t\t\t\t seclabel, false, false);\n#endif\n\n\treturn encap_and_redirect_with_nodeid(ctx,\
+    \ tunnel_endpoint, 0, seclabel,\n\t\t\t\t\t      dstid, trace);\n}\n\n#if defined(TUNNEL_MODE)\
+    \ || defined(ENABLE_HIGH_SCALE_IPCACHE)\n/* encap_and_redirect_lxc adds IPSec\
+    \ metadata (if enabled) and returns the packet\n * so that it can be passed to\
+    \ the IP stack. Without IPSec the packet is\n * typically redirected to the output\
+    \ tunnel device and ctx will not be seen by\n * the IP stack.\n *\n * Returns\
+    \ CTX_ACT_OK when ctx needs to be handed to IP stack (eg. for IPSec\n * handling),\
+    \ a DROP_* reason on error, and finally on successful redirect returns\n * CTX_ACT_REDIRECT.\n\
+    \ */\n\n// CONTEXT: encap_and_redirect_lxc(struct __ctx_buff *ctx,\n\ttunnel =\
+    \ map_lookup_elem(&TUNNEL_MAP, key);\n\tif (!tunnel)\n\t\treturn DROP_NO_TUNNEL_ENDPOINT;\n\
+    \n# ifdef ENABLE_IPSEC\n\tif (tunnel->key) {\n\t\t__u8 min_encrypt_key = get_min_encrypt_key(tunnel->key);\n\
+    \n\t\treturn set_ipsec_encrypt(ctx, min_encrypt_key, tunnel->ip4,\n\t\t\t\t\t\
+    \ seclabel, false, false);\n\t}\n# endif\n\treturn encap_and_redirect_with_nodeid(ctx,\
+    \ tunnel->ip4, 0, seclabel, dstid,\n\t\t\t\t\t      trace);\n#endif /* ENABLE_HIGH_SCALE_IPCACHE\
+    \ */\n}\n\nstatic __always_inline int\nencap_and_redirect_netdev(struct __ctx_buff\
+    \ *ctx, struct tunnel_key *k,\n\t\t\t  __u8 encrypt_key __maybe_unused,\n\t\t\t\
+    \  __u32 seclabel, const struct trace_ctx *trace)\n{\n\tstruct tunnel_value *tunnel;\n\
+    \n\ttunnel = map_lookup_elem(&TUNNEL_MAP, k);\n\tif (!tunnel)\n\t\treturn DROP_NO_TUNNEL_ENDPOINT;\n\
+    \n#ifdef ENABLE_IPSEC\n\tif (encrypt_key)\n\t\treturn set_ipsec_encrypt(ctx, encrypt_key,\
+    \ tunnel->ip4,\n\t\t\t\t\t seclabel, true, false);\n#endif\n\n\treturn encap_and_redirect_with_nodeid(ctx,\
+    \ tunnel->ip4, 0, seclabel, 0,\n\t\t\t\t\t      trace);\n}\n#endif /* TUNNEL_MODE\
+    \ || ENABLE_HIGH_SCALE_IPCACHE */\n\nstatic __always_inline __be16\ntunnel_gen_src_port_v4(struct\
+    \ ipv4_ct_tuple *tuple __maybe_unused)\n{\n#if __ctx_is == __ctx_xdp\n\t__be32\
+    \ hash = hash_from_tuple_v4(tuple);\n\n\treturn (hash >> 16)  ^ (__be16)hash;\n\
+    #else\n\treturn 0;"
+  fixed_code: "// FILE: bpf/lib/encap.h\n// CONTEXT: encap_and_redirect_with_nodeid(struct\
+    \ __ctx_buff *ctx, __be32 tunnel_endpoint,\n#endif\n\n\treturn __encap_and_redirect_with_nodeid(ctx,\
+    \ 0, tunnel_endpoint,\n\t\t\t\t\t\tseclabel, dstid, NOT_VTEP_DST,\n\t\t\t\t\t\t\
+    trace);\n}\n\n/* __encap_and_redirect_lxc() is a variant of encap_and_redirect_lxc()\n\
+    \ * that requires a valid tunnel_endpoint.\n */\nstatic __always_inline int\n\
+    __encap_and_redirect_lxc(struct __ctx_buff *ctx, __be32 tunnel_endpoint,\n\t\t\
+    \t __u8 encrypt_key, __u32 seclabel, __u32 dstid,\n\t\t\t const struct trace_ctx\
+    \ *trace)\n{\n\tint ifindex __maybe_unused;\n\tint ret __maybe_unused;\n\n\treturn\
+    \ encap_and_redirect_with_nodeid(ctx, tunnel_endpoint,\n\t\t\t\t\t      encrypt_key,\
+    \ seclabel, dstid,\n\t\t\t\t\t      trace);\n}\n\n#if defined(TUNNEL_MODE) ||\
+    \ defined(ENABLE_HIGH_SCALE_IPCACHE)\n/* encap_and_redirect_lxc adds IPSec metadata\
+    \ (if enabled) and returns the packet\n * so that it can be passed to the IP stack.\
+    \ Without IPSec the packet is\n * typically redirected to the output tunnel device\
+    \ and ctx will not be seen by\n * the IP stack.\n *\n * Returns CTX_ACT_OK when\
+    \ ctx needs to be handed to IP stack (eg. for IPSec\n * handling), a DROP_* reason\
+    \ on error, and finally on successful redirect returns\n * CTX_ACT_REDIRECT.\n\
+    \ */\n\n// CONTEXT: encap_and_redirect_lxc(struct __ctx_buff *ctx,\n\ttunnel =\
+    \ map_lookup_elem(&TUNNEL_MAP, key);\n\tif (!tunnel)\n\t\treturn DROP_NO_TUNNEL_ENDPOINT;\n\
+    \n# ifdef ENABLE_IPSEC\n\tif (tunnel->key) {\n\t\t__u8 min_encrypt_key = get_min_encrypt_key(tunnel->key);\n\
+    \n\t\treturn set_ipsec_encrypt(ctx, min_encrypt_key, tunnel->ip4,\n\t\t\t\t\t\
+    \ seclabel, false, false);\n\t}\n# endif\n\treturn __encap_and_redirect_with_nodeid(ctx,\
+    \ 0, tunnel->ip4, seclabel,\n\t\t\t\t\t\tdstid, NOT_VTEP_DST, trace);\n#endif\
+    \ /* ENABLE_HIGH_SCALE_IPCACHE */\n}\n\nstatic __always_inline int\nencap_and_redirect_netdev(struct\
+    \ __ctx_buff *ctx, struct tunnel_key *k,\n\t\t\t  __u8 encrypt_key, __u32 seclabel,\n\
+    \t\t\t  const struct trace_ctx *trace)\n{\n\tstruct tunnel_value *tunnel;\n\n\t\
+    tunnel = map_lookup_elem(&TUNNEL_MAP, k);\n\tif (!tunnel)\n\t\treturn DROP_NO_TUNNEL_ENDPOINT;\n\
+    \n\treturn encap_and_redirect_with_nodeid(ctx, tunnel->ip4, encrypt_key,\n\t\t\
+    \t\t\t      seclabel, 0, trace);\n}\n#endif /* TUNNEL_MODE || ENABLE_HIGH_SCALE_IPCACHE\
+    \ */\n\nstatic __always_inline __be16\ntunnel_gen_src_port_v4(struct ipv4_ct_tuple\
+    \ *tuple __maybe_unused)\n{\n#if __ctx_is == __ctx_xdp\n\t__be32 hash = hash_from_tuple_v4(tuple);\n\
+    \n\treturn (hash >> 16)  ^ (__be16)hash;\n#else\n\treturn 0;"
+  diff_summary: |-
+    bpf/lib/encap.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: encap_and_redirect_with_nodeid(struct __ctx_buff *ctx, __be32 tunnel_endpoint,, encap_and_redirect_lxc(struct __ctx_buff *ctx,.
+    - Commit subject: bpf/encap: Avoid checking encrypt_key twice.

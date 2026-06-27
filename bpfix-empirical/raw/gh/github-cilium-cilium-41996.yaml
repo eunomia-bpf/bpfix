@@ -1,0 +1,397 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-cilium-cilium-41996
+source_kind: github_issue
+source:
+  url: https://github.com/cilium/cilium/issues/41996
+  title: Cilium 1.18.0 networking failure - Using BPF Masquerading and nodeport causes
+    endpoints to lose connectivity
+  repository: https://github.com/cilium/cilium
+  commit: null
+  collected_at: '2026-03-11T16:01:28+00:00'
+collector:
+  original_path: bpfix-empirical/raw/gh/github-cilium-cilium-41996.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: true
+  verifier_log_block_count: 2
+  source_snippet_count: 0
+  has_buggy_code: false
+  has_fixed_code: true
+  has_fix_description: true
+reproduction:
+  status: environment_required
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: requires_cilium_kubernetes_kernel_environment_not_standalone_source
+raw:
+  case_id: github-cilium-cilium-41996
+  source: github_issues
+  collected_at: '2026-03-11T16:01:28+00:00'
+  issue:
+    repository: cilium/cilium
+    number: 41996
+    title: Cilium 1.18.0 networking failure - Using BPF Masquerading and nodeport
+      causes endpoints to lose connectivity
+    url: https://github.com/cilium/cilium/issues/41996
+    state: open
+    state_reason: null
+    labels:
+    - kind/bug
+    - need-more-info
+    - area/datapath
+    - needs/triage
+    - kind/community-report
+    - kind/complexity-issue
+    created_at: '2025-10-02T15:29:41Z'
+    updated_at: '2026-02-06T07:36:58Z'
+    author: percy78
+  verifier_log:
+    blocks:
+    - |-
+      "id": 1511,
+      "spec": {
+        "label-configuration": {},
+        "options": {
+          "ConntrackAccounting": "Disabled",
+          "Debug": "Disabled",
+          "DebugLB": "Disabled",
+          "DebugPolicy": "Disabled",
+          "DropNotification": "Enabled",
+          "MonitorAggregationLevel": "Medium",
+          "PolicyAccounting": "Enabled",
+          "PolicyAuditMode": "Disabled",
+          "PolicyVerdictNotification": "Enabled",
+          "SourceIPVerification": "Enabled",
+          "TraceNotification": "Enabled"
+        }
+      },
+      "status": {
+        "controllers": [
+          {
+            "configuration": {
+              "error-retry": true,
+              "error-retry-base": "2s",
+              "interval": "1s"
+            },
+            "name": "endpoint-1511-regeneration-recovery",
+            "status": {
+              "consecutive-failure-count": 78,
+              "failure-count": 78,
+              "last-failure-msg": "regeneration recovery failed",
+              "last-failure-timestamp": "2025-10-02T20:37:03.734Z",
+              "last-success-timestamp": "0001-01-01T00:00:00.000Z"
+            },
+            "uuid": "b02dc401-cb69-46c2-aaba-347243869831"
+          },
+          {
+            "configuration": {
+              "error-retry": true,
+              "interval": "5m0s"
+            },
+            "name": "resolve-identity-1511",
+            "status": {
+              "last-failure-timestamp": "0001-01-01T00:00:00.000Z",
+              "last-success-timestamp": "2025-10-02T20:36:40.378Z",
+              "success-count": 21
+            },
+            "uuid": "b41e43d8-e602-44e8-bade-766be9c08208"
+          }
+        ],
+        "external-identifiers": {
+          "pod-name": "/"
+        },
+        "health": {
+          "bpf": "Warning",
+          "connected": true,
+          "overallHealth": "Warning",
+          "policy": "Warning"
+        },
+        "identity": {
+          "id": 1,
+          "labels": [
+            "reserved:host",
+            "k8s:io.cilium.migration/cilium-default=true",
+            "k8s:node.kubernetes.io/instance-type=rke2",
+            "k8s:topology.kubernetes.io/env=dev",
+          ]
+        },
+        "labels": {
+          "derived": [
+            "k8s:io.cilium.migration/cilium-default=true",
+            "k8s:node.kubernetes.io/instance-type=rke2",
+            "k8s:topology.kubernetes.io/env=dev",
+            "reserved:host"
+          ],
+          "realized": {},
+          "security-relevant": [
+            "k8s:io.cilium.migration/cilium-default=true",
+            "k8s:node.kubernetes.io/instance-type=rke2",
+            "k8s:topology.kubernetes.io/env=dev",
+            "reserved:host"
+          ]
+        },
+        "log": [
+          {
+            "code": "Failure",
+            "message": "Error regenerating endpoint: attaching cilium_host: loading eBPF collection into the kernel: program tail_nodeport_nat_egress_ipv4: load program: permission denied: 1074: (71) r1 = *(u8 *)(r2 +23): R2 invalid mem access 'inv' (666 line(s) omitted)",
+            "state": "ready",
+            "timestamp": "2025-10-02T20:37:03Z"
+          }
+        ],
+        "networking": {
+          "addressing": [
+            {}
+          ],
+          "host-mac": "ae:0d:e8:95:5b:cc",
+          "interface-index": 5,
+          "interface-name": "cilium_host",
+          "mac": "ae:0d:e8:95:5b:cc"
+        },
+        "policy": {
+          "proxy-statistics": [],
+          "realized": {
+            "allowed-egress-identities": null,
+            "allowed-ingress-identities": null,
+            "denied-egress-identities": null,
+            "denied-ingress-identities": null,
+            "id": 1,
+            "l4": {
+              "egress": [],
+              "ingress": []
+            },
+            "policy-enabled": "none"
+          },
+          "spec": {
+            "allowed-egress-identities": null,
+            "allowed-ingress-identities": null,
+            "denied-egress-identities": null,
+            "denied-ingress-identities": null,
+            "id": 1,
+            "l4": {
+              "egress": [],
+              "ingress": []
+            },
+            "policy-enabled": "none"
+          }
+        },
+        "realized": {
+          "label-configuration": {},
+          "options": {
+            "ConntrackAccounting": "Disabled",
+            "Debug": "Disabled",
+            "DebugLB": "Disabled",
+            "DebugPolicy": "Disabled",
+            "DropNotification": "Enabled",
+            "MonitorAggregationLevel": "Medium",
+            "PolicyAccounting": "Enabled",
+            "PolicyAuditMode": "Disabled",
+            "PolicyVerdictNotification": "Enabled",
+            "SourceIPVerification": "Enabled",
+            "TraceNotification": "Enabled"
+          }
+        },
+        "state": "not-ready"
+      }
+    - |-
+      Verifier error: program tail_nodeport_nat_egress_ipv4: load program: permission denied:
+      1074: (71) r1 = *(u8 *)(r2 +23): R2 invalid mem access 'inv'
+    combined: |-
+      "id": 1511,
+      "spec": {
+        "label-configuration": {},
+        "options": {
+          "ConntrackAccounting": "Disabled",
+          "Debug": "Disabled",
+          "DebugLB": "Disabled",
+          "DebugPolicy": "Disabled",
+          "DropNotification": "Enabled",
+          "MonitorAggregationLevel": "Medium",
+          "PolicyAccounting": "Enabled",
+          "PolicyAuditMode": "Disabled",
+          "PolicyVerdictNotification": "Enabled",
+          "SourceIPVerification": "Enabled",
+          "TraceNotification": "Enabled"
+        }
+      },
+      "status": {
+        "controllers": [
+          {
+            "configuration": {
+              "error-retry": true,
+              "error-retry-base": "2s",
+              "interval": "1s"
+            },
+            "name": "endpoint-1511-regeneration-recovery",
+            "status": {
+              "consecutive-failure-count": 78,
+              "failure-count": 78,
+              "last-failure-msg": "regeneration recovery failed",
+              "last-failure-timestamp": "2025-10-02T20:37:03.734Z",
+              "last-success-timestamp": "0001-01-01T00:00:00.000Z"
+            },
+            "uuid": "b02dc401-cb69-46c2-aaba-347243869831"
+          },
+          {
+            "configuration": {
+              "error-retry": true,
+              "interval": "5m0s"
+            },
+            "name": "resolve-identity-1511",
+            "status": {
+              "last-failure-timestamp": "0001-01-01T00:00:00.000Z",
+              "last-success-timestamp": "2025-10-02T20:36:40.378Z",
+              "success-count": 21
+            },
+            "uuid": "b41e43d8-e602-44e8-bade-766be9c08208"
+          }
+        ],
+        "external-identifiers": {
+          "pod-name": "/"
+        },
+        "health": {
+          "bpf": "Warning",
+          "connected": true,
+          "overallHealth": "Warning",
+          "policy": "Warning"
+        },
+        "identity": {
+          "id": 1,
+          "labels": [
+            "reserved:host",
+            "k8s:io.cilium.migration/cilium-default=true",
+            "k8s:node.kubernetes.io/instance-type=rke2",
+            "k8s:topology.kubernetes.io/env=dev",
+          ]
+        },
+        "labels": {
+          "derived": [
+            "k8s:io.cilium.migration/cilium-default=true",
+            "k8s:node.kubernetes.io/instance-type=rke2",
+            "k8s:topology.kubernetes.io/env=dev",
+            "reserved:host"
+          ],
+          "realized": {},
+          "security-relevant": [
+            "k8s:io.cilium.migration/cilium-default=true",
+            "k8s:node.kubernetes.io/instance-type=rke2",
+            "k8s:topology.kubernetes.io/env=dev",
+            "reserved:host"
+          ]
+        },
+        "log": [
+          {
+            "code": "Failure",
+            "message": "Error regenerating endpoint: attaching cilium_host: loading eBPF collection into the kernel: program tail_nodeport_nat_egress_ipv4: load program: permission denied: 1074: (71) r1 = *(u8 *)(r2 +23): R2 invalid mem access 'inv' (666 line(s) omitted)",
+            "state": "ready",
+            "timestamp": "2025-10-02T20:37:03Z"
+          }
+        ],
+        "networking": {
+          "addressing": [
+            {}
+          ],
+          "host-mac": "ae:0d:e8:95:5b:cc",
+          "interface-index": 5,
+          "interface-name": "cilium_host",
+          "mac": "ae:0d:e8:95:5b:cc"
+        },
+        "policy": {
+          "proxy-statistics": [],
+          "realized": {
+            "allowed-egress-identities": null,
+            "allowed-ingress-identities": null,
+            "denied-egress-identities": null,
+            "denied-ingress-identities": null,
+            "id": 1,
+            "l4": {
+              "egress": [],
+              "ingress": []
+            },
+            "policy-enabled": "none"
+          },
+          "spec": {
+            "allowed-egress-identities": null,
+            "allowed-ingress-identities": null,
+            "denied-egress-identities": null,
+            "denied-ingress-identities": null,
+            "id": 1,
+            "l4": {
+              "egress": [],
+              "ingress": []
+            },
+            "policy-enabled": "none"
+          }
+        },
+        "realized": {
+          "label-configuration": {},
+          "options": {
+            "ConntrackAccounting": "Disabled",
+            "Debug": "Disabled",
+            "DebugLB": "Disabled",
+            "DebugPolicy": "Disabled",
+            "DropNotification": "Enabled",
+            "MonitorAggregationLevel": "Medium",
+            "PolicyAccounting": "Enabled",
+            "PolicyAuditMode": "Disabled",
+            "PolicyVerdictNotification": "Enabled",
+            "SourceIPVerification": "Enabled",
+            "TraceNotification": "Enabled"
+          }
+        },
+        "state": "not-ready"
+      }
+
+      Verifier error: program tail_nodeport_nat_egress_ipv4: load program: permission denied:
+      1074: (71) r1 = *(u8 *)(r2 +23): R2 invalid mem access 'inv'
+  source_snippets: []
+  issue_body_text: |-
+    Is there an existing issue for this?
+    [x] I have searched the existing issues
+    Version
+    equal or higher than v1.18.2 and lower than v1.19.0
+    What happened?
+    After upgrading to Cilium version 1.18.x, pods lose network connectivity due to unexpected BPF program removal. Cilium health endpoints are lost and pods cannot reach external addresses despite the node having connectivity.
+    How can we reproduce the issue?
+    1.) Install Cilium with Helm
+    2.) Helm flags 'helm install --bpf.masquerade=true --nodePort.enabled=true --kubeProxyReplacement=true
+    Cilium Version
+    Commencing from 1.18.0 and all subsequent releases on 1.18
+    Kernel Version
+    4.18.0-553.76.1.el8_10.x86_64
+    Kubernetes Version
+    v1.33.4+rke2r1
+    Regression
+    1.17.8
+    Sysdump
+    _No response_
+    Relevant log output
+    ```
+    root@grxxxworker0X:/home/cilium# cilium endpoint get 1511
+    [
+    {
+    }
+    ]
+    Anything else?
+    Issue only occurs after a worker node is rebooted. I.e the upgrade appears to be ok and all worker nodes are fine until a node has been rebooted. After reboot, all pods especially the ones requiring external connectivity ends up in crashloopback.
+    Cilium Users Document
+    [ ] Are you a user of Cilium? Please add yourself to the Users doc
+    Code of Conduct
+    [x] I agree to follow this project's Code of Conduct
+  fix:
+    summary: 'I have fixed the issue. Upgrade the kernel version to 6.8.x, the steps:
+      apt upgrade -y'
+    selected_comment:
+      kind: comment
+      url: https://github.com/cilium/cilium/issues/41996#issuecomment-3858546103
+      author: baopei
+      author_association: NONE
+      body_text: |-
+        Facing same issue with Ubuntu 22 , kernel version = 5.15.0-67-generic . cilium pod logs : level=info msg="generating BPF for endpoint failed, keeping stale directory" ciliumEndpointName=/ containerID="" k8sPodName=/ identity=1 datapathPolicyRevision=0 ipv4="" containerInterface="" endpointID=143 ipv6="" desiredPolicyRevision=0 subsys=endpoint error="attaching cilium_host: loading eBPF collection into the kernel: program tail_nodeport_nat_egress_ipv4: load program: permission denied: 1058: (71) r1 = *(u8 *)(r2 +23): R2 invalid mem access 'inv' (664 line(s) omitted)" file-path=143_next_fail Is this issue affects kernel version = 5.15.0-67-generic ?
+        I have fixed the issue.
+        Upgrade the kernel version to 6.8.x, the steps:
+        apt update
+        apt upgrade -y
+        apt install -y linux-generic-hwe-22.04
+        update-grub
+        reboot

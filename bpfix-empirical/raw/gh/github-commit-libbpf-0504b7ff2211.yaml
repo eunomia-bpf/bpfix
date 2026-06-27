@@ -1,0 +1,131 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-libbpf-0504b7ff2211
+source_kind: github_commit
+source:
+  url: https://github.com/libbpf/libbpf/commit/0504b7ff2211e2d4d9bbe1b550f0f5eb42ad6581
+  title: 'libbpf: Allow passing preallocated log_buf when loading BTF into kernel'
+  repository: https://github.com/libbpf/libbpf
+  commit: 0504b7ff2211e2d4d9bbe1b550f0f5eb42ad6581
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-libbpf-0504b7ff2211.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Changes BTF loading log-buffer plumbing in user-space src/btf.c and an internal
+    opts helper. It affects BTF load diagnostics/API behavior, not a standalone BPF
+    program verifier reject.
+raw:
+  case_id: github-commit-libbpf-0504b7ff2211
+  source: github_commits
+  repository: https://github.com/libbpf/libbpf
+  commit_hash: 0504b7ff2211e2d4d9bbe1b550f0f5eb42ad6581
+  commit_message: 'libbpf: Allow passing preallocated log_buf when loading BTF into
+    kernel'
+  commit_date: '2021-12-09'
+  fix_type: null_check
+  buggy_code: "// FILE: src/btf.c\n// CONTEXT: static struct btf *btf_parse(const\
+    \ char *path, struct btf *base_btf, struct btf_\nstruct btf *btf__parse(const\
+    \ char *path, struct btf_ext **btf_ext)\n{\n\treturn libbpf_ptr(btf_parse(path,\
+    \ NULL, btf_ext));\n}\n\nstruct btf *btf__parse_split(const char *path, struct\
+    \ btf *base_btf)\n{\n\treturn libbpf_ptr(btf_parse(path, base_btf, NULL));\n}\n\
+    \nstatic void *btf_get_raw_data(const struct btf *btf, __u32 *size, bool swap_endian);\n\
+    \nint btf__load_into_kernel(struct btf *btf)\n{\n\t__u32 log_buf_size = 0, raw_size;\n\
+    \tchar *log_buf = NULL;\n\tvoid *raw_data;\n\tint err = 0;\n\n\tif (btf->fd >=\
+    \ 0)\n\t\treturn libbpf_err(-EEXIST);\n\nretry_load:\n\tif (log_buf_size) {\n\t\
+    \tlog_buf = malloc(log_buf_size);\n\t\tif (!log_buf)\n\t\t\treturn libbpf_err(-ENOMEM);\n\
+    \n\t\t*log_buf = 0;\n\t}\n\n\traw_data = btf_get_raw_data(btf, &raw_size, false);\n\
+    \tif (!raw_data) {\n\t\terr = -ENOMEM;\n\t\tgoto done;\n\t}\n\t/* cache native\
+    \ raw data representation */\n\tbtf->raw_size = raw_size;\n\tbtf->raw_data = raw_data;\n\
+    \n\tbtf->fd = bpf_load_btf(raw_data, raw_size, log_buf, log_buf_size, false);\n\
+    \tif (btf->fd < 0) {\n\t\tif (!log_buf || errno == ENOSPC) {\n\t\t\tlog_buf_size\
+    \ = max((__u32)BPF_LOG_BUF_SIZE,\n\t\t\t\t\t   log_buf_size << 1);\n\t\t\tfree(log_buf);\n\
+    \t\t\tgoto retry_load;\n\t\t}\n\n\t\terr = -errno;\n\t\tpr_warn(\"Error loading\
+    \ BTF: %s(%d)\\n\", strerror(errno), errno);\n\t\tif (*log_buf)\n\t\t\tpr_warn(\"\
+    %s\\n\", log_buf);\n\t\tgoto done;\n\t}\n\ndone:\n\tfree(log_buf);\n\treturn libbpf_err(err);\n\
+    }\nint btf__load(struct btf *) __attribute__((alias(\"btf__load_into_kernel\"\
+    )));\n\nint btf__fd(const struct btf *btf)\n{\n\treturn btf->fd;\n}\n\nvoid btf__set_fd(struct\
+    \ btf *btf, int fd)\n{\n\tbtf->fd = fd;\n}\n\n// FILE: src/libbpf_internal.h\n\
+    // CONTEXT: static inline bool libbpf_validate_opts(const char *opts,\n#define\
+    \ OPTS_ZEROED(opts, last_nonzero_field)\t\t\t\t      \\\n({\t\t\t\t\t\t\t\t\t\
+    \      \\\n\tssize_t __off = offsetofend(typeof(*(opts)), last_nonzero_field);\
+    \     \\\n\t!(opts) || libbpf_is_mem_zeroed((const void *)opts + __off,\t    \
+    \  \\\n\t\t\t\t\t(opts)->sz - __off);\t\t      \\\n})\n\n\nint parse_cpu_mask_str(const\
+    \ char *s, bool **mask, int *mask_sz);\nint parse_cpu_mask_file(const char *fcpu,\
+    \ bool **mask, int *mask_sz);\nint libbpf__load_raw_btf(const char *raw_types,\
+    \ size_t types_len,\n\t\t\t const char *str_sec, size_t str_len);\n\nstruct btf\
+    \ *btf_get_from_fd(int btf_fd, struct btf *base_btf);\nvoid btf_get_kernel_prefix_kind(enum\
+    \ bpf_attach_type attach_type,\n\t\t\t\tconst char **prefix, int *kind);\n\nstruct\
+    \ btf_ext_info {\n\t/*\n\t * info points to the individual info section (e.g.\
+    \ func_info and\n\t * line_info) from the .BTF.ext. It does not include the __u32\
+    \ rec_size.\n\t */\n\tvoid *info;\n\t__u32 rec_size;"
+  fixed_code: "// FILE: src/btf.c\n// CONTEXT: static struct btf *btf_parse(const\
+    \ char *path, struct btf *base_btf, struct btf_\nstruct btf *btf__parse(const\
+    \ char *path, struct btf_ext **btf_ext)\n{\n\treturn libbpf_ptr(btf_parse(path,\
+    \ NULL, btf_ext));\n}\n\nstruct btf *btf__parse_split(const char *path, struct\
+    \ btf *base_btf)\n{\n\treturn libbpf_ptr(btf_parse(path, base_btf, NULL));\n}\n\
+    \nstatic void *btf_get_raw_data(const struct btf *btf, __u32 *size, bool swap_endian);\n\
+    \nint btf_load_into_kernel(struct btf *btf, char *log_buf, size_t log_sz, __u32\
+    \ log_level)\n{\n\tLIBBPF_OPTS(bpf_btf_load_opts, opts);\n\t__u32 buf_sz = 0,\
+    \ raw_size;\n\tchar *buf = NULL, *tmp;\n\tvoid *raw_data;\n\tint err = 0;\n\n\t\
+    if (btf->fd >= 0)\n\t\treturn libbpf_err(-EEXIST);\n\tif (log_sz && !log_buf)\n\
+    \t\treturn libbpf_err(-EINVAL);\n\n\t/* cache native raw data representation */\n\
+    \traw_data = btf_get_raw_data(btf, &raw_size, false);\n\tif (!raw_data) {\n\t\t\
+    err = -ENOMEM;\n\t\tgoto done;\n\t}\n\tbtf->raw_size = raw_size;\n\tbtf->raw_data\
+    \ = raw_data;\n\nretry_load:\n\t/* if log_level is 0, we won't provide log_buf/log_size\
+    \ to the kernel,\n\t * initially. Only if BTF loading fails, we bump log_level\
+    \ to 1 and\n\t * retry, using either auto-allocated or custom log_buf. This way\n\
+    \t * non-NULL custom log_buf provides a buffer just in case, but hopes\n\t * for\
+    \ successful load and no need for log_buf.\n\t */\n\tif (log_level) {\n\t\t/*\
+    \ if caller didn't provide custom log_buf, we'll keep\n\t\t * allocating our own\
+    \ progressively bigger buffers for BTF\n\t\t * verification log\n\t\t */\n\t\t\
+    if (!log_buf) {\n\t\t\tbuf_sz = max((__u32)BPF_LOG_BUF_SIZE, buf_sz * 2);\n\t\t\
+    \ttmp = realloc(buf, buf_sz);\n\t\t\tif (!tmp) {\n\t\t\t\terr = -ENOMEM;\n\t\t\
+    \t\tgoto done;\n\t\t\t}\n\t\t\tbuf = tmp;\n\t\t\tbuf[0] = '\\0';\n\t\t}\n\n\t\t\
+    opts.log_buf = log_buf ? log_buf : buf;\n\t\topts.log_size = log_buf ? log_sz\
+    \ : buf_sz;\n\t\topts.log_level = log_level;\n\t}\n\n\tbtf->fd = bpf_btf_load(raw_data,\
+    \ raw_size, &opts);\n\tif (btf->fd < 0) {\n\t\t/* time to turn on verbose mode\
+    \ and try again */\n\t\tif (log_level == 0) {\n\t\t\tlog_level = 1;\n\t\t\tgoto\
+    \ retry_load;\n\t\t}\n\t\t/* only retry if caller didn't provide custom log_buf,\
+    \ but\n\t\t * make sure we can never overflow buf_sz\n\t\t */\n\t\tif (!log_buf\
+    \ && errno == ENOSPC && buf_sz <= UINT_MAX / 2)\n\t\t\tgoto retry_load;\n\n\t\t\
+    err = -errno;\n\t\tpr_warn(\"BTF loading error: %d\\n\", err);\n\t\t/* don't print\
+    \ out contents of custom log_buf */\n\t\tif (!log_buf && buf[0])\n\t\t\tpr_warn(\"\
+    -- BEGIN BTF LOAD LOG ---\\n%s\\n-- END BTF LOAD LOG --\\n\", buf);\n\t}\n\ndone:\n\
+    \tfree(buf);\n\treturn libbpf_err(err);\n}\n\nint btf__load_into_kernel(struct\
+    \ btf *btf)\n{\n\treturn btf_load_into_kernel(btf, NULL, 0, 0);\n}\n\nint btf__load(struct\
+    \ btf *) __attribute__((alias(\"btf__load_into_kernel\")));\n\nint btf__fd(const\
+    \ struct btf *btf)\n{\n\treturn btf->fd;\n}\n\nvoid btf__set_fd(struct btf *btf,\
+    \ int fd)\n{\n\tbtf->fd = fd;\n}\n\n// FILE: src/libbpf_internal.h\n// CONTEXT:\
+    \ static inline bool libbpf_validate_opts(const char *opts,\n#define OPTS_ZEROED(opts,\
+    \ last_nonzero_field)\t\t\t\t      \\\n({\t\t\t\t\t\t\t\t\t      \\\n\tssize_t\
+    \ __off = offsetofend(typeof(*(opts)), last_nonzero_field);     \\\n\t!(opts)\
+    \ || libbpf_is_mem_zeroed((const void *)opts + __off,\t      \\\n\t\t\t\t\t(opts)->sz\
+    \ - __off);\t\t      \\\n})\n\n\nint parse_cpu_mask_str(const char *s, bool **mask,\
+    \ int *mask_sz);\nint parse_cpu_mask_file(const char *fcpu, bool **mask, int *mask_sz);\n\
+    int libbpf__load_raw_btf(const char *raw_types, size_t types_len,\n\t\t\t const\
+    \ char *str_sec, size_t str_len);\nint btf_load_into_kernel(struct btf *btf, char\
+    \ *log_buf, size_t log_sz, __u32 log_level);\n\nstruct btf *btf_get_from_fd(int\
+    \ btf_fd, struct btf *base_btf);\nvoid btf_get_kernel_prefix_kind(enum bpf_attach_type\
+    \ attach_type,\n\t\t\t\tconst char **prefix, int *kind);\n\nstruct btf_ext_info\
+    \ {\n\t/*\n\t * info points to the individual info section (e.g. func_info and\n\
+    \t * line_info) from the .BTF.ext. It does not include the __u32 rec_size.\n\t\
+    \ */\n\tvoid *info;\n\t__u32 rec_size;"
+  diff_summary: |-
+    src/btf.c:
+    - Added an explicit null guard before the dereference on all verifier-visible paths.
+    - Affected context: static struct btf *btf_parse(const char *path, struct btf *base_btf, struct btf_.
+    src/libbpf_internal.h:
+    - Added an explicit null guard before the dereference on all verifier-visible paths.
+    - Affected context: static inline bool libbpf_validate_opts(const char *opts,.
+    - Commit subject: libbpf: Allow passing preallocated log_buf when loading BTF into kernel.

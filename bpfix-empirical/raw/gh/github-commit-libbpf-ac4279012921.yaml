@@ -1,0 +1,70 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-libbpf-ac4279012921
+source_kind: github_commit
+source:
+  url: https://github.com/libbpf/libbpf/commit/ac4279012921e04d4d9151e302b4077b2f0cd314
+  title: 'libbpf: fix offsetof() and container_of() to work with CO-RE'
+  repository: https://github.com/libbpf/libbpf
+  commit: ac4279012921e04d4d9151e302b4077b2f0cd314
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-libbpf-ac4279012921.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: missing_source
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Raw has_verifier_log=false. The header diff force-redefines offsetof()/container_of()
+    for CO-RE relocation preservation; reproducing a verifier-visible failure would
+    require a BPF CO-RE program/object using those relocations, which is absent.
+raw:
+  case_id: github-commit-libbpf-ac4279012921
+  source: github_commits
+  repository: https://github.com/libbpf/libbpf
+  commit_hash: ac4279012921e04d4d9151e302b4077b2f0cd314
+  commit_message: 'libbpf: fix offsetof() and container_of() to work with CO-RE'
+  commit_date: '2023-05-08'
+  fix_type: other
+  buggy_code: "// FILE: src/bpf_helpers.h\n */\n#ifndef NULL\n#define NULL ((void\
+    \ *)0)\n#endif\n\n#ifndef KERNEL_VERSION\n#define KERNEL_VERSION(a, b, c) (((a)\
+    \ << 16) + ((b) << 8) + ((c) > 255 ? 255 : (c)))\n#endif\n\n/*\n * Helper macros\
+    \ to manipulate data structures\n */\n#ifndef offsetof\n#define offsetof(TYPE,\
+    \ MEMBER)\t((unsigned long)&((TYPE *)0)->MEMBER)\n#endif\n#ifndef container_of\n\
+    #define container_of(ptr, type, member)\t\t\t\t\\\n\t({\t\t\t\t\t\t\t\\\n\t\t\
+    void *__mptr = (void *)(ptr);\t\t\t\\\n\t\t((type *)(__mptr - offsetof(type, member)));\t\
+    \\\n\t})\n#endif\n\n/*\n * Compiler (optimization) barrier.\n */\n#ifndef barrier\n\
+    #define barrier() asm volatile(\"\" ::: \"memory\")\n#endif\n\n/* Variable-specific\
+    \ compiler (optimization) barrier. It's a no-op which makes\n * compiler believe\
+    \ that there is some black box modification of a given\n * variable and thus prevents\
+    \ compiler from making extra assumption about its\n * value and potential simplifications\
+    \ and optimizations on this variable."
+  fixed_code: "// FILE: src/bpf_helpers.h\n */\n#ifndef NULL\n#define NULL ((void\
+    \ *)0)\n#endif\n\n#ifndef KERNEL_VERSION\n#define KERNEL_VERSION(a, b, c) (((a)\
+    \ << 16) + ((b) << 8) + ((c) > 255 ? 255 : (c)))\n#endif\n\n/*\n * Helper macros\
+    \ to manipulate data structures\n */\n\n/* offsetof() definition that uses __builtin_offset()\
+    \ might not preserve field\n * offset CO-RE relocation properly, so force-redefine\
+    \ offsetof() using\n * old-school approach which works with CO-RE correctly\n\
+    \ */\n#undef offsetof\n#define offsetof(type, member)\t((unsigned long)&((type\
+    \ *)0)->member)\n\n/* redefined container_of() to ensure we use the above offsetof()\
+    \ macro */\n#undef container_of\n#define container_of(ptr, type, member)\t\t\t\
+    \t\\\n\t({\t\t\t\t\t\t\t\\\n\t\tvoid *__mptr = (void *)(ptr);\t\t\t\\\n\t\t((type\
+    \ *)(__mptr - offsetof(type, member)));\t\\\n\t})\n\n/*\n * Compiler (optimization)\
+    \ barrier.\n */\n#ifndef barrier\n#define barrier() asm volatile(\"\" ::: \"memory\"\
+    )\n#endif\n\n/* Variable-specific compiler (optimization) barrier. It's a no-op\
+    \ which makes\n * compiler believe that there is some black box modification of\
+    \ a given\n * variable and thus prevents compiler from making extra assumption\
+    \ about its\n * value and potential simplifications and optimizations on this\
+    \ variable."
+  diff_summary: |-
+    src/bpf_helpers.h:
+    - Applied a small verifier-related code change captured by the exact before/after snippets below.
+    - Affected context: the touched section.
+    - Commit subject: libbpf: fix offsetof() and container_of() to work with CO-RE.

@@ -1,0 +1,153 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-bbf57970f552
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/bbf57970f552619604d5eb84bc2971404ab0f255
+  title: 'bpf: Pass snat_v6_needs_masquerade args by map'
+  repository: https://github.com/cilium/cilium
+  commit: bbf57970f552619604d5eb84bc2971404ab0f255
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-bbf57970f552.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: replay_valid
+  case_id: github-commit-cilium-bbf57970f552
+  case_path: cases/github-commit-cilium-bbf57970f552
+  artifact_path: cases/github-commit-cilium-bbf57970f552
+  reason: admitted_to_bpfix_bench_cases
+raw:
+  case_id: github-commit-cilium-bbf57970f552
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: bbf57970f552619604d5eb84bc2971404ab0f255
+  commit_message: 'bpf: Pass snat_v6_needs_masquerade args by map'
+  commit_date: '2026-01-08'
+  fix_type: inline_hint
+  buggy_code: "// FILE: bpf/lib/nat.h\n// CONTEXT: snat_v6_rev_nat_can_skip(const\
+    \ struct ipv6_nat_target *target, const struct ipv6\n}\n\nstatic __always_inline\
+    \ void snat_v6_init_tuple(const struct ipv6hdr *ip6,\n\t\t\t\t\t       enum nat_dir\
+    \ dir,\n\t\t\t\t\t       struct ipv6_ct_tuple *tuple)\n{\n\tipv6_addr_copy(&tuple->daddr,\
+    \ (union v6addr *)&ip6->daddr);\n\tipv6_addr_copy(&tuple->saddr, (union v6addr\
+    \ *)&ip6->saddr);\n\ttuple->flags = dir;\n}\n\nstatic __always_inline int\nsnat_v6_needs_masquerade(struct\
+    \ __ctx_buff *ctx __maybe_unused,\n\t\t\t struct ipv6_ct_tuple *tuple __maybe_unused,\n\
+    \t\t\t fraginfo_t fraginfo __maybe_unused,\n\t\t\t int l4_off __maybe_unused,\n\
+    \t\t\t struct ipv6_nat_target *target __maybe_unused)\n{\n\t/* See comments in\
+    \ snat_v4_needs_masquerade(). */\n#if defined(ENABLE_MASQUERADE_IPV6) && defined(IS_BPF_HOST)\n\
+    \tunion v6addr masq_addr = CONFIG(nat_ipv6_masquerade);\n\tconst struct remote_endpoint_info\
+    \ *remote_ep;\n\tconst struct endpoint_info *local_ep;\n\tvoid *data, *data_end;\n\
+    \tstruct ipv6hdr *ip6;\n\n\tif (ipv6_addr_equals(&tuple->saddr, &masq_addr)) {\n\
+    \t\tipv6_addr_copy(&target->addr, &masq_addr);\n\t\ttarget->needs_ct = true;\n\
+    \n// CONTEXT: snat_v6_needs_masquerade(struct __ctx_buff *ctx __maybe_unused,\n\
+    \t\t\treturn NAT_PUNT_TO_STACK;\n\t}\n\n\tif (local_ep) {\n\t\tipv6_addr_copy(&target->addr,\
+    \ &masq_addr);\n\t\treturn NAT_NEEDED;\n\t}\n#endif /* ENABLE_MASQUERADE_IPV6\
+    \ && IS_BPF_HOST */\n\n\treturn NAT_PUNT_TO_STACK;\n}\n\nstatic __always_inline\
+    \ __maybe_unused int\nsnat_v6_nat_handle_icmp_error(struct __ctx_buff *ctx, __u64\
+    \ off,\n\t\t\t      struct ipv6_nat_entry **state)\n{\n\t__u32 inner_l3_off =\
+    \ (__u32)(off + sizeof(struct icmp6hdr));\n\tstruct ipv6_ct_tuple tuple = {};\n\
+    \tstruct ipv6hdr ip6;\n\t__u16 port_off;\n\t__u32 icmpoff;\n\tint hdrlen;\n\t\
+    __u8 type;\n\n// FILE: bpf/lib/nodeport_egress.h\n// CONTEXT: nodeport_has_nat_conflict_ipv6(const\
+    \ struct __ctx_buff *ctx __maybe_unused,\n\t\treturn true;\n\t}\n#endif\n\n\t\
+    return false;\n}\n\nstatic __always_inline int nodeport_snat_fwd_ipv6(struct __ctx_buff\
+    \ *ctx,\n\t\t\t\t\t\t  union v6addr *saddr,\n\t\t\t\t\t\t  struct trace_ctx *trace,\n\
+    \t\t\t\t\t\t  __s8 *ext_err)\n{\n\tstruct ipv6_nat_target target = {\n\t\t.min_port\
+    \ = NODEPORT_PORT_MIN_NAT,\n\t\t.max_port = NODEPORT_PORT_MAX_NAT,\n\t};\n\tstruct\
+    \ ipv6_ct_tuple tuple = {};\n\tint hdrlen, l4_off, ret;\n\tvoid *data, *data_end;\n\
+    \tstruct ipv6hdr *ip6;\n\tfraginfo_t fraginfo;\n\n\tif (!revalidate_data(ctx,\
+    \ &data, &data_end, &ip6))\n\t\treturn DROP_INVALID;\n\n\ttuple.nexthdr = ip6->nexthdr;\n\
+    \thdrlen = ipv6_hdrlen_with_fraginfo(ctx, &tuple.nexthdr, &fraginfo);\n\tif (hdrlen\
+    \ < 0)\n\t\treturn hdrlen;\n\n\tsnat_v6_init_tuple(ip6, NAT_DIR_EGRESS, &tuple);\n\
+    \tl4_off = ETH_HLEN + hdrlen;\n\n\tif (lb_is_svc_proto(tuple.nexthdr) &&\n\t \
+    \   nodeport_has_nat_conflict_ipv6(ctx, ip6, &target))\n\t\tgoto apply_snat;\n\
+    \n\tret = snat_v6_needs_masquerade(ctx, &tuple, fraginfo, l4_off, &target);\n\t\
+    if (IS_ERR(ret))\n\t\tgoto out;\n\n#if defined(ENABLE_EGRESS_GATEWAY_COMMON) &&\
+    \ defined(IS_BPF_HOST)\n\tif (target.egress_gateway) {\n\t\t/* Stay on the desired\
+    \ egress interface: */\n\t\tif (target.ifindex && target.ifindex == CONFIG(interface_ifindex))\n\
+    \t\t\tgoto apply_snat;\n\n\t\t/* Send packet to the correct egress interface,\
+    \ and SNAT it there. */\n\t\tret = egress_gw_fib_lookup_and_redirect_v6(ctx, &target.addr,\n\
+    \t\t\t\t\t\t\t   &tuple.daddr, target.ifindex,\n\t\t\t\t\t\t\t   ext_err);\n\t\
+    \tif (ret != CTX_ACT_OK)\n\t\t\treturn ret;\n\n\t\tif (!revalidate_data(ctx, &data,\
+    \ &data_end, &ip6))\n\t\t\treturn DROP_INVALID;\n\t}\n#endif\n\napply_snat:\n\t\
+    ipv6_addr_copy(saddr, &tuple.saddr);\n\tret = snat_v6_nat(ctx, &tuple, ip6, fraginfo,\
+    \ l4_off,\n\t\t\t  &target, trace, ext_err);\n\tif (IS_ERR(ret))\n\t\tgoto out;\n\
+    \n\t/* See the equivalent v4 path for comment */\n\tif (is_defined(IS_BPF_HOST))\n\
+    \t\tctx_snat_done_set(ctx);\n\nout:\n\tif (ret == NAT_PUNT_TO_STACK)\n\t\tret\
+    \ = CTX_ACT_OK;\n\n\treturn ret;"
+  fixed_code: "// FILE: bpf/lib/nat.h\n// CONTEXT: snat_v6_rev_nat_can_skip(const\
+    \ struct ipv6_nat_target *target, const struct ipv6\n}\n\nstatic __always_inline\
+    \ void snat_v6_init_tuple(const struct ipv6hdr *ip6,\n\t\t\t\t\t       enum nat_dir\
+    \ dir,\n\t\t\t\t\t       struct ipv6_ct_tuple *tuple)\n{\n\tipv6_addr_copy(&tuple->daddr,\
+    \ (union v6addr *)&ip6->daddr);\n\tipv6_addr_copy(&tuple->saddr, (union v6addr\
+    \ *)&ip6->saddr);\n\ttuple->flags = dir;\n}\n\nstatic __always_inline int\n__snat_v6_needs_masquerade(struct\
+    \ __ctx_buff *ctx __maybe_unused,\n\t\t\t   struct ipv6_ct_tuple *tuple __maybe_unused,\n\
+    \t\t\t   fraginfo_t fraginfo __maybe_unused,\n\t\t\t   int l4_off __maybe_unused,\n\
+    \t\t\t   struct ipv6_nat_target *target __maybe_unused)\n{\n\t/* See comments\
+    \ in snat_v4_needs_masquerade(). */\n#if defined(ENABLE_MASQUERADE_IPV6) && defined(IS_BPF_HOST)\n\
+    \tunion v6addr masq_addr = CONFIG(nat_ipv6_masquerade);\n\tconst struct remote_endpoint_info\
+    \ *remote_ep;\n\tconst struct endpoint_info *local_ep;\n\tvoid *data, *data_end;\n\
+    \tstruct ipv6hdr *ip6;\n\n\tif (ipv6_addr_equals(&tuple->saddr, &masq_addr)) {\n\
+    \t\tipv6_addr_copy(&target->addr, &masq_addr);\n\t\ttarget->needs_ct = true;\n\
+    \n// CONTEXT: snat_v6_needs_masquerade(struct __ctx_buff *ctx __maybe_unused,\n\
+    \t\t\treturn NAT_PUNT_TO_STACK;\n\t}\n\n\tif (local_ep) {\n\t\tipv6_addr_copy(&target->addr,\
+    \ &masq_addr);\n\t\treturn NAT_NEEDED;\n\t}\n#endif /* ENABLE_MASQUERADE_IPV6\
+    \ && IS_BPF_HOST */\n\n\treturn NAT_PUNT_TO_STACK;\n}\n\n/* Store struct ipv6_ct_tuple\
+    \ and struct ipv6_nat_target objects in maps to\n * optimize stack usage.\n */\n\
+    struct {\n\t__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);\n\t__uint(max_entries, 1);\n\
+    \t__type(key, int);\n\t__type(value, struct ipv6_ct_tuple);\n} ct_tuple_storage\
+    \ __section_maps_btf;\nstruct {\n\t__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);\n\t\
+    __uint(max_entries, 1);\n\t__type(key, int);\n\t__type(value, struct ipv6_nat_target);\n\
+    } nat_target_storage __section_maps_btf;\n\nstatic __always_inline int\nsnat_v6_needs_masquerade(struct\
+    \ __ctx_buff *ctx __maybe_unused,\n\t\t\t fraginfo_t fraginfo __maybe_unused,\n\
+    \t\t\t int l4_off __maybe_unused)\n{\n\tstruct ipv6_nat_target *target;\n\tstruct\
+    \ ipv6_ct_tuple *tuple;\n\tint ret, zero = 0;\n\n\ttuple = map_lookup_elem(&ct_tuple_storage,\
+    \ &zero);\n\tif (!tuple)\n\t\treturn DROP_INVALID;\n\ttarget = map_lookup_elem(&nat_target_storage,\
+    \ &zero);\n\tif (!target)\n\t\treturn DROP_INVALID;\n\n\tret = __snat_v6_needs_masquerade(ctx,\
+    \ tuple, fraginfo, l4_off, target);\n\n\treturn ret;\n}\n\nstatic __always_inline\
+    \ __maybe_unused int\nsnat_v6_nat_handle_icmp_error(struct __ctx_buff *ctx, __u64\
+    \ off,\n\t\t\t      struct ipv6_nat_entry **state)\n{\n\t__u32 inner_l3_off =\
+    \ (__u32)(off + sizeof(struct icmp6hdr));\n\tstruct ipv6_ct_tuple tuple = {};\n\
+    \tstruct ipv6hdr ip6;\n\t__u16 port_off;\n\t__u32 icmpoff;\n\tint hdrlen;\n\t\
+    __u8 type;\n\n// FILE: bpf/lib/nodeport_egress.h\n// CONTEXT: nodeport_has_nat_conflict_ipv6(const\
+    \ struct __ctx_buff *ctx __maybe_unused,\n\t\treturn true;\n\t}\n#endif\n\n\t\
+    return false;\n}\n\nstatic __always_inline int nodeport_snat_fwd_ipv6(struct __ctx_buff\
+    \ *ctx,\n\t\t\t\t\t\t  union v6addr *saddr,\n\t\t\t\t\t\t  struct trace_ctx *trace,\n\
+    \t\t\t\t\t\t  __s8 *ext_err)\n{\n\tstruct ipv6_nat_target *target;\n\tstruct ipv6_ct_tuple\
+    \ *tuple;\n\tint hdrlen, l4_off, ret;\n\tvoid *data, *data_end;\n\tstruct ipv6hdr\
+    \ *ip6;\n\tfraginfo_t fraginfo;\n\tint zero = 0;\n\n\ttuple = map_lookup_elem(&ct_tuple_storage,\
+    \ &zero);\n\tif (!tuple)\n\t\treturn DROP_INVALID;\n\ttarget = map_lookup_elem(&nat_target_storage,\
+    \ &zero);\n\tif (!target)\n\t\treturn DROP_INVALID;\n\n\tmemset(target, 0, sizeof(*target));\n\
+    \ttarget->min_port = NODEPORT_PORT_MIN_NAT;\n\ttarget->max_port = NODEPORT_PORT_MAX_NAT;\n\
+    \n\tif (!revalidate_data(ctx, &data, &data_end, &ip6))\n\t\treturn DROP_INVALID;\n\
+    \n\ttuple->nexthdr = ip6->nexthdr;\n\thdrlen = ipv6_hdrlen_with_fraginfo(ctx,\
+    \ &tuple->nexthdr, &fraginfo);\n\tif (hdrlen < 0)\n\t\treturn hdrlen;\n\n\tsnat_v6_init_tuple(ip6,\
+    \ NAT_DIR_EGRESS, tuple);\n\tl4_off = ETH_HLEN + hdrlen;\n\n\tif (lb_is_svc_proto(tuple->nexthdr)\
+    \ &&\n\t    nodeport_has_nat_conflict_ipv6(ctx, ip6, target))\n\t\tgoto apply_snat;\n\
+    \n\tret = snat_v6_needs_masquerade(ctx, fraginfo, l4_off);\n\tif (IS_ERR(ret))\n\
+    \t\tgoto out;\n\n#if defined(ENABLE_EGRESS_GATEWAY_COMMON) && defined(IS_BPF_HOST)\n\
+    \tif (target->egress_gateway) {\n\t\t/* Stay on the desired egress interface:\
+    \ */\n\t\tif (target->ifindex && target->ifindex == CONFIG(interface_ifindex))\n\
+    \t\t\tgoto apply_snat;\n\n\t\t/* Send packet to the correct egress interface,\
+    \ and SNAT it there. */\n\t\tret = egress_gw_fib_lookup_and_redirect_v6(ctx, &target->addr,\n\
+    \t\t\t\t\t\t\t   &tuple->daddr, target->ifindex,\n\t\t\t\t\t\t\t   ext_err);\n\
+    \t\tif (ret != CTX_ACT_OK)\n\t\t\treturn ret;\n\n\t\tif (!revalidate_data(ctx,\
+    \ &data, &data_end, &ip6))\n\t\t\treturn DROP_INVALID;\n\t}\n#endif\n\napply_snat:\n\
+    \tipv6_addr_copy(saddr, &tuple->saddr);\n\tret = snat_v6_nat(ctx, tuple, ip6,\
+    \ fraginfo, l4_off,\n\t\t\t  target, trace, ext_err);\n\tif (IS_ERR(ret))\n\t\t\
+    goto out;\n\n\t/* See the equivalent v4 path for comment */\n\tif (is_defined(IS_BPF_HOST))\n\
+    \t\tctx_snat_done_set(ctx);\n\nout:\n\tif (ret == NAT_PUNT_TO_STACK)\n\t\tret\
+    \ = CTX_ACT_OK;\n\n\treturn ret;"
+  diff_summary: |-
+    bpf/lib/nat.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: snat_v6_rev_nat_can_skip(const struct ipv6_nat_target *target, const struct ipv6, snat_v6_needs_masquerade(struct __ctx_buff *ctx __maybe_unused,.
+    bpf/lib/nodeport_egress.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: nodeport_has_nat_conflict_ipv6(const struct __ctx_buff *ctx __maybe_unused,.
+    - Commit subject: bpf: Pass snat_v6_needs_masquerade args by map.

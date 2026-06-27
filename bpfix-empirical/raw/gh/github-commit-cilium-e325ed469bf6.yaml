@@ -1,0 +1,62 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-e325ed469bf6
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/e325ed469bf61658c59723bed62f53da8155532f
+  title: 'bpf: remap MARK_MAGIC_SNAT_DONE marker to avoid conflicts'
+  repository: https://github.com/cilium/cilium
+  commit: e325ed469bf61658c59723bed62f53da8155532f
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-e325ed469bf6.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Remaps MARK_MAGIC_SNAT_DONE to avoid mark-bit conflicts; no verifier rejection
+    is implicated by the diff.
+raw:
+  case_id: github-commit-cilium-e325ed469bf6
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: e325ed469bf61658c59723bed62f53da8155532f
+  commit_message: 'bpf: remap MARK_MAGIC_SNAT_DONE marker to avoid conflicts'
+  commit_date: '2020-04-16'
+  fix_type: other
+  buggy_code: "// FILE: bpf/lib/common.h\n// CONTEXT: enum {\n#define MARK_MAGIC_HOST_MASK\t\
+    \t0x0F00\n#define MARK_MAGIC_PROXY_INGRESS\t0x0A00\n#define MARK_MAGIC_PROXY_EGRESS\t\
+    \t0x0B00\n#define MARK_MAGIC_HOST\t\t\t0x0C00\n#define MARK_MAGIC_DECRYPT\t\t\
+    0x0D00\n#define MARK_MAGIC_ENCRYPT\t\t0x0E00\n#define MARK_MAGIC_IDENTITY\t\t\
+    0x0F00 /* mark carries identity */\n#define MARK_MAGIC_TO_PROXY\t\t0x0200\n\n\
+    #define MARK_MAGIC_KEY_ID\t\t0xF000\n#define MARK_MAGIC_KEY_MASK\t\t0xFF00\n\n\
+    #define MARK_MAGIC_SNAT_DONE\t\t0x0500\n\n/**\n * get_identity - returns source\
+    \ identity from the mark field\n */\nstatic inline int __inline__ get_identity(struct\
+    \ __sk_buff *skb)\n{\n\treturn ((skb->mark & 0xFF) << 16) | skb->mark >> 16;\n\
+    }\n\nstatic inline void __inline__ set_encrypt_dip(struct __sk_buff *skb, __u32\
+    \ ip_endpoint)\n{\n\tskb->cb[4] = ip_endpoint;"
+  fixed_code: "// FILE: bpf/lib/common.h\n// CONTEXT: enum {\n#define MARK_MAGIC_HOST_MASK\t\
+    \t0x0F00\n#define MARK_MAGIC_PROXY_INGRESS\t0x0A00\n#define MARK_MAGIC_PROXY_EGRESS\t\
+    \t0x0B00\n#define MARK_MAGIC_HOST\t\t\t0x0C00\n#define MARK_MAGIC_DECRYPT\t\t\
+    0x0D00\n#define MARK_MAGIC_ENCRYPT\t\t0x0E00\n#define MARK_MAGIC_IDENTITY\t\t\
+    0x0F00 /* mark carries identity */\n#define MARK_MAGIC_TO_PROXY\t\t0x0200\n\n\
+    #define MARK_MAGIC_KEY_ID\t\t0xF000\n#define MARK_MAGIC_KEY_MASK\t\t0xFF00\n\n\
+    /* IPSec cannot be configured with NodePort BPF today, hence non-conflicting\n\
+    \ * overlap with MARK_MAGIC_KEY_ID.\n */\n#define MARK_MAGIC_SNAT_DONE\t\t0x1500\n\
+    \n/**\n * get_identity - returns source identity from the mark field\n */\nstatic\
+    \ inline int __inline__ get_identity(struct __sk_buff *skb)\n{\n\treturn ((skb->mark\
+    \ & 0xFF) << 16) | skb->mark >> 16;\n}\n\nstatic inline void __inline__ set_encrypt_dip(struct\
+    \ __sk_buff *skb, __u32 ip_endpoint)\n{\n\tskb->cb[4] = ip_endpoint;"
+  diff_summary: |-
+    bpf/lib/common.h:
+    - Applied a small verifier-related code change captured by the exact before/after snippets below.
+    - Affected context: enum {.
+    - Commit subject: bpf: remap MARK_MAGIC_SNAT_DONE marker to avoid conflicts.

@@ -1,0 +1,148 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-4dc7d8047caf
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/4dc7d8047cafc9661ff07bc784a20da1e0f617e3
+  title: 'bpf: Fix "same insn cannot be used with different pointers" in proxy.h'
+  repository: https://github.com/cilium/cilium
+  commit: 4dc7d8047cafc9661ff07bc784a20da1e0f617e3
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-4dc7d8047caf.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: replay_valid
+  case_id: github-commit-cilium-4dc7d8047caf
+  case_path: cases/github-commit-cilium-4dc7d8047caf
+  artifact_path: cases/github-commit-cilium-4dc7d8047caf
+  reason: admitted_to_bpfix_bench_cases
+raw:
+  case_id: github-commit-cilium-4dc7d8047caf
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: 4dc7d8047cafc9661ff07bc784a20da1e0f617e3
+  commit_message: 'bpf: Fix "same insn cannot be used with different pointers" in
+    proxy.h'
+  commit_date: '2024-05-04'
+  fix_type: refactor
+  buggy_code: |-
+    // FILE: bpf/lib/proxy.h
+    // CONTEXT: assign_socket_tcp(struct __ctx_buff *ctx,
+            struct bpf_sock *sk;
+            __u32 dbg_ctx;
+
+            sk = skc_lookup_tcp(ctx, tuple, len, BPF_F_CURRENT_NETNS, 0);
+            if (!sk)
+                    goto out;
+
+            if (established && sk->state == BPF_TCP_TIME_WAIT)
+                    goto release;
+            if (established && sk->state == BPF_TCP_LISTEN)
+                    goto release;
+
+            dbg_ctx = sk->family << 16 | ctx->protocol;
+            result = sk_assign(ctx, sk, 0);
+            cilium_dbg(ctx, DBG_SK_ASSIGN, -result, dbg_ctx);
+            if (result == 0)
+                    result = CTX_ACT_OK;
+            else
+                    result = DROP_PROXY_SET_FAILED;
+    release:
+            sk_release(sk);
+    out:
+            return result;
+    }
+
+
+    // CONTEXT: static __always_inline int
+    assign_socket_udp(struct __ctx_buff *ctx,
+                      struct bpf_sock_tuple *tuple, __u32 len,
+                      bool established __maybe_unused)
+    {
+            int result = DROP_PROXY_LOOKUP_FAILED;
+            struct bpf_sock *sk;
+            __u32 dbg_ctx;
+
+            sk = sk_lookup_udp(ctx, tuple, len, BPF_F_CURRENT_NETNS, 0);
+            if (!sk)
+                    goto out;
+
+            dbg_ctx = sk->family << 16 | ctx->protocol;
+            result = sk_assign(ctx, sk, 0);
+            cilium_dbg(ctx, DBG_SK_ASSIGN, -result, dbg_ctx);
+            if (result == 0)
+                    result = CTX_ACT_OK;
+            else
+                    result = DROP_PROXY_SET_FAILED;
+            sk_release(sk);
+    out:
+            return result;
+    }
+
+    static __always_inline int
+  fixed_code: |-
+    // FILE: bpf/lib/proxy.h
+    // CONTEXT: assign_socket_tcp(struct __ctx_buff *ctx,
+            struct bpf_sock *sk;
+            __u32 dbg_ctx;
+
+            sk = skc_lookup_tcp(ctx, tuple, len, BPF_F_CURRENT_NETNS, 0);
+            if (!sk)
+                    goto out;
+
+            if (established && sk->state == BPF_TCP_TIME_WAIT)
+                    goto release;
+            if (established && sk->state == BPF_TCP_LISTEN)
+                    goto release;
+
+            dbg_ctx = READ_ONCE(sk)->family << 16 | ctx->protocol;
+            result = sk_assign(ctx, sk, 0);
+            cilium_dbg(ctx, DBG_SK_ASSIGN, -result, dbg_ctx);
+            if (result == 0)
+                    result = CTX_ACT_OK;
+            else
+                    result = DROP_PROXY_SET_FAILED;
+    release:
+            sk_release(sk);
+    out:
+            return result;
+    }
+
+
+    // CONTEXT: static __always_inline int
+    assign_socket_udp(struct __ctx_buff *ctx,
+                      struct bpf_sock_tuple *tuple, __u32 len,
+                      bool established __maybe_unused)
+    {
+            int result = DROP_PROXY_LOOKUP_FAILED;
+            struct bpf_sock *sk;
+            __u32 dbg_ctx;
+
+            sk = sk_lookup_udp(ctx, tuple, len, BPF_F_CURRENT_NETNS, 0);
+            if (!sk)
+                    goto out;
+
+            dbg_ctx = READ_ONCE(sk)->family << 16 | ctx->protocol;
+            result = sk_assign(ctx, sk, 0);
+            cilium_dbg(ctx, DBG_SK_ASSIGN, -result, dbg_ctx);
+            if (result == 0)
+                    result = CTX_ACT_OK;
+            else
+                    result = DROP_PROXY_SET_FAILED;
+            sk_release(sk);
+    out:
+            return result;
+    }
+
+    static __always_inline int
+  diff_summary: |-
+    bpf/lib/proxy.h:
+    - Wrapped `sk->family` dereferences in `READ_ONCE(sk)` in both TCP and UDP socket assignment helpers.
+    - Prevented Clang 17 from merging two verifier-incompatible pointer-typed paths into one shared instruction sequence.

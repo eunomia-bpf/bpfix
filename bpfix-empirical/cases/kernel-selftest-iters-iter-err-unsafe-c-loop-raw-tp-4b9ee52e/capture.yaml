@@ -1,0 +1,20 @@
+schema_version: bpfix.capture/v1
+capture_id: kernel-selftest-iters-iter-err-unsafe-c-loop-raw-tp-4b9ee52e__kernel-6.15.11-clang-18-log2
+case_id: kernel-selftest-iters-iter-err-unsafe-c-loop-raw-tp-4b9ee52e
+environment_id: kernel-6.15.11-clang-18-log2
+imported_at: '2026-04-29T22:43:58+00:00'
+source_artifact:
+  path: bpfix-empirical/cases/kernel-selftest-iters-iter-err-unsafe-c-loop-raw-tp-4b9ee52e
+  source_file: tools/testing/selftests/bpf/progs/iters.c
+  target_function: iter_err_unsafe_c_loop
+  section: ?raw_tp
+  compile_ok: true
+  load_attempted: true
+  verifier_rejected: true
+  verifier_log_captured: true
+  source_record: bpfix-empirical/raw/kernel_selftests/kernel-selftest-iters-iter-err-unsafe-c-loop-raw-tp-4b9ee52e.yaml
+replay:
+  build_command: make
+  load_command: make replay-verify
+  verifier_log: replay-verifier.log
+  expected_load_status: verifier_reject

@@ -1,0 +1,158 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-8be6990e265e
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/8be6990e265e41443948d8279b15ec83cea39160
+  title: 'bpf: nodeport: consider inbound ICMP traffic in revSNAT bypass'
+  repository: https://github.com/cilium/cilium
+  commit: 8be6990e265e41443948d8279b15ec83cea39160
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-8be6990e265e.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: environment_required
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: NodePort ICMP/revSNAT bypass logic spans IPv6 tuple extraction, service
+    lookup, CT state, and FIB paths. The snippets are full datapath control flow without
+    a standalone rejected operation.
+raw:
+  case_id: github-commit-cilium-8be6990e265e
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: 8be6990e265e41443948d8279b15ec83cea39160
+  commit_message: 'bpf: nodeport: consider inbound ICMP traffic in revSNAT bypass'
+  commit_date: '2023-06-30'
+  fix_type: inline_hint
+  buggy_code: "// FILE: bpf/lib/nodeport.h\n// CONTEXT: fib_ipv4:\n\t}\ndrop_err:\n\
+    \treturn send_drop_notify_error_ext(ctx, 0, ret, ext_err,\n\t\t\t\t\t  CTX_ACT_DROP,\
+    \ METRIC_EGRESS);\n}\n\n/* See nodeport_lb4(). */\nstatic __always_inline int\
+    \ nodeport_lb6(struct __ctx_buff *ctx,\n\t\t\t\t\tstruct ipv6hdr *ip6,\n\t\t\t\
+    \t\t__u32 src_sec_identity,\n\t\t\t\t\t__s8 *ext_err)\n{\n\tint ret, l3_off =\
+    \ ETH_HLEN, l4_off;\n\tstruct ipv6_ct_tuple tuple = {};\n\tstruct lb6_service\
+    \ *svc;\n\tstruct lb6_key key = {};\n\tstruct ct_state ct_state_new = {};\n\t\
+    bool backend_local;\n\t__u32 monitor = 0;\n\n\tcilium_capture_in(ctx);\n\n\tret\
+    \ = lb6_extract_tuple(ctx, ip6, ETH_HLEN, &l4_off, &tuple);\n\tif (IS_ERR(ret))\
+    \ {\n\t\tif (ret == DROP_NO_SERVICE)\n\t\t\tgoto skip_service_lookup;\n\t\tif\
+    \ (ret == DROP_UNKNOWN_L4) {\n\t\t\tctx_set_xfer(ctx, XFER_PKT_NO_SVC);\n\t\t\t\
+    return CTX_ACT_OK;\n\t\t}\n\t\treturn ret;\n\t}\n\n\tlb6_fill_key(&key, &tuple);\n\
+    \n\tsvc = lb6_lookup_service(&key, false, false);\n\tif (svc) {\n\t\tconst bool\
+    \ skip_l3_xlate = DSR_ENCAP_MODE == DSR_ENCAP_IPIP;\n\n// CONTEXT: skip_service_lookup:\n\
+    \t\t\tif (is_v4_in_v6_rfc8215((union v6addr *)&ip6->saddr)) {\n\t\t\t\tep_tail_call(ctx,\
+    \ CILIUM_CALL_IPV64_RFC8215);\n\t\t\t} else {\n\t\t\t\tctx_store_meta(ctx, CB_NAT_46X64,\
+    \ NAT46x64_MODE_XLATE);\n\t\t\t\tep_tail_call(ctx, CILIUM_CALL_IPV6_NODEPORT_NAT_EGRESS);\n\
+    \t\t\t}\n\t\t\treturn DROP_MISSED_TAIL_CALL;\n\t\t}\n#endif\n\t\tctx_set_xfer(ctx,\
+    \ XFER_PKT_NO_SVC);\n\n#ifdef ENABLE_DSR\n\t\tif (nodeport_uses_dsr6(&tuple))\
+    \ {\n#if (defined(IS_BPF_OVERLAY) && DSR_ENCAP_MODE == DSR_ENCAP_GENEVE) || \\\
+    \n\t(!defined(IS_BPF_OVERLAY) && DSR_ENCAP_MODE != DSR_ENCAP_GENEVE)\n\t\t\tbool\
+    \ dsr = false;\n\n\t\t\tret = nodeport_extract_dsr_v6(ctx, ip6, &tuple, l4_off,\n\
+    \t\t\t\t\t\t      &key.address,\n\t\t\t\t\t\t      &key.dport, &dsr);\n\t\t\t\
+    if (dsr) {\n\t\t\t\tctx_store_meta(ctx, CB_SRC_LABEL, src_sec_identity);\n\t\t\
+    \t\tep_tail_call(ctx, CILIUM_CALL_IPV6_NODEPORT_DSR_INGRESS);\n\t\t\t\treturn\
+    \ DROP_MISSED_TAIL_CALL;\n\t\t\t}\n\n\t\t\tif (IS_ERR(ret))\n\t\t\t\treturn ret;\n\
+    #endif\n\n#ifndef ENABLE_MASQUERADE_IPV6\n\t\t\treturn CTX_ACT_OK;\n#endif /*\
+    \ ENABLE_MASQUERADE_IPV6 */\n\t\t}\n#endif /* ENABLE_DSR */\n\n\t\tctx_store_meta(ctx,\
+    \ CB_NAT_46X64, 0);\n\t\tctx_store_meta(ctx, CB_SRC_LABEL, src_sec_identity);\n\
+    \t\tep_tail_call(ctx, CILIUM_CALL_IPV6_NODEPORT_NAT_INGRESS);\n\t\treturn DROP_MISSED_TAIL_CALL;\n\
+    \t}\n\n\tbackend_local = __lookup_ip6_endpoint(&tuple.daddr);\n\tif (!backend_local\
+    \ && lb6_svc_is_hostport(svc))\n\t\treturn DROP_INVALID;\n\tif (backend_local\
+    \ || !nodeport_uses_dsr6(&tuple)) {\n\t\tstruct ct_state ct_state = {};\n\n//\
+    \ CONTEXT: skip_service_lookup:\n\t\tif (ip4->daddr != IPV4_DIRECT_ROUTING) {\n\
+    \t\t\tep_tail_call(ctx, CILIUM_CALL_IPV46_RFC8215);\n\t\t\treturn DROP_MISSED_TAIL_CALL;\n\
+    \t\t}\n#endif\n\t\t/* The packet is not destined to a service but it can be a\
+    \ reply\n\t\t * packet from a remote backend, in which case we need to perform\n\
+    \t\t * the reverse NAT.\n\t\t */\n\t\tctx_set_xfer(ctx, XFER_PKT_NO_SVC);\n\n\
+    #ifdef ENABLE_DSR\n\t\tif (nodeport_uses_dsr4(&tuple)) {\n#if (defined(IS_BPF_OVERLAY)\
+    \ && DSR_ENCAP_MODE == DSR_ENCAP_GENEVE) || \\\n\t(!defined(IS_BPF_OVERLAY) &&\
+    \ DSR_ENCAP_MODE != DSR_ENCAP_GENEVE)\n\t\t\tbool dsr = false;\n\n\t\t\t/* Check\
+    \ if packet has embedded DSR info, or belongs to\n\t\t\t * an established DSR\
+    \ connection:\n\t\t\t */\n\t\t\tret = nodeport_extract_dsr_v4(ctx, ip4, &tuple,\n\
+    \t\t\t\t\t\t      l4_off, &key.address,\n\t\t\t\t\t\t      &key.dport, &dsr);\n\
+    \t\t\tif (dsr) {\n\t\t\t\tctx_store_meta(ctx, CB_SRC_LABEL, src_sec_identity);\n\
+    \t\t\t\tep_tail_call(ctx, CILIUM_CALL_IPV4_NODEPORT_DSR_INGRESS);\n\t\t\t\treturn\
+    \ DROP_MISSED_TAIL_CALL;\n\t\t\t}\n\n\t\t\tif (IS_ERR(ret))\n\t\t\t\treturn ret;\n\
+    #endif\n#ifndef ENABLE_MASQUERADE_IPV4\n\t\t\t/* The packet is DSR-eligible, so\
+    \ we know for sure that it is\n\t\t\t * not reply traffic by a remote backend\
+    \ which would require\n\t\t\t * forwarding / revDNAT. If BPF-Masquerading is off,\
+    \ there is no\n\t\t\t * other reason to tail-call CILIUM_CALL_IPV4_NODEPORT_NAT_INGRESS.\n\
+    \t\t\t */\n\t\t\treturn CTX_ACT_OK;\n#endif /* ENABLE_MASQUERADE_IPV4 */\n\t\t\
+    }\n#endif /* ENABLE_DSR */\n\n\t\tctx_store_meta(ctx, CB_SRC_LABEL, src_sec_identity);\n\
+    \t\t/* For NAT64 we might see an IPv4 reply from the backend to\n\t\t * the LB\
+    \ entering this path. Thus, transform back to IPv6.\n\t\t */\n\t\tif (is_svc_proto\
+    \ && snat_v6_has_v4_match(&tuple)) {\n\t\t\tret = lb4_to_lb6(ctx, ip4, l3_off);\n\
+    \t\t\tif (ret)\n\t\t\t\treturn ret;\n\t\t\tctx_store_meta(ctx, CB_NAT_46X64, 0);\n\
+    \t\t\tep_tail_call(ctx, CILIUM_CALL_IPV6_NODEPORT_NAT_INGRESS);\n#ifdef ENABLE_NAT_46X64_GATEWAY"
+  fixed_code: "// FILE: bpf/lib/nodeport.h\n// CONTEXT: fib_ipv4:\n\t}\ndrop_err:\n\
+    \treturn send_drop_notify_error_ext(ctx, 0, ret, ext_err,\n\t\t\t\t\t  CTX_ACT_DROP,\
+    \ METRIC_EGRESS);\n}\n\n/* See nodeport_lb4(). */\nstatic __always_inline int\
+    \ nodeport_lb6(struct __ctx_buff *ctx,\n\t\t\t\t\tstruct ipv6hdr *ip6,\n\t\t\t\
+    \t\t__u32 src_sec_identity,\n\t\t\t\t\t__s8 *ext_err)\n{\n\tbool is_svc_proto\
+    \ __maybe_unused = true;\n\tint ret, l3_off = ETH_HLEN, l4_off;\n\tstruct ipv6_ct_tuple\
+    \ tuple = {};\n\tstruct lb6_service *svc;\n\tstruct lb6_key key = {};\n\tstruct\
+    \ ct_state ct_state_new = {};\n\tbool backend_local;\n\t__u32 monitor = 0;\n\n\
+    \tcilium_capture_in(ctx);\n\n\tret = lb6_extract_tuple(ctx, ip6, ETH_HLEN, &l4_off,\
+    \ &tuple);\n\tif (IS_ERR(ret)) {\n\t\tif (ret == DROP_NO_SERVICE) {\n\t\t\tis_svc_proto\
+    \ = false;\n\t\t\tgoto skip_service_lookup;\n\t\t}\n\t\tif (ret == DROP_UNKNOWN_L4)\
+    \ {\n\t\t\tctx_set_xfer(ctx, XFER_PKT_NO_SVC);\n\t\t\treturn CTX_ACT_OK;\n\t\t\
+    }\n\t\treturn ret;\n\t}\n\n\tlb6_fill_key(&key, &tuple);\n\n\tsvc = lb6_lookup_service(&key,\
+    \ false, false);\n\tif (svc) {\n\t\tconst bool skip_l3_xlate = DSR_ENCAP_MODE\
+    \ == DSR_ENCAP_IPIP;\n\n// CONTEXT: skip_service_lookup:\n\t\t\tif (is_v4_in_v6_rfc8215((union\
+    \ v6addr *)&ip6->saddr)) {\n\t\t\t\tep_tail_call(ctx, CILIUM_CALL_IPV64_RFC8215);\n\
+    \t\t\t} else {\n\t\t\t\tctx_store_meta(ctx, CB_NAT_46X64, NAT46x64_MODE_XLATE);\n\
+    \t\t\t\tep_tail_call(ctx, CILIUM_CALL_IPV6_NODEPORT_NAT_EGRESS);\n\t\t\t}\n\t\t\
+    \treturn DROP_MISSED_TAIL_CALL;\n\t\t}\n#endif\n\t\tctx_set_xfer(ctx, XFER_PKT_NO_SVC);\n\
+    \n#ifdef ENABLE_DSR\n#if (defined(IS_BPF_OVERLAY) && DSR_ENCAP_MODE == DSR_ENCAP_GENEVE)\
+    \ || \\\n\t(!defined(IS_BPF_OVERLAY) && DSR_ENCAP_MODE != DSR_ENCAP_GENEVE)\n\t\
+    \tif (nodeport_uses_dsr6(&tuple)) {\n\t\t\tbool dsr = false;\n\n\t\t\tret = nodeport_extract_dsr_v6(ctx,\
+    \ ip6, &tuple, l4_off,\n\t\t\t\t\t\t      &key.address,\n\t\t\t\t\t\t      &key.dport,\
+    \ &dsr);\n\t\t\tif (dsr) {\n\t\t\t\tctx_store_meta(ctx, CB_SRC_LABEL, src_sec_identity);\n\
+    \t\t\t\tep_tail_call(ctx, CILIUM_CALL_IPV6_NODEPORT_DSR_INGRESS);\n\t\t\t\treturn\
+    \ DROP_MISSED_TAIL_CALL;\n\t\t\t}\n\n\t\t\tif (IS_ERR(ret))\n\t\t\t\treturn ret;\n\
+    \t\t}\n#endif\n#endif /* ENABLE_DSR */\n\n#ifndef ENABLE_MASQUERADE_IPV6\n\t\t\
+    if (!is_svc_proto || nodeport_uses_dsr6(&tuple))\n\t\t\treturn CTX_ACT_OK;\n#endif\
+    \ /* ENABLE_MASQUERADE_IPV6 */\n\n\t\tctx_store_meta(ctx, CB_NAT_46X64, 0);\n\t\
+    \tctx_store_meta(ctx, CB_SRC_LABEL, src_sec_identity);\n\t\tep_tail_call(ctx,\
+    \ CILIUM_CALL_IPV6_NODEPORT_NAT_INGRESS);\n\t\treturn DROP_MISSED_TAIL_CALL;\n\
+    \t}\n\n\tbackend_local = __lookup_ip6_endpoint(&tuple.daddr);\n\tif (!backend_local\
+    \ && lb6_svc_is_hostport(svc))\n\t\treturn DROP_INVALID;\n\tif (backend_local\
+    \ || !nodeport_uses_dsr6(&tuple)) {\n\t\tstruct ct_state ct_state = {};\n\n//\
+    \ CONTEXT: skip_service_lookup:\n\t\tif (ip4->daddr != IPV4_DIRECT_ROUTING) {\n\
+    \t\t\tep_tail_call(ctx, CILIUM_CALL_IPV46_RFC8215);\n\t\t\treturn DROP_MISSED_TAIL_CALL;\n\
+    \t\t}\n#endif\n\t\t/* The packet is not destined to a service but it can be a\
+    \ reply\n\t\t * packet from a remote backend, in which case we need to perform\n\
+    \t\t * the reverse NAT.\n\t\t */\n\t\tctx_set_xfer(ctx, XFER_PKT_NO_SVC);\n\n\
+    #ifdef ENABLE_DSR\n#if (defined(IS_BPF_OVERLAY) && DSR_ENCAP_MODE == DSR_ENCAP_GENEVE)\
+    \ || \\\n\t(!defined(IS_BPF_OVERLAY) && DSR_ENCAP_MODE != DSR_ENCAP_GENEVE)\n\t\
+    \tif (nodeport_uses_dsr4(&tuple)) {\n\t\t\tbool dsr = false;\n\n\t\t\t/* Check\
+    \ if packet has embedded DSR info, or belongs to\n\t\t\t * an established DSR\
+    \ connection:\n\t\t\t */\n\t\t\tret = nodeport_extract_dsr_v4(ctx, ip4, &tuple,\n\
+    \t\t\t\t\t\t      l4_off, &key.address,\n\t\t\t\t\t\t      &key.dport, &dsr);\n\
+    \t\t\tif (dsr) {\n\t\t\t\tctx_store_meta(ctx, CB_SRC_LABEL, src_sec_identity);\n\
+    \t\t\t\tep_tail_call(ctx, CILIUM_CALL_IPV4_NODEPORT_DSR_INGRESS);\n\t\t\t\treturn\
+    \ DROP_MISSED_TAIL_CALL;\n\t\t\t}\n\n\t\t\tif (IS_ERR(ret))\n\t\t\t\treturn ret;\n\
+    \t\t}\n#endif\n#endif /* ENABLE_DSR */\n\n#ifndef ENABLE_MASQUERADE_IPV4\n\t\t\
+    /* When BPF-Masquerading is off, we can skip the revSNAT path via\n\t\t * CILIUM_CALL_IPV4_NODEPORT_NAT_INGRESS\
+    \ if:\n\t\t * - the packet is ICMP, or\n\t\t * - the packet is DSR-eligible (and\
+    \ thus not reply traffic by\n\t\t *   a remote backend that would require revSNAT\
+    \ / revDNAT)\n\t\t */\n\t\tif (!is_svc_proto || nodeport_uses_dsr4(&tuple))\n\t\
+    \t\treturn CTX_ACT_OK;\n#endif /* ENABLE_MASQUERADE_IPV4 */\n\n\t\tctx_store_meta(ctx,\
+    \ CB_SRC_LABEL, src_sec_identity);\n\t\t/* For NAT64 we might see an IPv4 reply\
+    \ from the backend to\n\t\t * the LB entering this path. Thus, transform back\
+    \ to IPv6.\n\t\t */\n\t\tif (is_svc_proto && snat_v6_has_v4_match(&tuple)) {\n\
+    \t\t\tret = lb4_to_lb6(ctx, ip4, l3_off);\n\t\t\tif (ret)\n\t\t\t\treturn ret;\n\
+    \t\t\tctx_store_meta(ctx, CB_NAT_46X64, 0);\n\t\t\tep_tail_call(ctx, CILIUM_CALL_IPV6_NODEPORT_NAT_INGRESS);\n\
+    #ifdef ENABLE_NAT_46X64_GATEWAY"
+  diff_summary: |-
+    bpf/lib/nodeport.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: fib_ipv4:, skip_service_lookup:.
+    - Commit subject: bpf: nodeport: consider inbound ICMP traffic in revSNAT bypass.

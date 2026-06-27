@@ -1,0 +1,87 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-4132b71e9abe
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/4132b71e9abe1d14d204f5ac481b76cd88c32f9e
+  title: 'bpf: Avoid redirect in bpf_netdev for NodePort'
+  repository: https://github.com/cilium/cilium
+  commit: 4132b71e9abe1d14d204f5ac481b76cd88c32f9e
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-4132b71e9abe.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: environment_required
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: NodePort redirect avoidance is an old branch/complexity workaround tied
+    to Cilium ENCAP_IFINDEX/NO_REDIRECT configuration and historical verifier behavior.
+raw:
+  case_id: github-commit-cilium-4132b71e9abe
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: 4132b71e9abe1d14d204f5ac481b76cd88c32f9e
+  commit_message: 'bpf: Avoid redirect in bpf_netdev for NodePort'
+  commit_date: '2019-07-22'
+  fix_type: loop_rewrite
+  buggy_code: "// FILE: bpf/bpf_netdev.c\n// CONTEXT: static inline int handle_ipv6(struct\
+    \ __sk_buff *skb, __u32 src_identity)\n\t__u8 nexthdr;\n\t__u32 secctx;\n\n\t\
+    if (!revalidate_data(skb, &data, &data_end, &ip6))\n\t\treturn DROP_INVALID;\n\
+    \n#ifdef ENABLE_NODEPORT\n\tif (!tc_index_skip_nodeport(skb)) {\n\t\tint ret =\
+    \ nodeport_lb6(skb, src_identity);\n\t\tif (ret < 0)\n\t\t\treturn ret;\n\t}\n\
+    #ifdef ENCAP_IFINDEX\n\treturn TC_ACT_OK;\n#endif /* ENCAP_IFINDEX */\n\t/* Verifier\
+    \ workaround: modified ctx access. */\n\tif (!revalidate_data(skb, &data, &data_end,\
+    \ &ip6))\n\t\treturn DROP_INVALID;\n#endif /* ENABLE_NODEPORT */\n\n\tnexthdr\
+    \ = ip6->nexthdr;\n\thdrlen = ipv6_hdrlen(skb, l3_off, &nexthdr);\n\tif (hdrlen\
+    \ < 0)\n\t\treturn hdrlen;\n\n\tl4_off = l3_off + hdrlen;\n\n\n// CONTEXT: static\
+    \ inline int handle_ipv4(struct __sk_buff *skb, __u32 src_identity)\n\tint l4_off;\n\
+    \t__u32 secctx;\n\n\tif (!revalidate_data(skb, &data, &data_end, &ip4))\n\t\t\
+    return DROP_INVALID;\n\n#ifdef ENABLE_NODEPORT\n\tif (!tc_index_skip_nodeport(skb))\
+    \ {\n\t\tint ret = nodeport_lb4(skb, src_identity);\n\t\tif (ret < 0)\n\t\t\t\
+    return ret;\n\t}\n#ifdef ENCAP_IFINDEX\n\treturn TC_ACT_OK;\n#endif /* ENCAP_IFINDEX\
+    \ */\n\t/* Verifier workaround: modified ctx access. */\n\tif (!revalidate_data(skb,\
+    \ &data, &data_end, &ip4))\n\t\treturn DROP_INVALID;\n#endif /* ENABLE_NODEPORT\
+    \ */\n\n\tl4_off = ETH_HLEN + ipv4_hdrlen(ip4);\n\tsecctx = derive_ipv4_sec_ctx(skb,\
+    \ ip4);\n\ttuple.nexthdr = ip4->protocol;\n\n\t/* Packets from the proxy will\
+    \ already have a real identity. */\n\tif (identity_is_reserved(src_identity))\
+    \ {\n\t\tinfo = ipcache_lookup4(&IPCACHE_MAP, ip4->saddr, V4_CACHE_KEY_LEN);"
+  fixed_code: "// FILE: bpf/bpf_netdev.c\n// CONTEXT: static inline int handle_ipv6(struct\
+    \ __sk_buff *skb, __u32 src_identity)\n\t__u8 nexthdr;\n\t__u32 secctx;\n\n\t\
+    if (!revalidate_data(skb, &data, &data_end, &ip6))\n\t\treturn DROP_INVALID;\n\
+    \n#ifdef ENABLE_NODEPORT\n\tif (!tc_index_skip_nodeport(skb)) {\n\t\tint ret =\
+    \ nodeport_lb6(skb, src_identity);\n\t\tif (ret < 0)\n\t\t\treturn ret;\n\t}\n\
+    #if defined(ENCAP_IFINDEX) || defined(NO_REDIRECT)\n\t/* See IPv4 case for NO_REDIRECT\
+    \ comments */\n\treturn TC_ACT_OK;\n#endif /* ENCAP_IFINDEX || NO_REDIRECT */\n\
+    \t/* Verifier workaround: modified ctx access. */\n\tif (!revalidate_data(skb,\
+    \ &data, &data_end, &ip6))\n\t\treturn DROP_INVALID;\n#endif /* ENABLE_NODEPORT\
+    \ */\n\n\tnexthdr = ip6->nexthdr;\n\thdrlen = ipv6_hdrlen(skb, l3_off, &nexthdr);\n\
+    \tif (hdrlen < 0)\n\t\treturn hdrlen;\n\n\tl4_off = l3_off + hdrlen;\n\n\n// CONTEXT:\
+    \ static inline int handle_ipv4(struct __sk_buff *skb, __u32 src_identity)\n\t\
+    int l4_off;\n\t__u32 secctx;\n\n\tif (!revalidate_data(skb, &data, &data_end,\
+    \ &ip4))\n\t\treturn DROP_INVALID;\n\n#ifdef ENABLE_NODEPORT\n\tif (!tc_index_skip_nodeport(skb))\
+    \ {\n\t\tint ret = nodeport_lb4(skb, src_identity);\n\t\tif (ret < 0)\n\t\t\t\
+    return ret;\n\t}\n#if defined(ENCAP_IFINDEX) || defined(NO_REDIRECT)\n\t/* We\
+    \ cannot redirect a packet to a local endpoint in the direct\n\t * routing mode,\
+    \ as the redirect bypasses nf_conntrack table.\n\t * This makes a second reply\
+    \ from the endpoint to be MASQUERADEd or\n\t * to be DROPed by k8s's \"--ctstate\
+    \ INVALID -j DROP\" depending via\n\t * which interface it was inputed. */\n\t\
+    return TC_ACT_OK;\n#endif /* ENCAP_IFINDEX || NO_REDIRECT */\n\t/* Verifier workaround:\
+    \ modified ctx access. */\n\tif (!revalidate_data(skb, &data, &data_end, &ip4))\n\
+    \t\treturn DROP_INVALID;\n#endif /* ENABLE_NODEPORT */\n\n\tl4_off = ETH_HLEN\
+    \ + ipv4_hdrlen(ip4);\n\tsecctx = derive_ipv4_sec_ctx(skb, ip4);\n\ttuple.nexthdr\
+    \ = ip4->protocol;\n\n\t/* Packets from the proxy will already have a real identity.\
+    \ */\n\tif (identity_is_reserved(src_identity)) {\n\t\tinfo = ipcache_lookup4(&IPCACHE_MAP,\
+    \ ip4->saddr, V4_CACHE_KEY_LEN);"
+  diff_summary: |-
+    bpf/bpf_netdev.c:
+    - Reworked loop or branch structure to reduce verifier complexity and keep the path bounded.
+    - Affected context: static inline int handle_ipv6(struct __sk_buff *skb, __u32 src_identity), static inline int handle_ipv4(struct __sk_buff *skb, __u32 src_identity).
+    - Commit subject: bpf: Avoid redirect in bpf_netdev for NodePort.

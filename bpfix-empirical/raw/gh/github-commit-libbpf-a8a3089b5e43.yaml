@@ -1,0 +1,64 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-libbpf-a8a3089b5e43
+source_kind: github_commit
+source:
+  url: https://github.com/libbpf/libbpf/commit/a8a3089b5e435c9ed0307ec738962a78d7229681
+  title: 'libbpf: Fix detection of BPF helper call instruction'
+  repository: https://github.com/libbpf/libbpf
+  commit: a8a3089b5e435c9ed0307ec738962a78d7229681
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-libbpf-a8a3089b5e43.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: not_reconstructable_from_diff
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Raw has_verifier_log=false. The fix adjusts libbpf relocation detection
+    of BPF helper-call instructions in bpf_object__collect_reloc(); a faithful replay
+    would need the specific ELF/BTF relocation object that was misdetected, not just
+    the loader diff.
+raw:
+  case_id: github-commit-libbpf-a8a3089b5e43
+  source: github_commits
+  repository: https://github.com/libbpf/libbpf
+  commit_hash: a8a3089b5e435c9ed0307ec738962a78d7229681
+  commit_message: 'libbpf: Fix detection of BPF helper call instruction'
+  commit_date: '2020-08-19'
+  fix_type: helper_switch
+  buggy_code: "// FILE: src/libbpf.c\n// CONTEXT: static int bpf_object__collect_reloc(struct\
+    \ bpf_object *obj)\n\t\t\t\treturn -LIBBPF_ERRNO__RELOC;\n\t\t\t}\n\t\t\terr =\
+    \ bpf_program__collect_reloc(prog, shdr, data, obj);\n\t\t}\n\t\tif (err)\n\t\t\
+    \treturn err;\n\t}\n\treturn 0;\n}\n\nstatic bool insn_is_helper_call(struct bpf_insn\
+    \ *insn, enum bpf_func_id *func_id)\n{\n\t__u8 class = BPF_CLASS(insn->code);\n\
+    \n\tif ((class == BPF_JMP || class == BPF_JMP32) &&\n\t    BPF_OP(insn->code)\
+    \ == BPF_CALL &&\n\t    BPF_SRC(insn->code) == BPF_K &&\n\t    insn->src_reg ==\
+    \ 0 && insn->dst_reg == 0) {\n\t\t    if (func_id)\n\t\t\t    *func_id = insn->imm;\n\
+    \t\t    return true;\n\t}\n\treturn false;\n}\n\nstatic int bpf_object__sanitize_prog(struct\
+    \ bpf_object* obj, struct bpf_program *prog)\n{\n\tstruct bpf_insn *insn = prog->insns;\n\
+    \tenum bpf_func_id func_id;\n\tint i;\n\n\tfor (i = 0; i < prog->insns_cnt; i++,\
+    \ insn++) {"
+  fixed_code: "// FILE: src/libbpf.c\n// CONTEXT: static int bpf_object__collect_reloc(struct\
+    \ bpf_object *obj)\n\t\t\t\treturn -LIBBPF_ERRNO__RELOC;\n\t\t\t}\n\t\t\terr =\
+    \ bpf_program__collect_reloc(prog, shdr, data, obj);\n\t\t}\n\t\tif (err)\n\t\t\
+    \treturn err;\n\t}\n\treturn 0;\n}\n\nstatic bool insn_is_helper_call(struct bpf_insn\
+    \ *insn, enum bpf_func_id *func_id)\n{\n\tif (BPF_CLASS(insn->code) == BPF_JMP\
+    \ &&\n\t    BPF_OP(insn->code) == BPF_CALL &&\n\t    BPF_SRC(insn->code) == BPF_K\
+    \ &&\n\t    insn->src_reg == 0 &&\n\t    insn->dst_reg == 0) {\n\t\t    *func_id\
+    \ = insn->imm;\n\t\t    return true;\n\t}\n\treturn false;\n}\n\nstatic int bpf_object__sanitize_prog(struct\
+    \ bpf_object* obj, struct bpf_program *prog)\n{\n\tstruct bpf_insn *insn = prog->insns;\n\
+    \tenum bpf_func_id func_id;\n\tint i;\n\n\tfor (i = 0; i < prog->insns_cnt; i++,\
+    \ insn++) {"
+  diff_summary: |-
+    src/libbpf.c:
+    - Gated or switched helper usage so unsupported helpers do not reach kernels that reject them.
+    - Affected context: static int bpf_object__collect_reloc(struct bpf_object *obj).
+    - Commit subject: libbpf: Fix detection of BPF helper call instruction.

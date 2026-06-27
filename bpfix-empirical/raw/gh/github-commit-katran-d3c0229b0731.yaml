@@ -1,0 +1,130 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-katran-d3c0229b0731
+source_kind: github_commit
+source:
+  url: https://github.com/facebookincubator/katran/commit/d3c0229b073181bc5abc8c7b082fed8b2b888bb7
+  title: 'katran: compiler fix for edge balancer'
+  repository: https://github.com/facebookincubator/katran
+  commit: d3c0229b073181bc5abc8c7b082fed8b2b888bb7
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-katran-d3c0229b0731.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: environment_required
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: The fixed code comment identifies a Linux 5.2 verifier register-copy issue
+    with protocol == IPPROTO_IPIP
+  verifier_status: null
+  captured_error: null
+  verifier_error_match: null
+raw:
+  case_id: github-commit-katran-d3c0229b0731
+  source: github_commits
+  repository: https://github.com/facebookincubator/katran
+  commit_hash: d3c0229b073181bc5abc8c7b082fed8b2b888bb7
+  commit_message: 'katran: compiler fix for edge balancer'
+  commit_date: '2021-08-30'
+  fix_type: refactor
+  buggy_code: |-
+    // FILE: katran/lib/bpf/balancer_kern.c
+    // CONTEXT: static inline int process_packet(void *data, __u64 off, void *data_end,
+      int action;
+      __u32 vip_num;
+      __u32 mac_addr_pos = 0;
+      __u16 pkt_bytes;
+      action = process_l3_headers(
+        &pckt, &protocol, off, &pkt_bytes, data, data_end, is_ipv6);
+      if (action >= 0) {
+        return action;
+      }
+      protocol = pckt.flow.proto;
+
+      #ifdef INLINE_DECAP_IPIP
+      if (protocol == IPPROTO_IPIP || protocol == IPPROTO_IPV6) {
+        bool pass = true;
+        action = check_decap_dst(&pckt, is_ipv6, &pass);
+        if (action >= 0) {
+          return action;
+        }
+        return process_encaped_ipip_pckt(
+            &data, &data_end, xdp, &is_ipv6, &protocol, pass);
+      }
+    #endif // INLINE_DECAP_IPIP
+
+      if (protocol == IPPROTO_TCP) {
+        if (!parse_tcp(data, data_end, is_ipv6, &pckt)) {
+  fixed_code: |-
+    // FILE: katran/lib/bpf/balancer_kern.c
+    // CONTEXT: static inline int process_packet(void *data, __u64 off, void *data_end,
+      int action;
+      __u32 vip_num;
+      __u32 mac_addr_pos = 0;
+      __u16 pkt_bytes;
+      action = process_l3_headers(
+        &pckt, &protocol, off, &pkt_bytes, data, data_end, is_ipv6);
+      if (action >= 0) {
+        return action;
+      }
+      protocol = pckt.flow.proto;
+
+      #ifdef INLINE_DECAP_IPIP
+      /* This is to workaround a verifier issue for 5.2.
+       * The reason is that 5.2 verifier does not handle register
+       * copy states properly while 5.6 handles properly.
+       *
+       * For the following source code:
+       *   if (protocol == IPPROTO_IPIP || protocol == IPPROTO_IPV6) {
+       *     ...
+       *   }
+       * llvm12 may generate the following simplified code sequence
+       *   100  r5 = *(u8 *)(r9 +51)  // r5 is the protocol
+       *   120  r4 = r5
+       *   121  if r4 s> 0x10 goto target1
+       *   122  *(u64 *)(r10 -184) = r5
+       *   123  if r4 == 0x4 goto target2
+       *   ...
+       *   target2:
+       *   150  r1 = *(u64 *)(r10 -184)
+       *   151  if (r1 != 4) { __unreachable__}
+       *
+       * For the path 123->150->151, 5.6 correctly noticed
+       * at insn 150: r4, r5, *(u64 *)(r10 -184) all have value 4.
+       * while 5.2 has *(u64 *)(r10 -184) holding "r5" which could be
+       * any value 0-255. In 5.2, "__unreachable" code is verified
+       * and it caused verifier failure.
+       */
+      if (protocol == IPPROTO_IPIP) {
+        bool pass = true;
+        action = check_decap_dst(&pckt, is_ipv6, &pass);
+        if (action >= 0) {
+          return action;
+        }
+        return process_encaped_ipip_pckt(
+            &data, &data_end, xdp, &is_ipv6, &protocol, pass);
+      } else if (protocol == IPPROTO_IPV6) {
+        bool pass = true;
+        action = check_decap_dst(&pckt, is_ipv6, &pass);
+        if (action >= 0) {
+          return action;
+        }
+        return process_encaped_ipip_pckt(
+            &data, &data_end, xdp, &is_ipv6, &protocol, pass);
+      }
+    #endif // INLINE_DECAP_IPIP
+
+      if (protocol == IPPROTO_TCP) {
+        if (!parse_tcp(data, data_end, is_ipv6, &pckt)) {
+  diff_summary: |-
+    katran/lib/bpf/balancer_kern.c:
+    - Split the combined `protocol == IPPROTO_IPIP || protocol == IPPROTO_IPV6` branch into two separate paths.
+    - Worked around a verifier state-tracking bug on older kernels that mishandled the copied protocol register.

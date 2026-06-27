@@ -1,0 +1,615 @@
+schema_version: bpfix.raw_external/v1
+raw_id: stackoverflow-78236201
+source_kind: stackoverflow
+source:
+  url: https://stackoverflow.com/questions/78236201/invalid-access-to-map-value-value-size-128-off-0-size-0-libbpf-prog-xdp-pars
+  title: 'invalid access to map value, value_size=128 off=0 size=0; libbpf: prog &#39;xdp_parser_func&#39;:
+    failed to load: -13'
+  repository: null
+  commit: null
+  collected_at: '2026-03-11T16:03:25+00:00'
+collector:
+  original_path: bpfix-empirical/raw/so/stackoverflow-78236201.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: true
+  verifier_log_block_count: 1
+  source_snippet_count: 0
+  has_buggy_code: false
+  has_fixed_code: false
+  has_fix_description: false
+reproduction:
+  status: replay_valid
+  case_id: stackoverflow-78236201
+  case_path: cases/stackoverflow-78236201
+  artifact_path: cases/stackoverflow-78236201
+  reason: admitted_to_bpfix_bench_cases
+raw:
+  case_id: stackoverflow-78236201
+  source: stackoverflow
+  collected_at: '2026-03-11T16:03:25+00:00'
+  question:
+    question_id: 78236201
+    title: 'invalid access to map value, value_size=128 off=0 size=0; libbpf: prog
+      &#39;xdp_parser_func&#39;: failed to load: -13'
+    url: https://stackoverflow.com/questions/78236201/invalid-access-to-map-value-value-size-128-off-0-size-0-libbpf-prog-xdp-pars
+    tags:
+    - ebpf
+    - bpf
+    - xdp-bpf
+    - libbpf
+    score: -2
+    answer_count: 1
+    is_answered: true
+  verifier_log:
+    blocks:
+    - |-
+      pegasus@pegasus:~/Documents/xdp-tutorial/packet01-parsing$ sudo ip link set dev test xdpgeneric obj xdp_prog_kern.o sec xdp
+      libbpf: prog 'xdp_parser_func': BPF program load failed: Permission denied
+      libbpf: prog 'xdp_parser_func': -- BEGIN PROG LOAD LOG --
+      0: R1=ctx(off=0,imm=0) R10=fp0
+      ; int xdp_parser_func(struct xdp_md *ctx)
+      0: (bf) r6 = r1                       ; R1=ctx(off=0,imm=0) R6_w=ctx(off=0,imm=0)
+      ; void *data_end = (void *)(long)ctx->data_end;
+      1: (61) r1 = *(u32 *)(r6 +4)          ; R1_w=pkt_end(off=0,imm=0) R6_w=ctx(off=0,imm=0)
+      ; void *data = (void *)(long)ctx->data;
+      2: (61) r3 = *(u32 *)(r6 +0)          ; R3_w=pkt(off=0,r=0,imm=0) R6_w=ctx(off=0,imm=0)
+      ; if (nh->pos + hdrsize > data_end)
+      3: (bf) r7 = r3                       ; R3_w=pkt(off=0,r=0,imm=0) R7_w=pkt(off=0,r=0,imm=0)
+      4: (07) r7 += 14                      ; R7_w=pkt(off=14,r=0,imm=0)
+      ; if (nh->pos + hdrsize > data_end)
+      5: (2d) if r7 > r1 goto pc+79         ; R1_w=pkt_end(off=0,imm=0) R7_w=pkt(off=14,r=14,imm=0)
+      ;
+      6: (71) r4 = *(u8 *)(r3 +12)          ; R3_w=pkt(off=0,r=14,imm=0) R4_w=scalar(umax=255,var_off=(0x0; 0xff))
+      7: (71) r2 = *(u8 *)(r3 +13)          ; R2_w=scalar(umax=255,var_off=(0x0; 0xff)) R3_w=pkt(off=0,r=14,imm=0)
+      8: (67) r2 <<= 8                      ; R2_w=scalar(umax=65280,var_off=(0x0; 0xff00))
+      9: (4f) r2 |= r4                      ; R2_w=scalar() R4_w=scalar(umax=255,var_off=(0x0; 0xff))
+      ; if (!proto_is_vlan(h_proto))
+      10: (15) if r2 == 0xa888 goto pc+1    ; R2_w=scalar()
+      11: (55) if r2 != 0x81 goto pc+19     ; R2=129
+      ; if (vlh + 1 > data_end)
+      12: (bf) r4 = r3                      ; R3=pkt(off=0,r=14,imm=0) R4_w=pkt(off=0,r=14,imm=0)
+      13: (07) r4 += 18                     ; R4_w=pkt(off=18,r=14,imm=0)
+      ; if (vlh + 1 > data_end)
+      14: (2d) if r4 > r1 goto pc+16        ; R1=pkt_end(off=0,imm=0) R4_w=pkt(off=18,r=18,imm=0)
+      ;
+      15: (71) r5 = *(u8 *)(r3 +16)         ; R3=pkt(off=0,r=18,imm=0) R5_w=scalar(umax=255,var_off=(0x0; 0xff))
+      16: (71) r2 = *(u8 *)(r3 +17)         ; R2_w=scalar(umax=255,var_off=(0x0; 0xff)) R3=pkt(off=0,r=18,imm=0)
+      17: (67) r2 <<= 8                     ; R2_w=scalar(umax=65280,var_off=(0x0; 0xff00))
+      18: (4f) r2 |= r5                     ; R2=scalar() R5=scalar(umax=255,var_off=(0x0; 0xff))
+      ; if (!proto_is_vlan(h_proto))
+      19: (15) if r2 == 0xa888 goto pc+2    ; R2=scalar()
+      20: (bf) r7 = r4                      ; R4=pkt(off=18,r=18,imm=0) R7_w=pkt(off=18,r=18,imm=0)
+      21: (55) if r2 != 0x81 goto pc+9      ; R2=129
+      ; if (vlh + 1 > data_end)
+      22: (bf) r5 = r3                      ; R3=pkt(off=0,r=18,imm=0) R5_w=pkt(off=0,r=18,imm=0)
+      23: (07) r5 += 22                     ; R5_w=pkt(off=22,r=18,imm=0)
+      24: (bf) r7 = r4                      ; R4=pkt(off=18,r=18,imm=0) R7_w=pkt(off=18,r=18,imm=0)
+      ; if (vlh + 1 > data_end)
+      25: (2d) if r5 > r1 goto pc+5         ; R1=pkt_end(off=0,imm=0) R5_w=pkt(off=22,r=22,imm=0)
+      ;
+      26: (71) r4 = *(u8 *)(r3 +20)         ; R3=pkt(off=0,r=22,imm=0) R4_w=scalar(umax=255,var_off=(0x0; 0xff))
+      27: (71) r2 = *(u8 *)(r3 +21)         ; R2_w=scalar(umax=255,var_off=(0x0; 0xff)) R3=pkt(off=0,r=22,imm=0)
+      28: (67) r2 <<= 8                     ; R2_w=scalar(umax=65280,var_off=(0x0; 0xff00))
+      29: (4f) r2 |= r4                     ; R2_w=scalar() R4_w=scalar(umax=255,var_off=(0x0; 0xff))
+      30: (bf) r7 = r5                      ; R5=pkt(off=22,r=22,imm=0) R7=pkt(off=22,r=22,imm=0)
+      ; if (nh_type == bpf_htons(ETH_P_8021Q)) {
+      31: (15) if r2 == 0x8 goto pc+76      ; R2=scalar()
+      32: (15) if r2 == 0xdd86 goto pc+44   ; R2=scalar()
+      33: (55) if r2 != 0x81 goto pc+51     ; R2=129
+      34: (b7) r0 = 0                       ; R0_w=0
+      ; if (nh->pos + hdrsize > data_end)
+      35: (bf) r2 = r7                      ; R2_w=pkt(off=22,r=22,imm=0) R7=pkt(off=22,r=22,imm=0)
+      36: (07) r2 += 14                     ; R2_w=pkt(off=36,r=22,imm=0)
+      ; if (nh->pos + hdrsize > data_end)
+      37: (2d) if r2 > r1 goto pc+69        ; R1=pkt_end(off=0,imm=0) R2_w=pkt(off=36,r=36,imm=0)
+      ; h_proto = eth->h_proto;
+      38: (71) r3 = *(u8 *)(r7 +12)         ; R3_w=scalar(umax=255,var_off=(0x0; 0xff)) R7=pkt(off=22,r=36,imm=0)
+      39: (71) r2 = *(u8 *)(r7 +13)         ; R2_w=scalar(umax=255,var_off=(0x0; 0xff)) R7=pkt(off=22,r=36,imm=0)
+      40: (67) r2 <<= 8                     ; R2_w=scalar(umax=65280,var_off=(0x0; 0xff00))
+      41: (4f) r2 |= r3                     ; R2=scalar() R3=scalar(umax=255,var_off=(0x0; 0xff))
+      ; if (!proto_is_vlan(h_proto))
+      42: (15) if r2 == 0xa888 goto pc+1    ; R2=scalar()
+      43: (55) if r2 != 0x81 goto pc+100    ; R2=129
+      ; if (vlh + 1 > data_end)
+      44: (bf) r2 = r7                      ; R2_w=pkt(off=22,r=36,imm=0) R7=pkt(off=22,r=36,imm=0)
+      45: (07) r2 += 18                     ; R2_w=pkt(off=40,r=36,imm=0)
+      ; if (vlh + 1 > data_end)
+      46: (2d) if r2 > r1 goto pc+97        ; R1=pkt_end(off=0,imm=0) R2_w=pkt(off=40,r=40,imm=0)
+      ; h_proto = vlh->h_vlan_encapsulated_proto;
+      47: (69) r5 = *(u16 *)(r7 +16)        ; R5_w=scalar(umax=65535,var_off=(0x0; 0xffff)) R7=pkt(off=22,r=40,imm=0)
+      48: (b7) r4 = 1                       ; R4_w=1
+      49: (b7) r3 = 1                       ; R3=1
+      ; return !!(h_proto == bpf_htons(ETH_P_8021Q) ||
+      50: (55) if r5 != 0x81 goto pc+1      ; R5=129
+      51: (b7) r3 = 0                       ; R3_w=0
+      ; return !!(h_proto == bpf_htons(ETH_P_8021Q) ||
+      52: (55) if r5 != 0xa888 goto pc+1    ; R5=129
+      ; if (!proto_is_vlan(h_proto))
+      54: (5f) r4 &= r3                     ; R3_w=0 R4_w=0
+      ; (bpf_ntohs(vlh->h_vlan_TCI) & VLAN_VID_MASK);
+      55: (69) r3 = *(u16 *)(r7 +14)        ; R3_w=scalar(umax=65535,var_off=(0x0; 0xffff)) R7=pkt(off=22,r=40,imm=0)
+      ; (bpf_ntohs(vlh->h_vlan_TCI) & VLAN_VID_MASK);
+      56: (57) r3 &= -241                   ; R3_w=scalar(umax=65295,var_off=(0x0; 0xff0f))
+      ; if (!proto_is_vlan(h_proto))
+      57: (57) r4 &= 1                      ; R4_w=0
+      58: (55) if r4 != 0x0 goto pc+7       ; R4_w=0
+      59: (07) r7 += 22                     ; R7=pkt(off=44,r=40,imm=0)
+      60: (2d) if r7 > r1 goto pc+5 66: R0=0 R1=pkt_end(off=0,imm=0) R2=pkt(off=40,r=40,imm=0) R3=scalar(umax=65295,var_off=(0x0; 0xff0f)) R4=0 R5=129 R6=ctx(off=0,imm=0) R7=pkt(off=44,r=-2,imm=0) R10=fp0
+      ; if (vlans.id[i] == 0)
+      66: (57) r3 &= 65535                  ; R3_w=scalar(umax=65295,var_off=(0x0; 0xff0f))
+      ; if (vlans.id[i] == 0)
+      67: (15) if r3 == 0x0 goto pc+83      ; R3_w=scalar(umax=65295,var_off=(0x0; 0xff0f))
+      68: (57) r8 &= 1
+      R8 !read_ok
+      processed 137 insns (limit 1000000) max_states_per_insn 1 total_states 13 peak_states 13 mark_read 8
+      -- END PROG LOAD LOG --
+      libbpf: prog 'xdp_parser_func': failed to load: -13
+      libbpf: failed to load object 'xdp_prog_kern.o'
+    combined: |-
+      pegasus@pegasus:~/Documents/xdp-tutorial/packet01-parsing$ sudo ip link set dev test xdpgeneric obj xdp_prog_kern.o sec xdp
+      libbpf: prog 'xdp_parser_func': BPF program load failed: Permission denied
+      libbpf: prog 'xdp_parser_func': -- BEGIN PROG LOAD LOG --
+      0: R1=ctx(off=0,imm=0) R10=fp0
+      ; int xdp_parser_func(struct xdp_md *ctx)
+      0: (bf) r6 = r1                       ; R1=ctx(off=0,imm=0) R6_w=ctx(off=0,imm=0)
+      ; void *data_end = (void *)(long)ctx->data_end;
+      1: (61) r1 = *(u32 *)(r6 +4)          ; R1_w=pkt_end(off=0,imm=0) R6_w=ctx(off=0,imm=0)
+      ; void *data = (void *)(long)ctx->data;
+      2: (61) r3 = *(u32 *)(r6 +0)          ; R3_w=pkt(off=0,r=0,imm=0) R6_w=ctx(off=0,imm=0)
+      ; if (nh->pos + hdrsize > data_end)
+      3: (bf) r7 = r3                       ; R3_w=pkt(off=0,r=0,imm=0) R7_w=pkt(off=0,r=0,imm=0)
+      4: (07) r7 += 14                      ; R7_w=pkt(off=14,r=0,imm=0)
+      ; if (nh->pos + hdrsize > data_end)
+      5: (2d) if r7 > r1 goto pc+79         ; R1_w=pkt_end(off=0,imm=0) R7_w=pkt(off=14,r=14,imm=0)
+      ;
+      6: (71) r4 = *(u8 *)(r3 +12)          ; R3_w=pkt(off=0,r=14,imm=0) R4_w=scalar(umax=255,var_off=(0x0; 0xff))
+      7: (71) r2 = *(u8 *)(r3 +13)          ; R2_w=scalar(umax=255,var_off=(0x0; 0xff)) R3_w=pkt(off=0,r=14,imm=0)
+      8: (67) r2 <<= 8                      ; R2_w=scalar(umax=65280,var_off=(0x0; 0xff00))
+      9: (4f) r2 |= r4                      ; R2_w=scalar() R4_w=scalar(umax=255,var_off=(0x0; 0xff))
+      ; if (!proto_is_vlan(h_proto))
+      10: (15) if r2 == 0xa888 goto pc+1    ; R2_w=scalar()
+      11: (55) if r2 != 0x81 goto pc+19     ; R2=129
+      ; if (vlh + 1 > data_end)
+      12: (bf) r4 = r3                      ; R3=pkt(off=0,r=14,imm=0) R4_w=pkt(off=0,r=14,imm=0)
+      13: (07) r4 += 18                     ; R4_w=pkt(off=18,r=14,imm=0)
+      ; if (vlh + 1 > data_end)
+      14: (2d) if r4 > r1 goto pc+16        ; R1=pkt_end(off=0,imm=0) R4_w=pkt(off=18,r=18,imm=0)
+      ;
+      15: (71) r5 = *(u8 *)(r3 +16)         ; R3=pkt(off=0,r=18,imm=0) R5_w=scalar(umax=255,var_off=(0x0; 0xff))
+      16: (71) r2 = *(u8 *)(r3 +17)         ; R2_w=scalar(umax=255,var_off=(0x0; 0xff)) R3=pkt(off=0,r=18,imm=0)
+      17: (67) r2 <<= 8                     ; R2_w=scalar(umax=65280,var_off=(0x0; 0xff00))
+      18: (4f) r2 |= r5                     ; R2=scalar() R5=scalar(umax=255,var_off=(0x0; 0xff))
+      ; if (!proto_is_vlan(h_proto))
+      19: (15) if r2 == 0xa888 goto pc+2    ; R2=scalar()
+      20: (bf) r7 = r4                      ; R4=pkt(off=18,r=18,imm=0) R7_w=pkt(off=18,r=18,imm=0)
+      21: (55) if r2 != 0x81 goto pc+9      ; R2=129
+      ; if (vlh + 1 > data_end)
+      22: (bf) r5 = r3                      ; R3=pkt(off=0,r=18,imm=0) R5_w=pkt(off=0,r=18,imm=0)
+      23: (07) r5 += 22                     ; R5_w=pkt(off=22,r=18,imm=0)
+      24: (bf) r7 = r4                      ; R4=pkt(off=18,r=18,imm=0) R7_w=pkt(off=18,r=18,imm=0)
+      ; if (vlh + 1 > data_end)
+      25: (2d) if r5 > r1 goto pc+5         ; R1=pkt_end(off=0,imm=0) R5_w=pkt(off=22,r=22,imm=0)
+      ;
+      26: (71) r4 = *(u8 *)(r3 +20)         ; R3=pkt(off=0,r=22,imm=0) R4_w=scalar(umax=255,var_off=(0x0; 0xff))
+      27: (71) r2 = *(u8 *)(r3 +21)         ; R2_w=scalar(umax=255,var_off=(0x0; 0xff)) R3=pkt(off=0,r=22,imm=0)
+      28: (67) r2 <<= 8                     ; R2_w=scalar(umax=65280,var_off=(0x0; 0xff00))
+      29: (4f) r2 |= r4                     ; R2_w=scalar() R4_w=scalar(umax=255,var_off=(0x0; 0xff))
+      30: (bf) r7 = r5                      ; R5=pkt(off=22,r=22,imm=0) R7=pkt(off=22,r=22,imm=0)
+      ; if (nh_type == bpf_htons(ETH_P_8021Q)) {
+      31: (15) if r2 == 0x8 goto pc+76      ; R2=scalar()
+      32: (15) if r2 == 0xdd86 goto pc+44   ; R2=scalar()
+      33: (55) if r2 != 0x81 goto pc+51     ; R2=129
+      34: (b7) r0 = 0                       ; R0_w=0
+      ; if (nh->pos + hdrsize > data_end)
+      35: (bf) r2 = r7                      ; R2_w=pkt(off=22,r=22,imm=0) R7=pkt(off=22,r=22,imm=0)
+      36: (07) r2 += 14                     ; R2_w=pkt(off=36,r=22,imm=0)
+      ; if (nh->pos + hdrsize > data_end)
+      37: (2d) if r2 > r1 goto pc+69        ; R1=pkt_end(off=0,imm=0) R2_w=pkt(off=36,r=36,imm=0)
+      ; h_proto = eth->h_proto;
+      38: (71) r3 = *(u8 *)(r7 +12)         ; R3_w=scalar(umax=255,var_off=(0x0; 0xff)) R7=pkt(off=22,r=36,imm=0)
+      39: (71) r2 = *(u8 *)(r7 +13)         ; R2_w=scalar(umax=255,var_off=(0x0; 0xff)) R7=pkt(off=22,r=36,imm=0)
+      40: (67) r2 <<= 8                     ; R2_w=scalar(umax=65280,var_off=(0x0; 0xff00))
+      41: (4f) r2 |= r3                     ; R2=scalar() R3=scalar(umax=255,var_off=(0x0; 0xff))
+      ; if (!proto_is_vlan(h_proto))
+      42: (15) if r2 == 0xa888 goto pc+1    ; R2=scalar()
+      43: (55) if r2 != 0x81 goto pc+100    ; R2=129
+      ; if (vlh + 1 > data_end)
+      44: (bf) r2 = r7                      ; R2_w=pkt(off=22,r=36,imm=0) R7=pkt(off=22,r=36,imm=0)
+      45: (07) r2 += 18                     ; R2_w=pkt(off=40,r=36,imm=0)
+      ; if (vlh + 1 > data_end)
+      46: (2d) if r2 > r1 goto pc+97        ; R1=pkt_end(off=0,imm=0) R2_w=pkt(off=40,r=40,imm=0)
+      ; h_proto = vlh->h_vlan_encapsulated_proto;
+      47: (69) r5 = *(u16 *)(r7 +16)        ; R5_w=scalar(umax=65535,var_off=(0x0; 0xffff)) R7=pkt(off=22,r=40,imm=0)
+      48: (b7) r4 = 1                       ; R4_w=1
+      49: (b7) r3 = 1                       ; R3=1
+      ; return !!(h_proto == bpf_htons(ETH_P_8021Q) ||
+      50: (55) if r5 != 0x81 goto pc+1      ; R5=129
+      51: (b7) r3 = 0                       ; R3_w=0
+      ; return !!(h_proto == bpf_htons(ETH_P_8021Q) ||
+      52: (55) if r5 != 0xa888 goto pc+1    ; R5=129
+      ; if (!proto_is_vlan(h_proto))
+      54: (5f) r4 &= r3                     ; R3_w=0 R4_w=0
+      ; (bpf_ntohs(vlh->h_vlan_TCI) & VLAN_VID_MASK);
+      55: (69) r3 = *(u16 *)(r7 +14)        ; R3_w=scalar(umax=65535,var_off=(0x0; 0xffff)) R7=pkt(off=22,r=40,imm=0)
+      ; (bpf_ntohs(vlh->h_vlan_TCI) & VLAN_VID_MASK);
+      56: (57) r3 &= -241                   ; R3_w=scalar(umax=65295,var_off=(0x0; 0xff0f))
+      ; if (!proto_is_vlan(h_proto))
+      57: (57) r4 &= 1                      ; R4_w=0
+      58: (55) if r4 != 0x0 goto pc+7       ; R4_w=0
+      59: (07) r7 += 22                     ; R7=pkt(off=44,r=40,imm=0)
+      60: (2d) if r7 > r1 goto pc+5 66: R0=0 R1=pkt_end(off=0,imm=0) R2=pkt(off=40,r=40,imm=0) R3=scalar(umax=65295,var_off=(0x0; 0xff0f)) R4=0 R5=129 R6=ctx(off=0,imm=0) R7=pkt(off=44,r=-2,imm=0) R10=fp0
+      ; if (vlans.id[i] == 0)
+      66: (57) r3 &= 65535                  ; R3_w=scalar(umax=65295,var_off=(0x0; 0xff0f))
+      ; if (vlans.id[i] == 0)
+      67: (15) if r3 == 0x0 goto pc+83      ; R3_w=scalar(umax=65295,var_off=(0x0; 0xff0f))
+      68: (57) r8 &= 1
+      R8 !read_ok
+      processed 137 insns (limit 1000000) max_states_per_insn 1 total_states 13 peak_states 13 mark_read 8
+      -- END PROG LOAD LOG --
+      libbpf: prog 'xdp_parser_func': failed to load: -13
+      libbpf: failed to load object 'xdp_prog_kern.o'
+  source_snippets: []
+  question_body_text: |-
+    I've completed the assignment as mentioned in the solutions.
+    Here's the repo I'm trying to test on my local machine:
+    https://github.com/xdp-project/xdp-tutorial/blob/master/packet01-parsing/README.org
+    Here's my C code:
+    /* SPDX-License-Identifier: GPL-2.0 */
+    #include <stddef.h>
+    #include <linux/bpf.h>
+    #include <linux/in.h>
+    #include <linux/if_ether.h>
+    #include <linux/if_packet.h>
+    #include <linux/ipv6.h>
+    #include <linux/icmpv6.h>
+    #include <bpf/bpf_helpers.h>
+    #include <bpf/bpf_endian.h>
+    /* Defines xdp_stats_map from packet04 */
+    #include "../common/xdp_stats_kern_user.h"
+    #include "../common/xdp_stats_kern.h"
+    /* Header cursor to keep track of current parsing position */
+    /* Packet parsing helpers.
+    *
+    * Each helper parses a packet header, including doing bounds checking, and
+    * returns the type of its contents if successful, and -1 otherwise.
+    *
+    * For Ethernet and IP headers, the content type is the type of the payload
+    * (h_proto for Ethernet, nexthdr for IPv6), for ICMP it is the ICMP type field.
+    * All return values are in host byte order.
+    */
+    #include <linux/ip.h>
+    #include <linux/icmp.h>
+    #include <linux/udp.h>
+    #include <linux/tcp.h>
+    /* Header cursor to keep track of current parsing position */
+    struct hdr_cursor {
+    void *pos;
+    };
+    /*
+    * struct vlan_hdr - vlan header
+    * @h_vlan_TCI: priority and VLAN ID
+    * @h_vlan_encapsulated_proto: packet type ID or len
+    */
+    struct vlan_hdr {
+    __be16 h_vlan_TCI;
+    __be16 h_vlan_encapsulated_proto;
+    };
+    /*
+    * Struct icmphdr_common represents the common part of the icmphdr and icmp6hdr
+    * structures.
+    */
+    struct icmphdr_common {
+    __u8 type;
+    __u8 code;
+    __sum16 cksum;
+    };
+    /* Allow users of header file to redefine VLAN max depth */
+    #ifndef VLAN_MAX_DEPTH
+    #define VLAN_MAX_DEPTH 2
+    #endif
+    #define VLAN_VID_MASK 0x0fff /* VLAN Identifier */
+    /* Struct for collecting VLANs after parsing via parse_ethhdr_vlan */
+    struct collect_vlans {
+    __u16 id[VLAN_MAX_DEPTH];
+    };
+    static __always_inline int proto_is_vlan(__u16 h_proto)
+    {
+    return !!(h_proto == bpf_htons(ETH_P_8021Q) ||
+    h_proto == bpf_htons(ETH_P_8021AD));
+    }
+    /* Notice, parse_ethhdr() will skip VLAN tags, by advancing nh->pos and returns
+    * next header EtherType, BUT the ethhdr pointer supplied still points to the
+    * Ethernet header. Thus, caller can look at eth->h_proto to see if this was a
+    * VLAN tagged packet.
+    */
+    static __always_inline int parse_ethhdr_vlan(struct hdr_cursor *nh,
+    void *data_end,
+    struct ethhdr **ethhdr,
+    struct collect_vlans *vlans)
+    {
+    struct ethhdr *eth = nh->pos;
+    int hdrsize = sizeof(*eth);
+    struct vlan_hdr *vlh;
+    __u16 h_proto;
+    int i;
+    /* Byte-count bounds check; check if current pointer + size of header
+    * is after data_end.
+    */
+    if (nh->pos + hdrsize > data_end)
+    return -1;
+    nh->pos += hdrsize;
+    *ethhdr = eth;
+    vlh = nh->pos;
+    h_proto = eth->h_proto;
+    /* Use loop unrolling to avoid the verifier restriction on loops;
+    * support up to VLAN_MAX_DEPTH layers of VLAN encapsulation.
+    */
+    #pragma unroll
+    for (i = 0; i < VLAN_MAX_DEPTH; i++) {
+    if (!proto_is_vlan(h_proto))
+    break;
+    if (vlh + 1 > data_end)
+    break;
+    h_proto = vlh->h_vlan_encapsulated_proto;
+    if (vlans) /* collect VLAN ids */
+    vlans->id[i] =
+    (bpf_ntohs(vlh->h_vlan_TCI) & VLAN_VID_MASK);
+    vlh++;
+    }
+    nh->pos = vlh;
+    return h_proto; /* network-byte-order */
+    }
+    static __always_inline int parse_ethhdr(struct hdr_cursor *nh,
+    void *data_end,
+    struct ethhdr **ethhdr)
+    {
+    /* Expect compiler removes the code that collects VLAN ids */
+    return parse_ethhdr_vlan(nh, data_end, ethhdr, NULL);
+    }
+    static __always_inline int parse_ip6hdr(struct hdr_cursor *nh,
+    void *data_end,
+    struct ipv6hdr **ip6hdr)
+    {
+    struct ipv6hdr *ip6h = nh->pos;
+    /* Pointer-arithmetic bounds check; pointer +1 points to after end of
+    * thing being pointed to. We will be using this style in the remainder
+    * of the tutorial.
+    */
+    if (ip6h + 1 > data_end)
+    return -1;
+    nh->pos = ip6h + 1;
+    *ip6hdr = ip6h;
+    return ip6h->nexthdr;
+    }
+    static __always_inline int parse_iphdr(struct hdr_cursor *nh,
+    void *data_end,
+    struct iphdr **iphdr)
+    {
+    struct iphdr *iph = nh->pos;
+    int hdrsize;
+    if (iph + 1 > data_end)
+    return -1;
+    hdrsize = iph->ihl * 4;
+    /* Sanity check packet field is valid */
+    if(hdrsize < sizeof(*iph))
+    return -1;
+    /* Variable-length IPv4 header, need to use byte-based arithmetic */
+    if (nh->pos + hdrsize > data_end)
+    return -1;
+    nh->pos += hdrsize;
+    *iphdr = iph;
+    return iph->protocol;
+    }
+    static __always_inline int parse_icmp6hdr(struct hdr_cursor *nh,
+    void *data_end,
+    struct icmp6hdr **icmp6hdr)
+    {
+    struct icmp6hdr *icmp6h = nh->pos;
+    if (icmp6h + 1 > data_end)
+    return -1;
+    nh->pos = icmp6h + 1;
+    *icmp6hdr = icmp6h;
+    return icmp6h->icmp6_type;
+    }
+    static __always_inline int parse_icmphdr(struct hdr_cursor *nh,
+    void *data_end,
+    struct icmphdr **icmphdr)
+    {
+    struct icmphdr *icmph = nh->pos;
+    if (icmph + 1 > data_end)
+    return -1;
+    nh->pos = icmph + 1;
+    *icmphdr = icmph;
+    return icmph->type;
+    }
+    SEC("xdp")
+    int xdp_parser_func(struct xdp_md *ctx)
+    {
+    void *data_end = (void *)(long)ctx->data_end;
+    void *data = (void *)(long)ctx->data;
+    struct ethhdr *eth;
+    /* Default action XDP_PASS, imply everything we couldn't parse, or that
+    * we don't want to deal with, we just pass up the stack and let the
+    * kernel deal with it.
+    */
+    __u32 action = XDP_PASS; /* Default action */
+    /* These keep track of the next header type and iterator pointer */
+    struct hdr_cursor nh;
+    int nh_type;
+    /* Start next header cursor position at data start */
+    nh.pos = data;
+    /* Packet parsing in steps: Get each header one at a time, aborting if
+    * parsing fails. Each helper function does sanity checking (is the
+    * header type in the packet correct?), and bounds checking.
+    */
+    nh_type = parse_ethhdr(&nh, data_end, &eth);
+    if (nh_type == bpf_htons(ETH_P_8021Q)) {
+    struct collect_vlans vlans;
+    int vlan_proto = parse_ethhdr_vlan(&nh, data_end, &eth, &vlans);
+    if (vlan_proto < 0)
+    return XDP_ABORTED;
+    // Print VLAN information
+    for (int i = 0; i < VLAN_MAX_DEPTH; i++) {
+    if (vlans.id[i] == 0)
+    // break;
+    bpf_printk("VLAN ID[%d] = %u\n", i, vlans.id[i]);
+    }
+    }
+    // Proceed to IPv4 or IPv6 parsing
+    if (nh_type == bpf_htons(ETH_P_IPV6)) {
+    struct ipv6hdr *ip6hdr;
+    int ip6_next_header = parse_ip6hdr(&nh, data_end, &ip6hdr);
+    if (ip6_next_header == IPPROTO_ICMPV6) {
+    struct icmp6hdr *icmp6hdr;
+    int icmp6_type = parse_icmp6hdr(&nh, data_end, &icmp6hdr);
+    if (icmp6_type < 0)
+    return XDP_ABORTED;
+    }
+    }
+    if (nh_type == bpf_htons(ETH_P_IP)) {
+    struct iphdr *iphdr;
+    int ip_next_header = parse_iphdr(&nh, data_end, &iphdr);
+    if (ip_next_header == IPPROTO_ICMP) {
+    struct icmphdr *icmphdr;
+    int icmp_type = parse_icmphdr(&nh, data_end, &icmphdr);
+    if (icmp_type < 0)
+    // goto out;
+    return XDP_ABORTED;
+    // Print IPv4 header information
+    bpf_printk("IPv4 Header: Source Address = %x, Destination Address = %x\n",
+    bpf_ntohl(iphdr->saddr), bpf_ntohl(iphdr->daddr));
+    bpf_printk("Protocol = %d\n", iphdr->protocol);
+    // Print ICMP header information
+    bpf_printk("ICMP Header: Type = %d, Code = %d\n",
+    icmphdr->type, icmphdr->code);
+    }
+    }
+    // Add more parsing or processing for IPv6, ICMPv6, VLAN, IPv4, and ICMP headers here if needed
+    // Set action based on parsed headers
+    // For example, drop packets with certain conditions
+    // action = XDP_DROP;
+    // out:
+    return xdp_stats_record_action(ctx, action); /* read via xdp_stats */
+    }
+    char _license[] SEC("license") = "GPL";
+    Command used to compile and run this program:
+    cd packet01-parsing
+    make
+    sudo ip link set dev test xdpgeneric obj xdp_prog_kern.o sec xdp
+    pegasus@pegasus:~/Documents/xdp-tutorial/packet01-parsing$ sudo ip link set dev test xdpgeneric obj xdp_prog_kern.o sec xdp
+    libbpf: prog 'xdp_parser_func': BPF program load failed: Permission denied
+    libbpf: prog 'xdp_parser_func': -- BEGIN PROG LOAD LOG --
+    0: R1=ctx(off=0,imm=0) R10=fp0
+    ; int xdp_parser_func(struct xdp_md *ctx)
+    0: (bf) r6 = r1 ; R1=ctx(off=0,imm=0) R6_w=ctx(off=0,imm=0)
+    ; void *data_end = (void *)(long)ctx->data_end;
+    1: (61) r1 = *(u32 *)(r6 +4) ; R1_w=pkt_end(off=0,imm=0) R6_w=ctx(off=0,imm=0)
+    ; void *data = (void *)(long)ctx->data;
+    2: (61) r3 = *(u32 *)(r6 +0) ; R3_w=pkt(off=0,r=0,imm=0) R6_w=ctx(off=0,imm=0)
+    ; if (nh->pos + hdrsize > data_end)
+    3: (bf) r7 = r3 ; R3_w=pkt(off=0,r=0,imm=0) R7_w=pkt(off=0,r=0,imm=0)
+    4: (07) r7 += 14 ; R7_w=pkt(off=14,r=0,imm=0)
+    ; if (nh->pos + hdrsize > data_end)
+    5: (2d) if r7 > r1 goto pc+79 ; R1_w=pkt_end(off=0,imm=0) R7_w=pkt(off=14,r=14,imm=0)
+    ;
+    6: (71) r4 = *(u8 *)(r3 +12) ; R3_w=pkt(off=0,r=14,imm=0) R4_w=scalar(umax=255,var_off=(0x0; 0xff))
+    7: (71) r2 = *(u8 *)(r3 +13) ; R2_w=scalar(umax=255,var_off=(0x0; 0xff)) R3_w=pkt(off=0,r=14,imm=0)
+    8: (67) r2 <<= 8 ; R2_w=scalar(umax=65280,var_off=(0x0; 0xff00))
+    9: (4f) r2 |= r4 ; R2_w=scalar() R4_w=scalar(umax=255,var_off=(0x0; 0xff))
+    ; if (!proto_is_vlan(h_proto))
+    10: (15) if r2 == 0xa888 goto pc+1 ; R2_w=scalar()
+    11: (55) if r2 != 0x81 goto pc+19 ; R2=129
+    ; if (vlh + 1 > data_end)
+    12: (bf) r4 = r3 ; R3=pkt(off=0,r=14,imm=0) R4_w=pkt(off=0,r=14,imm=0)
+    13: (07) r4 += 18 ; R4_w=pkt(off=18,r=14,imm=0)
+    ; if (vlh + 1 > data_end)
+    14: (2d) if r4 > r1 goto pc+16 ; R1=pkt_end(off=0,imm=0) R4_w=pkt(off=18,r=18,imm=0)
+    ;
+    15: (71) r5 = *(u8 *)(r3 +16) ; R3=pkt(off=0,r=18,imm=0) R5_w=scalar(umax=255,var_off=(0x0; 0xff))
+    16: (71) r2 = *(u8 *)(r3 +17) ; R2_w=scalar(umax=255,var_off=(0x0; 0xff)) R3=pkt(off=0,r=18,imm=0)
+    17: (67) r2 <<= 8 ; R2_w=scalar(umax=65280,var_off=(0x0; 0xff00))
+    18: (4f) r2 |= r5 ; R2=scalar() R5=scalar(umax=255,var_off=(0x0; 0xff))
+    ; if (!proto_is_vlan(h_proto))
+    19: (15) if r2 == 0xa888 goto pc+2 ; R2=scalar()
+    20: (bf) r7 = r4 ; R4=pkt(off=18,r=18,imm=0) R7_w=pkt(off=18,r=18,imm=0)
+    21: (55) if r2 != 0x81 goto pc+9 ; R2=129
+    ; if (vlh + 1 > data_end)
+    22: (bf) r5 = r3 ; R3=pkt(off=0,r=18,imm=0) R5_w=pkt(off=0,r=18,imm=0)
+    23: (07) r5 += 22 ; R5_w=pkt(off=22,r=18,imm=0)
+    24: (bf) r7 = r4 ; R4=pkt(off=18,r=18,imm=0) R7_w=pkt(off=18,r=18,imm=0)
+    ; if (vlh + 1 > data_end)
+    25: (2d) if r5 > r1 goto pc+5 ; R1=pkt_end(off=0,imm=0) R5_w=pkt(off=22,r=22,imm=0)
+    ;
+    26: (71) r4 = *(u8 *)(r3 +20) ; R3=pkt(off=0,r=22,imm=0) R4_w=scalar(umax=255,var_off=(0x0; 0xff))
+    27: (71) r2 = *(u8 *)(r3 +21) ; R2_w=scalar(umax=255,var_off=(0x0; 0xff)) R3=pkt(off=0,r=22,imm=0)
+    28: (67) r2 <<= 8 ; R2_w=scalar(umax=65280,var_off=(0x0; 0xff00))
+    29: (4f) r2 |= r4 ; R2_w=scalar() R4_w=scalar(umax=255,var_off=(0x0; 0xff))
+    30: (bf) r7 = r5 ; R5=pkt(off=22,r=22,imm=0) R7=pkt(off=22,r=22,imm=0)
+    ; if (nh_type == bpf_htons(ETH_P_8021Q)) {
+    31: (15) if r2 == 0x8 goto pc+76 ; R2=scalar()
+    32: (15) if r2 == 0xdd86 goto pc+44 ; R2=scalar()
+    33: (55) if r2 != 0x81 goto pc+51 ; R2=129
+    34: (b7) r0 = 0 ; R0_w=0
+    ; if (nh->pos + hdrsize > data_end)
+    35: (bf) r2 = r7 ; R2_w=pkt(off=22,r=22,imm=0) R7=pkt(off=22,r=22,imm=0)
+    36: (07) r2 += 14 ; R2_w=pkt(off=36,r=22,imm=0)
+    ; if (nh->pos + hdrsize > data_end)
+    37: (2d) if r2 > r1 goto pc+69 ; R1=pkt_end(off=0,imm=0) R2_w=pkt(off=36,r=36,imm=0)
+    ; h_proto = eth->h_proto;
+    38: (71) r3 = *(u8 *)(r7 +12) ; R3_w=scalar(umax=255,var_off=(0x0; 0xff)) R7=pkt(off=22,r=36,imm=0)
+    39: (71) r2 = *(u8 *)(r7 +13) ; R2_w=scalar(umax=255,var_off=(0x0; 0xff)) R7=pkt(off=22,r=36,imm=0)
+    40: (67) r2 <<= 8 ; R2_w=scalar(umax=65280,var_off=(0x0; 0xff00))
+    41: (4f) r2 |= r3 ; R2=scalar() R3=scalar(umax=255,var_off=(0x0; 0xff))
+    ; if (!proto_is_vlan(h_proto))
+    42: (15) if r2 == 0xa888 goto pc+1 ; R2=scalar()
+    43: (55) if r2 != 0x81 goto pc+100 ; R2=129
+    ; if (vlh + 1 > data_end)
+    44: (bf) r2 = r7 ; R2_w=pkt(off=22,r=36,imm=0) R7=pkt(off=22,r=36,imm=0)
+    45: (07) r2 += 18 ; R2_w=pkt(off=40,r=36,imm=0)
+    ; if (vlh + 1 > data_end)
+    46: (2d) if r2 > r1 goto pc+97 ; R1=pkt_end(off=0,imm=0) R2_w=pkt(off=40,r=40,imm=0)
+    ; h_proto = vlh->h_vlan_encapsulated_proto;
+    47: (69) r5 = *(u16 *)(r7 +16) ; R5_w=scalar(umax=65535,var_off=(0x0; 0xffff)) R7=pkt(off=22,r=40,imm=0)
+    48: (b7) r4 = 1 ; R4_w=1
+    49: (b7) r3 = 1 ; R3=1
+    ; return !!(h_proto == bpf_htons(ETH_P_8021Q) ||
+    50: (55) if r5 != 0x81 goto pc+1 ; R5=129
+    51: (b7) r3 = 0 ; R3_w=0
+    ; return !!(h_proto == bpf_htons(ETH_P_8021Q) ||
+    52: (55) if r5 != 0xa888 goto pc+1 ; R5=129
+    ; if (!proto_is_vlan(h_proto))
+    54: (5f) r4 &= r3 ; R3_w=0 R4_w=0
+    ; (bpf_ntohs(vlh->h_vlan_TCI) & VLAN_VID_MASK);
+    55: (69) r3 = *(u16 *)(r7 +14) ; R3_w=scalar(umax=65535,var_off=(0x0; 0xffff)) R7=pkt(off=22,r=40,imm=0)
+    ; (bpf_ntohs(vlh->h_vlan_TCI) & VLAN_VID_MASK);
+    56: (57) r3 &= -241 ; R3_w=scalar(umax=65295,var_off=(0x0; 0xff0f))
+    ; if (!proto_is_vlan(h_proto))
+    57: (57) r4 &= 1 ; R4_w=0
+    58: (55) if r4 != 0x0 goto pc+7 ; R4_w=0
+    59: (07) r7 += 22 ; R7=pkt(off=44,r=40,imm=0)
+    60: (2d) if r7 > r1 goto pc+5 66: R0=0 R1=pkt_end(off=0,imm=0) R2=pkt(off=40,r=40,imm=0) R3=scalar(umax=65295,var_off=(0x0; 0xff0f)) R4=0 R5=129 R6=ctx(off=0,imm=0) R7=pkt(off=44,r=-2,imm=0) R10=fp0
+    ; if (vlans.id[i] == 0)
+    66: (57) r3 &= 65535 ; R3_w=scalar(umax=65295,var_off=(0x0; 0xff0f))
+    ; if (vlans.id[i] == 0)
+    67: (15) if r3 == 0x0 goto pc+83 ; R3_w=scalar(umax=65295,var_off=(0x0; 0xff0f))
+    68: (57) r8 &= 1
+    R8 !read_ok
+    processed 137 insns (limit 1000000) max_states_per_insn 1 total_states 13 peak_states 13 mark_read 8
+    -- END PROG LOAD LOG --
+    libbpf: prog 'xdp_parser_func': failed to load: -13
+    libbpf: failed to load object 'xdp_prog_kern.o'
+    Why am I facing this error? How can I fix it?
+  selected_answer:
+    answer_id: 78237094
+    url: https://stackoverflow.com/questions/78236201/invalid-access-to-map-value-value-size-128-off-0-size-0-libbpf-prog-xdp-pars#78237094
+    is_accepted: false
+    score: 1
+    body_text: |-
+      You are using bpf_trace_printk incorrectly, you typically stack allocate the fmt, then take the sizeof the char array and pass it as the second argument.
+      I recommend you switch all usages to bpf_printk from bpf/bpf_helpers.h, since it does work exactly like you are invoking it right now. This macro does all of the heavy lifting for you.
+    fix_description: You are using bpf_trace_printk incorrectly, you typically stack
+      allocate the fmt, then take the sizeof the char array and pass it as the second
+      argument. I recommend you switch all usages to bpf_printk from bpf/bpf_helpers.h,
+      since it does work exactly like you are invoking it right now. This macro does
+      all of the heavy lifting for you.

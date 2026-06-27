@@ -1,0 +1,429 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-d2b63414e57e
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/d2b63414e57e6a324ffe233eaf155d070a1b2ae8
+  title: 'bpf: Pass fraginfo to lb6_extract_tuple'
+  repository: https://github.com/cilium/cilium
+  commit: d2b63414e57e6a324ffe233eaf155d070a1b2ae8
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-d2b63414e57e.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: environment_required
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Passes existing fraginfo into LB tuple extraction to reduce verifier complexity
+    in generated Cilium programs; faithful replay depends on the full datapath.
+raw:
+  case_id: github-commit-cilium-d2b63414e57e
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: d2b63414e57e6a324ffe233eaf155d070a1b2ae8
+  commit_message: 'bpf: Pass fraginfo to lb6_extract_tuple'
+  commit_date: '2025-03-26'
+  fix_type: inline_hint
+  buggy_code: "// FILE: bpf/bpf_lxc.c\n// CONTEXT: static __always_inline int __per_packet_lb_svc_xlate_4(void\
+    \ *ctx, struct iphdr *\n\tstruct ipv4_ct_tuple tuple = {};\n\tstruct ct_state\
+    \ ct_state_new = {};\n\tfraginfo_t fraginfo;\n\tstruct lb4_service *svc;\n\tstruct\
+    \ lb4_key key = {};\n\t__u16 proxy_port = 0;\n\t__u32 cluster_id = 0;\n\tint l4_off;\n\
+    \tint ret = 0;\n\n\tfraginfo = ipfrag_encode_ipv4(ip4);\n\n\tret = lb4_extract_tuple(ctx,\
+    \ ip4, ETH_HLEN, &l4_off, &tuple);\n\tif (IS_ERR(ret)) {\n\t\tif (ret == DROP_UNSUPP_SERVICE_PROTO\
+    \ || ret == DROP_UNKNOWN_L4)\n\t\t\tgoto skip_service_lookup;\n\t\telse\n\t\t\t\
+    return ret;\n\t}\n\n\tlb4_fill_key(&key, &tuple);\n\n\tsvc = lb4_lookup_service(&key,\
+    \ is_defined(ENABLE_NODEPORT));\n\tif (svc) {\n#if defined(ENABLE_L7_LB)\n\n//\
+    \ CONTEXT: static __always_inline int __per_packet_lb_svc_xlate_6(void *ctx, struct\
+    \ ipv6hdr\n\tstruct ct_state ct_state_new = {};\n\tfraginfo_t fraginfo;\n\tstruct\
+    \ lb6_service *svc;\n\tstruct lb6_key key = {};\n\t__u16 proxy_port = 0;\n\tint\
+    \ l4_off;\n\tint ret = 0;\n\n\tfraginfo = ipv6_get_fraginfo(ctx, ip6);\n\tif (fraginfo\
+    \ < 0)\n\t\treturn (int)fraginfo;\n\n\tret = lb6_extract_tuple(ctx, ip6, ETH_HLEN,\
+    \ &l4_off, &tuple);\n\tif (IS_ERR(ret)) {\n\t\tif (ret == DROP_UNSUPP_SERVICE_PROTO\
+    \ || ret == DROP_UNKNOWN_L4)\n\t\t\tgoto skip_service_lookup;\n\t\telse\n\t\t\t\
+    return ret;\n\t}\n\n\tlb6_fill_key(&key, &tuple);\n\n\t/*\n\t * Check if the destination\
+    \ address is among the address that should\n\t * be load balanced. This operation\
+    \ is performed before we go through\n\n// FILE: bpf/lib/lb.h\n// CONTEXT: lb6_key_set_protocol(struct\
+    \ lb6_key *key __maybe_unused,\nstatic __always_inline void\nlb6_fill_key(struct\
+    \ lb6_key *key, struct ipv6_ct_tuple *tuple)\n{\n\tlb6_key_set_protocol(key, tuple->nexthdr);\n\
+    \tipv6_addr_copy(&key->address, &tuple->daddr);\n\tkey->dport = tuple->sport;\n\
+    }\n\n/** Extract IPv6 CT tuple from packet\n * @arg ctx\t\tPacket\n * @arg ip6\t\
+    \tPointer to L3 header\n * @arg l3_off\t\tOffset to L3 header\n * @arg l4_off\t\
+    \tOffset to L4 header\n * @arg tuple\t\tCT tuple\n *\n * Expects the ctx to be\
+    \ validated for direct packet access up to L4.\n *\n * Returns:\n *   - CTX_ACT_OK\
+    \ on successful extraction\n *   - DROP_UNKNOWN_L4 if packet should be ignore\
+    \ (sent to stack)\n *   - Negative error code\n */\nstatic __always_inline int\n\
+    lb6_extract_tuple(struct __ctx_buff *ctx, struct ipv6hdr *ip6, int l3_off,\n\t\
+    \t  int *l4_off, struct ipv6_ct_tuple *tuple)\n{\n\tfraginfo_t fraginfo;\n\tint\
+    \ ret;\n\n\tfraginfo = ipv6_get_fraginfo(ctx, ip6);\n\tif (fraginfo < 0) {\n\t\
+    \tret = (int)fraginfo;\n\t\tgoto err;\n\t}\n\n\ttuple->nexthdr = ip6->nexthdr;\n\
+    \tipv6_addr_copy(&tuple->daddr, (union v6addr *)&ip6->daddr);\n\tipv6_addr_copy(&tuple->saddr,\
+    \ (union v6addr *)&ip6->saddr);\n\n\tret = ipv6_hdrlen_offset(ctx, &tuple->nexthdr,\
+    \ l3_off);\n\tif (ret < 0)\n\t\tgoto err;\n\n\t*l4_off = l3_off + ret;\n\n\tswitch\
+    \ (tuple->nexthdr) {\n\tcase IPPROTO_TCP:\n\n// CONTEXT: static __always_inline\
+    \ void\nlb4_fill_key(struct lb4_key *key, const struct ipv4_ct_tuple *tuple)\n\
+    {\n\tlb4_key_set_protocol(key, tuple->nexthdr);\n\tkey->address = tuple->daddr;\n\
+    \t/* CT tuple has ports in reverse order: */\n\tkey->dport = tuple->sport;\n}\n\
+    \n/** Extract IPv4 CT tuple from packet\n * @arg ctx\t\tPacket\n * @arg ip4\t\t\
+    Pointer to L3 header\n * @arg l3_off\t\tOffset to L3 header\n * @arg l4_off\t\t\
+    Offset to L4 header\n * @arg tuple\t\tCT tuple\n *\n * Returns:\n *   - CTX_ACT_OK\
+    \ on successful extraction\n *   - DROP_UNKNOWN_L4 if packet should be ignore\
+    \ (sent to stack)\n *   - Negative error code\n */\nstatic __always_inline int\n\
+    lb4_extract_tuple(struct __ctx_buff *ctx, struct iphdr *ip4, int l3_off, int *l4_off,\n\
+    \t\t  struct ipv4_ct_tuple *tuple)\n{\n\tfraginfo_t fraginfo;\n\n\tfraginfo =\
+    \ ipfrag_encode_ipv4(ip4);\n\n\ttuple->nexthdr = ip4->protocol;\n\ttuple->daddr\
+    \ = ip4->daddr;\n\ttuple->saddr = ip4->saddr;\n\n\t*l4_off = l3_off + ipv4_hdrlen(ip4);\n\
+    \n\tswitch (tuple->nexthdr) {\n\tcase IPPROTO_TCP:\n\tcase IPPROTO_UDP:\n#ifdef\
+    \ ENABLE_SCTP\n\tcase IPPROTO_SCTP:\n#endif  /* ENABLE_SCTP */\n\n// FILE: bpf/lib/nodeport.h\n\
+    // CONTEXT: static __always_inline int encap_geneve_dsr_opt6(struct __ctx_buff\
+    \ *ctx,\n\t\t\t\t\t\t int *ifindex, int *ohead)\n{\n\tstruct remote_endpoint_info\
+    \ *info;\n\tstruct ipv6_ct_tuple tuple __align_stack_8 = {};\n\tstruct geneve_dsr_opt6\
+    \ gopt;\n\tunion v6addr *dst;\n\tbool need_opt = true;\n\t__u16 encap_len = sizeof(struct\
+    \ ipv6hdr) + sizeof(struct udphdr) +\n\t\tsizeof(struct genevehdr) + ETH_HLEN;\n\
+    \t__u16 payload_len = bpf_ntohs(ip6->payload_len) + sizeof(*ip6);\n\t__u32 dst_sec_identity;\n\
+    \t__be32 tunnel_endpoint;\n\t__u16 total_len = 0;\n\t__be16 src_port;\n\tint l4_off,\
+    \ ret;\n\n\tbuild_bug_on((sizeof(gopt) % 4) != 0);\n\n\tdst = (union v6addr *)&ip6->daddr;\n\
+    \tinfo = lookup_ip6_remote_endpoint(dst, 0);\n\tif (!info || info->tunnel_endpoint\
+    \ == 0)\n\t\treturn DROP_NO_TUNNEL_ENDPOINT;\n\n\ttunnel_endpoint = info->tunnel_endpoint;\n\
+    \tdst_sec_identity = info->sec_identity;\n\n\tret = lb6_extract_tuple(ctx, ip6,\
+    \ ETH_HLEN, &l4_off, &tuple);\n\tif (IS_ERR(ret))\n\t\treturn ret;\n\n\tsrc_port\
+    \ = tunnel_gen_src_port_v6(&tuple);\n\n\t/* See encap_geneve_dsr_opt4(): */\n\t\
+    if (tuple.nexthdr == IPPROTO_TCP) {\n\t\tunion tcp_flags tcp_flags = { .value\
+    \ = 0 };\n\n\t\tif (l4_load_tcp_flags(ctx, l4_off, &tcp_flags) < 0)\n\t\t\treturn\
+    \ DROP_CT_INVALID_HDR;\n\n\n// CONTEXT: nodeport_rev_dnat_ingress_ipv6(struct\
+    \ __ctx_buff *ctx, struct trace_ctx *trace,\n\tif (!revalidate_data(ctx, &data,\
+    \ &data_end, &ip6))\n\t\treturn DROP_INVALID;\n\n#ifdef ENABLE_NAT_46X64_GATEWAY\n\
+    \tif (nat_46x64_fib)\n\t\tgoto fib_lookup;\n#endif\n\n\tfraginfo = ipv6_get_fraginfo(ctx,\
+    \ ip6);\n\tif (fraginfo < 0)\n\t\treturn (int)fraginfo;\n\n\tret = lb6_extract_tuple(ctx,\
+    \ ip6, ETH_HLEN, &l4_off, &tuple);\n\tif (ret < 0) {\n\t\tif (ret == DROP_UNSUPP_SERVICE_PROTO\
+    \ || ret == DROP_UNKNOWN_L4)\n\t\t\tgoto out;\n\t\treturn ret;\n\t}\n\n\tret =\
+    \ ct_lazy_lookup6(get_ct_map6(&tuple), &tuple, ctx, fraginfo,\n\t\t\t      l4_off,\
+    \ CT_INGRESS, SCOPE_REVERSE,\n\t\t\t      CT_ENTRY_NODEPORT, &ct_state, &monitor);\n\
+    \tif (ret == CT_REPLY) {\n\t\ttrace->reason = TRACE_REASON_CT_REPLY;\n\t\ttrace->monitor\
+    \ = monitor;\n\n// CONTEXT: int tail_nodeport_nat_egress_ipv6(struct __ctx_buff\
+    \ *ctx)\n\n#ifdef TUNNEL_MODE\n\tdst = (union v6addr *)&ip6->daddr;\n\tinfo =\
+    \ lookup_ip6_remote_endpoint(dst, 0);\n\tif (info && info->tunnel_endpoint !=\
+    \ 0 && !info->flag_skip_tunnel) {\n\t\ttunnel_endpoint = info->tunnel_endpoint;\n\
+    \t\tdst_sec_identity = info->sec_identity;\n\n\t\ttarget.addr = CONFIG(router_ipv6);\n\
+    \t}\n#endif\n\n\tret = lb6_extract_tuple(ctx, ip6, ETH_HLEN, &l4_off, &tuple);\n\
+    \tif (IS_ERR(ret))\n\t\tgoto drop_err;\n\n\tipv6_ct_tuple_swap_ports(&tuple);\n\
+    \ttuple.flags = TUPLE_F_OUT;\n\n\tret = ipv6_l3(ctx, ETH_HLEN, NULL, NULL, METRIC_EGRESS);\n\
+    \tif (unlikely(ret != CTX_ACT_OK))\n\t\tgoto drop_err;\n\n\tret = __snat_v6_nat(ctx,\
+    \ &tuple, fraginfo, l4_off, true,\n\t\t\t    &target, TCP_SPORT_OFF, &trace, &ext_err);\n\
+    \n// CONTEXT: static __always_inline int nodeport_lb6(struct __ctx_buff *ctx,\n\
+    \tbool is_svc_proto __maybe_unused = true;\n\tint ret, l3_off = ETH_HLEN, l4_off;\n\
+    \tstruct ipv6_ct_tuple tuple __align_stack_8 = {};\n\tstruct lb6_service *svc;\n\
+    \tstruct lb6_key key = {};\n\n\tcilium_capture_in(ctx);\n\n\tfraginfo = ipv6_get_fraginfo(ctx,\
+    \ ip6);\n\tif (fraginfo < 0)\n\t\treturn (int)fraginfo;\n\n\tret = lb6_extract_tuple(ctx,\
+    \ ip6, ETH_HLEN, &l4_off, &tuple);\n\tif (IS_ERR(ret)) {\n\t\tif (ret == DROP_UNSUPP_SERVICE_PROTO)\
+    \ {\n\t\t\tis_svc_proto = false;\n\t\t\tgoto skip_service_lookup;\n\t\t}\n\t\t\
+    if (ret == DROP_UNKNOWN_L4) {\n\t\t\tctx_set_xfer(ctx, XFER_PKT_NO_SVC);\n\t\t\
+    \treturn CTX_ACT_OK;\n\t\t}\n\t\treturn ret;\n\t}\n\n\n// CONTEXT: static __always_inline\
+    \ int encap_geneve_dsr_opt4(struct __ctx_buff *ctx, int l3_\n\tvoid *data, *data_end;\n\
+    \n\tbuild_bug_on((sizeof(gopt) % 4) != 0);\n\n\tif (has_encap) {\n\t\t/* point\
+    \ at the inner IPv4 header */\n\t\tif (!revalidate_data_l3_off(ctx, &data, &data_end,\
+    \ &ip4, encap_len + ETH_HLEN))\n\t\t\treturn DROP_INVALID;\n\n\t\tencap_len =\
+    \ 0;\n\t} else {\n\t\tstruct ipv4_ct_tuple tuple = {};\n\t\tint l4_off, ret;\n\
+    \n\t\tret = lb4_extract_tuple(ctx, ip4, l3_off, &l4_off, &tuple);\n\t\tif (IS_ERR(ret))\n\
+    \t\t\treturn ret;\n\n\t\tsrc_port = tunnel_gen_src_port_v4(&tuple);\n\t}\n#endif\n\
+    \n\tinfo = lookup_ip4_remote_endpoint(ip4->daddr, 0);\n\tif (!info || info->tunnel_endpoint\
+    \ == 0)\n\t\treturn DROP_NO_TUNNEL_ENDPOINT;\n\n\ttunnel_endpoint = info->tunnel_endpoint;\n\
+    \n// CONTEXT: nodeport_rev_dnat_ingress_ipv4(struct __ctx_buff *ctx, struct trace_ctx\
+    \ *trace,\n\t__u32 dst_sec_identity __maybe_unused = 0;\n\t__u32 src_sec_identity\
+    \ __maybe_unused = SECLABEL;\n\tbool allow_neigh_map = true;\n\tfraginfo_t fraginfo;\n\
+    \t__u32 *vrf_id __maybe_unused = NULL;\n\t__u32 monitor = 0;\n\n\tif (!revalidate_data(ctx,\
+    \ &data, &data_end, &ip4))\n\t\treturn DROP_INVALID;\n\n\tfraginfo = ipfrag_encode_ipv4(ip4);\n\
+    \n\tret = lb4_extract_tuple(ctx, ip4, ETH_HLEN, &l4_off, &tuple);\n\tif (ret <\
+    \ 0) {\n\t\t/* If it's not a SVC protocol, we don't need to check for RevDNAT:\
+    \ */\n\t\tif (ret == DROP_UNSUPP_SERVICE_PROTO || ret == DROP_UNKNOWN_L4)\n\t\t\
+    \tgoto skip_revdnat;\n\n\t\treturn ret;\n\t}\n\n#if defined(ENABLE_SRV6) && defined(IS_BPF_LXC)\n\
+    \t/* Determine if packet belongs to a VRF before we do NAT.\n\t * This is needed\
+    \ because we determine the VRF membership\n\t * based on the source address of\
+    \ the packet. This should\n\n// CONTEXT: int tail_nodeport_nat_egress_ipv4(struct\
+    \ __ctx_buff *ctx)\n\tif (info && info->tunnel_endpoint != 0 && !info->flag_skip_tunnel)\
+    \ {\n\t\ttunnel_endpoint = info->tunnel_endpoint;\n\t\tdst_sec_identity = info->sec_identity;\n\
+    \n\t\ttarget.addr = IPV4_GATEWAY;\n#if defined(ENABLE_CLUSTER_AWARE_ADDRESSING)\
+    \ && defined(ENABLE_INTER_CLUSTER_SNAT)\n\t\tif (cluster_id && cluster_id != CLUSTER_ID)\n\
+    \t\t\ttarget.addr = IPV4_INTER_CLUSTER_SNAT;\n#endif\n\t}\n#endif\n\n\tret = lb4_extract_tuple(ctx,\
+    \ ip4, ETH_HLEN, &l4_off, &tuple);\n\tif (IS_ERR(ret))\n\t\tgoto drop_err;\n\n\
+    \t/* Extracted ports are in flipped order, but SNAT wants them to\n\t * match\
+    \ the packet header:\n\t */\n\tipv4_ct_tuple_swap_ports(&tuple);\n\ttuple.flags\
+    \ = TUPLE_F_OUT;\n\n\tret = nodeport_nat_egress_ipv4_hook(ctx, ip4, dst_sec_identity,\
+    \ &tuple, l4_off, &ext_err);\n\tif (ret != CTX_ACT_OK)\n\t\treturn ret;\n\n//\
+    \ CONTEXT: static __always_inline int nodeport_lb4(struct __ctx_buff *ctx,\n{\n\
+    \tfraginfo_t fraginfo;\n\tstruct ipv4_ct_tuple tuple = {};\n\tbool is_svc_proto\
+    \ = true;\n\tstruct lb4_service *svc;\n\tstruct lb4_key key = {};\n\tint ret,\
+    \ l4_off;\n\n\tcilium_capture_in(ctx);\n\n\tfraginfo = ipfrag_encode_ipv4(ip4);\n\
+    \n\tret = lb4_extract_tuple(ctx, ip4, l3_off, &l4_off, &tuple);\n\tif (IS_ERR(ret))\
+    \ {\n\t\tif (ret == DROP_UNSUPP_SERVICE_PROTO) {\n\t\t\tis_svc_proto = false;\n\
+    \t\t\tgoto skip_service_lookup;\n\t\t}\n\t\tif (ret == DROP_UNKNOWN_L4) {\n\t\t\
+    \tctx_set_xfer(ctx, XFER_PKT_NO_SVC);\n\t\t\treturn CTX_ACT_OK;\n\t\t}\n\t\treturn\
+    \ ret;\n\t}\n\n// FILE: bpf/lib/nodeport_egress.h\n// CONTEXT: nodeport_rev_dnat_fwd_ipv6(struct\
+    \ __ctx_buff *ctx, bool *snat_done,\n\tfraginfo_t fraginfo;\n\tstruct ipv6hdr\
+    \ *ip6;\n\t__u32 monitor = 0;\n\tint ret, l4_off;\n\n\tif (!revalidate_data(ctx,\
+    \ &data, &data_end, &ip6))\n\t\treturn DROP_INVALID;\n\n\tfraginfo = ipv6_get_fraginfo(ctx,\
+    \ ip6);\n\tif (fraginfo < 0)\n\t\treturn (int)fraginfo;\n\n\tret = lb6_extract_tuple(ctx,\
+    \ ip6, ETH_HLEN, &l4_off, &tuple);\n\tif (ret < 0) {\n\t\tif (ret == DROP_UNSUPP_SERVICE_PROTO\
+    \ || ret == DROP_UNKNOWN_L4)\n\t\t\treturn CTX_ACT_OK;\n\t\treturn ret;\n\t}\n\
+    \n\tnat_info = nodeport_rev_dnat_get_info_ipv6(ctx, &tuple);\n\tif (!nat_info)\n\
+    \t\treturn CTX_ACT_OK;\n\n#if defined(IS_BPF_HOST) && !defined(ENABLE_SKIP_FIB)\n\
+    \tif (revdnat_only)\n\n// CONTEXT: nodeport_rev_dnat_fwd_ipv4(struct __ctx_buff\
+    \ *ctx, bool *snat_done,\n\tstruct ipv4_ct_tuple tuple = {};\n\tstruct ct_state\
+    \ ct_state = {};\n\tvoid *data, *data_end;\n\tstruct iphdr *ip4;\n\tfraginfo_t\
+    \ fraginfo;\n\t__u32 monitor = 0;\n\n\tif (!revalidate_data(ctx, &data, &data_end,\
+    \ &ip4))\n\t\treturn DROP_INVALID;\n\n\tfraginfo = ipfrag_encode_ipv4(ip4);\n\n\
+    \tret = lb4_extract_tuple(ctx, ip4, ETH_HLEN, &l4_off, &tuple);\n\tif (ret < 0)\
+    \ {\n\t\t/* If it's not a SVC protocol, we don't need to check for RevDNAT: */\n\
+    \t\tif (ret == DROP_UNSUPP_SERVICE_PROTO || ret == DROP_UNKNOWN_L4)\n\t\t\treturn\
+    \ CTX_ACT_OK;\n\t\treturn ret;\n\t}\n\n\tnat_info = nodeport_rev_dnat_get_info_ipv4(ctx,\
+    \ &tuple);\n\tif (!nat_info)\n\t\treturn CTX_ACT_OK;\n\n#if defined(IS_BPF_HOST)\
+    \ && !defined(ENABLE_SKIP_FIB)\n\n// FILE: bpf/tests/tc_nodeport_lb4_dsr_backend.c\n\
+    // CONTEXT: int nodeport_dsr_backend_check(struct __ctx_buff *ctx)\n\n\tif (l4->dest\
+    \ != BACKEND_PORT)\n\t\ttest_fatal(\"dst port has changed\");\n\n\tif (l4->check\
+    \ != bpf_htons(0xd7d0))\n\t\ttest_fatal(\"L4 checksum is invalid: %x\", bpf_htons(l4->check));\n\
+    \n\tstruct ipv4_ct_tuple tuple;\n\tstruct ct_entry *ct_entry;\n\tint l4_off, ret;\n\
+    \n\tret = lb4_extract_tuple(ctx, l3, sizeof(*status_code) + ETH_HLEN,\n\t\t\t\t\
+    &l4_off, &tuple);\n\tassert(!IS_ERR(ret));\n\n\ttuple.flags = TUPLE_F_IN;\n\t\
+    ipv4_ct_tuple_reverse(&tuple);\n\n\tct_entry = map_lookup_elem(get_ct_map4(&tuple),\
+    \ &tuple);\n\tif (!ct_entry)\n\t\ttest_fatal(\"no CT entry for DSR found\");\n\
+    \tif (!ct_entry->dsr_internal)\n\t\ttest_fatal(\"CT entry doesn't have the .dsr_internal\
+    \ flag set\");\n\n\tstruct ipv4_nat_entry *nat_entry;\n\n// CONTEXT: int nodeport_dsr_backend_redirect_check(struct\
+    \ __ctx_buff *ctx)\n\n\tif (l4->dest != BACKEND_PORT)\n\t\ttest_fatal(\"dst port\
+    \ has changed\");\n\n\tif (l4->check != bpf_htons(0xcccf))\n\t\ttest_fatal(\"\
+    L4 checksum is invalid: %x\", bpf_htons(l4->check));\n\n\tstruct ipv4_ct_tuple\
+    \ tuple;\n\tstruct ct_entry *ct_entry;\n\tint l4_off, ret;\n\n\tret = lb4_extract_tuple(ctx,\
+    \ l3, sizeof(*status_code) + ETH_HLEN,\n\t\t\t\t&l4_off, &tuple);\n\tassert(!IS_ERR(ret));\n\
+    \n\ttuple.flags = TUPLE_F_IN;\n\tipv4_ct_tuple_reverse(&tuple);\n\n\tct_entry\
+    \ = map_lookup_elem(get_ct_map4(&tuple), &tuple);\n\tif (!ct_entry)\n\t\ttest_fatal(\"\
+    no CT entry for DSR found\");\n\tif (!ct_entry->dsr_internal)\n\t\ttest_fatal(\"\
+    CT entry doesn't have the .dsr_internal flag set\");\n\n\tstruct ipv4_nat_entry\
+    \ *nat_entry;\n\n// FILE: bpf/tests/tc_nodeport_lb6_dsr_backend.c\n// CONTEXT:\
+    \ int nodeport_dsr_backend_check(struct __ctx_buff *ctx)\n\t\ttest_fatal(\"port\
+    \ in DSR extension has changed\")\n\tif (!ipv6_addr_equals((union v6addr *)&opt->addr,\
+    \ &frontend_ip))\n\t\ttest_fatal(\"addr in DSR extension has changed\")\n\n\t\
+    if (l4->source != CLIENT_PORT)\n\t\ttest_fatal(\"src port has changed\");\n\n\t\
+    if (l4->dest != BACKEND_PORT)\n\t\ttest_fatal(\"dst port has changed\");\n\n\t\
+    struct ipv6_ct_tuple tuple __align_stack_8;\n\tstruct ct_entry *ct_entry;\n\t\
+    int l4_off, ret;\n\n\tret = lb6_extract_tuple(ctx, l3, sizeof(*status_code) +\
+    \ ETH_HLEN,\n\t\t\t\t&l4_off, &tuple);\n\tassert(!IS_ERR(ret));\n\n\ttuple.flags\
+    \ = TUPLE_F_IN;\n\tipv6_ct_tuple_reverse(&tuple);\n\n\tct_entry = map_lookup_elem(get_ct_map6(&tuple),\
+    \ &tuple);\n\tif (!ct_entry)\n\t\ttest_fatal(\"no CT entry for DSR found\");\n\
+    \tif (!ct_entry->dsr_internal)\n\t\ttest_fatal(\"CT entry doesn't have the .dsr_internal\
+    \ flag set\");\n\n\tstruct ipv6_nat_entry *nat_entry;"
+  fixed_code: "// FILE: bpf/bpf_lxc.c\n// CONTEXT: static __always_inline int __per_packet_lb_svc_xlate_4(void\
+    \ *ctx, struct iphdr *\n\tstruct ipv4_ct_tuple tuple = {};\n\tstruct ct_state\
+    \ ct_state_new = {};\n\tfraginfo_t fraginfo;\n\tstruct lb4_service *svc;\n\tstruct\
+    \ lb4_key key = {};\n\t__u16 proxy_port = 0;\n\t__u32 cluster_id = 0;\n\tint l4_off;\n\
+    \tint ret = 0;\n\n\tfraginfo = ipfrag_encode_ipv4(ip4);\n\n\tret = lb4_extract_tuple(ctx,\
+    \ ip4, ETH_HLEN, fraginfo, &l4_off, &tuple);\n\tif (IS_ERR(ret)) {\n\t\tif (ret\
+    \ == DROP_UNSUPP_SERVICE_PROTO || ret == DROP_UNKNOWN_L4)\n\t\t\tgoto skip_service_lookup;\n\
+    \t\telse\n\t\t\treturn ret;\n\t}\n\n\tlb4_fill_key(&key, &tuple);\n\n\tsvc = lb4_lookup_service(&key,\
+    \ is_defined(ENABLE_NODEPORT));\n\tif (svc) {\n#if defined(ENABLE_L7_LB)\n\n//\
+    \ CONTEXT: static __always_inline int __per_packet_lb_svc_xlate_6(void *ctx, struct\
+    \ ipv6hdr\n\tstruct ct_state ct_state_new = {};\n\tfraginfo_t fraginfo;\n\tstruct\
+    \ lb6_service *svc;\n\tstruct lb6_key key = {};\n\t__u16 proxy_port = 0;\n\tint\
+    \ l4_off;\n\tint ret = 0;\n\n\tfraginfo = ipv6_get_fraginfo(ctx, ip6);\n\tif (fraginfo\
+    \ < 0)\n\t\treturn (int)fraginfo;\n\n\tret = lb6_extract_tuple(ctx, ip6, ETH_HLEN,\
+    \ fraginfo, &l4_off, &tuple);\n\tif (IS_ERR(ret)) {\n\t\tif (ret == DROP_UNSUPP_SERVICE_PROTO\
+    \ || ret == DROP_UNKNOWN_L4)\n\t\t\tgoto skip_service_lookup;\n\t\telse\n\t\t\t\
+    return ret;\n\t}\n\n\tlb6_fill_key(&key, &tuple);\n\n\t/*\n\t * Check if the destination\
+    \ address is among the address that should\n\t * be load balanced. This operation\
+    \ is performed before we go through\n\n// FILE: bpf/lib/lb.h\n// CONTEXT: lb6_key_set_protocol(struct\
+    \ lb6_key *key __maybe_unused,\nstatic __always_inline void\nlb6_fill_key(struct\
+    \ lb6_key *key, struct ipv6_ct_tuple *tuple)\n{\n\tlb6_key_set_protocol(key, tuple->nexthdr);\n\
+    \tipv6_addr_copy(&key->address, &tuple->daddr);\n\tkey->dport = tuple->sport;\n\
+    }\n\n/** Extract IPv6 CT tuple from packet\n * @arg ctx\t\tPacket\n * @arg ip6\t\
+    \tPointer to L3 header\n * @arg l3_off\t\tOffset to L3 header\n * @arg fraginfo\t\
+    fraginfo, as returned by ipv6_get_fraginfo\n * @arg l4_off\t\tOffset to L4 header\n\
+    \ * @arg tuple\t\tCT tuple\n *\n * Expects the ctx to be validated for direct\
+    \ packet access up to L4.\n *\n * Returns:\n *   - CTX_ACT_OK on successful extraction\n\
+    \ *   - DROP_UNKNOWN_L4 if packet should be ignore (sent to stack)\n *   - Negative\
+    \ error code\n */\nstatic __always_inline int\nlb6_extract_tuple(struct __ctx_buff\
+    \ *ctx, struct ipv6hdr *ip6, int l3_off,\n\t\t  fraginfo_t fraginfo, int *l4_off,\
+    \ struct ipv6_ct_tuple *tuple)\n{\n\tint ret;\n\n\ttuple->nexthdr = ip6->nexthdr;\n\
+    \tipv6_addr_copy(&tuple->daddr, (union v6addr *)&ip6->daddr);\n\tipv6_addr_copy(&tuple->saddr,\
+    \ (union v6addr *)&ip6->saddr);\n\n\tret = ipv6_hdrlen_offset(ctx, &tuple->nexthdr,\
+    \ l3_off);\n\tif (ret < 0)\n\t\tgoto err;\n\n\t*l4_off = l3_off + ret;\n\n\tswitch\
+    \ (tuple->nexthdr) {\n\tcase IPPROTO_TCP:\n\n// CONTEXT: static __always_inline\
+    \ void\nlb4_fill_key(struct lb4_key *key, const struct ipv4_ct_tuple *tuple)\n\
+    {\n\tlb4_key_set_protocol(key, tuple->nexthdr);\n\tkey->address = tuple->daddr;\n\
+    \t/* CT tuple has ports in reverse order: */\n\tkey->dport = tuple->sport;\n}\n\
+    \n/** Extract IPv4 CT tuple from packet\n * @arg ctx\t\tPacket\n * @arg ip4\t\t\
+    Pointer to L3 header\n * @arg l3_off\t\tOffset to L3 header\n * @arg fraginfo\t\
+    fraginfo, as returned by ipfrag_encode_ipv4\n * @arg l4_off\t\tOffset to L4 header\n\
+    \ * @arg tuple\t\tCT tuple\n *\n * Returns:\n *   - CTX_ACT_OK on successful extraction\n\
+    \ *   - DROP_UNKNOWN_L4 if packet should be ignore (sent to stack)\n *   - Negative\
+    \ error code\n */\nstatic __always_inline int\nlb4_extract_tuple(struct __ctx_buff\
+    \ *ctx, struct iphdr *ip4, int l3_off,\n\t\t  fraginfo_t fraginfo, int *l4_off,\
+    \ struct ipv4_ct_tuple *tuple)\n{\n\ttuple->nexthdr = ip4->protocol;\n\ttuple->daddr\
+    \ = ip4->daddr;\n\ttuple->saddr = ip4->saddr;\n\n\t*l4_off = l3_off + ipv4_hdrlen(ip4);\n\
+    \n\tswitch (tuple->nexthdr) {\n\tcase IPPROTO_TCP:\n\tcase IPPROTO_UDP:\n#ifdef\
+    \ ENABLE_SCTP\n\tcase IPPROTO_SCTP:\n#endif  /* ENABLE_SCTP */\n\n// FILE: bpf/lib/nodeport.h\n\
+    // CONTEXT: static __always_inline int encap_geneve_dsr_opt6(struct __ctx_buff\
+    \ *ctx,\n\t\t\t\t\t\t int *ifindex, int *ohead)\n{\n\tstruct remote_endpoint_info\
+    \ *info;\n\tstruct ipv6_ct_tuple tuple __align_stack_8 = {};\n\tstruct geneve_dsr_opt6\
+    \ gopt;\n\tunion v6addr *dst;\n\tbool need_opt = true;\n\t__u16 encap_len = sizeof(struct\
+    \ ipv6hdr) + sizeof(struct udphdr) +\n\t\tsizeof(struct genevehdr) + ETH_HLEN;\n\
+    \t__u16 payload_len = bpf_ntohs(ip6->payload_len) + sizeof(*ip6);\n\t__u32 dst_sec_identity;\n\
+    \t__be32 tunnel_endpoint;\n\tfraginfo_t fraginfo;\n\t__u16 total_len = 0;\n\t\
+    __be16 src_port;\n\tint l4_off, ret;\n\n\tbuild_bug_on((sizeof(gopt) % 4) != 0);\n\
+    \n\tdst = (union v6addr *)&ip6->daddr;\n\tinfo = lookup_ip6_remote_endpoint(dst,\
+    \ 0);\n\tif (!info || info->tunnel_endpoint == 0)\n\t\treturn DROP_NO_TUNNEL_ENDPOINT;\n\
+    \n\ttunnel_endpoint = info->tunnel_endpoint;\n\tdst_sec_identity = info->sec_identity;\n\
+    \n\tfraginfo = ipv6_get_fraginfo(ctx, ip6);\n\tif (fraginfo < 0)\n\t\treturn (int)fraginfo;\n\
+    \n\tret = lb6_extract_tuple(ctx, ip6, ETH_HLEN, fraginfo, &l4_off, &tuple);\n\t\
+    if (IS_ERR(ret))\n\t\treturn ret;\n\n\tsrc_port = tunnel_gen_src_port_v6(&tuple);\n\
+    \n\t/* See encap_geneve_dsr_opt4(): */\n\tif (tuple.nexthdr == IPPROTO_TCP) {\n\
+    \t\tunion tcp_flags tcp_flags = { .value = 0 };\n\n\t\tif (l4_load_tcp_flags(ctx,\
+    \ l4_off, &tcp_flags) < 0)\n\t\t\treturn DROP_CT_INVALID_HDR;\n\n\n// CONTEXT:\
+    \ nodeport_rev_dnat_ingress_ipv6(struct __ctx_buff *ctx, struct trace_ctx *trace,\n\
+    \tif (!revalidate_data(ctx, &data, &data_end, &ip6))\n\t\treturn DROP_INVALID;\n\
+    \n#ifdef ENABLE_NAT_46X64_GATEWAY\n\tif (nat_46x64_fib)\n\t\tgoto fib_lookup;\n\
+    #endif\n\n\tfraginfo = ipv6_get_fraginfo(ctx, ip6);\n\tif (fraginfo < 0)\n\t\t\
+    return (int)fraginfo;\n\n\tret = lb6_extract_tuple(ctx, ip6, ETH_HLEN, fraginfo,\
+    \ &l4_off, &tuple);\n\tif (ret < 0) {\n\t\tif (ret == DROP_UNSUPP_SERVICE_PROTO\
+    \ || ret == DROP_UNKNOWN_L4)\n\t\t\tgoto out;\n\t\treturn ret;\n\t}\n\n\tret =\
+    \ ct_lazy_lookup6(get_ct_map6(&tuple), &tuple, ctx, fraginfo,\n\t\t\t      l4_off,\
+    \ CT_INGRESS, SCOPE_REVERSE,\n\t\t\t      CT_ENTRY_NODEPORT, &ct_state, &monitor);\n\
+    \tif (ret == CT_REPLY) {\n\t\ttrace->reason = TRACE_REASON_CT_REPLY;\n\t\ttrace->monitor\
+    \ = monitor;\n\n// CONTEXT: int tail_nodeport_nat_egress_ipv6(struct __ctx_buff\
+    \ *ctx)\n\n#ifdef TUNNEL_MODE\n\tdst = (union v6addr *)&ip6->daddr;\n\tinfo =\
+    \ lookup_ip6_remote_endpoint(dst, 0);\n\tif (info && info->tunnel_endpoint !=\
+    \ 0 && !info->flag_skip_tunnel) {\n\t\ttunnel_endpoint = info->tunnel_endpoint;\n\
+    \t\tdst_sec_identity = info->sec_identity;\n\n\t\ttarget.addr = CONFIG(router_ipv6);\n\
+    \t}\n#endif\n\n\tret = lb6_extract_tuple(ctx, ip6, ETH_HLEN, fraginfo, &l4_off,\
+    \ &tuple);\n\tif (IS_ERR(ret))\n\t\tgoto drop_err;\n\n\tipv6_ct_tuple_swap_ports(&tuple);\n\
+    \ttuple.flags = TUPLE_F_OUT;\n\n\tret = ipv6_l3(ctx, ETH_HLEN, NULL, NULL, METRIC_EGRESS);\n\
+    \tif (unlikely(ret != CTX_ACT_OK))\n\t\tgoto drop_err;\n\n\tret = __snat_v6_nat(ctx,\
+    \ &tuple, fraginfo, l4_off, true,\n\t\t\t    &target, TCP_SPORT_OFF, &trace, &ext_err);\n\
+    \n// CONTEXT: static __always_inline int nodeport_lb6(struct __ctx_buff *ctx,\n\
+    \tbool is_svc_proto __maybe_unused = true;\n\tint ret, l3_off = ETH_HLEN, l4_off;\n\
+    \tstruct ipv6_ct_tuple tuple __align_stack_8 = {};\n\tstruct lb6_service *svc;\n\
+    \tstruct lb6_key key = {};\n\n\tcilium_capture_in(ctx);\n\n\tfraginfo = ipv6_get_fraginfo(ctx,\
+    \ ip6);\n\tif (fraginfo < 0)\n\t\treturn (int)fraginfo;\n\n\tret = lb6_extract_tuple(ctx,\
+    \ ip6, ETH_HLEN, fraginfo, &l4_off, &tuple);\n\tif (IS_ERR(ret)) {\n\t\tif (ret\
+    \ == DROP_UNSUPP_SERVICE_PROTO) {\n\t\t\tis_svc_proto = false;\n\t\t\tgoto skip_service_lookup;\n\
+    \t\t}\n\t\tif (ret == DROP_UNKNOWN_L4) {\n\t\t\tctx_set_xfer(ctx, XFER_PKT_NO_SVC);\n\
+    \t\t\treturn CTX_ACT_OK;\n\t\t}\n\t\treturn ret;\n\t}\n\n\n// CONTEXT: static\
+    \ __always_inline int encap_geneve_dsr_opt4(struct __ctx_buff *ctx, int l3_\n\t\
+    void *data, *data_end;\n\n\tbuild_bug_on((sizeof(gopt) % 4) != 0);\n\n\tif (has_encap)\
+    \ {\n\t\t/* point at the inner IPv4 header */\n\t\tif (!revalidate_data_l3_off(ctx,\
+    \ &data, &data_end, &ip4, encap_len + ETH_HLEN))\n\t\t\treturn DROP_INVALID;\n\
+    \n\t\tencap_len = 0;\n\t} else {\n\t\tstruct ipv4_ct_tuple tuple = {};\n\t\tfraginfo_t\
+    \ fraginfo;\n\t\tint l4_off, ret;\n\n\t\tfraginfo = ipfrag_encode_ipv4(ip4);\n\
+    \n\t\tret = lb4_extract_tuple(ctx, ip4, l3_off, fraginfo, &l4_off, &tuple);\n\t\
+    \tif (IS_ERR(ret))\n\t\t\treturn ret;\n\n\t\tsrc_port = tunnel_gen_src_port_v4(&tuple);\n\
+    \t}\n#endif\n\n\tinfo = lookup_ip4_remote_endpoint(ip4->daddr, 0);\n\tif (!info\
+    \ || info->tunnel_endpoint == 0)\n\t\treturn DROP_NO_TUNNEL_ENDPOINT;\n\n\ttunnel_endpoint\
+    \ = info->tunnel_endpoint;\n\n// CONTEXT: nodeport_rev_dnat_ingress_ipv4(struct\
+    \ __ctx_buff *ctx, struct trace_ctx *trace,\n\t__u32 dst_sec_identity __maybe_unused\
+    \ = 0;\n\t__u32 src_sec_identity __maybe_unused = SECLABEL;\n\tbool allow_neigh_map\
+    \ = true;\n\tfraginfo_t fraginfo;\n\t__u32 *vrf_id __maybe_unused = NULL;\n\t\
+    __u32 monitor = 0;\n\n\tif (!revalidate_data(ctx, &data, &data_end, &ip4))\n\t\
+    \treturn DROP_INVALID;\n\n\tfraginfo = ipfrag_encode_ipv4(ip4);\n\n\tret = lb4_extract_tuple(ctx,\
+    \ ip4, ETH_HLEN, fraginfo, &l4_off, &tuple);\n\tif (ret < 0) {\n\t\t/* If it's\
+    \ not a SVC protocol, we don't need to check for RevDNAT: */\n\t\tif (ret == DROP_UNSUPP_SERVICE_PROTO\
+    \ || ret == DROP_UNKNOWN_L4)\n\t\t\tgoto skip_revdnat;\n\n\t\treturn ret;\n\t\
+    }\n\n#if defined(ENABLE_SRV6) && defined(IS_BPF_LXC)\n\t/* Determine if packet\
+    \ belongs to a VRF before we do NAT.\n\t * This is needed because we determine\
+    \ the VRF membership\n\t * based on the source address of the packet. This should\n\
+    \n// CONTEXT: int tail_nodeport_nat_egress_ipv4(struct __ctx_buff *ctx)\n\tif\
+    \ (info && info->tunnel_endpoint != 0 && !info->flag_skip_tunnel) {\n\t\ttunnel_endpoint\
+    \ = info->tunnel_endpoint;\n\t\tdst_sec_identity = info->sec_identity;\n\n\t\t\
+    target.addr = IPV4_GATEWAY;\n#if defined(ENABLE_CLUSTER_AWARE_ADDRESSING) && defined(ENABLE_INTER_CLUSTER_SNAT)\n\
+    \t\tif (cluster_id && cluster_id != CLUSTER_ID)\n\t\t\ttarget.addr = IPV4_INTER_CLUSTER_SNAT;\n\
+    #endif\n\t}\n#endif\n\n\tret = lb4_extract_tuple(ctx, ip4, ETH_HLEN, fraginfo,\
+    \ &l4_off, &tuple);\n\tif (IS_ERR(ret))\n\t\tgoto drop_err;\n\n\t/* Extracted\
+    \ ports are in flipped order, but SNAT wants them to\n\t * match the packet header:\n\
+    \t */\n\tipv4_ct_tuple_swap_ports(&tuple);\n\ttuple.flags = TUPLE_F_OUT;\n\n\t\
+    ret = nodeport_nat_egress_ipv4_hook(ctx, ip4, dst_sec_identity, &tuple, l4_off,\
+    \ &ext_err);\n\tif (ret != CTX_ACT_OK)\n\t\treturn ret;\n\n// CONTEXT: static\
+    \ __always_inline int nodeport_lb4(struct __ctx_buff *ctx,\n{\n\tfraginfo_t fraginfo;\n\
+    \tstruct ipv4_ct_tuple tuple = {};\n\tbool is_svc_proto = true;\n\tstruct lb4_service\
+    \ *svc;\n\tstruct lb4_key key = {};\n\tint ret, l4_off;\n\n\tcilium_capture_in(ctx);\n\
+    \n\tfraginfo = ipfrag_encode_ipv4(ip4);\n\n\tret = lb4_extract_tuple(ctx, ip4,\
+    \ l3_off, fraginfo, &l4_off, &tuple);\n\tif (IS_ERR(ret)) {\n\t\tif (ret == DROP_UNSUPP_SERVICE_PROTO)\
+    \ {\n\t\t\tis_svc_proto = false;\n\t\t\tgoto skip_service_lookup;\n\t\t}\n\t\t\
+    if (ret == DROP_UNKNOWN_L4) {\n\t\t\tctx_set_xfer(ctx, XFER_PKT_NO_SVC);\n\t\t\
+    \treturn CTX_ACT_OK;\n\t\t}\n\t\treturn ret;\n\t}\n\n// FILE: bpf/lib/nodeport_egress.h\n\
+    // CONTEXT: nodeport_rev_dnat_fwd_ipv6(struct __ctx_buff *ctx, bool *snat_done,\n\
+    \tfraginfo_t fraginfo;\n\tstruct ipv6hdr *ip6;\n\t__u32 monitor = 0;\n\tint ret,\
+    \ l4_off;\n\n\tif (!revalidate_data(ctx, &data, &data_end, &ip6))\n\t\treturn\
+    \ DROP_INVALID;\n\n\tfraginfo = ipv6_get_fraginfo(ctx, ip6);\n\tif (fraginfo <\
+    \ 0)\n\t\treturn (int)fraginfo;\n\n\tret = lb6_extract_tuple(ctx, ip6, ETH_HLEN,\
+    \ fraginfo, &l4_off, &tuple);\n\tif (ret < 0) {\n\t\tif (ret == DROP_UNSUPP_SERVICE_PROTO\
+    \ || ret == DROP_UNKNOWN_L4)\n\t\t\treturn CTX_ACT_OK;\n\t\treturn ret;\n\t}\n\
+    \n\tnat_info = nodeport_rev_dnat_get_info_ipv6(ctx, &tuple);\n\tif (!nat_info)\n\
+    \t\treturn CTX_ACT_OK;\n\n#if defined(IS_BPF_HOST) && !defined(ENABLE_SKIP_FIB)\n\
+    \tif (revdnat_only)\n\n// CONTEXT: nodeport_rev_dnat_fwd_ipv4(struct __ctx_buff\
+    \ *ctx, bool *snat_done,\n\tstruct ipv4_ct_tuple tuple = {};\n\tstruct ct_state\
+    \ ct_state = {};\n\tvoid *data, *data_end;\n\tstruct iphdr *ip4;\n\tfraginfo_t\
+    \ fraginfo;\n\t__u32 monitor = 0;\n\n\tif (!revalidate_data(ctx, &data, &data_end,\
+    \ &ip4))\n\t\treturn DROP_INVALID;\n\n\tfraginfo = ipfrag_encode_ipv4(ip4);\n\n\
+    \tret = lb4_extract_tuple(ctx, ip4, ETH_HLEN, fraginfo, &l4_off, &tuple);\n\t\
+    if (ret < 0) {\n\t\t/* If it's not a SVC protocol, we don't need to check for\
+    \ RevDNAT: */\n\t\tif (ret == DROP_UNSUPP_SERVICE_PROTO || ret == DROP_UNKNOWN_L4)\n\
+    \t\t\treturn CTX_ACT_OK;\n\t\treturn ret;\n\t}\n\n\tnat_info = nodeport_rev_dnat_get_info_ipv4(ctx,\
+    \ &tuple);\n\tif (!nat_info)\n\t\treturn CTX_ACT_OK;\n\n#if defined(IS_BPF_HOST)\
+    \ && !defined(ENABLE_SKIP_FIB)\n\n// FILE: bpf/tests/tc_nodeport_lb4_dsr_backend.c\n\
+    // CONTEXT: int nodeport_dsr_backend_check(struct __ctx_buff *ctx)\n\n\tif (l4->dest\
+    \ != BACKEND_PORT)\n\t\ttest_fatal(\"dst port has changed\");\n\n\tif (l4->check\
+    \ != bpf_htons(0xd7d0))\n\t\ttest_fatal(\"L4 checksum is invalid: %x\", bpf_htons(l4->check));\n\
+    \n\tstruct ipv4_ct_tuple tuple;\n\tstruct ct_entry *ct_entry;\n\tint l4_off, ret;\n\
+    \n\tret = lb4_extract_tuple(ctx, l3, sizeof(*status_code) + ETH_HLEN,\n\t\t\t\t\
+    ipfrag_encode_ipv4(l3), &l4_off, &tuple);\n\tassert(!IS_ERR(ret));\n\n\ttuple.flags\
+    \ = TUPLE_F_IN;\n\tipv4_ct_tuple_reverse(&tuple);\n\n\tct_entry = map_lookup_elem(get_ct_map4(&tuple),\
+    \ &tuple);\n\tif (!ct_entry)\n\t\ttest_fatal(\"no CT entry for DSR found\");\n\
+    \tif (!ct_entry->dsr_internal)\n\t\ttest_fatal(\"CT entry doesn't have the .dsr_internal\
+    \ flag set\");\n\n\tstruct ipv4_nat_entry *nat_entry;\n\n// CONTEXT: int nodeport_dsr_backend_redirect_check(struct\
+    \ __ctx_buff *ctx)\n\n\tif (l4->dest != BACKEND_PORT)\n\t\ttest_fatal(\"dst port\
+    \ has changed\");\n\n\tif (l4->check != bpf_htons(0xcccf))\n\t\ttest_fatal(\"\
+    L4 checksum is invalid: %x\", bpf_htons(l4->check));\n\n\tstruct ipv4_ct_tuple\
+    \ tuple;\n\tstruct ct_entry *ct_entry;\n\tint l4_off, ret;\n\n\tret = lb4_extract_tuple(ctx,\
+    \ l3, sizeof(*status_code) + ETH_HLEN,\n\t\t\t\tipfrag_encode_ipv4(l3), &l4_off,\
+    \ &tuple);\n\tassert(!IS_ERR(ret));\n\n\ttuple.flags = TUPLE_F_IN;\n\tipv4_ct_tuple_reverse(&tuple);\n\
+    \n\tct_entry = map_lookup_elem(get_ct_map4(&tuple), &tuple);\n\tif (!ct_entry)\n\
+    \t\ttest_fatal(\"no CT entry for DSR found\");\n\tif (!ct_entry->dsr_internal)\n\
+    \t\ttest_fatal(\"CT entry doesn't have the .dsr_internal flag set\");\n\n\tstruct\
+    \ ipv4_nat_entry *nat_entry;\n\n// FILE: bpf/tests/tc_nodeport_lb6_dsr_backend.c\n\
+    // CONTEXT: int nodeport_dsr_backend_check(struct __ctx_buff *ctx)\n\t\ttest_fatal(\"\
+    port in DSR extension has changed\")\n\tif (!ipv6_addr_equals((union v6addr *)&opt->addr,\
+    \ &frontend_ip))\n\t\ttest_fatal(\"addr in DSR extension has changed\")\n\n\t\
+    if (l4->source != CLIENT_PORT)\n\t\ttest_fatal(\"src port has changed\");\n\n\t\
+    if (l4->dest != BACKEND_PORT)\n\t\ttest_fatal(\"dst port has changed\");\n\n\t\
+    struct ipv6_ct_tuple tuple __align_stack_8;\n\tstruct ct_entry *ct_entry;\n\t\
+    fraginfo_t fraginfo;\n\tint l4_off, ret;\n\n\tfraginfo = ipv6_get_fraginfo(ctx,\
+    \ l3);\n\tif (fraginfo < 0)\n\t\treturn (int)fraginfo;\n\n\tret = lb6_extract_tuple(ctx,\
+    \ l3, sizeof(*status_code) + ETH_HLEN,\n\t\t\t\tfraginfo, &l4_off, &tuple);\n\t\
+    assert(!IS_ERR(ret));\n\n\ttuple.flags = TUPLE_F_IN;\n\tipv6_ct_tuple_reverse(&tuple);\n\
+    \n\tct_entry = map_lookup_elem(get_ct_map6(&tuple), &tuple);\n\tif (!ct_entry)\n\
+    \t\ttest_fatal(\"no CT entry for DSR found\");\n\tif (!ct_entry->dsr_internal)\n\
+    \t\ttest_fatal(\"CT entry doesn't have the .dsr_internal flag set\");\n\n\tstruct\
+    \ ipv6_nat_entry *nat_entry;"
+  diff_summary: |-
+    bpf/bpf_lxc.c:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: static __always_inline int __per_packet_lb_svc_xlate_4(void *ctx, struct iphdr *, static __always_inline int __per_packet_lb_svc_xlate_6(void *ctx, struct ipv6hdr.
+    bpf/lib/lb.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: lb6_key_set_protocol(struct lb6_key *key __maybe_unused,, static __always_inline void.
+    bpf/lib/nodeport.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: static __always_inline int encap_geneve_dsr_opt6(struct __ctx_buff *ctx,, nodeport_rev_dnat_ingress_ipv6(struct __ctx_buff *ctx, struct trace_ctx *trace,, int tail_nodeport_nat_egress_ipv6(struct __ctx_buff *ctx).
+    bpf/lib/nodeport_egress.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: nodeport_rev_dnat_fwd_ipv6(struct __ctx_buff *ctx, bool *snat_done,, nodeport_rev_dnat_fwd_ipv4(struct __ctx_buff *ctx, bool *snat_done,.
+    bpf/tests/tc_nodeport_lb4_dsr_backend.c:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: int nodeport_dsr_backend_check(struct __ctx_buff *ctx), int nodeport_dsr_backend_redirect_check(struct __ctx_buff *ctx).
+    bpf/tests/tc_nodeport_lb6_dsr_backend.c:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: int nodeport_dsr_backend_check(struct __ctx_buff *ctx).
+    - Commit subject: bpf: Pass fraginfo to lb6_extract_tuple.

@@ -1,0 +1,241 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-libbpf-c3f58eb6cfc8
+source_kind: github_commit
+source:
+  url: https://github.com/libbpf/libbpf/commit/c3f58eb6cfc8c324c7e378ed4fcd3b5e6932dbc6
+  title: 'libbpf: Fix up verifier log for unguarded failed CO-RE relos'
+  repository: https://github.com/libbpf/libbpf
+  commit: c3f58eb6cfc8c324c7e378ed4fcd3b5e6932dbc6
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-libbpf-c3f58eb6cfc8.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: missing_source
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Raw has_verifier_log=false, source_snippet_count=0. The diff post-processes
+    verifier logs for poisoned failed CO-RE relocations matching invalid func unknown#195896080,
+    but the raw record contains only libbpf/relo_core log-fixup code and no BPF object
+    with the unguarded failing CO-RE relocation.
+raw:
+  case_id: github-commit-libbpf-c3f58eb6cfc8
+  source: github_commits
+  repository: https://github.com/libbpf/libbpf
+  commit_hash: c3f58eb6cfc8c324c7e378ed4fcd3b5e6932dbc6
+  commit_message: 'libbpf: Fix up verifier log for unguarded failed CO-RE relos'
+  commit_date: '2022-04-25'
+  fix_type: null_check
+  buggy_code: "// FILE: src/libbpf.c\n// CONTEXT: static int record_relo_core(struct\
+    \ bpf_program *prog,\n\t\t\t\t    prog->nr_reloc + 1, sizeof(*relos));\n\tif (!relos)\n\
+    \t\treturn -ENOMEM;\n\trelo = &relos[prog->nr_reloc];\n\trelo->type = RELO_CORE;\n\
+    \trelo->insn_idx = insn_idx;\n\trelo->core_relo = core_relo;\n\tprog->reloc_desc\
+    \ = relos;\n\tprog->nr_reloc++;\n\treturn 0;\n}\n\nstatic int bpf_core_resolve_relo(struct\
+    \ bpf_program *prog,\n\t\t\t\t const struct bpf_core_relo *relo,\n\t\t\t\t int\
+    \ relo_idx,\n\t\t\t\t const struct btf *local_btf,\n\t\t\t\t struct hashmap *cand_cache,\n\
+    \t\t\t\t struct bpf_core_relo_res *targ_res)\n{\n\tstruct bpf_core_spec specs_scratch[3]\
+    \ = {};\n\tconst void *type_key = u32_as_hash_key(relo->type_id);\n\tstruct bpf_core_cand_list\
+    \ *cands = NULL;\n\tconst char *prog_name = prog->name;\n\tconst struct btf_type\
+    \ *local_type;\n\n// CONTEXT: static int libbpf_prepare_prog_load(struct bpf_program\
+    \ *prog,\n\n\t\t/* but by now libbpf common logic is not utilizing\n\t\t * prog->atach_btf_obj_fd/prog->attach_btf_id\
+    \ anymore because\n\t\t * this callback is called after opts were populated by\n\
+    \t\t * libbpf, so this callback has to update opts explicitly here\n\t\t */\n\t\
+    \topts->attach_btf_obj_fd = btf_obj_fd;\n\t\topts->attach_btf_id = btf_type_id;\n\
+    \t}\n\treturn 0;\n}\n\nstatic int bpf_object_load_prog_instance(struct bpf_object\
+    \ *obj, struct bpf_program *prog,\n\t\t\t\t\t struct bpf_insn *insns, int insns_cnt,\n\
+    \t\t\t\t\t const char *license, __u32 kern_version,\n\t\t\t\t\t int *prog_fd)\n\
+    {\n\tLIBBPF_OPTS(bpf_prog_load_opts, load_attr);\n\tconst char *prog_name = NULL;\n\
+    \tchar *cp, errmsg[STRERR_BUFSIZE];\n\tsize_t log_buf_size = 0;\n\tchar *log_buf\
+    \ = NULL, *tmp;\n\tint btf_fd, ret, err;\n\tbool own_log_buf = true;\n\n// CONTEXT:\
+    \ retry_load:\n\t}\n\t/* On ENOSPC, increase log buffer size and retry, unless\
+    \ custom\n\t * log_buf is specified.\n\t * Be careful to not overflow u32, though.\
+    \ Kernel's log buf size limit\n\t * isn't part of UAPI so it can always be bumped\
+    \ to full 4GB. So don't\n\t * multiply by 2 unless we are sure we'll fit within\
+    \ 32 bits.\n\t * Currently, we'll get -EINVAL when we reach (UINT_MAX >> 2).\n\
+    \t */\n\tif (own_log_buf && errno == ENOSPC && log_buf_size <= UINT_MAX / 2)\n\
+    \t\tgoto retry_load;\n\n\tret = -errno;\n\tcp = libbpf_strerror_r(errno, errmsg,\
+    \ sizeof(errmsg));\n\tpr_warn(\"prog '%s': BPF program load failed: %s\\n\", prog->name,\
+    \ cp);\n\tpr_perm_msg(ret);\n\n\tif (own_log_buf && log_buf && log_buf[0] != '\\\
+    0') {\n\t\tpr_warn(\"prog '%s': -- BEGIN PROG LOAD LOG --\\n%s-- END PROG LOAD\
+    \ LOG --\\n\",\n\t\t\tprog->name, log_buf);\n\t}\n\nout:\n\tif (own_log_buf)\n\
+    \t\tfree(log_buf);\n\treturn ret;\n}\n\nstatic int bpf_program_record_relos(struct\
+    \ bpf_program *prog)\n{\n\tstruct bpf_object *obj = prog->obj;\n\tint i;\n\n\t\
+    for (i = 0; i < prog->nr_reloc; i++) {\n\t\tstruct reloc_desc *relo = &prog->reloc_desc[i];\n\
+    \t\tstruct extern_desc *ext = &obj->externs[relo->sym_off];\n\n\t\tswitch (relo->type)\
+    \ {\n\t\tcase RELO_EXTERN_VAR:\n\t\t\tif (ext->type != EXT_KSYM)\n\n// FILE: src/relo_core.c\n\
+    // CONTEXT: static bool core_relo_is_enumval_based(enum bpf_core_relo_kind kind)\n\
+    \ * High-level spec will capture only 3 points:\n *   - intial zero-index access\
+    \ by pointer (&s->... is the same as &s[0]...);\n *   - field 'a' access (corresponds\
+    \ to '2' in low-level spec);\n *   - array element #3 access (corresponds to '3'\
+    \ in low-level spec).\n *\n * Type-based relocations (TYPE_EXISTS/TYPE_SIZE,\n\
+    \ * TYPE_ID_LOCAL/TYPE_ID_TARGET) don't capture any field information. Their\n\
+    \ * spec and raw_spec are kept empty.\n *\n * Enum value-based relocations (ENUMVAL_EXISTS/ENUMVAL_VALUE)\
+    \ use access\n * string to specify enumerator's value index that need to be relocated.\n\
+    \ */\nstatic int bpf_core_parse_spec(const char *prog_name, const struct btf *btf,\n\
+    \t\t\t       const struct bpf_core_relo *relo,\n\t\t\t       struct bpf_core_spec\
+    \ *spec)\n{\n\tint access_idx, parsed_len, i;\n\tstruct bpf_core_accessor *acc;\n\
+    \tconst struct btf_type *t;\n\tconst char *name, *spec_str;\n\t__u32 id;\n\t__s64\
+    \ sz;\n\n\tspec_str = btf__name_by_offset(btf, relo->access_str_off);\n\tif (str_is_empty(spec_str)\
+    \ || *spec_str == ':')\n\t\treturn -EINVAL;\n\n\n// CONTEXT: poison:\n\t\t\tprog_name,\
+    \ relo_idx, insn_idx, insn->code,\n\t\t\tinsn->src_reg, insn->dst_reg, insn->off,\
+    \ insn->imm);\n\t\treturn -EINVAL;\n\t}\n\n\treturn 0;\n}\n\n/* Output spec definition\
+    \ in the format:\n * [<type-id>] (<type-name>) + <raw-spec> => <offset>@<spec>,\n\
+    \ * where <spec> is a C-syntax view of recorded field access, e.g.: x.a[3].b\n\
+    \ */\nstatic int bpf_core_format_spec(char *buf, size_t buf_sz, const struct bpf_core_spec\
+    \ *spec)\n{\n\tconst struct btf_type *t;\n\tconst struct btf_enum *e;\n\tconst\
+    \ char *s;\n\t__u32 type_id;\n\tint i, len = 0;\n\n#define append_buf(fmt, args...)\t\
+    \t\t\t\\\n\t({\t\t\t\t\t\t\t\\\n\t\tint r;\t\t\t\t\t\t\\\n\t\tr = snprintf(buf,\
+    \ buf_sz, fmt, ##args);\t\t\\\n\t\tlen += r;\t\t\t\t\t\\\n\n// FILE: src/relo_core.h\n\
+    // CONTEXT: size_t bpf_core_essential_name_len(const char *name);\n\nint bpf_core_calc_relo_insn(const\
+    \ char *prog_name,\n\t\t\t    const struct bpf_core_relo *relo, int relo_idx,\n\
+    \t\t\t    const struct btf *local_btf,\n\t\t\t    struct bpf_core_cand_list *cands,\n\
+    \t\t\t    struct bpf_core_spec *specs_scratch,\n\t\t\t    struct bpf_core_relo_res\
+    \ *targ_res);\n\nint bpf_core_patch_insn(const char *prog_name, struct bpf_insn\
+    \ *insn,\n\t\t\tint insn_idx, const struct bpf_core_relo *relo,\n\t\t\tint relo_idx,\
+    \ const struct bpf_core_relo_res *res);\n\n#endif"
+  fixed_code: "// FILE: src/libbpf.c\n// CONTEXT: static int record_relo_core(struct\
+    \ bpf_program *prog,\n\t\t\t\t    prog->nr_reloc + 1, sizeof(*relos));\n\tif (!relos)\n\
+    \t\treturn -ENOMEM;\n\trelo = &relos[prog->nr_reloc];\n\trelo->type = RELO_CORE;\n\
+    \trelo->insn_idx = insn_idx;\n\trelo->core_relo = core_relo;\n\tprog->reloc_desc\
+    \ = relos;\n\tprog->nr_reloc++;\n\treturn 0;\n}\n\nstatic const struct bpf_core_relo\
+    \ *find_relo_core(struct bpf_program *prog, int insn_idx)\n{\n\tstruct reloc_desc\
+    \ *relo;\n\tint i;\n\n\tfor (i = 0; i < prog->nr_reloc; i++) {\n\t\trelo = &prog->reloc_desc[i];\n\
+    \t\tif (relo->type != RELO_CORE || relo->insn_idx != insn_idx)\n\t\t\tcontinue;\n\
+    \n\t\treturn relo->core_relo;\n\t}\n\n\treturn NULL;\n}\n\nstatic int bpf_core_resolve_relo(struct\
+    \ bpf_program *prog,\n\t\t\t\t const struct bpf_core_relo *relo,\n\t\t\t\t int\
+    \ relo_idx,\n\t\t\t\t const struct btf *local_btf,\n\t\t\t\t struct hashmap *cand_cache,\n\
+    \t\t\t\t struct bpf_core_relo_res *targ_res)\n{\n\tstruct bpf_core_spec specs_scratch[3]\
+    \ = {};\n\tconst void *type_key = u32_as_hash_key(relo->type_id);\n\tstruct bpf_core_cand_list\
+    \ *cands = NULL;\n\tconst char *prog_name = prog->name;\n\tconst struct btf_type\
+    \ *local_type;\n\n// CONTEXT: static int libbpf_prepare_prog_load(struct bpf_program\
+    \ *prog,\n\n\t\t/* but by now libbpf common logic is not utilizing\n\t\t * prog->atach_btf_obj_fd/prog->attach_btf_id\
+    \ anymore because\n\t\t * this callback is called after opts were populated by\n\
+    \t\t * libbpf, so this callback has to update opts explicitly here\n\t\t */\n\t\
+    \topts->attach_btf_obj_fd = btf_obj_fd;\n\t\topts->attach_btf_id = btf_type_id;\n\
+    \t}\n\treturn 0;\n}\n\nstatic void fixup_verifier_log(struct bpf_program *prog,\
+    \ char *buf, size_t buf_sz);\n\nstatic int bpf_object_load_prog_instance(struct\
+    \ bpf_object *obj, struct bpf_program *prog,\n\t\t\t\t\t struct bpf_insn *insns,\
+    \ int insns_cnt,\n\t\t\t\t\t const char *license, __u32 kern_version,\n\t\t\t\t\
+    \t int *prog_fd)\n{\n\tLIBBPF_OPTS(bpf_prog_load_opts, load_attr);\n\tconst char\
+    \ *prog_name = NULL;\n\tchar *cp, errmsg[STRERR_BUFSIZE];\n\tsize_t log_buf_size\
+    \ = 0;\n\tchar *log_buf = NULL, *tmp;\n\tint btf_fd, ret, err;\n\tbool own_log_buf\
+    \ = true;\n\n// CONTEXT: retry_load:\n\t}\n\t/* On ENOSPC, increase log buffer\
+    \ size and retry, unless custom\n\t * log_buf is specified.\n\t * Be careful to\
+    \ not overflow u32, though. Kernel's log buf size limit\n\t * isn't part of UAPI\
+    \ so it can always be bumped to full 4GB. So don't\n\t * multiply by 2 unless\
+    \ we are sure we'll fit within 32 bits.\n\t * Currently, we'll get -EINVAL when\
+    \ we reach (UINT_MAX >> 2).\n\t */\n\tif (own_log_buf && errno == ENOSPC && log_buf_size\
+    \ <= UINT_MAX / 2)\n\t\tgoto retry_load;\n\n\tret = -errno;\n\n\t/* post-process\
+    \ verifier log to improve error descriptions */\n\tfixup_verifier_log(prog, log_buf,\
+    \ log_buf_size);\n\n\tcp = libbpf_strerror_r(errno, errmsg, sizeof(errmsg));\n\
+    \tpr_warn(\"prog '%s': BPF program load failed: %s\\n\", prog->name, cp);\n\t\
+    pr_perm_msg(ret);\n\n\tif (own_log_buf && log_buf && log_buf[0] != '\\0') {\n\t\
+    \tpr_warn(\"prog '%s': -- BEGIN PROG LOAD LOG --\\n%s-- END PROG LOAD LOG --\\\
+    n\",\n\t\t\tprog->name, log_buf);\n\t}\n\nout:\n\tif (own_log_buf)\n\t\tfree(log_buf);\n\
+    \treturn ret;\n}\n\nstatic char *find_prev_line(char *buf, char *cur)\n{\n\tchar\
+    \ *p;\n\n\tif (cur == buf) /* end of a log buf */\n\t\treturn NULL;\n\n\tp = cur\
+    \ - 1;\n\twhile (p - 1 >= buf && *(p - 1) != '\\n')\n\t\tp--;\n\n\treturn p;\n\
+    }\n\nstatic void patch_log(char *buf, size_t buf_sz, size_t log_sz,\n\t\t    \
+    \  char *orig, size_t orig_sz, const char *patch)\n{\n\t/* size of the remaining\
+    \ log content to the right from the to-be-replaced part */\n\tsize_t rem_sz =\
+    \ (buf + log_sz) - (orig + orig_sz);\n\tsize_t patch_sz = strlen(patch);\n\n\t\
+    if (patch_sz != orig_sz) {\n\t\t/* If patch line(s) are longer than original piece\
+    \ of verifier log,\n\t\t * shift log contents by (patch_sz - orig_sz) bytes to\
+    \ the right\n\t\t * starting from after to-be-replaced part of the log.\n\t\t\
+    \ *\n\t\t * If patch line(s) are shorter than original piece of verifier log,\n\
+    \t\t * shift log contents by (orig_sz - patch_sz) bytes to the left\n\t\t * starting\
+    \ from after to-be-replaced part of the log\n\t\t *\n\t\t * We need to be careful\
+    \ about not overflowing available\n\t\t * buf_sz capacity. If that's the case,\
+    \ we'll truncate the end\n\t\t * of the original log, as necessary.\n\t\t */\n\
+    \t\tif (patch_sz > orig_sz) {\n\t\t\tif (orig + patch_sz >= buf + buf_sz) {\n\t\
+    \t\t\t/* patch is big enough to cover remaining space completely */\n\t\t\t\t\
+    patch_sz -= (orig + patch_sz) - (buf + buf_sz) + 1;\n\t\t\t\trem_sz = 0;\n\t\t\
+    \t} else if (patch_sz - orig_sz > buf_sz - log_sz) {\n\t\t\t\t/* patch causes\
+    \ part of remaining log to be truncated */\n\t\t\t\trem_sz -= (patch_sz - orig_sz)\
+    \ - (buf_sz - log_sz);\n\t\t\t}\n\t\t}\n\t\t/* shift remaining log to the right\
+    \ by calculated amount */\n\t\tmemmove(orig + patch_sz, orig + orig_sz, rem_sz);\n\
+    \t}\n\n\tmemcpy(orig, patch, patch_sz);\n}\n\nstatic void fixup_log_failed_core_relo(struct\
+    \ bpf_program *prog,\n\t\t\t\t       char *buf, size_t buf_sz, size_t log_sz,\n\
+    \t\t\t\t       char *line1, char *line2, char *line3)\n{\n\t/* Expected log for\
+    \ failed and not properly guarded CO-RE relocation:\n\t * line1 -> 123: (85) call\
+    \ unknown#195896080\n\t * line2 -> invalid func unknown#195896080\n\t * line3\
+    \ -> <anything else or end of buffer>\n\t *\n\t * \"123\" is the index of the\
+    \ instruction that was poisoned. We extract\n\t * instruction index to find corresponding\
+    \ CO-RE relocation and\n\t * replace this part of the log with more relevant information\
+    \ about\n\t * failed CO-RE relocation.\n\t */\n\tconst struct bpf_core_relo *relo;\n\
+    \tstruct bpf_core_spec spec;\n\tchar patch[512], spec_buf[256];\n\tint insn_idx,\
+    \ err;\n\n\tif (sscanf(line1, \"%d: (%*d) call unknown#195896080\\n\", &insn_idx)\
+    \ != 1)\n\t\treturn;\n\n\trelo = find_relo_core(prog, insn_idx);\n\tif (!relo)\n\
+    \t\treturn;\n\n\terr = bpf_core_parse_spec(prog->name, prog->obj->btf, relo, &spec);\n\
+    \tif (err)\n\t\treturn;\n\n\tbpf_core_format_spec(spec_buf, sizeof(spec_buf),\
+    \ &spec);\n\tsnprintf(patch, sizeof(patch),\n\t\t \"%d: <invalid CO-RE relocation>\\\
+    n\"\n\t\t \"failed to resolve CO-RE relocation %s\\n\",\n\t\t insn_idx, spec_buf);\n\
+    \n\tpatch_log(buf, buf_sz, log_sz, line1, line3 - line1, patch);\n}\n\nstatic\
+    \ void fixup_verifier_log(struct bpf_program *prog, char *buf, size_t buf_sz)\n\
+    {\n\t/* look for familiar error patterns in last N lines of the log */\n\tconst\
+    \ size_t max_last_line_cnt = 10;\n\tchar *prev_line, *cur_line, *next_line;\n\t\
+    size_t log_sz;\n\tint i;\n\n\tif (!buf)\n\t\treturn;\n\n\tlog_sz = strlen(buf)\
+    \ + 1;\n\tnext_line = buf + log_sz - 1;\n\n\tfor (i = 0; i < max_last_line_cnt;\
+    \ i++, next_line = cur_line) {\n\t\tcur_line = find_prev_line(buf, next_line);\n\
+    \t\tif (!cur_line)\n\t\t\treturn;\n\n\t\t/* failed CO-RE relocation case */\n\t\
+    \tif (str_has_pfx(cur_line, \"invalid func unknown#195896080\\n\")) {\n\t\t\t\
+    prev_line = find_prev_line(buf, cur_line);\n\t\t\tif (!prev_line)\n\t\t\t\tcontinue;\n\
+    \n\t\t\tfixup_log_failed_core_relo(prog, buf, buf_sz, log_sz,\n\t\t\t\t\t\t  \
+    \ prev_line, cur_line, next_line);\n\t\t\treturn;\n\t\t}\n\t}\n}\n\nstatic int\
+    \ bpf_program_record_relos(struct bpf_program *prog)\n{\n\tstruct bpf_object *obj\
+    \ = prog->obj;\n\tint i;\n\n\tfor (i = 0; i < prog->nr_reloc; i++) {\n\t\tstruct\
+    \ reloc_desc *relo = &prog->reloc_desc[i];\n\t\tstruct extern_desc *ext = &obj->externs[relo->sym_off];\n\
+    \n\t\tswitch (relo->type) {\n\t\tcase RELO_EXTERN_VAR:\n\t\t\tif (ext->type !=\
+    \ EXT_KSYM)\n\n// FILE: src/relo_core.c\n// CONTEXT: static bool core_relo_is_enumval_based(enum\
+    \ bpf_core_relo_kind kind)\n * High-level spec will capture only 3 points:\n *\
+    \   - intial zero-index access by pointer (&s->... is the same as &s[0]...);\n\
+    \ *   - field 'a' access (corresponds to '2' in low-level spec);\n *   - array\
+    \ element #3 access (corresponds to '3' in low-level spec).\n *\n * Type-based\
+    \ relocations (TYPE_EXISTS/TYPE_SIZE,\n * TYPE_ID_LOCAL/TYPE_ID_TARGET) don't\
+    \ capture any field information. Their\n * spec and raw_spec are kept empty.\n\
+    \ *\n * Enum value-based relocations (ENUMVAL_EXISTS/ENUMVAL_VALUE) use access\n\
+    \ * string to specify enumerator's value index that need to be relocated.\n */\n\
+    int bpf_core_parse_spec(const char *prog_name, const struct btf *btf,\n\t\t\t\
+    const struct bpf_core_relo *relo,\n\t\t\tstruct bpf_core_spec *spec)\n{\n\tint\
+    \ access_idx, parsed_len, i;\n\tstruct bpf_core_accessor *acc;\n\tconst struct\
+    \ btf_type *t;\n\tconst char *name, *spec_str;\n\t__u32 id;\n\t__s64 sz;\n\n\t\
+    spec_str = btf__name_by_offset(btf, relo->access_str_off);\n\tif (str_is_empty(spec_str)\
+    \ || *spec_str == ':')\n\t\treturn -EINVAL;\n\n\n// CONTEXT: poison:\n\t\t\tprog_name,\
+    \ relo_idx, insn_idx, insn->code,\n\t\t\tinsn->src_reg, insn->dst_reg, insn->off,\
+    \ insn->imm);\n\t\treturn -EINVAL;\n\t}\n\n\treturn 0;\n}\n\n/* Output spec definition\
+    \ in the format:\n * [<type-id>] (<type-name>) + <raw-spec> => <offset>@<spec>,\n\
+    \ * where <spec> is a C-syntax view of recorded field access, e.g.: x.a[3].b\n\
+    \ */\nint bpf_core_format_spec(char *buf, size_t buf_sz, const struct bpf_core_spec\
+    \ *spec)\n{\n\tconst struct btf_type *t;\n\tconst struct btf_enum *e;\n\tconst\
+    \ char *s;\n\t__u32 type_id;\n\tint i, len = 0;\n\n#define append_buf(fmt, args...)\t\
+    \t\t\t\\\n\t({\t\t\t\t\t\t\t\\\n\t\tint r;\t\t\t\t\t\t\\\n\t\tr = snprintf(buf,\
+    \ buf_sz, fmt, ##args);\t\t\\\n\t\tlen += r;\t\t\t\t\t\\\n\n// FILE: src/relo_core.h\n\
+    // CONTEXT: size_t bpf_core_essential_name_len(const char *name);\n\nint bpf_core_calc_relo_insn(const\
+    \ char *prog_name,\n\t\t\t    const struct bpf_core_relo *relo, int relo_idx,\n\
+    \t\t\t    const struct btf *local_btf,\n\t\t\t    struct bpf_core_cand_list *cands,\n\
+    \t\t\t    struct bpf_core_spec *specs_scratch,\n\t\t\t    struct bpf_core_relo_res\
+    \ *targ_res);\n\nint bpf_core_patch_insn(const char *prog_name, struct bpf_insn\
+    \ *insn,\n\t\t\tint insn_idx, const struct bpf_core_relo *relo,\n\t\t\tint relo_idx,\
+    \ const struct bpf_core_relo_res *res);\n\nint bpf_core_parse_spec(const char\
+    \ *prog_name, const struct btf *btf,\n\t\t        const struct bpf_core_relo *relo,\n\
+    \t\t        struct bpf_core_spec *spec);\n\nint bpf_core_format_spec(char *buf,\
+    \ size_t buf_sz, const struct bpf_core_spec *spec);\n\n#endif"
+  diff_summary: |-
+    src/libbpf.c:
+    - Added an explicit null guard before the dereference on all verifier-visible paths.
+    - Affected context: static int record_relo_core(struct bpf_program *prog,, static int libbpf_prepare_prog_load(struct bpf_program *prog,, retry_load:.
+    src/relo_core.c:
+    - Added an explicit null guard before the dereference on all verifier-visible paths.
+    - Affected context: static bool core_relo_is_enumval_based(enum bpf_core_relo_kind kind), poison:.
+    src/relo_core.h:
+    - Added an explicit null guard before the dereference on all verifier-visible paths.
+    - Affected context: size_t bpf_core_essential_name_len(const char *name);.
+    - Commit subject: libbpf: Fix up verifier log for unguarded failed CO-RE relos.

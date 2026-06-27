@@ -1,0 +1,61 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-52b565fa30cb
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/52b565fa30cba718ac76163ab2db6ae7c640f763
+  title: 'bpf: fix undefined behaviour in encode_custom_prog_meta()'
+  repository: https://github.com/cilium/cilium
+  commit: 52b565fa30cba718ac76163ab2db6ae7c640f763
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-52b565fa30cb.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Fixes C undefined behavior in metadata encoding by casting before a shift.
+    The raw record does not identify a kernel verifier rejection.
+raw:
+  case_id: github-commit-cilium-52b565fa30cb
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: 52b565fa30cba718ac76163ab2db6ae7c640f763
+  commit_message: 'bpf: fix undefined behaviour in encode_custom_prog_meta()'
+  commit_date: '2021-03-26'
+  fix_type: inline_hint
+  buggy_code: "// FILE: bpf/bpf_lxc.c\n// CONTEXT: static __always_inline bool redirect_to_proxy(int\
+    \ verdict, __u8 dir)\n */\nstatic __always_inline int\nencode_custom_prog_meta(struct\
+    \ __ctx_buff *ctx, int ret, __u32 identity)\n{\n\t__u32 custom_meta = 0;\n\n\t\
+    /* If we cannot encode return value on 8 bits, return an error so we can\n\t *\
+    \ skip the tail call entirely, as custom program has no way to return\n\t * expected\
+    \ value and datapath logics will break.\n\t */\n\tif ((ret & 0xff) != ret)\n\t\
+    \treturn -1;\n\tcustom_meta |= (ret & 0xff) << 24;\n\tcustom_meta |= (identity\
+    \ & 0xffffff);\n\tctx_store_meta(ctx, CB_CUSTOM_CALLS, custom_meta);\n\treturn\
+    \ 0;\n}\n#endif\n\n#ifdef ENABLE_IPV6\nstatic __always_inline int ipv6_l3_from_lxc(struct\
+    \ __ctx_buff *ctx,\n\t\t\t\t\t    struct ipv6_ct_tuple *tuple,\n\t\t\t\t\t   \
+    \ int l3_off, struct ipv6hdr *ip6,\n\t\t\t\t\t    __u32 *dstID)\n{"
+  fixed_code: "// FILE: bpf/bpf_lxc.c\n// CONTEXT: static __always_inline bool redirect_to_proxy(int\
+    \ verdict, __u8 dir)\n */\nstatic __always_inline int\nencode_custom_prog_meta(struct\
+    \ __ctx_buff *ctx, int ret, __u32 identity)\n{\n\t__u32 custom_meta = 0;\n\n\t\
+    /* If we cannot encode return value on 8 bits, return an error so we can\n\t *\
+    \ skip the tail call entirely, as custom program has no way to return\n\t * expected\
+    \ value and datapath logics will break.\n\t */\n\tif ((ret & 0xff) != ret)\n\t\
+    \treturn -1;\n\tcustom_meta |= (__u32)(ret & 0xff) << 24;\n\tcustom_meta |= (identity\
+    \ & 0xffffff);\n\tctx_store_meta(ctx, CB_CUSTOM_CALLS, custom_meta);\n\treturn\
+    \ 0;\n}\n#endif\n\n#ifdef ENABLE_IPV6\nstatic __always_inline int ipv6_l3_from_lxc(struct\
+    \ __ctx_buff *ctx,\n\t\t\t\t\t    struct ipv6_ct_tuple *tuple,\n\t\t\t\t\t   \
+    \ int l3_off, struct ipv6hdr *ip6,\n\t\t\t\t\t    __u32 *dstID)\n{"
+  diff_summary: |-
+    bpf/bpf_lxc.c:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: static __always_inline bool redirect_to_proxy(int verdict, __u8 dir).
+    - Commit subject: bpf: fix undefined behaviour in encode_custom_prog_meta().

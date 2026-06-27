@@ -1,0 +1,177 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-bcc-b0f891d129a9
+source_kind: github_commit
+source:
+  url: https://github.com/iovisor/bcc/commit/b0f891d129a9b372e7e8af5b951a1b63985afe26
+  title: Force udst ctx->#reg load to be volatile
+  repository: https://github.com/iovisor/bcc
+  commit: b0f891d129a9b372e7e8af5b951a1b63985afe26
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-bcc-b0f891d129a9.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: environment_required
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: USDT context-register load volatility/inline generation change; no captured
+    verifier log or faithful generated rejected program.
+  verifier_status: null
+  captured_error: null
+  verifier_error_match: null
+raw:
+  case_id: github-commit-bcc-b0f891d129a9
+  source: github_commits
+  repository: https://github.com/iovisor/bcc
+  commit_hash: b0f891d129a9b372e7e8af5b951a1b63985afe26
+  commit_message: Force udst ctx->#reg load to be volatile
+  commit_date: '2017-05-30'
+  fix_type: inline_hint
+  buggy_code: |-
+    // FILE: src/cc/usdt.cc
+    // CONTEXT: std::string Probe::largest_arg_type(size_t arg_n) {
+
+    bool Probe::usdt_getarg(std::ostream &stream) {
+      const size_t arg_count = locations_[0].arguments_.size();
+
+      if (!attached_to_)
+        return false;
+
+      if (arg_count == 0)
+        return true;
+
+      for (size_t arg_n = 0; arg_n < arg_count; ++arg_n) {
+        std::string ctype = largest_arg_type(arg_n);
+        std::string cptr = tfm::format("*((volatile %s *)dest)", ctype);
+
+        tfm::format(stream,
+                    "static __always_inline int _bpf_readarg_%s_%d("
+                    "struct pt_regs *ctx, void *dest, size_t len) {\n"
+                    "  if (len != sizeof(%s)) return -1;\n",
+                    attached_to_.value(), arg_n + 1, ctype);
+
+        if (locations_.size() == 1) {
+          Location &location = locations_.front();
+          stream << "  ";
+          if (!location.arguments_[arg_n].assign_to_local(stream, cptr, bin_path_,
+                                                          pid_))
+
+    // FILE: src/cc/usdt_args.cc
+    // CONTEXT: bool Argument::get_global_address(uint64_t *address, const std::string &binpath,
+    }
+
+    bool Argument::assign_to_local(std::ostream &stream,
+                                   const std::string &local_name,
+                                   const std::string &binpath,
+                                   const optional<int> &pid) const {
+      if (constant_) {
+        tfm::format(stream, "%s = %d;", local_name, *constant_);
+        return true;
+      }
+
+      if (!deref_offset_) {
+        tfm::format(stream, "%s = (%s)ctx->%s;", local_name, ctype(),
+                    *base_register_name_);
+        return true;
+      }
+
+      if (deref_offset_ && !deref_ident_) {
+        tfm::format(stream, "{ u64 __addr = ctx->%s + (%d)",
+                    *base_register_name_, *deref_offset_);
+        if (index_register_name_) {
+          int scale = scale_.value_or(1);
+          tfm::format(stream, " + (ctx->%s * %d);", *index_register_name_, scale);
+        } else {
+          tfm::format(stream, ";");
+        }
+        tfm::format(stream,
+                    "%s __res = 0x0; "
+                    "bpf_probe_read(&__res, sizeof(__res), (void *)__addr); "
+                    "%s = __res; }",
+                    ctype(), local_name);
+        return true;
+      }
+
+      if (deref_offset_ && deref_ident_ && *base_register_name_ == "ip") {
+  fixed_code: |-
+    // FILE: src/cc/usdt.cc
+    // CONTEXT: std::string Probe::largest_arg_type(size_t arg_n) {
+
+    bool Probe::usdt_getarg(std::ostream &stream) {
+      const size_t arg_count = locations_[0].arguments_.size();
+
+      if (!attached_to_)
+        return false;
+
+      if (arg_count == 0)
+        return true;
+
+      for (size_t arg_n = 0; arg_n < arg_count; ++arg_n) {
+        std::string ctype = largest_arg_type(arg_n);
+        std::string cptr("dest");
+
+        tfm::format(stream,
+                    "static __always_inline int _bpf_readarg_%s_%d("
+                    "struct pt_regs *ctx, void *dest, size_t len) {\n"
+                    "  if (len != sizeof(%s)) return -1;\n",
+                    attached_to_.value(), arg_n + 1, ctype);
+
+        if (locations_.size() == 1) {
+          Location &location = locations_.front();
+          stream << "  ";
+          if (!location.arguments_[arg_n].assign_to_local(stream, cptr, bin_path_,
+                                                          pid_))
+
+    // FILE: src/cc/usdt_args.cc
+    // CONTEXT: bool Argument::get_global_address(uint64_t *address, const std::string &binpath,
+    }
+
+    bool Argument::assign_to_local(std::ostream &stream,
+                                   const std::string &local_name,
+                                   const std::string &binpath,
+                                   const optional<int> &pid) const {
+      if (constant_) {
+        tfm::format(stream, "%s = %d;", local_name, *constant_);
+        return true;
+      }
+
+      if (!deref_offset_) {
+        tfm::format(stream, "%s = *(volatile %s *)&ctx->%s;", local_name, ctype(),
+                    *base_register_name_);
+        return true;
+      }
+
+      if (deref_offset_ && !deref_ident_) {
+        tfm::format(stream, "{ u64 __addr = (*(volatile u64 *)&ctx->%s) + (%d)",
+                    *base_register_name_, *deref_offset_);
+        if (index_register_name_) {
+          int scale = scale_.value_or(1);
+          tfm::format(stream, " + ((*(volatile u64 *)&ctx->%s) * %d);", *index_register_name_, scale);
+        } else {
+          tfm::format(stream, ";");
+        }
+        tfm::format(stream,
+                    "%s __res = 0x0; "
+                    "bpf_probe_read(&__res, sizeof(__res), (void *)__addr); "
+                    "%s = __res; }",
+                    ctype(), local_name);
+        return true;
+      }
+
+      if (deref_offset_ && deref_ident_ && *base_register_name_ == "ip") {
+  diff_summary: |-
+    src/cc/usdt.cc:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: std::string Probe::largest_arg_type(size_t arg_n) {.
+    src/cc/usdt_args.cc:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: bool Argument::get_global_address(uint64_t *address, const std::string &binpath,.
+    - Commit subject: Force udst ctx->#reg load to be volatile.

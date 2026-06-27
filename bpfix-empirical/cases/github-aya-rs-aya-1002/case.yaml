@@ -1,0 +1,44 @@
+schema_version: bpfix.case/v1
+case_id: github-aya-rs-aya-1002
+source:
+  kind: github_issue
+  url: https://github.com/aya-rs/aya/issues/1002
+  repository: https://github.com/aya-rs/aya
+  commit: null
+  upstream_file: null
+  collected_at: '2026-03-11T16:01:52+00:00'
+  raw_excerpt_files:
+  - bpfix-empirical/raw/gh/github-aya-rs-aya-1002.yaml
+reproducer:
+  reconstruction: reconstructed
+  notes: Imported from reconstructed external source into bpfix-empirical; replay logs are generated
+    as replay-verifier.log.
+capture:
+  capture_id: github-aya-rs-aya-1002__kernel-6.15.11-clang-18-log2
+  terminal_error: only read from bpf_array is supported
+  rejected_insn_idx: 4
+external_match:
+  status: exact
+  policy: terminal_error
+  matched_messages:
+  - only read from bpf_array is supported
+  - only read from bpf_array is supported
+  notes: Imported only because verifier_error_match was exact/partial in the verified SO/GH
+    artifact.
+label:
+  capture_id: github-aya-rs-aya-1002__kernel-6.15.11-clang-18-log2
+  taxonomy_class: source_bug
+  error_id: BPFIX-E011
+  confidence: medium
+  label_source: external_replay_reconstruction
+  root_cause_description: Program writes through a BPF array map pointer; verifier only permits
+    supported array value access patterns.
+  root_cause_insn_idx: null
+  localization_confidence: medium
+  fix_type: use_map_value
+  fix_direction: Lookup a map value and write through that value pointer rather than treating
+    the map object pointer as storage.
+reporting:
+  family_id: github-aya-rs-aya-1002
+  representative: true
+  notes: External SO/GH case imported from verified exact/partial artifact.

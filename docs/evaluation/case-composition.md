@@ -1,9 +1,9 @@
-# bpfix-bench Case Composition
+# bpfix-empirical Case Composition
 
-This document is limited to benchmark case composition. It describes the
-snapshot rooted at `bpfix-bench/manifest.yaml` and the raw metadata under
-`bpfix-bench/raw/` as present on 2026-05-22. The manifest remains frozen at
-`bpfix-bench/manifest.yaml` with `frozen_at: 2026-04-29`; taxonomy labels in
+This document is limited to empirical case composition. It describes the
+snapshot rooted at `bpfix-empirical/manifest.yaml` and the raw metadata under
+`bpfix-empirical/raw/` as present on 2026-05-22. The manifest remains frozen at
+`bpfix-empirical/manifest.yaml` with `frozen_at: 2026-04-29`; taxonomy labels in
 this document reflect the mutually exclusive primary taxonomy migration.
 
 ## Audit Commands
@@ -19,9 +19,9 @@ from collections import Counter
 import sys
 import yaml
 
-root = Path("bpfix-bench")
+root = Path("bpfix-empirical")
 sys.path.insert(0, str(root / "tools"))
-from benchmark_metadata import with_case_defaults
+from empirical_metadata import with_case_defaults
 
 manifest = yaml.safe_load((root / "manifest.yaml").read_text())
 cases = manifest["cases"]
@@ -49,7 +49,7 @@ from pathlib import Path
 from collections import Counter, defaultdict
 import yaml
 
-root = Path("bpfix-bench")
+root = Path("bpfix-empirical")
 idx = yaml.safe_load((root / "raw/index.yaml").read_text())
 entries = idx["entries"]
 
@@ -73,7 +73,7 @@ from pathlib import Path
 from collections import Counter, defaultdict
 import yaml
 
-root = Path("bpfix-bench")
+root = Path("bpfix-empirical")
 catalog = yaml.safe_load(Path("docs/evaluation/legacy-catalogs/error_catalog.yaml").read_text())
 names = {e["error_id"]: e["short_name"] for e in catalog["error_types"]}
 manifest = yaml.safe_load((root / "manifest.yaml").read_text())
@@ -92,7 +92,7 @@ PY
 
 ## Replayable Cases
 
-`bpfix-bench/manifest.yaml` lists 235 replayable cases. Manifest membership is
+`bpfix-empirical/manifest.yaml` lists 235 replayable cases. Manifest membership is
 the ready-case set: every listed case has a loadable `case.yaml`, builds in the
 pinned environment, and is rejected by the verifier during replay validation.
 
@@ -142,7 +142,7 @@ Breakdown by source:
 
 ## Error Categories
 
-Benchmark label error IDs are summarized against
+Empirical label error IDs are summarized against
 `docs/evaluation/legacy-catalogs/error_catalog.yaml`. The current user-facing
 CLI error-id contract lives in `docs/error-catalog.yaml`.
 
@@ -180,7 +180,7 @@ the replayable corpus.
 
 ## External Raw Records
 
-`bpfix-bench/raw/index.yaml` is the audit surface for external Stack Overflow,
+`bpfix-empirical/raw/index.yaml` is the audit surface for external Stack Overflow,
 GitHub issue, and GitHub commit records. It contains 736 records.
 
 | source_kind | raw records |
@@ -200,14 +200,14 @@ Reproduction status by external source:
 | **total** | **150** | **4** | **32** | **197** | **31** | **15** | **45** | **262** | **736** |
 
 For this table, `replay_valid` is reproduced and admitted to
-`bpfix-bench/cases/`. The other statuses are not admitted as strict replayable
+`bpfix-empirical/cases/`. The other statuses are not admitted as strict replayable
 cases in this snapshot. There are no `candidate_for_replay`,
 `needs_manual_reconstruction`, `attempted_unknown`,
 `replay_valid_pending_import`, or `attempted_failed` records in
 `raw/index.yaml`.
 
 The top-level raw directory also contains 201 YAML files under
-`bpfix-bench/raw/kernel_selftests/`, but those files do not use the
+`bpfix-empirical/raw/kernel_selftests/`, but those files do not use the
 `bpfix.raw_external/v1` schema and do not carry `reproduction.status`. Their
 reproduced/unreproduced counts cannot be computed from the available raw
 metadata. The replayable kernel selftest count is therefore taken from
@@ -227,7 +227,7 @@ in case IDs, especially `dynptr` with 37 admitted cases and `irq` with 14.
 External raw collection is much larger than the admitted external subset. Only
 150 of 736 external raw records are `replay_valid`. The largest non-admitted
 bucket is `out_of_scope_non_verifier`: 262 records, mostly GitHub commits whose
-diffs do not encode a verifier-reject benchmark. Another 197 records are marked
+diffs do not encode an empirical corpus case. Another 197 records are marked
 `environment_required`, meaning the raw report depends on a project-specific
 kernel, loader, map, attach, or runtime environment that is not currently
 captured by the local harness.

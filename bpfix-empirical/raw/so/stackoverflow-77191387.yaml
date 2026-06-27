@@ -1,0 +1,312 @@
+schema_version: bpfix.raw_external/v1
+raw_id: stackoverflow-77191387
+source_kind: stackoverflow
+source:
+  url: https://stackoverflow.com/questions/77191387/invalid-argument-error-from-ebpf-program-when-when-loading-program-using-bpftool
+  title: Invalid argument error from eBPF program when when loading program using
+    bpftool
+  repository: null
+  commit: null
+  collected_at: '2026-04-30T00:51:10+00:00'
+collector:
+  original_path: bpfix-empirical/raw/so/stackoverflow-77191387.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: true
+  verifier_log_block_count: 1
+  source_snippet_count: 1
+  has_buggy_code: false
+  has_fixed_code: false
+  has_fix_description: false
+reproduction:
+  status: replay_valid
+  case_id: stackoverflow-77191387
+  case_path: cases/stackoverflow-77191387
+  artifact_path: cases/stackoverflow-77191387
+  reason: admitted_to_bpfix_bench_cases
+raw:
+  case_id: stackoverflow-77191387
+  source: stackoverflow
+  collected_at: '2026-04-30T00:51:10+00:00'
+  question:
+    question_id: 77191387
+    title: Invalid argument error from eBPF program when when loading program using
+      bpftool
+    url: https://stackoverflow.com/questions/77191387/invalid-argument-error-from-ebpf-program-when-when-loading-program-using-bpftool
+    tags:
+    - c
+    - ebpf
+    - xdp-bpf
+    - libbpf
+    score: 1
+    answer_count: 1
+    is_answered: true
+  verifier_log:
+    blocks:
+    - |-
+      libbpf: prog 'process_ingress_pkt': BPF program load failed: Invalid argument
+      libbpf: prog 'process_ingress_pkt': -- BEGIN PROG LOAD LOG --
+      ; int process_ingress_pkt(struct __sk_buff *skb){
+      0: (b7) r0 = 2
+      ; void *data_end = (void *)(long)skb->data_end;
+      1: (61) r3 = *(u32 *)(r1 +80)
+      ; void *data = (void *)(long)skb->data;
+      2: (61) r2 = *(u32 *)(r1 +76)
+      ; if (data > data_end) {
+      3: (2d) if r2 > r3 goto pc+22
+       R0_w=inv2 R1=ctx(id=0,off=0,imm=0) R2_w=pkt(id=0,off=0,r=0,imm=0) R3_w=pkt_end(id=0,off=0,imm=0) R10=fp0
+      4: (b7) r0 = 0
+      ; if ((void *) (eth_hdr + 1) > data_end) {
+      5: (bf) r1 = r2
+      6: (07) r1 += 14
+      ; if ((void *) (eth_hdr + 1) > data_end) {
+      7: (2d) if r1 > r3 goto pc+18
+       R0_w=inv0 R1_w=pkt(id=0,off=14,r=14,imm=0) R2_w=pkt(id=0,off=0,r=14,imm=0) R3_w=pkt_end(id=0,off=0,imm=0) R10=fp0
+      ; if (eth_hdr->h_proto != bpf_htons(ETH_P_IP)) {
+      8: (71) r1 = *(u8 *)(r2 +12)
+      9: (71) r4 = *(u8 *)(r2 +13)
+      10: (67) r4 <<= 8
+      11: (4f) r4 |= r1
+      ; if (eth_hdr->h_proto != bpf_htons(ETH_P_IP)) {
+      12: (55) if r4 != 0x8 goto pc+13
+       R0=inv0 R1=inv(id=0,umax_value=255,var_off=(0x0; 0xff)) R2=pkt(id=0,off=0,r=14,imm=0) R3=pkt_end(id=0,off=0,imm=0) R4=inv8 R10=fp0
+      ; if (data + sizeof(struct ethhdr) + sizeof(struct iphdr) > data_end){
+      13: (bf) r1 = r2
+      14: (07) r1 += 34
+      15: (b7) r0 = 2
+      ; if (data + sizeof(struct ethhdr) + sizeof(struct iphdr) > data_end){
+      16: (2d) if r1 > r3 goto pc+9
+       R0_w=inv2 R1_w=pkt(id=0,off=34,r=34,imm=0) R2=pkt(id=0,off=0,r=34,imm=0) R3=pkt_end(id=0,off=0,imm=0) R4=inv8 R10=fp0
+      ; blocked_ip = bpf_map_lookup_elem(&blocked, &(ip->saddr));
+      17: (07) r2 += 26
+      ; blocked_ip = bpf_map_lookup_elem(&blocked, &(ip->saddr));
+      18: (18) r1 = 0xffffacebc2209000
+      20: (85) call bpf_map_lookup_elem#1
+      21: (bf) r1 = r0
+      22: (b7) r0 = 1
+      23: (55) if r1 != 0x0 goto pc+1
+
+      from 23 to 25: R0_w=inv1 R1_w=map_value(id=0,off=0,ks=4,vs=4,imm=0) R10=fp0
+      ;
+      25: (67) r0 <<= 1
+      ; }
+      26: (95) exit
+      At program exit the register R0 has value (0x2; 0x0) should have been in (0x0; 0x1)
+      processed 28 insns (limit 1000000) max_states_per_insn 0 total_states 2 peak_states 2 mark_read 1
+      -- END PROG LOAD LOG --
+      libbpf: prog 'process_ingress_pkt': failed to load: -22
+      libbpf: failed to load object 'firewall.o'
+      Error: failed to load object file
+    combined: |-
+      libbpf: prog 'process_ingress_pkt': BPF program load failed: Invalid argument
+      libbpf: prog 'process_ingress_pkt': -- BEGIN PROG LOAD LOG --
+      ; int process_ingress_pkt(struct __sk_buff *skb){
+      0: (b7) r0 = 2
+      ; void *data_end = (void *)(long)skb->data_end;
+      1: (61) r3 = *(u32 *)(r1 +80)
+      ; void *data = (void *)(long)skb->data;
+      2: (61) r2 = *(u32 *)(r1 +76)
+      ; if (data > data_end) {
+      3: (2d) if r2 > r3 goto pc+22
+       R0_w=inv2 R1=ctx(id=0,off=0,imm=0) R2_w=pkt(id=0,off=0,r=0,imm=0) R3_w=pkt_end(id=0,off=0,imm=0) R10=fp0
+      4: (b7) r0 = 0
+      ; if ((void *) (eth_hdr + 1) > data_end) {
+      5: (bf) r1 = r2
+      6: (07) r1 += 14
+      ; if ((void *) (eth_hdr + 1) > data_end) {
+      7: (2d) if r1 > r3 goto pc+18
+       R0_w=inv0 R1_w=pkt(id=0,off=14,r=14,imm=0) R2_w=pkt(id=0,off=0,r=14,imm=0) R3_w=pkt_end(id=0,off=0,imm=0) R10=fp0
+      ; if (eth_hdr->h_proto != bpf_htons(ETH_P_IP)) {
+      8: (71) r1 = *(u8 *)(r2 +12)
+      9: (71) r4 = *(u8 *)(r2 +13)
+      10: (67) r4 <<= 8
+      11: (4f) r4 |= r1
+      ; if (eth_hdr->h_proto != bpf_htons(ETH_P_IP)) {
+      12: (55) if r4 != 0x8 goto pc+13
+       R0=inv0 R1=inv(id=0,umax_value=255,var_off=(0x0; 0xff)) R2=pkt(id=0,off=0,r=14,imm=0) R3=pkt_end(id=0,off=0,imm=0) R4=inv8 R10=fp0
+      ; if (data + sizeof(struct ethhdr) + sizeof(struct iphdr) > data_end){
+      13: (bf) r1 = r2
+      14: (07) r1 += 34
+      15: (b7) r0 = 2
+      ; if (data + sizeof(struct ethhdr) + sizeof(struct iphdr) > data_end){
+      16: (2d) if r1 > r3 goto pc+9
+       R0_w=inv2 R1_w=pkt(id=0,off=34,r=34,imm=0) R2=pkt(id=0,off=0,r=34,imm=0) R3=pkt_end(id=0,off=0,imm=0) R4=inv8 R10=fp0
+      ; blocked_ip = bpf_map_lookup_elem(&blocked, &(ip->saddr));
+      17: (07) r2 += 26
+      ; blocked_ip = bpf_map_lookup_elem(&blocked, &(ip->saddr));
+      18: (18) r1 = 0xffffacebc2209000
+      20: (85) call bpf_map_lookup_elem#1
+      21: (bf) r1 = r0
+      22: (b7) r0 = 1
+      23: (55) if r1 != 0x0 goto pc+1
+
+      from 23 to 25: R0_w=inv1 R1_w=map_value(id=0,off=0,ks=4,vs=4,imm=0) R10=fp0
+      ;
+      25: (67) r0 <<= 1
+      ; }
+      26: (95) exit
+      At program exit the register R0 has value (0x2; 0x0) should have been in (0x0; 0x1)
+      processed 28 insns (limit 1000000) max_states_per_insn 0 total_states 2 peak_states 2 mark_read 1
+      -- END PROG LOAD LOG --
+      libbpf: prog 'process_ingress_pkt': failed to load: -22
+      libbpf: failed to load object 'firewall.o'
+      Error: failed to load object file
+  source_snippets:
+  - |-
+    struct {
+        __uint(type, BPF_MAP_TYPE_ARRAY);
+        __uint(max_entries, 20000);
+        __type(key, __u32);
+        __type(value, __u32);
+    } blocked SEC(".maps");
+
+    SEC("cgroup_skb/ingress")
+    int process_ingress_pkt(struct __sk_buff *skb){
+        void *data = (void *)(long)skb->data;
+        void *data_end = (void *)(long)skb->data_end;
+
+        if (data > data_end) {
+            return TC_ACT_SHOT;
+        }
+
+        struct ethhdr *eth_hdr = data;
+
+        if ((void *) (eth_hdr + 1) > data_end) {
+            return TC_ACT_OK;
+        }
+
+        if (eth_hdr->h_proto != bpf_htons(ETH_P_IP)) {
+            return TC_ACT_OK;
+        }
+
+        if (data + sizeof(struct ethhdr) + sizeof(struct iphdr) > data_end){
+            return TC_ACT_SHOT;
+        }
+
+        long *blocked_ip;
+        struct iphdr *ip = (data + sizeof(struct ethhdr));
+
+        if (data + sizeof(struct ethhdr) + sizeof(struct iphdr) > data_end) {
+            return TC_ACT_SHOT;
+        }
+
+        blocked_ip = bpf_map_lookup_elem(&blocked, &(ip->saddr));
+        if (blocked_ip == NULL) {
+             return TC_ACT_OK;
+        }else{
+            return TC_ACT_SHOT;
+        }
+    }
+    char __license[] SEC("license") = "GPL";
+  question_body_text: |-
+    So I am trying out eBPF and I am having an invalid argument error when loading my eBPF program into the kernel. This is the program:
+    struct {
+    __uint(type, BPF_MAP_TYPE_ARRAY);
+    __uint(max_entries, 20000);
+    __type(key, __u32);
+    __type(value, __u32);
+    } blocked SEC(".maps");
+    SEC("cgroup_skb/ingress")
+    int process_ingress_pkt(struct __sk_buff *skb){
+    void *data = (void *)(long)skb->data;
+    void *data_end = (void *)(long)skb->data_end;
+    if (data > data_end) {
+    return TC_ACT_SHOT;
+    }
+    struct ethhdr *eth_hdr = data;
+    if ((void *) (eth_hdr + 1) > data_end) {
+    return TC_ACT_OK;
+    }
+    if (eth_hdr->h_proto != bpf_htons(ETH_P_IP)) {
+    return TC_ACT_OK;
+    }
+    if (data + sizeof(struct ethhdr) + sizeof(struct iphdr) > data_end){
+    return TC_ACT_SHOT;
+    }
+    long *blocked_ip;
+    struct iphdr *ip = (data + sizeof(struct ethhdr));
+    if (data + sizeof(struct ethhdr) + sizeof(struct iphdr) > data_end) {
+    return TC_ACT_SHOT;
+    }
+    blocked_ip = bpf_map_lookup_elem(&blocked, &(ip->saddr));
+    if (blocked_ip == NULL) {
+    return TC_ACT_OK;
+    }else{
+    return TC_ACT_SHOT;
+    }
+    }
+    char __license[] SEC("license") = "GPL";
+    Now, I am trying to learn about TC ingress and egress datapath and my intentions are to block certain IPs from passing through the kernel stack at the TC level. So far, no compiler issues, but after compiling. I load my program with (taken out of a MakeFile so pardon me) :
+    bpftool net detach xdp dev lo
+    rm -f /sys/fs/bpf/$(TARGET)
+    bpftool prog load $(BPF_OBJ) /sys/fs/bpf/$(TARGET)
+    bpftool net attach xdp pinned /sys/fs/bpf/$(TARGET) dev lo
+    Now, bpftool returns:
+    libbpf: prog 'process_ingress_pkt': BPF program load failed: Invalid argument
+    libbpf: prog 'process_ingress_pkt': -- BEGIN PROG LOAD LOG --
+    ; int process_ingress_pkt(struct __sk_buff *skb){
+    0: (b7) r0 = 2
+    ; void *data_end = (void *)(long)skb->data_end;
+    1: (61) r3 = *(u32 *)(r1 +80)
+    ; void *data = (void *)(long)skb->data;
+    2: (61) r2 = *(u32 *)(r1 +76)
+    ; if (data > data_end) {
+    3: (2d) if r2 > r3 goto pc+22
+    R0_w=inv2 R1=ctx(id=0,off=0,imm=0) R2_w=pkt(id=0,off=0,r=0,imm=0) R3_w=pkt_end(id=0,off=0,imm=0) R10=fp0
+    4: (b7) r0 = 0
+    ; if ((void *) (eth_hdr + 1) > data_end) {
+    5: (bf) r1 = r2
+    6: (07) r1 += 14
+    ; if ((void *) (eth_hdr + 1) > data_end) {
+    7: (2d) if r1 > r3 goto pc+18
+    R0_w=inv0 R1_w=pkt(id=0,off=14,r=14,imm=0) R2_w=pkt(id=0,off=0,r=14,imm=0) R3_w=pkt_end(id=0,off=0,imm=0) R10=fp0
+    ; if (eth_hdr->h_proto != bpf_htons(ETH_P_IP)) {
+    8: (71) r1 = *(u8 *)(r2 +12)
+    9: (71) r4 = *(u8 *)(r2 +13)
+    10: (67) r4 <<= 8
+    11: (4f) r4 |= r1
+    ; if (eth_hdr->h_proto != bpf_htons(ETH_P_IP)) {
+    12: (55) if r4 != 0x8 goto pc+13
+    R0=inv0 R1=inv(id=0,umax_value=255,var_off=(0x0; 0xff)) R2=pkt(id=0,off=0,r=14,imm=0) R3=pkt_end(id=0,off=0,imm=0) R4=inv8 R10=fp0
+    ; if (data + sizeof(struct ethhdr) + sizeof(struct iphdr) > data_end){
+    13: (bf) r1 = r2
+    14: (07) r1 += 34
+    15: (b7) r0 = 2
+    ; if (data + sizeof(struct ethhdr) + sizeof(struct iphdr) > data_end){
+    16: (2d) if r1 > r3 goto pc+9
+    R0_w=inv2 R1_w=pkt(id=0,off=34,r=34,imm=0) R2=pkt(id=0,off=0,r=34,imm=0) R3=pkt_end(id=0,off=0,imm=0) R4=inv8 R10=fp0
+    ; blocked_ip = bpf_map_lookup_elem(&blocked, &(ip->saddr));
+    17: (07) r2 += 26
+    ; blocked_ip = bpf_map_lookup_elem(&blocked, &(ip->saddr));
+    18: (18) r1 = 0xffffacebc2209000
+    20: (85) call bpf_map_lookup_elem#1
+    21: (bf) r1 = r0
+    22: (b7) r0 = 1
+    23: (55) if r1 != 0x0 goto pc+1
+    from 23 to 25: R0_w=inv1 R1_w=map_value(id=0,off=0,ks=4,vs=4,imm=0) R10=fp0
+    ;
+    25: (67) r0 <<= 1
+    ; }
+    26: (95) exit
+    At program exit the register R0 has value (0x2; 0x0) should have been in (0x0; 0x1)
+    processed 28 insns (limit 1000000) max_states_per_insn 0 total_states 2 peak_states 2 mark_read 1
+    -- END PROG LOAD LOG --
+    libbpf: prog 'process_ingress_pkt': failed to load: -22
+    libbpf: failed to load object 'firewall.o'
+    Error: failed to load object file
+    I am not entirely familiar with assembly but from research, turns out register 0 holds the return value, and I interpret At program exit the register R0 has value (0x2; 0x0) should have been in (0x0; 0x1) to be it received an unexpected return value? Not so sure at this point.
+  selected_answer:
+    answer_id: 77204312
+    url: https://stackoverflow.com/questions/77191387/invalid-argument-error-from-ebpf-program-when-when-loading-program-using-bpftool#77204312
+    is_accepted: false
+    score: 2
+    body_text: Basically, turns out that cgroup_skb/ingress programs require the return
+      value to be either 0 (drop) or 1 (pass) and I am using the macros defined for
+      return values of tc programs, which is not the appropriate thing to do for this
+      hook. So the verifier is saying that the program returns either 0 or 2, but
+      it should return either 0 or 1.
+    fix_description: Basically, turns out that cgroup_skb/ingress programs require
+      the return value to be either 0 (drop) or 1 (pass) and I am using the macros
+      defined for return values of tc programs, which is not the appropriate thing
+      to do for this hook. So the verifier is saying that the program returns either
+      0 or 2, but it should return either 0 or 1.

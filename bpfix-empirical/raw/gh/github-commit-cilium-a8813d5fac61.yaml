@@ -1,0 +1,510 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-a8813d5fac61
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/a8813d5fac614897055991d95499d9790f518be3
+  title: 'bpf: drop SVC traffic if no backend is available'
+  repository: https://github.com/cilium/cilium
+  commit: a8813d5fac614897055991d95499d9790f518be3
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-a8813d5fac61.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Drops service traffic when no backend is available and changes load-balancer
+    fallback behavior; no verifier rejection is identified in the raw snippets.
+raw:
+  case_id: github-commit-cilium-a8813d5fac61
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: a8813d5fac614897055991d95499d9790f518be3
+  commit_message: 'bpf: drop SVC traffic if no backend is available'
+  commit_date: '2022-09-30'
+  fix_type: inline_hint
+  buggy_code: "// FILE: bpf/bpf_lxc.c\n// CONTEXT: static __always_inline int __tail_handle_ipv6(struct\
+    \ __ctx_buff *ctx)\n\t\t\t\tgoto skip_service_lookup;\n\t\t\telse\n\t\t\t\treturn\
+    \ ret;\n\t\t}\n\n\t\t/*\n\t\t * Check if the destination address is among the\
+    \ address that should\n\t\t * be load balanced. This operation is performed before\
+    \ we go through\n\t\t * the connection tracker to allow storing the reverse nat\
+    \ index in\n\t\t * the CT entry for destination endpoints where we can't encode\
+    \ the\n\t\t * state in the address.\n\t\t */\n\t\tsvc = lb6_lookup_service(&key,\
+    \ is_defined(ENABLE_NODEPORT));\n\t\tif (svc) {\n#if defined(ENABLE_L7_LB)\n\t\
+    \t\tif (lb6_svc_is_l7loadbalancer(svc)) {\n\t\t\t\tproxy_port = (__u16)svc->l7_lb_proxy_port;\n\
+    \t\t\t\tgoto skip_service_lookup;\n\t\t\t}\n#endif /* ENABLE_L7_LB */\n\t\t\t\
+    ret = lb6_local(get_ct_map6(&tuple), ctx, ETH_HLEN, l4_off,\n\t\t\t\t\t&csum_off,\
+    \ &key, &tuple, svc, &ct_state_new,\n\t\t\t\t\tfalse);\n\t\t\tif (IS_ERR(ret))\n\
+    \t\t\t\treturn ret;\n\t\t}\n\nskip_service_lookup:\n\t\t/* Store state to be picked\
+    \ up on the continuation tail call. */\n\t\tlb6_ctx_store_state(ctx, &ct_state_new,\
+    \ proxy_port);\n\t}\n#endif /* ENABLE_PER_PACKET_LB */\n\n// CONTEXT: static __always_inline\
+    \ int __tail_handle_ipv4(struct __ctx_buff *ctx)\n\n\t\tl4_off = ETH_HLEN + ipv4_hdrlen(ip4);\n\
+    \n\t\tret = lb4_extract_key(ctx, ip4, l4_off, &key, &csum_off,\n\t\t\t\t     \
+    \ CT_EGRESS);\n\t\tif (IS_ERR(ret)) {\n\t\t\tif (ret == DROP_NO_SERVICE || ret\
+    \ == DROP_UNKNOWN_L4)\n\t\t\t\tgoto skip_service_lookup;\n\t\t\telse\n\t\t\t\t\
+    return ret;\n\t\t}\n\n\t\tsvc = lb4_lookup_service(&key, is_defined(ENABLE_NODEPORT));\n\
+    \t\tif (svc) {\n#if defined(ENABLE_L7_LB)\n\t\t\tif (lb4_svc_is_l7loadbalancer(svc))\
+    \ {\n\t\t\t\tproxy_port = (__u16)svc->l7_lb_proxy_port;\n\t\t\t\tgoto skip_service_lookup;\n\
+    \t\t\t}\n#endif /* ENABLE_L7_LB */\n\t\t\tret = lb4_local(get_ct_map4(&tuple),\
+    \ ctx, ETH_HLEN, l4_off,\n\t\t\t\t\t&csum_off, &key, &tuple, svc, &ct_state_new,\n\
+    \t\t\t\t\tip4->saddr, has_l4_header, false);\n\t\t\tif (IS_ERR(ret))\n\t\t\t\t\
+    return ret;\n\t\t}\nskip_service_lookup:\n\t\t/* Store state to be picked up on\
+    \ the continuation tail call. */\n\t\tlb4_ctx_store_state(ctx, &ct_state_new,\
+    \ proxy_port);\n\t}\n#endif /* ENABLE_PER_PACKET_LB */\n\n// FILE: bpf/bpf_sock.c\n\
+    // CONTEXT: sock4_wildcard_lookup(struct lb4_key *key __maybe_unused,\n\t */\n\
+    \tif (in_hostns && is_v4_loopback(key->address))\n\t\tgoto wildcard_lookup;\n\n\
+    \tinfo = ipcache_lookup4(&IPCACHE_MAP, key->address, V4_CACHE_KEY_LEN);\n\tif\
+    \ (info != NULL && (info->sec_label == HOST_ID ||\n\t    (include_remote_hosts\
+    \ && identity_is_remote_node(info->sec_label))))\n\t\tgoto wildcard_lookup;\n\n\
+    \treturn NULL;\nwildcard_lookup:\n\tkey->address = 0;\n\treturn lb4_lookup_service(key,\
+    \ true);\n}\n#endif /* ENABLE_NODEPORT */\n\nstatic __always_inline struct lb4_service\
+    \ *\nsock4_wildcard_lookup_full(struct lb4_key *key __maybe_unused,\n\t\t\t  \
+    \ const bool in_hostns __maybe_unused)\n{\n\tstruct lb4_service *svc = NULL;\n\
+    \n#ifdef ENABLE_NODEPORT\n\tsvc = sock4_wildcard_lookup(key, true, false, in_hostns);\n\
+    \tif (svc && !lb4_svc_is_nodeport(svc))\n\n// CONTEXT: static __always_inline\
+    \ int __sock4_xlate_fwd(struct bpf_sock_addr *ctx,\n#endif\n\n\tif (is_defined(ENABLE_SOCKET_LB_HOST_ONLY)\
+    \ && !in_hostns)\n\t\treturn -ENXIO;\n\n\tif (!udp_only && !sock_proto_enabled(ctx->protocol))\n\
+    \t\treturn -ENOTSUP;\n\n\t/* In case a direct match fails, we try to look-up surrogate\n\
+    \t * service entries via wildcarded lookup for NodePort and\n\t * HostPort services.\n\
+    \t */\n\tsvc = lb4_lookup_service(&key, true);\n\tif (!svc)\n\t\tsvc = sock4_wildcard_lookup_full(&key,\
+    \ in_hostns);\n\tif (!svc)\n\t\treturn -ENXIO;\n\n\t/* Do not perform service\
+    \ translation for external IPs\n\t * that are not a local address because we don't\
+    \ want\n\t * a k8s service to easily do MITM attacks for a public\n\t * IP address.\
+    \ But do the service translation if the IP\n\t * is from the host.\n\t */\n\t\
+    if (sock4_skip_xlate(svc, orig_key.address))\n\n// CONTEXT: static __always_inline\
+    \ int __sock4_post_bind(struct bpf_sock *ctx,\n\t\t\t\t\t     struct bpf_sock\
+    \ *ctx_full)\n{\n\tstruct lb4_service *svc;\n\tstruct lb4_key key = {\n\t\t.address\t\
+    = ctx->src_ip4,\n\t\t.dport\t\t= ctx_src_port(ctx),\n\t};\n\n\tif (!sock_proto_enabled(ctx->protocol)\
+    \ ||\n\t    !ctx_in_hostns(ctx_full, NULL))\n\t\treturn 0;\n\n\tsvc = lb4_lookup_service(&key,\
+    \ true);\n\tif (!svc)\n\t\t/* Perform a wildcard lookup for the case where the\
+    \ caller\n\t\t * tries to bind to loopback or an address with host identity\n\t\
+    \t * (without remote hosts).\n\t\t */\n\t\tsvc = sock4_wildcard_lookup(&key, false,\
+    \ false, true);\n\n\t/* If the sockaddr of this socket overlaps with a NodePort,\n\
+    \t * LoadBalancer or ExternalIP service. We must reject this\n\t * bind() call\
+    \ to avoid accidentally hijacking its traffic.\n\t */\n\tif (svc && (lb4_svc_is_nodeport(svc)\
+    \ ||\n\n// CONTEXT: static __always_inline int __sock4_xlate_rev(struct bpf_sock_addr\
+    \ *ctx,\n\t\t.address\t= ctx->user_ip4,\n\t\t.port\t\t= ctx_dst_port(ctx),\n\t\
+    };\n\n\tval = map_lookup_elem(&LB4_REVERSE_NAT_SK_MAP, &key);\n\tif (val) {\n\t\
+    \tstruct lb4_service *svc;\n\t\tstruct lb4_key svc_key = {\n\t\t\t.address\t=\
+    \ val->address,\n\t\t\t.dport\t\t= val->port,\n\t\t};\n\n\t\tsvc = lb4_lookup_service(&svc_key,\
+    \ true);\n\t\tif (!svc)\n\t\t\tsvc = sock4_wildcard_lookup_full(&svc_key,\n\t\t\
+    \t\t\t\tctx_in_hostns(ctx_full, NULL));\n\t\tif (!svc || svc->rev_nat_index !=\
+    \ val->rev_nat_index) {\n\t\t\tmap_delete_elem(&LB4_REVERSE_NAT_SK_MAP, &key);\n\
+    \t\t\tupdate_metrics(0, METRIC_INGRESS, REASON_LB_REVNAT_STALE);\n\t\t\treturn\
+    \ -ENOENT;\n\t\t}\n\n\t\tctx->user_ip4 = val->address;\n\t\tctx_set_port(ctx,\
+    \ val->port);\n\t\treturn 0;\n\n// CONTEXT: sock6_wildcard_lookup(struct lb6_key\
+    \ *key __maybe_unused,\n\t */\n\tif (in_hostns && is_v6_loopback(&key->address))\n\
+    \t\tgoto wildcard_lookup;\n\n\tinfo = ipcache_lookup6(&IPCACHE_MAP, &key->address,\
+    \ V6_CACHE_KEY_LEN);\n\tif (info != NULL && (info->sec_label == HOST_ID ||\n\t\
+    \    (include_remote_hosts && identity_is_remote_node(info->sec_label))))\n\t\t\
+    goto wildcard_lookup;\n\n\treturn NULL;\nwildcard_lookup:\n\tmemset(&key->address,\
+    \ 0, sizeof(key->address));\n\treturn lb6_lookup_service(key, true);\n}\n#endif\
+    \ /* ENABLE_NODEPORT */\n\nstatic __always_inline __maybe_unused struct lb6_service\
+    \ *\nsock6_wildcard_lookup_full(struct lb6_key *key __maybe_unused,\n\t\t\t  \
+    \ const bool in_hostns __maybe_unused)\n{\n\tstruct lb6_service *svc = NULL;\n\
+    \n#ifdef ENABLE_NODEPORT\n\tsvc = sock6_wildcard_lookup(key, true, false, in_hostns);\n\
+    \tif (svc && !lb6_svc_is_nodeport(svc))\n\n// CONTEXT: static __always_inline\
+    \ int __sock6_post_bind(struct bpf_sock *ctx)\n{\n\tstruct lb6_service *svc;\n\
+    \tstruct lb6_key key = {\n\t\t.dport\t\t= ctx_src_port(ctx),\n\t};\n\n\tif (!sock_proto_enabled(ctx->protocol)\
+    \ ||\n\t    !ctx_in_hostns(ctx, NULL))\n\t\treturn 0;\n\n\tctx_get_v6_src_address(ctx,\
+    \ &key.address);\n\n\tsvc = lb6_lookup_service(&key, true);\n\tif (!svc) {\n\t\
+    \tsvc = sock6_wildcard_lookup(&key, false, false, true);\n\t\tif (!svc)\n\t\t\t\
+    return sock6_post_bind_v4_in_v6(ctx);\n\t}\n\n\tif (svc && (lb6_svc_is_nodeport(svc)\
+    \ ||\n\t\t    lb6_svc_is_external_ip(svc) ||\n\t\t    lb6_svc_is_loadbalancer(svc)))\n\
+    \t\treturn -EADDRINUSE;\n\n\treturn 0;\n\n// CONTEXT: static __always_inline int\
+    \ __sock6_xlate_fwd(struct bpf_sock_addr *ctx,\n\tstruct lb6_backend l7backend;\n\
+    #endif\n\n\tif (is_defined(ENABLE_SOCKET_LB_HOST_ONLY) && !in_hostns)\n\t\treturn\
+    \ -ENXIO;\n\n\tif (!udp_only && !sock_proto_enabled(ctx->protocol))\n\t\treturn\
+    \ -ENOTSUP;\n\n\tctx_get_v6_address(ctx, &key.address);\n\tmemcpy(&orig_key, &key,\
+    \ sizeof(key));\n\n\tsvc = lb6_lookup_service(&key, true);\n\tif (!svc)\n\t\t\
+    svc = sock6_wildcard_lookup_full(&key, in_hostns);\n\tif (!svc)\n\t\treturn sock6_xlate_v4_in_v6(ctx,\
+    \ udp_only);\n\n\tif (sock6_skip_xlate(svc, &orig_key.address))\n\t\treturn -EPERM;\n\
+    \n#ifdef ENABLE_L7_LB\n\t/* See __sock4_xlate_fwd for commentary. */\n\tif (lb6_svc_is_l7loadbalancer(svc))\
+    \ {\n\t\tif (is_defined(BPF_HAVE_NETNS_COOKIE) && in_hostns) {\n\n// CONTEXT:\
+    \ static __always_inline int __sock6_xlate_rev(struct bpf_sock_addr *ctx)\n\t\
+    key.cookie = sock_local_cookie(ctx);\n\tkey.port = ctx_dst_port(ctx);\n\tctx_get_v6_address(ctx,\
+    \ &key.address);\n\n\tval = map_lookup_elem(&LB6_REVERSE_NAT_SK_MAP, &key);\n\t\
+    if (val) {\n\t\tstruct lb6_service *svc;\n\t\tstruct lb6_key svc_key = {\n\t\t\
+    \t.address\t= val->address,\n\t\t\t.dport\t\t= val->port,\n\t\t};\n\n\t\tsvc =\
+    \ lb6_lookup_service(&svc_key, true);\n\t\tif (!svc)\n\t\t\tsvc = sock6_wildcard_lookup_full(&svc_key,\n\
+    \t\t\t\t\t\tctx_in_hostns(ctx, NULL));\n\t\tif (!svc || svc->rev_nat_index !=\
+    \ val->rev_nat_index) {\n\t\t\tmap_delete_elem(&LB6_REVERSE_NAT_SK_MAP, &key);\n\
+    \t\t\tupdate_metrics(0, METRIC_INGRESS, REASON_LB_REVNAT_STALE);\n\t\t\treturn\
+    \ -ENOENT;\n\t\t}\n\n\t\tctx_set_v6_address(ctx, &val->address);\n\t\tctx_set_port(ctx,\
+    \ val->port);\n\t\treturn 0;\n\n// FILE: bpf/lib/lb.h\n// CONTEXT: bool lb6_src_range_ok(const\
+    \ struct lb6_service *svc __maybe_unused,\nstatic __always_inline bool\nlb6_to_lb4_service(const\
+    \ struct lb6_service *svc __maybe_unused)\n{\n#ifdef ENABLE_NAT_46X64\n\treturn\
+    \ svc->flags2 & SVC_FLAG_NAT_46X64;\n#else\n\treturn false;\n#endif\n}\n\nstatic\
+    \ __always_inline\nstruct lb6_service *lb6_lookup_service(struct lb6_key *key,\n\
+    \t\t\t\t       const bool scope_switch)\n{\n\tstruct lb6_service *svc;\n\n\tkey->scope\
+    \ = LB_LOOKUP_SCOPE_EXT;\n\tkey->backend_slot = 0;\n\tsvc = map_lookup_elem(&LB6_SERVICES_MAP_V2,\
+    \ key);\n\tif (svc) {\n\t\tif (!scope_switch || !lb6_svc_is_local_scope(svc))\n\
+    \t\t\t/* Packets for L7 LB are redirected even when there are no backends. */\n\
+    \t\t\treturn (svc->count || lb6_svc_is_l7loadbalancer(svc)) ? svc : NULL;\n\t\t\
+    key->scope = LB_LOOKUP_SCOPE_INT;\n\t\tsvc = map_lookup_elem(&LB6_SERVICES_MAP_V2,\
+    \ key);\n\t\tif (svc && (svc->count || lb6_svc_is_l7loadbalancer(svc)))\n\t\t\t\
+    return svc;\n\t}\n\n\treturn NULL;\n}\n\nstatic __always_inline struct lb6_backend\
+    \ *__lb6_lookup_backend(__u32 backend_id)\n{\n\treturn map_lookup_elem(&LB6_BACKEND_MAP_V2,\
+    \ &backend_id);\n}\n\nstatic __always_inline struct lb6_backend *\n\n// CONTEXT:\
+    \ static __always_inline int lb6_local(const void *map, struct __ctx_buff *ctx,\n\
+    \t/* If the lookup fails it means the user deleted the backend out from\n\t *\
+    \ underneath us. To resolve this fall back to hash. If this is a TCP\n\t * session\
+    \ we are likely to get a TCP RST.\n\t */\n\tbackend = lb6_lookup_backend(ctx,\
+    \ state->backend_id);\n\tif (unlikely(!backend || backend->flags != BE_STATE_ACTIVE))\
+    \ {\n\t\t/* Drain existing connections, but redirect new ones to only\n\t\t *\
+    \ active backends.\n\t\t */\n\t\tif (backend && !state->syn)\n\t\t\tgoto update_state;\n\
+    \t\tkey->backend_slot = 0;\n\t\tsvc = lb6_lookup_service(key, false);\n\t\tif\
+    \ (!svc)\n\t\t\tgoto drop_no_service;\n\t\tbackend_id = lb6_select_backend_id(ctx,\
+    \ key, tuple, svc);\n\t\tbackend = lb6_lookup_backend(ctx, backend_id);\n\t\t\
+    if (!backend)\n\t\t\tgoto drop_no_service;\n\t\tstate->backend_id = backend_id;\n\
+    \t\tct_update6_backend_id(map, tuple, state);\n\t}\nupdate_state:\n\t/* Restore\
+    \ flags so that SERVICE flag is only used in used when the\n\t * service lookup\
+    \ happens and future lookups use EGRESS or INGRESS.\n\n// CONTEXT: static __always_inline\
+    \ void lb6_ctx_restore_state(struct __ctx_buff *ctx,\n\n\t*proxy_port = ctx_load_meta(ctx,\
+    \ CB_PROXY_MAGIC) >> 16;\n\tctx_store_meta(ctx, CB_PROXY_MAGIC, 0);\n}\n\n#else\n\
+    \n/* Stubs for v4-in-v6 socket cgroup hook case when only v4 is enabled to avoid\n\
+    \ * additional map management.\n */\nstatic __always_inline\nstruct lb6_service\
+    \ *lb6_lookup_service(struct lb6_key *key __maybe_unused,\n\t\t\t\t       const\
+    \ bool scope_switch __maybe_unused)\n{\n\treturn NULL;\n}\n\nstatic __always_inline\n\
+    struct lb6_service *__lb6_lookup_backend_slot(struct lb6_key *key __maybe_unused)\n\
+    {\n\treturn NULL;\n}\n\nstatic __always_inline struct lb6_backend *\n__lb6_lookup_backend(__u16\
+    \ backend_id __maybe_unused)\n\n// CONTEXT: lb4_populate_ports(struct __ctx_buff\
+    \ *ctx, struct ipv4_ct_tuple *tuple, int off)\nstatic __always_inline bool\nlb4_to_lb6_service(const\
+    \ struct lb4_service *svc __maybe_unused)\n{\n#ifdef ENABLE_NAT_46X64\n\treturn\
+    \ svc->flags2 & SVC_FLAG_NAT_46X64;\n#else\n\treturn false;\n#endif\n}\n\nstatic\
+    \ __always_inline\nstruct lb4_service *lb4_lookup_service(struct lb4_key *key,\n\
+    \t\t\t\t       const bool scope_switch)\n{\n\tstruct lb4_service *svc;\n\n\tkey->scope\
+    \ = LB_LOOKUP_SCOPE_EXT;\n\tkey->backend_slot = 0;\n\tsvc = map_lookup_elem(&LB4_SERVICES_MAP_V2,\
+    \ key);\n\tif (svc) {\n\t\tif (!scope_switch || !lb4_svc_is_local_scope(svc))\n\
+    \t\t\t/* Packets for L7 LB are redirected even when there are no backends. */\n\
+    \t\t\treturn (svc->count || lb4_to_lb6_service(svc) ||\n\t\t\t\tlb4_svc_is_l7loadbalancer(svc))\
+    \ ? svc : NULL;\n\t\tkey->scope = LB_LOOKUP_SCOPE_INT;\n\t\tsvc = map_lookup_elem(&LB4_SERVICES_MAP_V2,\
+    \ key);\n\t\tif (svc && (svc->count || lb4_svc_is_l7loadbalancer(svc)))\n\t\t\t\
+    return svc;\n\t}\n\n\treturn NULL;\n}\n\nstatic __always_inline struct lb4_backend\
+    \ *__lb4_lookup_backend(__u32 backend_id)\n{\n\treturn map_lookup_elem(&LB4_BACKEND_MAP_V2,\
+    \ &backend_id);\n}\n\nstatic __always_inline struct lb4_backend *\n\n// CONTEXT:\
+    \ static __always_inline int lb4_local(const void *map, struct __ctx_buff *ctx,\n\
+    {\n\t__u32 monitor; /* Deliberately ignored; regular CT will determine monitoring.\
+    \ */\n\t__be32 new_saddr = 0, new_daddr;\n\t__u8 flags = tuple->flags;\n\tstruct\
+    \ lb4_backend *backend;\n\t__u32 backend_id = 0;\n\tint ret;\n#ifdef ENABLE_SESSION_AFFINITY\n\
+    \tunion lb4_affinity_client_id client_id = {\n\t\t.client_ip = saddr,\n\t};\n\
+    #endif\n\tret = ct_lookup4(map, tuple, ctx, l4_off, CT_SERVICE, state, &monitor);\n\
+    \tswitch (ret) {\n\tcase CT_NEW:\n#ifdef ENABLE_SESSION_AFFINITY\n\t\tif (lb4_svc_is_affinity(svc))\
+    \ {\n\t\t\tbackend_id = lb4_affinity_backend_id_by_addr(svc, &client_id);\n\t\t\
+    \tif (backend_id != 0) {\n\t\t\t\tbackend = lb4_lookup_backend(ctx, backend_id);\n\
+    \t\t\t\tif (backend == NULL)\n\t\t\t\t\tbackend_id = 0;\n\t\t\t}\n\t\t}\n\n//\
+    \ CONTEXT: static __always_inline int lb4_local(const void *map, struct __ctx_buff\
+    \ *ctx,\n\t/* If the lookup fails it means the user deleted the backend out from\n\
+    \t * underneath us. To resolve this fall back to hash. If this is a TCP\n\t *\
+    \ session we are likely to get a TCP RST.\n\t */\n\tbackend = lb4_lookup_backend(ctx,\
+    \ state->backend_id);\n\tif (unlikely(!backend || backend->flags != BE_STATE_ACTIVE))\
+    \ {\n\t\t/* Drain existing connections, but redirect new ones to only\n\t\t *\
+    \ active backends.\n\t\t */\n\t\tif (backend && !state->syn)\n\t\t\tgoto update_state;\n\
+    \t\tkey->backend_slot = 0;\n\t\tsvc = lb4_lookup_service(key, false);\n\t\tif\
+    \ (!svc)\n\t\t\tgoto drop_no_service;\n\t\tbackend_id = lb4_select_backend_id(ctx,\
+    \ key, tuple, svc);\n\t\tbackend = lb4_lookup_backend(ctx, backend_id);\n\t\t\
+    if (!backend)\n\t\t\tgoto drop_no_service;\n\t\tstate->backend_id = backend_id;\n\
+    \t\tct_update4_backend_id(map, tuple, state);\n\t}\nupdate_state:\n\t/* Restore\
+    \ flags so that SERVICE flag is only used in used when the\n\t * service lookup\
+    \ happens and future lookups use EGRESS or INGRESS.\n\n// FILE: bpf/lib/nodeport.h\n\
+    // CONTEXT: static __always_inline int nodeport_lb6(struct __ctx_buff *ctx,\n\t\
+    l4_off = l3_off + hdrlen;\n\n\tret = lb6_extract_key(ctx, &tuple, l4_off, &key,\
+    \ &csum_off, CT_EGRESS);\n\tif (IS_ERR(ret)) {\n\t\tif (ret == DROP_NO_SERVICE)\n\
+    \t\t\tgoto skip_service_lookup;\n\t\telse if (ret == DROP_UNKNOWN_L4)\n\t\t\t\
+    return CTX_ACT_OK;\n\t\telse\n\t\t\treturn ret;\n\t}\n\n\tsvc = lb6_lookup_service(&key,\
+    \ false);\n\tif (svc) {\n\t\tconst bool skip_l3_xlate = DSR_ENCAP_MODE == DSR_ENCAP_IPIP;\n\
+    \n\t\tif (!lb6_src_range_ok(svc, (union v6addr *)&ip6->saddr))\n\t\t\treturn DROP_NOT_IN_SRC_RANGE;\n\
+    \n#if defined(ENABLE_L7_LB)\n\t\tif (lb6_svc_is_l7loadbalancer(svc) && svc->l7_lb_proxy_port\
+    \ > 0) {\n\t\t\tsend_trace_notify(ctx, TRACE_TO_PROXY, src_identity, 0,\n\t\t\t\
+    \t\t  bpf_ntohs((__u16)svc->l7_lb_proxy_port), 0,\n\t\t\t\t\t  TRACE_REASON_POLICY,\
+    \ monitor);\n\t\t\treturn ctx_redirect_to_proxy_hairpin_ipv6(ctx,\n\t\t\t\t\t\t\
+    \t\t  (__be16)svc->l7_lb_proxy_port);\n\t\t}\n#endif\n\t\tret = lb6_local(get_ct_map6(&tuple),\
+    \ ctx, l3_off, l4_off,\n\t\t\t\t&csum_off, &key, &tuple, svc, &ct_state_new,\n\
+    \t\t\t\tskip_l3_xlate);\n\t\tif (IS_ERR(ret))\n\t\t\treturn ret;\n\t}\n\n\tif\
+    \ (!svc || !lb6_svc_is_routable(svc)) {\n\t\tif (svc)\n\t\t\treturn DROP_IS_CLUSTER_IP;\n\
+    \nskip_service_lookup:\n\n// CONTEXT: static __always_inline int nodeport_lb4(struct\
+    \ __ctx_buff *ctx,\n\tl4_off = l3_off + ipv4_hdrlen(ip4);\n\n\tret = lb4_extract_key(ctx,\
+    \ ip4, l4_off, &key, &csum_off, CT_EGRESS);\n\tif (IS_ERR(ret)) {\n\t\tif (ret\
+    \ == DROP_NO_SERVICE)\n\t\t\tgoto skip_service_lookup;\n\t\telse if (ret == DROP_UNKNOWN_L4)\n\
+    \t\t\treturn CTX_ACT_OK;\n\t\telse\n\t\t\treturn ret;\n\t}\n\n\tsvc = lb4_lookup_service(&key,\
+    \ false);\n\tif (svc) {\n\t\tconst bool skip_l3_xlate = DSR_ENCAP_MODE == DSR_ENCAP_IPIP;\n\
+    \n\t\tif (!lb4_src_range_ok(svc, ip4->saddr))\n\t\t\treturn DROP_NOT_IN_SRC_RANGE;\n\
+    #if defined(ENABLE_L7_LB)\n\t\tif (lb4_svc_is_l7loadbalancer(svc) && svc->l7_lb_proxy_port\
+    \ > 0) {\n\t\t\tsend_trace_notify(ctx, TRACE_TO_PROXY, src_identity, 0,\n\t\t\t\
+    \t\t  bpf_ntohs((__u16)svc->l7_lb_proxy_port), 0,\n\t\t\t\t\t  TRACE_REASON_POLICY,\
+    \ monitor);\n\t\t\treturn ctx_redirect_to_proxy_hairpin_ipv4(ctx,\n\t\t\t\t\t\t\
+    \t\t  (__be16)svc->l7_lb_proxy_port);\n\t\t}\n#endif\n\t\tif (lb4_to_lb6_service(svc))\
+    \ {\n\t\t\tret = lb4_to_lb6(ctx, ip4, l3_off);\n\t\t\tif (!ret)\n\t\t\t\treturn\
+    \ NAT_46X64_RECIRC;\n\t\t} else {\n\t\t\tret = lb4_local(get_ct_map4(&tuple),\
+    \ ctx, l3_off, l4_off,\n\t\t\t\t\t&csum_off, &key, &tuple, svc, &ct_state_new,\n\
+    \t\t\t\t\tip4->saddr, ipv4_has_l4_header(ip4),\n\t\t\t\t\tskip_l3_xlate);\n\t\t\
+    }\n\t\tif (IS_ERR(ret))\n\t\t\treturn ret;\n\t}\n\n\tif (!svc || !lb4_svc_is_routable(svc))\
+    \ {\n\t\tif (svc)\n\t\t\treturn DROP_IS_CLUSTER_IP;\n\n// FILE: bpf/sockops/bpf_sockops.c\n\
+    // CONTEXT: static inline void bpf_sock_ops_ipv4(struct bpf_sock_ops *skops)\n\
+    \t__u32 dip4, dport, dst_id = 0;\n\tstruct endpoint_info *exists;\n\tstruct lb4_service\
+    \ *svc;\n\tstruct sock_key key = {};\n\tint verdict;\n\n\tsk_extract4_key(skops,\
+    \ &key);\n\n\t/* If endpoint a service use L4/L3 stack for now. These can be\n\
+    \t * pulled in as needed.\n\t */\n\tsk_lb4_key(&lb4_key, &key);\n\tsvc = lb4_lookup_service(&lb4_key,\
+    \ true);\n\tif (svc)\n\t\treturn;\n\n\t/* Policy lookup required to learn proxy\
+    \ port */\n\tif (1) {\n\t\tstruct remote_endpoint_info *info;\n\n\t\tinfo = lookup_ip4_remote_endpoint(key.dip4);\n\
+    \t\tif (info != NULL && info->sec_label)\n\t\t\tdst_id = info->sec_label;\n\t\t\
+    else\n\t\t\tdst_id = WORLD_ID;"
+  fixed_code: "// FILE: bpf/bpf_lxc.c\n// CONTEXT: static __always_inline int __tail_handle_ipv6(struct\
+    \ __ctx_buff *ctx)\n\t\t\t\tgoto skip_service_lookup;\n\t\t\telse\n\t\t\t\treturn\
+    \ ret;\n\t\t}\n\n\t\t/*\n\t\t * Check if the destination address is among the\
+    \ address that should\n\t\t * be load balanced. This operation is performed before\
+    \ we go through\n\t\t * the connection tracker to allow storing the reverse nat\
+    \ index in\n\t\t * the CT entry for destination endpoints where we can't encode\
+    \ the\n\t\t * state in the address.\n\t\t */\n\t\tsvc = lb6_lookup_service(&key,\
+    \ is_defined(ENABLE_NODEPORT), false);\n\t\tif (svc) {\n#if defined(ENABLE_L7_LB)\n\
+    \t\t\tif (lb6_svc_is_l7loadbalancer(svc)) {\n\t\t\t\tproxy_port = (__u16)svc->l7_lb_proxy_port;\n\
+    \t\t\t\tgoto skip_service_lookup;\n\t\t\t}\n#endif /* ENABLE_L7_LB */\n\t\t\t\
+    if (unlikely(svc->count == 0))\n\t\t\t\treturn DROP_NO_SERVICE;\n\n\t\t\tret =\
+    \ lb6_local(get_ct_map6(&tuple), ctx, ETH_HLEN, l4_off,\n\t\t\t\t\t&csum_off,\
+    \ &key, &tuple, svc, &ct_state_new,\n\t\t\t\t\tfalse);\n\t\t\tif (IS_ERR(ret))\n\
+    \t\t\t\treturn ret;\n\t\t}\n\nskip_service_lookup:\n\t\t/* Store state to be picked\
+    \ up on the continuation tail call. */\n\t\tlb6_ctx_store_state(ctx, &ct_state_new,\
+    \ proxy_port);\n\t}\n#endif /* ENABLE_PER_PACKET_LB */\n\n// CONTEXT: static __always_inline\
+    \ int __tail_handle_ipv4(struct __ctx_buff *ctx)\n\n\t\tl4_off = ETH_HLEN + ipv4_hdrlen(ip4);\n\
+    \n\t\tret = lb4_extract_key(ctx, ip4, l4_off, &key, &csum_off,\n\t\t\t\t     \
+    \ CT_EGRESS);\n\t\tif (IS_ERR(ret)) {\n\t\t\tif (ret == DROP_NO_SERVICE || ret\
+    \ == DROP_UNKNOWN_L4)\n\t\t\t\tgoto skip_service_lookup;\n\t\t\telse\n\t\t\t\t\
+    return ret;\n\t\t}\n\n\t\tsvc = lb4_lookup_service(&key, is_defined(ENABLE_NODEPORT),\
+    \ false);\n\t\tif (svc) {\n#if defined(ENABLE_L7_LB)\n\t\t\tif (lb4_svc_is_l7loadbalancer(svc))\
+    \ {\n\t\t\t\tproxy_port = (__u16)svc->l7_lb_proxy_port;\n\t\t\t\tgoto skip_service_lookup;\n\
+    \t\t\t}\n#endif /* ENABLE_L7_LB */\n\t\t\tif (unlikely(svc->count == 0))\n\t\t\
+    \t\treturn DROP_NO_SERVICE;\n\n\t\t\tret = lb4_local(get_ct_map4(&tuple), ctx,\
+    \ ETH_HLEN, l4_off,\n\t\t\t\t\t&csum_off, &key, &tuple, svc, &ct_state_new,\n\t\
+    \t\t\t\tip4->saddr, has_l4_header, false);\n\t\t\tif (IS_ERR(ret))\n\t\t\t\treturn\
+    \ ret;\n\t\t}\nskip_service_lookup:\n\t\t/* Store state to be picked up on the\
+    \ continuation tail call. */\n\t\tlb4_ctx_store_state(ctx, &ct_state_new, proxy_port);\n\
+    \t}\n#endif /* ENABLE_PER_PACKET_LB */\n\n// FILE: bpf/bpf_sock.c\n// CONTEXT:\
+    \ sock4_wildcard_lookup(struct lb4_key *key __maybe_unused,\n\t */\n\tif (in_hostns\
+    \ && is_v4_loopback(key->address))\n\t\tgoto wildcard_lookup;\n\n\tinfo = ipcache_lookup4(&IPCACHE_MAP,\
+    \ key->address, V4_CACHE_KEY_LEN);\n\tif (info != NULL && (info->sec_label ==\
+    \ HOST_ID ||\n\t    (include_remote_hosts && identity_is_remote_node(info->sec_label))))\n\
+    \t\tgoto wildcard_lookup;\n\n\treturn NULL;\nwildcard_lookup:\n\tkey->address\
+    \ = 0;\n\treturn lb4_lookup_service(key, true, true);\n}\n#endif /* ENABLE_NODEPORT\
+    \ */\n\nstatic __always_inline struct lb4_service *\nsock4_wildcard_lookup_full(struct\
+    \ lb4_key *key __maybe_unused,\n\t\t\t   const bool in_hostns __maybe_unused)\n\
+    {\n\tstruct lb4_service *svc = NULL;\n\n#ifdef ENABLE_NODEPORT\n\tsvc = sock4_wildcard_lookup(key,\
+    \ true, false, in_hostns);\n\tif (svc && !lb4_svc_is_nodeport(svc))\n\n// CONTEXT:\
+    \ static __always_inline int __sock4_xlate_fwd(struct bpf_sock_addr *ctx,\n#endif\n\
+    \n\tif (is_defined(ENABLE_SOCKET_LB_HOST_ONLY) && !in_hostns)\n\t\treturn -ENXIO;\n\
+    \n\tif (!udp_only && !sock_proto_enabled(ctx->protocol))\n\t\treturn -ENOTSUP;\n\
+    \n\t/* In case a direct match fails, we try to look-up surrogate\n\t * service\
+    \ entries via wildcarded lookup for NodePort and\n\t * HostPort services.\n\t\
+    \ */\n\tsvc = lb4_lookup_service(&key, true, true);\n\tif (!svc)\n\t\tsvc = sock4_wildcard_lookup_full(&key,\
+    \ in_hostns);\n\tif (!svc)\n\t\treturn -ENXIO;\n\n\t/* Do not perform service\
+    \ translation for external IPs\n\t * that are not a local address because we don't\
+    \ want\n\t * a k8s service to easily do MITM attacks for a public\n\t * IP address.\
+    \ But do the service translation if the IP\n\t * is from the host.\n\t */\n\t\
+    if (sock4_skip_xlate(svc, orig_key.address))\n\n// CONTEXT: static __always_inline\
+    \ int __sock4_post_bind(struct bpf_sock *ctx,\n\t\t\t\t\t     struct bpf_sock\
+    \ *ctx_full)\n{\n\tstruct lb4_service *svc;\n\tstruct lb4_key key = {\n\t\t.address\t\
+    = ctx->src_ip4,\n\t\t.dport\t\t= ctx_src_port(ctx),\n\t};\n\n\tif (!sock_proto_enabled(ctx->protocol)\
+    \ ||\n\t    !ctx_in_hostns(ctx_full, NULL))\n\t\treturn 0;\n\n\tsvc = lb4_lookup_service(&key,\
+    \ true, true);\n\tif (!svc)\n\t\t/* Perform a wildcard lookup for the case where\
+    \ the caller\n\t\t * tries to bind to loopback or an address with host identity\n\
+    \t\t * (without remote hosts).\n\t\t */\n\t\tsvc = sock4_wildcard_lookup(&key,\
+    \ false, false, true);\n\n\t/* If the sockaddr of this socket overlaps with a\
+    \ NodePort,\n\t * LoadBalancer or ExternalIP service. We must reject this\n\t\
+    \ * bind() call to avoid accidentally hijacking its traffic.\n\t */\n\tif (svc\
+    \ && (lb4_svc_is_nodeport(svc) ||\n\n// CONTEXT: static __always_inline int __sock4_xlate_rev(struct\
+    \ bpf_sock_addr *ctx,\n\t\t.address\t= ctx->user_ip4,\n\t\t.port\t\t= ctx_dst_port(ctx),\n\
+    \t};\n\n\tval = map_lookup_elem(&LB4_REVERSE_NAT_SK_MAP, &key);\n\tif (val) {\n\
+    \t\tstruct lb4_service *svc;\n\t\tstruct lb4_key svc_key = {\n\t\t\t.address\t\
+    = val->address,\n\t\t\t.dport\t\t= val->port,\n\t\t};\n\n\t\tsvc = lb4_lookup_service(&svc_key,\
+    \ true, true);\n\t\tif (!svc)\n\t\t\tsvc = sock4_wildcard_lookup_full(&svc_key,\n\
+    \t\t\t\t\t\tctx_in_hostns(ctx_full, NULL));\n\t\tif (!svc || svc->rev_nat_index\
+    \ != val->rev_nat_index) {\n\t\t\tmap_delete_elem(&LB4_REVERSE_NAT_SK_MAP, &key);\n\
+    \t\t\tupdate_metrics(0, METRIC_INGRESS, REASON_LB_REVNAT_STALE);\n\t\t\treturn\
+    \ -ENOENT;\n\t\t}\n\n\t\tctx->user_ip4 = val->address;\n\t\tctx_set_port(ctx,\
+    \ val->port);\n\t\treturn 0;\n\n// CONTEXT: sock6_wildcard_lookup(struct lb6_key\
+    \ *key __maybe_unused,\n\t */\n\tif (in_hostns && is_v6_loopback(&key->address))\n\
+    \t\tgoto wildcard_lookup;\n\n\tinfo = ipcache_lookup6(&IPCACHE_MAP, &key->address,\
+    \ V6_CACHE_KEY_LEN);\n\tif (info != NULL && (info->sec_label == HOST_ID ||\n\t\
+    \    (include_remote_hosts && identity_is_remote_node(info->sec_label))))\n\t\t\
+    goto wildcard_lookup;\n\n\treturn NULL;\nwildcard_lookup:\n\tmemset(&key->address,\
+    \ 0, sizeof(key->address));\n\treturn lb6_lookup_service(key, true, true);\n}\n\
+    #endif /* ENABLE_NODEPORT */\n\nstatic __always_inline __maybe_unused struct lb6_service\
+    \ *\nsock6_wildcard_lookup_full(struct lb6_key *key __maybe_unused,\n\t\t\t  \
+    \ const bool in_hostns __maybe_unused)\n{\n\tstruct lb6_service *svc = NULL;\n\
+    \n#ifdef ENABLE_NODEPORT\n\tsvc = sock6_wildcard_lookup(key, true, false, in_hostns);\n\
+    \tif (svc && !lb6_svc_is_nodeport(svc))\n\n// CONTEXT: static __always_inline\
+    \ int __sock6_post_bind(struct bpf_sock *ctx)\n{\n\tstruct lb6_service *svc;\n\
+    \tstruct lb6_key key = {\n\t\t.dport\t\t= ctx_src_port(ctx),\n\t};\n\n\tif (!sock_proto_enabled(ctx->protocol)\
+    \ ||\n\t    !ctx_in_hostns(ctx, NULL))\n\t\treturn 0;\n\n\tctx_get_v6_src_address(ctx,\
+    \ &key.address);\n\n\tsvc = lb6_lookup_service(&key, true, true);\n\tif (!svc)\
+    \ {\n\t\tsvc = sock6_wildcard_lookup(&key, false, false, true);\n\t\tif (!svc)\n\
+    \t\t\treturn sock6_post_bind_v4_in_v6(ctx);\n\t}\n\n\tif (svc && (lb6_svc_is_nodeport(svc)\
+    \ ||\n\t\t    lb6_svc_is_external_ip(svc) ||\n\t\t    lb6_svc_is_loadbalancer(svc)))\n\
+    \t\treturn -EADDRINUSE;\n\n\treturn 0;\n\n// CONTEXT: static __always_inline int\
+    \ __sock6_xlate_fwd(struct bpf_sock_addr *ctx,\n\tstruct lb6_backend l7backend;\n\
+    #endif\n\n\tif (is_defined(ENABLE_SOCKET_LB_HOST_ONLY) && !in_hostns)\n\t\treturn\
+    \ -ENXIO;\n\n\tif (!udp_only && !sock_proto_enabled(ctx->protocol))\n\t\treturn\
+    \ -ENOTSUP;\n\n\tctx_get_v6_address(ctx, &key.address);\n\tmemcpy(&orig_key, &key,\
+    \ sizeof(key));\n\n\tsvc = lb6_lookup_service(&key, true, true);\n\tif (!svc)\n\
+    \t\tsvc = sock6_wildcard_lookup_full(&key, in_hostns);\n\tif (!svc)\n\t\treturn\
+    \ sock6_xlate_v4_in_v6(ctx, udp_only);\n\n\tif (sock6_skip_xlate(svc, &orig_key.address))\n\
+    \t\treturn -EPERM;\n\n#ifdef ENABLE_L7_LB\n\t/* See __sock4_xlate_fwd for commentary.\
+    \ */\n\tif (lb6_svc_is_l7loadbalancer(svc)) {\n\t\tif (is_defined(BPF_HAVE_NETNS_COOKIE)\
+    \ && in_hostns) {\n\n// CONTEXT: static __always_inline int __sock6_xlate_rev(struct\
+    \ bpf_sock_addr *ctx)\n\tkey.cookie = sock_local_cookie(ctx);\n\tkey.port = ctx_dst_port(ctx);\n\
+    \tctx_get_v6_address(ctx, &key.address);\n\n\tval = map_lookup_elem(&LB6_REVERSE_NAT_SK_MAP,\
+    \ &key);\n\tif (val) {\n\t\tstruct lb6_service *svc;\n\t\tstruct lb6_key svc_key\
+    \ = {\n\t\t\t.address\t= val->address,\n\t\t\t.dport\t\t= val->port,\n\t\t};\n\
+    \n\t\tsvc = lb6_lookup_service(&svc_key, true, true);\n\t\tif (!svc)\n\t\t\tsvc\
+    \ = sock6_wildcard_lookup_full(&svc_key,\n\t\t\t\t\t\tctx_in_hostns(ctx, NULL));\n\
+    \t\tif (!svc || svc->rev_nat_index != val->rev_nat_index) {\n\t\t\tmap_delete_elem(&LB6_REVERSE_NAT_SK_MAP,\
+    \ &key);\n\t\t\tupdate_metrics(0, METRIC_INGRESS, REASON_LB_REVNAT_STALE);\n\t\
+    \t\treturn -ENOENT;\n\t\t}\n\n\t\tctx_set_v6_address(ctx, &val->address);\n\t\t\
+    ctx_set_port(ctx, val->port);\n\t\treturn 0;\n\n// FILE: bpf/lib/lb.h\n// CONTEXT:\
+    \ bool lb6_src_range_ok(const struct lb6_service *svc __maybe_unused,\nstatic\
+    \ __always_inline bool\nlb6_to_lb4_service(const struct lb6_service *svc __maybe_unused)\n\
+    {\n#ifdef ENABLE_NAT_46X64\n\treturn svc->flags2 & SVC_FLAG_NAT_46X64;\n#else\n\
+    \treturn false;\n#endif\n}\n\nstatic __always_inline\nstruct lb6_service *lb6_lookup_service(struct\
+    \ lb6_key *key,\n\t   const bool scope_switch, const bool check_svc_backends)\n\
+    {\n\tstruct lb6_service *svc;\n\n\tkey->scope = LB_LOOKUP_SCOPE_EXT;\n\tkey->backend_slot\
+    \ = 0;\n\tsvc = map_lookup_elem(&LB6_SERVICES_MAP_V2, key);\n\tif (svc) {\n\t\t\
+    if (!scope_switch || !lb6_svc_is_local_scope(svc))\n\t\t\t/* Packets for L7 LB\
+    \ are redirected even when there are no backends. */\n\t\t\treturn (svc->count\
+    \ || !check_svc_backends ||\n\t\t\t\tlb6_svc_is_l7loadbalancer(svc)) ? svc : NULL;\n\
+    \t\tkey->scope = LB_LOOKUP_SCOPE_INT;\n\t\tsvc = map_lookup_elem(&LB6_SERVICES_MAP_V2,\
+    \ key);\n\t\tif (svc && (svc->count || !check_svc_backends || lb6_svc_is_l7loadbalancer(svc)))\n\
+    \t\t\treturn svc;\n\t}\n\n\treturn NULL;\n}\n\nstatic __always_inline struct lb6_backend\
+    \ *__lb6_lookup_backend(__u32 backend_id)\n{\n\treturn map_lookup_elem(&LB6_BACKEND_MAP_V2,\
+    \ &backend_id);\n}\n\nstatic __always_inline struct lb6_backend *\n\n// CONTEXT:\
+    \ static __always_inline int lb6_local(const void *map, struct __ctx_buff *ctx,\n\
+    \t/* If the lookup fails it means the user deleted the backend out from\n\t *\
+    \ underneath us. To resolve this fall back to hash. If this is a TCP\n\t * session\
+    \ we are likely to get a TCP RST.\n\t */\n\tbackend = lb6_lookup_backend(ctx,\
+    \ state->backend_id);\n\tif (unlikely(!backend || backend->flags != BE_STATE_ACTIVE))\
+    \ {\n\t\t/* Drain existing connections, but redirect new ones to only\n\t\t *\
+    \ active backends.\n\t\t */\n\t\tif (backend && !state->syn)\n\t\t\tgoto update_state;\n\
+    \t\tkey->backend_slot = 0;\n\t\tsvc = lb6_lookup_service(key, false, true);\n\t\
+    \tif (!svc)\n\t\t\tgoto drop_no_service;\n\t\tbackend_id = lb6_select_backend_id(ctx,\
+    \ key, tuple, svc);\n\t\tbackend = lb6_lookup_backend(ctx, backend_id);\n\t\t\
+    if (!backend)\n\t\t\tgoto drop_no_service;\n\t\tstate->backend_id = backend_id;\n\
+    \t\tct_update6_backend_id(map, tuple, state);\n\t}\nupdate_state:\n\t/* Restore\
+    \ flags so that SERVICE flag is only used in used when the\n\t * service lookup\
+    \ happens and future lookups use EGRESS or INGRESS.\n\n// CONTEXT: static __always_inline\
+    \ void lb6_ctx_restore_state(struct __ctx_buff *ctx,\n\n\t*proxy_port = ctx_load_meta(ctx,\
+    \ CB_PROXY_MAGIC) >> 16;\n\tctx_store_meta(ctx, CB_PROXY_MAGIC, 0);\n}\n\n#else\n\
+    \n/* Stubs for v4-in-v6 socket cgroup hook case when only v4 is enabled to avoid\n\
+    \ * additional map management.\n */\nstatic __always_inline\nstruct lb6_service\
+    \ *lb6_lookup_service(struct lb6_key *key __maybe_unused,\n\t   const bool scope_switch\
+    \ __maybe_unused, const bool check_svc_backends __maybe_unused)\n{\n\treturn NULL;\n\
+    }\n\nstatic __always_inline\nstruct lb6_service *__lb6_lookup_backend_slot(struct\
+    \ lb6_key *key __maybe_unused)\n{\n\treturn NULL;\n}\n\nstatic __always_inline\
+    \ struct lb6_backend *\n__lb6_lookup_backend(__u16 backend_id __maybe_unused)\n\
+    \n// CONTEXT: lb4_populate_ports(struct __ctx_buff *ctx, struct ipv4_ct_tuple\
+    \ *tuple, int off)\nstatic __always_inline bool\nlb4_to_lb6_service(const struct\
+    \ lb4_service *svc __maybe_unused)\n{\n#ifdef ENABLE_NAT_46X64\n\treturn svc->flags2\
+    \ & SVC_FLAG_NAT_46X64;\n#else\n\treturn false;\n#endif\n}\n\nstatic __always_inline\n\
+    struct lb4_service *lb4_lookup_service(struct lb4_key *key,\n\t\t\t\t  const bool\
+    \ scope_switch, const bool check_svc_backends)\n{\n\tstruct lb4_service *svc;\n\
+    \n\tkey->scope = LB_LOOKUP_SCOPE_EXT;\n\tkey->backend_slot = 0;\n\tsvc = map_lookup_elem(&LB4_SERVICES_MAP_V2,\
+    \ key);\n\tif (svc) {\n\t\tif (!scope_switch || !lb4_svc_is_local_scope(svc))\n\
+    \t\t\t/* Packets for L7 LB are redirected even when there are no backends. */\n\
+    \t\t\treturn (svc->count || !check_svc_backends || lb4_to_lb6_service(svc) ||\n\
+    \t\t\t\tlb4_svc_is_l7loadbalancer(svc)) ? svc : NULL;\n\t\tkey->scope = LB_LOOKUP_SCOPE_INT;\n\
+    \t\tsvc = map_lookup_elem(&LB4_SERVICES_MAP_V2, key);\n\t\tif (svc && (svc->count\
+    \ || !check_svc_backends || lb4_svc_is_l7loadbalancer(svc)))\n\t\t\treturn svc;\n\
+    \t}\n\n\treturn NULL;\n}\n\nstatic __always_inline struct lb4_backend *__lb4_lookup_backend(__u32\
+    \ backend_id)\n{\n\treturn map_lookup_elem(&LB4_BACKEND_MAP_V2, &backend_id);\n\
+    }\n\nstatic __always_inline struct lb4_backend *\n\n// CONTEXT: static __always_inline\
+    \ int lb4_local(const void *map, struct __ctx_buff *ctx,\n{\n\t__u32 monitor;\
+    \ /* Deliberately ignored; regular CT will determine monitoring. */\n\t__be32\
+    \ new_saddr = 0, new_daddr;\n\t__u8 flags = tuple->flags;\n\tstruct lb4_backend\
+    \ *backend;\n\t__u32 backend_id = 0;\n\tint ret;\n#ifdef ENABLE_SESSION_AFFINITY\n\
+    \tunion lb4_affinity_client_id client_id = {\n\t\t.client_ip = saddr,\n\t};\n\
+    #endif\n\n\tret = ct_lookup4(map, tuple, ctx, l4_off, CT_SERVICE, state, &monitor);\n\
+    \tswitch (ret) {\n\tcase CT_NEW:\n#ifdef ENABLE_SESSION_AFFINITY\n\t\tif (lb4_svc_is_affinity(svc))\
+    \ {\n\t\t\tbackend_id = lb4_affinity_backend_id_by_addr(svc, &client_id);\n\t\t\
+    \tif (backend_id != 0) {\n\t\t\t\tbackend = lb4_lookup_backend(ctx, backend_id);\n\
+    \t\t\t\tif (backend == NULL)\n\t\t\t\t\tbackend_id = 0;\n\t\t\t}\n\t\t}\n\n//\
+    \ CONTEXT: static __always_inline int lb4_local(const void *map, struct __ctx_buff\
+    \ *ctx,\n\t/* If the lookup fails it means the user deleted the backend out from\n\
+    \t * underneath us. To resolve this fall back to hash. If this is a TCP\n\t *\
+    \ session we are likely to get a TCP RST.\n\t */\n\tbackend = lb4_lookup_backend(ctx,\
+    \ state->backend_id);\n\tif (unlikely(!backend || backend->flags != BE_STATE_ACTIVE))\
+    \ {\n\t\t/* Drain existing connections, but redirect new ones to only\n\t\t *\
+    \ active backends.\n\t\t */\n\t\tif (backend && !state->syn)\n\t\t\tgoto update_state;\n\
+    \t\tkey->backend_slot = 0;\n\t\tsvc = lb4_lookup_service(key, false, true);\n\t\
+    \tif (!svc)\n\t\t\tgoto drop_no_service;\n\t\tbackend_id = lb4_select_backend_id(ctx,\
+    \ key, tuple, svc);\n\t\tbackend = lb4_lookup_backend(ctx, backend_id);\n\t\t\
+    if (!backend)\n\t\t\tgoto drop_no_service;\n\t\tstate->backend_id = backend_id;\n\
+    \t\tct_update4_backend_id(map, tuple, state);\n\t}\nupdate_state:\n\t/* Restore\
+    \ flags so that SERVICE flag is only used in used when the\n\t * service lookup\
+    \ happens and future lookups use EGRESS or INGRESS.\n\n// FILE: bpf/lib/nodeport.h\n\
+    // CONTEXT: static __always_inline int nodeport_lb6(struct __ctx_buff *ctx,\n\t\
+    l4_off = l3_off + hdrlen;\n\n\tret = lb6_extract_key(ctx, &tuple, l4_off, &key,\
+    \ &csum_off, CT_EGRESS);\n\tif (IS_ERR(ret)) {\n\t\tif (ret == DROP_NO_SERVICE)\n\
+    \t\t\tgoto skip_service_lookup;\n\t\telse if (ret == DROP_UNKNOWN_L4)\n\t\t\t\
+    return CTX_ACT_OK;\n\t\telse\n\t\t\treturn ret;\n\t}\n\n\tsvc = lb6_lookup_service(&key,\
+    \ false, false);\n\tif (svc) {\n\t\tconst bool skip_l3_xlate = DSR_ENCAP_MODE\
+    \ == DSR_ENCAP_IPIP;\n\n\t\tif (!lb6_src_range_ok(svc, (union v6addr *)&ip6->saddr))\n\
+    \t\t\treturn DROP_NOT_IN_SRC_RANGE;\n\n#if defined(ENABLE_L7_LB)\n\t\tif (lb6_svc_is_l7loadbalancer(svc)\
+    \ && svc->l7_lb_proxy_port > 0) {\n\t\t\tsend_trace_notify(ctx, TRACE_TO_PROXY,\
+    \ src_identity, 0,\n\t\t\t\t\t  bpf_ntohs((__u16)svc->l7_lb_proxy_port), 0,\n\t\
+    \t\t\t\t  TRACE_REASON_POLICY, monitor);\n\t\t\treturn ctx_redirect_to_proxy_hairpin_ipv6(ctx,\n\
+    \t\t\t\t\t\t\t\t  (__be16)svc->l7_lb_proxy_port);\n\t\t}\n#endif\n\t\tif (unlikely(svc->count\
+    \ == 0))\n\t\t\treturn DROP_NO_SERVICE;\n\n\t\tret = lb6_local(get_ct_map6(&tuple),\
+    \ ctx, l3_off, l4_off,\n\t\t\t\t&csum_off, &key, &tuple, svc, &ct_state_new,\n\
+    \t\t\t\tskip_l3_xlate);\n\t\tif (IS_ERR(ret))\n\t\t\treturn ret;\n\t}\n\n\tif\
+    \ (!svc || !lb6_svc_is_routable(svc)) {\n\t\tif (svc)\n\t\t\treturn DROP_IS_CLUSTER_IP;\n\
+    \nskip_service_lookup:\n\n// CONTEXT: static __always_inline int nodeport_lb4(struct\
+    \ __ctx_buff *ctx,\n\tl4_off = l3_off + ipv4_hdrlen(ip4);\n\n\tret = lb4_extract_key(ctx,\
+    \ ip4, l4_off, &key, &csum_off, CT_EGRESS);\n\tif (IS_ERR(ret)) {\n\t\tif (ret\
+    \ == DROP_NO_SERVICE)\n\t\t\tgoto skip_service_lookup;\n\t\telse if (ret == DROP_UNKNOWN_L4)\n\
+    \t\t\treturn CTX_ACT_OK;\n\t\telse\n\t\t\treturn ret;\n\t}\n\n\tsvc = lb4_lookup_service(&key,\
+    \ false, false);\n\tif (svc) {\n\t\tconst bool skip_l3_xlate = DSR_ENCAP_MODE\
+    \ == DSR_ENCAP_IPIP;\n\n\t\tif (!lb4_src_range_ok(svc, ip4->saddr))\n\t\t\treturn\
+    \ DROP_NOT_IN_SRC_RANGE;\n#if defined(ENABLE_L7_LB)\n\t\tif (lb4_svc_is_l7loadbalancer(svc)\
+    \ && svc->l7_lb_proxy_port > 0) {\n\t\t\tsend_trace_notify(ctx, TRACE_TO_PROXY,\
+    \ src_identity, 0,\n\t\t\t\t\t  bpf_ntohs((__u16)svc->l7_lb_proxy_port), 0,\n\t\
+    \t\t\t\t  TRACE_REASON_POLICY, monitor);\n\t\t\treturn ctx_redirect_to_proxy_hairpin_ipv4(ctx,\n\
+    \t\t\t\t\t\t\t\t  (__be16)svc->l7_lb_proxy_port);\n\t\t}\n#endif\n\t\tif (lb4_to_lb6_service(svc))\
+    \ {\n\t\t\tret = lb4_to_lb6(ctx, ip4, l3_off);\n\t\t\tif (!ret)\n\t\t\t\treturn\
+    \ NAT_46X64_RECIRC;\n\t\t} else {\n\t\t\tif (unlikely(svc->count == 0))\n\t\t\t\
+    \treturn DROP_NO_SERVICE;\n\n\t\t\tret = lb4_local(get_ct_map4(&tuple), ctx, l3_off,\
+    \ l4_off,\n\t\t\t\t\t&csum_off, &key, &tuple, svc, &ct_state_new,\n\t\t\t\t\t\
+    ip4->saddr, ipv4_has_l4_header(ip4),\n\t\t\t\t\tskip_l3_xlate);\n\t\t}\n\t\tif\
+    \ (IS_ERR(ret))\n\t\t\treturn ret;\n\t}\n\n\tif (!svc || !lb4_svc_is_routable(svc))\
+    \ {\n\t\tif (svc)\n\t\t\treturn DROP_IS_CLUSTER_IP;\n\n// FILE: bpf/sockops/bpf_sockops.c\n\
+    // CONTEXT: static inline void bpf_sock_ops_ipv4(struct bpf_sock_ops *skops)\n\
+    \t__u32 dip4, dport, dst_id = 0;\n\tstruct endpoint_info *exists;\n\tstruct lb4_service\
+    \ *svc;\n\tstruct sock_key key = {};\n\tint verdict;\n\n\tsk_extract4_key(skops,\
+    \ &key);\n\n\t/* If endpoint a service use L4/L3 stack for now. These can be\n\
+    \t * pulled in as needed.\n\t */\n\tsk_lb4_key(&lb4_key, &key);\n\tsvc = lb4_lookup_service(&lb4_key,\
+    \ true, true);\n\tif (svc)\n\t\treturn;\n\n\t/* Policy lookup required to learn\
+    \ proxy port */\n\tif (1) {\n\t\tstruct remote_endpoint_info *info;\n\n\t\tinfo\
+    \ = lookup_ip4_remote_endpoint(key.dip4);\n\t\tif (info != NULL && info->sec_label)\n\
+    \t\t\tdst_id = info->sec_label;\n\t\telse\n\t\t\tdst_id = WORLD_ID;"
+  diff_summary: |-
+    bpf/bpf_lxc.c:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: static __always_inline int __tail_handle_ipv6(struct __ctx_buff *ctx), static __always_inline int __tail_handle_ipv4(struct __ctx_buff *ctx).
+    bpf/bpf_sock.c:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: sock4_wildcard_lookup(struct lb4_key *key __maybe_unused,, static __always_inline int __sock4_xlate_fwd(struct bpf_sock_addr *ctx,, static __always_inline int __sock4_post_bind(struct bpf_sock *ctx,.
+    bpf/lib/lb.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: bool lb6_src_range_ok(const struct lb6_service *svc __maybe_unused,, static __always_inline int lb6_local(const void *map, struct __ctx_buff *ctx,, static __always_inline void lb6_ctx_restore_state(struct __ctx_buff *ctx,.
+    bpf/lib/nodeport.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: static __always_inline int nodeport_lb6(struct __ctx_buff *ctx,, static __always_inline int nodeport_lb4(struct __ctx_buff *ctx,.
+    bpf/sockops/bpf_sockops.c:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: static inline void bpf_sock_ops_ipv4(struct bpf_sock_ops *skops).
+    - Commit subject: bpf: drop SVC traffic if no backend is available.

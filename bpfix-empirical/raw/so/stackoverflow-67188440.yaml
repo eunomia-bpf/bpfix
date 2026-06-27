@@ -1,0 +1,163 @@
+schema_version: bpfix.raw_external/v1
+raw_id: stackoverflow-67188440
+source_kind: stackoverflow
+source:
+  url: https://stackoverflow.com/questions/67188440/ebpf-cannot-read-argv-and-envp-from-tracepoint-sys-enter-execve
+  title: eBPF - Cannot read argv and envp from tracepoint sys_enter_execve
+  repository: null
+  commit: null
+  collected_at: '2026-04-30T00:50:57+00:00'
+collector:
+  original_path: bpfix-empirical/raw/so/stackoverflow-67188440.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: true
+  verifier_log_block_count: 2
+  source_snippet_count: 0
+  has_buggy_code: false
+  has_fixed_code: false
+  has_fix_description: false
+reproduction:
+  status: replay_valid
+  case_id: stackoverflow-67188440
+  case_path: cases/stackoverflow-67188440
+  artifact_path: cases/stackoverflow-67188440
+  reason: admitted_to_bpfix_bench_cases
+raw:
+  case_id: stackoverflow-67188440
+  source: stackoverflow
+  collected_at: '2026-04-30T00:50:57+00:00'
+  question:
+    question_id: 67188440
+    title: eBPF - Cannot read argv and envp from tracepoint sys_enter_execve
+    url: https://stackoverflow.com/questions/67188440/ebpf-cannot-read-argv-and-envp-from-tracepoint-sys-enter-execve
+    tags:
+    - linux
+    - bpf
+    - ebpf
+    score: 5
+    answer_count: 2
+    is_answered: true
+  verifier_log:
+    blocks:
+    - |-
+      8: (15) if r0 == 0x0 goto pc+15
+       R0_w=map_value(id=0,off=0,ks=4,vs=300,imm=0) R6_w=ctx(id=0,off=0,imm=0) R10=fp0 fp-8=mmmm????
+      ; const char *const first_env_value = ctx->envp[0];
+      9: (79) r1 = *(u64 *)(r6 +32)
+      ; const char *const first_env_value = ctx->envp[0];
+      10: (79) r3 = *(u64 *)(r1 +0)
+      R1 invalid mem access 'inv'
+      processed 10 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0 mark_read 0
+    - |-
+      8: (15) if r0 == 0x0 goto pc+15
+       R0_w=map_value(id=0,off=0,ks=4,vs=300,imm=0) R6_w=ctx(id=0,off=0,imm=0) R10=fp0 fp-8=mmmm????
+      ; const char *const first_env_value = ctx->envp[0];
+      9: (79) r1 = *(u64 *)(r6 +32)
+      ; const char *const first_env_value = ctx->envp[0];
+      10: (79) r3 = *(u64 *)(r1 +0)
+      R1 invalid mem access 'inv'
+    combined: |-
+      8: (15) if r0 == 0x0 goto pc+15
+       R0_w=map_value(id=0,off=0,ks=4,vs=300,imm=0) R6_w=ctx(id=0,off=0,imm=0) R10=fp0 fp-8=mmmm????
+      ; const char *const first_env_value = ctx->envp[0];
+      9: (79) r1 = *(u64 *)(r6 +32)
+      ; const char *const first_env_value = ctx->envp[0];
+      10: (79) r3 = *(u64 *)(r1 +0)
+      R1 invalid mem access 'inv'
+      processed 10 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0 mark_read 0
+
+      8: (15) if r0 == 0x0 goto pc+15
+       R0_w=map_value(id=0,off=0,ks=4,vs=300,imm=0) R6_w=ctx(id=0,off=0,imm=0) R10=fp0 fp-8=mmmm????
+      ; const char *const first_env_value = ctx->envp[0];
+      9: (79) r1 = *(u64 *)(r6 +32)
+      ; const char *const first_env_value = ctx->envp[0];
+      10: (79) r3 = *(u64 *)(r1 +0)
+      R1 invalid mem access 'inv'
+  source_snippets: []
+  question_body_text: |-
+    I am learning BPF for my own fun, and I am having a hard time figuring out how to read argv and envp from the context passed to my eBPF program for sys_enter_execve
+    I will show my BPF program here and then explain in more details later what I am trying to accomplish.
+    Here's my code:
+    #include <linux/bpf.h>
+    #include <bpf_helpers.h>
+    struct
+    {
+    __uint(type, BPF_MAP_TYPE_ARRAY);
+    __type(key, __u32);
+    __type(value, char[300]);
+    __uint(max_entries, 1);
+    } mymap SEC(".maps");
+    // Based on /sys/kernel/debug/tracing/events/syscalls/sys_enter_execve/format
+    struct execve_args {
+    short common_type;
+    char common_flags;
+    char common_preempt_count;
+    int common_pid;
+    int __syscall_nr;
+    char *filename;
+    const char *const *argv;
+    const char *const *envp;
+    };
+    SEC("tracepoint/syscalls/sys_enter_execve")
+    int bpf_prog(struct execve_args *ctx) {
+    __u32 index = 0;
+    __u64 *value = bpf_map_lookup_elem(&mymap, &index);
+    // An array of length 300 is purely arbitrary here
+    char fn[300];
+    // null check for the value fetched from the map
+    if (value){
+    // trying here to get the first env var passed to the process
+    // started with execve
+    const char *const first_env_value = ctx->envp[0];
+    // null check
+    if (!first_env_value){
+    return 0;
+    }
+    // trying to safely read the value pointed by first_env_value
+    bpf_probe_read_user_str(fn, sizeof(fn), first_env_value);
+    bpf_map_update_elem(&mymap, &index, fn, BPF_ANY);
+    return 0;
+    }
+    return 0;
+    }
+    char _license[] SEC("license") = "GPL";
+    What I want, here, is to ultimately read the first environments variable referenced by ctx->envp and save it in the map.
+    Building the program succeeds, but it fails when I try to load it into the kernel:
+    8: (15) if r0 == 0x0 goto pc+15
+    R0_w=map_value(id=0,off=0,ks=4,vs=300,imm=0) R6_w=ctx(id=0,off=0,imm=0) R10=fp0 fp-8=mmmm????
+    ; const char *const first_env_value = ctx->envp[0];
+    9: (79) r1 = *(u64 *)(r6 +32)
+    ; const char *const first_env_value = ctx->envp[0];
+    10: (79) r3 = *(u64 *)(r1 +0)
+    R1 invalid mem access 'inv'
+    processed 10 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0 mark_read 0
+    I use bpf2go from Cilium project to load the BPF program into the kernel. And I use a Go program to read there BPF map.
+    Can someone give me some hints as to what am I doing wrong?
+    Maybe it is the double pointer that confuses me (const char *const *envp), maybe I misunderstand the sys_enter_execve system call and the tracepoint inputs, etc.
+    Any hint would be appreciated!
+    I'm not a kernel developer. I mostly code in Go and Python, but I really want to learn how to write BPF programs in pure C, just for the fun of it.
+    Thanks in advance
+  selected_answer:
+    answer_id: 67192259
+    url: https://stackoverflow.com/questions/67188440/ebpf-cannot-read-argv-and-envp-from-tracepoint-sys-enter-execve#67192259
+    is_accepted: true
+    score: 6
+    body_text: |-
+      TL;DR. You are trying to read arbitrary kernel memory. You need to use bpf_probe_read for that.
+      Let's have a look at the error logs:
+      The invalid memory access is on a load from r1. The value in r1 was loaded from memory using the address in r6 as the base. According to the second line, the verifier associates type ctx to r6.
+      So r6 points to your variable ctx. That variable is special (hence why the verifier has a special ctx type for it). Your BPF program is allowed to access memory pointed by that variable as long as its bounded (the exact bound depends on the program type).
+      8: (15) if r0 == 0x0 goto pc+15
+      R0_w=map_value(id=0,off=0,ks=4,vs=300,imm=0) R6_w=ctx(id=0,off=0,imm=0) R10=fp0 fp-8=mmmm????
+      ; const char *const first_env_value = ctx->envp[0];
+      9: (79) r1 = *(u64 *)(r6 +32)
+      ; const char *const first_env_value = ctx->envp[0];
+      10: (79) r3 = *(u64 *)(r1 +0)
+      R1 invalid mem access 'inv'
+      However, the value you retrieve from ctx->envp (the value stored in r1) is not part of ctx and may point to arbitrary kernel memory. The BPF verifier thus can't ensure ahead-of-time the safety of that access and rejects your program.
+      You need to use a BPF helper, bpf_probe_read, to access that memory. That helper will perform runtime checks to ensure the memory access is safe. If it's unsafe, it will return a negative error.
+    fix_description: TL;DR. You are trying to read arbitrary kernel memory. You need
+      to use bpf_probe_read for that. You need to use a BPF helper, bpf_probe_read,
+      to access that memory. That helper will perform runtime checks to ensure the
+      memory access is safe. If it's unsafe, it will return a negative error.

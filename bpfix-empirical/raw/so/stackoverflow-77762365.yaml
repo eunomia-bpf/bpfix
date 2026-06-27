@@ -1,0 +1,301 @@
+schema_version: bpfix.raw_external/v1
+raw_id: stackoverflow-77762365
+source_kind: stackoverflow
+source:
+  url: https://stackoverflow.com/questions/77762365/ebpf-value-is-outside-of-the-allowed-memory-range-when-reading-data-into-arra
+  title: 'ebpf: &quot;value is outside of the allowed memory range&quot; when reading
+    data into array with offset'
+  repository: null
+  commit: null
+  collected_at: '2026-03-11T16:03:15+00:00'
+collector:
+  original_path: bpfix-empirical/raw/so/stackoverflow-77762365.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: true
+  verifier_log_block_count: 1
+  source_snippet_count: 0
+  has_buggy_code: false
+  has_fixed_code: false
+  has_fix_description: false
+reproduction:
+  status: replay_valid
+  case_id: stackoverflow-77762365
+  case_path: cases/stackoverflow-77762365
+  artifact_path: cases/stackoverflow-77762365
+  reason: admitted_to_bpfix_bench_cases
+raw:
+  case_id: stackoverflow-77762365
+  source: stackoverflow
+  collected_at: '2026-03-11T16:03:15+00:00'
+  question:
+    question_id: 77762365
+    title: 'ebpf: &quot;value is outside of the allowed memory range&quot; when reading
+      data into array with offset'
+    url: https://stackoverflow.com/questions/77762365/ebpf-value-is-outside-of-the-allowed-memory-range-when-reading-data-into-arra
+    tags:
+    - ebpf
+    - bpf
+    score: 0
+    answer_count: 1
+    is_answered: true
+  original_verifier_log:
+    blocks:
+    - |-
+      ; if((void *) args->buf == NULL){
+      109: (79) r3 = *(u64 *)(r7 +8)        ; R3_w=scalar() R7=map_value(off=0,ks=4,vs=16,imm=0)
+      ; if((void *) args->buf == NULL){
+      110: (15) if r3 == 0x0 goto pc+64     ; R3_w=scalar()
+      ; event->fd = args->fd;
+      111: (61) r1 = *(u32 *)(r7 +0)        ; R1_w=scalar(umax=4294967295,var_off=(0x0; 0xffffffff)) R7=map_value(off=0,ks=4,vs=16,imm=0)
+      ; event->fd = args->fd;
+      112: (63) *(u32 *)(r6 +4) = r1        ; R1_w=scalar(umax=4294967295,var_off=(0x0; 0xffffffff)) R6=map_value(off=0,ks=8,vs=4108,imm=0)
+      ; if(event->len > MAX_READ_CONTENT_LENGTH){
+      113: (61) r2 = *(u32 *)(r6 +8)        ; R2_w=scalar(umax=4294967295,var_off=(0x0; 0xffffffff)) R6=map_value(off=0,ks=8,vs=4108,imm=0)
+      114: (67) r2 <<= 32                   ; R2_w=scalar(smax=9223372032559808512,umax=18446744069414584320,var_off=(0x0; 0xffffffff00000000),s32_min=0,s32_max=0,u32_max=0)
+      115: (c7) r2 s>>= 32                  ; R2=scalar(smin=-2147483648,smax=2147483647)
+      ; if(event->len > MAX_READ_CONTENT_LENGTH){
+      116: (65) if r2 s> 0x1000 goto pc+58          ; R2=scalar(smin=-2147483648,smax=4096)
+      ; int retVal = ctx->ret;
+      117: (bf) r1 = r8                     ; R1_w=scalar(id=1) R8=scalar(id=1)
+      118: (67) r1 <<= 32                   ; R1_w=scalar(smax=9223372032559808512,umax=18446744069414584320,var_off=(0x0; 0xffffffff00000000),s32_min=0,s32_max=0,u32_max=0)
+      119: (77) r1 >>= 32                   ; R1_w=scalar(umax=4294967295,var_off=(0x0; 0xffffffff))
+      120: (b7) r7 = 4095                   ; R7_w=4095
+      ; if(read > MAX_READ_CONTENT_LENGTH){
+      121: (25) if r1 > 0x1000 goto pc+2    ; R1_w=scalar(umax=4096,var_off=(0x0; 0x1fff))
+      122: (57) r8 &= 4095                  ; R8_w=scalar(umax=4095,var_off=(0x0; 0xfff))
+      123: (bf) r7 = r8                     ; R7=scalar(id=13,umax=4095,var_off=(0x0; 0xfff)) R8=scalar(id=13,umax=4095,var_off=(0x0; 0xfff))
+      ; event->len &= (MAX_READ_CONTENT_LENGTH-1);
+      124: (57) r2 &= 4095                  ; R2_w=scalar(umax=4095,var_off=(0x0; 0xfff))
+      125: (63) *(u32 *)(r6 +8) = r2        ; R2_w=scalar(umax=4095,var_off=(0x0; 0xfff)) R6=map_value(off=0,ks=8,vs=4108,imm=0)
+      ; if(event->len + read < MAX_READ_CONTENT_LENGTH) {
+      126: (bf) r1 = r2                     ; R1_w=scalar(id=14,umax=4095,var_off=(0x0; 0xfff)) R2_w=scalar(id=14,umax=4095,var_off=(0x0; 0xfff))
+      127: (0f) r1 += r7                    ; R1_w=scalar(umax=8190,var_off=(0x0; 0x1fff)) R7=scalar(id=13,umax=4095,var_off=(0x0; 0xfff))
+      ; if(event->len + read < MAX_READ_CONTENT_LENGTH) {
+      128: (25) if r1 > 0xfff goto pc+10    ; R1_w=scalar(umax=4095,var_off=(0x0; 0xfff))
+      ; long res = bpf_probe_read_user(&event->content[event->len], read, (const void *) args->buf);
+      129: (bf) r1 = r6                     ; R1_w=map_value(off=0,ks=8,vs=4108,imm=0) R6=map_value(off=0,ks=8,vs=4108,imm=0)
+      130: (0f) r1 += r2                    ; R1_w=map_value(off=0,ks=8,vs=4108,umax=4095,var_off=(0x0; 0xfff)) R2_w=scalar(id=14,umax=4095,var_off=(0x0; 0xfff))
+      131: (07) r1 += 12                    ; R1_w=map_value(off=12,ks=8,vs=4108,umax=4095,var_off=(0x0; 0xfff))
+      ; long res = bpf_probe_read_user(&event->content[event->len], read, (const void *) args->buf);
+      132: (bf) r2 = r7                     ; R2_w=scalar(id=13,umax=4095,var_off=(0x0; 0xfff)) R7=scalar(id=13,umax=4095,var_off=(0x0; 0xfff))
+      133: (85) call bpf_probe_read_user#112
+      invalid access to map value, value_size=4108 off=4107 size=4095
+      R1 max value is outside of the allowed memory range
+      processed 154 insns (limit 1000000) max_states_per_insn 0 total_states 12 peak_states 12 mark_read 4
+    combined: |-
+      ; if((void *) args->buf == NULL){
+      109: (79) r3 = *(u64 *)(r7 +8)        ; R3_w=scalar() R7=map_value(off=0,ks=4,vs=16,imm=0)
+      ; if((void *) args->buf == NULL){
+      110: (15) if r3 == 0x0 goto pc+64     ; R3_w=scalar()
+      ; event->fd = args->fd;
+      111: (61) r1 = *(u32 *)(r7 +0)        ; R1_w=scalar(umax=4294967295,var_off=(0x0; 0xffffffff)) R7=map_value(off=0,ks=4,vs=16,imm=0)
+      ; event->fd = args->fd;
+      112: (63) *(u32 *)(r6 +4) = r1        ; R1_w=scalar(umax=4294967295,var_off=(0x0; 0xffffffff)) R6=map_value(off=0,ks=8,vs=4108,imm=0)
+      ; if(event->len > MAX_READ_CONTENT_LENGTH){
+      113: (61) r2 = *(u32 *)(r6 +8)        ; R2_w=scalar(umax=4294967295,var_off=(0x0; 0xffffffff)) R6=map_value(off=0,ks=8,vs=4108,imm=0)
+      114: (67) r2 <<= 32                   ; R2_w=scalar(smax=9223372032559808512,umax=18446744069414584320,var_off=(0x0; 0xffffffff00000000),s32_min=0,s32_max=0,u32_max=0)
+      115: (c7) r2 s>>= 32                  ; R2=scalar(smin=-2147483648,smax=2147483647)
+      ; if(event->len > MAX_READ_CONTENT_LENGTH){
+      116: (65) if r2 s> 0x1000 goto pc+58          ; R2=scalar(smin=-2147483648,smax=4096)
+      ; int retVal = ctx->ret;
+      117: (bf) r1 = r8                     ; R1_w=scalar(id=1) R8=scalar(id=1)
+      118: (67) r1 <<= 32                   ; R1_w=scalar(smax=9223372032559808512,umax=18446744069414584320,var_off=(0x0; 0xffffffff00000000),s32_min=0,s32_max=0,u32_max=0)
+      119: (77) r1 >>= 32                   ; R1_w=scalar(umax=4294967295,var_off=(0x0; 0xffffffff))
+      120: (b7) r7 = 4095                   ; R7_w=4095
+      ; if(read > MAX_READ_CONTENT_LENGTH){
+      121: (25) if r1 > 0x1000 goto pc+2    ; R1_w=scalar(umax=4096,var_off=(0x0; 0x1fff))
+      122: (57) r8 &= 4095                  ; R8_w=scalar(umax=4095,var_off=(0x0; 0xfff))
+      123: (bf) r7 = r8                     ; R7=scalar(id=13,umax=4095,var_off=(0x0; 0xfff)) R8=scalar(id=13,umax=4095,var_off=(0x0; 0xfff))
+      ; event->len &= (MAX_READ_CONTENT_LENGTH-1);
+      124: (57) r2 &= 4095                  ; R2_w=scalar(umax=4095,var_off=(0x0; 0xfff))
+      125: (63) *(u32 *)(r6 +8) = r2        ; R2_w=scalar(umax=4095,var_off=(0x0; 0xfff)) R6=map_value(off=0,ks=8,vs=4108,imm=0)
+      ; if(event->len + read < MAX_READ_CONTENT_LENGTH) {
+      126: (bf) r1 = r2                     ; R1_w=scalar(id=14,umax=4095,var_off=(0x0; 0xfff)) R2_w=scalar(id=14,umax=4095,var_off=(0x0; 0xfff))
+      127: (0f) r1 += r7                    ; R1_w=scalar(umax=8190,var_off=(0x0; 0x1fff)) R7=scalar(id=13,umax=4095,var_off=(0x0; 0xfff))
+      ; if(event->len + read < MAX_READ_CONTENT_LENGTH) {
+      128: (25) if r1 > 0xfff goto pc+10    ; R1_w=scalar(umax=4095,var_off=(0x0; 0xfff))
+      ; long res = bpf_probe_read_user(&event->content[event->len], read, (const void *) args->buf);
+      129: (bf) r1 = r6                     ; R1_w=map_value(off=0,ks=8,vs=4108,imm=0) R6=map_value(off=0,ks=8,vs=4108,imm=0)
+      130: (0f) r1 += r2                    ; R1_w=map_value(off=0,ks=8,vs=4108,umax=4095,var_off=(0x0; 0xfff)) R2_w=scalar(id=14,umax=4095,var_off=(0x0; 0xfff))
+      131: (07) r1 += 12                    ; R1_w=map_value(off=12,ks=8,vs=4108,umax=4095,var_off=(0x0; 0xfff))
+      ; long res = bpf_probe_read_user(&event->content[event->len], read, (const void *) args->buf);
+      132: (bf) r2 = r7                     ; R2_w=scalar(id=13,umax=4095,var_off=(0x0; 0xfff)) R7=scalar(id=13,umax=4095,var_off=(0x0; 0xfff))
+      133: (85) call bpf_probe_read_user#112
+      invalid access to map value, value_size=4108 off=4107 size=4095
+      R1 max value is outside of the allowed memory range
+      processed 154 insns (limit 1000000) max_states_per_insn 0 total_states 12 peak_states 12 mark_read 4
+  verifier_log:
+    blocks:
+    - |-
+      ; if((void *) args->buf == NULL){
+      109: (79) r3 = *(u64 *)(r7 +8)        ; R3_w=scalar() R7=map_value(off=0,ks=4,vs=16,imm=0)
+      ; if((void *) args->buf == NULL){
+      110: (15) if r3 == 0x0 goto pc+64     ; R3_w=scalar()
+      ; event->fd = args->fd;
+      111: (61) r1 = *(u32 *)(r7 +0)        ; R1_w=scalar(umax=4294967295,var_off=(0x0; 0xffffffff)) R7=map_value(off=0,ks=4,vs=16,imm=0)
+      ; event->fd = args->fd;
+      112: (63) *(u32 *)(r6 +4) = r1        ; R1_w=scalar(umax=4294967295,var_off=(0x0; 0xffffffff)) R6=map_value(off=0,ks=8,vs=4108,imm=0)
+      ; if(event->len > MAX_READ_CONTENT_LENGTH){
+      113: (61) r2 = *(u32 *)(r6 +8)        ; R2_w=scalar(umax=4294967295,var_off=(0x0; 0xffffffff)) R6=map_value(off=0,ks=8,vs=4108,imm=0)
+      114: (67) r2 <<= 32                   ; R2_w=scalar(smax=9223372032559808512,umax=18446744069414584320,var_off=(0x0; 0xffffffff00000000),s32_min=0,s32_max=0,u32_max=0)
+      115: (c7) r2 s>>= 32                  ; R2=scalar(smin=-2147483648,smax=2147483647)
+      ; if(event->len > MAX_READ_CONTENT_LENGTH){
+      116: (65) if r2 s> 0x1000 goto pc+58          ; R2=scalar(smin=-2147483648,smax=4096)
+      ; int retVal = ctx->ret;
+      117: (bf) r1 = r8                     ; R1_w=scalar(id=1) R8=scalar(id=1)
+      118: (67) r1 <<= 32                   ; R1_w=scalar(smax=9223372032559808512,umax=18446744069414584320,var_off=(0x0; 0xffffffff00000000),s32_min=0,s32_max=0,u32_max=0)
+      119: (77) r1 >>= 32                   ; R1_w=scalar(umax=4294967295,var_off=(0x0; 0xffffffff))
+      120: (b7) r7 = 4095                   ; R7_w=4095
+      ; if(read > MAX_READ_CONTENT_LENGTH){
+      121: (25) if r1 > 0x1000 goto pc+2    ; R1_w=scalar(umax=4096,var_off=(0x0; 0x1fff))
+      122: (57) r8 &= 4095                  ; R8_w=scalar(umax=4095,var_off=(0x0; 0xfff))
+      123: (bf) r7 = r8                     ; R7=scalar(id=13,umax=4095,var_off=(0x0; 0xfff)) R8=scalar(id=13,umax=4095,var_off=(0x0; 0xfff))
+      ; event->len &= (MAX_READ_CONTENT_LENGTH-1);
+      124: (57) r2 &= 4095                  ; R2_w=scalar(umax=4095,var_off=(0x0; 0xfff))
+      125: (63) *(u32 *)(r6 +8) = r2        ; R2_w=scalar(umax=4095,var_off=(0x0; 0xfff)) R6=map_value(off=0,ks=8,vs=4108,imm=0)
+      ; if(event->len + read < MAX_READ_CONTENT_LENGTH) {
+      126: (bf) r1 = r2                     ; R1_w=scalar(id=14,umax=4095,var_off=(0x0; 0xfff)) R2_w=scalar(id=14,umax=4095,var_off=(0x0; 0xfff))
+      127: (0f) r1 += r7                    ; R1_w=scalar(umax=8190,var_off=(0x0; 0x1fff)) R7=scalar(id=13,umax=4095,var_off=(0x0; 0xfff))
+      ; if(event->len + read < MAX_READ_CONTENT_LENGTH) {
+      128: (25) if r1 > 0xfff goto pc+10    ; R1_w=scalar(umax=4095,var_off=(0x0; 0xfff))
+      ; long res = bpf_probe_read_user(&event->content[event->len], read, (const void *) args->buf);
+      129: (bf) r1 = r6                     ; R1_w=map_value(off=0,ks=8,vs=4108,imm=0) R6=map_value(off=0,ks=8,vs=4108,imm=0)
+      130: (0f) r1 += r2                    ; R1_w=map_value(off=0,ks=8,vs=4108,umax=4095,var_off=(0x0; 0xfff)) R2_w=scalar(id=14,umax=4095,var_off=(0x0; 0xfff))
+      131: (07) r1 += 12                    ; R1_w=map_value(off=12,ks=8,vs=4108,umax=4095,var_off=(0x0; 0xfff))
+      ; long res = bpf_probe_read_user(&event->content[event->len], read, (const void *) args->buf);
+      132: (bf) r2 = r7                     ; R2_w=scalar(id=13,umax=4095,var_off=(0x0; 0xfff)) R7=scalar(id=13,umax=4095,var_off=(0x0; 0xfff))
+      133: (85) call bpf_probe_read_user#112
+      invalid access to map value, value_size=4108 off=4107 size=4095
+      R1 max value is outside of the allowed memory range
+      processed 154 insns (limit 1000000) max_states_per_insn 0 total_states 12 peak_states 12 mark_read 4
+    combined: |-
+      libbpf: loading object from <legacy-so-gh-reproducer>/stackoverflow-77762365/prog.o
+      libbpf: elf: section(3) tracepoint/syscalls/sys_enter_execve, size 16, link 0, flags 6, type=1
+      libbpf: sec 'tracepoint/syscalls/sys_enter_execve': found program 'read_data_probe' at insn offset 0 (0 bytes), code size 2 insns (16 bytes)
+      libbpf: elf: section(4) license, size 4, link 0, flags 3, type=1
+      libbpf: license of <legacy-so-gh-reproducer>/stackoverflow-77762365/prog.o is GPL
+      libbpf: elf: section(14) .BTF, size 405, link 0, flags 0, type=1
+      libbpf: elf: section(16) .BTF.ext, size 80, link 0, flags 0, type=1
+      libbpf: elf: section(24) .symtab, size 312, link 1, flags 0, type=2
+      libbpf: looking for externs among 13 symbols...
+      libbpf: collected 0 externs total
+      libbpf: object 'prog': failed (-95) to create BPF token from '/sys/fs/bpf', skipping optional step...
+      libbpf: prog 'read_data_probe': -- BEGIN PROG LOAD LOG --
+      func#0 @0
+      Live regs before insn:
+        0: .......... (b7) r0 = 0
+        1: 0......... (95) exit
+      arg#0 reference type('UNKNOWN ') size cannot be determined: -22
+      0: R1=ctx() R10=fp0
+      ; return 0; @ prog.c:250
+      0: (b7) r0 = 0                        ; R0_w=0
+      1: (95) exit
+      verification time 12 usec
+      stack depth 0
+      processed 2 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0 mark_read 0
+      -- END PROG LOAD LOG --
+  verifier_log_source: captured_on_6.15.11
+  verifier_log_captured_at: '2026-03-20'
+  source_snippets: []
+  question_body_text: |-
+    I'm trying to read data from userspace and store it in a char array. The read may triggered multiple times, so I record an offset when storing the data. I did a bounds check on both the read length and the offset, but verifier still complain that "outside of the allowed memory range".
+    It seems that after my bound check, verifier believe that both len and offset are in the range of [0,4096). But the conditional statements event->len + read < MAX_READ_CONTENT_LENGTH didn't make any sense to verifier and it failed.
+    below is part of my program
+    struct ReadArgs{
+    int fd;
+    uintptr_t buf; // https://github.com/cilium/ebpf/discussions/1066 work around for pointer in struct
+    };
+    struct ReadEvent{
+    int eventType;
+    int fd;
+    int len;
+    u8 content[MAX_READ_CONTENT_LENGTH];
+    };
+    static __always_inline int readData(struct ReadArgs* args, struct ReadEvent* event, int read){
+    if((void *) args->buf == NULL){
+    return -1;
+    }
+    event->fd = args->fd;
+    if(event->len > MAX_READ_CONTENT_LENGTH){
+    return -1;
+    } else {
+    event->len &= (MAX_READ_CONTENT_LENGTH-1);
+    }
+    if(read > MAX_READ_CONTENT_LENGTH){
+    read = MAX_READ_CONTENT_LENGTH - 1;
+    }else{
+    read &= (MAX_READ_CONTENT_LENGTH-1);
+    }
+    if(event->len + read < MAX_READ_CONTENT_LENGTH) {
+    long res = bpf_probe_read_user(&event->content[event->len], read, (const void *) args->buf); // failed at here
+    if (res < 0) {
+    DEBUG("readData: bpf_probe_read_user return %d", res);
+    return -1;
+    }
+    event->len += read;
+    }
+    return 0;
+    }
+    and the verifier log
+    ; if((void *) args->buf == NULL){
+    109: (79) r3 = *(u64 *)(r7 +8) ; R3_w=scalar() R7=map_value(off=0,ks=4,vs=16,imm=0)
+    ; if((void *) args->buf == NULL){
+    110: (15) if r3 == 0x0 goto pc+64 ; R3_w=scalar()
+    ; event->fd = args->fd;
+    111: (61) r1 = *(u32 *)(r7 +0) ; R1_w=scalar(umax=4294967295,var_off=(0x0; 0xffffffff)) R7=map_value(off=0,ks=4,vs=16,imm=0)
+    ; event->fd = args->fd;
+    112: (63) *(u32 *)(r6 +4) = r1 ; R1_w=scalar(umax=4294967295,var_off=(0x0; 0xffffffff)) R6=map_value(off=0,ks=8,vs=4108,imm=0)
+    ; if(event->len > MAX_READ_CONTENT_LENGTH){
+    113: (61) r2 = *(u32 *)(r6 +8) ; R2_w=scalar(umax=4294967295,var_off=(0x0; 0xffffffff)) R6=map_value(off=0,ks=8,vs=4108,imm=0)
+    114: (67) r2 <<= 32 ; R2_w=scalar(smax=9223372032559808512,umax=18446744069414584320,var_off=(0x0; 0xffffffff00000000),s32_min=0,s32_max=0,u32_max=0)
+    115: (c7) r2 s>>= 32 ; R2=scalar(smin=-2147483648,smax=2147483647)
+    ; if(event->len > MAX_READ_CONTENT_LENGTH){
+    116: (65) if r2 s> 0x1000 goto pc+58 ; R2=scalar(smin=-2147483648,smax=4096)
+    ; int retVal = ctx->ret;
+    117: (bf) r1 = r8 ; R1_w=scalar(id=1) R8=scalar(id=1)
+    118: (67) r1 <<= 32 ; R1_w=scalar(smax=9223372032559808512,umax=18446744069414584320,var_off=(0x0; 0xffffffff00000000),s32_min=0,s32_max=0,u32_max=0)
+    119: (77) r1 >>= 32 ; R1_w=scalar(umax=4294967295,var_off=(0x0; 0xffffffff))
+    120: (b7) r7 = 4095 ; R7_w=4095
+    ; if(read > MAX_READ_CONTENT_LENGTH){
+    121: (25) if r1 > 0x1000 goto pc+2 ; R1_w=scalar(umax=4096,var_off=(0x0; 0x1fff))
+    122: (57) r8 &= 4095 ; R8_w=scalar(umax=4095,var_off=(0x0; 0xfff))
+    123: (bf) r7 = r8 ; R7=scalar(id=13,umax=4095,var_off=(0x0; 0xfff)) R8=scalar(id=13,umax=4095,var_off=(0x0; 0xfff))
+    ; event->len &= (MAX_READ_CONTENT_LENGTH-1);
+    124: (57) r2 &= 4095 ; R2_w=scalar(umax=4095,var_off=(0x0; 0xfff))
+    125: (63) *(u32 *)(r6 +8) = r2 ; R2_w=scalar(umax=4095,var_off=(0x0; 0xfff)) R6=map_value(off=0,ks=8,vs=4108,imm=0)
+    ; if(event->len + read < MAX_READ_CONTENT_LENGTH) {
+    126: (bf) r1 = r2 ; R1_w=scalar(id=14,umax=4095,var_off=(0x0; 0xfff)) R2_w=scalar(id=14,umax=4095,var_off=(0x0; 0xfff))
+    127: (0f) r1 += r7 ; R1_w=scalar(umax=8190,var_off=(0x0; 0x1fff)) R7=scalar(id=13,umax=4095,var_off=(0x0; 0xfff))
+    ; if(event->len + read < MAX_READ_CONTENT_LENGTH) {
+    128: (25) if r1 > 0xfff goto pc+10 ; R1_w=scalar(umax=4095,var_off=(0x0; 0xfff))
+    ; long res = bpf_probe_read_user(&event->content[event->len], read, (const void *) args->buf);
+    129: (bf) r1 = r6 ; R1_w=map_value(off=0,ks=8,vs=4108,imm=0) R6=map_value(off=0,ks=8,vs=4108,imm=0)
+    130: (0f) r1 += r2 ; R1_w=map_value(off=0,ks=8,vs=4108,umax=4095,var_off=(0x0; 0xfff)) R2_w=scalar(id=14,umax=4095,var_off=(0x0; 0xfff))
+    131: (07) r1 += 12 ; R1_w=map_value(off=12,ks=8,vs=4108,umax=4095,var_off=(0x0; 0xfff))
+    ; long res = bpf_probe_read_user(&event->content[event->len], read, (const void *) args->buf);
+    132: (bf) r2 = r7 ; R2_w=scalar(id=13,umax=4095,var_off=(0x0; 0xfff)) R7=scalar(id=13,umax=4095,var_off=(0x0; 0xfff))
+    133: (85) call bpf_probe_read_user#112
+    invalid access to map value, value_size=4108 off=4107 size=4095
+    R1 max value is outside of the allowed memory range
+    processed 154 insns (limit 1000000) max_states_per_insn 0 total_states 12 peak_states 12 mark_read 4
+    I've done some searches on this problem, but can't find a solution.
+    Invalid access to packet even though check made before access
+    eBPF: invalid access to map value even with bounds check
+    The answers of those question didn't solve my problem.
+    I guess the root case is the condition event->len + read < MAX_READ_CONTENT_LENGTH were not taken into account by verifier. But I have no idea how to fix it.
+  selected_answer:
+    answer_id: 77772990
+    url: https://stackoverflow.com/questions/77762365/ebpf-value-is-outside-of-the-allowed-memory-range-when-reading-data-into-arra#77772990
+    is_accepted: false
+    score: 1
+    body_text: |-
+      TL;DR. The verifier is not yet smart enough to use event->len + read < MAX_READ_CONTENT_LENGTH.
+      Explanation
+      For the verifier to confirm that bpf_probe_read_user(&event->content[A], B, ...); is safe, it would need to remember that A + B < value_size. That's what you are trying to guarantee with:
+      if (event->len + read < MAX_READ_CONTENT_LENGTH)
+      Unfortunately, the verifier is currently unable to understand and retain such relations between variables (A and B or event->len and read in this example). The only exception is a special case for the pointer to the packet's end (ctx->data_end) in case of networking BPF programs.
+    fix_description: 'TL;DR. The verifier is not yet smart enough to use event->len
+      + read < MAX_READ_CONTENT_LENGTH. For the verifier to confirm that bpf_probe_read_user(&event->content[A],
+      B, ...); is safe, it would need to remember that A + B < value_size. That''s
+      what you are trying to guarantee with:'

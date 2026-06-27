@@ -1,0 +1,71 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-ca6e1cba7262
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/ca6e1cba72621a0911b93ebfc0e94b5b47f7ce45
+  title: 'bpf: Relax verifier in conntrack code'
+  repository: https://github.com/cilium/cilium
+  commit: ca6e1cba72621a0911b93ebfc0e94b5b47f7ce45
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-ca6e1cba7262.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: environment_required
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Adds relax_verifier() checkpoints in conntrack code to avoid older-kernel
+    complexity limits; no standalone verifier operation is isolated.
+raw:
+  case_id: github-commit-cilium-ca6e1cba7262
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: ca6e1cba72621a0911b93ebfc0e94b5b47f7ce45
+  commit_message: 'bpf: Relax verifier in conntrack code'
+  commit_date: '2018-02-08'
+  fix_type: loop_rewrite
+  buggy_code: "// FILE: bpf/lib/common.h\n// CONTEXT: struct proxy6_tbl_key {\n\t\
+    __u8 nexthdr;\n\t__u8 pad;\n} __attribute__((packed));\n\nstruct proxy6_tbl_value\
+    \ {\n\tunion v6addr orig_daddr;\n\t__be16 orig_dport;\n\t__u16 pad;\n\t__u32 identity;\n\
+    \t__u32 lifetime;\n} __attribute__((packed));\n\n#endif\n\n// FILE: bpf/lib/conntrack.h\n\
+    // CONTEXT: static inline int __inline__ __ct_lookup(void *map, struct __sk_buff\
+    \ *skb,\n\t\t}\n#endif\n\n\t\tswitch (action) {\n\t\tcase ACTION_CREATE:\n\t\t\
+    \tret = entry->rx_closing + entry->tx_closing;\n\t\t\tif (unlikely(ret >= 1))\
+    \ {\n\t\t\t\tct_reset_closing(entry);\n\t\t\t\tct_update_timeout(entry);\n\t\t\
+    \t}\n\t\t\tbreak;\n\t\tcase ACTION_CLOSE:\n\t\t\t/* RST or similar, immediately\
+    \ delete ct entry */\n\t\t\tif (dir == CT_INGRESS)\n\t\t\t\tentry->rx_closing\
+    \ = 1;\n\t\t\telse\n\t\t\t\tentry->tx_closing = 1;\n\n\t\t\tif (ct_entry_alive(entry))\n\
+    \t\t\t\tbreak;\n\t\t\t__ct_update_timeout(entry, CT_CLOSE_TIMEOUT);\n\t\t\tbreak;\n\
+    \t\t}"
+  fixed_code: "// FILE: bpf/lib/common.h\n// CONTEXT: struct proxy6_tbl_key {\n\t\
+    __u8 nexthdr;\n\t__u8 pad;\n} __attribute__((packed));\n\nstruct proxy6_tbl_value\
+    \ {\n\tunion v6addr orig_daddr;\n\t__be16 orig_dport;\n\t__u16 pad;\n\t__u32 identity;\n\
+    \t__u32 lifetime;\n} __attribute__((packed));\n\n/**\n * relax_verifier is a dummy\
+    \ helper call to introduce a pruning checkpoing to\n * help relax the verifier\
+    \ to avoid reaching complexity limits on older\n * kernels.\n */\nstatic inline\
+    \ void relax_verifier(void)\n{\n\tint foo = 0;\n\tcsum_diff(0, 0, &foo, 1, 0);\n\
+    }\n\n#endif\n\n// FILE: bpf/lib/conntrack.h\n// CONTEXT: static inline int __inline__\
+    \ __ct_lookup(void *map, struct __sk_buff *skb,\n\t\t}\n#endif\n\n\t\tswitch (action)\
+    \ {\n\t\tcase ACTION_CREATE:\n\t\t\tret = entry->rx_closing + entry->tx_closing;\n\
+    \t\t\tif (unlikely(ret >= 1)) {\n\t\t\t\tct_reset_closing(entry);\n\t\t\t\tct_update_timeout(entry);\n\
+    \t\t\t}\n\t\t\tbreak;\n\t\tcase ACTION_CLOSE:\n\t\t\trelax_verifier();\n\n\t\t\
+    \t/* RST or similar, immediately delete ct entry */\n\t\t\tif (dir == CT_INGRESS)\n\
+    \t\t\t\tentry->rx_closing = 1;\n\t\t\telse\n\t\t\t\tentry->tx_closing = 1;\n\n\
+    \t\t\tif (ct_entry_alive(entry))\n\t\t\t\tbreak;\n\t\t\t__ct_update_timeout(entry,\
+    \ CT_CLOSE_TIMEOUT);\n\t\t\tbreak;\n\t\t}"
+  diff_summary: |-
+    bpf/lib/common.h:
+    - Reworked loop or branch structure to reduce verifier complexity and keep the path bounded.
+    - Affected context: struct proxy6_tbl_key {.
+    bpf/lib/conntrack.h:
+    - Reworked loop or branch structure to reduce verifier complexity and keep the path bounded.
+    - Affected context: static inline int __inline__ __ct_lookup(void *map, struct __sk_buff *skb,.
+    - Commit subject: bpf: Relax verifier in conntrack code.

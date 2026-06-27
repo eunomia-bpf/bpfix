@@ -1,0 +1,63 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-libbpf-93c109c9ee23
+source_kind: github_commit
+source:
+  url: https://github.com/libbpf/libbpf/commit/93c109c9ee23085996d436541afc6c5e36fcd44d
+  title: 'libbpf: Fix off-by-one bug in bpf_core_apply_relo()'
+  repository: https://github.com/libbpf/libbpf
+  commit: 93c109c9ee23085996d436541afc6c5e36fcd44d
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-libbpf-93c109c9ee23.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: missing_source
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Raw has_verifier_log=false. The fix changes a CO-RE relocation bounds check
+    from insn_idx > prog->insns_cnt to >=; a faithful replay would need an object
+    whose relocation offset equals the instruction count, but no such object/source
+    or verifier log is included.
+raw:
+  case_id: github-commit-libbpf-93c109c9ee23
+  source: github_commits
+  repository: https://github.com/libbpf/libbpf
+  commit_hash: 93c109c9ee23085996d436541afc6c5e36fcd44d
+  commit_message: 'libbpf: Fix off-by-one bug in bpf_core_apply_relo()'
+  commit_date: '2021-10-25'
+  fix_type: bounds_check
+  buggy_code: "// FILE: src/libbpf.c\n// CONTEXT: static int bpf_core_apply_relo(struct\
+    \ bpf_program *prog,\n\t__u32 local_id = relo->type_id;\n\tstruct bpf_insn *insn;\n\
+    \tint insn_idx, err;\n\n\tif (relo->insn_off % BPF_INSN_SZ)\n\t\treturn -EINVAL;\n\
+    \tinsn_idx = relo->insn_off / BPF_INSN_SZ;\n\t/* adjust insn_idx from section\
+    \ frame of reference to the local\n\t * program's frame of reference; (sub-)program\
+    \ code is not yet\n\t * relocated, so it's enough to just subtract in-section\
+    \ offset\n\t */\n\tinsn_idx = insn_idx - prog->sec_insn_off;\n\tif (insn_idx >\
+    \ prog->insns_cnt)\n\t\treturn -EINVAL;\n\tinsn = &prog->insns[insn_idx];\n\n\t\
+    local_type = btf__type_by_id(local_btf, local_id);\n\tif (!local_type)\n\t\treturn\
+    \ -EINVAL;\n\n\tlocal_name = btf__name_by_offset(local_btf, local_type->name_off);\n\
+    \tif (!local_name)\n\t\treturn -EINVAL;\n\n\tif (prog->obj->gen_loader) {"
+  fixed_code: "// FILE: src/libbpf.c\n// CONTEXT: static int bpf_core_apply_relo(struct\
+    \ bpf_program *prog,\n\t__u32 local_id = relo->type_id;\n\tstruct bpf_insn *insn;\n\
+    \tint insn_idx, err;\n\n\tif (relo->insn_off % BPF_INSN_SZ)\n\t\treturn -EINVAL;\n\
+    \tinsn_idx = relo->insn_off / BPF_INSN_SZ;\n\t/* adjust insn_idx from section\
+    \ frame of reference to the local\n\t * program's frame of reference; (sub-)program\
+    \ code is not yet\n\t * relocated, so it's enough to just subtract in-section\
+    \ offset\n\t */\n\tinsn_idx = insn_idx - prog->sec_insn_off;\n\tif (insn_idx >=\
+    \ prog->insns_cnt)\n\t\treturn -EINVAL;\n\tinsn = &prog->insns[insn_idx];\n\n\t\
+    local_type = btf__type_by_id(local_btf, local_id);\n\tif (!local_type)\n\t\treturn\
+    \ -EINVAL;\n\n\tlocal_name = btf__name_by_offset(local_btf, local_type->name_off);\n\
+    \tif (!local_name)\n\t\treturn -EINVAL;\n\n\tif (prog->obj->gen_loader) {"
+  diff_summary: |-
+    src/libbpf.c:
+    - Added explicit bounds or range guards so the verifier can prove the access size and offset.
+    - Affected context: static int bpf_core_apply_relo(struct bpf_program *prog,.
+    - Commit subject: libbpf: Fix off-by-one bug in bpf_core_apply_relo().

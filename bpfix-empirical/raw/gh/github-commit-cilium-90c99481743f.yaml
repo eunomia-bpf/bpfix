@@ -1,0 +1,61 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-90c99481743f
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/90c99481743f9d0062577e941be106fdcd6fcbc8
+  title: 'bpf: add probe and workaround for set_hash_invalid'
+  repository: https://github.com/cilium/cilium
+  commit: 90c99481743f9d0062577e941be106fdcd6fcbc8
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-90c99481743f.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: environment_required
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Adds a probe and fallback for set_hash_invalid() on kernels lacking the
+    helper. Replay would require historical helper availability and Cilium LB program
+    context.
+raw:
+  case_id: github-commit-cilium-90c99481743f
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: 90c99481743f9d0062577e941be106fdcd6fcbc8
+  commit_message: 'bpf: add probe and workaround for set_hash_invalid'
+  commit_date: '2017-03-26'
+  fix_type: helper_switch
+  buggy_code: "// FILE: bpf/lib/lb.h\n// CONTEXT: static inline int lb_next_rr(struct\
+    \ __sk_buff *skb,\n\tif (offset < LB_RR_MAX_SEQ) {\n\t\t/* Slave 0 is reserved\
+    \ for the master slot */\n\t\tslave = seq->idx[offset] + 1;\n\t\tcilium_trace(skb,\
+    \ DBG_RR_SLAVE_SEL, hash, slave);\n\t}\n\n\treturn slave;\n}\n#endif\n\nstatic\
+    \ inline __u32 lb_enforce_rehash(struct __sk_buff *skb)\n{\n\tset_hash_invalid(skb);\n\
+    \treturn get_hash_recalc(skb);\n}\n\nstatic inline int lb6_select_slave(struct\
+    \ __sk_buff *skb,\n\t\t\t\t   struct lb6_key *key,\n\t\t\t\t   __u16 count, __u16\
+    \ weight)\n{\n\t__u32 hash = lb_enforce_rehash(skb);\n\tint slave = 0;\n\n#ifdef\
+    \ HAVE_MAP_VAL_ADJ\n\tif (weight) {"
+  fixed_code: "// FILE: bpf/lib/lb.h\n// CONTEXT: static inline int lb_next_rr(struct\
+    \ __sk_buff *skb,\n\tif (offset < LB_RR_MAX_SEQ) {\n\t\t/* Slave 0 is reserved\
+    \ for the master slot */\n\t\tslave = seq->idx[offset] + 1;\n\t\tcilium_trace(skb,\
+    \ DBG_RR_SLAVE_SEL, hash, slave);\n\t}\n\n\treturn slave;\n}\n#endif\n\nstatic\
+    \ inline __u32 lb_enforce_rehash(struct __sk_buff *skb)\n{\n#ifdef HAVE_SET_HASH_INVALID\n\
+    \tset_hash_invalid(skb);\n#else\n\t/* Ugly workaround for 4.8 kernel where we\
+    \ don't have this function. */\n\t__u32 tmp;\n\n\tskb_load_bytes(skb,  0, &tmp,\
+    \ sizeof(tmp));\n\tskb_store_bytes(skb, 0, &tmp, sizeof(tmp), BPF_F_INVALIDATE_HASH);\n\
+    #endif\n\treturn get_hash_recalc(skb);\n}\n\nstatic inline int lb6_select_slave(struct\
+    \ __sk_buff *skb,\n\t\t\t\t   struct lb6_key *key,\n\t\t\t\t   __u16 count, __u16\
+    \ weight)\n{\n\t__u32 hash = lb_enforce_rehash(skb);\n\tint slave = 0;\n\n#ifdef\
+    \ HAVE_MAP_VAL_ADJ\n\tif (weight) {"
+  diff_summary: |-
+    bpf/lib/lb.h:
+    - Gated or switched helper usage so unsupported helpers do not reach kernels that reject them.
+    - Affected context: static inline int lb_next_rr(struct __sk_buff *skb,.
+    - Commit subject: bpf: add probe and workaround for set_hash_invalid.

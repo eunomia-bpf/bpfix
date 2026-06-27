@@ -1,0 +1,243 @@
+schema_version: bpfix.raw_external/v1
+raw_id: stackoverflow-70841631
+source_kind: stackoverflow
+source:
+  url: https://stackoverflow.com/questions/70841631/bpf-verifier-says-program-exceeds-1m-instruction
+  title: BPF verifier says program exceeds 1M instruction
+  repository: null
+  commit: null
+  collected_at: '2026-03-11T16:02:43+00:00'
+collector:
+  original_path: bpfix-empirical/raw/so/stackoverflow-70841631.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: true
+  verifier_log_block_count: 1
+  source_snippet_count: 1
+  has_buggy_code: false
+  has_fixed_code: false
+  has_fix_description: false
+reproduction:
+  status: replay_valid
+  case_id: stackoverflow-70841631
+  case_path: cases/stackoverflow-70841631
+  artifact_path: cases/stackoverflow-70841631
+  reason: admitted_to_bpfix_bench_cases
+raw:
+  case_id: stackoverflow-70841631
+  source: stackoverflow
+  collected_at: '2026-03-11T16:02:43+00:00'
+  question:
+    question_id: 70841631
+    title: BPF verifier says program exceeds 1M instruction
+    url: https://stackoverflow.com/questions/70841631/bpf-verifier-says-program-exceeds-1m-instruction
+    tags:
+    - c
+    - linux-kernel
+    - ebpf
+    - xdp-bpf
+    score: 4
+    answer_count: 1
+    is_answered: true
+  original_verifier_log:
+    blocks:
+    - |-
+      ; for (__u16 j = 0; j < MAX_SERVER_NAME_LENGTH; j++) {
+      76: (25) if r3 > 0xfb goto pc+3
+      77: (07) r3 += 1
+      78: (07) r4 += 8
+      79: (3d) if r1 >= r4 goto pc-15
+
+      from 79 to 65: R0_w=fp-189 R1=pkt_end(id=0,off=0,imm=0) R2=pkt(id=0,off=280,r=363,imm=0) R3_w=invP76 R4_w=pkt(id=0,off=363,r=363,imm=0) R5_w=inv(id=0,umin_value=1,umax_value=65536,var_off=(0x0; 0x1ffff)) R10=fp0 fp-8=??????mm fp-16=00000000 fp-24=00000000 fp-32=00000000 fp-40=00000000 fp-48=00000000 fp-56=00000000 fp-64=00000000 fp-72=00000000 fp-80=00000000 fp-88=00000000 fp-96=00000000 fp-104=00000000 fp-112=00000000 fp-120=00000000 fp-128=00000000 fp-136=00000000 fp-144=00000000 fp-152=00000000 fp-160=00000000 fp-168=00000000 fp-176=00000000 fp-184=00000000 fp-192=0000mmmm fp-200=mmmmmmmm fp-208=mmmmmmmm fp-216=mmmmmmmm fp-224=mmmmmmmm fp-232=mmmmmmmm fp-240=mmmmmmmm fp-248=mmmmmmmm fp-256=mmmmmmmm fp-264=mmmmmmmm
+      ; if (*data == '\r') {
+      65: (bf) r4 = r2
+      66: (0f) r4 += r3
+      67: (71) r5 = *(u8 *)(r4 +6)
+      BPF program is too large. Processed 1000001 insn
+      processed 1000001 insns (limit 1000000) max_states_per_insn 34 total_states 10376 peak_states 7503 mark_read 3
+    combined: |-
+      ; for (__u16 j = 0; j < MAX_SERVER_NAME_LENGTH; j++) {
+      76: (25) if r3 > 0xfb goto pc+3
+      77: (07) r3 += 1
+      78: (07) r4 += 8
+      79: (3d) if r1 >= r4 goto pc-15
+
+      from 79 to 65: R0_w=fp-189 R1=pkt_end(id=0,off=0,imm=0) R2=pkt(id=0,off=280,r=363,imm=0) R3_w=invP76 R4_w=pkt(id=0,off=363,r=363,imm=0) R5_w=inv(id=0,umin_value=1,umax_value=65536,var_off=(0x0; 0x1ffff)) R10=fp0 fp-8=??????mm fp-16=00000000 fp-24=00000000 fp-32=00000000 fp-40=00000000 fp-48=00000000 fp-56=00000000 fp-64=00000000 fp-72=00000000 fp-80=00000000 fp-88=00000000 fp-96=00000000 fp-104=00000000 fp-112=00000000 fp-120=00000000 fp-128=00000000 fp-136=00000000 fp-144=00000000 fp-152=00000000 fp-160=00000000 fp-168=00000000 fp-176=00000000 fp-184=00000000 fp-192=0000mmmm fp-200=mmmmmmmm fp-208=mmmmmmmm fp-216=mmmmmmmm fp-224=mmmmmmmm fp-232=mmmmmmmm fp-240=mmmmmmmm fp-248=mmmmmmmm fp-256=mmmmmmmm fp-264=mmmmmmmm
+      ; if (*data == '\r') {
+      65: (bf) r4 = r2
+      66: (0f) r4 += r3
+      67: (71) r5 = *(u8 *)(r4 +6)
+      BPF program is too large. Processed 1000001 insn
+      processed 1000001 insns (limit 1000000) max_states_per_insn 34 total_states 10376 peak_states 7503 mark_read 3
+    generated:
+      log: bpftool timed out
+      verifier_pass: false
+      template_used: raw-uapi
+      generated_at: '2026-03-13T21:13:59.219413+00:00'
+      old_log_len: 1127
+      new_log_len: 17
+  verifier_log:
+    blocks:
+    - |-
+      ; for (__u16 j = 0; j < MAX_SERVER_NAME_LENGTH; j++) {
+      76: (25) if r3 > 0xfb goto pc+3
+      77: (07) r3 += 1
+      78: (07) r4 += 8
+      79: (3d) if r1 >= r4 goto pc-15
+
+      from 79 to 65: R0_w=fp-189 R1=pkt_end(id=0,off=0,imm=0) R2=pkt(id=0,off=280,r=363,imm=0) R3_w=invP76 R4_w=pkt(id=0,off=363,r=363,imm=0) R5_w=inv(id=0,umin_value=1,umax_value=65536,var_off=(0x0; 0x1ffff)) R10=fp0 fp-8=??????mm fp-16=00000000 fp-24=00000000 fp-32=00000000 fp-40=00000000 fp-48=00000000 fp-56=00000000 fp-64=00000000 fp-72=00000000 fp-80=00000000 fp-88=00000000 fp-96=00000000 fp-104=00000000 fp-112=00000000 fp-120=00000000 fp-128=00000000 fp-136=00000000 fp-144=00000000 fp-152=00000000 fp-160=00000000 fp-168=00000000 fp-176=00000000 fp-184=00000000 fp-192=0000mmmm fp-200=mmmmmmmm fp-208=mmmmmmmm fp-216=mmmmmmmm fp-224=mmmmmmmm fp-232=mmmmmmmm fp-240=mmmmmmmm fp-248=mmmmmmmm fp-256=mmmmmmmm fp-264=mmmmmmmm
+      ; if (*data == '\r') {
+      65: (bf) r4 = r2
+      66: (0f) r4 += r3
+      67: (71) r5 = *(u8 *)(r4 +6)
+      BPF program is too large. Processed 1000001 insn
+      processed 1000001 insns (limit 1000000) max_states_per_insn 34 total_states 10376 peak_states 7503 mark_read 3
+    combined: bpftool timed out
+    generated:
+      log: bpftool timed out
+      verifier_pass: false
+      template_used: raw-uapi
+      generated_at: '2026-03-13T21:13:59.219413+00:00'
+      old_log_len: 1127
+      new_log_len: 17
+  verifier_log_source: captured_on_6.15.11
+  verifier_log_captured_at: '2026-03-20'
+  source_snippets:
+  - |-
+    #include <linux/bpf.h>
+    #include <bpf/bpf_helpers.h>
+
+    struct server_name {
+        char server_name[256];
+        __u16 length;
+    };
+
+    #define MAX_SERVER_NAME_LENGTH 253
+    #define HEADER_LEN 6
+
+    SEC("xdp")
+    int collect_ips_prog(struct xdp_md *ctx) {
+        char *data_end = (char *)(long)ctx->data_end;
+        char *data = (char *)(long)ctx->data;
+        int host_header_found = 0;
+
+        for (__u16 i = 0; i <= 512 - HEADER_LEN; i++) {
+            host_header_found = 0;
+
+            if (data_end < data + HEADER_LEN) {
+                goto end;
+            }
+
+            // Elf loader does not allow NULL terminated strings, so have to check each char manually
+            if (data[0] == 'H' && data[1] == 'o' && data[2] == 's' && data[3] == 't' && data[4] == ':' && data[5] == ' ') {
+                host_header_found = 1;
+                data += HEADER_LEN;
+                break;
+            }
+
+            data++;
+        }
+
+        if (host_header_found) {
+            struct server_name sn = {"a", 0};
+
+            for (__u16 j = 0; j < MAX_SERVER_NAME_LENGTH; j++) {
+                if (data_end < data + 1) {
+                    goto end;
+                }
+
+                if (*data == '\r') {
+                    break;
+                }
+
+                sn.server_name[j] = *data++;
+                sn.length++;
+            }
+        }
+
+    end:
+        return XDP_PASS;
+    }
+  question_body_text: |-
+    For the following program I get an error from the verifier saying that it exceeds 1M instructions, even though it shouldn't. The program finds the hostname of a HTTP packet.
+    #include <linux/bpf.h>
+    #include <bpf/bpf_helpers.h>
+    struct server_name {
+    char server_name[256];
+    __u16 length;
+    };
+    #define MAX_SERVER_NAME_LENGTH 253
+    #define HEADER_LEN 6
+    SEC("xdp")
+    int collect_ips_prog(struct xdp_md *ctx) {
+    char *data_end = (char *)(long)ctx->data_end;
+    char *data = (char *)(long)ctx->data;
+    int host_header_found = 0;
+    for (__u16 i = 0; i <= 512 - HEADER_LEN; i++) {
+    host_header_found = 0;
+    if (data_end < data + HEADER_LEN) {
+    goto end;
+    }
+    // Elf loader does not allow NULL terminated strings, so have to check each char manually
+    if (data[0] == 'H' && data[1] == 'o' && data[2] == 's' && data[3] == 't' && data[4] == ':' && data[5] == ' ') {
+    host_header_found = 1;
+    data += HEADER_LEN;
+    break;
+    }
+    data++;
+    }
+    if (host_header_found) {
+    struct server_name sn = {"a", 0};
+    for (__u16 j = 0; j < MAX_SERVER_NAME_LENGTH; j++) {
+    if (data_end < data + 1) {
+    goto end;
+    }
+    if (*data == '\r') {
+    break;
+    }
+    sn.server_name[j] = *data++;
+    sn.length++;
+    }
+    }
+    end:
+    return XDP_PASS;
+    }
+    Ignore that data is not pointing to the beginning of the HTTP payload of a packet. This is enough to reproduce the problem I'm seeing.
+    I get the following error:
+    ; for (__u16 j = 0; j < MAX_SERVER_NAME_LENGTH; j++) {
+    76: (25) if r3 > 0xfb goto pc+3
+    77: (07) r3 += 1
+    78: (07) r4 += 8
+    79: (3d) if r1 >= r4 goto pc-15
+    from 79 to 65: R0_w=fp-189 R1=pkt_end(id=0,off=0,imm=0) R2=pkt(id=0,off=280,r=363,imm=0) R3_w=invP76 R4_w=pkt(id=0,off=363,r=363,imm=0) R5_w=inv(id=0,umin_value=1,umax_value=65536,var_off=(0x0; 0x1ffff)) R10=fp0 fp-8=??????mm fp-16=00000000 fp-24=00000000 fp-32=00000000 fp-40=00000000 fp-48=00000000 fp-56=00000000 fp-64=00000000 fp-72=00000000 fp-80=00000000 fp-88=00000000 fp-96=00000000 fp-104=00000000 fp-112=00000000 fp-120=00000000 fp-128=00000000 fp-136=00000000 fp-144=00000000 fp-152=00000000 fp-160=00000000 fp-168=00000000 fp-176=00000000 fp-184=00000000 fp-192=0000mmmm fp-200=mmmmmmmm fp-208=mmmmmmmm fp-216=mmmmmmmm fp-224=mmmmmmmm fp-232=mmmmmmmm fp-240=mmmmmmmm fp-248=mmmmmmmm fp-256=mmmmmmmm fp-264=mmmmmmmm
+    ; if (*data == '\r') {
+    65: (bf) r4 = r2
+    66: (0f) r4 += r3
+    67: (71) r5 = *(u8 *)(r4 +6)
+    BPF program is too large. Processed 1000001 insn
+    processed 1000001 insns (limit 1000000) max_states_per_insn 34 total_states 10376 peak_states 7503 mark_read 3
+    This doesn't make sense because there should be at most 20 instructions in the second for loop, which would make for a max of 5060 instructions if the max iterations are reached. The smallest value I can decrease MAX_SERVER_NAME_LENGTH to for the verifier to pass is 104. If I comment out the if (host_header_found) { block, then the verifier succeeds.
+  selected_answer:
+    answer_id: 70848246
+    url: https://stackoverflow.com/questions/70841631/bpf-verifier-says-program-exceeds-1m-instruction#70848246
+    is_accepted: true
+    score: 6
+    body_text: |-
+      TL;DR. Your program is too complex for the verifier to analyze, as it must iterate over more than 1 million instructions to verify the full program.
+      Verifier Error Explanation
+      BPF program is too large. Processed 1000001 insn
+      The verifier errors because it already analyzed 1 million instructions. Hence it reached the limit and is giving up.
+      This verifier error is indeed a bit misleading. The BPF program isn't actually too large. The number of instructions the verifier has to analyze is different from the number of instructions in the whole program because the verifier has to analyze each and every path through the program. Therefore, it may analyze the same instruction several times, along different paths.
+      How can such a small program require more than 1M analyzed instructions?
+      The verifier reached 1 million instructions because your program has a lot of different paths. Indeed, your program has two loops with fairly high bounds (506 and 253), which themselves contain several conditions (to simplify, ~2 in each). In the worst case, the verifier may have to analyze each instruction on all possible paths through those two loops.
+      How can I fix it?
+      You may reduce the size of the loop (as you figured) to reduce the complexity. You may also simplify the loop bodies.
+      Alternatively, you could break your program with tail calls. Maybe one tail call between the two loops would be enough to pass the verifier.
+    fix_description: TL;DR. Your program is too complex for the verifier to analyze,
+      as it must iterate over more than 1 million instructions to verify the full
+      program. The verifier errors because it already analyzed 1 million instructions.
+      Hence it reached the limit and is giving up. This verifier error is indeed a
+      bit misleading. The BPF program isn't actually too large. The number of instructions
+      the verifier has to analyze is different from the number of instructions in
+      the whole program because the verifier has to analyze each and every path through
+      the program. Therefore, it may analyze the same instruct...

@@ -1,0 +1,185 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-737262d8d52d
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/737262d8d52d47c50ef08c1269ae9da6c9fb6e6d
+  title: 'bpf: Add send_trace_notify hook for redirect_direct_{v4,v6}'
+  repository: https://github.com/cilium/cilium
+  commit: 737262d8d52d47c50ef08c1269ae9da6c9fb6e6d
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-737262d8d52d.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: not_reconstructable_from_diff
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Adds trace-notify hooks across direct redirect helpers and LXC paths. The
+    verifier-visible shape is broad and no log isolates a terminal reject.
+raw:
+  case_id: github-commit-cilium-737262d8d52d
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: 737262d8d52d47c50ef08c1269ae9da6c9fb6e6d
+  commit_message: 'bpf: Add send_trace_notify hook for redirect_direct_{v4,v6}'
+  commit_date: '2022-07-08'
+  fix_type: inline_hint
+  buggy_code: "// FILE: bpf/bpf_lxc.c\n// CONTEXT: ct_recreate6:\n\t\t * not find\
+    \ the tunnel so fallthrough to nat46 and stack, (b)\n\t\t * the packet needs IPSec\
+    \ encap so push ctx to stack for encap, or\n\t\t * (c) packet was redirected to\
+    \ tunnel device so return.\n\t\t */\n\t\tret = encap_and_redirect_lxc(ctx, tunnel_endpoint,\
+    \ encrypt_key,\n\t\t\t\t\t     &key, SECLABEL, &trace);\n\t\tif (ret == IPSEC_ENDPOINT)\n\
+    \t\t\tgoto encrypt_to_stack;\n\t\telse if (ret != DROP_NO_TUNNEL_ENDPOINT)\n\t\
+    \t\treturn ret;\n\t}\n#endif\n\tif (is_defined(ENABLE_HOST_ROUTING))\n\t\treturn\
+    \ redirect_direct_v6(ctx, ETH_HLEN, ip6);\n\n\tgoto pass_to_stack;\n\n#ifdef ENABLE_ROUTING\n\
+    to_host:\n\tif (is_defined(ENABLE_HOST_FIREWALL) && *dst_id == HOST_ID) {\n\t\t\
+    send_trace_notify(ctx, TRACE_TO_HOST, SECLABEL, HOST_ID, 0,\n\t\t\t\t  HOST_IFINDEX,\
+    \ trace.reason, trace.monitor);\n\t\treturn ctx_redirect(ctx, HOST_IFINDEX, BPF_F_INGRESS);\n\
+    \t}\n#endif\n\n\n// CONTEXT: skip_vtep:\n\t\t/* If not redirected noteably due\
+    \ to IPSEC then pass up to stack\n\t\t * for further processing.\n\t\t */\n\t\t\
+    else if (ret == IPSEC_ENDPOINT)\n\t\t\tgoto encrypt_to_stack;\n\t\t/* This is\
+    \ either redirect by encap code or an error has\n\t\t * occurred either way return\
+    \ and stack will consume ctx.\n\t\t */\n\t\telse\n\t\t\treturn ret;\n\t}\n#endif\
+    \ /* TUNNEL_MODE */\n\tif (is_defined(ENABLE_HOST_ROUTING))\n\t\treturn redirect_direct_v4(ctx,\
+    \ ETH_HLEN, ip4);\n\n\tgoto pass_to_stack;\n\n#ifdef ENABLE_ROUTING\nto_host:\n\
+    \tif (is_defined(ENABLE_HOST_FIREWALL) && *dst_id == HOST_ID) {\n\t\tsend_trace_notify(ctx,\
+    \ TRACE_TO_HOST, SECLABEL, HOST_ID, 0,\n\t\t\t\t  HOST_IFINDEX, trace.reason,\
+    \ trace.monitor);\n\t\treturn ctx_redirect(ctx, HOST_IFINDEX, BPF_F_INGRESS);\n\
+    \t}\n#endif\n\n// FILE: bpf/lib/fib.h\n#define __LIB_FIB_H_\n\n#include <bpf/ctx/ctx.h>\n\
+    #include <bpf/api.h>\n\n#include \"common.h\"\n#include \"l3.h\"\n\n#ifdef ENABLE_IPV6\n\
+    static __always_inline int\nredirect_direct_v6(struct __ctx_buff *ctx __maybe_unused,\n\
+    \t\t   int l3_off __maybe_unused,\n\t\t   struct ipv6hdr *ip6 __maybe_unused)\n\
+    {\n\tbool no_neigh = is_defined(ENABLE_SKIP_FIB);\n\tint ret, oif = DIRECT_ROUTING_DEV_IFINDEX;\n\
+    \tstruct bpf_redir_neigh *nh = NULL;\n# ifndef ENABLE_SKIP_FIB\n\tstruct bpf_redir_neigh\
+    \ nh_params;\n\tstruct bpf_fib_lookup fib_params = {\n\t\t.family\t\t= AF_INET6,\n\
+    \t\t.ifindex\t= ctx->ingress_ifindex,\n\t};\n\n\tipv6_addr_copy((union v6addr\
+    \ *)&fib_params.ipv6_src,\n\t\t       (union v6addr *)&ip6->saddr);\n\tipv6_addr_copy((union\
+    \ v6addr *)&fib_params.ipv6_dst,\n\t\t       (union v6addr *)&ip6->daddr);\n\n\
+    // CONTEXT: redirect_direct_v6(struct __ctx_buff *ctx __maybe_unused,\n\t\tbreak;\n\
+    \tcase BPF_FIB_LKUP_RET_NO_NEIGH:\n\t\tnh_params.nh_family = fib_params.family;\n\
+    \t\t__bpf_memcpy_builtin(&nh_params.ipv6_nh, &fib_params.ipv6_dst,\n\t\t\t\t \
+    \    sizeof(nh_params.ipv6_nh));\n\t\tno_neigh = true;\n\t\tnh = &nh_params;\n\
+    \t\tbreak;\n\tdefault:\n\t\treturn CTX_ACT_DROP;\n\t}\n\n\toif = fib_params.ifindex;\n\
+    # endif /* ENABLE_SKIP_FIB */\n\n\tret = ipv6_l3(ctx, l3_off, NULL, NULL, METRIC_EGRESS);\n\
+    \tif (unlikely(ret != CTX_ACT_OK))\n\t\treturn ret;\n\tif (no_neigh)\n\t\treturn\
+    \ redirect_neigh(oif, nh, nh ? sizeof(*nh) : 0, 0);\n# ifndef ENABLE_SKIP_FIB\n\
+    \tif (eth_store_daddr(ctx, fib_params.dmac, 0) < 0)\n\t\treturn CTX_ACT_DROP;\n\
+    \tif (eth_store_saddr(ctx, fib_params.smac, 0) < 0)\n\t\treturn CTX_ACT_DROP;\n\
+    \treturn ctx_redirect(ctx, oif, 0);\n# endif /* ENABLE_SKIP_FIB */\n\treturn CTX_ACT_DROP;\n\
+    }\n#endif /* ENABLE_IPV6 */\n\n#ifdef ENABLE_IPV4\nstatic __always_inline int\n\
+    redirect_direct_v4(struct __ctx_buff *ctx __maybe_unused,\n\t\t   int l3_off __maybe_unused,\n\
+    \t\t   struct iphdr *ip4 __maybe_unused)\n{\n\t/* For deployments with just single\
+    \ external dev, redirect_neigh()\n\t * will resolve the GW and do L2 resolution\
+    \ for us. For multi-device\n\t * deployments we perform a FIB lookup prior to\
+    \ the redirect. If the\n\t * neigh entry cannot be resolved, we ask redirect_neigh()\
+    \ to do it,\n\t * otherwise we can directly call redirect().\n\t */\n\tbool no_neigh\
+    \ = is_defined(ENABLE_SKIP_FIB);\n\tint ret, oif = DIRECT_ROUTING_DEV_IFINDEX;\n\
+    \tstruct bpf_redir_neigh *nh = NULL;\n# ifndef ENABLE_SKIP_FIB\n\tstruct bpf_redir_neigh\
+    \ nh_params;\n\tstruct bpf_fib_lookup fib_params = {\n\t\t.family\t\t= AF_INET,\n\
+    \t\t.ifindex\t= ctx->ingress_ifindex,\n\t\t.ipv4_src\t= ip4->saddr,\n\t\t.ipv4_dst\t\
+    = ip4->daddr,\n\t};\n\n\tret = fib_lookup(ctx, &fib_params, sizeof(fib_params),\n\
+    \t\t\t BPF_FIB_LOOKUP_DIRECT);\n\n// CONTEXT: redirect_direct_v4(struct __ctx_buff\
+    \ *ctx __maybe_unused,\n\tcase BPF_FIB_LKUP_RET_NO_NEIGH:\n\t\t/* GW could also\
+    \ be v6, so copy union. */\n\t\tnh_params.nh_family = fib_params.family;\n\t\t\
+    __bpf_memcpy_builtin(&nh_params.ipv6_nh, &fib_params.ipv6_dst,\n\t\t\t\t     sizeof(nh_params.ipv6_nh));\n\
+    \t\tno_neigh = true;\n\t\tnh = &nh_params;\n\t\tbreak;\n\tdefault:\n\t\treturn\
+    \ CTX_ACT_DROP;\n\t}\n\n\toif = fib_params.ifindex;\n# endif /* ENABLE_SKIP_FIB\
+    \ */\n\n\tret = ipv4_l3(ctx, l3_off, NULL, NULL, ip4);\n\tif (unlikely(ret !=\
+    \ CTX_ACT_OK))\n\t\treturn ret;\n\tif (no_neigh)\n\t\treturn redirect_neigh(oif,\
+    \ nh, nh ? sizeof(*nh) : 0, 0);\n# ifndef ENABLE_SKIP_FIB\n\tif (eth_store_daddr(ctx,\
+    \ fib_params.dmac, 0) < 0)\n\t\treturn CTX_ACT_DROP;\n\tif (eth_store_saddr(ctx,\
+    \ fib_params.smac, 0) < 0)\n\t\treturn CTX_ACT_DROP;\n\treturn ctx_redirect(ctx,\
+    \ oif, 0);\n# endif /* ENABLE_SKIP_FIB */\n\treturn CTX_ACT_DROP;\n}\n#endif /*\
+    \ ENABLE_IPV4 */\n\n#endif /* __LIB_FIB_H_ */"
+  fixed_code: "// FILE: bpf/bpf_lxc.c\n// CONTEXT: ct_recreate6:\n\t\t * not find\
+    \ the tunnel so fallthrough to nat46 and stack, (b)\n\t\t * the packet needs IPSec\
+    \ encap so push ctx to stack for encap, or\n\t\t * (c) packet was redirected to\
+    \ tunnel device so return.\n\t\t */\n\t\tret = encap_and_redirect_lxc(ctx, tunnel_endpoint,\
+    \ encrypt_key,\n\t\t\t\t\t     &key, SECLABEL, &trace);\n\t\tif (ret == IPSEC_ENDPOINT)\n\
+    \t\t\tgoto encrypt_to_stack;\n\t\telse if (ret != DROP_NO_TUNNEL_ENDPOINT)\n\t\
+    \t\treturn ret;\n\t}\n#endif\n\tif (is_defined(ENABLE_HOST_ROUTING)) {\n\t\tint\
+    \ oif;\n\n\t\tret = redirect_direct_v6(ctx, ETH_HLEN, ip6, &oif);\n\t\tif (likely(ret\
+    \ == CTX_ACT_REDIRECT))\n\t\t\tsend_trace_notify(ctx, TRACE_TO_NETWORK, SECLABEL,\n\
+    \t\t\t\t\t  *dst_id, 0, oif,\n\t\t\t\t\t  trace.reason, trace.monitor);\n\t\t\
+    return ret;\n\t}\n\n\tgoto pass_to_stack;\n\n#ifdef ENABLE_ROUTING\nto_host:\n\
+    \tif (is_defined(ENABLE_HOST_FIREWALL) && *dst_id == HOST_ID) {\n\t\tsend_trace_notify(ctx,\
+    \ TRACE_TO_HOST, SECLABEL, HOST_ID, 0,\n\t\t\t\t  HOST_IFINDEX, trace.reason,\
+    \ trace.monitor);\n\t\treturn ctx_redirect(ctx, HOST_IFINDEX, BPF_F_INGRESS);\n\
+    \t}\n#endif\n\n\n// CONTEXT: skip_vtep:\n\t\t/* If not redirected noteably due\
+    \ to IPSEC then pass up to stack\n\t\t * for further processing.\n\t\t */\n\t\t\
+    else if (ret == IPSEC_ENDPOINT)\n\t\t\tgoto encrypt_to_stack;\n\t\t/* This is\
+    \ either redirect by encap code or an error has\n\t\t * occurred either way return\
+    \ and stack will consume ctx.\n\t\t */\n\t\telse\n\t\t\treturn ret;\n\t}\n#endif\
+    \ /* TUNNEL_MODE */\n\tif (is_defined(ENABLE_HOST_ROUTING)) {\n\t\tint oif;\n\n\
+    \t\tret = redirect_direct_v4(ctx, ETH_HLEN, ip4, &oif);\n\t\tif (likely(ret ==\
+    \ CTX_ACT_REDIRECT))\n\t\t\tsend_trace_notify(ctx, TRACE_TO_NETWORK, SECLABEL,\n\
+    \t\t\t\t\t  *dst_id, 0, oif,\n\t\t\t\t\t  trace.reason, trace.monitor);\n\t\t\
+    return ret;\n\t}\n\n\tgoto pass_to_stack;\n\n#ifdef ENABLE_ROUTING\nto_host:\n\
+    \tif (is_defined(ENABLE_HOST_FIREWALL) && *dst_id == HOST_ID) {\n\t\tsend_trace_notify(ctx,\
+    \ TRACE_TO_HOST, SECLABEL, HOST_ID, 0,\n\t\t\t\t  HOST_IFINDEX, trace.reason,\
+    \ trace.monitor);\n\t\treturn ctx_redirect(ctx, HOST_IFINDEX, BPF_F_INGRESS);\n\
+    \t}\n#endif\n\n// FILE: bpf/lib/fib.h\n#define __LIB_FIB_H_\n\n#include <bpf/ctx/ctx.h>\n\
+    #include <bpf/api.h>\n\n#include \"common.h\"\n#include \"l3.h\"\n\n#ifdef ENABLE_IPV6\n\
+    static __always_inline int\nredirect_direct_v6(struct __ctx_buff *ctx __maybe_unused,\n\
+    \t\t   int l3_off __maybe_unused,\n\t\t   struct ipv6hdr *ip6 __maybe_unused,\
+    \ int *oif)\n{\n\tbool no_neigh = is_defined(ENABLE_SKIP_FIB);\n\tint ret;\n\t\
+    struct bpf_redir_neigh *nh = NULL;\n# ifndef ENABLE_SKIP_FIB\n\tstruct bpf_redir_neigh\
+    \ nh_params;\n\tstruct bpf_fib_lookup fib_params = {\n\t\t.family\t\t= AF_INET6,\n\
+    \t\t.ifindex\t= ctx->ingress_ifindex,\n\t};\n\n\tipv6_addr_copy((union v6addr\
+    \ *)&fib_params.ipv6_src,\n\t\t       (union v6addr *)&ip6->saddr);\n\tipv6_addr_copy((union\
+    \ v6addr *)&fib_params.ipv6_dst,\n\t\t       (union v6addr *)&ip6->daddr);\n\n\
+    // CONTEXT: redirect_direct_v6(struct __ctx_buff *ctx __maybe_unused,\n\t\tbreak;\n\
+    \tcase BPF_FIB_LKUP_RET_NO_NEIGH:\n\t\tnh_params.nh_family = fib_params.family;\n\
+    \t\t__bpf_memcpy_builtin(&nh_params.ipv6_nh, &fib_params.ipv6_dst,\n\t\t\t\t \
+    \    sizeof(nh_params.ipv6_nh));\n\t\tno_neigh = true;\n\t\tnh = &nh_params;\n\
+    \t\tbreak;\n\tdefault:\n\t\treturn CTX_ACT_DROP;\n\t}\n\n\t*oif = fib_params.ifindex;\n\
+    # else\n\t*oif = DIRECT_ROUTING_DEV_IFINDEX;\n# endif /* ENABLE_SKIP_FIB */\n\n\
+    \tret = ipv6_l3(ctx, l3_off, NULL, NULL, METRIC_EGRESS);\n\tif (unlikely(ret !=\
+    \ CTX_ACT_OK))\n\t\treturn ret;\n\tif (no_neigh) {\n\t\tif (nh)\n\t\t\treturn\
+    \ redirect_neigh(*oif, nh, sizeof(*nh), 0);\n\t\telse\n\t\t\treturn redirect_neigh(*oif,\
+    \ NULL, 0, 0);\n\t}\n# ifndef ENABLE_SKIP_FIB\n\tif (eth_store_daddr(ctx, fib_params.dmac,\
+    \ 0) < 0)\n\t\treturn CTX_ACT_DROP;\n\tif (eth_store_saddr(ctx, fib_params.smac,\
+    \ 0) < 0)\n\t\treturn CTX_ACT_DROP;\n\treturn ctx_redirect(ctx, *oif, 0);\n# endif\
+    \ /* ENABLE_SKIP_FIB */\n\treturn CTX_ACT_DROP;\n}\n#endif /* ENABLE_IPV6 */\n\
+    \n#ifdef ENABLE_IPV4\nstatic __always_inline int\nredirect_direct_v4(struct __ctx_buff\
+    \ *ctx __maybe_unused,\n\t\t   int l3_off __maybe_unused,\n\t\t   struct iphdr\
+    \ *ip4 __maybe_unused, int *oif)\n{\n\t/* For deployments with just single external\
+    \ dev, redirect_neigh()\n\t * will resolve the GW and do L2 resolution for us.\
+    \ For multi-device\n\t * deployments we perform a FIB lookup prior to the redirect.\
+    \ If the\n\t * neigh entry cannot be resolved, we ask redirect_neigh() to do it,\n\
+    \t * otherwise we can directly call redirect().\n\t */\n\tbool no_neigh = is_defined(ENABLE_SKIP_FIB);\n\
+    \tint ret;\n\tstruct bpf_redir_neigh *nh = NULL;\n# ifndef ENABLE_SKIP_FIB\n\t\
+    struct bpf_redir_neigh nh_params;\n\tstruct bpf_fib_lookup fib_params = {\n\t\t\
+    .family\t\t= AF_INET,\n\t\t.ifindex\t= ctx->ingress_ifindex,\n\t\t.ipv4_src\t\
+    = ip4->saddr,\n\t\t.ipv4_dst\t= ip4->daddr,\n\t};\n\n\tret = fib_lookup(ctx, &fib_params,\
+    \ sizeof(fib_params),\n\t\t\t BPF_FIB_LOOKUP_DIRECT);\n\n// CONTEXT: redirect_direct_v4(struct\
+    \ __ctx_buff *ctx __maybe_unused,\n\tcase BPF_FIB_LKUP_RET_NO_NEIGH:\n\t\t/* GW\
+    \ could also be v6, so copy union. */\n\t\tnh_params.nh_family = fib_params.family;\n\
+    \t\t__bpf_memcpy_builtin(&nh_params.ipv6_nh, &fib_params.ipv6_dst,\n\t\t\t\t \
+    \    sizeof(nh_params.ipv6_nh));\n\t\tno_neigh = true;\n\t\tnh = &nh_params;\n\
+    \t\tbreak;\n\tdefault:\n\t\treturn CTX_ACT_DROP;\n\t}\n\n\t*oif = fib_params.ifindex;\n\
+    # else\n\t*oif = DIRECT_ROUTING_DEV_IFINDEX;\n# endif /* ENABLE_SKIP_FIB */\n\n\
+    \tret = ipv4_l3(ctx, l3_off, NULL, NULL, ip4);\n\tif (unlikely(ret != CTX_ACT_OK))\n\
+    \t\treturn ret;\n\tif (no_neigh) {\n\t\tif (nh)\n\t\t\treturn redirect_neigh(*oif,\
+    \ nh, sizeof(*nh), 0);\n\t\telse\n\t\t\treturn redirect_neigh(*oif, NULL, 0, 0);\n\
+    \t}\n# ifndef ENABLE_SKIP_FIB\n\tif (eth_store_daddr(ctx, fib_params.dmac, 0)\
+    \ < 0)\n\t\treturn CTX_ACT_DROP;\n\tif (eth_store_saddr(ctx, fib_params.smac,\
+    \ 0) < 0)\n\t\treturn CTX_ACT_DROP;\n\treturn ctx_redirect(ctx, *oif, 0);\n# endif\
+    \ /* ENABLE_SKIP_FIB */\n\treturn CTX_ACT_DROP;\n}\n#endif /* ENABLE_IPV4 */\n\
+    \n#endif /* __LIB_FIB_H_ */"
+  diff_summary: |-
+    bpf/bpf_lxc.c:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: ct_recreate6:, skip_vtep:.
+    bpf/lib/fib.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: redirect_direct_v6(struct __ctx_buff *ctx __maybe_unused,, redirect_direct_v4(struct __ctx_buff *ctx __maybe_unused,.
+    - Commit subject: bpf: Add send_trace_notify hook for redirect_direct_{v4,v6}.

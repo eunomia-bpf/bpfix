@@ -1,0 +1,278 @@
+schema_version: bpfix.raw_external/v1
+raw_id: stackoverflow-75515263
+source_kind: stackoverflow
+source:
+  url: https://stackoverflow.com/questions/75515263/ebpf-verifier-error-in-reading-map-value-struct-with-a-u64-element
+  title: eBPF verifier error in reading map value struct with a __u64 element
+  repository: null
+  commit: null
+  collected_at: '2026-03-11T16:03:11+00:00'
+collector:
+  original_path: bpfix-empirical/raw/so/stackoverflow-75515263.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: true
+  verifier_log_block_count: 2
+  source_snippet_count: 4
+  has_buggy_code: false
+  has_fixed_code: false
+  has_fix_description: false
+reproduction:
+  status: replay_valid
+  case_id: stackoverflow-75515263
+  case_path: cases/stackoverflow-75515263
+  artifact_path: cases/stackoverflow-75515263
+  reason: admitted_to_bpfix_bench_cases
+raw:
+  case_id: stackoverflow-75515263
+  source: stackoverflow
+  collected_at: '2026-03-11T16:03:11+00:00'
+  question:
+    question_id: 75515263
+    title: eBPF verifier error in reading map value struct with a __u64 element
+    url: https://stackoverflow.com/questions/75515263/ebpf-verifier-error-in-reading-map-value-struct-with-a-u64-element
+    tags:
+    - ebpf
+    - bpf
+    score: 0
+    answer_count: 1
+    is_answered: true
+  original_verifier_log:
+    blocks:
+    - |-
+      10: (b7) r1 = 7695468
+      ; const char foo[] = "output %llu";
+      11: (63) *(u32 *)(r10 -8) = r1
+      12: (18) r1 = 0x252074757074756f
+      14: (7b) *(u64 *)(r10 -16) = r1
+      ; bpf_trace_printk(foo,sizeof(foo),og_sock->sport);
+      15: (69) r3 = *(u16 *)(r0 +8)
+       R0=map_value(id=0,off=0,ks=4,vs=8,imm=0) R1_w=inv2675266226404750703 R10=fp0 fp-8=mmmmmmmm fp-16_w=inv2675266226404750703
+      invalid access to map value, value_size=8 off=8 size=2
+      R0 min value is outside of the allowed memory range
+      processed 14 insns (limit 1000000) max_states_per_insn 0 total_states 1 peak_states 1 mark_read 1
+      -- END PROG LOAD LOG --
+    - |-
+      ; if(og_sock) {
+      9: (15) if r0 == 0x0 goto pc+10
+       R0=map_value(id=0,off=0,ks=4,vs=8,imm=0) R10=fp0 fp-8=mmmm????
+      10: (b7) r1 = 7695468
+      ; const char foo[] = "output %llu";
+      11: (63) *(u32 *)(r10 -8) = r1
+      12: (18) r1 = 0x252074757074756f
+      14: (7b) *(u64 *)(r10 -16) = r1
+      ; bpf_trace_printk(foo,sizeof(foo),og_sock->ctime);
+      15: (79) r3 = *(u64 *)(r0 +8)
+       R0=map_value(id=0,off=0,ks=4,vs=8,imm=0) R1_w=inv2675266226404750703 R10=fp0 fp-8=mmmmmmmm fp-16_w=inv2675266226404750703
+      invalid access to map value, value_size=8 off=8 size=8
+      R0 min value is outside of the allowed memory range
+      processed 14 insns (limit 1000000) max_states_per_insn 0 total_states 1 peak_states 1 mark_read 1
+      -- END PROG LOAD LOG --
+    combined: |-
+      10: (b7) r1 = 7695468
+      ; const char foo[] = "output %llu";
+      11: (63) *(u32 *)(r10 -8) = r1
+      12: (18) r1 = 0x252074757074756f
+      14: (7b) *(u64 *)(r10 -16) = r1
+      ; bpf_trace_printk(foo,sizeof(foo),og_sock->sport);
+      15: (69) r3 = *(u16 *)(r0 +8)
+       R0=map_value(id=0,off=0,ks=4,vs=8,imm=0) R1_w=inv2675266226404750703 R10=fp0 fp-8=mmmmmmmm fp-16_w=inv2675266226404750703
+      invalid access to map value, value_size=8 off=8 size=2
+      R0 min value is outside of the allowed memory range
+      processed 14 insns (limit 1000000) max_states_per_insn 0 total_states 1 peak_states 1 mark_read 1
+      -- END PROG LOAD LOG --
+
+      ; if(og_sock) {
+      9: (15) if r0 == 0x0 goto pc+10
+       R0=map_value(id=0,off=0,ks=4,vs=8,imm=0) R10=fp0 fp-8=mmmm????
+      10: (b7) r1 = 7695468
+      ; const char foo[] = "output %llu";
+      11: (63) *(u32 *)(r10 -8) = r1
+      12: (18) r1 = 0x252074757074756f
+      14: (7b) *(u64 *)(r10 -16) = r1
+      ; bpf_trace_printk(foo,sizeof(foo),og_sock->ctime);
+      15: (79) r3 = *(u64 *)(r0 +8)
+       R0=map_value(id=0,off=0,ks=4,vs=8,imm=0) R1_w=inv2675266226404750703 R10=fp0 fp-8=mmmmmmmm fp-16_w=inv2675266226404750703
+      invalid access to map value, value_size=8 off=8 size=8
+      R0 min value is outside of the allowed memory range
+      processed 14 insns (limit 1000000) max_states_per_insn 0 total_states 1 peak_states 1 mark_read 1
+      -- END PROG LOAD LOG --
+    generated:
+      log: |-
+        libbpf: loading object from /tmp/bpfix_oracle_5jinqsl1/prog_wrap-vmlinux.o
+        libbpf: elf: section(3) license, size 4, link 0, flags 3, type=1
+        libbpf: license of /tmp/bpfix_oracle_5jinqsl1/prog_wrap-vmlinux.o is GPL
+        libbpf: elf: section(12) .BTF, size 163, link 0, flags 0, type=1
+        libbpf: elf: section(18) .symtab, size 216, link 1, flags 0, type=2
+        libbpf: looking for externs among 9 symbols...
+        libbpf: collected 0 externs total
+        libbpf: object 'prog_wrap-vmlin': failed (-95) to create BPF token from '/sys/fs/bpf', skipping optional step...
+        Error: object file doesn't contain any bpf program
+      verifier_pass: false
+      template_used: wrap-vmlinux
+      generated_at: '2026-03-13T21:13:50.965487+00:00'
+      old_log_len: 1288
+      new_log_len: 592
+  verifier_log:
+    blocks:
+    - |-
+      10: (b7) r1 = 7695468
+      ; const char foo[] = "output %llu";
+      11: (63) *(u32 *)(r10 -8) = r1
+      12: (18) r1 = 0x252074757074756f
+      14: (7b) *(u64 *)(r10 -16) = r1
+      ; bpf_trace_printk(foo,sizeof(foo),og_sock->sport);
+      15: (69) r3 = *(u16 *)(r0 +8)
+       R0=map_value(id=0,off=0,ks=4,vs=8,imm=0) R1_w=inv2675266226404750703 R10=fp0 fp-8=mmmmmmmm fp-16_w=inv2675266226404750703
+      invalid access to map value, value_size=8 off=8 size=2
+      R0 min value is outside of the allowed memory range
+      processed 14 insns (limit 1000000) max_states_per_insn 0 total_states 1 peak_states 1 mark_read 1
+      -- END PROG LOAD LOG --
+    - |-
+      ; if(og_sock) {
+      9: (15) if r0 == 0x0 goto pc+10
+       R0=map_value(id=0,off=0,ks=4,vs=8,imm=0) R10=fp0 fp-8=mmmm????
+      10: (b7) r1 = 7695468
+      ; const char foo[] = "output %llu";
+      11: (63) *(u32 *)(r10 -8) = r1
+      12: (18) r1 = 0x252074757074756f
+      14: (7b) *(u64 *)(r10 -16) = r1
+      ; bpf_trace_printk(foo,sizeof(foo),og_sock->ctime);
+      15: (79) r3 = *(u64 *)(r0 +8)
+       R0=map_value(id=0,off=0,ks=4,vs=8,imm=0) R1_w=inv2675266226404750703 R10=fp0 fp-8=mmmmmmmm fp-16_w=inv2675266226404750703
+      invalid access to map value, value_size=8 off=8 size=8
+      R0 min value is outside of the allowed memory range
+      processed 14 insns (limit 1000000) max_states_per_insn 0 total_states 1 peak_states 1 mark_read 1
+      -- END PROG LOAD LOG --
+    combined: |-
+      libbpf: loading object from <legacy-so-gh-reproducer>/stackoverflow-75515263/prog.o
+      libbpf: elf: section(3) tracepoint/syscalls/sys_enter_execve, size 160, link 0, flags 6, type=1
+      libbpf: sec 'tracepoint/syscalls/sys_enter_execve': found program 'read_lookup' at insn offset 0 (0 bytes), code size 20 insns (160 bytes)
+      libbpf: elf: section(4) .reltracepoint/syscalls/sys_enter_execve, size 16, link 27, flags 40, type=9
+      libbpf: elf: section(5) maps, size 20, link 0, flags 3, type=1
+      libbpf: elf: legacy map definitions in 'maps' section are not supported by libbpf v1.0+
+      Error: failed to open object file
+    generated:
+      log: |-
+        libbpf: loading object from /tmp/bpfix_oracle_5jinqsl1/prog_wrap-vmlinux.o
+        libbpf: elf: section(3) license, size 4, link 0, flags 3, type=1
+        libbpf: license of /tmp/bpfix_oracle_5jinqsl1/prog_wrap-vmlinux.o is GPL
+        libbpf: elf: section(12) .BTF, size 163, link 0, flags 0, type=1
+        libbpf: elf: section(18) .symtab, size 216, link 1, flags 0, type=2
+        libbpf: looking for externs among 9 symbols...
+        libbpf: collected 0 externs total
+        libbpf: object 'prog_wrap-vmlin': failed (-95) to create BPF token from '/sys/fs/bpf', skipping optional step...
+        Error: object file doesn't contain any bpf program
+      verifier_pass: false
+      template_used: wrap-vmlinux
+      generated_at: '2026-03-13T21:13:50.965487+00:00'
+      old_log_len: 1288
+      new_log_len: 592
+  verifier_log_source: captured_on_6.15.11
+  verifier_log_captured_at: '2026-03-20'
+  source_snippets:
+  - |-
+    struct {
+        __uint(type, BPF_MAP_TYPE_HASH);
+        __uint(max_entries, MAX_ENTRIES);
+        __type(key, u32);
+        __type(value, struct sock_info *);
+    } lookup SEC(".maps");
+  - |-
+    struct sock_info {
+        __u64 ctime;
+        __u16 sport;
+        __u16 dport;
+    };
+  - |-
+    struct sock_info *og_sock = bpf_map_lookup_elem(&lookup,&pid);
+
+    if(og_sock) {
+        const char foo[] = "output %llu";
+        bpf_trace_printk(foo,sizeof(foo),og_sock->ctime);
+    }
+  - |-
+    struct sock_info {
+        __u16 sport;
+        __u16 dport;
+        __u64 ctime;
+    };
+  question_body_text: |-
+    I'm trying to use an eBPF map which looks like this:
+    struct {
+    __uint(type, BPF_MAP_TYPE_HASH);
+    __uint(max_entries, MAX_ENTRIES);
+    __type(key, u32);
+    __type(value, struct sock_info *);
+    } lookup SEC(".maps");
+    and sock_info is defined as follows:
+    struct sock_info {
+    __u64 ctime;
+    __u16 sport;
+    __u16 dport;
+    };
+    When I try to access the value from the map, I am able to read ctime correctly but run into a verifier error accessing sport and dport
+    struct sock_info *og_sock = bpf_map_lookup_elem(&lookup,&pid);
+    if(og_sock) {
+    const char foo[] = "output %llu";
+    bpf_trace_printk(foo,sizeof(foo),og_sock->ctime);
+    }
+    10: (b7) r1 = 7695468
+    ; const char foo[] = "output %llu";
+    11: (63) *(u32 *)(r10 -8) = r1
+    12: (18) r1 = 0x252074757074756f
+    14: (7b) *(u64 *)(r10 -16) = r1
+    ; bpf_trace_printk(foo,sizeof(foo),og_sock->sport);
+    15: (69) r3 = *(u16 *)(r0 +8)
+    R0=map_value(id=0,off=0,ks=4,vs=8,imm=0) R1_w=inv2675266226404750703 R10=fp0 fp-8=mmmmmmmm fp-16_w=inv2675266226404750703
+    invalid access to map value, value_size=8 off=8 size=2
+    R0 min value is outside of the allowed memory range
+    processed 14 insns (limit 1000000) max_states_per_insn 0 total_states 1 peak_states 1 mark_read 1
+    -- END PROG LOAD LOG --
+    When I modify the struct as follows:
+    struct sock_info {
+    __u16 sport;
+    __u16 dport;
+    __u64 ctime;
+    };
+    I can read the values of sport and dport but ctime breaks
+    ; if(og_sock) {
+    9: (15) if r0 == 0x0 goto pc+10
+    R0=map_value(id=0,off=0,ks=4,vs=8,imm=0) R10=fp0 fp-8=mmmm????
+    10: (b7) r1 = 7695468
+    ; const char foo[] = "output %llu";
+    11: (63) *(u32 *)(r10 -8) = r1
+    12: (18) r1 = 0x252074757074756f
+    14: (7b) *(u64 *)(r10 -16) = r1
+    ; bpf_trace_printk(foo,sizeof(foo),og_sock->ctime);
+    15: (79) r3 = *(u64 *)(r0 +8)
+    R0=map_value(id=0,off=0,ks=4,vs=8,imm=0) R1_w=inv2675266226404750703 R10=fp0 fp-8=mmmmmmmm fp-16_w=inv2675266226404750703
+    invalid access to map value, value_size=8 off=8 size=8
+    R0 min value is outside of the allowed memory range
+    processed 14 insns (limit 1000000) max_states_per_insn 0 total_states 1 peak_states 1 mark_read 1
+    -- END PROG LOAD LOG --
+    I looked at this article but it seems to be related to bpf_sock_ops which I'm not working with.
+    Kernel info:
+    $ uname -a
+    Linux debian 5.10.0-20-arm64 #1 SMP Debian 5.10.158-2 (2022-12-13) aarch64 GNU/Linux
+  selected_answer:
+    answer_id: 75515281
+    url: https://stackoverflow.com/questions/75515263/ebpf-verifier-error-in-reading-map-value-struct-with-a-u64-element#75515281
+    is_accepted: true
+    score: 1
+    body_text: |-
+      If you want to store object of type struct sock_info in your BPF map, then its declaration should be:
+      struct {
+      __uint(type, BPF_MAP_TYPE_HASH);
+      __uint(max_entries, MAX_ENTRIES);
+      __type(key, u32);
+      __type(value, struct sock_info);
+      } lookup SEC(".maps");
+      Note how the value type is not a pointer anymore. Your C code for the lookup doesn't need to change.
+      The verifier fails in this way because it assumes that you wanted to store pointers into the map. So it allows you to access 64-bits worth of map value since that's the size of a pointer. Any more and it assumes you're doing an out-of-bound access.
+    fix_description: 'If you want to store object of type struct sock_info in your
+      BPF map, then its declaration should be: Note how the value type is not a pointer
+      anymore. Your C code for the lookup doesn''t need to change. The verifier fails
+      in this way because it assumes that you wanted to store pointers into the map.
+      So it allows you to access 64-bits worth of map value since that''s the size
+      of a pointer. Any more and it assumes you''re doing an out-of-bound access.'

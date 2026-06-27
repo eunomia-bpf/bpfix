@@ -1,0 +1,785 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-aya-rs-aya-1062
+source_kind: github_issue
+source:
+  url: https://github.com/aya-rs/aya/issues/1062
+  title: uretprobe latest aya version cannot pass anymore ctx.ret().unwrap to bpf_probe_read
+  repository: https://github.com/aya-rs/aya
+  commit: null
+  collected_at: '2026-03-11T16:01:54+00:00'
+collector:
+  original_path: bpfix-empirical/raw/gh/github-aya-rs-aya-1062.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: true
+  verifier_log_block_count: 3
+  source_snippet_count: 8
+  has_buggy_code: false
+  has_fixed_code: true
+  has_fix_description: true
+reproduction:
+  status: replay_valid
+  case_id: github-aya-rs-aya-1062
+  case_path: cases/github-aya-rs-aya-1062
+  artifact_path: cases/github-aya-rs-aya-1062
+  reason: admitted_to_bpfix_bench_cases
+raw:
+  case_id: github-aya-rs-aya-1062
+  source: github_issues
+  collected_at: '2026-03-11T16:01:54+00:00'
+  issue:
+    repository: aya-rs/aya
+    number: 1062
+    title: uretprobe latest aya version cannot pass anymore ctx.ret().unwrap to bpf_probe_read
+    url: https://github.com/aya-rs/aya/issues/1062
+    state: closed
+    state_reason: completed
+    labels: []
+    created_at: '2024-10-18T23:14:36Z'
+    updated_at: '2024-10-28T22:29:11Z'
+    author: jornfranke
+  verifier_log:
+    blocks:
+    - |-
+      Error: the BPF_PROG_LOAD syscall failed. Verifier output: 0: R1=ctx() R10=fp0
+      0: (bf) r6 = r1                       ; R1=ctx() R6_w=ctx()
+      1: (85) call bpf_get_current_pid_tgid#14      ; R0_w=scalar()
+      2: (7b) *(u64 *)(r10 -16) = r0        ; R0_w=scalar(id=1) R10=fp0 fp-16_w=scalar(id=1)
+      3: (7b) *(u64 *)(r10 -24) = r6        ; R6_w=ctx() R10=fp0 fp-24_w=ctx()
+      4: (79) r8 = *(u64 *)(r6 +80)         ; R6_w=ctx() R8_w=scalar()
+      5: (bf) r1 = r8                       ; R1_w=scalar(id=2) R8_w=scalar(id=2)
+      6: (67) r1 <<= 32                     ; R1_w=scalar(smax=0x7fffffff00000000,umax=0xffffffff00000000,smin32=0,smax32=umax32=0,var_off=(0x0; 0xffffffff00000000))
+      7: (bf) r2 = r1                       ; R1_w=scalar(id=3,smax=0x7fffffff00000000,umax=0xffffffff00000000,smin32=0,smax32=umax32=0,var_off=(0x0; 0xffffffff00000000)) R2_w=scalar(id=3,smax=0x7fffffff00000000,umax=0xffffffff00000000,smin32=0,smax32=umax32=0,var_off=(0x0; 0xffffffff00000000))
+      8: (c7) r2 s>>= 32                    ; R2_w=scalar(smin=0xffffffff80000000,smax=0x7fffffff)
+      9: (65) if r2 s> 0x0 goto pc+7 17: R0_w=scalar(id=1) R1_w=scalar(id=3,smax=0x7fffffff00000000,umax=0xffffffff00000000,smin32=0,smax32=umax32=0,var_off=(0x0; 0xffffffff00000000)) R2_w=scalar(smin=umin=smin32=umin32=1,smax=umax=umax32=0x7fffffff,var_off=(0x0; 0x7fffffff)) R6_w=ctx() R8_w=scalar(id=2) R10=fp0 fp-16_w=scalar(id=1) fp-24_w=ctx()
+      17: (77) r1 >>= 32                    ; R1_w=scalar(smin=0,smax=umax=0xffffffff,var_off=(0x0; 0xffffffff))
+      18: (25) if r1 > 0x4000 goto pc+31    ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=16384,var_off=(0x0; 0x7fff))
+      19: (bf) r2 = r10                     ; R2_w=fp0 R10=fp0
+      20: (07) r2 += -16                    ; R2_w=fp-16
+      21: (18) r1 = 0xffff9cdbe9801000      ; R1_w=map_ptr(map=SSLREADARGSMAP,ks=8,vs=8)
+      23: (85) call bpf_map_lookup_elem#1   ; R0=map_value_or_null(id=4,map=SSLREADARGSMAP,ks=8,vs=8)
+      24: (bf) r7 = r0                      ; R0=map_value_or_null(id=4,map=SSLREADARGSMAP,ks=8,vs=8) R7_w=map_value_or_null(id=4,map=SSLREADARGSMAP,ks=8,vs=8)
+      25: (15) if r7 == 0x0 goto pc-16      ; R7_w=map_value(map=SSLREADARGSMAP,ks=8,vs=8)
+      26: (b7) r1 = 0                       ; R1_w=0
+      27: (63) *(u32 *)(r10 -4) = r1        ; R1_w=0 R10=fp0 fp-8=0000????
+      28: (bf) r2 = r10                     ; R2_w=fp0 R10=fp0
+      29: (07) r2 += -4                     ; R2_w=fp-4
+      30: (18) r1 = 0xffff9cd9ea8a0f00      ; R1_w=map_ptr(map=SSLREADDATABUF,ks=4,vs=16384)
+      32: (85) call bpf_map_lookup_elem#1   ; R0=map_value_or_null(id=5,map=SSLREADDATABUF,ks=4,vs=16384)
+      33: (15) if r0 == 0x0 goto pc-24      ; R0=map_value(map=SSLREADDATABUF,ks=4,vs=16384)
+      34: (79) r3 = *(u64 *)(r7 +0)         ; R3_w=scalar() R7=map_value(map=SSLREADARGSMAP,ks=8,vs=8)
+      35: (79) r7 = *(u64 *)(r10 -24)       ; R7_w=ctx() R10=fp0 fp-24=ctx()
+      36: (79) r2 = *(u64 *)(r7 +80)        ; R2_w=scalar() R7_w=ctx()
+      37: (bf) r1 = r0                      ; R0=map_value(map=SSLREADDATABUF,ks=4,vs=16384) R1_w=map_value(map=SSLREADDATABUF,ks=4,vs=16384)
+      38: (bf) r6 = r0                      ; R0=map_value(map=SSLREADDATABUF,ks=4,vs=16384) R6_w=map_value(map=SSLREADDATABUF,ks=4,vs=16384)
+      39: (85) call bpf_probe_read_user#112
+      R2 min value is negative, either use unsigned or 'var &= const'
+      verification time 342 usec
+      stack depth 24+0+0+0
+      processed 37 insns (limit 1000000) max_states_per_insn 0 total_states 3 peak_states 3 mark_read 2
+    - |-
+      2024-10-19T18:03:50Z INFO  uprobe_libcall_filter_app] Configuring operation filter
+      [2024-10-19T18:03:50Z INFO  uprobe_libcall_filter_app] Configuring application: openssl3.1
+      [2024-10-19T18:03:50Z INFO  uprobe_libcall_filter_app] Configuring openssl_lib: /lib64/libssl.so.3.1.4
+      Error: the BPF_PROG_LOAD syscall failed. Verifier output: last insn is not an exit or jmp
+      verification time 4 usec
+      stack depth 0+0+0+0+0
+      processed 0 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0 mark_read 0
+
+      Caused by:
+          Invalid argument (os error 22)
+    - |-
+      Error: the BPF_PROG_LOAD syscall failed. Verifier output: 0: R1=ctx() R10=fp0
+      0: (bf) r6 = r1                       ; R1=ctx() R6_w=ctx()
+      1: (85) call bpf_get_current_pid_tgid#14      ; R0_w=scalar()
+      2: (7b) *(u64 *)(r10 -16) = r0        ; R0_w=scalar(id=1) R10=fp0 fp-16_w=scalar(id=1)
+      3: (79) r7 = *(u64 *)(r6 +80)         ; R6_w=ctx() R7_w=scalar()
+      4: (bf) r1 = r7                       ; R1_w=scalar(id=2) R7_w=scalar(id=2)
+      5: (67) r1 <<= 32                     ; R1_w=scalar(smax=0x7fffffff00000000,umax=0xffffffff00000000,smin32=0,smax32=umax32=0,var_off=(0x0; 0xffffffff00000000))
+      6: (c7) r1 s>>= 32                    ; R1_w=scalar(smin=0xffffffff80000000,smax=0x7fffffff)
+      7: (b7) r2 = 1                        ; R2_w=1
+      8: (6d) if r2 s> r1 goto pc+593       ; R1_w=scalar(smin=umin=smin32=umin32=1,smax=umax=umax32=0x7fffffff,var_off=(0x0; 0x7fffffff)) R2_w=1
+      9: (bf) r1 = r7                       ; R1_w=scalar(id=2) R7_w=scalar(id=2)
+      10: (57) r1 &= 2147483647             ; R1=scalar(smin=smin32=0,smax=umax=umax32=0x7fffffff,var_off=(0x0; 0x7fffffff))
+      11: (25) if r1 > 0x4000 goto pc+232   ; R1=scalar(smin=smin32=0,smax=umax=smax32=umax32=16384,var_off=(0x0; 0x7fff))
+      12: (b7) r9 = 0                       ; R9_w=0
+      13: (63) *(u32 *)(r10 -4) = r9        ; R9_w=0 R10=fp0 fp-8=0000????
+      14: (bf) r2 = r10                     ; R2_w=fp0 R10=fp0
+      15: (07) r2 += -4                     ; R2_w=fp-4
+      16: (18) r1 = 0xffff9367463bbd00      ; R1_w=map_ptr(map=AYA_LOG_BUF,ks=4,vs=8192)
+      18: (85) call bpf_map_lookup_elem#1   ; R0_w=map_value_or_null(id=3,map=AYA_LOG_BUF,ks=4,vs=8192)
+      19: (bf) r8 = r0                      ; R0=map_value_or_null(id=3,map=AYA_LOG_BUF,ks=4,vs=8192) R8=map_value_or_null(id=3,map=AYA_LOG_BUF,ks=4,vs=8192)
+      20: (15) if r8 == 0x0 goto pc+195     ; R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192)
+      21: (73) *(u8 *)(r8 +2) = r9          ; R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192) R9=0
+      22: (b7) r1 = 21                      ; R1_w=21
+      23: (73) *(u8 *)(r8 +1) = r1          ; R1_w=21 R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192)
+      24: (b7) r2 = 1                       ; R2_w=1
+      25: (73) *(u8 *)(r8 +0) = r2          ; R2_w=1 R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192)
+      26: (bf) r3 = r8                      ; R3_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192) R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192)
+      27: (07) r3 += 3                      ; R3_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=3)
+      28: (18) r4 = 0xffff9367496aa903      ; R4_w=map_value(map=.rodata,ks=4,vs=142,off=11)
+      30: (71) r5 = *(u8 *)(r4 +0)          ; R4_w=map_value(map=.rodata,ks=4,vs=142,off=11) R5_w=117
+      31: (73) *(u8 *)(r3 +0) = r5          ; R3_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=3) R5_w=117
+      32: (71) r5 = *(u8 *)(r4 +1)          ; R4_w=map_value(map=.rodata,ks=4,vs=142,off=11) R5_w=112
+      33: (73) *(u8 *)(r3 +1) = r5          ; R3_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=3) R5_w=112
+      34: (71) r5 = *(u8 *)(r4 +2)          ; R4_w=map_value(map=.rodata,ks=4,vs=142,off=11) R5_w=114
+      35: (73) *(u8 *)(r3 +2) = r5          ; R3_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=3) R5_w=114
+      36: (71) r5 = *(u8 *)(r4 +3)          ; R4_w=map_value(map=.rodata,ks=4,vs=142,off=11) R5_w=111
+      37: (73) *(u8 *)(r3 +3) = r5          ; R3_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=3) R5_w=111
+      38: (71) r5 = *(u8 *)(r4 +4)          ; R4_w=map_value(map=.rodata,ks=4,vs=142,off=11) R5_w=98
+      39: (73) *(u8 *)(r3 +4) = r5          ; R3_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=3) R5_w=98
+      40: (71) r5 = *(u8 *)(r4 +5)          ; R4_w=map_value(map=.rodata,ks=4,vs=142,off=11) R5_w=101
+      41: (73) *(u8 *)(r3 +5) = r5          ; R3_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=3) R5_w=101
+      42: (71) r5 = *(u8 *)(r4 +6)          ; R4_w=map_value(map=.rodata,ks=4,vs=142,off=11) R5_w=95
+      43: (73) *(u8 *)(r3 +6) = r5          ; R3_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=3) R5_w=95
+      44: (71) r5 = *(u8 *)(r4 +7)          ; R4_w=map_value(map=.rodata,ks=4,vs=142,off=11) R5_w=108
+      45: (73) *(u8 *)(r3 +7) = r5          ; R3_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=3) R5_w=108
+      46: (71) r5 = *(u8 *)(r4 +8)          ; R4_w=map_value(map=.rodata,ks=4,vs=142,off=11) R5_w=105
+      47: (73) *(u8 *)(r3 +8) = r5          ; R3_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=3) R5_w=105
+      48: (71) r5 = *(u8 *)(r4 +9)          ; R4_w=map_value(map=.rodata,ks=4,vs=142,off=11) R5_w=98
+      49: (73) *(u8 *)(r3 +9) = r5          ; R3_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=3) R5_w=98
+      50: (71) r5 = *(u8 *)(r4 +10)         ; R4_w=map_value(map=.rodata,ks=4,vs=142,off=11) R5_w=99
+      51: (73) *(u8 *)(r3 +10) = r5         ; R3_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=3) R5_w=99
+      52: (71) r5 = *(u8 *)(r4 +11)         ; R4_w=map_value(map=.rodata,ks=4,vs=142,off=11) R5_w=97
+      53: (73) *(u8 *)(r3 +11) = r5         ; R3_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=3) R5_w=97
+      54: (71) r5 = *(u8 *)(r4 +12)         ; R4_w=map_value(map=.rodata,ks=4,vs=142,off=11) R5_w=108
+      55: (73) *(u8 *)(r3 +12) = r5         ; R3_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=3) R5_w=108
+      56: (71) r5 = *(u8 *)(r4 +13)         ; R4_w=map_value(map=.rodata,ks=4,vs=142,off=11) R5_w=108
+      57: (73) *(u8 *)(r3 +13) = r5         ; R3_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=3) R5_w=108
+      58: (71) r5 = *(u8 *)(r4 +14)         ; R4_w=map_value(map=.rodata,ks=4,vs=142,off=11) R5_w=95
+      59: (73) *(u8 *)(r3 +14) = r5         ; R3_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=3) R5_w=95
+      60: (71) r5 = *(u8 *)(r4 +15)         ; R4_w=map_value(map=.rodata,ks=4,vs=142,off=11) R5_w=102
+      61: (73) *(u8 *)(r3 +15) = r5         ; R3_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=3) R5_w=102
+      62: (71) r5 = *(u8 *)(r4 +16)         ; R4_w=map_value(map=.rodata,ks=4,vs=142,off=11) R5_w=105
+      63: (73) *(u8 *)(r3 +16) = r5         ; R3_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=3) R5_w=105
+      64: (71) r5 = *(u8 *)(r4 +17)         ; R4_w=map_value(map=.rodata,ks=4,vs=142,off=11) R5_w=108
+      65: (73) *(u8 *)(r3 +17) = r5         ; R3_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=3) R5_w=108
+      66: (71) r5 = *(u8 *)(r4 +18)         ; R4_w=map_value(map=.rodata,ks=4,vs=142,off=11) R5_w=116
+      67: (73) *(u8 *)(r3 +18) = r5         ; R3_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=3) R5_w=116
+      68: (71) r5 = *(u8 *)(r4 +19)         ; R4_w=map_value(map=.rodata,ks=4,vs=142,off=11) R5_w=101
+      69: (73) *(u8 *)(r3 +19) = r5         ; R3_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=3) R5_w=101
+      70: (71) r5 = *(u8 *)(r4 +20)         ; R4_w=map_value(map=.rodata,ks=4,vs=142,off=11) R5_w=114
+      71: (73) *(u8 *)(r3 +20) = r5         ; R3_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=3) R5_w=114
+      72: (73) *(u8 *)(r8 +29) = r1         ; R1_w=21 R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192)
+      73: (73) *(u8 *)(r8 +25) = r2         ; R2_w=1 R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192)
+      74: (b7) r1 = 2                       ; R1_w=2
+      75: (73) *(u8 *)(r8 +27) = r1         ; R1_w=2 R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192)
+      76: (73) *(u8 *)(r8 +24) = r1         ; R1_w=2 R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192)
+      77: (73) *(u8 *)(r8 +30) = r9         ; R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192) R9=0
+      78: (73) *(u8 *)(r8 +26) = r9         ; R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192) R9=0
+      79: (b7) r2 = 3                       ; R2_w=3
+      80: (73) *(u8 *)(r8 +28) = r2         ; R2_w=3 R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192)
+      81: (bf) r1 = r8                      ; R1_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192) R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192)
+      82: (07) r1 += 31                     ; R1_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=31)
+      83: (71) r3 = *(u8 *)(r4 +0)          ; R3_w=117 R4_w=map_value(map=.rodata,ks=4,vs=142,off=11)
+      84: (73) *(u8 *)(r1 +0) = r3          ; R1_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=31) R3_w=117
+      85: (71) r3 = *(u8 *)(r4 +1)          ; R3_w=112 R4_w=map_value(map=.rodata,ks=4,vs=142,off=11)
+      86: (73) *(u8 *)(r1 +1) = r3          ; R1_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=31) R3_w=112
+      87: (71) r3 = *(u8 *)(r4 +2)          ; R3_w=114 R4_w=map_value(map=.rodata,ks=4,vs=142,off=11)
+      88: (73) *(u8 *)(r1 +2) = r3          ; R1_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=31) R3_w=114
+      89: (71) r3 = *(u8 *)(r4 +3)          ; R3_w=111 R4_w=map_value(map=.rodata,ks=4,vs=142,off=11)
+      90: (73) *(u8 *)(r1 +3) = r3          ; R1_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=31) R3_w=111
+      91: (71) r3 = *(u8 *)(r4 +4)          ; R3_w=98 R4_w=map_value(map=.rodata,ks=4,vs=142,off=11)
+      92: (73) *(u8 *)(r1 +4) = r3          ; R1_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=31) R3_w=98
+      93: (71) r3 = *(u8 *)(r4 +5)          ; R3_w=101 R4_w=map_value(map=.rodata,ks=4,vs=142,off=11)
+      94: (73) *(u8 *)(r1 +5) = r3          ; R1_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=31) R3_w=101
+      95: (71) r3 = *(u8 *)(r4 +6)          ; R3_w=95 R4_w=map_value(map=.rodata,ks=4,vs=142,off=11)
+      96: (73) *(u8 *)(r1 +6) = r3          ; R1_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=31) R3_w=95
+      97: (71) r3 = *(u8 *)(r4 +7)          ; R3_w=108 R4_w=map_value(map=.rodata,ks=4,vs=142,off=11)
+      98: (73) *(u8 *)(r1 +7) = r3          ; R1_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=31) R3_w=108
+      99: (71) r3 = *(u8 *)(r4 +8)          ; R3_w=105 R4_w=map_value(map=.rodata,ks=4,vs=142,off=11)
+      100: (73) *(u8 *)(r1 +8) = r3         ; R1_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=31) R3_w=105
+      101: (71) r3 = *(u8 *)(r4 +9)         ; R3_w=98 R4_w=map_value(map=.rodata,ks=4,vs=142,off=11)
+      102: (73) *(u8 *)(r1 +9) = r3         ; R1_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=31) R3_w=98
+      103: (71) r3 = *(u8 *)(r4 +10)        ; R3_w=99 R4_w=map_value(map=.rodata,ks=4,vs=142,off=11)
+      104: (73) *(u8 *)(r1 +10) = r3        ; R1_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=31) R3_w=99
+      105: (71) r3 = *(u8 *)(r4 +11)        ; R3_w=97 R4_w=map_value(map=.rodata,ks=4,vs=142,off=11)
+      106: (73) *(u8 *)(r1 +11) = r3        ; R1_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=31) R3_w=97
+      107: (71) r3 = *(u8 *)(r4 +12)        ; R3_w=108 R4_w=map_value(map=.rodata,ks=4,vs=142,off=11)
+      108: (73) *(u8 *)(r1 +12) = r3        ; R1_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=31) R3_w=108
+      109: (71) r3 = *(u8 *)(r4 +13)        ; R3_w=108 R4_w=map_value(map=.rodata,ks=4,vs=142,off=11)
+      110: (73) *(u8 *)(r1 +13) = r3        ; R1_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=31) R3_w=108
+      111: (71) r3 = *(u8 *)(r4 +14)        ; R3_w=95 R4_w=map_value(map=.rodata,ks=4,vs=142,off=11)
+      112: (73) *(u8 *)(r1 +14) = r3        ; R1_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=31) R3_w=95
+      113: (71) r3 = *(u8 *)(r4 +15)        ; R3_w=102 R4_w=map_value(map=.rodata,ks=4,vs=142,off=11)
+      114: (73) *(u8 *)(r1 +15) = r3        ; R1_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=31) R3_w=102
+      115: (71) r3 = *(u8 *)(r4 +16)        ; R3_w=105 R4_w=map_value(map=.rodata,ks=4,vs=142,off=11)
+      116: (73) *(u8 *)(r1 +16) = r3        ; R1_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=31) R3_w=105
+      117: (71) r3 = *(u8 *)(r4 +17)        ; R3_w=108 R4_w=map_value(map=.rodata,ks=4,vs=142,off=11)
+      118: (73) *(u8 *)(r1 +17) = r3        ; R1_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=31) R3_w=108
+      119: (71) r3 = *(u8 *)(r4 +18)        ; R3_w=116 R4_w=map_value(map=.rodata,ks=4,vs=142,off=11)
+      120: (73) *(u8 *)(r1 +18) = r3        ; R1_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=31) R3_w=116
+      121: (71) r3 = *(u8 *)(r4 +19)        ; R3_w=101 R4_w=map_value(map=.rodata,ks=4,vs=142,off=11)
+      122: (73) *(u8 *)(r1 +19) = r3        ; R1_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=31) R3_w=101
+      123: (71) r3 = *(u8 *)(r4 +20)        ; R3_w=114 R4_w=map_value(map=.rodata,ks=4,vs=142,off=11)
+      124: (73) *(u8 *)(r1 +20) = r3        ; R1_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=31) R3_w=114
+      125: (b7) r1 = 11                     ; R1_w=11
+      126: (73) *(u8 *)(r8 +53) = r1        ; R1_w=11 R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192)
+      127: (73) *(u8 *)(r8 +54) = r9        ; R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192) R9=0
+      128: (b7) r1 = 4                      ; R1_w=4
+      129: (73) *(u8 *)(r8 +52) = r1        ; R1_w=4 R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192)
+      130: (bf) r3 = r8                     ; R3_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192) R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192)
+      131: (07) r3 += 55                    ; R3_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=55)
+      132: (18) r4 = 0xffff9367496aa8f8     ; R4_w=map_value(map=.rodata,ks=4,vs=142)
+      134: (71) r5 = *(u8 *)(r4 +0)         ; R4_w=map_value(map=.rodata,ks=4,vs=142) R5_w=115
+      135: (73) *(u8 *)(r3 +0) = r5         ; R3_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=55) R5_w=115
+      136: (71) r5 = *(u8 *)(r4 +1)         ; R4_w=map_value(map=.rodata,ks=4,vs=142) R5_w=114
+      137: (73) *(u8 *)(r3 +1) = r5         ; R3_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=55) R5_w=114
+      138: (71) r5 = *(u8 *)(r4 +2)         ; R4_w=map_value(map=.rodata,ks=4,vs=142) R5_w=99
+      139: (73) *(u8 *)(r3 +2) = r5         ; R3_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=55) R5_w=99
+      140: (71) r5 = *(u8 *)(r4 +3)         ; R4_w=map_value(map=.rodata,ks=4,vs=142) R5_w=47
+      141: (73) *(u8 *)(r3 +3) = r5         ; R3_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=55) R5_w=47
+      142: (71) r5 = *(u8 *)(r4 +4)         ; R4_w=map_value(map=.rodata,ks=4,vs=142) R5_w=109
+      143: (73) *(u8 *)(r3 +4) = r5         ; R3_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=55) R5_w=109
+      144: (71) r5 = *(u8 *)(r4 +5)         ; R4_w=map_value(map=.rodata,ks=4,vs=142) R5_w=97
+      145: (73) *(u8 *)(r3 +5) = r5         ; R3_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=55) R5_w=97
+      146: (71) r5 = *(u8 *)(r4 +6)         ; R4_w=map_value(map=.rodata,ks=4,vs=142) R5_w=105
+      147: (73) *(u8 *)(r3 +6) = r5         ; R3_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=55) R5_w=105
+      148: (71) r5 = *(u8 *)(r4 +7)         ; R4_w=map_value(map=.rodata,ks=4,vs=142) R5_w=110
+      149: (73) *(u8 *)(r3 +7) = r5         ; R3_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=55) R5_w=110
+      150: (71) r5 = *(u8 *)(r4 +8)         ; R4_w=map_value(map=.rodata,ks=4,vs=142) R5_w=46
+      151: (73) *(u8 *)(r3 +8) = r5         ; R3_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=55) R5_w=46
+      152: (71) r5 = *(u8 *)(r4 +9)         ; R4_w=map_value(map=.rodata,ks=4,vs=142) R5_w=114
+      153: (73) *(u8 *)(r3 +9) = r5         ; R3_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=55) R5_w=114
+      154: (71) r5 = *(u8 *)(r4 +10)        ; R4_w=map_value(map=.rodata,ks=4,vs=142) R5_w=115
+      155: (73) *(u8 *)(r3 +10) = r5        ; R3_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=55) R5_w=115
+      156: (b7) r3 = 32                     ; R3_w=32
+      157: (73) *(u8 *)(r8 +94) = r3        ; R3_w=32 R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192)
+      158: (b7) r3 = 58                     ; R3_w=58
+      159: (73) *(u8 *)(r8 +93) = r3        ; R3_w=58 R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192)
+      160: (b7) r3 = 100                    ; R3_w=100
+      161: (73) *(u8 *)(r8 +92) = r3        ; R3_w=100 R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192)
+      162: (b7) r3 = 110                    ; R3_w=110
+      163: (73) *(u8 *)(r8 +91) = r3        ; R3_w=110 R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192)
+      164: (b7) r3 = 111                    ; R3_w=111
+      165: (73) *(u8 *)(r8 +90) = r3        ; R3_w=111 R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192)
+      166: (b7) r3 = 99                     ; R3_w=99
+      167: (73) *(u8 *)(r8 +89) = r3        ; R3_w=99 R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192)
+      168: (b7) r3 = 101                    ; R3_w=101
+      169: (73) *(u8 *)(r8 +88) = r3        ; R3_w=101 R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192)
+      170: (b7) r3 = 115                    ; R3_w=115
+      171: (73) *(u8 *)(r8 +87) = r3        ; R3_w=115 R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192)
+      172: (73) *(u8 *)(r8 +76) = r2        ; R2_w=3 R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192)
+      173: (b7) r2 = 8                      ; R2_w=8
+      174: (73) *(u8 *)(r8 +85) = r2        ; R2_w=8 R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192)
+      175: (73) *(u8 *)(r8 +74) = r2        ; R2_w=8 R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192)
+      176: (b7) r2 = 104                    ; R2_w=104
+      177: (73) *(u8 *)(r8 +69) = r2        ; R2_w=104 R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192)
+      178: (73) *(u8 *)(r8 +86) = r9        ; R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192) R9=0
+      179: (73) *(u8 *)(r8 +83) = r9        ; R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192) R9=0
+      180: (73) *(u8 *)(r8 +82) = r9        ; R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192) R9=0
+      181: (73) *(u8 *)(r8 +81) = r9        ; R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192) R9=0
+      182: (73) *(u8 *)(r8 +80) = r9        ; R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192) R9=0
+      183: (73) *(u8 *)(r8 +79) = r9        ; R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192) R9=0
+      184: (73) *(u8 *)(r8 +78) = r9        ; R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192) R9=0
+      185: (73) *(u8 *)(r8 +77) = r9        ; R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192) R9=0
+      186: (73) *(u8 *)(r8 +75) = r9        ; R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192) R9=0
+      187: (73) *(u8 *)(r8 +72) = r9        ; R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192) R9=0
+      188: (73) *(u8 *)(r8 +71) = r9        ; R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192) R9=0
+      189: (73) *(u8 *)(r8 +70) = r9        ; R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192) R9=0
+      190: (73) *(u8 *)(r8 +68) = r9        ; R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192) R9=0
+      191: (73) *(u8 *)(r8 +67) = r1        ; R1_w=4 R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192)
+      192: (b7) r1 = 20                     ; R1_w=20
+      193: (73) *(u8 *)(r8 +84) = r1        ; R1_w=20 R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192)
+      194: (b7) r1 = 6                      ; R1_w=6
+      195: (73) *(u8 *)(r8 +73) = r1        ; R1_w=6 R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192)
+      196: (b7) r1 = 5                      ; R1_w=5
+      197: (73) *(u8 *)(r8 +66) = r1        ; R1_w=5 R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192)
+      198: (bf) r1 = r8                     ; R1_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192) R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192)
+      199: (07) r1 += 95                    ; R1_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=95)
+      200: (85) call pc+608
+      caller:
+       R6=ctx() R7=scalar(id=2) R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192) R9=0 R10=fp0 fp-8=mmmm???? fp-16=scalar(id=1)
+      callee:
+       frame1: R1_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=95) R2_w=104 R3_w=115 R4_w=map_value(map=.rodata,ks=4,vs=142) R5_w=115 R10=fp0
+      809: frame1: R1=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=95) R2=104 R3=115 R4=map_value(map=.rodata,ks=4,vs=142) R5=115 R10=fp0
+      809: (b7) r2 = 1                      ; frame1: R2_w=1
+      810: (73) *(u8 *)(r1 +1) = r2         ; frame1: R1=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=95) R2_w=1
+      811: (73) *(u8 *)(r1 +3) = r2         ; frame1: R1=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=95) R2_w=1
+      812: (b7) r2 = 0                      ; frame1: R2_w=0
+      813: (73) *(u8 *)(r1 +2) = r2         ; frame1: R1=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=95) R2_w=0
+      814: (73) *(u8 *)(r1 +0) = r2         ; frame1: R1=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=95) R2_w=0
+      815: (95) exit
+      returning from callee:
+       frame1: R1=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=95) R2_w=0 R3=115 R4=map_value(map=.rodata,ks=4,vs=142) R5=115 R10=fp0
+      to caller at 201:
+       R6=ctx() R7=scalar(id=2) R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192) R9=0 R10=fp0 fp-8=mmmm???? fp-16=scalar(id=1)
+      201: (bf) r2 = r8                     ; R2_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192) R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192)
+      202: (07) r2 += 99                    ; R2_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=99)
+      203: (bf) r1 = r7                     ; R1_w=scalar(id=2) R7=scalar(id=2)
+      204: (b7) r3 = 8093                   ; R3_w=8093
+      205: (85) call pc+610
+      caller:
+       R6=ctx() R7=scalar(id=2) R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192) R9=0 R10=fp0 fp-8=mmmm???? fp-16=scalar(id=1)
+      callee:
+       frame1: R1_w=scalar(id=2) R2_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=99) R3_w=8093 R10=fp0
+      816: frame1: R1=scalar(id=2) R2=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=99) R3=8093 R10=fp0
+      816: (b7) r0 = 0                      ; frame1: R0_w=0
+      817: (15) if r3 == 0x0 goto pc+18     ; frame1: R3=8093
+      818: (b7) r4 = 3                      ; frame1: R4_w=3
+      819: (73) *(u8 *)(r2 +0) = r4         ; frame1: R2=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=99) R4_w=3
+      820: (2d) if r4 > r3 goto pc+15       ; frame1: R3=8093 R4_w=3
+      821: (b7) r4 = 4                      ; frame1: R4_w=4
+      822: (73) *(u8 *)(r2 +1) = r4         ; frame1: R2=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=99) R4_w=4
+      823: (73) *(u8 *)(r2 +2) = r0         ; frame1: R0_w=0 R2=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=99)
+      824: (b7) r4 = 7                      ; frame1: R4=7
+      825: (2d) if r4 > r3 goto pc+10       ; frame1: R3=8093 R4=7
+      826: (bf) r3 = r1                     ; frame1: R1=scalar(id=2) R3_w=scalar(id=2)
+      827: (77) r3 >>= 24                   ; frame1: R3_w=scalar(smin=0,smax=umax=0xffffffffff,var_off=(0x0; 0xffffffffff))
+      828: (73) *(u8 *)(r2 +6) = r3         ; frame1: R2=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=99) R3_w=scalar(smin=0,smax=umax=0xffffffffff,var_off=(0x0; 0xffffffffff))
+      829: (bf) r3 = r1                     ; frame1: R1=scalar(id=2) R3_w=scalar(id=2)
+      830: (77) r3 >>= 16                   ; frame1: R3_w=scalar(smin=0,smax=umax=0xffffffffffff,var_off=(0x0; 0xffffffffffff))
+      831: (73) *(u8 *)(r2 +5) = r3         ; frame1: R2=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=99) R3_w=scalar(smin=0,smax=umax=0xffffffffffff,var_off=(0x0; 0xffffffffffff))
+      832: (73) *(u8 *)(r2 +3) = r1         ; frame1: R1=scalar(id=2) R2=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=99)
+      833: (77) r1 >>= 8                    ; frame1: R1_w=scalar(smin=0,smax=umax=0xffffffffffffff,var_off=(0x0; 0xffffffffffffff))
+      834: (73) *(u8 *)(r2 +4) = r1         ; frame1: R1_w=scalar(smin=0,smax=umax=0xffffffffffffff,var_off=(0x0; 0xffffffffffffff)) R2=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=99)
+      835: (b7) r0 = 7                      ; frame1: R0_w=7
+      836: (95) exit
+      returning from callee:
+       frame1: R0_w=7 R1_w=scalar(smin=0,smax=umax=0xffffffffffffff,var_off=(0x0; 0xffffffffffffff)) R2=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=99) R3_w=scalar(smin=0,smax=umax=0xffffffffffff,var_off=(0x0; 0xffffffffffff)) R4=7 R10=fp0
+      to caller at 206:
+       R0_w=7 R6=ctx() R7=scalar(id=2) R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192) R9=0 R10=fp0 fp-8=mmmm???? fp-16=scalar(id=1)
+      206: (15) if r0 == 0x0 goto pc+9      ; R0=7
+      207: (07) r0 += 99                    ; R0_w=106
+      208: (bf) r1 = r6                     ; R1_w=ctx() R6=ctx()
+      209: (18) r2 = 0xffff9367496aba00     ; R2_w=map_ptr(map=AYA_LOGS,ks=4,vs=4)
+      211: (18) r3 = 0xffffffff             ; R3_w=0xffffffff
+      213: (bf) r4 = r8                     ; R4_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192) R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192)
+      214: (bf) r5 = r0                     ; R0_w=106 R5_w=106
+      215: (85) call bpf_perf_event_output#25       ; R0=scalar()
+      216: (bf) r2 = r10                    ; R2_w=fp0 R10=fp0
+      217: (07) r2 += -16                   ; R2_w=fp-16
+      218: (18) r1 = 0xffff9367505cbc00     ; R1_w=map_ptr(map=SSLREADARGSMAP,ks=8,vs=8)
+      220: (85) call bpf_map_lookup_elem#1          ; R0_w=map_value_or_null(id=4,map=SSLREADARGSMAP,ks=8,vs=8)
+      221: (bf) r8 = r0                     ; R0_w=map_value_or_null(id=4,map=SSLREADARGSMAP,ks=8,vs=8) R8_w=map_value_or_null(id=4,map=SSLREADARGSMAP,ks=8,vs=8)
+      222: (15) if r8 == 0x0 goto pc+379    ; R8_w=map_value(map=SSLREADARGSMAP,ks=8,vs=8)
+      223: (63) *(u32 *)(r10 -4) = r9       ; R9=0 R10=fp0 fp-8=0000????
+      224: (bf) r2 = r10                    ; R2_w=fp0 R10=fp0
+      225: (07) r2 += -4                    ; R2_w=fp-4
+      226: (18) r1 = 0xffff9367463bbe00     ; R1_w=map_ptr(map=SSLREADDATABUF,ks=4,vs=16384)
+      228: (85) call bpf_map_lookup_elem#1          ; R0=map_value_or_null(id=5,map=SSLREADDATABUF,ks=4,vs=16384)
+      229: (15) if r0 == 0x0 goto pc+372    ; R0=map_value(map=SSLREADDATABUF,ks=4,vs=16384)
+      230: (7b) *(u64 *)(r10 -24) = r0      ; R0=map_value(map=SSLREADDATABUF,ks=4,vs=16384) R10=fp0 fp-24_w=map_value(map=SSLREADDATABUF,ks=4,vs=16384)
+      231: (63) *(u32 *)(r10 -4) = r9       ; R9=0 R10=fp0 fp-8=0000????
+      232: (bf) r2 = r10                    ; R2_w=fp0 R10=fp0
+      233: (07) r2 += -4                    ; R2_w=fp-4
+      234: (18) r1 = 0xffff9367463bbd00     ; R1_w=map_ptr(map=AYA_LOG_BUF,ks=4,vs=8192)
+      236: (85) call bpf_map_lookup_elem#1          ; R0_w=map_value_or_null(id=6,map=AYA_LOG_BUF,ks=4,vs=8192)
+      237: (bf) r9 = r0                     ; R0=map_value_or_null(id=6,map=AYA_LOG_BUF,ks=4,vs=8192) R9=map_value_or_null(id=6,map=AYA_LOG_BUF,ks=4,vs=8192)
+      238: (55) if r9 != 0x0 goto pc+370    ; R9=0
+      239: (79) r3 = *(u64 *)(r8 +0)        ; R3_w=scalar() R8=map_value(map=SSLREADARGSMAP,ks=8,vs=8)
+      240: (79) r1 = *(u64 *)(r10 -24)      ; R1_w=map_value(map=SSLREADDATABUF,ks=4,vs=16384) R10=fp0 fp-24=map_value(map=SSLREADDATABUF,ks=4,vs=16384)
+      241: (bf) r2 = r7                     ; R2_w=scalar(id=2) R7=scalar(id=2)
+      242: (85) call bpf_probe_read_user#112
+      R2 min value is negative, either use unsigned or 'var &= const'
+      verification time 1159 usec
+      stack depth 24+0+0+0
+      processed 263 insns (limit 1000000) max_states_per_insn 0 total_states 9 peak_states 9 mark_read 7
+
+      Caused by:
+          Permission denied (os error 13)
+    combined: |-
+      Error: the BPF_PROG_LOAD syscall failed. Verifier output: 0: R1=ctx() R10=fp0
+      0: (bf) r6 = r1                       ; R1=ctx() R6_w=ctx()
+      1: (85) call bpf_get_current_pid_tgid#14      ; R0_w=scalar()
+      2: (7b) *(u64 *)(r10 -16) = r0        ; R0_w=scalar(id=1) R10=fp0 fp-16_w=scalar(id=1)
+      3: (7b) *(u64 *)(r10 -24) = r6        ; R6_w=ctx() R10=fp0 fp-24_w=ctx()
+      4: (79) r8 = *(u64 *)(r6 +80)         ; R6_w=ctx() R8_w=scalar()
+      5: (bf) r1 = r8                       ; R1_w=scalar(id=2) R8_w=scalar(id=2)
+      6: (67) r1 <<= 32                     ; R1_w=scalar(smax=0x7fffffff00000000,umax=0xffffffff00000000,smin32=0,smax32=umax32=0,var_off=(0x0; 0xffffffff00000000))
+      7: (bf) r2 = r1                       ; R1_w=scalar(id=3,smax=0x7fffffff00000000,umax=0xffffffff00000000,smin32=0,smax32=umax32=0,var_off=(0x0; 0xffffffff00000000)) R2_w=scalar(id=3,smax=0x7fffffff00000000,umax=0xffffffff00000000,smin32=0,smax32=umax32=0,var_off=(0x0; 0xffffffff00000000))
+      8: (c7) r2 s>>= 32                    ; R2_w=scalar(smin=0xffffffff80000000,smax=0x7fffffff)
+      9: (65) if r2 s> 0x0 goto pc+7 17: R0_w=scalar(id=1) R1_w=scalar(id=3,smax=0x7fffffff00000000,umax=0xffffffff00000000,smin32=0,smax32=umax32=0,var_off=(0x0; 0xffffffff00000000)) R2_w=scalar(smin=umin=smin32=umin32=1,smax=umax=umax32=0x7fffffff,var_off=(0x0; 0x7fffffff)) R6_w=ctx() R8_w=scalar(id=2) R10=fp0 fp-16_w=scalar(id=1) fp-24_w=ctx()
+      17: (77) r1 >>= 32                    ; R1_w=scalar(smin=0,smax=umax=0xffffffff,var_off=(0x0; 0xffffffff))
+      18: (25) if r1 > 0x4000 goto pc+31    ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=16384,var_off=(0x0; 0x7fff))
+      19: (bf) r2 = r10                     ; R2_w=fp0 R10=fp0
+      20: (07) r2 += -16                    ; R2_w=fp-16
+      21: (18) r1 = 0xffff9cdbe9801000      ; R1_w=map_ptr(map=SSLREADARGSMAP,ks=8,vs=8)
+      23: (85) call bpf_map_lookup_elem#1   ; R0=map_value_or_null(id=4,map=SSLREADARGSMAP,ks=8,vs=8)
+      24: (bf) r7 = r0                      ; R0=map_value_or_null(id=4,map=SSLREADARGSMAP,ks=8,vs=8) R7_w=map_value_or_null(id=4,map=SSLREADARGSMAP,ks=8,vs=8)
+      25: (15) if r7 == 0x0 goto pc-16      ; R7_w=map_value(map=SSLREADARGSMAP,ks=8,vs=8)
+      26: (b7) r1 = 0                       ; R1_w=0
+      27: (63) *(u32 *)(r10 -4) = r1        ; R1_w=0 R10=fp0 fp-8=0000????
+      28: (bf) r2 = r10                     ; R2_w=fp0 R10=fp0
+      29: (07) r2 += -4                     ; R2_w=fp-4
+      30: (18) r1 = 0xffff9cd9ea8a0f00      ; R1_w=map_ptr(map=SSLREADDATABUF,ks=4,vs=16384)
+      32: (85) call bpf_map_lookup_elem#1   ; R0=map_value_or_null(id=5,map=SSLREADDATABUF,ks=4,vs=16384)
+      33: (15) if r0 == 0x0 goto pc-24      ; R0=map_value(map=SSLREADDATABUF,ks=4,vs=16384)
+      34: (79) r3 = *(u64 *)(r7 +0)         ; R3_w=scalar() R7=map_value(map=SSLREADARGSMAP,ks=8,vs=8)
+      35: (79) r7 = *(u64 *)(r10 -24)       ; R7_w=ctx() R10=fp0 fp-24=ctx()
+      36: (79) r2 = *(u64 *)(r7 +80)        ; R2_w=scalar() R7_w=ctx()
+      37: (bf) r1 = r0                      ; R0=map_value(map=SSLREADDATABUF,ks=4,vs=16384) R1_w=map_value(map=SSLREADDATABUF,ks=4,vs=16384)
+      38: (bf) r6 = r0                      ; R0=map_value(map=SSLREADDATABUF,ks=4,vs=16384) R6_w=map_value(map=SSLREADDATABUF,ks=4,vs=16384)
+      39: (85) call bpf_probe_read_user#112
+      R2 min value is negative, either use unsigned or 'var &= const'
+      verification time 342 usec
+      stack depth 24+0+0+0
+      processed 37 insns (limit 1000000) max_states_per_insn 0 total_states 3 peak_states 3 mark_read 2
+
+      2024-10-19T18:03:50Z INFO  uprobe_libcall_filter_app] Configuring operation filter
+      [2024-10-19T18:03:50Z INFO  uprobe_libcall_filter_app] Configuring application: openssl3.1
+      [2024-10-19T18:03:50Z INFO  uprobe_libcall_filter_app] Configuring openssl_lib: /lib64/libssl.so.3.1.4
+      Error: the BPF_PROG_LOAD syscall failed. Verifier output: last insn is not an exit or jmp
+      verification time 4 usec
+      stack depth 0+0+0+0+0
+      processed 0 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0 mark_read 0
+
+      Caused by:
+          Invalid argument (os error 22)
+
+      Error: the BPF_PROG_LOAD syscall failed. Verifier output: 0: R1=ctx() R10=fp0
+      0: (bf) r6 = r1                       ; R1=ctx() R6_w=ctx()
+      1: (85) call bpf_get_current_pid_tgid#14      ; R0_w=scalar()
+      2: (7b) *(u64 *)(r10 -16) = r0        ; R0_w=scalar(id=1) R10=fp0 fp-16_w=scalar(id=1)
+      3: (79) r7 = *(u64 *)(r6 +80)         ; R6_w=ctx() R7_w=scalar()
+      4: (bf) r1 = r7                       ; R1_w=scalar(id=2) R7_w=scalar(id=2)
+      5: (67) r1 <<= 32                     ; R1_w=scalar(smax=0x7fffffff00000000,umax=0xffffffff00000000,smin32=0,smax32=umax32=0,var_off=(0x0; 0xffffffff00000000))
+      6: (c7) r1 s>>= 32                    ; R1_w=scalar(smin=0xffffffff80000000,smax=0x7fffffff)
+      7: (b7) r2 = 1                        ; R2_w=1
+      8: (6d) if r2 s> r1 goto pc+593       ; R1_w=scalar(smin=umin=smin32=umin32=1,smax=umax=umax32=0x7fffffff,var_off=(0x0; 0x7fffffff)) R2_w=1
+      9: (bf) r1 = r7                       ; R1_w=scalar(id=2) R7_w=scalar(id=2)
+      10: (57) r1 &= 2147483647             ; R1=scalar(smin=smin32=0,smax=umax=umax32=0x7fffffff,var_off=(0x0; 0x7fffffff))
+      11: (25) if r1 > 0x4000 goto pc+232   ; R1=scalar(smin=smin32=0,smax=umax=smax32=umax32=16384,var_off=(0x0; 0x7fff))
+      12: (b7) r9 = 0                       ; R9_w=0
+      13: (63) *(u32 *)(r10 -4) = r9        ; R9_w=0 R10=fp0 fp-8=0000????
+      14: (bf) r2 = r10                     ; R2_w=fp0 R10=fp0
+      15: (07) r2 += -4                     ; R2_w=fp-4
+      16: (18) r1 = 0xffff9367463bbd00      ; R1_w=map_ptr(map=AYA_LOG_BUF,ks=4,vs=8192)
+      18: (85) call bpf_map_lookup_elem#1   ; R0_w=map_value_or_null(id=3,map=AYA_LOG_BUF,ks=4,vs=8192)
+      19: (bf) r8 = r0                      ; R0=map_value_or_null(id=3,map=AYA_LOG_BUF,ks=4,vs=8192) R8=map_value_or_null(id=3,map=AYA_LOG_BUF,ks=4,vs=8192)
+      20: (15) if r8 == 0x0 goto pc+195     ; R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192)
+      21: (73) *(u8 *)(r8 +2) = r9          ; R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192) R9=0
+      22: (b7) r1 = 21                      ; R1_w=21
+      23: (73) *(u8 *)(r8 +1) = r1          ; R1_w=21 R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192)
+      24: (b7) r2 = 1                       ; R2_w=1
+      25: (73) *(u8 *)(r8 +0) = r2          ; R2_w=1 R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192)
+      26: (bf) r3 = r8                      ; R3_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192) R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192)
+      27: (07) r3 += 3                      ; R3_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=3)
+      28: (18) r4 = 0xffff9367496aa903      ; R4_w=map_value(map=.rodata,ks=4,vs=142,off=11)
+      30: (71) r5 = *(u8 *)(r4 +0)          ; R4_w=map_value(map=.rodata,ks=4,vs=142,off=11) R5_w=117
+      31: (73) *(u8 *)(r3 +0) = r5          ; R3_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=3) R5_w=117
+      32: (71) r5 = *(u8 *)(r4 +1)          ; R4_w=map_value(map=.rodata,ks=4,vs=142,off=11) R5_w=112
+      33: (73) *(u8 *)(r3 +1) = r5          ; R3_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=3) R5_w=112
+      34: (71) r5 = *(u8 *)(r4 +2)          ; R4_w=map_value(map=.rodata,ks=4,vs=142,off=11) R5_w=114
+      35: (73) *(u8 *)(r3 +2) = r5          ; R3_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=3) R5_w=114
+      36: (71) r5 = *(u8 *)(r4 +3)          ; R4_w=map_value(map=.rodata,ks=4,vs=142,off=11) R5_w=111
+      37: (73) *(u8 *)(r3 +3) = r5          ; R3_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=3) R5_w=111
+      38: (71) r5 = *(u8 *)(r4 +4)          ; R4_w=map_value(map=.rodata,ks=4,vs=142,off=11) R5_w=98
+      39: (73) *(u8 *)(r3 +4) = r5          ; R3_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=3) R5_w=98
+      40: (71) r5 = *(u8 *)(r4 +5)          ; R4_w=map_value(map=.rodata,ks=4,vs=142,off=11) R5_w=101
+      41: (73) *(u8 *)(r3 +5) = r5          ; R3_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=3) R5_w=101
+      42: (71) r5 = *(u8 *)(r4 +6)          ; R4_w=map_value(map=.rodata,ks=4,vs=142,off=11) R5_w=95
+      43: (73) *(u8 *)(r3 +6) = r5          ; R3_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=3) R5_w=95
+      44: (71) r5 = *(u8 *)(r4 +7)          ; R4_w=map_value(map=.rodata,ks=4,vs=142,off=11) R5_w=108
+      45: (73) *(u8 *)(r3 +7) = r5          ; R3_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=3) R5_w=108
+      46: (71) r5 = *(u8 *)(r4 +8)          ; R4_w=map_value(map=.rodata,ks=4,vs=142,off=11) R5_w=105
+      47: (73) *(u8 *)(r3 +8) = r5          ; R3_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=3) R5_w=105
+      48: (71) r5 = *(u8 *)(r4 +9)          ; R4_w=map_value(map=.rodata,ks=4,vs=142,off=11) R5_w=98
+      49: (73) *(u8 *)(r3 +9) = r5          ; R3_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=3) R5_w=98
+      50: (71) r5 = *(u8 *)(r4 +10)         ; R4_w=map_value(map=.rodata,ks=4,vs=142,off=11) R5_w=99
+      51: (73) *(u8 *)(r3 +10) = r5         ; R3_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=3) R5_w=99
+      52: (71) r5 = *(u8 *)(r4 +11)         ; R4_w=map_value(map=.rodata,ks=4,vs=142,off=11) R5_w=97
+      53: (73) *(u8 *)(r3 +11) = r5         ; R3_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=3) R5_w=97
+      54: (71) r5 = *(u8 *)(r4 +12)         ; R4_w=map_value(map=.rodata,ks=4,vs=142,off=11) R5_w=108
+      55: (73) *(u8 *)(r3 +12) = r5         ; R3_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=3) R5_w=108
+      56: (71) r5 = *(u8 *)(r4 +13)         ; R4_w=map_value(map=.rodata,ks=4,vs=142,off=11) R5_w=108
+      57: (73) *(u8 *)(r3 +13) = r5         ; R3_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=3) R5_w=108
+      58: (71) r5 = *(u8 *)(r4 +14)         ; R4_w=map_value(map=.rodata,ks=4,vs=142,off=11) R5_w=95
+      59: (73) *(u8 *)(r3 +14) = r5         ; R3_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=3) R5_w=95
+      60: (71) r5 = *(u8 *)(r4 +15)         ; R4_w=map_value(map=.rodata,ks=4,vs=142,off=11) R5_w=102
+      61: (73) *(u8 *)(r3 +15) = r5         ; R3_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=3) R5_w=102
+      62: (71) r5 = *(u8 *)(r4 +16)         ; R4_w=map_value(map=.rodata,ks=4,vs=142,off=11) R5_w=105
+      63: (73) *(u8 *)(r3 +16) = r5         ; R3_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=3) R5_w=105
+      64: (71) r5 = *(u8 *)(r4 +17)         ; R4_w=map_value(map=.rodata,ks=4,vs=142,off=11) R5_w=108
+      65: (73) *(u8 *)(r3 +17) = r5         ; R3_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=3) R5_w=108
+      66: (71) r5 = *(u8 *)(r4 +18)         ; R4_w=map_value(map=.rodata,ks=4,vs=142,off=11) R5_w=116
+      67: (73) *(u8 *)(r3 +18) = r5         ; R3_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=3) R5_w=116
+      68: (71) r5 = *(u8 *)(r4 +19)         ; R4_w=map_value(map=.rodata,ks=4,vs=142,off=11) R5_w=101
+      69: (73) *(u8 *)(r3 +19) = r5         ; R3_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=3) R5_w=101
+      70: (71) r5 = *(u8 *)(r4 +20)         ; R4_w=map_value(map=.rodata,ks=4,vs=142,off=11) R5_w=114
+      71: (73) *(u8 *)(r3 +20) = r5         ; R3_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=3) R5_w=114
+      72: (73) *(u8 *)(r8 +29) = r1         ; R1_w=21 R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192)
+      73: (73) *(u8 *)(r8 +25) = r2         ; R2_w=1 R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192)
+      74: (b7) r1 = 2                       ; R1_w=2
+      75: (73) *(u8 *)(r8 +27) = r1         ; R1_w=2 R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192)
+      76: (73) *(u8 *)(r8 +24) = r1         ; R1_w=2 R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192)
+      77: (73) *(u8 *)(r8 +30) = r9         ; R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192) R9=0
+      78: (73) *(u8 *)(r8 +26) = r9         ; R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192) R9=0
+      79: (b7) r2 = 3                       ; R2_w=3
+      80: (73) *(u8 *)(r8 +28) = r2         ; R2_w=3 R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192)
+      81: (bf) r1 = r8                      ; R1_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192) R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192)
+      82: (07) r1 += 31                     ; R1_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=31)
+      83: (71) r3 = *(u8 *)(r4 +0)          ; R3_w=117 R4_w=map_value(map=.rodata,ks=4,vs=142,off=11)
+      84: (73) *(u8 *)(r1 +0) = r3          ; R1_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=31) R3_w=117
+      85: (71) r3 = *(u8 *)(r4 +1)          ; R3_w=112 R4_w=map_value(map=.rodata,ks=4,vs=142,off=11)
+      86: (73) *(u8 *)(r1 +1) = r3          ; R1_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=31) R3_w=112
+      87: (71) r3 = *(u8 *)(r4 +2)          ; R3_w=114 R4_w=map_value(map=.rodata,ks=4,vs=142,off=11)
+      88: (73) *(u8 *)(r1 +2) = r3          ; R1_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=31) R3_w=114
+      89: (71) r3 = *(u8 *)(r4 +3)          ; R3_w=111 R4_w=map_value(map=.rodata,ks=4,vs=142,off=11)
+      90: (73) *(u8 *)(r1 +3) = r3          ; R1_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=31) R3_w=111
+      91: (71) r3 = *(u8 *)(r4 +4)          ; R3_w=98 R4_w=map_value(map=.rodata,ks=4,vs=142,off=11)
+      92: (73) *(u8 *)(r1 +4) = r3          ; R1_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=31) R3_w=98
+      93: (71) r3 = *(u8 *)(r4 +5)          ; R3_w=101 R4_w=map_value(map=.rodata,ks=4,vs=142,off=11)
+      94: (73) *(u8 *)(r1 +5) = r3          ; R1_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=31) R3_w=101
+      95: (71) r3 = *(u8 *)(r4 +6)          ; R3_w=95 R4_w=map_value(map=.rodata,ks=4,vs=142,off=11)
+      96: (73) *(u8 *)(r1 +6) = r3          ; R1_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=31) R3_w=95
+      97: (71) r3 = *(u8 *)(r4 +7)          ; R3_w=108 R4_w=map_value(map=.rodata,ks=4,vs=142,off=11)
+      98: (73) *(u8 *)(r1 +7) = r3          ; R1_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=31) R3_w=108
+      99: (71) r3 = *(u8 *)(r4 +8)          ; R3_w=105 R4_w=map_value(map=.rodata,ks=4,vs=142,off=11)
+      100: (73) *(u8 *)(r1 +8) = r3         ; R1_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=31) R3_w=105
+      101: (71) r3 = *(u8 *)(r4 +9)         ; R3_w=98 R4_w=map_value(map=.rodata,ks=4,vs=142,off=11)
+      102: (73) *(u8 *)(r1 +9) = r3         ; R1_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=31) R3_w=98
+      103: (71) r3 = *(u8 *)(r4 +10)        ; R3_w=99 R4_w=map_value(map=.rodata,ks=4,vs=142,off=11)
+      104: (73) *(u8 *)(r1 +10) = r3        ; R1_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=31) R3_w=99
+      105: (71) r3 = *(u8 *)(r4 +11)        ; R3_w=97 R4_w=map_value(map=.rodata,ks=4,vs=142,off=11)
+      106: (73) *(u8 *)(r1 +11) = r3        ; R1_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=31) R3_w=97
+      107: (71) r3 = *(u8 *)(r4 +12)        ; R3_w=108 R4_w=map_value(map=.rodata,ks=4,vs=142,off=11)
+      108: (73) *(u8 *)(r1 +12) = r3        ; R1_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=31) R3_w=108
+      109: (71) r3 = *(u8 *)(r4 +13)        ; R3_w=108 R4_w=map_value(map=.rodata,ks=4,vs=142,off=11)
+      110: (73) *(u8 *)(r1 +13) = r3        ; R1_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=31) R3_w=108
+      111: (71) r3 = *(u8 *)(r4 +14)        ; R3_w=95 R4_w=map_value(map=.rodata,ks=4,vs=142,off=11)
+      112: (73) *(u8 *)(r1 +14) = r3        ; R1_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=31) R3_w=95
+      113: (71) r3 = *(u8 *)(r4 +15)        ; R3_w=102 R4_w=map_value(map=.rodata,ks=4,vs=142,off=11)
+      114: (73) *(u8 *)(r1 +15) = r3        ; R1_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=31) R3_w=102
+      115: (71) r3 = *(u8 *)(r4 +16)        ; R3_w=105 R4_w=map_value(map=.rodata,ks=4,vs=142,off=11)
+      116: (73) *(u8 *)(r1 +16) = r3        ; R1_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=31) R3_w=105
+      117: (71) r3 = *(u8 *)(r4 +17)        ; R3_w=108 R4_w=map_value(map=.rodata,ks=4,vs=142,off=11)
+      118: (73) *(u8 *)(r1 +17) = r3        ; R1_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=31) R3_w=108
+      119: (71) r3 = *(u8 *)(r4 +18)        ; R3_w=116 R4_w=map_value(map=.rodata,ks=4,vs=142,off=11)
+      120: (73) *(u8 *)(r1 +18) = r3        ; R1_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=31) R3_w=116
+      121: (71) r3 = *(u8 *)(r4 +19)        ; R3_w=101 R4_w=map_value(map=.rodata,ks=4,vs=142,off=11)
+      122: (73) *(u8 *)(r1 +19) = r3        ; R1_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=31) R3_w=101
+      123: (71) r3 = *(u8 *)(r4 +20)        ; R3_w=114 R4_w=map_value(map=.rodata,ks=4,vs=142,off=11)
+      124: (73) *(u8 *)(r1 +20) = r3        ; R1_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=31) R3_w=114
+      125: (b7) r1 = 11                     ; R1_w=11
+      126: (73) *(u8 *)(r8 +53) = r1        ; R1_w=11 R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192)
+      127: (73) *(u8 *)(r8 +54) = r9        ; R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192) R9=0
+      128: (b7) r1 = 4                      ; R1_w=4
+      129: (73) *(u8 *)(r8 +52) = r1        ; R1_w=4 R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192)
+      130: (bf) r3 = r8                     ; R3_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192) R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192)
+      131: (07) r3 += 55                    ; R3_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=55)
+      132: (18) r4 = 0xffff9367496aa8f8     ; R4_w=map_value(map=.rodata,ks=4,vs=142)
+      134: (71) r5 = *(u8 *)(r4 +0)         ; R4_w=map_value(map=.rodata,ks=4,vs=142) R5_w=115
+      135: (73) *(u8 *)(r3 +0) = r5         ; R3_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=55) R5_w=115
+      136: (71) r5 = *(u8 *)(r4 +1)         ; R4_w=map_value(map=.rodata,ks=4,vs=142) R5_w=114
+      137: (73) *(u8 *)(r3 +1) = r5         ; R3_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=55) R5_w=114
+      138: (71) r5 = *(u8 *)(r4 +2)         ; R4_w=map_value(map=.rodata,ks=4,vs=142) R5_w=99
+      139: (73) *(u8 *)(r3 +2) = r5         ; R3_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=55) R5_w=99
+      140: (71) r5 = *(u8 *)(r4 +3)         ; R4_w=map_value(map=.rodata,ks=4,vs=142) R5_w=47
+      141: (73) *(u8 *)(r3 +3) = r5         ; R3_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=55) R5_w=47
+      142: (71) r5 = *(u8 *)(r4 +4)         ; R4_w=map_value(map=.rodata,ks=4,vs=142) R5_w=109
+      143: (73) *(u8 *)(r3 +4) = r5         ; R3_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=55) R5_w=109
+      144: (71) r5 = *(u8 *)(r4 +5)         ; R4_w=map_value(map=.rodata,ks=4,vs=142) R5_w=97
+      145: (73) *(u8 *)(r3 +5) = r5         ; R3_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=55) R5_w=97
+      146: (71) r5 = *(u8 *)(r4 +6)         ; R4_w=map_value(map=.rodata,ks=4,vs=142) R5_w=105
+      147: (73) *(u8 *)(r3 +6) = r5         ; R3_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=55) R5_w=105
+      148: (71) r5 = *(u8 *)(r4 +7)         ; R4_w=map_value(map=.rodata,ks=4,vs=142) R5_w=110
+      149: (73) *(u8 *)(r3 +7) = r5         ; R3_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=55) R5_w=110
+      150: (71) r5 = *(u8 *)(r4 +8)         ; R4_w=map_value(map=.rodata,ks=4,vs=142) R5_w=46
+      151: (73) *(u8 *)(r3 +8) = r5         ; R3_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=55) R5_w=46
+      152: (71) r5 = *(u8 *)(r4 +9)         ; R4_w=map_value(map=.rodata,ks=4,vs=142) R5_w=114
+      153: (73) *(u8 *)(r3 +9) = r5         ; R3_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=55) R5_w=114
+      154: (71) r5 = *(u8 *)(r4 +10)        ; R4_w=map_value(map=.rodata,ks=4,vs=142) R5_w=115
+      155: (73) *(u8 *)(r3 +10) = r5        ; R3_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=55) R5_w=115
+      156: (b7) r3 = 32                     ; R3_w=32
+      157: (73) *(u8 *)(r8 +94) = r3        ; R3_w=32 R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192)
+      158: (b7) r3 = 58                     ; R3_w=58
+      159: (73) *(u8 *)(r8 +93) = r3        ; R3_w=58 R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192)
+      160: (b7) r3 = 100                    ; R3_w=100
+      161: (73) *(u8 *)(r8 +92) = r3        ; R3_w=100 R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192)
+      162: (b7) r3 = 110                    ; R3_w=110
+      163: (73) *(u8 *)(r8 +91) = r3        ; R3_w=110 R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192)
+      164: (b7) r3 = 111                    ; R3_w=111
+      165: (73) *(u8 *)(r8 +90) = r3        ; R3_w=111 R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192)
+      166: (b7) r3 = 99                     ; R3_w=99
+      167: (73) *(u8 *)(r8 +89) = r3        ; R3_w=99 R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192)
+      168: (b7) r3 = 101                    ; R3_w=101
+      169: (73) *(u8 *)(r8 +88) = r3        ; R3_w=101 R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192)
+      170: (b7) r3 = 115                    ; R3_w=115
+      171: (73) *(u8 *)(r8 +87) = r3        ; R3_w=115 R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192)
+      172: (73) *(u8 *)(r8 +76) = r2        ; R2_w=3 R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192)
+      173: (b7) r2 = 8                      ; R2_w=8
+      174: (73) *(u8 *)(r8 +85) = r2        ; R2_w=8 R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192)
+      175: (73) *(u8 *)(r8 +74) = r2        ; R2_w=8 R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192)
+      176: (b7) r2 = 104                    ; R2_w=104
+      177: (73) *(u8 *)(r8 +69) = r2        ; R2_w=104 R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192)
+      178: (73) *(u8 *)(r8 +86) = r9        ; R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192) R9=0
+      179: (73) *(u8 *)(r8 +83) = r9        ; R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192) R9=0
+      180: (73) *(u8 *)(r8 +82) = r9        ; R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192) R9=0
+      181: (73) *(u8 *)(r8 +81) = r9        ; R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192) R9=0
+      182: (73) *(u8 *)(r8 +80) = r9        ; R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192) R9=0
+      183: (73) *(u8 *)(r8 +79) = r9        ; R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192) R9=0
+      184: (73) *(u8 *)(r8 +78) = r9        ; R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192) R9=0
+      185: (73) *(u8 *)(r8 +77) = r9        ; R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192) R9=0
+      186: (73) *(u8 *)(r8 +75) = r9        ; R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192) R9=0
+      187: (73) *(u8 *)(r8 +72) = r9        ; R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192) R9=0
+      188: (73) *(u8 *)(r8 +71) = r9        ; R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192) R9=0
+      189: (73) *(u8 *)(r8 +70) = r9        ; R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192) R9=0
+      190: (73) *(u8 *)(r8 +68) = r9        ; R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192) R9=0
+      191: (73) *(u8 *)(r8 +67) = r1        ; R1_w=4 R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192)
+      192: (b7) r1 = 20                     ; R1_w=20
+      193: (73) *(u8 *)(r8 +84) = r1        ; R1_w=20 R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192)
+      194: (b7) r1 = 6                      ; R1_w=6
+      195: (73) *(u8 *)(r8 +73) = r1        ; R1_w=6 R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192)
+      196: (b7) r1 = 5                      ; R1_w=5
+      197: (73) *(u8 *)(r8 +66) = r1        ; R1_w=5 R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192)
+      198: (bf) r1 = r8                     ; R1_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192) R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192)
+      199: (07) r1 += 95                    ; R1_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=95)
+      200: (85) call pc+608
+      caller:
+       R6=ctx() R7=scalar(id=2) R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192) R9=0 R10=fp0 fp-8=mmmm???? fp-16=scalar(id=1)
+      callee:
+       frame1: R1_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=95) R2_w=104 R3_w=115 R4_w=map_value(map=.rodata,ks=4,vs=142) R5_w=115 R10=fp0
+      809: frame1: R1=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=95) R2=104 R3=115 R4=map_value(map=.rodata,ks=4,vs=142) R5=115 R10=fp0
+      809: (b7) r2 = 1                      ; frame1: R2_w=1
+      810: (73) *(u8 *)(r1 +1) = r2         ; frame1: R1=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=95) R2_w=1
+      811: (73) *(u8 *)(r1 +3) = r2         ; frame1: R1=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=95) R2_w=1
+      812: (b7) r2 = 0                      ; frame1: R2_w=0
+      813: (73) *(u8 *)(r1 +2) = r2         ; frame1: R1=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=95) R2_w=0
+      814: (73) *(u8 *)(r1 +0) = r2         ; frame1: R1=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=95) R2_w=0
+      815: (95) exit
+      returning from callee:
+       frame1: R1=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=95) R2_w=0 R3=115 R4=map_value(map=.rodata,ks=4,vs=142) R5=115 R10=fp0
+      to caller at 201:
+       R6=ctx() R7=scalar(id=2) R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192) R9=0 R10=fp0 fp-8=mmmm???? fp-16=scalar(id=1)
+      201: (bf) r2 = r8                     ; R2_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192) R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192)
+      202: (07) r2 += 99                    ; R2_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=99)
+      203: (bf) r1 = r7                     ; R1_w=scalar(id=2) R7=scalar(id=2)
+      204: (b7) r3 = 8093                   ; R3_w=8093
+      205: (85) call pc+610
+      caller:
+       R6=ctx() R7=scalar(id=2) R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192) R9=0 R10=fp0 fp-8=mmmm???? fp-16=scalar(id=1)
+      callee:
+       frame1: R1_w=scalar(id=2) R2_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=99) R3_w=8093 R10=fp0
+      816: frame1: R1=scalar(id=2) R2=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=99) R3=8093 R10=fp0
+      816: (b7) r0 = 0                      ; frame1: R0_w=0
+      817: (15) if r3 == 0x0 goto pc+18     ; frame1: R3=8093
+      818: (b7) r4 = 3                      ; frame1: R4_w=3
+      819: (73) *(u8 *)(r2 +0) = r4         ; frame1: R2=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=99) R4_w=3
+      820: (2d) if r4 > r3 goto pc+15       ; frame1: R3=8093 R4_w=3
+      821: (b7) r4 = 4                      ; frame1: R4_w=4
+      822: (73) *(u8 *)(r2 +1) = r4         ; frame1: R2=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=99) R4_w=4
+      823: (73) *(u8 *)(r2 +2) = r0         ; frame1: R0_w=0 R2=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=99)
+      824: (b7) r4 = 7                      ; frame1: R4=7
+      825: (2d) if r4 > r3 goto pc+10       ; frame1: R3=8093 R4=7
+      826: (bf) r3 = r1                     ; frame1: R1=scalar(id=2) R3_w=scalar(id=2)
+      827: (77) r3 >>= 24                   ; frame1: R3_w=scalar(smin=0,smax=umax=0xffffffffff,var_off=(0x0; 0xffffffffff))
+      828: (73) *(u8 *)(r2 +6) = r3         ; frame1: R2=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=99) R3_w=scalar(smin=0,smax=umax=0xffffffffff,var_off=(0x0; 0xffffffffff))
+      829: (bf) r3 = r1                     ; frame1: R1=scalar(id=2) R3_w=scalar(id=2)
+      830: (77) r3 >>= 16                   ; frame1: R3_w=scalar(smin=0,smax=umax=0xffffffffffff,var_off=(0x0; 0xffffffffffff))
+      831: (73) *(u8 *)(r2 +5) = r3         ; frame1: R2=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=99) R3_w=scalar(smin=0,smax=umax=0xffffffffffff,var_off=(0x0; 0xffffffffffff))
+      832: (73) *(u8 *)(r2 +3) = r1         ; frame1: R1=scalar(id=2) R2=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=99)
+      833: (77) r1 >>= 8                    ; frame1: R1_w=scalar(smin=0,smax=umax=0xffffffffffffff,var_off=(0x0; 0xffffffffffffff))
+      834: (73) *(u8 *)(r2 +4) = r1         ; frame1: R1_w=scalar(smin=0,smax=umax=0xffffffffffffff,var_off=(0x0; 0xffffffffffffff)) R2=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=99)
+      835: (b7) r0 = 7                      ; frame1: R0_w=7
+      836: (95) exit
+      returning from callee:
+       frame1: R0_w=7 R1_w=scalar(smin=0,smax=umax=0xffffffffffffff,var_off=(0x0; 0xffffffffffffff)) R2=map_value(map=AYA_LOG_BUF,ks=4,vs=8192,off=99) R3_w=scalar(smin=0,smax=umax=0xffffffffffff,var_off=(0x0; 0xffffffffffff)) R4=7 R10=fp0
+      to caller at 206:
+       R0_w=7 R6=ctx() R7=scalar(id=2) R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192) R9=0 R10=fp0 fp-8=mmmm???? fp-16=scalar(id=1)
+      206: (15) if r0 == 0x0 goto pc+9      ; R0=7
+      207: (07) r0 += 99                    ; R0_w=106
+      208: (bf) r1 = r6                     ; R1_w=ctx() R6=ctx()
+      209: (18) r2 = 0xffff9367496aba00     ; R2_w=map_ptr(map=AYA_LOGS,ks=4,vs=4)
+      211: (18) r3 = 0xffffffff             ; R3_w=0xffffffff
+      213: (bf) r4 = r8                     ; R4_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192) R8=map_value(map=AYA_LOG_BUF,ks=4,vs=8192)
+      214: (bf) r5 = r0                     ; R0_w=106 R5_w=106
+      215: (85) call bpf_perf_event_output#25       ; R0=scalar()
+      216: (bf) r2 = r10                    ; R2_w=fp0 R10=fp0
+      217: (07) r2 += -16                   ; R2_w=fp-16
+      218: (18) r1 = 0xffff9367505cbc00     ; R1_w=map_ptr(map=SSLREADARGSMAP,ks=8,vs=8)
+      220: (85) call bpf_map_lookup_elem#1          ; R0_w=map_value_or_null(id=4,map=SSLREADARGSMAP,ks=8,vs=8)
+      221: (bf) r8 = r0                     ; R0_w=map_value_or_null(id=4,map=SSLREADARGSMAP,ks=8,vs=8) R8_w=map_value_or_null(id=4,map=SSLREADARGSMAP,ks=8,vs=8)
+      222: (15) if r8 == 0x0 goto pc+379    ; R8_w=map_value(map=SSLREADARGSMAP,ks=8,vs=8)
+      223: (63) *(u32 *)(r10 -4) = r9       ; R9=0 R10=fp0 fp-8=0000????
+      224: (bf) r2 = r10                    ; R2_w=fp0 R10=fp0
+      225: (07) r2 += -4                    ; R2_w=fp-4
+      226: (18) r1 = 0xffff9367463bbe00     ; R1_w=map_ptr(map=SSLREADDATABUF,ks=4,vs=16384)
+      228: (85) call bpf_map_lookup_elem#1          ; R0=map_value_or_null(id=5,map=SSLREADDATABUF,ks=4,vs=16384)
+      229: (15) if r0 == 0x0 goto pc+372    ; R0=map_value(map=SSLREADDATABUF,ks=4,vs=16384)
+      230: (7b) *(u64 *)(r10 -24) = r0      ; R0=map_value(map=SSLREADDATABUF,ks=4,vs=16384) R10=fp0 fp-24_w=map_value(map=SSLREADDATABUF,ks=4,vs=16384)
+      231: (63) *(u32 *)(r10 -4) = r9       ; R9=0 R10=fp0 fp-8=0000????
+      232: (bf) r2 = r10                    ; R2_w=fp0 R10=fp0
+      233: (07) r2 += -4                    ; R2_w=fp-4
+      234: (18) r1 = 0xffff9367463bbd00     ; R1_w=map_ptr(map=AYA_LOG_BUF,ks=4,vs=8192)
+      236: (85) call bpf_map_lookup_elem#1          ; R0_w=map_value_or_null(id=6,map=AYA_LOG_BUF,ks=4,vs=8192)
+      237: (bf) r9 = r0                     ; R0=map_value_or_null(id=6,map=AYA_LOG_BUF,ks=4,vs=8192) R9=map_value_or_null(id=6,map=AYA_LOG_BUF,ks=4,vs=8192)
+      238: (55) if r9 != 0x0 goto pc+370    ; R9=0
+      239: (79) r3 = *(u64 *)(r8 +0)        ; R3_w=scalar() R8=map_value(map=SSLREADARGSMAP,ks=8,vs=8)
+      240: (79) r1 = *(u64 *)(r10 -24)      ; R1_w=map_value(map=SSLREADDATABUF,ks=4,vs=16384) R10=fp0 fp-24=map_value(map=SSLREADDATABUF,ks=4,vs=16384)
+      241: (bf) r2 = r7                     ; R2_w=scalar(id=2) R7=scalar(id=2)
+      242: (85) call bpf_probe_read_user#112
+      R2 min value is negative, either use unsigned or 'var &= const'
+      verification time 1159 usec
+      stack depth 24+0+0+0
+      processed 263 insns (limit 1000000) max_states_per_insn 0 total_states 9 peak_states 9 mark_read 7
+
+      Caused by:
+          Permission denied (os error 13)
+  source_snippets:
+  - |-
+    bpf_probe_read_user(
+                                    output_buf.buf.as_mut_ptr() as *mut core::ffi::c_void,
+                                   ctx.ret().unwrap(),
+                                    *src_buffer_ptr,
+                                );
+  - |-
+    bpf_probe_read_user(
+                                    output_buf.buf.as_mut_ptr() as *mut core::ffi::c_void,
+                                   341,
+                                    *src_buffer_ptr,
+                                );
+  - |-
+    bpf_probe_read_user(
+                                output_buf.buf.as_mut_ptr() as *mut core::ffi::c_void,
+                               ctx.ret().unwrap(),
+                                *src_buffer_ptr,
+                            );
+  - |-
+    bpf_probe_read_user(
+                                output_buf.buf.as_mut_ptr() as *mut core::ffi::c_void,
+                               341,
+                                *src_buffer_ptr,
+                            );
+  - |-
+    bpf_probe_read(
+                                    output_buf.buf.as_mut_ptr() as *mut core::ffi::c_void,
+                                    (&ret_value_len).clone().try_into().unwrap(),
+                                    *src_buffer_ptr,
+                                );
+  - |-
+    // get return value (is the length of data read)
+        let ret_value_len: i32 = match ctx.ret() {
+            Some(ret) => ret,
+            None => return 0
+        };
+  - |-
+    // get return value (is the length of data read)
+    let ret_value_len: i32 = match ctx.ret() {
+        Some(ret) => ret,
+        None => return 0
+    };
+  - |-
+    bpf_probe_read_user(
+                                    output_buf.buf.as_mut_ptr() as *mut core::ffi::c_void,
+                                    ret_value_len as u32,
+                                    *src_buffer_ptr,
+                                );
+  issue_body_text: |-
+    Rust: 1.84.0-nightly
+    Aya-ebpf: main#240291ab8121939515275b0b41df0439761e1a3c
+    Context: https://github.com/ZuInnoTe/rust-ebpf-localnet-kernel-filter-study/blob/main/uprobe-libcall-filter/uprobe-libcall-filter-ebpf/src/main.rs#L110
+    I try essentially to do the following:
+    This fails with
+    This used to work before, but I am not sure if it is due to a Rust nightly update or an Aya update.
+    Interestingly enough if I hardcode the number that is in ctx.ret().unwrap() (I verified that indeed it is the same number), e.g.
+    then the program runs without issues.
+    Any ideas what could be the reason?
+  fix:
+    summary: No unwrapping/panicing in ebpf code. You must handle all errors.
+    selected_comment:
+      kind: comment
+      url: https://github.com/aya-rs/aya/issues/1062#issuecomment-2424593839
+      author: alessandrod
+      author_association: COLLABORATOR
+      body_text: No unwrapping/panicing in ebpf code. You must handle all errors.

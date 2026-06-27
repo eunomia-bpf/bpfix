@@ -1,0 +1,68 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-c005d6c56965
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/c005d6c56965e4e4cb87a3abe9306387b342fa42
+  title: 'ipcache: Stop populating node IDs in ipcache'
+  repository: https://github.com/cilium/cilium
+  commit: c005d6c56965e4e4cb87a3abe9306387b342fa42
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-c005d6c56965.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Raw has_verifier_log=false. The snippets stop carrying node IDs in ipcache/tunnel
+    structs by replacing fields with padding; this is datapath metadata/schema cleanup,
+    not verifier rejection evidence.
+raw:
+  case_id: github-commit-cilium-c005d6c56965
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: c005d6c56965e4e4cb87a3abe9306387b342fa42
+  commit_message: 'ipcache: Stop populating node IDs in ipcache'
+  commit_date: '2023-07-24'
+  fix_type: loop_rewrite
+  buggy_code: "// FILE: bpf/lib/common.h\n// CONTEXT: struct tunnel_key {\nstruct\
+    \ tunnel_value {\n\tunion {\n\t\tstruct {\n\t\t\t__u32\t\tip4;\n\t\t\t__u32\t\t\
+    pad1;\n\t\t\t__u32\t\tpad2;\n\t\t\t__u32\t\tpad3;\n\t\t};\n\t\tunion v6addr\t\
+    ip6;\n\t};\n\t__u8 family;\n\t__u8 key;\n\t__u16 node_id;\n} __packed;\n\n#define\
+    \ ENDPOINT_F_HOST\t\t1 /* Special endpoint representing local host */\n\n/* Value\
+    \ of endpoint map */\nstruct endpoint_info {\n\t__u32\t\tifindex;\n\t__u16\t\t\
+    unused; /* used to be sec_label, no longer used */\n\t__u16           lxc_id;\n\
+    \t__u32\t\tflags;\n\tmac_t\t\tmac;\n\tmac_t\t\tnode_mac;\n\n// CONTEXT: struct\
+    \ edt_id {\n};\n\nstruct edt_info {\n\t__u64\t\tbps;\n\t__u64\t\tt_last;\n\t__u64\t\
+    \tt_horizon_drop;\n\t__u64\t\tpad[4];\n};\n\nstruct remote_endpoint_info {\n\t\
+    __u32\t\tsec_label;\n\t__u32\t\ttunnel_endpoint;\n\t__u16\t\tnode_id;\n\t__u8\t\
+    \tkey;\n};\n\nstruct policy_key {\n\t__u32\t\tsec_label;\n\t__u16\t\tdport;\n\t\
+    __u8\t\tprotocol;\n\t__u8\t\tegress:1,\n\t\t\tpad:7;\n};\n\nstruct policy_entry\
+    \ {"
+  fixed_code: "// FILE: bpf/lib/common.h\n// CONTEXT: struct tunnel_key {\nstruct\
+    \ tunnel_value {\n\tunion {\n\t\tstruct {\n\t\t\t__u32\t\tip4;\n\t\t\t__u32\t\t\
+    pad1;\n\t\t\t__u32\t\tpad2;\n\t\t\t__u32\t\tpad3;\n\t\t};\n\t\tunion v6addr\t\
+    ip6;\n\t};\n\t__u8 family;\n\t__u8 key;\n\t__u16 pad;\n} __packed;\n\n#define\
+    \ ENDPOINT_F_HOST\t\t1 /* Special endpoint representing local host */\n\n/* Value\
+    \ of endpoint map */\nstruct endpoint_info {\n\t__u32\t\tifindex;\n\t__u16\t\t\
+    unused; /* used to be sec_label, no longer used */\n\t__u16           lxc_id;\n\
+    \t__u32\t\tflags;\n\tmac_t\t\tmac;\n\tmac_t\t\tnode_mac;\n\n// CONTEXT: struct\
+    \ edt_id {\n};\n\nstruct edt_info {\n\t__u64\t\tbps;\n\t__u64\t\tt_last;\n\t__u64\t\
+    \tt_horizon_drop;\n\t__u64\t\tpad[4];\n};\n\nstruct remote_endpoint_info {\n\t\
+    __u32\t\tsec_label;\n\t__u32\t\ttunnel_endpoint;\n\t__u16\t\tpad;\n\t__u8\t\t\
+    key;\n};\n\nstruct policy_key {\n\t__u32\t\tsec_label;\n\t__u16\t\tdport;\n\t\
+    __u8\t\tprotocol;\n\t__u8\t\tegress:1,\n\t\t\tpad:7;\n};\n\nstruct policy_entry\
+    \ {"
+  diff_summary: |-
+    bpf/lib/common.h:
+    - Reworked loop or branch structure to reduce verifier complexity and keep the path bounded.
+    - Affected context: struct tunnel_key {, struct edt_id {.
+    - Commit subject: ipcache: Stop populating node IDs in ipcache.

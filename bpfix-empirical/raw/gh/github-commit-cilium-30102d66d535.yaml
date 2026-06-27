@@ -1,0 +1,321 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-30102d66d535
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/30102d66d535f18f3f1550d026f520af66f213af
+  title: 'bpf: Separate conntrack timeouts for TCP and non-TCP'
+  repository: https://github.com/cilium/cilium
+  commit: 30102d66d535f18f3f1550d026f520af66f213af
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-30102d66d535.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: environment_required
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Conntrack/LPM loop rewrite is tied to older-kernel unrolled-loop capacity;
+    no terminal verifier log was captured.
+raw:
+  case_id: github-commit-cilium-30102d66d535
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: 30102d66d535f18f3f1550d026f520af66f213af
+  commit_message: 'bpf: Separate conntrack timeouts for TCP and non-TCP'
+  commit_date: '2018-06-06'
+  fix_type: loop_rewrite
+  buggy_code: "// FILE: bpf/lib/conntrack.h\n#define __LIB_CONNTRACK_H_\n\n#include\
+    \ <linux/icmpv6.h>\n#include <linux/icmp.h>\n\n#include \"common.h\"\n#include\
+    \ \"utils.h\"\n#include \"ipv6.h\"\n#include \"dbg.h\"\n#include \"l4.h\"\n#include\
+    \ \"nat46.h\"\n\n#define CT_DEFAULT_LIFETIME\t43200\n#define CT_SYN_TIMEOUT\t\t\
+    300\n#define CT_CLOSE_TIMEOUT\t10\n\n#ifdef CONNTRACK\n\n#define TUPLE_F_OUT\t\
+    \t0\t/* Outgoing flow */\n#define TUPLE_F_IN\t\t1\t/* Incoming flow */\n#define\
+    \ TUPLE_F_RELATED\t\t2\t/* Flow represents related packets */\n\nenum {\n\tACTION_UNSPEC,\n\
+    \tACTION_CREATE,\n\tACTION_CLOSE,\n};\n\nstatic inline void __inline__ __ct_update_timeout(struct\
+    \ ct_entry *entry,\n\t\t\t\t\t\t  __u32 lifetime)\n{\n#ifdef NEEDS_TIMEOUT\n\t\
+    entry->lifetime = bpf_ktime_get_sec() + lifetime;\n#endif\n}\n\nstatic inline\
+    \ void __inline__ ct_update_timeout(struct ct_entry *entry, bool syn)\n{\n\tentry->seen_non_syn\
+    \ |= !syn;\n\tif (entry->seen_non_syn)\n\t\t__ct_update_timeout(entry, CT_DEFAULT_LIFETIME);\n\
+    \telse\n\t\t__ct_update_timeout(entry, CT_SYN_TIMEOUT);\n}\n\nstatic inline void\
+    \ __inline__ ct_reset_closing(struct ct_entry *entry)\n{\n\tentry->rx_closing\
+    \ = 0;\n\tentry->tx_closing = 0;\n}\n\nstatic inline bool __inline__ ct_entry_alive(const\
+    \ struct ct_entry *entry)\n{\n\treturn !entry->rx_closing || !entry->tx_closing;\n\
+    }\n\nstatic inline int __inline__ __ct_lookup(void *map, struct __sk_buff *skb,\n\
+    \t\t\t\t\t void *tuple, int action, int dir,\n\t\t\t\t\t struct ct_state *ct_state,\n\
+    \t\t\t\t\t bool pkt_is_syn)\n{\n\tstruct ct_entry *entry;\n\tint ret;\n\n\tif\
+    \ ((entry = map_lookup_elem(map, tuple))) {\n\t\tcilium_dbg(skb, DBG_CT_MATCH,\
+    \ entry->lifetime, entry->rev_nat_index);\n\t\tif (ct_entry_alive(entry)) {\n\t\
+    \t\tct_update_timeout(entry, pkt_is_syn);\n\t\t}\n\t\tif (ct_state) {\n\t\t\t\
+    ct_state->rev_nat_index = entry->rev_nat_index;\n\t\t\tct_state->loopback = entry->lb_loopback;\n\
+    \t\t}\n\n#ifdef LXC_NAT46\n\t\t/* This packet needs nat46 translation */\n\t\t\
+    if (entry->nat46 && !skb->cb[CB_NAT46_STATE])\n\t\t\tskb->cb[CB_NAT46_STATE] =\
+    \ NAT46;\n#endif\n\n\n// CONTEXT: static inline int __inline__ __ct_lookup(void\
+    \ *map, struct __sk_buff *skb,\n\t\t\t__sync_fetch_and_add(&entry->rx_bytes, skb->len);\n\
+    \t\t} else {\n\t\t\t__sync_fetch_and_add(&entry->tx_packets, 1);\n\t\t\t__sync_fetch_and_add(&entry->tx_bytes,\
+    \ skb->len);\n\t\t}\n#endif\n\n\t\tswitch (action) {\n\t\tcase ACTION_CREATE:\n\
+    \t\t\tret = entry->rx_closing + entry->tx_closing;\n\t\t\tif (unlikely(ret >=\
+    \ 1)) {\n\t\t\t\tct_reset_closing(entry);\n\t\t\t\tct_update_timeout(entry, pkt_is_syn);\n\
+    \t\t\t}\n\t\t\tbreak;\n\t\tcase ACTION_CLOSE:\n\t\t\t/* RST or similar, immediately\
+    \ delete ct entry */\n\t\t\tif (dir == CT_INGRESS)\n\t\t\t\tentry->rx_closing\
+    \ = 1;\n\t\t\telse\n\t\t\t\tentry->tx_closing = 1;\n\n\t\t\tif (ct_entry_alive(entry))\n\
+    \t\t\t\tbreak;\n\t\t\t__ct_update_timeout(entry, CT_CLOSE_TIMEOUT);\n\n// CONTEXT:\
+    \ static inline void __inline__ ipv6_ct_tuple_reverse(struct ipv6_ct_tuple *tuple)\n\
+    \t\ttuple->flags &= ~TUPLE_F_IN;\n\telse\n\t\ttuple->flags |= TUPLE_F_IN;\n}\n\
+    \n/* Offset must point to IPv6 */\nstatic inline int __inline__ ct_lookup6(void\
+    \ *map, struct ipv6_ct_tuple *tuple,\n\t\t\t\t\tstruct __sk_buff *skb, int l4_off,\
+    \ __u32 secctx, int dir,\n\t\t\t\t\tstruct ct_state *ct_state)\n{\n\tint ret =\
+    \ CT_NEW, action = ACTION_UNSPEC;\n\tbool syn = false;\n\n\t/* The tuple is created\
+    \ in reverse order initially to find a\n\t * potential reverse flow. This is required\
+    \ because the RELATED\n\t * or REPLY state takes precedence over ESTABLISHED due\
+    \ to\n\t * policy requirements.\n\t *\n\t * Depending on direction, either source\
+    \ or destination address\n\t * is assumed to be the address of the container.\
+    \ Therefore,\n\t * the source address for incoming respectively the destination\n\
+    \t * address for outgoing packets is stored in a single field in\n\t * the tuple.\
+    \ The TUPLE_F_OUT and TUPLE_F_IN flags indicate which\n\t * address the field\
+    \ currently represents.\n\n// CONTEXT: static inline int __inline__ ct_lookup6(void\
+    \ *map, struct ipv6_ct_tuple *tuple,\n\t\t/* Can't handle extension headers yet\
+    \ */\n\t\treturn DROP_CT_UNKNOWN_PROTO;\n\t}\n\n\t/* Lookup the reverse direction\n\
+    \t *\n\t * This will find an existing flow in the reverse direction.\n\t * The\
+    \ reverse direction is the one where reverse nat index is stored.\n\t */\n\tcilium_dbg3(skb,\
+    \ DBG_CT_LOOKUP6_1, (__u32) tuple->saddr.p4, (__u32) tuple->daddr.p4,\n\t\t  \
+    \    (bpf_ntohs(tuple->sport) << 16) | bpf_ntohs(tuple->dport));\n\tcilium_dbg3(skb,\
+    \ DBG_CT_LOOKUP6_2, (tuple->nexthdr << 8) | tuple->flags, 0, 0);\n\tret = __ct_lookup(map,\
+    \ skb, tuple, action, dir, ct_state, syn);\n\tif (ret != CT_NEW) {\n\t\tif (likely(ret\
+    \ == CT_ESTABLISHED)) {\n\t\t\tif (unlikely(tuple->flags & TUPLE_F_RELATED))\n\
+    \t\t\t\tret = CT_RELATED;\n\t\t\telse\n\t\t\t\tret = CT_REPLY;\n\t\t}\n\t\tgoto\
+    \ out;\n\t}\n\n\t/* Lookup entry in forward direction */\n\tipv6_ct_tuple_reverse(tuple);\n\
+    \tret = __ct_lookup(map, skb, tuple, action, dir, ct_state, syn);\n\n#ifdef LXC_NAT46\n\
+    \tskb->cb[CB_NAT46_STATE] = NAT46_CLEAR;\n#endif\nout:\n\tcilium_dbg(skb, DBG_CT_VERDICT,\
+    \ ret < 0 ? -ret : ret, ct_state->rev_nat_index);\n\treturn ret;\n}\n\nstatic\
+    \ inline void __inline__ ipv4_ct_tuple_reverse(struct ipv4_ct_tuple *tuple)\n\
+    {\n\t__be32 tmp_addr = tuple->saddr;\n\n// CONTEXT: static inline void ct4_cilium_dbg_tuple(struct\
+    \ __sk_buff *skb, __u8 type,\n{\n\t__be32 addr = (dir == CT_INGRESS) ? tuple->saddr\
+    \ : tuple->daddr;\n\tcilium_dbg(skb, type, addr, rev_nat_index);\n}\n\n/* Offset\
+    \ must point to IPv4 header */\nstatic inline int __inline__ ct_lookup4(void *map,\
+    \ struct ipv4_ct_tuple *tuple,\n\t\t\t\t\tstruct __sk_buff *skb, int off, __u32\
+    \ secctx, int dir,\n\t\t\t\t\tstruct ct_state *ct_state)\n{\n\tint ret = CT_NEW,\
+    \ action = ACTION_UNSPEC;\n\tbool syn = false;\n\n\t/* The tuple is created in\
+    \ reverse order initially to find a\n\t * potential reverse flow. This is required\
+    \ because the RELATED\n\t * or REPLY state takes precedence over ESTABLISHED due\
+    \ to\n\t * policy requirements.\n\t *\n\t * Depending on direction, either source\
+    \ or destination address\n\t * is assumed to be the address of the container.\
+    \ Therefore,\n\t * the source address for incoming respectively the destination\n\
+    \t * address for outgoing packets is stored in a single field in\n\t * the tuple.\
+    \ The TUPLE_F_OUT and TUPLE_F_IN flags indicate which\n\t * address the field\
+    \ currently represents.\n\n// CONTEXT: static inline int __inline__ ct_lookup4(void\
+    \ *map, struct ipv4_ct_tuple *tuple,\n\t\treturn DROP_CT_UNKNOWN_PROTO;\n\t}\n\
+    \n\t/* Lookup the reverse direction\n\t *\n\t * This will find an existing flow\
+    \ in the reverse direction.\n\t */\n#ifndef QUIET_CT\n\tcilium_dbg3(skb, DBG_CT_LOOKUP4_1,\
+    \ tuple->saddr, tuple->daddr,\n\t\t      (bpf_ntohs(tuple->sport) << 16) | bpf_ntohs(tuple->dport));\n\
+    \tcilium_dbg3(skb, DBG_CT_LOOKUP4_2, (tuple->nexthdr << 8) | tuple->flags, 0,\
+    \ 0);\n#endif\n\tret = __ct_lookup(map, skb, tuple, action, dir, ct_state, syn);\n\
+    \tif (ret != CT_NEW) {\n\t\tif (likely(ret == CT_ESTABLISHED)) {\n\t\t\tif (unlikely(tuple->flags\
+    \ & TUPLE_F_RELATED))\n\t\t\t\tret = CT_RELATED;\n\t\t\telse\n\t\t\t\tret = CT_REPLY;\n\
+    \t\t}\n\t\tgoto out;\n\t}\n\n\t/* Lookup entry in forward direction */\n\tipv4_ct_tuple_reverse(tuple);\n\
+    \tret = __ct_lookup(map, skb, tuple, action, dir, ct_state, syn);\n\nout:\n\t\
+    cilium_dbg(skb, DBG_CT_VERDICT, ret < 0 ? -ret : ret, ct_state->rev_nat_index);\n\
+    \treturn ret;\n}\n\nstatic inline void __inline__ ct_delete6(void *map, struct\
+    \ ipv6_ct_tuple *tuple, struct __sk_buff *skb)\n{\n\tint err;\n\n\tif ((err =\
+    \ map_delete_elem(map, tuple)) < 0)\n\t\tcilium_dbg(skb, DBG_ERROR_RET, BPF_FUNC_map_delete_elem,\
+    \ err);\n}\n\n/* Offset must point to IPv6 */\nstatic inline int __inline__ ct_create6(void\
+    \ *map, struct ipv6_ct_tuple *tuple,\n\t\t\t\t\tstruct __sk_buff *skb, int dir,\n\
+    \t\t\t\t\tstruct ct_state *ct_state)\n{\n\t/* Create entry in original direction\
+    \ */\n\tstruct ct_entry entry = { };\n\n\tentry.rev_nat_index = ct_state->rev_nat_index;\n\
+    \tentry.lb_loopback = ct_state->loopback;\n\tct_update_timeout(&entry, tuple->nexthdr\
+    \ == IPPROTO_TCP);\n\n\tif (dir == CT_INGRESS) {\n\t\tentry.rx_packets = 1;\n\t\
+    \tentry.rx_bytes = skb->len;\n\t} else {\n\t\tentry.tx_packets = 1;\n\t\tentry.tx_bytes\
+    \ = skb->len;\n\t}\n\n\tcilium_dbg3(skb, DBG_CT_CREATED6, entry.rev_nat_index,\
+    \ ct_state->src_sec_id, 0);\n\n\tentry.src_sec_id = ct_state->src_sec_id;\n\n\
+    // CONTEXT: static inline void __inline__ ct_delete4(void *map, struct ipv4_ct_tuple\
+    \ *tuple,\n\tint err;\n\n\tif ((err = map_delete_elem(map, tuple)) < 0)\n\t\t\
+    cilium_dbg(skb, DBG_ERROR_RET, BPF_FUNC_map_delete_elem, err);\n}\n\nstatic inline\
+    \ int __inline__ ct_create4(void *map, struct ipv4_ct_tuple *tuple,\n\t\t\t\t\t\
+    struct __sk_buff *skb, int dir,\n\t\t\t\t\tstruct ct_state *ct_state)\n{\n\t/*\
+    \ Create entry in original direction */\n\tstruct ct_entry entry = { };\n\n\t\
+    entry.rev_nat_index = ct_state->rev_nat_index;\n\tentry.lb_loopback = ct_state->loopback;\n\
+    \tct_update_timeout(&entry, tuple->nexthdr == IPPROTO_TCP);\n\n\tif (dir == CT_INGRESS)\
+    \ {\n\t\tentry.rx_packets = 1;\n\t\tentry.rx_bytes = skb->len;\n\t} else {\n\t\
+    \tentry.tx_packets = 1;\n\t\tentry.tx_bytes = skb->len;\n\t}\n\n#ifdef LXC_NAT46\n\
+    \tif (skb->cb[CB_NAT46_STATE] == NAT64)\n\t\tentry.nat46 = dir == CT_EGRESS;\n\
+    \n// FILE: bpf/lxc_config.h\n#define CIDR4_INGRESS_MAP cilium_cidr4_ingress_foo\n\
+    #define CIDR6_EGRESS_MAP cilium_cidr6_egress_foo\n#define CIDR4_EGRESS_MAP cilium_cidr4_egress_foo\n\
+    /* It appears that we can support around ninety prefixes in an unrolled loop\n\
+    \ * for LPM CIDR handling in older kernels along with the rest of the logic in\n\
+    \ * the datapath, hence the defines below. This number was arrived to by\n * adjusting\
+    \ the number of prefixes and running:\n *    $ make -C bpf && sudo test/bpf/verifier-test.sh\n\
+    \ *\n *  If you're from a future where all supported kernels include LPM map type,\n\
+    \ *  consider deprecating the hash-based CIDR lookup and removing the below.\n\
+    \ */\n#define CIDR4_EGRESS_PREFIXES 32, 31, 30, 29, 28, 27, 26, 25, 24, 23, 22,\
+    \ 21, \\\n20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2,\
+    \ 1, 0\n#define CIDR6_EGRESS_PREFIXES CIDR4_EGRESS_PREFIXES\n#define CIDR6_INGRESS_PREFIXES\
+    \ CIDR6_EGRESS_PREFIXES\n#define CIDR4_INGRESS_PREFIXES CIDR4_EGRESS_PREFIXES\n\
+    #endif\n\n/* It appears that we can support around the below number of prefixes\
+    \ in an\n * unrolled loop for LPM CIDR handling in older kernels along with the\
+    \ rest of\n * the logic in the datapath, hence the defines below. This number\
+    \ was arrived\n * to by adjusting the number of prefixes and running:\n *\n *\
+    \    $ make -C bpf && sudo test/bpf/verifier-test.sh\n *\n *  If you're from a\
+    \ future where all supported kernels include LPM map type,\n *  consider deprecating\
+    \ the hash-based CIDR lookup and removing the below.\n */\n#define IPCACHE4_PREFIXES\
+    \ 32, 31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, \\\n20, 19, 18, 17, 16, 15,\
+    \ 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0\n#define IPCACHE6_PREFIXES\
+    \ IPCACHE4_PREFIXES"
+  fixed_code: "// FILE: bpf/lib/conntrack.h\n#define __LIB_CONNTRACK_H_\n\n#include\
+    \ <linux/icmpv6.h>\n#include <linux/icmp.h>\n\n#include \"common.h\"\n#include\
+    \ \"utils.h\"\n#include \"ipv6.h\"\n#include \"dbg.h\"\n#include \"l4.h\"\n#include\
+    \ \"nat46.h\"\n\n#define CT_DEFAULT_LIFETIME_TCP\t\t21600\t/* 6 hours */\n#define\
+    \ CT_DEFAULT_LIFETIME_NONTCP\t60\t/* 60 seconds */\n#define CT_DEFAULT_SYN_TIMEOUT\t\
+    \t60\t/* 60 seconds */\n#define CT_DEFAULT_CLOSE_TIMEOUT\t10\t/* 10 seconds */\n\
+    \n#ifndef CT_LIFETIME_TCP\n#define CT_LIFETIME_TCP CT_DEFAULT_LIFETIME_TCP\n#endif\n\
+    \n#ifndef CT_LIFETIME_NONTCP\n#define CT_LIFETIME_NONTCP CT_DEFAULT_LIFETIME_NONTCP\n\
+    #endif\n\n#ifndef CT_SYN_TIMEOUT\n#define CT_SYN_TIMEOUT CT_DEFAULT_SYN_TIMEOUT\n\
+    #endif\n\n#ifndef CT_CLOSE_TIMEOUT\n#define CT_CLOSE_TIMEOUT CT_DEFAULT_CLOSE_TIMEOUT\n\
+    #endif\n\n#ifdef CONNTRACK\n\n#define TUPLE_F_OUT\t\t0\t/* Outgoing flow */\n\
+    #define TUPLE_F_IN\t\t1\t/* Incoming flow */\n#define TUPLE_F_RELATED\t\t2\t/*\
+    \ Flow represents related packets */\n\nenum {\n\tACTION_UNSPEC,\n\tACTION_CREATE,\n\
+    \tACTION_CLOSE,\n};\n\nstatic inline void __inline__ __ct_update_timeout(struct\
+    \ ct_entry *entry,\n\t\t\t\t\t\t  __u32 lifetime)\n{\n#ifdef NEEDS_TIMEOUT\n\t\
+    entry->lifetime = bpf_ktime_get_sec() + lifetime;\n#endif\n}\n\nstatic inline\
+    \ void __inline__ ct_update_timeout(struct ct_entry *entry, bool syn, bool tcp)\n\
+    {\n\t__u32 lifetime = CT_LIFETIME_NONTCP;\n\n\tif (tcp) {\n\t\tentry->seen_non_syn\
+    \ |= !syn;\n\n\t\tif (entry->seen_non_syn)\n\t\t\tlifetime = CT_LIFETIME_TCP;\n\
+    \t\telse\n\t\t\tlifetime = CT_SYN_TIMEOUT;\n\t}\n\n\t__ct_update_timeout(entry,\
+    \ lifetime);\n}\n\nstatic inline void __inline__ ct_reset_closing(struct ct_entry\
+    \ *entry)\n{\n\tentry->rx_closing = 0;\n\tentry->tx_closing = 0;\n}\n\nstatic\
+    \ inline bool __inline__ ct_entry_alive(const struct ct_entry *entry)\n{\n\treturn\
+    \ !entry->rx_closing || !entry->tx_closing;\n}\n\nstatic inline int __inline__\
+    \ __ct_lookup(void *map, struct __sk_buff *skb,\n\t\t\t\t\t void *tuple, int action,\
+    \ int dir,\n\t\t\t\t\t struct ct_state *ct_state,\n\t\t\t\t\t bool pkt_is_syn,\
+    \ bool is_tcp)\n{\n\tstruct ct_entry *entry;\n\tint ret;\n\n\tif ((entry = map_lookup_elem(map,\
+    \ tuple))) {\n\t\tcilium_dbg(skb, DBG_CT_MATCH, entry->lifetime, entry->rev_nat_index);\n\
+    \t\tif (ct_entry_alive(entry)) {\n\t\t\tct_update_timeout(entry, pkt_is_syn, is_tcp);\n\
+    \t\t}\n\t\tif (ct_state) {\n\t\t\tct_state->rev_nat_index = entry->rev_nat_index;\n\
+    \t\t\tct_state->loopback = entry->lb_loopback;\n\t\t}\n\n#ifdef LXC_NAT46\n\t\t\
+    /* This packet needs nat46 translation */\n\t\tif (entry->nat46 && !skb->cb[CB_NAT46_STATE])\n\
+    \t\t\tskb->cb[CB_NAT46_STATE] = NAT46;\n#endif\n\n\n// CONTEXT: static inline\
+    \ int __inline__ __ct_lookup(void *map, struct __sk_buff *skb,\n\t\t\t__sync_fetch_and_add(&entry->rx_bytes,\
+    \ skb->len);\n\t\t} else {\n\t\t\t__sync_fetch_and_add(&entry->tx_packets, 1);\n\
+    \t\t\t__sync_fetch_and_add(&entry->tx_bytes, skb->len);\n\t\t}\n#endif\n\n\t\t\
+    switch (action) {\n\t\tcase ACTION_CREATE:\n\t\t\tret = entry->rx_closing + entry->tx_closing;\n\
+    \t\t\tif (unlikely(ret >= 1)) {\n\t\t\t\tct_reset_closing(entry);\n\t\t\t\tct_update_timeout(entry,\
+    \ pkt_is_syn, is_tcp);\n\t\t\t}\n\t\t\tbreak;\n\t\tcase ACTION_CLOSE:\n\t\t\t\
+    /* RST or similar, immediately delete ct entry */\n\t\t\tif (dir == CT_INGRESS)\n\
+    \t\t\t\tentry->rx_closing = 1;\n\t\t\telse\n\t\t\t\tentry->tx_closing = 1;\n\n\
+    \t\t\tif (ct_entry_alive(entry))\n\t\t\t\tbreak;\n\t\t\t__ct_update_timeout(entry,\
+    \ CT_CLOSE_TIMEOUT);\n\n// CONTEXT: static inline void __inline__ ipv6_ct_tuple_reverse(struct\
+    \ ipv6_ct_tuple *tuple)\n\t\ttuple->flags &= ~TUPLE_F_IN;\n\telse\n\t\ttuple->flags\
+    \ |= TUPLE_F_IN;\n}\n\n/* Offset must point to IPv6 */\nstatic inline int __inline__\
+    \ ct_lookup6(void *map, struct ipv6_ct_tuple *tuple,\n\t\t\t\t\tstruct __sk_buff\
+    \ *skb, int l4_off, __u32 secctx, int dir,\n\t\t\t\t\tstruct ct_state *ct_state)\n\
+    {\n\tint ret = CT_NEW, action = ACTION_UNSPEC;\n\tbool syn = false;\n\tbool is_tcp\
+    \ = tuple->nexthdr == IPPROTO_TCP;\n\n\t/* The tuple is created in reverse order\
+    \ initially to find a\n\t * potential reverse flow. This is required because the\
+    \ RELATED\n\t * or REPLY state takes precedence over ESTABLISHED due to\n\t *\
+    \ policy requirements.\n\t *\n\t * Depending on direction, either source or destination\
+    \ address\n\t * is assumed to be the address of the container. Therefore,\n\t\
+    \ * the source address for incoming respectively the destination\n\t * address\
+    \ for outgoing packets is stored in a single field in\n\t * the tuple. The TUPLE_F_OUT\
+    \ and TUPLE_F_IN flags indicate which\n\t * address the field currently represents.\n\
+    \n// CONTEXT: static inline int __inline__ ct_lookup6(void *map, struct ipv6_ct_tuple\
+    \ *tuple,\n\t\t/* Can't handle extension headers yet */\n\t\treturn DROP_CT_UNKNOWN_PROTO;\n\
+    \t}\n\n\t/* Lookup the reverse direction\n\t *\n\t * This will find an existing\
+    \ flow in the reverse direction.\n\t * The reverse direction is the one where\
+    \ reverse nat index is stored.\n\t */\n\tcilium_dbg3(skb, DBG_CT_LOOKUP6_1, (__u32)\
+    \ tuple->saddr.p4, (__u32) tuple->daddr.p4,\n\t\t      (bpf_ntohs(tuple->sport)\
+    \ << 16) | bpf_ntohs(tuple->dport));\n\tcilium_dbg3(skb, DBG_CT_LOOKUP6_2, (tuple->nexthdr\
+    \ << 8) | tuple->flags, 0, 0);\n\tret = __ct_lookup(map, skb, tuple, action, dir,\
+    \ ct_state, syn, is_tcp);\n\tif (ret != CT_NEW) {\n\t\tif (likely(ret == CT_ESTABLISHED))\
+    \ {\n\t\t\tif (unlikely(tuple->flags & TUPLE_F_RELATED))\n\t\t\t\tret = CT_RELATED;\n\
+    \t\t\telse\n\t\t\t\tret = CT_REPLY;\n\t\t}\n\t\tgoto out;\n\t}\n\n\t/* Lookup\
+    \ entry in forward direction */\n\tipv6_ct_tuple_reverse(tuple);\n\tret = __ct_lookup(map,\
+    \ skb, tuple, action, dir, ct_state, syn, is_tcp);\n\n#ifdef LXC_NAT46\n\tskb->cb[CB_NAT46_STATE]\
+    \ = NAT46_CLEAR;\n#endif\nout:\n\tcilium_dbg(skb, DBG_CT_VERDICT, ret < 0 ? -ret\
+    \ : ret, ct_state->rev_nat_index);\n\treturn ret;\n}\n\nstatic inline void __inline__\
+    \ ipv4_ct_tuple_reverse(struct ipv4_ct_tuple *tuple)\n{\n\t__be32 tmp_addr = tuple->saddr;\n\
+    \n// CONTEXT: static inline void ct4_cilium_dbg_tuple(struct __sk_buff *skb, __u8\
+    \ type,\n{\n\t__be32 addr = (dir == CT_INGRESS) ? tuple->saddr : tuple->daddr;\n\
+    \tcilium_dbg(skb, type, addr, rev_nat_index);\n}\n\n/* Offset must point to IPv4\
+    \ header */\nstatic inline int __inline__ ct_lookup4(void *map, struct ipv4_ct_tuple\
+    \ *tuple,\n\t\t\t\t\tstruct __sk_buff *skb, int off, __u32 secctx, int dir,\n\t\
+    \t\t\t\tstruct ct_state *ct_state)\n{\n\tint ret = CT_NEW, action = ACTION_UNSPEC;\n\
+    \tbool syn = false;\n\tbool is_tcp = tuple->nexthdr == IPPROTO_TCP;\n\n\t/* The\
+    \ tuple is created in reverse order initially to find a\n\t * potential reverse\
+    \ flow. This is required because the RELATED\n\t * or REPLY state takes precedence\
+    \ over ESTABLISHED due to\n\t * policy requirements.\n\t *\n\t * Depending on\
+    \ direction, either source or destination address\n\t * is assumed to be the address\
+    \ of the container. Therefore,\n\t * the source address for incoming respectively\
+    \ the destination\n\t * address for outgoing packets is stored in a single field\
+    \ in\n\t * the tuple. The TUPLE_F_OUT and TUPLE_F_IN flags indicate which\n\t\
+    \ * address the field currently represents.\n\n// CONTEXT: static inline int __inline__\
+    \ ct_lookup4(void *map, struct ipv4_ct_tuple *tuple,\n\t\treturn DROP_CT_UNKNOWN_PROTO;\n\
+    \t}\n\n\t/* Lookup the reverse direction\n\t *\n\t * This will find an existing\
+    \ flow in the reverse direction.\n\t */\n#ifndef QUIET_CT\n\tcilium_dbg3(skb,\
+    \ DBG_CT_LOOKUP4_1, tuple->saddr, tuple->daddr,\n\t\t      (bpf_ntohs(tuple->sport)\
+    \ << 16) | bpf_ntohs(tuple->dport));\n\tcilium_dbg3(skb, DBG_CT_LOOKUP4_2, (tuple->nexthdr\
+    \ << 8) | tuple->flags, 0, 0);\n#endif\n\tret = __ct_lookup(map, skb, tuple, action,\
+    \ dir, ct_state, syn, is_tcp);\n\tif (ret != CT_NEW) {\n\t\tif (likely(ret ==\
+    \ CT_ESTABLISHED)) {\n\t\t\tif (unlikely(tuple->flags & TUPLE_F_RELATED))\n\t\t\
+    \t\tret = CT_RELATED;\n\t\t\telse\n\t\t\t\tret = CT_REPLY;\n\t\t}\n\t\tgoto out;\n\
+    \t}\n\n\t/* Lookup entry in forward direction */\n\tipv4_ct_tuple_reverse(tuple);\n\
+    \tret = __ct_lookup(map, skb, tuple, action, dir, ct_state, syn, is_tcp);\n\n\
+    out:\n\tcilium_dbg(skb, DBG_CT_VERDICT, ret < 0 ? -ret : ret, ct_state->rev_nat_index);\n\
+    \treturn ret;\n}\n\nstatic inline void __inline__ ct_delete6(void *map, struct\
+    \ ipv6_ct_tuple *tuple, struct __sk_buff *skb)\n{\n\tint err;\n\n\tif ((err =\
+    \ map_delete_elem(map, tuple)) < 0)\n\t\tcilium_dbg(skb, DBG_ERROR_RET, BPF_FUNC_map_delete_elem,\
+    \ err);\n}\n\n/* Offset must point to IPv6 */\nstatic inline int __inline__ ct_create6(void\
+    \ *map, struct ipv6_ct_tuple *tuple,\n\t\t\t\t\tstruct __sk_buff *skb, int dir,\n\
+    \t\t\t\t\tstruct ct_state *ct_state)\n{\n\t/* Create entry in original direction\
+    \ */\n\tstruct ct_entry entry = { };\n\tbool is_tcp = tuple->nexthdr == IPPROTO_TCP;\n\
+    \n\tentry.rev_nat_index = ct_state->rev_nat_index;\n\tentry.lb_loopback = ct_state->loopback;\n\
+    \tct_update_timeout(&entry, is_tcp, is_tcp);\n\n\tif (dir == CT_INGRESS) {\n\t\
+    \tentry.rx_packets = 1;\n\t\tentry.rx_bytes = skb->len;\n\t} else {\n\t\tentry.tx_packets\
+    \ = 1;\n\t\tentry.tx_bytes = skb->len;\n\t}\n\n\tcilium_dbg3(skb, DBG_CT_CREATED6,\
+    \ entry.rev_nat_index, ct_state->src_sec_id, 0);\n\n\tentry.src_sec_id = ct_state->src_sec_id;\n\
+    \n// CONTEXT: static inline void __inline__ ct_delete4(void *map, struct ipv4_ct_tuple\
+    \ *tuple,\n\tint err;\n\n\tif ((err = map_delete_elem(map, tuple)) < 0)\n\t\t\
+    cilium_dbg(skb, DBG_ERROR_RET, BPF_FUNC_map_delete_elem, err);\n}\n\nstatic inline\
+    \ int __inline__ ct_create4(void *map, struct ipv4_ct_tuple *tuple,\n\t\t\t\t\t\
+    struct __sk_buff *skb, int dir,\n\t\t\t\t\tstruct ct_state *ct_state)\n{\n\t/*\
+    \ Create entry in original direction */\n\tstruct ct_entry entry = { };\n\tbool\
+    \ is_tcp = tuple->nexthdr == IPPROTO_TCP;\n\n\tentry.rev_nat_index = ct_state->rev_nat_index;\n\
+    \tentry.lb_loopback = ct_state->loopback;\n\tct_update_timeout(&entry, is_tcp,\
+    \ is_tcp);\n\n\tif (dir == CT_INGRESS) {\n\t\tentry.rx_packets = 1;\n\t\tentry.rx_bytes\
+    \ = skb->len;\n\t} else {\n\t\tentry.tx_packets = 1;\n\t\tentry.tx_bytes = skb->len;\n\
+    \t}\n\n#ifdef LXC_NAT46\n\tif (skb->cb[CB_NAT46_STATE] == NAT64)\n\t\tentry.nat46\
+    \ = dir == CT_EGRESS;\n\n// FILE: bpf/lxc_config.h\n#define CIDR4_INGRESS_MAP\
+    \ cilium_cidr4_ingress_foo\n#define CIDR6_EGRESS_MAP cilium_cidr6_egress_foo\n\
+    #define CIDR4_EGRESS_MAP cilium_cidr4_egress_foo\n/* It appears that we can support\
+    \ around ninety prefixes in an unrolled loop\n * for LPM CIDR handling in older\
+    \ kernels along with the rest of the logic in\n * the datapath, hence the defines\
+    \ below. This number was arrived to by\n * adjusting the number of prefixes and\
+    \ running:\n *    $ make -C bpf && sudo test/bpf/verifier-test.sh\n *\n *  If\
+    \ you're from a future where all supported kernels include LPM map type,\n * \
+    \ consider deprecating the hash-based CIDR lookup and removing the below.\n */\n\
+    #define CIDR4_EGRESS_PREFIXES 26, 25, 24, 23, 22, 21, \\\n20, 19, 18, 17, 16,\
+    \ 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0\n#define CIDR6_EGRESS_PREFIXES\
+    \ CIDR4_EGRESS_PREFIXES\n#define CIDR6_INGRESS_PREFIXES CIDR6_EGRESS_PREFIXES\n\
+    #define CIDR4_INGRESS_PREFIXES CIDR4_EGRESS_PREFIXES\n#endif\n\n/* It appears\
+    \ that we can support around the below number of prefixes in an\n * unrolled loop\
+    \ for LPM CIDR handling in older kernels along with the rest of\n * the logic\
+    \ in the datapath, hence the defines below. This number was arrived\n * to by\
+    \ adjusting the number of prefixes and running:\n *\n *    $ make -C bpf && sudo\
+    \ test/bpf/verifier-test.sh\n *\n *  If you're from a future where all supported\
+    \ kernels include LPM map type,\n *  consider deprecating the hash-based CIDR\
+    \ lookup and removing the below.\n */\n#define IPCACHE4_PREFIXES 26, 25, 24, 23,\
+    \ 22, 21, \\\n20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3,\
+    \ 2, 1, 0\n#define IPCACHE6_PREFIXES IPCACHE4_PREFIXES"
+  diff_summary: |-
+    bpf/lib/conntrack.h:
+    - Reworked loop or branch structure to reduce verifier complexity and keep the path bounded.
+    - Affected context: static inline int __inline__ __ct_lookup(void *map, struct __sk_buff *skb,, static inline void __inline__ ipv6_ct_tuple_reverse(struct ipv6_ct_tuple *tuple), static inline int __inline__ ct_lookup6(void *map, struct ipv6_ct_tuple *tuple,.
+    bpf/lxc_config.h:
+    - Reworked loop or branch structure to reduce verifier complexity and keep the path bounded.
+    - Affected context: the touched section.
+    - Commit subject: bpf: Separate conntrack timeouts for TCP and non-TCP.

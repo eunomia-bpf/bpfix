@@ -1,0 +1,59 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-c862a7157bb0
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/c862a7157bb016a25dcc4144f396f295a40bbce0
+  title: 'bpf: bump snat retries for older kernels'
+  repository: https://github.com/cilium/cilium
+  commit: c862a7157bb016a25dcc4144f396f295a40bbce0
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-c862a7157bb0.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: environment_required
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Bumps SNAT collision retries after IPv4/IPv6 tail-call splitting; replaying
+    the prior limit depends on historical full Cilium complexity constraints.
+raw:
+  case_id: github-commit-cilium-c862a7157bb0
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: c862a7157bb016a25dcc4144f396f295a40bbce0
+  commit_message: 'bpf: bump snat retries for older kernels'
+  commit_date: '2020-06-16'
+  fix_type: inline_hint
+  buggy_code: "// FILE: bpf/lib/nat.h\n// CONTEXT: struct nat_entry {\n#define NAT_CONTINUE_XLATE\
+    \ \t0\n\n#ifdef HAVE_LRU_HASH_MAP_TYPE\n# define NAT_MAP_TYPE BPF_MAP_TYPE_LRU_HASH\n\
+    #else\n# define NAT_MAP_TYPE BPF_MAP_TYPE_HASH\n#endif\n\n#ifdef HAVE_LARGE_INSN_LIMIT\n\
+    # define SNAT_COLLISION_RETRIES\t\t128\n# define SNAT_SIGNAL_THRES\t\t64\n#else\n\
+    # if defined(ENABLE_IPV4) && defined(ENABLE_IPV6)\n#  ifdef ENABLE_DSR_HYBRID\n\
+    #   define SNAT_COLLISION_RETRIES\t16\n#  else\n#   define SNAT_COLLISION_RETRIES\t\
+    18\n#  endif\n# else\n#  define SNAT_COLLISION_RETRIES\t20\n# endif\n# define\
+    \ SNAT_SIGNAL_THRES\t\t10\n#endif\n\nstatic __always_inline __be16 __snat_clamp_port_range(__u16\
+    \ start, __u16 end,\n\t\t\t\t\t\t      __u16 val)\n{\n\treturn (val % (__u16)(end\
+    \ - start)) + start;\n}\n\nstatic __always_inline __maybe_unused __be16\n__snat_try_keep_port(__u16\
+    \ start, __u16 end, __u16 val)\n{\n\treturn val >= start && val <= end ? val :"
+  fixed_code: "// FILE: bpf/lib/nat.h\n// CONTEXT: struct nat_entry {\n#define NAT_CONTINUE_XLATE\
+    \ \t0\n\n#ifdef HAVE_LRU_HASH_MAP_TYPE\n# define NAT_MAP_TYPE BPF_MAP_TYPE_LRU_HASH\n\
+    #else\n# define NAT_MAP_TYPE BPF_MAP_TYPE_HASH\n#endif\n\n#ifdef HAVE_LARGE_INSN_LIMIT\n\
+    # define SNAT_COLLISION_RETRIES\t\t128\n# define SNAT_SIGNAL_THRES\t\t64\n#else\n\
+    # define SNAT_COLLISION_RETRIES\t\t32\n# define SNAT_SIGNAL_THRES\t\t16\n#endif\n\
+    \nstatic __always_inline __be16 __snat_clamp_port_range(__u16 start, __u16 end,\n\
+    \t\t\t\t\t\t      __u16 val)\n{\n\treturn (val % (__u16)(end - start)) + start;\n\
+    }\n\nstatic __always_inline __maybe_unused __be16\n__snat_try_keep_port(__u16\
+    \ start, __u16 end, __u16 val)\n{\n\treturn val >= start && val <= end ? val :"
+  diff_summary: |-
+    bpf/lib/nat.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: struct nat_entry {.
+    - Commit subject: bpf: bump snat retries for older kernels.

@@ -1,0 +1,87 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-854473726b50
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/854473726b508ab0b5bccddc974c0fa9d5ac752b
+  title: 'bpf: Workaround for netkit + L7 policy redirect failure'
+  repository: https://github.com/cilium/cilium
+  commit: 854473726b508ab0b5bccddc974c0fa9d5ac752b
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-854473726b50.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: not_reconstructable_from_diff
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Netkit/L7 redirect workaround is a broad datapath behavior change without
+    a raw verifier log or minimal failing verifier pattern.
+raw:
+  case_id: github-commit-cilium-854473726b50
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: 854473726b508ab0b5bccddc974c0fa9d5ac752b
+  commit_message: 'bpf: Workaround for netkit + L7 policy redirect failure'
+  commit_date: '2025-10-20'
+  fix_type: inline_hint
+  buggy_code: "// FILE: bpf/lib/local_delivery.h\n/* SPDX-License-Identifier: (GPL-2.0-only\
+    \ OR BSD-2-Clause) */\n/* Copyright Authors of Cilium */\n\n#pragma once\n\n#include\
+    \ \"common.h\"\n#include \"dbg.h\"\n#include \"l3.h\"\n#include \"token_bucket.h\"\
+    \n\n/* Global map to jump into policy enforcement of sending endpoint */\nstruct\
+    \ {\n\t__uint(type, BPF_MAP_TYPE_PROG_ARRAY);\n\t__type(key, __u32);\n\t__type(value,\
+    \ __u32);\n\t__uint(pinning, LIBBPF_PIN_BY_NAME);\n\t__uint(max_entries, POLICY_PROG_MAP_SIZE);\n\
+    } cilium_egresscall_policy __section_maps_btf;\n\nstatic __always_inline __must_check\
+    \ int\ntail_call_egress_policy(struct __ctx_buff *ctx, __u16 endpoint_id)\n{\n\
+    \n// CONTEXT: local_delivery(struct __ctx_buff *ctx, __u32 seclabel,\n\n\t\tret\
+    \ = accept(ctx, ep->lxc_id);\n\t\tif (IS_ERR(ret))\n\t\t\treturn ret;\n\t}\n\n\
+    /*\n * When BPF host routing is enabled we need to check policies at source, as\
+    \ in\n * this case the skb is delivered directly to pod's namespace and the ingress\n\
+    \ * policy (the cil_to_container BPF program) is bypassed.\n */\n\tuse_fast_redirect\
+    \ = should_fast_redirect(ctx, from_host);\n\tif (is_defined(USE_BPF_PROG_FOR_INGRESS_POLICY)\
+    \ && !use_fast_redirect) {\n\t\tset_identity_mark(ctx, seclabel, magic);\n\n#\
+    \ if !defined(ENABLE_NODEPORT)\n\t\t/* In tunneling mode, we execute this code\
+    \ to send the packet from\n\t\t * cilium_vxlan to lxc*. If we're using kube-proxy,\
+    \ we don't want to use\n\t\t * redirect() because that would bypass conntrack\
+    \ and the reverse DNAT.\n\t\t * Thus, we send packets to the stack, but since\
+    \ they have the wrong\n\t\t * Ethernet addresses, we need to mark them as PACKET_HOST\
+    \ or the kernel\n\t\t * will drop them.\n\t\t */\n\t\tif (from_tunnel) {\n\t\t\
+    \tctx_change_type(ctx, PACKET_HOST);"
+  fixed_code: "// FILE: bpf/lib/local_delivery.h\n/* SPDX-License-Identifier: (GPL-2.0-only\
+    \ OR BSD-2-Clause) */\n/* Copyright Authors of Cilium */\n\n#pragma once\n\n#include\
+    \ \"common.h\"\n#include \"dbg.h\"\n#include \"l3.h\"\n#include \"token_bucket.h\"\
+    \n\nDECLARE_CONFIG(bool, enable_netkit, \"Use netkit devices for pods\")\n\n/*\
+    \ Global map to jump into policy enforcement of sending endpoint */\nstruct {\n\
+    \t__uint(type, BPF_MAP_TYPE_PROG_ARRAY);\n\t__type(key, __u32);\n\t__type(value,\
+    \ __u32);\n\t__uint(pinning, LIBBPF_PIN_BY_NAME);\n\t__uint(max_entries, POLICY_PROG_MAP_SIZE);\n\
+    } cilium_egresscall_policy __section_maps_btf;\n\nstatic __always_inline __must_check\
+    \ int\ntail_call_egress_policy(struct __ctx_buff *ctx, __u16 endpoint_id)\n{\n\
+    \n// CONTEXT: local_delivery(struct __ctx_buff *ctx, __u32 seclabel,\n\n\t\tret\
+    \ = accept(ctx, ep->lxc_id);\n\t\tif (IS_ERR(ret))\n\t\t\treturn ret;\n\t}\n\n\
+    /*\n * When BPF host routing is enabled we need to check policies at source, as\
+    \ in\n * this case the skb is delivered directly to pod's namespace and the ingress\n\
+    \ * policy (the cil_to_container BPF program) is bypassed.\n */\n\tuse_fast_redirect\
+    \ = should_fast_redirect(ctx, from_host);\n\tif (is_defined(USE_BPF_PROG_FOR_INGRESS_POLICY)\
+    \ && !use_fast_redirect &&\n\t    /* We need to enforce policies at the source\
+    \ in case of netkit\n\t     * devices because we can't redirect to proxy from\
+    \ bpf_lxc. That\n\t     * needs a fix upstream.\n\t     */\n\t    (!CONFIG(enable_netkit)\
+    \ || ctx_get_ingress_ifindex(ctx) > 0)) {\n\t\tset_identity_mark(ctx, seclabel,\
+    \ magic);\n\n# if !defined(ENABLE_NODEPORT)\n\t\t/* In tunneling mode, we execute\
+    \ this code to send the packet from\n\t\t * cilium_vxlan to lxc*. If we're using\
+    \ kube-proxy, we don't want to use\n\t\t * redirect() because that would bypass\
+    \ conntrack and the reverse DNAT.\n\t\t * Thus, we send packets to the stack,\
+    \ but since they have the wrong\n\t\t * Ethernet addresses, we need to mark them\
+    \ as PACKET_HOST or the kernel\n\t\t * will drop them.\n\t\t */\n\t\tif (from_tunnel)\
+    \ {\n\t\t\tctx_change_type(ctx, PACKET_HOST);"
+  diff_summary: |-
+    bpf/lib/local_delivery.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: local_delivery(struct __ctx_buff *ctx, __u32 seclabel,.
+    - Commit subject: bpf: Workaround for netkit + L7 policy redirect failure.

@@ -1,0 +1,71 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-bcc-7962f1389a96
+source_kind: github_commit
+source:
+  url: https://github.com/iovisor/bcc/commit/7962f1389a967621361a74aa75f84ea9a5ac1e55
+  title: 'libbpf-tools: Fix misaligned pointer accesses in tcplife'
+  repository: https://github.com/iovisor/bcc
+  commit: 7962f1389a967621361a74aa75f84ea9a5ac1e55
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-bcc-7962f1389a96.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Fix copies perf-buffer event data in userspace tcplife.c before field access;
+    no BPF program verifier rejection is represented.
+raw:
+  case_id: github-commit-bcc-7962f1389a96
+  source: github_commits
+  repository: https://github.com/iovisor/bcc
+  commit_hash: 7962f1389a967621361a74aa75f84ea9a5ac1e55
+  commit_message: 'libbpf-tools: Fix misaligned pointer accesses in tcplife'
+  commit_date: '2023-12-04'
+  fix_type: alignment
+  buggy_code: "// FILE: libbpf-tools/tcplife.c\n// CONTEXT: static int libbpf_print_fn(enum\
+    \ libbpf_print_level level, const char *format, va\n\t\treturn 0;\n\treturn vfprintf(stderr,\
+    \ format, args);\n}\n\nstatic void sig_int(int signo)\n{\n\texiting = 1;\n}\n\n\
+    static void handle_event(void *ctx, int cpu, void *data, __u32 data_sz)\n{\n\t\
+    char ts[32], saddr[48], daddr[48];\n\tstruct event *e = data;\n\tstruct tm *tm;\n\
+    \ttime_t t;\n\n\tif (emit_timestamp) {\n\t\ttime(&t);\n\t\ttm = localtime(&t);\n\
+    \t\tstrftime(ts, sizeof(ts), \"%H:%M:%S\", tm);\n\t\tprintf(\"%8s \", ts);\n\t\
+    }\n\n\tinet_ntop(e->family, &e->saddr, saddr, sizeof(saddr));\n\tinet_ntop(e->family,\
+    \ &e->daddr, daddr, sizeof(daddr));\n\n\tprintf(\"%-7d %-16s %-*s %-5d %-*s %-5d\
+    \ %-6.2f %-6.2f %-.2f\\n\",\n\t       e->pid, e->comm, column_width, saddr, e->sport,\
+    \ column_width, daddr, e->dport,\n\t       (double)e->tx_b / 1024, (double)e->rx_b\
+    \ / 1024, (double)e->span_us / 1000);\n}\n\nstatic void handle_lost_events(void\
+    \ *ctx, int cpu, __u64 lost_cnt)\n{\n\tfprintf(stderr, \"lost %llu events on CPU\
+    \ #%d\\n\", lost_cnt, cpu);\n}\n\nint main(int argc, char **argv)\n{\n\tLIBBPF_OPTS(bpf_object_open_opts,\
+    \ open_opts);\n\tstatic const struct argp argp = {\n\t\t.options = opts,"
+  fixed_code: "// FILE: libbpf-tools/tcplife.c\n// CONTEXT: static int libbpf_print_fn(enum\
+    \ libbpf_print_level level, const char *format, va\n\t\treturn 0;\n\treturn vfprintf(stderr,\
+    \ format, args);\n}\n\nstatic void sig_int(int signo)\n{\n\texiting = 1;\n}\n\n\
+    static void handle_event(void *ctx, int cpu, void *data, __u32 data_sz)\n{\n\t\
+    char ts[32], saddr[48], daddr[48];\n\tstruct event e;\n\tstruct tm *tm;\n\ttime_t\
+    \ t;\n\n\tif (data_sz < sizeof(e)) {\n\t\tprintf(\"Error: packet too small\\n\"\
+    );\n\t\treturn;\n\t}\n\t/* Copy data as alignment in the perf buffer isn't guaranteed.\
+    \ */\n\tmemcpy(&e, data, sizeof(e));\n\n\tif (emit_timestamp) {\n\t\ttime(&t);\n\
+    \t\ttm = localtime(&t);\n\t\tstrftime(ts, sizeof(ts), \"%H:%M:%S\", tm);\n\t\t\
+    printf(\"%8s \", ts);\n\t}\n\n\tinet_ntop(e.family, &e.saddr, saddr, sizeof(saddr));\n\
+    \tinet_ntop(e.family, &e.daddr, daddr, sizeof(daddr));\n\n\tprintf(\"%-7d %-16s\
+    \ %-*s %-5d %-*s %-5d %-6.2f %-6.2f %-.2f\\n\",\n\t       e.pid, e.comm, column_width,\
+    \ saddr, e.sport, column_width, daddr, e.dport,\n\t       (double)e.tx_b / 1024,\
+    \ (double)e.rx_b / 1024, (double)e.span_us / 1000);\n}\n\nstatic void handle_lost_events(void\
+    \ *ctx, int cpu, __u64 lost_cnt)\n{\n\tfprintf(stderr, \"lost %llu events on CPU\
+    \ #%d\\n\", lost_cnt, cpu);\n}\n\nint main(int argc, char **argv)\n{\n\tLIBBPF_OPTS(bpf_object_open_opts,\
+    \ open_opts);\n\tstatic const struct argp argp = {\n\t\t.options = opts,"
+  diff_summary: |-
+    libbpf-tools/tcplife.c:
+    - Adjusted alignment declarations or stack layout to avoid misaligned accesses.
+    - Affected context: static int libbpf_print_fn(enum libbpf_print_level level, const char *format, va.
+    - Commit subject: libbpf-tools: Fix misaligned pointer accesses in tcplife.

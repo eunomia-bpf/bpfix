@@ -1,7 +1,7 @@
 # Root-Cause Label Audit
 
 This document records the current root-cause localization label status for the
-235 replayable cases in `bpfix-bench/manifest.yaml`.
+235 replayable cases in `bpfix-empirical/manifest.yaml`.
 
 Instruction localization is not the right denominator for every verifier
 failure. Some failures are best localized to a source span, declaration, map or
@@ -57,7 +57,7 @@ explicitly labelled as "all-case coverage". Instead:
   scored as routing/diagnostic-target correctness, not as instruction-local
   distance.
 
-The benchmark should distinguish "the tool found the rejected instruction" from
+The evaluation should distinguish "the tool found the rejected instruction" from
 "the tool found the root cause." Those are often different locations.
 
 ## Next Labeling Work

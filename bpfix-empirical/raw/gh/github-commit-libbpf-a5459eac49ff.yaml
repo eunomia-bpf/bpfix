@@ -1,0 +1,111 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-libbpf-a5459eac49ff
+source_kind: github_commit
+source:
+  url: https://github.com/libbpf/libbpf/commit/a5459eac49ff4681247528a4cc9afa854b0c3527
+  title: 'libbpf: Skip zeroed or null fields if not found in the kernel type.'
+  repository: https://github.com/libbpf/libbpf
+  commit: a5459eac49ff4681247528a4cc9afa854b0c3527
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-libbpf-a5459eac49ff.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: environment_required
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Raw has_verifier_log=false. The diff changes bpf_map__init_kern_struct_ops()
+    to skip zero/null struct_ops members missing from kernel BTF; reproducing the
+    behavior requires a matching struct_ops object and kernel BTF shape, neither captured
+    in the raw record.
+raw:
+  case_id: github-commit-libbpf-a5459eac49ff
+  source: github_commits
+  repository: https://github.com/libbpf/libbpf
+  commit_hash: a5459eac49ff4681247528a4cc9afa854b0c3527
+  commit_message: 'libbpf: Skip zeroed or null fields if not found in the kernel type.'
+  commit_date: '2024-03-13'
+  fix_type: bounds_check
+  buggy_code: "// FILE: src/libbpf.c\n// CONTEXT: static int bpf_map__init_kern_struct_ops(struct\
+    \ bpf_map *map)\n\n\tmember = btf_members(type);\n\tfor (i = 0; i < btf_vlen(type);\
+    \ i++, member++) {\n\t\tconst struct btf_type *mtype, *kern_mtype;\n\t\t__u32\
+    \ mtype_id, kern_mtype_id;\n\t\tvoid *mdata, *kern_mdata;\n\t\t__s64 msize, kern_msize;\n\
+    \t\t__u32 moff, kern_moff;\n\t\t__u32 kern_member_idx;\n\t\tconst char *mname;\n\
+    \n\t\tmname = btf__name_by_offset(btf, member->name_off);\n\t\tkern_member = find_member_by_name(kern_btf,\
+    \ kern_type, mname);\n\t\tif (!kern_member) {\n\t\t\tpr_warn(\"struct_ops init_kern\
+    \ %s: Cannot find member %s in kernel BTF\\n\",\n\t\t\t\tmap->name, mname);\n\t\
+    \t\treturn -ENOTSUP;\n\t\t}\n\n\t\tkern_member_idx = kern_member - btf_members(kern_type);\n\
+    \t\tif (btf_member_bitfield_size(type, i) ||\n\t\t    btf_member_bitfield_size(kern_type,\
+    \ kern_member_idx)) {\n\t\t\tpr_warn(\"struct_ops init_kern %s: bitfield %s is\
+    \ not supported\\n\",\n\t\t\t\tmap->name, mname);\n\t\t\treturn -ENOTSUP;\n\t\t\
+    }\n\n\t\tmoff = member->offset / 8;\n\t\tkern_moff = kern_member->offset / 8;\n\
+    \n\t\tmdata = data + moff;\n\t\tkern_mdata = kern_data + kern_moff;\n\n\t\tmtype\
+    \ = skip_mods_and_typedefs(btf, member->type, &mtype_id);\n\t\tkern_mtype = skip_mods_and_typedefs(kern_btf,\
+    \ kern_member->type,\n\t\t\t\t\t\t    &kern_mtype_id);\n\t\tif (BTF_INFO_KIND(mtype->info)\
+    \ !=\n\t\t    BTF_INFO_KIND(kern_mtype->info)) {\n\t\t\tpr_warn(\"struct_ops init_kern\
+    \ %s: Unmatched member type %s %u != %u(kernel)\\n\",\n\t\t\t\tmap->name, mname,\
+    \ BTF_INFO_KIND(mtype->info),\n\t\t\t\tBTF_INFO_KIND(kern_mtype->info));\n\t\t\
+    \treturn -ENOTSUP;\n\t\t}\n\n// CONTEXT: static int bpf_map__init_kern_struct_ops(struct\
+    \ bpf_map *map)\n\t\t\t\treturn -EINVAL;\n\t\t\t}\n\n\t\t\tst_ops->kern_func_off[i]\
+    \ = kern_data_off + kern_moff;\n\n\t\t\tpr_debug(\"struct_ops init_kern %s: func\
+    \ ptr %s is set to prog %s from data(+%u) to kern_data(+%u)\\n\",\n\t\t\t\t map->name,\
+    \ mname, prog->name, moff,\n\t\t\t\t kern_moff);\n\n\t\t\tcontinue;\n\t\t}\n\n\
+    \t\tmsize = btf__resolve_size(btf, mtype_id);\n\t\tkern_msize = btf__resolve_size(kern_btf,\
+    \ kern_mtype_id);\n\t\tif (msize < 0 || kern_msize < 0 || msize != kern_msize)\
+    \ {\n\t\t\tpr_warn(\"struct_ops init_kern %s: Error in size of member %s: %zd\
+    \ != %zd(kernel)\\n\",\n\t\t\t\tmap->name, mname, (ssize_t)msize,\n\t\t\t\t(ssize_t)kern_msize);\n\
+    \t\t\treturn -ENOTSUP;\n\t\t}\n\n\t\tpr_debug(\"struct_ops init_kern %s: copy\
+    \ %s %u bytes from data(+%u) to kern_data(+%u)\\n\",\n\t\t\t map->name, mname,\
+    \ (unsigned int)msize,\n\t\t\t moff, kern_moff);\n\t\tmemcpy(kern_mdata, mdata,\
+    \ msize);\n\t}"
+  fixed_code: "// FILE: src/libbpf.c\n// CONTEXT: static int bpf_map__init_kern_struct_ops(struct\
+    \ bpf_map *map)\n\n\tmember = btf_members(type);\n\tfor (i = 0; i < btf_vlen(type);\
+    \ i++, member++) {\n\t\tconst struct btf_type *mtype, *kern_mtype;\n\t\t__u32\
+    \ mtype_id, kern_mtype_id;\n\t\tvoid *mdata, *kern_mdata;\n\t\t__s64 msize, kern_msize;\n\
+    \t\t__u32 moff, kern_moff;\n\t\t__u32 kern_member_idx;\n\t\tconst char *mname;\n\
+    \n\t\tmname = btf__name_by_offset(btf, member->name_off);\n\t\tmoff = member->offset\
+    \ / 8;\n\t\tmdata = data + moff;\n\t\tmsize = btf__resolve_size(btf, member->type);\n\
+    \t\tif (msize < 0) {\n\t\t\tpr_warn(\"struct_ops init_kern %s: failed to resolve\
+    \ the size of member %s\\n\",\n\t\t\t\tmap->name, mname);\n\t\t\treturn msize;\n\
+    \t\t}\n\n\t\tkern_member = find_member_by_name(kern_btf, kern_type, mname);\n\t\
+    \tif (!kern_member) {\n\t\t\t/* Skip all zeros or null fields if they are not\n\
+    \t\t\t * presented in the kernel BTF.\n\t\t\t */\n\t\t\tif (libbpf_is_mem_zeroed(mdata,\
+    \ msize)) {\n\t\t\t\tpr_info(\"struct_ops %s: member %s not found in kernel, skipping\
+    \ it as it's set to zero\\n\",\n\t\t\t\t\tmap->name, mname);\n\t\t\t\tcontinue;\n\
+    \t\t\t}\n\n\t\t\tpr_warn(\"struct_ops init_kern %s: Cannot find member %s in kernel\
+    \ BTF\\n\",\n\t\t\t\tmap->name, mname);\n\t\t\treturn -ENOTSUP;\n\t\t}\n\n\t\t\
+    kern_member_idx = kern_member - btf_members(kern_type);\n\t\tif (btf_member_bitfield_size(type,\
+    \ i) ||\n\t\t    btf_member_bitfield_size(kern_type, kern_member_idx)) {\n\t\t\
+    \tpr_warn(\"struct_ops init_kern %s: bitfield %s is not supported\\n\",\n\t\t\t\
+    \tmap->name, mname);\n\t\t\treturn -ENOTSUP;\n\t\t}\n\n\t\tkern_moff = kern_member->offset\
+    \ / 8;\n\t\tkern_mdata = kern_data + kern_moff;\n\n\t\tmtype = skip_mods_and_typedefs(btf,\
+    \ member->type, &mtype_id);\n\t\tkern_mtype = skip_mods_and_typedefs(kern_btf,\
+    \ kern_member->type,\n\t\t\t\t\t\t    &kern_mtype_id);\n\t\tif (BTF_INFO_KIND(mtype->info)\
+    \ !=\n\t\t    BTF_INFO_KIND(kern_mtype->info)) {\n\t\t\tpr_warn(\"struct_ops init_kern\
+    \ %s: Unmatched member type %s %u != %u(kernel)\\n\",\n\t\t\t\tmap->name, mname,\
+    \ BTF_INFO_KIND(mtype->info),\n\t\t\t\tBTF_INFO_KIND(kern_mtype->info));\n\t\t\
+    \treturn -ENOTSUP;\n\t\t}\n\n// CONTEXT: static int bpf_map__init_kern_struct_ops(struct\
+    \ bpf_map *map)\n\t\t\t\treturn -EINVAL;\n\t\t\t}\n\n\t\t\tst_ops->kern_func_off[i]\
+    \ = kern_data_off + kern_moff;\n\n\t\t\tpr_debug(\"struct_ops init_kern %s: func\
+    \ ptr %s is set to prog %s from data(+%u) to kern_data(+%u)\\n\",\n\t\t\t\t map->name,\
+    \ mname, prog->name, moff,\n\t\t\t\t kern_moff);\n\n\t\t\tcontinue;\n\t\t}\n\n\
+    \t\tkern_msize = btf__resolve_size(kern_btf, kern_mtype_id);\n\t\tif (kern_msize\
+    \ < 0 || msize != kern_msize) {\n\t\t\tpr_warn(\"struct_ops init_kern %s: Error\
+    \ in size of member %s: %zd != %zd(kernel)\\n\",\n\t\t\t\tmap->name, mname, (ssize_t)msize,\n\
+    \t\t\t\t(ssize_t)kern_msize);\n\t\t\treturn -ENOTSUP;\n\t\t}\n\n\t\tpr_debug(\"\
+    struct_ops init_kern %s: copy %s %u bytes from data(+%u) to kern_data(+%u)\\n\"\
+    ,\n\t\t\t map->name, mname, (unsigned int)msize,\n\t\t\t moff, kern_moff);\n\t\
+    \tmemcpy(kern_mdata, mdata, msize);\n\t}"
+  diff_summary: |-
+    src/libbpf.c:
+    - Added explicit bounds or range guards so the verifier can prove the access size and offset.
+    - Affected context: static int bpf_map__init_kern_struct_ops(struct bpf_map *map).
+    - Commit subject: libbpf: Skip zeroed or null fields if not found in the kernel type..

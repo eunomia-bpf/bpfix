@@ -1,0 +1,151 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-libbpf-6d704c7ffd5d
+source_kind: github_commit
+source:
+  url: https://github.com/libbpf/libbpf/commit/6d704c7ffd5defb0ec655a687cc9fe0952164c2f
+  title: 'libbpf: Support triple-underscore flavors for kfunc relocation'
+  repository: https://github.com/libbpf/libbpf
+  commit: 6d704c7ffd5defb0ec655a687cc9fe0952164c2f
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-libbpf-6d704c7ffd5d.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: missing_source
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Raw diff supports triple-underscore flavor names for kfunc/ksym relocation
+    via bpf_core_essential_name_len() and essent_name. Reproduction would require
+    a BPF object using the flavored extern; none is present, and no verifier log is
+    captured.
+raw:
+  case_id: github-commit-libbpf-6d704c7ffd5d
+  source: github_commits
+  repository: https://github.com/libbpf/libbpf
+  commit_hash: 6d704c7ffd5defb0ec655a687cc9fe0952164c2f
+  commit_message: 'libbpf: Support triple-underscore flavors for kfunc relocation'
+  commit_date: '2023-08-17'
+  fix_type: alignment
+  buggy_code: "// FILE: src/libbpf.c\n// CONTEXT: enum kcfg_type {\n\tKCFG_BOOL,\n\
+    \tKCFG_INT,\n\tKCFG_TRISTATE,\n\tKCFG_CHAR_ARR,\n};\n\nstruct extern_desc {\n\t\
+    enum extern_type type;\n\tint sym_idx;\n\tint btf_id;\n\tint sec_btf_id;\n\tconst\
+    \ char *name;\n\tbool is_set;\n\tbool is_weak;\n\tunion {\n\t\tstruct {\n\t\t\t\
+    enum kcfg_type type;\n\t\t\tint sz;\n\t\t\tint align;\n\t\t\tint data_off;\n\t\
+    \t\tbool is_signed;\n\t\t} kcfg;\n\t\tstruct {\n\t\t\tunsigned long long addr;\n\
+    \n// CONTEXT: static int add_dummy_ksym_var(struct btf *btf)\n\t\tpr_warn(\"cannot\
+    \ create a dummy_ksym var\\n\");\n\n\treturn dummy_var_btf_id;\n}\n\nstatic int\
+    \ bpf_object__collect_externs(struct bpf_object *obj)\n{\n\tstruct btf_type *sec,\
+    \ *kcfg_sec = NULL, *ksym_sec = NULL;\n\tconst struct btf_type *t;\n\tstruct extern_desc\
+    \ *ext;\n\tint i, n, off, dummy_var_btf_id;\n\tconst char *ext_name, *sec_name;\n\
+    \tElf_Scn *scn;\n\tElf64_Shdr *sh;\n\n\tif (!obj->efile.symbols)\n\t\treturn 0;\n\
+    \n\tscn = elf_sec_by_idx(obj, obj->efile.symbols_shndx);\n\tsh = elf_sec_hdr(obj,\
+    \ scn);\n\tif (!sh || sh->sh_entsize != sizeof(Elf64_Sym))\n\t\treturn -LIBBPF_ERRNO__FORMAT;\n\
+    \n\tdummy_var_btf_id = add_dummy_ksym_var(obj->btf);\n\n// CONTEXT: static int\
+    \ bpf_object__collect_externs(struct bpf_object *obj)\n\n\t\text->btf_id = find_extern_btf_id(obj->btf,\
+    \ ext_name);\n\t\tif (ext->btf_id <= 0) {\n\t\t\tpr_warn(\"failed to find BTF\
+    \ for extern '%s': %d\\n\",\n\t\t\t\text_name, ext->btf_id);\n\t\t\treturn ext->btf_id;\n\
+    \t\t}\n\t\tt = btf__type_by_id(obj->btf, ext->btf_id);\n\t\text->name = btf__name_by_offset(obj->btf,\
+    \ t->name_off);\n\t\text->sym_idx = i;\n\t\text->is_weak = ELF64_ST_BIND(sym->st_info)\
+    \ == STB_WEAK;\n\n\t\text->sec_btf_id = find_extern_sec_btf_id(obj->btf, ext->btf_id);\n\
+    \t\tif (ext->sec_btf_id <= 0) {\n\t\t\tpr_warn(\"failed to find BTF for extern\
+    \ '%s' [%d] section: %d\\n\",\n\t\t\t\text_name, ext->btf_id, ext->sec_btf_id);\n\
+    \t\t\treturn ext->sec_btf_id;\n\t\t}\n\t\tsec = (void *)btf__type_by_id(obj->btf,\
+    \ ext->sec_btf_id);\n\t\tsec_name = btf__name_by_offset(obj->btf, sec->name_off);\n\
+    \n\t\tif (strcmp(sec_name, KCONFIG_SEC) == 0) {\n\t\t\tif (btf_is_func(t)) {\n\
+    \t\t\t\tpr_warn(\"extern function %s is unsupported under %s section\\n\",\n\n\
+    // CONTEXT: static int bpf_object__resolve_ksym_var_btf_id(struct bpf_object *obj,\n\
+    \nstatic int bpf_object__resolve_ksym_func_btf_id(struct bpf_object *obj,\n\t\t\
+    \t\t\t\tstruct extern_desc *ext)\n{\n\tint local_func_proto_id, kfunc_proto_id,\
+    \ kfunc_id;\n\tstruct module_btf *mod_btf = NULL;\n\tconst struct btf_type *kern_func;\n\
+    \tstruct btf *kern_btf = NULL;\n\tint ret;\n\n\tlocal_func_proto_id = ext->ksym.type_id;\n\
+    \n\tkfunc_id = find_ksym_btf_id(obj, ext->name, BTF_KIND_FUNC, &kern_btf, &mod_btf);\n\
+    \tif (kfunc_id < 0) {\n\t\tif (kfunc_id == -ESRCH && ext->is_weak)\n\t\t\treturn\
+    \ 0;\n\t\tpr_warn(\"extern (func ksym) '%s': not found in kernel or module BTFs\\\
+    n\",\n\t\t\text->name);\n\t\treturn kfunc_id;\n\t}\n\n\tkern_func = btf__type_by_id(kern_btf,\
+    \ kfunc_id);\n\tkfunc_proto_id = kern_func->type;\n\n\tret = bpf_core_types_are_compat(obj->btf,\
+    \ local_func_proto_id,\n\t\t\t\t\tkern_btf, kfunc_proto_id);\n\tif (ret <= 0)\
+    \ {\n\t\tpr_warn(\"extern (func ksym) '%s': func_proto [%d] incompatible with\
+    \ %s [%d]\\n\",\n\t\t\text->name, local_func_proto_id,\n\t\t\tmod_btf ? mod_btf->name\
+    \ : \"vmlinux\", kfunc_proto_id);\n\t\treturn -EINVAL;\n\t}\n\n\t/* set index\
+    \ for module BTF fd in fd_array, if unset */\n\tif (mod_btf && !mod_btf->fd_array_idx)\
+    \ {\n\t\t/* insn->off is s16 */\n\t\tif (obj->fd_array_cnt == INT16_MAX) {\n\t\
+    \t\tpr_warn(\"extern (func ksym) '%s': module BTF fd index %d too big to fit in\
+    \ bpf_insn offset\\n\",\n\t\t\t\text->name, mod_btf->fd_array_idx);\n\n// CONTEXT:\
+    \ void bpf_object__close(struct bpf_object *obj)\n\n\tbpf_gen__free(obj->gen_loader);\n\
+    \tbpf_object__elf_finish(obj);\n\tbpf_object_unload(obj);\n\tbtf__free(obj->btf);\n\
+    \tbtf_ext__free(obj->btf_ext);\n\n\tfor (i = 0; i < obj->nr_maps; i++)\n\t\tbpf_map__destroy(&obj->maps[i]);\n\
+    \n\tzfree(&obj->btf_custom_path);\n\tzfree(&obj->kconfig);\n\tzfree(&obj->externs);\n\
+    \tobj->nr_extern = 0;\n\n\tzfree(&obj->maps);\n\tobj->nr_maps = 0;\n\n\tif (obj->programs\
+    \ && obj->nr_programs) {\n\t\tfor (i = 0; i < obj->nr_programs; i++)\n\t\t\tbpf_program__exit(&obj->programs[i]);\n\
+    \t}\n\tzfree(&obj->programs);"
+  fixed_code: "// FILE: src/libbpf.c\n// CONTEXT: enum kcfg_type {\n\tKCFG_BOOL,\n\
+    \tKCFG_INT,\n\tKCFG_TRISTATE,\n\tKCFG_CHAR_ARR,\n};\n\nstruct extern_desc {\n\t\
+    enum extern_type type;\n\tint sym_idx;\n\tint btf_id;\n\tint sec_btf_id;\n\tconst\
+    \ char *name;\n\tchar *essent_name;\n\tbool is_set;\n\tbool is_weak;\n\tunion\
+    \ {\n\t\tstruct {\n\t\t\tenum kcfg_type type;\n\t\t\tint sz;\n\t\t\tint align;\n\
+    \t\t\tint data_off;\n\t\t\tbool is_signed;\n\t\t} kcfg;\n\t\tstruct {\n\t\t\t\
+    unsigned long long addr;\n\n// CONTEXT: static int add_dummy_ksym_var(struct btf\
+    \ *btf)\n\t\tpr_warn(\"cannot create a dummy_ksym var\\n\");\n\n\treturn dummy_var_btf_id;\n\
+    }\n\nstatic int bpf_object__collect_externs(struct bpf_object *obj)\n{\n\tstruct\
+    \ btf_type *sec, *kcfg_sec = NULL, *ksym_sec = NULL;\n\tconst struct btf_type\
+    \ *t;\n\tstruct extern_desc *ext;\n\tint i, n, off, dummy_var_btf_id;\n\tconst\
+    \ char *ext_name, *sec_name;\n\tsize_t ext_essent_len;\n\tElf_Scn *scn;\n\tElf64_Shdr\
+    \ *sh;\n\n\tif (!obj->efile.symbols)\n\t\treturn 0;\n\n\tscn = elf_sec_by_idx(obj,\
+    \ obj->efile.symbols_shndx);\n\tsh = elf_sec_hdr(obj, scn);\n\tif (!sh || sh->sh_entsize\
+    \ != sizeof(Elf64_Sym))\n\t\treturn -LIBBPF_ERRNO__FORMAT;\n\n\tdummy_var_btf_id\
+    \ = add_dummy_ksym_var(obj->btf);\n\n// CONTEXT: static int bpf_object__collect_externs(struct\
+    \ bpf_object *obj)\n\n\t\text->btf_id = find_extern_btf_id(obj->btf, ext_name);\n\
+    \t\tif (ext->btf_id <= 0) {\n\t\t\tpr_warn(\"failed to find BTF for extern '%s':\
+    \ %d\\n\",\n\t\t\t\text_name, ext->btf_id);\n\t\t\treturn ext->btf_id;\n\t\t}\n\
+    \t\tt = btf__type_by_id(obj->btf, ext->btf_id);\n\t\text->name = btf__name_by_offset(obj->btf,\
+    \ t->name_off);\n\t\text->sym_idx = i;\n\t\text->is_weak = ELF64_ST_BIND(sym->st_info)\
+    \ == STB_WEAK;\n\n\t\text_essent_len = bpf_core_essential_name_len(ext->name);\n\
+    \t\text->essent_name = NULL;\n\t\tif (ext_essent_len != strlen(ext->name)) {\n\
+    \t\t\text->essent_name = strndup(ext->name, ext_essent_len);\n\t\t\tif (!ext->essent_name)\n\
+    \t\t\t\treturn -ENOMEM;\n\t\t}\n\n\t\text->sec_btf_id = find_extern_sec_btf_id(obj->btf,\
+    \ ext->btf_id);\n\t\tif (ext->sec_btf_id <= 0) {\n\t\t\tpr_warn(\"failed to find\
+    \ BTF for extern '%s' [%d] section: %d\\n\",\n\t\t\t\text_name, ext->btf_id, ext->sec_btf_id);\n\
+    \t\t\treturn ext->sec_btf_id;\n\t\t}\n\t\tsec = (void *)btf__type_by_id(obj->btf,\
+    \ ext->sec_btf_id);\n\t\tsec_name = btf__name_by_offset(obj->btf, sec->name_off);\n\
+    \n\t\tif (strcmp(sec_name, KCONFIG_SEC) == 0) {\n\t\t\tif (btf_is_func(t)) {\n\
+    \t\t\t\tpr_warn(\"extern function %s is unsupported under %s section\\n\",\n\n\
+    // CONTEXT: static int bpf_object__resolve_ksym_var_btf_id(struct bpf_object *obj,\n\
+    \nstatic int bpf_object__resolve_ksym_func_btf_id(struct bpf_object *obj,\n\t\t\
+    \t\t\t\tstruct extern_desc *ext)\n{\n\tint local_func_proto_id, kfunc_proto_id,\
+    \ kfunc_id;\n\tstruct module_btf *mod_btf = NULL;\n\tconst struct btf_type *kern_func;\n\
+    \tstruct btf *kern_btf = NULL;\n\tint ret;\n\n\tlocal_func_proto_id = ext->ksym.type_id;\n\
+    \n\tkfunc_id = find_ksym_btf_id(obj, ext->essent_name ?: ext->name, BTF_KIND_FUNC,\
+    \ &kern_btf,\n\t\t\t\t    &mod_btf);\n\tif (kfunc_id < 0) {\n\t\tif (kfunc_id\
+    \ == -ESRCH && ext->is_weak)\n\t\t\treturn 0;\n\t\tpr_warn(\"extern (func ksym)\
+    \ '%s': not found in kernel or module BTFs\\n\",\n\t\t\text->name);\n\t\treturn\
+    \ kfunc_id;\n\t}\n\n\tkern_func = btf__type_by_id(kern_btf, kfunc_id);\n\tkfunc_proto_id\
+    \ = kern_func->type;\n\n\tret = bpf_core_types_are_compat(obj->btf, local_func_proto_id,\n\
+    \t\t\t\t\tkern_btf, kfunc_proto_id);\n\tif (ret <= 0) {\n\t\tif (ext->is_weak)\n\
+    \t\t\treturn 0;\n\n\t\tpr_warn(\"extern (func ksym) '%s': func_proto [%d] incompatible\
+    \ with %s [%d]\\n\",\n\t\t\text->name, local_func_proto_id,\n\t\t\tmod_btf ? mod_btf->name\
+    \ : \"vmlinux\", kfunc_proto_id);\n\t\treturn -EINVAL;\n\t}\n\n\t/* set index\
+    \ for module BTF fd in fd_array, if unset */\n\tif (mod_btf && !mod_btf->fd_array_idx)\
+    \ {\n\t\t/* insn->off is s16 */\n\t\tif (obj->fd_array_cnt == INT16_MAX) {\n\t\
+    \t\tpr_warn(\"extern (func ksym) '%s': module BTF fd index %d too big to fit in\
+    \ bpf_insn offset\\n\",\n\t\t\t\text->name, mod_btf->fd_array_idx);\n\n// CONTEXT:\
+    \ void bpf_object__close(struct bpf_object *obj)\n\n\tbpf_gen__free(obj->gen_loader);\n\
+    \tbpf_object__elf_finish(obj);\n\tbpf_object_unload(obj);\n\tbtf__free(obj->btf);\n\
+    \tbtf_ext__free(obj->btf_ext);\n\n\tfor (i = 0; i < obj->nr_maps; i++)\n\t\tbpf_map__destroy(&obj->maps[i]);\n\
+    \n\tzfree(&obj->btf_custom_path);\n\tzfree(&obj->kconfig);\n\n\tfor (i = 0; i\
+    \ < obj->nr_extern; i++)\n\t\tzfree(&obj->externs[i].essent_name);\n\n\tzfree(&obj->externs);\n\
+    \tobj->nr_extern = 0;\n\n\tzfree(&obj->maps);\n\tobj->nr_maps = 0;\n\n\tif (obj->programs\
+    \ && obj->nr_programs) {\n\t\tfor (i = 0; i < obj->nr_programs; i++)\n\t\t\tbpf_program__exit(&obj->programs[i]);\n\
+    \t}\n\tzfree(&obj->programs);"
+  diff_summary: |-
+    src/libbpf.c:
+    - Adjusted alignment declarations or stack layout to avoid misaligned accesses.
+    - Affected context: enum kcfg_type {, static int add_dummy_ksym_var(struct btf *btf), static int bpf_object__collect_externs(struct bpf_object *obj).
+    - Commit subject: libbpf: Support triple-underscore flavors for kfunc relocation.

@@ -1,0 +1,199 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-libbpf-6d7acdae6de8
+source_kind: github_commit
+source:
+  url: https://github.com/libbpf/libbpf/commit/6d7acdae6de882197ad220b065b7fc0886a5dc25
+  title: 'libbpf: teach libbpf about log_level bit 2'
+  repository: https://github.com/libbpf/libbpf
+  commit: 6d7acdae6de882197ad220b065b7fc0886a5dc25
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-libbpf-6d7acdae6de8.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Raw diff teaches libbpf about verifier log_level bit 2 and increases BPF_LOG_BUF_SIZE.
+    It changes log plumbing and accepted option values, but supplies no rejected BPF
+    program or terminal verifier error.
+raw:
+  case_id: github-commit-libbpf-6d7acdae6de8
+  source: github_commits
+  repository: https://github.com/libbpf/libbpf
+  commit_hash: 6d7acdae6de882197ad220b065b7fc0886a5dc25
+  commit_message: 'libbpf: teach libbpf about log_level bit 2'
+  commit_date: '2019-04-01'
+  fix_type: bounds_check
+  buggy_code: "// FILE: src/bpf.c\n// CONTEXT: int bpf_load_program_xattr(const struct\
+    \ bpf_load_program_attr *load_attr,\n\t\t\t   char *log_buf, size_t log_buf_sz)\n\
+    {\n\tvoid *finfo = NULL, *linfo = NULL;\n\tunion bpf_attr attr;\n\t__u32 log_level;\n\
+    \t__u32 name_len;\n\tint fd;\n\n\tif (!load_attr || !log_buf != !log_buf_sz)\n\
+    \t\treturn -EINVAL;\n\n\tlog_level = load_attr->log_level;\n\tif (log_level >\
+    \ 2 || (log_level && !log_buf))\n\t\treturn -EINVAL;\n\n\tname_len = load_attr->name\
+    \ ? strlen(load_attr->name) : 0;\n\n\tmemset(&attr, 0, sizeof(attr));\n\tattr.prog_type\
+    \ = load_attr->prog_type;\n\tattr.expected_attach_type = load_attr->expected_attach_type;\n\
+    \tattr.insn_cnt = (__u32)load_attr->insns_cnt;\n\tattr.insns = ptr_to_u64(load_attr->insns);\n\
+    \tattr.license = ptr_to_u64(load_attr->license);\n\n\tattr.log_level = log_level;\n\
+    \n// FILE: src/bpf.h\n// CONTEXT: struct bpf_load_program_attr {\n\tconst void\
+    \ *func_info;\n\t__u32 func_info_cnt;\n\t__u32 line_info_rec_size;\n\tconst void\
+    \ *line_info;\n\t__u32 line_info_cnt;\n\t__u32 log_level;\n};\n\n/* Flags to direct\
+    \ loading requirements */\n#define MAPS_RELAX_COMPAT\t0x01\n\n/* Recommend log\
+    \ buffer size */\n#define BPF_LOG_BUF_SIZE (256 * 1024)\nLIBBPF_API int\nbpf_load_program_xattr(const\
+    \ struct bpf_load_program_attr *load_attr,\n\t\t       char *log_buf, size_t log_buf_sz);\n\
+    LIBBPF_API int bpf_load_program(enum bpf_prog_type type,\n\t\t\t\tconst struct\
+    \ bpf_insn *insns, size_t insns_cnt,\n\t\t\t\tconst char *license, __u32 kern_version,\n\
+    \t\t\t\tchar *log_buf, size_t log_buf_sz);\nLIBBPF_API int bpf_verify_program(enum\
+    \ bpf_prog_type type,\n\t\t\t\t  const struct bpf_insn *insns,\n\t\t\t\t  size_t\
+    \ insns_cnt, __u32 prog_flags,\n\t\t\t\t  const char *license, __u32 kern_version,\n\
+    \t\t\t\t  char *log_buf, size_t log_buf_sz,\n\n// FILE: src/libbpf.c\n// CONTEXT:\
+    \ struct bpf_program {\n\tstruct reloc_desc {\n\t\tenum {\n\t\t\tRELO_LD64,\n\t\
+    \t\tRELO_CALL,\n\t\t} type;\n\t\tint insn_idx;\n\t\tunion {\n\t\t\tint map_idx;\n\
+    \t\t\tint text_off;\n\t\t};\n\t} *reloc_desc;\n\tint nr_reloc;\n\n\tstruct {\n\
+    \t\tint nr;\n\t\tint *fds;\n\t} instances;\n\tbpf_program_prep_t preprocessor;\n\
+    \n\tstruct bpf_object *obj;\n\tvoid *priv;\n\tbpf_program_clear_priv_t clear_priv;\n\
+    \n\tenum bpf_attach_type expected_attach_type;\n\n// CONTEXT: static int bpf_object__collect_reloc(struct\
+    \ bpf_object *obj)\n\t\tif (err)\n\t\t\treturn err;\n\t}\n\treturn 0;\n}\n\nstatic\
+    \ int\nload_program(struct bpf_program *prog, struct bpf_insn *insns, int insns_cnt,\n\
+    \t     char *license, __u32 kern_version, int *pfd)\n{\n\tstruct bpf_load_program_attr\
+    \ load_attr;\n\tchar *cp, errmsg[STRERR_BUFSIZE];\n\tchar *log_buf;\n\tint ret;\n\
+    \n\tmemset(&load_attr, 0, sizeof(struct bpf_load_program_attr));\n\tload_attr.prog_type\
+    \ = prog->type;\n\tload_attr.expected_attach_type = prog->expected_attach_type;\n\
+    \tif (prog->caps->name)\n\t\tload_attr.name = prog->name;\n\tload_attr.insns =\
+    \ insns;\n\tload_attr.insns_cnt = insns_cnt;\n\tload_attr.license = license;\n\
+    \tload_attr.kern_version = kern_version;\n\tload_attr.prog_ifindex = prog->prog_ifindex;\n\
+    \tload_attr.prog_btf_fd = prog->btf_fd >= 0 ? prog->btf_fd : 0;\n\tload_attr.func_info\
+    \ = prog->func_info;\n\tload_attr.func_info_rec_size = prog->func_info_rec_size;\n\
+    \tload_attr.func_info_cnt = prog->func_info_cnt;\n\tload_attr.line_info = prog->line_info;\n\
+    \tload_attr.line_info_rec_size = prog->line_info_rec_size;\n\tload_attr.line_info_cnt\
+    \ = prog->line_info_cnt;\n\tif (!load_attr.insns || !load_attr.insns_cnt)\n\t\t\
+    return -EINVAL;\n\n\tlog_buf = malloc(BPF_LOG_BUF_SIZE);\n\tif (!log_buf)\n\t\t\
+    pr_warning(\"Alloc log buffer for bpf loader error, continue without log\\n\"\
+    );\n\n\tret = bpf_load_program_xattr(&load_attr, log_buf, BPF_LOG_BUF_SIZE);\n\
+    \n\tif (ret >= 0) {\n\t\t*pfd = ret;\n\t\tret = 0;\n\t\tgoto out;\n\t}\n\n\tret\
+    \ = -LIBBPF_ERRNO__LOAD;\n\tcp = libbpf_strerror_r(errno, errmsg, sizeof(errmsg));\n\
+    \tpr_warning(\"load bpf program failed: %s\\n\", cp);\n\n\tif (log_buf && log_buf[0]\
+    \ != '\\0') {\n\t\tret = -LIBBPF_ERRNO__VERIFY;\n\t\tpr_warning(\"-- BEGIN DUMP\
+    \ LOG ---\\n\");\n\t\tpr_warning(\"\\n%s\\n\", log_buf);\n\t\tpr_warning(\"--\
+    \ END LOG --\\n\");\n\t} else if (load_attr.insns_cnt >= BPF_MAXINSNS) {\n\t\t\
+    pr_warning(\"Program too large (%zu insns), at most %d insns\\n\",\n\t\t\t   load_attr.insns_cnt,\
+    \ BPF_MAXINSNS);\n\n// CONTEXT: int bpf_prog_load_xattr(const struct bpf_prog_load_attr\
+    \ *attr,\n\t\t\terr = bpf_program__identify_section(prog, &prog_type,\n\t\t\t\t\
+    \t\t\t    &expected_attach_type);\n\t\t\tif (err < 0) {\n\t\t\t\tbpf_object__close(obj);\n\
+    \t\t\t\treturn -EINVAL;\n\t\t\t}\n\t\t}\n\n\t\tbpf_program__set_type(prog, prog_type);\n\
+    \t\tbpf_program__set_expected_attach_type(prog,\n\t\t\t\t\t\t      expected_attach_type);\n\
+    \n\t\tif (!first_prog)\n\t\t\tfirst_prog = prog;\n\t}\n\n\tbpf_object__for_each_map(map,\
+    \ obj) {\n\t\tif (!bpf_map__is_offload_neutral(map))\n\t\t\tmap->map_ifindex =\
+    \ attr->ifindex;\n\t}\n\n\tif (!first_prog) {\n\t\tpr_warning(\"object file doesn't\
+    \ contain bpf program\\n\");\n\t\tbpf_object__close(obj);\n\n// FILE: src/libbpf.h\n\
+    // CONTEXT: LIBBPF_API void bpf_map__set_ifindex(struct bpf_map *map, __u32 ifindex);\n\
+    LIBBPF_API int bpf_map__pin(struct bpf_map *map, const char *path);\nLIBBPF_API\
+    \ int bpf_map__unpin(struct bpf_map *map, const char *path);\n\nLIBBPF_API int\
+    \ bpf_map__set_inner_map_fd(struct bpf_map *map, int fd);\n\nLIBBPF_API long libbpf_get_error(const\
+    \ void *ptr);\n\nstruct bpf_prog_load_attr {\n\tconst char *file;\n\tenum bpf_prog_type\
+    \ prog_type;\n\tenum bpf_attach_type expected_attach_type;\n\tint ifindex;\n};\n\
+    \nLIBBPF_API int bpf_prog_load_xattr(const struct bpf_prog_load_attr *attr,\n\t\
+    \t\t\t   struct bpf_object **pobj, int *prog_fd);\nLIBBPF_API int bpf_prog_load(const\
+    \ char *file, enum bpf_prog_type type,\n\t\t\t     struct bpf_object **pobj, int\
+    \ *prog_fd);\n\nLIBBPF_API int bpf_set_link_xdp_fd(int ifindex, int fd, __u32\
+    \ flags);\nLIBBPF_API int bpf_get_link_xdp_id(int ifindex, __u32 *prog_id, __u32\
+    \ flags);\n\nenum bpf_perf_event_ret {\n\tLIBBPF_PERF_EVENT_DONE\t= 0,"
+  fixed_code: "// FILE: src/bpf.c\n// CONTEXT: int bpf_load_program_xattr(const struct\
+    \ bpf_load_program_attr *load_attr,\n\t\t\t   char *log_buf, size_t log_buf_sz)\n\
+    {\n\tvoid *finfo = NULL, *linfo = NULL;\n\tunion bpf_attr attr;\n\t__u32 log_level;\n\
+    \t__u32 name_len;\n\tint fd;\n\n\tif (!load_attr || !log_buf != !log_buf_sz)\n\
+    \t\treturn -EINVAL;\n\n\tlog_level = load_attr->log_level;\n\tif (log_level >\
+    \ (4 | 2 | 1) || (log_level && !log_buf))\n\t\treturn -EINVAL;\n\n\tname_len =\
+    \ load_attr->name ? strlen(load_attr->name) : 0;\n\n\tmemset(&attr, 0, sizeof(attr));\n\
+    \tattr.prog_type = load_attr->prog_type;\n\tattr.expected_attach_type = load_attr->expected_attach_type;\n\
+    \tattr.insn_cnt = (__u32)load_attr->insns_cnt;\n\tattr.insns = ptr_to_u64(load_attr->insns);\n\
+    \tattr.license = ptr_to_u64(load_attr->license);\n\n\tattr.log_level = log_level;\n\
+    \n// FILE: src/bpf.h\n// CONTEXT: struct bpf_load_program_attr {\n\tconst void\
+    \ *func_info;\n\t__u32 func_info_cnt;\n\t__u32 line_info_rec_size;\n\tconst void\
+    \ *line_info;\n\t__u32 line_info_cnt;\n\t__u32 log_level;\n};\n\n/* Flags to direct\
+    \ loading requirements */\n#define MAPS_RELAX_COMPAT\t0x01\n\n/* Recommend log\
+    \ buffer size */\n#define BPF_LOG_BUF_SIZE (16 * 1024 * 1024) /* verifier maximum\
+    \ in kernels <= 5.1 */\nLIBBPF_API int\nbpf_load_program_xattr(const struct bpf_load_program_attr\
+    \ *load_attr,\n\t\t       char *log_buf, size_t log_buf_sz);\nLIBBPF_API int bpf_load_program(enum\
+    \ bpf_prog_type type,\n\t\t\t\tconst struct bpf_insn *insns, size_t insns_cnt,\n\
+    \t\t\t\tconst char *license, __u32 kern_version,\n\t\t\t\tchar *log_buf, size_t\
+    \ log_buf_sz);\nLIBBPF_API int bpf_verify_program(enum bpf_prog_type type,\n\t\
+    \t\t\t  const struct bpf_insn *insns,\n\t\t\t\t  size_t insns_cnt, __u32 prog_flags,\n\
+    \t\t\t\t  const char *license, __u32 kern_version,\n\t\t\t\t  char *log_buf, size_t\
+    \ log_buf_sz,\n\n// FILE: src/libbpf.c\n// CONTEXT: struct bpf_program {\n\tstruct\
+    \ reloc_desc {\n\t\tenum {\n\t\t\tRELO_LD64,\n\t\t\tRELO_CALL,\n\t\t} type;\n\t\
+    \tint insn_idx;\n\t\tunion {\n\t\t\tint map_idx;\n\t\t\tint text_off;\n\t\t};\n\
+    \t} *reloc_desc;\n\tint nr_reloc;\n\tint log_level;\n\n\tstruct {\n\t\tint nr;\n\
+    \t\tint *fds;\n\t} instances;\n\tbpf_program_prep_t preprocessor;\n\n\tstruct\
+    \ bpf_object *obj;\n\tvoid *priv;\n\tbpf_program_clear_priv_t clear_priv;\n\n\t\
+    enum bpf_attach_type expected_attach_type;\n\n// CONTEXT: static int bpf_object__collect_reloc(struct\
+    \ bpf_object *obj)\n\t\tif (err)\n\t\t\treturn err;\n\t}\n\treturn 0;\n}\n\nstatic\
+    \ int\nload_program(struct bpf_program *prog, struct bpf_insn *insns, int insns_cnt,\n\
+    \t     char *license, __u32 kern_version, int *pfd)\n{\n\tstruct bpf_load_program_attr\
+    \ load_attr;\n\tchar *cp, errmsg[STRERR_BUFSIZE];\n\tint log_buf_size = BPF_LOG_BUF_SIZE;\n\
+    \tchar *log_buf;\n\tint ret;\n\n\tmemset(&load_attr, 0, sizeof(struct bpf_load_program_attr));\n\
+    \tload_attr.prog_type = prog->type;\n\tload_attr.expected_attach_type = prog->expected_attach_type;\n\
+    \tif (prog->caps->name)\n\t\tload_attr.name = prog->name;\n\tload_attr.insns =\
+    \ insns;\n\tload_attr.insns_cnt = insns_cnt;\n\tload_attr.license = license;\n\
+    \tload_attr.kern_version = kern_version;\n\tload_attr.prog_ifindex = prog->prog_ifindex;\n\
+    \tload_attr.prog_btf_fd = prog->btf_fd >= 0 ? prog->btf_fd : 0;\n\tload_attr.func_info\
+    \ = prog->func_info;\n\tload_attr.func_info_rec_size = prog->func_info_rec_size;\n\
+    \tload_attr.func_info_cnt = prog->func_info_cnt;\n\tload_attr.line_info = prog->line_info;\n\
+    \tload_attr.line_info_rec_size = prog->line_info_rec_size;\n\tload_attr.line_info_cnt\
+    \ = prog->line_info_cnt;\n\tload_attr.log_level = prog->log_level;\n\tif (!load_attr.insns\
+    \ || !load_attr.insns_cnt)\n\t\treturn -EINVAL;\n\nretry_load:\n\tlog_buf = malloc(log_buf_size);\n\
+    \tif (!log_buf)\n\t\tpr_warning(\"Alloc log buffer for bpf loader error, continue\
+    \ without log\\n\");\n\n\tret = bpf_load_program_xattr(&load_attr, log_buf, log_buf_size);\n\
+    \n\tif (ret >= 0) {\n\t\tif (load_attr.log_level)\n\t\t\tpr_debug(\"verifier log:\\\
+    n%s\", log_buf);\n\t\t*pfd = ret;\n\t\tret = 0;\n\t\tgoto out;\n\t}\n\n\tif (errno\
+    \ == ENOSPC) {\n\t\tlog_buf_size <<= 1;\n\t\tfree(log_buf);\n\t\tgoto retry_load;\n\
+    \t}\n\tret = -LIBBPF_ERRNO__LOAD;\n\tcp = libbpf_strerror_r(errno, errmsg, sizeof(errmsg));\n\
+    \tpr_warning(\"load bpf program failed: %s\\n\", cp);\n\n\tif (log_buf && log_buf[0]\
+    \ != '\\0') {\n\t\tret = -LIBBPF_ERRNO__VERIFY;\n\t\tpr_warning(\"-- BEGIN DUMP\
+    \ LOG ---\\n\");\n\t\tpr_warning(\"\\n%s\\n\", log_buf);\n\t\tpr_warning(\"--\
+    \ END LOG --\\n\");\n\t} else if (load_attr.insns_cnt >= BPF_MAXINSNS) {\n\t\t\
+    pr_warning(\"Program too large (%zu insns), at most %d insns\\n\",\n\t\t\t   load_attr.insns_cnt,\
+    \ BPF_MAXINSNS);\n\n// CONTEXT: int bpf_prog_load_xattr(const struct bpf_prog_load_attr\
+    \ *attr,\n\t\t\terr = bpf_program__identify_section(prog, &prog_type,\n\t\t\t\t\
+    \t\t\t    &expected_attach_type);\n\t\t\tif (err < 0) {\n\t\t\t\tbpf_object__close(obj);\n\
+    \t\t\t\treturn -EINVAL;\n\t\t\t}\n\t\t}\n\n\t\tbpf_program__set_type(prog, prog_type);\n\
+    \t\tbpf_program__set_expected_attach_type(prog,\n\t\t\t\t\t\t      expected_attach_type);\n\
+    \n\t\tprog->log_level = attr->log_level;\n\t\tif (!first_prog)\n\t\t\tfirst_prog\
+    \ = prog;\n\t}\n\n\tbpf_object__for_each_map(map, obj) {\n\t\tif (!bpf_map__is_offload_neutral(map))\n\
+    \t\t\tmap->map_ifindex = attr->ifindex;\n\t}\n\n\tif (!first_prog) {\n\t\tpr_warning(\"\
+    object file doesn't contain bpf program\\n\");\n\t\tbpf_object__close(obj);\n\n\
+    // FILE: src/libbpf.h\n// CONTEXT: LIBBPF_API void bpf_map__set_ifindex(struct\
+    \ bpf_map *map, __u32 ifindex);\nLIBBPF_API int bpf_map__pin(struct bpf_map *map,\
+    \ const char *path);\nLIBBPF_API int bpf_map__unpin(struct bpf_map *map, const\
+    \ char *path);\n\nLIBBPF_API int bpf_map__set_inner_map_fd(struct bpf_map *map,\
+    \ int fd);\n\nLIBBPF_API long libbpf_get_error(const void *ptr);\n\nstruct bpf_prog_load_attr\
+    \ {\n\tconst char *file;\n\tenum bpf_prog_type prog_type;\n\tenum bpf_attach_type\
+    \ expected_attach_type;\n\tint ifindex;\n\tint log_level;\n};\n\nLIBBPF_API int\
+    \ bpf_prog_load_xattr(const struct bpf_prog_load_attr *attr,\n\t\t\t\t   struct\
+    \ bpf_object **pobj, int *prog_fd);\nLIBBPF_API int bpf_prog_load(const char *file,\
+    \ enum bpf_prog_type type,\n\t\t\t     struct bpf_object **pobj, int *prog_fd);\n\
+    \nLIBBPF_API int bpf_set_link_xdp_fd(int ifindex, int fd, __u32 flags);\nLIBBPF_API\
+    \ int bpf_get_link_xdp_id(int ifindex, __u32 *prog_id, __u32 flags);\n\nenum bpf_perf_event_ret\
+    \ {\n\tLIBBPF_PERF_EVENT_DONE\t= 0,"
+  diff_summary: |-
+    src/bpf.c:
+    - Added explicit bounds or range guards so the verifier can prove the access size and offset.
+    - Affected context: int bpf_load_program_xattr(const struct bpf_load_program_attr *load_attr,.
+    src/bpf.h:
+    - Added explicit bounds or range guards so the verifier can prove the access size and offset.
+    - Affected context: struct bpf_load_program_attr {.
+    src/libbpf.c:
+    - Added explicit bounds or range guards so the verifier can prove the access size and offset.
+    - Affected context: struct bpf_program {, static int bpf_object__collect_reloc(struct bpf_object *obj), int bpf_prog_load_xattr(const struct bpf_prog_load_attr *attr,.
+    src/libbpf.h:
+    - Added explicit bounds or range guards so the verifier can prove the access size and offset.
+    - Affected context: LIBBPF_API void bpf_map__set_ifindex(struct bpf_map *map, __u32 ifindex);.
+    - Commit subject: libbpf: teach libbpf about log_level bit 2.

@@ -1,0 +1,417 @@
+schema_version: bpfix.raw_external/v1
+raw_id: stackoverflow-72575736
+source_kind: stackoverflow
+source:
+  url: https://stackoverflow.com/questions/72575736/linux-kernel-5-10-verifier-rejects-ebpf-xdp-program-that-is-fine-for-kernel-5-13
+  title: Linux Kernel 5.10 verifier rejects eBPF XDP program that is fine for kernel
+    5.13
+  repository: null
+  commit: null
+  collected_at: '2026-03-11T16:02:49+00:00'
+collector:
+  original_path: bpfix-empirical/raw/so/stackoverflow-72575736.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: true
+  verifier_log_block_count: 2
+  source_snippet_count: 2
+  has_buggy_code: false
+  has_fixed_code: false
+  has_fix_description: false
+reproduction:
+  status: replay_valid
+  case_id: stackoverflow-72575736
+  case_path: cases/stackoverflow-72575736
+  artifact_path: cases/stackoverflow-72575736
+  reason: admitted_to_bpfix_bench_cases
+raw:
+  case_id: stackoverflow-72575736
+  source: stackoverflow
+  collected_at: '2026-03-11T16:02:49+00:00'
+  question:
+    question_id: 72575736
+    title: Linux Kernel 5.10 verifier rejects eBPF XDP program that is fine for kernel
+      5.13
+    url: https://stackoverflow.com/questions/72575736/linux-kernel-5-10-verifier-rejects-ebpf-xdp-program-that-is-fine-for-kernel-5-13
+    tags:
+    - linux
+    - rust
+    - ebpf
+    - xdp-bpf
+    score: 2
+    answer_count: 1
+    is_answered: true
+  verifier_log:
+    blocks:
+    - |-
+      ret=-1 os error=Permission denied (os error 13): 0: (61) r6 = *(u32 *)(r1 +4)
+      1: (61) r7 = *(u32 *)(r1 +0)
+      2: (bf) r1 = r7
+      3: (07) r1 += 14
+      4: (2d) if r1 > r6 goto pc+43
+       R1_w=pkt(id=0,off=14,r=14,imm=0) R6_w=pkt_end(id=0,off=0,imm=0) R7_w=pkt(id=0,off=0,r=14,imm=0) R10=fp0
+      5: (71) r2 = *(u8 *)(r7 +13)
+      6: (67) r2 <<= 8
+      7: (71) r3 = *(u8 *)(r7 +12)
+      8: (4f) r2 |= r3
+      9: (55) if r2 != 0x8 goto pc+38
+       R1_w=pkt(id=0,off=14,r=14,imm=0) R2_w=inv8 R3_w=inv(id=0,umax_value=255,var_off=(0x0; 0xff)) R6_w=pkt_end(id=0,off=0,imm=0) R7_w=pkt(id=0,off=0,r=14,imm=0) R10=fp0
+      10: (bf) r2 = r7
+      11: (07) r2 += 34
+      12: (2d) if r2 > r6 goto pc+35
+       R1=pkt(id=0,off=14,r=34,imm=0) R2=pkt(id=0,off=34,r=34,imm=0) R3=inv(id=0,umax_value=255,var_off=(0x0; 0xff)) R6=pkt_end(id=0,off=0,imm=0) R7=pkt(id=0,off=0,r=34,imm=0) R10=fp0
+      13: (71) r3 = *(u8 *)(r1 +0)
+      14: (67) r3 <<= 2
+      15: (57) r3 &= 60
+      16: (71) r2 = *(u8 *)(r1 +9)
+      17: (0f) r1 += r3
+      last_idx 17 first_idx 12
+      regs=8 stack=0 before 16: (71) r2 = *(u8 *)(r1 +9)
+      regs=8 stack=0 before 15: (57) r3 &= 60
+      regs=8 stack=0 before 14: (67) r3 <<= 2
+      regs=8 stack=0 before 13: (71) r3 = *(u8 *)(r1 +0)
+      18: (15) if r2 == 0x11 goto pc+31
+       R1_w=pkt(id=1,off=14,r=0,umax_value=60,var_off=(0x0; 0x3c)) R2_w=inv(id=0,umax_value=255,var_off=(0x0; 0xff)) R3_w=invP(id=0,umax_value=60,var_off=(0x0; 0x3c)) R6=pkt_end(id=0,off=0,imm=0) R7=pkt(id=0,off=0,r=34,imm=0) R10=fp0
+      19: (55) if r2 != 0x6 goto pc+28
+       R1_w=pkt(id=1,off=14,r=0,umax_value=60,var_off=(0x0; 0x3c)) R2_w=inv6 R3_w=invP(id=0,umax_value=60,var_off=(0x0; 0x3c)) R6=pkt_end(id=0,off=0,imm=0) R7=pkt(id=0,off=0,r=34,imm=0) R10=fp0
+      20: (2d) if r7 > r1 goto pc+27
+       R1=pkt(id=1,off=14,r=0,umax_value=60,var_off=(0x0; 0x3c)) R2=inv6 R3=invP(id=0,umax_value=60,var_off=(0x0; 0x3c)) R6=pkt_end(id=0,off=0,imm=0) R7=pkt(id=0,off=0,r=34,imm=0) R10=fp0
+      21: (bf) r2 = r1
+      22: (07) r2 += 20
+      23: (2d) if r2 > r6 goto pc+24
+       R1=pkt(id=1,off=14,r=34,umax_value=60,var_off=(0x0; 0x3c)) R2_w=pkt(id=1,off=34,r=34,umax_value=60,var_off=(0x0; 0x3c)) R3=invP(id=0,umax_value=60,var_off=(0x0; 0x3c)) R6=pkt_end(id=0,off=0,imm=0) R7=pkt(id=0,off=0,r=34,imm=0) R10=fp0
+      24: (71) r2 = *(u8 *)(r1 +12)
+      25: (77) r2 >>= 2
+      26: (57) r2 &= 60
+      27: (0f) r1 += r2
+      last_idx 27 first_idx 20
+      regs=4 stack=0 before 26: (57) r2 &= 60
+      regs=4 stack=0 before 25: (77) r2 >>= 2
+      regs=4 stack=0 before 24: (71) r2 = *(u8 *)(r1 +12)
+      28: (2d) if r7 > r1 goto pc+19
+       R1=pkt(id=2,off=14,r=0,umax_value=120,var_off=(0x0; 0x7c),s32_max_value=124,u32_max_value=124) R2=invP(id=0,umax_value=60,var_off=(0x0; 0x3c)) R3=invP(id=0,umax_value=60,var_off=(0x0; 0x3c)) R6=pkt_end(id=0,off=0,imm=0) R7=pkt(id=0,off=0,r=34,imm=0) R10=fp0
+      29: (bf) r8 = r1
+      30: (3d) if r1 >= r6 goto pc+17
+       R1=pkt(id=2,off=14,r=13,umax_value=120,var_off=(0x0; 0x7c),s32_max_value=124,u32_max_value=124) R2=invP(id=0,umax_value=60,var_off=(0x0; 0x3c)) R3=invP(id=0,umax_value=60,var_off=(0x0; 0x3c)) R6=pkt_end(id=0,off=0,imm=0) R7=pkt(id=0,off=0,r=34,imm=0) R8_w=pkt(id=2,off=14,r=13,umax_value=120,var_off=(0x0; 0x7c),s32_max_value=124,u32_max_value=124) R10=fp0
+      31: (bf) r1 = r8
+      32: (1f) r1 -= r7
+      33: (25) if r1 > 0x32 goto pc+14
+       R1_w=inv(id=0,umax_value=50,var_off=(0x0; 0xffffffff)) R2=invP(id=0,umax_value=60,var_off=(0x0; 0x3c)) R3=invP(id=0,umax_value=60,var_off=(0x0; 0x3c)) R6=pkt_end(id=0,off=0,imm=0) R7=pkt(id=0,off=0,r=34,imm=0) R8_w=pkt(id=2,off=14,r=13,umax_value=120,var_off=(0x0; 0x7c),s32_max_value=124,u32_max_value=124) R10=fp0
+      34: (b7) r9 = 0
+      35: (bf) r1 = r8
+      36: (0f) r1 += r9
+      last_idx 36 first_idx 28
+      regs=200 stack=0 before 35: (bf) r1 = r8
+      regs=200 stack=0 before 34: (b7) r9 = 0
+      37: (3d) if r7 >= r1 goto pc+10
+       R1=pkt(id=2,off=14,r=13,umax_value=120,var_off=(0x0; 0x7c),s32_max_value=124,u32_max_value=124) R2=invP(id=0,umax_value=60,var_off=(0x0; 0x3c)) R3=invP(id=0,umax_value=60,var_off=(0x0; 0x3c)) R6=pkt_end(id=0,off=0,imm=0) R7=pkt(id=0,off=0,r=34,imm=0) R8=pkt(id=2,off=14,r=13,umax_value=120,var_off=(0x0; 0x7c),s32_max_value=124,u32_max_value=124) R9=invP0 R10=fp0
+      38: (3d) if r1 >= r6 goto pc+9
+       R1=pkt(id=2,off=14,r=13,umax_value=120,var_off=(0x0; 0x7c),s32_max_value=124,u32_max_value=124) R2=invP(id=0,umax_value=60,var_off=(0x0; 0x3c)) R3=invP(id=0,umax_value=60,var_off=(0x0; 0x3c)) R6=pkt_end(id=0,off=0,imm=0) R7=pkt(id=0,off=0,r=34,imm=0) R8=pkt(id=2,off=14,r=13,umax_value=120,var_off=(0x0; 0x7c),s32_max_value=124,u32_max_value=124) R9=invP0 R10=fp0
+      39: (71) r3 = *(u8 *)(r1 +0)
+      invalid access to packet, off=14 size=1, R1(id=2,off=14,r=13)
+      R1 offset is outside of the packet
+      processed 40 insns (limit 1000000) max_states_per_insn 0 total_states 4 peak_states 4 mark_read 2
+    - |-
+      R1=pkt(id=2,off=14,r=0,umax_value=120,var_off=(0x0; 0x7c),s32_max_value=124,u32_max_value=124) R2=invP(id=0,umax_value=60,var_off=(0x0; 0x3c)) R3=invP(id=0,umax_value=60,var_off=(0x0; 0x3c)) R6=pkt_end(id=0,off=0,imm=0) R7=pkt(id=0,off=0,r=34,imm=0) R10=fp0
+      29: (bf) r8 = r1
+      30: (3d) if r1 >= r6 goto pc+17
+       R1=pkt(id=2,off=14,r=13,umax_value=120,var_off=(0x0; 0x7c),s32_max_value=124,u32_max_value=124) R2=invP(id=0,umax_value=60,var_off=(0x0; 0x3c)) R3=invP(id=0,umax_value=60,var_off=(0x0; 0x3c)) R6=pkt_end(id=0,off=0,imm=0) R7=pkt(id=0,off=0,r=34,imm=0) R8_w=pkt(id=2,off=14,r=13,umax_value=120,var_off=(0x0; 0x7c),s32_max_value=124,u32_max_value=124) R10=fp0
+      [...]
+      34: (b7) r9 = 0
+      35: (bf) r1 = r8
+      36: (0f) r1 += r9
+      37: (3d) if r7 >= r1 goto pc+10
+       R1=pkt(id=2,off=14,r=13,umax_value=120,var_off=(0x0; 0x7c),s32_max_value=124,u32_max_value=124) R2=invP(id=0,umax_value=60,var_off=(0x0; 0x3c)) R3=invP(id=0,umax_value=60,var_off=(0x0; 0x3c)) R6=pkt_end(id=0,off=0,imm=0) R7=pkt(id=0,off=0,r=34,imm=0) R8=pkt(id=2,off=14,r=13,umax_value=120,var_off=(0x0; 0x7c),s32_max_value=124,u32_max_value=124) R9=invP0 R10=fp0
+      38: (3d) if r1 >= r6 goto pc+9
+       R1=pkt(id=2,off=14,r=13,umax_value=120,var_off=(0x0; 0x7c),s32_max_value=124,u32_max_value=124) R2=invP(id=0,umax_value=60,var_off=(0x0; 0x3c)) R3=invP(id=0,umax_value=60,var_off=(0x0; 0x3c)) R6=pkt_end(id=0,off=0,imm=0) R7=pkt(id=0,off=0,r=34,imm=0) R8=pkt(id=2,off=14,r=13,umax_value=120,var_off=(0x0; 0x7c),s32_max_value=124,u32_max_value=124) R9=invP0 R10=fp0
+      39: (71) r3 = *(u8 *)(r1 +0)
+      invalid access to packet, off=14 size=1, R1(id=2,off=14,r=13)
+      R1 offset is outside of the packet
+    combined: |-
+      ret=-1 os error=Permission denied (os error 13): 0: (61) r6 = *(u32 *)(r1 +4)
+      1: (61) r7 = *(u32 *)(r1 +0)
+      2: (bf) r1 = r7
+      3: (07) r1 += 14
+      4: (2d) if r1 > r6 goto pc+43
+       R1_w=pkt(id=0,off=14,r=14,imm=0) R6_w=pkt_end(id=0,off=0,imm=0) R7_w=pkt(id=0,off=0,r=14,imm=0) R10=fp0
+      5: (71) r2 = *(u8 *)(r7 +13)
+      6: (67) r2 <<= 8
+      7: (71) r3 = *(u8 *)(r7 +12)
+      8: (4f) r2 |= r3
+      9: (55) if r2 != 0x8 goto pc+38
+       R1_w=pkt(id=0,off=14,r=14,imm=0) R2_w=inv8 R3_w=inv(id=0,umax_value=255,var_off=(0x0; 0xff)) R6_w=pkt_end(id=0,off=0,imm=0) R7_w=pkt(id=0,off=0,r=14,imm=0) R10=fp0
+      10: (bf) r2 = r7
+      11: (07) r2 += 34
+      12: (2d) if r2 > r6 goto pc+35
+       R1=pkt(id=0,off=14,r=34,imm=0) R2=pkt(id=0,off=34,r=34,imm=0) R3=inv(id=0,umax_value=255,var_off=(0x0; 0xff)) R6=pkt_end(id=0,off=0,imm=0) R7=pkt(id=0,off=0,r=34,imm=0) R10=fp0
+      13: (71) r3 = *(u8 *)(r1 +0)
+      14: (67) r3 <<= 2
+      15: (57) r3 &= 60
+      16: (71) r2 = *(u8 *)(r1 +9)
+      17: (0f) r1 += r3
+      last_idx 17 first_idx 12
+      regs=8 stack=0 before 16: (71) r2 = *(u8 *)(r1 +9)
+      regs=8 stack=0 before 15: (57) r3 &= 60
+      regs=8 stack=0 before 14: (67) r3 <<= 2
+      regs=8 stack=0 before 13: (71) r3 = *(u8 *)(r1 +0)
+      18: (15) if r2 == 0x11 goto pc+31
+       R1_w=pkt(id=1,off=14,r=0,umax_value=60,var_off=(0x0; 0x3c)) R2_w=inv(id=0,umax_value=255,var_off=(0x0; 0xff)) R3_w=invP(id=0,umax_value=60,var_off=(0x0; 0x3c)) R6=pkt_end(id=0,off=0,imm=0) R7=pkt(id=0,off=0,r=34,imm=0) R10=fp0
+      19: (55) if r2 != 0x6 goto pc+28
+       R1_w=pkt(id=1,off=14,r=0,umax_value=60,var_off=(0x0; 0x3c)) R2_w=inv6 R3_w=invP(id=0,umax_value=60,var_off=(0x0; 0x3c)) R6=pkt_end(id=0,off=0,imm=0) R7=pkt(id=0,off=0,r=34,imm=0) R10=fp0
+      20: (2d) if r7 > r1 goto pc+27
+       R1=pkt(id=1,off=14,r=0,umax_value=60,var_off=(0x0; 0x3c)) R2=inv6 R3=invP(id=0,umax_value=60,var_off=(0x0; 0x3c)) R6=pkt_end(id=0,off=0,imm=0) R7=pkt(id=0,off=0,r=34,imm=0) R10=fp0
+      21: (bf) r2 = r1
+      22: (07) r2 += 20
+      23: (2d) if r2 > r6 goto pc+24
+       R1=pkt(id=1,off=14,r=34,umax_value=60,var_off=(0x0; 0x3c)) R2_w=pkt(id=1,off=34,r=34,umax_value=60,var_off=(0x0; 0x3c)) R3=invP(id=0,umax_value=60,var_off=(0x0; 0x3c)) R6=pkt_end(id=0,off=0,imm=0) R7=pkt(id=0,off=0,r=34,imm=0) R10=fp0
+      24: (71) r2 = *(u8 *)(r1 +12)
+      25: (77) r2 >>= 2
+      26: (57) r2 &= 60
+      27: (0f) r1 += r2
+      last_idx 27 first_idx 20
+      regs=4 stack=0 before 26: (57) r2 &= 60
+      regs=4 stack=0 before 25: (77) r2 >>= 2
+      regs=4 stack=0 before 24: (71) r2 = *(u8 *)(r1 +12)
+      28: (2d) if r7 > r1 goto pc+19
+       R1=pkt(id=2,off=14,r=0,umax_value=120,var_off=(0x0; 0x7c),s32_max_value=124,u32_max_value=124) R2=invP(id=0,umax_value=60,var_off=(0x0; 0x3c)) R3=invP(id=0,umax_value=60,var_off=(0x0; 0x3c)) R6=pkt_end(id=0,off=0,imm=0) R7=pkt(id=0,off=0,r=34,imm=0) R10=fp0
+      29: (bf) r8 = r1
+      30: (3d) if r1 >= r6 goto pc+17
+       R1=pkt(id=2,off=14,r=13,umax_value=120,var_off=(0x0; 0x7c),s32_max_value=124,u32_max_value=124) R2=invP(id=0,umax_value=60,var_off=(0x0; 0x3c)) R3=invP(id=0,umax_value=60,var_off=(0x0; 0x3c)) R6=pkt_end(id=0,off=0,imm=0) R7=pkt(id=0,off=0,r=34,imm=0) R8_w=pkt(id=2,off=14,r=13,umax_value=120,var_off=(0x0; 0x7c),s32_max_value=124,u32_max_value=124) R10=fp0
+      31: (bf) r1 = r8
+      32: (1f) r1 -= r7
+      33: (25) if r1 > 0x32 goto pc+14
+       R1_w=inv(id=0,umax_value=50,var_off=(0x0; 0xffffffff)) R2=invP(id=0,umax_value=60,var_off=(0x0; 0x3c)) R3=invP(id=0,umax_value=60,var_off=(0x0; 0x3c)) R6=pkt_end(id=0,off=0,imm=0) R7=pkt(id=0,off=0,r=34,imm=0) R8_w=pkt(id=2,off=14,r=13,umax_value=120,var_off=(0x0; 0x7c),s32_max_value=124,u32_max_value=124) R10=fp0
+      34: (b7) r9 = 0
+      35: (bf) r1 = r8
+      36: (0f) r1 += r9
+      last_idx 36 first_idx 28
+      regs=200 stack=0 before 35: (bf) r1 = r8
+      regs=200 stack=0 before 34: (b7) r9 = 0
+      37: (3d) if r7 >= r1 goto pc+10
+       R1=pkt(id=2,off=14,r=13,umax_value=120,var_off=(0x0; 0x7c),s32_max_value=124,u32_max_value=124) R2=invP(id=0,umax_value=60,var_off=(0x0; 0x3c)) R3=invP(id=0,umax_value=60,var_off=(0x0; 0x3c)) R6=pkt_end(id=0,off=0,imm=0) R7=pkt(id=0,off=0,r=34,imm=0) R8=pkt(id=2,off=14,r=13,umax_value=120,var_off=(0x0; 0x7c),s32_max_value=124,u32_max_value=124) R9=invP0 R10=fp0
+      38: (3d) if r1 >= r6 goto pc+9
+       R1=pkt(id=2,off=14,r=13,umax_value=120,var_off=(0x0; 0x7c),s32_max_value=124,u32_max_value=124) R2=invP(id=0,umax_value=60,var_off=(0x0; 0x3c)) R3=invP(id=0,umax_value=60,var_off=(0x0; 0x3c)) R6=pkt_end(id=0,off=0,imm=0) R7=pkt(id=0,off=0,r=34,imm=0) R8=pkt(id=2,off=14,r=13,umax_value=120,var_off=(0x0; 0x7c),s32_max_value=124,u32_max_value=124) R9=invP0 R10=fp0
+      39: (71) r3 = *(u8 *)(r1 +0)
+      invalid access to packet, off=14 size=1, R1(id=2,off=14,r=13)
+      R1 offset is outside of the packet
+      processed 40 insns (limit 1000000) max_states_per_insn 0 total_states 4 peak_states 4 mark_read 2
+
+      R1=pkt(id=2,off=14,r=0,umax_value=120,var_off=(0x0; 0x7c),s32_max_value=124,u32_max_value=124) R2=invP(id=0,umax_value=60,var_off=(0x0; 0x3c)) R3=invP(id=0,umax_value=60,var_off=(0x0; 0x3c)) R6=pkt_end(id=0,off=0,imm=0) R7=pkt(id=0,off=0,r=34,imm=0) R10=fp0
+      29: (bf) r8 = r1
+      30: (3d) if r1 >= r6 goto pc+17
+       R1=pkt(id=2,off=14,r=13,umax_value=120,var_off=(0x0; 0x7c),s32_max_value=124,u32_max_value=124) R2=invP(id=0,umax_value=60,var_off=(0x0; 0x3c)) R3=invP(id=0,umax_value=60,var_off=(0x0; 0x3c)) R6=pkt_end(id=0,off=0,imm=0) R7=pkt(id=0,off=0,r=34,imm=0) R8_w=pkt(id=2,off=14,r=13,umax_value=120,var_off=(0x0; 0x7c),s32_max_value=124,u32_max_value=124) R10=fp0
+      [...]
+      34: (b7) r9 = 0
+      35: (bf) r1 = r8
+      36: (0f) r1 += r9
+      37: (3d) if r7 >= r1 goto pc+10
+       R1=pkt(id=2,off=14,r=13,umax_value=120,var_off=(0x0; 0x7c),s32_max_value=124,u32_max_value=124) R2=invP(id=0,umax_value=60,var_off=(0x0; 0x3c)) R3=invP(id=0,umax_value=60,var_off=(0x0; 0x3c)) R6=pkt_end(id=0,off=0,imm=0) R7=pkt(id=0,off=0,r=34,imm=0) R8=pkt(id=2,off=14,r=13,umax_value=120,var_off=(0x0; 0x7c),s32_max_value=124,u32_max_value=124) R9=invP0 R10=fp0
+      38: (3d) if r1 >= r6 goto pc+9
+       R1=pkt(id=2,off=14,r=13,umax_value=120,var_off=(0x0; 0x7c),s32_max_value=124,u32_max_value=124) R2=invP(id=0,umax_value=60,var_off=(0x0; 0x3c)) R3=invP(id=0,umax_value=60,var_off=(0x0; 0x3c)) R6=pkt_end(id=0,off=0,imm=0) R7=pkt(id=0,off=0,r=34,imm=0) R8=pkt(id=2,off=14,r=13,umax_value=120,var_off=(0x0; 0x7c),s32_max_value=124,u32_max_value=124) R9=invP0 R10=fp0
+      39: (71) r3 = *(u8 *)(r1 +0)
+      invalid access to packet, off=14 size=1, R1(id=2,off=14,r=13)
+      R1 offset is outside of the packet
+  source_snippets:
+  - |-
+    #[xdp]
+    unsafe fn xdp_test(ctx: XdpContext) -> XdpResult {
+        let data = ctx.data()?;
+        let start = ctx.data_start();
+        let off = data.offset();
+        let end = ctx.data_end();
+
+        /* Ensuring an upper bound for off doesn't make any difference
+        if off > 50 {
+            return XdpResult::Err(OutOfBounds);
+        }
+        */
+
+        let mut address = start + off;
+        for i in 0..500 {
+            address = start + off + i;
+            if address <= start || address >= end {
+                break;
+            }
+
+            // This line (packet access) fails on kernel 5.10, but works fine on 5.13
+            let byte = *(address as *const u8);
+            // Just so the packet read above doesn't get optimized away
+            printk!("%u", byte as u32);
+        }
+
+        Ok(XdpAction::Pass)
+    }
+  - |-
+    [snip]
+        for i in 0..500 {
+            address = start + off + i;
+            // Checking 2 bytes ahead makes 5.10 verifier happy
+            if address <= start || (address + 2) >= end {
+                break;
+            }
+
+            // Works on both 5.10 and 5.13
+            let byte = *(address as *const u8);
+            // Just so the packet read above doesn't get optimized away
+            printk!("%u", byte as u32);
+        }
+
+        Ok(XdpAction::Pass)
+    }
+  question_body_text: |-
+    I am writing some eBPF programs in Rust using redBPF and I've encountered some issue with the verifier that only appears on some kernels.
+    This is a minimal reproducer XDP probe that shows the issue:
+    #[xdp]
+    unsafe fn xdp_test(ctx: XdpContext) -> XdpResult {
+    let data = ctx.data()?;
+    let start = ctx.data_start();
+    let off = data.offset();
+    let end = ctx.data_end();
+    /* Ensuring an upper bound for off doesn't make any difference
+    if off > 50 {
+    return XdpResult::Err(OutOfBounds);
+    }
+    */
+    let mut address = start + off;
+    for i in 0..500 {
+    address = start + off + i;
+    if address <= start || address >= end {
+    break;
+    }
+    // This line (packet access) fails on kernel 5.10, but works fine on 5.13
+    let byte = *(address as *const u8);
+    // Just so the packet read above doesn't get optimized away
+    printk!("%u", byte as u32);
+    }
+    Ok(XdpAction::Pass)
+    }
+    Compiling this into eBPF bytecode and loading it into an Ubuntu 5.13 kernel (5.13.0-48-generic #54~20.04.1-Ubuntu SMP Thu Jun 2 23:37:17 UTC 2022 x86_64 x86_64 x86_64 GNU/Linux) works without issues. The verifier accepts the program.
+    However, trying to load the exact same bytecode into an Android emulator kernel 5.10.66-android12-9-00041-gfa9c9074531e-ab7914766 #1 SMP PREEMPT Fri Nov 12 11:36:25 UTC 2021 x86_64 the verifier rejects the program. This is the full error log from the verifier:
+    ret=-1 os error=Permission denied (os error 13): 0: (61) r6 = *(u32 *)(r1 +4)
+    1: (61) r7 = *(u32 *)(r1 +0)
+    2: (bf) r1 = r7
+    3: (07) r1 += 14
+    4: (2d) if r1 > r6 goto pc+43
+    R1_w=pkt(id=0,off=14,r=14,imm=0) R6_w=pkt_end(id=0,off=0,imm=0) R7_w=pkt(id=0,off=0,r=14,imm=0) R10=fp0
+    5: (71) r2 = *(u8 *)(r7 +13)
+    6: (67) r2 <<= 8
+    7: (71) r3 = *(u8 *)(r7 +12)
+    8: (4f) r2 |= r3
+    9: (55) if r2 != 0x8 goto pc+38
+    R1_w=pkt(id=0,off=14,r=14,imm=0) R2_w=inv8 R3_w=inv(id=0,umax_value=255,var_off=(0x0; 0xff)) R6_w=pkt_end(id=0,off=0,imm=0) R7_w=pkt(id=0,off=0,r=14,imm=0) R10=fp0
+    10: (bf) r2 = r7
+    11: (07) r2 += 34
+    12: (2d) if r2 > r6 goto pc+35
+    R1=pkt(id=0,off=14,r=34,imm=0) R2=pkt(id=0,off=34,r=34,imm=0) R3=inv(id=0,umax_value=255,var_off=(0x0; 0xff)) R6=pkt_end(id=0,off=0,imm=0) R7=pkt(id=0,off=0,r=34,imm=0) R10=fp0
+    13: (71) r3 = *(u8 *)(r1 +0)
+    14: (67) r3 <<= 2
+    15: (57) r3 &= 60
+    16: (71) r2 = *(u8 *)(r1 +9)
+    17: (0f) r1 += r3
+    last_idx 17 first_idx 12
+    regs=8 stack=0 before 16: (71) r2 = *(u8 *)(r1 +9)
+    regs=8 stack=0 before 15: (57) r3 &= 60
+    regs=8 stack=0 before 14: (67) r3 <<= 2
+    regs=8 stack=0 before 13: (71) r3 = *(u8 *)(r1 +0)
+    18: (15) if r2 == 0x11 goto pc+31
+    R1_w=pkt(id=1,off=14,r=0,umax_value=60,var_off=(0x0; 0x3c)) R2_w=inv(id=0,umax_value=255,var_off=(0x0; 0xff)) R3_w=invP(id=0,umax_value=60,var_off=(0x0; 0x3c)) R6=pkt_end(id=0,off=0,imm=0) R7=pkt(id=0,off=0,r=34,imm=0) R10=fp0
+    19: (55) if r2 != 0x6 goto pc+28
+    R1_w=pkt(id=1,off=14,r=0,umax_value=60,var_off=(0x0; 0x3c)) R2_w=inv6 R3_w=invP(id=0,umax_value=60,var_off=(0x0; 0x3c)) R6=pkt_end(id=0,off=0,imm=0) R7=pkt(id=0,off=0,r=34,imm=0) R10=fp0
+    20: (2d) if r7 > r1 goto pc+27
+    R1=pkt(id=1,off=14,r=0,umax_value=60,var_off=(0x0; 0x3c)) R2=inv6 R3=invP(id=0,umax_value=60,var_off=(0x0; 0x3c)) R6=pkt_end(id=0,off=0,imm=0) R7=pkt(id=0,off=0,r=34,imm=0) R10=fp0
+    21: (bf) r2 = r1
+    22: (07) r2 += 20
+    23: (2d) if r2 > r6 goto pc+24
+    R1=pkt(id=1,off=14,r=34,umax_value=60,var_off=(0x0; 0x3c)) R2_w=pkt(id=1,off=34,r=34,umax_value=60,var_off=(0x0; 0x3c)) R3=invP(id=0,umax_value=60,var_off=(0x0; 0x3c)) R6=pkt_end(id=0,off=0,imm=0) R7=pkt(id=0,off=0,r=34,imm=0) R10=fp0
+    24: (71) r2 = *(u8 *)(r1 +12)
+    25: (77) r2 >>= 2
+    26: (57) r2 &= 60
+    27: (0f) r1 += r2
+    last_idx 27 first_idx 20
+    regs=4 stack=0 before 26: (57) r2 &= 60
+    regs=4 stack=0 before 25: (77) r2 >>= 2
+    regs=4 stack=0 before 24: (71) r2 = *(u8 *)(r1 +12)
+    28: (2d) if r7 > r1 goto pc+19
+    R1=pkt(id=2,off=14,r=0,umax_value=120,var_off=(0x0; 0x7c),s32_max_value=124,u32_max_value=124) R2=invP(id=0,umax_value=60,var_off=(0x0; 0x3c)) R3=invP(id=0,umax_value=60,var_off=(0x0; 0x3c)) R6=pkt_end(id=0,off=0,imm=0) R7=pkt(id=0,off=0,r=34,imm=0) R10=fp0
+    29: (bf) r8 = r1
+    30: (3d) if r1 >= r6 goto pc+17
+    R1=pkt(id=2,off=14,r=13,umax_value=120,var_off=(0x0; 0x7c),s32_max_value=124,u32_max_value=124) R2=invP(id=0,umax_value=60,var_off=(0x0; 0x3c)) R3=invP(id=0,umax_value=60,var_off=(0x0; 0x3c)) R6=pkt_end(id=0,off=0,imm=0) R7=pkt(id=0,off=0,r=34,imm=0) R8_w=pkt(id=2,off=14,r=13,umax_value=120,var_off=(0x0; 0x7c),s32_max_value=124,u32_max_value=124) R10=fp0
+    31: (bf) r1 = r8
+    32: (1f) r1 -= r7
+    33: (25) if r1 > 0x32 goto pc+14
+    R1_w=inv(id=0,umax_value=50,var_off=(0x0; 0xffffffff)) R2=invP(id=0,umax_value=60,var_off=(0x0; 0x3c)) R3=invP(id=0,umax_value=60,var_off=(0x0; 0x3c)) R6=pkt_end(id=0,off=0,imm=0) R7=pkt(id=0,off=0,r=34,imm=0) R8_w=pkt(id=2,off=14,r=13,umax_value=120,var_off=(0x0; 0x7c),s32_max_value=124,u32_max_value=124) R10=fp0
+    34: (b7) r9 = 0
+    35: (bf) r1 = r8
+    36: (0f) r1 += r9
+    last_idx 36 first_idx 28
+    regs=200 stack=0 before 35: (bf) r1 = r8
+    regs=200 stack=0 before 34: (b7) r9 = 0
+    37: (3d) if r7 >= r1 goto pc+10
+    R1=pkt(id=2,off=14,r=13,umax_value=120,var_off=(0x0; 0x7c),s32_max_value=124,u32_max_value=124) R2=invP(id=0,umax_value=60,var_off=(0x0; 0x3c)) R3=invP(id=0,umax_value=60,var_off=(0x0; 0x3c)) R6=pkt_end(id=0,off=0,imm=0) R7=pkt(id=0,off=0,r=34,imm=0) R8=pkt(id=2,off=14,r=13,umax_value=120,var_off=(0x0; 0x7c),s32_max_value=124,u32_max_value=124) R9=invP0 R10=fp0
+    38: (3d) if r1 >= r6 goto pc+9
+    R1=pkt(id=2,off=14,r=13,umax_value=120,var_off=(0x0; 0x7c),s32_max_value=124,u32_max_value=124) R2=invP(id=0,umax_value=60,var_off=(0x0; 0x3c)) R3=invP(id=0,umax_value=60,var_off=(0x0; 0x3c)) R6=pkt_end(id=0,off=0,imm=0) R7=pkt(id=0,off=0,r=34,imm=0) R8=pkt(id=2,off=14,r=13,umax_value=120,var_off=(0x0; 0x7c),s32_max_value=124,u32_max_value=124) R9=invP0 R10=fp0
+    39: (71) r3 = *(u8 *)(r1 +0)
+    invalid access to packet, off=14 size=1, R1(id=2,off=14,r=13)
+    R1 offset is outside of the packet
+    processed 40 insns (limit 1000000) max_states_per_insn 0 total_states 4 peak_states 4 mark_read 2
+    As I understand the issue, the verifier of the 5.10 kernel rejects the dereferencing of the packet pointer, claiming that we don't have validated that it is always within bounds (reading at offset 14 while r is 13). We do in fact check this just above.
+    Interestingly, if I oversize the bounds check above to something like this, both the 5.10 and 5.13 kernel verifiers accept the program:
+    [snip]
+    for i in 0..500 {
+    address = start + off + i;
+    // Checking 2 bytes ahead makes 5.10 verifier happy
+    if address <= start || (address + 2) >= end {
+    break;
+    }
+    // Works on both 5.10 and 5.13
+    let byte = *(address as *const u8);
+    // Just so the packet read above doesn't get optimized away
+    printk!("%u", byte as u32);
+    }
+    Ok(XdpAction::Pass)
+    }
+    But the above is not what I want, because this causes the bounded loop to abort too early - I want the loop to run fully, if the packet is large enough. I have tried the usual tricks I do when I run into verifier issues, but so far to no avail. I don't quite understand why the 5.10 verifier is unhappy with the first example. Usually this is related to some unbounded registers, but as far as I can see all bounds should be satisfied.
+    I have tried looking at a diff of the kernel verifier between the two versions, but couldn't see any obvious change that causes this.
+  selected_answer:
+    answer_id: 72622305
+    url: https://stackoverflow.com/questions/72575736/linux-kernel-5-10-verifier-rejects-ebpf-xdp-program-that-is-fine-for-kernel-5-13#72622305
+    is_accepted: true
+    score: 1
+    body_text: |-
+      TL;DR. You are missing bug fix 2fa7d94afc1a for the BPF verifier. It was backported to the v5.13 kernel you are using as commit e7a61f15beea, but not to the v5.10 kernel.
+      You might want to try a newer Android kernel if possible, or to ask them to carry the bugfix if they don't on v5.10.
+      Verifier Error Explanation
+      I removed parts of the output that were irrelevant here.
+      R1=pkt(id=2,off=14,r=0,umax_value=120,var_off=(0x0; 0x7c),s32_max_value=124,u32_max_value=124) R2=invP(id=0,umax_value=60,var_off=(0x0; 0x3c)) R3=invP(id=0,umax_value=60,var_off=(0x0; 0x3c)) R6=pkt_end(id=0,off=0,imm=0) R7=pkt(id=0,off=0,r=34,imm=0) R10=fp0
+      29: (bf) r8 = r1
+      30: (3d) if r1 >= r6 goto pc+17
+      R1=pkt(id=2,off=14,r=13,umax_value=120,var_off=(0x0; 0x7c),s32_max_value=124,u32_max_value=124) R2=invP(id=0,umax_value=60,var_off=(0x0; 0x3c)) R3=invP(id=0,umax_value=60,var_off=(0x0; 0x3c)) R6=pkt_end(id=0,off=0,imm=0) R7=pkt(id=0,off=0,r=34,imm=0) R8_w=pkt(id=2,off=14,r=13,umax_value=120,var_off=(0x0; 0x7c),s32_max_value=124,u32_max_value=124) R10=fp0
+      [...]
+      34: (b7) r9 = 0
+      35: (bf) r1 = r8
+      36: (0f) r1 += r9
+      37: (3d) if r7 >= r1 goto pc+10
+      R1=pkt(id=2,off=14,r=13,umax_value=120,var_off=(0x0; 0x7c),s32_max_value=124,u32_max_value=124) R2=invP(id=0,umax_value=60,var_off=(0x0; 0x3c)) R3=invP(id=0,umax_value=60,var_off=(0x0; 0x3c)) R6=pkt_end(id=0,off=0,imm=0) R7=pkt(id=0,off=0,r=34,imm=0) R8=pkt(id=2,off=14,r=13,umax_value=120,var_off=(0x0; 0x7c),s32_max_value=124,u32_max_value=124) R9=invP0 R10=fp0
+      38: (3d) if r1 >= r6 goto pc+9
+      R1=pkt(id=2,off=14,r=13,umax_value=120,var_off=(0x0; 0x7c),s32_max_value=124,u32_max_value=124) R2=invP(id=0,umax_value=60,var_off=(0x0; 0x3c)) R3=invP(id=0,umax_value=60,var_off=(0x0; 0x3c)) R6=pkt_end(id=0,off=0,imm=0) R7=pkt(id=0,off=0,r=34,imm=0) R8=pkt(id=2,off=14,r=13,umax_value=120,var_off=(0x0; 0x7c),s32_max_value=124,u32_max_value=124) R9=invP0 R10=fp0
+      39: (71) r3 = *(u8 *)(r1 +0)
+      invalid access to packet, off=14 size=1, R1(id=2,off=14,r=13)
+      R1 offset is outside of the packet
+      The verifier tells us that we are trying to access the packet at offset 14 (off=14) with an access size of 1 byte when the packet is only known to be at least 13 bytes long (r=13). The known packet length here is incorrect somehow because you checked that address >= end.
+      Going up, we can check where that packet range (r=13) is coming from. It is assigned from R8 at instruction 35, itself assigned from R1 at instruction 29.
+      At instruction 30, we find the address >= end check in its bytecode form. We see that both R1 and R8's ranges are updated from r=0 to r=13 after this check. That is however incorrect and should be updated to off+1, hence r=15.
+      Checking the Verifier Sources
+      In the verifier, this update of the range is implemented in find_good_pkt_pointers. The update logic looks fine and shouldn't cause this issue.
+      But if we git blame those lines, we can see they were changed in commit 2fa7d94afc1a. The commit describes the off-by-two error you are hitting:
+      This commit fixes the off-by-two error by adjusting new_range in the
+      right direction and fixes the tests by changing the range into the
+      one that should actually fail.
+      This commit was released upstream in v5.16. Checking the Ubuntu sources for Ubuntu-hwe-5.13-5.13.0-48.54_20.04.1, we find this same commit backported as e7a61f15beea, which explains why it works on your v5.13 kernel.
+    fix_description: TL;DR. You are missing bug fix 2fa7d94afc1a for the BPF verifier.
+      It was backported to the v5.13 kernel you are using as commit e7a61f15beea,
+      but not to the v5.10 kernel. You might want to try a newer Android kernel if
+      possible, or to ask them to carry the bugfix if they don't on v5.10. The verifier
+      tells us that we are trying to access the packet at offset 14 (off=14) with
+      an access size of 1 byte when the packet is only known to be at least 13 bytes
+      long (r=13). The known packet length here is incorrect somehow because you checked
+      that address >= end.

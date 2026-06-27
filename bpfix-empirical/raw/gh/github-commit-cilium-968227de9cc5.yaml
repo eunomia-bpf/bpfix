@@ -1,0 +1,60 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-968227de9cc5
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/968227de9cc5c447d64fc266b14e55856ee60e4f
+  title: 'bpf: nat: NULL-initialize the NAT entry in snat_v6_rev_nat()'
+  repository: https://github.com/cilium/cilium
+  commit: 968227de9cc5c447d64fc266b14e55856ee60e4f
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-968227de9cc5.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: replay_valid
+  case_id: github-commit-cilium-968227de9cc5
+  case_path: cases/github-commit-cilium-968227de9cc5
+  artifact_path: cases/github-commit-cilium-968227de9cc5
+  reason: admitted_to_bpfix_bench_cases
+raw:
+  case_id: github-commit-cilium-968227de9cc5
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: 968227de9cc5c447d64fc266b14e55856ee60e4f
+  commit_message: 'bpf: nat: NULL-initialize the NAT entry in snat_v6_rev_nat()'
+  commit_date: '2023-08-17'
+  fix_type: inline_hint
+  buggy_code: "// FILE: bpf/lib/nat.h\n// CONTEXT: snat_v6_rev_nat_handle_icmp_pkt_toobig(struct\
+    \ __ctx_buff *ctx,\n\n\t/* The embedded packet was SNATed on egress. Reverse it\
+    \ again: */\n\treturn snat_v6_rewrite_headers(ctx, tuple.nexthdr, inner_l3_off,\
+    \ icmpoff,\n\t\t\t\t       &tuple.daddr, &(*state)->to_daddr, IPV6_SADDR_OFF,\n\
+    \t\t\t\t       tuple.dport, (*state)->to_dport, port_off);\n}\n\nstatic __always_inline\
+    \ __maybe_unused int\nsnat_v6_rev_nat(struct __ctx_buff *ctx, const struct ipv6_nat_target\
+    \ *target,\n\t\t__s8 *ext_err __maybe_unused)\n{\n\tstruct icmp6hdr icmp6hdr __align_stack_8;\n\
+    \tstruct ipv6_nat_entry *state;\n\tstruct ipv6_ct_tuple tuple = {};\n\t__u32 off,\
+    \ inner_l3_off;\n\tvoid *data, *data_end;\n\tstruct ipv6hdr *ip6;\n\tint ret,\
+    \ hdrlen;\n\tstruct {\n\t\t__be16 sport;\n\t\t__be16 dport;\n\t} l4hdr;\n\n\t\
+    build_bug_on(sizeof(struct ipv6_nat_entry) > 64);"
+  fixed_code: "// FILE: bpf/lib/nat.h\n// CONTEXT: snat_v6_rev_nat_handle_icmp_pkt_toobig(struct\
+    \ __ctx_buff *ctx,\n\n\t/* The embedded packet was SNATed on egress. Reverse it\
+    \ again: */\n\treturn snat_v6_rewrite_headers(ctx, tuple.nexthdr, inner_l3_off,\
+    \ icmpoff,\n\t\t\t\t       &tuple.daddr, &(*state)->to_daddr, IPV6_SADDR_OFF,\n\
+    \t\t\t\t       tuple.dport, (*state)->to_dport, port_off);\n}\n\nstatic __always_inline\
+    \ __maybe_unused int\nsnat_v6_rev_nat(struct __ctx_buff *ctx, const struct ipv6_nat_target\
+    \ *target,\n\t\t__s8 *ext_err __maybe_unused)\n{\n\tstruct icmp6hdr icmp6hdr __align_stack_8;\n\
+    \tstruct ipv6_nat_entry *state = NULL;\n\tstruct ipv6_ct_tuple tuple = {};\n\t\
+    __u32 off, inner_l3_off;\n\tvoid *data, *data_end;\n\tstruct ipv6hdr *ip6;\n\t\
+    int ret, hdrlen;\n\tstruct {\n\t\t__be16 sport;\n\t\t__be16 dport;\n\t} l4hdr;\n\
+    \n\tbuild_bug_on(sizeof(struct ipv6_nat_entry) > 64);"
+  diff_summary: |-
+    bpf/lib/nat.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: snat_v6_rev_nat_handle_icmp_pkt_toobig(struct __ctx_buff *ctx,.
+    - Commit subject: bpf: nat: NULL-initialize the NAT entry in snat_v6_rev_nat().

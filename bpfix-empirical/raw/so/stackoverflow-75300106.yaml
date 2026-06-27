@@ -1,0 +1,179 @@
+schema_version: bpfix.raw_external/v1
+raw_id: stackoverflow-75300106
+source_kind: stackoverflow
+source:
+  url: https://stackoverflow.com/questions/75300106/ebpf-verifier-r1-is-not-a-scalar
+  title: 'eBPF verifier: R1 is not a scalar'
+  repository: null
+  commit: null
+  collected_at: '2026-03-11T16:02:59+00:00'
+collector:
+  original_path: bpfix-empirical/raw/so/stackoverflow-75300106.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: true
+  verifier_log_block_count: 1
+  source_snippet_count: 1
+  has_buggy_code: false
+  has_fixed_code: false
+  has_fix_description: false
+reproduction:
+  status: replay_valid
+  case_id: stackoverflow-75300106
+  case_path: cases/stackoverflow-75300106
+  artifact_path: cases/stackoverflow-75300106
+  reason: admitted_to_bpfix_bench_cases
+raw:
+  case_id: stackoverflow-75300106
+  source: stackoverflow
+  collected_at: '2026-03-11T16:02:59+00:00'
+  question:
+    question_id: 75300106
+    title: 'eBPF verifier: R1 is not a scalar'
+    url: https://stackoverflow.com/questions/75300106/ebpf-verifier-r1-is-not-a-scalar
+    tags:
+    - ebpf
+    - cilium
+    - tracepoint
+    score: 1
+    answer_count: 1
+    is_answered: true
+  verifier_log:
+    blocks:
+    - |-
+      permission denied
+      R1 is not a scalar
+      ; int sys_enter_accept4(int fd, struct sockaddr *upeer_sockaddr, int *upeer_addrlen, int flags) {
+      0: (bf) r6 = r2
+      R2 !read_ok
+      processed 1 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0 mark_read 0
+    combined: |-
+      permission denied
+      R1 is not a scalar
+      ; int sys_enter_accept4(int fd, struct sockaddr *upeer_sockaddr, int *upeer_addrlen, int flags) {
+      0: (bf) r6 = r2
+      R2 !read_ok
+      processed 1 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0 mark_read 0
+  source_snippets:
+  - |-
+    llvm-objdump -S --no-show-raw-insn pkg/ebpf/bpf_bpfel.o
+
+    pkg/ebpf/bpf_bpfel.o:   file format elf64-bpf
+
+    Disassembly of section tracepoint/syscalls/sys_enter_accept4:
+
+    0000000000000000 <sys_enter_accept4>:
+           0:   r6 = r2
+           1:   r1 = 0 ll
+           3:   r2 = 16
+           4:   r3 = 0
+           5:   call 131
+           6:   r7 = r0
+           7:   if r7 != 0 goto +5 <LBB0_2>
+           8:   r1 = 0 ll
+          10:   r2 = 28
+          11:   call 6
+          12:   goto +7 <LBB0_3>
+
+    0000000000000068 <LBB0_2>:
+          13:   r1 = r7
+          14:   r2 = 16
+          15:   r3 = r6
+          16:   call 4
+          17:   r1 = r7
+          18:   r2 = 0
+          19:   call 132
+
+    00000000000000a0 <LBB0_3>:
+          20:   r0 = 0
+          21:   exit
+  question_body_text: |-
+    I have this eBPF code:
+    struct sock_info {
+    struct sockaddr addr;
+    };
+    SEC("tracepoint/syscalls/sys_enter_accept4")
+    int sys_enter_accept4(int fd, struct sockaddr *upeer_sockaddr, int *upeer_addrlen, int flags) {
+    struct sock_info *iad = bpf_ringbuf_reserve(&connections, sizeof(struct sock_info), 0);
+    if (!iad) {
+    bpf_printk("can't reserve ringbuf space");
+    return 0;
+    }
+    // https://man7.org/linux/man-pages/man7/bpf-helpers.7.html
+    bpf_probe_read(&iad->addr, sizeof(struct sockaddr), upeer_sockaddr);
+    bpf_ringbuf_submit(iad, 0);
+    return 0;
+    }
+    When I try to load it from the user space, the Cilium eBPF library returns me this Verification error:
+    permission denied
+    R1 is not a scalar
+    ; int sys_enter_accept4(int fd, struct sockaddr *upeer_sockaddr, int *upeer_addrlen, int flags) {
+    0: (bf) r6 = r2
+    R2 !read_ok
+    processed 1 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0 mark_read 0
+    If I remove the bpf_probe_read function, then the code runs. I tried many alternatives to try to read the contents of the *upeer_sockaddr pointer, but did not succeed.
+    Any hint why the eBPF verifier is complaining?
+    This is the output of llvm-objdump command:
+    llvm-objdump -S --no-show-raw-insn pkg/ebpf/bpf_bpfel.o
+    pkg/ebpf/bpf_bpfel.o: file format elf64-bpf
+    Disassembly of section tracepoint/syscalls/sys_enter_accept4:
+    0000000000000000 <sys_enter_accept4>:
+    0: r6 = r2
+    1: r1 = 0 ll
+    3: r2 = 16
+    4: r3 = 0
+    5: call 131
+    6: r7 = r0
+    7: if r7 != 0 goto +5 <LBB0_2>
+    8: r1 = 0 ll
+    10: r2 = 28
+    11: call 6
+    12: goto +7 <LBB0_3>
+    0000000000000068 <LBB0_2>:
+    13: r1 = r7
+    14: r2 = 16
+    15: r3 = r6
+    16: call 4
+    17: r1 = r7
+    18: r2 = 0
+    19: call 132
+    00000000000000a0 <LBB0_3>:
+    20: r0 = 0
+    21: exit
+  selected_answer:
+    answer_id: 75302692
+    url: https://stackoverflow.com/questions/75300106/ebpf-verifier-r1-is-not-a-scalar#75302692
+    is_accepted: false
+    score: 3
+    body_text: |-
+      You have defined your tracepoint program with 4 arguments int sys_enter_accept4(int fd, struct sockaddr *upeer_sockaddr, int *upeer_addrlen, int flags)
+      But these are not the parameters with which your program will be invoked.
+      The R2 !read_ok error is caused because you are accessing a second, non-existing parameter and you are not allowed to read from uninitialized registers.
+      For tracepoints you can find out the context structure by looking at the sysfs:
+      $ cat /sys/kernel/debug/tracing/events/syscalls/sys_enter_accept4/format
+      name: sys_enter_accept4
+      ID: 1595
+      format:
+      field:unsigned short common_type; offset:0; size:2; signed:0;
+      field:unsigned char common_flags; offset:2; size:1; signed:0;
+      field:unsigned char common_preempt_count; offset:3; size:1; signed:0;
+      field:int common_pid; offset:4; size:4; signed:1;
+      field:int __syscall_nr; offset:8; size:4; signed:1;
+      field:int fd; offset:16; size:8; signed:0;
+      field:struct sockaddr * upeer_sockaddr; offset:24; size:8; signed:0;
+      field:int * upeer_addrlen; offset:32; size:8; signed:0;
+      field:int flags; offset:40; size:8; signed:0;
+      print fmt: "fd: 0x%08lx, upeer_sockaddr: 0x%08lx, upeer_addrlen: 0x%08lx, flags: 0x%08lx", ((unsigned long)(REC->fd)), ((unsigned long)(REC->upeer_sockaddr)), ((unsigned long)(REC->upeer_addrlen)), ((unsigned long)(REC->flags))
+      If we turn this into a structure we get the following:
+      struct accept4_args {
+      u64 pad;
+      u32 __syscall_nr;
+      u32 fd;
+      struct sockaddr *upeer_sockaddr;
+      int *upeer_addrlen;
+      int flags;
+      };
+      Note that I replaced the common_ fields here with u64 pad, since that is likely not what you are interested in.
+      A pointer to the struct is passed in as one parameter: int sys_enter_accept4(struct accept4_args *args)
+    fix_description: The R2 !read_ok error is caused because you are accessing a second,
+      non-existing parameter and you are not allowed to read from uninitialized registers.

@@ -1,0 +1,577 @@
+schema_version: bpfix.raw_external/v1
+raw_id: stackoverflow-79817058
+source_kind: stackoverflow
+source:
+  url: https://stackoverflow.com/questions/79817058/manual-strstr-implementation-in-ebpf-on-kernel-level
+  title: Manual strstr implementation in eBPF on kernel level
+  repository: null
+  commit: null
+  collected_at: '2026-03-11T16:03:19+00:00'
+collector:
+  original_path: bpfix-empirical/raw/so/stackoverflow-79817058.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: true
+  verifier_log_block_count: 0
+  source_snippet_count: 4
+  has_buggy_code: false
+  has_fixed_code: false
+  has_fix_description: false
+reproduction:
+  status: missing_verifier_log
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Raw metadata says has_verifier_log=true, but verifier_log.blocks is empty,
+    combined is empty, and parser quality is empty. The snippets are partial userspace/LSM/string-search
+    fragments, so there is no captured terminal verifier error or rejected instruction
+    to validate a replay.
+raw:
+  case_id: stackoverflow-79817058
+  source: stackoverflow
+  collected_at: '2026-03-11T16:03:19+00:00'
+  question:
+    question_id: 79817058
+    title: Manual strstr implementation in eBPF on kernel level
+    url: https://stackoverflow.com/questions/79817058/manual-strstr-implementation-in-ebpf-on-kernel-level
+    tags:
+    - c
+    - linux-kernel
+    - ebpf
+    score: 0
+    answer_count: 1
+    is_answered: false
+  verifier_log:
+    blocks: []
+    combined: ''
+  source_snippets:
+  - |-
+    __u32 key = 0;
+        while (fgets(buf, sizeof(buf), blocked_patterns_fp)) {
+            buf[strcspn(buf, "\n")] = '\0';
+
+            if (buf[0] == '\0')
+                continue;
+
+            if (blocked_patterns_count < LITTLE_MAP_SIZE)
+            {
+                char val[MAX_PATTERN_LEN] = {};
+                strncpy(val, buf, sizeof(val) - 1);
+                // printf("%s\n", val);
+                int ret = bpf_map__update_elem(file_skel->maps.blocked_patterns,
+                                           &key, sizeof(key),
+                                           val, sizeof(val),
+                                           BPF_ANY);
+                if (ret)
+                    fprintf(stderr, "Failed to insert blocked_patterns[%s]\n", val);
+                key++;
+                blocked_patterns_count++;
+            } else {
+                isClosedPatternMatchingFp = 1;
+                fclose(blocked_patterns_fp);
+                break;
+            }
+        }
+
+        if (isClosedPatternMatchingFp == 0) {
+            fclose(blocked_patterns_fp);
+        }
+  - |-
+    SEC("lsm/file_open")
+    int BPF_PROG(check_file_open, struct file *file)
+    {
+        /* rest of code */
+        char name[MAX_CHAR_LEN] = {};
+        bpf_core_read_str(name, sizeof(name), file->f_path.dentry->d_name.name);
+        __u8 isMatch = iterate(name);
+        // bpf_printk("IsMatch %hhu\n", isMatch);
+        if (isMatch) {
+            // bpf_printk("Is match, filtering our -> %s\n", name);
+            return 0;
+        }
+        /* submiting the event ... rest of code */
+
+    }
+  - |-
+    static  char c_strstr(const char* str, const char *pattern)
+    {
+        char c1,c2;
+        int i,j;
+
+        for (i = 0; i < MAX_ITERS_FOR_STRSTR; i++){
+            for (j = 0; i + j <= MAX_ITERS_FOR_STRSTR; j++){
+                bpf_probe_read_kernel(&c2, sizeof(c2), pattern + j);
+                if (c2 == '\0'){
+                    return 1; // found match
+                }
+                if (i + j == MAX_ITERS_FOR_STRSTR){
+                    break;
+                }
+                bpf_probe_read_kernel(&c1, sizeof(c1), str + j);
+                // bpf_printk("aa [%c] -- [%c]\n",c1,c2);
+                if (c1 == '\0'){
+                    return 0; // not found
+                }
+                if (c1 != c2){
+                    break;
+                }
+            }
+            if (i + j == MAX_ITERS_FOR_STRSTR){
+                return 0;
+            }
+            str++;
+        }
+
+        return 0;
+    }
+  - |-
+    static int iterate_cb(u32 i, void *data)
+    {
+        struct iterate_ctx *ctx = data;
+
+        char *pattern_ptr = bpf_map_lookup_elem(&blocked_patterns, &i);
+        if (!pattern_ptr)
+        {
+            return 0; // continue
+        }
+
+        int plen = 0;
+        for (int k = 0; k < MAX_PATTERN_LEN; k++) {
+            char c;
+            bpf_probe_read_kernel(&c, sizeof(c), pattern_ptr + k);
+            if (c == '\0')
+                break;
+            plen++;
+        }
+
+        if (plen == 0)
+            return 0;
+
+        char match = c_strstr(ctx->filename, pattern_ptr);
+
+        if (match == 1)
+        {
+            ctx->match_found = 1;
+            return 1; // stop loop
+        }
+
+        return 0; // continue
+    }
+  question_body_text: |-
+    I am trying to implement a manual implementation of strstr in eBPF but cannot get past verifier.
+    Before starting, I know there is an existing bpf_strstr() implementation, but it's on 6.17+ linux version. I am sitting on 6.8.0 ish (Ubuntu 24.04.3 LTS).
+    Here is my implementation:
+    userspace side
+    // MACRO VALUES
+    #define MAX_PATTERN_LEN 16
+    #define MAX_CHAR_LEN 256
+    #define LITTLE_MAP_SIZE 64
+    eBPF side
+    static __always_inline int c_strstr(char str[MAX_CHAR_LEN], const char *pattern)
+    {
+    int plen = 0;
+    for (int k = 0; k < MAX_PATTERN_LEN; k++) {
+    if (pattern[k] == '\0')
+    break;
+    plen++;
+    }
+    if (plen == 0)
+    return 0;
+    for (int i = 0; i < MAX_CHAR_LEN; i++) {
+    if (str[i] == '\0')
+    break;
+    int match = 1;
+    for (int j = 0; j < MAX_PATTERN_LEN; j++) {
+    if (j >= plen)
+    break;
+    if (str[i + j] == '\0' || str[i + j] != pattern[j]) {
+    match = 0;
+    break;
+    }
+    }
+    if (match)
+    return 1;
+    }
+    return 0;
+    }
+    static __always_inline int iterate_cb(u64 i, void *data)
+    {
+    struct iterate_ctx *ctx = data;
+    char *pattern_ptr = bpf_map_lookup_elem(&blocked_patterns, &i);
+    if (!pattern_ptr)
+    return 0; // continue
+    char pattern[MAX_PATTERN_LEN];
+    __builtin_memcpy(pattern, pattern_ptr, MAX_PATTERN_LEN);
+    if (c_strstr(ctx->filename, pattern) == 1) {
+    ctx->match_found = 1;
+    return 1; // stop loop
+    }
+    return 0; // continue
+    }
+    // Wrapper to call bpf_loop
+    static __always_inline __u8 iterate(char str[MAX_CHAR_LEN]) {
+    struct iterate_ctx ctx = {};
+    ctx.match_found = 0;
+    ctx.filename = str;
+    bpf_loop(MAX_MAP_ELEMS, iterate_cb, &ctx, 0);
+    return ctx.match_found;
+    }
+    eBPF side
+    // Map definition
+    struct {
+    __uint(type, BPF_MAP_TYPE_ARRAY);
+    __uint(max_entries, LITTLE_MAP_SIZE);
+    __type(key, __u32);
+    __type(value, char[MAX_PATTERN_LEN]);
+    } blocked_patterns SEC(".maps");
+    Loading the patterns into the map ( from userspace)
+    __u32 key = 0;
+    while (fgets(buf, sizeof(buf), blocked_patterns_fp)) {
+    buf[strcspn(buf, "\n")] = '\0';
+    if (buf[0] == '\0')
+    continue;
+    if (blocked_patterns_count < LITTLE_MAP_SIZE)
+    {
+    char val[MAX_PATTERN_LEN] = {};
+    strncpy(val, buf, sizeof(val) - 1);
+    // printf("%s\n", val);
+    int ret = bpf_map__update_elem(file_skel->maps.blocked_patterns,
+    &key, sizeof(key),
+    val, sizeof(val),
+    BPF_ANY);
+    if (ret)
+    fprintf(stderr, "Failed to insert blocked_patterns[%s]\n", val);
+    key++;
+    blocked_patterns_count++;
+    } else {
+    isClosedPatternMatchingFp = 1;
+    fclose(blocked_patterns_fp);
+    break;
+    }
+    }
+    if (isClosedPatternMatchingFp == 0) {
+    fclose(blocked_patterns_fp);
+    }
+    eBPF side
+    SEC("lsm/file_open")
+    int BPF_PROG(check_file_open, struct file *file)
+    {
+    /* rest of code */
+    char name[MAX_CHAR_LEN] = {};
+    bpf_core_read_str(name, sizeof(name), file->f_path.dentry->d_name.name);
+    __u8 isMatch = iterate(name);
+    // bpf_printk("IsMatch %hhu\n", isMatch);
+    if (isMatch) {
+    // bpf_printk("Is match, filtering our -> %s\n", name);
+    return 0;
+    }
+    /* submiting the event ... rest of code */
+    }
+    TRIED SO FAR:
+    -> Making another local buffer in the iterate function. Reaching the maximum BPF stack size ( 512 )
+    -> Current problem: BPF Program is too large error.
+    Any workarounds or advice?
+    ERROR message:
+    ; for (int j = 0; j < plen; j++) {
+    700: (07) r1 += 1 ; frame1: R1_w=5 cb
+    ; for (int j = 0; j < plen; j++) {
+    701: (3d) if r1 >= r2 goto pc+18 ; frame1: R1_w=5 R2=10 cb
+    ; if (str[i + j] == '\0' || str[i + j] != pattern[j]) {
+    702: (bf) r7 = r5 ; frame1: R5=fp[0]-70 R7_w=fp[0]-70 cb
+    703: (0f) r7 += r1 ; frame1: R1_w=5 R7_w=fp[0]-65 cb
+    704: (71) r7 = *(u8 *)(r7 +0) ; frame1: R7_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) cb
+    ; if (str[i + j] == '\0' || str[i + j] != pattern[j]) {
+    705: (15) if r7 == 0x0 goto pc+4 ; frame1: R7_w=scalar(smin=umin=smin32=umin32=1,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) cb
+    ; if (str[i + j] == '\0' || str[i + j] != pattern[j]) {
+    706: (bf) r8 = r0 ; frame1: R0=map_value(map=blocked_pattern,ks=4,vs=16) R8_w=map_value(map=blocked_pattern,ks=4,vs=16) cb
+    707: (0f) r8 += r1 ; frame1: R1_w=5 R8_w=map_value(map=blocked_pattern,ks=4,vs=16,off=5) cb
+    708: (71) r8 = *(u8 *)(r8 +0) ; frame1: R8_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) cb
+    ; if (str[i + j] == '\0' || str[i + j] != pattern[j]) {
+    709: (1d) if r7 == r8 goto pc-10 ; frame1: R0=map_value(map=blocked_pattern,ks=4,vs=16) R1_w=5 R2=10 R3=fp[0]-296 R4=226 R5=fp[0]-70 R6=fp[0]-16 R7_w=scalar(smin=umin=smin32=umin32=1,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8_w=scalar(smin=umin=smin32=umin32=1,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R10=fp0 fp-8=mmmm???? cb
+    ; for (int j = 0; j < plen; j++) {
+    700: (07) r1 += 1 ; frame1: R1_w=6 cb
+    ; for (int j = 0; j < plen; j++) {
+    701: (3d) if r1 >= r2 goto pc+18 ; frame1: R1_w=6 R2=10 cb
+    ; if (str[i + j] == '\0' || str[i + j] != pattern[j]) {
+    702: (bf) r7 = r5 ; frame1: R5=fp[0]-70 R7_w=fp[0]-70 cb
+    703: (0f) r7 += r1 ; frame1: R1_w=6 R7_w=fp[0]-64 cb
+    704: (71) r7 = *(u8 *)(r7 +0) ; frame1: R7_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) cb
+    ; if (str[i + j] == '\0' || str[i + j] != pattern[j]) {
+    705: (15) if r7 == 0x0 goto pc+4 ; frame1: R7_w=scalar(smin=umin=smin32=umin32=1,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) cb
+    ; if (str[i + j] == '\0' || str[i + j] != pattern[j]) {
+    706: (bf) r8 = r0 ; frame1: R0=map_value(map=blocked_pattern,ks=4,vs=16) R8_w=map_value(map=blocked_pattern,ks=4,vs=16) cb
+    707: (0f) r8 += r1 ; frame1: R1_w=6 R8_w=map_value(map=blocked_pattern,ks=4,vs=16,off=6) cb
+    708: (71) r8 = *(u8 *)(r8 +0) ; frame1: R8_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) cb
+    ; if (str[i + j] == '\0' || str[i + j] != pattern[j]) {
+    709: (1d) if r7 == r8 goto pc-10 ; frame1: R0=map_value(map=blocked_pattern,ks=4,vs=16) R1_w=6 R2=10 R3=fp[0]-296 R4=226 R5=fp[0]-70 R6=fp[0]-16 R7_w=scalar(smin=umin=smin32=umin32=1,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R8_w=scalar(smin=umin=smin32=umin32=1,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) R10=fp0 fp-8=mmmm???? cb
+    ; for (int j = 0; j < plen; j++) {
+    700: (07) r1 += 1 ; frame1: R1_w=7 cb
+    ; for (int j = 0; j < plen; j++) {
+    701: (3d) if r1 >= r2 goto pc+18 ; frame1: R1_w=7 R2=10 cb
+    ; if (str[i + j] == '\0' || str[i + j] != pattern[j]) {
+    702: (bf) r7 = r5 ; frame1: R5=fp[0]-70 R7_w=fp[0]-70 cb
+    703: (0f) r7 += r1 ; frame1: R1_w=7 R7_w=fp[0]-63 cb
+    704: (71) r7 = *(u8 *)(r7 +0) ; frame1: R7_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) cb
+    ; if (str[i + j] == '\0' || str[i + j] != pattern[j]) {
+    705: (15) if r7 == 0x0 goto pc+4 ; frame1: R7_w=scalar(smin=umin=smin32=umin32=1,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) cb
+    ; if (str[i + j] == '\0' || str[i + j] != pattern[j]) {
+    706: (bf) r8 = r0 ; frame1: R0=map_value(map=blocked_pattern,ks=4,vs=16) R8_w=map_value(map=blocked_pattern,ks=4,vs=16) cb
+    707: (0f) r8 += r1 ; frame1: R1_w=7 R8_w=map_value(map=blocked_pattern,ks=4,vs=16,off=7) cb
+    708: (71) r8 = *(u8 *)(r8 +0) ; frame1: R8_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff)) cb
+    ; if (str[i + j] == '\0' || str[i + j] != pattern[j]) {
+    709: (1d) if r7 == r8 goto pc-10 BPF program is too large. Processed 1000001 insn
+    processed 1000001 insns (limit 1000000) max_states_per_insn 99 total_states 24347 peak_states 1650 mark_read 84
+    ! UPDATE ( adopted it from docs)
+    static __always_inline char c_strstr(const char* str, const char *pattern)
+    {
+    char c1,c2;
+    int i,j;
+    short unsigned int plen = 0;
+    for (int k = 0; k < MAX_PATTERN_LEN; k++) {
+    if (pattern[k] == '\0')
+    break;
+    plen++;
+    }
+    if (plen == 0)
+    return 0;
+    for (i = 0; i < MAX_CHAR_LEN; i++){
+    for (j = 0; i + j <= plen && j < MAX_CHAR_LEN; j++){
+    bpf_probe_read_kernel(&c2, sizeof(c2), pattern + j);
+    if (c2 == '\0'){
+    // bpf_printk("Found match on c2 == --0-- \n");
+    return 1; // found match
+    }
+    if (i + j == plen)
+    break;
+    bpf_probe_read_kernel(&c1, sizeof(c1), str + j);
+    // bpf_printk("Found c1 %c\n", c1);
+    if (c1 == '\0'){
+    // bpf_printk("Found not match on c1 == --0-- \n");
+    return 0; // not found
+    }
+    if (c1 != c2){
+    // bpf_printk("Found c1 != c2 \n");
+    break;
+    }
+    }
+    if (i + j == plen){
+    // bpf_printk("Found i + j == plen \n");
+    return 0; // not found
+    }
+    str++;
+    }
+    return 0;
+    }
+    static int iterate_cb(u32 i , void *data)
+    {
+    struct iterate_ctx *ctx = data;
+    // bpf_printk("AICI -> %d\n", i);
+    char *pattern_ptr = bpf_map_lookup_elem(&blocked_patterns, &i);
+    if (!pattern_ptr){
+    // bpf_printk("AICI1\n");
+    return 0; // continue
+    }
+    char match = c_strstr(ctx->filename, pattern_ptr);
+    // bpf_printk("AICI2 -> MATCH %d ---- %s\n", match, ctx->filename);
+    if (match == 1) {
+    ctx->match_found = 1;
+    // bpf_printk("AICI3 pattern %u\n", i);
+    bpf_printk("AICI2 -> MATCH %d ---- %s\n", match, ctx->filename);
+    return 1; // stop loop
+    }
+    return 0; // continue
+    }
+    // Wrapper to call bpf_loop
+    static __u8 iterate(const char* str) {
+    struct iterate_ctx ctx = {};
+    ctx.match_found = 0;
+    ctx.filename = str;
+    // bpf_printk("Starting iteration for: %s\n", str);
+    // Iterate over MAX_MAP_ELEMS safely
+    bpf_loop(LITTLE_MAP_SIZE, iterate_cb, &ctx, 0);
+    // bpf_printk("Starting iteration for: %hhu\n", ctx.match_found);
+    return ctx.match_found;
+    }
+    I got past the verifier, but something is not working good at logic.
+    e.g. for string libp.so.6 and pattern .so. it exists just when i reaches value 4 and breaks inside the second look and i get always not matching.
+    Tried workaround: instead of simple plen to put plen + MAX_CHAR_LEN but that defeats the whole purpose and it does not get past verifier ( tried it in a separate file and it works (in userspace) ).
+    FINAL UPDATE - SOLVED
+    static __always_inline char c_strstr(const char* str, const char *pattern)
+    {
+    char c1,c2;
+    int i,j;
+    short unsigned int plen = 0;
+    for (int k = 0; k < MAX_PATTERN_LEN; k++) {
+    if (pattern[k] == '\0')
+    break;
+    plen++;
+    }
+    if (plen == 0)
+    return 0;
+    for (i = 0; i < MAX_CHAR_LEN; i++){
+    for (j = 0; i + j <= plen && j < MAX_CHAR_LEN; j++){
+    bpf_probe_read_kernel(&c2, sizeof(c2), pattern + j);
+    if (c2 == '\0'){
+    // bpf_printk("Found match on c2 == --0-- \n");
+    return 1; // found match
+    }
+    if (i + j == plen)
+    break;
+    bpf_probe_read_kernel(&c1, sizeof(c1), str + j);
+    // bpf_printk("Found c1 %c\n", c1);
+    if (c1 == '\0'){
+    // bpf_printk("Found not match on c1 == --0-- \n");
+    return 0; // not found
+    }
+    if (c1 != c2){
+    // bpf_printk("Found c1 != c2 \n");
+    break;
+    }
+    }
+    if (i + j == plen){
+    // bpf_printk("Found i + j == plen \n");
+    return 0; // not found
+    }
+    str++;
+    }
+    return 0;
+    }
+    static int iterate_cb(u32 i , void *data)
+    {
+    struct iterate_ctx *ctx = data;
+    // bpf_printk("AICI -> %d\n", i);
+    char *pattern_ptr = bpf_map_lookup_elem(&blocked_patterns, &i);
+    if (!pattern_ptr){
+    // bpf_printk("AICI1\n");
+    return 0; // continue
+    }
+    char match = c_strstr(ctx->filename, pattern_ptr);
+    // bpf_printk("AICI2 -> MATCH %d ---- %s\n", match, ctx->filename);
+    if (match == 1) {
+    ctx->match_found = 1;
+    // bpf_printk("AICI3 pattern %u\n", i);
+    bpf_printk("AICI2 -> MATCH %d ---- %s\n", match, ctx->filename);
+    return 1; // stop loop
+    }
+    return 0; // continue
+    }
+    // Wrapper to call bpf_loop
+    static __u8 iterate(const char* str) {
+    struct iterate_ctx ctx = {};
+    ctx.match_found = 0;
+    ctx.filename = str;
+    // bpf_printk("Starting iteration for: %s\n", str);
+    // Iterate over MAX_MAP_ELEMS safely
+    bpf_loop(LITTLE_MAP_SIZE, iterate_cb, &ctx, 0);
+    // bpf_printk("Starting iteration for: %hhu\n", ctx.match_found);
+    return ctx.match_found;
+    }
+    instead of plen i put plen * 2 and it worked and it iterates and finds the pattern. Leaving solution here for somebody who needs it
+    UPDATE
+    I now seen what i wrote. It has no sense and works only for some cases . Sorry. I ll be coming back with the actual working alghoritm.
+    UPDATE 2
+    So , i have a working version, after many battles with the verifier.
+    static char c_strstr(const char* str, const char *pattern)
+    {
+    char c1,c2;
+    int i,j;
+    for (i = 0; i < MAX_ITERS_FOR_STRSTR; i++){
+    for (j = 0; i + j <= MAX_ITERS_FOR_STRSTR; j++){
+    bpf_probe_read_kernel(&c2, sizeof(c2), pattern + j);
+    if (c2 == '\0'){
+    return 1; // found match
+    }
+    if (i + j == MAX_ITERS_FOR_STRSTR){
+    break;
+    }
+    bpf_probe_read_kernel(&c1, sizeof(c1), str + j);
+    // bpf_printk("aa [%c] -- [%c]\n",c1,c2);
+    if (c1 == '\0'){
+    return 0; // not found
+    }
+    if (c1 != c2){
+    break;
+    }
+    }
+    if (i + j == MAX_ITERS_FOR_STRSTR){
+    return 0;
+    }
+    str++;
+    }
+    return 0;
+    }
+    Fallbacks
+    "magic number" #define MAX_ITERS_FOR_STRSTR 163
+    - If it exceeds this value, too many instructions -> does not pass the verifier
+    define MAX_CHAR_LEN 256
+    - If maybe the filename is bigger, getting truncated and cannot copy all of it ( i'd say pretty good tradeoff , 128+ chars are enough)
+    Also modified LITTLE_MAP_SIZE from 64 to as low as possible. In my case i do not need very much pattern matching so i put 4. I think it works with a little more, i will try and come back with answers
+    This is what i got until now, hope it will help somebody who will have the same problem! Thank you to all of you! Feel free to modify for a better working method!
+    UPDATE FINAL FINAL :)
+    static int iterate_cb(u32 i, void *data)
+    {
+    struct iterate_ctx *ctx = data;
+    char *pattern_ptr = bpf_map_lookup_elem(&blocked_patterns, &i);
+    if (!pattern_ptr)
+    {
+    return 0; // continue
+    }
+    int plen = 0;
+    for (int k = 0; k < MAX_PATTERN_LEN; k++) {
+    char c;
+    bpf_probe_read_kernel(&c, sizeof(c), pattern_ptr + k);
+    if (c == '\0')
+    break;
+    plen++;
+    }
+    if (plen == 0)
+    return 0;
+    char match = c_strstr(ctx->filename, pattern_ptr);
+    if (match == 1)
+    {
+    ctx->match_found = 1;
+    return 1; // stop loop
+    }
+    return 0; // continue
+    }
+    Added a check to skip empty patterns , because it was ingesting everytime it was coming and it was matching every time.
+    Everything works like a charm ! Watch for what values you put!
+  selected_answer:
+    answer_id: 79820361
+    url: https://stackoverflow.com/questions/79817058/manual-strstr-implementation-in-ebpf-on-kernel-level#79820361
+    is_accepted: false
+    score: 0
+    body_text: |-
+      The main problem in the original code is you compare i + j <= plen which makes no sense: it restricts matches to those occurring at the beginning of the string.
+      The final code uses some magical value MAX_ITERS_FOR_STRSTR to try and get around this problem, but it passes the verifier by chance. If the match starts beyond MAX_ITERS_FOR_STRSTR in the filename that can be as large as MAX_CHAR_LEN, the c_strstr would fail to locate it.
+      Here is a modified version of your code:
+      static int c_strstr(cosnt char str[MAX_CHAR_LEN], const char *pattern)
+      {
+      // compute the length of the pattern
+      int plen = 0;
+      while (plen < MAX_PATTERN_LEN && pattern[plen] != '\0') {
+      plen++;
+      }
+      // empty pattern always matches
+      if (plen == 0)
+      return 1;
+      for (int i = 0; i <= MAX_CHAR_LEN - plen && str[i] != '\0'; i++) {
+      // check for a match at offset i
+      if (str[i] == *pattern) {
+      for (int j = 1;; j++) {
+      if (j == plen)
+      return 1;
+      if (str[i + j] != pattern[j])
+      break;
+      }
+      }
+      }
+      return 0;
+      }
+    fix_description: 'The main problem in the original code is you compare i + j <=
+      plen which makes no sense: it restricts matches to those occurring at the beginning
+      of the string. The final code uses some magical value MAX_ITERS_FOR_STRSTR to
+      try and get around this problem, but it passes the verifier by chance. If the
+      match starts beyond MAX_ITERS_FOR_STRSTR in the filename that can be as large
+      as MAX_CHAR_LEN, the c_strstr would fail to locate it. Here is a modified version
+      of your code:'

@@ -1,0 +1,68 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-68772ba85b15
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/68772ba85b158325b82743a9df55d583cc547c48
+  title: 'bpf: Replace CALLS_MAP symbol in compile-tested binaries'
+  repository: https://github.com/cilium/cilium
+  commit: 68772ba85b158325b82743a9df55d583cc547c48
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-68772ba85b15.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Adds a dummy CALLS_MAP symbol for compile-tested binaries. The failure mode
+    is test/build symbol replacement rather than a parsed verifier rejection.
+raw:
+  case_id: github-commit-cilium-68772ba85b15
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: 68772ba85b158325b82743a9df55d583cc547c48
+  commit_message: 'bpf: Replace CALLS_MAP symbol in compile-tested binaries'
+  commit_date: '2020-11-06'
+  fix_type: other
+  buggy_code: |-
+    // FILE: bpf/netdev_config.h
+
+    /*
+     * This is just a dummy header with dummy values to allow for test
+     * compilation without the full code generation engine backend.
+     */
+    #define DROP_NOTIFY
+    #ifndef SKIP_DEBUG
+    #define DEBUG
+    #endif
+    #define ENCAP_IFINDEX 1
+    #define SECLABEL 2
+    #define SECLABEL_NB 0xfffff
+  fixed_code: |-
+    // FILE: bpf/netdev_config.h
+
+    /*
+     * This is just a dummy header with dummy values to allow for test
+     * compilation without the full code generation engine backend.
+     */
+    #define DROP_NOTIFY
+    #ifndef SKIP_DEBUG
+    #define DEBUG
+    #endif
+    #define ENCAP_IFINDEX 1
+    #define SECLABEL 2
+    #define SECLABEL_NB 0xfffff
+    #define CALLS_MAP test_cilium_calls_65535
+  diff_summary: |-
+    bpf/netdev_config.h:
+    - Applied a small verifier-related code change captured by the exact before/after snippets below.
+    - Affected context: the touched section.
+    - Commit subject: bpf: Replace CALLS_MAP symbol in compile-tested binaries.

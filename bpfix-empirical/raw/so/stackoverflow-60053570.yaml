@@ -1,0 +1,171 @@
+schema_version: bpfix.raw_external/v1
+raw_id: stackoverflow-60053570
+source_kind: stackoverflow
+source:
+  url: https://stackoverflow.com/questions/60053570/verifier-failure-for-a-xdp-code-computing-icmp-checksum
+  title: verifier failure for a xdp code computing icmp checksum?
+  repository: null
+  commit: null
+  collected_at: '2026-03-11T16:03:23+00:00'
+collector:
+  original_path: bpfix-empirical/raw/so/stackoverflow-60053570.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: true
+  verifier_log_block_count: 1
+  source_snippet_count: 1
+  has_buggy_code: false
+  has_fixed_code: false
+  has_fix_description: false
+reproduction:
+  status: replay_valid
+  case_id: stackoverflow-60053570
+  case_path: cases/stackoverflow-60053570
+  artifact_path: cases/stackoverflow-60053570
+  reason: admitted_to_bpfix_bench_cases
+raw:
+  case_id: stackoverflow-60053570
+  source: stackoverflow
+  collected_at: '2026-03-11T16:03:23+00:00'
+  question:
+    question_id: 60053570
+    title: verifier failure for a xdp code computing icmp checksum?
+    url: https://stackoverflow.com/questions/60053570/verifier-failure-for-a-xdp-code-computing-icmp-checksum
+    tags:
+    - c
+    - linux-kernel
+    - bpf
+    - xdp-bpf
+    score: -1
+    answer_count: 1
+    is_answered: false
+  verifier_log:
+    blocks:
+    - |-
+      libbpf: load bpf program failed: Permission denied
+      libbpf: -- BEGIN DUMP LOG ---
+      libbpf:
+      ...
+      48: (b7) r5 = 0
+      49: (85) call bpf_csum_diff#28
+      invalid access to packet, off=34 size=64, R3(id=0,off=34,r=42)
+      R3 offset is outside of the packet
+    combined: |-
+      libbpf: load bpf program failed: Permission denied
+      libbpf: -- BEGIN DUMP LOG ---
+      libbpf:
+      ...
+      48: (b7) r5 = 0
+      49: (85) call bpf_csum_diff#28
+      invalid access to packet, off=34 size=64, R3(id=0,off=34,r=42)
+      R3 offset is outside of the packet
+  source_snippets:
+  - |-
+    SEC("xdp_icmp")
+    int _xdp_icmp(struct xdp_md *xdp)
+    {
+        void *data_end = (void *)(long)xdp->data_end;
+        void *data = (void *)(long)xdp->data;
+        struct ethhdr *eth = data;
+        struct iphdr *iph;
+        struct icmphdr *icmph;
+        __u16 h_proto;
+        __be32 raddr;
+
+        ....
+        icmph = data + sizeof(*eth) + sizeof(*iph);
+        if (icmph + 1 > data_end)
+            return  XDP_DROP;
+
+        if (icmph -> type != ICMP_ECHO)
+        {
+            return XDP_PASS;
+        }
+
+        if (handle_ipv4(xdp) != XDP_TX)
+        {
+            return XDP_PASS;
+        }
+
+        raddr = iph->saddr;
+        swap_src_dst_mac(data);
+        iph->saddr = iph->daddr;
+        iph->daddr = raddr;
+        icmph->type = ICMP_ECHOREPLY;
+        icmph->checksum = 0;
+        __u32 sum = 0;
+        sum = bpf_csum_diff(0, 0, icmph, ICMP_ECHO_LEN, 0);
+        icmph->checksum = csum_fold_helper(sum);
+        return XDP_TX;
+    }
+  question_body_text: |-
+    I am using xdp(use XDP_TX action) to construct an icmp resv packets.
+    linux: centos8
+    kernel 4.18.0-80.el8.x86_64
+    llvm: 7.0.1
+    clang: clang version 7.0.1 (tags/RELEASE_701/final)
+    Here is my code:
+    SEC("xdp_icmp")
+    int _xdp_icmp(struct xdp_md *xdp)
+    {
+    void *data_end = (void *)(long)xdp->data_end;
+    void *data = (void *)(long)xdp->data;
+    struct ethhdr *eth = data;
+    struct iphdr *iph;
+    struct icmphdr *icmph;
+    __u16 h_proto;
+    __be32 raddr;
+    ....
+    icmph = data + sizeof(*eth) + sizeof(*iph);
+    if (icmph + 1 > data_end)
+    return XDP_DROP;
+    if (icmph -> type != ICMP_ECHO)
+    {
+    return XDP_PASS;
+    }
+    if (handle_ipv4(xdp) != XDP_TX)
+    {
+    return XDP_PASS;
+    }
+    raddr = iph->saddr;
+    swap_src_dst_mac(data);
+    iph->saddr = iph->daddr;
+    iph->daddr = raddr;
+    icmph->type = ICMP_ECHOREPLY;
+    icmph->checksum = 0;
+    __u32 sum = 0;
+    sum = bpf_csum_diff(0, 0, icmph, ICMP_ECHO_LEN, 0);
+    icmph->checksum = csum_fold_helper(sum);
+    return XDP_TX;
+    }
+    But the compilation result told me "verifier failure":
+    error:
+    libbpf: load bpf program failed: Permission denied
+    libbpf: -- BEGIN DUMP LOG ---
+    libbpf:
+    ...
+    48: (b7) r5 = 0
+    49: (85) call bpf_csum_diff#28
+    invalid access to packet, off=34 size=64, R3(id=0,off=34,r=42)
+    R3 offset is outside of the packet
+  selected_answer:
+    answer_id: 60053785
+    url: https://stackoverflow.com/questions/60053570/verifier-failure-for-a-xdp-code-computing-icmp-checksum#60053785
+    is_accepted: false
+    score: 0
+    body_text: |-
+      I believe that when calling:
+      // s64 bpf_csum_diff(__be32 *from, u32 from_size, __be32 *to, u32 to_size, __wsum seed)
+      sum = bpf_csum_diff(0, 0, icmph, ICMP_ECHO_LEN, 0);
+      The to_size passed as third argument should be a number of bytes. Assuming that you copied ICMP_ECHO_LEN from kernel selftests, I suspect its value is 64, thus asking the kernel to compute a checksum on a 64-bytes long buffer. But you never checked that your packet was that long (you have if (icmph + 1 > data_end), which looks correct to me).
+      I suspect you should try instead to pass the length of your header as the third argument, something like this (not tested):
+      um = bpf_csum_diff(0, 0, icmph, sizeof(struct icmphdr), 0);
+      struct icmphdr is defined in include/uapi/linux/icmp.h and seems to have a length of 8 bytes, although you do not need to know this and should be fine as long as you pass the correct length for your header.
+    fix_description: 'The to_size passed as third argument should be a number of bytes.
+      Assuming that you copied ICMP_ECHO_LEN from kernel selftests, I suspect its
+      value is 64, thus asking the kernel to compute a checksum on a 64-bytes long
+      buffer. But you never checked that your packet was that long (you have if (icmph
+      + 1 > data_end), which looks correct to me). I suspect you should try instead
+      to pass the length of your header as the third argument, something like this
+      (not tested): struct icmphdr is defined in include/uapi/linux/icmp.h and seems
+      to have a length of 8 bytes, although you do not need to know t...'

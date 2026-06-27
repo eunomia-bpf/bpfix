@@ -1,0 +1,88 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-aya-rs-aya-1104
+source_kind: github_issue
+source:
+  url: https://github.com/aya-rs/aya/issues/1104
+  title: xdp_hello example fails verifier in docker rust container
+  repository: https://github.com/aya-rs/aya
+  commit: null
+  collected_at: '2026-03-11T16:01:45+00:00'
+collector:
+  original_path: bpfix-empirical/raw/gh/github-aya-rs-aya-1104.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: true
+  verifier_log_block_count: 1
+  source_snippet_count: 1
+  has_buggy_code: false
+  has_fixed_code: true
+  has_fix_description: true
+reproduction:
+  status: replay_reject_no_rejected_insn
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: local_reconstruction_rejects_but_lacks_a_rejected_instruction_index
+  verifier_status: rejected
+  captured_error: last insn is not an exit or jmp
+  verifier_error_match: exact
+raw:
+  case_id: github-aya-rs-aya-1104
+  source: github_issues
+  collected_at: '2026-03-11T16:01:45+00:00'
+  issue:
+    repository: aya-rs/aya
+    number: 1104
+    title: xdp_hello example fails verifier in docker rust container
+    url: https://github.com/aya-rs/aya/issues/1104
+    state: closed
+    state_reason: completed
+    labels: []
+    created_at: '2024-12-01T17:11:21Z'
+    updated_at: '2024-12-02T15:11:18Z'
+    author: esemeniuc
+  verifier_log:
+    blocks:
+    - |-
+      Compiling xdp-hello-common v0.1.0 (/myapp/examples/xdp-hello/xdp-hello-common)
+         Compiling xdp-hello v0.1.0 (/myapp/examples/xdp-hello/xdp-hello)
+          Finished `dev` profile [unoptimized + debuginfo] target(s) in 6.26s
+      Error: the BPF_PROG_LOAD syscall failed. Verifier output: last insn is not an exit or jmp
+      verification time 9 usec
+      stack depth 0+0+0
+      processed 0 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0 mark_read 0
+
+      Caused by:
+          Invalid argument (os error 22)
+    combined: |-
+      Compiling xdp-hello-common v0.1.0 (/myapp/examples/xdp-hello/xdp-hello-common)
+         Compiling xdp-hello v0.1.0 (/myapp/examples/xdp-hello/xdp-hello)
+          Finished `dev` profile [unoptimized + debuginfo] target(s) in 6.26s
+      Error: the BPF_PROG_LOAD syscall failed. Verifier output: last insn is not an exit or jmp
+      verification time 9 usec
+      stack depth 0+0+0
+      processed 0 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0 mark_read 0
+
+      Caused by:
+          Invalid argument (os error 22)
+  source_snippets:
+  - |-
+    unsafe {
+        aya_ebpf::bpf_printk!(b"packet  received!");
+    }
+  issue_body_text: |-
+    Running the xdp_hello example with the following commands fails in:
+    docker run -it --privileged --network host --rm -v ~/dev/aya-book:/myapp -w /myapp rust bash
+    Inside the container, I ran:
+    Output
+    Host OS: arch running 6.6.52-1-lts
+  fix:
+    summary: The template and book have been updated to only build ebpf in release
+      mode. Please file an issue against those if you continue to be able to reproduce.
+    selected_comment:
+      kind: comment
+      url: https://github.com/aya-rs/aya/issues/1104#issuecomment-2511698406
+      author: tamird
+      author_association: MEMBER
+      body_text: The template and book have been updated to only build ebpf in release
+        mode. Please file an issue against those if you continue to be able to reproduce.

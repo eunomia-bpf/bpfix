@@ -1,0 +1,105 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-cilium-cilium-35182
+source_kind: github_issue
+source:
+  url: https://github.com/cilium/cilium/issues/35182
+  title: 'TestBPF/tc_nodeport_lb4_nat_lb.o: bpf_test.go:174: verifier error: load
+    program: invalid argument: Validating mock_fib_lookup() func#1 arg#0 reference
+    type(''UNKNOWN '') size cannot be determined: -22'
+  repository: https://github.com/cilium/cilium
+  commit: null
+  collected_at: '2026-03-11T16:01:43+00:00'
+collector:
+  original_path: bpfix-empirical/raw/gh/github-cilium-cilium-35182.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: true
+  verifier_log_block_count: 2
+  source_snippet_count: 0
+  has_buggy_code: false
+  has_fixed_code: true
+  has_fix_description: true
+reproduction:
+  status: replay_valid
+  case_id: github-cilium-cilium-35182
+  case_path: cases/github-cilium-cilium-35182
+  artifact_path: cases/github-cilium-cilium-35182
+  reason: admitted_to_bpfix_bench_cases
+raw:
+  case_id: github-cilium-cilium-35182
+  source: github_issues
+  collected_at: '2026-03-11T16:01:43+00:00'
+  issue:
+    repository: cilium/cilium
+    number: 35182
+    title: 'TestBPF/tc_nodeport_lb4_nat_lb.o: bpf_test.go:174: verifier error: load
+      program: invalid argument: Validating mock_fib_lookup() func#1 arg#0 reference
+      type(''UNKNOWN '') size cannot be determined: -22'
+    url: https://github.com/cilium/cilium/issues/35182
+    state: closed
+    state_reason: completed
+    labels:
+    - kind/question
+    - area/datapath
+    - kind/community-report
+    created_at: '2024-10-02T18:42:52Z'
+    updated_at: '2024-12-04T10:24:09Z'
+    author: jingyuanliang
+  verifier_log:
+    blocks:
+    - "=== RUN   TestBPF/tc_nodeport_lb4_nat_lb.o\n    bpf_test.go:174: verifier error:\
+      \ load program: invalid argument:\n        \tValidating mock_fib_lookup() func#1...\n\
+      \        \targ#0 reference type('UNKNOWN ') size cannot be determined: -22\n\
+      \        \tprocessed 0 insns (limit 1000000) max_states_per_insn 0 total_states\
+      \ 0 peak_states 0 mark_read 0"
+    - "bpf_test.go:174: verifier error: load program: invalid argument:\n    \tValidating\
+      \ mock_fib_lookup() func#1...\n    \targ#0 reference type('UNKNOWN ') size cannot\
+      \ be determined: -22\n    \tprocessed 0 insns (limit 1000000) max_states_per_insn\
+      \ 0 total_states 0 peak_states 0 mark_read 0"
+    combined: "=== RUN   TestBPF/tc_nodeport_lb4_nat_lb.o\n    bpf_test.go:174: verifier\
+      \ error: load program: invalid argument:\n        \tValidating mock_fib_lookup()\
+      \ func#1...\n        \targ#0 reference type('UNKNOWN ') size cannot be determined:\
+      \ -22\n        \tprocessed 0 insns (limit 1000000) max_states_per_insn 0 total_states\
+      \ 0 peak_states 0 mark_read 0\n\nbpf_test.go:174: verifier error: load program:\
+      \ invalid argument:\n    \tValidating mock_fib_lookup() func#1...\n    \targ#0\
+      \ reference type('UNKNOWN ') size cannot be determined: -22\n    \tprocessed\
+      \ 0 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0\
+      \ mark_read 0"
+  source_snippets: []
+  issue_body_text: |-
+    Is there an existing issue for this?
+    [x] I have searched the existing issues
+    Version
+    equal or higher than v1.16.0 and lower than v1.17.0
+    What happened?
+    bpf test failure with Clang 18
+    How can we reproduce the issue?
+    Run bpf tests with Clang 18 installed on the system using make -C bpf/tests all.
+    Cilium Version
+    1.16.2
+    Kernel Version
+    6.1.100+
+    Kubernetes Version
+    N/A
+    Regression
+    _No response_
+    Sysdump
+    _No response_
+    Relevant log output
+    _No response_
+    Anything else?
+    _No response_
+    Cilium Users Document
+    [x] Are you a user of Cilium? Please add yourself to the Users doc
+    Code of Conduct
+    [x] I agree to follow this project's Code of Conduct
+  fix:
+    summary: can you try again from main? This might be fixed recently with llvm 18
+      upgrade https://github.com/cilium/cilium/pull/36197
+    selected_comment:
+      kind: comment
+      url: https://github.com/cilium/cilium/issues/35182#issuecomment-2508844489
+      author: sayboras
+      author_association: MEMBER
+      body_text: can you try again from main? This might be fixed recently with llvm
+        18 upgrade https://github.com/cilium/cilium/pull/36197

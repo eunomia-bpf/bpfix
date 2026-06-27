@@ -1,0 +1,91 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-libbpf-b95b28103915
+source_kind: github_commit
+source:
+  url: https://github.com/libbpf/libbpf/commit/b95b281039152937878a22a7b9bbfaaed59fef99
+  title: 'libbpf: Add probe for large INSN limit'
+  repository: https://github.com/libbpf/libbpf
+  commit: b95b281039152937878a22a7b9bbfaaed59fef99
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-libbpf-b95b28103915.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: environment_required
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Raw has_verifier_log=false. The new bpf_probe_large_insn_limit() loads BPF_MAXINSNS
+    + 1 instructions and interprets E2BIG/EINVAL; replay depends on old/new kernel
+    instruction-limit behavior and provides no trace-rich verifier log.
+raw:
+  case_id: github-commit-libbpf-b95b28103915
+  source: github_commits
+  repository: https://github.com/libbpf/libbpf
+  commit_hash: b95b281039152937878a22a7b9bbfaaed59fef99
+  commit_message: 'libbpf: Add probe for large INSN limit'
+  commit_date: '2020-01-08'
+  fix_type: loop_rewrite
+  buggy_code: "// FILE: src/libbpf.h\n// CONTEXT: bpf_prog_linfo__lfind(const struct\
+    \ bpf_prog_linfo *prog_linfo,\n * Probe for supported system features\n *\n *\
+    \ Note that running many of these probes in a short amount of time can cause\n\
+    \ * the kernel to reach the maximal size of lockable memory allowed for the\n\
+    \ * user, causing subsequent probes to fail. In this case, the caller may want\n\
+    \ * to adjust that limit with setrlimit().\n */\nLIBBPF_API bool bpf_probe_prog_type(enum\
+    \ bpf_prog_type prog_type,\n\t\t\t\t    __u32 ifindex);\nLIBBPF_API bool bpf_probe_map_type(enum\
+    \ bpf_map_type map_type, __u32 ifindex);\nLIBBPF_API bool bpf_probe_helper(enum\
+    \ bpf_func_id id,\n\t\t\t\t enum bpf_prog_type prog_type, __u32 ifindex);\n\n\
+    /*\n * Get bpf_prog_info in continuous memory\n *\n * struct bpf_prog_info has\
+    \ multiple arrays. The user has option to choose\n * arrays to fetch from kernel.\
+    \ The following APIs provide an uniform way to\n * fetch these data. All arrays\
+    \ in bpf_prog_info are stored in a single\n * continuous memory region. This makes\
+    \ it easy to store the info in a\n * file.\n *\n * Before writing bpf_prog_info_linear\
+    \ to files, it is necessary to\n * translate pointers in bpf_prog_info to offsets.\
+    \ Helper functions\n\n// FILE: src/libbpf_probes.c\n// CONTEXT: bool bpf_probe_helper(enum\
+    \ bpf_func_id id, enum bpf_prog_type prog_type,\n\t\tswitch (get_vendor_id(ifindex))\
+    \ {\n\t\tcase 0x19ee: /* Netronome specific */\n\t\t\tres = res && !grep(buf,\
+    \ \"not supported by FW\") &&\n\t\t\t\t!grep(buf, \"unsupported function id\"\
+    );\n\t\t\tbreak;\n\t\tdefault:\n\t\t\tbreak;\n\t\t}\n\t}\n\n\treturn res;\n}"
+  fixed_code: "// FILE: src/libbpf.h\n// CONTEXT: bpf_prog_linfo__lfind(const struct\
+    \ bpf_prog_linfo *prog_linfo,\n * Probe for supported system features\n *\n *\
+    \ Note that running many of these probes in a short amount of time can cause\n\
+    \ * the kernel to reach the maximal size of lockable memory allowed for the\n\
+    \ * user, causing subsequent probes to fail. In this case, the caller may want\n\
+    \ * to adjust that limit with setrlimit().\n */\nLIBBPF_API bool bpf_probe_prog_type(enum\
+    \ bpf_prog_type prog_type,\n\t\t\t\t    __u32 ifindex);\nLIBBPF_API bool bpf_probe_map_type(enum\
+    \ bpf_map_type map_type, __u32 ifindex);\nLIBBPF_API bool bpf_probe_helper(enum\
+    \ bpf_func_id id,\n\t\t\t\t enum bpf_prog_type prog_type, __u32 ifindex);\nLIBBPF_API\
+    \ bool bpf_probe_large_insn_limit(__u32 ifindex);\n\n/*\n * Get bpf_prog_info\
+    \ in continuous memory\n *\n * struct bpf_prog_info has multiple arrays. The user\
+    \ has option to choose\n * arrays to fetch from kernel. The following APIs provide\
+    \ an uniform way to\n * fetch these data. All arrays in bpf_prog_info are stored\
+    \ in a single\n * continuous memory region. This makes it easy to store the info\
+    \ in a\n * file.\n *\n * Before writing bpf_prog_info_linear to files, it is necessary\
+    \ to\n * translate pointers in bpf_prog_info to offsets. Helper functions\n\n\
+    // FILE: src/libbpf_probes.c\n// CONTEXT: bool bpf_probe_helper(enum bpf_func_id\
+    \ id, enum bpf_prog_type prog_type,\n\t\tswitch (get_vendor_id(ifindex)) {\n\t\
+    \tcase 0x19ee: /* Netronome specific */\n\t\t\tres = res && !grep(buf, \"not supported\
+    \ by FW\") &&\n\t\t\t\t!grep(buf, \"unsupported function id\");\n\t\t\tbreak;\n\
+    \t\tdefault:\n\t\t\tbreak;\n\t\t}\n\t}\n\n\treturn res;\n}\n\n/*\n * Probe for\
+    \ availability of kernel commit (5.3):\n *\n * c04c0d2b968a (\"bpf: increase complexity\
+    \ limit and maximum program size\")\n */\nbool bpf_probe_large_insn_limit(__u32\
+    \ ifindex)\n{\n\tstruct bpf_insn insns[BPF_MAXINSNS + 1];\n\tint i;\n\n\tfor (i\
+    \ = 0; i < BPF_MAXINSNS; i++)\n\t\tinsns[i] = BPF_MOV64_IMM(BPF_REG_0, 1);\n\t\
+    insns[BPF_MAXINSNS] = BPF_EXIT_INSN();\n\n\terrno = 0;\n\tprobe_load(BPF_PROG_TYPE_SCHED_CLS,\
+    \ insns, ARRAY_SIZE(insns), NULL, 0,\n\t\t   ifindex);\n\n\treturn errno != E2BIG\
+    \ && errno != EINVAL;\n}"
+  diff_summary: |-
+    src/libbpf.h:
+    - Reworked loop or branch structure to reduce verifier complexity and keep the path bounded.
+    - Affected context: bpf_prog_linfo__lfind(const struct bpf_prog_linfo *prog_linfo,.
+    src/libbpf_probes.c:
+    - Reworked loop or branch structure to reduce verifier complexity and keep the path bounded.
+    - Affected context: bool bpf_probe_helper(enum bpf_func_id id, enum bpf_prog_type prog_type,.
+    - Commit subject: libbpf: Add probe for large INSN limit.

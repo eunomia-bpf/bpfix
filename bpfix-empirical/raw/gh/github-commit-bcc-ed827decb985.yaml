@@ -1,0 +1,69 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-bcc-ed827decb985
+source_kind: github_commit
+source:
+  url: https://github.com/iovisor/bcc/commit/ed827decb985f52e706bdbd7163edbeb906885f6
+  title: 'libbpf-tools: Fix misaligned pointer accesses in statsnoop'
+  repository: https://github.com/iovisor/bcc
+  commit: ed827decb985f52e706bdbd7163edbeb906885f6
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-bcc-ed827decb985.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Commit is in libbpf-tools/statsnoop.c user-space output/alignment code,
+    not a verifier-rejected BPF program.
+raw:
+  case_id: github-commit-bcc-ed827decb985
+  source: github_commits
+  repository: https://github.com/iovisor/bcc
+  commit_hash: ed827decb985f52e706bdbd7163edbeb906885f6
+  commit_message: 'libbpf-tools: Fix misaligned pointer accesses in statsnoop'
+  commit_date: '2023-12-04'
+  fix_type: alignment
+  buggy_code: "// FILE: libbpf-tools/statsnoop.c\n// CONTEXT: static int libbpf_print_fn(enum\
+    \ libbpf_print_level level, const char *format, va\n\t\treturn 0;\n\treturn vfprintf(stderr,\
+    \ format, args);\n}\n\nstatic void sig_int(int signo)\n{\n\texiting = 1;\n}\n\n\
+    static void handle_event(void *ctx, int cpu, void *data, __u32 data_sz)\n{\n\t\
+    static __u64 start_timestamp = 0;\n\tconst struct event *e = data;\n\tint fd,\
+    \ err;\n\tdouble ts = 0.0;\n\n\tif (e->ret >= 0) {\n\t\tfd = e->ret;\n\t\terr\
+    \ = 0;\n\t} else {\n\t\tfd = -1;\n\t\terr = -e->ret;\n\t}\n\tif (!start_timestamp)\n\
+    \t\tstart_timestamp = e->ts_ns;\n\tif (emit_timestamp) {\n\t\tts = (double)(e->ts_ns\
+    \ - start_timestamp) / 1000000000;\n\t\tprintf(\"%-14.9f \", ts);\n\t}\n\tprintf(\"\
+    %-7d %-20s %-4d %-4d %-s\\n\", e->pid, e->comm, fd, err, e->pathname);\n}\n\n\
+    static void handle_lost_events(void *ctx, int cpu, __u64 lost_cnt)\n{\n\twarn(\"\
+    lost %llu events on CPU #%d\\n\", lost_cnt, cpu);\n}\n\nint main(int argc, char\
+    \ **argv)\n{\n\tLIBBPF_OPTS(bpf_object_open_opts, open_opts);\n\tstatic const\
+    \ struct argp argp = {\n\t\t.options = opts,"
+  fixed_code: "// FILE: libbpf-tools/statsnoop.c\n// CONTEXT: static int libbpf_print_fn(enum\
+    \ libbpf_print_level level, const char *format, va\n\t\treturn 0;\n\treturn vfprintf(stderr,\
+    \ format, args);\n}\n\nstatic void sig_int(int signo)\n{\n\texiting = 1;\n}\n\n\
+    static void handle_event(void *ctx, int cpu, void *data, __u32 data_sz)\n{\n\t\
+    static __u64 start_timestamp = 0;\n\tstruct event e;\n\tint fd, err;\n\tdouble\
+    \ ts = 0.0;\n\n\tif (data_sz < sizeof(e)) {\n\t\tprintf(\"Error: packet too small\\\
+    n\");\n\t\treturn;\n\t}\n\t/* Copy data as alignment in the perf buffer isn't\
+    \ guaranteed. */\n\tmemcpy(&e, data, sizeof(e));\n\n\tif (e.ret >= 0) {\n\t\t\
+    fd = e.ret;\n\t\terr = 0;\n\t} else {\n\t\tfd = -1;\n\t\terr = -e.ret;\n\t}\n\t\
+    if (!start_timestamp)\n\t\tstart_timestamp = e.ts_ns;\n\tif (emit_timestamp) {\n\
+    \t\tts = (double)(e.ts_ns - start_timestamp) / 1000000000;\n\t\tprintf(\"%-14.9f\
+    \ \", ts);\n\t}\n\tprintf(\"%-7d %-20s %-4d %-4d %-s\\n\", e.pid, e.comm, fd,\
+    \ err, e.pathname);\n}\n\nstatic void handle_lost_events(void *ctx, int cpu, __u64\
+    \ lost_cnt)\n{\n\twarn(\"lost %llu events on CPU #%d\\n\", lost_cnt, cpu);\n}\n\
+    \nint main(int argc, char **argv)\n{\n\tLIBBPF_OPTS(bpf_object_open_opts, open_opts);\n\
+    \tstatic const struct argp argp = {\n\t\t.options = opts,"
+  diff_summary: |-
+    libbpf-tools/statsnoop.c:
+    - Adjusted alignment declarations or stack layout to avoid misaligned accesses.
+    - Affected context: static int libbpf_print_fn(enum libbpf_print_level level, const char *format, va.
+    - Commit subject: libbpf-tools: Fix misaligned pointer accesses in statsnoop.

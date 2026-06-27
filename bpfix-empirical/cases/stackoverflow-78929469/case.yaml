@@ -1,0 +1,43 @@
+schema_version: bpfix.case/v1
+case_id: stackoverflow-78929469
+source:
+  kind: stackoverflow
+  url: https://stackoverflow.com/questions/78929469/ebpf-go-getting-load-program-permission-denied-0-bf-r6-r3-r3-read-ok
+  repository: null
+  commit: null
+  upstream_file: null
+  collected_at: '2026-04-30T00:51:00+00:00'
+  raw_excerpt_files:
+  - bpfix-empirical/raw/so/stackoverflow-78929469.yaml
+reproducer:
+  reconstruction: reconstructed
+  notes: Imported from reconstructed external source into bpfix-empirical; replay logs are generated
+    as replay-verifier.log.
+capture:
+  capture_id: stackoverflow-78929469__kernel-6.15.11-clang-18-log2
+  terminal_error: R3 !read_ok
+  rejected_insn_idx: 0
+external_match:
+  status: exact
+  policy: terminal_error
+  matched_messages:
+  - R3 !read_ok
+  - R3 !read_ok
+  notes: Imported only because verifier_error_match was exact/partial in the verified SO/GH
+    artifact.
+label:
+  capture_id: stackoverflow-78929469__kernel-6.15.11-clang-18-log2
+  taxonomy_class: source_bug
+  error_id: BPFIX-E011
+  confidence: medium
+  label_source: external_replay_reconstruction
+  root_cause_description: Program reads from a register argument that is not initialized by
+    this program type ABI.
+  root_cause_insn_idx: null
+  localization_confidence: medium
+  fix_type: use_correct_context
+  fix_direction: Use the proper context struct/signature for the selected tracing program.
+reporting:
+  family_id: stackoverflow-78929469
+  representative: true
+  notes: External SO/GH case imported from verified exact/partial artifact.

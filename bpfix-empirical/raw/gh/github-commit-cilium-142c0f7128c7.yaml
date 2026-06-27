@@ -1,0 +1,141 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-142c0f7128c7
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/142c0f7128c7fac22eb18b2c21a56433f19a5ef8
+  title: 'datapath: Use inline function to keep policy and l4policy checks separate'
+  repository: https://github.com/cilium/cilium
+  commit: 142c0f7128c7fac22eb18b2c21a56433f19a5ef8
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-142c0f7128c7.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: environment_required
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Separates policy and L4 policy checks through an inline helper. Any verifier
+    effect depends on the full policy map path and generated datapath, with no raw
+    verifier log.
+raw:
+  case_id: github-commit-cilium-142c0f7128c7
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: 142c0f7128c7fac22eb18b2c21a56433f19a5ef8
+  commit_message: 'datapath: Use inline function to keep policy and l4policy checks
+    separate'
+  commit_date: '2023-04-17'
+  fix_type: inline_hint
+  buggy_code: "// FILE: bpf/lib/policy.h\n/* Copyright Authors of Cilium */\n\n#ifndef\
+    \ __LIB_POLICY_H_\n#define __LIB_POLICY_H_\n\n#include <linux/icmp.h>\n\n#include\
+    \ \"drop.h\"\n#include \"dbg.h\"\n#include \"eps.h\"\n#include \"maps.h\"\n\n\
+    static __always_inline void\naccount(struct __ctx_buff *ctx, struct policy_entry\
+    \ *policy)\n{\n\t/* FIXME: Use per cpu counters */\n\t__sync_fetch_and_add(&policy->packets,\
+    \ 1);\n\t__sync_fetch_and_add(&policy->bytes, ctx_full_len(ctx));\n}\n\nstatic\
+    \ __always_inline int\n__policy_can_access(const void *map, struct __ctx_buff\
+    \ *ctx, __u32 local_id,\n\t\t    __u32 remote_id, __u16 dport, __u8 proto, int\
+    \ dir,\n\t\t    bool is_untracked_fragment, __u8 *match_type, __s8 *ext_err,\n\
+    \t\t    __u16 *proxy_port)\n{\n\tstruct policy_entry *policy;\n\tstruct policy_entry\
+    \ *l4policy;\n\tstruct policy_key key = {\n\t\t.lpm_key = { POLICY_FULL_PREFIX,\
+    \ {} }, /* always look up with unwildcarded data */\n\n// CONTEXT: __policy_can_access(const\
+    \ void *map, struct __ctx_buff *ctx, __u32 local_id,\n\t * Note: Untracked fragments\
+    \ always have zero ports in the tuple so they can\n\t * only match entries that\
+    \ have fully wildcarded ports.\n\t */\n\tpolicy = map_lookup_elem(map, &key);\n\
+    \n\t/* This is a full L3/L4 match if port is not wildcarded,\n\t * need to check\
+    \ for L4-only policy first if it is.\n\t */\n\tif (likely(policy && !policy->wildcard_dport))\
+    \ {\n\t\tcilium_dbg3(ctx, DBG_L4_CREATE, remote_id, local_id,\n\t\t\t    dport\
+    \ << 16 | proto);\n\t\t*match_type = POLICY_MATCH_L3_L4;\t\t/* 1. id/proto/port\
+    \ */\n\t\tgoto policy_check_entry;\n\t}\n\n\t/* L4-only lookup. */\n\tkey.sec_label\
+    \ = 0;\n\t/* LPM precedence order without L3:\n\t * 2. ANY/proto/port\n\t * 4.\
+    \ ANY/proto/ANY\n\t * 6. ANY/ANY/ANY   == allow-all as L3 is zeroed in this lookup,\n\
+    \t *                     defer this until L3 match has been ruled out below.\n\
+    \t *\n\t * Untracked fragments always have zero ports in the tuple so they can\n\
+    \t * only match entries that have fully wildcarded ports.\n\t */\n\tl4policy =\
+    \ map_lookup_elem(map, &key);\n\n\tif (likely(l4policy && !l4policy->wildcard_dport))\
+    \ {\n\t\t*match_type = POLICY_MATCH_L4_ONLY;\t\t/* 2. ANY/proto/port */\n\t\t\
+    policy = l4policy;\n\t\tgoto policy_check_entry;\n\t}\n\n\tif (likely(policy &&\
+    \ !policy->wildcard_protocol)) {\n\t\t*match_type = POLICY_MATCH_L3_PROTO;\t\t\
+    /* 3. id/proto/ANY */\n\t\tgoto policy_check_entry;\n\t}\n\n\tif (likely(l4policy\
+    \ && !l4policy->wildcard_protocol)) {\n\t\t*match_type = POLICY_MATCH_PROTO_ONLY;\t\
+    \t/* 4. ANY/proto/ANY */\n\t\tpolicy = l4policy;\n\t\tgoto policy_check_entry;\n\
+    \t}\n\n\tif (likely(policy)) {\n\t\t*match_type = POLICY_MATCH_L3_ONLY;\t\t/*\
+    \ 5. id/ANY/ANY */\n\t\tgoto policy_check_entry;\n\t}\n\n\tif (likely(l4policy))\
+    \ {\n\t\t*match_type = POLICY_MATCH_ALL;\t\t\t/* 6. ANY/ANY/ANY */\n\t\tpolicy\
+    \ = l4policy;\n\t\tgoto policy_check_entry;\n\t}\n\n\t/* TODO: Consider skipping\
+    \ policy lookup in this case? */\n\tif (ctx_load_meta(ctx, CB_POLICY)) {\n\t\t\
+    *proxy_port = 0;\n\t\treturn CTX_ACT_OK;\n\t}\n\n\tif (is_untracked_fragment)\n\
+    \t\treturn DROP_FRAG_NOSUPPORT;\n\n\treturn DROP_POLICY;\n\npolicy_check_entry:\n\
+    \taccount(ctx, policy);\n\n\tif (unlikely(policy->deny))\n\t\treturn DROP_POLICY_DENY;\n\
+    \n\t*proxy_port = policy->proxy_port;\n\tif (unlikely(policy->auth_type)) {\n\t\
+    \tif (ext_err)\n\t\t\t*ext_err = (__s8)policy->auth_type;\n\t\treturn DROP_POLICY_AUTH_REQUIRED;\n\
+    \t}\n\treturn CTX_ACT_OK;\n}\n\n/**\n * Determine whether the policy allows this\
+    \ traffic on ingress.\n * @arg ctx\t\tPacket to allow or deny\n * @arg src_id\t\
+    \tSource security identity for this packet\n * @arg dst_id\t\tDestination security\
+    \ identity for this packet\n * @arg dport\t\tDestination port of this packet\n\
+    \ * @arg proto\t\tL3 Protocol of this packet\n * @arg is_untracked_fragment\t\
+    True if packet is a TCP/UDP datagram fragment\n *\t\t\t\tAND IPv4 fragment tracking\
+    \ is disabled\n * @arg match_type\t\tPointer to store layers used for policy match"
+  fixed_code: "// FILE: bpf/lib/policy.h\n/* Copyright Authors of Cilium */\n\n#ifndef\
+    \ __LIB_POLICY_H_\n#define __LIB_POLICY_H_\n\n#include <linux/icmp.h>\n\n#include\
+    \ \"drop.h\"\n#include \"dbg.h\"\n#include \"eps.h\"\n#include \"maps.h\"\n\n\
+    static __always_inline int\n__account_and_check(struct __ctx_buff *ctx, struct\
+    \ policy_entry *policy,\n\t\t    __s8 *ext_err, __u16 *proxy_port)\n{\n\t/* FIXME:\
+    \ Use per cpu counters */\n\t__sync_fetch_and_add(&policy->packets, 1);\n\t__sync_fetch_and_add(&policy->bytes,\
+    \ ctx_full_len(ctx));\n\n\tif (unlikely(policy->deny))\n\t\treturn DROP_POLICY_DENY;\n\
+    \n\t*proxy_port = policy->proxy_port;\n\tif (unlikely(policy->auth_type)) {\n\t\
+    \tif (ext_err)\n\t\t\t*ext_err = (__s8)policy->auth_type;\n\t\treturn DROP_POLICY_AUTH_REQUIRED;\n\
+    \t}\n\treturn CTX_ACT_OK;\n}\n\nstatic __always_inline int\n__policy_can_access(const\
+    \ void *map, struct __ctx_buff *ctx, __u32 local_id,\n\t\t    __u32 remote_id,\
+    \ __u16 dport, __u8 proto, int dir,\n\t\t    bool is_untracked_fragment, __u8\
+    \ *match_type, __s8 *ext_err,\n\t\t    __u16 *proxy_port)\n{\n\tstruct policy_entry\
+    \ *policy;\n\tstruct policy_entry *l4policy;\n\tstruct policy_key key = {\n\t\t\
+    .lpm_key = { POLICY_FULL_PREFIX, {} }, /* always look up with unwildcarded data\
+    \ */\n\n// CONTEXT: __policy_can_access(const void *map, struct __ctx_buff *ctx,\
+    \ __u32 local_id,\n\t * Note: Untracked fragments always have zero ports in the\
+    \ tuple so they can\n\t * only match entries that have fully wildcarded ports.\n\
+    \t */\n\tpolicy = map_lookup_elem(map, &key);\n\n\t/* This is a full L3/L4 match\
+    \ if port is not wildcarded,\n\t * need to check for L4-only policy first if it\
+    \ is.\n\t */\n\tif (likely(policy && !policy->wildcard_dport)) {\n\t\tcilium_dbg3(ctx,\
+    \ DBG_L4_CREATE, remote_id, local_id,\n\t\t\t    dport << 16 | proto);\n\t\t*match_type\
+    \ = POLICY_MATCH_L3_L4;\t\t/* 1. id/proto/port */\n\t\treturn __account_and_check(ctx,\
+    \ policy, ext_err, proxy_port);\n\t}\n\n\t/* L4-only lookup. */\n\tkey.sec_label\
+    \ = 0;\n\t/* LPM precedence order without L3:\n\t * 2. ANY/proto/port\n\t * 4.\
+    \ ANY/proto/ANY\n\t * 6. ANY/ANY/ANY   == allow-all as L3 is zeroed in this lookup,\n\
+    \t *                     defer this until L3 match has been ruled out below.\n\
+    \t *\n\t * Untracked fragments always have zero ports in the tuple so they can\n\
+    \t * only match entries that have fully wildcarded ports.\n\t */\n\tl4policy =\
+    \ map_lookup_elem(map, &key);\n\n\tif (likely(l4policy && !l4policy->wildcard_dport))\
+    \ {\n\t\t*match_type = POLICY_MATCH_L4_ONLY;\t\t/* 2. ANY/proto/port */\n\t\t\
+    return __account_and_check(ctx, l4policy, ext_err, proxy_port);\n\t}\n\n\tif (likely(policy\
+    \ && !policy->wildcard_protocol)) {\n\t\t*match_type = POLICY_MATCH_L3_PROTO;\t\
+    \t/* 3. id/proto/ANY */\n\t\treturn __account_and_check(ctx, policy, ext_err,\
+    \ proxy_port);\n\t}\n\n\tif (likely(l4policy && !l4policy->wildcard_protocol))\
+    \ {\n\t\t*match_type = POLICY_MATCH_PROTO_ONLY;\t\t/* 4. ANY/proto/ANY */\n\t\t\
+    return __account_and_check(ctx, l4policy, ext_err, proxy_port);\n\t}\n\n\tif (likely(policy))\
+    \ {\n\t\t*match_type = POLICY_MATCH_L3_ONLY;\t\t/* 5. id/ANY/ANY */\n\t\treturn\
+    \ __account_and_check(ctx, policy, ext_err, proxy_port);\n\t}\n\n\tif (likely(l4policy))\
+    \ {\n\t\t*match_type = POLICY_MATCH_ALL;\t\t\t/* 6. ANY/ANY/ANY */\n\t\treturn\
+    \ __account_and_check(ctx, l4policy, ext_err, proxy_port);\n\t}\n\n\t/* TODO:\
+    \ Consider skipping policy lookup in this case? */\n\tif (ctx_load_meta(ctx, CB_POLICY))\
+    \ {\n\t\t*proxy_port = 0;\n\t\treturn CTX_ACT_OK;\n\t}\n\n\tif (is_untracked_fragment)\n\
+    \t\treturn DROP_FRAG_NOSUPPORT;\n\n\treturn DROP_POLICY;\n}\n\n/**\n * Determine\
+    \ whether the policy allows this traffic on ingress.\n * @arg ctx\t\tPacket to\
+    \ allow or deny\n * @arg src_id\t\tSource security identity for this packet\n\
+    \ * @arg dst_id\t\tDestination security identity for this packet\n * @arg dport\t\
+    \tDestination port of this packet\n * @arg proto\t\tL3 Protocol of this packet\n\
+    \ * @arg is_untracked_fragment\tTrue if packet is a TCP/UDP datagram fragment\n\
+    \ *\t\t\t\tAND IPv4 fragment tracking is disabled\n * @arg match_type\t\tPointer\
+    \ to store layers used for policy match"
+  diff_summary: |-
+    bpf/lib/policy.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: __policy_can_access(const void *map, struct __ctx_buff *ctx, __u32 local_id,.
+    - Commit subject: datapath: Use inline function to keep policy and l4policy checks separate.

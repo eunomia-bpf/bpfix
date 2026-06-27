@@ -1,0 +1,24 @@
+schema_version: bpfix.capture/v1
+capture_id: stackoverflow-74178703__kernel-6.15.11-clang-18-log2
+case_id: stackoverflow-74178703
+environment_id: kernel-6.15.11-clang-18-log2
+imported_at: '2026-04-30T00:59:55+00:00'
+source_artifact:
+  path: bpfix-empirical/cases/stackoverflow-74178703
+  source_origin: source_snippets[1] -> case-rewrite
+  source_bucket: stackoverflow
+  language: c
+  compile_ok: true
+  verifier_status: rejected
+  verifier_error_match: mismatch
+  fixed_status: not_attempted
+  compatibility_rewrites:
+  - converted legacy bpf_elf_map to BTF SEC(".maps") definitions
+  - made offset/size verifier-visible scalars and preserved the copied byte so clang
+    cannot optimize away the map-value read
+  source_record: bpfix-empirical/raw/so/stackoverflow-74178703.yaml
+replay:
+  build_command: make
+  load_command: make replay-verify
+  verifier_log: replay-verifier.log
+  expected_load_status: verifier_reject

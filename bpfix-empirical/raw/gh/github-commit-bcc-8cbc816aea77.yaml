@@ -1,0 +1,73 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-bcc-8cbc816aea77
+source_kind: github_commit
+source:
+  url: https://github.com/iovisor/bcc/commit/8cbc816aea77ee3e134e9efbff695cfc3ad43d1a
+  title: invalid access fixed. parameter for specify the interface added
+  repository: https://github.com/iovisor/bcc
+  commit: 8cbc816aea77ee3e134e9efbff695cfc3ad43d1a
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-bcc-8cbc816aea77.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: replay_valid
+  case_id: github-commit-bcc-8cbc816aea77
+  case_path: cases/github-commit-bcc-8cbc816aea77
+  artifact_path: cases/github-commit-bcc-8cbc816aea77
+  reason: admitted_to_bpfix_bench_cases
+raw:
+  case_id: github-commit-bcc-8cbc816aea77
+  source: github_commits
+  repository: https://github.com/iovisor/bcc
+  commit_hash: 8cbc816aea77ee3e134e9efbff695cfc3ad43d1a
+  commit_message: invalid access fixed. parameter for specify the interface added
+  commit_date: '2016-05-16'
+  fix_type: other
+  buggy_code: "// FILE: examples/networking/http_filter/http-parse-complete.c\n//\
+    \ CONTEXT: int http_filter(struct __sk_buff *skb) {\n\n\tstruct ip_t *ip = cursor_advance(cursor,\
+    \ sizeof(*ip));\n\t//filter TCP packets (ip next protocol = 0x06)\n\tif (ip->nextp\
+    \ != IP_TCP) {\n\t\tgoto DROP;\n\t}\n\n\tu32  tcp_header_length = 0;\n\tu32  ip_header_length\
+    \ = 0;\n\tu32  payload_offset = 0;\n\tu32  payload_length = 0;\n\tstruct Key \t\
+    key;\n\tstruct Leaf leaf;\n\n\tstruct tcp_t *tcp = cursor_advance(cursor, sizeof(*tcp));\n\
+    \n\t//retrieve ip src/dest and port src/dest of current packet\n\t//and save it\
+    \ into struct Key\n\tkey.dst_ip = ip->dst;\n\tkey.src_ip = ip->src;\n\tkey.dst_port\
+    \ = tcp->dst_port;\n\tkey.src_port = tcp->src_port;\n\n\t//calculate ip header\
+    \ length\n\t//value to multiply * 4\n\n// CONTEXT: int http_filter(struct __sk_buff\
+    \ *skb) {\n\t//no HTTP match\n\t//check if packet belong to an HTTP session\n\t\
+    struct Leaf * lookup_leaf = sessions.lookup(&key);\n\tif(lookup_leaf) {\n\t\t\
+    //send packet to userspace\n\t\tgoto KEEP;\n\t}\n\tgoto DROP;\n\n\t//keep the\
+    \ packet and send it to userspace retruning -1\n\tHTTP_MATCH:\n\t//if not already\
+    \ present, insert into map <Key, Leaf>\n\tleaf.timestamp = 0;\n\tsessions.lookup_or_init(&key,\
+    \ &leaf);\n\tsessions.update(&key,&leaf);\n\t\n\t//send packet to userspace returning\
+    \ -1\n\tKEEP:\n\treturn -1;\n\n\t//drop the packet returning 0\n\tDROP:\n\treturn\
+    \ 0;\n\n}"
+  fixed_code: "// FILE: examples/networking/http_filter/http-parse-complete.c\n//\
+    \ CONTEXT: int http_filter(struct __sk_buff *skb) {\n\n\tstruct ip_t *ip = cursor_advance(cursor,\
+    \ sizeof(*ip));\n\t//filter TCP packets (ip next protocol = 0x06)\n\tif (ip->nextp\
+    \ != IP_TCP) {\n\t\tgoto DROP;\n\t}\n\n\tu32  tcp_header_length = 0;\n\tu32  ip_header_length\
+    \ = 0;\n\tu32  payload_offset = 0;\n\tu32  payload_length = 0;\n\tstruct Key \t\
+    key;\n\tstruct Leaf zero = {0};\n\n\tstruct tcp_t *tcp = cursor_advance(cursor,\
+    \ sizeof(*tcp));\n\n\t//retrieve ip src/dest and port src/dest of current packet\n\
+    \t//and save it into struct Key\n\tkey.dst_ip = ip->dst;\n\tkey.src_ip = ip->src;\n\
+    \tkey.dst_port = tcp->dst_port;\n\tkey.src_port = tcp->src_port;\n\n\t//calculate\
+    \ ip header length\n\t//value to multiply * 4\n\n// CONTEXT: int http_filter(struct\
+    \ __sk_buff *skb) {\n\t//no HTTP match\n\t//check if packet belong to an HTTP\
+    \ session\n\tstruct Leaf * lookup_leaf = sessions.lookup(&key);\n\tif(lookup_leaf)\
+    \ {\n\t\t//send packet to userspace\n\t\tgoto KEEP;\n\t}\n\tgoto DROP;\n\n\t//keep\
+    \ the packet and send it to userspace retruning -1\n\tHTTP_MATCH:\n\t//if not\
+    \ already present, insert into map <Key, Leaf>\n\tsessions.lookup_or_init(&key,&zero);\n\
+    \n\t//send packet to userspace returning -1\n\tKEEP:\n\treturn -1;\n\n\t//drop\
+    \ the packet returning 0\n\tDROP:\n\treturn 0;\n\n}"
+  diff_summary: |-
+    examples/networking/http_filter/http-parse-complete.c:
+    - Applied a small verifier-related code change captured by the exact before/after snippets below.
+    - Affected context: int http_filter(struct __sk_buff *skb) {.
+    - Commit subject: invalid access fixed. parameter for specify the interface added.

@@ -1,0 +1,87 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-2d5be9ea8679
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/2d5be9ea8679dbccfd3efedf186021fdc552149c
+  title: 'bpf: fix cilium_host unroutable check'
+  repository: https://github.com/cilium/cilium
+  commit: 2d5be9ea8679dbccfd3efedf186021fdc552149c
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-2d5be9ea8679.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: not_reconstructable_from_diff
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Large cilium_host unroutable-control-flow rewrite lacks a verifier log and
+    enough standalone source context for a faithful local reject.
+raw:
+  case_id: github-commit-cilium-2d5be9ea8679
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: 2d5be9ea8679dbccfd3efedf186021fdc552149c
+  commit_message: 'bpf: fix cilium_host unroutable check'
+  commit_date: '2019-09-30'
+  fix_type: loop_rewrite
+  buggy_code: "// FILE: bpf/bpf_netdev.c\n// CONTEXT: static inline int handle_ipv6(struct\
+    \ __sk_buff *skb, __u32 src_identity)\n\n\t\tret = encap_and_redirect_netdev(skb,\
+    \ &key, secctx, TRACE_PAYLOAD_LEN);\n\t\tif (ret == IPSEC_ENDPOINT)\n\t\t\treturn\
+    \ TC_ACT_OK;\n\t\telse if (ret != DROP_NO_TUNNEL_ENDPOINT)\n\t\t\treturn ret;\n\
+    \t}\n#endif\n\n\tdst = (union v6addr *) &ip6->daddr;\n\tinfo = ipcache_lookup6(&IPCACHE_MAP,\
+    \ dst, V6_CACHE_KEY_LEN);\n#ifdef FROM_HOST\n\tif (info == NULL) {\n\t\t/* We\
+    \ have received a packet for which no ipcache entry exists,\n\t\t * we do not\
+    \ know what to do with this packet, drop it. */\n\t\treturn DROP_UNROUTABLE;\n\
+    \t}\n#endif\n#ifdef ENABLE_IPSEC\n\tif (info && info->key && info->tunnel_endpoint)\
+    \ {\n\t\t__u8 key = get_min_encrypt_key(info->key);\n\n\t\tset_encrypt_key_cb(skb,\
+    \ key);\n#ifdef IP_POOLS\n\t\tset_encrypt_dip(skb, info->tunnel_endpoint);\n#else\n\
+    \t\tset_identity_cb(skb, secctx);\n\n// CONTEXT: static inline int handle_ipv4(struct\
+    \ __sk_buff *skb, __u32 src_identity)\n\t\t\treturn TC_ACT_OK;\n\t\telse if (ret\
+    \ != DROP_NO_TUNNEL_ENDPOINT)\n\t\t\treturn ret;\n\t}\n#endif\n\n#ifdef HOST_REDIRECT_TO_INGRESS\n\
+    \    return redirect(HOST_IFINDEX, BPF_F_INGRESS);\n#else\n\n\tinfo = ipcache_lookup4(&IPCACHE_MAP,\
+    \ ip4->daddr, V4_CACHE_KEY_LEN);\n#ifdef FROM_HOST\n\tif (info == NULL) {\n\t\t\
+    /* We have received a packet for which no ipcache entry exists,\n\t\t * we do\
+    \ not know what to do with this packet, drop it. */\n\t\treturn DROP_UNROUTABLE;\n\
+    \t}\n#endif\n#ifdef ENABLE_IPSEC\n\tif (info && info->key && info->tunnel_endpoint)\
+    \ {\n\t\t__u8 key = get_min_encrypt_key(info->key);\n\n\t\tset_encrypt_key_cb(skb,\
+    \ key);\n#ifdef IP_POOLS\n\t\tset_encrypt_dip(skb, info->tunnel_endpoint);\n#else\n\
+    \t\tset_identity_cb(skb, secctx);"
+  fixed_code: "// FILE: bpf/bpf_netdev.c\n// CONTEXT: static inline int handle_ipv6(struct\
+    \ __sk_buff *skb, __u32 src_identity)\n\n\t\tret = encap_and_redirect_netdev(skb,\
+    \ &key, secctx, TRACE_PAYLOAD_LEN);\n\t\tif (ret == IPSEC_ENDPOINT)\n\t\t\treturn\
+    \ TC_ACT_OK;\n\t\telse if (ret != DROP_NO_TUNNEL_ENDPOINT)\n\t\t\treturn ret;\n\
+    \t}\n#endif\n\n\tdst = (union v6addr *) &ip6->daddr;\n\tinfo = ipcache_lookup6(&IPCACHE_MAP,\
+    \ dst, V6_CACHE_KEY_LEN);\n#ifdef FROM_HOST\n\tif (info == NULL || info->sec_label\
+    \ == WORLD_ID) {\n\t\t/* See IPv4 comment. */\n\t\treturn DROP_UNROUTABLE;\n\t\
+    }\n#endif\n#ifdef ENABLE_IPSEC\n\tif (info && info->key && info->tunnel_endpoint)\
+    \ {\n\t\t__u8 key = get_min_encrypt_key(info->key);\n\n\t\tset_encrypt_key_cb(skb,\
+    \ key);\n#ifdef IP_POOLS\n\t\tset_encrypt_dip(skb, info->tunnel_endpoint);\n#else\n\
+    \t\tset_identity_cb(skb, secctx);\n\n// CONTEXT: static inline int handle_ipv4(struct\
+    \ __sk_buff *skb, __u32 src_identity)\n\t\t\treturn TC_ACT_OK;\n\t\telse if (ret\
+    \ != DROP_NO_TUNNEL_ENDPOINT)\n\t\t\treturn ret;\n\t}\n#endif\n\n#ifdef HOST_REDIRECT_TO_INGRESS\n\
+    \    return redirect(HOST_IFINDEX, BPF_F_INGRESS);\n#else\n\n\tinfo = ipcache_lookup4(&IPCACHE_MAP,\
+    \ ip4->daddr, V4_CACHE_KEY_LEN);\n#ifdef FROM_HOST\n\tif (info == NULL || info->sec_label\
+    \ == WORLD_ID) {\n\t\t/* We have received a packet for which no ipcache entry\
+    \ exists,\n\t\t * we do not know what to do with this packet, drop it.\n\t\t *\n\
+    \t\t * The info == NULL test is soley to satisfy verifier requirements\n\t\t *\
+    \ as in Cilium case we'll always hit the 0.0.0.0/32 catch-all\n\t\t * entry. Therefore\
+    \ we need to test for WORLD_ID. It is clearly\n\t\t * wrong to route a skb to\
+    \ cilium_host for which we don't know\n\t\t * anything about it as otherwise we'll\
+    \ run into a routing loop.\n\t\t */\n\t\treturn DROP_UNROUTABLE;\n\t}\n#endif\n\
+    #ifdef ENABLE_IPSEC\n\tif (info && info->key && info->tunnel_endpoint) {\n\t\t\
+    __u8 key = get_min_encrypt_key(info->key);\n\n\t\tset_encrypt_key_cb(skb, key);\n\
+    #ifdef IP_POOLS\n\t\tset_encrypt_dip(skb, info->tunnel_endpoint);\n#else\n\t\t\
+    set_identity_cb(skb, secctx);"
+  diff_summary: |-
+    bpf/bpf_netdev.c:
+    - Reworked loop or branch structure to reduce verifier complexity and keep the path bounded.
+    - Affected context: static inline int handle_ipv6(struct __sk_buff *skb, __u32 src_identity), static inline int handle_ipv4(struct __sk_buff *skb, __u32 src_identity).
+    - Commit subject: bpf: fix cilium_host unroutable check.

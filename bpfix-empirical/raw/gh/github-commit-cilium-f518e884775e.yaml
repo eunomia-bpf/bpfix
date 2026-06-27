@@ -1,0 +1,55 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-f518e884775e
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/f518e884775ed9eb6d80b6914a768fa807d742cc
+  title: 'cilium, bpf: improve and fix probing of kernel hz'
+  repository: https://github.com/cilium/cilium
+  commit: f518e884775ed9eb6d80b6914a768fa807d742cc
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-f518e884775e.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Kernel-HZ probing change gates jiffies-based monotonic time on KERNEL_HZ
+    != 1; this is feature probing/time conversion behavior, not verifier rejection.
+raw:
+  case_id: github-commit-cilium-f518e884775e
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: f518e884775ed9eb6d80b6914a768fa807d742cc
+  commit_message: 'cilium, bpf: improve and fix probing of kernel hz'
+  commit_date: '2020-05-11'
+  fix_type: other
+  buggy_code: "// FILE: bpf/lib/mono.h\n/* SPDX-License-Identifier: GPL-2.0 */\n/*\
+    \ Copyright (C) 2020 Authors of Cilium */\n\n#ifndef __LIB_MONO_H_\n#define __LIB_MONO_H_\n\
+    \n/* Moved out from time.h to avoid circular header dependency. */\n#if defined(BPF_HAVE_JIFFIES)\
+    \ && defined(ENABLE_JIFFIES)\n# define BPF_MONO_SCALER\t8\n# define bpf_mono_now()\t\
+    \t(jiffies >> BPF_MONO_SCALER)\n# define bpf_sec_to_mono(s)\t(bpf_sec_to_jiffies(s)\
+    \ >> BPF_MONO_SCALER)\n#else\n# define bpf_mono_now()\t\tbpf_ktime_get_sec()\n\
+    # define bpf_sec_to_mono(s)\t(s)\n#endif /* BPF_HAVE_JIFFIES && ENABLE_JIFFIES\
+    \ */\n\n#endif /* __LIB_MONO_H_ */"
+  fixed_code: "// FILE: bpf/lib/mono.h\n/* SPDX-License-Identifier: GPL-2.0 */\n/*\
+    \ Copyright (C) 2020 Authors of Cilium */\n\n#ifndef __LIB_MONO_H_\n#define __LIB_MONO_H_\n\
+    \n/* Moved out from time.h to avoid circular header dependency. */\n#if defined(BPF_HAVE_JIFFIES)\
+    \ && defined(ENABLE_JIFFIES) && KERNEL_HZ != 1\n# define BPF_MONO_SCALER\t8\n\
+    # define bpf_mono_now()\t\t(jiffies >> BPF_MONO_SCALER)\n# define bpf_sec_to_mono(s)\t\
+    (bpf_sec_to_jiffies(s) >> BPF_MONO_SCALER)\n#else\n# define bpf_mono_now()\t\t\
+    bpf_ktime_get_sec()\n# define bpf_sec_to_mono(s)\t(s)\n#endif /* BPF_HAVE_JIFFIES\
+    \ && ENABLE_JIFFIES */\n\n#endif /* __LIB_MONO_H_ */"
+  diff_summary: |-
+    bpf/lib/mono.h:
+    - Applied a small verifier-related code change captured by the exact before/after snippets below.
+    - Affected context: the touched section.
+    - Commit subject: cilium, bpf: improve and fix probing of kernel hz.

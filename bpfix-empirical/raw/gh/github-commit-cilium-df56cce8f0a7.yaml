@@ -1,0 +1,222 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-df56cce8f0a7
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/df56cce8f0a73520eb445f163d9393249157df5c
+  title: 'datapath: Fix hairpin flow when ENABLE_ROUTING is disabled'
+  repository: https://github.com/cilium/cilium
+  commit: df56cce8f0a73520eb445f163d9393249157df5c
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-df56cce8f0a7.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Fixes hairpin service flow behavior when routing is disabled; the commit
+    discusses complexity/readability tradeoffs but no verifier rejection.
+raw:
+  case_id: github-commit-cilium-df56cce8f0a7
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: df56cce8f0a73520eb445f163d9393249157df5c
+  commit_message: 'datapath: Fix hairpin flow when ENABLE_ROUTING is disabled'
+  commit_date: '2019-10-11'
+  fix_type: loop_rewrite
+  buggy_code: "// FILE: bpf/bpf_lxc.c\n// CONTEXT: static inline int ipv6_l3_from_lxc(struct\
+    \ __sk_buff *skb,\n\tint ret, verdict, l4_off, hdrlen;\n\tstruct csum_offset csum_off\
+    \ = {};\n\tstruct lb6_service_v2 *svc;\n\tstruct lb6_key_v2 key = {};\n\tstruct\
+    \ ct_state ct_state_new = {};\n\tstruct ct_state ct_state = {};\n\tvoid *data,\
+    \ *data_end;\n\tunion v6addr *daddr, orig_dip;\n\t__u32 tunnel_endpoint = 0;\n\
+    \t__u8 encrypt_key = 0;\n\t__u32 monitor = 0;\n\t__u8 reason;\n\n\tif (unlikely(!is_valid_lxc_src_ip(ip6)))\n\
+    \t\treturn DROP_INVALID_SIP;\n\n\tipv6_addr_copy(&tuple->daddr, (union v6addr\
+    \ *) &ip6->daddr);\n\tipv6_addr_copy(&tuple->saddr, (union v6addr *) &ip6->saddr);\n\
+    \n\thdrlen = ipv6_hdrlen(skb, l3_off, &tuple->nexthdr);\n\tif (hdrlen < 0)\n\t\
+    \treturn hdrlen;\n\n\tl4_off = l3_off + hdrlen;\n\n// CONTEXT: static inline int\
+    \ ipv6_l3_from_lxc(struct __sk_buff *skb,\n\t/*\n\t * Check if the destination\
+    \ address is among the address that should be\n\t * load balanced. This operation\
+    \ is performed before we go through the\n\t * connection tracker to allow storing\
+    \ the reverse nat index in the CT\n\t * entry for destination endpoints where\
+    \ we can't encode the state in the\n\t * address.\n\t */\n\tif ((svc = lb6_lookup_service_v2(skb,\
+    \ &key)) != NULL) {\n\t\tret = lb6_local(get_ct_map6(tuple), skb, l3_off, l4_off,\n\
+    \t\t\t\t&csum_off, &key, tuple, svc, &ct_state_new);\n\t\tif (IS_ERR(ret))\n\t\
+    \t\treturn ret;\n\t}\n\nskip_service_lookup:\n\t/* The verifier wants to see this\
+    \ assignment here in case the above goto\n\t * skip_service_lookup is hit. However,\
+    \ in the case the packet\n\t * is _not_ TCP or UDP we should not be using proxy\
+    \ logic anyways. For\n\t * correctness it must be below the service handler in\
+    \ case the service\n\t * logic re-writes the tuple daddr. In \"theory\" however\
+    \ the assignment\n\t * should be OK to move above goto label.\n\t */\n\tipv6_addr_copy(&orig_dip,\
+    \ (union v6addr *) &tuple->daddr);\n\n\n// CONTEXT: ct_recreate6:\n\t\t\t\treturn\
+    \ ret;\n\n\t\t\t/* A reverse translate packet is always allowed except for delivery\n\
+    \t\t\t * on the local node in which case this marking is cleared again. */\n\t\
+    \t\tpolicy_mark_skip(skb);\n\t\t}\n\t\tbreak;\n\n\tdefault:\n\t\treturn DROP_UNKNOWN_CT;\n\
+    \t}\n\n\tif (redirect_to_proxy(verdict, reason)) {\n\t\t// Trace the packet before\
+    \ its forwarded to proxy\n\t\tsend_trace_notify(skb, TRACE_TO_PROXY, SECLABEL,\
+    \ 0,\n\t\t\t\t  0, 0, reason, monitor);\n\t\treturn skb_redirect_to_proxy(skb,\
+    \ verdict);\n\t}\n\n\tif (!revalidate_data(skb, &data, &data_end, &ip6))\n\t\t\
+    return DROP_INVALID;\n\n\tdaddr = (union v6addr *)&ip6->daddr;\n\n#ifdef ENABLE_ROUTING\n\
+    \tstruct endpoint_info *ep;\n\n\t/* Lookup IPv6 address, this will return a match\
+    \ if:\n\t *  - The destination IP address belongs to a local endpoint managed\
+    \ by\n\t *    cilium\n\t *  - The destination IP address is an IP address associated\
+    \ with the\n\t *    host itself.\n\t */\n\tif ((ep = lookup_ip6_endpoint(ip6))\
+    \ != NULL) {\n\t\tif (ep->flags & ENDPOINT_F_HOST) {\n#ifdef HOST_IFINDEX\n\t\t\
+    \tgoto to_host;\n#else\n\t\t\treturn DROP_HOST_UNREACHABLE;\n#endif\n\t\t}\n\n\
+    \t\tpolicy_clear_mark(skb);\n\t\treturn ipv6_local_delivery(skb, l3_off, l4_off,\
+    \ SECLABEL, ip6, tuple->nexthdr, ep, METRIC_EGRESS);\n\t}\n#endif\n\n\t/* The\
+    \ packet goes to a peer not managed by this agent instance */\n#ifdef ENCAP_IFINDEX\n\
+    \t{\n\t\tstruct endpoint_key key = {};\n\n\t\t/* Lookup the destination prefix\
+    \ in the list of known\n\t\t * destination prefixes. If there is a match, the\
+    \ packet will\n\t\t * be encapsulated to that node and then routed by the agent\
+    \ on\n\t\t * the remote node.\n\t\t *\n\t\t * IPv6 lookup key: daddr/96\n\n//\
+    \ CONTEXT: static inline int handle_ipv4_from_lxc(struct __sk_buff *skb, __u32\
+    \ *dstID)\n\tstruct iphdr *ip4;\n\tint ret, verdict, l3_off = ETH_HLEN, l4_off;\n\
+    \tstruct csum_offset csum_off = {};\n\tstruct lb4_service_v2 *svc;\n\tstruct lb4_key_v2\
+    \ key = {};\n\tstruct ct_state ct_state_new = {};\n\tstruct ct_state ct_state\
+    \ = {};\n\t__be32 orig_dip;\n\t__u32 tunnel_endpoint = 0;\n\t__u8 encrypt_key\
+    \ = 0;\n\t__u32 monitor = 0;\n\t__u8 reason;\n\n\tif (!revalidate_data(skb, &data,\
+    \ &data_end, &ip4))\n\t\treturn DROP_INVALID;\n\n\ttuple.nexthdr = ip4->protocol;\n\
+    \n\tif (unlikely(!is_valid_lxc_src_ipv4(ip4)))\n\t\treturn DROP_INVALID_SIP;\n\
+    \n\ttuple.daddr = ip4->daddr;\n\ttuple.saddr = ip4->saddr;\n\n\n// CONTEXT: static\
+    \ inline int handle_ipv4_from_lxc(struct __sk_buff *skb, __u32 *dstID)\n\t\tif\
+    \ (ret == DROP_UNKNOWN_L4)\n\t\t\tgoto skip_service_lookup;\n\t\telse\n\t\t\t\
+    return ret;\n\t}\n\n\tct_state_new.orig_dport = key.dport;\n\tif ((svc = lb4_lookup_service_v2(skb,\
+    \ &key)) != NULL) {\n\t\tret = lb4_local(get_ct_map4(&tuple), skb, l3_off, l4_off,\
+    \ &csum_off,\n\t\t\t\t&key, &tuple, svc, &ct_state_new, ip4->saddr);\n\t\tif (IS_ERR(ret))\n\
+    \t\t\treturn ret;\n\t}\n\nskip_service_lookup:\n\t/* The verifier wants to see\
+    \ this assignment here in case the above goto\n\t * skip_service_lookup is hit.\
+    \ However, in the case the packet\n\t * is _not_ TCP or UDP we should not be using\
+    \ proxy logic anyways. For\n\t * correctness it must be below the service handler\
+    \ in case the service\n\t * logic re-writes the tuple daddr. In \"theory\" however\
+    \ the assignment\n\t * should be OK to move above goto label.\n\t */\n\torig_dip\
+    \ = tuple.daddr;\n\n\n// CONTEXT: ct_recreate4:\n\t\t\t\t\t  &ct_state, &tuple,\
+    \ 0);\n\t\t\tif (IS_ERR(ret)) {\n\t\t\t\trelax_verifier();\n\t\t\t\treturn ret;\n\
+    \t\t\t}\n\t\t}\n\t\tbreak;\n\n\tdefault:\n\t\treturn DROP_UNKNOWN_CT;\n\t}\n\n\
+    \tif (redirect_to_proxy(verdict, reason)) {\n\t\t// Trace the packet before its\
+    \ forwarded to proxy\n\t\tsend_trace_notify(skb, TRACE_TO_PROXY, SECLABEL, 0,\n\
+    \t\t\t\t  0, 0, reason, monitor);\n\t\treturn skb_redirect_to_proxy(skb, verdict);\n\
+    \t}\n\n\t/* After L4 write in port mapping: revalidate for direct packet access\
+    \ */\n\tif (!revalidate_data(skb, &data, &data_end, &ip4))\n\t\treturn DROP_INVALID;\n\
+    \n\torig_dip = ip4->daddr;\n\n#ifdef ENABLE_ROUTING\n\tstruct endpoint_info *ep;\n\
+    \n\t/* Lookup IPv4 address, this will return a match if:\n\t *  - The destination\
+    \ IP address belongs to a local endpoint managed by\n\t *    cilium\n\t *  - The\
+    \ destination IP address is an IP address associated with the\n\t *    host itself.\n\
+    \t */\n\tif ((ep = lookup_ip4_endpoint(ip4)) != NULL) {\n\t\tif (ep->flags & ENDPOINT_F_HOST)\
+    \ {\n#ifdef HOST_IFINDEX\n\t\t\tgoto to_host;\n#else\n\t\t\treturn DROP_HOST_UNREACHABLE;\n\
+    #endif\n\t\t}\n\t\tpolicy_clear_mark(skb);\n\t\treturn ipv4_local_delivery(skb,\
+    \ l3_off, l4_off, SECLABEL, ip4, ep, METRIC_EGRESS);\n\t}\n#endif\n\n#ifdef ENCAP_IFINDEX\n\
+    \t{\n\t\tstruct endpoint_key key = {};\n\n\t\tkey.ip4 = orig_dip & IPV4_MASK;\n\
+    \t\tkey.family = ENDPOINT_KEY_IPV4;\n\n\t\tret = encap_and_redirect_lxc(skb, tunnel_endpoint,\
+    \ encrypt_key, &key, SECLABEL, monitor);\n\t\tif (ret == DROP_NO_TUNNEL_ENDPOINT)\n\
+    \t\t\tgoto pass_to_stack;\n\t\t/* If not redirected noteably due to IPSEC then\
+    \ pass up to stack"
+  fixed_code: "// FILE: bpf/bpf_lxc.c\n// CONTEXT: static inline int ipv6_l3_from_lxc(struct\
+    \ __sk_buff *skb,\n\tint ret, verdict, l4_off, hdrlen;\n\tstruct csum_offset csum_off\
+    \ = {};\n\tstruct lb6_service_v2 *svc;\n\tstruct lb6_key_v2 key = {};\n\tstruct\
+    \ ct_state ct_state_new = {};\n\tstruct ct_state ct_state = {};\n\tvoid *data,\
+    \ *data_end;\n\tunion v6addr *daddr, orig_dip;\n\t__u32 tunnel_endpoint = 0;\n\
+    \t__u8 encrypt_key = 0;\n\t__u32 monitor = 0;\n\t__u8 reason;\n\tbool hairpin_flow\
+    \ = false; // endpoint wants to access itself via service IP\n\n\tif (unlikely(!is_valid_lxc_src_ip(ip6)))\n\
+    \t\treturn DROP_INVALID_SIP;\n\n\tipv6_addr_copy(&tuple->daddr, (union v6addr\
+    \ *) &ip6->daddr);\n\tipv6_addr_copy(&tuple->saddr, (union v6addr *) &ip6->saddr);\n\
+    \n\thdrlen = ipv6_hdrlen(skb, l3_off, &tuple->nexthdr);\n\tif (hdrlen < 0)\n\t\
+    \treturn hdrlen;\n\n\tl4_off = l3_off + hdrlen;\n\n// CONTEXT: static inline int\
+    \ ipv6_l3_from_lxc(struct __sk_buff *skb,\n\t/*\n\t * Check if the destination\
+    \ address is among the address that should be\n\t * load balanced. This operation\
+    \ is performed before we go through the\n\t * connection tracker to allow storing\
+    \ the reverse nat index in the CT\n\t * entry for destination endpoints where\
+    \ we can't encode the state in the\n\t * address.\n\t */\n\tif ((svc = lb6_lookup_service_v2(skb,\
+    \ &key)) != NULL) {\n\t\tret = lb6_local(get_ct_map6(tuple), skb, l3_off, l4_off,\n\
+    \t\t\t\t&csum_off, &key, tuple, svc, &ct_state_new);\n\t\tif (IS_ERR(ret))\n\t\
+    \t\treturn ret;\n\t\thairpin_flow |= ct_state_new.loopback;\n\t}\n\nskip_service_lookup:\n\
+    \t/* The verifier wants to see this assignment here in case the above goto\n\t\
+    \ * skip_service_lookup is hit. However, in the case the packet\n\t * is _not_\
+    \ TCP or UDP we should not be using proxy logic anyways. For\n\t * correctness\
+    \ it must be below the service handler in case the service\n\t * logic re-writes\
+    \ the tuple daddr. In \"theory\" however the assignment\n\t * should be OK to\
+    \ move above goto label.\n\t */\n\tipv6_addr_copy(&orig_dip, (union v6addr *)\
+    \ &tuple->daddr);\n\n\n// CONTEXT: ct_recreate6:\n\t\t\t\treturn ret;\n\n\t\t\t\
+    /* A reverse translate packet is always allowed except for delivery\n\t\t\t *\
+    \ on the local node in which case this marking is cleared again. */\n\t\t\tpolicy_mark_skip(skb);\n\
+    \t\t}\n\t\tbreak;\n\n\tdefault:\n\t\treturn DROP_UNKNOWN_CT;\n\t}\n\n\thairpin_flow\
+    \ |= ct_state.loopback;\n\n\tif (redirect_to_proxy(verdict, reason)) {\n\t\t//\
+    \ Trace the packet before its forwarded to proxy\n\t\tsend_trace_notify(skb, TRACE_TO_PROXY,\
+    \ SECLABEL, 0,\n\t\t\t\t  0, 0, reason, monitor);\n\t\treturn skb_redirect_to_proxy(skb,\
+    \ verdict);\n\t}\n\n\tif (!revalidate_data(skb, &data, &data_end, &ip6))\n\t\t\
+    return DROP_INVALID;\n\n\tdaddr = (union v6addr *)&ip6->daddr;\n\n\t/* See handle_ipv4_from_lxc()\
+    \ re hairpin_flow */\n\tif (is_defined(ENABLE_ROUTING) || hairpin_flow) {\n\t\t\
+    struct endpoint_info *ep;\n\n\t\t/* Lookup IPv6 address, this will return a match\
+    \ if:\n\t\t *  - The destination IP address belongs to a local endpoint managed\
+    \ by\n\t\t *    cilium\n\t\t *  - The destination IP address is an IP address\
+    \ associated with the\n\t\t *    host itself.\n\t\t */\n\t\tif ((ep = lookup_ip6_endpoint(ip6))\
+    \ != NULL) {\n#ifdef ENABLE_ROUTING\n\t\t\tif (ep->flags & ENDPOINT_F_HOST) {\n\
+    #ifdef HOST_IFINDEX\n\t\t\t\tgoto to_host;\n#else\n\t\t\t\treturn DROP_HOST_UNREACHABLE;\n\
+    #endif\n\t\t\t}\n#endif /* ENABLE_ROUTING */\n\t\t\tpolicy_clear_mark(skb);\n\t\
+    \t\treturn ipv6_local_delivery(skb, l3_off, l4_off, SECLABEL,\n\t\t\t\t\t\t  \
+    \ ip6, tuple->nexthdr, ep,\n\t\t\t\t\t\t   METRIC_EGRESS);\n\t\t}\n\t}\n\n\t/*\
+    \ The packet goes to a peer not managed by this agent instance */\n#ifdef ENCAP_IFINDEX\n\
+    \t{\n\t\tstruct endpoint_key key = {};\n\n\t\t/* Lookup the destination prefix\
+    \ in the list of known\n\t\t * destination prefixes. If there is a match, the\
+    \ packet will\n\t\t * be encapsulated to that node and then routed by the agent\
+    \ on\n\t\t * the remote node.\n\t\t *\n\t\t * IPv6 lookup key: daddr/96\n\n//\
+    \ CONTEXT: static inline int handle_ipv4_from_lxc(struct __sk_buff *skb, __u32\
+    \ *dstID)\n\tstruct iphdr *ip4;\n\tint ret, verdict, l3_off = ETH_HLEN, l4_off;\n\
+    \tstruct csum_offset csum_off = {};\n\tstruct lb4_service_v2 *svc;\n\tstruct lb4_key_v2\
+    \ key = {};\n\tstruct ct_state ct_state_new = {};\n\tstruct ct_state ct_state\
+    \ = {};\n\t__be32 orig_dip;\n\t__u32 tunnel_endpoint = 0;\n\t__u8 encrypt_key\
+    \ = 0;\n\t__u32 monitor = 0;\n\t__u8 reason;\n\tbool hairpin_flow = false; //\
+    \ endpoint wants to access itself via service IP\n\n\tif (!revalidate_data(skb,\
+    \ &data, &data_end, &ip4))\n\t\treturn DROP_INVALID;\n\n\ttuple.nexthdr = ip4->protocol;\n\
+    \n\tif (unlikely(!is_valid_lxc_src_ipv4(ip4)))\n\t\treturn DROP_INVALID_SIP;\n\
+    \n\ttuple.daddr = ip4->daddr;\n\ttuple.saddr = ip4->saddr;\n\n\n// CONTEXT: static\
+    \ inline int handle_ipv4_from_lxc(struct __sk_buff *skb, __u32 *dstID)\n\t\tif\
+    \ (ret == DROP_UNKNOWN_L4)\n\t\t\tgoto skip_service_lookup;\n\t\telse\n\t\t\t\
+    return ret;\n\t}\n\n\tct_state_new.orig_dport = key.dport;\n\tif ((svc = lb4_lookup_service_v2(skb,\
+    \ &key)) != NULL) {\n\t\tret = lb4_local(get_ct_map4(&tuple), skb, l3_off, l4_off,\
+    \ &csum_off,\n\t\t\t\t&key, &tuple, svc, &ct_state_new, ip4->saddr);\n\t\tif (IS_ERR(ret))\n\
+    \t\t\treturn ret;\n\t\thairpin_flow |= ct_state_new.loopback;\n\t}\n\nskip_service_lookup:\n\
+    \t/* The verifier wants to see this assignment here in case the above goto\n\t\
+    \ * skip_service_lookup is hit. However, in the case the packet\n\t * is _not_\
+    \ TCP or UDP we should not be using proxy logic anyways. For\n\t * correctness\
+    \ it must be below the service handler in case the service\n\t * logic re-writes\
+    \ the tuple daddr. In \"theory\" however the assignment\n\t * should be OK to\
+    \ move above goto label.\n\t */\n\torig_dip = tuple.daddr;\n\n\n// CONTEXT: ct_recreate4:\n\
+    \t\t\t\t\t  &ct_state, &tuple, 0);\n\t\t\tif (IS_ERR(ret)) {\n\t\t\t\trelax_verifier();\n\
+    \t\t\t\treturn ret;\n\t\t\t}\n\t\t}\n\t\tbreak;\n\n\tdefault:\n\t\treturn DROP_UNKNOWN_CT;\n\
+    \t}\n\n\thairpin_flow |= ct_state.loopback;\n\n\tif (redirect_to_proxy(verdict,\
+    \ reason)) {\n\t\t// Trace the packet before its forwarded to proxy\n\t\tsend_trace_notify(skb,\
+    \ TRACE_TO_PROXY, SECLABEL, 0,\n\t\t\t\t  0, 0, reason, monitor);\n\t\treturn\
+    \ skb_redirect_to_proxy(skb, verdict);\n\t}\n\n\t/* After L4 write in port mapping:\
+    \ revalidate for direct packet access */\n\tif (!revalidate_data(skb, &data, &data_end,\
+    \ &ip4))\n\t\treturn DROP_INVALID;\n\n\torig_dip = ip4->daddr;\n\n\t// Allow a\
+    \ hairpin packet to be redirected even if ENABLE_ROUTING is\n\t// disabled. Otherwise,\
+    \ the packet will be dropped by the kernel if\n\t// it's going to be routed via\
+    \ an interface it came from after it has\n\t// been passed to the stack.\n\tif\
+    \ (is_defined(ENABLE_ROUTING) || hairpin_flow) {\n\t\tstruct endpoint_info *ep;\n\
+    \n\t\t/* Lookup IPv4 address, this will return a match if:\n\t\t *  - The destination\
+    \ IP address belongs to a local endpoint\n\t\t *    managed by cilium\n\t\t *\
+    \  - The destination IP address is an IP address associated with the\n\t\t * \
+    \   host itself\n\t\t *  - The destination IP address belongs to endpoint itself.\n\
+    \t\t */\n\t\tif ((ep = lookup_ip4_endpoint(ip4)) != NULL) {\n#ifdef ENABLE_ROUTING\n\
+    \t\t\tif (ep->flags & ENDPOINT_F_HOST) {\n#ifdef HOST_IFINDEX\n\t\t\t\tgoto to_host;\n\
+    #else\n\t\t\t\treturn DROP_HOST_UNREACHABLE;\n#endif\n\t\t\t}\n#endif /* ENABLE_ROUTING\
+    \ */\n\t\t\tpolicy_clear_mark(skb);\n\t\t\treturn ipv4_local_delivery(skb, l3_off,\
+    \ l4_off, SECLABEL,\n\t\t\t\t\t\t   ip4, ep, METRIC_EGRESS);\n\t\t}\n\t}\n\n#ifdef\
+    \ ENCAP_IFINDEX\n\t{\n\t\tstruct endpoint_key key = {};\n\n\t\tkey.ip4 = orig_dip\
+    \ & IPV4_MASK;\n\t\tkey.family = ENDPOINT_KEY_IPV4;\n\n\t\tret = encap_and_redirect_lxc(skb,\
+    \ tunnel_endpoint, encrypt_key, &key, SECLABEL, monitor);\n\t\tif (ret == DROP_NO_TUNNEL_ENDPOINT)\n\
+    \t\t\tgoto pass_to_stack;\n\t\t/* If not redirected noteably due to IPSEC then\
+    \ pass up to stack"
+  diff_summary: |-
+    bpf/bpf_lxc.c:
+    - Reworked loop or branch structure to reduce verifier complexity and keep the path bounded.
+    - Affected context: static inline int ipv6_l3_from_lxc(struct __sk_buff *skb,, ct_recreate6:, static inline int handle_ipv4_from_lxc(struct __sk_buff *skb, __u32 *dstID).
+    - Commit subject: datapath: Fix hairpin flow when ENABLE_ROUTING is disabled.

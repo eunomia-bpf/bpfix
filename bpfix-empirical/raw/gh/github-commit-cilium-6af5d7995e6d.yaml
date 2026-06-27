@@ -1,0 +1,114 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-6af5d7995e6d
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/6af5d7995e6d6160641bc2eabbf1943d407d6190
+  title: refactoring unneeded if condition inside ifdef in `do_netdev`
+  repository: https://github.com/cilium/cilium
+  commit: 6af5d7995e6d6160641bc2eabbf1943d407d6190
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-6af5d7995e6d.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Refactors from_host/#ifdef placement in do_netdev() host-firewall metadata
+    paths. The record has no verifier log and reads as datapath cleanup, not a verifier
+    reject.
+raw:
+  case_id: github-commit-cilium-6af5d7995e6d
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: 6af5d7995e6d6160641bc2eabbf1943d407d6190
+  commit_message: refactoring unneeded if condition inside ifdef in `do_netdev`
+  commit_date: '2024-10-08'
+  fix_type: type_cast
+  buggy_code: "// FILE: bpf/bpf_host.c\n// CONTEXT: do_netdev(struct __ctx_buff *ctx,\
+    \ __u16 proto, const bool from_host)\n\t\t\tret = CTX_ACT_OK;\n\t\t#endif\n\t\t\
+    break;\n# endif\n#ifdef ENABLE_IPV6\n\tcase bpf_htons(ETH_P_IPV6):\n\t\tif (!revalidate_data_pull(ctx,\
+    \ &data, &data_end, &ip6))\n\t\t\treturn send_drop_notify_error(ctx, identity,\
+    \ DROP_INVALID,\n\t\t\t\t\t\t      CTX_ACT_DROP, METRIC_INGRESS);\n\n\t\tidentity\
+    \ = resolve_srcid_ipv6(ctx, ip6, identity, &ipcache_srcid, from_host);\n\t\tctx_store_meta(ctx,\
+    \ CB_SRC_LABEL, identity);\n\t\tif (from_host) {\n# if defined(ENABLE_HOST_FIREWALL)\
+    \ && !defined(ENABLE_MASQUERADE_IPV6)\n\t\t\t/* If we don't rely on BPF-based\
+    \ masquerading, we need\n\t\t\t * to pass the srcid from ipcache to host firewall.\
+    \ See\n\t\t\t * comment in ipv6_host_policy_egress() for details.\n\t\t\t */\n\
+    \t\t\tctx_store_meta(ctx, CB_IPCACHE_SRC_LABEL, ipcache_srcid);\n# endif /* defined(ENABLE_HOST_FIREWALL)\
+    \ && !defined(ENABLE_MASQUERADE_IPV6) */\n\t\t}\n\n\t\tsend_trace_notify(ctx,\
+    \ obs_point, ipcache_srcid, UNKNOWN_ID, TRACE_EP_ID_UNKNOWN,\n\t\t\t\t  ctx->ingress_ifindex,\
+    \ trace.reason, trace.monitor);\n\n\t\tret = tail_call_internal(ctx, from_host\
+    \ ? CILIUM_CALL_IPV6_FROM_HOST :\n\t\t\t\t\t\t\t  CILIUM_CALL_IPV6_FROM_NETDEV,\n\
+    \t\t\t\t\t &ext_err);\n\t\t/* See comment below for IPv4. */\n\t\treturn send_drop_notify_error_ext(ctx,\
+    \ identity, ret, ext_err,\n\t\t\t\t\t\t  CTX_ACT_OK, METRIC_INGRESS);\n#endif\n\
+    #ifdef ENABLE_IPV4\n\tcase bpf_htons(ETH_P_IP):\n\t\t/* This is the first time\
+    \ revalidate_data() is going to be called.\n\t\t * Make sure that we don't legitimately\
+    \ drop the packet if the skb\n\t\t * arrived with the header not being not in\
+    \ the linear data.\n\t\t */\n\t\tif (!revalidate_data_pull(ctx, &data, &data_end,\
+    \ &ip4))\n\t\t\treturn send_drop_notify_error(ctx, identity, DROP_INVALID,\n\t\
+    \t\t\t\t\t      CTX_ACT_DROP, METRIC_INGRESS);\n\n\t\tidentity = resolve_srcid_ipv4(ctx,\
+    \ ip4, identity, &ipcache_srcid,\n\t\t\t\t\t      from_host);\n\t\tctx_store_meta(ctx,\
+    \ CB_SRC_LABEL, identity);\n\t\tif (from_host) {\n# if defined(ENABLE_HOST_FIREWALL)\
+    \ && !defined(ENABLE_MASQUERADE_IPV4)\n\t\t\t/* If we don't rely on BPF-based\
+    \ masquerading, we need\n\t\t\t * to pass the srcid from ipcache to host firewall.\
+    \ See\n\t\t\t * comment in ipv4_host_policy_egress() for details.\n\t\t\t */\n\
+    \t\t\tctx_store_meta(ctx, CB_IPCACHE_SRC_LABEL, ipcache_srcid);\n# endif /* defined(ENABLE_HOST_FIREWALL)\
+    \ && !defined(ENABLE_MASQUERADE_IPV4) */\n\t\t}\n\n\t\tsend_trace_notify(ctx,\
+    \ obs_point, ipcache_srcid, UNKNOWN_ID, TRACE_EP_ID_UNKNOWN,\n\t\t\t\t  ctx->ingress_ifindex,\
+    \ trace.reason, trace.monitor);\n\n\t\tret = tail_call_internal(ctx, from_host\
+    \ ? CILIUM_CALL_IPV4_FROM_HOST :\n\t\t\t\t\t\t\t  CILIUM_CALL_IPV4_FROM_NETDEV,\n\
+    \t\t\t\t\t &ext_err);\n\t\t/* We are not returning an error here to always allow\
+    \ traffic to\n\t\t * the stack in case maps have become unavailable.\n\t\t *\n\
+    \t\t * Note: Since drop notification requires a tail call as well,\n\t\t * this\
+    \ notification is unlikely to succeed."
+  fixed_code: "// FILE: bpf/bpf_host.c\n// CONTEXT: do_netdev(struct __ctx_buff *ctx,\
+    \ __u16 proto, const bool from_host)\n\t\t\tret = CTX_ACT_OK;\n\t\t#endif\n\t\t\
+    break;\n# endif\n#ifdef ENABLE_IPV6\n\tcase bpf_htons(ETH_P_IPV6):\n\t\tif (!revalidate_data_pull(ctx,\
+    \ &data, &data_end, &ip6))\n\t\t\treturn send_drop_notify_error(ctx, identity,\
+    \ DROP_INVALID,\n\t\t\t\t\t\t      CTX_ACT_DROP, METRIC_INGRESS);\n\n\t\tidentity\
+    \ = resolve_srcid_ipv6(ctx, ip6, identity, &ipcache_srcid, from_host);\n\t\tctx_store_meta(ctx,\
+    \ CB_SRC_LABEL, identity);\n\n# if defined(ENABLE_HOST_FIREWALL) && !defined(ENABLE_MASQUERADE_IPV6)\n\
+    \t\tif (from_host) {\n\t\t\t/* If we don't rely on BPF-based masquerading, we\
+    \ need\n\t\t\t * to pass the srcid from ipcache to host firewall. See\n\t\t\t\
+    \ * comment in ipv6_host_policy_egress() for details.\n\t\t\t */\n\t\t\tctx_store_meta(ctx,\
+    \ CB_IPCACHE_SRC_LABEL, ipcache_srcid);\n\t\t}\n# endif /* defined(ENABLE_HOST_FIREWALL)\
+    \ && !defined(ENABLE_MASQUERADE_IPV6) */\n\n\t\tsend_trace_notify(ctx, obs_point,\
+    \ ipcache_srcid, UNKNOWN_ID, TRACE_EP_ID_UNKNOWN,\n\t\t\t\t  ctx->ingress_ifindex,\
+    \ trace.reason, trace.monitor);\n\n\t\tret = tail_call_internal(ctx, from_host\
+    \ ? CILIUM_CALL_IPV6_FROM_HOST :\n\t\t\t\t\t\t\t  CILIUM_CALL_IPV6_FROM_NETDEV,\n\
+    \t\t\t\t\t &ext_err);\n\t\t/* See comment below for IPv4. */\n\t\treturn send_drop_notify_error_ext(ctx,\
+    \ identity, ret, ext_err,\n\t\t\t\t\t\t  CTX_ACT_OK, METRIC_INGRESS);\n#endif\n\
+    #ifdef ENABLE_IPV4\n\tcase bpf_htons(ETH_P_IP):\n\t\t/* This is the first time\
+    \ revalidate_data() is going to be called.\n\t\t * Make sure that we don't legitimately\
+    \ drop the packet if the skb\n\t\t * arrived with the header not being not in\
+    \ the linear data.\n\t\t */\n\t\tif (!revalidate_data_pull(ctx, &data, &data_end,\
+    \ &ip4))\n\t\t\treturn send_drop_notify_error(ctx, identity, DROP_INVALID,\n\t\
+    \t\t\t\t\t      CTX_ACT_DROP, METRIC_INGRESS);\n\n\t\tidentity = resolve_srcid_ipv4(ctx,\
+    \ ip4, identity, &ipcache_srcid,\n\t\t\t\t\t      from_host);\n\t\tctx_store_meta(ctx,\
+    \ CB_SRC_LABEL, identity);\n\n# if defined(ENABLE_HOST_FIREWALL) && !defined(ENABLE_MASQUERADE_IPV4)\n\
+    \t\tif (from_host) {\n\t\t\t/* If we don't rely on BPF-based masquerading, we\
+    \ need\n\t\t\t * to pass the srcid from ipcache to host firewall. See\n\t\t\t\
+    \ * comment in ipv4_host_policy_egress() for details.\n\t\t\t */\n\t\t\tctx_store_meta(ctx,\
+    \ CB_IPCACHE_SRC_LABEL, ipcache_srcid);\n\t\t}\n# endif /* defined(ENABLE_HOST_FIREWALL)\
+    \ && !defined(ENABLE_MASQUERADE_IPV4) */\n\n\t\tsend_trace_notify(ctx, obs_point,\
+    \ ipcache_srcid, UNKNOWN_ID, TRACE_EP_ID_UNKNOWN,\n\t\t\t\t  ctx->ingress_ifindex,\
+    \ trace.reason, trace.monitor);\n\n\t\tret = tail_call_internal(ctx, from_host\
+    \ ? CILIUM_CALL_IPV4_FROM_HOST :\n\t\t\t\t\t\t\t  CILIUM_CALL_IPV4_FROM_NETDEV,\n\
+    \t\t\t\t\t &ext_err);\n\t\t/* We are not returning an error here to always allow\
+    \ traffic to\n\t\t * the stack in case maps have become unavailable.\n\t\t *\n\
+    \t\t * Note: Since drop notification requires a tail call as well,\n\t\t * this\
+    \ notification is unlikely to succeed."
+  diff_summary: |-
+    bpf/bpf_host.c:
+    - Adjusted types or casts so the verifier sees the intended pointer or value kind.
+    - Affected context: do_netdev(struct __ctx_buff *ctx, __u16 proto, const bool from_host).
+    - Commit subject: refactoring unneeded if condition inside ifdef in `do_netdev`.

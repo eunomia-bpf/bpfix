@@ -1,0 +1,60 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-ee5f473199ac
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/ee5f473199ac1b3f21864a531f442af3c6063ec3
+  title: 'bpf: ct: fix CT-based packet tracing for IPv6'
+  repository: https://github.com/cilium/cilium
+  commit: ee5f473199ac1b3f21864a531f442af3c6063ec3
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-ee5f473199ac.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Raw has_verifier_log=false. The fix swaps argument order in the IPv6 conntrack
+    tracing call to __ct_lookup6; this is packet tracing correctness, not a verifier
+    terminal error.
+raw:
+  case_id: github-commit-cilium-ee5f473199ac
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: ee5f473199ac1b3f21864a531f442af3c6063ec3
+  commit_message: 'bpf: ct: fix CT-based packet tracing for IPv6'
+  commit_date: '2023-06-26'
+  fix_type: inline_hint
+  buggy_code: "// FILE: bpf/lib/conntrack.h\n// CONTEXT: static __always_inline int\
+    \ ct_lookup6(const void *map,\n\t\ttuple->flags = TUPLE_F_OUT;\n\telse if (dir\
+    \ == CT_EGRESS)\n\t\ttuple->flags = TUPLE_F_IN;\n\telse if (dir == CT_SERVICE)\n\
+    \t\ttuple->flags = TUPLE_F_SERVICE;\n\telse\n\t\treturn DROP_CT_INVALID_HDR;\n\
+    \n\taction = ct_extract_ports6(ctx, l4_off, dir, tuple, NULL);\n\tif (action <\
+    \ 0)\n\t\treturn action;\n\n\treturn __ct_lookup6(map, tuple, ctx, action, l4_off,\
+    \ dir, SCOPE_BIDIR,\n\t\t\t    ct_state, monitor);\n}\n\nstatic __always_inline\
+    \ int\nipv4_extract_tuple(struct __ctx_buff *ctx, struct ipv4_ct_tuple *tuple,\n\
+    \t\t   int *l4_off)\n{\n\tint l3_off = ETH_HLEN;\n\tvoid *data, *data_end;\n\t\
+    struct iphdr *ip4;\n\n\tif (!revalidate_data(ctx, &data, &data_end, &ip4))"
+  fixed_code: "// FILE: bpf/lib/conntrack.h\n// CONTEXT: static __always_inline int\
+    \ ct_lookup6(const void *map,\n\t\ttuple->flags = TUPLE_F_OUT;\n\telse if (dir\
+    \ == CT_EGRESS)\n\t\ttuple->flags = TUPLE_F_IN;\n\telse if (dir == CT_SERVICE)\n\
+    \t\ttuple->flags = TUPLE_F_SERVICE;\n\telse\n\t\treturn DROP_CT_INVALID_HDR;\n\
+    \n\taction = ct_extract_ports6(ctx, l4_off, dir, tuple, NULL);\n\tif (action <\
+    \ 0)\n\t\treturn action;\n\n\treturn __ct_lookup6(map, tuple, ctx, l4_off, action,\
+    \ dir, SCOPE_BIDIR,\n\t\t\t    ct_state, monitor);\n}\n\nstatic __always_inline\
+    \ int\nipv4_extract_tuple(struct __ctx_buff *ctx, struct ipv4_ct_tuple *tuple,\n\
+    \t\t   int *l4_off)\n{\n\tint l3_off = ETH_HLEN;\n\tvoid *data, *data_end;\n\t\
+    struct iphdr *ip4;\n\n\tif (!revalidate_data(ctx, &data, &data_end, &ip4))"
+  diff_summary: |-
+    bpf/lib/conntrack.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: static __always_inline int ct_lookup6(const void *map,.
+    - Commit subject: bpf: ct: fix CT-based packet tracing for IPv6.

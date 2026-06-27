@@ -1,0 +1,61 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-697b6d18ce17
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/697b6d18ce176c4101dc5e7a09d5435a2f30cc1d
+  title: 'bpf: fix drop due to wrong l3/l4 csum in ipv4_redirect_to_host_port'
+  repository: https://github.com/cilium/cilium
+  commit: 697b6d18ce176c4101dc5e7a09d5435a2f30cc1d
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-697b6d18ce17.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Fixes IPv4 redirect checksum byte order by changing LXC_IPV4 to bpf_htonl(LXC_IPV4).
+    No verifier-load failure or rejected instruction is present.
+raw:
+  case_id: github-commit-cilium-697b6d18ce17
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: 697b6d18ce176c4101dc5e7a09d5435a2f30cc1d
+  commit_message: 'bpf: fix drop due to wrong l3/l4 csum in ipv4_redirect_to_host_port'
+  commit_date: '2017-05-17'
+  fix_type: other
+  buggy_code: "// FILE: bpf/bpf_lxc.c\n// CONTEXT: static inline int __inline__ ipv4_policy(struct\
+    \ __sk_buff *skb, int ifindex, __u\n\n\t\tct_state_new.orig_dport = tuple.dport;\n\
+    \t\tret = ct_create4(&CT_MAP4, &tuple, skb, CT_INGRESS, &ct_state_new);\n\t\t\
+    if (IS_ERR(ret))\n\t\t\treturn ret;\n\n\t\t/* NOTE: tuple has been invalidated\
+    \ after this */\n\n\t\tct_state.proxy_port = ct_state_new.proxy_port;\n\t}\n\n\
+    \tif (ct_state.proxy_port && (ret == CT_NEW || ret == CT_ESTABLISHED)) {\n\t\t\
+    __be32 orig_dip = LXC_IPV4;\n\n\t\tret = ipv4_redirect_to_host_port(skb, &csum_off,\
+    \ l4_off,\n\t\t\t\t\t\t ct_state.proxy_port, tuple.dport,\n\t\t\t\t\t\t orig_dip,\
+    \ &tuple);\n\t\tif (IS_ERR(ret))\n\t\t\treturn ret;\n\n\t\t/* Mark packet with\
+    \ PACKET_HOST and redirect to host */\n\t\tif (skb_change_type(skb, 0) < 0)\n\t\
+    \t\treturn DROP_WRITE_ERROR;\n\n\t\tskb->cb[CB_IFINDEX] = 0;"
+  fixed_code: "// FILE: bpf/bpf_lxc.c\n// CONTEXT: static inline int __inline__ ipv4_policy(struct\
+    \ __sk_buff *skb, int ifindex, __u\n\n\t\tct_state_new.orig_dport = tuple.dport;\n\
+    \t\tret = ct_create4(&CT_MAP4, &tuple, skb, CT_INGRESS, &ct_state_new);\n\t\t\
+    if (IS_ERR(ret))\n\t\t\treturn ret;\n\n\t\t/* NOTE: tuple has been invalidated\
+    \ after this */\n\n\t\tct_state.proxy_port = ct_state_new.proxy_port;\n\t}\n\n\
+    \tif (ct_state.proxy_port && (ret == CT_NEW || ret == CT_ESTABLISHED)) {\n\t\t\
+    __be32 orig_dip = bpf_htonl(LXC_IPV4);\n\n\t\tret = ipv4_redirect_to_host_port(skb,\
+    \ &csum_off, l4_off,\n\t\t\t\t\t\t ct_state.proxy_port, tuple.dport,\n\t\t\t\t\
+    \t\t orig_dip, &tuple);\n\t\tif (IS_ERR(ret))\n\t\t\treturn ret;\n\n\t\t/* Mark\
+    \ packet with PACKET_HOST and redirect to host */\n\t\tif (skb_change_type(skb,\
+    \ 0) < 0)\n\t\t\treturn DROP_WRITE_ERROR;\n\n\t\tskb->cb[CB_IFINDEX] = 0;"
+  diff_summary: |-
+    bpf/bpf_lxc.c:
+    - Applied a small verifier-related code change captured by the exact before/after snippets below.
+    - Affected context: static inline int __inline__ ipv4_policy(struct __sk_buff *skb, int ifindex, __u.
+    - Commit subject: bpf: fix drop due to wrong l3/l4 csum in ipv4_redirect_to_host_port.

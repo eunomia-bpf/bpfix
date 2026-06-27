@@ -1,0 +1,944 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-ce6f2c7729df
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/ce6f2c7729df96f31a0637c6a24f24add3a65fa6
+  title: 'bpf/Makefile: Forbid implicit int conversions'
+  repository: https://github.com/cilium/cilium
+  commit: ce6f2c7729df96f31a0637c6a24f24add3a65fa6
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-ce6f2c7729df.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Adds compiler warnings and explicit casts to forbid implicit int conversions;
+    this is compile-time hygiene, not a verifier replay.
+raw:
+  case_id: github-commit-cilium-ce6f2c7729df
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: ce6f2c7729df96f31a0637c6a24f24add3a65fa6
+  commit_message: 'bpf/Makefile: Forbid implicit int conversions'
+  commit_date: '2022-01-14'
+  fix_type: inline_hint
+  buggy_code: "// FILE: bpf/bpf_sock.c\n// CONTEXT: static __always_inline __maybe_unused\
+    \ void build_v4_in_v6(union v6addr *daddr,\n/* Hack due to missing narrow ctx\
+    \ access. */\nstatic __always_inline __maybe_unused __be16\nctx_dst_port(const\
+    \ struct bpf_sock_addr *ctx)\n{\n\tvolatile __u32 dport = ctx->user_port;\n\n\t\
+    return (__be16)dport;\n}\n\nstatic __always_inline __maybe_unused __be16\nctx_src_port(const\
+    \ struct bpf_sock *ctx)\n{\n\tvolatile __u32 sport = ctx->src_port;\n\n\treturn\
+    \ (__be16)bpf_htons(sport);\n}\n\nstatic __always_inline __maybe_unused\nvoid\
+    \ ctx_set_port(struct bpf_sock_addr *ctx, __be16 dport)\n{\n\tctx->user_port =\
+    \ (__u32)dport;\n}\n\nstatic __always_inline __maybe_unused bool task_in_extended_hostns(void)\n\
+    {\n\n// CONTEXT: static __always_inline void sock4_auto_bind(struct bpf_sock_addr\
+    \ *ctx)\n\nstatic __always_inline int __sock4_pre_bind(struct bpf_sock_addr *ctx,\n\
+    \t\t\t\t\t    struct bpf_sock_addr *ctx_full)\n{\n\t/* Code compiled in here guarantees\
+    \ that get_socket_cookie() is\n\t * available and unique on underlying kernel.\n\
+    \t */\n\t__sock_cookie key = get_socket_cookie(ctx_full);\n\tstruct lb4_health\
+    \ val = {\n\t\t.peer = {\n\t\t\t.address\t= ctx->user_ip4,\n\t\t\t.port\t\t= ctx_dst_port(ctx),\n\
+    \t\t\t.proto\t\t= ctx->protocol,\n\t\t},\n\t};\n\tint ret;\n\n\tret = map_update_elem(&LB4_HEALTH_MAP,\
+    \ &key, &val, 0);\n\tif (!ret)\n\t\tsock4_auto_bind(ctx);\n\treturn ret;\n}\n\n\
+    __section(\"cgroup/bind4\")\nint sock4_pre_bind(struct bpf_sock_addr *ctx)\n\n\
+    // CONTEXT: int sock6_xlate_v4_in_v6(struct bpf_sock_addr *ctx __maybe_unused,\n\
+    \n\tmemset(&fake_ctx, 0, sizeof(fake_ctx));\n\tfake_ctx.protocol  = ctx->protocol;\n\
+    \tfake_ctx.user_ip4  = addr6.p4;\n\tfake_ctx.user_port = ctx_dst_port(ctx);\n\n\
+    \tret = __sock4_xlate_fwd(&fake_ctx, ctx, udp_only);\n\tif (ret < 0)\n\t\treturn\
+    \ ret;\n\n\tbuild_v4_in_v6(&addr6, fake_ctx.user_ip4);\n\tctx_set_v6_address(ctx,\
+    \ &addr6);\n\tctx_set_port(ctx, fake_ctx.user_port);\n\n\treturn 0;\n#endif /*\
+    \ ENABLE_IPV4 */\n\treturn -ENXIO;\n}\n\n#ifdef ENABLE_NODEPORT\nstatic __always_inline\
+    \ int\nsock6_post_bind_v4_in_v6(struct bpf_sock *ctx __maybe_unused)\n{\n#ifdef\
+    \ ENABLE_IPV4\n\tstruct bpf_sock fake_ctx;\n\n// CONTEXT: sock6_pre_bind_v4_in_v6(struct\
+    \ bpf_sock_addr *ctx __maybe_unused)\n\n\tmemset(&fake_ctx, 0, sizeof(fake_ctx));\n\
+    \tfake_ctx.protocol  = ctx->protocol;\n\tfake_ctx.user_ip4  = addr6.p4;\n\tfake_ctx.user_port\
+    \ = ctx_dst_port(ctx);\n\n\tret = __sock4_pre_bind(&fake_ctx, ctx);\n\tif (ret\
+    \ < 0)\n\t\treturn ret;\n\n\tbuild_v4_in_v6(&addr6, fake_ctx.user_ip4);\n\tctx_set_v6_address(ctx,\
+    \ &addr6);\n\tctx_set_port(ctx, fake_ctx.user_port);\n#endif /* ENABLE_IPV4 */\n\
+    \treturn 0;\n}\n\n#ifdef ENABLE_IPV6\nstatic __always_inline void sock6_auto_bind(struct\
+    \ bpf_sock_addr *ctx)\n{\n\tunion v6addr zero = {};\n\n\tctx_set_v6_address(ctx,\
+    \ &zero);\n\tctx_set_port(ctx, 0);\n}\n#endif\n\nstatic __always_inline int __sock6_pre_bind(struct\
+    \ bpf_sock_addr *ctx)\n{\n\t__sock_cookie key __maybe_unused;\n\tstruct lb6_health\
+    \ val = {\n\t\t.peer = {\n\t\t\t.port\t\t= ctx_dst_port(ctx),\n\t\t\t.proto\t\t\
+    = ctx->protocol,\n\t\t},\n\t};\n\tint ret = 0;\n\n\tctx_get_v6_address(ctx, &val.peer.address);\n\
+    \tif (is_v4_in_v6(&val.peer.address))\n\t\treturn sock6_pre_bind_v4_in_v6(ctx);\n\
+    #ifdef ENABLE_IPV6\n\tkey = get_socket_cookie(ctx);\n\tret = map_update_elem(&LB6_HEALTH_MAP,\
+    \ &key, &val, 0);\n\tif (!ret)\n\t\tsock6_auto_bind(ctx);\n\n// CONTEXT: sock6_xlate_rev_v4_in_v6(struct\
+    \ bpf_sock_addr *ctx __maybe_unused)\n\n\tmemset(&fake_ctx, 0, sizeof(fake_ctx));\n\
+    \tfake_ctx.protocol  = ctx->protocol;\n\tfake_ctx.user_ip4  = addr6.p4;\n\tfake_ctx.user_port\
+    \ = ctx_dst_port(ctx);\n\n\tret = __sock4_xlate_rev(&fake_ctx, ctx);\n\tif (ret\
+    \ < 0)\n\t\treturn ret;\n\n\tbuild_v4_in_v6(&addr6, fake_ctx.user_ip4);\n\tctx_set_v6_address(ctx,\
+    \ &addr6);\n\tctx_set_port(ctx, fake_ctx.user_port);\n\n\treturn 0;\n#endif /*\
+    \ ENABLE_IPV4 */\n\treturn -ENXIO;\n}\n\nstatic __always_inline int __sock6_xlate_rev(struct\
+    \ bpf_sock_addr *ctx)\n{\n#ifdef ENABLE_IPV6\n\tstruct ipv6_revnat_tuple key =\
+    \ {};\n\tstruct ipv6_revnat_entry *val;\n\n// FILE: bpf/include/bpf/builtins.h\n\
+    // CONTEXT: __bpf_no_builtin_memset(void *d __maybe_unused, __u8 c __maybe_unused,\n\
+    \t__throw_build_bug();\n}\n\n/* Redirect any direct use in our code to throw an\
+    \ error. */\n#define __builtin_memset\t__bpf_no_builtin_memset\n\nstatic __always_inline\
+    \ __nobuiltin(\"memset\") void memset(void *d, int c,\n\t\t\t\t\t\t\t __u64 len)\n\
+    {\n\tif (__builtin_constant_p(len) && __builtin_constant_p(c) && c == 0)\n\t\t\
+    __bpf_memzero(d, len);\n\telse\n\t\t__bpf_memset_builtin(d, c, len);\n}\n\nstatic\
+    \ __always_inline __maybe_unused void\n__bpf_memcpy_builtin(void *d, const void\
+    \ *s, __u64 len)\n{\n\t/* Explicit opt-in for __builtin_memcpy(). */\n\t__builtin_memcpy(d,\
+    \ s, len);\n}\n\nstatic __always_inline void __bpf_memcpy(void *d, const void\
+    \ *s, __u64 len)\n{\n#if __clang_major__ >= 10\n\n// FILE: bpf/include/bpf/ctx/skb.h\n\
+    // CONTEXT: ctx_wire_len(const struct __sk_buff *ctx)\nstatic __always_inline\
+    \ __maybe_unused void\nctx_store_meta(struct __sk_buff *ctx, const __u32 off,\
+    \ __u32 data)\n{\n\tctx->cb[off] = data;\n}\n\nstatic __always_inline __maybe_unused\
+    \ __u32\nctx_load_meta(const struct __sk_buff *ctx, const __u32 off)\n{\n\treturn\
+    \ ctx->cb[off];\n}\n\nstatic __always_inline __maybe_unused __u32\nctx_get_protocol(const\
+    \ struct __sk_buff *ctx)\n{\n\treturn ctx->protocol;\n}\n\nstatic __always_inline\
+    \ __maybe_unused __u32\nctx_get_ifindex(const struct __sk_buff *ctx)\n{\n\treturn\
+    \ ctx->ifindex;\n}\n\n#endif /* __BPF_CTX_SKB_H_ */\n\n// FILE: bpf/include/bpf/ctx/xdp.h\n\
+    // CONTEXT: ctx_store_meta(struct xdp_md *ctx __maybe_unused, const __u64 off,\
+    \ __u32 datum)\n\nstatic __always_inline __maybe_unused __u32\nctx_load_meta(const\
+    \ struct xdp_md *ctx __maybe_unused, const __u64 off)\n{\n\t__u32 zero = 0, *data_meta\
+    \ = map_lookup_elem(&cilium_xdp_scratch, &zero);\n\n\tif (always_succeeds(data_meta))\n\
+    \t\treturn data_meta[off];\n\tbuild_bug_on((off + 1) * sizeof(__u32) > META_PIVOT);\n\
+    \treturn 0;\n}\n\nstatic __always_inline __maybe_unused __u32\nctx_get_protocol(const\
+    \ struct xdp_md *ctx)\n{\n\tvoid *data_end = ctx_data_end(ctx);\n\tstruct ethhdr\
+    \ *eth = ctx_data(ctx);\n\n\tif (ctx_no_room(eth + 1, data_end))\n\t\treturn 0;\n\
+    \n\treturn eth->h_proto;\n}\n\nstatic __always_inline __maybe_unused __u32\n\n\
+    // FILE: bpf/lib/conntrack.h\n// CONTEXT: static __always_inline int ct_create4(const\
+    \ void *map_main,\n * CT_INGRESS tuple belongs to a NodePort traffic (i.e., outside\
+    \ client => N/S\n * LB => local backend).\n *\n * When the client send the NodePort\
+    \ request, the NodePort BPF\n * (nodeport_lb{4,6}()) creates the CT_EGRESS entry\
+    \ for the\n * (saddr=client,daddr=backend) tuple. So, to derive whether the reply\
+    \ packet\n * backend => client belongs to the LB flow we can query the CT_EGRESS\
+    \ entry.\n */\nstatic __always_inline bool\nct_has_nodeport_egress_entry4(const\
+    \ void *map,\n\t\t\t      struct ipv4_ct_tuple *ingress_tuple)\n{\n\tint prev_flags\
+    \ = ingress_tuple->flags;\n\tstruct ct_entry *entry;\n\n\tingress_tuple->flags\
+    \ = TUPLE_F_OUT;\n\tentry = map_lookup_elem(map, ingress_tuple);\n\tingress_tuple->flags\
+    \ = prev_flags;\n\n\tif (entry)\n\t\treturn entry->node_port;\n\n\treturn 0;\n\
+    }\n\nstatic __always_inline bool\nct_has_nodeport_egress_entry6(const void *map,\n\
+    \t\t\t      struct ipv6_ct_tuple *ingress_tuple)\n{\n\tint prev_flags = ingress_tuple->flags;\n\
+    \tstruct ct_entry *entry;\n\n\tingress_tuple->flags = TUPLE_F_OUT;\n\tentry =\
+    \ map_lookup_elem(map, ingress_tuple);\n\tingress_tuple->flags = prev_flags;\n\
+    \n\tif (entry)\n\t\treturn entry->node_port;\n\n\treturn 0;\n}\n\n// FILE: bpf/lib/dbg.h\n\
+    // CONTEXT: struct debug_capture_msg {\n\tNOTIFY_CAPTURE_HDR\n\t__u32\t\targ1;\n\
+    \t__u32\t\targ2;\n};\n\nstatic __always_inline void cilium_dbg_capture2(struct\
+    \ __ctx_buff *ctx, __u8 type,\n\t\t\t\t\t\t__u32 arg1, __u32 arg2)\n{\n\t__u64\
+    \ ctx_len = ctx_full_len(ctx);\n\t__u64 cap_len = min_t(__u64, TRACE_PAYLOAD_LEN,\
+    \ ctx_len);\n\tstruct debug_capture_msg msg = {\n\t\t__notify_common_hdr(CILIUM_NOTIFY_DBG_CAPTURE,\
+    \ type),\n\t\t__notify_pktcap_hdr(ctx_len, cap_len),\n\t\t.arg1\t= arg1,\n\t\t\
+    .arg2\t= arg2,\n\t};\n\n\tctx_event_output(ctx, &EVENTS_MAP,\n\t\t\t (cap_len\
+    \ << 32) | BPF_F_CURRENT_CPU,\n\t\t\t &msg, sizeof(msg));\n}\n\nstatic __always_inline\
+    \ void cilium_dbg_capture(struct __ctx_buff *ctx, __u8 type,\n\t\t\t\t\t     \
+    \  __u32 arg1)\n{\n\n// FILE: bpf/lib/drop.h\n// CONTEXT: __section_tail(CILIUM_MAP_CALLS,\
+    \ CILIUM_CALL_DROP_NOTIFY)\nint __send_drop_notify(struct __ctx_buff *ctx)\n{\n\
+    \t/* Mask needed to calm verifier. */\n\tint error = ctx_load_meta(ctx, 2) & 0xFFFFFFFF;\n\
+    \t__u64 ctx_len = ctx_full_len(ctx);\n\t__u64 cap_len = min_t(__u64, TRACE_PAYLOAD_LEN,\
+    \ ctx_len);\n\tstruct drop_notify msg;\n\n\tif (error < 0)\n\t\terror = -error;\n\
+    \n\tmsg = (typeof(msg)) {\n\t\t__notify_common_hdr(CILIUM_NOTIFY_DROP, error),\n\
+    \t\t__notify_pktcap_hdr(ctx_len, cap_len),\n\t\t.src_label\t= ctx_load_meta(ctx,\
+    \ 0),\n\t\t.dst_label\t= ctx_load_meta(ctx, 1),\n\t\t.dst_id\t\t= ctx_load_meta(ctx,\
+    \ 3),\n\t};\n\n\tctx_event_output(ctx, &EVENTS_MAP,\n\t\t\t (cap_len << 32) |\
+    \ BPF_F_CURRENT_CPU,\n\t\t\t &msg, sizeof(msg));\n\n\treturn ctx_load_meta(ctx,\
+    \ 4);\n}\n\n\n// CONTEXT: int __send_drop_notify(struct __ctx_buff *ctx)\n * NOTE:\
+    \ This is terminal function and will cause the BPF program to exit\n */\nstatic\
+    \ __always_inline int\nsend_drop_notify(struct __ctx_buff *ctx, __u32 src, __u32\
+    \ dst, __u32 dst_id,\n\t\t int reason, int exitcode, enum metric_dir direction)\n\
+    {\n\tctx_store_meta(ctx, 0, src);\n\tctx_store_meta(ctx, 1, dst);\n\tctx_store_meta(ctx,\
+    \ 2, reason);\n\tctx_store_meta(ctx, 3, dst_id);\n\tctx_store_meta(ctx, 4, exitcode);\n\
+    \n\tupdate_metrics(ctx_full_len(ctx), direction, -reason);\n\tep_tail_call(ctx,\
+    \ CILIUM_CALL_DROP_NOTIFY);\n\n\treturn exitcode;\n}\n#else\nstatic __always_inline\n\
+    int send_drop_notify(struct __ctx_buff *ctx, __u32 src __maybe_unused,\n\t\t \
+    \    __u32 dst __maybe_unused, __u32 dst_id __maybe_unused,\n\t\t     int reason,\
+    \ int exitcode, enum metric_dir direction)\n{\n\tupdate_metrics(ctx_full_len(ctx),\
+    \ direction, (__u8)-reason);\n\treturn exitcode;\n\n// FILE: bpf/lib/lb.h\n//\
+    \ CONTEXT: struct lb6_service *lb6_lookup_backend_slot(struct __ctx_buff *ctx\
+    \ __maybe_unuse\n\n\treturn NULL;\n}\n\n/* Backend slot 0 is always reserved for\
+    \ the service frontend. */\n#if LB_SELECTION == LB_SELECTION_RANDOM\nstatic __always_inline\
+    \ __u32\nlb6_select_backend_id(struct __ctx_buff *ctx,\n\t\t      struct lb6_key\
+    \ *key,\n\t\t      const struct ipv6_ct_tuple *tuple __maybe_unused,\n\t\t   \
+    \   const struct lb6_service *svc)\n{\n\t__u32 slot = (get_prandom_u32() % svc->count)\
+    \ + 1;\n\tstruct lb6_service *be = lb6_lookup_backend_slot(ctx, key, slot);\n\n\
+    \treturn be ? be->backend_id : 0;\n}\n#elif LB_SELECTION == LB_SELECTION_MAGLEV\n\
+    static __always_inline __u32\nlb6_select_backend_id(struct __ctx_buff *ctx __maybe_unused,\n\
+    \t\t      struct lb6_key *key __maybe_unused,\n\t\t      const struct ipv6_ct_tuple\
+    \ *tuple,\n\t\t      const struct lb6_service *svc)\n{\n\t__u32 zero = 0, index\
+    \ = svc->rev_nat_index;\n\n// CONTEXT: struct lb4_service *lb4_lookup_backend_slot(struct\
+    \ __ctx_buff *ctx __maybe_unuse\n\n\treturn NULL;\n}\n\n/* Backend slot 0 is always\
+    \ reserved for the service frontend. */\n#if LB_SELECTION == LB_SELECTION_RANDOM\n\
+    static __always_inline __u32\nlb4_select_backend_id(struct __ctx_buff *ctx,\n\t\
+    \t      struct lb4_key *key,\n\t\t      const struct ipv4_ct_tuple *tuple __maybe_unused,\n\
+    \t\t      const struct lb4_service *svc)\n{\n\t__u32 slot = (get_prandom_u32()\
+    \ % svc->count) + 1;\n\tstruct lb4_service *be = lb4_lookup_backend_slot(ctx,\
+    \ key, slot);\n\n\treturn be ? be->backend_id : 0;\n}\n#elif LB_SELECTION == LB_SELECTION_MAGLEV\n\
+    static __always_inline __u32\nlb4_select_backend_id(struct __ctx_buff *ctx __maybe_unused,\n\
+    \t\t      struct lb4_key *key __maybe_unused,\n\t\t      const struct ipv4_ct_tuple\
+    \ *tuple,\n\t\t      const struct lb4_service *svc)\n{\n\t__u32 zero = 0, index\
+    \ = svc->rev_nat_index;\n\n// FILE: bpf/lib/nat.h\n// CONTEXT: struct nat_entry\
+    \ {\n#endif\n\nstatic __always_inline __be16 __snat_clamp_port_range(__u16 start,\
+    \ __u16 end,\n\t\t\t\t\t\t      __u16 val)\n{\n\treturn (val % (__u16)(end - start))\
+    \ + start;\n}\n\nstatic __always_inline __maybe_unused __be16\n__snat_try_keep_port(__u16\
+    \ start, __u16 end, __u16 val)\n{\n\treturn val >= start && val <= end ? val :\n\
+    \t       __snat_clamp_port_range(start, end, get_prandom_u32());\n}\n\nstatic\
+    \ __always_inline __maybe_unused void *\n__snat_lookup(const void *map, const\
+    \ void *tuple)\n{\n\treturn map_lookup_elem(map, tuple);\n}\n\nstatic __always_inline\
+    \ __maybe_unused int\n__snat_update(const void *map, const void *otuple, const\
+    \ void *ostate,\n\t      const void *rtuple, const void *rstate)\n{\n\n// CONTEXT:\
+    \ static __always_inline int snat_v4_new_mapping(struct __ctx_buff *ctx,\n\t\t\
+    if (!snat_v4_lookup(&rtuple)) {\n\t\t\tostate->common.created = bpf_mono_now();\n\
+    \t\t\trstate.common.created = ostate->common.created;\n\n\t\t\tret = snat_v4_update(otuple,\
+    \ ostate, &rtuple, &rstate);\n\t\t\tif (!ret)\n\t\t\t\tbreak;\n\t\t}\n\n\t\tport\
+    \ = __snat_clamp_port_range(target->min_port,\n\t\t\t\t\t       target->max_port,\n\
+    \t\t\t\t\t       retries ? port + 1 :\n\t\t\t\t\t       get_prandom_u32());\n\t\
+    \trtuple.dport = ostate->to_sport = bpf_htons(port);\n\t}\n\n\tif (retries > SNAT_SIGNAL_THRES)\n\
+    \t\tsend_signal_nat_fill_up(ctx, SIGNAL_PROTO_V4);\n\treturn !ret ? 0 : DROP_NAT_NO_MAPPING;\n\
+    }\n\nstatic __always_inline int snat_v4_track_local(struct __ctx_buff *ctx,\n\t\
+    \t\t\t\t       const struct ipv4_ct_tuple *tuple,\n\t\t\t\t\t       const struct\
+    \ ipv4_nat_entry *state,\n\t\t\t\t\t       enum nat_dir dir, __u32 off,\n\n//\
+    \ CONTEXT: static __always_inline int snat_v6_new_mapping(struct __ctx_buff *ctx,\n\
+    \t\tif (!snat_v6_lookup(&rtuple)) {\n\t\t\tostate->common.created = bpf_mono_now();\n\
+    \t\t\trstate.common.created = ostate->common.created;\n\n\t\t\tret = snat_v6_update(otuple,\
+    \ ostate, &rtuple, &rstate);\n\t\t\tif (!ret)\n\t\t\t\tbreak;\n\t\t}\n\n\t\tport\
+    \ = __snat_clamp_port_range(target->min_port,\n\t\t\t\t\t       target->max_port,\n\
+    \t\t\t\t\t       retries ? port + 1 :\n\t\t\t\t\t       get_prandom_u32());\n\t\
+    \trtuple.dport = ostate->to_sport = bpf_htons(port);\n\t}\n\n\tif (retries > SNAT_SIGNAL_THRES)\n\
+    \t\tsend_signal_nat_fill_up(ctx, SIGNAL_PROTO_V6);\n\treturn !ret ? 0 : DROP_NAT_NO_MAPPING;\n\
+    }\n\nstatic __always_inline int snat_v6_track_local(struct __ctx_buff *ctx,\n\t\
+    \t\t\t\t       struct ipv6_ct_tuple *tuple,\n\t\t\t\t\t       const struct ipv6_nat_entry\
+    \ *state,\n\t\t\t\t\t       enum nat_dir dir, __u32 off,\n\n// FILE: bpf/lib/nat46.h\n\
+    // CONTEXT: static __always_inline int icmp4_to_icmp6(struct __ctx_buff *ctx,\
+    \ int nh_off)\n\tif (ctx_store_bytes(ctx, nh_off, &icmp6, sizeof(icmp6), 0) <\
+    \ 0)\n\t\treturn DROP_WRITE_ERROR;\n\n\ticmp4.checksum = 0;\n\ticmp6.icmp6_cksum\
+    \ = 0;\n\treturn csum_diff(&icmp4, sizeof(icmp4), &icmp6, sizeof(icmp6), 0);\n\
+    }\n\nstatic __always_inline int icmp6_to_icmp4(struct __ctx_buff *ctx, int nh_off)\n\
+    {\n\tstruct icmphdr icmp4 __align_stack_8 = {};\n\tstruct icmp6hdr icmp6 __align_stack_8;\n\
+    \n\tif (ctx_load_bytes(ctx, nh_off, &icmp6, sizeof(icmp6)) < 0)\n\t\treturn DROP_INVALID;\n\
+    \n\ticmp4.checksum = icmp6.icmp6_cksum;\n\n\tswitch (icmp6.icmp6_type) {\n\tcase\
+    \ ICMPV6_ECHO_REQUEST:\n\t\ticmp4.type = ICMP_ECHO;\n\t\ticmp4.un.echo.id = icmp6.icmp6_identifier;\n\
+    \t\ticmp4.un.echo.sequence = icmp6.icmp6_sequence;\n\t\tbreak;\n\n// CONTEXT:\
+    \ static __always_inline int icmp6_to_icmp4(struct __ctx_buff *ctx, int nh_off)\n\
+    \t\t\tbreak;\n\t\tcase ICMPV6_PORT_UNREACH:\n\t\t\ticmp4.code = ICMP_PORT_UNREACH;\n\
+    \t\t\tbreak;\n\t\tdefault:\n\t\t\treturn DROP_UNKNOWN_ICMP6_CODE;\n\t\t}\n\t\t\
+    break;\n\tcase ICMPV6_PKT_TOOBIG:\n\t\ticmp4.type = ICMP_DEST_UNREACH;\n\t\ticmp4.code\
+    \ = ICMP_FRAG_NEEDED;\n\t\t/* FIXME */\n\t\tif (icmp6.icmp6_mtu)\n\t\t\ticmp4.un.frag.mtu\
+    \ = bpf_htons(bpf_ntohl(icmp6.icmp6_mtu));\n\t\telse\n\t\t\ticmp4.un.frag.mtu\
+    \ = bpf_htons(1500);\n\t\tbreak;\n\tcase ICMPV6_TIME_EXCEED:\n\t\ticmp4.type =\
+    \ ICMP_TIME_EXCEEDED;\n\t\ticmp4.code = icmp6.icmp6_code;\n\t\tbreak;\n\tcase\
+    \ ICMPV6_PARAMPROB:\n\t\tswitch (icmp6.icmp6_code) {\n\t\tcase ICMPV6_HDR_FIELD:\n\
+    \t\t\ticmp4.type = ICMP_PARAMETERPROB;\n\t\t\ticmp4.code = 0;\n\t\t\tbreak;\n\t\
+    \tcase ICMPV6_UNK_NEXTHDR:\n\n// CONTEXT: static __always_inline int ipv4_to_ipv6(struct\
+    \ __ctx_buff *ctx, struct iphdr *ip\n\t\tv6.daddr.in6_u.u6_addr32[0] = nat46_prefix.p1;\n\
+    \t\tv6.daddr.in6_u.u6_addr32[1] = nat46_prefix.p2;\n\t\tv6.daddr.in6_u.u6_addr32[2]\
+    \ = nat46_prefix.p3;\n\t\tv6.daddr.in6_u.u6_addr32[3] = bpf_htonl((bpf_ntohl(nat46_prefix.p4)\
+    \ & 0xFFFF0000) |\n\t\t\t\t\t\t\t(bpf_ntohl(v4.daddr) & 0xFFFF));\n\t}\n\n\tif\
+    \ (v4.protocol == IPPROTO_ICMP)\n\t\tv6.nexthdr = IPPROTO_ICMPV6;\n\telse\n\t\t\
+    v6.nexthdr = v4.protocol;\n\tv6.hop_limit = v4.ttl;\n\tv4hdr_len = (v4.ihl <<\
+    \ 2);\n\tv6.payload_len = bpf_htons(bpf_ntohs(v4.tot_len) - v4hdr_len);\n\n\t\
+    if (ctx_change_proto(ctx, bpf_htons(ETH_P_IPV6), 0) < 0) {\n#ifdef DEBUG_NAT46\n\
+    \t\tprintk(\"v46 NAT: ctx_modify failed\\n\");\n#endif\n\t\treturn DROP_WRITE_ERROR;\n\
+    \t}\n\n\tif (ctx_store_bytes(ctx, nh_off, &v6, sizeof(v6), 0) < 0 ||\n\t    ctx_store_bytes(ctx,\
+    \ nh_off - 2, &protocol, 2, 0) < 0)\n\t\treturn DROP_WRITE_ERROR;\n\n// FILE:\
+    \ bpf/lib/nodeport.h\n// CONTEXT: static __always_inline int dsr_set_ipip6(struct\
+    \ __ctx_buff *ctx,\n\tif (ctx_store_bytes(ctx, l3_off + offsetof(struct ipv6hdr,\
+    \ daddr),\n\t\t\t    backend_addr, sizeof(ip6->daddr), 0) < 0)\n\t\treturn DROP_WRITE_ERROR;\n\
+    \tif (ctx_store_bytes(ctx, l3_off + offsetof(struct ipv6hdr, saddr),\n\t\t\t \
+    \   &saddr, sizeof(ip6->saddr), 0) < 0)\n\t\treturn DROP_WRITE_ERROR;\n\treturn\
+    \ 0;\n}\n#elif DSR_ENCAP_MODE == DSR_ENCAP_NONE\nstatic __always_inline int dsr_set_ext6(struct\
+    \ __ctx_buff *ctx,\n\t\t\t\t\tstruct ipv6hdr *ip6,\n\t\t\t\t\tunion v6addr *svc_addr,\n\
+    \t\t\t\t\t__be32 svc_port, int *ohead)\n{\n\tstruct dsr_opt_v6 opt __align_stack_8\
+    \ = {};\n\t__u16 payload_len = bpf_ntohs(ip6->payload_len) + sizeof(opt);\n\n\t\
+    if (dsr_is_too_big(ctx, payload_len)) {\n\t\t*ohead = sizeof(opt);\n\t\treturn\
+    \ DROP_FRAG_NEEDED;\n\t}\n\n\topt.nexthdr = ip6->nexthdr;\n\tip6->nexthdr = NEXTHDR_DEST;\n\
+    \tip6->payload_len = bpf_htons(payload_len);\n\n// CONTEXT: static __always_inline\
+    \ int xlate_dsr_v6(struct __ctx_buff *ctx,\nstatic __always_inline int dsr_reply_icmp6(struct\
+    \ __ctx_buff *ctx,\n\t\t\t\t\t   struct ipv6hdr *ip6 __maybe_unused,\n\t\t\t\t\
+    \t   int code, int ohead __maybe_unused)\n{\n#ifdef ENABLE_DSR_ICMP_ERRORS\n\t\
+    const __s32 orig_dgram = 64, off = ETH_HLEN;\n\tconst __u32 l3_max = sizeof(*ip6)\
+    \ + orig_dgram;\n\t__be16 type = bpf_htons(ETH_P_IPV6);\n\t__u64 len_new = off\
+    \ + sizeof(*ip6) + orig_dgram;\n\t__u64 len_old = ctx_full_len(ctx);\n\tvoid *data_end\
+    \ = ctx_data_end(ctx);\n\tvoid *data = ctx_data(ctx);\n\t__wsum wsum;\n\tunion\
+    \ macaddr smac, dmac;\n\tstruct icmp6hdr icmp __align_stack_8 = {\n\t\t.icmp6_type\t\
+    = ICMPV6_PKT_TOOBIG,\n\t\t.icmp6_mtu\t= bpf_htonl(THIS_MTU - ohead),\n\t};\n\t\
+    struct ipv6hdr ip __align_stack_8 = {\n\t\t.version\t= 6,\n\t\t.priority\t= ip6->priority,\n\
+    \t\t.flow_lbl[0]\t= ip6->flow_lbl[0],\n\t\t.flow_lbl[1]\t= ip6->flow_lbl[1],\n\
+    \t\t.flow_lbl[2]\t= ip6->flow_lbl[2],\n\t\t.nexthdr\t= IPPROTO_ICMPV6,\n\t\t.hop_limit\t\
+    = IPDEFTTL,\n\t\t.saddr\t\t= ip6->daddr,\n\t\t.daddr\t\t= ip6->saddr,\n\t\t.payload_len\t\
+    = bpf_htons(sizeof(icmp) + len_new - off),\n\t};\n\n\tupdate_metrics(ctx_full_len(ctx),\
+    \ METRIC_EGRESS, -code);\n\n\tif (eth_load_saddr(ctx, smac.addr, 0) < 0)\n\t\t\
+    goto drop_err;\n\tif (eth_load_daddr(ctx, dmac.addr, 0) < 0)\n\t\tgoto drop_err;\n\
+    \tif (unlikely(data + len_new > data_end))\n\t\tgoto drop_err;\n\n\twsum = ipv6_pseudohdr_checksum(&ip,\
+    \ IPPROTO_ICMPV6,\n\t\t\t\t       bpf_ntohs(ip.payload_len), 0);\n\ticmp.icmp6_cksum\
+    \ = csum_fold(csum_diff(NULL, 0, data + off, l3_max,\n\t\t\t\t\t       csum_diff(NULL,\
+    \ 0, &icmp,\n\n// CONTEXT: drop_err:\n\t\t\t\t      METRIC_EGRESS);\n}\n\n__section_tail(CILIUM_MAP_CALLS,\
+    \ CILIUM_CALL_IPV6_NODEPORT_DSR)\nint tail_nodeport_ipv6_dsr(struct __ctx_buff\
+    \ *ctx)\n{\n\tstruct bpf_fib_lookup_padded fib_params = {\n\t\t.l = {\n\t\t\t\
+    .family\t\t= AF_INET6,\n\t\t\t.ifindex\t= DIRECT_ROUTING_DEV_IFINDEX,\n\t\t},\n\
+    \t};\n\tvoid *data, *data_end;\n\tstruct ipv6hdr *ip6;\n\tunion v6addr addr;\n\
+    \tint ret, ohead = 0;\n\tbool l2_hdr_required = true;\n\n\tif (!revalidate_data(ctx,\
+    \ &data, &data_end, &ip6)) {\n\t\tret = DROP_INVALID;\n\t\tgoto drop_err;\n\t\
+    }\n\n\taddr.p1 = ctx_load_meta(ctx, CB_ADDR_V6_1);\n\taddr.p2 = ctx_load_meta(ctx,\
+    \ CB_ADDR_V6_2);\n\taddr.p3 = ctx_load_meta(ctx, CB_ADDR_V6_3);\n\taddr.p4 = ctx_load_meta(ctx,\
+    \ CB_ADDR_V6_4);\n\n#if DSR_ENCAP_MODE == DSR_ENCAP_IPIP\n\tret = dsr_set_ipip6(ctx,\
+    \ ip6, &addr,\n\t\t\t    ctx_load_meta(ctx, CB_HINT), &ohead);\n#elif DSR_ENCAP_MODE\
+    \ == DSR_ENCAP_NONE\n\tret = dsr_set_ext6(ctx, ip6, &addr,\n\t\t\t   ctx_load_meta(ctx,\
+    \ CB_PORT), &ohead);\n#else\n# error \"Invalid load balancer DSR encapsulation\
+    \ mode!\"\n#endif\n\tif (unlikely(ret)) {\n\t\tif (dsr_fail_needs_reply(ret))\n\
+    \t\t\treturn dsr_reply_icmp6(ctx, ip6, ret, ohead);\n\t\tgoto drop_err;\n\t}\n\
+    \tif (!revalidate_data(ctx, &data, &data_end, &ip6)) {\n\t\tret = DROP_INVALID;\n\
+    \t\tgoto drop_err;\n\t}\n\n// CONTEXT: skip_service_lookup:\n\t\treturn DROP_INVALID;\n\
+    \n\tif (backend_local || !nodeport_uses_dsr6(&tuple)) {\n\t\tstruct ct_state ct_state\
+    \ = {};\n\n\t\tret = ct_lookup6(get_ct_map6(&tuple), &tuple, ctx, l4_off,\n\t\t\
+    \t\t CT_EGRESS, &ct_state, &monitor);\n\t\tswitch (ret) {\n\t\tcase CT_NEW:\n\
+    redo:\n\t\t\tct_state_new.src_sec_id = SECLABEL;\n\t\t\tct_state_new.node_port\
+    \ = 1;\n\t\t\tct_state_new.ifindex = NATIVE_DEV_IFINDEX;\n\t\t\tret = ct_create6(get_ct_map6(&tuple),\
+    \ NULL, &tuple, ctx,\n\t\t\t\t\t CT_EGRESS, &ct_state_new, false);\n\t\t\tif (IS_ERR(ret))\n\
+    \t\t\t\treturn ret;\n\t\t\tbreak;\n\t\tcase CT_REOPENED:\n\t\tcase CT_ESTABLISHED:\n\
+    \t\tcase CT_REPLY:\n\t\t\tif (unlikely(ct_state.rev_nat_index !=\n\t\t\t\t   \
+    \  svc->rev_nat_index))\n\t\t\t\tgoto redo;\n\t\t\tbreak;\n\n// CONTEXT: static\
+    \ __always_inline __be32 rss_gen_src4(__be32 client, __be32 l4_hint)\n\treturn\
+    \ src;\n}\n\n/*\n * Original packet: [clientIP:clientPort -> serviceIP:servicePort]\
+    \ } IP/L4\n *\n * After DSR IPIP:  [rssSrcIP -> backendIP]                   \
+    \     } IP\n *                  [clientIP:clientPort -> serviceIP:servicePort]\
+    \ } IP/L4\n */\nstatic __always_inline int dsr_set_ipip4(struct __ctx_buff *ctx,\n\
+    \t\t\t\t\t const struct iphdr *ip4,\n\t\t\t\t\t __be32 backend_addr,\n\t\t\t\t\
+    \t __be32 l4_hint, int *ohead)\n{\n\t__u16 tot_len = bpf_ntohs(ip4->tot_len) +\
+    \ sizeof(*ip4);\n\tconst int l3_off = ETH_HLEN;\n\t__be32 sum;\n\tstruct {\n\t\
+    \t__be16 tot_len;\n\t\t__be16 id;\n\t\t__be16 frag_off;\n\t\t__u8   ttl;\n\t\t\
+    __u8   protocol;\n\t\t__be32 saddr;\n\t\t__be32 daddr;\n\n// CONTEXT: static __always_inline\
+    \ int dsr_set_ipip4(struct __ctx_buff *ctx,\n\t\treturn DROP_WRITE_ERROR;\n\t\
+    if (ctx_store_bytes(ctx, l3_off + offsetof(struct iphdr, saddr),\n\t\t\t    &tp_new.saddr,\
+    \ 8, 0) < 0)\n\t\treturn DROP_WRITE_ERROR;\n\tif (l3_csum_replace(ctx, l3_off\
+    \ + offsetof(struct iphdr, check),\n\t\t\t    0, sum, 0) < 0)\n\t\treturn DROP_CSUM_L3;\n\
+    \treturn 0;\n}\n#elif DSR_ENCAP_MODE == DSR_ENCAP_NONE\nstatic __always_inline\
+    \ int dsr_set_opt4(struct __ctx_buff *ctx,\n\t\t\t\t\tstruct iphdr *ip4, __be32\
+    \ svc_addr,\n\t\t\t\t\t__be32 svc_port, int *ohead)\n{\n\t__u32 iph_old, iph_new,\
+    \ opt[2];\n\t__u16 tot_len = bpf_ntohs(ip4->tot_len) + sizeof(opt);\n\t__be32\
+    \ sum;\n\n\tif (ip4->protocol == IPPROTO_TCP) {\n\t\tunion tcp_flags tcp_flags\
+    \ = { .value = 0 };\n\n\t\tif (ctx_load_bytes(ctx, ETH_HLEN + sizeof(*ip4) + 12,\n\
+    \t\t\t\t   &tcp_flags, 2) < 0)\n\t\t\treturn DROP_CT_INVALID_HDR;\n\n\n// CONTEXT:\
+    \ static __always_inline int handle_dsr_v4(struct __ctx_buff *ctx, bool *dsr)\n\
+    {\n\tvoid *data, *data_end;\n\tstruct iphdr *ip4;\n\n\tif (!revalidate_data(ctx,\
+    \ &data, &data_end, &ip4))\n\t\treturn DROP_INVALID;\n\n\t/* Check whether IPv4\
+    \ header contains a 64-bit option (IPv4 header\n\t * w/o option (5 x 32-bit words)\
+    \ + the DSR option (2 x 32-bit words)).\n\t */\n\tif (ip4->ihl == 0x7) {\n\t\t\
+    __u32 opt1 = 0, opt2 = 0;\n\t\t__be32 address, dport;\n\n\t\tif (ctx_load_bytes(ctx,\
+    \ ETH_HLEN + sizeof(struct iphdr),\n\t\t\t\t   &opt1, sizeof(opt1)) < 0)\n\t\t\
+    \treturn DROP_INVALID;\n\n\t\topt1 = bpf_ntohl(opt1);\n\t\tif ((opt1 & DSR_IPV4_OPT_MASK)\
+    \ == DSR_IPV4_OPT_32) {\n\t\t\tif (ctx_load_bytes(ctx, ETH_HLEN +\n\t\t\t\t\t\
+    \   sizeof(struct iphdr) +\n\t\t\t\t\t   sizeof(opt1),\n\t\t\t\t\t   &opt2, sizeof(opt2))\
+    \ < 0)\n\t\t\t\treturn DROP_INVALID;\n\n// CONTEXT: static __always_inline int\
+    \ xlate_dsr_v4(struct __ctx_buff *ctx,\n\tnat_tup.flags = NAT_DIR_EGRESS;\n\t\
+    nat_tup.sport = tuple->dport;\n\tnat_tup.dport = tuple->sport;\n\n\tentry = snat_v4_lookup(&nat_tup);\n\
+    \tif (entry)\n\t\tret = snat_v4_rewrite_egress(ctx, &nat_tup, entry, l4_off, has_l4_header);\n\
+    \treturn ret;\n}\n\nstatic __always_inline int dsr_reply_icmp4(struct __ctx_buff\
+    \ *ctx,\n\t\t\t\t\t   struct iphdr *ip4 __maybe_unused,\n\t\t\t\t\t   int code,\
+    \ int ohead __maybe_unused)\n{\n#ifdef ENABLE_DSR_ICMP_ERRORS\n\tconst __s32 orig_dgram\
+    \ = 8, off = ETH_HLEN;\n\tconst __u32 l3_max = MAX_IPOPTLEN + sizeof(*ip4) + orig_dgram;\n\
+    \t__be16 type = bpf_htons(ETH_P_IP);\n\t__s32 len_new = off + ipv4_hdrlen(ip4)\
+    \ + orig_dgram;\n\t__s32 len_old = ctx_full_len(ctx);\n\t__u8 tmp[l3_max];\n\t\
+    union macaddr smac, dmac;\n\tstruct icmphdr icmp __align_stack_8 = {\n\t\t.type\t\
+    \t= ICMP_DEST_UNREACH,\n\t\t.code\t\t= ICMP_FRAG_NEEDED,\n\t\t.un = {\n\t\t\t\
+    .frag = {\n\t\t\t\t.mtu = bpf_htons(THIS_MTU - ohead),\n\t\t\t},\n\t\t},\n\t};\n\
+    \tstruct iphdr ip __align_stack_8 = {\n\t\t.ihl\t\t= sizeof(ip) >> 2,\n\t\t.version\t\
+    = IPVERSION,\n\t\t.ttl\t\t= IPDEFTTL,\n\t\t.tos\t\t= ip4->tos,\n\t\t.id\t\t= ip4->id,\n\
+    \t\t.protocol\t= IPPROTO_ICMP,\n\t\t.saddr\t\t= ip4->daddr,\n\t\t.daddr\t\t= ip4->saddr,\n\
+    \t\t.frag_off\t= bpf_htons(IP_DF),\n\t\t.tot_len\t= bpf_htons(sizeof(ip) + sizeof(icmp)\
+    \ +\n\t\t\t\t\t    len_new - off),\n\t};\n\n\tupdate_metrics(ctx_full_len(ctx),\
+    \ METRIC_EGRESS, -code);\n\n\tif (eth_load_saddr(ctx, smac.addr, 0) < 0)\n\t\t\
+    goto drop_err;\n\tif (eth_load_daddr(ctx, dmac.addr, 0) < 0)\n\t\tgoto drop_err;\n\
+    \n\tip.check = csum_fold(csum_diff(NULL, 0, &ip, sizeof(ip), 0));\n\n\t/* We use\
+    \ a workaround here in that we push zero-bytes into the\n\t * payload in order\
+    \ to support dynamic IPv4 header size. This\n\t * works given one's complement\
+    \ sum does not change.\n\t */\n\n// CONTEXT: drop_err:\n\t\t\t\t      METRIC_EGRESS);\n\
+    }\n\n__section_tail(CILIUM_MAP_CALLS, CILIUM_CALL_IPV4_NODEPORT_DSR)\nint tail_nodeport_ipv4_dsr(struct\
+    \ __ctx_buff *ctx)\n{\n\tstruct bpf_fib_lookup_padded fib_params = {\n\t\t.l =\
+    \ {\n\t\t\t.family\t\t= AF_INET,\n\t\t\t.ifindex\t= DIRECT_ROUTING_DEV_IFINDEX,\n\
+    \t\t},\n\t};\n\tvoid *data, *data_end;\n\tint ret, ohead = 0;\n\tstruct iphdr\
+    \ *ip4;\n\tbool l2_hdr_required = true;\n\n\tif (!revalidate_data(ctx, &data,\
+    \ &data_end, &ip4)) {\n\t\tret = DROP_INVALID;\n\t\tgoto drop_err;\n\t}\n\n#if\
+    \ DSR_ENCAP_MODE == DSR_ENCAP_IPIP\n\tret = dsr_set_ipip4(ctx, ip4,\n\t\t\t  \
+    \  ctx_load_meta(ctx, CB_ADDR_V4),\n\t\t\t    ctx_load_meta(ctx, CB_HINT), &ohead);\n\
+    #elif DSR_ENCAP_MODE == DSR_ENCAP_NONE\n\tret = dsr_set_opt4(ctx, ip4,\n\n// CONTEXT:\
+    \ skip_service_lookup:\n\t * need to track in here.\n\t */\n\tif (backend_local\
+    \ || !nodeport_uses_dsr4(&tuple)) {\n\t\tstruct ct_state ct_state = {};\n\n\t\t\
+    ret = ct_lookup4(get_ct_map4(&tuple), &tuple, ctx, l4_off,\n\t\t\t\t CT_EGRESS,\
+    \ &ct_state, &monitor);\n\t\tswitch (ret) {\n\t\tcase CT_NEW:\nredo:\n\t\t\tct_state_new.src_sec_id\
+    \ = SECLABEL;\n\t\t\tct_state_new.node_port = 1;\n\t\t\tct_state_new.ifindex =\
+    \ NATIVE_DEV_IFINDEX;\n\t\t\tret = ct_create4(get_ct_map4(&tuple), NULL, &tuple,\
+    \ ctx,\n\t\t\t\t\t CT_EGRESS, &ct_state_new, false);\n\t\t\tif (IS_ERR(ret))\n\
+    \t\t\t\treturn ret;\n\t\t\tbreak;\n\t\tcase CT_REOPENED:\n\t\tcase CT_ESTABLISHED:\n\
+    \t\tcase CT_REPLY:\n\t\t\t/* Recreate CT entries, as the existing one is stale\
+    \ and\n\t\t\t * belongs to a flow which target a different svc.\n\t\t\t */\n\t\
+    \t\tif (unlikely(ct_state.rev_nat_index !=\n\n// FILE: bpf/lib/pcap.h\n// CONTEXT:\
+    \ cilium_capture_classify_wcard(struct __ctx_buff *ctx)\n\t\tret = cilium_capture6_classify_wcard(ctx);\n\
+    \t\tbreak;\n#endif\n\tdefault:\n\t\tbreak;\n\t}\n\treturn ret;\n}\n\nstatic __always_inline\
+    \ bool\ncilium_capture_candidate(struct __ctx_buff *ctx __maybe_unused,\n\t\t\t\
+    \ __u16 *rule_id __maybe_unused,\n\t\t\t __u32 *cap_len __maybe_unused)\n{\n\t\
+    if (capture_enabled) {\n\t\tstruct capture_cache *c;\n\t\tstruct capture_rule\
+    \ *r;\n\t\t__u32 zero = 0;\n\n\t\tc = map_lookup_elem(&cilium_capture_cache, &zero);\n\
+    \t\tif (always_succeeds(c)) {\n\t\t\tr = cilium_capture_classify_wcard(ctx);\n\
+    \t\t\tc->rule_seen = r;\n\t\t\tif (r) {\n\t\t\t\tc->cap_len = *cap_len = r->cap_len;\n\
+    \t\t\t\tc->rule_id = *rule_id = r->rule_id;\n\t\t\t\treturn true;\n\t\t\t}\n\t\
+    \t}\n\t}\n\treturn false;\n}\n\nstatic __always_inline bool\ncilium_capture_cached(struct\
+    \ __ctx_buff *ctx __maybe_unused,\n\t\t      __u16 *rule_id __maybe_unused,\n\t\
+    \t      __u32 *cap_len __maybe_unused)\n\n// CONTEXT: cilium_capture_cached(struct\
+    \ __ctx_buff *ctx __maybe_unused,\n\t\tif (always_succeeds(c) && c->rule_seen)\
+    \ {\n\t\t\t*cap_len = c->cap_len;\n\t\t\t*rule_id = c->rule_id;\n\t\t\treturn\
+    \ true;\n\t\t}\n\t}\n\treturn false;\n}\n\nstatic __always_inline void\ncilium_capture_in(struct\
+    \ __ctx_buff *ctx __maybe_unused)\n{\n\t__u32 cap_len;\n\t__u16 rule_id;\n\n\t\
+    if (cilium_capture_candidate(ctx, &rule_id, &cap_len))\n\t\t__cilium_capture_in(ctx,\
+    \ rule_id, cap_len);\n}\n\nstatic __always_inline void\ncilium_capture_out(struct\
+    \ __ctx_buff *ctx __maybe_unused)\n{\n\t__u32 cap_len;\n\t__u16 rule_id;\n\n//\
+    \ FILE: bpf/lib/policy_log.h\n// CONTEXT: send_policy_verdict_notify(struct __ctx_buff\
+    \ *ctx, __u32 remote_label, __u16 dst\n\t\t\t   __u8 proto, __u8 dir, __u8 is_ipv6,\
+    \ int verdict,\n\t\t\t   __u8 match_type, __u8 is_audited)\n{\n\t__u64 ctx_len\
+    \ = ctx_full_len(ctx);\n\t__u64 cap_len = min_t(__u64, TRACE_PAYLOAD_LEN, ctx_len);\n\
+    \tstruct policy_verdict_notify msg;\n\n\tif (!policy_verdict_filter_allow(POLICY_VERDICT_LOG_FILTER,\
+    \ dir))\n\t\treturn;\n\n\tmsg = (typeof(msg)) {\n\t\t__notify_common_hdr(CILIUM_NOTIFY_POLICY_VERDICT,\
+    \ 0),\n\t\t__notify_pktcap_hdr(ctx_len, cap_len),\n\t\t.remote_label\t= remote_label,\n\
+    \t\t.verdict\t= verdict,\n\t\t.dst_port\t= bpf_ntohs(dst_port),\n\t\t.match_type\t\
+    = match_type,\n\t\t.proto\t\t= proto,\n\t\t.dir\t\t= dir,\n\t\t.ipv6\t\t= is_ipv6,\n\
+    \t\t.audited\t= is_audited,\n\t};\n\n\tctx_event_output(ctx, &EVENTS_MAP,\n\t\t\
+    \t (cap_len << 32) | BPF_F_CURRENT_CPU,\n\n// FILE: bpf/lib/trace.h\n// CONTEXT:\
+    \ send_trace_notify(struct __ctx_buff *ctx, enum trace_point obs_point,\n\t__u64\
+    \ ctx_len = ctx_full_len(ctx);\n\t__u64 cap_len = min_t(__u64, monitor ? : TRACE_PAYLOAD_LEN,\n\
+    \t\t\t      ctx_len);\n\tstruct trace_notify msg __align_stack_8;\n\n\tupdate_trace_metrics(ctx,\
+    \ obs_point, reason);\n\n\tif (!emit_trace_notify(obs_point, monitor))\n\t\treturn;\n\
+    \n\tmsg = (typeof(msg)) {\n\t\t__notify_common_hdr(CILIUM_NOTIFY_TRACE, obs_point),\n\
+    \t\t__notify_pktcap_hdr(ctx_len, cap_len),\n\t\t.src_label\t= src,\n\t\t.dst_label\t\
+    = dst,\n\t\t.dst_id\t\t= dst_id,\n\t\t.reason\t\t= reason,\n\t\t.ifindex\t= ifindex,\n\
+    \t};\n\tmemset(&msg.orig_ip6, 0, sizeof(union v6addr));\n\n\tctx_event_output(ctx,\
+    \ &EVENTS_MAP,\n\t\t\t (cap_len << 32) | BPF_F_CURRENT_CPU,\n\t\t\t &msg, sizeof(msg));\n\
+    }\n\n// CONTEXT: send_trace_notify4(struct __ctx_buff *ctx, enum trace_point obs_point,\n\
+    \t__u64 ctx_len = ctx_full_len(ctx);\n\t__u64 cap_len = min_t(__u64, monitor ?\
+    \ : TRACE_PAYLOAD_LEN,\n\t\t\t      ctx_len);\n\tstruct trace_notify msg;\n\n\t\
+    update_trace_metrics(ctx, obs_point, reason);\n\n\tif (!emit_trace_notify(obs_point,\
+    \ monitor))\n\t\treturn;\n\n\tmsg = (typeof(msg)) {\n\t\t__notify_common_hdr(CILIUM_NOTIFY_TRACE,\
+    \ obs_point),\n\t\t__notify_pktcap_hdr(ctx_len, cap_len),\n\t\t.src_label\t= src,\n\
+    \t\t.dst_label\t= dst,\n\t\t.dst_id\t\t= dst_id,\n\t\t.reason\t\t= reason,\n\t\
+    \t.ifindex\t= ifindex,\n\t\t.ipv6\t\t= 0,\n\t\t.orig_ip4\t= orig_addr,\n\t};\n\
+    \n\tctx_event_output(ctx, &EVENTS_MAP,\n\t\t\t (cap_len << 32) | BPF_F_CURRENT_CPU,\n\
+    \t\t\t &msg, sizeof(msg));\n\n// CONTEXT: send_trace_notify6(struct __ctx_buff\
+    \ *ctx, enum trace_point obs_point,\n\t__u64 ctx_len = ctx_full_len(ctx);\n\t\
+    __u64 cap_len = min_t(__u64, monitor ? : TRACE_PAYLOAD_LEN,\n\t\t\t      ctx_len);\n\
+    \tstruct trace_notify msg;\n\n\tupdate_trace_metrics(ctx, obs_point, reason);\n\
+    \n\tif (!emit_trace_notify(obs_point, monitor))\n\t\treturn;\n\n\tmsg = (typeof(msg))\
+    \ {\n\t\t__notify_common_hdr(CILIUM_NOTIFY_TRACE, obs_point),\n\t\t__notify_pktcap_hdr(ctx_len,\
+    \ cap_len),\n\t\t.src_label\t= src,\n\t\t.dst_label\t= dst,\n\t\t.dst_id\t\t=\
+    \ dst_id,\n\t\t.reason\t\t= reason,\n\t\t.ifindex\t= ifindex,\n\t\t.ipv6\t\t=\
+    \ 1,\n\t};\n\n\tipv6_addr_copy(&msg.orig_ip6, orig_addr);\n\n\tctx_event_output(ctx,\
+    \ &EVENTS_MAP,\n\t\t\t (cap_len << 32) | BPF_F_CURRENT_CPU,\n\n// FILE: bpf/sockops/bpf_redir.c\n\
+    // CONTEXT: int bpf_redir_proxy(struct sk_msg_md *msg)\n\n\t/* Currently, pulling\
+    \ dstIP out of endpoint\n\t * tables. This can be simplified by caching this information\
+    \ with the\n\t * socket to avoid extra overhead. This would require the agent\
+    \ though\n\t * to flush the sock ops map on policy changes.\n\t */\n\tinfo = lookup_ip4_remote_endpoint(key.dip4);\n\
+    \tif (info != NULL && info->sec_label)\n\t\tdst_id = info->sec_label;\n\telse\n\
+    \t\tdst_id = WORLD_ID;\n\n\tverdict = policy_sk_egress(dst_id, key.sip4, key.dport);\n\
+    \tif (verdict >= 0)\n\t\tmsg_redirect_hash(msg, &SOCK_OPS_MAP, &key, flags);\n\
+    \treturn SK_PASS;\n}\n\nBPF_LICENSE(\"GPL\");\nint _version __section(\"version\"\
+    ) = 1;\n\n// FILE: bpf/sockops/bpf_sockops.c\n// CONTEXT: static __always_inline\
+    \ void sk_extract4_key(const struct bpf_sock_ops *ops,\n\t * which unfortunately\
+    \ most kernels (as of October 2019) do not\n\t * support, which leads to verifier\
+    \ failures. Insert a READ_ONCE\n\t * to make sure that a 32-bit read followed\
+    \ by shift is generated.\n\t */\n\tkey->dport = READ_ONCE(ops->remote_port) >>\
+    \ 16;\n}\n\nstatic __always_inline void sk_lb4_key(struct lb4_key *lb4,\n\t\t\t\
+    \t\t  const struct sock_key *key)\n{\n\t/* SK MSG is always egress, so use daddr\
+    \ */\n\tlb4->address = key->dip4;\n\tlb4->dport = key->dport;\n}\n\nstatic __always_inline\
+    \ bool redirect_to_proxy(int verdict)\n{\n\treturn verdict > 0;\n}\n\nstatic inline\
+    \ void bpf_sock_ops_ipv4(struct bpf_sock_ops *skops)\n{\n\tstruct lb4_key lb4_key\
+    \ = {};\n\t__u32 dip4, dport, dst_id = 0;\n\tstruct endpoint_info *exists;\n\n\
+    // CONTEXT: static inline void bpf_sock_ops_ipv4(struct bpf_sock_ops *skops)\n\
+    \n\t/* Policy lookup required to learn proxy port */\n\tif (1) {\n\t\tstruct remote_endpoint_info\
+    \ *info;\n\n\t\tinfo = lookup_ip4_remote_endpoint(key.dip4);\n\t\tif (info !=\
+    \ NULL && info->sec_label)\n\t\t\tdst_id = info->sec_label;\n\t\telse\n\t\t\t\
+    dst_id = WORLD_ID;\n\t}\n\n\tverdict = policy_sk_egress(dst_id, key.sip4, key.dport);\n\
+    \tif (redirect_to_proxy(verdict)) {\n\t\t__be32 host_ip = IPV4_GATEWAY;\n\n\t\t\
+    key.dip4 = key.sip4;\n\t\tkey.dport = key.sport;\n\t\tkey.sip4 = host_ip;\n\t\t\
+    key.sport = verdict;\n\n\t\tsock_hash_update(skops, &SOCK_OPS_MAP, &key, BPF_NOEXIST);\n\
+    \t\treturn;\n\t}"
+  fixed_code: "// FILE: bpf/bpf_sock.c\n// CONTEXT: static __always_inline __maybe_unused\
+    \ void build_v4_in_v6(union v6addr *daddr,\n/* Hack due to missing narrow ctx\
+    \ access. */\nstatic __always_inline __maybe_unused __be16\nctx_dst_port(const\
+    \ struct bpf_sock_addr *ctx)\n{\n\tvolatile __u32 dport = ctx->user_port;\n\n\t\
+    return (__be16)dport;\n}\n\nstatic __always_inline __maybe_unused __be16\nctx_src_port(const\
+    \ struct bpf_sock *ctx)\n{\n\tvolatile __u16 sport = (__u16)ctx->src_port;\n\n\
+    \treturn (__be16)bpf_htons(sport);\n}\n\nstatic __always_inline __maybe_unused\n\
+    void ctx_set_port(struct bpf_sock_addr *ctx, __be16 dport)\n{\n\tctx->user_port\
+    \ = (__u32)dport;\n}\n\nstatic __always_inline __maybe_unused bool task_in_extended_hostns(void)\n\
+    {\n\n// CONTEXT: static __always_inline void sock4_auto_bind(struct bpf_sock_addr\
+    \ *ctx)\n\nstatic __always_inline int __sock4_pre_bind(struct bpf_sock_addr *ctx,\n\
+    \t\t\t\t\t    struct bpf_sock_addr *ctx_full)\n{\n\t/* Code compiled in here guarantees\
+    \ that get_socket_cookie() is\n\t * available and unique on underlying kernel.\n\
+    \t */\n\t__sock_cookie key = get_socket_cookie(ctx_full);\n\tstruct lb4_health\
+    \ val = {\n\t\t.peer = {\n\t\t\t.address\t= ctx->user_ip4,\n\t\t\t.port\t\t= ctx_dst_port(ctx),\n\
+    \t\t\t.proto\t\t= (__u8)ctx->protocol,\n\t\t},\n\t};\n\tint ret;\n\n\tret = map_update_elem(&LB4_HEALTH_MAP,\
+    \ &key, &val, 0);\n\tif (!ret)\n\t\tsock4_auto_bind(ctx);\n\treturn ret;\n}\n\n\
+    __section(\"cgroup/bind4\")\nint sock4_pre_bind(struct bpf_sock_addr *ctx)\n\n\
+    // CONTEXT: int sock6_xlate_v4_in_v6(struct bpf_sock_addr *ctx __maybe_unused,\n\
+    \n\tmemset(&fake_ctx, 0, sizeof(fake_ctx));\n\tfake_ctx.protocol  = ctx->protocol;\n\
+    \tfake_ctx.user_ip4  = addr6.p4;\n\tfake_ctx.user_port = ctx_dst_port(ctx);\n\n\
+    \tret = __sock4_xlate_fwd(&fake_ctx, ctx, udp_only);\n\tif (ret < 0)\n\t\treturn\
+    \ ret;\n\n\tbuild_v4_in_v6(&addr6, fake_ctx.user_ip4);\n\tctx_set_v6_address(ctx,\
+    \ &addr6);\n\tctx_set_port(ctx, (__u16)fake_ctx.user_port);\n\n\treturn 0;\n#endif\
+    \ /* ENABLE_IPV4 */\n\treturn -ENXIO;\n}\n\n#ifdef ENABLE_NODEPORT\nstatic __always_inline\
+    \ int\nsock6_post_bind_v4_in_v6(struct bpf_sock *ctx __maybe_unused)\n{\n#ifdef\
+    \ ENABLE_IPV4\n\tstruct bpf_sock fake_ctx;\n\n// CONTEXT: sock6_pre_bind_v4_in_v6(struct\
+    \ bpf_sock_addr *ctx __maybe_unused)\n\n\tmemset(&fake_ctx, 0, sizeof(fake_ctx));\n\
+    \tfake_ctx.protocol  = ctx->protocol;\n\tfake_ctx.user_ip4  = addr6.p4;\n\tfake_ctx.user_port\
+    \ = ctx_dst_port(ctx);\n\n\tret = __sock4_pre_bind(&fake_ctx, ctx);\n\tif (ret\
+    \ < 0)\n\t\treturn ret;\n\n\tbuild_v4_in_v6(&addr6, fake_ctx.user_ip4);\n\tctx_set_v6_address(ctx,\
+    \ &addr6);\n\tctx_set_port(ctx, (__u16)fake_ctx.user_port);\n#endif /* ENABLE_IPV4\
+    \ */\n\treturn 0;\n}\n\n#ifdef ENABLE_IPV6\nstatic __always_inline void sock6_auto_bind(struct\
+    \ bpf_sock_addr *ctx)\n{\n\tunion v6addr zero = {};\n\n\tctx_set_v6_address(ctx,\
+    \ &zero);\n\tctx_set_port(ctx, 0);\n}\n#endif\n\nstatic __always_inline int __sock6_pre_bind(struct\
+    \ bpf_sock_addr *ctx)\n{\n\t__sock_cookie key __maybe_unused;\n\tstruct lb6_health\
+    \ val = {\n\t\t.peer = {\n\t\t\t.port\t\t= ctx_dst_port(ctx),\n\t\t\t.proto\t\t\
+    = (__u8)ctx->protocol,\n\t\t},\n\t};\n\tint ret = 0;\n\n\tctx_get_v6_address(ctx,\
+    \ &val.peer.address);\n\tif (is_v4_in_v6(&val.peer.address))\n\t\treturn sock6_pre_bind_v4_in_v6(ctx);\n\
+    #ifdef ENABLE_IPV6\n\tkey = get_socket_cookie(ctx);\n\tret = map_update_elem(&LB6_HEALTH_MAP,\
+    \ &key, &val, 0);\n\tif (!ret)\n\t\tsock6_auto_bind(ctx);\n\n// CONTEXT: sock6_xlate_rev_v4_in_v6(struct\
+    \ bpf_sock_addr *ctx __maybe_unused)\n\n\tmemset(&fake_ctx, 0, sizeof(fake_ctx));\n\
+    \tfake_ctx.protocol  = ctx->protocol;\n\tfake_ctx.user_ip4  = addr6.p4;\n\tfake_ctx.user_port\
+    \ = ctx_dst_port(ctx);\n\n\tret = __sock4_xlate_rev(&fake_ctx, ctx);\n\tif (ret\
+    \ < 0)\n\t\treturn ret;\n\n\tbuild_v4_in_v6(&addr6, fake_ctx.user_ip4);\n\tctx_set_v6_address(ctx,\
+    \ &addr6);\n\tctx_set_port(ctx, (__u16)fake_ctx.user_port);\n\n\treturn 0;\n#endif\
+    \ /* ENABLE_IPV4 */\n\treturn -ENXIO;\n}\n\nstatic __always_inline int __sock6_xlate_rev(struct\
+    \ bpf_sock_addr *ctx)\n{\n#ifdef ENABLE_IPV6\n\tstruct ipv6_revnat_tuple key =\
+    \ {};\n\tstruct ipv6_revnat_entry *val;\n\n// FILE: bpf/include/bpf/builtins.h\n\
+    // CONTEXT: __bpf_no_builtin_memset(void *d __maybe_unused, __u8 c __maybe_unused,\n\
+    \t__throw_build_bug();\n}\n\n/* Redirect any direct use in our code to throw an\
+    \ error. */\n#define __builtin_memset\t__bpf_no_builtin_memset\n\nstatic __always_inline\
+    \ __nobuiltin(\"memset\") void memset(void *d, int c,\n\t\t\t\t\t\t\t __u64 len)\n\
+    {\n\tif (__builtin_constant_p(len) && __builtin_constant_p(c) && c == 0)\n\t\t\
+    __bpf_memzero(d, len);\n\telse\n\t\t__bpf_memset_builtin(d, (__u8)c, len);\n}\n\
+    \nstatic __always_inline __maybe_unused void\n__bpf_memcpy_builtin(void *d, const\
+    \ void *s, __u64 len)\n{\n\t/* Explicit opt-in for __builtin_memcpy(). */\n\t\
+    __builtin_memcpy(d, s, len);\n}\n\nstatic __always_inline void __bpf_memcpy(void\
+    \ *d, const void *s, __u64 len)\n{\n#if __clang_major__ >= 10\n\n// FILE: bpf/include/bpf/ctx/skb.h\n\
+    // CONTEXT: ctx_wire_len(const struct __sk_buff *ctx)\nstatic __always_inline\
+    \ __maybe_unused void\nctx_store_meta(struct __sk_buff *ctx, const __u32 off,\
+    \ __u32 data)\n{\n\tctx->cb[off] = data;\n}\n\nstatic __always_inline __maybe_unused\
+    \ __u32\nctx_load_meta(const struct __sk_buff *ctx, const __u32 off)\n{\n\treturn\
+    \ ctx->cb[off];\n}\n\nstatic __always_inline __maybe_unused __u16\nctx_get_protocol(const\
+    \ struct __sk_buff *ctx)\n{\n\treturn (__u16)ctx->protocol;\n}\n\nstatic __always_inline\
+    \ __maybe_unused __u32\nctx_get_ifindex(const struct __sk_buff *ctx)\n{\n\treturn\
+    \ ctx->ifindex;\n}\n\n#endif /* __BPF_CTX_SKB_H_ */\n\n// FILE: bpf/include/bpf/ctx/xdp.h\n\
+    // CONTEXT: ctx_store_meta(struct xdp_md *ctx __maybe_unused, const __u64 off,\
+    \ __u32 datum)\n\nstatic __always_inline __maybe_unused __u32\nctx_load_meta(const\
+    \ struct xdp_md *ctx __maybe_unused, const __u64 off)\n{\n\t__u32 zero = 0, *data_meta\
+    \ = map_lookup_elem(&cilium_xdp_scratch, &zero);\n\n\tif (always_succeeds(data_meta))\n\
+    \t\treturn data_meta[off];\n\tbuild_bug_on((off + 1) * sizeof(__u32) > META_PIVOT);\n\
+    \treturn 0;\n}\n\nstatic __always_inline __maybe_unused __u16\nctx_get_protocol(const\
+    \ struct xdp_md *ctx)\n{\n\tvoid *data_end = ctx_data_end(ctx);\n\tstruct ethhdr\
+    \ *eth = ctx_data(ctx);\n\n\tif (ctx_no_room(eth + 1, data_end))\n\t\treturn 0;\n\
+    \n\treturn eth->h_proto;\n}\n\nstatic __always_inline __maybe_unused __u32\n\n\
+    // FILE: bpf/lib/conntrack.h\n// CONTEXT: static __always_inline int ct_create4(const\
+    \ void *map_main,\n * CT_INGRESS tuple belongs to a NodePort traffic (i.e., outside\
+    \ client => N/S\n * LB => local backend).\n *\n * When the client send the NodePort\
+    \ request, the NodePort BPF\n * (nodeport_lb{4,6}()) creates the CT_EGRESS entry\
+    \ for the\n * (saddr=client,daddr=backend) tuple. So, to derive whether the reply\
+    \ packet\n * backend => client belongs to the LB flow we can query the CT_EGRESS\
+    \ entry.\n */\nstatic __always_inline bool\nct_has_nodeport_egress_entry4(const\
+    \ void *map,\n\t\t\t      struct ipv4_ct_tuple *ingress_tuple)\n{\n\t__u8 prev_flags\
+    \ = ingress_tuple->flags;\n\tstruct ct_entry *entry;\n\n\tingress_tuple->flags\
+    \ = TUPLE_F_OUT;\n\tentry = map_lookup_elem(map, ingress_tuple);\n\tingress_tuple->flags\
+    \ = prev_flags;\n\n\tif (entry)\n\t\treturn entry->node_port;\n\n\treturn 0;\n\
+    }\n\nstatic __always_inline bool\nct_has_nodeport_egress_entry6(const void *map,\n\
+    \t\t\t      struct ipv6_ct_tuple *ingress_tuple)\n{\n\t__u8 prev_flags = ingress_tuple->flags;\n\
+    \tstruct ct_entry *entry;\n\n\tingress_tuple->flags = TUPLE_F_OUT;\n\tentry =\
+    \ map_lookup_elem(map, ingress_tuple);\n\tingress_tuple->flags = prev_flags;\n\
+    \n\tif (entry)\n\t\treturn entry->node_port;\n\n\treturn 0;\n}\n\n// FILE: bpf/lib/dbg.h\n\
+    // CONTEXT: struct debug_capture_msg {\n\tNOTIFY_CAPTURE_HDR\n\t__u32\t\targ1;\n\
+    \t__u32\t\targ2;\n};\n\nstatic __always_inline void cilium_dbg_capture2(struct\
+    \ __ctx_buff *ctx, __u8 type,\n\t\t\t\t\t\t__u32 arg1, __u32 arg2)\n{\n\t__u64\
+    \ ctx_len = ctx_full_len(ctx);\n\t__u64 cap_len = min_t(__u64, TRACE_PAYLOAD_LEN,\
+    \ ctx_len);\n\tstruct debug_capture_msg msg = {\n\t\t__notify_common_hdr(CILIUM_NOTIFY_DBG_CAPTURE,\
+    \ type),\n\t\t__notify_pktcap_hdr(ctx_len, (__u16)cap_len),\n\t\t.arg1\t= arg1,\n\
+    \t\t.arg2\t= arg2,\n\t};\n\n\tctx_event_output(ctx, &EVENTS_MAP,\n\t\t\t (cap_len\
+    \ << 32) | BPF_F_CURRENT_CPU,\n\t\t\t &msg, sizeof(msg));\n}\n\nstatic __always_inline\
+    \ void cilium_dbg_capture(struct __ctx_buff *ctx, __u8 type,\n\t\t\t\t\t     \
+    \  __u32 arg1)\n{\n\n// FILE: bpf/lib/drop.h\n// CONTEXT: __section_tail(CILIUM_MAP_CALLS,\
+    \ CILIUM_CALL_DROP_NOTIFY)\nint __send_drop_notify(struct __ctx_buff *ctx)\n{\n\
+    \t/* Mask needed to calm verifier. */\n\tint error = ctx_load_meta(ctx, 2) & 0xFFFFFFFF;\n\
+    \t__u64 ctx_len = ctx_full_len(ctx);\n\t__u64 cap_len = min_t(__u64, TRACE_PAYLOAD_LEN,\
+    \ ctx_len);\n\tstruct drop_notify msg;\n\n\tif (error < 0)\n\t\terror = -error;\n\
+    \n\tmsg = (typeof(msg)) {\n\t\t__notify_common_hdr(CILIUM_NOTIFY_DROP, (__u8)error),\n\
+    \t\t__notify_pktcap_hdr(ctx_len, (__u16)cap_len),\n\t\t.src_label\t= ctx_load_meta(ctx,\
+    \ 0),\n\t\t.dst_label\t= ctx_load_meta(ctx, 1),\n\t\t.dst_id\t\t= ctx_load_meta(ctx,\
+    \ 3),\n\t};\n\n\tctx_event_output(ctx, &EVENTS_MAP,\n\t\t\t (cap_len << 32) |\
+    \ BPF_F_CURRENT_CPU,\n\t\t\t &msg, sizeof(msg));\n\n\treturn ctx_load_meta(ctx,\
+    \ 4);\n}\n\n\n// CONTEXT: int __send_drop_notify(struct __ctx_buff *ctx)\n * NOTE:\
+    \ This is terminal function and will cause the BPF program to exit\n */\nstatic\
+    \ __always_inline int\nsend_drop_notify(struct __ctx_buff *ctx, __u32 src, __u32\
+    \ dst, __u32 dst_id,\n\t\t int reason, int exitcode, enum metric_dir direction)\n\
+    {\n\tctx_store_meta(ctx, 0, src);\n\tctx_store_meta(ctx, 1, dst);\n\tctx_store_meta(ctx,\
+    \ 2, reason);\n\tctx_store_meta(ctx, 3, dst_id);\n\tctx_store_meta(ctx, 4, exitcode);\n\
+    \n\tupdate_metrics(ctx_full_len(ctx), direction, (__u8)-reason);\n\tep_tail_call(ctx,\
+    \ CILIUM_CALL_DROP_NOTIFY);\n\n\treturn exitcode;\n}\n#else\nstatic __always_inline\n\
+    int send_drop_notify(struct __ctx_buff *ctx, __u32 src __maybe_unused,\n\t\t \
+    \    __u32 dst __maybe_unused, __u32 dst_id __maybe_unused,\n\t\t     int reason,\
+    \ int exitcode, enum metric_dir direction)\n{\n\tupdate_metrics(ctx_full_len(ctx),\
+    \ direction, (__u8)-reason);\n\treturn exitcode;\n\n// FILE: bpf/lib/lb.h\n//\
+    \ CONTEXT: struct lb6_service *lb6_lookup_backend_slot(struct __ctx_buff *ctx\
+    \ __maybe_unuse\n\n\treturn NULL;\n}\n\n/* Backend slot 0 is always reserved for\
+    \ the service frontend. */\n#if LB_SELECTION == LB_SELECTION_RANDOM\nstatic __always_inline\
+    \ __u32\nlb6_select_backend_id(struct __ctx_buff *ctx,\n\t\t      struct lb6_key\
+    \ *key,\n\t\t      const struct ipv6_ct_tuple *tuple __maybe_unused,\n\t\t   \
+    \   const struct lb6_service *svc)\n{\n\t__u16 slot = (get_prandom_u32() % svc->count)\
+    \ + 1;\n\tstruct lb6_service *be = lb6_lookup_backend_slot(ctx, key, slot);\n\n\
+    \treturn be ? be->backend_id : 0;\n}\n#elif LB_SELECTION == LB_SELECTION_MAGLEV\n\
+    static __always_inline __u32\nlb6_select_backend_id(struct __ctx_buff *ctx __maybe_unused,\n\
+    \t\t      struct lb6_key *key __maybe_unused,\n\t\t      const struct ipv6_ct_tuple\
+    \ *tuple,\n\t\t      const struct lb6_service *svc)\n{\n\t__u32 zero = 0, index\
+    \ = svc->rev_nat_index;\n\n// CONTEXT: struct lb4_service *lb4_lookup_backend_slot(struct\
+    \ __ctx_buff *ctx __maybe_unuse\n\n\treturn NULL;\n}\n\n/* Backend slot 0 is always\
+    \ reserved for the service frontend. */\n#if LB_SELECTION == LB_SELECTION_RANDOM\n\
+    static __always_inline __u32\nlb4_select_backend_id(struct __ctx_buff *ctx,\n\t\
+    \t      struct lb4_key *key,\n\t\t      const struct ipv4_ct_tuple *tuple __maybe_unused,\n\
+    \t\t      const struct lb4_service *svc)\n{\n\t__u16 slot = (get_prandom_u32()\
+    \ % svc->count) + 1;\n\tstruct lb4_service *be = lb4_lookup_backend_slot(ctx,\
+    \ key, slot);\n\n\treturn be ? be->backend_id : 0;\n}\n#elif LB_SELECTION == LB_SELECTION_MAGLEV\n\
+    static __always_inline __u32\nlb4_select_backend_id(struct __ctx_buff *ctx __maybe_unused,\n\
+    \t\t      struct lb4_key *key __maybe_unused,\n\t\t      const struct ipv4_ct_tuple\
+    \ *tuple,\n\t\t      const struct lb4_service *svc)\n{\n\t__u32 zero = 0, index\
+    \ = svc->rev_nat_index;\n\n// FILE: bpf/lib/nat.h\n// CONTEXT: struct nat_entry\
+    \ {\n#endif\n\nstatic __always_inline __be16 __snat_clamp_port_range(__u16 start,\
+    \ __u16 end,\n\t\t\t\t\t\t      __u16 val)\n{\n\treturn (val % (__u16)(end - start))\
+    \ + start;\n}\n\nstatic __always_inline __maybe_unused __be16\n__snat_try_keep_port(__u16\
+    \ start, __u16 end, __u16 val)\n{\n\treturn val >= start && val <= end ? val :\n\
+    \t       __snat_clamp_port_range(start, end, (__u16)get_prandom_u32());\n}\n\n\
+    static __always_inline __maybe_unused void *\n__snat_lookup(const void *map, const\
+    \ void *tuple)\n{\n\treturn map_lookup_elem(map, tuple);\n}\n\nstatic __always_inline\
+    \ __maybe_unused int\n__snat_update(const void *map, const void *otuple, const\
+    \ void *ostate,\n\t      const void *rtuple, const void *rstate)\n{\n\n// CONTEXT:\
+    \ static __always_inline int snat_v4_new_mapping(struct __ctx_buff *ctx,\n\t\t\
+    if (!snat_v4_lookup(&rtuple)) {\n\t\t\tostate->common.created = bpf_mono_now();\n\
+    \t\t\trstate.common.created = ostate->common.created;\n\n\t\t\tret = snat_v4_update(otuple,\
+    \ ostate, &rtuple, &rstate);\n\t\t\tif (!ret)\n\t\t\t\tbreak;\n\t\t}\n\n\t\tport\
+    \ = __snat_clamp_port_range(target->min_port,\n\t\t\t\t\t       target->max_port,\n\
+    \t\t\t\t\t       retries ? port + 1 :\n\t\t\t\t\t       (__u16)get_prandom_u32());\n\
+    \t\trtuple.dport = ostate->to_sport = bpf_htons(port);\n\t}\n\n\tif (retries >\
+    \ SNAT_SIGNAL_THRES)\n\t\tsend_signal_nat_fill_up(ctx, SIGNAL_PROTO_V4);\n\treturn\
+    \ !ret ? 0 : DROP_NAT_NO_MAPPING;\n}\n\nstatic __always_inline int snat_v4_track_local(struct\
+    \ __ctx_buff *ctx,\n\t\t\t\t\t       const struct ipv4_ct_tuple *tuple,\n\t\t\t\
+    \t\t       const struct ipv4_nat_entry *state,\n\t\t\t\t\t       enum nat_dir\
+    \ dir, __u32 off,\n\n// CONTEXT: static __always_inline int snat_v6_new_mapping(struct\
+    \ __ctx_buff *ctx,\n\t\tif (!snat_v6_lookup(&rtuple)) {\n\t\t\tostate->common.created\
+    \ = bpf_mono_now();\n\t\t\trstate.common.created = ostate->common.created;\n\n\
+    \t\t\tret = snat_v6_update(otuple, ostate, &rtuple, &rstate);\n\t\t\tif (!ret)\n\
+    \t\t\t\tbreak;\n\t\t}\n\n\t\tport = __snat_clamp_port_range(target->min_port,\n\
+    \t\t\t\t\t       target->max_port,\n\t\t\t\t\t       retries ? port + 1 :\n\t\t\
+    \t\t\t       (__u16)get_prandom_u32());\n\t\trtuple.dport = ostate->to_sport =\
+    \ bpf_htons(port);\n\t}\n\n\tif (retries > SNAT_SIGNAL_THRES)\n\t\tsend_signal_nat_fill_up(ctx,\
+    \ SIGNAL_PROTO_V6);\n\treturn !ret ? 0 : DROP_NAT_NO_MAPPING;\n}\n\nstatic __always_inline\
+    \ int snat_v6_track_local(struct __ctx_buff *ctx,\n\t\t\t\t\t       struct ipv6_ct_tuple\
+    \ *tuple,\n\t\t\t\t\t       const struct ipv6_nat_entry *state,\n\t\t\t\t\t  \
+    \     enum nat_dir dir, __u32 off,\n\n// FILE: bpf/lib/nat46.h\n// CONTEXT: static\
+    \ __always_inline int icmp4_to_icmp6(struct __ctx_buff *ctx, int nh_off)\n\tif\
+    \ (ctx_store_bytes(ctx, nh_off, &icmp6, sizeof(icmp6), 0) < 0)\n\t\treturn DROP_WRITE_ERROR;\n\
+    \n\ticmp4.checksum = 0;\n\ticmp6.icmp6_cksum = 0;\n\treturn csum_diff(&icmp4,\
+    \ sizeof(icmp4), &icmp6, sizeof(icmp6), 0);\n}\n\nstatic __always_inline int icmp6_to_icmp4(struct\
+    \ __ctx_buff *ctx, int nh_off)\n{\n\tstruct icmphdr icmp4 __align_stack_8 = {};\n\
+    \tstruct icmp6hdr icmp6 __align_stack_8;\n\t__u32 mtu;\n\n\tif (ctx_load_bytes(ctx,\
+    \ nh_off, &icmp6, sizeof(icmp6)) < 0)\n\t\treturn DROP_INVALID;\n\n\ticmp4.checksum\
+    \ = icmp6.icmp6_cksum;\n\n\tswitch (icmp6.icmp6_type) {\n\tcase ICMPV6_ECHO_REQUEST:\n\
+    \t\ticmp4.type = ICMP_ECHO;\n\t\ticmp4.un.echo.id = icmp6.icmp6_identifier;\n\t\
+    \ticmp4.un.echo.sequence = icmp6.icmp6_sequence;\n\t\tbreak;\n\n// CONTEXT: static\
+    \ __always_inline int icmp6_to_icmp4(struct __ctx_buff *ctx, int nh_off)\n\t\t\
+    \tbreak;\n\t\tcase ICMPV6_PORT_UNREACH:\n\t\t\ticmp4.code = ICMP_PORT_UNREACH;\n\
+    \t\t\tbreak;\n\t\tdefault:\n\t\t\treturn DROP_UNKNOWN_ICMP6_CODE;\n\t\t}\n\t\t\
+    break;\n\tcase ICMPV6_PKT_TOOBIG:\n\t\ticmp4.type = ICMP_DEST_UNREACH;\n\t\ticmp4.code\
+    \ = ICMP_FRAG_NEEDED;\n\t\t/* FIXME */\n\t\tif (icmp6.icmp6_mtu) {\n\t\t\tmtu\
+    \ = bpf_ntohl(icmp6.icmp6_mtu);\n\t\t\ticmp4.un.frag.mtu = bpf_htons((__u16)mtu);\n\
+    \t\t} else {\n\t\t\ticmp4.un.frag.mtu = bpf_htons(1500);\n\t\t}\n\t\tbreak;\n\t\
+    case ICMPV6_TIME_EXCEED:\n\t\ticmp4.type = ICMP_TIME_EXCEEDED;\n\t\ticmp4.code\
+    \ = icmp6.icmp6_code;\n\t\tbreak;\n\tcase ICMPV6_PARAMPROB:\n\t\tswitch (icmp6.icmp6_code)\
+    \ {\n\t\tcase ICMPV6_HDR_FIELD:\n\t\t\ticmp4.type = ICMP_PARAMETERPROB;\n\t\t\t\
+    icmp4.code = 0;\n\t\t\tbreak;\n\t\tcase ICMPV6_UNK_NEXTHDR:\n\n// CONTEXT: static\
+    \ __always_inline int ipv4_to_ipv6(struct __ctx_buff *ctx, struct iphdr *ip\n\t\
+    \tv6.daddr.in6_u.u6_addr32[0] = nat46_prefix.p1;\n\t\tv6.daddr.in6_u.u6_addr32[1]\
+    \ = nat46_prefix.p2;\n\t\tv6.daddr.in6_u.u6_addr32[2] = nat46_prefix.p3;\n\t\t\
+    v6.daddr.in6_u.u6_addr32[3] = bpf_htonl((bpf_ntohl(nat46_prefix.p4) & 0xFFFF0000)\
+    \ |\n\t\t\t\t\t\t\t(bpf_ntohl(v4.daddr) & 0xFFFF));\n\t}\n\n\tif (v4.protocol\
+    \ == IPPROTO_ICMP)\n\t\tv6.nexthdr = IPPROTO_ICMPV6;\n\telse\n\t\tv6.nexthdr =\
+    \ v4.protocol;\n\tv6.hop_limit = v4.ttl;\n\tv4hdr_len = (__be16)(v4.ihl << 2);\n\
+    \tv6.payload_len = bpf_htons(bpf_ntohs(v4.tot_len) - v4hdr_len);\n\n\tif (ctx_change_proto(ctx,\
+    \ bpf_htons(ETH_P_IPV6), 0) < 0) {\n#ifdef DEBUG_NAT46\n\t\tprintk(\"v46 NAT:\
+    \ ctx_modify failed\\n\");\n#endif\n\t\treturn DROP_WRITE_ERROR;\n\t}\n\n\tif\
+    \ (ctx_store_bytes(ctx, nh_off, &v6, sizeof(v6), 0) < 0 ||\n\t    ctx_store_bytes(ctx,\
+    \ nh_off - 2, &protocol, 2, 0) < 0)\n\t\treturn DROP_WRITE_ERROR;\n\n// FILE:\
+    \ bpf/lib/nodeport.h\n// CONTEXT: static __always_inline int dsr_set_ipip6(struct\
+    \ __ctx_buff *ctx,\n\tif (ctx_store_bytes(ctx, l3_off + offsetof(struct ipv6hdr,\
+    \ daddr),\n\t\t\t    backend_addr, sizeof(ip6->daddr), 0) < 0)\n\t\treturn DROP_WRITE_ERROR;\n\
+    \tif (ctx_store_bytes(ctx, l3_off + offsetof(struct ipv6hdr, saddr),\n\t\t\t \
+    \   &saddr, sizeof(ip6->saddr), 0) < 0)\n\t\treturn DROP_WRITE_ERROR;\n\treturn\
+    \ 0;\n}\n#elif DSR_ENCAP_MODE == DSR_ENCAP_NONE\nstatic __always_inline int dsr_set_ext6(struct\
+    \ __ctx_buff *ctx,\n\t\t\t\t\tstruct ipv6hdr *ip6,\n\t\t\t\t\tunion v6addr *svc_addr,\n\
+    \t\t\t\t\t__be16 svc_port, int *ohead)\n{\n\tstruct dsr_opt_v6 opt __align_stack_8\
+    \ = {};\n\t__u16 payload_len = bpf_ntohs(ip6->payload_len) + sizeof(opt);\n\n\t\
+    if (dsr_is_too_big(ctx, payload_len)) {\n\t\t*ohead = sizeof(opt);\n\t\treturn\
+    \ DROP_FRAG_NEEDED;\n\t}\n\n\topt.nexthdr = ip6->nexthdr;\n\tip6->nexthdr = NEXTHDR_DEST;\n\
+    \tip6->payload_len = bpf_htons(payload_len);\n\n// CONTEXT: static __always_inline\
+    \ int xlate_dsr_v6(struct __ctx_buff *ctx,\nstatic __always_inline int dsr_reply_icmp6(struct\
+    \ __ctx_buff *ctx,\n\t\t\t\t\t   struct ipv6hdr *ip6 __maybe_unused,\n\t\t\t\t\
+    \t   int code, int ohead __maybe_unused)\n{\n#ifdef ENABLE_DSR_ICMP_ERRORS\n\t\
+    const __s32 orig_dgram = 64, off = ETH_HLEN;\n\tconst __u32 l3_max = sizeof(*ip6)\
+    \ + orig_dgram;\n\t__be16 type = bpf_htons(ETH_P_IPV6);\n\t__u64 len_new = off\
+    \ + sizeof(*ip6) + orig_dgram;\n\t__u64 len_old = ctx_full_len(ctx);\n\tvoid *data_end\
+    \ = ctx_data_end(ctx);\n\tvoid *data = ctx_data(ctx);\n\t__u8 reason = (__u8)-code;\n\
+    \t__wsum wsum;\n\tunion macaddr smac, dmac;\n\tstruct icmp6hdr icmp __align_stack_8\
+    \ = {\n\t\t.icmp6_type\t= ICMPV6_PKT_TOOBIG,\n\t\t.icmp6_mtu\t= bpf_htonl(THIS_MTU\
+    \ - ohead),\n\t};\n\t__u64 payload_len = sizeof(*ip6) + sizeof(icmp) + orig_dgram;\n\
+    \tstruct ipv6hdr ip __align_stack_8 = {\n\t\t.version\t= 6,\n\t\t.priority\t=\
+    \ ip6->priority,\n\t\t.flow_lbl[0]\t= ip6->flow_lbl[0],\n\t\t.flow_lbl[1]\t= ip6->flow_lbl[1],\n\
+    \t\t.flow_lbl[2]\t= ip6->flow_lbl[2],\n\t\t.nexthdr\t= IPPROTO_ICMPV6,\n\t\t.hop_limit\t\
+    = IPDEFTTL,\n\t\t.saddr\t\t= ip6->daddr,\n\t\t.daddr\t\t= ip6->saddr,\n\t\t.payload_len\t\
+    = bpf_htons((__u16)payload_len),\n\t};\n\n\tupdate_metrics(ctx_full_len(ctx),\
+    \ METRIC_EGRESS, reason);\n\n\tif (eth_load_saddr(ctx, smac.addr, 0) < 0)\n\t\t\
+    goto drop_err;\n\tif (eth_load_daddr(ctx, dmac.addr, 0) < 0)\n\t\tgoto drop_err;\n\
+    \tif (unlikely(data + len_new > data_end))\n\t\tgoto drop_err;\n\n\twsum = ipv6_pseudohdr_checksum(&ip,\
+    \ IPPROTO_ICMPV6,\n\t\t\t\t       bpf_ntohs(ip.payload_len), 0);\n\ticmp.icmp6_cksum\
+    \ = csum_fold(csum_diff(NULL, 0, data + off, l3_max,\n\t\t\t\t\t       csum_diff(NULL,\
+    \ 0, &icmp,\n\n// CONTEXT: drop_err:\n\t\t\t\t      METRIC_EGRESS);\n}\n\n__section_tail(CILIUM_MAP_CALLS,\
+    \ CILIUM_CALL_IPV6_NODEPORT_DSR)\nint tail_nodeport_ipv6_dsr(struct __ctx_buff\
+    \ *ctx)\n{\n\tstruct bpf_fib_lookup_padded fib_params = {\n\t\t.l = {\n\t\t\t\
+    .family\t\t= AF_INET6,\n\t\t\t.ifindex\t= DIRECT_ROUTING_DEV_IFINDEX,\n\t\t},\n\
+    \t};\n\t__u16 port __maybe_unused;\n\tvoid *data, *data_end;\n\tstruct ipv6hdr\
+    \ *ip6;\n\tunion v6addr addr;\n\tint ret, ohead = 0;\n\tbool l2_hdr_required =\
+    \ true;\n\n\tif (!revalidate_data(ctx, &data, &data_end, &ip6)) {\n\t\tret = DROP_INVALID;\n\
+    \t\tgoto drop_err;\n\t}\n\n\taddr.p1 = ctx_load_meta(ctx, CB_ADDR_V6_1);\n\taddr.p2\
+    \ = ctx_load_meta(ctx, CB_ADDR_V6_2);\n\taddr.p3 = ctx_load_meta(ctx, CB_ADDR_V6_3);\n\
+    \taddr.p4 = ctx_load_meta(ctx, CB_ADDR_V6_4);\n\n#if DSR_ENCAP_MODE == DSR_ENCAP_IPIP\n\
+    \tret = dsr_set_ipip6(ctx, ip6, &addr,\n\t\t\t    ctx_load_meta(ctx, CB_HINT),\
+    \ &ohead);\n#elif DSR_ENCAP_MODE == DSR_ENCAP_NONE\n\tport = (__u16)ctx_load_meta(ctx,\
+    \ CB_PORT);\n\tret = dsr_set_ext6(ctx, ip6, &addr, port, &ohead);\n#else\n# error\
+    \ \"Invalid load balancer DSR encapsulation mode!\"\n#endif\n\tif (unlikely(ret))\
+    \ {\n\t\tif (dsr_fail_needs_reply(ret))\n\t\t\treturn dsr_reply_icmp6(ctx, ip6,\
+    \ ret, ohead);\n\t\tgoto drop_err;\n\t}\n\tif (!revalidate_data(ctx, &data, &data_end,\
+    \ &ip6)) {\n\t\tret = DROP_INVALID;\n\t\tgoto drop_err;\n\t}\n\n// CONTEXT: skip_service_lookup:\n\
+    \t\treturn DROP_INVALID;\n\n\tif (backend_local || !nodeport_uses_dsr6(&tuple))\
+    \ {\n\t\tstruct ct_state ct_state = {};\n\n\t\tret = ct_lookup6(get_ct_map6(&tuple),\
+    \ &tuple, ctx, l4_off,\n\t\t\t\t CT_EGRESS, &ct_state, &monitor);\n\t\tswitch\
+    \ (ret) {\n\t\tcase CT_NEW:\nredo:\n\t\t\tct_state_new.src_sec_id = SECLABEL;\n\
+    \t\t\tct_state_new.node_port = 1;\n\t\t\tct_state_new.ifindex = (__u16)NATIVE_DEV_IFINDEX;\n\
+    \t\t\tret = ct_create6(get_ct_map6(&tuple), NULL, &tuple, ctx,\n\t\t\t\t\t CT_EGRESS,\
+    \ &ct_state_new, false);\n\t\t\tif (IS_ERR(ret))\n\t\t\t\treturn ret;\n\t\t\t\
+    break;\n\t\tcase CT_REOPENED:\n\t\tcase CT_ESTABLISHED:\n\t\tcase CT_REPLY:\n\t\
+    \t\tif (unlikely(ct_state.rev_nat_index !=\n\t\t\t\t     svc->rev_nat_index))\n\
+    \t\t\t\tgoto redo;\n\t\t\tbreak;\n\n// CONTEXT: static __always_inline __be32\
+    \ rss_gen_src4(__be32 client, __be32 l4_hint)\n\treturn src;\n}\n\n/*\n * Original\
+    \ packet: [clientIP:clientPort -> serviceIP:servicePort] } IP/L4\n *\n * After\
+    \ DSR IPIP:  [rssSrcIP -> backendIP]                        } IP\n *         \
+    \         [clientIP:clientPort -> serviceIP:servicePort] } IP/L4\n */\nstatic\
+    \ __always_inline int dsr_set_ipip4(struct __ctx_buff *ctx,\n\t\t\t\t\t const\
+    \ struct iphdr *ip4,\n\t\t\t\t\t __be32 backend_addr,\n\t\t\t\t\t __be32 l4_hint,\
+    \ __be16 *ohead)\n{\n\t__u16 tot_len = bpf_ntohs(ip4->tot_len) + sizeof(*ip4);\n\
+    \tconst int l3_off = ETH_HLEN;\n\t__be32 sum;\n\tstruct {\n\t\t__be16 tot_len;\n\
+    \t\t__be16 id;\n\t\t__be16 frag_off;\n\t\t__u8   ttl;\n\t\t__u8   protocol;\n\t\
+    \t__be32 saddr;\n\t\t__be32 daddr;\n\n// CONTEXT: static __always_inline int dsr_set_ipip4(struct\
+    \ __ctx_buff *ctx,\n\t\treturn DROP_WRITE_ERROR;\n\tif (ctx_store_bytes(ctx, l3_off\
+    \ + offsetof(struct iphdr, saddr),\n\t\t\t    &tp_new.saddr, 8, 0) < 0)\n\t\t\
+    return DROP_WRITE_ERROR;\n\tif (l3_csum_replace(ctx, l3_off + offsetof(struct\
+    \ iphdr, check),\n\t\t\t    0, sum, 0) < 0)\n\t\treturn DROP_CSUM_L3;\n\treturn\
+    \ 0;\n}\n#elif DSR_ENCAP_MODE == DSR_ENCAP_NONE\nstatic __always_inline int dsr_set_opt4(struct\
+    \ __ctx_buff *ctx,\n\t\t\t\t\tstruct iphdr *ip4, __be32 svc_addr,\n\t\t\t\t\t\
+    __be32 svc_port, __be16 *ohead)\n{\n\t__u32 iph_old, iph_new, opt[2];\n\t__u16\
+    \ tot_len = bpf_ntohs(ip4->tot_len) + sizeof(opt);\n\t__be32 sum;\n\n\tif (ip4->protocol\
+    \ == IPPROTO_TCP) {\n\t\tunion tcp_flags tcp_flags = { .value = 0 };\n\n\t\tif\
+    \ (ctx_load_bytes(ctx, ETH_HLEN + sizeof(*ip4) + 12,\n\t\t\t\t   &tcp_flags, 2)\
+    \ < 0)\n\t\t\treturn DROP_CT_INVALID_HDR;\n\n\n// CONTEXT: static __always_inline\
+    \ int handle_dsr_v4(struct __ctx_buff *ctx, bool *dsr)\n{\n\tvoid *data, *data_end;\n\
+    \tstruct iphdr *ip4;\n\n\tif (!revalidate_data(ctx, &data, &data_end, &ip4))\n\
+    \t\treturn DROP_INVALID;\n\n\t/* Check whether IPv4 header contains a 64-bit option\
+    \ (IPv4 header\n\t * w/o option (5 x 32-bit words) + the DSR option (2 x 32-bit\
+    \ words)).\n\t */\n\tif (ip4->ihl == 0x7) {\n\t\t__u32 opt1 = 0, opt2 = 0;\n\t\
+    \t__be32 address;\n\t\t__be16 dport;\n\n\t\tif (ctx_load_bytes(ctx, ETH_HLEN +\
+    \ sizeof(struct iphdr),\n\t\t\t\t   &opt1, sizeof(opt1)) < 0)\n\t\t\treturn DROP_INVALID;\n\
+    \n\t\topt1 = bpf_ntohl(opt1);\n\t\tif ((opt1 & DSR_IPV4_OPT_MASK) == DSR_IPV4_OPT_32)\
+    \ {\n\t\t\tif (ctx_load_bytes(ctx, ETH_HLEN +\n\t\t\t\t\t   sizeof(struct iphdr)\
+    \ +\n\t\t\t\t\t   sizeof(opt1),\n\t\t\t\t\t   &opt2, sizeof(opt2)) < 0)\n\t\t\t\
+    \treturn DROP_INVALID;\n\n// CONTEXT: static __always_inline int xlate_dsr_v4(struct\
+    \ __ctx_buff *ctx,\n\tnat_tup.flags = NAT_DIR_EGRESS;\n\tnat_tup.sport = tuple->dport;\n\
+    \tnat_tup.dport = tuple->sport;\n\n\tentry = snat_v4_lookup(&nat_tup);\n\tif (entry)\n\
+    \t\tret = snat_v4_rewrite_egress(ctx, &nat_tup, entry, l4_off, has_l4_header);\n\
+    \treturn ret;\n}\n\nstatic __always_inline int dsr_reply_icmp4(struct __ctx_buff\
+    \ *ctx,\n\t\t\t\t\t   struct iphdr *ip4 __maybe_unused,\n\t\t\t\t\t   int code,\
+    \ __be16 ohead __maybe_unused)\n{\n#ifdef ENABLE_DSR_ICMP_ERRORS\n\tconst __s32\
+    \ orig_dgram = 8, off = ETH_HLEN;\n\tconst __u32 l3_max = MAX_IPOPTLEN + sizeof(*ip4)\
+    \ + orig_dgram;\n\t__be16 type = bpf_htons(ETH_P_IP);\n\t__s32 len_new = off +\
+    \ ipv4_hdrlen(ip4) + orig_dgram;\n\t__s32 len_old = ctx_full_len(ctx);\n\t__u8\
+    \ reason = (__u8)-code;\n\t__u8 tmp[l3_max];\n\tunion macaddr smac, dmac;\n\t\
+    struct icmphdr icmp __align_stack_8 = {\n\t\t.type\t\t= ICMP_DEST_UNREACH,\n\t\
+    \t.code\t\t= ICMP_FRAG_NEEDED,\n\t\t.un = {\n\t\t\t.frag = {\n\t\t\t\t.mtu = bpf_htons(THIS_MTU\
+    \ - ohead),\n\t\t\t},\n\t\t},\n\t};\n\t__u64 tot_len = sizeof(struct iphdr) +\
+    \ ipv4_hdrlen(ip4) + sizeof(icmp) + orig_dgram;\n\tstruct iphdr ip __align_stack_8\
+    \ = {\n\t\t.ihl\t\t= sizeof(ip) >> 2,\n\t\t.version\t= IPVERSION,\n\t\t.ttl\t\t\
+    = IPDEFTTL,\n\t\t.tos\t\t= ip4->tos,\n\t\t.id\t\t= ip4->id,\n\t\t.protocol\t=\
+    \ IPPROTO_ICMP,\n\t\t.saddr\t\t= ip4->daddr,\n\t\t.daddr\t\t= ip4->saddr,\n\t\t\
+    .frag_off\t= bpf_htons(IP_DF),\n\t\t.tot_len\t= bpf_htons((__u16)tot_len),\n\t\
+    };\n\n\tupdate_metrics(ctx_full_len(ctx), METRIC_EGRESS, reason);\n\n\tif (eth_load_saddr(ctx,\
+    \ smac.addr, 0) < 0)\n\t\tgoto drop_err;\n\tif (eth_load_daddr(ctx, dmac.addr,\
+    \ 0) < 0)\n\t\tgoto drop_err;\n\n\tip.check = csum_fold(csum_diff(NULL, 0, &ip,\
+    \ sizeof(ip), 0));\n\n\t/* We use a workaround here in that we push zero-bytes\
+    \ into the\n\t * payload in order to support dynamic IPv4 header size. This\n\t\
+    \ * works given one's complement sum does not change.\n\t */\n\n// CONTEXT: drop_err:\n\
+    \t\t\t\t      METRIC_EGRESS);\n}\n\n__section_tail(CILIUM_MAP_CALLS, CILIUM_CALL_IPV4_NODEPORT_DSR)\n\
+    int tail_nodeport_ipv4_dsr(struct __ctx_buff *ctx)\n{\n\tstruct bpf_fib_lookup_padded\
+    \ fib_params = {\n\t\t.l = {\n\t\t\t.family\t\t= AF_INET,\n\t\t\t.ifindex\t= DIRECT_ROUTING_DEV_IFINDEX,\n\
+    \t\t},\n\t};\n\tbool l2_hdr_required = true;\n\tvoid *data, *data_end;\n\tstruct\
+    \ iphdr *ip4;\n\t__be16 ohead = 0;\n\tint ret;\n\n\tif (!revalidate_data(ctx,\
+    \ &data, &data_end, &ip4)) {\n\t\tret = DROP_INVALID;\n\t\tgoto drop_err;\n\t\
+    }\n\n#if DSR_ENCAP_MODE == DSR_ENCAP_IPIP\n\tret = dsr_set_ipip4(ctx, ip4,\n\t\
+    \t\t    ctx_load_meta(ctx, CB_ADDR_V4),\n\t\t\t    ctx_load_meta(ctx, CB_HINT),\
+    \ &ohead);\n#elif DSR_ENCAP_MODE == DSR_ENCAP_NONE\n\tret = dsr_set_opt4(ctx,\
+    \ ip4,\n\n// CONTEXT: skip_service_lookup:\n\t * need to track in here.\n\t */\n\
+    \tif (backend_local || !nodeport_uses_dsr4(&tuple)) {\n\t\tstruct ct_state ct_state\
+    \ = {};\n\n\t\tret = ct_lookup4(get_ct_map4(&tuple), &tuple, ctx, l4_off,\n\t\t\
+    \t\t CT_EGRESS, &ct_state, &monitor);\n\t\tswitch (ret) {\n\t\tcase CT_NEW:\n\
+    redo:\n\t\t\tct_state_new.src_sec_id = SECLABEL;\n\t\t\tct_state_new.node_port\
+    \ = 1;\n\t\t\tct_state_new.ifindex = (__u16)NATIVE_DEV_IFINDEX;\n\t\t\tret = ct_create4(get_ct_map4(&tuple),\
+    \ NULL, &tuple, ctx,\n\t\t\t\t\t CT_EGRESS, &ct_state_new, false);\n\t\t\tif (IS_ERR(ret))\n\
+    \t\t\t\treturn ret;\n\t\t\tbreak;\n\t\tcase CT_REOPENED:\n\t\tcase CT_ESTABLISHED:\n\
+    \t\tcase CT_REPLY:\n\t\t\t/* Recreate CT entries, as the existing one is stale\
+    \ and\n\t\t\t * belongs to a flow which target a different svc.\n\t\t\t */\n\t\
+    \t\tif (unlikely(ct_state.rev_nat_index !=\n\n// FILE: bpf/lib/pcap.h\n// CONTEXT:\
+    \ cilium_capture_classify_wcard(struct __ctx_buff *ctx)\n\t\tret = cilium_capture6_classify_wcard(ctx);\n\
+    \t\tbreak;\n#endif\n\tdefault:\n\t\tbreak;\n\t}\n\treturn ret;\n}\n\nstatic __always_inline\
+    \ bool\ncilium_capture_candidate(struct __ctx_buff *ctx __maybe_unused,\n\t\t\t\
+    \ __u16 *rule_id __maybe_unused,\n\t\t\t __u16 *cap_len __maybe_unused)\n{\n\t\
+    if (capture_enabled) {\n\t\tstruct capture_cache *c;\n\t\tstruct capture_rule\
+    \ *r;\n\t\t__u32 zero = 0;\n\n\t\tc = map_lookup_elem(&cilium_capture_cache, &zero);\n\
+    \t\tif (always_succeeds(c)) {\n\t\t\tr = cilium_capture_classify_wcard(ctx);\n\
+    \t\t\tc->rule_seen = r;\n\t\t\tif (r) {\n\t\t\t\tc->cap_len = *cap_len = (__u16)r->cap_len;\n\
+    \t\t\t\tc->rule_id = *rule_id = r->rule_id;\n\t\t\t\treturn true;\n\t\t\t}\n\t\
+    \t}\n\t}\n\treturn false;\n}\n\nstatic __always_inline bool\ncilium_capture_cached(struct\
+    \ __ctx_buff *ctx __maybe_unused,\n\t\t      __u16 *rule_id __maybe_unused,\n\t\
+    \t      __u32 *cap_len __maybe_unused)\n\n// CONTEXT: cilium_capture_cached(struct\
+    \ __ctx_buff *ctx __maybe_unused,\n\t\tif (always_succeeds(c) && c->rule_seen)\
+    \ {\n\t\t\t*cap_len = c->cap_len;\n\t\t\t*rule_id = c->rule_id;\n\t\t\treturn\
+    \ true;\n\t\t}\n\t}\n\treturn false;\n}\n\nstatic __always_inline void\ncilium_capture_in(struct\
+    \ __ctx_buff *ctx __maybe_unused)\n{\n\t__u16 cap_len;\n\t__u16 rule_id;\n\n\t\
+    if (cilium_capture_candidate(ctx, &rule_id, &cap_len))\n\t\t__cilium_capture_in(ctx,\
+    \ rule_id, cap_len);\n}\n\nstatic __always_inline void\ncilium_capture_out(struct\
+    \ __ctx_buff *ctx __maybe_unused)\n{\n\t__u32 cap_len;\n\t__u16 rule_id;\n\n//\
+    \ FILE: bpf/lib/policy_log.h\n// CONTEXT: send_policy_verdict_notify(struct __ctx_buff\
+    \ *ctx, __u32 remote_label, __u16 dst\n\t\t\t   __u8 proto, __u8 dir, __u8 is_ipv6,\
+    \ int verdict,\n\t\t\t   __u8 match_type, __u8 is_audited)\n{\n\t__u64 ctx_len\
+    \ = ctx_full_len(ctx);\n\t__u64 cap_len = min_t(__u64, TRACE_PAYLOAD_LEN, ctx_len);\n\
+    \tstruct policy_verdict_notify msg;\n\n\tif (!policy_verdict_filter_allow(POLICY_VERDICT_LOG_FILTER,\
+    \ dir))\n\t\treturn;\n\n\tmsg = (typeof(msg)) {\n\t\t__notify_common_hdr(CILIUM_NOTIFY_POLICY_VERDICT,\
+    \ 0),\n\t\t__notify_pktcap_hdr(ctx_len, (__u16)cap_len),\n\t\t.remote_label\t\
+    = remote_label,\n\t\t.verdict\t= verdict,\n\t\t.dst_port\t= bpf_ntohs(dst_port),\n\
+    \t\t.match_type\t= match_type,\n\t\t.proto\t\t= proto,\n\t\t.dir\t\t= dir,\n\t\
+    \t.ipv6\t\t= is_ipv6,\n\t\t.audited\t= is_audited,\n\t};\n\n\tctx_event_output(ctx,\
+    \ &EVENTS_MAP,\n\t\t\t (cap_len << 32) | BPF_F_CURRENT_CPU,\n\n// FILE: bpf/lib/trace.h\n\
+    // CONTEXT: send_trace_notify(struct __ctx_buff *ctx, enum trace_point obs_point,\n\
+    \t__u64 ctx_len = ctx_full_len(ctx);\n\t__u64 cap_len = min_t(__u64, monitor ?\
+    \ : TRACE_PAYLOAD_LEN,\n\t\t\t      ctx_len);\n\tstruct trace_notify msg __align_stack_8;\n\
+    \n\tupdate_trace_metrics(ctx, obs_point, reason);\n\n\tif (!emit_trace_notify(obs_point,\
+    \ monitor))\n\t\treturn;\n\n\tmsg = (typeof(msg)) {\n\t\t__notify_common_hdr(CILIUM_NOTIFY_TRACE,\
+    \ obs_point),\n\t\t__notify_pktcap_hdr(ctx_len, (__u16)cap_len),\n\t\t.src_label\t\
+    = src,\n\t\t.dst_label\t= dst,\n\t\t.dst_id\t\t= dst_id,\n\t\t.reason\t\t= reason,\n\
+    \t\t.ifindex\t= ifindex,\n\t};\n\tmemset(&msg.orig_ip6, 0, sizeof(union v6addr));\n\
+    \n\tctx_event_output(ctx, &EVENTS_MAP,\n\t\t\t (cap_len << 32) | BPF_F_CURRENT_CPU,\n\
+    \t\t\t &msg, sizeof(msg));\n}\n\n// CONTEXT: send_trace_notify4(struct __ctx_buff\
+    \ *ctx, enum trace_point obs_point,\n\t__u64 ctx_len = ctx_full_len(ctx);\n\t\
+    __u64 cap_len = min_t(__u64, monitor ? : TRACE_PAYLOAD_LEN,\n\t\t\t      ctx_len);\n\
+    \tstruct trace_notify msg;\n\n\tupdate_trace_metrics(ctx, obs_point, reason);\n\
+    \n\tif (!emit_trace_notify(obs_point, monitor))\n\t\treturn;\n\n\tmsg = (typeof(msg))\
+    \ {\n\t\t__notify_common_hdr(CILIUM_NOTIFY_TRACE, obs_point),\n\t\t__notify_pktcap_hdr(ctx_len,\
+    \ (__u16)cap_len),\n\t\t.src_label\t= src,\n\t\t.dst_label\t= dst,\n\t\t.dst_id\t\
+    \t= dst_id,\n\t\t.reason\t\t= reason,\n\t\t.ifindex\t= ifindex,\n\t\t.ipv6\t\t\
+    = 0,\n\t\t.orig_ip4\t= orig_addr,\n\t};\n\n\tctx_event_output(ctx, &EVENTS_MAP,\n\
+    \t\t\t (cap_len << 32) | BPF_F_CURRENT_CPU,\n\t\t\t &msg, sizeof(msg));\n\n//\
+    \ CONTEXT: send_trace_notify6(struct __ctx_buff *ctx, enum trace_point obs_point,\n\
+    \t__u64 ctx_len = ctx_full_len(ctx);\n\t__u64 cap_len = min_t(__u64, monitor ?\
+    \ : TRACE_PAYLOAD_LEN,\n\t\t\t      ctx_len);\n\tstruct trace_notify msg;\n\n\t\
+    update_trace_metrics(ctx, obs_point, reason);\n\n\tif (!emit_trace_notify(obs_point,\
+    \ monitor))\n\t\treturn;\n\n\tmsg = (typeof(msg)) {\n\t\t__notify_common_hdr(CILIUM_NOTIFY_TRACE,\
+    \ obs_point),\n\t\t__notify_pktcap_hdr(ctx_len, (__u16)cap_len),\n\t\t.src_label\t\
+    = src,\n\t\t.dst_label\t= dst,\n\t\t.dst_id\t\t= dst_id,\n\t\t.reason\t\t= reason,\n\
+    \t\t.ifindex\t= ifindex,\n\t\t.ipv6\t\t= 1,\n\t};\n\n\tipv6_addr_copy(&msg.orig_ip6,\
+    \ orig_addr);\n\n\tctx_event_output(ctx, &EVENTS_MAP,\n\t\t\t (cap_len << 32)\
+    \ | BPF_F_CURRENT_CPU,\n\n// FILE: bpf/sockops/bpf_redir.c\n// CONTEXT: int bpf_redir_proxy(struct\
+    \ sk_msg_md *msg)\n\n\t/* Currently, pulling dstIP out of endpoint\n\t * tables.\
+    \ This can be simplified by caching this information with the\n\t * socket to\
+    \ avoid extra overhead. This would require the agent though\n\t * to flush the\
+    \ sock ops map on policy changes.\n\t */\n\tinfo = lookup_ip4_remote_endpoint(key.dip4);\n\
+    \tif (info != NULL && info->sec_label)\n\t\tdst_id = info->sec_label;\n\telse\n\
+    \t\tdst_id = WORLD_ID;\n\n\tverdict = policy_sk_egress(dst_id, key.sip4, (__u16)key.dport);\n\
+    \tif (verdict >= 0)\n\t\tmsg_redirect_hash(msg, &SOCK_OPS_MAP, &key, flags);\n\
+    \treturn SK_PASS;\n}\n\nBPF_LICENSE(\"GPL\");\nint _version __section(\"version\"\
+    ) = 1;\n\n// FILE: bpf/sockops/bpf_sockops.c\n// CONTEXT: static __always_inline\
+    \ void sk_extract4_key(const struct bpf_sock_ops *ops,\n\t * which unfortunately\
+    \ most kernels (as of October 2019) do not\n\t * support, which leads to verifier\
+    \ failures. Insert a READ_ONCE\n\t * to make sure that a 32-bit read followed\
+    \ by shift is generated.\n\t */\n\tkey->dport = READ_ONCE(ops->remote_port) >>\
+    \ 16;\n}\n\nstatic __always_inline void sk_lb4_key(struct lb4_key *lb4,\n\t\t\t\
+    \t\t  const struct sock_key *key)\n{\n\t/* SK MSG is always egress, so use daddr\
+    \ */\n\tlb4->address = key->dip4;\n\tlb4->dport = (__u16)key->dport;\n}\n\nstatic\
+    \ __always_inline bool redirect_to_proxy(int verdict)\n{\n\treturn verdict > 0;\n\
+    }\n\nstatic inline void bpf_sock_ops_ipv4(struct bpf_sock_ops *skops)\n{\n\tstruct\
+    \ lb4_key lb4_key = {};\n\t__u32 dip4, dport, dst_id = 0;\n\tstruct endpoint_info\
+    \ *exists;\n\n// CONTEXT: static inline void bpf_sock_ops_ipv4(struct bpf_sock_ops\
+    \ *skops)\n\n\t/* Policy lookup required to learn proxy port */\n\tif (1) {\n\t\
+    \tstruct remote_endpoint_info *info;\n\n\t\tinfo = lookup_ip4_remote_endpoint(key.dip4);\n\
+    \t\tif (info != NULL && info->sec_label)\n\t\t\tdst_id = info->sec_label;\n\t\t\
+    else\n\t\t\tdst_id = WORLD_ID;\n\t}\n\n\tverdict = policy_sk_egress(dst_id, key.sip4,\
+    \ (__u16)key.dport);\n\tif (redirect_to_proxy(verdict)) {\n\t\t__be32 host_ip\
+    \ = IPV4_GATEWAY;\n\n\t\tkey.dip4 = key.sip4;\n\t\tkey.dport = key.sport;\n\t\t\
+    key.sip4 = host_ip;\n\t\tkey.sport = verdict;\n\n\t\tsock_hash_update(skops, &SOCK_OPS_MAP,\
+    \ &key, BPF_NOEXIST);\n\t\treturn;\n\t}"
+  diff_summary: |-
+    bpf/bpf_sock.c:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: static __always_inline __maybe_unused void build_v4_in_v6(union v6addr *daddr,, static __always_inline void sock4_auto_bind(struct bpf_sock_addr *ctx), int sock6_xlate_v4_in_v6(struct bpf_sock_addr *ctx __maybe_unused,.
+    bpf/include/bpf/builtins.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: __bpf_no_builtin_memset(void *d __maybe_unused, __u8 c __maybe_unused,.
+    bpf/include/bpf/ctx/skb.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: ctx_wire_len(const struct __sk_buff *ctx).
+    bpf/include/bpf/ctx/xdp.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: ctx_store_meta(struct xdp_md *ctx __maybe_unused, const __u64 off, __u32 datum).
+    bpf/lib/conntrack.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: static __always_inline int ct_create4(const void *map_main,.
+    bpf/lib/dbg.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: struct debug_capture_msg {.
+    bpf/lib/drop.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: __section_tail(CILIUM_MAP_CALLS, CILIUM_CALL_DROP_NOTIFY), int __send_drop_notify(struct __ctx_buff *ctx).
+    bpf/lib/lb.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: struct lb6_service *lb6_lookup_backend_slot(struct __ctx_buff *ctx __maybe_unuse, struct lb4_service *lb4_lookup_backend_slot(struct __ctx_buff *ctx __maybe_unuse.
+    bpf/lib/nat.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: struct nat_entry {, static __always_inline int snat_v4_new_mapping(struct __ctx_buff *ctx,, static __always_inline int snat_v6_new_mapping(struct __ctx_buff *ctx,.
+    bpf/lib/nat46.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: static __always_inline int icmp4_to_icmp6(struct __ctx_buff *ctx, int nh_off), static __always_inline int icmp6_to_icmp4(struct __ctx_buff *ctx, int nh_off), static __always_inline int ipv4_to_ipv6(struct __ctx_buff *ctx, struct iphdr *ip.
+    bpf/lib/nodeport.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: static __always_inline int dsr_set_ipip6(struct __ctx_buff *ctx,, static __always_inline int xlate_dsr_v6(struct __ctx_buff *ctx,, drop_err:.
+    bpf/lib/pcap.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: cilium_capture_classify_wcard(struct __ctx_buff *ctx), cilium_capture_cached(struct __ctx_buff *ctx __maybe_unused,.
+    bpf/lib/policy_log.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: send_policy_verdict_notify(struct __ctx_buff *ctx, __u32 remote_label, __u16 dst.
+    bpf/lib/trace.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: send_trace_notify(struct __ctx_buff *ctx, enum trace_point obs_point,, send_trace_notify4(struct __ctx_buff *ctx, enum trace_point obs_point,, send_trace_notify6(struct __ctx_buff *ctx, enum trace_point obs_point,.
+    bpf/sockops/bpf_redir.c:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: int bpf_redir_proxy(struct sk_msg_md *msg).
+    bpf/sockops/bpf_sockops.c:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: static __always_inline void sk_extract4_key(const struct bpf_sock_ops *ops,, static inline void bpf_sock_ops_ipv4(struct bpf_sock_ops *skops).
+    - Commit subject: bpf/Makefile: Forbid implicit int conversions.

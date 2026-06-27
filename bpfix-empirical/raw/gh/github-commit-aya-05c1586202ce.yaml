@@ -1,0 +1,336 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-aya-05c1586202ce
+source_kind: github_commit
+source:
+  url: https://github.com/aya-rs/aya/commit/05c1586202ce8719ef92b9b83dd30032bfa11edd
+  title: 'bpf: bpf_probe_read_kernel fields in pt_regs'
+  repository: https://github.com/aya-rs/aya
+  commit: 05c1586202ce8719ef92b9b83dd30032bfa11edd
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-aya-05c1586202ce.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: environment_required
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: The commit switches pt_regs field reads to bpf_probe_read_kernel; replay
+    depends on Aya's Rust lowering and kernel helper support, with no verifier log
+    or standalone source.
+raw:
+  case_id: github-commit-aya-05c1586202ce
+  source: github_commits
+  repository: https://github.com/aya-rs/aya
+  commit_hash: 05c1586202ce8719ef92b9b83dd30032bfa11edd
+  commit_message: 'bpf: bpf_probe_read_kernel fields in pt_regs'
+  commit_date: '2022-06-10'
+  fix_type: helper_switch
+  buggy_code: |-
+    // FILE: bpf/aya-bpf/src/args.rs
+    use crate::cty::c_void;
+
+    // aarch64 uses user_pt_regs instead of pt_regs
+    #[cfg(not(bpf_target_arch = "aarch64"))]
+    use crate::bindings::pt_regs;
+    #[cfg(bpf_target_arch = "aarch64")]
+    use crate::bindings::user_pt_regs as pt_regs;
+
+    /// A trait that indicates a valid type for an argument which can be coerced from a BTF
+    /// context.
+    ///
+    /// Users should not implement this trait.
+    ///
+
+    // CONTEXT: pub trait FromPtRegs: Sized {
+        /// Coerces a `T` from the `n`th argument of a pt_regs context where `n` starts
+        /// at 0 and increases by 1 for each successive argument.
+        fn from_argument(ctx: &pt_regs, n: usize) -> Option<Self>;
+
+        /// Coerces a `T` from the return value of a pt_regs context.
+        fn from_retval(ctx: &pt_regs) -> Option<Self>;
+    }
+
+    #[cfg(bpf_target_arch = "x86_64")]
+    impl<T> FromPtRegs for *const T {
+        fn from_argument(ctx: &pt_regs, n: usize) -> Option<Self> {
+            match n {
+                0 => Some(ctx.rdi as *const _),
+                1 => Some(ctx.rsi as *const _),
+                2 => Some(ctx.rdx as *const _),
+                3 => Some(ctx.rcx as *const _),
+                4 => Some(ctx.r8 as *const _),
+                5 => Some(ctx.r9 as *const _),
+                _ => None,
+            }
+        }
+
+        fn from_retval(ctx: &pt_regs) -> Option<Self> {
+            Some(ctx.rax as *const _)
+        }
+    }
+
+    #[cfg(bpf_target_arch = "arm")]
+    impl<T> FromPtRegs for *const T {
+        fn from_argument(ctx: &pt_regs, n: usize) -> Option<Self> {
+            if n <= 6 {
+                Some(ctx.uregs[n] as *const _)
+            } else {
+                None
+            }
+        }
+
+        fn from_retval(ctx: &pt_regs) -> Option<Self> {
+            Some(ctx.uregs[0] as *const _)
+        }
+    }
+
+    #[cfg(bpf_target_arch = "aarch64")]
+    impl<T> FromPtRegs for *const T {
+        fn from_argument(ctx: &pt_regs, n: usize) -> Option<Self> {
+            if n <= 7 {
+                Some(ctx.regs[n] as *const _)
+            } else {
+                None
+            }
+        }
+
+        fn from_retval(ctx: &pt_regs) -> Option<Self> {
+            Some(ctx.regs[0] as *const _)
+        }
+    }
+
+    #[cfg(bpf_target_arch = "x86_64")]
+    impl<T> FromPtRegs for *mut T {
+        fn from_argument(ctx: &pt_regs, n: usize) -> Option<Self> {
+            match n {
+                0 => Some(ctx.rdi as *mut _),
+                1 => Some(ctx.rsi as *mut _),
+                2 => Some(ctx.rdx as *mut _),
+                3 => Some(ctx.rcx as *mut _),
+                4 => Some(ctx.r8 as *mut _),
+                5 => Some(ctx.r9 as *mut _),
+                _ => None,
+            }
+        }
+
+        fn from_retval(ctx: &pt_regs) -> Option<Self> {
+            Some(ctx.rax as *mut _)
+        }
+    }
+
+    #[cfg(bpf_target_arch = "arm")]
+    impl<T> FromPtRegs for *mut T {
+        fn from_argument(ctx: &pt_regs, n: usize) -> Option<Self> {
+            if n <= 6 {
+                Some(ctx.uregs[n] as *mut _)
+            } else {
+                None
+            }
+        }
+
+        fn from_retval(ctx: &pt_regs) -> Option<Self> {
+            Some(ctx.uregs[0] as *mut _)
+        }
+    }
+
+    #[cfg(bpf_target_arch = "aarch64")]
+    impl<T> FromPtRegs for *mut T {
+        fn from_argument(ctx: &pt_regs, n: usize) -> Option<Self> {
+            if n <= 7 {
+                Some(ctx.regs[n] as *mut _)
+            } else {
+                None
+            }
+        }
+
+        fn from_retval(ctx: &pt_regs) -> Option<Self> {
+            Some(ctx.regs[0] as *mut _)
+        }
+    }
+
+    /// Helper macro to implement [`FromPtRegs`] for a primitive type.
+    macro_rules! impl_from_pt_regs {
+        ($type:ident) => {
+            #[cfg(bpf_target_arch = "x86_64")]
+            impl FromPtRegs for $type {
+                fn from_argument(ctx: &pt_regs, n: usize) -> Option<Self> {
+                    match n {
+                        0 => Some(ctx.rdi as *const $type as _),
+                        1 => Some(ctx.rsi as *const $type as _),
+  fixed_code: |-
+    // FILE: bpf/aya-bpf/src/args.rs
+    use crate::{cty::c_void, helpers::bpf_probe_read_kernel};
+
+    // aarch64 uses user_pt_regs instead of pt_regs
+    #[cfg(not(bpf_target_arch = "aarch64"))]
+    use crate::bindings::pt_regs;
+    #[cfg(bpf_target_arch = "aarch64")]
+    use crate::bindings::user_pt_regs as pt_regs;
+
+    /// A trait that indicates a valid type for an argument which can be coerced from a BTF
+    /// context.
+    ///
+    /// Users should not implement this trait.
+    ///
+
+    // CONTEXT: pub trait FromPtRegs: Sized {
+        /// Coerces a `T` from the `n`th argument of a pt_regs context where `n` starts
+        /// at 0 and increases by 1 for each successive argument.
+        fn from_argument(ctx: &pt_regs, n: usize) -> Option<Self>;
+
+        /// Coerces a `T` from the return value of a pt_regs context.
+        fn from_retval(ctx: &pt_regs) -> Option<Self>;
+    }
+
+    #[cfg(bpf_target_arch = "x86_64")]
+    impl<T> FromPtRegs for *const T {
+        fn from_argument(ctx: &pt_regs, n: usize) -> Option<Self> {
+            match n {
+                0 => unsafe { bpf_probe_read_kernel(&ctx.rdi).map(|v| v as *const _).ok() },
+                1 => unsafe { bpf_probe_read_kernel(&ctx.rsi).map(|v| v as *const _).ok() },
+                2 => unsafe { bpf_probe_read_kernel(&ctx.rdx).map(|v| v as *const _).ok() },
+                3 => unsafe { bpf_probe_read_kernel(&ctx.rcx).map(|v| v as *const _).ok() },
+                4 => unsafe { bpf_probe_read_kernel(&ctx.r8).map(|v| v as *const _).ok() },
+                5 => unsafe { bpf_probe_read_kernel(&ctx.r9).map(|v| v as *const _).ok() },
+                _ => None,
+            }
+        }
+
+        fn from_retval(ctx: &pt_regs) -> Option<Self> {
+            unsafe { bpf_probe_read_kernel(&ctx.rax).map(|v| v as *const _).ok() }
+        }
+    }
+
+    #[cfg(bpf_target_arch = "arm")]
+    impl<T> FromPtRegs for *const T {
+        fn from_argument(ctx: &pt_regs, n: usize) -> Option<Self> {
+            if n <= 6 {
+                unsafe {
+                    bpf_probe_read_kernel(&ctx.uregs[n])
+                        .map(|v| v as *const _)
+                        .ok()
+                }
+            } else {
+                None
+            }
+        }
+
+        fn from_retval(ctx: &pt_regs) -> Option<Self> {
+            unsafe {
+                bpf_probe_read_kernel(&ctx.uregs[0])
+                    .map(|v| v as *const _)
+                    .ok()
+            }
+        }
+    }
+
+    #[cfg(bpf_target_arch = "aarch64")]
+    impl<T> FromPtRegs for *const T {
+        fn from_argument(ctx: &pt_regs, n: usize) -> Option<Self> {
+            if n <= 7 {
+                unsafe {
+                    bpf_probe_read_kernel(&ctx.regs[n])
+                        .map(|v| v as *const _)
+                        .ok()
+                }
+            } else {
+                None
+            }
+        }
+
+        fn from_retval(ctx: &pt_regs) -> Option<Self> {
+            unsafe {
+                bpf_probe_read_kernel(&ctx.regs[0])
+                    .map(|v| v as *const _)
+                    .ok()
+            }
+        }
+    }
+
+    #[cfg(bpf_target_arch = "x86_64")]
+    impl<T> FromPtRegs for *mut T {
+        fn from_argument(ctx: &pt_regs, n: usize) -> Option<Self> {
+            match n {
+                0 => unsafe { bpf_probe_read_kernel(&ctx.rdi).map(|v| v as *mut _).ok() },
+                1 => unsafe { bpf_probe_read_kernel(&ctx.rsi).map(|v| v as *mut _).ok() },
+                2 => unsafe { bpf_probe_read_kernel(&ctx.rdx).map(|v| v as *mut _).ok() },
+                3 => unsafe { bpf_probe_read_kernel(&ctx.rcx).map(|v| v as *mut _).ok() },
+                4 => unsafe { bpf_probe_read_kernel(&ctx.r8).map(|v| v as *mut _).ok() },
+                5 => unsafe { bpf_probe_read_kernel(&ctx.r9).map(|v| v as *mut _).ok() },
+                _ => None,
+            }
+        }
+
+        fn from_retval(ctx: &pt_regs) -> Option<Self> {
+            unsafe { bpf_probe_read_kernel(&ctx.rax).map(|v| v as *mut _).ok() }
+        }
+    }
+
+    #[cfg(bpf_target_arch = "arm")]
+    impl<T> FromPtRegs for *mut T {
+        fn from_argument(ctx: &pt_regs, n: usize) -> Option<Self> {
+            if n <= 6 {
+                unsafe {
+                    bpf_probe_read_kernel(&ctx.uregs[n])
+                        .map(|v| v as *mut _)
+                        .ok()
+                }
+            } else {
+                None
+            }
+        }
+
+        fn from_retval(ctx: &pt_regs) -> Option<Self> {
+            unsafe {
+                bpf_probe_read_kernel(&ctx.uregs[0])
+                    .map(|v| v as *mut _)
+                    .ok()
+            }
+        }
+    }
+
+    #[cfg(bpf_target_arch = "aarch64")]
+    impl<T> FromPtRegs for *mut T {
+        fn from_argument(ctx: &pt_regs, n: usize) -> Option<Self> {
+            if n <= 7 {
+                unsafe {
+                    bpf_probe_read_kernel(&ctx.regs[n])
+                        .map(|v| v as *mut _)
+                        .ok()
+                }
+            } else {
+                None
+            }
+        }
+
+        fn from_retval(ctx: &pt_regs) -> Option<Self> {
+            unsafe {
+                bpf_probe_read_kernel(&ctx.regs[0])
+                    .map(|v| v as *mut _)
+                    .ok()
+            }
+        }
+    }
+
+    /// Helper macro to implement [`FromPtRegs`] for a primitive type.
+    macro_rules! impl_from_pt_regs {
+        ($type:ident) => {
+            #[cfg(bpf_target_arch = "x86_64")]
+            impl FromPtRegs for $type {
+                fn from_argument(ctx: &pt_regs, n: usize) -> Option<Self> {
+                    match n {
+                        0 => Some(ctx.rdi as *const $type as _),
+                        1 => Some(ctx.rsi as *const $type as _),
+  diff_summary: |-
+    bpf/aya-bpf/src/args.rs:
+    - Gated or switched helper usage so unsupported helpers do not reach kernels that reject them.
+    - Affected context: pub trait FromPtRegs: Sized {.
+    - Commit subject: bpf: bpf_probe_read_kernel fields in pt_regs.

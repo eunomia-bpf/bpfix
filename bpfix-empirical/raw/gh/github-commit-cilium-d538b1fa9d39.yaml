@@ -1,0 +1,59 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-d538b1fa9d39
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/d538b1fa9d39a52557a9be79861ed1b75249b308
+  title: 'bpf: ct: fix CT-based packet tracing for IPv6'
+  repository: https://github.com/cilium/cilium
+  commit: d538b1fa9d39a52557a9be79861ed1b75249b308
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-d538b1fa9d39.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Fixes swapped CT lookup parameters affecting IPv6 packet tracing and CT
+    state behavior; no verifier-load failure is implicated.
+raw:
+  case_id: github-commit-cilium-d538b1fa9d39
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: d538b1fa9d39a52557a9be79861ed1b75249b308
+  commit_message: 'bpf: ct: fix CT-based packet tracing for IPv6'
+  commit_date: '2023-06-26'
+  fix_type: inline_hint
+  buggy_code: "// FILE: bpf/lib/conntrack.h\n// CONTEXT: static __always_inline int\
+    \ ct_lookup6(const void *map,\n\t\t/* load sport + dport into tuple */\n\t\tif\
+    \ (ctx_load_bytes(ctx, l4_off, &tuple->dport, 4) < 0)\n\t\t\treturn DROP_CT_INVALID_HDR;\n\
+    \n\t\taction = ACTION_CREATE;\n\t\tbreak;\n\n\tdefault:\n\t\t/* Can't handle extension\
+    \ headers yet */\n\t\treturn DROP_CT_UNKNOWN_PROTO;\n\t}\n\n\treturn __ct_lookup6(map,\
+    \ tuple, ctx, action, l4_off, dir, ct_state, monitor);\n}\n\nstatic __always_inline\
+    \ int\nipv4_extract_tuple(struct __ctx_buff *ctx, struct ipv4_ct_tuple *tuple,\n\
+    \t\t   int *l4_off)\n{\n\tint l3_off = ETH_HLEN;\n\tvoid *data, *data_end;\n\t\
+    struct iphdr *ip4;\n\n\tif (!revalidate_data(ctx, &data, &data_end, &ip4))\n\t\
+    \treturn DROP_INVALID;"
+  fixed_code: "// FILE: bpf/lib/conntrack.h\n// CONTEXT: static __always_inline int\
+    \ ct_lookup6(const void *map,\n\t\t/* load sport + dport into tuple */\n\t\tif\
+    \ (ctx_load_bytes(ctx, l4_off, &tuple->dport, 4) < 0)\n\t\t\treturn DROP_CT_INVALID_HDR;\n\
+    \n\t\taction = ACTION_CREATE;\n\t\tbreak;\n\n\tdefault:\n\t\t/* Can't handle extension\
+    \ headers yet */\n\t\treturn DROP_CT_UNKNOWN_PROTO;\n\t}\n\n\treturn __ct_lookup6(map,\
+    \ tuple, ctx, l4_off, action, dir, ct_state, monitor);\n}\n\nstatic __always_inline\
+    \ int\nipv4_extract_tuple(struct __ctx_buff *ctx, struct ipv4_ct_tuple *tuple,\n\
+    \t\t   int *l4_off)\n{\n\tint l3_off = ETH_HLEN;\n\tvoid *data, *data_end;\n\t\
+    struct iphdr *ip4;\n\n\tif (!revalidate_data(ctx, &data, &data_end, &ip4))\n\t\
+    \treturn DROP_INVALID;"
+  diff_summary: |-
+    bpf/lib/conntrack.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: static __always_inline int ct_lookup6(const void *map,.
+    - Commit subject: bpf: ct: fix CT-based packet tracing for IPv6.

@@ -1,0 +1,204 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-e9438c20e7d1
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/e9438c20e7d1000e5c9f4bf0641bf3b07f13b1ac
+  title: 'bpf,loader: explicitly manage policy programs for bpf_lxc and bpf_host'
+  repository: https://github.com/cilium/cilium
+  commit: e9438c20e7d1000e5c9f4bf0641bf3b07f13b1ac
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-e9438c20e7d1.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Changes loader/program-map management so policy programs are explicit entry
+    programs; this is loader/attachment organization, not a standalone verifier failure.
+raw:
+  case_id: github-commit-cilium-e9438c20e7d1
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: e9438c20e7d1000e5c9f4bf0641bf3b07f13b1ac
+  commit_message: 'bpf,loader: explicitly manage policy programs for bpf_lxc and bpf_host'
+  commit_date: '2024-06-13'
+  fix_type: inline_hint
+  buggy_code: "// FILE: bpf/bpf_host.c\n// CONTEXT: from_host_to_lxc(struct __ctx_buff\
+    \ *ctx, __s8 *ext_err)\n\t\tbreak;\n\t}\n\n\treturn ret;\n}\n#endif /* ENABLE_HOST_FIREWALL\
+    \ */\n\n/* When per-endpoint routes are enabled, packets to and from local endpoints\n\
+    \ * will tail call into this program to enforce egress and ingress host policies.\n\
+    \ * Packets to the local endpoints will then tail call back to the original\n\
+    \ * bpf_lxc program.\n */\n__section_tail(CILIUM_MAP_POLICY, TEMPLATE_HOST_EP_ID)\n\
+    int handle_lxc_traffic(struct __ctx_buff *ctx __maybe_unused)\n{\n#ifdef ENABLE_HOST_FIREWALL\n\
+    \tbool from_host = ctx_load_meta(ctx, CB_FROM_HOST);\n\t__u32 lxc_id;\n\tint ret;\n\
+    \t__s8 ext_err = 0;\n\n\tif (from_host) {\n\t\tret = from_host_to_lxc(ctx, &ext_err);\n\
+    \t\tif (IS_ERR(ret))\n\t\t\treturn send_drop_notify_error_ext(ctx, HOST_ID, ret,\
+    \ ext_err,\n\n// FILE: bpf/bpf_lxc.c\n// CONTEXT: TAIL_CT_LOOKUP4(CILIUM_CALL_IPV4_CT_INGRESS,\
+    \ tail_ipv4_ct_ingress, CT_INGRESS,\n\n/* Handle policy decisions as the packet\
+    \ makes its way towards the endpoint.\n * Previously, the packet may have come\
+    \ from another local endpoint, another\n * endpoint in the cluster, or from the\
+    \ big blue room (as identified by the\n * contents of ctx / CB_SRC_LABEL. Determine\
+    \ whether the traffic may be\n * passed into the endpoint or if it needs further\
+    \ inspection by a userspace\n * proxy.\n *\n * This program will be tail called\
+    \ to in ipv{4,6}_local_delivery from either\n * bpf_host, bpf_overlay (if coming\
+    \ from the tunnel), or bpf_lxc (if coming\n * from another local pod).\n */\n\
+    __section_tail(CILIUM_MAP_POLICY, TEMPLATE_LXC_ID)\nint handle_policy(struct __ctx_buff\
+    \ *ctx)\n{\n\t__u32 src_label = ctx_load_meta(ctx, CB_SRC_LABEL);\n\t__u32 sec_label\
+    \ = SECLABEL;\n\t__s8 ext_err = 0;\n\t__u16 proto;\n\tint ret;\n\n\tif (!validate_ethertype(ctx,\
+    \ &proto)) {\n\t\tret = DROP_UNSUPPORTED_L2;\n\t\tgoto out;\n\t}\n\n// CONTEXT:\
+    \ out:\n\t\t\t\t\t    CTX_ACT_DROP, METRIC_INGRESS);\n\n\treturn ret;\n}\n\n/*\
+    \ Handle policy decisions as the packet makes its way from the\n * endpoint. \
+    \ Previously, the packet has come from the same endpoint,\n * but was redirected\
+    \ to a L7 LB.\n *\n * This program will be tail called from bpf_host for packets\
+    \ sent by\n * a L7 LB.\n */\n__section_tail(CILIUM_MAP_EGRESSPOLICY, TEMPLATE_LXC_ID)\n\
+    int handle_policy_egress(struct __ctx_buff *ctx __maybe_unused)\n{\n#if defined(ENABLE_L7_LB)\n\
+    \t__u16 proto;\n\tint ret;\n\t__u32 sec_label = SECLABEL;\n\t__s8 ext_err = 0;\n\
+    \n\tif (!validate_ethertype(ctx, &proto)) {\n\t\tret = DROP_UNSUPPORTED_L2;\n\t\
+    \tgoto out;\n\t}\n\n// FILE: bpf/lib/ids.h\n/* SPDX-License-Identifier: (GPL-2.0-only\
+    \ OR BSD-2-Clause) */\n/* Copyright Authors of Cilium */\n\n#pragma once\n\n/*\
+    \ WARNING: Do not change these ids without updating pkg/bpf/collection.go */\n\
+    #define CILIUM_MAP_POLICY\t1\n#define CILIUM_MAP_CALLS\t2\n#define CILIUM_MAP_EGRESSPOLICY\t\
+    4\n\n// FILE: bpf/lib/maps.h\n// CONTEXT: struct {\n\t__uint(map_flags, CONDITIONAL_PREALLOC);\n\
+    } ENDPOINTS_MAP __section_maps_btf;\n\nstruct {\n\t__uint(type, BPF_MAP_TYPE_PERCPU_HASH);\n\
+    \t__type(key, struct metrics_key);\n\t__type(value, struct metrics_value);\n\t\
+    __uint(pinning, LIBBPF_PIN_BY_NAME);\n\t__uint(max_entries, METRICS_MAP_SIZE);\n\
+    \t__uint(map_flags, CONDITIONAL_PREALLOC);\n} METRICS_MAP __section_maps_btf;\n\
+    \n\n#ifndef SKIP_POLICY_MAP\n/* Global map to jump into policy enforcement of\
+    \ receiving endpoint */\nstruct bpf_elf_map __section_maps POLICY_CALL_MAP = {\n\
+    \t.type\t\t= BPF_MAP_TYPE_PROG_ARRAY,\n\t.id\t\t= CILIUM_MAP_POLICY,\n\t.size_key\t\
+    = sizeof(__u32),\n\t.size_value\t= sizeof(__u32),\n\t.pinning\t= LIBBPF_PIN_BY_NAME,\n\
+    \t.max_elem\t= POLICY_PROG_MAP_SIZE,\n};\n\nstatic __always_inline __must_check\
+    \ int\ntail_call_policy(struct __ctx_buff *ctx, __u16 endpoint_id)\n{\n\tif (__builtin_constant_p(endpoint_id))\
+    \ {\n\t\ttail_call_static(ctx, POLICY_CALL_MAP, endpoint_id);\n\t} else {\n\t\t\
+    tail_call_dynamic(ctx, &POLICY_CALL_MAP, endpoint_id);\n\t}\n\n\t/* When forwarding\
+    \ from a BPF program to some endpoint,\n\t * there are inherent races that can\
+    \ result in the endpoint's\n\t * policy program being unavailable (eg. if the\
+    \ endpoint is\n\t * terminating).\n\t */\n\treturn DROP_EP_NOT_READY;\n}\n#endif\
+    \ /* SKIP_POLICY_MAP */\n\n/* Global map to jump into policy enforcement of sending\
+    \ endpoint */\nstruct bpf_elf_map __section_maps POLICY_EGRESSCALL_MAP = {\n\t\
+    .type\t\t= BPF_MAP_TYPE_PROG_ARRAY,\n\t.id\t\t= CILIUM_MAP_EGRESSPOLICY,\n\t.size_key\t\
+    = sizeof(__u32),\n\t.size_value\t= sizeof(__u32),\n\t.pinning\t= LIBBPF_PIN_BY_NAME,\n\
+    \t.max_elem\t= POLICY_PROG_MAP_SIZE,\n};\n\nstatic __always_inline __must_check\
+    \ int\ntail_call_egress_policy(struct __ctx_buff *ctx, __u16 endpoint_id)\n{\n\
+    \ttail_call_dynamic(ctx, &POLICY_EGRESSCALL_MAP, endpoint_id);\n\t/* same issue\
+    \ as for the POLICY_CALL_MAP calls */\n\treturn DROP_EP_NOT_READY;\n}\n\n#ifdef\
+    \ POLICY_MAP\n/* Per-endpoint policy enforcement map */\nstruct {\n\t__uint(type,\
+    \ BPF_MAP_TYPE_LPM_TRIE);\n\t__type(key, struct policy_key);\n\t__type(value,\
+    \ struct policy_entry);\n\t__uint(pinning, LIBBPF_PIN_BY_NAME);\n\t__uint(max_entries,\
+    \ POLICY_MAP_SIZE);\n\t__uint(map_flags, BPF_F_NO_PREALLOC);\n\n// FILE: bpf/node_config.h\n\
+    // CONTEXT: DEFINE_IPV6(HOST_IP, 0xbe, 0xef, 0x0, 0x0, 0x0, 0x0, 0x0, 0x1, 0x0,\
+    \ 0x0, 0xa, 0x\n#define EGRESS_POLICY_MAP test_cilium_egress_gw_policy_v4\n#define\
+    \ SRV6_VRF_MAP4 test_cilium_srv6_vrf_v4\n#define SRV6_VRF_MAP6 test_cilium_srv6_vrf_v6\n\
+    #define SRV6_POLICY_MAP4 test_cilium_srv6_policy_v4\n#define SRV6_POLICY_MAP6\
+    \ test_cilium_srv6_policy_v6\n#define SRV6_SID_MAP test_cilium_srv6_sid\n#define\
+    \ ENDPOINTS_MAP test_cilium_lxc\n#define EVENTS_MAP test_cilium_events\n#define\
+    \ EVENTS_MAP_RATE_LIMIT 0\n#define EVENTS_MAP_BURST_LIMIT 0\n#define SIGNAL_MAP\
+    \ test_cilium_signals\n#define METRICS_MAP test_cilium_metrics\n#define POLICY_CALL_MAP\
+    \ test_cilium_policy\n#define AUTH_MAP test_cilium_auth\n#define CONFIG_MAP test_cilium_runtime_config\n\
+    #define IPCACHE_MAP test_cilium_ipcache\n#define NODE_MAP_V2 test_cilium_node_map\n\
+    #define ENCRYPT_MAP test_cilium_encrypt_state\n#define L2_RESPONDER_MAP4 test_cilium_l2_responder_v4\n\
+    #define RATELIMIT_MAP test_cilium_ratelimit\n#define RATELIMIT_METRICS_MAP test_cilium_ratelimit_metrics\n\
+    #define TUNNEL_MAP test_cilium_tunnel_map\n#define VTEP_MAP test_cilium_vtep_map\n\
+    #define LB6_REVERSE_NAT_MAP test_cilium_lb6_reverse_nat\n#define LB6_SERVICES_MAP_V2\
+    \ test_cilium_lb6_services"
+  fixed_code: "// FILE: bpf/bpf_host.c\n// CONTEXT: from_host_to_lxc(struct __ctx_buff\
+    \ *ctx, __s8 *ext_err)\n\t\tbreak;\n\t}\n\n\treturn ret;\n}\n#endif /* ENABLE_HOST_FIREWALL\
+    \ */\n\n/* When per-endpoint routes are enabled, packets to and from local endpoints\n\
+    \ * will tail call into this program to enforce egress and ingress host policies.\n\
+    \ * Packets to the local endpoints will then tail call back to the original\n\
+    \ * bpf_lxc program.\n */\n__section_entry\nint handle_lxc_traffic(struct __ctx_buff\
+    \ *ctx __maybe_unused)\n{\n#ifdef ENABLE_HOST_FIREWALL\n\tbool from_host = ctx_load_meta(ctx,\
+    \ CB_FROM_HOST);\n\t__u32 lxc_id;\n\tint ret;\n\t__s8 ext_err = 0;\n\n\tif (from_host)\
+    \ {\n\t\tret = from_host_to_lxc(ctx, &ext_err);\n\t\tif (IS_ERR(ret))\n\t\t\t\
+    return send_drop_notify_error_ext(ctx, HOST_ID, ret, ext_err,\n\n// FILE: bpf/bpf_lxc.c\n\
+    // CONTEXT: TAIL_CT_LOOKUP4(CILIUM_CALL_IPV4_CT_INGRESS, tail_ipv4_ct_ingress,\
+    \ CT_INGRESS,\n\n/* Handle policy decisions as the packet makes its way towards\
+    \ the endpoint.\n * Previously, the packet may have come from another local endpoint,\
+    \ another\n * endpoint in the cluster, or from the big blue room (as identified\
+    \ by the\n * contents of ctx / CB_SRC_LABEL. Determine whether the traffic may\
+    \ be\n * passed into the endpoint or if it needs further inspection by a userspace\n\
+    \ * proxy.\n *\n * This program will be tail called to in ipv{4,6}_local_delivery\
+    \ from either\n * bpf_host, bpf_overlay (if coming from the tunnel), or bpf_lxc\
+    \ (if coming\n * from another local pod).\n */\n__section_entry\nint handle_policy(struct\
+    \ __ctx_buff *ctx)\n{\n\t__u32 src_label = ctx_load_meta(ctx, CB_SRC_LABEL);\n\
+    \t__u32 sec_label = SECLABEL;\n\t__s8 ext_err = 0;\n\t__u16 proto;\n\tint ret;\n\
+    \n\tif (!validate_ethertype(ctx, &proto)) {\n\t\tret = DROP_UNSUPPORTED_L2;\n\t\
+    \tgoto out;\n\t}\n\n// CONTEXT: out:\n\t\t\t\t\t    CTX_ACT_DROP, METRIC_INGRESS);\n\
+    \n\treturn ret;\n}\n\n/* Handle policy decisions as the packet makes its way from\
+    \ the\n * endpoint.  Previously, the packet has come from the same endpoint,\n\
+    \ * but was redirected to a L7 LB.\n *\n * This program will be tail called from\
+    \ bpf_host for packets sent by\n * a L7 LB.\n */\n__section_entry\nint handle_policy_egress(struct\
+    \ __ctx_buff *ctx __maybe_unused)\n{\n#if defined(ENABLE_L7_LB)\n\t__u16 proto;\n\
+    \tint ret;\n\t__u32 sec_label = SECLABEL;\n\t__s8 ext_err = 0;\n\n\tif (!validate_ethertype(ctx,\
+    \ &proto)) {\n\t\tret = DROP_UNSUPPORTED_L2;\n\t\tgoto out;\n\t}\n\n// FILE: bpf/lib/ids.h\n\
+    /* SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause) */\n/* Copyright Authors\
+    \ of Cilium */\n\n#pragma once\n\n/* WARNING: Do not change these ids without\
+    \ updating pkg/bpf/collection.go */\n#define CILIUM_MAP_CALLS\t2\n\n// FILE: bpf/lib/maps.h\n\
+    // CONTEXT: struct {\n\t__uint(map_flags, CONDITIONAL_PREALLOC);\n} ENDPOINTS_MAP\
+    \ __section_maps_btf;\n\nstruct {\n\t__uint(type, BPF_MAP_TYPE_PERCPU_HASH);\n\
+    \t__type(key, struct metrics_key);\n\t__type(value, struct metrics_value);\n\t\
+    __uint(pinning, LIBBPF_PIN_BY_NAME);\n\t__uint(max_entries, METRICS_MAP_SIZE);\n\
+    \t__uint(map_flags, CONDITIONAL_PREALLOC);\n} METRICS_MAP __section_maps_btf;\n\
+    \n#ifndef SKIP_POLICY_MAP\n/* Global map to jump into policy enforcement of receiving\
+    \ endpoint */\nstruct {\n\t__uint(type, BPF_MAP_TYPE_PROG_ARRAY);\n\t__type(key,\
+    \ __u32);\n\t__type(value, __u32);\n\t__uint(pinning, LIBBPF_PIN_BY_NAME);\n\t\
+    __uint(max_entries, POLICY_PROG_MAP_SIZE);\n} cilium_call_policy __section_maps_btf;\n\
+    \nstatic __always_inline __must_check int\ntail_call_policy(struct __ctx_buff\
+    \ *ctx, __u16 endpoint_id)\n{\n\tif (__builtin_constant_p(endpoint_id)) {\n\t\t\
+    tail_call_static(ctx, cilium_call_policy, endpoint_id);\n\t} else {\n\t\ttail_call_dynamic(ctx,\
+    \ &cilium_call_policy, endpoint_id);\n\t}\n\n\t/* When forwarding from a BPF program\
+    \ to some endpoint,\n\t * there are inherent races that can result in the endpoint's\n\
+    \t * policy program being unavailable (eg. if the endpoint is\n\t * terminating).\n\
+    \t */\n\treturn DROP_EP_NOT_READY;\n}\n#endif /* SKIP_POLICY_MAP */\n\n/* Global\
+    \ map to jump into policy enforcement of sending endpoint */\nstruct {\n\t__uint(type,\
+    \ BPF_MAP_TYPE_PROG_ARRAY);\n\t__type(key, __u32);\n\t__type(value, __u32);\n\t\
+    __uint(pinning, LIBBPF_PIN_BY_NAME);\n\t__uint(max_entries, POLICY_PROG_MAP_SIZE);\n\
+    } cilium_egresscall_policy __section_maps_btf;\n\nstatic __always_inline __must_check\
+    \ int\ntail_call_egress_policy(struct __ctx_buff *ctx, __u16 endpoint_id)\n{\n\
+    \ttail_call_dynamic(ctx, &cilium_egresscall_policy, endpoint_id);\n\t/* same issue\
+    \ as for the cilium_call_policy calls */\n\treturn DROP_EP_NOT_READY;\n}\n\n#ifdef\
+    \ POLICY_MAP\n/* Per-endpoint policy enforcement map */\nstruct {\n\t__uint(type,\
+    \ BPF_MAP_TYPE_LPM_TRIE);\n\t__type(key, struct policy_key);\n\t__type(value,\
+    \ struct policy_entry);\n\t__uint(pinning, LIBBPF_PIN_BY_NAME);\n\t__uint(max_entries,\
+    \ POLICY_MAP_SIZE);\n\t__uint(map_flags, BPF_F_NO_PREALLOC);\n\n// FILE: bpf/node_config.h\n\
+    // CONTEXT: DEFINE_IPV6(HOST_IP, 0xbe, 0xef, 0x0, 0x0, 0x0, 0x0, 0x0, 0x1, 0x0,\
+    \ 0x0, 0xa, 0x\n#define EGRESS_POLICY_MAP test_cilium_egress_gw_policy_v4\n#define\
+    \ SRV6_VRF_MAP4 test_cilium_srv6_vrf_v4\n#define SRV6_VRF_MAP6 test_cilium_srv6_vrf_v6\n\
+    #define SRV6_POLICY_MAP4 test_cilium_srv6_policy_v4\n#define SRV6_POLICY_MAP6\
+    \ test_cilium_srv6_policy_v6\n#define SRV6_SID_MAP test_cilium_srv6_sid\n#define\
+    \ ENDPOINTS_MAP test_cilium_lxc\n#define EVENTS_MAP test_cilium_events\n#define\
+    \ EVENTS_MAP_RATE_LIMIT 0\n#define EVENTS_MAP_BURST_LIMIT 0\n#define SIGNAL_MAP\
+    \ test_cilium_signals\n#define METRICS_MAP test_cilium_metrics\n#define AUTH_MAP\
+    \ test_cilium_auth\n#define CONFIG_MAP test_cilium_runtime_config\n#define IPCACHE_MAP\
+    \ test_cilium_ipcache\n#define NODE_MAP_V2 test_cilium_node_map\n#define ENCRYPT_MAP\
+    \ test_cilium_encrypt_state\n#define L2_RESPONDER_MAP4 test_cilium_l2_responder_v4\n\
+    #define RATELIMIT_MAP test_cilium_ratelimit\n#define RATELIMIT_METRICS_MAP test_cilium_ratelimit_metrics\n\
+    #define TUNNEL_MAP test_cilium_tunnel_map\n#define VTEP_MAP test_cilium_vtep_map\n\
+    #define LB6_REVERSE_NAT_MAP test_cilium_lb6_reverse_nat\n#define LB6_SERVICES_MAP_V2\
+    \ test_cilium_lb6_services"
+  diff_summary: |-
+    bpf/bpf_host.c:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: from_host_to_lxc(struct __ctx_buff *ctx, __s8 *ext_err).
+    bpf/bpf_lxc.c:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: TAIL_CT_LOOKUP4(CILIUM_CALL_IPV4_CT_INGRESS, tail_ipv4_ct_ingress, CT_INGRESS,, out:.
+    bpf/lib/ids.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: the touched section.
+    bpf/lib/maps.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: struct {.
+    bpf/node_config.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: DEFINE_IPV6(HOST_IP, 0xbe, 0xef, 0x0, 0x0, 0x0, 0x0, 0x0, 0x1, 0x0, 0x0, 0xa, 0x.
+    - Commit subject: bpf,loader: explicitly manage policy programs for bpf_lxc and bpf_host.

@@ -1,0 +1,117 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-36c7d6628244
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/36c7d66282449265eb4a897a4e18b39cbcdb177d
+  title: 'bpf: nodeport: split up ingress path when HostFW is enabled'
+  repository: https://github.com/cilium/cilium
+  commit: 36c7d66282449265eb4a897a4e18b39cbcdb177d
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-36c7d6628244.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: not_reconstructable_from_diff
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: NodePort HostFW ingress split/type change spans several Cilium helpers with
+    no verifier terminal error.
+raw:
+  case_id: github-commit-cilium-36c7d6628244
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: 36c7d66282449265eb4a897a4e18b39cbcdb177d
+  commit_message: 'bpf: nodeport: split up ingress path when HostFW is enabled'
+  commit_date: '2024-01-24'
+  fix_type: type_cast
+  buggy_code: "// FILE: bpf/lib/nodeport.h\n// CONTEXT: fib_ipv4:\n\t\tfib_params.l.ipv4_src\
+    \ = ip4->saddr;\n\t\tfib_params.l.ipv4_dst = ip4->daddr;\n\t\tfib_params.l.family\
+    \ = AF_INET;\n\t} else {\n\t\tipv6_addr_copy((union v6addr *)&fib_params.l.ipv6_src,\n\
+    \t\t\t       (union v6addr *)&ip6->saddr);\n\t\tipv6_addr_copy((union v6addr *)&fib_params.l.ipv6_dst,\n\
+    \t\t\t       (union v6addr *)&ip6->daddr);\n\t}\n\treturn fib_redirect(ctx, true,\
+    \ &fib_params, allow_neigh_map, ext_err, &ifindex);\n}\n\ndeclare_tailcall_if(__or(__not(is_defined(HAVE_LARGE_INSN_LIMIT)),\n\
+    \t\t\t is_defined(IS_BPF_LXC)),\n\t\t    CILIUM_CALL_IPV6_NODEPORT_REVNAT)\nint\
+    \ tail_nodeport_rev_dnat_ingress_ipv6(struct __ctx_buff *ctx)\n{\n\tstruct trace_ctx\
+    \ trace = {\n\t\t.reason = TRACE_REASON_CT_REPLY,\n\t\t.monitor = TRACE_PAYLOAD_LEN,\n\
+    \t};\n\t__s8 ext_err = 0;\n\tint ret = 0;\n\n\tret = nodeport_rev_dnat_ingress_ipv6(ctx,\
+    \ &trace, &ext_err);\n\tif (IS_ERR(ret))\n\n// CONTEXT: int tail_nodeport_nat_ingress_ipv6(struct\
+    \ __ctx_buff *ctx)\n\tctx_snat_done_set(ctx);\n\n#if !defined(ENABLE_DSR) || (defined(ENABLE_DSR)\
+    \ && defined(ENABLE_DSR_HYBRID))\n\n# if defined(ENABLE_HOST_FIREWALL) && defined(IS_BPF_HOST)\n\
+    \tret = ipv6_host_policy_ingress(ctx, &src_id, &trace, &ext_err);\n\tif (IS_ERR(ret))\n\
+    \t\tgoto drop_err;\n\n\tctx_skip_host_fw_set(ctx);\n# endif\n\n\tret = invoke_traced_tailcall_if(__not(is_defined(HAVE_LARGE_INSN_LIMIT)),\n\
+    \t\t\t\t\tCILIUM_CALL_IPV6_NODEPORT_REVNAT,\n\t\t\t\t\tnodeport_rev_dnat_ingress_ipv6,\n\
+    \t\t\t\t\t&trace, &ext_err);\n\tif (IS_ERR(ret))\n\t\tgoto drop_err;\n\n\tif (ret\
+    \ == CTX_ACT_OK)\n\t\tgoto recircle;\n\n\tedt_set_aggregate(ctx, 0);\n\tcilium_capture_out(ctx);\n\
+    \treturn ret;\n\n// CONTEXT: redirect:\n\t}\n#endif\n\n\tif (!revalidate_data(ctx,\
+    \ &data, &data_end, &ip4))\n\t\treturn DROP_INVALID;\n\n\tfib_params.l.ipv4_src\
+    \ = ip4->saddr;\n\tfib_params.l.ipv4_dst = ip4->daddr;\n\n\treturn fib_redirect(ctx,\
+    \ true, &fib_params, allow_neigh_map, ext_err, &ifindex);\n}\n\ndeclare_tailcall_if(__or(__not(is_defined(HAVE_LARGE_INSN_LIMIT)),\n\
+    \t\t\t is_defined(IS_BPF_LXC)),\n\t\t    CILIUM_CALL_IPV4_NODEPORT_REVNAT)\nint\
+    \ tail_nodeport_rev_dnat_ingress_ipv4(struct __ctx_buff *ctx)\n{\n\tstruct trace_ctx\
+    \ trace = {\n\t\t.reason = TRACE_REASON_UNKNOWN,\n\t\t.monitor = TRACE_PAYLOAD_LEN,\n\
+    \t};\n\t__s8 ext_err = 0;\n\tint ret = 0;\n\n\tret = nodeport_rev_dnat_ingress_ipv4(ctx,\
+    \ &trace, &ext_err);\n\tif (IS_ERR(ret))\n\n// CONTEXT: int tail_nodeport_nat_ingress_ipv4(struct\
+    \ __ctx_buff *ctx)\n\t/* We don't want to enforce host policies a second time,\n\
+    \t * on recircle / after RevDNAT.\n\t */\n\tctx_skip_host_fw_set(ctx);\n# endif\n\
+    \n\t/* If we're not in full DSR mode, reply traffic from remote backends\n\t *\
+    \ might pass back through the LB node and requires revDNAT.\n\t *\n\t * Also let\
+    \ nodeport_rev_dnat_ingress_ipv4() redirect EgressGW\n\t * reply traffic into\
+    \ tunnel (see there for details).\n\t */\n\tret = invoke_traced_tailcall_if(__not(is_defined(HAVE_LARGE_INSN_LIMIT)),\n\
+    \t\t\t\t\tCILIUM_CALL_IPV4_NODEPORT_REVNAT,\n\t\t\t\t\tnodeport_rev_dnat_ingress_ipv4,\n\
+    \t\t\t\t\t&trace, &ext_err);\n\tif (IS_ERR(ret))\n\t\tgoto drop_err;\n\n\t/* No\
+    \ redirect needed: */\n\tif (ret == CTX_ACT_OK)\n\t\tgoto recircle;\n\n\t/* Redirected\
+    \ to egress interface: */\n\tedt_set_aggregate(ctx, 0);"
+  fixed_code: "// FILE: bpf/lib/nodeport.h\n// CONTEXT: fib_ipv4:\n\t\tfib_params.l.ipv4_src\
+    \ = ip4->saddr;\n\t\tfib_params.l.ipv4_dst = ip4->daddr;\n\t\tfib_params.l.family\
+    \ = AF_INET;\n\t} else {\n\t\tipv6_addr_copy((union v6addr *)&fib_params.l.ipv6_src,\n\
+    \t\t\t       (union v6addr *)&ip6->saddr);\n\t\tipv6_addr_copy((union v6addr *)&fib_params.l.ipv6_dst,\n\
+    \t\t\t       (union v6addr *)&ip6->daddr);\n\t}\n\treturn fib_redirect(ctx, true,\
+    \ &fib_params, allow_neigh_map, ext_err, &ifindex);\n}\n\ndeclare_tailcall_if(__or3(__not(is_defined(HAVE_LARGE_INSN_LIMIT)),\n\
+    \t\t\t  __and(is_defined(ENABLE_HOST_FIREWALL),\n\t\t\t\tis_defined(IS_BPF_HOST)),\n\
+    \t\t\t  is_defined(IS_BPF_LXC)),\n\t\t    CILIUM_CALL_IPV6_NODEPORT_REVNAT)\n\
+    int tail_nodeport_rev_dnat_ingress_ipv6(struct __ctx_buff *ctx)\n{\n\tstruct trace_ctx\
+    \ trace = {\n\t\t.reason = TRACE_REASON_CT_REPLY,\n\t\t.monitor = TRACE_PAYLOAD_LEN,\n\
+    \t};\n\t__s8 ext_err = 0;\n\tint ret = 0;\n\n\tret = nodeport_rev_dnat_ingress_ipv6(ctx,\
+    \ &trace, &ext_err);\n\tif (IS_ERR(ret))\n\n// CONTEXT: int tail_nodeport_nat_ingress_ipv6(struct\
+    \ __ctx_buff *ctx)\n\tctx_snat_done_set(ctx);\n\n#if !defined(ENABLE_DSR) || (defined(ENABLE_DSR)\
+    \ && defined(ENABLE_DSR_HYBRID))\n\n# if defined(ENABLE_HOST_FIREWALL) && defined(IS_BPF_HOST)\n\
+    \tret = ipv6_host_policy_ingress(ctx, &src_id, &trace, &ext_err);\n\tif (IS_ERR(ret))\n\
+    \t\tgoto drop_err;\n\n\tctx_skip_host_fw_set(ctx);\n# endif\n\n\tret = invoke_traced_tailcall_if(__or(__not(is_defined(HAVE_LARGE_INSN_LIMIT)),\n\
+    \t\t\t\t\t     __and(is_defined(ENABLE_HOST_FIREWALL),\n\t\t\t\t\t\t   is_defined(IS_BPF_HOST))),\n\
+    \t\t\t\t\tCILIUM_CALL_IPV6_NODEPORT_REVNAT,\n\t\t\t\t\tnodeport_rev_dnat_ingress_ipv6,\n\
+    \t\t\t\t\t&trace, &ext_err);\n\tif (IS_ERR(ret))\n\t\tgoto drop_err;\n\n\tif (ret\
+    \ == CTX_ACT_OK)\n\t\tgoto recircle;\n\n\tedt_set_aggregate(ctx, 0);\n\tcilium_capture_out(ctx);\n\
+    \treturn ret;\n\n// CONTEXT: redirect:\n\t}\n#endif\n\n\tif (!revalidate_data(ctx,\
+    \ &data, &data_end, &ip4))\n\t\treturn DROP_INVALID;\n\n\tfib_params.l.ipv4_src\
+    \ = ip4->saddr;\n\tfib_params.l.ipv4_dst = ip4->daddr;\n\n\treturn fib_redirect(ctx,\
+    \ true, &fib_params, allow_neigh_map, ext_err, &ifindex);\n}\n\ndeclare_tailcall_if(__or3(__not(is_defined(HAVE_LARGE_INSN_LIMIT)),\n\
+    \t\t\t  __and(is_defined(ENABLE_HOST_FIREWALL),\n\t\t\t\tis_defined(IS_BPF_HOST)),\n\
+    \t\t\t  is_defined(IS_BPF_LXC)),\n\t\t    CILIUM_CALL_IPV4_NODEPORT_REVNAT)\n\
+    int tail_nodeport_rev_dnat_ingress_ipv4(struct __ctx_buff *ctx)\n{\n\tstruct trace_ctx\
+    \ trace = {\n\t\t.reason = TRACE_REASON_UNKNOWN,\n\t\t.monitor = TRACE_PAYLOAD_LEN,\n\
+    \t};\n\t__s8 ext_err = 0;\n\tint ret = 0;\n\n\tret = nodeport_rev_dnat_ingress_ipv4(ctx,\
+    \ &trace, &ext_err);\n\tif (IS_ERR(ret))\n\n// CONTEXT: int tail_nodeport_nat_ingress_ipv4(struct\
+    \ __ctx_buff *ctx)\n\t/* We don't want to enforce host policies a second time,\n\
+    \t * on recircle / after RevDNAT.\n\t */\n\tctx_skip_host_fw_set(ctx);\n# endif\n\
+    \n\t/* If we're not in full DSR mode, reply traffic from remote backends\n\t *\
+    \ might pass back through the LB node and requires revDNAT.\n\t *\n\t * Also let\
+    \ nodeport_rev_dnat_ingress_ipv4() redirect EgressGW\n\t * reply traffic into\
+    \ tunnel (see there for details).\n\t */\n\tret = invoke_traced_tailcall_if(__or(__not(is_defined(HAVE_LARGE_INSN_LIMIT)),\n\
+    \t\t\t\t\t     __and(is_defined(ENABLE_HOST_FIREWALL),\n\t\t\t\t\t\t   is_defined(IS_BPF_HOST))),\n\
+    \t\t\t\t\tCILIUM_CALL_IPV4_NODEPORT_REVNAT,\n\t\t\t\t\tnodeport_rev_dnat_ingress_ipv4,\n\
+    \t\t\t\t\t&trace, &ext_err);\n\tif (IS_ERR(ret))\n\t\tgoto drop_err;\n\n\t/* No\
+    \ redirect needed: */\n\tif (ret == CTX_ACT_OK)\n\t\tgoto recircle;\n\n\t/* Redirected\
+    \ to egress interface: */\n\tedt_set_aggregate(ctx, 0);"
+  diff_summary: |-
+    bpf/lib/nodeport.h:
+    - Adjusted types or casts so the verifier sees the intended pointer or value kind.
+    - Affected context: fib_ipv4:, int tail_nodeport_nat_ingress_ipv6(struct __ctx_buff *ctx), redirect:.
+    - Commit subject: bpf: nodeport: split up ingress path when HostFW is enabled.

@@ -1,0 +1,471 @@
+schema_version: bpfix.raw_external/v1
+raw_id: stackoverflow-76277872
+source_kind: stackoverflow
+source:
+  url: https://stackoverflow.com/questions/76277872/need-help-in-xdp-program-failing-to-load-with-error-r9-offset-is-outside-of-the
+  title: Need help in XDP program failing to load with error &quot;R9 offset is outside
+    of the packet&quot;
+  repository: null
+  commit: null
+  collected_at: '2026-03-11T16:03:01+00:00'
+collector:
+  original_path: bpfix-empirical/raw/so/stackoverflow-76277872.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: true
+  verifier_log_block_count: 1
+  source_snippet_count: 1
+  has_buggy_code: false
+  has_fixed_code: false
+  has_fix_description: false
+reproduction:
+  status: replay_valid
+  case_id: stackoverflow-76277872
+  case_path: cases/stackoverflow-76277872
+  artifact_path: cases/stackoverflow-76277872
+  reason: admitted_to_bpfix_bench_cases
+raw:
+  case_id: stackoverflow-76277872
+  source: stackoverflow
+  collected_at: '2026-03-11T16:03:01+00:00'
+  question:
+    question_id: 76277872
+    title: Need help in XDP program failing to load with error &quot;R9 offset is
+      outside of the packet&quot;
+    url: https://stackoverflow.com/questions/76277872/need-help-in-xdp-program-failing-to-load-with-error-r9-offset-is-outside-of-the
+    tags:
+    - filter
+    - packet
+    - ebpf
+    - bpf
+    - xdp-bpf
+    score: 1
+    answer_count: 1
+    is_answered: false
+  original_verifier_log:
+    blocks:
+    - |-
+      2023/05/18 12:48:21 error while loading "xdp/xdp_ip_filter" (permission denied):
+      0: (b7) r0 = 0
+      1: (61) r3 = *(u32 *)(r1 +4)
+      2: (61) r9 = *(u32 *)(r1 +0)
+      3: (bf) r1 = r9
+      4: (07) r1 += 14
+      5: (2d) if r1 > r3 goto pc+199
+       R0_w=inv0 R1_w=pkt(id=0,off=14,r=14,imm=0) R3_w=pkt_end(id=0,off=0,imm=0) R9_w=pkt(id=0,off=0,r=14,imm=0) R10=fp0
+      6: (61) r1 = *(u32 *)(r9 +26)
+      invalid access to packet, off=26 size=4, R9(id=0,off=26,r=14)
+      R9 offset is outside of the packet
+      processed 7 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0 mark_read 0
+    combined: |-
+      2023/05/18 12:48:21 error while loading "xdp/xdp_ip_filter" (permission denied):
+      0: (b7) r0 = 0
+      1: (61) r3 = *(u32 *)(r1 +4)
+      2: (61) r9 = *(u32 *)(r1 +0)
+      3: (bf) r1 = r9
+      4: (07) r1 += 14
+      5: (2d) if r1 > r3 goto pc+199
+       R0_w=inv0 R1_w=pkt(id=0,off=14,r=14,imm=0) R3_w=pkt_end(id=0,off=0,imm=0) R9_w=pkt(id=0,off=0,r=14,imm=0) R10=fp0
+      6: (61) r1 = *(u32 *)(r9 +26)
+      invalid access to packet, off=26 size=4, R9(id=0,off=26,r=14)
+      R9 offset is outside of the packet
+      processed 7 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0 mark_read 0
+  verifier_log:
+    blocks:
+    - |-
+      2023/05/18 12:48:21 error while loading "xdp/xdp_ip_filter" (permission denied):
+      0: (b7) r0 = 0
+      1: (61) r3 = *(u32 *)(r1 +4)
+      2: (61) r9 = *(u32 *)(r1 +0)
+      3: (bf) r1 = r9
+      4: (07) r1 += 14
+      5: (2d) if r1 > r3 goto pc+199
+       R0_w=inv0 R1_w=pkt(id=0,off=14,r=14,imm=0) R3_w=pkt_end(id=0,off=0,imm=0) R9_w=pkt(id=0,off=0,r=14,imm=0) R10=fp0
+      6: (61) r1 = *(u32 *)(r9 +26)
+      invalid access to packet, off=26 size=4, R9(id=0,off=26,r=14)
+      R9 offset is outside of the packet
+      processed 7 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0 mark_read 0
+    combined: |-
+      libbpf: loading object from <legacy-so-gh-reproducer>/stackoverflow-76277872/prog.o
+      libbpf: elf: section(3) xdp, size 1408, link 0, flags 6, type=1
+      libbpf: sec 'xdp': found program 'xdp_ip_filter' at insn offset 0 (0 bytes), code size 176 insns (1408 bytes)
+      libbpf: elf: section(4) .relxdp, size 192, link 26, flags 40, type=9
+      libbpf: elf: section(5) maps, size 120, link 0, flags 3, type=1
+      libbpf: elf: legacy map definitions in 'maps' section are not supported by libbpf v1.0+
+      Error: failed to open object file
+  verifier_log_source: captured_on_6.15.11
+  verifier_log_captured_at: '2026-03-20'
+  source_snippets:
+  - |-
+    xdp.c
+    #include <linux/bpf.h>
+    #include <linux/if_ether.h>
+    #include <linux/ip.h>
+    #include <linux/in.h>
+    #include <linux/tcp.h>
+    #include <linux/udp.h>
+    #include <linux/types.h>
+    // #include <bpf/bpf_helpers.h>
+    #include "maps.h"
+
+    // struct vlan_hdr {
+    //  __be16 h_vlan_TCI;
+    //  __be16 h_vlan_encapsulated_proto;
+    // };
+
+    /* helper functions called from eBPF programs */
+    // static int (*bpf_trace_printk)(const char *fmt, int fmt_size, ...) =
+    //          (void *) BPF_FUNC_trace_printk;
+
+    /* macro for printing debug info to the tracing pipe, useful just for
+       debugging purposes and not recommended to use in production systems.
+
+         use `sudo cat /sys/kernel/debug/tracing/trace_pipe` to read debug info.
+     */
+    // #define printt(fmt, ...)                                                   \
+    //             ({                                                             \
+    //                 char ____fmt[] = fmt;                                      \
+    //                 bpf_trace_printk(____fmt, sizeof(____fmt), ##__VA_ARGS__); \
+    //             })
+
+    SEC("xdp/xdp_ip_filter")
+    int xdp_ip_filter(struct xdp_md *ctx) {
+        void *end = (void *)(unsigned long)ctx->data_end;
+        void *data = (void *)(unsigned long)ctx->data;
+        __u32 ip_src, ip_dst;
+        // __u64 offset;
+        // __u16 eth_type;
+
+        // struct ethhdr *eth = data;
+        // offset = sizeof(struct ethhdr);
+
+        // if (data + offset > end) {
+        //     return XDP_ABORTED;
+        // }
+        // eth_type = eth->h_proto;
+
+        /* handle VLAN tagged packet */
+    //     if (eth_type == htons(ETH_P_8021Q) || eth_type == htons(ETH_P_8021AD)) {
+    //  struct vlan_hdr *vlan_hdr;
+
+    //  vlan_hdr = (void *)eth + offset;
+    //  offset += sizeof(*vlan_hdr);
+    //  if ((void *)eth + offset > end)
+    //      return 0;
+    //  eth_type = vlan_hdr->h_vlan_encapsulated_proto;
+    //    }
+
+    //     /* let's only handle IPv4 addresses */
+    //     if (eth_type == ntohs(ETH_P_IPV6)) {
+    //         return XDP_PASS;
+    //     }
+
+        struct iphdr *iph;
+        if (end >= data + sizeof(struct ethhdr)) {
+            iph = data + sizeof(struct ethhdr);
+        } else {
+            return XDP_ABORTED;
+        }
+        // offset += sizeof(struct iphdr);
+        /* make sure the bytes you want to read are within the packet's range before reading them */
+        // if (iph + 1 > end) {
+        //     return XDP_ABORTED;
+        // }
+        ip_src = iph->saddr;
+        ip_dst = iph->daddr;
+        __u8 proto = iph->protocol;
+
+        if (proto == 1 || proto == 6 || proto == 17) {
+            __u64 *srcMap_value, *dstMap_value, *protoMap_value, bitmap;
+            srcMap_value = bpf_map_lookup_elem(&srcMap, &ip_src);
+            dstMap_value = bpf_map_lookup_elem(&dstMap, &ip_dst);
+            protoMap_value = bpf_map_lookup_elem(&protoMap, &proto);
+
+            if (srcMap_value == 0) {
+                __u32 default_sip = 0;
+                srcMap_value = bpf_map_lookup_elem(&srcMap, &default_sip);
+            }
+            if (dstMap_value == 0) {
+                __u32 default_dip = 0;
+                dstMap_value = bpf_map_lookup_elem(&dstMap, &default_dip);
+            }
+            if (protoMap_value == 0) {
+                __u8 default_prot = 0;
+                protoMap_value = bpf_map_lookup_elem(&protoMap, &default_prot);
+            }
+
+            if (proto == 1) {
+                bitmap = (*srcMap_value) & (*dstMap_value) & (*protoMap_value);
+                __u64 temp = (~bitmap) + 1;
+                bitmap = bitmap & temp;
+            }
+            if (proto == 6) {
+                struct tcphdr *tcph;
+                if (end >= data + sizeof(struct ethhdr) + sizeof(struct iphdr)) {
+                    tcph = data + sizeof(struct ethhdr) + sizeof(struct iphdr);
+                } else {
+                    return XDP_ABORTED;
+                }
+                __u64 *sportMap_value, *dportMap_value;
+                __u16 sport = tcph->source;
+                __u16 dport = tcph->dest;
+                sportMap_value = bpf_map_lookup_elem(&sportMap, &sport);
+                dportMap_value = bpf_map_lookup_elem(&dportMap, &dport);
+
+                if (sportMap_value == 0) {
+                    __u16 default_sport = 0;
+                    sportMap_value = bpf_map_lookup_elem(&sportMap, &default_sport);
+                }
+                if (dportMap_value == 0) {
+                    __u16 default_dport = 0;
+                    dportMap_value = bpf_map_lookup_elem(&dportMap, &default_dport);
+                }
+
+                bitmap = (*srcMap_value) & (*dstMap_value) & (*protoMap_value) & (*sportMap_value) & (*dportMap_value);
+                __u64 temp = (~bitmap) + 1;
+                bitmap = bitmap & temp;
+            }
+            if (proto == 17) {
+                struct udphdr *udph;
+                if (end >= data + sizeof(struct ethhdr) + sizeof(struct iphdr)) {
+                    udph = data + sizeof(struct ethhdr) + sizeof(struct iphdr);
+                } else {
+                    return XDP_ABORTED;
+                }
+                __u64 *sportMap_value, *dportMap_value;
+                __u16 sport = udph->source;
+                __u16 dport = udph->dest;
+                sportMap_value = bpf_map_lookup_elem(&sportMap, &sport);
+                dportMap_value = bpf_map_lookup_elem(&dportMap, &dport);
+
+                if (sportMap_value == 0) {
+                    __u16 default_sport = 0;
+                    sportMap_value = bpf_map_lookup_elem(&sportMap, &default_sport);
+                }
+                if (dportMap_value == 0) {
+                    __u16 default_dport = 0;
+                    dportMap_value = bpf_map_lookup_elem(&dportMap, &default_dport);
+                }
+
+                bitmap = (*srcMap_value) & (*dstMap_value) & (*protoMap_value) & (*sportMap_value) & (*dportMap_value);
+                __u64 temp = (~bitmap) + 1;
+                bitmap = bitmap & temp;
+            }
+
+            __u64 *actionMap_value;
+            actionMap_value = bpf_map_lookup_elem(&actionMap, &bitmap);
+            if (actionMap_value) {
+                (*actionMap_value) = (*actionMap_value) + 1;
+                bpf_map_update_elem(&actionMap, &bitmap, actionMap_value, BPF_EXIST);
+                return XDP_DROP;
+            }
+        }
+        return XDP_PASS;
+    }
+
+    char __license[] SEC("license") = "GPL";
+
+    maps.h
+
+    #define SEC(NAME) __attribute__((section(NAME), used))
+
+    static void *(*bpf_map_lookup_elem)(void *map, void *key) = (void *) BPF_FUNC_map_lookup_elem;
+    static void *(*bpf_map_update_elem)(void *map, void *key, void *value, int flags) = (void *) BPF_FUNC_map_update_elem;
+
+    #define BUF_SIZE_MAP_NS 256
+
+    typedef struct bpf_map_def {
+        unsigned int type;
+        unsigned int key_size;
+        unsigned int value_size;
+        unsigned int max_entries;
+        unsigned int map_flags;
+        unsigned int pinning;
+        char namespace[BUF_SIZE_MAP_NS];
+    } bpf_map_def;
+
+    enum bpf_pin_type {
+        PIN_NONE = 0,
+        PIN_OBJECT_NS,
+        PIN_GLOBAL_NS,
+        PIN_CUSTOM_NS,
+    };
+
+    struct bpf_map_def SEC("maps/srcMap") srcMap = {
+        .type = BPF_MAP_TYPE_HASH,
+        .key_size = sizeof(__u32),
+        .value_size = sizeof(__u64),
+        .max_entries = 4194304,
+        .pinning = PIN_GLOBAL_NS,
+        .namespace = "globals",
+    };
+
+    struct bpf_map_def SEC("maps/dstMap") dstMap = {
+        .type = BPF_MAP_TYPE_HASH,
+        .key_size = sizeof(__u32),
+        .value_size = sizeof(__u64),
+        .max_entries = 4194304,
+        .pinning = PIN_GLOBAL_NS,
+        .namespace = "globals",
+    };
+
+    struct bpf_map_def SEC("maps/protoMap") protoMap = {
+        .type = BPF_MAP_TYPE_HASH,
+        .key_size = sizeof(__u8),
+        .value_size = sizeof(__u64),
+        .max_entries = 4194304,
+        .pinning = PIN_GLOBAL_NS,
+        .namespace = "globals",
+    };
+
+    struct bpf_map_def SEC("maps/sportMap") sportMap = {
+        .type = BPF_MAP_TYPE_HASH,
+        .key_size = sizeof(__u16),
+        .value_size = sizeof(__u64),
+        .max_entries = 4194304,
+        .pinning = PIN_GLOBAL_NS,
+        .namespace = "globals",
+    };
+
+    struct bpf_map_def SEC("maps/dportMap") dportMap = {
+        .type = BPF_MAP_TYPE_HASH,
+        .key_size = sizeof(__u16),
+        .value_size = sizeof(__u64),
+        .max_entries = 4194304,
+        .pinning = PIN_GLOBAL_NS,
+        .namespace = "globals",
+    };
+
+    struct bpf_map_def SEC("maps/actionMap") actionMap = {
+        .type = BPF_MAP_TYPE_HASH,
+        .key_size = sizeof(__u64),
+        .value_size = sizeof(__u64),
+        .max_entries = 4194304,
+        .pinning = PIN_GLOBAL_NS,
+        .namespace = "globals",
+    };
+  question_body_text: "I have an xdp program that filters packets by quintuple matching.\
+    \ I'm only interested in ip, icmp, tcp, udp headers. I will check each packet's\
+    \ destination ip, source ip, and the protocol field in the ip header to determine\
+    \ the upper layer protocol. If it is icmp, only compare these three pieces of\
+    \ information with the data in bpf_map, and then perform corresponding operations.\
+    \ If it is tcp or udp, you also need to add the source port and destination port.\
+    \ However, when I try to load the XDP program into the kernel in Native mode,\
+    \ it says \"R9 offset is outside of the packet\". Really don't know why. Any help\
+    \ on this would be greatly appreciated.\nFollowing is the code:\nxdp.c\n#include\
+    \ <linux/bpf.h>\n#include <linux/if_ether.h>\n#include <linux/ip.h>\n#include\
+    \ <linux/in.h>\n#include <linux/tcp.h>\n#include <linux/udp.h>\n#include <linux/types.h>\n\
+    // #include <bpf/bpf_helpers.h>\n#include \"maps.h\"\n// struct vlan_hdr {\n//\
+    \ __be16 h_vlan_TCI;\n// __be16 h_vlan_encapsulated_proto;\n// };\n/* helper functions\
+    \ called from eBPF programs */\n// static int (*bpf_trace_printk)(const char *fmt,\
+    \ int fmt_size, ...) =\n// (void *) BPF_FUNC_trace_printk;\n/* macro for printing\
+    \ debug info to the tracing pipe, useful just for\ndebugging purposes and not\
+    \ recommended to use in production systems.\nuse `sudo cat /sys/kernel/debug/tracing/trace_pipe`\
+    \ to read debug info.\n*/\n// #define printt(fmt, ...) \\\n// ({ \\\n// char ____fmt[]\
+    \ = fmt; \\\n// bpf_trace_printk(____fmt, sizeof(____fmt), ##__VA_ARGS__); \\\n\
+    // })\nSEC(\"xdp/xdp_ip_filter\")\nint xdp_ip_filter(struct xdp_md *ctx) {\nvoid\
+    \ *end = (void *)(unsigned long)ctx->data_end;\nvoid *data = (void *)(unsigned\
+    \ long)ctx->data;\n__u32 ip_src, ip_dst;\n// __u64 offset;\n// __u16 eth_type;\n\
+    // struct ethhdr *eth = data;\n// offset = sizeof(struct ethhdr);\n// if (data\
+    \ + offset > end) {\n// return XDP_ABORTED;\n// }\n// eth_type = eth->h_proto;\n\
+    /* handle VLAN tagged packet */\n// if (eth_type == htons(ETH_P_8021Q) || eth_type\
+    \ == htons(ETH_P_8021AD)) {\n// struct vlan_hdr *vlan_hdr;\n// vlan_hdr = (void\
+    \ *)eth + offset;\n// offset += sizeof(*vlan_hdr);\n// if ((void *)eth + offset\
+    \ > end)\n// return 0;\n// eth_type = vlan_hdr->h_vlan_encapsulated_proto;\n//\
+    \ }\n// /* let's only handle IPv4 addresses */\n// if (eth_type == ntohs(ETH_P_IPV6))\
+    \ {\n// return XDP_PASS;\n// }\nstruct iphdr *iph;\nif (end >= data + sizeof(struct\
+    \ ethhdr)) {\niph = data + sizeof(struct ethhdr);\n} else {\nreturn XDP_ABORTED;\n\
+    }\n// offset += sizeof(struct iphdr);\n/* make sure the bytes you want to read\
+    \ are within the packet's range before reading them */\n// if (iph + 1 > end)\
+    \ {\n// return XDP_ABORTED;\n// }\nip_src = iph->saddr;\nip_dst = iph->daddr;\n\
+    __u8 proto = iph->protocol;\nif (proto == 1 || proto == 6 || proto == 17) {\n\
+    __u64 *srcMap_value, *dstMap_value, *protoMap_value, bitmap;\nsrcMap_value = bpf_map_lookup_elem(&srcMap,\
+    \ &ip_src);\ndstMap_value = bpf_map_lookup_elem(&dstMap, &ip_dst);\nprotoMap_value\
+    \ = bpf_map_lookup_elem(&protoMap, &proto);\nif (srcMap_value == 0) {\n__u32 default_sip\
+    \ = 0;\nsrcMap_value = bpf_map_lookup_elem(&srcMap, &default_sip);\n}\nif (dstMap_value\
+    \ == 0) {\n__u32 default_dip = 0;\ndstMap_value = bpf_map_lookup_elem(&dstMap,\
+    \ &default_dip);\n}\nif (protoMap_value == 0) {\n__u8 default_prot = 0;\nprotoMap_value\
+    \ = bpf_map_lookup_elem(&protoMap, &default_prot);\n}\nif (proto == 1) {\nbitmap\
+    \ = (*srcMap_value) & (*dstMap_value) & (*protoMap_value);\n__u64 temp = (~bitmap)\
+    \ + 1;\nbitmap = bitmap & temp;\n}\nif (proto == 6) {\nstruct tcphdr *tcph;\n\
+    if (end >= data + sizeof(struct ethhdr) + sizeof(struct iphdr)) {\ntcph = data\
+    \ + sizeof(struct ethhdr) + sizeof(struct iphdr);\n} else {\nreturn XDP_ABORTED;\n\
+    }\n__u64 *sportMap_value, *dportMap_value;\n__u16 sport = tcph->source;\n__u16\
+    \ dport = tcph->dest;\nsportMap_value = bpf_map_lookup_elem(&sportMap, &sport);\n\
+    dportMap_value = bpf_map_lookup_elem(&dportMap, &dport);\nif (sportMap_value ==\
+    \ 0) {\n__u16 default_sport = 0;\nsportMap_value = bpf_map_lookup_elem(&sportMap,\
+    \ &default_sport);\n}\nif (dportMap_value == 0) {\n__u16 default_dport = 0;\n\
+    dportMap_value = bpf_map_lookup_elem(&dportMap, &default_dport);\n}\nbitmap =\
+    \ (*srcMap_value) & (*dstMap_value) & (*protoMap_value) & (*sportMap_value) &\
+    \ (*dportMap_value);\n__u64 temp = (~bitmap) + 1;\nbitmap = bitmap & temp;\n}\n\
+    if (proto == 17) {\nstruct udphdr *udph;\nif (end >= data + sizeof(struct ethhdr)\
+    \ + sizeof(struct iphdr)) {\nudph = data + sizeof(struct ethhdr) + sizeof(struct\
+    \ iphdr);\n} else {\nreturn XDP_ABORTED;\n}\n__u64 *sportMap_value, *dportMap_value;\n\
+    __u16 sport = udph->source;\n__u16 dport = udph->dest;\nsportMap_value = bpf_map_lookup_elem(&sportMap,\
+    \ &sport);\ndportMap_value = bpf_map_lookup_elem(&dportMap, &dport);\nif (sportMap_value\
+    \ == 0) {\n__u16 default_sport = 0;\nsportMap_value = bpf_map_lookup_elem(&sportMap,\
+    \ &default_sport);\n}\nif (dportMap_value == 0) {\n__u16 default_dport = 0;\n\
+    dportMap_value = bpf_map_lookup_elem(&dportMap, &default_dport);\n}\nbitmap =\
+    \ (*srcMap_value) & (*dstMap_value) & (*protoMap_value) & (*sportMap_value) &\
+    \ (*dportMap_value);\n__u64 temp = (~bitmap) + 1;\nbitmap = bitmap & temp;\n}\n\
+    __u64 *actionMap_value;\nactionMap_value = bpf_map_lookup_elem(&actionMap, &bitmap);\n\
+    if (actionMap_value) {\n(*actionMap_value) = (*actionMap_value) + 1;\nbpf_map_update_elem(&actionMap,\
+    \ &bitmap, actionMap_value, BPF_EXIST);\nreturn XDP_DROP;\n}\n}\nreturn XDP_PASS;\n\
+    }\nchar __license[] SEC(\"license\") = \"GPL\";\nmaps.h\n#define SEC(NAME) __attribute__((section(NAME),\
+    \ used))\nstatic void *(*bpf_map_lookup_elem)(void *map, void *key) = (void *)\
+    \ BPF_FUNC_map_lookup_elem;\nstatic void *(*bpf_map_update_elem)(void *map, void\
+    \ *key, void *value, int flags) = (void *) BPF_FUNC_map_update_elem;\n#define\
+    \ BUF_SIZE_MAP_NS 256\ntypedef struct bpf_map_def {\nunsigned int type;\nunsigned\
+    \ int key_size;\nunsigned int value_size;\nunsigned int max_entries;\nunsigned\
+    \ int map_flags;\nunsigned int pinning;\nchar namespace[BUF_SIZE_MAP_NS];\n} bpf_map_def;\n\
+    enum bpf_pin_type {\nPIN_NONE = 0,\nPIN_OBJECT_NS,\nPIN_GLOBAL_NS,\nPIN_CUSTOM_NS,\n\
+    };\nstruct bpf_map_def SEC(\"maps/srcMap\") srcMap = {\n.type = BPF_MAP_TYPE_HASH,\n\
+    .key_size = sizeof(__u32),\n.value_size = sizeof(__u64),\n.max_entries = 4194304,\n\
+    .pinning = PIN_GLOBAL_NS,\n.namespace = \"globals\",\n};\nstruct bpf_map_def SEC(\"\
+    maps/dstMap\") dstMap = {\n.type = BPF_MAP_TYPE_HASH,\n.key_size = sizeof(__u32),\n\
+    .value_size = sizeof(__u64),\n.max_entries = 4194304,\n.pinning = PIN_GLOBAL_NS,\n\
+    .namespace = \"globals\",\n};\nstruct bpf_map_def SEC(\"maps/protoMap\") protoMap\
+    \ = {\n.type = BPF_MAP_TYPE_HASH,\n.key_size = sizeof(__u8),\n.value_size = sizeof(__u64),\n\
+    .max_entries = 4194304,\n.pinning = PIN_GLOBAL_NS,\n.namespace = \"globals\",\n\
+    };\nstruct bpf_map_def SEC(\"maps/sportMap\") sportMap = {\n.type = BPF_MAP_TYPE_HASH,\n\
+    .key_size = sizeof(__u16),\n.value_size = sizeof(__u64),\n.max_entries = 4194304,\n\
+    .pinning = PIN_GLOBAL_NS,\n.namespace = \"globals\",\n};\nstruct bpf_map_def SEC(\"\
+    maps/dportMap\") dportMap = {\n.type = BPF_MAP_TYPE_HASH,\n.key_size = sizeof(__u16),\n\
+    .value_size = sizeof(__u64),\n.max_entries = 4194304,\n.pinning = PIN_GLOBAL_NS,\n\
+    .namespace = \"globals\",\n};\nstruct bpf_map_def SEC(\"maps/actionMap\") actionMap\
+    \ = {\n.type = BPF_MAP_TYPE_HASH,\n.key_size = sizeof(__u64),\n.value_size = sizeof(__u64),\n\
+    .max_entries = 4194304,\n.pinning = PIN_GLOBAL_NS,\n.namespace = \"globals\",\n\
+    };\nBelow is the error message\uFF1A\n2023/05/18 12:48:21 error while loading\
+    \ \"xdp/xdp_ip_filter\" (permission denied):\n0: (b7) r0 = 0\n1: (61) r3 = *(u32\
+    \ *)(r1 +4)\n2: (61) r9 = *(u32 *)(r1 +0)\n3: (bf) r1 = r9\n4: (07) r1 += 14\n\
+    5: (2d) if r1 > r3 goto pc+199\nR0_w=inv0 R1_w=pkt(id=0,off=14,r=14,imm=0) R3_w=pkt_end(id=0,off=0,imm=0)\
+    \ R9_w=pkt(id=0,off=0,r=14,imm=0) R10=fp0\n6: (61) r1 = *(u32 *)(r9 +26)\ninvalid\
+    \ access to packet, off=26 size=4, R9(id=0,off=26,r=14)\nR9 offset is outside\
+    \ of the packet\nprocessed 7 insns (limit 1000000) max_states_per_insn 0 total_states\
+    \ 0 peak_states 0 mark_read 0\nThe compilation command I use is clang -O2 -target\
+    \ bpf -c xdp.c -o xdp.o.When I use clang -target bpf -c xdp.c -o xdp.o,the error\
+    \ message has changed.\n2023/05/18 12:47:23 map location not supported: map \"\
+    \" is in section \".data\" instead of \"maps/\"\nI have just entered the field\
+    \ of ebpf in the Linux kernel, and I don't know how to solve the problem. I hope\
+    \ the error can be resolved."
+  selected_answer:
+    answer_id: 76279202
+    url: https://stackoverflow.com/questions/76277872/need-help-in-xdp-program-failing-to-load-with-error-r9-offset-is-outside-of-the#76279202
+    is_accepted: false
+    score: 0
+    body_text: |-
+      The bounds check here is not correct. You are checking if you can access up to struct ethhdr of bytes, but you should check for struct ethhdr + struct iphdr since you will be reading from the iphdr next.
+      struct iphdr *iph;
+      if (end >= data + sizeof(struct ethhdr)) {
+      iph = data + sizeof(struct ethhdr);
+      } else {
+      return XDP_ABORTED;
+      }
+      A more typical way to do bounds checking is:
+      struct iphdr *iph = data + sizeof(struct ethhdr);
+      if ((void *) iphdr + sizeof(struct iphdr) >= end)
+      return XDP_ABORTED;
+      We first calculate the start of the IP header and make a pointer. (this is save since we are not accessing its fields or dereferencing it). Then we take the start of our header, add its size and check that its less then end. After this we know we can access all fields of iph without overrunning bounds.
+    fix_description: The bounds check here is not correct. You are checking if you
+      can access up to struct ethhdr of bytes, but you should check for struct ethhdr
+      + struct iphdr since you will be reading from the iphdr next.

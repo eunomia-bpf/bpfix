@@ -1,0 +1,653 @@
+schema_version: bpfix.raw_external/v1
+raw_id: stackoverflow-75294010
+source_kind: stackoverflow
+source:
+  url: https://stackoverflow.com/questions/75294010/how-to-use-bpf-probe-read-to-copy-large-length-data-in-ebpf-program
+  title: How to use bpf_probe_read() to copy large length data in EBPF program?
+  repository: null
+  commit: null
+  collected_at: '2026-03-11T16:03:11+00:00'
+collector:
+  original_path: bpfix-empirical/raw/so/stackoverflow-75294010.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: true
+  verifier_log_block_count: 1
+  source_snippet_count: 2
+  has_buggy_code: false
+  has_fixed_code: false
+  has_fix_description: false
+reproduction:
+  status: replay_valid
+  case_id: stackoverflow-75294010
+  case_path: cases/stackoverflow-75294010
+  artifact_path: cases/stackoverflow-75294010
+  reason: admitted_to_bpfix_bench_cases
+raw:
+  case_id: stackoverflow-75294010
+  source: stackoverflow
+  collected_at: '2026-03-11T16:03:11+00:00'
+  question:
+    question_id: 75294010
+    title: How to use bpf_probe_read() to copy large length data in EBPF program?
+    url: https://stackoverflow.com/questions/75294010/how-to-use-bpf-probe-read-to-copy-large-length-data-in-ebpf-program
+    tags:
+    - ebpf
+    - bpf
+    score: 0
+    answer_count: 1
+    is_answered: true
+  original_verifier_log:
+    blocks:
+    - |-
+      func#0 @0
+      0: R1=ctx(id=0,off=0,imm=0) R10=fp0
+      ; int syscall__probe_write(struct sys_enter_read_write_ctx *ctx) {
+      0: (bf) r6 = r1
+      1: R1=ctx(id=0,off=0,imm=0) R6_w=ctx(id=0,off=0,imm=0) R10=fp0
+      1: (b7) r1 = 0
+      2: R1_w=inv0 R6_w=ctx(id=0,off=0,imm=0) R10=fp0
+      ; int zero = 0;
+      2: (63) *(u32 *)(r10 -4) = r1
+      last_idx 2 first_idx 0
+      regs=2 stack=0 before 1: (b7) r1 = 0
+      3: R1_w=invP0 R6_w=ctx(id=0,off=0,imm=0) R10=fp0 fp-8=0000????
+      3: (bf) r2 = r10
+      4: R1_w=invP0 R2_w=fp0 R6_w=ctx(id=0,off=0,imm=0) R10=fp0 fp-8=0000????
+      ;
+      4: (07) r2 += -4
+      5: R1_w=invP0 R2_w=fp-4 R6_w=ctx(id=0,off=0,imm=0) R10=fp0 fp-8=0000????
+      ; struct syscall_write_event_t *event = bpf_map_lookup_elem(&write_buffer_heap, &zero);
+      5: (18) r1 = 0xffff888802a72000
+      7: R1_w=map_ptr(id=0,off=0,ks=4,vs=1040,imm=0) R2_w=fp-4 R6_w=ctx(id=0,off=0,imm=0) R10=fp0 fp-8=0000????
+      7: (85) call bpf_map_lookup_elem#1
+      8: R0_w=map_value_or_null(id=1,off=0,ks=4,vs=1040,imm=0) R6_w=ctx(id=0,off=0,imm=0) R10=fp0 fp-8=mmmm????
+      ; if (!event) {
+      8: (15) if r0 == 0x0 goto pc+10
+       R0_w=map_value(id=0,off=0,ks=4,vs=1040,imm=0) R6_w=ctx(id=0,off=0,imm=0) R10=fp0 fp-8=mmmm????
+      9: R0_w=map_value(id=0,off=0,ks=4,vs=1040,imm=0) R6_w=ctx(id=0,off=0,imm=0) R10=fp0 fp-8=mmmm????
+      ; event->attr.fd = ctx->fd;
+      9: (61) r1 = *(u32 *)(r6 +16)
+      10: R0_w=map_value(id=0,off=0,ks=4,vs=1040,imm=0) R1_w=inv(id=0,umax_value=4294967295,var_off=(0x0; 0xffffffff)) R6_w=ctx(id=0,off=0,imm=0) R10=fp0 fp-8=mmmm????
+      10: (b7) r2 = 4
+      11: R0_w=map_value(id=0,off=0,ks=4,vs=1040,imm=0) R1_w=inv(id=0,umax_value=4294967295,var_off=(0x0; 0xffffffff)) R2_w=inv4 R6_w=ctx(id=0,off=0,imm=0) R10=fp0 fp-8=mmmm????
+      ; event->attr.fd = ctx->fd;
+      11: (63) *(u32 *)(r2 +0) = r1
+      R2 invalid mem access 'inv'
+    combined: |-
+      func#0 @0
+      0: R1=ctx(id=0,off=0,imm=0) R10=fp0
+      ; int syscall__probe_write(struct sys_enter_read_write_ctx *ctx) {
+      0: (bf) r6 = r1
+      1: R1=ctx(id=0,off=0,imm=0) R6_w=ctx(id=0,off=0,imm=0) R10=fp0
+      1: (b7) r1 = 0
+      2: R1_w=inv0 R6_w=ctx(id=0,off=0,imm=0) R10=fp0
+      ; int zero = 0;
+      2: (63) *(u32 *)(r10 -4) = r1
+      last_idx 2 first_idx 0
+      regs=2 stack=0 before 1: (b7) r1 = 0
+      3: R1_w=invP0 R6_w=ctx(id=0,off=0,imm=0) R10=fp0 fp-8=0000????
+      3: (bf) r2 = r10
+      4: R1_w=invP0 R2_w=fp0 R6_w=ctx(id=0,off=0,imm=0) R10=fp0 fp-8=0000????
+      ;
+      4: (07) r2 += -4
+      5: R1_w=invP0 R2_w=fp-4 R6_w=ctx(id=0,off=0,imm=0) R10=fp0 fp-8=0000????
+      ; struct syscall_write_event_t *event = bpf_map_lookup_elem(&write_buffer_heap, &zero);
+      5: (18) r1 = 0xffff888802a72000
+      7: R1_w=map_ptr(id=0,off=0,ks=4,vs=1040,imm=0) R2_w=fp-4 R6_w=ctx(id=0,off=0,imm=0) R10=fp0 fp-8=0000????
+      7: (85) call bpf_map_lookup_elem#1
+      8: R0_w=map_value_or_null(id=1,off=0,ks=4,vs=1040,imm=0) R6_w=ctx(id=0,off=0,imm=0) R10=fp0 fp-8=mmmm????
+      ; if (!event) {
+      8: (15) if r0 == 0x0 goto pc+10
+       R0_w=map_value(id=0,off=0,ks=4,vs=1040,imm=0) R6_w=ctx(id=0,off=0,imm=0) R10=fp0 fp-8=mmmm????
+      9: R0_w=map_value(id=0,off=0,ks=4,vs=1040,imm=0) R6_w=ctx(id=0,off=0,imm=0) R10=fp0 fp-8=mmmm????
+      ; event->attr.fd = ctx->fd;
+      9: (61) r1 = *(u32 *)(r6 +16)
+      10: R0_w=map_value(id=0,off=0,ks=4,vs=1040,imm=0) R1_w=inv(id=0,umax_value=4294967295,var_off=(0x0; 0xffffffff)) R6_w=ctx(id=0,off=0,imm=0) R10=fp0 fp-8=mmmm????
+      10: (b7) r2 = 4
+      11: R0_w=map_value(id=0,off=0,ks=4,vs=1040,imm=0) R1_w=inv(id=0,umax_value=4294967295,var_off=(0x0; 0xffffffff)) R2_w=inv4 R6_w=ctx(id=0,off=0,imm=0) R10=fp0 fp-8=mmmm????
+      ; event->attr.fd = ctx->fd;
+      11: (63) *(u32 *)(r2 +0) = r1
+      R2 invalid mem access 'inv'
+  verifier_log:
+    blocks:
+    - |-
+      func#0 @0
+      0: R1=ctx(id=0,off=0,imm=0) R10=fp0
+      ; int syscall__probe_write(struct sys_enter_read_write_ctx *ctx) {
+      0: (bf) r6 = r1
+      1: R1=ctx(id=0,off=0,imm=0) R6_w=ctx(id=0,off=0,imm=0) R10=fp0
+      1: (b7) r1 = 0
+      2: R1_w=inv0 R6_w=ctx(id=0,off=0,imm=0) R10=fp0
+      ; int zero = 0;
+      2: (63) *(u32 *)(r10 -4) = r1
+      last_idx 2 first_idx 0
+      regs=2 stack=0 before 1: (b7) r1 = 0
+      3: R1_w=invP0 R6_w=ctx(id=0,off=0,imm=0) R10=fp0 fp-8=0000????
+      3: (bf) r2 = r10
+      4: R1_w=invP0 R2_w=fp0 R6_w=ctx(id=0,off=0,imm=0) R10=fp0 fp-8=0000????
+      ;
+      4: (07) r2 += -4
+      5: R1_w=invP0 R2_w=fp-4 R6_w=ctx(id=0,off=0,imm=0) R10=fp0 fp-8=0000????
+      ; struct syscall_write_event_t *event = bpf_map_lookup_elem(&write_buffer_heap, &zero);
+      5: (18) r1 = 0xffff888802a72000
+      7: R1_w=map_ptr(id=0,off=0,ks=4,vs=1040,imm=0) R2_w=fp-4 R6_w=ctx(id=0,off=0,imm=0) R10=fp0 fp-8=0000????
+      7: (85) call bpf_map_lookup_elem#1
+      8: R0_w=map_value_or_null(id=1,off=0,ks=4,vs=1040,imm=0) R6_w=ctx(id=0,off=0,imm=0) R10=fp0 fp-8=mmmm????
+      ; if (!event) {
+      8: (15) if r0 == 0x0 goto pc+10
+       R0_w=map_value(id=0,off=0,ks=4,vs=1040,imm=0) R6_w=ctx(id=0,off=0,imm=0) R10=fp0 fp-8=mmmm????
+      9: R0_w=map_value(id=0,off=0,ks=4,vs=1040,imm=0) R6_w=ctx(id=0,off=0,imm=0) R10=fp0 fp-8=mmmm????
+      ; event->attr.fd = ctx->fd;
+      9: (61) r1 = *(u32 *)(r6 +16)
+      10: R0_w=map_value(id=0,off=0,ks=4,vs=1040,imm=0) R1_w=inv(id=0,umax_value=4294967295,var_off=(0x0; 0xffffffff)) R6_w=ctx(id=0,off=0,imm=0) R10=fp0 fp-8=mmmm????
+      10: (b7) r2 = 4
+      11: R0_w=map_value(id=0,off=0,ks=4,vs=1040,imm=0) R1_w=inv(id=0,umax_value=4294967295,var_off=(0x0; 0xffffffff)) R2_w=inv4 R6_w=ctx(id=0,off=0,imm=0) R10=fp0 fp-8=mmmm????
+      ; event->attr.fd = ctx->fd;
+      11: (63) *(u32 *)(r2 +0) = r1
+      R2 invalid mem access 'inv'
+    combined: |-
+      libbpf: loading object from <legacy-so-gh-reproducer>/stackoverflow-75294010/prog.o
+      libbpf: elf: section(3) license, size 4, link 0, flags 3, type=1
+      libbpf: license of <legacy-so-gh-reproducer>/stackoverflow-75294010/prog.o is GPL
+      libbpf: elf: section(4) .maps, size 40, link 0, flags 3, type=1
+      libbpf: elf: section(13) .BTF, size 621, link 0, flags 0, type=1
+      libbpf: elf: section(19) .symtab, size 264, link 1, flags 0, type=2
+      libbpf: looking for externs among 11 symbols...
+      libbpf: collected 0 externs total
+      libbpf: map 'write_buffer_heap': at sec_idx 4, offset 0.
+      libbpf: map 'write_buffer_heap': can't determine value size for type [11]: -22.
+      Error: failed to open object file
+  verifier_log_source: captured_on_6.15.11
+  verifier_log_captured_at: '2026-03-20'
+  source_snippets:
+  - |-
+    sock_bpfel_x86.o:       file format elf64-bpf
+
+    Disassembly of section tracepoint/syscalls/sys_enter_write:
+
+    0000000000000000 <syscall__probe_write>:
+    ; syscall__probe_write():
+           0:       r6 = r1
+           1:       r1 = 0
+           2:       *(u32 *)(r10 - 4) = r1
+           3:       r2 = r10
+    ; syscall_write_events():
+           4:       r2 += -4
+           5:       r1 = 0 ll
+           7:       call 1
+           8:       if r0 == 0 goto +10 <LBB0_2>
+           9:       r1 = *(u64 *)(r6 + 16)
+          10:       r2 = 4
+          11:       *(u32 *)(r2 + 0) = r1
+          12:       r2 = *(u64 *)(r6 + 32)
+          13:       r1 = 8
+          14:       *(u32 *)(r1 + 0) = r2
+          15:       r3 = *(u64 *)(r6 + 24)
+          16:       r2 &= 1023
+          17:       r1 = 16
+          18:       call 4
+
+    0000000000000098 <LBB0_2>:
+    ; LBB0_2():
+          19:       r0 = 0
+          20:       exit
+  - |-
+    func#0 @0
+    0: R1=ctx(id=0,off=0,imm=0) R10=fp0
+    ; int syscall__probe_write(struct sys_enter_read_write_ctx *ctx) {
+    0: (bf) r6 = r1
+    1: R1=ctx(id=0,off=0,imm=0) R6_w=ctx(id=0,off=0,imm=0) R10=fp0
+    ; size_t buf_size = ctx->count & 0x3ff;
+    1: (79) r7 = *(u64 *)(r6 +24)
+    2: R1=ctx(id=0,off=0,imm=0) R6_w=ctx(id=0,off=0,imm=0) R7_w=inv(id=0) R10=fp0
+    ; bpf_probe_read(&buf, sizeof(buf), &ctx->buf);
+    2: (bf) r3 = r6
+    3: R1=ctx(id=0,off=0,imm=0) R3_w=ctx(id=0,off=0,imm=0) R6_w=ctx(id=0,off=0,imm=0) R7_w=inv(id=0) R10=fp0
+    3: (07) r3 += 16
+    4: R1=ctx(id=0,off=0,imm=0) R3_w=ctx(id=0,off=16,imm=0) R6_w=ctx(id=0,off=0,imm=0) R7_w=inv(id=0) R10=fp0
+    4: (bf) r1 = r10
+    5: R1_w=fp0 R3_w=ctx(id=0,off=16,imm=0) R6_w=ctx(id=0,off=0,imm=0) R7_w=inv(id=0) R10=fp0
+    ;
+    5: (07) r1 += -16
+    6: R1_w=fp-16 R3_w=ctx(id=0,off=16,imm=0) R6_w=ctx(id=0,off=0,imm=0) R7_w=inv(id=0) R10=fp0
+    ; bpf_probe_read(&buf, sizeof(buf), &ctx->buf);
+    6: (b7) r2 = 8
+    7: R1_w=fp-16 R2_w=inv8 R3_w=ctx(id=0,off=16,imm=0) R6_w=ctx(id=0,off=0,imm=0) R7_w=inv(id=0) R10=fp0
+    7: (85) call bpf_probe_read#4
+    last_idx 7 first_idx 0
+    regs=4 stack=0 before 6: (b7) r2 = 8
+    8: R0_w=inv(id=0) R6_w=ctx(id=0,off=0,imm=0) R7_w=inv(id=0) R10=fp0 fp-16=mmmmmmmm
+    8: (b7) r1 = 0
+    9: R0_w=inv(id=0) R1_w=inv0 R6_w=ctx(id=0,off=0,imm=0) R7_w=inv(id=0) R10=fp0 fp-16=mmmmmmmm
+    ; zero = 0;
+    9: (63) *(u32 *)(r10 -4) = r1
+    last_idx 9 first_idx 0
+    regs=2 stack=0 before 8: (b7) r1 = 0
+    10: R0_w=inv(id=0) R1_w=invP0 R6_w=ctx(id=0,off=0,imm=0) R7_w=inv(id=0) R10=fp0 fp-8=0000???? fp-16=mmmmmmmm
+    10: (bf) r2 = r10
+    11: R0_w=inv(id=0) R1_w=invP0 R2_w=fp0 R6_w=ctx(id=0,off=0,imm=0) R7_w=inv(id=0) R10=fp0 fp-8=0000???? fp-16=mmmmmmmm
+    ;
+    11: (07) r2 += -4
+    12: R0_w=inv(id=0) R1_w=invP0 R2_w=fp-4 R6_w=ctx(id=0,off=0,imm=0) R7_w=inv(id=0) R10=fp0 fp-8=0000???? fp-16=mmmmmmmm
+    ; struct syscall_write_event_t *event = bpf_map_lookup_elem(&write_buffer_heap, &zero);
+    12: (18) r1 = 0xffff88880710a200
+    14: R0_w=inv(id=0) R1_w=map_ptr(id=0,off=0,ks=4,vs=1040,imm=0) R2_w=fp-4 R6_w=ctx(id=0,off=0,imm=0) R7_w=inv(id=0) R10=fp0 fp-8=0000???? fp-16=mmmmmmmm
+    14: (85) call bpf_map_lookup_elem#1
+    15: R0=map_value_or_null(id=1,off=0,ks=4,vs=1040,imm=0) R6=ctx(id=0,off=0,imm=0) R7=inv(id=0) R10=fp0 fp-8=mmmm???? fp-16=mmmmmmmm
+    ; struct syscall_write_event_t *event = bpf_map_lookup_elem(&write_buffer_heap, &zero);
+    15: (7b) *(u64 *)(r10 -24) = r0
+    16: R0=map_value_or_null(id=1,off=0,ks=4,vs=1040,imm=0) R6=ctx(id=0,off=0,imm=0) R7=inv(id=0) R10=fp0 fp-8=mmmm???? fp-16=mmmmmmmm fp-24_w=map_value_or_null
+    ; if (!event) {
+    16: (15) if r0 == 0x0 goto pc+25
+     R0=map_value(id=0,off=0,ks=4,vs=1040,imm=0) R6=ctx(id=0,off=0,imm=0) R7=inv(id=0) R10=fp0 fp-8=mmmm???? fp-16=mmmmmmmm fp-24_w=map_value
+    17: R0=map_value(id=0,off=0,ks=4,vs=1040,imm=0) R6=ctx(id=0,off=0,imm=0) R7=inv(id=0) R10=fp0 fp-8=mmmm???? fp-16=mmmmmmmm fp-24_w=map_value
+    ; event->attr.fd = ctx->fd;
+    17: (61) r1 = *(u32 *)(r6 +12)
+    18: R0=map_value(id=0,off=0,ks=4,vs=1040,imm=0) R1_w=inv(id=0,umax_value=4294967295,var_off=(0x0; 0xffffffff)) R6=ctx(id=0,off=0,imm=0) R7=inv(id=0) R10=fp0 fp-8=mmmm???? fp-16=mmmmmmmm fp-24_w=map_value
+    ; event->attr.fd = ctx->fd;
+    18: (63) *(u32 *)(r0 +4) = r1
+     R0=map_value(id=0,off=0,ks=4,vs=1040,imm=0) R1_w=inv(id=0,umax_value=4294967295,var_off=(0x0; 0xffffffff)) R6=ctx(id=0,off=0,imm=0) R7=inv(id=0) R10=fp0 fp-8=mmmm???? fp-16=mmmmmmmm fp-24_w=map_value
+    19: R0=map_value(id=0,off=0,ks=4,vs=1040,imm=0) R1_w=inv(id=0,umax_value=4294967295,var_off=(0x0; 0xffffffff)) R6=ctx(id=0,off=0,imm=0) R7=inv(id=0) R10=fp0 fp-8=mmmm???? fp-16=mmmmmmmm fp-24_w=map_value
+    ; event->attr.bytes = ctx->count;
+    19: (79) r1 = *(u64 *)(r6 +24)
+    20: R0=map_value(id=0,off=0,ks=4,vs=1040,imm=0) R1_w=inv(id=0) R6=ctx(id=0,off=0,imm=0) R7=inv(id=0) R10=fp0 fp-8=mmmm???? fp-16=mmmmmmmm fp-24_w=map_value
+    ; event->attr.bytes = ctx->count;
+    20: (63) *(u32 *)(r0 +8) = r1
+     R0=map_value(id=0,off=0,ks=4,vs=1040,imm=0) R1_w=inv(id=0) R6=ctx(id=0,off=0,imm=0) R7=inv(id=0) R10=fp0 fp-8=mmmm???? fp-16=mmmmmmmm fp-24_w=map_value
+    21: R0=map_value(id=0,off=0,ks=4,vs=1040,imm=0) R1_w=inv(id=0) R6=ctx(id=0,off=0,imm=0) R7=inv(id=0) R10=fp0 fp-8=mmmm???? fp-16=mmmmmmmm fp-24_w=map_value
+    21: (b7) r1 = 2
+    22: R0=map_value(id=0,off=0,ks=4,vs=1040,imm=0) R1_w=inv2 R6=ctx(id=0,off=0,imm=0) R7=inv(id=0) R10=fp0 fp-8=mmmm???? fp-16=mmmmmmmm fp-24_w=map_value
+    ; event->attr.event_type = kEventTypeSyscallWriteEvent;
+    22: (63) *(u32 *)(r0 +0) = r1
+     R0=map_value(id=0,off=0,ks=4,vs=1040,imm=0) R1_w=inv2 R6=ctx(id=0,off=0,imm=0) R7=inv(id=0) R10=fp0 fp-8=mmmm???? fp-16=mmmmmmmm fp-24_w=map_value
+    23: R0=map_value(id=0,off=0,ks=4,vs=1040,imm=0) R1_w=inv2 R6=ctx(id=0,off=0,imm=0) R7=inv(id=0) R10=fp0 fp-8=mmmm???? fp-16=mmmmmmmm fp-24_w=map_value
+    ; event->attr.msg_size = buf_size;
+    23: (57) r7 &= 1023
+    24: R0=map_value(id=0,off=0,ks=4,vs=1040,imm=0) R1_w=inv2 R6=ctx(id=0,off=0,imm=0) R7_w=inv(id=0,umax_value=1023,var_off=(0x0; 0x3ff)) R10=fp0 fp-8=mmmm???? fp-16=mmmmmmmm fp-24_w=map_value
+    ; event->attr.msg_size = buf_size;
+    24: (63) *(u32 *)(r0 +12) = r7
+     R0=map_value(id=0,off=0,ks=4,vs=1040,imm=0) R1_w=inv2 R6=ctx(id=0,off=0,imm=0) R7_w=inv(id=0,umax_value=1023,var_off=(0x0; 0x3ff)) R10=fp0 fp-8=mmmm???? fp-16=mmmmmmmm fp-24_w=map_value
+    25: R0=map_value(id=0,off=0,ks=4,vs=1040,imm=0) R1_w=inv2 R6=ctx(id=0,off=0,imm=0) R7_w=inv(id=0,umax_value=1023,var_off=(0x0; 0x3ff)) R10=fp0 fp-8=mmmm???? fp-16=mmmmmmmm fp-24_w=map_value
+    ; int size = bpf_probe_read_str(&event->msg, buf_size, buf);
+    25: (79) r3 = *(u64 *)(r10 -16)
+    26: R0=map_value(id=0,off=0,ks=4,vs=1040,imm=0) R1_w=inv2 R3_w=inv(id=0) R6=ctx(id=0,off=0,imm=0) R7_w=inv(id=0,umax_value=1023,var_off=(0x0; 0x3ff)) R10=fp0 fp-8=mmmm???? fp-16=mmmmmmmm fp-24_w=map_value
+    ; int size = bpf_probe_read_str(&event->msg, buf_size, buf);
+    26: (07) r0 += 16
+    27: R0_w=map_value(id=0,off=16,ks=4,vs=1040,imm=0) R1_w=inv2 R3_w=inv(id=0) R6=ctx(id=0,off=0,imm=0) R7_w=inv(id=0,umax_value=1023,var_off=(0x0; 0x3ff)) R10=fp0 fp-8=mmmm???? fp-16=mmmmmmmm fp-24_w=map_value
+    ; int size = bpf_probe_read_str(&event->msg, buf_size, buf);
+    27: (bf) r1 = r0
+    28: R0_w=map_value(id=0,off=16,ks=4,vs=1040,imm=0) R1_w=map_value(id=0,off=16,ks=4,vs=1040,imm=0) R3_w=inv(id=0) R6=ctx(id=0,off=0,imm=0) R7_w=inv(id=0,umax_value=1023,var_off=(0x0; 0x3ff)) R10=fp0 fp-8=mmmm???? fp-16=mmmmmmmm fp-24_w=map_value
+    28: (bf) r2 = r7
+    29: R0_w=map_value(id=0,off=16,ks=4,vs=1040,imm=0) R1_w=map_value(id=0,off=16,ks=4,vs=1040,imm=0) R2_w=inv(id=0,umax_value=1023,var_off=(0x0; 0x3ff)) R3_w=inv(id=0) R6=ctx(id=0,off=0,imm=0) R7_w=inv(id=0,umax_value=1023,var_off=(0x0; 0x3ff)) R10=fp0 fp-8=mmmm???? fp-16=mmmmmmmm fp-24_w=map_value
+    29: (85) call bpf_probe_read_str#45
+     R0_w=map_value(id=0,off=16,ks=4,vs=1040,imm=0) R1_w=map_value(id=0,off=16,ks=4,vs=1040,imm=0) R2_w=inv(id=0,umax_value=1023,var_off=(0x0; 0x3ff)) R3_w=inv(id=0) R6=ctx(id=0,off=0,imm=0) R7_w=inv(id=0,umax_value=1023,var_off=(0x0; 0x3ff)) R10=fp0 fp-8=mmmm???? fp-16=mmmmmmmm fp-24_w=map_value
+     R0_w=map_value(id=0,off=16,ks=4,vs=1040,imm=0) R1_w=map_value(id=0,off=16,ks=4,vs=1040,imm=0) R2_w=inv(id=0,umax_value=1023,var_off=(0x0; 0x3ff)) R3_w=inv(id=0) R6=ctx(id=0,off=0,imm=0) R7_w=inv(id=0,umax_value=1023,var_off=(0x0; 0x3ff)) R10=fp0 fp-8=mmmm???? fp-16=mmmmmmmm fp-24_w=map_value
+    last_idx 29 first_idx 15
+    regs=4 stack=0 before 28: (bf) r2 = r7
+    regs=80 stack=0 before 27: (bf) r1 = r0
+    regs=80 stack=0 before 26: (07) r0 += 16
+    regs=80 stack=0 before 25: (79) r3 = *(u64 *)(r10 -16)
+    regs=80 stack=0 before 24: (63) *(u32 *)(r0 +12) = r7
+    regs=80 stack=0 before 23: (57) r7 &= 1023
+    regs=80 stack=0 before 22: (63) *(u32 *)(r0 +0) = r1
+    regs=80 stack=0 before 21: (b7) r1 = 2
+    regs=80 stack=0 before 20: (63) *(u32 *)(r0 +8) = r1
+    regs=80 stack=0 before 19: (79) r1 = *(u64 *)(r6 +24)
+    regs=80 stack=0 before 18: (63) *(u32 *)(r0 +4) = r1
+    regs=80 stack=0 before 17: (61) r1 = *(u32 *)(r6 +12)
+    regs=80 stack=0 before 16: (15) if r0 == 0x0 goto pc+25
+    regs=80 stack=0 before 15: (7b) *(u64 *)(r10 -24) = r0
+     R0_rw=map_value_or_null(id=1,off=0,ks=4,vs=1040,imm=0) R6_rw=ctx(id=0,off=0,imm=0) R7_rw=invP(id=0) R10=fp0 fp-8=mmmm???? fp-16_r=mmmmmmmm
+    parent didn't have regs=80 stack=0 marks
+    last_idx 14 first_idx 0
+    regs=80 stack=0 before 14: (85) call bpf_map_lookup_elem#1
+    regs=80 stack=0 before 12: (18) r1 = 0xffff88880710a200
+    regs=80 stack=0 before 11: (07) r2 += -4
+    regs=80 stack=0 before 10: (bf) r2 = r10
+    regs=80 stack=0 before 9: (63) *(u32 *)(r10 -4) = r1
+    regs=80 stack=0 before 8: (b7) r1 = 0
+    regs=80 stack=0 before 7: (85) call bpf_probe_read#4
+    regs=80 stack=0 before 6: (b7) r2 = 8
+    regs=80 stack=0 before 5: (07) r1 += -16
+    regs=80 stack=0 before 4: (bf) r1 = r10
+    regs=80 stack=0 before 3: (07) r3 += 16
+    regs=80 stack=0 before 2: (bf) r3 = r6
+    regs=80 stack=0 before 1: (79) r7 = *(u64 *)(r6 +24)
+    30: R0=inv(id=0,umax_value=1023,var_off=(0x0; 0x3ff)) R6=ctx(id=0,off=0,imm=0) R7=inv(id=0,umax_value=1023,var_off=(0x0; 0x3ff)) R10=fp0 fp-8=mmmm???? fp-16=mmmmmmmm fp-24=map_value
+    ; bpf_perf_event_output(ctx, &syscall_write_events, BPF_F_CURRENT_CPU, &event, sizeof(struct syscall_write_event_t)-MAX_MSG_SIZE+size);
+    30: (67) r0 <<= 32
+    31: R0_w=inv(id=0,umax_value=4393751543808,var_off=(0x0; 0x3ff00000000)) R6=ctx(id=0,off=0,imm=0) R7=inv(id=0,umax_value=1023,var_off=(0x0; 0x3ff)) R10=fp0 fp-8=mmmm???? fp-16=mmmmmmmm fp-24=map_value
+    31: (c7) r0 s>>= 32
+    32: R0_w=inv(id=0,umax_value=1023,var_off=(0x0; 0x3ff)) R6=ctx(id=0,off=0,imm=0) R7=inv(id=0,umax_value=1023,var_off=(0x0; 0x3ff)) R10=fp0 fp-8=mmmm???? fp-16=mmmmmmmm fp-24=map_value
+    ; bpf_perf_event_output(ctx, &syscall_write_events, BPF_F_CURRENT_CPU, &event, sizeof(struct syscall_write_event_t)-MAX_MSG_SIZE+size);
+    32: (07) r0 += 16
+    33: R0_w=inv(id=0,umin_value=16,umax_value=1039,var_off=(0x0; 0x7ff)) R6=ctx(id=0,off=0,imm=0) R7=inv(id=0,umax_value=1023,var_off=(0x0; 0x3ff)) R10=fp0 fp-8=mmmm???? fp-16=mmmmmmmm fp-24=map_value
+    33: (bf) r4 = r10
+    34: R0_w=inv(id=0,umin_value=16,umax_value=1039,var_off=(0x0; 0x7ff)) R4_w=fp0 R6=ctx(id=0,off=0,imm=0) R7=inv(id=0,umax_value=1023,var_off=(0x0; 0x3ff)) R10=fp0 fp-8=mmmm???? fp-16=mmmmmmmm fp-24=map_value
+    ;
+    34: (07) r4 += -24
+    35: R0_w=inv(id=0,umin_value=16,umax_value=1039,var_off=(0x0; 0x7ff)) R4_w=fp-24 R6=ctx(id=0,off=0,imm=0) R7=inv(id=0,umax_value=1023,var_off=(0x0; 0x3ff)) R10=fp0 fp-8=mmmm???? fp-16=mmmmmmmm fp-24=map_value
+    ; bpf_perf_event_output(ctx, &syscall_write_events, BPF_F_CURRENT_CPU, &event, sizeof(struct syscall_write_event_t)-MAX_MSG_SIZE+size);
+    35: (bf) r1 = r6
+    36: R0_w=inv(id=0,umin_value=16,umax_value=1039,var_off=(0x0; 0x7ff)) R1_w=ctx(id=0,off=0,imm=0) R4_w=fp-24 R6=ctx(id=0,off=0,imm=0) R7=inv(id=0,umax_value=1023,var_off=(0x0; 0x3ff)) R10=fp0 fp-8=mmmm???? fp-16=mmmmmmmm fp-24=map_value
+    36: (18) r2 = 0xffff888807109c00
+    38: R0_w=inv(id=0,umin_value=16,umax_value=1039,var_off=(0x0; 0x7ff)) R1_w=ctx(id=0,off=0,imm=0) R2_w=map_ptr(id=0,off=0,ks=4,vs=4,imm=0) R4_w=fp-24 R6=ctx(id=0,off=0,imm=0) R7=inv(id=0,umax_value=1023,var_off=(0x0; 0x3ff)) R10=fp0 fp-8=mmmm???? fp-16=mmmmmmmm fp-24=map_value
+    38: (18) r3 = 0xffffffff
+    40: R0_w=inv(id=0,umin_value=16,umax_value=1039,var_off=(0x0; 0x7ff)) R1_w=ctx(id=0,off=0,imm=0) R2_w=map_ptr(id=0,off=0,ks=4,vs=4,imm=0) R3_w=inv4294967295 R4_w=fp-24 R6=ctx(id=0,off=0,imm=0) R7=inv(id=0,umax_value=1023,var_off=(0x0; 0x3ff)) R10=fp0 fp-8=mmmm???? fp-16=mmmmmmmm fp-24=map_value
+    40: (bf) r5 = r0
+    41: R0_w=inv(id=0,umin_value=16,umax_value=1039,var_off=(0x0; 0x7ff)) R1_w=ctx(id=0,off=0,imm=0) R2_w=map_ptr(id=0,off=0,ks=4,vs=4,imm=0) R3_w=inv4294967295 R4_w=fp-24 R5_w=inv(id=0,umin_value=16,umax_value=1039,var_off=(0x0; 0x7ff)) R6=ctx(id=0,off=0,imm=0) R7=inv(id=0,umax_value=1023,var_off=(0x0; 0x3ff)) R10=fp0 fp-8=mmmm???? fp-16=mmmmmmmm fp-24=map_value
+    41: (85) call bpf_perf_event_output#25
+    invalid stack type R4 off=-24 access_size=1039
+  question_body_text: |-
+    I am trying to dump the contents of the user space buffer in write() system call by running ebpf programs on tracepoint/syscalls/sys_enter_write.
+    I want to copy data with a maximum length of 1024, so I use BPF_MAP_TYPE_PERCPU_ARRAY to temporarily store the expected data structure, but when reading data through bpf_probe_read, I get an error from the verifier: load program: permission denied: 11: (63) *(u32 *) (r2 +0) = r1: R2 invalid mem access 'inv' (21 line(s) omitted).
+    kernel: 5.4.119
+    #include "vmlinux.h"
+    #include "common.h"
+    #include "bpf_tracing.h"
+    #include "bpf_helpers.h"
+    char __license[] SEC("license") = "Dual MIT/GPL";
+    struct {
+    __uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+    __uint(max_entries, 1);
+    __type(key, __u32);
+    __type(value, struct syscall_write_event_t);
+    } write_buffer_heap SEC(".maps");
+    struct {
+    __uint(type, BPF_MAP_TYPE_PERF_EVENT_ARRAY);
+    } syscall_write_events SEC(".maps");
+    #define MAX_MSG_SIZE 1024
+    // This needs to match exactly with the Go version of the struct.
+    struct syscall_write_event_t {
+    struct attr_t {
+    int event_type;
+    int fd;
+    int bytes;
+    // Care needs to be taken as only msg_size bytes of msg are guaranteed
+    // to be valid.
+    int msg_size;
+    } attr;
+    char msg[MAX_MSG_SIZE];
+    };
+    struct sys_enter_read_write_ctx {
+    __u64 __unused_syscall_header;
+    __u32 __unused_syscall_nr;
+    __u64 fd;
+    const char * buf;
+    size_t count;
+    };
+    enum {
+    kEventTypeSyscallAddrEvent = 1,
+    kEventTypeSyscallWriteEvent = 2,
+    kEventTypeSyscallCloseEvent = 3,
+    };
+    SEC("tracepoint/syscalls/sys_enter_write")
+    int syscall__probe_write(struct sys_enter_read_write_ctx *ctx) {
+    int zero = 0;
+    struct syscall_write_event_t *event = bpf_map_lookup_elem(&write_buffer_heap, &zero);
+    if (!event) {
+    return 0;
+    }
+    __builtin_memset(&event, 0, sizeof(event));
+    event->attr.fd = ctx->fd;
+    event->attr.bytes = ctx->count;
+    // size_t buf_size = ctx->count < sizeof(event->msg) ? ctx->count : sizeof(event->msg);
+    // size_t buf_size = ctx->count < 0x400 ? ctx->count : 0x3ff;
+    size_t buf_size = ctx->count & 0x3ff;
+    // asm volatile("%[buf_size] &= 0xfff;\n" ::[buf_size] "+r"(buf_size) :);
+    bpf_probe_read(&event->msg, buf_size, ctx->buf);
+    event->attr.msg_size = buf_size;
+    event->attr.event_type = kEventTypeSyscallWriteEvent;
+    bpf_perf_event_output(ctx, &syscall_write_events, BPF_F_CURRENT_CPU, &event, sizeof(event->attr) + buf_size);
+    return 0;
+    }
+    llvm-objdump -d -S --no-show-raw-insn -l --symbolize-operands syscalls_bpfel_x86.o
+    sock_bpfel_x86.o: file format elf64-bpf
+    Disassembly of section tracepoint/syscalls/sys_enter_write:
+    0000000000000000 <syscall__probe_write>:
+    ; syscall__probe_write():
+    0: r6 = r1
+    1: r1 = 0
+    2: *(u32 *)(r10 - 4) = r1
+    3: r2 = r10
+    ; syscall_write_events():
+    4: r2 += -4
+    5: r1 = 0 ll
+    7: call 1
+    8: if r0 == 0 goto +10 <LBB0_2>
+    9: r1 = *(u64 *)(r6 + 16)
+    10: r2 = 4
+    11: *(u32 *)(r2 + 0) = r1
+    12: r2 = *(u64 *)(r6 + 32)
+    13: r1 = 8
+    14: *(u32 *)(r1 + 0) = r2
+    15: r3 = *(u64 *)(r6 + 24)
+    16: r2 &= 1023
+    17: r1 = 16
+    18: call 4
+    0000000000000098 <LBB0_2>:
+    ; LBB0_2():
+    19: r0 = 0
+    20: exit
+    verifier log:
+    func#0 @0
+    0: R1=ctx(id=0,off=0,imm=0) R10=fp0
+    ; int syscall__probe_write(struct sys_enter_read_write_ctx *ctx) {
+    0: (bf) r6 = r1
+    1: R1=ctx(id=0,off=0,imm=0) R6_w=ctx(id=0,off=0,imm=0) R10=fp0
+    1: (b7) r1 = 0
+    2: R1_w=inv0 R6_w=ctx(id=0,off=0,imm=0) R10=fp0
+    ; int zero = 0;
+    2: (63) *(u32 *)(r10 -4) = r1
+    last_idx 2 first_idx 0
+    regs=2 stack=0 before 1: (b7) r1 = 0
+    3: R1_w=invP0 R6_w=ctx(id=0,off=0,imm=0) R10=fp0 fp-8=0000????
+    3: (bf) r2 = r10
+    4: R1_w=invP0 R2_w=fp0 R6_w=ctx(id=0,off=0,imm=0) R10=fp0 fp-8=0000????
+    ;
+    4: (07) r2 += -4
+    5: R1_w=invP0 R2_w=fp-4 R6_w=ctx(id=0,off=0,imm=0) R10=fp0 fp-8=0000????
+    ; struct syscall_write_event_t *event = bpf_map_lookup_elem(&write_buffer_heap, &zero);
+    5: (18) r1 = 0xffff888802a72000
+    7: R1_w=map_ptr(id=0,off=0,ks=4,vs=1040,imm=0) R2_w=fp-4 R6_w=ctx(id=0,off=0,imm=0) R10=fp0 fp-8=0000????
+    7: (85) call bpf_map_lookup_elem#1
+    8: R0_w=map_value_or_null(id=1,off=0,ks=4,vs=1040,imm=0) R6_w=ctx(id=0,off=0,imm=0) R10=fp0 fp-8=mmmm????
+    ; if (!event) {
+    8: (15) if r0 == 0x0 goto pc+10
+    R0_w=map_value(id=0,off=0,ks=4,vs=1040,imm=0) R6_w=ctx(id=0,off=0,imm=0) R10=fp0 fp-8=mmmm????
+    9: R0_w=map_value(id=0,off=0,ks=4,vs=1040,imm=0) R6_w=ctx(id=0,off=0,imm=0) R10=fp0 fp-8=mmmm????
+    ; event->attr.fd = ctx->fd;
+    9: (61) r1 = *(u32 *)(r6 +16)
+    10: R0_w=map_value(id=0,off=0,ks=4,vs=1040,imm=0) R1_w=inv(id=0,umax_value=4294967295,var_off=(0x0; 0xffffffff)) R6_w=ctx(id=0,off=0,imm=0) R10=fp0 fp-8=mmmm????
+    10: (b7) r2 = 4
+    11: R0_w=map_value(id=0,off=0,ks=4,vs=1040,imm=0) R1_w=inv(id=0,umax_value=4294967295,var_off=(0x0; 0xffffffff)) R2_w=inv4 R6_w=ctx(id=0,off=0,imm=0) R10=fp0 fp-8=mmmm????
+    ; event->attr.fd = ctx->fd;
+    11: (63) *(u32 *)(r2 +0) = r1
+    R2 invalid mem access 'inv'
+    I removed __builtin_memset, then i got invalid stack type R4 off=-24 access_size=1039
+    SEC("tracepoint/syscalls/sys_enter_write")
+    int syscall__probe_write(struct sys_enter_read_write_ctx *ctx) {
+    int zero;
+    size_t buf_size = ctx->count < 0x400 ? ctx->count : 0x3ff;
+    asm volatile("%[buf_size] &= 0xfff;\n" ::[buf_size] "+r"(buf_size):);
+    char *buf;
+    bpf_probe_read(&buf, sizeof(buf), &ctx->buf);
+    zero = 0;
+    struct syscall_write_event_t *event = bpf_map_lookup_elem(&write_buffer_heap, &zero);
+    if (!event) {
+    return 0;
+    }
+    event->attr.fd = ctx->fd;
+    event->attr.bytes = ctx->count;
+    event->attr.msg_size = buf_size;
+    event->attr.event_type = kEventTypeSyscallWriteEvent;
+    int size = bpf_probe_read_str(&event->msg, buf_size, buf);
+    bpf_perf_event_output(ctx, &syscall_write_events, BPF_F_CURRENT_CPU, &event, sizeof(struct syscall_write_event_t)-MAX_MSG_SIZE+size);
+    return 0;
+    }
+    verifier log:
+    func#0 @0
+    0: R1=ctx(id=0,off=0,imm=0) R10=fp0
+    ; int syscall__probe_write(struct sys_enter_read_write_ctx *ctx) {
+    0: (bf) r6 = r1
+    1: R1=ctx(id=0,off=0,imm=0) R6_w=ctx(id=0,off=0,imm=0) R10=fp0
+    ; size_t buf_size = ctx->count & 0x3ff;
+    1: (79) r7 = *(u64 *)(r6 +24)
+    2: R1=ctx(id=0,off=0,imm=0) R6_w=ctx(id=0,off=0,imm=0) R7_w=inv(id=0) R10=fp0
+    ; bpf_probe_read(&buf, sizeof(buf), &ctx->buf);
+    2: (bf) r3 = r6
+    3: R1=ctx(id=0,off=0,imm=0) R3_w=ctx(id=0,off=0,imm=0) R6_w=ctx(id=0,off=0,imm=0) R7_w=inv(id=0) R10=fp0
+    3: (07) r3 += 16
+    4: R1=ctx(id=0,off=0,imm=0) R3_w=ctx(id=0,off=16,imm=0) R6_w=ctx(id=0,off=0,imm=0) R7_w=inv(id=0) R10=fp0
+    4: (bf) r1 = r10
+    5: R1_w=fp0 R3_w=ctx(id=0,off=16,imm=0) R6_w=ctx(id=0,off=0,imm=0) R7_w=inv(id=0) R10=fp0
+    ;
+    5: (07) r1 += -16
+    6: R1_w=fp-16 R3_w=ctx(id=0,off=16,imm=0) R6_w=ctx(id=0,off=0,imm=0) R7_w=inv(id=0) R10=fp0
+    ; bpf_probe_read(&buf, sizeof(buf), &ctx->buf);
+    6: (b7) r2 = 8
+    7: R1_w=fp-16 R2_w=inv8 R3_w=ctx(id=0,off=16,imm=0) R6_w=ctx(id=0,off=0,imm=0) R7_w=inv(id=0) R10=fp0
+    7: (85) call bpf_probe_read#4
+    last_idx 7 first_idx 0
+    regs=4 stack=0 before 6: (b7) r2 = 8
+    8: R0_w=inv(id=0) R6_w=ctx(id=0,off=0,imm=0) R7_w=inv(id=0) R10=fp0 fp-16=mmmmmmmm
+    8: (b7) r1 = 0
+    9: R0_w=inv(id=0) R1_w=inv0 R6_w=ctx(id=0,off=0,imm=0) R7_w=inv(id=0) R10=fp0 fp-16=mmmmmmmm
+    ; zero = 0;
+    9: (63) *(u32 *)(r10 -4) = r1
+    last_idx 9 first_idx 0
+    regs=2 stack=0 before 8: (b7) r1 = 0
+    10: R0_w=inv(id=0) R1_w=invP0 R6_w=ctx(id=0,off=0,imm=0) R7_w=inv(id=0) R10=fp0 fp-8=0000???? fp-16=mmmmmmmm
+    10: (bf) r2 = r10
+    11: R0_w=inv(id=0) R1_w=invP0 R2_w=fp0 R6_w=ctx(id=0,off=0,imm=0) R7_w=inv(id=0) R10=fp0 fp-8=0000???? fp-16=mmmmmmmm
+    ;
+    11: (07) r2 += -4
+    12: R0_w=inv(id=0) R1_w=invP0 R2_w=fp-4 R6_w=ctx(id=0,off=0,imm=0) R7_w=inv(id=0) R10=fp0 fp-8=0000???? fp-16=mmmmmmmm
+    ; struct syscall_write_event_t *event = bpf_map_lookup_elem(&write_buffer_heap, &zero);
+    12: (18) r1 = 0xffff88880710a200
+    14: R0_w=inv(id=0) R1_w=map_ptr(id=0,off=0,ks=4,vs=1040,imm=0) R2_w=fp-4 R6_w=ctx(id=0,off=0,imm=0) R7_w=inv(id=0) R10=fp0 fp-8=0000???? fp-16=mmmmmmmm
+    14: (85) call bpf_map_lookup_elem#1
+    15: R0=map_value_or_null(id=1,off=0,ks=4,vs=1040,imm=0) R6=ctx(id=0,off=0,imm=0) R7=inv(id=0) R10=fp0 fp-8=mmmm???? fp-16=mmmmmmmm
+    ; struct syscall_write_event_t *event = bpf_map_lookup_elem(&write_buffer_heap, &zero);
+    15: (7b) *(u64 *)(r10 -24) = r0
+    16: R0=map_value_or_null(id=1,off=0,ks=4,vs=1040,imm=0) R6=ctx(id=0,off=0,imm=0) R7=inv(id=0) R10=fp0 fp-8=mmmm???? fp-16=mmmmmmmm fp-24_w=map_value_or_null
+    ; if (!event) {
+    16: (15) if r0 == 0x0 goto pc+25
+    R0=map_value(id=0,off=0,ks=4,vs=1040,imm=0) R6=ctx(id=0,off=0,imm=0) R7=inv(id=0) R10=fp0 fp-8=mmmm???? fp-16=mmmmmmmm fp-24_w=map_value
+    17: R0=map_value(id=0,off=0,ks=4,vs=1040,imm=0) R6=ctx(id=0,off=0,imm=0) R7=inv(id=0) R10=fp0 fp-8=mmmm???? fp-16=mmmmmmmm fp-24_w=map_value
+    ; event->attr.fd = ctx->fd;
+    17: (61) r1 = *(u32 *)(r6 +12)
+    18: R0=map_value(id=0,off=0,ks=4,vs=1040,imm=0) R1_w=inv(id=0,umax_value=4294967295,var_off=(0x0; 0xffffffff)) R6=ctx(id=0,off=0,imm=0) R7=inv(id=0) R10=fp0 fp-8=mmmm???? fp-16=mmmmmmmm fp-24_w=map_value
+    ; event->attr.fd = ctx->fd;
+    18: (63) *(u32 *)(r0 +4) = r1
+    R0=map_value(id=0,off=0,ks=4,vs=1040,imm=0) R1_w=inv(id=0,umax_value=4294967295,var_off=(0x0; 0xffffffff)) R6=ctx(id=0,off=0,imm=0) R7=inv(id=0) R10=fp0 fp-8=mmmm???? fp-16=mmmmmmmm fp-24_w=map_value
+    19: R0=map_value(id=0,off=0,ks=4,vs=1040,imm=0) R1_w=inv(id=0,umax_value=4294967295,var_off=(0x0; 0xffffffff)) R6=ctx(id=0,off=0,imm=0) R7=inv(id=0) R10=fp0 fp-8=mmmm???? fp-16=mmmmmmmm fp-24_w=map_value
+    ; event->attr.bytes = ctx->count;
+    19: (79) r1 = *(u64 *)(r6 +24)
+    20: R0=map_value(id=0,off=0,ks=4,vs=1040,imm=0) R1_w=inv(id=0) R6=ctx(id=0,off=0,imm=0) R7=inv(id=0) R10=fp0 fp-8=mmmm???? fp-16=mmmmmmmm fp-24_w=map_value
+    ; event->attr.bytes = ctx->count;
+    20: (63) *(u32 *)(r0 +8) = r1
+    R0=map_value(id=0,off=0,ks=4,vs=1040,imm=0) R1_w=inv(id=0) R6=ctx(id=0,off=0,imm=0) R7=inv(id=0) R10=fp0 fp-8=mmmm???? fp-16=mmmmmmmm fp-24_w=map_value
+    21: R0=map_value(id=0,off=0,ks=4,vs=1040,imm=0) R1_w=inv(id=0) R6=ctx(id=0,off=0,imm=0) R7=inv(id=0) R10=fp0 fp-8=mmmm???? fp-16=mmmmmmmm fp-24_w=map_value
+    21: (b7) r1 = 2
+    22: R0=map_value(id=0,off=0,ks=4,vs=1040,imm=0) R1_w=inv2 R6=ctx(id=0,off=0,imm=0) R7=inv(id=0) R10=fp0 fp-8=mmmm???? fp-16=mmmmmmmm fp-24_w=map_value
+    ; event->attr.event_type = kEventTypeSyscallWriteEvent;
+    22: (63) *(u32 *)(r0 +0) = r1
+    R0=map_value(id=0,off=0,ks=4,vs=1040,imm=0) R1_w=inv2 R6=ctx(id=0,off=0,imm=0) R7=inv(id=0) R10=fp0 fp-8=mmmm???? fp-16=mmmmmmmm fp-24_w=map_value
+    23: R0=map_value(id=0,off=0,ks=4,vs=1040,imm=0) R1_w=inv2 R6=ctx(id=0,off=0,imm=0) R7=inv(id=0) R10=fp0 fp-8=mmmm???? fp-16=mmmmmmmm fp-24_w=map_value
+    ; event->attr.msg_size = buf_size;
+    23: (57) r7 &= 1023
+    24: R0=map_value(id=0,off=0,ks=4,vs=1040,imm=0) R1_w=inv2 R6=ctx(id=0,off=0,imm=0) R7_w=inv(id=0,umax_value=1023,var_off=(0x0; 0x3ff)) R10=fp0 fp-8=mmmm???? fp-16=mmmmmmmm fp-24_w=map_value
+    ; event->attr.msg_size = buf_size;
+    24: (63) *(u32 *)(r0 +12) = r7
+    R0=map_value(id=0,off=0,ks=4,vs=1040,imm=0) R1_w=inv2 R6=ctx(id=0,off=0,imm=0) R7_w=inv(id=0,umax_value=1023,var_off=(0x0; 0x3ff)) R10=fp0 fp-8=mmmm???? fp-16=mmmmmmmm fp-24_w=map_value
+    25: R0=map_value(id=0,off=0,ks=4,vs=1040,imm=0) R1_w=inv2 R6=ctx(id=0,off=0,imm=0) R7_w=inv(id=0,umax_value=1023,var_off=(0x0; 0x3ff)) R10=fp0 fp-8=mmmm???? fp-16=mmmmmmmm fp-24_w=map_value
+    ; int size = bpf_probe_read_str(&event->msg, buf_size, buf);
+    25: (79) r3 = *(u64 *)(r10 -16)
+    26: R0=map_value(id=0,off=0,ks=4,vs=1040,imm=0) R1_w=inv2 R3_w=inv(id=0) R6=ctx(id=0,off=0,imm=0) R7_w=inv(id=0,umax_value=1023,var_off=(0x0; 0x3ff)) R10=fp0 fp-8=mmmm???? fp-16=mmmmmmmm fp-24_w=map_value
+    ; int size = bpf_probe_read_str(&event->msg, buf_size, buf);
+    26: (07) r0 += 16
+    27: R0_w=map_value(id=0,off=16,ks=4,vs=1040,imm=0) R1_w=inv2 R3_w=inv(id=0) R6=ctx(id=0,off=0,imm=0) R7_w=inv(id=0,umax_value=1023,var_off=(0x0; 0x3ff)) R10=fp0 fp-8=mmmm???? fp-16=mmmmmmmm fp-24_w=map_value
+    ; int size = bpf_probe_read_str(&event->msg, buf_size, buf);
+    27: (bf) r1 = r0
+    28: R0_w=map_value(id=0,off=16,ks=4,vs=1040,imm=0) R1_w=map_value(id=0,off=16,ks=4,vs=1040,imm=0) R3_w=inv(id=0) R6=ctx(id=0,off=0,imm=0) R7_w=inv(id=0,umax_value=1023,var_off=(0x0; 0x3ff)) R10=fp0 fp-8=mmmm???? fp-16=mmmmmmmm fp-24_w=map_value
+    28: (bf) r2 = r7
+    29: R0_w=map_value(id=0,off=16,ks=4,vs=1040,imm=0) R1_w=map_value(id=0,off=16,ks=4,vs=1040,imm=0) R2_w=inv(id=0,umax_value=1023,var_off=(0x0; 0x3ff)) R3_w=inv(id=0) R6=ctx(id=0,off=0,imm=0) R7_w=inv(id=0,umax_value=1023,var_off=(0x0; 0x3ff)) R10=fp0 fp-8=mmmm???? fp-16=mmmmmmmm fp-24_w=map_value
+    29: (85) call bpf_probe_read_str#45
+    R0_w=map_value(id=0,off=16,ks=4,vs=1040,imm=0) R1_w=map_value(id=0,off=16,ks=4,vs=1040,imm=0) R2_w=inv(id=0,umax_value=1023,var_off=(0x0; 0x3ff)) R3_w=inv(id=0) R6=ctx(id=0,off=0,imm=0) R7_w=inv(id=0,umax_value=1023,var_off=(0x0; 0x3ff)) R10=fp0 fp-8=mmmm???? fp-16=mmmmmmmm fp-24_w=map_value
+    R0_w=map_value(id=0,off=16,ks=4,vs=1040,imm=0) R1_w=map_value(id=0,off=16,ks=4,vs=1040,imm=0) R2_w=inv(id=0,umax_value=1023,var_off=(0x0; 0x3ff)) R3_w=inv(id=0) R6=ctx(id=0,off=0,imm=0) R7_w=inv(id=0,umax_value=1023,var_off=(0x0; 0x3ff)) R10=fp0 fp-8=mmmm???? fp-16=mmmmmmmm fp-24_w=map_value
+    last_idx 29 first_idx 15
+    regs=4 stack=0 before 28: (bf) r2 = r7
+    regs=80 stack=0 before 27: (bf) r1 = r0
+    regs=80 stack=0 before 26: (07) r0 += 16
+    regs=80 stack=0 before 25: (79) r3 = *(u64 *)(r10 -16)
+    regs=80 stack=0 before 24: (63) *(u32 *)(r0 +12) = r7
+    regs=80 stack=0 before 23: (57) r7 &= 1023
+    regs=80 stack=0 before 22: (63) *(u32 *)(r0 +0) = r1
+    regs=80 stack=0 before 21: (b7) r1 = 2
+    regs=80 stack=0 before 20: (63) *(u32 *)(r0 +8) = r1
+    regs=80 stack=0 before 19: (79) r1 = *(u64 *)(r6 +24)
+    regs=80 stack=0 before 18: (63) *(u32 *)(r0 +4) = r1
+    regs=80 stack=0 before 17: (61) r1 = *(u32 *)(r6 +12)
+    regs=80 stack=0 before 16: (15) if r0 == 0x0 goto pc+25
+    regs=80 stack=0 before 15: (7b) *(u64 *)(r10 -24) = r0
+    R0_rw=map_value_or_null(id=1,off=0,ks=4,vs=1040,imm=0) R6_rw=ctx(id=0,off=0,imm=0) R7_rw=invP(id=0) R10=fp0 fp-8=mmmm???? fp-16_r=mmmmmmmm
+    parent didn't have regs=80 stack=0 marks
+    last_idx 14 first_idx 0
+    regs=80 stack=0 before 14: (85) call bpf_map_lookup_elem#1
+    regs=80 stack=0 before 12: (18) r1 = 0xffff88880710a200
+    regs=80 stack=0 before 11: (07) r2 += -4
+    regs=80 stack=0 before 10: (bf) r2 = r10
+    regs=80 stack=0 before 9: (63) *(u32 *)(r10 -4) = r1
+    regs=80 stack=0 before 8: (b7) r1 = 0
+    regs=80 stack=0 before 7: (85) call bpf_probe_read#4
+    regs=80 stack=0 before 6: (b7) r2 = 8
+    regs=80 stack=0 before 5: (07) r1 += -16
+    regs=80 stack=0 before 4: (bf) r1 = r10
+    regs=80 stack=0 before 3: (07) r3 += 16
+    regs=80 stack=0 before 2: (bf) r3 = r6
+    regs=80 stack=0 before 1: (79) r7 = *(u64 *)(r6 +24)
+    30: R0=inv(id=0,umax_value=1023,var_off=(0x0; 0x3ff)) R6=ctx(id=0,off=0,imm=0) R7=inv(id=0,umax_value=1023,var_off=(0x0; 0x3ff)) R10=fp0 fp-8=mmmm???? fp-16=mmmmmmmm fp-24=map_value
+    ; bpf_perf_event_output(ctx, &syscall_write_events, BPF_F_CURRENT_CPU, &event, sizeof(struct syscall_write_event_t)-MAX_MSG_SIZE+size);
+    30: (67) r0 <<= 32
+    31: R0_w=inv(id=0,umax_value=4393751543808,var_off=(0x0; 0x3ff00000000)) R6=ctx(id=0,off=0,imm=0) R7=inv(id=0,umax_value=1023,var_off=(0x0; 0x3ff)) R10=fp0 fp-8=mmmm???? fp-16=mmmmmmmm fp-24=map_value
+    31: (c7) r0 s>>= 32
+    32: R0_w=inv(id=0,umax_value=1023,var_off=(0x0; 0x3ff)) R6=ctx(id=0,off=0,imm=0) R7=inv(id=0,umax_value=1023,var_off=(0x0; 0x3ff)) R10=fp0 fp-8=mmmm???? fp-16=mmmmmmmm fp-24=map_value
+    ; bpf_perf_event_output(ctx, &syscall_write_events, BPF_F_CURRENT_CPU, &event, sizeof(struct syscall_write_event_t)-MAX_MSG_SIZE+size);
+    32: (07) r0 += 16
+    33: R0_w=inv(id=0,umin_value=16,umax_value=1039,var_off=(0x0; 0x7ff)) R6=ctx(id=0,off=0,imm=0) R7=inv(id=0,umax_value=1023,var_off=(0x0; 0x3ff)) R10=fp0 fp-8=mmmm???? fp-16=mmmmmmmm fp-24=map_value
+    33: (bf) r4 = r10
+    34: R0_w=inv(id=0,umin_value=16,umax_value=1039,var_off=(0x0; 0x7ff)) R4_w=fp0 R6=ctx(id=0,off=0,imm=0) R7=inv(id=0,umax_value=1023,var_off=(0x0; 0x3ff)) R10=fp0 fp-8=mmmm???? fp-16=mmmmmmmm fp-24=map_value
+    ;
+    34: (07) r4 += -24
+    35: R0_w=inv(id=0,umin_value=16,umax_value=1039,var_off=(0x0; 0x7ff)) R4_w=fp-24 R6=ctx(id=0,off=0,imm=0) R7=inv(id=0,umax_value=1023,var_off=(0x0; 0x3ff)) R10=fp0 fp-8=mmmm???? fp-16=mmmmmmmm fp-24=map_value
+    ; bpf_perf_event_output(ctx, &syscall_write_events, BPF_F_CURRENT_CPU, &event, sizeof(struct syscall_write_event_t)-MAX_MSG_SIZE+size);
+    35: (bf) r1 = r6
+    36: R0_w=inv(id=0,umin_value=16,umax_value=1039,var_off=(0x0; 0x7ff)) R1_w=ctx(id=0,off=0,imm=0) R4_w=fp-24 R6=ctx(id=0,off=0,imm=0) R7=inv(id=0,umax_value=1023,var_off=(0x0; 0x3ff)) R10=fp0 fp-8=mmmm???? fp-16=mmmmmmmm fp-24=map_value
+    36: (18) r2 = 0xffff888807109c00
+    38: R0_w=inv(id=0,umin_value=16,umax_value=1039,var_off=(0x0; 0x7ff)) R1_w=ctx(id=0,off=0,imm=0) R2_w=map_ptr(id=0,off=0,ks=4,vs=4,imm=0) R4_w=fp-24 R6=ctx(id=0,off=0,imm=0) R7=inv(id=0,umax_value=1023,var_off=(0x0; 0x3ff)) R10=fp0 fp-8=mmmm???? fp-16=mmmmmmmm fp-24=map_value
+    38: (18) r3 = 0xffffffff
+    40: R0_w=inv(id=0,umin_value=16,umax_value=1039,var_off=(0x0; 0x7ff)) R1_w=ctx(id=0,off=0,imm=0) R2_w=map_ptr(id=0,off=0,ks=4,vs=4,imm=0) R3_w=inv4294967295 R4_w=fp-24 R6=ctx(id=0,off=0,imm=0) R7=inv(id=0,umax_value=1023,var_off=(0x0; 0x3ff)) R10=fp0 fp-8=mmmm???? fp-16=mmmmmmmm fp-24=map_value
+    40: (bf) r5 = r0
+    41: R0_w=inv(id=0,umin_value=16,umax_value=1039,var_off=(0x0; 0x7ff)) R1_w=ctx(id=0,off=0,imm=0) R2_w=map_ptr(id=0,off=0,ks=4,vs=4,imm=0) R3_w=inv4294967295 R4_w=fp-24 R5_w=inv(id=0,umin_value=16,umax_value=1039,var_off=(0x0; 0x7ff)) R6=ctx(id=0,off=0,imm=0) R7=inv(id=0,umax_value=1023,var_off=(0x0; 0x3ff)) R10=fp0 fp-8=mmmm???? fp-16=mmmmmmmm fp-24=map_value
+    41: (85) call bpf_perf_event_output#25
+    invalid stack type R4 off=-24 access_size=1039
+    i'm really confused, hope someone can help out, Thanks!
+  selected_answer:
+    answer_id: 75309149
+    url: https://stackoverflow.com/questions/75294010/how-to-use-bpf-probe-read-to-copy-large-length-data-in-ebpf-program#75309149
+    is_accepted: true
+    score: 1
+    body_text: |-
+      TL;DR. You want to pass a pointer to bpf_perf_event_output, not a pointer to a pointer.
+      Verifier Error Explanation
+      41: R0_w=inv(id=0,umin_value=16,umax_value=1039,var_off=(0x0; 0x7ff)) R1_w=ctx(id=0,off=0,imm=0) R2_w=map_ptr(id=0,off=0,ks=4,vs=4,imm=0) R3_w=inv4294967295 R4_w=fp-24 R5_w=inv(id=0,umin_value=16,umax_value=1039,var_off=(0x0; 0x7ff)) R6=ctx(id=0,off=0,imm=0) R7=inv(id=0,umax_value=1023,var_off=(0x0; 0x3ff)) R10=fp0 fp-8=mmmm???? fp-16=mmmmmmmm fp-24=map_value
+      41: (85) call bpf_perf_event_output#25
+      invalid stack type R4 off=-24 access_size=1039
+      Here the verifier complains that the fourth argument to bpf_perf_event_output is pointing to the stack with an access size that is way beyond the actual stack size. The fourth argument is &event.
+      Root Cause
+      The fourth argument to bpf_perf_event_output should be a pointer to the data to post on the ring buffer. Hence, you want to pass event as the argument, not &event.
+    fix_description: Root Cause The fourth argument to bpf_perf_event_output should
+      be a pointer to the data to post on the ring buffer. Hence, you want to pass
+      event as the argument, not &event.

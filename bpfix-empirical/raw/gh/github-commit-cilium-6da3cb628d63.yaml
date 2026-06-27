@@ -1,0 +1,131 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-6da3cb628d63
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/6da3cb628d639b4d51eb270693eef18705e3d441
+  title: 'bpf: fix complexity issue on kernels <5.3'
+  repository: https://github.com/cilium/cilium
+  commit: 6da3cb628d639b4d51eb270693eef18705e3d441
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-6da3cb628d63.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: environment_required
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Explicitly targets complexity on kernels <5.3 by adding relax_verifier()/inlining
+    changes in full LXC and conntrack paths.
+raw:
+  case_id: github-commit-cilium-6da3cb628d63
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: 6da3cb628d639b4d51eb270693eef18705e3d441
+  commit_message: 'bpf: fix complexity issue on kernels <5.3'
+  commit_date: '2020-11-09'
+  fix_type: inline_hint
+  buggy_code: "// FILE: bpf/bpf_lxc.c\n// SPDX-License-Identifier: GPL-2.0\n/* Copyright\
+    \ (C) 2016-2020 Authors of Cilium */\n\n#include <bpf/ctx/skb.h>\n#include <bpf/api.h>\n\
+    \n#include <ep_config.h>\n#include <node_config.h>\n\n#include <linux/icmpv6.h>\n\
+    \n#define EVENT_SOURCE LXC_ID\n\n#include \"lib/tailcall.h\"\n#include \"lib/common.h\"\
+    \n#include \"lib/config.h\"\n#include \"lib/maps.h\"\n#include \"lib/arp.h\"\n\
+    #include \"lib/edt.h\"\n#include \"lib/ipv6.h\"\n#include \"lib/ipv4.h\"\n\n//\
+    \ CONTEXT: ipv4_policy(struct __ctx_buff *ctx, int ifindex, __u32 src_label, __u8\
+    \ *reason,\n#endif\n\n\tret = ct_lookup4(get_ct_map4(&tuple), &tuple, ctx, l4_off,\
+    \ CT_INGRESS, &ct_state,\n\t\t\t &monitor);\n\tif (ret < 0)\n\t\treturn ret;\n\
+    \n\t*reason = ret;\n\n\t/* Check it this is return traffic to an egress proxy.\n\
+    \t * Do not redirect again if the packet is coming from the egress proxy.\n\t\
+    \ */\n\tif ((ret == CT_REPLY || ret == CT_RELATED) && ct_state.proxy_redirect\
+    \ &&\n\t    !tc_index_skip_egress_proxy(ctx)) {\n\t\t/* This is a reply, the proxy\
+    \ port does not need to be embedded\n\t\t * into ctx->mark and *proxy_port can\
+    \ be left unset.\n\t\t */\n\t\tsend_trace_notify4(ctx, TRACE_TO_PROXY, src_label,\
+    \ SECLABEL, orig_sip,\n\t\t\t\t  0, ifindex, 0, monitor);\n\t\tif (tuple_out)\n\
+    \t\t\t*tuple_out = tuple;\n\t\treturn POLICY_ACT_PROXY_REDIRECT;\n\t}\n\n// FILE:\
+    \ bpf/lib/conntrack.h\n/* SPDX-License-Identifier: GPL-2.0 */\n/* Copyright (C)\
+    \ 2016-2020 Authors of Cilium */\n\n#ifndef __LIB_CONNTRACK_H_\n#define __LIB_CONNTRACK_H_\n\
+    \n#include <linux/icmpv6.h>\n#include <linux/icmp.h>\n\n#include \"common.h\"\n\
+    #include \"utils.h\"\n#include \"ipv4.h\"\n#include \"ipv6.h\"\n#include \"dbg.h\"\
+    \n#include \"l4.h\"\n#include \"nat46.h\"\n#include \"signal.h\"\n\n#ifdef CONNTRACK\n\
+    enum {\n\tACTION_UNSPEC,\n\n// CONTEXT: static __always_inline bool __ct_entry_keep_alive(const\
+    \ void *map,\n\treturn false;\n}\n\nstatic __always_inline __u8 __ct_lookup(const\
+    \ void *map, struct __ctx_buff *ctx,\n\t\t\t\t\tconst void *tuple, int action,\
+    \ int dir,\n\t\t\t\t\tstruct ct_state *ct_state,\n\t\t\t\t\tbool is_tcp, union\
+    \ tcp_flags seen_flags,\n\t\t\t\t\t__u32 *monitor)\n{\n\tstruct ct_entry *entry;\n\
+    \tint reopen;\n\n\tentry = map_lookup_elem(map, tuple);\n\tif (entry) {\n\t\t\
+    cilium_dbg(ctx, DBG_CT_MATCH, entry->lifetime, entry->rev_nat_index);\n\t\tif\
+    \ (ct_entry_alive(entry))\n\t\t\t*monitor = ct_update_timeout(entry, is_tcp, dir,\
+    \ seen_flags);\n\t\tif (ct_state) {\n\t\t\tct_state->rev_nat_index = entry->rev_nat_index;\n\
+    \t\t\tct_state->loopback = entry->lb_loopback;\n\t\t\tct_state->node_port = entry->node_port;\n\
+    \t\t\tct_state->ifindex = entry->ifindex;\n\t\t\tct_state->dsr = entry->dsr;\n\
+    \t\t\tct_state->proxy_redirect = entry->proxy_redirect;\n\n// CONTEXT: static\
+    \ __always_inline int ct_lookup4(const void *map,\n\tret = __ct_lookup(map, ctx,\
+    \ tuple, action, dir, ct_state, is_tcp,\n\t\t\t  tcp_flags, monitor);\n\tif (ret\
+    \ != CT_NEW) {\n\t\tif (likely(ret == CT_ESTABLISHED || ret == CT_REOPENED)) {\n\
+    \t\t\tif (unlikely(tuple->flags & TUPLE_F_RELATED))\n\t\t\t\tret = CT_RELATED;\n\
+    \t\t\telse\n\t\t\t\tret = CT_REPLY;\n\t\t}\n\t\tgoto out;\n\t}\n\n\t/* Lookup\
+    \ entry in forward direction */\n\tif (dir != CT_SERVICE) {\n\t\tipv4_ct_tuple_reverse(tuple);\n\
+    \t\tret = __ct_lookup(map, ctx, tuple, action, dir, ct_state,\n\t\t\t\t  is_tcp,\
+    \ tcp_flags, monitor);\n\t}\nout:\n\tcilium_dbg(ctx, DBG_CT_VERDICT, ret < 0 ?\
+    \ -ret : ret, ct_state->rev_nat_index);\n\tif (conn_is_dns(tuple->dport))\n\t\t\
+    *monitor = MTU;\n\treturn ret;\n}"
+  fixed_code: "// FILE: bpf/bpf_lxc.c\n// SPDX-License-Identifier: GPL-2.0\n/* Copyright\
+    \ (C) 2016-2020 Authors of Cilium */\n\n#include <bpf/ctx/skb.h>\n#include <bpf/api.h>\n\
+    \n#include <ep_config.h>\n#include <node_config.h>\n\n#include <bpf/verifier.h>\n\
+    \n#include <linux/icmpv6.h>\n\n#define EVENT_SOURCE LXC_ID\n\n#include \"lib/tailcall.h\"\
+    \n#include \"lib/common.h\"\n#include \"lib/config.h\"\n#include \"lib/maps.h\"\
+    \n#include \"lib/arp.h\"\n#include \"lib/edt.h\"\n#include \"lib/ipv6.h\"\n#include\
+    \ \"lib/ipv4.h\"\n\n// CONTEXT: ipv4_policy(struct __ctx_buff *ctx, int ifindex,\
+    \ __u32 src_label, __u8 *reason,\n#endif\n\n\tret = ct_lookup4(get_ct_map4(&tuple),\
+    \ &tuple, ctx, l4_off, CT_INGRESS, &ct_state,\n\t\t\t &monitor);\n\tif (ret <\
+    \ 0)\n\t\treturn ret;\n\n\t*reason = ret;\n\n\t/* Check it this is return traffic\
+    \ to an egress proxy.\n\t * Do not redirect again if the packet is coming from\
+    \ the egress proxy.\n\t */\n\trelax_verifier();\n\tif ((ret == CT_REPLY || ret\
+    \ == CT_RELATED) && ct_state.proxy_redirect &&\n\t    !tc_index_skip_egress_proxy(ctx))\
+    \ {\n\t\t/* This is a reply, the proxy port does not need to be embedded\n\t\t\
+    \ * into ctx->mark and *proxy_port can be left unset.\n\t\t */\n\t\tsend_trace_notify4(ctx,\
+    \ TRACE_TO_PROXY, src_label, SECLABEL, orig_sip,\n\t\t\t\t  0, ifindex, 0, monitor);\n\
+    \t\tif (tuple_out)\n\t\t\t*tuple_out = tuple;\n\t\treturn POLICY_ACT_PROXY_REDIRECT;\n\
+    \t}\n\n// FILE: bpf/lib/conntrack.h\n/* SPDX-License-Identifier: GPL-2.0 */\n\
+    /* Copyright (C) 2016-2020 Authors of Cilium */\n\n#ifndef __LIB_CONNTRACK_H_\n\
+    #define __LIB_CONNTRACK_H_\n\n#include <linux/icmpv6.h>\n#include <linux/icmp.h>\n\
+    \n#include <bpf/verifier.h>\n\n#include \"common.h\"\n#include \"utils.h\"\n#include\
+    \ \"ipv4.h\"\n#include \"ipv6.h\"\n#include \"dbg.h\"\n#include \"l4.h\"\n#include\
+    \ \"nat46.h\"\n#include \"signal.h\"\n\n#ifdef CONNTRACK\nenum {\n\tACTION_UNSPEC,\n\
+    \n// CONTEXT: static __always_inline bool __ct_entry_keep_alive(const void *map,\n\
+    \treturn false;\n}\n\nstatic __always_inline __u8 __ct_lookup(const void *map,\
+    \ struct __ctx_buff *ctx,\n\t\t\t\t\tconst void *tuple, int action, int dir,\n\
+    \t\t\t\t\tstruct ct_state *ct_state,\n\t\t\t\t\tbool is_tcp, union tcp_flags seen_flags,\n\
+    \t\t\t\t\t__u32 *monitor)\n{\n\tstruct ct_entry *entry;\n\tint reopen;\n\n\trelax_verifier();\n\
+    \n\tentry = map_lookup_elem(map, tuple);\n\tif (entry) {\n\t\tcilium_dbg(ctx,\
+    \ DBG_CT_MATCH, entry->lifetime, entry->rev_nat_index);\n\t\tif (ct_entry_alive(entry))\n\
+    \t\t\t*monitor = ct_update_timeout(entry, is_tcp, dir, seen_flags);\n\t\tif (ct_state)\
+    \ {\n\t\t\tct_state->rev_nat_index = entry->rev_nat_index;\n\t\t\tct_state->loopback\
+    \ = entry->lb_loopback;\n\t\t\tct_state->node_port = entry->node_port;\n\t\t\t\
+    ct_state->ifindex = entry->ifindex;\n\t\t\tct_state->dsr = entry->dsr;\n\t\t\t\
+    ct_state->proxy_redirect = entry->proxy_redirect;\n\n// CONTEXT: static __always_inline\
+    \ int ct_lookup4(const void *map,\n\tret = __ct_lookup(map, ctx, tuple, action,\
+    \ dir, ct_state, is_tcp,\n\t\t\t  tcp_flags, monitor);\n\tif (ret != CT_NEW) {\n\
+    \t\tif (likely(ret == CT_ESTABLISHED || ret == CT_REOPENED)) {\n\t\t\tif (unlikely(tuple->flags\
+    \ & TUPLE_F_RELATED))\n\t\t\t\tret = CT_RELATED;\n\t\t\telse\n\t\t\t\tret = CT_REPLY;\n\
+    \t\t}\n\t\tgoto out;\n\t}\n\n\trelax_verifier();\n\n\t/* Lookup entry in forward\
+    \ direction */\n\tif (dir != CT_SERVICE) {\n\t\tipv4_ct_tuple_reverse(tuple);\n\
+    \t\tret = __ct_lookup(map, ctx, tuple, action, dir, ct_state,\n\t\t\t\t  is_tcp,\
+    \ tcp_flags, monitor);\n\t}\nout:\n\tcilium_dbg(ctx, DBG_CT_VERDICT, ret < 0 ?\
+    \ -ret : ret, ct_state->rev_nat_index);\n\tif (conn_is_dns(tuple->dport))\n\t\t\
+    *monitor = MTU;\n\treturn ret;\n}"
+  diff_summary: |-
+    bpf/bpf_lxc.c:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: ipv4_policy(struct __ctx_buff *ctx, int ifindex, __u32 src_label, __u8 *reason,.
+    bpf/lib/conntrack.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: static __always_inline bool __ct_entry_keep_alive(const void *map,, static __always_inline int ct_lookup4(const void *map,.
+    - Commit subject: bpf: fix complexity issue on kernels <5.3.

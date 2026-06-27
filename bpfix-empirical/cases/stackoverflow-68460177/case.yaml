@@ -1,0 +1,42 @@
+schema_version: bpfix.case/v1
+case_id: stackoverflow-68460177
+source:
+  kind: stackoverflow
+  url: https://stackoverflow.com/questions/68460177/register-errors-when-trying-to-separate-strings-and-print-them-using-bcc
+  repository: null
+  commit: null
+  upstream_file: null
+  collected_at: '2026-04-30T00:51:07+00:00'
+  raw_excerpt_files:
+  - bpfix-empirical/raw/so/stackoverflow-68460177.yaml
+reproducer:
+  reconstruction: reconstructed
+  notes: Reconstructed from the BCC text program using a local BCC-style bpf_trace_printk
+    wrapper. Replay logs are generated as replay-verifier.log.
+capture:
+  capture_id: stackoverflow-68460177__kernel-6.15.11-clang-18-log2
+  terminal_error: R4 bitwise operator |= on pointer prohibited
+  rejected_insn_idx: 37
+external_match:
+  status: exact
+  policy: terminal_error
+  matched_messages:
+  - R4 bitwise operator |= on pointer prohibited
+  notes: Local replay reproduces the raw terminal verifier error.
+label:
+  capture_id: stackoverflow-68460177__kernel-6.15.11-clang-18-log2
+  taxonomy_class: source_bug
+  error_id: BPFIX-E006
+  confidence: medium
+  label_source: external_replay_reconstruction
+  root_cause_description: Pointer arithmetic derived from a mutable string start offset is
+    compiled into a prohibited bitwise operation on a stack pointer.
+  root_cause_insn_idx: null
+  localization_confidence: medium
+  fix_type: pointer_arithmetic
+  fix_direction: Avoid dynamic pointer arithmetic on stack string pointers passed through
+    trace_printk varargs.
+reporting:
+  family_id: stackoverflow-68460177
+  representative: true
+  notes: External Stack Overflow case reconstructed during Batch 01.

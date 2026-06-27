@@ -1,0 +1,220 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-libbpf-3319982d34dd
+source_kind: github_commit
+source:
+  url: https://github.com/libbpf/libbpf/commit/3319982d34ddc51a2807ccc92445d9a9d9089dcf
+  title: 'libbpf: Mark BPF subprogs with hidden visibility as static for BPF verifier'
+  repository: https://github.com/libbpf/libbpf
+  commit: 3319982d34ddc51a2807ccc92445d9a9d9089dcf
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-libbpf-3319982d34dd.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: missing_source
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Raw diff adds __hidden and libbpf BTF FUNC linkage rewriting so hidden global/weak
+    subprograms are verified like static functions. It contains only libbpf/header
+    implementation snippets and no triggering BPF source/object or verifier log.
+raw:
+  case_id: github-commit-libbpf-3319982d34dd
+  source: github_commits
+  repository: https://github.com/libbpf/libbpf
+  commit_hash: 3319982d34ddc51a2807ccc92445d9a9d9089dcf
+  commit_message: 'libbpf: Mark BPF subprogs with hidden visibility as static for
+    BPF verifier'
+  commit_date: '2021-04-23'
+  fix_type: inline_hint
+  buggy_code: "// FILE: src/bpf_helpers.h\n\n/* Avoid 'linux/stddef.h' definition\
+    \ of '__always_inline'. */\n#undef __always_inline\n#define __always_inline inline\
+    \ __attribute__((always_inline))\n\n#ifndef __noinline\n#define __noinline __attribute__((noinline))\n\
+    #endif\n#ifndef __weak\n#define __weak __attribute__((weak))\n#endif\n\n/* When\
+    \ utilizing vmlinux.h with BPF CO-RE, user BPF programs can't include\n * any\
+    \ system-level headers (such as stddef.h, linux/version.h, etc), and\n * commonly-used\
+    \ macros like NULL and KERNEL_VERSION aren't available through\n * vmlinux.h.\
+    \ This just adds unnecessary hurdles and forces users to re-define\n * them on\
+    \ their own. So as a convenience, provide such definitions here.\n */\n#ifndef\
+    \ NULL\n#define NULL ((void *)0)\n#endif\n\n#ifndef KERNEL_VERSION\n#define KERNEL_VERSION(a,\
+    \ b, c) (((a) << 16) + ((b) << 8) + ((c) > 255 ? 255 : (c)))\n\n// FILE: src/btf.c\n\
+    // CONTEXT: int btf__add_str(struct btf *btf, const char *s)\n\n\tbtf->hdr->str_len\
+    \ = strset__data_size(btf->strs_set);\n\n\treturn btf->start_str_off + off;\n\
+    }\n\nstatic void *btf_add_type_mem(struct btf *btf, size_t add_sz)\n{\n\treturn\
+    \ libbpf_add_mem(&btf->types_data, &btf->types_data_cap, 1,\n\t\t\t      btf->hdr->type_len,\
+    \ UINT_MAX, add_sz);\n}\n\nstatic __u32 btf_type_info(int kind, int vlen, int\
+    \ kflag)\n{\n\treturn (kflag << 31) | (kind << 24) | vlen;\n}\n\nstatic void btf_type_inc_vlen(struct\
+    \ btf_type *t)\n{\n\tt->info = btf_type_info(btf_kind(t), btf_vlen(t) + 1, btf_kflag(t));\n\
+    }\n\nstatic int btf_commit_type(struct btf *btf, int data_sz)\n{\n\tint err;\n\
+    \n\terr = btf_add_type_idx_entry(btf, btf->hdr->type_len);\n\tif (err)\n\t\treturn\
+    \ err;\n\n// FILE: src/libbpf.c\n#define BPF_INSN_SZ (sizeof(struct bpf_insn))\n\
+    \n/* vsprintf() in __base_pr() uses nonliteral format string. It may break\n *\
+    \ compilation if user enables corresponding warning. Disable it explicitly.\n\
+    \ */\n#pragma GCC diagnostic ignored \"-Wformat-nonliteral\"\n\n#define __printf(a,\
+    \ b)\t__attribute__((format(printf, a, b)))\n\nstatic struct bpf_map *bpf_object__add_map(struct\
+    \ bpf_object *obj);\nstatic const struct btf_type *\nskip_mods_and_typedefs(const\
+    \ struct btf *btf, __u32 id, __u32 *res_id);\n\nstatic int __base_pr(enum libbpf_print_level\
+    \ level, const char *format,\n\t\t     va_list args)\n{\n\tif (level == LIBBPF_DEBUG)\n\
+    \t\treturn 0;\n\n\treturn vfprintf(stderr, format, args);\n}\n\nstatic libbpf_print_fn_t\
+    \ __libbpf_pr = __base_pr;\n\n\n// CONTEXT: struct bpf_program {\n\n\tstruct {\n\
+    \t\tint nr;\n\t\tint *fds;\n\t} instances;\n\tbpf_program_prep_t preprocessor;\n\
+    \n\tstruct bpf_object *obj;\n\tvoid *priv;\n\tbpf_program_clear_priv_t clear_priv;\n\
+    \n\tbool load;\n\tenum bpf_prog_type type;\n\tenum bpf_attach_type expected_attach_type;\n\
+    \tint prog_ifindex;\n\t__u32 attach_btf_obj_fd;\n\t__u32 attach_btf_id;\n\t__u32\
+    \ attach_prog_fd;\n\tvoid *func_info;\n\t__u32 func_info_rec_size;\n\t__u32 func_info_cnt;\n\
+    \n\tvoid *line_info;\n\t__u32 line_info_rec_size;\n\n// CONTEXT: bpf_object__add_programs(struct\
+    \ bpf_object *obj, Elf_Data *sec_data,\n\t\t\t\tsec_name, name);\n\t\t\treturn\
+    \ -ENOMEM;\n\t\t}\n\t\tobj->programs = progs;\n\n\t\tprog = &progs[nr_progs];\n\
+    \n\t\terr = bpf_object__init_prog(obj, prog, name, sec_idx, sec_name,\n\t\t\t\t\
+    \t    sec_off, data + sec_off, prog_sz);\n\t\tif (err)\n\t\t\treturn err;\n\n\t\
+    \tnr_progs++;\n\t\tobj->nr_programs = nr_progs;\n\n\t\tsec_off += prog_sz;\n\t\
+    }\n\n\treturn 0;\n}\n\nstatic __u32 get_kernel_version(void)\n{\n\t__u32 major,\
+    \ minor, patch;\n\n// CONTEXT: static int bpf_object__load_vmlinux_btf(struct\
+    \ bpf_object *obj, bool force)\n\t\terr = PTR_ERR(obj->btf_vmlinux);\n\t\tpr_warn(\"\
+    Error loading vmlinux BTF: %d\\n\", err);\n\t\tobj->btf_vmlinux = NULL;\n\t\t\
+    return err;\n\t}\n\treturn 0;\n}\n\nstatic int bpf_object__sanitize_and_load_btf(struct\
+    \ bpf_object *obj)\n{\n\tstruct btf *kern_btf = obj->btf;\n\tbool btf_mandatory,\
+    \ sanitize;\n\tint err = 0;\n\n\tif (!obj->btf)\n\t\treturn 0;\n\n\tif (!kernel_supports(FEAT_BTF))\
+    \ {\n\t\tif (kernel_needs_btf(obj)) {\n\t\t\terr = -EOPNOTSUPP;\n\t\t\tgoto report;\n\
+    \t\t}\n\t\tpr_debug(\"Kernel doesn't support BTF, skipping uploading it.\\n\"\
+    );\n\t\treturn 0;\n\t}\n\n\tsanitize = btf_needs_sanitization(obj);\n\tif (sanitize)\
+    \ {\n\t\tconst void *raw_data;\n\t\t__u32 sz;\n\n\t\t/* clone BTF to sanitize\
+    \ a copy and leave the original intact */\n\t\traw_data = btf__get_raw_data(obj->btf,\
+    \ &sz);\n\t\tkern_btf = btf__new(raw_data, sz);\n\t\tif (IS_ERR(kern_btf))\n\t\
+    \t\treturn PTR_ERR(kern_btf);\n\n\t\t/* enforce 8-byte pointers for BPF-targeted\
+    \ BTFs */\n\n// FILE: src/libbpf_internal.h\n#define __LIBBPF_LIBBPF_INTERNAL_H\n\
+    \n#include <stdlib.h>\n#include <limits.h>\n\n/* make sure libbpf doesn't use\
+    \ kernel-only integer typedefs */\n#pragma GCC poison u8 u16 u32 u64 s8 s16 s32\
+    \ s64\n\n/* prevent accidental re-addition of reallocarray() */\n#pragma GCC poison\
+    \ reallocarray\n\n#include \"libbpf.h\"\n\n#ifndef EM_BPF\n#define EM_BPF 247\n\
+    #endif\n\n#ifndef R_BPF_64_64\n#define R_BPF_64_64 1\n#endif\n#ifndef R_BPF_64_32\n\
+    #define R_BPF_64_32 10\n#endif\n\n\n// CONTEXT: static inline void *libbpf_reallocarray(void\
+    \ *ptr, size_t nmemb, size_t size)\n\tif (size == 0 || nmemb > ULONG_MAX / size)\n\
+    \t\treturn NULL;\n\ttotal = nmemb * size;\n#endif\n\treturn realloc(ptr, total);\n\
+    }\n\nstruct btf;\nstruct btf_type;\n\nstruct btf_type *btf_type_by_id(struct btf\
+    \ *btf, __u32 type_id);\n\nvoid *libbpf_add_mem(void **data, size_t *cap_cnt,\
+    \ size_t elem_sz,\n\t\t     size_t cur_cnt, size_t max_cnt, size_t add_cnt);\n\
+    int libbpf_ensure_mem(void **data, size_t *cap_cnt, size_t elem_sz, size_t need_cnt);\n\
+    \nstatic inline bool libbpf_validate_opts(const char *opts,\n\t\t\t\t\tsize_t\
+    \ opts_sz, size_t user_sz,\n\t\t\t\t\tconst char *type_name)\n{\n\tif (user_sz\
+    \ < sizeof(size_t)) {\n\t\tpr_warn(\"%s size (%zu) is too small\\n\", type_name,\
+    \ user_sz);\n\t\treturn false;\n\t}"
+  fixed_code: "// FILE: src/bpf_helpers.h\n\n/* Avoid 'linux/stddef.h' definition\
+    \ of '__always_inline'. */\n#undef __always_inline\n#define __always_inline inline\
+    \ __attribute__((always_inline))\n\n#ifndef __noinline\n#define __noinline __attribute__((noinline))\n\
+    #endif\n#ifndef __weak\n#define __weak __attribute__((weak))\n#endif\n\n/*\n *\
+    \ Use __hidden attribute to mark a non-static BPF subprogram effectively\n * static\
+    \ for BPF verifier's verification algorithm purposes, allowing more\n * extensive\
+    \ and permissive BPF verification process, taking into account\n * subprogram's\
+    \ caller context.\n */\n#define __hidden __attribute__((visibility(\"hidden\"\
+    )))\n\n/* When utilizing vmlinux.h with BPF CO-RE, user BPF programs can't include\n\
+    \ * any system-level headers (such as stddef.h, linux/version.h, etc), and\n *\
+    \ commonly-used macros like NULL and KERNEL_VERSION aren't available through\n\
+    \ * vmlinux.h. This just adds unnecessary hurdles and forces users to re-define\n\
+    \ * them on their own. So as a convenience, provide such definitions here.\n */\n\
+    #ifndef NULL\n#define NULL ((void *)0)\n#endif\n\n#ifndef KERNEL_VERSION\n#define\
+    \ KERNEL_VERSION(a, b, c) (((a) << 16) + ((b) << 8) + ((c) > 255 ? 255 : (c)))\n\
+    \n// FILE: src/btf.c\n// CONTEXT: int btf__add_str(struct btf *btf, const char\
+    \ *s)\n\n\tbtf->hdr->str_len = strset__data_size(btf->strs_set);\n\n\treturn btf->start_str_off\
+    \ + off;\n}\n\nstatic void *btf_add_type_mem(struct btf *btf, size_t add_sz)\n\
+    {\n\treturn libbpf_add_mem(&btf->types_data, &btf->types_data_cap, 1,\n\t\t\t\
+    \      btf->hdr->type_len, UINT_MAX, add_sz);\n}\n\nstatic void btf_type_inc_vlen(struct\
+    \ btf_type *t)\n{\n\tt->info = btf_type_info(btf_kind(t), btf_vlen(t) + 1, btf_kflag(t));\n\
+    }\n\nstatic int btf_commit_type(struct btf *btf, int data_sz)\n{\n\tint err;\n\
+    \n\terr = btf_add_type_idx_entry(btf, btf->hdr->type_len);\n\tif (err)\n\t\treturn\
+    \ err;\n\n// FILE: src/libbpf.c\n#define BPF_INSN_SZ (sizeof(struct bpf_insn))\n\
+    \n/* vsprintf() in __base_pr() uses nonliteral format string. It may break\n *\
+    \ compilation if user enables corresponding warning. Disable it explicitly.\n\
+    \ */\n#pragma GCC diagnostic ignored \"-Wformat-nonliteral\"\n\n#define __printf(a,\
+    \ b)\t__attribute__((format(printf, a, b)))\n\nstatic struct bpf_map *bpf_object__add_map(struct\
+    \ bpf_object *obj);\nstatic const struct btf_type *\nskip_mods_and_typedefs(const\
+    \ struct btf *btf, __u32 id, __u32 *res_id);\nstatic bool prog_is_subprog(const\
+    \ struct bpf_object *obj, const struct bpf_program *prog);\n\nstatic int __base_pr(enum\
+    \ libbpf_print_level level, const char *format,\n\t\t     va_list args)\n{\n\t\
+    if (level == LIBBPF_DEBUG)\n\t\treturn 0;\n\n\treturn vfprintf(stderr, format,\
+    \ args);\n}\n\nstatic libbpf_print_fn_t __libbpf_pr = __base_pr;\n\n\n// CONTEXT:\
+    \ struct bpf_program {\n\n\tstruct {\n\t\tint nr;\n\t\tint *fds;\n\t} instances;\n\
+    \tbpf_program_prep_t preprocessor;\n\n\tstruct bpf_object *obj;\n\tvoid *priv;\n\
+    \tbpf_program_clear_priv_t clear_priv;\n\n\tbool load;\n\tbool mark_btf_static;\n\
+    \tenum bpf_prog_type type;\n\tenum bpf_attach_type expected_attach_type;\n\tint\
+    \ prog_ifindex;\n\t__u32 attach_btf_obj_fd;\n\t__u32 attach_btf_id;\n\t__u32 attach_prog_fd;\n\
+    \tvoid *func_info;\n\t__u32 func_info_rec_size;\n\t__u32 func_info_cnt;\n\n\t\
+    void *line_info;\n\t__u32 line_info_rec_size;\n\n// CONTEXT: bpf_object__add_programs(struct\
+    \ bpf_object *obj, Elf_Data *sec_data,\n\t\t\t\tsec_name, name);\n\t\t\treturn\
+    \ -ENOMEM;\n\t\t}\n\t\tobj->programs = progs;\n\n\t\tprog = &progs[nr_progs];\n\
+    \n\t\terr = bpf_object__init_prog(obj, prog, name, sec_idx, sec_name,\n\t\t\t\t\
+    \t    sec_off, data + sec_off, prog_sz);\n\t\tif (err)\n\t\t\treturn err;\n\n\t\
+    \t/* if function is a global/weak symbol, but has hidden\n\t\t * visibility (STV_HIDDEN),\
+    \ mark its BTF FUNC as static to\n\t\t * enable more permissive BPF verification\
+    \ mode with more\n\t\t * outside context available to BPF verifier\n\t\t */\n\t\
+    \tif (GELF_ST_BIND(sym.st_info) != STB_LOCAL\n\t\t    && GELF_ST_VISIBILITY(sym.st_other)\
+    \ == STV_HIDDEN)\n\t\t\tprog->mark_btf_static = true;\n\n\t\tnr_progs++;\n\t\t\
+    obj->nr_programs = nr_progs;\n\n\t\tsec_off += prog_sz;\n\t}\n\n\treturn 0;\n\
+    }\n\nstatic __u32 get_kernel_version(void)\n{\n\t__u32 major, minor, patch;\n\n\
+    // CONTEXT: static int bpf_object__load_vmlinux_btf(struct bpf_object *obj, bool\
+    \ force)\n\t\terr = PTR_ERR(obj->btf_vmlinux);\n\t\tpr_warn(\"Error loading vmlinux\
+    \ BTF: %d\\n\", err);\n\t\tobj->btf_vmlinux = NULL;\n\t\treturn err;\n\t}\n\t\
+    return 0;\n}\n\nstatic int bpf_object__sanitize_and_load_btf(struct bpf_object\
+    \ *obj)\n{\n\tstruct btf *kern_btf = obj->btf;\n\tbool btf_mandatory, sanitize;\n\
+    \tint i, err = 0;\n\n\tif (!obj->btf)\n\t\treturn 0;\n\n\tif (!kernel_supports(FEAT_BTF))\
+    \ {\n\t\tif (kernel_needs_btf(obj)) {\n\t\t\terr = -EOPNOTSUPP;\n\t\t\tgoto report;\n\
+    \t\t}\n\t\tpr_debug(\"Kernel doesn't support BTF, skipping uploading it.\\n\"\
+    );\n\t\treturn 0;\n\t}\n\n\t/* Even though some subprogs are global/weak, user\
+    \ might prefer more\n\t * permissive BPF verification process that BPF verifier\
+    \ performs for\n\t * static functions, taking into account more context from the\
+    \ caller\n\t * functions. In such case, they need to mark such subprogs with\n\
+    \t * __attribute__((visibility(\"hidden\"))) and libbpf will adjust\n\t * corresponding\
+    \ FUNC BTF type to be marked as static and trigger more\n\t * involved BPF verification\
+    \ process.\n\t */\n\tfor (i = 0; i < obj->nr_programs; i++) {\n\t\tstruct bpf_program\
+    \ *prog = &obj->programs[i];\n\t\tstruct btf_type *t;\n\t\tconst char *name;\n\
+    \t\tint j, n;\n\n\t\tif (!prog->mark_btf_static || !prog_is_subprog(obj, prog))\n\
+    \t\t\tcontinue;\n\n\t\tn = btf__get_nr_types(obj->btf);\n\t\tfor (j = 1; j <=\
+    \ n; j++) {\n\t\t\tt = btf_type_by_id(obj->btf, j);\n\t\t\tif (!btf_is_func(t)\
+    \ || btf_func_linkage(t) != BTF_FUNC_GLOBAL)\n\t\t\t\tcontinue;\n\n\t\t\tname\
+    \ = btf__str_by_offset(obj->btf, t->name_off);\n\t\t\tif (strcmp(name, prog->name)\
+    \ != 0)\n\t\t\t\tcontinue;\n\n\t\t\tt->info = btf_type_info(BTF_KIND_FUNC, BTF_FUNC_STATIC,\
+    \ 0);\n\t\t\tbreak;\n\t\t}\n\t}\n\n\tsanitize = btf_needs_sanitization(obj);\n\
+    \tif (sanitize) {\n\t\tconst void *raw_data;\n\t\t__u32 sz;\n\n\t\t/* clone BTF\
+    \ to sanitize a copy and leave the original intact */\n\t\traw_data = btf__get_raw_data(obj->btf,\
+    \ &sz);\n\t\tkern_btf = btf__new(raw_data, sz);\n\t\tif (IS_ERR(kern_btf))\n\t\
+    \t\treturn PTR_ERR(kern_btf);\n\n\t\t/* enforce 8-byte pointers for BPF-targeted\
+    \ BTFs */\n\n// FILE: src/libbpf_internal.h\n#define __LIBBPF_LIBBPF_INTERNAL_H\n\
+    \n#include <stdlib.h>\n#include <limits.h>\n\n/* make sure libbpf doesn't use\
+    \ kernel-only integer typedefs */\n#pragma GCC poison u8 u16 u32 u64 s8 s16 s32\
+    \ s64\n\n/* prevent accidental re-addition of reallocarray() */\n#pragma GCC poison\
+    \ reallocarray\n\n#include \"libbpf.h\"\n#include \"btf.h\"\n\n#ifndef EM_BPF\n\
+    #define EM_BPF 247\n#endif\n\n#ifndef R_BPF_64_64\n#define R_BPF_64_64 1\n#endif\n\
+    #ifndef R_BPF_64_32\n#define R_BPF_64_32 10\n#endif\n\n\n// CONTEXT: static inline\
+    \ void *libbpf_reallocarray(void *ptr, size_t nmemb, size_t size)\n\tif (size\
+    \ == 0 || nmemb > ULONG_MAX / size)\n\t\treturn NULL;\n\ttotal = nmemb * size;\n\
+    #endif\n\treturn realloc(ptr, total);\n}\n\nstruct btf;\nstruct btf_type;\n\n\
+    struct btf_type *btf_type_by_id(struct btf *btf, __u32 type_id);\n\nstatic inline\
+    \ __u32 btf_type_info(int kind, int vlen, int kflag)\n{\n\treturn (kflag << 31)\
+    \ | (kind << 24) | vlen;\n}\n\nvoid *libbpf_add_mem(void **data, size_t *cap_cnt,\
+    \ size_t elem_sz,\n\t\t     size_t cur_cnt, size_t max_cnt, size_t add_cnt);\n\
+    int libbpf_ensure_mem(void **data, size_t *cap_cnt, size_t elem_sz, size_t need_cnt);\n\
+    \nstatic inline bool libbpf_validate_opts(const char *opts,\n\t\t\t\t\tsize_t\
+    \ opts_sz, size_t user_sz,\n\t\t\t\t\tconst char *type_name)\n{\n\tif (user_sz\
+    \ < sizeof(size_t)) {\n\t\tpr_warn(\"%s size (%zu) is too small\\n\", type_name,\
+    \ user_sz);\n\t\treturn false;\n\t}"
+  diff_summary: |-
+    src/bpf_helpers.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: the touched section.
+    src/btf.c:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: int btf__add_str(struct btf *btf, const char *s).
+    src/libbpf.c:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: struct bpf_program {, bpf_object__add_programs(struct bpf_object *obj, Elf_Data *sec_data,, static int bpf_object__load_vmlinux_btf(struct bpf_object *obj, bool force).
+    src/libbpf_internal.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: static inline void *libbpf_reallocarray(void *ptr, size_t nmemb, size_t size).
+    - Commit subject: libbpf: Mark BPF subprogs with hidden visibility as static for BPF verifier.

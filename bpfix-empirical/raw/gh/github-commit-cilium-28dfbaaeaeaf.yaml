@@ -1,0 +1,71 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-28dfbaaeaeaf
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/28dfbaaeaeafb1f40c14815645acb87e7d6a11e9
+  title: 'bpf: lb: pull ipv4_handle_fragmentation() into lb4_extract_tuple()'
+  repository: https://github.com/cilium/cilium
+  commit: 28dfbaaeaeafb1f40c14815645acb87e7d6a11e9
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-28dfbaaeaeaf.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: environment_required
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Moves IPv4 fragmentation/L4 port extraction into lb4_extract_tuple(). The
+    raw record lacks a verifier log and requires the surrounding LB/fragmentation
+    datapath for a faithful replay.
+raw:
+  case_id: github-commit-cilium-28dfbaaeaeaf
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: 28dfbaaeaeafb1f40c14815645acb87e7d6a11e9
+  commit_message: 'bpf: lb: pull ipv4_handle_fragmentation() into lb4_extract_tuple()'
+  commit_date: '2023-01-12'
+  fix_type: inline_hint
+  buggy_code: "// FILE: bpf/lib/lb.h\n// CONTEXT: static __always_inline int lb4_extract_key(struct\
+    \ __ctx_buff *ctx __maybe_unused\n\tkey->proto = 0;\n\tkey->address = ip4->daddr;\n\
+    \tif (ipv4_has_l4_header(ip4))\n\t\tcsum_l4_offset_and_flags(ip4->protocol, csum_off);\n\
+    \n\treturn lb4_extract_l4_port(ctx, ip4->protocol, l4_off, CT_EGRESS, &key->dport,\
+    \ ip4);\n}\n\nstatic __always_inline int\nlb4_extract_tuple(struct __ctx_buff\
+    \ *ctx, struct iphdr *ip4, int *l4_off,\n\t\t  struct ipv4_ct_tuple *tuple)\n\
+    {\n\ttuple->nexthdr = ip4->protocol;\n\ttuple->daddr = ip4->daddr;\n\ttuple->saddr\
+    \ = ip4->saddr;\n\n\t*l4_off = ETH_HLEN + ipv4_hdrlen(ip4);\n\n\tswitch (tuple->nexthdr)\
+    \ {\n\tcase IPPROTO_TCP:\n\tcase IPPROTO_UDP:\n#ifdef ENABLE_SCTP\n\tcase IPPROTO_SCTP:\n\
+    #endif  /* ENABLE_SCTP */\n\t\treturn ipv4_ct_extract_l4_ports(ctx, *l4_off, CT_EGRESS,\n\
+    \t\t\t\t\t\ttuple, NULL);\n\tcase IPPROTO_ICMP:\n\t\treturn DROP_NO_SERVICE;\n\
+    \tdefault:\n\t\treturn DROP_UNKNOWN_L4;\n\t}\n}\n\nstatic __always_inline\nbool\
+    \ lb4_src_range_ok(const struct lb4_service *svc __maybe_unused,\n\t\t      __u32\
+    \ saddr __maybe_unused)\n{\n#ifdef ENABLE_SRC_RANGE_CHECK"
+  fixed_code: "// FILE: bpf/lib/lb.h\n// CONTEXT: static __always_inline int lb4_extract_key(struct\
+    \ __ctx_buff *ctx __maybe_unused\n\tkey->proto = 0;\n\tkey->address = ip4->daddr;\n\
+    \tif (ipv4_has_l4_header(ip4))\n\t\tcsum_l4_offset_and_flags(ip4->protocol, csum_off);\n\
+    \n\treturn lb4_extract_l4_port(ctx, ip4->protocol, l4_off, CT_EGRESS, &key->dport,\
+    \ ip4);\n}\n\nstatic __always_inline int\nlb4_extract_tuple(struct __ctx_buff\
+    \ *ctx, struct iphdr *ip4, int *l4_off,\n\t\t  struct ipv4_ct_tuple *tuple)\n\
+    {\n\tint ret;\n\n\ttuple->nexthdr = ip4->protocol;\n\ttuple->daddr = ip4->daddr;\n\
+    \ttuple->saddr = ip4->saddr;\n\n\t*l4_off = ETH_HLEN + ipv4_hdrlen(ip4);\n\n\t\
+    switch (tuple->nexthdr) {\n\tcase IPPROTO_TCP:\n\tcase IPPROTO_UDP:\n#ifdef ENABLE_SCTP\n\
+    \tcase IPPROTO_SCTP:\n#endif  /* ENABLE_SCTP */\n#ifdef ENABLE_IPV4_FRAGMENTS\n\
+    \t\tret = ipv4_handle_fragmentation(ctx, ip4, *l4_off,\n\t\t\t\t\t\tCT_EGRESS,\n\
+    \t\t\t\t\t\t(struct ipv4_frag_l4ports *)&tuple->dport,\n\t\t\t\t\t\tNULL);\n#else\n\
+    \t\tret = l4_load_ports(ctx, *l4_off, &tuple->dport);\n#endif\n\n\t\tif (IS_ERR(ret))\n\
+    \t\t\treturn ret;\n\t\treturn 0;\n\tcase IPPROTO_ICMP:\n\t\treturn DROP_NO_SERVICE;\n\
+    \tdefault:\n\t\treturn DROP_UNKNOWN_L4;\n\t}\n}\n\nstatic __always_inline\nbool\
+    \ lb4_src_range_ok(const struct lb4_service *svc __maybe_unused,\n\t\t      __u32\
+    \ saddr __maybe_unused)\n{\n#ifdef ENABLE_SRC_RANGE_CHECK"
+  diff_summary: |-
+    bpf/lib/lb.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: static __always_inline int lb4_extract_key(struct __ctx_buff *ctx __maybe_unused.
+    - Commit subject: bpf: lb: pull ipv4_handle_fragmentation() into lb4_extract_tuple().

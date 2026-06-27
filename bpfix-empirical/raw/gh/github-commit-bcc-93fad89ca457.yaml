@@ -1,0 +1,87 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-bcc-93fad89ca457
+source_kind: github_commit
+source:
+  url: https://github.com/iovisor/bcc/commit/93fad89ca4573a50395049d4895361998677b9a1
+  title: 'libbpf-tools: Fix misaligned pointer accesses in tcpconnect'
+  repository: https://github.com/iovisor/bcc
+  commit: 93fad89ca4573a50395049d4895361998677b9a1
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-bcc-93fad89ca457.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Commit is in libbpf-tools/tcpconnect.c user-space output/alignment code,
+    not a verifier-rejected BPF program.
+raw:
+  case_id: github-commit-bcc-93fad89ca457
+  source: github_commits
+  repository: https://github.com/iovisor/bcc
+  commit_hash: 93fad89ca4573a50395049d4895361998677b9a1
+  commit_message: 'libbpf-tools: Fix misaligned pointer accesses in tcpconnect'
+  commit_date: '2023-12-04'
+  fix_type: alignment
+  buggy_code: "// FILE: libbpf-tools/tcpconnect.c\n// CONTEXT: static void print_events_header()\n\
+    \t\tprintf(\"%-9s\", \"TIME(s)\");\n\tif (env.print_uid)\n\t\tprintf(\"%-6s\"\
+    , \"UID\");\n\tprintf(\"%-6s %-12s %-2s %-16s %-16s\",\n\t       \"PID\", \"COMM\"\
+    , \"IP\", \"SADDR\", \"DADDR\");\n\tif (env.source_port)\n\t\tprintf(\" %-5s\"\
+    , \"SPORT\");\n\tprintf(\" %-5s\\n\", \"DPORT\");\n}\n\nstatic void handle_event(void\
+    \ *ctx, int cpu, void *data, __u32 data_sz)\n{\n\tconst struct event *event =\
+    \ data;\n\tchar src[INET6_ADDRSTRLEN];\n\tchar dst[INET6_ADDRSTRLEN];\n\tunion\
+    \ {\n\t\tstruct in_addr  x4;\n\t\tstruct in6_addr x6;\n\t} s, d;\n\tstatic __u64\
+    \ start_ts;\n\n\tif (event->af == AF_INET) {\n\t\ts.x4.s_addr = event->saddr_v4;\n\
+    \t\td.x4.s_addr = event->daddr_v4;\n\t} else if (event->af == AF_INET6) {\n\t\t\
+    memcpy(&s.x6.s6_addr, event->saddr_v6, sizeof(s.x6.s6_addr));\n\t\tmemcpy(&d.x6.s6_addr,\
+    \ event->daddr_v6, sizeof(d.x6.s6_addr));\n\t} else {\n\t\twarn(\"broken event:\
+    \ event->af=%d\", event->af);\n\t\treturn;\n\t}\n\n\tif (env.print_timestamp)\
+    \ {\n\t\tif (start_ts == 0)\n\t\t\tstart_ts = event->ts_us;\n\t\tprintf(\"%-9.3f\"\
+    , (event->ts_us - start_ts) / 1000000.0);\n\t}\n\n\tif (env.print_uid)\n\t\tprintf(\"\
+    %-6d\", event->uid);\n\n\tprintf(\"%-6d %-12.12s %-2d %-16s %-16s\",\n\t     \
+    \  event->pid, event->task,\n\t       event->af == AF_INET ? 4 : 6,\n\t      \
+    \ inet_ntop(event->af, &s, src, sizeof(src)),\n\t       inet_ntop(event->af, &d,\
+    \ dst, sizeof(dst)));\n\n\tif (env.source_port)\n\t\tprintf(\" %-5d\", event->sport);\n\
+    \n\tprintf(\" %-5d\", ntohs(event->dport));\n\n\tprintf(\"\\n\");\n}\n\nstatic\
+    \ void handle_lost_events(void *ctx, int cpu, __u64 lost_cnt)\n{\n\twarn(\"Lost\
+    \ %llu events on CPU #%d!\\n\", lost_cnt, cpu);\n}\n\nstatic void print_events(int\
+    \ perf_map_fd)\n{\n\tstruct perf_buffer *pb;"
+  fixed_code: "// FILE: libbpf-tools/tcpconnect.c\n// CONTEXT: static void print_events_header()\n\
+    \t\tprintf(\"%-9s\", \"TIME(s)\");\n\tif (env.print_uid)\n\t\tprintf(\"%-6s\"\
+    , \"UID\");\n\tprintf(\"%-6s %-12s %-2s %-16s %-16s\",\n\t       \"PID\", \"COMM\"\
+    , \"IP\", \"SADDR\", \"DADDR\");\n\tif (env.source_port)\n\t\tprintf(\" %-5s\"\
+    , \"SPORT\");\n\tprintf(\" %-5s\\n\", \"DPORT\");\n}\n\nstatic void handle_event(void\
+    \ *ctx, int cpu, void *data, __u32 data_sz)\n{\n\tstruct event event;\n\tchar\
+    \ src[INET6_ADDRSTRLEN];\n\tchar dst[INET6_ADDRSTRLEN];\n\tunion {\n\t\tstruct\
+    \ in_addr  x4;\n\t\tstruct in6_addr x6;\n\t} s, d;\n\tstatic __u64 start_ts;\n\
+    \n\tif (data_sz < sizeof(event)) {\n\t\tprintf(\"Error: packet too small\\n\"\
+    );\n\t\treturn;\n\t}\n\t/* Copy data as alignment in the perf buffer isn't guaranteed.\
+    \ */\n\tmemcpy(&event, data, sizeof(event));\n\n\tif (event.af == AF_INET) {\n\
+    \t\ts.x4.s_addr = event.saddr_v4;\n\t\td.x4.s_addr = event.daddr_v4;\n\t} else\
+    \ if (event.af == AF_INET6) {\n\t\tmemcpy(&s.x6.s6_addr, event.saddr_v6, sizeof(s.x6.s6_addr));\n\
+    \t\tmemcpy(&d.x6.s6_addr, event.daddr_v6, sizeof(d.x6.s6_addr));\n\t} else {\n\
+    \t\twarn(\"broken event: event.af=%d\", event.af);\n\t\treturn;\n\t}\n\n\tif (env.print_timestamp)\
+    \ {\n\t\tif (start_ts == 0)\n\t\t\tstart_ts = event.ts_us;\n\t\tprintf(\"%-9.3f\"\
+    , (event.ts_us - start_ts) / 1000000.0);\n\t}\n\n\tif (env.print_uid)\n\t\tprintf(\"\
+    %-6d\", event.uid);\n\n\tprintf(\"%-6d %-12.12s %-2d %-16s %-16s\",\n\t      \
+    \ event.pid, event.task,\n\t       event.af == AF_INET ? 4 : 6,\n\t       inet_ntop(event.af,\
+    \ &s, src, sizeof(src)),\n\t       inet_ntop(event.af, &d, dst, sizeof(dst)));\n\
+    \n\tif (env.source_port)\n\t\tprintf(\" %-5d\", event.sport);\n\n\tprintf(\" %-5d\"\
+    , ntohs(event.dport));\n\n\tprintf(\"\\n\");\n}\n\nstatic void handle_lost_events(void\
+    \ *ctx, int cpu, __u64 lost_cnt)\n{\n\twarn(\"Lost %llu events on CPU #%d!\\n\"\
+    , lost_cnt, cpu);\n}\n\nstatic void print_events(int perf_map_fd)\n{\n\tstruct\
+    \ perf_buffer *pb;"
+  diff_summary: |-
+    libbpf-tools/tcpconnect.c:
+    - Adjusted alignment declarations or stack layout to avoid misaligned accesses.
+    - Affected context: static void print_events_header().
+    - Commit subject: libbpf-tools: Fix misaligned pointer accesses in tcpconnect.

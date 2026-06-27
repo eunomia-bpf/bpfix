@@ -1,0 +1,117 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-4fa26a4105eb
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/4fa26a4105eb2166f05cf198f494273e338575df
+  title: 'datapath: Enable sessionAffinity for older kernels'
+  repository: https://github.com/cilium/cilium
+  commit: 4fa26a4105eb2166f05cf198f494273e338575df
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-4fa26a4105eb.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: environment_required
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Enables session affinity on older kernels by changing netns-cookie conditional
+    paths. Faithful replay depends on old-kernel helper/configuration behavior and
+    Cilium LB generation.
+raw:
+  case_id: github-commit-cilium-4fa26a4105eb
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: 4fa26a4105eb2166f05cf198f494273e338575df
+  commit_message: 'datapath: Enable sessionAffinity for older kernels'
+  commit_date: '2020-05-25'
+  fix_type: inline_hint
+  buggy_code: "// FILE: bpf/lib/lb.h\n// CONTEXT: __lb6_delete_affinity(const struct\
+    \ lb6_service *svc, bool netns_cookie,\nstatic __always_inline void\nlb6_delete_affinity_by_addr(const\
+    \ struct lb6_service *svc,\n\t\t\t    union lb6_affinity_client_id *id)\n{\n\t\
+    __lb6_delete_affinity(svc, false, id);\n}\n#endif /* ENABLE_SESSION_AFFINITY */\n\
+    \nstatic __always_inline __u32\nlb6_affinity_backend_id_by_netns(const struct\
+    \ lb6_service *svc __maybe_unused,\n\t\t\t\t union lb6_affinity_client_id *id\
+    \ __maybe_unused)\n{\n#if defined(ENABLE_SESSION_AFFINITY) && defined(BPF_HAVE_NETNS_COOKIE)\n\
+    \treturn __lb6_affinity_backend_id(svc, true, id);\n#else\n\treturn 0;\n#endif\n\
+    }\n\nstatic __always_inline void\nlb6_update_affinity_by_netns(const struct lb6_service\
+    \ *svc __maybe_unused,\n\t\t\t     union lb6_affinity_client_id *id __maybe_unused,\n\
+    \t\t\t     __u32 backend_id __maybe_unused)\n{\n#if defined(ENABLE_SESSION_AFFINITY)\
+    \ && defined(BPF_HAVE_NETNS_COOKIE)\n\t__lb6_update_affinity(svc, true, id, backend_id);\n\
+    #endif\n}\n\nstatic __always_inline void\nlb6_delete_affinity_by_netns(const struct\
+    \ lb6_service *svc __maybe_unused,\n\t\t\t     union lb6_affinity_client_id *id\
+    \ __maybe_unused)\n{\n#if defined(ENABLE_SESSION_AFFINITY) && defined(BPF_HAVE_NETNS_COOKIE)\n\
+    \t__lb6_delete_affinity(svc, true, id);\n#endif\n}\n\nstatic __always_inline int\
+    \ lb6_local(const void *map, struct __ctx_buff *ctx,\n\t\t\t\t     int l3_off,\
+    \ int l4_off,\n\t\t\t\t     struct csum_offset *csum_off,\n\t\t\t\t     struct\
+    \ lb6_key *key,\n\t\t\t\t     struct ipv6_ct_tuple *tuple,\n\t\t\t\t     const\
+    \ struct lb6_service *svc,\n\t\t\t\t     struct ct_state *state)\n{\n\n// CONTEXT:\
+    \ __lb4_delete_affinity(const struct lb4_service *svc, bool netns_cookie,\nstatic\
+    \ __always_inline void\nlb4_delete_affinity_by_addr(const struct lb4_service *svc,\n\
+    \t\t\t    union lb4_affinity_client_id *id)\n{\n\t__lb4_delete_affinity(svc, false,\
+    \ id);\n}\n#endif /* ENABLE_SESSION_AFFINITY */\n\nstatic __always_inline __u32\n\
+    lb4_affinity_backend_id_by_netns(const struct lb4_service *svc __maybe_unused,\n\
+    \t\t\t\t union lb4_affinity_client_id *id __maybe_unused)\n{\n#if defined(ENABLE_SESSION_AFFINITY)\
+    \ && defined(BPF_HAVE_NETNS_COOKIE)\n\treturn __lb4_affinity_backend_id(svc, true,\
+    \ id);\n#else\n\treturn 0;\n#endif\n}\n\nstatic __always_inline void\nlb4_update_affinity_by_netns(const\
+    \ struct lb4_service *svc __maybe_unused,\n\t\t\t     union lb4_affinity_client_id\
+    \ *id __maybe_unused,\n\t\t\t     __u32 backend_id __maybe_unused)\n{\n#if defined(ENABLE_SESSION_AFFINITY)\
+    \ && defined(BPF_HAVE_NETNS_COOKIE)\n\t__lb4_update_affinity(svc, true, id, backend_id);\n\
+    #endif\n}\n\nstatic __always_inline void\nlb4_delete_affinity_by_netns(const struct\
+    \ lb4_service *svc __maybe_unused,\n\t\t\t     union lb4_affinity_client_id *id\
+    \ __maybe_unused)\n{\n#if defined(ENABLE_SESSION_AFFINITY) && defined(BPF_HAVE_NETNS_COOKIE)\n\
+    \t__lb4_delete_affinity(svc, true, id);\n#endif\n}\n\nstatic __always_inline int\
+    \ lb4_local(const void *map, struct __ctx_buff *ctx,\n\t\t\t\t     int l3_off,\
+    \ int l4_off,\n\t\t\t\t     struct csum_offset *csum_off,\n\t\t\t\t     struct\
+    \ lb4_key *key,\n\t\t\t\t     struct ipv4_ct_tuple *tuple,\n\t\t\t\t     const\
+    \ struct lb4_service *svc,\n\t\t\t\t     struct ct_state *state, __be32 saddr)\n\
+    {"
+  fixed_code: "// FILE: bpf/lib/lb.h\n// CONTEXT: __lb6_delete_affinity(const struct\
+    \ lb6_service *svc, bool netns_cookie,\nstatic __always_inline void\nlb6_delete_affinity_by_addr(const\
+    \ struct lb6_service *svc,\n\t\t\t    union lb6_affinity_client_id *id)\n{\n\t\
+    __lb6_delete_affinity(svc, false, id);\n}\n#endif /* ENABLE_SESSION_AFFINITY */\n\
+    \nstatic __always_inline __u32\nlb6_affinity_backend_id_by_netns(const struct\
+    \ lb6_service *svc __maybe_unused,\n\t\t\t\t union lb6_affinity_client_id *id\
+    \ __maybe_unused)\n{\n#if defined(ENABLE_SESSION_AFFINITY)\n\treturn __lb6_affinity_backend_id(svc,\
+    \ true, id);\n#else\n\treturn 0;\n#endif\n}\n\nstatic __always_inline void\nlb6_update_affinity_by_netns(const\
+    \ struct lb6_service *svc __maybe_unused,\n\t\t\t     union lb6_affinity_client_id\
+    \ *id __maybe_unused,\n\t\t\t     __u32 backend_id __maybe_unused)\n{\n#if defined(ENABLE_SESSION_AFFINITY)\n\
+    \t__lb6_update_affinity(svc, true, id, backend_id);\n#endif\n}\n\nstatic __always_inline\
+    \ void\nlb6_delete_affinity_by_netns(const struct lb6_service *svc __maybe_unused,\n\
+    \t\t\t     union lb6_affinity_client_id *id __maybe_unused)\n{\n#if defined(ENABLE_SESSION_AFFINITY)\n\
+    \t__lb6_delete_affinity(svc, true, id);\n#endif\n}\n\nstatic __always_inline int\
+    \ lb6_local(const void *map, struct __ctx_buff *ctx,\n\t\t\t\t     int l3_off,\
+    \ int l4_off,\n\t\t\t\t     struct csum_offset *csum_off,\n\t\t\t\t     struct\
+    \ lb6_key *key,\n\t\t\t\t     struct ipv6_ct_tuple *tuple,\n\t\t\t\t     const\
+    \ struct lb6_service *svc,\n\t\t\t\t     struct ct_state *state)\n{\n\n// CONTEXT:\
+    \ __lb4_delete_affinity(const struct lb4_service *svc, bool netns_cookie,\nstatic\
+    \ __always_inline void\nlb4_delete_affinity_by_addr(const struct lb4_service *svc,\n\
+    \t\t\t    union lb4_affinity_client_id *id)\n{\n\t__lb4_delete_affinity(svc, false,\
+    \ id);\n}\n#endif /* ENABLE_SESSION_AFFINITY */\n\nstatic __always_inline __u32\n\
+    lb4_affinity_backend_id_by_netns(const struct lb4_service *svc __maybe_unused,\n\
+    \t\t\t\t union lb4_affinity_client_id *id __maybe_unused)\n{\n#if defined(ENABLE_SESSION_AFFINITY)\n\
+    \treturn __lb4_affinity_backend_id(svc, true, id);\n#else\n\treturn 0;\n#endif\n\
+    }\n\nstatic __always_inline void\nlb4_update_affinity_by_netns(const struct lb4_service\
+    \ *svc __maybe_unused,\n\t\t\t     union lb4_affinity_client_id *id __maybe_unused,\n\
+    \t\t\t     __u32 backend_id __maybe_unused)\n{\n#if defined(ENABLE_SESSION_AFFINITY)\n\
+    \t__lb4_update_affinity(svc, true, id, backend_id);\n#endif\n}\n\nstatic __always_inline\
+    \ void\nlb4_delete_affinity_by_netns(const struct lb4_service *svc __maybe_unused,\n\
+    \t\t\t     union lb4_affinity_client_id *id __maybe_unused)\n{\n#if defined(ENABLE_SESSION_AFFINITY)\n\
+    \t__lb4_delete_affinity(svc, true, id);\n#endif\n}\n\nstatic __always_inline int\
+    \ lb4_local(const void *map, struct __ctx_buff *ctx,\n\t\t\t\t     int l3_off,\
+    \ int l4_off,\n\t\t\t\t     struct csum_offset *csum_off,\n\t\t\t\t     struct\
+    \ lb4_key *key,\n\t\t\t\t     struct ipv4_ct_tuple *tuple,\n\t\t\t\t     const\
+    \ struct lb4_service *svc,\n\t\t\t\t     struct ct_state *state, __be32 saddr)\n\
+    {"
+  diff_summary: |-
+    bpf/lib/lb.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: __lb6_delete_affinity(const struct lb6_service *svc, bool netns_cookie,, __lb4_delete_affinity(const struct lb4_service *svc, bool netns_cookie,.
+    - Commit subject: datapath: Enable sessionAffinity for older kernels.

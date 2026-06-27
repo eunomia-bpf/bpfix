@@ -1,0 +1,60 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-libbpf-9b91dce6913e
+source_kind: github_commit
+source:
+  url: https://github.com/libbpf/libbpf/commit/9b91dce6913e2837738089b3716a0667208da30e
+  title: 'libbpf: Fix bpf_object name determination for bpf_object__open_file()'
+  repository: https://github.com/libbpf/libbpf
+  commit: 9b91dce6913e2837738089b3716a0667208da30e
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-libbpf-9b91dce6913e.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Raw has_verifier_log=false. The fix changes libbpf object-name selection
+    for bpf_object__open_file()/memory buffers; this is loader metadata naming, not
+    verifier-visible program behavior.
+raw:
+  case_id: github-commit-libbpf-9b91dce6913e
+  source: github_commits
+  repository: https://github.com/libbpf/libbpf
+  commit_hash: 9b91dce6913e2837738089b3716a0667208da30e
+  commit_message: 'libbpf: Fix bpf_object name determination for bpf_object__open_file()'
+  commit_date: '2019-11-21'
+  fix_type: other
+  buggy_code: "// FILE: src/libbpf.c\n// CONTEXT: __bpf_object__open(const char *path,\
+    \ const void *obj_buf, size_t obj_buf_sz,\n\t__u32 attach_prog_fd;\n\tint err;\n\
+    \n\tif (elf_version(EV_CURRENT) == EV_NONE) {\n\t\tpr_warn(\"failed to init libelf\
+    \ for %s\\n\",\n\t\t\tpath ? : \"(mem buf)\");\n\t\treturn ERR_PTR(-LIBBPF_ERRNO__LIBELF);\n\
+    \t}\n\n\tif (!OPTS_VALID(opts, bpf_object_open_opts))\n\t\treturn ERR_PTR(-EINVAL);\n\
+    \n\tobj_name = OPTS_GET(opts, object_name, path);\n\tif (obj_buf) {\n\t\tif (!obj_name)\
+    \ {\n\t\t\tsnprintf(tmp_name, sizeof(tmp_name), \"%lx-%lx\",\n\t\t\t\t (unsigned\
+    \ long)obj_buf,\n\t\t\t\t (unsigned long)obj_buf_sz);\n\t\t\tobj_name = tmp_name;\n\
+    \t\t}\n\t\tpath = obj_name;\n\t\tpr_debug(\"loading object '%s' from buffer\\\
+    n\", obj_name);\n\t}\n\n\tobj = bpf_object__new(path, obj_buf, obj_buf_sz, obj_name);"
+  fixed_code: "// FILE: src/libbpf.c\n// CONTEXT: __bpf_object__open(const char *path,\
+    \ const void *obj_buf, size_t obj_buf_sz,\n\t__u32 attach_prog_fd;\n\tint err;\n\
+    \n\tif (elf_version(EV_CURRENT) == EV_NONE) {\n\t\tpr_warn(\"failed to init libelf\
+    \ for %s\\n\",\n\t\t\tpath ? : \"(mem buf)\");\n\t\treturn ERR_PTR(-LIBBPF_ERRNO__LIBELF);\n\
+    \t}\n\n\tif (!OPTS_VALID(opts, bpf_object_open_opts))\n\t\treturn ERR_PTR(-EINVAL);\n\
+    \n\tobj_name = OPTS_GET(opts, object_name, NULL);\n\tif (obj_buf) {\n\t\tif (!obj_name)\
+    \ {\n\t\t\tsnprintf(tmp_name, sizeof(tmp_name), \"%lx-%lx\",\n\t\t\t\t (unsigned\
+    \ long)obj_buf,\n\t\t\t\t (unsigned long)obj_buf_sz);\n\t\t\tobj_name = tmp_name;\n\
+    \t\t}\n\t\tpath = obj_name;\n\t\tpr_debug(\"loading object '%s' from buffer\\\
+    n\", obj_name);\n\t}\n\n\tobj = bpf_object__new(path, obj_buf, obj_buf_sz, obj_name);"
+  diff_summary: |-
+    src/libbpf.c:
+    - Applied a small verifier-related code change captured by the exact before/after snippets below.
+    - Affected context: __bpf_object__open(const char *path, const void *obj_buf, size_t obj_buf_sz,.
+    - Commit subject: libbpf: Fix bpf_object name determination for bpf_object__open_file().

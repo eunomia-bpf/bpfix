@@ -1,0 +1,65 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-c6fe6b8e2546
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/c6fe6b8e2546e45703e7e1d08f3b72d9540faec5
+  title: 'bpf/tests: Fix `conntrack_test.c` in prep for Clang update'
+  repository: https://github.com/cilium/cilium
+  commit: c6fe6b8e2546e45703e7e1d08f3b72d9540faec5
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-c6fe6b8e2546.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Fixes a conntrack test assertion timeout expectation for a clang update;
+    this is test logic, not a kernel verifier load failure.
+raw:
+  case_id: github-commit-cilium-c6fe6b8e2546
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: c6fe6b8e2546e45703e7e1d08f3b72d9540faec5
+  commit_message: 'bpf/tests: Fix `conntrack_test.c` in prep for Clang update'
+  commit_date: '2024-03-05'
+  fix_type: other
+  buggy_code: "// FILE: bpf/tests/conntrack_test.c\n// CONTEXT: int bpf_test(__maybe_unused\
+    \ struct __sk_buff *sctx)\n\t\tassert(monitor == 0);\n\t\tassert(timeout_in(entry,\
+    \ CT_CLOSE_TIMEOUT - 1));\n\n\t\t/* A connection is reopened due to a newly seen\
+    \ SYN.*/\n\t\tadvance_time();\n\t\tmonitor = 0;\n\t\tseen_flags.value = TCP_FLAG_SYN;\n\
+    \t\tres = __ct_lookup(get_ct_map4(&tuple), &ctx, &tuple,\n\t\t\t\t  ct_tcp_select_action(seen_flags),\
+    \ CT_EGRESS,\n\t\t\t\t  CT_ENTRY_ANY, NULL, true, seen_flags, &monitor);\n\t\t\
+    assert(res == CT_REOPENED);\n\t\tassert(monitor == TRACE_PAYLOAD_LEN);\n\t\tassert(timeout_in(entry,\
+    \ CT_CONNECTION_LIFETIME_TCP));\n\n\t\t/* Label connection as new if the tuple\
+    \ wasn't previously tracked */\n\t\ttuple.saddr = 123;\n\t\tseen_flags.value =\
+    \ TCP_FLAG_SYN;\n\t\tres = __ct_lookup(get_ct_map4(&tuple), &ctx, &tuple,\n\t\t\
+    \t\t  ct_tcp_select_action(seen_flags), CT_INGRESS,\n\t\t\t\t  CT_ENTRY_ANY, NULL,\
+    \ true, seen_flags, &monitor);\n\t\tassert(res == CT_NEW);\n\t\tassert(monitor\
+    \ == TRACE_PAYLOAD_LEN);\n\t});\n\n\ttest_finish();"
+  fixed_code: "// FILE: bpf/tests/conntrack_test.c\n// CONTEXT: int bpf_test(__maybe_unused\
+    \ struct __sk_buff *sctx)\n\t\tassert(monitor == 0);\n\t\tassert(timeout_in(entry,\
+    \ CT_CLOSE_TIMEOUT - 1));\n\n\t\t/* A connection is reopened due to a newly seen\
+    \ SYN.*/\n\t\tadvance_time();\n\t\tmonitor = 0;\n\t\tseen_flags.value = TCP_FLAG_SYN;\n\
+    \t\tres = __ct_lookup(get_ct_map4(&tuple), &ctx, &tuple,\n\t\t\t\t  ct_tcp_select_action(seen_flags),\
+    \ CT_EGRESS,\n\t\t\t\t  CT_ENTRY_ANY, NULL, true, seen_flags, &monitor);\n\t\t\
+    assert(res == CT_REOPENED);\n\t\tassert(monitor == TRACE_PAYLOAD_LEN);\n\t\tassert(timeout_in(entry,\
+    \ CT_SYN_TIMEOUT));\n\n\t\t/* Label connection as new if the tuple wasn't previously\
+    \ tracked */\n\t\ttuple.saddr = 123;\n\t\tseen_flags.value = TCP_FLAG_SYN;\n\t\
+    \tres = __ct_lookup(get_ct_map4(&tuple), &ctx, &tuple,\n\t\t\t\t  ct_tcp_select_action(seen_flags),\
+    \ CT_INGRESS,\n\t\t\t\t  CT_ENTRY_ANY, NULL, true, seen_flags, &monitor);\n\t\t\
+    assert(res == CT_NEW);\n\t\tassert(monitor == TRACE_PAYLOAD_LEN);\n\t});\n\n\t\
+    test_finish();"
+  diff_summary: |-
+    bpf/tests/conntrack_test.c:
+    - Applied a small verifier-related code change captured by the exact before/after snippets below.
+    - Affected context: int bpf_test(__maybe_unused struct __sk_buff *sctx).
+    - Commit subject: bpf/tests: Fix `conntrack_test.c` in prep for Clang update.

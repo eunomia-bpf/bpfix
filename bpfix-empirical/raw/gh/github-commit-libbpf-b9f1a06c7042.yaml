@@ -1,0 +1,79 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-libbpf-b9f1a06c7042
+source_kind: github_commit
+source:
+  url: https://github.com/libbpf/libbpf/commit/b9f1a06c7042bf9df5ae603fbcb5f88fdea59157
+  title: 'libbpf: Fix btf_dump''s packed struct determination'
+  repository: https://github.com/libbpf/libbpf
+  commit: b9f1a06c7042bf9df5ae603fbcb5f88fdea59157
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-libbpf-b9f1a06c7042.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Raw has_verifier_log=false, source_snippet_count=0. The diff changes user-space
+    src/btf_dump.c packed-struct alignment detection in btf_dump_emit_type()/btf_natural_align_of(),
+    with no BPF program or verifier rejection.
+raw:
+  case_id: github-commit-libbpf-b9f1a06c7042
+  source: github_commits
+  repository: https://github.com/libbpf/libbpf
+  commit_hash: b9f1a06c7042bf9df5ae603fbcb5f88fdea59157
+  commit_message: 'libbpf: Fix btf_dump''s packed struct determination'
+  commit_date: '2022-12-15'
+  fix_type: alignment
+  buggy_code: "// FILE: src/btf_dump.c\n// CONTEXT: static void btf_dump_emit_type(struct\
+    \ btf_dump *d, __u32 id, __u32 cont_id)\n\n\t\tbtf_dump_emit_type(d, t->type,\
+    \ cont_id);\n\t\tfor (i = 0; i < n; i++, p++)\n\t\t\tbtf_dump_emit_type(d, p->type,\
+    \ cont_id);\n\n\t\tbreak;\n\t}\n\tdefault:\n\t\tbreak;\n\t}\n}\n\nstatic int btf_natural_align_of(const\
+    \ struct btf *btf, __u32 id)\n{\n\tconst struct btf_type *t = btf__type_by_id(btf,\
+    \ id);\n\tint i, align, vlen;\n\tconst struct btf_member *m;\n\n\tif (!btf_is_composite(t))\n\
+    \t\treturn btf__align_of(btf, id);\n\n\talign = 1;\n\tm = btf_members(t);\n\t\
+    vlen = btf_vlen(t);\n\tfor (i = 0; i < vlen; i++, m++) {\n\t\talign = max(align,\
+    \ btf__align_of(btf, m->type));\n\t}\n\n\treturn align;\n}\n\nstatic bool btf_is_struct_packed(const\
+    \ struct btf *btf, __u32 id,\n\t\t\t\t const struct btf_type *t)\n{\n\tconst struct\
+    \ btf_member *m;\n\tint align, i, bit_sz;\n\t__u16 vlen;\n\n\talign = btf_natural_align_of(btf,\
+    \ id);\n\t/* size of a non-packed struct has to be a multiple of its alignment\
+    \ */\n\tif (align && (t->size % align) != 0)\n\t\treturn true;\n\n\tm = btf_members(t);\n\
+    \tvlen = btf_vlen(t);\n\t/* all non-bitfield fields have to be naturally aligned\
+    \ */\n\tfor (i = 0; i < vlen; i++, m++) {\n\t\talign = btf_natural_align_of(btf,\
+    \ m->type);\n\t\tbit_sz = btf_member_bitfield_size(t, i);\n\t\tif (align && bit_sz\
+    \ == 0 && m->offset % (8 * align) != 0)\n\t\t\treturn true;\n\t}\n\n\t/*\n\t *\
+    \ if original struct was marked as packed, but its layout is\n\t * naturally aligned,\
+    \ we'll detect that it's not packed\n\t */\n\treturn false;\n}\n\nstatic void\
+    \ btf_dump_emit_bit_padding(const struct btf_dump *d,\n\t\t\t\t      int cur_off,\
+    \ int next_off, int next_align,\n\t\t\t\t      bool in_bitfield, int lvl)\n{\n\
+    \tconst struct {"
+  fixed_code: "// FILE: src/btf_dump.c\n// CONTEXT: static void btf_dump_emit_type(struct\
+    \ btf_dump *d, __u32 id, __u32 cont_id)\n\n\t\tbtf_dump_emit_type(d, t->type,\
+    \ cont_id);\n\t\tfor (i = 0; i < n; i++, p++)\n\t\t\tbtf_dump_emit_type(d, p->type,\
+    \ cont_id);\n\n\t\tbreak;\n\t}\n\tdefault:\n\t\tbreak;\n\t}\n}\n\nstatic bool\
+    \ btf_is_struct_packed(const struct btf *btf, __u32 id,\n\t\t\t\t const struct\
+    \ btf_type *t)\n{\n\tconst struct btf_member *m;\n\tint max_align = 1, align,\
+    \ i, bit_sz;\n\t__u16 vlen;\n\n\tm = btf_members(t);\n\tvlen = btf_vlen(t);\n\t\
+    /* all non-bitfield fields have to be naturally aligned */\n\tfor (i = 0; i <\
+    \ vlen; i++, m++) {\n\t\talign = btf__align_of(btf, m->type);\n\t\tbit_sz = btf_member_bitfield_size(t,\
+    \ i);\n\t\tif (align && bit_sz == 0 && m->offset % (8 * align) != 0)\n\t\t\treturn\
+    \ true;\n\t\tmax_align = max(align, max_align);\n\t}\n\t/* size of a non-packed\
+    \ struct has to be a multiple of its alignment */\n\tif (t->size % max_align !=\
+    \ 0)\n\t\treturn true;\n\t/*\n\t * if original struct was marked as packed, but\
+    \ its layout is\n\t * naturally aligned, we'll detect that it's not packed\n\t\
+    \ */\n\treturn false;\n}\n\nstatic void btf_dump_emit_bit_padding(const struct\
+    \ btf_dump *d,\n\t\t\t\t      int cur_off, int next_off, int next_align,\n\t\t\
+    \t\t      bool in_bitfield, int lvl)\n{\n\tconst struct {"
+  diff_summary: |-
+    src/btf_dump.c:
+    - Adjusted alignment declarations or stack layout to avoid misaligned accesses.
+    - Affected context: static void btf_dump_emit_type(struct btf_dump *d, __u32 id, __u32 cont_id).
+    - Commit subject: libbpf: Fix btf_dump's packed struct determination.

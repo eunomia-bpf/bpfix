@@ -1,0 +1,223 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-5e1139d09b2d
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/5e1139d09b2da79d57a95f99b62dcf03549a83cb
+  title: 'bpf: nodeport: only set outer src IP for tunnel encap in XDP'
+  repository: https://github.com/cilium/cilium
+  commit: 5e1139d09b2da79d57a95f99b62dcf03549a83cb
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-5e1139d09b2d.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: not_reconstructable_from_diff
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Changes NodePort tunnel-encap source-IP handling across XDP/TC paths. The
+    snippets require the surrounding NodePort, DSR, and tunnel configuration to make
+    verifier-visible behavior meaningful, and no log is present.
+raw:
+  case_id: github-commit-cilium-5e1139d09b2d
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: 5e1139d09b2da79d57a95f99b62dcf03549a83cb
+  commit_message: 'bpf: nodeport: only set outer src IP for tunnel encap in XDP'
+  commit_date: '2023-07-10'
+  fix_type: inline_hint
+  buggy_code: "// FILE: bpf/lib/nodeport.h\n// CONTEXT: static __always_inline bool\n\
+    bpf_skip_recirculation(const struct __ctx_buff *ctx __maybe_unused)\n{\n\t/* From\
+    \ XDP layer, we do not go through an egress hook from\n\t * here, hence nothing\
+    \ to be skipped.\n\t */\n#if __ctx_is == __ctx_skb\n\treturn ctx->tc_index & TC_INDEX_F_SKIP_RECIRCULATION;\n\
+    #else\n\treturn false;\n#endif\n}\n\nstatic __always_inline bool dsr_fail_needs_reply(int\
+    \ code __maybe_unused)\n{\n#ifdef ENABLE_DSR_ICMP_ERRORS\n\tif (code == DROP_FRAG_NEEDED)\n\
+    \t\treturn true;\n#endif\n\treturn false;\n}\n\nstatic __always_inline bool dsr_is_too_big(struct\
+    \ __ctx_buff *ctx __maybe_unused,\n\t\t\t\t\t   __u16 expanded_len __maybe_unused)\n\
+    {\n\n// CONTEXT: static __always_inline int encap_geneve_dsr_opt6(struct __ctx_buff\
+    \ *ctx,\n\t\tencap_len += sizeof(struct geneve_dsr_opt6);\n\t\tset_geneve_dsr_opt6(svc_port,\
+    \ svc_addr, &gopt);\n\t}\n\n\ttotal_len = encap_len + payload_len;\n\n\tif (dsr_is_too_big(ctx,\
+    \ total_len)) {\n\t\t*ohead = encap_len;\n\t\treturn DROP_FRAG_NEEDED;\n\t}\n\n\
+    \tif (need_opt)\n\t\treturn  __encap_with_nodeid_opt(ctx,\n\t\t\t\t\t\tIPV4_DIRECT_ROUTING,\n\
+    \t\t\t\t\t\tsrc_port,\n\t\t\t\t\t\ttunnel_endpoint,\n\t\t\t\t\t\tWORLD_ID,\n\t\
+    \t\t\t\t\tdst_sec_identity,\n\t\t\t\t\t\tNOT_VTEP_DST,\n\t\t\t\t\t\t&gopt,\n\t\
+    \t\t\t\t\tsizeof(gopt),\n\t\t\t\t\t\t(enum trace_reason)CT_NEW,\n\t\t\t\t\t\t\
+    TRACE_PAYLOAD_LEN,\n\t\t\t\t\t\tifindex);\n\n\treturn __encap_with_nodeid(ctx,\n\
+    \t\t\t\t   IPV4_DIRECT_ROUTING,\n\t\t\t\t   src_port,\n\t\t\t\t   tunnel_endpoint,\n\
+    \t\t\t\t   WORLD_ID,\n\t\t\t\t   dst_sec_identity,\n\t\t\t\t   NOT_VTEP_DST,\n\
+    \t\t\t\t   (enum trace_reason)CT_NEW,\n\t\t\t\t   TRACE_PAYLOAD_LEN,\n\t\t\t\t\
+    \   ifindex);\n}\n#endif /* DSR_ENCAP_MODE */\n\nstatic __always_inline int find_dsr_v6(struct\
+    \ __ctx_buff *ctx, __u8 nexthdr,\n\t\t\t\t       struct dsr_opt_v6 *dsr_opt, bool\
+    \ *found)\n{\n\tstruct ipv6_opt_hdr opthdr __align_stack_8;\n\tint i, len = sizeof(struct\
+    \ ipv6hdr);\n\t__u8 nh = nexthdr;\n\n#pragma unroll\n\tfor (i = 0; i < IPV6_MAX_HEADERS;\
+    \ i++) {\n\n// CONTEXT: int tail_nodeport_nat_egress_ipv6(struct __ctx_buff *ctx)\n\
+    \tret = __snat_v6_nat(ctx, &tuple, l4_off, ACTION_CREATE, true,\n\t\t\t    &target,\
+    \ &ext_err);\n\tif (IS_ERR(ret))\n\t\tgoto drop_err;\n\n\tctx_snat_done_set(ctx);\n\
+    #ifdef TUNNEL_MODE\n\tif (tunnel_endpoint) {\n\t\t__be16 src_port;\n\n\t\tsrc_port\
+    \ = tunnel_gen_src_port_v6(&tuple);\n\n\t\tret = __encap_with_nodeid(ctx,\n\t\t\
+    \t\t\t  IPV4_DIRECT_ROUTING,\n\t\t\t\t\t  src_port,\n\t\t\t\t\t  tunnel_endpoint,\n\
+    \t\t\t\t\t  WORLD_ID,\n\t\t\t\t\t  dst_sec_identity,\n\t\t\t\t\t  NOT_VTEP_DST,\n\
+    \t\t\t\t\t  (enum trace_reason)CT_NEW,\n\t\t\t\t\t  TRACE_PAYLOAD_LEN, &oif);\n\
+    \t\tif (IS_ERR(ret))\n\t\t\tgoto drop_err;\n\n\t\tif (ret == CTX_ACT_REDIRECT\
+    \ && oif) {\n\t\t\tcilium_capture_out(ctx);\n\t\t\treturn ctx_redirect(ctx, oif,\
+    \ 0);\n\t\t}\n\n\t\tgoto fib_ipv4;\n\t}\n#endif\n\tif (!revalidate_data(ctx, &data,\
+    \ &data_end, &ip6)) {\n\n// CONTEXT: static __always_inline int rev_nodeport_lb6(struct\
+    \ __ctx_buff *ctx, __s8 *ext_er\n\t}\nout:\n\tif (bpf_skip_recirculation(ctx))\n\
+    \t\treturn DROP_NAT_NO_MAPPING;\n\n\tctx_skip_nodeport_set(ctx);\n\tep_tail_call(ctx,\
+    \ CILIUM_CALL_IPV6_FROM_NETDEV);\n\treturn DROP_MISSED_TAIL_CALL;\n#ifdef TUNNEL_MODE\n\
+    encap_redirect:\n\tsrc_port = tunnel_gen_src_port_v6(&tuple);\n\n\tret = __encap_with_nodeid(ctx,\
+    \ IPV4_DIRECT_ROUTING, src_port,\n\t\t\t\t  tunnel_endpoint, SECLABEL, dst_sec_identity,\n\
+    \t\t\t\t  NOT_VTEP_DST, reason, monitor, &ifindex);\n\tif (IS_ERR(ret))\n\t\t\
+    return ret;\n\n\tif (ret == CTX_ACT_REDIRECT && ifindex)\n\t\treturn ctx_redirect(ctx,\
+    \ ifindex, 0);\n\n\tgoto fib_ipv4;\n#endif\n\nfib_lookup:\n\tif (is_v4_in_v6((union\
+    \ v6addr *)&ip6->saddr)) {\n\t\tstruct iphdr *ip4;\n\n// CONTEXT: static __always_inline\
+    \ int encap_geneve_dsr_opt4(struct __ctx_buff *ctx, int l3_\n\t\t\t\treturn DROP_WRITE_ERROR;\n\
+    \n\t\t\tret = ctx_set_tunnel_opt(ctx, (__u8 *)&gopt, sizeof(gopt));\n\t\t\tif\
+    \ (ret)\n\t\t\t\treturn ret;\n\t\t}\n\n\t\treturn CTX_ACT_REDIRECT;\n\t}\n#endif\n\
+    \n\tif (need_opt)\n\t\treturn  __encap_with_nodeid_opt(ctx,\n\t\t\t\t\t\tIPV4_DIRECT_ROUTING,\n\
+    \t\t\t\t\t\tsrc_port,\n\t\t\t\t\t\ttunnel_endpoint,\n\t\t\t\t\t\tsrc_sec_identity,\n\
+    \t\t\t\t\t\tdst_sec_identity,\n\t\t\t\t\t\tNOT_VTEP_DST,\n\t\t\t\t\t\t&gopt,\n\
+    \t\t\t\t\t\tsizeof(gopt),\n\t\t\t\t\t\t(enum trace_reason)CT_NEW,\n\t\t\t\t\t\t\
+    TRACE_PAYLOAD_LEN,\n\t\t\t\t\t\tifindex);\n\n\treturn __encap_with_nodeid(ctx,\n\
+    \t\t\t\t   IPV4_DIRECT_ROUTING,\n\t\t\t\t   src_port,\n\t\t\t\t   tunnel_endpoint,\n\
+    \t\t\t\t   src_sec_identity,\n\t\t\t\t   dst_sec_identity,\n\t\t\t\t   NOT_VTEP_DST,\n\
+    \t\t\t\t   (enum trace_reason)CT_NEW,\n\t\t\t\t   TRACE_PAYLOAD_LEN,\n\t\t\t\t\
+    \   ifindex);\n}\n#endif /* DSR_ENCAP_MODE */\n\nstatic __always_inline int\n\
+    nodeport_extract_dsr_v4(struct __ctx_buff *ctx,\n\t\t\tconst struct iphdr *ip4\
+    \ __maybe_unused,\n\t\t\tconst struct ipv4_ct_tuple *tuple, int l4_off,\n\t\t\t\
+    __be32 *addr, __be16 *port, bool *dsr)\n{\n\tstruct ipv4_ct_tuple tmp = *tuple;\n\
+    \n\t/* Parse DSR info from the packet, to get the addr/port of the\n\n// CONTEXT:\
+    \ int tail_nodeport_nat_egress_ipv4(struct __ctx_buff *ctx)\n\tif (tunnel_endpoint)\
+    \ {\n\t\t__be16 src_port;\n\n\t\tsrc_port = tunnel_gen_src_port_v4(&tuple);\n\n\
+    \t\t/* The request came from outside, so we need to\n\t\t * set the security id\
+    \ in the tunnel header to WORLD_ID.\n\t\t * Otherwise, the remote node will assume,\
+    \ that the\n\t\t * request originated from a cluster node which will\n\t\t * bypass\
+    \ any netpol which disallows LB requests from\n\t\t * outside.\n\t\t */\n\t\t\
+    ret = __encap_with_nodeid(ctx,\n\t\t\t\t\t  IPV4_DIRECT_ROUTING,\n\t\t\t\t\t \
+    \ src_port,\n\t\t\t\t\t  tunnel_endpoint,\n\t\t\t\t\t  WORLD_ID,\n\t\t\t\t\t \
+    \ dst_sec_identity,\n\t\t\t\t\t  NOT_VTEP_DST,\n\t\t\t\t\t  (enum trace_reason)CT_NEW,\n\
+    \t\t\t\t\t  TRACE_PAYLOAD_LEN, &oif);\n\t\tif (IS_ERR(ret))\n\t\t\tgoto drop_err;\n\
+    \n\t\tif (ret == CTX_ACT_REDIRECT && oif) {\n\t\t\tcilium_capture_out(ctx);\n\t\
+    \t\treturn ctx_redirect(ctx, oif, 0);\n\t\t}\n\t}\n#endif\n\tif (!revalidate_data(ctx,\
+    \ &data, &data_end, &ip4)) {\n\t\tret = DROP_INVALID;\n\t\tgoto drop_err;\n\n\
+    // CONTEXT: static __always_inline int rev_nodeport_lb4(struct __ctx_buff *ctx,\
+    \ __s8 *ext_er\n\t}\nout:\n\tif (bpf_skip_recirculation(ctx))\n\t\treturn DROP_NAT_NO_MAPPING;\n\
+    \n\tctx_skip_nodeport_set(ctx);\n\tep_tail_call(ctx, CILIUM_CALL_IPV4_FROM_NETDEV);\n\
+    \treturn DROP_MISSED_TAIL_CALL;\n#if (defined(ENABLE_EGRESS_GATEWAY) && !defined(IS_BPF_OVERLAY))\
+    \ || defined(TUNNEL_MODE)\nencap_redirect:\n\tsrc_port = tunnel_gen_src_port_v4(&tuple);\n\
+    \n\tret = __encap_with_nodeid(ctx, IPV4_DIRECT_ROUTING, src_port,\n\t\t\t\t  tunnel_endpoint,\
+    \ SECLABEL, dst_sec_identity,\n\t\t\t\t  NOT_VTEP_DST, reason, monitor, &ifindex);\n\
+    \tif (IS_ERR(ret))\n\t\treturn ret;\n\n\tif (ret == CTX_ACT_REDIRECT && ifindex)\n\
+    \t\treturn ctx_redirect(ctx, ifindex, 0);\n\n\tif (!revalidate_data(ctx, &data,\
+    \ &data_end, &ip4))\n\t\treturn DROP_INVALID;\n#endif\n\nfib_lookup:\n\treturn\
+    \ fib_redirect_v4(ctx, l3_off, ip4, true, ext_err,"
+  fixed_code: "// FILE: bpf/lib/nodeport.h\n// CONTEXT: static __always_inline bool\n\
+    bpf_skip_recirculation(const struct __ctx_buff *ctx __maybe_unused)\n{\n\t/* From\
+    \ XDP layer, we do not go through an egress hook from\n\t * here, hence nothing\
+    \ to be skipped.\n\t */\n#if __ctx_is == __ctx_skb\n\treturn ctx->tc_index & TC_INDEX_F_SKIP_RECIRCULATION;\n\
+    #else\n\treturn false;\n#endif\n}\n\n#ifdef HAVE_ENCAP\nstatic __always_inline\
+    \ int\nnodeport_add_tunnel_encap(struct __ctx_buff *ctx, __u32 src_ip, __be16\
+    \ src_port,\n\t\t\t  __be32 dst_ip, __u32 src_sec_identity, __u32 dst_sec_identity,\n\
+    \t\t\t  enum trace_reason ct_reason, __u32 monitor, int *ifindex)\n{\n\t/* Let\
+    \ kernel choose the outer source ip */\n\tif (ctx_is_skb())\n\t\tsrc_ip = 0;\n\
+    \n\treturn __encap_with_nodeid(ctx, src_ip, src_port, dst_ip,\n\t\t\t\t   src_sec_identity,\
+    \ dst_sec_identity, NOT_VTEP_DST,\n\t\t\t\t   ct_reason, monitor, ifindex);\n\
+    }\n\n# if defined(ENABLE_DSR) && DSR_ENCAP_MODE == DSR_ENCAP_GENEVE\nstatic __always_inline\
+    \ int\nnodeport_add_tunnel_encap_opt(struct __ctx_buff *ctx, __u32 src_ip, __be16\
+    \ src_port,\n\t\t\t      __be32 dst_ip, __u32 src_sec_identity, __u32 dst_sec_identity,\n\
+    \t\t\t      void *opt, __u32 opt_len, enum trace_reason ct_reason,\n\t\t\t   \
+    \   __u32 monitor, int *ifindex)\n{\n\t/* Let kernel choose the outer source ip\
+    \ */\n\tif (ctx_is_skb())\n\t\tsrc_ip = 0;\n\n\treturn __encap_with_nodeid_opt(ctx,\
+    \ src_ip, src_port, dst_ip,\n\t\t\t\t       src_sec_identity, dst_sec_identity,\
+    \ NOT_VTEP_DST,\n\t\t\t\t       opt, opt_len, ct_reason, monitor, ifindex);\n\
+    }\n# endif\n#endif /* HAVE_ENCAP */\n\nstatic __always_inline bool dsr_fail_needs_reply(int\
+    \ code __maybe_unused)\n{\n#ifdef ENABLE_DSR_ICMP_ERRORS\n\tif (code == DROP_FRAG_NEEDED)\n\
+    \t\treturn true;\n#endif\n\treturn false;\n}\n\nstatic __always_inline bool dsr_is_too_big(struct\
+    \ __ctx_buff *ctx __maybe_unused,\n\t\t\t\t\t   __u16 expanded_len __maybe_unused)\n\
+    {\n\n// CONTEXT: static __always_inline int encap_geneve_dsr_opt6(struct __ctx_buff\
+    \ *ctx,\n\t\tencap_len += sizeof(struct geneve_dsr_opt6);\n\t\tset_geneve_dsr_opt6(svc_port,\
+    \ svc_addr, &gopt);\n\t}\n\n\ttotal_len = encap_len + payload_len;\n\n\tif (dsr_is_too_big(ctx,\
+    \ total_len)) {\n\t\t*ohead = encap_len;\n\t\treturn DROP_FRAG_NEEDED;\n\t}\n\n\
+    \tif (need_opt)\n\t\treturn nodeport_add_tunnel_encap_opt(ctx,\n\t\t\t\t\t\t \
+    \    IPV4_DIRECT_ROUTING,\n\t\t\t\t\t\t     src_port,\n\t\t\t\t\t\t     tunnel_endpoint,\n\
+    \t\t\t\t\t\t     WORLD_ID,\n\t\t\t\t\t\t     dst_sec_identity,\n\t\t\t\t\t\t \
+    \    &gopt,\n\t\t\t\t\t\t     sizeof(gopt),\n\t\t\t\t\t\t     (enum trace_reason)CT_NEW,\n\
+    \t\t\t\t\t\t     TRACE_PAYLOAD_LEN,\n\t\t\t\t\t\t     ifindex);\n\n\treturn nodeport_add_tunnel_encap(ctx,\n\
+    \t\t\t\t\t IPV4_DIRECT_ROUTING,\n\t\t\t\t\t src_port,\n\t\t\t\t\t tunnel_endpoint,\n\
+    \t\t\t\t\t WORLD_ID,\n\t\t\t\t\t dst_sec_identity,\n\t\t\t\t\t (enum trace_reason)CT_NEW,\n\
+    \t\t\t\t\t TRACE_PAYLOAD_LEN,\n\t\t\t\t\t ifindex);\n}\n#endif /* DSR_ENCAP_MODE\
+    \ */\n\nstatic __always_inline int find_dsr_v6(struct __ctx_buff *ctx, __u8 nexthdr,\n\
+    \t\t\t\t       struct dsr_opt_v6 *dsr_opt, bool *found)\n{\n\tstruct ipv6_opt_hdr\
+    \ opthdr __align_stack_8;\n\tint i, len = sizeof(struct ipv6hdr);\n\t__u8 nh =\
+    \ nexthdr;\n\n#pragma unroll\n\tfor (i = 0; i < IPV6_MAX_HEADERS; i++) {\n\n//\
+    \ CONTEXT: int tail_nodeport_nat_egress_ipv6(struct __ctx_buff *ctx)\n\tret =\
+    \ __snat_v6_nat(ctx, &tuple, l4_off, ACTION_CREATE, true,\n\t\t\t    &target,\
+    \ &ext_err);\n\tif (IS_ERR(ret))\n\t\tgoto drop_err;\n\n\tctx_snat_done_set(ctx);\n\
+    #ifdef TUNNEL_MODE\n\tif (tunnel_endpoint) {\n\t\t__be16 src_port;\n\n\t\tsrc_port\
+    \ = tunnel_gen_src_port_v6(&tuple);\n\n\t\tret = nodeport_add_tunnel_encap(ctx,\n\
+    \t\t\t\t\t\tIPV4_DIRECT_ROUTING,\n\t\t\t\t\t\tsrc_port,\n\t\t\t\t\t\ttunnel_endpoint,\n\
+    \t\t\t\t\t\tWORLD_ID,\n\t\t\t\t\t\tdst_sec_identity,\n\t\t\t\t\t\t(enum trace_reason)CT_NEW,\n\
+    \t\t\t\t\t\tTRACE_PAYLOAD_LEN, &oif);\n\t\tif (IS_ERR(ret))\n\t\t\tgoto drop_err;\n\
+    \n\t\tif (ret == CTX_ACT_REDIRECT && oif) {\n\t\t\tcilium_capture_out(ctx);\n\t\
+    \t\treturn ctx_redirect(ctx, oif, 0);\n\t\t}\n\n\t\tgoto fib_ipv4;\n\t}\n#endif\n\
+    \tif (!revalidate_data(ctx, &data, &data_end, &ip6)) {\n\n// CONTEXT: static __always_inline\
+    \ int rev_nodeport_lb6(struct __ctx_buff *ctx, __s8 *ext_er\n\t}\nout:\n\tif (bpf_skip_recirculation(ctx))\n\
+    \t\treturn DROP_NAT_NO_MAPPING;\n\n\tctx_skip_nodeport_set(ctx);\n\tep_tail_call(ctx,\
+    \ CILIUM_CALL_IPV6_FROM_NETDEV);\n\treturn DROP_MISSED_TAIL_CALL;\n#ifdef TUNNEL_MODE\n\
+    encap_redirect:\n\tsrc_port = tunnel_gen_src_port_v6(&tuple);\n\n\tret = nodeport_add_tunnel_encap(ctx,\
+    \ IPV4_DIRECT_ROUTING, src_port,\n\t\t\t\t\ttunnel_endpoint, SECLABEL, dst_sec_identity,\n\
+    \t\t\t\t\treason, monitor, &ifindex);\n\tif (IS_ERR(ret))\n\t\treturn ret;\n\n\
+    \tif (ret == CTX_ACT_REDIRECT && ifindex)\n\t\treturn ctx_redirect(ctx, ifindex,\
+    \ 0);\n\n\tgoto fib_ipv4;\n#endif\n\nfib_lookup:\n\tif (is_v4_in_v6((union v6addr\
+    \ *)&ip6->saddr)) {\n\t\tstruct iphdr *ip4;\n\n// CONTEXT: static __always_inline\
+    \ int encap_geneve_dsr_opt4(struct __ctx_buff *ctx, int l3_\n\t\t\t\treturn DROP_WRITE_ERROR;\n\
+    \n\t\t\tret = ctx_set_tunnel_opt(ctx, (__u8 *)&gopt, sizeof(gopt));\n\t\t\tif\
+    \ (ret)\n\t\t\t\treturn ret;\n\t\t}\n\n\t\treturn CTX_ACT_REDIRECT;\n\t}\n#endif\n\
+    \n\tif (need_opt)\n\t\treturn nodeport_add_tunnel_encap_opt(ctx,\n\t\t\t\t\t\t\
+    \     IPV4_DIRECT_ROUTING,\n\t\t\t\t\t\t     src_port,\n\t\t\t\t\t\t     tunnel_endpoint,\n\
+    \t\t\t\t\t\t     src_sec_identity,\n\t\t\t\t\t\t     dst_sec_identity,\n\t\t\t\
+    \t\t\t     &gopt,\n\t\t\t\t\t\t     sizeof(gopt),\n\t\t\t\t\t\t     (enum trace_reason)CT_NEW,\n\
+    \t\t\t\t\t\t     TRACE_PAYLOAD_LEN,\n\t\t\t\t\t\t     ifindex);\n\n\treturn nodeport_add_tunnel_encap(ctx,\n\
+    \t\t\t\t\t IPV4_DIRECT_ROUTING,\n\t\t\t\t\t src_port,\n\t\t\t\t\t tunnel_endpoint,\n\
+    \t\t\t\t\t src_sec_identity,\n\t\t\t\t\t dst_sec_identity,\n\t\t\t\t\t (enum trace_reason)CT_NEW,\n\
+    \t\t\t\t\t TRACE_PAYLOAD_LEN,\n\t\t\t\t\t ifindex);\n}\n#endif /* DSR_ENCAP_MODE\
+    \ */\n\nstatic __always_inline int\nnodeport_extract_dsr_v4(struct __ctx_buff\
+    \ *ctx,\n\t\t\tconst struct iphdr *ip4 __maybe_unused,\n\t\t\tconst struct ipv4_ct_tuple\
+    \ *tuple, int l4_off,\n\t\t\t__be32 *addr, __be16 *port, bool *dsr)\n{\n\tstruct\
+    \ ipv4_ct_tuple tmp = *tuple;\n\n\t/* Parse DSR info from the packet, to get the\
+    \ addr/port of the\n\n// CONTEXT: int tail_nodeport_nat_egress_ipv4(struct __ctx_buff\
+    \ *ctx)\n\tif (tunnel_endpoint) {\n\t\t__be16 src_port;\n\n\t\tsrc_port = tunnel_gen_src_port_v4(&tuple);\n\
+    \n\t\t/* The request came from outside, so we need to\n\t\t * set the security\
+    \ id in the tunnel header to WORLD_ID.\n\t\t * Otherwise, the remote node will\
+    \ assume, that the\n\t\t * request originated from a cluster node which will\n\
+    \t\t * bypass any netpol which disallows LB requests from\n\t\t * outside.\n\t\
+    \t */\n\t\tret = nodeport_add_tunnel_encap(ctx,\n\t\t\t\t\t\tIPV4_DIRECT_ROUTING,\n\
+    \t\t\t\t\t\tsrc_port,\n\t\t\t\t\t\ttunnel_endpoint,\n\t\t\t\t\t\tWORLD_ID,\n\t\
+    \t\t\t\t\tdst_sec_identity,\n\t\t\t\t\t\t(enum trace_reason)CT_NEW,\n\t\t\t\t\t\
+    \tTRACE_PAYLOAD_LEN, &oif);\n\t\tif (IS_ERR(ret))\n\t\t\tgoto drop_err;\n\n\t\t\
+    if (ret == CTX_ACT_REDIRECT && oif) {\n\t\t\tcilium_capture_out(ctx);\n\t\t\t\
+    return ctx_redirect(ctx, oif, 0);\n\t\t}\n\t}\n#endif\n\tif (!revalidate_data(ctx,\
+    \ &data, &data_end, &ip4)) {\n\t\tret = DROP_INVALID;\n\t\tgoto drop_err;\n\n\
+    // CONTEXT: static __always_inline int rev_nodeport_lb4(struct __ctx_buff *ctx,\
+    \ __s8 *ext_er\n\t}\nout:\n\tif (bpf_skip_recirculation(ctx))\n\t\treturn DROP_NAT_NO_MAPPING;\n\
+    \n\tctx_skip_nodeport_set(ctx);\n\tep_tail_call(ctx, CILIUM_CALL_IPV4_FROM_NETDEV);\n\
+    \treturn DROP_MISSED_TAIL_CALL;\n#if (defined(ENABLE_EGRESS_GATEWAY) && !defined(IS_BPF_OVERLAY))\
+    \ || defined(TUNNEL_MODE)\nencap_redirect:\n\tsrc_port = tunnel_gen_src_port_v4(&tuple);\n\
+    \n\tret = nodeport_add_tunnel_encap(ctx, IPV4_DIRECT_ROUTING, src_port,\n\t\t\t\
+    \t\ttunnel_endpoint, SECLABEL, dst_sec_identity,\n\t\t\t\t\treason, monitor, &ifindex);\n\
+    \tif (IS_ERR(ret))\n\t\treturn ret;\n\n\tif (ret == CTX_ACT_REDIRECT && ifindex)\n\
+    \t\treturn ctx_redirect(ctx, ifindex, 0);\n\n\tif (!revalidate_data(ctx, &data,\
+    \ &data_end, &ip4))\n\t\treturn DROP_INVALID;\n#endif\n\nfib_lookup:\n\treturn\
+    \ fib_redirect_v4(ctx, l3_off, ip4, true, ext_err,"
+  diff_summary: |-
+    bpf/lib/nodeport.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: static __always_inline bool, static __always_inline int encap_geneve_dsr_opt6(struct __ctx_buff *ctx,, int tail_nodeport_nat_egress_ipv6(struct __ctx_buff *ctx).
+    - Commit subject: bpf: nodeport: only set outer src IP for tunnel encap in XDP.

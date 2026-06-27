@@ -1,0 +1,162 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-aya-rs-aya-1490
+source_kind: github_issue
+source:
+  url: https://github.com/aya-rs/aya/issues/1490
+  title: BPF_BTF_LOAD MaybeUninit Invalid name
+  repository: https://github.com/aya-rs/aya
+  commit: null
+  collected_at: '2026-03-11T16:01:26+00:00'
+collector:
+  original_path: bpfix-empirical/raw/gh/github-aya-rs-aya-1490.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: true
+  verifier_log_block_count: 1
+  source_snippet_count: 0
+  has_buggy_code: false
+  has_fixed_code: true
+  has_fix_description: true
+reproduction:
+  status: missing_source
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: btf_load_error_present_but_no_embedded_reproducer_source
+raw:
+  case_id: github-aya-rs-aya-1490
+  source: github_issues
+  collected_at: '2026-03-11T16:01:26+00:00'
+  issue:
+    repository: aya-rs/aya
+    number: 1490
+    title: BPF_BTF_LOAD MaybeUninit Invalid name
+    url: https://github.com/aya-rs/aya/issues/1490
+    state: closed
+    state_reason: completed
+    labels: []
+    created_at: '2026-03-03T21:09:35Z'
+    updated_at: '2026-03-03T22:34:59Z'
+    author: macw97
+  verifier_log:
+    blocks:
+    - |-
+      Error: BTF error: the BPF_BTF_LOAD syscall returned Invalid argument (os error 22). Verifier output: magic: 0xeb9f
+      version: 1
+      flags: 0x0
+      hdr_len: 24
+      type_off: 0
+      type_len: 852
+      str_off: 852
+      str_len: 3274
+      btf_total_size: 4150
+      [1] PTR (anon) type_id=2
+      [2] ENUM c_void size=1 vlen=2
+              __variant1 val=0
+              __variant2 val=1
+      [3] FUNC_PROTO (anon) return=4 args=(1 ctx)
+      [4] INT i32 size=4 bits_offset=0 nr_bits=32 encoding=SIGNED
+      [5] FUNC bprm_check_security type_id=3
+      [6] PTR (anon) type_id=7
+      [7] INT u8 size=1 bits_offset=0 nr_bits=8 encoding=(none)
+      [8] INT usize size=8 bits_offset=0 nr_bits=64 encoding=(none)
+      [9] FUNC_PROTO (anon) return=0 args=(6 dest, 6 src, 8 n)
+      [10] FUNC memcpy type_id=9
+      [11] FUNC_PROTO (anon) return=0 args=(6 dest, 6 src, 8 n)
+      [12] FUNC memmove type_id=11
+      [13] FUNC_PROTO (anon) return=0 args=(6 s, 4 c, 8 n)
+      [14] FUNC memset type_id=13
+      [15] PTR (anon) type_id=7
+      [16] FUNC_PROTO (anon) return=4 args=(15 s1, 15 s2, 8 n)
+      [17] FUNC memcmp type_id=16
+      [18] FUNC_PROTO (anon) return=4 args=(15 s1, 15 s2, 8 n)
+      [19] FUNC bcmp type_id=18
+      [20] ARRAY (anon) type_id=7 index_type_id=21 nr_elems=13
+      [21] INT __ARRAY_SIZE_TYPE__ size=4 bits_offset=0 nr_bits=32 encoding=(none)
+      [22] VAR LICENSE type_id=20 linkage=1
+      [23] STRUCT RingBuf size=28 vlen=1
+              def type_id=24 bits_offset=0
+      [24] STRUCT MapDef size=28 vlen=1
+              __0 type_id=25 bits_offset=0
+      [25] STRUCT UnsafeCell_3C_aya_ebpf_bindings_3A__3A_bindings_3A__3A_bpf_map_def_3E_ size=28 vlen=1
+              value type_id=26 bits_offset=0
+      [26] STRUCT bpf_map_def size=28 vlen=7
+              type_ type_id=27 bits_offset=0
+              key_size type_id=27 bits_offset=32
+              value_size type_id=27 bits_offset=64
+              max_entries type_id=27 bits_offset=96
+              map_flags type_id=27 bits_offset=128
+              id type_id=27 bits_offset=160
+              pinning type_id=27 bits_offset=192
+      [27] INT u32 size=4 bits_offset=0 nr_bits=32 encoding=(none)
+      [28] VAR AYA_LOGS type_id=23 linkage=1
+      [29] STRUCT EbpfGlobal_3C_u8_3E_ size=1 vlen=1
+              value type_id=30 bits_offset=0
+      [30] UNION MaybeUninit<u8> size=1 vlen=2 Invalid name
+    combined: |-
+      Error: BTF error: the BPF_BTF_LOAD syscall returned Invalid argument (os error 22). Verifier output: magic: 0xeb9f
+      version: 1
+      flags: 0x0
+      hdr_len: 24
+      type_off: 0
+      type_len: 852
+      str_off: 852
+      str_len: 3274
+      btf_total_size: 4150
+      [1] PTR (anon) type_id=2
+      [2] ENUM c_void size=1 vlen=2
+              __variant1 val=0
+              __variant2 val=1
+      [3] FUNC_PROTO (anon) return=4 args=(1 ctx)
+      [4] INT i32 size=4 bits_offset=0 nr_bits=32 encoding=SIGNED
+      [5] FUNC bprm_check_security type_id=3
+      [6] PTR (anon) type_id=7
+      [7] INT u8 size=1 bits_offset=0 nr_bits=8 encoding=(none)
+      [8] INT usize size=8 bits_offset=0 nr_bits=64 encoding=(none)
+      [9] FUNC_PROTO (anon) return=0 args=(6 dest, 6 src, 8 n)
+      [10] FUNC memcpy type_id=9
+      [11] FUNC_PROTO (anon) return=0 args=(6 dest, 6 src, 8 n)
+      [12] FUNC memmove type_id=11
+      [13] FUNC_PROTO (anon) return=0 args=(6 s, 4 c, 8 n)
+      [14] FUNC memset type_id=13
+      [15] PTR (anon) type_id=7
+      [16] FUNC_PROTO (anon) return=4 args=(15 s1, 15 s2, 8 n)
+      [17] FUNC memcmp type_id=16
+      [18] FUNC_PROTO (anon) return=4 args=(15 s1, 15 s2, 8 n)
+      [19] FUNC bcmp type_id=18
+      [20] ARRAY (anon) type_id=7 index_type_id=21 nr_elems=13
+      [21] INT __ARRAY_SIZE_TYPE__ size=4 bits_offset=0 nr_bits=32 encoding=(none)
+      [22] VAR LICENSE type_id=20 linkage=1
+      [23] STRUCT RingBuf size=28 vlen=1
+              def type_id=24 bits_offset=0
+      [24] STRUCT MapDef size=28 vlen=1
+              __0 type_id=25 bits_offset=0
+      [25] STRUCT UnsafeCell_3C_aya_ebpf_bindings_3A__3A_bindings_3A__3A_bpf_map_def_3E_ size=28 vlen=1
+              value type_id=26 bits_offset=0
+      [26] STRUCT bpf_map_def size=28 vlen=7
+              type_ type_id=27 bits_offset=0
+              key_size type_id=27 bits_offset=32
+              value_size type_id=27 bits_offset=64
+              max_entries type_id=27 bits_offset=96
+              map_flags type_id=27 bits_offset=128
+              id type_id=27 bits_offset=160
+              pinning type_id=27 bits_offset=192
+      [27] INT u32 size=4 bits_offset=0 nr_bits=32 encoding=(none)
+      [28] VAR AYA_LOGS type_id=23 linkage=1
+      [29] STRUCT EbpfGlobal_3C_u8_3E_ size=1 vlen=1
+              value type_id=30 bits_offset=0
+      [30] UNION MaybeUninit<u8> size=1 vlen=2 Invalid name
+  source_snippets: []
+  issue_body_text: |-
+    Hi, I'm doing small side project to get some knowledge regarding kernel development/eBPF/Rust. I had everything setuped with basic project generated from aya template and it worked like a charm. BTF was generated with aya-tool. I was on commit #1394. After update to newest master or any commit close to that it seems like I get errors when loading BTF and its related to MaybeUninit and aya logs. Is it not properly translated(???) Not entirely sure if it's aya-tool problem or something else, but after downgrading to earlier commits everything was loading properly and working as expected. As I wrote I don't have enough knowledge to be sure. Just an observation...
+    Error output bellow
+  fix:
+    summary: This was fixed in https://github.com/aya-rs/bpf-linker/pull/346 and released
+      in https://github.com/aya-rs/bpf-linker/releases/tag/v0.10.2.
+    selected_comment:
+      kind: comment
+      url: https://github.com/aya-rs/aya/issues/1490#issuecomment-3993986344
+      author: tamird
+      author_association: MEMBER
+      body_text: This was fixed in https://github.com/aya-rs/bpf-linker/pull/346 and
+        released in https://github.com/aya-rs/bpf-linker/releases/tag/v0.10.2.

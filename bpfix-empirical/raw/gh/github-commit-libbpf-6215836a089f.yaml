@@ -1,0 +1,90 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-libbpf-6215836a089f
+source_kind: github_commit
+source:
+  url: https://github.com/libbpf/libbpf/commit/6215836a089f9517071ef7a0ea0c431735e28893
+  title: 'libbpf: fix to reject unknown flags in xsk_socket__create()'
+  repository: https://github.com/libbpf/libbpf
+  commit: 6215836a089f9517071ef7a0ea0c431735e28893
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-libbpf-6215836a089f.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Raw diff validates xsk_socket__create() flags and rejects unknown libbpf_flags.
+    This is AF_XDP socket API input validation, not verifier behavior.
+raw:
+  case_id: github-commit-libbpf-6215836a089f
+  source: github_commits
+  repository: https://github.com/libbpf/libbpf
+  commit_hash: 6215836a089f9517071ef7a0ea0c431735e28893
+  commit_message: 'libbpf: fix to reject unknown flags in xsk_socket__create()'
+  commit_date: '2019-03-12'
+  fix_type: bounds_check
+  buggy_code: "// FILE: src/xsk.c\n// CONTEXT: static void xsk_set_umem_config(struct\
+    \ xsk_umem_config *cfg,\n\t\tcfg->comp_size = XSK_RING_CONS__DEFAULT_NUM_DESCS;\n\
+    \t\tcfg->frame_size = XSK_UMEM__DEFAULT_FRAME_SIZE;\n\t\tcfg->frame_headroom =\
+    \ XSK_UMEM__DEFAULT_FRAME_HEADROOM;\n\t\treturn;\n\t}\n\n\tcfg->fill_size = usr_cfg->fill_size;\n\
+    \tcfg->comp_size = usr_cfg->comp_size;\n\tcfg->frame_size = usr_cfg->frame_size;\n\
+    \tcfg->frame_headroom = usr_cfg->frame_headroom;\n}\n\nstatic void xsk_set_xdp_socket_config(struct\
+    \ xsk_socket_config *cfg,\n\t\t\t\t      const struct xsk_socket_config *usr_cfg)\n\
+    {\n\tif (!usr_cfg) {\n\t\tcfg->rx_size = XSK_RING_CONS__DEFAULT_NUM_DESCS;\n\t\
+    \tcfg->tx_size = XSK_RING_PROD__DEFAULT_NUM_DESCS;\n\t\tcfg->libbpf_flags = 0;\n\
+    \t\tcfg->xdp_flags = 0;\n\t\tcfg->bind_flags = 0;\n\t\treturn;\n\t}\n\n\tcfg->rx_size\
+    \ = usr_cfg->rx_size;\n\tcfg->tx_size = usr_cfg->tx_size;\n\tcfg->libbpf_flags\
+    \ = usr_cfg->libbpf_flags;\n\tcfg->xdp_flags = usr_cfg->xdp_flags;\n\tcfg->bind_flags\
+    \ = usr_cfg->bind_flags;\n}\n\nint xsk_umem__create(struct xsk_umem **umem_ptr,\
+    \ void *umem_area, __u64 size,\n\t\t     struct xsk_ring_prod *fill, struct xsk_ring_cons\
+    \ *comp,\n\t\t     const struct xsk_umem_config *usr_config)\n{\n\tstruct xdp_mmap_offsets\
+    \ off;\n\tstruct xdp_umem_reg mr;\n\tstruct xsk_umem *umem;\n\tsocklen_t optlen;\n\
+    \tvoid *map;\n\tint err;\n\n// CONTEXT: int xsk_socket__create(struct xsk_socket\
+    \ **xsk_ptr, const char *ifname,\n\t}\n\n\txsk->outstanding_tx = 0;\n\txsk->queue_id\
+    \ = queue_id;\n\txsk->umem = umem;\n\txsk->ifindex = if_nametoindex(ifname);\n\
+    \tif (!xsk->ifindex) {\n\t\terr = -errno;\n\t\tgoto out_socket;\n\t}\n\tstrncpy(xsk->ifname,\
+    \ ifname, IFNAMSIZ);\n\n\txsk_set_xdp_socket_config(&xsk->config, usr_config);\n\
+    \n\tif (rx) {\n\t\terr = setsockopt(xsk->fd, SOL_XDP, XDP_RX_RING,\n\t\t\t\t &xsk->config.rx_size,\n\
+    \t\t\t\t sizeof(xsk->config.rx_size));\n\t\tif (err) {\n\t\t\terr = -errno;\n\t\
+    \t\tgoto out_socket;\n\t\t}\n\t}\n\tif (tx) {\n\t\terr = setsockopt(xsk->fd, SOL_XDP,\
+    \ XDP_TX_RING,"
+  fixed_code: "// FILE: src/xsk.c\n// CONTEXT: static void xsk_set_umem_config(struct\
+    \ xsk_umem_config *cfg,\n\t\tcfg->comp_size = XSK_RING_CONS__DEFAULT_NUM_DESCS;\n\
+    \t\tcfg->frame_size = XSK_UMEM__DEFAULT_FRAME_SIZE;\n\t\tcfg->frame_headroom =\
+    \ XSK_UMEM__DEFAULT_FRAME_HEADROOM;\n\t\treturn;\n\t}\n\n\tcfg->fill_size = usr_cfg->fill_size;\n\
+    \tcfg->comp_size = usr_cfg->comp_size;\n\tcfg->frame_size = usr_cfg->frame_size;\n\
+    \tcfg->frame_headroom = usr_cfg->frame_headroom;\n}\n\nstatic int xsk_set_xdp_socket_config(struct\
+    \ xsk_socket_config *cfg,\n\t\t\t\t     const struct xsk_socket_config *usr_cfg)\n\
+    {\n\tif (!usr_cfg) {\n\t\tcfg->rx_size = XSK_RING_CONS__DEFAULT_NUM_DESCS;\n\t\
+    \tcfg->tx_size = XSK_RING_PROD__DEFAULT_NUM_DESCS;\n\t\tcfg->libbpf_flags = 0;\n\
+    \t\tcfg->xdp_flags = 0;\n\t\tcfg->bind_flags = 0;\n\t\treturn 0;\n\t}\n\n\tif\
+    \ (usr_cfg->libbpf_flags & ~XSK_LIBBPF_FLAGS__INHIBIT_PROG_LOAD)\n\t\treturn -EINVAL;\n\
+    \n\tcfg->rx_size = usr_cfg->rx_size;\n\tcfg->tx_size = usr_cfg->tx_size;\n\tcfg->libbpf_flags\
+    \ = usr_cfg->libbpf_flags;\n\tcfg->xdp_flags = usr_cfg->xdp_flags;\n\tcfg->bind_flags\
+    \ = usr_cfg->bind_flags;\n\n\treturn 0;\n}\n\nint xsk_umem__create(struct xsk_umem\
+    \ **umem_ptr, void *umem_area, __u64 size,\n\t\t     struct xsk_ring_prod *fill,\
+    \ struct xsk_ring_cons *comp,\n\t\t     const struct xsk_umem_config *usr_config)\n\
+    {\n\tstruct xdp_mmap_offsets off;\n\tstruct xdp_umem_reg mr;\n\tstruct xsk_umem\
+    \ *umem;\n\tsocklen_t optlen;\n\tvoid *map;\n\tint err;\n\n// CONTEXT: int xsk_socket__create(struct\
+    \ xsk_socket **xsk_ptr, const char *ifname,\n\t}\n\n\txsk->outstanding_tx = 0;\n\
+    \txsk->queue_id = queue_id;\n\txsk->umem = umem;\n\txsk->ifindex = if_nametoindex(ifname);\n\
+    \tif (!xsk->ifindex) {\n\t\terr = -errno;\n\t\tgoto out_socket;\n\t}\n\tstrncpy(xsk->ifname,\
+    \ ifname, IFNAMSIZ);\n\n\terr = xsk_set_xdp_socket_config(&xsk->config, usr_config);\n\
+    \tif (err)\n\t\tgoto out_socket;\n\n\tif (rx) {\n\t\terr = setsockopt(xsk->fd,\
+    \ SOL_XDP, XDP_RX_RING,\n\t\t\t\t &xsk->config.rx_size,\n\t\t\t\t sizeof(xsk->config.rx_size));\n\
+    \t\tif (err) {\n\t\t\terr = -errno;\n\t\t\tgoto out_socket;\n\t\t}\n\t}\n\tif\
+    \ (tx) {\n\t\terr = setsockopt(xsk->fd, SOL_XDP, XDP_TX_RING,"
+  diff_summary: |-
+    src/xsk.c:
+    - Added explicit bounds or range guards so the verifier can prove the access size and offset.
+    - Affected context: static void xsk_set_umem_config(struct xsk_umem_config *cfg,, int xsk_socket__create(struct xsk_socket **xsk_ptr, const char *ifname,.
+    - Commit subject: libbpf: fix to reject unknown flags in xsk_socket__create().

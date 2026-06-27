@@ -1,0 +1,272 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-911ccd86df5f
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/911ccd86df5fa5064ae4b5c0791ec17e704c2f7e
+  title: 'bpf: Fix LB loopback path with ingress policy'
+  repository: https://github.com/cilium/cilium
+  commit: 911ccd86df5fa5064ae4b5c0791ec17e704c2f7e
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-911ccd86df5f.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: environment_required
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: LB loopback with ingress policy changes many local-delivery call signatures
+    across host, LXC, overlay, and L3 helpers. No isolated verifier-rejected snippet
+    or log is present.
+raw:
+  case_id: github-commit-cilium-911ccd86df5f
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: 911ccd86df5fa5064ae4b5c0791ec17e704c2f7e
+  commit_message: 'bpf: Fix LB loopback path with ingress policy'
+  commit_date: '2022-12-18'
+  fix_type: inline_hint
+  buggy_code: "// FILE: bpf/bpf_host.c\n// CONTEXT: skip_host_firewall:\n\t}\n\n\t\
+    /* Lookup IPv6 address in list of local endpoints */\n\tep = lookup_ip6_endpoint(ip6);\n\
+    \tif (ep) {\n\t\t/* Let through packets to the node-ip so they are\n\t\t * processed\
+    \ by the local ip stack.\n\t\t */\n\t\tif (ep->flags & ENDPOINT_F_HOST)\n\t\t\t\
+    return CTX_ACT_OK;\n\n\t\treturn ipv6_local_delivery(ctx, l3_off, secctx, ep,\n\
+    \t\t\t\t\t   METRIC_INGRESS, from_host);\n\t}\n\n\t/* Below remainder is only\
+    \ relevant when traffic is pushed via cilium_host.\n\t * For traffic coming from\
+    \ external, we're done here.\n\t */\n\tif (!from_host)\n\t\treturn CTX_ACT_OK;\n\
+    \n#ifdef TUNNEL_MODE\n\tdst = (union v6addr *) &ip6->daddr;\n\tinfo = ipcache_lookup6(&IPCACHE_MAP,\
+    \ dst, V6_CACHE_KEY_LEN);\n\tif (info != NULL && info->tunnel_endpoint != 0) {\n\
+    \n// CONTEXT: handle_ipv4(struct __ctx_buff *ctx, __u32 secctx,\n\t}\n\n\t/* Lookup\
+    \ IPv4 address in list of local endpoints and host IPs */\n\tep = lookup_ip4_endpoint(ip4);\n\
+    \tif (ep) {\n\t\t/* Let through packets to the node-ip so they are processed by\n\
+    \t\t * the local ip stack.\n\t\t */\n\t\tif (ep->flags & ENDPOINT_F_HOST)\n\t\t\
+    \treturn CTX_ACT_OK;\n\n\t\treturn ipv4_local_delivery(ctx, ETH_HLEN, secctx,\
+    \ ip4, ep,\n\t\t\t\t\t   METRIC_INGRESS, from_host);\n\t}\n\n\t/* Below remainder\
+    \ is only relevant when traffic is pushed via cilium_host.\n\t * For traffic coming\
+    \ from external, we're done here.\n\t */\n\tif (!from_host)\n\t\treturn CTX_ACT_OK;\n\
+    \n\t/* Handle VTEP integration in bpf_host to support pod L7 PROXY.\n\t * It requires\
+    \ route setup to VTEP CIDR via dev cilium_host scope link.\n\t */\n#ifdef ENABLE_VTEP\n\
+    \n// FILE: bpf/bpf_lxc.c\n// CONTEXT: ct_recreate6:\n#ifdef ENABLE_ROUTING\n\t\
+    \t\tif (ep->flags & ENDPOINT_F_HOST) {\n#ifdef HOST_IFINDEX\n\t\t\t\tgoto to_host;\n\
+    #else\n\t\t\t\treturn DROP_HOST_UNREACHABLE;\n#endif\n\t\t\t}\n#endif /* ENABLE_ROUTING\
+    \ */\n\t\t\tpolicy_clear_mark(ctx);\n\t\t\t/* If the packet is from L7 LB it is\
+    \ coming from the host */\n\t\t\treturn ipv6_local_delivery(ctx, ETH_HLEN, SECLABEL,\
+    \ ep,\n\t\t\t\t\t\t   METRIC_EGRESS, from_l7lb);\n\t\t}\n\t}\n\n#if defined(ENABLE_HOST_FIREWALL)\
+    \ && !defined(ENABLE_ROUTING)\n\t/* If the destination is the local host and per-endpoint\
+    \ routes are\n\t * enabled, jump to the bpf_host program to enforce ingress host\
+    \ policies.\n\t */\n\tif (*dst_id == HOST_ID) {\n\t\tctx_store_meta(ctx, CB_FROM_HOST,\
+    \ 0);\n\t\ttail_call_static(ctx, &POLICY_CALL_MAP, HOST_EP_ID);\n\t\treturn DROP_MISSED_TAIL_CALL;\n\
+    \t}\n\n// CONTEXT: ct_recreate4:\n#ifdef ENABLE_ROUTING\n\t\t\tif (ep->flags &\
+    \ ENDPOINT_F_HOST) {\n#ifdef HOST_IFINDEX\n\t\t\t\tgoto to_host;\n#else\n\t\t\t\
+    \treturn DROP_HOST_UNREACHABLE;\n#endif\n\t\t\t}\n#endif /* ENABLE_ROUTING */\n\
+    \t\t\tpolicy_clear_mark(ctx);\n\t\t\t/* If the packet is from L7 LB it is coming\
+    \ from the host */\n\t\t\treturn ipv4_local_delivery(ctx, ETH_HLEN, SECLABEL,\
+    \ ip4,\n\t\t\t\t\t\t   ep, METRIC_EGRESS, from_l7lb);\n\t\t}\n\t}\n\n#if defined(ENABLE_HOST_FIREWALL)\
+    \ && !defined(ENABLE_ROUTING)\n\t/* If the destination is the local host and per-endpoint\
+    \ routes are\n\t * enabled, jump to the bpf_host program to enforce ingress host\
+    \ policies.\n\t */\n\tif (*dst_id == HOST_ID) {\n\t\tctx_store_meta(ctx, CB_FROM_HOST,\
+    \ 0);\n\t\ttail_call_static(ctx, &POLICY_CALL_MAP, HOST_EP_ID);\n\t\treturn DROP_MISSED_TAIL_CALL;\n\
+    \t}\n\n// FILE: bpf/bpf_overlay.c\n// CONTEXT: not_esp:\n\t\t/* Let through packets\
+    \ to the node-ip so they are processed by\n\t\t * the local ip stack.\n\t\t */\n\
+    \t\tif (ep->flags & ENDPOINT_F_HOST)\n\t\t\tgoto to_host;\n\n\t\tnexthdr = ip6->nexthdr;\n\
+    \t\thdrlen = ipv6_hdrlen(ctx, &nexthdr);\n\t\tif (hdrlen < 0)\n\t\t\treturn hdrlen;\n\
+    \n\t\treturn ipv6_local_delivery(ctx, l3_off, *identity, ep,\n\t\t\t\t\t   METRIC_INGRESS,\
+    \ false);\n\t}\n\n\t/* A packet entering the node from the tunnel and not going\
+    \ to a local\n\t * endpoint has to be going to the local host.\n\t */\nto_host:\n\
+    #ifdef HOST_IFINDEX\n\tif (1) {\n\t\tunion macaddr host_mac = HOST_IFINDEX_MAC;\n\
+    \t\tunion macaddr router_mac = NODE_MAC;\n\n\t\tret = ipv6_l3(ctx, ETH_HLEN, (__u8\
+    \ *)&router_mac.addr,\n\n// CONTEXT: not_esp:\n#endif\n\n\t/* Lookup IPv4 address\
+    \ in list of local endpoints */\n\tep = lookup_ip4_endpoint(ip4);\n\tif (ep) {\n\
+    \t\t/* Let through packets to the node-ip so they are processed by\n\t\t * the\
+    \ local ip stack.\n\t\t */\n\t\tif (ep->flags & ENDPOINT_F_HOST)\n\t\t\tgoto to_host;\n\
+    \n\t\treturn ipv4_local_delivery(ctx, ETH_HLEN, *identity, ip4, ep,\n\t\t\t\t\t\
+    \   METRIC_INGRESS, false);\n\t}\n\n\t/* A packet entering the node from the tunnel\
+    \ and not going to a local\n\t * endpoint has to be going to the local host.\n\
+    \t */\nto_host:\n#ifdef HOST_IFINDEX\n\tif (1) {\n\t\tunion macaddr host_mac =\
+    \ HOST_IFINDEX_MAC;\n\t\tunion macaddr router_mac = NODE_MAC;\n\t\tint ret;\n\n\
+    // FILE: bpf/lib/l3.h\n// CONTEXT: static __always_inline int ipv4_l3(struct __ctx_buff\
+    \ *ctx, int l3_off,\n\n#ifndef SKIP_POLICY_MAP\n#ifdef ENABLE_IPV6\n/* Performs\
+    \ IPv6 L2/L3 handling and delivers the packet to the destination pod\n * on the\
+    \ same node, either via the stack or via a redirect call.\n * Depending on the\
+    \ configuration, it may also enforce ingress policies for the\n * destination\
+    \ pod via a tail call.\n */\nstatic __always_inline int ipv6_local_delivery(struct\
+    \ __ctx_buff *ctx, int l3_off,\n\t\t\t\t\t       __u32 seclabel,\n\t\t\t\t\t \
+    \      const struct endpoint_info *ep,\n\t\t\t\t\t       __u8 direction,\n\t\t\
+    \t\t\t       bool from_host __maybe_unused)\n{\n\tmac_t router_mac = ep->node_mac;\n\
+    \tmac_t lxc_mac = ep->mac;\n\tint ret;\n\n\tcilium_dbg(ctx, DBG_LOCAL_DELIVERY,\
+    \ ep->lxc_id, seclabel);\n\n\t/* This will invalidate the size check */\n\tret\
+    \ = ipv6_l3(ctx, l3_off, (__u8 *) &router_mac, (__u8 *) &lxc_mac, direction);\n\
+    \tif (ret != CTX_ACT_OK)\n\t\treturn ret;\n\n#ifdef LOCAL_DELIVERY_METRICS\n\t\
+    /*\n\t * Special LXC case for updating egress forwarding metrics.\n\t * Note that\
+    \ the packet could still be dropped but it would show up\n\t * as an ingress drop\
+    \ counter in metrics.\n\t */\n\tupdate_metrics(ctx_full_len(ctx), direction, REASON_FORWARDED);\n\
+    #endif\n\n#if defined(USE_BPF_PROG_FOR_INGRESS_POLICY) && \\\n\t!defined(FORCE_LOCAL_POLICY_EVAL_AT_SOURCE)\n\
+    \tctx->mark |= MARK_MAGIC_IDENTITY;\n\tset_identity_mark(ctx, seclabel);\n\n#\
+    \ if defined(TUNNEL_MODE) && !defined(ENABLE_NODEPORT)\n\t/* In tunneling mode,\
+    \ we execute this code to send the packet from\n\t * cilium_vxlan to lxc*. If\
+    \ we're using kube-proxy, we don't want to use\n\t * redirect() because that would\
+    \ bypass conntrack and the reverse DNAT.\n\t * Thus, we send packets to the stack,\
+    \ but since they have the wrong\n\t * Ethernet addresses, we need to mark them\
+    \ as PACKET_HOST or the kernel\n\t * will drop them.\n\n// CONTEXT: static __always_inline\
+    \ int ipv6_local_delivery(struct __ctx_buff *ctx, int l3_of\n}\n#endif /* ENABLE_IPV6\
+    \ */\n\n/* Performs IPv4 L2/L3 handling and delivers the packet to the destination\
+    \ pod\n * on the same node, either via the stack or via a redirect call.\n * Depending\
+    \ on the configuration, it may also enforce ingress policies for the\n * destination\
+    \ pod via a tail call.\n */\nstatic __always_inline int ipv4_local_delivery(struct\
+    \ __ctx_buff *ctx, int l3_off,\n\t\t\t\t\t       __u32 seclabel, struct iphdr\
+    \ *ip4,\n\t\t\t\t\t       const struct endpoint_info *ep,\n\t\t\t\t\t       __u8\
+    \ direction __maybe_unused,\n\t\t\t\t\t       bool from_host __maybe_unused)\n\
+    {\n\tmac_t router_mac = ep->node_mac;\n\tmac_t lxc_mac = ep->mac;\n\tint ret;\n\
+    \n\tcilium_dbg(ctx, DBG_LOCAL_DELIVERY, ep->lxc_id, seclabel);\n\n\tret = ipv4_l3(ctx,\
+    \ l3_off, (__u8 *) &router_mac, (__u8 *) &lxc_mac, ip4);\n\tif (ret != CTX_ACT_OK)\n\
+    \t\treturn ret;\n\n#ifdef LOCAL_DELIVERY_METRICS\n\t/*\n\t * Special LXC case\
+    \ for updating egress forwarding metrics.\n\t * Note that the packet could still\
+    \ be dropped but it would show up\n\t * as an ingress drop counter in metrics.\n\
+    \t */\n\tupdate_metrics(ctx_full_len(ctx), direction, REASON_FORWARDED);\n#endif\n\
+    \n#if defined(USE_BPF_PROG_FOR_INGRESS_POLICY) && \\\n\t!defined(FORCE_LOCAL_POLICY_EVAL_AT_SOURCE)\n\
+    \tctx->mark |= MARK_MAGIC_IDENTITY;\n\tset_identity_mark(ctx, seclabel);\n\n#\
+    \ if defined(TUNNEL_MODE) && !defined(ENABLE_NODEPORT)\n\t/* In tunneling mode,\
+    \ we execute this code to send the packet from\n\t * cilium_vxlan to lxc*. If\
+    \ we're using kube-proxy, we don't want to use\n\t * redirect() because that would\
+    \ bypass conntrack and the reverse DNAT.\n\t * Thus, we send packets to the stack,\
+    \ but since they have the wrong\n\t * Ethernet addresses, we need to mark them\
+    \ as PACKET_HOST or the kernel\n\t * will drop them."
+  fixed_code: "// FILE: bpf/bpf_host.c\n// CONTEXT: skip_host_firewall:\n\t}\n\n\t\
+    /* Lookup IPv6 address in list of local endpoints */\n\tep = lookup_ip6_endpoint(ip6);\n\
+    \tif (ep) {\n\t\t/* Let through packets to the node-ip so they are\n\t\t * processed\
+    \ by the local ip stack.\n\t\t */\n\t\tif (ep->flags & ENDPOINT_F_HOST)\n\t\t\t\
+    return CTX_ACT_OK;\n\n\t\treturn ipv6_local_delivery(ctx, l3_off, secctx, ep,\n\
+    \t\t\t\t\t   METRIC_INGRESS, from_host, false);\n\t}\n\n\t/* Below remainder is\
+    \ only relevant when traffic is pushed via cilium_host.\n\t * For traffic coming\
+    \ from external, we're done here.\n\t */\n\tif (!from_host)\n\t\treturn CTX_ACT_OK;\n\
+    \n#ifdef TUNNEL_MODE\n\tdst = (union v6addr *) &ip6->daddr;\n\tinfo = ipcache_lookup6(&IPCACHE_MAP,\
+    \ dst, V6_CACHE_KEY_LEN);\n\tif (info != NULL && info->tunnel_endpoint != 0) {\n\
+    \n// CONTEXT: handle_ipv4(struct __ctx_buff *ctx, __u32 secctx,\n\t}\n\n\t/* Lookup\
+    \ IPv4 address in list of local endpoints and host IPs */\n\tep = lookup_ip4_endpoint(ip4);\n\
+    \tif (ep) {\n\t\t/* Let through packets to the node-ip so they are processed by\n\
+    \t\t * the local ip stack.\n\t\t */\n\t\tif (ep->flags & ENDPOINT_F_HOST)\n\t\t\
+    \treturn CTX_ACT_OK;\n\n\t\treturn ipv4_local_delivery(ctx, ETH_HLEN, secctx,\
+    \ ip4, ep,\n\t\t\t\t\t   METRIC_INGRESS, from_host, false);\n\t}\n\n\t/* Below\
+    \ remainder is only relevant when traffic is pushed via cilium_host.\n\t * For\
+    \ traffic coming from external, we're done here.\n\t */\n\tif (!from_host)\n\t\
+    \treturn CTX_ACT_OK;\n\n\t/* Handle VTEP integration in bpf_host to support pod\
+    \ L7 PROXY.\n\t * It requires route setup to VTEP CIDR via dev cilium_host scope\
+    \ link.\n\t */\n#ifdef ENABLE_VTEP\n\n// FILE: bpf/bpf_lxc.c\n// CONTEXT: ct_recreate6:\n\
+    #ifdef ENABLE_ROUTING\n\t\t\tif (ep->flags & ENDPOINT_F_HOST) {\n#ifdef HOST_IFINDEX\n\
+    \t\t\t\tgoto to_host;\n#else\n\t\t\t\treturn DROP_HOST_UNREACHABLE;\n#endif\n\t\
+    \t\t}\n#endif /* ENABLE_ROUTING */\n\t\t\tpolicy_clear_mark(ctx);\n\t\t\t/* If\
+    \ the packet is from L7 LB it is coming from the host */\n\t\t\treturn ipv6_local_delivery(ctx,\
+    \ ETH_HLEN, SECLABEL, ep,\n\t\t\t\t\t\t   METRIC_EGRESS, from_l7lb, hairpin_flow);\n\
+    \t\t}\n\t}\n\n#if defined(ENABLE_HOST_FIREWALL) && !defined(ENABLE_ROUTING)\n\t\
+    /* If the destination is the local host and per-endpoint routes are\n\t * enabled,\
+    \ jump to the bpf_host program to enforce ingress host policies.\n\t */\n\tif\
+    \ (*dst_id == HOST_ID) {\n\t\tctx_store_meta(ctx, CB_FROM_HOST, 0);\n\t\ttail_call_static(ctx,\
+    \ &POLICY_CALL_MAP, HOST_EP_ID);\n\t\treturn DROP_MISSED_TAIL_CALL;\n\t}\n\n//\
+    \ CONTEXT: ct_recreate4:\n#ifdef ENABLE_ROUTING\n\t\t\tif (ep->flags & ENDPOINT_F_HOST)\
+    \ {\n#ifdef HOST_IFINDEX\n\t\t\t\tgoto to_host;\n#else\n\t\t\t\treturn DROP_HOST_UNREACHABLE;\n\
+    #endif\n\t\t\t}\n#endif /* ENABLE_ROUTING */\n\t\t\tpolicy_clear_mark(ctx);\n\t\
+    \t\t/* If the packet is from L7 LB it is coming from the host */\n\t\t\treturn\
+    \ ipv4_local_delivery(ctx, ETH_HLEN, SECLABEL, ip4,\n\t\t\t\t\t\t   ep, METRIC_EGRESS,\
+    \ from_l7lb, hairpin_flow);\n\t\t}\n\t}\n\n#if defined(ENABLE_HOST_FIREWALL) &&\
+    \ !defined(ENABLE_ROUTING)\n\t/* If the destination is the local host and per-endpoint\
+    \ routes are\n\t * enabled, jump to the bpf_host program to enforce ingress host\
+    \ policies.\n\t */\n\tif (*dst_id == HOST_ID) {\n\t\tctx_store_meta(ctx, CB_FROM_HOST,\
+    \ 0);\n\t\ttail_call_static(ctx, &POLICY_CALL_MAP, HOST_EP_ID);\n\t\treturn DROP_MISSED_TAIL_CALL;\n\
+    \t}\n\n// FILE: bpf/bpf_overlay.c\n// CONTEXT: not_esp:\n\t\t/* Let through packets\
+    \ to the node-ip so they are processed by\n\t\t * the local ip stack.\n\t\t */\n\
+    \t\tif (ep->flags & ENDPOINT_F_HOST)\n\t\t\tgoto to_host;\n\n\t\tnexthdr = ip6->nexthdr;\n\
+    \t\thdrlen = ipv6_hdrlen(ctx, &nexthdr);\n\t\tif (hdrlen < 0)\n\t\t\treturn hdrlen;\n\
+    \n\t\treturn ipv6_local_delivery(ctx, l3_off, *identity, ep,\n\t\t\t\t\t   METRIC_INGRESS,\
+    \ false, false);\n\t}\n\n\t/* A packet entering the node from the tunnel and not\
+    \ going to a local\n\t * endpoint has to be going to the local host.\n\t */\n\
+    to_host:\n#ifdef HOST_IFINDEX\n\tif (1) {\n\t\tunion macaddr host_mac = HOST_IFINDEX_MAC;\n\
+    \t\tunion macaddr router_mac = NODE_MAC;\n\n\t\tret = ipv6_l3(ctx, ETH_HLEN, (__u8\
+    \ *)&router_mac.addr,\n\n// CONTEXT: not_esp:\n#endif\n\n\t/* Lookup IPv4 address\
+    \ in list of local endpoints */\n\tep = lookup_ip4_endpoint(ip4);\n\tif (ep) {\n\
+    \t\t/* Let through packets to the node-ip so they are processed by\n\t\t * the\
+    \ local ip stack.\n\t\t */\n\t\tif (ep->flags & ENDPOINT_F_HOST)\n\t\t\tgoto to_host;\n\
+    \n\t\treturn ipv4_local_delivery(ctx, ETH_HLEN, *identity, ip4, ep,\n\t\t\t\t\t\
+    \   METRIC_INGRESS, false, false);\n\t}\n\n\t/* A packet entering the node from\
+    \ the tunnel and not going to a local\n\t * endpoint has to be going to the local\
+    \ host.\n\t */\nto_host:\n#ifdef HOST_IFINDEX\n\tif (1) {\n\t\tunion macaddr host_mac\
+    \ = HOST_IFINDEX_MAC;\n\t\tunion macaddr router_mac = NODE_MAC;\n\t\tint ret;\n\
+    \n// FILE: bpf/lib/l3.h\n// CONTEXT: static __always_inline int ipv4_l3(struct\
+    \ __ctx_buff *ctx, int l3_off,\n\n#ifndef SKIP_POLICY_MAP\n#ifdef ENABLE_IPV6\n\
+    /* Performs IPv6 L2/L3 handling and delivers the packet to the destination pod\n\
+    \ * on the same node, either via the stack or via a redirect call.\n * Depending\
+    \ on the configuration, it may also enforce ingress policies for the\n * destination\
+    \ pod via a tail call.\n */\nstatic __always_inline int ipv6_local_delivery(struct\
+    \ __ctx_buff *ctx, int l3_off,\n\t\t\t\t\t       __u32 seclabel,\n\t\t\t\t\t \
+    \      const struct endpoint_info *ep,\n\t\t\t\t\t       __u8 direction,\n\t\t\
+    \t\t\t       bool from_host __maybe_unused,\n\t\t\t\t\t       bool hairpin_flow\
+    \ __maybe_unused)\n{\n\tmac_t router_mac = ep->node_mac;\n\tmac_t lxc_mac = ep->mac;\n\
+    \tint ret;\n\n\tcilium_dbg(ctx, DBG_LOCAL_DELIVERY, ep->lxc_id, seclabel);\n\n\
+    \t/* This will invalidate the size check */\n\tret = ipv6_l3(ctx, l3_off, (__u8\
+    \ *) &router_mac, (__u8 *) &lxc_mac, direction);\n\tif (ret != CTX_ACT_OK)\n\t\
+    \treturn ret;\n\n#ifdef LOCAL_DELIVERY_METRICS\n\t/*\n\t * Special LXC case for\
+    \ updating egress forwarding metrics.\n\t * Note that the packet could still be\
+    \ dropped but it would show up\n\t * as an ingress drop counter in metrics.\n\t\
+    \ */\n\tupdate_metrics(ctx_full_len(ctx), direction, REASON_FORWARDED);\n#endif\n\
+    \n#ifndef DISABLE_LOOPBACK_LB\n\t/* Skip ingress policy enforcement for hairpin\
+    \ traffic. As the hairpin\n\t * traffic is destined to a local pod (more specifically,\
+    \ the same pod\n\t * the traffic originated from, we skip the tail call for ingress\
+    \ policy\n\t * enforcement, and directly redirect it to the endpoint).\n\t */\n\
+    \tif (unlikely(hairpin_flow))\n\t\treturn redirect_ep(ctx, ep->ifindex, from_host);\n\
+    #endif /* DISABLE_LOOPBACK_LB */\n\n#if defined(USE_BPF_PROG_FOR_INGRESS_POLICY)\
+    \ && \\\n\t!defined(FORCE_LOCAL_POLICY_EVAL_AT_SOURCE)\n\tctx->mark |= MARK_MAGIC_IDENTITY;\n\
+    \tset_identity_mark(ctx, seclabel);\n\n# if defined(TUNNEL_MODE) && !defined(ENABLE_NODEPORT)\n\
+    \t/* In tunneling mode, we execute this code to send the packet from\n\t * cilium_vxlan\
+    \ to lxc*. If we're using kube-proxy, we don't want to use\n\t * redirect() because\
+    \ that would bypass conntrack and the reverse DNAT.\n\t * Thus, we send packets\
+    \ to the stack, but since they have the wrong\n\t * Ethernet addresses, we need\
+    \ to mark them as PACKET_HOST or the kernel\n\t * will drop them.\n\n// CONTEXT:\
+    \ static __always_inline int ipv6_local_delivery(struct __ctx_buff *ctx, int l3_of\n\
+    }\n#endif /* ENABLE_IPV6 */\n\n/* Performs IPv4 L2/L3 handling and delivers the\
+    \ packet to the destination pod\n * on the same node, either via the stack or\
+    \ via a redirect call.\n * Depending on the configuration, it may also enforce\
+    \ ingress policies for the\n * destination pod via a tail call.\n */\nstatic __always_inline\
+    \ int ipv4_local_delivery(struct __ctx_buff *ctx, int l3_off,\n\t\t\t\t\t    \
+    \   __u32 seclabel, struct iphdr *ip4,\n\t\t\t\t\t       const struct endpoint_info\
+    \ *ep,\n\t\t\t\t\t       __u8 direction __maybe_unused,\n\t\t\t\t\t       bool\
+    \ from_host __maybe_unused,\n\t\t\t\t\t       bool hairpin_flow __maybe_unused)\n\
+    {\n\tmac_t router_mac = ep->node_mac;\n\tmac_t lxc_mac = ep->mac;\n\tint ret;\n\
+    \n\tcilium_dbg(ctx, DBG_LOCAL_DELIVERY, ep->lxc_id, seclabel);\n\n\tret = ipv4_l3(ctx,\
+    \ l3_off, (__u8 *) &router_mac, (__u8 *) &lxc_mac, ip4);\n\tif (ret != CTX_ACT_OK)\n\
+    \t\treturn ret;\n\n#ifdef LOCAL_DELIVERY_METRICS\n\t/*\n\t * Special LXC case\
+    \ for updating egress forwarding metrics.\n\t * Note that the packet could still\
+    \ be dropped but it would show up\n\t * as an ingress drop counter in metrics.\n\
+    \t */\n\tupdate_metrics(ctx_full_len(ctx), direction, REASON_FORWARDED);\n#endif\n\
+    \n#ifndef DISABLE_LOOPBACK_LB\n\t/* Skip ingress policy enforcement for hairpin\
+    \ traffic.\tAs the hairpin\n\t * traffic is destined to a local pod (more specifically,\
+    \ the same pod the\n\t * traffic originated from, we skip the tail call for ingress\
+    \ policy\n\t * enforcement, and directly redirect it to the endpoint).\n\t */\n\
+    \tif (unlikely(hairpin_flow))\n\t\treturn redirect_ep(ctx, ep->ifindex, from_host);\n\
+    #endif /* DISABLE_LOOPBACK_LB */\n\n#if defined(USE_BPF_PROG_FOR_INGRESS_POLICY)\
+    \ && \\\n\t!defined(FORCE_LOCAL_POLICY_EVAL_AT_SOURCE)\n\tctx->mark |= MARK_MAGIC_IDENTITY;\n\
+    \tset_identity_mark(ctx, seclabel);\n\n# if defined(TUNNEL_MODE) && !defined(ENABLE_NODEPORT)\n\
+    \t/* In tunneling mode, we execute this code to send the packet from\n\t * cilium_vxlan\
+    \ to lxc*. If we're using kube-proxy, we don't want to use\n\t * redirect() because\
+    \ that would bypass conntrack and the reverse DNAT.\n\t * Thus, we send packets\
+    \ to the stack, but since they have the wrong\n\t * Ethernet addresses, we need\
+    \ to mark them as PACKET_HOST or the kernel\n\t * will drop them."
+  diff_summary: |-
+    bpf/bpf_host.c:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: skip_host_firewall:, handle_ipv4(struct __ctx_buff *ctx, __u32 secctx,.
+    bpf/bpf_lxc.c:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: ct_recreate6:, ct_recreate4:.
+    bpf/bpf_overlay.c:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: not_esp:.
+    bpf/lib/l3.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: static __always_inline int ipv4_l3(struct __ctx_buff *ctx, int l3_off,, static __always_inline int ipv6_local_delivery(struct __ctx_buff *ctx, int l3_of.
+    - Commit subject: bpf: Fix LB loopback path with ingress policy.

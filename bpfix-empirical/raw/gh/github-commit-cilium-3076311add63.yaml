@@ -1,0 +1,160 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-3076311add63
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/3076311add63c691ef72ceb4d2e2b58ec83dbf3c
+  title: 'bpf: slim down EGW-related CT lookup in to-netdev'
+  repository: https://github.com/cilium/cilium
+  commit: 3076311add63c691ef72ceb4d2e2b58ec83dbf3c
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-3076311add63.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: environment_required
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: EGW CT lookup slimming is an older-kernel verifier-state workaround without
+    a captured terminal reject.
+raw:
+  case_id: github-commit-cilium-3076311add63
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: 3076311add63c691ef72ceb4d2e2b58ec83dbf3c
+  commit_message: 'bpf: slim down EGW-related CT lookup in to-netdev'
+  commit_date: '2024-10-12'
+  fix_type: inline_hint
+  buggy_code: "// FILE: bpf/bpf_host.c\n// CONTEXT: skip_host_firewall:\n\n#ifdef\
+    \ ENABLE_HEALTH_CHECK\n\tret = lb_handle_health(ctx, proto);\n\tif (ret != CTX_ACT_OK)\n\
+    \t\tgoto exit;\n#endif\n\n#ifdef ENABLE_EGRESS_GATEWAY_COMMON\n\t{\n\t\tvoid *data,\
+    \ *data_end;\n\t\tstruct iphdr *ip4;\n\t\tstruct ipv4_ct_tuple tuple = {};\n\t\
+    \tstruct ct_state ct_state = {};\n\t\tenum ct_status ct_status;\n\t\tbool has_l4_header\
+    \ = true;\n\t\tint l4_off;\n\t\tstruct remote_endpoint_info *info;\n\t\tstruct\
+    \ endpoint_info *src_ep;\n\n\t\tif (src_sec_identity == HOST_ID)\n\t\t\tgoto skip_egress_gateway;\n\
+    \n\t\tif (proto != bpf_htons(ETH_P_IP))\n\t\t\tgoto skip_egress_gateway;\n\n\t\
+    \tif (ctx_egw_done(ctx))\n\t\t\tgoto skip_egress_gateway;\n\n\t\tif (!revalidate_data(ctx,\
+    \ &data, &data_end, &ip4)) {\n\t\t\tret = DROP_INVALID;\n\t\t\tgoto drop_err;\n\
+    \t\t}\n\n\t\ttuple.nexthdr = ip4->protocol;\n\t\ttuple.daddr = ip4->daddr;\n\t\
+    \ttuple.saddr = ip4->saddr;\n\n\t\tl4_off = ETH_HLEN + ipv4_hdrlen(ip4);\n\t\t\
+    ret = ct_extract_ports4(ctx, ip4, l4_off, CT_EGRESS, &tuple,\n\t\t\t\t\t&has_l4_header);\n\
+    \t\tif (IS_ERR(ret)) {\n\t\t\tif (ret == DROP_CT_UNKNOWN_PROTO)\n\t\t\t\tgoto\
+    \ skip_egress_gateway;\n\n\t\t\tgoto drop_err;\n\t\t}\n\n\t\t__ipv4_ct_tuple_reverse(&tuple);\n\
+    \t\tret = ct_lazy_lookup4(get_ct_map4(&tuple),\n\t\t\t\t      &tuple, ctx, ipv4_is_fragment(ip4),\n\
+    \t\t\t\t      l4_off, has_l4_header, CT_EGRESS,\n\t\t\t\t      SCOPE_FORWARD,\
+    \ CT_ENTRY_ANY,\n\t\t\t\t      &ct_state, &trace.monitor);\n\t\tif (IS_ERR(ret))\n\
+    \t\t\tgoto drop_err;\n\n\t\tct_status = (enum ct_status)ret;\n\n\t\tsrc_ep = __lookup_ip4_endpoint(ip4->saddr);\n\
+    \t\tif (src_ep)\n\t\t\tsrc_sec_identity = src_ep->sec_id;\n\n\t\tinfo = lookup_ip4_remote_endpoint(ip4->daddr,\
+    \ 0);\n\t\tif (info && info->sec_identity)\n\t\t\tdst_sec_identity = info->sec_identity;\n\
+    \n\t\tret = egress_gw_handle_packet(ctx, &tuple, ct_status,\n\t\t\t\t\t      src_sec_identity,\
+    \ dst_sec_identity,\n\t\t\t\t\t      &trace);\n\t\tif (IS_ERR(ret))\n\t\t\tgoto\
+    \ drop_err;\n\n\t\tif (ret != CTX_ACT_OK)\n\t\t\treturn ret;\n\t}\nskip_egress_gateway:\n\
+    #endif\n\n#ifdef ENABLE_NODEPORT\n\n// FILE: bpf/lib/egress_gateway.h\n// CONTEXT:\
+    \ bool egress_gw_reply_matches_policy(struct iphdr *ip4 __maybe_unused)\n\tif\
+    \ (egress_policy->gateway_ip == EGRESS_GATEWAY_NO_GATEWAY ||\n\t    egress_policy->gateway_ip\
+    \ == EGRESS_GATEWAY_EXCLUDED_CIDR)\n\t\treturn false;\n\n\treturn true;\n#else\n\
+    \treturn false;\n#endif /* ENABLE_EGRESS_GATEWAY */\n}\n\n/** Match a packet against\
+    \ EGW policy map, and return the gateway's IP.\n * @arg rtuple\t\tCT tuple for\
+    \ the packet\n * @arg ct_status\tCT result, to identify egressing connections\n\
+    \ * @arg gateway_ip\treturns the gateway node's IP\n *\n * Returns\n * * CTX_ACT_REDIRECT\
+    \ if a matching policy entry was found,\n * * CTX_ACT_OK if no EGW logic should\
+    \ be applied,\n * * DROP_* for error conditions.\n */\nstatic __always_inline\
+    \ int\negress_gw_request_needs_redirect_hook(struct ipv4_ct_tuple *rtuple,\n\t\
+    \t\t\t      enum ct_status ct_status,\n\t\t\t\t      __be32 *gateway_ip)\n{\n\t\
+    /* We lookup CT in forward direction at to-netdev and expect to\n\t * get CT_ESTABLISHED\
+    \ for outbound connection as\n\t * from_container should have already created\
+    \ a CT entry.\n\t * If we get CT_NEW here, it's an indication that it's a reply\n\
+    \t * for inbound connection or host-level outbound connection.\n\t * We don't\
+    \ expect to receive any other ct_status here.\n\t */\n\tif (ct_status != CT_ESTABLISHED)\n\
+    \t\treturn CTX_ACT_OK;\n\n\treturn egress_gw_request_needs_redirect(rtuple, gateway_ip);\n\
+    }\n\nstatic __always_inline\nbool egress_gw_snat_needed_hook(__be32 saddr, __be32\
+    \ daddr, __be32 *snat_addr)\n{\n\tstruct remote_endpoint_info *remote_ep;\n\n\t\
+    remote_ep = lookup_ip4_remote_endpoint(daddr, 0);\n\t/* If the packet is destined\
+    \ to an entity inside the cluster, either EP\n\t * or node, skip SNAT since only\
+    \ traffic leaving the cluster is supposed\n\t * to be masqueraded with an egress\
+    \ IP.\n\n// CONTEXT: bool egress_gw_reply_needs_redirect_hook(struct iphdr *ip4,\
+    \ __u32 *tunnel_endpoi\n\t\t*tunnel_endpoint = info->tunnel_endpoint;\n\t\t*dst_sec_identity\
+    \ = info->sec_identity;\n\n\t\treturn true;\n\t}\n\n\treturn false;\n}\n\nstatic\
+    \ __always_inline\nint egress_gw_handle_packet(struct __ctx_buff *ctx,\n\t\t\t\
+    \    struct ipv4_ct_tuple *tuple,\n\t\t\t    enum ct_status ct_status,\n\t\t\t\
+    \    __u32 src_sec_identity, __u32 dst_sec_identity,\n\t\t\t    const struct trace_ctx\
+    \ *trace)\n{\n\tstruct endpoint_info *gateway_node_ep;\n\t__be32 gateway_ip =\
+    \ 0;\n\tint ret;\n\n\t/* If the packet is destined to an entity inside the cluster,\n\
+    \t * either EP or node, it should not be forwarded to an egress\n\t * gateway\
+    \ since only traffic leaving the cluster is supposed to\n\t * be masqueraded with\
+    \ an egress IP.\n\t */\n\tif (identity_is_cluster(dst_sec_identity))\n\t\treturn\
+    \ CTX_ACT_OK;\n\n\tret = egress_gw_request_needs_redirect_hook(tuple, ct_status,\
+    \ &gateway_ip);\n\tif (IS_ERR(ret))\n\t\treturn ret;\n\n\tif (ret == CTX_ACT_OK)\n\
+    \t\treturn ret;\n\n\t/* If the gateway node is the local node, then just let the\n\
+    \t * packet go through, as it will be SNATed later on by\n\t * handle_nat_fwd().\n\
+    \t */\n\tgateway_node_ep = __lookup_ip4_endpoint(gateway_ip);\n\tif (gateway_node_ep\
+    \ && (gateway_node_ep->flags & ENDPOINT_F_HOST))"
+  fixed_code: "// FILE: bpf/bpf_host.c\n// CONTEXT: skip_host_firewall:\n\n#ifdef\
+    \ ENABLE_HEALTH_CHECK\n\tret = lb_handle_health(ctx, proto);\n\tif (ret != CTX_ACT_OK)\n\
+    \t\tgoto exit;\n#endif\n\n#ifdef ENABLE_EGRESS_GATEWAY_COMMON\n\t{\n\t\tvoid *data,\
+    \ *data_end;\n\t\tstruct iphdr *ip4;\n\t\tstruct ipv4_ct_tuple tuple = {};\n\t\
+    \tint l4_off;\n\t\tstruct remote_endpoint_info *info;\n\t\tstruct endpoint_info\
+    \ *src_ep;\n\t\tbool is_reply;\n\n\t\tif (src_sec_identity == HOST_ID)\n\t\t\t\
+    goto skip_egress_gateway;\n\n\t\tif (proto != bpf_htons(ETH_P_IP))\n\t\t\tgoto\
+    \ skip_egress_gateway;\n\n\t\tif (ctx_egw_done(ctx))\n\t\t\tgoto skip_egress_gateway;\n\
+    \n\t\tif (!revalidate_data(ctx, &data, &data_end, &ip4)) {\n\t\t\tret = DROP_INVALID;\n\
+    \t\t\tgoto drop_err;\n\t\t}\n\n\t\ttuple.nexthdr = ip4->protocol;\n\t\ttuple.daddr\
+    \ = ip4->daddr;\n\t\ttuple.saddr = ip4->saddr;\n\n\t\tl4_off = ETH_HLEN + ipv4_hdrlen(ip4);\n\
+    \t\tret = ct_extract_ports4(ctx, ip4, l4_off, CT_EGRESS, &tuple,\n\t\t\t\t\tNULL);\n\
+    \t\tif (IS_ERR(ret)) {\n\t\t\tif (ret == DROP_CT_UNKNOWN_PROTO)\n\t\t\t\tgoto\
+    \ skip_egress_gateway;\n\n\t\t\tgoto drop_err;\n\t\t}\n\n\t\t/* Only handle outbound\
+    \ connections: */\n\t\tis_reply = ct_is_reply4(get_ct_map4(&tuple), &tuple);\n\
+    \t\tif (is_reply)\n\t\t\tgoto skip_egress_gateway;\n\n\t\tsrc_ep = __lookup_ip4_endpoint(ip4->saddr);\n\
+    \t\tif (src_ep)\n\t\t\tsrc_sec_identity = src_ep->sec_id;\n\n\t\tinfo = lookup_ip4_remote_endpoint(ip4->daddr,\
+    \ 0);\n\t\tif (info && info->sec_identity)\n\t\t\tdst_sec_identity = info->sec_identity;\n\
+    \n\t\t/* lower-level code expects CT tuple to be flipped: */\n\t\t__ipv4_ct_tuple_reverse(&tuple);\n\
+    \t\tret = egress_gw_handle_packet(ctx, &tuple,\n\t\t\t\t\t      src_sec_identity,\
+    \ dst_sec_identity,\n\t\t\t\t\t      &trace);\n\t\tif (IS_ERR(ret))\n\t\t\tgoto\
+    \ drop_err;\n\n\t\tif (ret != CTX_ACT_OK)\n\t\t\treturn ret;\n\t}\nskip_egress_gateway:\n\
+    #endif\n\n#ifdef ENABLE_NODEPORT\n\n// FILE: bpf/lib/egress_gateway.h\n// CONTEXT:\
+    \ bool egress_gw_reply_matches_policy(struct iphdr *ip4 __maybe_unused)\n\tif\
+    \ (egress_policy->gateway_ip == EGRESS_GATEWAY_NO_GATEWAY ||\n\t    egress_policy->gateway_ip\
+    \ == EGRESS_GATEWAY_EXCLUDED_CIDR)\n\t\treturn false;\n\n\treturn true;\n#else\n\
+    \treturn false;\n#endif /* ENABLE_EGRESS_GATEWAY */\n}\n\n/** Match a packet against\
+    \ EGW policy map, and return the gateway's IP.\n * @arg rtuple\t\tCT tuple for\
+    \ the packet\n * @arg gateway_ip\treturns the gateway node's IP\n *\n * Returns\n\
+    \ * * CTX_ACT_REDIRECT if a matching policy entry was found,\n * * CTX_ACT_OK\
+    \ if no EGW logic should be applied,\n * * DROP_* for error conditions.\n */\n\
+    static __always_inline int\negress_gw_request_needs_redirect_hook(struct ipv4_ct_tuple\
+    \ *rtuple,\n\t\t\t\t      __be32 *gateway_ip)\n{\n\treturn egress_gw_request_needs_redirect(rtuple,\
+    \ gateway_ip);\n}\n\nstatic __always_inline\nbool egress_gw_snat_needed_hook(__be32\
+    \ saddr, __be32 daddr, __be32 *snat_addr)\n{\n\tstruct remote_endpoint_info *remote_ep;\n\
+    \n\tremote_ep = lookup_ip4_remote_endpoint(daddr, 0);\n\t/* If the packet is destined\
+    \ to an entity inside the cluster, either EP\n\t * or node, skip SNAT since only\
+    \ traffic leaving the cluster is supposed\n\t * to be masqueraded with an egress\
+    \ IP.\n\n// CONTEXT: bool egress_gw_reply_needs_redirect_hook(struct iphdr *ip4,\
+    \ __u32 *tunnel_endpoi\n\t\t*tunnel_endpoint = info->tunnel_endpoint;\n\t\t*dst_sec_identity\
+    \ = info->sec_identity;\n\n\t\treturn true;\n\t}\n\n\treturn false;\n}\n\nstatic\
+    \ __always_inline\nint egress_gw_handle_packet(struct __ctx_buff *ctx,\n\t\t\t\
+    \    struct ipv4_ct_tuple *tuple,\n\t\t\t    __u32 src_sec_identity, __u32 dst_sec_identity,\n\
+    \t\t\t    const struct trace_ctx *trace)\n{\n\tstruct endpoint_info *gateway_node_ep;\n\
+    \t__be32 gateway_ip = 0;\n\tint ret;\n\n\t/* If the packet is destined to an entity\
+    \ inside the cluster,\n\t * either EP or node, it should not be forwarded to an\
+    \ egress\n\t * gateway since only traffic leaving the cluster is supposed to\n\
+    \t * be masqueraded with an egress IP.\n\t */\n\tif (identity_is_cluster(dst_sec_identity))\n\
+    \t\treturn CTX_ACT_OK;\n\n\tret = egress_gw_request_needs_redirect_hook(tuple,\
+    \ &gateway_ip);\n\tif (IS_ERR(ret))\n\t\treturn ret;\n\n\tif (ret == CTX_ACT_OK)\n\
+    \t\treturn ret;\n\n\t/* If the gateway node is the local node, then just let the\n\
+    \t * packet go through, as it will be SNATed later on by\n\t * handle_nat_fwd().\n\
+    \t */\n\tgateway_node_ep = __lookup_ip4_endpoint(gateway_ip);\n\tif (gateway_node_ep\
+    \ && (gateway_node_ep->flags & ENDPOINT_F_HOST))"
+  diff_summary: |-
+    bpf/bpf_host.c:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: skip_host_firewall:.
+    bpf/lib/egress_gateway.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: bool egress_gw_reply_matches_policy(struct iphdr *ip4 __maybe_unused), bool egress_gw_reply_needs_redirect_hook(struct iphdr *ip4, __u32 *tunnel_endpoi.
+    - Commit subject: bpf: slim down EGW-related CT lookup in to-netdev.

@@ -1,0 +1,261 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-975f5bd9cd2b
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/975f5bd9cd2b6de172a25415d83a682ab49e73bc
+  title: 'bpf: Remove several debug messages'
+  repository: https://github.com/cilium/cilium
+  commit: 975f5bd9cd2b6de172a25415d83a682ab49e73bc
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-975f5bd9cd2b.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: environment_required
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Removes debug messages to reduce instruction count with debugging enabled;
+    replay depends on a historical full Cilium debug build and instruction-size pressure,
+    with no standalone terminal log.
+raw:
+  case_id: github-commit-cilium-975f5bd9cd2b
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: 975f5bd9cd2b6de172a25415d83a682ab49e73bc
+  commit_message: 'bpf: Remove several debug messages'
+  commit_date: '2019-05-17'
+  fix_type: helper_switch
+  buggy_code: "// FILE: bpf/bpf_lxc.c\n// CONTEXT: ct_recreate6:\n\t\tunion v6addr\
+    \ host_ip = {};\n\n\t\tBPF_V6(host_ip, HOST_IP);\n\n\t\tret = ipv6_redirect_to_host_port(skb,\
+    \ &csum_off, l4_off,\n\t\t\t\t\t\t verdict, tuple->dport,\n\t\t\t\t\t\t orig_dip,\
+    \ tuple, &host_ip,\n\t\t\t\t\t\t SECLABEL, forwarding_reason,\n\t\t\t\t\t\t monitor);\n\
+    \t\tif (IS_ERR(ret))\n\t\t\treturn ret;\n\n\t\tcilium_dbg(skb, DBG_TO_HOST, skb->cb[CB_POLICY],\
+    \ 0);\n\n\t\tret = ipv6_l3(skb, l3_off, (__u8 *) &router_mac.addr, (__u8 *) &host_mac.addr,\
+    \ METRIC_EGRESS);\n\t\tif (ret != TC_ACT_OK)\n\t\t\treturn ret;\n\n\t\tcilium_dbg_capture(skb,\
+    \ DBG_CAPTURE_DELIVERY, HOST_IFINDEX);\n\t\treturn redirect(HOST_IFINDEX, 0);\n\
+    \t}\n\n\tif (!revalidate_data(skb, &data, &data_end, &ip6))\n\t\treturn DROP_INVALID;\n\
+    \n\tdaddr = (union v6addr *)&ip6->daddr;\n\n// CONTEXT: ct_recreate6:\n#ifdef\
+    \ ENABLE_NAT46\n\tif (unlikely(ipv6_addr_is_mapped(daddr))) {\n\t\tep_tail_call(skb,\
+    \ CILIUM_CALL_NAT64);\n\t\treturn DROP_MISSED_TAIL_CALL;\n\t}\n#endif\n\tgoto\
+    \ pass_to_stack;\n\nto_host:\n\tif (is_defined(ENABLE_HOST_REDIRECT)) {\n\t\t\
+    union macaddr host_mac = HOST_IFINDEX_MAC;\n\n\t\tcilium_dbg(skb, DBG_TO_HOST,\
+    \ is_policy_skip(skb), 0);\n\n\t\tret = ipv6_l3(skb, l3_off, (__u8 *) &router_mac.addr,\
+    \ (__u8 *) &host_mac.addr, METRIC_EGRESS);\n\t\tif (ret != TC_ACT_OK)\n\t\t\t\
+    return ret;\n\n\t\tsend_trace_notify(skb, TRACE_TO_HOST, SECLABEL, HOST_ID, 0,\n\
+    \t\t\t\t  HOST_IFINDEX, forwarding_reason, monitor);\n\n\t\tcilium_dbg_capture(skb,\
+    \ DBG_CAPTURE_DELIVERY, HOST_IFINDEX);\n\t\treturn redirect(HOST_IFINDEX, 0);\n\
+    \t}\n\npass_to_stack:\n\tcilium_dbg(skb, DBG_TO_STACK, 0, 0);\n\n\tret = ipv6_l3(skb,\
+    \ l3_off, NULL, (__u8 *) &router_mac.addr, METRIC_EGRESS);\n\tif (unlikely(ret\
+    \ != TC_ACT_OK))\n\t\treturn ret;\n\n\tif (ipv6_store_flowlabel(skb, l3_off, SECLABEL_NB)\
+    \ < 0)\n\t\treturn DROP_WRITE_ERROR;\n\n\tsend_trace_notify(skb, TRACE_TO_STACK,\
+    \ SECLABEL, *dstID, 0, 0,\n\t\t\t  forwarding_reason, monitor);\n\n\tcilium_dbg_capture(skb,\
+    \ DBG_CAPTURE_DELIVERY, 0);\n#ifndef ENCAP_IFINDEX\n\n// CONTEXT: ct_recreate4:\n\
+    \n\t\tret = ipv4_redirect_to_host_port(skb, &csum_off, l4_off,\n\t\t\t\t\t\t verdict,\
+    \ tuple.dport,\n\t\t\t\t\t\t orig_dip, &tuple, SECLABEL,\n\t\t\t\t\t\t forwarding_reason,\
+    \ monitor);\n\t\tif (IS_ERR(ret))\n\t\t\treturn ret;\n\n\t\t/* After L4 write\
+    \ in port mapping: revalidate for direct packet access */\n\t\tif (!revalidate_data(skb,\
+    \ &data, &data_end, &ip4))\n\t\t\treturn DROP_INVALID;\n\n\t\tcilium_dbg(skb,\
+    \ DBG_TO_HOST, skb->cb[CB_POLICY], 0);\n\n\t\tret = ipv4_l3(skb, l3_off, (__u8\
+    \ *) &router_mac.addr, (__u8 *) &host_mac.addr, ip4);\n\t\tif (ret != TC_ACT_OK)\n\
+    \t\t\treturn ret;\n\n\t\tcilium_dbg_capture(skb, DBG_CAPTURE_DELIVERY, HOST_IFINDEX);\n\
+    \n#ifdef HOST_REDIRECT_TO_INGRESS\n\t\treturn redirect(HOST_IFINDEX, BPF_F_INGRESS);\n\
+    #else\n\t\treturn redirect(HOST_IFINDEX, 0);\n#endif\n\t}\n\n// CONTEXT: ct_recreate4:\n\
+    \t\t */\n\t\telse\n\t\t\treturn ret;\n\t}\n#else\n\tgoto pass_to_stack;\n#endif\n\
+    \nto_host:\n\tif (is_defined(ENABLE_HOST_REDIRECT)) {\n\t\tunion macaddr host_mac\
+    \ = HOST_IFINDEX_MAC;\n\n\t\tcilium_dbg(skb, DBG_TO_HOST, is_policy_skip(skb),\
+    \ 0);\n\n\t\tret = ipv4_l3(skb, l3_off, (__u8 *) &router_mac.addr, (__u8 *) &host_mac.addr,\
+    \ ip4);\n\t\tif (ret != TC_ACT_OK)\n\t\t\treturn ret;\n\n\t\tsend_trace_notify(skb,\
+    \ TRACE_TO_HOST, SECLABEL, HOST_ID, 0, HOST_IFINDEX,\n\t\t\t\t  forwarding_reason,\
+    \ monitor);\n\n\t\tcilium_dbg_capture(skb, DBG_CAPTURE_DELIVERY, HOST_IFINDEX);\n\
+    #ifdef HOST_REDIRECT_TO_INGRESS\n\t\treturn redirect(HOST_IFINDEX, BPF_F_INGRESS);\n\
+    #else\n\t\treturn redirect(HOST_IFINDEX, 0);\n#endif\n\t}\n\npass_to_stack:\n\t\
+    cilium_dbg(skb, DBG_TO_STACK, 0, 0);\n\n\tret = ipv4_l3(skb, l3_off, NULL, (__u8\
+    \ *) &router_mac.addr, ip4);\n\tif (unlikely(ret != TC_ACT_OK))\n\t\treturn ret;\n\
+    \n\t/* FIXME: We can't store the security context anywhere here so all\n\t * packets\
+    \ to other nodes will look like they come from an outside\n\t * network.\n\t */\n\
+    \n\tsend_trace_notify(skb, TRACE_TO_STACK, SECLABEL, *dstID, 0, 0,\n\t\t\t  forwarding_reason,\
+    \ monitor);\n#ifndef ENCAP_IFINDEX\n\n// CONTEXT: ipv4_policy(struct __sk_buff\
+    \ *skb, int ifindex, __u32 src_label, int *forwarding\n\n\tif (redirect_to_proxy(verdict,\
+    \ *forwarding_reason)) {\n\t\tunion macaddr host_mac = HOST_IFINDEX_MAC;\n\t\t\
+    union macaddr router_mac = NODE_MAC;\n\n\t\tret = ipv4_redirect_to_host_port(skb,\
+    \ &csum_off, l4_off,\n\t\t\t\t\t\t verdict, tuple.dport,\n\t\t\t\t\t\t orig_dip,\
+    \ &tuple, src_label,\n\t\t\t\t\t\t *forwarding_reason, monitor);\n\t\tif (IS_ERR(ret))\n\
+    \t\t\treturn ret;\n\n\t\tcilium_dbg(skb, DBG_TO_HOST, is_policy_skip(skb), 0);\n\
+    \n\t\tif (eth_store_saddr(skb, (__u8 *) &router_mac.addr, 0) < 0)\n\t\t\treturn\
+    \ DROP_WRITE_ERROR;\n\n\t\tif (eth_store_daddr(skb, (__u8 *) &host_mac.addr, 0)\
+    \ < 0)\n\t\t\treturn DROP_WRITE_ERROR;\n\n\t\tskb->cb[CB_IFINDEX] = HOST_IFINDEX;\n\
+    \n#ifdef HOST_REDIRECT_TO_INGRESS\n\t\treturn redirect(HOST_IFINDEX, BPF_F_INGRESS);\n\
+    #else\n\t\treturn redirect(HOST_IFINDEX, 0);\n\n// FILE: bpf/lib/encap.h\n// CONTEXT:\
+    \ encap_and_redirect_ipsec(struct __sk_buff *skb, __u32 tunnel_endpoint, __u8\
+    \ key,\nstatic inline int __inline__\n__encap_and_redirect_with_nodeid(struct\
+    \ __sk_buff *skb, __u32 tunnel_endpoint,\n\t\t\t\t __u32 seclabel, __u32 monitor)\n\
+    {\n\tstruct bpf_tunnel_key key = {};\n\t__u32 node_id;\n\tint ret;\n\n\tnode_id\
+    \ = bpf_htonl(tunnel_endpoint);\n\tkey.tunnel_id = seclabel;\n\tkey.remote_ipv4\
+    \ = node_id;\n\n\tcilium_dbg(skb, DBG_ENCAP, node_id, seclabel);\n\n\tret = skb_set_tunnel_key(skb,\
+    \ &key, sizeof(key), 0);\n\tif (unlikely(ret < 0))\n\t\treturn DROP_WRITE_ERROR;\n\
+    \n\tsend_trace_notify(skb, TRACE_TO_OVERLAY, seclabel, 0, 0, ENCAP_IFINDEX,\n\t\
+    \t\t  0, monitor);\n\n\treturn redirect(ENCAP_IFINDEX, 0);\n}\n\n/* encap_and_redirect_with_nodeid\
+    \ returns IPSEC_ENDPOINT after skb meta-data is\n * set when IPSec is enabled.\
+    \ Caller should pass the skb to the stack at this\n\n// FILE: bpf/lib/l3.h\n//\
+    \ CONTEXT: static inline int ipv6_local_delivery(struct __sk_buff *skb, int l3_off,\
+    \ int l4_\n\tint ret;\n\n\tcilium_dbg(skb, DBG_LOCAL_DELIVERY, ep->lxc_id, seclabel);\n\
+    \n\tmac_t lxc_mac = ep->mac;\n\tmac_t router_mac = ep->node_mac;\n\n\t/* This\
+    \ will invalidate the size check */\n\tret = ipv6_l3(skb, l3_off, (__u8 *) &router_mac,\
+    \ (__u8 *) &lxc_mac, direction);\n\tif (ret != TC_ACT_OK)\n\t\treturn ret;\n\n\
+    \tcilium_dbg(skb, DBG_LXC_FOUND, ep->ifindex, 0);\n\tskb->cb[CB_SRC_LABEL] = seclabel;\n\
+    \tskb->cb[CB_IFINDEX] = ep->ifindex;\n\n#if defined LOCAL_DELIVERY_METRICS\n\t\
+    /*\n\t * Special LXC case for updating egress forwarding metrics.\n\t * Note that\
+    \ the packet could still be dropped but it would show up\n\t * as an ingress drop\
+    \ counter in metrics.\n\t */\n\tupdate_metrics(skb->len, direction, REASON_FORWARDED);\n\
+    #endif\n\ttail_call(skb, &POLICY_CALL_MAP, ep->lxc_id);\n\n// CONTEXT: static\
+    \ inline int __inline__ ipv4_local_delivery(struct __sk_buff *skb, int l3_o\n\
+    {\n\tint ret;\n\n\tcilium_dbg(skb, DBG_LOCAL_DELIVERY, ep->lxc_id, seclabel);\n\
+    \n\tmac_t lxc_mac = ep->mac;\n\tmac_t router_mac = ep->node_mac;\n\n\tret = ipv4_l3(skb,\
+    \ l3_off, (__u8 *) &router_mac, (__u8 *) &lxc_mac, ip4);\n\tif (ret != TC_ACT_OK)\n\
+    \t\treturn ret;\n\n\tcilium_dbg(skb, DBG_LXC_FOUND, ep->ifindex, 0);\n\tskb->cb[CB_SRC_LABEL]\
+    \ = seclabel;\n\tskb->cb[CB_IFINDEX] = ep->ifindex;\n\n#if defined LOCAL_DELIVERY_METRICS\n\
+    \t/*\n\t * Special LXC case for updating egress forwarding metrics.\n\t * Note\
+    \ that the packet could still be dropped but it would show up\n\t * as an ingress\
+    \ drop counter in metrics.\n\t */\n\tupdate_metrics(skb->len, direction, REASON_FORWARDED);\n\
+    #endif\n\ttail_call(skb, &POLICY_CALL_MAP, ep->lxc_id);\n\n// FILE: bpf/lib/lb.h\n\
+    // CONTEXT: struct bpf_elf_map __section_maps LB4_RR_SEQ_MAP = {\n\n#ifdef HAVE_MAP_VAL_ADJ\n\
+    static inline int lb_next_rr(struct __sk_buff *skb,\n\t\t\t     struct lb_sequence\
+    \ *seq,\n\t\t\t     __be16 hash)\n{\n\tint slave = 0;\n\t__u8 offset = hash %\
+    \ seq->count;\n\n\tif (offset < LB_RR_MAX_SEQ) {\n\t\t/* Slave 0 is reserved for\
+    \ the master slot */\n\t\tslave = seq->idx[offset] + 1;\n\t\tcilium_dbg(skb, DBG_RR_SLAVE_SEL,\
+    \ hash, slave);\n\t}\n\n\treturn slave;\n}\n#endif\n\nstatic inline __u32 lb_enforce_rehash(struct\
+    \ __sk_buff *skb)\n{\n#ifdef HAVE_SET_HASH_INVALID\n\tset_hash_invalid(skb);\n\
+    #else\n\t/* Ugly workaround for 4.8 kernel where we don't have this function.\
+    \ */\n\n// CONTEXT: static inline int lb6_select_slave(struct __sk_buff *skb,\n\
+    \tif (weight) {\n\t\tstruct lb_sequence *seq;\n\n\t\tseq = map_lookup_elem(&cilium_lb6_rr_seq,\
+    \ key);\n\t\tif (seq && seq->count != 0)\n\t\t\tslave = lb_next_rr(skb, seq, hash);\n\
+    \t}\n#endif\n\n\tif (slave == 0) {\n\t\t/* Slave 0 is reserved for the master\
+    \ slot */\n\t\tslave = (hash % count) + 1;\n\t\tcilium_dbg(skb, DBG_PKT_HASH,\
+    \ hash, slave);\n\t}\n\n\treturn slave;\n}\n\nstatic inline int lb4_select_slave(struct\
+    \ __sk_buff *skb,\n\t\t\t\t   __u16 count, __u16 weight)\n{\n\t__u32 hash = lb_enforce_rehash(skb);\n\
+    \tint slave = 0;\n\n/* Disabled for now since on older kernels dynamic map access"
+  fixed_code: "// FILE: bpf/bpf_lxc.c\n// CONTEXT: ct_recreate6:\n\t\tunion v6addr\
+    \ host_ip = {};\n\n\t\tBPF_V6(host_ip, HOST_IP);\n\n\t\tret = ipv6_redirect_to_host_port(skb,\
+    \ &csum_off, l4_off,\n\t\t\t\t\t\t verdict, tuple->dport,\n\t\t\t\t\t\t orig_dip,\
+    \ tuple, &host_ip,\n\t\t\t\t\t\t SECLABEL, forwarding_reason,\n\t\t\t\t\t\t monitor);\n\
+    \t\tif (IS_ERR(ret))\n\t\t\treturn ret;\n\n\t\tret = ipv6_l3(skb, l3_off, (__u8\
+    \ *) &router_mac.addr, (__u8 *) &host_mac.addr, METRIC_EGRESS);\n\t\tif (ret !=\
+    \ TC_ACT_OK)\n\t\t\treturn ret;\n\n\t\tcilium_dbg_capture(skb, DBG_CAPTURE_DELIVERY,\
+    \ HOST_IFINDEX);\n\t\treturn redirect(HOST_IFINDEX, 0);\n\t}\n\n\tif (!revalidate_data(skb,\
+    \ &data, &data_end, &ip6))\n\t\treturn DROP_INVALID;\n\n\tdaddr = (union v6addr\
+    \ *)&ip6->daddr;\n\n// CONTEXT: ct_recreate6:\n#ifdef ENABLE_NAT46\n\tif (unlikely(ipv6_addr_is_mapped(daddr)))\
+    \ {\n\t\tep_tail_call(skb, CILIUM_CALL_NAT64);\n\t\treturn DROP_MISSED_TAIL_CALL;\n\
+    \t}\n#endif\n\tgoto pass_to_stack;\n\nto_host:\n\tif (is_defined(ENABLE_HOST_REDIRECT))\
+    \ {\n\t\tunion macaddr host_mac = HOST_IFINDEX_MAC;\n\n\t\tret = ipv6_l3(skb,\
+    \ l3_off, (__u8 *) &router_mac.addr, (__u8 *) &host_mac.addr, METRIC_EGRESS);\n\
+    \t\tif (ret != TC_ACT_OK)\n\t\t\treturn ret;\n\n\t\tsend_trace_notify(skb, TRACE_TO_HOST,\
+    \ SECLABEL, HOST_ID, 0,\n\t\t\t\t  HOST_IFINDEX, forwarding_reason, monitor);\n\
+    \n\t\tcilium_dbg_capture(skb, DBG_CAPTURE_DELIVERY, HOST_IFINDEX);\n\t\treturn\
+    \ redirect(HOST_IFINDEX, 0);\n\t}\n\npass_to_stack:\n\tret = ipv6_l3(skb, l3_off,\
+    \ NULL, (__u8 *) &router_mac.addr, METRIC_EGRESS);\n\tif (unlikely(ret != TC_ACT_OK))\n\
+    \t\treturn ret;\n\n\tif (ipv6_store_flowlabel(skb, l3_off, SECLABEL_NB) < 0)\n\
+    \t\treturn DROP_WRITE_ERROR;\n\n\tsend_trace_notify(skb, TRACE_TO_STACK, SECLABEL,\
+    \ *dstID, 0, 0,\n\t\t\t  forwarding_reason, monitor);\n\n\tcilium_dbg_capture(skb,\
+    \ DBG_CAPTURE_DELIVERY, 0);\n#ifndef ENCAP_IFINDEX\n\n// CONTEXT: ct_recreate4:\n\
+    \n\t\tret = ipv4_redirect_to_host_port(skb, &csum_off, l4_off,\n\t\t\t\t\t\t verdict,\
+    \ tuple.dport,\n\t\t\t\t\t\t orig_dip, &tuple, SECLABEL,\n\t\t\t\t\t\t forwarding_reason,\
+    \ monitor);\n\t\tif (IS_ERR(ret))\n\t\t\treturn ret;\n\n\t\t/* After L4 write\
+    \ in port mapping: revalidate for direct packet access */\n\t\tif (!revalidate_data(skb,\
+    \ &data, &data_end, &ip4))\n\t\t\treturn DROP_INVALID;\n\n\t\tret = ipv4_l3(skb,\
+    \ l3_off, (__u8 *) &router_mac.addr, (__u8 *) &host_mac.addr, ip4);\n\t\tif (ret\
+    \ != TC_ACT_OK)\n\t\t\treturn ret;\n\n\t\tcilium_dbg_capture(skb, DBG_CAPTURE_DELIVERY,\
+    \ HOST_IFINDEX);\n\n#ifdef HOST_REDIRECT_TO_INGRESS\n\t\treturn redirect(HOST_IFINDEX,\
+    \ BPF_F_INGRESS);\n#else\n\t\treturn redirect(HOST_IFINDEX, 0);\n#endif\n\t}\n\
+    \n// CONTEXT: ct_recreate4:\n\t\t */\n\t\telse\n\t\t\treturn ret;\n\t}\n#else\n\
+    \tgoto pass_to_stack;\n#endif\n\nto_host:\n\tif (is_defined(ENABLE_HOST_REDIRECT))\
+    \ {\n\t\tunion macaddr host_mac = HOST_IFINDEX_MAC;\n\n\t\tret = ipv4_l3(skb,\
+    \ l3_off, (__u8 *) &router_mac.addr, (__u8 *) &host_mac.addr, ip4);\n\t\tif (ret\
+    \ != TC_ACT_OK)\n\t\t\treturn ret;\n\n\t\tsend_trace_notify(skb, TRACE_TO_HOST,\
+    \ SECLABEL, HOST_ID, 0, HOST_IFINDEX,\n\t\t\t\t  forwarding_reason, monitor);\n\
+    \n\t\tcilium_dbg_capture(skb, DBG_CAPTURE_DELIVERY, HOST_IFINDEX);\n#ifdef HOST_REDIRECT_TO_INGRESS\n\
+    \t\treturn redirect(HOST_IFINDEX, BPF_F_INGRESS);\n#else\n\t\treturn redirect(HOST_IFINDEX,\
+    \ 0);\n#endif\n\t}\n\npass_to_stack:\n\tret = ipv4_l3(skb, l3_off, NULL, (__u8\
+    \ *) &router_mac.addr, ip4);\n\tif (unlikely(ret != TC_ACT_OK))\n\t\treturn ret;\n\
+    \n\t/* FIXME: We can't store the security context anywhere here so all\n\t * packets\
+    \ to other nodes will look like they come from an outside\n\t * network.\n\t */\n\
+    \n\tsend_trace_notify(skb, TRACE_TO_STACK, SECLABEL, *dstID, 0, 0,\n\t\t\t  forwarding_reason,\
+    \ monitor);\n#ifndef ENCAP_IFINDEX\n\n// CONTEXT: ipv4_policy(struct __sk_buff\
+    \ *skb, int ifindex, __u32 src_label, int *forwarding\n\n\tif (redirect_to_proxy(verdict,\
+    \ *forwarding_reason)) {\n\t\tunion macaddr host_mac = HOST_IFINDEX_MAC;\n\t\t\
+    union macaddr router_mac = NODE_MAC;\n\n\t\tret = ipv4_redirect_to_host_port(skb,\
+    \ &csum_off, l4_off,\n\t\t\t\t\t\t verdict, tuple.dport,\n\t\t\t\t\t\t orig_dip,\
+    \ &tuple, src_label,\n\t\t\t\t\t\t *forwarding_reason, monitor);\n\t\tif (IS_ERR(ret))\n\
+    \t\t\treturn ret;\n\n\t\tif (eth_store_saddr(skb, (__u8 *) &router_mac.addr, 0)\
+    \ < 0)\n\t\t\treturn DROP_WRITE_ERROR;\n\n\t\tif (eth_store_daddr(skb, (__u8 *)\
+    \ &host_mac.addr, 0) < 0)\n\t\t\treturn DROP_WRITE_ERROR;\n\n\t\tskb->cb[CB_IFINDEX]\
+    \ = HOST_IFINDEX;\n\n#ifdef HOST_REDIRECT_TO_INGRESS\n\t\treturn redirect(HOST_IFINDEX,\
+    \ BPF_F_INGRESS);\n#else\n\t\treturn redirect(HOST_IFINDEX, 0);\n\n// FILE: bpf/lib/encap.h\n\
+    // CONTEXT: encap_and_redirect_ipsec(struct __sk_buff *skb, __u32 tunnel_endpoint,\
+    \ __u8 key,\nstatic inline int __inline__\n__encap_and_redirect_with_nodeid(struct\
+    \ __sk_buff *skb, __u32 tunnel_endpoint,\n\t\t\t\t __u32 seclabel, __u32 monitor)\n\
+    {\n\tstruct bpf_tunnel_key key = {};\n\t__u32 node_id;\n\tint ret;\n\n\tnode_id\
+    \ = bpf_htonl(tunnel_endpoint);\n\tkey.tunnel_id = seclabel;\n\tkey.remote_ipv4\
+    \ = node_id;\n\n\tret = skb_set_tunnel_key(skb, &key, sizeof(key), 0);\n\tif (unlikely(ret\
+    \ < 0))\n\t\treturn DROP_WRITE_ERROR;\n\n\tsend_trace_notify(skb, TRACE_TO_OVERLAY,\
+    \ seclabel, 0, 0, ENCAP_IFINDEX,\n\t\t\t  0, monitor);\n\n\treturn redirect(ENCAP_IFINDEX,\
+    \ 0);\n}\n\n/* encap_and_redirect_with_nodeid returns IPSEC_ENDPOINT after skb\
+    \ meta-data is\n * set when IPSec is enabled. Caller should pass the skb to the\
+    \ stack at this\n\n// FILE: bpf/lib/l3.h\n// CONTEXT: static inline int ipv6_local_delivery(struct\
+    \ __sk_buff *skb, int l3_off, int l4_\n\tint ret;\n\n\tcilium_dbg(skb, DBG_LOCAL_DELIVERY,\
+    \ ep->lxc_id, seclabel);\n\n\tmac_t lxc_mac = ep->mac;\n\tmac_t router_mac = ep->node_mac;\n\
+    \n\t/* This will invalidate the size check */\n\tret = ipv6_l3(skb, l3_off, (__u8\
+    \ *) &router_mac, (__u8 *) &lxc_mac, direction);\n\tif (ret != TC_ACT_OK)\n\t\t\
+    return ret;\n\n\tskb->cb[CB_SRC_LABEL] = seclabel;\n\tskb->cb[CB_IFINDEX] = ep->ifindex;\n\
+    \n#if defined LOCAL_DELIVERY_METRICS\n\t/*\n\t * Special LXC case for updating\
+    \ egress forwarding metrics.\n\t * Note that the packet could still be dropped\
+    \ but it would show up\n\t * as an ingress drop counter in metrics.\n\t */\n\t\
+    update_metrics(skb->len, direction, REASON_FORWARDED);\n#endif\n\ttail_call(skb,\
+    \ &POLICY_CALL_MAP, ep->lxc_id);\n\n// CONTEXT: static inline int __inline__ ipv4_local_delivery(struct\
+    \ __sk_buff *skb, int l3_o\n{\n\tint ret;\n\n\tcilium_dbg(skb, DBG_LOCAL_DELIVERY,\
+    \ ep->lxc_id, seclabel);\n\n\tmac_t lxc_mac = ep->mac;\n\tmac_t router_mac = ep->node_mac;\n\
+    \n\tret = ipv4_l3(skb, l3_off, (__u8 *) &router_mac, (__u8 *) &lxc_mac, ip4);\n\
+    \tif (ret != TC_ACT_OK)\n\t\treturn ret;\n\n\tskb->cb[CB_SRC_LABEL] = seclabel;\n\
+    \tskb->cb[CB_IFINDEX] = ep->ifindex;\n\n#if defined LOCAL_DELIVERY_METRICS\n\t\
+    /*\n\t * Special LXC case for updating egress forwarding metrics.\n\t * Note that\
+    \ the packet could still be dropped but it would show up\n\t * as an ingress drop\
+    \ counter in metrics.\n\t */\n\tupdate_metrics(skb->len, direction, REASON_FORWARDED);\n\
+    #endif\n\ttail_call(skb, &POLICY_CALL_MAP, ep->lxc_id);\n\n// FILE: bpf/lib/lb.h\n\
+    // CONTEXT: struct bpf_elf_map __section_maps LB4_RR_SEQ_MAP = {\n\n#ifdef HAVE_MAP_VAL_ADJ\n\
+    static inline int lb_next_rr(struct __sk_buff *skb,\n\t\t\t     struct lb_sequence\
+    \ *seq,\n\t\t\t     __be16 hash)\n{\n\tint slave = 0;\n\t__u8 offset = hash %\
+    \ seq->count;\n\n\tif (offset < LB_RR_MAX_SEQ) {\n\t\t/* Slave 0 is reserved for\
+    \ the master slot */\n\t\tslave = seq->idx[offset] + 1;\n\t\tcilium_dbg_lb(skb,\
+    \ DBG_RR_SLAVE_SEL, hash, slave);\n\t}\n\n\treturn slave;\n}\n#endif\n\nstatic\
+    \ inline __u32 lb_enforce_rehash(struct __sk_buff *skb)\n{\n#ifdef HAVE_SET_HASH_INVALID\n\
+    \tset_hash_invalid(skb);\n#else\n\t/* Ugly workaround for 4.8 kernel where we\
+    \ don't have this function. */\n\n// CONTEXT: static inline int lb6_select_slave(struct\
+    \ __sk_buff *skb,\n\tif (weight) {\n\t\tstruct lb_sequence *seq;\n\n\t\tseq =\
+    \ map_lookup_elem(&cilium_lb6_rr_seq, key);\n\t\tif (seq && seq->count != 0)\n\
+    \t\t\tslave = lb_next_rr(skb, seq, hash);\n\t}\n#endif\n\n\tif (slave == 0) {\n\
+    \t\t/* Slave 0 is reserved for the master slot */\n\t\tslave = (hash % count)\
+    \ + 1;\n\t\tcilium_dbg_lb(skb, DBG_PKT_HASH, hash, slave);\n\t}\n\n\treturn slave;\n\
+    }\n\nstatic inline int lb4_select_slave(struct __sk_buff *skb,\n\t\t\t\t   __u16\
+    \ count, __u16 weight)\n{\n\t__u32 hash = lb_enforce_rehash(skb);\n\tint slave\
+    \ = 0;\n\n/* Disabled for now since on older kernels dynamic map access"
+  diff_summary: |-
+    bpf/bpf_lxc.c:
+    - Gated or switched helper usage so unsupported helpers do not reach kernels that reject them.
+    - Affected context: ct_recreate6:, ct_recreate4:, ipv4_policy(struct __sk_buff *skb, int ifindex, __u32 src_label, int *forwarding.
+    bpf/lib/encap.h:
+    - Gated or switched helper usage so unsupported helpers do not reach kernels that reject them.
+    - Affected context: encap_and_redirect_ipsec(struct __sk_buff *skb, __u32 tunnel_endpoint, __u8 key,.
+    bpf/lib/l3.h:
+    - Gated or switched helper usage so unsupported helpers do not reach kernels that reject them.
+    - Affected context: static inline int ipv6_local_delivery(struct __sk_buff *skb, int l3_off, int l4_, static inline int __inline__ ipv4_local_delivery(struct __sk_buff *skb, int l3_o.
+    bpf/lib/lb.h:
+    - Gated or switched helper usage so unsupported helpers do not reach kernels that reject them.
+    - Affected context: struct bpf_elf_map __section_maps LB4_RR_SEQ_MAP = {, static inline int lb6_select_slave(struct __sk_buff *skb,.
+    - Commit subject: bpf: Remove several debug messages.

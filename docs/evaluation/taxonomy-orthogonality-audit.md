@@ -1,17 +1,17 @@
 # Taxonomy Orthogonality Audit
 
-This document records the pre-migration `bpfix-bench` root-cause label audit
+This document records the pre-migration `bpfix-empirical` root-cause label audit
 that motivated the orthogonal taxonomy cleanup. It covers the 235 replayable
 cases under
-`bpfix-bench/cases/*/case.yaml` and the current taxonomy/catalog inputs:
+`bpfix-empirical/cases/*/case.yaml` and the current taxonomy/catalog inputs:
 
-- `bpfix-bench/taxonomy.yaml`
+- `bpfix-empirical/taxonomy.yaml`
 - `docs/evaluation/legacy-catalogs/error_catalog.yaml`
 - `docs/evaluation/legacy-catalogs/obligation_catalog.yaml`
 - `docs/evaluation/metrics.md`
 - `docs/evaluation/baselines.md`
 
-No `bpfix-bench/cases/*.yaml` file was edited while producing the audit
+No `bpfix-empirical/cases/*.yaml` file was edited while producing the audit
 snapshot below.
 
 ## Migration Status
@@ -39,7 +39,7 @@ The pre-migration labels mixed at least two dimensions in `label.taxonomy_class`
 `source_bug`, `lowering_artifact`, `env_mismatch`, and `verifier_limit` are
 root-cause-layer labels, while `stack_safety` and `build_configuration` were
 mechanism or configuration labels. This is not orthogonal enough for
-OSDI/SOSP-style claims because the benchmark can double-count the same concept
+OSDI/SOSP-style claims because the empirical corpus can double-count the same concept
 as either a primary class or a secondary mechanism.
 
 The cleanup should keep one mutually exclusive primary root-cause axis and move
@@ -111,7 +111,7 @@ between the program's assumed target and the replay target:
   forbidden in the selected environment;
 - BTF, CO-RE, func info, reference metadata, context layout, or map relocation
   is absent, malformed, or built for the wrong target;
-- build or compiler configuration creates bytecode outside the benchmark's
+- build or compiler configuration creates bytecode outside the replay environment's
   intended BPF target contract, for example unoptimized builds leaving indirect
   helper calls or unknown opcodes;
 - the same source/bytecode is expected to verify under a different declared
@@ -233,11 +233,11 @@ Other audit facts:
 - `external_match.status` counts are `not_applicable` 131, `exact` 42,
   `semantic` 37, and `partial` 25.
 - `repair.eligible` is false for 203 cases and true for 32 cases.
-- `bpfix-bench/taxonomy.yaml` now defines `verifier_false_positive`; the active
+- `bpfix-empirical/taxonomy.yaml` now defines `verifier_false_positive`; the active
   replay corpus currently keeps 7 replayable cases in that class after
   replay-artifact drift corrections.
 - `stack_safety` and `build_configuration` were case labels but were not
-  top-level classes in `bpfix-bench/taxonomy.yaml`.
+  top-level classes in `bpfix-empirical/taxonomy.yaml`.
 
 If only the two off-axis labels are normalized, the provisional class counts
 would be:
@@ -449,12 +449,12 @@ Unsafe blind changes:
 Representative commands used for this audit:
 
 ```bash
-sed -n '1,240p' bpfix-bench/taxonomy.yaml
+sed -n '1,240p' bpfix-empirical/taxonomy.yaml
 sed -n '1,620p' docs/evaluation/legacy-catalogs/error_catalog.yaml
 sed -n '1,520p' docs/evaluation/legacy-catalogs/obligation_catalog.yaml
 sed -n '1,520p' docs/evaluation/metrics.md
 sed -n '1,520p' docs/evaluation/baselines.md
-find bpfix-bench/cases -mindepth 2 -maxdepth 2 -name case.yaml | wc -l
+find bpfix-empirical/cases -mindepth 2 -maxdepth 2 -name case.yaml | wc -l
 git status --short
 ```
 
@@ -466,9 +466,9 @@ from pathlib import Path
 import sys
 import yaml, collections
 
-root = Path('bpfix-bench')
+root = Path('bpfix-empirical')
 sys.path.insert(0, str(root / 'tools'))
-from benchmark_metadata import with_case_defaults
+from empirical_metadata import with_case_defaults
 
 manifest = yaml.safe_load((root / 'manifest.yaml').read_text())
 rows = []

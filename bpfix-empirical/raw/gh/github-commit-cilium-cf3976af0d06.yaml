@@ -1,0 +1,123 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-cf3976af0d06
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/cf3976af0d061b29ec8e43d727f1587a8f646afa
+  title: 'bpf: tests: add helper to setup endpoint entry'
+  repository: https://github.com/cilium/cilium
+  commit: cf3976af0d061b29ec8e43d727f1587a8f646afa
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-cf3976af0d06.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: attempted_accepted
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Local endpoint map-update and memcpy/stack-alignment probes accepted on
+    kernel 6.15.11; the raw record has no terminal verifier log to anchor a stricter
+    reconstruction.
+raw:
+  case_id: github-commit-cilium-cf3976af0d06
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: cf3976af0d061b29ec8e43d727f1587a8f646afa
+  commit_message: 'bpf: tests: add helper to setup endpoint entry'
+  commit_date: '2025-09-02'
+  fix_type: inline_hint
+  buggy_code: "// FILE: bpf/tests/lib/endpoint.h\n/* SPDX-License-Identifier: (GPL-2.0-only\
+    \ OR BSD-2-Clause) */\n/* Copyright Authors of Cilium */\n\nstatic __always_inline\
+    \ void\nendpoint_v4_add_entry(__be32 addr, __u32 ifindex, __u16 lxc_id, __u32\
+    \ flags, __u32 sec_id,\n\t\t      __u32 parent_ifindex, const __u8 *ep_mac_addr,\
+    \ const __u8 *node_mac_addr)\n{\n\tstruct endpoint_key key = {\n\t\t.ip4 = addr,\n\
+    \t\t.family = ENDPOINT_KEY_IPV4,\n\t};\n\tstruct endpoint_info value = {\n\t\t\
+    .ifindex = ifindex,\n\t\t.lxc_id = lxc_id,\n\t\t.flags = flags,\n\t\t.sec_id =\
+    \ sec_id,\n\t\t.parent_ifindex = parent_ifindex,\n\t};\n\n\tif (ep_mac_addr)\n\
+    \t\tmemcpy(&value.mac, ep_mac_addr, ETH_ALEN);\n\tif (node_mac_addr)\n\t\tmemcpy(&value.node_mac,\
+    \ node_mac_addr, ETH_ALEN);\n\n\tmap_update_elem(&cilium_lxc, &key, &value, BPF_ANY);\n\
+    }\n\nstatic __always_inline void\nendpoint_v4_del_entry(__be32 addr)\n{\n\tstruct\
+    \ endpoint_key key = {\n\t\t.ip4 = addr,\n\t\t.family = ENDPOINT_KEY_IPV4,\n\t\
+    };\n\n\tmap_delete_elem(&cilium_lxc, &key);\n}\n\nstatic __always_inline void\n\
+    endpoint_v6_add_entry(const union v6addr *addr, __u32 ifindex, __u16 lxc_id,\n\
+    \t\t      __u32 flags, __u32 sec_id,\n\t\t      const __u8 *ep_mac_addr, const\
+    \ __u8 *node_mac_addr)\n{\n\tstruct endpoint_key key = {\n\t\t.family = ENDPOINT_KEY_IPV6,\n\
+    \t};\n\n\tstruct endpoint_info value = {\n\t\t.ifindex = ifindex,\n\t\t.lxc_id\
+    \ = lxc_id,\n\t\t.flags = flags,\n\t\t.sec_id = sec_id,\n\t};\n\n\tmemcpy(&key.ip6,\
+    \ addr, sizeof(*addr));\n\n\tif (ep_mac_addr)\n\t\tmemcpy(&value.mac, ep_mac_addr,\
+    \ ETH_ALEN);\n\tif (node_mac_addr)\n\t\tmemcpy(&value.node_mac, node_mac_addr,\
+    \ ETH_ALEN);\n\n\tmap_update_elem(&cilium_lxc, &key, &value, BPF_ANY);\n}\n\n\
+    // FILE: bpf/tests/tc_srv6_decap.c\n// CONTEXT: int srv6_decap_to_pod_ipv4_pktgen(struct\
+    \ __ctx_buff *ctx)\n\tdata = pktgen__push_data(&builder, default_data, sizeof(default_data));\n\
+    \tif (!data)\n\t\treturn TEST_FAIL;\n\n\tpktgen__finish(&builder);\n\n\treturn\
+    \ TEST_PASS;\n}\n\nSETUP(\"tc\", \"tc_srv6_decap_to_pod_ipv4\")\nint srv6_decap_to_pod_ipv4_setup(struct\
+    \ __ctx_buff *ctx __maybe_unused)\n{\n\tunion v6addr sid;\n\t__u32 vrf_id = 1;\n\
+    \n\tmemcpy(sid.addr, (const void *)SID, sizeof(sid.addr));\n\n\tmap_update_elem(&cilium_srv6_sid,\
+    \ &sid, &vrf_id, 0);\n\n\tendpoint_v4_add_entry(POD_IPV4, 12345, 100, 0, 0, 0,\n\
+    \t\t\t      (__u8 *)POD_MAC, (__u8 *)ROUTER_MAC);\n\n\ttail_call_static(ctx, entry_call_map,\
+    \ FROM_NETDEV);\n\n\treturn TEST_FAIL;\n\n// CONTEXT: int srv6_decap_to_service_ipv4_pktgen(struct\
+    \ __ctx_buff *ctx)\n\tdata = pktgen__push_data(&builder, default_data, sizeof(default_data));\n\
+    \tif (!data)\n\t\treturn TEST_FAIL;\n\n\tpktgen__finish(&builder);\n\n\treturn\
+    \ TEST_PASS;\n}\n\nSETUP(\"tc\", \"tc_srv6_decap_to_service_ipv4\")\nint srv6_decap_to_service_ipv4_setup(struct\
+    \ __ctx_buff *ctx __maybe_unused)\n{\n\tunion v6addr sid;\n\t__u32 vrf_id = 1;\n\
+    \n\tmemcpy(sid.addr, (const void *)SID, sizeof(sid.addr));\n\n\tmap_update_elem(&cilium_srv6_sid,\
+    \ &sid, &vrf_id, 0);\n\n\tlb_v4_add_service(SERVICE_IPV4, SERVICE_PORT, IPPROTO_TCP,\
+    \ 1, 1);\n\tlb_v4_add_backend(SERVICE_IPV4, SERVICE_PORT, 1, 124,\n\t\t\t  POD_IPV4,\
+    \ SERVICE_PORT, IPPROTO_TCP, 0);\n\n\tendpoint_v4_add_entry(POD_IPV4, 12345, 100,\
+    \ 0, 0, 0,\n\t\t\t      (__u8 *)POD_MAC, (__u8 *)ROUTER_MAC);"
+  fixed_code: "// FILE: bpf/tests/lib/endpoint.h\n/* SPDX-License-Identifier: (GPL-2.0-only\
+    \ OR BSD-2-Clause) */\n/* Copyright Authors of Cilium */\n\nstatic __always_inline\
+    \ void\nendpoint_add_entry(struct endpoint_key *key, __u32 ifindex, __u16 lxc_id,\
+    \ __u32 flags, __u32 sec_id,\n\t\t   __u32 parent_ifindex, const __u8 *ep_mac_addr,\
+    \ const __u8 *node_mac_addr)\n{\n\tstruct endpoint_info value = {\n\t\t.ifindex\
+    \ = ifindex,\n\t\t.lxc_id = lxc_id,\n\t\t.flags = flags,\n\t\t.sec_id = sec_id,\n\
+    \t\t.parent_ifindex = parent_ifindex,\n\t};\n\n\tif (ep_mac_addr)\n\t\t__bpf_memcpy_builtin(&value.mac,\
+    \ ep_mac_addr, ETH_ALEN);\n\tif (node_mac_addr)\n\t\t__bpf_memcpy_builtin(&value.node_mac,\
+    \ node_mac_addr, ETH_ALEN);\n\n\tmap_update_elem(&cilium_lxc, key, &value, BPF_ANY);\n\
+    }\n\nstatic __always_inline void\nendpoint_v4_add_entry(__be32 addr, __u32 ifindex,\
+    \ __u16 lxc_id, __u32 flags, __u32 sec_id,\n\t\t      __u32 parent_ifindex, const\
+    \ __u8 *ep_mac_addr, const __u8 *node_mac_addr)\n{\n\tstruct endpoint_key key\
+    \ = {\n\t\t.ip4 = addr,\n\t\t.family = ENDPOINT_KEY_IPV4,\n\t};\n\n\tendpoint_add_entry(&key,\
+    \ ifindex, lxc_id, flags, sec_id, parent_ifindex,\n\t\t\t   ep_mac_addr, node_mac_addr);\n\
+    }\n\nstatic __always_inline void\nendpoint_v4_del_entry(__be32 addr)\n{\n\tstruct\
+    \ endpoint_key key = {\n\t\t.ip4 = addr,\n\t\t.family = ENDPOINT_KEY_IPV4,\n\t\
+    };\n\n\tmap_delete_elem(&cilium_lxc, &key);\n}\n\nstatic __always_inline void\n\
+    endpoint_v6_add_entry(const union v6addr *addr, __u32 ifindex, __u16 lxc_id,\n\
+    \t\t      __u32 flags, __u32 sec_id,\n\t\t      const __u8 *ep_mac_addr, const\
+    \ __u8 *node_mac_addr)\n{\n\tstruct endpoint_key key = {\n\t\t.family = ENDPOINT_KEY_IPV6,\n\
+    \t};\n\n\tmemcpy(&key.ip6, addr, sizeof(*addr));\n\n\tendpoint_add_entry(&key,\
+    \ ifindex, lxc_id, flags, sec_id, 0,\n\t\t\t   ep_mac_addr, node_mac_addr);\n\
+    }\n\n// FILE: bpf/tests/tc_srv6_decap.c\n// CONTEXT: int srv6_decap_to_pod_ipv4_pktgen(struct\
+    \ __ctx_buff *ctx)\n\tdata = pktgen__push_data(&builder, default_data, sizeof(default_data));\n\
+    \tif (!data)\n\t\treturn TEST_FAIL;\n\n\tpktgen__finish(&builder);\n\n\treturn\
+    \ TEST_PASS;\n}\n\nSETUP(\"tc\", \"tc_srv6_decap_to_pod_ipv4\")\nint srv6_decap_to_pod_ipv4_setup(struct\
+    \ __ctx_buff *ctx __maybe_unused)\n{\n\tunion v6addr sid __align_stack_8;\n\t\
+    __u32 vrf_id = 1;\n\n\tmemcpy(sid.addr, (const void *)SID, sizeof(sid.addr));\n\
+    \n\tmap_update_elem(&cilium_srv6_sid, &sid, &vrf_id, 0);\n\n\tendpoint_v4_add_entry(POD_IPV4,\
+    \ 12345, 100, 0, 0, 0,\n\t\t\t      (__u8 *)POD_MAC, (__u8 *)ROUTER_MAC);\n\n\t\
+    tail_call_static(ctx, entry_call_map, FROM_NETDEV);\n\n\treturn TEST_FAIL;\n\n\
+    // CONTEXT: int srv6_decap_to_service_ipv4_pktgen(struct __ctx_buff *ctx)\n\t\
+    data = pktgen__push_data(&builder, default_data, sizeof(default_data));\n\tif\
+    \ (!data)\n\t\treturn TEST_FAIL;\n\n\tpktgen__finish(&builder);\n\n\treturn TEST_PASS;\n\
+    }\n\nSETUP(\"tc\", \"tc_srv6_decap_to_service_ipv4\")\nint srv6_decap_to_service_ipv4_setup(struct\
+    \ __ctx_buff *ctx __maybe_unused)\n{\n\tunion v6addr sid __align_stack_8;\n\t\
+    __u32 vrf_id = 1;\n\n\tmemcpy(sid.addr, (const void *)SID, sizeof(sid.addr));\n\
+    \n\tmap_update_elem(&cilium_srv6_sid, &sid, &vrf_id, 0);\n\n\tlb_v4_add_service(SERVICE_IPV4,\
+    \ SERVICE_PORT, IPPROTO_TCP, 1, 1);\n\tlb_v4_add_backend(SERVICE_IPV4, SERVICE_PORT,\
+    \ 1, 124,\n\t\t\t  POD_IPV4, SERVICE_PORT, IPPROTO_TCP, 0);\n\n\tendpoint_v4_add_entry(POD_IPV4,\
+    \ 12345, 100, 0, 0, 0,\n\t\t\t      (__u8 *)POD_MAC, (__u8 *)ROUTER_MAC);"
+  diff_summary: |-
+    bpf/tests/lib/endpoint.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: the touched section.
+    bpf/tests/tc_srv6_decap.c:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: int srv6_decap_to_pod_ipv4_pktgen(struct __ctx_buff *ctx), int srv6_decap_to_service_ipv4_pktgen(struct __ctx_buff *ctx).
+    - Commit subject: bpf: tests: add helper to setup endpoint entry.

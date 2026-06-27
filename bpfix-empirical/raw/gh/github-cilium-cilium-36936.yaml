@@ -1,0 +1,460 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-cilium-cilium-36936
+source_kind: github_issue
+source:
+  url: https://github.com/cilium/cilium/issues/36936
+  title: 'BPF verifier reject in tail_handle_ipv4_from_host (was: Installing cilium
+    on AKS with delegated plugin in tunnel mode results in permissions error)'
+  repository: https://github.com/cilium/cilium
+  commit: null
+  collected_at: '2026-03-11T16:01:41+00:00'
+collector:
+  original_path: bpfix-empirical/raw/gh/github-cilium-cilium-36936.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: true
+  verifier_log_block_count: 4
+  source_snippet_count: 0
+  has_buggy_code: false
+  has_fixed_code: true
+  has_fix_description: true
+reproduction:
+  status: replay_valid
+  case_id: github-cilium-cilium-36936
+  case_path: cases/github-cilium-cilium-36936
+  artifact_path: cases/github-cilium-cilium-36936
+  reason: admitted_to_bpfix_bench_cases
+raw:
+  case_id: github-cilium-cilium-36936
+  source: github_issues
+  collected_at: '2026-03-11T16:01:41+00:00'
+  issue:
+    repository: cilium/cilium
+    number: 36936
+    title: 'BPF verifier reject in tail_handle_ipv4_from_host (was: Installing cilium
+      on AKS with delegated plugin in tunnel mode results in permissions error)'
+    url: https://github.com/cilium/cilium/issues/36936
+    state: closed
+    state_reason: completed
+    labels:
+    - kind/bug
+    - area/datapath
+    - needs/triage
+    - kind/community-report
+    - info-completed
+    created_at: '2025-01-10T18:28:36Z'
+    updated_at: '2025-02-03T12:53:34Z'
+    author: krunaljain
+  verifier_log:
+    blocks:
+    - 'time="2025-01-10T18:19:10.295196069Z" level=error msg="endpoint regeneration
+      failed" ciliumEndpointName=/ containerID= containerInterface= datapathPolicyRevision=0
+      desiredPolicyRevision=2 endpointID=514 error="attaching cilium_host: loading
+      eBPF collection into the kernel: program tail_handle_ipv4_from_host: load program:
+      permission denied: 127: (61) r9 = *(u32 *)(r1 +0): R1 invalid mem access ''map_value_or_null''
+      (183 line(s) omitted)" identity=1 ipv4= ipv6= k8sPodName=/ subsys=endpoint'
+    - |-
+      error="attaching cilium_host:
+          loading eBPF collection into the kernel:
+          program tail_handle_ipv4_from_host:
+          load program:
+          permission denied:
+          127: (61) r9 = *(u32 *)(r1 +0):
+          R1 invalid mem access 'map_value_or_null' (183 line(s) omitted)"
+    - |-
+      loading eBPF collection into the kernel:
+      program tail_handle_ipv4_from_host:
+      load program:
+      permission denied:
+      127: (61) r9 = *(u32 *)(r1 +0):
+      R1 invalid mem access 'map_value_or_null' (183 line(s) omitted)"
+    - "2025-01-10T17:54:26.027023483Z Verifier error: program tail_handle_ipv4_from_host:\
+      \ load program: permission denied: 127: (61) r9 = *(u32 *)(r1 +0): R1 invalid\
+      \ mem access 'map_value_or_null' (183 line(s) omitted)\n2025-01-10T17:54:26.027038509Z\
+      \ Verifier log: load program: permission denied:\n2025-01-10T17:54:26.027042704Z\
+      \ \t; int tail_handle_ipv4_from_host(struct __ctx_buff *ctx)\n2025-01-10T17:54:26.027054344Z\
+      \ \t0: (bf) r6 = r1\n2025-01-10T17:54:26.027058029Z \t; return ctx->cb[off];\n\
+      2025-01-10T17:54:26.027060683Z \t1: (61) r1 = *(u32 *)(r6 +48)\n2025-01-10T17:54:26.027063286Z\
+      \ \t2: (63) *(u32 *)(r10 -96) = r1\n2025-01-10T17:54:26.027065742Z \t3: (b4)\
+      \ w1 = 0\n2025-01-10T17:54:26.027068157Z \t; ctx->cb[off] = data;\n2025-01-10T17:54:26.027070607Z\
+      \ \t4: (63) *(u32 *)(r6 +48) = r1\n2025-01-10T17:54:26.027072994Z \t; DEFINE_FUNC_CTX_POINTER(data_end)\n\
+      2025-01-10T17:54:26.027075297Z \t5: (61) r2 = *(u32 *)(r6 +80)\n2025-01-10T17:54:26.027077707Z\
+      \ \t; DEFINE_FUNC_CTX_POINTER(data)\n2025-01-10T17:54:26.027080251Z \t6: (61)\
+      \ r3 = *(u32 *)(r6 +76)\n2025-01-10T17:54:26.027082346Z \t7: (b4) w0 = -134\n\
+      2025-01-10T17:54:26.027084886Z \t; if (data + tot_len > data_end)\n2025-01-10T17:54:26.027095264Z\
+      \ \t8: (07) r3 += 34\n2025-01-10T17:54:26.027097720Z \t; if (!revalidate_data(ctx,\
+      \ &data, &data_end, &ip4))\n2025-01-10T17:54:26.027100126Z \t9: (2d) if r3 >\
+      \ r2 goto pc+456\n2025-01-10T17:54:26.027102608Z \t R0_w=inv4294967162 R1_w=inv0\
+      \ R2_w=pkt_end(id=0,off=0,imm=0) R3_w=pkt(id=0,off=34,r=34,imm=0) R6_w=ctx(id=0,off=0,imm=0)\
+      \ R10=fp0 fp-96=inv\n2025-01-10T17:54:26.027104712Z \t; ctx->cb[off] = data;\n\
+      2025-01-10T17:54:26.027106946Z \t10: (63) *(u32 *)(r6 +48) = r1\n2025-01-10T17:54:26.027109391Z\
+      \ \t; volatile __u32 tc_index = ctx->tc_index;\n2025-01-10T17:54:26.027111540Z\
+      \ \t11: (61) r2 = *(u32 *)(r6 +44)\n2025-01-10T17:54:26.027113640Z \t; volatile\
+      \ __u32 tc_index = ctx->tc_index;\n2025-01-10T17:54:26.027115984Z \t12: (63)\
+      \ *(u32 *)(r10 -48) = r2\n2025-01-10T17:54:26.027118253Z \t; return tc_index\
+      \ & TC_INDEX_F_FROM_INGRESS_PROXY;\n2025-01-10T17:54:26.027120540Z \t13: (61)\
+      \ r1 = *(u32 *)(r10 -48)\n2025-01-10T17:54:26.027122719Z \t; volatile __u32\
+      \ tc_index = ctx->tc_index;\n2025-01-10T17:54:26.027124990Z \t14: (63) *(u32\
+      \ *)(r10 -48) = r2\n2025-01-10T17:54:26.027127467Z \t; return tc_index & TC_INDEX_F_FROM_INGRESS_PROXY;\n\
+      2025-01-10T17:54:26.027129900Z \t15: (54) w1 &= 1\n2025-01-10T17:54:26.027132233Z\
+      \ \t16: (b4) w3 = 2560\n2025-01-10T17:54:26.027134618Z \t; if (from_host &&\
+      \ tc_index_from_ingress_proxy(ctx)) {\n2025-01-10T17:54:26.027137158Z \t17:\
+      \ (56) if w1 != 0x0 goto pc+1\n2025-01-10T17:54:26.027144364Z \t R0_w=inv4294967162\
+      \ R1_w=inv0 R2_w=inv(id=0,umax_value=4294967295,var_off=(0x0; 0xffffffff)) R3_w=inv2560\
+      \ R6_w=ctx(id=0,off=0,imm=0) R10=fp0 fp-48=inv fp-96=inv\n2025-01-10T17:54:26.027146534Z\
+      \ \t18: (b4) w3 = 3840\n2025-01-10T17:54:26.027148187Z \t; return tc_index &\
+      \ TC_INDEX_F_FROM_EGRESS_PROXY;\n2025-01-10T17:54:26.027149887Z \t19: (61) r2\
+      \ = *(u32 *)(r10 -48)\n2025-01-10T17:54:26.027151452Z \t; return tc_index &\
+      \ TC_INDEX_F_FROM_EGRESS_PROXY;\n2025-01-10T17:54:26.027153026Z \t20: (54) w2\
+      \ &= 2\n2025-01-10T17:54:26.027154738Z \t21: (b4) w9 = 2816\n2025-01-10T17:54:26.027156695Z\
+      \ \t; if (from_host && tc_index_from_egress_proxy(ctx)) {\n2025-01-10T17:54:26.027158375Z\
+      \ \t22: (56) if w2 != 0x0 goto pc+1\n2025-01-10T17:54:26.027160309Z \t R0=inv4294967162\
+      \ R1=inv0 R2_w=inv0 R3=inv3840 R6=ctx(id=0,off=0,imm=0) R9_w=inv2816 R10=fp0\
+      \ fp-48=inv fp-96=inv\n2025-01-10T17:54:26.027161958Z \t23: (bc) w9 = w3\n2025-01-10T17:54:26.027163602Z\
+      \ \t; return tc_index & TC_INDEX_F_FROM_EGRESS_PROXY;\n2025-01-10T17:54:26.027165193Z\
+      \ \t24: (4c) w2 |= w1\n2025-01-10T17:54:26.027166856Z \t25: (b4) w8 = 1\n2025-01-10T17:54:26.027168588Z\
+      \ \t; if (from_host && tc_index_from_egress_proxy(ctx)) {\n2025-01-10T17:54:26.027170236Z\
+      \ \t26: (56) if w2 != 0x0 goto pc+1\n2025-01-10T17:54:26.027172157Z \tlast_idx\
+      \ 26 first_idx 19\n2025-01-10T17:54:26.027173889Z \tregs=4 stack=0 before 25:\
+      \ (b4) w8 = 1\n2025-01-10T17:54:26.027175562Z \tregs=4 stack=0 before 24: (4c)\
+      \ w2 |= w1\n2025-01-10T17:54:26.027180567Z \tregs=6 stack=0 before 23: (bc)\
+      \ w9 = w3\n2025-01-10T17:54:26.027182247Z \tregs=6 stack=0 before 22: (56) if\
+      \ w2 != 0x0 goto pc+1\n2025-01-10T17:54:26.027183871Z \tregs=6 stack=0 before\
+      \ 21: (b4) w9 = 2816\n2025-01-10T17:54:26.027185884Z \tregs=6 stack=0 before\
+      \ 20: (54) w2 &= 2\n2025-01-10T17:54:26.027187502Z \tregs=6 stack=0 before 19:\
+      \ (61) r2 = *(u32 *)(r10 -48)\n2025-01-10T17:54:26.027189208Z \t R0_w=inv4294967162\
+      \ R1_rw=invP0 R2_w=inv(id=0,umax_value=4294967295,var_off=(0x0; 0xffffffff))\
+      \ R3_rw=inv3840 R6_w=ctx(id=0,off=0,imm=0) R10=fp0 fp-48_r=invP fp-96=inv\n\
+      2025-01-10T17:54:26.027190921Z \tparent didn't have regs=2 stack=20 marks\n\
+      2025-01-10T17:54:26.027192522Z \tlast_idx 18 first_idx 0\n2025-01-10T17:54:26.027194093Z\
+      \ \tregs=2 stack=20 before 18: (b4) w3 = 3840\n2025-01-10T17:54:26.027195648Z\
+      \ \tregs=2 stack=20 before 17: (56) if w1 != 0x0 goto pc+1\n2025-01-10T17:54:26.027197260Z\
+      \ \tregs=2 stack=20 before 16: (b4) w3 = 2560\n2025-01-10T17:54:26.027198934Z\
+      \ \tregs=2 stack=20 before 15: (54) w1 &= 1\n2025-01-10T17:54:26.027200882Z\
+      \ \tregs=2 stack=20 before 14: (63) *(u32 *)(r10 -48) = r2\n2025-01-10T17:54:26.027203008Z\
+      \ \tregs=6 stack=0 before 13: (61) r1 = *(u32 *)(r10 -48)\n2025-01-10T17:54:26.027205349Z\
+      \ \tregs=4 stack=20 before 12: (63) *(u32 *)(r10 -48) = r2\n2025-01-10T17:54:26.027207658Z\
+      \ \tregs=4 stack=0 before 11: (61) r2 = *(u32 *)(r6 +44)\n2025-01-10T17:54:26.027209988Z\
+      \ \t27: (b4) w8 = 0\n2025-01-10T17:54:26.027212582Z \t; DEFINE_FUNC_CTX_POINTER(data_end)\n\
+      2025-01-10T17:54:26.027215055Z \t28: (61) r1 = *(u32 *)(r6 +80)\n2025-01-10T17:54:26.027218076Z\
+      \ \t; DEFINE_FUNC_CTX_POINTER(data)\n2025-01-10T17:54:26.027219713Z \t29: (61)\
+      \ r2 = *(u32 *)(r6 +76)\n2025-01-10T17:54:26.027221361Z \t; if (data + tot_len\
+      \ > data_end)\n2025-01-10T17:54:26.027222956Z \t30: (07) r2 += 34\n2025-01-10T17:54:26.027224559Z\
+      \ \t; if (data + tot_len > data_end)\n2025-01-10T17:54:26.027226232Z \t31: (2d)\
+      \ if r2 > r1 goto pc+382\n2025-01-10T17:54:26.027228020Z \t R0=inv4294967162\
+      \ R1_w=pkt_end(id=0,off=0,imm=0) R2_w=pkt(id=0,off=34,r=34,imm=0) R3=inv3840\
+      \ R6=ctx(id=0,off=0,imm=0) R8=inv0 R9=inv3840 R10=fp0 fp-48=inv fp-96=inv\n\
+      2025-01-10T17:54:26.027229650Z \t32: (18) r1 = 0xa64d9b45b98e\n2025-01-10T17:54:26.027231366Z\
+      \ \t; union macaddr cilium_net_mac = CILIUM_NET_MAC;\n2025-01-10T17:54:26.027232941Z\
+      \ \t34: (7b) *(u64 *)(r10 -48) = r1\n2025-01-10T17:54:26.027234606Z \t35: (bf)\
+      \ r3 = r10\n2025-01-10T17:54:26.027236257Z \t;\n2025-01-10T17:54:26.027237941Z\
+      \ \t36: (07) r3 += -48\n2025-01-10T17:54:26.027239604Z \t; return ctx_store_bytes(ctx,\
+      \ off, mac, ETH_ALEN, 0);\n2025-01-10T17:54:26.027241201Z \t37: (bf) r1 = r6\n\
+      2025-01-10T17:54:26.027242786Z \t38: (b4) w2 = 0\n2025-01-10T17:54:26.027244377Z\
+      \ \t39: (b4) w4 = 6\n2025-01-10T17:54:26.027246170Z \t40: (b4) w5 = 0\n2025-01-10T17:54:26.027248321Z\
+      \ \t41: (85) call bpf_skb_store_bytes#9\n2025-01-10T17:54:26.027250602Z \tlast_idx\
+      \ 41 first_idx 28\n2025-01-10T17:54:26.027252877Z \tregs=10 stack=0 before 40:\
+      \ (b4) w5 = 0\n2025-01-10T17:54:26.027255218Z \tregs=10 stack=0 before 39: (b4)\
+      \ w4 = 6\n2025-01-10T17:54:26.027257826Z \t42: (bc) w1 = w0\n2025-01-10T17:54:26.027260169Z\
+      \ \t;\n2025-01-10T17:54:26.027262495Z \t43: (c4) w0 s>>= 31\n2025-01-10T17:54:26.027265050Z\
+      \ \t44: (54) w0 &= -141\n2025-01-10T17:54:26.027280349Z \t; if (IS_ERR(ret))\n\
+      2025-01-10T17:54:26.027282554Z \t45: (c6) if w1 s< 0x0 goto pc+368\n2025-01-10T17:54:26.027285573Z\
+      \ \t R0_w=inv(id=0,umax_value=4294967155,var_off=(0x0; 0xffffff73),s32_max_value=2147483507)\
+      \ R1_w=inv(id=0,umax_value=2147483647,var_off=(0x0; 0x7fffffff)) R6=ctx(id=0,off=0,imm=0)\
+      \ R8=inv0 R9=inv3840 R10=fp0 fp-48=mmmmmmmm fp-96=inv\n2025-01-10T17:54:26.027288227Z\
+      \ \t; DEFINE_FUNC_CTX_POINTER(data_end)\n2025-01-10T17:54:26.027293459Z \t46:\
+      \ (61) r1 = *(u32 *)(r6 +80)\n2025-01-10T17:54:26.027295787Z \t; DEFINE_FUNC_CTX_POINTER(data)\n\
+      2025-01-10T17:54:26.027297816Z \t47: (61) r7 = *(u32 *)(r6 +76)\n2025-01-10T17:54:26.027299945Z\
+      \ \t; if (data + tot_len > data_end)\n2025-01-10T17:54:26.027302056Z \t48: (bf)\
+      \ r2 = r7\n2025-01-10T17:54:26.027304684Z \t49: (07) r2 += 34\n2025-01-10T17:54:26.027308714Z\
+      \ \t50: (b4) w0 = -134\n2025-01-10T17:54:26.027310500Z \t; if (data + tot_len\
+      \ > data_end)\n2025-01-10T17:54:26.027312189Z \t51: (2d) if r2 > r1 goto pc+362\n\
+      2025-01-10T17:54:26.027314123Z \t R0_w=inv4294967162 R1_w=pkt_end(id=0,off=0,imm=0)\
+      \ R2_w=pkt(id=0,off=34,r=34,imm=0) R6=ctx(id=0,off=0,imm=0) R7_w=pkt(id=0,off=0,r=34,imm=0)\
+      \ R8=inv0 R9=inv3840 R10=fp0 fp-48=mmmmmmmm fp-96=inv\n2025-01-10T17:54:26.027315724Z\
+      \ \t; return __lookup_ip4_endpoint(ip4->daddr);\n2025-01-10T17:54:26.027317366Z\
+      \ \t52: (61) r1 = *(u32 *)(r7 +30)\n2025-01-10T17:54:26.027318970Z \t53: (b7)\
+      \ r2 = 0\n2025-01-10T17:54:26.027320579Z \t; struct endpoint_key key = {};\n\
+      2025-01-10T17:54:26.027322204Z \t54: (63) *(u32 *)(r10 -32) = r2\n2025-01-10T17:54:26.027324195Z\
+      \ \tlast_idx 54 first_idx 42\n2025-01-10T17:54:26.027326356Z \tregs=4 stack=0\
+      \ before 53: (b7) r2 = 0\n2025-01-10T17:54:26.027328699Z \t55: (63) *(u32 *)(r10\
+      \ -36) = r2\n2025-01-10T17:54:26.027331202Z \tlast_idx 55 first_idx 42\n2025-01-10T17:54:26.027345180Z\
+      \ \tregs=4 stack=0 before 54: (63) *(u32 *)(r10 -32) = r2\n2025-01-10T17:54:26.027346948Z\
+      \ \tregs=4 stack=0 before 53: (b7) r2 = 0\n2025-01-10T17:54:26.027348698Z \t\
+      56: (63) *(u32 *)(r10 -40) = r2\n2025-01-10T17:54:26.027350261Z \tlast_idx 56\
+      \ first_idx 42\n2025-01-10T17:54:26.027351841Z \tregs=4 stack=0 before 55: (63)\
+      \ *(u32 *)(r10 -36) = r2\n2025-01-10T17:54:26.027353661Z \tregs=4 stack=0 before\
+      \ 54: (63) *(u32 *)(r10 -32) = r2\n2025-01-10T17:54:26.027355754Z \tregs=4 stack=0\
+      \ before 53: (b7) r2 = 0\n2025-01-10T17:54:26.027358073Z \t57: (63) *(u32 *)(r10\
+      \ -44) = r2\n2025-01-10T17:54:26.027360278Z \tlast_idx 57 first_idx 42\n2025-01-10T17:54:26.027362805Z\
+      \ \tregs=4 stack=0 before 56: (63) *(u32 *)(r10 -40) = r2\n2025-01-10T17:54:26.027365217Z\
+      \ \tregs=4 stack=0 before 55: (63) *(u32 *)(r10 -36) = r2\n2025-01-10T17:54:26.027367416Z\
+      \ \tregs=4 stack=0 before 54: (63) *(u32 *)(r10 -32) = r2\n2025-01-10T17:54:26.027369476Z\
+      \ \tregs=4 stack=0 before 53: (b7) r2 = 0\n2025-01-10T17:54:26.027371825Z \t\
+      ; key.ip4 = ip;\n2025-01-10T17:54:26.027373882Z \t58: (63) *(u32 *)(r10 -48)\
+      \ = r1\n2025-01-10T17:54:26.027375989Z \t59: (b4) w1 = 1\n2025-01-10T17:54:26.027378083Z\
+      \ \t; key.family = ENDPOINT_KEY_IPV4;\n2025-01-10T17:54:26.027380655Z \t60:\
+      \ (73) *(u8 *)(r10 -32) = r1\n2025-01-10T17:54:26.027385107Z \t61: (bf) r2 =\
+      \ r10\n2025-01-10T17:54:26.027387257Z \t;\n2025-01-10T17:54:26.027389570Z \t\
+      62: (07) r2 += -48\n2025-01-10T17:54:26.027391944Z \t; return map_lookup_elem(&ENDPOINTS_MAP,\
+      \ &key);\n2025-01-10T17:54:26.027394225Z \t63: (18) r1 = 0xff3c36dd581e0000\n\
+      2025-01-10T17:54:26.027396657Z \t65: (85) call bpf_map_lookup_elem#1\n2025-01-10T17:54:26.027399236Z\
+      \ \t66: (bf) r1 = r0\n2025-01-10T17:54:26.027402918Z \t; if (ep) {\n2025-01-10T17:54:26.027405048Z\
+      \ \t67: (15) if r1 == 0x0 goto pc+41\n2025-01-10T17:54:26.027407210Z\n2025-01-10T17:54:26.027409640Z\
+      \ \tfrom 67 to 109: R0=inv0 R1_w=inv0 R6=ctx(id=0,off=0,imm=0) R7=pkt(id=0,off=0,r=34,imm=0)\
+      \ R8=inv0 R9=inv3840 R10=fp0 fp-32=????mmmm fp-40=mmmmmmmm fp-48=mmmmmmmm fp-96=inv\n\
+      2025-01-10T17:54:26.027411701Z \t; info = lookup_ip4_remote_endpoint(ip4->daddr,\
+      \ 0);\n2025-01-10T17:54:26.027413724Z \t109: (61) r1 = *(u32 *)(r7 +30)\n2025-01-10T17:54:26.027415839Z\
+      \ \t110: (b4) w2 = 0\n2025-01-10T17:54:26.027418318Z \t; .ip4 = addr,\n2025-01-10T17:54:26.027420388Z\
+      \ \t111: (63) *(u32 *)(r10 -28) = r2\n2025-01-10T17:54:26.027425878Z \tlast_idx\
+      \ 111 first_idx 66\n2025-01-10T17:54:26.027428017Z \tregs=4 stack=0 before 110:\
+      \ (b4) w2 = 0\n2025-01-10T17:54:26.027430208Z \t112: (63) *(u32 *)(r10 -32)\
+      \ = r2\n2025-01-10T17:54:26.027432376Z \tlast_idx 112 first_idx 66\n2025-01-10T17:54:26.027434907Z\
+      \ \tregs=4 stack=0 before 111: (63) *(u32 *)(r10 -28) = r2\n2025-01-10T17:54:26.027437301Z\
+      \ \tregs=4 stack=0 before 110: (b4) w2 = 0\n2025-01-10T17:54:26.027441174Z \t\
+      113: (63) *(u32 *)(r10 -36) = r2\n2025-01-10T17:54:26.027442890Z \tlast_idx\
+      \ 113 first_idx 66\n2025-01-10T17:54:26.027444450Z \tregs=4 stack=0 before 112:\
+      \ (63) *(u32 *)(r10 -32) = r2\n2025-01-10T17:54:26.027446114Z \tregs=4 stack=0\
+      \ before 111: (63) *(u32 *)(r10 -28) = r2\n2025-01-10T17:54:26.027447758Z \t\
+      regs=4 stack=0 before 110: (b4) w2 = 0\n2025-01-10T17:54:26.027449377Z \t114:\
+      \ (63) *(u32 *)(r10 -40) = r1\n2025-01-10T17:54:26.027450966Z \t115: (b4) w1\
+      \ = 64\n2025-01-10T17:54:26.027452719Z \t; .lpm_key = { IPCACHE_PREFIX_LEN(prefix),\
+      \ {} },\n2025-01-10T17:54:26.027454349Z \t116: (63) *(u32 *)(r10 -48) = r1\n\
+      2025-01-10T17:54:26.027456101Z \t117: (b4) w1 = 16777216\n2025-01-10T17:54:26.027457737Z\
+      \ \t; key.cluster_id = (__u16)cluster_id;\n2025-01-10T17:54:26.027459279Z \t\
+      118: (63) *(u32 *)(r10 -44) = r1\n2025-01-10T17:54:26.027460888Z \t119: (bf)\
+      \ r2 = r10\n2025-01-10T17:54:26.027462534Z \t; info = lookup_ip4_remote_endpoint(ip4->daddr,\
+      \ 0);\n2025-01-10T17:54:26.027464689Z \t120: (07) r2 += -48\n2025-01-10T17:54:26.027466877Z\
+      \ \t; return map_lookup_elem(map, &key);\n2025-01-10T17:54:26.027469220Z \t\
+      121: (18) r1 = 0xff3c36ddeab8a000\n2025-01-10T17:54:26.027471557Z \t123: (85)\
+      \ call bpf_map_lookup_elem#1\n2025-01-10T17:54:26.027473904Z \t124: (bf) r1\
+      \ = r0\n2025-01-10T17:54:26.027476151Z \t; __u32 identity_len = CONFIG(identity_length);\n\
+      2025-01-10T17:54:26.027478558Z \t125: (18) r2 = 0xff4ded5d82ea6000\n2025-01-10T17:54:26.027481194Z\
+      \ \t; skip_tunnel_flag = extract_cluster_id_from_identity(info->sec_identity)\
+      \ == 1;\n2025-01-10T17:54:26.027483699Z \t127: (61) r9 = *(u32 *)(r1 +0)\n2025-01-10T17:54:26.027486150Z\
+      \ \tR1 invalid mem access 'map_value_or_null'\n2025-01-10T17:54:26.027490492Z\
+      \ \tprocessed 329 insns (limit 1000000) max_states_per_insn 1 total_states 22\
+      \ peak_states 22 mark_read 10"
+    combined: "time=\"2025-01-10T18:19:10.295196069Z\" level=error msg=\"endpoint\
+      \ regeneration failed\" ciliumEndpointName=/ containerID= containerInterface=\
+      \ datapathPolicyRevision=0 desiredPolicyRevision=2 endpointID=514 error=\"attaching\
+      \ cilium_host: loading eBPF collection into the kernel: program tail_handle_ipv4_from_host:\
+      \ load program: permission denied: 127: (61) r9 = *(u32 *)(r1 +0): R1 invalid\
+      \ mem access 'map_value_or_null' (183 line(s) omitted)\" identity=1 ipv4= ipv6=\
+      \ k8sPodName=/ subsys=endpoint\n\nerror=\"attaching cilium_host:\n    loading\
+      \ eBPF collection into the kernel:\n    program tail_handle_ipv4_from_host:\n\
+      \    load program:\n    permission denied:\n    127: (61) r9 = *(u32 *)(r1 +0):\n\
+      \    R1 invalid mem access 'map_value_or_null' (183 line(s) omitted)\"\n\nloading\
+      \ eBPF collection into the kernel:\nprogram tail_handle_ipv4_from_host:\nload\
+      \ program:\npermission denied:\n127: (61) r9 = *(u32 *)(r1 +0):\nR1 invalid\
+      \ mem access 'map_value_or_null' (183 line(s) omitted)\"\n\n2025-01-10T17:54:26.027023483Z\
+      \ Verifier error: program tail_handle_ipv4_from_host: load program: permission\
+      \ denied: 127: (61) r9 = *(u32 *)(r1 +0): R1 invalid mem access 'map_value_or_null'\
+      \ (183 line(s) omitted)\n2025-01-10T17:54:26.027038509Z Verifier log: load program:\
+      \ permission denied:\n2025-01-10T17:54:26.027042704Z \t; int tail_handle_ipv4_from_host(struct\
+      \ __ctx_buff *ctx)\n2025-01-10T17:54:26.027054344Z \t0: (bf) r6 = r1\n2025-01-10T17:54:26.027058029Z\
+      \ \t; return ctx->cb[off];\n2025-01-10T17:54:26.027060683Z \t1: (61) r1 = *(u32\
+      \ *)(r6 +48)\n2025-01-10T17:54:26.027063286Z \t2: (63) *(u32 *)(r10 -96) = r1\n\
+      2025-01-10T17:54:26.027065742Z \t3: (b4) w1 = 0\n2025-01-10T17:54:26.027068157Z\
+      \ \t; ctx->cb[off] = data;\n2025-01-10T17:54:26.027070607Z \t4: (63) *(u32 *)(r6\
+      \ +48) = r1\n2025-01-10T17:54:26.027072994Z \t; DEFINE_FUNC_CTX_POINTER(data_end)\n\
+      2025-01-10T17:54:26.027075297Z \t5: (61) r2 = *(u32 *)(r6 +80)\n2025-01-10T17:54:26.027077707Z\
+      \ \t; DEFINE_FUNC_CTX_POINTER(data)\n2025-01-10T17:54:26.027080251Z \t6: (61)\
+      \ r3 = *(u32 *)(r6 +76)\n2025-01-10T17:54:26.027082346Z \t7: (b4) w0 = -134\n\
+      2025-01-10T17:54:26.027084886Z \t; if (data + tot_len > data_end)\n2025-01-10T17:54:26.027095264Z\
+      \ \t8: (07) r3 += 34\n2025-01-10T17:54:26.027097720Z \t; if (!revalidate_data(ctx,\
+      \ &data, &data_end, &ip4))\n2025-01-10T17:54:26.027100126Z \t9: (2d) if r3 >\
+      \ r2 goto pc+456\n2025-01-10T17:54:26.027102608Z \t R0_w=inv4294967162 R1_w=inv0\
+      \ R2_w=pkt_end(id=0,off=0,imm=0) R3_w=pkt(id=0,off=34,r=34,imm=0) R6_w=ctx(id=0,off=0,imm=0)\
+      \ R10=fp0 fp-96=inv\n2025-01-10T17:54:26.027104712Z \t; ctx->cb[off] = data;\n\
+      2025-01-10T17:54:26.027106946Z \t10: (63) *(u32 *)(r6 +48) = r1\n2025-01-10T17:54:26.027109391Z\
+      \ \t; volatile __u32 tc_index = ctx->tc_index;\n2025-01-10T17:54:26.027111540Z\
+      \ \t11: (61) r2 = *(u32 *)(r6 +44)\n2025-01-10T17:54:26.027113640Z \t; volatile\
+      \ __u32 tc_index = ctx->tc_index;\n2025-01-10T17:54:26.027115984Z \t12: (63)\
+      \ *(u32 *)(r10 -48) = r2\n2025-01-10T17:54:26.027118253Z \t; return tc_index\
+      \ & TC_INDEX_F_FROM_INGRESS_PROXY;\n2025-01-10T17:54:26.027120540Z \t13: (61)\
+      \ r1 = *(u32 *)(r10 -48)\n2025-01-10T17:54:26.027122719Z \t; volatile __u32\
+      \ tc_index = ctx->tc_index;\n2025-01-10T17:54:26.027124990Z \t14: (63) *(u32\
+      \ *)(r10 -48) = r2\n2025-01-10T17:54:26.027127467Z \t; return tc_index & TC_INDEX_F_FROM_INGRESS_PROXY;\n\
+      2025-01-10T17:54:26.027129900Z \t15: (54) w1 &= 1\n2025-01-10T17:54:26.027132233Z\
+      \ \t16: (b4) w3 = 2560\n2025-01-10T17:54:26.027134618Z \t; if (from_host &&\
+      \ tc_index_from_ingress_proxy(ctx)) {\n2025-01-10T17:54:26.027137158Z \t17:\
+      \ (56) if w1 != 0x0 goto pc+1\n2025-01-10T17:54:26.027144364Z \t R0_w=inv4294967162\
+      \ R1_w=inv0 R2_w=inv(id=0,umax_value=4294967295,var_off=(0x0; 0xffffffff)) R3_w=inv2560\
+      \ R6_w=ctx(id=0,off=0,imm=0) R10=fp0 fp-48=inv fp-96=inv\n2025-01-10T17:54:26.027146534Z\
+      \ \t18: (b4) w3 = 3840\n2025-01-10T17:54:26.027148187Z \t; return tc_index &\
+      \ TC_INDEX_F_FROM_EGRESS_PROXY;\n2025-01-10T17:54:26.027149887Z \t19: (61) r2\
+      \ = *(u32 *)(r10 -48)\n2025-01-10T17:54:26.027151452Z \t; return tc_index &\
+      \ TC_INDEX_F_FROM_EGRESS_PROXY;\n2025-01-10T17:54:26.027153026Z \t20: (54) w2\
+      \ &= 2\n2025-01-10T17:54:26.027154738Z \t21: (b4) w9 = 2816\n2025-01-10T17:54:26.027156695Z\
+      \ \t; if (from_host && tc_index_from_egress_proxy(ctx)) {\n2025-01-10T17:54:26.027158375Z\
+      \ \t22: (56) if w2 != 0x0 goto pc+1\n2025-01-10T17:54:26.027160309Z \t R0=inv4294967162\
+      \ R1=inv0 R2_w=inv0 R3=inv3840 R6=ctx(id=0,off=0,imm=0) R9_w=inv2816 R10=fp0\
+      \ fp-48=inv fp-96=inv\n2025-01-10T17:54:26.027161958Z \t23: (bc) w9 = w3\n2025-01-10T17:54:26.027163602Z\
+      \ \t; return tc_index & TC_INDEX_F_FROM_EGRESS_PROXY;\n2025-01-10T17:54:26.027165193Z\
+      \ \t24: (4c) w2 |= w1\n2025-01-10T17:54:26.027166856Z \t25: (b4) w8 = 1\n2025-01-10T17:54:26.027168588Z\
+      \ \t; if (from_host && tc_index_from_egress_proxy(ctx)) {\n2025-01-10T17:54:26.027170236Z\
+      \ \t26: (56) if w2 != 0x0 goto pc+1\n2025-01-10T17:54:26.027172157Z \tlast_idx\
+      \ 26 first_idx 19\n2025-01-10T17:54:26.027173889Z \tregs=4 stack=0 before 25:\
+      \ (b4) w8 = 1\n2025-01-10T17:54:26.027175562Z \tregs=4 stack=0 before 24: (4c)\
+      \ w2 |= w1\n2025-01-10T17:54:26.027180567Z \tregs=6 stack=0 before 23: (bc)\
+      \ w9 = w3\n2025-01-10T17:54:26.027182247Z \tregs=6 stack=0 before 22: (56) if\
+      \ w2 != 0x0 goto pc+1\n2025-01-10T17:54:26.027183871Z \tregs=6 stack=0 before\
+      \ 21: (b4) w9 = 2816\n2025-01-10T17:54:26.027185884Z \tregs=6 stack=0 before\
+      \ 20: (54) w2 &= 2\n2025-01-10T17:54:26.027187502Z \tregs=6 stack=0 before 19:\
+      \ (61) r2 = *(u32 *)(r10 -48)\n2025-01-10T17:54:26.027189208Z \t R0_w=inv4294967162\
+      \ R1_rw=invP0 R2_w=inv(id=0,umax_value=4294967295,var_off=(0x0; 0xffffffff))\
+      \ R3_rw=inv3840 R6_w=ctx(id=0,off=0,imm=0) R10=fp0 fp-48_r=invP fp-96=inv\n\
+      2025-01-10T17:54:26.027190921Z \tparent didn't have regs=2 stack=20 marks\n\
+      2025-01-10T17:54:26.027192522Z \tlast_idx 18 first_idx 0\n2025-01-10T17:54:26.027194093Z\
+      \ \tregs=2 stack=20 before 18: (b4) w3 = 3840\n2025-01-10T17:54:26.027195648Z\
+      \ \tregs=2 stack=20 before 17: (56) if w1 != 0x0 goto pc+1\n2025-01-10T17:54:26.027197260Z\
+      \ \tregs=2 stack=20 before 16: (b4) w3 = 2560\n2025-01-10T17:54:26.027198934Z\
+      \ \tregs=2 stack=20 before 15: (54) w1 &= 1\n2025-01-10T17:54:26.027200882Z\
+      \ \tregs=2 stack=20 before 14: (63) *(u32 *)(r10 -48) = r2\n2025-01-10T17:54:26.027203008Z\
+      \ \tregs=6 stack=0 before 13: (61) r1 = *(u32 *)(r10 -48)\n2025-01-10T17:54:26.027205349Z\
+      \ \tregs=4 stack=20 before 12: (63) *(u32 *)(r10 -48) = r2\n2025-01-10T17:54:26.027207658Z\
+      \ \tregs=4 stack=0 before 11: (61) r2 = *(u32 *)(r6 +44)\n2025-01-10T17:54:26.027209988Z\
+      \ \t27: (b4) w8 = 0\n2025-01-10T17:54:26.027212582Z \t; DEFINE_FUNC_CTX_POINTER(data_end)\n\
+      2025-01-10T17:54:26.027215055Z \t28: (61) r1 = *(u32 *)(r6 +80)\n2025-01-10T17:54:26.027218076Z\
+      \ \t; DEFINE_FUNC_CTX_POINTER(data)\n2025-01-10T17:54:26.027219713Z \t29: (61)\
+      \ r2 = *(u32 *)(r6 +76)\n2025-01-10T17:54:26.027221361Z \t; if (data + tot_len\
+      \ > data_end)\n2025-01-10T17:54:26.027222956Z \t30: (07) r2 += 34\n2025-01-10T17:54:26.027224559Z\
+      \ \t; if (data + tot_len > data_end)\n2025-01-10T17:54:26.027226232Z \t31: (2d)\
+      \ if r2 > r1 goto pc+382\n2025-01-10T17:54:26.027228020Z \t R0=inv4294967162\
+      \ R1_w=pkt_end(id=0,off=0,imm=0) R2_w=pkt(id=0,off=34,r=34,imm=0) R3=inv3840\
+      \ R6=ctx(id=0,off=0,imm=0) R8=inv0 R9=inv3840 R10=fp0 fp-48=inv fp-96=inv\n\
+      2025-01-10T17:54:26.027229650Z \t32: (18) r1 = 0xa64d9b45b98e\n2025-01-10T17:54:26.027231366Z\
+      \ \t; union macaddr cilium_net_mac = CILIUM_NET_MAC;\n2025-01-10T17:54:26.027232941Z\
+      \ \t34: (7b) *(u64 *)(r10 -48) = r1\n2025-01-10T17:54:26.027234606Z \t35: (bf)\
+      \ r3 = r10\n2025-01-10T17:54:26.027236257Z \t;\n2025-01-10T17:54:26.027237941Z\
+      \ \t36: (07) r3 += -48\n2025-01-10T17:54:26.027239604Z \t; return ctx_store_bytes(ctx,\
+      \ off, mac, ETH_ALEN, 0);\n2025-01-10T17:54:26.027241201Z \t37: (bf) r1 = r6\n\
+      2025-01-10T17:54:26.027242786Z \t38: (b4) w2 = 0\n2025-01-10T17:54:26.027244377Z\
+      \ \t39: (b4) w4 = 6\n2025-01-10T17:54:26.027246170Z \t40: (b4) w5 = 0\n2025-01-10T17:54:26.027248321Z\
+      \ \t41: (85) call bpf_skb_store_bytes#9\n2025-01-10T17:54:26.027250602Z \tlast_idx\
+      \ 41 first_idx 28\n2025-01-10T17:54:26.027252877Z \tregs=10 stack=0 before 40:\
+      \ (b4) w5 = 0\n2025-01-10T17:54:26.027255218Z \tregs=10 stack=0 before 39: (b4)\
+      \ w4 = 6\n2025-01-10T17:54:26.027257826Z \t42: (bc) w1 = w0\n2025-01-10T17:54:26.027260169Z\
+      \ \t;\n2025-01-10T17:54:26.027262495Z \t43: (c4) w0 s>>= 31\n2025-01-10T17:54:26.027265050Z\
+      \ \t44: (54) w0 &= -141\n2025-01-10T17:54:26.027280349Z \t; if (IS_ERR(ret))\n\
+      2025-01-10T17:54:26.027282554Z \t45: (c6) if w1 s< 0x0 goto pc+368\n2025-01-10T17:54:26.027285573Z\
+      \ \t R0_w=inv(id=0,umax_value=4294967155,var_off=(0x0; 0xffffff73),s32_max_value=2147483507)\
+      \ R1_w=inv(id=0,umax_value=2147483647,var_off=(0x0; 0x7fffffff)) R6=ctx(id=0,off=0,imm=0)\
+      \ R8=inv0 R9=inv3840 R10=fp0 fp-48=mmmmmmmm fp-96=inv\n2025-01-10T17:54:26.027288227Z\
+      \ \t; DEFINE_FUNC_CTX_POINTER(data_end)\n2025-01-10T17:54:26.027293459Z \t46:\
+      \ (61) r1 = *(u32 *)(r6 +80)\n2025-01-10T17:54:26.027295787Z \t; DEFINE_FUNC_CTX_POINTER(data)\n\
+      2025-01-10T17:54:26.027297816Z \t47: (61) r7 = *(u32 *)(r6 +76)\n2025-01-10T17:54:26.027299945Z\
+      \ \t; if (data + tot_len > data_end)\n2025-01-10T17:54:26.027302056Z \t48: (bf)\
+      \ r2 = r7\n2025-01-10T17:54:26.027304684Z \t49: (07) r2 += 34\n2025-01-10T17:54:26.027308714Z\
+      \ \t50: (b4) w0 = -134\n2025-01-10T17:54:26.027310500Z \t; if (data + tot_len\
+      \ > data_end)\n2025-01-10T17:54:26.027312189Z \t51: (2d) if r2 > r1 goto pc+362\n\
+      2025-01-10T17:54:26.027314123Z \t R0_w=inv4294967162 R1_w=pkt_end(id=0,off=0,imm=0)\
+      \ R2_w=pkt(id=0,off=34,r=34,imm=0) R6=ctx(id=0,off=0,imm=0) R7_w=pkt(id=0,off=0,r=34,imm=0)\
+      \ R8=inv0 R9=inv3840 R10=fp0 fp-48=mmmmmmmm fp-96=inv\n2025-01-10T17:54:26.027315724Z\
+      \ \t; return __lookup_ip4_endpoint(ip4->daddr);\n2025-01-10T17:54:26.027317366Z\
+      \ \t52: (61) r1 = *(u32 *)(r7 +30)\n2025-01-10T17:54:26.027318970Z \t53: (b7)\
+      \ r2 = 0\n2025-01-10T17:54:26.027320579Z \t; struct endpoint_key key = {};\n\
+      2025-01-10T17:54:26.027322204Z \t54: (63) *(u32 *)(r10 -32) = r2\n2025-01-10T17:54:26.027324195Z\
+      \ \tlast_idx 54 first_idx 42\n2025-01-10T17:54:26.027326356Z \tregs=4 stack=0\
+      \ before 53: (b7) r2 = 0\n2025-01-10T17:54:26.027328699Z \t55: (63) *(u32 *)(r10\
+      \ -36) = r2\n2025-01-10T17:54:26.027331202Z \tlast_idx 55 first_idx 42\n2025-01-10T17:54:26.027345180Z\
+      \ \tregs=4 stack=0 before 54: (63) *(u32 *)(r10 -32) = r2\n2025-01-10T17:54:26.027346948Z\
+      \ \tregs=4 stack=0 before 53: (b7) r2 = 0\n2025-01-10T17:54:26.027348698Z \t\
+      56: (63) *(u32 *)(r10 -40) = r2\n2025-01-10T17:54:26.027350261Z \tlast_idx 56\
+      \ first_idx 42\n2025-01-10T17:54:26.027351841Z \tregs=4 stack=0 before 55: (63)\
+      \ *(u32 *)(r10 -36) = r2\n2025-01-10T17:54:26.027353661Z \tregs=4 stack=0 before\
+      \ 54: (63) *(u32 *)(r10 -32) = r2\n2025-01-10T17:54:26.027355754Z \tregs=4 stack=0\
+      \ before 53: (b7) r2 = 0\n2025-01-10T17:54:26.027358073Z \t57: (63) *(u32 *)(r10\
+      \ -44) = r2\n2025-01-10T17:54:26.027360278Z \tlast_idx 57 first_idx 42\n2025-01-10T17:54:26.027362805Z\
+      \ \tregs=4 stack=0 before 56: (63) *(u32 *)(r10 -40) = r2\n2025-01-10T17:54:26.027365217Z\
+      \ \tregs=4 stack=0 before 55: (63) *(u32 *)(r10 -36) = r2\n2025-01-10T17:54:26.027367416Z\
+      \ \tregs=4 stack=0 before 54: (63) *(u32 *)(r10 -32) = r2\n2025-01-10T17:54:26.027369476Z\
+      \ \tregs=4 stack=0 before 53: (b7) r2 = 0\n2025-01-10T17:54:26.027371825Z \t\
+      ; key.ip4 = ip;\n2025-01-10T17:54:26.027373882Z \t58: (63) *(u32 *)(r10 -48)\
+      \ = r1\n2025-01-10T17:54:26.027375989Z \t59: (b4) w1 = 1\n2025-01-10T17:54:26.027378083Z\
+      \ \t; key.family = ENDPOINT_KEY_IPV4;\n2025-01-10T17:54:26.027380655Z \t60:\
+      \ (73) *(u8 *)(r10 -32) = r1\n2025-01-10T17:54:26.027385107Z \t61: (bf) r2 =\
+      \ r10\n2025-01-10T17:54:26.027387257Z \t;\n2025-01-10T17:54:26.027389570Z \t\
+      62: (07) r2 += -48\n2025-01-10T17:54:26.027391944Z \t; return map_lookup_elem(&ENDPOINTS_MAP,\
+      \ &key);\n2025-01-10T17:54:26.027394225Z \t63: (18) r1 = 0xff3c36dd581e0000\n\
+      2025-01-10T17:54:26.027396657Z \t65: (85) call bpf_map_lookup_elem#1\n2025-01-10T17:54:26.027399236Z\
+      \ \t66: (bf) r1 = r0\n2025-01-10T17:54:26.027402918Z \t; if (ep) {\n2025-01-10T17:54:26.027405048Z\
+      \ \t67: (15) if r1 == 0x0 goto pc+41\n2025-01-10T17:54:26.027407210Z\n2025-01-10T17:54:26.027409640Z\
+      \ \tfrom 67 to 109: R0=inv0 R1_w=inv0 R6=ctx(id=0,off=0,imm=0) R7=pkt(id=0,off=0,r=34,imm=0)\
+      \ R8=inv0 R9=inv3840 R10=fp0 fp-32=????mmmm fp-40=mmmmmmmm fp-48=mmmmmmmm fp-96=inv\n\
+      2025-01-10T17:54:26.027411701Z \t; info = lookup_ip4_remote_endpoint(ip4->daddr,\
+      \ 0);\n2025-01-10T17:54:26.027413724Z \t109: (61) r1 = *(u32 *)(r7 +30)\n2025-01-10T17:54:26.027415839Z\
+      \ \t110: (b4) w2 = 0\n2025-01-10T17:54:26.027418318Z \t; .ip4 = addr,\n2025-01-10T17:54:26.027420388Z\
+      \ \t111: (63) *(u32 *)(r10 -28) = r2\n2025-01-10T17:54:26.027425878Z \tlast_idx\
+      \ 111 first_idx 66\n2025-01-10T17:54:26.027428017Z \tregs=4 stack=0 before 110:\
+      \ (b4) w2 = 0\n2025-01-10T17:54:26.027430208Z \t112: (63) *(u32 *)(r10 -32)\
+      \ = r2\n2025-01-10T17:54:26.027432376Z \tlast_idx 112 first_idx 66\n2025-01-10T17:54:26.027434907Z\
+      \ \tregs=4 stack=0 before 111: (63) *(u32 *)(r10 -28) = r2\n2025-01-10T17:54:26.027437301Z\
+      \ \tregs=4 stack=0 before 110: (b4) w2 = 0\n2025-01-10T17:54:26.027441174Z \t\
+      113: (63) *(u32 *)(r10 -36) = r2\n2025-01-10T17:54:26.027442890Z \tlast_idx\
+      \ 113 first_idx 66\n2025-01-10T17:54:26.027444450Z \tregs=4 stack=0 before 112:\
+      \ (63) *(u32 *)(r10 -32) = r2\n2025-01-10T17:54:26.027446114Z \tregs=4 stack=0\
+      \ before 111: (63) *(u32 *)(r10 -28) = r2\n2025-01-10T17:54:26.027447758Z \t\
+      regs=4 stack=0 before 110: (b4) w2 = 0\n2025-01-10T17:54:26.027449377Z \t114:\
+      \ (63) *(u32 *)(r10 -40) = r1\n2025-01-10T17:54:26.027450966Z \t115: (b4) w1\
+      \ = 64\n2025-01-10T17:54:26.027452719Z \t; .lpm_key = { IPCACHE_PREFIX_LEN(prefix),\
+      \ {} },\n2025-01-10T17:54:26.027454349Z \t116: (63) *(u32 *)(r10 -48) = r1\n\
+      2025-01-10T17:54:26.027456101Z \t117: (b4) w1 = 16777216\n2025-01-10T17:54:26.027457737Z\
+      \ \t; key.cluster_id = (__u16)cluster_id;\n2025-01-10T17:54:26.027459279Z \t\
+      118: (63) *(u32 *)(r10 -44) = r1\n2025-01-10T17:54:26.027460888Z \t119: (bf)\
+      \ r2 = r10\n2025-01-10T17:54:26.027462534Z \t; info = lookup_ip4_remote_endpoint(ip4->daddr,\
+      \ 0);\n2025-01-10T17:54:26.027464689Z \t120: (07) r2 += -48\n2025-01-10T17:54:26.027466877Z\
+      \ \t; return map_lookup_elem(map, &key);\n2025-01-10T17:54:26.027469220Z \t\
+      121: (18) r1 = 0xff3c36ddeab8a000\n2025-01-10T17:54:26.027471557Z \t123: (85)\
+      \ call bpf_map_lookup_elem#1\n2025-01-10T17:54:26.027473904Z \t124: (bf) r1\
+      \ = r0\n2025-01-10T17:54:26.027476151Z \t; __u32 identity_len = CONFIG(identity_length);\n\
+      2025-01-10T17:54:26.027478558Z \t125: (18) r2 = 0xff4ded5d82ea6000\n2025-01-10T17:54:26.027481194Z\
+      \ \t; skip_tunnel_flag = extract_cluster_id_from_identity(info->sec_identity)\
+      \ == 1;\n2025-01-10T17:54:26.027483699Z \t127: (61) r9 = *(u32 *)(r1 +0)\n2025-01-10T17:54:26.027486150Z\
+      \ \tR1 invalid mem access 'map_value_or_null'\n2025-01-10T17:54:26.027490492Z\
+      \ \tprocessed 329 insns (limit 1000000) max_states_per_insn 1 total_states 22\
+      \ peak_states 22 mark_read 10"
+  source_snippets: []
+  issue_body_text: |-
+    Is there an existing issue for this?
+    [x] I have searched the existing issues
+    Version
+    equal or higher than v1.17.0 and lower than v1.18.0
+    What happened?
+    Trying to install cilium with this helm command
+    Getting the following error log in cilium agent
+    Error:
+    This is resulting in cilium_host network interface not being created
+    How can we reproduce the issue?
+    1.Create AKS cluster
+    Use the helm command above to install cilium
+    Cilium Version
+    v1.16.2
+    Kernel Version
+    Kubernetes Version
+    Client Version: v1.31.0
+    Kustomize Version: v5.4.2
+    Server Version: v1.30.6
+    Regression
+    _No response_
+    Sysdump
+    cilium_sysdump.zip
+    Relevant log output
+    Anything else?
+    _No response_
+    Cilium Users Document
+    [x] Are you a user of Cilium? Please add yourself to the Users doc
+    Code of Conduct
+    [x] I agree to follow this project's Code of Conduct
+  fix:
+    summary: 'From the sysdump: Cilium 1.17.0-dev 2b7ed3e7b3 2024-12-23T11:58:29-08:00
+      go version go1.23.4 linux/amd64" subsys=daemon'
+    selected_comment:
+      kind: comment
+      url: https://github.com/cilium/cilium/issues/36936#issuecomment-2597765591
+      author: julianwiedmann
+      author_association: MEMBER
+      body_text: |-
+        From the sysdump:
+        Cilium 1.17.0-dev 2b7ed3e7b3 2024-12-23T11:58:29-08:00 go version go1.23.4 linux/amd64" subsys=daemon

@@ -1,0 +1,65 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-libbpf-2f52e2afc068
+source_kind: github_commit
+source:
+  url: https://github.com/libbpf/libbpf/commit/2f52e2afc068b801880021334a41f16a18fa4bc2
+  title: 'libbpf: Improve sanity checking during BTF fix up'
+  repository: https://github.com/libbpf/libbpf
+  commit: 2f52e2afc068b801880021334a41f16a18fa4bc2
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-libbpf-2f52e2afc068.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Adds a null/type guard before using a BTF VAR during libbpf BTF datasec
+    fixup. It is libbpf object/BTF sanity checking and supplies no verifier reject.
+raw:
+  case_id: github-commit-libbpf-2f52e2afc068
+  source: github_commits
+  repository: https://github.com/libbpf/libbpf
+  commit_hash: 2f52e2afc068b801880021334a41f16a18fa4bc2
+  commit_message: 'libbpf: Improve sanity checking during BTF fix up'
+  commit_date: '2021-11-03'
+  fix_type: other
+  buggy_code: "// FILE: src/libbpf.c\n// CONTEXT: static int btf_fixup_datasec(struct\
+    \ bpf_object *obj, struct btf *btf,\n\t\tgoto sort_vars;\n\n\tret = find_elf_sec_sz(obj,\
+    \ name, &size);\n\tif (ret || !size || (t->size && t->size != size)) {\n\t\tpr_debug(\"\
+    Invalid size for section %s: %u bytes\\n\", name, size);\n\t\treturn -ENOENT;\n\
+    \t}\n\n\tt->size = size;\n\n\tfor (i = 0, vsi = btf_var_secinfos(t); i < vars;\
+    \ i++, vsi++) {\n\t\tt_var = btf__type_by_id(btf, vsi->type);\n\t\tvar = btf_var(t_var);\n\
+    \n\t\tif (!btf_is_var(t_var)) {\n\t\t\tpr_debug(\"Non-VAR type seen in section\
+    \ %s\\n\", name);\n\t\t\treturn -EINVAL;\n\t\t}\n\n\t\tif (var->linkage == BTF_VAR_STATIC)\n\
+    \t\t\tcontinue;\n\n\t\tname = btf__name_by_offset(btf, t_var->name_off);\n\t\t\
+    if (!name) {\n\t\t\tpr_debug(\"No name found in string section for VAR kind\\\
+    n\");\n\t\t\treturn -ENOENT;\n\t\t}\n\n\t\tret = find_elf_var_offset(obj, name,\
+    \ &off);\n\t\tif (ret) {\n\t\t\tpr_debug(\"No offset found in symbol table for\
+    \ VAR %s\\n\","
+  fixed_code: "// FILE: src/libbpf.c\n// CONTEXT: static int btf_fixup_datasec(struct\
+    \ bpf_object *obj, struct btf *btf,\n\t\tgoto sort_vars;\n\n\tret = find_elf_sec_sz(obj,\
+    \ name, &size);\n\tif (ret || !size || (t->size && t->size != size)) {\n\t\tpr_debug(\"\
+    Invalid size for section %s: %u bytes\\n\", name, size);\n\t\treturn -ENOENT;\n\
+    \t}\n\n\tt->size = size;\n\n\tfor (i = 0, vsi = btf_var_secinfos(t); i < vars;\
+    \ i++, vsi++) {\n\t\tt_var = btf__type_by_id(btf, vsi->type);\n\t\tif (!t_var\
+    \ || !btf_is_var(t_var)) {\n\t\t\tpr_debug(\"Non-VAR type seen in section %s\\\
+    n\", name);\n\t\t\treturn -EINVAL;\n\t\t}\n\n\t\tvar = btf_var(t_var);\n\t\tif\
+    \ (var->linkage == BTF_VAR_STATIC)\n\t\t\tcontinue;\n\n\t\tname = btf__name_by_offset(btf,\
+    \ t_var->name_off);\n\t\tif (!name) {\n\t\t\tpr_debug(\"No name found in string\
+    \ section for VAR kind\\n\");\n\t\t\treturn -ENOENT;\n\t\t}\n\n\t\tret = find_elf_var_offset(obj,\
+    \ name, &off);\n\t\tif (ret) {\n\t\t\tpr_debug(\"No offset found in symbol table\
+    \ for VAR %s\\n\","
+  diff_summary: |-
+    src/libbpf.c:
+    - Applied a small verifier-related code change captured by the exact before/after snippets below.
+    - Affected context: static int btf_fixup_datasec(struct bpf_object *obj, struct btf *btf,.
+    - Commit subject: libbpf: Improve sanity checking during BTF fix up.

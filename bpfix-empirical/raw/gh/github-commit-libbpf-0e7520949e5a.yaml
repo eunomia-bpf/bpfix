@@ -1,0 +1,105 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-libbpf-0e7520949e5a
+source_kind: github_commit
+source:
+  url: https://github.com/libbpf/libbpf/commit/0e7520949e5a9e92c10d8aacd5e2e0e7bcd87108
+  title: 'libbpf: Support weak typed ksyms.'
+  repository: https://github.com/libbpf/libbpf
+  commit: 0e7520949e5a9e92c10d8aacd5e2e0e7bcd87108
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-libbpf-0e7520949e5a.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: missing_source
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Raw diff only changes libbpf resolution/relocation for weak typed ksyms
+    in src/libbpf.c (ext->ksym.type_id && ext->is_set, weak -ESRCH handling). No BPF
+    object using an unresolved weak typed ksym and no verifier log are included.
+raw:
+  case_id: github-commit-libbpf-0e7520949e5a
+  source: github_commits
+  repository: https://github.com/libbpf/libbpf
+  commit_hash: 0e7520949e5a9e92c10d8aacd5e2e0e7bcd87108
+  commit_message: 'libbpf: Support weak typed ksyms.'
+  commit_date: '2021-08-11'
+  fix_type: attribute_annotation
+  buggy_code: "// FILE: src/libbpf.c\n// CONTEXT: bpf_object__relocate_data(struct\
+    \ bpf_object *obj, struct bpf_program *prog)\n\t\tcase RELO_EXTERN_VAR:\n\t\t\t\
+    ext = &obj->externs[relo->sym_off];\n\t\t\tif (ext->type == EXT_KCFG) {\n\t\t\t\
+    \tif (obj->gen_loader) {\n\t\t\t\t\tinsn[0].src_reg = BPF_PSEUDO_MAP_IDX_VALUE;\n\
+    \t\t\t\t\tinsn[0].imm = obj->kconfig_map_idx;\n\t\t\t\t} else {\n\t\t\t\t\tinsn[0].src_reg\
+    \ = BPF_PSEUDO_MAP_VALUE;\n\t\t\t\t\tinsn[0].imm = obj->maps[obj->kconfig_map_idx].fd;\n\
+    \t\t\t\t}\n\t\t\t\tinsn[1].imm = ext->kcfg.data_off;\n\t\t\t} else /* EXT_KSYM\
+    \ */ {\n\t\t\t\tif (ext->ksym.type_id) { /* typed ksyms */\n\t\t\t\t\tinsn[0].src_reg\
+    \ = BPF_PSEUDO_BTF_ID;\n\t\t\t\t\tinsn[0].imm = ext->ksym.kernel_btf_id;\n\t\t\
+    \t\t\tinsn[1].imm = ext->ksym.kernel_btf_obj_fd;\n\t\t\t\t} else { /* typeless\
+    \ ksyms */\n\t\t\t\t\tinsn[0].imm = (__u32)ext->ksym.addr;\n\t\t\t\t\tinsn[1].imm\
+    \ = ext->ksym.addr >> 32;\n\t\t\t\t}\n\t\t\t}\n\t\t\tbreak;\n\t\tcase RELO_EXTERN_FUNC:\n\
+    \t\t\text = &obj->externs[relo->sym_off];\n\t\t\tinsn[0].src_reg = BPF_PSEUDO_KFUNC_CALL;\n\
+    \t\t\tinsn[0].imm = ext->ksym.kernel_btf_id;\n\t\t\tbreak;\n\t\tcase RELO_SUBPROG_ADDR:\n\
+    \t\t\tif (insn[0].src_reg != BPF_PSEUDO_FUNC) {\n\n// CONTEXT: static int find_ksym_btf_id(struct\
+    \ bpf_object *obj, const char *ksym_name,\n\t\tif (err)\n\t\t\treturn err;\n\n\
+    \t\tfor (i = 0; i < obj->btf_module_cnt; i++) {\n\t\t\tbtf = obj->btf_modules[i].btf;\n\
+    \t\t\t/* we assume module BTF FD is always >0 */\n\t\t\tbtf_fd = obj->btf_modules[i].fd;\n\
+    \t\t\tid = btf__find_by_name_kind(btf, ksym_name, kind);\n\t\t\tif (id != -ENOENT)\n\
+    \t\t\t\tbreak;\n\t\t}\n\t}\n\tif (id <= 0) {\n\t\tpr_warn(\"extern (%s ksym) '%s':\
+    \ failed to find BTF ID in kernel BTF(s).\\n\",\n\t\t\t__btf_kind_str(kind), ksym_name);\n\
+    \t\treturn -ESRCH;\n\t}\n\n\t*res_btf = btf;\n\t*res_btf_fd = btf_fd;\n\treturn\
+    \ id;\n}\n\nstatic int bpf_object__resolve_ksym_var_btf_id(struct bpf_object *obj,\n\
+    \t\t\t\t\t       struct extern_desc *ext)\n{\n\tconst struct btf_type *targ_var,\
+    \ *targ_type;\n\t__u32 targ_type_id, local_type_id;\n\tconst char *targ_var_name;\n\
+    \tint id, btf_fd = 0, err;\n\tstruct btf *btf = NULL;\n\n\tid = find_ksym_btf_id(obj,\
+    \ ext->name, BTF_KIND_VAR, &btf, &btf_fd);\n\tif (id < 0)\n\t\treturn id;\n\n\t\
+    /* find local type_id */\n\tlocal_type_id = ext->ksym.type_id;\n\n\t/* find target\
+    \ type_id */\n\ttarg_var = btf__type_by_id(btf, id);\n\ttarg_var_name = btf__name_by_offset(btf,\
+    \ targ_var->name_off);\n\ttarg_type = skip_mods_and_typedefs(btf, targ_var->type,\
+    \ &targ_type_id);\n\n\terr = bpf_core_types_are_compat(obj->btf, local_type_id,\n\
+    \t\t\t\t\tbtf, targ_type_id);\n\tif (err <= 0) {"
+  fixed_code: "// FILE: src/libbpf.c\n// CONTEXT: bpf_object__relocate_data(struct\
+    \ bpf_object *obj, struct bpf_program *prog)\n\t\tcase RELO_EXTERN_VAR:\n\t\t\t\
+    ext = &obj->externs[relo->sym_off];\n\t\t\tif (ext->type == EXT_KCFG) {\n\t\t\t\
+    \tif (obj->gen_loader) {\n\t\t\t\t\tinsn[0].src_reg = BPF_PSEUDO_MAP_IDX_VALUE;\n\
+    \t\t\t\t\tinsn[0].imm = obj->kconfig_map_idx;\n\t\t\t\t} else {\n\t\t\t\t\tinsn[0].src_reg\
+    \ = BPF_PSEUDO_MAP_VALUE;\n\t\t\t\t\tinsn[0].imm = obj->maps[obj->kconfig_map_idx].fd;\n\
+    \t\t\t\t}\n\t\t\t\tinsn[1].imm = ext->kcfg.data_off;\n\t\t\t} else /* EXT_KSYM\
+    \ */ {\n\t\t\t\tif (ext->ksym.type_id && ext->is_set) { /* typed ksyms */\n\t\t\
+    \t\t\tinsn[0].src_reg = BPF_PSEUDO_BTF_ID;\n\t\t\t\t\tinsn[0].imm = ext->ksym.kernel_btf_id;\n\
+    \t\t\t\t\tinsn[1].imm = ext->ksym.kernel_btf_obj_fd;\n\t\t\t\t} else { /* typeless\
+    \ ksyms or unresolved typed ksyms */\n\t\t\t\t\tinsn[0].imm = (__u32)ext->ksym.addr;\n\
+    \t\t\t\t\tinsn[1].imm = ext->ksym.addr >> 32;\n\t\t\t\t}\n\t\t\t}\n\t\t\tbreak;\n\
+    \t\tcase RELO_EXTERN_FUNC:\n\t\t\text = &obj->externs[relo->sym_off];\n\t\t\t\
+    insn[0].src_reg = BPF_PSEUDO_KFUNC_CALL;\n\t\t\tinsn[0].imm = ext->ksym.kernel_btf_id;\n\
+    \t\t\tbreak;\n\t\tcase RELO_SUBPROG_ADDR:\n\t\t\tif (insn[0].src_reg != BPF_PSEUDO_FUNC)\
+    \ {\n\n// CONTEXT: static int find_ksym_btf_id(struct bpf_object *obj, const char\
+    \ *ksym_name,\n\t\tif (err)\n\t\t\treturn err;\n\n\t\tfor (i = 0; i < obj->btf_module_cnt;\
+    \ i++) {\n\t\t\tbtf = obj->btf_modules[i].btf;\n\t\t\t/* we assume module BTF\
+    \ FD is always >0 */\n\t\t\tbtf_fd = obj->btf_modules[i].fd;\n\t\t\tid = btf__find_by_name_kind(btf,\
+    \ ksym_name, kind);\n\t\t\tif (id != -ENOENT)\n\t\t\t\tbreak;\n\t\t}\n\t}\n\t\
+    if (id <= 0)\n\t\treturn -ESRCH;\n\n\t*res_btf = btf;\n\t*res_btf_fd = btf_fd;\n\
+    \treturn id;\n}\n\nstatic int bpf_object__resolve_ksym_var_btf_id(struct bpf_object\
+    \ *obj,\n\t\t\t\t\t       struct extern_desc *ext)\n{\n\tconst struct btf_type\
+    \ *targ_var, *targ_type;\n\t__u32 targ_type_id, local_type_id;\n\tconst char *targ_var_name;\n\
+    \tint id, btf_fd = 0, err;\n\tstruct btf *btf = NULL;\n\n\tid = find_ksym_btf_id(obj,\
+    \ ext->name, BTF_KIND_VAR, &btf, &btf_fd);\n\tif (id == -ESRCH && ext->is_weak)\
+    \ {\n\t\treturn 0;\n\t} else if (id < 0) {\n\t\tpr_warn(\"extern (var ksym) '%s':\
+    \ not found in kernel BTF\\n\",\n\t\t\text->name);\n\t\treturn id;\n\t}\n\n\t\
+    /* find local type_id */\n\tlocal_type_id = ext->ksym.type_id;\n\n\t/* find target\
+    \ type_id */\n\ttarg_var = btf__type_by_id(btf, id);\n\ttarg_var_name = btf__name_by_offset(btf,\
+    \ targ_var->name_off);\n\ttarg_type = skip_mods_and_typedefs(btf, targ_var->type,\
+    \ &targ_type_id);\n\n\terr = bpf_core_types_are_compat(obj->btf, local_type_id,\n\
+    \t\t\t\t\tbtf, targ_type_id);\n\tif (err <= 0) {"
+  diff_summary: |-
+    src/libbpf.c:
+    - Changed verifier-relevant attributes or annotations on the affected declarations.
+    - Affected context: bpf_object__relocate_data(struct bpf_object *obj, struct bpf_program *prog), static int find_ksym_btf_id(struct bpf_object *obj, const char *ksym_name,.
+    - Commit subject: libbpf: Support weak typed ksyms..

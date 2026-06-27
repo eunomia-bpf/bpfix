@@ -1,0 +1,61 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-0cf109933350
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/0cf10993335045c0a35ac6b80efaa5eb99a4ab8e
+  title: 'bpf: Align union v6addr old_daddr'
+  repository: https://github.com/cilium/cilium
+  commit: 0cf10993335045c0a35ac6b80efaa5eb99a4ab8e
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-0cf109933350.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: attempted_accepted
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: A local probe for the packed union v6addr old_daddr stack-alignment pattern
+    built and loaded without a verifier terminal error on kernel 6.15.11.
+raw:
+  case_id: github-commit-cilium-0cf109933350
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: 0cf10993335045c0a35ac6b80efaa5eb99a4ab8e
+  commit_message: 'bpf: Align union v6addr old_daddr'
+  commit_date: '2025-10-31'
+  fix_type: inline_hint
+  buggy_code: "// FILE: bpf/lib/lb.h\n// CONTEXT: static __always_inline int __lb6_rev_nat(struct\
+    \ __ctx_buff *ctx, int l4_off,\n\t\t\t\t\t bool loopback __maybe_unused)\n{\n\t\
+    union v6addr old_saddr __align_stack_8;\n\tint ret;\n\n\tcilium_dbg_lb(ctx, DBG_LB6_REVERSE_NAT,\
+    \ nat->address.p4, nat->port);\n\n\tipv6_addr_copy(&old_saddr, &tuple->saddr);\n\
+    \tipv6_addr_copy(&tuple->saddr, &nat->address);\n\n#ifdef USE_LOOPBACK_LB\n\t\
+    if (loopback) {\n\t\tunion v6addr old_daddr;\n\n\t\tipv6_addr_copy(&old_daddr,\
+    \ &tuple->daddr);\n\t\tcilium_dbg_lb(ctx, DBG_LB6_LOOPBACK_SNAT_REV, old_daddr.p4,\
+    \ old_saddr.p4);\n\n\t\tret = ipv6_store_daddr(ctx, old_saddr.addr, ETH_HLEN);\n\
+    \t\tif (IS_ERR(ret))\n\t\t\treturn DROP_WRITE_ERROR;\n\n\t\t/* Update the tuple\
+    \ address which is representing the destination address */\n\t\tipv6_addr_copy(&tuple->daddr,\
+    \ &old_saddr);\n\n\t\tif (has_l4_header) {"
+  fixed_code: "// FILE: bpf/lib/lb.h\n// CONTEXT: static __always_inline int __lb6_rev_nat(struct\
+    \ __ctx_buff *ctx, int l4_off,\n\t\t\t\t\t bool loopback __maybe_unused)\n{\n\t\
+    union v6addr old_saddr __align_stack_8;\n\tint ret;\n\n\tcilium_dbg_lb(ctx, DBG_LB6_REVERSE_NAT,\
+    \ nat->address.p4, nat->port);\n\n\tipv6_addr_copy(&old_saddr, &tuple->saddr);\n\
+    \tipv6_addr_copy(&tuple->saddr, &nat->address);\n\n#ifdef USE_LOOPBACK_LB\n\t\
+    if (loopback) {\n\t\tunion v6addr old_daddr __align_stack_8;\n\n\t\tipv6_addr_copy(&old_daddr,\
+    \ &tuple->daddr);\n\t\tcilium_dbg_lb(ctx, DBG_LB6_LOOPBACK_SNAT_REV, old_daddr.p4,\
+    \ old_saddr.p4);\n\n\t\tret = ipv6_store_daddr(ctx, old_saddr.addr, ETH_HLEN);\n\
+    \t\tif (IS_ERR(ret))\n\t\t\treturn DROP_WRITE_ERROR;\n\n\t\t/* Update the tuple\
+    \ address which is representing the destination address */\n\t\tipv6_addr_copy(&tuple->daddr,\
+    \ &old_saddr);\n\n\t\tif (has_l4_header) {"
+  diff_summary: |-
+    bpf/lib/lb.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: static __always_inline int __lb6_rev_nat(struct __ctx_buff *ctx, int l4_off,.
+    - Commit subject: bpf: Align union v6addr old_daddr.

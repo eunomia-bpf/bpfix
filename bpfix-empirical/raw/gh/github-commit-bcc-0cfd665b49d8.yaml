@@ -1,0 +1,70 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-bcc-0cfd665b49d8
+source_kind: github_commit
+source:
+  url: https://github.com/iovisor/bcc/commit/0cfd665b49d8d2dfe8ee2599763cbca3f4b54015
+  title: fix a verifier failure
+  repository: https://github.com/iovisor/bcc
+  commit: 0cfd665b49d8d2dfe8ee2599763cbca3f4b54015
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-bcc-0cfd665b49d8.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: replay_valid
+  case_id: github-commit-bcc-0cfd665b49d8
+  case_path: cases/github-commit-bcc-0cfd665b49d8
+  artifact_path: cases/github-commit-bcc-0cfd665b49d8
+  reason: admitted_to_bpfix_bench_cases
+raw:
+  case_id: github-commit-bcc-0cfd665b49d8
+  source: github_commits
+  repository: https://github.com/iovisor/bcc
+  commit_hash: 0cfd665b49d8d2dfe8ee2599763cbca3f4b54015
+  commit_message: fix a verifier failure
+  commit_date: '2018-01-08'
+  fix_type: other
+  buggy_code: "// FILE: src/cc/export/helpers.h\n// CONTEXT: int bpf_usdt_readarg_p(int\
+    \ argc, struct pt_regs *ctx, void *buf, u64 len) asm(\"l\n#define PT_REGS_IP(x)\t\
+    \t((x)->pc)\n#else\n#error \"bcc does not support this platform yet\"\n#endif\n\
+    \n#define lock_xadd(ptr, val) ((void)__sync_fetch_and_add(ptr, val))\n\n#define\
+    \ TRACEPOINT_PROBE(category, event) \\\nint tracepoint__##category##__##event(struct\
+    \ tracepoint__##category##__##event *args)\n\n#define TP_DATA_LOC_READ_CONST(dst,\
+    \ field, length)                        \\\n        do {                     \
+    \                                         \\\n            short __offset = args->data_loc_##field\
+    \ & 0xFFFF;             \\\n            bpf_probe_read((void *)dst, length, (char\
+    \ *)args + __offset); \\\n        } while (0);\n\n#define TP_DATA_LOC_READ(dst,\
+    \ field)                                        \\\n        do {             \
+    \                                                   \\\n            short __offset\
+    \ = args->data_loc_##field & 0xFFFF;               \\\n            short __length\
+    \ = args->data_loc_##field >> 16;                  \\\n            bpf_probe_read((void\
+    \ *)dst, __length, (char *)args + __offset); \\\n        } while (0);\n\n#endif\n\
+    )********\""
+  fixed_code: "// FILE: src/cc/export/helpers.h\n// CONTEXT: int bpf_usdt_readarg_p(int\
+    \ argc, struct pt_regs *ctx, void *buf, u64 len) asm(\"l\n#define PT_REGS_IP(x)\t\
+    \t((x)->pc)\n#else\n#error \"bcc does not support this platform yet\"\n#endif\n\
+    \n#define lock_xadd(ptr, val) ((void)__sync_fetch_and_add(ptr, val))\n\n#define\
+    \ TRACEPOINT_PROBE(category, event) \\\nint tracepoint__##category##__##event(struct\
+    \ tracepoint__##category##__##event *args)\n\n#define TP_DATA_LOC_READ_CONST(dst,\
+    \ field, length)                        \\\n        do {                     \
+    \                                         \\\n            unsigned short __offset\
+    \ = args->data_loc_##field & 0xFFFF;    \\\n            bpf_probe_read((void *)dst,\
+    \ length, (char *)args + __offset); \\\n        } while (0);\n\n#define TP_DATA_LOC_READ(dst,\
+    \ field)                                        \\\n        do {             \
+    \                                                   \\\n            unsigned short\
+    \ __offset = args->data_loc_##field & 0xFFFF;      \\\n            unsigned short\
+    \ __length = args->data_loc_##field >> 16;         \\\n            bpf_probe_read((void\
+    \ *)dst, __length, (char *)args + __offset); \\\n        } while (0);\n\n#endif\n\
+    )********\""
+  diff_summary: |-
+    src/cc/export/helpers.h:
+    - Applied a small verifier-related code change captured by the exact before/after snippets below.
+    - Affected context: int bpf_usdt_readarg_p(int argc, struct pt_regs *ctx, void *buf, u64 len) asm("l.
+    - Commit subject: fix a verifier failure.

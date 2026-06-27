@@ -1,0 +1,63 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-9f27973a1052
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/9f27973a10525eff566de806f4da136119d8282b
+  title: 'bpf: lb: fix check for L3 pseudo-hdr csum update in lb6_xlate()'
+  repository: https://github.com/cilium/cilium
+  commit: 9f27973a10525eff566de806f4da136119d8282b
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-9f27973a1052.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Fixes an SCTP-over-IPv6 checksum condition in load-balancing logic; no verifier-load
+    failure is implicated.
+raw:
+  case_id: github-commit-cilium-9f27973a1052
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: 9f27973a10525eff566de806f4da136119d8282b
+  commit_message: 'bpf: lb: fix check for L3 pseudo-hdr csum update in lb6_xlate()'
+  commit_date: '2023-01-06'
+  fix_type: inline_hint
+  buggy_code: "// FILE: bpf/lib/lb.h\n// CONTEXT: lb6_select_backend_id(struct __ctx_buff\
+    \ *ctx __maybe_unused,\nstatic __always_inline int lb6_xlate(struct __ctx_buff\
+    \ *ctx,\n\t\t\t\t     const union v6addr *new_dst, __u8 nexthdr,\n\t\t\t\t   \
+    \  int l3_off, int l4_off,\n\t\t\t\t     struct csum_offset *csum_off,\n\t\t\t\
+    \t     const struct lb6_key *key,\n\t\t\t\t     const struct lb6_backend *backend,\n\
+    \t\t\t\t     const bool skip_l3_xlate)\n{\n\tif (skip_l3_xlate)\n\t\tgoto l4_xlate;\n\
+    \n\tipv6_store_daddr(ctx, new_dst->addr, l3_off);\n\tif (csum_off) {\n\t\t__be32\
+    \ sum = csum_diff(key->address.addr, 16, new_dst->addr,\n\t\t\t\t       16, 0);\n\
+    \n\t\tif (csum_l4_replace(ctx, l4_off, csum_off, 0, sum,\n\t\t\t\t    BPF_F_PSEUDO_HDR)\
+    \ < 0)\n\t\t\treturn DROP_CSUM_L4;\n\t}\n\nl4_xlate:\n#ifdef ENABLE_SCTP\n\t/*\
+    \ This will change the SCTP checksum, which we cannot fix right now.\n\t * This\
+    \ will likely need kernel changes before we can remove this."
+  fixed_code: "// FILE: bpf/lib/lb.h\n// CONTEXT: lb6_select_backend_id(struct __ctx_buff\
+    \ *ctx __maybe_unused,\nstatic __always_inline int lb6_xlate(struct __ctx_buff\
+    \ *ctx,\n\t\t\t\t     const union v6addr *new_dst, __u8 nexthdr,\n\t\t\t\t   \
+    \  int l3_off, int l4_off,\n\t\t\t\t     struct csum_offset *csum_off,\n\t\t\t\
+    \t     const struct lb6_key *key,\n\t\t\t\t     const struct lb6_backend *backend,\n\
+    \t\t\t\t     const bool skip_l3_xlate)\n{\n\tif (skip_l3_xlate)\n\t\tgoto l4_xlate;\n\
+    \n\tipv6_store_daddr(ctx, new_dst->addr, l3_off);\n\tif (csum_off->offset) {\n\
+    \t\t__be32 sum = csum_diff(key->address.addr, 16, new_dst->addr,\n\t\t\t\t   \
+    \    16, 0);\n\n\t\tif (csum_l4_replace(ctx, l4_off, csum_off, 0, sum,\n\t\t\t\
+    \t    BPF_F_PSEUDO_HDR) < 0)\n\t\t\treturn DROP_CSUM_L4;\n\t}\n\nl4_xlate:\n#ifdef\
+    \ ENABLE_SCTP\n\t/* This will change the SCTP checksum, which we cannot fix right\
+    \ now.\n\t * This will likely need kernel changes before we can remove this."
+  diff_summary: |-
+    bpf/lib/lb.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: lb6_select_backend_id(struct __ctx_buff *ctx __maybe_unused,.
+    - Commit subject: bpf: lb: fix check for L3 pseudo-hdr csum update in lb6_xlate().

@@ -1,0 +1,202 @@
+schema_version: bpfix.raw_external/v1
+raw_id: stackoverflow-78695342
+source_kind: stackoverflow
+source:
+  url: https://stackoverflow.com/questions/78695342/why-is-the-ebpf-compiler-behaving-differently-when-not-using-bpf-map-update-elem
+  title: Why is the eBPF compiler behaving differently when not using bpf_map_update_element()
+  repository: null
+  commit: null
+  collected_at: '2026-03-11T16:03:06+00:00'
+collector:
+  original_path: bpfix-empirical/raw/so/stackoverflow-78695342.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: true
+  verifier_log_block_count: 0
+  source_snippet_count: 2
+  has_buggy_code: false
+  has_fixed_code: false
+  has_fix_description: false
+reproduction:
+  status: missing_source
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: disassembly_verifier_analysis_present_but_no_complete_c_source_harness
+raw:
+  case_id: stackoverflow-78695342
+  source: stackoverflow
+  collected_at: '2026-03-11T16:03:06+00:00'
+  question:
+    question_id: 78695342
+    title: Why is the eBPF compiler behaving differently when not using bpf_map_update_element()
+    url: https://stackoverflow.com/questions/78695342/why-is-the-ebpf-compiler-behaving-differently-when-not-using-bpf-map-update-elem
+    tags:
+    - c
+    - bytecode
+    - ebpf
+    - xdp-bpf
+    score: 1
+    answer_count: 0
+    is_answered: false
+  verifier_log:
+    blocks: []
+    combined: ''
+  source_snippets:
+  - |-
+    int find(struct __sk_buff *skb){
+    91: 7b 1a e8 ff 00 00 00 00 *(u64 *)(r10 - 24) = r1
+    ;     if(skb == NULL)
+          92:   15 01 92 00 00 00 00 00 if r1 == 0 goto +146 <LBB1_23>
+          93:   b7 01 00 00 00 00 00 00 r1 = 0
+    ;     context_key_t key = CONTEXT_KEY;
+          94:   63 1a fc ff 00 00 00 00 *(u32 *)(r10 - 4) = r1
+          95:   bf a2 00 00 00 00 00 00 r2 = r10
+          96:   07 02 00 00 fc ff ff ff r2 += -4
+    ;     context_data_t * ctx = bpf_map_lookup_elem(&context_map,&key);
+          97:   18 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 r1 = 0 ll
+          99:   85 00 00 00 01 00 00 00 call 1
+         100:   7b 0a f0 ff 00 00 00 00 *(u64 *)(r10 - 16) = r0
+    ;     if(ctx==NULL)
+         101:   15 00 89 00 00 00 00 00 if r0 == 0 goto +137 <LBB1_23>
+    ;     if(ctx->action_index<0 || ctx->action_index >= MAX_ACTION_LIST)
+         102:   79 a1 f0 ff 00 00 00 00 r1 = *(u64 *)(r10 - 16)
+         103:   69 11 06 00 00 00 00 00 r1 = *(u16 *)(r1 + 6)
+         104:   25 01 86 00 1f 00 00 00 if r1 > 31 goto +134 <LBB1_23>
+    ;     unsigned short offset= args->offset;
+         105:   27 01 00 00 90 00 00 00 r1 *= 144
+    ;     find_t *args = &(ctx->action_argument[ctx->action_index].find_args);
+         106:   79 a2 f0 ff 00 00 00 00 r2 = *(u64 *)(r10 - 16)
+         107:   07 02 00 00 10 01 00 00 r2 += 272
+    ;     unsigned short offset= args->offset;
+         108:   bf 24 00 00 00 00 00 00 r4 = r2
+         109:   0f 14 00 00 00 00 00 00 r4 += r1
+         110:   79 a3 e8 ff 00 00 00 00 r3 = *(u64 *)(r10 - 24)
+    ;     void *data = (void *)(__u64)skb->data;
+         111:   61 30 4c 00 00 00 00 00 r0 = *(u32 *)(r3 + 76)
+    ;     void *data_end = (void*)(__u64)skb->data_end;
+         112:   61 33 50 00 00 00 00 00 r3 = *(u32 *)(r3 + 80)
+    ;     unsigned short offset= args->offset;
+         113:   7b 3a e0 ff 00 00 00 00 *(u64 *)(r10 - 32) = r3
+         114:   69 43 00 00 00 00 00 00 r3 = *(u16 *)(r4 + 0)
+
+    Update ctx structure
+    Use bpf_map_update_element() to update ctx structure in map
+  - |-
+    int find(struct __sk_buff *skb){
+          91:   bf 16 00 00 00 00 00 00 r6 = r1
+    ;     if(skb == NULL)
+          92:   15 06 8b 00 00 00 00 00 if r6 == 0 goto +139 <LBB1_22>
+          93:   b7 01 00 00 00 00 00 00 r1 = 0
+    ;     context_key_t key = CONTEXT_KEY;
+          94:   63 1a fc ff 00 00 00 00 *(u32 *)(r10 - 4) = r1
+          95:   bf a2 00 00 00 00 00 00 r2 = r10
+          96:   07 02 00 00 fc ff ff ff r2 += -4
+    ;     context_data_t * ctx = bpf_map_lookup_elem(&context_map,&key);
+          97:   18 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 r1 = 0 ll
+          99:   85 00 00 00 01 00 00 00 call 1
+         100:   7b 0a f0 ff 00 00 00 00 *(u64 *)(r10 - 16) = r0
+    ;     if(ctx==NULL)
+         101:   15 00 82 00 00 00 00 00 if r0 == 0 goto +130 <LBB1_22>
+    ;     if(ctx->action_index<0 || ctx->action_index >= MAX_ACTION_LIST)
+         102:   79 a1 f0 ff 00 00 00 00 r1 = *(u64 *)(r10 - 16)
+         103:   69 11 06 00 00 00 00 00 r1 = *(u16 *)(r1 + 6)
+         104:   7b 1a d0 ff 00 00 00 00 *(u64 *)(r10 - 48) = r1
+         105:   25 01 7e 00 1f 00 00 00 if r1 > 31 goto +126 <LBB1_22>
+    ;     unsigned short offset= args->offset;
+         106:   79 a2 d0 ff 00 00 00 00 r2 = *(u64 *)(r10 - 48)
+         107:   27 02 00 00 90 00 00 00 r2 *= 144
+    ;     find_t *args = &(ctx->action_argument[ctx->action_index].find_args);
+         108:   79 a5 f0 ff 00 00 00 00 r5 = *(u64 *)(r10 - 16)
+         109:   07 05 00 00 10 01 00 00 r5 += 272
+         110:   7b 5a e8 ff 00 00 00 00 *(u64 *)(r10 - 24) = r5
+    ;     unsigned short offset= args->offset;
+         111:   0f 25 00 00 00 00 00 00 r5 += r2
+    ;     void *data = (void *)(__u64)skb->data;
+         112:   61 69 4c 00 00 00 00 00 r9 = *(u32 *)(r6 + 76)
+    ;     void *data_end = (void*)(__u64)skb->data_end;
+         113:   61 61 50 00 00 00 00 00 r1 = *(u32 *)(r6 + 80)
+    ;     unsigned short offset= args->offset;
+         114:   7b 1a e0 ff 00 00 00 00 *(u64 *)(r10 - 32) = r1
+         115:   69 54 00 00 00 00 00 00 r4 = *(u16 *)(r5 + 0)
+  question_body_text: |-
+    I have eBPF code where I lookup a certain structure from a map, and then access a field inside that structure, and make modifications to the values inside the structure. eBPF generates the following byte code if I use a bpf_map_update_element() at the end to reflect changes in the map, which seems redundant to me since bpf_map_lookup_element() provides me a pointer to the structure anyways.
+    int find(struct __sk_buff *skb){
+    91: 7b 1a e8 ff 00 00 00 00 *(u64 *)(r10 - 24) = r1
+    ; if(skb == NULL)
+    92: 15 01 92 00 00 00 00 00 if r1 == 0 goto +146 <LBB1_23>
+    93: b7 01 00 00 00 00 00 00 r1 = 0
+    ; context_key_t key = CONTEXT_KEY;
+    94: 63 1a fc ff 00 00 00 00 *(u32 *)(r10 - 4) = r1
+    95: bf a2 00 00 00 00 00 00 r2 = r10
+    96: 07 02 00 00 fc ff ff ff r2 += -4
+    ; context_data_t * ctx = bpf_map_lookup_elem(&context_map,&key);
+    97: 18 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 r1 = 0 ll
+    99: 85 00 00 00 01 00 00 00 call 1
+    100: 7b 0a f0 ff 00 00 00 00 *(u64 *)(r10 - 16) = r0
+    ; if(ctx==NULL)
+    101: 15 00 89 00 00 00 00 00 if r0 == 0 goto +137 <LBB1_23>
+    ; if(ctx->action_index<0 || ctx->action_index >= MAX_ACTION_LIST)
+    102: 79 a1 f0 ff 00 00 00 00 r1 = *(u64 *)(r10 - 16)
+    103: 69 11 06 00 00 00 00 00 r1 = *(u16 *)(r1 + 6)
+    104: 25 01 86 00 1f 00 00 00 if r1 > 31 goto +134 <LBB1_23>
+    ; unsigned short offset= args->offset;
+    105: 27 01 00 00 90 00 00 00 r1 *= 144
+    ; find_t *args = &(ctx->action_argument[ctx->action_index].find_args);
+    106: 79 a2 f0 ff 00 00 00 00 r2 = *(u64 *)(r10 - 16)
+    107: 07 02 00 00 10 01 00 00 r2 += 272
+    ; unsigned short offset= args->offset;
+    108: bf 24 00 00 00 00 00 00 r4 = r2
+    109: 0f 14 00 00 00 00 00 00 r4 += r1
+    110: 79 a3 e8 ff 00 00 00 00 r3 = *(u64 *)(r10 - 24)
+    ; void *data = (void *)(__u64)skb->data;
+    111: 61 30 4c 00 00 00 00 00 r0 = *(u32 *)(r3 + 76)
+    ; void *data_end = (void*)(__u64)skb->data_end;
+    112: 61 33 50 00 00 00 00 00 r3 = *(u32 *)(r3 + 80)
+    ; unsigned short offset= args->offset;
+    113: 7b 3a e0 ff 00 00 00 00 *(u64 *)(r10 - 32) = r3
+    114: 69 43 00 00 00 00 00 00 r3 = *(u16 *)(r4 + 0)
+    Update ctx structure
+    Use bpf_map_update_element() to update ctx structure in map
+    Now, if I comment out the bpf_map_update_element() at the end, I get the following byte code which does not load.
+    int find(struct __sk_buff *skb){
+    91: bf 16 00 00 00 00 00 00 r6 = r1
+    ; if(skb == NULL)
+    92: 15 06 8b 00 00 00 00 00 if r6 == 0 goto +139 <LBB1_22>
+    93: b7 01 00 00 00 00 00 00 r1 = 0
+    ; context_key_t key = CONTEXT_KEY;
+    94: 63 1a fc ff 00 00 00 00 *(u32 *)(r10 - 4) = r1
+    95: bf a2 00 00 00 00 00 00 r2 = r10
+    96: 07 02 00 00 fc ff ff ff r2 += -4
+    ; context_data_t * ctx = bpf_map_lookup_elem(&context_map,&key);
+    97: 18 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 r1 = 0 ll
+    99: 85 00 00 00 01 00 00 00 call 1
+    100: 7b 0a f0 ff 00 00 00 00 *(u64 *)(r10 - 16) = r0
+    ; if(ctx==NULL)
+    101: 15 00 82 00 00 00 00 00 if r0 == 0 goto +130 <LBB1_22>
+    ; if(ctx->action_index<0 || ctx->action_index >= MAX_ACTION_LIST)
+    102: 79 a1 f0 ff 00 00 00 00 r1 = *(u64 *)(r10 - 16)
+    103: 69 11 06 00 00 00 00 00 r1 = *(u16 *)(r1 + 6)
+    104: 7b 1a d0 ff 00 00 00 00 *(u64 *)(r10 - 48) = r1
+    105: 25 01 7e 00 1f 00 00 00 if r1 > 31 goto +126 <LBB1_22>
+    ; unsigned short offset= args->offset;
+    106: 79 a2 d0 ff 00 00 00 00 r2 = *(u64 *)(r10 - 48)
+    107: 27 02 00 00 90 00 00 00 r2 *= 144
+    ; find_t *args = &(ctx->action_argument[ctx->action_index].find_args);
+    108: 79 a5 f0 ff 00 00 00 00 r5 = *(u64 *)(r10 - 16)
+    109: 07 05 00 00 10 01 00 00 r5 += 272
+    110: 7b 5a e8 ff 00 00 00 00 *(u64 *)(r10 - 24) = r5
+    ; unsigned short offset= args->offset;
+    111: 0f 25 00 00 00 00 00 00 r5 += r2
+    ; void *data = (void *)(__u64)skb->data;
+    112: 61 69 4c 00 00 00 00 00 r9 = *(u32 *)(r6 + 76)
+    ; void *data_end = (void*)(__u64)skb->data_end;
+    113: 61 61 50 00 00 00 00 00 r1 = *(u32 *)(r6 + 80)
+    ; unsigned short offset= args->offset;
+    114: 7b 1a e0 ff 00 00 00 00 *(u64 *)(r10 - 32) = r1
+    115: 69 54 00 00 00 00 00 00 r4 = *(u16 *)(r5 + 0)
+    The key point of difference is the check at line 105, which is performed on r1, and then the same value is stored in r2, and processed further via r2, which is not bounded according to the verifier, due to which the verifier raises the following exception
+    invalid access to map value, value_size=5016 off=9437312 size=2 R5 max value is outside of the allowed memory range
+    In the case where I have bpf_map_update_element(), the check is performed on r1, and the value is processed further in r1 itself, which is bounded according to the verifier, and hence lets it load.
+    Anyway I can avoid the redundant operation of updating the map again?
+  selected_answer: {}

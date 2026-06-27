@@ -1,0 +1,61 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-libbpf-06c4624c8cf8
+source_kind: github_commit
+source:
+  url: https://github.com/libbpf/libbpf/commit/06c4624c8cf878e2d32be36e42ec1b5ef8b2a685
+  title: 'libbpf: Fix potential NULL dereference when parsing ELF'
+  repository: https://github.com/libbpf/libbpf
+  commit: 06c4624c8cf878e2d32be36e42ec1b5ef8b2a685
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-libbpf-06c4624c8cf8.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Fixes a potential NULL dereference while parsing ELF sections in bpf_object__init_global_data_maps().
+    This is libbpf robustness during object parsing, not verifier rejection evidence.
+raw:
+  case_id: github-commit-libbpf-06c4624c8cf8
+  source: github_commits
+  repository: https://github.com/libbpf/libbpf
+  commit_hash: 06c4624c8cf878e2d32be36e42ec1b5ef8b2a685
+  commit_message: 'libbpf: Fix potential NULL dereference when parsing ELF'
+  commit_date: '2022-08-15'
+  fix_type: bounds_check
+  buggy_code: "// FILE: src/libbpf.c\n// CONTEXT: static int bpf_object__init_global_data_maps(struct\
+    \ bpf_object *obj)\n{\n\tstruct elf_sec_desc *sec_desc;\n\tconst char *sec_name;\n\
+    \tint err = 0, sec_idx;\n\n\t/*\n\t * Populate obj->maps with libbpf internal\
+    \ maps.\n\t */\n\tfor (sec_idx = 1; sec_idx < obj->efile.sec_cnt; sec_idx++) {\n\
+    \t\tsec_desc = &obj->efile.secs[sec_idx];\n\n\t\t/* Skip recognized sections with\
+    \ size 0. */\n\t\tif (sec_desc->data && sec_desc->data->d_size == 0)\n\t\t\tcontinue;\n\
+    \n\t\tswitch (sec_desc->sec_type) {\n\t\tcase SEC_DATA:\n\t\t\tsec_name = elf_sec_name(obj,\
+    \ elf_sec_by_idx(obj, sec_idx));\n\t\t\terr = bpf_object__init_internal_map(obj,\
+    \ LIBBPF_MAP_DATA,\n\t\t\t\t\t\t\t    sec_name, sec_idx,\n\t\t\t\t\t\t\t    sec_desc->data->d_buf,\n\
+    \t\t\t\t\t\t\t    sec_desc->data->d_size);\n\t\t\tbreak;\n\t\tcase SEC_RODATA:\n\
+    \t\t\tobj->has_rodata = true;"
+  fixed_code: "// FILE: src/libbpf.c\n// CONTEXT: static int bpf_object__init_global_data_maps(struct\
+    \ bpf_object *obj)\n{\n\tstruct elf_sec_desc *sec_desc;\n\tconst char *sec_name;\n\
+    \tint err = 0, sec_idx;\n\n\t/*\n\t * Populate obj->maps with libbpf internal\
+    \ maps.\n\t */\n\tfor (sec_idx = 1; sec_idx < obj->efile.sec_cnt; sec_idx++) {\n\
+    \t\tsec_desc = &obj->efile.secs[sec_idx];\n\n\t\t/* Skip recognized sections with\
+    \ size 0. */\n\t\tif (!sec_desc->data || sec_desc->data->d_size == 0)\n\t\t\t\
+    continue;\n\n\t\tswitch (sec_desc->sec_type) {\n\t\tcase SEC_DATA:\n\t\t\tsec_name\
+    \ = elf_sec_name(obj, elf_sec_by_idx(obj, sec_idx));\n\t\t\terr = bpf_object__init_internal_map(obj,\
+    \ LIBBPF_MAP_DATA,\n\t\t\t\t\t\t\t    sec_name, sec_idx,\n\t\t\t\t\t\t\t    sec_desc->data->d_buf,\n\
+    \t\t\t\t\t\t\t    sec_desc->data->d_size);\n\t\t\tbreak;\n\t\tcase SEC_RODATA:\n\
+    \t\t\tobj->has_rodata = true;"
+  diff_summary: |-
+    src/libbpf.c:
+    - Added explicit bounds or range guards so the verifier can prove the access size and offset.
+    - Affected context: static int bpf_object__init_global_data_maps(struct bpf_object *obj).
+    - Commit subject: libbpf: Fix potential NULL dereference when parsing ELF.

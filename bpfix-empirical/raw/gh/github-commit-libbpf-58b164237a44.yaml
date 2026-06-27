@@ -1,0 +1,65 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-libbpf-58b164237a44
+source_kind: github_commit
+source:
+  url: https://github.com/libbpf/libbpf/commit/58b164237a4493a808d72f4ecefda6ee1b337a84
+  title: 'libbpf: Fix btf__align_of() by taking into account field offsets'
+  repository: https://github.com/libbpf/libbpf
+  commit: 58b164237a4493a808d72f4ecefda6ee1b337a84
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-libbpf-58b164237a44.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Raw diff updates user-space btf__align_of() to account for member offsets
+    and packed structs. It affects BTF layout introspection, not kernel verifier acceptance
+    of a BPF program.
+raw:
+  case_id: github-commit-libbpf-58b164237a44
+  source: github_commits
+  repository: https://github.com/libbpf/libbpf
+  commit_hash: 58b164237a4493a808d72f4ecefda6ee1b337a84
+  commit_message: 'libbpf: Fix btf__align_of() by taking into account field offsets'
+  commit_date: '2022-12-12'
+  fix_type: alignment
+  buggy_code: "// FILE: src/btf.c\n// CONTEXT: int btf__align_of(const struct btf\
+    \ *btf, __u32 id)\n\t\treturn btf__align_of(btf, btf_array(t)->type);\n\tcase\
+    \ BTF_KIND_STRUCT:\n\tcase BTF_KIND_UNION: {\n\t\tconst struct btf_member *m =\
+    \ btf_members(t);\n\t\t__u16 vlen = btf_vlen(t);\n\t\tint i, max_align = 1, align;\n\
+    \n\t\tfor (i = 0; i < vlen; i++, m++) {\n\t\t\talign = btf__align_of(btf, m->type);\n\
+    \t\t\tif (align <= 0)\n\t\t\t\treturn libbpf_err(align);\n\t\t\tmax_align = max(max_align,\
+    \ align);\n\t\t}\n\n\t\treturn max_align;\n\t}\n\tdefault:\n\t\tpr_warn(\"unsupported\
+    \ BTF_KIND:%u\\n\", btf_kind(t));\n\t\treturn errno = EINVAL, 0;\n\t}\n}\n\nint\
+    \ btf__resolve_type(const struct btf *btf, __u32 type_id)\n{\n\tconst struct btf_type\
+    \ *t;\n\tint depth = 0;"
+  fixed_code: "// FILE: src/btf.c\n// CONTEXT: int btf__align_of(const struct btf\
+    \ *btf, __u32 id)\n\t\treturn btf__align_of(btf, btf_array(t)->type);\n\tcase\
+    \ BTF_KIND_STRUCT:\n\tcase BTF_KIND_UNION: {\n\t\tconst struct btf_member *m =\
+    \ btf_members(t);\n\t\t__u16 vlen = btf_vlen(t);\n\t\tint i, max_align = 1, align;\n\
+    \n\t\tfor (i = 0; i < vlen; i++, m++) {\n\t\t\talign = btf__align_of(btf, m->type);\n\
+    \t\t\tif (align <= 0)\n\t\t\t\treturn libbpf_err(align);\n\t\t\tmax_align = max(max_align,\
+    \ align);\n\n\t\t\t/* if field offset isn't aligned according to field\n\t\t\t\
+    \ * type's alignment, then struct must be packed\n\t\t\t */\n\t\t\tif (btf_member_bitfield_size(t,\
+    \ i) == 0 &&\n\t\t\t    (m->offset % (8 * align)) != 0)\n\t\t\t\treturn 1;\n\t\
+    \t}\n\n\t\t/* if struct/union size isn't a multiple of its alignment,\n\t\t *\
+    \ then struct must be packed\n\t\t */\n\t\tif ((t->size % max_align) != 0)\n\t\
+    \t\treturn 1;\n\n\t\treturn max_align;\n\t}\n\tdefault:\n\t\tpr_warn(\"unsupported\
+    \ BTF_KIND:%u\\n\", btf_kind(t));\n\t\treturn errno = EINVAL, 0;\n\t}\n}\n\nint\
+    \ btf__resolve_type(const struct btf *btf, __u32 type_id)\n{\n\tconst struct btf_type\
+    \ *t;\n\tint depth = 0;"
+  diff_summary: |-
+    src/btf.c:
+    - Adjusted alignment declarations or stack layout to avoid misaligned accesses.
+    - Affected context: int btf__align_of(const struct btf *btf, __u32 id).
+    - Commit subject: libbpf: Fix btf__align_of() by taking into account field offsets.

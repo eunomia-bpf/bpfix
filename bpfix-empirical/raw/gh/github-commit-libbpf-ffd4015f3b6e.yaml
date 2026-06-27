@@ -1,0 +1,63 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-libbpf-ffd4015f3b6e
+source_kind: github_commit
+source:
+  url: https://github.com/libbpf/libbpf/commit/ffd4015f3b6e17782b5d2e4a2fb3f5e6740bed71
+  title: 'libbpf: Fix a bug with checking bpf_probe_read_kernel() support in old kernels'
+  repository: https://github.com/libbpf/libbpf
+  commit: ffd4015f3b6e17782b5d2e4a2fb3f5e6740bed71
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-libbpf-ffd4015f3b6e.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: environment_required
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Raw has_verifier_log=false. The change switches libbpf's bpf_probe_read_kernel()
+    feature probe from kprobe to tracepoint program type for old kernels; reproducing
+    the bug requires an old-kernel helper/prog-type support matrix.
+raw:
+  case_id: github-commit-libbpf-ffd4015f3b6e
+  source: github_commits
+  repository: https://github.com/libbpf/libbpf
+  commit_hash: ffd4015f3b6e17782b5d2e4a2fb3f5e6740bed71
+  commit_message: 'libbpf: Fix a bug with checking bpf_probe_read_kernel() support
+    in old kernels'
+  commit_date: '2022-04-09'
+  fix_type: helper_switch
+  buggy_code: "// FILE: src/libbpf.c\n// CONTEXT: static int probe_kern_exp_attach_type(void)\n\
+    static int probe_kern_probe_read_kernel(void)\n{\n\tstruct bpf_insn insns[] =\
+    \ {\n\t\tBPF_MOV64_REG(BPF_REG_1, BPF_REG_10),\t/* r1 = r10 (fp) */\n\t\tBPF_ALU64_IMM(BPF_ADD,\
+    \ BPF_REG_1, -8),\t/* r1 += -8 */\n\t\tBPF_MOV64_IMM(BPF_REG_2, 8),\t\t/* r2 =\
+    \ 8 */\n\t\tBPF_MOV64_IMM(BPF_REG_3, 0),\t\t/* r3 = 0 */\n\t\tBPF_RAW_INSN(BPF_JMP\
+    \ | BPF_CALL, 0, 0, 0, BPF_FUNC_probe_read_kernel),\n\t\tBPF_EXIT_INSN(),\n\t\
+    };\n\tint fd, insn_cnt = ARRAY_SIZE(insns);\n\n\tfd = bpf_prog_load(BPF_PROG_TYPE_KPROBE,\
+    \ NULL, \"GPL\", insns, insn_cnt, NULL);\n\treturn probe_fd(fd);\n}\n\nstatic\
+    \ int probe_prog_bind_map(void)\n{\n\tchar *cp, errmsg[STRERR_BUFSIZE];\n\tstruct\
+    \ bpf_insn insns[] = {\n\t\tBPF_MOV64_IMM(BPF_REG_0, 0),\n\t\tBPF_EXIT_INSN(),\n\
+    \t};\n\tint ret, map, prog, insn_cnt = ARRAY_SIZE(insns);"
+  fixed_code: "// FILE: src/libbpf.c\n// CONTEXT: static int probe_kern_exp_attach_type(void)\n\
+    static int probe_kern_probe_read_kernel(void)\n{\n\tstruct bpf_insn insns[] =\
+    \ {\n\t\tBPF_MOV64_REG(BPF_REG_1, BPF_REG_10),\t/* r1 = r10 (fp) */\n\t\tBPF_ALU64_IMM(BPF_ADD,\
+    \ BPF_REG_1, -8),\t/* r1 += -8 */\n\t\tBPF_MOV64_IMM(BPF_REG_2, 8),\t\t/* r2 =\
+    \ 8 */\n\t\tBPF_MOV64_IMM(BPF_REG_3, 0),\t\t/* r3 = 0 */\n\t\tBPF_RAW_INSN(BPF_JMP\
+    \ | BPF_CALL, 0, 0, 0, BPF_FUNC_probe_read_kernel),\n\t\tBPF_EXIT_INSN(),\n\t\
+    };\n\tint fd, insn_cnt = ARRAY_SIZE(insns);\n\n\tfd = bpf_prog_load(BPF_PROG_TYPE_TRACEPOINT,\
+    \ NULL, \"GPL\", insns, insn_cnt, NULL);\n\treturn probe_fd(fd);\n}\n\nstatic\
+    \ int probe_prog_bind_map(void)\n{\n\tchar *cp, errmsg[STRERR_BUFSIZE];\n\tstruct\
+    \ bpf_insn insns[] = {\n\t\tBPF_MOV64_IMM(BPF_REG_0, 0),\n\t\tBPF_EXIT_INSN(),\n\
+    \t};\n\tint ret, map, prog, insn_cnt = ARRAY_SIZE(insns);"
+  diff_summary: |-
+    src/libbpf.c:
+    - Gated or switched helper usage so unsupported helpers do not reach kernels that reject them.
+    - Affected context: static int probe_kern_exp_attach_type(void).
+    - Commit subject: libbpf: Fix a bug with checking bpf_probe_read_kernel() support in old kernels.

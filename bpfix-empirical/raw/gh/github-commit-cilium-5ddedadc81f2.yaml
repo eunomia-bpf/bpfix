@@ -1,0 +1,99 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-5ddedadc81f2
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/5ddedadc81f203e8340f8ef4fdf62e0be6454b73
+  title: 'bpf: Optimize ipv6_handle_fragmentation'
+  repository: https://github.com/cilium/cilium
+  commit: 5ddedadc81f203e8340f8ef4fdf62e0be6454b73
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-5ddedadc81f2.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: environment_required
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Optimizes IPv6 fragmentation handling to reduce verifier complexity. The
+    available snippet lacks the full parser/control-flow context and no captured verifier
+    log is available.
+raw:
+  case_id: github-commit-cilium-5ddedadc81f2
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: 5ddedadc81f203e8340f8ef4fdf62e0be6454b73
+  commit_message: 'bpf: Optimize ipv6_handle_fragmentation'
+  commit_date: '2025-03-25'
+  fix_type: inline_hint
+  buggy_code: "// FILE: bpf/lib/ipv6.h\n#define NEXTHDR_NONE            59      /*\
+    \ No next header */\n#define NEXTHDR_DEST            60      /* Destination options\
+    \ header. */\n#define NEXTHDR_SCTP            132     /* SCTP message. */\n#define\
+    \ NEXTHDR_MOBILITY        135     /* Mobility header. */\n\n#define NEXTHDR_MAX\
+    \             255\n\n#define IPV6_FRAGLEN            8\n\n#define IPV6_SADDR_OFF\t\
+    \toffsetof(struct ipv6hdr, saddr)\n#define IPV6_DADDR_OFF\t\toffsetof(struct ipv6hdr,\
+    \ daddr)\n\nstruct ipv6_frag_id {\n\t__be32 id;\t\t/* L4 datagram identifier */\n\
+    \t__u8 proto;\n\t__u8 pad[3];\n\tunion v6addr saddr;\n\tunion v6addr daddr;\n\
+    } __packed;\n\nstruct ipv6_frag_l4ports {\n\t__be16 sport;\n\t__be16 dport;\n\
+    } __packed;\n\n// CONTEXT: ipv6_frag_get_l4ports(const struct ipv6_frag_id *frag_id,\n\
+    \tmemcpy(ports, tmp, sizeof(*ports));\n\treturn 0;\n}\n\nstatic __always_inline\
+    \ int\nipv6_handle_fragmentation(struct __ctx_buff *ctx,\n\t\t\t  const struct\
+    \ ipv6hdr *ip6,\n\t\t\t  fraginfo_t fraginfo,\n\t\t\t  int l4_off,\n\t\t\t  enum\
+    \ ct_dir ct_dir,\n\t\t\t  struct ipv6_frag_l4ports *ports)\n{\n\tstruct ipv6_frag_id\
+    \ frag_id __align_stack_8 = {\n\t\t.id = ipfrag_get_id(fraginfo),\n\t\t.proto\
+    \ = ipfrag_get_protocol(fraginfo),\n\t};\n\tipv6_addr_copy(&frag_id.daddr, (union\
+    \ v6addr *)&ip6->daddr);\n\tipv6_addr_copy(&frag_id.saddr, (union v6addr *)&ip6->saddr);\n\
+    \n\tif (unlikely(!ipfrag_has_l4_header(fraginfo)))\n\t\treturn ipv6_frag_get_l4ports(&frag_id,\
+    \ ports);\n\n\tif (l4_load_ports(ctx, l4_off, (__be16 *)ports) < 0)\n\t\treturn\
+    \ DROP_CT_INVALID_HDR;\n\n\tif (unlikely(ipfrag_is_fragment(fraginfo))) {\n\t\t\
+    if (map_update_elem(&cilium_ipv6_frag_datagrams, &frag_id, ports, BPF_ANY))\n\t\
+    \t\tupdate_metrics(ctx_full_len(ctx), ct_to_metrics_dir(ct_dir),\n\t\t\t\t   \
+    \    REASON_FRAG_PACKET_UPDATE);\n\t}\n\n\treturn 0;\n}\n#endif\n\nstatic __always_inline\
+    \ int\nipv6_load_l4_ports(struct __ctx_buff *ctx, struct ipv6hdr *ip6 __maybe_unused,\n\
+    \t\t   fraginfo_t fraginfo, int l4_off, enum ct_dir dir __maybe_unused,\n\t\t\
+    \   __be16 *ports)\n{\n#ifdef ENABLE_IPV6_FRAGMENTS\n\treturn ipv6_handle_fragmentation(ctx,\
+    \ ip6, fraginfo, l4_off, dir,\n\t\t\t\t\t (struct ipv6_frag_l4ports *)ports);\n\
+    #else"
+  fixed_code: "// FILE: bpf/lib/ipv6.h\n#define NEXTHDR_NONE            59      /*\
+    \ No next header */\n#define NEXTHDR_DEST            60      /* Destination options\
+    \ header. */\n#define NEXTHDR_SCTP            132     /* SCTP message. */\n#define\
+    \ NEXTHDR_MOBILITY        135     /* Mobility header. */\n\n#define NEXTHDR_MAX\
+    \             255\n\n#define IPV6_FRAGLEN            8\n\n#define IPV6_SADDR_OFF\t\
+    \toffsetof(struct ipv6hdr, saddr)\n#define IPV6_DADDR_OFF\t\toffsetof(struct ipv6hdr,\
+    \ daddr)\n\n/* Follows the structure of ipv6hdr, see ipv6_handle_fragmentation.\
+    \ */\nstruct ipv6_frag_id {\n\t__be32 id;\t\t/* L4 datagram identifier */\n\t\
+    __u8 proto;\n\t__u8 pad[3];\n\tunion v6addr saddr;\n\tunion v6addr daddr;\n} __packed;\n\
+    \nstruct ipv6_frag_l4ports {\n\t__be16 sport;\n\t__be16 dport;\n} __packed;\n\n\
+    // CONTEXT: ipv6_frag_get_l4ports(const struct ipv6_frag_id *frag_id,\n\tmemcpy(ports,\
+    \ tmp, sizeof(*ports));\n\treturn 0;\n}\n\nstatic __always_inline int\nipv6_handle_fragmentation(struct\
+    \ __ctx_buff *ctx,\n\t\t\t  const struct ipv6hdr *ip6,\n\t\t\t  fraginfo_t fraginfo,\n\
+    \t\t\t  int l4_off,\n\t\t\t  enum ct_dir ct_dir,\n\t\t\t  struct ipv6_frag_l4ports\
+    \ *ports)\n{\n\t/* frag_id and ip6 have saddr and daddr at the same offset, which\
+    \ allows\n\t * to spare a bit of stack space and save a copy of 32 bytes.\n\t\
+    \ */\n\tunion {\n\t\t__u64 diff;\n\t\tstruct ipv6_frag_id frag_id;\n\t\tstruct\
+    \ ipv6hdr ip6;\n\t} *u = (void *)ip6;\n\t__u64 backup = u->diff;\n\tint ret =\
+    \ 0;\n\n\tu->diff = 0; /* Clear the padding. */\n\tu->frag_id.id = ipfrag_get_id(fraginfo);\n\
+    \tu->frag_id.proto = ipfrag_get_protocol(fraginfo);\n\t/* saddr and daddr are\
+    \ already there. */\n\n\tif (unlikely(!ipfrag_has_l4_header(fraginfo))) {\n\t\t\
+    ret = ipv6_frag_get_l4ports(&u->frag_id, ports);\n\t\tgoto out;\n\t}\n\n\tif (l4_load_ports(ctx,\
+    \ l4_off, (__be16 *)ports) < 0) {\n\t\tret = DROP_CT_INVALID_HDR;\n\t\tgoto out;\n\
+    \t}\n\n\tif (unlikely(ipfrag_is_fragment(fraginfo))) {\n\t\tif (map_update_elem(&cilium_ipv6_frag_datagrams,\
+    \ &u->frag_id, ports, BPF_ANY))\n\t\t\tupdate_metrics(ctx_full_len(ctx), ct_to_metrics_dir(ct_dir),\n\
+    \t\t\t\t       REASON_FRAG_PACKET_UPDATE);\n\t}\n\nout:\n\tu->diff = backup;\n\
+    \treturn ret;\n}\n#endif\n\nstatic __always_inline int\nipv6_load_l4_ports(struct\
+    \ __ctx_buff *ctx, struct ipv6hdr *ip6 __maybe_unused,\n\t\t   fraginfo_t fraginfo,\
+    \ int l4_off, enum ct_dir dir __maybe_unused,\n\t\t   __be16 *ports)\n{\n#ifdef\
+    \ ENABLE_IPV6_FRAGMENTS\n\treturn ipv6_handle_fragmentation(ctx, ip6, fraginfo,\
+    \ l4_off, dir,\n\t\t\t\t\t (struct ipv6_frag_l4ports *)ports);\n#else"
+  diff_summary: |-
+    bpf/lib/ipv6.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: ipv6_frag_get_l4ports(const struct ipv6_frag_id *frag_id,.
+    - Commit subject: bpf: Optimize ipv6_handle_fragmentation.

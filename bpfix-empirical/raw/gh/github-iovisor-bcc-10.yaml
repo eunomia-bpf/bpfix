@@ -1,0 +1,856 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-iovisor-bcc-10
+source_kind: github_issue
+source:
+  url: https://github.com/iovisor/bcc/issues/10
+  title: verifier failure with a particular dp program
+  repository: https://github.com/iovisor/bcc
+  commit: null
+  collected_at: '2026-04-30T01:41:26+00:00'
+collector:
+  original_path: bpfix-empirical/raw/gh/github-iovisor-bcc-10.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: true
+  verifier_log_block_count: 1
+  source_snippet_count: 6
+  has_buggy_code: false
+  has_fixed_code: false
+  has_fix_description: false
+reproduction:
+  status: replay_valid
+  case_id: github-iovisor-bcc-10
+  case_path: cases/github-iovisor-bcc-10
+  artifact_path: cases/github-iovisor-bcc-10
+  reason: admitted_to_bpfix_bench_cases
+raw:
+  case_id: github-iovisor-bcc-10
+  source: github_issues
+  collected_at: '2026-04-30T01:41:26+00:00'
+  issue:
+    repository: iovisor/bcc
+    number: 10
+    title: verifier failure with a particular dp program
+    url: https://github.com/iovisor/bcc/issues/10
+    state: OPEN
+    labels:
+    - bug
+    - prio:low
+    created_at: '2015-05-08T18:24:59Z'
+    updated_at: '2015-09-18T19:43:08Z'
+    author: yonghong-song
+  verifier_log:
+    blocks:
+    - R2 invalid mem access 'map_value_or_null'
+    combined: R2 invalid mem access 'map_value_or_null'
+  source_snippets:
+  - |-
+    plumgrid@yhs-plumgrid:~/iovisor/bcc/tests/jit$ cat bpfdev1.b
+    #packed "false"
+
+    // hash
+    struct FwdKey {
+      u32 dip:32;
+    };
+    struct FwdLeaf {
+      u32 fwd_idx:32;
+    };
+    Table<FwdKey, FwdLeaf, FIXED_MATCH, NONE> fwd_map(1);
+
+    // array
+    struct ConfigKey {
+      u32 index:32;
+    };
+    struct ConfigLeaf {
+      u32 bpfdev_ip:32;
+      u32 slave_ip:32;
+    };
+    Table<ConfigKey, ConfigLeaf, INDEXED, AUTO> config_map(1);
+
+    // hash
+    struct MacaddrKey {
+      u32 ip:32;
+    };
+    struct MacaddrLeaf {
+      u64 mac:48;
+    };
+    Table<MacaddrKey, MacaddrLeaf, FIXED_MATCH, AUTO> macaddr_map(11);
+
+    // hash
+    struct SlaveKey {
+      u32 slave_ip:32;
+    };
+    struct SlaveLeaf {
+      u32 slave_ifindex:32;
+    };
+    Table<SlaveKey, SlaveLeaf, FIXED_MATCH, NONE> slave_map(10);
+
+    u32 main(struct proto::skbuff *skb) {
+      u32 ret:32;
+
+      if skb.pkt_type == 0 {
+        // tx
+        // make sure configured
+        u32 slave_ip:32;
+
+        struct ConfigKey cfg_key = {.index = 0};
+        struct ConfigLeaf *cfg_leaf;
+        config_map.lookup(cfg_key, cfg_leaf) {};
+        on_valid(cfg_leaf) {
+          slave_ip = cfg_leaf->slave_ip;
+        } else {
+          return 0xffffffff;
+        }
+
+        // make sure slave configured
+        // tx, default to the single slave
+        struct SlaveKey slave_key = {.slave_ip = slave_ip};
+        struct SlaveLeaf *slave_leaf;
+        slave_map.lookup(slave_key, slave_leaf);
+        on_valid(slave_leaf) {
+          ret = slave_leaf->slave_ifindex;
+        } else {
+          return 0xffffffff;
+        }
+      } else {
+        // rx, default to stack
+        ret = 0;
+      }
+
+      goto proto::ethernet;
+
+      state proto::ethernet {
+      }
+
+      state proto::dot1q {
+      }
+
+      state proto::arp {
+        if (skb.pkt_type) {
+          if $arp.oper == 1 {
+            struct MacaddrKey mac_key = {.ip = $arp.spa};
+            struct MacaddrLeaf mac_leaf = {.mac = $arp.sha};
+            macaddr_map.update(mac_key, mac_leaf);
+          }
+          goto EOP;
+        }
+      }
+
+      state proto::ip {
+      }
+      state proto::udp {
+        if $udp.dport != 5000 {
+           goto EOP;
+        }
+        if (skb.pkt_type) {
+          // lookup and then forward
+          struct FwdKey fwd_key = {.dip = $ip.dst};
+          struct FwdLeaf *fwd_val;
+          fwd_map.lookup(fwd_key, fwd_val) {};
+          on_valid(fwd_val) {
+             return fwd_val.fwd_idx;
+          } else {
+             goto EOP;
+          }
+        } else {
+          // rewrite the packet and send to a pre-configured index if needed
+          u32 new_ip:32;
+          u32 old_ip:32;
+          u64 src_mac:48;
+          u64 dst_mac:48;
+
+          struct ConfigKey cfg_key = {.index = 0};
+          struct ConfigLeaf *cfg_leaf;
+          config_map.lookup(cfg_key, cfg_leaf) {};
+          on_valid(cfg_leaf) {
+            struct MacaddrKey mac_key = {.ip = cfg_leaf->bpfdev_ip};
+            struct MacaddrLeaf *mac_leaf;
+
+            mac_key.ip = cfg_leaf->bpfdev_ip;
+            macaddr_map.lookup(mac_key, mac_leaf) {};
+            on_valid (mac_leaf) {
+              src_mac = mac_leaf->mac;
+            } else {
+          goto EOP;
+            }
+
+            mac_key.ip = cfg_leaf->slave_ip;
+            macaddr_map.lookup(mac_key, mac_leaf) {};
+            on_valid (mac_leaf) {
+              dst_mac = mac_leaf->mac;
+            } else {
+          goto EOP;
+            }
+
+            // rewrite ethernet header
+            pkt.rewrite_field($ethernet.dst, dst_mac);
+            pkt.rewrite_field($ethernet.src, src_mac);
+
+            // ip & udp checksum
+            incr_cksum(@ip.hchecksum, $ip.src, cfg_leaf->bpfdev_ip);
+            incr_cksum(@ip.hchecksum, $ip.dst, cfg_leaf->slave_ip);
+            incr_cksum(@udp.crc, $ip.src, cfg_leaf->bpfdev_ip, 1);
+            incr_cksum(@udp.crc, $ip.dst, cfg_leaf->slave_ip, 1);
+
+            // rewrite ip src/dst fields
+            pkt.rewrite_field($ip.src, cfg_leaf->bpfdev_ip);
+            pkt.rewrite_field($ip.dst, cfg_leaf->slave_ip);
+
+            goto EOP;
+
+          } else {
+            goto EOP;
+          }
+        }
+      }
+
+      state EOP {
+        return ret;
+      }
+    }
+  - |-
+    #!/usr/bin/env python
+
+    # test program for a simple bpfdev
+
+    import sys
+    import commands
+    from ctypes import c_uint, c_ulong, Structure
+    from netaddr import IPAddress, EUI
+    from bpf import BPF
+    from subprocess import check_call
+    from unittest import main, TestCase
+
+    # map structures
+    class FwdKey(Structure):
+        _fields_ = [("dip", c_uint)]
+    class FwdLeaf(Structure):
+        _fields_ = [("ifc_idx", c_uint)]
+
+    class ConfigKey(Structure):
+        _fields_ = [("idx", c_uint)]
+    class ConfigLeaf(Structure):
+        _fields_ = [("bpfdev_ip", c_uint),
+                    ("slave_ip", c_uint)]
+
+    class MacaddrKey(Structure):
+        _fields_ = [("ip", c_uint)]
+    class MacaddrLeaf(Structure):
+        _fields_ = [("mac", c_ulong)]
+
+    class SlaveKey(Structure):
+        _fields_ = [("slave_ip", c_uint)]
+    class SlaveLeaf(Structure):
+        _fields_ = [("ifc_idx", c_uint)]
+
+    class TestBPFDev(TestCase):
+        def config(self, bpfdev, ns, bpfdev_ip, bpfdev_mac, slave_ip):
+            # ifup bpfdev
+            check_call(["ip", "link", "set", "dev", bpfdev, "up"])
+            check_call(["ifconfig", bpfdev, bpfdev_ip])
+            check_call(["ifconfig", bpfdev, "hw", "ether", bpfdev_mac])
+
+            # setup a namespace for the VM
+            if_se = ns + ".eth0.se"
+            if_vm = ns + ".eth0.vm"
+            check_call(["ip", "netns", "add", ns])
+            check_call(["ip", "link", "add", "name", if_se, "type", "veth", "peer", "name", if_vm])
+            check_call(["ip", "link", "set", if_vm, "netns", ns])
+            check_call(["ip", "netns", "exec", ns, "ip", "link", "set", if_vm, "name", "eth0"])
+            check_call(["ip", "link", "set", if_se, "up"])
+            check_call(["ip", "netns", "exec", ns, "ip", "link", "set", "eth0", "up"])
+            check_call(["ip", "link", "set", "dev", if_se, "promisc", "on"])
+            check_call(["ip", "netns", "exec", ns, "ifconfig", "eth0", slave_ip])
+
+            # establish the master-slave relationships
+            check_call(["ip", "link", "set", "dev", if_se, "master", bpfdev])
+
+        def setUp(self):
+            sys.stderr.write("build bpfdev programs for br22 and br33\n")
+            self.prog1 = BPF("main", "bpfdev1.b", "proto.b", prog_type=BPF.BPF_PROG_TYPE_BPFDEV, debug=0)
+            self.prog2 = BPF("main", "bpfdev1.b", "proto.b", prog_type=BPF.BPF_PROG_TYPE_BPFDEV, debug=0)
+
+        # create two bpf devices
+            sys.stderr.write("creating bpfdev br22 and br33\n")
+            self.prog1.create_bpfdev("br22")
+            self.prog2.create_bpfdev("br33")
+
+            # configure bpfdev
+            sys.stderr.write("configuring bpfdev br22 and br33\n")
+            self.config("br22", "ns0", "10.0.0.4", "02:02:02:02:02:02", "10.1.1.3")
+            self.config("br33", "ns1", "20.0.0.4", "04:04:04:04:04:04", "20.1.1.3")
+
+            # prog1 table configuration
+            sys.stderr.write("configuring bpfdev br22 table\n")
+            fwd_if = int(commands.getoutput('ip -o link show dev br33 | awk -F\': \' \'{print $1}\''))
+            sys.stderr.write("br22 special rx packet forward to %d\n" % fwd_if)
+            fwd_map = self.prog1.table("fwd_map", FwdKey, FwdLeaf)
+            key = FwdKey(IPAddress("10.0.0.4").value)
+            leaf = FwdLeaf(fwd_if)
+            fwd_map.put(key, leaf)
+
+            config_map = self.prog1.table("config_map", ConfigKey, ConfigLeaf)
+            key = ConfigKey(0)
+            leaf = ConfigLeaf(IPAddress("10.0.0.4").value, IPAddress("10.1.1.3").value)
+            config_map.put(key, leaf)
+
+            macaddr_map = self.prog1.table("macaddr_map", MacaddrKey, MacaddrLeaf)
+            key = MacaddrKey(IPAddress("10.0.0.4").value)
+            leaf = MacaddrLeaf(EUI("02-02-02-02-02-02").value)    # 02:02:02:02:02:02
+            macaddr_map.put(key, leaf)
+
+            slave_map = self.prog1.table("slave_map", SlaveKey, SlaveLeaf)
+            fwd_if = int(commands.getoutput('ip -o link show dev ns0.eth0.se | awk -F\': \' \'{print $1}\''))
+            sys.stderr.write("br22 special tx packet forward to %d\n" % fwd_if)
+            key = SlaveKey(IPAddress("10.1.1.3").value)
+            leaf = SlaveLeaf(fwd_if)
+            slave_map.put(key, leaf)
+
+            # prog2 table configuratioin
+            sys.stderr.write("configuring bpfdev br33 table\n")
+            fwd_if = int(commands.getoutput('ip -o link show dev br22 | awk -F\': \' \'{print $1}\''))
+            sys.stderr.write("br33 special rx packet forward to %d\n" % fwd_if)
+            fwd_map = self.prog2.table("fwd_map", FwdKey, FwdLeaf)
+            key = FwdKey(IPAddress("20.0.0.4").value)
+            leaf = FwdLeaf(fwd_if)
+            fwd_map.put(key, leaf)
+
+            config_map = self.prog2.table("config_map", ConfigKey, ConfigLeaf)
+            key = ConfigKey(0)
+            leaf = ConfigLeaf(IPAddress("20.0.0.4").value, IPAddress("20.1.1.3").value)
+            config_map.put(key, leaf)
+
+            macaddr_map = self.prog2.table("macaddr_map", MacaddrKey, MacaddrLeaf)
+            key = MacaddrKey(IPAddress("20.0.0.4").value)
+            leaf = MacaddrLeaf(EUI("04-04-04-04-04-04").value)    # 04:04:04:04:04:04
+            macaddr_map.put(key, leaf)
+
+            slave_map = self.prog2.table("slave_map", SlaveKey, SlaveLeaf)
+            fwd_if = int(commands.getoutput('ip -o link show dev ns1.eth0.se | awk -F\': \' \'{print $1}\''))
+            sys.stderr.write("br33 special tx packet forward to %d\n" % fwd_if)
+            key = SlaveKey(IPAddress("20.1.1.3").value)
+            leaf = SlaveLeaf(fwd_if)
+            slave_map.put(key, leaf)
+
+        sys.stderr.write("prog1 config_map")
+            config_map = self.prog1.table("config_map", ConfigKey, ConfigLeaf)
+            key = ConfigKey(0)
+        leaf = config_map.get(key)
+            print "config1", leaf.bpfdev_ip, leaf.slave_ip
+
+        sys.stderr.write("prog2 config_map")
+            config_map = self.prog2.table("config_map", ConfigKey, ConfigLeaf)
+            key = ConfigKey(0)
+        leaf = config_map.get(key)
+            print "config2", leaf.bpfdev_ip, leaf.slave_ip
+
+        def test_ping(self):
+            sys.stderr.write("testing ping between master and slave\n")
+            check_call(["ip", "netns", "exec", "ns0", "ping", "-c4", "10.0.0.4"])
+            check_call(["ip", "netns", "exec", "ns1", "ping", "-c4", "20.0.0.4"])
+
+            # sys.stderr.write("testing forwarding from br22 to br33\n")
+            # check_call(["ip", "netns", "exec", "ns1", "/usr/bin/python", "/home/plumgrid/bpf/recv_udp.py", "&"])
+            # check_call(["ip", "netns", "exec", "ns0", "/usr/bin/python", "/home/plumgrid/bpf/send_udp.py"])
+
+    if __name__ == "__main__":
+        main()
+  - "5: from 39 to 89: R0=imm5000 R1=imm0 R6=ctx R7=imm0 R8=imm14 R9=inv R10=fp\n\
+    5: 89: (b7) r9 = 0\n5: 90: (63) *(u32 *)(r10 -56) = r9\n5: 91: (18) r1 = 0x587280\n\
+    5: 93: (bf) r2 = r10\n5: 94: (07) r2 += -56\n5: 95: (85) call 1\n5: 96: (bf) r1\
+    \ = r0\n5: 97: (15) if r0 == 0x0 goto pc-11\n5:  R0=map_value(ks=4,vs=8) R1=map_value_or_null(ks=4,vs=8)\
+    \ R6=ctx R7=imm0 R8=imm14 R9=imm0 R10=fp\n5: 98: (05) goto pc+0\n5: 99: (63) *(u32\
+    \ *)(r10 -64) = r9\n5: 100: (bf) r2 = r1\n5: 101: (7b) *(u64 *)(r10 -72) = r2\n\
+    5: 102: (61) r1 = *(u32 *)(r2 +0)\n5: R2 invalid mem access 'map_value_or_null'\n\
+    5: \n5: ERROR: test_ping (__main__.TestBPFDev)\n5: ----------------------------------------------------------------------\n\
+    5: Traceback (most recent call last):\n5:   File \"/home/plumgrid/iovisor/bcc/tests/jit/bpfdev1.py\"\
+    , line 59, in setUp\n5:     self.prog1 = BPF(\"main\", \"bpfdev1.b\", \"proto.b\"\
+    , prog_type=BPF.BPF_PROG_TYPE_BPFDEV, debug=0)\n5:   File \"/home/plumgrid/iovisor/bcc/src/bpf.py\"\
+    , line 64, in __init__\n5:     self.load(self.name)\n5:   File \"/home/plumgrid/iovisor/bcc/src/bpf.py\"\
+    , line 78, in load\n5:     raise Exception(\"Failed to load BPF program %s\" %\
+    \ self.name)\n5: Exception: Failed to load BPF program main\n5: \n5: ----------------------------------------------------------------------"
+  - |-
+    LBB8_16:                                # %if.else20
+            mov     r9, 0
+            stw     -56(r10), r9
+            ld_pseudo       r1, 1, 6
+            mov     r2, r10
+            addi    r2, -56
+            call    1
+            mov     r1, r0
+            jeqi    r0, 0 goto LBB8_12
+            jmp     LBB8_18
+    LBB8_18:                                # %onvalid.then25
+            stw     -64(r10), r9
+            mov     r2, r1
+            std     -72(r10), r2
+            ldw     r1, 0(r2)
+            stw     -64(r10), r1
+  - |-
+    5: Target Transform Information
+    5: Target Pass Configuration
+    5: No Alias Analysis (always returns 'may' alias)
+    5: Type-Based Alias Analysis
+    5: Scoped NoAlias Alias Analysis
+    5: Assumption Cache Tracker
+    5: Target Library Information
+    5: Basic Alias Analysis (stateless AA impl)
+    5: Create Garbage Collector Module Metadata
+    5: Machine Module Information
+    5: Machine Branch Probability Analysis
+    5:   ModulePass Manager
+    5:     FunctionPass Manager
+    5:       Dominator Tree Construction
+    5:       Natural Loop Information
+    5:       Canonicalize natural loops
+    5:       Scalar Evolution Analysis
+    5:       Loop Pass Manager
+    5:         Induction Variable Users
+    5:         Loop Strength Reduction
+    5:       Lower Garbage Collection Instructions
+    5:       Shadow Stack GC Lowering
+    5:       Remove unreachable blocks from the CFG
+    5:       Dominator Tree Construction
+    5:       Constant Hoisting
+    5:       Partially inline calls to library functions
+    5:       CodeGen Prepare
+    5:     Rewrite Symbols
+    5:     FunctionPass Manager
+    5:       Lower invoke and unwind, for unwindless code generators
+    5:       Remove unreachable blocks from the CFG
+    5:       Insert stack protectors
+    5:       Machine Function Analysis
+    5:       Dominator Tree Construction
+    5:       Natural Loop Information
+    5:       Branch Probability Analysis
+    5:       BPF DAG->DAG Pattern Instruction Selection
+    5:       Expand ISel Pseudo-instructions
+    5:       Tail Duplication
+    5:       Optimize machine instruction PHIs
+    5:       MachineDominator Tree Construction
+    5:       Slot index numbering
+    5:       Merge disjoint stack slots
+    5:       Local Stack Slot Allocation
+    5:       Remove dead machine instructions
+    5:       MachineDominator Tree Construction
+    5:       Machine Natural Loop Construction
+    5:       Machine Loop Invariant Code Motion
+    5:       Machine Common Subexpression Elimination
+    5:       MachinePostDominator Tree Construction
+    5:       Machine Block Frequency Analysis
+    5:       Machine code sinking
+    5:       Peephole Optimizations
+    5:       Remove dead machine instructions
+    5:       Process Implicit Definitions
+    5:       Remove unreachable machine basic blocks
+    5:       Live Variable Analysis
+    5:       MachineDominator Tree Construction
+    5:       Machine Natural Loop Construction
+    5:       Eliminate PHI nodes for register allocation
+    5:       Two-Address instruction pass
+    5:       Slot index numbering
+    5:       Live Interval Analysis
+    5:       Simple Register Coalescing
+    5:       Machine Instruction Scheduler
+    5:       Machine Block Frequency Analysis
+    5:       Debug Variable Analysis
+    5:       Live Stack Slot Analysis
+    5:       Virtual Register Map
+    5:       Live Register Matrix
+    5:       Bundle Machine CFG Edges
+    5:       Spill Code Placement Analysis
+    5:       Greedy Register Allocator
+    5:       Virtual Register Rewriter
+    5:       Stack Slot Coloring
+    5:       Machine Loop Invariant Code Motion
+    5:       Prologue/Epilogue Insertion & Frame Finalization
+    5:       Machine Block Frequency Analysis
+    5:       Control Flow Optimizer
+    5:       Tail Duplication
+    5:       Machine Copy Propagation Pass
+    5:       Post-RA pseudo instruction expansion pass
+    5:       MachineDominator Tree Construction
+    5:       Machine Natural Loop Construction
+    5:       Post RA top-down list latency scheduler
+    5:       Analyze Machine Code For Garbage Collection
+    5:       Machine Block Frequency Analysis
+    5:       Branch Probability Basic Block Placement
+    5:       StackMap Liveness Analysis
+    5:       BPF Assembly Printer
+  - |-
+    diff --git a/tests/jit/bpfdev1.b b/tests/jit/bpfdev1.b
+    index c2ecddd..bc04002 100644
+    --- a/tests/jit/bpfdev1.b
+    +++ b/tests/jit/bpfdev1.b
+    @@ -110,49 +110,53 @@ u32 main(struct proto::skbuff *skb) {
+           u32 old_ip:32;
+           u64 src_mac:48;
+           u64 dst_mac:48;
+    +      u32 bpfdev_ip:32;
+    +      u32 slave_ip:32;
+
+           struct ConfigKey cfg_key = {.index = 0};
+           struct ConfigLeaf *cfg_leaf;
+           config_map.lookup(cfg_key, cfg_leaf) {};
+           on_valid(cfg_leaf) {
+    -        struct MacaddrKey mac_key = {.ip = cfg_leaf->bpfdev_ip};
+    -        struct MacaddrLeaf *mac_leaf;
+    -
+    -        mac_key.ip = cfg_leaf->bpfdev_ip;
+    -        macaddr_map.lookup(mac_key, mac_leaf) {};
+    -        on_valid (mac_leaf) {
+    -          src_mac = mac_leaf->mac;
+    -        } else {
+    -         goto EOP;
+    -        }
+    -
+    -        mac_key.ip = cfg_leaf->slave_ip;
+    -        macaddr_map.lookup(mac_key, mac_leaf) {};
+    -        on_valid (mac_leaf) {
+    -          dst_mac = mac_leaf->mac;
+    -        } else {
+    -         goto EOP;
+    -        }
+    -
+    -        // rewrite ethernet header
+    -        pkt.rewrite_field($ethernet.dst, dst_mac);
+    -        pkt.rewrite_field($ethernet.src, src_mac);
+    -
+    -        // ip & udp checksum
+    -        incr_cksum(@ip.hchecksum, $ip.src, cfg_leaf->bpfdev_ip);
+    -        incr_cksum(@ip.hchecksum, $ip.dst, cfg_leaf->slave_ip);
+    -        incr_cksum(@udp.crc, $ip.src, cfg_leaf->bpfdev_ip, 1);
+    -        incr_cksum(@udp.crc, $ip.dst, cfg_leaf->slave_ip, 1);
+    -
+    -        // rewrite ip src/dst fields
+    -        pkt.rewrite_field($ip.src, cfg_leaf->bpfdev_ip);
+    -        pkt.rewrite_field($ip.dst, cfg_leaf->slave_ip);
+    +        bpfdev_ip = cfg_leaf->bpfdev_ip;
+    +        slave_ip = cfg_leaf->slave_ip;
+    +      } else {
+    +        goto EOP;
+    +      }
+
+    +      struct MacaddrKey mac_key = {.ip = bpfdev_ip};
+    +      struct MacaddrLeaf *mac_leaf;
+    +
+    +      mac_key.ip = bpfdev_ip;
+    +      macaddr_map.lookup(mac_key, mac_leaf) {};
+    +      on_valid (mac_leaf) {
+    +        src_mac = mac_leaf->mac;
+    +      } else {
+             goto EOP;
+    +      }
+
+    +      mac_key.ip = slave_ip;
+    +      macaddr_map.lookup(mac_key, mac_leaf) {};
+    +      on_valid (mac_leaf) {
+    +        dst_mac = mac_leaf->mac;
+           } else {
+             goto EOP;
+           }
+    +
+    +      // rewrite ethernet header
+    +      pkt.rewrite_field($ethernet.dst, dst_mac);
+    +      pkt.rewrite_field($ethernet.src, src_mac);
+    +
+    +      // ip & udp checksum
+    +      incr_cksum(@ip.hchecksum, $ip.src, bpfdev_ip);
+    +      incr_cksum(@ip.hchecksum, $ip.dst, slave_ip);
+    +      incr_cksum(@udp.crc, $ip.src, bpfdev_ip, 1);
+    +      incr_cksum(@udp.crc, $ip.dst, slave_ip, 1);
+    +
+    +      // rewrite ip src/dst fields
+    +      pkt.rewrite_field($ip.src, bpfdev_ip);
+    +      pkt.rewrite_field($ip.dst, slave_ip);
+    +
+    +      goto EOP;
+         }
+       }
+  issue_body_text: "For the following B program:\n\n```\nplumgrid@yhs-plumgrid:~/iovisor/bcc/tests/jit$\
+    \ cat bpfdev1.b\n#packed \"false\"\n\n// hash\nstruct FwdKey {\n  u32 dip:32;\n\
+    };\nstruct FwdLeaf {\n  u32 fwd_idx:32;\n};\nTable<FwdKey, FwdLeaf, FIXED_MATCH,\
+    \ NONE> fwd_map(1);\n\n// array\nstruct ConfigKey {\n  u32 index:32;\n};\nstruct\
+    \ ConfigLeaf {\n  u32 bpfdev_ip:32;\n  u32 slave_ip:32;\n};\nTable<ConfigKey,\
+    \ ConfigLeaf, INDEXED, AUTO> config_map(1);\n\n// hash\nstruct MacaddrKey {\n\
+    \  u32 ip:32;\n};\nstruct MacaddrLeaf {\n  u64 mac:48;\n};\nTable<MacaddrKey,\
+    \ MacaddrLeaf, FIXED_MATCH, AUTO> macaddr_map(11);\n\n// hash\nstruct SlaveKey\
+    \ {\n  u32 slave_ip:32;\n};\nstruct SlaveLeaf {\n  u32 slave_ifindex:32;\n};\n\
+    Table<SlaveKey, SlaveLeaf, FIXED_MATCH, NONE> slave_map(10);\n\nu32 main(struct\
+    \ proto::skbuff *skb) {\n  u32 ret:32;\n\n  if skb.pkt_type == 0 {\n    // tx\n\
+    \    // make sure configured\n    u32 slave_ip:32;\n\n    struct ConfigKey cfg_key\
+    \ = {.index = 0};\n    struct ConfigLeaf *cfg_leaf;\n    config_map.lookup(cfg_key,\
+    \ cfg_leaf) {};\n    on_valid(cfg_leaf) {\n      slave_ip = cfg_leaf->slave_ip;\n\
+    \    } else {\n      return 0xffffffff;\n    }\n\n    // make sure slave configured\n\
+    \    // tx, default to the single slave\n    struct SlaveKey slave_key = {.slave_ip\
+    \ = slave_ip};\n    struct SlaveLeaf *slave_leaf;\n    slave_map.lookup(slave_key,\
+    \ slave_leaf);\n    on_valid(slave_leaf) {\n      ret = slave_leaf->slave_ifindex;\n\
+    \    } else {\n      return 0xffffffff;\n    }\n  } else {\n    // rx, default\
+    \ to stack\n    ret = 0;\n  }\n\n  goto proto::ethernet;\n\n  state proto::ethernet\
+    \ {\n  }\n\n  state proto::dot1q {\n  }\n\n  state proto::arp {\n    if (skb.pkt_type)\
+    \ {\n      if $arp.oper == 1 {\n        struct MacaddrKey mac_key = {.ip = $arp.spa};\n\
+    \        struct MacaddrLeaf mac_leaf = {.mac = $arp.sha};\n        macaddr_map.update(mac_key,\
+    \ mac_leaf);\n      }\n      goto EOP;\n    }\n  }\n\n  state proto::ip {\n  }\n\
+    \  state proto::udp {\n    if $udp.dport != 5000 {\n       goto EOP;\n    }\n\
+    \    if (skb.pkt_type) {\n      // lookup and then forward\n      struct FwdKey\
+    \ fwd_key = {.dip = $ip.dst};\n      struct FwdLeaf *fwd_val;\n      fwd_map.lookup(fwd_key,\
+    \ fwd_val) {};\n      on_valid(fwd_val) {\n         return fwd_val.fwd_idx;\n\
+    \      } else {\n         goto EOP;\n      }\n    } else {\n      // rewrite the\
+    \ packet and send to a pre-configured index if needed\n      u32 new_ip:32;\n\
+    \      u32 old_ip:32;\n      u64 src_mac:48;\n      u64 dst_mac:48;\n\n      struct\
+    \ ConfigKey cfg_key = {.index = 0};\n      struct ConfigLeaf *cfg_leaf;\n    \
+    \  config_map.lookup(cfg_key, cfg_leaf) {};\n      on_valid(cfg_leaf) {\n    \
+    \    struct MacaddrKey mac_key = {.ip = cfg_leaf->bpfdev_ip};\n        struct\
+    \ MacaddrLeaf *mac_leaf;\n\n        mac_key.ip = cfg_leaf->bpfdev_ip;\n      \
+    \  macaddr_map.lookup(mac_key, mac_leaf) {};\n        on_valid (mac_leaf) {\n\
+    \          src_mac = mac_leaf->mac;\n        } else {\n      goto EOP;\n     \
+    \   }\n\n        mac_key.ip = cfg_leaf->slave_ip;\n        macaddr_map.lookup(mac_key,\
+    \ mac_leaf) {};\n        on_valid (mac_leaf) {\n          dst_mac = mac_leaf->mac;\n\
+    \        } else {\n      goto EOP;\n        }\n\n        // rewrite ethernet header\n\
+    \        pkt.rewrite_field($ethernet.dst, dst_mac);\n        pkt.rewrite_field($ethernet.src,\
+    \ src_mac);\n\n        // ip & udp checksum\n        incr_cksum(@ip.hchecksum,\
+    \ $ip.src, cfg_leaf->bpfdev_ip);\n        incr_cksum(@ip.hchecksum, $ip.dst, cfg_leaf->slave_ip);\n\
+    \        incr_cksum(@udp.crc, $ip.src, cfg_leaf->bpfdev_ip, 1);\n        incr_cksum(@udp.crc,\
+    \ $ip.dst, cfg_leaf->slave_ip, 1);\n\n        // rewrite ip src/dst fields\n \
+    \       pkt.rewrite_field($ip.src, cfg_leaf->bpfdev_ip);\n        pkt.rewrite_field($ip.dst,\
+    \ cfg_leaf->slave_ip);\n\n        goto EOP;\n\n      } else {\n        goto EOP;\n\
+    \      }\n    }\n  }\n\n  state EOP {\n    return ret;\n  }\n}\n```\n\nplumgrid@yhs-plumgrid:~/iovisor/bcc/tests/jit$\
+    \ \n\nThe control plane app looks like:\n\nplumgrid@yhs-plumgrid:~/iovisor/bcc/tests/jit$\
+    \ cat bpfdev1.py\n\n```\n#!/usr/bin/env python\n\n# test program for a simple\
+    \ bpfdev\n\nimport sys\nimport commands\nfrom ctypes import c_uint, c_ulong, Structure\n\
+    from netaddr import IPAddress, EUI\nfrom bpf import BPF\nfrom subprocess import\
+    \ check_call\nfrom unittest import main, TestCase\n\n# map structures\nclass FwdKey(Structure):\n\
+    \    _fields_ = [(\"dip\", c_uint)]\nclass FwdLeaf(Structure):\n    _fields_ =\
+    \ [(\"ifc_idx\", c_uint)]\n\nclass ConfigKey(Structure):\n    _fields_ = [(\"\
+    idx\", c_uint)]\nclass ConfigLeaf(Structure):\n    _fields_ = [(\"bpfdev_ip\"\
+    , c_uint),\n                (\"slave_ip\", c_uint)]\n\nclass MacaddrKey(Structure):\n\
+    \    _fields_ = [(\"ip\", c_uint)]\nclass MacaddrLeaf(Structure):\n    _fields_\
+    \ = [(\"mac\", c_ulong)]\n\nclass SlaveKey(Structure):\n    _fields_ = [(\"slave_ip\"\
+    , c_uint)]\nclass SlaveLeaf(Structure):\n    _fields_ = [(\"ifc_idx\", c_uint)]\n\
+    \nclass TestBPFDev(TestCase):\n    def config(self, bpfdev, ns, bpfdev_ip, bpfdev_mac,\
+    \ slave_ip):\n        # ifup bpfdev\n        check_call([\"ip\", \"link\", \"\
+    set\", \"dev\", bpfdev, \"up\"])\n        check_call([\"ifconfig\", bpfdev, bpfdev_ip])\n\
+    \        check_call([\"ifconfig\", bpfdev, \"hw\", \"ether\", bpfdev_mac])\n\n\
+    \        # setup a namespace for the VM\n        if_se = ns + \".eth0.se\"\n \
+    \       if_vm = ns + \".eth0.vm\"\n        check_call([\"ip\", \"netns\", \"add\"\
+    , ns])\n        check_call([\"ip\", \"link\", \"add\", \"name\", if_se, \"type\"\
+    , \"veth\", \"peer\", \"name\", if_vm])\n        check_call([\"ip\", \"link\"\
+    , \"set\", if_vm, \"netns\", ns])\n        check_call([\"ip\", \"netns\", \"exec\"\
+    , ns, \"ip\", \"link\", \"set\", if_vm, \"name\", \"eth0\"])\n        check_call([\"\
+    ip\", \"link\", \"set\", if_se, \"up\"])\n        check_call([\"ip\", \"netns\"\
+    , \"exec\", ns, \"ip\", \"link\", \"set\", \"eth0\", \"up\"])\n        check_call([\"\
+    ip\", \"link\", \"set\", \"dev\", if_se, \"promisc\", \"on\"])\n        check_call([\"\
+    ip\", \"netns\", \"exec\", ns, \"ifconfig\", \"eth0\", slave_ip])\n\n        #\
+    \ establish the master-slave relationships\n        check_call([\"ip\", \"link\"\
+    , \"set\", \"dev\", if_se, \"master\", bpfdev])\n\n    def setUp(self):\n    \
+    \    sys.stderr.write(\"build bpfdev programs for br22 and br33\\n\")\n      \
+    \  self.prog1 = BPF(\"main\", \"bpfdev1.b\", \"proto.b\", prog_type=BPF.BPF_PROG_TYPE_BPFDEV,\
+    \ debug=0)\n        self.prog2 = BPF(\"main\", \"bpfdev1.b\", \"proto.b\", prog_type=BPF.BPF_PROG_TYPE_BPFDEV,\
+    \ debug=0)\n\n    # create two bpf devices\n        sys.stderr.write(\"creating\
+    \ bpfdev br22 and br33\\n\")\n        self.prog1.create_bpfdev(\"br22\")\n   \
+    \     self.prog2.create_bpfdev(\"br33\")\n\n        # configure bpfdev\n     \
+    \   sys.stderr.write(\"configuring bpfdev br22 and br33\\n\")\n        self.config(\"\
+    br22\", \"ns0\", \"10.0.0.4\", \"02:02:02:02:02:02\", \"10.1.1.3\")\n        self.config(\"\
+    br33\", \"ns1\", \"20.0.0.4\", \"04:04:04:04:04:04\", \"20.1.1.3\")\n\n      \
+    \  # prog1 table configuration\n        sys.stderr.write(\"configuring bpfdev\
+    \ br22 table\\n\")\n        fwd_if = int(commands.getoutput('ip -o link show dev\
+    \ br33 | awk -F\\': \\' \\'{print $1}\\''))\n        sys.stderr.write(\"br22 special\
+    \ rx packet forward to %d\\n\" % fwd_if)\n        fwd_map = self.prog1.table(\"\
+    fwd_map\", FwdKey, FwdLeaf)\n        key = FwdKey(IPAddress(\"10.0.0.4\").value)\n\
+    \        leaf = FwdLeaf(fwd_if)\n        fwd_map.put(key, leaf)\n\n        config_map\
+    \ = self.prog1.table(\"config_map\", ConfigKey, ConfigLeaf)\n        key = ConfigKey(0)\n\
+    \        leaf = ConfigLeaf(IPAddress(\"10.0.0.4\").value, IPAddress(\"10.1.1.3\"\
+    ).value)\n        config_map.put(key, leaf)\n\n        macaddr_map = self.prog1.table(\"\
+    macaddr_map\", MacaddrKey, MacaddrLeaf)\n        key = MacaddrKey(IPAddress(\"\
+    10.0.0.4\").value)\n        leaf = MacaddrLeaf(EUI(\"02-02-02-02-02-02\").value)\
+    \    # 02:02:02:02:02:02\n        macaddr_map.put(key, leaf)\n\n        slave_map\
+    \ = self.prog1.table(\"slave_map\", SlaveKey, SlaveLeaf)\n        fwd_if = int(commands.getoutput('ip\
+    \ -o link show dev ns0.eth0.se | awk -F\\': \\' \\'{print $1}\\''))\n        sys.stderr.write(\"\
+    br22 special tx packet forward to %d\\n\" % fwd_if)\n        key = SlaveKey(IPAddress(\"\
+    10.1.1.3\").value)\n        leaf = SlaveLeaf(fwd_if)\n        slave_map.put(key,\
+    \ leaf)\n\n        # prog2 table configuratioin\n        sys.stderr.write(\"configuring\
+    \ bpfdev br33 table\\n\")\n        fwd_if = int(commands.getoutput('ip -o link\
+    \ show dev br22 | awk -F\\': \\' \\'{print $1}\\''))\n        sys.stderr.write(\"\
+    br33 special rx packet forward to %d\\n\" % fwd_if)\n        fwd_map = self.prog2.table(\"\
+    fwd_map\", FwdKey, FwdLeaf)\n        key = FwdKey(IPAddress(\"20.0.0.4\").value)\n\
+    \        leaf = FwdLeaf(fwd_if)\n        fwd_map.put(key, leaf)\n\n        config_map\
+    \ = self.prog2.table(\"config_map\", ConfigKey, ConfigLeaf)\n        key = ConfigKey(0)\n\
+    \        leaf = ConfigLeaf(IPAddress(\"20.0.0.4\").value, IPAddress(\"20.1.1.3\"\
+    ).value)\n        config_map.put(key, leaf)\n\n        macaddr_map = self.prog2.table(\"\
+    macaddr_map\", MacaddrKey, MacaddrLeaf)\n        key = MacaddrKey(IPAddress(\"\
+    20.0.0.4\").value)\n        leaf = MacaddrLeaf(EUI(\"04-04-04-04-04-04\").value)\
+    \    # 04:04:04:04:04:04\n        macaddr_map.put(key, leaf)\n\n        slave_map\
+    \ = self.prog2.table(\"slave_map\", SlaveKey, SlaveLeaf)\n        fwd_if = int(commands.getoutput('ip\
+    \ -o link show dev ns1.eth0.se | awk -F\\': \\' \\'{print $1}\\''))\n        sys.stderr.write(\"\
+    br33 special tx packet forward to %d\\n\" % fwd_if)\n        key = SlaveKey(IPAddress(\"\
+    20.1.1.3\").value)\n        leaf = SlaveLeaf(fwd_if)\n        slave_map.put(key,\
+    \ leaf)\n\n    sys.stderr.write(\"prog1 config_map\")\n        config_map = self.prog1.table(\"\
+    config_map\", ConfigKey, ConfigLeaf)\n        key = ConfigKey(0)\n    leaf = config_map.get(key)\n\
+    \        print \"config1\", leaf.bpfdev_ip, leaf.slave_ip\n\n    sys.stderr.write(\"\
+    prog2 config_map\")\n        config_map = self.prog2.table(\"config_map\", ConfigKey,\
+    \ ConfigLeaf)\n        key = ConfigKey(0)\n    leaf = config_map.get(key)\n  \
+    \      print \"config2\", leaf.bpfdev_ip, leaf.slave_ip\n\n    def test_ping(self):\n\
+    \        sys.stderr.write(\"testing ping between master and slave\\n\")\n    \
+    \    check_call([\"ip\", \"netns\", \"exec\", \"ns0\", \"ping\", \"-c4\", \"10.0.0.4\"\
+    ])\n        check_call([\"ip\", \"netns\", \"exec\", \"ns1\", \"ping\", \"-c4\"\
+    , \"20.0.0.4\"])\n\n        # sys.stderr.write(\"testing forwarding from br22\
+    \ to br33\\n\")\n        # check_call([\"ip\", \"netns\", \"exec\", \"ns1\", \"\
+    /usr/bin/python\", \"/home/plumgrid/bpf/recv_udp.py\", \"&\"])\n        # check_call([\"\
+    ip\", \"netns\", \"exec\", \"ns0\", \"/usr/bin/python\", \"/home/plumgrid/bpf/send_udp.py\"\
+    ])\n\nif __name__ == \"__main__\":\n    main()\n```\n\nplumgrid@yhs-plumgrid:~/iovisor/bcc/tests/jit$\
+    \ \n\nIn order to run complete test, there are other changes in bcc are needed\
+    \ to support new bpfdev device and these changes are not included here.\n\nThe\
+    \ test failed with the following symtom:\n\n```\n5: from 39 to 89: R0=imm5000\
+    \ R1=imm0 R6=ctx R7=imm0 R8=imm14 R9=inv R10=fp\n5: 89: (b7) r9 = 0\n5: 90: (63)\
+    \ *(u32 *)(r10 -56) = r9\n5: 91: (18) r1 = 0x587280\n5: 93: (bf) r2 = r10\n5:\
+    \ 94: (07) r2 += -56\n5: 95: (85) call 1\n5: 96: (bf) r1 = r0\n5: 97: (15) if\
+    \ r0 == 0x0 goto pc-11\n5:  R0=map_value(ks=4,vs=8) R1=map_value_or_null(ks=4,vs=8)\
+    \ R6=ctx R7=imm0 R8=imm14 R9=imm0 R10=fp\n5: 98: (05) goto pc+0\n5: 99: (63) *(u32\
+    \ *)(r10 -64) = r9\n5: 100: (bf) r2 = r1\n5: 101: (7b) *(u64 *)(r10 -72) = r2\n\
+    5: 102: (61) r1 = *(u32 *)(r2 +0)\n5: R2 invalid mem access 'map_value_or_null'\n\
+    5: \n5: ERROR: test_ping (__main__.TestBPFDev)\n5: ----------------------------------------------------------------------\n\
+    5: Traceback (most recent call last):\n5:   File \"/home/plumgrid/iovisor/bcc/tests/jit/bpfdev1.py\"\
+    , line 59, in setUp\n5:     self.prog1 = BPF(\"main\", \"bpfdev1.b\", \"proto.b\"\
+    , prog_type=BPF.BPF_PROG_TYPE_BPFDEV, debug=0)\n5:   File \"/home/plumgrid/iovisor/bcc/src/bpf.py\"\
+    , line 64, in __init__\n5:     self.load(self.name)\n5:   File \"/home/plumgrid/iovisor/bcc/src/bpf.py\"\
+    , line 78, in load\n5:     raise Exception(\"Failed to load BPF program %s\" %\
+    \ self.name)\n5: Exception: Failed to load BPF program main\n5: \n5: ----------------------------------------------------------------------\n\
+    ```\n\ninstruction \"96\" does an assignment from r0 to r1, and verifier thinks\
+    \ r1 could be map_value or null,\nalthough instruction \"97\" checks \"r0\" for\
+    \ null.\n\nThe compiler ought to generate better code. The instruction \"r1 =\
+    \ r0\" is not necessary.\n\nI dumped IR (change py program debug=0 to debug=1),\
+    \ and feed the IR to llc.\n`llc -march=bpf -filetype=asm -O3 b.ll``\n\nllc also\
+    \ generates similar code:\n\n```\nLBB8_16:                                # %if.else20\n\
+    \        mov     r9, 0\n        stw     -56(r10), r9\n        ld_pseudo      \
+    \ r1, 1, 6\n        mov     r2, r10\n        addi    r2, -56\n        call   \
+    \ 1\n        mov     r1, r0\n        jeqi    r0, 0 goto LBB8_12\n        jmp \
+    \    LBB8_18\nLBB8_18:                                # %onvalid.then25\n    \
+    \    stw     -64(r10), r9\n        mov     r2, r1\n        std     -72(r10), r2\n\
+    \        ldw     r1, 0(r2)\n        stw     -64(r10), r1\n```\n\n-O2 generates\
+    \ similar code.\n\nStudying the LLVM optimization passes, there is a path in LLVM\
+    \ which called \"virtual register rewrite\" and it indeed removes SOME of the\
+    \ above redundant copies, but not all of them, hence causing the issue.\n\nFYI,\
+    \ I changed LLVM to print out the pass applied during bcc compiler optimization\
+    \ and below is the result:\n\n```\n5: Target Transform Information\n5: Target\
+    \ Pass Configuration\n5: No Alias Analysis (always returns 'may' alias)\n5: Type-Based\
+    \ Alias Analysis\n5: Scoped NoAlias Alias Analysis\n5: Assumption Cache Tracker\n\
+    5: Target Library Information\n5: Basic Alias Analysis (stateless AA impl)\n5:\
+    \ Create Garbage Collector Module Metadata\n5: Machine Module Information\n5:\
+    \ Machine Branch Probability Analysis\n5:   ModulePass Manager\n5:     FunctionPass\
+    \ Manager\n5:       Dominator Tree Construction\n5:       Natural Loop Information\n\
+    5:       Canonicalize natural loops\n5:       Scalar Evolution Analysis\n5:  \
+    \     Loop Pass Manager\n5:         Induction Variable Users\n5:         Loop\
+    \ Strength Reduction\n5:       Lower Garbage Collection Instructions\n5:     \
+    \  Shadow Stack GC Lowering\n5:       Remove unreachable blocks from the CFG\n\
+    5:       Dominator Tree Construction\n5:       Constant Hoisting\n5:       Partially\
+    \ inline calls to library functions\n5:       CodeGen Prepare\n5:     Rewrite\
+    \ Symbols\n5:     FunctionPass Manager\n5:       Lower invoke and unwind, for\
+    \ unwindless code generators\n5:       Remove unreachable blocks from the CFG\n\
+    5:       Insert stack protectors\n5:       Machine Function Analysis\n5:     \
+    \  Dominator Tree Construction\n5:       Natural Loop Information\n5:       Branch\
+    \ Probability Analysis\n5:       BPF DAG->DAG Pattern Instruction Selection\n\
+    5:       Expand ISel Pseudo-instructions\n5:       Tail Duplication\n5:      \
+    \ Optimize machine instruction PHIs\n5:       MachineDominator Tree Construction\n\
+    5:       Slot index numbering\n5:       Merge disjoint stack slots\n5:       Local\
+    \ Stack Slot Allocation\n5:       Remove dead machine instructions\n5:       MachineDominator\
+    \ Tree Construction\n5:       Machine Natural Loop Construction\n5:       Machine\
+    \ Loop Invariant Code Motion\n5:       Machine Common Subexpression Elimination\n\
+    5:       MachinePostDominator Tree Construction\n5:       Machine Block Frequency\
+    \ Analysis\n5:       Machine code sinking\n5:       Peephole Optimizations\n5:\
+    \       Remove dead machine instructions\n5:       Process Implicit Definitions\n\
+    5:       Remove unreachable machine basic blocks\n5:       Live Variable Analysis\n\
+    5:       MachineDominator Tree Construction\n5:       Machine Natural Loop Construction\n\
+    5:       Eliminate PHI nodes for register allocation\n5:       Two-Address instruction\
+    \ pass\n5:       Slot index numbering\n5:       Live Interval Analysis\n5:   \
+    \    Simple Register Coalescing\n5:       Machine Instruction Scheduler\n5:  \
+    \     Machine Block Frequency Analysis\n5:       Debug Variable Analysis\n5: \
+    \      Live Stack Slot Analysis\n5:       Virtual Register Map\n5:       Live\
+    \ Register Matrix\n5:       Bundle Machine CFG Edges\n5:       Spill Code Placement\
+    \ Analysis\n5:       Greedy Register Allocator\n5:       Virtual Register Rewriter\n\
+    5:       Stack Slot Coloring\n5:       Machine Loop Invariant Code Motion\n5:\
+    \       Prologue/Epilogue Insertion & Frame Finalization\n5:       Machine Block\
+    \ Frequency Analysis\n5:       Control Flow Optimizer\n5:       Tail Duplication\n\
+    5:       Machine Copy Propagation Pass\n5:       Post-RA pseudo instruction expansion\
+    \ pass\n5:       MachineDominator Tree Construction\n5:       Machine Natural\
+    \ Loop Construction\n5:       Post RA top-down list latency scheduler\n5:    \
+    \   Analyze Machine Code For Garbage Collection\n5:       Machine Block Frequency\
+    \ Analysis\n5:       Branch Probability Basic Block Placement\n5:       StackMap\
+    \ Liveness Analysis\n5:       BPF Assembly Printer\n```\n\nChecking llc compiler\
+    \ passes, it is very similar (I did not compare one-to-one) to the above\nfor\
+    \ function passes.\n\nIn summary, this is an LLVM issue and we may have to fix\
+    \ there.\n"
+  comments:
+  - url: https://github.com/iovisor/bcc/issues/10#issuecomment-100321985
+    author: yonghong-song
+    author_association: COLLABORATOR
+    created_at: '2015-05-08T18:34:15Z'
+    body_text: "The following diff fixed the problem:\n\nplumgrid@yhs-plumgrid:~/iovisor/bcc/tests/jit$\
+      \ git diff\n\n```\ndiff --git a/tests/jit/bpfdev1.b b/tests/jit/bpfdev1.b\n\
+      index c2ecddd..bc04002 100644\n--- a/tests/jit/bpfdev1.b\n+++ b/tests/jit/bpfdev1.b\n\
+      @@ -110,49 +110,53 @@ u32 main(struct proto::skbuff *skb) {\n       u32 old_ip:32;\n\
+      \       u64 src_mac:48;\n       u64 dst_mac:48;\n+      u32 bpfdev_ip:32;\n\
+      +      u32 slave_ip:32;\n\n       struct ConfigKey cfg_key = {.index = 0};\n\
+      \       struct ConfigLeaf *cfg_leaf;\n       config_map.lookup(cfg_key, cfg_leaf)\
+      \ {};\n       on_valid(cfg_leaf) {\n-        struct MacaddrKey mac_key = {.ip\
+      \ = cfg_leaf->bpfdev_ip};\n-        struct MacaddrLeaf *mac_leaf;\n-\n-    \
+      \    mac_key.ip = cfg_leaf->bpfdev_ip;\n-        macaddr_map.lookup(mac_key,\
+      \ mac_leaf) {};\n-        on_valid (mac_leaf) {\n-          src_mac = mac_leaf->mac;\n\
+      -        } else {\n-         goto EOP;\n-        }\n-\n-        mac_key.ip =\
+      \ cfg_leaf->slave_ip;\n-        macaddr_map.lookup(mac_key, mac_leaf) {};\n\
+      -        on_valid (mac_leaf) {\n-          dst_mac = mac_leaf->mac;\n-     \
+      \   } else {\n-         goto EOP;\n-        }\n-\n-        // rewrite ethernet\
+      \ header\n-        pkt.rewrite_field($ethernet.dst, dst_mac);\n-        pkt.rewrite_field($ethernet.src,\
+      \ src_mac);\n-\n-        // ip & udp checksum\n-        incr_cksum(@ip.hchecksum,\
+      \ $ip.src, cfg_leaf->bpfdev_ip);\n-        incr_cksum(@ip.hchecksum, $ip.dst,\
+      \ cfg_leaf->slave_ip);\n-        incr_cksum(@udp.crc, $ip.src, cfg_leaf->bpfdev_ip,\
+      \ 1);\n-        incr_cksum(@udp.crc, $ip.dst, cfg_leaf->slave_ip, 1);\n-\n-\
+      \        // rewrite ip src/dst fields\n-        pkt.rewrite_field($ip.src, cfg_leaf->bpfdev_ip);\n\
+      -        pkt.rewrite_field($ip.dst, cfg_leaf->slave_ip);\n+        bpfdev_ip\
+      \ = cfg_leaf->bpfdev_ip;\n+        slave_ip = cfg_leaf->slave_ip;\n+      }\
+      \ else {\n+        goto EOP;\n+      }\n\n+      struct MacaddrKey mac_key =\
+      \ {.ip = bpfdev_ip};\n+      struct MacaddrLeaf *mac_leaf;\n+\n+      mac_key.ip\
+      \ = bpfdev_ip;\n+      macaddr_map.lookup(mac_key, mac_leaf) {};\n+      on_valid\
+      \ (mac_leaf) {\n+        src_mac = mac_leaf->mac;\n+      } else {\n       \
+      \  goto EOP;\n+      }\n\n+      mac_key.ip = slave_ip;\n+      macaddr_map.lookup(mac_key,\
+      \ mac_leaf) {};\n+      on_valid (mac_leaf) {\n+        dst_mac = mac_leaf->mac;\n\
+      \       } else {\n         goto EOP;\n       }\n+\n+      // rewrite ethernet\
+      \ header\n+      pkt.rewrite_field($ethernet.dst, dst_mac);\n+      pkt.rewrite_field($ethernet.src,\
+      \ src_mac);\n+\n+      // ip & udp checksum\n+      incr_cksum(@ip.hchecksum,\
+      \ $ip.src, bpfdev_ip);\n+      incr_cksum(@ip.hchecksum, $ip.dst, slave_ip);\n\
+      +      incr_cksum(@udp.crc, $ip.src, bpfdev_ip, 1);\n+      incr_cksum(@udp.crc,\
+      \ $ip.dst, slave_ip, 1);\n+\n+      // rewrite ip src/dst fields\n+      pkt.rewrite_field($ip.src,\
+      \ bpfdev_ip);\n+      pkt.rewrite_field($ip.dst, slave_ip);\n+\n+      goto\
+      \ EOP;\n     }\n   }\n\n```\n\nplumgrid@yhs-plumgrid:~/iovisor/bcc/tests/jit$\
+      \ \n\nBasically, the map result should have a short live range by copying to\
+      \ local variable.\n"
+  - url: https://github.com/iovisor/bcc/issues/10#issuecomment-100783012
+    author: 4ast
+    author_association: MEMBER
+    created_at: '2015-05-11T06:11:51Z'
+    body_text: |
+      the diff is mangled it seems. It seems it's a workaround by using inside knowledge of front-end gen ?
+      I think we should try to fix it in the backend. Clearly r2=r1 assignments are redundant.
+      I also don't 'remat' pass to be run. It's important. Otherwise constant values will be copied between registers instead of using 'mov Rx, imm' which is faster, less register pressure and easier on verifier.
+  - url: https://github.com/iovisor/bcc/issues/10#issuecomment-100908929
+    author: drzaeus77
+    author_association: CONTRIBUTOR
+    created_at: '2015-05-11T13:34:50Z'
+    body_text: |
+      I've updated the diff with proper github markdown syntax. Alexei, do you have any advice on how to fix it in the backend, or are you considering that your own AI?
+  - url: https://github.com/iovisor/bcc/issues/10#issuecomment-101026722
+    author: 4ast
+    author_association: MEMBER
+    created_at: '2015-05-11T19:35:20Z'
+    body_text: "I don't have a concrete plan. I suspect there is still something we\
+      \ missing\nabout pass_manager. Probably need to enable several more passes.\n\
+      \nOn Mon, May 11, 2015 at 6:34 AM, Brenden notifications@github.com wrote:\n\
+      \n> I've updated the diff with proper github markdown syntax. Alexei, do you\n\
+      > have any advice on how to fix it in the backend, or are you considering\n\
+      > that your own AI?\n> \n> \u2014\n> Reply to this email directly or view it\
+      \ on GitHub\n> https://github.com/plumgrid/bcc/issues/10#issuecomment-100908929.\n"
+  reconstruction_seed:
+    source_origin: GitHub issue semantic reconstruction
+    captured_error: R0 invalid mem access 'map_value_or_null'
+    verifier_error_match: mismatch
+    notes: Semantic C reconstruction of the map lookup result dereference verifier
+      failure from iovisor/bcc#10.

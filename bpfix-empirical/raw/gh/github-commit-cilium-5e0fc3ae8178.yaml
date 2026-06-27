@@ -1,0 +1,219 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-5e0fc3ae8178
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/5e0fc3ae81789df8879daf4e0ce3a7b414ff9ad6
+  title: 'bpf,loader: reduce complexity of SECLABEL_IPV{4,6} plumbing'
+  repository: https://github.com/cilium/cilium
+  commit: 5e0fc3ae81789df8879daf4e0ce3a7b414ff9ad6
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-5e0fc3ae8178.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: environment_required
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Reduces SECLABEL_IPV{4,6} plumbing complexity through loader/config changes
+    across several generated programs. Faithful replay depends on Cilium loader substitution
+    and generated objects, not an isolated snippet.
+raw:
+  case_id: github-commit-cilium-5e0fc3ae8178
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: 5e0fc3ae81789df8879daf4e0ce3a7b414ff9ad6
+  commit_message: 'bpf,loader: reduce complexity of SECLABEL_IPV{4,6} plumbing'
+  commit_date: '2025-01-16'
+  fix_type: type_cast
+  buggy_code: "// FILE: bpf/bpf_overlay.c\n// SPDX-License-Identifier: (GPL-2.0-only\
+    \ OR BSD-2-Clause)\n/* Copyright Authors of Cilium */\n\n#include <bpf/ctx/skb.h>\n\
+    #include <bpf/api.h>\n\n#include <node_config.h>\n#include <netdev_config.h>\n\
+    #include \"lib/mcast.h\"\n\n#define IS_BPF_OVERLAY 1\n\n/* Controls the inclusion\
+    \ of the CILIUM_CALL_HANDLE_ICMP6_NS section in the\n * bpf_lxc object file.\n\
+    \ */\n#define SKIP_ICMPV6_NS_HANDLING\n\n/* Controls the inclusion of the CILIUM_CALL_SRV6\
+    \ section in the object file.\n */\n#define SKIP_SRV6_HANDLING\n\n#include \"\
+    lib/tailcall.h\"\n#include \"lib/common.h\"\n#include \"lib/edt.h\"\n\n// FILE:\
+    \ bpf/bpf_wireguard.c\n// SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)\n\
+    /* Copyright Authors of Cilium */\n\n#define ETH_HLEN 0\n#define IS_BPF_WIREGUARD\
+    \ 1\n\n#include <bpf/ctx/skb.h>\n#include <bpf/api.h>\n\n#include <node_config.h>\n\
+    #include <netdev_config.h>\n\n#include \"lib/trace.h\"\n#include \"lib/drop.h\"\
+    \n#include \"lib/nodeport.h\"\n#include \"lib/nodeport_egress.h\"\n\n/* to-wireguard\
+    \ is attached as a tc egress filter to the cilium_wg0 device.\n */\n__section_entry\n\
+    int cil_to_wireguard(struct __ctx_buff *ctx)\n{\n\tint __maybe_unused ret;\n\t\
+    __s8 __maybe_unused ext_err = 0;\n\n// FILE: bpf/bpf_xdp.c\n// SPDX-License-Identifier:\
+    \ (GPL-2.0-only OR BSD-2-Clause)\n/* Copyright Authors of Cilium */\n\n#include\
+    \ <bpf/ctx/xdp.h>\n#include <bpf/api.h>\n\n#include <node_config.h>\n#include\
+    \ <netdev_config.h>\n#include <filter_config.h>\n\n#define IS_BPF_XDP 1\n\n#define\
+    \ SKIP_POLICY_MAP 1\n\n/* Controls the inclusion of the CILIUM_CALL_HANDLE_ICMP6_NS\
+    \ section in the\n * bpf_lxc object file.\n */\n#define SKIP_ICMPV6_NS_HANDLING\n\
+    \n/* Controls the inclusion of the CILIUM_CALL_SEND_ICMP6_TIME_EXCEEDED section\n\
+    \ * in the bpf_lxc object file. This is needed for all callers of\n * ipv6_local_delivery,\
+    \ which calls into the IPv6 L3 handling.\n */\n#define SKIP_ICMPV6_HOPLIMIT_HANDLING\n\
+    \n// FILE: bpf/ep_config.h\n// CONTEXT: DEFINE_IPV6(LXC_IP, 0xbe, 0xef, 0, 0,\
+    \ 0, 0, 0, 0x1, 0, 0, 0, 0x1, 0x01, 0x65, 0x\n\n#ifndef LXC_IPV4\nDEFINE_U32(LXC_IPV4,\
+    \ 0x10203040);\n#define LXC_IPV4 fetch_u32(LXC_IPV4)\n#endif /* LXC_IPV4 */\n\n\
+    /*\n * Both the LXC_ID and the HOST_EP_ID are defined here to ease compile testing,\n\
+    \ * but in the actual header files, only one of them will be present.\n */\nDEFINE_U16(LXC_ID,\
+    \ 0x2A);\n#define LXC_ID fetch_u16(LXC_ID)\n#ifndef SECLABEL\nDEFINE_U32(SECLABEL,\
+    \ 0xfffff);\n#define SECLABEL fetch_u32(SECLABEL)\n#endif\nDEFINE_U32(SECLABEL_IPV4,\
+    \ 0xfffff);\n#define SECLABEL_IPV4 fetch_u32(SECLABEL_IPV4)\nDEFINE_U32(SECLABEL_IPV6,\
+    \ 0xfffff);\n#define SECLABEL_IPV6 fetch_u32(SECLABEL_IPV6)\n\nDEFINE_U32(POLICY_VERDICT_LOG_FILTER,\
+    \ 0xffff);\n#define POLICY_VERDICT_LOG_FILTER fetch_u32(POLICY_VERDICT_LOG_FILTER)\n\
+    \n#ifndef ENDPOINT_NETNS_COOKIE\nDEFINE_U64(ENDPOINT_NETNS_COOKIE, 0xFFFFFFFFFFFFFFFF);\n\
+    #define ENDPOINT_NETNS_COOKIE fetch_u64(ENDPOINT_NETNS_COOKIE)\n#endif /*ENDPOINT_NETNS_COOKIE*/\n\
+    \n#define HOST_EP_ID 0x1092\n\n#define POLICY_MAP test_cilium_policy_v2_65535\n\
+    \n// FILE: bpf/netdev_config.h\n/* SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)\
+    \ */\n/* Copyright Authors of Cilium */\n\n/*\n * This is just a dummy header\
+    \ with dummy values to allow for test\n * compilation without the full code generation\
+    \ engine backend.\n */\n#define DROP_NOTIFY\n#ifndef SKIP_DEBUG\n#define DEBUG\n\
+    #endif\n#define SECLABEL 2\n#define SECLABEL_IPV4 2\n#define SECLABEL_IPV6 2\n\
+    #define CALLS_MAP test_cilium_calls_65535\n\n// FILE: bpf/tests/ipsec_from_network_generic.h\n\
+    #define ENCRYPT_KEY 3\n#define ENABLE_IPV4\n#define ENABLE_IPV6\n#define ENABLE_IPSEC\n\
+    #define TUNNEL_MODE\n#define ENCAP_IFINDEX 4\n#define DEST_IFINDEX 5\n#define\
+    \ DEST_LXC_ID 200\n\n#include \"common.h\"\n#include <bpf/ctx/skb.h>\n#include\
+    \ \"pktgen.h\"\n#define ROUTER_IP\n#define SECLABEL\n#define SECLABEL_IPV4\n#define\
+    \ SECLABEL_IPV6\n#undef ROUTER_IP\n#undef SECLABEL\n#undef SECLABEL_IPV4\n#undef\
+    \ SECLABEL_IPV6\n\n#define ctx_redirect mock_ctx_redirect\nint mock_ctx_redirect(const\
+    \ struct __sk_buff *ctx __maybe_unused, int ifindex, __u32 flags)\n{\n\tif (ifindex\
+    \ != 1)\n\t\treturn -1;\n\tif (flags != 0)\n\t\treturn -2;\n\treturn CTX_ACT_REDIRECT;\n\
+    }\n\n#define skb_change_type mock_skb_change_type\n\n// FILE: bpf/tests/ipsec_from_overlay_generic.h\n\
+    #define ENCRYPT_KEY 3\n#define ENABLE_IPV4\n#define ENABLE_IPV6\n#define ENABLE_IPSEC\n\
+    #define TUNNEL_MODE\n#define ENCAP_IFINDEX 4\n#define DEST_IFINDEX 5\n#define\
+    \ DEST_LXC_ID 200\n\n#include \"common.h\"\n#include <bpf/ctx/skb.h>\n#include\
+    \ \"pktgen.h\"\n#define ROUTER_IP\n#define SECLABEL\n#define SECLABEL_IPV4\n#define\
+    \ SECLABEL_IPV6\n#undef ROUTER_IP\n#undef SECLABEL\n#undef SECLABEL_IPV4\n#undef\
+    \ SECLABEL_IPV6\n\n#define skb_change_type mock_skb_change_type\nint mock_skb_change_type(__maybe_unused\
+    \ struct __sk_buff *skb, __u32 type)\n{\n\tif (type != PACKET_HOST)\n\t\treturn\
+    \ -1;\n\treturn 0;\n}\n\n#define skb_get_tunnel_key mock_skb_get_tunnel_key\n\
+    int mock_skb_get_tunnel_key(__maybe_unused struct __sk_buff *skb,\n\t\t\t    struct\
+    \ bpf_tunnel_key *to,\n\n// FILE: bpf/tests/tc_egressgw_redirect_from_overlay.c\n\
+    // SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)\n/* Copyright Authors\
+    \ of Cilium */\n\n#include \"common.h\"\n\n#include <bpf/ctx/skb.h>\n#include\
+    \ \"pktgen.h\"\n#define SECLABEL\n#define SECLABEL_IPV4\n#define SECLABEL_IPV6\n\
+    #undef SECLABEL\n#undef SECLABEL_IPV4\n#undef SECLABEL_IPV6\n\n/* Enable code\
+    \ paths under test */\n#define ENABLE_IPV4\n#define ENABLE_NODEPORT\n#define ENABLE_EGRESS_GATEWAY\n\
+    #define ENABLE_MASQUERADE_IPV4\n#define ENCAP_IFINDEX\t42\n#define IFACE_IFINDEX\t\
+    44\n\n#define SECCTX_FROM_IPCACHE 1\n\n#define ctx_redirect mock_ctx_redirect\n\
+    \n// FILE: bpf/tests/tc_egressgw_redirect_from_overlay_with_egress_interface.c\n\
+    // SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)\n/* Copyright Authors\
+    \ of Cilium */\n\n#include \"common.h\"\n\n#include <bpf/ctx/skb.h>\n#include\
+    \ \"pktgen.h\"\n#define SECLABEL\n#define SECLABEL_IPV4\n#define SECLABEL_IPV6\n\
+    #undef SECLABEL\n#undef SECLABEL_IPV4\n#undef SECLABEL_IPV6\n\n/* Enable code\
+    \ paths under test */\n#define HAVE_FIB_NEIGH\t1\n\n#define ENABLE_IPV4\n#define\
+    \ ENABLE_NODEPORT\n#define ENABLE_EGRESS_GATEWAY\n#define ENABLE_MASQUERADE_IPV4\n\
+    #define ENCAP_IFINDEX\t42\n#define IFACE_IFINDEX\t44\n\n/* Provide the desired\
+    \ egress interface to the datapath */"
+  fixed_code: "// FILE: bpf/bpf_overlay.c\n// SPDX-License-Identifier: (GPL-2.0-only\
+    \ OR BSD-2-Clause)\n/* Copyright Authors of Cilium */\n\n#include <bpf/ctx/skb.h>\n\
+    #include <bpf/api.h>\n\n#include <node_config.h>\n#include <netdev_config.h>\n\
+    #include \"lib/mcast.h\"\n\n#define IS_BPF_OVERLAY 1\n\n/* WORLD_IPV{4,6}_ID varies\
+    \ based on dualstack being enabled. Real values are\n * written into node_config.h\
+    \ at runtime. */\n#define SECLABEL WORLD_ID\n#define SECLABEL_IPV4 WORLD_IPV4_ID\n\
+    #define SECLABEL_IPV6 WORLD_IPV6_ID\n\n/* Controls the inclusion of the CILIUM_CALL_HANDLE_ICMP6_NS\
+    \ section in the\n * bpf_lxc object file.\n */\n#define SKIP_ICMPV6_NS_HANDLING\n\
+    \n/* Controls the inclusion of the CILIUM_CALL_SRV6 section in the object file.\n\
+    \ */\n#define SKIP_SRV6_HANDLING\n\n#include \"lib/tailcall.h\"\n#include \"lib/common.h\"\
+    \n#include \"lib/edt.h\"\n\n// FILE: bpf/bpf_wireguard.c\n// SPDX-License-Identifier:\
+    \ (GPL-2.0-only OR BSD-2-Clause)\n/* Copyright Authors of Cilium */\n\n#define\
+    \ ETH_HLEN 0\n#define IS_BPF_WIREGUARD 1\n\n#include <bpf/ctx/skb.h>\n#include\
+    \ <bpf/api.h>\n\n#include <node_config.h>\n#include <netdev_config.h>\n\n/* WORLD_IPV{4,6}_ID\
+    \ varies based on dualstack being enabled. Real values are\n * written into node_config.h\
+    \ at runtime. */\n#define SECLABEL WORLD_ID\n#define SECLABEL_IPV4 WORLD_IPV4_ID\n\
+    #define SECLABEL_IPV6 WORLD_IPV6_ID\n\n#include \"lib/trace.h\"\n#include \"lib/drop.h\"\
+    \n#include \"lib/nodeport.h\"\n#include \"lib/nodeport_egress.h\"\n\n/* to-wireguard\
+    \ is attached as a tc egress filter to the cilium_wg0 device.\n */\n__section_entry\n\
+    int cil_to_wireguard(struct __ctx_buff *ctx)\n{\n\tint __maybe_unused ret;\n\t\
+    __s8 __maybe_unused ext_err = 0;\n\n// FILE: bpf/bpf_xdp.c\n// SPDX-License-Identifier:\
+    \ (GPL-2.0-only OR BSD-2-Clause)\n/* Copyright Authors of Cilium */\n\n#include\
+    \ <bpf/ctx/xdp.h>\n#include <bpf/api.h>\n\n#include <node_config.h>\n#include\
+    \ <netdev_config.h>\n#include <filter_config.h>\n\n#define IS_BPF_XDP 1\n\n/*\
+    \ WORLD_IPV{4,6}_ID varies based on dualstack being enabled. Real values are\n\
+    \ * written into node_config.h at runtime. */\n#define SECLABEL WORLD_ID\n#define\
+    \ SECLABEL_IPV4 WORLD_IPV4_ID\n#define SECLABEL_IPV6 WORLD_IPV6_ID\n\n#define\
+    \ SKIP_POLICY_MAP 1\n\n/* Controls the inclusion of the CILIUM_CALL_HANDLE_ICMP6_NS\
+    \ section in the\n * bpf_lxc object file.\n */\n#define SKIP_ICMPV6_NS_HANDLING\n\
+    \n/* Controls the inclusion of the CILIUM_CALL_SEND_ICMP6_TIME_EXCEEDED section\n\
+    \ * in the bpf_lxc object file. This is needed for all callers of\n * ipv6_local_delivery,\
+    \ which calls into the IPv6 L3 handling.\n */\n#define SKIP_ICMPV6_HOPLIMIT_HANDLING\n\
+    \n// FILE: bpf/ep_config.h\n// CONTEXT: DEFINE_IPV6(LXC_IP, 0xbe, 0xef, 0, 0,\
+    \ 0, 0, 0, 0x1, 0, 0, 0, 0x1, 0x01, 0x65, 0x\n\n#ifndef LXC_IPV4\nDEFINE_U32(LXC_IPV4,\
+    \ 0x10203040);\n#define LXC_IPV4 fetch_u32(LXC_IPV4)\n#endif /* LXC_IPV4 */\n\n\
+    /*\n * Both the LXC_ID and the HOST_EP_ID are defined here to ease compile testing,\n\
+    \ * but in the actual header files, only one of them will be present.\n */\nDEFINE_U16(LXC_ID,\
+    \ 0x2A);\n#define LXC_ID fetch_u16(LXC_ID)\n\n/* Security identity of endpoint\
+    \ programs are identical across v4/v6. */\nDEFINE_U32(SECLABEL, 0xfffff);\n#define\
+    \ SECLABEL fetch_u32(SECLABEL)\n#define SECLABEL_IPV4 SECLABEL\n#define SECLABEL_IPV6\
+    \ SECLABEL\n\nDEFINE_U32(POLICY_VERDICT_LOG_FILTER, 0xffff);\n#define POLICY_VERDICT_LOG_FILTER\
+    \ fetch_u32(POLICY_VERDICT_LOG_FILTER)\n\n#ifndef ENDPOINT_NETNS_COOKIE\nDEFINE_U64(ENDPOINT_NETNS_COOKIE,\
+    \ 0xFFFFFFFFFFFFFFFF);\n#define ENDPOINT_NETNS_COOKIE fetch_u64(ENDPOINT_NETNS_COOKIE)\n\
+    #endif /*ENDPOINT_NETNS_COOKIE*/\n\n#define HOST_EP_ID 0x1092\n\n#define POLICY_MAP\
+    \ test_cilium_policy_v2_65535\n\n// FILE: bpf/netdev_config.h\n/* SPDX-License-Identifier:\
+    \ (GPL-2.0-only OR BSD-2-Clause) */\n/* Copyright Authors of Cilium */\n\n/*\n\
+    \ * This is just a dummy header with dummy values to allow for test\n * compilation\
+    \ without the full code generation engine backend.\n */\n#define DROP_NOTIFY\n\
+    #ifndef SKIP_DEBUG\n#define DEBUG\n#endif\n\n#define CALLS_MAP test_cilium_calls_65535\n\
+    \n// FILE: bpf/tests/ipsec_from_network_generic.h\n#define ENCRYPT_KEY 3\n#define\
+    \ ENABLE_IPV4\n#define ENABLE_IPV6\n#define ENABLE_IPSEC\n#define TUNNEL_MODE\n\
+    #define ENCAP_IFINDEX 4\n#define DEST_IFINDEX 5\n#define DEST_LXC_ID 200\n\n#include\
+    \ \"common.h\"\n#include <bpf/ctx/skb.h>\n#include \"pktgen.h\"\n\n#define ctx_redirect\
+    \ mock_ctx_redirect\nint mock_ctx_redirect(const struct __sk_buff *ctx __maybe_unused,\
+    \ int ifindex, __u32 flags)\n{\n\tif (ifindex != 1)\n\t\treturn -1;\n\tif (flags\
+    \ != 0)\n\t\treturn -2;\n\treturn CTX_ACT_REDIRECT;\n}\n\n#define skb_change_type\
+    \ mock_skb_change_type\n\n// FILE: bpf/tests/ipsec_from_overlay_generic.h\n#define\
+    \ ENCRYPT_KEY 3\n#define ENABLE_IPV4\n#define ENABLE_IPV6\n#define ENABLE_IPSEC\n\
+    #define TUNNEL_MODE\n#define ENCAP_IFINDEX 4\n#define DEST_IFINDEX 5\n#define\
+    \ DEST_LXC_ID 200\n\n#include \"common.h\"\n#include <bpf/ctx/skb.h>\n#include\
+    \ \"pktgen.h\"\n\n#define skb_change_type mock_skb_change_type\nint mock_skb_change_type(__maybe_unused\
+    \ struct __sk_buff *skb, __u32 type)\n{\n\tif (type != PACKET_HOST)\n\t\treturn\
+    \ -1;\n\treturn 0;\n}\n\n#define skb_get_tunnel_key mock_skb_get_tunnel_key\n\
+    int mock_skb_get_tunnel_key(__maybe_unused struct __sk_buff *skb,\n\t\t\t    struct\
+    \ bpf_tunnel_key *to,\n\n// FILE: bpf/tests/tc_egressgw_redirect_from_overlay.c\n\
+    // SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)\n/* Copyright Authors\
+    \ of Cilium */\n\n#include \"common.h\"\n\n#include <bpf/ctx/skb.h>\n#include\
+    \ \"pktgen.h\"\n\n/* Enable code paths under test */\n#define ENABLE_IPV4\n#define\
+    \ ENABLE_NODEPORT\n#define ENABLE_EGRESS_GATEWAY\n#define ENABLE_MASQUERADE_IPV4\n\
+    #define ENCAP_IFINDEX\t42\n#define IFACE_IFINDEX\t44\n\n#define SECCTX_FROM_IPCACHE\
+    \ 1\n\n#define ctx_redirect mock_ctx_redirect\n\n// FILE: bpf/tests/tc_egressgw_redirect_from_overlay_with_egress_interface.c\n\
+    // SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)\n/* Copyright Authors\
+    \ of Cilium */\n\n#include \"common.h\"\n\n#include <bpf/ctx/skb.h>\n#include\
+    \ \"pktgen.h\"\n\n/* Enable code paths under test */\n#define HAVE_FIB_NEIGH\t\
+    1\n\n#define ENABLE_IPV4\n#define ENABLE_NODEPORT\n#define ENABLE_EGRESS_GATEWAY\n\
+    #define ENABLE_MASQUERADE_IPV4\n#define ENCAP_IFINDEX\t42\n#define IFACE_IFINDEX\t\
+    44\n\n/* Provide the desired egress interface to the datapath */"
+  diff_summary: |-
+    bpf/bpf_overlay.c:
+    - Adjusted types or casts so the verifier sees the intended pointer or value kind.
+    - Affected context: the touched section.
+    bpf/bpf_wireguard.c:
+    - Adjusted types or casts so the verifier sees the intended pointer or value kind.
+    - Affected context: the touched section.
+    bpf/bpf_xdp.c:
+    - Adjusted types or casts so the verifier sees the intended pointer or value kind.
+    - Affected context: the touched section.
+    bpf/ep_config.h:
+    - Adjusted types or casts so the verifier sees the intended pointer or value kind.
+    - Affected context: DEFINE_IPV6(LXC_IP, 0xbe, 0xef, 0, 0, 0, 0, 0, 0x1, 0, 0, 0, 0x1, 0x01, 0x65, 0x.
+    bpf/netdev_config.h:
+    - Adjusted types or casts so the verifier sees the intended pointer or value kind.
+    - Affected context: the touched section.
+    bpf/tests/ipsec_from_network_generic.h:
+    - Adjusted types or casts so the verifier sees the intended pointer or value kind.
+    - Affected context: the touched section.
+    bpf/tests/ipsec_from_overlay_generic.h:
+    - Adjusted types or casts so the verifier sees the intended pointer or value kind.
+    - Affected context: the touched section.
+    bpf/tests/tc_egressgw_redirect_from_overlay.c:
+    - Adjusted types or casts so the verifier sees the intended pointer or value kind.
+    - Affected context: the touched section.
+    bpf/tests/tc_egressgw_redirect_from_overlay_with_egress_interface.c:
+    - Adjusted types or casts so the verifier sees the intended pointer or value kind.
+    - Affected context: the touched section.
+    - Commit subject: bpf,loader: reduce complexity of SECLABEL_IPV{4,6} plumbing.

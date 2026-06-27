@@ -1,0 +1,125 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-5b05cc92dd66
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/5b05cc92dd664f918f0712247b0f4d3a48850393
+  title: 'bpf: Split handle_lxc_traffic with tail calls'
+  repository: https://github.com/cilium/cilium
+  commit: 5b05cc92dd664f918f0712247b0f4d3a48850393
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-5b05cc92dd66.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: environment_required
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Splits host-firewall LXC traffic handling into tail calls to reduce full-program
+    complexity. Faithful replay depends on Cilium feature flags, generated tail-call
+    maps, and historical verifier limits.
+raw:
+  case_id: github-commit-cilium-5b05cc92dd66
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: 5b05cc92dd664f918f0712247b0f4d3a48850393
+  commit_message: 'bpf: Split handle_lxc_traffic with tail calls'
+  commit_date: '2021-03-04'
+  fix_type: inline_hint
+  buggy_code: "// FILE: bpf/bpf_host.c\n// CONTEXT: int to_host(struct __ctx_buff\
+    \ *ctx)\n\tret = CTX_ACT_OK;\n#endif /* ENABLE_HOST_FIREWALL */\n\nout:\n\tif\
+    \ (IS_ERR(ret))\n\t\treturn send_drop_notify_error(ctx, srcID, ret, CTX_ACT_DROP,\n\
+    \t\t\t\t\t      METRIC_INGRESS);\n\n\treturn ret;\n}\n\n#if defined(ENABLE_HOST_FIREWALL)\
+    \ && !defined(ENABLE_ROUTING)\nstatic __always_inline int\n/* Handles packet from\
+    \ a local endpoint entering the host namespace. Applies\n * ingress host policies.\n\
+    \ */\nto_host_from_lxc(struct __ctx_buff *ctx __maybe_unused)\n{\n\tint ret =\
+    \ CTX_ACT_OK;\n\t__u32 src_id = 0;\n\t__u16 proto = 0;\n\n\tif (!validate_ethertype(ctx,\
+    \ &proto)) {\n\t\tret = DROP_UNSUPPORTED_L2;\n\t\tgoto out;\n\t}\n\n\tswitch (proto)\
+    \ {\n# if defined ENABLE_ARP_PASSTHROUGH || defined ENABLE_ARP_RESPONDER\n\tcase\
+    \ bpf_htons(ETH_P_ARP):\n\t\tret = CTX_ACT_OK;\n\t\tbreak;\n# endif\n# ifdef ENABLE_IPV6\n\
+    \tcase bpf_htons(ETH_P_IPV6):\n\t\tret = ipv6_host_policy_ingress(ctx, &src_id);\n\
+    \t\tbreak;\n# endif\n# ifdef ENABLE_IPV4\n\tcase bpf_htons(ETH_P_IP):\n\t\tret\
+    \ = ipv4_host_policy_ingress(ctx, &src_id);\n\t\tbreak;\n# endif\n\tdefault:\n\
+    \t\tret = DROP_UNKNOWN_L3;\n\t\tbreak;\n\t}\n\nout:\n\tif (IS_ERR(ret))\n\t\t\
+    return send_drop_notify_error(ctx, src_id, ret, CTX_ACT_DROP,\n\t\t\t\t\t    \
+    \  METRIC_INGRESS);\n\treturn ret;\n}\n\n/* Handles packets that left the host\
+    \ namespace and will enter a local\n * endpoint's namespace. Applies egress host\
+    \ policies before handling\n * control back to bpf_lxc.\n */\nstatic __always_inline\
+    \ int\nfrom_host_to_lxc(struct __ctx_buff *ctx)\n{\n\tint ret = CTX_ACT_OK;\n\n\
+    // FILE: bpf/lib/common.h\n */\n#define CILIUM_CALL_DROP_NOTIFY\t\t\t1\n#define\
+    \ CILIUM_CALL_ERROR_NOTIFY\t\t2\n#define CILIUM_CALL_SEND_ICMP6_ECHO_REPLY\t3\n\
+    #define CILIUM_CALL_HANDLE_ICMP6_NS\t\t4\n#define CILIUM_CALL_SEND_ICMP6_TIME_EXCEEDED\t\
+    5\n#define CILIUM_CALL_ARP\t\t\t\t6\n#define CILIUM_CALL_IPV4_FROM_LXC\t\t7\n\
+    #define CILIUM_CALL_NAT64\t\t\t8\n#define CILIUM_CALL_NAT46\t\t\t9\n#define CILIUM_CALL_IPV6_FROM_LXC\t\
+    \t10\n#define CILIUM_CALL_IPV4_TO_LXC_POLICY_ONLY\t11\n#define CILIUM_CALL_IPV6_TO_LXC_POLICY_ONLY\t\
+    12\n#define CILIUM_CALL_IPV4_TO_ENDPOINT\t\t13\n#define CILIUM_CALL_IPV6_TO_ENDPOINT\t\
+    \t14\n#define CILIUM_CALL_IPV4_NODEPORT_NAT\t\t15\n#define CILIUM_CALL_IPV6_NODEPORT_NAT\t\
+    \t16\n#define CILIUM_CALL_IPV4_NODEPORT_REVNAT\t17\n#define CILIUM_CALL_IPV6_NODEPORT_REVNAT\t\
+    18\n#define CILIUM_CALL_IPV4_ENCAP_NODEPORT_NAT\t19\n#define CILIUM_CALL_IPV4_NODEPORT_DSR\t\
+    \t20\n#define CILIUM_CALL_IPV6_NODEPORT_DSR\t\t21\n#define CILIUM_CALL_IPV4_FROM_HOST\t\
+    \t22\n#define CILIUM_CALL_IPV6_FROM_HOST\t\t23\n#define CILIUM_CALL_IPV6_ENCAP_NODEPORT_NAT\t\
+    24"
+  fixed_code: "// FILE: bpf/bpf_host.c\n// CONTEXT: int to_host(struct __ctx_buff\
+    \ *ctx)\n\tret = CTX_ACT_OK;\n#endif /* ENABLE_HOST_FIREWALL */\n\nout:\n\tif\
+    \ (IS_ERR(ret))\n\t\treturn send_drop_notify_error(ctx, srcID, ret, CTX_ACT_DROP,\n\
+    \t\t\t\t\t      METRIC_INGRESS);\n\n\treturn ret;\n}\n\n#if defined(ENABLE_HOST_FIREWALL)\
+    \ && !defined(ENABLE_ROUTING)\n#ifdef ENABLE_IPV6\ndeclare_tailcall_if(__or(__and(is_defined(ENABLE_IPV4),\
+    \ is_defined(ENABLE_IPV6)),\n\t\t\t is_defined(DEBUG)), CILIUM_CALL_IPV6_TO_HOST_POLICY_ONLY)\n\
+    int tail_ipv6_host_policy_ingress(struct __ctx_buff *ctx)\n{\n\t__u32 srcID =\
+    \ 0;\n\tint ret;\n\n\tret = ipv6_host_policy_ingress(ctx, &srcID);\n\tif (IS_ERR(ret))\n\
+    \t\treturn send_drop_notify_error(ctx, srcID, ret, CTX_ACT_DROP,\n\t\t\t\t\t \
+    \     METRIC_INGRESS);\n\treturn ret;\n}\n#endif /* ENABLE_IPV6 */\n\n#ifdef ENABLE_IPV4\n\
+    declare_tailcall_if(__or(__and(is_defined(ENABLE_IPV4), is_defined(ENABLE_IPV6)),\n\
+    \t\t\t is_defined(DEBUG)), CILIUM_CALL_IPV4_TO_HOST_POLICY_ONLY)\nint tail_ipv4_host_policy_ingress(struct\
+    \ __ctx_buff *ctx)\n{\n\t__u32 srcID = 0;\n\tint ret;\n\n\tret = ipv4_host_policy_ingress(ctx,\
+    \ &srcID);\n\tif (IS_ERR(ret))\n\t\treturn send_drop_notify_error(ctx, srcID,\
+    \ ret, CTX_ACT_DROP,\n\t\t\t\t\t      METRIC_INGRESS);\n\treturn ret;\n}\n#endif\
+    \ /* ENABLE_IPV4 */\n\nstatic __always_inline int\n/* Handles packet from a local\
+    \ endpoint entering the host namespace. Applies\n * ingress host policies.\n */\n\
+    to_host_from_lxc(struct __ctx_buff *ctx __maybe_unused)\n{\n\tint ret = CTX_ACT_OK;\n\
+    \t__u16 proto = 0;\n\n\tif (!validate_ethertype(ctx, &proto)) {\n\t\tret = DROP_UNSUPPORTED_L2;\n\
+    \t\tgoto out;\n\t}\n\n\tswitch (proto) {\n# if defined ENABLE_ARP_PASSTHROUGH\
+    \ || defined ENABLE_ARP_RESPONDER\n\tcase bpf_htons(ETH_P_ARP):\n\t\tret = CTX_ACT_OK;\n\
+    \t\tbreak;\n# endif\n# ifdef ENABLE_IPV6\n\tcase bpf_htons(ETH_P_IPV6):\n\t\t\
+    invoke_tailcall_if(__or(__and(is_defined(ENABLE_IPV4),\n\t\t\t\t\t      is_defined(ENABLE_IPV6)),\n\
+    \t\t\t\t\tis_defined(DEBUG)),\n\t\t\t\t   CILIUM_CALL_IPV6_TO_HOST_POLICY_ONLY,\n\
+    \t\t\t\t   tail_ipv6_host_policy_ingress);\n\t\tbreak;\n# endif\n# ifdef ENABLE_IPV4\n\
+    \tcase bpf_htons(ETH_P_IP):\n\t\tinvoke_tailcall_if(__or(__and(is_defined(ENABLE_IPV4),\n\
+    \t\t\t\t\t      is_defined(ENABLE_IPV6)),\n\t\t\t\t\tis_defined(DEBUG)),\n\t\t\
+    \t\t   CILIUM_CALL_IPV6_TO_HOST_POLICY_ONLY,\n\t\t\t\t   tail_ipv4_host_policy_ingress);\n\
+    \t\tbreak;\n# endif\n\tdefault:\n\t\tret = DROP_UNKNOWN_L3;\n\t\tbreak;\n\t}\n\
+    \nout:\n\tif (IS_ERR(ret))\n\t\treturn send_drop_notify_error(ctx, 0, ret, CTX_ACT_DROP,\n\
+    \t\t\t\t\t      METRIC_INGRESS);\n\treturn ret;\n}\n\n/* Handles packets that\
+    \ left the host namespace and will enter a local\n * endpoint's namespace. Applies\
+    \ egress host policies before handling\n * control back to bpf_lxc.\n */\nstatic\
+    \ __always_inline int\nfrom_host_to_lxc(struct __ctx_buff *ctx)\n{\n\tint ret\
+    \ = CTX_ACT_OK;\n\n// FILE: bpf/lib/common.h\n */\n#define CILIUM_CALL_DROP_NOTIFY\t\
+    \t\t1\n#define CILIUM_CALL_ERROR_NOTIFY\t\t2\n#define CILIUM_CALL_SEND_ICMP6_ECHO_REPLY\t\
+    3\n#define CILIUM_CALL_HANDLE_ICMP6_NS\t\t4\n#define CILIUM_CALL_SEND_ICMP6_TIME_EXCEEDED\t\
+    5\n#define CILIUM_CALL_ARP\t\t\t\t6\n#define CILIUM_CALL_IPV4_FROM_LXC\t\t7\n\
+    #define CILIUM_CALL_NAT64\t\t\t8\n#define CILIUM_CALL_NAT46\t\t\t9\n#define CILIUM_CALL_IPV6_FROM_LXC\t\
+    \t10\n#define CILIUM_CALL_IPV4_TO_LXC_POLICY_ONLY\t11\n#define CILIUM_CALL_IPV4_TO_HOST_POLICY_ONLY\t\
+    CILIUM_CALL_IPV4_TO_LXC_POLICY_ONLY\n#define CILIUM_CALL_IPV6_TO_LXC_POLICY_ONLY\t\
+    12\n#define CILIUM_CALL_IPV6_TO_HOST_POLICY_ONLY\tCILIUM_CALL_IPV6_TO_LXC_POLICY_ONLY\n\
+    #define CILIUM_CALL_IPV4_TO_ENDPOINT\t\t13\n#define CILIUM_CALL_IPV6_TO_ENDPOINT\t\
+    \t14\n#define CILIUM_CALL_IPV4_NODEPORT_NAT\t\t15\n#define CILIUM_CALL_IPV6_NODEPORT_NAT\t\
+    \t16\n#define CILIUM_CALL_IPV4_NODEPORT_REVNAT\t17\n#define CILIUM_CALL_IPV6_NODEPORT_REVNAT\t\
+    18\n#define CILIUM_CALL_IPV4_ENCAP_NODEPORT_NAT\t19\n#define CILIUM_CALL_IPV4_NODEPORT_DSR\t\
+    \t20\n#define CILIUM_CALL_IPV6_NODEPORT_DSR\t\t21\n#define CILIUM_CALL_IPV4_FROM_HOST\t\
+    \t22\n#define CILIUM_CALL_IPV6_FROM_HOST\t\t23\n#define CILIUM_CALL_IPV6_ENCAP_NODEPORT_NAT\t\
+    24"
+  diff_summary: |-
+    bpf/bpf_host.c:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: int to_host(struct __ctx_buff *ctx).
+    bpf/lib/common.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: the touched section.
+    - Commit subject: bpf: Split handle_lxc_traffic with tail calls.

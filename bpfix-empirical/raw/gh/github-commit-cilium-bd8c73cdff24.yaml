@@ -1,0 +1,217 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-bd8c73cdff24
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/bd8c73cdff24874c3fb972ee3c0994436a0dc58a
+  title: 'bpf: Remove all of relax_verifier()'
+  repository: https://github.com/cilium/cilium
+  commit: bd8c73cdff24874c3fb972ee3c0994436a0dc58a
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-bd8c73cdff24.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: environment_required
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Raw has_verifier_log=false. The commit removes historical relax_verifier()
+    calls from host/LXC paths after complexity changes; reproducing the old 4.9-era
+    complexity behavior requires the full generated datapath.
+raw:
+  case_id: github-commit-cilium-bd8c73cdff24
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: bd8c73cdff24874c3fb972ee3c0994436a0dc58a
+  commit_message: 'bpf: Remove all of relax_verifier()'
+  commit_date: '2020-06-09'
+  fix_type: inline_hint
+  buggy_code: "// FILE: bpf/bpf_host.c\n// CONTEXT: handle_ipv6(struct __ctx_buff\
+    \ *ctx, __u32 secctx, bool from_host)\n\t\tif (IS_ERR(ret))\n\t\t\treturn ret;\n\
+    \n\t\tif (!revalidate_data(ctx, &data, &data_end, &ip6))\n\t\t\treturn DROP_INVALID;\n\
+    \t}\n\n#ifdef ENABLE_HOST_FIREWALL\n\tif (from_host)\n\t\tret = ipv6_host_policy_egress(ctx,\
+    \ secctx);\n\telse\n\t\tret = ipv6_host_policy_ingress(ctx, &remoteID);\n\n\t\
+    /* Needed to pass 128k complexity limit. Measured on 4.9 verifier:\n\t * 173251\
+    \ insns before, 148991 after. */\n\trelax_verifier();\n\tif (IS_ERR(ret))\n\t\t\
+    return ret;\n\tif (skip_redirect)\n\t\treturn CTX_ACT_OK;\n\n\tif (!revalidate_data(ctx,\
+    \ &data, &data_end, &ip6))\n\t\treturn DROP_INVALID;\n#endif /* ENABLE_HOST_FIREWALL\
+    \ */\n\n\t/* Lookup IPv4 address in list of local endpoints */\n\tif ((ep = lookup_ip6_endpoint(ip6))\
+    \ != NULL) {\n\t\t/* Let through packets to the node-ip so they are\n\t\t * processed\
+    \ by the local ip stack */\n\t\tif (ep->flags & ENDPOINT_F_HOST)\n\t\t\treturn\
+    \ CTX_ACT_OK;\n\n\t\treturn ipv6_local_delivery(ctx, l3_off, secctx, ep,\n\n//\
+    \ CONTEXT: handle_ipv6(struct __ctx_buff *ctx, __u32 secctx, bool from_host)\n\
+    \treturn CTX_ACT_OK;\n}\n\nstatic __always_inline int\ntail_handle_ipv6(struct\
+    \ __ctx_buff *ctx, bool from_host)\n{\n\t__u32 proxy_identity = ctx_load_meta(ctx,\
+    \ CB_SRC_IDENTITY);\n\tint ret;\n\n\tctx_store_meta(ctx, CB_SRC_IDENTITY, 0);\n\
+    \n\tret = handle_ipv6(ctx, proxy_identity, from_host);\n\tif (IS_ERR(ret)) {\n\
+    \t\trelax_verifier();\n\t\treturn send_drop_notify_error(ctx, proxy_identity,\
+    \ ret,\n\t\t\t\t\t      CTX_ACT_DROP, METRIC_INGRESS);\n\t}\n\treturn ret;\n}\n\
+    \n__section_tail(CILIUM_MAP_CALLS, CILIUM_CALL_IPV6_FROM_HOST)\nint tail_handle_ipv6_from_host(struct\
+    \ __ctx_buff *ctx __maybe_unused)\n{\n\treturn tail_handle_ipv6(ctx, true);\n\
+    }\n\n__section_tail(CILIUM_MAP_CALLS, CILIUM_CALL_IPV6_FROM_LXC)\nint tail_handle_ipv6_from_netdev(struct\
+    \ __ctx_buff *ctx)\n{\n\n// CONTEXT: handle_ipv4(struct __ctx_buff *ctx, __u32\
+    \ secctx, bool from_host)\n#endif\n}\n\nstatic __always_inline int\ntail_handle_ipv4(struct\
+    \ __ctx_buff *ctx, bool from_host)\n{\n\t__u32 proxy_identity = ctx_load_meta(ctx,\
+    \ CB_SRC_IDENTITY);\n\tint ret;\n\n\tctx_store_meta(ctx, CB_SRC_IDENTITY, 0);\n\
+    \n\tret = handle_ipv4(ctx, proxy_identity, from_host);\n\tif (IS_ERR(ret)) {\n\
+    \t\trelax_verifier();\n\t\treturn send_drop_notify_error(ctx, proxy_identity,\n\
+    \t\t\t\t\t      ret, CTX_ACT_DROP, METRIC_INGRESS);\n\t}\n\treturn ret;\n}\n\n\
+    __section_tail(CILIUM_MAP_CALLS, CILIUM_CALL_IPV4_FROM_HOST)\nint tail_handle_ipv4_from_host(struct\
+    \ __ctx_buff *ctx)\n{\n\treturn tail_handle_ipv4(ctx, true);\n}\n\n__section_tail(CILIUM_MAP_CALLS,\
+    \ CILIUM_CALL_IPV4_FROM_LXC)\nint tail_handle_ipv4_from_netdev(struct __ctx_buff\
+    \ *ctx)\n{\n\n// FILE: bpf/bpf_lxc.c\n// CONTEXT: static __always_inline int handle_ipv6(struct\
+    \ __ctx_buff *ctx, __u32 *dstID)\n\ttuple.nexthdr = ip6->nexthdr;\n\treturn ipv6_l3_from_lxc(ctx,\
+    \ &tuple, ETH_HLEN, ip6, dstID);\n}\n\ndeclare_tailcall_if(__or(__and(is_defined(ENABLE_IPV4),\
+    \ is_defined(ENABLE_IPV6)),\n\t\t\t is_defined(DEBUG)), CILIUM_CALL_IPV6_FROM_LXC)\n\
+    int tail_handle_ipv6(struct __ctx_buff *ctx)\n{\n\t__u32 dstID = 0;\n\tint ret\
+    \ = handle_ipv6(ctx, &dstID);\n\n\tif (IS_ERR(ret)) {\n\t\trelax_verifier();\n\
+    \t\treturn send_drop_notify(ctx, SECLABEL, dstID, 0, ret, CTX_ACT_DROP,\n\t\t\
+    \                        METRIC_EGRESS);\n\t}\n\n\treturn ret;\n}\n#endif /* ENABLE_IPV6\
+    \ */\n\n#ifdef ENABLE_IPV4\nstatic __always_inline int handle_ipv4_from_lxc(struct\
+    \ __ctx_buff *ctx,\n\t\t\t\t\t\t__u32 *dstID)\n{\n\n// CONTEXT: ct_recreate4:\n\
+    # ifdef ENABLE_DSR\n\t\tif (ct_state.dsr) {\n\t\t\tret = xlate_dsr_v4(ctx, &tuple,\
+    \ l4_off);\n\t\t\tif (ret != 0)\n\t\t\t\treturn ret;\n\t\t}\n# endif /* ENABLE_DSR\
+    \ */\n#endif /* ENABLE_NODEPORT */\n\n\t\tif (ct_state.rev_nat_index) {\n\t\t\t\
+    ret = lb4_rev_nat(ctx, l3_off, l4_off, &csum_off,\n\t\t\t\t\t  &ct_state, &tuple,\
+    \ 0);\n\t\t\tif (IS_ERR(ret)) {\n\t\t\t\trelax_verifier();\n\t\t\t\treturn ret;\n\
+    \t\t\t}\n\t\t}\n\t\tbreak;\n\n\tdefault:\n\t\treturn DROP_UNKNOWN_CT;\n\t}\n\n\
+    \thairpin_flow |= ct_state.loopback;\n\n\tif (redirect_to_proxy(verdict, reason))\
+    \ {\n\t\t// Trace the packet before its forwarded to proxy\n\t\tsend_trace_notify(ctx,\
+    \ TRACE_TO_PROXY, SECLABEL, 0,\n\n// FILE: bpf/include/bpf/api.h\n#ifndef __BPF_API__\n\
+    #define __BPF_API__\n\n#include <linux/types.h>\n#include <linux/byteorder.h>\n\
+    #include <linux/bpf.h>\n#include <linux/if_packet.h>\n\n#include \"compiler.h\"\
+    \n#include \"section.h\"\n#include \"helpers.h\"\n#include \"builtins.h\"\n#include\
+    \ \"verifier.h\"\n#include \"tailcall.h\"\n#include \"errno.h\"\n#include \"loader.h\"\
+    \n#include \"csum.h\"\n\n#endif /* __BPF_API__ */\n\n// FILE: bpf/lib/conntrack.h\n\
+    // CONTEXT: enum {\n\n/* conn_is_dns returns true if the connection is DNS, false\
+    \ otherwise.\n *\n * @dport: Connection destination port.\n *\n * To reduce program\
+    \ complexity, we ignore nexthdr and dir here:\n * nexthdr: The parser will not\
+    \ fill dport if nexthdr is not TCP/UDP.\n * dir:     Ideally we would only consider\
+    \ responses, but requests are likely\n *          to be small anyway.\n * */\n\
+    static __always_inline bool conn_is_dns(__u16 dport)\n{\n\tif (dport == bpf_htons(53))\
+    \ {\n\t\trelax_verifier();\n\t\treturn true;\n\t}\n\treturn false;\n}\n\nunion\
+    \ tcp_flags {\n\tstruct {\n\t\t__u8 upper_bits;\n\t\t__u8 lower_bits;\n\t\t__u16\
+    \ pad;\n\t};\n\t__u32 value;\n};\n\n/**\n\n// CONTEXT: static __always_inline\
+    \ int ct_lookup6(const void *map,\n\t\tbreak;\n\n\tcase IPPROTO_UDP:\n\t\t/* load\
+    \ sport + dport into tuple */\n\t\tif (ctx_load_bytes(ctx, l4_off, &tuple->dport,\
+    \ 4) < 0)\n\t\t\treturn DROP_CT_INVALID_HDR;\n\n\t\taction = ACTION_CREATE;\n\t\
+    \tbreak;\n\n\tdefault:\n\t\t/* Can't handle extension headers yet */\n\t\trelax_verifier();\n\
+    \t\treturn DROP_CT_UNKNOWN_PROTO;\n\t}\n\n\t/* Lookup the reverse direction\n\t\
+    \ *\n\t * This will find an existing flow in the reverse direction.\n\t * The\
+    \ reverse direction is the one where reverse nat index is stored.\n\t */\n\tcilium_dbg3(ctx,\
+    \ DBG_CT_LOOKUP6_1, (__u32) tuple->saddr.p4, (__u32) tuple->daddr.p4,\n\t\t  \
+    \    (bpf_ntohs(tuple->sport) << 16) | bpf_ntohs(tuple->dport));\n\tcilium_dbg3(ctx,\
+    \ DBG_CT_LOOKUP6_2, (tuple->nexthdr << 8) | tuple->flags, 0, 0);\n\tret = __ct_lookup(map,\
+    \ ctx, tuple, action, dir, ct_state, is_tcp,\n\n// CONTEXT: static __always_inline\
+    \ int ct_lookup4(const void *map,\n\t\t\treturn DROP_CT_INVALID_HDR;\n\t\tbreak;\n\
+    \n\tcase IPPROTO_UDP:\n\t\tif (ipv4_ct_extract_l4_ports(ctx, off, tuple) < 0)\n\
+    \t\t\treturn DROP_CT_INVALID_HDR;\n\n\t\taction = ACTION_CREATE;\n\t\tbreak;\n\
+    \n\tdefault:\n\t\t/* Can't handle extension headers yet */\n\t\trelax_verifier();\n\
+    \t\treturn DROP_CT_UNKNOWN_PROTO;\n\t}\n\n\t/* Lookup the reverse direction\n\t\
+    \ *\n\t * This will find an existing flow in the reverse direction.\n\t */\n#ifndef\
+    \ QUIET_CT\n\tcilium_dbg3(ctx, DBG_CT_LOOKUP4_1, tuple->saddr, tuple->daddr,\n\
+    \t\t      (bpf_ntohs(tuple->sport) << 16) | bpf_ntohs(tuple->dport));\n\tcilium_dbg3(ctx,\
+    \ DBG_CT_LOOKUP4_2, (tuple->nexthdr << 8) | tuple->flags, 0, 0);\n#endif"
+  fixed_code: "// FILE: bpf/bpf_host.c\n// CONTEXT: handle_ipv6(struct __ctx_buff\
+    \ *ctx, __u32 secctx, bool from_host)\n\t\tif (IS_ERR(ret))\n\t\t\treturn ret;\n\
+    \n\t\tif (!revalidate_data(ctx, &data, &data_end, &ip6))\n\t\t\treturn DROP_INVALID;\n\
+    \t}\n\n#ifdef ENABLE_HOST_FIREWALL\n\tif (from_host)\n\t\tret = ipv6_host_policy_egress(ctx,\
+    \ secctx);\n\telse\n\t\tret = ipv6_host_policy_ingress(ctx, &remoteID);\n\tif\
+    \ (IS_ERR(ret))\n\t\treturn ret;\n\tif (skip_redirect)\n\t\treturn CTX_ACT_OK;\n\
+    \tif (!revalidate_data(ctx, &data, &data_end, &ip6))\n\t\treturn DROP_INVALID;\n\
+    #endif /* ENABLE_HOST_FIREWALL */\n\n\t/* Lookup IPv4 address in list of local\
+    \ endpoints */\n\tif ((ep = lookup_ip6_endpoint(ip6)) != NULL) {\n\t\t/* Let through\
+    \ packets to the node-ip so they are\n\t\t * processed by the local ip stack */\n\
+    \t\tif (ep->flags & ENDPOINT_F_HOST)\n\t\t\treturn CTX_ACT_OK;\n\n\t\treturn ipv6_local_delivery(ctx,\
+    \ l3_off, secctx, ep,\n\n// CONTEXT: handle_ipv6(struct __ctx_buff *ctx, __u32\
+    \ secctx, bool from_host)\n\treturn CTX_ACT_OK;\n}\n\nstatic __always_inline int\n\
+    tail_handle_ipv6(struct __ctx_buff *ctx, bool from_host)\n{\n\t__u32 proxy_identity\
+    \ = ctx_load_meta(ctx, CB_SRC_IDENTITY);\n\tint ret;\n\n\tctx_store_meta(ctx,\
+    \ CB_SRC_IDENTITY, 0);\n\n\tret = handle_ipv6(ctx, proxy_identity, from_host);\n\
+    \tif (IS_ERR(ret))\n\t\treturn send_drop_notify_error(ctx, proxy_identity, ret,\n\
+    \t\t\t\t\t      CTX_ACT_DROP, METRIC_INGRESS);\n\treturn ret;\n}\n\n__section_tail(CILIUM_MAP_CALLS,\
+    \ CILIUM_CALL_IPV6_FROM_HOST)\nint tail_handle_ipv6_from_host(struct __ctx_buff\
+    \ *ctx __maybe_unused)\n{\n\treturn tail_handle_ipv6(ctx, true);\n}\n\n__section_tail(CILIUM_MAP_CALLS,\
+    \ CILIUM_CALL_IPV6_FROM_LXC)\nint tail_handle_ipv6_from_netdev(struct __ctx_buff\
+    \ *ctx)\n{\n\n// CONTEXT: handle_ipv4(struct __ctx_buff *ctx, __u32 secctx, bool\
+    \ from_host)\n#endif\n}\n\nstatic __always_inline int\ntail_handle_ipv4(struct\
+    \ __ctx_buff *ctx, bool from_host)\n{\n\t__u32 proxy_identity = ctx_load_meta(ctx,\
+    \ CB_SRC_IDENTITY);\n\tint ret;\n\n\tctx_store_meta(ctx, CB_SRC_IDENTITY, 0);\n\
+    \n\tret = handle_ipv4(ctx, proxy_identity, from_host);\n\tif (IS_ERR(ret))\n\t\
+    \treturn send_drop_notify_error(ctx, proxy_identity,\n\t\t\t\t\t      ret, CTX_ACT_DROP,\
+    \ METRIC_INGRESS);\n\treturn ret;\n}\n\n__section_tail(CILIUM_MAP_CALLS, CILIUM_CALL_IPV4_FROM_HOST)\n\
+    int tail_handle_ipv4_from_host(struct __ctx_buff *ctx)\n{\n\treturn tail_handle_ipv4(ctx,\
+    \ true);\n}\n\n__section_tail(CILIUM_MAP_CALLS, CILIUM_CALL_IPV4_FROM_LXC)\nint\
+    \ tail_handle_ipv4_from_netdev(struct __ctx_buff *ctx)\n{\n\n// FILE: bpf/bpf_lxc.c\n\
+    // CONTEXT: static __always_inline int handle_ipv6(struct __ctx_buff *ctx, __u32\
+    \ *dstID)\n\ttuple.nexthdr = ip6->nexthdr;\n\treturn ipv6_l3_from_lxc(ctx, &tuple,\
+    \ ETH_HLEN, ip6, dstID);\n}\n\ndeclare_tailcall_if(__or(__and(is_defined(ENABLE_IPV4),\
+    \ is_defined(ENABLE_IPV6)),\n\t\t\t is_defined(DEBUG)), CILIUM_CALL_IPV6_FROM_LXC)\n\
+    int tail_handle_ipv6(struct __ctx_buff *ctx)\n{\n\t__u32 dstID = 0;\n\tint ret\
+    \ = handle_ipv6(ctx, &dstID);\n\n\tif (IS_ERR(ret)) {\n\t\treturn send_drop_notify(ctx,\
+    \ SECLABEL, dstID, 0, ret, CTX_ACT_DROP,\n\t\t                        METRIC_EGRESS);\n\
+    \t}\n\n\treturn ret;\n}\n#endif /* ENABLE_IPV6 */\n\n#ifdef ENABLE_IPV4\nstatic\
+    \ __always_inline int handle_ipv4_from_lxc(struct __ctx_buff *ctx,\n\t\t\t\t\t\
+    \t__u32 *dstID)\n{\n\n// CONTEXT: ct_recreate4:\n# ifdef ENABLE_DSR\n\t\tif (ct_state.dsr)\
+    \ {\n\t\t\tret = xlate_dsr_v4(ctx, &tuple, l4_off);\n\t\t\tif (ret != 0)\n\t\t\
+    \t\treturn ret;\n\t\t}\n# endif /* ENABLE_DSR */\n#endif /* ENABLE_NODEPORT */\n\
+    \n\t\tif (ct_state.rev_nat_index) {\n\t\t\tret = lb4_rev_nat(ctx, l3_off, l4_off,\
+    \ &csum_off,\n\t\t\t\t\t  &ct_state, &tuple, 0);\n\t\t\tif (IS_ERR(ret))\n\t\t\
+    \t\treturn ret;\n\t\t}\n\t\tbreak;\n\n\tdefault:\n\t\treturn DROP_UNKNOWN_CT;\n\
+    \t}\n\n\thairpin_flow |= ct_state.loopback;\n\n\tif (redirect_to_proxy(verdict,\
+    \ reason)) {\n\t\t// Trace the packet before its forwarded to proxy\n\t\tsend_trace_notify(ctx,\
+    \ TRACE_TO_PROXY, SECLABEL, 0,\n\n// FILE: bpf/include/bpf/api.h\n#ifndef __BPF_API__\n\
+    #define __BPF_API__\n\n#include <linux/types.h>\n#include <linux/byteorder.h>\n\
+    #include <linux/bpf.h>\n#include <linux/if_packet.h>\n\n#include \"compiler.h\"\
+    \n#include \"section.h\"\n#include \"helpers.h\"\n#include \"builtins.h\"\n#include\
+    \ \"tailcall.h\"\n#include \"errno.h\"\n#include \"loader.h\"\n#include \"csum.h\"\
+    \n\n#endif /* __BPF_API__ */\n\n// FILE: bpf/lib/conntrack.h\n// CONTEXT: enum\
+    \ {\n\n/* conn_is_dns returns true if the connection is DNS, false otherwise.\n\
+    \ *\n * @dport: Connection destination port.\n *\n * To reduce program complexity,\
+    \ we ignore nexthdr and dir here:\n * nexthdr: The parser will not fill dport\
+    \ if nexthdr is not TCP/UDP.\n * dir:     Ideally we would only consider responses,\
+    \ but requests are likely\n *          to be small anyway.\n * */\nstatic __always_inline\
+    \ bool conn_is_dns(__u16 dport)\n{\n\treturn dport == bpf_htons(53);\n}\n\nunion\
+    \ tcp_flags {\n\tstruct {\n\t\t__u8 upper_bits;\n\t\t__u8 lower_bits;\n\t\t__u16\
+    \ pad;\n\t};\n\t__u32 value;\n};\n\n/**\n\n// CONTEXT: static __always_inline\
+    \ int ct_lookup6(const void *map,\n\t\tbreak;\n\n\tcase IPPROTO_UDP:\n\t\t/* load\
+    \ sport + dport into tuple */\n\t\tif (ctx_load_bytes(ctx, l4_off, &tuple->dport,\
+    \ 4) < 0)\n\t\t\treturn DROP_CT_INVALID_HDR;\n\n\t\taction = ACTION_CREATE;\n\t\
+    \tbreak;\n\n\tdefault:\n\t\t/* Can't handle extension headers yet */\n\t\treturn\
+    \ DROP_CT_UNKNOWN_PROTO;\n\t}\n\n\t/* Lookup the reverse direction\n\t *\n\t *\
+    \ This will find an existing flow in the reverse direction.\n\t * The reverse\
+    \ direction is the one where reverse nat index is stored.\n\t */\n\tcilium_dbg3(ctx,\
+    \ DBG_CT_LOOKUP6_1, (__u32) tuple->saddr.p4, (__u32) tuple->daddr.p4,\n\t\t  \
+    \    (bpf_ntohs(tuple->sport) << 16) | bpf_ntohs(tuple->dport));\n\tcilium_dbg3(ctx,\
+    \ DBG_CT_LOOKUP6_2, (tuple->nexthdr << 8) | tuple->flags, 0, 0);\n\tret = __ct_lookup(map,\
+    \ ctx, tuple, action, dir, ct_state, is_tcp,\n\n// CONTEXT: static __always_inline\
+    \ int ct_lookup4(const void *map,\n\t\t\treturn DROP_CT_INVALID_HDR;\n\t\tbreak;\n\
+    \n\tcase IPPROTO_UDP:\n\t\tif (ipv4_ct_extract_l4_ports(ctx, off, tuple) < 0)\n\
+    \t\t\treturn DROP_CT_INVALID_HDR;\n\n\t\taction = ACTION_CREATE;\n\t\tbreak;\n\
+    \n\tdefault:\n\t\t/* Can't handle extension headers yet */\n\t\treturn DROP_CT_UNKNOWN_PROTO;\n\
+    \t}\n\n\t/* Lookup the reverse direction\n\t *\n\t * This will find an existing\
+    \ flow in the reverse direction.\n\t */\n#ifndef QUIET_CT\n\tcilium_dbg3(ctx,\
+    \ DBG_CT_LOOKUP4_1, tuple->saddr, tuple->daddr,\n\t\t      (bpf_ntohs(tuple->sport)\
+    \ << 16) | bpf_ntohs(tuple->dport));\n\tcilium_dbg3(ctx, DBG_CT_LOOKUP4_2, (tuple->nexthdr\
+    \ << 8) | tuple->flags, 0, 0);\n#endif"
+  diff_summary: |-
+    bpf/bpf_host.c:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: handle_ipv6(struct __ctx_buff *ctx, __u32 secctx, bool from_host), handle_ipv4(struct __ctx_buff *ctx, __u32 secctx, bool from_host).
+    bpf/bpf_lxc.c:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: static __always_inline int handle_ipv6(struct __ctx_buff *ctx, __u32 *dstID), ct_recreate4:.
+    bpf/include/bpf/api.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: the touched section.
+    bpf/lib/conntrack.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: enum {, static __always_inline int ct_lookup6(const void *map,, static __always_inline int ct_lookup4(const void *map,.
+    - Commit subject: bpf: Remove all of relax_verifier().

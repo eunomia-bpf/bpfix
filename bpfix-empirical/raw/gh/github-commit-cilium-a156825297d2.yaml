@@ -1,0 +1,237 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-a156825297d2
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/a156825297d2cf16d58a7274548181b9d804342b
+  title: 'bpf: Extract source ID resolution from handle_ipv{4,6}'
+  repository: https://github.com/cilium/cilium
+  commit: a156825297d2cf16d58a7274548181b9d804342b
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-a156825297d2.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: environment_required
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Extracts source-ID resolution from high-complexity host programs; replay
+    requires historical generated Cilium host datapath.
+raw:
+  case_id: github-commit-cilium-a156825297d2
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: a156825297d2cf16d58a7274548181b9d804342b
+  commit_message: 'bpf: Extract source ID resolution from handle_ipv{4,6}'
+  commit_date: '2020-05-12'
+  fix_type: inline_hint
+  buggy_code: "// FILE: bpf/bpf_host.c\n// CONTEXT: derive_src_id(const union v6addr\
+    \ *node_ip, struct ipv6hdr *ip6, __u32 *identity)\n\t\t*identity = bpf_ntohl(*tmp\
+    \ & IPV6_FLOWLABEL_MASK);\n\n\t\t/* A remote node will map any HOST_ID source\
+    \ to be presented as\n\t\t * REMOTE_NODE_ID, therefore any attempt to signal HOST_ID\
+    \ as\n\t\t * source from a remote node can be droppped. */\n\t\tif (*identity\
+    \ == HOST_ID)\n\t\t\treturn DROP_INVALID_IDENTITY;\n\t}\n\treturn 0;\n}\n\nstatic\
+    \ __always_inline __u32\nresolve_srcid_ipv6(struct __ctx_buff *ctx, struct ipv6hdr\
+    \ *ip6,\n\t\t   __u32 srcid_from_proxy, bool from_host)\n{\n\t__u32 src_id = WORLD_ID,\
+    \ srcid_from_ipcache = srcid_from_proxy;\n\tstruct remote_endpoint_info *info\
+    \ = NULL;\n\tunion v6addr *src;\n\tint ret;\n\n\tif (!from_host) {\n\t\tunion\
+    \ v6addr node_ip = {};\n\n\t\tBPF_V6(node_ip, ROUTER_IP);\n\t\tret = derive_src_id(&node_ip,\
+    \ ip6, &src_id);\n\t\tif (IS_ERR(ret))\n\t\t\treturn ret;\n\t}\n\n\t/* Packets\
+    \ from the proxy will already have a real identity. */\n\tif (identity_is_reserved(srcid_from_ipcache))\
+    \ {\n\t\tsrc = (union v6addr *) &ip6->saddr;\n\n// CONTEXT: resolve_srcid_ipv6(struct\
+    \ __ctx_buff *ctx, struct ipv6hdr *ip6,\n#ifdef ENABLE_SECCTX_FROM_IPCACHE\n\t\
+    /* If we could not derive the secctx from the packet itself but\n\t * from the\
+    \ ipcache instead, then use the ipcache identity. E.g.\n\t * used in ipvlan master\
+    \ device's datapath on ingress.\n\t */\n\telse if (src_id == WORLD_ID && !identity_is_reserved(srcid_from_ipcache))\n\
+    \t\tsrc_id = srcid_from_ipcache;\n#endif\n\n\treturn src_id;\n}\n\nstatic __always_inline\
+    \ int handle_ipv6(struct __ctx_buff *ctx,\n\t\t\t\t       __u32 srcid_from_proxy,\
+    \ bool from_host)\n{\n\tstruct remote_endpoint_info *info = NULL;\n\tvoid *data,\
+    \ *data_end;\n\tstruct ipv6hdr *ip6;\n\tunion v6addr *dst;\n\tint ret, l3_off\
+    \ = ETH_HLEN, hdrlen;\n\tstruct endpoint_info *ep;\n\t__u8 nexthdr;\n\t__u32 secctx;\n\
+    \n\tif (!revalidate_data(ctx, &data, &data_end, &ip6))\n\t\treturn DROP_INVALID;\n\
+    \n#ifdef ENABLE_NODEPORT\n\tif (!from_host) {\n\t\tif (ctx_get_xfer(ctx) != XFER_PKT_NO_SVC\
+    \ &&\n\t\t    !bpf_skip_nodeport(ctx)) {\n\t\t\tret = nodeport_lb6(ctx, srcid_from_proxy);\n\
+    \t\t\tif (ret < 0)\n\t\t\t\treturn ret;\n\t\t}\n#if defined(ENCAP_IFINDEX) ||\
+    \ defined(NO_REDIRECT)\n\t\t/* See IPv4 case for NO_REDIRECT comments */\n\t\t\
+    return CTX_ACT_OK;\n#endif /* ENCAP_IFINDEX || NO_REDIRECT */\n\t\t/* Verifier\
+    \ workaround: modified ctx access. */\n\t\tif (!revalidate_data(ctx, &data, &data_end,\
+    \ &ip6))\n\t\t\treturn DROP_INVALID;\n\t}\n#endif /* ENABLE_NODEPORT */\n\n//\
+    \ CONTEXT: static __always_inline int handle_ipv6(struct __ctx_buff *ctx,\n\t\
+    hdrlen = ipv6_hdrlen(ctx, l3_off, &nexthdr);\n\tif (hdrlen < 0)\n\t\treturn hdrlen;\n\
+    \n#ifdef HANDLE_NS\n\tif (unlikely(nexthdr == IPPROTO_ICMPV6)) {\n\t\tret = icmp6_handle(ctx,\
+    \ ETH_HLEN, ip6, METRIC_INGRESS);\n\t\tif (IS_ERR(ret))\n\t\t\treturn ret;\n\t\
+    }\n#endif\n\n\tsecctx = resolve_srcid_ipv6(ctx, ip6, srcid_from_proxy, from_host);\n\
+    \n\tif (from_host) {\n\t\t/* If we are attached to cilium_host at egress, this\
+    \ will\n\t\t * rewrite the destination mac address to the MAC of cilium_net */\n\
+    \t\tret = rewrite_dmac_to_host(ctx, secctx);\n\t\t/* DIRECT PACKET READ INVALID\
+    \ */\n\t\tif (IS_ERR(ret))\n\t\t\treturn ret;\n\n\t\tif (!revalidate_data(ctx,\
+    \ &data, &data_end, &ip6))\n\t\t\treturn DROP_INVALID;\n\t}\n\n\n// CONTEXT: int\
+    \ tail_handle_ipv6_from_host(struct __ctx_buff *ctx __maybe_unused)\n\treturn\
+    \ tail_handle_ipv6(ctx, true);\n}\n\n__section_tail(CILIUM_MAP_CALLS, CILIUM_CALL_IPV6_FROM_LXC)\n\
+    int tail_handle_ipv6_from_netdev(struct __ctx_buff *ctx)\n{\n\treturn tail_handle_ipv6(ctx,\
+    \ false);\n}\n#endif /* ENABLE_IPV6 */\n\n#ifdef ENABLE_IPV4\nstatic __always_inline\
+    \ __u32\nresolve_srcid_ipv4(struct __ctx_buff *ctx, const struct iphdr *ip4,\n\
+    \t\t   __u32 srcid_from_proxy, bool from_host)\n{\n\t__u32 src_id = WORLD_ID,\
+    \ srcid_from_ipcache = srcid_from_proxy;\n\tstruct remote_endpoint_info *info\
+    \ = NULL;\n\n\t/* Packets from the proxy will already have a real identity. */\n\
+    \tif (identity_is_reserved(srcid_from_ipcache)) {\n\t\tinfo = lookup_ip4_remote_endpoint(ip4->saddr);\n\
+    \t\tif (info != NULL) {\n\t\t\t__u32 sec_label = info->sec_label;\n\t\t\tif (sec_label)\
+    \ {\n\t\t\t\t/* When SNAT is enabled on traffic ingressing\n\t\t\t\t * into Cilium,\
+    \ all traffic from the world will\n\t\t\t\t * have a source IP of the host. It\
+    \ will only\n\t\t\t\t * actually be from the host if\n\t\t\t\t * \"srcid_from_proxy\"\
+    \ (passed into this\n\n// CONTEXT: resolve_srcid_ipv4(struct __ctx_buff *ctx,\
+    \ const struct iphdr *ip4,\n#ifdef ENABLE_SECCTX_FROM_IPCACHE\n\t/* If we could\
+    \ not derive the secctx from the packet itself but\n\t * from the ipcache instead,\
+    \ then use the ipcache identity. E.g.\n\t * used in ipvlan master device's datapath\
+    \ on ingress.\n\t */\n\telse if (!identity_is_reserved(srcid_from_ipcache))\n\t\
+    \tsrc_id = srcid_from_ipcache;\n#endif\n\n\treturn src_id;\n}\n\nstatic __always_inline\
+    \ int handle_ipv4(struct __ctx_buff *ctx,\n\t\t\t\t       __u32 srcid_from_proxy,\
+    \ bool from_host)\n{\n\tstruct remote_endpoint_info *info = NULL;\n\tstruct ipv4_ct_tuple\
+    \ tuple = {};\n\tstruct endpoint_info *ep;\n\tvoid *data, *data_end;\n\tstruct\
+    \ iphdr *ip4;\n\t__u32 secctx;\n\n\tif (!revalidate_data(ctx, &data, &data_end,\
+    \ &ip4))\n\t\treturn DROP_INVALID;\n\n#ifdef ENABLE_NODEPORT\n\tif (!from_host)\
+    \ {\n\t\tif (ctx_get_xfer(ctx) != XFER_PKT_NO_SVC &&\n\t\t    !bpf_skip_nodeport(ctx))\
+    \ {\n\t\t\tint ret = nodeport_lb4(ctx, srcid_from_proxy);\n\t\t\tif (ret < 0)\n\
+    \t\t\t\treturn ret;\n\t\t}\n#if defined(ENCAP_IFINDEX) || defined(NO_REDIRECT)\n\
+    \t\t/* We cannot redirect a packet to a local endpoint in the direct\n\t\t * routing\
+    \ mode, as the redirect bypasses nf_conntrack table.\n\t\t * This makes a second\
+    \ reply from the endpoint to be MASQUERADEd\n\t\t * or to be DROPed by k8s's \"\
+    --ctstate INVALID -j DROP\"\n\t\t * depending via which interface it was inputed.\
+    \ */\n\t\treturn CTX_ACT_OK;\n#endif /* ENCAP_IFINDEX || NO_REDIRECT */\n\t\t\
+    /* Verifier workaround: modified ctx access. */\n\t\tif (!revalidate_data(ctx,\
+    \ &data, &data_end, &ip4))\n\t\t\treturn DROP_INVALID;\n\t}\n#endif /* ENABLE_NODEPORT\
+    \ */\n\n\ttuple.nexthdr = ip4->protocol;\n\n\tsecctx = resolve_srcid_ipv4(ctx,\
+    \ ip4, srcid_from_proxy, from_host);\n\n\tif (from_host) {\n\t\tint ret;\n\n\t\
+    \t/* If we are attached to cilium_host at egress, this will\n\t\t * rewrite the\
+    \ destination mac address to the MAC of cilium_net */\n\t\tret = rewrite_dmac_to_host(ctx,\
+    \ secctx);\n\t\t/* DIRECT PACKET READ INVALID */\n\t\tif (IS_ERR(ret))\n\t\t\t\
+    return ret;\n\n\t\tif (!revalidate_data(ctx, &data, &data_end, &ip4))\n\t\t\t\
+    return DROP_INVALID;\n\n// CONTEXT: do_netdev(struct __ctx_buff *ctx, __u16 proto,\
+    \ bool from_host)\n\t\t\ttrace = TRACE_FROM_PROXY;\n\t\tsend_trace_notify(ctx,\
+    \ trace, identity, 0, 0,\n\t\t\t\t  ctx->ingress_ifindex, 0, TRACE_PAYLOAD_LEN);\n\
+    \t} else {\n\t\tbpf_skip_nodeport_clear(ctx);\n\t\tsend_trace_notify(ctx, TRACE_FROM_STACK,\
+    \ 0, 0, 0,\n\t\t\t\t  ctx->ingress_ifindex, 0, TRACE_PAYLOAD_LEN);\n\t}\n\n\t\
+    switch (proto) {\n#ifdef ENABLE_IPV6\n\tcase bpf_htons(ETH_P_IPV6):\n\t\tctx_store_meta(ctx,\
+    \ CB_SRC_IDENTITY, identity);\n\t\tif (from_host)\n\t\t\tep_tail_call(ctx, CILIUM_CALL_IPV6_FROM_HOST);\n\
+    \t\telse\n\t\t\tep_tail_call(ctx, CILIUM_CALL_IPV6_FROM_LXC);\n\t\t/* See comment\
+    \ below for IPv4. */\n\t\treturn send_drop_notify_error(ctx, identity, DROP_MISSED_TAIL_CALL,\n\
+    \t\t\t\t\t      CTX_ACT_OK, METRIC_INGRESS);\n#endif\n#ifdef ENABLE_IPV4\n\tcase\
+    \ bpf_htons(ETH_P_IP):\n\t\tctx_store_meta(ctx, CB_SRC_IDENTITY, identity);\n\t\
+    \tif (from_host)\n\t\t\tep_tail_call(ctx, CILIUM_CALL_IPV4_FROM_HOST);\n\t\telse\n\
+    \t\t\tep_tail_call(ctx, CILIUM_CALL_IPV4_FROM_LXC);\n\t\t/* We are not returning\
+    \ an error here to always allow traffic to\n\t\t * the stack in case maps have\
+    \ become unavailable.\n\t\t *\n\t\t * Note: Since drop notification requires a\
+    \ tail call as well,\n\t\t * this notification is unlikely to succeed. */\n\t\t\
+    return send_drop_notify_error(ctx, identity, DROP_MISSED_TAIL_CALL,\n\t\t    \
+    \                          CTX_ACT_OK, METRIC_INGRESS);"
+  fixed_code: "// FILE: bpf/bpf_host.c\n// CONTEXT: derive_src_id(const union v6addr\
+    \ *node_ip, struct ipv6hdr *ip6, __u32 *identity)\n\t\t*identity = bpf_ntohl(*tmp\
+    \ & IPV6_FLOWLABEL_MASK);\n\n\t\t/* A remote node will map any HOST_ID source\
+    \ to be presented as\n\t\t * REMOTE_NODE_ID, therefore any attempt to signal HOST_ID\
+    \ as\n\t\t * source from a remote node can be droppped. */\n\t\tif (*identity\
+    \ == HOST_ID)\n\t\t\treturn DROP_INVALID_IDENTITY;\n\t}\n\treturn 0;\n}\n\nstatic\
+    \ __always_inline __u32\nresolve_srcid_ipv6(struct __ctx_buff *ctx, __u32 srcid_from_proxy,\n\
+    \t\t   bool from_host)\n{\n\t__u32 src_id = WORLD_ID, srcid_from_ipcache = srcid_from_proxy;\n\
+    \tstruct remote_endpoint_info *info = NULL;\n\tvoid *data, *data_end;\n\tstruct\
+    \ ipv6hdr *ip6;\n\tunion v6addr *src;\n\tint ret;\n\n\tif (!revalidate_data(ctx,\
+    \ &data, &data_end, &ip6))\n\t\treturn DROP_INVALID;\n\n\tif (!from_host) {\n\t\
+    \tunion v6addr node_ip = {};\n\n\t\tBPF_V6(node_ip, ROUTER_IP);\n\t\tret = derive_src_id(&node_ip,\
+    \ ip6, &src_id);\n\t\tif (IS_ERR(ret))\n\t\t\treturn ret;\n\t}\n\n\t/* Packets\
+    \ from the proxy will already have a real identity. */\n\tif (identity_is_reserved(srcid_from_ipcache))\
+    \ {\n\t\tsrc = (union v6addr *) &ip6->saddr;\n\n// CONTEXT: resolve_srcid_ipv6(struct\
+    \ __ctx_buff *ctx, struct ipv6hdr *ip6,\n#ifdef ENABLE_SECCTX_FROM_IPCACHE\n\t\
+    /* If we could not derive the secctx from the packet itself but\n\t * from the\
+    \ ipcache instead, then use the ipcache identity. E.g.\n\t * used in ipvlan master\
+    \ device's datapath on ingress.\n\t */\n\telse if (src_id == WORLD_ID && !identity_is_reserved(srcid_from_ipcache))\n\
+    \t\tsrc_id = srcid_from_ipcache;\n#endif\n\n\treturn src_id;\n}\n\nstatic __always_inline\
+    \ int\nhandle_ipv6(struct __ctx_buff *ctx, __u32 secctx, bool from_host)\n{\n\t\
+    struct remote_endpoint_info *info = NULL;\n\tvoid *data, *data_end;\n\tstruct\
+    \ ipv6hdr *ip6;\n\tunion v6addr *dst;\n\tint ret, l3_off = ETH_HLEN, hdrlen;\n\
+    \tstruct endpoint_info *ep;\n\t__u8 nexthdr;\n\n\tif (!revalidate_data(ctx, &data,\
+    \ &data_end, &ip6))\n\t\treturn DROP_INVALID;\n\n#ifdef ENABLE_NODEPORT\n\tif\
+    \ (!from_host) {\n\t\tif (ctx_get_xfer(ctx) != XFER_PKT_NO_SVC &&\n\t\t    !bpf_skip_nodeport(ctx))\
+    \ {\n\t\t\tret = nodeport_lb6(ctx, secctx);\n\t\t\tif (ret < 0)\n\t\t\t\treturn\
+    \ ret;\n\t\t}\n#if defined(ENCAP_IFINDEX) || defined(NO_REDIRECT)\n\t\t/* See\
+    \ IPv4 case for NO_REDIRECT comments */\n\t\treturn CTX_ACT_OK;\n#endif /* ENCAP_IFINDEX\
+    \ || NO_REDIRECT */\n\t\t/* Verifier workaround: modified ctx access. */\n\t\t\
+    if (!revalidate_data(ctx, &data, &data_end, &ip6))\n\t\t\treturn DROP_INVALID;\n\
+    \t}\n#endif /* ENABLE_NODEPORT */\n\n// CONTEXT: static __always_inline int handle_ipv6(struct\
+    \ __ctx_buff *ctx,\n\thdrlen = ipv6_hdrlen(ctx, l3_off, &nexthdr);\n\tif (hdrlen\
+    \ < 0)\n\t\treturn hdrlen;\n\n#ifdef HANDLE_NS\n\tif (unlikely(nexthdr == IPPROTO_ICMPV6))\
+    \ {\n\t\tret = icmp6_handle(ctx, ETH_HLEN, ip6, METRIC_INGRESS);\n\t\tif (IS_ERR(ret))\n\
+    \t\t\treturn ret;\n\t}\n#endif\n\n\tif (from_host) {\n\t\t/* If we are attached\
+    \ to cilium_host at egress, this will\n\t\t * rewrite the destination mac address\
+    \ to the MAC of cilium_net */\n\t\tret = rewrite_dmac_to_host(ctx, secctx);\n\t\
+    \t/* DIRECT PACKET READ INVALID */\n\t\tif (IS_ERR(ret))\n\t\t\treturn ret;\n\n\
+    \t\tif (!revalidate_data(ctx, &data, &data_end, &ip6))\n\t\t\treturn DROP_INVALID;\n\
+    \t}\n\n\n// CONTEXT: int tail_handle_ipv6_from_host(struct __ctx_buff *ctx __maybe_unused)\n\
+    \treturn tail_handle_ipv6(ctx, true);\n}\n\n__section_tail(CILIUM_MAP_CALLS, CILIUM_CALL_IPV6_FROM_LXC)\n\
+    int tail_handle_ipv6_from_netdev(struct __ctx_buff *ctx)\n{\n\treturn tail_handle_ipv6(ctx,\
+    \ false);\n}\n#endif /* ENABLE_IPV6 */\n\n#ifdef ENABLE_IPV4\nstatic __always_inline\
+    \ __u32\nresolve_srcid_ipv4(struct __ctx_buff *ctx, __u32 srcid_from_proxy,\n\t\
+    \t   bool from_host)\n{\n\t__u32 src_id = WORLD_ID, srcid_from_ipcache = srcid_from_proxy;\n\
+    \tstruct remote_endpoint_info *info = NULL;\n\tvoid *data, *data_end;\n\tstruct\
+    \ iphdr *ip4;\n\n\tif (!revalidate_data(ctx, &data, &data_end, &ip4))\n\t\treturn\
+    \ DROP_INVALID;\n\n\t/* Packets from the proxy will already have a real identity.\
+    \ */\n\tif (identity_is_reserved(srcid_from_ipcache)) {\n\t\tinfo = lookup_ip4_remote_endpoint(ip4->saddr);\n\
+    \t\tif (info != NULL) {\n\t\t\t__u32 sec_label = info->sec_label;\n\t\t\tif (sec_label)\
+    \ {\n\t\t\t\t/* When SNAT is enabled on traffic ingressing\n\t\t\t\t * into Cilium,\
+    \ all traffic from the world will\n\t\t\t\t * have a source IP of the host. It\
+    \ will only\n\t\t\t\t * actually be from the host if\n\t\t\t\t * \"srcid_from_proxy\"\
+    \ (passed into this\n\n// CONTEXT: resolve_srcid_ipv4(struct __ctx_buff *ctx,\
+    \ const struct iphdr *ip4,\n#ifdef ENABLE_SECCTX_FROM_IPCACHE\n\t/* If we could\
+    \ not derive the secctx from the packet itself but\n\t * from the ipcache instead,\
+    \ then use the ipcache identity. E.g.\n\t * used in ipvlan master device's datapath\
+    \ on ingress.\n\t */\n\telse if (!identity_is_reserved(srcid_from_ipcache))\n\t\
+    \tsrc_id = srcid_from_ipcache;\n#endif\n\n\treturn src_id;\n}\n\nstatic __always_inline\
+    \ int\nhandle_ipv4(struct __ctx_buff *ctx, __u32 secctx, bool from_host)\n{\n\t\
+    struct remote_endpoint_info *info = NULL;\n\tstruct ipv4_ct_tuple tuple = {};\n\
+    \tstruct endpoint_info *ep;\n\tvoid *data, *data_end;\n\tstruct iphdr *ip4;\n\n\
+    \tif (!revalidate_data(ctx, &data, &data_end, &ip4))\n\t\treturn DROP_INVALID;\n\
+    \n#ifdef ENABLE_NODEPORT\n\tif (!from_host) {\n\t\tif (ctx_get_xfer(ctx) != XFER_PKT_NO_SVC\
+    \ &&\n\t\t    !bpf_skip_nodeport(ctx)) {\n\t\t\tint ret = nodeport_lb4(ctx, secctx);\n\
+    \t\t\tif (ret < 0)\n\t\t\t\treturn ret;\n\t\t}\n#if defined(ENCAP_IFINDEX) ||\
+    \ defined(NO_REDIRECT)\n\t\t/* We cannot redirect a packet to a local endpoint\
+    \ in the direct\n\t\t * routing mode, as the redirect bypasses nf_conntrack table.\n\
+    \t\t * This makes a second reply from the endpoint to be MASQUERADEd\n\t\t * or\
+    \ to be DROPed by k8s's \"--ctstate INVALID -j DROP\"\n\t\t * depending via which\
+    \ interface it was inputed. */\n\t\treturn CTX_ACT_OK;\n#endif /* ENCAP_IFINDEX\
+    \ || NO_REDIRECT */\n\t\t/* Verifier workaround: modified ctx access. */\n\t\t\
+    if (!revalidate_data(ctx, &data, &data_end, &ip4))\n\t\t\treturn DROP_INVALID;\n\
+    \t}\n#endif /* ENABLE_NODEPORT */\n\n\ttuple.nexthdr = ip4->protocol;\n\n\tif\
+    \ (from_host) {\n\t\tint ret;\n\n\t\t/* If we are attached to cilium_host at egress,\
+    \ this will\n\t\t * rewrite the destination mac address to the MAC of cilium_net\
+    \ */\n\t\tret = rewrite_dmac_to_host(ctx, secctx);\n\t\t/* DIRECT PACKET READ\
+    \ INVALID */\n\t\tif (IS_ERR(ret))\n\t\t\treturn ret;\n\n\t\tif (!revalidate_data(ctx,\
+    \ &data, &data_end, &ip4))\n\t\t\treturn DROP_INVALID;\n\n// CONTEXT: do_netdev(struct\
+    \ __ctx_buff *ctx, __u16 proto, bool from_host)\n\t\t\ttrace = TRACE_FROM_PROXY;\n\
+    \t\tsend_trace_notify(ctx, trace, identity, 0, 0,\n\t\t\t\t  ctx->ingress_ifindex,\
+    \ 0, TRACE_PAYLOAD_LEN);\n\t} else {\n\t\tbpf_skip_nodeport_clear(ctx);\n\t\t\
+    send_trace_notify(ctx, TRACE_FROM_STACK, 0, 0, 0,\n\t\t\t\t  ctx->ingress_ifindex,\
+    \ 0, TRACE_PAYLOAD_LEN);\n\t}\n\n\tswitch (proto) {\n#ifdef ENABLE_IPV6\n\tcase\
+    \ bpf_htons(ETH_P_IPV6):\n\t\tidentity = resolve_srcid_ipv6(ctx, identity, from_host);\n\
+    \t\tctx_store_meta(ctx, CB_SRC_IDENTITY, identity);\n\t\tif (from_host)\n\t\t\t\
+    ep_tail_call(ctx, CILIUM_CALL_IPV6_FROM_HOST);\n\t\telse\n\t\t\tep_tail_call(ctx,\
+    \ CILIUM_CALL_IPV6_FROM_LXC);\n\t\t/* See comment below for IPv4. */\n\t\treturn\
+    \ send_drop_notify_error(ctx, identity, DROP_MISSED_TAIL_CALL,\n\t\t\t\t\t   \
+    \   CTX_ACT_OK, METRIC_INGRESS);\n#endif\n#ifdef ENABLE_IPV4\n\tcase bpf_htons(ETH_P_IP):\n\
+    \t\tidentity = resolve_srcid_ipv4(ctx, identity, from_host);\n\t\tctx_store_meta(ctx,\
+    \ CB_SRC_IDENTITY, identity);\n\t\tif (from_host)\n\t\t\tep_tail_call(ctx, CILIUM_CALL_IPV4_FROM_HOST);\n\
+    \t\telse\n\t\t\tep_tail_call(ctx, CILIUM_CALL_IPV4_FROM_LXC);\n\t\t/* We are not\
+    \ returning an error here to always allow traffic to\n\t\t * the stack in case\
+    \ maps have become unavailable.\n\t\t *\n\t\t * Note: Since drop notification\
+    \ requires a tail call as well,\n\t\t * this notification is unlikely to succeed.\
+    \ */\n\t\treturn send_drop_notify_error(ctx, identity, DROP_MISSED_TAIL_CALL,\n\
+    \t\t                              CTX_ACT_OK, METRIC_INGRESS);"
+  diff_summary: |-
+    bpf/bpf_host.c:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: derive_src_id(const union v6addr *node_ip, struct ipv6hdr *ip6, __u32 *identity), resolve_srcid_ipv6(struct __ctx_buff *ctx, struct ipv6hdr *ip6,, static __always_inline int handle_ipv6(struct __ctx_buff *ctx,.
+    - Commit subject: bpf: Extract source ID resolution from handle_ipv{4,6}.

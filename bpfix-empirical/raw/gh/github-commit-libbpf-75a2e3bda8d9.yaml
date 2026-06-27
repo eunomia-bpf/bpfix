@@ -1,0 +1,76 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-libbpf-75a2e3bda8d9
+source_kind: github_commit
+source:
+  url: https://github.com/libbpf/libbpf/commit/75a2e3bda8d9d60926154ea1ddc096047982d621
+  title: 'libbpf: provide NULL and KERNEL_VERSION macros in bpf_helpers.h'
+  repository: https://github.com/libbpf/libbpf
+  commit: 75a2e3bda8d9d60926154ea1ddc096047982d621
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-libbpf-75a2e3bda8d9.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: true
+  verifier_log_block_count: 1
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: 'Raw has_verifier_log=true, but the captured text ends with Error: object
+    file doesn''t contain any bpf program; parser result is log_quality=no_terminal_error,
+    terminal_error=None, rejected_insn_idx=None. The diff only adds NULL and KERNEL_VERSION
+    convenience macros in bpf_helpers.h.'
+raw:
+  case_id: github-commit-libbpf-75a2e3bda8d9
+  source: github_commits
+  repository: https://github.com/libbpf/libbpf
+  commit_hash: 75a2e3bda8d9d60926154ea1ddc096047982d621
+  commit_message: 'libbpf: provide NULL and KERNEL_VERSION macros in bpf_helpers.h'
+  commit_date: '2021-03-17'
+  fix_type: inline_hint
+  buggy_code: "// FILE: src/bpf_helpers.h\n\n/* Avoid 'linux/stddef.h' definition\
+    \ of '__always_inline'. */\n#undef __always_inline\n#define __always_inline inline\
+    \ __attribute__((always_inline))\n\n#ifndef __noinline\n#define __noinline __attribute__((noinline))\n\
+    #endif\n#ifndef __weak\n#define __weak __attribute__((weak))\n#endif\n\n/*\n *\
+    \ Helper macro to manipulate data structures\n */\n#ifndef offsetof\n#define offsetof(TYPE,\
+    \ MEMBER)\t((unsigned long)&((TYPE *)0)->MEMBER)\n#endif\n#ifndef container_of\n\
+    #define container_of(ptr, type, member)\t\t\t\t\\\n\t({\t\t\t\t\t\t\t\\\n\t\t\
+    void *__mptr = (void *)(ptr);\t\t\t\\\n\t\t((type *)(__mptr - offsetof(type, member)));\t\
+    \\\n\t})\n#endif"
+  fixed_code: "// FILE: src/bpf_helpers.h\n\n/* Avoid 'linux/stddef.h' definition\
+    \ of '__always_inline'. */\n#undef __always_inline\n#define __always_inline inline\
+    \ __attribute__((always_inline))\n\n#ifndef __noinline\n#define __noinline __attribute__((noinline))\n\
+    #endif\n#ifndef __weak\n#define __weak __attribute__((weak))\n#endif\n\n/* When\
+    \ utilizing vmlinux.h with BPF CO-RE, user BPF programs can't include\n * any\
+    \ system-level headers (such as stddef.h, linux/version.h, etc), and\n * commonly-used\
+    \ macros like NULL and KERNEL_VERSION aren't available through\n * vmlinux.h.\
+    \ This just adds unnecessary hurdles and forces users to re-define\n * them on\
+    \ their own. So as a convenience, provide such definitions here.\n */\n#ifndef\
+    \ NULL\n#define NULL ((void *)0)\n#endif\n\n#ifndef KERNEL_VERSION\n#define KERNEL_VERSION(a,b,c)\
+    \ (((a) << 16) + ((b) << 8) + ((c) > 255 ? 255 : (c))\n#endif\n\n/*\n * Helper\
+    \ macros to manipulate data structures\n */\n#ifndef offsetof\n#define offsetof(TYPE,\
+    \ MEMBER)\t((unsigned long)&((TYPE *)0)->MEMBER)\n#endif\n#ifndef container_of\n\
+    #define container_of(ptr, type, member)\t\t\t\t\\\n\t({\t\t\t\t\t\t\t\\\n\t\t\
+    void *__mptr = (void *)(ptr);\t\t\t\\\n\t\t((type *)(__mptr - offsetof(type, member)));\t\
+    \\\n\t})\n#endif"
+  diff_summary: |-
+    src/bpf_helpers.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: the touched section.
+    - Commit subject: libbpf: provide NULL and KERNEL_VERSION macros in bpf_helpers.h.
+  verifier_log: |-
+    libbpf: loading object from /tmp/bpfix_oracle_1_x6xj4n/prog_wrap-vmlinux.o
+    libbpf: elf: section(3) license, size 4, link 0, flags 3, type=1
+    libbpf: license of /tmp/bpfix_oracle_1_x6xj4n/prog_wrap-vmlinux.o is GPL
+    libbpf: elf: section(12) .BTF, size 163, link 0, flags 0, type=1
+    libbpf: elf: section(18) .symtab, size 216, link 1, flags 0, type=2
+    libbpf: looking for externs among 9 symbols...
+    libbpf: collected 0 externs total
+    libbpf: object 'prog_wrap-vmlin': failed (-95) to create BPF token from '/sys/fs/bpf', skipping optional step...
+    Error: object file doesn't contain any bpf program

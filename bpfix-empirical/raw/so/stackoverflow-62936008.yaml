@@ -1,0 +1,204 @@
+schema_version: bpfix.raw_external/v1
+raw_id: stackoverflow-62936008
+source_kind: stackoverflow
+source:
+  url: https://stackoverflow.com/questions/62936008/attaching-ebpf-to-kprobe
+  title: Attaching eBPF to KPROBE?
+  repository: null
+  commit: null
+  collected_at: '2026-04-30T00:50:59+00:00'
+collector:
+  original_path: bpfix-empirical/raw/so/stackoverflow-62936008.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: true
+  verifier_log_block_count: 1
+  source_snippet_count: 1
+  has_buggy_code: false
+  has_fixed_code: false
+  has_fix_description: false
+reproduction:
+  status: environment_required
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Raw error (invalid relo for insn[6].code 0x85, then last insn is not an
+    exit or jmp) depends on the historical kernel samples/bpf loader and missing helper
+    declaration path. A modern /tmp/batch44-so629 probe with bpf_helpers.h built and
+    loaded successfully, so it was not admitted.
+raw:
+  case_id: stackoverflow-62936008
+  source: stackoverflow
+  collected_at: '2026-04-30T00:50:59+00:00'
+  question:
+    question_id: 62936008
+    title: Attaching eBPF to KPROBE?
+    url: https://stackoverflow.com/questions/62936008/attaching-ebpf-to-kprobe
+    tags:
+    - linux
+    - bpf
+    - ebpf
+    score: 3
+    answer_count: 1
+    is_answered: true
+  verifier_log:
+    blocks:
+    - |-
+      invalid relo for insn[6].code 0x85
+      bpf_load_program() err=22
+      last insn is not an exit or jmp
+      processed 0 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0 mark_read 0
+      last insn is not an exit or jmp
+      processed 0 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0 mark_read 0
+    combined: |-
+      invalid relo for insn[6].code 0x85
+      bpf_load_program() err=22
+      last insn is not an exit or jmp
+      processed 0 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0 mark_read 0
+      last insn is not an exit or jmp
+      processed 0 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0 mark_read 0
+  source_snippets:
+  - |-
+    CLANG = clang
+
+    EXECABLE = monitor-exec
+
+    BPFCODE = one
+
+    BPFTOOLS = /kernel-src/samples/bpf
+    BPFLOADER = $(BPFTOOLS)/bpf_load.c
+
+    INCLUDE += -I/kernel-src/samples/bpf
+    INCLUDE += -I/kernel-src/tools/lib
+
+    CCINCLUDE += -I/kernel-src/tools/testing/selftests/bpf
+    CCINCLUDE += -I/kernel-src/tools/lib/bpf
+    CCINCLUDE += ${INCLUDE}
+
+    LOADINCLUDE += -I/kernel-src/tools/include
+    LOADINCLUDE += -I/kernel-src/tools/perf
+    LOADINCLUDE += ${INCLUDE}
+    LIBRARY_PATH = -L/usr/local/lib64
+    BPFSO = -lbpf
+
+    .PHONY: clean bpfload build
+
+    clean:
+        rm -f *.o *.so $(EXECABLE)
+
+    build: ${BPFCODE.c} ${BPFLOADER}
+        $(CLANG) -O2 -DHAVE_ATTR_TEST=0 -target bpf -c $(BPFCODE:=.c) $(CCINCLUDE) -o ${BPFCODE:=.o}
+
+    bpfload: build
+        clang -o $(EXECABLE) -DHAVE_ATTR_TEST=0  -lelf $(LOADINCLUDE) $(LIBRARY_PATH) $(BPFSO) \
+            $(BPFLOADER) loader.c
+
+    $(EXECABLE): bpfload
+
+    .DEFAULT_GOAL := $(EXECABLE)
+  question_body_text: |-
+    I wrote a simple program to attach to execve system call with a kprobe, but I am unable to see the relevant output.
+    Here is my one.c (BPF program):
+    #include <errno.h>
+    #include <bpf/bpf.h>
+    #include <stdio.h>
+    #include <string.h>
+    #include "bpf_load.h"
+    #include "bpf_util.h"
+    #include "libbpf.h"
+    #define SEC(NAME) __attribute__((section(NAME), used))
+    SEC("kprobe/execve")
+    int bpf_prog1(struct pt_regs *ctx)
+    {
+    char m[]="hello world";
+    bpf_trace_printk(m,sizeof(m));
+    return 0;
+    }
+    char _license[] SEC("license") = "GPL";
+    bpf_load.c (user space loader):
+    #include "bpf_load.h"
+    #include <stdio.h>
+    #include <linux/bpf.h>
+    #include <sys/resource.h>
+    int main(int argc, char **argv) {
+    if (load_bpf_file("one.o")) {
+    printf("%s", bpf_log_buf);
+    return 1;
+    }
+    return 0;
+    }
+    And the Makefile:
+    CLANG = clang
+    EXECABLE = monitor-exec
+    BPFCODE = one
+    BPFTOOLS = /kernel-src/samples/bpf
+    BPFLOADER = $(BPFTOOLS)/bpf_load.c
+    INCLUDE += -I/kernel-src/samples/bpf
+    INCLUDE += -I/kernel-src/tools/lib
+    CCINCLUDE += -I/kernel-src/tools/testing/selftests/bpf
+    CCINCLUDE += -I/kernel-src/tools/lib/bpf
+    CCINCLUDE += ${INCLUDE}
+    LOADINCLUDE += -I/kernel-src/tools/include
+    LOADINCLUDE += -I/kernel-src/tools/perf
+    LOADINCLUDE += ${INCLUDE}
+    LIBRARY_PATH = -L/usr/local/lib64
+    BPFSO = -lbpf
+    .PHONY: clean bpfload build
+    clean:
+    rm -f *.o *.so $(EXECABLE)
+    build: ${BPFCODE.c} ${BPFLOADER}
+    $(CLANG) -O2 -DHAVE_ATTR_TEST=0 -target bpf -c $(BPFCODE:=.c) $(CCINCLUDE) -o ${BPFCODE:=.o}
+    bpfload: build
+    clang -o $(EXECABLE) -DHAVE_ATTR_TEST=0 -lelf $(LOADINCLUDE) $(LIBRARY_PATH) $(BPFSO) \
+    $(BPFLOADER) loader.c
+    $(EXECABLE): bpfload
+    .DEFAULT_GOAL := $(EXECABLE)
+    As of now I don't get any errors from the Makefile.
+    I am getting the following output when I execute ./monitor-exec
+    invalid relo for insn[6].code 0x85
+    bpf_load_program() err=22
+    last insn is not an exit or jmp
+    processed 0 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0 mark_read 0
+    last insn is not an exit or jmp
+    processed 0 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0 mark_read 0
+    I am unable to understand what I am doing wrong. I am just attaching a kprobe and that should print hello world when that system call occurs.
+  selected_answer:
+    answer_id: 62936074
+    url: https://stackoverflow.com/questions/62936008/attaching-ebpf-to-kprobe#62936074
+    is_accepted: true
+    score: 4
+    body_text: |-
+      In your eBPF program:
+      #include <errno.h>
+      #include <bpf/bpf.h>
+      #include <stdio.h>
+      #include <string.h>
+      #include "bpf_load.h"
+      #include "bpf_util.h"
+      #include "libbpf.h"
+      #define SEC(NAME) __attribute__((section(NAME), used))
+      SEC("kprobe/execve")
+      int bpf_prog1(struct pt_regs *ctx)
+      {
+      char m[]="hello world";
+      bpf_trace_printk(m,sizeof(m));
+      return 0;
+      }
+      You use bpf_trace_printk() correctly (although you might want to add a \n at the end of your message or your output will be messy), but it turns out none of the files you include contains the definition for this helper.
+      bpf_trace_printk() is compiled as part of the kernel and won't ever be compiled into your BPF object file. When trying to load your program, the function load_bpf_file() does a relocation step where it places the number associated to bpf_trace_printk() (in user API) in the relevant instruction of the eBPF bytecode.
+      But it needs to find this number somewhere. It is defined in header linux/bpf.h (pulled from several of your includes) as FN(trace_printk) (some macro magic going on), resulting de facto in a #define BPF_FUNC_trace_prink 6. But you need to tell your loading function that it corresponds to the bpf_trace_prink() you're calling!
+      Two solutions:
+      Manually declare it:
+      static int (*bpf_trace_printk)(const char *fmt, int fmt_size, ...) =
+      (void *) BPF_FUNC_trace_printk;
+      Or add a header that contains it, e.g. tools/lib/bpf/bpf_helpers.h in kernel repo. In your case:
+      #include <bpf/bpf_helpers.h>
+      (Note that this header is generated when compiling libbpf, it is not present in the repository by default.)
+    fix_description: 'You use bpf_trace_printk() correctly (although you might want
+      to add a \n at the end of your message or your output will be messy), but it
+      turns out none of the files you include contains the definition for this helper.
+      But it needs to find this number somewhere. It is defined in header linux/bpf.h
+      (pulled from several of your includes) as FN(trace_printk) (some macro magic
+      going on), resulting de facto in a #define BPF_FUNC_trace_prink 6. But you need
+      to tell your loading function that it corresponds to the bpf_trace_prink() you''re
+      calling! Two solutions:'

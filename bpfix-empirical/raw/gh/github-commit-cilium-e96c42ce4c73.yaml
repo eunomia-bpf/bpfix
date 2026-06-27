@@ -1,0 +1,59 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-e96c42ce4c73
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/e96c42ce4c733ecd665a7831d676d58dbd817f26
+  title: 'bpf: Relax the verifier in CT slow paths'
+  repository: https://github.com/cilium/cilium
+  commit: e96c42ce4c733ecd665a7831d676d58dbd817f26
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-e96c42ce4c73.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: environment_required
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Adds relax_verifier() in conntrack/debug slow paths; any failure is old
+    full-datapath verifier complexity without a captured standalone terminal log.
+raw:
+  case_id: github-commit-cilium-e96c42ce4c73
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: e96c42ce4c733ecd665a7831d676d58dbd817f26
+  commit_message: 'bpf: Relax the verifier in CT slow paths'
+  commit_date: '2018-02-09'
+  fix_type: other
+  buggy_code: "// FILE: bpf/lib/dbg.h\n// CONTEXT: static inline void cilium_dbg_capture2(struct\
+    \ __sk_buff *skb, __u8 type, __u32 a\nstatic inline void cilium_dbg_capture(struct\
+    \ __sk_buff *skb, __u8 type, __u32 arg1)\n{\n\tcilium_dbg_capture2(skb, type,\
+    \ arg1, 0);\n}\n\n#else\n\n# define printk(fmt, ...)\t\t\t\t\t\\\n\t\tdo { } while\
+    \ (0)\n\nstatic inline void cilium_dbg(struct __sk_buff *skb, __u8 type, __u32\
+    \ arg1, __u32 arg2)\n{\n}\n\nstatic inline void cilium_dbg3(struct __sk_buff *skb,\
+    \ __u8 type, __u32 arg1,\n\t\t\t       __u32 arg2, __u32 arg3)\n{\n}\n\nstatic\
+    \ inline void cilium_dbg_capture(struct __sk_buff *skb, __u8 type, __u32 arg1)\n\
+    {\n}\n\nstatic inline void cilium_dbg_capture2(struct __sk_buff *skb, __u8 type,\
+    \ __u32 arg1, __u32 arg2)\n{\n}\n\n#endif"
+  fixed_code: "// FILE: bpf/lib/dbg.h\n// CONTEXT: static inline void cilium_dbg_capture2(struct\
+    \ __sk_buff *skb, __u8 type, __u32 a\nstatic inline void cilium_dbg_capture(struct\
+    \ __sk_buff *skb, __u8 type, __u32 arg1)\n{\n\tcilium_dbg_capture2(skb, type,\
+    \ arg1, 0);\n}\n\n#else\n\n# define printk(fmt, ...)\t\t\t\t\t\\\n\t\tdo { } while\
+    \ (0)\n\nstatic inline void cilium_dbg(struct __sk_buff *skb, __u8 type, __u32\
+    \ arg1, __u32 arg2)\n{\n\trelax_verifier();\n}\n\nstatic inline void cilium_dbg3(struct\
+    \ __sk_buff *skb, __u8 type, __u32 arg1,\n\t\t\t       __u32 arg2, __u32 arg3)\n\
+    {\n\trelax_verifier();\n}\n\nstatic inline void cilium_dbg_capture(struct __sk_buff\
+    \ *skb, __u8 type, __u32 arg1)\n{\n}\n\nstatic inline void cilium_dbg_capture2(struct\
+    \ __sk_buff *skb, __u8 type, __u32 arg1, __u32 arg2)\n{\n}\n\n#endif"
+  diff_summary: |-
+    bpf/lib/dbg.h:
+    - Applied a small verifier-related code change captured by the exact before/after snippets below.
+    - Affected context: static inline void cilium_dbg_capture2(struct __sk_buff *skb, __u8 type, __u32 a.
+    - Commit subject: bpf: Relax the verifier in CT slow paths.

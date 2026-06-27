@@ -1,0 +1,152 @@
+schema_version: bpfix.raw_external/v1
+raw_id: stackoverflow-71253472
+source_kind: stackoverflow
+source:
+  url: https://stackoverflow.com/questions/71253472/sync-fetch-and-add-doesnt-work-in-bpf
+  title: __sync_fetch_and_add() doesn&#39;t work in bpf
+  repository: null
+  commit: null
+  collected_at: '2026-03-11T16:03:20+00:00'
+collector:
+  original_path: bpfix-empirical/raw/so/stackoverflow-71253472.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: true
+  verifier_log_block_count: 1
+  source_snippet_count: 1
+  has_buggy_code: false
+  has_fixed_code: false
+  has_fix_description: false
+reproduction:
+  status: replay_valid
+  case_id: stackoverflow-71253472
+  case_path: cases/stackoverflow-71253472
+  artifact_path: cases/stackoverflow-71253472
+  reason: admitted_to_bpfix_bench_cases
+raw:
+  case_id: stackoverflow-71253472
+  source: stackoverflow
+  collected_at: '2026-03-11T16:03:20+00:00'
+  question:
+    question_id: 71253472
+    title: __sync_fetch_and_add() doesn&#39;t work in bpf
+    url: https://stackoverflow.com/questions/71253472/sync-fetch-and-add-doesnt-work-in-bpf
+    tags:
+    - linux
+    - clang
+    - llvm
+    - bpf
+    score: 0
+    answer_count: 0
+    is_answered: false
+  verifier_log:
+    blocks:
+    - |-
+      ```
+              ; if (slot >= MAX_SLOTS)
+              214: (bf) r2 = r1
+              215: (67) r2 <<= 32
+              216: (77) r2 >>= 32
+              217: (b7) r3 = 31
+              ; __sync_fetch_and_add(&histp->slots[slot], 1);
+              218: (2d) if r3 > r2 goto pc+1
+
+              from 218 to 220: R0=map_value(id=0,off=0,ks=8,vs=128,imm=0) R1=inv(id=0) R2_w=inv(id=0,umax_value=30,var_off=(0x0; 0x1f)) R3_w=inv31 R4=inv0 R6=inv(id=0,umin_value=1) R7=fp-32 R8=inv(id=0) R9=map_value(id=0,off=0,ks=8,vs=40,imm=0) R10=fp0 fp-8=mmmmmmmm fp-16=mmmmmmmm fp-24=mmmmmmmm fp-32=mmmmmmmm fp-40=mmmmmmmm
+              ; __sync_fetch_and_add(&histp->slots[slot], 1);
+            ```
+            ```
+              parent didn't have regs=100 stack=0 marks
+              ```
+               R0_w=inv(id=0) R6_rw=inv(id=0) R7_rw=ctx(id=0,off=0,imm=0) R8_rw=invP(id=0) R10=fp0 fp-8_w=00000000 fp-16_w=mmmmmmmm fp-24_rw=mmmmmmmm fp-32_rw=00000000
+              parent didn't have regs=100 stack=0 marks
+           ```
+              regs=1 stack=0 before 3: (85) call bpf_ktime_get_ns#5
+              224: (b7) r1 = 1
+              **; __sync_fetch_and_add(&histp->slots[slot], 1);**
+              225: (c3) lock *(u32 *)(r0 +0) += r1
+               R0_w=map_value(id=0,off=0,ks=8,vs=128,umax_value=17179869180,var_off=(0x0; 0x3fffffffc),s32_max_value=2147483644,u32_max_value=-4) R1_w=inv1 R2_w=inv(id=0,umax_value=30,var_off=(0x0; 0x1f)) R3_w=inv31 R4=inv0 R6=inv(id=0,umin_value=1) R7=fp-32 R8=inv(id=0) R9=map_value(id=0,off=0,ks=8,vs=40,imm=0) R10=fp0 fp-8=mmmmmmmm fp-16=mmmmmmmm fp-24=mmmmmmmm fp-32=mmmmmmmm fp-40=mmmmmmmm
+              R0 unbounded memory access, make sure to bounds check any such access
+              processed 145 insns (limit 1000000) max_states_per_insn 0 total_states 11 peak_states 11 mark_read 6
+              -- END PROG LOAD LOG --
+    combined: |-
+      ```
+              ; if (slot >= MAX_SLOTS)
+              214: (bf) r2 = r1
+              215: (67) r2 <<= 32
+              216: (77) r2 >>= 32
+              217: (b7) r3 = 31
+              ; __sync_fetch_and_add(&histp->slots[slot], 1);
+              218: (2d) if r3 > r2 goto pc+1
+
+              from 218 to 220: R0=map_value(id=0,off=0,ks=8,vs=128,imm=0) R1=inv(id=0) R2_w=inv(id=0,umax_value=30,var_off=(0x0; 0x1f)) R3_w=inv31 R4=inv0 R6=inv(id=0,umin_value=1) R7=fp-32 R8=inv(id=0) R9=map_value(id=0,off=0,ks=8,vs=40,imm=0) R10=fp0 fp-8=mmmmmmmm fp-16=mmmmmmmm fp-24=mmmmmmmm fp-32=mmmmmmmm fp-40=mmmmmmmm
+              ; __sync_fetch_and_add(&histp->slots[slot], 1);
+            ```
+            ```
+              parent didn't have regs=100 stack=0 marks
+              ```
+               R0_w=inv(id=0) R6_rw=inv(id=0) R7_rw=ctx(id=0,off=0,imm=0) R8_rw=invP(id=0) R10=fp0 fp-8_w=00000000 fp-16_w=mmmmmmmm fp-24_rw=mmmmmmmm fp-32_rw=00000000
+              parent didn't have regs=100 stack=0 marks
+           ```
+              regs=1 stack=0 before 3: (85) call bpf_ktime_get_ns#5
+              224: (b7) r1 = 1
+              **; __sync_fetch_and_add(&histp->slots[slot], 1);**
+              225: (c3) lock *(u32 *)(r0 +0) += r1
+               R0_w=map_value(id=0,off=0,ks=8,vs=128,umax_value=17179869180,var_off=(0x0; 0x3fffffffc),s32_max_value=2147483644,u32_max_value=-4) R1_w=inv1 R2_w=inv(id=0,umax_value=30,var_off=(0x0; 0x1f)) R3_w=inv31 R4=inv0 R6=inv(id=0,umin_value=1) R7=fp-32 R8=inv(id=0) R9=map_value(id=0,off=0,ks=8,vs=40,imm=0) R10=fp0 fp-8=mmmmmmmm fp-16=mmmmmmmm fp-24=mmmmmmmm fp-32=mmmmmmmm fp-40=mmmmmmmm
+              R0 unbounded memory access, make sure to bounds check any such access
+              processed 145 insns (limit 1000000) max_states_per_insn 0 total_states 11 peak_states 11 mark_read 6
+              -- END PROG LOAD LOG --
+  source_snippets:
+  - |-
+    histp = bpf_map_lookup_elem(&scsi_hists, &hkey);
+            if (!histp) {
+                    bpf_map_update_elem(&scsi_hists, &hkey, &initial_hist, 0);
+                    histp = bpf_map_lookup_elem(&scsi_hists, &hkey);
+                    if (!histp)
+                            goto cleanup;
+            }
+            slot = log2l(delta);
+            if (slot >= MAX_SLOTS)
+                    slot = MAX_SLOTS - 1;
+
+            __sync_fetch_and_add(&histp->slots[slot], 1);
+  question_body_text: |-
+    I use __sync_fetch_and_add(&histp->slots[slot], 1) in my bpf program, but it failed on verification, is there somebody know why? the clang and LLVM both are v10. Thanks for your help.
+    below is the error log:
+    ```
+    ; if (slot >= MAX_SLOTS)
+    214: (bf) r2 = r1
+    215: (67) r2 <<= 32
+    216: (77) r2 >>= 32
+    217: (b7) r3 = 31
+    ; __sync_fetch_and_add(&histp->slots[slot], 1);
+    218: (2d) if r3 > r2 goto pc+1
+    from 218 to 220: R0=map_value(id=0,off=0,ks=8,vs=128,imm=0) R1=inv(id=0) R2_w=inv(id=0,umax_value=30,var_off=(0x0; 0x1f)) R3_w=inv31 R4=inv0 R6=inv(id=0,umin_value=1) R7=fp-32 R8=inv(id=0) R9=map_value(id=0,off=0,ks=8,vs=40,imm=0) R10=fp0 fp-8=mmmmmmmm fp-16=mmmmmmmm fp-24=mmmmmmmm fp-32=mmmmmmmm fp-40=mmmmmmmm
+    ; __sync_fetch_and_add(&histp->slots[slot], 1);
+    ```
+    ```
+    parent didn't have regs=100 stack=0 marks
+    ```
+    R0_w=inv(id=0) R6_rw=inv(id=0) R7_rw=ctx(id=0,off=0,imm=0) R8_rw=invP(id=0) R10=fp0 fp-8_w=00000000 fp-16_w=mmmmmmmm fp-24_rw=mmmmmmmm fp-32_rw=00000000
+    parent didn't have regs=100 stack=0 marks
+    ```
+    regs=1 stack=0 before 3: (85) call bpf_ktime_get_ns#5
+    224: (b7) r1 = 1
+    **; __sync_fetch_and_add(&histp->slots[slot], 1);**
+    225: (c3) lock *(u32 *)(r0 +0) += r1
+    R0_w=map_value(id=0,off=0,ks=8,vs=128,umax_value=17179869180,var_off=(0x0; 0x3fffffffc),s32_max_value=2147483644,u32_max_value=-4) R1_w=inv1 R2_w=inv(id=0,umax_value=30,var_off=(0x0; 0x1f)) R3_w=inv31 R4=inv0 R6=inv(id=0,umin_value=1) R7=fp-32 R8=inv(id=0) R9=map_value(id=0,off=0,ks=8,vs=40,imm=0) R10=fp0 fp-8=mmmmmmmm fp-16=mmmmmmmm fp-24=mmmmmmmm fp-32=mmmmmmmm fp-40=mmmmmmmm
+    R0 unbounded memory access, make sure to bounds check any such access
+    processed 145 insns (limit 1000000) max_states_per_insn 0 total_states 11 peak_states 11 mark_read 6
+    -- END PROG LOAD LOG --
+    bpf program code: the hists and hkey are defined as in the biolatency.
+    histp = bpf_map_lookup_elem(&scsi_hists, &hkey);
+    if (!histp) {
+    bpf_map_update_elem(&scsi_hists, &hkey, &initial_hist, 0);
+    histp = bpf_map_lookup_elem(&scsi_hists, &hkey);
+    if (!histp)
+    goto cleanup;
+    }
+    slot = log2l(delta);
+    if (slot >= MAX_SLOTS)
+    slot = MAX_SLOTS - 1;
+    __sync_fetch_and_add(&histp->slots[slot], 1);
+  selected_answer: {}

@@ -1,0 +1,43 @@
+schema_version: bpfix.case/v1
+case_id: github-commit-bcc-d4e505c1e4ed
+source:
+  kind: github_commit
+  url: https://github.com/iovisor/bcc/commit/d4e505c1e4edc8e514a39afe831b3e5a17593aa8
+  repository: https://github.com/iovisor/bcc
+  commit: d4e505c1e4edc8e514a39afe831b3e5a17593aa8
+  upstream_file: libbpf-tools/bitesize.bpf.c
+  raw_excerpt_files:
+  - bpfix-empirical/raw/gh/github-commit-bcc-d4e505c1e4ed.yaml
+reproducer:
+  reconstruction: reconstructed
+  notes: Standalone reconstruction of the comm_allowed loop condition that reads targ_comm[i]
+    before proving i is less than TASK_COMM_LEN.
+capture:
+  capture_id: github-commit-bcc-d4e505c1e4ed__kernel-6.15.11-clang-18-log2
+  terminal_error: invalid access to map value, value_size=16 off=16 size=1
+  rejected_insn_idx: 11
+external_match:
+  status: not_applicable
+  policy: terminal_error
+  matched_messages:
+  - targ_comm[i] before i < TASK_COMM_LEN
+  - invalid access to map value
+  notes: Raw commit has no verifier log; replay validates the same out-of-bounds access risk
+    described by the commit.
+label:
+  capture_id: github-commit-bcc-d4e505c1e4ed__kernel-6.15.11-clang-18-log2
+  taxonomy_class: source_bug
+  error_id: BPFIX-E002
+  confidence: medium
+  label_source: external_replay_reconstruction
+  root_cause_description: The loop condition evaluates targ_comm[i] before the upper-bound
+    check, allowing the verifier to explore an i == TASK_COMM_LEN path that reads one byte
+    past the global array.
+  root_cause_insn_idx: null
+  localization_confidence: medium
+  fix_type: bounds_check
+  fix_direction: Check i < TASK_COMM_LEN before reading targ_comm[i] in the loop condition.
+reporting:
+  family_id: github-commit-bcc-d4e505c1e4ed
+  representative: true
+  notes: Reconstructed from a raw GitHub commit diff without an external verifier log.

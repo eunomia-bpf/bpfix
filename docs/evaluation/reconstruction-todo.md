@@ -1,15 +1,15 @@
 # Reconstruction Queue
 
 This file tracks the policy for turning raw external records into strict
-`bpfix-bench/cases/` entries. There is no active hand-assigned reconstruction
+`bpfix-empirical/cases/` entries. There is no active hand-assigned reconstruction
 queue in the maintained project state. Historical batch reports remain under
 external scratch archives, not in the maintained repository docs.
 
 ## Current State
 
-`bpfix-bench/raw/index.yaml` contains 736 external raw records. Of those, 150
+`bpfix-empirical/raw/index.yaml` contains 736 external raw records. Of those, 150
 are `replay_valid` and have been admitted to the replayable corpus. The
-remaining records are not benchmark cases.
+remaining records are not empirical corpus cases.
 
 Non-admitted statuses:
 
@@ -28,7 +28,7 @@ Non-admitted statuses:
 A reconstructed case must contain at least:
 
 ```text
-bpfix-bench/cases/<case_id>/
+bpfix-empirical/cases/<case_id>/
   Makefile
   prog.c
   case.yaml
@@ -37,7 +37,7 @@ bpfix-bench/cases/<case_id>/
 and must pass local replay:
 
 ```bash
-python3 bpfix-bench/tools/validate_benchmark.py --replay bpfix-bench --timeout-sec 60
+python3 bpfix-empirical/tools/validate_empirical.py --replay bpfix-empirical --timeout-sec 60
 ```
 
 During case development, the individual case should also build and replay with
@@ -45,7 +45,7 @@ its own `Makefile` commands before being added to `manifest.yaml`.
 
 ## Worker Rules
 
-- Do not add a case to `bpfix-bench/manifest.yaml` until its directory is
+- Do not add a case to `bpfix-empirical/manifest.yaml` until its directory is
   self-contained and replay-valid.
 - Do not change `raw/index.yaml` without regenerating or auditing the raw index.
 - Keep generated object files and replay logs out of version control.
@@ -64,4 +64,4 @@ The strongest future candidates are usually records with:
 
 Records marked `environment_required`, `missing_source`, or
 `missing_verifier_log` need additional evidence before they can become
-benchmark cases.
+empirical corpus cases.

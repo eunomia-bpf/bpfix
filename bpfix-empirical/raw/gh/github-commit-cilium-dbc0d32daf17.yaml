@@ -1,0 +1,223 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-dbc0d32daf17
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/dbc0d32daf17a4fe6427ee0a06cd80383c2e4379
+  title: Move egress handler in tailcall
+  repository: https://github.com/cilium/cilium
+  commit: dbc0d32daf17a4fe6427ee0a06cd80383c2e4379
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-dbc0d32daf17.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: environment_required
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Moves egress handling into a tail call to avoid the host program growing
+    too large; replay depends on the generated Cilium program size.
+raw:
+  case_id: github-commit-cilium-dbc0d32daf17
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: dbc0d32daf17a4fe6427ee0a06cd80383c2e4379
+  commit_message: Move egress handler in tailcall
+  commit_date: '2021-03-16'
+  fix_type: inline_hint
+  buggy_code: "// FILE: bpf/bpf_host.c\n#include \"lib/dbg.h\"\n#include \"lib/proxy.h\"\
+    \n#include \"lib/trace.h\"\n#include \"lib/identity.h\"\n#include \"lib/l3.h\"\
+    \n#include \"lib/l4.h\"\n#include \"lib/drop.h\"\n#include \"lib/encap.h\"\n#include\
+    \ \"lib/nat.h\"\n#include \"lib/lb.h\"\n#include \"lib/nodeport.h\"\n#include\
+    \ \"lib/eps.h\"\n#include \"lib/egress_gw.h\"\n#include \"lib/host_firewall.h\"\
+    \n#include \"lib/overloadable.h\"\n#include \"lib/encrypt.h\"\n\n#if defined(ENABLE_IPV4)\
+    \ || defined(ENABLE_IPV6)\nstatic __always_inline int rewrite_dmac_to_host(struct\
+    \ __ctx_buff *ctx,\n\t\t\t\t\t\t__u32 src_identity)\n{\n\t/* When attached to\
+    \ cilium_host, we rewrite the DMAC to the mac of\n\t * cilium_host (peer) to ensure\
+    \ the packet is being considered to be\n\t * addressed to the host (PACKET_HOST).\n\
+    \t */\n\n// CONTEXT: out:\n#endif /* ENABLE_HOST_FIREWALL */\n\n#if defined(ENABLE_BANDWIDTH_MANAGER)\n\
+    \tret = edt_sched_departure(ctx);\n\t/* No send_drop_notify_error() here given\
+    \ we're rate-limiting. */\n\tif (ret == CTX_ACT_DROP) {\n\t\tupdate_metrics(ctx_full_len(ctx),\
+    \ METRIC_EGRESS,\n\t\t\t       -DROP_EDT_HORIZON);\n\t\treturn ret;\n\t}\n#endif\n\
+    \n#if defined(ENABLE_EGRESS_GATEWAY)\n\t/* If the packet is revnat'ed, skip the\
+    \ egress gateway. */\n\tif ((ctx->mark & MARK_MAGIC_SNAT_DONE) != MARK_MAGIC_SNAT_DONE)\
+    \ {\n\t\tret = egress_nat_fwd(ctx);\n\t\tif (IS_ERR(ret))\n\t\t\treturn send_drop_notify_error(ctx,\
+    \ 0, ret,\n\t\t\t\t\t\t      CTX_ACT_DROP,\n\t\t\t\t\t\t      METRIC_EGRESS);\n\
+    \t}\n#endif\n\n#if defined(ENABLE_NODEPORT) && \\\n\t(!defined(ENABLE_DSR) ||\
+    \ \\\n\t (defined(ENABLE_DSR) && defined(ENABLE_DSR_HYBRID)) || \\\n\t defined(ENABLE_MASQUERADE))\n\
+    \tif ((ctx->mark & MARK_MAGIC_SNAT_DONE) != MARK_MAGIC_SNAT_DONE) {\n\t\tret =\
+    \ nodeport_nat_fwd(ctx);\n\t\tif (IS_ERR(ret))\n\t\t\treturn send_drop_notify_error(ctx,\
+    \ 0, ret,\n\t\t\t\t\t\t      CTX_ACT_DROP,\n\t\t\t\t\t\t      METRIC_EGRESS);\n\
+    \t}\n#endif\n#ifdef ENABLE_HEALTH_CHECK\n\tret = lb_handle_health(ctx);\n\tif\
+    \ (IS_ERR(ret))\n\t\treturn send_drop_notify_error(ctx, 0, ret, CTX_ACT_DROP,\n\
+    \t\t\t\t\t      METRIC_EGRESS);\n#endif\n\n// FILE: bpf/bpf_overlay.c\n// CONTEXT:\
+    \ int to_overlay(struct __ctx_buff *ctx)\n\tif (ret == CTX_ACT_DROP) {\n\t\tupdate_metrics(ctx_full_len(ctx),\
+    \ METRIC_EGRESS,\n\t\t\t       -DROP_EDT_HORIZON);\n\t\treturn CTX_ACT_DROP;\n\
+    \t}\n#endif\n\n#ifdef ENABLE_NODEPORT\n\tif ((ctx->mark & MARK_MAGIC_SNAT_DONE)\
+    \ == MARK_MAGIC_SNAT_DONE) {\n\t\tret = CTX_ACT_OK;\n\t\tgoto out;\n\t}\n\tret\
+    \ = nodeport_nat_fwd(ctx);\n#endif\nout:\n\tif (IS_ERR(ret))\n\t\treturn send_drop_notify_error(ctx,\
+    \ 0, ret, CTX_ACT_DROP, METRIC_EGRESS);\n\treturn ret;\n}\n\nBPF_LICENSE(\"GPL\"\
+    );\n\n// FILE: bpf/lib/nodeport.h\n#ifndef __NODEPORT_H_\n#define __NODEPORT_H_\n\
+    \n#include <bpf/ctx/ctx.h>\n#include <bpf/api.h>\n\n#include \"tailcall.h\"\n\
+    #include \"nat.h\"\n#include \"edt.h\"\n#include \"lb.h\"\n#include \"common.h\"\
+    \n#include \"overloadable.h\"\n#include \"conntrack.h\"\n#include \"csum.h\"\n\
+    #include \"encap.h\"\n#include \"trace.h\"\n#include \"ghash.h\"\n#include \"\
+    host_firewall.h\"\n\n#define CB_SRC_IDENTITY\t0\n\n#ifdef ENABLE_NODEPORT\n /*\
+    \ Define dummy values to make bpf_{lxc,overlay}.c to compile */\n#ifndef NATIVE_DEV_IFINDEX\n\
+    \n// CONTEXT: static __always_inline bool nodeport_uses_dsr4(const struct ipv4_ct_tuple\
+    \ *tuple\n * to true.\n */\nstatic __always_inline bool snat_v4_needed(struct\
+    \ __ctx_buff *ctx, __be32 *addr,\n\t\t\t\t\t   bool *from_endpoint __maybe_unused)\n\
+    {\n\tstruct endpoint_info *ep __maybe_unused;\n\tvoid *data, *data_end;\n\tstruct\
+    \ iphdr *ip4;\n\n\tif (!revalidate_data(ctx, &data, &data_end, &ip4))\n\t\treturn\
+    \ false;\n\n\t/* Basic minimum is to only NAT when there is a potential of\n\t\
+    \ * overlapping tuples, e.g. applications in hostns reusing\n\t * source IPs we\
+    \ SNAT in NodePort and BPF-masq.\n\t */\n#if defined(ENCAP_IFINDEX) && defined(IS_BPF_OVERLAY)\n\
+    \tif (ip4->saddr == IPV4_GATEWAY) {\n\t\t*addr = IPV4_GATEWAY;\n\t\treturn true;\n\
+    \t}\n#else\n    /* NATIVE_DEV_IFINDEX == DIRECT_ROUTING_DEV_IFINDEX cannot be\
+    \ moved into\n     * preprocessor, as the former is known only during load time\
+    \ (templating).\n\n// CONTEXT: int tail_rev_nodeport_lb4(struct __ctx_buff *ctx)\n\
+    \t/* We don't want to enforce host policies a second time if we jump back to\n\
+    \t * bpf_host's handle_ipv6.\n\t */\n\tctx_skip_host_fw_set(ctx);\n#endif\n\t\
+    ret = rev_nodeport_lb4(ctx, &ifindex);\n\tif (IS_ERR(ret))\n\t\treturn send_drop_notify_error(ctx,\
+    \ 0, ret, CTX_ACT_DROP, METRIC_EGRESS);\n\tedt_set_aggregate(ctx, 0);\n\treturn\
+    \ ctx_redirect(ctx, ifindex, 0);\n}\n\ndeclare_tailcall_if(__or(__and(is_defined(ENABLE_IPV4),\n\
+    \t\t\t       is_defined(ENABLE_IPV6)),\n\t\t\t __and(is_defined(ENABLE_HOST_FIREWALL),\n\
+    \t\t\t       is_defined(IS_BPF_HOST))),\n\t\t    CILIUM_CALL_IPV4_ENCAP_NODEPORT_NAT)\n\
+    int tail_handle_nat_fwd_ipv4(struct __ctx_buff *ctx)\n{\n\treturn nodeport_nat_ipv4_fwd(ctx);\n\
+    }\n#endif /* ENABLE_IPV4 */\n\n#ifdef ENABLE_HEALTH_CHECK\nstatic __always_inline\
+    \ int\nhealth_encap_v4(struct __ctx_buff *ctx, __u32 tunnel_ep,\n\t\t__u32 seclabel)\n\
+    {\n\n// CONTEXT: lb_handle_health(struct __ctx_buff *ctx __maybe_unused)\n\t\t\
+    if (ret != 0)\n\t\t\treturn ret;\n\t\tctx->mark |= MARK_MAGIC_HEALTH_IPIP_DONE;\n\
+    \t\treturn redirect(ENCAP6_IFINDEX, 0);\n\t}\n#endif\n\tdefault:\n\t\treturn CTX_ACT_OK;\n\
+    \t}\n}\n#endif /* ENABLE_HEALTH_CHECK */\n\nstatic __always_inline int nodeport_nat_fwd(struct\
+    \ __ctx_buff *ctx)\n{\n\tint ret = CTX_ACT_OK;\n\t__u16 proto;\n\n\tif (!validate_ethertype(ctx,\
+    \ &proto))\n\t\treturn CTX_ACT_OK;\n\tswitch (proto) {\n#ifdef ENABLE_IPV4\n\t\
+    case bpf_htons(ETH_P_IP):\n\t\tinvoke_tailcall_if(__or(__and(is_defined(ENABLE_IPV4),\n\
+    \t\t\t\t\t      is_defined(ENABLE_IPV6)),\n\t\t\t\t\t__and(is_defined(ENABLE_HOST_FIREWALL),\n\
+    \t\t\t\t\t      is_defined(IS_BPF_HOST))),\n\t\t\t\t   CILIUM_CALL_IPV4_ENCAP_NODEPORT_NAT,\n\
+    \t\t\t\t   tail_handle_nat_fwd_ipv4);\n\t\tbreak;\n#endif /* ENABLE_IPV4 */\n\
+    #ifdef ENABLE_IPV6\n\tcase bpf_htons(ETH_P_IPV6):\n\t\tinvoke_tailcall_if(__or(__and(is_defined(ENABLE_IPV4),\n\
+    \t\t\t\t\t      is_defined(ENABLE_IPV6)),\n\t\t\t\t\t__and(is_defined(ENABLE_HOST_FIREWALL),\n\
+    \t\t\t\t\t      is_defined(IS_BPF_HOST))),\n\t\t\t\t   CILIUM_CALL_IPV6_ENCAP_NODEPORT_NAT,\n\
+    \t\t\t\t   tail_handle_nat_fwd_ipv6);\n\n// FILE: bpf/lib/tailcall.h\n#define\
+    \ __and_0(y)  __eval(__and_0, y)\n#define __and_1(y)  __eval(__and_1, y)\n#define\
+    \ __and(x, y) __eval(__and_, x)(y)\n\n#define __or_00 0\n#define __or_01 1\n#define\
+    \ __or_10 1\n#define __or_11 1\n#define __or_0(y)  __eval(__or_0, y)\n#define\
+    \ __or_1(y)  __eval(__or_1, y)\n#define __or(x, y) __eval(__or_, x)(y)\n\n/* declare_tailcall_if()\
+    \ and invoke_tailcall_if() is a pair\n * of helpers which based on COND either\
+    \ selects to emit a\n * tail call for the underlying function when true or emits\n\
+    \ * it as inlined when false. COND can be selected by one or\n * multiple compile\
+    \ time flags.\n *\n * Usage example:\n *\n * 1) Declaration:\n *\n * declare_tailcall_if(__and(is_defined(ENABLE_IPV4),\
+    \ is_defined(ENABLE_IPV6)),\n *                     CILIUM_CALL_FOO)"
+  fixed_code: "// FILE: bpf/bpf_host.c\n#include \"lib/dbg.h\"\n#include \"lib/proxy.h\"\
+    \n#include \"lib/trace.h\"\n#include \"lib/identity.h\"\n#include \"lib/l3.h\"\
+    \n#include \"lib/l4.h\"\n#include \"lib/drop.h\"\n#include \"lib/encap.h\"\n#include\
+    \ \"lib/nat.h\"\n#include \"lib/lb.h\"\n#include \"lib/nodeport.h\"\n#include\
+    \ \"lib/eps.h\"\n#include \"lib/host_firewall.h\"\n#include \"lib/overloadable.h\"\
+    \n#include \"lib/encrypt.h\"\n\n#if defined(ENABLE_IPV4) || defined(ENABLE_IPV6)\n\
+    static __always_inline int rewrite_dmac_to_host(struct __ctx_buff *ctx,\n\t\t\t\
+    \t\t\t__u32 src_identity)\n{\n\t/* When attached to cilium_host, we rewrite the\
+    \ DMAC to the mac of\n\t * cilium_host (peer) to ensure the packet is being considered\
+    \ to be\n\t * addressed to the host (PACKET_HOST).\n\t */\n\n// CONTEXT: out:\n\
+    #endif /* ENABLE_HOST_FIREWALL */\n\n#if defined(ENABLE_BANDWIDTH_MANAGER)\n\t\
+    ret = edt_sched_departure(ctx);\n\t/* No send_drop_notify_error() here given we're\
+    \ rate-limiting. */\n\tif (ret == CTX_ACT_DROP) {\n\t\tupdate_metrics(ctx_full_len(ctx),\
+    \ METRIC_EGRESS,\n\t\t\t       -DROP_EDT_HORIZON);\n\t\treturn ret;\n\t}\n#endif\n\
+    \n#if defined(ENABLE_NODEPORT) && \\\n\t(!defined(ENABLE_DSR) || \\\n\t (defined(ENABLE_DSR)\
+    \ && defined(ENABLE_DSR_HYBRID)) || \\\n\t defined(ENABLE_MASQUERADE) || \\\n\t\
+    \ defined(ENABLE_EGRESS_GATEWAY))\n\tif ((ctx->mark & MARK_MAGIC_SNAT_DONE) !=\
+    \ MARK_MAGIC_SNAT_DONE) {\n\t\tret = handle_nat_fwd(ctx);\n\t\tif (IS_ERR(ret))\n\
+    \t\t\treturn send_drop_notify_error(ctx, 0, ret,\n\t\t\t\t\t\t      CTX_ACT_DROP,\n\
+    \t\t\t\t\t\t      METRIC_EGRESS);\n\t}\n#endif\n#ifdef ENABLE_HEALTH_CHECK\n\t\
+    ret = lb_handle_health(ctx);\n\tif (IS_ERR(ret))\n\t\treturn send_drop_notify_error(ctx,\
+    \ 0, ret, CTX_ACT_DROP,\n\t\t\t\t\t      METRIC_EGRESS);\n#endif\n\n// FILE: bpf/bpf_overlay.c\n\
+    // CONTEXT: int to_overlay(struct __ctx_buff *ctx)\n\tif (ret == CTX_ACT_DROP)\
+    \ {\n\t\tupdate_metrics(ctx_full_len(ctx), METRIC_EGRESS,\n\t\t\t       -DROP_EDT_HORIZON);\n\
+    \t\treturn CTX_ACT_DROP;\n\t}\n#endif\n\n#ifdef ENABLE_NODEPORT\n\tif ((ctx->mark\
+    \ & MARK_MAGIC_SNAT_DONE) == MARK_MAGIC_SNAT_DONE) {\n\t\tret = CTX_ACT_OK;\n\t\
+    \tgoto out;\n\t}\n\tret = handle_nat_fwd(ctx);\n#endif\nout:\n\tif (IS_ERR(ret))\n\
+    \t\treturn send_drop_notify_error(ctx, 0, ret, CTX_ACT_DROP, METRIC_EGRESS);\n\
+    \treturn ret;\n}\n\nBPF_LICENSE(\"GPL\");\n\n// FILE: bpf/lib/nodeport.h\n#ifndef\
+    \ __NODEPORT_H_\n#define __NODEPORT_H_\n\n#include <bpf/ctx/ctx.h>\n#include <bpf/api.h>\n\
+    \n#include \"tailcall.h\"\n#include \"nat.h\"\n#include \"edt.h\"\n#include \"\
+    lb.h\"\n#include \"common.h\"\n#include \"overloadable.h\"\n#include \"eps.h\"\
+    \n#include \"conntrack.h\"\n#include \"csum.h\"\n#include \"encap.h\"\n#include\
+    \ \"trace.h\"\n#include \"ghash.h\"\n#include \"host_firewall.h\"\n\n#define CB_SRC_IDENTITY\t\
+    0\n\n#ifdef ENABLE_NODEPORT\n /* Define dummy values to make bpf_{lxc,overlay}.c\
+    \ to compile */\n#ifndef NATIVE_DEV_IFINDEX\n\n// CONTEXT: static __always_inline\
+    \ bool nodeport_uses_dsr4(const struct ipv4_ct_tuple *tuple\n * to true.\n */\n\
+    static __always_inline bool snat_v4_needed(struct __ctx_buff *ctx, __be32 *addr,\n\
+    \t\t\t\t\t   bool *from_endpoint __maybe_unused)\n{\n\tstruct endpoint_info *ep\
+    \ __maybe_unused;\n\tvoid *data, *data_end;\n\tstruct iphdr *ip4;\n\n\tif (!revalidate_data(ctx,\
+    \ &data, &data_end, &ip4))\n\t\treturn false;\n\n#if defined(ENABLE_EGRESS_GATEWAY)\n\
+    \t/* Check if SNAT needs to be applied to the packet. Apply SNAT if there\n\t\
+    \ * is an egress rule in ebpf map, and the packet is not coming out from\n\t *\
+    \ overlay interface. If the packet is coming from an overlay interface\n\t * it\
+    \ means it is forwarded to another node, instead of leaving the\n\t * cluster.\n\
+    \t */\n\tif (1) {\n\t\tstruct egress_info *info;\n\n\t\tinfo = lookup_ip4_egress_endpoint(ip4->saddr,\
+    \ ip4->daddr);\n\t\tif (info && ctx->ifindex != ENCAP_IFINDEX) {\n\t\t\t*addr\
+    \ = info->egress_ip;\n\t\t\t*from_endpoint = true;\n\t\t\treturn true;\n\t\t}\n\
+    \t}\n#endif\n\n\t/* Basic minimum is to only NAT when there is a potential of\n\
+    \t * overlapping tuples, e.g. applications in hostns reusing\n\t * source IPs\
+    \ we SNAT in NodePort and BPF-masq.\n\t */\n#if defined(ENCAP_IFINDEX) && defined(IS_BPF_OVERLAY)\n\
+    \tif (ip4->saddr == IPV4_GATEWAY) {\n\t\t*addr = IPV4_GATEWAY;\n\t\treturn true;\n\
+    \t}\n#else\n    /* NATIVE_DEV_IFINDEX == DIRECT_ROUTING_DEV_IFINDEX cannot be\
+    \ moved into\n     * preprocessor, as the former is known only during load time\
+    \ (templating).\n\n// CONTEXT: int tail_rev_nodeport_lb4(struct __ctx_buff *ctx)\n\
+    \t/* We don't want to enforce host policies a second time if we jump back to\n\
+    \t * bpf_host's handle_ipv6.\n\t */\n\tctx_skip_host_fw_set(ctx);\n#endif\n\t\
+    ret = rev_nodeport_lb4(ctx, &ifindex);\n\tif (IS_ERR(ret))\n\t\treturn send_drop_notify_error(ctx,\
+    \ 0, ret, CTX_ACT_DROP, METRIC_EGRESS);\n\tedt_set_aggregate(ctx, 0);\n\treturn\
+    \ ctx_redirect(ctx, ifindex, 0);\n}\n\ndeclare_tailcall_if(__or3(__and(is_defined(ENABLE_IPV4),\n\
+    \t\t\t\tis_defined(ENABLE_IPV6)),\n\t\t\t  __and(is_defined(ENABLE_HOST_FIREWALL),\n\
+    \t\t\t\tis_defined(IS_BPF_HOST)),\n\t\t\t  is_defined(ENABLE_EGRESS_GATEWAY)),\n\
+    \t\t    CILIUM_CALL_IPV4_ENCAP_NODEPORT_NAT)\nint tail_handle_nat_fwd_ipv4(struct\
+    \ __ctx_buff *ctx)\n{\n\treturn nodeport_nat_ipv4_fwd(ctx);\n}\n#endif /* ENABLE_IPV4\
+    \ */\n\n#ifdef ENABLE_HEALTH_CHECK\nstatic __always_inline int\nhealth_encap_v4(struct\
+    \ __ctx_buff *ctx, __u32 tunnel_ep,\n\t\t__u32 seclabel)\n{\n\n// CONTEXT: lb_handle_health(struct\
+    \ __ctx_buff *ctx __maybe_unused)\n\t\tif (ret != 0)\n\t\t\treturn ret;\n\t\t\
+    ctx->mark |= MARK_MAGIC_HEALTH_IPIP_DONE;\n\t\treturn redirect(ENCAP6_IFINDEX,\
+    \ 0);\n\t}\n#endif\n\tdefault:\n\t\treturn CTX_ACT_OK;\n\t}\n}\n#endif /* ENABLE_HEALTH_CHECK\
+    \ */\n\nstatic __always_inline int handle_nat_fwd(struct __ctx_buff *ctx)\n{\n\
+    \tint ret = CTX_ACT_OK;\n\t__u16 proto;\n\n\tif (!validate_ethertype(ctx, &proto))\n\
+    \t\treturn CTX_ACT_OK;\n\tswitch (proto) {\n#ifdef ENABLE_IPV4\n\tcase bpf_htons(ETH_P_IP):\n\
+    \t\tinvoke_tailcall_if(__or3(__and(is_defined(ENABLE_IPV4),\n\t\t\t\t\t      \
+    \ is_defined(ENABLE_IPV6)),\n\t\t\t\t\t __and(is_defined(ENABLE_HOST_FIREWALL),\n\
+    \t\t\t\t\t       is_defined(IS_BPF_HOST)),\n\t\t\t\t\t is_defined(ENABLE_EGRESS_GATEWAY)),\n\
+    \t\t\t\t   CILIUM_CALL_IPV4_ENCAP_NODEPORT_NAT,\n\t\t\t\t   tail_handle_nat_fwd_ipv4);\n\
+    \t\tbreak;\n#endif /* ENABLE_IPV4 */\n#ifdef ENABLE_IPV6\n\tcase bpf_htons(ETH_P_IPV6):\n\
+    \t\tinvoke_tailcall_if(__or(__and(is_defined(ENABLE_IPV4),\n\t\t\t\t\t      is_defined(ENABLE_IPV6)),\n\
+    \t\t\t\t\t__and(is_defined(ENABLE_HOST_FIREWALL),\n\t\t\t\t\t      is_defined(IS_BPF_HOST))),\n\
+    \t\t\t\t   CILIUM_CALL_IPV6_ENCAP_NODEPORT_NAT,\n\t\t\t\t   tail_handle_nat_fwd_ipv6);\n\
+    \n// FILE: bpf/lib/tailcall.h\n#define __and_0(y)  __eval(__and_0, y)\n#define\
+    \ __and_1(y)  __eval(__and_1, y)\n#define __and(x, y) __eval(__and_, x)(y)\n\n\
+    #define __or_00 0\n#define __or_01 1\n#define __or_10 1\n#define __or_11 1\n#define\
+    \ __or_0(y)  __eval(__or_0, y)\n#define __or_1(y)  __eval(__or_1, y)\n#define\
+    \ __or(x, y) __eval(__or_, x)(y)\n\n#define __or3_1(y, z)  1\n#define __or3_0(y,\
+    \ z)  __or(y, z)\n#define __or3(x, y, z) __eval(__or3_, x)(y, z)\n\n/* declare_tailcall_if()\
+    \ and invoke_tailcall_if() is a pair\n * of helpers which based on COND either\
+    \ selects to emit a\n * tail call for the underlying function when true or emits\n\
+    \ * it as inlined when false. COND can be selected by one or\n * multiple compile\
+    \ time flags.\n *\n * Usage example:\n *\n * 1) Declaration:\n *\n * declare_tailcall_if(__and(is_defined(ENABLE_IPV4),\
+    \ is_defined(ENABLE_IPV6)),\n *                     CILIUM_CALL_FOO)"
+  diff_summary: |-
+    bpf/bpf_host.c:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: out:.
+    bpf/bpf_overlay.c:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: int to_overlay(struct __ctx_buff *ctx).
+    bpf/lib/nodeport.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: static __always_inline bool nodeport_uses_dsr4(const struct ipv4_ct_tuple *tuple, int tail_rev_nodeport_lb4(struct __ctx_buff *ctx), lb_handle_health(struct __ctx_buff *ctx __maybe_unused).
+    bpf/lib/tailcall.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: the touched section.
+    - Commit subject: Move egress handler in tailcall.

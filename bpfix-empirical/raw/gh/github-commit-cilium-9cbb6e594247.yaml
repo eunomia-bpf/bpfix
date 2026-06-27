@@ -1,0 +1,167 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-9cbb6e594247
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/9cbb6e594247c7b5732b0c6e560d894093b38c47
+  title: 'datapath: Do not SNAT replies to outside'
+  repository: https://github.com/cilium/cilium
+  commit: 9cbb6e594247c7b5732b0c6e560d894093b38c47
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-9cbb6e594247.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: environment_required
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Commit body cites a 4.19 full-program complexity failure, BPF program is
+    too large. Processed 131073 insn; local faithful replay requires that historical
+    Cilium build.
+raw:
+  case_id: github-commit-cilium-9cbb6e594247
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: 9cbb6e594247c7b5732b0c6e560d894093b38c47
+  commit_message: 'datapath: Do not SNAT replies to outside'
+  commit_date: '2021-08-16'
+  fix_type: inline_hint
+  buggy_code: "// FILE: bpf/lib/conntrack.h\n// CONTEXT: static __always_inline int\
+    \ ipv4_ct_extract_l4_ports(struct __ctx_buff *ctx,\n\treturn CTX_ACT_OK;\n}\n\n\
+    static __always_inline void ct4_cilium_dbg_tuple(struct __ctx_buff *ctx, __u8\
+    \ type,\n\t\t\t\t\t\t const struct ipv4_ct_tuple *tuple,\n\t\t\t\t\t\t __u32 rev_nat_index,\
+    \ int dir)\n{\n\t__be32 addr = (dir == CT_INGRESS) ? tuple->saddr : tuple->daddr;\n\
+    \n\tcilium_dbg(ctx, type, addr, rev_nat_index);\n}\n\n/* Offset must point to\
+    \ IPv4 header */\nstatic __always_inline int ct_lookup4(const void *map,\n\t\t\
+    \t\t      struct ipv4_ct_tuple *tuple,\n\t\t\t\t      struct __ctx_buff *ctx,\
+    \ int off, int dir,\n\t\t\t\t      struct ct_state *ct_state, __u32 *monitor)\n\
+    {\n\tint err, ret = CT_NEW, action = ACTION_UNSPEC;\n\tbool is_tcp = tuple->nexthdr\
+    \ == IPPROTO_TCP,\n\t     has_l4_header = true;\n\tunion tcp_flags tcp_flags =\
+    \ { .value = 0 };\n\n\t/* The tuple is created in reverse order initially to find\
+    \ a\n\n// CONTEXT: static __always_inline int ct_create4(const void *map_main,\n\
+    }\n#else /* !CONNTRACK */\nstatic __always_inline int\nct_lookup6(const void *map\
+    \ __maybe_unused,\n\t   struct ipv6_ct_tuple *tuple __maybe_unused,\n\t   struct\
+    \ __ctx_buff *ctx __maybe_unused, int off __maybe_unused,\n\t   int dir __maybe_unused,\
+    \ struct ct_state *ct_state __maybe_unused,\n\t   __u32 *monitor __maybe_unused)\n\
+    {\n\treturn 0;\n}\n\nstatic __always_inline int\nct_lookup4(const void *map __maybe_unused,\n\
+    \t   struct ipv4_ct_tuple *tuple __maybe_unused,\n\t   struct __ctx_buff *ctx\
+    \ __maybe_unused, int off __maybe_unused,\n\t   int dir __maybe_unused, struct\
+    \ ct_state *ct_state __maybe_unused,\n\t   __u32 *monitor __maybe_unused)\n{\n\
+    \treturn 0;\n}\n\nstatic __always_inline void\nct_update6_backend_id(const void\
+    \ *map __maybe_unused,\n\n// FILE: bpf/lib/nodeport.h\n// CONTEXT: static __always_inline\
+    \ bool nodeport_uses_dsr4(const struct ipv4_ct_tuple *tuple\n}\n\n/* Returns true\
+    \ if the packet must be SNAT-ed. In addition, sets \"addr\" to\n * SNAT IP addr,\
+    \ and if a packet is sent from an endpoint, sets \"from_endpoint\"\n * to true.\n\
+    \ */\nstatic __always_inline bool snat_v4_needed(struct __ctx_buff *ctx, __be32\
+    \ *addr,\n\t\t\t\t\t   bool *from_endpoint __maybe_unused)\n{\n\tstruct endpoint_info\
+    \ *ep __maybe_unused;\n\tvoid *data, *data_end;\n\tstruct iphdr *ip4;\n\n\tif\
+    \ (!revalidate_data(ctx, &data, &data_end, &ip4))\n\t\treturn false;\n\n#if defined(ENABLE_EGRESS_GATEWAY)\n\
+    \t/* Check if SNAT needs to be applied to the packet. Apply SNAT if there\n\t\
+    \ * is an egress rule in ebpf map, and the packet is not coming out from\n\t *\
+    \ overlay interface. If the packet is coming from an overlay interface\n\t * it\
+    \ means it is forwarded to another node, instead of leaving the\n\t * cluster.\n\
+    \t */\n\tif (1) {\n\n// CONTEXT: static __always_inline bool snat_v4_needed(struct\
+    \ __ctx_buff *ctx, __be32 *addr,\n\t\t\t * to a remote node is not encap'd, and\
+    \ is sent\n\t\t\t * via a native dev. Therefore, such packet has\n\t\t\t * to\
+    \ be MASQ'd. Otherwise, it might be dropped\n\t\t\t * either by underlying network\
+    \ (e.g. AWS drops\n\t\t\t * packets by default from unknown subnets) or\n\t\t\t\
+    \ * by the remote node if its native dev's\n\t\t\t * rp_filter=1.\n\t\t\t */\n\
+    \t\t\tif (info->sec_label == REMOTE_NODE_ID)\n\t\t\t\treturn false;\n#endif\n\n\
+    \t\t\t*addr = IPV4_MASQUERADE;\n\t\t\treturn true;\n\t\t}\n\t}\n#endif /*ENABLE_MASQUERADE\
+    \ */\n\n\treturn false;\n}\n\nstatic __always_inline int nodeport_nat_ipv4_fwd(struct\
+    \ __ctx_buff *ctx)\n{\n\tbool from_endpoint = false;"
+  fixed_code: "// FILE: bpf/lib/conntrack.h\n// CONTEXT: static __always_inline int\
+    \ ipv4_ct_extract_l4_ports(struct __ctx_buff *ctx,\n\treturn CTX_ACT_OK;\n}\n\n\
+    static __always_inline void ct4_cilium_dbg_tuple(struct __ctx_buff *ctx, __u8\
+    \ type,\n\t\t\t\t\t\t const struct ipv4_ct_tuple *tuple,\n\t\t\t\t\t\t __u32 rev_nat_index,\
+    \ int dir)\n{\n\t__be32 addr = (dir == CT_INGRESS) ? tuple->saddr : tuple->daddr;\n\
+    \n\tcilium_dbg(ctx, type, addr, rev_nat_index);\n}\n\nstatic __always_inline int\n\
+    ct_extract_ports4(struct __ctx_buff *ctx, int off, int dir,\n\t\t  struct ipv4_ct_tuple\
+    \ *tuple)\n{\n\tint err;\n\n\tswitch (tuple->nexthdr) {\n\tcase IPPROTO_ICMP:\n\
+    \t\tif (1) {\n\t\t\t__be16 identifier = 0;\n\t\t\t__u8 type;\n\n\t\t\tif (ctx_load_bytes(ctx,\
+    \ off, &type, 1) < 0)\n\t\t\t\treturn DROP_CT_INVALID_HDR;\n\t\t\tif ((type ==\
+    \ ICMP_ECHO || type == ICMP_ECHOREPLY) &&\n\t\t\t     ctx_load_bytes(ctx, off\
+    \ + offsetof(struct icmphdr, un.echo.id),\n\t\t\t\t\t    &identifier, 2) < 0)\n\
+    \t\t\t\treturn DROP_CT_INVALID_HDR;\n\n\t\t\ttuple->sport = 0;\n\t\t\ttuple->dport\
+    \ = 0;\n\n\t\t\tswitch (type) {\n\t\t\tcase ICMP_DEST_UNREACH:\n\t\t\tcase ICMP_TIME_EXCEEDED:\n\
+    \t\t\tcase ICMP_PARAMETERPROB:\n\t\t\t\ttuple->flags |= TUPLE_F_RELATED;\n\t\t\
+    \t\tbreak;\n\n\t\t\tcase ICMP_ECHOREPLY:\n\t\t\t\ttuple->sport = identifier;\n\
+    \t\t\t\tbreak;\n\t\t\tcase ICMP_ECHO:\n\t\t\t\ttuple->dport = identifier;\n\t\t\
+    \t\t/* fall through */\n\t\t\tdefault:\n\t\t\t\tbreak;\n\t\t\t}\n\t\t}\n\t\tbreak;\n\
+    \n\tcase IPPROTO_TCP:\n\t\terr = ipv4_ct_extract_l4_ports(ctx, off, dir, tuple,\
+    \ NULL);\n\t\tif (err < 0)\n\t\t\treturn err;\n\n\t\tbreak;\n\n\tcase IPPROTO_UDP:\n\
+    \t\terr = ipv4_ct_extract_l4_ports(ctx, off, dir, tuple, NULL);\n\t\tif (err <\
+    \ 0)\n\t\t\treturn err;\n\n\t\tbreak;\n\n\tdefault:\n\t\t/* Can't handle extension\
+    \ headers yet */\n\t\treturn DROP_CT_UNKNOWN_PROTO;\n\t}\n\n\treturn 0;\n}\n\n\
+    /* The function determines whether an egress flow identified by the given\n *\
+    \ tuple is a reply.\n *\n * The datapath creates a CT entry in a reverse order.\
+    \ E.g., if a pod sends a\n * request to outside, the CT entry stored in the BPF\
+    \ map will be TUPLE_F_IN:\n * pod => outside. So, we can leverage this fact to\
+    \ determine whether the given\n * flow is a reply.\n */\nstatic __always_inline\
+    \ int\nct_is_reply4(const void *map, struct __ctx_buff *ctx, int off,\n\t    \
+    \ struct ipv4_ct_tuple *tuple, bool *is_reply)\n{\n\tint err = 0;\n\n\terr = ct_extract_ports4(ctx,\
+    \ off, CT_EGRESS, tuple);\n\tif (err < 0)\n\t\treturn err;\n\n\ttuple->flags =\
+    \ TUPLE_F_IN;\n\n\t*is_reply = map_lookup_elem(map, tuple) != NULL;\n\n\treturn\
+    \ 0;\n}\n\n/* Offset must point to IPv4 header */\nstatic __always_inline int\
+    \ ct_lookup4(const void *map,\n\t\t\t\t      struct ipv4_ct_tuple *tuple,\n\t\t\
+    \t\t      struct __ctx_buff *ctx, int off, int dir,\n\t\t\t\t      struct ct_state\
+    \ *ct_state, __u32 *monitor)\n{\n\tint err, ret = CT_NEW, action = ACTION_UNSPEC;\n\
+    \tbool is_tcp = tuple->nexthdr == IPPROTO_TCP,\n\t     has_l4_header = true;\n\
+    \tunion tcp_flags tcp_flags = { .value = 0 };\n\n\t/* The tuple is created in\
+    \ reverse order initially to find a\n\n// CONTEXT: static __always_inline int\
+    \ ct_create4(const void *map_main,\n}\n#else /* !CONNTRACK */\nstatic __always_inline\
+    \ int\nct_lookup6(const void *map __maybe_unused,\n\t   struct ipv6_ct_tuple *tuple\
+    \ __maybe_unused,\n\t   struct __ctx_buff *ctx __maybe_unused, int off __maybe_unused,\n\
+    \t   int dir __maybe_unused, struct ct_state *ct_state __maybe_unused,\n\t   __u32\
+    \ *monitor __maybe_unused)\n{\n\treturn 0;\n}\n\nstatic __always_inline int\n\
+    ct_is_reply4(const void *map __maybe_unused,\n\t     struct __ctx_buff *ctx __maybe_unused,\
+    \ int off __maybe_unused,\n\t     struct ipv4_ct_tuple *tuple __maybe_unused,\n\
+    \t     bool *is_reply __maybe_unused)\n{\n\treturn 0;\n}\n\nstatic __always_inline\
+    \ int\nct_lookup4(const void *map __maybe_unused,\n\t   struct ipv4_ct_tuple *tuple\
+    \ __maybe_unused,\n\t   struct __ctx_buff *ctx __maybe_unused, int off __maybe_unused,\n\
+    \t   int dir __maybe_unused, struct ct_state *ct_state __maybe_unused,\n\t   __u32\
+    \ *monitor __maybe_unused)\n{\n\treturn 0;\n}\n\nstatic __always_inline void\n\
+    ct_update6_backend_id(const void *map __maybe_unused,\n\n// FILE: bpf/lib/nodeport.h\n\
+    // CONTEXT: static __always_inline bool nodeport_uses_dsr4(const struct ipv4_ct_tuple\
+    \ *tuple\n}\n\n/* Returns true if the packet must be SNAT-ed. In addition, sets\
+    \ \"addr\" to\n * SNAT IP addr, and if a packet is sent from an endpoint, sets\
+    \ \"from_endpoint\"\n * to true.\n */\nstatic __always_inline bool snat_v4_needed(struct\
+    \ __ctx_buff *ctx, __be32 *addr,\n\t\t\t\t\t   bool *from_endpoint __maybe_unused)\n\
+    {\n\tstruct endpoint_info *ep __maybe_unused;\n\tvoid *data, *data_end;\n\tstruct\
+    \ iphdr *ip4;\n\tstruct ipv4_ct_tuple tuple __maybe_unused = {};\n\tbool is_reply\
+    \ __maybe_unused = false;\n\n\tif (!revalidate_data(ctx, &data, &data_end, &ip4))\n\
+    \t\treturn false;\n\n#if defined(ENABLE_EGRESS_GATEWAY)\n\t/* Check if SNAT needs\
+    \ to be applied to the packet. Apply SNAT if there\n\t * is an egress rule in\
+    \ ebpf map, and the packet is not coming out from\n\t * overlay interface. If\
+    \ the packet is coming from an overlay interface\n\t * it means it is forwarded\
+    \ to another node, instead of leaving the\n\t * cluster.\n\t */\n\tif (1) {\n\n\
+    // CONTEXT: static __always_inline bool snat_v4_needed(struct __ctx_buff *ctx,\
+    \ __be32 *addr,\n\t\t\t * to a remote node is not encap'd, and is sent\n\t\t\t\
+    \ * via a native dev. Therefore, such packet has\n\t\t\t * to be MASQ'd. Otherwise,\
+    \ it might be dropped\n\t\t\t * either by underlying network (e.g. AWS drops\n\
+    \t\t\t * packets by default from unknown subnets) or\n\t\t\t * by the remote node\
+    \ if its native dev's\n\t\t\t * rp_filter=1.\n\t\t\t */\n\t\t\tif (info->sec_label\
+    \ == REMOTE_NODE_ID)\n\t\t\t\treturn false;\n#endif\n\n\t\t\ttuple.nexthdr = ip4->protocol;\n\
+    \t\t\ttuple.daddr = ip4->daddr;\n\t\t\ttuple.saddr = ip4->saddr;\n\n\t\t\t/* The\
+    \ packet is a reply, which means that outside\n\t\t\t * has initiated the connection,\
+    \ so no need to SNAT\n\t\t\t * the reply.\n\t\t\t */\n\t\t\tif (!ct_is_reply4(get_ct_map4(&tuple),\
+    \ ctx,\n\t\t\t\t\t  ETH_HLEN + ipv4_hdrlen(ip4),\n\t\t\t\t\t  &tuple, &is_reply)\
+    \ &&\n\t\t\t    is_reply)\n\t\t\t\treturn false;\n\n\t\t\t*addr = IPV4_MASQUERADE;\n\
+    \t\t\treturn true;\n\t\t}\n\t}\n#endif /*ENABLE_MASQUERADE */\n\n\treturn false;\n\
+    }\n\nstatic __always_inline int nodeport_nat_ipv4_fwd(struct __ctx_buff *ctx)\n\
+    {\n\tbool from_endpoint = false;"
+  diff_summary: |-
+    bpf/lib/conntrack.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: static __always_inline int ipv4_ct_extract_l4_ports(struct __ctx_buff *ctx,, static __always_inline int ct_create4(const void *map_main,.
+    bpf/lib/nodeport.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: static __always_inline bool nodeport_uses_dsr4(const struct ipv4_ct_tuple *tuple, static __always_inline bool snat_v4_needed(struct __ctx_buff *ctx, __be32 *addr,.
+    - Commit subject: datapath: Do not SNAT replies to outside.

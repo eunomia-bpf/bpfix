@@ -1,0 +1,20 @@
+schema_version: bpfix.capture/v1
+capture_id: kernel-selftest-cpumask-failure-test-populate-invalid-source-tp-btf-task-newtask-149c6ecc__kernel-6.15.11-clang-18-log2
+case_id: kernel-selftest-cpumask-failure-test-populate-invalid-source-tp-btf-task-newtask-149c6ecc
+environment_id: kernel-6.15.11-clang-18-log2
+imported_at: '2026-04-29T22:43:45+00:00'
+source_artifact:
+  path: bpfix-empirical/cases/kernel-selftest-cpumask-failure-test-populate-invalid-source-tp-btf-task-newtask-149c6ecc
+  source_file: tools/testing/selftests/bpf/progs/cpumask_failure.c
+  target_function: test_populate_invalid_source
+  section: tp_btf/task_newtask
+  compile_ok: true
+  load_attempted: true
+  verifier_rejected: true
+  verifier_log_captured: true
+  source_record: bpfix-empirical/raw/kernel_selftests/kernel-selftest-cpumask-failure-test-populate-invalid-source-tp-btf-task-newtask-149c6ecc.yaml
+replay:
+  build_command: make
+  load_command: make replay-verify
+  verifier_log: replay-verifier.log
+  expected_load_status: verifier_reject

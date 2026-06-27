@@ -1,0 +1,102 @@
+schema_version: bpfix.raw_external/v1
+raw_id: stackoverflow-67441023
+source_kind: stackoverflow
+source:
+  url: https://stackoverflow.com/questions/67441023/ebpf-verify-ld-abs-and-ld-ind-instructions
+  title: 'ebpf: verify LD_ABS and LD_IND instructions'
+  repository: null
+  commit: null
+  collected_at: '2026-03-11T16:02:55+00:00'
+collector:
+  original_path: bpfix-empirical/raw/so/stackoverflow-67441023.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: true
+  verifier_log_block_count: 1
+  source_snippet_count: 1
+  has_buggy_code: false
+  has_fixed_code: false
+  has_fix_description: false
+reproduction:
+  status: replay_valid
+  case_id: stackoverflow-67441023
+  case_path: cases/stackoverflow-67441023
+  artifact_path: cases/stackoverflow-67441023
+  reason: admitted_to_bpfix_bench_cases
+raw:
+  case_id: stackoverflow-67441023
+  source: stackoverflow
+  collected_at: '2026-03-11T16:02:55+00:00'
+  question:
+    question_id: 67441023
+    title: 'ebpf: verify LD_ABS and LD_IND instructions'
+    url: https://stackoverflow.com/questions/67441023/ebpf-verify-ld-abs-and-ld-ind-instructions
+    tags:
+    - instructions
+    - bpf
+    - ebpf
+    score: 1
+    answer_count: 1
+    is_answered: true
+  verifier_log:
+    blocks:
+    - |-
+      >> 0: (30) r0 = *(u8 *)skb[9]
+      R6 !read_ok
+    combined: |-
+      >> 0: (30) r0 = *(u8 *)skb[9]
+      R6 !read_ok
+  source_snippets:
+  - |-
+    struct bpf_insn prog[] = {
+        BPF_LD_ABS(BPF_B, offsetof(struct iphdr, protocol)),
+        /* exit with value 0 */
+        BPF_MOV64_IMM(BPF_REG_0, 0),
+        BPF_EXIT_INSN(),
+    };
+  question_body_text: |-
+    I was reading the verifier code, in particular the part verifying safety of LD_ABS and LD_IND instructions (check_ld_abs()). As the comment says, these instructions implicitly expect input in r6 register, i.e. this is where we have to load pointer to __sk_buff. So I verified that the following program of type BPF_PROG_TYPE_SOCKET_FILTER will be rejected by the verifier:
+    struct bpf_insn prog[] = {
+    BPF_LD_ABS(BPF_B, offsetof(struct iphdr, protocol)),
+    /* exit with value 0 */
+    BPF_MOV64_IMM(BPF_REG_0, 0),
+    BPF_EXIT_INSN(),
+    };
+    ...
+    >> 0: (30) r0 = *(u8 *)skb[9]
+    R6 !read_ok
+    i.e. it needs to prepare r6 before LD_ABS:
+    BPF_MOV64_REG(BPF_REG_6, BPF_REG_1)
+    However, the comment also says about explicit input (in this case the input can be any register)? Is it only used by LD_IND? What are the differences with implicit mode?
+    Thanks.
+  selected_answer:
+    answer_id: 67441377
+    url: https://stackoverflow.com/questions/67441023/ebpf-verify-ld-abs-and-ld-ind-instructions#67441377
+    is_accepted: true
+    score: 2
+    body_text: |-
+      This is no implicit or explicit mode. Those instructions simply take several arguments, some of which are implicit, some of which are explicit.
+      The context is implicit because, as you explain, it must be referenced in r6, which means that it is not passed explicitly to the instruction by the user: You don't see r6 in BPF_LD_ABS(BPF_B, offsetof(struct iphdr, protocol)). It is an implicit convention that the instruction will expect the context from that register.
+      By contrast, the source register and immediate value, also used by the instruction, are part of the instruction itself in the bytecode, making them explicit arguments.
+      The kernel documentation confirms it somewhat:
+      eBPF has two non-generic instructions: (BPF_ABS | | BPF_LD) and
+      (BPF_IND | | BPF_LD) which are used to access packet data.
+      They had to be carried over from classic to have strong performance of
+      socket filters running in eBPF interpreter. These instructions can only
+      be used when interpreter context is a pointer to struct sk_buff and
+      have seven implicit operands. Register R6 is an implicit input that must
+      contain pointer to sk_buff. Register R0 is an implicit output which contains
+      the data fetched from the packet. Registers R1-R5 are scratch registers
+      and must not be used to store the data across BPF_ABS | BPF_LD or
+      BPF_IND | BPF_LD instructions.
+      As a reminder:
+      LD_ABS loads data from an absolute address, starting from the beginning of the context (stored in r6) and adding the offset contained in the imm field. The data is stored into r0 (implicit output). It does not use the src register.
+      LD_IND performs an indirect load, it first offsets the context with the (variable) value from the src register, and then adds the (fixed) imm value as a second offset to reach the bytes to load into r0.
+    fix_description: 'The context is implicit because, as you explain, it must be
+      referenced in r6, which means that it is not passed explicitly to the instruction
+      by the user: You don''t see r6 in BPF_LD_ABS(BPF_B, offsetof(struct iphdr, protocol)).
+      It is an implicit convention that the instruction will expect the context from
+      that register. and must not be used to store the data across BPF_ABS | BPF_LD
+      or LD_ABS loads data from an absolute address, starting from the beginning of
+      the context (stored in r6) and adding the offset contained in the imm field.
+      The data is stored into r0 (implicit output). It does not...'

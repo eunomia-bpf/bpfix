@@ -1,0 +1,70 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-ecdff123780d
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/ecdff123780dcc50599e424cbbc77edf2c70e396
+  title: 'bpf: Reset Pod''s queue mapping in host veth to fix phys dev mq selection'
+  repository: https://github.com/cilium/cilium
+  commit: ecdff123780dcc50599e424cbbc77edf2c70e396
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-ecdff123780d.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Raw has_verifier_log=false. The change includes lib/qm.h and calls reset_queue_mapping(ctx)
+    in handle_xgress; it fixes host-veth queue mapping behavior, not verifier load.
+raw:
+  case_id: github-commit-cilium-ecdff123780d
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: ecdff123780dcc50599e424cbbc77edf2c70e396
+  commit_message: 'bpf: Reset Pod''s queue mapping in host veth to fix phys dev mq
+    selection'
+  commit_date: '2022-01-05'
+  fix_type: type_cast
+  buggy_code: "// FILE: bpf/bpf_lxc.c\n#include <bpf/verifier.h>\n\n#include <linux/icmpv6.h>\n\
+    \n#define EVENT_SOURCE LXC_ID\n\n#include \"lib/tailcall.h\"\n#include \"lib/common.h\"\
+    \n#include \"lib/config.h\"\n#include \"lib/maps.h\"\n#include \"lib/arp.h\"\n\
+    #include \"lib/edt.h\"\n#include \"lib/ipv6.h\"\n#include \"lib/ipv4.h\"\n#include\
+    \ \"lib/icmp6.h\"\n#include \"lib/eth.h\"\n#include \"lib/dbg.h\"\n#include \"\
+    lib/l3.h\"\n#include \"lib/lxc.h\"\n#include \"lib/nat46.h\"\n#include \"lib/identity.h\"\
+    \n#include \"lib/policy.h\"\n#include \"lib/lb.h\"\n#include \"lib/drop.h\"\n\n\
+    // CONTEXT: int tail_handle_arp(struct __ctx_buff *ctx)\n#endif /* ENABLE_IPV4\
+    \ */\n\n/* Attachment/entry point is ingress for veth, egress for ipvlan.\n *\
+    \ It corresponds to packets leaving the container.\n */\n__section(\"from-container\"\
+    )\nint handle_xgress(struct __ctx_buff *ctx)\n{\n\t__u16 proto;\n\tint ret;\n\n\
+    \tbpf_clear_meta(ctx);\n\n\tsend_trace_notify(ctx, TRACE_FROM_LXC, SECLABEL, 0,\
+    \ 0, 0, 0,\n\t\t\t  TRACE_PAYLOAD_LEN);\n\n\tif (!validate_ethertype(ctx, &proto))\
+    \ {\n\t\tret = DROP_UNSUPPORTED_L2;\n\t\tgoto out;\n\t}\n\n\tswitch (proto) {\n\
+    #ifdef ENABLE_IPV6\n\tcase bpf_htons(ETH_P_IPV6):"
+  fixed_code: "// FILE: bpf/bpf_lxc.c\n#include <bpf/verifier.h>\n\n#include <linux/icmpv6.h>\n\
+    \n#define EVENT_SOURCE LXC_ID\n\n#include \"lib/tailcall.h\"\n#include \"lib/common.h\"\
+    \n#include \"lib/config.h\"\n#include \"lib/maps.h\"\n#include \"lib/arp.h\"\n\
+    #include \"lib/edt.h\"\n#include \"lib/qm.h\"\n#include \"lib/ipv6.h\"\n#include\
+    \ \"lib/ipv4.h\"\n#include \"lib/icmp6.h\"\n#include \"lib/eth.h\"\n#include \"\
+    lib/dbg.h\"\n#include \"lib/l3.h\"\n#include \"lib/lxc.h\"\n#include \"lib/nat46.h\"\
+    \n#include \"lib/identity.h\"\n#include \"lib/policy.h\"\n#include \"lib/lb.h\"\
+    \n#include \"lib/drop.h\"\n\n// CONTEXT: int tail_handle_arp(struct __ctx_buff\
+    \ *ctx)\n#endif /* ENABLE_IPV4 */\n\n/* Attachment/entry point is ingress for\
+    \ veth, egress for ipvlan.\n * It corresponds to packets leaving the container.\n\
+    \ */\n__section(\"from-container\")\nint handle_xgress(struct __ctx_buff *ctx)\n\
+    {\n\t__u16 proto;\n\tint ret;\n\n\tbpf_clear_meta(ctx);\n\treset_queue_mapping(ctx);\n\
+    \n\tsend_trace_notify(ctx, TRACE_FROM_LXC, SECLABEL, 0, 0, 0, 0,\n\t\t\t  TRACE_PAYLOAD_LEN);\n\
+    \n\tif (!validate_ethertype(ctx, &proto)) {\n\t\tret = DROP_UNSUPPORTED_L2;\n\t\
+    \tgoto out;\n\t}\n\n\tswitch (proto) {\n#ifdef ENABLE_IPV6\n\tcase bpf_htons(ETH_P_IPV6):"
+  diff_summary: |-
+    bpf/bpf_lxc.c:
+    - Adjusted types or casts so the verifier sees the intended pointer or value kind.
+    - Affected context: int tail_handle_arp(struct __ctx_buff *ctx).
+    - Commit subject: bpf: Reset Pod's queue mapping in host veth to fix phys dev mq selection.

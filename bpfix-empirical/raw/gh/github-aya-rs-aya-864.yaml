@@ -1,0 +1,118 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-aya-rs-aya-864
+source_kind: github_issue
+source:
+  url: https://github.com/aya-rs/aya/issues/864
+  title: unknown func bpf_get_current_pid_tgid - but it actually exists
+  repository: https://github.com/aya-rs/aya
+  commit: null
+  collected_at: '2026-03-11T16:01:59+00:00'
+collector:
+  original_path: bpfix-empirical/raw/gh/github-aya-rs-aya-864.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: true
+  verifier_log_block_count: 1
+  source_snippet_count: 2
+  has_buggy_code: false
+  has_fixed_code: true
+  has_fix_description: true
+reproduction:
+  status: attempted_accepted
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: The issue log reports unknown func bpf_get_current_pid_tgid#14 from a TC
+    classifier. A faithful TC helper-call reconstruction built and loaded locally
+    on the current replay kernel, so the original failure appears tied to historical
+    helper availability.
+raw:
+  case_id: github-aya-rs-aya-864
+  source: github_issues
+  collected_at: '2026-03-11T16:01:59+00:00'
+  issue:
+    repository: aya-rs/aya
+    number: 864
+    title: unknown func bpf_get_current_pid_tgid - but it actually exists
+    url: https://github.com/aya-rs/aya/issues/864
+    state: closed
+    state_reason: completed
+    labels: []
+    created_at: '2024-01-12T11:12:28Z'
+    updated_at: '2024-02-05T10:40:48Z'
+    author: emanuele-em
+  verifier_log:
+    blocks:
+    - |-
+      Finished dev [unoptimized + debuginfo] target(s) in 0.08s
+      [sudo] password for emanuele:
+      Error: the BPF_PROG_LOAD syscall failed. Verifier output: 0: R1=ctx(off=0,imm=0) R10=fp0
+      0: (bf) r6 = r1                       ; R1=ctx(off=0,imm=0) R6_w=ctx(off=0,imm=0)
+      1: (85) call bpf_get_current_pid_tgid#14
+      unknown func bpf_get_current_pid_tgid#14
+      verification time 19 usec
+      stack depth 0
+      processed 2 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0 mark_read 0
+
+      Caused by:
+          Invalid argument (os error 22)
+      Failed to run `sudo -E target/debug/interceptor --iface wlo1`
+    combined: |-
+      Finished dev [unoptimized + debuginfo] target(s) in 0.08s
+      [sudo] password for emanuele:
+      Error: the BPF_PROG_LOAD syscall failed. Verifier output: 0: R1=ctx(off=0,imm=0) R10=fp0
+      0: (bf) r6 = r1                       ; R1=ctx(off=0,imm=0) R6_w=ctx(off=0,imm=0)
+      1: (85) call bpf_get_current_pid_tgid#14
+      unknown func bpf_get_current_pid_tgid#14
+      verification time 19 usec
+      stack depth 0
+      processed 2 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0 mark_read 0
+
+      Caused by:
+          Invalid argument (os error 22)
+      Failed to run `sudo -E target/debug/interceptor --iface wlo1`
+  source_snippets:
+  - |-
+    #![no_std]
+    #![no_main]
+
+    use aya_bpf::{macros::classifier, programs::TcContext, BpfContext};
+    use aya_log_ebpf::info;
+
+    #[classifier]
+    pub fn interceptor(ctx: TcContext) -> i32 {
+        match try_interceptor(ctx) {
+            Ok(ret) => ret,
+            Err(ret) => ret,
+        }
+    }
+
+    fn try_interceptor(ctx: TcContext) -> Result<i32, i32> {
+        let pid = ctx.pid();
+        info!(&ctx, "received a packet");
+        Ok(0)
+    }
+
+    #[panic_handler]
+    fn panic(_info: &core::panic::PanicInfo) -> ! {
+        unsafe { core::hint::unreachable_unchecked() }
+    }
+  - |-
+    let pid = ctx.pid();
+    info!(&ctx, "tracepoint inet_sock_set_state called, pid: {}",pid);
+    Ok(0)
+  issue_body_text: |-
+    I'm building a TC Classifier (Egress), I used the template code and everything works fine BUT if I add BpfContext with let pid = ctx.pid() it breaks.
+    Code:
+    Error:
+    is it a problem with linker? I miss something?
+  fix:
+    summary: "This is a bug in TcContext, it should return the skb.pid and not use\
+      \ the helper. Want to try to make a patch? \U0001F60A"
+    selected_comment:
+      kind: comment
+      url: https://github.com/aya-rs/aya/issues/864#issuecomment-1888903513
+      author: alessandrod
+      author_association: COLLABORATOR
+      body_text: "This is a bug in TcContext, it should return the skb.pid and not\
+        \ use the helper. Want to try to make a patch? \U0001F60A"

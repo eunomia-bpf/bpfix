@@ -1,0 +1,62 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-libbpf-3b19b1bb5599
+source_kind: github_commit
+source:
+  url: https://github.com/libbpf/libbpf/commit/3b19b1bb559963a1fc9010e5895211c47c4ff4ae
+  title: 'libbpf: Call memfd_create() syscall directly'
+  repository: https://github.com/libbpf/libbpf
+  commit: 3b19b1bb559963a1fc9010e5895211c47c4ff4ae
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-libbpf-3b19b1bb5599.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Changes libbpf to call memfd_create() directly. The touched find_elf_var_sym()/memfd
+    path is user-space compatibility code and has no verifier log.
+raw:
+  case_id: github-commit-libbpf-3b19b1bb5599
+  source: github_commits
+  repository: https://github.com/libbpf/libbpf
+  commit_hash: 3b19b1bb559963a1fc9010e5895211c47c4ff4ae
+  commit_message: 'libbpf: Call memfd_create() syscall directly'
+  commit_date: '2024-02-01'
+  fix_type: other
+  buggy_code: "// FILE: src/libbpf.c\n// CONTEXT: static Elf64_Sym *find_elf_var_sym(const\
+    \ struct bpf_object *obj, const char *nam\n\t\tsname = elf_sym_str(obj, sym->st_name);\n\
+    \t\tif (!sname) {\n\t\t\tpr_warn(\"failed to get sym name string for var %s\\\
+    n\", name);\n\t\t\treturn ERR_PTR(-EIO);\n\t\t}\n\t\tif (strcmp(name, sname) ==\
+    \ 0)\n\t\t\treturn sym;\n\t}\n\n\treturn ERR_PTR(-ENOENT);\n}\n\nstatic int create_placeholder_fd(void)\n\
+    {\n\tint fd;\n\n\tfd = ensure_good_fd(memfd_create(\"libbpf-placeholder-fd\",\
+    \ MFD_CLOEXEC));\n\tif (fd < 0)\n\t\treturn -errno;\n\treturn fd;\n}\n\nstatic\
+    \ struct bpf_map *bpf_object__add_map(struct bpf_object *obj)\n{\n\tstruct bpf_map\
+    \ *map;\n\tint err;\n\n\terr = libbpf_ensure_mem((void **)&obj->maps, &obj->maps_cap,\n\
+    \t\t\t\tsizeof(*obj->maps), obj->nr_maps + 1);"
+  fixed_code: "// FILE: src/libbpf.c\n// CONTEXT: static Elf64_Sym *find_elf_var_sym(const\
+    \ struct bpf_object *obj, const char *nam\n\t\tsname = elf_sym_str(obj, sym->st_name);\n\
+    \t\tif (!sname) {\n\t\t\tpr_warn(\"failed to get sym name string for var %s\\\
+    n\", name);\n\t\t\treturn ERR_PTR(-EIO);\n\t\t}\n\t\tif (strcmp(name, sname) ==\
+    \ 0)\n\t\t\treturn sym;\n\t}\n\n\treturn ERR_PTR(-ENOENT);\n}\n\n/* Some versions\
+    \ of Android don't provide memfd_create() in their libc\n * implementation, so\
+    \ avoid complications and just go straight to Linux\n * syscall.\n */\nstatic\
+    \ int sys_memfd_create(const char *name, unsigned flags)\n{\n\treturn syscall(__NR_memfd_create,\
+    \ name, flags);\n}\n\nstatic int create_placeholder_fd(void)\n{\n\tint fd;\n\n\
+    \tfd = ensure_good_fd(sys_memfd_create(\"libbpf-placeholder-fd\", MFD_CLOEXEC));\n\
+    \tif (fd < 0)\n\t\treturn -errno;\n\treturn fd;\n}\n\nstatic struct bpf_map *bpf_object__add_map(struct\
+    \ bpf_object *obj)\n{\n\tstruct bpf_map *map;\n\tint err;\n\n\terr = libbpf_ensure_mem((void\
+    \ **)&obj->maps, &obj->maps_cap,\n\t\t\t\tsizeof(*obj->maps), obj->nr_maps + 1);"
+  diff_summary: |-
+    src/libbpf.c:
+    - Applied a small verifier-related code change captured by the exact before/after snippets below.
+    - Affected context: static Elf64_Sym *find_elf_var_sym(const struct bpf_object *obj, const char *nam.
+    - Commit subject: libbpf: Call memfd_create() syscall directly.

@@ -19,7 +19,7 @@ from your existing workflow and turns them into:
 
 ## Motivating Example
 
-Here is a real verifier failure from `bpfix-bench`
+Here is a real verifier failure from `bpfix-empirical`
 (`stackoverflow-53136145`). The source parses either IPv4 or IPv6, derives a
 UDP header pointer on each branch, checks the UDP header against `data_end`, and
 then reads the destination port:
@@ -160,7 +160,7 @@ bpfix [OPTIONS] [LOG]
 `LOG` can be a verifier, build, `bpftool`, libbpf, Aya, or BCC log. When `LOG`
 is omitted or `-`, BPFix reads stdin. Positional input and stdin are always log
 text. BPFix does not execute loader commands in the default path, and there is
-no default command-execution workflow. Benchmark YAML and Docker-based execution
+no default command-execution workflow. Empirical corpus YAML and Docker-based execution
 are explicit non-default modes; if Docker support is added, it should be selected
 with an option such as `--docker`, not inferred from `LOG`. The output is always
 plain text.
@@ -189,7 +189,7 @@ with experimental object metadata, after installing with
 bpfix --object xdp.o verifier.log
 ```
 
-BPFix does not need `case.yaml` for normal use. Benchmark YAML records are
+BPFix does not need `case.yaml` for normal use. Empirical corpus YAML records are
 evaluation fixtures; use the evaluation scripts when measuring the bundled
 corpus.
 
@@ -207,12 +207,12 @@ crates/
 ```
 
 The earlier Python version has been removed from the maintained tree. Python
-scripts that remain under `bpfix-bench/tools/` are benchmark replay and corpus
+scripts that remain under `bpfix-empirical/tools/` are empirical replay and corpus
 maintenance helpers, not a second BPFix implementation and not part of the
 public CLI.
 
 The public CLI design lives in `docs/open-source-tool-design.md`, and the full
-user workflow is in `docs/user-guide.md`. Benchmark methodology and
+user workflow is in `docs/user-guide.md`. Evaluation methodology and
 project planning notes live under `docs/evaluation/` and
 `docs/project-status.md`; they are supporting material, not required reading for
 normal use.
@@ -292,7 +292,7 @@ cargo fmt --all
 Run a smoke test:
 
 ```bash
-cargo run -p bpfix -- bpfix-bench/cases/stackoverflow-60053570/replay-verifier.log
+cargo run -p bpfix -- bpfix-empirical/cases/stackoverflow-60053570/replay-verifier.log
 ```
 
 Check release packaging:
@@ -301,7 +301,7 @@ Check release packaging:
 make release-check
 ```
 
-This runs packaging checks, example consistency checks, the benchmark
+This runs packaging checks, example consistency checks, the empirical corpus
 `--reject-fallback` gate, and the feature-gated object-analysis CLI tests.
 
 `bpfix` depends on the sibling `bpfanalysis` crate. Publish `bpfanalysis` first,
@@ -310,14 +310,14 @@ wait for it to appear in the crates.io index, then publish `bpfix`.
 ## Repository Layout
 
 ```text
-bpfix-bench/       replayable verifier-failure corpus and raw examples
+bpfix-empirical/       replayable verifier-failure corpus and raw examples
 crates/bpfanalysis Rust analysis library
 crates/bpfix       user-facing CLI
-docs/project-status.md project planning and benchmark notes
+docs/project-status.md project planning and evaluation notes
 docs/user-guide.md    install, getting logs, output, and CI usage
 docs/open-source-tool-design.md public CLI contract
 examples/          bpftool, libbpf, Aya, BCC, CI, and editor integration snippets
-docs/evaluation/   benchmark and metric notes
-bpfix-bench/tools/ benchmark replay and corpus-maintenance tools
+docs/evaluation/   evaluation and metric notes
+bpfix-empirical/tools/ empirical replay and corpus-maintenance tools
 vendor/libbpf/     libbpf submodule
 ```

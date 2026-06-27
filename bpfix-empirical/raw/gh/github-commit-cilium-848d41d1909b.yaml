@@ -1,0 +1,128 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-848d41d1909b
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/848d41d1909b4144be8ea8f0827f95693111ab28
+  title: 'bpf: Fix ipcache lookup in bpf_netdev'
+  repository: https://github.com/cilium/cilium
+  commit: 848d41d1909b4144be8ea8f0827f95693111ab28
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-848d41d1909b.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: replay_valid
+  case_id: github-commit-cilium-848d41d1909b
+  case_path: cases/github-commit-cilium-848d41d1909b
+  artifact_path: cases/github-commit-cilium-848d41d1909b
+  reason: admitted_to_bpfix_bench_cases
+raw:
+  case_id: github-commit-cilium-848d41d1909b
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: 848d41d1909b4144be8ea8f0827f95693111ab28
+  commit_message: 'bpf: Fix ipcache lookup in bpf_netdev'
+  commit_date: '2018-07-18'
+  fix_type: bounds_check
+  buggy_code: "// FILE: bpf/bpf_lxc.c\n// CONTEXT: skip_service_lookup:\n\n\tif (!revalidate_data(skb,\
+    \ &data, &data_end, &ip6))\n\t\treturn DROP_INVALID;\n\tdaddr = (union v6addr\
+    \ *)&ip6->daddr;\n\n\t/* Determine the destination category for policy fallback.\
+    \ */\n\tBPF_V6(router_ip, ROUTER_IP);\n\n\tif (1) {\n\t\tstruct remote_endpoint_info\
+    \ *info;\n\n\t\tinfo = lookup_ip6_remote_endpoint(&orig_dip);\n\t\tif (info !=\
+    \ NULL) {\n\t\t\tdstID = info->sec_label;\n\t\t\ttunnel_endpoint = info->tunnel_endpoint;\n\
+    \t\t} else if (ipv6_match_prefix_64(daddr, &router_ip))\n\t\t\tdstID = CLUSTER_ID;\n\
+    \n\t\tcilium_dbg(skb, info ? DBG_IP_ID_MAP_SUCCEED6 : DBG_IP_ID_MAP_FAILED6,\n\
+    \t\t\t   orig_dip.p4, dstID);\n\t}\n\n\t/* If the packet is in the establishing\
+    \ direction and it's destined\n\t * within the cluster, it must match policy or\
+    \ be dropped. If it's\n\t * bound for the host/outside, perform the CIDR policy\
+    \ check. */\n\n// CONTEXT: skip_service_lookup:\n\tret = ct_lookup4(&CT_MAP4,\
+    \ &tuple, skb, l4_off, CT_EGRESS,\n\t\t\t &ct_state);\n\tif (ret < 0)\n\t\treturn\
+    \ ret;\n\n\tforwarding_reason = ret;\n\n\t/* Determine the destination category\
+    \ for policy fallback. */\n\tif (1) {\n\t\tstruct remote_endpoint_info *info;\n\
+    \n\t\tinfo = lookup_ip4_remote_endpoint(orig_dip);\n\t\tif (info != NULL) {\n\t\
+    \t\tdstID = info->sec_label;\n\t\t\ttunnel_endpoint = info->tunnel_endpoint;\n\
+    \t\t} else if ((orig_dip & IPV4_CLUSTER_MASK) == IPV4_CLUSTER_RANGE)\n\t\t\tdstID\
+    \ = CLUSTER_ID;\n\n\t\tcilium_dbg(skb, info ? DBG_IP_ID_MAP_SUCCEED4 : DBG_IP_ID_MAP_FAILED4,\n\
+    \t\t\t   orig_dip, dstID);\n\t}\n\n\t/* If the packet is in the establishing direction\
+    \ and it's destined\n\t * within the cluster, it must match policy or be dropped.\
+    \ If it's\n\t * bound for the host/outside, perform the CIDR policy check. */\n\
+    \n// FILE: bpf/bpf_netdev.c\n// CONTEXT: static inline int handle_ipv6(struct\
+    \ __sk_buff *skb, __u32 src_identity)\n#ifdef HANDLE_NS\n\tif (unlikely(nexthdr\
+    \ == IPPROTO_ICMPV6)) {\n\t\tint ret = icmp6_handle(skb, ETH_HLEN, ip6, METRIC_INGRESS);\n\
+    \t\tif (IS_ERR(ret))\n\t\t\treturn ret;\n\t}\n#endif\n\n\t/* Packets from the\
+    \ proxy will already have a real identity. */\n\tif (identity_is_reserved(src_identity))\
+    \ {\n\t\tunion v6addr *src = (union v6addr *) &ip6->saddr;\n\t\tinfo = ipcache_lookup6(&cilium_ipcache,\
+    \ src, V6_CACHE_KEY_LEN);\n\t\tif (!info)\n\t\t\tsrc_identity = info->sec_label;\n\
+    \t\tcilium_dbg(skb, info ? DBG_IP_ID_MAP_SUCCEED6 : DBG_IP_ID_MAP_FAILED6,\n\t\
+    \t\t   ((__u32 *) src)[3], src_identity);\n\t}\n\n\tBPF_V6(node_ip, ROUTER_IP);\n\
+    \tflowlabel = derive_sec_ctx(skb, &node_ip, ip6);\n\n#ifdef FROM_HOST\n\tif (1)\
+    \ {\n\t\tint ret;\n\n\n// CONTEXT: static inline int handle_ipv4(struct __sk_buff\
+    \ *skb, __u32 src_identity)\n\t__u32 secctx;\n\n\tif (!revalidate_data(skb, &data,\
+    \ &data_end, &ip4))\n\t\treturn DROP_INVALID;\n\n\tl4_off = ETH_HLEN + ipv4_hdrlen(ip4);\n\
+    \tsecctx = derive_ipv4_sec_ctx(skb, ip4);\n\ttuple.nexthdr = ip4->protocol;\n\n\
+    \t/* Packets from the proxy will already have a real identity. */\n\tif (identity_is_reserved(src_identity))\
+    \ {\n\t\tinfo = ipcache_lookup4(&cilium_ipcache, ip4->saddr, V4_CACHE_KEY_LEN);\n\
+    \t\tif (!info)\n\t\t\tsrc_identity = info->sec_label;\n\t\tcilium_dbg(skb, info\
+    \ ? DBG_IP_ID_MAP_SUCCEED4 : DBG_IP_ID_MAP_FAILED4,\n\t\t\t   ip4->saddr, src_identity);\n\
+    \t}\n\n#ifdef FROM_HOST\n\tif (1) {\n\t\tint ret;\n\n\t\tsecctx = src_identity;\n\
+    \t\tret = reverse_proxy(skb, l4_off, ip4, tuple.nexthdr);\n\t\t/* DIRECT PACKET\
+    \ READ INVALID */"
+  fixed_code: "// FILE: bpf/bpf_lxc.c\n// CONTEXT: skip_service_lookup:\n\n\tif (!revalidate_data(skb,\
+    \ &data, &data_end, &ip6))\n\t\treturn DROP_INVALID;\n\tdaddr = (union v6addr\
+    \ *)&ip6->daddr;\n\n\t/* Determine the destination category for policy fallback.\
+    \ */\n\tBPF_V6(router_ip, ROUTER_IP);\n\n\tif (1) {\n\t\tstruct remote_endpoint_info\
+    \ *info;\n\n\t\tinfo = lookup_ip6_remote_endpoint(&orig_dip);\n\t\tif (info !=\
+    \ NULL && info->sec_label) {\n\t\t\tdstID = info->sec_label;\n\t\t\ttunnel_endpoint\
+    \ = info->tunnel_endpoint;\n\t\t} else if (ipv6_match_prefix_64(daddr, &router_ip))\n\
+    \t\t\tdstID = CLUSTER_ID;\n\n\t\tcilium_dbg(skb, info ? DBG_IP_ID_MAP_SUCCEED6\
+    \ : DBG_IP_ID_MAP_FAILED6,\n\t\t\t   orig_dip.p4, dstID);\n\t}\n\n\t/* If the\
+    \ packet is in the establishing direction and it's destined\n\t * within the cluster,\
+    \ it must match policy or be dropped. If it's\n\t * bound for the host/outside,\
+    \ perform the CIDR policy check. */\n\n// CONTEXT: skip_service_lookup:\n\tret\
+    \ = ct_lookup4(&CT_MAP4, &tuple, skb, l4_off, CT_EGRESS,\n\t\t\t &ct_state);\n\
+    \tif (ret < 0)\n\t\treturn ret;\n\n\tforwarding_reason = ret;\n\n\t/* Determine\
+    \ the destination category for policy fallback. */\n\tif (1) {\n\t\tstruct remote_endpoint_info\
+    \ *info;\n\n\t\tinfo = lookup_ip4_remote_endpoint(orig_dip);\n\t\tif (info !=\
+    \ NULL && info->sec_label) {\n\t\t\tdstID = info->sec_label;\n\t\t\ttunnel_endpoint\
+    \ = info->tunnel_endpoint;\n\t\t} else if ((orig_dip & IPV4_CLUSTER_MASK) == IPV4_CLUSTER_RANGE)\n\
+    \t\t\tdstID = CLUSTER_ID;\n\n\t\tcilium_dbg(skb, info ? DBG_IP_ID_MAP_SUCCEED4\
+    \ : DBG_IP_ID_MAP_FAILED4,\n\t\t\t   orig_dip, dstID);\n\t}\n\n\t/* If the packet\
+    \ is in the establishing direction and it's destined\n\t * within the cluster,\
+    \ it must match policy or be dropped. If it's\n\t * bound for the host/outside,\
+    \ perform the CIDR policy check. */\n\n// FILE: bpf/bpf_netdev.c\n// CONTEXT:\
+    \ static inline int handle_ipv6(struct __sk_buff *skb, __u32 src_identity)\n#ifdef\
+    \ HANDLE_NS\n\tif (unlikely(nexthdr == IPPROTO_ICMPV6)) {\n\t\tint ret = icmp6_handle(skb,\
+    \ ETH_HLEN, ip6, METRIC_INGRESS);\n\t\tif (IS_ERR(ret))\n\t\t\treturn ret;\n\t\
+    }\n#endif\n\n\t/* Packets from the proxy will already have a real identity. */\n\
+    \tif (identity_is_reserved(src_identity)) {\n\t\tunion v6addr *src = (union v6addr\
+    \ *) &ip6->saddr;\n\t\tinfo = ipcache_lookup6(&cilium_ipcache, src, V6_CACHE_KEY_LEN);\n\
+    \t\tif (info != NULL && info->sec_label)\n\t\t\tsrc_identity = info->sec_label;\n\
+    \t\tcilium_dbg(skb, info ? DBG_IP_ID_MAP_SUCCEED6 : DBG_IP_ID_MAP_FAILED6,\n\t\
+    \t\t   ((__u32 *) src)[3], src_identity);\n\t}\n\n\tBPF_V6(node_ip, ROUTER_IP);\n\
+    \tflowlabel = derive_sec_ctx(skb, &node_ip, ip6);\n\n#ifdef FROM_HOST\n\tif (1)\
+    \ {\n\t\tint ret;\n\n\n// CONTEXT: static inline int handle_ipv4(struct __sk_buff\
+    \ *skb, __u32 src_identity)\n\t__u32 secctx;\n\n\tif (!revalidate_data(skb, &data,\
+    \ &data_end, &ip4))\n\t\treturn DROP_INVALID;\n\n\tl4_off = ETH_HLEN + ipv4_hdrlen(ip4);\n\
+    \tsecctx = derive_ipv4_sec_ctx(skb, ip4);\n\ttuple.nexthdr = ip4->protocol;\n\n\
+    \t/* Packets from the proxy will already have a real identity. */\n\tif (identity_is_reserved(src_identity))\
+    \ {\n\t\tinfo = ipcache_lookup4(&cilium_ipcache, ip4->saddr, V4_CACHE_KEY_LEN);\n\
+    \t\tif (info != NULL && info->sec_label)\n\t\t\tsrc_identity = info->sec_label;\n\
+    \t\tcilium_dbg(skb, info ? DBG_IP_ID_MAP_SUCCEED4 : DBG_IP_ID_MAP_FAILED4,\n\t\
+    \t\t   ip4->saddr, src_identity);\n\t}\n\n#ifdef FROM_HOST\n\tif (1) {\n\t\tint\
+    \ ret;\n\n\t\tsecctx = src_identity;\n\t\tret = reverse_proxy(skb, l4_off, ip4,\
+    \ tuple.nexthdr);\n\t\t/* DIRECT PACKET READ INVALID */"
+  diff_summary: |-
+    bpf/bpf_lxc.c:
+    - Added explicit bounds or range guards so the verifier can prove the access size and offset.
+    - Affected context: skip_service_lookup:.
+    bpf/bpf_netdev.c:
+    - Added explicit bounds or range guards so the verifier can prove the access size and offset.
+    - Affected context: static inline int handle_ipv6(struct __sk_buff *skb, __u32 src_identity), static inline int handle_ipv4(struct __sk_buff *skb, __u32 src_identity).
+    - Commit subject: bpf: Fix ipcache lookup in bpf_netdev.

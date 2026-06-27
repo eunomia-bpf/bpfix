@@ -1,0 +1,83 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-bcc-ae6ed35ccf5c
+source_kind: github_commit
+source:
+  url: https://github.com/iovisor/bcc/commit/ae6ed35ccf5ce85ffc4439127c0d5593b80131fe
+  title: 'libbpf-tools: Fix misaligned pointer accesses in biosnoop'
+  repository: https://github.com/iovisor/bcc
+  commit: ae6ed35ccf5ce85ffc4439127c0d5593b80131fe
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-bcc-ae6ed35ccf5c.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Commit is in libbpf-tools/biosnoop.c user-space formatting/alignment code,
+    not a BPF verifier failure.
+raw:
+  case_id: github-commit-bcc-ae6ed35ccf5c
+  source: github_commits
+  repository: https://github.com/iovisor/bcc
+  commit_hash: ae6ed35ccf5ce85ffc4439127c0d5593b80131fe
+  commit_message: 'libbpf-tools: Fix misaligned pointer accesses in biosnoop'
+  commit_date: '2023-12-04'
+  fix_type: alignment
+  buggy_code: "// FILE: libbpf-tools/biosnoop.c\n// CONTEXT: static void blk_fill_rwbs(char\
+    \ *rwbs, unsigned int op)\n\t\trwbs[i++] = 'S';\n\tif (op & REQ_META)\n\t\trwbs[i++]\
+    \ = 'M';\n\n\trwbs[i] = '\\0';\n}\n\nstatic struct partitions *partitions;\n\n\
+    void handle_event(void *ctx, int cpu, void *data, __u32 data_sz)\n{\n\tconst struct\
+    \ partition *partition;\n\tconst struct event *e = data;\n\tchar rwbs[RWBS_LEN];\n\
+    \tstruct timespec ct;\n\tstruct tm *tm;\n\tchar ts[32];\n\n\tif (env.timestamp)\
+    \ {\n\t\t/* Since `bpf_ktime_get_boot_ns` requires at least 5.8 kernel,\n\t\t\
+    \ * so get time from usespace instead */\n\t\tclock_gettime(CLOCK_REALTIME, &ct);\n\
+    \t\ttm = localtime(&ct.tv_sec);\n\t\tstrftime(ts, sizeof(ts), \"%H:%M:%S\", tm);\n\
+    \t\tprintf(\"%-8s.%03ld \", ts, ct.tv_nsec / 1000000);\n\t} else {\n\t\tif (!start_ts)\
+    \ {\n\t\t\tstart_ts = e->ts;\n\t\t}\n\t\tprintf(\"%-11.6f \",(e->ts - start_ts)\
+    \ / 1000000000.0);\n\t}\n\tblk_fill_rwbs(rwbs, e->cmd_flags);\n\tpartition = partitions__get_by_dev(partitions,\
+    \ e->dev);\n\tprintf(\"%-14.14s %-7d %-7s %-4s %-10lld %-7d \",\n\t\te->comm,\
+    \ e->pid, partition ? partition->name : \"Unknown\", rwbs,\n\t\te->sector, e->len);\n\
+    \tif (env.queued)\n\t\tprintf(\"%7.3f \", e->qdelta != -1 ?\n\t\t\te->qdelta /\
+    \ 1000000.0 : -1);\n\tprintf(\"%7.3f\\n\", e->delta / 1000000.0);\n}\n\nvoid handle_lost_events(void\
+    \ *ctx, int cpu, __u64 lost_cnt)\n{\n\tfprintf(stderr, \"lost %llu events on CPU\
+    \ #%d\\n\", lost_cnt, cpu);\n}\n\nstatic void blk_account_io_set_attach_target(struct\
+    \ biosnoop_bpf *obj)\n{\n\tif (fentry_can_attach(\"blk_account_io_start\", NULL))\n\
+    \t\tbpf_program__set_attach_target(obj->progs.blk_account_io_start,\n\t\t\t\t\t\
+    \       0, \"blk_account_io_start\");"
+  fixed_code: "// FILE: libbpf-tools/biosnoop.c\n// CONTEXT: static void blk_fill_rwbs(char\
+    \ *rwbs, unsigned int op)\n\t\trwbs[i++] = 'S';\n\tif (op & REQ_META)\n\t\trwbs[i++]\
+    \ = 'M';\n\n\trwbs[i] = '\\0';\n}\n\nstatic struct partitions *partitions;\n\n\
+    void handle_event(void *ctx, int cpu, void *data, __u32 data_sz)\n{\n\tconst struct\
+    \ partition *partition;\n\tstruct event e;\n\tchar rwbs[RWBS_LEN];\n\tstruct timespec\
+    \ ct;\n\tstruct tm *tm;\n\tchar ts[32];\n\n        if (data_sz < sizeof(e)) {\n\
+    \t\tprintf(\"Error: packet too small\\n\");\n\t\treturn;\n\t}\n\t/* Copy data\
+    \ as alignment in the perf buffer isn't guaranteed. */\n\tmemcpy(&e, data, sizeof(e));\n\
+    \n\tif (env.timestamp) {\n\t\t/* Since `bpf_ktime_get_boot_ns` requires at least\
+    \ 5.8 kernel,\n\t\t * so get time from usespace instead */\n\t\tclock_gettime(CLOCK_REALTIME,\
+    \ &ct);\n\t\ttm = localtime(&ct.tv_sec);\n\t\tstrftime(ts, sizeof(ts), \"%H:%M:%S\"\
+    , tm);\n\t\tprintf(\"%-8s.%03ld \", ts, ct.tv_nsec / 1000000);\n\t} else {\n\t\
+    \tif (!start_ts) {\n\t\t\tstart_ts = e.ts;\n\t\t}\n\t\tprintf(\"%-11.6f \",(e.ts\
+    \ - start_ts) / 1000000000.0);\n\t}\n\tblk_fill_rwbs(rwbs, e.cmd_flags);\n\tpartition\
+    \ = partitions__get_by_dev(partitions, e.dev);\n\tprintf(\"%-14.14s %-7d %-7s\
+    \ %-4s %-10lld %-7d \",\n\t\te.comm, e.pid, partition ? partition->name : \"Unknown\"\
+    , rwbs,\n\t\te.sector, e.len);\n\tif (env.queued)\n\t\tprintf(\"%7.3f \", e.qdelta\
+    \ != -1 ?\n\t\t\te.qdelta / 1000000.0 : -1);\n\tprintf(\"%7.3f\\n\", e.delta /\
+    \ 1000000.0);\n}\n\nvoid handle_lost_events(void *ctx, int cpu, __u64 lost_cnt)\n\
+    {\n\tfprintf(stderr, \"lost %llu events on CPU #%d\\n\", lost_cnt, cpu);\n}\n\n\
+    static void blk_account_io_set_attach_target(struct biosnoop_bpf *obj)\n{\n\t\
+    if (fentry_can_attach(\"blk_account_io_start\", NULL))\n\t\tbpf_program__set_attach_target(obj->progs.blk_account_io_start,\n\
+    \t\t\t\t\t       0, \"blk_account_io_start\");"
+  diff_summary: |-
+    libbpf-tools/biosnoop.c:
+    - Adjusted alignment declarations or stack layout to avoid misaligned accesses.
+    - Affected context: static void blk_fill_rwbs(char *rwbs, unsigned int op).
+    - Commit subject: libbpf-tools: Fix misaligned pointer accesses in biosnoop.

@@ -1,0 +1,311 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-5bb58205d955
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/5bb58205d9553c232c223e2754dc77ea51d99703
+  title: 'bpf: Use oif from CT in compat mode'
+  repository: https://github.com/cilium/cilium
+  commit: 5bb58205d9553c232c223e2754dc77ea51d99703
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-5bb58205d955.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: environment_required
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Uses caller-provided output interface information for old FIB behavior in
+    compat mode. Reproducing verifier-visible behavior requires the historical kernel
+    FIB helper behavior and broad NodePort/LXC datapath context.
+raw:
+  case_id: github-commit-cilium-5bb58205d955
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: 5bb58205d9553c232c223e2754dc77ea51d99703
+  commit_message: 'bpf: Use oif from CT in compat mode'
+  commit_date: '2023-02-13'
+  fix_type: inline_hint
+  buggy_code: "// FILE: bpf/bpf_lxc.c\n// CONTEXT: ct_recreate6:\n\t\t * (c) packet\
+    \ was redirected to tunnel device so return.\n\t\t */\n\t\tret = encap_and_redirect_lxc(ctx,\
+    \ tunnel_endpoint, encrypt_key,\n\t\t\t\t\t     &key, node_id, SECLABEL, *dst_id,\n\
+    \t\t\t\t\t     &trace);\n\t\tif (ret == CTX_ACT_OK)\n\t\t\tgoto encrypt_to_stack;\n\
+    \t\telse if (ret != DROP_NO_TUNNEL_ENDPOINT)\n\t\t\treturn ret;\n\t}\n#endif\n\
+    \tif (is_defined(ENABLE_HOST_ROUTING)) {\n\t\tint oif;\n\n\t\tret = fib_redirect_v6(ctx,\
+    \ ETH_HLEN, ip6, false, ext_err,\n\t\t\t\t      ctx->ingress_ifindex, &oif);\n\
+    \t\tif (likely(ret == CTX_ACT_REDIRECT))\n\t\t\tsend_trace_notify(ctx, TRACE_TO_NETWORK,\
+    \ SECLABEL,\n\t\t\t\t\t  *dst_id, 0, oif,\n\t\t\t\t\t  trace.reason, trace.monitor);\n\
+    \t\treturn ret;\n\t}\n\n\tgoto pass_to_stack;\n\n\n// CONTEXT: skip_vtep:\n\t\t\
+    \ * for further processing.\n\t\t */\n\t\telse if (ret == CTX_ACT_OK)\n\t\t\t\
+    goto encrypt_to_stack;\n\t\t/* This is either redirect by encap code or an error\
+    \ has\n\t\t * occurred either way return and stack will consume ctx.\n\t\t */\n\
+    \t\telse\n\t\t\treturn ret;\n\t}\n#endif /* TUNNEL_MODE */\n\tif (is_defined(ENABLE_HOST_ROUTING))\
+    \ {\n\t\tint oif;\n\n\t\tret = fib_redirect_v4(ctx, ETH_HLEN, ip4, false, ext_err,\n\
+    \t\t\t\t      ctx->ingress_ifindex, &oif);\n\t\tif (likely(ret == CTX_ACT_REDIRECT))\n\
+    \t\t\tsend_trace_notify(ctx, TRACE_TO_NETWORK, SECLABEL,\n\t\t\t\t\t  *dst_id,\
+    \ 0, oif,\n\t\t\t\t\t  trace.reason, trace.monitor);\n\t\treturn ret;\n\t}\n\n\
+    \tgoto pass_to_stack;\n\n// FILE: bpf/lib/fib.h\n// CONTEXT: maybe_add_l2_hdr(struct\
+    \ __ctx_buff *ctx __maybe_unused,\n\t\t * device, so we need to create L2 header\
+    \ first.\n\t\t */\n\t\t__u16 proto = ctx_get_protocol(ctx);\n\n\t\tif (ctx_change_head(ctx,\
+    \ __ETH_HLEN, 0))\n\t\t\treturn DROP_INVALID;\n\t\tif (eth_store_proto(ctx, proto,\
+    \ 0) < 0)\n\t\t\treturn DROP_WRITE_ERROR;\n\t}\n\treturn 0;\n}\n\nstatic __always_inline\
+    \ int\nfib_redirect(struct __ctx_buff *ctx, const bool needs_l2_check,\n\t   \
+    \  struct bpf_fib_lookup_padded *fib_params, __s8 *fib_err, int *oif)\n{\n\tstruct\
+    \ bpf_redir_neigh nh_params;\n\tstruct bpf_redir_neigh *nh = NULL;\n\tbool no_neigh\
+    \ = is_defined(ENABLE_SKIP_FIB);\n\tint ret;\n\n#ifndef ENABLE_SKIP_FIB\n\tret\
+    \ = fib_lookup(ctx, &fib_params->l, sizeof(fib_params->l),\n\t\t\t BPF_FIB_LOOKUP_DIRECT);\n\
+    \tif (ret != BPF_FIB_LKUP_RET_SUCCESS) {\n\t\t*fib_err = (__s8)ret;\n\t\tif (likely(ret\
+    \ == BPF_FIB_LKUP_RET_NO_NEIGH)) {\n\t\t\tnh_params.nh_family = fib_params->l.family;\n\
+    \t\t\t__bpf_memcpy_builtin(&nh_params.ipv6_nh,\n\t\t\t\t\t     &fib_params->l.ipv6_dst,\n\
+    \t\t\t\t\t     sizeof(nh_params.ipv6_nh));\n\t\t\tnh = &nh_params;\n\t\t\tno_neigh\
+    \ = true;\n\t\t} else {\n\t\t\treturn DROP_NO_FIB;\n\t\t}\n\t}\n\t*oif = fib_params->l.ifindex;\n\
+    #else\n\t*oif = DIRECT_ROUTING_DEV_IFINDEX;\n\tnh_params.nh_family = fib_params->l.family;\n\
+    #endif /* ENABLE_SKIP_FIB */\n\tif (needs_l2_check) {\n\t\tbool l2_hdr_required\
+    \ = true;\n\n\t\tret = maybe_add_l2_hdr(ctx, *oif, &l2_hdr_required);\n\t\tif\
+    \ (ret != 0)\n\t\t\treturn ret;\n\t\tif (!l2_hdr_required)\n\t\t\tgoto out_send;\n\
+    \t}\n\tif (no_neigh) {\n\t\tif (neigh_resolver_available()) {\n\t\t\tif (nh)\n\
+    \t\t\t\treturn redirect_neigh(*oif, &nh_params,\n\t\t\t\t\t\t      sizeof(nh_params),\
+    \ 0);\n\t\t\telse\n\t\t\t\treturn redirect_neigh(*oif, NULL, 0, 0);\n\t\t} else\
+    \ {\n\t\t\tunion macaddr *dmac, smac =\n\t\t\t\tNATIVE_DEV_MAC_BY_IFINDEX(fib_params->l.ifindex);\n\
+    \t\t\tdmac = nh_params.nh_family == AF_INET ?\n\t\t\t       neigh_lookup_ip4(&fib_params->l.ipv4_dst)\
+    \ :\n\t\t\t       neigh_lookup_ip6((void *)&fib_params->l.ipv6_dst);\n\t\t\tif\
+    \ (!dmac) {\n\t\t\t\t*fib_err = BPF_FIB_MAP_NO_NEIGH;\n\t\t\t\treturn DROP_NO_FIB;\n\
+    \t\t\t}\n\t\t\tif (eth_store_daddr_aligned(ctx, dmac->addr, 0) < 0)\n\t\t\t\t\
+    return DROP_WRITE_ERROR;\n\t\t\tif (eth_store_saddr_aligned(ctx, smac.addr, 0)\
+    \ < 0)\n\t\t\t\treturn DROP_WRITE_ERROR;\n\t\t}\n\n// FILE: bpf/lib/nodeport.h\n\
+    // CONTEXT: static __always_inline int dsr_reply_icmp6(struct __ctx_buff *ctx,\n\
+    \n\treturn ctx_redirect(ctx, ctx_get_ifindex(ctx), 0);\ndrop_err:\n#endif\n\t\
+    return send_drop_notify_error(ctx, 0, code, CTX_ACT_DROP,\n\t\t\t\t      METRIC_EGRESS);\n\
+    }\n\n__section_tail(CILIUM_MAP_CALLS, CILIUM_CALL_IPV6_NODEPORT_DSR)\nint tail_nodeport_ipv6_dsr(struct\
+    \ __ctx_buff *ctx)\n{\n\t__u16 port __maybe_unused;\n\tint ret, oif, ohead = 0;\n\
+    \tvoid *data, *data_end;\n\tstruct ipv6hdr *ip6;\n\tunion v6addr addr;\n\t__s8\
+    \ ext_err = 0;\n\n\tif (!revalidate_data(ctx, &data, &data_end, &ip6)) {\n\t\t\
+    ret = DROP_INVALID;\n\t\tgoto drop_err;\n\t}\n\n\taddr.p1 = ctx_load_meta(ctx,\
+    \ CB_ADDR_V6_1);\n\taddr.p2 = ctx_load_meta(ctx, CB_ADDR_V6_2);\n\n// CONTEXT:\
+    \ int tail_nodeport_ipv6_dsr(struct __ctx_buff *ctx)\n\t\treturn ret;\n\t}\ndrop_err:\n\
+    \treturn send_drop_notify_error_ext(ctx, 0, ret, ext_err,\n\t\t\t\t\t  CTX_ACT_DROP,\
+    \ METRIC_EGRESS);\n}\n#endif /* ENABLE_DSR */\n\n#ifdef ENABLE_NAT_46X64_GATEWAY\n\
+    __section_tail(CILIUM_MAP_CALLS, CILIUM_CALL_IPV46_RFC8215)\nint tail_nat_ipv46(struct\
+    \ __ctx_buff *ctx)\n{\n\tint ret, oif, l3_off = ETH_HLEN;\n\tvoid *data, *data_end;\n\
+    \tstruct ipv6hdr *ip6;\n\tstruct iphdr *ip4;\n\t__s8 ext_err = 0;\n\n\tif (!revalidate_data(ctx,\
+    \ &data, &data_end, &ip4)) {\n\t\tret = DROP_INVALID;\n\t\tgoto drop_err;\n\t\
+    }\n\tif (nat46_rfc8215(ctx, ip4, l3_off)) {\n\t\tret = DROP_NAT46;\n\t\tgoto drop_err;\n\
+    \n// CONTEXT: int tail_nat_ipv46(struct __ctx_buff *ctx)\n\tif (likely(ret ==\
+    \ CTX_ACT_REDIRECT)) {\n\t\tcilium_capture_out(ctx);\n\t\treturn ret;\n\t}\ndrop_err:\n\
+    \treturn send_drop_notify_error_ext(ctx, 0, ret, ext_err,\n\t\t\t\t\t  CTX_ACT_DROP,\
+    \ METRIC_EGRESS);\n}\n\n__section_tail(CILIUM_MAP_CALLS, CILIUM_CALL_IPV64_RFC8215)\n\
+    int tail_nat_ipv64(struct __ctx_buff *ctx)\n{\n\tint ret, oif, l3_off = ETH_HLEN;\n\
+    \tvoid *data, *data_end;\n\tstruct ipv6hdr *ip6;\n\tstruct iphdr *ip4;\n\t__s8\
+    \ ext_err = 0;\n\n\tif (!revalidate_data(ctx, &data, &data_end, &ip6)) {\n\t\t\
+    ret = DROP_INVALID;\n\t\tgoto drop_err;\n\t}\n\tif (nat64_rfc8215(ctx, ip6)) {\n\
+    \t\tret = DROP_NAT64;\n\t\tgoto drop_err;\n\n// CONTEXT: int tail_nodeport_nat_egress_ipv6(struct\
+    \ __ctx_buff *ctx)\n\tunion v6addr tmp = IPV6_DIRECT_ROUTING;\n\tstruct bpf_fib_lookup_padded\
+    \ fib_params = {\n\t\t.l = {\n\t\t\t.family\t\t= AF_INET6,\n\t\t\t.ifindex\t=\
+    \ ctx_get_ifindex(ctx),\n\t\t},\n\t};\n\tstruct ipv6_nat_target target = {\n\t\
+    \t.min_port = NODEPORT_PORT_MIN_NAT,\n\t\t.max_port = NODEPORT_PORT_MAX_NAT,\n\
+    \t\t.src_from_world = true,\n\t};\n\tint ret, oif;\n\tvoid *data, *data_end;\n\
+    \tstruct ipv6hdr *ip6;\n\t__s8 ext_err = 0;\n#ifdef TUNNEL_MODE\n\tstruct remote_endpoint_info\
+    \ *info;\n\tint verdict = CTX_ACT_REDIRECT;\n\tbool use_tunnel = false;\n\tunion\
+    \ v6addr *dst;\n#endif\n\n\tif (nat_46x64)\n\t\tbuild_v4_in_v6(&tmp, IPV4_DIRECT_ROUTING);\n\
+    \n// CONTEXT: nodeport_rev_dnat_fwd_ipv6(struct __ctx_buff *ctx, struct trace_ctx\
+    \ *trace)\nstatic __always_inline int rev_nodeport_lb6(struct __ctx_buff *ctx,\
+    \ __s8 *ext_err)\n{\n#ifdef ENABLE_NAT_46X64_GATEWAY\n\tconst bool nat_46x64_fib\
+    \ = nat46x64_cb_route(ctx);\n#endif\n\tint ret, ret2, l3_off = ETH_HLEN, l4_off;\n\
+    \tstruct csum_offset csum_off = {};\n\tstruct ipv6_ct_tuple tuple = {};\n\tstruct\
+    \ ct_state ct_state = {};\n\tvoid *data, *data_end;\n\tstruct ipv6hdr *ip6;\n\t\
+    __u32 monitor = 0;\n\tint ifindex;\n\n\tif (!revalidate_data(ctx, &data, &data_end,\
+    \ &ip6))\n\t\treturn DROP_INVALID;\n#ifdef ENABLE_NAT_46X64_GATEWAY\n\tif (nat_46x64_fib)\n\
+    \t\tgoto skip_rev_dnat;\n#endif\n\tret = lb6_extract_tuple(ctx, ip6, &l4_off,\
+    \ &tuple);\n\tif (ret < 0) {\n\t\tif (ret == DROP_NO_SERVICE || ret == DROP_UNKNOWN_L4)\n\
+    \t\t\tgoto out;\n\t\treturn ret;\n\n// CONTEXT: static __always_inline int dsr_reply_icmp4(struct\
+    \ __ctx_buff *ctx,\n\treturn ctx_redirect(ctx, ctx_get_ifindex(ctx), 0);\ndrop_err:\n\
+    #endif\n\treturn send_drop_notify_error(ctx, 0, code, CTX_ACT_DROP,\n\t\t\t\t\
+    \      METRIC_EGRESS);\n}\n\n__section_tail(CILIUM_MAP_CALLS, CILIUM_CALL_IPV4_NODEPORT_DSR)\n\
+    int tail_nodeport_ipv4_dsr(struct __ctx_buff *ctx)\n{\n\tvoid *data, *data_end;\n\
+    \tstruct iphdr *ip4;\n\tint ret, oif;\n\t__u32 addr;\n\t__u16 port;\n\t__be16\
+    \ ohead = 0;\n\t__s8 ext_err = 0;\n\n\tif (!revalidate_data(ctx, &data, &data_end,\
+    \ &ip4)) {\n\t\tret = DROP_INVALID;\n\t\tgoto drop_err;\n\t}\n\taddr = ctx_load_meta(ctx,\
+    \ CB_ADDR_V4);\n\tport = (__u16)ctx_load_meta(ctx, CB_PORT);\n#if DSR_ENCAP_MODE\
+    \ == DSR_ENCAP_IPIP\n\n// CONTEXT: int tail_nodeport_nat_egress_ipv4(struct __ctx_buff\
+    \ *ctx)\n{\n\tstruct bpf_fib_lookup_padded fib_params = {\n\t\t.l = {\n\t\t\t\
+    .family\t\t= AF_INET,\n\t\t\t.ifindex\t= ctx_get_ifindex(ctx),\n\t\t},\n\t};\n\
+    \tstruct ipv4_nat_target target = {\n\t\t.min_port = NODEPORT_PORT_MIN_NAT,\n\t\
+    \t.max_port = NODEPORT_PORT_MAX_NAT,\n\t\t.src_from_world = true,\n\t};\n\tint\
+    \ ret, oif;\n\tvoid *data, *data_end;\n\tstruct iphdr *ip4;\n\t__s8 ext_err =\
+    \ 0;\n#ifdef TUNNEL_MODE\n\tstruct remote_endpoint_info *info;\n\tint verdict\
+    \ = CTX_ACT_REDIRECT;\n\tbool use_tunnel = false;\n#endif\n\t/* Unfortunately,\
+    \ the bpf_fib_lookup() is not able to set src IP addr.\n\t * So we need to assume\
+    \ that the direct routing device is going to be\n\t * used to fwd the NodePort\
+    \ request, thus SNAT-ing to its IP addr.\n\t * This will change once we have resolved\
+    \ GH#17158.\n\n// CONTEXT: nodeport_rev_dnat_fwd_ipv4(struct __ctx_buff *ctx,\
+    \ struct trace_ctx *trace)\n * backend i) was a local EP and bpf_lxc redirected\
+    \ to us, ii) was\n * a remote backend and we got here after reverse SNAT from\
+    \ the\n * tail_nodeport_nat_ingress_ipv4().\n *\n * Also, reverse NAT handling\
+    \ return path egress-gw traffic.\n *\n * CILIUM_CALL_IPV{4,6}_NODEPORT_REVNAT\
+    \ is plugged into CILIUM_MAP_CALLS\n * of the bpf_host, bpf_overlay and of the\
+    \ bpf_lxc.\n */\nstatic __always_inline int rev_nodeport_lb4(struct __ctx_buff\
+    \ *ctx, __s8 *ext_err)\n{\n\tenum trace_reason __maybe_unused reason = TRACE_REASON_UNKNOWN;\n\
+    \tint ifindex, ret, ret2, l3_off = ETH_HLEN, l4_off;\n\tstruct csum_offset csum_off\
+    \ = {};\n\tstruct ipv4_ct_tuple tuple = {};\n\tstruct ct_state ct_state = {};\n\
+    \tvoid *data, *data_end;\n\tstruct iphdr *ip4;\n\t__u32 monitor = TRACE_PAYLOAD_LEN;\n\
+    \t__u32 tunnel_endpoint __maybe_unused = 0;\n\t__u32 dst_id __maybe_unused = 0;\n\
+    \tbool has_l4_header;\n\n\tif (!revalidate_data(ctx, &data, &data_end, &ip4))\n\
+    \t\treturn DROP_INVALID;"
+  fixed_code: "// FILE: bpf/bpf_lxc.c\n// CONTEXT: ct_recreate6:\n\t\t * (c) packet\
+    \ was redirected to tunnel device so return.\n\t\t */\n\t\tret = encap_and_redirect_lxc(ctx,\
+    \ tunnel_endpoint, encrypt_key,\n\t\t\t\t\t     &key, node_id, SECLABEL, *dst_id,\n\
+    \t\t\t\t\t     &trace);\n\t\tif (ret == CTX_ACT_OK)\n\t\t\tgoto encrypt_to_stack;\n\
+    \t\telse if (ret != DROP_NO_TUNNEL_ENDPOINT)\n\t\t\treturn ret;\n\t}\n#endif\n\
+    \tif (is_defined(ENABLE_HOST_ROUTING)) {\n\t\tint oif = 0;\n\n\t\tret = fib_redirect_v6(ctx,\
+    \ ETH_HLEN, ip6, false, ext_err,\n\t\t\t\t      ctx->ingress_ifindex, &oif);\n\
+    \t\tif (likely(ret == CTX_ACT_REDIRECT))\n\t\t\tsend_trace_notify(ctx, TRACE_TO_NETWORK,\
+    \ SECLABEL,\n\t\t\t\t\t  *dst_id, 0, oif,\n\t\t\t\t\t  trace.reason, trace.monitor);\n\
+    \t\treturn ret;\n\t}\n\n\tgoto pass_to_stack;\n\n\n// CONTEXT: skip_vtep:\n\t\t\
+    \ * for further processing.\n\t\t */\n\t\telse if (ret == CTX_ACT_OK)\n\t\t\t\
+    goto encrypt_to_stack;\n\t\t/* This is either redirect by encap code or an error\
+    \ has\n\t\t * occurred either way return and stack will consume ctx.\n\t\t */\n\
+    \t\telse\n\t\t\treturn ret;\n\t}\n#endif /* TUNNEL_MODE */\n\tif (is_defined(ENABLE_HOST_ROUTING))\
+    \ {\n\t\tint oif = 0;\n\n\t\tret = fib_redirect_v4(ctx, ETH_HLEN, ip4, false,\
+    \ ext_err,\n\t\t\t\t      ctx->ingress_ifindex, &oif);\n\t\tif (likely(ret ==\
+    \ CTX_ACT_REDIRECT))\n\t\t\tsend_trace_notify(ctx, TRACE_TO_NETWORK, SECLABEL,\n\
+    \t\t\t\t\t  *dst_id, 0, oif,\n\t\t\t\t\t  trace.reason, trace.monitor);\n\t\t\
+    return ret;\n\t}\n\n\tgoto pass_to_stack;\n\n// FILE: bpf/lib/fib.h\n// CONTEXT:\
+    \ maybe_add_l2_hdr(struct __ctx_buff *ctx __maybe_unused,\n\t\t * device, so we\
+    \ need to create L2 header first.\n\t\t */\n\t\t__u16 proto = ctx_get_protocol(ctx);\n\
+    \n\t\tif (ctx_change_head(ctx, __ETH_HLEN, 0))\n\t\t\treturn DROP_INVALID;\n\t\
+    \tif (eth_store_proto(ctx, proto, 0) < 0)\n\t\t\treturn DROP_WRITE_ERROR;\n\t\
+    }\n\treturn 0;\n}\n\n/* fib_redirect() is common helper code which performs fib\
+    \ lookup, populates\n * the corresponding hardware addresses and pushes the packet\
+    \ to a target\n * device for the next hop. Calling fib_redirect_v{4,6} is preferred\
+    \ unless\n * due to NAT46x64 struct bpf_fib_lookup_padded needs to be prepared\
+    \ at the\n * callsite. oif must be 0 if otherwise not passed in from the BPF CT.\
+    \ The\n * needs_l2_check must be true if the packet could transition between L2->L3\n\
+    \ * or L3->L2 device.\n */\nstatic __always_inline int\nfib_redirect(struct __ctx_buff\
+    \ *ctx, const bool needs_l2_check,\n\t     struct bpf_fib_lookup_padded *fib_params,\
+    \ __s8 *fib_err, int *oif)\n{\n\tstruct bpf_redir_neigh nh_params;\n\tstruct bpf_redir_neigh\
+    \ *nh = NULL;\n\tbool no_neigh = is_defined(ENABLE_SKIP_FIB);\n\tint ret;\n\n\
+    #ifndef ENABLE_SKIP_FIB\n\tret = fib_lookup(ctx, &fib_params->l, sizeof(fib_params->l),\n\
+    \t\t\t BPF_FIB_LOOKUP_DIRECT);\n\tif (ret != BPF_FIB_LKUP_RET_SUCCESS) {\n\t\t\
+    *fib_err = (__s8)ret;\n\t\tif (likely(ret == BPF_FIB_LKUP_RET_NO_NEIGH)) {\n\t\
+    \t\tnh_params.nh_family = fib_params->l.family;\n\t\t\t__bpf_memcpy_builtin(&nh_params.ipv6_nh,\n\
+    \t\t\t\t\t     &fib_params->l.ipv6_dst,\n\t\t\t\t\t     sizeof(nh_params.ipv6_nh));\n\
+    \t\t\tnh = &nh_params;\n\t\t\tno_neigh = true;\n\t\t\t/* For kernels without d1c362e1dd68\
+    \ (\"bpf: Always\n\t\t\t * return target ifindex in bpf_fib_lookup\") we\n\t\t\
+    \t * fall back to use the caller-provided oif when\n\t\t\t * necessary.\n\t\t\t\
+    \ */\n\t\t\tif (!is_defined(HAVE_FIB_IFINDEX) && *oif > 0)\n\t\t\t\tgoto skip_oif;\n\
+    \t\t} else {\n\t\t\treturn DROP_NO_FIB;\n\t\t}\n\t}\n\t*oif = fib_params->l.ifindex;\n\
+    skip_oif:\n#else\n\t*oif = DIRECT_ROUTING_DEV_IFINDEX;\n\tnh_params.nh_family\
+    \ = fib_params->l.family;\n#endif /* ENABLE_SKIP_FIB */\n\tif (needs_l2_check)\
+    \ {\n\t\tbool l2_hdr_required = true;\n\n\t\tret = maybe_add_l2_hdr(ctx, *oif,\
+    \ &l2_hdr_required);\n\t\tif (ret != 0)\n\t\t\treturn ret;\n\t\tif (!l2_hdr_required)\n\
+    \t\t\tgoto out_send;\n\t}\n\tif (no_neigh) {\n\t\t/* If we are able to resolve\
+    \ neighbors on demand, always\n\t\t * prefer that over the BPF neighbor map since\
+    \ the latter\n\t\t * might be less accurate in some asymmetric corner cases.\n\
+    \t\t */\n\t\tif (neigh_resolver_available()) {\n\t\t\tif (nh)\n\t\t\t\treturn\
+    \ redirect_neigh(*oif, &nh_params,\n\t\t\t\t\t\t      sizeof(nh_params), 0);\n\
+    \t\t\telse\n\t\t\t\treturn redirect_neigh(*oif, NULL, 0, 0);\n\t\t} else {\n\t\
+    \t\tunion macaddr *dmac, smac = NATIVE_DEV_MAC_BY_IFINDEX(*oif);\n\n\t\t\t/* The\
+    \ neigh_record_ip{4,6} locations are mainly from\n\t\t\t * inbound client traffic\
+    \ on the load-balancer where we\n\t\t\t * know that replies need to go back to\
+    \ them.\n\t\t\t */\n\t\t\tdmac = nh_params.nh_family == AF_INET ?\n\t\t\t    \
+    \   neigh_lookup_ip4(&fib_params->l.ipv4_dst) :\n\t\t\t       neigh_lookup_ip6((void\
+    \ *)&fib_params->l.ipv6_dst);\n\t\t\tif (!dmac) {\n\t\t\t\t*fib_err = BPF_FIB_MAP_NO_NEIGH;\n\
+    \t\t\t\treturn DROP_NO_FIB;\n\t\t\t}\n\t\t\tif (eth_store_daddr_aligned(ctx, dmac->addr,\
+    \ 0) < 0)\n\t\t\t\treturn DROP_WRITE_ERROR;\n\t\t\tif (eth_store_saddr_aligned(ctx,\
+    \ smac.addr, 0) < 0)\n\t\t\t\treturn DROP_WRITE_ERROR;\n\t\t}\n\n// FILE: bpf/lib/nodeport.h\n\
+    // CONTEXT: static __always_inline int dsr_reply_icmp6(struct __ctx_buff *ctx,\n\
+    \n\treturn ctx_redirect(ctx, ctx_get_ifindex(ctx), 0);\ndrop_err:\n#endif\n\t\
+    return send_drop_notify_error(ctx, 0, code, CTX_ACT_DROP,\n\t\t\t\t      METRIC_EGRESS);\n\
+    }\n\n__section_tail(CILIUM_MAP_CALLS, CILIUM_CALL_IPV6_NODEPORT_DSR)\nint tail_nodeport_ipv6_dsr(struct\
+    \ __ctx_buff *ctx)\n{\n\t__u16 port __maybe_unused;\n\tint ret, oif = 0, ohead\
+    \ = 0;\n\tvoid *data, *data_end;\n\tstruct ipv6hdr *ip6;\n\tunion v6addr addr;\n\
+    \t__s8 ext_err = 0;\n\n\tif (!revalidate_data(ctx, &data, &data_end, &ip6)) {\n\
+    \t\tret = DROP_INVALID;\n\t\tgoto drop_err;\n\t}\n\n\taddr.p1 = ctx_load_meta(ctx,\
+    \ CB_ADDR_V6_1);\n\taddr.p2 = ctx_load_meta(ctx, CB_ADDR_V6_2);\n\n// CONTEXT:\
+    \ int tail_nodeport_ipv6_dsr(struct __ctx_buff *ctx)\n\t\treturn ret;\n\t}\ndrop_err:\n\
+    \treturn send_drop_notify_error_ext(ctx, 0, ret, ext_err,\n\t\t\t\t\t  CTX_ACT_DROP,\
+    \ METRIC_EGRESS);\n}\n#endif /* ENABLE_DSR */\n\n#ifdef ENABLE_NAT_46X64_GATEWAY\n\
+    __section_tail(CILIUM_MAP_CALLS, CILIUM_CALL_IPV46_RFC8215)\nint tail_nat_ipv46(struct\
+    \ __ctx_buff *ctx)\n{\n\tint ret, oif = 0, l3_off = ETH_HLEN;\n\tvoid *data, *data_end;\n\
+    \tstruct ipv6hdr *ip6;\n\tstruct iphdr *ip4;\n\t__s8 ext_err = 0;\n\n\tif (!revalidate_data(ctx,\
+    \ &data, &data_end, &ip4)) {\n\t\tret = DROP_INVALID;\n\t\tgoto drop_err;\n\t\
+    }\n\tif (nat46_rfc8215(ctx, ip4, l3_off)) {\n\t\tret = DROP_NAT46;\n\t\tgoto drop_err;\n\
+    \n// CONTEXT: int tail_nat_ipv46(struct __ctx_buff *ctx)\n\tif (likely(ret ==\
+    \ CTX_ACT_REDIRECT)) {\n\t\tcilium_capture_out(ctx);\n\t\treturn ret;\n\t}\ndrop_err:\n\
+    \treturn send_drop_notify_error_ext(ctx, 0, ret, ext_err,\n\t\t\t\t\t  CTX_ACT_DROP,\
+    \ METRIC_EGRESS);\n}\n\n__section_tail(CILIUM_MAP_CALLS, CILIUM_CALL_IPV64_RFC8215)\n\
+    int tail_nat_ipv64(struct __ctx_buff *ctx)\n{\n\tint ret, oif = 0, l3_off = ETH_HLEN;\n\
+    \tvoid *data, *data_end;\n\tstruct ipv6hdr *ip6;\n\tstruct iphdr *ip4;\n\t__s8\
+    \ ext_err = 0;\n\n\tif (!revalidate_data(ctx, &data, &data_end, &ip6)) {\n\t\t\
+    ret = DROP_INVALID;\n\t\tgoto drop_err;\n\t}\n\tif (nat64_rfc8215(ctx, ip6)) {\n\
+    \t\tret = DROP_NAT64;\n\t\tgoto drop_err;\n\n// CONTEXT: int tail_nodeport_nat_egress_ipv6(struct\
+    \ __ctx_buff *ctx)\n\tunion v6addr tmp = IPV6_DIRECT_ROUTING;\n\tstruct bpf_fib_lookup_padded\
+    \ fib_params = {\n\t\t.l = {\n\t\t\t.family\t\t= AF_INET6,\n\t\t\t.ifindex\t=\
+    \ ctx_get_ifindex(ctx),\n\t\t},\n\t};\n\tstruct ipv6_nat_target target = {\n\t\
+    \t.min_port = NODEPORT_PORT_MIN_NAT,\n\t\t.max_port = NODEPORT_PORT_MAX_NAT,\n\
+    \t\t.src_from_world = true,\n\t};\n\tint ret, oif = 0;\n\tvoid *data, *data_end;\n\
+    \tstruct ipv6hdr *ip6;\n\t__s8 ext_err = 0;\n#ifdef TUNNEL_MODE\n\tstruct remote_endpoint_info\
+    \ *info;\n\tint verdict = CTX_ACT_REDIRECT;\n\tbool use_tunnel = false;\n\tunion\
+    \ v6addr *dst;\n#endif\n\n\tif (nat_46x64)\n\t\tbuild_v4_in_v6(&tmp, IPV4_DIRECT_ROUTING);\n\
+    \n// CONTEXT: nodeport_rev_dnat_fwd_ipv6(struct __ctx_buff *ctx, struct trace_ctx\
+    \ *trace)\nstatic __always_inline int rev_nodeport_lb6(struct __ctx_buff *ctx,\
+    \ __s8 *ext_err)\n{\n#ifdef ENABLE_NAT_46X64_GATEWAY\n\tconst bool nat_46x64_fib\
+    \ = nat46x64_cb_route(ctx);\n#endif\n\tint ret, ret2, l3_off = ETH_HLEN, l4_off;\n\
+    \tstruct csum_offset csum_off = {};\n\tstruct ipv6_ct_tuple tuple = {};\n\tstruct\
+    \ ct_state ct_state = {};\n\tvoid *data, *data_end;\n\tstruct ipv6hdr *ip6;\n\t\
+    __u32 monitor = 0;\n\tint ifindex = 0;\n\n\tif (!revalidate_data(ctx, &data, &data_end,\
+    \ &ip6))\n\t\treturn DROP_INVALID;\n#ifdef ENABLE_NAT_46X64_GATEWAY\n\tif (nat_46x64_fib)\n\
+    \t\tgoto skip_rev_dnat;\n#endif\n\tret = lb6_extract_tuple(ctx, ip6, &l4_off,\
+    \ &tuple);\n\tif (ret < 0) {\n\t\tif (ret == DROP_NO_SERVICE || ret == DROP_UNKNOWN_L4)\n\
+    \t\t\tgoto out;\n\t\treturn ret;\n\n// CONTEXT: static __always_inline int dsr_reply_icmp4(struct\
+    \ __ctx_buff *ctx,\n\treturn ctx_redirect(ctx, ctx_get_ifindex(ctx), 0);\ndrop_err:\n\
+    #endif\n\treturn send_drop_notify_error(ctx, 0, code, CTX_ACT_DROP,\n\t\t\t\t\
+    \      METRIC_EGRESS);\n}\n\n__section_tail(CILIUM_MAP_CALLS, CILIUM_CALL_IPV4_NODEPORT_DSR)\n\
+    int tail_nodeport_ipv4_dsr(struct __ctx_buff *ctx)\n{\n\tvoid *data, *data_end;\n\
+    \tstruct iphdr *ip4;\n\tint ret, oif = 0;\n\t__u32 addr;\n\t__u16 port;\n\t__be16\
+    \ ohead = 0;\n\t__s8 ext_err = 0;\n\n\tif (!revalidate_data(ctx, &data, &data_end,\
+    \ &ip4)) {\n\t\tret = DROP_INVALID;\n\t\tgoto drop_err;\n\t}\n\taddr = ctx_load_meta(ctx,\
+    \ CB_ADDR_V4);\n\tport = (__u16)ctx_load_meta(ctx, CB_PORT);\n#if DSR_ENCAP_MODE\
+    \ == DSR_ENCAP_IPIP\n\n// CONTEXT: int tail_nodeport_nat_egress_ipv4(struct __ctx_buff\
+    \ *ctx)\n{\n\tstruct bpf_fib_lookup_padded fib_params = {\n\t\t.l = {\n\t\t\t\
+    .family\t\t= AF_INET,\n\t\t\t.ifindex\t= ctx_get_ifindex(ctx),\n\t\t},\n\t};\n\
+    \tstruct ipv4_nat_target target = {\n\t\t.min_port = NODEPORT_PORT_MIN_NAT,\n\t\
+    \t.max_port = NODEPORT_PORT_MAX_NAT,\n\t\t.src_from_world = true,\n\t};\n\tint\
+    \ ret, oif = 0;\n\tvoid *data, *data_end;\n\tstruct iphdr *ip4;\n\t__s8 ext_err\
+    \ = 0;\n#ifdef TUNNEL_MODE\n\tstruct remote_endpoint_info *info;\n\tint verdict\
+    \ = CTX_ACT_REDIRECT;\n\tbool use_tunnel = false;\n#endif\n\t/* Unfortunately,\
+    \ the bpf_fib_lookup() is not able to set src IP addr.\n\t * So we need to assume\
+    \ that the direct routing device is going to be\n\t * used to fwd the NodePort\
+    \ request, thus SNAT-ing to its IP addr.\n\t * This will change once we have resolved\
+    \ GH#17158.\n\n// CONTEXT: nodeport_rev_dnat_fwd_ipv4(struct __ctx_buff *ctx,\
+    \ struct trace_ctx *trace)\n * backend i) was a local EP and bpf_lxc redirected\
+    \ to us, ii) was\n * a remote backend and we got here after reverse SNAT from\
+    \ the\n * tail_nodeport_nat_ingress_ipv4().\n *\n * Also, reverse NAT handling\
+    \ return path egress-gw traffic.\n *\n * CILIUM_CALL_IPV{4,6}_NODEPORT_REVNAT\
+    \ is plugged into CILIUM_MAP_CALLS\n * of the bpf_host, bpf_overlay and of the\
+    \ bpf_lxc.\n */\nstatic __always_inline int rev_nodeport_lb4(struct __ctx_buff\
+    \ *ctx, __s8 *ext_err)\n{\n\tenum trace_reason __maybe_unused reason = TRACE_REASON_UNKNOWN;\n\
+    \tint ifindex = 0, ret, ret2, l3_off = ETH_HLEN, l4_off;\n\tstruct csum_offset\
+    \ csum_off = {};\n\tstruct ipv4_ct_tuple tuple = {};\n\tstruct ct_state ct_state\
+    \ = {};\n\tvoid *data, *data_end;\n\tstruct iphdr *ip4;\n\t__u32 monitor = TRACE_PAYLOAD_LEN;\n\
+    \t__u32 tunnel_endpoint __maybe_unused = 0;\n\t__u32 dst_id __maybe_unused = 0;\n\
+    \tbool has_l4_header;\n\n\tif (!revalidate_data(ctx, &data, &data_end, &ip4))\n\
+    \t\treturn DROP_INVALID;"
+  diff_summary: |-
+    bpf/bpf_lxc.c:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: ct_recreate6:, skip_vtep:.
+    bpf/lib/fib.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: maybe_add_l2_hdr(struct __ctx_buff *ctx __maybe_unused,.
+    bpf/lib/nodeport.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: static __always_inline int dsr_reply_icmp6(struct __ctx_buff *ctx,, int tail_nodeport_ipv6_dsr(struct __ctx_buff *ctx), int tail_nat_ipv46(struct __ctx_buff *ctx).
+    - Commit subject: bpf: Use oif from CT in compat mode.

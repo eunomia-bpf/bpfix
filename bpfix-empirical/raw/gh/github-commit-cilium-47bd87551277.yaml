@@ -1,0 +1,177 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-47bd87551277
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/47bd8755127703efc0f77af4b22566d6c3ed09e2
+  title: 'cilium: encrypt, use ipcache to lookup IPsec destination IP'
+  repository: https://github.com/cilium/cilium
+  commit: 47bd8755127703efc0f77af4b22566d6c3ed09e2
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-47bd87551277.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: environment_required
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: IPsec destination-IP handling depends on Cilium IPsec/IP_POOLS configuration,
+    mark/cb metadata propagation, and full LXC/netdev datapath generation. The raw
+    record has no verifier log or isolated rejected operation.
+raw:
+  case_id: github-commit-cilium-47bd87551277
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: 47bd8755127703efc0f77af4b22566d6c3ed09e2
+  commit_message: 'cilium: encrypt, use ipcache to lookup IPsec destination IP'
+  commit_date: '2019-05-30'
+  fix_type: inline_hint
+  buggy_code: "// FILE: bpf/bpf_lxc.c\n// CONTEXT: pass_to_stack:\n\n\tif (ipv6_store_flowlabel(skb,\
+    \ l3_off, SECLABEL_NB) < 0)\n\t\treturn DROP_WRITE_ERROR;\n\n\tsend_trace_notify(skb,\
+    \ TRACE_TO_STACK, SECLABEL, *dstID, 0, 0,\n\t\t\t  reason, monitor);\n\n\tcilium_dbg_capture(skb,\
+    \ DBG_CAPTURE_DELIVERY, 0);\n#ifndef ENCAP_IFINDEX\n#ifdef ENABLE_IPSEC\n\tif\
+    \ (encrypt_key && tunnel_endpoint) {\n\t\tset_encrypt_key(skb, encrypt_key);\n\
+    \t\tset_identity(skb, SECLABEL);\n\t}\n#endif\n#endif\n\treturn TC_ACT_OK;\n}\n\
+    \nstatic inline int __inline__ handle_ipv6(struct __sk_buff *skb, __u32 *dstID)\n\
+    {\n\tstruct ipv6_ct_tuple tuple = {};\n\tvoid *data, *data_end;\n\tstruct ipv6hdr\
+    \ *ip6;\n\tint ret;\n\n// CONTEXT: pass_to_stack:\n\n\t/* FIXME: We can't store\
+    \ the security context anywhere here so all\n\t * packets to other nodes will\
+    \ look like they come from an outside\n\t * network.\n\t */\n\n\tsend_trace_notify(skb,\
+    \ TRACE_TO_STACK, SECLABEL, *dstID, 0, 0,\n\t\t\t  reason, monitor);\n#ifndef\
+    \ ENCAP_IFINDEX\n#ifdef ENABLE_IPSEC\n\tif (encrypt_key && tunnel_endpoint) {\n\
+    \t\tset_encrypt_key(skb, encrypt_key);\n\t\tset_identity(skb, SECLABEL);\n\t}\n\
+    #endif\n#endif\n\tcilium_dbg_capture(skb, DBG_CAPTURE_DELIVERY, 0);\n\treturn\
+    \ TC_ACT_OK;\n}\n\ndeclare_tailcall_if(__and(is_defined(ENABLE_IPV4), is_defined(ENABLE_IPV6)),\
+    \ CILIUM_CALL_IPV4_FROM_LXC)\nint tail_handle_ipv4(struct __sk_buff *skb)\n{\n\
+    \t__u32 dstID = 0;\n\tint ret = handle_ipv4_from_lxc(skb, &dstID);\n\n// FILE:\
+    \ bpf/bpf_netdev.c\n// CONTEXT: static inline int handle_ipv6(struct __sk_buff\
+    \ *skb, __u32 src_identity)\n#ifdef FROM_HOST\n\tif (info == NULL) {\n\t\t/* We\
+    \ have received a packet for which no ipcache entry exists,\n\t\t * we do not\
+    \ know what to do with this packet, drop it. */\n\t\treturn DROP_UNROUTABLE;\n\
+    \t}\n#endif\n#ifdef ENABLE_IPSEC\n\tif (info && info->key && info->tunnel_endpoint)\
+    \ {\n\t\t__u8 key = get_min_encrypt_key(info->key);\n\n\t\tset_encrypt_key_cb(skb,\
+    \ key);\n\t\tset_identity_cb(skb, secctx);\n\t}\n#endif\n\treturn TC_ACT_OK;\n\
+    }\n#endif /* ENABLE_IPV6 */\n\n#ifdef ENABLE_IPV4\nstatic inline __u32 derive_ipv4_sec_ctx(struct\
+    \ __sk_buff *skb, struct iphdr *ip4)\n{\n#ifdef FIXED_SRC_SECCTX\n\treturn FIXED_SRC_SECCTX;\n\
+    #else\n\n// CONTEXT: static inline int handle_ipv4(struct __sk_buff *skb, __u32\
+    \ src_identity)\n#ifdef FROM_HOST\n\tif (info == NULL) {\n\t\t/* We have received\
+    \ a packet for which no ipcache entry exists,\n\t\t * we do not know what to do\
+    \ with this packet, drop it. */\n\t\treturn DROP_UNROUTABLE;\n\t}\n#endif\n#ifdef\
+    \ ENABLE_IPSEC\n\tif (info && info->key && info->tunnel_endpoint) {\n\t\t__u8\
+    \ key = get_min_encrypt_key(info->key);\n\n\t\tset_encrypt_key_cb(skb, key);\n\
+    \t\tset_identity_cb(skb, secctx);\n\t}\n#endif\n\treturn TC_ACT_OK;\n#endif\n\
+    }\n\n#define CB_SRC_IDENTITY 0\n\n__section_tail(CILIUM_MAP_CALLS, CILIUM_CALL_IPV4_FROM_LXC)\
+    \ int tail_handle_ipv4(struct __sk_buff *skb)\n{\n\t__u32 proxy_identity = skb->cb[CB_SRC_IDENTITY];\n\
+    \tint ret;\n\n// CONTEXT: __section_tail(CILIUM_MAP_CALLS, CILIUM_CALL_IPV4_FROM_LXC)\
+    \ int tail_handle_ipv4\n\nstatic __always_inline int do_netdev(struct __sk_buff\
+    \ *skb, __u16 proto)\n{\n\t__u32 identity = 0;\n\tint ret;\n\n#ifdef ENABLE_IPSEC\n\
+    \tif (1) {\n\t\t__u32 magic = skb->mark & MARK_MAGIC_HOST_MASK;\n\n\t\tif (magic\
+    \ == MARK_MAGIC_ENCRYPT) {\n\t\t\t__u32 seclabel, tunnel_endpoint = 0;\n\n\t\t\
+    \tseclabel = get_identity(skb);\n\t\t\ttunnel_endpoint = skb->cb[4];\n\t\t\tskb->mark\
+    \ = 0;\n\t\t\tbpf_clear_cb(skb);\n\n#ifdef ENCAP_IFINDEX\n\t\t\treturn __encap_and_redirect_with_nodeid(skb,\
+    \ tunnel_endpoint, seclabel, TRACE_PAYLOAD_LEN);\n#elif ENCRYPT_NODE\n\t\t\treturn\
+    \ redirect(ENCRYPT_IFACE, 0);\n#else\n\t\t\treturn TC_ACT_OK;\n#endif\n\t\t}\n\
+    \t}\n#endif\n\tbpf_clear_cb(skb);\n\n#ifdef FROM_HOST\n\tif (1) {\n\n// FILE:\
+    \ bpf/lib/common.h\n// CONTEXT: enum {\n\n#define MARK_MAGIC_KEY_ID\t\t0xF000\n\
+    #define MARK_MAGIC_KEY_MASK\t\t0xFF00\n\n/**\n * get_identity - returns source\
+    \ identity from the mark field\n */\nstatic inline int __inline__ get_identity(struct\
+    \ __sk_buff *skb)\n{\n\treturn ((skb->mark & 0xFF) << 16) | skb->mark >> 16;\n\
+    }\n\n/**\n * set_identity - pushes 24 bit identity into skb mark value.\n */\n\
+    static inline void __inline__ set_identity(struct __sk_buff *skb, __u32 identity)\n\
+    {\n\tskb->mark = skb->mark & MARK_MAGIC_KEY_MASK;\n\tskb->mark |= ((identity &\
+    \ 0xFFFF) << 16) | ((identity & 0xFF0000) >> 16);\n}\n\nstatic inline void __inline__\
+    \ set_identity_cb(struct __sk_buff *skb, __u32 identity)\n{\n\tskb->cb[1] = identity;"
+  fixed_code: "// FILE: bpf/bpf_lxc.c\n// CONTEXT: pass_to_stack:\n\n\tif (ipv6_store_flowlabel(skb,\
+    \ l3_off, SECLABEL_NB) < 0)\n\t\treturn DROP_WRITE_ERROR;\n\n\tsend_trace_notify(skb,\
+    \ TRACE_TO_STACK, SECLABEL, *dstID, 0, 0,\n\t\t\t  reason, monitor);\n\n\tcilium_dbg_capture(skb,\
+    \ DBG_CAPTURE_DELIVERY, 0);\n#ifndef ENCAP_IFINDEX\n#ifdef ENABLE_IPSEC\n\tif\
+    \ (encrypt_key && tunnel_endpoint) {\n\t\tset_encrypt_key(skb, encrypt_key);\n\
+    #ifdef IP_POOLS\n\t\tset_encrypt_dip(skb, tunnel_endpoint);\n#else\n\t\tset_identity(skb,\
+    \ SECLABEL);\n#endif\n\t}\n#endif\n#endif\n\treturn TC_ACT_OK;\n}\n\nstatic inline\
+    \ int __inline__ handle_ipv6(struct __sk_buff *skb, __u32 *dstID)\n{\n\tstruct\
+    \ ipv6_ct_tuple tuple = {};\n\tvoid *data, *data_end;\n\tstruct ipv6hdr *ip6;\n\
+    \tint ret;\n\n// CONTEXT: pass_to_stack:\n\n\t/* FIXME: We can't store the security\
+    \ context anywhere here so all\n\t * packets to other nodes will look like they\
+    \ come from an outside\n\t * network.\n\t */\n\n\tsend_trace_notify(skb, TRACE_TO_STACK,\
+    \ SECLABEL, *dstID, 0, 0,\n\t\t\t  reason, monitor);\n#ifndef ENCAP_IFINDEX\n\
+    #ifdef ENABLE_IPSEC\n\tif (encrypt_key && tunnel_endpoint) {\n\t\tset_encrypt_key(skb,\
+    \ encrypt_key);\n#ifdef IP_POOLS\n\t\tset_encrypt_dip(skb, tunnel_endpoint);\n\
+    #else\n\t\tset_identity(skb, SECLABEL);\n#endif\n\t}\n#endif\n#endif\n\tcilium_dbg_capture(skb,\
+    \ DBG_CAPTURE_DELIVERY, 0);\n\treturn TC_ACT_OK;\n}\n\ndeclare_tailcall_if(__and(is_defined(ENABLE_IPV4),\
+    \ is_defined(ENABLE_IPV6)), CILIUM_CALL_IPV4_FROM_LXC)\nint tail_handle_ipv4(struct\
+    \ __sk_buff *skb)\n{\n\t__u32 dstID = 0;\n\tint ret = handle_ipv4_from_lxc(skb,\
+    \ &dstID);\n\n// FILE: bpf/bpf_netdev.c\n// CONTEXT: static inline int handle_ipv6(struct\
+    \ __sk_buff *skb, __u32 src_identity)\n#ifdef FROM_HOST\n\tif (info == NULL) {\n\
+    \t\t/* We have received a packet for which no ipcache entry exists,\n\t\t * we\
+    \ do not know what to do with this packet, drop it. */\n\t\treturn DROP_UNROUTABLE;\n\
+    \t}\n#endif\n#ifdef ENABLE_IPSEC\n\tif (info && info->key && info->tunnel_endpoint)\
+    \ {\n\t\t__u8 key = get_min_encrypt_key(info->key);\n\n\t\tset_encrypt_key_cb(skb,\
+    \ key);\n#ifdef IP_POOLS\n\t\tset_encrypt_dip(skb, info->tunnel_endpoint);\n#else\n\
+    \t\tset_identity_cb(skb, secctx);\n#endif\n\t}\n#endif\n\treturn TC_ACT_OK;\n\
+    }\n#endif /* ENABLE_IPV6 */\n\n#ifdef ENABLE_IPV4\nstatic inline __u32 derive_ipv4_sec_ctx(struct\
+    \ __sk_buff *skb, struct iphdr *ip4)\n{\n#ifdef FIXED_SRC_SECCTX\n\treturn FIXED_SRC_SECCTX;\n\
+    #else\n\n// CONTEXT: static inline int handle_ipv4(struct __sk_buff *skb, __u32\
+    \ src_identity)\n#ifdef FROM_HOST\n\tif (info == NULL) {\n\t\t/* We have received\
+    \ a packet for which no ipcache entry exists,\n\t\t * we do not know what to do\
+    \ with this packet, drop it. */\n\t\treturn DROP_UNROUTABLE;\n\t}\n#endif\n#ifdef\
+    \ ENABLE_IPSEC\n\tif (info && info->key && info->tunnel_endpoint) {\n\t\t__u8\
+    \ key = get_min_encrypt_key(info->key);\n\n\t\tset_encrypt_key_cb(skb, key);\n\
+    #ifdef IP_POOLS\n\t\tset_encrypt_dip(skb, info->tunnel_endpoint);\n#else\n\t\t\
+    set_identity_cb(skb, secctx);\n#endif\n\t}\n#endif\n\treturn TC_ACT_OK;\n#endif\n\
+    }\n\n#define CB_SRC_IDENTITY 0\n\n__section_tail(CILIUM_MAP_CALLS, CILIUM_CALL_IPV4_FROM_LXC)\
+    \ int tail_handle_ipv4(struct __sk_buff *skb)\n{\n\t__u32 proxy_identity = skb->cb[CB_SRC_IDENTITY];\n\
+    \tint ret;\n\n// CONTEXT: __section_tail(CILIUM_MAP_CALLS, CILIUM_CALL_IPV4_FROM_LXC)\
+    \ int tail_handle_ipv4\n\nstatic __always_inline int do_netdev(struct __sk_buff\
+    \ *skb, __u16 proto)\n{\n\t__u32 identity = 0;\n\tint ret;\n\n#ifdef ENABLE_IPSEC\n\
+    \tif (1) {\n\t\t__u32 magic = skb->mark & MARK_MAGIC_HOST_MASK;\n\n\t\tif (magic\
+    \ == MARK_MAGIC_ENCRYPT) {\n\t\t\t__u32 seclabel, tunnel_endpoint = 0;\n#ifdef\
+    \ IP_POOLS\n\t\t\t__u32 tunnel_source = IPV4_ENCRYPT_IFACE;\n\t\t\tvoid *data,\
+    \ *data_end;\n\t\t\tstruct iphdr *iphdr;\n\t\t\t__be32 sum;\n#endif\n\n\t\t\t\
+    seclabel = get_identity(skb);\n\t\t\ttunnel_endpoint = skb->cb[4];\n\t\t\tskb->mark\
+    \ = 0;\n#ifdef ENCAP_IFINDEX\n\t\t\tbpf_clear_cb(skb);\n\t\t\treturn __encap_and_redirect_with_nodeid(skb,\
+    \ tunnel_endpoint, seclabel, TRACE_PAYLOAD_LEN);\n#endif\n#ifdef IP_POOLS\n\t\t\
+    \tif (!revalidate_data(skb, &data, &data_end, &iphdr))\n\t\t\t\treturn DROP_INVALID;\n\
+    \n\t\t\t/* When IP_POOLS is enabled ip addresses are not\n\t\t\t * assigned on\
+    \ a per node basis so lacking node\n\t\t\t * affinity we can not use IP address\
+    \ to assign the\n\t\t\t * destination IP. Instead rewrite it here from cb[].\n\
+    \t\t\t */\n\t\t\tsum = csum_diff(&iphdr->daddr, 4, &tunnel_endpoint, 4, 0);\n\t\
+    \t\tif (skb_store_bytes(skb, ETH_HLEN + offsetof(struct iphdr, daddr),\n\t\t\t\
+    \    &tunnel_endpoint, 4, 0) < 0)\n\t\t\t\treturn DROP_WRITE_ERROR;\n\t\t\tif\
+    \ (l3_csum_replace(skb, ETH_HLEN + offsetof(struct iphdr, check),\n\t\t\t    0,\
+    \ sum, 0) < 0)\n\t\t\t\treturn DROP_CSUM_L3;\n\n\t\t\tif (!revalidate_data(skb,\
+    \ &data, &data_end, &iphdr))\n\t\t\t\treturn DROP_INVALID;\n\n\t\t\tsum = csum_diff(&iphdr->saddr,\
+    \ 4, &tunnel_source, 4, 0);\n\t\t\tif (skb_store_bytes(skb, ETH_HLEN + offsetof(struct\
+    \ iphdr, saddr),\n\t\t\t    &tunnel_source, 4, 0) < 0)\n\t\t\t\treturn DROP_WRITE_ERROR;\n\
+    \t\t\tif (l3_csum_replace(skb, ETH_HLEN + offsetof(struct iphdr, check),\n\t\t\
+    \t    0, sum, 0) < 0)\n\t\t\t\treturn DROP_CSUM_L3;\n#endif\n\t\t\tbpf_clear_cb(skb);\n\
+    #if ENCRYPT_NODE\n\t\t\treturn redirect(ENCRYPT_IFACE, 0);\n#else\n\t\t\treturn\
+    \ TC_ACT_OK;\n#endif\n\t\t}\n\t}\n#endif\n\tbpf_clear_cb(skb);\n\n#ifdef FROM_HOST\n\
+    \tif (1) {\n\n// FILE: bpf/lib/common.h\n// CONTEXT: enum {\n\n#define MARK_MAGIC_KEY_ID\t\
+    \t0xF000\n#define MARK_MAGIC_KEY_MASK\t\t0xFF00\n\n/**\n * get_identity - returns\
+    \ source identity from the mark field\n */\nstatic inline int __inline__ get_identity(struct\
+    \ __sk_buff *skb)\n{\n\treturn ((skb->mark & 0xFF) << 16) | skb->mark >> 16;\n\
+    }\n\nstatic inline void __inline__ set_encrypt_dip(struct __sk_buff *skb, __u32\
+    \ ip_endpoint)\n{\n\tskb->cb[4] = ip_endpoint;\n}\n\n/**\n * set_identity - pushes\
+    \ 24 bit identity into skb mark value.\n */\nstatic inline void __inline__ set_identity(struct\
+    \ __sk_buff *skb, __u32 identity)\n{\n\tskb->mark = skb->mark & MARK_MAGIC_KEY_MASK;\n\
+    \tskb->mark |= ((identity & 0xFFFF) << 16) | ((identity & 0xFF0000) >> 16);\n\
+    }\n\nstatic inline void __inline__ set_identity_cb(struct __sk_buff *skb, __u32\
+    \ identity)\n{\n\tskb->cb[1] = identity;"
+  diff_summary: |-
+    bpf/bpf_lxc.c:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: pass_to_stack:.
+    bpf/bpf_netdev.c:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: static inline int handle_ipv6(struct __sk_buff *skb, __u32 src_identity), static inline int handle_ipv4(struct __sk_buff *skb, __u32 src_identity), __section_tail(CILIUM_MAP_CALLS, CILIUM_CALL_IPV4_FROM_LXC) int tail_handle_ipv4.
+    bpf/lib/common.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: enum {.
+    - Commit subject: cilium: encrypt, use ipcache to lookup IPsec destination IP.

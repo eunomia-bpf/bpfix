@@ -1,0 +1,94 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-0ab817e77209
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/0ab817e77209f565075b181e40f98a667544d43a
+  title: 'bpf: nodeport: don''t track L2 addr for connection to local backend (v2)'
+  repository: https://github.com/cilium/cilium
+  commit: 0ab817e77209f565075b181e40f98a667544d43a
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-0ab817e77209.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: not_reconstructable_from_diff
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Nodeport local-backend tracking change depends on Cilium tail-call/test
+    harness context; no verifier log and no standalone faithful reducer.
+raw:
+  case_id: github-commit-cilium-0ab817e77209
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: 0ab817e77209f565075b181e40f98a667544d43a
+  commit_message: 'bpf: nodeport: don''t track L2 addr for connection to local backend
+    (v2)'
+  commit_date: '2025-05-20'
+  fix_type: inline_hint
+  buggy_code: "// FILE: bpf/lib/nodeport.h\n// CONTEXT: static __always_inline int\
+    \ nodeport_svc_lb6(struct __ctx_buff *ctx,\n\t\t\tif (IS_ERR(ret))\n\t\t\t\treturn\
+    \ ret;\n\t\t\tbreak;\n\t\tcase CT_ESTABLISHED:\n\t\t\t/* Note that we don't validate\
+    \ whether the matched CT entry\n\t\t\t * has identical values (eg. .ifindex) as\
+    \ set above.\n\t\t\t */\n\t\t\tbreak;\n\t\tdefault:\n\t\t\treturn DROP_UNKNOWN_CT;\n\
+    \t\t}\n\n\t\tret = neigh_record_ip6(ctx);\n\t\tif (ret < 0)\n\t\t\treturn ret;\n\
+    \t\tif (backend_local) {\n\t\t\tctx_set_xfer(ctx, XFER_PKT_NO_SVC);\n\t\t\treturn\
+    \ CTX_ACT_OK;\n\t\t}\n\t}\n\n\t/* TX request to remote backend: */\n\tedt_set_aggregate(ctx,\
+    \ 0);\n\tif (nodeport_uses_dsr6(svc, tuple)) {\n#if DSR_ENCAP_MODE == DSR_ENCAP_IPIP\n\
+    \t\tctx_store_meta(ctx, CB_HINT,\n\t\t\t       ((__u32)tuple->sport << 16) | tuple->dport);\n\
+    \t\tctx_store_meta_ipv6(ctx, CB_ADDR_V6_1, &tuple->daddr);\n#elif DSR_ENCAP_MODE\
+    \ == DSR_ENCAP_GENEVE || DSR_ENCAP_MODE == DSR_ENCAP_NONE\n\t\tctx_store_meta(ctx,\
+    \ CB_PORT, key->dport);\n\t\tctx_store_meta_ipv6(ctx, CB_ADDR_V6_1, &key->address);\n\
+    \n// CONTEXT: static __always_inline int nodeport_svc_lb4(struct __ctx_buff *ctx,\n\
+    \t\t\tif (IS_ERR(ret))\n\t\t\t\treturn ret;\n\t\t\tbreak;\n\t\tcase CT_ESTABLISHED:\n\
+    \t\t\t/* Note that we don't validate whether the matched CT entry\n\t\t\t * has\
+    \ identical values (eg. .ifindex) as set above.\n\t\t\t */\n\t\t\tbreak;\n\t\t\
+    default:\n\t\t\treturn DROP_UNKNOWN_CT;\n\t\t}\n\n\t\t/* Neighbour tracking is\
+    \ needed for local backend until\n\t\t * https://github.com/cilium/cilium/issues/24062\
+    \ is resolved.\n\t\t */\n\t\tret = neigh_record_ip4(ctx);\n\t\tif (ret < 0)\n\t\
+    \t\treturn ret;\n\t\tif (backend_local) {\n\t\t\tctx_set_xfer(ctx, XFER_PKT_NO_SVC);\n\
+    \t\t\treturn CTX_ACT_OK;\n\t\t}\n\t}\n\n\t/* TX request to remote backend: */\n\
+    \tedt_set_aggregate(ctx, 0);\n\tif (nodeport_uses_dsr4(svc, tuple)) {\n#if DSR_ENCAP_MODE\
+    \ == DSR_ENCAP_IPIP\n\t\tctx_store_meta(ctx, CB_HINT,\n\t\t\t       ((__u32)tuple->sport\
+    \ << 16) | tuple->dport);\n\t\tctx_store_meta(ctx, CB_ADDR_V4, tuple->daddr);\n\
+    #elif DSR_ENCAP_MODE == DSR_ENCAP_GENEVE || DSR_ENCAP_MODE == DSR_ENCAP_NONE\n\
+    \t\tctx_store_meta(ctx, CB_PORT, key->dport);\n\t\tctx_store_meta(ctx, CB_ADDR_V4,\
+    \ key->address);"
+  fixed_code: "// FILE: bpf/lib/nodeport.h\n// CONTEXT: static __always_inline int\
+    \ nodeport_svc_lb6(struct __ctx_buff *ctx,\n\t\t\tif (IS_ERR(ret))\n\t\t\t\treturn\
+    \ ret;\n\t\t\tbreak;\n\t\tcase CT_ESTABLISHED:\n\t\t\t/* Note that we don't validate\
+    \ whether the matched CT entry\n\t\t\t * has identical values (eg. .ifindex) as\
+    \ set above.\n\t\t\t */\n\t\t\tbreak;\n\t\tdefault:\n\t\t\treturn DROP_UNKNOWN_CT;\n\
+    \t\t}\n\n\t\tif (backend_local) {\n\t\t\tctx_set_xfer(ctx, XFER_PKT_NO_SVC);\n\
+    \t\t\treturn CTX_ACT_OK;\n\t\t}\n\n\t\tret = neigh_record_ip6(ctx);\n\t\tif (ret\
+    \ < 0)\n\t\t\treturn ret;\n\t}\n\n\t/* TX request to remote backend: */\n\tedt_set_aggregate(ctx,\
+    \ 0);\n\tif (nodeport_uses_dsr6(svc, tuple)) {\n#if DSR_ENCAP_MODE == DSR_ENCAP_IPIP\n\
+    \t\tctx_store_meta(ctx, CB_HINT,\n\t\t\t       ((__u32)tuple->sport << 16) | tuple->dport);\n\
+    \t\tctx_store_meta_ipv6(ctx, CB_ADDR_V6_1, &tuple->daddr);\n#elif DSR_ENCAP_MODE\
+    \ == DSR_ENCAP_GENEVE || DSR_ENCAP_MODE == DSR_ENCAP_NONE\n\t\tctx_store_meta(ctx,\
+    \ CB_PORT, key->dport);\n\t\tctx_store_meta_ipv6(ctx, CB_ADDR_V6_1, &key->address);\n\
+    \n// CONTEXT: static __always_inline int nodeport_svc_lb4(struct __ctx_buff *ctx,\n\
+    \t\t\tif (IS_ERR(ret))\n\t\t\t\treturn ret;\n\t\t\tbreak;\n\t\tcase CT_ESTABLISHED:\n\
+    \t\t\t/* Note that we don't validate whether the matched CT entry\n\t\t\t * has\
+    \ identical values (eg. .ifindex) as set above.\n\t\t\t */\n\t\t\tbreak;\n\t\t\
+    default:\n\t\t\treturn DROP_UNKNOWN_CT;\n\t\t}\n\n\t\tif (backend_local) {\n\t\
+    \t\tctx_set_xfer(ctx, XFER_PKT_NO_SVC);\n\t\t\treturn CTX_ACT_OK;\n\t\t}\n\n\t\
+    \tret = neigh_record_ip4(ctx);\n\t\tif (ret < 0)\n\t\t\treturn ret;\n\t}\n\n\t\
+    /* TX request to remote backend: */\n\tedt_set_aggregate(ctx, 0);\n\tif (nodeport_uses_dsr4(svc,\
+    \ tuple)) {\n#if DSR_ENCAP_MODE == DSR_ENCAP_IPIP\n\t\tctx_store_meta(ctx, CB_HINT,\n\
+    \t\t\t       ((__u32)tuple->sport << 16) | tuple->dport);\n\t\tctx_store_meta(ctx,\
+    \ CB_ADDR_V4, tuple->daddr);\n#elif DSR_ENCAP_MODE == DSR_ENCAP_GENEVE || DSR_ENCAP_MODE\
+    \ == DSR_ENCAP_NONE\n\t\tctx_store_meta(ctx, CB_PORT, key->dport);\n\t\tctx_store_meta(ctx,\
+    \ CB_ADDR_V4, key->address);"
+  diff_summary: |-
+    bpf/lib/nodeport.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: static __always_inline int nodeport_svc_lb6(struct __ctx_buff *ctx,, static __always_inline int nodeport_svc_lb4(struct __ctx_buff *ctx,.
+    - Commit subject: bpf: nodeport: don't track L2 addr for connection to local backend (v2).

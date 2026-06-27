@@ -1,0 +1,20 @@
+schema_version: bpfix.capture/v1
+capture_id: stackoverflow-77205912__kernel-6.15.11-clang-18-log2
+case_id: stackoverflow-77205912
+environment_id: kernel-6.15.11-clang-18-log2
+imported_at: '2026-04-29T22:41:35+00:00'
+source_artifact:
+  path: bpfix-empirical/cases/stackoverflow-77205912
+  source_origin: body[0] -> case-rewrite
+  source_bucket: stackoverflow
+  language: c
+  compile_ok: true
+  verifier_status: rejected
+  verifier_error_match: partial
+  fixed_status: not_attempted
+  source_record: bpfix-empirical/raw/so/stackoverflow-77205912.yaml
+replay:
+  build_command: make
+  load_command: make replay-verify
+  verifier_log: replay-verifier.log
+  expected_load_status: verifier_reject

@@ -1,0 +1,108 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-e80be9ebffd4
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/e80be9ebffd4b2db932b7c04529b87cc8859dc53
+  title: 'bpf/tests/scapy: work-around builtins limit of 128'
+  repository: https://github.com/cilium/cilium
+  commit: e80be9ebffd4b2db932b7c04529b87cc8859dc53
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-e80be9ebffd4.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: attempted_accepted
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Standalone 129-byte __builtin_memcmp() probe accepted locally; the raw scapy
+    builtin-limit issue lacks a verifier log and did not reproduce on the pinned toolchain/kernel.
+raw:
+  case_id: github-commit-cilium-e80be9ebffd4
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: e80be9ebffd4b2db932b7c04529b87cc8859dc53
+  commit_message: 'bpf/tests/scapy: work-around builtins limit of 128'
+  commit_date: '2025-09-18'
+  fix_type: inline_hint
+  buggy_code: "// FILE: bpf/tests/scapy.h\n/**\n * Declare scapy buffer in stack.\n\
+    \ *\n * NAME: name of the buffer. Unique name in the scope. Use BUF(NAME) to refer\n\
+    \ *       to this buffer.\n *\n * Variable args:\n *  #1: scapy object (layer)\n\
+    \ */\n#define BUF_DECL(NAME, ...) \\\n\tconst __u8 BUF(NAME)[] = __SCAPY_BUF_BYTES(NAME)\n\
+    \n/**\n * Push (append) BUF(NAME) to the end of the ctx pkt builder.\n */\n#define\
+    \ BUILDER_PUSH_BUF(BUILDER, NAME)\t\t\t\t\t\\\n\tdo {\t\t\t\t\t\t\t\t\\\n\t\t\
+    if (!pktgen__push_data(&(BUILDER), (void *)&BUF(NAME),\t\\\n\t\t\t\t       sizeof(BUF(NAME))))\t\
+    \t\\\n\t\t\treturn TEST_ERROR;\t\t\t\t\\\n\t} while (0)\n\n/**\n * Compare a packet\
+    \ (ctx) to a scapy buffer starting from ctx's OFF byte\n */\n#define ASSERT_CTX_BUF_OFF(NAME,\
+    \ FIRST_LAYER, CTX, OFF, BUF_NAME, LEN)\t\t\\\n\tdo {\t\t\t\t\t\t\t\t\t\\\n\t\t\
+    void *__DATA = (void *)(long)(CTX)->data;\t\t\t\\\n\t\tvoid *__DATA_END = (void\
+    \ *)(long)(CTX)->data_end;\t\t\\\n\t\t__DATA += OFF;\t\t\t\t\t\t\t\\\n\n\t\t\t\
+    \t\t\t\t\t\t\t\\\n\t\tif (__DATA + (LEN) > __DATA_END) {\t\t\t\t\\\n\t\t\tok =\
+    \ false;\t\t\t\t\t\t\\\n\t\t\t_len = (__u16)(__DATA_END - __DATA);\t\t\t\\\n\t\
+    \t\ttest_log(\"CTX len (%d) - offset (%d) < LEN (%d)\",\t\\\n\t\t\t\t _len + OFF,\
+    \ OFF, LEN);\t\t\t\t\\\n\t\t}\t\t\t\t\t\t\t\t\\\n\t\tif (sizeof(BUF(BUF_NAME))\
+    \ < (LEN)) {\t\t\t\t\\\n\t\t\tok = false;\t\t\t\t\t\t\\\n\t\t\ttest_log(\"Buffer\
+    \ '\" #BUF_NAME \"' of len (%d) < LEN\"\t\\\n\t\t\t\t \" (%d)\", sizeof(BUF(BUF_NAME)),\
+    \ LEN);\t\t\\\n\t\t}\t\t\t\t\t\t\t\t\\\n\t\tif (ok && memcmp(__DATA, &BUF(BUF_NAME),\
+    \ LEN) != 0) {\t\t\\\n\t\t\tok = false;\t\t\t\t\t\t\\\n\t\t\ttest_log(\"CTX and\
+    \ buffer '\" #BUF_NAME\t\t\t\\\n\t\t\t\t \"' content mismatch \");\t\t\t\\\n\t\
+    \t}\t\t\t\t\t\t\t\t\\\n\t\tif (!ok) {\t\t\t\t\t\t\t\\\n\t\t\thexdump_len_off(__FILE__\
+    \ \":\" LINE_STRING \" assert '\"\t\\\n\t\t\t\t\tNAME \"' FAILED! Got (ctx)\"\
+    ,\t\t\\\n\t\t\t\t\tFIRST_LAYER, CTX, _len, OFF);\t\t\\\n\t\t\tscapy_hexdump(__FILE__\
+    \ \":\" LINE_STRING \" assert '\"\t\\\n\t\t\t\t      NAME \"' FAILED! Expected\
+    \ (buf)\",\t\t\\\n\t\t\t\t      FIRST_LAYER, &BUF(BUF_NAME)[0],\t\t\\\n\t\t\t\t\
+    \      sizeof(BUF(BUF_NAME)));\t\t\t\\"
+  fixed_code: "// FILE: bpf/tests/scapy.h\n/**\n * Declare scapy buffer in stack.\n\
+    \ *\n * NAME: name of the buffer. Unique name in the scope. Use BUF(NAME) to refer\n\
+    \ *       to this buffer.\n *\n * Variable args:\n *  #1: scapy object (layer)\n\
+    \ */\n#define BUF_DECL(NAME, ...) \\\n\tconst __u8 BUF(NAME)[] = __SCAPY_BUF_BYTES(NAME)\n\
+    \nstatic __always_inline\nint scapy_memcmp(const void *a, const void *b, const\
+    \ __u16 len)\n{\n\t__u32 i;\n\n\tfor (i = 0; i + 8 <= len; i += 8) {\n\t\t__u64\
+    \ va = *(__u64 *)(a + i);\n\t\t__u64 vb = *(__u64 *)(b + i);\n\n\t\tif (va !=\
+    \ vb)\n\t\t\treturn (va < vb) ? -1 : 1;\n\t}\n\n\t#pragma unroll\n\tfor (; i <\
+    \ len; i++) {\n\t\t__u8 va = *(__u8 *)(a + i);\n\t\t__u8 vb = *(__u8 *)(b + i);\n\
+    \n\t\tif (va != vb)\n\t\t\treturn (va < vb) ? -1 : 1;\n\t}\n\n\treturn 0;\n}\n\
+    \nstatic __always_inline\nvoid scapy_memcpy(const void *dst, const void *src,\
+    \ const __u32 len)\n{\n\t__u32 i;\n\n\t#pragma unroll\n\tfor (i = 0; i + 8 <=\
+    \ len; i += 8)\n\t\t*(__u64 *)(dst + i) = *(__u64 *)(src + i);\n\n\t#pragma unroll\n\
+    \tfor (; i < len; i++)\n\t\t*(__u8 *)(dst + i) = *(__u8 *)(src + i);\n}\n\nstatic\
+    \ __always_inline\nvoid *scapy__push_data(struct pktgen *builder, void *data,\
+    \ int len)\n{\n\tvoid *pkt_data = pktgen__push_data_room(builder, len);\n\n\t\
+    if (!pkt_data)\n\t\treturn 0;\n\tif (pkt_data + len > ctx_data_end(builder->ctx))\n\
+    \t\treturn 0;\n\n\tscapy_memcpy(pkt_data, data, len);\n\n\treturn pkt_data;\n\
+    }\n\n/**\n * Push (append) BUF(NAME) to the end of the ctx pkt builder.\n */\n\
+    #define BUILDER_PUSH_BUF(BUILDER, NAME)\t\t\t\t\t\\\n\tdo {\t\t\t\t\t\t\t\t\\\n\
+    \t\tif (!scapy__push_data(&(BUILDER), (void *)&BUF(NAME),\t\\\n\t\t\t\t      \
+    \ sizeof(BUF(NAME))))\t\t\\\n\t\t\treturn TEST_ERROR;\t\t\t\t\\\n\t} while (0)\n\
+    \n/**\n * Compare a packet (ctx) to a scapy buffer starting from ctx's OFF byte\n\
+    \ */\n#define ASSERT_CTX_BUF_OFF(NAME, FIRST_LAYER, CTX, OFF, BUF_NAME, LEN)\t\
+    \t\\\n\tdo {\t\t\t\t\t\t\t\t\t\\\n\t\tvoid *__DATA = (void *)(long)(CTX)->data;\t\
+    \t\t\\\n\t\tvoid *__DATA_END = (void *)(long)(CTX)->data_end;\t\t\\\n\t\t__DATA\
+    \ += OFF;\t\t\t\t\t\t\t\\\n\n\t\t\t\t\t\t\t\t\t\t\\\n\t\tif (__DATA + (LEN) >\
+    \ __DATA_END) {\t\t\t\t\\\n\t\t\tok = false;\t\t\t\t\t\t\\\n\t\t\t_len = (__u16)(__DATA_END\
+    \ - __DATA);\t\t\t\\\n\t\t\ttest_log(\"CTX len (%d) - offset (%d) < LEN (%d)\"\
+    ,\t\\\n\t\t\t\t _len + OFF, OFF, LEN);\t\t\t\t\\\n\t\t}\t\t\t\t\t\t\t\t\\\n\t\t\
+    if (sizeof(BUF(BUF_NAME)) < (LEN)) {\t\t\t\t\\\n\t\t\tok = false;\t\t\t\t\t\t\\\
+    \n\t\t\ttest_log(\"Buffer '\" #BUF_NAME \"' of len (%d) < LEN\"\t\\\n\t\t\t\t\
+    \ \" (%d)\", sizeof(BUF(BUF_NAME)), LEN);\t\t\\\n\t\t}\t\t\t\t\t\t\t\t\\\n\t\t\
+    if (ok && scapy_memcmp(__DATA, &BUF(BUF_NAME), LEN) != 0) {\t\\\n\t\t\tok = false;\t\
+    \t\t\t\t\t\\\n\t\t\ttest_log(\"CTX and buffer '\" #BUF_NAME\t\t\t\\\n\t\t\t\t\
+    \ \"' content mismatch \");\t\t\t\\\n\t\t}\t\t\t\t\t\t\t\t\\\n\t\tif (!ok) {\t\
+    \t\t\t\t\t\t\\\n\t\t\thexdump_len_off(__FILE__ \":\" LINE_STRING \" assert '\"\
+    \t\\\n\t\t\t\t\tNAME \"' FAILED! Got (ctx)\",\t\t\\\n\t\t\t\t\tFIRST_LAYER, CTX,\
+    \ _len, OFF);\t\t\\\n\t\t\tscapy_hexdump(__FILE__ \":\" LINE_STRING \" assert\
+    \ '\"\t\\\n\t\t\t\t      NAME \"' FAILED! Expected (buf)\",\t\t\\\n\t\t\t\t  \
+    \    FIRST_LAYER, &BUF(BUF_NAME)[0],\t\t\\\n\t\t\t\t      sizeof(BUF(BUF_NAME)));\t\
+    \t\t\\"
+  diff_summary: |-
+    bpf/tests/scapy.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: the touched section.
+    - Commit subject: bpf/tests/scapy: work-around builtins limit of 128.

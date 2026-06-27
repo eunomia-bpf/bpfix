@@ -1,0 +1,85 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-bcc-03f9322cc688
+source_kind: github_commit
+source:
+  url: https://github.com/iovisor/bcc/commit/03f9322cc6886bf6ebd21aa07e911179cfd34efb
+  title: 'libbpf-tools: Fix misaligned pointer accesses in tcpstates'
+  repository: https://github.com/iovisor/bcc
+  commit: 03f9322cc6886bf6ebd21aa07e911179cfd34efb
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-bcc-03f9322cc688.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Fix copies perf-buffer event data in userspace tcpstates.c before dereferencing
+    because perf-buffer alignment is not guaranteed; this is not BPF verifier-load
+    behavior.
+  verifier_status: null
+  captured_error: null
+  verifier_error_match: null
+raw:
+  case_id: github-commit-bcc-03f9322cc688
+  source: github_commits
+  repository: https://github.com/iovisor/bcc
+  commit_hash: 03f9322cc6886bf6ebd21aa07e911179cfd34efb
+  commit_message: 'libbpf-tools: Fix misaligned pointer accesses in tcpstates'
+  commit_date: '2023-12-04'
+  fix_type: alignment
+  buggy_code: "// FILE: libbpf-tools/tcpstates.c\n// CONTEXT: static int libbpf_print_fn(enum\
+    \ libbpf_print_level level, const char *format, va\n\n\treturn vfprintf(stderr,\
+    \ format, args);\n}\n\nstatic void sig_int(int signo)\n{\n\texiting = 1;\n}\n\n\
+    static void handle_event(void *ctx, int cpu, void *data, __u32 data_sz)\n{\n\t\
+    char ts[32], saddr[39], daddr[39];\n\tstruct event *e = data;\n\tstruct tm *tm;\n\
+    \tint family;\n\ttime_t t;\n\n\tif (emit_timestamp) {\n\t\ttime(&t);\n\t\ttm =\
+    \ localtime(&t);\n\t\tstrftime(ts, sizeof(ts), \"%H:%M:%S\", tm);\n\t\tprintf(\"\
+    %8s \", ts);\n\t}\n\n\tinet_ntop(e->family, &e->saddr, saddr, sizeof(saddr));\n\
+    \tinet_ntop(e->family, &e->daddr, daddr, sizeof(daddr));\n\tif (wide_output) {\n\
+    \t\tfamily = e->family == AF_INET ? 4 : 6;\n\t\tprintf(\"%-16llx %-7d %-16s %-2d\
+    \ %-39s %-5d %-39s %-5d %-11s -> %-11s %.3f\\n\",\n\t\t       e->skaddr, e->pid,\
+    \ e->task, family, saddr, e->sport, daddr, e->dport,\n\t\t       tcp_states[e->oldstate],\
+    \ tcp_states[e->newstate], (double)e->delta_us / 1000);\n\t} else {\n\t\tprintf(\"\
+    %-16llx %-7d %-10.10s %-15s %-5d %-15s %-5d %-11s -> %-11s %.3f\\n\",\n\t\t  \
+    \     e->skaddr, e->pid, e->task, saddr, e->sport, daddr, e->dport,\n\t\t    \
+    \   tcp_states[e->oldstate], tcp_states[e->newstate], (double)e->delta_us / 1000);\n\
+    \t}\n}\n\nstatic void handle_lost_events(void *ctx, int cpu, __u64 lost_cnt)\n\
+    {\n\twarn(\"lost %llu events on CPU #%d\\n\", lost_cnt, cpu);\n}\n\nint main(int\
+    \ argc, char **argv)\n{\n\tLIBBPF_OPTS(bpf_object_open_opts, open_opts);\n\tstatic\
+    \ const struct argp argp = {"
+  fixed_code: "// FILE: libbpf-tools/tcpstates.c\n// CONTEXT: static int libbpf_print_fn(enum\
+    \ libbpf_print_level level, const char *format, va\n\n\treturn vfprintf(stderr,\
+    \ format, args);\n}\n\nstatic void sig_int(int signo)\n{\n\texiting = 1;\n}\n\n\
+    static void handle_event(void *ctx, int cpu, void *data, __u32 data_sz)\n{\n\t\
+    char ts[32], saddr[39], daddr[39];\n\tstruct event e;\n\tstruct tm *tm;\n\tint\
+    \ family;\n\ttime_t t;\n\n\tif (data_sz < sizeof(e)) {\n\t\tprintf(\"Error: packet\
+    \ too small\\n\");\n\t\treturn;\n\t}\n\t/* Copy data as alignment in the perf\
+    \ buffer isn't guaranteed. */\n\tmemcpy(&e, data, sizeof(e));\n\n\tif (emit_timestamp)\
+    \ {\n\t\ttime(&t);\n\t\ttm = localtime(&t);\n\t\tstrftime(ts, sizeof(ts), \"%H:%M:%S\"\
+    , tm);\n\t\tprintf(\"%8s \", ts);\n\t}\n\n\tinet_ntop(e.family, &e.saddr, saddr,\
+    \ sizeof(saddr));\n\tinet_ntop(e.family, &e.daddr, daddr, sizeof(daddr));\n\t\
+    if (wide_output) {\n\t\tfamily = e.family == AF_INET ? 4 : 6;\n\t\tprintf(\"%-16llx\
+    \ %-7d %-16s %-2d %-39s %-5d %-39s %-5d %-11s -> %-11s %.3f\\n\",\n\t\t      \
+    \ e.skaddr, e.pid, e.task, family, saddr, e.sport, daddr, e.dport,\n\t\t     \
+    \  tcp_states[e.oldstate], tcp_states[e.newstate], (double)e.delta_us / 1000);\n\
+    \t} else {\n\t\tprintf(\"%-16llx %-7d %-10.10s %-15s %-5d %-15s %-5d %-11s ->\
+    \ %-11s %.3f\\n\",\n\t\t       e.skaddr, e.pid, e.task, saddr, e.sport, daddr,\
+    \ e.dport,\n\t\t       tcp_states[e.oldstate], tcp_states[e.newstate], (double)e.delta_us\
+    \ / 1000);\n\t}\n}\n\nstatic void handle_lost_events(void *ctx, int cpu, __u64\
+    \ lost_cnt)\n{\n\twarn(\"lost %llu events on CPU #%d\\n\", lost_cnt, cpu);\n}\n\
+    \nint main(int argc, char **argv)\n{\n\tLIBBPF_OPTS(bpf_object_open_opts, open_opts);\n\
+    \tstatic const struct argp argp = {"
+  diff_summary: |-
+    libbpf-tools/tcpstates.c:
+    - Adjusted alignment declarations or stack layout to avoid misaligned accesses.
+    - Affected context: static int libbpf_print_fn(enum libbpf_print_level level, const char *format, va.
+    - Commit subject: libbpf-tools: Fix misaligned pointer accesses in tcpstates.

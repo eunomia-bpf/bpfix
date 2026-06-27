@@ -1,0 +1,93 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-f51f4dfac542
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/f51f4dfac5421dcf01b95bf682419b939f91995e
+  title: 'bpf: Add check for null state in snat_v6_nat'
+  repository: https://github.com/cilium/cilium
+  commit: f51f4dfac5421dcf01b95bf682419b939f91995e
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-f51f4dfac542.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: replay_valid
+  case_id: github-commit-cilium-f51f4dfac542
+  case_path: cases/github-commit-cilium-f51f4dfac542
+  artifact_path: cases/github-commit-cilium-f51f4dfac542
+  reason: admitted_to_bpfix_bench_cases
+raw:
+  case_id: github-commit-cilium-f51f4dfac542
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: f51f4dfac5421dcf01b95bf682419b939f91995e
+  commit_message: 'bpf: Add check for null state in snat_v6_nat'
+  commit_date: '2025-08-07'
+  fix_type: null_check
+  buggy_code: |-
+    // FILE: bpf/lib/nat.h
+    // CONTEXT: snat_v6_nat_handle_icmp_error(struct __ctx_buff *ctx, __u64 off, bool has_l4_hea
+    static __always_inline int
+    __snat_v6_nat(struct __ctx_buff *ctx, struct ipv6_ct_tuple *tuple, fraginfo_t fraginfo,
+                  int l4_off, bool update_tuple, const struct ipv6_nat_target *target,
+                  __u16 port_off, struct trace_ctx *trace, __s8 *ext_err)
+    {
+            struct ipv6_nat_entry *state, tmp;
+            int ret;
+
+            ret = snat_v6_nat_handle_mapping(ctx, tuple, fraginfo, &state, &tmp,
+                                             l4_off, target, trace, ext_err);
+            if (ret < 0)
+                    return ret;
+
+            ret = snat_v6_rewrite_headers(ctx, tuple->nexthdr, ETH_HLEN,
+                                          ipfrag_has_l4_header(fraginfo), l4_off,
+                                          &tuple->saddr, &state->to_saddr, IPV6_SADDR_OFF,
+                                          tuple->sport, state->to_sport, port_off);
+
+            if (update_tuple) {
+                    ipv6_addr_copy(&tuple->saddr, &state->to_saddr);
+                    tuple->sport = state->to_sport;
+            }
+
+            return ret;
+  fixed_code: |-
+    // FILE: bpf/lib/nat.h
+    // CONTEXT: snat_v6_nat_handle_icmp_error(struct __ctx_buff *ctx, __u64 off, bool has_l4_hea
+    static __always_inline int
+    __snat_v6_nat(struct __ctx_buff *ctx, struct ipv6_ct_tuple *tuple, fraginfo_t fraginfo,
+                  int l4_off, bool update_tuple, const struct ipv6_nat_target *target,
+                  __u16 port_off, struct trace_ctx *trace, __s8 *ext_err)
+    {
+            struct ipv6_nat_entry *state, tmp;
+            int ret;
+
+            ret = snat_v6_nat_handle_mapping(ctx, tuple, fraginfo, &state, &tmp,
+                                             l4_off, target, trace, ext_err);
+            if (ret < 0)
+                    return ret;
+            if (!state)
+                    return DROP_NAT_NO_MAPPING;
+
+            ret = snat_v6_rewrite_headers(ctx, tuple->nexthdr, ETH_HLEN,
+                                          ipfrag_has_l4_header(fraginfo), l4_off,
+                                          &tuple->saddr, &state->to_saddr, IPV6_SADDR_OFF,
+                                          tuple->sport, state->to_sport, port_off);
+
+            if (update_tuple) {
+                    ipv6_addr_copy(&tuple->saddr, &state->to_saddr);
+                    tuple->sport = state->to_sport;
+            }
+
+            return ret;
+  diff_summary: |-
+    bpf/lib/nat.h:
+    - Added an explicit `if (!state)` guard after `snat_v6_nat_handle_mapping()`.
+    - Closed the verifier path that still considered the returned NAT state nullable on RHEL 8.6.

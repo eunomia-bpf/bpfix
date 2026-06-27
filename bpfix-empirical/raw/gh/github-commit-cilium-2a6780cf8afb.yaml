@@ -1,0 +1,206 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-2a6780cf8afb
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/2a6780cf8afbced8509762a0f3a506ad13627b10
+  title: 'bpf: Workaround IPv6 tunneling checksum bug'
+  repository: https://github.com/cilium/cilium
+  commit: 2a6780cf8afbced8509762a0f3a506ad13627b10
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-2a6780cf8afb.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: environment_required
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: IPv6 tunneling checksum workaround touches policy, LB, nodeport, and nodeport
+    egress paths. No verifier log is present; a faithful replay would require the
+    full Cilium datapath and checksum/tunnel configuration.
+raw:
+  case_id: github-commit-cilium-2a6780cf8afb
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: 2a6780cf8afbced8509762a0f3a506ad13627b10
+  commit_message: 'bpf: Workaround IPv6 tunneling checksum bug'
+  commit_date: '2025-03-19'
+  fix_type: inline_hint
+  buggy_code: "// FILE: bpf/bpf_lxc.c\n// CONTEXT: ipv6_policy(struct __ctx_buff *ctx,\
+    \ struct ipv6hdr *ip6, __u32 src_label,\n\t\t\t * into ctx->mark and *proxy_port\
+    \ can be left unset.\n\t\t\t */\n\t\t\t*proxy_port = 0;\n\t\t\tgoto redirect_to_proxy;\n\
+    \t\t}\n\n\t\t/* Reverse NAT applies to return traffic only. */\n\t\tif (unlikely(ct_state->rev_nat_index))\
+    \ {\n\t\t\tint ret2;\n\n\t\t\tret2 = lb6_rev_nat(ctx, l4_off,\n\t\t\t\t\t   ct_state->rev_nat_index,\
+    \ tuple,\n\t\t\t\t\t   ipfrag_has_l4_header(fraginfo));\n\t\t\tif (IS_ERR(ret2))\n\
+    \t\t\t\treturn ret2;\n\t\t}\n\n\t\t/* proxy_port remains 0 in this case */\n\t\
+    \tbreak;\n\tdefault:\n\t\t/* If packet is coming from the ingress proxy we have\
+    \ to skip\n\t\t * redirection to the ingress proxy as we would loop forever.\n\
+    \t\t */\n\t\tif (tc_index_from_ingress_proxy(ctx))\n\t\t\tbreak;\n\n// FILE: bpf/lib/lb.h\n\
+    // CONTEXT: lb_l4_xlate(struct __ctx_buff *ctx, __u8 nexthdr __maybe_unused, int\
+    \ l4_off,\n\n\t\t/* Port offsets for UDP and TCP are the same */\n\t\tret = l4_modify_port(ctx,\
+    \ l4_off, TCP_DPORT_OFF, csum_off,\n\t\t\t\t     backend_port, dport);\n\t\tif\
+    \ (IS_ERR(ret))\n\t\t\treturn ret;\n\t}\n\n\treturn CTX_ACT_OK;\n}\n\n#ifdef ENABLE_IPV6\n\
+    static __always_inline int __lb6_rev_nat(struct __ctx_buff *ctx, int l4_off,\n\
+    \t\t\t\t\t struct ipv6_ct_tuple *tuple,\n\t\t\t\t\t struct lb6_reverse_nat *nat,\n\
+    \t\t\t\t\t bool has_l4_header)\n{\n\tunion v6addr old_saddr __align_stack_8;\n\
+    \t__be32 sum;\n\tint ret;\n\n\tcilium_dbg_lb(ctx, DBG_LB6_REVERSE_NAT, nat->address.p4,\
+    \ nat->port);\n\n\tipv6_addr_copy(&old_saddr, &tuple->saddr);\n\tipv6_addr_copy(&tuple->saddr,\
+    \ &nat->address);\n\n\tret = ipv6_store_saddr(ctx, nat->address.addr, ETH_HLEN);\n\
+    \tif (IS_ERR(ret))\n\t\treturn DROP_WRITE_ERROR;\n\n\tif (has_l4_header) {\n\t\
+    \tstruct csum_offset csum_off = {};\n\n\t\tcsum_l4_offset_and_flags(tuple->nexthdr,\
+    \ &csum_off);\n\n\t\tif (nat->port) {\n\t\t\tret = reverse_map_l4_port(ctx, tuple->nexthdr,\
+    \ tuple->dport,\n\t\t\t\t\t\t  nat->port, l4_off, &csum_off);\n\t\t\tif (IS_ERR(ret))\n\
+    \t\t\t\treturn ret;\n\t\t}\n\n\t\tsum = csum_diff(old_saddr.addr, 16, nat->address.addr,\
+    \ 16, 0);\n\t\tif (csum_off.offset &&\n\t\t    csum_l4_replace(ctx, l4_off, &csum_off,\
+    \ 0, sum, BPF_F_PSEUDO_HDR) < 0)\n\t\t\treturn DROP_CSUM_L4;\n\t}\n\n\treturn\
+    \ 0;\n}\n\nstatic __always_inline struct lb6_reverse_nat *\nlb6_lookup_rev_nat_entry(struct\
+    \ __ctx_buff *ctx __maybe_unused, __u16 index)\n{\n\tcilium_dbg_lb(ctx, DBG_LB6_REVERSE_NAT_LOOKUP,\
+    \ index, 0);\n\n\treturn map_lookup_elem(&cilium_lb6_reverse_nat, &index);\n}\n\
+    \n/** Perform IPv6 reverse NAT based on reverse NAT index\n * @arg ctx\t\tpacket\n\
+    \ * @arg l4_off\t\toffset to L4\n * @arg index\t\treverse NAT index\n * @arg tuple\t\
+    \ttuple\n */\nstatic __always_inline int lb6_rev_nat(struct __ctx_buff *ctx, int\
+    \ l4_off, __u16 index,\n\t\t\t\t       struct ipv6_ct_tuple *tuple, bool has_l4_header)\n\
+    {\n\tstruct lb6_reverse_nat *nat;\n\n\tnat = lb6_lookup_rev_nat_entry(ctx, index);\n\
+    \tif (nat == NULL)\n\t\treturn 0;\n\n\treturn __lb6_rev_nat(ctx, l4_off, tuple,\
+    \ nat, has_l4_header);\n}\n\nstatic __always_inline void\nlb6_key_set_protocol(struct\
+    \ lb6_key *key __maybe_unused,\n\t\t     __u8 protocol __maybe_unused)\n{\n#if\
+    \ defined(ENABLE_SERVICE_PROTOCOL_DIFFERENTIATION)\n\tkey->proto = protocol;\n\
+    #endif\n}\n\nstatic __always_inline void\n\n// FILE: bpf/lib/nodeport.h\n// CONTEXT:\
+    \ int tail_nat_ipv64(struct __ctx_buff *ctx)\n\tret = fib_redirect_v4(ctx, l3_off,\
+    \ ip4, false, true, &ext_err, &oif);\n\tif (fib_ok(ret)) {\n\t\tcilium_capture_out(ctx);\n\
+    \t\treturn ret;\n\t}\ndrop_err:\n\treturn send_drop_notify_error_ext(ctx, UNKNOWN_ID,\
+    \ ret, ext_err,\n\t\t\t\t\t  METRIC_EGRESS);\n}\n#endif /* ENABLE_NAT_46X64_GATEWAY\
+    \ */\n\nstatic __always_inline int\nnodeport_rev_dnat_ipv6(struct __ctx_buff *ctx,\
+    \ enum ct_dir dir __maybe_unused,\n\t\t       struct trace_ctx *trace, __s8 *ext_err)\n\
+    {\n\tstruct bpf_fib_lookup_padded fib_params = {\n\t\t.l = {\n\t\t\t.family\t\t\
+    = AF_INET6,\n\t\t\t.ifindex\t= ctx_get_ifindex(ctx),\n\t\t},\n\t};\n\tint ret,\
+    \ l4_off;\n\tstruct remote_endpoint_info *info __maybe_unused;\n\tstruct ipv6_ct_tuple\
+    \ tuple __align_stack_8 = {};\n\tstruct ct_state ct_state = {};\n\n// CONTEXT:\
+    \ nodeport_rev_dnat_ipv6(struct __ctx_buff *ctx, enum ct_dir dir __maybe_unused,\n\
+    \n\tret = ct_lazy_lookup6(get_ct_map6(&tuple), &tuple, ctx, fraginfo,\n\t\t\t\
+    \      l4_off, CT_INGRESS, SCOPE_REVERSE,\n\t\t\t      CT_ENTRY_NODEPORT, &ct_state,\
+    \ &monitor);\n\tif (ret == CT_REPLY) {\n\t\ttrace->reason = TRACE_REASON_CT_REPLY;\n\
+    \t\ttrace->monitor = monitor;\n\t\tret = ipv6_l3(ctx, ETH_HLEN, NULL, NULL, METRIC_EGRESS);\n\
+    \t\tif (unlikely(ret != CTX_ACT_OK))\n\t\t\treturn ret;\n\n\t\tret = lb6_rev_nat(ctx,\
+    \ l4_off, ct_state.rev_nat_index,\n\t\t\t\t  &tuple, ipfrag_has_l4_header(fraginfo));\n\
+    \t\tif (IS_ERR(ret))\n\t\t\treturn ret;\n\t\tif (!revalidate_data(ctx, &data,\
+    \ &data_end, &ip6))\n\t\t\treturn DROP_INVALID;\n\t\tctx_snat_done_set(ctx);\n\
+    \n#ifdef TUNNEL_MODE\n\t\tinfo = lookup_ip6_remote_endpoint((union v6addr *)&ip6->daddr,\
+    \ 0);\n\t\tif (info && info->flag_has_tunnel_ep && !info->flag_skip_tunnel) {\n\
+    \t\t\tsrc_sec_identity = REMOTE_NODE_ID;\n\t\t\tgoto encap_redirect;\n\t\t}\n\n\
+    // FILE: bpf/lib/nodeport_egress.h\n// CONTEXT: nodeport_rev_dnat_fwd_ipv6(struct\
+    \ __ctx_buff *ctx, bool *snat_done,\nskip_fib:\n#endif\n\n\tret = ct_lazy_lookup6(get_ct_map6(&tuple),\
+    \ &tuple, ctx, fraginfo,\n\t\t\t      l4_off, CT_INGRESS, SCOPE_REVERSE,\n\t\t\
+    \t      CT_ENTRY_NODEPORT | CT_ENTRY_DSR,\n\t\t\t      NULL, &monitor);\n\tif\
+    \ (ret == CT_REPLY) {\n\t\ttrace->reason = TRACE_REASON_CT_REPLY;\n\t\ttrace->monitor\
+    \ = monitor;\n\n\t\tret = __lb6_rev_nat(ctx, l4_off, &tuple, nat_info,\n\t\t\t\
+    \t    ipfrag_has_l4_header(fraginfo));\n\t\tif (IS_ERR(ret))\n\t\t\treturn ret;\n\
+    \n\t\t*snat_done = true;\n\t}\n\n\treturn CTX_ACT_OK;\n}\n\nstatic __always_inline\
+    \ int\n__handle_nat_fwd_ipv6(struct __ctx_buff *ctx, __u32 src_id __maybe_unused,\n\
+    \t\t      bool revdnat_only, struct trace_ctx *trace, __s8 *ext_err)"
+  fixed_code: "// FILE: bpf/bpf_lxc.c\n// CONTEXT: ipv6_policy(struct __ctx_buff *ctx,\
+    \ struct ipv6hdr *ip6, __u32 src_label,\n\t\t\t * into ctx->mark and *proxy_port\
+    \ can be left unset.\n\t\t\t */\n\t\t\t*proxy_port = 0;\n\t\t\tgoto redirect_to_proxy;\n\
+    \t\t}\n\n\t\t/* Reverse NAT applies to return traffic only. */\n\t\tif (unlikely(ct_state->rev_nat_index))\
+    \ {\n\t\t\tint ret2;\n\n\t\t\tret2 = lb6_rev_nat(ctx, l4_off,\n\t\t\t\t\t   ct_state->rev_nat_index,\
+    \ tuple,\n\t\t\t\t\t   ipfrag_has_l4_header(fraginfo), CT_INGRESS);\n\t\t\tif\
+    \ (IS_ERR(ret2))\n\t\t\t\treturn ret2;\n\t\t}\n\n\t\t/* proxy_port remains 0 in\
+    \ this case */\n\t\tbreak;\n\tdefault:\n\t\t/* If packet is coming from the ingress\
+    \ proxy we have to skip\n\t\t * redirection to the ingress proxy as we would loop\
+    \ forever.\n\t\t */\n\t\tif (tc_index_from_ingress_proxy(ctx))\n\t\t\tbreak;\n\
+    \n// FILE: bpf/lib/lb.h\n// CONTEXT: lb_l4_xlate(struct __ctx_buff *ctx, __u8\
+    \ nexthdr __maybe_unused, int l4_off,\n\n\t\t/* Port offsets for UDP and TCP are\
+    \ the same */\n\t\tret = l4_modify_port(ctx, l4_off, TCP_DPORT_OFF, csum_off,\n\
+    \t\t\t\t     backend_port, dport);\n\t\tif (IS_ERR(ret))\n\t\t\treturn ret;\n\t\
+    }\n\n\treturn CTX_ACT_OK;\n}\n\n#ifdef ENABLE_IPV6\nstatic __always_inline int\n\
+    ipv6_l4_csum_update(struct __ctx_buff *ctx, int l4_off, union v6addr *old_addr,\n\
+    \t\t    union v6addr *new_addr, struct csum_offset *csum_off,\n\t\t    enum ct_dir\
+    \ dir)\n{\n\tint flag = 0;\n\t__be32 sum;\n\n\tsum = csum_diff(old_addr->addr,\
+    \ 16, new_addr->addr, 16, 0);\n\n\t/* We need this to workaround a bug in bpf_l4_csum_replace's\
+    \ usage of\n\t * inet_proto_csum_replace_by_diff. In short, for IPv6 we don't\
+    \ want to\n\t * update skb->csum when CHECKSUM_COMPLETE (for the reason explained\
+    \ above\n\t * inet_proto_csum_replace16). Unfortunately,\n\t * inet_proto_csum_replace_by_diff\
+    \ does update skb->csum in that case. So\n\t * we don't set BPF_F_PSEUDO_HDR to\
+    \ work around that.\n\t * On egress, however, we might be in CHECKSUM_PARTIAL\
+    \ state, in which\n\t * case we need to set BPF_F_PSEUDO_HDR or the L4 checksum\
+    \ won't be\n\t * updated.\n\t */\n\tif (dir == CT_EGRESS)\n\t\tflag = BPF_F_PSEUDO_HDR;\n\
+    \n\treturn csum_l4_replace(ctx, l4_off, csum_off, 0, sum, flag);\n}\n\nstatic\
+    \ __always_inline int __lb6_rev_nat(struct __ctx_buff *ctx, int l4_off,\n\t\t\t\
+    \t\t struct ipv6_ct_tuple *tuple,\n\t\t\t\t\t struct lb6_reverse_nat *nat,\n\t\
+    \t\t\t\t bool has_l4_header, enum ct_dir dir)\n{\n\tunion v6addr old_saddr __align_stack_8;\n\
+    \tint ret;\n\n\tcilium_dbg_lb(ctx, DBG_LB6_REVERSE_NAT, nat->address.p4, nat->port);\n\
+    \n\tipv6_addr_copy(&old_saddr, &tuple->saddr);\n\tipv6_addr_copy(&tuple->saddr,\
+    \ &nat->address);\n\n\tret = ipv6_store_saddr(ctx, nat->address.addr, ETH_HLEN);\n\
+    \tif (IS_ERR(ret))\n\t\treturn DROP_WRITE_ERROR;\n\n\tif (has_l4_header) {\n\t\
+    \tstruct csum_offset csum_off = {};\n\n\t\tcsum_l4_offset_and_flags(tuple->nexthdr,\
+    \ &csum_off);\n\n\t\tif (nat->port) {\n\t\t\tret = reverse_map_l4_port(ctx, tuple->nexthdr,\
+    \ tuple->dport,\n\t\t\t\t\t\t  nat->port, l4_off, &csum_off);\n\t\t\tif (IS_ERR(ret))\n\
+    \t\t\t\treturn ret;\n\t\t}\n\n\t\tif (csum_off.offset &&\n\t\t    ipv6_l4_csum_update(ctx,\
+    \ l4_off, &old_saddr, &nat->address,\n\t\t\t\t\t&csum_off, dir) < 0)\n\t\t\treturn\
+    \ DROP_CSUM_L4;\n\t}\n\n\treturn 0;\n}\n\nstatic __always_inline struct lb6_reverse_nat\
+    \ *\nlb6_lookup_rev_nat_entry(struct __ctx_buff *ctx __maybe_unused, __u16 index)\n\
+    {\n\tcilium_dbg_lb(ctx, DBG_LB6_REVERSE_NAT_LOOKUP, index, 0);\n\n\treturn map_lookup_elem(&cilium_lb6_reverse_nat,\
+    \ &index);\n}\n\n/** Perform IPv6 reverse NAT based on reverse NAT index\n * @arg\
+    \ ctx\t\tpacket\n * @arg l4_off\t\toffset to L4\n * @arg index\t\treverse NAT\
+    \ index\n * @arg tuple\t\ttuple\n */\nstatic __always_inline int lb6_rev_nat(struct\
+    \ __ctx_buff *ctx, int l4_off, __u16 index,\n\t\t\t\t       struct ipv6_ct_tuple\
+    \ *tuple, bool has_l4_header,\n\t\t\t\t       enum ct_dir dir)\n{\n\tstruct lb6_reverse_nat\
+    \ *nat;\n\n\tnat = lb6_lookup_rev_nat_entry(ctx, index);\n\tif (nat == NULL)\n\
+    \t\treturn 0;\n\n\treturn __lb6_rev_nat(ctx, l4_off, tuple, nat, has_l4_header,\
+    \ dir);\n}\n\nstatic __always_inline void\nlb6_key_set_protocol(struct lb6_key\
+    \ *key __maybe_unused,\n\t\t     __u8 protocol __maybe_unused)\n{\n#if defined(ENABLE_SERVICE_PROTOCOL_DIFFERENTIATION)\n\
+    \tkey->proto = protocol;\n#endif\n}\n\nstatic __always_inline void\n\n// FILE:\
+    \ bpf/lib/nodeport.h\n// CONTEXT: int tail_nat_ipv64(struct __ctx_buff *ctx)\n\
+    \tret = fib_redirect_v4(ctx, l3_off, ip4, false, true, &ext_err, &oif);\n\tif\
+    \ (fib_ok(ret)) {\n\t\tcilium_capture_out(ctx);\n\t\treturn ret;\n\t}\ndrop_err:\n\
+    \treturn send_drop_notify_error_ext(ctx, UNKNOWN_ID, ret, ext_err,\n\t\t\t\t\t\
+    \  METRIC_EGRESS);\n}\n#endif /* ENABLE_NAT_46X64_GATEWAY */\n\nstatic __always_inline\
+    \ int\nnodeport_rev_dnat_ipv6(struct __ctx_buff *ctx, enum ct_dir dir,\n\t\t \
+    \      struct trace_ctx *trace, __s8 *ext_err)\n{\n\tstruct bpf_fib_lookup_padded\
+    \ fib_params = {\n\t\t.l = {\n\t\t\t.family\t\t= AF_INET6,\n\t\t\t.ifindex\t=\
+    \ ctx_get_ifindex(ctx),\n\t\t},\n\t};\n\tint ret, l4_off;\n\tstruct remote_endpoint_info\
+    \ *info __maybe_unused;\n\tstruct ipv6_ct_tuple tuple __align_stack_8 = {};\n\t\
+    struct ct_state ct_state = {};\n\n// CONTEXT: nodeport_rev_dnat_ipv6(struct __ctx_buff\
+    \ *ctx, enum ct_dir dir __maybe_unused,\n\n\tret = ct_lazy_lookup6(get_ct_map6(&tuple),\
+    \ &tuple, ctx, fraginfo,\n\t\t\t      l4_off, CT_INGRESS, SCOPE_REVERSE,\n\t\t\
+    \t      CT_ENTRY_NODEPORT, &ct_state, &monitor);\n\tif (ret == CT_REPLY) {\n\t\
+    \ttrace->reason = TRACE_REASON_CT_REPLY;\n\t\ttrace->monitor = monitor;\n\t\t\
+    ret = ipv6_l3(ctx, ETH_HLEN, NULL, NULL, METRIC_EGRESS);\n\t\tif (unlikely(ret\
+    \ != CTX_ACT_OK))\n\t\t\treturn ret;\n\n\t\tret = lb6_rev_nat(ctx, l4_off, ct_state.rev_nat_index,\n\
+    \t\t\t\t  &tuple, ipfrag_has_l4_header(fraginfo),\n\t\t\t\t  dir);\n\t\tif (IS_ERR(ret))\n\
+    \t\t\treturn ret;\n\t\tif (!revalidate_data(ctx, &data, &data_end, &ip6))\n\t\t\
+    \treturn DROP_INVALID;\n\t\tctx_snat_done_set(ctx);\n\n#ifdef TUNNEL_MODE\n\t\t\
+    info = lookup_ip6_remote_endpoint((union v6addr *)&ip6->daddr, 0);\n\t\tif (info\
+    \ && info->flag_has_tunnel_ep && !info->flag_skip_tunnel) {\n\t\t\tsrc_sec_identity\
+    \ = REMOTE_NODE_ID;\n\t\t\tgoto encap_redirect;\n\t\t}\n\n// FILE: bpf/lib/nodeport_egress.h\n\
+    // CONTEXT: nodeport_rev_dnat_fwd_ipv6(struct __ctx_buff *ctx, bool *snat_done,\n\
+    skip_fib:\n#endif\n\n\tret = ct_lazy_lookup6(get_ct_map6(&tuple), &tuple, ctx,\
+    \ fraginfo,\n\t\t\t      l4_off, CT_INGRESS, SCOPE_REVERSE,\n\t\t\t      CT_ENTRY_NODEPORT\
+    \ | CT_ENTRY_DSR,\n\t\t\t      NULL, &monitor);\n\tif (ret == CT_REPLY) {\n\t\t\
+    trace->reason = TRACE_REASON_CT_REPLY;\n\t\ttrace->monitor = monitor;\n\n\t\t\
+    ret = __lb6_rev_nat(ctx, l4_off, &tuple, nat_info,\n\t\t\t\t    ipfrag_has_l4_header(fraginfo),\
+    \ CT_EGRESS);\n\t\tif (IS_ERR(ret))\n\t\t\treturn ret;\n\n\t\t*snat_done = true;\n\
+    \t}\n\n\treturn CTX_ACT_OK;\n}\n\nstatic __always_inline int\n__handle_nat_fwd_ipv6(struct\
+    \ __ctx_buff *ctx, __u32 src_id __maybe_unused,\n\t\t      bool revdnat_only,\
+    \ struct trace_ctx *trace, __s8 *ext_err)"
+  diff_summary: |-
+    bpf/bpf_lxc.c:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: ipv6_policy(struct __ctx_buff *ctx, struct ipv6hdr *ip6, __u32 src_label,.
+    bpf/lib/lb.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: lb_l4_xlate(struct __ctx_buff *ctx, __u8 nexthdr __maybe_unused, int l4_off,.
+    bpf/lib/nodeport.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: int tail_nat_ipv64(struct __ctx_buff *ctx), nodeport_rev_dnat_ipv6(struct __ctx_buff *ctx, enum ct_dir dir __maybe_unused,.
+    bpf/lib/nodeport_egress.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: nodeport_rev_dnat_fwd_ipv6(struct __ctx_buff *ctx, bool *snat_done,.
+    - Commit subject: bpf: Workaround IPv6 tunneling checksum bug.

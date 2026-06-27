@@ -1,0 +1,60 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-d2274ab14652
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/d2274ab14652cafd0f94639343a3be7d110f5cd6
+  title: 'bpf/tests: Test memcmp up to length=72'
+  repository: https://github.com/cilium/cilium
+  commit: d2274ab14652cafd0f94639343a3be7d110f5cd6
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-d2274ab14652.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Adds a test for larger built-in memcmp lengths while keeping iterations
+    low to avoid test complexity; it is not a verifier rejection fix.
+raw:
+  case_id: github-commit-cilium-d2274ab14652
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: d2274ab14652cafd0f94639343a3be7d110f5cd6
+  commit_message: 'bpf/tests: Test memcmp up to length=72'
+  commit_date: '2025-03-21'
+  fix_type: type_cast
+  buggy_code: "// FILE: bpf/tests/builtins.c\n// CONTEXT: int test_builtin_memcmp(__maybe_unused\
+    \ struct __ctx_buff *ctx)\n\ttest_init();\n\n\tint i;\n\n\tfor (i = 0; i < 100;\
+    \ i++) {\n\t\t/* ./builtin_gen memcmp 32 > builtin_memcmp.h */\n\t\t#include \"\
+    builtin_memcmp.h\"\n\t}\n\n\ttest_finish();\n}\n\nCHECK(\"tc\", \"builtin_memmove\"\
+    )\nint test_builtin_memmove(__maybe_unused struct __ctx_buff *ctx)\n{\n\ttest_init();\n\
+    \n\t/* ./builtin_gen memmove1 96  > builtin_memmove.h */\n\t/* ./builtin_gen memmove2\
+    \ 96 >> builtin_memmove.h */\n\t/* ./builtin_gen memmove3 96 >> builtin_memmove.h\
+    \ */\n\t/* ./builtin_gen memmove4 96 >> builtin_memmove.h */\n\t/* ./builtin_gen\
+    \ memmove5 96 >> builtin_memmove.h */\n\t#include \"builtin_memmove.h\""
+  fixed_code: "// FILE: bpf/tests/builtins.c\n// CONTEXT: int test_builtin_memcmp(__maybe_unused\
+    \ struct __ctx_buff *ctx)\n\ttest_init();\n\n\tint i;\n\n\tfor (i = 0; i < 100;\
+    \ i++) {\n\t\t/* ./builtin_gen memcmp 32 > builtin_memcmp.h */\n\t\t#include \"\
+    builtin_memcmp.h\"\n\t}\n\n\ttest_finish();\n}\n\nCHECK(\"tc\", \"builtin_memcmp_large\"\
+    )\nint test_builtin_memcmp_large(__maybe_unused struct __ctx_buff *ctx)\n{\n\t\
+    test_init();\n\n\t/* ./builtin_gen memcmp 72 > builtin_memcmp_large.h */\n\t#include\
+    \ \"builtin_memcmp_large.h\"\n\n\ttest_finish();\n}\n\nCHECK(\"tc\", \"builtin_memmove\"\
+    )\nint test_builtin_memmove(__maybe_unused struct __ctx_buff *ctx)\n{\n\ttest_init();\n\
+    \n\t/* ./builtin_gen memmove1 96  > builtin_memmove.h */\n\t/* ./builtin_gen memmove2\
+    \ 96 >> builtin_memmove.h */\n\t/* ./builtin_gen memmove3 96 >> builtin_memmove.h\
+    \ */\n\t/* ./builtin_gen memmove4 96 >> builtin_memmove.h */\n\t/* ./builtin_gen\
+    \ memmove5 96 >> builtin_memmove.h */\n\t#include \"builtin_memmove.h\""
+  diff_summary: |-
+    bpf/tests/builtins.c:
+    - Adjusted types or casts so the verifier sees the intended pointer or value kind.
+    - Affected context: int test_builtin_memcmp(__maybe_unused struct __ctx_buff *ctx).
+    - Commit subject: bpf/tests: Test memcmp up to length=72.

@@ -1,0 +1,66 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-3323fb0c62a9
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/3323fb0c62a9c8d813d47a606540783d97ac7973
+  title: 'bpf/analyze: refactor and support bpf2bpf calls'
+  repository: https://github.com/cilium/cilium
+  commit: 3323fb0c62a9c8d813d47a606540783d97ac7973
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-3323fb0c62a9.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: true
+  verifier_log_block_count: 1
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Raw log parses as no_terminal_error; libbpf reports the object contains
+    no BPF program rather than a verifier rejection.
+raw:
+  case_id: github-commit-cilium-3323fb0c62a9
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: 3323fb0c62a9c8d813d47a606540783d97ac7973
+  commit_message: 'bpf/analyze: refactor and support bpf2bpf calls'
+  commit_date: '2025-11-10'
+  fix_type: inline_hint
+  buggy_code: "// FILE: bpf/include/bpf/compiler.h\n\n#ifndef unlikely\n# define unlikely(X)\t\
+    \t__builtin_expect(!!(X), 0)\n#endif\n\n#ifndef always_succeeds\t\t/* Mainly for\
+    \ documentation purpose. */\n# define always_succeeds(X)\tlikely(X)\n#endif\n\n\
+    #undef __always_inline\t\t/* stddef.h defines its own */\n#define __always_inline\t\
+    \tinline __attribute__((always_inline))\n\n#ifndef __stringify\n# define __stringify(X)\t\
+    \t#X\n#endif\n\n#ifndef __aligned\n# define __aligned(X)\t\t__attribute__((aligned(X)))\n\
+    #endif\n\n#ifndef build_bug_on\n# define build_bug_on(E)\t((void)sizeof(char[1\
+    \ - 2*!!(E)]))\n#endif"
+  fixed_code: "// FILE: bpf/include/bpf/compiler.h\n\n#ifndef unlikely\n# define unlikely(X)\t\
+    \t__builtin_expect(!!(X), 0)\n#endif\n\n#ifndef always_succeeds\t\t/* Mainly for\
+    \ documentation purpose. */\n# define always_succeeds(X)\tlikely(X)\n#endif\n\n\
+    #undef __always_inline\t\t/* stddef.h defines its own */\n#define __always_inline\t\
+    \tinline __attribute__((always_inline))\n\n#ifndef __noinline\n# define __noinline\t\
+    \t__attribute__((noinline))\n#endif\n\n#ifndef __stringify\n# define __stringify(X)\t\
+    \t#X\n#endif\n\n#ifndef __aligned\n# define __aligned(X)\t\t__attribute__((aligned(X)))\n\
+    #endif\n\n#ifndef build_bug_on\n# define build_bug_on(E)\t((void)sizeof(char[1\
+    \ - 2*!!(E)]))\n#endif"
+  diff_summary: |-
+    bpf/include/bpf/compiler.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: the touched section.
+    - Commit subject: bpf/analyze: refactor and support bpf2bpf calls.
+  verifier_log: |-
+    libbpf: loading object from /tmp/bpfix_oracle_gq2so643/prog_wrap-vmlinux.o
+    libbpf: elf: section(3) license, size 4, link 0, flags 3, type=1
+    libbpf: license of /tmp/bpfix_oracle_gq2so643/prog_wrap-vmlinux.o is GPL
+    libbpf: elf: section(12) .BTF, size 163, link 0, flags 0, type=1
+    libbpf: elf: section(18) .symtab, size 216, link 1, flags 0, type=2
+    libbpf: looking for externs among 9 symbols...
+    libbpf: collected 0 externs total
+    libbpf: object 'prog_wrap-vmlin': failed (-95) to create BPF token from '/sys/fs/bpf', skipping optional step...
+    Error: object file doesn't contain any bpf program

@@ -1,0 +1,224 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-aya-2ac433449cde
+source_kind: github_commit
+source:
+  url: https://github.com/aya-rs/aya/commit/2ac433449cdea32f10c8fc88218799995946032d
+  title: Minor tweaks to make the verifier's job easier
+  repository: https://github.com/aya-rs/aya
+  commit: 2ac433449cdea32f10c8fc88218799995946032d
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-aya-2ac433449cde.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: missing_verifier_log
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: The commit adds explicit log-buffer bounds and perf-output guards, but the
+    raw record lacks a verifier log and complete failing eBPF program.
+raw:
+  case_id: github-commit-aya-2ac433449cde
+  source: github_commits
+  repository: https://github.com/aya-rs/aya
+  commit_hash: 2ac433449cdea32f10c8fc88218799995946032d
+  commit_message: Minor tweaks to make the verifier's job easier
+  commit_date: '2021-10-15'
+  fix_type: bounds_check
+  buggy_code: |-
+    // FILE: aya-log/aya-log-ebpf/src/lib.rs
+
+    pub extern crate ufmt;
+
+    mod macros;
+
+    use core::{cmp, mem, ptr};
+
+    use aya_bpf::{
+        macros::map,
+        maps::{PerCpuArray, PerfEventByteArray},
+    };
+    pub use aya_log_common::Level;
+    use aya_log_common::{RecordField, LOG_BUF_CAPACITY};
+
+    #[doc(hidden)]
+    #[repr(C)]
+    pub struct LogBuf {
+        pub buf: [u8; LOG_BUF_CAPACITY],
+    }
+
+    #[doc(hidden)]
+    #[map]
+    pub static mut AYA_LOG_BUF: PerCpuArray<LogBuf> = PerCpuArray::with_max_entries(1, 0);
+
+    #[doc(hidden)]
+
+    // CONTEXT: impl<'a> LogBufWriter<'a> {
+            unsafe { ptr::write_unaligned(buf.as_mut_ptr() as *mut _, len) };
+
+            self.pos
+        }
+    }
+
+    impl<'a> ufmt::uWrite for LogBufWriter<'a> {
+        type Error = ();
+
+        fn write_str(&mut self, s: &str) -> Result<(), Self::Error> {
+            let bytes = s.as_bytes();
+            let len = bytes.len();
+            let available = self.data.len() - self.pos;
+            if available < len {
+                return Err(());
+            }
+
+            self.data[self.pos..self.pos + len].copy_from_slice(bytes);
+            self.pos += len;
+            Ok(())
+        }
+    }
+
+    struct TagLenValue<'a> {
+        tag: RecordField,
+        value: &'a [u8],
+    }
+
+    impl<'a> TagLenValue<'a> {
+        #[inline(always)]
+
+    // FILE: aya-log/aya-log-ebpf/src/macros.rs
+    // CONTEXT: macro_rules! trace {
+    ///
+    /// log!(Level::Error, "Received errors: {}, {}", data.0, data.1);
+    /// log!(target: "app_events", Level::Warn, "App warning: {}, {}, {}",
+    ///     data.0, data.1, private_data);
+    /// # }
+    /// ```
+    #[macro_export]
+    macro_rules! log {
+        ($ctx:expr, target: $target:expr, $lvl:expr, $($arg:tt)+) => ({
+            if let Some(buf) = unsafe { $crate::AYA_LOG_BUF.get_mut(0) } {
+                if let Ok(header_len) = $crate::write_record_header(&mut buf.buf, module_path!(), $lvl, module_path!(), file!(), line!()) {
+                    if let Ok(message_len) = $crate::write_record_message!(&mut buf.buf[header_len..], $($arg)+) {
+                        let _ = unsafe { $crate::AYA_LOGS.output($ctx, &buf.buf[..header_len + message_len], 0) };
+                    };
+                }
+            }
+        });
+        ($ctx:expr, $lvl:expr, $($arg:tt)+) => ($crate::log!($ctx, target: __log_module_path!(), $lvl, $($arg)+))
+    }
+
+    #[doc(hidden)]
+    #[macro_export]
+    macro_rules! write_record_message {
+        ($buf:expr, $($arg:tt)+) => {{
+            use aya_log_ebpf::ufmt;
+  fixed_code: |-
+    // FILE: aya-log/aya-log-ebpf/src/lib.rs
+
+    pub extern crate ufmt;
+
+    mod macros;
+
+    use core::{cmp, mem, ptr};
+
+    use aya_bpf::{
+        macros::map,
+        maps::{PerCpuArray, PerfEventByteArray},
+    };
+    pub use aya_log_common::Level;
+    use aya_log_common::RecordField;
+    pub use aya_log_common::LOG_BUF_CAPACITY;
+
+    #[doc(hidden)]
+    #[repr(C)]
+    pub struct LogBuf {
+        pub buf: [u8; LOG_BUF_CAPACITY],
+    }
+
+    #[doc(hidden)]
+    #[map]
+    pub static mut AYA_LOG_BUF: PerCpuArray<LogBuf> = PerCpuArray::with_max_entries(1, 0);
+
+    #[doc(hidden)]
+
+    // CONTEXT: impl<'a> LogBufWriter<'a> {
+            unsafe { ptr::write_unaligned(buf.as_mut_ptr() as *mut _, len) };
+
+            self.pos
+        }
+    }
+
+    impl<'a> ufmt::uWrite for LogBufWriter<'a> {
+        type Error = ();
+
+        fn write_str(&mut self, s: &str) -> Result<(), Self::Error> {
+            let bytes = s.as_bytes();
+            let len = bytes.len();
+
+            // this is to make sure the verifier knows about the upper bound
+            if len > LOG_BUF_CAPACITY {
+                return Err(());
+            }
+
+            let available = self.data.len() - self.pos;
+            if available < len {
+                return Err(());
+            }
+
+            self.data[self.pos..self.pos + len].copy_from_slice(&bytes[..len]);
+            self.pos += len;
+            Ok(())
+        }
+    }
+
+    struct TagLenValue<'a> {
+        tag: RecordField,
+        value: &'a [u8],
+    }
+
+    impl<'a> TagLenValue<'a> {
+        #[inline(always)]
+
+    // FILE: aya-log/aya-log-ebpf/src/macros.rs
+    // CONTEXT: macro_rules! trace {
+    ///
+    /// log!(Level::Error, "Received errors: {}, {}", data.0, data.1);
+    /// log!(target: "app_events", Level::Warn, "App warning: {}, {}, {}",
+    ///     data.0, data.1, private_data);
+    /// # }
+    /// ```
+    #[macro_export]
+    macro_rules! log {
+        ($ctx:expr, target: $target:expr, $lvl:expr, $($arg:tt)+) => ({
+            if let Some(buf) = unsafe { $crate::AYA_LOG_BUF.get_mut(0) } {
+                if let Ok(header_len) = $crate::write_record_header(&mut buf.buf, module_path!(), $lvl, module_path!(), file!(), line!()) {
+                    if let Ok(message_len) = $crate::write_record_message!(&mut buf.buf[header_len..], $($arg)+) {
+                        let record_len = header_len + message_len;
+                        if record_len <= $crate::LOG_BUF_CAPACITY {
+                            let _ = unsafe { $crate::AYA_LOGS.output($ctx, &buf.buf[..header_len + message_len], 0) };
+                        }
+                    };
+                }
+            }
+        });
+        ($ctx:expr, $lvl:expr, $($arg:tt)+) => ($crate::log!($ctx, target: __log_module_path!(), $lvl, $($arg)+))
+    }
+
+    #[doc(hidden)]
+    #[macro_export]
+    macro_rules! write_record_message {
+        ($buf:expr, $($arg:tt)+) => {{
+            use aya_log_ebpf::ufmt;
+  diff_summary: |-
+    aya-log/aya-log-ebpf/src/lib.rs:
+    - Added explicit upper-bound checks against `LOG_BUF_CAPACITY` before copying string bytes.
+    - Switched to a bounded slice copy `&bytes[..len]` so the verifier sees a finite copy length.
+    aya-log/aya-log-ebpf/src/macros.rs:
+    - Guarded perf-event output with `record_len <= LOG_BUF_CAPACITY`.

@@ -1,0 +1,71 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-dc5dd36fef04
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/dc5dd36fef047e93db917e09ebb54e5eab3f2750
+  title: 'bpf: Use long-term solution to IPv6 checksum bug'
+  repository: https://github.com/cilium/cilium
+  commit: dc5dd36fef047e93db917e09ebb54e5eab3f2750
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-dc5dd36fef04.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Switches IPv6 checksum updates to use BPF_F_IPV6 with runtime fallback;
+    this is checksum correctness/kernel-feature handling, not a verifier reject.
+raw:
+  case_id: github-commit-cilium-dc5dd36fef04
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: dc5dd36fef047e93db917e09ebb54e5eab3f2750
+  commit_message: 'bpf: Use long-term solution to IPv6 checksum bug'
+  commit_date: '2025-07-07'
+  fix_type: inline_hint
+  buggy_code: "// FILE: bpf/lib/lb.h\n// CONTEXT: lb_l4_xlate(struct __ctx_buff *ctx,\
+    \ __u8 nexthdr __maybe_unused, int l4_off,\n\t\t\treturn ret;\n\t}\n\n\treturn\
+    \ CTX_ACT_OK;\n}\n\n#ifdef ENABLE_IPV6\nstatic __always_inline int\nipv6_l4_csum_update(struct\
+    \ __ctx_buff *ctx, int l4_off, union v6addr *old_addr,\n\t\t    union v6addr *new_addr,\
+    \ struct csum_offset *csum_off,\n\t\t    enum ct_dir dir)\n{\n\tint flag = 0;\n\
+    \t__be32 sum;\n\n\tsum = csum_diff(old_addr->addr, 16, new_addr->addr, 16, 0);\n\
+    \n\t/* We need this to workaround a bug in bpf_l4_csum_replace's usage of\n\t\
+    \ * inet_proto_csum_replace_by_diff. In short, for IPv6 we don't want to\n\t *\
+    \ update skb->csum when CHECKSUM_COMPLETE (for the reason explained above\n\t\
+    \ * inet_proto_csum_replace16). Unfortunately,\n\t * inet_proto_csum_replace_by_diff\
+    \ does update skb->csum in that case. So\n\t * we don't set BPF_F_PSEUDO_HDR to\
+    \ work around that.\n\t * On egress, however, we might be in CHECKSUM_PARTIAL\
+    \ state, in which\n\t * case we need to set BPF_F_PSEUDO_HDR or the L4 checksum\
+    \ won't be\n\t * updated.\n\t */\n\tif (dir == CT_EGRESS)\n\t\tflag = BPF_F_PSEUDO_HDR;"
+  fixed_code: "// FILE: bpf/lib/lb.h\n// CONTEXT: lb_l4_xlate(struct __ctx_buff *ctx,\
+    \ __u8 nexthdr __maybe_unused, int l4_off,\n\t\t\treturn ret;\n\t}\n\n\treturn\
+    \ CTX_ACT_OK;\n}\n\n#ifdef ENABLE_IPV6\nstatic __always_inline int\nipv6_l4_csum_update(struct\
+    \ __ctx_buff *ctx, int l4_off, union v6addr *old_addr,\n\t\t    union v6addr *new_addr,\
+    \ struct csum_offset *csum_off,\n\t\t    enum ct_dir dir)\n{\n\tint flag = 0,\
+    \ ret;\n\t__be32 sum;\n\n\tsum = csum_diff(old_addr->addr, 16, new_addr->addr,\
+    \ 16, 0);\n\n\t/* Newer kernels support the BPF_F_IPV6 flag which addresses the\
+    \ below\n\t * bug. So let's try this first. -EINVAL indicates the flag probably\
+    \ isn't\n\t * supported.\n\t */\n\tret = csum_l4_replace(ctx, l4_off, csum_off,\
+    \ 0, sum,\n\t\t\t      BPF_F_PSEUDO_HDR | BPF_F_IPV6);\n\tif (ret != -EINVAL)\n\
+    \t\treturn ret;\n\n\t/* We need this to workaround a bug in bpf_l4_csum_replace's\
+    \ usage of\n\t * inet_proto_csum_replace_by_diff. In short, for IPv6 we don't\
+    \ want to\n\t * update skb->csum when CHECKSUM_COMPLETE (for the reason explained\
+    \ above\n\t * inet_proto_csum_replace16). Unfortunately,\n\t * inet_proto_csum_replace_by_diff\
+    \ does update skb->csum in that case. So\n\t * we don't set BPF_F_PSEUDO_HDR to\
+    \ work around that.\n\t * On egress, however, we might be in CHECKSUM_PARTIAL\
+    \ state, in which\n\t * case we need to set BPF_F_PSEUDO_HDR or the L4 checksum\
+    \ won't be\n\t * updated.\n\t */\n\tif (dir == CT_EGRESS)\n\t\tflag = BPF_F_PSEUDO_HDR;"
+  diff_summary: |-
+    bpf/lib/lb.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: lb_l4_xlate(struct __ctx_buff *ctx, __u8 nexthdr __maybe_unused, int l4_off,.
+    - Commit subject: bpf: Use long-term solution to IPv6 checksum bug.

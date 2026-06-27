@@ -1,0 +1,131 @@
+schema_version: bpfix.raw_external/v1
+raw_id: stackoverflow-47591176
+source_kind: stackoverflow
+source:
+  url: https://stackoverflow.com/questions/47591176/simple-ebpf-action-not-taking-effect-with-tc
+  title: Simple eBPF action not taking effect with tc
+  repository: null
+  commit: null
+  collected_at: '2026-03-11T16:02:41+00:00'
+collector:
+  original_path: bpfix-empirical/raw/so/stackoverflow-47591176.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: true
+  verifier_log_block_count: 1
+  source_snippet_count: 1
+  has_buggy_code: false
+  has_fixed_code: false
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: log_shows_successful_load_issue_is_tc_direct_action_runtime_semantics
+raw:
+  case_id: stackoverflow-47591176
+  source: stackoverflow
+  collected_at: '2026-03-11T16:02:41+00:00'
+  question:
+    question_id: 47591176
+    title: Simple eBPF action not taking effect with tc
+    url: https://stackoverflow.com/questions/47591176/simple-ebpf-action-not-taking-effect-with-tc
+    tags:
+    - linux-kernel
+    - bpf
+    - ebpf
+    score: 4
+    answer_count: 1
+    is_answered: true
+  verifier_log:
+    blocks:
+    - |-
+      $ tc qdisc add dev eth0 clsact
+      $ tc filter add dev eth0 ingress bpf \
+            object-file ./net-next.git/samples/bpf/parse_simple.o \
+            section simple verbose
+
+      Prog section 'simple' loaded (5)!
+       - Type:         3
+       - Instructions: 2 (0 over limit)
+       - License:      GPL
+
+      Verifier analysis:
+
+      0: (b7) r0 = 2
+      1: (95) exit
+      processed 2 insns, stack depth 0
+    combined: |-
+      $ tc qdisc add dev eth0 clsact
+      $ tc filter add dev eth0 ingress bpf \
+            object-file ./net-next.git/samples/bpf/parse_simple.o \
+            section simple verbose
+
+      Prog section 'simple' loaded (5)!
+       - Type:         3
+       - Instructions: 2 (0 over limit)
+       - License:      GPL
+
+      Verifier analysis:
+
+      0: (b7) r0 = 2
+      1: (95) exit
+      processed 2 insns, stack depth 0
+  source_snippets:
+  - |-
+    SEC("simple")
+    int handle_ingress(struct __sk_buff *skb)
+    {
+       return TC_ACT_SHOT;
+    }
+  question_body_text: |-
+    I compiled BPF example from samples/bpf/pare_simple.c (from the Linux kernel tree) with very simple change:
+    SEC("simple")
+    int handle_ingress(struct __sk_buff *skb)
+    {
+    return TC_ACT_SHOT;
+    }
+    So I want ANY packets to be dropped. I install it as follows:
+    This happens on Ubuntu 16.04.3 LTS with kernel 4.4.0-98, llvm and clang of version 3.8 installed from packages, iproute2 is the latest from github.
+    $ tc qdisc add dev eth0 clsact
+    $ tc filter add dev eth0 ingress bpf \
+    object-file ./net-next.git/samples/bpf/parse_simple.o \
+    section simple verbose
+    Prog section 'simple' loaded (5)!
+    - Type: 3
+    - Instructions: 2 (0 over limit)
+    - License: GPL
+    Verifier analysis:
+    0: (b7) r0 = 2
+    1: (95) exit
+    processed 2 insns, stack depth 0
+    So it seems it installs successfully, however this filter/ebpf does not drop packets, I generate ingress traffic on eth0 interface, e.g. ICMP, and it passes on. What am I doing wrong?
+  selected_answer:
+    answer_id: 47592561
+    url: https://stackoverflow.com/questions/47591176/simple-ebpf-action-not-taking-effect-with-tc#47592561
+    is_accepted: true
+    score: 5
+    body_text: |-
+      TL;DR: You should add direct-action flag to the tc filter command, as in
+      tc filter add dev eth0 ingress bpf \
+      object-file ./net-next.git/samples/bpf/parse_simple.o \
+      section simple direct-action verbose
+      ^^^^^^^^^^^^^
+      The short help for tc bpf filter bpf help mentions this flag, but is has not made its way to the tc-bpf(8) manual page at this time, if I remember correctly.
+      So, what is this flag for?
+      eBPF programs can be attached two ways with tc: as actions, or as classifiers. Classifiers, attached with tc filter add, are supposed to be used for filtering packets, and do not apply an action by default. Which means that their return values have the following meaning (from man tc-bpf):
+      0 , denotes a mismatch
+      -1 , denotes the default classid configured from the command line
+      else , everything else will override the default classid to provide a facility for non-linear matching
+      Actions attached with tc action add, on the other hand, can drop or mirror or perform other operations with packets, but they are not supposed to actually filter them.
+      Because eBPF is kind of more flexible than the traditional actions and filters of tc, you can actually do both at once, filter a packet (i.e. identify this packet) and perform an action on it. To reflect this flexibility, the direct-action, or da flag was added (for kernel 4.4 or newer, with matching iproute2 package). It tells the kernel to use the return values of actions (TC_ACT_SHOT, TC_ACT_OK, etc.) for classifiers. And this is what you need here to return TC_ACT_SHOT in a way the kernel understands you want to drop the packet.
+      If I remember correctly, the reason why we use this flag instead of just dropping filters for actions is that you need a filter anyway with tc to attach you action to? (to be confirmed). So with the direct-action flag you do not have to attach both one filter and one action, the filter can do both operations. This should be the preferred way to go for eBPF programming with tc.
+    fix_description: 'TL;DR: You should add direct-action flag to the tc filter command,
+      as in Because eBPF is kind of more flexible than the traditional actions and
+      filters of tc, you can actually do both at once, filter a packet (i.e. identify
+      this packet) and perform an action on it. To reflect this flexibility, the direct-action,
+      or da flag was added (for kernel 4.4 or newer, with matching iproute2 package).
+      It tells the kernel to use the return values of actions (TC_ACT_SHOT, TC_ACT_OK,
+      etc.) for classifiers. And this is what you need here to return TC_ACT_SHOT
+      in a way the kernel understands you want to dr...'

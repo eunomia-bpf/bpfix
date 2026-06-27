@@ -1,0 +1,332 @@
+schema_version: bpfix.raw_external/v1
+raw_id: stackoverflow-78196801
+source_kind: stackoverflow
+source:
+  url: https://stackoverflow.com/questions/78196801/ebpf-kernel-code-permission-denied-invalid-access-to-map-value
+  title: 'Ebpf Kernel Code: permission denied: invalid access to map value'
+  repository: null
+  commit: null
+  collected_at: '2026-04-30T00:51:04+00:00'
+collector:
+  original_path: bpfix-empirical/raw/so/stackoverflow-78196801.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: true
+  verifier_log_block_count: 0
+  source_snippet_count: 4
+  has_buggy_code: false
+  has_fixed_code: false
+  has_fix_description: false
+reproduction:
+  status: replay_valid
+  case_id: stackoverflow-78196801
+  case_path: cases/stackoverflow-78196801
+  artifact_path: cases/stackoverflow-78196801
+  reason: admitted_to_bpfix_bench_cases
+raw:
+  case_id: stackoverflow-78196801
+  source: stackoverflow
+  collected_at: '2026-04-30T00:51:04+00:00'
+  question:
+    question_id: 78196801
+    title: 'Ebpf Kernel Code: permission denied: invalid access to map value'
+    url: https://stackoverflow.com/questions/78196801/ebpf-kernel-code-permission-denied-invalid-access-to-map-value
+    tags:
+    - c
+    - ebpf
+    score: 2
+    answer_count: 1
+    is_answered: true
+  verifier_log:
+    blocks: []
+    combined: ''
+  source_snippets:
+  - |-
+    struct value {
+        int index;
+        char flags[MAX_FLAGS_LEN];
+    };
+
+    struct {
+        __uint(type, BPF_MAP_TYPE_LRU_HASH);
+        __uint(max_entries, 32);
+        __type(key, __u8);
+        __type(value, struct value);
+    } output_map SEC(".maps");
+  - |-
+    SEC("classifier")
+    int tc_ingress(struct __sk_buff *skb)
+    {
+        __u8 key = 1;
+        struct value *value;
+        value = bpf_map_lookup_elem(&output_map, &key);
+
+        if (value == NULL){
+            struct value initial_value = {
+                .index = 1,
+                .flags = ","
+            };
+            bpf_map_update_elem(&output_map, &key, &initial_value, BPF_NOEXIST);
+        } else {
+            if (value->index >= sizeof(value->flags)){
+                goto out;
+            }
+
+        }
+
+        if (value->index < sizeof(value->flags)){
+            value->flags[value->index] = ',';
+            value->index++;
+        }
+
+        if (value->index < sizeof(value->flags)){
+            value->flags[value->index] = ',';
+            value->index++;
+        }
+
+        bpf_printk("Flags: %d", value->flags);
+
+    out:
+        return TC_ACT_OK;
+    }
+  - |-
+    static __always_inline void store_flags(struct value *value){
+        if (value->index < sizeof(value->flags)){
+            value->flags[value->index] = ',';
+            value->index++;
+        }
+
+        if (value->index < sizeof(value->flags)){
+            value->flags[value->index] = ',';
+            value->index++;
+        }
+    }
+
+    SEC("classifier")
+    int tc_ingress(struct __sk_buff *skb)
+    {
+        __u8 key = 1;
+        struct value *value;
+        value = bpf_map_lookup_elem(&output_map, &key);
+
+        if (value == NULL){
+            struct value initial_value = {
+                .index = 1,
+                .flags = ","
+            };
+            bpf_map_update_elem(&output_map, &key, &initial_value, BPF_NOEXIST);
+        } else {
+            if (value->index >= sizeof(value->flags)){
+                goto out;
+            }
+
+        }
+
+        store_flags(value);
+
+        bpf_printk("Flags: %d", value->flags);
+
+    out:
+        return TC_ACT_OK;
+    }
+  - |-
+    static __always_inline void store_flags(struct value *value){
+        int index = value->index;
+
+        if (index < sizeof(value->flags)){
+            value->flags[index] = ',';
+            index++;
+        }
+
+        if (index < sizeof(value->flags)){
+            value->flags[index] = ',';
+            index++;
+        }
+
+        value->index=index;
+    }
+
+    SEC("classifier")
+    int tc_ingress(struct __sk_buff *skb)
+    {
+        __u8 key = 1;
+        struct value *value;
+        value = bpf_map_lookup_elem(&output_map, &key);
+
+        if (value == NULL){
+            struct value initial_value = {
+                .index = 1,
+                .flags = ","
+            };
+            bpf_map_update_elem(&output_map, &key, &initial_value, BPF_NOEXIST);
+        } else {
+            store_flags(value);
+        }
+
+        bpf_printk("Flags: %d", value->flags);
+
+        return TC_ACT_OK;
+    }
+  question_body_text: |-
+    I'm writing an ebpf program to read packets data on tc. The code below is simplified to better understand the problem. Let's say I have an ebpf map whose value is the struct as defined below:
+    struct value {
+    int index;
+    char flags[MAX_FLAGS_LEN];
+    };
+    struct {
+    __uint(type, BPF_MAP_TYPE_LRU_HASH);
+    __uint(max_entries, 32);
+    __type(key, __u8);
+    __type(value, struct value);
+    } output_map SEC(".maps");
+    If my ebpf program is written all out in the main section, it would work fine like below.
+    SEC("classifier")
+    int tc_ingress(struct __sk_buff *skb)
+    {
+    __u8 key = 1;
+    struct value *value;
+    value = bpf_map_lookup_elem(&output_map, &key);
+    if (value == NULL){
+    struct value initial_value = {
+    .index = 1,
+    .flags = ","
+    };
+    bpf_map_update_elem(&output_map, &key, &initial_value, BPF_NOEXIST);
+    } else {
+    if (value->index >= sizeof(value->flags)){
+    goto out;
+    }
+    }
+    if (value->index < sizeof(value->flags)){
+    value->flags[value->index] = ',';
+    value->index++;
+    }
+    if (value->index < sizeof(value->flags)){
+    value->flags[value->index] = ',';
+    value->index++;
+    }
+    bpf_printk("Flags: %d", value->flags);
+    out:
+    return TC_ACT_OK;
+    }
+    However, when I refactor the code as below:
+    static __always_inline void store_flags(struct value *value){
+    if (value->index < sizeof(value->flags)){
+    value->flags[value->index] = ',';
+    value->index++;
+    }
+    if (value->index < sizeof(value->flags)){
+    value->flags[value->index] = ',';
+    value->index++;
+    }
+    }
+    SEC("classifier")
+    int tc_ingress(struct __sk_buff *skb)
+    {
+    __u8 key = 1;
+    struct value *value;
+    value = bpf_map_lookup_elem(&output_map, &key);
+    if (value == NULL){
+    struct value initial_value = {
+    .index = 1,
+    .flags = ","
+    };
+    bpf_map_update_elem(&output_map, &key, &initial_value, BPF_NOEXIST);
+    } else {
+    if (value->index >= sizeof(value->flags)){
+    goto out;
+    }
+    }
+    store_flags(value);
+    bpf_printk("Flags: %d", value->flags);
+    out:
+    return TC_ACT_OK;
+    }
+    I will get this error:
+    permission denied: invalid access to map value, value_size=20 off=20 size=1: R4 max value is outside of the allowed memory range (52 line(s) omitted)
+    Does anyone know the fix?
+    Edit: Dylan's answer contains detailed reasoning why it happened. Modifying the code to this fixed it.
+    static __always_inline void store_flags(struct value *value){
+    int index = value->index;
+    if (index < sizeof(value->flags)){
+    value->flags[index] = ',';
+    index++;
+    }
+    if (index < sizeof(value->flags)){
+    value->flags[index] = ',';
+    index++;
+    }
+    value->index=index;
+    }
+    SEC("classifier")
+    int tc_ingress(struct __sk_buff *skb)
+    {
+    __u8 key = 1;
+    struct value *value;
+    value = bpf_map_lookup_elem(&output_map, &key);
+    if (value == NULL){
+    struct value initial_value = {
+    .index = 1,
+    .flags = ","
+    };
+    bpf_map_update_elem(&output_map, &key, &initial_value, BPF_NOEXIST);
+    } else {
+    store_flags(value);
+    }
+    bpf_printk("Flags: %d", value->flags);
+    return TC_ACT_OK;
+    }
+  selected_answer:
+    answer_id: 78205329
+    url: https://stackoverflow.com/questions/78196801/ebpf-kernel-code-permission-denied-invalid-access-to-map-value#78205329
+    is_accepted: true
+    score: 1
+    body_text: |-
+      This seems to come down to unfortunate bytecode generation and limitations of the verifier.
+      I will first explain the verifier bit. A large part of what the verifier does is value tracking. So for variables on the stack and in registers it keep stack of their type (scalar, pointer to a map value, pointer to context, ect) and their value range (min, max, bitfield, ect). It is this value tracking that allows the versifier to assert that certain actions are safe.
+      Lets assume MAX_FLAGS_LEN is 15, this means that if you try to access value->flags with an index of 15 or higher, you are reading outside of the map value, and potentially accessing data you shouldn't. You did a good job of checking bounds checking this. But depending on how the compiler generated the bytecode, the verifier might not see that. That is because the verifier doesn't track value information inside the map.
+      The verifier operates at the bytecode level, so if the compiler generated:
+      R2 = <map pointer>ll
+      R1 = *(u16*)(R2 + 0) ; value->index
+      If R1 > 15: goto out ; if (value->index < sizeof(value->flags))
+      R2 += 2 ; change pointer to point at value->flags
+      R2 += R1 ; Add index
+      *(u8*)(R2 + 0) = ',' ; value->flags[value->index] = ','
+      ...
+      out:
+      ...
+      If this is the generation, then index is written into R1, bounds checked, and used. So the verifier can track it.
+      But if for whatever reason the compiler makes something like this:
+      R2 = <map pointer>ll
+      R1 = *(u16*)(R2 + 0) ; value->index
+      If R1 > 15: goto out ; if (value->index < sizeof(value->flags))
+      R4 = *(u16*)(R2 + 0) ; value->index
+      R2 += 2 ; change pointer to point at value->flags
+      R2 += R4 ; Add index
+      *(u8*)(R2 + 0) = ',' ; value->flags[value->index] = ','
+      ...
+      out:
+      ...
+      Then the verifier knows R1 is safe and bounds checked. But it doesn't know this about R4, even though they are both value->index, just gotten from memory at different times. The verifier assumes R4 could contain an index larger than 15.
+      Actually, this is fair. Since the map is shared across CPUs, the map value could have been changed between the first memory access and the second memory access.
+      So changing the code around slightly to use an intermediate variable will hopefully signal the compiler to generate the first instance.
+      static __always_inline void store_flags(struct value *value){
+      int index = value->index;
+      if (index < sizeof(value->flags)){
+      value->flags[index] = ',';
+      value->index = index + 1;
+      }
+      index = value->index;
+      if (index < sizeof(value->flags)){
+      value->flags[index] = ',';
+      value->index = index + 1;
+      }
+      }
+    fix_description: Lets assume MAX_FLAGS_LEN is 15, this means that if you try to
+      access value->flags with an index of 15 or higher, you are reading outside of
+      the map value, and potentially accessing data you shouldn't. You did a good
+      job of checking bounds checking this. But depending on how the compiler generated
+      the bytecode, the verifier might not see that. That is because the verifier
+      doesn't track value information inside the map. So changing the code around
+      slightly to use an intermediate variable will hopefully signal the compiler
+      to generate the first instance.

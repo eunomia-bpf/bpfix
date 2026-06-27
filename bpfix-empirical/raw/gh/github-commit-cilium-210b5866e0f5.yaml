@@ -1,0 +1,154 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-210b5866e0f5
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/210b5866e0f5fed7eb6e1ab993ae71a9334f628c
+  title: 'bpf: migrate netkit-specific runtime check to loadtime check'
+  repository: https://github.com/cilium/cilium
+  commit: 210b5866e0f5fed7eb6e1ab993ae71a9334f628c
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-210b5866e0f5.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: environment_required
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Netkit runtime-check/loadtime-check refactor spans policy tail calls and
+    local-delivery paths. No verifier log is captured, and the behavior depends on
+    Cilium load-time feature selection.
+raw:
+  case_id: github-commit-cilium-210b5866e0f5
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: 210b5866e0f5fed7eb6e1ab993ae71a9334f628c
+  commit_message: 'bpf: migrate netkit-specific runtime check to loadtime check'
+  commit_date: '2026-02-19'
+  fix_type: inline_hint
+  buggy_code: "// FILE: bpf/bpf_lxc.c\n// CONTEXT: int tail_ipv6_policy(struct __ctx_buff\
+    \ *ctx)\n\t\tbreak;\n\tcase CTX_ACT_OK:\n#if !defined(ENABLE_ROUTING) && !defined(ENABLE_NODEPORT)\n\
+    \t\t/* See comment in IPv4 path. */\n\t\tif (from_tunnel) {\n\t\t\tctx_change_type(ctx,\
+    \ PACKET_HOST);\n\t\t\tbreak;\n\t\t}\n#endif /* !ENABLE_ROUTING && !ENABLE_NODEPORT\
+    \ */\n\n\t\tif (do_redirect)\n\t\t\tret = redirect_ep(ctx, CONFIG(interface_ifindex),\n\
+    \t\t\t\t\t  should_redirect_peer(ctx, from_host),\n\t\t\t\t\t  from_tunnel);\n\
+    \t\tbreak;\n\tdefault:\n\t\tbreak;\n\t}\n\n\tif (IS_ERR(ret))\n\t\tgoto drop_err;\n\
+    \n\treturn ret;\n\ndrop_err:\n\n// CONTEXT: int tail_ipv4_policy(struct __ctx_buff\
+    \ *ctx)\n\t\t * Ethernet addresses, we need to mark them as PACKET_HOST or the\
+    \ kernel\n\t\t * will drop them.\n\t\t * See #14646 for details.\n\t\t */\n\t\t\
+    if (from_tunnel) {\n\t\t\tctx_change_type(ctx, PACKET_HOST);\n\t\t\tbreak;\n\t\
+    \t}\n#endif /* !ENABLE_ROUTING && !ENABLE_NODEPORT */\n\n\t\tif (do_redirect)\n\
+    \t\t\tret = redirect_ep(ctx, CONFIG(interface_ifindex),\n\t\t\t\t\t  should_redirect_peer(ctx,\
+    \ from_host),\n\t\t\t\t\t  from_tunnel);\n\t\tbreak;\n\tdefault:\n\t\tbreak;\n\
+    \t}\n\n\tif (IS_ERR(ret))\n\t\tgoto drop_err;\n\n\treturn ret;\n\ndrop_err:\n\n\
+    // FILE: bpf/lib/local_delivery.h\n// CONTEXT: tail_call_policy(struct __ctx_buff\
+    \ *ctx, __u16 endpoint_id)\n\t} else {\n\t\ttail_call_dynamic(ctx, &cilium_call_policy,\
+    \ endpoint_id);\n\t}\n\n\t/* When forwarding from a BPF program to some endpoint,\n\
+    \t * there are inherent races that can result in the endpoint's\n\t * policy program\
+    \ being unavailable (eg. if the endpoint is\n\t * terminating).\n\t */\n\treturn\
+    \ DROP_EP_NOT_READY;\n}\n\nstatic __always_inline bool should_redirect_peer(struct\
+    \ __ctx_buff *ctx, bool from_host)\n{\n\t/* Going via CPU backlog queue (aka needs_backlog)\
+    \ is required\n\t * whenever we cannot do a fast ingress -> ingress switch but\n\
+    \t * instead need an ingress -> egress netns traversal or vice\n\t * versa.\n\t\
+    \ *\n\t * This is also the case if BPF host routing is disabled, or if\n\t * we\
+    \ are currently on egress which is indicated by ingress_ifindex\n\t * being 0.\
+    \ The latter is cleared upon skb scrubbing.\n\t *\n\t * In case of netkit, we're\
+    \ on the egress side and need a regular\n\t * redirect to the peer device's ifindex.\
+    \ In case of veth we're\n\t * on ingress and need a redirect peer to get to the\
+    \ target. Both\n\t * only traverse the CPU backlog queue once. In case of phys\
+    \ ->\n\t * Pod, the ingress_ifindex is > 0 and in both device types we\n\t * do\
+    \ want a redirect peer into the target Pod's netns.\n\t */\n\treturn is_defined(ENABLE_HOST_ROUTING)\
+    \ &&\n\t       !from_host &&\n\t       ctx_get_ingress_ifindex(ctx) > 0;\n}\n\n\
+    static __always_inline int redirect_ep(struct __ctx_buff *ctx,\n\t\t\t\t     \
+    \  int ifindex,\n\t\t\t\t       bool use_redirect_peer,\n\t\t\t\t       bool from_tunnel)\n\
+    {\n\tif (!use_redirect_peer)\n\t\treturn (int)ctx_redirect(ctx, ifindex, 0);\n\
+    \n\t/* When coming from overlay, we need to set packet type\n\t * to HOST as otherwise\
+    \ we might get dropped in IP layer.\n\n// CONTEXT: local_delivery(struct __ctx_buff\
+    \ *ctx, __u32 seclabel, __u32 magic,\n\n\tif (direction == METRIC_INGRESS && !from_host)\
+    \ {\n\t\t/*\n\t\t * Traffic from nodes, local endpoints, or hairpin connections\
+    \ is ignored\n\t\t */\n\t\tint ret;\n\n\t\tret = accept(ctx, ep->lxc_id);\n\t\t\
+    if (IS_ERR(ret))\n\t\t\treturn ret;\n\t}\n\n/*\n * When BPF host routing is enabled\
+    \ we need to check policies at source, as in\n * this case the skb is delivered\
+    \ directly to pod's namespace and the ingress\n * policy (the cil_to_container\
+    \ BPF program) is bypassed.\n */\n\tuse_redirect_peer = should_redirect_peer(ctx,\
+    \ from_host);\n\tif (is_defined(USE_BPF_PROG_FOR_INGRESS_POLICY) && !use_redirect_peer\
+    \ &&\n\t    /* We need to enforce policies at the source in case of netkit\n\t\
+    \     * devices because we can't redirect to proxy from bpf_lxc. That\n\t    \
+    \ * needs a fix upstream.\n\t     */\n\t    (!CONFIG(enable_netkit) || ctx_get_ingress_ifindex(ctx)\
+    \ > 0)) {\n\t\tset_identity_mark(ctx, seclabel, magic);\n\n# if !defined(ENABLE_NODEPORT)\n\
+    \t\t/* In tunneling mode, we execute this code to send the packet from\n\t\t *\
+    \ cilium_vxlan to lxc*. If we're using kube-proxy, we don't want to use\n\t\t\
+    \ * redirect() because that would bypass conntrack and the reverse DNAT.\n\t\t\
+    \ * Thus, we send packets to the stack, but since they have the wrong\n\t\t *\
+    \ Ethernet addresses, we need to mark them as PACKET_HOST or the kernel\n\t\t\
+    \ * will drop them.\n\t\t */\n\t\tif (from_tunnel) {\n\t\t\tctx_change_type(ctx,\
+    \ PACKET_HOST);"
+  fixed_code: "// FILE: bpf/bpf_lxc.c\n// CONTEXT: int tail_ipv6_policy(struct __ctx_buff\
+    \ *ctx)\n\t\tbreak;\n\tcase CTX_ACT_OK:\n#if !defined(ENABLE_ROUTING) && !defined(ENABLE_NODEPORT)\n\
+    \t\t/* See comment in IPv4 path. */\n\t\tif (from_tunnel) {\n\t\t\tctx_change_type(ctx,\
+    \ PACKET_HOST);\n\t\t\tbreak;\n\t\t}\n#endif /* !ENABLE_ROUTING && !ENABLE_NODEPORT\
+    \ */\n\n\t\tif (do_redirect)\n\t\t\tret = redirect_ep(ctx, CONFIG(interface_ifindex),\n\
+    \t\t\t\t\t  should_redirect_peer(from_host),\n\t\t\t\t\t  from_tunnel);\n\t\t\
+    break;\n\tdefault:\n\t\tbreak;\n\t}\n\n\tif (IS_ERR(ret))\n\t\tgoto drop_err;\n\
+    \n\treturn ret;\n\ndrop_err:\n\n// CONTEXT: int tail_ipv4_policy(struct __ctx_buff\
+    \ *ctx)\n\t\t * Ethernet addresses, we need to mark them as PACKET_HOST or the\
+    \ kernel\n\t\t * will drop them.\n\t\t * See #14646 for details.\n\t\t */\n\t\t\
+    if (from_tunnel) {\n\t\t\tctx_change_type(ctx, PACKET_HOST);\n\t\t\tbreak;\n\t\
+    \t}\n#endif /* !ENABLE_ROUTING && !ENABLE_NODEPORT */\n\n\t\tif (do_redirect)\n\
+    \t\t\tret = redirect_ep(ctx, CONFIG(interface_ifindex),\n\t\t\t\t\t  should_redirect_peer(from_host),\n\
+    \t\t\t\t\t  from_tunnel);\n\t\tbreak;\n\tdefault:\n\t\tbreak;\n\t}\n\n\tif (IS_ERR(ret))\n\
+    \t\tgoto drop_err;\n\n\treturn ret;\n\ndrop_err:\n\n// FILE: bpf/lib/local_delivery.h\n\
+    // CONTEXT: tail_call_policy(struct __ctx_buff *ctx, __u16 endpoint_id)\n\t} else\
+    \ {\n\t\ttail_call_dynamic(ctx, &cilium_call_policy, endpoint_id);\n\t}\n\n\t\
+    /* When forwarding from a BPF program to some endpoint,\n\t * there are inherent\
+    \ races that can result in the endpoint's\n\t * policy program being unavailable\
+    \ (eg. if the endpoint is\n\t * terminating).\n\t */\n\treturn DROP_EP_NOT_READY;\n\
+    }\n\nstatic __always_inline bool\nshould_redirect_peer(bool from_host)\n{\n\t\
+    /* We should only do a redirect_peer() if BPF Host Routing is enabled,\n\t * otherwise\
+    \ we do a standard redirect().\n\t *\n\t * Also, if we're from_host, we cannot\
+    \ do an ingress -> ingress switch\n\t * via redirect_peer() and instead need an\
+    \ ingress -> egress netns\n\t * traversal (or vice versa.)\n\t *\n\t * Finally,\
+    \ in case of Pod -> Pod:\n\t * - on veth, we're on TC ingress and need a redirect_peer()\
+    \ to get\n\t *   to the target namespace.\n\t * - on netkit, we're on TC egress\
+    \ and need a regular redirect() to\n\t *   the peer device's ifindex. Netkit takes\
+    \ care of the namespace\n\t *   switch for us.\n\t *\n\t * Note: both redirect()\
+    \ and redirect_peer() only traverse the CPU\n\t * backlog queue once.\n\t */\n\
+    \treturn is_defined(ENABLE_HOST_ROUTING) &&\n\t       !from_host &&\n\t      \
+    \ !CONFIG(enable_netkit);\n}\n\nstatic __always_inline int redirect_ep(struct\
+    \ __ctx_buff *ctx,\n\t\t\t\t       int ifindex,\n\t\t\t\t       bool use_redirect_peer,\n\
+    \t\t\t\t       bool from_tunnel)\n{\n\tif (!use_redirect_peer)\n\t\treturn (int)ctx_redirect(ctx,\
+    \ ifindex, 0);\n\n\t/* When coming from overlay, we need to set packet type\n\t\
+    \ * to HOST as otherwise we might get dropped in IP layer.\n\n// CONTEXT: local_delivery(struct\
+    \ __ctx_buff *ctx, __u32 seclabel, __u32 magic,\n\n\tif (direction == METRIC_INGRESS\
+    \ && !from_host) {\n\t\t/*\n\t\t * Traffic from nodes, local endpoints, or hairpin\
+    \ connections is ignored\n\t\t */\n\t\tint ret;\n\n\t\tret = accept(ctx, ep->lxc_id);\n\
+    \t\tif (IS_ERR(ret))\n\t\t\treturn ret;\n\t}\n\n\t/* When BPF host routing is\
+    \ enabled we need to check policies at source, as in\n\t * this case the skb is\
+    \ delivered directly to pod's namespace and the ingress\n\t * policy (the cil_to_container\
+    \ BPF program) is bypassed.\n\t */\n\tuse_redirect_peer = should_redirect_peer(from_host);\n\
+    \tif (is_defined(USE_BPF_PROG_FOR_INGRESS_POLICY) && !use_redirect_peer &&\n\t\
+    \    /* We need to enforce policies at the source in case of netkit\n\t     *\
+    \ devices because we can't redirect to proxy from bpf_lxc. That\n\t     * needs\
+    \ a fix upstream.\n\t     */\n\t    !CONFIG(enable_netkit)) {\n\t\tset_identity_mark(ctx,\
+    \ seclabel, magic);\n\n# if !defined(ENABLE_NODEPORT)\n\t\t/* In tunneling mode,\
+    \ we execute this code to send the packet from\n\t\t * cilium_vxlan to lxc*. If\
+    \ we're using kube-proxy, we don't want to use\n\t\t * redirect() because that\
+    \ would bypass conntrack and the reverse DNAT.\n\t\t * Thus, we send packets to\
+    \ the stack, but since they have the wrong\n\t\t * Ethernet addresses, we need\
+    \ to mark them as PACKET_HOST or the kernel\n\t\t * will drop them.\n\t\t */\n\
+    \t\tif (from_tunnel) {\n\t\t\tctx_change_type(ctx, PACKET_HOST);"
+  diff_summary: |-
+    bpf/bpf_lxc.c:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: int tail_ipv6_policy(struct __ctx_buff *ctx), int tail_ipv4_policy(struct __ctx_buff *ctx).
+    bpf/lib/local_delivery.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: tail_call_policy(struct __ctx_buff *ctx, __u16 endpoint_id), local_delivery(struct __ctx_buff *ctx, __u32 seclabel, __u32 magic,.
+    - Commit subject: bpf: migrate netkit-specific runtime check to loadtime check.

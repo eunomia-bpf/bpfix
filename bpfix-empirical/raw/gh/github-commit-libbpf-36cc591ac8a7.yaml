@@ -1,0 +1,127 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-libbpf-36cc591ac8a7
+source_kind: github_commit
+source:
+  url: https://github.com/libbpf/libbpf/commit/36cc591ac8a7b390249c4f3afcef21b8c9c6c76f
+  title: 'libbpf: Improve ELF relo sanitization'
+  repository: https://github.com/libbpf/libbpf
+  commit: 36cc591ac8a7b390249c4f3afcef21b8c9c6c76f
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-libbpf-36cc591ac8a7.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Improves ELF relocation sanitization in bpf_object__elf_collect() and find_prog_by_sec_insn().
+    This is libbpf object parsing/relocation hygiene with no rejected BPF program
+    or terminal verifier error.
+raw:
+  case_id: github-commit-libbpf-36cc591ac8a7
+  source: github_commits
+  repository: https://github.com/libbpf/libbpf
+  commit_hash: 36cc591ac8a7b390249c4f3afcef21b8c9c6c76f
+  commit_message: 'libbpf: Improve ELF relo sanitization'
+  commit_date: '2021-11-03'
+  fix_type: bounds_check
+  buggy_code: "// FILE: src/libbpf.c\n// CONTEXT: static int bpf_object__elf_collect(struct\
+    \ bpf_object *obj)\n\t\t\t\tsec_desc->shdr = sh;\n\t\t\t\tsec_desc->data = data;\n\
+    \t\t\t} else if (strcmp(name, STRUCT_OPS_SEC) == 0) {\n\t\t\t\tobj->efile.st_ops_data\
+    \ = data;\n\t\t\t\tobj->efile.st_ops_shndx = idx;\n\t\t\t} else {\n\t\t\t\tpr_info(\"\
+    elf: skipping unrecognized data section(%d) %s\\n\",\n\t\t\t\t\tidx, name);\n\t\
+    \t\t}\n\t\t} else if (sh->sh_type == SHT_REL) {\n\t\t\tint targ_sec_idx = sh->sh_info;\
+    \ /* points to other section */\n\n\t\t\t/* Only do relo for section with exec\
+    \ instructions */\n\t\t\tif (!section_have_execinstr(obj, targ_sec_idx) &&\n\t\
+    \t\t    strcmp(name, \".rel\" STRUCT_OPS_SEC) &&\n\t\t\t    strcmp(name, \".rel\"\
+    \ MAPS_ELF_SEC)) {\n\t\t\t\tpr_info(\"elf: skipping relo section(%d) %s for section(%d)\
+    \ %s\\n\",\n\t\t\t\t\tidx, name, targ_sec_idx,\n\t\t\t\t\telf_sec_name(obj, elf_sec_by_idx(obj,\
+    \ targ_sec_idx)) ?: \"<?>\");\n\t\t\t\tcontinue;\n\t\t\t}\n\n\t\t\tsec_desc->sec_type\
+    \ = SEC_RELO;\n\t\t\tsec_desc->shdr = sh;\n\n// CONTEXT: static struct bpf_program\
+    \ *find_prog_by_sec_insn(const struct bpf_object *obj,\n\t * wrong one, so we\
+    \ need to double check conditions for the last time\n\t */\n\tprog = &obj->programs[l];\n\
+    \tif (prog->sec_idx == sec_idx && prog_contains_insn(prog, insn_idx))\n\t\treturn\
+    \ prog;\n\treturn NULL;\n}\n\nstatic int\nbpf_object__collect_prog_relos(struct\
+    \ bpf_object *obj, Elf64_Shdr *shdr, Elf_Data *data)\n{\n\tconst char *relo_sec_name,\
+    \ *sec_name;\n\tsize_t sec_idx = shdr->sh_info;\n\tstruct bpf_program *prog;\n\
+    \tstruct reloc_desc *relos;\n\tint err, i, nrels;\n\tconst char *sym_name;\n\t\
+    __u32 insn_idx;\n\tElf_Scn *scn;\n\tElf_Data *scn_data;\n\tElf64_Sym *sym;\n\t\
+    Elf64_Rel *rel;\n\n\tscn = elf_sec_by_idx(obj, sec_idx);\n\tscn_data = elf_sec_data(obj,\
+    \ scn);\n\n\trelo_sec_name = elf_sec_str(obj, shdr->sh_name);\n\tsec_name = elf_sec_name(obj,\
+    \ scn);\n\tif (!relo_sec_name || !sec_name)\n\t\treturn -EINVAL;\n\n\tpr_debug(\"\
+    sec '%s': collecting relocation for section(%zu) '%s'\\n\",\n\t\t relo_sec_name,\
+    \ sec_idx, sec_name);\n\tnrels = shdr->sh_size / shdr->sh_entsize;\n\n\tfor (i\
+    \ = 0; i < nrels; i++) {\n\t\trel = elf_rel_by_idx(data, i);\n\t\tif (!rel) {\n\
+    \t\t\tpr_warn(\"sec '%s': failed to get relo #%d\\n\", relo_sec_name, i);\n\t\t\
+    \treturn -LIBBPF_ERRNO__FORMAT;\n\t\t}\n\n\t\tsym = elf_sym_by_idx(obj, ELF64_R_SYM(rel->r_info));\n\
+    \t\tif (!sym) {\n\t\t\tpr_warn(\"sec '%s': symbol 0x%zx not found for relo #%d\\\
+    n\",\n\t\t\t\trelo_sec_name, (size_t)ELF64_R_SYM(rel->r_info), i);\n\t\t\treturn\
+    \ -LIBBPF_ERRNO__FORMAT;\n\t\t}\n\n\t\tif (rel->r_offset % BPF_INSN_SZ || rel->r_offset\
+    \ >= scn_data->d_size) {\n\t\t\tpr_warn(\"sec '%s': invalid offset 0x%zx for relo\
+    \ #%d\\n\",\n\t\t\t\trelo_sec_name, (size_t)ELF64_R_SYM(rel->r_info), i);\n\t\t\
+    \treturn -LIBBPF_ERRNO__FORMAT;\n\t\t}\n\n\t\tinsn_idx = rel->r_offset / BPF_INSN_SZ;\n\
+    \t\t/* relocations against static functions are recorded as\n\t\t * relocations\
+    \ against the section that contains a function;\n\t\t * in such case, symbol will\
+    \ be STT_SECTION and sym.st_name\n\t\t * will point to empty string (0), so fetch\
+    \ section name\n\t\t * instead\n\t\t */\n\t\tif (ELF64_ST_TYPE(sym->st_info) ==\
+    \ STT_SECTION && sym->st_name == 0)\n\t\t\tsym_name = elf_sec_name(obj, elf_sec_by_idx(obj,\
+    \ sym->st_shndx));"
+  fixed_code: "// FILE: src/libbpf.c\n// CONTEXT: static int bpf_object__elf_collect(struct\
+    \ bpf_object *obj)\n\t\t\t\tsec_desc->shdr = sh;\n\t\t\t\tsec_desc->data = data;\n\
+    \t\t\t} else if (strcmp(name, STRUCT_OPS_SEC) == 0) {\n\t\t\t\tobj->efile.st_ops_data\
+    \ = data;\n\t\t\t\tobj->efile.st_ops_shndx = idx;\n\t\t\t} else {\n\t\t\t\tpr_info(\"\
+    elf: skipping unrecognized data section(%d) %s\\n\",\n\t\t\t\t\tidx, name);\n\t\
+    \t\t}\n\t\t} else if (sh->sh_type == SHT_REL) {\n\t\t\tint targ_sec_idx = sh->sh_info;\
+    \ /* points to other section */\n\n\t\t\tif (sh->sh_entsize != sizeof(Elf64_Rel)\
+    \ ||\n\t\t\t    targ_sec_idx >= obj->efile.sec_cnt)\n\t\t\t\treturn -LIBBPF_ERRNO__FORMAT;\n\
+    \n\t\t\t/* Only do relo for section with exec instructions */\n\t\t\tif (!section_have_execinstr(obj,\
+    \ targ_sec_idx) &&\n\t\t\t    strcmp(name, \".rel\" STRUCT_OPS_SEC) &&\n\t\t\t\
+    \    strcmp(name, \".rel\" MAPS_ELF_SEC)) {\n\t\t\t\tpr_info(\"elf: skipping relo\
+    \ section(%d) %s for section(%d) %s\\n\",\n\t\t\t\t\tidx, name, targ_sec_idx,\n\
+    \t\t\t\t\telf_sec_name(obj, elf_sec_by_idx(obj, targ_sec_idx)) ?: \"<?>\");\n\t\
+    \t\t\tcontinue;\n\t\t\t}\n\n\t\t\tsec_desc->sec_type = SEC_RELO;\n\t\t\tsec_desc->shdr\
+    \ = sh;\n\n// CONTEXT: static struct bpf_program *find_prog_by_sec_insn(const\
+    \ struct bpf_object *obj,\n\t * wrong one, so we need to double check conditions\
+    \ for the last time\n\t */\n\tprog = &obj->programs[l];\n\tif (prog->sec_idx ==\
+    \ sec_idx && prog_contains_insn(prog, insn_idx))\n\t\treturn prog;\n\treturn NULL;\n\
+    }\n\nstatic int\nbpf_object__collect_prog_relos(struct bpf_object *obj, Elf64_Shdr\
+    \ *shdr, Elf_Data *data)\n{\n\tconst char *relo_sec_name, *sec_name;\n\tsize_t\
+    \ sec_idx = shdr->sh_info, sym_idx;\n\tstruct bpf_program *prog;\n\tstruct reloc_desc\
+    \ *relos;\n\tint err, i, nrels;\n\tconst char *sym_name;\n\t__u32 insn_idx;\n\t\
+    Elf_Scn *scn;\n\tElf_Data *scn_data;\n\tElf64_Sym *sym;\n\tElf64_Rel *rel;\n\n\
+    \tif (sec_idx >= obj->efile.sec_cnt)\n\t\treturn -EINVAL;\n\n\tscn = elf_sec_by_idx(obj,\
+    \ sec_idx);\n\tscn_data = elf_sec_data(obj, scn);\n\n\trelo_sec_name = elf_sec_str(obj,\
+    \ shdr->sh_name);\n\tsec_name = elf_sec_name(obj, scn);\n\tif (!relo_sec_name\
+    \ || !sec_name)\n\t\treturn -EINVAL;\n\n\tpr_debug(\"sec '%s': collecting relocation\
+    \ for section(%zu) '%s'\\n\",\n\t\t relo_sec_name, sec_idx, sec_name);\n\tnrels\
+    \ = shdr->sh_size / shdr->sh_entsize;\n\n\tfor (i = 0; i < nrels; i++) {\n\t\t\
+    rel = elf_rel_by_idx(data, i);\n\t\tif (!rel) {\n\t\t\tpr_warn(\"sec '%s': failed\
+    \ to get relo #%d\\n\", relo_sec_name, i);\n\t\t\treturn -LIBBPF_ERRNO__FORMAT;\n\
+    \t\t}\n\n\t\tsym_idx = ELF64_R_SYM(rel->r_info);\n\t\tsym = elf_sym_by_idx(obj,\
+    \ sym_idx);\n\t\tif (!sym) {\n\t\t\tpr_warn(\"sec '%s': symbol #%zu not found\
+    \ for relo #%d\\n\",\n\t\t\t\trelo_sec_name, sym_idx, i);\n\t\t\treturn -LIBBPF_ERRNO__FORMAT;\n\
+    \t\t}\n\n\t\tif (sym->st_shndx >= obj->efile.sec_cnt) {\n\t\t\tpr_warn(\"sec '%s':\
+    \ corrupted symbol #%zu pointing to invalid section #%zu for relo #%d\\n\",\n\t\
+    \t\t\trelo_sec_name, sym_idx, (size_t)sym->st_shndx, i);\n\t\t\treturn -LIBBPF_ERRNO__FORMAT;\n\
+    \t\t}\n\n\t\tif (rel->r_offset % BPF_INSN_SZ || rel->r_offset >= scn_data->d_size)\
+    \ {\n\t\t\tpr_warn(\"sec '%s': invalid offset 0x%zx for relo #%d\\n\",\n\t\t\t\
+    \trelo_sec_name, (size_t)rel->r_offset, i);\n\t\t\treturn -LIBBPF_ERRNO__FORMAT;\n\
+    \t\t}\n\n\t\tinsn_idx = rel->r_offset / BPF_INSN_SZ;\n\t\t/* relocations against\
+    \ static functions are recorded as\n\t\t * relocations against the section that\
+    \ contains a function;\n\t\t * in such case, symbol will be STT_SECTION and sym.st_name\n\
+    \t\t * will point to empty string (0), so fetch section name\n\t\t * instead\n\
+    \t\t */\n\t\tif (ELF64_ST_TYPE(sym->st_info) == STT_SECTION && sym->st_name ==\
+    \ 0)\n\t\t\tsym_name = elf_sec_name(obj, elf_sec_by_idx(obj, sym->st_shndx));"
+  diff_summary: |-
+    src/libbpf.c:
+    - Added explicit bounds or range guards so the verifier can prove the access size and offset.
+    - Affected context: static int bpf_object__elf_collect(struct bpf_object *obj), static struct bpf_program *find_prog_by_sec_insn(const struct bpf_object *obj,.
+    - Commit subject: libbpf: Improve ELF relo sanitization.

@@ -1,18 +1,18 @@
 # BPFix Evaluation Metrics
 
-This document defines metrics for evaluating BPFix on `bpfix-bench`.
+This document defines metrics for evaluating BPFix on `bpfix-empirical`.
 It is limited to metric definitions, ground-truth requirements, scoring
 rules, exclusions, and reporting slices.
 
 All primary diagnostic metrics must be grounded in locally replayed verifier
 reject logs, not only in checked-in historical logs. A case is eligible for
-primary evaluation only after the benchmark harness compiles the benchmark
+primary evaluation only after the empirical replay harness compiles the target
 program, loads it with the configured local verifier stack, records the reject
 result, and stores the exact verifier log used as BPFix input.
 
 ## Evaluation Unit
 
-The unit of evaluation is one replayed benchmark case:
+The unit of evaluation is one replayed empirical case:
 
 - `case_id`
 - source stratum, currently kernel selftest, GitHub issue, or Stack Overflow
@@ -33,7 +33,7 @@ separately.
 
 ## Required Ground Truth Labels
 
-Each benchmark case needs the following labels before it can contribute to
+Each empirical case needs the following labels before it can contribute to
 the corresponding metrics.
 
 ### Reproduction Labels
@@ -53,7 +53,7 @@ the corresponding metrics.
 - `root_cause_kind`: normalized cause type, such as missing bounds check,
   stale pointer proof, helper contract violation, invalid map definition,
   unavailable helper, verifier complexity limit, or frontend lowering artifact
-- `taxonomy_class`: one of the benchmark taxonomy classes, for example
+- `taxonomy_class`: one of the empirical taxonomy classes, for example
   `source_bug`, `lowering_artifact`, `verifier_limit`, `environment_or_configuration`, or
   `verifier_false_positive`
 - `verifier_error_class`: normalized verifier error family extracted from the
@@ -113,7 +113,7 @@ patches or fix recommendations.
 - `fixed_source` or `fix_oracle`: reference patch, accepted rewrite, or
   executable oracle for validating repairs
 - `negative_repair_constraints`: changes that must not be counted as success,
-  such as deleting program logic, weakening the benchmark assertion, changing
+  such as deleting program logic, weakening the evaluation assertion, changing
   program type without justification, or avoiding the rejected code path
 
 ## Diagnostic Correctness
@@ -311,7 +311,7 @@ Partial repair-strategy credit:
 | Identifies when no source repair is appropriate | 0.10 |
 
 If `repair_applicable` is false, full credit requires recommending no source
-patch and correctly identifying the environment, verifier, or benchmark
+patch and correctly identifying the environment, verifier, or empirical corpus
 condition. Proposing a source patch for a non-repairable case scores at most
 0.25.
 
@@ -326,13 +326,13 @@ For generated source patches, report each stage with its own denominator:
   patches
 - end-to-end repair success: verifier-accepted patched programs /
   repair-applicable cases
-- semantic preservation rate, when benchmark-specific tests or equivalence
+- semantic preservation rate, when case-specific tests or equivalence
   checks exist
 
 A verifier-accepted patch is not automatically a successful repair. It must
 also preserve required behavior and satisfy `negative_repair_constraints`.
 Patches that delete the rejected operation, change program type without a
-ground-truth basis, alter map or context semantics to avoid the benchmark, or
+ground-truth basis, alter map or context semantics to avoid the empirical case, or
 depend on unavailable kernel features must be counted as failures.
 
 ## Runtime and Overhead
@@ -369,8 +369,8 @@ Required source strata:
 - kernel selftests
 - GitHub issues or pull requests
 - Stack Overflow cases
-- synthetic or reduced cases, if a future benchmark revision includes them
-- any additional benchmark source used by `bpfix-bench`
+- synthetic or reduced cases, if a future empirical corpus revision includes them
+- any additional empirical source used by `bpfix-empirical`
 
 Required category strata:
 

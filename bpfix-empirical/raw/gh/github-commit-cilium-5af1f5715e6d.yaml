@@ -1,0 +1,62 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-5af1f5715e6d
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/5af1f5715e6de110a7934c8a4f3f0eaacf961330
+  title: 'cilium: avoid llvm relocations with macro'
+  repository: https://github.com/cilium/cilium
+  commit: 5af1f5715e6de110a7934c8a4f3f0eaacf961330
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-5af1f5715e6d.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Adds IPv6 address-construction macros to avoid LLVM relocations. The failure
+    mode is compiler/relocation handling, not a captured kernel verifier rejection.
+raw:
+  case_id: github-commit-cilium-5af1f5715e6d
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: 5af1f5715e6de110a7934c8a4f3f0eaacf961330
+  commit_message: 'cilium: avoid llvm relocations with macro'
+  commit_date: '2017-05-24'
+  fix_type: other
+  buggy_code: "// FILE: bpf/lib/l3.h\n#include \"ipv6.h\"\n#include \"ipv4.h\"\n#include\
+    \ \"eth.h\"\n#include \"dbg.h\"\n#include \"l4.h\"\n#include \"icmp6.h\"\n#include\
+    \ \"geneve.h\"\n#include \"csum.h\"\n\n/* validating options on tx is optional\
+    \ */\n#define VALIDATE_GENEVE_TX\n\n#ifdef ENCAP_IFINDEX\nstatic inline int do_encapsulation(struct\
+    \ __sk_buff *skb, __u32 node_id,\n\t\t\t\t   __u32 seclabel, uint8_t *buf, int\
+    \ sz)\n{\n\tstruct bpf_tunnel_key key = {};\n\tint ret;\n\n\tkey.tunnel_id = seclabel;\n\
+    \tkey.remote_ipv4 = node_id;\n\n\tcilium_trace(skb, DBG_ENCAP, node_id, seclabel);"
+  fixed_code: "// FILE: bpf/lib/l3.h\n#include \"ipv6.h\"\n#include \"ipv4.h\"\n#include\
+    \ \"eth.h\"\n#include \"dbg.h\"\n#include \"l4.h\"\n#include \"icmp6.h\"\n#include\
+    \ \"geneve.h\"\n#include \"csum.h\"\n\n/* validating options on tx is optional\
+    \ */\n#define VALIDATE_GENEVE_TX\n\n/* Macros for working with L3 cilium defined\
+    \ IPV6 addresses */\n#define BPF_V6(dst, ...)    BPF_V6_16(dst, __VA_ARGS__)\n\
+    #define BPF_V6_16(dst, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13,\
+    \ a14, a15, a16) \\\n\t    ({                                      \t\t\t\t\t\
+    \   \\\n\t             dst.p1 = bpf_htonl( (a1) << 24 |  (a2) << 16 |  (a3) <<\
+    \ 8 |  (a4));   \\\n\t             dst.p2 = bpf_htonl( (a5) << 24 |  (a6) << 16\
+    \ |  (a7) << 8 |  (a8));   \\\n\t             dst.p3 = bpf_htonl( (a9) << 24 |\
+    \ (a10) << 16 | (a11) << 8 | (a12));   \\\n\t             dst.p4 = bpf_htonl((a13)\
+    \ << 24 | (a14) << 16 | (a15) << 8 | (a16));   \\\n\t         })\n\n#ifdef ENCAP_IFINDEX\n\
+    static inline int do_encapsulation(struct __sk_buff *skb, __u32 node_id,\n\t\t\
+    \t\t   __u32 seclabel, uint8_t *buf, int sz)\n{\n\tstruct bpf_tunnel_key key =\
+    \ {};\n\tint ret;\n\n\tkey.tunnel_id = seclabel;\n\tkey.remote_ipv4 = node_id;\n\
+    \n\tcilium_trace(skb, DBG_ENCAP, node_id, seclabel);"
+  diff_summary: |-
+    bpf/lib/l3.h:
+    - Applied a small verifier-related code change captured by the exact before/after snippets below.
+    - Affected context: the touched section.
+    - Commit subject: cilium: avoid llvm relocations with macro.

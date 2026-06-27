@@ -1,0 +1,61 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-libbpf-c008eb921eec
+source_kind: github_commit
+source:
+  url: https://github.com/libbpf/libbpf/commit/c008eb921eec064f01263b2a5577dc668b27b0cc
+  title: 'libbpf: Fix NULL pointer dereference in bpf_object__collect_prog_relos'
+  repository: https://github.com/libbpf/libbpf
+  commit: c008eb921eec064f01263b2a5577dc668b27b0cc
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-libbpf-c008eb921eec.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Raw has_verifier_log=false, source_snippet_count=0. The fix adds a NULL
+    guard in bpf_object__collect_prog_relos() before libbpf relocation-section diagnostics;
+    it prevents a user-space loader dereference and supplies no rejected instruction.
+raw:
+  case_id: github-commit-libbpf-c008eb921eec
+  source: github_commits
+  repository: https://github.com/libbpf/libbpf
+  commit_hash: c008eb921eec064f01263b2a5577dc668b27b0cc
+  commit_message: 'libbpf: Fix NULL pointer dereference in bpf_object__collect_prog_relos'
+  commit_date: '2023-12-21'
+  fix_type: null_check
+  buggy_code: "// FILE: src/libbpf.c\n// CONTEXT: bpf_object__collect_prog_relos(struct\
+    \ bpf_object *obj, Elf64_Shdr *shdr, Elf_Dat\n\tconst char *sym_name;\n\t__u32\
+    \ insn_idx;\n\tElf_Scn *scn;\n\tElf_Data *scn_data;\n\tElf64_Sym *sym;\n\tElf64_Rel\
+    \ *rel;\n\n\tif (sec_idx >= obj->efile.sec_cnt)\n\t\treturn -EINVAL;\n\n\tscn\
+    \ = elf_sec_by_idx(obj, sec_idx);\n\tscn_data = elf_sec_data(obj, scn);\n\n\t\
+    relo_sec_name = elf_sec_str(obj, shdr->sh_name);\n\tsec_name = elf_sec_name(obj,\
+    \ scn);\n\tif (!relo_sec_name || !sec_name)\n\t\treturn -EINVAL;\n\n\tpr_debug(\"\
+    sec '%s': collecting relocation for section(%zu) '%s'\\n\",\n\t\t relo_sec_name,\
+    \ sec_idx, sec_name);\n\tnrels = shdr->sh_size / shdr->sh_entsize;\n\n\tfor (i\
+    \ = 0; i < nrels; i++) {\n\t\trel = elf_rel_by_idx(data, i);"
+  fixed_code: "// FILE: src/libbpf.c\n// CONTEXT: bpf_object__collect_prog_relos(struct\
+    \ bpf_object *obj, Elf64_Shdr *shdr, Elf_Dat\n\tconst char *sym_name;\n\t__u32\
+    \ insn_idx;\n\tElf_Scn *scn;\n\tElf_Data *scn_data;\n\tElf64_Sym *sym;\n\tElf64_Rel\
+    \ *rel;\n\n\tif (sec_idx >= obj->efile.sec_cnt)\n\t\treturn -EINVAL;\n\n\tscn\
+    \ = elf_sec_by_idx(obj, sec_idx);\n\tscn_data = elf_sec_data(obj, scn);\n\tif\
+    \ (!scn_data)\n\t\treturn -LIBBPF_ERRNO__FORMAT;\n\n\trelo_sec_name = elf_sec_str(obj,\
+    \ shdr->sh_name);\n\tsec_name = elf_sec_name(obj, scn);\n\tif (!relo_sec_name\
+    \ || !sec_name)\n\t\treturn -EINVAL;\n\n\tpr_debug(\"sec '%s': collecting relocation\
+    \ for section(%zu) '%s'\\n\",\n\t\t relo_sec_name, sec_idx, sec_name);\n\tnrels\
+    \ = shdr->sh_size / shdr->sh_entsize;\n\n\tfor (i = 0; i < nrels; i++) {\n\t\t\
+    rel = elf_rel_by_idx(data, i);"
+  diff_summary: |-
+    src/libbpf.c:
+    - Added an explicit null guard before the dereference on all verifier-visible paths.
+    - Affected context: bpf_object__collect_prog_relos(struct bpf_object *obj, Elf64_Shdr *shdr, Elf_Dat.
+    - Commit subject: libbpf: Fix NULL pointer dereference in bpf_object__collect_prog_relos.

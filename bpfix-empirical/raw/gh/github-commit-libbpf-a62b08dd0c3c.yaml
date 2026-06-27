@@ -1,0 +1,234 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-libbpf-a62b08dd0c3c
+source_kind: github_commit
+source:
+  url: https://github.com/libbpf/libbpf/commit/a62b08dd0c3c61db83ab5ceca7d9d083ab7d7ef3
+  title: 'libbpf: Support disabling auto-loading BPF programs'
+  repository: https://github.com/libbpf/libbpf
+  commit: a62b08dd0c3c61db83ab5ceca7d9d083ab7d7ef3
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-libbpf-a62b08dd0c3c.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Raw has_verifier_log=false. The diff adds libbpf autoload state and API
+    handling around program loading, extern resolution, and skeleton loading; no standalone
+    rejected BPF source or verifier log is present.
+raw:
+  case_id: github-commit-libbpf-a62b08dd0c3c
+  source: github_commits
+  repository: https://github.com/libbpf/libbpf
+  commit_hash: a62b08dd0c3c61db83ab5ceca7d9d083ab7d7ef3
+  commit_message: 'libbpf: Support disabling auto-loading BPF programs'
+  commit_date: '2020-06-25'
+  fix_type: bounds_check
+  buggy_code: "// FILE: src/libbpf.c\n// CONTEXT: struct bpf_program {\n\tint idx;\n\
+    \tchar *name;\n\tint prog_ifindex;\n\tchar *section_name;\n\tconst struct bpf_sec_def\
+    \ *sec_def;\n\t/* section_name with / replaced by _; makes recursive pinning\n\
+    \t * in bpf_object__pin_programs easier\n\t */\n\tchar *pin_name;\n\tstruct bpf_insn\
+    \ *insns;\n\tsize_t insns_cnt, main_prog_cnt;\n\tenum bpf_prog_type type;\n\n\t\
+    struct reloc_desc *reloc_desc;\n\tint nr_reloc;\n\tint log_level;\n\n\tstruct\
+    \ {\n\t\tint nr;\n\t\tint *fds;\n\t} instances;\n\tbpf_program_prep_t preprocessor;\n\
+    \n\tstruct bpf_object *obj;\n\n// CONTEXT: bpf_program__init(void *data, size_t\
+    \ size, char *section_name, int idx,\n\tprog->insns = malloc(size);\n\tif (!prog->insns)\
+    \ {\n\t\tpr_warn(\"failed to alloc insns for prog under section %s\\n\",\n\t\t\
+    \tsection_name);\n\t\tgoto errout;\n\t}\n\tprog->insns_cnt = size / bpf_insn_sz;\n\
+    \tmemcpy(prog->insns, data, size);\n\tprog->idx = idx;\n\tprog->instances.fds\
+    \ = NULL;\n\tprog->instances.nr = -1;\n\tprog->type = BPF_PROG_TYPE_UNSPEC;\n\n\
+    \treturn 0;\nerrout:\n\tbpf_program__exit(prog);\n\treturn -ENOMEM;\n}\n\nstatic\
+    \ int\nbpf_object__add_program(struct bpf_object *obj, void *data, size_t size,\n\
+    \t\t\tchar *section_name, int idx)\n{\n\tstruct bpf_program prog, *progs;\n\n\
+    // CONTEXT: static inline bool libbpf_prog_needs_vmlinux_btf(struct bpf_program\
+    \ *prog)\n\nstatic int bpf_object__load_vmlinux_btf(struct bpf_object *obj)\n\
+    {\n\tbool need_vmlinux_btf = false;\n\tstruct bpf_program *prog;\n\tint err;\n\
+    \n\t/* CO-RE relocations need kernel BTF */\n\tif (obj->btf_ext && obj->btf_ext->field_reloc_info.len)\n\
+    \t\tneed_vmlinux_btf = true;\n\n\tbpf_object__for_each_program(prog, obj) {\n\t\
+    \tif (libbpf_prog_needs_vmlinux_btf(prog)) {\n\t\t\tneed_vmlinux_btf = true;\n\
+    \t\t\tbreak;\n\t\t}\n\t}\n\n\tif (!need_vmlinux_btf)\n\t\treturn 0;\n\n\tobj->btf_vmlinux\
+    \ = libbpf_find_kernel_btf();\n\tif (IS_ERR(obj->btf_vmlinux)) {\n\t\terr = PTR_ERR(obj->btf_vmlinux);\n\
+    \n// CONTEXT: retry_load:\n\nout:\n\tfree(log_buf);\n\treturn ret;\n}\n\nstatic\
+    \ int libbpf_find_attach_btf_id(struct bpf_program *prog);\n\nint bpf_program__load(struct\
+    \ bpf_program *prog, char *license, __u32 kern_ver)\n{\n\tint err = 0, fd, i,\
+    \ btf_id;\n\n\tif ((prog->type == BPF_PROG_TYPE_TRACING ||\n\t     prog->type\
+    \ == BPF_PROG_TYPE_LSM ||\n\t     prog->type == BPF_PROG_TYPE_EXT) && !prog->attach_btf_id)\
+    \ {\n\t\tbtf_id = libbpf_find_attach_btf_id(prog);\n\t\tif (btf_id <= 0)\n\t\t\
+    \treturn btf_id;\n\t\tprog->attach_btf_id = btf_id;\n\t}\n\n\tif (prog->instances.nr\
+    \ < 0 || !prog->instances.fds) {\n\t\tif (prog->preprocessor) {\n\t\t\tpr_warn(\"\
+    Internal error: can't load program '%s'\\n\",\n\n// CONTEXT: out:\n\treturn err;\n\
+    }\n\nstatic bool bpf_program__is_function_storage(const struct bpf_program *prog,\n\
+    \t\t\t\t\t     const struct bpf_object *obj)\n{\n\treturn prog->idx == obj->efile.text_shndx\
+    \ && obj->has_pseudo_calls;\n}\n\nstatic int\nbpf_object__load_progs(struct bpf_object\
+    \ *obj, int log_level)\n{\n\tsize_t i;\n\tint err;\n\n\tfor (i = 0; i < obj->nr_programs;\
+    \ i++) {\n\t\tif (bpf_program__is_function_storage(&obj->programs[i], obj))\n\t\
+    \t\tcontinue;\n\t\tobj->programs[i].log_level |= log_level;\n\t\terr = bpf_program__load(&obj->programs[i],\n\
+    \t\t\t\t\tobj->license,\n\t\t\t\t\tobj->kern_version);\n\t\tif (err)\n\t\t\treturn\
+    \ err;\n\t}\n\treturn 0;\n}\n\nstatic const struct bpf_sec_def *find_sec_def(const\
+    \ char *sec_name);\n\nstatic struct bpf_object *\n__bpf_object__open(const char\
+    \ *path, const void *obj_buf, size_t obj_buf_sz,\n\t\t   const struct bpf_object_open_opts\
+    \ *opts)\n{\n\n// CONTEXT: static int bpf_object__resolve_externs(struct bpf_object\
+    \ *obj,\nint bpf_object__load_xattr(struct bpf_object_load_attr *attr)\n{\n\t\
+    struct bpf_object *obj;\n\tint err, i;\n\n\tif (!attr)\n\t\treturn -EINVAL;\n\t\
+    obj = attr->obj;\n\tif (!obj)\n\t\treturn -EINVAL;\n\n\tif (obj->loaded) {\n\t\
+    \tpr_warn(\"object should not be loaded twice\\n\");\n\t\treturn -EINVAL;\n\t\
+    }\n\n\tobj->loaded = true;\n\n\terr = bpf_object__probe_loading(obj);\n\terr =\
+    \ err ? : bpf_object__probe_caps(obj);\n\terr = err ? : bpf_object__resolve_externs(obj,\
+    \ obj->kconfig);\n\terr = err ? : bpf_object__sanitize_and_load_btf(obj);\n\t\
+    err = err ? : bpf_object__sanitize_maps(obj);\n\terr = err ? : bpf_object__load_vmlinux_btf(obj);\n\
+    \terr = err ? : bpf_object__init_kern_struct_ops_maps(obj);\n\terr = err ? : bpf_object__create_maps(obj);\n\
+    \terr = err ? : bpf_object__relocate(obj, attr->target_btf_path);\n\terr = err\
+    \ ? : bpf_object__load_progs(obj, attr->log_level);\n\n\tbtf__free(obj->btf_vmlinux);\n\
+    \tobj->btf_vmlinux = NULL;\n\n\tif (err)\n\t\tgoto out;\n\n\treturn 0;\nout:\n\
+    \t/* unpin any maps that were auto-pinned during load */\n\tfor (i = 0; i < obj->nr_maps;\
+    \ i++)\n\t\tif (obj->maps[i].pinned && !obj->maps[i].reused)\n\t\t\tbpf_map__unpin(&obj->maps[i],\
+    \ NULL);\n\n\tbpf_object__unload(obj);\n\tpr_warn(\"failed to load object '%s'\\\
+    n\", obj->path);\n\n// CONTEXT: const char *bpf_program__title(const struct bpf_program\
+    \ *prog, bool needs_copy)\n\ttitle = prog->section_name;\n\tif (needs_copy) {\n\
+    \t\ttitle = strdup(title);\n\t\tif (!title) {\n\t\t\tpr_warn(\"failed to strdup\
+    \ program title\\n\");\n\t\t\treturn ERR_PTR(-ENOMEM);\n\t\t}\n\t}\n\n\treturn\
+    \ title;\n}\n\nint bpf_program__fd(const struct bpf_program *prog)\n{\n\treturn\
+    \ bpf_program__nth_fd(prog, 0);\n}\n\nsize_t bpf_program__size(const struct bpf_program\
+    \ *prog)\n{\n\treturn prog->insns_cnt * sizeof(struct bpf_insn);\n}\n\nint bpf_program__set_prep(struct\
+    \ bpf_program *prog, int nr_instances,\n\t\t\t  bpf_program_prep_t prep)\n\n//\
+    \ CONTEXT: int bpf_object__load_skeleton(struct bpf_object_skeleton *s)\n}\n\n\
+    int bpf_object__attach_skeleton(struct bpf_object_skeleton *s)\n{\n\tint i;\n\n\
+    \tfor (i = 0; i < s->prog_cnt; i++) {\n\t\tstruct bpf_program *prog = *s->progs[i].prog;\n\
+    \t\tstruct bpf_link **link = s->progs[i].link;\n\t\tconst struct bpf_sec_def *sec_def;\n\
+    \t\tconst char *sec_name = bpf_program__title(prog, false);\n\n\t\tsec_def = find_sec_def(sec_name);\n\
+    \t\tif (!sec_def || !sec_def->attach_fn)\n\t\t\tcontinue;\n\n\t\t*link = sec_def->attach_fn(sec_def,\
+    \ prog);\n\t\tif (IS_ERR(*link)) {\n\t\t\tpr_warn(\"failed to auto-attach program\
+    \ '%s': %ld\\n\",\n\t\t\t\tbpf_program__name(prog), PTR_ERR(*link));\n\t\t\treturn\
+    \ PTR_ERR(*link);\n\t\t}\n\t}\n\n// FILE: src/libbpf.h\n// CONTEXT: LIBBPF_API\
+    \ struct bpf_program *bpf_program__prev(struct bpf_program *prog,\ntypedef void\
+    \ (*bpf_program_clear_priv_t)(struct bpf_program *, void *);\n\nLIBBPF_API int\
+    \ bpf_program__set_priv(struct bpf_program *prog, void *priv,\n\t\t\t\t     bpf_program_clear_priv_t\
+    \ clear_priv);\n\nLIBBPF_API void *bpf_program__priv(const struct bpf_program\
+    \ *prog);\nLIBBPF_API void bpf_program__set_ifindex(struct bpf_program *prog,\n\
+    \t\t\t\t\t __u32 ifindex);\n\nLIBBPF_API const char *bpf_program__name(const struct\
+    \ bpf_program *prog);\nLIBBPF_API const char *bpf_program__title(const struct\
+    \ bpf_program *prog,\n\t\t\t\t\t  bool needs_copy);\n\n/* returns program size\
+    \ in bytes */\nLIBBPF_API size_t bpf_program__size(const struct bpf_program *prog);\n\
+    \nLIBBPF_API int bpf_program__load(struct bpf_program *prog, char *license,\n\t\
+    \t\t\t __u32 kern_version);\nLIBBPF_API int bpf_program__fd(const struct bpf_program\
+    \ *prog);\nLIBBPF_API int bpf_program__pin_instance(struct bpf_program *prog,\n\
+    \t\t\t\t\t const char *path,\n\t\t\t\t\t int instance);\nLIBBPF_API int bpf_program__unpin_instance(struct\
+    \ bpf_program *prog,\n\t\t\t\t\t   const char *path,"
+  fixed_code: "// FILE: src/libbpf.c\n// CONTEXT: struct bpf_program {\n\tint idx;\n\
+    \tchar *name;\n\tint prog_ifindex;\n\tchar *section_name;\n\tconst struct bpf_sec_def\
+    \ *sec_def;\n\t/* section_name with / replaced by _; makes recursive pinning\n\
+    \t * in bpf_object__pin_programs easier\n\t */\n\tchar *pin_name;\n\tstruct bpf_insn\
+    \ *insns;\n\tsize_t insns_cnt, main_prog_cnt;\n\tenum bpf_prog_type type;\n\t\
+    bool load;\n\n\tstruct reloc_desc *reloc_desc;\n\tint nr_reloc;\n\tint log_level;\n\
+    \n\tstruct {\n\t\tint nr;\n\t\tint *fds;\n\t} instances;\n\tbpf_program_prep_t\
+    \ preprocessor;\n\n\tstruct bpf_object *obj;\n\n// CONTEXT: bpf_program__init(void\
+    \ *data, size_t size, char *section_name, int idx,\n\tprog->insns = malloc(size);\n\
+    \tif (!prog->insns) {\n\t\tpr_warn(\"failed to alloc insns for prog under section\
+    \ %s\\n\",\n\t\t\tsection_name);\n\t\tgoto errout;\n\t}\n\tprog->insns_cnt = size\
+    \ / bpf_insn_sz;\n\tmemcpy(prog->insns, data, size);\n\tprog->idx = idx;\n\tprog->instances.fds\
+    \ = NULL;\n\tprog->instances.nr = -1;\n\tprog->type = BPF_PROG_TYPE_UNSPEC;\n\t\
+    prog->load = true;\n\n\treturn 0;\nerrout:\n\tbpf_program__exit(prog);\n\treturn\
+    \ -ENOMEM;\n}\n\nstatic int\nbpf_object__add_program(struct bpf_object *obj, void\
+    \ *data, size_t size,\n\t\t\tchar *section_name, int idx)\n{\n\tstruct bpf_program\
+    \ prog, *progs;\n\n// CONTEXT: static inline bool libbpf_prog_needs_vmlinux_btf(struct\
+    \ bpf_program *prog)\n\nstatic int bpf_object__load_vmlinux_btf(struct bpf_object\
+    \ *obj)\n{\n\tbool need_vmlinux_btf = false;\n\tstruct bpf_program *prog;\n\t\
+    int err;\n\n\t/* CO-RE relocations need kernel BTF */\n\tif (obj->btf_ext && obj->btf_ext->field_reloc_info.len)\n\
+    \t\tneed_vmlinux_btf = true;\n\n\tbpf_object__for_each_program(prog, obj) {\n\t\
+    \tif (!prog->load)\n\t\t\tcontinue;\n\t\tif (libbpf_prog_needs_vmlinux_btf(prog))\
+    \ {\n\t\t\tneed_vmlinux_btf = true;\n\t\t\tbreak;\n\t\t}\n\t}\n\n\tif (!need_vmlinux_btf)\n\
+    \t\treturn 0;\n\n\tobj->btf_vmlinux = libbpf_find_kernel_btf();\n\tif (IS_ERR(obj->btf_vmlinux))\
+    \ {\n\t\terr = PTR_ERR(obj->btf_vmlinux);\n\n// CONTEXT: retry_load:\n\nout:\n\
+    \tfree(log_buf);\n\treturn ret;\n}\n\nstatic int libbpf_find_attach_btf_id(struct\
+    \ bpf_program *prog);\n\nint bpf_program__load(struct bpf_program *prog, char\
+    \ *license, __u32 kern_ver)\n{\n\tint err = 0, fd, i, btf_id;\n\n\tif (prog->obj->loaded)\
+    \ {\n\t\tpr_warn(\"prog '%s'('%s'): can't load after object was loaded\\n\",\n\
+    \t\t\tprog->name, prog->section_name);\n\t\treturn -EINVAL;\n\t}\n\n\tif ((prog->type\
+    \ == BPF_PROG_TYPE_TRACING ||\n\t     prog->type == BPF_PROG_TYPE_LSM ||\n\t \
+    \    prog->type == BPF_PROG_TYPE_EXT) && !prog->attach_btf_id) {\n\t\tbtf_id =\
+    \ libbpf_find_attach_btf_id(prog);\n\t\tif (btf_id <= 0)\n\t\t\treturn btf_id;\n\
+    \t\tprog->attach_btf_id = btf_id;\n\t}\n\n\tif (prog->instances.nr < 0 || !prog->instances.fds)\
+    \ {\n\t\tif (prog->preprocessor) {\n\t\t\tpr_warn(\"Internal error: can't load\
+    \ program '%s'\\n\",\n\n// CONTEXT: out:\n\treturn err;\n}\n\nstatic bool bpf_program__is_function_storage(const\
+    \ struct bpf_program *prog,\n\t\t\t\t\t     const struct bpf_object *obj)\n{\n\
+    \treturn prog->idx == obj->efile.text_shndx && obj->has_pseudo_calls;\n}\n\nstatic\
+    \ int\nbpf_object__load_progs(struct bpf_object *obj, int log_level)\n{\n\tstruct\
+    \ bpf_program *prog;\n\tsize_t i;\n\tint err;\n\n\tfor (i = 0; i < obj->nr_programs;\
+    \ i++) {\n\t\tprog = &obj->programs[i];\n\t\tif (bpf_program__is_function_storage(prog,\
+    \ obj))\n\t\t\tcontinue;\n\t\tif (!prog->load) {\n\t\t\tpr_debug(\"prog '%s'('%s'):\
+    \ skipped loading\\n\",\n\t\t\t\t prog->name, prog->section_name);\n\t\t\tcontinue;\n\
+    \t\t}\n\t\tprog->log_level |= log_level;\n\t\terr = bpf_program__load(prog, obj->license,\
+    \ obj->kern_version);\n\t\tif (err)\n\t\t\treturn err;\n\t}\n\treturn 0;\n}\n\n\
+    static const struct bpf_sec_def *find_sec_def(const char *sec_name);\n\nstatic\
+    \ struct bpf_object *\n__bpf_object__open(const char *path, const void *obj_buf,\
+    \ size_t obj_buf_sz,\n\t\t   const struct bpf_object_open_opts *opts)\n{\n\n//\
+    \ CONTEXT: static int bpf_object__resolve_externs(struct bpf_object *obj,\nint\
+    \ bpf_object__load_xattr(struct bpf_object_load_attr *attr)\n{\n\tstruct bpf_object\
+    \ *obj;\n\tint err, i;\n\n\tif (!attr)\n\t\treturn -EINVAL;\n\tobj = attr->obj;\n\
+    \tif (!obj)\n\t\treturn -EINVAL;\n\n\tif (obj->loaded) {\n\t\tpr_warn(\"object\
+    \ '%s': load can't be attempted twice\\n\", obj->name);\n\t\treturn -EINVAL;\n\
+    \t}\n\n\terr = bpf_object__probe_loading(obj);\n\terr = err ? : bpf_object__probe_caps(obj);\n\
+    \terr = err ? : bpf_object__resolve_externs(obj, obj->kconfig);\n\terr = err ?\
+    \ : bpf_object__sanitize_and_load_btf(obj);\n\terr = err ? : bpf_object__sanitize_maps(obj);\n\
+    \terr = err ? : bpf_object__load_vmlinux_btf(obj);\n\terr = err ? : bpf_object__init_kern_struct_ops_maps(obj);\n\
+    \terr = err ? : bpf_object__create_maps(obj);\n\terr = err ? : bpf_object__relocate(obj,\
+    \ attr->target_btf_path);\n\terr = err ? : bpf_object__load_progs(obj, attr->log_level);\n\
+    \n\tbtf__free(obj->btf_vmlinux);\n\tobj->btf_vmlinux = NULL;\n\n\tobj->loaded\
+    \ = true; /* doesn't matter if successfully or not */\n\n\tif (err)\n\t\tgoto\
+    \ out;\n\n\treturn 0;\nout:\n\t/* unpin any maps that were auto-pinned during\
+    \ load */\n\tfor (i = 0; i < obj->nr_maps; i++)\n\t\tif (obj->maps[i].pinned &&\
+    \ !obj->maps[i].reused)\n\t\t\tbpf_map__unpin(&obj->maps[i], NULL);\n\n\tbpf_object__unload(obj);\n\
+    \tpr_warn(\"failed to load object '%s'\\n\", obj->path);\n\n// CONTEXT: const\
+    \ char *bpf_program__title(const struct bpf_program *prog, bool needs_copy)\n\t\
+    title = prog->section_name;\n\tif (needs_copy) {\n\t\ttitle = strdup(title);\n\
+    \t\tif (!title) {\n\t\t\tpr_warn(\"failed to strdup program title\\n\");\n\t\t\
+    \treturn ERR_PTR(-ENOMEM);\n\t\t}\n\t}\n\n\treturn title;\n}\n\nbool bpf_program__autoload(const\
+    \ struct bpf_program *prog)\n{\n\treturn prog->load;\n}\n\nint bpf_program__set_autoload(struct\
+    \ bpf_program *prog, bool autoload)\n{\n\tif (prog->obj->loaded)\n\t\treturn -EINVAL;\n\
+    \n\tprog->load = autoload;\n\treturn 0;\n}\n\nint bpf_program__fd(const struct\
+    \ bpf_program *prog)\n{\n\treturn bpf_program__nth_fd(prog, 0);\n}\n\nsize_t bpf_program__size(const\
+    \ struct bpf_program *prog)\n{\n\treturn prog->insns_cnt * sizeof(struct bpf_insn);\n\
+    }\n\nint bpf_program__set_prep(struct bpf_program *prog, int nr_instances,\n\t\
+    \t\t  bpf_program_prep_t prep)\n\n// CONTEXT: int bpf_object__load_skeleton(struct\
+    \ bpf_object_skeleton *s)\n}\n\nint bpf_object__attach_skeleton(struct bpf_object_skeleton\
+    \ *s)\n{\n\tint i;\n\n\tfor (i = 0; i < s->prog_cnt; i++) {\n\t\tstruct bpf_program\
+    \ *prog = *s->progs[i].prog;\n\t\tstruct bpf_link **link = s->progs[i].link;\n\
+    \t\tconst struct bpf_sec_def *sec_def;\n\t\tconst char *sec_name = bpf_program__title(prog,\
+    \ false);\n\n\t\tif (!prog->load)\n\t\t\tcontinue;\n\n\t\tsec_def = find_sec_def(sec_name);\n\
+    \t\tif (!sec_def || !sec_def->attach_fn)\n\t\t\tcontinue;\n\n\t\t*link = sec_def->attach_fn(sec_def,\
+    \ prog);\n\t\tif (IS_ERR(*link)) {\n\t\t\tpr_warn(\"failed to auto-attach program\
+    \ '%s': %ld\\n\",\n\t\t\t\tbpf_program__name(prog), PTR_ERR(*link));\n\t\t\treturn\
+    \ PTR_ERR(*link);\n\t\t}\n\t}\n\n// FILE: src/libbpf.h\n// CONTEXT: LIBBPF_API\
+    \ struct bpf_program *bpf_program__prev(struct bpf_program *prog,\ntypedef void\
+    \ (*bpf_program_clear_priv_t)(struct bpf_program *, void *);\n\nLIBBPF_API int\
+    \ bpf_program__set_priv(struct bpf_program *prog, void *priv,\n\t\t\t\t     bpf_program_clear_priv_t\
+    \ clear_priv);\n\nLIBBPF_API void *bpf_program__priv(const struct bpf_program\
+    \ *prog);\nLIBBPF_API void bpf_program__set_ifindex(struct bpf_program *prog,\n\
+    \t\t\t\t\t __u32 ifindex);\n\nLIBBPF_API const char *bpf_program__name(const struct\
+    \ bpf_program *prog);\nLIBBPF_API const char *bpf_program__title(const struct\
+    \ bpf_program *prog,\n\t\t\t\t\t  bool needs_copy);\nLIBBPF_API bool bpf_program__autoload(const\
+    \ struct bpf_program *prog);\nLIBBPF_API int bpf_program__set_autoload(struct\
+    \ bpf_program *prog, bool autoload);\n\n/* returns program size in bytes */\n\
+    LIBBPF_API size_t bpf_program__size(const struct bpf_program *prog);\n\nLIBBPF_API\
+    \ int bpf_program__load(struct bpf_program *prog, char *license,\n\t\t\t\t __u32\
+    \ kern_version);\nLIBBPF_API int bpf_program__fd(const struct bpf_program *prog);\n\
+    LIBBPF_API int bpf_program__pin_instance(struct bpf_program *prog,\n\t\t\t\t\t\
+    \ const char *path,\n\t\t\t\t\t int instance);\nLIBBPF_API int bpf_program__unpin_instance(struct\
+    \ bpf_program *prog,\n\t\t\t\t\t   const char *path,"
+  diff_summary: |-
+    src/libbpf.c:
+    - Added explicit bounds or range guards so the verifier can prove the access size and offset.
+    - Affected context: struct bpf_program {, bpf_program__init(void *data, size_t size, char *section_name, int idx,, static inline bool libbpf_prog_needs_vmlinux_btf(struct bpf_program *prog).
+    src/libbpf.h:
+    - Added explicit bounds or range guards so the verifier can prove the access size and offset.
+    - Affected context: LIBBPF_API struct bpf_program *bpf_program__prev(struct bpf_program *prog,.
+    - Commit subject: libbpf: Support disabling auto-loading BPF programs.

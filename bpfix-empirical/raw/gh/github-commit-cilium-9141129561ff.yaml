@@ -1,0 +1,312 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-9141129561ff
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/9141129561ffa75478806687141fef630d4c97a3
+  title: 'bpf: work around scrubbing of skb->mark during veth transition'
+  repository: https://github.com/cilium/cilium
+  commit: 9141129561ffa75478806687141fef630d4c97a3
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-9141129561ff.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Works around skb->mark scrubbing during veth transition by changing metadata
+    propagation and IPsec/encap calls. This is runtime datapath behavior, not a verifier-load
+    failure.
+raw:
+  case_id: github-commit-cilium-9141129561ff
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: 9141129561ffa75478806687141fef630d4c97a3
+  commit_message: 'bpf: work around scrubbing of skb->mark during veth transition'
+  commit_date: '2023-10-23'
+  fix_type: inline_hint
+  buggy_code: "// FILE: bpf/bpf_host.c\n// CONTEXT: skip_host_firewall:\n#endif\n\n\
+    \tif (!info || (!from_ingress_proxy &&\n\t\t      info->sec_label == WORLD_ID))\
+    \ {\n\t\t/* See IPv4 comment. */\n\t\treturn DROP_UNROUTABLE;\n\t}\n\n#if defined(ENABLE_IPSEC)\
+    \ && !defined(TUNNEL_MODE)\n\t/* See IPv4 comment. */\n\tif (from_ingress_proxy\
+    \ && info->tunnel_endpoint && encrypt_key)\n\t\treturn set_ipsec_encrypt(ctx,\
+    \ encrypt_key, info->tunnel_endpoint,\n\t\t\t\t\t info->sec_label);\n#endif\n\n\
+    \treturn CTX_ACT_OK;\n}\n\nstatic __always_inline int\ntail_handle_ipv6(struct\
+    \ __ctx_buff *ctx, const bool from_host)\n{\n\t__u32 proxy_identity = ctx_load_meta(ctx,\
+    \ CB_SRC_LABEL);\n\tint ret;\n\t__s8 ext_err = 0;\n\n\n// CONTEXT: skip_vtep:\n\
+    \t\t *\n\t\t * Note that we do not drop packets from ingress proxy even if\n\t\
+    \t * they are going to WORLD_ID. This is to avoid\n\t\t * https://github.com/cilium/cilium/issues/21954.\n\
+    \t\t */\n\t\treturn DROP_UNROUTABLE;\n\t}\n\n#if defined(ENABLE_IPSEC) && !defined(TUNNEL_MODE)\n\
+    \t/* We encrypt host to remote pod packets only if they are from ingress proxy.\
+    \ */\n\tif (from_ingress_proxy && info->tunnel_endpoint && encrypt_key)\n\t\t\
+    return set_ipsec_encrypt(ctx, encrypt_key, info->tunnel_endpoint,\n\t\t\t\t\t\
+    \ info->sec_label);\n#endif\n\n\treturn CTX_ACT_OK;\n}\n\nstatic __always_inline\
+    \ int\ntail_handle_ipv4(struct __ctx_buff *ctx, __u32 ipcache_srcid, const bool\
+    \ from_host)\n{\n\t__u32 proxy_identity = ctx_load_meta(ctx, CB_SRC_LABEL);\n\t\
+    int ret;\n\t__s8 ext_err = 0;\n\n\n// CONTEXT: __section(\"to-host\")\nint cil_to_host(struct\
+    \ __ctx_buff *ctx)\n{\n\t__u32 magic = ctx_load_meta(ctx, CB_PROXY_MAGIC);\n\t\
+    __u16 __maybe_unused proto = 0;\n\tstruct trace_ctx trace = {\n\t\t.reason = TRACE_REASON_UNKNOWN,\n\
+    \t\t.monitor = 0,\n\t};\n\tint ret = CTX_ACT_OK;\n\tbool traced = false;\n\t__u32\
+    \ src_id = 0;\n\n\tif ((magic & 0xFFFF) == MARK_MAGIC_TO_PROXY) {\n\t\t/* Upper\
+    \ 16 bits may carry proxy port number */\n\t\t__be16 port = magic >> 16;\n\n\t\
+    \tctx_store_meta(ctx, CB_PROXY_MAGIC, 0);\n\t\tret = ctx_redirect_to_proxy_first(ctx,\
+    \ port);\n\t\tif (IS_ERR(ret))\n\t\t\tgoto out;\n\t\t/* We already traced this\
+    \ in the previous prog with more\n\t\t * background context, skip trace here.\n\
+    \t\t */\n\t\ttraced = true;\n\t}\n\n// FILE: bpf/bpf_lxc.c\n// CONTEXT: pass_to_stack:\n\
+    #endif\n\n\tif (ipv6_store_flowlabel(ctx, ETH_HLEN, SECLABEL_NB) < 0)\n\t\treturn\
+    \ DROP_WRITE_ERROR;\n\n#ifdef ENABLE_WIREGUARD\n\tif (dst_remote_ep)\n\t\tset_encrypt_mark(ctx);\n\
+    \telse\n#elif !defined(TUNNEL_MODE)\n# ifdef ENABLE_IPSEC\n\tif (encrypt_key &&\
+    \ tunnel_endpoint) {\n\t\tret = set_ipsec_encrypt_mark(ctx, encrypt_key, tunnel_endpoint);\n\
+    \t\tif (unlikely(ret != CTX_ACT_OK))\n\t\t\treturn ret;\n\t\tset_identity_meta(ctx,\
+    \ SECLABEL);\n\t} else\n# endif /* ENABLE_IPSEC */\n#endif /* ENABLE_WIREGUARD\
+    \ */\n\t{\n#ifdef ENABLE_IDENTITY_MARK\n\t\t/* Always encode the source identity\
+    \ when passing to the stack.\n\t\t * If the stack hairpins the packet back to\
+    \ a local endpoint the\n\t\t * source identity can still be derived even if SNAT\
+    \ is\n\t\t * performed by a component such as portmap.\n\t\t */\n\t\tctx->mark\
+    \ |= MARK_MAGIC_IDENTITY;\n\t\tset_identity_mark(ctx, SECLABEL);\n\n// CONTEXT:\
+    \ pass_to_stack:\n\tret = ipv4_l3(ctx, ETH_HLEN, NULL, (__u8 *)&router_mac.addr,\
+    \ ip4);\n\tif (unlikely(ret != CTX_ACT_OK))\n\t\treturn ret;\n#endif\n\n#ifdef\
+    \ ENABLE_WIREGUARD\n\tif (dst_remote_ep)\n\t\tset_encrypt_mark(ctx);\n\telse /*\
+    \ Wireguard and identity mark are mutually exclusive */\n#elif !defined(TUNNEL_MODE)\n\
+    # ifdef ENABLE_IPSEC\n\tif (encrypt_key && tunnel_endpoint) {\n\t\tret = set_ipsec_encrypt_mark(ctx,\
+    \ encrypt_key, tunnel_endpoint);\n\t\tif (unlikely(ret != CTX_ACT_OK))\n\t\t\t\
+    return ret;\n\t\tset_identity_meta(ctx, SECLABEL);\n\t} else\n# endif /* ENABLE_IPSEC\
+    \ */\n#endif /* ENABLE_WIREGUARD */\n\t{\n#ifdef ENABLE_IDENTITY_MARK\n\t\t/*\
+    \ Always encode the source identity when passing to the stack.\n\t\t * If the\
+    \ stack hairpins the packet back to a local endpoint the\n\t\t * source identity\
+    \ can still be derived even if SNAT is\n\t\t * performed by a component such as\
+    \ portmap.\n\t\t */\n\t\tctx->mark |= MARK_MAGIC_IDENTITY;\n\t\tset_identity_mark(ctx,\
+    \ SECLABEL);\n\n// FILE: bpf/lib/encap.h\n// CONTEXT: __encap_and_redirect_with_nodeid(struct\
+    \ __ctx_buff *ctx, __u32 tunnel_endpoint,\n * returns CTX_ACT_REDIRECT on successful\
+    \ redirect to tunnel device.\n * On error returns CTX_ACT_DROP or DROP_WRITE_ERROR.\n\
+    \ */\nstatic __always_inline int\nencap_and_redirect_with_nodeid(struct __ctx_buff\
+    \ *ctx, __u32 tunnel_endpoint,\n\t\t\t       __u8 encrypt_key __maybe_unused,\n\
+    \t\t\t       __u32 seclabel, __u32 dstid,\n\t\t\t       const struct trace_ctx\
+    \ *trace)\n{\n#ifdef ENABLE_IPSEC\n\tif (encrypt_key)\n\t\treturn set_ipsec_encrypt(ctx,\
+    \ encrypt_key, tunnel_endpoint,\n\t\t\t\t\t seclabel);\n#endif\n\n\treturn __encap_and_redirect_with_nodeid(ctx,\
+    \ tunnel_endpoint, seclabel, dstid, NOT_VTEP_DST,\n\t\t\t\t\t\ttrace);\n}\n\n\
+    /* __encap_and_redirect_lxc() is a variant of encap_and_redirect_lxc()\n * that\
+    \ requires a valid tunnel_endpoint.\n */\nstatic __always_inline int\n__encap_and_redirect_lxc(struct\
+    \ __ctx_buff *ctx, __u32 tunnel_endpoint,\n\t\t\t __u8 encrypt_key __maybe_unused,\
+    \ __u32 seclabel,\n\t\t\t __u32 dstid, const struct trace_ctx *trace)\n{\n\t__u32\
+    \ ifindex __maybe_unused;\n\tint ret __maybe_unused;\n\n#ifdef ENABLE_IPSEC\n\t\
+    if (encrypt_key)\n\t\treturn set_ipsec_encrypt(ctx, encrypt_key, tunnel_endpoint,\n\
+    \t\t\t\t\t seclabel);\n#endif\n\n#if !defined(ENABLE_NODEPORT) && defined(ENABLE_HOST_FIREWALL)\n\
+    \t/* For the host firewall, traffic from a pod to a remote node is sent\n\t *\
+    \ through the tunnel. In the case of node --> VIP@remote pod, packets may\n\t\
+    \ * be DNATed when they enter the remote node. If kube-proxy is used, the\n\t\
+    \ * response needs to go through the stack on the way to the tunnel, to\n\t *\
+    \ apply the correct reverse DNAT.\n\t * See #14674 for details.\n\t */\n\tret\
+    \ = __encap_with_nodeid(ctx, tunnel_endpoint, seclabel, dstid, NOT_VTEP_DST,\n\
+    \t\t\t\t  trace->reason, trace->monitor, &ifindex);\n\n// CONTEXT: encap_and_redirect_lxc(struct\
+    \ __ctx_buff *ctx, __u32 tunnel_endpoint,\n\t\t\t\t\t\tencrypt_key, seclabel,\
+    \ dstid,\n\t\t\t\t\t\ttrace);\n\n\ttunnel = map_lookup_elem(&TUNNEL_MAP, key);\n\
+    \tif (!tunnel)\n\t\treturn DROP_NO_TUNNEL_ENDPOINT;\n\n#ifdef ENABLE_IPSEC\n\t\
+    if (tunnel->key) {\n\t\t__u8 min_encrypt_key = get_min_encrypt_key(tunnel->key);\n\
+    \n\t\treturn set_ipsec_encrypt(ctx, min_encrypt_key, tunnel->ip4,\n\t\t\t\t\t\
+    \ seclabel);\n\t}\n#endif\n\treturn __encap_and_redirect_with_nodeid(ctx, tunnel->ip4,\
+    \ seclabel,\n\t\t\t\t\t\tdstid, NOT_VTEP_DST, trace);\n}\n\nstatic __always_inline\
+    \ int\nencap_and_redirect_netdev(struct __ctx_buff *ctx, struct tunnel_key *k,\n\
+    \t\t\t  __u8 encrypt_key __maybe_unused,\n\t\t\t  __u32 seclabel, const struct\
+    \ trace_ctx *trace)\n{\n\tstruct tunnel_value *tunnel;\n\n\ttunnel = map_lookup_elem(&TUNNEL_MAP,\
+    \ k);\n\tif (!tunnel)\n\t\treturn DROP_NO_TUNNEL_ENDPOINT;\n\n#ifdef ENABLE_IPSEC\n\
+    \tif (encrypt_key)\n\t\treturn set_ipsec_encrypt(ctx, encrypt_key, tunnel->ip4,\n\
+    \t\t\t\t\t seclabel);\n#endif\n\n\treturn __encap_and_redirect_with_nodeid(ctx,\
+    \ tunnel->ip4, seclabel,\n\t\t\t\t\t\t0, NOT_VTEP_DST, trace);\n}\n#endif /* TUNNEL_MODE\
+    \ */\n\n#endif /* HAVE_ENCAP */\n#endif /* __LIB_ENCAP_H_ */\n\n// FILE: bpf/lib/encrypt.h\n\
+    #ifndef __LIB_ENCRYPT_H_\n#define __LIB_ENCRYPT_H_\n\n#include <bpf/ctx/skb.h>\n\
+    #include <bpf/api.h>\n#include <linux/if_ether.h>\n#include <linux/ip.h>\n\n#include\
+    \ \"lib/common.h\"\n\n#ifdef ENABLE_IPSEC\nstatic __always_inline int\nset_ipsec_encrypt_mark(struct\
+    \ __ctx_buff *ctx, __u8 key, __u32 tunnel_endpoint)\n{\n\tstruct node_key node_ip\
+    \ = {};\n\t__u16 *node_id;\n\n\tnode_ip.family = ENDPOINT_KEY_IPV4;\n\tnode_ip.ip4\
+    \ = tunnel_endpoint;\n\tnode_id = map_lookup_elem(&NODE_MAP, &node_ip);\n\tif\
+    \ (!node_id)\n\t\treturn DROP_NO_NODE_ID;\n\n\tset_encrypt_key_mark(ctx, key,\
+    \ *node_id);\n\treturn CTX_ACT_OK;\n}\n\nstatic __always_inline int\nset_ipsec_encrypt(struct\
+    \ __ctx_buff *ctx, __u8 key, __u32 tunnel_endpoint,\n\t\t  __u32 seclabel)\n{\n\
+    \t/* IPSec is performed by the stack on any packets with the\n\t * MARK_MAGIC_ENCRYPT\
+    \ bit set. During the process though we\n\t * lose the lxc context (seclabel and\
+    \ tunnel endpoint). The\n\t * tunnel endpoint can be looked up from daddr but\
+    \ the sec\n\t * label is stashed in the mark and extracted in bpf_host\n\t * to\
+    \ send ctx onto tunnel for encap.\n\t */\n\tset_identity_meta(ctx, seclabel);\n\
+    \treturn set_ipsec_encrypt_mark(ctx, key, tunnel_endpoint);\n}\n\nstatic __always_inline\
+    \ int\ndo_decrypt(struct __ctx_buff *ctx, __u16 proto)\n{\n\tvoid *data, *data_end;\n\
+    \t__u8 protocol = 0;\n\tbool decrypted;\n#ifdef ENABLE_IPV6\n\tstruct ipv6hdr\
+    \ *ip6;\n#endif\n#ifdef ENABLE_IPV4\n\n// FILE: bpf/lib/overloadable_skb.h\n//\
+    \ CONTEXT: set_identity_meta(struct __sk_buff *ctx, __u32 identity)\n\tctx->cb[CB_ENCRYPT_IDENTITY]\
+    \ = identity;\n}\n\n/**\n * set_encrypt_key - pushes 8 bit key, 16 bit node ID,\
+    \ and encryption marker into ctx mark value.\n */\nstatic __always_inline __maybe_unused\
+    \ void\nset_encrypt_key_mark(struct __sk_buff *ctx, __u8 key, __u32 node_id)\n\
+    {\n\tctx->mark = or_encrypt_key(key) | node_id << 16;\n}\n\n/**\n * set_encrypt_mark\
+    \ - sets the encryption mark to make skb to match ip rule\n * used to steer packet\
+    \ into Wireguard tunnel device (cilium_wg0) in order to\n * encrypt it.\n */\n\
+    static __always_inline __maybe_unused void\nset_encrypt_mark(struct __sk_buff\
+    \ *ctx)\n{\n\tctx->mark |= MARK_MAGIC_ENCRYPT;\n}\n\nstatic __always_inline __maybe_unused\
+    \ int\n\n// FILE: bpf/lib/overloadable_xdp.h\n// CONTEXT: set_identity_mark(struct\
+    \ xdp_md *ctx __maybe_unused, __u32 identity __maybe_unus\nstatic __always_inline\
+    \ __maybe_unused void\nset_identity_meta(struct xdp_md *ctx __maybe_unused,\n\t\
+    \t__u32 identity __maybe_unused)\n{\n}\n\nstatic __always_inline __maybe_unused\
+    \ void\nset_encrypt_key_mark(struct xdp_md *ctx __maybe_unused, __u8 key __maybe_unused,\n\
+    \t\t     __u32 node_id __maybe_unused)\n{\n}\n\nstatic __always_inline __maybe_unused\
+    \ int\nredirect_self(struct xdp_md *ctx __maybe_unused)\n{\n\treturn XDP_TX;\n\
+    }\n\n#define RECIRC_MARKER\t5 /* tail call recirculation */\n#define XFER_MARKER\t\
+    6 /* xdp -> skb meta transfer */\n\nstatic __always_inline __maybe_unused void\n\
+    ctx_skip_nodeport_clear(struct xdp_md *ctx __maybe_unused)\n{"
+  fixed_code: "// FILE: bpf/bpf_host.c\n// CONTEXT: skip_host_firewall:\n#endif\n\n\
+    \tif (!info || (!from_ingress_proxy &&\n\t\t      info->sec_label == WORLD_ID))\
+    \ {\n\t\t/* See IPv4 comment. */\n\t\treturn DROP_UNROUTABLE;\n\t}\n\n#if defined(ENABLE_IPSEC)\
+    \ && !defined(TUNNEL_MODE)\n\t/* See IPv4 comment. */\n\tif (from_ingress_proxy\
+    \ && info->tunnel_endpoint && encrypt_key)\n\t\treturn set_ipsec_encrypt(ctx,\
+    \ encrypt_key, info->tunnel_endpoint,\n\t\t\t\t\t info->sec_label, true);\n#endif\n\
+    \n\treturn CTX_ACT_OK;\n}\n\nstatic __always_inline int\ntail_handle_ipv6(struct\
+    \ __ctx_buff *ctx, const bool from_host)\n{\n\t__u32 proxy_identity = ctx_load_meta(ctx,\
+    \ CB_SRC_LABEL);\n\tint ret;\n\t__s8 ext_err = 0;\n\n\n// CONTEXT: skip_vtep:\n\
+    \t\t *\n\t\t * Note that we do not drop packets from ingress proxy even if\n\t\
+    \t * they are going to WORLD_ID. This is to avoid\n\t\t * https://github.com/cilium/cilium/issues/21954.\n\
+    \t\t */\n\t\treturn DROP_UNROUTABLE;\n\t}\n\n#if defined(ENABLE_IPSEC) && !defined(TUNNEL_MODE)\n\
+    \t/* We encrypt host to remote pod packets only if they are from ingress proxy.\
+    \ */\n\tif (from_ingress_proxy && info->tunnel_endpoint && encrypt_key)\n\t\t\
+    return set_ipsec_encrypt(ctx, encrypt_key, info->tunnel_endpoint,\n\t\t\t\t\t\
+    \ info->sec_label, true);\n#endif\n\n\treturn CTX_ACT_OK;\n}\n\nstatic __always_inline\
+    \ int\ntail_handle_ipv4(struct __ctx_buff *ctx, __u32 ipcache_srcid, const bool\
+    \ from_host)\n{\n\t__u32 proxy_identity = ctx_load_meta(ctx, CB_SRC_LABEL);\n\t\
+    int ret;\n\t__s8 ext_err = 0;\n\n\n// CONTEXT: __section(\"to-host\")\nint cil_to_host(struct\
+    \ __ctx_buff *ctx)\n{\n\t__u32 magic = ctx_load_meta(ctx, CB_PROXY_MAGIC);\n\t\
+    __u16 __maybe_unused proto = 0;\n\tstruct trace_ctx trace = {\n\t\t.reason = TRACE_REASON_UNKNOWN,\n\
+    \t\t.monitor = 0,\n\t};\n\tint ret = CTX_ACT_OK;\n\tbool traced = false;\n\t__u32\
+    \ src_id = 0;\n\n\tif ((magic & MARK_MAGIC_HOST_MASK) == MARK_MAGIC_ENCRYPT) {\n\
+    \t\tctx->mark = magic; /* CB_ENCRYPT_MAGIC */\n\t\tsrc_id = ctx_load_meta(ctx,\
+    \ CB_ENCRYPT_IDENTITY);\n\t} else if ((magic & 0xFFFF) == MARK_MAGIC_TO_PROXY)\
+    \ {\n\t\t/* Upper 16 bits may carry proxy port number */\n\t\t__be16 port = magic\
+    \ >> 16;\n\n\t\tctx_store_meta(ctx, CB_PROXY_MAGIC, 0);\n\t\tret = ctx_redirect_to_proxy_first(ctx,\
+    \ port);\n\t\tif (IS_ERR(ret))\n\t\t\tgoto out;\n\t\t/* We already traced this\
+    \ in the previous prog with more\n\t\t * background context, skip trace here.\n\
+    \t\t */\n\t\ttraced = true;\n\t}\n\n// FILE: bpf/bpf_lxc.c\n// CONTEXT: pass_to_stack:\n\
+    #endif\n\n\tif (ipv6_store_flowlabel(ctx, ETH_HLEN, SECLABEL_NB) < 0)\n\t\treturn\
+    \ DROP_WRITE_ERROR;\n\n#ifdef ENABLE_WIREGUARD\n\tif (dst_remote_ep)\n\t\tset_encrypt_mark(ctx);\n\
+    \telse\n#elif !defined(TUNNEL_MODE)\n# ifdef ENABLE_IPSEC\n\tif (encrypt_key &&\
+    \ tunnel_endpoint) {\n\t\tret = set_ipsec_encrypt(ctx, encrypt_key, tunnel_endpoint,\
+    \ SECLABEL, false);\n\t\tif (unlikely(ret != CTX_ACT_OK))\n\t\t\treturn ret;\n\
+    \t} else\n# endif /* ENABLE_IPSEC */\n#endif /* ENABLE_WIREGUARD */\n\t{\n#ifdef\
+    \ ENABLE_IDENTITY_MARK\n\t\t/* Always encode the source identity when passing\
+    \ to the stack.\n\t\t * If the stack hairpins the packet back to a local endpoint\
+    \ the\n\t\t * source identity can still be derived even if SNAT is\n\t\t * performed\
+    \ by a component such as portmap.\n\t\t */\n\t\tctx->mark |= MARK_MAGIC_IDENTITY;\n\
+    \t\tset_identity_mark(ctx, SECLABEL);\n\n// CONTEXT: pass_to_stack:\n\tret = ipv4_l3(ctx,\
+    \ ETH_HLEN, NULL, (__u8 *)&router_mac.addr, ip4);\n\tif (unlikely(ret != CTX_ACT_OK))\n\
+    \t\treturn ret;\n#endif\n\n#ifdef ENABLE_WIREGUARD\n\tif (dst_remote_ep)\n\t\t\
+    set_encrypt_mark(ctx);\n\telse /* Wireguard and identity mark are mutually exclusive\
+    \ */\n#elif !defined(TUNNEL_MODE)\n# ifdef ENABLE_IPSEC\n\tif (encrypt_key &&\
+    \ tunnel_endpoint) {\n\t\tret = set_ipsec_encrypt(ctx, encrypt_key, tunnel_endpoint,\
+    \ SECLABEL, false);\n\t\tif (unlikely(ret != CTX_ACT_OK))\n\t\t\treturn ret;\n\
+    \t} else\n# endif /* ENABLE_IPSEC */\n#endif /* ENABLE_WIREGUARD */\n\t{\n#ifdef\
+    \ ENABLE_IDENTITY_MARK\n\t\t/* Always encode the source identity when passing\
+    \ to the stack.\n\t\t * If the stack hairpins the packet back to a local endpoint\
+    \ the\n\t\t * source identity can still be derived even if SNAT is\n\t\t * performed\
+    \ by a component such as portmap.\n\t\t */\n\t\tctx->mark |= MARK_MAGIC_IDENTITY;\n\
+    \t\tset_identity_mark(ctx, SECLABEL);\n\n// FILE: bpf/lib/encap.h\n// CONTEXT:\
+    \ __encap_and_redirect_with_nodeid(struct __ctx_buff *ctx, __u32 tunnel_endpoint,\n\
+    \ * returns CTX_ACT_REDIRECT on successful redirect to tunnel device.\n * On error\
+    \ returns CTX_ACT_DROP or DROP_WRITE_ERROR.\n */\nstatic __always_inline int\n\
+    encap_and_redirect_with_nodeid(struct __ctx_buff *ctx, __u32 tunnel_endpoint,\n\
+    \t\t\t       __u8 encrypt_key __maybe_unused,\n\t\t\t       __u32 seclabel, __u32\
+    \ dstid,\n\t\t\t       const struct trace_ctx *trace)\n{\n#ifdef ENABLE_IPSEC\n\
+    \tif (encrypt_key)\n\t\treturn set_ipsec_encrypt(ctx, encrypt_key, tunnel_endpoint,\n\
+    \t\t\t\t\t seclabel, true);\n#endif\n\n\treturn __encap_and_redirect_with_nodeid(ctx,\
+    \ tunnel_endpoint, seclabel, dstid, NOT_VTEP_DST,\n\t\t\t\t\t\ttrace);\n}\n\n\
+    /* __encap_and_redirect_lxc() is a variant of encap_and_redirect_lxc()\n * that\
+    \ requires a valid tunnel_endpoint.\n */\nstatic __always_inline int\n__encap_and_redirect_lxc(struct\
+    \ __ctx_buff *ctx, __u32 tunnel_endpoint,\n\t\t\t __u8 encrypt_key __maybe_unused,\
+    \ __u32 seclabel,\n\t\t\t __u32 dstid, const struct trace_ctx *trace)\n{\n\t__u32\
+    \ ifindex __maybe_unused;\n\tint ret __maybe_unused;\n\n#ifdef ENABLE_IPSEC\n\t\
+    if (encrypt_key)\n\t\treturn set_ipsec_encrypt(ctx, encrypt_key, tunnel_endpoint,\n\
+    \t\t\t\t\t seclabel, false);\n#endif\n\n#if !defined(ENABLE_NODEPORT) && defined(ENABLE_HOST_FIREWALL)\n\
+    \t/* For the host firewall, traffic from a pod to a remote node is sent\n\t *\
+    \ through the tunnel. In the case of node --> VIP@remote pod, packets may\n\t\
+    \ * be DNATed when they enter the remote node. If kube-proxy is used, the\n\t\
+    \ * response needs to go through the stack on the way to the tunnel, to\n\t *\
+    \ apply the correct reverse DNAT.\n\t * See #14674 for details.\n\t */\n\tret\
+    \ = __encap_with_nodeid(ctx, tunnel_endpoint, seclabel, dstid, NOT_VTEP_DST,\n\
+    \t\t\t\t  trace->reason, trace->monitor, &ifindex);\n\n// CONTEXT: encap_and_redirect_lxc(struct\
+    \ __ctx_buff *ctx, __u32 tunnel_endpoint,\n\t\t\t\t\t\tencrypt_key, seclabel,\
+    \ dstid,\n\t\t\t\t\t\ttrace);\n\n\ttunnel = map_lookup_elem(&TUNNEL_MAP, key);\n\
+    \tif (!tunnel)\n\t\treturn DROP_NO_TUNNEL_ENDPOINT;\n\n#ifdef ENABLE_IPSEC\n\t\
+    if (tunnel->key) {\n\t\t__u8 min_encrypt_key = get_min_encrypt_key(tunnel->key);\n\
+    \n\t\treturn set_ipsec_encrypt(ctx, min_encrypt_key, tunnel->ip4,\n\t\t\t\t\t\
+    \ seclabel, false);\n\t}\n#endif\n\treturn __encap_and_redirect_with_nodeid(ctx,\
+    \ tunnel->ip4, seclabel,\n\t\t\t\t\t\tdstid, NOT_VTEP_DST, trace);\n}\n\nstatic\
+    \ __always_inline int\nencap_and_redirect_netdev(struct __ctx_buff *ctx, struct\
+    \ tunnel_key *k,\n\t\t\t  __u8 encrypt_key __maybe_unused,\n\t\t\t  __u32 seclabel,\
+    \ const struct trace_ctx *trace)\n{\n\tstruct tunnel_value *tunnel;\n\n\ttunnel\
+    \ = map_lookup_elem(&TUNNEL_MAP, k);\n\tif (!tunnel)\n\t\treturn DROP_NO_TUNNEL_ENDPOINT;\n\
+    \n#ifdef ENABLE_IPSEC\n\tif (encrypt_key)\n\t\treturn set_ipsec_encrypt(ctx, encrypt_key,\
+    \ tunnel->ip4,\n\t\t\t\t\t seclabel, true);\n#endif\n\n\treturn __encap_and_redirect_with_nodeid(ctx,\
+    \ tunnel->ip4, seclabel,\n\t\t\t\t\t\t0, NOT_VTEP_DST, trace);\n}\n#endif /* TUNNEL_MODE\
+    \ */\n\n#endif /* HAVE_ENCAP */\n#endif /* __LIB_ENCAP_H_ */\n\n// FILE: bpf/lib/encrypt.h\n\
+    #ifndef __LIB_ENCRYPT_H_\n#define __LIB_ENCRYPT_H_\n\n#include <bpf/ctx/skb.h>\n\
+    #include <bpf/api.h>\n#include <linux/if_ether.h>\n#include <linux/ip.h>\n\n#include\
+    \ \"lib/common.h\"\n\n#ifdef ENABLE_IPSEC\nstatic __always_inline int\nset_ipsec_encrypt(struct\
+    \ __ctx_buff *ctx, __u8 key, __u32 tunnel_endpoint,\n\t\t  __u32 seclabel, bool\
+    \ use_meta)\n{\n\t/* IPSec is performed by the stack on any packets with the\n\
+    \t * MARK_MAGIC_ENCRYPT bit set. During the process though we\n\t * lose the lxc\
+    \ context (seclabel and tunnel endpoint). The\n\t * tunnel endpoint can be looked\
+    \ up from daddr but the sec\n\t * label is stashed in the mark or cb, and extracted\
+    \ in\n\t * bpf_host to send ctx onto tunnel for encap.\n\t */\n\n\tstruct node_key\
+    \ node_ip = {};\n\t__u16 *node_id;\n\n\tnode_ip.family = ENDPOINT_KEY_IPV4;\n\t\
+    node_ip.ip4 = tunnel_endpoint;\n\tnode_id = map_lookup_elem(&NODE_MAP, &node_ip);\n\
+    \tif (!node_id)\n\t\treturn DROP_NO_NODE_ID;\n\n\tset_identity_meta(ctx, seclabel);\n\
+    \tif (use_meta)\n\t\tset_encrypt_key_meta(ctx, key, *node_id);\n\telse\n\t\tset_encrypt_key_mark(ctx,\
+    \ key, *node_id);\n\treturn CTX_ACT_OK;\n}\n\nstatic __always_inline int\ndo_decrypt(struct\
+    \ __ctx_buff *ctx, __u16 proto)\n{\n\tvoid *data, *data_end;\n\t__u8 protocol\
+    \ = 0;\n\tbool decrypted;\n#ifdef ENABLE_IPV6\n\tstruct ipv6hdr *ip6;\n#endif\n\
+    #ifdef ENABLE_IPV4\n\n// FILE: bpf/lib/overloadable_skb.h\n// CONTEXT: set_identity_meta(struct\
+    \ __sk_buff *ctx, __u32 identity)\n\tctx->cb[CB_ENCRYPT_IDENTITY] = identity;\n\
+    }\n\n/**\n * set_encrypt_key - pushes 8 bit key, 16 bit node ID, and encryption\
+    \ marker into ctx mark value.\n */\nstatic __always_inline __maybe_unused void\n\
+    set_encrypt_key_mark(struct __sk_buff *ctx, __u8 key, __u32 node_id)\n{\n\tctx->mark\
+    \ = or_encrypt_key(key) | node_id << 16;\n}\n\nstatic __always_inline __maybe_unused\
+    \ void\nset_encrypt_key_meta(struct __sk_buff *ctx, __u8 key, __u32 node_id)\n\
+    {\n\tctx->cb[CB_ENCRYPT_MAGIC] = or_encrypt_key(key) | node_id << 16;\n}\n\n/**\n\
+    \ * set_encrypt_mark - sets the encryption mark to make skb to match ip rule\n\
+    \ * used to steer packet into Wireguard tunnel device (cilium_wg0) in order to\n\
+    \ * encrypt it.\n */\nstatic __always_inline __maybe_unused void\nset_encrypt_mark(struct\
+    \ __sk_buff *ctx)\n{\n\tctx->mark |= MARK_MAGIC_ENCRYPT;\n}\n\nstatic __always_inline\
+    \ __maybe_unused int\n\n// FILE: bpf/lib/overloadable_xdp.h\n// CONTEXT: set_identity_mark(struct\
+    \ xdp_md *ctx __maybe_unused, __u32 identity __maybe_unus\nstatic __always_inline\
+    \ __maybe_unused void\nset_identity_meta(struct xdp_md *ctx __maybe_unused,\n\t\
+    \t__u32 identity __maybe_unused)\n{\n}\n\nstatic __always_inline __maybe_unused\
+    \ void\nset_encrypt_key_mark(struct xdp_md *ctx __maybe_unused, __u8 key __maybe_unused,\n\
+    \t\t     __u32 node_id __maybe_unused)\n{\n}\n\nstatic __always_inline __maybe_unused\
+    \ void\nset_encrypt_key_meta(struct __sk_buff *ctx __maybe_unused, __u8 key __maybe_unused,\n\
+    \t\t     __u32 node_id __maybe_unused)\n{\n}\n\nstatic __always_inline __maybe_unused\
+    \ int\nredirect_self(struct xdp_md *ctx __maybe_unused)\n{\n\treturn XDP_TX;\n\
+    }\n\n#define RECIRC_MARKER\t5 /* tail call recirculation */\n#define XFER_MARKER\t\
+    6 /* xdp -> skb meta transfer */\n\nstatic __always_inline __maybe_unused void\n\
+    ctx_skip_nodeport_clear(struct xdp_md *ctx __maybe_unused)\n{"
+  diff_summary: |-
+    bpf/bpf_host.c:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: skip_host_firewall:, skip_vtep:, __section("to-host").
+    bpf/bpf_lxc.c:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: pass_to_stack:.
+    bpf/lib/encap.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: __encap_and_redirect_with_nodeid(struct __ctx_buff *ctx, __u32 tunnel_endpoint,, encap_and_redirect_lxc(struct __ctx_buff *ctx, __u32 tunnel_endpoint,.
+    bpf/lib/encrypt.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: the touched section.
+    bpf/lib/overloadable_skb.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: set_identity_meta(struct __sk_buff *ctx, __u32 identity).
+    bpf/lib/overloadable_xdp.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: set_identity_mark(struct xdp_md *ctx __maybe_unused, __u32 identity __maybe_unus.
+    - Commit subject: bpf: work around scrubbing of skb->mark during veth transition.

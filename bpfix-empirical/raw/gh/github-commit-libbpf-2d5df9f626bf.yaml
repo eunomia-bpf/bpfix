@@ -1,0 +1,60 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-libbpf-2d5df9f626bf
+source_kind: github_commit
+source:
+  url: https://github.com/libbpf/libbpf/commit/2d5df9f626bff591454defa5996166e453c0d516
+  title: 'libbpf: Fix potential uninitialized tail padding with LIBBPF_OPTS_RESET'
+  repository: https://github.com/libbpf/libbpf
+  commit: 2d5df9f626bff591454defa5996166e453c0d516
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-libbpf-2d5df9f626bf.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Changes LIBBPF_OPTS_RESET to avoid uninitialized tail padding via a temporary
+    and memcpy. This is user-space options-struct initialization, not verifier bytecode.
+raw:
+  case_id: github-commit-libbpf-2d5df9f626bf
+  source: github_commits
+  repository: https://github.com/libbpf/libbpf
+  commit_hash: 2d5df9f626bff591454defa5996166e453c0d516
+  commit_message: 'libbpf: Fix potential uninitialized tail padding with LIBBPF_OPTS_RESET'
+  commit_date: '2023-11-07'
+  fix_type: other
+  buggy_code: "// FILE: src/libbpf_common.h\n\t\t};\t\t\t\t\t\t\t    \\\n\t})\n\n\
+    /* Helper macro to clear and optionally reinitialize libbpf options struct\n *\n\
+    \ * Small helper macro to reset all fields and to reinitialize the common\n *\
+    \ structure size member. Values provided by users in struct initializer-\n * syntax\
+    \ as varargs can be provided as well to reinitialize options struct\n * specific\
+    \ members.\n */\n#define LIBBPF_OPTS_RESET(NAME, ...)\t\t\t\t\t    \\\n\tdo {\t\
+    \t\t\t\t\t\t\t    \\\n\t\tmemset(&NAME, 0, sizeof(NAME));\t\t\t\t    \\\n\t\t\
+    NAME = (typeof(NAME)) {\t\t\t\t\t    \\\n\t\t\t.sz = sizeof(NAME),\t\t\t\t   \
+    \ \\\n\t\t\t__VA_ARGS__\t\t\t\t\t    \\\n\t\t};\t\t\t\t\t\t\t    \\\n\t} while\
+    \ (0)\n\n#endif /* __LIBBPF_LIBBPF_COMMON_H */"
+  fixed_code: "// FILE: src/libbpf_common.h\n\t\t};\t\t\t\t\t\t\t    \\\n\t})\n\n\
+    /* Helper macro to clear and optionally reinitialize libbpf options struct\n *\n\
+    \ * Small helper macro to reset all fields and to reinitialize the common\n *\
+    \ structure size member. Values provided by users in struct initializer-\n * syntax\
+    \ as varargs can be provided as well to reinitialize options struct\n * specific\
+    \ members.\n */\n#define LIBBPF_OPTS_RESET(NAME, ...)\t\t\t\t\t    \\\n\tdo {\t\
+    \t\t\t\t\t\t\t    \\\n\t\ttypeof(NAME) ___##NAME = ({ \t\t\t\t    \\\n\t\t\tmemset(&___##NAME,\
+    \ 0, sizeof(NAME));\t\t    \\\n\t\t\t(typeof(NAME)) {\t\t\t\t    \\\n\t\t\t\t\
+    .sz = sizeof(NAME),\t\t\t    \\\n\t\t\t\t__VA_ARGS__\t\t\t\t    \\\n\t\t\t};\t\
+    \t\t\t\t\t    \\\n\t\t});\t\t\t\t\t\t\t    \\\n\t\tmemcpy(&NAME, &___##NAME, sizeof(NAME));\t\
+    \t    \\\n\t} while (0)\n\n#endif /* __LIBBPF_LIBBPF_COMMON_H */"
+  diff_summary: |-
+    src/libbpf_common.h:
+    - Applied a small verifier-related code change captured by the exact before/after snippets below.
+    - Affected context: the touched section.
+    - Commit subject: libbpf: Fix potential uninitialized tail padding with LIBBPF_OPTS_RESET.

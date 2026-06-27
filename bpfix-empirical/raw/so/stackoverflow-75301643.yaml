@@ -1,0 +1,139 @@
+schema_version: bpfix.raw_external/v1
+raw_id: stackoverflow-75301643
+source_kind: stackoverflow
+source:
+  url: https://stackoverflow.com/questions/75301643/bpf-verifier-throws-error-bpf-program-is-too-large
+  title: BPF verifier throws error &quot;BPF program is too large&quot;
+  repository: null
+  commit: null
+  collected_at: '2026-03-11T16:03:21+00:00'
+collector:
+  original_path: bpfix-empirical/raw/so/stackoverflow-75301643.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: true
+  verifier_log_block_count: 0
+  source_snippet_count: 2
+  has_buggy_code: false
+  has_fixed_code: false
+  has_fix_description: false
+reproduction:
+  status: missing_verifier_log
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: source_fragments_present_but_verifier_log_block_empty
+raw:
+  case_id: stackoverflow-75301643
+  source: stackoverflow
+  collected_at: '2026-03-11T16:03:21+00:00'
+  question:
+    question_id: 75301643
+    title: BPF verifier throws error &quot;BPF program is too large&quot;
+    url: https://stackoverflow.com/questions/75301643/bpf-verifier-throws-error-bpf-program-is-too-large
+    tags:
+    - c
+    - linux
+    - encryption
+    - ebpf
+    score: 0
+    answer_count: 0
+    is_answered: false
+  verifier_log:
+    blocks: []
+    combined: ''
+    generated:
+      log: |-
+        libbpf: loading object from /tmp/bpfix_oracle_m68q9cpv/prog_wrap-vmlinux.o
+        libbpf: elf: section(3) license, size 4, link 0, flags 3, type=1
+        libbpf: license of /tmp/bpfix_oracle_m68q9cpv/prog_wrap-vmlinux.o is GPL
+        libbpf: elf: section(12) .BTF, size 163, link 0, flags 0, type=1
+        libbpf: elf: section(18) .symtab, size 216, link 1, flags 0, type=2
+        libbpf: looking for externs among 9 symbols...
+        libbpf: collected 0 externs total
+        libbpf: object 'prog_wrap-vmlin': failed (-95) to create BPF token from '/sys/fs/bpf', skipping optional step...
+        Error: object file doesn't contain any bpf program
+      verifier_pass: false
+      template_used: wrap-vmlinux
+      generated_at: '2026-03-13T21:13:50.155984+00:00'
+      old_log_len: 0
+      new_log_len: 592
+  source_snippets:
+  - |-
+    static __always_inline long int encrypt_decrypt(struct ipv6_destopt_pdmv2_unencrypted *pdm)
+    {
+        // xor all fields after flip bit with a key of size 2 bytes
+        __u16 key = 0x1234;
+        __u32 key1 = key << 16 | key;
+        // get first 8 bits of key
+        __u8 key2 = key >> 8;
+        __u8 key3 = key & 0xFF;
+        example_struct->a = example_struct->a ^ key2;
+        example_struct->b = example_struct->b ^ key3;
+        example_struct->c = example_struct->c ^ key1;
+        example_struct->d = example_struct->d ^ key;
+        example_struct->e = example_struct->e ^ key;
+        example_struct->f = example_struct->f ^ key;
+        example_struct->g = example_struct->g ^ key;
+        return 0;
+    }
+  - |-
+    struct example_struct
+    {
+        __u8 u;
+        __u8 v;
+        __u16 x;
+        __u16 y;
+        // following fields are encrypted
+        __u8 a;
+        __u8 b;
+        __u32 c;
+        __u16 d;
+        __u16 e;
+        __u16 f;
+        __u16 g;
+        __uint128_t more_stuff_1;
+
+        __u8 more_stuff_2;
+        __u8 more_stuff_3;
+    };
+  question_body_text: |-
+    I am trying to define a struct and trying to perform XOR encryption on it using a key of 2 bytes.
+    static __always_inline long int encrypt_decrypt(struct ipv6_destopt_pdmv2_unencrypted *pdm)
+    {
+    // xor all fields after flip bit with a key of size 2 bytes
+    __u16 key = 0x1234;
+    __u32 key1 = key << 16 | key;
+    // get first 8 bits of key
+    __u8 key2 = key >> 8;
+    __u8 key3 = key & 0xFF;
+    example_struct->a = example_struct->a ^ key2;
+    example_struct->b = example_struct->b ^ key3;
+    example_struct->c = example_struct->c ^ key1;
+    example_struct->d = example_struct->d ^ key;
+    example_struct->e = example_struct->e ^ key;
+    example_struct->f = example_struct->f ^ key;
+    example_struct->g = example_struct->g ^ key;
+    return 0;
+    }
+    The struct example_struct is given by,
+    struct example_struct
+    {
+    __u8 u;
+    __u8 v;
+    __u16 x;
+    __u16 y;
+    // following fields are encrypted
+    __u8 a;
+    __u8 b;
+    __u32 c;
+    __u16 d;
+    __u16 e;
+    __u16 f;
+    __u16 g;
+    __uint128_t more_stuff_1;
+    __u8 more_stuff_2;
+    __u8 more_stuff_3;
+    };
+    When I comment out the line example_struct->a = example_struct->a ^ key2;, the verifier does not throw any error, but when I include this one line, the verifier throws the error processed 1000001 instructions, bpf program too large. The number of instructions it shows when it throws this error in the bpf program itself is 534. Why is this happening?
+  selected_answer: {}

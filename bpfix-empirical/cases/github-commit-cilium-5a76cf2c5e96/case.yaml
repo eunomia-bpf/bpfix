@@ -1,0 +1,47 @@
+schema_version: bpfix.case/v1
+case_id: github-commit-cilium-5a76cf2c5e96
+source:
+  kind: github_commit
+  url: https://github.com/cilium/cilium/commit/5a76cf2c5e9648693ec15f59fc73847be3c5a1b6
+  repository: https://github.com/cilium/cilium
+  commit: 5a76cf2c5e9648693ec15f59fc73847be3c5a1b6
+  upstream_file: bpf/bpf_sock.c
+  raw_excerpt_files:
+  - bpfix-empirical/raw/gh/github-commit-cilium-5a76cf2c5e96.yaml
+reproducer:
+  reconstruction: reconstructed
+  notes: Standalone reconstruction of the commit's verifier-visible failure mode. The upstream
+    log reports pointer arithmetic on a map_value_or_null backend pointer before the verifier
+    can prove the lookup result is non-null.
+capture:
+  capture_id: github-commit-cilium-5a76cf2c5e96__kernel-6.15.11-clang-18-log2
+  terminal_error: R1 pointer arithmetic on map_value_or_null prohibited, null-check it first
+  rejected_insn_idx: 8
+external_match:
+  status: not_applicable
+  policy: verifier_symptom
+  matched_messages:
+  - R9 pointer arithmetic on map_value_or_null prohibited, null-check it first
+  - R7 pointer arithmetic on map_value_or_null prohibited, null-check it first
+  - R1 pointer arithmetic on map_value_or_null prohibited, null-check it first
+  notes: Commit-derived case reconstructed from raw diff/context; no external verifier log
+    matching is required.
+label:
+  capture_id: github-commit-cilium-5a76cf2c5e96__kernel-6.15.11-clang-18-log2
+  taxonomy_class: source_bug
+  error_id: BPFIX-E002
+  confidence: medium
+  label_source: external_replay_reconstruction
+  root_cause_description: A map lookup result is adjusted as a backend field pointer while
+    it is still verifier-typed as map_value_or_null.
+  root_cause_insn_idx: 8
+  rejected_line: 'asm volatile("%0 += 4" : "+r"(field));'
+  root_cause_line: 'asm volatile("%0 += 4" : "+r"(field));'
+  localization_confidence: medium
+  fix_type: null_check
+  fix_direction: Prove the map lookup result is non-null before deriving any field pointer
+    or doing pointer arithmetic on it.
+reporting:
+  family_id: github-commit-cilium-5a76cf2c5e96
+  representative: true
+  notes: Reconstruction Batch 10.

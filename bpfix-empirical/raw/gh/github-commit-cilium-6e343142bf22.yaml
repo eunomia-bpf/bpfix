@@ -1,0 +1,271 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-6e343142bf22
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/6e343142bf22c215ff497005e9a77cda3f812558
+  title: 'bpf/nodeport: split the cilium call ipv4 nodeport nat'
+  repository: https://github.com/cilium/cilium
+  commit: 6e343142bf22c215ff497005e9a77cda3f812558
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-6e343142bf22.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: environment_required
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Splits IPv4 nodeport NAT into tail calls to reduce full-program complexity.
+    Replay requires generated nodeport/NAT/FIB datapath and historical complexity
+    behavior.
+raw:
+  case_id: github-commit-cilium-6e343142bf22
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: 6e343142bf22c215ff497005e9a77cda3f812558
+  commit_message: 'bpf/nodeport: split the cilium call ipv4 nodeport nat'
+  commit_date: '2022-05-06'
+  fix_type: inline_hint
+  buggy_code: "// FILE: bpf/lib/common.h\n#define CILIUM_CALL_IPV4_FROM_OVERLAY\t\t\
+    CILIUM_CALL_IPV4_FROM_LXC\n#define CILIUM_CALL_UNUSED1\t\t\t8\n#define CILIUM_CALL_UNUSED2\t\
+    \t\t9\n#define CILIUM_CALL_IPV6_FROM_LXC\t\t10\n#define CILIUM_CALL_IPV6_FROM_NETDEV\t\
+    \tCILIUM_CALL_IPV6_FROM_LXC\n#define CILIUM_CALL_IPV6_FROM_OVERLAY\t\tCILIUM_CALL_IPV6_FROM_LXC\n\
+    #define CILIUM_CALL_IPV4_TO_LXC_POLICY_ONLY\t11\n#define CILIUM_CALL_IPV4_TO_HOST_POLICY_ONLY\t\
+    CILIUM_CALL_IPV4_TO_LXC_POLICY_ONLY\n#define CILIUM_CALL_IPV6_TO_LXC_POLICY_ONLY\t\
+    12\n#define CILIUM_CALL_IPV6_TO_HOST_POLICY_ONLY\tCILIUM_CALL_IPV6_TO_LXC_POLICY_ONLY\n\
+    #define CILIUM_CALL_IPV4_TO_ENDPOINT\t\t13\n#define CILIUM_CALL_IPV6_TO_ENDPOINT\t\
+    \t14\n#define CILIUM_CALL_IPV4_NODEPORT_NAT\t\t15\n#define CILIUM_CALL_IPV6_NODEPORT_NAT\t\
+    \t16\n#define CILIUM_CALL_IPV4_NODEPORT_REVNAT\t17\n#define CILIUM_CALL_IPV6_NODEPORT_REVNAT\t\
+    18\n#define CILIUM_CALL_IPV4_ENCAP_NODEPORT_NAT\t19\n#define CILIUM_CALL_IPV4_NODEPORT_DSR\t\
+    \t20\n#define CILIUM_CALL_IPV6_NODEPORT_DSR\t\t21\n#define CILIUM_CALL_IPV4_FROM_HOST\t\
+    \t22\n#define CILIUM_CALL_IPV6_FROM_HOST\t\t23\n#define CILIUM_CALL_IPV6_ENCAP_NODEPORT_NAT\t\
+    24\n#define CILIUM_CALL_IPV4_FROM_LXC_CONT\t\t25\n#define CILIUM_CALL_IPV6_FROM_LXC_CONT\t\
+    \t26\n#define CILIUM_CALL_IPV4_CT_INGRESS\t\t27\n#define CILIUM_CALL_IPV4_CT_INGRESS_POLICY_ONLY\t\
+    28\n#define CILIUM_CALL_IPV4_CT_EGRESS\t\t29\n#define CILIUM_CALL_IPV6_CT_INGRESS\t\
+    \t30\n#define CILIUM_CALL_IPV6_CT_INGRESS_POLICY_ONLY\t31\n#define CILIUM_CALL_IPV6_CT_EGRESS\t\
+    \t32\n#define CILIUM_CALL_SRV6_ENCAP\t\t\t33\n#define CILIUM_CALL_SRV6_DECAP\t\
+    \t\t34\n#define CILIUM_CALL_SRV6_REPLY\t\t\t35\n#define CILIUM_CALL_SIZE\t\t\t\
+    36\n\ntypedef __u64 mac_t;\n\nunion v6addr {\n\tstruct {\n\t\t__u32 p1;\n\t\t\
+    __u32 p2;\n\t\t__u32 p3;\n\t\t__u32 p4;\n\t};\n\tstruct {\n\t\t__u64 d1;\n\n//\
+    \ FILE: bpf/lib/nodeport.h\n// CONTEXT: int tail_nodeport_ipv4_dsr(struct __ctx_buff\
+    \ *ctx)\n\tif (eth_store_saddr(ctx, fib_params.l.smac, 0) < 0) {\n\t\tret = DROP_WRITE_ERROR;\n\
+    \t\tgoto drop_err;\n\t}\nout_send:\n\tcilium_capture_out(ctx);\n\treturn ctx_redirect(ctx,\
+    \ fib_params.l.ifindex, 0);\ndrop_err:\n\treturn send_drop_notify_error_ext(ctx,\
+    \ 0, ret, ext_err, CTX_ACT_DROP, METRIC_EGRESS);\n}\n#endif /* ENABLE_DSR */\n\
+    \n__section_tail(CILIUM_MAP_CALLS, CILIUM_CALL_IPV4_NODEPORT_NAT)\nint tail_nodeport_nat_ipv4(struct\
+    \ __ctx_buff *ctx)\n{\n\tenum nat_dir dir = (enum nat_dir)ctx_load_meta(ctx, CB_NAT);\n\
+    \tstruct bpf_fib_lookup_padded fib_params = {\n\t\t.l = {\n\t\t\t.family\t\t=\
+    \ AF_INET,\n\t\t\t.ifindex\t= ctx_get_ifindex(ctx),\n\t\t},\n\t};\n\tstruct ipv4_nat_target\
+    \ target = {\n\t\t.min_port = NODEPORT_PORT_MIN_NAT,\n\t\t.max_port = NODEPORT_PORT_MAX_NAT,\n\
+    \t\t.src_from_world = true,\n\t};\n\tvoid *data, *data_end;\n\tstruct iphdr *ip4;\n\
+    \tbool l2_hdr_required = true;\n\tint ret, ext_err = 0;\n\n\t/* Unfortunately,\
+    \ the bpf_fib_lookup() is not able to set src IP addr.\n\t * So we need to assume\
+    \ that the direct routing device is going to be\n\t * used to fwd the NodePort\
+    \ request, thus SNAT-ing to its IP addr.\n\t * This will change once we have resolved\
+    \ GH#17158.\n\t */\n\ttarget.addr = IPV4_DIRECT_ROUTING;\n#ifdef TUNNEL_MODE\n\
+    \tif (dir == NAT_DIR_EGRESS) {\n\t\tstruct remote_endpoint_info *info;\n\n\t\t\
+    if (!revalidate_data(ctx, &data, &data_end, &ip4)) {\n\t\t\tret = DROP_INVALID;\n\
+    \t\t\tgoto drop_err;\n\t\t}\n\n\t\tinfo = ipcache_lookup4(&IPCACHE_MAP, ip4->daddr,\
+    \ V4_CACHE_KEY_LEN);\n\t\tif (info != NULL && info->tunnel_endpoint != 0) {\n\t\
+    \t\t/* The dir == NAT_DIR_EGRESS branch is executed for\n\t\t\t * N/S LB requests\
+    \ which needs to be fwd-ed to a remote\n\t\t\t * node. As the request came from\
+    \ outside, we need to\n\t\t\t * set the security id in the tunnel header to WORLD_ID.\n\
+    \t\t\t * Otherwise, the remote node will assume, that the\n\t\t\t * request originated\
+    \ from a cluster node which will\n\t\t\t * bypass any netpol which disallows LB\
+    \ requests from\n\t\t\t * outside.\n\t\t\t */\n\t\t\tret = __encap_with_nodeid(ctx,\
+    \ info->tunnel_endpoint,\n\t\t\t\t\t\t  WORLD_ID,\n\t\t\t\t\t\t  NOT_VTEP_DST,\n\
+    \t\t\t\t\t\t  (enum trace_reason)CT_NEW,\n\t\t\t\t\t\t  TRACE_PAYLOAD_LEN);\n\t\
+    \t\tif (ret)\n\t\t\t\tgoto drop_err;\n\n\t\t\ttarget.addr = IPV4_GATEWAY;\n\t\t\
+    \tfib_params.l.ifindex = ENCAP_IFINDEX;\n\n\t\t\t/* fib lookup not necessary when\
+    \ going over tunnel. */\n\t\t\tif (eth_store_daddr(ctx, fib_params.l.dmac, 0)\
+    \ < 0) {\n\t\t\t\tret = DROP_WRITE_ERROR;\n\t\t\t\tgoto drop_err;\n\t\t\t}\n\t\
+    \t\tif (eth_store_saddr(ctx, fib_params.l.smac, 0) < 0) {\n\t\t\t\tret = DROP_WRITE_ERROR;\n\
+    \t\t\t\tgoto drop_err;\n\t\t\t}\n\t\t}\n\t}\n#endif\n\t/* Handles SNAT on NAT_DIR_EGRESS\
+    \ and reverse SNAT for reply packets\n\t * from remote backends on NAT_DIR_INGRESS.\n\
+    \t */\n\tret = snat_v4_process(ctx, dir, &target, false);\n\tif (IS_ERR(ret))\
+    \ {\n\t\t/* In case of no mapping, recircle back to main path. SNAT is very\n\t\
+    \t * expensive in terms of instructions (since we don't have BPF to\n\t\t * BPF\
+    \ calls as we use tail calls) and complexity, hence this is\n\t\t * done inside\
+    \ a tail call here.\n\t\t */\n\t\tif (dir == NAT_DIR_INGRESS) {\n\t\t\tbpf_skip_nodeport_set(ctx);\n\
+    \t\t\tep_tail_call(ctx, CILIUM_CALL_IPV4_FROM_NETDEV);\n\t\t\tret = DROP_MISSED_TAIL_CALL;\n\
+    \t\t\tgoto drop_err;\n\t\t}\n\t\tif (ret != NAT_PUNT_TO_STACK)\n\t\t\tgoto drop_err;\n\
+    \t}\n\n\tbpf_mark_snat_done(ctx);\n\n\tif (dir == NAT_DIR_INGRESS) {\n\t\t/* At\
+    \ this point we know that a reverse SNAT mapping exists.\n\t\t * Otherwise, we\
+    \ would have tail-called back to\n\t\t * CALL_IPV4_FROM_NETDEV in the code above.\
+    \ The existence of the\n\t\t * mapping is an indicator that the packet might be\
+    \ a reply from\n\t\t * a remote backend. So handle the service reverse DNAT (if\n\
+    \t\t * needed)\n\t\t */\n\t\tep_tail_call(ctx, CILIUM_CALL_IPV4_NODEPORT_REVNAT);\n\
+    \t\tret = DROP_MISSED_TAIL_CALL;\n\t\tgoto drop_err;\n\t}\n#ifdef TUNNEL_MODE\n\
+    \tif (fib_params.l.ifindex == ENCAP_IFINDEX)\n\t\tgoto out_send;\n#endif\n\tif\
+    \ (!revalidate_data(ctx, &data, &data_end, &ip4)) {\n\t\tret = DROP_INVALID;\n\
+    \t\tgoto drop_err;\n\t}\n\n\tfib_params.l.ipv4_src = ip4->saddr;\n\tfib_params.l.ipv4_dst\
+    \ = ip4->daddr;\n\n\n// CONTEXT: int tail_nodeport_nat_ipv4(struct __ctx_buff\
+    \ *ctx)\n\t\tgoto drop_err;\n\tif (!l2_hdr_required)\n\t\tgoto out_send;\n\n\t\
+    if (eth_store_daddr(ctx, fib_params.l.dmac, 0) < 0) {\n\t\tret = DROP_WRITE_ERROR;\n\
+    \t\tgoto drop_err;\n\t}\n\tif (eth_store_saddr(ctx, fib_params.l.smac, 0) < 0)\
+    \ {\n\t\tret = DROP_WRITE_ERROR;\n\t\tgoto drop_err;\n\t}\nout_send:\n\tcilium_capture_out(ctx);\n\
+    \treturn ctx_redirect(ctx, fib_params.l.ifindex, 0);\ndrop_err:\n\treturn send_drop_notify_error_ext(ctx,\
+    \ 0, ret, ext_err, CTX_ACT_DROP,\n\t\t\t\t      dir == NAT_DIR_INGRESS ?\n\t\t\
+    \t\t      METRIC_INGRESS : METRIC_EGRESS);\n}\n\n/* Main node-port entry point\
+    \ for host-external ingressing node-port traffic\n * which handles the case of:\
+    \ i) backend is local EP, ii) backend is remote EP,\n * iii) reply from remote\
+    \ backend EP.\n */\nstatic __always_inline int nodeport_lb4(struct __ctx_buff\
+    \ *ctx,\n\t\t\t\t\t__u32 src_identity)\n{\n\tstruct ipv4_ct_tuple tuple = {};\n\
+    \tvoid *data, *data_end;\n\tstruct iphdr *ip4;\n\n// CONTEXT: static __always_inline\
+    \ int nodeport_lb4(struct __ctx_buff *ctx,\n\n\t\t/* The packet is not destined\
+    \ to a service but it can be a reply\n\t\t * packet from a remote backend, in\
+    \ which case we need to perform\n\t\t * the reverse NAT.\n\t\t */\nskip_service_lookup:\n\
+    \t\tctx_set_xfer(ctx, XFER_PKT_NO_SVC);\n\n#ifndef ENABLE_MASQUERADE\n\t\tif (nodeport_uses_dsr4(&tuple))\n\
+    \t\t\treturn CTX_ACT_OK;\n#endif\n\t\tctx_store_meta(ctx, CB_NAT, NAT_DIR_INGRESS);\n\
+    \t\tctx_store_meta(ctx, CB_SRC_IDENTITY, src_identity);\n\t\t/* For NAT64 we might\
+    \ see an IPv4 reply from the backend to\n\t\t * the LB entering this path. Thus,\
+    \ transform back to IPv6.\n\t\t */\n\t\tif (!lb4_populate_ports(ctx, &tuple, l4_off)\
+    \ &&\n\t\t    snat_v6_has_v4_match(&tuple)) {\n\t\t\tret = lb4_to_lb6(ctx, ip4,\
+    \ l3_off);\n\t\t\tif (ret)\n\t\t\t\treturn ret;\n\t\t\tep_tail_call(ctx, CILIUM_CALL_IPV6_NODEPORT_NAT);\n\
+    \t\t} else {\n\t\t\tep_tail_call(ctx, CILIUM_CALL_IPV4_NODEPORT_NAT);\n\t\t}\n\
+    \t\treturn DROP_MISSED_TAIL_CALL;\n\t}\n\n\tbackend_local = __lookup_ip4_endpoint(tuple.daddr);\n\
+    \tif (!backend_local && lb4_svc_is_hostport(svc))\n\t\treturn DROP_INVALID;\n\n\
+    \t/* Reply from DSR packet is never seen on this node again hence no\n\t * need\
+    \ to track in here.\n\t */\n\tif (backend_local || !nodeport_uses_dsr4(&tuple))\
+    \ {\n\n// CONTEXT: redo:\n\t\tedt_set_aggregate(ctx, 0);\n\t\tif (nodeport_uses_dsr4(&tuple))\
+    \ {\n#if DSR_ENCAP_MODE == DSR_ENCAP_IPIP\n\t\t\tctx_store_meta(ctx, CB_HINT,\n\
+    \t\t\t\t       ((__u32)tuple.sport << 16) | tuple.dport);\n\t\t\tctx_store_meta(ctx,\
+    \ CB_ADDR_V4, tuple.daddr);\n#elif DSR_ENCAP_MODE == DSR_ENCAP_NONE\n\t\t\tctx_store_meta(ctx,\
+    \ CB_PORT, key.dport);\n\t\t\tctx_store_meta(ctx, CB_ADDR_V4, key.address);\n\
+    #endif /* DSR_ENCAP_MODE */\n\t\t\tep_tail_call(ctx, CILIUM_CALL_IPV4_NODEPORT_DSR);\n\
+    \t\t} else {\n\t\t\tctx_store_meta(ctx, CB_NAT, NAT_DIR_EGRESS);\n\t\t\tep_tail_call(ctx,\
+    \ CILIUM_CALL_IPV4_NODEPORT_NAT);\n\t\t}\n\t\treturn DROP_MISSED_TAIL_CALL;\n\t\
+    }\n\n\tctx_set_xfer(ctx, XFER_PKT_NO_SVC);\n\n\treturn CTX_ACT_OK;\n}\n\n/* Reverse\
+    \ NAT handling of node-port traffic for the case where the\n * backend i) was\
+    \ a local EP and bpf_lxc redirected to us, ii) was\n * a remote backend and we\
+    \ got here after reverse SNAT from the"
+  fixed_code: "// FILE: bpf/lib/common.h\n#define CILIUM_CALL_IPV4_FROM_OVERLAY\t\t\
+    CILIUM_CALL_IPV4_FROM_LXC\n#define CILIUM_CALL_UNUSED1\t\t\t8\n#define CILIUM_CALL_UNUSED2\t\
+    \t\t9\n#define CILIUM_CALL_IPV6_FROM_LXC\t\t10\n#define CILIUM_CALL_IPV6_FROM_NETDEV\t\
+    \tCILIUM_CALL_IPV6_FROM_LXC\n#define CILIUM_CALL_IPV6_FROM_OVERLAY\t\tCILIUM_CALL_IPV6_FROM_LXC\n\
+    #define CILIUM_CALL_IPV4_TO_LXC_POLICY_ONLY\t11\n#define CILIUM_CALL_IPV4_TO_HOST_POLICY_ONLY\t\
+    CILIUM_CALL_IPV4_TO_LXC_POLICY_ONLY\n#define CILIUM_CALL_IPV6_TO_LXC_POLICY_ONLY\t\
+    12\n#define CILIUM_CALL_IPV6_TO_HOST_POLICY_ONLY\tCILIUM_CALL_IPV6_TO_LXC_POLICY_ONLY\n\
+    #define CILIUM_CALL_IPV4_TO_ENDPOINT\t\t13\n#define CILIUM_CALL_IPV6_TO_ENDPOINT\t\
+    \t14\n#define CILIUM_CALL_IPV4_NODEPORT_NAT_EGRESS\t15\n#define CILIUM_CALL_IPV6_NODEPORT_NAT\t\
+    \t16\n#define CILIUM_CALL_IPV4_NODEPORT_REVNAT\t17\n#define CILIUM_CALL_IPV6_NODEPORT_REVNAT\t\
+    18\n#define CILIUM_CALL_IPV4_ENCAP_NODEPORT_NAT\t19\n#define CILIUM_CALL_IPV4_NODEPORT_DSR\t\
+    \t20\n#define CILIUM_CALL_IPV6_NODEPORT_DSR\t\t21\n#define CILIUM_CALL_IPV4_FROM_HOST\t\
+    \t22\n#define CILIUM_CALL_IPV6_FROM_HOST\t\t23\n#define CILIUM_CALL_IPV6_ENCAP_NODEPORT_NAT\t\
+    24\n#define CILIUM_CALL_IPV4_FROM_LXC_CONT\t\t25\n#define CILIUM_CALL_IPV6_FROM_LXC_CONT\t\
+    \t26\n#define CILIUM_CALL_IPV4_CT_INGRESS\t\t27\n#define CILIUM_CALL_IPV4_CT_INGRESS_POLICY_ONLY\t\
+    28\n#define CILIUM_CALL_IPV4_CT_EGRESS\t\t29\n#define CILIUM_CALL_IPV6_CT_INGRESS\t\
+    \t30\n#define CILIUM_CALL_IPV6_CT_INGRESS_POLICY_ONLY\t31\n#define CILIUM_CALL_IPV6_CT_EGRESS\t\
+    \t32\n#define CILIUM_CALL_SRV6_ENCAP\t\t\t33\n#define CILIUM_CALL_SRV6_DECAP\t\
+    \t\t34\n#define CILIUM_CALL_SRV6_REPLY\t\t\t35\n#define CILIUM_CALL_IPV4_NODEPORT_NAT_INGRESS\t\
+    36\n#define CILIUM_CALL_SIZE\t\t\t37\n\ntypedef __u64 mac_t;\n\nunion v6addr {\n\
+    \tstruct {\n\t\t__u32 p1;\n\t\t__u32 p2;\n\t\t__u32 p3;\n\t\t__u32 p4;\n\t};\n\
+    \tstruct {\n\t\t__u64 d1;\n\n// FILE: bpf/lib/nodeport.h\n// CONTEXT: int tail_nodeport_ipv4_dsr(struct\
+    \ __ctx_buff *ctx)\n\tif (eth_store_saddr(ctx, fib_params.l.smac, 0) < 0) {\n\t\
+    \tret = DROP_WRITE_ERROR;\n\t\tgoto drop_err;\n\t}\nout_send:\n\tcilium_capture_out(ctx);\n\
+    \treturn ctx_redirect(ctx, fib_params.l.ifindex, 0);\ndrop_err:\n\treturn send_drop_notify_error_ext(ctx,\
+    \ 0, ret, ext_err, CTX_ACT_DROP, METRIC_EGRESS);\n}\n#endif /* ENABLE_DSR */\n\
+    \n__section_tail(CILIUM_MAP_CALLS, CILIUM_CALL_IPV4_NODEPORT_NAT_INGRESS)\nint\
+    \ tail_nodeport_nat_ingress_ipv4(struct __ctx_buff *ctx)\n{\n\tstruct ipv4_nat_target\
+    \ target = {\n\t\t.min_port = NODEPORT_PORT_MIN_NAT,\n\t\t.max_port = NODEPORT_PORT_MAX_NAT,\n\
+    \t\t.src_from_world = true,\n\t};\n\tint ret;\n\n\t/* Unfortunately, the bpf_fib_lookup()\
+    \ is not able to set src IP addr.\n\t * So we need to assume that the direct routing\
+    \ device is going to be\n\t * used to fwd the NodePort request, thus SNAT-ing\
+    \ to its IP addr.\n\t * This will change once we have resolved GH#17158.\n\t */\n\
+    \ttarget.addr = IPV4_DIRECT_ROUTING;\n\n\tret = snat_v4_process(ctx, NAT_DIR_INGRESS,\
+    \ &target, false);\n\tif (IS_ERR(ret)) {\n\t\t/* In case of no mapping, recircle\
+    \ back to main path. SNAT is very\n\t\t * expensive in terms of instructions (since\
+    \ we don't have BPF to\n\t\t * BPF calls as we use tail calls) and complexity,\
+    \ hence this is\n\t\t * done inside a tail call here.\n\t\t */\n\t\tbpf_skip_nodeport_set(ctx);\n\
+    \t\tep_tail_call(ctx, CILIUM_CALL_IPV4_FROM_NETDEV);\n\t\tret = DROP_MISSED_TAIL_CALL;\n\
+    \t\tgoto drop_err;\n\t}\n\n\tbpf_mark_snat_done(ctx);\n\n\t/* At this point we\
+    \ know that a reverse SNAT mapping exists.\n\t * Otherwise, we would have tail-called\
+    \ back to\n\t * CALL_IPV4_FROM_NETDEV in the code above. The existence of the\n\
+    \t * mapping is an indicator that the packet might be a reply from\n\t * a remote\
+    \ backend. So handle the service reverse DNAT (if\n\t * needed)\n\t */\n\tep_tail_call(ctx,\
+    \ CILIUM_CALL_IPV4_NODEPORT_REVNAT);\n\tret = DROP_MISSED_TAIL_CALL;\n\tgoto drop_err;\n\
+    \n drop_err:\n\treturn send_drop_notify_error(ctx, 0, ret, CTX_ACT_DROP, METRIC_INGRESS);\n\
+    }\n\n__section_tail(CILIUM_MAP_CALLS, CILIUM_CALL_IPV4_NODEPORT_NAT_EGRESS)\n\
+    int tail_nodeport_nat_egress_ipv4(struct __ctx_buff *ctx)\n{\n\tstruct bpf_fib_lookup_padded\
+    \ fib_params = {\n\t\t.l = {\n\t\t\t.family\t\t= AF_INET,\n\t\t\t.ifindex\t= ctx_get_ifindex(ctx),\n\
+    \t\t},\n\t};\n\tstruct ipv4_nat_target target = {\n\t\t.min_port = NODEPORT_PORT_MIN_NAT,\n\
+    \t\t.max_port = NODEPORT_PORT_MAX_NAT,\n\t\t.src_from_world = true,\n\t};\n\t\
+    void *data, *data_end;\n\tstruct iphdr *ip4;\n\tbool l2_hdr_required = true;\n\
+    \tint ret, ext_err = 0;\n\n#ifdef TUNNEL_MODE\n\tstruct remote_endpoint_info *info;\n\
+    #endif\n\n\t/* Unfortunately, the bpf_fib_lookup() is not able to set src IP addr.\n\
+    \t * So we need to assume that the direct routing device is going to be\n\t *\
+    \ used to fwd the NodePort request, thus SNAT-ing to its IP addr.\n\t * This will\
+    \ change once we have resolved GH#17158.\n\t */\n\ttarget.addr = IPV4_DIRECT_ROUTING;\n\
+    \n#ifdef TUNNEL_MODE\n\tif (!revalidate_data(ctx, &data, &data_end, &ip4)) {\n\
+    \t\tret = DROP_INVALID;\n\t\tgoto drop_err;\n\t}\n\n\tinfo = ipcache_lookup4(&IPCACHE_MAP,\
+    \ ip4->daddr, V4_CACHE_KEY_LEN);\n\tif (info && info->tunnel_endpoint != 0) {\n\
+    \t\t/* The dir == NAT_DIR_EGRESS branch is executed for\n\t\t * N/S LB requests\
+    \ which needs to be fwd-ed to a remote\n\t\t * node. As the request came from\
+    \ outside, we need to\n\t\t * set the security id in the tunnel header to WORLD_ID.\n\
+    \t\t * Otherwise, the remote node will assume, that the\n\t\t * request originated\
+    \ from a cluster node which will\n\t\t * bypass any netpol which disallows LB\
+    \ requests from\n\t\t * outside.\n\t\t */\n\t\tret = __encap_with_nodeid(ctx,\
+    \ info->tunnel_endpoint,\n\t\t\t\t\t  WORLD_ID,\n\t\t\t\t\t  NOT_VTEP_DST,\n\t\
+    \t\t\t\t  (enum trace_reason)CT_NEW,\n\t\t\t\t\t  TRACE_PAYLOAD_LEN);\n\t\tif\
+    \ (ret)\n\t\t\tgoto drop_err;\n\n\t\ttarget.addr = IPV4_GATEWAY;\n\t\tfib_params.l.ifindex\
+    \ = ENCAP_IFINDEX;\n\n\t\t/* fib lookup not necessary when going over tunnel.\
+    \ */\n\t\tif (eth_store_daddr(ctx, fib_params.l.dmac, 0) < 0) {\n\t\t\tret = DROP_WRITE_ERROR;\n\
+    \t\t\tgoto drop_err;\n\t\t}\n\t\tif (eth_store_saddr(ctx, fib_params.l.smac, 0)\
+    \ < 0) {\n\t\t\tret = DROP_WRITE_ERROR;\n\t\t\tgoto drop_err;\n\t\t}\n\t}\n#endif\n\
+    \tret = snat_v4_process(ctx, NAT_DIR_EGRESS, &target, false);\n\tif (IS_ERR(ret)\
+    \ && ret != NAT_PUNT_TO_STACK)\n\t\tgoto drop_err;\n\n\tbpf_mark_snat_done(ctx);\n\
+    \n#ifdef TUNNEL_MODE\n\tif (fib_params.l.ifindex == ENCAP_IFINDEX)\n\t\tgoto out_send;\n\
+    #endif\n\tif (!revalidate_data(ctx, &data, &data_end, &ip4)) {\n\t\tret = DROP_INVALID;\n\
+    \t\tgoto drop_err;\n\t}\n\n\tfib_params.l.ipv4_src = ip4->saddr;\n\tfib_params.l.ipv4_dst\
+    \ = ip4->daddr;\n\n\n// CONTEXT: int tail_nodeport_nat_ipv4(struct __ctx_buff\
+    \ *ctx)\n\t\tgoto drop_err;\n\tif (!l2_hdr_required)\n\t\tgoto out_send;\n\n\t\
+    if (eth_store_daddr(ctx, fib_params.l.dmac, 0) < 0) {\n\t\tret = DROP_WRITE_ERROR;\n\
+    \t\tgoto drop_err;\n\t}\n\tif (eth_store_saddr(ctx, fib_params.l.smac, 0) < 0)\
+    \ {\n\t\tret = DROP_WRITE_ERROR;\n\t\tgoto drop_err;\n\t}\n\nout_send:\n\tcilium_capture_out(ctx);\n\
+    \treturn ctx_redirect(ctx, fib_params.l.ifindex, 0);\ndrop_err:\n\treturn send_drop_notify_error_ext(ctx,\
+    \ 0, ret, ext_err, CTX_ACT_DROP, METRIC_EGRESS);\n}\n\n/* Main node-port entry\
+    \ point for host-external ingressing node-port traffic\n * which handles the case\
+    \ of: i) backend is local EP, ii) backend is remote EP,\n * iii) reply from remote\
+    \ backend EP.\n */\nstatic __always_inline int nodeport_lb4(struct __ctx_buff\
+    \ *ctx,\n\t\t\t\t\t__u32 src_identity)\n{\n\tstruct ipv4_ct_tuple tuple = {};\n\
+    \tvoid *data, *data_end;\n\tstruct iphdr *ip4;\n\n// CONTEXT: static __always_inline\
+    \ int nodeport_lb4(struct __ctx_buff *ctx,\n\n\t\t/* The packet is not destined\
+    \ to a service but it can be a reply\n\t\t * packet from a remote backend, in\
+    \ which case we need to perform\n\t\t * the reverse NAT.\n\t\t */\nskip_service_lookup:\n\
+    \t\tctx_set_xfer(ctx, XFER_PKT_NO_SVC);\n\n#ifndef ENABLE_MASQUERADE\n\t\tif (nodeport_uses_dsr4(&tuple))\n\
+    \t\t\treturn CTX_ACT_OK;\n#endif\n\t\tctx_store_meta(ctx, CB_SRC_IDENTITY, src_identity);\n\
+    \t\t/* For NAT64 we might see an IPv4 reply from the backend to\n\t\t * the LB\
+    \ entering this path. Thus, transform back to IPv6.\n\t\t */\n\t\tif (!lb4_populate_ports(ctx,\
+    \ &tuple, l4_off) &&\n\t\t    snat_v6_has_v4_match(&tuple)) {\n\t\t\tret = lb4_to_lb6(ctx,\
+    \ ip4, l3_off);\n\t\t\tif (ret)\n\t\t\t\treturn ret;\n\t\t\tep_tail_call(ctx,\
+    \ CILIUM_CALL_IPV6_NODEPORT_NAT);\n\t\t} else {\n\t\t\tep_tail_call(ctx, CILIUM_CALL_IPV4_NODEPORT_NAT_INGRESS);\n\
+    \t\t}\n\t\treturn DROP_MISSED_TAIL_CALL;\n\t}\n\n\tbackend_local = __lookup_ip4_endpoint(tuple.daddr);\n\
+    \tif (!backend_local && lb4_svc_is_hostport(svc))\n\t\treturn DROP_INVALID;\n\n\
+    \t/* Reply from DSR packet is never seen on this node again hence no\n\t * need\
+    \ to track in here.\n\t */\n\tif (backend_local || !nodeport_uses_dsr4(&tuple))\
+    \ {\n\n// CONTEXT: redo:\n\t\tedt_set_aggregate(ctx, 0);\n\t\tif (nodeport_uses_dsr4(&tuple))\
+    \ {\n#if DSR_ENCAP_MODE == DSR_ENCAP_IPIP\n\t\t\tctx_store_meta(ctx, CB_HINT,\n\
+    \t\t\t\t       ((__u32)tuple.sport << 16) | tuple.dport);\n\t\t\tctx_store_meta(ctx,\
+    \ CB_ADDR_V4, tuple.daddr);\n#elif DSR_ENCAP_MODE == DSR_ENCAP_NONE\n\t\t\tctx_store_meta(ctx,\
+    \ CB_PORT, key.dport);\n\t\t\tctx_store_meta(ctx, CB_ADDR_V4, key.address);\n\
+    #endif /* DSR_ENCAP_MODE */\n\t\t\tep_tail_call(ctx, CILIUM_CALL_IPV4_NODEPORT_DSR);\n\
+    \t\t} else {\n\t\t\tep_tail_call(ctx, CILIUM_CALL_IPV4_NODEPORT_NAT_EGRESS);\n\
+    \t\t}\n\t\treturn DROP_MISSED_TAIL_CALL;\n\t}\n\n\tctx_set_xfer(ctx, XFER_PKT_NO_SVC);\n\
+    \n\treturn CTX_ACT_OK;\n}\n\n/* Reverse NAT handling of node-port traffic for\
+    \ the case where the\n * backend i) was a local EP and bpf_lxc redirected to us,\
+    \ ii) was\n * a remote backend and we got here after reverse SNAT from the"
+  diff_summary: |-
+    bpf/lib/common.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: the touched section.
+    bpf/lib/nodeport.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: int tail_nodeport_ipv4_dsr(struct __ctx_buff *ctx), int tail_nodeport_nat_ipv4(struct __ctx_buff *ctx), static __always_inline int nodeport_lb4(struct __ctx_buff *ctx,.
+    - Commit subject: bpf/nodeport: split the cilium call ipv4 nodeport nat.

@@ -1,0 +1,43 @@
+schema_version: bpfix.case/v1
+case_id: github-commit-cilium-b4a0fa7425c7
+source:
+  kind: github_commit
+  url: https://github.com/cilium/cilium/commit/b4a0fa7425c71f91dde88afd35ac51e3aa6e6adf
+  repository: https://github.com/cilium/cilium
+  commit: b4a0fa7425c71f91dde88afd35ac51e3aa6e6adf
+  upstream_file: bpf/lib/nat.h
+  raw_excerpt_files:
+  - bpfix-empirical/raw/gh/github-commit-cilium-b4a0fa7425c7.yaml
+reproducer:
+  reconstruction: reconstructed
+  notes: Minimal replay of the stack-alignment failure mode from the raw diff, where `snat_v4_rev_nat()`
+    changes `struct ipv4_ct_tuple tuple = {}` to `struct ipv4_ct_tuple tuple __align_stack_8
+    = {}` before wide stack copies.
+capture:
+  capture_id: github-commit-cilium-b4a0fa7425c7__kernel-6.15.11-clang-18-log2
+  terminal_error: misaligned stack access off 0+-15+0 size 8
+  rejected_insn_idx: 3
+external_match:
+  status: not_applicable
+  policy: root_cause
+  matched_messages:
+  - misaligned stack access off 0+-15+0 size 8
+  notes: Commit-derived case reconstructed from raw diff/context; no external verifier log
+    matching is required.
+label:
+  capture_id: github-commit-cilium-b4a0fa7425c7__kernel-6.15.11-clang-18-log2
+  taxonomy_class: lowering_artifact
+  error_id: BPFIX-E006
+  confidence: medium
+  label_source: manual_reconstruction
+  root_cause_description: A stack object used for a wide copy is not guaranteed 8-byte aligned,
+    so the verifier rejects an 8-byte stack access through an unaligned frame-pointer-derived
+    address.
+  root_cause_insn_idx: null
+  localization_confidence: medium
+  fix_type: align_stack
+  fix_direction: Force the CT tuple stack object to 8-byte alignment before wide accesses.
+reporting:
+  family_id: github-commit-cilium-b4a0fa7425c7
+  representative: true
+  notes: Batch 34 manual reconstruction.

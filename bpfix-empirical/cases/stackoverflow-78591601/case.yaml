@@ -1,0 +1,42 @@
+schema_version: bpfix.case/v1
+case_id: stackoverflow-78591601
+source:
+  kind: stackoverflow
+  url: https://stackoverflow.com/questions/78591601
+  repository: null
+  commit: null
+  upstream_file: null
+  raw_excerpt_files:
+  - bpfix-empirical/raw/so/stackoverflow-78591601.yaml
+reproducer:
+  reconstruction: reconstructed
+  notes: Imported from reconstructed external source into bpfix-empirical; replay logs are generated
+    as replay-verifier.log.
+capture:
+  capture_id: stackoverflow-78591601__kernel-6.15.11-clang-18-log2
+  terminal_error: invalid access to packet, off=72 size=4, R1(id=0,off=72,r=74)
+  rejected_insn_idx: 6
+external_match:
+  status: partial
+  policy: terminal_error
+  matched_messages:
+  - invalid access to packet, off=74 size=4, R2(id=6,off=74,r=0)
+  - invalid access to packet, off=72 size=4, R1(id=0,off=72,r=74)
+  notes: Imported only because verifier_error_match was exact/partial in the verified SO/GH
+    artifact.
+label:
+  capture_id: stackoverflow-78591601__kernel-6.15.11-clang-18-log2
+  taxonomy_class: source_bug
+  error_id: BPFIX-E005
+  confidence: medium
+  label_source: external_replay_reconstruction
+  root_cause_description: XDP payload aggregation reads four bytes after only a shorter packet
+    range is proven.
+  root_cause_insn_idx: null
+  localization_confidence: medium
+  fix_type: bounds_check
+  fix_direction: Prove the full access width before the packet load.
+reporting:
+  family_id: stackoverflow-78591601
+  representative: true
+  notes: External SO/GH case imported from verified exact/partial artifact.

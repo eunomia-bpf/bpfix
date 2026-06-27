@@ -1,0 +1,109 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-libbpf-abdb15beddcb
+source_kind: github_commit
+source:
+  url: https://github.com/libbpf/libbpf/commit/abdb15beddcb1a5a0d8ad1994fe10b01461388b5
+  title: 'libbpf: Add getters for BTF.ext func and line info'
+  repository: https://github.com/libbpf/libbpf
+  commit: abdb15beddcb1a5a0d8ad1994fe10b01461388b5
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-libbpf-abdb15beddcb.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Raw has_verifier_log=false. The commit adds getters for BTF.ext function
+    and line info after bpf_program__set_log_buf() and declares them in libbpf.h;
+    this is introspection API plumbing, not verifier failure material.
+raw:
+  case_id: github-commit-libbpf-abdb15beddcb
+  source: github_commits
+  repository: https://github.com/libbpf/libbpf
+  commit_hash: abdb15beddcb1a5a0d8ad1994fe10b01461388b5
+  commit_message: 'libbpf: Add getters for BTF.ext func and line info'
+  commit_date: '2025-04-09'
+  fix_type: other
+  buggy_code: "// FILE: src/libbpf.c\n// CONTEXT: int bpf_program__set_log_buf(struct\
+    \ bpf_program *prog, char *log_buf, size_t log\n\tif (log_size && !log_buf)\n\t\
+    \treturn libbpf_err(-EINVAL);\n\tif (prog->log_size > UINT_MAX)\n\t\treturn libbpf_err(-EINVAL);\n\
+    \tif (prog->obj->state >= OBJ_LOADED)\n\t\treturn libbpf_err(-EBUSY);\n\n\tprog->log_buf\
+    \ = log_buf;\n\tprog->log_size = log_size;\n\treturn 0;\n}\n\n#define SEC_DEF(sec_pfx,\
+    \ ptype, atype, flags, ...) {\t\t\t    \\\n\t.sec = (char *)sec_pfx,\t\t\t\t\t\
+    \t    \\\n\t.prog_type = BPF_PROG_TYPE_##ptype,\t\t\t\t    \\\n\t.expected_attach_type\
+    \ = atype,\t\t\t\t\t    \\\n\t.cookie = (long)(flags),\t\t\t\t\t    \\\n\t.prog_prepare_load_fn\
+    \ = libbpf_prepare_prog_load,\t\t    \\\n\t__VA_ARGS__\t\t\t\t\t\t\t    \\\n}\n\
+    \nstatic int attach_kprobe(const struct bpf_program *prog, long cookie, struct\
+    \ bpf_link **link);\nstatic int attach_uprobe(const struct bpf_program *prog,\
+    \ long cookie, struct bpf_link **link);\nstatic int attach_ksyscall(const struct\
+    \ bpf_program *prog, long cookie, struct bpf_link **link);\n\n// FILE: src/libbpf.h\n\
+    // CONTEXT: bpf_program__set_expected_attach_type(struct bpf_program *prog,\n\
+    LIBBPF_API __u32 bpf_program__flags(const struct bpf_program *prog);\nLIBBPF_API\
+    \ int bpf_program__set_flags(struct bpf_program *prog, __u32 flags);\n\n/* Per-program\
+    \ log level and log buffer getters/setters.\n * See bpf_object_open_opts comments\
+    \ regarding log_level and log_buf\n * interactions.\n */\nLIBBPF_API __u32 bpf_program__log_level(const\
+    \ struct bpf_program *prog);\nLIBBPF_API int bpf_program__set_log_level(struct\
+    \ bpf_program *prog, __u32 log_level);\nLIBBPF_API const char *bpf_program__log_buf(const\
+    \ struct bpf_program *prog, size_t *log_size);\nLIBBPF_API int bpf_program__set_log_buf(struct\
+    \ bpf_program *prog, char *log_buf, size_t log_size);\n\n/**\n * @brief **bpf_program__set_attach_target()**\
+    \ sets BTF-based attach target\n * for supported BPF program types:\n *   - BTF-aware\
+    \ raw tracepoints (tp_btf);\n *   - fentry/fexit/fmod_ret;\n *   - lsm;\n *  \
+    \ - freplace.\n * @param prog BPF program to set the attach type for\n * @param\
+    \ type attach type to set the BPF map to have\n * @return error code; or 0 if\
+    \ no error occurred.\n */\nLIBBPF_API int"
+  fixed_code: "// FILE: src/libbpf.c\n// CONTEXT: int bpf_program__set_log_buf(struct\
+    \ bpf_program *prog, char *log_buf, size_t log\n\tif (log_size && !log_buf)\n\t\
+    \treturn libbpf_err(-EINVAL);\n\tif (prog->log_size > UINT_MAX)\n\t\treturn libbpf_err(-EINVAL);\n\
+    \tif (prog->obj->state >= OBJ_LOADED)\n\t\treturn libbpf_err(-EBUSY);\n\n\tprog->log_buf\
+    \ = log_buf;\n\tprog->log_size = log_size;\n\treturn 0;\n}\n\nstruct bpf_func_info\
+    \ *bpf_program__func_info(const struct bpf_program *prog)\n{\n\tif (prog->func_info_rec_size\
+    \ != sizeof(struct bpf_func_info))\n\t\treturn libbpf_err_ptr(-EOPNOTSUPP);\n\t\
+    return prog->func_info;\n}\n\n__u32 bpf_program__func_info_cnt(const struct bpf_program\
+    \ *prog)\n{\n\treturn prog->func_info_cnt;\n}\n\nstruct bpf_line_info *bpf_program__line_info(const\
+    \ struct bpf_program *prog)\n{\n\tif (prog->line_info_rec_size != sizeof(struct\
+    \ bpf_line_info))\n\t\treturn libbpf_err_ptr(-EOPNOTSUPP);\n\treturn prog->line_info;\n\
+    }\n\n__u32 bpf_program__line_info_cnt(const struct bpf_program *prog)\n{\n\treturn\
+    \ prog->line_info_cnt;\n}\n\n#define SEC_DEF(sec_pfx, ptype, atype, flags, ...)\
+    \ {\t\t\t    \\\n\t.sec = (char *)sec_pfx,\t\t\t\t\t\t    \\\n\t.prog_type = BPF_PROG_TYPE_##ptype,\t\
+    \t\t\t    \\\n\t.expected_attach_type = atype,\t\t\t\t\t    \\\n\t.cookie = (long)(flags),\t\
+    \t\t\t\t    \\\n\t.prog_prepare_load_fn = libbpf_prepare_prog_load,\t\t    \\\n\
+    \t__VA_ARGS__\t\t\t\t\t\t\t    \\\n}\n\nstatic int attach_kprobe(const struct\
+    \ bpf_program *prog, long cookie, struct bpf_link **link);\nstatic int attach_uprobe(const\
+    \ struct bpf_program *prog, long cookie, struct bpf_link **link);\nstatic int\
+    \ attach_ksyscall(const struct bpf_program *prog, long cookie, struct bpf_link\
+    \ **link);\n\n// FILE: src/libbpf.h\n// CONTEXT: bpf_program__set_expected_attach_type(struct\
+    \ bpf_program *prog,\nLIBBPF_API __u32 bpf_program__flags(const struct bpf_program\
+    \ *prog);\nLIBBPF_API int bpf_program__set_flags(struct bpf_program *prog, __u32\
+    \ flags);\n\n/* Per-program log level and log buffer getters/setters.\n * See\
+    \ bpf_object_open_opts comments regarding log_level and log_buf\n * interactions.\n\
+    \ */\nLIBBPF_API __u32 bpf_program__log_level(const struct bpf_program *prog);\n\
+    LIBBPF_API int bpf_program__set_log_level(struct bpf_program *prog, __u32 log_level);\n\
+    LIBBPF_API const char *bpf_program__log_buf(const struct bpf_program *prog, size_t\
+    \ *log_size);\nLIBBPF_API int bpf_program__set_log_buf(struct bpf_program *prog,\
+    \ char *log_buf, size_t log_size);\n\nLIBBPF_API struct bpf_func_info *bpf_program__func_info(const\
+    \ struct bpf_program *prog);\nLIBBPF_API __u32 bpf_program__func_info_cnt(const\
+    \ struct bpf_program *prog);\n\nLIBBPF_API struct bpf_line_info *bpf_program__line_info(const\
+    \ struct bpf_program *prog);\nLIBBPF_API __u32 bpf_program__line_info_cnt(const\
+    \ struct bpf_program *prog);\n\n/**\n * @brief **bpf_program__set_attach_target()**\
+    \ sets BTF-based attach target\n * for supported BPF program types:\n *   - BTF-aware\
+    \ raw tracepoints (tp_btf);\n *   - fentry/fexit/fmod_ret;\n *   - lsm;\n *  \
+    \ - freplace.\n * @param prog BPF program to set the attach type for\n * @param\
+    \ type attach type to set the BPF map to have\n * @return error code; or 0 if\
+    \ no error occurred.\n */\nLIBBPF_API int"
+  diff_summary: |-
+    src/libbpf.c:
+    - Applied a small verifier-related code change captured by the exact before/after snippets below.
+    - Affected context: int bpf_program__set_log_buf(struct bpf_program *prog, char *log_buf, size_t log.
+    src/libbpf.h:
+    - Applied a small verifier-related code change captured by the exact before/after snippets below.
+    - Affected context: bpf_program__set_expected_attach_type(struct bpf_program *prog,.
+    - Commit subject: libbpf: Add getters for BTF.ext func and line info.

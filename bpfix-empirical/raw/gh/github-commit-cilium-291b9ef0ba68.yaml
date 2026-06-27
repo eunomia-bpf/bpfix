@@ -1,0 +1,73 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-291b9ef0ba68
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/291b9ef0ba68b73c5f9fb7c674b9eee977faca7f
+  title: 'bpf:test: fix ETH_HLEN naming in wireguard_helpers_tests.c'
+  repository: https://github.com/cilium/cilium
+  commit: 291b9ef0ba68b73c5f9fb7c674b9eee977faca7f
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-291b9ef0ba68.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Fixes a test macro name from ETH_LEN to ETH_HLEN in WireGuard helper tests;
+    this is test source correctness, not a verifier-reject case.
+raw:
+  case_id: github-commit-cilium-291b9ef0ba68
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: 291b9ef0ba68b73c5f9fb7c674b9eee977faca7f
+  commit_message: 'bpf:test: fix ETH_HLEN naming in wireguard_helpers_tests.c'
+  commit_date: '2026-02-16'
+  fix_type: type_cast
+  buggy_code: "// FILE: bpf/tests/wireguard_helpers_tests.c\n// SPDX-License-Identifier:\
+    \ (GPL-2.0-only OR BSD-2-Clause)\n/* Copyright Authors of Cilium */\n\n#define\
+    \ ENABLE_WIREGUARD 1\n#define ENABLE_NODE_ENCRYPTION 1\n#define ENABLE_IPV4 1\n\
+    #define ENABLE_IPV6 1\n#define ETH_LEN 14\n\n#define CLUSTER_IDENTITY 0x5555\n\
+    \n#include <bpf/ctx/skb.h>\n#include \"common.h\"\n#include \"pktgen.h\"\n\n#include\
+    \ \"node_config.h\"\n#include \"lib/eps.h\"\n#include \"lib/common.h\"\n#include\
+    \ \"lib/wireguard.h\"\n#include \"lib/ipv4.h\"\n\n// CONTEXT: int check1(struct\
+    \ __ctx_buff *ctx)\n\tvoid *data, *data_end = NULL;\n\tstruct iphdr *ipv4 = NULL;\n\
+    \tstruct udphdr *udp = NULL;\n\tint l4_off = 0;\n\t__u8 protocol = 0;\n\n\tassert(revalidate_data(ctx,\
+    \ &data, &data_end, &ipv4));\n\n\tudp = (void *)ipv4 + sizeof(struct iphdr);\n\
+    \n\tassert((void *)udp + sizeof(struct udphdr) <= data_end)\n\n\tl4_off = ETH_LEN\
+    \ + ipv4_hdrlen(ipv4);\n\tprotocol = ipv4->protocol;\n\n\t/* Valid Wireguard packet.\
+    \ */\n\tassert(ctx_is_wireguard(ctx, l4_off, protocol, CLUSTER_IDENTITY));\n\n\
+    \t/* Invalid identity within CIDR. */\n\tassert(!ctx_is_wireguard(ctx, l4_off,\
+    \ protocol, CIDR_IDENTITY_RANGE_START));\n\n\t/* Invalid protocol TCP. */\n\t\
+    assert(!ctx_is_wireguard(ctx, l4_off, IPPROTO_TCP, CLUSTER_IDENTITY));\n\n\t/*\
+    \ Invalid L4 offset. */"
+  fixed_code: "// FILE: bpf/tests/wireguard_helpers_tests.c\n// SPDX-License-Identifier:\
+    \ (GPL-2.0-only OR BSD-2-Clause)\n/* Copyright Authors of Cilium */\n\n#define\
+    \ ENABLE_WIREGUARD 1\n#define ENABLE_NODE_ENCRYPTION 1\n#define ENABLE_IPV4 1\n\
+    #define ENABLE_IPV6 1\n#define ETH_HLEN 14\n\n#define CLUSTER_IDENTITY 0x5555\n\
+    \n#include <bpf/ctx/skb.h>\n#include \"common.h\"\n#include \"pktgen.h\"\n\n#include\
+    \ \"node_config.h\"\n#include \"lib/eps.h\"\n#include \"lib/common.h\"\n#include\
+    \ \"lib/wireguard.h\"\n#include \"lib/ipv4.h\"\n\n// CONTEXT: int check1(struct\
+    \ __ctx_buff *ctx)\n\tvoid *data, *data_end = NULL;\n\tstruct iphdr *ipv4 = NULL;\n\
+    \tstruct udphdr *udp = NULL;\n\tint l4_off = 0;\n\t__u8 protocol = 0;\n\n\tassert(revalidate_data(ctx,\
+    \ &data, &data_end, &ipv4));\n\n\tudp = (void *)ipv4 + sizeof(struct iphdr);\n\
+    \n\tassert((void *)udp + sizeof(struct udphdr) <= data_end)\n\n\tl4_off = ETH_HLEN\
+    \ + ipv4_hdrlen(ipv4);\n\tprotocol = ipv4->protocol;\n\n\t/* Valid Wireguard packet.\
+    \ */\n\tassert(ctx_is_wireguard(ctx, l4_off, protocol, CLUSTER_IDENTITY));\n\n\
+    \t/* Invalid identity within CIDR. */\n\tassert(!ctx_is_wireguard(ctx, l4_off,\
+    \ protocol, CIDR_IDENTITY_RANGE_START));\n\n\t/* Invalid protocol TCP. */\n\t\
+    assert(!ctx_is_wireguard(ctx, l4_off, IPPROTO_TCP, CLUSTER_IDENTITY));\n\n\t/*\
+    \ Invalid L4 offset. */"
+  diff_summary: |-
+    bpf/tests/wireguard_helpers_tests.c:
+    - Adjusted types or casts so the verifier sees the intended pointer or value kind.
+    - Affected context: int check1(struct __ctx_buff *ctx).
+    - Commit subject: bpf:test: fix ETH_HLEN naming in wireguard_helpers_tests.c.

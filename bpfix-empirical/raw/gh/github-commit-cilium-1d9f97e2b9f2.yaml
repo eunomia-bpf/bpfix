@@ -1,0 +1,60 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-1d9f97e2b9f2
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/1d9f97e2b9f20decae846438bfd80c798f43cca3
+  title: 'bpf: specify handle_lxc_traffic return type to fix -Wimplicit-int error'
+  repository: https://github.com/cilium/cilium
+  commit: 1d9f97e2b9f20decae846438bfd80c798f43cca3
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-1d9f97e2b9f2.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Adds the missing return type to fix a -Wimplicit-int compiler error. The
+    failure is source compilation hygiene, not a BPF verifier reject.
+raw:
+  case_id: github-commit-cilium-1d9f97e2b9f2
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: 1d9f97e2b9f20decae846438bfd80c798f43cca3
+  commit_message: 'bpf: specify handle_lxc_traffic return type to fix -Wimplicit-int
+    error'
+  commit_date: '2022-05-20'
+  fix_type: type_cast
+  buggy_code: "// FILE: bpf/bpf_host.c\n// CONTEXT: from_host_to_lxc(struct __ctx_buff\
+    \ *ctx)\n\t\tbreak;\n\t}\n\n\treturn ret;\n}\n\n/* When per-endpoint routes are\
+    \ enabled, packets to and from local endpoints\n * will tail call into this program\
+    \ to enforce egress and ingress host policies.\n * Packets to the local endpoints\
+    \ will then tail call back to the original\n * bpf_lxc program.\n */\n__section_tail(CILIUM_MAP_POLICY,\
+    \ TEMPLATE_HOST_EP_ID)\nhandle_lxc_traffic(struct __ctx_buff *ctx)\n{\n\tbool\
+    \ from_host = ctx_load_meta(ctx, CB_FROM_HOST);\n\t__u32 lxc_id;\n\tint ret;\n\
+    \n\tif (from_host) {\n\t\tret = from_host_to_lxc(ctx);\n\t\tif (IS_ERR(ret))\n\
+    \t\t\treturn send_drop_notify_error(ctx, HOST_ID, ret, CTX_ACT_DROP,\n\t\t\t\t\
+    \t\t      METRIC_EGRESS);\n\n\t\tlxc_id = ctx_load_meta(ctx, CB_DST_ENDPOINT_ID);"
+  fixed_code: "// FILE: bpf/bpf_host.c\n// CONTEXT: from_host_to_lxc(struct __ctx_buff\
+    \ *ctx)\n\t\tbreak;\n\t}\n\n\treturn ret;\n}\n\n/* When per-endpoint routes are\
+    \ enabled, packets to and from local endpoints\n * will tail call into this program\
+    \ to enforce egress and ingress host policies.\n * Packets to the local endpoints\
+    \ will then tail call back to the original\n * bpf_lxc program.\n */\n__section_tail(CILIUM_MAP_POLICY,\
+    \ TEMPLATE_HOST_EP_ID)\nint handle_lxc_traffic(struct __ctx_buff *ctx)\n{\n\t\
+    bool from_host = ctx_load_meta(ctx, CB_FROM_HOST);\n\t__u32 lxc_id;\n\tint ret;\n\
+    \n\tif (from_host) {\n\t\tret = from_host_to_lxc(ctx);\n\t\tif (IS_ERR(ret))\n\
+    \t\t\treturn send_drop_notify_error(ctx, HOST_ID, ret, CTX_ACT_DROP,\n\t\t\t\t\
+    \t\t      METRIC_EGRESS);\n\n\t\tlxc_id = ctx_load_meta(ctx, CB_DST_ENDPOINT_ID);"
+  diff_summary: |-
+    bpf/bpf_host.c:
+    - Adjusted types or casts so the verifier sees the intended pointer or value kind.
+    - Affected context: from_host_to_lxc(struct __ctx_buff *ctx).
+    - Commit subject: bpf: specify handle_lxc_traffic return type to fix -Wimplicit-int error.

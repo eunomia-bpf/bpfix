@@ -1,0 +1,335 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-aya-rs-aya-1056
+source_kind: github_issue
+source:
+  url: https://github.com/aya-rs/aya/issues/1056
+  title: 'aya-template uprobe Error: the BPF_PROG_LOAD syscall failed. Verifier output:
+    last insn is not an exit or jmp'
+  repository: https://github.com/aya-rs/aya
+  commit: null
+  collected_at: '2026-03-11T16:01:48+00:00'
+collector:
+  original_path: bpfix-empirical/raw/gh/github-aya-rs-aya-1056.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: true
+  verifier_log_block_count: 2
+  source_snippet_count: 1
+  has_buggy_code: false
+  has_fixed_code: true
+  has_fix_description: true
+reproduction:
+  status: replay_valid
+  case_id: github-aya-rs-aya-1056
+  case_path: cases/github-aya-rs-aya-1056
+  artifact_path: cases/github-aya-rs-aya-1056
+  reason: admitted_to_bpfix_bench_cases
+raw:
+  case_id: github-aya-rs-aya-1056
+  source: github_issues
+  collected_at: '2026-03-11T16:01:48+00:00'
+  issue:
+    repository: aya-rs/aya
+    number: 1056
+    title: 'aya-template uprobe Error: the BPF_PROG_LOAD syscall failed. Verifier
+      output: last insn is not an exit or jmp'
+    url: https://github.com/aya-rs/aya/issues/1056
+    state: closed
+    state_reason: completed
+    labels: []
+    created_at: '2024-10-11T08:33:37Z'
+    updated_at: '2024-12-01T18:24:58Z'
+    author: cn-kali-team
+  verifier_log:
+    blocks:
+    - "\u279C  IdeaProjects cargo generate https://github.com/aya-rs/aya-template\n\
+      \     Project Name: ebpf-log\n\U0001F527   Destination: /home/kali-team/IdeaProjects/ebpf-log\
+      \ ...\n\U0001F527   project-name: ebpf-log ...\n\U0001F527   Generating template\
+      \ ...\n\u2714 \U0001F937   Which type of eBPF program? \xB7 uprobe\n\U0001F937\
+      \   Target to attach the (u|uret)probe? (e.g libc): /usr/lib/libssl.so.3\n\U0001F937\
+      \   Function name to attach the (u|uret)probe? (e.g getaddrinfo): SSL_write\n\
+      \U0001F527   Moving generated files into: `/home/kali-team/IdeaProjects/ebpf-log`...\n\
+      \U0001F527   Initializing a fresh Git repository\n\u2728   Done! New project\
+      \ created /home/kali-team/IdeaProjects/ebpf-log\n\u279C  IdeaProjects cd ebpf-log\n\
+      \u279C  ebpf-log git:(main) \u2717 cargo xtask run\nError: the BPF_PROG_LOAD\
+      \ syscall failed. Verifier output: last insn is not an exit or jmp\nverification\
+      \ time 7 usec\nstack depth 0+0+0\nprocessed 0 insns (limit 1000000) max_states_per_insn\
+      \ 0 total_states 0 peak_states 0 mark_read 0\n\nCaused by:\n    Invalid argument\
+      \ (os error 22)\nFailed to run `sudo -E target/debug/ebpf-log`"
+    - |-
+      [DEBUG aya::bpf] BPF Feature Detection: Features {
+              bpf_name: true,
+              bpf_probe_read_kernel: true,
+              bpf_perf_link: true,
+              bpf_global_data: true,
+              bpf_cookie: true,
+              cpumap_prog_id: true,
+              devmap_prog_id: true,
+              prog_info_map_ids: true,
+              prog_info_gpl_compatible: true,
+              btf: Some(
+                  BtfFeatures {
+                      btf_func: true,
+                      btf_func_global: true,
+                      btf_datasec: true,
+                      btf_float: true,
+                      btf_decl_tag: true,
+                      btf_type_tag: true,
+                      btf_enum64: true,
+                  },
+              ),
+          }
+      [DEBUG aya_obj::relocation] relocating map by section index 10, kind Rodata at insn 59 in section 2
+      [DEBUG aya_obj::relocation] relocating map by section index 10, kind Rodata at insn 244 in section 2
+      [DEBUG aya_obj::relocation] relocating map by section index 10, kind Rodata at insn 426 in section 2
+      [DEBUG aya_obj::relocation] relocating map by section index 10, kind Rodata at insn 417 in section 2
+      [DEBUG aya_obj::relocation] relocating map by section index 10, kind Rodata at insn 163 in section 2
+      [DEBUG aya_obj::relocation] relocating map by section index 10, kind Rodata at insn 181 in section 2
+      [DEBUG aya_obj::relocation] relocating map by symbol index Some(15), kind Maps at insn 25 in section 2
+      [DEBUG aya_obj::relocation] relocating map by symbol index Some(16), kind Maps at insn 527 in section 2
+      [DEBUG aya_obj::relocation] relocating map by symbol index Some(14), kind Maps at insn 5 in section 2
+      [DEBUG aya_obj::relocation] relocating map by section index 10, kind Rodata at insn 226 in section 2
+      [DEBUG aya_obj::relocation] relocating map by section index 10, kind Rodata at insn 77 in section 2
+      [DEBUG aya_obj::relocation] relocating program `ssl_write_ret` function `ssl_write_ret` size 2
+      [DEBUG aya_obj::relocation] finished relocating program `ssl_write_ret` function `ssl_write_ret`
+      [DEBUG aya_obj::relocation] relocating program `ssl_write` function `ssl_write` size 3
+      [DEBUG aya_obj::relocation] relocating call to callee address 0x0 in section 2 (relocation) at instruction 0
+      [DEBUG aya_obj::relocation] callee is `_ZN11ecapture_rs7try_ssl17hcc1631f08bca413fE`
+      [DEBUG aya_obj::relocation] linked function `_ZN11ecapture_rs7try_ssl17hcc1631f08bca413fE` at instruction 3
+      [DEBUG aya_obj::relocation] relocating program `ssl_write` function `_ZN11ecapture_rs7try_ssl17hcc1631f08bca413fE` size 535
+      [DEBUG aya_obj::relocation] relocating call to callee address 0x0 in section 6 (relocation) at instruction 42
+      [DEBUG aya_obj::relocation] callee is `_ZN4core9panicking14panic_nounwind17hfcf50e67f2a272cfE`
+      [DEBUG aya_obj::relocation] callee `_ZN4core9panicking14panic_nounwind17hfcf50e67f2a272cfE` is at ins 3, -40 from current instruction 42
+      [DEBUG aya_obj::relocation] finished relocating program `ssl_write` function `_ZN11ecapture_rs7try_ssl17hcc1631f08bca413fE`
+      [DEBUG aya_obj::relocation] callee `_ZN11ecapture_rs7try_ssl17hcc1631f08bca413fE` is at ins 3, 2 from current instruction 0
+      [DEBUG aya_obj::relocation] finished relocating program `ssl_write` function `ssl_write`
+      [DEBUG aya_obj::relocation] relocating program `ssl_read` function `ssl_read` size 3
+      [DEBUG aya_obj::relocation] relocating call to callee address 0x0 in section 2 (relocation) at instruction 0
+      [DEBUG aya_obj::relocation] callee is `_ZN11ecapture_rs7try_ssl17hcc1631f08bca413fE`
+      [DEBUG aya_obj::relocation] linked function `_ZN11ecapture_rs7try_ssl17hcc1631f08bca413fE` at instruction 3
+      [DEBUG aya_obj::relocation] relocating program `ssl_read` function `_ZN11ecapture_rs7try_ssl17hcc1631f08bca413fE` size 535
+      [DEBUG aya_obj::relocation] relocating call to callee address 0x0 in section 6 (relocation) at instruction 42
+      [DEBUG aya_obj::relocation] callee is `_ZN4core9panicking14panic_nounwind17hfcf50e67f2a272cfE`
+      [DEBUG aya_obj::relocation] callee `_ZN4core9panicking14panic_nounwind17hfcf50e67f2a272cfE` is at ins 3, -40 from current instruction 42
+      [DEBUG aya_obj::relocation] finished relocating program `ssl_read` function `_ZN11ecapture_rs7try_ssl17hcc1631f08bca413fE`
+      [DEBUG aya_obj::relocation] callee `_ZN11ecapture_rs7try_ssl17hcc1631f08bca413fE` is at ins 3, 2 from current instruction 0
+      [DEBUG aya_obj::relocation] finished relocating program `ssl_read` function `ssl_read`
+      [DEBUG aya_obj::relocation] relocating program `ssl_read_ret` function `ssl_read_ret` size 2
+      [DEBUG aya_obj::relocation] finished relocating program `ssl_read_ret` function `ssl_read_ret`
+      Error: the BPF_PROG_LOAD syscall failed. Verifier output: 0: R1=ctx() R10=fp0
+      0: (85) call pc+2
+      caller:
+       R10=fp0
+      callee:
+       frame1: R1=ctx() R10=fp0
+      3: frame1: R1=ctx() R10=fp0
+      3: (bf) r6 = r1                       ; frame1: R1=ctx() R6_w=ctx()
+      4: (b7) r1 = 0                        ; frame1: R1_w=0
+      5: (63) *(u32 *)(r10 -8) = r1         ; frame1: R1_w=0 R10=fp0 fp-8=????0
+      6: (bf) r2 = r10                      ; frame1: R2_w=fp0 R10=fp0
+      7: (07) r2 += -8                      ; frame1: R2_w=fp-8
+      8: (18) r1 = 0xffff8c9724c65200       ; frame1: R1_w=map_ptr(map=AYA_LOG_BUF,ks=4,vs=8192)
+      10: (85) call bpf_map_lookup_elem#1   ; frame1: R0=map_value_or_null(id=1,map=AYA_LOG_BUF,ks=4,vs=8192)
+      11: (55) if r0 != 0x0 goto pc+22 34: frame1: R0=map_value(map=AYA_LOG_BUF,ks=4,vs=8192) R6=ctx() R10=fp0 fp-8=????mmmm
+      34: (bf) r1 = r10                     ; frame1: R1_w=fp0 R10=fp0
+      35: (07) r1 += -8                     ; frame1: R1_w=fp-8
+      36: (bf) r2 = r0                      ; frame1: R0=map_value(map=AYA_LOG_BUF,ks=4,vs=8192) R2_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192)
+      37: (1f) r2 -= r1                     ; frame1: R1=fp-8 R2=scalar()
+      38: (2d) if r0 > r1 goto pc+2         ; frame1: R0=map_value(map=AYA_LOG_BUF,ks=4,vs=8192) R1=fp-8
+      39: (1f) r1 -= r0                     ; frame1: R0=map_value(map=AYA_LOG_BUF,ks=4,vs=8192) R1_w=scalar()
+      40: (bf) r2 = r1                      ; frame1: R1_w=scalar(id=3) R2_w=scalar(id=3)
+      41: (55) if r2 != 0x0 goto pc+1       ; frame1: R2_w=0
+      42: (85) call pc-40
+      caller:
+       frame1: R6=ctx() R10=fp0 fp-8=????mmmm
+      callee:
+       frame2: R1_w=0 R2_w=0 R10=fp0
+      3: frame2: R1_w=0 R2_w=0 R10=fp0
+      3: (bf) r6 = r1                       ; frame2: R1_w=0 R6_w=0
+      4: (b7) r1 = 0                        ; frame2: R1_w=0
+      5: (63) *(u32 *)(r10 -8) = r1         ; frame2: R1_w=0 R10=fp0 fp-8=????0
+      6: (bf) r2 = r10                      ; frame2: R2_w=fp0 R10=fp0
+      7: (07) r2 += -8                      ; frame2: R2_w=fp-8
+      8: (18) r1 = 0xffff8c9724c65200       ; frame2: R1_w=map_ptr(map=AYA_LOG_BUF,ks=4,vs=8192)
+      10: (85) call bpf_map_lookup_elem#1   ; frame2: R0=map_value_or_null(id=4,map=AYA_LOG_BUF,ks=4,vs=8192)
+      11: (55) if r0 != 0x0 goto pc+22      ; frame2: R0=0
+      12: (85) call bpf_get_current_pid_tgid#14     ; frame2: R0_w=scalar()
+      13: (63) *(u32 *)(r10 -20) = r0       ; frame2: R0_w=scalar() R10=fp0 fp-24=mmmm????
+      14: (07) r6 += 104                    ; frame2: R6_w=104
+      15: (bf) r1 = r10                     ; frame2: R1_w=fp0 R10=fp0
+      16: (07) r1 += -8                     ; frame2: R1_w=fp-8
+      17: (b7) r2 = 8                       ; frame2: R2_w=8
+      18: (bf) r3 = r6                      ; frame2: R3_w=104 R6_w=104
+      19: (85) call bpf_probe_read#4        ; frame2: R0=scalar() fp-8=mmmmmmmm
+      20: (15) if r0 == 0x0 goto pc+1       ; frame2: R0=scalar(umin=1)
+      21: (05) goto pc+11
+      33: (95) exit
+      returning from callee:
+       frame2: R0=scalar(umin=1) R6=104 R10=fp0 fp-8=mmmmmmmm fp-24=mmmm????
+      to caller at 43:
+       frame1: R0=scalar(umin=1) R6=ctx() R10=fp0 fp-8=????mmmm
+      43: (bf) r1 = r0                      ; frame1: R0=scalar(id=5,umin=1) R1_w=scalar(id=5,umin=1)
+      44: (07) r1 += 1                      ; frame1: R1_w=scalar()
+      45: (bf) r3 = r10                     ; frame1: R3_w=fp0 R10=fp0
+      46: (07) r3 += -8                     ; frame1: R3_w=fp-8
+      47: (bf) r2 = r1                      ; frame1: R1_w=scalar(id=6) R2_w=scalar(id=6)
+      48: (1f) r2 -= r3
+      math between fp pointer and register with unbounded min value is not allowed
+      verification time 219 usec
+      stack depth 0+24
+      processed 72 insns (limit 1000000) max_states_per_insn 1 total_states 6 peak_states 6 mark_read 2
+
+      Caused by:
+          Invalid argument (os error 22)
+      Failed to run `sudo -E target/debug/ebpf-log`
+    combined: "\u279C  IdeaProjects cargo generate https://github.com/aya-rs/aya-template\n\
+      \     Project Name: ebpf-log\n\U0001F527   Destination: /home/kali-team/IdeaProjects/ebpf-log\
+      \ ...\n\U0001F527   project-name: ebpf-log ...\n\U0001F527   Generating template\
+      \ ...\n\u2714 \U0001F937   Which type of eBPF program? \xB7 uprobe\n\U0001F937\
+      \   Target to attach the (u|uret)probe? (e.g libc): /usr/lib/libssl.so.3\n\U0001F937\
+      \   Function name to attach the (u|uret)probe? (e.g getaddrinfo): SSL_write\n\
+      \U0001F527   Moving generated files into: `/home/kali-team/IdeaProjects/ebpf-log`...\n\
+      \U0001F527   Initializing a fresh Git repository\n\u2728   Done! New project\
+      \ created /home/kali-team/IdeaProjects/ebpf-log\n\u279C  IdeaProjects cd ebpf-log\n\
+      \u279C  ebpf-log git:(main) \u2717 cargo xtask run\nError: the BPF_PROG_LOAD\
+      \ syscall failed. Verifier output: last insn is not an exit or jmp\nverification\
+      \ time 7 usec\nstack depth 0+0+0\nprocessed 0 insns (limit 1000000) max_states_per_insn\
+      \ 0 total_states 0 peak_states 0 mark_read 0\n\nCaused by:\n    Invalid argument\
+      \ (os error 22)\nFailed to run `sudo -E target/debug/ebpf-log`\n\n[DEBUG aya::bpf]\
+      \ BPF Feature Detection: Features {\n        bpf_name: true,\n        bpf_probe_read_kernel:\
+      \ true,\n        bpf_perf_link: true,\n        bpf_global_data: true,\n    \
+      \    bpf_cookie: true,\n        cpumap_prog_id: true,\n        devmap_prog_id:\
+      \ true,\n        prog_info_map_ids: true,\n        prog_info_gpl_compatible:\
+      \ true,\n        btf: Some(\n            BtfFeatures {\n                btf_func:\
+      \ true,\n                btf_func_global: true,\n                btf_datasec:\
+      \ true,\n                btf_float: true,\n                btf_decl_tag: true,\n\
+      \                btf_type_tag: true,\n                btf_enum64: true,\n  \
+      \          },\n        ),\n    }\n[DEBUG aya_obj::relocation] relocating map\
+      \ by section index 10, kind Rodata at insn 59 in section 2\n[DEBUG aya_obj::relocation]\
+      \ relocating map by section index 10, kind Rodata at insn 244 in section 2\n\
+      [DEBUG aya_obj::relocation] relocating map by section index 10, kind Rodata\
+      \ at insn 426 in section 2\n[DEBUG aya_obj::relocation] relocating map by section\
+      \ index 10, kind Rodata at insn 417 in section 2\n[DEBUG aya_obj::relocation]\
+      \ relocating map by section index 10, kind Rodata at insn 163 in section 2\n\
+      [DEBUG aya_obj::relocation] relocating map by section index 10, kind Rodata\
+      \ at insn 181 in section 2\n[DEBUG aya_obj::relocation] relocating map by symbol\
+      \ index Some(15), kind Maps at insn 25 in section 2\n[DEBUG aya_obj::relocation]\
+      \ relocating map by symbol index Some(16), kind Maps at insn 527 in section\
+      \ 2\n[DEBUG aya_obj::relocation] relocating map by symbol index Some(14), kind\
+      \ Maps at insn 5 in section 2\n[DEBUG aya_obj::relocation] relocating map by\
+      \ section index 10, kind Rodata at insn 226 in section 2\n[DEBUG aya_obj::relocation]\
+      \ relocating map by section index 10, kind Rodata at insn 77 in section 2\n\
+      [DEBUG aya_obj::relocation] relocating program `ssl_write_ret` function `ssl_write_ret`\
+      \ size 2\n[DEBUG aya_obj::relocation] finished relocating program `ssl_write_ret`\
+      \ function `ssl_write_ret`\n[DEBUG aya_obj::relocation] relocating program `ssl_write`\
+      \ function `ssl_write` size 3\n[DEBUG aya_obj::relocation] relocating call to\
+      \ callee address 0x0 in section 2 (relocation) at instruction 0\n[DEBUG aya_obj::relocation]\
+      \ callee is `_ZN11ecapture_rs7try_ssl17hcc1631f08bca413fE`\n[DEBUG aya_obj::relocation]\
+      \ linked function `_ZN11ecapture_rs7try_ssl17hcc1631f08bca413fE` at instruction\
+      \ 3\n[DEBUG aya_obj::relocation] relocating program `ssl_write` function `_ZN11ecapture_rs7try_ssl17hcc1631f08bca413fE`\
+      \ size 535\n[DEBUG aya_obj::relocation] relocating call to callee address 0x0\
+      \ in section 6 (relocation) at instruction 42\n[DEBUG aya_obj::relocation] callee\
+      \ is `_ZN4core9panicking14panic_nounwind17hfcf50e67f2a272cfE`\n[DEBUG aya_obj::relocation]\
+      \ callee `_ZN4core9panicking14panic_nounwind17hfcf50e67f2a272cfE` is at ins\
+      \ 3, -40 from current instruction 42\n[DEBUG aya_obj::relocation] finished relocating\
+      \ program `ssl_write` function `_ZN11ecapture_rs7try_ssl17hcc1631f08bca413fE`\n\
+      [DEBUG aya_obj::relocation] callee `_ZN11ecapture_rs7try_ssl17hcc1631f08bca413fE`\
+      \ is at ins 3, 2 from current instruction 0\n[DEBUG aya_obj::relocation] finished\
+      \ relocating program `ssl_write` function `ssl_write`\n[DEBUG aya_obj::relocation]\
+      \ relocating program `ssl_read` function `ssl_read` size 3\n[DEBUG aya_obj::relocation]\
+      \ relocating call to callee address 0x0 in section 2 (relocation) at instruction\
+      \ 0\n[DEBUG aya_obj::relocation] callee is `_ZN11ecapture_rs7try_ssl17hcc1631f08bca413fE`\n\
+      [DEBUG aya_obj::relocation] linked function `_ZN11ecapture_rs7try_ssl17hcc1631f08bca413fE`\
+      \ at instruction 3\n[DEBUG aya_obj::relocation] relocating program `ssl_read`\
+      \ function `_ZN11ecapture_rs7try_ssl17hcc1631f08bca413fE` size 535\n[DEBUG aya_obj::relocation]\
+      \ relocating call to callee address 0x0 in section 6 (relocation) at instruction\
+      \ 42\n[DEBUG aya_obj::relocation] callee is `_ZN4core9panicking14panic_nounwind17hfcf50e67f2a272cfE`\n\
+      [DEBUG aya_obj::relocation] callee `_ZN4core9panicking14panic_nounwind17hfcf50e67f2a272cfE`\
+      \ is at ins 3, -40 from current instruction 42\n[DEBUG aya_obj::relocation]\
+      \ finished relocating program `ssl_read` function `_ZN11ecapture_rs7try_ssl17hcc1631f08bca413fE`\n\
+      [DEBUG aya_obj::relocation] callee `_ZN11ecapture_rs7try_ssl17hcc1631f08bca413fE`\
+      \ is at ins 3, 2 from current instruction 0\n[DEBUG aya_obj::relocation] finished\
+      \ relocating program `ssl_read` function `ssl_read`\n[DEBUG aya_obj::relocation]\
+      \ relocating program `ssl_read_ret` function `ssl_read_ret` size 2\n[DEBUG aya_obj::relocation]\
+      \ finished relocating program `ssl_read_ret` function `ssl_read_ret`\nError:\
+      \ the BPF_PROG_LOAD syscall failed. Verifier output: 0: R1=ctx() R10=fp0\n0:\
+      \ (85) call pc+2\ncaller:\n R10=fp0\ncallee:\n frame1: R1=ctx() R10=fp0\n3:\
+      \ frame1: R1=ctx() R10=fp0\n3: (bf) r6 = r1                       ; frame1:\
+      \ R1=ctx() R6_w=ctx()\n4: (b7) r1 = 0                        ; frame1: R1_w=0\n\
+      5: (63) *(u32 *)(r10 -8) = r1         ; frame1: R1_w=0 R10=fp0 fp-8=????0\n\
+      6: (bf) r2 = r10                      ; frame1: R2_w=fp0 R10=fp0\n7: (07) r2\
+      \ += -8                      ; frame1: R2_w=fp-8\n8: (18) r1 = 0xffff8c9724c65200\
+      \       ; frame1: R1_w=map_ptr(map=AYA_LOG_BUF,ks=4,vs=8192)\n10: (85) call\
+      \ bpf_map_lookup_elem#1   ; frame1: R0=map_value_or_null(id=1,map=AYA_LOG_BUF,ks=4,vs=8192)\n\
+      11: (55) if r0 != 0x0 goto pc+22 34: frame1: R0=map_value(map=AYA_LOG_BUF,ks=4,vs=8192)\
+      \ R6=ctx() R10=fp0 fp-8=????mmmm\n34: (bf) r1 = r10                     ; frame1:\
+      \ R1_w=fp0 R10=fp0\n35: (07) r1 += -8                     ; frame1: R1_w=fp-8\n\
+      36: (bf) r2 = r0                      ; frame1: R0=map_value(map=AYA_LOG_BUF,ks=4,vs=8192)\
+      \ R2_w=map_value(map=AYA_LOG_BUF,ks=4,vs=8192)\n37: (1f) r2 -= r1          \
+      \           ; frame1: R1=fp-8 R2=scalar()\n38: (2d) if r0 > r1 goto pc+2   \
+      \      ; frame1: R0=map_value(map=AYA_LOG_BUF,ks=4,vs=8192) R1=fp-8\n39: (1f)\
+      \ r1 -= r0                     ; frame1: R0=map_value(map=AYA_LOG_BUF,ks=4,vs=8192)\
+      \ R1_w=scalar()\n40: (bf) r2 = r1                      ; frame1: R1_w=scalar(id=3)\
+      \ R2_w=scalar(id=3)\n41: (55) if r2 != 0x0 goto pc+1       ; frame1: R2_w=0\n\
+      42: (85) call pc-40\ncaller:\n frame1: R6=ctx() R10=fp0 fp-8=????mmmm\ncallee:\n\
+      \ frame2: R1_w=0 R2_w=0 R10=fp0\n3: frame2: R1_w=0 R2_w=0 R10=fp0\n3: (bf) r6\
+      \ = r1                       ; frame2: R1_w=0 R6_w=0\n4: (b7) r1 = 0       \
+      \                 ; frame2: R1_w=0\n5: (63) *(u32 *)(r10 -8) = r1         ;\
+      \ frame2: R1_w=0 R10=fp0 fp-8=????0\n6: (bf) r2 = r10                      ;\
+      \ frame2: R2_w=fp0 R10=fp0\n7: (07) r2 += -8                      ; frame2:\
+      \ R2_w=fp-8\n8: (18) r1 = 0xffff8c9724c65200       ; frame2: R1_w=map_ptr(map=AYA_LOG_BUF,ks=4,vs=8192)\n\
+      10: (85) call bpf_map_lookup_elem#1   ; frame2: R0=map_value_or_null(id=4,map=AYA_LOG_BUF,ks=4,vs=8192)\n\
+      11: (55) if r0 != 0x0 goto pc+22      ; frame2: R0=0\n12: (85) call bpf_get_current_pid_tgid#14\
+      \     ; frame2: R0_w=scalar()\n13: (63) *(u32 *)(r10 -20) = r0       ; frame2:\
+      \ R0_w=scalar() R10=fp0 fp-24=mmmm????\n14: (07) r6 += 104                 \
+      \   ; frame2: R6_w=104\n15: (bf) r1 = r10                     ; frame2: R1_w=fp0\
+      \ R10=fp0\n16: (07) r1 += -8                     ; frame2: R1_w=fp-8\n17: (b7)\
+      \ r2 = 8                       ; frame2: R2_w=8\n18: (bf) r3 = r6          \
+      \            ; frame2: R3_w=104 R6_w=104\n19: (85) call bpf_probe_read#4   \
+      \     ; frame2: R0=scalar() fp-8=mmmmmmmm\n20: (15) if r0 == 0x0 goto pc+1 \
+      \      ; frame2: R0=scalar(umin=1)\n21: (05) goto pc+11\n33: (95) exit\nreturning\
+      \ from callee:\n frame2: R0=scalar(umin=1) R6=104 R10=fp0 fp-8=mmmmmmmm fp-24=mmmm????\n\
+      to caller at 43:\n frame1: R0=scalar(umin=1) R6=ctx() R10=fp0 fp-8=????mmmm\n\
+      43: (bf) r1 = r0                      ; frame1: R0=scalar(id=5,umin=1) R1_w=scalar(id=5,umin=1)\n\
+      44: (07) r1 += 1                      ; frame1: R1_w=scalar()\n45: (bf) r3 =\
+      \ r10                     ; frame1: R3_w=fp0 R10=fp0\n46: (07) r3 += -8    \
+      \                 ; frame1: R3_w=fp-8\n47: (bf) r2 = r1                    \
+      \  ; frame1: R1_w=scalar(id=6) R2_w=scalar(id=6)\n48: (1f) r2 -= r3\nmath between\
+      \ fp pointer and register with unbounded min value is not allowed\nverification\
+      \ time 219 usec\nstack depth 0+24\nprocessed 72 insns (limit 1000000) max_states_per_insn\
+      \ 1 total_states 6 peak_states 6 mark_read 2\n\nCaused by:\n    Invalid argument\
+      \ (os error 22)\nFailed to run `sudo -E target/debug/ebpf-log`"
+  source_snippets:
+  - |-
+    bpf_name: true,
+        bpf_probe_read_kernel: true,
+        bpf_perf_link: true,
+        bpf_global_data: true,
+        bpf_cookie: true,
+        cpumap_prog_id: true,
+        devmap_prog_id: true,
+        prog_info_map_ids: true,
+        prog_info_gpl_compatible: true,
+        btf: Some(
+            BtfFeatures {
+                btf_func: true,
+                btf_func_global: true,
+                btf_datasec: true,
+                btf_float: true,
+                btf_decl_tag: true,
+                btf_type_tag: true,
+                btf_enum64: true,
+            },
+        ),
+    }
+  issue_body_text: Delete all info! Can work normally afterwards
+  fix:
+    summary: You are calling panic somewhere. You can't panic or unwrap anywhere in
+      ebpf code.
+    selected_comment:
+      kind: comment
+      url: https://github.com/aya-rs/aya/issues/1056#issuecomment-2408292065
+      author: alessandrod
+      author_association: COLLABORATOR
+      body_text: You are calling panic somewhere. You can't panic or unwrap anywhere
+        in ebpf code.

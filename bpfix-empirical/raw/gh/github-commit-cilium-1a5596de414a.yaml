@@ -1,0 +1,110 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-1a5596de414a
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/1a5596de414a4fd41d63fd68223a0f5e87ac1746
+  title: 'bpf: fix map_array_get_16 backend retrieval'
+  repository: https://github.com/cilium/cilium
+  commit: 1a5596de414a4fd41d63fd68223a0f5e87ac1746
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-1a5596de414a.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: replay_valid
+  case_id: github-commit-cilium-1a5596de414a
+  case_path: cases/github-commit-cilium-1a5596de414a
+  artifact_path: cases/github-commit-cilium-1a5596de414a
+  reason: admitted_to_bpfix_bench_cases
+raw:
+  case_id: github-commit-cilium-1a5596de414a
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: 1a5596de414a4fd41d63fd68223a0f5e87ac1746
+  commit_message: 'bpf: fix map_array_get_16 backend retrieval'
+  commit_date: '2021-04-21'
+  fix_type: inline_hint
+  buggy_code: "// FILE: bpf/include/bpf/access.h\n// CONTEXT: map_array_get_16(const\
+    \ __u16 *array, __u32 index, const __u32 limit)\n\t__u16 datum = 0;\n\n\tif (__builtin_constant_p(index)\
+    \ ||\n\t    !__builtin_constant_p(limit))\n\t\t__throw_build_bug();\n\n\t/* LLVM\
+    \ tends to optimize code away that is needed for the verifier to\n\t * understand\
+    \ dynamic map access. Input constraint is that index < limit\n\t * for this util\
+    \ function, so we never fail here, and returned datum is\n\t * always valid.\n\
+    \t */\n\tasm volatile(\"%[index] <<= 1\\n\\t\"\n\t\t     \"if %[index] >= %[limit]\
+    \ goto +1\\n\\t\"\n\t\t     \"%[array] += %[index]\\n\\t\"\n\t\t     \"%[datum]\
+    \ = *(u16 *)(%[array] + 0)\\n\\t\"\n\t\t     : [datum]\"=r\"(datum)\n\t\t    \
+    \ : [limit]\"i\"(limit), [array]\"r\"(array), [index]\"r\"(index)\n\t\t     :\
+    \ /* no clobbers */ );\n\n\treturn datum;\n}\n#else\n# define map_array_get_16(array,\
+    \ index, limit)\t__throw_build_bug()\n#endif /* !__non_bpf_context && __bpf__\
+    \ */\n#endif /* __BPF_ACCESS_H_ */\n\n// FILE: bpf/lib/lb.h\n// CONTEXT: lb6_select_backend_id(struct\
+    \ __ctx_buff *ctx __maybe_unused,\n\t__u16 *backend_ids;\n\tvoid *maglev_lut;\n\
+    \n\tmaglev_lut = map_lookup_elem(&LB6_MAGLEV_MAP_OUTER, &index);\n\tif (unlikely(!maglev_lut))\n\
+    \t\treturn 0;\n\n\tbackend_ids = map_lookup_elem(maglev_lut, &zero);\n\tif (unlikely(!backend_ids))\n\
+    \t\treturn 0;\n\n\tindex = hash_from_tuple_v6(tuple) % LB_MAGLEV_LUT_SIZE;\n\t\
+    return map_array_get_16(backend_ids, index, LB_MAGLEV_LUT_SIZE);\n}\n#else\n#\
+    \ error \"Invalid load balancer backend selection algorithm!\"\n#endif /* LB_SELECTION\
+    \ */\n\nstatic __always_inline int lb6_xlate(struct __ctx_buff *ctx,\n\t\t\t\t\
+    \     union v6addr *new_dst, __u8 nexthdr __maybe_unused,\n\t\t\t\t     int l3_off,\
+    \ int l4_off,\n\t\t\t\t     struct csum_offset *csum_off,\n\t\t\t\t     const\
+    \ struct lb6_key *key,\n\t\t\t\t     const struct lb6_backend *backend __maybe_unused)\n\
+    {\n\n// CONTEXT: lb4_select_backend_id(struct __ctx_buff *ctx __maybe_unused,\n\
+    \t__u16 *backend_ids;\n\tvoid *maglev_lut;\n\n\tmaglev_lut = map_lookup_elem(&LB4_MAGLEV_MAP_OUTER,\
+    \ &index);\n\tif (unlikely(!maglev_lut))\n\t\treturn 0;\n\n\tbackend_ids = map_lookup_elem(maglev_lut,\
+    \ &zero);\n\tif (unlikely(!backend_ids))\n\t\treturn 0;\n\n\tindex = hash_from_tuple_v4(tuple)\
+    \ % LB_MAGLEV_LUT_SIZE;\n\treturn map_array_get_16(backend_ids, index, LB_MAGLEV_LUT_SIZE);\n\
+    }\n#else\n# error \"Invalid load balancer backend selection algorithm!\"\n#endif\
+    \ /* LB_SELECTION */\n\nstatic __always_inline int\nlb4_xlate(struct __ctx_buff\
+    \ *ctx, __be32 *new_daddr, __be32 *new_saddr __maybe_unused,\n\t  __be32 *old_saddr\
+    \ __maybe_unused, __u8 nexthdr __maybe_unused, int l3_off,\n\t  int l4_off, struct\
+    \ csum_offset *csum_off, struct lb4_key *key,\n\t  const struct lb4_backend *backend\
+    \ __maybe_unused, bool has_l4_header)\n{\n\t__be32 sum;"
+  fixed_code: "// FILE: bpf/include/bpf/access.h\n// CONTEXT: map_array_get_16(const\
+    \ __u16 *array, __u32 index, const __u32 limit)\n\t__u16 datum = 0;\n\n\tif (__builtin_constant_p(index)\
+    \ ||\n\t    !__builtin_constant_p(limit))\n\t\t__throw_build_bug();\n\n\t/* LLVM\
+    \ tends to optimize code away that is needed for the verifier to\n\t * understand\
+    \ dynamic map access. Input constraint is that index < limit\n\t * for this util\
+    \ function, so we never fail here, and returned datum is\n\t * always valid.\n\
+    \t */\n\tasm volatile(\"%[index] <<= 1\\n\\t\"\n\t\t     \"if %[index] > %[limit]\
+    \ goto +1\\n\\t\"\n\t\t     \"%[array] += %[index]\\n\\t\"\n\t\t     \"%[datum]\
+    \ = *(u16 *)(%[array] + 0)\\n\\t\"\n\t\t     : [datum]\"=r\"(datum)\n\t\t    \
+    \ : [limit]\"i\"(limit), [array]\"r\"(array), [index]\"r\"(index)\n\t\t     :\
+    \ /* no clobbers */ );\n\n\treturn datum;\n}\n#else\n# define map_array_get_16(array,\
+    \ index, limit)\t__throw_build_bug()\n#endif /* !__non_bpf_context && __bpf__\
+    \ */\n#endif /* __BPF_ACCESS_H_ */\n\n// FILE: bpf/lib/lb.h\n// CONTEXT: lb6_select_backend_id(struct\
+    \ __ctx_buff *ctx __maybe_unused,\n\t__u16 *backend_ids;\n\tvoid *maglev_lut;\n\
+    \n\tmaglev_lut = map_lookup_elem(&LB6_MAGLEV_MAP_OUTER, &index);\n\tif (unlikely(!maglev_lut))\n\
+    \t\treturn 0;\n\n\tbackend_ids = map_lookup_elem(maglev_lut, &zero);\n\tif (unlikely(!backend_ids))\n\
+    \t\treturn 0;\n\n\tindex = hash_from_tuple_v6(tuple) % LB_MAGLEV_LUT_SIZE;\n\t\
+    return map_array_get_16(backend_ids, index, (LB_MAGLEV_LUT_SIZE - 1) << 1);\n\
+    }\n#else\n# error \"Invalid load balancer backend selection algorithm!\"\n#endif\
+    \ /* LB_SELECTION */\n\nstatic __always_inline int lb6_xlate(struct __ctx_buff\
+    \ *ctx,\n\t\t\t\t     union v6addr *new_dst, __u8 nexthdr __maybe_unused,\n\t\t\
+    \t\t     int l3_off, int l4_off,\n\t\t\t\t     struct csum_offset *csum_off,\n\
+    \t\t\t\t     const struct lb6_key *key,\n\t\t\t\t     const struct lb6_backend\
+    \ *backend __maybe_unused)\n{\n\n// CONTEXT: lb4_select_backend_id(struct __ctx_buff\
+    \ *ctx __maybe_unused,\n\t__u16 *backend_ids;\n\tvoid *maglev_lut;\n\n\tmaglev_lut\
+    \ = map_lookup_elem(&LB4_MAGLEV_MAP_OUTER, &index);\n\tif (unlikely(!maglev_lut))\n\
+    \t\treturn 0;\n\n\tbackend_ids = map_lookup_elem(maglev_lut, &zero);\n\tif (unlikely(!backend_ids))\n\
+    \t\treturn 0;\n\n\tindex = hash_from_tuple_v4(tuple) % LB_MAGLEV_LUT_SIZE;\n\t\
+    return map_array_get_16(backend_ids, index, (LB_MAGLEV_LUT_SIZE - 1) << 1);\n\
+    }\n#else\n# error \"Invalid load balancer backend selection algorithm!\"\n#endif\
+    \ /* LB_SELECTION */\n\nstatic __always_inline int\nlb4_xlate(struct __ctx_buff\
+    \ *ctx, __be32 *new_daddr, __be32 *new_saddr __maybe_unused,\n\t  __be32 *old_saddr\
+    \ __maybe_unused, __u8 nexthdr __maybe_unused, int l3_off,\n\t  int l4_off, struct\
+    \ csum_offset *csum_off, struct lb4_key *key,\n\t  const struct lb4_backend *backend\
+    \ __maybe_unused, bool has_l4_header)\n{\n\t__be32 sum;"
+  diff_summary: |-
+    bpf/include/bpf/access.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: map_array_get_16(const __u16 *array, __u32 index, const __u32 limit).
+    bpf/lib/lb.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: lb6_select_backend_id(struct __ctx_buff *ctx __maybe_unused,, lb4_select_backend_id(struct __ctx_buff *ctx __maybe_unused,.
+    - Commit subject: bpf: fix map_array_get_16 backend retrieval.

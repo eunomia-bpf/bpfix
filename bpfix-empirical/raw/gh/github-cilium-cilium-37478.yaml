@@ -1,0 +1,805 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-cilium-cilium-37478
+source_kind: github_issue
+source:
+  url: https://github.com/cilium/cilium/issues/37478
+  title: 'Verifier error: program tail_handle_snat_fwd_ipv4: load program: permission
+    denied: 2908: (69) r5 = *(u16 *)(r1 +36): R1 invalid mem access ''map_value_or_null''
+    (4703 line(s) omitted)'
+  repository: https://github.com/cilium/cilium
+  commit: null
+  collected_at: '2026-03-11T16:01:34+00:00'
+collector:
+  original_path: bpfix-empirical/raw/gh/github-cilium-cilium-37478.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: true
+  verifier_log_block_count: 5
+  source_snippet_count: 3
+  has_buggy_code: false
+  has_fixed_code: true
+  has_fix_description: true
+reproduction:
+  status: replay_valid
+  case_id: github-cilium-cilium-37478
+  case_path: cases/github-cilium-cilium-37478
+  artifact_path: cases/github-cilium-cilium-37478
+  reason: admitted_to_bpfix_bench_cases
+raw:
+  case_id: github-cilium-cilium-37478
+  source: github_issues
+  collected_at: '2026-03-11T16:01:34+00:00'
+  issue:
+    repository: cilium/cilium
+    number: 37478
+    title: 'Verifier error: program tail_handle_snat_fwd_ipv4: load program: permission
+      denied: 2908: (69) r5 = *(u16 *)(r1 +36): R1 invalid mem access ''map_value_or_null''
+      (4703 line(s) omitted)'
+    url: https://github.com/cilium/cilium/issues/37478
+    state: closed
+    state_reason: not_planned
+    labels:
+    - kind/bug
+    - need-more-info
+    - area/datapath
+    - needs/triage
+    - kind/community-report
+    - kind/regression
+    - stale
+    - affects/v1.16
+    created_at: '2025-02-07T09:21:57Z'
+    updated_at: '2025-06-01T02:13:19Z'
+    author: donyhuang
+  verifier_log:
+    blocks:
+    - |-
+      Verifier error: program tail_handle_snat_fwd_ipv4: load program: permission denied: 2908: (69) r5 = *(u16 *)(r1 +36): R1 invalid mem access 'map_value_or_null' (4703 line(s) omitted)
+      Verifier log: load program: permission denied:
+              ; int tail_handle_snat_fwd_ipv4(struct __ctx_buff *ctx)
+              0: (b4) w9 = 0
+              ; ctx->cb[off] = data;
+              1: (63) *(u32 *)(r1 +52) = r9
+              ; struct ipv4_ct_tuple tuple = {};
+              2: (6b) *(u16 *)(r10 -148) = r9
+              last_idx 2 first_idx 0
+              regs=200 stack=0 before 1: (63) *(u32 *)(r1 +52) = r9
+              regs=200 stack=0 before 0: (b4) w9 = 0
+              3: (63) *(u32 *)(r10 -152) = r9
+              ; DEFINE_FUNC_CTX_POINTER(data_end)
+              4: (61) r3 = *(u32 *)(r1 +80)
+              5: (7b) *(u64 *)(r10 -168) = r1
+              ; DEFINE_FUNC_CTX_POINTER(data)
+              6: (61) r6 = *(u32 *)(r1 +76)
+              ; if (data + tot_len > data_end)
+              7: (bf) r2 = r6
+              8: (07) r2 += 34
+              ; if (data + tot_len > data_end)
+              9: (2d) if r2 > r3 goto pc+17
+               R1=ctx(id=0,off=0,imm=0) R2_w=pkt(id=0,off=34,r=34,imm=0) R3_w=pkt_end(id=0,off=0,imm=0) R6_w=pkt(id=0,off=0,r=34,imm=0) R9_w=invP0 R10=fp0 fp-152=??000000 fp-168_w=ctx
+              ; tuple->nexthdr = ip4->protocol;
+              10: (71) r1 = *(u8 *)(r6 +23)
+                      ; tuple->nexthdr = ip4->protocol;
+              11: (73) *(u8 *)(r10 -148) = r1
+              ; tuple->daddr = ip4->daddr;
+              12: (61) r0 = *(u32 *)(r6 +30)
+              ; tuple->daddr = ip4->daddr;
+              13: (63) *(u32 *)(r10 -160) = r0
+              ; tuple->saddr = ip4->saddr;
+              14: (61) r5 = *(u32 *)(r6 +26)
+              ; tuple->flags = dir;
+              15: (73) *(u8 *)(r10 -147) = r9
+              ; tuple->saddr = ip4->saddr;
+              16: (63) *(u32 *)(r10 -156) = r5
+              ; return ip4->ihl * 4;
+              17: (71) r2 = *(u8 *)(r6 +14)
+              ; if (lb_is_svc_proto(tuple.nexthdr) &&
+              18: (16) if w1 == 0x11 goto pc+1
+               R0_w=inv(id=0,umax_value=4294967295,var_off=(0x0; 0xffffffff)) R1_w=inv(id=0,umax_value=255,var_off=(0x0; 0xff)) R2_w=inv(id=0,umax_value=255,var_off=(0x0; 0xff)) R3_w=pkt_end(id=0,off=0,imm=0) R5_w=inv(id=0,umax_value=4294967295,var_off=(0x0; 0xffffffff)) R6_w=pkt(id=0,off=0,r=34,imm=0) R9_w=invP0 R10=fp0 fp-152=??0m0000 fp-160=mmmmmmmm fp-168_w=ctx
+              19: (56) if w1 != 0x6 goto pc+1
+               R0=inv(id=0,umax_value=4294967295,var_off=(0x0; 0xffffffff)) R1=inv6 R2=inv(id=0,umax_value=255,var_off=(0x0; 0xff)) R3=pkt_end(id=0,off=0,imm=0) R5=inv(id=0,umax_value=4294967295,var_off=(0x0; 0xffffffff)) R6=pkt(id=0,off=0,r=34,imm=0) R9=invP0 R10=fp0 fp-152=??0m0000 fp-160=mmmmmmmm fp-168=ctx
+              ; if (ip4->saddr == IPV4_GATEWAY) {
+              20: (16) if w5 == 0x3502fe0a goto pc+56
+               R0=inv(id=0,umax_value=4294967295,var_off=(0x0; 0xffffffff)) R1=inv6 R2=inv(id=0,umax_value=255,var_off=(0x0; 0xff)) R3=pkt_end(id=0,off=0,imm=0) R5=inv(id=0,umax_value=4294967295,var_off=(0x0; 0xffffffff)) R6=pkt(id=0,off=0,r=34,imm=0) R9=invP0 R10=fp0 fp-152=??0m0000 fp-160=mmmmmmmm fp-168=ctx
+              21: (b4) w2 = 5
+              22: (b4) w8 = 0
+              23: (b4) w5 = 0
+              24: (b4) w3 = 0
+              ; if (IS_ERR(ret))
+              25: (c6) if w8 s< 0x0 goto pc+2
+              last_idx 25 first_idx 19
+              regs=100 stack=0 before 24: (b4) w3 = 0
+              regs=100 stack=0 before 23: (b4) w5 = 0
+              regs=100 stack=0 before 22: (b4) w8 = 0
+              26: (05) goto pc+2988
+              ; if (ret == CTX_ACT_OK)
+              3015: (56) if w8 != 0x0 goto pc+70
+              3016: (bc) w9 = w2
+              3017: (bc) w8 = w3
+              3018: (bc) w6 = w5
+              ; return ctx->len;
+              3019: (79) r1 = *(u64 *)(r10 -168)
+              3020: (61) r7 = *(u32 *)(r1 +0)
+              3021: (18) r1 = 0x6f00eb0200
+              ; struct metrics_key key = {};
+              3023: (7b) *(u64 *)(r10 -128) = r1
+              3024: (bf) r2 = r10
+              ;
+              3025: (07) r2 += -128
+              ; entry = map_lookup_elem(&METRICS_MAP, &key);
+              3026: (18) r1 = 0xffff8882317bf000
+              3028: (85) call bpf_map_lookup_elem#1
+              ; if (entry) {
+              3029: (15) if r0 == 0x0 goto pc+8
+               R0=map_value(id=0,off=0,ks=8,vs=16,imm=0) R6=inv0 R7=inv(id=0,umax_value=4294967295,var_off=(0x0; 0xffffffff)) R8=inv0 R9=inv5 R10=fp0 fp-128=mmmmmmmm fp-152=??0m0000 fp-160=mmmmmmmm fp-168=ctx
+              ; entry->count += 1;
+              3030: (79) r1 = *(u64 *)(r0 +0)
+               R0=map_value(id=0,off=0,ks=8,vs=16,imm=0) R6=inv0 R7=inv(id=0,umax_value=4294967295,var_off=(0x0; 0xffffffff)) R8=inv0 R9=inv5 R10=fp0 fp-128=mmmmmmmm fp-152=??0m0000 fp-160=mmmmmmmm fp-168=ctx
+              3031: (07) r1 += 1
+              3032: (7b) *(u64 *)(r0 +0) = r1
+               R0=map_value(id=0,off=0,ks=8,vs=16,imm=0) R1_w=inv(id=0) R6=inv0 R7=inv(id=0,umax_value=4294967295,var_off=(0x0; 0xffffffff)) R8=inv0 R9=inv5 R10=fp0 fp-128=mmmmmmmm fp-152=??0m0000 fp-160=mmmmmmmm fp-168=ctx
+              ; entry->bytes += bytes;
+              3033: (79) r1 = *(u64 *)(r0 +8)
+               R0=map_value(id=0,off=0,ks=8,vs=16,imm=0) R1_w=inv(id=0) R6=inv0 R7=inv(id=0,umax_value=4294967295,var_off=(0x0; 0xffffffff)) R8=inv0 R9=inv5 R10=fp0 fp-128=mmmmmmmm fp-152=??0m0000 fp-160=mmmmmmmm fp-168=ctx
+              3034: (0f) r1 += r7
+              3035: (7b) *(u64 *)(r0 +8) = r1
+               R0=map_value(id=0,off=0,ks=8,vs=16,imm=0) R1_w=inv(id=0) R6=inv0 R7=inv(id=0,umax_value=4294967295,var_off=(0x0; 0xffffffff)) R8=inv0 R9=inv5 R10=fp0 fp-128=mmmmmmmm fp-152=??0m0000 fp-160=mmmmmmmm fp-168=ctx
+              ; if (!emit_trace_notify(obs_point, monitor))
+              3036: (16) if w8 == 0x0 goto pc+48
+              last_idx 3036 first_idx 3029
+              regs=100 stack=0 before 3035: (7b) *(u64 *)(r0 +8) = r1
+              regs=100 stack=0 before 3034: (0f) r1 += r7
+              regs=100 stack=0 before 3033: (79) r1 = *(u64 *)(r0 +8)
+              regs=100 stack=0 before 3032: (7b) *(u64 *)(r0 +0) = r1
+              regs=100 stack=0 before 3031: (07) r1 += 1
+              regs=100 stack=0 before 3030: (79) r1 = *(u64 *)(r0 +0)
+              regs=100 stack=0 before 3029: (15) if r0 == 0x0 goto pc+8
+               R0_rw=map_value_or_null(id=1,off=0,ks=8,vs=16,imm=0) R6_w=inv0 R7_rw=inv(id=0,umax_value=4294967295,var_off=(0x0; 0xffffffff)) R8_rw=invP0 R9_w=inv5 R10=fp0 fp-128_w=mmmmmmmm fp-152=??0m0000 fp-160=mmmmmmmm fp-168=ctx
+              parent didn't have regs=100 stack=0 marks
+              last_idx 3028 first_idx 3015
+              regs=100 stack=0 before 3028: (85) call bpf_map_lookup_elem#1
+              regs=100 stack=0 before 3026: (18) r1 = 0xffff8882317bf000
+              regs=100 stack=0 before 3025: (07) r2 += -128
+              regs=100 stack=0 before 3024: (bf) r2 = r10
+              regs=100 stack=0 before 3023: (7b) *(u64 *)(r10 -128) = r1
+              regs=100 stack=0 before 3021: (18) r1 = 0x6f00eb0200
+              regs=100 stack=0 before 3020: (61) r7 = *(u32 *)(r1 +0)
+              regs=100 stack=0 before 3019: (79) r1 = *(u64 *)(r10 -168)
+              regs=100 stack=0 before 3018: (bc) w6 = w5
+              regs=100 stack=0 before 3017: (bc) w8 = w3
+              regs=8 stack=0 before 3016: (bc) w9 = w2
+              regs=8 stack=0 before 3015: (56) if w8 != 0x0 goto pc+70
+               R0=inv(id=0,umax_value=4294967295,var_off=(0x0; 0xffffffff)) R1=inv6 R2_rw=inv5 R3_rw=invP0 R5_rw=inv0 R6=pkt(id=0,off=0,r=34,imm=0) R8_rw=invP0 R9=invP0 R10=fp0 fp-152=??0m0000 fp-160=mmmmmmmm fp-168_r=ctx
+              parent didn't have regs=8 stack=0 marks
+              last_idx 26 first_idx 19
+              regs=8 stack=0 before 26: (05) goto pc+2988
+              regs=8 stack=0 before 25: (c6) if w8 s< 0x0 goto pc+2
+              regs=8 stack=0 before 24: (b4) w3 = 0
+              ; ctx_event_output(ctx, &EVENTS_MAP,
+              3085: (b4) w8 = 0
+              ; }
+              3086: (bc) w0 = w8
+              3087: (95) exit
+
+              from 3029 to 3038: R0=inv0 R6=inv0 R7=inv(id=0,umax_value=4294967295,var_off=(0x0; 0xffffffff)) R8=inv0 R9=inv5 R10=fp0 fp-128=mmmmmmmm fp-152=??0m0000 fp-160=mmmmmmmm fp-168=ctx
+              ; new_entry.bytes = bytes;
+              3038: (7b) *(u64 *)(r10 -80) = r7
+              3039: (b7) r1 = 1
+              ; new_entry.count = 1;
+              3040: (7b) *(u64 *)(r10 -88) = r1
+              3041: (bf) r2 = r10
+              ;
+              3042: (07) r2 += -128
+              3043: (bf) r3 = r10
+              3044: (07) r3 += -88
+              ; map_update_elem(&METRICS_MAP, &key, &new_entry, 0);
+              3045: (18) r1 = 0xffff8882317bf000
+              3047: (b4) w4 = 0
+              3048: (85) call bpf_map_update_elem#2
+              ; if (!emit_trace_notify(obs_point, monitor))
+              3049: (16) if w8 == 0x0 goto pc+35
+              last_idx 3049 first_idx 3049
+               R0_w=inv(id=0) R6=inv0 R7=inv(id=0,umax_value=4294967295,var_off=(0x0; 0xffffffff)) R8_r=invP0 R9=inv5 R10=fp0 fp-80_w=mmmmmmmm fp-88_w=mmmmmmmm fp-128=mmmmmmmm fp-152=??0m0000 fp-160=mmmmmmmm fp-168=ctx
+              parent didn't have regs=100 stack=0 marks
+              last_idx 3048 first_idx 3029
+              regs=100 stack=0 before 3048: (85) call bpf_map_update_elem#2
+              regs=100 stack=0 before 3047: (b4) w4 = 0
+              regs=100 stack=0 before 3045: (18) r1 = 0xffff8882317bf000
+              regs=100 stack=0 before 3044: (07) r3 += -88
+              regs=100 stack=0 before 3043: (bf) r3 = r10
+              regs=100 stack=0 before 3042: (07) r2 += -128
+              regs=100 stack=0 before 3041: (bf) r2 = r10
+              regs=100 stack=0 before 3040: (7b) *(u64 *)(r10 -88) = r1
+              regs=100 stack=0 before 3039: (b7) r1 = 1
+              regs=100 stack=0 before 3038: (7b) *(u64 *)(r10 -80) = r7
+              regs=100 stack=0 before 3029: (15) if r0 == 0x0 goto pc+8
+               R0_rw=map_value_or_null(id=1,off=0,ks=8,vs=16,imm=0) R6_w=inv0 R7_rw=inv(id=0,umax_value=4294967295,var_off=(0x0; 0xffffffff)) R8_rw=invP0 R9_w=inv5 R10=fp0 fp-128_rw=mmmmmmmm fp-152=??0m0000 fp-160=mmmmmmmm fp-168=ctx
+              parent already had regs=100 stack=0 marks
+              3085: safe
+
+              from 20 to 77: R0=inv(id=0,umax_value=4294967295,var_off=(0x0; 0xffffffff)) R1=inv6 R2=inv(id=0,umax_value=255,var_off=(0x0; 0xff)) R3=pkt_end(id=0,off=0,imm=0) R5=inv889388554 R6=pkt(id=0,off=0,r=34,imm=0) R9=invP0 R10=fp0 fp-152=??0m0000 fp-160=mmmmmmmm fp-168=ctx
+              ;
+              77: (64) w2 <<= 2
+              78: (54) w2 &= 60
+              ; return ip4->frag_off & bpf_htons(0x1FFF);
+              79: (69) r4 = *(u16 *)(r6 +20)
+              ; return ip4->frag_off & bpf_htons(0x1FFF);
+              80: (bc) w3 = w4
+              81: (54) w3 &= 65311
+              82: (b4) w7 = 1
+              ; return ip4->frag_off & bpf_htons(0x1FFF);
+              83: (16) if w3 == 0x0 goto pc+1
+               R0=inv(id=0,umax_value=4294967295,var_off=(0x0; 0xffffffff)) R1=inv6 R2_w=inv(id=0,umax_value=60,var_off=(0x0; 0x3c)) R3_w=inv(id=0,umax_value=65311,var_off=(0x0; 0xff1f)) R4_w=inv(id=0,umax_value=65535,var_off=(0x0; 0xffff)) R5=inv889388554 R6=pkt(id=0,off=0,r=34,imm=0) R7_w=inv1 R9=invP0 R10=fp0 fp-152=??0m0000 fp-160=mmmmmmmm fp-168=ctx
+              84: (b4) w7 = 0
+              85: (63) *(u32 *)(r10 -192) = r7
+              last_idx 85 first_idx 85
+               R0=inv(id=0,umax_value=4294967295,var_off=(0x0; 0xffffffff)) R1=inv6 R2_w=inv(id=0,umax_value=60,var_off=(0x0; 0x3c)) R3_w=inv(id=0,umax_value=65311,var_off=(0x0; 0xff1f)) R4_w=inv(id=0,umax_value=65535,var_off=(0x0; 0xffff)) R5=inv889388554 R6=pkt(id=0,off=0,r=34,imm=0) R7_rw=invP0 R9=invP0 R10=fp0 fp-152=??0m0000 fp-160=mmmmmmmm fp-168=ctx
+              parent didn't have regs=80 stack=0 marks
+      ......
+
+               from 611 to 653: safe
+
+              from 594 to 610: R0=inv(id=0) R6=inv0 R7=inv(id=0,umax_value=4294967295,var_off=(0x0; 0xffffffff)) R8=inv0 R9=inv0 R10=fp0 fp-8=??mmmmmm fp-16=mmmmmmmm fp-32=????0000 fp-40=mmmmmmmm fp-48=mmmmmmmm fp-56=mmmmmmmm fp-64=mmmmmmmm fp-72=mmmmmmmm fp-80=mmmmmmmm fp-88=mmmmmmmm fp-120=????0mmm fp-128=mmmmmmmm fp-152=??mmmmmm fp-160=mmmmmmmm fp-168=ctx fp-176=????mmmm fp-184=????mmmm fp-192=????0000 fp-200=????0000 fp-208=map_value_or_null fp-216=????mmmm fp-224=????0000
+              ; SEND_SIGNAL(ctx, SIGNAL_CT_FILL_UP, proto, proto);
+              610: (61) r3 = *(u32 *)(r10 -216)
+              ; if (IS_ERR(ret))
+              611: (66) if w7 s> 0xffffffff goto pc+41
+               R0=inv(id=0) R3_w=inv(id=0,umax_value=4294967295,var_off=(0x0; 0xffffffff)) R6=inv0 R7=inv(id=0,umax_value=4294967295,var_off=(0x0; 0xffffffff)) R8=inv0 R9=inv0 R10=fp0 fp-8=??mmmmmm fp-16=mmmmmmmm fp-32=????0000 fp-40=mmmmmmmm fp-48=mmmmmmmm fp-56=mmmmmmmm fp-64=mmmmmmmm fp-72=mmmmmmmm fp-80=mmmmmmmm fp-88=mmmmmmmm fp-120=????0mmm fp-128=mmmmmmmm fp-152=??mmmmmm fp-160=mmmmmmmm fp-168=ctx fp-176=????mmmm fp-184=????mmmm fp-192=????0000 fp-200=????0000 fp-208=map_value_or_null fp-216=????mmmm fp-224=????0000
+              612: (79) r1 = *(u64 *)(r10 -208)
+              ; if (ret < 0)
+              613: (c6) if w8 s< 0x0 goto pc+2398
+              last_idx 613 first_idx 610
+              regs=100 stack=0 before 612: (79) r1 = *(u64 *)(r10 -208)
+              regs=100 stack=0 before 611: (66) if w7 s> 0xffffffff goto pc+41
+              regs=100 stack=0 before 610: (61) r3 = *(u32 *)(r10 -216)
+               R0_w=inv(id=0) R6=inv0 R7_rw=inv(id=0,umax_value=4294967295,var_off=(0x0; 0xffffffff)) R8_rw=invP0 R9_w=inv0 R10=fp0 fp-8=??mmmmmm fp-16=mmmmmmmm fp-32=????0000 fp-40=mmmmmmmm fp-48=mmmmmmmm fp-56=mmmmmmmm fp-64=mmmmmmmm fp-72=mmmmmmmm fp-80=mmmmmmmm fp-88=mmmmmmmm fp-120=????0mmm fp-128=mmmmmmmm fp-152=??mmmmmm fp-160=mmmmmmmm fp-168=ctx fp-176=????mmmm fp-184=????mmmm fp-192=????0000 fp-200=????0000 fp-208_r=map_value_or_null fp-216_r=????mmmm fp-224=????0000
+              parent didn't have regs=100 stack=0 marks
+              last_idx 594 first_idx 582
+              regs=100 stack=0 before 594: (66) if w7 s> 0xffffffff goto pc+15
+              regs=100 stack=0 before 593: (b4) w8 = 0
+              614: (05) goto pc+2291
+              ; if (old_addr == new_addr && old_port == new_port)
+              2906: (69) r4 = *(u16 *)(r10 -150)
+              ; ret = snat_v4_rewrite_headers(ctx, tuple->nexthdr, ETH_HLEN, has_l4_header, l4_off,
+              2907: (71) r2 = *(u8 *)(r10 -148)
+              ; tuple->sport, state->to_sport, port_off);
+              2908: (69) r5 = *(u16 *)(r1 +36)
+              R1 invalid mem access 'map_value_or_null'
+              processed 2835 insns (limit 1000000) max_states_per_insn 1 total_states 172 peak_states 172 mark_read 136
+    - |-
+      from 594 to 610: R0=inv(id=0) R6=inv0 R7=inv(id=0,umax_value=4294967295,var_off=(0x0; 0xffffffff)) R8=inv0 R9=inv0 R10=fp0 fp-8=??mmmmmm fp-16=mmmmmmmm fp-32=????0000 fp-40=mmmmmmmm fp-48=mmmmmmmm fp-56=mmmmmmmm fp-64=mmmmmmmm fp-72=mmmmmmmm fp-80=mmmmmmmm fp-88=mmmmmmmm fp-120=????0mmm fp-128=mmmmmmmm fp-152=??mmmmmm fp-160=mmmmmmmm fp-168=ctx fp-176=????mmmm fp-184=????mmmm fp-192=????0000 fp-200=????0000 fp-208=map_value_or_null fp-216=????mmmm fp-224=????0000
+          ; SEND_SIGNAL(ctx, SIGNAL_CT_FILL_UP, proto, proto);
+          610: (61) r3 = *(u32 *)(r10 -216)
+          ; if (IS_ERR(ret))
+          611: (66) if w7 s> 0xffffffff goto pc+41
+           R0=inv(id=0) R3_w=inv(id=0,umax_value=4294967295,var_off=(0x0; 0xffffffff)) R6=inv0 R7=inv(id=0,umax_value=4294967295,var_off=(0x0; 0xffffffff)) R8=inv0 R9=inv0 R10=fp0 fp-8=??mmmmmm fp-16=mmmmmmmm fp-32=????0000 fp-40=mmmmmmmm fp-48=mmmmmmmm fp-56=mmmmmmmm fp-64=mmmmmmmm fp-72=mmmmmmmm fp-80=mmmmmmmm fp-88=mmmmmmmm fp-120=????0mmm fp-128=mmmmmmmm fp-152=??mmmmmm fp-160=mmmmmmmm fp-168=ctx fp-176=????mmmm fp-184=????mmmm fp-192=????0000 fp-200=????0000 fp-208=map_value_or_null fp-216=????mmmm fp-224=????0000
+          612: (79) r1 = *(u64 *)(r10 -208)
+          ; if (ret < 0)
+          613: (c6) if w8 s< 0x0 goto pc+2398
+          last_idx 613 first_idx 610
+          regs=100 stack=0 before 612: (79) r1 = *(u64 *)(r10 -208)
+          regs=100 stack=0 before 611: (66) if w7 s> 0xffffffff goto pc+41
+          regs=100 stack=0 before 610: (61) r3 = *(u32 *)(r10 -216)
+           R0_w=inv(id=0) R6=inv0 R7_rw=inv(id=0,umax_value=4294967295,var_off=(0x0; 0xffffffff)) R8_rw=invP0 R9_w=inv0 R10=fp0 fp-8=??mmmmmm fp-16=mmmmmmmm fp-32=????0000 fp-40=mmmmmmmm fp-48=mmmmmmmm fp-56=mmmmmmmm fp-64=mmmmmmmm fp-72=mmmmmmmm fp-80=mmmmmmmm fp-88=mmmmmmmm fp-120=????0mmm fp-128=mmmmmmmm fp-152=??mmmmmm fp-160=mmmmmmmm fp-168=ctx fp-176=????mmmm fp-184=????mmmm fp-192=????0000 fp-200=????0000 fp-208_r=map_value_or_null fp-216_r=????mmmm fp-224=????0000
+          parent didn't have regs=100 stack=0 marks
+          last_idx 594 first_idx 582
+          regs=100 stack=0 before 594: (66) if w7 s> 0xffffffff goto pc+15
+          regs=100 stack=0 before 593: (b4) w8 = 0
+          614: (05) goto pc+2291
+          ; if (old_addr == new_addr && old_port == new_port)
+          2906: (69) r4 = *(u16 *)(r10 -150)
+          ; ret = snat_v4_rewrite_headers(ctx, tuple->nexthdr, ETH_HLEN, has_l4_header, l4_off,
+          2907: (71) r2 = *(u8 *)(r10 -148)
+          ; tuple->sport, state->to_sport, port_off);
+          2908: (69) r5 = *(u16 *)(r1 +36)
+          R1 invalid mem access 'map_value_or_null'
+          processed 2835 insns (limit 1000000) max_states_per_insn 1 total_states 172 peak_states 172 mark_read 136
+    - "R0=inv(id=0) R1_w=inv(id=0,umax_value=4294967295,var_off=(0x0; 0xffffffff))\
+      \ R2_w=inv(id=0,umax_value=4294967295,var_off=(0x0; 0xffffffff)) R3_w=map_value_or_null(id=2,off=0,ks=38,vs=56,imm=0)\
+      \ R6=invP0 R7=inv(id=0,umax_value=4294967295,var_off=(0x0; 0xffffffff)) R8=inv0\
+      \ R9=inv(id=0) R10=fp0 fp-56=mmmmmmmm fp-64=mmmmmmmm fp-72=mmmmmmmm fp-80=mmmmmmmm\
+      \ fp-88=mmmmmmmm fp-96=mmmmmmmm fp-104=mmmmmmmm fp-112=mmmmmmmm fp-136=??mmmmmm\
+      \ fp-144=mmmmmmmm fp-152=mmmmmmmm fp-160=mmmmmmmm fp-168=mmmmmmmm fp-184=mmmm????\
+      \ fp-192=??mmmmmm fp-200=mmmmmmmm fp-208=mmmmmmmm fp-216=mmmmmmmm fp-224=mmmmmmmm\
+      \ fp-232=ctx fp-240=????mmmm fp-248=mmmmmmmm fp-256=????mmmm fp-264=inv74775649059069\
+      \ fp-272=inv-5628936584259698688 fp-280=????mmmm fp-288=mmmmmmmm fp-296=mmmmmmmm\
+      \ fp-304=????0000 fp-312=fp fp-320=????0000\n\t544: (05) goto pc+2227\n\t; if\
+      \ (a->d1 != b->d1)\n\t2772: (71) r1 = *(u8 *)(r3 +32)\n\tR3 invalid mem access\
+      \ 'map_value_or_null'\n\tprocessed 4294 insns (limit 1000000) max_states_per_insn\
+      \ 7 total_states 271 peak_states 262 mark_read 147"
+    - |-
+      R0=inv(id=0) R1_w=inv(id=0,umax_value=4294967295,var_off=(0x0; 0xffffffff)) R2_w=inv(id=0,umax_value=4294967295,var_off=(0x0; 0xffffffff)) R3_w=map_value_or_null(id=2,off=0,ks=38,vs=56,imm=0) R6=invP0 R7=inv(id=0,umax_value=4294967295,var_off=(0x0; 0xffffffff)) R8=inv0 R9=inv(id=0) R10=fp0 fp-56=mmmmmmmm fp-64=mmmmmmmm fp-72=mmmmmmmm fp-80=mmmmmmmm fp-88=mmmmmmmm fp-96=mmmmmmmm fp-104=mmmmmmmm fp-112=mmmmmmmm fp-136=??mmmmmm fp-144=mmmmmmmm fp-152=mmmmmmmm fp-160=mmmmmmmm fp-168=mmmmmmmm fp-184=mmmm???? fp-192=??mmmmmm fp-200=mmmmmmmm fp-208=mmmmmmmm fp-216=mmmmmmmm fp-224=mmmmmmmm fp-232=ctx fp-240=????mmmm fp-248=mmmmmmmm fp-256=????mmmm fp-264=inv74775649059069 fp-272=inv-5628936584259698688 fp-280=????mmmm fp-288=mmmmmmmm fp-296=mmmmmmmm fp-304=????0000 fp-312=fp fp-320=????0000
+      544: (05) goto pc+2227
+      ; if (a->d1 != b->d1)
+      2772: (71) r1 = *(u8 *)(r3 +32)
+      R3 invalid mem access 'map_value_or_null'
+      processed 4294 insns (limit 1000000) max_states_per_insn 7 total_states 271 peak_states 262 mark_read 147
+    - "> \t R0=inv(id=0) R1_w=inv(id=0,umax_value=4294967295,var_off=(0x0; 0xffffffff))\
+      \ R2_w=inv(id=0,umax_value=4294967295,var_off=(0x0; 0xffffffff)) R3_w=map_value_or_null(id=2,off=0,ks=38,vs=56,imm=0)\
+      \ R6=invP0 R7=inv(id=0,umax_value=4294967295,var_off=(0x0; 0xffffffff)) R8=inv0\
+      \ R9=inv(id=0) R10=fp0 fp-56=mmmmmmmm fp-64=mmmmmmmm fp-72=mmmmmmmm fp-80=mmmmmmmm\
+      \ fp-88=mmmmmmmm fp-96=mmmmmmmm fp-104=mmmmmmmm fp-112=mmmmmmmm fp-136=??mmmmmm\
+      \ fp-144=mmmmmmmm fp-152=mmmmmmmm fp-160=mmmmmmmm fp-168=mmmmmmmm fp-184=mmmm????\
+      \ fp-192=??mmmmmm fp-200=mmmmmmmm fp-208=mmmmmmmm fp-216=mmmmmmmm fp-224=mmmmmmmm\
+      \ fp-232=ctx fp-240=????mmmm fp-248=mmmmmmmm fp-256=????mmmm fp-264=inv74775649059069\
+      \ fp-272=inv-5628936584259698688 fp-280=????mmmm fp-288=mmmmmmmm fp-296=mmmmmmmm\
+      \ fp-304=????0000 fp-312=fp fp-320=????0000\n> \t544: (05) goto pc+2227\n> \t\
+      ; if (a->d1 != b->d1)\n> \t2772: (71) r1 = *(u8 *)(r3 +32)\n> \tR3 invalid mem\
+      \ access 'map_value_or_null'\n> \tprocessed 4294 insns (limit 1000000) max_states_per_insn\
+      \ 7 total_states 271 peak_states 262 mark_read 147\n>"
+    combined: "Verifier error: program tail_handle_snat_fwd_ipv4: load program: permission\
+      \ denied: 2908: (69) r5 = *(u16 *)(r1 +36): R1 invalid mem access 'map_value_or_null'\
+      \ (4703 line(s) omitted)\nVerifier log: load program: permission denied:\n \
+      \       ; int tail_handle_snat_fwd_ipv4(struct __ctx_buff *ctx)\n        0:\
+      \ (b4) w9 = 0\n        ; ctx->cb[off] = data;\n        1: (63) *(u32 *)(r1 +52)\
+      \ = r9\n        ; struct ipv4_ct_tuple tuple = {};\n        2: (6b) *(u16 *)(r10\
+      \ -148) = r9\n        last_idx 2 first_idx 0\n        regs=200 stack=0 before\
+      \ 1: (63) *(u32 *)(r1 +52) = r9\n        regs=200 stack=0 before 0: (b4) w9\
+      \ = 0\n        3: (63) *(u32 *)(r10 -152) = r9\n        ; DEFINE_FUNC_CTX_POINTER(data_end)\n\
+      \        4: (61) r3 = *(u32 *)(r1 +80)\n        5: (7b) *(u64 *)(r10 -168) =\
+      \ r1\n        ; DEFINE_FUNC_CTX_POINTER(data)\n        6: (61) r6 = *(u32 *)(r1\
+      \ +76)\n        ; if (data + tot_len > data_end)\n        7: (bf) r2 = r6\n\
+      \        8: (07) r2 += 34\n        ; if (data + tot_len > data_end)\n      \
+      \  9: (2d) if r2 > r3 goto pc+17\n         R1=ctx(id=0,off=0,imm=0) R2_w=pkt(id=0,off=34,r=34,imm=0)\
+      \ R3_w=pkt_end(id=0,off=0,imm=0) R6_w=pkt(id=0,off=0,r=34,imm=0) R9_w=invP0\
+      \ R10=fp0 fp-152=??000000 fp-168_w=ctx\n        ; tuple->nexthdr = ip4->protocol;\n\
+      \        10: (71) r1 = *(u8 *)(r6 +23)\n                ; tuple->nexthdr = ip4->protocol;\n\
+      \        11: (73) *(u8 *)(r10 -148) = r1\n        ; tuple->daddr = ip4->daddr;\n\
+      \        12: (61) r0 = *(u32 *)(r6 +30)\n        ; tuple->daddr = ip4->daddr;\n\
+      \        13: (63) *(u32 *)(r10 -160) = r0\n        ; tuple->saddr = ip4->saddr;\n\
+      \        14: (61) r5 = *(u32 *)(r6 +26)\n        ; tuple->flags = dir;\n   \
+      \     15: (73) *(u8 *)(r10 -147) = r9\n        ; tuple->saddr = ip4->saddr;\n\
+      \        16: (63) *(u32 *)(r10 -156) = r5\n        ; return ip4->ihl * 4;\n\
+      \        17: (71) r2 = *(u8 *)(r6 +14)\n        ; if (lb_is_svc_proto(tuple.nexthdr)\
+      \ &&\n        18: (16) if w1 == 0x11 goto pc+1\n         R0_w=inv(id=0,umax_value=4294967295,var_off=(0x0;\
+      \ 0xffffffff)) R1_w=inv(id=0,umax_value=255,var_off=(0x0; 0xff)) R2_w=inv(id=0,umax_value=255,var_off=(0x0;\
+      \ 0xff)) R3_w=pkt_end(id=0,off=0,imm=0) R5_w=inv(id=0,umax_value=4294967295,var_off=(0x0;\
+      \ 0xffffffff)) R6_w=pkt(id=0,off=0,r=34,imm=0) R9_w=invP0 R10=fp0 fp-152=??0m0000\
+      \ fp-160=mmmmmmmm fp-168_w=ctx\n        19: (56) if w1 != 0x6 goto pc+1\n  \
+      \       R0=inv(id=0,umax_value=4294967295,var_off=(0x0; 0xffffffff)) R1=inv6\
+      \ R2=inv(id=0,umax_value=255,var_off=(0x0; 0xff)) R3=pkt_end(id=0,off=0,imm=0)\
+      \ R5=inv(id=0,umax_value=4294967295,var_off=(0x0; 0xffffffff)) R6=pkt(id=0,off=0,r=34,imm=0)\
+      \ R9=invP0 R10=fp0 fp-152=??0m0000 fp-160=mmmmmmmm fp-168=ctx\n        ; if\
+      \ (ip4->saddr == IPV4_GATEWAY) {\n        20: (16) if w5 == 0x3502fe0a goto\
+      \ pc+56\n         R0=inv(id=0,umax_value=4294967295,var_off=(0x0; 0xffffffff))\
+      \ R1=inv6 R2=inv(id=0,umax_value=255,var_off=(0x0; 0xff)) R3=pkt_end(id=0,off=0,imm=0)\
+      \ R5=inv(id=0,umax_value=4294967295,var_off=(0x0; 0xffffffff)) R6=pkt(id=0,off=0,r=34,imm=0)\
+      \ R9=invP0 R10=fp0 fp-152=??0m0000 fp-160=mmmmmmmm fp-168=ctx\n        21: (b4)\
+      \ w2 = 5\n        22: (b4) w8 = 0\n        23: (b4) w5 = 0\n        24: (b4)\
+      \ w3 = 0\n        ; if (IS_ERR(ret))\n        25: (c6) if w8 s< 0x0 goto pc+2\n\
+      \        last_idx 25 first_idx 19\n        regs=100 stack=0 before 24: (b4)\
+      \ w3 = 0\n        regs=100 stack=0 before 23: (b4) w5 = 0\n        regs=100\
+      \ stack=0 before 22: (b4) w8 = 0\n        26: (05) goto pc+2988\n        ; if\
+      \ (ret == CTX_ACT_OK)\n        3015: (56) if w8 != 0x0 goto pc+70\n        3016:\
+      \ (bc) w9 = w2\n        3017: (bc) w8 = w3\n        3018: (bc) w6 = w5\n   \
+      \     ; return ctx->len;\n        3019: (79) r1 = *(u64 *)(r10 -168)\n     \
+      \   3020: (61) r7 = *(u32 *)(r1 +0)\n        3021: (18) r1 = 0x6f00eb0200\n\
+      \        ; struct metrics_key key = {};\n        3023: (7b) *(u64 *)(r10 -128)\
+      \ = r1\n        3024: (bf) r2 = r10\n        ;\n        3025: (07) r2 += -128\n\
+      \        ; entry = map_lookup_elem(&METRICS_MAP, &key);\n        3026: (18)\
+      \ r1 = 0xffff8882317bf000\n        3028: (85) call bpf_map_lookup_elem#1\n \
+      \       ; if (entry) {\n        3029: (15) if r0 == 0x0 goto pc+8\n        \
+      \ R0=map_value(id=0,off=0,ks=8,vs=16,imm=0) R6=inv0 R7=inv(id=0,umax_value=4294967295,var_off=(0x0;\
+      \ 0xffffffff)) R8=inv0 R9=inv5 R10=fp0 fp-128=mmmmmmmm fp-152=??0m0000 fp-160=mmmmmmmm\
+      \ fp-168=ctx\n        ; entry->count += 1;\n        3030: (79) r1 = *(u64 *)(r0\
+      \ +0)\n         R0=map_value(id=0,off=0,ks=8,vs=16,imm=0) R6=inv0 R7=inv(id=0,umax_value=4294967295,var_off=(0x0;\
+      \ 0xffffffff)) R8=inv0 R9=inv5 R10=fp0 fp-128=mmmmmmmm fp-152=??0m0000 fp-160=mmmmmmmm\
+      \ fp-168=ctx\n        3031: (07) r1 += 1\n        3032: (7b) *(u64 *)(r0 +0)\
+      \ = r1\n         R0=map_value(id=0,off=0,ks=8,vs=16,imm=0) R1_w=inv(id=0) R6=inv0\
+      \ R7=inv(id=0,umax_value=4294967295,var_off=(0x0; 0xffffffff)) R8=inv0 R9=inv5\
+      \ R10=fp0 fp-128=mmmmmmmm fp-152=??0m0000 fp-160=mmmmmmmm fp-168=ctx\n     \
+      \   ; entry->bytes += bytes;\n        3033: (79) r1 = *(u64 *)(r0 +8)\n    \
+      \     R0=map_value(id=0,off=0,ks=8,vs=16,imm=0) R1_w=inv(id=0) R6=inv0 R7=inv(id=0,umax_value=4294967295,var_off=(0x0;\
+      \ 0xffffffff)) R8=inv0 R9=inv5 R10=fp0 fp-128=mmmmmmmm fp-152=??0m0000 fp-160=mmmmmmmm\
+      \ fp-168=ctx\n        3034: (0f) r1 += r7\n        3035: (7b) *(u64 *)(r0 +8)\
+      \ = r1\n         R0=map_value(id=0,off=0,ks=8,vs=16,imm=0) R1_w=inv(id=0) R6=inv0\
+      \ R7=inv(id=0,umax_value=4294967295,var_off=(0x0; 0xffffffff)) R8=inv0 R9=inv5\
+      \ R10=fp0 fp-128=mmmmmmmm fp-152=??0m0000 fp-160=mmmmmmmm fp-168=ctx\n     \
+      \   ; if (!emit_trace_notify(obs_point, monitor))\n        3036: (16) if w8\
+      \ == 0x0 goto pc+48\n        last_idx 3036 first_idx 3029\n        regs=100\
+      \ stack=0 before 3035: (7b) *(u64 *)(r0 +8) = r1\n        regs=100 stack=0 before\
+      \ 3034: (0f) r1 += r7\n        regs=100 stack=0 before 3033: (79) r1 = *(u64\
+      \ *)(r0 +8)\n        regs=100 stack=0 before 3032: (7b) *(u64 *)(r0 +0) = r1\n\
+      \        regs=100 stack=0 before 3031: (07) r1 += 1\n        regs=100 stack=0\
+      \ before 3030: (79) r1 = *(u64 *)(r0 +0)\n        regs=100 stack=0 before 3029:\
+      \ (15) if r0 == 0x0 goto pc+8\n         R0_rw=map_value_or_null(id=1,off=0,ks=8,vs=16,imm=0)\
+      \ R6_w=inv0 R7_rw=inv(id=0,umax_value=4294967295,var_off=(0x0; 0xffffffff))\
+      \ R8_rw=invP0 R9_w=inv5 R10=fp0 fp-128_w=mmmmmmmm fp-152=??0m0000 fp-160=mmmmmmmm\
+      \ fp-168=ctx\n        parent didn't have regs=100 stack=0 marks\n        last_idx\
+      \ 3028 first_idx 3015\n        regs=100 stack=0 before 3028: (85) call bpf_map_lookup_elem#1\n\
+      \        regs=100 stack=0 before 3026: (18) r1 = 0xffff8882317bf000\n      \
+      \  regs=100 stack=0 before 3025: (07) r2 += -128\n        regs=100 stack=0 before\
+      \ 3024: (bf) r2 = r10\n        regs=100 stack=0 before 3023: (7b) *(u64 *)(r10\
+      \ -128) = r1\n        regs=100 stack=0 before 3021: (18) r1 = 0x6f00eb0200\n\
+      \        regs=100 stack=0 before 3020: (61) r7 = *(u32 *)(r1 +0)\n        regs=100\
+      \ stack=0 before 3019: (79) r1 = *(u64 *)(r10 -168)\n        regs=100 stack=0\
+      \ before 3018: (bc) w6 = w5\n        regs=100 stack=0 before 3017: (bc) w8 =\
+      \ w3\n        regs=8 stack=0 before 3016: (bc) w9 = w2\n        regs=8 stack=0\
+      \ before 3015: (56) if w8 != 0x0 goto pc+70\n         R0=inv(id=0,umax_value=4294967295,var_off=(0x0;\
+      \ 0xffffffff)) R1=inv6 R2_rw=inv5 R3_rw=invP0 R5_rw=inv0 R6=pkt(id=0,off=0,r=34,imm=0)\
+      \ R8_rw=invP0 R9=invP0 R10=fp0 fp-152=??0m0000 fp-160=mmmmmmmm fp-168_r=ctx\n\
+      \        parent didn't have regs=8 stack=0 marks\n        last_idx 26 first_idx\
+      \ 19\n        regs=8 stack=0 before 26: (05) goto pc+2988\n        regs=8 stack=0\
+      \ before 25: (c6) if w8 s< 0x0 goto pc+2\n        regs=8 stack=0 before 24:\
+      \ (b4) w3 = 0\n        ; ctx_event_output(ctx, &EVENTS_MAP,\n        3085: (b4)\
+      \ w8 = 0\n        ; }\n        3086: (bc) w0 = w8\n        3087: (95) exit\n\
+      \n        from 3029 to 3038: R0=inv0 R6=inv0 R7=inv(id=0,umax_value=4294967295,var_off=(0x0;\
+      \ 0xffffffff)) R8=inv0 R9=inv5 R10=fp0 fp-128=mmmmmmmm fp-152=??0m0000 fp-160=mmmmmmmm\
+      \ fp-168=ctx\n        ; new_entry.bytes = bytes;\n        3038: (7b) *(u64 *)(r10\
+      \ -80) = r7\n        3039: (b7) r1 = 1\n        ; new_entry.count = 1;\n   \
+      \     3040: (7b) *(u64 *)(r10 -88) = r1\n        3041: (bf) r2 = r10\n     \
+      \   ;\n        3042: (07) r2 += -128\n        3043: (bf) r3 = r10\n        3044:\
+      \ (07) r3 += -88\n        ; map_update_elem(&METRICS_MAP, &key, &new_entry,\
+      \ 0);\n        3045: (18) r1 = 0xffff8882317bf000\n        3047: (b4) w4 = 0\n\
+      \        3048: (85) call bpf_map_update_elem#2\n        ; if (!emit_trace_notify(obs_point,\
+      \ monitor))\n        3049: (16) if w8 == 0x0 goto pc+35\n        last_idx 3049\
+      \ first_idx 3049\n         R0_w=inv(id=0) R6=inv0 R7=inv(id=0,umax_value=4294967295,var_off=(0x0;\
+      \ 0xffffffff)) R8_r=invP0 R9=inv5 R10=fp0 fp-80_w=mmmmmmmm fp-88_w=mmmmmmmm\
+      \ fp-128=mmmmmmmm fp-152=??0m0000 fp-160=mmmmmmmm fp-168=ctx\n        parent\
+      \ didn't have regs=100 stack=0 marks\n        last_idx 3048 first_idx 3029\n\
+      \        regs=100 stack=0 before 3048: (85) call bpf_map_update_elem#2\n   \
+      \     regs=100 stack=0 before 3047: (b4) w4 = 0\n        regs=100 stack=0 before\
+      \ 3045: (18) r1 = 0xffff8882317bf000\n        regs=100 stack=0 before 3044:\
+      \ (07) r3 += -88\n        regs=100 stack=0 before 3043: (bf) r3 = r10\n    \
+      \    regs=100 stack=0 before 3042: (07) r2 += -128\n        regs=100 stack=0\
+      \ before 3041: (bf) r2 = r10\n        regs=100 stack=0 before 3040: (7b) *(u64\
+      \ *)(r10 -88) = r1\n        regs=100 stack=0 before 3039: (b7) r1 = 1\n    \
+      \    regs=100 stack=0 before 3038: (7b) *(u64 *)(r10 -80) = r7\n        regs=100\
+      \ stack=0 before 3029: (15) if r0 == 0x0 goto pc+8\n         R0_rw=map_value_or_null(id=1,off=0,ks=8,vs=16,imm=0)\
+      \ R6_w=inv0 R7_rw=inv(id=0,umax_value=4294967295,var_off=(0x0; 0xffffffff))\
+      \ R8_rw=invP0 R9_w=inv5 R10=fp0 fp-128_rw=mmmmmmmm fp-152=??0m0000 fp-160=mmmmmmmm\
+      \ fp-168=ctx\n        parent already had regs=100 stack=0 marks\n        3085:\
+      \ safe\n\n        from 20 to 77: R0=inv(id=0,umax_value=4294967295,var_off=(0x0;\
+      \ 0xffffffff)) R1=inv6 R2=inv(id=0,umax_value=255,var_off=(0x0; 0xff)) R3=pkt_end(id=0,off=0,imm=0)\
+      \ R5=inv889388554 R6=pkt(id=0,off=0,r=34,imm=0) R9=invP0 R10=fp0 fp-152=??0m0000\
+      \ fp-160=mmmmmmmm fp-168=ctx\n        ;\n        77: (64) w2 <<= 2\n       \
+      \ 78: (54) w2 &= 60\n        ; return ip4->frag_off & bpf_htons(0x1FFF);\n \
+      \       79: (69) r4 = *(u16 *)(r6 +20)\n        ; return ip4->frag_off & bpf_htons(0x1FFF);\n\
+      \        80: (bc) w3 = w4\n        81: (54) w3 &= 65311\n        82: (b4) w7\
+      \ = 1\n        ; return ip4->frag_off & bpf_htons(0x1FFF);\n        83: (16)\
+      \ if w3 == 0x0 goto pc+1\n         R0=inv(id=0,umax_value=4294967295,var_off=(0x0;\
+      \ 0xffffffff)) R1=inv6 R2_w=inv(id=0,umax_value=60,var_off=(0x0; 0x3c)) R3_w=inv(id=0,umax_value=65311,var_off=(0x0;\
+      \ 0xff1f)) R4_w=inv(id=0,umax_value=65535,var_off=(0x0; 0xffff)) R5=inv889388554\
+      \ R6=pkt(id=0,off=0,r=34,imm=0) R7_w=inv1 R9=invP0 R10=fp0 fp-152=??0m0000 fp-160=mmmmmmmm\
+      \ fp-168=ctx\n        84: (b4) w7 = 0\n        85: (63) *(u32 *)(r10 -192) =\
+      \ r7\n        last_idx 85 first_idx 85\n         R0=inv(id=0,umax_value=4294967295,var_off=(0x0;\
+      \ 0xffffffff)) R1=inv6 R2_w=inv(id=0,umax_value=60,var_off=(0x0; 0x3c)) R3_w=inv(id=0,umax_value=65311,var_off=(0x0;\
+      \ 0xff1f)) R4_w=inv(id=0,umax_value=65535,var_off=(0x0; 0xffff)) R5=inv889388554\
+      \ R6=pkt(id=0,off=0,r=34,imm=0) R7_rw=invP0 R9=invP0 R10=fp0 fp-152=??0m0000\
+      \ fp-160=mmmmmmmm fp-168=ctx\n        parent didn't have regs=80 stack=0 marks\n\
+      ......\n\n         from 611 to 653: safe\n\n        from 594 to 610: R0=inv(id=0)\
+      \ R6=inv0 R7=inv(id=0,umax_value=4294967295,var_off=(0x0; 0xffffffff)) R8=inv0\
+      \ R9=inv0 R10=fp0 fp-8=??mmmmmm fp-16=mmmmmmmm fp-32=????0000 fp-40=mmmmmmmm\
+      \ fp-48=mmmmmmmm fp-56=mmmmmmmm fp-64=mmmmmmmm fp-72=mmmmmmmm fp-80=mmmmmmmm\
+      \ fp-88=mmmmmmmm fp-120=????0mmm fp-128=mmmmmmmm fp-152=??mmmmmm fp-160=mmmmmmmm\
+      \ fp-168=ctx fp-176=????mmmm fp-184=????mmmm fp-192=????0000 fp-200=????0000\
+      \ fp-208=map_value_or_null fp-216=????mmmm fp-224=????0000\n        ; SEND_SIGNAL(ctx,\
+      \ SIGNAL_CT_FILL_UP, proto, proto);\n        610: (61) r3 = *(u32 *)(r10 -216)\n\
+      \        ; if (IS_ERR(ret))\n        611: (66) if w7 s> 0xffffffff goto pc+41\n\
+      \         R0=inv(id=0) R3_w=inv(id=0,umax_value=4294967295,var_off=(0x0; 0xffffffff))\
+      \ R6=inv0 R7=inv(id=0,umax_value=4294967295,var_off=(0x0; 0xffffffff)) R8=inv0\
+      \ R9=inv0 R10=fp0 fp-8=??mmmmmm fp-16=mmmmmmmm fp-32=????0000 fp-40=mmmmmmmm\
+      \ fp-48=mmmmmmmm fp-56=mmmmmmmm fp-64=mmmmmmmm fp-72=mmmmmmmm fp-80=mmmmmmmm\
+      \ fp-88=mmmmmmmm fp-120=????0mmm fp-128=mmmmmmmm fp-152=??mmmmmm fp-160=mmmmmmmm\
+      \ fp-168=ctx fp-176=????mmmm fp-184=????mmmm fp-192=????0000 fp-200=????0000\
+      \ fp-208=map_value_or_null fp-216=????mmmm fp-224=????0000\n        612: (79)\
+      \ r1 = *(u64 *)(r10 -208)\n        ; if (ret < 0)\n        613: (c6) if w8 s<\
+      \ 0x0 goto pc+2398\n        last_idx 613 first_idx 610\n        regs=100 stack=0\
+      \ before 612: (79) r1 = *(u64 *)(r10 -208)\n        regs=100 stack=0 before\
+      \ 611: (66) if w7 s> 0xffffffff goto pc+41\n        regs=100 stack=0 before\
+      \ 610: (61) r3 = *(u32 *)(r10 -216)\n         R0_w=inv(id=0) R6=inv0 R7_rw=inv(id=0,umax_value=4294967295,var_off=(0x0;\
+      \ 0xffffffff)) R8_rw=invP0 R9_w=inv0 R10=fp0 fp-8=??mmmmmm fp-16=mmmmmmmm fp-32=????0000\
+      \ fp-40=mmmmmmmm fp-48=mmmmmmmm fp-56=mmmmmmmm fp-64=mmmmmmmm fp-72=mmmmmmmm\
+      \ fp-80=mmmmmmmm fp-88=mmmmmmmm fp-120=????0mmm fp-128=mmmmmmmm fp-152=??mmmmmm\
+      \ fp-160=mmmmmmmm fp-168=ctx fp-176=????mmmm fp-184=????mmmm fp-192=????0000\
+      \ fp-200=????0000 fp-208_r=map_value_or_null fp-216_r=????mmmm fp-224=????0000\n\
+      \        parent didn't have regs=100 stack=0 marks\n        last_idx 594 first_idx\
+      \ 582\n        regs=100 stack=0 before 594: (66) if w7 s> 0xffffffff goto pc+15\n\
+      \        regs=100 stack=0 before 593: (b4) w8 = 0\n        614: (05) goto pc+2291\n\
+      \        ; if (old_addr == new_addr && old_port == new_port)\n        2906:\
+      \ (69) r4 = *(u16 *)(r10 -150)\n        ; ret = snat_v4_rewrite_headers(ctx,\
+      \ tuple->nexthdr, ETH_HLEN, has_l4_header, l4_off,\n        2907: (71) r2 =\
+      \ *(u8 *)(r10 -148)\n        ; tuple->sport, state->to_sport, port_off);\n \
+      \       2908: (69) r5 = *(u16 *)(r1 +36)\n        R1 invalid mem access 'map_value_or_null'\n\
+      \        processed 2835 insns (limit 1000000) max_states_per_insn 1 total_states\
+      \ 172 peak_states 172 mark_read 136\n\nfrom 594 to 610: R0=inv(id=0) R6=inv0\
+      \ R7=inv(id=0,umax_value=4294967295,var_off=(0x0; 0xffffffff)) R8=inv0 R9=inv0\
+      \ R10=fp0 fp-8=??mmmmmm fp-16=mmmmmmmm fp-32=????0000 fp-40=mmmmmmmm fp-48=mmmmmmmm\
+      \ fp-56=mmmmmmmm fp-64=mmmmmmmm fp-72=mmmmmmmm fp-80=mmmmmmmm fp-88=mmmmmmmm\
+      \ fp-120=????0mmm fp-128=mmmmmmmm fp-152=??mmmmmm fp-160=mmmmmmmm fp-168=ctx\
+      \ fp-176=????mmmm fp-184=????mmmm fp-192=????0000 fp-200=????0000 fp-208=map_value_or_null\
+      \ fp-216=????mmmm fp-224=????0000\n    ; SEND_SIGNAL(ctx, SIGNAL_CT_FILL_UP,\
+      \ proto, proto);\n    610: (61) r3 = *(u32 *)(r10 -216)\n    ; if (IS_ERR(ret))\n\
+      \    611: (66) if w7 s> 0xffffffff goto pc+41\n     R0=inv(id=0) R3_w=inv(id=0,umax_value=4294967295,var_off=(0x0;\
+      \ 0xffffffff)) R6=inv0 R7=inv(id=0,umax_value=4294967295,var_off=(0x0; 0xffffffff))\
+      \ R8=inv0 R9=inv0 R10=fp0 fp-8=??mmmmmm fp-16=mmmmmmmm fp-32=????0000 fp-40=mmmmmmmm\
+      \ fp-48=mmmmmmmm fp-56=mmmmmmmm fp-64=mmmmmmmm fp-72=mmmmmmmm fp-80=mmmmmmmm\
+      \ fp-88=mmmmmmmm fp-120=????0mmm fp-128=mmmmmmmm fp-152=??mmmmmm fp-160=mmmmmmmm\
+      \ fp-168=ctx fp-176=????mmmm fp-184=????mmmm fp-192=????0000 fp-200=????0000\
+      \ fp-208=map_value_or_null fp-216=????mmmm fp-224=????0000\n    612: (79) r1\
+      \ = *(u64 *)(r10 -208)\n    ; if (ret < 0)\n    613: (c6) if w8 s< 0x0 goto\
+      \ pc+2398\n    last_idx 613 first_idx 610\n    regs=100 stack=0 before 612:\
+      \ (79) r1 = *(u64 *)(r10 -208)\n    regs=100 stack=0 before 611: (66) if w7\
+      \ s> 0xffffffff goto pc+41\n    regs=100 stack=0 before 610: (61) r3 = *(u32\
+      \ *)(r10 -216)\n     R0_w=inv(id=0) R6=inv0 R7_rw=inv(id=0,umax_value=4294967295,var_off=(0x0;\
+      \ 0xffffffff)) R8_rw=invP0 R9_w=inv0 R10=fp0 fp-8=??mmmmmm fp-16=mmmmmmmm fp-32=????0000\
+      \ fp-40=mmmmmmmm fp-48=mmmmmmmm fp-56=mmmmmmmm fp-64=mmmmmmmm fp-72=mmmmmmmm\
+      \ fp-80=mmmmmmmm fp-88=mmmmmmmm fp-120=????0mmm fp-128=mmmmmmmm fp-152=??mmmmmm\
+      \ fp-160=mmmmmmmm fp-168=ctx fp-176=????mmmm fp-184=????mmmm fp-192=????0000\
+      \ fp-200=????0000 fp-208_r=map_value_or_null fp-216_r=????mmmm fp-224=????0000\n\
+      \    parent didn't have regs=100 stack=0 marks\n    last_idx 594 first_idx 582\n\
+      \    regs=100 stack=0 before 594: (66) if w7 s> 0xffffffff goto pc+15\n    regs=100\
+      \ stack=0 before 593: (b4) w8 = 0\n    614: (05) goto pc+2291\n    ; if (old_addr\
+      \ == new_addr && old_port == new_port)\n    2906: (69) r4 = *(u16 *)(r10 -150)\n\
+      \    ; ret = snat_v4_rewrite_headers(ctx, tuple->nexthdr, ETH_HLEN, has_l4_header,\
+      \ l4_off,\n    2907: (71) r2 = *(u8 *)(r10 -148)\n    ; tuple->sport, state->to_sport,\
+      \ port_off);\n    2908: (69) r5 = *(u16 *)(r1 +36)\n    R1 invalid mem access\
+      \ 'map_value_or_null'\n    processed 2835 insns (limit 1000000) max_states_per_insn\
+      \ 1 total_states 172 peak_states 172 mark_read 136\n\nR0=inv(id=0) R1_w=inv(id=0,umax_value=4294967295,var_off=(0x0;\
+      \ 0xffffffff)) R2_w=inv(id=0,umax_value=4294967295,var_off=(0x0; 0xffffffff))\
+      \ R3_w=map_value_or_null(id=2,off=0,ks=38,vs=56,imm=0) R6=invP0 R7=inv(id=0,umax_value=4294967295,var_off=(0x0;\
+      \ 0xffffffff)) R8=inv0 R9=inv(id=0) R10=fp0 fp-56=mmmmmmmm fp-64=mmmmmmmm fp-72=mmmmmmmm\
+      \ fp-80=mmmmmmmm fp-88=mmmmmmmm fp-96=mmmmmmmm fp-104=mmmmmmmm fp-112=mmmmmmmm\
+      \ fp-136=??mmmmmm fp-144=mmmmmmmm fp-152=mmmmmmmm fp-160=mmmmmmmm fp-168=mmmmmmmm\
+      \ fp-184=mmmm???? fp-192=??mmmmmm fp-200=mmmmmmmm fp-208=mmmmmmmm fp-216=mmmmmmmm\
+      \ fp-224=mmmmmmmm fp-232=ctx fp-240=????mmmm fp-248=mmmmmmmm fp-256=????mmmm\
+      \ fp-264=inv74775649059069 fp-272=inv-5628936584259698688 fp-280=????mmmm fp-288=mmmmmmmm\
+      \ fp-296=mmmmmmmm fp-304=????0000 fp-312=fp fp-320=????0000\n\t544: (05) goto\
+      \ pc+2227\n\t; if (a->d1 != b->d1)\n\t2772: (71) r1 = *(u8 *)(r3 +32)\n\tR3\
+      \ invalid mem access 'map_value_or_null'\n\tprocessed 4294 insns (limit 1000000)\
+      \ max_states_per_insn 7 total_states 271 peak_states 262 mark_read 147\n\nR0=inv(id=0)\
+      \ R1_w=inv(id=0,umax_value=4294967295,var_off=(0x0; 0xffffffff)) R2_w=inv(id=0,umax_value=4294967295,var_off=(0x0;\
+      \ 0xffffffff)) R3_w=map_value_or_null(id=2,off=0,ks=38,vs=56,imm=0) R6=invP0\
+      \ R7=inv(id=0,umax_value=4294967295,var_off=(0x0; 0xffffffff)) R8=inv0 R9=inv(id=0)\
+      \ R10=fp0 fp-56=mmmmmmmm fp-64=mmmmmmmm fp-72=mmmmmmmm fp-80=mmmmmmmm fp-88=mmmmmmmm\
+      \ fp-96=mmmmmmmm fp-104=mmmmmmmm fp-112=mmmmmmmm fp-136=??mmmmmm fp-144=mmmmmmmm\
+      \ fp-152=mmmmmmmm fp-160=mmmmmmmm fp-168=mmmmmmmm fp-184=mmmm???? fp-192=??mmmmmm\
+      \ fp-200=mmmmmmmm fp-208=mmmmmmmm fp-216=mmmmmmmm fp-224=mmmmmmmm fp-232=ctx\
+      \ fp-240=????mmmm fp-248=mmmmmmmm fp-256=????mmmm fp-264=inv74775649059069 fp-272=inv-5628936584259698688\
+      \ fp-280=????mmmm fp-288=mmmmmmmm fp-296=mmmmmmmm fp-304=????0000 fp-312=fp\
+      \ fp-320=????0000\n544: (05) goto pc+2227\n; if (a->d1 != b->d1)\n2772: (71)\
+      \ r1 = *(u8 *)(r3 +32)\nR3 invalid mem access 'map_value_or_null'\nprocessed\
+      \ 4294 insns (limit 1000000) max_states_per_insn 7 total_states 271 peak_states\
+      \ 262 mark_read 147\n\n> \t R0=inv(id=0) R1_w=inv(id=0,umax_value=4294967295,var_off=(0x0;\
+      \ 0xffffffff)) R2_w=inv(id=0,umax_value=4294967295,var_off=(0x0; 0xffffffff))\
+      \ R3_w=map_value_or_null(id=2,off=0,ks=38,vs=56,imm=0) R6=invP0 R7=inv(id=0,umax_value=4294967295,var_off=(0x0;\
+      \ 0xffffffff)) R8=inv0 R9=inv(id=0) R10=fp0 fp-56=mmmmmmmm fp-64=mmmmmmmm fp-72=mmmmmmmm\
+      \ fp-80=mmmmmmmm fp-88=mmmmmmmm fp-96=mmmmmmmm fp-104=mmmmmmmm fp-112=mmmmmmmm\
+      \ fp-136=??mmmmmm fp-144=mmmmmmmm fp-152=mmmmmmmm fp-160=mmmmmmmm fp-168=mmmmmmmm\
+      \ fp-184=mmmm???? fp-192=??mmmmmm fp-200=mmmmmmmm fp-208=mmmmmmmm fp-216=mmmmmmmm\
+      \ fp-224=mmmmmmmm fp-232=ctx fp-240=????mmmm fp-248=mmmmmmmm fp-256=????mmmm\
+      \ fp-264=inv74775649059069 fp-272=inv-5628936584259698688 fp-280=????mmmm fp-288=mmmmmmmm\
+      \ fp-296=mmmmmmmm fp-304=????0000 fp-312=fp fp-320=????0000\n> \t544: (05) goto\
+      \ pc+2227\n> \t; if (a->d1 != b->d1)\n> \t2772: (71) r1 = *(u8 *)(r3 +32)\n\
+      > \tR3 invalid mem access 'map_value_or_null'\n> \tprocessed 4294 insns (limit\
+      \ 1000000) max_states_per_insn 7 total_states 271 peak_states 262 mark_read\
+      \ 147\n>"
+  source_snippets:
+  - |-
+    ; int tail_handle_snat_fwd_ipv4(struct __ctx_buff *ctx)
+        0: (b4) w9 = 0
+        ; ctx->cb[off] = data;
+        1: (63) *(u32 *)(r1 +52) = r9
+        ; struct ipv4_ct_tuple tuple = {};
+        2: (6b) *(u16 *)(r10 -148) = r9
+        last_idx 2 first_idx 0
+        regs=200 stack=0 before 1: (63) *(u32 *)(r1 +52) = r9
+        regs=200 stack=0 before 0: (b4) w9 = 0
+        3: (63) *(u32 *)(r10 -152) = r9
+        ; DEFINE_FUNC_CTX_POINTER(data_end)
+        4: (61) r3 = *(u32 *)(r1 +80)
+        5: (7b) *(u64 *)(r10 -168) = r1
+        ; DEFINE_FUNC_CTX_POINTER(data)
+        6: (61) r6 = *(u32 *)(r1 +76)
+        ; if (data + tot_len > data_end)
+        7: (bf) r2 = r6
+        8: (07) r2 += 34
+        ; if (data + tot_len > data_end)
+        9: (2d) if r2 > r3 goto pc+17
+         R1=ctx(id=0,off=0,imm=0) R2_w=pkt(id=0,off=34,r=34,imm=0) R3_w=pkt_end(id=0,off=0,imm=0) R6_w=pkt(id=0,off=0,r=34,imm=0) R9_w=invP0 R10=fp0 fp-152=??000000 fp-168_w=ctx
+        ; tuple->nexthdr = ip4->protocol;
+        10: (71) r1 = *(u8 *)(r6 +23)
+                ; tuple->nexthdr = ip4->protocol;
+        11: (73) *(u8 *)(r10 -148) = r1
+        ; tuple->daddr = ip4->daddr;
+        12: (61) r0 = *(u32 *)(r6 +30)
+        ; tuple->daddr = ip4->daddr;
+        13: (63) *(u32 *)(r10 -160) = r0
+        ; tuple->saddr = ip4->saddr;
+        14: (61) r5 = *(u32 *)(r6 +26)
+        ; tuple->flags = dir;
+        15: (73) *(u8 *)(r10 -147) = r9
+        ; tuple->saddr = ip4->saddr;
+        16: (63) *(u32 *)(r10 -156) = r5
+        ; return ip4->ihl * 4;
+        17: (71) r2 = *(u8 *)(r6 +14)
+        ; if (lb_is_svc_proto(tuple.nexthdr) &&
+        18: (16) if w1 == 0x11 goto pc+1
+         R0_w=inv(id=0,umax_value=4294967295,var_off=(0x0; 0xffffffff)) R1_w=inv(id=0,umax_value=255,var_off=(0x0; 0xff)) R2_w=inv(id=0,umax_value=255,var_off=(0x0; 0xff)) R3_w=pkt_end(id=0,off=0,imm=0) R5_w=inv(id=0,umax_value=4294967295,var_off=(0x0; 0xffffffff)) R6_w=pkt(id=0,off=0,r=34,imm=0) R9_w=invP0 R10=fp0 fp-152=??0m0000 fp-160=mmmmmmmm fp-168_w=ctx
+        19: (56) if w1 != 0x6 goto pc+1
+         R0=inv(id=0,umax_value=4294967295,var_off=(0x0; 0xffffffff)) R1=inv6 R2=inv(id=0,umax_value=255,var_off=(0x0; 0xff)) R3=pkt_end(id=0,off=0,imm=0) R5=inv(id=0,umax_value=4294967295,var_off=(0x0; 0xffffffff)) R6=pkt(id=0,off=0,r=34,imm=0) R9=invP0 R10=fp0 fp-152=??0m0000 fp-160=mmmmmmmm fp-168=ctx
+        ; if (ip4->saddr == IPV4_GATEWAY) {
+        20: (16) if w5 == 0x3502fe0a goto pc+56
+         R0=inv(id=0,umax_value=4294967295,var_off=(0x0; 0xffffffff)) R1=inv6 R2=inv(id=0,umax_value=255,var_off=(0x0; 0xff)) R3=pkt_end(id=0,off=0,imm=0) R5=inv(id=0,umax_value=4294967295,var_off=(0x0; 0xffffffff)) R6=pkt(id=0,off=0,r=34,imm=0) R9=invP0 R10=fp0 fp-152=??0m0000 fp-160=mmmmmmmm fp-168=ctx
+        21: (b4) w2 = 5
+        22: (b4) w8 = 0
+        23: (b4) w5 = 0
+        24: (b4) w3 = 0
+        ; if (IS_ERR(ret))
+        25: (c6) if w8 s< 0x0 goto pc+2
+        last_idx 25 first_idx 19
+        regs=100 stack=0 before 24: (b4) w3 = 0
+        regs=100 stack=0 before 23: (b4) w5 = 0
+        regs=100 stack=0 before 22: (b4) w8 = 0
+        26: (05) goto pc+2988
+        ; if (ret == CTX_ACT_OK)
+        3015: (56) if w8 != 0x0 goto pc+70
+        3016: (bc) w9 = w2
+        3017: (bc) w8 = w3
+        3018: (bc) w6 = w5
+        ; return ctx->len;
+        3019: (79) r1 = *(u64 *)(r10 -168)
+        3020: (61) r7 = *(u32 *)(r1 +0)
+        3021: (18) r1 = 0x6f00eb0200
+        ; struct metrics_key key = {};
+        3023: (7b) *(u64 *)(r10 -128) = r1
+        3024: (bf) r2 = r10
+        ;
+        3025: (07) r2 += -128
+        ; entry = map_lookup_elem(&METRICS_MAP, &key);
+        3026: (18) r1 = 0xffff8882317bf000
+        3028: (85) call bpf_map_lookup_elem#1
+        ; if (entry) {
+        3029: (15) if r0 == 0x0 goto pc+8
+         R0=map_value(id=0,off=0,ks=8,vs=16,imm=0) R6=inv0 R7=inv(id=0,umax_value=4294967295,var_off=(0x0; 0xffffffff)) R8=inv0 R9=inv5 R10=fp0 fp-128=mmmmmmmm fp-152=??0m0000 fp-160=mmmmmmmm fp-168=ctx
+        ; entry->count += 1;
+        3030: (79) r1 = *(u64 *)(r0 +0)
+         R0=map_value(id=0,off=0,ks=8,vs=16,imm=0) R6=inv0 R7=inv(id=0,umax_value=4294967295,var_off=(0x0; 0xffffffff)) R8=inv0 R9=inv5 R10=fp0 fp-128=mmmmmmmm fp-152=??0m0000 fp-160=mmmmmmmm fp-168=ctx
+        3031: (07) r1 += 1
+        3032: (7b) *(u64 *)(r0 +0) = r1
+         R0=map_value(id=0,off=0,ks=8,vs=16,imm=0) R1_w=inv(id=0) R6=inv0 R7=inv(id=0,umax_value=4294967295,var_off=(0x0; 0xffffffff)) R8=inv0 R9=inv5 R10=fp0 fp-128=mmmmmmmm fp-152=??0m0000 fp-160=mmmmmmmm fp-168=ctx
+        ; entry->bytes += bytes;
+        3033: (79) r1 = *(u64 *)(r0 +8)
+         R0=map_value(id=0,off=0,ks=8,vs=16,imm=0) R1_w=inv(id=0) R6=inv0 R7=inv(id=0,umax_value=4294967295,var_off=(0x0; 0xffffffff)) R8=inv0 R9=inv5 R10=fp0 fp-128=mmmmmmmm fp-152=??0m0000 fp-160=mmmmmmmm fp-168=ctx
+        3034: (0f) r1 += r7
+        3035: (7b) *(u64 *)(r0 +8) = r1
+         R0=map_value(id=0,off=0,ks=8,vs=16,imm=0) R1_w=inv(id=0) R6=inv0 R7=inv(id=0,umax_value=4294967295,var_off=(0x0; 0xffffffff)) R8=inv0 R9=inv5 R10=fp0 fp-128=mmmmmmmm fp-152=??0m0000 fp-160=mmmmmmmm fp-168=ctx
+        ; if (!emit_trace_notify(obs_point, monitor))
+        3036: (16) if w8 == 0x0 goto pc+48
+        last_idx 3036 first_idx 3029
+        regs=100 stack=0 before 3035: (7b) *(u64 *)(r0 +8) = r1
+        regs=100 stack=0 before 3034: (0f) r1 += r7
+        regs=100 stack=0 before 3033: (79) r1 = *(u64 *)(r0 +8)
+        regs=100 stack=0 before 3032: (7b) *(u64 *)(r0 +0) = r1
+        regs=100 stack=0 before 3031: (07) r1 += 1
+        regs=100 stack=0 before 3030: (79) r1 = *(u64 *)(r0 +0)
+        regs=100 stack=0 before 3029: (15) if r0 == 0x0 goto pc+8
+         R0_rw=map_value_or_null(id=1,off=0,ks=8,vs=16,imm=0) R6_w=inv0 R7_rw=inv(id=0,umax_value=4294967295,var_off=(0x0; 0xffffffff)) R8_rw=invP0 R9_w=inv5 R10=fp0 fp-128_w=mmmmmmmm fp-152=??0m0000 fp-160=mmmmmmmm fp-168=ctx
+        parent didn't have regs=100 stack=0 marks
+        last_idx 3028 first_idx 3015
+        regs=100 stack=0 before 3028: (85) call bpf_map_lookup_elem#1
+        regs=100 stack=0 before 3026: (18) r1 = 0xffff8882317bf000
+        regs=100 stack=0 before 3025: (07) r2 += -128
+        regs=100 stack=0 before 3024: (bf) r2 = r10
+        regs=100 stack=0 before 3023: (7b) *(u64 *)(r10 -128) = r1
+        regs=100 stack=0 before 3021: (18) r1 = 0x6f00eb0200
+        regs=100 stack=0 before 3020: (61) r7 = *(u32 *)(r1 +0)
+        regs=100 stack=0 before 3019: (79) r1 = *(u64 *)(r10 -168)
+        regs=100 stack=0 before 3018: (bc) w6 = w5
+        regs=100 stack=0 before 3017: (bc) w8 = w3
+        regs=8 stack=0 before 3016: (bc) w9 = w2
+        regs=8 stack=0 before 3015: (56) if w8 != 0x0 goto pc+70
+         R0=inv(id=0,umax_value=4294967295,var_off=(0x0; 0xffffffff)) R1=inv6 R2_rw=inv5 R3_rw=invP0 R5_rw=inv0 R6=pkt(id=0,off=0,r=34,imm=0) R8_rw=invP0 R9=invP0 R10=fp0 fp-152=??0m0000 fp-160=mmmmmmmm fp-168_r=ctx
+        parent didn't have regs=8 stack=0 marks
+        last_idx 26 first_idx 19
+        regs=8 stack=0 before 26: (05) goto pc+2988
+        regs=8 stack=0 before 25: (c6) if w8 s< 0x0 goto pc+2
+        regs=8 stack=0 before 24: (b4) w3 = 0
+        ; ctx_event_output(ctx, &EVENTS_MAP,
+        3085: (b4) w8 = 0
+        ; }
+        3086: (bc) w0 = w8
+        3087: (95) exit
+  - |-
+    from 3029 to 3038: R0=inv0 R6=inv0 R7=inv(id=0,umax_value=4294967295,var_off=(0x0; 0xffffffff)) R8=inv0 R9=inv5 R10=fp0 fp-128=mmmmmmmm fp-152=??0m0000 fp-160=mmmmmmmm fp-168=ctx
+        ; new_entry.bytes = bytes;
+        3038: (7b) *(u64 *)(r10 -80) = r7
+        3039: (b7) r1 = 1
+        ; new_entry.count = 1;
+        3040: (7b) *(u64 *)(r10 -88) = r1
+        3041: (bf) r2 = r10
+        ;
+        3042: (07) r2 += -128
+        3043: (bf) r3 = r10
+        3044: (07) r3 += -88
+        ; map_update_elem(&METRICS_MAP, &key, &new_entry, 0);
+        3045: (18) r1 = 0xffff8882317bf000
+        3047: (b4) w4 = 0
+        3048: (85) call bpf_map_update_elem#2
+        ; if (!emit_trace_notify(obs_point, monitor))
+        3049: (16) if w8 == 0x0 goto pc+35
+        last_idx 3049 first_idx 3049
+         R0_w=inv(id=0) R6=inv0 R7=inv(id=0,umax_value=4294967295,var_off=(0x0; 0xffffffff)) R8_r=invP0 R9=inv5 R10=fp0 fp-80_w=mmmmmmmm fp-88_w=mmmmmmmm fp-128=mmmmmmmm fp-152=??0m0000 fp-160=mmmmmmmm fp-168=ctx
+        parent didn't have regs=100 stack=0 marks
+        last_idx 3048 first_idx 3029
+        regs=100 stack=0 before 3048: (85) call bpf_map_update_elem#2
+        regs=100 stack=0 before 3047: (b4) w4 = 0
+        regs=100 stack=0 before 3045: (18) r1 = 0xffff8882317bf000
+        regs=100 stack=0 before 3044: (07) r3 += -88
+        regs=100 stack=0 before 3043: (bf) r3 = r10
+        regs=100 stack=0 before 3042: (07) r2 += -128
+        regs=100 stack=0 before 3041: (bf) r2 = r10
+        regs=100 stack=0 before 3040: (7b) *(u64 *)(r10 -88) = r1
+        regs=100 stack=0 before 3039: (b7) r1 = 1
+        regs=100 stack=0 before 3038: (7b) *(u64 *)(r10 -80) = r7
+        regs=100 stack=0 before 3029: (15) if r0 == 0x0 goto pc+8
+         R0_rw=map_value_or_null(id=1,off=0,ks=8,vs=16,imm=0) R6_w=inv0 R7_rw=inv(id=0,umax_value=4294967295,var_off=(0x0; 0xffffffff)) R8_rw=invP0 R9_w=inv5 R10=fp0 fp-128_rw=mmmmmmmm fp-152=??0m0000 fp-160=mmmmmmmm fp-168=ctx
+        parent already had regs=100 stack=0 marks
+        3085: safe
+  - |-
+    from 20 to 77: R0=inv(id=0,umax_value=4294967295,var_off=(0x0; 0xffffffff)) R1=inv6 R2=inv(id=0,umax_value=255,var_off=(0x0; 0xff)) R3=pkt_end(id=0,off=0,imm=0) R5=inv889388554 R6=pkt(id=0,off=0,r=34,imm=0) R9=invP0 R10=fp0 fp-152=??0m0000 fp-160=mmmmmmmm fp-168=ctx
+        ;
+        77: (64) w2 <<= 2
+        78: (54) w2 &= 60
+        ; return ip4->frag_off & bpf_htons(0x1FFF);
+        79: (69) r4 = *(u16 *)(r6 +20)
+        ; return ip4->frag_off & bpf_htons(0x1FFF);
+        80: (bc) w3 = w4
+        81: (54) w3 &= 65311
+        82: (b4) w7 = 1
+        ; return ip4->frag_off & bpf_htons(0x1FFF);
+        83: (16) if w3 == 0x0 goto pc+1
+         R0=inv(id=0,umax_value=4294967295,var_off=(0x0; 0xffffffff)) R1=inv6 R2_w=inv(id=0,umax_value=60,var_off=(0x0; 0x3c)) R3_w=inv(id=0,umax_value=65311,var_off=(0x0; 0xff1f)) R4_w=inv(id=0,umax_value=65535,var_off=(0x0; 0xffff)) R5=inv889388554 R6=pkt(id=0,off=0,r=34,imm=0) R7_w=inv1 R9=invP0 R10=fp0 fp-152=??0m0000 fp-160=mmmmmmmm fp-168=ctx
+        84: (b4) w7 = 0
+        85: (63) *(u32 *)(r10 -192) = r7
+        last_idx 85 first_idx 85
+         R0=inv(id=0,umax_value=4294967295,var_off=(0x0; 0xffffffff)) R1=inv6 R2_w=inv(id=0,umax_value=60,var_off=(0x0; 0x3c)) R3_w=inv(id=0,umax_value=65311,var_off=(0x0; 0xff1f)) R4_w=inv(id=0,umax_value=65535,var_off=(0x0; 0xffff)) R5=inv889388554 R6=pkt(id=0,off=0,r=34,imm=0) R7_rw=invP0 R9=invP0 R10=fp0 fp-152=??0m0000 fp-160=mmmmmmmm fp-168=ctx
+        parent didn't have regs=80 stack=0 marks
+  issue_body_text: |-
+    Is there an existing issue for this?
+    [x] I have searched the existing issues
+    Version
+    equal or higher than 1.16.0
+    What happened?
+    A bug happened!
+    How can we reproduce the issue?
+    1 install cilium by helm
+    2 helm values yaml is
+    Cilium Version
+    1.16.0
+    Kernel Version
+    Linux VM-1-133-opencloudos 5.4.119-20.0009.36 #1 SMP Mon Nov 4 13:30:25 CST 2024 x86_64 x86_64 x86_64 GNU/Linux
+    Kubernetes Version
+    Client Version: v1.28.9
+    Kustomize Version: v5.0.4-0.20230601165947-6ce0bf390ce3
+    Server Version: v1.28.9
+    Regression
+    1.15.6 work fine for me
+    Sysdump
+    _No response_
+    Relevant log output
+    Anything else?
+    _No response_
+    Cilium Users Document
+    [x] Are you a user of Cilium? Please add yourself to the Users doc
+    Code of Conduct
+    [x] I agree to follow this project's Code of Conduct
+  fix:
+    summary: Indeed issues like this are often highly related to the kernel version.
+      I would also strongly suggest using a version newer than v1.16.0. There have
+      been six subsequent patch releases since that version in the v1.16.x series,
+      and now v1.17.0 is out. While I do not know whether a newer bugfix release of
+      Cilium will fix this particular issue (since it's probably more to do with the
+      kernel), it is helpful for us to understand whether the issue impacts users
+      on the latest bugfix release.
+    selected_comment:
+      kind: comment
+      url: https://github.com/cilium/cilium/issues/37478#issuecomment-2648171889
+      author: joestringer
+      author_association: MEMBER
+      body_text: Indeed issues like this are often highly related to the kernel version.
+        I would also strongly suggest using a version newer than v1.16.0. There have
+        been six subsequent patch releases since that version in the v1.16.x series,
+        and now v1.17.0 is out. While I do not know whether a newer bugfix release
+        of Cilium will fix this particular issue (since it's probably more to do with
+        the kernel), it is helpful for us to understand whether the issue impacts
+        users on the latest bugfix release.

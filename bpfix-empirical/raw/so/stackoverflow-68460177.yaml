@@ -1,0 +1,386 @@
+schema_version: bpfix.raw_external/v1
+raw_id: stackoverflow-68460177
+source_kind: stackoverflow
+source:
+  url: https://stackoverflow.com/questions/68460177/register-errors-when-trying-to-separate-strings-and-print-them-using-bcc
+  title: Register errors when trying to separate strings and print them using BCC
+  repository: null
+  commit: null
+  collected_at: '2026-04-30T00:51:07+00:00'
+collector:
+  original_path: bpfix-empirical/raw/so/stackoverflow-68460177.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: true
+  verifier_log_block_count: 1
+  source_snippet_count: 1
+  has_buggy_code: false
+  has_fixed_code: false
+  has_fix_description: false
+reproduction:
+  status: replay_valid
+  case_id: stackoverflow-68460177
+  case_path: cases/stackoverflow-68460177
+  artifact_path: cases/stackoverflow-68460177
+  reason: admitted_to_bpfix_bench_cases
+raw:
+  case_id: stackoverflow-68460177
+  source: stackoverflow
+  collected_at: '2026-04-30T00:51:07+00:00'
+  question:
+    question_id: 68460177
+    title: Register errors when trying to separate strings and print them using BCC
+    url: https://stackoverflow.com/questions/68460177/register-errors-when-trying-to-separate-strings-and-print-them-using-bcc
+    tags:
+    - ebpf
+    - bcc-bpf
+    score: 1
+    answer_count: 1
+    is_answered: true
+  verifier_log:
+    blocks:
+    - |-
+      bpf: Failed to load program: Permission denied
+      btf_vmlinux is malformed
+      Unrecognized arg#0 type PTR
+      ; int helloworld2(void *ctx)
+      0: (b7) r1 = 7562354
+      ; const char str[] = "here are some words";
+      1: (63) *(u32 *)(r10 -8) = r1
+      2: (18) r1 = 0x6f7720656d6f7320
+      4: (7b) *(u64 *)(r10 -16) = r1
+      5: (18) r1 = 0x6572612065726568
+      7: (7b) *(u64 *)(r10 -24) = r1
+      8: (b7) r6 = 684837
+      ; ({ char _fmt[] = "%s\n"; bpf_trace_printk_(_fmt, sizeof(_fmt), i - start, str + start); });
+      9: (63) *(u32 *)(r10 -28) = r6
+      10: (bf) r1 = r10
+      ;
+      11: (07) r1 += -28
+      12: (bf) r4 = r10
+      13: (07) r4 += -24
+      ; ({ char _fmt[] = "%s\n"; bpf_trace_printk_(_fmt, sizeof(_fmt), i - start, str + start); });
+      14: (b7) r2 = 4
+      15: (b7) r3 = 4
+      16: (85) call bpf_trace_printk#6
+      last_idx 16 first_idx 0
+      regs=4 stack=0 before 15: (b7) r3 = 4
+      regs=4 stack=0 before 14: (b7) r2 = 4
+      17: (b7) r1 = 5
+      ; if (str[i] == ' ') {
+      18: (71) r2 = *(u8 *)(r10 -19)
+      ; if (str[i] == ' ') {
+      19: (55) if r2 != 0x20 goto pc+9
+       R0_w=inv(id=0) R1_w=inv5 R2_w=inv32 R6_w=inv684837 R10=fp0 fp-8=????mmmm fp-16_w=inv8031924080438375200 fp-24_w=inv7310011936944579944 fp-32=mmmm????
+      ;
+      20: (bf) r4 = r10
+      21: (07) r4 += -19
+      ; ({ char _fmt[] = "%s\n"; bpf_trace_printk_(_fmt, sizeof(_fmt), i - start, str + start); });
+      22: (63) *(u32 *)(r10 -28) = r6
+      23: (bf) r1 = r10
+      ;
+      24: (07) r1 += -28
+      ; ({ char _fmt[] = "%s\n"; bpf_trace_printk_(_fmt, sizeof(_fmt), i - start, str + start); });
+      25: (b7) r2 = 4
+      26: (b7) r3 = 0
+      27: (85) call bpf_trace_printk#6
+      last_idx 27 first_idx 0
+      regs=4 stack=0 before 26: (b7) r3 = 0
+      regs=4 stack=0 before 25: (b7) r2 = 4
+      28: (b7) r1 = 6
+      ; if (str[i] == ' ') {
+      29: (71) r2 = *(u8 *)(r10 -18)
+      ; if (str[i] == ' ') {
+      30: (55) if r2 != 0x20 goto pc+12
+       R0=inv(id=0) R1_w=inv6 R2_w=inv32 R6=inv684837 R10=fp0 fp-8=????mmmm fp-16=inv8031924080438375200 fp-24=inv7310011936944579944 fp-32=mmmm????
+      31: (b7) r2 = 684837
+      ; ({ char _fmt[] = "%s\n"; bpf_trace_printk_(_fmt, sizeof(_fmt), i - start, str + start); });
+      32: (63) *(u32 *)(r10 -28) = r2
+      33: (b7) r3 = 6
+      ; ({ char _fmt[] = "%s\n"; bpf_trace_printk_(_fmt, sizeof(_fmt), i - start, str + start); });
+      34: (1f) r3 -= r1
+      35: (bf) r4 = r10
+      ;
+      36: (07) r4 += -24
+      ; ({ char _fmt[] = "%s\n"; bpf_trace_printk_(_fmt, sizeof(_fmt), i - start, str + start); });
+      37: (4f) r4 |= r1
+      last_idx 37 first_idx 28
+      regs=2 stack=0 before 36: (07) r4 += -24
+      regs=2 stack=0 before 35: (bf) r4 = r10
+      regs=2 stack=0 before 34: (1f) r3 -= r1
+      regs=2 stack=0 before 33: (b7) r3 = 6
+      regs=2 stack=0 before 32: (63) *(u32 *)(r10 -28) = r2
+      regs=2 stack=0 before 31: (b7) r2 = 684837
+      regs=2 stack=0 before 30: (55) if r2 != 0x20 goto pc+12
+      regs=2 stack=0 before 29: (71) r2 = *(u8 *)(r10 -18)
+      regs=2 stack=0 before 28: (b7) r1 = 6
+      R4 bitwise operator |= on pointer prohibited
+      processed 36 insns (limit 1000000) max_states_per_insn 0 total_states 1 peak_states 1 mark_read 1
+
+      Traceback (most recent call last):
+        File "BPFHelloWorld.py", line 31, in <module>
+          b.attach_kprobe(event=b.get_syscall_fnname("clone"), fn_name="helloworld2")
+        File "/usr/lib/python3/dist-packages/bcc/__init__.py", line 654, in attach_kprobe
+          fn = self.load_func(fn_name, BPF.KPROBE)
+        File "/usr/lib/python3/dist-packages/bcc/__init__.py", line 394, in load_func
+          raise Exception("Failed to load BPF program %s: %s" %
+      Exception: Failed to load BPF program b'helloworld2': Permission denied
+    combined: |-
+      bpf: Failed to load program: Permission denied
+      btf_vmlinux is malformed
+      Unrecognized arg#0 type PTR
+      ; int helloworld2(void *ctx)
+      0: (b7) r1 = 7562354
+      ; const char str[] = "here are some words";
+      1: (63) *(u32 *)(r10 -8) = r1
+      2: (18) r1 = 0x6f7720656d6f7320
+      4: (7b) *(u64 *)(r10 -16) = r1
+      5: (18) r1 = 0x6572612065726568
+      7: (7b) *(u64 *)(r10 -24) = r1
+      8: (b7) r6 = 684837
+      ; ({ char _fmt[] = "%s\n"; bpf_trace_printk_(_fmt, sizeof(_fmt), i - start, str + start); });
+      9: (63) *(u32 *)(r10 -28) = r6
+      10: (bf) r1 = r10
+      ;
+      11: (07) r1 += -28
+      12: (bf) r4 = r10
+      13: (07) r4 += -24
+      ; ({ char _fmt[] = "%s\n"; bpf_trace_printk_(_fmt, sizeof(_fmt), i - start, str + start); });
+      14: (b7) r2 = 4
+      15: (b7) r3 = 4
+      16: (85) call bpf_trace_printk#6
+      last_idx 16 first_idx 0
+      regs=4 stack=0 before 15: (b7) r3 = 4
+      regs=4 stack=0 before 14: (b7) r2 = 4
+      17: (b7) r1 = 5
+      ; if (str[i] == ' ') {
+      18: (71) r2 = *(u8 *)(r10 -19)
+      ; if (str[i] == ' ') {
+      19: (55) if r2 != 0x20 goto pc+9
+       R0_w=inv(id=0) R1_w=inv5 R2_w=inv32 R6_w=inv684837 R10=fp0 fp-8=????mmmm fp-16_w=inv8031924080438375200 fp-24_w=inv7310011936944579944 fp-32=mmmm????
+      ;
+      20: (bf) r4 = r10
+      21: (07) r4 += -19
+      ; ({ char _fmt[] = "%s\n"; bpf_trace_printk_(_fmt, sizeof(_fmt), i - start, str + start); });
+      22: (63) *(u32 *)(r10 -28) = r6
+      23: (bf) r1 = r10
+      ;
+      24: (07) r1 += -28
+      ; ({ char _fmt[] = "%s\n"; bpf_trace_printk_(_fmt, sizeof(_fmt), i - start, str + start); });
+      25: (b7) r2 = 4
+      26: (b7) r3 = 0
+      27: (85) call bpf_trace_printk#6
+      last_idx 27 first_idx 0
+      regs=4 stack=0 before 26: (b7) r3 = 0
+      regs=4 stack=0 before 25: (b7) r2 = 4
+      28: (b7) r1 = 6
+      ; if (str[i] == ' ') {
+      29: (71) r2 = *(u8 *)(r10 -18)
+      ; if (str[i] == ' ') {
+      30: (55) if r2 != 0x20 goto pc+12
+       R0=inv(id=0) R1_w=inv6 R2_w=inv32 R6=inv684837 R10=fp0 fp-8=????mmmm fp-16=inv8031924080438375200 fp-24=inv7310011936944579944 fp-32=mmmm????
+      31: (b7) r2 = 684837
+      ; ({ char _fmt[] = "%s\n"; bpf_trace_printk_(_fmt, sizeof(_fmt), i - start, str + start); });
+      32: (63) *(u32 *)(r10 -28) = r2
+      33: (b7) r3 = 6
+      ; ({ char _fmt[] = "%s\n"; bpf_trace_printk_(_fmt, sizeof(_fmt), i - start, str + start); });
+      34: (1f) r3 -= r1
+      35: (bf) r4 = r10
+      ;
+      36: (07) r4 += -24
+      ; ({ char _fmt[] = "%s\n"; bpf_trace_printk_(_fmt, sizeof(_fmt), i - start, str + start); });
+      37: (4f) r4 |= r1
+      last_idx 37 first_idx 28
+      regs=2 stack=0 before 36: (07) r4 += -24
+      regs=2 stack=0 before 35: (bf) r4 = r10
+      regs=2 stack=0 before 34: (1f) r3 -= r1
+      regs=2 stack=0 before 33: (b7) r3 = 6
+      regs=2 stack=0 before 32: (63) *(u32 *)(r10 -28) = r2
+      regs=2 stack=0 before 31: (b7) r2 = 684837
+      regs=2 stack=0 before 30: (55) if r2 != 0x20 goto pc+12
+      regs=2 stack=0 before 29: (71) r2 = *(u8 *)(r10 -18)
+      regs=2 stack=0 before 28: (b7) r1 = 6
+      R4 bitwise operator |= on pointer prohibited
+      processed 36 insns (limit 1000000) max_states_per_insn 0 total_states 1 peak_states 1 mark_read 1
+
+      Traceback (most recent call last):
+        File "BPFHelloWorld.py", line 31, in <module>
+          b.attach_kprobe(event=b.get_syscall_fnname("clone"), fn_name="helloworld2")
+        File "/usr/lib/python3/dist-packages/bcc/__init__.py", line 654, in attach_kprobe
+          fn = self.load_func(fn_name, BPF.KPROBE)
+        File "/usr/lib/python3/dist-packages/bcc/__init__.py", line 394, in load_func
+          raise Exception("Failed to load BPF program %s: %s" %
+      Exception: Failed to load BPF program b'helloworld2': Permission denied
+  source_snippets:
+  - |-
+    from bcc import BPF
+    # BPF PROGRAM
+    bpfprogram = """
+
+    int helloworld2(void *ctx)
+    {
+
+        const char str[] = "here are some words";
+        int length = sizeof(str);
+        int start = 0;
+        //#pragma unroll Tried using this but does not really fix the issue.
+        for (int i = 0; i < sizeof(str); i++) {
+            if (str[i] == ' ') {
+                bpf_trace_printk("%s\\n", i - start, str + start);
+                start = i + 1;
+            }
+        }
+        bpf_trace_printk("%s\\n", length - start, str + start);
+
+        return 0;
+    }
+    """
+    # This compiles the program defined by the bpfprogram string into bpf bytecode and
+    #loads it to the kernel BPF verifier.
+    b = BPF(text=bpfprogram)
+    # This attaches the compiled BPF program to a kernel event of your choosing,
+    #in this case to the sys_clone syscall which will cause the BPF program to run
+    #everytime the sys_clone call occurs.
+    b.attach_kprobe(event=b.get_syscall_fnname("clone"), fn_name="helloworld2")
+    # Capture and print the BPF program's trace output
+    b.trace_print()
+  question_body_text: |-
+    I would like to separate some strings and print them out one by one but it seems almost impossible due to these errors. Trying to change const char str[] to const char *str seems to just net me an opcode 00 error. It seems like I am heading down the right path but just need help to print these lines out one by one. Here is the code running on an online compiler to see what its output looks like String Parser online IDE
+    from bcc import BPF
+    # BPF PROGRAM
+    bpfprogram = """
+    int helloworld2(void *ctx)
+    {
+    const char str[] = "here are some words";
+    int length = sizeof(str);
+    int start = 0;
+    //#pragma unroll Tried using this but does not really fix the issue.
+    for (int i = 0; i < sizeof(str); i++) {
+    if (str[i] == ' ') {
+    bpf_trace_printk("%s\\n", i - start, str + start);
+    start = i + 1;
+    }
+    }
+    bpf_trace_printk("%s\\n", length - start, str + start);
+    return 0;
+    }
+    """
+    # This compiles the program defined by the bpfprogram string into bpf bytecode and
+    #loads it to the kernel BPF verifier.
+    b = BPF(text=bpfprogram)
+    # This attaches the compiled BPF program to a kernel event of your choosing,
+    #in this case to the sys_clone syscall which will cause the BPF program to run
+    #everytime the sys_clone call occurs.
+    b.attach_kprobe(event=b.get_syscall_fnname("clone"), fn_name="helloworld2")
+    # Capture and print the BPF program's trace output
+    b.trace_print()
+    Here is the error that I am seeing, Trying a pointer instead of a char array just nets me an opcode 00 error. Trying #pragma unroll does not seem to really fix the issue either. I am wondering if there is a solution to this problem that I am just not seeing. One notable error is near the end here: R4 bitwise operator |= on pointer prohibited
+    bpf: Failed to load program: Permission denied
+    btf_vmlinux is malformed
+    Unrecognized arg#0 type PTR
+    ; int helloworld2(void *ctx)
+    0: (b7) r1 = 7562354
+    ; const char str[] = "here are some words";
+    1: (63) *(u32 *)(r10 -8) = r1
+    2: (18) r1 = 0x6f7720656d6f7320
+    4: (7b) *(u64 *)(r10 -16) = r1
+    5: (18) r1 = 0x6572612065726568
+    7: (7b) *(u64 *)(r10 -24) = r1
+    8: (b7) r6 = 684837
+    ; ({ char _fmt[] = "%s\n"; bpf_trace_printk_(_fmt, sizeof(_fmt), i - start, str + start); });
+    9: (63) *(u32 *)(r10 -28) = r6
+    10: (bf) r1 = r10
+    ;
+    11: (07) r1 += -28
+    12: (bf) r4 = r10
+    13: (07) r4 += -24
+    ; ({ char _fmt[] = "%s\n"; bpf_trace_printk_(_fmt, sizeof(_fmt), i - start, str + start); });
+    14: (b7) r2 = 4
+    15: (b7) r3 = 4
+    16: (85) call bpf_trace_printk#6
+    last_idx 16 first_idx 0
+    regs=4 stack=0 before 15: (b7) r3 = 4
+    regs=4 stack=0 before 14: (b7) r2 = 4
+    17: (b7) r1 = 5
+    ; if (str[i] == ' ') {
+    18: (71) r2 = *(u8 *)(r10 -19)
+    ; if (str[i] == ' ') {
+    19: (55) if r2 != 0x20 goto pc+9
+    R0_w=inv(id=0) R1_w=inv5 R2_w=inv32 R6_w=inv684837 R10=fp0 fp-8=????mmmm fp-16_w=inv8031924080438375200 fp-24_w=inv7310011936944579944 fp-32=mmmm????
+    ;
+    20: (bf) r4 = r10
+    21: (07) r4 += -19
+    ; ({ char _fmt[] = "%s\n"; bpf_trace_printk_(_fmt, sizeof(_fmt), i - start, str + start); });
+    22: (63) *(u32 *)(r10 -28) = r6
+    23: (bf) r1 = r10
+    ;
+    24: (07) r1 += -28
+    ; ({ char _fmt[] = "%s\n"; bpf_trace_printk_(_fmt, sizeof(_fmt), i - start, str + start); });
+    25: (b7) r2 = 4
+    26: (b7) r3 = 0
+    27: (85) call bpf_trace_printk#6
+    last_idx 27 first_idx 0
+    regs=4 stack=0 before 26: (b7) r3 = 0
+    regs=4 stack=0 before 25: (b7) r2 = 4
+    28: (b7) r1 = 6
+    ; if (str[i] == ' ') {
+    29: (71) r2 = *(u8 *)(r10 -18)
+    ; if (str[i] == ' ') {
+    30: (55) if r2 != 0x20 goto pc+12
+    R0=inv(id=0) R1_w=inv6 R2_w=inv32 R6=inv684837 R10=fp0 fp-8=????mmmm fp-16=inv8031924080438375200 fp-24=inv7310011936944579944 fp-32=mmmm????
+    31: (b7) r2 = 684837
+    ; ({ char _fmt[] = "%s\n"; bpf_trace_printk_(_fmt, sizeof(_fmt), i - start, str + start); });
+    32: (63) *(u32 *)(r10 -28) = r2
+    33: (b7) r3 = 6
+    ; ({ char _fmt[] = "%s\n"; bpf_trace_printk_(_fmt, sizeof(_fmt), i - start, str + start); });
+    34: (1f) r3 -= r1
+    35: (bf) r4 = r10
+    ;
+    36: (07) r4 += -24
+    ; ({ char _fmt[] = "%s\n"; bpf_trace_printk_(_fmt, sizeof(_fmt), i - start, str + start); });
+    37: (4f) r4 |= r1
+    last_idx 37 first_idx 28
+    regs=2 stack=0 before 36: (07) r4 += -24
+    regs=2 stack=0 before 35: (bf) r4 = r10
+    regs=2 stack=0 before 34: (1f) r3 -= r1
+    regs=2 stack=0 before 33: (b7) r3 = 6
+    regs=2 stack=0 before 32: (63) *(u32 *)(r10 -28) = r2
+    regs=2 stack=0 before 31: (b7) r2 = 684837
+    regs=2 stack=0 before 30: (55) if r2 != 0x20 goto pc+12
+    regs=2 stack=0 before 29: (71) r2 = *(u8 *)(r10 -18)
+    regs=2 stack=0 before 28: (b7) r1 = 6
+    R4 bitwise operator |= on pointer prohibited
+    processed 36 insns (limit 1000000) max_states_per_insn 0 total_states 1 peak_states 1 mark_read 1
+    Traceback (most recent call last):
+    File "BPFHelloWorld.py", line 31, in <module>
+    b.attach_kprobe(event=b.get_syscall_fnname("clone"), fn_name="helloworld2")
+    File "/usr/lib/python3/dist-packages/bcc/__init__.py", line 654, in attach_kprobe
+    fn = self.load_func(fn_name, BPF.KPROBE)
+    File "/usr/lib/python3/dist-packages/bcc/__init__.py", line 394, in load_func
+    raise Exception("Failed to load BPF program %s: %s" %
+    Exception: Failed to load BPF program b'helloworld2': Permission denied
+  selected_answer:
+    answer_id: 68535541
+    url: https://stackoverflow.com/questions/68460177/register-errors-when-trying-to-separate-strings-and-print-them-using-bcc#68535541
+    is_accepted: true
+    score: 0
+    body_text: |-
+      You are using bcc's bpf_trace_print function which expects different arguments from the kernel helper.
+      In bcc, bpf_trace_print is a sort of wrapper around the corresponding BPF helper. If you check its documentation, it expects a single mandatory argument, a string and several optional arguments:
+      Syntax: int bpf_trace_printk(const char *fmt, ...)
+      So you can write things like:
+      bpf_trace_printk("remote-port: %d, local-port: %d\\n", skk.remote_port,
+      skk.local_port);
+      In contrast, the BPF helper expects the first argument to be the string and the second to be the size of the string:
+      static const struct bpf_func_proto bpf_trace_printk_proto = {
+      .func = bpf_trace_printk,
+      .gpl_only = true,
+      .ret_type = RET_INTEGER,
+      .arg1_type = ARG_PTR_TO_MEM,
+      .arg2_type = ARG_CONST_SIZE,
+      };
+    fix_description: 'You are using bcc''s bpf_trace_print function which expects
+      different arguments from the kernel helper. In bcc, bpf_trace_print is a sort
+      of wrapper around the corresponding BPF helper. If you check its documentation,
+      it expects a single mandatory argument, a string and several optional arguments:
+      Syntax: int bpf_trace_printk(const char *fmt, ...)'

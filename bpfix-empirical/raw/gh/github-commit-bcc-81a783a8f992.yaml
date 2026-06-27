@@ -1,0 +1,131 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-bcc-81a783a8f992
+source_kind: github_commit
+source:
+  url: https://github.com/iovisor/bcc/commit/81a783a8f9922fcb50d9aa149d48f1547ece0999
+  title: Add debug flag to enable prints from kernel verifier
+  repository: https://github.com/iovisor/bcc
+  commit: 81a783a8f9922fcb50d9aa149d48f1547ece0999
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-bcc-81a783a8f992.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Commit changes BCC bpf_prog_load() logging behavior and verifier log collection
+    flags, not an eBPF program rejected by the verifier. No verifier log or program
+    source is present.
+raw:
+  case_id: github-commit-bcc-81a783a8f992
+  source: github_commits
+  repository: https://github.com/iovisor/bcc
+  commit_hash: 81a783a8f9922fcb50d9aa149d48f1547ece0999
+  commit_message: Add debug flag to enable prints from kernel verifier
+  commit_date: '2015-08-24'
+  fix_type: other
+  buggy_code: |-
+    // FILE: src/cc/libbpf.c
+    // CONTEXT: int bpf_get_next_key(int fd, void *key, void *next_key)
+      return syscall(__NR_bpf, BPF_MAP_GET_NEXT_KEY, &attr, sizeof(attr));
+    }
+
+    #define ROUND_UP(x, n) (((x) + (n) - 1u) & ~((n) - 1u))
+
+    char bpf_log_buf[LOG_BUF_SIZE];
+
+    int bpf_prog_load(enum bpf_prog_type prog_type,
+                      const struct bpf_insn *insns, int prog_len,
+                      const char *license, unsigned kern_version,
+                      char *log_buf, unsigned log_buf_size)
+    {
+      log_buf = log_buf ? log_buf : bpf_log_buf;
+      log_buf_size = log_buf_size ? log_buf_size : LOG_BUF_SIZE;
+      union bpf_attr attr = {
+        .prog_type = prog_type,
+        .insns = ptr_to_u64((void *) insns),
+        .insn_cnt = prog_len / sizeof(struct bpf_insn),
+        .license = ptr_to_u64((void *) license),
+        .log_buf = ptr_to_u64(log_buf),
+        .log_size = log_buf_size,
+        .log_level = 1,
+      };
+
+      attr.kern_version = kern_version;
+      log_buf[0] = 0;
+
+      int ret = syscall(__NR_bpf, BPF_PROG_LOAD, &attr, sizeof(attr));
+      if (ret < 0 && log_buf == bpf_log_buf) {
+        fprintf(stderr, "bpf: %s\n%s\n", strerror(errno), bpf_log_buf);
+      }
+      return ret;
+    }
+
+    int bpf_open_raw_sock(const char *name)
+    {
+      struct sockaddr_ll sll;
+      int sock;
+
+      sock = socket(PF_PACKET, SOCK_RAW | SOCK_NONBLOCK | SOCK_CLOEXEC, htons(ETH_P_ALL));
+      if (sock < 0) {
+  fixed_code: |-
+    // FILE: src/cc/libbpf.c
+    // CONTEXT: int bpf_get_next_key(int fd, void *key, void *next_key)
+      return syscall(__NR_bpf, BPF_MAP_GET_NEXT_KEY, &attr, sizeof(attr));
+    }
+
+    #define ROUND_UP(x, n) (((x) + (n) - 1u) & ~((n) - 1u))
+
+    char bpf_log_buf[LOG_BUF_SIZE];
+
+    int bpf_prog_load(enum bpf_prog_type prog_type,
+                      const struct bpf_insn *insns, int prog_len,
+                      const char *license, unsigned kern_version,
+                      char *log_buf, unsigned log_buf_size)
+    {
+      union bpf_attr attr = {
+        .prog_type = prog_type,
+        .insns = ptr_to_u64((void *) insns),
+        .insn_cnt = prog_len / sizeof(struct bpf_insn),
+        .license = ptr_to_u64((void *) license),
+        .log_buf = ptr_to_u64(log_buf),
+        .log_size = log_buf_size,
+        .log_level = log_buf ? 1 : 0,
+      };
+
+      attr.kern_version = kern_version;
+      if (log_buf)
+        log_buf[0] = 0;
+
+      int ret = syscall(__NR_bpf, BPF_PROG_LOAD, &attr, sizeof(attr));
+      if (ret < 0 && !log_buf) {
+        // caller did not specify log_buf but failure should be printed,
+        // so call recursively and print the result to stderr
+        bpf_prog_load(prog_type, insns, prog_len, license, kern_version,
+            bpf_log_buf, LOG_BUF_SIZE);
+        fprintf(stderr, "bpf: %s\n%s\n", strerror(errno), bpf_log_buf);
+      }
+      return ret;
+    }
+
+    int bpf_open_raw_sock(const char *name)
+    {
+      struct sockaddr_ll sll;
+      int sock;
+
+      sock = socket(PF_PACKET, SOCK_RAW | SOCK_NONBLOCK | SOCK_CLOEXEC, htons(ETH_P_ALL));
+      if (sock < 0) {
+  diff_summary: |-
+    src/cc/libbpf.c:
+    - Applied a small verifier-related code change captured by the exact before/after snippets below.
+    - Affected context: int bpf_get_next_key(int fd, void *key, void *next_key).
+    - Commit subject: Add debug flag to enable prints from kernel verifier.

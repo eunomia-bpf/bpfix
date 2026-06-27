@@ -1,0 +1,168 @@
+schema_version: bpfix.raw_external/v1
+raw_id: stackoverflow-77613784
+source_kind: stackoverflow
+source:
+  url: https://stackoverflow.com/questions/77613784/how-to-bpf-probe-read-str-all-ctx-argv-elements-in-kernel-space-and-forward-it
+  title: How to bpf_probe_read_str all ctx-&gt;argv elements in kernel space and forward
+    it to the userspace?
+  repository: null
+  commit: null
+  collected_at: '2026-04-30T00:51:19+00:00'
+collector:
+  original_path: bpfix-empirical/raw/so/stackoverflow-77613784.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: true
+  verifier_log_block_count: 2
+  source_snippet_count: 1
+  has_buggy_code: false
+  has_fixed_code: false
+  has_fix_description: false
+reproduction:
+  status: replay_valid
+  case_id: stackoverflow-77613784
+  case_path: cases/stackoverflow-77613784
+  artifact_path: cases/stackoverflow-77613784
+  reason: admitted_to_bpfix_bench_cases
+raw:
+  case_id: stackoverflow-77613784
+  source: stackoverflow
+  collected_at: '2026-04-30T00:51:19+00:00'
+  question:
+    question_id: 77613784
+    title: How to bpf_probe_read_str all ctx-&gt;argv elements in kernel space and
+      forward it to the userspace?
+    url: https://stackoverflow.com/questions/77613784/how-to-bpf-probe-read-str-all-ctx-argv-elements-in-kernel-space-and-forward-it
+    tags:
+    - c
+    - system-calls
+    - ebpf
+    - execve
+    - tracepoint
+    score: 0
+    answer_count: 1
+    is_answered: true
+  verifier_log:
+    blocks:
+    - |-
+      42: (85) call bpf_probe_read_user_str#114     ; R0=scalar(smin=-4095,smax=8) fp-72=mmmmmmmm
+      ; data.argv[i] = arg;
+      43: (79) r1 = *(u64 *)(r10 -72)       ; R1_w=scalar() R10=fp0 fp-72=mmmmmmmm
+      ; data.argv[i] = arg;
+      44: (79) r2 = *(u64 *)(r10 -8)        ; R2_w=P0 R10=fp0 fp-8=00000000
+      ; data.argv[i] = arg;
+      45: (7b) *(u64 *)(r2 +0) = r1
+      R2 invalid mem access 'scalar'
+      processed 43 insns (limit 1000000) max_states_per_insn 0 total_states 3 peak_states 3 mark_read 3
+      Failed to load BPF object
+    - |-
+      62: (85) call bpf_trace_printk#6
+      ; for (int i = 0; i < sizeof(ctx->argv); i++)
+      infinite loop detected at insn 63
+      processed 97 insns (limit 1000000) max_states_per_insn 1 total_states 6 peak_states 6 mark_read 4
+    combined: |-
+      42: (85) call bpf_probe_read_user_str#114     ; R0=scalar(smin=-4095,smax=8) fp-72=mmmmmmmm
+      ; data.argv[i] = arg;
+      43: (79) r1 = *(u64 *)(r10 -72)       ; R1_w=scalar() R10=fp0 fp-72=mmmmmmmm
+      ; data.argv[i] = arg;
+      44: (79) r2 = *(u64 *)(r10 -8)        ; R2_w=P0 R10=fp0 fp-8=00000000
+      ; data.argv[i] = arg;
+      45: (7b) *(u64 *)(r2 +0) = r1
+      R2 invalid mem access 'scalar'
+      processed 43 insns (limit 1000000) max_states_per_insn 0 total_states 3 peak_states 3 mark_read 3
+      Failed to load BPF object
+
+      62: (85) call bpf_trace_printk#6
+      ; for (int i = 0; i < sizeof(ctx->argv); i++)
+      infinite loop detected at insn 63
+      processed 97 insns (limit 1000000) max_states_per_insn 1 total_states 6 peak_states 6 mark_read 4
+  source_snippets:
+  - |-
+    struct sys_enter_execve
+    {
+        // ...
+        char **argv;
+    };
+
+    struct data_t
+    {
+        // ...
+        char **argv;
+    };
+    SEC("tp/syscalls/sys_enter_execve")
+    int tp_sys_enter_execve(struct sys_enter_execve *ctx)
+    {
+        struct data_t data = {};
+
+        // ...
+
+        for (int i = 0; i < sizeof(ctx->argv); i++)
+        {
+            char *arg = NULL;
+            bpf_probe_read_user_str(&arg, sizeof(arg),  &ctx->argv[i]);
+
+            data.argv[i] = arg; // Lead to the below error
+            // bpf_map_update_elem(&argv, &i, &arg, BPF_ANY); // Another solution that lead to infinite loop for the verifier
+            bpf_printk("arg%d: %s ", i, arg); // Works and print the correct sting
+        }
+
+        bpf_perf_event_output(ctx, &output, BPF_F_CURRENT_CPU, &data, sizeof(data));
+        return 0;
+    }
+  question_body_text: "I am new to eBPF and currently trying to send all the executed\
+    \ commands with arguments in the userspace using a perf map.\nI manage to send\
+    \ most of my data, but not the one accessed with bpf_probe_read_str. Print the\
+    \ output in console works, but i don't know where to look for to forward ctx->argv\
+    \ to the userspace after reading it from kernel.\nMaybe am i supposed to this\
+    \ solution but copy all argv item manually ?\nMy code is based on liz's chapter\
+    \ 7 tuto\nstruct sys_enter_execve\n{\n// ...\nchar **argv;\n};\nstruct data_t\n\
+    {\n// ...\nchar **argv;\n};\nSEC(\"tp/syscalls/sys_enter_execve\")\nint tp_sys_enter_execve(struct\
+    \ sys_enter_execve *ctx)\n{\nstruct data_t data = {};\n// ...\nfor (int i = 0;\
+    \ i < sizeof(ctx->argv); i++)\n{\nchar *arg = NULL;\nbpf_probe_read_user_str(&arg,\
+    \ sizeof(arg), &ctx->argv[i]);\ndata.argv[i] = arg; // Lead to the below error\n\
+    // bpf_map_update_elem(&argv, &i, &arg, BPF_ANY); // Another solution that lead\
+    \ to infinite loop for the verifier\nbpf_printk(\"arg%d: %s \", i, arg); // Works\
+    \ and print the correct sting\n}\nbpf_perf_event_output(ctx, &output, BPF_F_CURRENT_CPU,\
+    \ &data, sizeof(data));\nreturn 0;\n}\nBelow is the error from data.argv[i] =\
+    \ arg;\n42: (85) call bpf_probe_read_user_str#114 ; R0=scalar(smin=-4095,smax=8)\
+    \ fp-72=mmmmmmmm\n; data.argv[i] = arg;\n43: (79) r1 = *(u64 *)(r10 -72) ; R1_w=scalar()\
+    \ R10=fp0 fp-72=mmmmmmmm\n; data.argv[i] = arg;\n44: (79) r2 = *(u64 *)(r10 -8)\
+    \ ; R2_w=P0 R10=fp0 fp-8=00000000\n; data.argv[i] = arg;\n45: (7b) *(u64 *)(r2\
+    \ +0) = r1\nR2 invalid mem access 'scalar'\nprocessed 43 insns (limit 1000000)\
+    \ max_states_per_insn 0 total_states 3 peak_states 3 mark_read 3\nFailed to load\
+    \ BPF object\nI tried the alternantive solution to manually copy all args into\
+    \ an hashmap with bpf_map_update_elem(&argv, &i, &arg, BPF_ANY); but the verifier\
+    \ can't load the program and send the below error\n62: (85) call bpf_trace_printk#6\n\
+    ; for (int i = 0; i < sizeof(ctx->argv); i++)\ninfinite loop detected at insn\
+    \ 63\nprocessed 97 insns (limit 1000000) max_states_per_insn 1 total_states 6\
+    \ peak_states 6 mark_read 4\nWhat did i miss in the documentation ?\nThanks \u270C\
+    \uFE0F"
+  selected_answer:
+    answer_id: 77620707
+    url: https://stackoverflow.com/questions/77613784/how-to-bpf-probe-read-str-all-ctx-argv-elements-in-kernel-space-and-forward-it#77620707
+    is_accepted: true
+    score: 2
+    body_text: "So there were few confusion i had and it explain why i could not fix\
+      \ this problem. I'll give more details below.\nI think the error invalid mem\
+      \ access 'scalar' means that the verifier can't determine the size of a char\
+      \ pointer to check that the size of all variables stay in 512 bytes. Basically\
+      \ to fix this was just to fix the size of my variable from char **argv; to char[8][50].\
+      \ I have noticed that the length of ctx->argv was always 8 so i took this value.\
+      \ Then the second mistake was to make sure the value was safe using bpf_probe_read\
+      \ before bpf_probe_read_str\nSo the final code look like this.\nstruct sys_enter_execve\n\
+      {\n// ...\nchar **argv;\n};\nstruct data_t\n{\n// ...\nchar argv[8][50]; //\
+      \ Fix the size here is critical for the verifier\n};\nSEC(\"tp/syscalls/sys_enter_execve\"\
+      )\nint tp_sys_enter_execve(struct sys_enter_execve *ctx)\n{\nstruct data_t data\
+      \ = {};\n// ...\nfor (int i = 0; i < sizeof(ctx->argv); i++)\n{\nchar *tmp;\n\
+      bpf_probe_read(&tmp, sizeof(tmp), &ctx->argv[i]);\nbpf_probe_read_str(data.argv[i],\
+      \ sizeof(data.argv[i]), tmp);\n}\nbpf_perf_event_output(ctx, &output, BPF_F_CURRENT_CPU,\
+      \ &data, sizeof(data));\nreturn 0;\n}\nI hope it could help for your code.\n\
+      Happy coding \u270C\uFE0F"
+    fix_description: So there were few confusion i had and it explain why i could
+      not fix this problem. I'll give more details below. I think the error invalid
+      mem access 'scalar' means that the verifier can't determine the size of a char
+      pointer to check that the size of all variables stay in 512 bytes. Basically
+      to fix this was just to fix the size of my variable from char **argv; to char[8][50].
+      I have noticed that the length of ctx->argv was always 8 so i took this value.
+      Then the second mistake was to make sure the value was safe using bpf_probe_read
+      before bpf_probe_read_str char argv[8][50]; // Fix the s...

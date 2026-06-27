@@ -1,0 +1,86 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-7684efd186f9
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/7684efd186f937e4843e0f981911e8df0a3d3fb8
+  title: 'bpf: Move ARP protocol check into main section'
+  repository: https://github.com/cilium/cilium
+  commit: 7684efd186f937e4843e0f981911e8df0a3d3fb8
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-7684efd186f9.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: environment_required
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Moves an ARP protocol check in old netdev code. Any verifier behavior depends
+    on the 2016 Cilium datapath and historical verifier.
+raw:
+  case_id: github-commit-cilium-7684efd186f9
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: 7684efd186f937e4843e0f981911e8df0a3d3fb8
+  commit_message: 'bpf: Move ARP protocol check into main section'
+  commit_date: '2016-05-09'
+  fix_type: type_cast
+  buggy_code: "// FILE: bpf/bpf_netdev.c\n// CONTEXT: static inline __u32 derive_sec_ctx(struct\
+    \ __sk_buff *skb, const union v6addr *no\n\n\treturn flowlabel;\n#endif\n}\n\n\
+    \n__section(\"from-netdev\")\nint from_netdev(struct __sk_buff *skb)\n{\n\tunion\
+    \ v6addr node_ip = { . addr = ROUTER_IP };\n\n#ifdef ENABLE_ARP_RESPONDER\n\t\
+    union macaddr responder_mac = HOST_IFINDEX_MAC;\n\tif (unlikely(arp_check(skb,\
+    \ IPV4_GW, &responder_mac) == 1)) {\n\t\ttail_call(skb, &cilium_proto, CILIUM_MAP_PROTO_ARP);\n\
+    \t\treturn TC_ACT_SHOT;\n\t}\n#endif\n\n#ifdef ENABLE_NAT46\n\t/* First try to\
+    \ do v46 nat */\n\tif (skb->protocol == __constant_htons(ETH_P_IP)) {\n\t\tunion\
+    \ v6addr sp = NAT46_SRC_PREFIX;\n\t\tunion v6addr dp = HOST_IP;\n\t\t__u32 dst;\n\
+    \n\t\tif (ipv4_load_daddr(skb, ETH_HLEN, &dst) < 0)\n\t\t\treturn TC_ACT_SHOT;\n\
+    \n// FILE: bpf/lib/arp.h\n#include <linux/if_arp.h>\n#include <linux/if_ether.h>\n\
+    #include \"eth.h\"\n#include \"dbg.h\"\n\n#define CILIUM_MAP_PROTO_ARP 0\n\n/*\n\
+    \ * check if an arp request is for ar_tip\n */\nstatic inline int arp_check(struct\
+    \ __sk_buff *skb, __be32 ar_tip, union macaddr *responder_mac)\n{\n\tunion macaddr\
+    \ dmac = {};\n\t__be32 tip;\n\t__be16 arpop;\n\n\tif (likely(skb->protocol !=\
+    \ __constant_htons(ETH_P_ARP)))\n\t\treturn 0;\n\n\teth_load_daddr(skb, dmac.addr,\
+    \ 0);\n\t/* Get ARP op code */\n\tif (skb_load_bytes(skb, 20, &arpop, sizeof(arpop))\
+    \ < 0)\n\t\treturn TC_ACT_SHOT;\n\t/* Get ARP Target IP */\n\tif (skb_load_bytes(skb,\
+    \ 38, &tip, sizeof(tip)) < 0)\n\t\treturn TC_ACT_SHOT;\n\n\tif ((arpop != __constant_htons(ARPOP_REQUEST))\
+    \ || (tip != ar_tip) ||\n\t    (!eth_is_bcast(&dmac) && eth_addrcmp(&dmac, responder_mac)))\
+    \ {\n#ifdef DEBUG_ARP\n\t\tprintk(\"arp target mismatch for %x, (target %x op\
+    \ %d)\\n\","
+  fixed_code: "// FILE: bpf/bpf_netdev.c\n// CONTEXT: static inline __u32 derive_sec_ctx(struct\
+    \ __sk_buff *skb, const union v6addr *no\n\n\treturn flowlabel;\n#endif\n}\n\n\
+    \n__section(\"from-netdev\")\nint from_netdev(struct __sk_buff *skb)\n{\n\tunion\
+    \ v6addr node_ip = { . addr = ROUTER_IP };\n\n#ifdef ENABLE_ARP_RESPONDER\n\t\
+    if (unlikely(skb->protocol == __constant_htons(ETH_P_ARP))) {\n\t\tunion macaddr\
+    \ responder_mac = HOST_IFINDEX_MAC;\n\t\tif (unlikely(arp_check(skb, IPV4_GW,\
+    \ &responder_mac) == 1)) {\n\t\t\ttail_call(skb, &cilium_proto, CILIUM_MAP_PROTO_ARP);\n\
+    \t\t\treturn TC_ACT_SHOT;\n\t\t}\n\t}\n#endif\n\n#ifdef ENABLE_NAT46\n\t/* First\
+    \ try to do v46 nat */\n\tif (skb->protocol == __constant_htons(ETH_P_IP)) {\n\
+    \t\tunion v6addr sp = NAT46_SRC_PREFIX;\n\t\tunion v6addr dp = HOST_IP;\n\t\t\
+    __u32 dst;\n\n\t\tif (ipv4_load_daddr(skb, ETH_HLEN, &dst) < 0)\n\t\t\treturn\
+    \ TC_ACT_SHOT;\n\n// FILE: bpf/lib/arp.h\n#include <linux/if_arp.h>\n#include\
+    \ <linux/if_ether.h>\n#include \"eth.h\"\n#include \"dbg.h\"\n\n#define CILIUM_MAP_PROTO_ARP\
+    \ 0\n\n/*\n * check if an arp request is for ar_tip\n */\nstatic inline int arp_check(struct\
+    \ __sk_buff *skb, __be32 ar_tip, union macaddr *responder_mac)\n{\n\tunion macaddr\
+    \ dmac;\n\t__be32 tip;\n\t__be16 arpop;\n\n\teth_load_daddr(skb, dmac.addr, 0);\n\
+    \t/* Get ARP op code */\n\tif (skb_load_bytes(skb, 20, &arpop, sizeof(arpop))\
+    \ < 0)\n\t\treturn TC_ACT_SHOT;\n\t/* Get ARP Target IP */\n\tif (skb_load_bytes(skb,\
+    \ 38, &tip, sizeof(tip)) < 0)\n\t\treturn TC_ACT_SHOT;\n\n\tif ((arpop != __constant_htons(ARPOP_REQUEST))\
+    \ || (tip != ar_tip) ||\n\t    (!eth_is_bcast(&dmac) && eth_addrcmp(&dmac, responder_mac)))\
+    \ {\n#ifdef DEBUG_ARP\n\t\tprintk(\"arp target mismatch for %x, (target %x op\
+    \ %d)\\n\","
+  diff_summary: |-
+    bpf/bpf_netdev.c:
+    - Adjusted types or casts so the verifier sees the intended pointer or value kind.
+    - Affected context: static inline __u32 derive_sec_ctx(struct __sk_buff *skb, const union v6addr *no.
+    bpf/lib/arp.h:
+    - Adjusted types or casts so the verifier sees the intended pointer or value kind.
+    - Affected context: the touched section.
+    - Commit subject: bpf: Move ARP protocol check into main section.

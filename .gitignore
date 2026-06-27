@@ -24,11 +24,11 @@ out/
 .cache/
 *.log
 *.jsonl
-docs/tmp/benchmark-eval-results.json
+docs/tmp/empirical-eval-results.json
 docs/tmp/
-bpfix-test/results/
-bpfix-test/splits/*.prompts.json
-!bpfix-test/cases/**/verifier.log
+bpfix-bench/results/
+bpfix-bench/splits/*.prompts.json
+!bpfix-bench/cases/**/verifier.log
 
 # Compiled artifacts
 *.o
@@ -45,16 +45,16 @@ bpfix-test/splits/*.prompts.json
 *.core
 core.*
 
-# bpfix-bench replay/build outputs
-bpfix-bench/checksums.txt
-bpfix-bench/replay-report.json
-bpfix-bench/cases/**/hashes.txt
-bpfix-bench/cases/**/prog.o
-bpfix-bench/cases/**/selftest_prog_loader
-bpfix-bench/cases/**/verifier.log
-bpfix-bench/cases/**/replay-verifier.log
-bpfix-bench/cases/**/verifier_load_result.json
-bpfix-bench/cases/**/replay_load_result.json
+# bpfix-empirical replay/build outputs
+bpfix-empirical/checksums.txt
+bpfix-empirical/replay-report.json
+bpfix-empirical/cases/**/hashes.txt
+bpfix-empirical/cases/**/prog.o
+bpfix-empirical/cases/**/selftest_prog_loader
+bpfix-empirical/cases/**/verifier.log
+bpfix-empirical/cases/**/replay-verifier.log
+bpfix-empirical/cases/**/verifier_load_result.json
+bpfix-empirical/cases/**/replay_load_result.json
 
 # LaTeX temporaries
 *.aux

@@ -1,0 +1,357 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-aya-11c227743de9
+source_kind: github_commit
+source:
+  url: https://github.com/aya-rs/aya/commit/11c227743de9ef149871df44c9d99979749d1b00
+  title: 'bpf: improve bpf_probe_read_kernel_str_bytes and bpf_probe_read_user_str_bytes'
+  repository: https://github.com/aya-rs/aya
+  commit: 11c227743de9ef149871df44c9d99979749d1b00
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-aya-11c227743de9.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: environment_required
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: The commit changes inlining around probe-read string helpers and memory
+    builtins for older verifier behavior. No terminal verifier log or isolated C/Rust
+    program is present.
+raw:
+  case_id: github-commit-aya-11c227743de9
+  source: github_commits
+  repository: https://github.com/aya-rs/aya
+  commit_hash: 11c227743de9ef149871df44c9d99979749d1b00
+  commit_message: 'bpf: improve bpf_probe_read_kernel_str_bytes and bpf_probe_read_user_str_bytes'
+  commit_date: '2023-07-03'
+  fix_type: inline_hint
+  buggy_code: |-
+    // FILE: bpf/aya-bpf/src/helpers.rs
+    //! by the BPF verifier.
+    //!
+    //! Here, we provide some higher-level wrappers around the underlying kernel helpers, but
+    //! also expose bindings to the underlying helpers as a fall-back in case of a missing
+    //! implementation.
+
+    use core::mem::{self, MaybeUninit};
+
+    pub use aya_bpf_bindings::helpers as gen;
+    #[doc(hidden)]
+    pub use gen::*;
+
+    use crate::cty::{c_char, c_long, c_void};
+
+    /// Read bytes stored at `src` and store them as a `T`.
+    ///
+    /// Generally speaking, the more specific [`bpf_probe_read_user`] and
+    /// [`bpf_probe_read_kernel`] should be preferred over this function.
+    ///
+    /// Returns a bitwise copy of `mem::size_of::<T>()` bytes stored at the user space address
+    /// `src`. See `bpf_probe_read_kernel` for  reading kernel space memory.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+
+    // CONTEXT: pub unsafe fn bpf_probe_read_user_str(src: *const u8, dest: &mut [u8]) -> Result
+    ///
+    /// On failure, this function returns Err(-1).
+    #[inline]
+    pub unsafe fn bpf_probe_read_user_str_bytes(
+        src: *const u8,
+        dest: &mut [u8],
+    ) -> Result<&[u8], c_long> {
+        let len = gen::bpf_probe_read_user_str(
+            dest.as_mut_ptr() as *mut c_void,
+            dest.len() as u32,
+            src as *const c_void,
+        );
+        if len <= 0 {
+            return Err(-1);
+        }
+
+        let len = len as usize;
+        if len >= dest.len() {
+            // this can never happen, it's needed to tell the verifier that len is
+            // bounded
+            return Err(-1);
+        }
+
+        // len includes NULL byte
+        Ok(&dest[..len - 1])
+    }
+
+    /// Read a null-terminated string from _kernel space_ stored at `src` into `dest`.
+    ///
+    /// In case the length of `dest` is smaller then the length of `src`, the read bytes will
+    /// be truncated to the size of `dest`.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// # #![allow(dead_code)]
+    /// # use aya_bpf::{cty::c_long, helpers::bpf_probe_read_kernel_str};
+
+    // CONTEXT: pub unsafe fn bpf_probe_read_kernel_str(src: *const u8, dest: &mut [u8]) -> Resu
+    ///
+    /// On failure, this function returns Err(-1).
+    #[inline]
+    pub unsafe fn bpf_probe_read_kernel_str_bytes(
+        src: *const u8,
+        dest: &mut [u8],
+    ) -> Result<&[u8], c_long> {
+        let len = gen::bpf_probe_read_kernel_str(
+            dest.as_mut_ptr() as *mut c_void,
+            dest.len() as u32,
+            src as *const c_void,
+        );
+        if len <= 0 {
+            return Err(-1);
+        }
+
+        let len = len as usize;
+        if len >= dest.len() {
+            // this can never happen, it's needed to tell the verifier that len is
+            // bounded
+            return Err(-1);
+        }
+
+        // len includes NULL byte
+        Ok(&dest[..len - 1])
+    }
+
+    /// Write bytes to the _user space_ pointer `src` and store them as a `T`.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// # #![allow(dead_code)]
+    /// # use aya_bpf::{
+    /// #     cty::{c_int, c_long},
+    /// #     helpers::bpf_probe_write_user,
+    /// #     programs::ProbeContext,
+
+    // FILE: bpf/aya-bpf/src/lib.rs
+    //! [![](https://aya-rs.dev/assets/images/aya_logo_docs.svg)](https://aya-rs.dev)
+    //!
+    //! A library to write eBPF programs.
+    //!
+    //! Aya-bpf is an eBPF library built with a focus on operability and developer experience.
+    //! It is the kernel-space counterpart of [Aya](https://docs.rs/aya)
+
+    #![doc(
+        html_logo_url = "https://aya-rs.dev/assets/images/crabby.svg",
+        html_favicon_url = "https://aya-rs.dev/assets/images/crabby.svg"
+    )]
+    #![cfg_attr(unstable, feature(never_type))]
+    #![allow(clippy::missing_safety_doc)]
+    #![no_std]
+
+    pub use aya_bpf_bindings::bindings;
+
+    mod args;
+    pub use args::PtRegs;
+    pub mod helpers;
+    pub mod maps;
+    pub mod programs;
+
+    pub use aya_bpf_cty as cty;
+
+    // CONTEXT: pub unsafe extern "C" fn memset(s: *mut u8, c: c_int, n: usize) {
+            *((base + i) as *mut u8) = c as u8;
+        }
+    }
+
+    #[no_mangle]
+    pub unsafe extern "C" fn memcpy(dest: *mut u8, src: *mut u8, n: usize) {
+        let dest_base = dest as usize;
+        let src_base = src as usize;
+        for i in 0..n {
+            *((dest_base + i) as *mut u8) = *((src_base + i) as *mut u8);
+        }
+    }
+  fixed_code: |-
+    // FILE: bpf/aya-bpf/src/helpers.rs
+    //! by the BPF verifier.
+    //!
+    //! Here, we provide some higher-level wrappers around the underlying kernel helpers, but
+    //! also expose bindings to the underlying helpers as a fall-back in case of a missing
+    //! implementation.
+
+    use core::mem::{self, MaybeUninit};
+
+    pub use aya_bpf_bindings::helpers as gen;
+    #[doc(hidden)]
+    pub use gen::*;
+
+    use crate::{
+        check_bounds_signed,
+        cty::{c_char, c_long, c_void},
+    };
+
+    /// Read bytes stored at `src` and store them as a `T`.
+    ///
+    /// Generally speaking, the more specific [`bpf_probe_read_user`] and
+    /// [`bpf_probe_read_kernel`] should be preferred over this function.
+    ///
+    /// Returns a bitwise copy of `mem::size_of::<T>()` bytes stored at the user space address
+    /// `src`. See `bpf_probe_read_kernel` for  reading kernel space memory.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+
+    // CONTEXT: pub unsafe fn bpf_probe_read_user_str(src: *const u8, dest: &mut [u8]) -> Result
+    ///
+    /// On failure, this function returns Err(-1).
+    #[inline]
+    pub unsafe fn bpf_probe_read_user_str_bytes(
+        src: *const u8,
+        dest: &mut [u8],
+    ) -> Result<&[u8], c_long> {
+        let len = gen::bpf_probe_read_user_str(
+            dest.as_mut_ptr() as *mut c_void,
+            dest.len() as u32,
+            src as *const c_void,
+        );
+
+        read_str_bytes(len, dest)
+    }
+
+    fn read_str_bytes(len: i64, dest: &mut [u8]) -> Result<&[u8], c_long> {
+        // The lower bound is 0, since it's what is returned for b"\0". See the
+        // bpf_probe_read_user_[user|kernel]_bytes_empty integration tests.  The upper bound
+        // check is not needed since the helper truncates, but the verifier doesn't
+        // know that so we show it the upper bound.
+        if !check_bounds_signed(len, 0, dest.len() as i64) {
+            return Err(-1);
+        }
+
+        // len includes the NULL terminator but not for b"\0" for which the kernel
+        // returns len=0. So we do a saturating sub and for b"\0" we return the
+        // empty slice, for all other cases we omit the terminator.
+        Ok(&dest[..(len as usize).saturating_sub(1)])
+    }
+
+    /// Read a null-terminated string from _kernel space_ stored at `src` into `dest`.
+    ///
+    /// In case the length of `dest` is smaller then the length of `src`, the read bytes will
+    /// be truncated to the size of `dest`.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// # #![allow(dead_code)]
+    /// # use aya_bpf::{cty::c_long, helpers::bpf_probe_read_kernel_str};
+
+    // CONTEXT: pub unsafe fn bpf_probe_read_kernel_str(src: *const u8, dest: &mut [u8]) -> Resu
+    ///
+    /// On failure, this function returns Err(-1).
+    #[inline]
+    pub unsafe fn bpf_probe_read_kernel_str_bytes(
+        src: *const u8,
+        dest: &mut [u8],
+    ) -> Result<&[u8], c_long> {
+        let len = gen::bpf_probe_read_kernel_str(
+            dest.as_mut_ptr() as *mut c_void,
+            dest.len() as u32,
+            src as *const c_void,
+        );
+
+        read_str_bytes(len, dest)
+    }
+
+    /// Write bytes to the _user space_ pointer `src` and store them as a `T`.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// # #![allow(dead_code)]
+    /// # use aya_bpf::{
+    /// #     cty::{c_int, c_long},
+    /// #     helpers::bpf_probe_write_user,
+    /// #     programs::ProbeContext,
+
+    // FILE: bpf/aya-bpf/src/lib.rs
+    //! [![](https://aya-rs.dev/assets/images/aya_logo_docs.svg)](https://aya-rs.dev)
+    //!
+    //! A library to write eBPF programs.
+    //!
+    //! Aya-bpf is an eBPF library built with a focus on operability and developer experience.
+    //! It is the kernel-space counterpart of [Aya](https://docs.rs/aya)
+    #![doc(
+        html_logo_url = "https://aya-rs.dev/assets/images/crabby.svg",
+        html_favicon_url = "https://aya-rs.dev/assets/images/crabby.svg"
+    )]
+    #![cfg_attr(unstable, feature(never_type))]
+    #![cfg_attr(target_arch = "bpf", feature(asm_experimental_arch))]
+    #![allow(clippy::missing_safety_doc)]
+    #![no_std]
+
+    pub use aya_bpf_bindings::bindings;
+
+    mod args;
+    pub use args::PtRegs;
+    pub mod helpers;
+    pub mod maps;
+    pub mod programs;
+
+    pub use aya_bpf_cty as cty;
+
+    // CONTEXT: pub unsafe extern "C" fn memset(s: *mut u8, c: c_int, n: usize) {
+            *((base + i) as *mut u8) = c as u8;
+        }
+    }
+
+    #[no_mangle]
+    pub unsafe extern "C" fn memcpy(dest: *mut u8, src: *mut u8, n: usize) {
+        let dest_base = dest as usize;
+        let src_base = src as usize;
+        for i in 0..n {
+            *((dest_base + i) as *mut u8) = *((src_base + i) as *mut u8);
+        }
+    }
+
+    /// Check if a value is within a range, using conditional forms compatible with
+    /// the verifier.
+    #[inline(always)]
+    pub fn check_bounds_signed(value: i64, lower: i64, upper: i64) -> bool {
+        #[cfg(target_arch = "bpf")]
+        unsafe {
+            let mut in_bounds = 0u64;
+            core::arch::asm!(
+                "if {value} s< {lower} goto +2",
+                "if {value} s> {upper} goto +1",
+                "{i} = 1",
+                i = inout(reg) in_bounds,
+                lower = in(reg) lower,
+                upper = in(reg) upper,
+                value = in(reg) value,
+            );
+            in_bounds == 1
+        }
+        // We only need this for doc tests which are compiled for the host target
+        #[cfg(not(target_arch = "bpf"))]
+        {
+            let _ = value;
+            let _ = lower;
+            let _ = upper;
+            unimplemented!()
+        }
+    }
+  diff_summary: |-
+    bpf/aya-bpf/src/helpers.rs:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: pub unsafe fn bpf_probe_read_user_str(src: *const u8, dest: &mut [u8]) -> Result, pub unsafe fn bpf_probe_read_kernel_str(src: *const u8, dest: &mut [u8]) -> Resu.
+    bpf/aya-bpf/src/lib.rs:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: pub unsafe extern "C" fn memset(s: *mut u8, c: c_int, n: usize) {.
+    - Commit subject: bpf: improve bpf_probe_read_kernel_str_bytes and bpf_probe_read_user_str_bytes.

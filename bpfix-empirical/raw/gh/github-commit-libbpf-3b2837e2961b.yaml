@@ -1,0 +1,100 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-libbpf-3b2837e2961b
+source_kind: github_commit
+source:
+  url: https://github.com/libbpf/libbpf/commit/3b2837e2961b3b57af566f0945928b42bebb4945
+  title: 'libbpf: Handle missing BPF_OBJ_GET_INFO_BY_FD gracefully in perf_buffer'
+  repository: https://github.com/libbpf/libbpf
+  commit: 3b2837e2961b3b57af566f0945928b42bebb4945
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-libbpf-3b2837e2961b.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Handles missing BPF_OBJ_GET_INFO_BY_FD gracefully in perf buffer setup.
+    This is syscall compatibility for map info lookup, not a BPF program verification
+    failure.
+raw:
+  case_id: github-commit-libbpf-3b2837e2961b
+  source: github_commits
+  repository: https://github.com/libbpf/libbpf
+  commit_hash: 3b2837e2961b3b57af566f0945928b42bebb4945
+  commit_message: 'libbpf: Handle missing BPF_OBJ_GET_INFO_BY_FD gracefully in perf_buffer'
+  commit_date: '2020-07-07'
+  fix_type: other
+  buggy_code: "// FILE: src/libbpf.c\n// CONTEXT: perf_buffer__new_raw(int map_fd,\
+    \ size_t page_cnt,\n\tp.ctx = opts->ctx;\n\tp.cpu_cnt = opts->cpu_cnt;\n\tp.cpus\
+    \ = opts->cpus;\n\tp.map_keys = opts->map_keys;\n\n\treturn __perf_buffer__new(map_fd,\
+    \ page_cnt, &p);\n}\n\nstatic struct perf_buffer *__perf_buffer__new(int map_fd,\
+    \ size_t page_cnt,\n\t\t\t\t\t      struct perf_buffer_params *p)\n{\n\tconst\
+    \ char *online_cpus_file = \"/sys/devices/system/cpu/online\";\n\tstruct bpf_map_info\
+    \ map = {};\n\tchar msg[STRERR_BUFSIZE];\n\tstruct perf_buffer *pb;\n\tbool *online\
+    \ = NULL;\n\t__u32 map_info_len;\n\tint err, i, j, n;\n\n\tif (page_cnt & (page_cnt\
+    \ - 1)) {\n\t\tpr_warn(\"page count should be power of two, but is %zu\\n\",\n\
+    \t\t\tpage_cnt);\n\t\treturn ERR_PTR(-EINVAL);\n\t}\n\n\tmap_info_len = sizeof(map);\n\
+    \terr = bpf_obj_get_info_by_fd(map_fd, &map, &map_info_len);\n\tif (err) {\n\t\
+    \terr = -errno;\n\t\tpr_warn(\"failed to get map info for map FD %d: %s\\n\",\n\
+    \t\t\tmap_fd, libbpf_strerror_r(err, msg, sizeof(msg)));\n\t\treturn ERR_PTR(err);\n\
+    \t}\n\n\tif (map.type != BPF_MAP_TYPE_PERF_EVENT_ARRAY) {\n\t\tpr_warn(\"map '%s'\
+    \ should be BPF_MAP_TYPE_PERF_EVENT_ARRAY\\n\",\n\t\t\tmap.name);\n\t\treturn\
+    \ ERR_PTR(-EINVAL);\n\t}\n\n\tpb = calloc(1, sizeof(*pb));\n\tif (!pb)\n\t\treturn\
+    \ ERR_PTR(-ENOMEM);\n\n\tpb->event_cb = p->event_cb;\n\tpb->sample_cb = p->sample_cb;\n\
+    \tpb->lost_cb = p->lost_cb;\n\tpb->ctx = p->ctx;\n\n\tpb->page_size = getpagesize();\n\
+    \n// CONTEXT: static struct perf_buffer *__perf_buffer__new(int map_fd, size_t\
+    \ page_cnt,\n\t\t\tlibbpf_strerror_r(err, msg, sizeof(msg)));\n\t\tgoto error;\n\
+    \t}\n\n\tif (p->cpu_cnt > 0) {\n\t\tpb->cpu_cnt = p->cpu_cnt;\n\t} else {\n\t\t\
+    pb->cpu_cnt = libbpf_num_possible_cpus();\n\t\tif (pb->cpu_cnt < 0) {\n\t\t\t\
+    err = pb->cpu_cnt;\n\t\t\tgoto error;\n\t\t}\n\t\tif (map.max_entries < pb->cpu_cnt)\n\
+    \t\t\tpb->cpu_cnt = map.max_entries;\n\t}\n\n\tpb->events = calloc(pb->cpu_cnt,\
+    \ sizeof(*pb->events));\n\tif (!pb->events) {\n\t\terr = -ENOMEM;\n\t\tpr_warn(\"\
+    failed to allocate events: out of memory\\n\");\n\t\tgoto error;\n\t}\n\tpb->cpu_bufs\
+    \ = calloc(pb->cpu_cnt, sizeof(*pb->cpu_bufs));\n\tif (!pb->cpu_bufs) {\n\t\t\
+    err = -ENOMEM;"
+  fixed_code: "// FILE: src/libbpf.c\n// CONTEXT: perf_buffer__new_raw(int map_fd,\
+    \ size_t page_cnt,\n\tp.ctx = opts->ctx;\n\tp.cpu_cnt = opts->cpu_cnt;\n\tp.cpus\
+    \ = opts->cpus;\n\tp.map_keys = opts->map_keys;\n\n\treturn __perf_buffer__new(map_fd,\
+    \ page_cnt, &p);\n}\n\nstatic struct perf_buffer *__perf_buffer__new(int map_fd,\
+    \ size_t page_cnt,\n\t\t\t\t\t      struct perf_buffer_params *p)\n{\n\tconst\
+    \ char *online_cpus_file = \"/sys/devices/system/cpu/online\";\n\tstruct bpf_map_info\
+    \ map;\n\tchar msg[STRERR_BUFSIZE];\n\tstruct perf_buffer *pb;\n\tbool *online\
+    \ = NULL;\n\t__u32 map_info_len;\n\tint err, i, j, n;\n\n\tif (page_cnt & (page_cnt\
+    \ - 1)) {\n\t\tpr_warn(\"page count should be power of two, but is %zu\\n\",\n\
+    \t\t\tpage_cnt);\n\t\treturn ERR_PTR(-EINVAL);\n\t}\n\n\t/* best-effort sanity\
+    \ checks */\n\tmemset(&map, 0, sizeof(map));\n\tmap_info_len = sizeof(map);\n\t\
+    err = bpf_obj_get_info_by_fd(map_fd, &map, &map_info_len);\n\tif (err) {\n\t\t\
+    err = -errno;\n\t\t/* if BPF_OBJ_GET_INFO_BY_FD is supported, will return\n\t\t\
+    \ * -EBADFD, -EFAULT, or -E2BIG on real error\n\t\t */\n\t\tif (err != -EINVAL)\
+    \ {\n\t\t\tpr_warn(\"failed to get map info for map FD %d: %s\\n\",\n\t\t\t\t\
+    map_fd, libbpf_strerror_r(err, msg, sizeof(msg)));\n\t\t\treturn ERR_PTR(err);\n\
+    \t\t}\n\t\tpr_debug(\"failed to get map info for FD %d; API not supported? Ignoring...\\\
+    n\",\n\t\t\t map_fd);\n\t} else {\n\t\tif (map.type != BPF_MAP_TYPE_PERF_EVENT_ARRAY)\
+    \ {\n\t\t\tpr_warn(\"map '%s' should be BPF_MAP_TYPE_PERF_EVENT_ARRAY\\n\",\n\t\
+    \t\t\tmap.name);\n\t\t\treturn ERR_PTR(-EINVAL);\n\t\t}\n\t}\n\n\tpb = calloc(1,\
+    \ sizeof(*pb));\n\tif (!pb)\n\t\treturn ERR_PTR(-ENOMEM);\n\n\tpb->event_cb =\
+    \ p->event_cb;\n\tpb->sample_cb = p->sample_cb;\n\tpb->lost_cb = p->lost_cb;\n\
+    \tpb->ctx = p->ctx;\n\n\tpb->page_size = getpagesize();\n\n// CONTEXT: static\
+    \ struct perf_buffer *__perf_buffer__new(int map_fd, size_t page_cnt,\n\t\t\t\
+    libbpf_strerror_r(err, msg, sizeof(msg)));\n\t\tgoto error;\n\t}\n\n\tif (p->cpu_cnt\
+    \ > 0) {\n\t\tpb->cpu_cnt = p->cpu_cnt;\n\t} else {\n\t\tpb->cpu_cnt = libbpf_num_possible_cpus();\n\
+    \t\tif (pb->cpu_cnt < 0) {\n\t\t\terr = pb->cpu_cnt;\n\t\t\tgoto error;\n\t\t\
+    }\n\t\tif (map.max_entries && map.max_entries < pb->cpu_cnt)\n\t\t\tpb->cpu_cnt\
+    \ = map.max_entries;\n\t}\n\n\tpb->events = calloc(pb->cpu_cnt, sizeof(*pb->events));\n\
+    \tif (!pb->events) {\n\t\terr = -ENOMEM;\n\t\tpr_warn(\"failed to allocate events:\
+    \ out of memory\\n\");\n\t\tgoto error;\n\t}\n\tpb->cpu_bufs = calloc(pb->cpu_cnt,\
+    \ sizeof(*pb->cpu_bufs));\n\tif (!pb->cpu_bufs) {\n\t\terr = -ENOMEM;"
+  diff_summary: |-
+    src/libbpf.c:
+    - Applied a small verifier-related code change captured by the exact before/after snippets below.
+    - Affected context: perf_buffer__new_raw(int map_fd, size_t page_cnt,, static struct perf_buffer *__perf_buffer__new(int map_fd, size_t page_cnt,.
+    - Commit subject: libbpf: Handle missing BPF_OBJ_GET_INFO_BY_FD gracefully in perf_buffer.

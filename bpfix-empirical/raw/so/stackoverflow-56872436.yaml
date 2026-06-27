@@ -1,0 +1,144 @@
+schema_version: bpfix.raw_external/v1
+raw_id: stackoverflow-56872436
+source_kind: stackoverflow
+source:
+  url: https://stackoverflow.com/questions/56872436/bpf-verifier-rejecting-xdp-program-due-to-back-edge-even-though-pragma-unroll-is
+  title: BPF verifier rejecting XDP program due to back-edge even though pragma unroll
+    is used
+  repository: null
+  commit: null
+  collected_at: '2026-03-11T16:02:46+00:00'
+collector:
+  original_path: bpfix-empirical/raw/so/stackoverflow-56872436.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: true
+  verifier_log_block_count: 1
+  source_snippet_count: 2
+  has_buggy_code: false
+  has_fixed_code: false
+  has_fix_description: false
+reproduction:
+  status: replay_valid
+  case_id: stackoverflow-56872436
+  case_path: cases/stackoverflow-56872436
+  artifact_path: cases/stackoverflow-56872436
+  reason: admitted_to_bpfix_bench_cases
+raw:
+  case_id: stackoverflow-56872436
+  source: stackoverflow
+  collected_at: '2026-03-11T16:02:46+00:00'
+  question:
+    question_id: 56872436
+    title: BPF verifier rejecting XDP program due to back-edge even though pragma
+      unroll is used
+    url: https://stackoverflow.com/questions/56872436/bpf-verifier-rejecting-xdp-program-due-to-back-edge-even-though-pragma-unroll-is
+    tags:
+    - c
+    - clang
+    - ebpf
+    score: 2
+    answer_count: 1
+    is_answered: false
+  verifier_log:
+    blocks:
+    - |-
+      libbpf: load bpf program failed: Invalid argument
+      libbpf: -- BEGIN DUMP LOG ---
+      libbpf:
+      back-edge from insn 271 to 69
+
+      libbpf: -- END LOG --
+      libbpf: failed to load program 'xdp_prog'
+    combined: |-
+      libbpf: load bpf program failed: Invalid argument
+      libbpf: -- BEGIN DUMP LOG ---
+      libbpf:
+      back-edge from insn 271 to 69
+
+      libbpf: -- END LOG --
+      libbpf: failed to load program 'xdp_prog'
+  source_snippets:
+  - |-
+    #pragma unroll
+    for (i = 0; i < 8; i++)
+    {
+        int k = idx + i;
+        mask = bpf_map_lookup_elem(&a_map, &k);
+        if (!mask || (mask->an_idx == 0))
+            return -1;
+
+        *m_key = *key;
+        foo(m_key, mask);  // an __alwais_inline func
+
+        id = bpf_map_lookup_elem(&b_map, m_key);
+        if (id)
+        {
+            *out_id = *id;
+            return 0;
+        }
+    }
+  - |-
+    #pragma unroll
+    for (i = 0; i < 8; i++)
+    {
+        int k = i;
+        mask = bpf_map_lookup_elem(&a_map, &k);
+    }
+  question_body_text: |-
+    So, as per title I'm trying to load an XDP program, when surprisingly the bpf verifier kicks in spitting in my face with the famous back-edge error:
+    libbpf: load bpf program failed: Invalid argument
+    libbpf: -- BEGIN DUMP LOG ---
+    libbpf:
+    back-edge from insn 271 to 69
+    libbpf: -- END LOG --
+    libbpf: failed to load program 'xdp_prog'
+    Even though the only for-loop - with the number of iterations known at compile time - in my restricted ebpf C code is guarded by pragma unroll. Here's a code snippet showing the affected for-loop as defined inside an __always_inlined function:
+    #pragma unroll
+    for (i = 0; i < 8; i++)
+    {
+    int k = idx + i;
+    mask = bpf_map_lookup_elem(&a_map, &k);
+    if (!mask || (mask->an_idx == 0))
+    return -1;
+    *m_key = *key;
+    foo(m_key, mask); // an __alwais_inline func
+    id = bpf_map_lookup_elem(&b_map, m_key);
+    if (id)
+    {
+    *out_id = *id;
+    return 0;
+    }
+    }
+    Maybe the problem is with clang failing to unroll the loop? If that's right, why does it fail, is there any workaround? It's unacceptable to manually unroll the loop as it results in a horrendous, unmaintainable, and unreadable code.
+    Oh, I'm working with:
+    kernel 4.19.3
+    llvm-clang 8
+    Any thoughts?
+    UPDATE
+    Just noticed that even the following dummy for-loop seems not to be unrolled, with the bpf verifier complaining about back-edge:
+    #pragma unroll
+    for (i = 0; i < 8; i++)
+    {
+    int k = i;
+    mask = bpf_map_lookup_elem(&a_map, &k);
+    }
+    Is it just me for this doesn't make any sense?
+  selected_answer:
+    answer_id: 57248953
+    url: https://stackoverflow.com/questions/56872436/bpf-verifier-rejecting-xdp-program-due-to-back-edge-even-though-pragma-unroll-is#57248953
+    is_accepted: false
+    score: -2
+    body_text: |-
+      I write the following code, and it works.
+      #pragma clang loop unroll(full)
+      for (int i = 0; i < 128; i++)
+      {
+      if (bpf_map_lookup_elem(&conntrack_hash_tab, &reply_key) == NULL)
+      {
+      break;
+      }
+      reply_key.dport = reply_key.dport+1;
+      }
+    fix_description: 'I write the following code, and it works. #pragma clang loop
+      unroll(full) for (int i = 0; i < 128; i++)'

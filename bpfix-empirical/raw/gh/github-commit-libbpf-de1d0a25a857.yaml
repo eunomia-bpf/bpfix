@@ -1,0 +1,54 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-libbpf-de1d0a25a857
+source_kind: github_commit
+source:
+  url: https://github.com/libbpf/libbpf/commit/de1d0a25a857b0518e2cd722397443aad90c6d87
+  title: 'libbpf: Fix null pointer dereference in btf_dump__free on allocation failure'
+  repository: https://github.com/libbpf/libbpf
+  commit: de1d0a25a857b0518e2cd722397443aad90c6d87
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-libbpf-de1d0a25a857.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Raw has_verifier_log=false, source_snippet_count=0. The diff adds a NULL
+    guard in btf_dump__free()/resize cleanup after allocation failure; this is user-space
+    memory cleanup in BTF dumping, not verifier behavior.
+raw:
+  case_id: github-commit-libbpf-de1d0a25a857
+  source: github_commits
+  repository: https://github.com/libbpf/libbpf
+  commit_hash: de1d0a25a857b0518e2cd722397443aad90c6d87
+  commit_message: 'libbpf: Fix null pointer dereference in btf_dump__free on allocation
+    failure'
+  commit_date: '2025-06-18'
+  fix_type: null_check
+  buggy_code: "// FILE: src/btf_dump.c\n// CONTEXT: static int btf_dump_resize(struct\
+    \ btf_dump *d)\n\tif (err)\n\t\treturn err;\n\n\td->last_id = last_id;\n\treturn\
+    \ 0;\n}\n\nstatic void btf_dump_free_names(struct hashmap *map)\n{\n\tsize_t bkt;\n\
+    \tstruct hashmap_entry *cur;\n\n\thashmap__for_each_entry(map, cur, bkt)\n\t\t\
+    free((void *)cur->pkey);\n\n\thashmap__free(map);\n}\n\nvoid btf_dump__free(struct\
+    \ btf_dump *d)\n{\n\tint i;\n\n\tif (IS_ERR_OR_NULL(d))\n\t\treturn;"
+  fixed_code: "// FILE: src/btf_dump.c\n// CONTEXT: static int btf_dump_resize(struct\
+    \ btf_dump *d)\n\tif (err)\n\t\treturn err;\n\n\td->last_id = last_id;\n\treturn\
+    \ 0;\n}\n\nstatic void btf_dump_free_names(struct hashmap *map)\n{\n\tsize_t bkt;\n\
+    \tstruct hashmap_entry *cur;\n\n\tif (!map)\n\t\treturn;\n\n\thashmap__for_each_entry(map,\
+    \ cur, bkt)\n\t\tfree((void *)cur->pkey);\n\n\thashmap__free(map);\n}\n\nvoid\
+    \ btf_dump__free(struct btf_dump *d)\n{\n\tint i;\n\n\tif (IS_ERR_OR_NULL(d))\n\
+    \t\treturn;"
+  diff_summary: |-
+    src/btf_dump.c:
+    - Added an explicit null guard before the dereference on all verifier-visible paths.
+    - Affected context: static int btf_dump_resize(struct btf_dump *d).
+    - Commit subject: libbpf: Fix null pointer dereference in btf_dump__free on allocation failure.

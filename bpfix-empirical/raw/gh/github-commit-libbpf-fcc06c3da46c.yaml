@@ -1,0 +1,115 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-libbpf-fcc06c3da46c
+source_kind: github_commit
+source:
+  url: https://github.com/libbpf/libbpf/commit/fcc06c3da46ce256f1fd047ca48f028aa2cb40b7
+  title: 'libbpf: Remove unused args in parse_usdt_note'
+  repository: https://github.com/libbpf/libbpf
+  commit: fcc06c3da46ce256f1fd047ca48f028aa2cb40b7
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-libbpf-fcc06c3da46c.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Raw has_verifier_log=false. The change removes unused arguments from USDT
+    note parsing and target collection; this is user-space parser cleanup without
+    verifier evidence.
+raw:
+  case_id: github-commit-libbpf-fcc06c3da46c
+  source: github_commits
+  repository: https://github.com/libbpf/libbpf
+  commit_hash: fcc06c3da46ce256f1fd047ca48f028aa2cb40b7
+  commit_message: 'libbpf: Remove unused args in parse_usdt_note'
+  commit_date: '2025-09-04'
+  fix_type: loop_rewrite
+  buggy_code: "// FILE: src/usdt.c\n// CONTEXT: static struct elf_seg *find_vma_seg(struct\
+    \ elf_seg *segs, size_t seg_cnt, long o\n\n\t/* for VMA segments from /proc/<pid>/maps\
+    \ file, provided \"address\" is\n\t * actually a file offset, so should be fall\
+    \ within logical\n\t * offset-based range of [offset_start, offset_end)\n\t */\n\
+    \tfor (i = 0, seg = segs; i < seg_cnt; i++, seg++) {\n\t\tif (seg->offset <= offset\
+    \ && offset < seg->offset + (seg->end - seg->start))\n\t\t\treturn seg;\n\t}\n\
+    \treturn NULL;\n}\n\nstatic int parse_usdt_note(Elf *elf, const char *path, GElf_Nhdr\
+    \ *nhdr,\n\t\t\t   const char *data, size_t name_off, size_t desc_off,\n\t\t\t\
+    \   struct usdt_note *usdt_note);\n\nstatic int parse_usdt_spec(struct usdt_spec\
+    \ *spec, const struct usdt_note *note, __u64 usdt_cookie);\n\nstatic int collect_usdt_targets(struct\
+    \ usdt_manager *man, Elf *elf, const char *path, pid_t pid,\n\t\t\t\tconst char\
+    \ *usdt_provider, const char *usdt_name, __u64 usdt_cookie,\n\t\t\t\tstruct usdt_target\
+    \ **out_targets, size_t *out_target_cnt)\n{\n\tsize_t off, name_off, desc_off,\
+    \ seg_cnt = 0, vma_seg_cnt = 0, target_cnt = 0;\n\tstruct elf_seg *segs = NULL,\
+    \ *vma_segs = NULL;\n\tstruct usdt_target *targets = NULL, *target;\n\tlong base_addr\
+    \ = 0;\n\tElf_Scn *notes_scn, *base_scn;\n\n// CONTEXT: static int collect_usdt_targets(struct\
+    \ usdt_manager *man, Elf *elf, const char *\n\t */\n\tif (find_elf_sec_by_name(elf,\
+    \ USDT_BASE_SEC, &base_shdr, &base_scn) == 0)\n\t\tbase_addr = base_shdr.sh_addr;\n\
+    \n\tdata = elf_getdata(notes_scn, 0);\n\toff = 0;\n\twhile ((off = gelf_getnote(data,\
+    \ off, &nhdr, &name_off, &desc_off)) > 0) {\n\t\tlong usdt_abs_ip, usdt_rel_ip,\
+    \ usdt_sema_off = 0;\n\t\tstruct usdt_note note;\n\t\tstruct elf_seg *seg = NULL;\n\
+    \t\tvoid *tmp;\n\n\t\terr = parse_usdt_note(elf, path, &nhdr, data->d_buf, name_off,\
+    \ desc_off, &note);\n\t\tif (err)\n\t\t\tgoto err_out;\n\n\t\tif (strcmp(note.provider,\
+    \ usdt_provider) != 0 || strcmp(note.name, usdt_name) != 0)\n\t\t\tcontinue;\n\
+    \n\t\t/* We need to compensate \"prelink effect\". See [0] for details,\n\t\t\
+    \ * relevant parts quoted here:\n\t\t *\n\t\t * Each SDT probe also expands into\
+    \ a non-allocated ELF note. You can\n\t\t * find this by looking at SHT_NOTE sections\
+    \ and decoding the format;\n\t\t * see below for details. Because the note is\
+    \ non-allocated, it means\n\n// CONTEXT: err_out:\n\n\tif (link)\n\t\tbpf_link__destroy(&link->link);\n\
+    \tfree(targets);\n\thashmap__free(specs_hash);\n\telf_close(&elf_fd);\n\treturn\
+    \ libbpf_err_ptr(err);\n}\n\n/* Parse out USDT ELF note from '.note.stapsdt' section.\n\
+    \ * Logic inspired by perf's code.\n */\nstatic int parse_usdt_note(Elf *elf,\
+    \ const char *path, GElf_Nhdr *nhdr,\n\t\t\t   const char *data, size_t name_off,\
+    \ size_t desc_off,\n\t\t\t   struct usdt_note *note)\n{\n\tconst char *provider,\
+    \ *name, *args;\n\tlong addrs[3];\n\tsize_t len;\n\n\t/* sanity check USDT note\
+    \ name and type first */\n\tif (strncmp(data + name_off, USDT_NOTE_NAME, nhdr->n_namesz)\
+    \ != 0)\n\t\treturn -EINVAL;\n\tif (nhdr->n_type != USDT_NOTE_TYPE)\n\t\treturn\
+    \ -EINVAL;"
+  fixed_code: "// FILE: src/usdt.c\n// CONTEXT: static struct elf_seg *find_vma_seg(struct\
+    \ elf_seg *segs, size_t seg_cnt, long o\n\n\t/* for VMA segments from /proc/<pid>/maps\
+    \ file, provided \"address\" is\n\t * actually a file offset, so should be fall\
+    \ within logical\n\t * offset-based range of [offset_start, offset_end)\n\t */\n\
+    \tfor (i = 0, seg = segs; i < seg_cnt; i++, seg++) {\n\t\tif (seg->offset <= offset\
+    \ && offset < seg->offset + (seg->end - seg->start))\n\t\t\treturn seg;\n\t}\n\
+    \treturn NULL;\n}\n\nstatic int parse_usdt_note(GElf_Nhdr *nhdr, const char *data,\
+    \ size_t name_off,\n\t\t\t   size_t desc_off, struct usdt_note *usdt_note);\n\n\
+    static int parse_usdt_spec(struct usdt_spec *spec, const struct usdt_note *note,\
+    \ __u64 usdt_cookie);\n\nstatic int collect_usdt_targets(struct usdt_manager *man,\
+    \ Elf *elf, const char *path, pid_t pid,\n\t\t\t\tconst char *usdt_provider, const\
+    \ char *usdt_name, __u64 usdt_cookie,\n\t\t\t\tstruct usdt_target **out_targets,\
+    \ size_t *out_target_cnt)\n{\n\tsize_t off, name_off, desc_off, seg_cnt = 0, vma_seg_cnt\
+    \ = 0, target_cnt = 0;\n\tstruct elf_seg *segs = NULL, *vma_segs = NULL;\n\tstruct\
+    \ usdt_target *targets = NULL, *target;\n\tlong base_addr = 0;\n\tElf_Scn *notes_scn,\
+    \ *base_scn;\n\n// CONTEXT: static int collect_usdt_targets(struct usdt_manager\
+    \ *man, Elf *elf, const char *\n\t */\n\tif (find_elf_sec_by_name(elf, USDT_BASE_SEC,\
+    \ &base_shdr, &base_scn) == 0)\n\t\tbase_addr = base_shdr.sh_addr;\n\n\tdata =\
+    \ elf_getdata(notes_scn, 0);\n\toff = 0;\n\twhile ((off = gelf_getnote(data, off,\
+    \ &nhdr, &name_off, &desc_off)) > 0) {\n\t\tlong usdt_abs_ip, usdt_rel_ip, usdt_sema_off\
+    \ = 0;\n\t\tstruct usdt_note note;\n\t\tstruct elf_seg *seg = NULL;\n\t\tvoid\
+    \ *tmp;\n\n\t\terr = parse_usdt_note(&nhdr, data->d_buf, name_off, desc_off, &note);\n\
+    \t\tif (err)\n\t\t\tgoto err_out;\n\n\t\tif (strcmp(note.provider, usdt_provider)\
+    \ != 0 || strcmp(note.name, usdt_name) != 0)\n\t\t\tcontinue;\n\n\t\t/* We need\
+    \ to compensate \"prelink effect\". See [0] for details,\n\t\t * relevant parts\
+    \ quoted here:\n\t\t *\n\t\t * Each SDT probe also expands into a non-allocated\
+    \ ELF note. You can\n\t\t * find this by looking at SHT_NOTE sections and decoding\
+    \ the format;\n\t\t * see below for details. Because the note is non-allocated,\
+    \ it means\n\n// CONTEXT: err_out:\n\n\tif (link)\n\t\tbpf_link__destroy(&link->link);\n\
+    \tfree(targets);\n\thashmap__free(specs_hash);\n\telf_close(&elf_fd);\n\treturn\
+    \ libbpf_err_ptr(err);\n}\n\n/* Parse out USDT ELF note from '.note.stapsdt' section.\n\
+    \ * Logic inspired by perf's code.\n */\nstatic int parse_usdt_note(GElf_Nhdr\
+    \ *nhdr, const char *data, size_t name_off, size_t desc_off,\n\t\t\t   struct\
+    \ usdt_note *note)\n{\n\tconst char *provider, *name, *args;\n\tlong addrs[3];\n\
+    \tsize_t len;\n\n\t/* sanity check USDT note name and type first */\n\tif (strncmp(data\
+    \ + name_off, USDT_NOTE_NAME, nhdr->n_namesz) != 0)\n\t\treturn -EINVAL;\n\tif\
+    \ (nhdr->n_type != USDT_NOTE_TYPE)\n\t\treturn -EINVAL;"
+  diff_summary: |-
+    src/usdt.c:
+    - Reworked loop or branch structure to reduce verifier complexity and keep the path bounded.
+    - Affected context: static struct elf_seg *find_vma_seg(struct elf_seg *segs, size_t seg_cnt, long o, static int collect_usdt_targets(struct usdt_manager *man, Elf *elf, const char *, err_out:.
+    - Commit subject: libbpf: Remove unused args in parse_usdt_note.

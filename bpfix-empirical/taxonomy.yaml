@@ -1,0 +1,196 @@
+---
+taxonomy_name: bpfix_failure_taxonomy
+taxonomy_version: 0.1.0
+title: BPFix 5-Class Verifier Failure Taxonomy
+description: |
+  Compact taxonomy used to label empirical corpus cases and structured diagnostics.
+  The goal is not to encode every verifier message, but to separate failures by
+  where the real defect lives: in the source program, the compiler lowering,
+  verifier false positives, the verifier's resource budget, or the execution
+  environment.
+classification_principles:
+  - Prefer the deepest root cause over the most visible symptom in the raw verifier log.
+  - Use exactly one primary class per case; add nuance through tags, not extra classes.
+  - If a case is ambiguous, ask which layer must change to make the failure disappear.
+decision_order:
+  - verifier_false_positive
+  - environment_or_configuration
+  - verifier_limit
+  - lowering_artifact
+  - source_bug
+classes:
+  - id: source_bug
+    short_label: Source Bug
+    summary: The program violates a real verifier-enforced safety obligation.
+    detailed_description: |
+      The failure originates in the source program itself. The eBPF verifier is
+      correctly demanding evidence for memory safety, pointer validity, object
+      lifetime, reference discipline, or type discipline, and the program does
+      not supply that evidence. Most developer-facing verifier failures belong here.
+    inclusion_signals:
+      - Missing packet or map-value bounds check before dereference.
+      - Nullable helper return value used without a dominating null test.
+      - Pointer arithmetic escapes the tracked object region.
+      - Reference or lock discipline is violated on some control-flow path.
+      - Scalar range proof is absent for array, stack, or map indexing.
+    exclusion_signals:
+      - Source is semantically safe but LLVM emitted verifier-hostile control flow.
+      - Failure only occurs because a helper, kfunc, program type, or BTF asset is unavailable.
+      - Failure disappears after a verifier bugfix with no source change.
+    common_log_shapes:
+      - invalid access to packet
+      - invalid mem access
+      - R0/R1 type mismatch
+      - unbounded memory access
+      - unreleased reference
+    typical_obligations:
+      - Prove a bounds check dominates the access.
+      - Prove a pointer is non-null on every feasible path.
+      - Preserve reference ownership across early exits.
+      - Re-establish type information after helper calls or pointer joins.
+    typical_repairs:
+      - Add guard conditions or early returns.
+      - Split control flow to preserve verifier knowledge.
+      - Narrow pointer arithmetic and hoist safety checks.
+      - Insert explicit reference release or lock/unlock balancing.
+  - id: lowering_artifact
+    short_label: Lowering Artifact
+    summary: The source intent is reasonable, but compilation produced verifier-unfriendly bytecode.
+    detailed_description: |
+      The problem is introduced or amplified by the lowering pipeline from C to
+      BPF bytecode. LLVM may widen control flow, lose obvious range relationships,
+      spill and reload values in a way that obscures type information, or generate
+      instruction patterns the verifier cannot relate back to the source-level proof.
+      The right repair may still be a source rewrite, but the defect is best
+      explained as a compiler-lowering artifact rather than a conceptual source bug.
+    inclusion_signals:
+      - Small source rewrites or different optimization levels make the failure disappear.
+      - The rejected path is an artifact of spilling, register reuse, or CFG reshaping.
+      - Equivalent hand-written or differently lowered bytecode verifies cleanly.
+      - The source already contains the necessary safety check, but the verifier no longer sees it.
+    exclusion_signals:
+      - The source truly lacks a required check or uses unsafe pointer arithmetic.
+      - The verifier times out or exhausts complexity on an otherwise well-lowered program.
+      - The environment lacks the helper, BTF type, or attach point referenced by the program.
+    common_log_shapes:
+      - math between pkt pointer and register with lost bounds
+      - type precision lost after spill/fill
+      - control-flow join widens scalar range
+      - bounds check present in source but not preserved in IR/bytecode
+    typical_obligations:
+      - Preserve a dominance relationship through lowering.
+      - Keep pointer and scalar facts live across spills, merges, and helper boundaries.
+      - Emit bytecode patterns compatible with verifier abstract interpretation.
+    typical_repairs:
+      - Rewrite source to simplify CFG or shorten live ranges.
+      - Use temporary variables to avoid precision loss.
+      - Change optimization level or targeted idiom while preserving semantics.
+      - Introduce explicit casts or guard blocks that survive lowering.
+  - id: verifier_limit
+    short_label: Verifier Limit
+    summary: Verification exceeds a deliberate resource, complexity, loop, or stack budget.
+    detailed_description: |
+      The rejection stems from a deliberate verifier design or resource boundary
+      rather than a specific missing proof obligation at one access site. The
+      verifier may stop because the program exceeds instruction, state,
+      complexity, bounded-loop, or combined-stack limits. These cases should not
+      be used for ordinary precision false-positive claims unless the terminal
+      error is explicitly a budget or design-limit rejection.
+    inclusion_signals:
+      - The terminal error reports program size, instruction, state, complexity, loop, or stack budget exhaustion.
+      - Refactoring into smaller programs, simpler loops, or shallower call graphs makes the same logic fit the verifier budget.
+      - The rejection is about verifier tractability rather than one concrete packet, map, pointer, nullability, or lifetime proof.
+    exclusion_signals:
+      - The source lacks a real safety precondition.
+      - The failure comes from missing environment support such as helper availability.
+      - The verifier finishes analysis but rejects due to imprecise range, relation, pointer, or state tracking.
+      - A concrete verifier false positive is known and independently fixed upstream.
+    common_log_shapes:
+      - program too large
+      - too many states
+      - bounded loop not proven
+      - combined stack size exceeds
+    typical_obligations:
+      - Supply a proof shape the verifier can actually consume.
+      - Reduce abstract-state explosion or path fan-out.
+      - Make loop or invariant structure explicit.
+    typical_repairs:
+      - Refactor complex logic into simpler verifier-friendly stages.
+      - Add invariant-preserving guards and tighten ranges earlier.
+      - Split programs or use tail calls to reduce verifier workload.
+      - Replace clever arithmetic with simpler equivalences.
+  - id: environment_or_configuration
+    short_label: Environment or Configuration
+    summary: The program, build, loader, or runtime assumptions do not match the target environment.
+    detailed_description: |
+      The verifier failure is caused by differences between the program's assumed
+      environment or build/loader configuration and the actual target. Typical
+      sources include helper availability, kfunc support, BTF presence,
+      attach-type constraints, map definitions, compiler flags, loader
+      relocations, kernel configuration, or expected context layout. The source
+      logic may be valid under one target/configuration and invalid under
+      another.
+    inclusion_signals:
+      - Helper or kfunc is unknown on the target kernel.
+      - BTF-derived type information or CO-RE relocations do not match the runtime target.
+      - Program type or attach point forbids an operation that is legal elsewhere.
+      - Build flags or loader relocations produce bytecode outside the intended BPF contract.
+      - The same bytecode verifies on one kernel/configuration but not another due to feature support.
+    exclusion_signals:
+      - The source misuses the API regardless of environment.
+      - The verifier rejects safe code because of analysis weakness rather than environment support.
+      - The kernel verifier is conservatively or incorrectly rejecting safe bytecode.
+    common_log_shapes:
+      - unknown func
+      - invalid btf_id
+      - attach type not supported
+      - helper not allowed in this program type
+      - map value layout mismatch
+    typical_obligations:
+      - Match program features to target-kernel capability.
+      - Prove type and context expectations against the runtime environment.
+      - Respect attach-type and helper allowlists.
+    typical_repairs:
+      - Gate features by kernel capability.
+      - Switch helper or attach strategy.
+      - Regenerate skeletons or BTF-dependent artifacts against the target.
+      - Adjust map definitions, CO-RE assumptions, or deployment configuration.
+  - id: verifier_false_positive
+    short_label: Verifier False Positive
+    summary: The program is semantically safe at the bytecode level, but the verifier rejects it conservatively or incorrectly.
+    detailed_description: |
+      The verifier completes enough analysis to reject the program, but the
+      rejection is best explained as an over-conservative or incorrect verifier
+      judgment rather than a source semantic bug, lowering artifact, resource
+      limit, or environment mismatch. This class includes relation/range
+      precision false positives and stronger upstream-confirmed verifier bugs.
+      It requires stronger evidence than ordinary source bugs because it is easy
+      to mislabel missing source preconditions as verifier conservatism.
+    inclusion_signals:
+      - The rejected bytecode can be manually argued safe without adding a new semantic precondition.
+      - An equivalent bytecode/source rewrite verifies while preserving the same safety invariant.
+      - The log shows imprecise relation, range, state-merge, or pruning behavior rather than a true unsafe access.
+      - Upstream kernel discussion or patch explicitly treats the rejection as a false positive or verifier bug.
+    exclusion_signals:
+      - The source lacks a required check.
+      - The source check exists but compilation/lowering obscures it; use `lowering_artifact`.
+      - Rewriting the source adds a new semantic safety precondition.
+      - The failure comes from missing helper, BTF, or program-type support.
+      - The terminal error is a size, complexity, state, loop, or stack budget limit.
+    common_log_shapes:
+      - conservative rejection of a manually safe range or relation
+      - equivalent state rejected after merge
+      - kernel patch notes mention verifier false-positive fix
+      - inconsistent rejection across close kernels with unchanged safe bytecode
+    typical_obligations:
+      - Demonstrate that the rejected program is actually safe.
+      - Isolate the verifier check, state transition, or abstract relation that is too conservative.
+      - Record the evidence strength and affected kernel range.
+    typical_repairs:
+      - Carry a verifier-friendly workaround that preserves semantics.
+      - Backport a verifier fix when one exists.
+      - Route the case into kernel-version-aware evaluation.
+ambiguity_notes:
+  - If a source rewrite is needed only because the verifier cannot track the compiler's output, prefer `lowering_artifact`.
+  - If the same safe program is rejected due to instruction, state, loop, or stack budget exhaustion, prefer `verifier_limit`.
+  - If the verifier rejects a semantically safe bytecode because of precision, relation tracking, or an upstream-confirmed bug, prefer `verifier_false_positive`.

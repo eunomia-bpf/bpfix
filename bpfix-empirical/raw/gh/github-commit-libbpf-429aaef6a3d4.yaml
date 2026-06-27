@@ -1,0 +1,152 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-libbpf-429aaef6a3d4
+source_kind: github_commit
+source:
+  url: https://github.com/libbpf/libbpf/commit/429aaef6a3d40d31b038b069218719a02d781759
+  title: 'libbpf: Add gating for arena globals relocation feature'
+  repository: https://github.com/libbpf/libbpf
+  commit: 429aaef6a3d40d31b038b069218719a02d781759
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-libbpf-429aaef6a3d4.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: replay_reject_no_rejected_insn
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: A temp reconstruction of the raw probe_ldimm64_full_range_off() instruction
+    sequence rejected locally with direct value offset of 1073741824 is not allowed,
+    but the log reported processed 0 insns and parser output was log_quality=message_only,
+    rejected_insn_idx=None.
+raw:
+  case_id: github-commit-libbpf-429aaef6a3d4
+  source: github_commits
+  repository: https://github.com/libbpf/libbpf
+  commit_hash: 429aaef6a3d40d31b038b069218719a02d781759
+  commit_message: 'libbpf: Add gating for arena globals relocation feature'
+  commit_date: '2026-02-10'
+  fix_type: volatile_hack
+  buggy_code: "// FILE: src/features.c\n// CONTEXT: static int probe_kern_arg_ctx_tag(int\
+    \ token_fd)\n\topts.prog_btf_fd = btf_fd;\n\topts.func_info = &func_infos;\n\t\
+    opts.func_info_cnt = ARRAY_SIZE(func_infos);\n\topts.func_info_rec_size = sizeof(func_infos[0]);\n\
+    \n\tprog_fd = bpf_prog_load(BPF_PROG_TYPE_KPROBE, \"det_arg_ctx\",\n\t\t\t\t\"\
+    GPL\", insns, insn_cnt, &opts);\n\tclose(btf_fd);\n\n\treturn probe_fd(prog_fd);\n\
+    }\n\ntypedef int (*feature_probe_fn)(int /* token_fd */);\n\nstatic struct kern_feature_cache\
+    \ feature_cache;\n\nstatic struct kern_feature_desc {\n\tconst char *desc;\n\t\
+    feature_probe_fn probe;\n} feature_probes[__FEAT_CNT] = {\n\t[FEAT_PROG_NAME]\
+    \ = {\n\t\t\"BPF program name\", probe_kern_prog_name,\n\t},\n\t[FEAT_GLOBAL_DATA]\
+    \ = {\n\n// CONTEXT: static struct kern_feature_desc {\n\t[FEAT_SYSCALL_WRAPPER]\
+    \ = {\n\t\t\"Kernel using syscall wrapper\", probe_kern_syscall_wrapper,\n\t},\n\
+    \t[FEAT_UPROBE_MULTI_LINK] = {\n\t\t\"BPF multi-uprobe link support\", probe_uprobe_multi_link,\n\
+    \t},\n\t[FEAT_ARG_CTX_TAG] = {\n\t\t\"kernel-side __arg_ctx tag\", probe_kern_arg_ctx_tag,\n\
+    \t},\n\t[FEAT_BTF_QMARK_DATASEC] = {\n\t\t\"BTF DATASEC names starting from '?'\"\
+    , probe_kern_btf_qmark_datasec,\n\t},\n};\n\nbool feat_supported(struct kern_feature_cache\
+    \ *cache, enum kern_feature_id feat_id)\n{\n\tstruct kern_feature_desc *feat =\
+    \ &feature_probes[feat_id];\n\tint ret;\n\n\t/* assume global feature cache, unless\
+    \ custom one is provided */\n\tif (!cache)\n\t\tcache = &feature_cache;\n\n\t\
+    if (READ_ONCE(cache->res[feat_id]) == FEAT_UNKNOWN) {\n\n// FILE: src/libbpf.c\n\
+    // CONTEXT: static int init_arena_map_data(struct bpf_object *obj, struct bpf_map\
+    \ *map,\n\tif (data_alloc_sz > mmap_sz) {\n\t\tpr_warn(\"elf: sec '%s': declared\
+    \ ARENA map size (%zu) is too small to hold global __arena variables of size %zu\\\
+    n\",\n\t\t\tsec_name, mmap_sz, data_sz);\n\t\treturn -E2BIG;\n\t}\n\n\tobj->arena_data\
+    \ = malloc(data_sz);\n\tif (!obj->arena_data)\n\t\treturn -ENOMEM;\n\tmemcpy(obj->arena_data,\
+    \ data, data_sz);\n\tobj->arena_data_sz = data_sz;\n\n\t/* place globals at the\
+    \ end of the arena */\n\tobj->arena_data_off = mmap_sz - data_alloc_sz;\n\n\t\
+    /* make bpf_map__init_value() work for ARENA maps */\n\tmap->mmaped = obj->arena_data;\n\
+    \n\treturn 0;\n}\n\nstatic int bpf_object__init_user_btf_maps(struct bpf_object\
+    \ *obj, bool strict,\n\t\t\t\t\t  const char *pin_root_path)\n{\n\tconst struct\
+    \ btf_type *sec = NULL;\n\tint nr_types, i, vlen, err;\n\n// FILE: src/libbpf_internal.h\n\
+    // CONTEXT: enum kern_feature_id {\n\t/* BPF cookie (bpf_get_attach_cookie() BPF\
+    \ helper) support */\n\tFEAT_BPF_COOKIE,\n\t/* BTF_KIND_ENUM64 support and BTF_KIND_ENUM\
+    \ kflag support */\n\tFEAT_BTF_ENUM64,\n\t/* Kernel uses syscall wrapper (CONFIG_ARCH_HAS_SYSCALL_WRAPPER)\
+    \ */\n\tFEAT_SYSCALL_WRAPPER,\n\t/* BPF multi-uprobe link support */\n\tFEAT_UPROBE_MULTI_LINK,\n\
+    \t/* Kernel supports arg:ctx tag (__arg_ctx) for global subprogs natively */\n\
+    \tFEAT_ARG_CTX_TAG,\n\t/* Kernel supports '?' at the front of datasec names */\n\
+    \tFEAT_BTF_QMARK_DATASEC,\n\t__FEAT_CNT,\n};\n\nenum kern_feature_result {\n\t\
+    FEAT_UNKNOWN = 0,\n\tFEAT_SUPPORTED = 1,\n\tFEAT_MISSING = 2,\n};\n\nstruct kern_feature_cache\
+    \ {\n\tenum kern_feature_result res[__FEAT_CNT];\n\tint token_fd;"
+  fixed_code: "// FILE: src/features.c\n// CONTEXT: static int probe_kern_arg_ctx_tag(int\
+    \ token_fd)\n\topts.prog_btf_fd = btf_fd;\n\topts.func_info = &func_infos;\n\t\
+    opts.func_info_cnt = ARRAY_SIZE(func_infos);\n\topts.func_info_rec_size = sizeof(func_infos[0]);\n\
+    \n\tprog_fd = bpf_prog_load(BPF_PROG_TYPE_KPROBE, \"det_arg_ctx\",\n\t\t\t\t\"\
+    GPL\", insns, insn_cnt, &opts);\n\tclose(btf_fd);\n\n\treturn probe_fd(prog_fd);\n\
+    }\n\nstatic int probe_ldimm64_full_range_off(int token_fd)\n{\n\tchar log_buf[1024];\n\
+    \tint prog_fd, map_fd;\n\tint ret;\n\tLIBBPF_OPTS(bpf_map_create_opts, map_opts,\n\
+    \t\t.token_fd = token_fd,\n\t\t.map_flags = token_fd ? BPF_F_TOKEN_FD : 0,\n\t\
+    );\n\tLIBBPF_OPTS(bpf_prog_load_opts, prog_opts,\n\t\t.token_fd = token_fd,\n\t\
+    \t.prog_flags = token_fd ? BPF_F_TOKEN_FD : 0,\n\t\t.log_buf = log_buf,\n\t\t\
+    .log_size = sizeof(log_buf),\n\t);\n\tstruct bpf_insn insns[] = {\n\t\tBPF_LD_MAP_VALUE(BPF_REG_1,\
+    \ 0, 1UL << 30),\n\t\tBPF_EXIT_INSN(),\n\t};\n\tint insn_cnt = ARRAY_SIZE(insns);\n\
+    \n\tmap_fd = bpf_map_create(BPF_MAP_TYPE_ARRAY, \"arr\", sizeof(int), 1, 1, &map_opts);\n\
+    \tif (map_fd < 0) {\n\t\tret = -errno;\n\t\tpr_warn(\"Error in %s(): %s. Couldn't\
+    \ create simple array map.\\n\",\n\t\t\t__func__, errstr(ret));\n\t\treturn ret;\n\
+    \t}\n\tinsns[0].imm = map_fd;\n\n\tprog_fd = bpf_prog_load(BPF_PROG_TYPE_TRACEPOINT,\
+    \ \"global_reloc\", \"GPL\", insns, insn_cnt, &prog_opts);\n\tret = -errno;\n\n\
+    \tclose(map_fd);\n\tclose(prog_fd);\n\n\tif (prog_fd >= 0) {\n\t\tpr_warn(\"Error\
+    \ in %s(): Program loading unexpectedly succeeded.\\n\", __func__);\n\t\treturn\
+    \ -EINVAL;\n\t}\n\n\t/*\n\t * Feature is allowed if we're not failing with the\
+    \ error message\n\t * \"direct value offset of %u is not allowed\" removed in\n\
+    \t * 12a1fe6e12db (\"bpf/verifier: Do not limit maximum direct offset into arena\
+    \ map\").\n\t * We should instead fail with \"invalid access to map value pointer\"\
+    .\n\t * Ensure we match with one of the two and we're not failing with a\n\t *\
+    \ different, unexpected message.\n\t */\n\tif (strstr(log_buf, \"direct value\
+    \ offset of\"))\n\t\treturn 0;\n\n\tif (!strstr(log_buf, \"invalid access to map\
+    \ value pointer\")) {\n\t\tpr_warn(\"Error in %s(): Program unexpectedly failed\
+    \ with message: %s.\\n\",\n\t\t\t__func__, log_buf);\n\t\treturn ret;\n\t}\n\n\
+    \treturn 1;\n}\n\ntypedef int (*feature_probe_fn)(int /* token_fd */);\n\nstatic\
+    \ struct kern_feature_cache feature_cache;\n\nstatic struct kern_feature_desc\
+    \ {\n\tconst char *desc;\n\tfeature_probe_fn probe;\n} feature_probes[__FEAT_CNT]\
+    \ = {\n\t[FEAT_PROG_NAME] = {\n\t\t\"BPF program name\", probe_kern_prog_name,\n\
+    \t},\n\t[FEAT_GLOBAL_DATA] = {\n\n// CONTEXT: static struct kern_feature_desc\
+    \ {\n\t[FEAT_SYSCALL_WRAPPER] = {\n\t\t\"Kernel using syscall wrapper\", probe_kern_syscall_wrapper,\n\
+    \t},\n\t[FEAT_UPROBE_MULTI_LINK] = {\n\t\t\"BPF multi-uprobe link support\", probe_uprobe_multi_link,\n\
+    \t},\n\t[FEAT_ARG_CTX_TAG] = {\n\t\t\"kernel-side __arg_ctx tag\", probe_kern_arg_ctx_tag,\n\
+    \t},\n\t[FEAT_BTF_QMARK_DATASEC] = {\n\t\t\"BTF DATASEC names starting from '?'\"\
+    , probe_kern_btf_qmark_datasec,\n\t},\n\t[FEAT_LDIMM64_FULL_RANGE_OFF] = {\n\t\
+    \t\"full range LDIMM64 support\", probe_ldimm64_full_range_off,\n\t},\n};\n\n\
+    bool feat_supported(struct kern_feature_cache *cache, enum kern_feature_id feat_id)\n\
+    {\n\tstruct kern_feature_desc *feat = &feature_probes[feat_id];\n\tint ret;\n\n\
+    \t/* assume global feature cache, unless custom one is provided */\n\tif (!cache)\n\
+    \t\tcache = &feature_cache;\n\n\tif (READ_ONCE(cache->res[feat_id]) == FEAT_UNKNOWN)\
+    \ {\n\n// FILE: src/libbpf.c\n// CONTEXT: static int init_arena_map_data(struct\
+    \ bpf_object *obj, struct bpf_map *map,\n\tif (data_alloc_sz > mmap_sz) {\n\t\t\
+    pr_warn(\"elf: sec '%s': declared ARENA map size (%zu) is too small to hold global\
+    \ __arena variables of size %zu\\n\",\n\t\t\tsec_name, mmap_sz, data_sz);\n\t\t\
+    return -E2BIG;\n\t}\n\n\tobj->arena_data = malloc(data_sz);\n\tif (!obj->arena_data)\n\
+    \t\treturn -ENOMEM;\n\tmemcpy(obj->arena_data, data, data_sz);\n\tobj->arena_data_sz\
+    \ = data_sz;\n\n\t/* place globals at the end of the arena (if supported) */\n\
+    \tif (kernel_supports(obj, FEAT_LDIMM64_FULL_RANGE_OFF))\n\t\tobj->arena_data_off\
+    \ = mmap_sz - data_alloc_sz;\n\telse\n\t\tobj->arena_data_off = 0;\n\n\t/* make\
+    \ bpf_map__init_value() work for ARENA maps */\n\tmap->mmaped = obj->arena_data;\n\
+    \n\treturn 0;\n}\n\nstatic int bpf_object__init_user_btf_maps(struct bpf_object\
+    \ *obj, bool strict,\n\t\t\t\t\t  const char *pin_root_path)\n{\n\tconst struct\
+    \ btf_type *sec = NULL;\n\tint nr_types, i, vlen, err;\n\n// FILE: src/libbpf_internal.h\n\
+    // CONTEXT: enum kern_feature_id {\n\t/* BPF cookie (bpf_get_attach_cookie() BPF\
+    \ helper) support */\n\tFEAT_BPF_COOKIE,\n\t/* BTF_KIND_ENUM64 support and BTF_KIND_ENUM\
+    \ kflag support */\n\tFEAT_BTF_ENUM64,\n\t/* Kernel uses syscall wrapper (CONFIG_ARCH_HAS_SYSCALL_WRAPPER)\
+    \ */\n\tFEAT_SYSCALL_WRAPPER,\n\t/* BPF multi-uprobe link support */\n\tFEAT_UPROBE_MULTI_LINK,\n\
+    \t/* Kernel supports arg:ctx tag (__arg_ctx) for global subprogs natively */\n\
+    \tFEAT_ARG_CTX_TAG,\n\t/* Kernel supports '?' at the front of datasec names */\n\
+    \tFEAT_BTF_QMARK_DATASEC,\n\t/* Kernel supports LDIMM64 imm offsets past 512 MiB.\
+    \ */\n\tFEAT_LDIMM64_FULL_RANGE_OFF,\n\t__FEAT_CNT,\n};\n\nenum kern_feature_result\
+    \ {\n\tFEAT_UNKNOWN = 0,\n\tFEAT_SUPPORTED = 1,\n\tFEAT_MISSING = 2,\n};\n\nstruct\
+    \ kern_feature_cache {\n\tenum kern_feature_result res[__FEAT_CNT];\n\tint token_fd;"
+  diff_summary: |-
+    src/features.c:
+    - Added or changed a volatile or READ_ONCE-style access to force verifier-friendly code generation.
+    - Affected context: static int probe_kern_arg_ctx_tag(int token_fd), static struct kern_feature_desc {.
+    src/libbpf.c:
+    - Added or changed a volatile or READ_ONCE-style access to force verifier-friendly code generation.
+    - Affected context: static int init_arena_map_data(struct bpf_object *obj, struct bpf_map *map,.
+    src/libbpf_internal.h:
+    - Added or changed a volatile or READ_ONCE-style access to force verifier-friendly code generation.
+    - Affected context: enum kern_feature_id {.
+    - Commit subject: libbpf: Add gating for arena globals relocation feature.

@@ -1,0 +1,198 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-4d36cac2ee63
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/4d36cac2ee6328fe796674b9e72b4c36a7c0f70b
+  title: 'bpf: Fixes to support mattr=+alu32'
+  repository: https://github.com/cilium/cilium
+  commit: 4d36cac2ee6328fe796674b9e72b4c36a7c0f70b
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-4d36cac2ee63.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: replay_valid
+  case_id: github-commit-cilium-4d36cac2ee63
+  case_path: cases/github-commit-cilium-4d36cac2ee63
+  artifact_path: cases/github-commit-cilium-4d36cac2ee63
+  reason: admitted_to_bpfix_bench_cases
+raw:
+  case_id: github-commit-cilium-4d36cac2ee63
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: 4d36cac2ee6328fe796674b9e72b4c36a7c0f70b
+  commit_message: 'bpf: Fixes to support mattr=+alu32'
+  commit_date: '2021-04-21'
+  fix_type: inline_hint
+  buggy_code: "// FILE: bpf/include/bpf/ctx/skb.h\n * hash. We currently only use\
+    \ the hash for debugging. If needed later, we\n * can map it to BPF_FUNC(get_hash_recalc)\
+    \ to get the L4 hash.\n */\n#define get_hash(ctx)\t\tctx->hash\n#define get_hash_recalc(ctx)\t\
+    get_hash(ctx)\n\nstatic __always_inline __maybe_unused int\nctx_redirect(struct\
+    \ __sk_buff *ctx __maybe_unused, int ifindex, __u32 flags)\n{\n\treturn redirect(ifindex,\
+    \ flags);\n}\n\nstatic __always_inline __maybe_unused __u32\nctx_full_len(const\
+    \ struct __sk_buff *ctx)\n{\n\treturn ctx->len;\n}\n\nstatic __always_inline __maybe_unused\
+    \ __u32\nctx_wire_len(const struct __sk_buff *ctx)\n{\n\treturn ctx->wire_len;\n\
+    }\n\nstatic __always_inline __maybe_unused void\n\n// FILE: bpf/include/bpf/ctx/xdp.h\n\
+    // CONTEXT: ctx_adjust_room(struct xdp_md *ctx, const __s32 len_diff, const __u32\
+    \ mode,\n#define redirect_peer\t\t\tredirect\n\nstatic __always_inline __maybe_unused\
+    \ int\nctx_redirect(const struct xdp_md *ctx, int ifindex, const __u32 flags)\n\
+    {\n\tif (unlikely(flags))\n\t\treturn -ENOTSUPP;\n\tif ((__u32)ifindex != ctx->ingress_ifindex)\n\
+    \t\treturn -ENOTSUPP;\n\treturn XDP_TX;\n}\n\nstatic __always_inline __maybe_unused\
+    \ __u32\nctx_full_len(const struct xdp_md *ctx)\n{\n\t/* No non-linear section\
+    \ in XDP. */\n\treturn ctx_data_end(ctx) - ctx_data(ctx);\n}\n\nstatic __always_inline\
+    \ __maybe_unused __u32\nctx_wire_len(const struct xdp_md *ctx)\n{\n\treturn ctx_full_len(ctx);\n\
+    }\n\n// FILE: bpf/lib/common.h\n// CONTEXT: static __always_inline bool validate_ethertype(struct\
+    \ __ctx_buff *ctx,\n\tif (data + ETH_HLEN > data_end)\n\t\treturn false;\n\t*proto\
+    \ = eth->h_proto;\n\tif (bpf_ntohs(*proto) < ETH_P_802_3_MIN)\n\t\treturn false;\
+    \ /* non-Ethernet II unsupported */\n\treturn true;\n}\n\nstatic __always_inline\
+    \ __maybe_unused bool\n__revalidate_data_pull(struct __ctx_buff *ctx, void **data_,\
+    \ void **data_end_,\n\t\t       void **l3, const __u32 l3_len, const bool pull)\n\
+    {\n\tconst __u32 tot_len = ETH_HLEN + l3_len;\n\tvoid *data_end;\n\tvoid *data;\n\
+    \n\t/* Verifier workaround, do this unconditionally: invalid size of register\
+    \ spill. */\n\tif (pull)\n\t\tctx_pull_data(ctx, tot_len);\n\tdata_end = ctx_data_end(ctx);\n\
+    \tdata = ctx_data(ctx);\n\tif (data + tot_len > data_end)\n\t\treturn false;\n\
+    \n\t/* Verifier workaround: pointer arithmetic on pkt_end prohibited. */\n\n//\
+    \ FILE: bpf/lib/csum.h\n// CONTEXT: static __always_inline void csum_l4_offset_and_flags(__u8\
+    \ nexthdr,\n\t}\n}\n\n/**\n * Helper to change L4 checksum\n * @arg ctx\tPacket\n\
+    \ * @arg l4_off\tOffset to L4 header\n * @arg csum\tPointer to csum_offset as\
+    \ extracted by csum_l4_offset_and_flags()\n * @arg from\tFrom value or 0 if to\
+    \ contains csum diff\n * @arg to\tTo value or a csum diff\n * @arg flags\tAdditional\
+    \ flags to be passed to l4_csum_replace()\n */\nstatic __always_inline int csum_l4_replace(struct\
+    \ __ctx_buff *ctx, int l4_off,\n\t\t\t\t\t   const struct csum_offset *csum,\n\
+    \t\t\t\t\t   __be32 from, __be32 to, int flags)\n{\n\treturn l4_csum_replace(ctx,\
+    \ l4_off + csum->offset, from, to, flags | csum->flags);\n}\n\n#endif /* __LB_H_\
+    \ */\n\n// FILE: bpf/lib/encap.h\n// CONTEXT: encap_and_redirect_ipsec(struct\
+    \ __ctx_buff *ctx, __u32 tunnel_endpoint,\n#endif /* ENABLE_IPSEC */\n\nstatic\
+    \ __always_inline int\nencap_remap_v6_host_address(struct __ctx_buff *ctx __maybe_unused,\n\
+    \t\t\t    const bool egress __maybe_unused)\n{\n#ifdef ENABLE_ENCAP_HOST_REMAP\n\
+    \tstruct csum_offset csum = {};\n\tunion v6addr host_ip;\n\tvoid *data, *data_end;\n\
+    \tstruct ipv6hdr *ip6;\n\tunion v6addr *which;\n\t__u32 off, noff;\n\t__u8 nexthdr;\n\
+    \t__u16 proto;\n\t__be32 sum;\n\tint ret;\n\n\tvalidate_ethertype(ctx, &proto);\n\
+    \tif (proto != bpf_htons(ETH_P_IPV6))\n\t\treturn 0;\n\tif (!revalidate_data(ctx,\
+    \ &data, &data_end, &ip6))\n\t\treturn DROP_INVALID;\n\t/* For requests routed\
+    \ via tunnel with external v6 node IP\n\t * we need to remap their source address\
+    \ to the router address\n\t * as otherwise replies are not routed via tunnel but\
+    \ public\n\t * address instead.\n\t */\n\n// FILE: bpf/lib/metrics.h\n#include\
+    \ \"utils.h\"\n#include \"maps.h\"\n#include \"dbg.h\"\n\n/**\n * update_metrics\n\
+    \ * @direction:\t1: Ingress 2: Egress\n * @reason:\treason for forwarding or dropping\
+    \ packet.\n *\t\treason is 0 if packet is being forwarded, else reason\n *\t\t\
+    is the drop error code.\n * Update the metrics map.\n */\nstatic __always_inline\
+    \ void update_metrics(__u32 bytes, __u8 direction,\n\t\t\t\t\t   __u8 reason)\n\
+    {\n\tstruct metrics_value *entry, newEntry = {};\n\tstruct metrics_key key = {};\n\
+    \n\tkey.reason = reason;\n\tkey.dir    = direction;\n\n\n\tentry = map_lookup_elem(&METRICS_MAP,\
+    \ &key);\n\tif (entry) {\n\t\tentry->count += 1;\n\t\tentry->bytes += (__u64)bytes;\n\
+    \t} else {\n\t\tnewEntry.count = 1;\n\t\tnewEntry.bytes = (__u64)bytes;\n\t\t\
+    map_update_elem(&METRICS_MAP, &key, &newEntry, 0);\n\t}\n}\n\n/**\n * ct_to_metrics_dir\n\
+    \ * @direction:\t1: Ingress 2: Egress 3: Service\n * Convert a CT direction into\
+    \ the corresponding one for metrics.\n */\nstatic __always_inline __u8 ct_to_metrics_dir(__u8\
+    \ ct_dir)\n{\n\tswitch (ct_dir) {\n\n// FILE: bpf/lib/nat.h\n// CONTEXT: static\
+    \ __always_inline __maybe_unused int snat_v4_process(struct __ctx_buff *ctx\n\t\
+    \t\t\t\t\tconst struct ipv4_nat_target *target,\n\t\t\t\t\t\tbool from_endpoint)\n\
+    {\n\tstruct icmphdr icmphdr __align_stack_8;\n\tstruct ipv4_nat_entry *state,\
+    \ tmp;\n\tstruct ipv4_ct_tuple tuple = {};\n\tvoid *data, *data_end;\n\tstruct\
+    \ iphdr *ip4;\n\tstruct {\n\t\t__be16 sport;\n\t\t__be16 dport;\n\t} l4hdr;\n\t\
+    __u32 off;\n\tbool icmp = false, icmp_echoreply = false;\n\tint ret;\n\n\tbuild_bug_on(sizeof(struct\
+    \ ipv4_nat_entry) > 64);\n\n\tif (!revalidate_data(ctx, &data, &data_end, &ip4))\n\
+    \t\treturn DROP_INVALID;\n\n\ttuple.nexthdr = ip4->protocol;\n\ttuple.daddr =\
+    \ ip4->daddr;\n\ttuple.saddr = ip4->saddr;\n\ttuple.flags = dir;"
+  fixed_code: "// FILE: bpf/include/bpf/ctx/skb.h\n * hash. We currently only use\
+    \ the hash for debugging. If needed later, we\n * can map it to BPF_FUNC(get_hash_recalc)\
+    \ to get the L4 hash.\n */\n#define get_hash(ctx)\t\tctx->hash\n#define get_hash_recalc(ctx)\t\
+    get_hash(ctx)\n\nstatic __always_inline __maybe_unused int\nctx_redirect(struct\
+    \ __sk_buff *ctx __maybe_unused, int ifindex, __u32 flags)\n{\n\treturn redirect(ifindex,\
+    \ flags);\n}\n\nstatic __always_inline __maybe_unused __u64\nctx_full_len(const\
+    \ struct __sk_buff *ctx)\n{\n\treturn ctx->len;\n}\n\nstatic __always_inline __maybe_unused\
+    \ __u32\nctx_wire_len(const struct __sk_buff *ctx)\n{\n\treturn ctx->wire_len;\n\
+    }\n\nstatic __always_inline __maybe_unused void\n\n// FILE: bpf/include/bpf/ctx/xdp.h\n\
+    // CONTEXT: ctx_adjust_room(struct xdp_md *ctx, const __s32 len_diff, const __u32\
+    \ mode,\n#define redirect_peer\t\t\tredirect\n\nstatic __always_inline __maybe_unused\
+    \ int\nctx_redirect(const struct xdp_md *ctx, int ifindex, const __u32 flags)\n\
+    {\n\tif (unlikely(flags))\n\t\treturn -ENOTSUPP;\n\tif ((__u32)ifindex != ctx->ingress_ifindex)\n\
+    \t\treturn -ENOTSUPP;\n\treturn XDP_TX;\n}\n\nstatic __always_inline __maybe_unused\
+    \ __u64\nctx_full_len(const struct xdp_md *ctx)\n{\n\t/* No non-linear section\
+    \ in XDP. */\n\treturn ctx_data_end(ctx) - ctx_data(ctx);\n}\n\nstatic __always_inline\
+    \ __maybe_unused __u32\nctx_wire_len(const struct xdp_md *ctx)\n{\n\treturn ctx_full_len(ctx);\n\
+    }\n\n// FILE: bpf/lib/common.h\n// CONTEXT: static __always_inline bool validate_ethertype(struct\
+    \ __ctx_buff *ctx,\n\tif (data + ETH_HLEN > data_end)\n\t\treturn false;\n\t*proto\
+    \ = eth->h_proto;\n\tif (bpf_ntohs(*proto) < ETH_P_802_3_MIN)\n\t\treturn false;\
+    \ /* non-Ethernet II unsupported */\n\treturn true;\n}\n\nstatic __always_inline\
+    \ __maybe_unused bool\n__revalidate_data_pull(struct __ctx_buff *ctx, void **data_,\
+    \ void **data_end_,\n\t\t       void **l3, const __u32 l3_len, const bool pull)\n\
+    {\n\tconst __u64 tot_len = ETH_HLEN + l3_len;\n\tvoid *data_end;\n\tvoid *data;\n\
+    \n\t/* Verifier workaround, do this unconditionally: invalid size of register\
+    \ spill. */\n\tif (pull)\n\t\tctx_pull_data(ctx, tot_len);\n\tdata_end = ctx_data_end(ctx);\n\
+    \tdata = ctx_data(ctx);\n\tif (data + tot_len > data_end)\n\t\treturn false;\n\
+    \n\t/* Verifier workaround: pointer arithmetic on pkt_end prohibited. */\n\n//\
+    \ FILE: bpf/lib/csum.h\n// CONTEXT: static __always_inline void csum_l4_offset_and_flags(__u8\
+    \ nexthdr,\n\t}\n}\n\n/**\n * Helper to change L4 checksum\n * @arg ctx\tPacket\n\
+    \ * @arg l4_off\tOffset to L4 header\n * @arg csum\tPointer to csum_offset as\
+    \ extracted by csum_l4_offset_and_flags()\n * @arg from\tFrom value or 0 if to\
+    \ contains csum diff\n * @arg to\tTo value or a csum diff\n * @arg flags\tAdditional\
+    \ flags to be passed to l4_csum_replace()\n */\nstatic __always_inline int csum_l4_replace(struct\
+    \ __ctx_buff *ctx, __u64 l4_off,\n\t\t\t\t\t   const struct csum_offset *csum,\n\
+    \t\t\t\t\t   __be32 from, __be32 to, int flags)\n{\n\treturn l4_csum_replace(ctx,\
+    \ l4_off + csum->offset, from, to, flags | csum->flags);\n}\n\n#endif /* __LB_H_\
+    \ */\n\n// FILE: bpf/lib/encap.h\n// CONTEXT: encap_and_redirect_ipsec(struct\
+    \ __ctx_buff *ctx, __u32 tunnel_endpoint,\n#endif /* ENABLE_IPSEC */\n\nstatic\
+    \ __always_inline int\nencap_remap_v6_host_address(struct __ctx_buff *ctx __maybe_unused,\n\
+    \t\t\t    const bool egress __maybe_unused)\n{\n#ifdef ENABLE_ENCAP_HOST_REMAP\n\
+    \tstruct csum_offset csum = {};\n\tunion v6addr host_ip;\n\tvoid *data, *data_end;\n\
+    \tstruct ipv6hdr *ip6;\n\tunion v6addr *which;\n\t__u8 nexthdr;\n\t__u16 proto;\n\
+    \t__be32 sum;\n\t__u32 noff;\n\t__u64 off;\n\tint ret;\n\n\tvalidate_ethertype(ctx,\
+    \ &proto);\n\tif (proto != bpf_htons(ETH_P_IPV6))\n\t\treturn 0;\n\tif (!revalidate_data(ctx,\
+    \ &data, &data_end, &ip6))\n\t\treturn DROP_INVALID;\n\t/* For requests routed\
+    \ via tunnel with external v6 node IP\n\t * we need to remap their source address\
+    \ to the router address\n\t * as otherwise replies are not routed via tunnel but\
+    \ public\n\t * address instead.\n\t */\n\n// FILE: bpf/lib/metrics.h\n#include\
+    \ \"utils.h\"\n#include \"maps.h\"\n#include \"dbg.h\"\n\n/**\n * update_metrics\n\
+    \ * @direction:\t1: Ingress 2: Egress\n * @reason:\treason for forwarding or dropping\
+    \ packet.\n *\t\treason is 0 if packet is being forwarded, else reason\n *\t\t\
+    is the drop error code.\n * Update the metrics map.\n */\nstatic __always_inline\
+    \ void update_metrics(__u64 bytes, __u8 direction,\n\t\t\t\t\t   __u8 reason)\n\
+    {\n\tstruct metrics_value *entry, newEntry = {};\n\tstruct metrics_key key = {};\n\
+    \n\tkey.reason = reason;\n\tkey.dir    = direction;\n\n\n\tentry = map_lookup_elem(&METRICS_MAP,\
+    \ &key);\n\tif (entry) {\n\t\tentry->count += 1;\n\t\tentry->bytes += bytes;\n\
+    \t} else {\n\t\tnewEntry.count = 1;\n\t\tnewEntry.bytes = bytes;\n\t\tmap_update_elem(&METRICS_MAP,\
+    \ &key, &newEntry, 0);\n\t}\n}\n\n/**\n * ct_to_metrics_dir\n * @direction:\t\
+    1: Ingress 2: Egress 3: Service\n * Convert a CT direction into the corresponding\
+    \ one for metrics.\n */\nstatic __always_inline __u8 ct_to_metrics_dir(__u8 ct_dir)\n\
+    {\n\tswitch (ct_dir) {\n\n// FILE: bpf/lib/nat.h\n// CONTEXT: static __always_inline\
+    \ __maybe_unused int snat_v4_process(struct __ctx_buff *ctx\n\t\t\t\t\t\tconst\
+    \ struct ipv4_nat_target *target,\n\t\t\t\t\t\tbool from_endpoint)\n{\n\tstruct\
+    \ icmphdr icmphdr __align_stack_8;\n\tstruct ipv4_nat_entry *state, tmp;\n\tstruct\
+    \ ipv4_ct_tuple tuple = {};\n\tvoid *data, *data_end;\n\tstruct iphdr *ip4;\n\t\
+    struct {\n\t\t__be16 sport;\n\t\t__be16 dport;\n\t} l4hdr;\n\t__u64 off;\n\tbool\
+    \ icmp = false, icmp_echoreply = false;\n\tint ret;\n\n\tbuild_bug_on(sizeof(struct\
+    \ ipv4_nat_entry) > 64);\n\n\tif (!revalidate_data(ctx, &data, &data_end, &ip4))\n\
+    \t\treturn DROP_INVALID;\n\n\ttuple.nexthdr = ip4->protocol;\n\ttuple.daddr =\
+    \ ip4->daddr;\n\ttuple.saddr = ip4->saddr;\n\ttuple.flags = dir;"
+  diff_summary: |-
+    bpf/include/bpf/ctx/skb.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: the touched section.
+    bpf/include/bpf/ctx/xdp.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: ctx_adjust_room(struct xdp_md *ctx, const __s32 len_diff, const __u32 mode,.
+    bpf/lib/common.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: static __always_inline bool validate_ethertype(struct __ctx_buff *ctx,.
+    bpf/lib/csum.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: static __always_inline void csum_l4_offset_and_flags(__u8 nexthdr,.
+    bpf/lib/encap.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: encap_and_redirect_ipsec(struct __ctx_buff *ctx, __u32 tunnel_endpoint,.
+    bpf/lib/metrics.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: the touched section.
+    bpf/lib/nat.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: static __always_inline __maybe_unused int snat_v4_process(struct __ctx_buff *ctx.
+    - Commit subject: bpf: Fixes to support mattr=+alu32.

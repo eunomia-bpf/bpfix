@@ -1,0 +1,52 @@
+schema_version: bpfix.case/v1
+case_id: github-commit-cilium-bbf57970f552
+source:
+  kind: github_commit
+  url: https://github.com/cilium/cilium/commit/bbf57970f552619604d5eb84bc2971404ab0f255
+  repository: https://github.com/cilium/cilium
+  commit: bbf57970f552619604d5eb84bc2971404ab0f255
+  upstream_file: bpf/lib/nat.h
+  raw_excerpt_files:
+  - bpfix-empirical/raw/gh/github-commit-cilium-bbf57970f552.yaml
+reproducer:
+  reconstruction: reconstructed
+  notes: Minimal replay of the IPv6 NAT scratch-state stack pressure behind moving the tuple
+    and NAT target objects into per-CPU map storage. The Makefile raises clang's BPF stack-size
+    limit so the object builds and the kernel verifier rejects the oversized helper write.
+capture:
+  capture_id: github-commit-cilium-bbf57970f552__kernel-6.15.11-clang-18-log2
+  terminal_error: invalid write to stack R1 off=-600 size=280
+  rejected_insn_idx: 9
+external_match:
+  status: not_applicable
+  policy: root_cause
+  matched_messages: []
+  notes: Commit-derived case reconstructed from raw diff/context; no external verifier log
+    matching is required.
+label:
+  capture_id: github-commit-cilium-bbf57970f552__kernel-6.15.11-clang-18-log2
+  taxonomy_class: source_bug
+  mechanism_tags:
+  - stack_safety
+  - stack_bounds
+  - large_stack_object
+  obligation_ids:
+  - BPFIX-O023
+  evidence_tags:
+  - direct_stack_region_violation
+  - verifier_stack_access_oob
+  - helper_writable_region_crosses_stack_limit
+  error_id: BPFIX-E006
+  confidence: medium
+  label_source: manual_reconstruction
+  root_cause_description: Large IPv6 NAT tuple and target scratch objects remain on the BPF
+    stack and are passed to helpers as writable regions beyond the verifier stack limit.
+  root_cause_insn_idx: null
+  localization_confidence: medium
+  fix_type: move_to_map_storage
+  fix_direction: Store large scratch values in per-CPU map storage or otherwise reduce the
+    in-frame NAT scratch footprint below verifier limits.
+reporting:
+  family_id: github-commit-cilium-bbf57970f552
+  representative: true
+  notes: Batch 15 manual reconstruction.

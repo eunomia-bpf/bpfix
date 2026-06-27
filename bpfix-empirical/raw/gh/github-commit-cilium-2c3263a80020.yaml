@@ -1,0 +1,148 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-2c3263a80020
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/2c3263a80020f457f3fd24b3a739ddccecd242b6
+  title: 'bpf: fix flakes when checking metrics map values.'
+  repository: https://github.com/cilium/cilium
+  commit: 2c3263a80020f457f3fd24b3a739ddccecd242b6
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-2c3263a80020.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: missing_verifier_log
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Metrics-map test flake record has code snippets but no verifier log or terminal
+    error to anchor a faithful reject replay.
+raw:
+  case_id: github-commit-cilium-2c3263a80020
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: 2c3263a80020f457f3fd24b3a739ddccecd242b6
+  commit_message: 'bpf: fix flakes when checking metrics map values.'
+  commit_date: '2023-09-28'
+  fix_type: inline_hint
+  buggy_code: "// FILE: bpf/include/bpf/helpers.h\n\n#if __ctx_is == __ctx_skb\n#\
+    \ include \"helpers_skb.h\"\n#else\n# include \"helpers_xdp.h\"\n#endif\n\n/*\
+    \ Map access/manipulation */\nstatic void *BPF_FUNC(map_lookup_elem, const void\
+    \ *map, const void *key);\nstatic int BPF_FUNC(map_update_elem, const void *map,\
+    \ const void *key,\n\t\t    const void *value, __u32 flags);\nstatic int BPF_FUNC(map_delete_elem,\
+    \ const void *map, const void *key);\n\n/* Time access */\nstatic __u64 BPF_FUNC(ktime_get_ns);\n\
+    static __u64 BPF_FUNC(ktime_get_boot_ns);\nstatic __u64 BPF_FUNC(jiffies64);\n\
+    #define jiffies\tjiffies64()\n\n/* We have cookies! ;-) */\nstatic __sock_cookie\
+    \ BPF_FUNC(get_socket_cookie, void *ctx);\nstatic __net_cookie BPF_FUNC(get_netns_cookie,\
+    \ void *ctx);\n\n/* Legacy cgroups */\n\n// FILE: bpf/tests/common.h\n#define\
+    \ __bpf_log_arg12(ptr, arg, args...) *(ptr++) = MKR_LOG_ARG; *(__u64 *)(ptr) =\
+    \ arg; \\\n\t\t\t\t\t  ptr += sizeof(__u64); __bpf_log_arg11(ptr, args)\n#define\
+    \ __bpf_log_arg(ptr, args...) \\\n\t___bpf_apply(__bpf_log_arg, ___bpf_narg(args))(ptr,\
+    \ args)\n\n/* These values have to stay in sync with the enum */\n/* values in\
+    \ test/bpf_tests/trf.proto */\n#define TEST_ERROR 0\n#define TEST_PASS 1\n#define\
+    \ TEST_FAIL 2\n#define TEST_SKIP 3\n\n/* Use an array map with 1 key and a large\
+    \ value size as buffer to write results */\n/* into. */\nstruct {\n\t__uint(type,\
+    \ BPF_MAP_TYPE_ARRAY);\n\t__uint(key_size, sizeof(__u32));\n\t__uint(value_size,\
+    \ 8192);\n\t__uint(pinning, LIBBPF_PIN_BY_NAME);\n\t__uint(max_entries, 1);\n\
+    } suite_result_map __section_maps_btf;\n\n/* Values for the markers below are\
+    \ derived from this guide: */\n/* https://developers.google.com/protocol-buffers/docs/encoding#structure\
+    \ */\n\n// CONTEXT: static __always_inline int __##NAME(IPTYPE addr)\t\t\\\n\t\
+    int prefixes[] = { PREFIXES };\t\t\t\t\\\n\tconst int size = ARRAY_SIZE(prefixes);\t\
+    \t\t\\\n\tint i;\t\t\t\t\t\t\t\\\n\t\t\t\t\t\t\t\t\\\n_Pragma(\"unroll\")\t\t\t\
+    \t\t\t\\\n\tfor (i = 0; i < size; i++)\t\t\t\t\\\n\t\tif (LOOKUP_FN(&(MAP), addr,\
+    \ prefixes[i]))\t\\\n\t\t\treturn 1;\t\t\t\t\\\n\t\t\t\t\t\t\t\t\\\n\treturn 0;\t\
+    \t\t\t\t\t\\\n}\n\n#endif /* ____BPF_TEST_COMMON____ */\n\n// FILE: bpf/tests/ipsec_from_lxc_test.c\n\
+    // CONTEXT: int ipv4_from_lxc_no_node_id_check(__maybe_unused const struct __ctx_buff\
+    \ *ctx)\n\n\tif (data + sizeof(*status_code) > data_end)\n\t\ttest_fatal(\"status\
+    \ code out of bounds\");\n\n\tstatus_code = data;\n\tassert(*status_code == CTX_ACT_DROP);\n\
+    \n\tkey.reason = (__u8)-DROP_NO_NODE_ID;\n\tkey.dir = METRIC_EGRESS;\n\tentry\
+    \ = map_lookup_elem(&METRICS_MAP, &key);\n\tif (!entry)\n\t\ttest_fatal(\"metrics\
+    \ entry not found\");\n\tassert(entry->count == 1);\n\n\ttest_finish();\n}\n\n\
+    PKTGEN(\"tc\", \"02_ipv4_from_lxc_encrypt\")\nint ipv4_from_lxc_encrypt_pktgen(struct\
+    \ __ctx_buff *ctx)\n{\n\treturn pktgen_from_lxc(ctx);\n}\n\nSETUP(\"tc\", \"02_ipv4_from_lxc_encrypt\"\
+    )\nint ipv4_from_lxc_encrypt_setup(struct __ctx_buff *ctx)\n\n// FILE: bpf/tests/tc_lxc_policy_drop.c\n\
+    // CONTEXT: int tc_lxc_policy_drop__setup(struct __ctx_buff *ctx)\n\t/* Jump into\
+    \ the entrypoint */\n\ttail_call_static(ctx, &entry_call_map, FROM_CONTAINER);\n\
+    \t/* Fail if we didn't jump */\n\treturn TEST_ERROR;\n}\n\nCHECK(\"tc\", \"tc_lxc_policy_drop\"\
+    )\nint tc_lxc_policy_drop_check(const struct __ctx_buff *ctx)\n{\n\tvoid *data,\
+    \ *data_end;\n\t__u32 *status_code;\n\n\tstruct metrics_value *entry = NULL;\n\
+    \tstruct metrics_key key = {};\n\n\ttest_init();\n\n\tdata = (void *)(long)ctx_data(ctx);\n\
+    \tdata_end = (void *)(long)ctx->data_end;\n\n\tif (data + sizeof(__u32) > data_end)\n\
+    \t\ttest_fatal(\"status code out of bounds\");\n\n\tstatus_code = data;\n\tassert(*status_code\
+    \ == CTX_ACT_DROP);\n\n\tkey.reason = (__u8)-DROP_POLICY_DENY;\n\tkey.dir = METRIC_EGRESS;\n\
+    \tentry = map_lookup_elem(&METRICS_MAP, &key);\n\tif (!entry)\n\t\ttest_fatal(\"\
+    metrics entry not found\");\n\tassert(entry->count == 1);\n\n\ttest_finish();\n\
+    }"
+  fixed_code: "// FILE: bpf/include/bpf/helpers.h\n\n#if __ctx_is == __ctx_skb\n#\
+    \ include \"helpers_skb.h\"\n#else\n# include \"helpers_xdp.h\"\n#endif\n\n/*\
+    \ Map access/manipulation */\nstatic void *BPF_FUNC(map_lookup_elem, const void\
+    \ *map, const void *key);\nstatic int BPF_FUNC(map_update_elem, const void *map,\
+    \ const void *key,\n\t\t    const void *value, __u32 flags);\nstatic int BPF_FUNC(map_delete_elem,\
+    \ const void *map, const void *key);\nstatic void *BPF_FUNC(map_lookup_percpu_elem,\
+    \ void *map, const void *key,\n\t\t\t\tunsigned int cpu);\n\n/* Time access */\n\
+    static __u64 BPF_FUNC(ktime_get_ns);\nstatic __u64 BPF_FUNC(ktime_get_boot_ns);\n\
+    static __u64 BPF_FUNC(jiffies64);\n#define jiffies\tjiffies64()\n\n/* We have\
+    \ cookies! ;-) */\nstatic __sock_cookie BPF_FUNC(get_socket_cookie, void *ctx);\n\
+    static __net_cookie BPF_FUNC(get_netns_cookie, void *ctx);\n\n/* Legacy cgroups\
+    \ */\n\n// FILE: bpf/tests/common.h\n#define __bpf_log_arg12(ptr, arg, args...)\
+    \ *(ptr++) = MKR_LOG_ARG; *(__u64 *)(ptr) = arg; \\\n\t\t\t\t\t  ptr += sizeof(__u64);\
+    \ __bpf_log_arg11(ptr, args)\n#define __bpf_log_arg(ptr, args...) \\\n\t___bpf_apply(__bpf_log_arg,\
+    \ ___bpf_narg(args))(ptr, args)\n\n/* These values have to stay in sync with the\
+    \ enum */\n/* values in test/bpf_tests/trf.proto */\n#define TEST_ERROR 0\n#define\
+    \ TEST_PASS 1\n#define TEST_FAIL 2\n#define TEST_SKIP 3\n\n/* Max number of cpus\
+    \ to check when doing percpu hash assertions */\n#define NR_CPUS 128\n\n/* Use\
+    \ an array map with 1 key and a large value size as buffer to write results */\n\
+    /* into. */\nstruct {\n\t__uint(type, BPF_MAP_TYPE_ARRAY);\n\t__uint(key_size,\
+    \ sizeof(__u32));\n\t__uint(value_size, 8192);\n\t__uint(pinning, LIBBPF_PIN_BY_NAME);\n\
+    \t__uint(max_entries, 1);\n} suite_result_map __section_maps_btf;\n\n/* Values\
+    \ for the markers below are derived from this guide: */\n/* https://developers.google.com/protocol-buffers/docs/encoding#structure\
+    \ */\n\n// CONTEXT: static __always_inline int __##NAME(IPTYPE addr)\t\t\\\n\t\
+    int prefixes[] = { PREFIXES };\t\t\t\t\\\n\tconst int size = ARRAY_SIZE(prefixes);\t\
+    \t\t\\\n\tint i;\t\t\t\t\t\t\t\\\n\t\t\t\t\t\t\t\t\\\n_Pragma(\"unroll\")\t\t\t\
+    \t\t\t\\\n\tfor (i = 0; i < size; i++)\t\t\t\t\\\n\t\tif (LOOKUP_FN(&(MAP), addr,\
+    \ prefixes[i]))\t\\\n\t\t\treturn 1;\t\t\t\t\\\n\t\t\t\t\t\t\t\t\\\n\treturn 0;\t\
+    \t\t\t\t\t\\\n}\n\n/* Asserts that the sum of per-cpu metrics map slots for a\
+    \ key equals count */\n#define assert_metrics_count(key, count) \\\n({ \\\n\t\
+    struct metrics_value *__entry = NULL; \\\n\t__u64 sum = 0; \\\n\t/* Iterate until\
+    \ lookup encounters null when hitting cpu number */ \\\n\t/* Assumes at most 128\
+    \ CPUS */ \\\n\tfor (int i = 0; i < NR_CPUS; i++) { \\\n\t\t__entry = map_lookup_percpu_elem(&METRICS_MAP,\
+    \ &key, i); \\\n\t\tif (!__entry) { \\\n\t\t\tbreak; \\\n\t\t} \\\n\t\tsum +=\
+    \ __entry->count; \\\n\t} \\\n\tassert(sum == count); \\\n})\n\n#endif /* ____BPF_TEST_COMMON____\
+    \ */\n\n// FILE: bpf/tests/ipsec_from_lxc_test.c\n// CONTEXT: int ipv4_from_lxc_no_node_id_check(__maybe_unused\
+    \ const struct __ctx_buff *ctx)\n\n\tif (data + sizeof(*status_code) > data_end)\n\
+    \t\ttest_fatal(\"status code out of bounds\");\n\n\tstatus_code = data;\n\tassert(*status_code\
+    \ == CTX_ACT_DROP);\n\n\tkey.reason = (__u8)-DROP_NO_NODE_ID;\n\tkey.dir = METRIC_EGRESS;\n\
+    \tentry = map_lookup_elem(&METRICS_MAP, &key);\n\tif (!entry)\n\t\ttest_fatal(\"\
+    metrics entry not found\");\n\n\t__u64 count = 1;\n\tassert_metrics_count(key,\
+    \ count);\n\n\ttest_finish();\n}\n\nPKTGEN(\"tc\", \"02_ipv4_from_lxc_encrypt\"\
+    )\nint ipv4_from_lxc_encrypt_pktgen(struct __ctx_buff *ctx)\n{\n\treturn pktgen_from_lxc(ctx);\n\
+    }\n\nSETUP(\"tc\", \"02_ipv4_from_lxc_encrypt\")\nint ipv4_from_lxc_encrypt_setup(struct\
+    \ __ctx_buff *ctx)\n\n// FILE: bpf/tests/tc_lxc_policy_drop.c\n// CONTEXT: int\
+    \ tc_lxc_policy_drop__setup(struct __ctx_buff *ctx)\n\t/* Jump into the entrypoint\
+    \ */\n\ttail_call_static(ctx, &entry_call_map, FROM_CONTAINER);\n\t/* Fail if\
+    \ we didn't jump */\n\treturn TEST_ERROR;\n}\n\nCHECK(\"tc\", \"tc_lxc_policy_drop\"\
+    )\nint tc_lxc_policy_drop_check(const struct __ctx_buff *ctx)\n{\n\tvoid *data,\
+    \ *data_end;\n\t__u32 *status_code;\n\n\tstruct metrics_key key = {};\n\n\ttest_init();\n\
+    \n\tdata = (void *)(long)ctx_data(ctx);\n\tdata_end = (void *)(long)ctx->data_end;\n\
+    \n\tif (data + sizeof(__u32) > data_end)\n\t\ttest_fatal(\"status code out of\
+    \ bounds\");\n\n\tstatus_code = data;\n\tassert(*status_code == CTX_ACT_DROP);\n\
+    \n\tkey.reason = (__u8)-DROP_POLICY_DENY;\n\tkey.dir = METRIC_EGRESS;\n\n\t__u64\
+    \ count = 1;\n\tassert_metrics_count(key, count);\n\n\ttest_finish();\n}"
+  diff_summary: "bpf/include/bpf/helpers.h:\n- Changed inlining annotations so verifier-visible\
+    \ state stays in a form older kernels accept.\n- Affected context: the touched\
+    \ section.\nbpf/tests/common.h:\n- Changed inlining annotations so verifier-visible\
+    \ state stays in a form older kernels accept.\n- Affected context: static __always_inline\
+    \ int __##NAME(IPTYPE addr)\t\t\\.\nbpf/tests/ipsec_from_lxc_test.c:\n- Changed\
+    \ inlining annotations so verifier-visible state stays in a form older kernels\
+    \ accept.\n- Affected context: int ipv4_from_lxc_no_node_id_check(__maybe_unused\
+    \ const struct __ctx_buff *ctx).\nbpf/tests/tc_lxc_policy_drop.c:\n- Changed inlining\
+    \ annotations so verifier-visible state stays in a form older kernels accept.\n\
+    - Affected context: int tc_lxc_policy_drop__setup(struct __ctx_buff *ctx).\n-\
+    \ Commit subject: bpf: fix flakes when checking metrics map values.."

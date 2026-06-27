@@ -1,0 +1,137 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-c69d8cb801e5
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/c69d8cb801e56a2e435bf85813429887cb472500
+  title: 'bpf: lb: clean up saddr handling in __lb*_rev_nat()'
+  repository: https://github.com/cilium/cilium
+  commit: c69d8cb801e56a2e435bf85813429887cb472500
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-c69d8cb801e5.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: environment_required
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Removes an older-kernel NAT temporary-stack workaround after the minimum
+    kernel bump; no standalone terminal reject is isolated from the diff.
+raw:
+  case_id: github-commit-cilium-c69d8cb801e5
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: c69d8cb801e56a2e435bf85813429887cb472500
+  commit_message: 'bpf: lb: clean up saddr handling in __lb*_rev_nat()'
+  commit_date: '2023-06-14'
+  fix_type: inline_hint
+  buggy_code: "// FILE: bpf/lib/lb.h\n// CONTEXT: lb_l4_xlate(struct __ctx_buff *ctx,\
+    \ __u8 nexthdr __maybe_unused, int l4_off,\n\t}\n\n\treturn CTX_ACT_OK;\n}\n\n\
+    #ifdef ENABLE_IPV6\nstatic __always_inline int __lb6_rev_nat(struct __ctx_buff\
+    \ *ctx, int l4_off,\n\t\t\t\t\t struct ipv6_ct_tuple *tuple, int flags,\n\t\t\t\
+    \t\t struct lb6_reverse_nat *nat)\n{\n\tstruct csum_offset csum_off = {};\n\t\
+    union v6addr old_saddr;\n\tunion v6addr tmp;\n\t__u8 *new_saddr;\n\t__be32 sum;\n\
+    \tint ret;\n\n\tcilium_dbg_lb(ctx, DBG_LB6_REVERSE_NAT, nat->address.p4, nat->port);\n\
+    \n\tcsum_l4_offset_and_flags(tuple->nexthdr, &csum_off);\n\n\tif (nat->port) {\n\
+    \t\tret = reverse_map_l4_port(ctx, tuple->nexthdr, nat->port, l4_off, &csum_off);\n\
+    \t\tif (IS_ERR(ret))\n\t\t\treturn ret;\n\t}\n\n\tif (flags & REV_NAT_F_TUPLE_SADDR)\
+    \ {\n\t\tipv6_addr_copy(&old_saddr, &tuple->saddr);\n\t\tipv6_addr_copy(&tuple->saddr,\
+    \ &nat->address);\n\t\tnew_saddr = tuple->saddr.addr;\n\t} else {\n\t\tif (ipv6_load_saddr(ctx,\
+    \ ETH_HLEN, &old_saddr) < 0)\n\t\t\treturn DROP_INVALID;\n\n\t\tipv6_addr_copy(&tmp,\
+    \ &nat->address);\n\t\tnew_saddr = tmp.addr;\n\t}\n\n\tret = ipv6_store_saddr(ctx,\
+    \ new_saddr, ETH_HLEN);\n\tif (IS_ERR(ret))\n\t\treturn DROP_WRITE_ERROR;\n\n\t\
+    sum = csum_diff(old_saddr.addr, 16, new_saddr, 16, 0);\n\tif (csum_off.offset\
+    \ &&\n\t    csum_l4_replace(ctx, l4_off, &csum_off, 0, sum, BPF_F_PSEUDO_HDR)\
+    \ < 0)\n\t\treturn DROP_CSUM_L4;\n\n\treturn 0;\n}\n\n/** Perform IPv6 reverse\
+    \ NAT based on reverse NAT index\n * @arg ctx\t\tpacket\n * @arg l4_off\t\toffset\
+    \ to L4\n * @arg index\t\treverse NAT index\n * @arg tuple\t\ttuple\n\n// CONTEXT:\
+    \ lb6_to_lb4_service(const struct lb6_service *svc __maybe_unused)\n\treturn false;\n\
+    }\n#endif /* ENABLE_IPV6 */\n\n#ifdef ENABLE_IPV4\nstatic __always_inline int\
+    \ __lb4_rev_nat(struct __ctx_buff *ctx, int l3_off, int l4_off,\n\t\t\t\t\t struct\
+    \ ipv4_ct_tuple *tuple, int flags,\n\t\t\t\t\t const struct lb4_reverse_nat *nat,\n\
+    \t\t\t\t\t const struct ct_state *ct_state __maybe_unused,\n\t\t\t\t\t bool has_l4_header)\n\
+    {\n\tstruct csum_offset csum_off = {};\n\t__be32 old_sip, new_sip, sum = 0;\n\t\
+    int ret;\n\n\tcilium_dbg_lb(ctx, DBG_LB4_REVERSE_NAT, nat->address, nat->port);\n\
+    \n\tif (has_l4_header)\n\t\tcsum_l4_offset_and_flags(tuple->nexthdr, &csum_off);\n\
+    \n\tif (nat->port && has_l4_header) {\n\t\tret = reverse_map_l4_port(ctx, tuple->nexthdr,\
+    \ nat->port, l4_off, &csum_off);\n\t\tif (IS_ERR(ret))\n\t\t\treturn ret;\n\t\
+    }\n\n\tif (flags & REV_NAT_F_TUPLE_SADDR) {\n\t\told_sip = tuple->saddr;\n\t\t\
+    tuple->saddr = new_sip = nat->address;\n\t} else {\n\t\tret = ctx_load_bytes(ctx,\
+    \ l3_off + offsetof(struct iphdr, saddr), &old_sip, 4);\n\t\tif (IS_ERR(ret))\n\
+    \t\t\treturn ret;\n\n\t\tnew_sip = nat->address;\n\t}\n\n#ifndef DISABLE_LOOPBACK_LB\n\
+    \tif (ct_state->loopback) {\n\t\t/* The packet was looped back to the sending\
+    \ endpoint on the\n\t\t * forward service translation. This implies that the original\n\
+    \t\t * source address of the packet is the source address of the\n\t\t * current\
+    \ packet. We therefore need to make the current source\n\t\t * address the new\
+    \ destination address.\n\t\t */\n\t\t__be32 old_dip;\n\n\n// CONTEXT: static __always_inline\
+    \ int __lb4_rev_nat(struct __ctx_buff *ctx, int l3_off, int\n\t\tret = ctx_store_bytes(ctx,\
+    \ l3_off + offsetof(struct iphdr, daddr), &old_sip, 4, 0);\n\t\tif (IS_ERR(ret))\n\
+    \t\t\treturn DROP_WRITE_ERROR;\n\n\t\tsum = csum_diff(&old_dip, 4, &old_sip, 4,\
+    \ 0);\n\n\t\t/* Update the tuple address which is representing the destination\
+    \ address */\n\t\ttuple->saddr = old_sip;\n\t}\n#endif\n\n\tret = ctx_store_bytes(ctx,\
+    \ l3_off + offsetof(struct iphdr, saddr),\n\t\t\t      &new_sip, 4, 0);\n\tif\
+    \ (IS_ERR(ret))\n\t\treturn DROP_WRITE_ERROR;\n\n\tsum = csum_diff(&old_sip, 4,\
+    \ &new_sip, 4, sum);\n\tif (ipv4_csum_update_by_diff(ctx, l3_off, sum) < 0)\n\t\
+    \treturn DROP_CSUM_L3;\n\n\tif (csum_off.offset &&\n\t    csum_l4_replace(ctx,\
+    \ l4_off, &csum_off, 0, sum, BPF_F_PSEUDO_HDR) < 0)\n\t\treturn DROP_CSUM_L4;\n\
+    \n\treturn 0;\n}\n\n\n/** Perform IPv4 reverse NAT based on reverse NAT index"
+  fixed_code: "// FILE: bpf/lib/lb.h\n// CONTEXT: lb_l4_xlate(struct __ctx_buff *ctx,\
+    \ __u8 nexthdr __maybe_unused, int l4_off,\n\t}\n\n\treturn CTX_ACT_OK;\n}\n\n\
+    #ifdef ENABLE_IPV6\nstatic __always_inline int __lb6_rev_nat(struct __ctx_buff\
+    \ *ctx, int l4_off,\n\t\t\t\t\t struct ipv6_ct_tuple *tuple, int flags,\n\t\t\t\
+    \t\t struct lb6_reverse_nat *nat)\n{\n\tstruct csum_offset csum_off = {};\n\t\
+    union v6addr old_saddr;\n\t__be32 sum;\n\tint ret;\n\n\tcilium_dbg_lb(ctx, DBG_LB6_REVERSE_NAT,\
+    \ nat->address.p4, nat->port);\n\n\tcsum_l4_offset_and_flags(tuple->nexthdr, &csum_off);\n\
+    \n\tif (nat->port) {\n\t\tret = reverse_map_l4_port(ctx, tuple->nexthdr, nat->port,\
+    \ l4_off, &csum_off);\n\t\tif (IS_ERR(ret))\n\t\t\treturn ret;\n\t}\n\n\tif (flags\
+    \ & REV_NAT_F_TUPLE_SADDR) {\n\t\tipv6_addr_copy(&old_saddr, &tuple->saddr);\n\
+    \t\tipv6_addr_copy(&tuple->saddr, &nat->address);\n\t} else {\n\t\tif (ipv6_load_saddr(ctx,\
+    \ ETH_HLEN, &old_saddr) < 0)\n\t\t\treturn DROP_INVALID;\n\t}\n\n\tret = ipv6_store_saddr(ctx,\
+    \ nat->address.addr, ETH_HLEN);\n\tif (IS_ERR(ret))\n\t\treturn DROP_WRITE_ERROR;\n\
+    \n\tsum = csum_diff(old_saddr.addr, 16, nat->address.addr, 16, 0);\n\tif (csum_off.offset\
+    \ &&\n\t    csum_l4_replace(ctx, l4_off, &csum_off, 0, sum, BPF_F_PSEUDO_HDR)\
+    \ < 0)\n\t\treturn DROP_CSUM_L4;\n\n\treturn 0;\n}\n\n/** Perform IPv6 reverse\
+    \ NAT based on reverse NAT index\n * @arg ctx\t\tpacket\n * @arg l4_off\t\toffset\
+    \ to L4\n * @arg index\t\treverse NAT index\n * @arg tuple\t\ttuple\n\n// CONTEXT:\
+    \ lb6_to_lb4_service(const struct lb6_service *svc __maybe_unused)\n\treturn false;\n\
+    }\n#endif /* ENABLE_IPV6 */\n\n#ifdef ENABLE_IPV4\nstatic __always_inline int\
+    \ __lb4_rev_nat(struct __ctx_buff *ctx, int l3_off, int l4_off,\n\t\t\t\t\t struct\
+    \ ipv4_ct_tuple *tuple, int flags,\n\t\t\t\t\t const struct lb4_reverse_nat *nat,\n\
+    \t\t\t\t\t const struct ct_state *ct_state __maybe_unused,\n\t\t\t\t\t bool has_l4_header)\n\
+    {\n\tstruct csum_offset csum_off = {};\n\t__be32 old_sip, sum = 0;\n\tint ret;\n\
+    \n\tcilium_dbg_lb(ctx, DBG_LB4_REVERSE_NAT, nat->address, nat->port);\n\n\tif\
+    \ (has_l4_header)\n\t\tcsum_l4_offset_and_flags(tuple->nexthdr, &csum_off);\n\n\
+    \tif (nat->port && has_l4_header) {\n\t\tret = reverse_map_l4_port(ctx, tuple->nexthdr,\
+    \ nat->port, l4_off, &csum_off);\n\t\tif (IS_ERR(ret))\n\t\t\treturn ret;\n\t\
+    }\n\n\tif (flags & REV_NAT_F_TUPLE_SADDR) {\n\t\told_sip = tuple->saddr;\n\t\t\
+    tuple->saddr = nat->address;\n\t} else {\n\t\tret = ctx_load_bytes(ctx, l3_off\
+    \ + offsetof(struct iphdr, saddr), &old_sip, 4);\n\t\tif (IS_ERR(ret))\n\t\t\t\
+    return ret;\n\t}\n\n#ifndef DISABLE_LOOPBACK_LB\n\tif (ct_state->loopback) {\n\
+    \t\t/* The packet was looped back to the sending endpoint on the\n\t\t * forward\
+    \ service translation. This implies that the original\n\t\t * source address of\
+    \ the packet is the source address of the\n\t\t * current packet. We therefore\
+    \ need to make the current source\n\t\t * address the new destination address.\n\
+    \t\t */\n\t\t__be32 old_dip;\n\n\n// CONTEXT: static __always_inline int __lb4_rev_nat(struct\
+    \ __ctx_buff *ctx, int l3_off, int\n\t\tret = ctx_store_bytes(ctx, l3_off + offsetof(struct\
+    \ iphdr, daddr), &old_sip, 4, 0);\n\t\tif (IS_ERR(ret))\n\t\t\treturn DROP_WRITE_ERROR;\n\
+    \n\t\tsum = csum_diff(&old_dip, 4, &old_sip, 4, 0);\n\n\t\t/* Update the tuple\
+    \ address which is representing the destination address */\n\t\ttuple->saddr =\
+    \ old_sip;\n\t}\n#endif\n\n\tret = ctx_store_bytes(ctx, l3_off + offsetof(struct\
+    \ iphdr, saddr),\n\t\t\t      &nat->address, 4, 0);\n\tif (IS_ERR(ret))\n\t\t\
+    return DROP_WRITE_ERROR;\n\n\tsum = csum_diff(&old_sip, 4, &nat->address, 4, sum);\n\
+    \tif (ipv4_csum_update_by_diff(ctx, l3_off, sum) < 0)\n\t\treturn DROP_CSUM_L3;\n\
+    \n\tif (csum_off.offset &&\n\t    csum_l4_replace(ctx, l4_off, &csum_off, 0, sum,\
+    \ BPF_F_PSEUDO_HDR) < 0)\n\t\treturn DROP_CSUM_L4;\n\n\treturn 0;\n}\n\n\n/**\
+    \ Perform IPv4 reverse NAT based on reverse NAT index"
+  diff_summary: |-
+    bpf/lib/lb.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: lb_l4_xlate(struct __ctx_buff *ctx, __u8 nexthdr __maybe_unused, int l4_off,, lb6_to_lb4_service(const struct lb6_service *svc __maybe_unused), static __always_inline int __lb4_rev_nat(struct __ctx_buff *ctx, int l3_off, int.
+    - Commit subject: bpf: lb: clean up saddr handling in __lb*_rev_nat().

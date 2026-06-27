@@ -1,0 +1,303 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-libbpf-7cfc3659953c
+source_kind: github_commit
+source:
+  url: https://github.com/libbpf/libbpf/commit/7cfc3659953cae15b0292e279e570d597685c1b5
+  title: 'libbpbpf: Check bpf_map/bpf_program fd validity'
+  repository: https://github.com/libbpf/libbpf
+  commit: 7cfc3659953cae15b0292e279e570d597685c1b5
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-libbpf-7cfc3659953c.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Raw has_verifier_log=false. The change validates libbpf map/program FDs
+    before pin, lookup, link update, attach, or struct_ops operations; these are user-space
+    API guard paths with no verifier-loaded BPF bytecode.
+raw:
+  case_id: github-commit-libbpf-7cfc3659953c
+  source: github_commits
+  repository: https://github.com/libbpf/libbpf
+  commit_hash: 7cfc3659953cae15b0292e279e570d597685c1b5
+  commit_message: 'libbpbpf: Check bpf_map/bpf_program fd validity'
+  commit_date: '2024-03-18'
+  fix_type: null_check
+  buggy_code: "// FILE: src/libbpf.c\n// CONTEXT: int bpf_program__unpin(struct bpf_program\
+    \ *prog, const char *path)\n}\n\nint bpf_map__pin(struct bpf_map *map, const char\
+    \ *path)\n{\n\tchar *cp, errmsg[STRERR_BUFSIZE];\n\tint err;\n\n\tif (map == NULL)\
+    \ {\n\t\tpr_warn(\"invalid map pointer\\n\");\n\t\treturn libbpf_err(-EINVAL);\n\
+    \t}\n\n\tif (map->pin_path) {\n\t\tif (path && strcmp(path, map->pin_path)) {\n\
+    \t\t\tpr_warn(\"map '%s' already has pin path '%s' different from '%s'\\n\",\n\
+    \t\t\t\tbpf_map__name(map), map->pin_path, path);\n\t\t\treturn libbpf_err(-EINVAL);\n\
+    \t\t} else if (map->pinned) {\n\t\t\tpr_debug(\"map '%s' already pinned at '%s';\
+    \ not re-pinning\\n\",\n\t\t\t\t bpf_map__name(map), map->pin_path);\n\t\t\treturn\
+    \ 0;\n\t\t}\n\t} else {\n\t\tif (!path) {\n\n// CONTEXT: bpf_object__find_map_fd_by_name(const\
+    \ struct bpf_object *obj, const char *name)\nstatic int validate_map_op(const\
+    \ struct bpf_map *map, size_t key_sz,\n\t\t\t   size_t value_sz, bool check_value_sz)\n\
+    {\n\tif (!map_is_created(map)) /* map is not yet created */\n\t\treturn -ENOENT;\n\
+    \n\tif (map->def.key_size != key_sz) {\n\t\tpr_warn(\"map '%s': unexpected key\
+    \ size %zu provided, expected %u\\n\",\n\t\t\tmap->name, key_sz, map->def.key_size);\n\
+    \t\treturn -EINVAL;\n\t}\n\n\tif (!check_value_sz)\n\t\treturn 0;\n\n\tswitch\
+    \ (map->def.type) {\n\tcase BPF_MAP_TYPE_PERCPU_ARRAY:\n\tcase BPF_MAP_TYPE_PERCPU_HASH:\n\
+    \tcase BPF_MAP_TYPE_LRU_PERCPU_HASH:\n\tcase BPF_MAP_TYPE_PERCPU_CGROUP_STORAGE:\
+    \ {\n\t\tint num_cpu = libbpf_num_possible_cpus();\n\t\tsize_t elem_sz = roundup(map->def.value_size,\
+    \ 8);\n\n\t\tif (value_sz != num_cpu * elem_sz) {\n\n// CONTEXT: long libbpf_get_error(const\
+    \ void *ptr)\n\t/* If ptr == NULL, then errno should be already set by the failing\n\
+    \t * API, because libbpf never returns NULL on success and it now always\n\t *\
+    \ sets errno on error. So no extra errno handling for ptr == NULL\n\t * case.\n\
+    \t */\n\treturn -errno;\n}\n\n/* Replace link's underlying BPF program with the\
+    \ new one */\nint bpf_link__update_program(struct bpf_link *link, struct bpf_program\
+    \ *prog)\n{\n\tint ret;\n\n\tret = bpf_link_update(bpf_link__fd(link), bpf_program__fd(prog),\
+    \ NULL);\n\treturn libbpf_err_errno(ret);\n}\n\n/* Release \"ownership\" of underlying\
+    \ BPF resource (typically, BPF program\n * attached to some BPF hook, e.g., tracepoint,\
+    \ kprobe, etc). Disconnected\n * link, when destructed through bpf_link__destroy()\
+    \ call won't attempt to\n * detach/unregisted that BPF resource. This is useful\
+    \ in situations where,\n * say, attached BPF program has to outlive userspace\
+    \ program that attached it\n * in the system. Depending on type of BPF program,\
+    \ though, there might be\n * additional steps (like pinning BPF program in BPF\
+    \ FS) necessary to ensure\n * exit of userspace program doesn't trigger automatic\
+    \ detachment and clean up\n * inside the kernel.\n\n// CONTEXT: struct bpf_link\
+    \ *bpf_program__attach_perf_event_opts(const struct bpf_program *p\n\tbool force_ioctl_attach;\n\
+    \n\tif (!OPTS_VALID(opts, bpf_perf_event_opts))\n\t\treturn libbpf_err_ptr(-EINVAL);\n\
+    \n\tif (pfd < 0) {\n\t\tpr_warn(\"prog '%s': invalid perf event FD %d\\n\",\n\t\
+    \t\tprog->name, pfd);\n\t\treturn libbpf_err_ptr(-EINVAL);\n\t}\n\tprog_fd = bpf_program__fd(prog);\n\
+    \tif (prog_fd < 0) {\n\t\tpr_warn(\"prog '%s': can't attach BPF program w/o FD\
+    \ (did you load it?)\\n\",\n\t\t\tprog->name);\n\t\treturn libbpf_err_ptr(-EINVAL);\n\
+    \t}\n\n\tlink = calloc(1, sizeof(*link));\n\tif (!link)\n\t\treturn libbpf_err_ptr(-ENOMEM);\n\
+    \tlink->link.detach = &bpf_link_perf_detach;\n\tlink->link.dealloc = &bpf_link_perf_dealloc;\n\
+    \tlink->perf_event_fd = pfd;\n\n\tforce_ioctl_attach = OPTS_GET(opts, force_ioctl_attach,\
+    \ false);\n\n// CONTEXT: bpf_program__attach_kprobe_multi_opts(const struct bpf_program\
+    \ *prog,\n\tstruct bpf_link *link = NULL;\n\tchar errmsg[STRERR_BUFSIZE];\n\t\
+    const unsigned long *addrs;\n\tint err, link_fd, prog_fd;\n\tconst __u64 *cookies;\n\
+    \tconst char **syms;\n\tbool retprobe;\n\tsize_t cnt;\n\n\tif (!OPTS_VALID(opts,\
+    \ bpf_kprobe_multi_opts))\n\t\treturn libbpf_err_ptr(-EINVAL);\n\n\tsyms    =\
+    \ OPTS_GET(opts, syms, false);\n\taddrs   = OPTS_GET(opts, addrs, false);\n\t\
+    cnt     = OPTS_GET(opts, cnt, false);\n\tcookies = OPTS_GET(opts, cookies, false);\n\
+    \n\tif (!pattern && !addrs && !syms)\n\t\treturn libbpf_err_ptr(-EINVAL);\n\t\
+    if (pattern && (addrs || syms || cookies || cnt))\n\t\treturn libbpf_err_ptr(-EINVAL);\n\
+    \tif (!pattern && !cnt)\n\t\treturn libbpf_err_ptr(-EINVAL);\n\tif (addrs && syms)\n\
+    \n// CONTEXT: bpf_program__attach_kprobe_multi_opts(const struct bpf_program *prog,\n\
+    \tlopts.kprobe_multi.addrs = addrs;\n\tlopts.kprobe_multi.cookies = cookies;\n\
+    \tlopts.kprobe_multi.cnt = cnt;\n\tlopts.kprobe_multi.flags = retprobe ? BPF_F_KPROBE_MULTI_RETURN\
+    \ : 0;\n\n\tlink = calloc(1, sizeof(*link));\n\tif (!link) {\n\t\terr = -ENOMEM;\n\
+    \t\tgoto error;\n\t}\n\tlink->detach = &bpf_link__detach_fd;\n\n\tprog_fd = bpf_program__fd(prog);\n\
+    \tlink_fd = bpf_link_create(prog_fd, 0, BPF_TRACE_KPROBE_MULTI, &lopts);\n\tif\
+    \ (link_fd < 0) {\n\t\terr = -errno;\n\t\tpr_warn(\"prog '%s': failed to attach:\
+    \ %s\\n\",\n\t\t\tprog->name, libbpf_strerror_r(err, errmsg, sizeof(errmsg)));\n\
+    \t\tgoto error;\n\t}\n\tlink->fd = link_fd;\n\tfree(res.addrs);\n\treturn link;\n\
+    \nerror:\n\n// CONTEXT: bpf_program__attach_uprobe_multi(const struct bpf_program\
+    \ *prog,\n\tunsigned long *resolved_offsets = NULL;\n\tint err = 0, link_fd, prog_fd;\n\
+    \tstruct bpf_link *link = NULL;\n\tchar errmsg[STRERR_BUFSIZE];\n\tchar full_path[PATH_MAX];\n\
+    \tconst __u64 *cookies;\n\tconst char **syms;\n\tsize_t cnt;\n\n\tif (!OPTS_VALID(opts,\
+    \ bpf_uprobe_multi_opts))\n\t\treturn libbpf_err_ptr(-EINVAL);\n\n\tsyms = OPTS_GET(opts,\
+    \ syms, NULL);\n\toffsets = OPTS_GET(opts, offsets, NULL);\n\tref_ctr_offsets\
+    \ = OPTS_GET(opts, ref_ctr_offsets, NULL);\n\tcookies = OPTS_GET(opts, cookies,\
+    \ NULL);\n\tcnt = OPTS_GET(opts, cnt, 0);\n\n\t/*\n\t * User can specify 2 mutually\
+    \ exclusive set of inputs:\n\t *\n\t * 1) use only path/func_pattern/pid arguments\n\
+    \t *\n\t * 2) use path/pid with allowed combinations of:\n\n// CONTEXT: bpf_program__attach_uprobe_multi(const\
+    \ struct bpf_program *prog,\n\tif (pid == 0)\n\t\tpid = getpid();\n\tif (pid >\
+    \ 0)\n\t\tlopts.uprobe_multi.pid = pid;\n\n\tlink = calloc(1, sizeof(*link));\n\
+    \tif (!link) {\n\t\terr = -ENOMEM;\n\t\tgoto error;\n\t}\n\tlink->detach = &bpf_link__detach_fd;\n\
+    \n\tprog_fd = bpf_program__fd(prog);\n\tlink_fd = bpf_link_create(prog_fd, 0,\
+    \ BPF_TRACE_UPROBE_MULTI, &lopts);\n\tif (link_fd < 0) {\n\t\terr = -errno;\n\t\
+    \tpr_warn(\"prog '%s': failed to attach multi-uprobe: %s\\n\",\n\t\t\tprog->name,\
+    \ libbpf_strerror_r(err, errmsg, sizeof(errmsg)));\n\t\tgoto error;\n\t}\n\tlink->fd\
+    \ = link_fd;\n\tfree(resolved_offsets);\n\treturn link;\n\nerror:\n\n// CONTEXT:\
+    \ struct bpf_link *bpf_program__attach_usdt(const struct bpf_program *prog,\n\t\
+    \t\t\t\t  const struct bpf_usdt_opts *opts)\n{\n\tchar resolved_path[512];\n\t\
+    struct bpf_object *obj = prog->obj;\n\tstruct bpf_link *link;\n\t__u64 usdt_cookie;\n\
+    \tint err;\n\n\tif (!OPTS_VALID(opts, bpf_uprobe_opts))\n\t\treturn libbpf_err_ptr(-EINVAL);\n\
+    \n\tif (bpf_program__fd(prog) < 0) {\n\t\tpr_warn(\"prog '%s': can't attach BPF\
+    \ program w/o FD (did you load it?)\\n\",\n\t\t\tprog->name);\n\t\treturn libbpf_err_ptr(-EINVAL);\n\
+    \t}\n\n\tif (!binary_path)\n\t\treturn libbpf_err_ptr(-EINVAL);\n\n\tif (!strchr(binary_path,\
+    \ '/')) {\n\t\terr = resolve_full_path(binary_path, resolved_path, sizeof(resolved_path));\n\
+    \t\tif (err) {\n\t\t\tpr_warn(\"prog '%s': failed to resolve full path for '%s':\
+    \ %d\\n\",\n\t\t\t\tprog->name, binary_path, err);\n\n// CONTEXT: struct bpf_link\
+    \ *bpf_program__attach_netfilter(const struct bpf_program *prog,\n\n\treturn link;\n\
+    }\n\nstruct bpf_link *bpf_program__attach(const struct bpf_program *prog)\n{\n\
+    \tstruct bpf_link *link = NULL;\n\tint err;\n\n\tif (!prog->sec_def || !prog->sec_def->prog_attach_fn)\n\
+    \t\treturn libbpf_err_ptr(-EOPNOTSUPP);\n\n\terr = prog->sec_def->prog_attach_fn(prog,\
+    \ prog->sec_def->cookie, &link);\n\tif (err)\n\t\treturn libbpf_err_ptr(err);\n\
+    \n\t/* When calling bpf_program__attach() explicitly, auto-attach support\n\t\
+    \ * is expected to work, so NULL returned link is considered an error.\n\t * This\
+    \ is different for skeleton's attach, see comment in\n\t * bpf_object__attach_skeleton().\n\
+    \t */\n\tif (!link)\n\t\treturn libbpf_err_ptr(-EOPNOTSUPP);\n\n\n// CONTEXT:\
+    \ static int bpf_link__detach_struct_ops(struct bpf_link *link)\n\t\t/* w/o a\
+    \ real link */\n\t\treturn bpf_map_delete_elem(link->fd, &zero);\n\n\treturn close(link->fd);\n\
+    }\n\nstruct bpf_link *bpf_map__attach_struct_ops(const struct bpf_map *map)\n\
+    {\n\tstruct bpf_link_struct_ops *link;\n\t__u32 zero = 0;\n\tint err, fd;\n\n\t\
+    if (!bpf_map__is_struct_ops(map) || map->fd == -1)\n\t\treturn libbpf_err_ptr(-EINVAL);\n\
+    \n\tlink = calloc(1, sizeof(*link));\n\tif (!link)\n\t\treturn libbpf_err_ptr(-EINVAL);\n\
+    \n\t/* kern_vdata should be prepared during the loading phase. */\n\terr = bpf_map_update_elem(map->fd,\
+    \ &zero, map->st_ops->kern_vdata, 0);\n\t/* It can be EBUSY if the map has been\
+    \ used to create or\n\t * update a link before.  We don't allow updating the value\
+    \ of\n\t * a struct_ops once it is set.  That ensures that the value\n\t * never\
+    \ changed.  So, it is safe to skip EBUSY.\n\t */\n\tif (err && (!(map->def.map_flags\
+    \ & BPF_F_LINK) || err != -EBUSY)) {\n\n// CONTEXT: struct bpf_link *bpf_map__attach_struct_ops(const\
+    \ struct bpf_map *map)\n\treturn &link->link;\n}\n\n/*\n * Swap the back struct_ops\
+    \ of a link with a new struct_ops map.\n */\nint bpf_link__update_map(struct bpf_link\
+    \ *link, const struct bpf_map *map)\n{\n\tstruct bpf_link_struct_ops *st_ops_link;\n\
+    \t__u32 zero = 0;\n\tint err;\n\n\tif (!bpf_map__is_struct_ops(map) || !map_is_created(map))\n\
+    \t\treturn -EINVAL;\n\n\tst_ops_link = container_of(link, struct bpf_link_struct_ops,\
+    \ link);\n\t/* Ensure the type of a link is correct */\n\tif (st_ops_link->map_fd\
+    \ < 0)\n\t\treturn -EINVAL;\n\n\terr = bpf_map_update_elem(map->fd, &zero, map->st_ops->kern_vdata,\
+    \ 0);\n\t/* It can be EBUSY if the map has been used to create or\n\t * update\
+    \ a link before.  We don't allow updating the value of\n\t * a struct_ops once\
+    \ it is set.  That ensures that the value\n\t * never changed.  So, it is safe\
+    \ to skip EBUSY.\n\t */"
+  fixed_code: "// FILE: src/libbpf.c\n// CONTEXT: int bpf_program__unpin(struct bpf_program\
+    \ *prog, const char *path)\n}\n\nint bpf_map__pin(struct bpf_map *map, const char\
+    \ *path)\n{\n\tchar *cp, errmsg[STRERR_BUFSIZE];\n\tint err;\n\n\tif (map == NULL)\
+    \ {\n\t\tpr_warn(\"invalid map pointer\\n\");\n\t\treturn libbpf_err(-EINVAL);\n\
+    \t}\n\n\tif (map->fd < 0) {\n\t\tpr_warn(\"map '%s': can't pin BPF map without\
+    \ FD (was it created?)\\n\", map->name);\n\t\treturn libbpf_err(-EINVAL);\n\t\
+    }\n\n\tif (map->pin_path) {\n\t\tif (path && strcmp(path, map->pin_path)) {\n\t\
+    \t\tpr_warn(\"map '%s' already has pin path '%s' different from '%s'\\n\",\n\t\
+    \t\t\tbpf_map__name(map), map->pin_path, path);\n\t\t\treturn libbpf_err(-EINVAL);\n\
+    \t\t} else if (map->pinned) {\n\t\t\tpr_debug(\"map '%s' already pinned at '%s';\
+    \ not re-pinning\\n\",\n\t\t\t\t bpf_map__name(map), map->pin_path);\n\t\t\treturn\
+    \ 0;\n\t\t}\n\t} else {\n\t\tif (!path) {\n\n// CONTEXT: bpf_object__find_map_fd_by_name(const\
+    \ struct bpf_object *obj, const char *name)\nstatic int validate_map_op(const\
+    \ struct bpf_map *map, size_t key_sz,\n\t\t\t   size_t value_sz, bool check_value_sz)\n\
+    {\n\tif (!map_is_created(map)) /* map is not yet created */\n\t\treturn -ENOENT;\n\
+    \n\tif (map->def.key_size != key_sz) {\n\t\tpr_warn(\"map '%s': unexpected key\
+    \ size %zu provided, expected %u\\n\",\n\t\t\tmap->name, key_sz, map->def.key_size);\n\
+    \t\treturn -EINVAL;\n\t}\n\n\tif (map->fd < 0) {\n\t\tpr_warn(\"map '%s': can't\
+    \ use BPF map without FD (was it created?)\\n\", map->name);\n\t\treturn -EINVAL;\n\
+    \t}\n\n\tif (!check_value_sz)\n\t\treturn 0;\n\n\tswitch (map->def.type) {\n\t\
+    case BPF_MAP_TYPE_PERCPU_ARRAY:\n\tcase BPF_MAP_TYPE_PERCPU_HASH:\n\tcase BPF_MAP_TYPE_LRU_PERCPU_HASH:\n\
+    \tcase BPF_MAP_TYPE_PERCPU_CGROUP_STORAGE: {\n\t\tint num_cpu = libbpf_num_possible_cpus();\n\
+    \t\tsize_t elem_sz = roundup(map->def.value_size, 8);\n\n\t\tif (value_sz != num_cpu\
+    \ * elem_sz) {\n\n// CONTEXT: long libbpf_get_error(const void *ptr)\n\t/* If\
+    \ ptr == NULL, then errno should be already set by the failing\n\t * API, because\
+    \ libbpf never returns NULL on success and it now always\n\t * sets errno on error.\
+    \ So no extra errno handling for ptr == NULL\n\t * case.\n\t */\n\treturn -errno;\n\
+    }\n\n/* Replace link's underlying BPF program with the new one */\nint bpf_link__update_program(struct\
+    \ bpf_link *link, struct bpf_program *prog)\n{\n\tint ret;\n\tint prog_fd = bpf_program__fd(prog);\n\
+    \n\tif (prog_fd < 0) {\n\t\tpr_warn(\"prog '%s': can't use BPF program without\
+    \ FD (was it loaded?)\\n\",\n\t\t\tprog->name);\n\t\treturn libbpf_err(-EINVAL);\n\
+    \t}\n\n\tret = bpf_link_update(bpf_link__fd(link), prog_fd, NULL);\n\treturn libbpf_err_errno(ret);\n\
+    }\n\n/* Release \"ownership\" of underlying BPF resource (typically, BPF program\n\
+    \ * attached to some BPF hook, e.g., tracepoint, kprobe, etc). Disconnected\n\
+    \ * link, when destructed through bpf_link__destroy() call won't attempt to\n\
+    \ * detach/unregisted that BPF resource. This is useful in situations where,\n\
+    \ * say, attached BPF program has to outlive userspace program that attached it\n\
+    \ * in the system. Depending on type of BPF program, though, there might be\n\
+    \ * additional steps (like pinning BPF program in BPF FS) necessary to ensure\n\
+    \ * exit of userspace program doesn't trigger automatic detachment and clean up\n\
+    \ * inside the kernel.\n\n// CONTEXT: struct bpf_link *bpf_program__attach_perf_event_opts(const\
+    \ struct bpf_program *p\n\tbool force_ioctl_attach;\n\n\tif (!OPTS_VALID(opts,\
+    \ bpf_perf_event_opts))\n\t\treturn libbpf_err_ptr(-EINVAL);\n\n\tif (pfd < 0)\
+    \ {\n\t\tpr_warn(\"prog '%s': invalid perf event FD %d\\n\",\n\t\t\tprog->name,\
+    \ pfd);\n\t\treturn libbpf_err_ptr(-EINVAL);\n\t}\n\tprog_fd = bpf_program__fd(prog);\n\
+    \tif (prog_fd < 0) {\n\t\tpr_warn(\"prog '%s': can't attach BPF program without\
+    \ FD (was it loaded?)\\n\",\n\t\t\tprog->name);\n\t\treturn libbpf_err_ptr(-EINVAL);\n\
+    \t}\n\n\tlink = calloc(1, sizeof(*link));\n\tif (!link)\n\t\treturn libbpf_err_ptr(-ENOMEM);\n\
+    \tlink->link.detach = &bpf_link_perf_detach;\n\tlink->link.dealloc = &bpf_link_perf_dealloc;\n\
+    \tlink->perf_event_fd = pfd;\n\n\tforce_ioctl_attach = OPTS_GET(opts, force_ioctl_attach,\
+    \ false);\n\n// CONTEXT: bpf_program__attach_kprobe_multi_opts(const struct bpf_program\
+    \ *prog,\n\tstruct bpf_link *link = NULL;\n\tchar errmsg[STRERR_BUFSIZE];\n\t\
+    const unsigned long *addrs;\n\tint err, link_fd, prog_fd;\n\tconst __u64 *cookies;\n\
+    \tconst char **syms;\n\tbool retprobe;\n\tsize_t cnt;\n\n\tif (!OPTS_VALID(opts,\
+    \ bpf_kprobe_multi_opts))\n\t\treturn libbpf_err_ptr(-EINVAL);\n\n\tprog_fd =\
+    \ bpf_program__fd(prog);\n\tif (prog_fd < 0) {\n\t\tpr_warn(\"prog '%s': can't\
+    \ attach BPF program without FD (was it loaded?)\\n\",\n\t\t\tprog->name);\n\t\
+    \treturn libbpf_err_ptr(-EINVAL);\n\t}\n\n\tsyms    = OPTS_GET(opts, syms, false);\n\
+    \taddrs   = OPTS_GET(opts, addrs, false);\n\tcnt     = OPTS_GET(opts, cnt, false);\n\
+    \tcookies = OPTS_GET(opts, cookies, false);\n\n\tif (!pattern && !addrs && !syms)\n\
+    \t\treturn libbpf_err_ptr(-EINVAL);\n\tif (pattern && (addrs || syms || cookies\
+    \ || cnt))\n\t\treturn libbpf_err_ptr(-EINVAL);\n\tif (!pattern && !cnt)\n\t\t\
+    return libbpf_err_ptr(-EINVAL);\n\tif (addrs && syms)\n\n// CONTEXT: bpf_program__attach_kprobe_multi_opts(const\
+    \ struct bpf_program *prog,\n\tlopts.kprobe_multi.addrs = addrs;\n\tlopts.kprobe_multi.cookies\
+    \ = cookies;\n\tlopts.kprobe_multi.cnt = cnt;\n\tlopts.kprobe_multi.flags = retprobe\
+    \ ? BPF_F_KPROBE_MULTI_RETURN : 0;\n\n\tlink = calloc(1, sizeof(*link));\n\tif\
+    \ (!link) {\n\t\terr = -ENOMEM;\n\t\tgoto error;\n\t}\n\tlink->detach = &bpf_link__detach_fd;\n\
+    \n\tlink_fd = bpf_link_create(prog_fd, 0, BPF_TRACE_KPROBE_MULTI, &lopts);\n\t\
+    if (link_fd < 0) {\n\t\terr = -errno;\n\t\tpr_warn(\"prog '%s': failed to attach:\
+    \ %s\\n\",\n\t\t\tprog->name, libbpf_strerror_r(err, errmsg, sizeof(errmsg)));\n\
+    \t\tgoto error;\n\t}\n\tlink->fd = link_fd;\n\tfree(res.addrs);\n\treturn link;\n\
+    \nerror:\n\n// CONTEXT: bpf_program__attach_uprobe_multi(const struct bpf_program\
+    \ *prog,\n\tunsigned long *resolved_offsets = NULL;\n\tint err = 0, link_fd, prog_fd;\n\
+    \tstruct bpf_link *link = NULL;\n\tchar errmsg[STRERR_BUFSIZE];\n\tchar full_path[PATH_MAX];\n\
+    \tconst __u64 *cookies;\n\tconst char **syms;\n\tsize_t cnt;\n\n\tif (!OPTS_VALID(opts,\
+    \ bpf_uprobe_multi_opts))\n\t\treturn libbpf_err_ptr(-EINVAL);\n\n\tprog_fd =\
+    \ bpf_program__fd(prog);\n\tif (prog_fd < 0) {\n\t\tpr_warn(\"prog '%s': can't\
+    \ attach BPF program without FD (was it loaded?)\\n\",\n\t\t\tprog->name);\n\t\
+    \treturn libbpf_err_ptr(-EINVAL);\n\t}\n\n\tsyms = OPTS_GET(opts, syms, NULL);\n\
+    \toffsets = OPTS_GET(opts, offsets, NULL);\n\tref_ctr_offsets = OPTS_GET(opts,\
+    \ ref_ctr_offsets, NULL);\n\tcookies = OPTS_GET(opts, cookies, NULL);\n\tcnt =\
+    \ OPTS_GET(opts, cnt, 0);\n\n\t/*\n\t * User can specify 2 mutually exclusive\
+    \ set of inputs:\n\t *\n\t * 1) use only path/func_pattern/pid arguments\n\t *\n\
+    \t * 2) use path/pid with allowed combinations of:\n\n// CONTEXT: bpf_program__attach_uprobe_multi(const\
+    \ struct bpf_program *prog,\n\tif (pid == 0)\n\t\tpid = getpid();\n\tif (pid >\
+    \ 0)\n\t\tlopts.uprobe_multi.pid = pid;\n\n\tlink = calloc(1, sizeof(*link));\n\
+    \tif (!link) {\n\t\terr = -ENOMEM;\n\t\tgoto error;\n\t}\n\tlink->detach = &bpf_link__detach_fd;\n\
+    \n\tlink_fd = bpf_link_create(prog_fd, 0, BPF_TRACE_UPROBE_MULTI, &lopts);\n\t\
+    if (link_fd < 0) {\n\t\terr = -errno;\n\t\tpr_warn(\"prog '%s': failed to attach\
+    \ multi-uprobe: %s\\n\",\n\t\t\tprog->name, libbpf_strerror_r(err, errmsg, sizeof(errmsg)));\n\
+    \t\tgoto error;\n\t}\n\tlink->fd = link_fd;\n\tfree(resolved_offsets);\n\treturn\
+    \ link;\n\nerror:\n\n// CONTEXT: struct bpf_link *bpf_program__attach_usdt(const\
+    \ struct bpf_program *prog,\n\t\t\t\t\t  const struct bpf_usdt_opts *opts)\n{\n\
+    \tchar resolved_path[512];\n\tstruct bpf_object *obj = prog->obj;\n\tstruct bpf_link\
+    \ *link;\n\t__u64 usdt_cookie;\n\tint err;\n\n\tif (!OPTS_VALID(opts, bpf_uprobe_opts))\n\
+    \t\treturn libbpf_err_ptr(-EINVAL);\n\n\tif (bpf_program__fd(prog) < 0) {\n\t\t\
+    pr_warn(\"prog '%s': can't attach BPF program without FD (was it loaded?)\\n\"\
+    ,\n\t\t\tprog->name);\n\t\treturn libbpf_err_ptr(-EINVAL);\n\t}\n\n\tif (!binary_path)\n\
+    \t\treturn libbpf_err_ptr(-EINVAL);\n\n\tif (!strchr(binary_path, '/')) {\n\t\t\
+    err = resolve_full_path(binary_path, resolved_path, sizeof(resolved_path));\n\t\
+    \tif (err) {\n\t\t\tpr_warn(\"prog '%s': failed to resolve full path for '%s':\
+    \ %d\\n\",\n\t\t\t\tprog->name, binary_path, err);\n\n// CONTEXT: struct bpf_link\
+    \ *bpf_program__attach_netfilter(const struct bpf_program *prog,\n\n\treturn link;\n\
+    }\n\nstruct bpf_link *bpf_program__attach(const struct bpf_program *prog)\n{\n\
+    \tstruct bpf_link *link = NULL;\n\tint err;\n\n\tif (!prog->sec_def || !prog->sec_def->prog_attach_fn)\n\
+    \t\treturn libbpf_err_ptr(-EOPNOTSUPP);\n\n\tif (bpf_program__fd(prog) < 0) {\n\
+    \t\tpr_warn(\"prog '%s': can't attach BPF program without FD (was it loaded?)\\\
+    n\",\n\t\t\tprog->name);\n\t\treturn libbpf_err_ptr(-EINVAL);\n\t}\n\n\terr =\
+    \ prog->sec_def->prog_attach_fn(prog, prog->sec_def->cookie, &link);\n\tif (err)\n\
+    \t\treturn libbpf_err_ptr(err);\n\n\t/* When calling bpf_program__attach() explicitly,\
+    \ auto-attach support\n\t * is expected to work, so NULL returned link is considered\
+    \ an error.\n\t * This is different for skeleton's attach, see comment in\n\t\
+    \ * bpf_object__attach_skeleton().\n\t */\n\tif (!link)\n\t\treturn libbpf_err_ptr(-EOPNOTSUPP);\n\
+    \n\n// CONTEXT: static int bpf_link__detach_struct_ops(struct bpf_link *link)\n\
+    \t\t/* w/o a real link */\n\t\treturn bpf_map_delete_elem(link->fd, &zero);\n\n\
+    \treturn close(link->fd);\n}\n\nstruct bpf_link *bpf_map__attach_struct_ops(const\
+    \ struct bpf_map *map)\n{\n\tstruct bpf_link_struct_ops *link;\n\t__u32 zero =\
+    \ 0;\n\tint err, fd;\n\n\tif (!bpf_map__is_struct_ops(map))\n\t\treturn libbpf_err_ptr(-EINVAL);\n\
+    \n\tif (map->fd < 0) {\n\t\tpr_warn(\"map '%s': can't attach BPF map without FD\
+    \ (was it created?)\\n\", map->name);\n\t\treturn libbpf_err_ptr(-EINVAL);\n\t\
+    }\n\n\tlink = calloc(1, sizeof(*link));\n\tif (!link)\n\t\treturn libbpf_err_ptr(-EINVAL);\n\
+    \n\t/* kern_vdata should be prepared during the loading phase. */\n\terr = bpf_map_update_elem(map->fd,\
+    \ &zero, map->st_ops->kern_vdata, 0);\n\t/* It can be EBUSY if the map has been\
+    \ used to create or\n\t * update a link before.  We don't allow updating the value\
+    \ of\n\t * a struct_ops once it is set.  That ensures that the value\n\t * never\
+    \ changed.  So, it is safe to skip EBUSY.\n\t */\n\tif (err && (!(map->def.map_flags\
+    \ & BPF_F_LINK) || err != -EBUSY)) {\n\n// CONTEXT: struct bpf_link *bpf_map__attach_struct_ops(const\
+    \ struct bpf_map *map)\n\treturn &link->link;\n}\n\n/*\n * Swap the back struct_ops\
+    \ of a link with a new struct_ops map.\n */\nint bpf_link__update_map(struct bpf_link\
+    \ *link, const struct bpf_map *map)\n{\n\tstruct bpf_link_struct_ops *st_ops_link;\n\
+    \t__u32 zero = 0;\n\tint err;\n\n\tif (!bpf_map__is_struct_ops(map))\n\t\treturn\
+    \ -EINVAL;\n\n\tif (map->fd < 0) {\n\t\tpr_warn(\"map '%s': can't use BPF map\
+    \ without FD (was it created?)\\n\", map->name);\n\t\treturn -EINVAL;\n\t}\n\n\
+    \tst_ops_link = container_of(link, struct bpf_link_struct_ops, link);\n\t/* Ensure\
+    \ the type of a link is correct */\n\tif (st_ops_link->map_fd < 0)\n\t\treturn\
+    \ -EINVAL;\n\n\terr = bpf_map_update_elem(map->fd, &zero, map->st_ops->kern_vdata,\
+    \ 0);\n\t/* It can be EBUSY if the map has been used to create or\n\t * update\
+    \ a link before.  We don't allow updating the value of\n\t * a struct_ops once\
+    \ it is set.  That ensures that the value\n\t * never changed.  So, it is safe\
+    \ to skip EBUSY.\n\t */"
+  diff_summary: |-
+    src/libbpf.c:
+    - Added an explicit null guard before the dereference on all verifier-visible paths.
+    - Affected context: int bpf_program__unpin(struct bpf_program *prog, const char *path), bpf_object__find_map_fd_by_name(const struct bpf_object *obj, const char *name), long libbpf_get_error(const void *ptr).
+    - Commit subject: libbpbpf: Check bpf_map/bpf_program fd validity.

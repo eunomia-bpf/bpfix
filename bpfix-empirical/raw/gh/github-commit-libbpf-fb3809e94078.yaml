@@ -1,0 +1,118 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-libbpf-fb3809e94078
+source_kind: github_commit
+source:
+  url: https://github.com/libbpf/libbpf/commit/fb3809e940789cad5ca3c915c164b730ada44530
+  title: 'libbpf: Clarify/fix unaligned data issues for btf typed dump'
+  repository: https://github.com/libbpf/libbpf
+  commit: fb3809e940789cad5ca3c915c164b730ada44530
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-libbpf-fb3809e94078.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Raw has_verifier_log=false. The diff adjusts alignment checks for BTF typed
+    dump data in user-space btf_dump.c; it does not describe a BPF verifier-load failure.
+raw:
+  case_id: github-commit-libbpf-fb3809e94078
+  source: github_commits
+  repository: https://github.com/libbpf/libbpf
+  commit_hash: fb3809e940789cad5ca3c915c164b730ada44530
+  commit_message: 'libbpf: Clarify/fix unaligned data issues for btf typed dump'
+  commit_date: '2021-07-16'
+  fix_type: alignment
+  buggy_code: "// FILE: src/btf_dump.c\n// CONTEXT: static int btf_dump_base_type_check_zero(struct\
+    \ btf_dump *d,\n\t\tnr_bytes = t->size;\n\n\tif (nr_bytes < 1 || nr_bytes > 16)\
+    \ {\n\t\tpr_warn(\"unexpected size %d for id [%u]\\n\", nr_bytes, id);\n\t\treturn\
+    \ -EINVAL;\n\t}\n\n\tif (memcmp(data, bytecmp, nr_bytes) == 0)\n\t\treturn -ENODATA;\n\
+    \treturn 0;\n}\n\nstatic int btf_dump_int_data(struct btf_dump *d,\n\t\t\t   \
+    \  const struct btf_type *t,\n\t\t\t     __u32 type_id,\n\t\t\t     const void\
+    \ *data,\n\t\t\t     __u8 bits_offset)\n{\n\t__u8 encoding = btf_int_encoding(t);\n\
+    \tbool sign = encoding & BTF_INT_SIGNED;\n\tint sz = t->size;\n\n\tif (sz == 0)\
+    \ {\n\t\tpr_warn(\"unexpected size %d for id [%u]\\n\", sz, type_id);\n\t\treturn\
+    \ -EINVAL;\n\t}\n\n\t/* handle packed int data - accesses of integers not aligned\
+    \ on\n\t * int boundaries can cause problems on some platforms.\n\t */\n\tif (((uintptr_t)data)\
+    \ % sz)\n\t\treturn btf_dump_bitfield_data(d, t, data, 0, 0);\n\n\tswitch (sz)\
+    \ {\n\tcase 16:\n\t\tbtf_dump_int128(d, t, data);\n\t\tbreak;\n\tcase 8:\n\t\t\
+    if (sign)\n\t\t\tbtf_dump_type_values(d, \"%lld\", *(long long *)data);\n\t\t\
+    else\n\t\t\tbtf_dump_type_values(d, \"%llu\", *(unsigned long long *)data);\n\t\
+    \tbreak;\n\n// CONTEXT: union float_data {\n};\n\nstatic int btf_dump_float_data(struct\
+    \ btf_dump *d,\n\t\t\t       const struct btf_type *t,\n\t\t\t       __u32 type_id,\n\
+    \t\t\t       const void *data)\n{\n\tconst union float_data *flp = data;\n\tunion\
+    \ float_data fl;\n\tint sz = t->size;\n\n\t/* handle unaligned data; copy to local\
+    \ union */\n\tif (((uintptr_t)data) % sz) {\n\t\tmemcpy(&fl, data, sz);\n\t\t\
+    flp = &fl;\n\t}\n\n\tswitch (sz) {\n\tcase 16:\n\t\tbtf_dump_type_values(d, \"\
+    %Lf\", flp->ld);\n\t\tbreak;\n\tcase 8:\n\t\tbtf_dump_type_values(d, \"%lf\",\
+    \ flp->d);\n\t\tbreak;\n\tcase 4:\n\n// CONTEXT: static int btf_dump_struct_data(struct\
+    \ btf_dump *d,\n\t\tbit_sz = btf_member_bitfield_size(t, i);\n\t\terr = btf_dump_dump_type_data(d,\
+    \ mname, mtype, m->type, data + moffset / 8,\n\t\t\t\t\t      moffset % 8, bit_sz);\n\
+    \t\tif (err < 0)\n\t\t\treturn err;\n\t}\n\td->typed_dump->depth--;\n\tbtf_dump_data_pfx(d);\n\
+    \tbtf_dump_type_values(d, \"}\");\n\treturn err;\n}\n\nstatic int btf_dump_ptr_data(struct\
+    \ btf_dump *d,\n\t\t\t      const struct btf_type *t,\n\t\t\t      __u32 id,\n\
+    \t\t\t      const void *data)\n{\n\tbtf_dump_type_values(d, \"%p\", *(void **)data);\n\
+    \treturn 0;\n}\n\nstatic int btf_dump_get_enum_value(struct btf_dump *d,\n\t\t\
+    \t\t   const struct btf_type *t,\n\t\t\t\t   const void *data,\n\t\t\t\t   __u32\
+    \ id,\n\t\t\t\t   __s64 *value)\n{\n\tint sz = t->size;\n\n\t/* handle unaligned\
+    \ enum value */\n\tif (((uintptr_t)data) % sz) {\n\t\t*value = (__s64)btf_dump_bitfield_get_data(d,\
+    \ t, data, 0, 0);\n\t\treturn 0;\n\t}\n\tswitch (t->size) {\n\tcase 8:\n\t\t*value\
+    \ = *(__s64 *)data;\n\t\treturn 0;\n\tcase 4:\n\t\t*value = *(__s32 *)data;\n\t\
+    \treturn 0;\n\tcase 2:\n\t\t*value = *(__s16 *)data;"
+  fixed_code: "// FILE: src/btf_dump.c\n// CONTEXT: static int btf_dump_base_type_check_zero(struct\
+    \ btf_dump *d,\n\t\tnr_bytes = t->size;\n\n\tif (nr_bytes < 1 || nr_bytes > 16)\
+    \ {\n\t\tpr_warn(\"unexpected size %d for id [%u]\\n\", nr_bytes, id);\n\t\treturn\
+    \ -EINVAL;\n\t}\n\n\tif (memcmp(data, bytecmp, nr_bytes) == 0)\n\t\treturn -ENODATA;\n\
+    \treturn 0;\n}\n\nstatic bool ptr_is_aligned(const void *data, int data_sz)\n\
+    {\n\treturn ((uintptr_t)data) % data_sz == 0;\n}\n\nstatic int btf_dump_int_data(struct\
+    \ btf_dump *d,\n\t\t\t     const struct btf_type *t,\n\t\t\t     __u32 type_id,\n\
+    \t\t\t     const void *data,\n\t\t\t     __u8 bits_offset)\n{\n\t__u8 encoding\
+    \ = btf_int_encoding(t);\n\tbool sign = encoding & BTF_INT_SIGNED;\n\tint sz =\
+    \ t->size;\n\n\tif (sz == 0) {\n\t\tpr_warn(\"unexpected size %d for id [%u]\\\
+    n\", sz, type_id);\n\t\treturn -EINVAL;\n\t}\n\n\t/* handle packed int data -\
+    \ accesses of integers not aligned on\n\t * int boundaries can cause problems\
+    \ on some platforms.\n\t */\n\tif (!ptr_is_aligned(data, sz))\n\t\treturn btf_dump_bitfield_data(d,\
+    \ t, data, 0, 0);\n\n\tswitch (sz) {\n\tcase 16:\n\t\tbtf_dump_int128(d, t, data);\n\
+    \t\tbreak;\n\tcase 8:\n\t\tif (sign)\n\t\t\tbtf_dump_type_values(d, \"%lld\",\
+    \ *(long long *)data);\n\t\telse\n\t\t\tbtf_dump_type_values(d, \"%llu\", *(unsigned\
+    \ long long *)data);\n\t\tbreak;\n\n// CONTEXT: union float_data {\n};\n\nstatic\
+    \ int btf_dump_float_data(struct btf_dump *d,\n\t\t\t       const struct btf_type\
+    \ *t,\n\t\t\t       __u32 type_id,\n\t\t\t       const void *data)\n{\n\tconst\
+    \ union float_data *flp = data;\n\tunion float_data fl;\n\tint sz = t->size;\n\
+    \n\t/* handle unaligned data; copy to local union */\n\tif (!ptr_is_aligned(data,\
+    \ sz)) {\n\t\tmemcpy(&fl, data, sz);\n\t\tflp = &fl;\n\t}\n\n\tswitch (sz) {\n\
+    \tcase 16:\n\t\tbtf_dump_type_values(d, \"%Lf\", flp->ld);\n\t\tbreak;\n\tcase\
+    \ 8:\n\t\tbtf_dump_type_values(d, \"%lf\", flp->d);\n\t\tbreak;\n\tcase 4:\n\n\
+    // CONTEXT: static int btf_dump_struct_data(struct btf_dump *d,\n\t\tbit_sz =\
+    \ btf_member_bitfield_size(t, i);\n\t\terr = btf_dump_dump_type_data(d, mname,\
+    \ mtype, m->type, data + moffset / 8,\n\t\t\t\t\t      moffset % 8, bit_sz);\n\
+    \t\tif (err < 0)\n\t\t\treturn err;\n\t}\n\td->typed_dump->depth--;\n\tbtf_dump_data_pfx(d);\n\
+    \tbtf_dump_type_values(d, \"}\");\n\treturn err;\n}\n\nunion ptr_data {\n\tunsigned\
+    \ int p;\n\tunsigned long long lp;\n};\n\nstatic int btf_dump_ptr_data(struct\
+    \ btf_dump *d,\n\t\t\t      const struct btf_type *t,\n\t\t\t      __u32 id,\n\
+    \t\t\t      const void *data)\n{\n\tif (ptr_is_aligned(data, d->ptr_sz) && d->ptr_sz\
+    \ == sizeof(void *)) {\n\t\tbtf_dump_type_values(d, \"%p\", *(void **)data);\n\
+    \t} else {\n\t\tunion ptr_data pt;\n\n\t\tmemcpy(&pt, data, d->ptr_sz);\n\t\t\
+    if (d->ptr_sz == 4)\n\t\t\tbtf_dump_type_values(d, \"0x%x\", pt.p);\n\t\telse\n\
+    \t\t\tbtf_dump_type_values(d, \"0x%llx\", pt.lp);\n\t}\n\treturn 0;\n}\n\nstatic\
+    \ int btf_dump_get_enum_value(struct btf_dump *d,\n\t\t\t\t   const struct btf_type\
+    \ *t,\n\t\t\t\t   const void *data,\n\t\t\t\t   __u32 id,\n\t\t\t\t   __s64 *value)\n\
+    {\n\tint sz = t->size;\n\n\t/* handle unaligned enum value */\n\tif (!ptr_is_aligned(data,\
+    \ sz)) {\n\t\t*value = (__s64)btf_dump_bitfield_get_data(d, t, data, 0, 0);\n\t\
+    \treturn 0;\n\t}\n\tswitch (t->size) {\n\tcase 8:\n\t\t*value = *(__s64 *)data;\n\
+    \t\treturn 0;\n\tcase 4:\n\t\t*value = *(__s32 *)data;\n\t\treturn 0;\n\tcase\
+    \ 2:\n\t\t*value = *(__s16 *)data;"
+  diff_summary: |-
+    src/btf_dump.c:
+    - Adjusted alignment declarations or stack layout to avoid misaligned accesses.
+    - Affected context: static int btf_dump_base_type_check_zero(struct btf_dump *d,, union float_data {, static int btf_dump_struct_data(struct btf_dump *d,.
+    - Commit subject: libbpf: Clarify/fix unaligned data issues for btf typed dump.

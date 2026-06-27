@@ -1,0 +1,245 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-bcc-45f5df4c5942
+source_kind: github_commit
+source:
+  url: https://github.com/iovisor/bcc/commit/45f5df4c594284469a1b6d35bd605cfdf06d30b6
+  title: 'libbpf-tools: Remove map flag BPF_F_NO_PREALLOC'
+  repository: https://github.com/iovisor/bcc
+  commit: 45f5df4c594284469a1b6d35bd605cfdf06d30b6
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-bcc-45f5df4c5942.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: environment_required
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Fix removes BPF_F_NO_PREALLOC from many hash maps. This is map/object load
+    compatibility rather than an isolated verifier instruction rejection with a terminal
+    verifier error.
+  verifier_status: null
+  captured_error: null
+  verifier_error_match: null
+raw:
+  case_id: github-commit-bcc-45f5df4c5942
+  source: github_commits
+  repository: https://github.com/iovisor/bcc
+  commit_hash: 45f5df4c594284469a1b6d35bd605cfdf06d30b6
+  commit_message: 'libbpf-tools: Remove map flag BPF_F_NO_PREALLOC'
+  commit_date: '2022-06-10'
+  fix_type: inline_hint
+  buggy_code: "// FILE: libbpf-tools/biolatency.bpf.c\n// CONTEXT: struct request_queue___x\
+    \ {\nstruct {\n\t__uint(type, BPF_MAP_TYPE_CGROUP_ARRAY);\n\t__type(key, u32);\n\
+    \t__type(value, u32);\n\t__uint(max_entries, 1);\n} cgroup_map SEC(\".maps\");\n\
+    \nstruct {\n\t__uint(type, BPF_MAP_TYPE_HASH);\n\t__uint(max_entries, MAX_ENTRIES);\n\
+    \t__type(key, struct request *);\n\t__type(value, u64);\n\t__uint(map_flags, BPF_F_NO_PREALLOC);\n\
+    } start SEC(\".maps\");\n\nstatic struct hist initial_hist;\n\nstruct {\n\t__uint(type,\
+    \ BPF_MAP_TYPE_HASH);\n\t__uint(max_entries, MAX_ENTRIES);\n\t__type(key, struct\
+    \ hist_key);\n\t__type(value, struct hist);\n\t__uint(map_flags, BPF_F_NO_PREALLOC);\n\
+    } hists SEC(\".maps\");\n\nstatic __always_inline\nint trace_rq_start(struct request\
+    \ *rq, int issue)\n{\n\tif (issue && targ_queued && BPF_CORE_READ(rq->q, elevator))\n\
+    \t\treturn 0;\n\n\tu64 ts = bpf_ktime_get_ns();\n\n\tif (filter_dev) {\n\t\tstruct\
+    \ request_queue___x *q = (void *)BPF_CORE_READ(rq, q);\n\n// FILE: libbpf-tools/biopattern.bpf.c\n\
+    #include <bpf/bpf_tracing.h>\n#include \"biopattern.h\"\n#include \"maps.bpf.h\"\
+    \n\nconst volatile bool filter_dev = false;\nconst volatile __u32 targ_dev = 0;\n\
+    \nstruct {\n\t__uint(type, BPF_MAP_TYPE_HASH);\n\t__uint(max_entries, 64);\n\t\
+    __type(key, u32);\n\t__type(value, struct counter);\n\t__uint(map_flags, BPF_F_NO_PREALLOC);\n\
+    } counters SEC(\".maps\");\n\nSEC(\"tracepoint/block/block_rq_complete\")\nint\
+    \ handle__block_rq_complete(struct trace_event_raw_block_rq_complete *ctx)\n{\n\
+    \tsector_t sector = ctx->sector;\n\tstruct counter *counterp, zero = {};\n\tu32\
+    \ nr_sector = ctx->nr_sector;\n\tu32 dev = ctx->dev;\n\n\tif (filter_dev && targ_dev\
+    \ != dev)\n\t\treturn 0;\n\n// FILE: libbpf-tools/biosnoop.bpf.c\n// CONTEXT:\
+    \ struct {\n} cgroup_map SEC(\".maps\");\n\nstruct piddata {\n\tchar comm[TASK_COMM_LEN];\n\
+    \tu32 pid;\n};\n\nstruct {\n\t__uint(type, BPF_MAP_TYPE_HASH);\n\t__uint(max_entries,\
+    \ MAX_ENTRIES);\n\t__type(key, struct request *);\n\t__type(value, struct piddata);\n\
+    \t__uint(map_flags, BPF_F_NO_PREALLOC);\n} infobyreq SEC(\".maps\");\n\nstruct\
+    \ stage {\n\tu64 insert;\n\tu64 issue;\n\t__u32 dev;\n};\n\nstruct {\n\t__uint(type,\
+    \ BPF_MAP_TYPE_HASH);\n\t__uint(max_entries, MAX_ENTRIES);\n\t__type(key, struct\
+    \ request *);\n\n// FILE: libbpf-tools/biostacks.bpf.c\n// CONTEXT: struct request_queue___x\
+    \ {\n} __attribute__((preserve_access_index));\n\nstruct internal_rqinfo {\n\t\
+    u64 start_ts;\n\tstruct rqinfo rqinfo;\n};\n\nstruct {\n\t__uint(type, BPF_MAP_TYPE_HASH);\n\
+    \t__uint(max_entries, MAX_ENTRIES);\n\t__type(key, struct request *);\n\t__type(value,\
+    \ struct internal_rqinfo);\n\t__uint(map_flags, BPF_F_NO_PREALLOC);\n} rqinfos\
+    \ SEC(\".maps\");\n\nstruct {\n\t__uint(type, BPF_MAP_TYPE_HASH);\n\t__uint(max_entries,\
+    \ MAX_ENTRIES);\n\t__type(key, struct rqinfo);\n\t__type(value, struct hist);\n\
+    \t__uint(map_flags, BPF_F_NO_PREALLOC);\n} hists SEC(\".maps\");\n\nstatic struct\
+    \ hist zero;\n\nstatic __always_inline\nint trace_start(void *ctx, struct request\
+    \ *rq, bool merge_bio)\n{\n\tstruct internal_rqinfo *i_rqinfop = NULL, i_rqinfo\
+    \ = {};\n\tstruct request_queue___x *q = (void *)BPF_CORE_READ(rq, q);\n\tstruct\
+    \ gendisk *disk;\n\tu32 dev;\n\n// FILE: libbpf-tools/bitesize.bpf.c\n// CONTEXT:\
+    \ const volatile __u32 targ_dev = 0;\n\nextern __u32 LINUX_KERNEL_VERSION __kconfig;\n\
+    \nstruct request_queue___x {\n\tstruct gendisk *disk;\n} __attribute__((preserve_access_index));\n\
+    \nstruct {\n\t__uint(type, BPF_MAP_TYPE_HASH);\n\t__uint(max_entries, 10240);\n\
+    \t__type(key, struct hist_key);\n\t__type(value, struct hist);\n\t__uint(map_flags,\
+    \ BPF_F_NO_PREALLOC);\n} hists SEC(\".maps\");\n\nstatic struct hist initial_hist;\n\
+    \nstatic __always_inline bool comm_allowed(const char *comm)\n{\n\tint i;\n\n\t\
+    for (i = 0; targ_comm[i] != '\\0' && i < TASK_COMM_LEN; i++) {\n\t\tif (comm[i]\
+    \ != targ_comm[i])\n\t\t\treturn false;\n\t}\n\n// FILE: libbpf-tools/numamove.bpf.c\n\
+    // SPDX-License-Identifier: GPL-2.0\n// Copyright (c) 2020 Wenbo Zhang\n#include\
+    \ <vmlinux.h>\n#include <bpf/bpf_helpers.h>\n#include <bpf/bpf_tracing.h>\n\n\
+    struct {\n\t__uint(type, BPF_MAP_TYPE_HASH);\n\t__uint(max_entries, 10240);\n\t\
+    __type(key, u32);\n\t__type(value, u64);\n\t__uint(map_flags, BPF_F_NO_PREALLOC);\n\
+    } start SEC(\".maps\");\n\n__u64 latency = 0;\n__u64 num = 0;\n\nSEC(\"fentry/migrate_misplaced_page\"\
+    )\nint BPF_PROG(migrate_misplaced_page)\n{\n\tu32 pid = bpf_get_current_pid_tgid();\n\
+    \tu64 ts = bpf_ktime_get_ns();\n\n\tbpf_map_update_elem(&start, &pid, &ts, 0);\n\
+    \n// FILE: libbpf-tools/readahead.bpf.c\n#include <bpf/bpf_helpers.h>\n#include\
+    \ <bpf/bpf_tracing.h>\n#include \"readahead.h\"\n#include \"bits.bpf.h\"\n\n#define\
+    \ MAX_ENTRIES\t10240\n\nstruct {\n\t__uint(type, BPF_MAP_TYPE_HASH);\n\t__uint(max_entries,\
+    \ MAX_ENTRIES);\n\t__type(key, u32);\n\t__type(value, u64);\n\t__uint(map_flags,\
+    \ BPF_F_NO_PREALLOC);\n} in_readahead SEC(\".maps\");\n\nstruct {\n\t__uint(type,\
+    \ BPF_MAP_TYPE_HASH);\n\t__uint(max_entries, MAX_ENTRIES);\n\t__type(key, struct\
+    \ page *);\n\t__type(value, u64);\n\t__uint(map_flags, BPF_F_NO_PREALLOC);\n}\
+    \ birth SEC(\".maps\");\n\nstruct hist hist = {};\n\nSEC(\"fentry/do_page_cache_ra\"\
+    )\nint BPF_PROG(do_page_cache_ra)\n{\n\tu32 pid = bpf_get_current_pid_tgid();\n\
+    \tu64 one = 1;\n\n\tbpf_map_update_elem(&in_readahead, &pid, &one, 0);\n\treturn\
+    \ 0;\n\n// FILE: libbpf-tools/syscount.bpf.c\n// CONTEXT: const volatile pid_t\
+    \ filter_pid = 0;\nstruct {\n\t__uint(type, BPF_MAP_TYPE_CGROUP_ARRAY);\n\t__type(key,\
+    \ u32);\n\t__type(value, u32);\n\t__uint(max_entries, 1);\n} cgroup_map SEC(\"\
+    .maps\");\n\nstruct {\n\t__uint(type, BPF_MAP_TYPE_HASH);\n\t__uint(max_entries,\
+    \ MAX_ENTRIES);\n\t__type(key, u32);\n\t__type(value, u64);\n\t__uint(map_flags,\
+    \ BPF_F_NO_PREALLOC);\n} start SEC(\".maps\");\n\nstruct {\n\t__uint(type, BPF_MAP_TYPE_HASH);\n\
+    \t__uint(max_entries, MAX_ENTRIES);\n\t__type(key, u32);\n\t__type(value, struct\
+    \ data_t);\n\t__uint(map_flags, BPF_F_NO_PREALLOC);\n} data SEC(\".maps\");\n\n\
+    static __always_inline\nvoid save_proc_name(struct data_t *val)\n{\n\tstruct task_struct\
+    \ *current = (void *)bpf_get_current_task();\n\n\t/* We should save the process\
+    \ name every time because it can be\n\t * changed (e.g., by exec).  This can be\
+    \ optimized later by managing\n\t * this field with the help of tp/sched/sched_process_exec\
+    \ and\n\t * raw_tp/task_rename. */\n\tBPF_CORE_READ_STR_INTO(&val->comm, current,\
+    \ group_leader, comm);\n\n// FILE: libbpf-tools/tcpconnect.bpf.c\n// CONTEXT:\
+    \ const volatile uid_t filter_uid = -1;\nconst volatile pid_t filter_pid = 0;\n\
+    const volatile bool do_count = 0;\n\n/* Define here, because there are conflicts\
+    \ with include files */\n#define AF_INET\t\t2\n#define AF_INET6\t10\n\nstruct\
+    \ {\n\t__uint(type, BPF_MAP_TYPE_HASH);\n\t__uint(max_entries, MAX_ENTRIES);\n\
+    \t__type(key, u32);\n\t__type(value, struct sock *);\n\t__uint(map_flags, BPF_F_NO_PREALLOC);\n\
+    } sockets SEC(\".maps\");\n\nstruct {\n\t__uint(type, BPF_MAP_TYPE_HASH);\n\t\
+    __uint(max_entries, MAX_ENTRIES);\n\t__type(key, struct ipv4_flow_key);\n\t__type(value,\
+    \ u64);\n\t__uint(map_flags, BPF_F_NO_PREALLOC);\n} ipv4_count SEC(\".maps\");\n\
+    \nstruct {\n\t__uint(type, BPF_MAP_TYPE_HASH);\n\t__uint(max_entries, MAX_ENTRIES);\n\
+    \t__type(key, struct ipv6_flow_key);\n\t__type(value, u64);\n\t__uint(map_flags,\
+    \ BPF_F_NO_PREALLOC);\n} ipv6_count SEC(\".maps\");\n\nstruct {\n\t__uint(type,\
+    \ BPF_MAP_TYPE_PERF_EVENT_ARRAY);\n\t__uint(key_size, sizeof(u32));\n\t__uint(value_size,\
+    \ sizeof(u32));\n} events SEC(\".maps\");\n\nstatic __always_inline bool filter_port(__u16\
+    \ port)\n{\n\tint i;"
+  fixed_code: "// FILE: libbpf-tools/biolatency.bpf.c\n// CONTEXT: struct request_queue___x\
+    \ {\nstruct {\n\t__uint(type, BPF_MAP_TYPE_CGROUP_ARRAY);\n\t__type(key, u32);\n\
+    \t__type(value, u32);\n\t__uint(max_entries, 1);\n} cgroup_map SEC(\".maps\");\n\
+    \nstruct {\n\t__uint(type, BPF_MAP_TYPE_HASH);\n\t__uint(max_entries, MAX_ENTRIES);\n\
+    \t__type(key, struct request *);\n\t__type(value, u64);\n} start SEC(\".maps\"\
+    );\n\nstatic struct hist initial_hist;\n\nstruct {\n\t__uint(type, BPF_MAP_TYPE_HASH);\n\
+    \t__uint(max_entries, MAX_ENTRIES);\n\t__type(key, struct hist_key);\n\t__type(value,\
+    \ struct hist);\n} hists SEC(\".maps\");\n\nstatic __always_inline\nint trace_rq_start(struct\
+    \ request *rq, int issue)\n{\n\tif (issue && targ_queued && BPF_CORE_READ(rq->q,\
+    \ elevator))\n\t\treturn 0;\n\n\tu64 ts = bpf_ktime_get_ns();\n\n\tif (filter_dev)\
+    \ {\n\t\tstruct request_queue___x *q = (void *)BPF_CORE_READ(rq, q);\n\n// FILE:\
+    \ libbpf-tools/biopattern.bpf.c\n#include <bpf/bpf_tracing.h>\n#include \"biopattern.h\"\
+    \n#include \"maps.bpf.h\"\n\nconst volatile bool filter_dev = false;\nconst volatile\
+    \ __u32 targ_dev = 0;\n\nstruct {\n\t__uint(type, BPF_MAP_TYPE_HASH);\n\t__uint(max_entries,\
+    \ 64);\n\t__type(key, u32);\n\t__type(value, struct counter);\n} counters SEC(\"\
+    .maps\");\n\nSEC(\"tracepoint/block/block_rq_complete\")\nint handle__block_rq_complete(struct\
+    \ trace_event_raw_block_rq_complete *ctx)\n{\n\tsector_t sector = ctx->sector;\n\
+    \tstruct counter *counterp, zero = {};\n\tu32 nr_sector = ctx->nr_sector;\n\t\
+    u32 dev = ctx->dev;\n\n\tif (filter_dev && targ_dev != dev)\n\t\treturn 0;\n\n\
+    // FILE: libbpf-tools/biosnoop.bpf.c\n// CONTEXT: struct {\n} cgroup_map SEC(\"\
+    .maps\");\n\nstruct piddata {\n\tchar comm[TASK_COMM_LEN];\n\tu32 pid;\n};\n\n\
+    struct {\n\t__uint(type, BPF_MAP_TYPE_HASH);\n\t__uint(max_entries, MAX_ENTRIES);\n\
+    \t__type(key, struct request *);\n\t__type(value, struct piddata);\n} infobyreq\
+    \ SEC(\".maps\");\n\nstruct stage {\n\tu64 insert;\n\tu64 issue;\n\t__u32 dev;\n\
+    };\n\nstruct {\n\t__uint(type, BPF_MAP_TYPE_HASH);\n\t__uint(max_entries, MAX_ENTRIES);\n\
+    \t__type(key, struct request *);\n\n// FILE: libbpf-tools/biostacks.bpf.c\n//\
+    \ CONTEXT: struct request_queue___x {\n} __attribute__((preserve_access_index));\n\
+    \nstruct internal_rqinfo {\n\tu64 start_ts;\n\tstruct rqinfo rqinfo;\n};\n\nstruct\
+    \ {\n\t__uint(type, BPF_MAP_TYPE_HASH);\n\t__uint(max_entries, MAX_ENTRIES);\n\
+    \t__type(key, struct request *);\n\t__type(value, struct internal_rqinfo);\n}\
+    \ rqinfos SEC(\".maps\");\n\nstruct {\n\t__uint(type, BPF_MAP_TYPE_HASH);\n\t\
+    __uint(max_entries, MAX_ENTRIES);\n\t__type(key, struct rqinfo);\n\t__type(value,\
+    \ struct hist);\n} hists SEC(\".maps\");\n\nstatic struct hist zero;\n\nstatic\
+    \ __always_inline\nint trace_start(void *ctx, struct request *rq, bool merge_bio)\n\
+    {\n\tstruct internal_rqinfo *i_rqinfop = NULL, i_rqinfo = {};\n\tstruct request_queue___x\
+    \ *q = (void *)BPF_CORE_READ(rq, q);\n\tstruct gendisk *disk;\n\tu32 dev;\n\n\
+    // FILE: libbpf-tools/bitesize.bpf.c\n// CONTEXT: const volatile __u32 targ_dev\
+    \ = 0;\n\nextern __u32 LINUX_KERNEL_VERSION __kconfig;\n\nstruct request_queue___x\
+    \ {\n\tstruct gendisk *disk;\n} __attribute__((preserve_access_index));\n\nstruct\
+    \ {\n\t__uint(type, BPF_MAP_TYPE_HASH);\n\t__uint(max_entries, 10240);\n\t__type(key,\
+    \ struct hist_key);\n\t__type(value, struct hist);\n} hists SEC(\".maps\");\n\n\
+    static struct hist initial_hist;\n\nstatic __always_inline bool comm_allowed(const\
+    \ char *comm)\n{\n\tint i;\n\n\tfor (i = 0; targ_comm[i] != '\\0' && i < TASK_COMM_LEN;\
+    \ i++) {\n\t\tif (comm[i] != targ_comm[i])\n\t\t\treturn false;\n\t}\n\n// FILE:\
+    \ libbpf-tools/numamove.bpf.c\n// SPDX-License-Identifier: GPL-2.0\n// Copyright\
+    \ (c) 2020 Wenbo Zhang\n#include <vmlinux.h>\n#include <bpf/bpf_helpers.h>\n#include\
+    \ <bpf/bpf_tracing.h>\n\nstruct {\n\t__uint(type, BPF_MAP_TYPE_HASH);\n\t__uint(max_entries,\
+    \ 10240);\n\t__type(key, u32);\n\t__type(value, u64);\n} start SEC(\".maps\");\n\
+    \n__u64 latency = 0;\n__u64 num = 0;\n\nSEC(\"fentry/migrate_misplaced_page\"\
+    )\nint BPF_PROG(migrate_misplaced_page)\n{\n\tu32 pid = bpf_get_current_pid_tgid();\n\
+    \tu64 ts = bpf_ktime_get_ns();\n\n\tbpf_map_update_elem(&start, &pid, &ts, 0);\n\
+    \n// FILE: libbpf-tools/readahead.bpf.c\n#include <bpf/bpf_helpers.h>\n#include\
+    \ <bpf/bpf_tracing.h>\n#include \"readahead.h\"\n#include \"bits.bpf.h\"\n\n#define\
+    \ MAX_ENTRIES\t10240\n\nstruct {\n\t__uint(type, BPF_MAP_TYPE_HASH);\n\t__uint(max_entries,\
+    \ MAX_ENTRIES);\n\t__type(key, u32);\n\t__type(value, u64);\n} in_readahead SEC(\"\
+    .maps\");\n\nstruct {\n\t__uint(type, BPF_MAP_TYPE_HASH);\n\t__uint(max_entries,\
+    \ MAX_ENTRIES);\n\t__type(key, struct page *);\n\t__type(value, u64);\n} birth\
+    \ SEC(\".maps\");\n\nstruct hist hist = {};\n\nSEC(\"fentry/do_page_cache_ra\"\
+    )\nint BPF_PROG(do_page_cache_ra)\n{\n\tu32 pid = bpf_get_current_pid_tgid();\n\
+    \tu64 one = 1;\n\n\tbpf_map_update_elem(&in_readahead, &pid, &one, 0);\n\treturn\
+    \ 0;\n\n// FILE: libbpf-tools/syscount.bpf.c\n// CONTEXT: const volatile pid_t\
+    \ filter_pid = 0;\nstruct {\n\t__uint(type, BPF_MAP_TYPE_CGROUP_ARRAY);\n\t__type(key,\
+    \ u32);\n\t__type(value, u32);\n\t__uint(max_entries, 1);\n} cgroup_map SEC(\"\
+    .maps\");\n\nstruct {\n\t__uint(type, BPF_MAP_TYPE_HASH);\n\t__uint(max_entries,\
+    \ MAX_ENTRIES);\n\t__type(key, u32);\n\t__type(value, u64);\n} start SEC(\".maps\"\
+    );\n\nstruct {\n\t__uint(type, BPF_MAP_TYPE_HASH);\n\t__uint(max_entries, MAX_ENTRIES);\n\
+    \t__type(key, u32);\n\t__type(value, struct data_t);\n} data SEC(\".maps\");\n\
+    \nstatic __always_inline\nvoid save_proc_name(struct data_t *val)\n{\n\tstruct\
+    \ task_struct *current = (void *)bpf_get_current_task();\n\n\t/* We should save\
+    \ the process name every time because it can be\n\t * changed (e.g., by exec).\
+    \  This can be optimized later by managing\n\t * this field with the help of tp/sched/sched_process_exec\
+    \ and\n\t * raw_tp/task_rename. */\n\tBPF_CORE_READ_STR_INTO(&val->comm, current,\
+    \ group_leader, comm);\n\n// FILE: libbpf-tools/tcpconnect.bpf.c\n// CONTEXT:\
+    \ const volatile uid_t filter_uid = -1;\nconst volatile pid_t filter_pid = 0;\n\
+    const volatile bool do_count = 0;\n\n/* Define here, because there are conflicts\
+    \ with include files */\n#define AF_INET\t\t2\n#define AF_INET6\t10\n\nstruct\
+    \ {\n\t__uint(type, BPF_MAP_TYPE_HASH);\n\t__uint(max_entries, MAX_ENTRIES);\n\
+    \t__type(key, u32);\n\t__type(value, struct sock *);\n} sockets SEC(\".maps\"\
+    );\n\nstruct {\n\t__uint(type, BPF_MAP_TYPE_HASH);\n\t__uint(max_entries, MAX_ENTRIES);\n\
+    \t__type(key, struct ipv4_flow_key);\n\t__type(value, u64);\n} ipv4_count SEC(\"\
+    .maps\");\n\nstruct {\n\t__uint(type, BPF_MAP_TYPE_HASH);\n\t__uint(max_entries,\
+    \ MAX_ENTRIES);\n\t__type(key, struct ipv6_flow_key);\n\t__type(value, u64);\n\
+    } ipv6_count SEC(\".maps\");\n\nstruct {\n\t__uint(type, BPF_MAP_TYPE_PERF_EVENT_ARRAY);\n\
+    \t__uint(key_size, sizeof(u32));\n\t__uint(value_size, sizeof(u32));\n} events\
+    \ SEC(\".maps\");\n\nstatic __always_inline bool filter_port(__u16 port)\n{\n\t\
+    int i;"
+  diff_summary: |-
+    libbpf-tools/biolatency.bpf.c:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: struct request_queue___x {.
+    libbpf-tools/biopattern.bpf.c:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: the touched section.
+    libbpf-tools/biosnoop.bpf.c:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: struct {.
+    libbpf-tools/biostacks.bpf.c:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: struct request_queue___x {.
+    libbpf-tools/bitesize.bpf.c:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: const volatile __u32 targ_dev = 0;.
+    libbpf-tools/numamove.bpf.c:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: the touched section.
+    libbpf-tools/readahead.bpf.c:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: the touched section.
+    libbpf-tools/syscount.bpf.c:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: const volatile pid_t filter_pid = 0;.
+    libbpf-tools/tcpconnect.bpf.c:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: const volatile uid_t filter_uid = -1;.
+    - Commit subject: libbpf-tools: Remove map flag BPF_F_NO_PREALLOC.

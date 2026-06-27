@@ -1,0 +1,68 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-libbpf-989d7189cdcf
+source_kind: github_commit
+source:
+  url: https://github.com/libbpf/libbpf/commit/989d7189cdcf43480c7d1f15a13ad13333e0877d
+  title: 'libbpf: Use static const fmt string in __bpf_printk'
+  repository: https://github.com/libbpf/libbpf
+  commit: 989d7189cdcf43480c7d1f15a13ad13333e0877d
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-libbpf-989d7189cdcf.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: missing_source
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Raw has_verifier_log=false. The header macro change makes __bpf_printk use
+    a static const format string unless BPF_NO_GLOBAL_DATA is set, but the raw record
+    lacks the BPF program and verifier log needed to identify a faithful rejected
+    stack/global-data pattern.
+raw:
+  case_id: github-commit-libbpf-989d7189cdcf
+  source: github_commits
+  repository: https://github.com/libbpf/libbpf
+  commit_hash: 989d7189cdcf43480c7d1f15a13ad13333e0877d
+  commit_message: 'libbpf: Use static const fmt string in __bpf_printk'
+  commit_date: '2021-09-17'
+  fix_type: other
+  buggy_code: "// FILE: src/bpf_helpers.h\n// CONTEXT: enum libbpf_tristate {\n\t\
+    static const char ___fmt[] = fmt;\t\t\t\\\n\tunsigned long long ___param[___bpf_narg(args)];\t\
+    \t\\\n\t\t\t\t\t\t\t\t\\\n\t_Pragma(\"GCC diagnostic push\")\t\t\t\t\\\n\t_Pragma(\"\
+    GCC diagnostic ignored \\\"-Wint-conversion\\\"\")\t\\\n\t___bpf_fill(___param,\
+    \ args);\t\t\t\t\\\n\t_Pragma(\"GCC diagnostic pop\")\t\t\t\t\\\n\t\t\t\t\t\t\t\
+    \t\\\n\tbpf_snprintf(out, out_size, ___fmt,\t\t\t\\\n\t\t     ___param, sizeof(___param));\t\
+    \t\\\n})\n\n#define __bpf_printk(fmt, ...)\t\t\t\t\\\n({\t\t\t\t\t\t\t\\\n\tchar\
+    \ ____fmt[] = fmt;\t\t\t\t\\\n\tbpf_trace_printk(____fmt, sizeof(____fmt),\t\\\
+    \n\t\t\t ##__VA_ARGS__);\t\t\\\n})\n\n/*\n * __bpf_vprintk wraps the bpf_trace_vprintk\
+    \ helper with variadic arguments\n * instead of an array of u64.\n */\n#define\
+    \ __bpf_vprintk(fmt, args...)\t\t\t\t\\\n({\t\t\t\t\t\t\t\t\\\n\tstatic const\
+    \ char ___fmt[] = fmt;\t\t\t\\\n\tunsigned long long ___param[___bpf_narg(args)];\t\
+    \t\\"
+  fixed_code: "// FILE: src/bpf_helpers.h\n// CONTEXT: enum libbpf_tristate {\n\t\
+    static const char ___fmt[] = fmt;\t\t\t\\\n\tunsigned long long ___param[___bpf_narg(args)];\t\
+    \t\\\n\t\t\t\t\t\t\t\t\\\n\t_Pragma(\"GCC diagnostic push\")\t\t\t\t\\\n\t_Pragma(\"\
+    GCC diagnostic ignored \\\"-Wint-conversion\\\"\")\t\\\n\t___bpf_fill(___param,\
+    \ args);\t\t\t\t\\\n\t_Pragma(\"GCC diagnostic pop\")\t\t\t\t\\\n\t\t\t\t\t\t\t\
+    \t\\\n\tbpf_snprintf(out, out_size, ___fmt,\t\t\t\\\n\t\t     ___param, sizeof(___param));\t\
+    \t\\\n})\n\n#ifdef BPF_NO_GLOBAL_DATA\n#define BPF_PRINTK_FMT_MOD\n#else\n#define\
+    \ BPF_PRINTK_FMT_MOD static const\n#endif\n\n#define __bpf_printk(fmt, ...)\t\t\
+    \t\t\\\n({\t\t\t\t\t\t\t\\\n\tBPF_PRINTK_FMT_MOD char ____fmt[] = fmt;\t\\\n\t\
+    bpf_trace_printk(____fmt, sizeof(____fmt),\t\\\n\t\t\t ##__VA_ARGS__);\t\t\\\n\
+    })\n\n/*\n * __bpf_vprintk wraps the bpf_trace_vprintk helper with variadic arguments\n\
+    \ * instead of an array of u64.\n */\n#define __bpf_vprintk(fmt, args...)\t\t\t\
+    \t\\\n({\t\t\t\t\t\t\t\t\\\n\tstatic const char ___fmt[] = fmt;\t\t\t\\\n\tunsigned\
+    \ long long ___param[___bpf_narg(args)];\t\t\\"
+  diff_summary: |-
+    src/bpf_helpers.h:
+    - Applied a small verifier-related code change captured by the exact before/after snippets below.
+    - Affected context: enum libbpf_tristate {.
+    - Commit subject: libbpf: Use static const fmt string in __bpf_printk.

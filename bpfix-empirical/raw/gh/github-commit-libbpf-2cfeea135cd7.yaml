@@ -1,0 +1,67 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-libbpf-2cfeea135cd7
+source_kind: github_commit
+source:
+  url: https://github.com/libbpf/libbpf/commit/2cfeea135cd73f02a89754b3bc1aeded9a221d75
+  title: 'libbpf: Fix segfault in static linker for objects without BTF'
+  repository: https://github.com/libbpf/libbpf
+  commit: 2cfeea135cd73f02a89754b3bc1aeded9a221d75
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-libbpf-2cfeea135cd7.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Adds an if (!obj->btf) guard in the static linker before iterating BTF types.
+    It fixes a user-space linker segfault for objects without BTF, not verifier rejection.
+raw:
+  case_id: github-commit-libbpf-2cfeea135cd7
+  source: github_commits
+  repository: https://github.com/libbpf/libbpf
+  commit_hash: 2cfeea135cd73f02a89754b3bc1aeded9a221d75
+  commit_message: 'libbpf: Fix segfault in static linker for objects without BTF'
+  commit_date: '2021-09-24'
+  fix_type: other
+  buggy_code: "// FILE: src/linker.c\n// CONTEXT: static bool glob_syms_match(const\
+    \ char *sym_name,\n\treturn true;\n}\n\nstatic bool btf_is_non_static(const struct\
+    \ btf_type *t)\n{\n\treturn (btf_is_var(t) && btf_var(t)->linkage != BTF_VAR_STATIC)\n\
+    \t       || (btf_is_func(t) && btf_func_linkage(t) != BTF_FUNC_STATIC);\n}\n\n\
+    static int find_glob_sym_btf(struct src_obj *obj, Elf64_Sym *sym, const char *sym_name,\n\
+    \t\t\t     int *out_btf_sec_id, int *out_btf_id)\n{\n\tint i, j, n = btf__get_nr_types(obj->btf),\
+    \ m, btf_id = 0;\n\tconst struct btf_type *t;\n\tconst struct btf_var_secinfo\
+    \ *vi;\n\tconst char *name;\n\n\tfor (i = 1; i <= n; i++) {\n\t\tt = btf__type_by_id(obj->btf,\
+    \ i);\n\n\t\t/* some global and extern FUNCs and VARs might not be associated\
+    \ with any\n\t\t * DATASEC, so try to detect them in the same pass\n\t\t */\n\t\
+    \tif (btf_is_non_static(t)) {\n\t\t\tname = btf__str_by_offset(obj->btf, t->name_off);\n\
+    \t\t\tif (strcmp(name, sym_name) != 0)\n\t\t\t\tcontinue;\n\n\t\t\t/* remember\
+    \ and still try to find DATASEC */"
+  fixed_code: "// FILE: src/linker.c\n// CONTEXT: static bool glob_syms_match(const\
+    \ char *sym_name,\n\treturn true;\n}\n\nstatic bool btf_is_non_static(const struct\
+    \ btf_type *t)\n{\n\treturn (btf_is_var(t) && btf_var(t)->linkage != BTF_VAR_STATIC)\n\
+    \t       || (btf_is_func(t) && btf_func_linkage(t) != BTF_FUNC_STATIC);\n}\n\n\
+    static int find_glob_sym_btf(struct src_obj *obj, Elf64_Sym *sym, const char *sym_name,\n\
+    \t\t\t     int *out_btf_sec_id, int *out_btf_id)\n{\n\tint i, j, n, m, btf_id\
+    \ = 0;\n\tconst struct btf_type *t;\n\tconst struct btf_var_secinfo *vi;\n\tconst\
+    \ char *name;\n\n\tif (!obj->btf) {\n\t\tpr_warn(\"failed to find BTF info for\
+    \ object '%s'\\n\", obj->filename);\n\t\treturn -EINVAL;\n\t}\n\n\tn = btf__get_nr_types(obj->btf);\n\
+    \tfor (i = 1; i <= n; i++) {\n\t\tt = btf__type_by_id(obj->btf, i);\n\n\t\t/*\
+    \ some global and extern FUNCs and VARs might not be associated with any\n\t\t\
+    \ * DATASEC, so try to detect them in the same pass\n\t\t */\n\t\tif (btf_is_non_static(t))\
+    \ {\n\t\t\tname = btf__str_by_offset(obj->btf, t->name_off);\n\t\t\tif (strcmp(name,\
+    \ sym_name) != 0)\n\t\t\t\tcontinue;\n\n\t\t\t/* remember and still try to find\
+    \ DATASEC */"
+  diff_summary: |-
+    src/linker.c:
+    - Applied a small verifier-related code change captured by the exact before/after snippets below.
+    - Affected context: static bool glob_syms_match(const char *sym_name,.
+    - Commit subject: libbpf: Fix segfault in static linker for objects without BTF.

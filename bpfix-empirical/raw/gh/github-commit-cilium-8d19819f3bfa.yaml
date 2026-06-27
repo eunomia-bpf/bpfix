@@ -1,0 +1,65 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-8d19819f3bfa
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/8d19819f3bfa895ad9a781505b62c418386b6a80
+  title: 'bpf: nat: document verifier workaround'
+  repository: https://github.com/cilium/cilium
+  commit: 8d19819f3bfa895ad9a781505b62c418386b6a80
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-8d19819f3bfa.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: missing_verifier_log
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: The commit only documents an existing RHEL 8.6 verifier workaround around
+    a null NAT state check. It provides no terminal verifier error, rejected instruction,
+    or new source change to reconstruct.
+raw:
+  case_id: github-commit-cilium-8d19819f3bfa
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: 8d19819f3bfa895ad9a781505b62c418386b6a80
+  commit_message: 'bpf: nat: document verifier workaround'
+  commit_date: '2025-09-16'
+  fix_type: type_cast
+  buggy_code: "// FILE: bpf/lib/nat.h\n// CONTEXT: snat_v6_nat_handle_icmp_error(struct\
+    \ __ctx_buff *ctx, __u64 off, bool has_l4_hea\nstatic __always_inline int\n__snat_v6_nat(struct\
+    \ __ctx_buff *ctx, struct ipv6_ct_tuple *tuple, fraginfo_t fraginfo,\n\t     \
+    \ int l4_off, bool update_tuple, const struct ipv6_nat_target *target,\n\t   \
+    \   __u16 port_off, struct trace_ctx *trace, __s8 *ext_err)\n{\n\tstruct ipv6_nat_entry\
+    \ *state;\n\tint ret;\n\n\tret = snat_v6_nat_handle_mapping(ctx, tuple, fraginfo,\
+    \ &state,\n\t\t\t\t\t l4_off, target, trace, ext_err);\n\tif (ret < 0)\n\t\treturn\
+    \ ret;\n\tif (!state)\n\t\treturn DROP_NAT_NO_MAPPING;\n\n\tret = snat_v6_rewrite_headers(ctx,\
+    \ tuple->nexthdr, ETH_HLEN,\n\t\t\t\t      ipfrag_has_l4_header(fraginfo), l4_off,\n\
+    \t\t\t\t      &tuple->saddr, &state->to_saddr, IPV6_SADDR_OFF,\n\t\t\t\t     \
+    \ tuple->sport, state->to_sport, port_off);\n\n\tif (update_tuple) {\n\t\tipv6_addr_copy(&tuple->saddr,\
+    \ &state->to_saddr);\n\t\ttuple->sport = state->to_sport;\n\t}"
+  fixed_code: "// FILE: bpf/lib/nat.h\n// CONTEXT: snat_v6_nat_handle_icmp_error(struct\
+    \ __ctx_buff *ctx, __u64 off, bool has_l4_hea\nstatic __always_inline int\n__snat_v6_nat(struct\
+    \ __ctx_buff *ctx, struct ipv6_ct_tuple *tuple, fraginfo_t fraginfo,\n\t     \
+    \ int l4_off, bool update_tuple, const struct ipv6_nat_target *target,\n\t   \
+    \   __u16 port_off, struct trace_ctx *trace, __s8 *ext_err)\n{\n\tstruct ipv6_nat_entry\
+    \ *state;\n\tint ret;\n\n\tret = snat_v6_nat_handle_mapping(ctx, tuple, fraginfo,\
+    \ &state,\n\t\t\t\t\t l4_off, target, trace, ext_err);\n\tif (ret < 0)\n\t\treturn\
+    \ ret;\n\t/* GH-40991: Verifier workaround for RHEL8.6 kernel: */\n\tif (!state)\n\
+    \t\treturn DROP_NAT_NO_MAPPING;\n\n\tret = snat_v6_rewrite_headers(ctx, tuple->nexthdr,\
+    \ ETH_HLEN,\n\t\t\t\t      ipfrag_has_l4_header(fraginfo), l4_off,\n\t\t\t\t \
+    \     &tuple->saddr, &state->to_saddr, IPV6_SADDR_OFF,\n\t\t\t\t      tuple->sport,\
+    \ state->to_sport, port_off);\n\n\tif (update_tuple) {\n\t\tipv6_addr_copy(&tuple->saddr,\
+    \ &state->to_saddr);\n\t\ttuple->sport = state->to_sport;\n\t}"
+  diff_summary: |-
+    bpf/lib/nat.h:
+    - Adjusted types or casts so the verifier sees the intended pointer or value kind.
+    - Affected context: snat_v6_nat_handle_icmp_error(struct __ctx_buff *ctx, __u64 off, bool has_l4_hea.
+    - Commit subject: bpf: nat: document verifier workaround.

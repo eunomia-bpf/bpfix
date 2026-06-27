@@ -1,0 +1,113 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-libbpf-939ab641b89b
+source_kind: github_commit
+source:
+  url: https://github.com/libbpf/libbpf/commit/939ab641b89bf9831cea1c17afb81793f4527427
+  title: 'libbpf: feature-detect arg:ctx tag support in kernel'
+  repository: https://github.com/libbpf/libbpf
+  commit: 939ab641b89bf9831cea1c17afb81793f4527427
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-libbpf-939ab641b89b.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: environment_required
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Raw has_verifier_log=false. The fixed code adds a synthetic arg:ctx feature
+    probe using raw BTF and bpf_prog_load(BPF_PROG_TYPE_KPROBE, ...); replay depends
+    on kernel support for arg:ctx tags and related kfunc/context behavior, with no
+    captured verifier log.
+raw:
+  case_id: github-commit-libbpf-939ab641b89b
+  source: github_commits
+  repository: https://github.com/libbpf/libbpf
+  commit_hash: 939ab641b89bf9831cea1c17afb81793f4527427
+  commit_message: 'libbpf: feature-detect arg:ctx tag support in kernel'
+  commit_date: '2024-01-17'
+  fix_type: type_cast
+  buggy_code: "// FILE: src/libbpf.c\n// CONTEXT: static int clone_func_btf_info(struct\
+    \ btf *btf, int orig_fn_id, struct bpf_progr\n\t * with original name_off\n\t\
+    \ */\n\tfn_id = btf__add_func(btf, prog->name, linkage, fn_proto_id);\n\tif (fn_id\
+    \ < 0)\n\t\treturn -EINVAL;\n\n\tfn_t = btf_type_by_id(btf, fn_id);\n\tfn_t->name_off\
+    \ = fn_name_off; /* reuse original string */\n\n\treturn fn_id;\n}\n\n/* Check\
+    \ if main program or global subprog's function prototype has `arg:ctx`\n * argument\
+    \ tags, and, if necessary, substitute correct type to match what BPF\n * verifier\
+    \ would expect, taking into account specific program type. This\n * allows to\
+    \ support __arg_ctx tag transparently on old kernels that don't yet\n * have a\
+    \ native support for it in the verifier, making user's life much\n * easier.\n\
+    \ */\nstatic int bpf_program_fixup_func_info(struct bpf_object *obj, struct bpf_program\
+    \ *prog)\n{\n\tconst char *ctx_name = NULL, *ctx_tag = \"arg:ctx\";\n\tstruct\
+    \ bpf_func_info_min *func_rec;\n\tstruct btf_type *fn_t, *fn_proto_t;\n\tstruct\
+    \ btf *btf = obj->btf;\n\tconst struct btf_type *t;\n\tstruct btf_param *p;\n\t\
+    int ptr_id = 0, struct_id, tag_id, orig_fn_id;\n\tint i, n, arg_idx, arg_cnt,\
+    \ err, rec_idx;\n\tint *orig_ids;\n\n\t/* no .BTF.ext, no problem */\n\tif (!obj->btf_ext\
+    \ || !prog->func_info)\n\t\treturn 0;\n\n\t/* some BPF program types just don't\
+    \ have named context structs, so\n\t * this fallback mechanism doesn't work for\
+    \ them\n\t */\n\tfor (i = 0; i < ARRAY_SIZE(global_ctx_map); i++) {\n\t\tif (global_ctx_map[i].prog_type\
+    \ != prog->type)\n\t\t\tcontinue;\n\t\tctx_name = global_ctx_map[i].ctx_name;\n\
+    \t\tbreak;\n\t}\n\tif (!ctx_name)\n\t\treturn 0;"
+  fixed_code: "// FILE: src/libbpf.c\n// CONTEXT: static int clone_func_btf_info(struct\
+    \ btf *btf, int orig_fn_id, struct bpf_progr\n\t * with original name_off\n\t\
+    \ */\n\tfn_id = btf__add_func(btf, prog->name, linkage, fn_proto_id);\n\tif (fn_id\
+    \ < 0)\n\t\treturn -EINVAL;\n\n\tfn_t = btf_type_by_id(btf, fn_id);\n\tfn_t->name_off\
+    \ = fn_name_off; /* reuse original string */\n\n\treturn fn_id;\n}\n\nstatic int\
+    \ probe_kern_arg_ctx_tag(void)\n{\n\t/* To minimize merge conflicts with BPF token\
+    \ series that refactors\n\t * feature detection code a lot, we don't integrate\n\
+    \t * probe_kern_arg_ctx_tag() into kernel_supports() feature-detection\n\t * framework\
+    \ yet, doing our own caching internally.\n\t * This will be cleaned up a bit later\
+    \ when bpf/bpf-next trees settle.\n\t */\n\tstatic int cached_result = -1;\n\t\
+    static const char strs[] = \"\\0a\\0b\\0arg:ctx\\0\";\n\tconst __u32 types[] =\
+    \ {\n\t\t/* [1] INT */\n\t\tBTF_TYPE_INT_ENC(1 /* \"a\" */, BTF_INT_SIGNED, 0,\
+    \ 32, 4),\n\t\t/* [2] PTR -> VOID */\n\t\tBTF_TYPE_ENC(0, BTF_INFO_ENC(BTF_KIND_PTR,\
+    \ 0, 0), 0),\n\t\t/* [3] FUNC_PROTO `int(void *a)` */\n\t\tBTF_TYPE_ENC(0, BTF_INFO_ENC(BTF_KIND_FUNC_PROTO,\
+    \ 0, 1), 1),\n\t\tBTF_PARAM_ENC(1 /* \"a\" */, 2),\n\t\t/* [4] FUNC 'a' -> FUNC_PROTO\
+    \ (main prog) */\n\t\tBTF_TYPE_ENC(1 /* \"a\" */, BTF_INFO_ENC(BTF_KIND_FUNC,\
+    \ 0, BTF_FUNC_GLOBAL), 3),\n\t\t/* [5] FUNC_PROTO `int(void *b __arg_ctx)` */\n\
+    \t\tBTF_TYPE_ENC(0, BTF_INFO_ENC(BTF_KIND_FUNC_PROTO, 0, 1), 1),\n\t\tBTF_PARAM_ENC(3\
+    \ /* \"b\" */, 2),\n\t\t/* [6] FUNC 'b' -> FUNC_PROTO (subprog) */\n\t\tBTF_TYPE_ENC(3\
+    \ /* \"b\" */, BTF_INFO_ENC(BTF_KIND_FUNC, 0, BTF_FUNC_GLOBAL), 5),\n\t\t/* [7]\
+    \ DECL_TAG 'arg:ctx' -> func 'b' arg 'b' */\n\t\tBTF_TYPE_DECL_TAG_ENC(5 /* \"\
+    arg:ctx\" */, 6, 0),\n\t};\n\tconst struct bpf_insn insns[] = {\n\t\t/* main prog\
+    \ */\n\t\tBPF_CALL_REL(+1),\n\t\tBPF_EXIT_INSN(),\n\t\t/* global subprog */\n\t\
+    \tBPF_EMIT_CALL(BPF_FUNC_get_func_ip), /* needs PTR_TO_CTX */\n\t\tBPF_EXIT_INSN(),\n\
+    \t};\n\tconst struct bpf_func_info_min func_infos[] = {\n\t\t{ 0, 4 }, /* main\
+    \ prog -> FUNC 'a' */\n\t\t{ 2, 6 }, /* subprog -> FUNC 'b' */\n\t};\n\tLIBBPF_OPTS(bpf_prog_load_opts,\
+    \ opts);\n\tint prog_fd, btf_fd, insn_cnt = ARRAY_SIZE(insns);\n\n\tif (cached_result\
+    \ >= 0)\n\t\treturn cached_result;\n\n\tbtf_fd = libbpf__load_raw_btf((char *)types,\
+    \ sizeof(types), strs, sizeof(strs));\n\tif (btf_fd < 0)\n\t\treturn 0;\n\n\t\
+    opts.prog_btf_fd = btf_fd;\n\topts.func_info = &func_infos;\n\topts.func_info_cnt\
+    \ = ARRAY_SIZE(func_infos);\n\topts.func_info_rec_size = sizeof(func_infos[0]);\n\
+    \n\tprog_fd = bpf_prog_load(BPF_PROG_TYPE_KPROBE, \"det_arg_ctx\",\n\t\t\t\t\"\
+    GPL\", insns, insn_cnt, &opts);\n\tclose(btf_fd);\n\n\tcached_result = probe_fd(prog_fd);\n\
+    \treturn cached_result;\n}\n\n/* Check if main program or global subprog's function\
+    \ prototype has `arg:ctx`\n * argument tags, and, if necessary, substitute correct\
+    \ type to match what BPF\n * verifier would expect, taking into account specific\
+    \ program type. This\n * allows to support __arg_ctx tag transparently on old\
+    \ kernels that don't yet\n * have a native support for it in the verifier, making\
+    \ user's life much\n * easier.\n */\nstatic int bpf_program_fixup_func_info(struct\
+    \ bpf_object *obj, struct bpf_program *prog)\n{\n\tconst char *ctx_name = NULL,\
+    \ *ctx_tag = \"arg:ctx\";\n\tstruct bpf_func_info_min *func_rec;\n\tstruct btf_type\
+    \ *fn_t, *fn_proto_t;\n\tstruct btf *btf = obj->btf;\n\tconst struct btf_type\
+    \ *t;\n\tstruct btf_param *p;\n\tint ptr_id = 0, struct_id, tag_id, orig_fn_id;\n\
+    \tint i, n, arg_idx, arg_cnt, err, rec_idx;\n\tint *orig_ids;\n\n\t/* no .BTF.ext,\
+    \ no problem */\n\tif (!obj->btf_ext || !prog->func_info)\n\t\treturn 0;\n\n\t\
+    /* don't do any fix ups if kernel natively supports __arg_ctx */\n\tif (probe_kern_arg_ctx_tag()\
+    \ > 0)\n\t\treturn 0;\n\n\t/* some BPF program types just don't have named context\
+    \ structs, so\n\t * this fallback mechanism doesn't work for them\n\t */\n\tfor\
+    \ (i = 0; i < ARRAY_SIZE(global_ctx_map); i++) {\n\t\tif (global_ctx_map[i].prog_type\
+    \ != prog->type)\n\t\t\tcontinue;\n\t\tctx_name = global_ctx_map[i].ctx_name;\n\
+    \t\tbreak;\n\t}\n\tif (!ctx_name)\n\t\treturn 0;"
+  diff_summary: |-
+    src/libbpf.c:
+    - Adjusted types or casts so the verifier sees the intended pointer or value kind.
+    - Affected context: static int clone_func_btf_info(struct btf *btf, int orig_fn_id, struct bpf_progr.
+    - Commit subject: libbpf: feature-detect arg:ctx tag support in kernel.

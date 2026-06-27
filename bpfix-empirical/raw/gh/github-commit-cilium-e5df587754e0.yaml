@@ -1,0 +1,263 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-e5df587754e0
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/e5df587754e0249be705a68d4124c44b7ae34d1c
+  title: 'bpf/nat: introduce snat_v*_can_skip() nat and rev_nat'
+  repository: https://github.com/cilium/cilium
+  commit: e5df587754e0249be705a68d4124c44b7ae34d1c
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-e5df587754e0.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: environment_required
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Splits SNAT skip predicates for NAT and RevNAT paths; any verifier benefit
+    is tied to Cilium's full NAT/NodePort datapath and no isolated failing operation
+    is present.
+raw:
+  case_id: github-commit-cilium-e5df587754e0
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: e5df587754e0249be705a68d4124c44b7ae34d1c
+  commit_message: 'bpf/nat: introduce snat_v*_can_skip() nat and rev_nat'
+  commit_date: '2022-08-09'
+  fix_type: inline_hint
+  buggy_code: "// FILE: bpf/lib/nat.h\n// CONTEXT: static __always_inline int snat_v4_rewrite_ingress(struct\
+    \ __ctx_buff *ctx,\n\tif (l3_csum_replace(ctx, ETH_HLEN + offsetof(struct iphdr,\
+    \ check),\n\t\t\t    0, sum, 0) < 0)\n\t\treturn DROP_CSUM_L3;\n\tif (tuple->nexthdr\
+    \ == IPPROTO_ICMP)\n\t\tsum = sum_l4;\n\tif (csum.offset &&\n\t    csum_l4_replace(ctx,\
+    \ off, &csum, 0, sum, flags) < 0)\n\t\treturn DROP_CSUM_L4;\n\treturn 0;\n}\n\n\
+    static __always_inline bool\nsnat_v4_can_skip(const struct ipv4_nat_target *target,\n\
+    \t\t const struct ipv4_ct_tuple *tuple, enum nat_dir dir,\n\t\t bool from_endpoint,\
+    \ bool icmp_echoreply)\n{\n\t__u16 dport = bpf_ntohs(tuple->dport), sport = bpf_ntohs(tuple->sport);\n\
+    \n\tif (dir == NAT_DIR_EGRESS &&\n\t    ((!from_endpoint && !target->src_from_world\
+    \ && sport < NAT_MIN_EGRESS) ||\n\t     icmp_echoreply))\n\t\treturn true;\n\t\
+    if (dir == NAT_DIR_INGRESS && (dport < target->min_port || dport > target->max_port))\n\
+    \t\treturn true;\n\n\treturn false;\n}\n\nstatic __always_inline __maybe_unused\
+    \ int snat_v4_create_dsr(struct __ctx_buff *ctx,\n\t\t\t\t\t\t\t     __be32 to_saddr,\n\
+    \t\t\t\t\t\t\t     __be16 to_sport)\n{\n\tvoid *data, *data_end;\n\tstruct ipv4_ct_tuple\
+    \ tuple = {};\n\tstruct ipv4_nat_entry state = {};\n\tstruct iphdr *ip4;\n\tstruct\
+    \ {\n\t\t__be16 sport;\n\n// CONTEXT: snat_v4_nat(struct __ctx_buff *ctx, const\
+    \ struct ipv4_nat_target *target,\n\t\t\ttuple.dport = 0;\n\t\t\ttuple.sport =\
+    \ icmphdr.un.echo.id;\n\t\t} else {\n\t\t\ttuple.dport = icmphdr.un.echo.id;\n\
+    \t\t\ttuple.sport = 0;\n\t\t\ticmp_echoreply = true;\n\t\t}\n\t\tbreak;\n\tdefault:\n\
+    \t\treturn NAT_PUNT_TO_STACK;\n\t};\n\n\tif (snat_v4_can_skip(target, &tuple,\
+    \ NAT_DIR_EGRESS, from_endpoint, icmp_echoreply))\n\t\treturn NAT_PUNT_TO_STACK;\n\
+    \tret = snat_v4_handle_mapping(ctx, &tuple, &state, &tmp, NAT_DIR_EGRESS, off,\
+    \ target);\n\tif (ret > 0)\n\t\treturn CTX_ACT_OK;\n\tif (ret < 0)\n\t\treturn\
+    \ ret;\n\n\treturn snat_v4_rewrite_egress(ctx, &tuple, state, off, ipv4_has_l4_header(ip4));\n\
+    }\n\nstatic __always_inline __maybe_unused int\nsnat_v4_rev_nat(struct __ctx_buff\
+    \ *ctx, const struct ipv4_nat_target *target,\n\t\tbool from_endpoint)\n{\n\t\
+    struct icmphdr icmphdr __align_stack_8;\n\tstruct ipv4_nat_entry *state, tmp;\n\
+    \tstruct ipv4_ct_tuple tuple = {};\n\tvoid *data, *data_end;\n\tstruct iphdr *ip4;\n\
+    \tstruct {\n\t\t__be16 sport;\n\t\t__be16 dport;\n\t} l4hdr;\n\tbool icmp_echoreply\
+    \ = false;\n\t__u64 off;\n\tint ret;\n\n\tbuild_bug_on(sizeof(struct ipv4_nat_entry)\
+    \ > 64);\n\n\tif (!revalidate_data(ctx, &data, &data_end, &ip4))\n\t\treturn DROP_INVALID;\n\
+    \n\ttuple.nexthdr = ip4->protocol;\n\ttuple.daddr = ip4->daddr;\n\ttuple.saddr\
+    \ = ip4->saddr;\n\ttuple.flags = NAT_DIR_INGRESS;\n\n// CONTEXT: snat_v4_rev_nat(struct\
+    \ __ctx_buff *ctx, const struct ipv4_nat_target *target,\n\tcase IPPROTO_ICMP:\n\
+    \t\tif (ctx_load_bytes(ctx, off, &icmphdr, sizeof(icmphdr)) < 0)\n\t\t\treturn\
+    \ DROP_INVALID;\n\t\tif (icmphdr.type != ICMP_ECHO &&\n\t\t    icmphdr.type !=\
+    \ ICMP_ECHOREPLY)\n\t\t\treturn DROP_NAT_UNSUPP_PROTO;\n\t\tif (icmphdr.type ==\
+    \ ICMP_ECHO) {\n\t\t\ttuple.dport = 0;\n\t\t\ttuple.sport = icmphdr.un.echo.id;\n\
+    \t\t} else {\n\t\t\ttuple.dport = icmphdr.un.echo.id;\n\t\t\ttuple.sport = 0;\n\
+    \t\t\ticmp_echoreply = true;\n\t\t}\n\t\tbreak;\n\tdefault:\n\t\treturn NAT_PUNT_TO_STACK;\n\
+    \t};\n\n\tif (snat_v4_can_skip(target, &tuple, NAT_DIR_INGRESS, from_endpoint,\
+    \ icmp_echoreply))\n\t\treturn NAT_PUNT_TO_STACK;\n\tret = snat_v4_handle_mapping(ctx,\
+    \ &tuple, &state, &tmp, NAT_DIR_INGRESS, off, target);\n\tif (ret > 0)\n\t\treturn\
+    \ CTX_ACT_OK;\n\tif (ret < 0)\n\t\treturn ret;\n\n\treturn snat_v4_rewrite_ingress(ctx,\
+    \ &tuple, state, off);\n}\n#else\nstatic __always_inline __maybe_unused\nint snat_v4_nat(struct\
+    \ __ctx_buff *ctx __maybe_unused,\n\t\tconst struct ipv4_nat_target *target __maybe_unused,\n\
+    \t\tbool from_endpoint __maybe_unused)\n{\n\treturn CTX_ACT_OK;\n}\n\nstatic __always_inline\
+    \ __maybe_unused\nint snat_v4_rev_nat(struct __ctx_buff *ctx __maybe_unused,\n\
+    \t\t    const struct ipv4_nat_target *target __maybe_unused,\n\t\t    bool from_endpoint\
+    \ __maybe_unused)\n{\n\treturn CTX_ACT_OK;\n}\n\nstatic __always_inline __maybe_unused\n\
+    void snat_v4_delete_tuples(struct ipv4_ct_tuple *tuple __maybe_unused)\n{\n}\n\
+    #endif\n\nstruct ipv6_nat_entry {\n\tstruct nat_entry common;\n\n// CONTEXT: static\
+    \ __always_inline int snat_v6_rewrite_ingress(struct __ctx_buff *ctx,\n\t\t}}\n\
+    \t}\n\tif (ctx_store_bytes(ctx, ETH_HLEN + offsetof(struct ipv6hdr, daddr),\n\t\
+    \t\t    &state->to_daddr, 16, 0) < 0)\n\t\treturn DROP_WRITE_ERROR;\n\tif (csum.offset\
+    \ &&\n\t    csum_l4_replace(ctx, off, &csum, 0, sum, BPF_F_PSEUDO_HDR) < 0)\n\t\
+    \treturn DROP_CSUM_L4;\n\treturn 0;\n}\n\nstatic __always_inline bool\nsnat_v6_can_skip(const\
+    \ struct ipv6_nat_target *target,\n\t\t const struct ipv6_ct_tuple *tuple, enum\
+    \ nat_dir dir,\n\t\t bool icmp_echoreply)\n{\n\t__u16 dport = bpf_ntohs(tuple->dport),\
+    \ sport = bpf_ntohs(tuple->sport);\n\n\tif (dir == NAT_DIR_EGRESS &&\n\t    ((!target->src_from_world\
+    \ && sport < NAT_MIN_EGRESS) ||\n\t     icmp_echoreply))\n\t\treturn true;\n\t\
+    if (dir == NAT_DIR_INGRESS && (dport < target->min_port || dport > target->max_port))\n\
+    \t\treturn true;\n\treturn false;\n}\n\nstatic __always_inline __maybe_unused\
+    \ int snat_v6_create_dsr(struct __ctx_buff *ctx,\n\t\t\t\t\t\t\t     const union\
+    \ v6addr *to_saddr,\n\t\t\t\t\t\t\t     __be16 to_sport)\n{\n\tvoid *data, *data_end;\n\
+    \tstruct ipv6_ct_tuple tuple = {};\n\tstruct ipv6_nat_entry state = {};\n\tstruct\
+    \ ipv6hdr *ip6;\n\tstruct {\n\t\t__be16 sport;\n\n// CONTEXT: snat_v6_nat(struct\
+    \ __ctx_buff *ctx, const struct ipv6_nat_target *target)\n\t\t\ttuple.dport =\
+    \ 0;\n\t\t\ttuple.sport = icmp6hdr.icmp6_dataun.u_echo.identifier;\n\t\t} else\
+    \ {\n\t\t\ttuple.dport = icmp6hdr.icmp6_dataun.u_echo.identifier;\n\t\t\ttuple.sport\
+    \ = 0;\n\t\t\ticmp_echoreply = true;\n\t\t}\n\t\tbreak;\n\tdefault:\n\t\treturn\
+    \ NAT_PUNT_TO_STACK;\n\t};\n\n\tif (snat_v6_can_skip(target, &tuple, NAT_DIR_EGRESS,\
+    \ icmp_echoreply))\n\t\treturn NAT_PUNT_TO_STACK;\n\tret = snat_v6_handle_mapping(ctx,\
+    \ &tuple, &state, &tmp, NAT_DIR_EGRESS, off, target);\n\tif (ret > 0)\n\t\treturn\
+    \ CTX_ACT_OK;\n\tif (ret < 0)\n\t\treturn ret;\n\n\treturn snat_v6_rewrite_egress(ctx,\
+    \ &tuple, state, off);\n}\n\nstatic __always_inline __maybe_unused int\nsnat_v6_rev_nat(struct\
+    \ __ctx_buff *ctx, const struct ipv6_nat_target *target)\n\n// CONTEXT: snat_v6_rev_nat(struct\
+    \ __ctx_buff *ctx, const struct ipv6_nat_target *target)\n\tstruct icmp6hdr icmp6hdr\
+    \ __align_stack_8;\n\tstruct ipv6_nat_entry *state, tmp;\n\tstruct ipv6_ct_tuple\
+    \ tuple = {};\n\tvoid *data, *data_end;\n\tstruct ipv6hdr *ip6;\n\tint ret, hdrlen;\n\
+    \tstruct {\n\t\t__be16 sport;\n\t\t__be16 dport;\n\t} l4hdr;\n\t__u8 nexthdr;\n\
+    \t__u32 off;\n\tbool icmp_echoreply = false;\n\n\tbuild_bug_on(sizeof(struct ipv6_nat_entry)\
+    \ > 64);\n\n\tif (!revalidate_data(ctx, &data, &data_end, &ip6))\n\t\treturn DROP_INVALID;\n\
+    \n\tnexthdr = ip6->nexthdr;\n\thdrlen = ipv6_hdrlen(ctx, &nexthdr);\n\tif (hdrlen\
+    \ < 0)\n\t\treturn hdrlen;\n\n\ttuple.nexthdr = nexthdr;\n\n// CONTEXT: snat_v6_rev_nat(struct\
+    \ __ctx_buff *ctx, const struct ipv6_nat_target *target)\n\t\tif (icmp6hdr.icmp6_type\
+    \ == ICMP6_NS_MSG_TYPE ||\n\t\t    icmp6hdr.icmp6_type == ICMP6_NA_MSG_TYPE)\n\
+    \t\t\treturn CTX_ACT_OK;\n\t\tif (icmp6hdr.icmp6_type != ICMPV6_ECHO_REQUEST &&\n\
+    \t\t    icmp6hdr.icmp6_type != ICMPV6_ECHO_REPLY)\n\t\t\treturn DROP_NAT_UNSUPP_PROTO;\n\
+    \t\tif (icmp6hdr.icmp6_type == ICMPV6_ECHO_REQUEST) {\n\t\t\ttuple.dport = 0;\n\
+    \t\t\ttuple.sport = icmp6hdr.icmp6_dataun.u_echo.identifier;\n\t\t} else {\n\t\
+    \t\ttuple.dport = icmp6hdr.icmp6_dataun.u_echo.identifier;\n\t\t\ttuple.sport\
+    \ = 0;\n\t\t\ticmp_echoreply = true;\n\t\t}\n\t\tbreak;\n\tdefault:\n\t\treturn\
+    \ NAT_PUNT_TO_STACK;\n\t};\n\n\tif (snat_v6_can_skip(target, &tuple, NAT_DIR_INGRESS,\
+    \ icmp_echoreply))\n\t\treturn NAT_PUNT_TO_STACK;\n\tret = snat_v6_handle_mapping(ctx,\
+    \ &tuple, &state, &tmp, NAT_DIR_INGRESS, off, target);\n\tif (ret > 0)\n\t\treturn\
+    \ CTX_ACT_OK;\n\tif (ret < 0)\n\t\treturn ret;\n\n\treturn snat_v6_rewrite_ingress(ctx,\
+    \ &tuple, state, off);\n}\n#else\nstatic __always_inline __maybe_unused\nint snat_v6_nat(struct\
+    \ __ctx_buff *ctx __maybe_unused,\n\n// FILE: bpf/lib/nodeport.h\n// CONTEXT:\
+    \ int tail_nodeport_nat_ingress_ipv4(struct __ctx_buff *ctx)\n\t\t.max_port =\
+    \ NODEPORT_PORT_MAX_NAT,\n\t\t.src_from_world = true,\n\t};\n\tint ret;\n\n\t\
+    /* Unfortunately, the bpf_fib_lookup() is not able to set src IP addr.\n\t * So\
+    \ we need to assume that the direct routing device is going to be\n\t * used to\
+    \ fwd the NodePort request, thus SNAT-ing to its IP addr.\n\t * This will change\
+    \ once we have resolved GH#17158.\n\t */\n\ttarget.addr = IPV4_DIRECT_ROUTING;\n\
+    \n\tret = snat_v4_rev_nat(ctx, &target, false);\n\tif (IS_ERR(ret)) {\n\t\t/*\
+    \ In case of no mapping, recircle back to main path. SNAT is very\n\t\t * expensive\
+    \ in terms of instructions (since we don't have BPF to\n\t\t * BPF calls as we\
+    \ use tail calls) and complexity, hence this is\n\t\t * done inside a tail call\
+    \ here.\n\t\t */\n\t\tbpf_skip_nodeport_set(ctx);\n\t\tep_tail_call(ctx, CILIUM_CALL_IPV4_FROM_NETDEV);\n\
+    \t\tret = DROP_MISSED_TAIL_CALL;\n\t\tgoto drop_err;\n\t}"
+  fixed_code: "// FILE: bpf/lib/nat.h\n// CONTEXT: static __always_inline int snat_v4_rewrite_ingress(struct\
+    \ __ctx_buff *ctx,\n\tif (l3_csum_replace(ctx, ETH_HLEN + offsetof(struct iphdr,\
+    \ check),\n\t\t\t    0, sum, 0) < 0)\n\t\treturn DROP_CSUM_L3;\n\tif (tuple->nexthdr\
+    \ == IPPROTO_ICMP)\n\t\tsum = sum_l4;\n\tif (csum.offset &&\n\t    csum_l4_replace(ctx,\
+    \ off, &csum, 0, sum, flags) < 0)\n\t\treturn DROP_CSUM_L4;\n\treturn 0;\n}\n\n\
+    static __always_inline bool\nsnat_v4_nat_can_skip(const struct ipv4_nat_target\
+    \ *target, const struct ipv4_ct_tuple *tuple,\n\t\t     bool from_endpoint, bool\
+    \ icmp_echoreply)\n{\n\t__u16 sport = bpf_ntohs(tuple->sport);\n\n\treturn (!from_endpoint\
+    \ && !target->src_from_world && sport < NAT_MIN_EGRESS) ||\n\t\ticmp_echoreply;\n\
+    }\n\nstatic __always_inline bool\nsnat_v4_rev_nat_can_skip(const struct ipv4_nat_target\
+    \ *target, const struct ipv4_ct_tuple *tuple)\n{\n\t__u16 dport = bpf_ntohs(tuple->dport);\n\
+    \n\treturn dport < target->min_port || dport > target->max_port;\n}\n\nstatic\
+    \ __always_inline __maybe_unused int snat_v4_create_dsr(struct __ctx_buff *ctx,\n\
+    \t\t\t\t\t\t\t     __be32 to_saddr,\n\t\t\t\t\t\t\t     __be16 to_sport)\n{\n\t\
+    void *data, *data_end;\n\tstruct ipv4_ct_tuple tuple = {};\n\tstruct ipv4_nat_entry\
+    \ state = {};\n\tstruct iphdr *ip4;\n\tstruct {\n\t\t__be16 sport;\n\n// CONTEXT:\
+    \ snat_v4_nat(struct __ctx_buff *ctx, const struct ipv4_nat_target *target,\n\t\
+    \t\ttuple.dport = 0;\n\t\t\ttuple.sport = icmphdr.un.echo.id;\n\t\t} else {\n\t\
+    \t\ttuple.dport = icmphdr.un.echo.id;\n\t\t\ttuple.sport = 0;\n\t\t\ticmp_echoreply\
+    \ = true;\n\t\t}\n\t\tbreak;\n\tdefault:\n\t\treturn NAT_PUNT_TO_STACK;\n\t};\n\
+    \n\tif (snat_v4_nat_can_skip(target, &tuple, from_endpoint, icmp_echoreply))\n\
+    \t\treturn NAT_PUNT_TO_STACK;\n\tret = snat_v4_handle_mapping(ctx, &tuple, &state,\
+    \ &tmp, NAT_DIR_EGRESS, off, target);\n\tif (ret > 0)\n\t\treturn CTX_ACT_OK;\n\
+    \tif (ret < 0)\n\t\treturn ret;\n\n\treturn snat_v4_rewrite_egress(ctx, &tuple,\
+    \ state, off, ipv4_has_l4_header(ip4));\n}\n\nstatic __always_inline __maybe_unused\
+    \ int\nsnat_v4_rev_nat(struct __ctx_buff *ctx, const struct ipv4_nat_target *target)\n\
+    {\n\tstruct icmphdr icmphdr __align_stack_8;\n\tstruct ipv4_nat_entry *state,\
+    \ tmp;\n\tstruct ipv4_ct_tuple tuple = {};\n\tvoid *data, *data_end;\n\tstruct\
+    \ iphdr *ip4;\n\tstruct {\n\t\t__be16 sport;\n\t\t__be16 dport;\n\t} l4hdr;\n\t\
+    __u64 off;\n\tint ret;\n\n\tbuild_bug_on(sizeof(struct ipv4_nat_entry) > 64);\n\
+    \n\tif (!revalidate_data(ctx, &data, &data_end, &ip4))\n\t\treturn DROP_INVALID;\n\
+    \n\ttuple.nexthdr = ip4->protocol;\n\ttuple.daddr = ip4->daddr;\n\ttuple.saddr\
+    \ = ip4->saddr;\n\ttuple.flags = NAT_DIR_INGRESS;\n\n// CONTEXT: snat_v4_rev_nat(struct\
+    \ __ctx_buff *ctx, const struct ipv4_nat_target *target,\n\tcase IPPROTO_ICMP:\n\
+    \t\tif (ctx_load_bytes(ctx, off, &icmphdr, sizeof(icmphdr)) < 0)\n\t\t\treturn\
+    \ DROP_INVALID;\n\t\tif (icmphdr.type != ICMP_ECHO &&\n\t\t    icmphdr.type !=\
+    \ ICMP_ECHOREPLY)\n\t\t\treturn DROP_NAT_UNSUPP_PROTO;\n\t\tif (icmphdr.type ==\
+    \ ICMP_ECHO) {\n\t\t\ttuple.dport = 0;\n\t\t\ttuple.sport = icmphdr.un.echo.id;\n\
+    \t\t} else {\n\t\t\ttuple.dport = icmphdr.un.echo.id;\n\t\t\ttuple.sport = 0;\n\
+    \t\t}\n\t\tbreak;\n\tdefault:\n\t\treturn NAT_PUNT_TO_STACK;\n\t};\n\n\tif (snat_v4_rev_nat_can_skip(target,\
+    \ &tuple))\n\t\treturn NAT_PUNT_TO_STACK;\n\tret = snat_v4_handle_mapping(ctx,\
+    \ &tuple, &state, &tmp, NAT_DIR_INGRESS, off, target);\n\tif (ret > 0)\n\t\treturn\
+    \ CTX_ACT_OK;\n\tif (ret < 0)\n\t\treturn ret;\n\n\treturn snat_v4_rewrite_ingress(ctx,\
+    \ &tuple, state, off);\n}\n#else\nstatic __always_inline __maybe_unused\nint snat_v4_nat(struct\
+    \ __ctx_buff *ctx __maybe_unused,\n\t\tconst struct ipv4_nat_target *target __maybe_unused,\n\
+    \t\tbool from_endpoint __maybe_unused)\n{\n\treturn CTX_ACT_OK;\n}\n\nstatic __always_inline\
+    \ __maybe_unused\nint snat_v4_rev_nat(struct __ctx_buff *ctx __maybe_unused,\n\
+    \t\t    const struct ipv4_nat_target *target __maybe_unused)\n{\n\treturn CTX_ACT_OK;\n\
+    }\n\nstatic __always_inline __maybe_unused\nvoid snat_v4_delete_tuples(struct\
+    \ ipv4_ct_tuple *tuple __maybe_unused)\n{\n}\n#endif\n\nstruct ipv6_nat_entry\
+    \ {\n\tstruct nat_entry common;\n\n// CONTEXT: static __always_inline int snat_v6_rewrite_ingress(struct\
+    \ __ctx_buff *ctx,\n\t\t}}\n\t}\n\tif (ctx_store_bytes(ctx, ETH_HLEN + offsetof(struct\
+    \ ipv6hdr, daddr),\n\t\t\t    &state->to_daddr, 16, 0) < 0)\n\t\treturn DROP_WRITE_ERROR;\n\
+    \tif (csum.offset &&\n\t    csum_l4_replace(ctx, off, &csum, 0, sum, BPF_F_PSEUDO_HDR)\
+    \ < 0)\n\t\treturn DROP_CSUM_L4;\n\treturn 0;\n}\n\nstatic __always_inline bool\n\
+    snat_v6_nat_can_skip(const struct ipv6_nat_target *target, const struct ipv6_ct_tuple\
+    \ *tuple,\n\t\t     bool icmp_echoreply)\n{\n\t__u16 sport = bpf_ntohs(tuple->sport);\n\
+    \n\treturn (!target->src_from_world && sport < NAT_MIN_EGRESS) || icmp_echoreply;\n\
+    }\n\nstatic __always_inline bool\nsnat_v6_rev_nat_can_skip(const struct ipv6_nat_target\
+    \ *target, const struct ipv6_ct_tuple *tuple)\n{\n\t__u16 dport = bpf_ntohs(tuple->dport);\n\
+    \n\treturn dport < target->min_port || dport > target->max_port;\n}\n\nstatic\
+    \ __always_inline __maybe_unused int snat_v6_create_dsr(struct __ctx_buff *ctx,\n\
+    \t\t\t\t\t\t\t     const union v6addr *to_saddr,\n\t\t\t\t\t\t\t     __be16 to_sport)\n\
+    {\n\tvoid *data, *data_end;\n\tstruct ipv6_ct_tuple tuple = {};\n\tstruct ipv6_nat_entry\
+    \ state = {};\n\tstruct ipv6hdr *ip6;\n\tstruct {\n\t\t__be16 sport;\n\n// CONTEXT:\
+    \ snat_v6_nat(struct __ctx_buff *ctx, const struct ipv6_nat_target *target)\n\t\
+    \t\ttuple.dport = 0;\n\t\t\ttuple.sport = icmp6hdr.icmp6_dataun.u_echo.identifier;\n\
+    \t\t} else {\n\t\t\ttuple.dport = icmp6hdr.icmp6_dataun.u_echo.identifier;\n\t\
+    \t\ttuple.sport = 0;\n\t\t\ticmp_echoreply = true;\n\t\t}\n\t\tbreak;\n\tdefault:\n\
+    \t\treturn NAT_PUNT_TO_STACK;\n\t};\n\n\tif (snat_v6_nat_can_skip(target, &tuple,\
+    \ icmp_echoreply))\n\t\treturn NAT_PUNT_TO_STACK;\n\tret = snat_v6_handle_mapping(ctx,\
+    \ &tuple, &state, &tmp, NAT_DIR_EGRESS, off, target);\n\tif (ret > 0)\n\t\treturn\
+    \ CTX_ACT_OK;\n\tif (ret < 0)\n\t\treturn ret;\n\n\treturn snat_v6_rewrite_egress(ctx,\
+    \ &tuple, state, off);\n}\n\nstatic __always_inline __maybe_unused int\nsnat_v6_rev_nat(struct\
+    \ __ctx_buff *ctx, const struct ipv6_nat_target *target)\n\n// CONTEXT: snat_v6_rev_nat(struct\
+    \ __ctx_buff *ctx, const struct ipv6_nat_target *target)\n\tstruct icmp6hdr icmp6hdr\
+    \ __align_stack_8;\n\tstruct ipv6_nat_entry *state, tmp;\n\tstruct ipv6_ct_tuple\
+    \ tuple = {};\n\tvoid *data, *data_end;\n\tstruct ipv6hdr *ip6;\n\tint ret, hdrlen;\n\
+    \tstruct {\n\t\t__be16 sport;\n\t\t__be16 dport;\n\t} l4hdr;\n\t__u8 nexthdr;\n\
+    \t__u32 off;\n\n\tbuild_bug_on(sizeof(struct ipv6_nat_entry) > 64);\n\n\tif (!revalidate_data(ctx,\
+    \ &data, &data_end, &ip6))\n\t\treturn DROP_INVALID;\n\n\tnexthdr = ip6->nexthdr;\n\
+    \thdrlen = ipv6_hdrlen(ctx, &nexthdr);\n\tif (hdrlen < 0)\n\t\treturn hdrlen;\n\
+    \n\ttuple.nexthdr = nexthdr;\n\n// CONTEXT: snat_v6_rev_nat(struct __ctx_buff\
+    \ *ctx, const struct ipv6_nat_target *target)\n\t\tif (icmp6hdr.icmp6_type ==\
+    \ ICMP6_NS_MSG_TYPE ||\n\t\t    icmp6hdr.icmp6_type == ICMP6_NA_MSG_TYPE)\n\t\t\
+    \treturn CTX_ACT_OK;\n\t\tif (icmp6hdr.icmp6_type != ICMPV6_ECHO_REQUEST &&\n\t\
+    \t    icmp6hdr.icmp6_type != ICMPV6_ECHO_REPLY)\n\t\t\treturn DROP_NAT_UNSUPP_PROTO;\n\
+    \t\tif (icmp6hdr.icmp6_type == ICMPV6_ECHO_REQUEST) {\n\t\t\ttuple.dport = 0;\n\
+    \t\t\ttuple.sport = icmp6hdr.icmp6_dataun.u_echo.identifier;\n\t\t} else {\n\t\
+    \t\ttuple.dport = icmp6hdr.icmp6_dataun.u_echo.identifier;\n\t\t\ttuple.sport\
+    \ = 0;\n\t\t}\n\t\tbreak;\n\tdefault:\n\t\treturn NAT_PUNT_TO_STACK;\n\t};\n\n\
+    \tif (snat_v6_rev_nat_can_skip(target, &tuple))\n\t\treturn NAT_PUNT_TO_STACK;\n\
+    \tret = snat_v6_handle_mapping(ctx, &tuple, &state, &tmp, NAT_DIR_INGRESS, off,\
+    \ target);\n\tif (ret > 0)\n\t\treturn CTX_ACT_OK;\n\tif (ret < 0)\n\t\treturn\
+    \ ret;\n\n\treturn snat_v6_rewrite_ingress(ctx, &tuple, state, off);\n}\n#else\n\
+    static __always_inline __maybe_unused\nint snat_v6_nat(struct __ctx_buff *ctx\
+    \ __maybe_unused,\n\n// FILE: bpf/lib/nodeport.h\n// CONTEXT: int tail_nodeport_nat_ingress_ipv4(struct\
+    \ __ctx_buff *ctx)\n\t\t.max_port = NODEPORT_PORT_MAX_NAT,\n\t\t.src_from_world\
+    \ = true,\n\t};\n\tint ret;\n\n\t/* Unfortunately, the bpf_fib_lookup() is not\
+    \ able to set src IP addr.\n\t * So we need to assume that the direct routing\
+    \ device is going to be\n\t * used to fwd the NodePort request, thus SNAT-ing\
+    \ to its IP addr.\n\t * This will change once we have resolved GH#17158.\n\t */\n\
+    \ttarget.addr = IPV4_DIRECT_ROUTING;\n\n\tret = snat_v4_rev_nat(ctx, &target);\n\
+    \tif (IS_ERR(ret)) {\n\t\t/* In case of no mapping, recircle back to main path.\
+    \ SNAT is very\n\t\t * expensive in terms of instructions (since we don't have\
+    \ BPF to\n\t\t * BPF calls as we use tail calls) and complexity, hence this is\n\
+    \t\t * done inside a tail call here.\n\t\t */\n\t\tbpf_skip_nodeport_set(ctx);\n\
+    \t\tep_tail_call(ctx, CILIUM_CALL_IPV4_FROM_NETDEV);\n\t\tret = DROP_MISSED_TAIL_CALL;\n\
+    \t\tgoto drop_err;\n\t}"
+  diff_summary: |-
+    bpf/lib/nat.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: static __always_inline int snat_v4_rewrite_ingress(struct __ctx_buff *ctx,, snat_v4_nat(struct __ctx_buff *ctx, const struct ipv4_nat_target *target,, snat_v4_rev_nat(struct __ctx_buff *ctx, const struct ipv4_nat_target *target,.
+    bpf/lib/nodeport.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: int tail_nodeport_nat_ingress_ipv4(struct __ctx_buff *ctx).
+    - Commit subject: bpf/nat: introduce snat_v*_can_skip() nat and rev_nat.

@@ -1,0 +1,304 @@
+schema_version: bpfix.raw_external/v1
+raw_id: stackoverflow-79348306
+source_kind: stackoverflow
+source:
+  url: https://stackoverflow.com/questions/79348306/bpf-verifier-rejects-the-use-of-path-pointer-as-argument-to-the-bpf-d-path-helpe
+  title: BPF verifier rejects the use of path pointer as argument to the bpf_d_path
+    helper function
+  repository: null
+  commit: null
+  collected_at: '2026-03-11T16:02:51+00:00'
+collector:
+  original_path: bpfix-empirical/raw/so/stackoverflow-79348306.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: true
+  verifier_log_block_count: 2
+  source_snippet_count: 0
+  has_buggy_code: false
+  has_fixed_code: false
+  has_fix_description: false
+reproduction:
+  status: replay_valid
+  case_id: stackoverflow-79348306
+  case_path: cases/stackoverflow-79348306
+  artifact_path: cases/stackoverflow-79348306
+  reason: admitted_to_bpfix_bench_cases
+raw:
+  case_id: stackoverflow-79348306
+  source: stackoverflow
+  collected_at: '2026-03-11T16:02:51+00:00'
+  question:
+    question_id: 79348306
+    title: BPF verifier rejects the use of path pointer as argument to the bpf_d_path
+      helper function
+    url: https://stackoverflow.com/questions/79348306/bpf-verifier-rejects-the-use-of-path-pointer-as-argument-to-the-bpf-d-path-helpe
+    tags:
+    - linux-kernel
+    - ebpf
+    - bpf
+    - linux-security-module
+    score: 2
+    answer_count: 1
+    is_answered: true
+  original_verifier_log:
+    blocks:
+    - |-
+      libbpf: prog 'test_prog': BPF program load failed: Permission denied
+      libbpf: prog 'test_prog': -- BEGIN PROG LOAD LOG --
+      0: R1=ctx() R10=fp0
+      ; int BPF_PROG(test_prog, struct file *file, int ret)
+      0: (b7) r2 = 152                      ; R2_w=152
+      ; int BPF_PROG(test_prog, struct file *file, int ret)
+      1: (79) r3 = *(u64 *)(r1 +0)
+      func 'bpf_lsm_file_open' arg0 has btf_id 601 type STRUCT 'file'
+      2: R1=ctx() R3_w=trusted_ptr_file()
+      2: (0f) r3 += r2                      ; R2_w=152 R3_w=trusted_ptr_file(off=152)
+      3: (bf) r6 = r10                      ; R6_w=fp0 R10=fp0
+      ;
+      4: (07) r6 += -16                     ; R6_w=fp-16
+      ; BPF_CORE_READ_INTO(&file_path, file, f_path);
+      5: (bf) r1 = r6                       ; R1_w=fp-16 R6_w=fp-16
+      6: (b7) r2 = 16                       ; R2_w=16
+      7: (85) call bpf_probe_read_kernel#113        ; R0_w=scalar() fp-8=mmmmmmmm fp-16=mmmmmmmm
+      8: (bf) r2 = r10                      ; R2_w=fp0 R10=fp0
+      ;
+      9: (07) r2 += -271                    ; R2_w=fp-271
+      ; long err = bpf_d_path(&file_path, path_buffer, sizeof(path_buffer));
+      10: (bf) r1 = r6                      ; R1_w=fp-16 R6_w=fp-16
+      11: (b7) r3 = 255                     ; R3_w=255
+      12: (85) call bpf_d_path#147
+      R1 type=fp expected=ptr_, trusted_ptr_, rcu_ptr_
+      processed 13 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0 mark_read 0
+      -- END PROG LOAD LOG --
+      libbpf: prog 'test_prog': failed to load: -13
+      libbpf: failed to load object 'lsm_file_open.o'
+      Failed to load BPF object into the kernel
+    - |-
+      12: (85) call bpf_d_path#147
+      R1 type=fp expected=ptr_, trusted_ptr_, rcu_ptr_
+    combined: |-
+      libbpf: prog 'test_prog': BPF program load failed: Permission denied
+      libbpf: prog 'test_prog': -- BEGIN PROG LOAD LOG --
+      0: R1=ctx() R10=fp0
+      ; int BPF_PROG(test_prog, struct file *file, int ret)
+      0: (b7) r2 = 152                      ; R2_w=152
+      ; int BPF_PROG(test_prog, struct file *file, int ret)
+      1: (79) r3 = *(u64 *)(r1 +0)
+      func 'bpf_lsm_file_open' arg0 has btf_id 601 type STRUCT 'file'
+      2: R1=ctx() R3_w=trusted_ptr_file()
+      2: (0f) r3 += r2                      ; R2_w=152 R3_w=trusted_ptr_file(off=152)
+      3: (bf) r6 = r10                      ; R6_w=fp0 R10=fp0
+      ;
+      4: (07) r6 += -16                     ; R6_w=fp-16
+      ; BPF_CORE_READ_INTO(&file_path, file, f_path);
+      5: (bf) r1 = r6                       ; R1_w=fp-16 R6_w=fp-16
+      6: (b7) r2 = 16                       ; R2_w=16
+      7: (85) call bpf_probe_read_kernel#113        ; R0_w=scalar() fp-8=mmmmmmmm fp-16=mmmmmmmm
+      8: (bf) r2 = r10                      ; R2_w=fp0 R10=fp0
+      ;
+      9: (07) r2 += -271                    ; R2_w=fp-271
+      ; long err = bpf_d_path(&file_path, path_buffer, sizeof(path_buffer));
+      10: (bf) r1 = r6                      ; R1_w=fp-16 R6_w=fp-16
+      11: (b7) r3 = 255                     ; R3_w=255
+      12: (85) call bpf_d_path#147
+      R1 type=fp expected=ptr_, trusted_ptr_, rcu_ptr_
+      processed 13 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0 mark_read 0
+      -- END PROG LOAD LOG --
+      libbpf: prog 'test_prog': failed to load: -13
+      libbpf: failed to load object 'lsm_file_open.o'
+      Failed to load BPF object into the kernel
+
+      12: (85) call bpf_d_path#147
+      R1 type=fp expected=ptr_, trusted_ptr_, rcu_ptr_
+  verifier_log:
+    blocks:
+    - |-
+      libbpf: prog 'test_prog': BPF program load failed: Permission denied
+      libbpf: prog 'test_prog': -- BEGIN PROG LOAD LOG --
+      0: R1=ctx() R10=fp0
+      ; int BPF_PROG(test_prog, struct file *file, int ret)
+      0: (b7) r2 = 152                      ; R2_w=152
+      ; int BPF_PROG(test_prog, struct file *file, int ret)
+      1: (79) r3 = *(u64 *)(r1 +0)
+      func 'bpf_lsm_file_open' arg0 has btf_id 601 type STRUCT 'file'
+      2: R1=ctx() R3_w=trusted_ptr_file()
+      2: (0f) r3 += r2                      ; R2_w=152 R3_w=trusted_ptr_file(off=152)
+      3: (bf) r6 = r10                      ; R6_w=fp0 R10=fp0
+      ;
+      4: (07) r6 += -16                     ; R6_w=fp-16
+      ; BPF_CORE_READ_INTO(&file_path, file, f_path);
+      5: (bf) r1 = r6                       ; R1_w=fp-16 R6_w=fp-16
+      6: (b7) r2 = 16                       ; R2_w=16
+      7: (85) call bpf_probe_read_kernel#113        ; R0_w=scalar() fp-8=mmmmmmmm fp-16=mmmmmmmm
+      8: (bf) r2 = r10                      ; R2_w=fp0 R10=fp0
+      ;
+      9: (07) r2 += -271                    ; R2_w=fp-271
+      ; long err = bpf_d_path(&file_path, path_buffer, sizeof(path_buffer));
+      10: (bf) r1 = r6                      ; R1_w=fp-16 R6_w=fp-16
+      11: (b7) r3 = 255                     ; R3_w=255
+      12: (85) call bpf_d_path#147
+      R1 type=fp expected=ptr_, trusted_ptr_, rcu_ptr_
+      processed 13 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0 mark_read 0
+      -- END PROG LOAD LOG --
+      libbpf: prog 'test_prog': failed to load: -13
+      libbpf: failed to load object 'lsm_file_open.o'
+      Failed to load BPF object into the kernel
+    - |-
+      12: (85) call bpf_d_path#147
+      R1 type=fp expected=ptr_, trusted_ptr_, rcu_ptr_
+    combined: |-
+      libbpf: loading object from <legacy-so-gh-reproducer>/stackoverflow-79348306/prog.o
+      libbpf: elf: section(3) lsm/file_open, size 120, link 0, flags 6, type=1
+      libbpf: sec 'lsm/file_open': found program 'test_prog' at insn offset 0 (0 bytes), code size 15 insns (120 bytes)
+      libbpf: elf: section(4) license, size 4, link 0, flags 3, type=1
+      libbpf: license of <legacy-so-gh-reproducer>/stackoverflow-79348306/prog.o is GPL
+      libbpf: elf: section(15) .BTF, size 2916, link 0, flags 0, type=1
+      libbpf: elf: section(17) .BTF.ext, size 204, link 0, flags 0, type=1
+      libbpf: elf: section(25) .symtab, size 336, link 1, flags 0, type=2
+      libbpf: looking for externs among 14 symbols...
+      libbpf: collected 0 externs total
+      libbpf: object 'prog': failed (-95) to create BPF token from '/sys/fs/bpf', skipping optional step...
+      libbpf: loaded kernel BTF from '/sys/kernel/btf/vmlinux'
+      libbpf: sec 'lsm/file_open': found 1 CO-RE relocations
+      libbpf: CO-RE relocating [6] struct file: found target candidate [779] struct file in [vmlinux]
+      libbpf: prog 'test_prog': relo #0: <byte_off> [6] struct file.f_path (0:10 @ offset 64)
+      libbpf: prog 'test_prog': relo #0: matching candidate #0 <byte_off> [779] struct file.f_path (0:10 @ offset 64)
+      libbpf: prog 'test_prog': relo #0: patched insn #0 (ALU/ALU64) imm 64 -> 64
+      libbpf: prog 'test_prog': BPF program load failed: -EACCES
+      libbpf: prog 'test_prog': -- BEGIN PROG LOAD LOG --
+      func#0 @0
+      Live regs before insn:
+        0: .1........ (b7) r2 = 64
+        1: .12....... (79) r3 = *(u64 *)(r1 +0)
+        2: ..23...... (0f) r3 += r2
+        3: ...3...... (bf) r6 = r10
+        4: ...3..6... (07) r6 += -16
+        5: ...3..6... (bf) r1 = r6
+        6: .1.3..6... (b7) r2 = 16
+        7: .123..6... (85) call bpf_probe_read_kernel#113
+        8: ......6... (bf) r2 = r10
+        9: ..2...6... (07) r2 += -271
+       10: ..2...6... (bf) r1 = r6
+       11: .12....... (b7) r3 = 255
+       12: .123...... (85) call bpf_d_path#147
+       13: .......... (b7) r0 = 0
+       14: 0......... (95) exit
+      0: R1=ctx() R10=fp0
+      ; int BPF_PROG(test_prog, struct file *file, int ret) @ prog.c:208
+      0: (b7) r2 = 64                       ; R2_w=64
+      1: (79) r3 = *(u64 *)(r1 +0)
+      func 'bpf_lsm_file_open' arg0 has btf_id 779 type STRUCT 'file'
+      2: R1=ctx() R3_w=trusted_ptr_file()
+      2: (0f) r3 += r2
+      mark_precise: frame0: last_idx 2 first_idx 0 subseq_idx -1
+      mark_precise: frame0: regs=r2 stack= before 1: (79) r3 = *(u64 *)(r1 +0)
+      mark_precise: frame0: regs=r2 stack= before 0: (b7) r2 = 64
+      3: R2_w=64 R3_w=trusted_ptr_file(off=64)
+      3: (bf) r6 = r10                      ; R6_w=fp0 R10=fp0
+      ;  @ prog.c:0
+      4: (07) r6 += -16                     ; R6_w=fp-16
+      ; BPF_CORE_READ_INTO(&file_path, file, f_path); @ prog.c:213
+      5: (bf) r1 = r6                       ; R1_w=fp-16 R6_w=fp-16
+      6: (b7) r2 = 16                       ; R2_w=16
+      7: (85) call bpf_probe_read_kernel#113
+      mark_precise: frame0: last_idx 7 first_idx 0 subseq_idx -1
+      mark_precise: frame0: regs=r2 stack= before 6: (b7) r2 = 16
+      8: R0_w=scalar() fp-8=mmmmmmmm fp-16=mmmmmmmm
+      8: (bf) r2 = r10                      ; R2_w=fp0 R10=fp0
+      ;  @ prog.c:0
+      9: (07) r2 += -271                    ; R2_w=fp-271
+      ; long err = bpf_d_path(&file_path, path_buffer, sizeof(path_buffer)); @ prog.c:214
+      10: (bf) r1 = r6                      ; R1_w=fp-16 R6_w=fp-16
+      11: (b7) r3 = 255                     ; R3_w=255
+      12: (85) call bpf_d_path#147
+      R1 type=fp expected=ptr_, trusted_ptr_, rcu_ptr_
+      verification time 67 usec
+      stack depth 16
+      processed 13 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0 mark_read 0
+      -- END PROG LOAD LOG --
+      libbpf: prog 'test_prog': failed to load: -EACCES
+      libbpf: failed to load object '<legacy-so-gh-reproducer>/stackoverflow-79348306/prog.o'
+      Error: failed to load object file
+  verifier_log_source: captured_on_6.15.11
+  verifier_log_captured_at: '2026-03-20'
+  source_snippets: []
+  question_body_text: |-
+    I have written an example ebpf program to attach to the lsm/file_open but the verifier rejects my program.
+    my program:
+    #include "vmlinux.h"
+    #include "commons.h"
+    #include <bpf/bpf_helpers.h>
+    #include <bpf/bpf_core_read.h>
+    #include <bpf/bpf_tracing.h>
+    #define MAX_SIZE 255
+    SEC("lsm/file_open")
+    int BPF_PROG(test_prog, struct file *file, int ret)
+    {
+    unsigned int f_flags;
+    struct path file_path;
+    char path_buffer[MAX_SIZE];
+    BPF_CORE_READ_INTO(&file_path, file, f_path);
+    long err = bpf_d_path(&file_path, path_buffer, sizeof(path_buffer));
+    return 0;
+    }
+    char LICENSE[] SEC("license") = "GPL";
+    verifier produces this output:
+    libbpf: prog 'test_prog': BPF program load failed: Permission denied
+    libbpf: prog 'test_prog': -- BEGIN PROG LOAD LOG --
+    0: R1=ctx() R10=fp0
+    ; int BPF_PROG(test_prog, struct file *file, int ret)
+    0: (b7) r2 = 152 ; R2_w=152
+    ; int BPF_PROG(test_prog, struct file *file, int ret)
+    1: (79) r3 = *(u64 *)(r1 +0)
+    func 'bpf_lsm_file_open' arg0 has btf_id 601 type STRUCT 'file'
+    2: R1=ctx() R3_w=trusted_ptr_file()
+    2: (0f) r3 += r2 ; R2_w=152 R3_w=trusted_ptr_file(off=152)
+    3: (bf) r6 = r10 ; R6_w=fp0 R10=fp0
+    ;
+    4: (07) r6 += -16 ; R6_w=fp-16
+    ; BPF_CORE_READ_INTO(&file_path, file, f_path);
+    5: (bf) r1 = r6 ; R1_w=fp-16 R6_w=fp-16
+    6: (b7) r2 = 16 ; R2_w=16
+    7: (85) call bpf_probe_read_kernel#113 ; R0_w=scalar() fp-8=mmmmmmmm fp-16=mmmmmmmm
+    8: (bf) r2 = r10 ; R2_w=fp0 R10=fp0
+    ;
+    9: (07) r2 += -271 ; R2_w=fp-271
+    ; long err = bpf_d_path(&file_path, path_buffer, sizeof(path_buffer));
+    10: (bf) r1 = r6 ; R1_w=fp-16 R6_w=fp-16
+    11: (b7) r3 = 255 ; R3_w=255
+    12: (85) call bpf_d_path#147
+    R1 type=fp expected=ptr_, trusted_ptr_, rcu_ptr_
+    processed 13 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0 mark_read 0
+    -- END PROG LOAD LOG --
+    libbpf: prog 'test_prog': failed to load: -13
+    libbpf: failed to load object 'lsm_file_open.o'
+    Failed to load BPF object into the kernel
+    Any help would be greatly appreciated. My kernel version is: 6.8.0-51-generic.
+  selected_answer:
+    answer_id: 79348591
+    url: https://stackoverflow.com/questions/79348306/bpf-verifier-rejects-the-use-of-path-pointer-as-argument-to-the-bpf-d-path-helpe#79348591
+    is_accepted: true
+    score: 3
+    body_text: |-
+      TL;DR. BPF_CORE_READ_INTO is unnecessary and causes the verifier to lose track of the variable's type.
+      Verifier Error Explanation
+      12: (85) call bpf_d_path#147
+      R1 type=fp expected=ptr_, trusted_ptr_, rcu_ptr_
+      The verifier complains that the type for R1 when calling bpf_d_path is not as it expects. Since it's R1, we're talking about the first argument of bpf_d_path, file_path.
+      And when it says type, it means verifier types. So the verifier expected one of the listed types (ptr_ aka PTR_TO_BTF_ID, with trusted and RCU variants, see reg_type_str for the mappings). Instead it got a pointer to the stack (fp aka PTR_TO_STACK).
+      Root Cause
+      Reading up, we can see that R1 points to the offset -16 in the stack (R1_w=fp-16). And before that, we can see that that offset was written by bpf_probe_read_kernel. As expected and shown by the annotated verifier output, bpf_probe_read_kernel comes from the compilation of BPF_CORE_READ_INTO. So BPF_CORE_READ_INTO is copying your file->f_path pointer to the stack.
+      Looking at verifier examples upstream (ex., tools/testing/selftests/bpf/progs/bpf_iter_task_vmas.c), we can see the call to BPF_CORE_READ_INTO isn't needed. And the copy to the stack probably confuses the verifier here.
+      Solution
+      Your code can be rewritten to:
+      SEC("lsm/file_open")
+      int BPF_PROG(test_prog, struct file *file, int ret)
+      {
+      unsigned int f_flags;
+      char path_buffer[MAX_SIZE];
+      long err = bpf_d_path(&file->f_path, path_buffer, sizeof(path_buffer));
+      return 0;
+      }
+      and it loads!
+    fix_description: Root Cause Solution

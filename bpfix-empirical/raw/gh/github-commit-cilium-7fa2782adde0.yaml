@@ -1,0 +1,132 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-7fa2782adde0
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/7fa2782adde0f884aeba0ec4aa06ef735ab8b263
+  title: 'bpf: ct: clarify relevant fields for ct_lookup() / ct_create()'
+  repository: https://github.com/cilium/cilium
+  commit: 7fa2782adde0f884aeba0ec4aa06ef735ab8b263
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-7fa2782adde0.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: not_reconstructable_from_diff
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Conntrack field clarification changes struct-field propagation in Cilium
+    CT helpers; the raw diff does not expose a standalone verifier reject.
+raw:
+  case_id: github-commit-cilium-7fa2782adde0
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: 7fa2782adde0f884aeba0ec4aa06ef735ab8b263
+  commit_message: 'bpf: ct: clarify relevant fields for ct_lookup() / ct_create()'
+  commit_date: '2023-04-02'
+  fix_type: inline_hint
+  buggy_code: "// FILE: bpf/lib/conntrack.h\n// CONTEXT: static __always_inline __u8\
+    \ __ct_lookup(const void *map, struct __ctx_buff *ctx,\n\tif (entry) {\n\t\tcilium_dbg(ctx,\
+    \ DBG_CT_MATCH, entry->lifetime, entry->rev_nat_index);\n#ifdef HAVE_LARGE_INSN_LIMIT\n\
+    \t\tif (dir == CT_SERVICE && syn &&\n\t\t    ct_entry_closing(entry) &&\n\t\t\
+    \    ct_entry_expired_rebalance(entry))\n\t\t\tgoto ct_new;\n#endif\n\t\tif (ct_entry_alive(entry))\n\
+    \t\t\t*monitor = ct_update_timeout(entry, is_tcp, dir, seen_flags);\n\t\tif (ct_state)\
+    \ {\n\t\t\tct_state->rev_nat_index = entry->rev_nat_index;\n\t\t\tct_state->loopback\
+    \ = entry->lb_loopback;\n\t\t\tct_state->node_port = entry->node_port;\n\t\t\t\
+    ct_state->ifindex = entry->ifindex;\n\t\t\tct_state->dsr = entry->dsr;\n\t\t\t\
+    ct_state->proxy_redirect = entry->proxy_redirect;\n\t\t\tct_state->from_l7lb =\
+    \ entry->from_l7lb;\n\t\t\tct_state->auth_required = entry->auth_required;\n\t\
+    \t\tif (dir == CT_SERVICE) {\n\t\t\t\tct_state->backend_id = entry->backend_id;\n\
+    \t\t\t\tct_state->syn = syn;\n\t\t\t} else if (dir == CT_INGRESS || dir == CT_EGRESS)\n\
+    \t\t\t\tct_state->from_tunnel = entry->from_tunnel;\n\t\t}\n#ifdef CONNTRACK_ACCOUNTING\n\
+    \t\t/* FIXME: This is slow, per-cpu counters? */\n\t\tif (dir == CT_INGRESS) {\n\
+    \t\t\t__sync_fetch_and_add(&entry->rx_packets, 1);\n\t\t\t__sync_fetch_and_add(&entry->rx_bytes,\
+    \ ctx_full_len(ctx));\n\t\t} else if (dir == CT_EGRESS) {\n\t\t\t__sync_fetch_and_add(&entry->tx_packets,\
+    \ 1);\n\t\t\t__sync_fetch_and_add(&entry->tx_bytes, ctx_full_len(ctx));\n\t\t\
+    }\n#endif\n\t\tswitch (action) {\n\n// CONTEXT: static __always_inline int ct_create6(const\
+    \ void *map_main, const void *map_rela\n\t/* Create entry in original direction\
+    \ */\n\tstruct ct_entry entry = { };\n\tbool is_tcp = tuple->nexthdr == IPPROTO_TCP;\n\
+    \tunion tcp_flags seen_flags = { .value = 0 };\n\n\t/* Note if this is a proxy\
+    \ connection so that replies can be redirected\n\t * back to the proxy.\n\t */\n\
+    \tentry.proxy_redirect = proxy_redirect;\n\tentry.from_l7lb = from_l7lb;\n\tentry.auth_required\
+    \ = auth_required;\n\n\tif (dir == CT_SERVICE)\n\t\tentry.backend_id = ct_state->backend_id;\n\
+    \n\tentry.lb_loopback = ct_state->loopback;\n\tentry.node_port = ct_state->node_port;\n\
+    \trelax_verifier();\n\tentry.dsr = ct_state->dsr;\n\tentry.ifindex = ct_state->ifindex;\n\
+    \n\tentry.rev_nat_index = ct_state->rev_nat_index;\n\tseen_flags.value |= is_tcp\
+    \ ? TCP_FLAG_SYN : 0;\n\tct_update_timeout(&entry, is_tcp, dir, seen_flags);\n\
+    \n\tif (dir == CT_INGRESS) {\n\t\tentry.rx_packets = 1;\n\t\tentry.rx_bytes =\
+    \ ctx_full_len(ctx);\n\t} else if (dir == CT_EGRESS) {\n\t\tentry.tx_packets =\
+    \ 1;\n\t\tentry.tx_bytes = ctx_full_len(ctx);\n\t}\n\n// CONTEXT: static __always_inline\
+    \ int ct_create4(const void *map_main,\n\t/* Create entry in original direction\
+    \ */\n\tstruct ct_entry entry = { };\n\tbool is_tcp = tuple->nexthdr == IPPROTO_TCP;\n\
+    \tunion tcp_flags seen_flags = { .value = 0 };\n\n\t/* Note if this is a proxy\
+    \ connection so that replies can be redirected\n\t * back to the proxy.\n\t */\n\
+    \tentry.proxy_redirect = proxy_redirect;\n\tentry.from_l7lb = from_l7lb;\n\tentry.auth_required\
+    \ = auth_required;\n\n\tentry.lb_loopback = ct_state->loopback;\n\tentry.node_port\
+    \ = ct_state->node_port;\n\trelax_verifier();\n\tentry.dsr = ct_state->dsr;\n\t\
+    entry.ifindex = ct_state->ifindex;\n\n\tif (dir == CT_SERVICE)\n\t\tentry.backend_id\
+    \ = ct_state->backend_id;\n\telse if (dir == CT_INGRESS || dir == CT_EGRESS)\n\
+    \t\tentry.from_tunnel = ct_state->from_tunnel;\n\n\tentry.rev_nat_index = ct_state->rev_nat_index;\n\
+    \tseen_flags.value |= is_tcp ? TCP_FLAG_SYN : 0;\n\tct_update_timeout(&entry,\
+    \ is_tcp, dir, seen_flags);\n\n\tif (dir == CT_INGRESS) {\n\t\tentry.rx_packets\
+    \ = 1;\n\t\tentry.rx_bytes = ctx_full_len(ctx);\n\t} else if (dir == CT_EGRESS)\
+    \ {\n\t\tentry.tx_packets = 1;\n\t\tentry.tx_bytes = ctx_full_len(ctx);\n\t}"
+  fixed_code: "// FILE: bpf/lib/conntrack.h\n// CONTEXT: static __always_inline __u8\
+    \ __ct_lookup(const void *map, struct __ctx_buff *ctx,\n\tif (entry) {\n\t\tcilium_dbg(ctx,\
+    \ DBG_CT_MATCH, entry->lifetime, entry->rev_nat_index);\n#ifdef HAVE_LARGE_INSN_LIMIT\n\
+    \t\tif (dir == CT_SERVICE && syn &&\n\t\t    ct_entry_closing(entry) &&\n\t\t\
+    \    ct_entry_expired_rebalance(entry))\n\t\t\tgoto ct_new;\n#endif\n\t\tif (ct_entry_alive(entry))\n\
+    \t\t\t*monitor = ct_update_timeout(entry, is_tcp, dir, seen_flags);\n\t\tif (ct_state)\
+    \ {\n\t\t\tct_state->rev_nat_index = entry->rev_nat_index;\n\t\t\tct_state->proxy_redirect\
+    \ = entry->proxy_redirect;\n\t\t\tct_state->from_l7lb = entry->from_l7lb;\n\t\t\
+    \tct_state->auth_required = entry->auth_required;\n\t\t\tif (dir == CT_SERVICE)\
+    \ {\n\t\t\t\tct_state->backend_id = entry->backend_id;\n\t\t\t\tct_state->syn\
+    \ = syn;\n\t\t\t} else if (dir == CT_INGRESS || dir == CT_EGRESS) {\n\t\t\t\t\
+    ct_state->loopback = entry->lb_loopback;\n\t\t\t\tct_state->node_port = entry->node_port;\n\
+    \t\t\t\tct_state->dsr = entry->dsr;\n\t\t\t\tct_state->from_tunnel = entry->from_tunnel;\n\
+    \t\t\t\tct_state->ifindex = entry->ifindex;\n\t\t\t}\n\t\t}\n#ifdef CONNTRACK_ACCOUNTING\n\
+    \t\t/* FIXME: This is slow, per-cpu counters? */\n\t\tif (dir == CT_INGRESS) {\n\
+    \t\t\t__sync_fetch_and_add(&entry->rx_packets, 1);\n\t\t\t__sync_fetch_and_add(&entry->rx_bytes,\
+    \ ctx_full_len(ctx));\n\t\t} else if (dir == CT_EGRESS) {\n\t\t\t__sync_fetch_and_add(&entry->tx_packets,\
+    \ 1);\n\t\t\t__sync_fetch_and_add(&entry->tx_bytes, ctx_full_len(ctx));\n\t\t\
+    }\n#endif\n\t\tswitch (action) {\n\n// CONTEXT: static __always_inline int ct_create6(const\
+    \ void *map_main, const void *map_rela\n\t/* Create entry in original direction\
+    \ */\n\tstruct ct_entry entry = { };\n\tbool is_tcp = tuple->nexthdr == IPPROTO_TCP;\n\
+    \tunion tcp_flags seen_flags = { .value = 0 };\n\n\t/* Note if this is a proxy\
+    \ connection so that replies can be redirected\n\t * back to the proxy.\n\t */\n\
+    \tentry.proxy_redirect = proxy_redirect;\n\tentry.from_l7lb = from_l7lb;\n\tentry.auth_required\
+    \ = auth_required;\n\n\tif (dir == CT_SERVICE) {\n\t\tentry.backend_id = ct_state->backend_id;\n\
+    \t} else if (dir == CT_INGRESS || dir == CT_EGRESS) {\n\t\tentry.lb_loopback =\
+    \ ct_state->loopback;\n\t\tentry.node_port = ct_state->node_port;\n\t\tentry.dsr\
+    \ = ct_state->dsr;\n\t\tentry.ifindex = ct_state->ifindex;\n\t}\n\n\tentry.rev_nat_index\
+    \ = ct_state->rev_nat_index;\n\tseen_flags.value |= is_tcp ? TCP_FLAG_SYN : 0;\n\
+    \tct_update_timeout(&entry, is_tcp, dir, seen_flags);\n\n\tif (dir == CT_INGRESS)\
+    \ {\n\t\tentry.rx_packets = 1;\n\t\tentry.rx_bytes = ctx_full_len(ctx);\n\t} else\
+    \ if (dir == CT_EGRESS) {\n\t\tentry.tx_packets = 1;\n\t\tentry.tx_bytes = ctx_full_len(ctx);\n\
+    \t}\n\n// CONTEXT: static __always_inline int ct_create4(const void *map_main,\n\
+    \t/* Create entry in original direction */\n\tstruct ct_entry entry = { };\n\t\
+    bool is_tcp = tuple->nexthdr == IPPROTO_TCP;\n\tunion tcp_flags seen_flags = {\
+    \ .value = 0 };\n\n\t/* Note if this is a proxy connection so that replies can\
+    \ be redirected\n\t * back to the proxy.\n\t */\n\tentry.proxy_redirect = proxy_redirect;\n\
+    \tentry.from_l7lb = from_l7lb;\n\tentry.auth_required = auth_required;\n\n\tif\
+    \ (dir == CT_SERVICE) {\n\t\tentry.backend_id = ct_state->backend_id;\n\t} else\
+    \ if (dir == CT_INGRESS || dir == CT_EGRESS) {\n\t\tentry.lb_loopback = ct_state->loopback;\n\
+    \t\tentry.node_port = ct_state->node_port;\n\t\tentry.dsr = ct_state->dsr;\n\t\
+    \tentry.from_tunnel = ct_state->from_tunnel;\n\t\tentry.ifindex = ct_state->ifindex;\n\
+    \t}\n\n\tentry.rev_nat_index = ct_state->rev_nat_index;\n\tseen_flags.value |=\
+    \ is_tcp ? TCP_FLAG_SYN : 0;\n\tct_update_timeout(&entry, is_tcp, dir, seen_flags);\n\
+    \n\tif (dir == CT_INGRESS) {\n\t\tentry.rx_packets = 1;\n\t\tentry.rx_bytes =\
+    \ ctx_full_len(ctx);\n\t} else if (dir == CT_EGRESS) {\n\t\tentry.tx_packets =\
+    \ 1;\n\t\tentry.tx_bytes = ctx_full_len(ctx);\n\t}"
+  diff_summary: |-
+    bpf/lib/conntrack.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: static __always_inline __u8 __ct_lookup(const void *map, struct __ctx_buff *ctx,, static __always_inline int ct_create6(const void *map_main, const void *map_rela, static __always_inline int ct_create4(const void *map_main,.
+    - Commit subject: bpf: ct: clarify relevant fields for ct_lookup() / ct_create().

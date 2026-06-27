@@ -1,0 +1,92 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-ff65a2bd28f2
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/ff65a2bd28f21cb789130640ee92224c487dcbcd
+  title: 'pkg/bpf: Do not load unused maps'
+  repository: https://github.com/cilium/cilium
+  commit: ff65a2bd28f21cb789130640ee92224c487dcbcd
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-ff65a2bd28f2.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Adds btf_decl_tag("do-not-prune") to maps so the loader/dead-code pass keeps
+    them; not a BPF program verifier-reject record.
+raw:
+  case_id: github-commit-cilium-ff65a2bd28f2
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: ff65a2bd28f21cb789130640ee92224c487dcbcd
+  commit_message: 'pkg/bpf: Do not load unused maps'
+  commit_date: '2025-05-12'
+  fix_type: inline_hint
+  buggy_code: "// FILE: bpf/include/bpf/section.h\n *\n * For marking tail calls in\
+    \ regular, non-test code, use __declare_tail defined\n * in tailcall.h.\n */\n\
+    #if !defined(PROG_TYPE)\n\t#error \"Include bpf/ctx/skb.h or xdp.h before section.h!\"\
+    \n#endif\n#define __section_entry\t\t__section(PROG_TYPE \"/entry\")\n\n#define\
+    \ __section_license\t__section(\"license\")\n#define __section_maps_btf\t__section(\"\
+    .maps\")\n\n#define BPF_LICENSE(NAME) \\\n\tchar ____license[] __section_license\
+    \ = NAME\n\n// FILE: bpf/lib/local_delivery.h\n#include \"common.h\"\n#include\
+    \ \"dbg.h\"\n#include \"l3.h\"\n#include \"token_bucket.h\"\n\n/* Global map to\
+    \ jump into policy enforcement of sending endpoint */\nstruct {\n\t__uint(type,\
+    \ BPF_MAP_TYPE_PROG_ARRAY);\n\t__type(key, __u32);\n\t__type(value, __u32);\n\t\
+    __uint(pinning, LIBBPF_PIN_BY_NAME);\n\t__uint(max_entries, POLICY_PROG_MAP_SIZE);\n\
+    } cilium_egresscall_policy __section_maps_btf;\n\nstatic __always_inline __must_check\
+    \ int\ntail_call_egress_policy(struct __ctx_buff *ctx, __u16 endpoint_id)\n{\n\
+    \ttail_call_dynamic(ctx, &cilium_egresscall_policy, endpoint_id);\n\t/* same issue\
+    \ as for the cilium_call_policy calls */\n\treturn DROP_EP_NOT_READY;\n}\n\n/*\
+    \ Global map to jump into policy enforcement of receiving endpoint */\nstruct\
+    \ {\n\t__uint(type, BPF_MAP_TYPE_PROG_ARRAY);\n\t__type(key, __u32);\n\t__type(value,\
+    \ __u32);\n\t__uint(pinning, LIBBPF_PIN_BY_NAME);\n\t__uint(max_entries, POLICY_PROG_MAP_SIZE);\n\
+    } cilium_call_policy __section_maps_btf;\n\nstatic __always_inline __must_check\
+    \ int\ntail_call_policy(struct __ctx_buff *ctx, __u16 endpoint_id)\n{\n\tif (__builtin_constant_p(endpoint_id))\
+    \ {\n\t\ttail_call_static(ctx, cilium_call_policy, endpoint_id);\n\t} else {\n\
+    \t\ttail_call_dynamic(ctx, &cilium_call_policy, endpoint_id);\n\t}\n\n\t/* When\
+    \ forwarding from a BPF program to some endpoint,\n\t * there are inherent races\
+    \ that can result in the endpoint's"
+  fixed_code: "// FILE: bpf/include/bpf/section.h\n *\n * For marking tail calls in\
+    \ regular, non-test code, use __declare_tail defined\n * in tailcall.h.\n */\n\
+    #if !defined(PROG_TYPE)\n\t#error \"Include bpf/ctx/skb.h or xdp.h before section.h!\"\
+    \n#endif\n#define __section_entry\t\t__section(PROG_TYPE \"/entry\")\n\n#define\
+    \ __section_license\t__section(\"license\")\n#define __section_maps_btf\t__section(\"\
+    .maps\")\n\n/* Must be kept in sync with `doNotPruneTag` in pkg/bpf/dead_code_elimination.go\
+    \ */\n#define __do_not_prune\t\t__attribute__((btf_decl_tag(\"do-not-prune\")))\n\
+    \n#define BPF_LICENSE(NAME) \\\n\tchar ____license[] __section_license = NAME\n\
+    \n// FILE: bpf/lib/local_delivery.h\n#include \"common.h\"\n#include \"dbg.h\"\
+    \n#include \"l3.h\"\n#include \"token_bucket.h\"\n\n/* Global map to jump into\
+    \ policy enforcement of sending endpoint */\nstruct {\n\t__uint(type, BPF_MAP_TYPE_PROG_ARRAY);\n\
+    \t__type(key, __u32);\n\t__type(value, __u32);\n\t__uint(pinning, LIBBPF_PIN_BY_NAME);\n\
+    \t__uint(max_entries, POLICY_PROG_MAP_SIZE);\n} cilium_egresscall_policy __section_maps_btf\
+    \ __do_not_prune;\n\nstatic __always_inline __must_check int\ntail_call_egress_policy(struct\
+    \ __ctx_buff *ctx, __u16 endpoint_id)\n{\n\ttail_call_dynamic(ctx, &cilium_egresscall_policy,\
+    \ endpoint_id);\n\t/* same issue as for the cilium_call_policy calls */\n\treturn\
+    \ DROP_EP_NOT_READY;\n}\n\n/* Global map to jump into policy enforcement of receiving\
+    \ endpoint */\nstruct {\n\t__uint(type, BPF_MAP_TYPE_PROG_ARRAY);\n\t__type(key,\
+    \ __u32);\n\t__type(value, __u32);\n\t__uint(pinning, LIBBPF_PIN_BY_NAME);\n\t\
+    __uint(max_entries, POLICY_PROG_MAP_SIZE);\n} cilium_call_policy __section_maps_btf\
+    \ __do_not_prune;\n\nstatic __always_inline __must_check int\ntail_call_policy(struct\
+    \ __ctx_buff *ctx, __u16 endpoint_id)\n{\n\tif (__builtin_constant_p(endpoint_id))\
+    \ {\n\t\ttail_call_static(ctx, cilium_call_policy, endpoint_id);\n\t} else {\n\
+    \t\ttail_call_dynamic(ctx, &cilium_call_policy, endpoint_id);\n\t}\n\n\t/* When\
+    \ forwarding from a BPF program to some endpoint,\n\t * there are inherent races\
+    \ that can result in the endpoint's"
+  diff_summary: |-
+    bpf/include/bpf/section.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: the touched section.
+    bpf/lib/local_delivery.h:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: the touched section.
+    - Commit subject: pkg/bpf: Do not load unused maps.

@@ -1,0 +1,75 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-libbpf-2b940bcde10c
+source_kind: github_commit
+source:
+  url: https://github.com/libbpf/libbpf/commit/2b940bcde10c460c4e09570a31143f88c80c8c20
+  title: 'libbpf: Fix undefined behavior in {get,put}_unaligned_be32()'
+  repository: https://github.com/libbpf/libbpf
+  commit: 2b940bcde10c460c4e09570a31143f88c80c8c20
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-libbpf-2b940bcde10c.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Replaces packed-struct unaligned big-endian helpers in src/libbpf_utils.c
+    with memcpy(). This is user-space undefined-behavior cleanup in SHA/libbpf utilities,
+    not BPF verifier behavior.
+raw:
+  case_id: github-commit-libbpf-2b940bcde10c
+  source: github_commits
+  repository: https://github.com/libbpf/libbpf
+  commit_hash: 2b940bcde10c460c4e09570a31143f88c80c8c20
+  commit_message: 'libbpf: Fix undefined behavior in {get,put}_unaligned_be32()'
+  commit_date: '2025-10-05'
+  fix_type: alignment
+  buggy_code: "// FILE: src/libbpf_utils.c\n// CONTEXT: const char *libbpf_errstr(int\
+    \ err)\n\tcase -EROFS:\t\treturn \"-EROFS\";\n\tcase -ESPIPE:\t\treturn \"-ESPIPE\"\
+    ;\n\tcase -ESRCH:\t\treturn \"-ESRCH\";\n\tcase -ETXTBSY:\t\treturn \"-ETXTBSY\"\
+    ;\n\tcase -EUCLEAN:\t\treturn \"-EUCLEAN\";\n\tcase -EXDEV:\t\treturn \"-EXDEV\"\
+    ;\n\tdefault:\n\t\tsnprintf(buf, sizeof(buf), \"%d\", err);\n\t\treturn buf;\n\
+    \t}\n}\n\n#pragma GCC diagnostic push\n#pragma GCC diagnostic ignored \"-Wpacked\"\
+    \n#pragma GCC diagnostic ignored \"-Wattributes\"\nstruct __packed_u32 { __u32\
+    \ __val; } __attribute__((packed));\n#pragma GCC diagnostic pop\n\n#define get_unaligned_be32(p)\
+    \ be32_to_cpu((((struct __packed_u32 *)(p))->__val))\n#define put_unaligned_be32(v,\
+    \ p) do {\t\t\t\t\t\t\t\\\n\t((struct __packed_u32 *)(p))->__val = cpu_to_be32(v);\t\
+    \t\t\t\\\n} while (0)\n\n#define SHA256_BLOCK_LENGTH 64\n#define Ch(x, y, z) (((x)\
+    \ & (y)) ^ (~(x) & (z)))\n#define Maj(x, y, z) (((x) & (y)) ^ ((x) & (z)) ^ ((y)\
+    \ & (z)))\n#define Sigma_0(x) (ror32((x), 2) ^ ror32((x), 13) ^ ror32((x), 22))\n\
+    #define Sigma_1(x) (ror32((x), 6) ^ ror32((x), 11) ^ ror32((x), 25))\n#define\
+    \ sigma_0(x) (ror32((x), 7) ^ ror32((x), 18) ^ ((x) >> 3))\n#define sigma_1(x)\
+    \ (ror32((x), 17) ^ ror32((x), 19) ^ ((x) >> 10))\n\nstatic const __u32 sha256_K[64]\
+    \ = {\n\t0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1,\n\
+    \t0x923f82a4, 0xab1c5ed5, 0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3,"
+  fixed_code: "// FILE: src/libbpf_utils.c\n// CONTEXT: const char *libbpf_errstr(int\
+    \ err)\n\tcase -EROFS:\t\treturn \"-EROFS\";\n\tcase -ESPIPE:\t\treturn \"-ESPIPE\"\
+    ;\n\tcase -ESRCH:\t\treturn \"-ESRCH\";\n\tcase -ETXTBSY:\t\treturn \"-ETXTBSY\"\
+    ;\n\tcase -EUCLEAN:\t\treturn \"-EUCLEAN\";\n\tcase -EXDEV:\t\treturn \"-EXDEV\"\
+    ;\n\tdefault:\n\t\tsnprintf(buf, sizeof(buf), \"%d\", err);\n\t\treturn buf;\n\
+    \t}\n}\n\nstatic inline __u32 get_unaligned_be32(const void *p)\n{\n\t__be32 val;\n\
+    \n\tmemcpy(&val, p, sizeof(val));\n\treturn be32_to_cpu(val);\n}\n\nstatic inline\
+    \ void put_unaligned_be32(__u32 val, void *p)\n{\n\t__be32 be_val = cpu_to_be32(val);\n\
+    \n\tmemcpy(p, &be_val, sizeof(be_val));\n}\n\n#define SHA256_BLOCK_LENGTH 64\n\
+    #define Ch(x, y, z) (((x) & (y)) ^ (~(x) & (z)))\n#define Maj(x, y, z) (((x) &\
+    \ (y)) ^ ((x) & (z)) ^ ((y) & (z)))\n#define Sigma_0(x) (ror32((x), 2) ^ ror32((x),\
+    \ 13) ^ ror32((x), 22))\n#define Sigma_1(x) (ror32((x), 6) ^ ror32((x), 11) ^\
+    \ ror32((x), 25))\n#define sigma_0(x) (ror32((x), 7) ^ ror32((x), 18) ^ ((x) >>\
+    \ 3))\n#define sigma_1(x) (ror32((x), 17) ^ ror32((x), 19) ^ ((x) >> 10))\n\n\
+    static const __u32 sha256_K[64] = {\n\t0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5,\
+    \ 0x3956c25b, 0x59f111f1,\n\t0x923f82a4, 0xab1c5ed5, 0xd807aa98, 0x12835b01, 0x243185be,\
+    \ 0x550c7dc3,"
+  diff_summary: |-
+    src/libbpf_utils.c:
+    - Adjusted alignment declarations or stack layout to avoid misaligned accesses.
+    - Affected context: const char *libbpf_errstr(int err).
+    - Commit subject: libbpf: Fix undefined behavior in {get,put}_unaligned_be32().

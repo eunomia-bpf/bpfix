@@ -1,0 +1,78 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-libbpf-444f3c0e7a0f
+source_kind: github_commit
+source:
+  url: https://github.com/libbpf/libbpf/commit/444f3c0e7a0fbfeeac4b3809a184c6640ce10306
+  title: 'libbpf: Work around kernel inconsistently stripping ''.llvm.'' suffix'
+  repository: https://github.com/libbpf/libbpf
+  commit: 444f3c0e7a0fbfeeac4b3809a184c6640ce10306
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-libbpf-444f3c0e7a0f.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Works around kernel kallsyms name stripping for .llvm. suffixes in libbpf
+    symbol availability logic. This is kernel-symbol matching behavior, not verifier
+    bytecode rejection.
+raw:
+  case_id: github-commit-libbpf-444f3c0e7a0f
+  source: github_commits
+  repository: https://github.com/libbpf/libbpf
+  commit_hash: 444f3c0e7a0fbfeeac4b3809a184c6640ce10306
+  commit_message: 'libbpf: Work around kernel inconsistently stripping ''.llvm.''
+    suffix'
+  commit_date: '2025-01-16'
+  fix_type: other
+  buggy_code: "// FILE: src/libbpf.c\n// CONTEXT: struct avail_kallsyms_data {\nstatic\
+    \ int avail_func_cmp(const void *a, const void *b)\n{\n\treturn strcmp(*(const\
+    \ char **)a, *(const char **)b);\n}\n\nstatic int avail_kallsyms_cb(unsigned long\
+    \ long sym_addr, char sym_type,\n\t\t\t     const char *sym_name, void *ctx)\n\
+    {\n\tstruct avail_kallsyms_data *data = ctx;\n\tstruct kprobe_multi_resolve *res\
+    \ = data->res;\n\tint err;\n\n\tif (!bsearch(&sym_name, data->syms, data->cnt,\
+    \ sizeof(*data->syms), avail_func_cmp))\n\t\treturn 0;\n\n\terr = libbpf_ensure_mem((void\
+    \ **)&res->addrs, &res->cap, sizeof(*res->addrs), res->cnt + 1);\n\tif (err)\n\
+    \t\treturn err;\n\n\tres->addrs[res->cnt++] = (unsigned long)sym_addr;\n\treturn\
+    \ 0;\n}\n\nstatic int libbpf_available_kallsyms_parse(struct kprobe_multi_resolve\
+    \ *res)\n{\n\tconst char *available_functions_file = tracefs_available_filter_functions();\n\
+    \tstruct avail_kallsyms_data data;"
+  fixed_code: "// FILE: src/libbpf.c\n// CONTEXT: struct avail_kallsyms_data {\nstatic\
+    \ int avail_func_cmp(const void *a, const void *b)\n{\n\treturn strcmp(*(const\
+    \ char **)a, *(const char **)b);\n}\n\nstatic int avail_kallsyms_cb(unsigned long\
+    \ long sym_addr, char sym_type,\n\t\t\t     const char *sym_name, void *ctx)\n\
+    {\n\tstruct avail_kallsyms_data *data = ctx;\n\tstruct kprobe_multi_resolve *res\
+    \ = data->res;\n\tint err;\n\n\tif (!glob_match(sym_name, res->pattern))\n\t\t\
+    return 0;\n\n\tif (!bsearch(&sym_name, data->syms, data->cnt, sizeof(*data->syms),\
+    \ avail_func_cmp)) {\n\t\t/* Some versions of kernel strip out .llvm.<hash> suffix\
+    \ from\n\t\t * function names reported in available_filter_functions, but\n\t\t\
+    \ * don't do so for kallsyms. While this is clearly a kernel\n\t\t * bug (fixed\
+    \ by [0]) we try to accommodate that in libbpf to\n\t\t * make multi-kprobe usability\
+    \ a bit better: if no match is\n\t\t * found, we will strip .llvm. suffix and\
+    \ try one more time.\n\t\t *\n\t\t *   [0] fb6a421fb615 (\"kallsyms: Match symbols\
+    \ exactly with CONFIG_LTO_CLANG\")\n\t\t */\n\t\tchar sym_trim[256], *psym_trim\
+    \ = sym_trim, *sym_sfx;\n\n\t\tif (!(sym_sfx = strstr(sym_name, \".llvm.\")))\n\
+    \t\t\treturn 0;\n\n\t\t/* psym_trim vs sym_trim dance is done to avoid pointer\
+    \ vs array\n\t\t * coercion differences and get proper `const char **` pointer\n\
+    \t\t * which avail_func_cmp() expects\n\t\t */\n\t\tsnprintf(sym_trim, sizeof(sym_trim),\
+    \ \"%.*s\", (int)(sym_sfx - sym_name), sym_name);\n\t\tif (!bsearch(&psym_trim,\
+    \ data->syms, data->cnt, sizeof(*data->syms), avail_func_cmp))\n\t\t\treturn 0;\n\
+    \t}\n\n\terr = libbpf_ensure_mem((void **)&res->addrs, &res->cap, sizeof(*res->addrs),\
+    \ res->cnt + 1);\n\tif (err)\n\t\treturn err;\n\n\tres->addrs[res->cnt++] = (unsigned\
+    \ long)sym_addr;\n\treturn 0;\n}\n\nstatic int libbpf_available_kallsyms_parse(struct\
+    \ kprobe_multi_resolve *res)\n{\n\tconst char *available_functions_file = tracefs_available_filter_functions();\n\
+    \tstruct avail_kallsyms_data data;"
+  diff_summary: |-
+    src/libbpf.c:
+    - Applied a small verifier-related code change captured by the exact before/after snippets below.
+    - Affected context: struct avail_kallsyms_data {.
+    - Commit subject: libbpf: Work around kernel inconsistently stripping '.llvm.' suffix.

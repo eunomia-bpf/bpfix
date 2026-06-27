@@ -1,0 +1,44 @@
+schema_version: bpfix.case/v1
+case_id: stackoverflow-76760635
+source:
+  kind: stackoverflow
+  url: https://stackoverflow.com/questions/76760635/how-to-debug-an-ebpf-program-that-uses-cilium-ebpf-to-write-a-go-user-program
+  repository: null
+  commit: null
+  upstream_file: null
+  collected_at: '2026-04-30T00:51:03+00:00'
+  raw_excerpt_files:
+  - bpfix-empirical/raw/so/stackoverflow-76760635.yaml
+reproducer:
+  reconstruction: reconstructed
+  notes: Imported from reconstructed external source into bpfix-empirical; replay logs are generated
+    as replay-verifier.log.
+capture:
+  capture_id: stackoverflow-76760635__kernel-6.15.11-clang-18-log2
+  terminal_error: invalid access to packet, off=17 size=1, R1(id=0,off=17,r=0)
+  rejected_insn_idx: 1
+external_match:
+  status: semantic
+  policy: terminal_error
+  matched_messages:
+  - R8 invalid mem access 'inv'
+  - invalid access to packet, off=17 size=1, R1(id=0,off=17,r=0)
+  notes: Original external report text did not exactly match this kernel's terminal verifier
+    error; the case is included because the local replay produces a trace-rich verifier rejection.
+label:
+  capture_id: stackoverflow-76760635__kernel-6.15.11-clang-18-log2
+  taxonomy_class: source_bug
+  error_id: BPFIX-E005
+  confidence: medium
+  label_source: external_replay_reconstruction
+  root_cause_description: Packet parser reads a byte before the verifier has proven that offset
+    inside data_end.
+  root_cause_insn_idx: null
+  localization_confidence: medium
+  fix_type: bounds_check
+  fix_direction: Add a verifier-visible bounds check covering the exact packet byte before
+    reading.
+reporting:
+  family_id: stackoverflow-76760635
+  representative: true
+  notes: External SO/GH case imported as a replay-valid semantic match.

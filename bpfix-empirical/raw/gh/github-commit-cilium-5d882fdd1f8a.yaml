@@ -1,0 +1,57 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-5d882fdd1f8a
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/5d882fdd1f8a7ecf4383bce66a76cfa10e41ddff
+  title: 'bpf: fix verifier error in dameon debug mode with newer LLVM versions'
+  repository: https://github.com/cilium/cilium
+  commit: 5d882fdd1f8a7ecf4383bce66a76cfa10e41ddff
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-5d882fdd1f8a.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: missing_verifier_log
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: The title names a debug-mode verifier error fixed by forcing a volatile
+    skb->tc_index load, but the raw record contains no terminal verifier log or rejected
+    instruction. A generic repro would not be faithful to the LLVM/Cilium debug-mode
+    failure.
+raw:
+  case_id: github-commit-cilium-5d882fdd1f8a
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: 5d882fdd1f8a7ecf4383bce66a76cfa10e41ddff
+  commit_message: 'bpf: fix verifier error in dameon debug mode with newer LLVM versions'
+  commit_date: '2017-11-30'
+  fix_type: volatile_hack
+  buggy_code: "// FILE: bpf/lib/lxc.h\n// CONTEXT: ipv6_redirect_to_host_port(struct\
+    \ __sk_buff *skb, struct csum_offset *csum,\n\tif (map_update_elem(&cilium_proxy6,\
+    \ &key, &value, 0) < 0)\n\t\treturn DROP_CT_CREATE_FAILED;\n\n\treturn 0;\n}\n\
+    #endif\n\n/**\n * tc_index_is_from_proxy - returns true if packet originates from\
+    \ egress proxy\n */\nstatic inline bool __inline__ tc_index_skip_proxy(struct\
+    \ __sk_buff *skb)\n{\n#ifdef DEBUG\n\tif (skb->tc_index & TC_INDEX_F_SKIP_PROXY)\n\
+    \t\tcilium_dbg(skb, DBG_SKIP_PROXY, skb->tc_index, 0);\n#endif\n\n\treturn skb->tc_index\
+    \ & TC_INDEX_F_SKIP_PROXY;\n}"
+  fixed_code: "// FILE: bpf/lib/lxc.h\n// CONTEXT: ipv6_redirect_to_host_port(struct\
+    \ __sk_buff *skb, struct csum_offset *csum,\n\tif (map_update_elem(&cilium_proxy6,\
+    \ &key, &value, 0) < 0)\n\t\treturn DROP_CT_CREATE_FAILED;\n\n\treturn 0;\n}\n\
+    #endif\n\n/**\n * tc_index_is_from_proxy - returns true if packet originates from\
+    \ egress proxy\n */\nstatic inline bool __inline__ tc_index_skip_proxy(struct\
+    \ __sk_buff *skb)\n{\n\tvolatile __u32 tc_index = skb->tc_index;\n#ifdef DEBUG\n\
+    \tif (tc_index & TC_INDEX_F_SKIP_PROXY)\n\t\tcilium_dbg(skb, DBG_SKIP_PROXY, tc_index,\
+    \ 0);\n#endif\n\n\treturn tc_index & TC_INDEX_F_SKIP_PROXY;\n}"
+  diff_summary: |-
+    bpf/lib/lxc.h:
+    - Added or changed a volatile or READ_ONCE-style access to force verifier-friendly code generation.
+    - Affected context: ipv6_redirect_to_host_port(struct __sk_buff *skb, struct csum_offset *csum,.
+    - Commit subject: bpf: fix verifier error in dameon debug mode with newer LLVM versions.

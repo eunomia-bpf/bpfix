@@ -1,0 +1,106 @@
+schema_version: bpfix.raw_external/v1
+raw_id: stackoverflow-69192685
+source_kind: stackoverflow
+source:
+  url: https://stackoverflow.com/questions/69192685/whats-func-info-in-ebpf-verifier
+  title: what&#39;s func_info in eBPF verifier?
+  repository: null
+  commit: null
+  collected_at: '2026-03-11T16:02:47+00:00'
+collector:
+  original_path: bpfix-empirical/raw/so/stackoverflow-69192685.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: true
+  verifier_log_block_count: 1
+  source_snippet_count: 0
+  has_buggy_code: false
+  has_fixed_code: false
+  has_fix_description: false
+reproduction:
+  status: missing_source
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: verifier_error_present_but_no_xdp_program_source
+raw:
+  case_id: stackoverflow-69192685
+  source: stackoverflow
+  collected_at: '2026-03-11T16:02:47+00:00'
+  question:
+    question_id: 69192685
+    title: what&#39;s func_info in eBPF verifier?
+    url: https://stackoverflow.com/questions/69192685/whats-func-info-in-ebpf-verifier
+    tags:
+    - ebpf
+    score: 2
+    answer_count: 1
+    is_answered: true
+  verifier_log:
+    blocks:
+    - |-
+      libbpf: failed to guess program type based on ELF section name '.text'
+      libbpf: supported section(type) names are: socket kprobe/ uprobe/ kretprobe/ uretprobe/ classifier action tracepoint/ tp/ raw_tracepoint/ raw_tp/ tp_btf/ xdp perf_event lwt_in lwt_out lwt_xmit lwt_seg6local cgroup_skb/ingress cgroup_skb/egress cgroup/skb cgroup/sock cgroup/post_bind4 cgroup/post_bind6 cgroup/dev sockops sk_skb/stream_parser sk_skb/stream_verdict sk_skb sk_msg lirc_mode2 flow_dissector cgroup/bind4 cgroup/bind6 cgroup/connect4 cgroup/connect6 cgroup/sendmsg4 cgroup/sendmsg6 cgroup/recvmsg4 cgroup/recvmsg6 cgroup/sysctl cgroup/getsockopt cgroup/setsockopt
+      libbpf: load bpf program failed: Invalid argument
+      libbpf: -- BEGIN DUMP LOG ---
+      libbpf:
+      number of funcs in func_info doesn't match number of subprogs
+      processed 0 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0 mark_read 0
+      libbpf: -- END LOG --
+      libbpf: failed to load program '.text'
+    combined: |-
+      libbpf: failed to guess program type based on ELF section name '.text'
+      libbpf: supported section(type) names are: socket kprobe/ uprobe/ kretprobe/ uretprobe/ classifier action tracepoint/ tp/ raw_tracepoint/ raw_tp/ tp_btf/ xdp perf_event lwt_in lwt_out lwt_xmit lwt_seg6local cgroup_skb/ingress cgroup_skb/egress cgroup/skb cgroup/sock cgroup/post_bind4 cgroup/post_bind6 cgroup/dev sockops sk_skb/stream_parser sk_skb/stream_verdict sk_skb sk_msg lirc_mode2 flow_dissector cgroup/bind4 cgroup/bind6 cgroup/connect4 cgroup/connect6 cgroup/sendmsg4 cgroup/sendmsg6 cgroup/recvmsg4 cgroup/recvmsg6 cgroup/sysctl cgroup/getsockopt cgroup/setsockopt
+      libbpf: load bpf program failed: Invalid argument
+      libbpf: -- BEGIN DUMP LOG ---
+      libbpf:
+      number of funcs in func_info doesn't match number of subprogs
+      processed 0 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0 mark_read 0
+      libbpf: -- END LOG --
+      libbpf: failed to load program '.text'
+  source_snippets: []
+  question_body_text: |-
+    I'm developing an XDP program and I'm facing this error when trying to mount it in NIC driver:
+    libbpf: failed to guess program type based on ELF section name '.text'
+    libbpf: supported section(type) names are: socket kprobe/ uprobe/ kretprobe/ uretprobe/ classifier action tracepoint/ tp/ raw_tracepoint/ raw_tp/ tp_btf/ xdp perf_event lwt_in lwt_out lwt_xmit lwt_seg6local cgroup_skb/ingress cgroup_skb/egress cgroup/skb cgroup/sock cgroup/post_bind4 cgroup/post_bind6 cgroup/dev sockops sk_skb/stream_parser sk_skb/stream_verdict sk_skb sk_msg lirc_mode2 flow_dissector cgroup/bind4 cgroup/bind6 cgroup/connect4 cgroup/connect6 cgroup/sendmsg4 cgroup/sendmsg6 cgroup/recvmsg4 cgroup/recvmsg6 cgroup/sysctl cgroup/getsockopt cgroup/setsockopt
+    libbpf: load bpf program failed: Invalid argument
+    libbpf: -- BEGIN DUMP LOG ---
+    libbpf:
+    number of funcs in func_info doesn't match number of subprogs
+    processed 0 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0 mark_read 0
+    libbpf: -- END LOG --
+    libbpf: failed to load program '.text'
+    I searched and found the error is raising when eBPF verifier trying to compare attr->func_info_cnt and env->subprog_cnt but I don't understand how these two values are set before processed by the verifier. I have one XDP program with one section and 6 functions as helpers, I'm not sure if this info can help but I can provide more about the structure of the program if needed.
+  selected_answer:
+    answer_id: 69194713
+    url: https://stackoverflow.com/questions/69192685/whats-func-info-in-ebpf-verifier#69194713
+    is_accepted: true
+    score: 3
+    body_text: "Did you omit to put your programs in a dedicated ELF section? Something\
+      \ like:\nSEC(\"xdp\")\nint my_prog(struct xdp_md *ctx)\n{\n...\n}\n(Where SEC()\
+      \ is a macro defined in libbpf's bpf_helpers.h header.)\nIf you do not specify\
+      \ any ELF section name, clang/LLVM defaults to .text, as in your error message.\
+      \ When you attempt to load a program with libbpf, the library usually guesses\
+      \ the program type from the name of the ELF section into which the program was\
+      \ put. If you do not use a dedicated section name, and do not otherwise specify\
+      \ the program type (for example, in libbpf with bpf_program__set_type()), then\
+      \ libbpf is unable to pick the relevant type for your program.\nThis could lead\
+      \ to some of your programs to fail to load. From the error message above, it\
+      \ looks like you use function calls in your program (instead of declaring, for\
+      \ example, your functions as static inline). When your main program passes the\
+      \ verifier, some parts will be missing: The \u201Cfunctions\u201D may not be\
+      \ loaded, so the verifier complains that the expected number of functions/subprograms\
+      \ inferred from the main program (env->subprog_cnt) is different from the number\
+      \ of functions collected by your loader application (attr->func_info_cnt) and\
+      \ passed down to the kernel when loading the program with the bpf() system call.\n\
+      If this is the case, you can probably fix the issue either by placing your code\
+      \ in dedicated ELF functions, or by declaring your functions as static inline\
+      \ if you do not require function calls in the generated bytecode."
+    fix_description: If you do not specify any ELF section name, clang/LLVM defaults
+      to .text, as in your error message. When you attempt to load a program with
+      libbpf, the library usually guesses the program type from the name of the ELF
+      section into which the program was put. If you do not use a dedicated section
+      name, and do not otherwise specify the program type (for example, in libbpf
+      with bpf_program__set_type()), then libbpf is unable to pick the relevant type
+      for your program. This could lead to some of your programs to fail to load.
+      From the error message above, it looks like you use function calls in...

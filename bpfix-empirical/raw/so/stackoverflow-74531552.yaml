@@ -1,0 +1,767 @@
+schema_version: bpfix.raw_external/v1
+raw_id: stackoverflow-74531552
+source_kind: stackoverflow
+source:
+  url: https://stackoverflow.com/questions/74531552/bpf-verification-fails-due-to-register-offset
+  title: BPF Verification fails due to register offset
+  repository: null
+  commit: null
+  collected_at: '2026-03-11T16:03:10+00:00'
+collector:
+  original_path: bpfix-empirical/raw/so/stackoverflow-74531552.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: true
+  verifier_log_block_count: 1
+  source_snippet_count: 1
+  has_buggy_code: false
+  has_fixed_code: false
+  has_fix_description: false
+reproduction:
+  status: replay_valid
+  case_id: stackoverflow-74531552
+  case_path: cases/stackoverflow-74531552
+  artifact_path: cases/stackoverflow-74531552
+  reason: admitted_to_bpfix_bench_cases
+raw:
+  case_id: stackoverflow-74531552
+  source: stackoverflow
+  collected_at: '2026-03-11T16:03:10+00:00'
+  question:
+    question_id: 74531552
+    title: BPF Verification fails due to register offset
+    url: https://stackoverflow.com/questions/74531552/bpf-verification-fails-due-to-register-offset
+    tags:
+    - c
+    - linux-kernel
+    - ebpf
+    - bpf
+    - bcc-bpf
+    score: 0
+    answer_count: 1
+    is_answered: true
+  original_verifier_log:
+    blocks:
+    - |-
+      bpf: Failed to load program: Invalid argument
+      0: (b7) r7 = 0
+      1: (63) *(u32 *)(r10 -4) = r7
+      last_idx 1 first_idx 0
+      regs=80 stack=0 before 0: (b7) r7 = 0
+      2: (63) *(u32 *)(r10 -8) = r7
+      3: (18) r1 = 0xffff98ec8a7dd800
+      5: (bf) r2 = r10
+      6: (07) r2 += -4
+      7: (85) call bpf_map_lookup_elem#1
+      8: (bf) r6 = r0
+      9: (55) if r6 != 0x0 goto pc+30
+       R0_w=inv0 R6_w=inv0 R7_w=invP0 R10=fp0 fp-8=mmmm0000
+      10: (18) r1 = 0xffff98ec8a7dd800
+      12: (bf) r6 = r10
+      13: (07) r6 += -4
+      14: (bf) r3 = r10
+      15: (07) r3 += -8
+      16: (bf) r2 = r6
+      17: (b7) r4 = 1
+      18: (85) call bpf_map_update_elem#2
+      19: (18) r1 = 0xffff98ec8a7dd800
+      21: (bf) r2 = r6
+      22: (85) call bpf_map_lookup_elem#1
+      23: (bf) r6 = r0
+      24: (55) if r6 != 0x0 goto pc+15
+
+      from 24 to 40: R0_w=map_value(id=0,off=0,ks=4,vs=4,imm=0) R6_w=map_value(id=0,off=0,ks=4,vs=4,imm=0) R7=invP0 R10=fp0 fp-8=mmmmmmmm
+      40: (73) *(u8 *)(r10 -66) = r7
+      41: (b7) r1 = 25637
+      42: (6b) *(u16 *)(r10 -68) = r1
+      43: (b7) r1 = 540697972
+      44: (63) *(u32 *)(r10 -72) = r1
+      45: (18) r1 = 0x6174732072727563
+      47: (7b) *(u64 *)(r10 -80) = r1
+      48: (61) r3 = *(u32 *)(r6 +0)
+       R0_w=map_value(id=0,off=0,ks=4,vs=4,imm=0) R1_w=inv7022364302173697379 R6_w=map_value(id=0,off=0,ks=4,vs=4,imm=0) R7=invP0 R10=fp0 fp-8=mmmmmmmm fp-72=?0mmmmmm fp-80_w=inv7022364302173697379
+      49: (bf) r1 = r10
+      50: (07) r1 += -80
+      51: (b7) r2 = 15
+      52: (85) call bpf_trace_printk#6
+      last_idx 52 first_idx 19
+      regs=4 stack=0 before 51: (b7) r2 = 15
+      53: (18) r1 = 0xffff98ed35b5b000
+      55: (bf) r2 = r10
+      56: (07) r2 += -80
+      57: (85) call bpf_map_peek_elem#89
+      58: (67) r0 <<= 32
+      59: (c7) r0 s>>= 32
+      60: (65) if r0 s> 0xffffffff goto pc+41
+       R0_w=inv(id=0,umin_value=18446744071562067968,var_off=(0xffffffff80000000; 0x7fffffff),u32_min_value=-2147483648) R6=map_value(id=0,off=0,ks=4,vs=4,imm=0) R7=invP0 R10=fp0 fp-8=mmmmmmmm fp-16=????mmmm fp-24=mmmmmmmm fp-32=mmmmmmmm fp-40=mmmmmmmm fp-48=mmmmmmmm fp-56=mmmmmmmm fp-64=mmmmmmmm fp-72=mmmmmmmm fp-80=mmmmmmmm
+      61: (b7) r1 = 29801
+      62: (6b) *(u16 *)(r10 -84) = r1
+      63: (b7) r1 = 1852383342
+      64: (63) *(u32 *)(r10 -88) = r1
+      65: (18) r1 = 0x6f74616d6f747561
+      67: (7b) *(u64 *)(r10 -96) = r1
+      68: (b7) r7 = 0
+      69: (73) *(u8 *)(r10 -82) = r7
+      last_idx 69 first_idx 53
+      regs=80 stack=0 before 68: (b7) r7 = 0
+      70: (bf) r1 = r10
+      71: (07) r1 += -96
+      72: (b7) r2 = 15
+      73: (85) call bpf_trace_printk#6
+      last_idx 73 first_idx 53
+      regs=4 stack=0 before 72: (b7) r2 = 15
+      74: (18) r1 = 0xffffffff
+      76: (63) *(u32 *)(r10 -72) = r1
+      77: (b7) r2 = 1
+      78: (63) *(u32 *)(r10 -76) = r2
+      79: (63) *(u32 *)(r10 -64) = r1
+      80: (63) *(u32 *)(r10 -68) = r1
+      81: (b7) r2 = 2
+      82: (63) *(u32 *)(r10 -56) = r2
+      83: (63) *(u32 *)(r10 -60) = r1
+      84: (63) *(u32 *)(r10 -48) = r1
+      85: (63) *(u32 *)(r10 -52) = r1
+      86: (63) *(u32 *)(r10 -40) = r1
+      87: (63) *(u32 *)(r10 -44) = r1
+      88: (63) *(u32 *)(r10 -32) = r1
+      89: (b7) r2 = 3
+      90: (63) *(u32 *)(r10 -36) = r2
+      91: (63) *(u32 *)(r10 -24) = r1
+      92: (63) *(u32 *)(r10 -28) = r1
+      93: (63) *(u32 *)(r10 -16) = r7
+      94: (63) *(u32 *)(r10 -20) = r1
+      95: (63) *(u32 *)(r10 -80) = r7
+      96: (18) r1 = 0xffff98ed35b5b000
+      98: (bf) r2 = r10
+      99: (07) r2 += -80
+      100: (b7) r3 = 2
+      101: (85) call bpf_map_push_elem#87
+      102: (61) r1 = *(u32 *)(r6 +0)
+       R0_w=inv(id=0) R6=map_value(id=0,off=0,ks=4,vs=4,imm=0) R7=invP0 R10=fp0 fp-8=mmmmmmmm fp-16=????mmmm fp-24=mmmmmmmm fp-32=mmmmmmmm fp-40=mmmmmmmm fp-48=mmmmmmmm fp-56=mmmmmmmm fp-64=mmmmmmmm fp-72=mmmmmmmm fp-80=mmmmmmmm fp-88=?mmmmmmm fp-96=mmmmmmmm
+      103: (67) r1 <<= 32
+      104: (c7) r1 s>>= 32
+      105: (67) r1 <<= 4
+      106: (bf) r2 = r10
+      107: (07) r2 += -80
+      108: (0f) r2 += r1
+      last_idx 108 first_idx 74
+      regs=2 stack=0 before 107: (07) r2 += -80
+      regs=2 stack=0 before 106: (bf) r2 = r10
+      regs=2 stack=0 before 105: (67) r1 <<= 4
+      regs=2 stack=0 before 104: (c7) r1 s>>= 32
+      regs=2 stack=0 before 103: (67) r1 <<= 32
+      regs=2 stack=0 before 102: (61) r1 = *(u32 *)(r6 +0)
+      math between fp pointer and register with unbounded min value is not allowed
+      processed 100 insns (limit 1000000) max_states_per_insn 0 total_states 4 peak_states 4 mark_read 2
+    combined: |-
+      bpf: Failed to load program: Invalid argument
+      0: (b7) r7 = 0
+      1: (63) *(u32 *)(r10 -4) = r7
+      last_idx 1 first_idx 0
+      regs=80 stack=0 before 0: (b7) r7 = 0
+      2: (63) *(u32 *)(r10 -8) = r7
+      3: (18) r1 = 0xffff98ec8a7dd800
+      5: (bf) r2 = r10
+      6: (07) r2 += -4
+      7: (85) call bpf_map_lookup_elem#1
+      8: (bf) r6 = r0
+      9: (55) if r6 != 0x0 goto pc+30
+       R0_w=inv0 R6_w=inv0 R7_w=invP0 R10=fp0 fp-8=mmmm0000
+      10: (18) r1 = 0xffff98ec8a7dd800
+      12: (bf) r6 = r10
+      13: (07) r6 += -4
+      14: (bf) r3 = r10
+      15: (07) r3 += -8
+      16: (bf) r2 = r6
+      17: (b7) r4 = 1
+      18: (85) call bpf_map_update_elem#2
+      19: (18) r1 = 0xffff98ec8a7dd800
+      21: (bf) r2 = r6
+      22: (85) call bpf_map_lookup_elem#1
+      23: (bf) r6 = r0
+      24: (55) if r6 != 0x0 goto pc+15
+
+      from 24 to 40: R0_w=map_value(id=0,off=0,ks=4,vs=4,imm=0) R6_w=map_value(id=0,off=0,ks=4,vs=4,imm=0) R7=invP0 R10=fp0 fp-8=mmmmmmmm
+      40: (73) *(u8 *)(r10 -66) = r7
+      41: (b7) r1 = 25637
+      42: (6b) *(u16 *)(r10 -68) = r1
+      43: (b7) r1 = 540697972
+      44: (63) *(u32 *)(r10 -72) = r1
+      45: (18) r1 = 0x6174732072727563
+      47: (7b) *(u64 *)(r10 -80) = r1
+      48: (61) r3 = *(u32 *)(r6 +0)
+       R0_w=map_value(id=0,off=0,ks=4,vs=4,imm=0) R1_w=inv7022364302173697379 R6_w=map_value(id=0,off=0,ks=4,vs=4,imm=0) R7=invP0 R10=fp0 fp-8=mmmmmmmm fp-72=?0mmmmmm fp-80_w=inv7022364302173697379
+      49: (bf) r1 = r10
+      50: (07) r1 += -80
+      51: (b7) r2 = 15
+      52: (85) call bpf_trace_printk#6
+      last_idx 52 first_idx 19
+      regs=4 stack=0 before 51: (b7) r2 = 15
+      53: (18) r1 = 0xffff98ed35b5b000
+      55: (bf) r2 = r10
+      56: (07) r2 += -80
+      57: (85) call bpf_map_peek_elem#89
+      58: (67) r0 <<= 32
+      59: (c7) r0 s>>= 32
+      60: (65) if r0 s> 0xffffffff goto pc+41
+       R0_w=inv(id=0,umin_value=18446744071562067968,var_off=(0xffffffff80000000; 0x7fffffff),u32_min_value=-2147483648) R6=map_value(id=0,off=0,ks=4,vs=4,imm=0) R7=invP0 R10=fp0 fp-8=mmmmmmmm fp-16=????mmmm fp-24=mmmmmmmm fp-32=mmmmmmmm fp-40=mmmmmmmm fp-48=mmmmmmmm fp-56=mmmmmmmm fp-64=mmmmmmmm fp-72=mmmmmmmm fp-80=mmmmmmmm
+      61: (b7) r1 = 29801
+      62: (6b) *(u16 *)(r10 -84) = r1
+      63: (b7) r1 = 1852383342
+      64: (63) *(u32 *)(r10 -88) = r1
+      65: (18) r1 = 0x6f74616d6f747561
+      67: (7b) *(u64 *)(r10 -96) = r1
+      68: (b7) r7 = 0
+      69: (73) *(u8 *)(r10 -82) = r7
+      last_idx 69 first_idx 53
+      regs=80 stack=0 before 68: (b7) r7 = 0
+      70: (bf) r1 = r10
+      71: (07) r1 += -96
+      72: (b7) r2 = 15
+      73: (85) call bpf_trace_printk#6
+      last_idx 73 first_idx 53
+      regs=4 stack=0 before 72: (b7) r2 = 15
+      74: (18) r1 = 0xffffffff
+      76: (63) *(u32 *)(r10 -72) = r1
+      77: (b7) r2 = 1
+      78: (63) *(u32 *)(r10 -76) = r2
+      79: (63) *(u32 *)(r10 -64) = r1
+      80: (63) *(u32 *)(r10 -68) = r1
+      81: (b7) r2 = 2
+      82: (63) *(u32 *)(r10 -56) = r2
+      83: (63) *(u32 *)(r10 -60) = r1
+      84: (63) *(u32 *)(r10 -48) = r1
+      85: (63) *(u32 *)(r10 -52) = r1
+      86: (63) *(u32 *)(r10 -40) = r1
+      87: (63) *(u32 *)(r10 -44) = r1
+      88: (63) *(u32 *)(r10 -32) = r1
+      89: (b7) r2 = 3
+      90: (63) *(u32 *)(r10 -36) = r2
+      91: (63) *(u32 *)(r10 -24) = r1
+      92: (63) *(u32 *)(r10 -28) = r1
+      93: (63) *(u32 *)(r10 -16) = r7
+      94: (63) *(u32 *)(r10 -20) = r1
+      95: (63) *(u32 *)(r10 -80) = r7
+      96: (18) r1 = 0xffff98ed35b5b000
+      98: (bf) r2 = r10
+      99: (07) r2 += -80
+      100: (b7) r3 = 2
+      101: (85) call bpf_map_push_elem#87
+      102: (61) r1 = *(u32 *)(r6 +0)
+       R0_w=inv(id=0) R6=map_value(id=0,off=0,ks=4,vs=4,imm=0) R7=invP0 R10=fp0 fp-8=mmmmmmmm fp-16=????mmmm fp-24=mmmmmmmm fp-32=mmmmmmmm fp-40=mmmmmmmm fp-48=mmmmmmmm fp-56=mmmmmmmm fp-64=mmmmmmmm fp-72=mmmmmmmm fp-80=mmmmmmmm fp-88=?mmmmmmm fp-96=mmmmmmmm
+      103: (67) r1 <<= 32
+      104: (c7) r1 s>>= 32
+      105: (67) r1 <<= 4
+      106: (bf) r2 = r10
+      107: (07) r2 += -80
+      108: (0f) r2 += r1
+      last_idx 108 first_idx 74
+      regs=2 stack=0 before 107: (07) r2 += -80
+      regs=2 stack=0 before 106: (bf) r2 = r10
+      regs=2 stack=0 before 105: (67) r1 <<= 4
+      regs=2 stack=0 before 104: (c7) r1 s>>= 32
+      regs=2 stack=0 before 103: (67) r1 <<= 32
+      regs=2 stack=0 before 102: (61) r1 = *(u32 *)(r6 +0)
+      math between fp pointer and register with unbounded min value is not allowed
+      processed 100 insns (limit 1000000) max_states_per_insn 0 total_states 4 peak_states 4 mark_read 2
+  verifier_log:
+    blocks:
+    - |-
+      bpf: Failed to load program: Invalid argument
+      0: (b7) r7 = 0
+      1: (63) *(u32 *)(r10 -4) = r7
+      last_idx 1 first_idx 0
+      regs=80 stack=0 before 0: (b7) r7 = 0
+      2: (63) *(u32 *)(r10 -8) = r7
+      3: (18) r1 = 0xffff98ec8a7dd800
+      5: (bf) r2 = r10
+      6: (07) r2 += -4
+      7: (85) call bpf_map_lookup_elem#1
+      8: (bf) r6 = r0
+      9: (55) if r6 != 0x0 goto pc+30
+       R0_w=inv0 R6_w=inv0 R7_w=invP0 R10=fp0 fp-8=mmmm0000
+      10: (18) r1 = 0xffff98ec8a7dd800
+      12: (bf) r6 = r10
+      13: (07) r6 += -4
+      14: (bf) r3 = r10
+      15: (07) r3 += -8
+      16: (bf) r2 = r6
+      17: (b7) r4 = 1
+      18: (85) call bpf_map_update_elem#2
+      19: (18) r1 = 0xffff98ec8a7dd800
+      21: (bf) r2 = r6
+      22: (85) call bpf_map_lookup_elem#1
+      23: (bf) r6 = r0
+      24: (55) if r6 != 0x0 goto pc+15
+
+      from 24 to 40: R0_w=map_value(id=0,off=0,ks=4,vs=4,imm=0) R6_w=map_value(id=0,off=0,ks=4,vs=4,imm=0) R7=invP0 R10=fp0 fp-8=mmmmmmmm
+      40: (73) *(u8 *)(r10 -66) = r7
+      41: (b7) r1 = 25637
+      42: (6b) *(u16 *)(r10 -68) = r1
+      43: (b7) r1 = 540697972
+      44: (63) *(u32 *)(r10 -72) = r1
+      45: (18) r1 = 0x6174732072727563
+      47: (7b) *(u64 *)(r10 -80) = r1
+      48: (61) r3 = *(u32 *)(r6 +0)
+       R0_w=map_value(id=0,off=0,ks=4,vs=4,imm=0) R1_w=inv7022364302173697379 R6_w=map_value(id=0,off=0,ks=4,vs=4,imm=0) R7=invP0 R10=fp0 fp-8=mmmmmmmm fp-72=?0mmmmmm fp-80_w=inv7022364302173697379
+      49: (bf) r1 = r10
+      50: (07) r1 += -80
+      51: (b7) r2 = 15
+      52: (85) call bpf_trace_printk#6
+      last_idx 52 first_idx 19
+      regs=4 stack=0 before 51: (b7) r2 = 15
+      53: (18) r1 = 0xffff98ed35b5b000
+      55: (bf) r2 = r10
+      56: (07) r2 += -80
+      57: (85) call bpf_map_peek_elem#89
+      58: (67) r0 <<= 32
+      59: (c7) r0 s>>= 32
+      60: (65) if r0 s> 0xffffffff goto pc+41
+       R0_w=inv(id=0,umin_value=18446744071562067968,var_off=(0xffffffff80000000; 0x7fffffff),u32_min_value=-2147483648) R6=map_value(id=0,off=0,ks=4,vs=4,imm=0) R7=invP0 R10=fp0 fp-8=mmmmmmmm fp-16=????mmmm fp-24=mmmmmmmm fp-32=mmmmmmmm fp-40=mmmmmmmm fp-48=mmmmmmmm fp-56=mmmmmmmm fp-64=mmmmmmmm fp-72=mmmmmmmm fp-80=mmmmmmmm
+      61: (b7) r1 = 29801
+      62: (6b) *(u16 *)(r10 -84) = r1
+      63: (b7) r1 = 1852383342
+      64: (63) *(u32 *)(r10 -88) = r1
+      65: (18) r1 = 0x6f74616d6f747561
+      67: (7b) *(u64 *)(r10 -96) = r1
+      68: (b7) r7 = 0
+      69: (73) *(u8 *)(r10 -82) = r7
+      last_idx 69 first_idx 53
+      regs=80 stack=0 before 68: (b7) r7 = 0
+      70: (bf) r1 = r10
+      71: (07) r1 += -96
+      72: (b7) r2 = 15
+      73: (85) call bpf_trace_printk#6
+      last_idx 73 first_idx 53
+      regs=4 stack=0 before 72: (b7) r2 = 15
+      74: (18) r1 = 0xffffffff
+      76: (63) *(u32 *)(r10 -72) = r1
+      77: (b7) r2 = 1
+      78: (63) *(u32 *)(r10 -76) = r2
+      79: (63) *(u32 *)(r10 -64) = r1
+      80: (63) *(u32 *)(r10 -68) = r1
+      81: (b7) r2 = 2
+      82: (63) *(u32 *)(r10 -56) = r2
+      83: (63) *(u32 *)(r10 -60) = r1
+      84: (63) *(u32 *)(r10 -48) = r1
+      85: (63) *(u32 *)(r10 -52) = r1
+      86: (63) *(u32 *)(r10 -40) = r1
+      87: (63) *(u32 *)(r10 -44) = r1
+      88: (63) *(u32 *)(r10 -32) = r1
+      89: (b7) r2 = 3
+      90: (63) *(u32 *)(r10 -36) = r2
+      91: (63) *(u32 *)(r10 -24) = r1
+      92: (63) *(u32 *)(r10 -28) = r1
+      93: (63) *(u32 *)(r10 -16) = r7
+      94: (63) *(u32 *)(r10 -20) = r1
+      95: (63) *(u32 *)(r10 -80) = r7
+      96: (18) r1 = 0xffff98ed35b5b000
+      98: (bf) r2 = r10
+      99: (07) r2 += -80
+      100: (b7) r3 = 2
+      101: (85) call bpf_map_push_elem#87
+      102: (61) r1 = *(u32 *)(r6 +0)
+       R0_w=inv(id=0) R6=map_value(id=0,off=0,ks=4,vs=4,imm=0) R7=invP0 R10=fp0 fp-8=mmmmmmmm fp-16=????mmmm fp-24=mmmmmmmm fp-32=mmmmmmmm fp-40=mmmmmmmm fp-48=mmmmmmmm fp-56=mmmmmmmm fp-64=mmmmmmmm fp-72=mmmmmmmm fp-80=mmmmmmmm fp-88=?mmmmmmm fp-96=mmmmmmmm
+      103: (67) r1 <<= 32
+      104: (c7) r1 s>>= 32
+      105: (67) r1 <<= 4
+      106: (bf) r2 = r10
+      107: (07) r2 += -80
+      108: (0f) r2 += r1
+      last_idx 108 first_idx 74
+      regs=2 stack=0 before 107: (07) r2 += -80
+      regs=2 stack=0 before 106: (bf) r2 = r10
+      regs=2 stack=0 before 105: (67) r1 <<= 4
+      regs=2 stack=0 before 104: (c7) r1 s>>= 32
+      regs=2 stack=0 before 103: (67) r1 <<= 32
+      regs=2 stack=0 before 102: (61) r1 = *(u32 *)(r6 +0)
+      math between fp pointer and register with unbounded min value is not allowed
+      processed 100 insns (limit 1000000) max_states_per_insn 0 total_states 4 peak_states 4 mark_read 2
+    combined: |-
+      libbpf: loading object from <legacy-so-gh-reproducer>/stackoverflow-74531552/prog.o
+      libbpf: elf: section(3) kprobe/tcp_connect, size 648, link 0, flags 6, type=1
+      libbpf: sec 'kprobe/tcp_connect': found program 'trace_connect_v4_return' at insn offset 0 (0 bytes), code size 81 insns (648 bytes)
+      libbpf: elf: section(4) .relkprobe/tcp_connect, size 80, link 27, flags 40, type=9
+      libbpf: elf: section(5) .maps, size 56, link 0, flags 3, type=1
+      libbpf: elf: section(6) .rodata, size 64, link 0, flags 2, type=1
+      libbpf: elf: section(7) license, size 4, link 0, flags 3, type=1
+      libbpf: license of <legacy-so-gh-reproducer>/stackoverflow-74531552/prog.o is GPL
+      libbpf: elf: section(17) .BTF, size 2276, link 0, flags 0, type=1
+      libbpf: elf: section(19) .BTF.ext, size 400, link 0, flags 0, type=1
+      libbpf: elf: section(27) .symtab, size 432, link 1, flags 0, type=2
+      libbpf: looking for externs among 18 symbols...
+      libbpf: collected 0 externs total
+      libbpf: map 'automaton': at sec_idx 5, offset 0.
+      libbpf: map 'automaton': found type = 23.
+      libbpf: map 'automaton': found value [8], sz = 68.
+      libbpf: map 'automaton': found max_entries = 1.
+      libbpf: map 'state_store': at sec_idx 5, offset 24.
+      libbpf: map 'state_store': found type = 1.
+      libbpf: map 'state_store': found key [2], sz = 4.
+      libbpf: map 'state_store': found value [2], sz = 4.
+      libbpf: map 'state_store': found max_entries = 1.
+      libbpf: map 'prog.rodata' (global data): at sec_idx 6, offset 0, flags 80.
+      libbpf: map 2 is "prog.rodata"
+      libbpf: sec '.relkprobe/tcp_connect': collecting relocation for section(3) 'kprobe/tcp_connect'
+      libbpf: sec '.relkprobe/tcp_connect': relo #0: insn #5 against 'state_store'
+      libbpf: prog 'trace_connect_v4_return': found map 1 (state_store, sec 5, off 24) for insn #5
+      libbpf: sec '.relkprobe/tcp_connect': relo #1: insn #14 against 'state_store'
+      libbpf: prog 'trace_connect_v4_return': found map 1 (state_store, sec 5, off 24) for insn #14
+      libbpf: sec '.relkprobe/tcp_connect': relo #2: insn #19 against 'state_store'
+      libbpf: prog 'trace_connect_v4_return': found map 1 (state_store, sec 5, off 24) for insn #19
+      libbpf: sec '.relkprobe/tcp_connect': relo #3: insn #29 against 'automaton'
+      libbpf: prog 'trace_connect_v4_return': found map 0 (automaton, sec 5, off 0) for insn #29
+      libbpf: sec '.relkprobe/tcp_connect': relo #4: insn #58 against 'automaton'
+      libbpf: prog 'trace_connect_v4_return': found map 0 (automaton, sec 5, off 0) for insn #58
+      libbpf: object 'prog': failed (-95) to create BPF token from '/sys/fs/bpf', skipping optional step...
+      libbpf: map 'automaton': created successfully, fd=4
+      libbpf: map 'state_store': created successfully, fd=5
+      libbpf: map 'prog.rodata': created successfully, fd=6
+      libbpf: prog 'trace_connect_v4_return': BPF program load failed: -EINVAL
+      libbpf: prog 'trace_connect_v4_return': -- BEGIN PROG LOAD LOG --
+      func#0 @0
+      Live regs before insn:
+        0: .......... (b7) r1 = 0
+        1: .1........ (63) *(u32 *)(r10 -4) = r1
+        2: .1........ (63) *(u32 *)(r10 -8) = r1
+        3: .......... (bf) r2 = r10
+        4: ..2....... (07) r2 += -4
+        5: ..2....... (18) r1 = 0xffff8f291ace8c00
+        7: .12....... (85) call bpf_map_lookup_elem#1
+        8: 0......... (bf) r6 = r0
+        9: ......6... (55) if r6 != 0x0 goto pc+17
+       10: .......... (bf) r6 = r10
+       11: ......6... (07) r6 += -4
+       12: ......6... (bf) r3 = r10
+       13: ...3..6... (07) r3 += -8
+       14: ...3..6... (18) r1 = 0xffff8f291ace8c00
+       16: .1.3..6... (bf) r2 = r6
+       17: .123..6... (b7) r4 = 1
+       18: .1234.6... (85) call bpf_map_update_elem#2
+       19: ......6... (18) r1 = 0xffff8f291ace8c00
+       21: .1....6... (bf) r2 = r6
+       22: .12....... (85) call bpf_map_lookup_elem#1
+       23: 0......... (bf) r6 = r0
+       24: ......6... (18) r0 = 0xffffffff
+       26: 0.....6... (15) if r6 == 0x0 goto pc+53
+       27: ......6... (bf) r2 = r10
+       28: ..2...6... (07) r2 += -76
+       29: ..2...6... (18) r1 = 0xffff8f2742992c00
+       31: .12...6... (85) call bpf_map_peek_elem#89
+       32: 0.....6... (65) if r0 s> 0xffffffff goto pc+29
+       33: ......6... (b7) r1 = 1
+       34: .1....6... (63) *(u32 *)(r10 -72) = r1
+       35: ......6... (b7) r1 = 2
+       36: .1....6... (63) *(u32 *)(r10 -52) = r1
+       37: ......6... (b7) r1 = 3
+       38: .1....6... (63) *(u32 *)(r10 -32) = r1
+       39: ......6... (18) r1 = 0xffffffff
+       41: .1....6... (63) *(u32 *)(r10 -68) = r1
+       42: .1....6... (63) *(u32 *)(r10 -60) = r1
+       43: .1....6... (63) *(u32 *)(r10 -64) = r1
+       44: .1....6... (63) *(u32 *)(r10 -56) = r1
+       45: .1....6... (63) *(u32 *)(r10 -44) = r1
+       46: .1....6... (63) *(u32 *)(r10 -48) = r1
+       47: .1....6... (63) *(u32 *)(r10 -36) = r1
+       48: .1....6... (63) *(u32 *)(r10 -40) = r1
+       49: .1....6... (63) *(u32 *)(r10 -28) = r1
+       50: .1....6... (63) *(u32 *)(r10 -20) = r1
+       51: .1....6... (63) *(u32 *)(r10 -24) = r1
+       52: .1....6... (63) *(u32 *)(r10 -16) = r1
+       53: ......6... (b7) r1 = 0
+       54: .1....6... (63) *(u32 *)(r10 -12) = r1
+       55: .1....6... (63) *(u32 *)(r10 -76) = r1
+       56: ......6... (bf) r2 = r10
+       57: ..2...6... (07) r2 += -76
+       58: ..2...6... (18) r1 = 0xffff8f2742992c00
+       60: .12...6... (b7) r3 = 0
+       61: .123..6... (85) call bpf_map_push_elem#87
+       62: ......6... (61) r1 = *(u32 *)(r6 +0)
+       63: .1....6... (67) r1 <<= 32
+       64: .1....6... (c7) r1 s>>= 32
+       65: .1....6... (67) r1 <<= 4
+       66: .1....6... (bf) r2 = r10
+       67: .12...6... (07) r2 += -76
+       68: .12...6... (0f) r2 += r1
+       69: ..2...6... (18) r0 = 0xffffffff
+       71: 0.2...6... (61) r1 = *(u32 *)(r2 +4)
+       72: 01....6... (67) r1 <<= 32
+       73: 01....6... (c7) r1 s>>= 32
+       74: 01....6... (15) if r1 == 0x0 goto pc+5
+       75: 01....6... (65) if r1 s> 0x3 goto pc+4
+       76: 01....6... (b7) r2 = -1
+       77: 012...6... (6d) if r2 s> r1 goto pc+2
+       78: .1....6... (63) *(u32 *)(r6 +0) = r1
+       79: .......... (b7) r0 = 0
+       80: 0......... (95) exit
+      0: R1=ctx() R10=fp0
+      ; int trace_connect_v4_return(struct pt_regs *ctx) @ prog.c:235
+      0: (b7) r1 = 0                        ; R1_w=0
+      ; int key = 0, init_val = 0; @ prog.c:237
+      1: (63) *(u32 *)(r10 -4) = r1
+      mark_precise: frame0: last_idx 1 first_idx 0 subseq_idx -1
+      mark_precise: frame0: regs=r1 stack= before 0: (b7) r1 = 0
+      2: R1_w=0 R10=fp0 fp-8=0000????
+      2: (63) *(u32 *)(r10 -8) = r1         ; R1_w=0 R10=fp0 fp-8=00000
+      3: (bf) r2 = r10                      ; R2_w=fp0 R10=fp0
+      ;  @ prog.c:0
+      4: (07) r2 += -4                      ; R2_w=fp-4
+      ; int *curr_state = bpf_map_lookup_elem(&state_store, key); @ prog.c:227
+      5: (18) r1 = 0xffff8f291ace8c00       ; R1_w=map_ptr(map=state_store,ks=4,vs=4)
+      7: (85) call bpf_map_lookup_elem#1    ; R0_w=map_value_or_null(id=1,map=state_store,ks=4,vs=4)
+      8: (bf) r6 = r0                       ; R0_w=map_value_or_null(id=1,map=state_store,ks=4,vs=4) R6_w=map_value_or_null(id=1,map=state_store,ks=4,vs=4)
+      ; if (curr_state) @ prog.c:228
+      9: (55) if r6 != 0x0 goto pc+17       ; R6_w=0
+      10: (bf) r6 = r10                     ; R6_w=fp0 R10=fp0
+      ; bpf_map_update_elem(&state_store, key, init_val, BPF_NOEXIST); @ prog.c:230
+      11: (07) r6 += -4                     ; R6_w=fp-4
+      12: (bf) r3 = r10                     ; R3_w=fp0 R10=fp0
+      13: (07) r3 += -8                     ; R3_w=fp-8
+      14: (18) r1 = 0xffff8f291ace8c00      ; R1_w=map_ptr(map=state_store,ks=4,vs=4)
+      16: (bf) r2 = r6                      ; R2_w=fp-4 R6_w=fp-4
+      17: (b7) r4 = 1                       ; R4_w=1
+      18: (85) call bpf_map_update_elem#2   ; R0=scalar()
+      ; return bpf_map_lookup_elem(&state_store, key); @ prog.c:231
+      19: (18) r1 = 0xffff8f291ace8c00      ; R1_w=map_ptr(map=state_store,ks=4,vs=4)
+      21: (bf) r2 = r6                      ; R2_w=fp-4 R6=fp-4
+      22: (85) call bpf_map_lookup_elem#1   ; R0_w=map_value_or_null(id=2,map=state_store,ks=4,vs=4)
+      23: (bf) r6 = r0                      ; R0_w=map_value_or_null(id=2,map=state_store,ks=4,vs=4) R6_w=map_value_or_null(id=2,map=state_store,ks=4,vs=4)
+      24: (18) r0 = 0xffffffff              ; R0_w=0xffffffff
+      ; if (!curr_state) @ prog.c:243
+      26: (15) if r6 == 0x0 goto pc+53      ; R6_w=map_value(map=state_store,ks=4,vs=4)
+      27: (bf) r2 = r10                     ; R2_w=fp0 R10=fp0
+      ; if (bpf_map_peek_elem(&automaton, &aut) < 0) { @ prog.c:246
+      28: (07) r2 += -76                    ; R2_w=fp-76
+      29: (18) r1 = 0xffff8f2742992c00      ; R1_w=map_ptr(map=automaton,ks=0,vs=68)
+      31: (85) call bpf_map_peek_elem#89    ; R0=scalar() fp-16=mmmmmmmm fp-24=mmmmmmmm fp-32=mmmmmmmm fp-40=mmmmmmmm fp-48=mmmmmmmm fp-56=mmmmmmmm fp-64=mmmmmmmm fp-72=mmmmmmmm fp-80=mmmm????
+      32: (65) if r0 s> 0xffffffff goto pc+29       ; R0=scalar(smax=-1,umin=0x8000000000000000,var_off=(0x8000000000000000; 0x7fffffffffffffff))
+      33: (b7) r1 = 1                       ; R1_w=1
+      ; aut = (automaton_t){ @ prog.c:247
+      34: (63) *(u32 *)(r10 -72) = r1       ; R1_w=1 R10=fp0 fp-72=mmmm1
+      35: (b7) r1 = 2                       ; R1_w=2
+      36: (63) *(u32 *)(r10 -52) = r1       ; R1_w=2 R10=fp0 fp-56=mmmmmmmm
+      37: (b7) r1 = 3                       ; R1_w=3
+      38: (63) *(u32 *)(r10 -32) = r1       ; R1_w=3 R10=fp0 fp-32=mmmm3
+      39: (18) r1 = 0xffffffff              ; R1_w=0xffffffff
+      41: (63) *(u32 *)(r10 -68) = r1       ; R1_w=0xffffffff R10=fp0 fp-72=mmmmmmmm
+      42: (63) *(u32 *)(r10 -60) = r1       ; R1_w=0xffffffff R10=fp0 fp-64=mmmmmmmm
+      43: (63) *(u32 *)(r10 -64) = r1       ; R1_w=0xffffffff R10=fp0 fp-64=mmmm0xffffffff
+      44: (63) *(u32 *)(r10 -56) = r1       ; R1_w=0xffffffff R10=fp0 fp-56=mmmm0xffffffff
+      45: (63) *(u32 *)(r10 -44) = r1       ; R1_w=0xffffffff R10=fp0 fp-48=mmmmmmmm
+      46: (63) *(u32 *)(r10 -48) = r1       ; R1_w=0xffffffff R10=fp0 fp-48=mmmm0xffffffff
+      47: (63) *(u32 *)(r10 -36) = r1       ; R1_w=0xffffffff R10=fp0 fp-40=mmmmmmmm
+      48: (63) *(u32 *)(r10 -40) = r1       ; R1_w=0xffffffff R10=fp0 fp-40=mmmm0xffffffff
+      49: (63) *(u32 *)(r10 -28) = r1       ; R1_w=0xffffffff R10=fp0 fp-32=mmmmmmmm
+      50: (63) *(u32 *)(r10 -20) = r1       ; R1_w=0xffffffff R10=fp0 fp-24=mmmmmmmm
+      51: (63) *(u32 *)(r10 -24) = r1       ; R1_w=0xffffffff R10=fp0 fp-24=mmmm0xffffffff
+      52: (63) *(u32 *)(r10 -16) = r1       ; R1_w=0xffffffff R10=fp0 fp-16=mmmm0xffffffff
+      53: (b7) r1 = 0                       ; R1_w=0
+      54: (63) *(u32 *)(r10 -12) = r1
+      mark_precise: frame0: last_idx 54 first_idx 32 subseq_idx -1
+      mark_precise: frame0: regs=r1 stack= before 53: (b7) r1 = 0
+      55: R1_w=0 R10=fp0 fp-16=0000mmmm
+      55: (63) *(u32 *)(r10 -76) = r1
+      mark_precise: frame0: last_idx 55 first_idx 32 subseq_idx -1
+      mark_precise: frame0: regs=r1 stack= before 54: (63) *(u32 *)(r10 -12) = r1
+      mark_precise: frame0: regs=r1 stack= before 53: (b7) r1 = 0
+      56: R1_w=0 R10=fp0 fp-80=0000????
+      56: (bf) r2 = r10                     ; R2_w=fp0 R10=fp0
+      ;  @ prog.c:0
+      57: (07) r2 += -76                    ; R2_w=fp-76
+      ; bpf_map_push_elem(&automaton, &aut, 0); @ prog.c:256
+      58: (18) r1 = 0xffff8f2742992c00      ; R1_w=map_ptr(map=automaton,ks=0,vs=68)
+      60: (b7) r3 = 0                       ; R3_w=0
+      61: (85) call bpf_map_push_elem#87    ; R0=scalar()
+      ; next = aut.function[*curr_state][0]; @ prog.c:259
+      62: (61) r1 = *(u32 *)(r6 +0)         ; R1_w=scalar(smin=0,smax=umax=0xffffffff,var_off=(0x0; 0xffffffff)) R6=map_value(map=state_store,ks=4,vs=4)
+      63: (67) r1 <<= 32                    ; R1_w=scalar(smax=0x7fffffff00000000,umax=0xffffffff00000000,smin32=0,smax32=umax32=0,var_off=(0x0; 0xffffffff00000000))
+      64: (c7) r1 s>>= 32                   ; R1_w=scalar(smin=0xffffffff80000000,smax=0x7fffffff)
+      65: (67) r1 <<= 4                     ; R1_w=scalar(smax=0x7ffffffffffffff0,umax=0xfffffffffffffff0,smax32=0x7ffffff0,umax32=0xfffffff0,var_off=(0x0; 0xfffffffffffffff0))
+      66: (bf) r2 = r10                     ; R2_w=fp0 R10=fp0
+      67: (07) r2 += -76                    ; R2_w=fp-76
+      68: (0f) r2 += r1
+      mark_precise: frame0: last_idx 68 first_idx 62 subseq_idx -1
+      mark_precise: frame0: regs=r1 stack= before 67: (07) r2 += -76
+      mark_precise: frame0: regs=r1 stack= before 66: (bf) r2 = r10
+      mark_precise: frame0: regs=r1 stack= before 65: (67) r1 <<= 4
+      mark_precise: frame0: regs=r1 stack= before 64: (c7) r1 s>>= 32
+      mark_precise: frame0: regs=r1 stack= before 63: (67) r1 <<= 32
+      mark_precise: frame0: regs=r1 stack= before 62: (61) r1 = *(u32 *)(r6 +0)
+      math between fp pointer and register with unbounded min value is not allowed
+      verification time 187 usec
+      stack depth 80
+      processed 62 insns (limit 1000000) max_states_per_insn 0 total_states 3 peak_states 3 mark_read 2
+      -- END PROG LOAD LOG --
+      libbpf: prog 'trace_connect_v4_return': failed to load: -EINVAL
+      libbpf: failed to load object '<legacy-so-gh-reproducer>/stackoverflow-74531552/prog.o'
+      Error: failed to load object file
+  verifier_log_source: captured_on_6.15.11
+  verifier_log_captured_at: '2026-03-20'
+  source_snippets:
+  - if (!next || next > 3 || next < -1) return -1;
+  question_body_text: |-
+    I am trying to write some bpf probes that keep some sort of state required for runtime verification. I am using iovisor/BCC for this purpose. I have created a pinned map so this value can be used across several bpf programs. Whenever I read the value from the state_store map, I get a valid pointer which I can dereference and print value of. To get the value for next state, I invoke the matrix function provided in automaton_s.
+    #include <bcc/proto.h>
+    struct automaton_s {
+    int initial_state;
+    int function[4][4];
+    };
+    typedef struct automaton_s automaton_t;
+    BPF_STACK(automaton, automaton_t, 1);
+    BPF_TABLE_PINNED("hash", int, int, state_store, 1, "/sys/fs/bpf/state");
+    int trace_connect_v4_return(struct pt_regs *ctx)
+    {
+    int key = 0, init_val = 0;
+    int *curr_state;
+    curr_state = state_store.lookup_or_try_init(&key, &init_val);
+    if (!curr_state) {
+    bpf_trace_printk("State store is full");
+    return -1;
+    }
+    bpf_trace_printk("curr state: %d", *curr_state);
+    automaton_t aut;
+    if (automaton.peek(&aut) < 0) {
+    bpf_trace_printk("automaton init");
+    aut = (automaton_t) {
+    .initial_state = 0,
+    .function = {
+    { 1, -1, -1, -1 },
+    { -1, 2, -1, -1 },
+    { -1, -1, 3, -1 },
+    { -1, -1, -1, 0 }
+    }
+    };
+    automaton.push(&aut, BPF_EXIST);
+    }
+    int next = aut.function[*curr_state][0];
+    bpf_trace_printk("next val: %d", next);
+    state_store.update(&key, &next);
+    return 0;
+    }
+    The error occurs whenever I try to use this next value, for either printing or updating state_store (see last two lines before return 0;). I get the error math between fp pointer and register with unbounded min value is not allowed. Commenting out these two lines makes the program compile at least, but I still need to update the state_store.
+    Googling the issue has led me to believe that this is some sort of register offset error, rejected by the verifier.
+    The entire error message:
+    bpf: Failed to load program: Invalid argument
+    0: (b7) r7 = 0
+    1: (63) *(u32 *)(r10 -4) = r7
+    last_idx 1 first_idx 0
+    regs=80 stack=0 before 0: (b7) r7 = 0
+    2: (63) *(u32 *)(r10 -8) = r7
+    3: (18) r1 = 0xffff98ec8a7dd800
+    5: (bf) r2 = r10
+    6: (07) r2 += -4
+    7: (85) call bpf_map_lookup_elem#1
+    8: (bf) r6 = r0
+    9: (55) if r6 != 0x0 goto pc+30
+    R0_w=inv0 R6_w=inv0 R7_w=invP0 R10=fp0 fp-8=mmmm0000
+    10: (18) r1 = 0xffff98ec8a7dd800
+    12: (bf) r6 = r10
+    13: (07) r6 += -4
+    14: (bf) r3 = r10
+    15: (07) r3 += -8
+    16: (bf) r2 = r6
+    17: (b7) r4 = 1
+    18: (85) call bpf_map_update_elem#2
+    19: (18) r1 = 0xffff98ec8a7dd800
+    21: (bf) r2 = r6
+    22: (85) call bpf_map_lookup_elem#1
+    23: (bf) r6 = r0
+    24: (55) if r6 != 0x0 goto pc+15
+    from 24 to 40: R0_w=map_value(id=0,off=0,ks=4,vs=4,imm=0) R6_w=map_value(id=0,off=0,ks=4,vs=4,imm=0) R7=invP0 R10=fp0 fp-8=mmmmmmmm
+    40: (73) *(u8 *)(r10 -66) = r7
+    41: (b7) r1 = 25637
+    42: (6b) *(u16 *)(r10 -68) = r1
+    43: (b7) r1 = 540697972
+    44: (63) *(u32 *)(r10 -72) = r1
+    45: (18) r1 = 0x6174732072727563
+    47: (7b) *(u64 *)(r10 -80) = r1
+    48: (61) r3 = *(u32 *)(r6 +0)
+    R0_w=map_value(id=0,off=0,ks=4,vs=4,imm=0) R1_w=inv7022364302173697379 R6_w=map_value(id=0,off=0,ks=4,vs=4,imm=0) R7=invP0 R10=fp0 fp-8=mmmmmmmm fp-72=?0mmmmmm fp-80_w=inv7022364302173697379
+    49: (bf) r1 = r10
+    50: (07) r1 += -80
+    51: (b7) r2 = 15
+    52: (85) call bpf_trace_printk#6
+    last_idx 52 first_idx 19
+    regs=4 stack=0 before 51: (b7) r2 = 15
+    53: (18) r1 = 0xffff98ed35b5b000
+    55: (bf) r2 = r10
+    56: (07) r2 += -80
+    57: (85) call bpf_map_peek_elem#89
+    58: (67) r0 <<= 32
+    59: (c7) r0 s>>= 32
+    60: (65) if r0 s> 0xffffffff goto pc+41
+    R0_w=inv(id=0,umin_value=18446744071562067968,var_off=(0xffffffff80000000; 0x7fffffff),u32_min_value=-2147483648) R6=map_value(id=0,off=0,ks=4,vs=4,imm=0) R7=invP0 R10=fp0 fp-8=mmmmmmmm fp-16=????mmmm fp-24=mmmmmmmm fp-32=mmmmmmmm fp-40=mmmmmmmm fp-48=mmmmmmmm fp-56=mmmmmmmm fp-64=mmmmmmmm fp-72=mmmmmmmm fp-80=mmmmmmmm
+    61: (b7) r1 = 29801
+    62: (6b) *(u16 *)(r10 -84) = r1
+    63: (b7) r1 = 1852383342
+    64: (63) *(u32 *)(r10 -88) = r1
+    65: (18) r1 = 0x6f74616d6f747561
+    67: (7b) *(u64 *)(r10 -96) = r1
+    68: (b7) r7 = 0
+    69: (73) *(u8 *)(r10 -82) = r7
+    last_idx 69 first_idx 53
+    regs=80 stack=0 before 68: (b7) r7 = 0
+    70: (bf) r1 = r10
+    71: (07) r1 += -96
+    72: (b7) r2 = 15
+    73: (85) call bpf_trace_printk#6
+    last_idx 73 first_idx 53
+    regs=4 stack=0 before 72: (b7) r2 = 15
+    74: (18) r1 = 0xffffffff
+    76: (63) *(u32 *)(r10 -72) = r1
+    77: (b7) r2 = 1
+    78: (63) *(u32 *)(r10 -76) = r2
+    79: (63) *(u32 *)(r10 -64) = r1
+    80: (63) *(u32 *)(r10 -68) = r1
+    81: (b7) r2 = 2
+    82: (63) *(u32 *)(r10 -56) = r2
+    83: (63) *(u32 *)(r10 -60) = r1
+    84: (63) *(u32 *)(r10 -48) = r1
+    85: (63) *(u32 *)(r10 -52) = r1
+    86: (63) *(u32 *)(r10 -40) = r1
+    87: (63) *(u32 *)(r10 -44) = r1
+    88: (63) *(u32 *)(r10 -32) = r1
+    89: (b7) r2 = 3
+    90: (63) *(u32 *)(r10 -36) = r2
+    91: (63) *(u32 *)(r10 -24) = r1
+    92: (63) *(u32 *)(r10 -28) = r1
+    93: (63) *(u32 *)(r10 -16) = r7
+    94: (63) *(u32 *)(r10 -20) = r1
+    95: (63) *(u32 *)(r10 -80) = r7
+    96: (18) r1 = 0xffff98ed35b5b000
+    98: (bf) r2 = r10
+    99: (07) r2 += -80
+    100: (b7) r3 = 2
+    101: (85) call bpf_map_push_elem#87
+    102: (61) r1 = *(u32 *)(r6 +0)
+    R0_w=inv(id=0) R6=map_value(id=0,off=0,ks=4,vs=4,imm=0) R7=invP0 R10=fp0 fp-8=mmmmmmmm fp-16=????mmmm fp-24=mmmmmmmm fp-32=mmmmmmmm fp-40=mmmmmmmm fp-48=mmmmmmmm fp-56=mmmmmmmm fp-64=mmmmmmmm fp-72=mmmmmmmm fp-80=mmmmmmmm fp-88=?mmmmmmm fp-96=mmmmmmmm
+    103: (67) r1 <<= 32
+    104: (c7) r1 s>>= 32
+    105: (67) r1 <<= 4
+    106: (bf) r2 = r10
+    107: (07) r2 += -80
+    108: (0f) r2 += r1
+    last_idx 108 first_idx 74
+    regs=2 stack=0 before 107: (07) r2 += -80
+    regs=2 stack=0 before 106: (bf) r2 = r10
+    regs=2 stack=0 before 105: (67) r1 <<= 4
+    regs=2 stack=0 before 104: (c7) r1 s>>= 32
+    regs=2 stack=0 before 103: (67) r1 <<= 32
+    regs=2 stack=0 before 102: (61) r1 = *(u32 *)(r6 +0)
+    math between fp pointer and register with unbounded min value is not allowed
+    processed 100 insns (limit 1000000) max_states_per_insn 0 total_states 4 peak_states 4 mark_read 2
+    I have tried testing for min and max values of both *curr_state and next such as:
+    if (!next || next > 3 || next < -1) return -1;
+    But it seems naive and does not solve the issue. I have no clue on how to proceed, any help is greatly appreciated.
+  selected_answer:
+    answer_id: 74536453
+    url: https://stackoverflow.com/questions/74531552/bpf-verification-fails-due-to-register-offset#74536453
+    is_accepted: true
+    score: 1
+    body_text: |-
+      So, I've found the solution. It seems that I didn't properly check for the bounds of *curr_state. So the solution is to simply add the following snippet, prior to indexing aut.function.
+      if (*curr_state < 0 || *curr_state >= 4)
+      return -1;
+    fix_description: So, I've found the solution. It seems that I didn't properly
+      check for the bounds of *curr_state. So the solution is to simply add the following
+      snippet, prior to indexing aut.function.

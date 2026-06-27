@@ -1,0 +1,121 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-cilium-0d89f055806d
+source_kind: github_commit
+source:
+  url: https://github.com/cilium/cilium/commit/0d89f055806dc83b7d7b0586e5c08cd597a92bdc
+  title: 'cilium: encryption fixes when fib helper is not supported'
+  repository: https://github.com/cilium/cilium
+  commit: 0d89f055806dc83b7d7b0586e5c08cd597a92bdc
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-cilium-0d89f055806d.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: environment_required
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Encryption/FIB-helper fallback behavior depends on helper support and Cilium
+    build configuration; no concrete verifier log or standalone replay source is present.
+raw:
+  case_id: github-commit-cilium-0d89f055806d
+  source: github_commits
+  repository: https://github.com/cilium/cilium
+  commit_hash: 0d89f055806dc83b7d7b0586e5c08cd597a92bdc
+  commit_message: 'cilium: encryption fixes when fib helper is not supported'
+  commit_date: '2020-06-07'
+  fix_type: inline_hint
+  buggy_code: "// FILE: bpf/bpf_host.c\n// CONTEXT: do_netdev_encrypt_fib(struct __ctx_buff\
+    \ *ctx __maybe_unused,\n\t\tgoto drop_err_fib;\n\t}\n\t*encrypt_iface = fib_params.ifindex;\n\
+    drop_err_fib:\n#endif /* BPF_HAVE_FIB_LOOKUP */\n\treturn ret;\n}\n\nstatic __always_inline\
+    \ int do_netdev_encrypt(struct __ctx_buff *ctx, __u16 proto)\n{\n\tint encrypt_iface\
+    \ = 0;\n\tint ret = 0;\n\n#if defined(ENCRYPT_NODE) || defined(BPF_HAVE_FIB_LOOKUP)\n\
+    \tencrypt_iface = ENCRYPT_IFACE;\n#endif\n\tret = do_netdev_encrypt_pools(ctx);\n\
+    \tif (ret)\n\t\treturn send_drop_notify_error(ctx, 0, ret, CTX_ACT_DROP, METRIC_INGRESS);\n\
+    \n\tret = do_netdev_encrypt_fib(ctx, proto, &encrypt_iface);\n\tif (ret)\n\t\t\
+    return send_drop_notify_error(ctx, 0, ret, CTX_ACT_DROP, METRIC_INGRESS);\n\n\t\
+    bpf_clear_meta(ctx);\n#if defined(ENCRYPT_NODE) || defined(BPF_HAVE_FIB_LOOKUP)\n\
+    \treturn redirect(encrypt_iface, 0);\n#else\n\treturn CTX_ACT_OK;\n#endif\n}\n\
+    \n#else /* ENCAP_IFINDEX */\nstatic __always_inline int do_netdev_encrypt_encap(struct\
+    \ __ctx_buff *ctx)\n{\n\t__u32 seclabel, tunnel_endpoint = 0;\n\n\tseclabel =\
+    \ get_identity(ctx);\n\ttunnel_endpoint = ctx_load_meta(ctx, 4);\n\tctx->mark\
+    \ = 0;\n\n\tbpf_clear_meta(ctx);\n\n// FILE: bpf/bpf_lxc.c\n// CONTEXT: pass_to_stack:\n\
+    \n\tsend_trace_notify(ctx, TRACE_TO_STACK, SECLABEL, *dstID, 0, 0,\n\t\t\t  reason,\
+    \ monitor);\n\n\tcilium_dbg_capture(ctx, DBG_CAPTURE_DELIVERY, 0);\n#ifndef ENCAP_IFINDEX\n\
+    #ifdef ENABLE_IPSEC\n\tif (encrypt_key && tunnel_endpoint) {\n\t\tset_encrypt_key_mark(ctx,\
+    \ encrypt_key);\n#ifdef IP_POOLS\n\t\tset_encrypt_dip(ctx, tunnel_endpoint);\n\
+    #endif\n\t}\n#endif\n#endif\n\t/* Always encode the source identity when passing\
+    \ to the stack. If the\n\t * stack hairpins the packet back to a local endpoint\
+    \ the source\n\t * identity can still be derived even if SNAT is performed by\
+    \ a\n\t * component such as portmap */\n\tctx->mark |= MARK_MAGIC_IDENTITY;\n\t\
+    set_identity_mark(ctx, SECLABEL);\n\n\treturn CTX_ACT_OK;\n}\n\nstatic __always_inline\
+    \ int handle_ipv6(struct __ctx_buff *ctx, __u32 *dstID)\n{\n\tstruct ipv6_ct_tuple\
+    \ tuple = {};\n\tvoid *data, *data_end;\n\tstruct ipv6hdr *ip6;\n\tint ret;\n\n\
+    \tif (!revalidate_data(ctx, &data, &data_end, &ip6))\n\n// CONTEXT: pass_to_stack:\n\
+    \t * network.\n\t */\n\n\tsend_trace_notify(ctx, TRACE_TO_STACK, SECLABEL, *dstID,\
+    \ 0, 0,\n\t\t\t  reason, monitor);\n#ifndef ENCAP_IFINDEX\n#ifdef ENABLE_IPSEC\n\
+    \tif (encrypt_key && tunnel_endpoint) {\n\t\tset_encrypt_key_mark(ctx, encrypt_key);\n\
+    #ifdef IP_POOLS\n\t\tset_encrypt_dip(ctx, tunnel_endpoint);\n#endif\n\t}\n#endif\n\
+    #endif\n\n\t/* Always encode the source identity when passing to the stack. If\
+    \ the\n\t * stack hairpins the packet back to a local endpoint the source\n\t\
+    \ * identity can still be derived even if SNAT is performed by a\n\t * component\
+    \ such as portmap */\n\tctx->mark |= MARK_MAGIC_IDENTITY;\n\tset_identity_mark(ctx,\
+    \ SECLABEL);\n\n\tcilium_dbg_capture(ctx, DBG_CAPTURE_DELIVERY, 0);\n\treturn\
+    \ CTX_ACT_OK;\n}\n\ndeclare_tailcall_if(__or(__and(is_defined(ENABLE_IPV4), is_defined(ENABLE_IPV6)),\n\
+    \t\t\t is_defined(DEBUG)), CILIUM_CALL_IPV4_FROM_LXC)\nint tail_handle_ipv4(struct\
+    \ __ctx_buff *ctx)\n{\n\t__u32 dstID = 0;\n\tint ret = handle_ipv4_from_lxc(ctx,\
+    \ &dstID);"
+  fixed_code: "// FILE: bpf/bpf_host.c\n// CONTEXT: do_netdev_encrypt_fib(struct __ctx_buff\
+    \ *ctx __maybe_unused,\n\t\tgoto drop_err_fib;\n\t}\n\t*encrypt_iface = fib_params.ifindex;\n\
+    drop_err_fib:\n#endif /* BPF_HAVE_FIB_LOOKUP */\n\treturn ret;\n}\n\nstatic __always_inline\
+    \ int do_netdev_encrypt(struct __ctx_buff *ctx, __u16 proto)\n{\n\tint encrypt_iface\
+    \ = 0;\n\tint ret = 0;\n#if defined(ENCRYPT_IFACE)\n\tencrypt_iface = ENCRYPT_IFACE;\n\
+    #endif\n\tret = do_netdev_encrypt_pools(ctx);\n\tif (ret)\n\t\treturn send_drop_notify_error(ctx,\
+    \ 0, ret, CTX_ACT_DROP, METRIC_INGRESS);\n\n\tret = do_netdev_encrypt_fib(ctx,\
+    \ proto, &encrypt_iface);\n\tif (ret)\n\t\treturn send_drop_notify_error(ctx,\
+    \ 0, ret, CTX_ACT_DROP, METRIC_INGRESS);\n\n\tbpf_clear_meta(ctx);\n\tif (encrypt_iface)\n\
+    \t\treturn redirect(encrypt_iface, 0);\n\treturn CTX_ACT_OK;\n}\n\n#else /* ENCAP_IFINDEX\
+    \ */\nstatic __always_inline int do_netdev_encrypt_encap(struct __ctx_buff *ctx)\n\
+    {\n\t__u32 seclabel, tunnel_endpoint = 0;\n\n\tseclabel = get_identity(ctx);\n\
+    \ttunnel_endpoint = ctx_load_meta(ctx, 4);\n\tctx->mark = 0;\n\n\tbpf_clear_meta(ctx);\n\
+    \n// FILE: bpf/bpf_lxc.c\n// CONTEXT: pass_to_stack:\n\n\tsend_trace_notify(ctx,\
+    \ TRACE_TO_STACK, SECLABEL, *dstID, 0, 0,\n\t\t\t  reason, monitor);\n\n\tcilium_dbg_capture(ctx,\
+    \ DBG_CAPTURE_DELIVERY, 0);\n#ifndef ENCAP_IFINDEX\n#ifdef ENABLE_IPSEC\n\tif\
+    \ (encrypt_key && tunnel_endpoint) {\n\t\tset_encrypt_key_mark(ctx, encrypt_key);\n\
+    #ifdef IP_POOLS\n\t\tset_encrypt_dip(ctx, tunnel_endpoint);\n#endif\n\t} else\n\
+    #endif\n#endif\n\t{\n\t\t/* Always encode the source identity when passing to\
+    \ the stack. If the\n\t\t * stack hairpins the packet back to a local endpoint\
+    \ the source\n\t\t * identity can still be derived even if SNAT is performed by\
+    \ a\n\t\t * component such as portmap */\n\t\tctx->mark |= MARK_MAGIC_IDENTITY;\n\
+    \t\tset_identity_mark(ctx, SECLABEL);\n\t}\n\n\treturn CTX_ACT_OK;\n}\n\nstatic\
+    \ __always_inline int handle_ipv6(struct __ctx_buff *ctx, __u32 *dstID)\n{\n\t\
+    struct ipv6_ct_tuple tuple = {};\n\tvoid *data, *data_end;\n\tstruct ipv6hdr *ip6;\n\
+    \tint ret;\n\n\tif (!revalidate_data(ctx, &data, &data_end, &ip6))\n\n// CONTEXT:\
+    \ pass_to_stack:\n\t * network.\n\t */\n\n\tsend_trace_notify(ctx, TRACE_TO_STACK,\
+    \ SECLABEL, *dstID, 0, 0,\n\t\t\t  reason, monitor);\n#ifndef ENCAP_IFINDEX\n\
+    #ifdef ENABLE_IPSEC\n\tif (encrypt_key && tunnel_endpoint) {\n\t\tset_encrypt_key_mark(ctx,\
+    \ encrypt_key);\n#ifdef IP_POOLS\n\t\tset_encrypt_dip(ctx, tunnel_endpoint);\n\
+    #endif\n\t} else\n#endif\n#endif\n\t{\n\t\t/* Always encode the source identity\
+    \ when passing to the stack. If the\n\t\t * stack hairpins the packet back to\
+    \ a local endpoint the source\n\t\t * identity can still be derived even if SNAT\
+    \ is performed by a\n\t\t * component such as portmap */\n\t\tctx->mark |= MARK_MAGIC_IDENTITY;\n\
+    \t\tset_identity_mark(ctx, SECLABEL);\n\t}\n\n\tcilium_dbg_capture(ctx, DBG_CAPTURE_DELIVERY,\
+    \ 0);\n\treturn CTX_ACT_OK;\n}\n\ndeclare_tailcall_if(__or(__and(is_defined(ENABLE_IPV4),\
+    \ is_defined(ENABLE_IPV6)),\n\t\t\t is_defined(DEBUG)), CILIUM_CALL_IPV4_FROM_LXC)\n\
+    int tail_handle_ipv4(struct __ctx_buff *ctx)\n{\n\t__u32 dstID = 0;\n\tint ret\
+    \ = handle_ipv4_from_lxc(ctx, &dstID);"
+  diff_summary: |-
+    bpf/bpf_host.c:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: do_netdev_encrypt_fib(struct __ctx_buff *ctx __maybe_unused,.
+    bpf/bpf_lxc.c:
+    - Changed inlining annotations so verifier-visible state stays in a form older kernels accept.
+    - Affected context: pass_to_stack:.
+    - Commit subject: cilium: encryption fixes when fib helper is not supported.

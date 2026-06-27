@@ -1,0 +1,108 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-libbpf-50d1b8e6b45b
+source_kind: github_commit
+source:
+  url: https://github.com/libbpf/libbpf/commit/50d1b8e6b45b2ea00c8710c9a259581bb19051ed
+  title: 'libbpf: remove linux/unaligned.h dependency for libbpf_sha256()'
+  repository: https://github.com/libbpf/libbpf
+  commit: 50d1b8e6b45b2ea00c8710c9a259581bb19051ed
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-libbpf-50d1b8e6b45b.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Raw diff removes linux/unaligned.h use in user-space src/libbpf_utils.c
+    and adds local packed helpers for libbpf_sha256(). It is a libbpf portability/build
+    dependency change, with no BPF program or verifier log.
+raw:
+  case_id: github-commit-libbpf-50d1b8e6b45b
+  source: github_commits
+  repository: https://github.com/libbpf/libbpf
+  commit_hash: 50d1b8e6b45b2ea00c8710c9a259581bb19051ed
+  commit_message: 'libbpf: remove linux/unaligned.h dependency for libbpf_sha256()'
+  commit_date: '2025-10-01'
+  fix_type: alignment
+  buggy_code: "// FILE: src/libbpf_utils.c\n * Copyright (C) 2013-2015 Alexei Starovoitov\
+    \ <ast@kernel.org>\n * Copyright (C) 2015 Wang Nan <wangnan0@huawei.com>\n * Copyright\
+    \ (C) 2015 Huawei Inc.\n * Copyright (C) 2017 Nicira, Inc.\n */\n\n#undef _GNU_SOURCE\n\
+    #include <stdio.h>\n#include <string.h>\n#include <errno.h>\n#include <inttypes.h>\n\
+    #include <linux/kernel.h>\n#include <linux/unaligned.h>\n\n#include \"libbpf.h\"\
+    \n#include \"libbpf_internal.h\"\n\n#ifndef ENOTSUPP\n#define ENOTSUPP\t524\n\
+    #endif\n\n/* make sure libbpf doesn't use kernel-only integer typedefs */\n#pragma\
+    \ GCC poison u8 u16 u32 u64 s8 s16 s32 s64\n\n#define ERRNO_OFFSET(e)\t\t((e)\
+    \ - __LIBBPF_ERRNO__START)\n\n// CONTEXT: const char *libbpf_errstr(int err)\n\
+    \tcase -EROFS:\t\treturn \"-EROFS\";\n\tcase -ESPIPE:\t\treturn \"-ESPIPE\";\n\
+    \tcase -ESRCH:\t\treturn \"-ESRCH\";\n\tcase -ETXTBSY:\t\treturn \"-ETXTBSY\"\
+    ;\n\tcase -EUCLEAN:\t\treturn \"-EUCLEAN\";\n\tcase -EXDEV:\t\treturn \"-EXDEV\"\
+    ;\n\tdefault:\n\t\tsnprintf(buf, sizeof(buf), \"%d\", err);\n\t\treturn buf;\n\
+    \t}\n}\n\n#define SHA256_BLOCK_LENGTH 64\n#define Ch(x, y, z) (((x) & (y)) ^ (~(x)\
+    \ & (z)))\n#define Maj(x, y, z) (((x) & (y)) ^ ((x) & (z)) ^ ((y) & (z)))\n#define\
+    \ Sigma_0(x) (ror32((x), 2) ^ ror32((x), 13) ^ ror32((x), 22))\n#define Sigma_1(x)\
+    \ (ror32((x), 6) ^ ror32((x), 11) ^ ror32((x), 25))\n#define sigma_0(x) (ror32((x),\
+    \ 7) ^ ror32((x), 18) ^ ((x) >> 3))\n#define sigma_1(x) (ror32((x), 17) ^ ror32((x),\
+    \ 19) ^ ((x) >> 10))\n\nstatic const __u32 sha256_K[64] = {\n\t0x428a2f98, 0x71374491,\
+    \ 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1,\n\t0x923f82a4, 0xab1c5ed5, 0xd807aa98,\
+    \ 0x12835b01, 0x243185be, 0x550c7dc3,\n\t0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,\
+    \ 0xe49b69c1, 0xefbe4786,\n\n// CONTEXT: void libbpf_sha256(const void *data,\
+    \ size_t len, __u8 out[SHA256_DIGEST_LENGTH])\n{\n\t__u32 state[8] = { 0x6a09e667,\
+    \ 0xbb67ae85, 0x3c6ef372, 0xa54ff53a,\n\t\t\t   0x510e527f, 0x9b05688c, 0x1f83d9ab,\
+    \ 0x5be0cd19 };\n\tconst __be64 bitcount = cpu_to_be64((__u64)len * 8);\n\t__u8\
+    \ final_data[2 * SHA256_BLOCK_LENGTH] = { 0 };\n\tsize_t final_len = len % SHA256_BLOCK_LENGTH;\n\
+    \tint i;\n\n\tsha256_blocks(state, data, len / SHA256_BLOCK_LENGTH);\n\n\tmemcpy(final_data,\
+    \ data + len - final_len, final_len);\n\tfinal_data[final_len] = 0x80;\n\tfinal_len\
+    \ = round_up(final_len + 9, SHA256_BLOCK_LENGTH);\n\tmemcpy(&final_data[final_len\
+    \ - 8], &bitcount, 8);\n\n\tsha256_blocks(state, final_data, final_len / SHA256_BLOCK_LENGTH);\n\
+    \n\tfor (i = 0; i < ARRAY_SIZE(state); i++)\n\t\tput_unaligned_be32(state[i],\
+    \ &out[4 * i]);\n}"
+  fixed_code: "// FILE: src/libbpf_utils.c\n * Copyright (C) 2013-2015 Alexei Starovoitov\
+    \ <ast@kernel.org>\n * Copyright (C) 2015 Wang Nan <wangnan0@huawei.com>\n * Copyright\
+    \ (C) 2015 Huawei Inc.\n * Copyright (C) 2017 Nicira, Inc.\n */\n\n#undef _GNU_SOURCE\n\
+    #include <stdio.h>\n#include <string.h>\n#include <errno.h>\n#include <inttypes.h>\n\
+    #include <linux/kernel.h>\n\n#include \"libbpf.h\"\n#include \"libbpf_internal.h\"\
+    \n\n#ifndef ENOTSUPP\n#define ENOTSUPP\t524\n#endif\n\n/* make sure libbpf doesn't\
+    \ use kernel-only integer typedefs */\n#pragma GCC poison u8 u16 u32 u64 s8 s16\
+    \ s32 s64\n\n#define ERRNO_OFFSET(e)\t\t((e) - __LIBBPF_ERRNO__START)\n\n// CONTEXT:\
+    \ const char *libbpf_errstr(int err)\n\tcase -EROFS:\t\treturn \"-EROFS\";\n\t\
+    case -ESPIPE:\t\treturn \"-ESPIPE\";\n\tcase -ESRCH:\t\treturn \"-ESRCH\";\n\t\
+    case -ETXTBSY:\t\treturn \"-ETXTBSY\";\n\tcase -EUCLEAN:\t\treturn \"-EUCLEAN\"\
+    ;\n\tcase -EXDEV:\t\treturn \"-EXDEV\";\n\tdefault:\n\t\tsnprintf(buf, sizeof(buf),\
+    \ \"%d\", err);\n\t\treturn buf;\n\t}\n}\n\n#pragma GCC diagnostic push\n#pragma\
+    \ GCC diagnostic ignored \"-Wpacked\"\nstruct __packed_u32 { __u32 __val; } __attribute__((packed));\n\
+    #pragma GCC diagnostic pop\n\n#define get_unaligned_be32(p) be32_to_cpu((((struct\
+    \ __packed_u32 *)(p))->__val))\n#define put_unaligned_be32(v, p) do {\t\t\t\t\t\
+    \t\t\\\n\t((struct __packed_u32 *)(p))->__val = cpu_to_be32(v);\t\t\t\t\\\n} while\
+    \ (0)\n\n#define SHA256_BLOCK_LENGTH 64\n#define Ch(x, y, z) (((x) & (y)) ^ (~(x)\
+    \ & (z)))\n#define Maj(x, y, z) (((x) & (y)) ^ ((x) & (z)) ^ ((y) & (z)))\n#define\
+    \ Sigma_0(x) (ror32((x), 2) ^ ror32((x), 13) ^ ror32((x), 22))\n#define Sigma_1(x)\
+    \ (ror32((x), 6) ^ ror32((x), 11) ^ ror32((x), 25))\n#define sigma_0(x) (ror32((x),\
+    \ 7) ^ ror32((x), 18) ^ ((x) >> 3))\n#define sigma_1(x) (ror32((x), 17) ^ ror32((x),\
+    \ 19) ^ ((x) >> 10))\n\nstatic const __u32 sha256_K[64] = {\n\t0x428a2f98, 0x71374491,\
+    \ 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1,\n\t0x923f82a4, 0xab1c5ed5, 0xd807aa98,\
+    \ 0x12835b01, 0x243185be, 0x550c7dc3,\n\t0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,\
+    \ 0xe49b69c1, 0xefbe4786,\n\n// CONTEXT: void libbpf_sha256(const void *data,\
+    \ size_t len, __u8 out[SHA256_DIGEST_LENGTH])\n{\n\t__u32 state[8] = { 0x6a09e667,\
+    \ 0xbb67ae85, 0x3c6ef372, 0xa54ff53a,\n\t\t\t   0x510e527f, 0x9b05688c, 0x1f83d9ab,\
+    \ 0x5be0cd19 };\n\tconst __be64 bitcount = cpu_to_be64((__u64)len * 8);\n\t__u8\
+    \ final_data[2 * SHA256_BLOCK_LENGTH] = { 0 };\n\tsize_t final_len = len % SHA256_BLOCK_LENGTH;\n\
+    \tint i;\n\n\tsha256_blocks(state, data, len / SHA256_BLOCK_LENGTH);\n\n\tmemcpy(final_data,\
+    \ data + len - final_len, final_len);\n\tfinal_data[final_len] = 0x80;\n\tfinal_len\
+    \ = roundup(final_len + 9, SHA256_BLOCK_LENGTH);\n\tmemcpy(&final_data[final_len\
+    \ - 8], &bitcount, 8);\n\n\tsha256_blocks(state, final_data, final_len / SHA256_BLOCK_LENGTH);\n\
+    \n\tfor (i = 0; i < ARRAY_SIZE(state); i++)\n\t\tput_unaligned_be32(state[i],\
+    \ &out[4 * i]);\n}"
+  diff_summary: |-
+    src/libbpf_utils.c:
+    - Adjusted alignment declarations or stack layout to avoid misaligned accesses.
+    - Affected context: const char *libbpf_errstr(int err), void libbpf_sha256(const void *data, size_t len, __u8 out[SHA256_DIGEST_LENGTH]).
+    - Commit subject: libbpf: remove linux/unaligned.h dependency for libbpf_sha256().

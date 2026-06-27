@@ -1,0 +1,44 @@
+schema_version: bpfix.case/v1
+case_id: github-commit-bcc-8cbc816aea77
+source:
+  kind: github_commit
+  url: https://github.com/iovisor/bcc/commit/8cbc816aea77ee3e134e9efbff695cfc3ad43d1a
+  repository: https://github.com/iovisor/bcc
+  commit: 8cbc816aea77ee3e134e9efbff695cfc3ad43d1a
+  upstream_file: examples/networking/http_filter/http-parse-complete.c
+  collected_at: '2026-04-29'
+  raw_excerpt_files:
+  - bpfix-empirical/raw/gh/github-commit-bcc-8cbc816aea77.yaml
+reproducer:
+  reconstruction: reconstructed
+  notes: Reconstructs the HTTP filter packet parsing shape from the raw diff, including a
+    TCP field read after only the Ethernet and fixed-size IPv4 header bounds are proven.
+capture:
+  capture_id: github-commit-bcc-8cbc816aea77__kernel-6.15.11-clang-18-log2
+  terminal_error: invalid access to packet, off=36 size=2, R1(id=0,off=36,r=34)
+  rejected_insn_idx: 16
+external_match:
+  status: not_applicable
+  policy: commit_diff
+  matched_messages:
+  - invalid access to packet
+  - R1 offset is outside of the packet
+  notes: The raw record has no captured verifier log. The local reproducer preserves the commit's
+    invalid packet access class rather than the later map-initializer cleanup detail.
+label:
+  capture_id: github-commit-bcc-8cbc816aea77__kernel-6.15.11-clang-18-log2
+  taxonomy_class: source_bug
+  error_id: BPFIX-E011
+  confidence: medium
+  label_source: external_replay_reconstruction
+  root_cause_description: The program reads TCP ports without proving that the TCP header
+    is inside the packet.
+  root_cause_insn_idx: 16
+  localization_confidence: medium
+  fix_type: bounds_check
+  fix_direction: Add a verifier-visible bounds check for the TCP header before reading source
+    or destination ports.
+reporting:
+  family_id: github-commit-bcc-8cbc816aea77
+  representative: true
+  notes: Commit-derived reconstructed verifier rejection.

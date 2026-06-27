@@ -1,0 +1,92 @@
+schema_version: bpfix.raw_external/v1
+raw_id: github-commit-bcc-16508e5684b1
+source_kind: github_commit
+source:
+  url: https://github.com/iovisor/bcc/commit/16508e5684b13396b94be0ce6b12edc0c745e30c
+  title: 'libbpf-tools: Fix misaligned pointer accesses in opensnoop'
+  repository: https://github.com/iovisor/bcc
+  commit: 16508e5684b13396b94be0ce6b12edc0c745e30c
+  collected_at: null
+collector:
+  original_path: bpfix-empirical/raw/gh/github-commit-bcc-16508e5684b1.yaml
+  synced_at: '2026-04-29'
+content:
+  has_verifier_log: false
+  verifier_log_block_count: 0
+  source_snippet_count: 0
+  has_buggy_code: true
+  has_fixed_code: true
+  has_fix_description: false
+reproduction:
+  status: out_of_scope_non_verifier
+  case_id: null
+  case_path: null
+  artifact_path: null
+  reason: Fix copies perf-buffer event data in userspace opensnoop.c before field
+    access; no BPF program verifier rejection is represented.
+  verifier_status: null
+  captured_error: null
+  verifier_error_match: null
+raw:
+  case_id: github-commit-bcc-16508e5684b1
+  source: github_commits
+  repository: https://github.com/iovisor/bcc
+  commit_hash: 16508e5684b13396b94be0ce6b12edc0c745e30c
+  commit_message: 'libbpf-tools: Fix misaligned pointer accesses in opensnoop'
+  commit_date: '2023-12-04'
+  fix_type: alignment
+  buggy_code: "// FILE: libbpf-tools/opensnoop.c\n// CONTEXT: static int libbpf_print_fn(enum\
+    \ libbpf_print_level level, const char *format, va\n\tif (level == LIBBPF_DEBUG\
+    \ && !env.verbose)\n\t\treturn 0;\n\treturn vfprintf(stderr, format, args);\n\
+    }\n\nstatic void sig_int(int signo)\n{\n\texiting = 1;\n}\n\nvoid handle_event(void\
+    \ *ctx, int cpu, void *data, __u32 data_sz)\n{\n\tconst struct event *e = data;\n\
+    \tstruct tm *tm;\n#ifdef USE_BLAZESYM\n\tsym_src_cfg cfgs[] = {\n\t\t{ .src_type\
+    \ = SRC_T_PROCESS, .params = { .process = { .pid = e->pid }}},\n\t};\n\tconst\
+    \ blazesym_result *result = NULL;\n\tconst blazesym_csym *sym;\n\tint i, j;\n\
+    #endif\n\tint sps_cnt;\n\tchar ts[32];\n\ttime_t t;\n\tint fd, err;\n\n\t/* name\
+    \ filtering is currently done in user space */\n\tif (env.name && strstr(e->comm,\
+    \ env.name) == NULL)\n\t\treturn;\n\n\t/* prepare fields */\n\ttime(&t);\n\ttm\
+    \ = localtime(&t);\n\tstrftime(ts, sizeof(ts), \"%H:%M:%S\", tm);\n\tif (e->ret\
+    \ >= 0) {\n\t\tfd = e->ret;\n\t\terr = 0;\n\t} else {\n\t\tfd = -1;\n\t\terr =\
+    \ - e->ret;\n\t}\n\n#ifdef USE_BLAZESYM\n\tif (env.callers)\n\t\tresult = blazesym_symbolize(symbolizer,\
+    \ cfgs, 1, (const uint64_t *)&e->callers, 2);\n#endif\n\n\t/* print output */\n\
+    \tsps_cnt = 0;\n\tif (env.timestamp) {\n\t\tprintf(\"%-8s \", ts);\n\t\tsps_cnt\
+    \ += 9;\n\t}\n\tif (env.print_uid) {\n\t\tprintf(\"%-7d \", e->uid);\n\t\tsps_cnt\
+    \ += 8;\n\t}\n\tprintf(\"%-6d %-16s %3d %3d \", e->pid, e->comm, fd, err);\n\t\
+    sps_cnt += 7 + 17 + 4 + 4;\n\tif (env.extended) {\n\t\tprintf(\"%08o \", e->flags);\n\
+    \t\tsps_cnt += 9;\n\t}\n\tprintf(\"%s\\n\", e->fname);\n\n#ifdef USE_BLAZESYM\n\
+    \tfor (i = 0; result && i < result->size; i++) {\n\t\tif (result->entries[i].size\
+    \ == 0)\n\t\t\tcontinue;\n\t\tsym = &result->entries[i].syms[0];\n\n\t\tfor (j\
+    \ = 0; j < sps_cnt; j++)\n\t\t\tprintf(\" \");\n\t\tif (sym->line_no)\n\t\t\t\
+    printf(\"%s:%ld\\n\", sym->symbol, sym->line_no);\n\t\telse"
+  fixed_code: "// FILE: libbpf-tools/opensnoop.c\n// CONTEXT: static int libbpf_print_fn(enum\
+    \ libbpf_print_level level, const char *format, va\n\tif (level == LIBBPF_DEBUG\
+    \ && !env.verbose)\n\t\treturn 0;\n\treturn vfprintf(stderr, format, args);\n\
+    }\n\nstatic void sig_int(int signo)\n{\n\texiting = 1;\n}\n\nvoid handle_event(void\
+    \ *ctx, int cpu, void *data, __u32 data_sz)\n{\n\tstruct event e;\n\tstruct tm\
+    \ *tm;\n#ifdef USE_BLAZESYM\n\tsym_src_cfg cfgs[] = {\n\t\t{ .src_type = SRC_T_PROCESS,\
+    \ .params = { .process = { .pid = e->pid }}},\n\t};\n\tconst blazesym_result *result\
+    \ = NULL;\n\tconst blazesym_csym *sym;\n\tint i, j;\n#endif\n\tint sps_cnt;\n\t\
+    char ts[32];\n\ttime_t t;\n\tint fd, err;\n\n\tif (data_sz < sizeof(e)) {\n  \
+    \ \t   \tprintf(\"Error: packet too small\\n\");\n   \t   \treturn;\n\t}\n\t/*\
+    \ Copy data as alignment in the perf buffer isn't guaranteed. */\n\tmemcpy(&e,\
+    \ data, sizeof(e));\n\n\t/* name filtering is currently done in user space */\n\
+    \tif (env.name && strstr(e.comm, env.name) == NULL)\n\t\treturn;\n\n\t/* prepare\
+    \ fields */\n\ttime(&t);\n\ttm = localtime(&t);\n\tstrftime(ts, sizeof(ts), \"\
+    %H:%M:%S\", tm);\n\tif (e.ret >= 0) {\n\t\tfd = e.ret;\n\t\terr = 0;\n\t} else\
+    \ {\n\t\tfd = -1;\n\t\terr = - e.ret;\n\t}\n\n#ifdef USE_BLAZESYM\n\tif (env.callers)\n\
+    \t\tresult = blazesym_symbolize(symbolizer, cfgs, 1, (const uint64_t *)&e.callers,\
+    \ 2);\n#endif\n\n\t/* print output */\n\tsps_cnt = 0;\n\tif (env.timestamp) {\n\
+    \t\tprintf(\"%-8s \", ts);\n\t\tsps_cnt += 9;\n\t}\n\tif (env.print_uid) {\n\t\
+    \tprintf(\"%-7d \", e.uid);\n\t\tsps_cnt += 8;\n\t}\n\tprintf(\"%-6d %-16s %3d\
+    \ %3d \", e.pid, e.comm, fd, err);\n\tsps_cnt += 7 + 17 + 4 + 4;\n\tif (env.extended)\
+    \ {\n\t\tprintf(\"%08o \", e.flags);\n\t\tsps_cnt += 9;\n\t}\n\tprintf(\"%s\\\
+    n\", e.fname);\n\n#ifdef USE_BLAZESYM\n\tfor (i = 0; result && i < result->size;\
+    \ i++) {\n\t\tif (result->entries[i].size == 0)\n\t\t\tcontinue;\n\t\tsym = &result->entries[i].syms[0];\n\
+    \n\t\tfor (j = 0; j < sps_cnt; j++)\n\t\t\tprintf(\" \");\n\t\tif (sym->line_no)\n\
+    \t\t\tprintf(\"%s:%ld\\n\", sym->symbol, sym->line_no);\n\t\telse"
+  diff_summary: |-
+    libbpf-tools/opensnoop.c:
+    - Adjusted alignment declarations or stack layout to avoid misaligned accesses.
+    - Affected context: static int libbpf_print_fn(enum libbpf_print_level level, const char *format, va.
+    - Commit subject: libbpf-tools: Fix misaligned pointer accesses in opensnoop.
