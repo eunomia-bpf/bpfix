@@ -22,7 +22,7 @@ cargo run -p bpfix -- verifier.log
 Use your normal workflow and keep the full load output:
 
 ```bash
-sudo bpftool -d prog load xdp.o /sys/fs/bpf/xdp 2>&1 | tee verifier.log
+sudo bpftool -d prog load examples/bpftool/motivating-example.bpf.o /sys/fs/bpf/bpfix-demo 2>&1 | tee verifier.log
 bpfix verifier.log
 ```
 
@@ -33,12 +33,8 @@ make load 2>&1 | tee load.log
 bpfix load.log
 ```
 
-Stdin works the same way:
-
-```bash
-sudo bpftool -d prog load xdp.o /sys/fs/bpf/xdp 2>&1 | bpfix
-```
-
+The example object is copied from the `stackoverflow-53136145` case used by the
+root README motivating example; replace it with the object you are debugging.
 The positional argument and stdin are always interpreted as verifier/build/load
 log text.
 
@@ -52,12 +48,11 @@ environments, if added later, should be selected by explicit options such as
 
 ## Optional Object Metadata
 
-`--object` is optional and experimental. It requires a build with the
-`object-analysis` feature:
+`--object` is optional and requires a build with the `object-analysis` feature:
 
 ```bash
 cargo install --path crates/bpfix --features object-analysis
-bpfix --object xdp.o verifier.log
+bpfix --object examples/bpftool/motivating-example.bpf.o verifier.log
 ```
 
 Use it when you want object-section metadata to enrich the same plain-text

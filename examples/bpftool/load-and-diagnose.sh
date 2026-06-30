@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 set -u
 
-obj=${1:-xdp.o}
-pin=${2:-/sys/fs/bpf/bpfix_example}
+script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+obj=${1:-"$script_dir/motivating-example.bpf.o"}
+pin=${2:-/sys/fs/bpf/bpfix-demo}
 log=${LOG:-verifier.log}
 
 set +e

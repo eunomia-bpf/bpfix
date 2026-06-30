@@ -6,11 +6,12 @@ BPFix is easiest to use as a log filter:
 existing eBPF workflow emits verifier/build log -> bpfix reads the log -> plain text diagnostic
 ```
 
-The default CLI accepts either a file or stdin:
+The bpftool quick start captures the verifier log, then asks BPFix to explain
+that saved log:
 
 ```bash
+sudo bpftool -d prog load examples/bpftool/motivating-example.bpf.o /sys/fs/bpf/bpfix-demo 2>&1 | tee verifier.log
 bpfix verifier.log
-make load 2>&1 | bpfix
 ```
 
 ## Directory Map
@@ -26,10 +27,12 @@ make load 2>&1 | bpfix
 | `ci/` | CI maintainers | GitHub Actions artifact flow for `verifier.log` and BPFix text |
 | `editor/` | editor and agent integrations | plain-text diagnostic handoff |
 
-The examples intentionally keep placeholders such as `xdp.o`, `./loader`, and
-`cargo run --bin loader`. Replace them with the command that already fails in
-your project. BPFix should sit beside that command; it should not force you to
-rewrite the loader just to get a useful diagnostic.
+The bpftool quick start uses the committed `bpftool/motivating-example.bpf.o`
+object from the root README motivating example. Other examples intentionally
+keep placeholders such as `xdp.o`, `./loader`, and `cargo run --bin loader`.
+Replace them with the command that already fails in your project. BPFix should
+sit beside that command; it should not force you to rewrite the loader just to
+get a useful diagnostic.
 
 ## Support Levels
 
@@ -38,7 +41,7 @@ rewrite the loader just to get a useful diagnostic.
 | File or stdin verifier/build/load log | stable default | `bpfix verifier.log` |
 | Plain text diagnostic | stable default | `bpfix verifier.log` |
 | Existing bpftool/libbpf/Aya/BCC output | stable when the log includes the verifier region | capture stderr/stdout, then run `bpfix` |
-| Object metadata | experimental, feature-gated | build with `--features object-analysis`, then pass `--object prog.o` |
+| Object metadata | feature-gated | build with `--features object-analysis`, then pass `--object prog.o` |
 | Docker or command execution | not a default example path | use only if a future explicit option is implemented |
 
 The default examples avoid feature-gated options. Set

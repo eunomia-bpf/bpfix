@@ -44,6 +44,7 @@ bpfix-bench/splits/*.prompts.json
 *.skel.h
 *.core
 core.*
+!examples/bpftool/motivating-example.bpf.o
 
 # bpfix-empirical replay/build outputs
 bpfix-empirical/checksums.txt

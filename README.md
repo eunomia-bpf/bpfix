@@ -2,8 +2,6 @@
 
 **BPFix makes eBPF verifier errors feel closer to Rust compiler errors.**
 
-> experimental
-
 The Linux eBPF verifier is powerful, but its failure logs are hard to read. A
 developer usually sees a long `bpftool`, libbpf, Aya, or BCC log and then has to
 guess which safety proof the verifier could not establish.
@@ -19,10 +17,10 @@ from your existing workflow and turns them into:
 
 ## Motivating Example
 
-Here is a real verifier failure from `bpfix-empirical`
-(`stackoverflow-53136145`). The source parses either IPv4 or IPv6, derives a
-UDP header pointer on each branch, checks the UDP header against `data_end`, and
-then reads the destination port:
+The Quick Start below loads a prebuilt object for a real verifier failure from
+`bpfix-empirical` (`stackoverflow-53136145`). The source parses either IPv4 or
+IPv6, derives a UDP header pointer on each branch, checks the UDP header against
+`data_end`, and then reads the destination port:
 
 ```c
 if (ethertype == ETH_P_IP) {
@@ -71,6 +69,7 @@ error[BPFIX-E006]: verifier-visible compiler lowering hides the required proof
   = class: lowering_artifact
   = confidence: medium
   = diagnostic: supported, help: repair_hint, span: exact_pc
+  = next action: provenance
   --> prog.c:270
    |
 263 | if (ipv4_hdr)
@@ -98,58 +97,20 @@ that proof.
 
 ## Quick Start
 
-Build the workspace:
+After installing `bpfix`, try the same log-first `bpftool` flow used by
+`examples/bpftool/`:
 
 ```bash
-git submodule update --init --recursive
-cargo build --workspace
-```
-
-Install the CLI from this checkout if you want the examples below to use
-`bpfix` directly:
-
-```bash
-cargo install --path crates/bpfix
-```
-
-Run BPFix on a verifier log:
-
-```bash
+sudo bpftool -d prog load examples/bpftool/motivating-example.bpf.o /sys/fs/bpf/bpfix-demo 2>&1 | tee verifier.log
 bpfix verifier.log
 ```
 
-Pipe a failing load command into BPFix:
-
-```bash
-sudo bpftool -d prog load xdp.o /sys/fs/bpf/xdp 2>&1 | bpfix
-```
-
-Pass a full libbpf or build log directly; BPFix extracts the verifier region
-when the log contains surrounding build output:
-
-```bash
-bpfix build-or-load.log
-```
-
-Optionally pass the BPF object when BPFix is built with object analysis enabled.
-This is an experimental enhancement: BPFix reads BPF instruction sections,
-uses that metadata to enrich the plain-text diagnostic, and keeps log-only
-diagnostics working if object analysis fails. BTF-backed source correlation will
-build on the same explicit opt-in shape:
-
-```bash
-cargo install --path crates/bpfix --features object-analysis
-bpfix --object xdp.o verifier.log
-```
-
-For CI pipelines that want to fail when BPFix cannot produce a supported
-diagnostic, add `--fail-on-unsupported`. BPFix still renders the plain-text
-diagnostic first, then exits with code 2 for `unsupported_input` or
-`unsupported_verifier_message`:
-
-```bash
-bpfix --fail-on-unsupported verifier.log
-```
+`bpftool -d` emits the verifier log when the load fails, `tee` saves that output
+as `verifier.log`, and `bpfix verifier.log` explains the rejected load. The
+example object is copied from the `stackoverflow-53136145` case shown above, so
+the second command should produce the `BPFIX-E006` diagnostic in the motivating
+example. Replace the object path with the object you are debugging in your own
+project.
 
 The CLI shape is intentionally small:
 
@@ -178,15 +139,15 @@ bpfix verifier.log
 or:
 
 ```bash
-sudo bpftool -d prog load xdp.o /sys/fs/bpf/xdp 2>&1 | tee verifier.log
+sudo bpftool -d prog load examples/bpftool/motivating-example.bpf.o /sys/fs/bpf/bpfix-demo 2>&1 | tee verifier.log
 bpfix verifier.log
 ```
 
-with experimental object metadata, after installing with
-`--features object-analysis`:
+with feature-gated object metadata, after installing with `--features
+object-analysis`:
 
 ```bash
-bpfix --object xdp.o verifier.log
+bpfix --object examples/bpftool/motivating-example.bpf.o verifier.log
 ```
 
 BPFix does not need `case.yaml` for normal use. Empirical corpus YAML records are
