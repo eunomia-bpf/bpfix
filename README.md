@@ -12,7 +12,7 @@ point to where the verifier lost the required proof.
 Install `bpfix` and load the prebuilt verifier failure:
 
 ```bash
-cargo install --path crates/bpfix
+cargo install bpfix
 sudo bpftool -d prog load examples/bpftool/quick-start.bpf.o /sys/fs/bpf/bpfix-demo 2>&1 | tee verifier.log
 ```
 

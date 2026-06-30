@@ -46,7 +46,7 @@ BANNED_BENCH_TERMS = [
 ]
 
 README_QUICK_START_ORDER = [
-    "```bash\ncargo install --path crates/bpfix\nsudo bpftool -d prog load examples/bpftool/quick-start.bpf.o /sys/fs/bpf/bpfix-demo 2>&1 | tee verifier.log\n```",
+    "```bash\ncargo install bpfix\nsudo bpftool -d prog load examples/bpftool/quick-start.bpf.o /sys/fs/bpf/bpfix-demo 2>&1 | tee verifier.log\n```",
     "```bash\nbpfix verifier.log\n```",
     "The raw log says where the verifier stopped, but not the source-level proof",
     "error[BPFIX-E006]: verifier-visible compiler lowering hides the required proof",
