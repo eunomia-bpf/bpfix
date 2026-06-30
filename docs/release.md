@@ -40,11 +40,21 @@ python3 bpfix-empirical/run-bpfix-eval.py --confusion --reject-fallback --no-bui
 The `Publish to crates.io` GitHub Actions job runs after the test job on
 `master`, `main`, or manual `workflow_dispatch`.
 
-If the repository secret `CARGO_REGISTRY_TOKEN` is missing, the job exits
-successfully after a warning and skips publishing. This keeps normal CI green
-for forks and fresh checkouts.
+Publishing can authenticate in either of two ways:
 
-When `CARGO_REGISTRY_TOKEN` is present, the workflow:
+- Set the repository secret `CARGO_REGISTRY_TOKEN` to a crates.io token with
+  publish permissions.
+- Configure crates.io Trusted Publishing for this GitHub repository and
+  workflow, then set the repository variable
+  `CRATES_IO_TRUSTED_PUBLISHING=true`.
+
+If neither path is configured, the job exits successfully after a warning and
+skips publishing. This keeps normal CI green for forks and fresh checkouts.
+Trusted Publishing setup is documented by crates.io at
+<https://crates.io/docs/trusted-publishing>; the workflow uses the official
+`rust-lang/crates-io-auth-action`.
+
+When publish credentials are available, the workflow:
 
 1. Queries crates.io for `bpfanalysis` and `bpfix`.
 2. Selects the next patch version for which neither crate is published.
