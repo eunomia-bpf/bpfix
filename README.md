@@ -217,6 +217,13 @@ project planning notes live under `docs/evaluation/` and
 `docs/project-status.md`; they are supporting material, not required reading for
 normal use.
 
+`bpfix-bench/` contains the frozen BPFix-Bench main75 LLM repair benchmark. It
+is a source-first benchmark: a repair succeeds only when the candidate BPF C
+file compiles, loads through the kernel verifier, and passes the case oracle.
+Start with `bpfix-bench/README.md` for the benchmark contract and
+`docs/evaluation/bpfix-bench-llm-repair-eval.md` for the reported raw-log versus
+BPFix-diagnostic results.
+
 The default `bpfix` CLI uses the verifier-log parser from `bpfanalysis`.
 Object/CFG analysis is behind the `object-analysis` Cargo feature; that path
 uses `libbpf-sys` and the `vendor/libbpf` submodule for BPF instruction and

@@ -1,25 +1,29 @@
 # BPFix-Bench
 
-`bpfix-bench/` is the source-first LLM repair stress suite for BPFix. It is not
-`bpfix-empirical/`: success here means a candidate replacement `buggy.bpf.c` builds,
-loads through the verifier, and passes the case oracle.
+`bpfix-bench/` is the frozen source-first LLM repair benchmark for BPFix. It is
+separate from `bpfix-empirical/`: success here means a candidate replacement
+`buggy.bpf.c` builds, loads through the kernel verifier, and passes the case
+oracle.
 
-Current case inventory:
+The public benchmark split is `splits/main.txt`. It contains 75 runnable repair
+tasks and is frozen for reporting. Do not edit cases, oracles, verifier logs, or
+the split order in place; new benchmark revisions should use a new split or
+versioned directory.
+
+Current inventory:
 
 - `cases/`: 77 directories on disk.
-- runnable tracked fixtures: 75 with `buggy.bpf.c`, `verifier.log`,
-  `diagnostic.txt`, and `test.py`.
-- `splits/dev40.txt`: 40 admitted calibration cases.
-- `splits/hard40.txt`: 40-case high-difficulty calibration subset retained
-  from main-suite hardening.
-- `splits/real-seed-candidates.txt`: 34 real-project seed staging cases.
-- `splits/main.txt`: 75-case combined working suite: all runnable fixtures.
-- `splits/main.manifest.json`: oracle metadata for the combined suite.
-- `splits/clean60.txt`: legacy empty heldout placeholder, kept only so older
-  scripts do not break.
+- runnable benchmark fixtures: 75 with `buggy.bpf.c`, `verifier.log`,
+  `diagnostic.txt`, `fixed.bpf.c`, and `test.py`.
+- `splits/main.txt`: frozen 75-case benchmark split.
+- `splits/main.manifest.json`: frozen split metadata and oracle coverage.
+- `splits/dev40.txt` and `splits/hard40.txt`: historical development subsets.
+- `splits/real-seed-candidates.txt`: provenance ledger for real-project seeds.
+- `splits/clean60.txt`: legacy empty split kept for compatibility with older
+  scripts.
 
-The two non-runnable directories are placeholders without `buggy.bpf.c` and are
-not part of any split.
+The two non-runnable directories are placeholders without `buggy.bpf.c`; they
+are excluded from all reported benchmark splits.
 
 ## Case Format
 
@@ -40,15 +44,9 @@ verifier/load log. `diagnostic.txt` is BPFix plain-text output generated from
 that same log. `fixed.bpf.c` is a checked-in reference repair that must pass the
 same oracle. `test.py` is the only oracle for repair success.
 
-## Main Commands
+## Quick Start
 
-Audit the 40 admitted calibration cases:
-
-```bash
-python3 bpfix-bench/tools/audit_cases.py --split bpfix-bench/splits/dev40.txt
-```
-
-Audit the combined 75-case working suite:
+Audit the frozen 75-case benchmark:
 
 ```bash
 python3 bpfix-bench/tools/audit_cases.py --split bpfix-bench/splits/main.txt --manifest bpfix-bench/splits/main.manifest.json
@@ -102,9 +100,12 @@ python3 bpfix-bench/tools/run_suite.py \
 
 Available modes are `source-only`, `raw`, `trimmed-raw`, and `bpfix`.
 
-The current Qwen3.6 27B main75 calibration result is documented in
-`docs/tmp/bpfix-bench/qwen27b-main75-repair-results.md`: raw one-shot 22/75,
-BPFix one-shot 38/75, raw retry 30/75, and BPFix retry 44/75.
+The published main75 results are documented in
+`docs/evaluation/bpfix-bench-llm-repair-eval.md`. The headline Qwen3.6 27B
+comparison is raw one-shot 22/75 versus BPFix one-shot 38/75, and raw retry
+30/75 versus BPFix retry 44/75.
+
+## Regenerating Artifacts
 
 Refresh diagnostics from existing logs without recapturing verifier output:
 
@@ -114,7 +115,8 @@ python3 bpfix-bench/tools/refresh_case_artifacts.py --diagnostic-only
 ```
 
 Use full refresh only when the local kernel/toolchain/replay environment is
-ready:
+ready. For the frozen benchmark, write refreshed artifacts to a new versioned
+split instead of mutating `splits/main.txt` in place:
 
 ```bash
 python3 bpfix-bench/tools/refresh_case_artifacts.py
@@ -122,17 +124,18 @@ python3 bpfix-bench/tools/refresh_case_artifacts.py
 
 ## How To Report Results
 
-Report `main` as an evolving working suite, not as a clean heldout benchmark.
-When reporting LLM repair results, separate one-shot from retry and separate
-raw verifier-log prompts from BPFix-assisted prompts.
-The remaining real-seed staging cases should be fixed and promoted only after
-their diagnostics and oracles pass `audit_cases.py`.
-If a paper later needs a frozen benchmark, freeze a new split from the current
-suite, record the exact case ids and prompt hashes, and do not change that split
-after model results are collected.
-The calibrated `main` suite is useful for engineering and model comparison, but
-it should not be described as a contamination-free heldout result.
+Use `splits/main.txt` as the benchmark denominator and report the exact prompt
+mode, model, attempt count, split SHA-256, kernel, clang, bpftool/libbpf
+versions, and result `summary.json` path. Separate one-shot from retry and
+separate raw verifier-log prompts from BPFix-assisted prompts.
 
-The old dev40/clean60 design notes and pilot result writeups have been moved to
-`docs/tmp/bpfix-bench/`. They are useful historical context, but they are no
-longer the primary user-facing benchmark contract.
+`main75` is a curated verifier-repair benchmark, not a natural-frequency sample
+of all eBPF failures. Claims should therefore be scoped to source-level repair
+tasks represented by the suite: packet/map proof lifecycle, helper memory
+contracts, ring-buffer/dynptr protocols, source/object correlation, and
+program/map environment constraints.
+
+Historical dev/clean60 notes and pilot writeups are retained for provenance
+only. The user-facing benchmark contract is this README, `splits/main.txt`,
+`splits/main.manifest.json`, the case directories, and
+`docs/evaluation/bpfix-bench-llm-repair-eval.md`.

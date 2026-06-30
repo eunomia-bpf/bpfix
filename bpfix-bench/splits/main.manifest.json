@@ -1,14 +1,15 @@
 {
   "schema_version": "bpfix.test.split-manifest/v1",
   "split_id": "main",
-  "profile": "working_combined",
+  "profile": "frozen_main75",
   "freeze": {
-    "frozen": false,
-    "reason": "combined engineering split used for bpfix-bench iteration; not a contamination-free heldout benchmark",
-    "fingerprints_frozen": false
+    "frozen": true,
+    "reason": "main75 is the frozen public BPFix-Bench split; do not mutate cases, diagnostics, logs, or oracles in place",
+    "fingerprints_frozen": false,
+    "case_list_frozen": true
   },
   "admission_policy": {
-    "model_result_used_for_admission": true,
+    "model_result_used_for_admission": false,
     "case_ids_opaque_in_prompt": true
   },
   "case_defaults": {

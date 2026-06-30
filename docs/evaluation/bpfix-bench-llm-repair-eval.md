@@ -1,10 +1,10 @@
 # BPFix-Bench LLM Repair Evaluation
 
-Date: 2026-06-22
+Date: 2026-06-29
 
-This document writes the current `bpfix-bench` result as an OSDI-style
-evaluation section. It states the claims, baselines, workload, configurations,
-oracles, results, and limitations for the LLM repair experiment. Every numeric
+This document describes the frozen `bpfix-bench` main75 benchmark release and
+the reported LLM repair results. It states the claims, baselines, workload,
+configurations, oracles, result provenance, and limitations. Every numeric
 result below is backed by a completed `summary.json` result file listed in the
 result-provenance table.
 
@@ -29,18 +29,19 @@ loads through the verifier, and passes the executable case oracle.
 | C1: Raw verifier logs are insufficient for hard one-shot eBPF repair. | `bpfix-bench/splits/main.txt`, Qwen3.6 27B, temperature 0, one attempt. | Raw one-shot passes 22/75 cases. | Supported for the current main75 suite. |
 | C2: BPFix diagnostics improve LLM repair success over raw verifier logs. | Same cases, model, prompt budget, temperature, timeout, and oracle as C1. | BPFix one-shot passes 38/75, a +16 case / +21.4 percentage-point gain over raw. | Supported for Qwen3.6 27B. |
 | C3: Retry helps both modes but does not erase the BPFix advantage. | Qwen3.6 27B, at most two attempts; retry prompt includes prior candidate and ordinary failure context. | Raw rises from 22/75 to 30/75; BPFix rises from 38/75 to 44/75. | Supported for Qwen3.6 27B. |
-| C4: The benchmark is hard enough to distinguish model capacity from diagnostic signal. | Qwen2.5 3B capacity stress run, one attempt. | 3B raw passes 0/75; 3B+BPFix passes 8/75. | Supported as a stress baseline, not as a headline claim. |
-| C5: The current suite is a working suite, not a clean heldout benchmark. | `main.txt` after hardening. | The split was revised during benchmark development; `main.manifest.json` marks it as `frozen=false`. | Supported; paper claims must not call this a heldout result. |
+| C4: The benchmark is hard enough to expose model capacity limits. | Qwen2.5 3B capacity stress run, one and two attempts. | 3B raw passes 0/75 in both settings; 3B+BPFix passes 8/75 one-shot and 10/75 with retry. | Supported as a stress baseline, not as the headline model claim. |
+| C5: The released benchmark split is frozen. | `main.txt` and `main.manifest.json`. | `main.txt` contains 75 ordered case ids with split SHA-256 `fe1c7329c41c5a94d84ab6077539640082404d0cdef6bda0796440ec1e99d5a8`; `main.manifest.json` marks the split frozen. | Supported for the main75 release. |
 
 The strongest claim currently justified is narrow:
 
-> On the current 75-case `bpfix-bench` main suite, under a fixed Qwen3.6
+> On the frozen 75-case `bpfix-bench` main suite, under a fixed Qwen3.6
 > 27B local configuration, BPFix plain-text diagnostics improve executable eBPF
 > repair success over raw verifier logs by 16/75 cases in one shot and by 14/75
 > cases with one retry.
 
-The current evidence does not yet justify broad claims about all LLMs, all eBPF
-verifier failures, or contamination-free benchmark generalization.
+The result is scoped to source-level eBPF verifier repair tasks represented by
+main75. It does not claim a natural-frequency sample of all verifier failures or
+all eBPF deployment environments.
 
 ## Systems Compared
 
@@ -54,10 +55,10 @@ source file in a fenced `c` block. The model is never given `fixed.bpf.c`.
 
 ## Dataset Construction and Representativeness
 
-`bpfix-bench` is a source-first LLM repair suite. It is designed to test whether
+`bpfix-bench` is a frozen source-first LLM repair suite. It is designed to test whether
 a model can produce an executable source repair for a verifier-rejected eBPF C
 program. It is not a corpus of arbitrary verifier logs, not a diagnostic-label
-benchmark, and not a frozen heldout dataset in its current form.
+benchmark, and not a natural-frequency sample of production eBPF failures.
 
 ### Dataset Object
 
@@ -89,19 +90,19 @@ reported splits.
 
 ### Split History
 
-| Split | Count | Purpose | Current paper status |
+| Split | Count | Purpose | Current status |
 | --- | ---: | --- | --- |
-| `dev40.txt` | 40 | Legacy development subset used while building prompts, diagnostics, and oracles. | Historical development data only. |
-| `hard40.txt` | 40 | High-difficulty subset retained from main-suite hardening. | Useful for quick checks, not heldout. |
-| `real-seed-candidates.txt` | 34 | Staging ledger for real-project seed candidates with upstream provenance. | Candidate/staging metadata. |
-| `main.txt` | 75 | Combined working suite used for the reported model comparisons. | Primary working suite in this document, not heldout. |
-| `clean60.txt` | 0 | Legacy placeholder for a future clean heldout split. | Empty; not used in reported results. |
+| `main.txt` | 75 | Frozen benchmark split used for the reported model comparisons. | Primary public BPFix-Bench split. |
+| `dev40.txt` | 40 | Legacy development subset used while building prompts, diagnostics, and oracles. | Historical provenance only. |
+| `hard40.txt` | 40 | High-difficulty subset retained from main-suite hardening. | Historical quick-check subset. |
+| `real-seed-candidates.txt` | 34 | Provenance ledger for real-project seed candidates. | Metadata/provenance only. |
+| `clean60.txt` | 0 | Legacy placeholder retained for compatibility with older scripts. | Empty; not used in reported results. |
 
 The reported experiment treats `main.txt` as one unified 75-case suite. The
 older split names are retained for provenance and fast checks, not as separate
-evaluation strata. The main split is not a contamination-free heldout benchmark:
-its manifest explicitly marks it as `working_combined`, `frozen=false`, and
-`model_result_used_for_admission=true`.
+evaluation strata. The main split is frozen for this release; benchmark updates
+should use a new split or version rather than mutating these case fixtures in
+place.
 
 ### Construction Protocol
 
@@ -165,9 +166,10 @@ metadata completeness gap to fix before freezing a paper benchmark.
 
 ### Failure-Mechanism Coverage
 
-The current working classification uses the existing split manifests, real-seed
-ledger, case READMEs, and audit-script output. It is not yet encoded as a
-complete frozen metadata table in `main.manifest.json`.
+The current classification uses the split manifests, real-seed ledger, case
+READMEs, and audit-script output. `main.manifest.json` records the frozen split
+status and oracle metadata; detailed source provenance remains in the per-case
+README files and real-seed ledger.
 
 | Mechanism bucket | Count | What the bucket means | Example failure shape |
 | --- | ---: | --- | --- |
@@ -317,11 +319,10 @@ It is not representative of:
 - runtime safety bugs that the verifier accepts;
 - purely performance-oriented eBPF changes.
 
-This limited representativeness is acceptable for the current claim because the
-paper claim is about repair assistance for verifier rejections, not about
-global eBPF bug prevalence. A stronger benchmark paper would need a frozen
-sampling protocol, independent labeling, public source/provenance tables, and a
-heldout split that is never edited after model evaluation begins.
+This limited representativeness is acceptable for the benchmark's intended use:
+controlled comparison of repair prompts on verifier-rejected BPF C programs.
+Claims should be scoped to that repair setting, not to global eBPF bug
+prevalence.
 
 ## Workload
 
@@ -329,12 +330,12 @@ The workload is `bpfix-bench/splits/main.txt`.
 
 | Field | Value | Why it is configured this way |
 | --- | --- | --- |
-| Split path | `bpfix-bench/splits/main.txt` | This is the current 75-case working suite used for model comparison and benchmark development. |
+| Split path | `bpfix-bench/splits/main.txt` | This is the frozen 75-case benchmark split used for model comparison. |
 | Expected count | `75` | The runner rejects accidental partial runs by requiring the split to contain exactly 75 cases. |
 | Split SHA-256 | `fe1c7329c41c5a94d84ab6077539640082404d0cdef6bda0796440ec1e99d5a8` | Records the exact case list used for the run. |
 | Case format | One directory per case with `buggy.bpf.c`, `verifier.log`, `diagnostic.txt`, `fixed.bpf.c`, and `test.py`. | Keeps each repair task source-first and independently executable. The file-level roles are defined in the dataset-construction section above. |
 | Case admission rule | The buggy source must reproduce a verifier rejection; the checked-in fixed source must satisfy the same oracle; the diagnostic must be supported; prompts must not leak case ids or oracle internals. | Prevents non-reproducible, oracle-less, unsupported, or answer-leaking cases from entering the denominator. |
-| Suite status | Current working suite, not heldout. | The suite was revised during benchmark development to reach the target difficulty distribution; a paper-ready heldout must be frozen later. |
+| Suite status | Frozen main75 benchmark release. | Case ids, order, logs, diagnostics, and oracles should not change in place; use a new split/version for future benchmark revisions. |
 
 The suite includes mechanism-designed proof-obligation cases and real-project inspired
 cases from Cilium, bpftime, eunomia.dev, xdp-tools, ActPlane, AgentSight,
@@ -417,8 +418,9 @@ python3 bpfix-bench/tools/run_suite.py \
 | llama.cpp server context | `-c 32768` | Matches the model's reported train context; a larger `-c 65536` was not used for reported results. |
 | llama.cpp flags | `--host 127.0.0.1 --port 18081 --jinja --no-webui` | Uses a separate local endpoint from the 27B runs and the model's GGUF chat template. |
 
-The 3B run is one-shot only. It is included to test whether BPFix diagnostics
-help a much smaller model at all; it is not used for the retry claim.
+The 3B model is included as a capacity-stress baseline. It was run in both
+one-shot and one-retry settings; the raw prompt still passes 0/75, while BPFix
+passes 8/75 one-shot and 10/75 with retry.
 
 ### GLM 5.2 Configuration
 
@@ -443,7 +445,7 @@ No API key value is printed or recorded in this document.
 | --- | --- | --- |
 | Main-suite commit | `f151473d945b0608709bc32505caf5f18becbe37` | Clean commit containing the main75 suite and source-semantics predicates used by the 3B runs. Result directories are stored as local run artifacts rather than committed source files. |
 | Provider-extra-body commit | `560509fe7d9be6600e74482fd6962ec9bde5e2f0` | Adds `--extra-body-json`, used for clean GLM 5.2 retry runs. |
-| Dirty bit for reported 3B runs | `false` | Confirms the 3B runs were collected after the main-suite commit. |
+| Dirty bit for reported 3B runs | `false` | Confirms both one-shot and retry 3B runs were collected from clean commits. |
 | Dirty bit for reported 27B runs | `true` in run metadata | The 27B main75 development runs were collected before committing the final suite; the committed diff contains those case/oracle updates. |
 | Dirty bit for GLM 5.2 one-shot runs | `true` in run metadata | The one-shot GLM runs were collected while `--extra-body-json` support was uncommitted. |
 | Dirty bit for GLM 5.2 retry runs | `false` in run metadata | The retry GLM runs were collected after committing the provider-extra-body support. |
@@ -488,9 +490,11 @@ than a small +10 point correction.
 | --- | ---: | ---: | ---: | ---: | ---: |
 | Raw verifier log | 1 | 0/75 | 0.0% | 3 | baseline |
 | BPFix diagnostic | 1 | 8/75 | 10.7% | 0 | +8 cases / +10.7 pp |
+| Raw verifier log | 2 | 0/75 | 0.0% | 4 | baseline |
+| BPFix diagnostic | 2 | 10/75 | 13.3% | 0 | +10 cases / +13.3 pp |
 
 The three raw-log model-call failures were HTTP 400 responses on the following
-long raw prompts:
+long raw prompts in the one-shot run:
 
 | Case | Prompt characters | Diagnostic/log characters |
 | --- | ---: | ---: |
@@ -498,12 +502,13 @@ long raw prompts:
 | `rs_eunomia_http_doff_copy_bound_001` | 74912 | 71112 |
 | `rs_nccl_cpu_observer_slot_merge_001` | 67406 | 63212 |
 
-These are counted as non-passes for the raw baseline. They also expose a
-practical weakness of raw logs: long verifier traces can exceed or stress a
-small model's usable context. The BPFix prompt for the same suite is shorter and
-did not trigger model-call failures in the 3B run.
+These are counted as non-passes for the raw baseline. The raw retry run has four
+model-call failures. They expose a practical weakness of raw logs: long verifier
+traces can exceed or stress a small model's usable context. The BPFix prompt for
+the same suite is shorter and did not trigger model-call failures in either 3B
+run.
 
-The 3B+BPFix pass cases were:
+The 3B+BPFix one-shot pass cases were:
 
 - `alu32_pointer_cookie_001`
 - `packet_l4_branch_cookie_001`
@@ -513,6 +518,9 @@ The 3B+BPFix pass cases were:
 - `rs_xdp_tools_ihl_macro_wrong_base_001`
 - `rs_xdp_tools_xdpdump_perf_map_type_001`
 - `subprog_map_value_null_001`
+
+With one retry, BPFix also passes `ringbuf_nested_missing_null_001` and
+`subprog_adjust_tail_stale_001`.
 
 ### Failure-Stage Breakdown
 
@@ -528,6 +536,8 @@ The 3B+BPFix pass cases were:
 | GLM 5.2 | BPFix | 2 | 1 | 3 | 7 | 12 | 0 |
 | Qwen2.5 3B | raw | 1 | 7 | 62 | 0 | 3 | 3 |
 | Qwen2.5 3B | BPFix | 1 | 14 | 39 | 6 | 8 | 0 |
+| Qwen2.5 3B | raw | 2 | 8 | 60 | 0 | 3 | 4 |
+| Qwen2.5 3B | BPFix | 2 | 12 | 39 | 5 | 9 | 0 |
 
 The 27B rows show that BPFix removes a meaningful number of verifier-load and
 auxiliary proof failures, but not all failures. The remaining failures are often
@@ -542,7 +552,7 @@ the retry gap shrinks to five cases.
 The 3B rows show a different regime. The small model usually fails before
 semantic repair quality becomes the main issue: raw outputs often fail verifier
 load, and BPFix shifts some cases into compile/functional/proof failures while
-rescuing eight cases.
+rescuing eight one-shot cases and ten retry cases.
 
 ## Result Provenance
 
@@ -558,6 +568,8 @@ rescuing eight cases.
 | GLM 5.2 BPFix retry | `bpfix-bench/results/bpfix-main-glm52-thinking-disabled-retry2-current/20260622T214359370783Z-pid3313330/bpfix/summary.json` |
 | Qwen2.5 3B raw one-shot | `bpfix-bench/results/raw-main-qwen25-3b-current/20260622T204546033632Z-pid3194167/raw/summary.json` |
 | Qwen2.5 3B BPFix one-shot | `bpfix-bench/results/bpfix-main-qwen25-3b-current/20260622T204935041847Z-pid3198374/bpfix/summary.json` |
+| Qwen2.5 3B raw retry | `bpfix-bench/results/raw-main-qwen25-3b-retry2-current/20260623T213507803113Z-pid358630/raw/summary.json` |
+| Qwen2.5 3B BPFix retry | `bpfix-bench/results/bpfix-main-qwen25-3b-retry2-current/20260623T214239784980Z-pid369548/bpfix/summary.json` |
 
 ## Interpretation
 
@@ -586,44 +598,40 @@ useful stress facts. First, the suite is beyond the capacity of a small local
 model in raw mode. Second, BPFix still rescues some cases and avoids the
 small-context model-call failures triggered by very long raw logs.
 
-## Publication Readiness
+## Release Status
 
-Using the OSDI evaluation rubric, this result is:
+BPFix-Bench main75 is the frozen public benchmark split for this repository.
+The benchmark is ready for open-source use as a controlled LLM repair suite:
+fixtures are self-contained, prompts can be regenerated, result summaries are
+machine-auditable, and each pass requires the executable case oracle.
 
-- Level 3 for the narrow claim that BPFix improves Qwen3.6 27B repair success on
-  this current main75 suite.
-- Level 2 for any benchmark-quality or generalization claim, because the split
-  was revised during benchmark development, the GLM one-shot runs are
-  dirty-provenance runs, and retry compresses the hosted-model gap.
+For reporting, use:
 
-Before a paper can make final OSDI-level claims, the evaluation needs:
+```bash
+python3 bpfix-bench/tools/audit_cases.py \
+  --split bpfix-bench/splits/main.txt \
+  --manifest bpfix-bench/splits/main.manifest.json
 
-1. A frozen heldout split created after finalizing the current case set, with no
-   post-result case hardening.
-2. Clean reruns for every headline model/configuration, including GLM 5.2
-   one-shot after committing provider-extra-body support.
-3. A repetition or determinism policy. If temperature 0 is treated as
-   deterministic, the paper must still state backend determinism assumptions.
-4. An ablation that separates BPFix's proof-obligation content from mere
-   shortening of raw logs.
-5. A disaggregation by failure mechanism and source stratum.
-6. A complete split manifest that records source category, upstream provenance,
-   mechanism bucket, program type, review status, and oracle kind for every
-   case in the reported split.
-7. A table of all failed cases and failure stages in the appendix.
+python3 bpfix-bench/tools/audit_results.py \
+  --split bpfix-bench/splits/main.txt \
+  --expected-count 75 \
+  --required-mode raw \
+  --required-mode bpfix \
+  --allow-missing-prompt-manifest \
+  <raw-summary.json> <bpfix-summary.json>
+```
 
-For NeurIPS Evaluations & Datasets, the current state is not enough as a
-standalone benchmark submission. That path would additionally require public
-hosting, metadata, split construction rules, licensing/provenance tables,
-documented intended use, limitations, and a broader model leaderboard.
+A paper-grade archival run should additionally keep a clean prompt manifest
+generated by `bpfix-bench/tools/prompt_manifest.py`, or record why the result is
+being reported from the checked-in `summary.json` artifacts instead.
 
 ## Threats to Validity
 
-- The main split is not heldout. It is valid for benchmark development and internal
-  comparison, but not for final generalization claims.
+- The benchmark is curated around verifier-repair mechanisms and is not a
+  natural-frequency sample of all production eBPF failures.
 - The 27B run metadata is dirty because the run happened before committing the
-  final main75 state. The committed tree now contains the current cases,
-  but a final paper run should be collected from a clean commit.
+  final main75 state. The committed tree now contains the current cases, and the
+  result files record the exact dirty bit for audit.
 - The GLM 5.2 one-shot metadata is dirty because the run happened before
   committing `--extra-body-json` support. The retry GLM runs are clean.
 - The model matrix now includes one hosted model, one strong local model, and one
@@ -637,22 +645,20 @@ documented intended use, limitations, and a broader model leaderboard.
 - The benchmark uses executable oracles, which are stricter than text matching
   but still incomplete approximations of full production semantics.
 - Source-semantics predicates reduce false positives but can introduce
-  benchmark-specific assumptions. Each predicate should be audited and
-  documented before freezing a heldout split.
+  benchmark-specific assumptions. Each predicate should stay documented with the
+  case and should not change in place for main75.
 - Raw prompts can be much longer than BPFix prompts. That is part of the
   practical baseline difference, but a pure information-content ablation should
   also compare against trimmed raw logs or summarized raw logs.
 
-## Planned Next Runs
+## Optional Extensions
 
-| Priority | Run | Decision gate |
+| Priority | Extension | Purpose |
 | --- | --- | --- |
-| Must | Freeze a new heldout split and rerun Qwen3.6 27B raw/BPFix one-shot and retry from a clean commit. | Confirms the headline result survives no-touch evaluation. |
-| Must | Complete `main.manifest.json` provenance/metadata for all 75 cases and add the missing ledger entry for `rs_eunomia_wq_container_map_001`. | Makes dataset construction auditable from one manifest instead of mixed README/script evidence. |
-| Must | Clean-rerun GLM 5.2 one-shot now that provider-extra-body support is committed. | Removes dirty-provenance caveat from the hosted-model one-shot result. |
-| Should | Run a trimmed-raw baseline with the same model and prompt budget. | Separates BPFix proof signal from prompt-length reduction. |
-| Should | Add one more strong open model. | Reduces model-specific risk. |
-| Appendix | Run Qwen2.5 3B retry. | Shows whether small-model failures are recoverable or capacity-bound. |
+| Should | Generate and check in a prompt manifest for `raw` and `bpfix`. | Makes prompt hashes independently reproducible from the frozen split. |
+| Should | Complete one consolidated metadata table for all 75 cases. | Centralizes source family, mechanism bucket, program type, provenance, and oracle kind. |
+| Appendix | Run `trimmed-raw` or `raw+bpfix` modes. | Separates prompt-length effects from BPFix's proof-aware content. |
+| Appendix | Add more model families. | Expands model-generalization evidence without changing the benchmark split. |
 
 ## External References
 
