@@ -2,18 +2,9 @@
 
 **BPFix makes eBPF verifier errors feel closer to Rust compiler errors.**
 
-The Linux eBPF verifier is powerful, but its failure logs are hard to read. A
-developer usually sees a long `bpftool`, libbpf, Aya, or BCC log and then has to
-guess which safety proof the verifier could not establish.
-
-BPFix is a userspace diagnostic layer for that problem. It reads verifier logs
-from your existing workflow and turns them into:
-
-- a stable `BPFIX-*` error ID
-- a short explanation of what the verifier could not prove
-- the nearest instruction or source location when the log contains one
-- actionable `help:` guidance
-- plain-text output for terminals, CI, editors, and agents
+The Linux eBPF verifier is powerful, but its failure logs are hard to read. 
+BPFix is a userspace diagnostic tools for that problem. It reads verifier logs
+from your existing workflow and turns them into explaination and point you to the error location where the verifier lost the proof.
 
 ## Quick Start
 
