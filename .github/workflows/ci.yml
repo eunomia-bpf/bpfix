@@ -6,12 +6,16 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   test:
     name: Test
     runs-on: ubuntu-latest
+    if: |
+      github.event_name != 'push' ||
+      (!contains(github.event.head_commit.message, '[skip ci]') &&
+       !contains(github.event.head_commit.message, '[ci skip]'))
 
     steps:
       - name: Checkout
@@ -76,6 +80,7 @@ jobs:
         with:
           submodules: recursive
           fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -88,39 +93,25 @@ jobs:
       - name: Restore empirical fixtures
         run: bash scripts/restore-empirical-fixtures.sh
 
-      - name: Resolve crate publish state
+      - name: Set release version
+        id: set_version
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           python3 - <<'PY'
           import json
+          import re
           import tomllib
           import urllib.error
           import urllib.request
           from pathlib import Path
 
           USER_AGENT = "bpfix-release-ci"
-          CRATES = [
-              ("bpfanalysis", "BPFANALYSIS", Path("crates/bpfanalysis/Cargo.toml"), []),
-              ("bpfix", "BPFIX", Path("crates/bpfix/Cargo.toml"), ["bpfanalysis"]),
-          ]
+          BPFANALYSIS = Path("crates/bpfanalysis/Cargo.toml")
+          BPFIX = Path("crates/bpfix/Cargo.toml")
 
           def manifest(path: Path) -> dict:
               return tomllib.loads(path.read_text(encoding="utf-8"))
-
-          manifests = {crate: manifest(path) for crate, _, path, _ in CRATES}
-          versions = {
-              crate: manifests[crate]["package"]["version"]
-              for crate, _, _, _ in CRATES
-          }
-
-          bpfix_bpfanalysis = manifests["bpfix"]["dependencies"]["bpfanalysis"]
-          if bpfix_bpfanalysis["version"] != versions["bpfanalysis"]:
-              raise SystemExit(
-                  "bpfix dependency bpfanalysis version "
-                  f"{bpfix_bpfanalysis['version']} does not match "
-                  f"bpfanalysis {versions['bpfanalysis']}"
-              )
-          if bpfix_bpfanalysis.get("path") != "../bpfanalysis":
-              raise SystemExit("bpfix dependency on bpfanalysis must keep the local path")
 
           def published(crate: str, version: str) -> bool:
               req = urllib.request.Request(
@@ -136,22 +127,81 @@ jobs:
                       return False
                   raise
 
+          def replace_first_version(path: Path, version: str) -> None:
+              text = path.read_text(encoding="utf-8")
+              updated, count = re.subn(r'^version = "[^"]+"', f'version = "{version}"', text, count=1, flags=re.M)
+              if count != 1:
+                  raise SystemExit(f"could not update package version in {path}")
+              path.write_text(updated, encoding="utf-8")
+
+          base = manifest(BPFIX)["package"]["version"]
+          major, minor, patch = map(int, base.split("."))
+          version = base
+          while published("bpfanalysis", version) or published("bpfix", version):
+              patch += 1
+              version = f"{major}.{minor}.{patch}"
+
+          replace_first_version(BPFANALYSIS, version)
+          replace_first_version(BPFIX, version)
+          bpfix_text = BPFIX.read_text(encoding="utf-8")
+          bpfix_text, count = re.subn(
+              r'bpfanalysis = \{ version = "[^"]+", path = "\.\./bpfanalysis", default-features = false \}',
+              f'bpfanalysis = {{ version = "{version}", path = "../bpfanalysis", default-features = false }}',
+              bpfix_text,
+          )
+          if count != 1:
+              raise SystemExit("could not update bpfix dependency on bpfanalysis")
+          BPFIX.write_text(bpfix_text, encoding="utf-8")
+
+          bpfanalysis_manifest = manifest(BPFANALYSIS)
+          bpfix_manifest = manifest(BPFIX)
+          bpfix_bpfanalysis = bpfix_manifest["dependencies"]["bpfanalysis"]
+          if bpfanalysis_manifest["package"]["version"] != version:
+              raise SystemExit("bpfanalysis package version was not updated")
+          if bpfix_manifest["package"]["version"] != version:
+              raise SystemExit("bpfix package version was not updated")
+          if bpfix_bpfanalysis["version"] != version:
+              raise SystemExit("bpfix dependency version does not match release version")
+          if bpfix_bpfanalysis.get("path") != "../bpfanalysis":
+              raise SystemExit("bpfix dependency on bpfanalysis must keep the local path")
+
           with open("publish_versions.env", "w", encoding="utf-8") as env:
-              for crate, env_name, _, _ in CRATES:
-                  version = versions[crate]
-                  is_published = published(crate, version)
-                  action = "already published" if is_published else "not published yet"
-                  print(f"{crate} {version} is {action}")
-                  env.write(f"{env_name}_VERSION={version}\n")
-                  env.write(f"PUBLISH_{env_name}={str(not is_published).lower()}\n")
+              env.write(f"BPFANALYSIS_VERSION={version}\n")
+              env.write(f"BPFIX_VERSION={version}\n")
+
+          with open("publish_versions.out", "w", encoding="utf-8") as out:
+              out.write(f"version={version}\n")
+
+          print(f"Using release version {version}")
           PY
+          cargo generate-lockfile
           cat publish_versions.env >> "$GITHUB_ENV"
+          cat publish_versions.out >> "$GITHUB_OUTPUT"
 
       - name: Check release packaging
         run: scripts/check-release.sh
 
+      - name: Commit release snapshot
+        env:
+          BPFIX_VERSION: ${{ steps.set_version.outputs.version }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Cargo.lock crates/bpfanalysis/Cargo.toml crates/bpfix/Cargo.toml
+          if git diff --cached --quiet; then
+            echo "Release snapshot already matches ${BPFIX_VERSION}; no commit needed."
+          else
+            git commit -m "chore: release bpfix ${BPFIX_VERSION} [skip ci]"
+            git push origin "HEAD:${GITHUB_REF#refs/heads/}"
+          fi
+          if [ -n "$(git status --porcelain -- Cargo.lock crates/bpfanalysis/Cargo.toml crates/bpfix/Cargo.toml)" ]; then
+            echo "::error::release snapshot has uncommitted Cargo files after commit."
+            git status --short -- Cargo.lock crates/bpfanalysis/Cargo.toml crates/bpfix/Cargo.toml
+            exit 1
+          fi
+
       - name: Publish bpfanalysis
-        if: env.PUBLISH_BPFANALYSIS == 'true'
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
         run: |
@@ -163,7 +213,6 @@ jobs:
           cargo publish -p bpfanalysis
 
       - name: Wait for bpfanalysis index
-        if: env.PUBLISH_BPFANALYSIS == 'true'
         env:
           CRATE_NAME: bpfanalysis
           CRATE_VERSION: ${{ env.BPFANALYSIS_VERSION }}
@@ -173,7 +222,6 @@ jobs:
         run: cargo package -p bpfix
 
       - name: Publish bpfix
-        if: env.PUBLISH_BPFIX == 'true'
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
         run: |
@@ -185,7 +233,6 @@ jobs:
           cargo publish -p bpfix
 
       - name: Wait for bpfix index
-        if: env.PUBLISH_BPFIX == 'true'
         env:
           CRATE_NAME: bpfix
           CRATE_VERSION: ${{ env.BPFIX_VERSION }}

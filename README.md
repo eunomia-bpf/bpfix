@@ -17,10 +17,11 @@ from your existing workflow and turns them into:
 
 ## Quick Start
 
-After installing `bpfix`, run the prebuilt verifier failure used by the examples:
+Install `bpfix` and load the prebuilt verifier failure:
 
 ```bash
-sudo bpftool -d prog load examples/bpftool/quick-start.bpf.o /sys/fs/bpf/bpfix-demo 2>&1 | tee verifier.log >/dev/null; bpfix verifier.log
+cargo install --path crates/bpfix
+sudo bpftool -d prog load examples/bpftool/quick-start.bpf.o /sys/fs/bpf/bpfix-demo 2>&1 | tee verifier.log
 ```
 
 The command loads a real verifier failure from `bpfix-empirical`
@@ -67,6 +68,10 @@ from 31 to 34: ... R5_w=40 ...
 R5 invalid mem access 'scalar'
 ```
 
+```bash
+bpfix verifier.log
+```
+
 The raw log says where the verifier stopped, but not the source-level proof
 story. BPFix turns the trace into a Rust-style multi-span diagnostic:
 
@@ -100,6 +105,8 @@ missing a generic "add a bounds check" hint. The useful answer is the proof
 lifecycle: where a verifier-recognized pointer proof exists, where branch-local
 provenance can be merged away, and where the rejected instruction finally needs
 that proof.
+
+![BPFix overview](docs/assets/sec-1-overview.png)
 
 The example object is copied from
 `bpfix-empirical/cases/stackoverflow-53136145/prog.o`; replace it with the
