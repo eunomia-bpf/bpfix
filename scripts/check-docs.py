@@ -34,6 +34,10 @@ BENCH_CONTRACT_DOCS = [
     ROOT / "docs" / "evaluation" / "bpfix-bench-llm-repair-eval.md",
 ]
 
+REMOVED_LEGACY_BENCHMARK_TOOLS = [
+    ROOT / "bpfix-bench" / "tools" / "audit_splits.py",
+]
+
 BANNED_BENCH_TERMS = [
     "docs/tmp",
     "clean60",
@@ -101,6 +105,13 @@ def check_benchmark_contract_terms(errors: list[str]) -> None:
                 errors.append(
                     f"{path.relative_to(ROOT)} mentions legacy benchmark term {term!r}"
                 )
+
+    for path in REMOVED_LEGACY_BENCHMARK_TOOLS:
+        if path.exists():
+            errors.append(
+                f"{path.relative_to(ROOT)} is a legacy split-staging tool; "
+                "use audit_cases.py for the frozen main75 benchmark contract"
+            )
 
 
 def check_readme_quick_start(errors: list[str]) -> None:

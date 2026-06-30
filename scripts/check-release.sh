@@ -69,6 +69,18 @@ reject_package_paths bpfix "${bpfix_manifest}"
 examples/check-examples.sh
 python3 scripts/check-docs.py
 python3 scripts/check-error-catalog.py
+echo "Checking frozen BPFix-Bench main75 contract..."
+python3 bpfix-bench/tools/audit_cases.py \
+    --split bpfix-bench/splits/main.txt \
+    --manifest bpfix-bench/splits/main.manifest.json \
+    >/tmp/bpfix-bench-main-audit.json
+echo "Checking BPFix-Bench main75 prompt generation..."
+python3 bpfix-bench/tools/run_suite.py \
+    --split bpfix-bench/splits/main.txt \
+    --expected-count 75 \
+    --mode bpfix \
+    --prompt-only \
+    >/tmp/bpfix-bench-main-prompt-only.json
 python3 bpfix-empirical/run-bpfix-eval.py --confusion --coverage --reject-fallback
 cargo test -p bpfix --features object-analysis --test cli
 cargo package -p bpfanalysis "${package_flags[@]}"

@@ -36,7 +36,6 @@ help:
 	@echo "                          Optional: SPLIT=... MANIFEST=... SMOKE=1 for custom oracle checks"
 	@echo "  make bpfix-bench-smoke  Validate bpfix-bench fixtures and buggy rejects"
 	@echo "  make bpfix-bench-main-gate Run the frozen main75 bpfix-bench gate"
-	@echo "  make bpfix-bench-dev40-gate   Run the full dev40 split quality gate"
 	@echo "  make release-check     Run packaging, example, empirical, and object-analysis gates"
 	@echo ""
 	@echo "Utilities"
@@ -94,26 +93,6 @@ bpfix-bench-main-gate:
 	cd $(CURDIR) && python3 bpfix-bench/tools/audit_cases.py \
 		--split bpfix-bench/splits/main.txt \
 		--manifest bpfix-bench/splits/main.manifest.json
-
-.PHONY: bpfix-bench-dev40-gate
-bpfix-bench-dev40-gate:
-	@echo "[bpfix-bench-dev40-gate] Auditing dev40 split and buggy-reject smoke..."
-	cd $(CURDIR) && python3 bpfix-bench/tools/audit_splits.py \
-		--split bpfix-bench/splits/dev40.txt \
-		--manifest bpfix-bench/splits/dev40.manifest.json \
-		--profile dev \
-		--expected-count 40 \
-		--audit-cases --smoke
-
-.PHONY: bpfix-bench-real-seed-candidate-gate
-bpfix-bench-real-seed-candidate-gate:
-	@echo "[bpfix-bench-real-seed-candidate-gate] Auditing historical real-project seed staging ledger..."
-	cd $(CURDIR) && python3 bpfix-bench/tools/audit_splits.py \
-		--split bpfix-bench/splits/real-seed-candidates.txt \
-		--manifest bpfix-bench/splits/real-seed-candidates.manifest.json \
-		--profile candidate \
-		--disallow-overlap bpfix-bench/splits/dev40.txt \
-		--audit-cases --smoke
 
 .PHONY: release-check
 release-check:
