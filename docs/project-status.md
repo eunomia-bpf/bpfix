@@ -1,6 +1,6 @@
 # BPFix Project Status and Roadmap
 
-Last updated: 2026-06-13
+Last updated: 2026-06-30
 
 BPFix is scoped as a Rust userspace diagnostic tool for eBPF verifier failures.
 The maintained product goal is: take existing verifier logs and return
@@ -88,6 +88,7 @@ The active project is a Cargo workspace.
 | libbpf source reference | active | `vendor/libbpf` submodule |
 | empirical corpus | active | `bpfix-empirical/` |
 | empirical replay tools | corpus maintenance | `bpfix-empirical/tools/` |
+| release automation | active | `.github/workflows/ci.yml`, `docs/release.md` |
 
 The `bpfanalysis` crate imports the analysis implementation from the `bpfopt`
 analysis module and keeps the dependent instruction, verifier-log, and

@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   test:
@@ -64,6 +64,8 @@ jobs:
     name: Publish to crates.io
     runs-on: ubuntu-latest
     needs: test
+    permissions:
+      contents: write
     if: |
       (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
       (github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main') &&

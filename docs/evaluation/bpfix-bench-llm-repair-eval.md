@@ -96,7 +96,6 @@ reported splits.
 | `dev40.txt` | 40 | Legacy development subset used while building prompts, diagnostics, and oracles. | Historical provenance only. |
 | `hard40.txt` | 40 | High-difficulty subset retained from main-suite hardening. | Historical quick-check subset. |
 | `real-seed-candidates.txt` | 34 | Provenance ledger for real-project seed candidates. | Metadata/provenance only. |
-| `clean60.txt` | 0 | Legacy placeholder retained for compatibility with older scripts. | Empty; not used in reported results. |
 
 The reported experiment treats `main.txt` as one unified 75-case suite. The
 older split names are retained for provenance and fast checks, not as separate

@@ -80,7 +80,7 @@ Publish order:
   2. wait for bpfanalysis ${bpfanalysis_version} to appear in the crates.io index
   3. cargo publish -p bpfix
 
-bpfix ${bpfix_version} cannot be fully package-verified before bpfanalysis
+bpfix ${bpfix_version} cannot be fully package-verified until bpfanalysis
 ${bpfanalysis_version} is available from crates.io, because Cargo removes path
 dependencies from published packages.
 EOF

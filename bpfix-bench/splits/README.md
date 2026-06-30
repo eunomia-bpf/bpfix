@@ -11,8 +11,8 @@ Current splits:
   provenance and quick compatibility checks.
 - `hard40.txt`: 40-case high-difficulty development subset retained from
   benchmark hardening.
-- `real-seed-candidates.txt`: provenance ledger for real-project seed cases.
-- `clean60.txt`: legacy empty placeholder kept so older scripts do not break.
+- `real-seed-candidates.txt`: historical provenance ledger for real-project
+  seed cases used while constructing the released main75 suite.
 
 `main.txt` is the public benchmark contract. Do not mutate the split, case
 fixtures, verifier logs, diagnostics, or case oracles in place. If the benchmark
@@ -25,6 +25,3 @@ Basic audit commands:
 python3 bpfix-bench/tools/audit_cases.py --split bpfix-bench/splits/main.txt --manifest bpfix-bench/splits/main.manifest.json
 python3 bpfix-bench/tools/run_suite.py --split bpfix-bench/splits/main.txt --expected-count 75 --mode bpfix --prompt-only
 ```
-
-Historical clean60 protocol notes and pilot writeups live under
-`docs/tmp/bpfix-bench/`; they are not the current benchmark contract.

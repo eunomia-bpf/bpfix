@@ -4,7 +4,7 @@
   "profile": "candidate_staging",
   "freeze": {
     "frozen": false,
-    "reason": "staging split for real-project seeds; promotion to clean60 requires 60 admitted cases, final independent review, and prompt freeze",
+    "reason": "historical seed-staging ledger retained for main75 provenance; not a public benchmark split",
     "fingerprints_frozen": true
   },
   "admission_policy": {
@@ -14,8 +14,8 @@
   },
   "selection_protocol": {
     "case_source_policy": "Stage only real-project seeds with upstream project, commit, path, and license provenance.",
-    "admission_order_policy": "Review and smoke candidates before any clean LLM evaluation; promotion to clean60 happens only after the full 60-case split is assembled.",
-    "review_policy": "Require independent review of every candidate's bug, oracle coverage, provenance, and clean-split eligibility before promotion.",
+    "admission_order_policy": "Review and smoke candidates before inclusion in the released benchmark suite.",
+    "review_policy": "Require review of every candidate's bug, oracle coverage, provenance, and benchmark eligibility before promotion.",
     "model_result_blinding_policy": "Do not run or inspect source-only, raw, trimmed-raw, or structured repair outcomes while admitting or excluding candidates.",
     "near_duplicate_policy": "Reject semantic near-duplicates of dev40, bpfix-empirical replay cases, or already staged candidates even when exact file hashes differ."
   },
@@ -226,7 +226,7 @@
             "case_id": "rs_datrail_cgroup_filter_key_width_001",
             "decision_made_before_model_eval": true,
             "model_result_used": true,
-            "notes": "Minimized DatRail's tenant-scoped cgroup-child filter workflow into an XDP helper-memory contract case where a 32-bit child selector key is passed to a tracked_cgroups map whose helper contract requires the initialized 64-bit composite key (tenant << 32) | selector. The original admission did not use LLM repair outcomes; this main-suite hardening was checked against raw-log Qwen repair behavior and is not clean-heldout eligible."
+            "notes": "Minimized DatRail's tenant-scoped cgroup-child filter workflow into an XDP helper-memory contract case where a 32-bit child selector key is passed to a tracked_cgroups map whose helper contract requires the initialized 64-bit composite key (tenant << 32) | selector. The original admission did not use LLM repair outcomes; this main-suite hardening was checked against raw-log Qwen repair behavior and the ledger is not a benchmark denominator."
         },
         {
             "seed": "bpf-developer-tutorial@3a722c03d5129ac212935bf5ecce118e64efcdd8:src/16-memleak/memleak.bpf.c#free-info-merge",
@@ -298,7 +298,7 @@
       "seed": "agentsight@1d063722bc631bef77cc6046c214e2583ba5c7e4:bpf/stdiocap.bpf.c#wrong-prog-type",
       "reason": "duplicate_or_near_duplicate",
       "model_result_used": false,
-      "notes": "Rejected after independent review and before model evaluation because the candidate gate found a normalized buggy-source near duplicate with rs_agentsight_stdiocap_user_copy_len_001 (j=0.9317/c=0.9737). Although the verifier symptom differs, it shares the same minimized stdiocap workflow too closely for clean60/candidate admission."
+      "notes": "Rejected after independent review and before model evaluation because the candidate gate found a normalized buggy-source near duplicate with rs_agentsight_stdiocap_user_copy_len_001 (j=0.9317/c=0.9737). Although the verifier symptom differs, it shares the same minimized stdiocap workflow too closely for candidate admission."
     },
     {
       "seed": "namei_ext@6fe308aa3a16a9ea160f634f60ed76427dcc1b7c:kernel/tools/testing/selftests/net/nat6to4.bpf.c",
@@ -837,7 +837,7 @@
                 "not_seen_in_prior_eval": true,
                 "bug_summary": "The user-ringbuf dynptr callback obtains a 24-byte payload pointer with bpf_dynptr_data; the non-null proof is established only on the current_pid == 0 branch, then msg->op and msg->comm are read after the branch merge where the verifier still tracks the pointer as mem_or_null.",
                 "oracle_rationale": "The custom oracle requires compile and tracepoint verifier load, preservation of user-ringbuf drain, dynptr payload consumption via bpf_dynptr_data or checked bpf_dynptr_read, kernel-ringbuf reserve/submit, PID attribution, exact op/comm payload-offset to record-offset flow, and submit of the reserved ringbuf reference. The dynptr_read alternative requires a verifier-visible successful return check before reserve/copy.",
-                "provenance_rationale": "Seed was derived from bpf-developer-tutorial's GPL user-ringbuf example at the pinned commit/path. The minimized harness preserves the upstream user-ringbuf drain callback and kernel-ringbuf event workflow, and explicitly adds a small payload-copy step so the heldout case exercises dynptr payload proof lifecycle rather than only helper availability."
+                "provenance_rationale": "Seed was derived from bpf-developer-tutorial's GPL user-ringbuf example at the pinned commit/path. The minimized harness preserves the upstream user-ringbuf drain callback and kernel-ringbuf event workflow, and explicitly adds a small payload-copy step so the case exercises dynptr payload proof lifecycle rather than only helper availability."
             },
             "provenance": {
                 "seed_type": "minimized real-project seed in user-ringbuf dynptr callback harness",
@@ -894,13 +894,13 @@
                 "not_seen_in_prior_eval": true,
                 "bug_summary": "The browsertrace-style syscall-exit program looks up start_ns and proves it non-null only on the pid == 0 branch, then computes event->delta_ns = ts - *tsp after the branch merge. For normal user PIDs the verifier still tracks the timestamp pointer as map_value_or_null, so the final reject is the elapsed-time dereference rather than the earlier proof-loss branch.",
                 "oracle_rationale": "The custom oracle requires compile and tracepoint verifier load, preservation of the two map lookups, timestamp delta, ringbuf reserve/submit, bounded bpf_probe_read_user, and cleanup of both maps. Its proof predicates track verifier registers per path: the start_ns map-value load must flow into the ringbuf delta field, and the saved bufs map-value pointer must be the current R3 at bpf_probe_read_user while R1 is the ringbuf payload destination and R2 is the bounded copy length. Negative controls for constant delta, removed user copy, register clobber, and cross-path taint fail.",
-                "provenance_rationale": "Seed was derived from DatRail's browsertrace BPF program at the pinned commit/path. The minimized harness preserves the upstream syscall-exit buffer lookup, start timestamp lookup, elapsed-time event field, bounded user copy, ringbuf event, and cleanup workflow while removing browser/NSS filters so the heldout case isolates branch-merge loss of the start_ns map-value proof."
+                "provenance_rationale": "Seed was derived from DatRail's browsertrace BPF program at the pinned commit/path. The minimized harness preserves the upstream syscall-exit buffer lookup, start timestamp lookup, elapsed-time event field, bounded user copy, ringbuf event, and cleanup workflow while removing browser/NSS filters so the case isolates branch-merge loss of the start_ns map-value proof."
             },
             "provenance": {
                 "seed_type": "minimized real-project seed in browsertrace syscall-exit harness",
                 "source": "https://github.com/DatRail/datrail-agent-monitor/blob/cfd94492b336c70c680718ad6d91ca2a81cc048d/bpf/browsertrace.bpf.c",
                 "license": "(LGPL-2.1 OR BSD-2-Clause)",
-                "minimization": "Preserved the browsertrace exit workflow shape: saved user buffer lookup, start timestamp lookup, elapsed-time event field, bounded bpf_probe_read_user copy, ringbuf submit, and cleanup of both maps. The minimized harness removes browser-specific filters and NSS bookkeeping so the heldout case isolates branch-merge loss of the start_ns map-value proof.",
+                "minimization": "Preserved the browsertrace exit workflow shape: saved user buffer lookup, start timestamp lookup, elapsed-time event field, bounded bpf_probe_read_user copy, ringbuf submit, and cleanup of both maps. The minimized harness removes browser-specific filters and NSS bookkeeping so the case isolates branch-merge loss of the start_ns map-value proof.",
                 "upstream_project": "https://github.com/DatRail/datrail-agent-monitor",
                 "upstream_ref": "cfd94492b336c70c680718ad6d91ca2a81cc048d",
                 "upstream_path": "bpf/browsertrace.bpf.c",
@@ -950,7 +950,7 @@
                 "not_seen_in_prior_eval": true,
                 "bug_summary": "The sslsniff-style SSL_read uretprobe keeps a per-CPU ssl_data scratch event whose buggy layout has an 8-byte buf field at offset 56 while copy_size is bounded by MAX_BUF_SIZE=16. The verifier reaches bpf_probe_read_user with R1 at ssl_data+56 and R2 possibly 16, so the helper write can exceed the 64-byte map value.",
                 "oracle_rationale": "The custom oracle requires compile and kprobe verifier load, preservation of saved-buffer lookup, start timestamp lookup, ssl_data scratch lookup, timestamp delta, bounded bpf_probe_read_user into data->buf, cleanup of both saved maps, and bpf_perf_event_output. Its proof predicates track verifier registers per path so the probe-read destination must be ssl_data.buf at offset 56 with offset+copy length within value_size, R3 must come from the saved bufs map value, and perf output must submit the ssl_data event after the copy path. Negative controls for removed copy, removed perf output, wrong output data, and wrong copy destination fail.",
-                "provenance_rationale": "Seed was derived from bpftime's sslsniff uretprobe program at the pinned commit/path. The minimized harness preserves the upstream saved buffer/start timestamp maps, per-CPU scratch event, metadata fill, user copy, cleanup, and perf-event output while shrinking the scratch buffer so the heldout case isolates helper-memory range proof."
+                "provenance_rationale": "Seed was derived from bpftime's sslsniff uretprobe program at the pinned commit/path. The minimized harness preserves the upstream saved buffer/start timestamp maps, per-CPU scratch event, metadata fill, user copy, cleanup, and perf-event output while shrinking the scratch buffer so the case isolates helper-memory range proof."
             },
             "provenance": {
                 "seed_type": "minimized real-project seed in uretprobe perf-event harness",

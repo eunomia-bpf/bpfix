@@ -33,10 +33,9 @@ help:
 	@echo "  make empirical-smoke   Run the CLI against one empirical corpus case"
 	@echo "  make empirical-eval    Run bpfix over bpfix-empirical and print metrics"
 	@echo "  make bpfix-bench-audit  Audit bpfix-bench fixture structure and prompts"
-	@echo "                          Optional: SPLIT=... MANIFEST=... SMOKE=1 for custom clean oracles"
+	@echo "                          Optional: SPLIT=... MANIFEST=... SMOKE=1 for custom oracle checks"
 	@echo "  make bpfix-bench-smoke  Validate bpfix-bench fixtures and buggy rejects"
-	@echo "  make bpfix-bench-main-gate Run the combined 75-case bpfix-bench gate"
-	@echo "  make bpfix-bench-real-seed-candidate-gate Audit real-project seed staging candidates"
+	@echo "  make bpfix-bench-main-gate Run the frozen main75 bpfix-bench gate"
 	@echo "  make bpfix-bench-dev40-gate   Run the full dev40 split quality gate"
 	@echo "  make release-check     Run packaging, example, empirical, and object-analysis gates"
 	@echo ""
@@ -91,7 +90,7 @@ bpfix-bench-audit:
 
 .PHONY: bpfix-bench-main-gate
 bpfix-bench-main-gate:
-	@echo "[bpfix-bench-main-gate] Auditing combined bpfix-bench working suite..."
+	@echo "[bpfix-bench-main-gate] Auditing frozen bpfix-bench main75 suite..."
 	cd $(CURDIR) && python3 bpfix-bench/tools/audit_cases.py \
 		--split bpfix-bench/splits/main.txt \
 		--manifest bpfix-bench/splits/main.manifest.json
@@ -108,52 +107,13 @@ bpfix-bench-dev40-gate:
 
 .PHONY: bpfix-bench-real-seed-candidate-gate
 bpfix-bench-real-seed-candidate-gate:
-	@echo "[bpfix-bench-real-seed-candidate-gate] Auditing real-project seed staging candidates..."
+	@echo "[bpfix-bench-real-seed-candidate-gate] Auditing historical real-project seed staging ledger..."
 	cd $(CURDIR) && python3 bpfix-bench/tools/audit_splits.py \
 		--split bpfix-bench/splits/real-seed-candidates.txt \
 		--manifest bpfix-bench/splits/real-seed-candidates.manifest.json \
 		--profile candidate \
 		--disallow-overlap bpfix-bench/splits/dev40.txt \
 		--audit-cases --smoke
-
-.PHONY: bpfix-bench-clean60-gate
-bpfix-bench-clean60-gate:
-	@echo "[bpfix-bench-clean60-gate] Auditing clean60 heldout split..."
-	cd $(CURDIR) && python3 bpfix-bench/tools/audit_splits.py \
-		--split bpfix-bench/splits/clean60.txt \
-		--manifest bpfix-bench/splits/clean60.manifest.json \
-		--profile clean60 \
-		--expected-count 60 \
-		--disallow-overlap bpfix-bench/splits/dev40.txt \
-		--audit-cases --smoke
-
-.PHONY: bpfix-bench-prompt-gate
-bpfix-bench-prompt-gate:
-	@test -n "$(PROMPT_MANIFEST)" || (echo "Set PROMPT_MANIFEST to the clean60 prompt manifest"; exit 2)
-	@echo "[bpfix-bench-prompt-gate] Verifying clean60 prompt manifest..."
-	cd $(CURDIR) && python3 bpfix-bench/tools/prompt_manifest.py \
-		--split bpfix-bench/splits/clean60.txt \
-		--expected-count 60 \
-		--verify $(PROMPT_MANIFEST)
-
-.PHONY: bpfix-bench-clean60-paper-gate
-bpfix-bench-clean60-paper-gate: bpfix-bench-clean60-gate bpfix-bench-prompt-gate
-
-.PHONY: bpfix-bench-result-gate
-bpfix-bench-result-gate:
-	@test -n "$(RESULT_SUMMARIES)" || (echo "Set RESULT_SUMMARIES to legacy clean60 summary.json paths"; exit 2)
-	@test -n "$(PROMPT_MANIFEST)" || (echo "Set PROMPT_MANIFEST to the legacy clean60 prompt manifest"; exit 2)
-	@echo "[bpfix-bench-result-gate] Running legacy clean60 admission, prompt, and result gates..."
-	$(MAKE) bpfix-bench-clean60-paper-gate PROMPT_MANIFEST=$(PROMPT_MANIFEST)
-	cd $(CURDIR) && python3 bpfix-bench/tools/audit_results.py \
-		--split bpfix-bench/splits/clean60.txt \
-		--expected-count 60 \
-		--prompt-manifest $(PROMPT_MANIFEST) \
-		--required-mode source-only \
-		--required-mode raw \
-		--required-mode trimmed-raw \
-		--required-mode bpfix \
-		$(RESULT_SUMMARIES)
 
 .PHONY: release-check
 release-check:

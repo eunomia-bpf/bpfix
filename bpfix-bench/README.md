@@ -18,9 +18,8 @@ Current inventory:
 - `splits/main.txt`: frozen 75-case benchmark split.
 - `splits/main.manifest.json`: frozen split metadata and oracle coverage.
 - `splits/dev40.txt` and `splits/hard40.txt`: historical development subsets.
-- `splits/real-seed-candidates.txt`: provenance ledger for real-project seeds.
-- `splits/clean60.txt`: legacy empty split kept for compatibility with older
-  scripts.
+- `splits/real-seed-candidates.txt`: historical provenance ledger for
+  real-project seeds used while constructing the released main75 suite.
 
 The two non-runnable directories are placeholders without `buggy.bpf.c`; they
 are excluded from all reported benchmark splits.
@@ -135,7 +134,7 @@ tasks represented by the suite: packet/map proof lifecycle, helper memory
 contracts, ring-buffer/dynptr protocols, source/object correlation, and
 program/map environment constraints.
 
-Historical dev/clean60 notes and pilot writeups are retained for provenance
-only. The user-facing benchmark contract is this README, `splits/main.txt`,
+Historical development subsets are retained for provenance only. The
+user-facing benchmark contract is this README, `splits/main.txt`,
 `splits/main.manifest.json`, the case directories, and
 `docs/evaluation/bpfix-bench-llm-repair-eval.md`.

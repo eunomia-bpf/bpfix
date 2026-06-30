@@ -1,6 +1,5 @@
-# Staging split for real-project seed candidates before clean60 admission.
-# These cases are not part of clean60 until independent review, provenance
-# audit, and final 60-case freeze are complete.
+# Historical real-project seed ledger from main75 construction.
+# This is not a public benchmark split and should not be used as a denominator.
 rs_agentsight_process_ringbuf_null_001
 rs_agentsight_stdiocap_user_copy_len_001
 rs_actplane_policy_map_merge_001

@@ -1,10 +1,11 @@
-# BPFix: making eBPF verifier error more friendly 
+# BPFix: making eBPF verifier errors more friendly
 
 **BPFix makes eBPF verifier errors feel closer to Rust compiler errors.**
 
-The Linux eBPF verifier is powerful, but its failure logs are hard to read. 
-BPFix is a userspace diagnostic tools for that problem. It reads verifier logs
-from your existing workflow and turns them into explaination and point you to the error location where the verifier lost the proof.
+The Linux eBPF verifier is powerful, but its failure logs are hard to read.
+BPFix is a userspace diagnostic tool for that problem. It reads verifier logs
+from your existing workflow and turns them into source-level explanations that
+point to where the verifier lost the required proof.
 
 ## Quick Start
 
@@ -97,7 +98,7 @@ lifecycle: where a verifier-recognized pointer proof exists, where branch-local
 provenance can be merged away, and where the rejected instruction finally needs
 that proof.
 
-![BPFix overview](docs/assets/sec-1-overview.png)
+![BPFix overview](https://raw.githubusercontent.com/eunomia-bpf/bpfix/master/docs/assets/sec-1-overview.png)
 
 The example object is copied from
 `bpfix-empirical/cases/stackoverflow-53136145/prog.o`; replace it with the
@@ -263,8 +264,11 @@ make release-check
 This runs packaging checks, example consistency checks, the empirical corpus
 `--reject-fallback` gate, and the feature-gated object-analysis CLI tests.
 
-`bpfix` depends on the sibling `bpfanalysis` crate. Publish `bpfanalysis` first,
-wait for it to appear in the crates.io index, then publish `bpfix`.
+Release automation and the manual fallback are documented in
+[docs/release.md](https://github.com/eunomia-bpf/bpfix/blob/master/docs/release.md).
+`bpfix` depends on the sibling `bpfanalysis` crate; the publish workflow selects
+the next unpublished patch version, publishes `bpfanalysis` first, waits for it
+to appear in the crates.io index, and then publishes `bpfix`.
 
 ## Repository Layout
 
@@ -275,6 +279,7 @@ crates/bpfix       user-facing CLI
 docs/project-status.md project planning and evaluation notes
 docs/user-guide.md    install, getting logs, output, and CI usage
 docs/open-source-tool-design.md public CLI contract
+docs/release.md       release gates and crates.io publishing process
 examples/          bpftool, libbpf, Aya, BCC, CI, and editor integration snippets
 docs/evaluation/   evaluation and metric notes
 bpfix-empirical/tools/ empirical replay and corpus-maintenance tools
