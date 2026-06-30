@@ -18,9 +18,9 @@ Run the repository release gate before publishing:
 make release-check
 ```
 
-This gate checks package contents, example consistency, the user-facing error
-catalog, the empirical diagnostic fallback gate, and the feature-gated
-object-analysis CLI path.
+This gate checks package contents, documentation links and benchmark-contract
+drift, example consistency, the user-facing error catalog, the empirical
+diagnostic fallback gate, and the feature-gated object-analysis CLI path.
 
 CI also runs:
 
@@ -31,6 +31,7 @@ cargo clippy --workspace --all-targets --all-features -- -D warnings
 cargo test --workspace
 cargo build -p bpfix --no-default-features
 scripts/check-release.sh
+python3 scripts/check-docs.py
 python3 bpfix-empirical/run-bpfix-eval.py --confusion --reject-fallback --no-build
 ```
 

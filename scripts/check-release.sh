@@ -67,6 +67,7 @@ require_package_file bpfix "${bpfix_manifest}" tests/cli.rs
 reject_package_paths bpfix "${bpfix_manifest}"
 
 examples/check-examples.sh
+python3 scripts/check-docs.py
 python3 scripts/check-error-catalog.py
 python3 bpfix-empirical/run-bpfix-eval.py --confusion --coverage --reject-fallback
 cargo test -p bpfix --features object-analysis --test cli
