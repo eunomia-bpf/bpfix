@@ -93,8 +93,21 @@ jobs:
       - name: Restore empirical fixtures
         run: bash scripts/restore-empirical-fixtures.sh
 
+      - name: Check crates.io token
+        id: cargo_token
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        run: |
+          if [ -z "${CARGO_REGISTRY_TOKEN:-}" ]; then
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::CARGO_REGISTRY_TOKEN is not set; skipping crates.io publish."
+          else
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Set release version
         id: set_version
+        if: steps.cargo_token.outputs.available == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -179,9 +192,11 @@ jobs:
           cat publish_versions.out >> "$GITHUB_OUTPUT"
 
       - name: Check release packaging
+        if: steps.cargo_token.outputs.available == 'true'
         run: scripts/check-release.sh
 
       - name: Commit release snapshot
+        if: steps.cargo_token.outputs.available == 'true'
         env:
           BPFIX_VERSION: ${{ steps.set_version.outputs.version }}
         run: |
@@ -202,6 +217,7 @@ jobs:
           fi
 
       - name: Publish bpfanalysis
+        if: steps.cargo_token.outputs.available == 'true'
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
         run: |
@@ -213,15 +229,18 @@ jobs:
           cargo publish -p bpfanalysis
 
       - name: Wait for bpfanalysis index
+        if: steps.cargo_token.outputs.available == 'true'
         env:
           CRATE_NAME: bpfanalysis
           CRATE_VERSION: ${{ env.BPFANALYSIS_VERSION }}
         run: bash .github/workflows/wait-for-crate.sh
 
       - name: Verify bpfix Cargo package
+        if: steps.cargo_token.outputs.available == 'true'
         run: cargo package -p bpfix
 
       - name: Publish bpfix
+        if: steps.cargo_token.outputs.available == 'true'
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
         run: |
@@ -233,12 +252,14 @@ jobs:
           cargo publish -p bpfix
 
       - name: Wait for bpfix index
+        if: steps.cargo_token.outputs.available == 'true'
         env:
           CRATE_NAME: bpfix
           CRATE_VERSION: ${{ env.BPFIX_VERSION }}
         run: bash .github/workflows/wait-for-crate.sh
 
       - name: Smoke test cargo install from crates.io
+        if: steps.cargo_token.outputs.available == 'true'
         env:
           BPFIX_VERSION: ${{ env.BPFIX_VERSION }}
         run: |
