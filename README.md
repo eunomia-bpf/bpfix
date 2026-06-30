@@ -15,54 +15,15 @@ from your existing workflow and turns them into:
 - actionable `help:` guidance
 - plain-text output for terminals, CI, editors, and agents
 
-## Motivating Example
+## Quick Start
 
-The Quick Start below loads a prebuilt object for a real verifier failure from
-`bpfix-empirical` (`stackoverflow-53136145`). The source parses either IPv4 or
-IPv6, derives a UDP header pointer on each branch, checks the UDP header against
-`data_end`, and then reads the destination port:
+After installing `bpfix`, run the prebuilt verifier failure used by the examples:
 
-```c
-if (ethertype == ETH_P_IP) {
-    ipv4_hdr = (void *)eth + ETH_HLEN;
-    if ((void *)(ipv4_hdr + 1) > data_end)
-        return 1;
-} else if (ethertype == ETH_P_IPV6) {
-    ipv6_hdr = (void *)eth + ETH_HLEN;
-    if ((void *)(ipv6_hdr + 1) > data_end)
-        return 1;
-} else {
-    return 2;
-}
-
-if (ipv4_hdr)
-    udph = (void *)ipv4_hdr + sizeof(*ipv4_hdr);
-else
-    udph = (void *)ipv6_hdr + sizeof(*ipv6_hdr);
-
-if (udph + sizeof(struct udphdr) > data_end)
-    return 1;
-
-dst_port = __constant_ntohs(((struct udphdr *)udph)->dest);
+```bash
+sudo bpftool -d prog load examples/bpftool/quick-start.bpf.o /sys/fs/bpf/bpfix-demo 2>&1 | tee verifier.log >/dev/null; bpfix verifier.log
 ```
 
-That source shape is normal BPF C: the developer made the packet proof explicit.
-The failure is in the verifier-visible proof lifecycle. One replay path reaches
-the shared `udph->dest` load with `r5` as a scalar instead of a packet pointer:
-
-```text
-from 31 to 34: ... R5_w=40 ...
-; if (udph + sizeof(struct udphdr) > data_end) @ prog.c:267
-34: (bf) r3 = r5                      ; R3_w=40 R5_w=40
-35: (07) r3 += 8                      ; R3=48
-36: (2d) if r3 > r2 goto pc+4         ; R2=pkt_end() R3=48
-; dst_port = __constant_ntohs(((struct udphdr *)udph)->dest); @ prog.c:270
-37: (69) r2 = *(u16 *)(r5 +2)
-R5 invalid mem access 'scalar'
-```
-
-The raw log says where the verifier stopped, but not the source-level proof
-story. BPFix turns the trace into a Rust-style multi-span diagnostic:
+Expected output:
 
 ```text
 error[BPFIX-E006]: verifier-visible compiler lowering hides the required proof
@@ -89,28 +50,9 @@ help: Use the packet pointer that received the data_end proof, or rederive and r
 help: Keep the final access on a verifier-tracked pointer; rederive it from a checked base after scalar work.
 ```
 
-This is the kind of failure that motivates the project: the program is not
-missing a generic "add a bounds check" hint. The useful answer is the proof
-lifecycle: where a verifier-recognized pointer proof exists, where branch-local
-provenance can be merged away, and where the rejected instruction finally needs
-that proof.
-
-## Quick Start
-
-After installing `bpfix`, try the same log-first `bpftool` flow used by
-`examples/bpftool/`:
-
-```bash
-sudo bpftool -d prog load examples/bpftool/motivating-example.bpf.o /sys/fs/bpf/bpfix-demo 2>&1 | tee verifier.log
-bpfix verifier.log
-```
-
-`bpftool -d` emits the verifier log when the load fails, `tee` saves that output
-as `verifier.log`, and `bpfix verifier.log` explains the rejected load. The
-example object is copied from the `stackoverflow-53136145` case shown above, so
-the second command should produce the `BPFIX-E006` diagnostic in the motivating
-example. Replace the object path with the object you are debugging in your own
-project.
+The example object is copied from
+`bpfix-empirical/cases/stackoverflow-53136145/prog.o`; replace it with the
+object you are debugging in your own project.
 
 The CLI shape is intentionally small:
 
@@ -139,7 +81,7 @@ bpfix verifier.log
 or:
 
 ```bash
-sudo bpftool -d prog load examples/bpftool/motivating-example.bpf.o /sys/fs/bpf/bpfix-demo 2>&1 | tee verifier.log
+sudo bpftool -d prog load examples/bpftool/quick-start.bpf.o /sys/fs/bpf/bpfix-demo 2>&1 | tee verifier.log
 bpfix verifier.log
 ```
 
@@ -147,7 +89,7 @@ with feature-gated object metadata, after installing with `--features
 object-analysis`:
 
 ```bash
-bpfix --object examples/bpftool/motivating-example.bpf.o verifier.log
+bpfix --object examples/bpftool/quick-start.bpf.o verifier.log
 ```
 
 BPFix does not need `case.yaml` for normal use. Empirical corpus YAML records are

@@ -9,14 +9,14 @@ Use this when you already load a compiled eBPF object with `bpftool`.
 The important pieces are:
 
 ```bash
-sudo bpftool -d prog load examples/bpftool/motivating-example.bpf.o /sys/fs/bpf/bpfix-demo 2>&1 | tee verifier.log
+sudo bpftool -d prog load examples/bpftool/quick-start.bpf.o /sys/fs/bpf/bpfix-demo 2>&1 | tee verifier.log
 bpfix verifier.log
 ```
 
 `-d` asks bpftool/libbpf to emit debug output, including the verifier log when
-the load fails. The committed `motivating-example.bpf.o` is copied from
+the load fails. The committed `quick-start.bpf.o` is copied from
 `bpfix-empirical/cases/stackoverflow-53136145/prog.o`, the same case used by the
-root README motivating example.
+root README Quick Start.
 
 Object metadata is optional. If BPFix was installed with `--features
 object-analysis`, opt into it explicitly:

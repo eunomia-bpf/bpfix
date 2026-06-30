@@ -2,7 +2,7 @@
 set -u
 
 script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-obj=${1:-"$script_dir/motivating-example.bpf.o"}
+obj=${1:-"$script_dir/quick-start.bpf.o"}
 pin=${2:-/sys/fs/bpf/bpfix-demo}
 log=${LOG:-verifier.log}
 

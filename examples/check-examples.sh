@@ -11,7 +11,7 @@ aya/loader-snippet.rs
 aya/run-and-diagnose.sh
 bcc/README.md
 bcc/tool-snippet.py
-bpftool/motivating-example.bpf.o
+bpftool/quick-start.bpf.o
 bpftool/README.md
 bpftool/load-and-diagnose.sh
 ci/README.md
@@ -31,7 +31,7 @@ for file in $required_files; do
 done
 
 if command -v llvm-objdump >/dev/null 2>&1; then
-    llvm-objdump -h "$examples_dir/bpftool/motivating-example.bpf.o" >/dev/null
+    llvm-objdump -h "$examples_dir/bpftool/quick-start.bpf.o" >/dev/null
 fi
 
 generated_files=$(find "$examples_dir" \( -name '__pycache__' -o -name '*.py[co]' \) -print)

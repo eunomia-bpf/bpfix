@@ -10,7 +10,7 @@ The bpftool quick start captures the verifier log, then asks BPFix to explain
 that saved log:
 
 ```bash
-sudo bpftool -d prog load examples/bpftool/motivating-example.bpf.o /sys/fs/bpf/bpfix-demo 2>&1 | tee verifier.log
+sudo bpftool -d prog load examples/bpftool/quick-start.bpf.o /sys/fs/bpf/bpfix-demo 2>&1 | tee verifier.log
 bpfix verifier.log
 ```
 
@@ -27,12 +27,11 @@ bpfix verifier.log
 | `ci/` | CI maintainers | GitHub Actions artifact flow for `verifier.log` and BPFix text |
 | `editor/` | editor and agent integrations | plain-text diagnostic handoff |
 
-The bpftool quick start uses the committed `bpftool/motivating-example.bpf.o`
-object from the root README motivating example. Other examples intentionally
-keep placeholders such as `xdp.o`, `./loader`, and `cargo run --bin loader`.
-Replace them with the command that already fails in your project. BPFix should
-sit beside that command; it should not force you to rewrite the loader just to
-get a useful diagnostic.
+The bpftool quick start uses the committed `bpftool/quick-start.bpf.o` object
+from the root README Quick Start. Other examples intentionally keep placeholders
+such as `xdp.o`, `./loader`, and `cargo run --bin loader`. Replace them with the
+command that already fails in your project. BPFix should sit beside that command;
+it should not force you to rewrite the loader just to get a useful diagnostic.
 
 ## Support Levels
 

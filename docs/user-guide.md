@@ -22,7 +22,7 @@ cargo run -p bpfix -- verifier.log
 Use your normal workflow and keep the full load output:
 
 ```bash
-sudo bpftool -d prog load examples/bpftool/motivating-example.bpf.o /sys/fs/bpf/bpfix-demo 2>&1 | tee verifier.log
+sudo bpftool -d prog load examples/bpftool/quick-start.bpf.o /sys/fs/bpf/bpfix-demo 2>&1 | tee verifier.log
 bpfix verifier.log
 ```
 
@@ -34,7 +34,7 @@ bpfix load.log
 ```
 
 The example object is copied from the `stackoverflow-53136145` case used by the
-root README motivating example; replace it with the object you are debugging.
+root README Quick Start; replace it with the object you are debugging.
 The positional argument and stdin are always interpreted as verifier/build/load
 log text.
 
@@ -52,7 +52,7 @@ environments, if added later, should be selected by explicit options such as
 
 ```bash
 cargo install --path crates/bpfix --features object-analysis
-bpfix --object examples/bpftool/motivating-example.bpf.o verifier.log
+bpfix --object examples/bpftool/quick-start.bpf.o verifier.log
 ```
 
 Use it when you want object-section metadata to enrich the same plain-text
