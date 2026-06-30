@@ -44,8 +44,9 @@ Publishing can authenticate in either of two ways:
 
 - Set the repository secret `CARGO_REGISTRY_TOKEN` to a crates.io token with
   publish permissions.
-- Configure crates.io Trusted Publishing for this GitHub repository and
-  workflow, then set the repository variable
+- Configure crates.io Trusted Publishing for both crates (`bpfanalysis` and
+  `bpfix`) with this GitHub repository and the `ci.yml` workflow, then set the
+  repository variable
   `CRATES_IO_TRUSTED_PUBLISHING=true`.
 
 If neither path is configured, the job exits successfully after a warning and
@@ -53,6 +54,11 @@ skips publishing. This keeps normal CI green for forks and fresh checkouts.
 Trusted Publishing setup is documented by crates.io at
 <https://crates.io/docs/trusted-publishing>; the workflow uses the official
 `rust-lang/crates-io-auth-action`.
+Do not enable `CRATES_IO_TRUSTED_PUBLISHING` until both crates have a matching
+trusted-publisher configuration on crates.io. Trusted Publishing is configured
+per crate and requires the crate to have been published once already; `bpfix`
+and `bpfanalysis` already satisfy that bootstrap condition through their
+published `0.1.0` releases.
 
 When publish credentials are available, the workflow:
 

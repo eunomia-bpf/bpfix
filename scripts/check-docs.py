@@ -14,7 +14,9 @@ PUBLIC_MARKDOWN_GLOBS = [
     "README.md",
     "docs/**/*.md",
     "bpfix-bench/**/*.md",
+    "bpfix-empirical/**/*.md",
     "examples/**/*.md",
+    "skills/**/*.md",
 ]
 
 IGNORED_PARTS = {
@@ -37,6 +39,13 @@ BANNED_BENCH_TERMS = [
     "clean60",
     "heldout",
     "working suite",
+]
+
+README_QUICK_START_ORDER = [
+    "```bash\ncargo install --path crates/bpfix\nsudo bpftool -d prog load examples/bpftool/quick-start.bpf.o /sys/fs/bpf/bpfix-demo 2>&1 | tee verifier.log\n```",
+    "```bash\nbpfix verifier.log\n```",
+    "The raw log says where the verifier stopped, but not the source-level proof",
+    "error[BPFIX-E006]: verifier-visible compiler lowering hides the required proof",
 ]
 
 
@@ -94,10 +103,25 @@ def check_benchmark_contract_terms(errors: list[str]) -> None:
                 )
 
 
+def check_readme_quick_start(errors: list[str]) -> None:
+    text = (ROOT / "README.md").read_text(encoding="utf-8")
+    cursor = 0
+    for expected in README_QUICK_START_ORDER:
+        index = text.find(expected, cursor)
+        if index == -1:
+            errors.append(
+                "README.md Quick Start is missing or reordered around "
+                f"{expected.splitlines()[0]!r}"
+            )
+            return
+        cursor = index + len(expected)
+
+
 def main() -> int:
     errors: list[str] = []
     check_links(errors)
     check_benchmark_contract_terms(errors)
+    check_readme_quick_start(errors)
     if errors:
         print("documentation drift check failed:", file=sys.stderr)
         for error in errors:
