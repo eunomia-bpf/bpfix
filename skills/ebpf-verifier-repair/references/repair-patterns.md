@@ -1,13 +1,17 @@
 # Repair Patterns
 
-Use these patterns after reading the BPFix diagnostic. The repair target is the
-missing verifier-visible proof, not the shortest edit that changes the terminal
-error string.
+Use these patterns after identifying the missing verifier-visible proof from a
+raw verifier log, BPFix diagnostic, or failed repair attempt. The repair target
+is the proof the verifier cannot see, not the shortest edit that changes the
+terminal error string.
 
 ## Bounds
 
 Use for packet, map-value, dynptr-slice, and scalar length/range failures.
 
+- Preserve the original packet/map/helper semantics while adding the missing
+  proof. Do not clamp, skip, or truncate inputs unless that is already the
+  program's intended behavior.
 - Keep the same pointer expression checked against `data_end` and later used
   for the access. If the verifier sees a different register or scalarized
   pointer, rederive the pointer from the checked base immediately before use.
@@ -64,6 +68,9 @@ verifier-tracked ownership.
 Use for scalarized pointers, stale packet pointers, branch-local pointer proofs,
 compiler-lowering artifacts, and invalid pointer types.
 
+- First identify where the proof is established, where it is lost, and which
+  dereference/helper argument needs the proof. Repair that relation; do not
+  rewrite unrelated control flow.
 - Recompute the pointer from a verifier-tracked base near the dereference.
 - Duplicate small loads or stores inside branches when a merge would turn a
   packet/map/stack pointer into a scalar or lose range facts.

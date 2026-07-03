@@ -1,6 +1,6 @@
 ---
 name: ebpf-verifier-repair
-description: End-to-end workflow for diagnosing and repairing eBPF verifier rejections in C, Rust/Aya, libbpf, libbpf-rs, BCC, bpftool, and CI logs using BPFix. Use when Codex is asked to fix, explain, or patch verifier errors, verifier logs, BPFIX diagnostics, packet bounds, nullable pointer, stack initialization, reference lifetime, scalar range, pointer provenance, compiler lowering artifact, helper/kfunc/dynptr/iterator, RCU/IRQ/lock, environment capability, or verifier budget failures.
+description: End-to-end workflow for diagnosing and repairing eBPF verifier rejections in C, Rust/Aya, libbpf, libbpf-rs, BCC, bpftool, and CI logs from raw verbose verifier logs, BPFix diagnostics, or source/test failures. Use when Codex is asked to fix, explain, or patch verifier errors, verifier logs, BPFIX diagnostics, packet bounds, nullable pointer, stack initialization, reference lifetime, scalar range, pointer provenance, compiler lowering artifact, helper/kfunc/dynptr/iterator, RCU/IRQ/lock, environment capability, or verifier budget failures.
 ---
 
 # eBPF Verifier Repair
@@ -8,7 +8,8 @@ description: End-to-end workflow for diagnosing and repairing eBPF verifier reje
 ## Overview
 
 Repair verifier failures as missing proof obligations, not as string-matched
-terminal errors. Use `bpfix` as the evidence engine, then make the smallest
+terminal errors. A full verbose verifier log plus source is sufficient evidence
+to start; use `bpfix` only when it is available and helpful. Make the smallest
 verifier-visible source change that preserves program semantics and proves the
 required safety fact to the kernel verifier.
 
@@ -21,12 +22,11 @@ workflow; the reusable user job is "repair this verifier rejection."
 - Read `references/log-collection.md` when the user did not provide a full
   verbose verifier log, the log is incomplete, or the framework/loader command
   is unclear.
-- Read `references/diagnostic-routing.md` before turning a BPFix JSON
-  diagnostic into a repair plan, especially when `failure_class`,
-  `help_safety`, or `diagnostic_kind` changes what is safe to edit.
+- Read `references/diagnostic-routing.md` only when a BPFix JSON diagnostic is
+  provided or generated. Do not block raw-log repair on this file.
 - Read `references/repair-patterns.md` before editing source, selecting a
   verifier-visible rewrite, or reviewing a proposed patch.
-- Run `scripts/run-bpfix-diagnostic.sh` when a log file is available and a
+- Run `scripts/run-bpfix-diagnostic.sh` only when BPFix is available and a
   repeatable JSON/text diagnostic artifact would make the repair loop clearer.
 
 ## Repair Workflow
@@ -37,8 +37,14 @@ workflow; the reusable user job is "repair this verifier rejection."
    rejection. Preserve the full verbose verifier/build/load log; the final
    `Permission denied` or `invalid argument` line is not enough.
 
-2. Run BPFix before editing.
-   Prefer JSON plus text output:
+2. Choose the evidence path.
+   If only source and a raw verbose verifier log are available, work directly
+   from them. Find the rejected instruction, terminal verifier message,
+   register state, helper call, source annotation, and the earlier branch or
+   check that should have established the missing proof. Do not wait for BPFix.
+
+   If BPFix is available and the user did not ask for a raw-log-only repair, it
+   can add structured evidence. Prefer JSON plus text output:
 
    ```bash
    bpfix --format both verifier.log
@@ -56,8 +62,10 @@ workflow; the reusable user job is "repair this verifier rejection."
 
 3. Route by proof evidence, not by prose alone.
    Inspect `diagnostic_kind`, `failure_class`, `help_safety`, `next_action`,
-   `required_proof`, `source_span`, `related_spans`, and `evidence`. If BPFix
-   reports unsupported input, fix log collection first. If it reports an
+   `required_proof`, `source_span`, `related_spans`, and `evidence` when a
+   diagnostic exists. With raw logs, infer the same fields manually from the
+   rejected PC, register classes/ranges, helper arguments, and source lines. If
+   the log is incomplete, fix log collection first. If the evidence points to
    environment/configuration failure, confirm kernel/program-type/helper/BTF
    availability before editing source.
 
@@ -77,10 +85,11 @@ workflow; the reusable user job is "repair this verifier rejection."
 
 6. Validate the repair.
    Rebuild the BPF object, rerun the original load/replay command, and rerun
-   `bpfix` on any new verifier log. A successful repair means the original
-   rejection no longer appears and no new verifier rejection replaces it. When
-   privileged loading is not available, run compile/tests and explain the
-   remaining verification gap.
+   `bpfix` on any new verifier log only if BPFix was part of the evidence path.
+   A successful repair means the original rejection no longer appears, no new
+   verifier rejection replaces it, and the project's semantic oracle still
+   passes. When privileged loading is not available, run compile/tests and
+   explain the remaining verification gap.
 
 7. Report the result in proof terms.
    Summarize the changed proof, the files touched, the validation command and
@@ -88,10 +97,23 @@ workflow; the reusable user job is "repair this verifier rejection."
 
 ## Source Editing Rules
 
+- For full-source repairs, return a complete compilable source file. Preserve
+  includes, map definitions, helper prototypes, `SEC()` sections, license,
+  constants, function names, and loader-visible symbols unless the evidence
+  specifically requires changing them.
 - Preserve BPF program semantics first; verifier acceptance is not sufficient
   if the runtime behavior changes.
 - Keep fixes local to the rejected proof path unless evidence shows a shared
   helper, macro, or abstraction owns the missing proof.
+- Do not delete functionality, weaken filters, change return values, remove map
+  operations, or replace helper calls merely to make the verifier accept the
+  program.
+- When a candidate fails to compile or is malformed, fix syntax, braces,
+  includes, macros, and complete-source formatting before changing verifier
+  logic.
+- When a candidate loads but fails the project's oracle, treat that as a real
+  semantic regression. Reopen the proof hypothesis and preserve the original
+  dataflow, side effects, and observable outputs.
 - Treat `lowering_artifact` as a bytecode-shape problem: duplicate small
   branches, keep pointer values typed, or rederive from a tracked base instead
   of only adding a source-level check that may lower away.
