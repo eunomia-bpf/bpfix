@@ -46,6 +46,25 @@ BPFix does not execute the loader command for you. Docker or replay
 environments, if added later, should be selected by explicit options such as
 `--docker`; they do not change what the positional argument or stdin means.
 
+## Stable CLI Contract
+
+The stable 0.1.x user interface is:
+
+```text
+bpfix [OPTIONS] [LOG]
+```
+
+`LOG` is always log text. If `LOG` is omitted or `-`, BPFix reads stdin. The
+public options are:
+
+- `--object <OBJECT>`: attach optional compiled-object metadata.
+- `--fail-on-unsupported`: print the diagnostic, then exit 2 for unsupported
+  inputs.
+- `--help` and `--version`.
+
+The output is plain text. BPFix intentionally does not expose a stable JSON
+format in 0.1.x.
+
 ## Optional Object Metadata
 
 `--object` is optional and requires a build with the `object-analysis` feature:

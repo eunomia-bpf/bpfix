@@ -57,6 +57,17 @@ fn stdin_renders_plain_text_diagnostic() {
 }
 
 #[test]
+fn omitted_input_reads_stdin() {
+    let output = run_stdin(SCALAR_REJECT_LOG, &[]);
+    assert!(output.status.success(), "{}", stderr(&output));
+
+    let text = stdout(&output);
+    assert!(text.contains("error[BPFIX-"));
+    assert!(text.contains("= diagnostic: supported"));
+    assert!(text.contains("--> buggy.bpf.c:17"));
+}
+
+#[test]
 fn path_input_renders_plain_text_diagnostic() {
     let path =
         workspace_root().join("bpfix-empirical/cases/stackoverflow-53136145/replay-verifier.log");
@@ -104,6 +115,9 @@ fn help_describes_plain_text_oriented_inputs() {
     assert!(output.status.success());
 
     let help = stdout(&output);
+    assert!(help.contains("Usage: bpfix [OPTIONS] [INPUT]"));
+    assert!(help.contains("[INPUT]"));
+    assert!(help.contains("Reads stdin when omitted or '-'"));
     assert!(help.contains("Verifier, build, bpftool, libbpf, Aya, or BCC log"));
     assert!(help.contains("Experimental compiled BPF object metadata"));
     assert!(!help.contains("--format"));

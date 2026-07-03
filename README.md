@@ -104,7 +104,9 @@ The example object is copied from
 `bpfix-empirical/cases/stackoverflow-53136145/prog.o`; replace it with the
 object you are debugging in your own project.
 
-The CLI shape is intentionally small:
+## Stable CLI Contract
+
+The 0.1.x CLI contract is intentionally small:
 
 ```text
 bpfix [OPTIONS] [LOG]
@@ -112,11 +114,14 @@ bpfix [OPTIONS] [LOG]
 
 `LOG` can be a verifier, build, `bpftool`, libbpf, Aya, or BCC log. When `LOG`
 is omitted or `-`, BPFix reads stdin. Positional input and stdin are always log
-text. BPFix does not execute loader commands in the default path, and there is
-no default command-execution workflow. Empirical corpus YAML and Docker-based execution
-are explicit non-default modes; if Docker support is added, it should be selected
-with an option such as `--docker`, not inferred from `LOG`. The output is always
-plain text.
+text. Supported public options are `--object <OBJECT>`,
+`--fail-on-unsupported`, `--help`, and `--version`. The output is plain text;
+there is no stable JSON output mode in 0.1.x.
+
+BPFix does not execute loader commands in the default path, and there is no
+default command-execution workflow. Empirical corpus YAML and Docker-based
+execution are explicit non-default modes; if Docker support is added, it should
+be selected with an option such as `--docker`, not inferred from `LOG`.
 
 ## Best Workflow
 
