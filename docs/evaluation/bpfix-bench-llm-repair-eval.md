@@ -5,8 +5,8 @@ Date: 2026-06-29
 This document describes the frozen `bpfix-bench` main75 benchmark release and
 the reported LLM repair results. It states the claims, baselines, workload,
 configurations, oracles, result provenance, and limitations. Every numeric
-result below is backed by a completed `summary.json` result file listed in the
-result-provenance table.
+result below is backed by a tracked compact `summary.json` result file listed in
+the result-provenance table.
 
 ## Evaluation Question
 
@@ -557,18 +557,18 @@ rescuing eight one-shot cases and ten retry cases.
 
 | Label | Result file |
 | --- | --- |
-| Qwen3.6 27B raw one-shot | `bpfix-bench/results/raw-main-qwen36-27b-hardened2-current/20260622T095443274429Z-pid2155539/raw/summary.json` |
-| Qwen3.6 27B BPFix one-shot | `bpfix-bench/results/bpfix-main-qwen36-27b-hardened2-current/20260622T101050360741Z-pid2167585/bpfix/summary.json` |
-| Qwen3.6 27B raw retry | `bpfix-bench/results/raw-main-qwen36-27b-hardened2-retry2-current/20260622T102327736469Z-pid2187731/raw/summary.json` |
-| Qwen3.6 27B BPFix retry | `bpfix-bench/results/bpfix-main-qwen36-27b-hardened2-retry2-current/20260622T105116447851Z-pid2222732/bpfix/summary.json` |
-| GLM 5.2 raw one-shot | `bpfix-bench/results/raw-main-glm52-thinking-disabled-current/20260622T211028217458Z-pid3229818/raw/summary.json` |
-| GLM 5.2 BPFix one-shot | `bpfix-bench/results/bpfix-main-glm52-thinking-disabled-current/20260622T211937511394Z-pid3244079/bpfix/summary.json` |
-| GLM 5.2 raw retry | `bpfix-bench/results/raw-main-glm52-thinking-disabled-retry2-current/20260622T212905484904Z-pid3277599/raw/summary.json` |
-| GLM 5.2 BPFix retry | `bpfix-bench/results/bpfix-main-glm52-thinking-disabled-retry2-current/20260622T214359370783Z-pid3313330/bpfix/summary.json` |
-| Qwen2.5 3B raw one-shot | `bpfix-bench/results/raw-main-qwen25-3b-current/20260622T204546033632Z-pid3194167/raw/summary.json` |
-| Qwen2.5 3B BPFix one-shot | `bpfix-bench/results/bpfix-main-qwen25-3b-current/20260622T204935041847Z-pid3198374/bpfix/summary.json` |
-| Qwen2.5 3B raw retry | `bpfix-bench/results/raw-main-qwen25-3b-retry2-current/20260623T213507803113Z-pid358630/raw/summary.json` |
-| Qwen2.5 3B BPFix retry | `bpfix-bench/results/bpfix-main-qwen25-3b-retry2-current/20260623T214239784980Z-pid369548/bpfix/summary.json` |
+| Qwen3.6 27B raw one-shot | `bpfix-bench/published-results/main75/qwen36-27b/raw-one-shot/summary.json` |
+| Qwen3.6 27B BPFix one-shot | `bpfix-bench/published-results/main75/qwen36-27b/bpfix-one-shot/summary.json` |
+| Qwen3.6 27B raw retry | `bpfix-bench/published-results/main75/qwen36-27b/raw-retry2/summary.json` |
+| Qwen3.6 27B BPFix retry | `bpfix-bench/published-results/main75/qwen36-27b/bpfix-retry2/summary.json` |
+| GLM 5.2 raw one-shot | `bpfix-bench/published-results/main75/glm52/raw-one-shot/summary.json` |
+| GLM 5.2 BPFix one-shot | `bpfix-bench/published-results/main75/glm52/bpfix-one-shot/summary.json` |
+| GLM 5.2 raw retry | `bpfix-bench/published-results/main75/glm52/raw-retry2/summary.json` |
+| GLM 5.2 BPFix retry | `bpfix-bench/published-results/main75/glm52/bpfix-retry2/summary.json` |
+| Qwen2.5 3B raw one-shot | `bpfix-bench/published-results/main75/qwen25-3b/raw-one-shot/summary.json` |
+| Qwen2.5 3B BPFix one-shot | `bpfix-bench/published-results/main75/qwen25-3b/bpfix-one-shot/summary.json` |
+| Qwen2.5 3B raw retry | `bpfix-bench/published-results/main75/qwen25-3b/raw-retry2/summary.json` |
+| Qwen2.5 3B BPFix retry | `bpfix-bench/published-results/main75/qwen25-3b/bpfix-retry2/summary.json` |
 
 ## Interpretation
 

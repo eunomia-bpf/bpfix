@@ -100,9 +100,10 @@ python3 bpfix-bench/tools/run_suite.py \
 Available modes are `source-only`, `raw`, `trimmed-raw`, and `bpfix`.
 
 The published main75 results are documented in
-`docs/evaluation/bpfix-bench-llm-repair-eval.md`. The headline Qwen3.6 27B
-comparison is raw one-shot 22/75 versus BPFix one-shot 38/75, and raw retry
-30/75 versus BPFix retry 44/75.
+`docs/evaluation/bpfix-bench-llm-repair-eval.md` and backed by tracked compact
+summaries under `published-results/main75/`. The headline Qwen3.6 27B comparison
+is raw one-shot 22/75 versus BPFix one-shot 38/75, and raw retry 30/75 versus
+BPFix retry 44/75.
 
 ## Regenerating Artifacts
 
@@ -125,8 +126,10 @@ python3 bpfix-bench/tools/refresh_case_artifacts.py
 
 Use `splits/main.txt` as the benchmark denominator and report the exact prompt
 mode, model, attempt count, split SHA-256, kernel, clang, bpftool/libbpf
-versions, and result `summary.json` path. Separate one-shot from retry and
-separate raw verifier-log prompts from BPFix-assisted prompts.
+versions, and result `summary.json` path. Put release-facing summaries under
+`published-results/main75/`; keep full local run directories under ignored
+`results/`. Separate one-shot from retry and separate raw verifier-log prompts
+from BPFix-assisted prompts.
 
 `main75` is a curated verifier-repair benchmark, not a natural-frequency sample
 of all eBPF failures. Claims should therefore be scoped to source-level repair

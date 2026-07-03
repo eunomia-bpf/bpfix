@@ -27,7 +27,7 @@ external_match:
     error; the case is included because the local replay produces a trace-rich verifier rejection.
 label:
   capture_id: github-orangeopensource-p4rt-ovs-5__kernel-6.15.11-clang-18-log2
-  taxonomy_class: lowering_artifact
+  taxonomy_class: source_bug
   error_id: BPFIX-E005
   confidence: medium
   label_source: external_replay_reconstruction

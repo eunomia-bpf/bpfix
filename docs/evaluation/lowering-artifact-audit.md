@@ -99,7 +99,7 @@ First manual pass over all 46 historical lowering candidates:
 | `github-commit-cilium-c3b65fce8b84` | `lowering_artifact` | high | Inline asm output register can appear uninitialized on a verifier-visible branch even though source only uses it on the success path; masking rewrites the bytecode proof. |
 | `github-commit-cilium-caf84595d9cb` | `lowering_artifact` | high | Clang drops an unused ctx argument at a BPF-to-BPF callsite; `volatile` forces the real ctx pointer to remain live. |
 | `github-iovisor-bcc-5062` | `lowering_artifact` | medium | The optimizer uses a packet pointer register different from the one that received the verifier bounds proof. |
-| `github-orangeopensource-p4rt-ovs-5` | `lowering_artifact` | medium | Generated P4/uBPF code widens a map-value access from 4 to 8 bytes; root cause is source-to-BPF generation, not handwritten C source intent. |
+| `github-orangeopensource-p4rt-ovs-5` | `source_bug` | medium | Generated P4/uBPF code reads eight bytes from a four-byte map value; the replay artifact is a generator/source-size contract bug, not a compiler-lowering proof-loss case. |
 | `stackoverflow-53136145` | `lowering_artifact` | high | IPv4/IPv6 branch merge loses UDP pointer provenance before `udph->dest`; branch-preserving rewrite is semantically equivalent. |
 | `stackoverflow-60053570` | `source_bug` | high | Accepted answer says the checksum helper is asked to read 64 bytes while source only checked `icmph + 1`. |
 | `stackoverflow-70729664` | `verifier_false_positive` | high | Source carries bounds checks, but verifier rejects due `MAX_PACKET_OFF`/range precision while walking chunks; fix adds verifier-friendly clamp. |
@@ -130,13 +130,13 @@ First-pass counts:
 
 | audit class | cases |
 | --- | ---: |
-| `lowering_artifact` | 19 |
+| `lowering_artifact` | 18 |
 | `verifier_false_positive` | 7 |
-| `source_bug` | 19 |
+| `source_bug` | 20 |
 | `environment_or_configuration` | 1 |
 | `verifier_limit` | 0 |
 
-The 19 active `lowering_artifact` cases are the interesting set to preserve and
+The 18 active `lowering_artifact` cases are the interesting set to preserve and
 strengthen with `mechanism_tags` and `evidence_tags`. The 7 active
 `verifier_false_positive` cases should not be mixed into lowering claims; they
 are still valuable, but the claim is verifier precision/conservatism rather than

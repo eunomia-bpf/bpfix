@@ -27,7 +27,7 @@ external_match:
     error; the case is included because the local replay produces a trace-rich verifier rejection.
 label:
   capture_id: github-cilium-cilium-35182__kernel-6.15.11-clang-18-log2
-  taxonomy_class: source_bug
+  taxonomy_class: environment_or_configuration
   mechanism_tags:
   - subprogram_signature
   - pointer_type_contract

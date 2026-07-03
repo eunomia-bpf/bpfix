@@ -1,0 +1,1634 @@
+{
+  "mode": "bpfix",
+  "passed": 38,
+  "results": [
+    {
+      "attempt": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "alu32_pointer_cookie_001",
+      "diagnostic_chars": 1398,
+      "failure_stage": "verifier_load",
+      "mode": "bpfix",
+      "model": "Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M.gguf",
+      "oracle_returncode": 1,
+      "prompt_chars": 2908,
+      "prompt_sha256": "cedc19faa9d3db3f22d4e8fb22a8b0bd0f5e55314c01057fba463573afea264e",
+      "source_chars": 1176,
+      "status": "fail"
+    },
+    {
+      "attempt": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "auxiliary_proof_predicate",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "dynptr_slice_missing_null_check_001",
+      "diagnostic_chars": 1147,
+      "failure_stage": "auxiliary_proof_predicate",
+      "mode": "bpfix",
+      "model": "Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M.gguf",
+      "oracle_returncode": 1,
+      "prompt_chars": 2487,
+      "prompt_sha256": "9386394825e8ffad47fd0eb4d42220f6bf7aafd44eb37a494a9076311f1d3807",
+      "source_chars": 1006,
+      "status": "fail"
+    },
+    {
+      "attempt": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "auxiliary_proof_predicate",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "dynptr_slice_short_mem_001",
+      "diagnostic_chars": 1308,
+      "failure_stage": "auxiliary_proof_predicate",
+      "mode": "bpfix",
+      "model": "Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M.gguf",
+      "oracle_returncode": 1,
+      "prompt_chars": 2705,
+      "prompt_sha256": "a00c32b99a50557cf6b8ca4b58c5c151d54a9248a71cb68d0f24aa52d948fe14",
+      "source_chars": 1063,
+      "status": "fail"
+    },
+    {
+      "attempt": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "functional_oracle",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "dynptr_slice_stack_buffer_001",
+      "diagnostic_chars": 1094,
+      "failure_stage": "functional_oracle",
+      "mode": "bpfix",
+      "model": "Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M.gguf",
+      "oracle_returncode": 1,
+      "prompt_chars": 2378,
+      "prompt_sha256": "02b566f9a15f9d724d96ca344bf7db6735c4ecafcac1dbd6e9315078efb7f8e9",
+      "source_chars": 950,
+      "status": "fail"
+    },
+    {
+      "attempt": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "auxiliary_proof_predicate",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "dynptr_stack_copy_001",
+      "diagnostic_chars": 1020,
+      "failure_stage": "auxiliary_proof_predicate",
+      "mode": "bpfix",
+      "model": "Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M.gguf",
+      "oracle_returncode": 1,
+      "prompt_chars": 2554,
+      "prompt_sha256": "5ca1c876d69ddfa10b0905d5a236522de8b4c2c5b58fdfda6ddc5cfa416d16c9",
+      "source_chars": 1200,
+      "status": "fail"
+    },
+    {
+      "attempt": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "compile",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "dynptr_uninitialized_slice_arg_001",
+      "diagnostic_chars": 1015,
+      "failure_stage": "compile",
+      "mode": "bpfix",
+      "model": "Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M.gguf",
+      "oracle_returncode": 1,
+      "prompt_chars": 2071,
+      "prompt_sha256": "5528b17e6aee9a40bfc54932a1ba29f13fd2c9cc70aa4db8f924eb9b72bf96e5",
+      "source_chars": 722,
+      "status": "fail"
+    },
+    {
+      "attempt": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "helper_csum_diff_stack_len_001",
+      "diagnostic_chars": 813,
+      "failure_stage": "verifier_load",
+      "mode": "bpfix",
+      "model": "Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M.gguf",
+      "oracle_returncode": 1,
+      "prompt_chars": 2780,
+      "prompt_sha256": "fd85acf9e95afb2f36afbb807c7e402b1e6a9a4216a89437ea819340c41dc075",
+      "source_chars": 1633,
+      "status": "fail"
+    },
+    {
+      "attempt": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "auxiliary_proof_predicate",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "helper_map_arg_stack_001",
+      "diagnostic_chars": 1177,
+      "failure_stage": "auxiliary_proof_predicate",
+      "mode": "bpfix",
+      "model": "Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M.gguf",
+      "oracle_returncode": 1,
+      "prompt_chars": 2805,
+      "prompt_sha256": "431a5c73e7a2ea1482ede3cfc03a3246216c43e118127e91de9ecd4ff15f191d",
+      "source_chars": 1294,
+      "status": "fail"
+    },
+    {
+      "attempt": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "functional_oracle",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "map_value_branch_merge_001",
+      "diagnostic_chars": 1143,
+      "failure_stage": "functional_oracle",
+      "mode": "bpfix",
+      "model": "Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M.gguf",
+      "oracle_returncode": 1,
+      "prompt_chars": 2974,
+      "prompt_sha256": "712f134f657ea48e1a5a1a2322464cb7eb38ea31a539276f84ae5c84e1c672cd",
+      "source_chars": 1497,
+      "status": "fail"
+    },
+    {
+      "attempt": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "auxiliary_proof_predicate",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "map_value_index_guard_oob_001",
+      "diagnostic_chars": 1214,
+      "failure_stage": "auxiliary_proof_predicate",
+      "mode": "bpfix",
+      "model": "Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M.gguf",
+      "oracle_returncode": 1,
+      "prompt_chars": 2600,
+      "prompt_sha256": "45b3036a3ccc2cdb30e0cd01581f140ffbdf62ce6cf9a4da640607379748cd5f",
+      "source_chars": 1052,
+      "status": "fail"
+    },
+    {
+      "attempt": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "pass",
+          "oracle_returncode": 0
+        }
+      ],
+      "case": "map_value_inline_cookie_001",
+      "diagnostic_chars": 1144,
+      "failure_stage": "pass",
+      "mode": "bpfix",
+      "model": "Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M.gguf",
+      "oracle_returncode": 0,
+      "prompt_chars": 2959,
+      "prompt_sha256": "1d8d3fcaf64b3ae878c205f95622834bfe76115e79e918a23a196e083ea83980",
+      "source_chars": 1481,
+      "status": "pass"
+    },
+    {
+      "attempt": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "functional_oracle",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "map_value_pointer_cookie_001",
+      "diagnostic_chars": 1142,
+      "failure_stage": "functional_oracle",
+      "mode": "bpfix",
+      "model": "Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M.gguf",
+      "oracle_returncode": 1,
+      "prompt_chars": 2941,
+      "prompt_sha256": "c20242a2240f78655bd17b71a1794793ae01e568663fcd0ad762b2c8d067c2c9",
+      "source_chars": 1465,
+      "status": "fail"
+    },
+    {
+      "attempt": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "auxiliary_proof_predicate",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "map_value_signed_index_001",
+      "diagnostic_chars": 1368,
+      "failure_stage": "auxiliary_proof_predicate",
+      "mode": "bpfix",
+      "model": "Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M.gguf",
+      "oracle_returncode": 1,
+      "prompt_chars": 2673,
+      "prompt_sha256": "8a761404579e10672f76d9c693bc02051c8251bd1e819250c915942278657680",
+      "source_chars": 971,
+      "status": "fail"
+    },
+    {
+      "attempt": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "functional_oracle",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "map_value_spill_cookie_001",
+      "diagnostic_chars": 1142,
+      "failure_stage": "functional_oracle",
+      "mode": "bpfix",
+      "model": "Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M.gguf",
+      "oracle_returncode": 1,
+      "prompt_chars": 2875,
+      "prompt_sha256": "635f660483c8cacf0427e99261377fd9e4e61caf4f2ba59c2cd95d6b7f0aca76",
+      "source_chars": 1399,
+      "status": "fail"
+    },
+    {
+      "attempt": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "auxiliary_proof_predicate",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "packet_checked_wrong_base_001",
+      "diagnostic_chars": 1550,
+      "failure_stage": "auxiliary_proof_predicate",
+      "mode": "bpfix",
+      "model": "Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M.gguf",
+      "oracle_returncode": 1,
+      "prompt_chars": 2576,
+      "prompt_sha256": "57adc6d4f1a1ab10924402bf532d329b7bcac7872d7cb186d190081a1db27724",
+      "source_chars": 692,
+      "status": "fail"
+    },
+    {
+      "attempt": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "packet_eth_off_by_one_001",
+      "diagnostic_chars": 1390,
+      "failure_stage": "verifier_load",
+      "mode": "bpfix",
+      "model": "Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M.gguf",
+      "oracle_returncode": 1,
+      "prompt_chars": 2700,
+      "prompt_sha256": "0c31e0aa633db4a34bf9c3ec00700a127dbcbe0ab6b8c6e1c2838f545d2b0104",
+      "source_chars": 976,
+      "status": "fail"
+    },
+    {
+      "attempt": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "packet_ihl_udp_undercheck_001",
+      "diagnostic_chars": 1052,
+      "failure_stage": "verifier_load",
+      "mode": "bpfix",
+      "model": "Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M.gguf",
+      "oracle_returncode": 1,
+      "prompt_chars": 3111,
+      "prompt_sha256": "bf7e1a833f4fe89dd29846466011fe7cc386fe76d2f23f8346be2cd7700758a8",
+      "source_chars": 1725,
+      "status": "fail"
+    },
+    {
+      "attempt": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "auxiliary_proof_predicate",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "packet_inline_return_cookie_001",
+      "diagnostic_chars": 1574,
+      "failure_stage": "auxiliary_proof_predicate",
+      "mode": "bpfix",
+      "model": "Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M.gguf",
+      "oracle_returncode": 1,
+      "prompt_chars": 3254,
+      "prompt_sha256": "1d2abe749289ed53a769795fd600cc261c76575b450d711e31b33a816b505852",
+      "source_chars": 1346,
+      "status": "fail"
+    },
+    {
+      "attempt": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "pass",
+          "oracle_returncode": 0
+        }
+      ],
+      "case": "packet_l4_branch_cookie_001",
+      "diagnostic_chars": 1624,
+      "failure_stage": "pass",
+      "mode": "bpfix",
+      "model": "Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M.gguf",
+      "oracle_returncode": 0,
+      "prompt_chars": 3634,
+      "prompt_sha256": "a116edb378f8af9b116ec59278e43fd85389d70f67dbc41ee16680a4bd861f12",
+      "source_chars": 1676,
+      "status": "pass"
+    },
+    {
+      "attempt": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "pass",
+          "oracle_returncode": 0
+        }
+      ],
+      "case": "packet_macro_cookie_001",
+      "diagnostic_chars": 1399,
+      "failure_stage": "pass",
+      "mode": "bpfix",
+      "model": "Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M.gguf",
+      "oracle_returncode": 0,
+      "prompt_chars": 2990,
+      "prompt_sha256": "91a7298e39ab4c401722f77fee30148ad4a6ef0eac07bb5a76a3a5ee4c83b718",
+      "source_chars": 1257,
+      "status": "pass"
+    },
+    {
+      "attempt": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "pass",
+          "oracle_returncode": 0
+        }
+      ],
+      "case": "packet_macro_payload_undercheck_001",
+      "diagnostic_chars": 1039,
+      "failure_stage": "pass",
+      "mode": "bpfix",
+      "model": "Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M.gguf",
+      "oracle_returncode": 0,
+      "prompt_chars": 2599,
+      "prompt_sha256": "cc186e42122d842ff999972cc1da1da52397d1b5ec2f919b8d88cc6de7e3a02e",
+      "source_chars": 1226,
+      "status": "pass"
+    },
+    {
+      "attempt": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "pass",
+          "oracle_returncode": 0
+        }
+      ],
+      "case": "packet_vlan_cookie_001",
+      "diagnostic_chars": 1399,
+      "failure_stage": "pass",
+      "mode": "bpfix",
+      "model": "Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M.gguf",
+      "oracle_returncode": 0,
+      "prompt_chars": 3333,
+      "prompt_sha256": "bb4e7d20023e0eb0c15f03cd8cc16f9cea5675378e6676b4399e45e1b54a92d4",
+      "source_chars": 1600,
+      "status": "pass"
+    },
+    {
+      "attempt": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "auxiliary_proof_predicate",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "perf_event_packet_payload_001",
+      "diagnostic_chars": 1103,
+      "failure_stage": "auxiliary_proof_predicate",
+      "mode": "bpfix",
+      "model": "Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M.gguf",
+      "oracle_returncode": 1,
+      "prompt_chars": 2444,
+      "prompt_sha256": "569d69bb373a5bcc1f40ae5e68e5f90c9f01d5d502387423fcda32460f497a4e",
+      "source_chars": 1007,
+      "status": "fail"
+    },
+    {
+      "attempt": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "auxiliary_proof_predicate",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "ringbuf_branch_cookie_001",
+      "diagnostic_chars": 1744,
+      "failure_stage": "auxiliary_proof_predicate",
+      "mode": "bpfix",
+      "model": "Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M.gguf",
+      "oracle_returncode": 1,
+      "prompt_chars": 3527,
+      "prompt_sha256": "61eb508cc204e537bddb7c291beb510b4c740ce159b8deff278c6f8320c12eb4",
+      "source_chars": 1449,
+      "status": "fail"
+    },
+    {
+      "attempt": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "auxiliary_proof_predicate",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "ringbuf_double_submit_001",
+      "diagnostic_chars": 883,
+      "failure_stage": "auxiliary_proof_predicate",
+      "mode": "bpfix",
+      "model": "Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M.gguf",
+      "oracle_returncode": 1,
+      "prompt_chars": 2393,
+      "prompt_sha256": "f8729789ccbd02a215593cef812e8f9b1a5bbee3f9e4960234bb75c2629997d8",
+      "source_chars": 1176,
+      "status": "fail"
+    },
+    {
+      "attempt": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "ringbuf_missing_null_check_001",
+      "diagnostic_chars": 1276,
+      "failure_stage": "verifier_load",
+      "mode": "bpfix",
+      "model": "Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M.gguf",
+      "oracle_returncode": 1,
+      "prompt_chars": 2684,
+      "prompt_sha256": "4193fe4dd328166a5c2dffe6c15ecdc5773ade63261d48390150a3f8bfc95056",
+      "source_chars": 1074,
+      "status": "fail"
+    },
+    {
+      "attempt": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "pass",
+          "oracle_returncode": 0
+        }
+      ],
+      "case": "ringbuf_nested_missing_null_001",
+      "diagnostic_chars": 1110,
+      "failure_stage": "pass",
+      "mode": "bpfix",
+      "model": "Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M.gguf",
+      "oracle_returncode": 0,
+      "prompt_chars": 2589,
+      "prompt_sha256": "29ab0fa63edb78241be90e42cf47ff4c4856df9b23956ab7defbbc1e8ee4f284",
+      "source_chars": 1145,
+      "status": "pass"
+    },
+    {
+      "attempt": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "pass",
+          "oracle_returncode": 0
+        }
+      ],
+      "case": "ringbuf_nested_reserve_leak_001",
+      "diagnostic_chars": 1153,
+      "failure_stage": "pass",
+      "mode": "bpfix",
+      "model": "Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M.gguf",
+      "oracle_returncode": 0,
+      "prompt_chars": 2671,
+      "prompt_sha256": "f2f78cfc2829bea71bab85beaf41d3c7ffc83984c831510c60e9d688ef9cf5fc",
+      "source_chars": 1184,
+      "status": "pass"
+    },
+    {
+      "attempt": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "pass",
+          "oracle_returncode": 0
+        }
+      ],
+      "case": "ringbuf_pointer_cookie_001",
+      "diagnostic_chars": 1641,
+      "failure_stage": "pass",
+      "mode": "bpfix",
+      "model": "Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M.gguf",
+      "oracle_returncode": 0,
+      "prompt_chars": 3844,
+      "prompt_sha256": "8bea46fd8c9a6edd9c4f90b4a3123d056d21244ff39599f8899fe90241a45305",
+      "source_chars": 1869,
+      "status": "pass"
+    },
+    {
+      "attempt": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "pass",
+          "oracle_returncode": 0
+        }
+      ],
+      "case": "ringbuf_ref_leak_001",
+      "diagnostic_chars": 1160,
+      "failure_stage": "pass",
+      "mode": "bpfix",
+      "model": "Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M.gguf",
+      "oracle_returncode": 0,
+      "prompt_chars": 2592,
+      "prompt_sha256": "36028310f86e2f50aad59bee45238f9ba8c984cbab22f61ecdb738dcbd64f04a",
+      "source_chars": 1098,
+      "status": "pass"
+    },
+    {
+      "attempt": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "ringbuf_stack_discard_001",
+      "diagnostic_chars": 978,
+      "failure_stage": "verifier_load",
+      "mode": "bpfix",
+      "model": "Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M.gguf",
+      "oracle_returncode": 1,
+      "prompt_chars": 1994,
+      "prompt_sha256": "9c5c8383fb4f8871bd67696bb22deb43c0a8ebffb36076abb6137715efe19d27",
+      "source_chars": 682,
+      "status": "fail"
+    },
+    {
+      "attempt": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "auxiliary_proof_predicate",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "ringbuf_stack_submit_001",
+      "diagnostic_chars": 974,
+      "failure_stage": "auxiliary_proof_predicate",
+      "mode": "bpfix",
+      "model": "Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M.gguf",
+      "oracle_returncode": 1,
+      "prompt_chars": 2032,
+      "prompt_sha256": "eaa072aa02e831e80fba8d00e1153b65a844105595230be848a6f44b4e55c27d",
+      "source_chars": 724,
+      "status": "fail"
+    },
+    {
+      "attempt": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "pass",
+          "oracle_returncode": 0
+        }
+      ],
+      "case": "ringbuf_submit_after_discard_001",
+      "diagnostic_chars": 980,
+      "failure_stage": "pass",
+      "mode": "bpfix",
+      "model": "Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M.gguf",
+      "oracle_returncode": 0,
+      "prompt_chars": 2374,
+      "prompt_sha256": "705deec486dd436641a00412b211b23f8961feafed00e62f72092f3ebef747fa",
+      "source_chars": 1060,
+      "status": "pass"
+    },
+    {
+      "attempt": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "pass",
+          "oracle_returncode": 0
+        }
+      ],
+      "case": "ringbuf_two_record_cookie_001",
+      "diagnostic_chars": 1669,
+      "failure_stage": "pass",
+      "mode": "bpfix",
+      "model": "Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M.gguf",
+      "oracle_returncode": 0,
+      "prompt_chars": 3611,
+      "prompt_sha256": "51881327d361df97714f9b268a522e8624156dcb84b5056d09255125c7d601d5",
+      "source_chars": 1608,
+      "status": "pass"
+    },
+    {
+      "attempt": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "functional_oracle",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "rs_actplane_cap_dynptr_payload_null_001",
+      "diagnostic_chars": 1116,
+      "failure_stage": "functional_oracle",
+      "mode": "bpfix",
+      "model": "Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M.gguf",
+      "oracle_returncode": 1,
+      "prompt_chars": 4240,
+      "prompt_sha256": "8fadd2c58bb914482c13cff494595fbfc763fdf44040a6bedbcbf2b7a8e770df",
+      "source_chars": 2790,
+      "status": "fail"
+    },
+    {
+      "attempt": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "pass",
+          "oracle_returncode": 0
+        }
+      ],
+      "case": "rs_actplane_lsm_bpf_ringbuf_merge_001",
+      "diagnostic_chars": 1113,
+      "failure_stage": "pass",
+      "mode": "bpfix",
+      "model": "Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M.gguf",
+      "oracle_returncode": 0,
+      "prompt_chars": 2668,
+      "prompt_sha256": "072238336fe8d27d2120f6a681cd2119d5980801fe2ffa89cb78c2006aaea135",
+      "source_chars": 1221,
+      "status": "pass"
+    },
+    {
+      "attempt": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "functional_oracle",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "rs_actplane_mmap_pending_merge_001",
+      "diagnostic_chars": 1104,
+      "failure_stage": "functional_oracle",
+      "mode": "bpfix",
+      "model": "Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M.gguf",
+      "oracle_returncode": 1,
+      "prompt_chars": 6668,
+      "prompt_sha256": "8152725ce51d87c23f701c668d18993affd373646aa7059a50aefd667bcea84e",
+      "source_chars": 5230,
+      "status": "fail"
+    },
+    {
+      "attempt": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "auxiliary_proof_predicate",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "rs_actplane_policy_map_merge_001",
+      "diagnostic_chars": 1182,
+      "failure_stage": "auxiliary_proof_predicate",
+      "mode": "bpfix",
+      "model": "Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M.gguf",
+      "oracle_returncode": 1,
+      "prompt_chars": 2785,
+      "prompt_sha256": "ff526253acdccd2af6d3b78cc51d0faccf4191d96882227dac83d3bb28762eef",
+      "source_chars": 1269,
+      "status": "fail"
+    },
+    {
+      "attempt": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "functional_oracle",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "rs_actplane_taint_loop_count_bound_001",
+      "diagnostic_chars": 1021,
+      "failure_stage": "functional_oracle",
+      "mode": "bpfix",
+      "model": "Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M.gguf",
+      "oracle_returncode": 1,
+      "prompt_chars": 2427,
+      "prompt_sha256": "4f774fcc60f0f650ec61b541d04b432bf647b595db2c9fbf989331faa93c202a",
+      "source_chars": 1072,
+      "status": "fail"
+    },
+    {
+      "attempt": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "pass",
+          "oracle_returncode": 0
+        }
+      ],
+      "case": "rs_agentsight_fs_overflow_counter_merge_001",
+      "diagnostic_chars": 1263,
+      "failure_stage": "pass",
+      "mode": "bpfix",
+      "model": "Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M.gguf",
+      "oracle_returncode": 0,
+      "prompt_chars": 4807,
+      "prompt_sha256": "e2a40024bb4649e0ac4ee2020ce24a8593550f04b14460b6f269b0a3b41ea8a6",
+      "source_chars": 3210,
+      "status": "pass"
+    },
+    {
+      "attempt": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "pass",
+          "oracle_returncode": 0
+        }
+      ],
+      "case": "rs_agentsight_process_ringbuf_null_001",
+      "diagnostic_chars": 1064,
+      "failure_stage": "pass",
+      "mode": "bpfix",
+      "model": "Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M.gguf",
+      "oracle_returncode": 0,
+      "prompt_chars": 2478,
+      "prompt_sha256": "2c4b2dd03ee0fd56f884fa262ab600e1673db56159dfee02eec71355638cb806",
+      "source_chars": 1080,
+      "status": "pass"
+    },
+    {
+      "attempt": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "pass",
+          "oracle_returncode": 0
+        }
+      ],
+      "case": "rs_agentsight_stdiocap_user_copy_len_001",
+      "diagnostic_chars": 1264,
+      "failure_stage": "pass",
+      "mode": "bpfix",
+      "model": "Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M.gguf",
+      "oracle_returncode": 0,
+      "prompt_chars": 2998,
+      "prompt_sha256": "780e20f8867e1700691ab7904a36a35bee1b433ece990376d8fd2df7430a932a",
+      "source_chars": 1400,
+      "status": "pass"
+    },
+    {
+      "attempt": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "functional_oracle",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "rs_agentsight_write_ctx_merge_001",
+      "diagnostic_chars": 1179,
+      "failure_stage": "functional_oracle",
+      "mode": "bpfix",
+      "model": "Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M.gguf",
+      "oracle_returncode": 1,
+      "prompt_chars": 4692,
+      "prompt_sha256": "c5d4c41dd9b7b60421018412e9a6322fb8aadd00249238d6cddf80adfb2adc8b",
+      "source_chars": 3179,
+      "status": "fail"
+    },
+    {
+      "attempt": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "auxiliary_proof_predicate",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "rs_bpftime_opensnoop_ringbuf_filter_ref_001",
+      "diagnostic_chars": 1157,
+      "failure_stage": "auxiliary_proof_predicate",
+      "mode": "bpfix",
+      "model": "Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M.gguf",
+      "oracle_returncode": 1,
+      "prompt_chars": 3406,
+      "prompt_sha256": "78bea108d2f6a0c9934426ab6b736d7941e68e4a34d2c1575614de92fce6cec4",
+      "source_chars": 1915,
+      "status": "fail"
+    },
+    {
+      "attempt": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "auxiliary_proof_predicate",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "rs_bpftime_opensnoop_stack_wrong_prog_type_001",
+      "diagnostic_chars": 925,
+      "failure_stage": "auxiliary_proof_predicate",
+      "mode": "bpfix",
+      "model": "Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M.gguf",
+      "oracle_returncode": 1,
+      "prompt_chars": 2660,
+      "prompt_sha256": "fb26674dca46e3de28cf8b7f77b1567cc39e7774414598527eec65d008501dc1",
+      "source_chars": 1401,
+      "status": "fail"
+    },
+    {
+      "attempt": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "pass",
+          "oracle_returncode": 0
+        }
+      ],
+      "case": "rs_bpftime_sslsniff_perf_copy_len_001",
+      "diagnostic_chars": 1464,
+      "failure_stage": "pass",
+      "mode": "bpfix",
+      "model": "Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M.gguf",
+      "oracle_returncode": 0,
+      "prompt_chars": 4438,
+      "prompt_sha256": "b14b1c186db212316a6b1ccfd271e06535fa14f45d012b5c1d524e08ffd0260c",
+      "source_chars": 2640,
+      "status": "pass"
+    },
+    {
+      "attempt": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "pass",
+          "oracle_returncode": 0
+        }
+      ],
+      "case": "rs_cilium_change_proto_stale_001",
+      "diagnostic_chars": 1343,
+      "failure_stage": "pass",
+      "mode": "bpfix",
+      "model": "Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M.gguf",
+      "oracle_returncode": 0,
+      "prompt_chars": 2715,
+      "prompt_sha256": "d1d0617b9cc7bb195853c5ac413333829fb73196c7fbfc7dcd1f2e3230c4d662",
+      "source_chars": 1038,
+      "status": "pass"
+    },
+    {
+      "attempt": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "pass",
+          "oracle_returncode": 0
+        }
+      ],
+      "case": "rs_cilium_fib_lookup_param_len_001",
+      "diagnostic_chars": 822,
+      "failure_stage": "pass",
+      "mode": "bpfix",
+      "model": "Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M.gguf",
+      "oracle_returncode": 0,
+      "prompt_chars": 2413,
+      "prompt_sha256": "ef206c20a3e418427f7bd7b323051f4ff1a4694f319e94b034aaa4034239c9c6",
+      "source_chars": 1257,
+      "status": "pass"
+    },
+    {
+      "attempt": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "pass",
+          "oracle_returncode": 0
+        }
+      ],
+      "case": "rs_cilium_ip_options_traceid_payload_bound_001",
+      "diagnostic_chars": 1159,
+      "failure_stage": "pass",
+      "mode": "bpfix",
+      "model": "Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M.gguf",
+      "oracle_returncode": 0,
+      "prompt_chars": 4373,
+      "prompt_sha256": "25976234aed725cb3c2d87eceab2836cad9d078a4a966244ebc6aadc4e065676",
+      "source_chars": 2880,
+      "status": "pass"
+    },
+    {
+      "attempt": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "pass",
+          "oracle_returncode": 0
+        }
+      ],
+      "case": "rs_cilium_ipv6_exthdr_l4_offset_001",
+      "diagnostic_chars": 1457,
+      "failure_stage": "pass",
+      "mode": "bpfix",
+      "model": "Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M.gguf",
+      "oracle_returncode": 0,
+      "prompt_chars": 3806,
+      "prompt_sha256": "332a8c690dcf7c14929ed8663f202e5d214f808280d60341c52c2eaa3688170d",
+      "source_chars": 2015,
+      "status": "pass"
+    },
+    {
+      "attempt": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "pass",
+          "oracle_returncode": 0
+        }
+      ],
+      "case": "rs_cilium_mcast_igmpv3_grec_bound_001",
+      "diagnostic_chars": 1581,
+      "failure_stage": "pass",
+      "mode": "bpfix",
+      "model": "Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M.gguf",
+      "oracle_returncode": 0,
+      "prompt_chars": 4202,
+      "prompt_sha256": "8c98c9b5ebc5ffb871bb850a16e2860c05a57e7435fa258946ddf27d181974c9",
+      "source_chars": 2287,
+      "status": "pass"
+    },
+    {
+      "attempt": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "pass",
+          "oracle_returncode": 0
+        }
+      ],
+      "case": "rs_cilium_proxy_skc_assign_ref_leak_001",
+      "diagnostic_chars": 1119,
+      "failure_stage": "pass",
+      "mode": "bpfix",
+      "model": "Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M.gguf",
+      "oracle_returncode": 0,
+      "prompt_chars": 2393,
+      "prompt_sha256": "90e532a88f3c9888eba03bbac361608137a1dfe3eae2943fc50f799f09f02604",
+      "source_chars": 940,
+      "status": "pass"
+    },
+    {
+      "attempt": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "pass",
+          "oracle_returncode": 0
+        }
+      ],
+      "case": "rs_cilium_srv6_segment_bound_001",
+      "diagnostic_chars": 1510,
+      "failure_stage": "pass",
+      "mode": "bpfix",
+      "model": "Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M.gguf",
+      "oracle_returncode": 0,
+      "prompt_chars": 3851,
+      "prompt_sha256": "5bb3837c1dbedadfaf382dbf5b4495e3ce30ac5fc0d9dfcf6854662e7a97559d",
+      "source_chars": 2007,
+      "status": "pass"
+    },
+    {
+      "attempt": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "pass",
+          "oracle_returncode": 0
+        }
+      ],
+      "case": "rs_datrail_browsertrace_start_ns_merge_001",
+      "diagnostic_chars": 1196,
+      "failure_stage": "pass",
+      "mode": "bpfix",
+      "model": "Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M.gguf",
+      "oracle_returncode": 0,
+      "prompt_chars": 3458,
+      "prompt_sha256": "60bb1454d79cd191d8681fd8e41dc98122646493a0f99d0625c3a96c84acd64a",
+      "source_chars": 1928,
+      "status": "pass"
+    },
+    {
+      "attempt": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "functional_oracle",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "rs_datrail_cgroup_filter_key_width_001",
+      "diagnostic_chars": 851,
+      "failure_stage": "functional_oracle",
+      "mode": "bpfix",
+      "model": "Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M.gguf",
+      "oracle_returncode": 1,
+      "prompt_chars": 2983,
+      "prompt_sha256": "6011b45672973c84fced8a71f41a1a3c3f9b2ffe88cd743e9794654ef185a885",
+      "source_chars": 1798,
+      "status": "fail"
+    },
+    {
+      "attempt": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "functional_oracle",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "rs_eunomia_energy_runtime_merge_001",
+      "diagnostic_chars": 1114,
+      "failure_stage": "functional_oracle",
+      "mode": "bpfix",
+      "model": "Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M.gguf",
+      "oracle_returncode": 1,
+      "prompt_chars": 5404,
+      "prompt_sha256": "7236c678620ff0bb1f22c3bcd4926b81b2725b30bfbfeaacc6dcf0e162300fb0",
+      "source_chars": 3956,
+      "status": "fail"
+    },
+    {
+      "attempt": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "rs_eunomia_http_doff_copy_bound_001",
+      "diagnostic_chars": 1202,
+      "failure_stage": "verifier_load",
+      "mode": "bpfix",
+      "model": "Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M.gguf",
+      "oracle_returncode": 1,
+      "prompt_chars": 5013,
+      "prompt_sha256": "fd5fa155da06254766eff1b071eabc88e52a4c7ba59c1fbc666e71bd0fa3b662",
+      "source_chars": 3477,
+      "status": "fail"
+    },
+    {
+      "attempt": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "rs_eunomia_wq_container_map_001",
+      "diagnostic_chars": 835,
+      "failure_stage": "verifier_load",
+      "mode": "bpfix",
+      "model": "Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M.gguf",
+      "oracle_returncode": 1,
+      "prompt_chars": 3378,
+      "prompt_sha256": "113ab3dc972661458ea3c128536c0de6705a410f1b429c92a085f59279432c7c",
+      "source_chars": 2209,
+      "status": "fail"
+    },
+    {
+      "attempt": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "pass",
+          "oracle_returncode": 0
+        }
+      ],
+      "case": "rs_nccl_cpu_observer_slot_merge_001",
+      "diagnostic_chars": 1308,
+      "failure_stage": "pass",
+      "mode": "bpfix",
+      "model": "Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M.gguf",
+      "oracle_returncode": 0,
+      "prompt_chars": 5513,
+      "prompt_sha256": "ab39afd45e28f99a64a8eaf1c98363b53e317b20b49fb5559ac4e3d90836b92a",
+      "source_chars": 3871,
+      "status": "pass"
+    },
+    {
+      "attempt": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "pass",
+          "oracle_returncode": 0
+        }
+      ],
+      "case": "rs_tetragon_data_event_size_guard_001",
+      "diagnostic_chars": 982,
+      "failure_stage": "pass",
+      "mode": "bpfix",
+      "model": "Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M.gguf",
+      "oracle_returncode": 0,
+      "prompt_chars": 3572,
+      "prompt_sha256": "c72b8fc3607ce4ab35604a466cab35b94011692bd8847d168aeb0f5d22bbcbb0",
+      "source_chars": 2256,
+      "status": "pass"
+    },
+    {
+      "attempt": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "rs_tutorial_dynptr_tc_ref_leak_001",
+      "diagnostic_chars": 1222,
+      "failure_stage": "verifier_load",
+      "mode": "bpfix",
+      "model": "Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M.gguf",
+      "oracle_returncode": 1,
+      "prompt_chars": 5071,
+      "prompt_sha256": "ad96087d3bcfe28c551852e7622c02b1cd82a07c23245699bafd39a393057cfd",
+      "source_chars": 3515,
+      "status": "fail"
+    },
+    {
+      "attempt": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "pass",
+          "oracle_returncode": 0
+        }
+      ],
+      "case": "rs_tutorial_memleak_free_info_merge_001",
+      "diagnostic_chars": 1346,
+      "failure_stage": "pass",
+      "mode": "bpfix",
+      "model": "Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M.gguf",
+      "oracle_returncode": 0,
+      "prompt_chars": 3362,
+      "prompt_sha256": "b3e16d3a4cb99503f6bc0aa5681f83aa4c4cc1d15c16b98f8fdd8d9e1e46c89a",
+      "source_chars": 1682,
+      "status": "pass"
+    },
+    {
+      "attempt": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "pass",
+          "oracle_returncode": 0
+        }
+      ],
+      "case": "rs_tutorial_pidhide_tailcall_map_type_001",
+      "diagnostic_chars": 881,
+      "failure_stage": "pass",
+      "mode": "bpfix",
+      "model": "Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M.gguf",
+      "oracle_returncode": 0,
+      "prompt_chars": 2076,
+      "prompt_sha256": "7c4c52be4d7a0e2b8cc0308aed9aa10473fa35088d5092c4e5cdab3a277e4a92",
+      "source_chars": 861,
+      "status": "pass"
+    },
+    {
+      "attempt": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "pass",
+          "oracle_returncode": 0
+        }
+      ],
+      "case": "rs_tutorial_user_ringbuf_dynptr_merge_001",
+      "diagnostic_chars": 1202,
+      "failure_stage": "pass",
+      "mode": "bpfix",
+      "model": "Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M.gguf",
+      "oracle_returncode": 0,
+      "prompt_chars": 2937,
+      "prompt_sha256": "f748f5f97c0863f2192eda36f4528fb09d0470124dc7164333e1c87b963e94e5",
+      "source_chars": 1401,
+      "status": "pass"
+    },
+    {
+      "attempt": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "pass",
+          "oracle_returncode": 0
+        }
+      ],
+      "case": "rs_xdp_tools_ihl_macro_wrong_base_001",
+      "diagnostic_chars": 1056,
+      "failure_stage": "pass",
+      "mode": "bpfix",
+      "model": "Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M.gguf",
+      "oracle_returncode": 0,
+      "prompt_chars": 2798,
+      "prompt_sha256": "afe3bfd2deba46adc04d090a9d182a05a19dc24fcf3ace4a3587e4f77debf42e",
+      "source_chars": 1408,
+      "status": "pass"
+    },
+    {
+      "attempt": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "rs_xdp_tools_load_bytes_stack_len_001",
+      "diagnostic_chars": 978,
+      "failure_stage": "verifier_load",
+      "mode": "bpfix",
+      "model": "Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M.gguf",
+      "oracle_returncode": 1,
+      "prompt_chars": 2086,
+      "prompt_sha256": "6670ad6b3e71e6c69667fcecf3fe294d34685f8a942be86118d9969fae969ab4",
+      "source_chars": 774,
+      "status": "fail"
+    },
+    {
+      "attempt": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "pass",
+          "oracle_returncode": 0
+        }
+      ],
+      "case": "rs_xdp_tools_xdpdump_perf_map_type_001",
+      "diagnostic_chars": 980,
+      "failure_stage": "pass",
+      "mode": "bpfix",
+      "model": "Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M.gguf",
+      "oracle_returncode": 0,
+      "prompt_chars": 2866,
+      "prompt_sha256": "041ecbab149d30975f73126b53bfa6d38652c6302133887b6741b5f2c215a8ec",
+      "source_chars": 1552,
+      "status": "pass"
+    },
+    {
+      "attempt": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "pass",
+          "oracle_returncode": 0
+        }
+      ],
+      "case": "rs_xdp_tools_xdpfilt_udp_macro_bound_001",
+      "diagnostic_chars": 1384,
+      "failure_stage": "pass",
+      "mode": "bpfix",
+      "model": "Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M.gguf",
+      "oracle_returncode": 0,
+      "prompt_chars": 3918,
+      "prompt_sha256": "b284cbfef7d0acbda5e9378e3c1982fe787e49ec797583160108752881375546",
+      "source_chars": 2200,
+      "status": "pass"
+    },
+    {
+      "attempt": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "pass",
+          "oracle_returncode": 0
+        }
+      ],
+      "case": "rs_xdp_tools_xdpsock_redirect_map_type_001",
+      "diagnostic_chars": 906,
+      "failure_stage": "pass",
+      "mode": "bpfix",
+      "model": "Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M.gguf",
+      "oracle_returncode": 0,
+      "prompt_chars": 2074,
+      "prompt_sha256": "cc7a00fba49f1c4e5fed2b7908906a9f385844a11b8e46923eab1db16c64241b",
+      "source_chars": 834,
+      "status": "pass"
+    },
+    {
+      "attempt": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "pass",
+          "oracle_returncode": 0
+        }
+      ],
+      "case": "subprog_adjust_tail_stale_001",
+      "diagnostic_chars": 1433,
+      "failure_stage": "pass",
+      "mode": "bpfix",
+      "model": "Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M.gguf",
+      "oracle_returncode": 0,
+      "prompt_chars": 2555,
+      "prompt_sha256": "95f726c7b45de833adf812892187d4ed310b384aebb1fe2bb2556b2daa2ebc28",
+      "source_chars": 788,
+      "status": "pass"
+    },
+    {
+      "attempt": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "pass",
+          "oracle_returncode": 0
+        }
+      ],
+      "case": "subprog_map_value_null_001",
+      "diagnostic_chars": 1144,
+      "failure_stage": "pass",
+      "mode": "bpfix",
+      "model": "Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M.gguf",
+      "oracle_returncode": 0,
+      "prompt_chars": 2765,
+      "prompt_sha256": "efd732c0173562a152253a6aacba9c837110a28fbc09cc8b49c74c1a1262d1da",
+      "source_chars": 1287,
+      "status": "pass"
+    },
+    {
+      "attempt": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "pass",
+          "oracle_returncode": 0
+        }
+      ],
+      "case": "xdp_adjust_head_map_value_001",
+      "diagnostic_chars": 1307,
+      "failure_stage": "pass",
+      "mode": "bpfix",
+      "model": "Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M.gguf",
+      "oracle_returncode": 0,
+      "prompt_chars": 2964,
+      "prompt_sha256": "582c41d206a07709b6de749866ba2ba3e964b915805508adb9b190be67a91f4e",
+      "source_chars": 1323,
+      "status": "pass"
+    },
+    {
+      "attempt": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "auxiliary_proof_predicate",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "xdp_adjust_head_ringbuf_001",
+      "diagnostic_chars": 1778,
+      "failure_stage": "auxiliary_proof_predicate",
+      "mode": "bpfix",
+      "model": "Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M.gguf",
+      "oracle_returncode": 1,
+      "prompt_chars": 3404,
+      "prompt_sha256": "fd9e613f72a97c60712508a367749eba572dad2c70edabeb652c4f5fa77dceb7",
+      "source_chars": 1292,
+      "status": "fail"
+    },
+    {
+      "attempt": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "pass",
+          "oracle_returncode": 0
+        }
+      ],
+      "case": "xdp_adjust_head_stale_001",
+      "diagnostic_chars": 1335,
+      "failure_stage": "pass",
+      "mode": "bpfix",
+      "model": "Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M.gguf",
+      "oracle_returncode": 0,
+      "prompt_chars": 3182,
+      "prompt_sha256": "939f78d07e9a779aab73e721fee0619fbb2a277f5cfa49c812dba61da54294ef",
+      "source_chars": 1513,
+      "status": "pass"
+    },
+    {
+      "attempt": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "pass",
+          "oracle_returncode": 0
+        }
+      ],
+      "case": "xdp_adjust_tail_stale_001",
+      "diagnostic_chars": 1297,
+      "failure_stage": "pass",
+      "mode": "bpfix",
+      "model": "Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M.gguf",
+      "oracle_returncode": 0,
+      "prompt_chars": 2933,
+      "prompt_sha256": "6ed92146c9e4b8fbbe4eaa9a829153b34d5562e34efcbc13a71bf9e2b02be323",
+      "source_chars": 1302,
+      "status": "pass"
+    }
+  ],
+  "run_metadata": {
+    "case_selection": {
+      "case_overrides": [],
+      "split": {
+        "allow_empty": false,
+        "case_count": 75,
+        "expected_count": 75,
+        "path": "/home/yunwei37/workspace/ebpf-verifier-agent/bpfix-bench/splits/main.txt",
+        "sha256": "fe1c7329c41c5a94d84ab6077539640082404d0cdef6bda0796440ec1e99d5a8"
+      }
+    },
+    "generated_at": "2026-06-22T10:10:50.360873+00:00",
+    "git": {
+      "commit": "0278c792cfa5eeef3b3c68157dc8c28e77f3b62a",
+      "dirty": true
+    },
+    "llm": {
+      "api_key_env": "LLAMA_API_KEY",
+      "base_url": "http://127.0.0.1:18080/v1",
+      "llama_cpp": {
+        "commit": "57819b8d4b39d893408e51520dff3d47d1ebb757",
+        "path": "/home/yunwei37/workspace/llama.cpp-latest"
+      },
+      "max_tokens": 8192,
+      "model": "Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M.gguf",
+      "model_file": {
+        "exists": true,
+        "path": "/home/yunwei37/.cache/huggingface/hub/models--DevQuasar--Qwen.Qwen3.6-27B-GGUF/blobs/f7da7eee0f1ffa280742a293f02052d1f58d3253c9e109c1be8fb0067eb1b3a9",
+        "sha256": "f7da7eee0f1ffa280742a293f02052d1f58d3253c9e109c1be8fb0067eb1b3a9",
+        "size_bytes": 16547398976
+      },
+      "server": {
+        "models": {
+          "data": [
+            {
+              "aliases": [],
+              "created": 1782123050,
+              "id": "Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M.gguf",
+              "meta": {
+                "n_ctx_train": 262144,
+                "n_embd": 5120,
+                "n_params": 26895998464,
+                "n_vocab": 248320,
+                "size": 16536406016,
+                "vocab_type": 2
+              },
+              "object": "model",
+              "owned_by": "llamacpp",
+              "tags": []
+            }
+          ],
+          "models": [
+            {
+              "capabilities": [
+                "completion"
+              ],
+              "description": "",
+              "details": {
+                "families": [
+                  ""
+                ],
+                "family": "",
+                "format": "gguf",
+                "parameter_size": "",
+                "parent_model": "",
+                "quantization_level": ""
+              },
+              "digest": "",
+              "model": "Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M.gguf",
+              "modified_at": "",
+              "name": "Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M.gguf",
+              "parameters": "",
+              "size": "",
+              "tags": [
+                ""
+              ],
+              "type": "model"
+            }
+          ],
+          "object": "list"
+        },
+        "reachable": true
+      },
+      "temperature": 0.0,
+      "timeout_sec": 900.0
+    },
+    "runner": {
+      "argv": [
+        "bpfix-bench/tools/run_suite.py",
+        "--mode",
+        "bpfix",
+        "--split",
+        "bpfix-bench/splits/main.txt",
+        "--expected-count",
+        "75",
+        "--results-dir",
+        "bpfix-bench/results/bpfix-main-qwen36-27b-hardened2-current",
+        "--base-url",
+        "http://127.0.0.1:18080/v1",
+        "--model",
+        "Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M.gguf",
+        "--model-path",
+        "/home/yunwei37/.cache/huggingface/hub/models--DevQuasar--Qwen.Qwen3.6-27B-GGUF/snapshots/b19fa7e8538a1a5f66452eb3b3167e026177be1d/Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M.gguf",
+        "--model-sha256",
+        "f7da7eee0f1ffa280742a293f02052d1f58d3253c9e109c1be8fb0067eb1b3a9",
+        "--llama-cpp-dir",
+        "/home/yunwei37/workspace/llama.cpp-latest",
+        "--timeout",
+        "900",
+        "--max-tokens",
+        "8192",
+        "--temperature",
+        "0"
+      ]
+    },
+    "source_summary_path": "bpfix-bench/results/bpfix-main-qwen36-27b-hardened2-current/20260622T101050360741Z-pid2167585/bpfix/summary.json",
+    "toolchain": {
+      "bpftool": [
+        "bpftool v7.7.0",
+        "using libbpf v1.7",
+        "features: llvm, skeletons"
+      ],
+      "clang": "Ubuntu clang version 18.1.3 (1ubuntu1)",
+      "kernel": "Linux lab 6.15.11-061511-generic #202508201748 SMP PREEMPT_DYNAMIC Wed Aug 20 20:23:19 UTC 2025 x86_64 x86_64 x86_64 GNU/Linux",
+      "llvm_objdump": "Ubuntu LLVM version 18.1.3"
+    }
+  },
+  "total": 75
+}

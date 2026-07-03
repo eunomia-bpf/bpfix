@@ -125,20 +125,29 @@ Every replayable case has `label.taxonomy_class`, `label.error_id`, and
 
 | taxonomy_class | cases |
 |---|---:|
-| source_bug | 194 |
-| lowering_artifact | 19 |
-| environment_or_configuration | 11 |
+| source_bug | 191 |
+| lowering_artifact | 18 |
+| environment_or_configuration | 14 |
 | verifier_false_positive | 7 |
-| verifier_limit | 4 |
+| verifier_limit | 5 |
+
+Paper responsibility layers:
+
+| responsible layer | cases |
+|---|---:|
+| developer | 191 |
+| compiler | 18 |
+| environment | 14 |
+| verifier | 12 |
 
 Breakdown by source:
 
 | source_kind | environment_or_configuration | lowering_artifact | source_bug | verifier_false_positive | verifier_limit | total |
 |---|---:|---:|---:|---:|---:|---:|
 | github_commit | 2 | 15 | 29 | 0 | 0 | 46 |
-| github_issue | 2 | 2 | 14 | 0 | 0 | 18 |
+| github_issue | 3 | 1 | 14 | 0 | 0 | 18 |
 | kernel_selftest | 3 | 0 | 80 | 0 | 2 | 85 |
-| stackoverflow | 4 | 2 | 71 | 7 | 2 | 86 |
+| stackoverflow | 6 | 2 | 68 | 7 | 3 | 86 |
 
 ## Error Categories
 
@@ -152,26 +161,26 @@ CLI error-id contract lives in `docs/error-catalog.yaml`.
 | BPFIX-E002 | nullable_map_value_dereference | source_bug | 10 |
 | BPFIX-E003 | uninitialized_stack_read | source_bug | 5 |
 | BPFIX-E004 | reference_lifetime_violation | source_bug | 3 |
-| BPFIX-E005 | scalar_range_too_wide_after_lowering | lowering_artifact 7, source_bug 16, verifier_false_positive 7 | 30 |
+| BPFIX-E005 | scalar_range_too_wide_after_lowering | lowering_artifact 6, source_bug 17, verifier_false_positive 7 | 30 |
 | BPFIX-E006 | provenance_lost_across_spill | environment_or_configuration 1, lowering_artifact 12, source_bug 5 | 18 |
 | BPFIX-E009 | helper_or_kfunc_unavailable | environment_or_configuration | 1 |
 | BPFIX-E010 | verifier_false_positive_or_regression | source_bug | 1 |
-| BPFIX-E011 | scalar_pointer_dereference | source_bug | 59 |
+| BPFIX-E011 | scalar_pointer_dereference | environment_or_configuration 2, source_bug 57 | 59 |
 | BPFIX-E012 | dynptr_protocol_violation | source_bug | 8 |
 | BPFIX-E013 | execution_context_discipline_violation | source_bug | 13 |
-| BPFIX-E014 | iterator_state_protocol_violation | source_bug | 6 |
+| BPFIX-E014 | iterator_state_protocol_violation | source_bug 5, verifier_limit 1 | 6 |
 | BPFIX-E015 | trusted_arg_nullability | source_bug | 9 |
 | BPFIX-E016 | helper_or_kfunc_context_restriction | environment_or_configuration 5, source_bug 3 | 8 |
 | BPFIX-E017 | map_value_bounds_violation | source_bug | 8 |
 | BPFIX-E018 | verifier_analysis_budget_limit | verifier_limit | 4 |
 | BPFIX-E019 | dynptr_storage_or_release_contract_violation | source_bug | 13 |
 | BPFIX-E020 | irq_flag_state_protocol_violation | source_bug | 3 |
-| BPFIX-E021 | map_relocation_or_metadata_missing | environment_or_configuration 4, source_bug 1 | 5 |
+| BPFIX-E021 | map_relocation_or_metadata_missing | environment_or_configuration | 5 |
 | BPFIX-E023 | register_or_stack_contract_violation | source_bug | 16 |
 
 The taxonomy column above uses the labels in each `case.yaml`, not only the
 default taxonomy in `docs/evaluation/legacy-catalogs/error_catalog.yaml`. For `BPFIX-E005`,
-16 cases are labelled `source_bug`, 7 are labelled `lowering_artifact`, and 7
+17 cases are labelled `source_bug`, 6 are labelled `lowering_artifact`, and 7
 are labelled `verifier_false_positive`.
 
 Notable concentration: `BPFIX-E011` accounts for 59 of 235 replayable cases,
@@ -215,9 +224,9 @@ metadata. The replayable kernel selftest count is therefore taken from
 
 ## Gaps and Biases
 
-The replayable corpus is dominated by `source_bug` labels: 194 of 235 cases
-(82.6%). `lowering_artifact` has 19 cases after the first manual audit,
-`verifier_false_positive` has 7, and `verifier_limit` has only 4.
+The replayable corpus is dominated by `source_bug` labels: 191 of 235 cases
+(81.3%). `lowering_artifact` has 18 cases after the first manual audit,
+`verifier_false_positive` has 7, and `verifier_limit` has 5.
 
 Kernel selftests are strongly represented in the admitted corpus: 85 of 235
 cases. They are useful because they are reproducible and trace-rich, but they

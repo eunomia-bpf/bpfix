@@ -36,8 +36,10 @@ help:
 	@echo "                          Optional: SPLIT=... MANIFEST=... SMOKE=1 for custom oracle checks"
 	@echo "  make bpfix-bench-smoke  Validate bpfix-bench fixtures and buggy rejects"
 	@echo "  make bpfix-bench-main-gate Run the frozen main75 bpfix-bench gate"
+	@echo "  make bpfix-bench-published-results Audit tracked published main75 result summaries"
 	@echo "  make release-check     Run packaging, example, empirical, and object-analysis gates"
 	@echo "  make paper-arxiv       Build and validate paper/arxiv-submission.tar.gz"
+	@echo "  make artifact-check    Run release, published-result, and paper artifact checks"
 	@echo ""
 	@echo "Utilities"
 	@echo "  make clean             Remove generated Rust, empirical, and benchmark artifacts"
@@ -95,6 +97,25 @@ bpfix-bench-main-gate:
 		--split bpfix-bench/splits/main.txt \
 		--manifest bpfix-bench/splits/main.manifest.json
 
+.PHONY: bpfix-bench-published-results
+bpfix-bench-published-results:
+	@echo "[bpfix-bench-published-results] Auditing tracked main75 result summaries..."
+	cd $(CURDIR) && set -e; \
+	base=bpfix-bench/published-results/main75; \
+	common=(python3 bpfix-bench/tools/audit_results.py --split bpfix-bench/splits/main.txt --expected-count 75 --required-mode raw --required-mode bpfix --allow-missing-prompt-manifest --allow-dirty); \
+	for spec in \
+		"qwen36-one-shot||qwen36-27b/raw-one-shot|qwen36-27b/bpfix-one-shot" \
+		"qwen36-retry2||qwen36-27b/raw-retry2|qwen36-27b/bpfix-retry2" \
+		"glm52-one-shot|--allow-missing-model-digest|glm52/raw-one-shot|glm52/bpfix-one-shot" \
+		"glm52-retry2|--allow-missing-model-digest|glm52/raw-retry2|glm52/bpfix-retry2" \
+		"qwen25-one-shot||qwen25-3b/raw-one-shot|qwen25-3b/bpfix-one-shot" \
+		"qwen25-retry2||qwen25-3b/raw-retry2|qwen25-3b/bpfix-retry2"; do \
+		IFS='|' read -r name extra raw bpfix <<< "$$spec"; \
+		args=("$${common[@]}"); \
+		[[ -n "$$extra" ]] && args+=($$extra); \
+		"$${args[@]}" "$$base/$$raw/summary.json" "$$base/$$bpfix/summary.json" >"/tmp/bpfix-bench-$$name-results-audit.json"; \
+	done
+
 .PHONY: release-check
 release-check:
 	@echo "[release-check] Running release readiness checks..."
@@ -104,6 +125,9 @@ release-check:
 paper-arxiv:
 	@echo "[paper-arxiv] Building arXiv package..."
 	$(MAKE) -C $(CURDIR)/paper docker-arxiv
+
+.PHONY: artifact-check
+artifact-check: release-check bpfix-bench-published-results paper-arxiv
 
 .PHONY: clean
 clean:

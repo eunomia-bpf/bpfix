@@ -1,0 +1,1964 @@
+{
+  "mode": "raw",
+  "passed": 0,
+  "results": [
+    {
+      "attempt": 2,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "compile",
+          "oracle_returncode": 1
+        },
+        {
+          "attempt": 2,
+          "failure_stage": "compile",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "alu32_pointer_cookie_001",
+      "diagnostic_chars": 5501,
+      "failure_stage": "compile",
+      "mode": "raw",
+      "model": "qwen2.5-3b-instruct-q4_k_m",
+      "oracle_returncode": 1,
+      "prompt_chars": 7000,
+      "prompt_sha256": "1b873053b2b27f6884cff6e78ef05cb0e032f8b46c5e23f45f8ff2076fd7a1e5",
+      "source_chars": 1176,
+      "status": "fail"
+    },
+    {
+      "attempt": 2,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        },
+        {
+          "attempt": 2,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "dynptr_slice_missing_null_check_001",
+      "diagnostic_chars": 5497,
+      "failure_stage": "verifier_load",
+      "mode": "raw",
+      "model": "qwen2.5-3b-instruct-q4_k_m",
+      "oracle_returncode": 1,
+      "prompt_chars": 6826,
+      "prompt_sha256": "465dc4937a05ad0a3c105f8693a7fecbd22e6ffe9607e047eeeadf622479a108",
+      "source_chars": 1006,
+      "status": "fail"
+    },
+    {
+      "attempt": 2,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        },
+        {
+          "attempt": 2,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "dynptr_slice_short_mem_001",
+      "diagnostic_chars": 5614,
+      "failure_stage": "verifier_load",
+      "mode": "raw",
+      "model": "qwen2.5-3b-instruct-q4_k_m",
+      "oracle_returncode": 1,
+      "prompt_chars": 7000,
+      "prompt_sha256": "d60f9cdbf7d0cd48da5c8a27b397d2ba018a61d5fcf39e7d0efbf461ba0ebeec",
+      "source_chars": 1063,
+      "status": "fail"
+    },
+    {
+      "attempt": 2,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        },
+        {
+          "attempt": 2,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "dynptr_slice_stack_buffer_001",
+      "diagnostic_chars": 5000,
+      "failure_stage": "verifier_load",
+      "mode": "raw",
+      "model": "qwen2.5-3b-instruct-q4_k_m",
+      "oracle_returncode": 1,
+      "prompt_chars": 6273,
+      "prompt_sha256": "e3b6892fe2693b0d2e371f9888a90f96318853c2aaea1c300d711cf3bd60881e",
+      "source_chars": 950,
+      "status": "fail"
+    },
+    {
+      "attempt": 2,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        },
+        {
+          "attempt": 2,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "dynptr_stack_copy_001",
+      "diagnostic_chars": 5128,
+      "failure_stage": "verifier_load",
+      "mode": "raw",
+      "model": "qwen2.5-3b-instruct-q4_k_m",
+      "oracle_returncode": 1,
+      "prompt_chars": 6651,
+      "prompt_sha256": "b67f04bbd3d0e0fde6af96906d2e15adef75b61d1b65c4bb4157e3ee770a98fa",
+      "source_chars": 1200,
+      "status": "fail"
+    },
+    {
+      "attempt": 2,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        },
+        {
+          "attempt": 2,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "dynptr_uninitialized_slice_arg_001",
+      "diagnostic_chars": 3176,
+      "failure_stage": "verifier_load",
+      "mode": "raw",
+      "model": "qwen2.5-3b-instruct-q4_k_m",
+      "oracle_returncode": 1,
+      "prompt_chars": 4221,
+      "prompt_sha256": "b5c533f04a26017707a7c9288163e4cbc6b05052bee55460f48f92bffdb50ae3",
+      "source_chars": 722,
+      "status": "fail"
+    },
+    {
+      "attempt": 2,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        },
+        {
+          "attempt": 2,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "helper_csum_diff_stack_len_001",
+      "diagnostic_chars": 11507,
+      "failure_stage": "verifier_load",
+      "mode": "raw",
+      "model": "qwen2.5-3b-instruct-q4_k_m",
+      "oracle_returncode": 1,
+      "prompt_chars": 13463,
+      "prompt_sha256": "5a265cb36889b5b9849c3344f3c76970fa4f77f9121de1939093671191683846",
+      "source_chars": 1633,
+      "status": "fail"
+    },
+    {
+      "attempt": 2,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "auxiliary_proof_predicate",
+          "oracle_returncode": 1
+        },
+        {
+          "attempt": 2,
+          "failure_stage": "auxiliary_proof_predicate",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "helper_map_arg_stack_001",
+      "diagnostic_chars": 5483,
+      "failure_stage": "auxiliary_proof_predicate",
+      "mode": "raw",
+      "model": "qwen2.5-3b-instruct-q4_k_m",
+      "oracle_returncode": 1,
+      "prompt_chars": 7100,
+      "prompt_sha256": "7d0de27fc40c0a84e6673ec8de17f36ea6926ae652b4db499f5e2e83f76229ae",
+      "source_chars": 1294,
+      "status": "fail"
+    },
+    {
+      "attempt": 2,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        },
+        {
+          "attempt": 2,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "map_value_branch_merge_001",
+      "diagnostic_chars": 8847,
+      "failure_stage": "verifier_load",
+      "mode": "raw",
+      "model": "qwen2.5-3b-instruct-q4_k_m",
+      "oracle_returncode": 1,
+      "prompt_chars": 10667,
+      "prompt_sha256": "307e58fc7c85b0894fc0fb2cdf4905f24e21657a468c63fb63644df6c7d4c5bb",
+      "source_chars": 1497,
+      "status": "fail"
+    },
+    {
+      "attempt": 2,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        },
+        {
+          "attempt": 2,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "map_value_index_guard_oob_001",
+      "diagnostic_chars": 8068,
+      "failure_stage": "verifier_load",
+      "mode": "raw",
+      "model": "qwen2.5-3b-instruct-q4_k_m",
+      "oracle_returncode": 1,
+      "prompt_chars": 9443,
+      "prompt_sha256": "12427988ad67c2e82743d7a994db9ef63704745fff09890f17661f87fc912d2f",
+      "source_chars": 1052,
+      "status": "fail"
+    },
+    {
+      "attempt": 2,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        },
+        {
+          "attempt": 2,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "map_value_inline_cookie_001",
+      "diagnostic_chars": 8000,
+      "failure_stage": "verifier_load",
+      "mode": "raw",
+      "model": "qwen2.5-3b-instruct-q4_k_m",
+      "oracle_returncode": 1,
+      "prompt_chars": 9804,
+      "prompt_sha256": "242e7b2e2d4ba6b30651f7670b97417ce02cde13d5b2b242d0a587ebf63c302e",
+      "source_chars": 1481,
+      "status": "fail"
+    },
+    {
+      "attempt": 2,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        },
+        {
+          "attempt": 2,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "map_value_pointer_cookie_001",
+      "diagnostic_chars": 7984,
+      "failure_stage": "verifier_load",
+      "mode": "raw",
+      "model": "qwen2.5-3b-instruct-q4_k_m",
+      "oracle_returncode": 1,
+      "prompt_chars": 9772,
+      "prompt_sha256": "f2a8c002968aa99697a2eb66e454de50dc3631b5f05c55204c9a645c9622ed53",
+      "source_chars": 1465,
+      "status": "fail"
+    },
+    {
+      "attempt": 2,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        },
+        {
+          "attempt": 2,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "map_value_signed_index_001",
+      "diagnostic_chars": 7761,
+      "failure_stage": "verifier_load",
+      "mode": "raw",
+      "model": "qwen2.5-3b-instruct-q4_k_m",
+      "oracle_returncode": 1,
+      "prompt_chars": 9055,
+      "prompt_sha256": "7657b74a595041930871c8e5f13dc08ed60d88e41f21e4bb5632b68ed144482a",
+      "source_chars": 971,
+      "status": "fail"
+    },
+    {
+      "attempt": 2,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        },
+        {
+          "attempt": 2,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "map_value_spill_cookie_001",
+      "diagnostic_chars": 7612,
+      "failure_stage": "verifier_load",
+      "mode": "raw",
+      "model": "qwen2.5-3b-instruct-q4_k_m",
+      "oracle_returncode": 1,
+      "prompt_chars": 9334,
+      "prompt_sha256": "7ea690b418bc7d8726d543720d62a7def4f609923408a64e911bcc59e9a42419",
+      "source_chars": 1399,
+      "status": "fail"
+    },
+    {
+      "attempt": 2,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        },
+        {
+          "attempt": 2,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "packet_checked_wrong_base_001",
+      "diagnostic_chars": 3251,
+      "failure_stage": "verifier_load",
+      "mode": "raw",
+      "model": "qwen2.5-3b-instruct-q4_k_m",
+      "oracle_returncode": 1,
+      "prompt_chars": 4266,
+      "prompt_sha256": "64436a4ace10f0e579dc19ff7520d2eefdc3edbe49ab25a175396394029ace9e",
+      "source_chars": 692,
+      "status": "fail"
+    },
+    {
+      "attempt": 2,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        },
+        {
+          "attempt": 2,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "packet_eth_off_by_one_001",
+      "diagnostic_chars": 3486,
+      "failure_stage": "verifier_load",
+      "mode": "raw",
+      "model": "qwen2.5-3b-instruct-q4_k_m",
+      "oracle_returncode": 1,
+      "prompt_chars": 4785,
+      "prompt_sha256": "8bb6bdd0e7c72a3c32ba255e23fad164bde47062f80227c7d929db9435d8bc96",
+      "source_chars": 976,
+      "status": "fail"
+    },
+    {
+      "attempt": 2,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        },
+        {
+          "attempt": 2,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "packet_ihl_udp_undercheck_001",
+      "diagnostic_chars": 9857,
+      "failure_stage": "verifier_load",
+      "mode": "raw",
+      "model": "qwen2.5-3b-instruct-q4_k_m",
+      "oracle_returncode": 1,
+      "prompt_chars": 11905,
+      "prompt_sha256": "a84f45ead0c5157d3c5824a826f00d4f7a3acd366f1aca97c3a7569887d2ad7d",
+      "source_chars": 1725,
+      "status": "fail"
+    },
+    {
+      "attempt": 2,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "compile",
+          "oracle_returncode": 1
+        },
+        {
+          "attempt": 2,
+          "failure_stage": "compile",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "packet_inline_return_cookie_001",
+      "diagnostic_chars": 5841,
+      "failure_stage": "compile",
+      "mode": "raw",
+      "model": "qwen2.5-3b-instruct-q4_k_m",
+      "oracle_returncode": 1,
+      "prompt_chars": 7510,
+      "prompt_sha256": "06bf7735029ddfb06684b68a5c5aebcef942e25391eb9f8e0e79311c6aa8d8fa",
+      "source_chars": 1346,
+      "status": "fail"
+    },
+    {
+      "attempt": 2,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "compile",
+          "oracle_returncode": 1
+        },
+        {
+          "attempt": 2,
+          "failure_stage": "compile",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "packet_l4_branch_cookie_001",
+      "diagnostic_chars": 6779,
+      "failure_stage": "compile",
+      "mode": "raw",
+      "model": "qwen2.5-3b-instruct-q4_k_m",
+      "oracle_returncode": 1,
+      "prompt_chars": 8778,
+      "prompt_sha256": "706dcb7eeed4bbf54f0b4909afd7b0bbaea4393203bcb7220fd55c49436748a2",
+      "source_chars": 1676,
+      "status": "fail"
+    },
+    {
+      "attempt": 2,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "compile",
+          "oracle_returncode": 1
+        },
+        {
+          "attempt": 2,
+          "failure_stage": "compile",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "packet_macro_cookie_001",
+      "diagnostic_chars": 5681,
+      "failure_stage": "compile",
+      "mode": "raw",
+      "model": "qwen2.5-3b-instruct-q4_k_m",
+      "oracle_returncode": 1,
+      "prompt_chars": 7261,
+      "prompt_sha256": "d71ce8e3199fd3125a211f2062208d1cfb212e10ec94c22230e831da6f47878c",
+      "source_chars": 1257,
+      "status": "fail"
+    },
+    {
+      "attempt": 2,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        },
+        {
+          "attempt": 2,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "packet_macro_payload_undercheck_001",
+      "diagnostic_chars": 8327,
+      "failure_stage": "verifier_load",
+      "mode": "raw",
+      "model": "qwen2.5-3b-instruct-q4_k_m",
+      "oracle_returncode": 1,
+      "prompt_chars": 9876,
+      "prompt_sha256": "c70b1d75a0a7af238e4d28302597c9bc8699a62f957c1d20c99e6c119b4ff12b",
+      "source_chars": 1226,
+      "status": "fail"
+    },
+    {
+      "attempt": 2,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "compile",
+          "oracle_returncode": 1
+        },
+        {
+          "attempt": 2,
+          "failure_stage": "compile",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "packet_vlan_cookie_001",
+      "diagnostic_chars": 6881,
+      "failure_stage": "compile",
+      "mode": "raw",
+      "model": "qwen2.5-3b-instruct-q4_k_m",
+      "oracle_returncode": 1,
+      "prompt_chars": 8804,
+      "prompt_sha256": "c5191af2087e1b62aee3eb3d9ee9c28e547c322b24bdf9f4b0ab87d9c6f0c094",
+      "source_chars": 1600,
+      "status": "fail"
+    },
+    {
+      "attempt": 2,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        },
+        {
+          "attempt": 2,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "perf_event_packet_payload_001",
+      "diagnostic_chars": 5242,
+      "failure_stage": "verifier_load",
+      "mode": "raw",
+      "model": "qwen2.5-3b-instruct-q4_k_m",
+      "oracle_returncode": 1,
+      "prompt_chars": 6572,
+      "prompt_sha256": "d43e1bea1f17d7ec42cca9dfcafdbdf34b951ad2c29036e2a16b6f9f046a7a3d",
+      "source_chars": 1007,
+      "status": "fail"
+    },
+    {
+      "attempt": 2,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "compile",
+          "oracle_returncode": 1
+        },
+        {
+          "attempt": 2,
+          "failure_stage": "compile",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "ringbuf_branch_cookie_001",
+      "diagnostic_chars": 7646,
+      "failure_stage": "compile",
+      "mode": "raw",
+      "model": "qwen2.5-3b-instruct-q4_k_m",
+      "oracle_returncode": 1,
+      "prompt_chars": 9418,
+      "prompt_sha256": "15b186525363f082c3cdd3952a787ba320064527a789190f2d0975f9b2926afc",
+      "source_chars": 1449,
+      "status": "fail"
+    },
+    {
+      "attempt": 2,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "auxiliary_proof_predicate",
+          "oracle_returncode": 1
+        },
+        {
+          "attempt": 2,
+          "failure_stage": "auxiliary_proof_predicate",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "ringbuf_double_submit_001",
+      "diagnostic_chars": 7010,
+      "failure_stage": "auxiliary_proof_predicate",
+      "mode": "raw",
+      "model": "qwen2.5-3b-instruct-q4_k_m",
+      "oracle_returncode": 1,
+      "prompt_chars": 8509,
+      "prompt_sha256": "5f918436f21110ba137a619c6b44bbfb60e1f68db62311e49b6d8b93fca6be8e",
+      "source_chars": 1176,
+      "status": "fail"
+    },
+    {
+      "attempt": 2,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        },
+        {
+          "attempt": 2,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "ringbuf_missing_null_check_001",
+      "diagnostic_chars": 5811,
+      "failure_stage": "verifier_load",
+      "mode": "raw",
+      "model": "qwen2.5-3b-instruct-q4_k_m",
+      "oracle_returncode": 1,
+      "prompt_chars": 7208,
+      "prompt_sha256": "859be6f57cee358a386e901528031a978239beaebb84b184e7dbb0e76bdc67d0",
+      "source_chars": 1074,
+      "status": "fail"
+    },
+    {
+      "attempt": 2,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        },
+        {
+          "attempt": 2,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "ringbuf_nested_missing_null_001",
+      "diagnostic_chars": 7292,
+      "failure_stage": "verifier_load",
+      "mode": "raw",
+      "model": "qwen2.5-3b-instruct-q4_k_m",
+      "oracle_returncode": 1,
+      "prompt_chars": 8760,
+      "prompt_sha256": "92569103659144e3bbee2e777083ab8f1857606660588bd8df39eb5b5bd9cfe2",
+      "source_chars": 1145,
+      "status": "fail"
+    },
+    {
+      "attempt": 2,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        },
+        {
+          "attempt": 2,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "ringbuf_nested_reserve_leak_001",
+      "diagnostic_chars": 9728,
+      "failure_stage": "verifier_load",
+      "mode": "raw",
+      "model": "qwen2.5-3b-instruct-q4_k_m",
+      "oracle_returncode": 1,
+      "prompt_chars": 11235,
+      "prompt_sha256": "cf6dffbf704b40dfba5a1d896f53c14902b5cf02386eefa72a568c80199151b2",
+      "source_chars": 1184,
+      "status": "fail"
+    },
+    {
+      "attempt": 2,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "compile",
+          "oracle_returncode": 1
+        },
+        {
+          "attempt": 2,
+          "failure_stage": "compile",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "ringbuf_pointer_cookie_001",
+      "diagnostic_chars": 8907,
+      "failure_stage": "compile",
+      "mode": "raw",
+      "model": "qwen2.5-3b-instruct-q4_k_m",
+      "oracle_returncode": 1,
+      "prompt_chars": 11099,
+      "prompt_sha256": "3628f089772607d36cc6950d861bb6423a988ee239bc43ea3223d1ff9c846640",
+      "source_chars": 1869,
+      "status": "fail"
+    },
+    {
+      "attempt": 2,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        },
+        {
+          "attempt": 2,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "ringbuf_ref_leak_001",
+      "diagnostic_chars": 9240,
+      "failure_stage": "verifier_load",
+      "mode": "raw",
+      "model": "qwen2.5-3b-instruct-q4_k_m",
+      "oracle_returncode": 1,
+      "prompt_chars": 10661,
+      "prompt_sha256": "b6a63bdbc73a5c891b836e56c8c43ca44917d2f279ef53c98623f672c5bacbe4",
+      "source_chars": 1098,
+      "status": "fail"
+    },
+    {
+      "attempt": 2,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        },
+        {
+          "attempt": 2,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "ringbuf_stack_discard_001",
+      "diagnostic_chars": 2225,
+      "failure_stage": "verifier_load",
+      "mode": "raw",
+      "model": "qwen2.5-3b-instruct-q4_k_m",
+      "oracle_returncode": 1,
+      "prompt_chars": 3230,
+      "prompt_sha256": "a6b32ae61ad696c948079ca991e9eee9e34d39360d86d2b179da160e16c4e3c3",
+      "source_chars": 682,
+      "status": "fail"
+    },
+    {
+      "attempt": 2,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        },
+        {
+          "attempt": 2,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "ringbuf_stack_submit_001",
+      "diagnostic_chars": 2951,
+      "failure_stage": "verifier_load",
+      "mode": "raw",
+      "model": "qwen2.5-3b-instruct-q4_k_m",
+      "oracle_returncode": 1,
+      "prompt_chars": 3998,
+      "prompt_sha256": "46e79f912fa7918e49fe0a8de851fad6372c79db4634899e6622af35a356a91f",
+      "source_chars": 724,
+      "status": "fail"
+    },
+    {
+      "attempt": 2,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        },
+        {
+          "attempt": 2,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "ringbuf_submit_after_discard_001",
+      "diagnostic_chars": 6804,
+      "failure_stage": "verifier_load",
+      "mode": "raw",
+      "model": "qwen2.5-3b-instruct-q4_k_m",
+      "oracle_returncode": 1,
+      "prompt_chars": 8187,
+      "prompt_sha256": "a312371aecf56c3e3eff210de43634bd44e90db91b6ebc3deb9986ed93998e71",
+      "source_chars": 1060,
+      "status": "fail"
+    },
+    {
+      "attempt": 2,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "compile",
+          "oracle_returncode": 1
+        },
+        {
+          "attempt": 2,
+          "failure_stage": "compile",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "ringbuf_two_record_cookie_001",
+      "diagnostic_chars": 9505,
+      "failure_stage": "compile",
+      "mode": "raw",
+      "model": "qwen2.5-3b-instruct-q4_k_m",
+      "oracle_returncode": 1,
+      "prompt_chars": 11436,
+      "prompt_sha256": "331611eb0da895e677d725a37f9b4d5e3586686116e0f7a8f3b41e5a5fbefc79",
+      "source_chars": 1608,
+      "status": "fail"
+    },
+    {
+      "attempt": 1,
+      "attempts": [],
+      "case": "rs_actplane_cap_dynptr_payload_null_001",
+      "diagnostic_chars": 113050,
+      "failure_stage": "model_call",
+      "mode": "raw",
+      "model": "qwen2.5-3b-instruct-q4_k_m",
+      "prompt_chars": 116163,
+      "prompt_sha256": "1a389c00241fcb00d481624be8b42bceff6e4d82c91eac8e922d127bc3cbdc6b",
+      "source_chars": 2790,
+      "status": "model_error"
+    },
+    {
+      "attempt": 2,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        },
+        {
+          "attempt": 2,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "rs_actplane_lsm_bpf_ringbuf_merge_001",
+      "diagnostic_chars": 8829,
+      "failure_stage": "verifier_load",
+      "mode": "raw",
+      "model": "qwen2.5-3b-instruct-q4_k_m",
+      "oracle_returncode": 1,
+      "prompt_chars": 10373,
+      "prompt_sha256": "3142ac57b1bf88d2f1b084b2f5e6219fd09cd24935817176c6d9d89c230ee9dd",
+      "source_chars": 1221,
+      "status": "fail"
+    },
+    {
+      "attempt": 2,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        },
+        {
+          "attempt": 2,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "rs_actplane_mmap_pending_merge_001",
+      "diagnostic_chars": 16396,
+      "failure_stage": "verifier_load",
+      "mode": "raw",
+      "model": "qwen2.5-3b-instruct-q4_k_m",
+      "oracle_returncode": 1,
+      "prompt_chars": 21949,
+      "prompt_sha256": "e215671bcda0ce3f8bb393f1ae5e30f416032f9ed6c18091f01c8f0037ed6f52",
+      "source_chars": 5230,
+      "status": "fail"
+    },
+    {
+      "attempt": 2,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "auxiliary_proof_predicate",
+          "oracle_returncode": 1
+        },
+        {
+          "attempt": 2,
+          "failure_stage": "auxiliary_proof_predicate",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "rs_actplane_policy_map_merge_001",
+      "diagnostic_chars": 9129,
+      "failure_stage": "auxiliary_proof_predicate",
+      "mode": "raw",
+      "model": "qwen2.5-3b-instruct-q4_k_m",
+      "oracle_returncode": 1,
+      "prompt_chars": 10721,
+      "prompt_sha256": "548968ca3b744695ad54a067389e964f1bec2293e8586e64d5480d8a2e7891c0",
+      "source_chars": 1269,
+      "status": "fail"
+    },
+    {
+      "attempt": 2,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        },
+        {
+          "attempt": 2,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "rs_actplane_taint_loop_count_bound_001",
+      "diagnostic_chars": 10292,
+      "failure_stage": "verifier_load",
+      "mode": "raw",
+      "model": "qwen2.5-3b-instruct-q4_k_m",
+      "oracle_returncode": 1,
+      "prompt_chars": 11687,
+      "prompt_sha256": "0218ffae5687b8ee909d14328fa1abea5febf3ee69d66efb48bb71aaa3e57db6",
+      "source_chars": 1072,
+      "status": "fail"
+    },
+    {
+      "attempt": 2,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        },
+        {
+          "attempt": 2,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "rs_agentsight_fs_overflow_counter_merge_001",
+      "diagnostic_chars": 29865,
+      "failure_stage": "verifier_load",
+      "mode": "raw",
+      "model": "qwen2.5-3b-instruct-q4_k_m",
+      "oracle_returncode": 1,
+      "prompt_chars": 33398,
+      "prompt_sha256": "3a21f461e3095b167bed11bc6fc4809e2f89e9a9a42093d5e5391fa5ac09737c",
+      "source_chars": 3210,
+      "status": "fail"
+    },
+    {
+      "attempt": 2,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        },
+        {
+          "attempt": 2,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "rs_agentsight_process_ringbuf_null_001",
+      "diagnostic_chars": 6119,
+      "failure_stage": "verifier_load",
+      "mode": "raw",
+      "model": "qwen2.5-3b-instruct-q4_k_m",
+      "oracle_returncode": 1,
+      "prompt_chars": 7522,
+      "prompt_sha256": "21d00852df3d9de3e56df7481eccb70dbceb66500b8ac5c29f9f3dab98996d01",
+      "source_chars": 1080,
+      "status": "fail"
+    },
+    {
+      "attempt": 2,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        },
+        {
+          "attempt": 2,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "rs_agentsight_stdiocap_user_copy_len_001",
+      "diagnostic_chars": 9169,
+      "failure_stage": "verifier_load",
+      "mode": "raw",
+      "model": "qwen2.5-3b-instruct-q4_k_m",
+      "oracle_returncode": 1,
+      "prompt_chars": 10892,
+      "prompt_sha256": "e2ba2dccad74dd398a97878a0cab2c9fc5c1324c0676985c504248a6c842c211",
+      "source_chars": 1400,
+      "status": "fail"
+    },
+    {
+      "attempt": 2,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        },
+        {
+          "attempt": 2,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "rs_agentsight_write_ctx_merge_001",
+      "diagnostic_chars": 12730,
+      "failure_stage": "verifier_load",
+      "mode": "raw",
+      "model": "qwen2.5-3b-instruct-q4_k_m",
+      "oracle_returncode": 1,
+      "prompt_chars": 16232,
+      "prompt_sha256": "0a6d1f35f764eeea0d914bd3ea3a3ecff0b6cc1c54516b198ee2400a24e9795e",
+      "source_chars": 3179,
+      "status": "fail"
+    },
+    {
+      "attempt": 2,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        },
+        {
+          "attempt": 2,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "rs_bpftime_opensnoop_ringbuf_filter_ref_001",
+      "diagnostic_chars": 15560,
+      "failure_stage": "verifier_load",
+      "mode": "raw",
+      "model": "qwen2.5-3b-instruct-q4_k_m",
+      "oracle_returncode": 1,
+      "prompt_chars": 17798,
+      "prompt_sha256": "62b8cb4dbc6e66657f093fc268e06a69eec970a49488be65e6be626541bf47f3",
+      "source_chars": 1915,
+      "status": "fail"
+    },
+    {
+      "attempt": 2,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        },
+        {
+          "attempt": 2,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "rs_bpftime_opensnoop_stack_wrong_prog_type_001",
+      "diagnostic_chars": 7072,
+      "failure_stage": "verifier_load",
+      "mode": "raw",
+      "model": "qwen2.5-3b-instruct-q4_k_m",
+      "oracle_returncode": 1,
+      "prompt_chars": 8796,
+      "prompt_sha256": "8fe537d66e9a50d176a8ac4b2f68ac36c83f0ee4b0ba46d57f94e613545d2f81",
+      "source_chars": 1401,
+      "status": "fail"
+    },
+    {
+      "attempt": 2,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        },
+        {
+          "attempt": 2,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "rs_bpftime_sslsniff_perf_copy_len_001",
+      "diagnostic_chars": 17129,
+      "failure_stage": "verifier_load",
+      "mode": "raw",
+      "model": "qwen2.5-3b-instruct-q4_k_m",
+      "oracle_returncode": 1,
+      "prompt_chars": 20092,
+      "prompt_sha256": "5f57cf27f320b2efaef1a85eca70c653b45951d43dd484eb1ed963b109235f4e",
+      "source_chars": 2640,
+      "status": "fail"
+    },
+    {
+      "attempt": 2,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        },
+        {
+          "attempt": 2,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "rs_cilium_change_proto_stale_001",
+      "diagnostic_chars": 6742,
+      "failure_stage": "verifier_load",
+      "mode": "raw",
+      "model": "qwen2.5-3b-instruct-q4_k_m",
+      "oracle_returncode": 1,
+      "prompt_chars": 8103,
+      "prompt_sha256": "e883b66cee7c670ee0763794b300ffe281e7db8c4ca608d50372bac2226308b7",
+      "source_chars": 1038,
+      "status": "fail"
+    },
+    {
+      "attempt": 2,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        },
+        {
+          "attempt": 2,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "rs_cilium_fib_lookup_param_len_001",
+      "diagnostic_chars": 14437,
+      "failure_stage": "verifier_load",
+      "mode": "raw",
+      "model": "qwen2.5-3b-instruct-q4_k_m",
+      "oracle_returncode": 1,
+      "prompt_chars": 16017,
+      "prompt_sha256": "b9ed8b0c3335ff5ba4e21c669ffec3696b74ad6cb61e8cd27deda379433d298f",
+      "source_chars": 1257,
+      "status": "fail"
+    },
+    {
+      "attempt": 2,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        },
+        {
+          "attempt": 2,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "rs_cilium_ip_options_traceid_payload_bound_001",
+      "diagnostic_chars": 21611,
+      "failure_stage": "verifier_load",
+      "mode": "raw",
+      "model": "qwen2.5-3b-instruct-q4_k_m",
+      "oracle_returncode": 1,
+      "prompt_chars": 24814,
+      "prompt_sha256": "6672961da2a8f8401ca476d033ce289e2cc3baa3a3f87314827093078f94fa3b",
+      "source_chars": 2880,
+      "status": "fail"
+    },
+    {
+      "attempt": 2,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        },
+        {
+          "attempt": 2,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "rs_cilium_ipv6_exthdr_l4_offset_001",
+      "diagnostic_chars": 7780,
+      "failure_stage": "verifier_load",
+      "mode": "raw",
+      "model": "qwen2.5-3b-instruct-q4_k_m",
+      "oracle_returncode": 1,
+      "prompt_chars": 10118,
+      "prompt_sha256": "5645dd033d5e742432b66a6c202a84de63f4a37534a22090c6fd39b6cbc634c8",
+      "source_chars": 2015,
+      "status": "fail"
+    },
+    {
+      "attempt": 2,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        },
+        {
+          "attempt": 2,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "rs_cilium_mcast_igmpv3_grec_bound_001",
+      "diagnostic_chars": 9716,
+      "failure_stage": "verifier_load",
+      "mode": "raw",
+      "model": "qwen2.5-3b-instruct-q4_k_m",
+      "oracle_returncode": 1,
+      "prompt_chars": 12326,
+      "prompt_sha256": "aeb5d3f2b5acf4c0688f053603a06384f3e600eb7c85d9906bedce279717c54a",
+      "source_chars": 2287,
+      "status": "fail"
+    },
+    {
+      "attempt": 2,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        },
+        {
+          "attempt": 2,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "rs_cilium_proxy_skc_assign_ref_leak_001",
+      "diagnostic_chars": 8685,
+      "failure_stage": "verifier_load",
+      "mode": "raw",
+      "model": "qwen2.5-3b-instruct-q4_k_m",
+      "oracle_returncode": 1,
+      "prompt_chars": 9948,
+      "prompt_sha256": "02e6018c102a14e46bad872c371eb40bd785c15febed0b7f741196be909e73c7",
+      "source_chars": 940,
+      "status": "fail"
+    },
+    {
+      "attempt": 2,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        },
+        {
+          "attempt": 2,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "rs_cilium_srv6_segment_bound_001",
+      "diagnostic_chars": 6719,
+      "failure_stage": "verifier_load",
+      "mode": "raw",
+      "model": "qwen2.5-3b-instruct-q4_k_m",
+      "oracle_returncode": 1,
+      "prompt_chars": 9049,
+      "prompt_sha256": "8fc2a534902113e6f5bbd27db3a3eeb8968581c18502c43fd8fa8dec2c963362",
+      "source_chars": 2007,
+      "status": "fail"
+    },
+    {
+      "attempt": 2,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        },
+        {
+          "attempt": 2,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "rs_datrail_browsertrace_start_ns_merge_001",
+      "diagnostic_chars": 21811,
+      "failure_stage": "verifier_load",
+      "mode": "raw",
+      "model": "qwen2.5-3b-instruct-q4_k_m",
+      "oracle_returncode": 1,
+      "prompt_chars": 24062,
+      "prompt_sha256": "3572d2ab022914dfd482ab32468495c9eb96e98777427f85f28d6384953cefd4",
+      "source_chars": 1928,
+      "status": "fail"
+    },
+    {
+      "attempt": 2,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        },
+        {
+          "attempt": 2,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "rs_datrail_cgroup_filter_key_width_001",
+      "diagnostic_chars": 9484,
+      "failure_stage": "verifier_load",
+      "mode": "raw",
+      "model": "qwen2.5-3b-instruct-q4_k_m",
+      "oracle_returncode": 1,
+      "prompt_chars": 11605,
+      "prompt_sha256": "0be39a0be27f3ca76ed771866165be39356d6283c25a8b5b5022abd33460d1f0",
+      "source_chars": 1798,
+      "status": "fail"
+    },
+    {
+      "attempt": 2,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        },
+        {
+          "attempt": 2,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "rs_eunomia_energy_runtime_merge_001",
+      "diagnostic_chars": 18161,
+      "failure_stage": "verifier_load",
+      "mode": "raw",
+      "model": "qwen2.5-3b-instruct-q4_k_m",
+      "oracle_returncode": 1,
+      "prompt_chars": 22440,
+      "prompt_sha256": "967ebd94a8af605123405b0ad9db14e6b78fe4d8c5a4cb9ef9ffaf024f2f3b16",
+      "source_chars": 3956,
+      "status": "fail"
+    },
+    {
+      "attempt": 1,
+      "attempts": [],
+      "case": "rs_eunomia_http_doff_copy_bound_001",
+      "diagnostic_chars": 71112,
+      "failure_stage": "model_call",
+      "mode": "raw",
+      "model": "qwen2.5-3b-instruct-q4_k_m",
+      "prompt_chars": 74912,
+      "prompt_sha256": "ff45f991b440360a77af5ac5146e6c8e7c28afc994934abd10ff24d98295e097",
+      "source_chars": 3477,
+      "status": "model_error"
+    },
+    {
+      "attempt": 2,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        },
+        {
+          "attempt": 2,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "rs_eunomia_wq_container_map_001",
+      "diagnostic_chars": 14412,
+      "failure_stage": "verifier_load",
+      "mode": "raw",
+      "model": "qwen2.5-3b-instruct-q4_k_m",
+      "oracle_returncode": 1,
+      "prompt_chars": 16944,
+      "prompt_sha256": "0f3a4564044ca51554f4f9fade531b37f31df4b0f078cef05075f6ce39f76a49",
+      "source_chars": 2209,
+      "status": "fail"
+    },
+    {
+      "attempt": 1,
+      "attempts": [],
+      "case": "rs_nccl_cpu_observer_slot_merge_001",
+      "diagnostic_chars": 63212,
+      "failure_stage": "model_call",
+      "mode": "raw",
+      "model": "qwen2.5-3b-instruct-q4_k_m",
+      "prompt_chars": 67406,
+      "prompt_sha256": "baf0d4bb2a3e85d160db4a6889903ae636c7a87acf3a35a5fa508917fbaca319",
+      "source_chars": 3871,
+      "status": "model_error"
+    },
+    {
+      "attempt": 2,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        },
+        {
+          "attempt": 2,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "rs_tetragon_data_event_size_guard_001",
+      "diagnostic_chars": 7256,
+      "failure_stage": "verifier_load",
+      "mode": "raw",
+      "model": "qwen2.5-3b-instruct-q4_k_m",
+      "oracle_returncode": 1,
+      "prompt_chars": 9835,
+      "prompt_sha256": "4532c63eda0c4c6cc52a66017c62581f2e647fb770073e15eccc451d75fc821e",
+      "source_chars": 2256,
+      "status": "fail"
+    },
+    {
+      "attempt": 2,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "rs_tutorial_dynptr_tc_ref_leak_001",
+      "diagnostic_chars": 42904,
+      "failure_stage": "model_call",
+      "mode": "raw",
+      "model": "qwen2.5-3b-instruct-q4_k_m",
+      "prompt_chars": 46742,
+      "prompt_sha256": "d1e201e5004a92e2c922aec1728bbfb5f964082c8d6f8800e75b6ae206d839e3",
+      "source_chars": 3515,
+      "status": "model_error"
+    },
+    {
+      "attempt": 2,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        },
+        {
+          "attempt": 2,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "rs_tutorial_memleak_free_info_merge_001",
+      "diagnostic_chars": 10022,
+      "failure_stage": "verifier_load",
+      "mode": "raw",
+      "model": "qwen2.5-3b-instruct-q4_k_m",
+      "oracle_returncode": 1,
+      "prompt_chars": 12027,
+      "prompt_sha256": "4c04c101bf41bf59c40dd680ddecf655914741d912314fc6b8780667af53dca3",
+      "source_chars": 1682,
+      "status": "fail"
+    },
+    {
+      "attempt": 2,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        },
+        {
+          "attempt": 2,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "rs_tutorial_pidhide_tailcall_map_type_001",
+      "diagnostic_chars": 4279,
+      "failure_stage": "verifier_load",
+      "mode": "raw",
+      "model": "qwen2.5-3b-instruct-q4_k_m",
+      "oracle_returncode": 1,
+      "prompt_chars": 5463,
+      "prompt_sha256": "2039b5f7cb9225f1506814943dd48e4ac0caf4144b494543440098144bd118c8",
+      "source_chars": 861,
+      "status": "fail"
+    },
+    {
+      "attempt": 2,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        },
+        {
+          "attempt": 2,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "rs_tutorial_user_ringbuf_dynptr_merge_001",
+      "diagnostic_chars": 11031,
+      "failure_stage": "verifier_load",
+      "mode": "raw",
+      "model": "qwen2.5-3b-instruct-q4_k_m",
+      "oracle_returncode": 1,
+      "prompt_chars": 12755,
+      "prompt_sha256": "ad3693c9dfa9376c2eec39642e7310a6d28c53f9f63d7d9368dec6f139607e0d",
+      "source_chars": 1401,
+      "status": "fail"
+    },
+    {
+      "attempt": 2,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        },
+        {
+          "attempt": 2,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "rs_xdp_tools_ihl_macro_wrong_base_001",
+      "diagnostic_chars": 7337,
+      "failure_stage": "verifier_load",
+      "mode": "raw",
+      "model": "qwen2.5-3b-instruct-q4_k_m",
+      "oracle_returncode": 1,
+      "prompt_chars": 9068,
+      "prompt_sha256": "4032e8942f158abbab847146f30c6557eb36c2f9c8634e48208422c962148d11",
+      "source_chars": 1408,
+      "status": "fail"
+    },
+    {
+      "attempt": 2,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        },
+        {
+          "attempt": 2,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "rs_xdp_tools_load_bytes_stack_len_001",
+      "diagnostic_chars": 2430,
+      "failure_stage": "verifier_load",
+      "mode": "raw",
+      "model": "qwen2.5-3b-instruct-q4_k_m",
+      "oracle_returncode": 1,
+      "prompt_chars": 3527,
+      "prompt_sha256": "35279cacb019117e2c55e0caddd70791b92b4862e0e5505e6078009f9ca3b5fd",
+      "source_chars": 774,
+      "status": "fail"
+    },
+    {
+      "attempt": 2,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        },
+        {
+          "attempt": 2,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "rs_xdp_tools_xdpdump_perf_map_type_001",
+      "diagnostic_chars": 8195,
+      "failure_stage": "verifier_load",
+      "mode": "raw",
+      "model": "qwen2.5-3b-instruct-q4_k_m",
+      "oracle_returncode": 1,
+      "prompt_chars": 10070,
+      "prompt_sha256": "8cd7182c0ecb245b3708ca02814fdafd3a347604cfd854b92eb50f050a18bce4",
+      "source_chars": 1552,
+      "status": "fail"
+    },
+    {
+      "attempt": 2,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        },
+        {
+          "attempt": 2,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "rs_xdp_tools_xdpfilt_udp_macro_bound_001",
+      "diagnostic_chars": 7391,
+      "failure_stage": "verifier_load",
+      "mode": "raw",
+      "model": "qwen2.5-3b-instruct-q4_k_m",
+      "oracle_returncode": 1,
+      "prompt_chars": 9914,
+      "prompt_sha256": "eb3ff7a40dc6b0567500fa1dc6efa0cc2933ee9e66034a0f80c500c7aa80d326",
+      "source_chars": 2200,
+      "status": "fail"
+    },
+    {
+      "attempt": 2,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        },
+        {
+          "attempt": 2,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "rs_xdp_tools_xdpsock_redirect_map_type_001",
+      "diagnostic_chars": 5707,
+      "failure_stage": "verifier_load",
+      "mode": "raw",
+      "model": "qwen2.5-3b-instruct-q4_k_m",
+      "oracle_returncode": 1,
+      "prompt_chars": 6864,
+      "prompt_sha256": "f6cdd9d2d0491cd5c577419cd6b75f7da040485fe474438298807a280915a44c",
+      "source_chars": 834,
+      "status": "fail"
+    },
+    {
+      "attempt": 2,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        },
+        {
+          "attempt": 2,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "subprog_adjust_tail_stale_001",
+      "diagnostic_chars": 5510,
+      "failure_stage": "verifier_load",
+      "mode": "raw",
+      "model": "qwen2.5-3b-instruct-q4_k_m",
+      "oracle_returncode": 1,
+      "prompt_chars": 6621,
+      "prompt_sha256": "6a0e36260a67c080f8ea060cff4216e245728c3229589647215cefa2b2472d58",
+      "source_chars": 788,
+      "status": "fail"
+    },
+    {
+      "attempt": 2,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        },
+        {
+          "attempt": 2,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "subprog_map_value_null_001",
+      "diagnostic_chars": 6992,
+      "failure_stage": "verifier_load",
+      "mode": "raw",
+      "model": "qwen2.5-3b-instruct-q4_k_m",
+      "oracle_returncode": 1,
+      "prompt_chars": 8602,
+      "prompt_sha256": "a88f4d7fea3f7b22a65264f14665b17d91efbdd09c8df8729bd5da0c93b73c23",
+      "source_chars": 1287,
+      "status": "fail"
+    },
+    {
+      "attempt": 2,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        },
+        {
+          "attempt": 2,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "xdp_adjust_head_map_value_001",
+      "diagnostic_chars": 8259,
+      "failure_stage": "verifier_load",
+      "mode": "raw",
+      "model": "qwen2.5-3b-instruct-q4_k_m",
+      "oracle_returncode": 1,
+      "prompt_chars": 9905,
+      "prompt_sha256": "f5561225b4e4bf2db0098e3c90e5a502c1143d2da265bf6f8a6ef6948d7de1ac",
+      "source_chars": 1323,
+      "status": "fail"
+    },
+    {
+      "attempt": 2,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        },
+        {
+          "attempt": 2,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "xdp_adjust_head_ringbuf_001",
+      "diagnostic_chars": 8397,
+      "failure_stage": "verifier_load",
+      "mode": "raw",
+      "model": "qwen2.5-3b-instruct-q4_k_m",
+      "oracle_returncode": 1,
+      "prompt_chars": 10012,
+      "prompt_sha256": "4d634cf6d5f871d96328c5aab625ddf1edcc3df008290c3a73ce6556c4825b2c",
+      "source_chars": 1292,
+      "status": "fail"
+    },
+    {
+      "attempt": 2,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        },
+        {
+          "attempt": 2,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "xdp_adjust_head_stale_001",
+      "diagnostic_chars": 6408,
+      "failure_stage": "verifier_load",
+      "mode": "raw",
+      "model": "qwen2.5-3b-instruct-q4_k_m",
+      "oracle_returncode": 1,
+      "prompt_chars": 8244,
+      "prompt_sha256": "978b78e854a5c1b49dc2069589f5d9c684fbf4bdb57478b38baa18c733e47294",
+      "source_chars": 1513,
+      "status": "fail"
+    },
+    {
+      "attempt": 2,
+      "attempts": [
+        {
+          "attempt": 1,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        },
+        {
+          "attempt": 2,
+          "failure_stage": "verifier_load",
+          "oracle_returncode": 1
+        }
+      ],
+      "case": "xdp_adjust_tail_stale_001",
+      "diagnostic_chars": 6227,
+      "failure_stage": "verifier_load",
+      "mode": "raw",
+      "model": "qwen2.5-3b-instruct-q4_k_m",
+      "oracle_returncode": 1,
+      "prompt_chars": 7852,
+      "prompt_sha256": "b17e6984cc44288d3f46739d0840416fa86f0d5d32ccbe474ffa9fdad378bf6a",
+      "source_chars": 1302,
+      "status": "fail"
+    }
+  ],
+  "run_metadata": {
+    "case_selection": {
+      "case_overrides": [],
+      "split": {
+        "allow_empty": false,
+        "case_count": 75,
+        "expected_count": 75,
+        "path": "/home/yunwei37/workspace/ebpf-verifier-agent/bpfix-bench/splits/main.txt",
+        "sha256": "fe1c7329c41c5a94d84ab6077539640082404d0cdef6bda0796440ec1e99d5a8"
+      }
+    },
+    "generated_at": "2026-06-23T21:35:07.803248+00:00",
+    "git": {
+      "commit": "e03e0248c8ca44d29995f0afa4c355ae51dbdbb2",
+      "dirty": false
+    },
+    "llm": {
+      "api_key_env": "LLAMA_API_KEY",
+      "base_url": "http://127.0.0.1:18081/v1",
+      "extra_body": null,
+      "llama_cpp": {
+        "commit": "57819b8d4b39d893408e51520dff3d47d1ebb757",
+        "path": "/home/yunwei37/workspace/llama.cpp-latest"
+      },
+      "max_tokens": 8192,
+      "model": "qwen2.5-3b-instruct-q4_k_m",
+      "model_file": {
+        "exists": true,
+        "path": "/home/yunwei37/workspace/llama.cpp-latest/models/qwen2.5-3b-instruct-q4_k_m.gguf",
+        "sha256": "626b4a6678b86442240e33df819e00132d3ba7dddfe1cdc4fbb18e0a9615c62d",
+        "size_bytes": 2104932768
+      },
+      "server": {
+        "models": {
+          "data": [
+            {
+              "aliases": [],
+              "created": 1782250507,
+              "id": "qwen2.5-3b-instruct-q4_k_m.gguf",
+              "meta": {
+                "n_ctx_train": 32768,
+                "n_embd": 2048,
+                "n_params": 3397103616,
+                "n_vocab": 151936,
+                "size": 2098976768,
+                "vocab_type": 2
+              },
+              "object": "model",
+              "owned_by": "llamacpp",
+              "tags": []
+            }
+          ],
+          "models": [
+            {
+              "capabilities": [
+                "completion"
+              ],
+              "description": "",
+              "details": {
+                "families": [
+                  ""
+                ],
+                "family": "",
+                "format": "gguf",
+                "parameter_size": "",
+                "parent_model": "",
+                "quantization_level": ""
+              },
+              "digest": "",
+              "model": "qwen2.5-3b-instruct-q4_k_m.gguf",
+              "modified_at": "",
+              "name": "qwen2.5-3b-instruct-q4_k_m.gguf",
+              "parameters": "",
+              "size": "",
+              "tags": [
+                ""
+              ],
+              "type": "model"
+            }
+          ],
+          "object": "list"
+        },
+        "reachable": true
+      },
+      "temperature": 0.0,
+      "timeout_sec": 180.0
+    },
+    "runner": {
+      "argv": [
+        "bpfix-bench/tools/run_suite.py",
+        "--split",
+        "bpfix-bench/splits/main.txt",
+        "--expected-count",
+        "75",
+        "--mode",
+        "raw",
+        "--repair-attempts",
+        "2",
+        "--base-url",
+        "http://127.0.0.1:18081/v1",
+        "--model",
+        "qwen2.5-3b-instruct-q4_k_m",
+        "--model-path",
+        "/home/yunwei37/workspace/llama.cpp-latest/models/qwen2.5-3b-instruct-q4_k_m.gguf",
+        "--model-sha256",
+        "626b4a6678b86442240e33df819e00132d3ba7dddfe1cdc4fbb18e0a9615c62d",
+        "--llama-cpp-dir",
+        "/home/yunwei37/workspace/llama.cpp-latest",
+        "--results-dir",
+        "bpfix-bench/results/raw-main-qwen25-3b-retry2-current"
+      ]
+    },
+    "source_summary_path": "bpfix-bench/results/raw-main-qwen25-3b-retry2-current/20260623T213507803113Z-pid358630/raw/summary.json",
+    "toolchain": {
+      "bpftool": [
+        "bpftool v7.7.0",
+        "using libbpf v1.7",
+        "features: llvm, skeletons"
+      ],
+      "clang": "Ubuntu clang version 18.1.3 (1ubuntu1)",
+      "kernel": "Linux lab 6.15.11-061511-generic #202508201748 SMP PREEMPT_DYNAMIC Wed Aug 20 20:23:19 UTC 2025 x86_64 x86_64 x86_64 GNU/Linux",
+      "llvm_objdump": "Ubuntu LLVM version 18.1.3"
+    }
+  },
+  "total": 75
+}
