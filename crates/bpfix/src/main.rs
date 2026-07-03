@@ -1,4 +1,5 @@
 use std::path::{Path, PathBuf};
+use std::process::{Command, Stdio};
 
 #[cfg(feature = "object-analysis")]
 use anyhow::Context;
@@ -29,6 +30,9 @@ struct Cli {
     /// Experimental compiled BPF object metadata. Requires --features object-analysis.
     #[arg(long)]
     object: Option<PathBuf>,
+    /// Check local tools used for replay, object metadata, and verifier-oracle workflows.
+    #[arg(long)]
+    doctor: bool,
     /// Exit with code 2 after rendering if the input cannot be diagnosed.
     #[arg(long)]
     fail_on_unsupported: bool,
@@ -36,6 +40,14 @@ struct Cli {
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
+    if cli.doctor {
+        if cli.input.is_some() || cli.object.is_some() || cli.fail_on_unsupported {
+            anyhow::bail!("--doctor does not take a log input, --object, or --fail-on-unsupported");
+        }
+        print!("{}", render_doctor());
+        return Ok(());
+    }
+
     let loaded = load_input(cli.input.as_deref())?;
     let (object_programs, object_analysis_error) = object_metadata(cli.object.as_deref(), &loaded);
     let diagnostic = build_diagnostic(
@@ -52,6 +64,113 @@ fn main() -> Result<()> {
     }
 
     Ok(())
+}
+
+fn render_doctor() -> String {
+    let mut out = String::new();
+    out.push_str("bpfix doctor\n");
+    out.push_str(&format!("version: {}\n", env!("CARGO_PKG_VERSION")));
+    out.push_str("log-only diagnostics: ok (use `bpfix LOG`, `bpfix -`, or pipe stdin)\n");
+    out.push_str("\nlocal environment:\n");
+
+    push_check(
+        &mut out,
+        "object-analysis feature",
+        cfg!(feature = "object-analysis"),
+        if cfg!(feature = "object-analysis") {
+            "enabled; --object can attach compiled-object metadata"
+        } else {
+            "disabled; rebuild with `--features object-analysis` to enrich --object diagnostics"
+        },
+    );
+    push_command_check(
+        &mut out,
+        "clang",
+        "clang",
+        &["--version"],
+        "required to rebuild BPF C sources",
+    );
+    push_command_check(
+        &mut out,
+        "bpftool",
+        "bpftool",
+        &["version"],
+        "required to load programs and capture verifier logs",
+    );
+    push_command_check(
+        &mut out,
+        "llvm-objdump",
+        "llvm-objdump",
+        &["--version"],
+        "useful for object inspection and fixture debugging",
+    );
+    push_path_check(
+        &mut out,
+        "kernel BTF",
+        Path::new("/sys/kernel/btf/vmlinux"),
+        "required by many CO-RE and bpftool load workflows",
+    );
+    push_sudo_check(&mut out);
+    out.push_str("\nnotes:\n");
+    out.push_str("- Missing replay/load tools do not block plain log diagnostics.\n");
+    out.push_str("- They matter when rebuilding BPF programs, loading through the kernel verifier, or running bpfix-bench oracles.\n");
+    out
+}
+
+fn push_check(out: &mut String, name: &str, ok: bool, detail: &str) {
+    let status = if ok { "ok" } else { "warn" };
+    out.push_str(&format!("  {status}: {name}: {detail}\n"));
+}
+
+fn push_path_check(out: &mut String, name: &str, path: &Path, detail: &str) {
+    let status = if path.is_file() { "ok" } else { "warn" };
+    let suffix = if path.is_file() { detail } else { "not found" };
+    out.push_str(&format!(
+        "  {status}: {name}: {} ({suffix})\n",
+        path.display()
+    ));
+}
+
+fn push_command_check(out: &mut String, name: &str, program: &str, args: &[&str], detail: &str) {
+    match command_first_line(program, args) {
+        Some(line) => out.push_str(&format!("  ok: {name}: {line}\n")),
+        None => out.push_str(&format!(
+            "  warn: {name}: not found or not runnable ({detail})\n"
+        )),
+    }
+}
+
+fn command_first_line(program: &str, args: &[&str]) -> Option<String> {
+    let output = Command::new(program).args(args).output().ok()?;
+    if !output.status.success() {
+        return None;
+    }
+    let text = String::from_utf8_lossy(&output.stdout);
+    text.lines()
+        .find(|line| !line.trim().is_empty())
+        .map(|line| line.trim().to_string())
+}
+
+fn push_sudo_check(out: &mut String) {
+    match Command::new("sudo")
+        .args(["-n", "true"])
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status()
+    {
+        Ok(status) if status.success() => {
+            out.push_str(
+                "  ok: sudo -n true: non-interactive sudo is available for load/replay workflows\n",
+            );
+        }
+        Ok(_) => {
+            out.push_str("  warn: sudo -n true: unavailable without a password; log-only diagnostics still work\n");
+        }
+        Err(_) => {
+            out.push_str("  warn: sudo: not found; log-only diagnostics still work\n");
+        }
+    }
 }
 
 fn object_metadata(

@@ -58,6 +58,8 @@ bpfix [OPTIONS] [LOG]
 public options are:
 
 - `--object <OBJECT>`: attach optional compiled-object metadata.
+- `--doctor`: check local tools used by replay, object metadata, and
+  verifier-oracle workflows without reading a log.
 - `--fail-on-unsupported`: print the diagnostic, then exit 2 for unsupported
   inputs.
 - `--help` and `--version`.

@@ -84,6 +84,33 @@ fn path_input_renders_plain_text_diagnostic() {
 }
 
 #[test]
+fn doctor_reports_local_environment_without_reading_input() {
+    let output = Command::new(env!("CARGO_BIN_EXE_bpfix"))
+        .arg("--doctor")
+        .output()
+        .expect("bpfix --doctor should execute");
+    assert!(output.status.success(), "{}", stderr(&output));
+
+    let text = stdout(&output);
+    assert!(text.contains("bpfix doctor"));
+    assert!(text.contains("log-only diagnostics: ok"));
+    assert!(text.contains("object-analysis feature"));
+    assert!(text.contains("bpftool"));
+    assert!(!text.trim_start().starts_with('{'));
+}
+
+#[test]
+fn doctor_rejects_log_input() {
+    let output = Command::new(env!("CARGO_BIN_EXE_bpfix"))
+        .args(["--doctor", "verifier.log"])
+        .output()
+        .expect("bpfix --doctor should execute");
+    assert!(!output.status.success());
+
+    assert!(stderr(&output).contains("--doctor does not take a log input"));
+}
+
+#[test]
 fn format_flag_is_not_a_public_interface() {
     let output = run_stdin(SCALAR_REJECT_LOG, &["-", "--format", "json"]);
     assert!(!output.status.success());
@@ -120,5 +147,6 @@ fn help_describes_plain_text_oriented_inputs() {
     assert!(help.contains("Reads stdin when omitted or '-'"));
     assert!(help.contains("Verifier, build, bpftool, libbpf, Aya, or BCC log"));
     assert!(help.contains("Experimental compiled BPF object metadata"));
+    assert!(help.contains("--doctor"));
     assert!(!help.contains("--format"));
 }

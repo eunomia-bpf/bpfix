@@ -114,7 +114,7 @@ bpfix [OPTIONS] [LOG]
 
 `LOG` can be a verifier, build, `bpftool`, libbpf, Aya, or BCC log. When `LOG`
 is omitted or `-`, BPFix reads stdin. Positional input and stdin are always log
-text. Supported public options are `--object <OBJECT>`,
+text. Supported public options are `--object <OBJECT>`, `--doctor`,
 `--fail-on-unsupported`, `--help`, and `--version`. The output is plain text;
 there is no stable JSON output mode in 0.1.x.
 
@@ -150,6 +150,12 @@ bpfix --object examples/bpftool/quick-start.bpf.o verifier.log
 BPFix does not need `case.yaml` for normal use. Empirical corpus YAML records are
 evaluation fixtures; use the evaluation scripts when measuring the bundled
 corpus.
+
+Check the local rebuild/load environment without reading a log:
+
+```bash
+bpfix --doctor
+```
 
 The full user workflow is documented in `docs/user-guide.md`. More copyable
 integration snippets live in `examples/`.
