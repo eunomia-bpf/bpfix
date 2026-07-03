@@ -385,6 +385,23 @@ def oracle_retry_context(completed: subprocess.CompletedProcess[str], candidate_
     return "\n".join(chunks)
 
 
+def extract_retry_context(response: str, error: ValueError) -> str:
+    return "\n".join(
+        [
+            "Previous repair attempt did not return a complete replacement C source file.",
+            f"Extraction error: {error}",
+            "",
+            "Previous model response:",
+            "```text",
+            truncate_middle(response, 20000),
+            "```",
+            "",
+            "Try again. Return only one complete replacement C source file in a fenced ```c block.",
+            "Do not nest code fences inside the C code block.",
+        ]
+    )
+
+
 def append_retry_context(prompt: str, retry_context: str | None) -> str:
     if retry_context is None:
         return prompt
@@ -727,17 +744,26 @@ def main(argv: list[str] | None = None) -> int:
                         "status": "model_error",
                         "failure_stage": "extract_source",
                         "error": str(exc),
+                        "prompt_sha256": sha256_text(prompt),
+                        "prompt_chars": len(prompt),
                     }
+                    (attempt_out / "result.json").write_text(
+                        json.dumps(attempt_result, indent=2, sort_keys=True) + "\n",
+                        encoding="utf-8",
+                    )
                     attempts.append(attempt_result)
-                    final_result = {
-                        "case": case_dir.name,
-                        **attempt_result,
-                        "attempts": attempts,
-                        "mode": args.mode,
-                        "model": args.model,
-                        **prompt_info,
-                    }
-                    break
+                    if attempt == args.repair_attempts:
+                        final_result = {
+                            "case": case_dir.name,
+                            **attempt_result,
+                            "attempts": attempts,
+                            "mode": args.mode,
+                            "model": args.model,
+                            **prompt_info,
+                        }
+                        break
+                    retry_context = extract_retry_context(response, exc)
+                    continue
 
                 completed = run_oracle(case_dir, candidate_path, attempt_out / "work")
                 attempt_result = {

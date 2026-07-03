@@ -85,7 +85,8 @@ python3 bpfix-bench/tools/run_suite.py \
 ```
 
 Allow one repair retry without BPFix. The second prompt appends the previous
-candidate source and the compile/load/verifier/oracle failure context:
+candidate source or malformed model response plus the
+compile/load/verifier/oracle failure context:
 
 ```bash
 python3 bpfix-bench/tools/run_suite.py \
