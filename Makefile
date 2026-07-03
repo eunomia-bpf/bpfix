@@ -37,6 +37,7 @@ help:
 	@echo "  make bpfix-bench-smoke  Validate bpfix-bench fixtures and buggy rejects"
 	@echo "  make bpfix-bench-main-gate Run the frozen main75 bpfix-bench gate"
 	@echo "  make release-check     Run packaging, example, empirical, and object-analysis gates"
+	@echo "  make paper-arxiv       Build and validate paper/arxiv-submission.tar.gz"
 	@echo ""
 	@echo "Utilities"
 	@echo "  make clean             Remove generated Rust, empirical, and benchmark artifacts"
@@ -98,6 +99,11 @@ bpfix-bench-main-gate:
 release-check:
 	@echo "[release-check] Running release readiness checks..."
 	cd $(CURDIR) && scripts/check-release.sh
+
+.PHONY: paper-arxiv
+paper-arxiv:
+	@echo "[paper-arxiv] Building arXiv package..."
+	$(MAKE) -C $(CURDIR)/paper docker-arxiv
 
 .PHONY: clean
 clean:
