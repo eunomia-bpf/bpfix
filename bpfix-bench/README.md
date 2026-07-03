@@ -97,7 +97,21 @@ python3 bpfix-bench/tools/run_suite.py \
   --model Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M
 ```
 
-Available modes are `source-only`, `raw`, `trimmed-raw`, and `bpfix`.
+Test the checked-in repair skill without BPFix diagnostics. This mode gives the
+model `buggy.bpf.c`, the raw `verifier.log`, and the guidance in
+`skills/ebpf-verifier-repair/`:
+
+```bash
+python3 bpfix-bench/tools/run_suite.py \
+  --split bpfix-bench/splits/main.txt \
+  --expected-count 75 \
+  --mode skills \
+  --repair-attempts 2 \
+  --base-url http://127.0.0.1:18080/v1 \
+  --model Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M
+```
+
+Available modes are `source-only`, `raw`, `trimmed-raw`, `bpfix`, and `skills`.
 
 The published main75 results are documented in
 `docs/evaluation/bpfix-bench-llm-repair-eval.md` and backed by tracked compact

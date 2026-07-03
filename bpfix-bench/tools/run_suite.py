@@ -20,7 +20,12 @@ from typing import Any
 
 DEFAULT_BASE_URL = "http://127.0.0.1:18080/v1"
 DEFAULT_MODEL = "Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M"
-MODES = ["source-only", "raw", "trimmed-raw", "bpfix"]
+MODES = ["source-only", "raw", "trimmed-raw", "bpfix", "skills"]
+SKILL_REPAIR_DIR = Path("skills") / "ebpf-verifier-repair"
+SKILL_FILES = [
+    SKILL_REPAIR_DIR / "SKILL.md",
+    SKILL_REPAIR_DIR / "references" / "repair-patterns.md",
+]
 
 
 def repo_root() -> Path:
@@ -78,6 +83,51 @@ def sha256_file(path: Path) -> str:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def markdown_section(text: str, heading: str) -> str:
+    match = re.search(rf"^{re.escape(heading)}\n(?P<body>.*?)(?=^## |\Z)", text, flags=re.DOTALL | re.MULTILINE)
+    if not match:
+        raise ValueError(f"missing markdown section: {heading}")
+    return match.group("body").strip()
+
+
+def markdown_from_heading(text: str, heading: str) -> str:
+    match = re.search(rf"^{re.escape(heading)}\n(?P<body>.*)", text, flags=re.DOTALL | re.MULTILINE)
+    if not match:
+        raise ValueError(f"missing markdown heading: {heading}")
+    return f"{heading}\n{match.group('body').strip()}"
+
+
+def skill_file_metadata(root: Path) -> list[dict[str, object]]:
+    files: list[dict[str, object]] = []
+    for relative in SKILL_FILES:
+        path = root / relative
+        files.append(
+            {
+                "path": str(relative),
+                "sha256": sha256_file(path) if path.exists() else None,
+                "exists": path.exists(),
+            }
+        )
+    return files
+
+
+def skills_prompt_guidance(root: Path) -> str:
+    skill = (root / SKILL_FILES[0]).read_text(encoding="utf-8")
+    patterns = (root / SKILL_FILES[1]).read_text(encoding="utf-8")
+    source_rules = markdown_section(skill, "## Source Editing Rules")
+    repair_patterns = markdown_from_heading(patterns, "## Bounds")
+    return f"""Repair verifier failures as missing proof obligations, not as string-matched terminal errors.
+Make the smallest verifier-visible source change that preserves program semantics.
+Do not use a BPFix diagnostic in this prompt mode; use only the source, raw verifier log, and these rules.
+
+Source Editing Rules
+{source_rules}
+
+Repair Patterns
+{repair_patterns}
+"""
 
 
 def trim_verifier_log(log: str) -> str:
@@ -182,6 +232,10 @@ def run_metadata(args: argparse.Namespace, root: Path) -> dict[str, object]:
             "split": split_metadata(args),
             "case_overrides": args.case or [],
         },
+        "prompt_mode": {
+            "mode": args.mode,
+            "skill_files": skill_file_metadata(root) if args.mode == "skills" else [],
+        },
     }
 
 
@@ -199,6 +253,15 @@ def diagnostic_input(case_dir: Path, mode: str) -> tuple[str | None, str, str]:
             (case_dir / "diagnostic.txt").read_text(encoding="utf-8"),
             "",
         )
+    if mode == "skills":
+        return (
+            "raw verifier log",
+            (case_dir / "verifier.log").read_text(encoding="utf-8"),
+            (
+                "Use the eBPF verifier repair skill guidance below. "
+                "Do not use or infer from a BPFix plain-text diagnostic."
+            ),
+        )
     raise ValueError(f"unknown mode: {mode}")
 
 
@@ -215,6 +278,14 @@ def build_prompt(case_dir: Path, mode: str) -> str:
 {diagnostic}
 ```
 """
+    skill_block = ""
+    if mode == "skills":
+        skill_block = f"""
+Repair skill guidance:
+```text
+{skills_prompt_guidance(repo_root())}
+```
+"""
 
     return f"""You are fixing one eBPF verifier rejection.
 
@@ -222,6 +293,7 @@ Return only one complete replacement C source file in a fenced ```c block.
 Do not explain. Do not output a diff. Preserve the intended packet/helper
 semantics; do not remove the program, maps, SEC() section, or license.
 {diagnostic_guidance}
+{skill_block}
 
 Source file:
 ```c

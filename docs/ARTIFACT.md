@@ -85,7 +85,22 @@ python3 bpfix-bench/tools/run_suite.py \
 ```
 
 Use `--mode bpfix` for the BPFix-diagnostic condition, and
-`--repair-attempts 2` for the one-retry condition.
+`--repair-attempts 2` for the one-retry condition. Use `--mode skills` to test
+the checked-in `skills/ebpf-verifier-repair/` guidance with raw verifier logs
+and no BPFix diagnostic input:
+
+```bash
+python3 bpfix-bench/tools/run_suite.py \
+  --split bpfix-bench/splits/main.txt \
+  --expected-count 75 \
+  --mode skills \
+  --repair-attempts 2 \
+  --base-url http://127.0.0.1:18080/v1 \
+  --model Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M \
+  --timeout 900 \
+  --max-tokens 8192 \
+  --temperature 0
+```
 
 ## Expected Headline Counts
 
