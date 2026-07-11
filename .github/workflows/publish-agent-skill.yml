@@ -1,0 +1,159 @@
+name: Publish eBPF Verifier Repair Skill
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - "skills/ebpf-verifier-repair/**"
+      - ".codex-plugin/plugin.json"
+      - ".claude-plugin/marketplace.json"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publish-ebpf-verifier-repair
+  cancel-in-progress: false
+
+env:
+  GH_VERSION: "2.96.0"
+  SKILLS_CLI_VERSION: "1.5.16"
+  SKILL_NAME: ebpf-verifier-repair
+
+jobs:
+  publish:
+    name: Publish GitHub skill and sync skills.sh
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install GitHub CLI with skill support
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          asset="gh_${GH_VERSION}_linux_amd64.tar.gz"
+          install_dir="${RUNNER_TEMP}/gh-${GH_VERSION}"
+          download_dir="${RUNNER_TEMP}/gh-download"
+          mkdir -p "${download_dir}" "${install_dir}"
+          gh release download "v${GH_VERSION}" \
+            --repo cli/cli \
+            --pattern "${asset}" \
+            --pattern "gh_${GH_VERSION}_checksums.txt" \
+            --dir "${download_dir}"
+          (
+            cd "${download_dir}"
+            grep "  ${asset}$" "gh_${GH_VERSION}_checksums.txt" | sha256sum -c -
+          )
+          tar -xzf "${download_dir}/${asset}" \
+            --strip-components=1 \
+            -C "${install_dir}"
+          echo "${install_dir}/bin" >> "${GITHUB_PATH}"
+
+      - name: Read and validate publication metadata
+        id: metadata
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import re
+          from pathlib import Path
+
+          skill_name = os.environ["SKILL_NAME"]
+          codex = json.loads(Path(".codex-plugin/plugin.json").read_text())
+          claude = json.loads(
+              Path(f"skills/{skill_name}/.claude-plugin/plugin.json").read_text()
+          )
+          marketplace = json.loads(Path(".claude-plugin/marketplace.json").read_text())
+          entries = [row for row in marketplace["plugins"] if row["name"] == skill_name]
+          if len(entries) != 1:
+              raise SystemExit(f"expected one marketplace entry for {skill_name}")
+
+          skill_text = Path(f"skills/{skill_name}/SKILL.md").read_text()
+          match = re.search(r"^name:\s*([^\s]+)\s*$", skill_text, re.MULTILINE)
+          if match is None or match.group(1) != skill_name:
+              raise SystemExit("SKILL.md name does not match the publication name")
+
+          names = {codex["name"], claude["name"], entries[0]["name"]}
+          if names != {skill_name}:
+              raise SystemExit(f"plugin names disagree: {sorted(names)}")
+          versions = {codex["version"], claude["version"], entries[0]["version"]}
+          if len(versions) != 1:
+              raise SystemExit(f"plugin versions disagree: {sorted(versions)}")
+
+          version = versions.pop()
+          if re.fullmatch(r"0|[1-9]\d*", version):
+              raise SystemExit("plugin version must use three-part semantic versioning")
+          if re.fullmatch(r"(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)", version) is None:
+              raise SystemExit(f"unsupported plugin version: {version}")
+
+          tag = f"{skill_name}-v{version}"
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+              output.write(f"version={version}\n")
+              output.write(f"tag={tag}\n")
+          print(f"Publishing {skill_name} {version} as {tag}")
+          PY
+
+      - name: Validate Agent Skill release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.metadata.outputs.tag }}
+        run: gh skill publish --dry-run --tag "${TAG}"
+
+      - name: Publish immutable GitHub Agent Skill release
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.metadata.outputs.tag }}
+        run: |
+          set -euo pipefail
+          if gh release view "${TAG}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
+            tag_sha=$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${TAG}" --jq '.object.sha')
+            if [[ "${EVENT_NAME}" == "push" && "${tag_sha}" != "${GITHUB_SHA}" ]]; then
+              echo "${TAG} already points to ${tag_sha}, not ${GITHUB_SHA}." >&2
+              echo "Bump the version in both plugin manifests and the Claude marketplace." >&2
+              exit 1
+            fi
+            echo "${TAG} is already published at ${tag_sha}; skipping release creation."
+          else
+            gh skill publish --tag "${TAG}"
+          fi
+
+      - name: Sync repository to skills.sh
+        run: |
+          set -euo pipefail
+          install_dir=$(mktemp -d)
+          cd "${install_dir}"
+          npx --yes "skills@${SKILLS_CLI_VERSION}" add "${GITHUB_REPOSITORY}" \
+            --skill "${SKILL_NAME}" \
+            --agent codex \
+            --yes \
+            --copy
+
+      - name: Verify skills.sh listing
+        run: |
+          set -euo pipefail
+          url="https://www.skills.sh/${GITHUB_REPOSITORY}/${SKILL_NAME}"
+          for attempt in $(seq 1 12); do
+            page=$(curl --fail --silent --show-error --location --retry 2 "${url}" || true)
+            if grep -q "${SKILL_NAME}" <<<"${page}" && \
+               grep -q "${GITHUB_REPOSITORY}" <<<"${page}"; then
+              echo "Verified ${url}"
+              exit 0
+            fi
+            echo "skills.sh has not indexed the release yet (attempt ${attempt}/12)."
+            sleep 10
+          done
+          echo "skills.sh listing did not become visible: ${url}" >&2
+          exit 1
