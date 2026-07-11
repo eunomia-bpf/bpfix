@@ -1,4 +1,4 @@
 interface:
   display_name: "eBPF Verifier Repair"
-  short_description: "Repair verifier failures with BPFix"
-  default_prompt: "Use $ebpf-verifier-repair to repair this eBPF verifier rejection."
+  short_description: "Repair eBPF verifier failures from raw logs"
+  default_prompt: "Use $ebpf-verifier-repair to diagnose and repair this verifier rejection from the source and verbose log."

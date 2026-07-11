@@ -5,7 +5,7 @@ usage() {
   cat <<'USAGE'
 Usage: run-bpfix-diagnostic.sh [--object OBJ] [--out DIR] [--bpfix PATH] LOG
 
-Run bpfix on a verifier/build/load log and write both JSON and text artifacts.
+Run bpfix on a verifier/build/load log and write a plain-text diagnostic.
 
 Options:
   --object OBJ   Optional compiled BPF object passed to bpfix --object.
@@ -104,7 +104,6 @@ run_bpfix() {
 }
 
 mkdir -p "$out_dir" || exit 73
-json_out="$out_dir/diagnostic.json"
 text_out="$out_dir/diagnostic.txt"
 
 common_args=()
@@ -112,49 +111,15 @@ if [[ -n "$object_path" ]]; then
   common_args+=(--object "$object_path")
 fi
 
-json_status=0
-run_bpfix "${common_args[@]}" --format json --fail-on-unsupported "$log_path" > "$json_out" || json_status=$?
-
 text_status=0
-run_bpfix "${common_args[@]}" --format text "$log_path" > "$text_out" || text_status=$?
+run_bpfix "${common_args[@]}" --fail-on-unsupported "$log_path" > "$text_out" || text_status=$?
 
-if [[ $text_status -ne 0 ]]; then
-  echo "bpfix text rendering failed with exit code $text_status" >&2
-  exit "$text_status"
-fi
-
-python3 - "$json_out" <<'PY'
-import json
-import sys
-from pathlib import Path
-
-path = Path(sys.argv[1])
-try:
-    diagnostic = json.loads(path.read_text())
-except Exception as exc:
-    print(f"failed to read diagnostic JSON: {exc}", file=sys.stderr)
-    sys.exit(1)
-
-fields = [
-    ("error_id", diagnostic.get("error_id")),
-    ("diagnostic_kind", diagnostic.get("diagnostic_kind")),
-    ("failure_class", diagnostic.get("failure_class")),
-    ("next_action", diagnostic.get("next_action")),
-    ("help_safety", diagnostic.get("help_safety")),
-    ("required_proof", diagnostic.get("required_proof")),
-]
-for key, value in fields:
-    if value is not None:
-        print(f"{key}: {value}")
-PY
-
-echo "json: $json_out"
 echo "text: $text_out"
 
-if [[ $json_status -eq 2 ]]; then
+if [[ $text_status -eq 2 ]]; then
   echo "bpfix reported unsupported input/message; inspect artifacts before editing source" >&2
   exit 2
-elif [[ $json_status -ne 0 ]]; then
-  echo "bpfix JSON rendering failed with exit code $json_status" >&2
-  exit "$json_status"
+elif [[ $text_status -ne 0 ]]; then
+  echo "bpfix rendering failed with exit code $text_status" >&2
+  exit "$text_status"
 fi

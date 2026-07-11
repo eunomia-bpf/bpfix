@@ -10,7 +10,17 @@ not enough.
 - Prefer verbose loader modes: `bpftool -d`, libbpf debug prints, framework
   debug logs, or CI artifacts that preserve the full build/load output.
 - Do not hand-trim the middle of the verifier trace. If the log is huge, keep
-  the complete artifact on disk and pass the path to `bpfix`.
+  the complete artifact on disk and pass the path to `bpfix`. For raw-log
+  repair without BPFix, create a bounded working slice while retaining the
+  original artifact:
+
+  ```bash
+  skills/ebpf-verifier-repair/scripts/extract_verifier_failure.py verifier.log > verifier-failure.log
+  ```
+
+  The slice keeps the latest load region, its instruction overview, and the
+  terminal rejection. Inspect the original log around omitted PCs when proof
+  origin or loss is not present in the slice.
 - Preserve the compiled `.o` when possible. Object analysis is optional but can
   improve PC/source correlation when BPFix is built with `object-analysis`.
 - Record kernel version, program type, attach type, loader command, and whether
@@ -22,8 +32,8 @@ bpftool:
 
 ```bash
 sudo bpftool -d prog load prog.o /sys/fs/bpf/prog 2>&1 | tee verifier.log
-bpfix --format both verifier.log
-bpfix --object prog.o --format json verifier.log > bpfix-diagnostic.json
+bpfix verifier.log
+bpfix --object prog.o verifier.log > bpfix-diagnostic.txt
 ```
 
 libbpf or libbpf-rs project:
@@ -51,12 +61,13 @@ CI artifact pattern:
 
 ```bash
 make load 2>&1 | tee verifier.log
-bpfix --format json --fail-on-unsupported verifier.log > bpfix-diagnostic.json
+bpfix --fail-on-unsupported verifier.log > bpfix-diagnostic.txt
 ```
 
-If `bpfix` exits with code 2 under `--fail-on-unsupported`, inspect the JSON and
-the raw log. The diagnostic artifact was still written; the problem is log
-collection or unsupported-message coverage, not necessarily a source repair.
+If `bpfix` exits with code 2 under `--fail-on-unsupported`, inspect the
+plain-text artifact and raw log. The diagnostic artifact was still written;
+the problem is log collection or unsupported-message coverage, not necessarily
+a source repair.
 
 ## Incomplete Logs
 

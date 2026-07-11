@@ -17,6 +17,12 @@ import urllib.request
 from pathlib import Path
 from typing import Any
 
+SKILL_SCRIPT_DIR = (
+    Path(__file__).resolve().parents[2] / "skills" / "ebpf-verifier-repair" / "scripts"
+)
+sys.path.insert(0, str(SKILL_SCRIPT_DIR))
+from extract_verifier_failure import compact_verifier_log  # noqa: E402
+
 
 DEFAULT_BASE_URL = "http://127.0.0.1:18080/v1"
 DEFAULT_MODEL = "Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M"
@@ -24,6 +30,9 @@ MODES = ["source-only", "raw", "trimmed-raw", "bpfix", "skills"]
 SKILL_REPAIR_DIR = Path("skills") / "ebpf-verifier-repair"
 SKILL_FILES = [
     SKILL_REPAIR_DIR / "SKILL.md",
+    SKILL_REPAIR_DIR / "references" / "raw-log-triage.md",
+    SKILL_REPAIR_DIR / "references" / "semantic-preservation.md",
+    SKILL_REPAIR_DIR / "references" / "failure-directed-retry.md",
     SKILL_REPAIR_DIR / "references" / "repair-patterns.md",
 ]
 
@@ -115,7 +124,10 @@ def skill_file_metadata(root: Path) -> list[dict[str, object]]:
 
 def skills_prompt_guidance(root: Path) -> str:
     skill = (root / SKILL_FILES[0]).read_text(encoding="utf-8")
-    patterns = (root / SKILL_FILES[1]).read_text(encoding="utf-8")
+    raw_log_triage = (root / SKILL_FILES[1]).read_text(encoding="utf-8")
+    semantic_preservation = (root / SKILL_FILES[2]).read_text(encoding="utf-8")
+    failure_directed_retry = (root / SKILL_FILES[3]).read_text(encoding="utf-8")
+    patterns = (root / SKILL_FILES[4]).read_text(encoding="utf-8")
     source_rules = markdown_section(skill, "## Source Editing Rules")
     repair_patterns = markdown_from_heading(patterns, "## Bounds")
     return f"""Repair verifier failures as missing proof obligations, not as string-matched terminal errors.
@@ -124,6 +136,15 @@ Do not use a BPFix diagnostic in this prompt mode; use only the source, raw veri
 
 Source Editing Rules
 {source_rules}
+
+Raw Log Triage
+{raw_log_triage}
+
+Semantic Preservation
+{semantic_preservation}
+
+Failure-Directed Retry
+{failure_directed_retry}
 
 Repair Patterns
 {repair_patterns}
@@ -254,9 +275,10 @@ def diagnostic_input(case_dir: Path, mode: str) -> tuple[str | None, str, str]:
             "",
         )
     if mode == "skills":
+        raw_log = (case_dir / "verifier.log").read_text(encoding="utf-8")
         return (
-            "raw verifier log",
-            (case_dir / "verifier.log").read_text(encoding="utf-8"),
+            "raw verifier failure slice",
+            compact_verifier_log(raw_log),
             (
                 "Use the eBPF verifier repair skill guidance below. "
                 "Do not use or infer from a BPFix plain-text diagnostic."

@@ -99,8 +99,9 @@ python3 bpfix-bench/tools/run_suite.py \
 ```
 
 Test the checked-in repair skill without BPFix diagnostics. This mode gives the
-model `buggy.bpf.c`, the raw `verifier.log`, and the guidance in
-`skills/ebpf-verifier-repair/`:
+model `buggy.bpf.c`, a bounded failure slice from the raw `verifier.log`, and
+the guidance in `skills/ebpf-verifier-repair/`. The full raw log remains the
+source artifact; only oversized prompt input is compacted:
 
 ```bash
 python3 bpfix-bench/tools/run_suite.py \

@@ -1,0 +1,26 @@
+{
+  "name": "ebpf-verifier-repair",
+  "version": "0.1.0",
+  "description": "Diagnose and repair eBPF verifier failures from source and verbose logs.",
+  "author": {
+    "name": "eunomia-bpf",
+    "url": "https://github.com/eunomia-bpf"
+  },
+  "homepage": "https://github.com/eunomia-bpf/bpfix/tree/master/skills/ebpf-verifier-repair",
+  "repository": "https://github.com/eunomia-bpf/bpfix",
+  "license": "MIT",
+  "keywords": ["ebpf", "bpf", "linux", "verifier", "debugging"],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "eBPF Verifier Repair",
+    "shortDescription": "Repair eBPF verifier failures from raw logs",
+    "longDescription": "Diagnose rejected eBPF programs, preserve program semantics, and implement verifier-visible repairs from source and verbose verifier logs.",
+    "developerName": "eunomia-bpf",
+    "category": "Developer Tools",
+    "capabilities": ["Read", "Write"],
+    "websiteURL": "https://github.com/eunomia-bpf/bpfix",
+    "defaultPrompt": [
+      "Repair this eBPF verifier rejection from the source and verbose log."
+    ]
+  }
+}

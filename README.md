@@ -157,6 +157,46 @@ Check the local rebuild/load environment without reading a log:
 bpfix --doctor
 ```
 
+## Agent Skill
+
+[`skills/ebpf-verifier-repair/`](skills/ebpf-verifier-repair/) is a portable
+agent skill for end-to-end eBPF verifier repair. It works directly from BPF
+source plus a verbose verifier log; BPFix diagnostics are optional structured
+evidence, not a runtime dependency. The skill includes raw-log triage,
+semantic-preservation and retry workflows, repair patterns, and a script for
+compacting oversized verifier traces without modifying the original log.
+
+Install the Agent Skill for Codex, GitHub Copilot, or another supported agent
+with GitHub CLI 2.90 or newer:
+
+```bash
+gh skill install eunomia-bpf/bpfix ebpf-verifier-repair --agent codex --scope user
+```
+
+For Claude Code, add this repository's marketplace and install the same skill
+as a namespaced plugin:
+
+```text
+/plugin marketplace add eunomia-bpf/bpfix
+/plugin install ebpf-verifier-repair@eunomia-bpf
+```
+
+The Agent Skill, Codex plugin, and Claude plugin share the same `SKILL.md`,
+scripts, and references. The plugin manifests do not duplicate the repair
+instructions.
+
+Validate the skill and its frozen 75-case prompt surface with:
+
+```bash
+python3 "${CODEX_HOME:-$HOME/.codex}/skills/.system/skill-creator/scripts/quick_validate.py" skills/ebpf-verifier-repair
+python3 -m unittest bpfix-bench/tools/test_run_suite.py -v
+python3 bpfix-bench/tools/run_suite.py \
+  --split bpfix-bench/splits/main.txt \
+  --expected-count 75 \
+  --mode skills \
+  --prompt-only
+```
+
 The full user workflow is documented in `docs/user-guide.md`. More copyable
 integration snippets live in `examples/`.
 

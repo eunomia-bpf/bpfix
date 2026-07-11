@@ -1,6 +1,7 @@
 ---
 name: ebpf-verifier-repair
 description: End-to-end workflow for diagnosing and repairing eBPF verifier rejections in C, Rust/Aya, libbpf, libbpf-rs, BCC, bpftool, and CI logs from raw verbose verifier logs, BPFix diagnostics, or source/test failures. Use when Codex is asked to fix, explain, or patch verifier errors, verifier logs, BPFIX diagnostics, packet bounds, nullable pointer, stack initialization, reference lifetime, scalar range, pointer provenance, compiler lowering artifact, helper/kfunc/dynptr/iterator, RCU/IRQ/lock, environment capability, or verifier budget failures.
+license: MIT
 ---
 
 # eBPF Verifier Repair
@@ -22,12 +23,24 @@ workflow; the reusable user job is "repair this verifier rejection."
 - Read `references/log-collection.md` when the user did not provide a full
   verbose verifier log, the log is incomplete, or the framework/loader command
   is unclear.
-- Read `references/diagnostic-routing.md` only when a BPFix JSON diagnostic is
+- Read `references/raw-log-triage.md` whenever repairing from a raw verifier
+  log. Use its rejected-instruction and proof-lifecycle procedure before
+  selecting a source rewrite.
+- Read `references/diagnostic-routing.md` only when a BPFix diagnostic is
   provided or generated. Do not block raw-log repair on this file.
 - Read `references/repair-patterns.md` before editing source, selecting a
   verifier-visible rewrite, or reviewing a proposed patch.
+- Read `references/semantic-preservation.md` before editing a nontrivial
+  program, especially when it updates maps, emits events, has fallback policy,
+  or uses multiple acquired resources.
+- Read `references/failure-directed-retry.md` after any candidate fails to
+  compile, load, or pass the semantic oracle. Route the next edit by the failure
+  stage instead of starting a new speculative repair.
 - Run `scripts/run-bpfix-diagnostic.sh` only when BPFix is available and a
-  repeatable JSON/text diagnostic artifact would make the repair loop clearer.
+  repeatable plain-text diagnostic artifact would make the repair loop clearer.
+- Run `scripts/extract_verifier_failure.py verifier.log` when a raw log is too
+  large for the working context. Keep the original log and inspect omitted PCs
+  when the initial slice does not reveal proof origin or loss.
 
 ## Repair Workflow
 
@@ -44,16 +57,16 @@ workflow; the reusable user job is "repair this verifier rejection."
    check that should have established the missing proof. Do not wait for BPFix.
 
    If BPFix is available and the user did not ask for a raw-log-only repair, it
-   can add structured evidence. Prefer JSON plus text output:
+   can add proof-aware plain-text evidence:
 
    ```bash
-   bpfix --format both verifier.log
-   bpfix --format json --fail-on-unsupported verifier.log > bpfix-diagnostic.json
-   bpfix --object prog.o --format json verifier.log
+   bpfix verifier.log
+   bpfix --fail-on-unsupported verifier.log > bpfix-diagnostic.txt
+   bpfix --object prog.o verifier.log
    ```
 
    If this skill is checked out with the BPFix repo, the helper script can
-   produce both artifacts:
+   produce a repeatable plain-text artifact:
 
    ```bash
    skills/ebpf-verifier-repair/scripts/run-bpfix-diagnostic.sh --out .bpfix-agent verifier.log
@@ -61,37 +74,46 @@ workflow; the reusable user job is "repair this verifier rejection."
    ```
 
 3. Route by proof evidence, not by prose alone.
-   Inspect `diagnostic_kind`, `failure_class`, `help_safety`, `next_action`,
-   `required_proof`, `source_span`, `related_spans`, and `evidence` when a
-   diagnostic exists. With raw logs, infer the same fields manually from the
+   Inspect the diagnostic class, safety/confidence labels, next action,
+   required proof, source spans, and verifier evidence when a diagnostic
+   exists. With raw logs, infer the same facts manually from the
    rejected PC, register classes/ranges, helper arguments, and source lines. If
    the log is incomplete, fix log collection first. If the evidence points to
    environment/configuration failure, confirm kernel/program-type/helper/BTF
    availability before editing source.
 
-4. Form a proof-obligation hypothesis.
+4. Freeze the semantic contract.
+   List the observable behavior that the repair must preserve: program section
+   and return actions, packet or context fields consumed, map keys and values,
+   state mutations, event contents, helper calls, resource lifecycle, fallback
+   behavior, and meaningful branch outcomes. Read the project's tests and
+   loader when available. Distinguish a safety guard from a policy decision;
+   do not turn a missing proof into a new policy.
+
+5. Form a proof-obligation hypothesis.
    State the fact the verifier could not prove at the rejected instruction:
    packet bounds, non-nullness, initialized stack bytes, live reference release,
    scalar range, pointer provenance/type, alignment, helper/kfunc contract,
    dynptr protocol, execution context, or complexity bound. Name where the
    proof is established, lost, or missing.
 
-5. Edit the source minimally and verifier-visibly.
+6. Edit the source minimally and verifier-visibly.
    Prefer rewrites that keep the checked value and the used value in the same
    verifier-visible path. Revalidate after helpers that invalidate pointers.
    Re-derive pointers from checked bases near use when compiler lowering or
    branch merging hides provenance. Do not add unrelated checks or broad casts
    that change semantics without proving the required fact.
 
-6. Validate the repair.
+7. Validate the repair.
    Rebuild the BPF object, rerun the original load/replay command, and rerun
    `bpfix` on any new verifier log only if BPFix was part of the evidence path.
    A successful repair means the original rejection no longer appears, no new
    verifier rejection replaces it, and the project's semantic oracle still
-   passes. When privileged loading is not available, run compile/tests and
-   explain the remaining verification gap.
+   passes. If a stage fails, follow `references/failure-directed-retry.md` and
+   make the next edit answer that evidence. When privileged loading is not
+   available, run compile/tests and explain the remaining verification gap.
 
-7. Report the result in proof terms.
+8. Report the result in proof terms.
    Summarize the changed proof, the files touched, the validation command and
    result, and any kernel/environment assumption that remains.
 

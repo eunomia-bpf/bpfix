@@ -36,7 +36,7 @@ BPFix diagnostics are evidence for one repair workflow. Do not treat every
    Apply the local source repair pattern for `next_action` and verify by
    rerunning the original load path.
 
-## Stable JSON Fields
+## Diagnostic Fields
 
 - `error_id`: stable user-facing family such as `BPFIX-E001`.
 - `failure_class`: source bug, lowering artifact, environment/configuration,
@@ -50,8 +50,8 @@ BPFix diagnostics are evidence for one repair workflow. Do not treat every
 - `related_spans`: proof establishment, proof loss, or nearby context labels.
 - `evidence`: terminal verifier error, rejected PC, verifier state signal,
   lowering signal, or precision signal.
-- `metadata.object_analysis_error`: object metadata was requested but could not
-  be used; the log diagnostic can still be valid.
+- An `object analysis` warning means optional object metadata could not be used;
+  the log diagnostic can still be valid.
 
 ## Error Family Index
 

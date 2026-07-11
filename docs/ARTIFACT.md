@@ -86,8 +86,9 @@ python3 bpfix-bench/tools/run_suite.py \
 
 Use `--mode bpfix` for the BPFix-diagnostic condition, and
 `--repair-attempts 2` for the one-retry condition. Use `--mode skills` to test
-the checked-in `skills/ebpf-verifier-repair/` guidance with raw verifier logs
-and no BPFix diagnostic input:
+the checked-in `skills/ebpf-verifier-repair/` guidance with bounded failure
+slices from raw verifier logs and no BPFix diagnostic input. The full raw logs
+remain unchanged in each case directory:
 
 ```bash
 python3 bpfix-bench/tools/run_suite.py \
