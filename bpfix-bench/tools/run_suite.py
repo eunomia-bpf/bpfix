@@ -12,6 +12,7 @@ import os
 import re
 import subprocess
 import sys
+import time
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -27,6 +28,13 @@ from extract_verifier_failure import compact_verifier_log  # noqa: E402
 DEFAULT_BASE_URL = "http://127.0.0.1:18080/v1"
 DEFAULT_MODEL = "Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M"
 MODES = ["source-only", "raw", "trimmed-raw", "bpfix", "skills"]
+TOKEN_USAGE_FIELDS = [
+    "prompt_tokens",
+    "completion_tokens",
+    "total_tokens",
+    "reasoning_tokens",
+    "cached_prompt_tokens",
+]
 SKILL_REPAIR_DIR = Path("skills") / "ebpf-verifier-repair"
 SKILL_FILES = [
     SKILL_REPAIR_DIR / "SKILL.md",
@@ -430,6 +438,121 @@ def append_retry_context(prompt: str, retry_context: str | None) -> str:
     return f"{prompt}\n\nRetry context:\n{retry_context}\n"
 
 
+def nested_int(value: object, *path: str) -> int | None:
+    current = value
+    for key in path:
+        if not isinstance(current, dict):
+            return None
+        current = current.get(key)
+    if isinstance(current, bool) or not isinstance(current, int) or current < 0:
+        return None
+    return current
+
+
+def first_reported_int(value: object, *paths: tuple[str, ...]) -> int | None:
+    for path in paths:
+        result = nested_int(value, *path)
+        if result is not None:
+            return result
+    return None
+
+
+def normalize_token_usage(raw_usage: object) -> dict[str, int | None] | None:
+    if not isinstance(raw_usage, dict):
+        return None
+    normalized = {
+        "prompt_tokens": first_reported_int(raw_usage, ("prompt_tokens",), ("input_tokens",)),
+        "completion_tokens": first_reported_int(
+            raw_usage,
+            ("completion_tokens",),
+            ("output_tokens",),
+        ),
+        "total_tokens": nested_int(raw_usage, "total_tokens"),
+        "reasoning_tokens": first_reported_int(
+            raw_usage,
+            ("completion_tokens_details", "reasoning_tokens"),
+            ("output_tokens_details", "reasoning_tokens"),
+            ("reasoning_tokens",),
+        ),
+        "cached_prompt_tokens": first_reported_int(
+            raw_usage,
+            ("prompt_tokens_details", "cached_tokens"),
+            ("input_tokens_details", "cached_tokens"),
+        ),
+    }
+    return normalized if any(value is not None for value in normalized.values()) else None
+
+
+def aggregate_attempt_cost(attempts: list[dict[str, Any]]) -> dict[str, Any]:
+    model_calls = [attempt for attempt in attempts if "model_wall_time_seconds" in attempt]
+    coverage: dict[str, int] = {}
+    totals: dict[str, int | None] = {}
+    for field in TOKEN_USAGE_FIELDS:
+        reported = [
+            usage[field]
+            for attempt in model_calls
+            if isinstance((usage := attempt.get("token_usage")), dict)
+            and isinstance(usage.get(field), int)
+        ]
+        coverage[field] = len(reported)
+        totals[field] = sum(reported) if len(reported) == len(model_calls) and model_calls else None
+
+    def sum_seconds(field: str) -> float:
+        return round(
+            sum(
+                float(attempt[field])
+                for attempt in attempts
+                if isinstance(attempt.get(field), (int, float))
+            ),
+            6,
+        )
+
+    return {
+        "model_calls": len(model_calls),
+        "token_usage_coverage": coverage,
+        **totals,
+        "model_wall_time_seconds": sum_seconds("model_wall_time_seconds"),
+        "oracle_wall_time_seconds": sum_seconds("oracle_wall_time_seconds"),
+        "attempt_wall_time_seconds": sum_seconds("attempt_wall_time_seconds"),
+    }
+
+
+def repair_policy_checkpoints(
+    results: list[dict[str, Any]],
+    max_attempts: int | None = None,
+) -> list[dict[str, Any]]:
+    observed_attempts = max(
+        (
+            len(attempts)
+            for result in results
+            if isinstance((attempts := result.get("attempts")), list)
+        ),
+        default=0,
+    )
+    checkpoint_count = observed_attempts if max_attempts is None else max_attempts
+    checkpoints: list[dict[str, Any]] = []
+    for attempt_limit in range(1, checkpoint_count + 1):
+        selected_attempts: list[dict[str, Any]] = []
+        passed = 0
+        for result in results:
+            attempts = result.get("attempts")
+            if not isinstance(attempts, list):
+                continue
+            policy_attempts = attempts[:attempt_limit]
+            selected_attempts.extend(policy_attempts)
+            if any(attempt.get("status") == "pass" for attempt in policy_attempts):
+                passed += 1
+        checkpoints.append(
+            {
+                "max_attempts": attempt_limit,
+                "total": len(results),
+                "passed": passed,
+                "cost": aggregate_attempt_cost(selected_attempts),
+            }
+        )
+    return checkpoints
+
+
 def call_openai_compatible(
     *,
     base_url: str,
@@ -440,7 +563,7 @@ def call_openai_compatible(
     max_tokens: int,
     temperature: float,
     extra_body: dict[str, Any] | None = None,
-) -> str:
+) -> dict[str, Any]:
     url = base_url.rstrip("/") + "/chat/completions"
     body = {
         "model": model,
@@ -467,7 +590,22 @@ def call_openai_compatible(
     )
     with urllib.request.urlopen(request, timeout=timeout) as response:
         payload = json.loads(response.read().decode("utf-8"))
-    return str(payload["choices"][0]["message"]["content"])
+    choice = payload["choices"][0]
+    message = choice["message"]
+    content = message["content"]
+    if not isinstance(content, str):
+        raise KeyError("choices[0].message.content is not a string")
+    raw_usage = payload.get("usage")
+    raw_timings = payload.get("timings")
+    reasoning_content = message.get("reasoning_content")
+    return {
+        "content": content,
+        "finish_reason": choice.get("finish_reason"),
+        "reasoning_chars": len(reasoning_content) if isinstance(reasoning_content, str) else None,
+        "token_usage": normalize_token_usage(raw_usage),
+        "api_usage": raw_usage if isinstance(raw_usage, dict) else None,
+        "api_timings": raw_timings if isinstance(raw_timings, dict) else None,
+    }
 
 
 def extract_source(response: str) -> str:
@@ -702,6 +840,7 @@ def main(argv: list[str] | None = None) -> int:
     for case_dir in cases:
         case_out = run_dir / case_dir.name
         case_out.mkdir(parents=True, exist_ok=True)
+        prompt_build_started = time.perf_counter()
         base_prompt = build_prompt(case_dir, args.mode)
         (case_out / "prompt.txt").write_text(base_prompt, encoding="utf-8")
         prompt_info = {
@@ -709,6 +848,7 @@ def main(argv: list[str] | None = None) -> int:
             "prompt_chars": len(base_prompt),
             "source_chars": len((case_dir / "buggy.bpf.c").read_text(encoding="utf-8")),
             "diagnostic_chars": len(diagnostic_input(case_dir, args.mode)[1]),
+            "prompt_build_wall_time_seconds": round(time.perf_counter() - prompt_build_started, 6),
         }
 
         if args.prompt_only:
@@ -724,8 +864,10 @@ def main(argv: list[str] | None = None) -> int:
                 attempt_out.mkdir(parents=True, exist_ok=True)
                 prompt = append_retry_context(base_prompt, retry_context)
                 (attempt_out / "prompt.txt").write_text(prompt, encoding="utf-8")
+                attempt_started = time.perf_counter()
+                model_started = time.perf_counter()
                 try:
-                    response = call_openai_compatible(
+                    model_result = call_openai_compatible(
                         base_url=args.base_url,
                         api_key=api_key,
                         model=args.model,
@@ -735,6 +877,8 @@ def main(argv: list[str] | None = None) -> int:
                         temperature=args.temperature,
                         extra_body=args.extra_body,
                     )
+                    model_wall_time = round(time.perf_counter() - model_started, 6)
+                    response = model_result["content"]
                     (attempt_out / "response.txt").write_text(response, encoding="utf-8")
                 except (
                     json.JSONDecodeError,
@@ -744,18 +888,47 @@ def main(argv: list[str] | None = None) -> int:
                     ConnectionError,
                     http.client.HTTPException,
                 ) as exc:
-                    final_result = {
-                        "case": case_dir.name,
+                    model_wall_time = round(time.perf_counter() - model_started, 6)
+                    attempt_result = {
+                        "attempt": attempt,
                         "status": "model_error",
                         "failure_stage": "model_call",
                         "error": str(exc),
-                        "attempt": attempt,
+                        "prompt_sha256": sha256_text(prompt),
+                        "prompt_chars": len(prompt),
+                        "response_chars": None,
+                        "reasoning_chars": None,
+                        "finish_reason": None,
+                        "token_usage": None,
+                        "api_usage": None,
+                        "api_timings": None,
+                        "model_wall_time_seconds": model_wall_time,
+                        "oracle_wall_time_seconds": None,
+                        "attempt_wall_time_seconds": round(time.perf_counter() - attempt_started, 6),
+                    }
+                    (attempt_out / "result.json").write_text(
+                        json.dumps(attempt_result, indent=2, sort_keys=True) + "\n",
+                        encoding="utf-8",
+                    )
+                    attempts.append(attempt_result)
+                    final_result = {
+                        "case": case_dir.name,
+                        **attempt_result,
                         "attempts": attempts,
                         "mode": args.mode,
                         "model": args.model,
                         **prompt_info,
                     }
                     break
+                model_metrics = {
+                    "response_chars": len(response),
+                    "reasoning_chars": model_result["reasoning_chars"],
+                    "finish_reason": model_result["finish_reason"],
+                    "token_usage": model_result["token_usage"],
+                    "api_usage": model_result["api_usage"],
+                    "api_timings": model_result["api_timings"],
+                    "model_wall_time_seconds": model_wall_time,
+                }
                 try:
                     candidate_source = extract_source(response)
                     candidate_path = attempt_out / "candidate.bpf.c"
@@ -768,6 +941,9 @@ def main(argv: list[str] | None = None) -> int:
                         "error": str(exc),
                         "prompt_sha256": sha256_text(prompt),
                         "prompt_chars": len(prompt),
+                        **model_metrics,
+                        "oracle_wall_time_seconds": None,
+                        "attempt_wall_time_seconds": round(time.perf_counter() - attempt_started, 6),
                     }
                     (attempt_out / "result.json").write_text(
                         json.dumps(attempt_result, indent=2, sort_keys=True) + "\n",
@@ -787,7 +963,9 @@ def main(argv: list[str] | None = None) -> int:
                     retry_context = extract_retry_context(response, exc)
                     continue
 
+                oracle_started = time.perf_counter()
                 completed = run_oracle(case_dir, candidate_path, attempt_out / "work")
+                oracle_wall_time = round(time.perf_counter() - oracle_started, 6)
                 attempt_result = {
                     "attempt": attempt,
                     "status": "pass" if completed.returncode == 0 else "fail",
@@ -798,6 +976,9 @@ def main(argv: list[str] | None = None) -> int:
                     "oracle_returncode": completed.returncode,
                     "prompt_sha256": sha256_text(prompt),
                     "prompt_chars": len(prompt),
+                    **model_metrics,
+                    "oracle_wall_time_seconds": oracle_wall_time,
+                    "attempt_wall_time_seconds": round(time.perf_counter() - attempt_started, 6),
                 }
                 (attempt_out / "result.json").write_text(
                     json.dumps(attempt_result, indent=2, sort_keys=True) + "\n",
@@ -826,13 +1007,16 @@ def main(argv: list[str] | None = None) -> int:
                     "model": args.model,
                     **prompt_info,
                 }
+            final_result["cost"] = aggregate_attempt_cost(attempts)
             (case_out / "result.json").write_text(json.dumps(final_result, indent=2, sort_keys=True) + "\n", encoding="utf-8")
             summary.append(final_result)
             continue
         else:
             candidate_path = args.candidate.resolve()
 
+        oracle_started = time.perf_counter()
         completed = run_oracle(case_dir, candidate_path, case_out / "work")
+        oracle_wall_time = round(time.perf_counter() - oracle_started, 6)
         result = {
             "case": case_dir.name,
             "status": "pass" if completed.returncode == 0 else "fail",
@@ -843,6 +1027,7 @@ def main(argv: list[str] | None = None) -> int:
             "oracle_returncode": completed.returncode,
             "mode": args.mode,
             "model": args.model,
+            "oracle_wall_time_seconds": oracle_wall_time,
             **prompt_info,
         }
         (case_out / "result.json").write_text(json.dumps(result, indent=2, sort_keys=True) + "\n", encoding="utf-8")
@@ -853,6 +1038,18 @@ def main(argv: list[str] | None = None) -> int:
         "mode": args.mode,
         "total": len(summary),
         "passed": passed,
+        "cost": aggregate_attempt_cost(
+            [
+                attempt
+                for result in summary
+                if isinstance((attempts := result.get("attempts")), list)
+                for attempt in attempts
+            ]
+        ),
+        "policy_checkpoints": repair_policy_checkpoints(
+            summary,
+            args.repair_attempts if args.candidate is None and not args.prompt_only else None,
+        ),
         "run_metadata": metadata,
         "results": summary,
     }

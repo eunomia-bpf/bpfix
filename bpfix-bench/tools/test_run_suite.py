@@ -1,12 +1,16 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import io
+import json
 import os
 import subprocess
 import sys
 import tempfile
 import unittest
+from contextlib import redirect_stdout
 from pathlib import Path
+from unittest import mock
 
 
 TOOLS_DIR = Path(__file__).resolve().parent
@@ -15,6 +19,191 @@ sys.path.insert(0, str(TOOLS_DIR))
 
 import run_suite  # noqa: E402
 from extract_verifier_failure import compact_verifier_log, latest_load_region  # noqa: E402
+
+
+class FakeHTTPResponse:
+    def __init__(self, payload: dict[str, object]) -> None:
+        self.payload = payload
+
+    def __enter__(self) -> FakeHTTPResponse:
+        return self
+
+    def __exit__(self, *_args: object) -> None:
+        return None
+
+    def read(self) -> bytes:
+        return json.dumps(self.payload).encode("utf-8")
+
+
+class CostAccountingTests(unittest.TestCase):
+    def test_normalizes_openai_and_responses_usage_fields(self) -> None:
+        self.assertEqual(
+            run_suite.normalize_token_usage(
+                {
+                    "prompt_tokens": 100,
+                    "completion_tokens": 20,
+                    "total_tokens": 120,
+                    "completion_tokens_details": {"reasoning_tokens": 7},
+                    "prompt_tokens_details": {"cached_tokens": 11},
+                }
+            ),
+            {
+                "prompt_tokens": 100,
+                "completion_tokens": 20,
+                "total_tokens": 120,
+                "reasoning_tokens": 7,
+                "cached_prompt_tokens": 11,
+            },
+        )
+        self.assertEqual(
+            run_suite.normalize_token_usage(
+                {
+                    "input_tokens": 80,
+                    "output_tokens": 10,
+                    "total_tokens": 90,
+                    "output_tokens_details": {"reasoning_tokens": 3},
+                }
+            ),
+            {
+                "prompt_tokens": 80,
+                "completion_tokens": 10,
+                "total_tokens": 90,
+                "reasoning_tokens": 3,
+                "cached_prompt_tokens": None,
+            },
+        )
+
+    @mock.patch.object(run_suite.urllib.request, "urlopen")
+    def test_model_call_preserves_usage_and_provider_timings(self, urlopen: mock.Mock) -> None:
+        urlopen.return_value = FakeHTTPResponse(
+            {
+                "choices": [
+                    {
+                        "finish_reason": "stop",
+                        "message": {"content": "```c\nint x;\n```", "reasoning_content": "why"},
+                    }
+                ],
+                "usage": {
+                    "prompt_tokens": 16,
+                    "completion_tokens": 8,
+                    "total_tokens": 24,
+                },
+                "timings": {"prompt_ms": 2.5, "predicted_ms": 4.0},
+            }
+        )
+        result = run_suite.call_openai_compatible(
+            base_url="http://model.invalid/v1",
+            api_key="none",
+            model="test",
+            prompt="repair this",
+            timeout=1,
+            max_tokens=32,
+            temperature=0,
+        )
+        self.assertEqual(result["content"], "```c\nint x;\n```")
+        self.assertEqual(result["reasoning_chars"], 3)
+        self.assertEqual(result["token_usage"]["total_tokens"], 24)
+        self.assertEqual(result["api_timings"]["prompt_ms"], 2.5)
+
+    def test_aggregate_requires_complete_usage_coverage(self) -> None:
+        attempts = [
+            {
+                "model_wall_time_seconds": 1.0,
+                "oracle_wall_time_seconds": 2.0,
+                "attempt_wall_time_seconds": 3.0,
+                "token_usage": {
+                    "prompt_tokens": 10,
+                    "completion_tokens": 5,
+                    "total_tokens": 15,
+                    "reasoning_tokens": 0,
+                    "cached_prompt_tokens": 2,
+                },
+            },
+            {
+                "model_wall_time_seconds": 4.0,
+                "oracle_wall_time_seconds": None,
+                "attempt_wall_time_seconds": 4.5,
+                "token_usage": {
+                    "prompt_tokens": 20,
+                    "completion_tokens": 6,
+                    "total_tokens": 26,
+                    "reasoning_tokens": None,
+                    "cached_prompt_tokens": None,
+                },
+            },
+        ]
+        cost = run_suite.aggregate_attempt_cost(attempts)
+        self.assertEqual(cost["model_calls"], 2)
+        self.assertEqual(cost["prompt_tokens"], 30)
+        self.assertEqual(cost["total_tokens"], 41)
+        self.assertIsNone(cost["reasoning_tokens"])
+        self.assertEqual(cost["token_usage_coverage"]["reasoning_tokens"], 1)
+        self.assertEqual(cost["model_wall_time_seconds"], 5.0)
+        self.assertEqual(cost["oracle_wall_time_seconds"], 2.0)
+
+    def test_policy_checkpoints_derive_from_one_retry_trajectory(self) -> None:
+        def attempt(status: str, tokens: int) -> dict[str, object]:
+            return {
+                "status": status,
+                "model_wall_time_seconds": 1.0,
+                "oracle_wall_time_seconds": 1.0,
+                "attempt_wall_time_seconds": 2.0,
+                "token_usage": {
+                    "prompt_tokens": tokens - 1,
+                    "completion_tokens": 1,
+                    "total_tokens": tokens,
+                    "reasoning_tokens": 0,
+                    "cached_prompt_tokens": 0,
+                },
+            }
+
+        checkpoints = run_suite.repair_policy_checkpoints(
+            [
+                {"attempts": [attempt("pass", 10)]},
+                {"attempts": [attempt("fail", 20), attempt("pass", 30)]},
+                {"attempts": [attempt("fail", 40), attempt("fail", 50)]},
+            ]
+        )
+        self.assertEqual([(row["max_attempts"], row["passed"]) for row in checkpoints], [(1, 1), (2, 2)])
+        self.assertEqual(checkpoints[0]["cost"]["total_tokens"], 70)
+        self.assertEqual(checkpoints[1]["cost"]["total_tokens"], 150)
+
+        no_retry_needed = run_suite.repair_policy_checkpoints(
+            [{"attempts": [attempt("pass", 10)]}],
+            max_attempts=2,
+        )
+        self.assertEqual([(row["max_attempts"], row["passed"]) for row in no_retry_needed], [(1, 1), (2, 1)])
+        self.assertEqual(no_retry_needed[0]["cost"], no_retry_needed[1]["cost"])
+
+    @mock.patch.object(run_suite, "server_model_metadata", return_value={"reachable": False, "models": None})
+    @mock.patch.object(run_suite, "call_openai_compatible", side_effect=TimeoutError("timed out"))
+    def test_model_call_failure_is_recorded_as_attempt(
+        self,
+        _call: mock.Mock,
+        _server: mock.Mock,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            results_dir = Path(temp_dir)
+            with redirect_stdout(io.StringIO()):
+                returncode = run_suite.main(
+                    [
+                        "--case",
+                        "alu32_pointer_cookie_001",
+                        "--results-dir",
+                        str(results_dir),
+                        "--base-url",
+                        "http://model.invalid/v1",
+                    ]
+                )
+            self.assertEqual(returncode, 1)
+            summary_path = next(results_dir.rglob("summary.json"))
+            summary = json.loads(summary_path.read_text(encoding="utf-8"))
+            attempts = summary["results"][0]["attempts"]
+            self.assertEqual(len(attempts), 1)
+            self.assertEqual(attempts[0]["failure_stage"], "model_call")
+            self.assertIsNone(attempts[0]["token_usage"])
+            self.assertEqual(summary["cost"]["model_calls"], 1)
+            self.assertEqual(summary["cost"]["token_usage_coverage"]["total_tokens"], 0)
 
 
 class VerifierLogSliceTests(unittest.TestCase):
