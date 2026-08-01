@@ -427,7 +427,7 @@ content from prompt compression. A claim that localization wins independently
 of length requires a separate per-case token-matched control.
 
 Model-call wall time, oracle wall time, and attempt elapsed time are recorded
-separately. Attempt elapsed time includes retry-context construction and prompt
+separately. Attempt elapsed time includes retry-context appending and prompt
 artifact output. End-to-end turnaround additionally includes BPFix
 preprocessing.
 Paper-facing wall-time comparisons require the pinned server configuration,

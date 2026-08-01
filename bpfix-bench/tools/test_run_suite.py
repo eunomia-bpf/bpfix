@@ -259,6 +259,58 @@ class CostAccountingTests(unittest.TestCase):
         self.assertTrue(any("cost does not match" in error for error in errors))
         self.assertTrue(any("policy_checkpoints do not match" in error for error in errors))
 
+        def refresh_costs(payload: dict) -> None:
+            payload_results = payload["results"]
+            payload_attempts = payload_results[0]["attempts"]
+            payload_results[0]["cost"] = run_suite.aggregate_attempt_cost(payload_attempts)
+            payload["cost"] = run_suite.aggregate_attempt_cost(payload_attempts)
+            limit = payload["run_metadata"]["repair_policy"]["max_attempts"]
+            payload["policy_checkpoints"] = run_suite.repair_policy_checkpoints(
+                payload_results,
+                max_attempts=limit,
+            )
+
+        truncated = json.loads(json.dumps(summary))
+        truncated["run_metadata"]["repair_policy"]["max_attempts"] = 2
+        truncated["results"][0]["attempts"][0]["status"] = "fail"
+        truncated["results"][0]["attempts"][0]["failure_stage"] = "verifier_load"
+        truncated["results"][0]["status"] = "fail"
+        truncated["results"][0]["failure_stage"] = "verifier_load"
+        refresh_costs(truncated)
+        errors = audit_results.audit_cost_metrics(
+            path=Path("summary.json"),
+            summary=truncated,
+            results=truncated["results"],
+            require_cost_metrics=True,
+        )
+        self.assertTrue(any("stops before exhausting" in error for error in errors))
+
+        too_many = json.loads(json.dumps(summary))
+        first_attempt = too_many["results"][0]["attempts"][0]
+        first_attempt["status"] = "fail"
+        first_attempt["failure_stage"] = "verifier_load"
+        second_attempt = json.loads(json.dumps(attempt))
+        second_attempt["attempt"] = 2
+        too_many["results"][0]["attempts"].append(second_attempt)
+        refresh_costs(too_many)
+        errors = audit_results.audit_cost_metrics(
+            path=Path("summary.json"),
+            summary=too_many,
+            results=too_many["results"],
+            require_cost_metrics=True,
+        )
+        self.assertTrue(any("exceeds repair_policy.max_attempts" in error for error in errors))
+
+        missing_provenance = json.loads(json.dumps(summary))
+        missing_provenance["results"][0]["attempts"][0]["api_usage"] = None
+        errors = audit_results.audit_cost_metrics(
+            path=Path("summary.json"),
+            summary=missing_provenance,
+            results=missing_provenance["results"],
+            require_cost_metrics=True,
+        )
+        self.assertTrue(any("token_usage does not match" in error for error in errors))
+
     def test_cost_audit_allows_legacy_only_when_not_required(self) -> None:
         legacy = {"results": []}
         self.assertEqual(
@@ -317,54 +369,84 @@ class CostAccountingTests(unittest.TestCase):
         run_oracle: mock.Mock,
         _server: mock.Mock,
     ) -> None:
-        model_call.side_effect = [
-            TimeoutError("timed out"),
-            {
-                "content": "```c\nint x;\n```",
-                "error": None,
-                "finish_reason": "stop",
-                "reasoning_chars": None,
-                "token_usage": {
-                    "prompt_tokens": 10,
-                    "completion_tokens": 5,
-                    "total_tokens": 15,
-                    "reasoning_tokens": None,
-                    "cached_prompt_tokens": None,
-                },
-                "api_usage": {"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 15},
-                "api_timings": None,
+        valid_response = {
+            "content": "```c\nint x;\n```",
+            "error": None,
+            "finish_reason": "stop",
+            "reasoning_chars": None,
+            "token_usage": {
+                "prompt_tokens": 10,
+                "completion_tokens": 5,
+                "total_tokens": 15,
+                "reasoning_tokens": None,
+                "cached_prompt_tokens": None,
             },
+            "api_usage": {"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 15},
+            "api_timings": None,
+        }
+        malformed_response = {
+            **valid_response,
+            "content": None,
+            "error": "choices[0].message.content is not a string",
+        }
+        scenarios = [
+            ("timeout-pass", TimeoutError("timed out"), 0, "pass"),
+            ("timeout-fail", TimeoutError("timed out"), 1, "fail"),
+            ("malformed-fail", malformed_response, 1, "fail"),
         ]
-        run_oracle.return_value = subprocess.CompletedProcess(
-            args=["oracle"],
-            returncode=0,
-            stdout="{}",
-            stderr="",
-        )
-        with tempfile.TemporaryDirectory() as temp_dir:
-            results_dir = Path(temp_dir)
-            with redirect_stdout(io.StringIO()):
-                returncode = run_suite.main(
-                    [
-                        "--case",
-                        "alu32_pointer_cookie_001",
-                        "--results-dir",
-                        str(results_dir),
-                        "--base-url",
-                        "http://model.invalid/v1",
-                        "--repair-attempts",
-                        "2",
-                    ]
+        for name, first_result, oracle_returncode, final_status in scenarios:
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as temp_dir:
+                model_call.reset_mock(side_effect=True)
+                model_call.side_effect = [first_result, valid_response]
+                run_oracle.return_value = subprocess.CompletedProcess(
+                    args=["oracle"],
+                    returncode=oracle_returncode,
+                    stdout=(
+                        "{}"
+                        if oracle_returncode == 0
+                        else '{"load":{"returncode":1},"map_setup":[]}'
+                    ),
+                    stderr="",
                 )
-            self.assertEqual(returncode, 0)
-            summary_path = next(results_dir.rglob("summary.json"))
-            summary = json.loads(summary_path.read_text(encoding="utf-8"))
-            attempts = summary["results"][0]["attempts"]
-            self.assertEqual([attempt["status"] for attempt in attempts], ["model_error", "pass"])
-            self.assertEqual(model_call.call_count, 2)
-            self.assertEqual(summary["policy_checkpoints"][0]["passed"], 0)
-            self.assertEqual(summary["policy_checkpoints"][1]["passed"], 1)
-            self.assertIsNone(summary["cost"]["total_tokens"])
+                results_dir = Path(temp_dir)
+                with redirect_stdout(io.StringIO()):
+                    returncode = run_suite.main(
+                        [
+                            "--case",
+                            "alu32_pointer_cookie_001",
+                            "--results-dir",
+                            str(results_dir),
+                            "--base-url",
+                            "http://model.invalid/v1",
+                            "--repair-attempts",
+                            "2",
+                        ]
+                    )
+                self.assertEqual(returncode, 0 if final_status == "pass" else 1)
+                summary_path = next(results_dir.rglob("summary.json"))
+                summary = json.loads(summary_path.read_text(encoding="utf-8"))
+                attempts = summary["results"][0]["attempts"]
+                self.assertEqual(
+                    [attempt["status"] for attempt in attempts],
+                    ["model_error", final_status],
+                )
+                self.assertEqual(summary["results"][0]["status"], final_status)
+                self.assertEqual(summary["results"][0]["attempt"], 2)
+                self.assertEqual(model_call.call_count, 2)
+                self.assertEqual(summary["policy_checkpoints"][0]["passed"], 0)
+                self.assertEqual(
+                    summary["policy_checkpoints"][1]["passed"],
+                    1 if final_status == "pass" else 0,
+                )
+                self.assertEqual(
+                    audit_results.audit_cost_metrics(
+                        path=summary_path,
+                        summary=summary,
+                        results=summary["results"],
+                        require_cost_metrics=True,
+                    ),
+                    [],
+                )
 
 
 class VerifierLogSliceTests(unittest.TestCase):

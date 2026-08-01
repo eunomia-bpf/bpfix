@@ -868,7 +868,6 @@ def main(argv: list[str] | None = None) -> int:
         if args.candidate is None:
             retry_context = None
             attempts: list[dict[str, Any]] = []
-            final_result: dict[str, Any] | None = None
             for attempt in range(1, args.repair_attempts + 1):
                 attempt_out = case_out / f"attempt-{attempt}"
                 attempt_out.mkdir(parents=True, exist_ok=True)
@@ -918,14 +917,6 @@ def main(argv: list[str] | None = None) -> int:
                         encoding="utf-8",
                     )
                     attempts.append(attempt_result)
-                    final_result = {
-                        "case": case_dir.name,
-                        **attempt_result,
-                        "attempts": attempts,
-                        "mode": args.mode,
-                        "model": args.model,
-                        **prompt_info,
-                    }
                     if attempt == args.repair_attempts:
                         break
                     continue
@@ -957,14 +948,6 @@ def main(argv: list[str] | None = None) -> int:
                         encoding="utf-8",
                     )
                     attempts.append(attempt_result)
-                    final_result = {
-                        "case": case_dir.name,
-                        **attempt_result,
-                        "attempts": attempts,
-                        "mode": args.mode,
-                        "model": args.model,
-                        **prompt_info,
-                    }
                     if attempt == args.repair_attempts:
                         break
                     continue
@@ -991,14 +974,6 @@ def main(argv: list[str] | None = None) -> int:
                     )
                     attempts.append(attempt_result)
                     if attempt == args.repair_attempts:
-                        final_result = {
-                            "case": case_dir.name,
-                            **attempt_result,
-                            "attempts": attempts,
-                            "mode": args.mode,
-                            "model": args.model,
-                            **prompt_info,
-                        }
                         break
                     retry_context = extract_retry_context(response, exc)
                     continue
@@ -1026,27 +1001,18 @@ def main(argv: list[str] | None = None) -> int:
                 )
                 attempts.append(attempt_result)
                 if completed.returncode == 0:
-                    final_result = {
-                        "case": case_dir.name,
-                        **attempt_result,
-                        "attempts": attempts,
-                        "mode": args.mode,
-                        "model": args.model,
-                        **prompt_info,
-                    }
                     break
                 retry_context = oracle_retry_context(completed, candidate_source)
 
-            if final_result is None:
-                last_attempt = attempts[-1]
-                final_result = {
-                    "case": case_dir.name,
-                    **last_attempt,
-                    "attempts": attempts,
-                    "mode": args.mode,
-                    "model": args.model,
-                    **prompt_info,
-                }
+            last_attempt = attempts[-1]
+            final_result = {
+                "case": case_dir.name,
+                **last_attempt,
+                "attempts": attempts,
+                "mode": args.mode,
+                "model": args.model,
+                **prompt_info,
+            }
             final_result["cost"] = aggregate_attempt_cost(attempts)
             (case_out / "result.json").write_text(json.dumps(final_result, indent=2, sort_keys=True) + "\n", encoding="utf-8")
             summary.append(final_result)

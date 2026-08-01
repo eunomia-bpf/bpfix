@@ -236,6 +236,21 @@ def audit_cost_metrics(
         errors.append(f"{path}: cost and policy_checkpoints must be reported together")
         return errors
 
+    metadata = run_metadata(summary)
+    repair_policy = metadata.get("repair_policy") if isinstance(metadata, dict) else None
+    declared_max_attempts = (
+        repair_policy.get("max_attempts") if isinstance(repair_policy, dict) else None
+    )
+    declared_attempt_limit = (
+        declared_max_attempts
+        if isinstance(declared_max_attempts, int)
+        and not isinstance(declared_max_attempts, bool)
+        and declared_max_attempts >= 1
+        else None
+    )
+    if require_cost_metrics and declared_attempt_limit is None:
+        errors.append(f"{path}: run_metadata.repair_policy.max_attempts is required")
+
     all_attempts: list[dict[str, Any]] = []
     for result_index, raw_result in enumerate(results):
         if not isinstance(raw_result, dict):
@@ -273,8 +288,12 @@ def audit_cost_metrics(
             api_usage = raw_attempt.get("api_usage")
             if api_usage is not None and not isinstance(api_usage, dict):
                 errors.append(f"{prefix}.api_usage must be an object or null")
-            elif isinstance(api_usage, dict) and run_suite.normalize_token_usage(api_usage) != token_usage:
+            if run_suite.normalize_token_usage(api_usage) != token_usage:
                 errors.append(f"{prefix}.token_usage does not match normalized api_usage")
+
+            api_timings = raw_attempt.get("api_timings")
+            if api_timings is not None and not isinstance(api_timings, dict):
+                errors.append(f"{prefix}.api_timings must be an object or null")
 
             for field in [
                 "model_wall_time_seconds",
@@ -293,6 +312,15 @@ def audit_cost_metrics(
             if any(attempt.get("status") == "pass" for attempt in validated_attempts[:-1]):
                 errors.append(f"{path}: results[{result_index}] records attempts after a pass")
             last_attempt = validated_attempts[-1]
+            if declared_attempt_limit is not None:
+                if len(attempts) > declared_attempt_limit:
+                    errors.append(
+                        f"{path}: results[{result_index}] exceeds repair_policy.max_attempts"
+                    )
+                elif len(attempts) < declared_attempt_limit and last_attempt.get("status") != "pass":
+                    errors.append(
+                        f"{path}: results[{result_index}] stops before exhausting repair_policy.max_attempts"
+                    )
             for field in ["status", "failure_stage"]:
                 if raw_result.get(field) != last_attempt.get(field):
                     errors.append(f"{path}: results[{result_index}].{field} does not match its last attempt")
@@ -309,24 +337,7 @@ def audit_cost_metrics(
     if not isinstance(checkpoints, list):
         errors.append(f"{path}: policy_checkpoints must be a list")
     else:
-        metadata = run_metadata(summary)
-        repair_policy = metadata.get("repair_policy") if isinstance(metadata, dict) else None
-        declared_max_attempts = (
-            repair_policy.get("max_attempts") if isinstance(repair_policy, dict) else None
-        )
-        if require_cost_metrics and (
-            isinstance(declared_max_attempts, bool)
-            or not isinstance(declared_max_attempts, int)
-            or declared_max_attempts < 1
-        ):
-            errors.append(f"{path}: run_metadata.repair_policy.max_attempts is required")
-        checkpoint_count = (
-            declared_max_attempts
-            if isinstance(declared_max_attempts, int)
-            and not isinstance(declared_max_attempts, bool)
-            and declared_max_attempts >= 1
-            else len(checkpoints)
-        )
+        checkpoint_count = declared_attempt_limit or len(checkpoints)
         if len(checkpoints) != checkpoint_count:
             errors.append(
                 f"{path}: policy_checkpoints length does not match repair_policy.max_attempts"
