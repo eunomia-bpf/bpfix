@@ -393,6 +393,44 @@ python3 bpfix-bench/tools/run_suite.py \
 | Provider extra body | `--extra-body-json` when needed. | Records nonstandard but explicit provider settings, such as disabling GLM 5.2 deep thinking for direct source generation. |
 | Result metadata | Git commit, dirty bit, split hash, toolchain versions, model path/hash, llama.cpp commit, prompt hash. | Makes each number auditable back to a run artifact. |
 
+### Cost-aware rerun protocol
+
+The tracked result summaries below predate token instrumentation: they record
+prompt characters and repair outcomes, but not API-reported token usage or
+model-call wall time. Consequently, the existing success counts and the
+roughly 77.5% reduction in base-prompt characters must not be presented as an
+exact token- or turnaround-cost result.
+
+New runs record cost once per model call. For each case and prompt mode, run one
+maximum-two-attempt trajectory. Attempt one is the observed one-shot
+checkpoint; the second checkpoint retries only first-attempt failures with the
+same failure-informed context used by the current benchmark. This avoids
+comparing independently sampled one-shot and retry runs. Report only these two
+observed policies rather than interpolating an arbitrary token-budget frontier.
+
+At each checkpoint report oracle-valid repairs together with total prompt,
+completion, and total tokens across every model call made by that policy,
+including failed repairs. Report reasoning tokens only when the provider
+supplies that field, as a decomposition already included in completion/total
+usage, and include field coverage so a missing value is never interpreted as
+zero. `total tokens / oracle-valid repairs` is a secondary cost-effectiveness
+summary; the numerator includes unsuccessful work.
+
+The primary practical comparison remains raw verifier logs against BPFix
+diagnostics on the same model, split, oracle, temperature, maximum output, and
+retry policy. `trimmed-raw` removes wrapper noise but is not token-matched to
+BPFix, so it is only a supporting ablation and cannot isolate proof-aware
+content from prompt compression. A claim that localization wins independently
+of length requires a separate per-case token-matched control.
+
+Model-call wall time, oracle wall time, and attempt elapsed time are recorded
+separately. End-to-end turnaround additionally includes BPFix preprocessing.
+Paper-facing wall-time comparisons require the pinned server configuration,
+exclusive GPU use, warm-up, prompt caching disabled or symmetrically reset, and
+a fixed counterbalanced mode schedule. Otherwise the timing fields are
+diagnostic only and the paper should report the token comparison without a
+turnaround claim.
+
 ### Qwen3.6 27B Configuration
 
 | Field | Value | Explanation |

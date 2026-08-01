@@ -98,6 +98,25 @@ python3 bpfix-bench/tools/run_suite.py \
   --model Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M
 ```
 
+Use this single two-attempt trajectory for cost comparisons; do not run an
+independent one-shot trajectory. The resulting `summary.json` contains
+`policy_checkpoints` for the observed first-attempt policy and the policy that
+retries first-attempt failures once. Each model-backed attempt records:
+
+- API-reported prompt, completion, total, reasoning, and cached-prompt tokens;
+- coverage for every token field, with unreported values left as `null` rather
+  than estimated;
+- raw provider `usage` and timing objects;
+- response length, model-call wall time, oracle wall time, and total attempt
+  wall time, including failed model calls.
+
+Reasoning tokens are a provider-specific decomposition of completion tokens;
+do not add them to `total_tokens`. Aggregate costs include failed attempts, so
+they can be divided by the number of oracle-valid repairs without dropping the
+cost of unsuccessful work. The runner uses provider-reported usage because the
+API count includes the system message and model chat template; `prompt_chars`
+remains only a provider-independent size proxy.
+
 Test the checked-in repair skill without BPFix diagnostics. This mode gives the
 model `buggy.bpf.c`, a bounded failure slice from the raw `verifier.log`, and
 the guidance in `skills/ebpf-verifier-repair/`. The full raw log remains the
@@ -145,7 +164,17 @@ mode, model, attempt count, split SHA-256, kernel, clang, bpftool/libbpf
 versions, and result `summary.json` path. Put release-facing summaries under
 `published-results/main75/`; keep full local run directories under ignored
 `results/`. Separate one-shot from retry and separate raw verifier-log prompts
-from BPFix-assisted prompts.
+from BPFix-assisted prompts. For cost reporting, run one maximum-two-attempt
+trajectory and derive both checkpoints from it. Report input and output tokens
+separately, total-token coverage, total tokens across all attempted cases, and
+oracle-valid successes at each checkpoint. Do not interpolate unobserved token
+budgets or report averages over successful cases alone.
+
+Client wall time from the runner measures a warm model-server repair loop. An
+end-to-end turnaround claim must additionally include BPFix diagnostic
+generation, control or disable prompt caching symmetrically, avoid concurrent
+GPU work, and use a fixed counterbalanced mode order. If those conditions are
+not met, report token results without treating wall time as a fair comparison.
 
 `main75` is a curated verifier-repair benchmark, not a natural-frequency sample
 of all eBPF failures. Claims should therefore be scoped to source-level repair
