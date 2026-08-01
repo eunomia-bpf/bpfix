@@ -132,6 +132,10 @@ class CostAccountingTests(unittest.TestCase):
                 self.assertEqual(result["token_usage"]["total_tokens"], 17)
 
     def test_aggregate_requires_complete_usage_coverage(self) -> None:
+        empty_cost = run_suite.aggregate_attempt_cost([])
+        self.assertEqual(empty_cost["model_calls"], 0)
+        self.assertTrue(all(empty_cost[field] == 0 for field in run_suite.TOKEN_USAGE_FIELDS))
+
         attempts = [
             {
                 "model_wall_time_seconds": 1.0,

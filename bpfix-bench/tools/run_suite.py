@@ -498,7 +498,7 @@ def aggregate_attempt_cost(attempts: list[dict[str, Any]]) -> dict[str, Any]:
             and isinstance(usage.get(field), int)
         ]
         coverage[field] = len(reported)
-        totals[field] = sum(reported) if len(reported) == len(model_calls) and model_calls else None
+        totals[field] = sum(reported) if len(reported) == len(model_calls) else None
 
     def sum_seconds(field: str) -> float:
         return round(
