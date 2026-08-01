@@ -18,6 +18,7 @@ ROOT = TOOLS_DIR.parents[1]
 sys.path.insert(0, str(TOOLS_DIR))
 
 import run_suite  # noqa: E402
+import audit_results  # noqa: E402
 from extract_verifier_failure import compact_verifier_log, latest_load_region  # noqa: E402
 
 
@@ -105,6 +106,31 @@ class CostAccountingTests(unittest.TestCase):
         self.assertEqual(result["token_usage"]["total_tokens"], 24)
         self.assertEqual(result["api_timings"]["prompt_ms"], 2.5)
 
+    @mock.patch.object(run_suite.urllib.request, "urlopen")
+    def test_malformed_model_response_preserves_billable_usage(self, urlopen: mock.Mock) -> None:
+        usage = {"prompt_tokens": 16, "completion_tokens": 1, "total_tokens": 17}
+        for payload, expected_error in [
+            (
+                {"choices": [{"message": {"content": None}}], "usage": usage},
+                "content is not a string",
+            ),
+            ({"choices": [], "usage": usage}, "choices[0] is missing or invalid"),
+        ]:
+            with self.subTest(error=expected_error):
+                urlopen.return_value = FakeHTTPResponse(payload)
+                result = run_suite.call_openai_compatible(
+                    base_url="http://model.invalid/v1",
+                    api_key="none",
+                    model="test",
+                    prompt="repair this",
+                    timeout=1,
+                    max_tokens=32,
+                    temperature=0,
+                )
+                self.assertIsNone(result["content"])
+                self.assertIn(expected_error, result["error"])
+                self.assertEqual(result["token_usage"]["total_tokens"], 17)
+
     def test_aggregate_requires_complete_usage_coverage(self) -> None:
         attempts = [
             {
@@ -175,6 +201,83 @@ class CostAccountingTests(unittest.TestCase):
         self.assertEqual([(row["max_attempts"], row["passed"]) for row in no_retry_needed], [(1, 1), (2, 1)])
         self.assertEqual(no_retry_needed[0]["cost"], no_retry_needed[1]["cost"])
 
+    def test_cost_audit_recomputes_totals_and_checkpoints(self) -> None:
+        attempt = {
+            "attempt": 1,
+            "status": "pass",
+            "failure_stage": "pass",
+            "model_wall_time_seconds": 1.0,
+            "oracle_wall_time_seconds": 2.0,
+            "attempt_wall_time_seconds": 3.0,
+            "token_usage": {
+                "prompt_tokens": 10,
+                "completion_tokens": 5,
+                "total_tokens": 15,
+                "reasoning_tokens": 0,
+                "cached_prompt_tokens": 0,
+            },
+            "api_usage": {
+                "prompt_tokens": 10,
+                "completion_tokens": 5,
+                "total_tokens": 15,
+                "completion_tokens_details": {"reasoning_tokens": 0},
+                "prompt_tokens_details": {"cached_tokens": 0},
+            },
+        }
+        result = {
+            "case": "case-1",
+            "status": "pass",
+            "failure_stage": "pass",
+            "attempts": [attempt],
+            "cost": run_suite.aggregate_attempt_cost([attempt]),
+        }
+        summary = {
+            "run_metadata": {"repair_policy": {"max_attempts": 1}},
+            "results": [result],
+            "cost": run_suite.aggregate_attempt_cost([attempt]),
+            "policy_checkpoints": run_suite.repair_policy_checkpoints([result], max_attempts=1),
+        }
+        self.assertEqual(
+            audit_results.audit_cost_metrics(
+                path=Path("summary.json"),
+                summary=summary,
+                results=summary["results"],
+                require_cost_metrics=True,
+            ),
+            [],
+        )
+
+        corrupted = json.loads(json.dumps(summary))
+        corrupted["cost"]["total_tokens"] += 1
+        corrupted["policy_checkpoints"][0]["passed"] = 0
+        errors = audit_results.audit_cost_metrics(
+            path=Path("summary.json"),
+            summary=corrupted,
+            results=corrupted["results"],
+            require_cost_metrics=True,
+        )
+        self.assertTrue(any("cost does not match" in error for error in errors))
+        self.assertTrue(any("policy_checkpoints do not match" in error for error in errors))
+
+    def test_cost_audit_allows_legacy_only_when_not_required(self) -> None:
+        legacy = {"results": []}
+        self.assertEqual(
+            audit_results.audit_cost_metrics(
+                path=Path("legacy.json"),
+                summary=legacy,
+                results=[],
+                require_cost_metrics=False,
+            ),
+            [],
+        )
+        errors = audit_results.audit_cost_metrics(
+            path=Path("legacy.json"),
+            summary=legacy,
+            results=[],
+            require_cost_metrics=True,
+        )
+        self.assertTrue(any("cost and policy_checkpoints are required" in error for error in errors))
+
     @mock.patch.object(run_suite, "server_model_metadata", return_value={"reachable": False, "models": None})
     @mock.patch.object(run_suite, "call_openai_compatible", side_effect=TimeoutError("timed out"))
     def test_model_call_failure_is_recorded_as_attempt(
@@ -204,6 +307,64 @@ class CostAccountingTests(unittest.TestCase):
             self.assertIsNone(attempts[0]["token_usage"])
             self.assertEqual(summary["cost"]["model_calls"], 1)
             self.assertEqual(summary["cost"]["token_usage_coverage"]["total_tokens"], 0)
+
+    @mock.patch.object(run_suite, "server_model_metadata", return_value={"reachable": False, "models": None})
+    @mock.patch.object(run_suite, "run_oracle")
+    @mock.patch.object(run_suite, "call_openai_compatible")
+    def test_transport_failure_consumes_attempt_then_retries(
+        self,
+        model_call: mock.Mock,
+        run_oracle: mock.Mock,
+        _server: mock.Mock,
+    ) -> None:
+        model_call.side_effect = [
+            TimeoutError("timed out"),
+            {
+                "content": "```c\nint x;\n```",
+                "error": None,
+                "finish_reason": "stop",
+                "reasoning_chars": None,
+                "token_usage": {
+                    "prompt_tokens": 10,
+                    "completion_tokens": 5,
+                    "total_tokens": 15,
+                    "reasoning_tokens": None,
+                    "cached_prompt_tokens": None,
+                },
+                "api_usage": {"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 15},
+                "api_timings": None,
+            },
+        ]
+        run_oracle.return_value = subprocess.CompletedProcess(
+            args=["oracle"],
+            returncode=0,
+            stdout="{}",
+            stderr="",
+        )
+        with tempfile.TemporaryDirectory() as temp_dir:
+            results_dir = Path(temp_dir)
+            with redirect_stdout(io.StringIO()):
+                returncode = run_suite.main(
+                    [
+                        "--case",
+                        "alu32_pointer_cookie_001",
+                        "--results-dir",
+                        str(results_dir),
+                        "--base-url",
+                        "http://model.invalid/v1",
+                        "--repair-attempts",
+                        "2",
+                    ]
+                )
+            self.assertEqual(returncode, 0)
+            summary_path = next(results_dir.rglob("summary.json"))
+            summary = json.loads(summary_path.read_text(encoding="utf-8"))
+            attempts = summary["results"][0]["attempts"]
+            self.assertEqual([attempt["status"] for attempt in attempts], ["model_error", "pass"])
+            self.assertEqual(model_call.call_count, 2)
+            self.assertEqual(summary["policy_checkpoints"][0]["passed"], 0)
+            self.assertEqual(summary["policy_checkpoints"][1]["passed"], 1)
+            self.assertIsNone(summary["cost"]["total_tokens"])
 
 
 class VerifierLogSliceTests(unittest.TestCase):

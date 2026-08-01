@@ -110,6 +110,11 @@ retries first-attempt failures once. Each model-backed attempt records:
 - response length, model-call wall time, oracle wall time, and total attempt
   wall time, including failed model calls.
 
+Transport and malformed-response failures consume an attempt and are retried
+with the same prompt while budget remains. Total attempt time starts before
+retry-context construction and prompt-file output, while model-call time covers
+only the API call.
+
 Reasoning tokens are a provider-specific decomposition of completion tokens;
 do not add them to `total_tokens`. Aggregate costs include failed attempts, so
 they can be divided by the number of oracle-valid repairs without dropping the
@@ -169,6 +174,11 @@ trajectory and derive both checkpoints from it. Report input and output tokens
 separately, total-token coverage, total tokens across all attempted cases, and
 oracle-valid successes at each checkpoint. Do not interpolate unobserved token
 budgets or report averages over successful cases alone.
+
+Pass `--require-cost-metrics` to `audit_results.py` for new cost-aware runs; the
+audit recomputes per-case totals, summary totals, and policy checkpoints from
+the attempt records. Legacy published summaries remain auditable without this
+flag because they predate token instrumentation.
 
 Client wall time from the runner measures a warm model-server repair loop. An
 end-to-end turnaround claim must additionally include BPFix diagnostic

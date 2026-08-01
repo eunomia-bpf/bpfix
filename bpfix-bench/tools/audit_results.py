@@ -218,6 +218,128 @@ def stage_for_result(result: dict[str, Any]) -> str | None:
     return None
 
 
+def audit_cost_metrics(
+    *,
+    path: Path,
+    summary: dict[str, Any],
+    results: list[Any],
+    require_cost_metrics: bool,
+) -> list[str]:
+    errors: list[str] = []
+    has_cost = "cost" in summary
+    has_checkpoints = "policy_checkpoints" in summary
+    if not has_cost and not has_checkpoints:
+        if require_cost_metrics:
+            errors.append(f"{path}: cost and policy_checkpoints are required")
+        return errors
+    if has_cost != has_checkpoints:
+        errors.append(f"{path}: cost and policy_checkpoints must be reported together")
+        return errors
+
+    all_attempts: list[dict[str, Any]] = []
+    for result_index, raw_result in enumerate(results):
+        if not isinstance(raw_result, dict):
+            continue
+        attempts = raw_result.get("attempts")
+        if not isinstance(attempts, list):
+            if require_cost_metrics and raw_result.get("status") != "prompt_written":
+                errors.append(f"{path}: results[{result_index}].attempts must be a list")
+            continue
+        if not attempts:
+            errors.append(f"{path}: results[{result_index}].attempts must not be empty")
+            continue
+
+        validated_attempts: list[dict[str, Any]] = []
+        for attempt_index, raw_attempt in enumerate(attempts, start=1):
+            prefix = f"{path}: results[{result_index}].attempts[{attempt_index - 1}]"
+            if not isinstance(raw_attempt, dict):
+                errors.append(f"{prefix} must be an object")
+                continue
+            validated_attempts.append(raw_attempt)
+            if raw_attempt.get("attempt") != attempt_index:
+                errors.append(f"{prefix}.attempt must be {attempt_index}")
+
+            token_usage = raw_attempt.get("token_usage")
+            if token_usage is not None and not isinstance(token_usage, dict):
+                errors.append(f"{prefix}.token_usage must be an object or null")
+            elif isinstance(token_usage, dict):
+                for field in run_suite.TOKEN_USAGE_FIELDS:
+                    value = token_usage.get(field)
+                    if value is not None and (isinstance(value, bool) or not isinstance(value, int) or value < 0):
+                        errors.append(f"{prefix}.token_usage.{field} must be a non-negative integer or null")
+                    if field not in token_usage:
+                        errors.append(f"{prefix}.token_usage.{field} is required")
+
+            api_usage = raw_attempt.get("api_usage")
+            if api_usage is not None and not isinstance(api_usage, dict):
+                errors.append(f"{prefix}.api_usage must be an object or null")
+            elif isinstance(api_usage, dict) and run_suite.normalize_token_usage(api_usage) != token_usage:
+                errors.append(f"{prefix}.token_usage does not match normalized api_usage")
+
+            for field in [
+                "model_wall_time_seconds",
+                "oracle_wall_time_seconds",
+                "attempt_wall_time_seconds",
+            ]:
+                value = raw_attempt.get(field)
+                if field == "model_wall_time_seconds" and value is None:
+                    errors.append(f"{prefix}.{field} is required")
+                elif value is not None and (
+                    isinstance(value, bool) or not isinstance(value, (int, float)) or value < 0
+                ):
+                    errors.append(f"{prefix}.{field} must be a non-negative number or null")
+
+        if validated_attempts:
+            if any(attempt.get("status") == "pass" for attempt in validated_attempts[:-1]):
+                errors.append(f"{path}: results[{result_index}] records attempts after a pass")
+            last_attempt = validated_attempts[-1]
+            for field in ["status", "failure_stage"]:
+                if raw_result.get(field) != last_attempt.get(field):
+                    errors.append(f"{path}: results[{result_index}].{field} does not match its last attempt")
+            expected_result_cost = run_suite.aggregate_attempt_cost(validated_attempts)
+            if raw_result.get("cost") != expected_result_cost:
+                errors.append(f"{path}: results[{result_index}].cost does not match its attempts")
+            all_attempts.extend(validated_attempts)
+
+    expected_summary_cost = run_suite.aggregate_attempt_cost(all_attempts)
+    if summary.get("cost") != expected_summary_cost:
+        errors.append(f"{path}: cost does not match the recorded attempts")
+
+    checkpoints = summary.get("policy_checkpoints")
+    if not isinstance(checkpoints, list):
+        errors.append(f"{path}: policy_checkpoints must be a list")
+    else:
+        metadata = run_metadata(summary)
+        repair_policy = metadata.get("repair_policy") if isinstance(metadata, dict) else None
+        declared_max_attempts = (
+            repair_policy.get("max_attempts") if isinstance(repair_policy, dict) else None
+        )
+        if require_cost_metrics and (
+            isinstance(declared_max_attempts, bool)
+            or not isinstance(declared_max_attempts, int)
+            or declared_max_attempts < 1
+        ):
+            errors.append(f"{path}: run_metadata.repair_policy.max_attempts is required")
+        checkpoint_count = (
+            declared_max_attempts
+            if isinstance(declared_max_attempts, int)
+            and not isinstance(declared_max_attempts, bool)
+            and declared_max_attempts >= 1
+            else len(checkpoints)
+        )
+        if len(checkpoints) != checkpoint_count:
+            errors.append(
+                f"{path}: policy_checkpoints length does not match repair_policy.max_attempts"
+            )
+        expected_checkpoints = run_suite.repair_policy_checkpoints(
+            [result for result in results if isinstance(result, dict)],
+            max_attempts=checkpoint_count,
+        )
+        if checkpoints != expected_checkpoints:
+            errors.append(f"{path}: policy_checkpoints do not match the recorded attempts")
+    return errors
+
+
 def audit_one_summary(
     *,
     path: Path,
@@ -228,6 +350,7 @@ def audit_one_summary(
     allow_prompt_only: bool,
     allow_dirty: bool,
     allow_missing_model_digest: bool,
+    require_cost_metrics: bool,
 ) -> tuple[dict[str, Any], list[str]]:
     errors: list[str] = []
     mode = summary.get("mode")
@@ -335,6 +458,15 @@ def audit_one_summary(
     if duplicate_cases:
         errors.append(f"{path}: duplicate result case ids: {', '.join(sorted(duplicate_cases))}")
 
+    errors.extend(
+        audit_cost_metrics(
+            path=path,
+            summary=summary,
+            results=results,
+            require_cost_metrics=require_cost_metrics,
+        )
+    )
+
     split = split_record(summary)
     split_summary: dict[str, Any] = {"present": split is not None}
     if expected_split is not None:
@@ -422,6 +554,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         action="store_true",
         help="Do not require every summary to contain the same ordered case list.",
     )
+    parser.add_argument(
+        "--require-cost-metrics",
+        action="store_true",
+        help="Require and recompute per-attempt costs and repair-policy checkpoints.",
+    )
     return parser.parse_args(argv)
 
 
@@ -457,6 +594,7 @@ def audit_results(args: argparse.Namespace) -> dict[str, Any]:
             allow_prompt_only=args.allow_prompt_only,
             allow_dirty=args.allow_dirty,
             allow_missing_model_digest=args.allow_missing_model_digest,
+            require_cost_metrics=args.require_cost_metrics,
         )
         summaries.append(report)
         errors.extend(summary_errors)

@@ -265,6 +265,9 @@ def run_metadata(args: argparse.Namespace, root: Path) -> dict[str, object]:
             "mode": args.mode,
             "skill_files": skill_file_metadata(root) if args.mode == "skills" else [],
         },
+        "repair_policy": {
+            "max_attempts": args.repair_attempts if args.candidate is None and not args.prompt_only else None,
+        },
     }
 
 
@@ -590,17 +593,24 @@ def call_openai_compatible(
     )
     with urllib.request.urlopen(request, timeout=timeout) as response:
         payload = json.loads(response.read().decode("utf-8"))
-    choice = payload["choices"][0]
-    message = choice["message"]
-    content = message["content"]
-    if not isinstance(content, str):
-        raise KeyError("choices[0].message.content is not a string")
-    raw_usage = payload.get("usage")
-    raw_timings = payload.get("timings")
-    reasoning_content = message.get("reasoning_content")
+    raw_usage = payload.get("usage") if isinstance(payload, dict) else None
+    raw_timings = payload.get("timings") if isinstance(payload, dict) else None
+    choices = payload.get("choices") if isinstance(payload, dict) else None
+    choice = choices[0] if isinstance(choices, list) and choices and isinstance(choices[0], dict) else None
+    message = choice.get("message") if isinstance(choice, dict) else None
+    content = message.get("content") if isinstance(message, dict) else None
+    reasoning_content = message.get("reasoning_content") if isinstance(message, dict) else None
+    error = None
+    if choice is None:
+        error = "response choices[0] is missing or invalid"
+    elif not isinstance(message, dict):
+        error = "choices[0].message is missing or invalid"
+    elif not isinstance(content, str):
+        error = "choices[0].message.content is not a string"
     return {
-        "content": content,
-        "finish_reason": choice.get("finish_reason"),
+        "content": content if isinstance(content, str) else None,
+        "error": error,
+        "finish_reason": choice.get("finish_reason") if isinstance(choice, dict) else None,
         "reasoning_chars": len(reasoning_content) if isinstance(reasoning_content, str) else None,
         "token_usage": normalize_token_usage(raw_usage),
         "api_usage": raw_usage if isinstance(raw_usage, dict) else None,
@@ -862,9 +872,9 @@ def main(argv: list[str] | None = None) -> int:
             for attempt in range(1, args.repair_attempts + 1):
                 attempt_out = case_out / f"attempt-{attempt}"
                 attempt_out.mkdir(parents=True, exist_ok=True)
+                attempt_started = time.perf_counter()
                 prompt = append_retry_context(base_prompt, retry_context)
                 (attempt_out / "prompt.txt").write_text(prompt, encoding="utf-8")
-                attempt_started = time.perf_counter()
                 model_started = time.perf_counter()
                 try:
                     model_result = call_openai_compatible(
@@ -878,13 +888,10 @@ def main(argv: list[str] | None = None) -> int:
                         extra_body=args.extra_body,
                     )
                     model_wall_time = round(time.perf_counter() - model_started, 6)
-                    response = model_result["content"]
-                    (attempt_out / "response.txt").write_text(response, encoding="utf-8")
                 except (
                     json.JSONDecodeError,
                     urllib.error.URLError,
                     TimeoutError,
-                    KeyError,
                     ConnectionError,
                     http.client.HTTPException,
                 ) as exc:
@@ -919,16 +926,49 @@ def main(argv: list[str] | None = None) -> int:
                         "model": args.model,
                         **prompt_info,
                     }
-                    break
+                    if attempt == args.repair_attempts:
+                        break
+                    continue
+                response = model_result.get("content")
                 model_metrics = {
-                    "response_chars": len(response),
-                    "reasoning_chars": model_result["reasoning_chars"],
-                    "finish_reason": model_result["finish_reason"],
-                    "token_usage": model_result["token_usage"],
-                    "api_usage": model_result["api_usage"],
-                    "api_timings": model_result["api_timings"],
+                    "response_chars": len(response) if isinstance(response, str) else None,
+                    "reasoning_chars": model_result.get("reasoning_chars"),
+                    "finish_reason": model_result.get("finish_reason"),
+                    "token_usage": model_result.get("token_usage"),
+                    "api_usage": model_result.get("api_usage"),
+                    "api_timings": model_result.get("api_timings"),
                     "model_wall_time_seconds": model_wall_time,
                 }
+                response_error = model_result.get("error")
+                if response_error is not None or not isinstance(response, str):
+                    attempt_result = {
+                        "attempt": attempt,
+                        "status": "model_error",
+                        "failure_stage": "model_call",
+                        "error": str(response_error or "model response content is unavailable"),
+                        "prompt_sha256": sha256_text(prompt),
+                        "prompt_chars": len(prompt),
+                        **model_metrics,
+                        "oracle_wall_time_seconds": None,
+                        "attempt_wall_time_seconds": round(time.perf_counter() - attempt_started, 6),
+                    }
+                    (attempt_out / "result.json").write_text(
+                        json.dumps(attempt_result, indent=2, sort_keys=True) + "\n",
+                        encoding="utf-8",
+                    )
+                    attempts.append(attempt_result)
+                    final_result = {
+                        "case": case_dir.name,
+                        **attempt_result,
+                        "attempts": attempts,
+                        "mode": args.mode,
+                        "model": args.model,
+                        **prompt_info,
+                    }
+                    if attempt == args.repair_attempts:
+                        break
+                    continue
+                (attempt_out / "response.txt").write_text(response, encoding="utf-8")
                 try:
                     candidate_source = extract_source(response)
                     candidate_path = attempt_out / "candidate.bpf.c"
