@@ -7,6 +7,7 @@ import os
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from contextlib import redirect_stdout
 from pathlib import Path
@@ -37,6 +38,24 @@ class FakeHTTPResponse:
 
 
 class CostAccountingTests(unittest.TestCase):
+    @staticmethod
+    def valid_model_result() -> dict[str, object]:
+        return {
+            "content": "```c\nint x;\n```",
+            "error": None,
+            "finish_reason": "stop",
+            "reasoning_chars": None,
+            "token_usage": {
+                "prompt_tokens": 10,
+                "completion_tokens": 5,
+                "total_tokens": 15,
+                "reasoning_tokens": None,
+                "cached_prompt_tokens": None,
+            },
+            "api_usage": {"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 15},
+            "api_timings": None,
+        }
+
     def test_normalizes_openai_and_responses_usage_fields(self) -> None:
         self.assertEqual(
             run_suite.normalize_token_usage(
@@ -373,21 +392,7 @@ class CostAccountingTests(unittest.TestCase):
         run_oracle: mock.Mock,
         _server: mock.Mock,
     ) -> None:
-        valid_response = {
-            "content": "```c\nint x;\n```",
-            "error": None,
-            "finish_reason": "stop",
-            "reasoning_chars": None,
-            "token_usage": {
-                "prompt_tokens": 10,
-                "completion_tokens": 5,
-                "total_tokens": 15,
-                "reasoning_tokens": None,
-                "cached_prompt_tokens": None,
-            },
-            "api_usage": {"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 15},
-            "api_timings": None,
-        }
+        valid_response = self.valid_model_result()
         malformed_response = {
             **valid_response,
             "content": None,
@@ -451,6 +456,62 @@ class CostAccountingTests(unittest.TestCase):
                     ),
                     [],
                 )
+
+    @mock.patch.object(run_suite, "server_model_metadata", return_value={"reachable": False, "models": None})
+    @mock.patch.object(run_suite, "run_oracle")
+    @mock.patch.object(run_suite, "call_openai_compatible")
+    def test_retry_context_build_is_in_attempt_timing(
+        self,
+        model_call: mock.Mock,
+        run_oracle: mock.Mock,
+        _server: mock.Mock,
+    ) -> None:
+        model_call.side_effect = [self.valid_model_result(), self.valid_model_result()]
+        run_oracle.side_effect = [
+            subprocess.CompletedProcess(
+                args=["oracle"],
+                returncode=1,
+                stdout='{"load":{"returncode":1},"map_setup":[]}',
+                stderr="",
+            ),
+            subprocess.CompletedProcess(args=["oracle"], returncode=0, stdout="{}", stderr=""),
+        ]
+
+        def delayed_retry_context(*_args: object) -> str:
+            time.sleep(0.02)
+            return "delayed retry context"
+
+        with tempfile.TemporaryDirectory() as temp_dir, mock.patch.object(
+            run_suite,
+            "oracle_retry_context",
+            side_effect=delayed_retry_context,
+        ):
+            results_dir = Path(temp_dir)
+            with redirect_stdout(io.StringIO()):
+                returncode = run_suite.main(
+                    [
+                        "--case",
+                        "alu32_pointer_cookie_001",
+                        "--results-dir",
+                        str(results_dir),
+                        "--base-url",
+                        "http://model.invalid/v1",
+                        "--repair-attempts",
+                        "2",
+                    ]
+                )
+            self.assertEqual(returncode, 0)
+            summary_path = next(results_dir.rglob("summary.json"))
+            summary = json.loads(summary_path.read_text(encoding="utf-8"))
+            attempts = summary["results"][0]["attempts"]
+            measured_non_model_time = (
+                attempts[0]["attempt_wall_time_seconds"]
+                - attempts[0]["model_wall_time_seconds"]
+                - attempts[0]["oracle_wall_time_seconds"]
+            )
+            self.assertGreaterEqual(measured_non_model_time, 0.015)
+            second_prompt = summary_path.parent / "alu32_pointer_cookie_001" / "attempt-2" / "prompt.txt"
+            self.assertIn("delayed retry context", second_prompt.read_text(encoding="utf-8"))
 
 
 class VerifierLogSliceTests(unittest.TestCase):

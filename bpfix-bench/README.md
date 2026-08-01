@@ -112,8 +112,8 @@ retries first-attempt failures once. Each model-backed attempt records:
 
 Transport and malformed-response failures consume an attempt and are retried
 with the same prompt while budget remains. Total attempt time starts before
-retry-context appending and prompt-file output, while model-call time covers
-only the API call.
+retry-context construction, appending, and prompt-file output, while model-call
+time covers only the API call.
 
 Reasoning tokens are a provider-specific decomposition of completion tokens;
 do not add them to `total_tokens`. Aggregate costs include failed attempts, so

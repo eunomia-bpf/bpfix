@@ -957,6 +957,11 @@ def main(argv: list[str] | None = None) -> int:
                     candidate_path = attempt_out / "candidate.bpf.c"
                     candidate_path.write_text(candidate_source, encoding="utf-8")
                 except ValueError as exc:
+                    next_retry_context = (
+                        extract_retry_context(response, exc)
+                        if attempt < args.repair_attempts
+                        else None
+                    )
                     attempt_result = {
                         "attempt": attempt,
                         "status": "model_error",
@@ -975,12 +980,17 @@ def main(argv: list[str] | None = None) -> int:
                     attempts.append(attempt_result)
                     if attempt == args.repair_attempts:
                         break
-                    retry_context = extract_retry_context(response, exc)
+                    retry_context = next_retry_context
                     continue
 
                 oracle_started = time.perf_counter()
                 completed = run_oracle(case_dir, candidate_path, attempt_out / "work")
                 oracle_wall_time = round(time.perf_counter() - oracle_started, 6)
+                next_retry_context = (
+                    oracle_retry_context(completed, candidate_source)
+                    if completed.returncode != 0 and attempt < args.repair_attempts
+                    else None
+                )
                 attempt_result = {
                     "attempt": attempt,
                     "status": "pass" if completed.returncode == 0 else "fail",
@@ -1002,7 +1012,7 @@ def main(argv: list[str] | None = None) -> int:
                 attempts.append(attempt_result)
                 if completed.returncode == 0:
                     break
-                retry_context = oracle_retry_context(completed, candidate_source)
+                retry_context = next_retry_context
 
             last_attempt = attempts[-1]
             final_result = {
