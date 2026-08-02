@@ -19,7 +19,7 @@ def repo_root() -> Path:
 
 
 def selected_modes(args: argparse.Namespace) -> list[str]:
-    modes = args.mode or list(run_suite.MODES)
+    modes = args.mode or list(run_suite.STATIC_PROMPT_MODES)
     duplicates = sorted({mode for mode in modes if modes.count(mode) > 1})
     if duplicates:
         raise SystemExit("duplicate mode(s): " + ", ".join(duplicates))
@@ -183,7 +183,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--split", type=Path, required=True, help="Split file containing case ids.")
     parser.add_argument("--expected-count", type=int, help="Required number of cases.")
-    parser.add_argument("--mode", action="append", choices=run_suite.MODES, help="Prompt mode to include.")
+    parser.add_argument(
+        "--mode",
+        action="append",
+        choices=run_suite.STATIC_PROMPT_MODES,
+        help="Static prompt mode to include; matched-raw-tail requires a live model tokenizer.",
+    )
     parser.add_argument("--output", type=Path, help="Write a generated manifest to this file.")
     parser.add_argument("--verify", type=Path, help="Verify an existing prompt manifest.")
     parser.add_argument(

@@ -16,18 +16,30 @@ import time
 import urllib.error
 import urllib.request
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 SKILL_SCRIPT_DIR = (
     Path(__file__).resolve().parents[2] / "skills" / "ebpf-verifier-repair" / "scripts"
 )
 sys.path.insert(0, str(SKILL_SCRIPT_DIR))
-from extract_verifier_failure import compact_verifier_log  # noqa: E402
+from extract_verifier_failure import compact_verifier_log, latest_load_region  # noqa: E402
 
 
 DEFAULT_BASE_URL = "http://127.0.0.1:18080/v1"
 DEFAULT_MODEL = "Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M"
-MODES = ["source-only", "raw", "trimmed-raw", "bpfix", "skills"]
+STATIC_PROMPT_MODES = [
+    "source-only",
+    "raw",
+    "trimmed-raw",
+    "bpfix",
+    "skills",
+    "bpfix-neutral",
+    "bpfix-no-help",
+]
+MODES = [*STATIC_PROMPT_MODES, "matched-raw-tail"]
+SYSTEM_PROMPT = "You repair eBPF C verifier failures by returning a full corrected source file."
+NEUTRAL_EVIDENCE_LABEL = "verifier diagnostic evidence"
+RAW_TAIL_OMISSION = "... <earlier verifier log omitted to match the diagnostic token budget> ...\n"
 TOKEN_USAGE_FIELDS = [
     "prompt_tokens",
     "completion_tokens",
@@ -285,6 +297,13 @@ def diagnostic_input(case_dir: Path, mode: str) -> tuple[str | None, str, str]:
             (case_dir / "diagnostic.txt").read_text(encoding="utf-8"),
             "",
         )
+    if mode in {"bpfix-neutral", "bpfix-no-help"}:
+        diagnostic = (case_dir / "diagnostic.txt").read_text(encoding="utf-8")
+        if mode == "bpfix-no-help":
+            diagnostic = "".join(
+                line for line in diagnostic.splitlines(keepends=True) if not line.startswith("help:")
+            )
+        return NEUTRAL_EVIDENCE_LABEL, diagnostic, ""
     if mode == "skills":
         raw_log = (case_dir / "verifier.log").read_text(encoding="utf-8")
         return (
@@ -298,9 +317,14 @@ def diagnostic_input(case_dir: Path, mode: str) -> tuple[str | None, str, str]:
     raise ValueError(f"unknown mode: {mode}")
 
 
-def build_prompt(case_dir: Path, mode: str) -> str:
+def render_prompt(
+    case_dir: Path,
+    mode: str,
+    diagnostic_label: str | None,
+    diagnostic: str,
+    diagnostic_guidance: str,
+) -> str:
     source = (case_dir / "buggy.bpf.c").read_text(encoding="utf-8")
-    diagnostic_label, diagnostic, diagnostic_guidance = diagnostic_input(case_dir, mode)
     diagnostic_block = ""
     if diagnostic_label is None:
         diagnostic_block = "\nNo verifier diagnostic is provided for this baseline.\n"
@@ -334,6 +358,72 @@ Source file:
 ```
 {diagnostic_block}
 """
+
+
+def build_prompt_details(
+    case_dir: Path,
+    mode: str,
+    token_counter: Callable[[str], int] | None = None,
+) -> dict[str, Any]:
+    if mode != "matched-raw-tail":
+        label, diagnostic, guidance = diagnostic_input(case_dir, mode)
+        return {
+            "prompt": render_prompt(case_dir, mode, label, diagnostic, guidance),
+            "diagnostic_chars": len(diagnostic),
+            "prompt_token_match": None,
+        }
+
+    if token_counter is None:
+        raise ValueError("matched-raw-tail requires a chat prompt token counter")
+
+    target_label, target_diagnostic, target_guidance = diagnostic_input(case_dir, "bpfix-no-help")
+    target_prompt = render_prompt(
+        case_dir,
+        "bpfix-no-help",
+        target_label,
+        target_diagnostic,
+        target_guidance,
+    )
+    target_tokens = token_counter(target_prompt)
+
+    raw_log = (case_dir / "verifier.log").read_text(encoding="utf-8")
+    region = latest_load_region(raw_log)
+    lines = region.splitlines(keepends=True)
+    candidates: list[tuple[int, str, str, int]] = []
+    for start in range(len(lines) + 1):
+        evidence = region if start == 0 else RAW_TAIL_OMISSION + "".join(lines[start:])
+        prompt = render_prompt(case_dir, mode, NEUTRAL_EVIDENCE_LABEL, evidence, "")
+        tokens = token_counter(prompt)
+        if tokens <= target_tokens:
+            candidates.append((start, evidence, prompt, tokens))
+    if not candidates:
+        raise ValueError(f"{case_dir.name}: no complete-line raw suffix fits the no-help token budget")
+
+    start, evidence, prompt, matched_tokens = min(candidates, key=lambda item: item[0])
+    return {
+        "prompt": prompt,
+        "diagnostic_chars": len(evidence),
+        "prompt_token_match": {
+            "target_mode": "bpfix-no-help",
+            "target_tokens": target_tokens,
+            "matched_tokens": matched_tokens,
+            "gap_tokens": target_tokens - matched_tokens,
+            "load_region_count": raw_log.count("-- BEGIN PROG LOAD LOG --"),
+            "region_sha256": sha256_text(region),
+            "region_chars": len(region),
+            "region_line_count": len(lines),
+            "suffix_start_line": start + 1,
+            "suffix_line_count": len(lines) - start,
+        },
+    }
+
+
+def build_prompt(
+    case_dir: Path,
+    mode: str,
+    token_counter: Callable[[str], int] | None = None,
+) -> str:
+    return str(build_prompt_details(case_dir, mode, token_counter)["prompt"])
 
 
 def truncate_middle(text: str, limit: int) -> str:
@@ -556,6 +646,64 @@ def repair_policy_checkpoints(
     return checkpoints
 
 
+def chat_completion_body(
+    *,
+    model: str,
+    prompt: str,
+    max_tokens: int,
+    temperature: float,
+    extra_body: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    body = {
+        "model": model,
+        "messages": [
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": prompt},
+        ],
+        "temperature": temperature,
+        "max_tokens": max_tokens,
+    }
+    if extra_body:
+        body.update(extra_body)
+    return body
+
+
+def count_chat_input_tokens(
+    *,
+    base_url: str,
+    api_key: str,
+    model: str,
+    prompt: str,
+    timeout: float,
+    max_tokens: int,
+    temperature: float,
+    extra_body: dict[str, Any] | None = None,
+) -> int:
+    url = base_url.rstrip("/") + "/chat/completions/input_tokens"
+    body = chat_completion_body(
+        model=model,
+        prompt=prompt,
+        max_tokens=max_tokens,
+        temperature=temperature,
+        extra_body=extra_body,
+    )
+    request = urllib.request.Request(
+        url,
+        data=json.dumps(body).encode("utf-8"),
+        headers={
+            "content-type": "application/json",
+            "authorization": f"Bearer {api_key}",
+        },
+        method="POST",
+    )
+    with urllib.request.urlopen(request, timeout=timeout) as response:
+        payload = json.loads(response.read().decode("utf-8"))
+    input_tokens = payload.get("input_tokens") if isinstance(payload, dict) else None
+    if isinstance(input_tokens, bool) or not isinstance(input_tokens, int) or input_tokens < 0:
+        raise ValueError("token-count response does not contain a non-negative input_tokens integer")
+    return input_tokens
+
+
 def call_openai_compatible(
     *,
     base_url: str,
@@ -568,20 +716,13 @@ def call_openai_compatible(
     extra_body: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     url = base_url.rstrip("/") + "/chat/completions"
-    body = {
-        "model": model,
-        "messages": [
-            {
-                "role": "system",
-                "content": "You repair eBPF C verifier failures by returning a full corrected source file.",
-            },
-            {"role": "user", "content": prompt},
-        ],
-        "temperature": temperature,
-        "max_tokens": max_tokens,
-    }
-    if extra_body:
-        body.update(extra_body)
+    body = chat_completion_body(
+        model=model,
+        prompt=prompt,
+        max_tokens=max_tokens,
+        temperature=temperature,
+        extra_body=extra_body,
+    )
     request = urllib.request.Request(
         url,
         data=json.dumps(body).encode("utf-8"),
@@ -846,18 +987,32 @@ def main(argv: list[str] | None = None) -> int:
     (run_dir / "metadata.json").write_text(json.dumps(metadata, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
     api_key = os.environ.get(args.api_key_env, "none")
+    token_counter = None
+    if args.mode == "matched-raw-tail":
+        token_counter = lambda prompt: count_chat_input_tokens(
+            base_url=args.base_url,
+            api_key=api_key,
+            model=args.model,
+            prompt=prompt,
+            timeout=min(args.timeout, 30.0),
+            max_tokens=args.max_tokens,
+            temperature=args.temperature,
+            extra_body=args.extra_body,
+        )
     summary: list[dict[str, Any]] = []
     for case_dir in cases:
         case_out = run_dir / case_dir.name
         case_out.mkdir(parents=True, exist_ok=True)
         prompt_build_started = time.perf_counter()
-        base_prompt = build_prompt(case_dir, args.mode)
+        prompt_details = build_prompt_details(case_dir, args.mode, token_counter)
+        base_prompt = str(prompt_details["prompt"])
         (case_out / "prompt.txt").write_text(base_prompt, encoding="utf-8")
         prompt_info = {
             "prompt_sha256": sha256_text(base_prompt),
             "prompt_chars": len(base_prompt),
             "source_chars": len((case_dir / "buggy.bpf.c").read_text(encoding="utf-8")),
-            "diagnostic_chars": len(diagnostic_input(case_dir, args.mode)[1]),
+            "diagnostic_chars": prompt_details["diagnostic_chars"],
+            "prompt_token_match": prompt_details["prompt_token_match"],
             "prompt_build_wall_time_seconds": round(time.perf_counter() - prompt_build_started, 6),
         }
 

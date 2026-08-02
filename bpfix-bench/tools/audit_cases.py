@@ -231,7 +231,7 @@ def audit_test_py(
 
 def audit_prompt(case_dir: Path, errors: list[str]) -> None:
     for mode in run_suite.MODES:
-        prompt = run_suite.build_prompt(case_dir, mode)
+        prompt = run_suite.build_prompt(case_dir, mode, len if mode == "matched-raw-tail" else None)
         if case_dir.name in prompt:
             errors.append(f"{mode} prompt leaks semantic case id {case_dir.name!r}")
         for snippet in FORBIDDEN_PROMPT_SNIPPETS:

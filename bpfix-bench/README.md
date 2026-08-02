@@ -137,7 +137,14 @@ python3 bpfix-bench/tools/run_suite.py \
   --model Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M
 ```
 
-Available modes are `source-only`, `raw`, `trimmed-raw`, `bpfix`, and `skills`.
+Available modes are `source-only`, `raw`, `trimmed-raw`, `bpfix`, `skills`,
+`bpfix-neutral`, `bpfix-no-help`, and `matched-raw-tail`. The three last modes
+form a one-shot mechanism ablation: the two BPFix modes share a neutral evidence
+label, `bpfix-no-help` removes rendered `help:` lines, and `matched-raw-tail`
+uses llama.cpp's chat token-count endpoint to retain the largest complete-line
+suffix of the latest verifier load region that fits the corresponding no-help
+prompt budget. Use these modes with the same llama.cpp server and do not use
+retry results as a token-matched comparison.
 
 The published main75 results are documented in
 `docs/evaluation/bpfix-bench-llm-repair-eval.md` and backed by tracked compact

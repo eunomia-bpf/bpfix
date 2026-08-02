@@ -562,6 +562,75 @@ trailer
             compact_verifier_log("short", max_chars=1_999)
 
 
+class PromptAblationTests(unittest.TestCase):
+    def test_no_help_removes_only_rendered_help_lines(self) -> None:
+        case_dir = ROOT / "bpfix-bench" / "cases" / "alu32_pointer_cookie_001"
+        neutral_label, full, _ = run_suite.diagnostic_input(case_dir, "bpfix-neutral")
+        no_help_label, no_help, _ = run_suite.diagnostic_input(case_dir, "bpfix-no-help")
+        self.assertEqual(neutral_label, run_suite.NEUTRAL_EVIDENCE_LABEL)
+        self.assertEqual(no_help_label, run_suite.NEUTRAL_EVIDENCE_LABEL)
+        self.assertIn("\nhelp:", "\n" + full)
+        self.assertNotIn("\nhelp:", "\n" + no_help)
+        self.assertEqual(
+            no_help,
+            "".join(line for line in full.splitlines(keepends=True) if not line.startswith("help:")),
+        )
+
+    def test_matched_tail_uses_latest_region_and_no_help_budget(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            case_dir = Path(temp_dir)
+            (case_dir / "buggy.bpf.c").write_text("int x;\n", encoding="utf-8")
+            (case_dir / "diagnostic.txt").write_text(
+                "error[BPFIX-E001]: proof-aware evidence\n"
+                "  = required proof: retain the checked pointer\n"
+                + "  = note: "
+                + ("proof detail " * 40)
+                + "\n"
+                + "help: use the checked pointer\n",
+                encoding="utf-8",
+            )
+            (case_dir / "verifier.log").write_text(
+                "-- BEGIN PROG LOAD LOG --\nold rejection\n-- END PROG LOAD LOG --\n"
+                "-- BEGIN PROG LOAD LOG --\n"
+                + "".join(f"state line {index} with extra detail\n" for index in range(20))
+                + "terminal rejection\n-- END PROG LOAD LOG --\n",
+                encoding="utf-8",
+            )
+
+            details = run_suite.build_prompt_details(case_dir, "matched-raw-tail", len)
+            prompt = details["prompt"]
+            match = details["prompt_token_match"]
+            self.assertNotIn("old rejection", prompt)
+            self.assertIn("terminal rejection", prompt)
+            self.assertIn(run_suite.RAW_TAIL_OMISSION.strip(), prompt)
+            self.assertNotIn("proof-aware evidence", prompt)
+            self.assertEqual(match["load_region_count"], 2)
+            self.assertGreater(match["suffix_start_line"], 1)
+            self.assertLessEqual(match["matched_tokens"], match["target_tokens"])
+            self.assertEqual(
+                match["gap_tokens"], match["target_tokens"] - match["matched_tokens"]
+            )
+
+    @mock.patch.object(run_suite.urllib.request, "urlopen")
+    def test_chat_token_count_uses_generation_messages(self, urlopen: mock.Mock) -> None:
+        urlopen.return_value = FakeHTTPResponse({"object": "response.input_tokens", "input_tokens": 17})
+        count = run_suite.count_chat_input_tokens(
+            base_url="http://model.invalid/v1",
+            api_key="none",
+            model="test",
+            prompt="repair this",
+            timeout=1,
+            max_tokens=32,
+            temperature=0,
+        )
+        self.assertEqual(count, 17)
+        request = urlopen.call_args.args[0]
+        self.assertEqual(request.full_url, "http://model.invalid/v1/chat/completions/input_tokens")
+        body = json.loads(request.data.decode("utf-8"))
+        self.assertEqual(body["messages"][0]["content"], run_suite.SYSTEM_PROMPT)
+        self.assertEqual(body["messages"][1], {"role": "user", "content": "repair this"})
+
+
 class BPFixHelperScriptTests(unittest.TestCase):
     def run_helper(
         self, exit_code: int
