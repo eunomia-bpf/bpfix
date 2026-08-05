@@ -1,0 +1,124 @@
+{
+  "api_timings": {
+    "cache_n": 21,
+    "predicted_ms": 4808.576,
+    "predicted_n": 357,
+    "predicted_per_second": 74.2423536614582,
+    "predicted_per_token_ms": 13.46940056022409,
+    "prompt_ms": 323.119,
+    "prompt_n": 736,
+    "prompt_per_second": 2277.7985819465894,
+    "prompt_per_token_ms": 0.43902038043478264
+  },
+  "api_usage": {
+    "completion_tokens": 357,
+    "prompt_tokens": 757,
+    "prompt_tokens_details": {
+      "cached_tokens": 21
+    },
+    "total_tokens": 1114
+  },
+  "attempt": 1,
+  "attempt_wall_time_seconds": 5.382071,
+  "attempts": [
+    {
+      "api_timings": {
+        "cache_n": 21,
+        "predicted_ms": 4808.576,
+        "predicted_n": 357,
+        "predicted_per_second": 74.2423536614582,
+        "predicted_per_token_ms": 13.46940056022409,
+        "prompt_ms": 323.119,
+        "prompt_n": 736,
+        "prompt_per_second": 2277.7985819465894,
+        "prompt_per_token_ms": 0.43902038043478264
+      },
+      "api_usage": {
+        "completion_tokens": 357,
+        "prompt_tokens": 757,
+        "prompt_tokens_details": {
+          "cached_tokens": 21
+        },
+        "total_tokens": 1114
+      },
+      "attempt": 1,
+      "attempt_wall_time_seconds": 5.382071,
+      "candidate": "bpfix-bench/results/ablation-main75-current-server/full/20260802T074345660111Z-pid1071164/matched-raw-tail/packet_eth_off_by_one_001/attempt-1/candidate.bpf.c",
+      "failure_stage": "verifier_load",
+      "finish_reason": "stop",
+      "model_wall_time_seconds": 5.143048,
+      "oracle_returncode": 1,
+      "oracle_stderr": "",
+      "oracle_stdout": "{\n  \"compile\": {\n    \"argv\": [\n      \"clang\",\n      \"-target\",\n      \"bpf\",\n      \"-O2\",\n      \"-g\",\n      \"-I\",\n      \"/usr/include\",\n      \"-D__TARGET_ARCH_x86\",\n      \"-c\",\n      \"/home/yunwei37/workspace/bpfix/bpfix-bench/results/ablation-main75-current-server/full/20260802T074345660111Z-pid1071164/matched-raw-tail/packet_eth_off_by_one_001/attempt-1/candidate.bpf.c\",\n      \"-o\",\n      \"bpfix-bench/results/ablation-main75-current-server/full/20260802T074345660111Z-pid1071164/matched-raw-tail/packet_eth_off_by_one_001/attempt-1/work/prog.o\"\n    ],\n    \"returncode\": 0,\n    \"stderr\": \"\",\n    \"stdout\": \"\"\n  },\n  \"expect_reject\": false,\n  \"functional\": [],\n  \"load\": {\n    \"argv\": [\n      \"sudo\",\n      \"bpftool\",\n      \"-d\",\n      \"prog\",\n      \"load\",\n      \"bpfix-bench/results/ablation-main75-current-server/full/20260802T074345660111Z-pid1071164/matched-raw-tail/packet_eth_off_by_one_001/attempt-1/work/prog.o\",\n      \"/sys/fs/bpf/bpfix_test_candidate_bpf_1075208\",\n      \"type\",\n      \"xdp\"\n    ],\n    \"returncode\": 255,\n    \"stderr\": \"libbpf: loading object from bpfix-bench/results/ablation-main75-current-server/full/20260802T074345660111Z-pid1071164/matched-raw-tail/packet_eth_off_by_one_001/attempt-1/work/prog.o\\nlibbpf: elf: section(3) xdp, size 152, link 0, flags 6, type=1\\nlibbpf: sec 'xdp': found program 'packet_eth_off_by_one' at insn offset 0 (0 bytes), code size 19 insns (152 bytes)\\nlibbpf: elf: section(4) license, size 4, link 0, flags 3, type=1\\nlibbpf: license of bpfix-bench/results/ablation-main75-current-server/full/20260802T074345660111Z-pid1071164/matched-raw-tail/packet_eth_off_by_one_001/attempt-1/work/prog.o is GPL\\nlibbpf: elf: section(14) .BTF, size 983, link 0, flags 0, type=1\\nlibbpf: elf: section(16) .BTF.ext, size 300, link 0, flags 0, type=1\\nlibbpf: elf: section(24) .symtab, size 360, link 1, flags 0, type=2\\nlibbpf: looking for externs among 15 symbols...\\nlibbpf: collected 0 externs total\\nlibbpf: object 'prog': failed (-95) to create BPF token from '/sys/fs/bpf', skipping optional step...\\nlibbpf: loaded kernel BTF from '/sys/kernel/btf/vmlinux'\\nlibbpf: sec 'xdp': found 2 CO-RE relocations\\nlibbpf: CO-RE relocating [2] struct xdp_md: found target candidate [14922] struct xdp_md in [vmlinux]\\nlibbpf: prog 'packet_eth_off_by_one': relo #0: <byte_off> [2] struct xdp_md.data_end (0:1 @ offset 4)\\nlibbpf: prog 'packet_eth_off_by_one': relo #0: matching candidate #0 <byte_off> [14922] struct xdp_md.data_end (0:1 @ offset 4)\\nlibbpf: prog 'packet_eth_off_by_one': relo #0: patched insn #0 (LDX/ST/STX) off 4 -> 4\\nlibbpf: prog 'packet_eth_off_by_one': relo #1: <byte_off> [2] struct xdp_md.data (0:0 @ offset 0)\\nlibbpf: prog 'packet_eth_off_by_one': relo #1: matching candidate #0 <byte_off> [14922] struct xdp_md.data (0:0 @ offset 0)\\nlibbpf: prog 'packet_eth_off_by_one': relo #1: patched insn #1 (LDX/ST/STX) off 0 -> 0\\nlibbpf: prog 'packet_eth_off_by_one': BPF program load failed: -EACCES\\nlibbpf: prog 'packet_eth_off_by_one': -- BEGIN PROG LOAD LOG --\\nfunc#0 @0\\nLive regs before insn:\\n  0: .1........ (61) r2 = *(u32 *)(r1 +4)\\n  1: .12....... (61) r1 = *(u32 *)(r1 +0)\\n  2: .12....... (bf) r3 = r1\\n  3: .123...... (07) r3 += 14\\n  4: .123...... (b7) r0 = 2\\n  5: 0123...... (2d) if r3 > r2 goto pc+12\\n  6: .12....... (b7) r0 = 1\\n  7: 012....... (69) r3 = *(u16 *)(r1 +12)\\n  8: 0123...... (dc) r3 = be16 r3\\n  9: 0123...... (15) if r3 == 0x800 goto pc+8\\n 10: .123...... (55) if r3 != 0x86dd goto pc+6\\n 11: .12....... (07) r1 += 40\\n 12: .12....... (b7) r0 = 2\\n 13: 012....... (2d) if r1 > r2 goto pc+4\\n 14: .1........ (71) r1 = *(u8 *)(r1 +0)\\n 15: .1........ (b7) r0 = 1\\n 16: 01........ (15) if r1 == 0x11 goto pc+1\\n 17: .......... (b7) r0 = 2\\n 18: 0......... (95) exit\\n0: R1=ctx() R10=fp0\\n; void *data_end = (void *)(long)ctx->data_end; @ candidate.bpf.c:29\\n0: (61) r2 = *(u32 *)(r1 +4)          ; R1=ctx() R2_w=pkt_end()\\n; void *data = (void *)(long)ctx->data; @ candidate.bpf.c:28\\n1: (61) r1 = *(u32 *)(r1 +0)          ; R1_w=pkt(r=0)\\n; if (data + 14 > data_end) @ candidate.bpf.c:33\\n2: (bf) r3 = r1                       ; R1_w=pkt(r=0) R3_w=pkt(r=0)\\n3: (07) r3 += 14                      ; R3_w=pkt(off=14,r=0)\\n4: (b7) r0 = 2                        ; R0_w=2\\n5: (2d) if r3 > r2 goto pc+12         ; R2_w=pkt_end() R3_w=pkt(off=14,r=14)\\n6: (b7) r0 = 1                        ; R0_w=1\\n; proto = *(__u16 *)(data + 12); @ candidate.bpf.c:36\\n7: (69) r3 = *(u16 *)(r1 +12)         ; R1_w=pkt(r=14) R3_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=0xffff,var_off=(0x0; 0xffff))\\n; if (bpf_ntohs(proto) == ETH_P_IP) @ candidate.bpf.c:37\\n8: (dc) r3 = be16 r3                  ; R3_w=scalar()\\n9: (15) if r3 == 0x800 goto pc+8      ; R3_w=scalar()\\n10: (55) if r3 != 0x86dd goto pc+6    ; R3=0x86dd\\n; if (data + 40 > data_end) @ candidate.bpf.c:42\\n11: (07) r1 += 40                     ; R1_w=pkt(off=40,r=14)\\n12: (b7) r0 = 2                       ; R0_w=2\\n13: (2d) if r1 > r2 goto pc+4         ; R1_w=pkt(off=40,r=40) R2=pkt_end()\\n; nexthdr = *(__u8 *)(data + 40); @ candidate.bpf.c:44\\n14: (71) r1 = *(u8 *)(r1 +0)\\ninvalid access to packet, off=40 size=1, R1(id=0,off=40,r=40)\\nR1 offset is outside of the packet\\nverification time 63 usec\\nstack depth 0\\nprocessed 15 insns (limit 1000000) max_states_per_insn 0 total_states 1 peak_states 1 mark_read 1\\n-- END PROG LOAD LOG --\\nlibbpf: prog 'packet_eth_off_by_one': failed to load: -EACCES\\nlibbpf: failed to load object 'bpfix-bench/results/ablation-main75-current-server/full/20260802T074345660111Z-pid1071164/matched-raw-tail/packet_eth_off_by_one_001/attempt-1/work/prog.o'\\nError: failed to load object file\\n\",\n    \"stdout\": \"\"\n  },\n  \"map_setup\": [],\n  \"passed\": false,\n  \"source\": \"/home/yunwei37/workspace/bpfix/bpfix-bench/results/ablation-main75-current-server/full/20260802T074345660111Z-pid1071164/matched-raw-tail/packet_eth_off_by_one_001/attempt-1/candidate.bpf.c\",\n  \"source_semantics\": [],\n  \"success_log_checks\": []\n}\n",
+      "oracle_wall_time_seconds": 0.238664,
+      "prompt_chars": 2025,
+      "prompt_sha256": "12edaaaf7e02d9a0bd65a42f22067f90b5d921c29d4928bd4cdb544d6f4f2679",
+      "reasoning_chars": null,
+      "response_chars": 985,
+      "status": "fail",
+      "token_usage": {
+        "cached_prompt_tokens": 21,
+        "completion_tokens": 357,
+        "prompt_tokens": 757,
+        "reasoning_tokens": null,
+        "total_tokens": 1114
+      }
+    }
+  ],
+  "candidate": "bpfix-bench/results/ablation-main75-current-server/full/20260802T074345660111Z-pid1071164/matched-raw-tail/packet_eth_off_by_one_001/attempt-1/candidate.bpf.c",
+  "case": "packet_eth_off_by_one_001",
+  "cost": {
+    "attempt_wall_time_seconds": 5.382071,
+    "cached_prompt_tokens": 21,
+    "completion_tokens": 357,
+    "model_calls": 1,
+    "model_wall_time_seconds": 5.143048,
+    "oracle_wall_time_seconds": 0.238664,
+    "prompt_tokens": 757,
+    "reasoning_tokens": null,
+    "token_usage_coverage": {
+      "cached_prompt_tokens": 1,
+      "completion_tokens": 1,
+      "prompt_tokens": 1,
+      "reasoning_tokens": 0,
+      "total_tokens": 1
+    },
+    "total_tokens": 1114
+  },
+  "diagnostic_chars": 713,
+  "failure_stage": "verifier_load",
+  "finish_reason": "stop",
+  "mode": "matched-raw-tail",
+  "model": "Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M",
+  "model_wall_time_seconds": 5.143048,
+  "oracle_returncode": 1,
+  "oracle_stderr": "",
+  "oracle_stdout": "{\n  \"compile\": {\n    \"argv\": [\n      \"clang\",\n      \"-target\",\n      \"bpf\",\n      \"-O2\",\n      \"-g\",\n      \"-I\",\n      \"/usr/include\",\n      \"-D__TARGET_ARCH_x86\",\n      \"-c\",\n      \"/home/yunwei37/workspace/bpfix/bpfix-bench/results/ablation-main75-current-server/full/20260802T074345660111Z-pid1071164/matched-raw-tail/packet_eth_off_by_one_001/attempt-1/candidate.bpf.c\",\n      \"-o\",\n      \"bpfix-bench/results/ablation-main75-current-server/full/20260802T074345660111Z-pid1071164/matched-raw-tail/packet_eth_off_by_one_001/attempt-1/work/prog.o\"\n    ],\n    \"returncode\": 0,\n    \"stderr\": \"\",\n    \"stdout\": \"\"\n  },\n  \"expect_reject\": false,\n  \"functional\": [],\n  \"load\": {\n    \"argv\": [\n      \"sudo\",\n      \"bpftool\",\n      \"-d\",\n      \"prog\",\n      \"load\",\n      \"bpfix-bench/results/ablation-main75-current-server/full/20260802T074345660111Z-pid1071164/matched-raw-tail/packet_eth_off_by_one_001/attempt-1/work/prog.o\",\n      \"/sys/fs/bpf/bpfix_test_candidate_bpf_1075208\",\n      \"type\",\n      \"xdp\"\n    ],\n    \"returncode\": 255,\n    \"stderr\": \"libbpf: loading object from bpfix-bench/results/ablation-main75-current-server/full/20260802T074345660111Z-pid1071164/matched-raw-tail/packet_eth_off_by_one_001/attempt-1/work/prog.o\\nlibbpf: elf: section(3) xdp, size 152, link 0, flags 6, type=1\\nlibbpf: sec 'xdp': found program 'packet_eth_off_by_one' at insn offset 0 (0 bytes), code size 19 insns (152 bytes)\\nlibbpf: elf: section(4) license, size 4, link 0, flags 3, type=1\\nlibbpf: license of bpfix-bench/results/ablation-main75-current-server/full/20260802T074345660111Z-pid1071164/matched-raw-tail/packet_eth_off_by_one_001/attempt-1/work/prog.o is GPL\\nlibbpf: elf: section(14) .BTF, size 983, link 0, flags 0, type=1\\nlibbpf: elf: section(16) .BTF.ext, size 300, link 0, flags 0, type=1\\nlibbpf: elf: section(24) .symtab, size 360, link 1, flags 0, type=2\\nlibbpf: looking for externs among 15 symbols...\\nlibbpf: collected 0 externs total\\nlibbpf: object 'prog': failed (-95) to create BPF token from '/sys/fs/bpf', skipping optional step...\\nlibbpf: loaded kernel BTF from '/sys/kernel/btf/vmlinux'\\nlibbpf: sec 'xdp': found 2 CO-RE relocations\\nlibbpf: CO-RE relocating [2] struct xdp_md: found target candidate [14922] struct xdp_md in [vmlinux]\\nlibbpf: prog 'packet_eth_off_by_one': relo #0: <byte_off> [2] struct xdp_md.data_end (0:1 @ offset 4)\\nlibbpf: prog 'packet_eth_off_by_one': relo #0: matching candidate #0 <byte_off> [14922] struct xdp_md.data_end (0:1 @ offset 4)\\nlibbpf: prog 'packet_eth_off_by_one': relo #0: patched insn #0 (LDX/ST/STX) off 4 -> 4\\nlibbpf: prog 'packet_eth_off_by_one': relo #1: <byte_off> [2] struct xdp_md.data (0:0 @ offset 0)\\nlibbpf: prog 'packet_eth_off_by_one': relo #1: matching candidate #0 <byte_off> [14922] struct xdp_md.data (0:0 @ offset 0)\\nlibbpf: prog 'packet_eth_off_by_one': relo #1: patched insn #1 (LDX/ST/STX) off 0 -> 0\\nlibbpf: prog 'packet_eth_off_by_one': BPF program load failed: -EACCES\\nlibbpf: prog 'packet_eth_off_by_one': -- BEGIN PROG LOAD LOG --\\nfunc#0 @0\\nLive regs before insn:\\n  0: .1........ (61) r2 = *(u32 *)(r1 +4)\\n  1: .12....... (61) r1 = *(u32 *)(r1 +0)\\n  2: .12....... (bf) r3 = r1\\n  3: .123...... (07) r3 += 14\\n  4: .123...... (b7) r0 = 2\\n  5: 0123...... (2d) if r3 > r2 goto pc+12\\n  6: .12....... (b7) r0 = 1\\n  7: 012....... (69) r3 = *(u16 *)(r1 +12)\\n  8: 0123...... (dc) r3 = be16 r3\\n  9: 0123...... (15) if r3 == 0x800 goto pc+8\\n 10: .123...... (55) if r3 != 0x86dd goto pc+6\\n 11: .12....... (07) r1 += 40\\n 12: .12....... (b7) r0 = 2\\n 13: 012....... (2d) if r1 > r2 goto pc+4\\n 14: .1........ (71) r1 = *(u8 *)(r1 +0)\\n 15: .1........ (b7) r0 = 1\\n 16: 01........ (15) if r1 == 0x11 goto pc+1\\n 17: .......... (b7) r0 = 2\\n 18: 0......... (95) exit\\n0: R1=ctx() R10=fp0\\n; void *data_end = (void *)(long)ctx->data_end; @ candidate.bpf.c:29\\n0: (61) r2 = *(u32 *)(r1 +4)          ; R1=ctx() R2_w=pkt_end()\\n; void *data = (void *)(long)ctx->data; @ candidate.bpf.c:28\\n1: (61) r1 = *(u32 *)(r1 +0)          ; R1_w=pkt(r=0)\\n; if (data + 14 > data_end) @ candidate.bpf.c:33\\n2: (bf) r3 = r1                       ; R1_w=pkt(r=0) R3_w=pkt(r=0)\\n3: (07) r3 += 14                      ; R3_w=pkt(off=14,r=0)\\n4: (b7) r0 = 2                        ; R0_w=2\\n5: (2d) if r3 > r2 goto pc+12         ; R2_w=pkt_end() R3_w=pkt(off=14,r=14)\\n6: (b7) r0 = 1                        ; R0_w=1\\n; proto = *(__u16 *)(data + 12); @ candidate.bpf.c:36\\n7: (69) r3 = *(u16 *)(r1 +12)         ; R1_w=pkt(r=14) R3_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=0xffff,var_off=(0x0; 0xffff))\\n; if (bpf_ntohs(proto) == ETH_P_IP) @ candidate.bpf.c:37\\n8: (dc) r3 = be16 r3                  ; R3_w=scalar()\\n9: (15) if r3 == 0x800 goto pc+8      ; R3_w=scalar()\\n10: (55) if r3 != 0x86dd goto pc+6    ; R3=0x86dd\\n; if (data + 40 > data_end) @ candidate.bpf.c:42\\n11: (07) r1 += 40                     ; R1_w=pkt(off=40,r=14)\\n12: (b7) r0 = 2                       ; R0_w=2\\n13: (2d) if r1 > r2 goto pc+4         ; R1_w=pkt(off=40,r=40) R2=pkt_end()\\n; nexthdr = *(__u8 *)(data + 40); @ candidate.bpf.c:44\\n14: (71) r1 = *(u8 *)(r1 +0)\\ninvalid access to packet, off=40 size=1, R1(id=0,off=40,r=40)\\nR1 offset is outside of the packet\\nverification time 63 usec\\nstack depth 0\\nprocessed 15 insns (limit 1000000) max_states_per_insn 0 total_states 1 peak_states 1 mark_read 1\\n-- END PROG LOAD LOG --\\nlibbpf: prog 'packet_eth_off_by_one': failed to load: -EACCES\\nlibbpf: failed to load object 'bpfix-bench/results/ablation-main75-current-server/full/20260802T074345660111Z-pid1071164/matched-raw-tail/packet_eth_off_by_one_001/attempt-1/work/prog.o'\\nError: failed to load object file\\n\",\n    \"stdout\": \"\"\n  },\n  \"map_setup\": [],\n  \"passed\": false,\n  \"source\": \"/home/yunwei37/workspace/bpfix/bpfix-bench/results/ablation-main75-current-server/full/20260802T074345660111Z-pid1071164/matched-raw-tail/packet_eth_off_by_one_001/attempt-1/candidate.bpf.c\",\n  \"source_semantics\": [],\n  \"success_log_checks\": []\n}\n",
+  "oracle_wall_time_seconds": 0.238664,
+  "prompt_build_wall_time_seconds": 0.47181,
+  "prompt_chars": 2025,
+  "prompt_sha256": "12edaaaf7e02d9a0bd65a42f22067f90b5d921c29d4928bd4cdb544d6f4f2679",
+  "prompt_token_match": {
+    "gap_tokens": 3,
+    "load_region_count": 1,
+    "matched_tokens": 757,
+    "region_chars": 1719,
+    "region_line_count": 41,
+    "region_sha256": "2abc55cef5277035e11ff8f12ce6f7c0b78d0fb9614bdc200f6e929d83d4e540",
+    "suffix_line_count": 13,
+    "suffix_start_line": 29,
+    "target_mode": "bpfix-no-help",
+    "target_tokens": 760
+  },
+  "reasoning_chars": null,
+  "response_chars": 985,
+  "source_chars": 976,
+  "status": "fail",
+  "token_usage": {
+    "cached_prompt_tokens": 21,
+    "completion_tokens": 357,
+    "prompt_tokens": 757,
+    "reasoning_tokens": null,
+    "total_tokens": 1114
+  }
+}

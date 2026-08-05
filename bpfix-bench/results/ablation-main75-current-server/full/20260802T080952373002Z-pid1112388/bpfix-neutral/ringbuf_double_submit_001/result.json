@@ -1,0 +1,113 @@
+{
+  "api_timings": {
+    "cache_n": 21,
+    "predicted_ms": 6308.866,
+    "predicted_n": 469,
+    "predicted_per_second": 74.33982588947046,
+    "predicted_per_token_ms": 13.45173987206823,
+    "prompt_ms": 332.846,
+    "prompt_n": 750,
+    "prompt_per_second": 2253.2943162904166,
+    "prompt_per_token_ms": 0.44379466666666667
+  },
+  "api_usage": {
+    "completion_tokens": 469,
+    "prompt_tokens": 771,
+    "prompt_tokens_details": {
+      "cached_tokens": 21
+    },
+    "total_tokens": 1240
+  },
+  "attempt": 1,
+  "attempt_wall_time_seconds": 6.69321,
+  "attempts": [
+    {
+      "api_timings": {
+        "cache_n": 21,
+        "predicted_ms": 6308.866,
+        "predicted_n": 469,
+        "predicted_per_second": 74.33982588947046,
+        "predicted_per_token_ms": 13.45173987206823,
+        "prompt_ms": 332.846,
+        "prompt_n": 750,
+        "prompt_per_second": 2253.2943162904166,
+        "prompt_per_token_ms": 0.44379466666666667
+      },
+      "api_usage": {
+        "completion_tokens": 469,
+        "prompt_tokens": 771,
+        "prompt_tokens_details": {
+          "cached_tokens": 21
+        },
+        "total_tokens": 1240
+      },
+      "attempt": 1,
+      "attempt_wall_time_seconds": 6.69321,
+      "candidate": "bpfix-bench/results/ablation-main75-current-server/full/20260802T080952373002Z-pid1112388/bpfix-neutral/ringbuf_double_submit_001/attempt-1/candidate.bpf.c",
+      "failure_stage": "auxiliary_proof_predicate",
+      "finish_reason": "stop",
+      "model_wall_time_seconds": 6.65615,
+      "oracle_returncode": 1,
+      "oracle_stderr": "",
+      "oracle_stdout": "{\n  \"expect_reject\": false,\n  \"passed\": false,\n  \"source\": \"/home/yunwei37/workspace/bpfix/bpfix-bench/results/ablation-main75-current-server/full/20260802T080952373002Z-pid1112388/bpfix-neutral/ringbuf_double_submit_001/attempt-1/candidate.bpf.c\",\n  \"source_semantics\": [\n    {\n      \"name\": \"audit reserve failure keeps IPv4 drop semantics\",\n      \"passed\": false\n    }\n  ]\n}\n",
+      "oracle_wall_time_seconds": 0.036247,
+      "prompt_chars": 2395,
+      "prompt_sha256": "258d22fd048ed0e5c10510ed1b3f1cc9f3651a3a37ecf8b23f5d2ee1cfc83c6d",
+      "reasoning_chars": null,
+      "response_chars": 1325,
+      "status": "fail",
+      "token_usage": {
+        "cached_prompt_tokens": 21,
+        "completion_tokens": 469,
+        "prompt_tokens": 771,
+        "reasoning_tokens": null,
+        "total_tokens": 1240
+      }
+    }
+  ],
+  "candidate": "bpfix-bench/results/ablation-main75-current-server/full/20260802T080952373002Z-pid1112388/bpfix-neutral/ringbuf_double_submit_001/attempt-1/candidate.bpf.c",
+  "case": "ringbuf_double_submit_001",
+  "cost": {
+    "attempt_wall_time_seconds": 6.69321,
+    "cached_prompt_tokens": 21,
+    "completion_tokens": 469,
+    "model_calls": 1,
+    "model_wall_time_seconds": 6.65615,
+    "oracle_wall_time_seconds": 0.036247,
+    "prompt_tokens": 771,
+    "reasoning_tokens": null,
+    "token_usage_coverage": {
+      "cached_prompt_tokens": 1,
+      "completion_tokens": 1,
+      "prompt_tokens": 1,
+      "reasoning_tokens": 0,
+      "total_tokens": 1
+    },
+    "total_tokens": 1240
+  },
+  "diagnostic_chars": 883,
+  "failure_stage": "auxiliary_proof_predicate",
+  "finish_reason": "stop",
+  "mode": "bpfix-neutral",
+  "model": "Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M",
+  "model_wall_time_seconds": 6.65615,
+  "oracle_returncode": 1,
+  "oracle_stderr": "",
+  "oracle_stdout": "{\n  \"expect_reject\": false,\n  \"passed\": false,\n  \"source\": \"/home/yunwei37/workspace/bpfix/bpfix-bench/results/ablation-main75-current-server/full/20260802T080952373002Z-pid1112388/bpfix-neutral/ringbuf_double_submit_001/attempt-1/candidate.bpf.c\",\n  \"source_semantics\": [\n    {\n      \"name\": \"audit reserve failure keeps IPv4 drop semantics\",\n      \"passed\": false\n    }\n  ]\n}\n",
+  "oracle_wall_time_seconds": 0.036247,
+  "prompt_build_wall_time_seconds": 0.000227,
+  "prompt_chars": 2395,
+  "prompt_sha256": "258d22fd048ed0e5c10510ed1b3f1cc9f3651a3a37ecf8b23f5d2ee1cfc83c6d",
+  "prompt_token_match": null,
+  "reasoning_chars": null,
+  "response_chars": 1325,
+  "source_chars": 1176,
+  "status": "fail",
+  "token_usage": {
+    "cached_prompt_tokens": 21,
+    "completion_tokens": 469,
+    "prompt_tokens": 771,
+    "reasoning_tokens": null,
+    "total_tokens": 1240
+  }
+}

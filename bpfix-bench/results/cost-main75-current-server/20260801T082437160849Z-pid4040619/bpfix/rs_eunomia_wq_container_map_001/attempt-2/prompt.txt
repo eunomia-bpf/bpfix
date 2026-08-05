@@ -1,0 +1,546 @@
+You are fixing one eBPF verifier rejection.
+
+Return only one complete replacement C source file in a fenced ```c block.
+Do not explain. Do not output a diff. Preserve the intended packet/helper
+semantics; do not remove the program, maps, SEC() section, or license.
+
+
+
+Source file:
+```c
+// SPDX-License-Identifier: GPL-2.0
+#ifndef __TARGET_ARCH_x86
+#define __TARGET_ARCH_x86 1
+#endif
+
+#include <vmlinux.h>
+#include <bpf/bpf_helpers.h>
+
+#ifndef XDP_DROP
+#define XDP_DROP 1
+#endif
+#ifndef XDP_PASS
+#define XDP_PASS 2
+#endif
+
+#define bpf_wq_set_callback(wq, cb, flags) \
+	bpf_wq_set_callback_impl((wq), (cb), (flags), NULL)
+
+struct wq_request {
+	__u32 key;
+	__u32 value;
+	__u32 schedule;
+	__u32 priority;
+};
+
+struct elem {
+	__u32 value;
+	__u32 scheduled;
+	struct bpf_wq work;
+};
+
+struct stats {
+	__u64 processed;
+	__u64 skipped;
+	__u64 scheduled;
+	__u64 last_key;
+	__u64 last_value;
+};
+
+struct {
+	__uint(type, BPF_MAP_TYPE_ARRAY);
+	__uint(max_entries, 4);
+	__type(key, int);
+	__type(value, struct elem);
+} work_items SEC(".maps");
+
+struct {
+	__uint(type, BPF_MAP_TYPE_ARRAY);
+	__uint(max_entries, 1);
+	__type(key, int);
+	__type(value, struct stats);
+} stats_map SEC(".maps");
+
+static int wq_callback(void *map, int *key, void *value)
+{
+	struct elem *elem = value;
+
+	elem->scheduled += 1000;
+	elem->value += 1;
+	return 0;
+}
+
+SEC("xdp")
+int rs_eunomia_wq_container_map(struct xdp_md *ctx)
+{
+	void *data = (void *)(long)ctx->data;
+	void *data_end = (void *)(long)ctx->data_end;
+	struct wq_request *req = data;
+	struct elem init = {};
+	struct bpf_wq local_wq = {};
+	struct elem *elem;
+	struct stats *stats;
+	struct bpf_wq *wq;
+	int stat_key = 0;
+	int key;
+
+	if ((void *)(req + 1) > data_end)
+		return XDP_PASS;
+
+	stats = bpf_map_lookup_elem(&stats_map, &stat_key);
+	if (!stats)
+		return XDP_PASS;
+
+	stats->processed++;
+	if (!req->schedule) {
+		stats->skipped++;
+		return XDP_PASS;
+	}
+
+	key = (req->key ^ req->priority) & 3;
+	init.value = req->value;
+	if (bpf_map_update_elem(&work_items, &key, &init, BPF_ANY))
+		return XDP_PASS;
+
+	elem = bpf_map_lookup_elem(&work_items, &key);
+	if (!elem)
+		return XDP_PASS;
+
+	wq = &local_wq;
+	if (bpf_wq_init(wq, &work_items, 0))
+		return XDP_PASS;
+
+	elem->value = req->value;
+	elem->scheduled = 1;
+
+	if (bpf_wq_set_callback(wq, wq_callback, 0))
+		return XDP_PASS;
+	if (bpf_wq_start(wq, 0))
+		return XDP_PASS;
+
+	stats->scheduled++;
+	stats->last_key = key;
+	stats->last_value = elem->value + req->priority;
+	return XDP_DROP;
+}
+
+char _license[] SEC("license") = "GPL";
+
+```
+
+BPFix plain-text diagnostic:
+```text
+error[BPFIX-E010]: helper or subprogram argument contract is not satisfied
+  = class: source_bug
+  = confidence: medium
+  = diagnostic: supported, help: repair_hint, span: exact_pc
+  = next action: protocol
+  --> buggy.bpf.c:99
+   |
+99 | if (bpf_wq_init(wq, &work_items, 0))
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ rejected here: helper or subprogram argument contract is not satisfied
+   |
+   = verifier[184]: arg#0 doesn't point to a map value
+   = note: nearest BPF instruction pc 56
+   = note: parsed 49 verifier state snapshots
+   = required proof: pass verifier-recognized argument types, ranges, and pointer lifetimes to the helper, kfunc, or subprogram
+help: Check the exact register passed as each helper or subprogram argument.
+help: Keep argument range, nullability, and pointer type refinements visible at the call site.
+
+```
+
+
+
+Retry context:
+Previous repair attempt failed.
+Failure stage: verifier_load
+
+Previous candidate source:
+```c
+// SPDX-License-Identifier: GPL-2.0
+#ifndef __TARGET_ARCH_x86
+#define __TARGET_ARCH_x86 1
+#endif
+
+#include <vmlinux.h>
+#include <bpf/bpf_helpers.h>
+
+#ifndef XDP_DROP
+#define XDP_DROP 1
+#endif
+#ifndef XDP_PASS
+#define XDP_PASS 2
+#endif
+
+#define bpf_wq_set_callback(wq, cb, flags) \
+	bpf_wq_set_callback_impl((wq), (cb), (flags), NULL)
+
+struct wq_request {
+	__u32 key;
+	__u32 value;
+	__u32 schedule;
+	__u32 priority;
+};
+
+struct elem {
+	__u32 value;
+	__u32 scheduled;
+	struct bpf_wq work;
+};
+
+struct stats {
+	__u64 processed;
+	__u64 skipped;
+	__u64 scheduled;
+	__u64 last_key;
+	__u64 last_value;
+};
+
+struct {
+	__uint(type, BPF_MAP_TYPE_ARRAY);
+	__uint(max_entries, 4);
+	__type(key, int);
+	__type(value, struct elem);
+} work_items SEC(".maps");
+
+struct {
+	__uint(type, BPF_MAP_TYPE_ARRAY);
+	__uint(max_entries, 1);
+	__type(key, int);
+	__type(value, struct stats);
+} stats_map SEC(".maps");
+
+static int wq_callback(void *map, int *key, void *value)
+{
+	struct elem *elem = value;
+
+	elem->scheduled += 1000;
+	elem->value += 1;
+	return 0;
+}
+
+SEC("xdp")
+int rs_eunomia_wq_container_map(struct xdp_md *ctx)
+{
+	void *data = (void *)(long)ctx->data;
+	void *data_end = (void *)(long)ctx->data_end;
+	struct wq_request *req = data;
+	struct elem init = {};
+	struct bpf_wq local_wq = {};
+	struct elem *elem;
+	struct stats *stats;
+	struct bpf_wq *wq;
+	int stat_key = 0;
+	int key;
+
+	if ((void *)(req + 1) > data_end)
+		return XDP_PASS;
+
+	stats = bpf_map_lookup_elem(&stats_map, &stat_key);
+	if (!stats)
+		return XDP_PASS;
+
+	stats->processed++;
+	if (!req->schedule) {
+		stats->skipped++;
+		return XDP_PASS;
+	}
+
+	key = (req->key ^ req->priority) & 3;
+	init.value = req->value;
+	if (bpf_map_update_elem(&work_items, &key, &init, BPF_ANY))
+		return XDP_PASS;
+
+	elem = bpf_map_lookup_elem(&work_items, &key);
+	if (!elem)
+		return XDP_PASS;
+
+	wq = &local_wq;
+	if (bpf_wq_init(wq, &work_items, 0))
+		return XDP_PASS;
+
+	elem->value = req->value;
+	elem->scheduled = 1;
+
+	if (bpf_wq_set_callback(wq, wq_callback, 0))
+		return XDP_PASS;
+	if (bpf_wq_start(wq, 0))
+		return XDP_PASS;
+
+	stats->scheduled++;
+	stats->last_key = key;
+	stats->last_value = elem->value + req->priority;
+	return XDP_DROP;
+}
+
+char _license[] SEC("license") = "GPL";
+
+```
+
+Verifier/load output from previous attempt:
+```text
+libbpf: loading object from bpfix-bench/results/cost-main75-current-server/20260801T082437160849Z-pid4040619/bpfix/rs_eunomia_wq_container_map_001/attempt-1/work/prog.o
+libbpf: elf: section(2) .text, size 64, link 0, flags 6, type=1
+libbpf: sec '.text': found program 'wq_callback' at insn offset 0 (0 bytes), code size 8 insns (64 bytes)
+libbpf: elf: section(3) xdp, size 784, link 0, flags 6, type=1
+libbpf: sec 'xdp': found program 'rs_eunomia_wq_container_map' at insn offset 0 (0 bytes), code size 98 insns (784 bytes)
+libbpf: elf: section(4) .relxdp, size 128, link 27, flags 40, type=9
+libbpf: elf: section(5) .maps, size 64, link 0, flags 3, type=1
+libbpf: elf: section(6) license, size 4, link 0, flags 3, type=1
+libbpf: license of bpfix-bench/results/cost-main75-current-server/20260801T082437160849Z-pid4040619/bpfix/rs_eunomia_wq_container_map_001/attempt-1/work/prog.o is GPL
+libbpf: elf: section(17) .BTF, size 2555, link 0, flags 0, type=1
+libbpf: elf: section(19) .BTF.ext, size 900, link 0, flags 0, type=1
+libbpf: elf: section(27) .symtab, size 552, link 1, flags 0, type=2
+libbpf: looking for externs among 23 symbols...
+libbpf: collected 3 externs total
+libbpf: extern (ksym) #0: symbol 19, name bpf_wq_init
+libbpf: extern (ksym) #1: symbol 20, name bpf_wq_set_callback_impl
+libbpf: extern (ksym) #2: symbol 21, name bpf_wq_start
+libbpf: map 'stats_map': at sec_idx 5, offset 0.
+libbpf: map 'stats_map': found type = 2.
+libbpf: map 'stats_map': found key [2], sz = 4.
+libbpf: map 'stats_map': found value [9], sz = 40.
+libbpf: map 'stats_map': found max_entries = 1.
+libbpf: map 'work_items': at sec_idx 5, offset 32.
+libbpf: map 'work_items': found type = 2.
+libbpf: map 'work_items': found key [2], sz = 4.
+libbpf: map 'work_items': found value [17], sz = 24.
+libbpf: map 'work_items': found max_entries = 4.
+libbpf: sec '.relxdp': collecting relocation for section(3) 'xdp'
+libbpf: sec '.relxdp': relo #0: insn #15 against 'stats_map'
+libbpf: prog 'rs_eunomia_wq_container_map': found map 0 (stats_map, sec 5, off 0) for insn #15
+libbpf: sec '.relxdp': relo #1: insn #41 against 'work_items'
+libbpf: prog 'rs_eunomia_wq_container_map': found map 1 (work_items, sec 5, off 32) for insn #41
+libbpf: sec '.relxdp': relo #2: insn #48 against 'work_items'
+libbpf: prog 'rs_eunomia_wq_container_map': found map 1 (work_items, sec 5, off 32) for insn #48
+libbpf: sec '.relxdp': relo #3: insn #55 against 'work_items'
+libbpf: prog 'rs_eunomia_wq_container_map': found map 1 (work_items, sec 5, off 32) for insn #55
+libbpf: sec '.relxdp': relo #4: insn #58 against 'bpf_wq_init'
+libbpf: prog 'rs_eunomia_wq_container_map': found extern #0 'bpf_wq_init' (sym 19) for insn #58
+libbpf: sec '.relxdp': relo #5: insn #68 against '.text'
+libbpf: sec '.relxdp': relo #6: insn #72 against 'bpf_wq_set_callback_impl'
+libbpf: prog 'rs_eunomia_wq_container_map': found extern #1 'bpf_wq_set_callback_impl' (sym 20) for insn #72
+libbpf: sec '.relxdp': relo #7: insn #79 against 'bpf_wq_start'
+libbpf: prog 'rs_eunomia_wq_container_map': found extern #2 'bpf_wq_start' (sym 21) for insn #79
+libbpf: object 'prog': failed (-95) to create BPF token from '/sys/fs/bpf', skipping optional step...
+libbpf: loaded kernel BTF from '/sys/kernel/btf/vmlinux'
+libbpf: extern (func ksym) 'bpf_wq_init': resolved to vmlinux [73557]
+libbpf: extern (func ksym) 'bpf_wq_set_callback_impl': resolved to vmlinux [73559]
+libbpf: extern (func ksym) 'bpf_wq_start': resolved to vmlinux [73561]
+libbpf: sec 'xdp': found 2 CO-RE relocations
+libbpf: CO-RE relocating [25] struct xdp_md: found target candidate [14922] struct xdp_md in [vmlinux]
+libbpf: prog 'rs_eunomia_wq_container_map': relo #0: <byte_off> [25] struct xdp_md.data_end (0:1 @ offset 4)
+libbpf: prog 'rs_eunomia_wq_container_map': relo #0: matching candidate #0 <byte_off> [14922] struct xdp_md.data_end (0:1 @ offset 4)
+libbpf: prog 'rs_eunomia_wq_container_map': relo #0: patched insn #0 (LDX/ST/STX) off 4 -> 4
+libbpf: prog 'rs_eunomia_wq_container_map': relo #1: <byte_off> [25] struct xdp_md.data (0:0 @ offset 0)
+libbpf: prog 'rs_eunomia_wq_container_map': relo #1: matching candidate #0 <byte_off> [14922] struct xdp_md.data (0:0 @ offset 0)
+libbpf: prog 'rs_eunomia_wq_container_map': relo #1: patched insn #1 (LDX/ST/STX) off 0 -> 0
+libbpf: prog 'rs_eunomia_wq_container_map': added 8 insns from sub-prog 'wq_callback'
+libbpf: prog 'rs_eunomia_wq_container_map': insn #68 relocated, imm 29 points to subprog 'wq_callback' (now at 98 offset)
+libbpf: map 'stats_map': created successfully, fd=4
+libbpf: map 'work_items': created successfully, fd=5
+libbpf: prog 'rs_eunomia_wq_container_map': BPF program load failed: -EINVAL
+libbpf: prog 'rs_eunomia_wq_container_map': -- BEGIN PROG LOAD LOG --
+func#0 @0
+func#1 @98
+Live regs before insn:
+  0: .1........ (61) r2 = *(u32 *)(r1 +4)
+  1: .12....... (61) r9 = *(u32 *)(r1 +0)
+  2: ..2......9 (b7) r1 = 0
+  3: .12......9 (7b) *(u64 *)(r10 -8) = r1
+  4: .12......9 (7b) *(u64 *)(r10 -16) = r1
+  5: .12......9 (7b) *(u64 *)(r10 -24) = r1
+  6: .12......9 (7b) *(u64 *)(r10 -32) = r1
+  7: .12......9 (7b) *(u64 *)(r10 -40) = r1
+  8: .12......9 (63) *(u32 *)(r10 -44) = r1
+  9: ..2......9 (b7) r6 = 2
+ 10: ..2...6..9 (bf) r1 = r9
+ 11: .12...6..9 (07) r1 += 16
+ 12: .12...6..9 (2d) if r1 > r2 goto pc+15
+ 13: ......6..9 (bf) r2 = r10
+ 14: ..2...6..9 (07) r2 += -44
+ 15: ..2...6..9 (18) r1 = 0xffff8c034e9bec00
+ 17: .12...6..9 (85) call bpf_map_lookup_elem#1
+ 18: 0.....6..9 (bf) r7 = r0
+ 19: ......67.9 (15) if r7 == 0x0 goto pc+8
+ 20: ......67.9 (79) r1 = *(u64 *)(r7 +0)
+ 21: .1....67.9 (07) r1 += 1
+ 22: .1....67.9 (7b) *(u64 *)(r7 +0) = r1
+ 23: ......67.9 (61) r1 = *(u32 *)(r9 +8)
+ 24: .1....67.9 (55) if r1 != 0x0 goto pc+5
+ 25: ......67.. (79) r1 = *(u64 *)(r7 +8)
+ 26: .1....67.. (07) r1 += 1
+ 27: .1....67.. (7b) *(u64 *)(r7 +8) = r1
+ 28: ......6... (bf) r0 = r6
+ 29: 0......... (95) exit
+ 30: ......67.9 (61) r1 = *(u32 *)(r9 +0)
+ 31: .1....67.9 (61) r2 = *(u32 *)(r9 +12)
+ 32: .12...67.9 (af) r2 ^= r1
+ 33: ..2...67.9 (57) r2 &= 3
+ 34: ..2...67.9 (63) *(u32 *)(r10 -48) = r2
+ 35: ......67.9 (61) r1 = *(u32 *)(r9 +4)
+ 36: .1....67.9 (63) *(u32 *)(r10 -24) = r1
+ 37: ......67.9 (bf) r2 = r10
+ 38: ..2...67.9 (07) r2 += -48
+ 39: ..2...67.9 (bf) r3 = r10
+ 40: ..23..67.9 (07) r3 += -24
+ 41: ..23..67.9 (18) r1 = 0xffff8c034e9bd600
+ 43: .123..67.9 (b7) r4 = 0
+ 44: .1234.67.9 (85) call bpf_map_update_elem#2
+ 45: 0.....67.9 (55) if r0 != 0x0 goto pc-18
+ 46: ......67.9 (bf) r2 = r10
+ 47: ..2...67.9 (07) r2 += -48
+ 48: ..2...67.9 (18) r1 = 0xffff8c034e9bd600
+ 50: .12...67.9 (85) call bpf_map_lookup_elem#1
+ 51: 0.....67.9 (bf) r8 = r0
+ 52: ......6789 (15) if r8 == 0x0 goto pc-25
+ 53: ......6789 (bf) r1 = r10
+ 54: .1....6789 (07) r1 += -40
+ 55: .1....6789 (18) r2 = 0xffff8c034e9bd600
+ 57: .12...6789 (b7) r3 = 0
+ 58: .123..6789 (85) call bpf_wq_init#73557
+ 59: 0.....6789 (67) r0 <<= 32
+ 60: 0.....6789 (77) r0 >>= 32
+ 61: 0.....6789 (55) if r0 != 0x0 goto pc-34
+ 62: ......6789 (61) r1 = *(u32 *)(r9 +4)
+ 63: .1....6789 (b7) r2 = 1
+ 64: .12...6789 (63) *(u32 *)(r8 +4) = r2
+ 65: .1....6789 (63) *(u32 *)(r8 +0) = r1
+ 66: ......6789 (bf) r1 = r10
+ 67: .1....6789 (07) r1 += -40
+ 68: .1....6789 (18) r2 = 0x1d
+ 70: .12...6789 (b7) r3 = 0
+ 71: .123..6789 (b7) r4 = 0
+ 72: .1234.6789 (85) call bpf_wq_set_callback_impl#73559
+ 73: 0.....6789 (67) r0 <<= 32
+ 74: 0.....6789 (77) r0 >>= 32
+ 75: 0.....6789 (55) if r0 != 0x0 goto pc-48
+ 76: ......6789 (bf) r1 = r10
+ 77: .1....6789 (07) r1 += -40
+ 78: .1....6789 (b7) r2 = 0
+ 79: .12...6789 (85) call bpf_wq_start#73561
+ 80: 0.....6789 (67) r0 <<= 32
+ 81: 0.....6789 (77) r0 >>= 32
+ 82: 0.....6789 (55) if r0 != 0x0 goto pc-55
+ 83: .......789 (79) r1 = *(u64 *)(r7 +16)
+ 84: .1.....789 (07) r1 += 1
+ 85: .1.....789 (7b) *(u64 *)(r7 +16) = r1
+ 86: .......789 (61) r1 = *(u32 *)(r10 -48)
+ 87: .1.....789 (67) r1 <<= 32
+ 88: .1.....789 (c7) r1 s>>= 32
+ 89: .1.....789 (7b) *(u64 *)(r7 +24) = r1
+ 90: .......789 (61) r1 = *(u32 *)(r8 +0)
+ 91: .1.....7.9 (61) r2 = *(u32 *)(r9 +12)
+ 92: .12....7.. (0f) r2 += r1
+ 93: ..2....7.. (67) r2 <<= 32
+ 94: ..2....7.. (77) r2 >>= 32
+ 95: ..2....7.. (7b) *(u64 *)(r7 +32) = r2
+ 96: .......... (b7) r6 = 1
+ 97: ......6... (05) goto pc-70
+ 98: ...3...... (61) r1 = *(u32 *)(r3 +4)
+ 99: .1.3...... (07) r1 += 1000
+100: .1.3...... (63) *(u32 *)(r3 +4) = r1
+101: ...3...... (61) r1 = *(u32 *)(r3 +0)
+102: .1.3...... (07) r1 += 1
+103: .1.3...... (63) *(u32 *)(r3 +0) = r1
+104: .......... (b7) r0 = 0
+105: 0......... (95) exit
+0: R1=ctx() R10=fp0
+; void *data_end = (void *)(long)ctx->data_end; @ candidate.bpf.c:67
+0: (61) r2 = *(u32 *)(r1 +4)          ; R1=ctx() R2_w=pkt_end()
+; void *data = (void *)(long)ctx->data; @ candidate.bpf.c:66
+1: (61) r9 = *(u32 *)(r1 +0)          ; R1=ctx() R9_w=pkt(r=0)
+2: (b7) r1 = 0                        ; R1_w=0
+; struct elem init = {}; @ candidate.bpf.c:69
+3: (7b) *(u64 *)(r10 -8) = r1         ; R1_w=0 R10=fp0 fp-8_w=0
+4: (7b) *(u64 *)(r10 -16) = r1        ; R1_w=0 R10=fp0 fp-16_w=0
+5: (7b) *(u64 *)(r10 -24) = r1        ; R1_w=0 R10=fp0 fp-24_w=0
+; struct bpf_wq local_wq = {}; @ candidate.bpf.c:70
+6: (7b) *(u64 *)(r10 -32) = r1        ; R1_w=0 R10=fp0 fp-32_w=0
+7: (7b) *(u64 *)(r10 -40) = r1        ; R1_w=0 R10=fp0 fp-40_w=0
+; int stat_key = 0; @ candidate.bpf.c:74
+8: (63) *(u32 *)(r10 -44) = r1
+mark_precise: frame0: last_idx 8 first_idx 0 subseq_idx -1 
+mark_precise: frame0: regs=r1 stack= before 7: (7b) *(u64 *)(r10 -40) = r1
+mark_precise: frame0: regs=r1 stack= before 6: (7b) *(u64 *)(r10 -32) = r1
+mark_precise: frame0: regs=r1 stack= before 5: (7b) *(u64 *)(r10 -24) = r1
+mark_precise: frame0: regs=r1 stack= before 4: (7b) *(u64 *)(r10 -16) = r1
+mark_precise: frame0: regs=r1 stack= before 3: (7b) *(u64 *)(r10 -8) = r1
+mark_precise: frame0: regs=r1 stack= before 2: (b7) r1 = 0
+9: R1_w=0 R10=fp0 fp-48=0000????
+9: (b7) r6 = 2                        ; R6_w=2
+; if ((void *)(req + 1) > data_end) @ candidate.bpf.c:77
+10: (bf) r1 = r9                      ; R1_w=pkt(r=0) R9_w=pkt(r=0)
+11: (07) r1 += 16                     ; R1_w=pkt(off=16,r=0)
+12: (2d) if r1 > r2 goto pc+15        ; R1_w=pkt(off=16,r=16) R2_w=pkt_end()
+13: (bf) r2 = r10                     ; R2_w=fp0 R10=fp0
+; stats = bpf_map_lookup_elem(&stats_map, &stat_key); @ candidate.bpf.c:80
+14: (07) r2 += -44                    ; R2_w=fp-44
+15: (18) r1 = 0xffff8c034e9bec00      ; R1_w=map_ptr(map=stats_map,ks=4,vs=40)
+17: (85) call bpf_map_lookup_elem#1   ; R0=map_value(map=stats_map,ks=4,vs=40)
+18: (bf) r7 = r0                      ; R0=map_value(map=stats_map,ks=4,vs=40) R7_w=map_value(map=stats_map,ks=4,vs=40)
+; if (!stats) @ candidate.bpf.c:81
+19: (15) if r7 == 0x0 goto pc+8       ; R7_w=map_value(map=stats_map,ks=4,vs=40)
+; stats->processed++; @ candidate.bpf.c:84
+20: (79) r1 = *(u64 *)(r7 +0)         ; R1_w=scalar() R7_w=map_value(map=stats_map,ks=4,vs=40)
+21: (07) r1 += 1                      ; R1_w=scalar()
+22: (7b) *(u64 *)(r7 +0) = r1         ; R1_w=scalar() R7_w=map_value(map=stats_map,ks=4,vs=40)
+; if (!req->schedule) { @ candidate.bpf.c:85
+23: (61) r1 = *(u32 *)(r9 +8)         ; R1_w=scalar(smin=0,smax=umax=0xffffffff,var_off=(0x0; 0xffffffff)) R9=pkt(r=16)
+24: (55) if r1 != 0x0 goto pc+5       ; R1_w=0
+; stats->skipped++; @ candidate.bpf.c:86
+25: (79) r1 = *(u64 *)(r7 +8)         ; R1_w=scalar() R7_w=map_value(map=stats_map,ks=4,vs=40)
+26: (07) r1 += 1                      ; R1_w=scalar()
+27: (7b) *(u64 *)(r7 +8) = r1         ; R1=scalar() R7=map_value(map=stats_map,ks=4,vs=40)
+; } @ candidate.bpf.c:115
+28: (bf) r0 = r6                      ; R0_w=2 R6=2
+29: (95) exit
+
+from 24 to 30: R0=map_value(map=stats_map,ks=4,vs=40) R1_w=scalar(smin=umin=umin32=1,smax=umax=0xffffffff,var_off=(0x0; 0xffffffff)) R6=2 R7_w=map_value(map=stats_map,ks=4,vs=40) R9=pkt(r=16) R10=fp0 fp-8=0 fp-16=0 fp-24=0 fp-32=0 fp-40=0 fp-48=0000????
+30: R0=map_value(map=stats_map,ks=4,vs=40) R1_w=scalar(smin=umin=umin32=1,smax=umax=0xffffffff,var_off=(0x0; 0xffffffff)) R6=2 R7_w=map_value(map=stats_map,ks=4,vs=40) R9=pkt(r=16) R10=fp0 fp-8=0 fp-16=0 fp-24=0 fp-32=0 fp-40=0 fp-48=0000????
+; key = (req->key ^ req->priority) & 3; @ candidate.bpf.c:90
+30: (61) r1 = *(u32 *)(r9 +0)         ; R1_w=scalar(smin=0,smax=umax=0xffffffff,var_off=(0x0; 0xffffffff)) R9=pkt(r=16)
+31: (61) r2 = *(u32 *)(r9 +12)        ; R2_w=scalar(smin=0,smax=umax=0xffffffff,var_off=(0x0; 0xffffffff)) R9=pkt(r=16)
+32: (af) r2 ^= r1                     ; R1_w=scalar(smin=0,smax=umax=0xffffffff,var_off=(0x0; 0xffffffff)) R2_w=scalar(smin=0,smax=umax=0xffffffff,var_off=(0x0; 0xffffffff))
+33: (57) r2 &= 3                      ; R2_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=3,var_off=(0x0; 0x3))
+34: (63) *(u32 *)(r10 -48) = r2       ; R2_w=scalar(id=1,smin=smin32=0,smax=umax=smax32=umax32=3,var_off=(0x0; 0x3)) R10=fp0 fp-48=0000scalar(id=1,smin=smin32=0,smax=umax=smax32=umax32=3,var_off=(0x0; 0x3))
+; init.value = req->value; @ candidate.bpf.c:91
+35: (61) r1 = *(u32 *)(r9 +4)         ; R1_w=scalar(smin=0,smax=umax=0xffffffff,var_off=(0x0; 0xffffffff)) R9=pkt(r=16)
+36: (63) *(u32 *)(r10 -24) = r1       ; R1_w=scalar(id=2,smin=0,smax=umax=0xffffffff,var_off=(0x0; 0xffffffff)) R10=fp0 fp-24=mmmmscalar(id=2,smin=0,smax=umax=0xffffffff,var_off=(0x0; 0xffffffff))
+37: (bf) r2 = r10                     ; R2_w=fp0 R10=fp0
+; key = (req->key ^ req->priority) & 3; @ candidate.bpf.c:90
+38: (07) r2 += -48                    ; R2_w=fp-48
+39: (bf) r3 = r10                     ; R3_w=fp0 R10=fp0
+40: (07) r3 += -24                    ; R3_w=fp-24
+; if (bpf_map_update_elem(&work_items, &key, &init, BPF_ANY)) @ candidate.bpf.c:92
+41: (18) r1 = 0xffff8c034e9bd600      ; R1_w=map_ptr(map=work_items,ks=4,vs=24)
+43: (b7) r4 = 0                       ; R4_w=0
+44: (85) call bpf_map_update_elem#2   ; R0=scalar()
+45: (55) if r0 != 0x0 goto pc-18      ; R0=0
+46: (bf) r2 = r10                     ; R2_w=fp0 R10=fp0
+; elem = bpf_map_lookup_elem(&work_items, &key); @ candidate.bpf.c:95
+47: (07) r2 += -48                    ; R2_w=fp-48
+48: (18) r1 = 0xffff8c034e9bd600      ; R1_w=map_ptr(map=work_items,ks=4,vs=24)
+50: (85) call bpf_map_lookup_elem#1   ; R0_w=map_value_or_null(id=3,map=work_items,ks=4,vs=24)
+51: (bf) r8 = r0                      ; R0_w=map_value_or_null(id=3,map=work_items,ks=4,vs=24) R8_w=map_value_or_null(id=3,map=work_items,ks=4,vs=24)
+; if (!elem) @ candidate.bpf.c:96
+52: (15) if r8 == 0x0 goto pc-25      ; R8_w=map_value(map=work_items,ks=4,vs=24)
+53: (bf) r1 = r10                     ; R1_w=fp0 R10=fp0
+;  @ candidate.bpf.c:0
+54: (07) r1 += -40                    ; R1_w=fp-40
+; if (bpf_wq_init(wq, &work_items, 0)) @ candidate.bpf.c:100
+55: (18) r2 = 0xffff8c034e9bd600      ; R2_w=map_ptr(map=work_items,ks=4,vs=24)
+57: (b7) r3 = 0                       ; R3_w=0
+58: (85) call bpf_wq_init#73557
+arg#0 doesn't point to a map value
+verification time 340 usec
+stack depth 48+0
+processed 55 insns (limit 1000000) max_states_per_insn 0 total_states 3 peak_states 3 mark_read 2
+-- END PROG LOAD LOG --
+libbpf: prog 'rs_eunomia_wq_container_map': failed to load: -EINVAL
+libbpf: failed to load object 'bpfix-bench/results/cost-main75-current-server/20260801T082437160849Z-pid4040619/bpfix/rs_eunomia_wq_container_map_001/attempt-1/work/prog.o'
+Error: failed to load object file
+
+```
+
+Try again. Return only one complete replacement C source file in a fenced ```c block.

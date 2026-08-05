@@ -1,0 +1,43 @@
+{
+  "api_timings": {
+    "cache_n": 21,
+    "predicted_ms": 4777.972,
+    "predicted_n": 350,
+    "predicted_per_second": 73.25283614052155,
+    "predicted_per_token_ms": 13.65134857142857,
+    "prompt_ms": 962.208,
+    "prompt_n": 2771,
+    "prompt_per_second": 2879.8347134923015,
+    "prompt_per_token_ms": 0.34724215084806925
+  },
+  "api_usage": {
+    "completion_tokens": 350,
+    "prompt_tokens": 2792,
+    "prompt_tokens_details": {
+      "cached_tokens": 21
+    },
+    "total_tokens": 3142
+  },
+  "attempt": 1,
+  "attempt_wall_time_seconds": 6.057607,
+  "candidate": "bpfix-bench/results/cost-main75-current-server/20260801T075920882474Z-pid3975799/raw/dynptr_slice_stack_buffer_001/attempt-1/candidate.bpf.c",
+  "failure_stage": "compile",
+  "finish_reason": "stop",
+  "model_wall_time_seconds": 5.794817,
+  "oracle_returncode": 1,
+  "oracle_stderr": "",
+  "oracle_stdout": "{\n  \"compile\": {\n    \"argv\": [\n      \"clang\",\n      \"-target\",\n      \"bpf\",\n      \"-O2\",\n      \"-g\",\n      \"-I\",\n      \"/usr/include\",\n      \"-D__TARGET_ARCH_x86\",\n      \"-c\",\n      \"/home/yunwei37/workspace/bpfix/bpfix-bench/results/cost-main75-current-server/20260801T075920882474Z-pid3975799/raw/dynptr_slice_stack_buffer_001/attempt-1/candidate.bpf.c\",\n      \"-o\",\n      \"bpfix-bench/results/cost-main75-current-server/20260801T075920882474Z-pid3975799/raw/dynptr_slice_stack_buffer_001/attempt-1/work/prog.o\"\n    ],\n    \"returncode\": 1,\n    \"stderr\": \"/home/yunwei37/workspace/bpfix/bpfix-bench/results/cost-main75-current-server/20260801T075920882474Z-pid3975799/raw/dynptr_slice_stack_buffer_001/attempt-1/candidate.bpf.c:38:20: error: invalid operands to binary expression ('void' and 'int')\\n   38 |     return tail[0] == 0x08 ? XDP_DROP : XDP_PASS;\\n      |            ~~~~~~~ ^  ~~~~\\n1 error generated.\\n\",\n    \"stdout\": \"\"\n  },\n  \"expect_reject\": false,\n  \"functional\": [],\n  \"load\": null,\n  \"map_setup\": [],\n  \"passed\": false,\n  \"source\": \"/home/yunwei37/workspace/bpfix/bpfix-bench/results/cost-main75-current-server/20260801T075920882474Z-pid3975799/raw/dynptr_slice_stack_buffer_001/attempt-1/candidate.bpf.c\",\n  \"source_semantics\": [],\n  \"success_log_checks\": []\n}\n",
+  "oracle_wall_time_seconds": 0.262471,
+  "prompt_chars": 6274,
+  "prompt_sha256": "80a36982e81c302254ca2e2000633af98c3c9c9f64fbab2a546def8c42cfe90c",
+  "reasoning_chars": null,
+  "response_chars": 951,
+  "status": "fail",
+  "token_usage": {
+    "cached_prompt_tokens": 21,
+    "completion_tokens": 350,
+    "prompt_tokens": 2792,
+    "reasoning_tokens": null,
+    "total_tokens": 3142
+  }
+}

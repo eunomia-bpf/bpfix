@@ -1,0 +1,95 @@
+You are fixing one eBPF verifier rejection.
+
+Return only one complete replacement C source file in a fenced ```c block.
+Do not explain. Do not output a diff. Preserve the intended packet/helper
+semantics; do not remove the program, maps, SEC() section, or license.
+
+
+
+Source file:
+```c
+#ifndef __TARGET_ARCH_x86
+#define __TARGET_ARCH_x86 1
+#endif
+
+#include <vmlinux.h>
+#include <bpf/bpf_helpers.h>
+#include <bpf/bpf_endian.h>
+
+#ifndef TC_ACT_OK
+#define TC_ACT_OK 0
+#endif
+#ifndef TC_ACT_SHOT
+#define TC_ACT_SHOT 2
+#endif
+#ifndef ETH_P_IP
+#define ETH_P_IP 0x0800
+#endif
+
+struct policy_state {
+    __u32 drop_proto;
+    __u32 seen_ipv4;
+};
+
+struct {
+    __uint(type, BPF_MAP_TYPE_HASH);
+    __uint(max_entries, 16);
+    __type(key, __u32);
+    __type(value, struct policy_state);
+} policy_map SEC(".maps");
+
+SEC("tc")
+int rs_actplane_policy_map_merge(struct __sk_buff *skb)
+{
+    void *data = (void *)(long)skb->data;
+    void *data_end = (void *)(long)skb->data_end;
+    struct ethhdr *eth = data;
+    struct policy_state *policy;
+    __u32 key = 0;
+    __u32 proto;
+
+    if ((void *)(eth + 1) > data_end)
+        return TC_ACT_OK;
+
+    proto = bpf_ntohs(eth->h_proto);
+    policy = bpf_map_lookup_elem(&policy_map, &key);
+    if (!policy)
+        return TC_ACT_OK;
+
+    if (proto == ETH_P_IP) {
+        policy->seen_ipv4 += 1;
+    } else {
+        __u32 shadow_key = proto;
+
+        policy = bpf_map_lookup_elem(&policy_map, &shadow_key);
+    }
+
+    return policy->drop_proto == proto ? TC_ACT_SHOT : TC_ACT_OK;
+}
+
+char _license[] SEC("license") = "GPL";
+
+```
+
+verifier diagnostic evidence:
+```text
+error[BPFIX-E002]: nullable pointer is used before the verifier sees a non-null proof
+  = class: source_bug
+  = confidence: medium
+  = diagnostic: supported, help: repair_hint, span: exact_pc
+  = next action: null
+  --> buggy.bpf.c:57
+   |
+54 | policy = bpf_map_lookup_elem(&policy_map, &shadow_key);
+   | ------------------------------------------------------- nearby source context for nullable pointer
+57 | return policy->drop_proto == proto ? TC_ACT_SHOT : TC_ACT_OK;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ nullable pointer reaches this use without a non-null proof
+   |
+   = verifier[98]: R0 invalid mem access 'map_value_or_null'
+   = note: nearest BPF instruction pc 27
+   = note: parsed 33 verifier state snapshots
+   = note[verifier-state]: verifier state shows the rejected pointer register is still a nullable helper result at the dereference, arithmetic, or helper-use site
+   = required proof: prove the nullable helper result is non-null in the same verifier-visible branch as this use
+
+```
+

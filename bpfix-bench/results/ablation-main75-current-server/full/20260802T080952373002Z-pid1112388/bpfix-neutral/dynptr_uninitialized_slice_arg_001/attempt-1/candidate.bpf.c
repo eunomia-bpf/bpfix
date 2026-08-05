@@ -1,0 +1,57 @@
+#ifndef __TARGET_ARCH_x86
+#define __TARGET_ARCH_x86 1
+#endif
+
+#include <vmlinux.h>
+#include <bpf/bpf_helpers.h>
+#include <bpf/bpf_endian.h>
+
+#ifndef XDP_PASS
+#define XDP_PASS 2
+#endif
+#ifndef XDP_DROP
+#define XDP_DROP 1
+#endif
+#ifndef ETH_P_IP
+#define ETH_P_IP 0x0800
+#endif
+
+extern void *bpf_dynptr_slice(const struct bpf_dynptr *p, __u32 offset, void *buffer__opt, __u32 buffer__szk) __ksym;
+extern int bpf_xdp_adjust_head(struct xdp_md *ctx, int offset) __ksym;
+extern int bpf_xdp_load_bytes(struct xdp_md *ctx, __u32 offset, void *to, __u32 len) __ksym;
+extern int bpf_xdp_store_bytes(struct xdp_md *ctx, __u32 offset, const void *from, __u32 len) __ksym;
+extern int bpf_xdp_redirect_map(struct xdp_md *ctx, __u32 map_fd, __u64 key, __u64 flags) __ksym;
+extern int bpf_xdp_redirect(struct xdp_md *ctx, __u32 ifindex, __u64 flags) __ksym;
+extern int bpf_xdp_adjust_tail(struct xdp_md *ctx, int offset) __ksym;
+extern int bpf_xdp_adjust_meta(struct xdp_md *ctx, int offset) __ksym;
+extern int bpf_xdp_adjust_head(struct xdp_md *ctx, int offset) __ksym;
+extern int bpf_xdp_load_bytes(struct xdp_md *ctx, __u32 offset, void *to, __u32 len) __ksym;
+extern int bpf_xdp_store_bytes(struct xdp_md *ctx, __u32 offset, const void *from, __u32 len) __ksym;
+extern int bpf_xdp_redirect_map(struct xdp_md *ctx, __u32 map_fd, __u64 key, __u64 flags) __ksym;
+extern int bpf_xdp_redirect(struct xdp_md *ctx, __u32 ifindex, __u64 flags) __ksym;
+extern int bpf_xdp_adjust_tail(struct xdp_md *ctx, int offset) __ksym;
+extern int bpf_xdp_adjust_meta(struct xdp_md *ctx, int offset) __ksym;
+
+SEC("xdp")
+int dynptr_uninitialized_slice_arg(struct xdp_md *ctx)
+{
+    struct bpf_dynptr ptr;
+    struct ethhdr *eth;
+    int err;
+
+    err = bpf_xdp_adjust_head(ctx, 0);
+    if (err)
+        return XDP_PASS;
+
+    err = bpf_xdp_load_bytes(ctx, 0, &ptr, sizeof(ptr));
+    if (err)
+        return XDP_PASS;
+
+    eth = bpf_dynptr_slice(&ptr, 0, 0, sizeof(*eth));
+    if (!eth)
+        return XDP_PASS;
+
+    return bpf_ntohs(eth->h_proto) == ETH_P_IP ? XDP_DROP : XDP_PASS;
+}
+
+char _license[] SEC("license") = "GPL";

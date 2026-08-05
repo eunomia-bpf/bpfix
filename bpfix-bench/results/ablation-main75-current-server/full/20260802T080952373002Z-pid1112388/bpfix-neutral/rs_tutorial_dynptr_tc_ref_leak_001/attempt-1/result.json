@@ -1,0 +1,17 @@
+{
+  "api_timings": null,
+  "api_usage": null,
+  "attempt": 1,
+  "attempt_wall_time_seconds": 1.648869,
+  "error": "Remote end closed connection without response",
+  "failure_stage": "model_call",
+  "finish_reason": null,
+  "model_wall_time_seconds": 1.648789,
+  "oracle_wall_time_seconds": null,
+  "prompt_chars": 5073,
+  "prompt_sha256": "9c4b54bfa7033535f9066b35f14b69e2dddfc4b4f479b558b2446e59f7fd8b24",
+  "reasoning_chars": null,
+  "response_chars": null,
+  "status": "model_error",
+  "token_usage": null
+}

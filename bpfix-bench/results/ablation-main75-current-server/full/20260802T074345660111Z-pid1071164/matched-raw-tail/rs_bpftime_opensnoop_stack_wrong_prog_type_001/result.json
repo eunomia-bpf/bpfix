@@ -1,0 +1,124 @@
+{
+  "api_timings": {
+    "cache_n": 21,
+    "predicted_ms": 6511.197,
+    "predicted_n": 484,
+    "predicted_per_second": 74.33349044730178,
+    "predicted_per_token_ms": 13.452886363636363,
+    "prompt_ms": 337.283,
+    "prompt_n": 773,
+    "prompt_per_second": 2291.8439411414156,
+    "prompt_per_token_ms": 0.43632988357050456
+  },
+  "api_usage": {
+    "completion_tokens": 484,
+    "prompt_tokens": 794,
+    "prompt_tokens_details": {
+      "cached_tokens": 21
+    },
+    "total_tokens": 1278
+  },
+  "attempt": 1,
+  "attempt_wall_time_seconds": 7.060475,
+  "attempts": [
+    {
+      "api_timings": {
+        "cache_n": 21,
+        "predicted_ms": 6511.197,
+        "predicted_n": 484,
+        "predicted_per_second": 74.33349044730178,
+        "predicted_per_token_ms": 13.452886363636363,
+        "prompt_ms": 337.283,
+        "prompt_n": 773,
+        "prompt_per_second": 2291.8439411414156,
+        "prompt_per_token_ms": 0.43632988357050456
+      },
+      "api_usage": {
+        "completion_tokens": 484,
+        "prompt_tokens": 794,
+        "prompt_tokens_details": {
+          "cached_tokens": 21
+        },
+        "total_tokens": 1278
+      },
+      "attempt": 1,
+      "attempt_wall_time_seconds": 7.060475,
+      "candidate": "bpfix-bench/results/ablation-main75-current-server/full/20260802T074345660111Z-pid1071164/matched-raw-tail/rs_bpftime_opensnoop_stack_wrong_prog_type_001/attempt-1/candidate.bpf.c",
+      "failure_stage": "compile",
+      "finish_reason": "stop",
+      "model_wall_time_seconds": 6.859691,
+      "oracle_returncode": 1,
+      "oracle_stderr": "",
+      "oracle_stdout": "{\n  \"compile\": {\n    \"argv\": [\n      \"clang\",\n      \"-target\",\n      \"bpf\",\n      \"-O2\",\n      \"-g\",\n      \"-I\",\n      \"/usr/include\",\n      \"-D__TARGET_ARCH_x86\",\n      \"-c\",\n      \"/home/yunwei37/workspace/bpfix/bpfix-bench/results/ablation-main75-current-server/full/20260802T074345660111Z-pid1071164/matched-raw-tail/rs_bpftime_opensnoop_stack_wrong_prog_type_001/attempt-1/candidate.bpf.c\",\n      \"-o\",\n      \"bpfix-bench/results/ablation-main75-current-server/full/20260802T074345660111Z-pid1071164/matched-raw-tail/rs_bpftime_opensnoop_stack_wrong_prog_type_001/attempt-1/work/prog.o\"\n    ],\n    \"returncode\": 1,\n    \"stderr\": \"/home/yunwei37/workspace/bpfix/bpfix-bench/results/ablation-main75-current-server/full/20260802T074345660111Z-pid1071164/matched-raw-tail/rs_bpftime_opensnoop_stack_wrong_prog_type_001/attempt-1/candidate.bpf.c:50:49: error: too many arguments to function call, expected 3, have 4\\n   50 |     bpf_get_stackid(ctx, &stack, sizeof(stack), BPF_F_USER_STACK);\\n      |     ~~~~~~~~~~~~~~~                             ^~~~~~~~~~~~~~~~\\n1 error generated.\\n\",\n    \"stdout\": \"\"\n  },\n  \"expect_reject\": false,\n  \"load\": null,\n  \"load_log_semantics\": [],\n  \"passed\": false,\n  \"source\": \"/home/yunwei37/workspace/bpfix/bpfix-bench/results/ablation-main75-current-server/full/20260802T074345660111Z-pid1071164/matched-raw-tail/rs_bpftime_opensnoop_stack_wrong_prog_type_001/attempt-1/candidate.bpf.c\",\n  \"source_semantics\": []\n}\n",
+      "oracle_wall_time_seconds": 0.200106,
+      "prompt_chars": 2299,
+      "prompt_sha256": "b931b45b2be0a545fb1be2c62c69d39f78aa5240c62911559dd55e9e674a3ecd",
+      "reasoning_chars": null,
+      "response_chars": 1412,
+      "status": "fail",
+      "token_usage": {
+        "cached_prompt_tokens": 21,
+        "completion_tokens": 484,
+        "prompt_tokens": 794,
+        "reasoning_tokens": null,
+        "total_tokens": 1278
+      }
+    }
+  ],
+  "candidate": "bpfix-bench/results/ablation-main75-current-server/full/20260802T074345660111Z-pid1071164/matched-raw-tail/rs_bpftime_opensnoop_stack_wrong_prog_type_001/attempt-1/candidate.bpf.c",
+  "case": "rs_bpftime_opensnoop_stack_wrong_prog_type_001",
+  "cost": {
+    "attempt_wall_time_seconds": 7.060475,
+    "cached_prompt_tokens": 21,
+    "completion_tokens": 484,
+    "model_calls": 1,
+    "model_wall_time_seconds": 6.859691,
+    "oracle_wall_time_seconds": 0.200106,
+    "prompt_tokens": 794,
+    "reasoning_tokens": null,
+    "token_usage_coverage": {
+      "cached_prompt_tokens": 1,
+      "completion_tokens": 1,
+      "prompt_tokens": 1,
+      "reasoning_tokens": 0,
+      "total_tokens": 1
+    },
+    "total_tokens": 1278
+  },
+  "diagnostic_chars": 562,
+  "failure_stage": "compile",
+  "finish_reason": "stop",
+  "mode": "matched-raw-tail",
+  "model": "Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M",
+  "model_wall_time_seconds": 6.859691,
+  "oracle_returncode": 1,
+  "oracle_stderr": "",
+  "oracle_stdout": "{\n  \"compile\": {\n    \"argv\": [\n      \"clang\",\n      \"-target\",\n      \"bpf\",\n      \"-O2\",\n      \"-g\",\n      \"-I\",\n      \"/usr/include\",\n      \"-D__TARGET_ARCH_x86\",\n      \"-c\",\n      \"/home/yunwei37/workspace/bpfix/bpfix-bench/results/ablation-main75-current-server/full/20260802T074345660111Z-pid1071164/matched-raw-tail/rs_bpftime_opensnoop_stack_wrong_prog_type_001/attempt-1/candidate.bpf.c\",\n      \"-o\",\n      \"bpfix-bench/results/ablation-main75-current-server/full/20260802T074345660111Z-pid1071164/matched-raw-tail/rs_bpftime_opensnoop_stack_wrong_prog_type_001/attempt-1/work/prog.o\"\n    ],\n    \"returncode\": 1,\n    \"stderr\": \"/home/yunwei37/workspace/bpfix/bpfix-bench/results/ablation-main75-current-server/full/20260802T074345660111Z-pid1071164/matched-raw-tail/rs_bpftime_opensnoop_stack_wrong_prog_type_001/attempt-1/candidate.bpf.c:50:49: error: too many arguments to function call, expected 3, have 4\\n   50 |     bpf_get_stackid(ctx, &stack, sizeof(stack), BPF_F_USER_STACK);\\n      |     ~~~~~~~~~~~~~~~                             ^~~~~~~~~~~~~~~~\\n1 error generated.\\n\",\n    \"stdout\": \"\"\n  },\n  \"expect_reject\": false,\n  \"load\": null,\n  \"load_log_semantics\": [],\n  \"passed\": false,\n  \"source\": \"/home/yunwei37/workspace/bpfix/bpfix-bench/results/ablation-main75-current-server/full/20260802T074345660111Z-pid1071164/matched-raw-tail/rs_bpftime_opensnoop_stack_wrong_prog_type_001/attempt-1/candidate.bpf.c\",\n  \"source_semantics\": []\n}\n",
+  "oracle_wall_time_seconds": 0.200106,
+  "prompt_build_wall_time_seconds": 1.118787,
+  "prompt_chars": 2299,
+  "prompt_sha256": "b931b45b2be0a545fb1be2c62c69d39f78aa5240c62911559dd55e9e674a3ecd",
+  "prompt_token_match": {
+    "gap_tokens": 6,
+    "load_region_count": 1,
+    "matched_tokens": 794,
+    "region_chars": 5017,
+    "region_line_count": 98,
+    "region_sha256": "33ccdf9555a0c35eeb42e8c098bec6d3a66239810bef994609b2c5d6eb3c7b0a",
+    "suffix_line_count": 10,
+    "suffix_start_line": 89,
+    "target_mode": "bpfix-no-help",
+    "target_tokens": 800
+  },
+  "reasoning_chars": null,
+  "response_chars": 1412,
+  "source_chars": 1401,
+  "status": "fail",
+  "token_usage": {
+    "cached_prompt_tokens": 21,
+    "completion_tokens": 484,
+    "prompt_tokens": 794,
+    "reasoning_tokens": null,
+    "total_tokens": 1278
+  }
+}

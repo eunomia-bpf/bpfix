@@ -1,0 +1,103 @@
+You are fixing one eBPF verifier rejection.
+
+Return only one complete replacement C source file in a fenced ```c block.
+Do not explain. Do not output a diff. Preserve the intended packet/helper
+semantics; do not remove the program, maps, SEC() section, or license.
+
+
+
+Source file:
+```c
+#ifndef __TARGET_ARCH_x86
+#define __TARGET_ARCH_x86 1
+#endif
+
+#include <vmlinux.h>
+#include <bpf/bpf_helpers.h>
+
+struct io_args_t {
+    __u64 buf;
+    __s32 fd;
+    __u8 is_read;
+};
+
+struct stdio_event_t {
+    __u32 pid;
+    __s32 fd;
+    __u32 len;
+    __u8 is_read;
+    __u8 pad[3];
+    char buf[8];
+};
+
+struct {
+    __uint(type, BPF_MAP_TYPE_RINGBUF);
+    __uint(max_entries, 1 << 12);
+} rb SEC(".maps");
+
+struct {
+    __uint(type, BPF_MAP_TYPE_HASH);
+    __uint(max_entries, 1024);
+    __type(key, __u64);
+    __type(value, struct io_args_t);
+} io_args SEC(".maps");
+
+SEC("tp/syscalls/sys_exit_read")
+int rs_agentsight_stdiocap_user_copy_len(struct trace_event_raw_sys_exit *ctx)
+{
+    __u64 pid_tgid = bpf_get_current_pid_tgid();
+    struct io_args_t *args;
+    struct stdio_event_t *event;
+    __u32 copy_size = 16;
+
+    args = bpf_map_lookup_elem(&io_args, &pid_tgid);
+    if (!args)
+        return 0;
+    if (ctx->ret <= 0)
+        goto cleanup;
+
+    event = bpf_ringbuf_reserve(&rb, sizeof(*event), 0);
+    if (!event)
+        goto cleanup;
+
+    event->pid = pid_tgid >> 32;
+    event->fd = args->fd;
+    event->len = (__u32)ctx->ret;
+    event->is_read = args->is_read;
+    bpf_probe_read_user(event->buf, copy_size, (const void *)args->buf);
+    bpf_ringbuf_submit(event, 0);
+
+cleanup:
+    bpf_map_delete_elem(&io_args, &pid_tgid);
+    return 0;
+}
+
+char _license[] SEC("license") = "GPL";
+
+```
+
+verifier diagnostic evidence:
+```text
+error[BPFIX-E005]: scalar range proof is missing
+  = class: source_bug
+  = confidence: medium
+  = diagnostic: supported, help: repair_hint, span: exact_pc
+  = next action: bounds
+  --> buggy.bpf.c:57
+   |
+46 | if (ctx->ret <= 0)
+   | ------------------ nearby source context for scalar range
+56 | event->is_read = args->is_read;
+   | ------------------------------- verifier still sees R1 as scalar(smin=0,smax=255,umax=255), so the required scalar or map-value bound is not available at the use
+57 | bpf_probe_read_user(event->buf, copy_size, (const void *)args->buf);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ rejected here: verifier still sees R1 as scalar with unknown bounds
+   |
+   = verifier[94]: invalid access to memory, mem_size=24 off=16 size=16; R1 min value is outside of the allowed memory range
+   = note: nearest BPF instruction pc 33
+   = note: parsed 29 verifier state snapshots
+   = required proof: prove R1 has a bounded non-negative scalar range before this pointer arithmetic or helper memory access; verifier sees scalar with unknown bounds
+help: Clamp the index or length with explicit upper and lower bounds.
+help: Keep the bounded scalar in the same SSA value used for pointer arithmetic or helper length.
+
+```
+

@@ -1,0 +1,112 @@
+You are fixing one eBPF verifier rejection.
+
+Return only one complete replacement C source file in a fenced ```c block.
+Do not explain. Do not output a diff. Preserve the intended packet/helper
+semantics; do not remove the program, maps, SEC() section, or license.
+
+
+
+Source file:
+```c
+#ifndef __TARGET_ARCH_x86
+#define __TARGET_ARCH_x86 1
+#endif
+
+#include <vmlinux.h>
+#include <bpf/bpf_helpers.h>
+#include <bpf/bpf_endian.h>
+
+#ifndef XDP_PASS
+#define XDP_PASS 2
+#endif
+#ifndef XDP_DROP
+#define XDP_DROP 1
+#endif
+#ifndef ETH_P_IP
+#define ETH_P_IP 0x0800
+#endif
+
+struct dns_policy {
+    __u16 checksum;
+    __u8 tag;
+    __u8 pad;
+};
+
+struct {
+    __uint(type, BPF_MAP_TYPE_HASH);
+    __uint(max_entries, 1);
+    __type(key, __u32);
+    __type(value, struct dns_policy);
+} policies SEC(".maps");
+
+SEC("xdp")
+int packet_ihl_udp_undercheck(struct xdp_md *ctx)
+{
+    void *data = (void *)(long)ctx->data;
+    void *data_end = (void *)(long)ctx->data_end;
+    struct ethhdr *eth = data;
+    struct iphdr *iph;
+    void *udp;
+    __u32 ihl;
+    __u16 dport;
+    __u16 checksum;
+    __u8 tag;
+    struct dns_policy *policy;
+    __u32 key = 0;
+
+    if ((void *)(eth + 1) > data_end)
+        return XDP_PASS;
+    if (bpf_ntohs(eth->h_proto) != ETH_P_IP)
+        return XDP_PASS;
+
+    iph = data + sizeof(*eth);
+    if ((void *)(iph + 1) > data_end)
+        return XDP_PASS;
+    if (iph->protocol != IPPROTO_UDP)
+        return XDP_PASS;
+
+    ihl = iph->ihl * 4;
+    if (ihl < sizeof(*iph) || ihl > 60)
+        return XDP_PASS;
+
+    udp = data + sizeof(*eth) + ihl;
+    if (udp + 3 > data_end)
+        return XDP_PASS;
+
+    dport = *(__u16 *)(udp + 2);
+    if (udp + 7 > data_end)
+        return XDP_PASS;
+
+    checksum = *(__u16 *)(udp + 6);
+    tag = *(__u8 *)(udp + 8);
+    if (bpf_ntohs(dport) != 53)
+        return XDP_PASS;
+
+    policy = bpf_map_lookup_elem(&policies, &key);
+    return bpf_ntohs(checksum) == policy->checksum && tag == policy->tag ? XDP_DROP : XDP_PASS;
+}
+
+char _license[] SEC("license") = "GPL";
+
+```
+
+verifier diagnostic evidence:
+```text
+error[BPFIX-E001]: packet access reaches the use before the verifier has enough packet range
+  = class: source_bug
+  = confidence: medium
+  = diagnostic: supported, help: repair_hint, span: exact_pc
+  = next action: bounds
+  --> buggy.bpf.c:0
+   |
+66 | dport = *(__u16 *)(udp + 2);
+   | ---------------------------- verifier only proves packet range 21 bytes on this path, but the rejected access requires 23 bytes
+   |
+   = verifier[100]: invalid access to packet, off=22 size=1, R1(id=1,off=22,r=21); R1 offset is outside of the packet
+   = note: nearest BPF instruction pc 28
+   = note: parsed 21 verifier state snapshots
+   = note[verifier-state]: verifier state shows the packet register's proven range is shorter than the rejected access requires at this instruction
+   = required proof: prove this packet register has range at least off + size at the rejected load, store, or helper call
+
+```
+

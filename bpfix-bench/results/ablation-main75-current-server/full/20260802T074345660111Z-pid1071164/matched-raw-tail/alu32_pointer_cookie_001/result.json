@@ -1,0 +1,124 @@
+{
+  "api_timings": {
+    "cache_n": 21,
+    "predicted_ms": 5383.437,
+    "predicted_n": 401,
+    "predicted_per_second": 74.48772967901361,
+    "predicted_per_token_ms": 13.425029925187031,
+    "prompt_ms": 329.758,
+    "prompt_n": 761,
+    "prompt_per_second": 2307.752958229975,
+    "prompt_per_token_ms": 0.43332194480946123
+  },
+  "api_usage": {
+    "completion_tokens": 401,
+    "prompt_tokens": 782,
+    "prompt_tokens_details": {
+      "cached_tokens": 21
+    },
+    "total_tokens": 1183
+  },
+  "attempt": 1,
+  "attempt_wall_time_seconds": 5.959315,
+  "attempts": [
+    {
+      "api_timings": {
+        "cache_n": 21,
+        "predicted_ms": 5383.437,
+        "predicted_n": 401,
+        "predicted_per_second": 74.48772967901361,
+        "predicted_per_token_ms": 13.425029925187031,
+        "prompt_ms": 329.758,
+        "prompt_n": 761,
+        "prompt_per_second": 2307.752958229975,
+        "prompt_per_token_ms": 0.43332194480946123
+      },
+      "api_usage": {
+        "completion_tokens": 401,
+        "prompt_tokens": 782,
+        "prompt_tokens_details": {
+          "cached_tokens": 21
+        },
+        "total_tokens": 1183
+      },
+      "attempt": 1,
+      "attempt_wall_time_seconds": 5.959315,
+      "candidate": "bpfix-bench/results/ablation-main75-current-server/full/20260802T074345660111Z-pid1071164/matched-raw-tail/alu32_pointer_cookie_001/attempt-1/candidate.bpf.c",
+      "failure_stage": "verifier_load",
+      "finish_reason": "stop",
+      "model_wall_time_seconds": 5.72392,
+      "oracle_returncode": 1,
+      "oracle_stderr": "",
+      "oracle_stdout": "{\n  \"compile\": {\n    \"argv\": [\n      \"clang\",\n      \"-target\",\n      \"bpf\",\n      \"-O2\",\n      \"-g\",\n      \"-I\",\n      \"/usr/include\",\n      \"-D__TARGET_ARCH_x86\",\n      \"-c\",\n      \"/home/yunwei37/workspace/bpfix/bpfix-bench/results/ablation-main75-current-server/full/20260802T074345660111Z-pid1071164/matched-raw-tail/alu32_pointer_cookie_001/attempt-1/candidate.bpf.c\",\n      \"-o\",\n      \"bpfix-bench/results/ablation-main75-current-server/full/20260802T074345660111Z-pid1071164/matched-raw-tail/alu32_pointer_cookie_001/attempt-1/work/prog.o\"\n    ],\n    \"returncode\": 0,\n    \"stderr\": \"\",\n    \"stdout\": \"\"\n  },\n  \"expect_reject\": false,\n  \"functional\": [],\n  \"load\": {\n    \"argv\": [\n      \"sudo\",\n      \"bpftool\",\n      \"-d\",\n      \"prog\",\n      \"load\",\n      \"bpfix-bench/results/ablation-main75-current-server/full/20260802T074345660111Z-pid1071164/matched-raw-tail/alu32_pointer_cookie_001/attempt-1/work/prog.o\",\n      \"/sys/fs/bpf/bpfix_test_candidate_bpf_1071312\",\n      \"type\",\n      \"xdp\"\n    ],\n    \"returncode\": 255,\n    \"stderr\": \"libbpf: loading object from bpfix-bench/results/ablation-main75-current-server/full/20260802T074345660111Z-pid1071164/matched-raw-tail/alu32_pointer_cookie_001/attempt-1/work/prog.o\\nlibbpf: elf: section(3) xdp, size 184, link 0, flags 6, type=1\\nlibbpf: sec 'xdp': found program 'alu32_pointer_cookie' at insn offset 0 (0 bytes), code size 23 insns (184 bytes)\\nlibbpf: elf: section(4) license, size 4, link 0, flags 3, type=1\\nlibbpf: license of bpfix-bench/results/ablation-main75-current-server/full/20260802T074345660111Z-pid1071164/matched-raw-tail/alu32_pointer_cookie_001/attempt-1/work/prog.o is GPL\\nlibbpf: elf: section(14) .BTF, size 1722, link 0, flags 0, type=1\\nlibbpf: elf: section(16) .BTF.ext, size 396, link 0, flags 0, type=1\\nlibbpf: elf: section(24) .symtab, size 336, link 1, flags 0, type=2\\nlibbpf: looking for externs among 14 symbols...\\nlibbpf: collected 0 externs total\\nlibbpf: object 'prog': failed (-95) to create BPF token from '/sys/fs/bpf', skipping optional step...\\nlibbpf: loaded kernel BTF from '/sys/kernel/btf/vmlinux'\\nlibbpf: sec 'xdp': found 5 CO-RE relocations\\nlibbpf: CO-RE relocating [2] struct xdp_md: found target candidate [14922] struct xdp_md in [vmlinux]\\nlibbpf: prog 'alu32_pointer_cookie': relo #0: <byte_off> [2] struct xdp_md.data_end (0:1 @ offset 4)\\nlibbpf: prog 'alu32_pointer_cookie': relo #0: matching candidate #0 <byte_off> [14922] struct xdp_md.data_end (0:1 @ offset 4)\\nlibbpf: prog 'alu32_pointer_cookie': relo #0: patched insn #1 (LDX/ST/STX) off 4 -> 4\\nlibbpf: prog 'alu32_pointer_cookie': relo #1: <byte_off> [2] struct xdp_md.data (0:0 @ offset 0)\\nlibbpf: prog 'alu32_pointer_cookie': relo #1: matching candidate #0 <byte_off> [14922] struct xdp_md.data (0:0 @ offset 0)\\nlibbpf: prog 'alu32_pointer_cookie': relo #1: patched insn #2 (LDX/ST/STX) off 0 -> 0\\nlibbpf: CO-RE relocating [8] struct ethhdr: found target candidate [23410] struct ethhdr in [vmlinux]\\nlibbpf: prog 'alu32_pointer_cookie': relo #2: <byte_off> [8] struct ethhdr.h_proto (0:2 @ offset 12)\\nlibbpf: prog 'alu32_pointer_cookie': relo #2: matching candidate #0 <byte_off> [23410] struct ethhdr.h_proto (0:2 @ offset 12)\\nlibbpf: prog 'alu32_pointer_cookie': relo #2: patched insn #6 (LDX/ST/STX) off 12 -> 12\\nlibbpf: CO-RE relocating [15] struct iphdr: found target candidate [23765] struct iphdr in [vmlinux]\\nlibbpf: prog 'alu32_pointer_cookie': relo #3: <byte_off> [15] struct iphdr.protocol (0:7 @ offset 9)\\nlibbpf: prog 'alu32_pointer_cookie': relo #3: matching candidate #0 <byte_off> [23765] struct iphdr.protocol (0:7 @ offset 9)\\nlibbpf: prog 'alu32_pointer_cookie': relo #3: patched insn #10 (LDX/ST/STX) off 9 -> 9\\nlibbpf: CO-RE relocating [22] struct udphdr: found target candidate [23773] struct udphdr in [vmlinux]\\nlibbpf: prog 'alu32_pointer_cookie': relo #4: <byte_off> [22] struct udphdr.dest (0:1 @ offset 2)\\nlibbpf: prog 'alu32_pointer_cookie': relo #4: matching candidate #0 <byte_off> [23773] struct udphdr.dest (0:1 @ offset 2)\\nlibbpf: prog 'alu32_pointer_cookie': relo #4: patched insn #18 (LDX/ST/STX) off 2 -> 2\\nlibbpf: prog 'alu32_pointer_cookie': BPF program load failed: -EACCES\\nlibbpf: prog 'alu32_pointer_cookie': -- BEGIN PROG LOAD LOG --\\nfunc#0 @0\\nLive regs before insn:\\n  0: .1........ (b7) r0 = 2\\n  1: 01........ (61) r2 = *(u32 *)(r1 +4)\\n  2: 012....... (61) r3 = *(u32 *)(r1 +0)\\n  3: 0.23...... (bf) r1 = r3\\n  4: 0123...... (07) r1 += 14\\n  5: 0123...... (2d) if r1 > r2 goto pc+16\\n  6: 0123...... (69) r4 = *(u16 *)(r3 +12)\\n  7: 01234..... (55) if r4 != 0x8 goto pc+14\\n  8: 0123...... (07) r3 += 34\\n  9: 0123...... (2d) if r3 > r2 goto pc+12\\n 10: 012....... (71) r3 = *(u8 *)(r1 +9)\\n 11: 0123...... (55) if r3 != 0x11 goto pc+10\\n 12: 012....... (67) r1 <<= 32\\n 13: 012....... (77) r1 >>= 32\\n 14: 012....... (bf) r3 = r1\\n 15: 0123...... (07) r3 += 28\\n 16: 0123...... (2d) if r3 > r2 goto pc+5\\n 17: .1........ (07) r1 += 20\\n 18: .1........ (69) r1 = *(u16 *)(r1 +2)\\n 19: .1........ (b7) r0 = 1\\n 20: 01........ (15) if r1 == 0x3500 goto pc+1\\n 21: .......... (b7) r0 = 2\\n 22: 0......... (95) exit\\n0: R1=ctx() R10=fp0\\n; int alu32_pointer_cookie(struct xdp_md *ctx) @ candidate.bpf.c:23\\n0: (b7) r0 = 2                        ; R0_w=2\\n; void *data_end = (void *)(long)ctx->data_end; @ candidate.bpf.c:26\\n1: (61) r2 = *(u32 *)(r1 +4)          ; R1=ctx() R2_w=pkt_end()\\n; void *data = (void *)(long)ctx->data; @ candidate.bpf.c:25\\n2: (61) r3 = *(u32 *)(r1 +0)          ; R1=ctx() R3_w=pkt(r=0)\\n; if ((void *)(eth + 1) > data_end) @ candidate.bpf.c:30\\n3: (bf) r1 = r3                       ; R1_w=pkt(r=0) R3_w=pkt(r=0)\\n4: (07) r1 += 14                      ; R1_w=pkt(off=14,r=0)\\n5: (2d) if r1 > r2 goto pc+16         ; R1_w=pkt(off=14,r=14) R2_w=pkt_end()\\n; if (bpf_ntohs(eth->h_proto) != ETH_P_IP) @ candidate.bpf.c:32\\n6: (69) r4 = *(u16 *)(r3 +12)         ; R3_w=pkt(r=14) R4_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=0xffff,var_off=(0x0; 0xffff))\\n7: (55) if r4 != 0x8 goto pc+14       ; R4_w=8\\n8: (07) r3 += 34                      ; R3=pkt(off=34,r=14)\\n9: (2d) if r3 > r2 goto pc+12         ; R2=pkt_end() R3=pkt(off=34,r=34)\\n; if (iph->protocol != IPPROTO_UDP) @ candidate.bpf.c:38\\n10: (71) r3 = *(u8 *)(r1 +9)          ; R1=pkt(off=14,r=34) R3_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))\\n11: (55) if r3 != 0x11 goto pc+10     ; R3_w=17\\n; cookie = (cookie << 32) >> 32; @ candidate.bpf.c:42\\n12: (67) r1 <<= 32\\nR1 pointer arithmetic with <<= operator prohibited\\nverification time 67 usec\\nstack depth 0\\nprocessed 13 insns (limit 1000000) max_states_per_insn 0 total_states 1 peak_states 1 mark_read 1\\n-- END PROG LOAD LOG --\\nlibbpf: prog 'alu32_pointer_cookie': failed to load: -EACCES\\nlibbpf: failed to load object 'bpfix-bench/results/ablation-main75-current-server/full/20260802T074345660111Z-pid1071164/matched-raw-tail/alu32_pointer_cookie_001/attempt-1/work/prog.o'\\nError: failed to load object file\\n\",\n    \"stdout\": \"\"\n  },\n  \"map_setup\": [],\n  \"passed\": false,\n  \"source\": \"/home/yunwei37/workspace/bpfix/bpfix-bench/results/ablation-main75-current-server/full/20260802T074345660111Z-pid1071164/matched-raw-tail/alu32_pointer_cookie_001/attempt-1/candidate.bpf.c\",\n  \"source_semantics\": [],\n  \"success_log_checks\": []\n}\n",
+      "oracle_wall_time_seconds": 0.235027,
+      "prompt_chars": 2150,
+      "prompt_sha256": "6fdda2e2e45ea0162280534264a8b6f46c79ed5b9b5c2be5ac48bcc3c1105470",
+      "reasoning_chars": null,
+      "response_chars": 1139,
+      "status": "fail",
+      "token_usage": {
+        "cached_prompt_tokens": 21,
+        "completion_tokens": 401,
+        "prompt_tokens": 782,
+        "reasoning_tokens": null,
+        "total_tokens": 1183
+      }
+    }
+  ],
+  "candidate": "bpfix-bench/results/ablation-main75-current-server/full/20260802T074345660111Z-pid1071164/matched-raw-tail/alu32_pointer_cookie_001/attempt-1/candidate.bpf.c",
+  "case": "alu32_pointer_cookie_001",
+  "cost": {
+    "attempt_wall_time_seconds": 5.959315,
+    "cached_prompt_tokens": 21,
+    "completion_tokens": 401,
+    "model_calls": 1,
+    "model_wall_time_seconds": 5.72392,
+    "oracle_wall_time_seconds": 0.235027,
+    "prompt_tokens": 782,
+    "reasoning_tokens": null,
+    "token_usage_coverage": {
+      "cached_prompt_tokens": 1,
+      "completion_tokens": 1,
+      "prompt_tokens": 1,
+      "reasoning_tokens": 0,
+      "total_tokens": 1
+    },
+    "total_tokens": 1183
+  },
+  "diagnostic_chars": 638,
+  "failure_stage": "verifier_load",
+  "finish_reason": "stop",
+  "mode": "matched-raw-tail",
+  "model": "Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M",
+  "model_wall_time_seconds": 5.72392,
+  "oracle_returncode": 1,
+  "oracle_stderr": "",
+  "oracle_stdout": "{\n  \"compile\": {\n    \"argv\": [\n      \"clang\",\n      \"-target\",\n      \"bpf\",\n      \"-O2\",\n      \"-g\",\n      \"-I\",\n      \"/usr/include\",\n      \"-D__TARGET_ARCH_x86\",\n      \"-c\",\n      \"/home/yunwei37/workspace/bpfix/bpfix-bench/results/ablation-main75-current-server/full/20260802T074345660111Z-pid1071164/matched-raw-tail/alu32_pointer_cookie_001/attempt-1/candidate.bpf.c\",\n      \"-o\",\n      \"bpfix-bench/results/ablation-main75-current-server/full/20260802T074345660111Z-pid1071164/matched-raw-tail/alu32_pointer_cookie_001/attempt-1/work/prog.o\"\n    ],\n    \"returncode\": 0,\n    \"stderr\": \"\",\n    \"stdout\": \"\"\n  },\n  \"expect_reject\": false,\n  \"functional\": [],\n  \"load\": {\n    \"argv\": [\n      \"sudo\",\n      \"bpftool\",\n      \"-d\",\n      \"prog\",\n      \"load\",\n      \"bpfix-bench/results/ablation-main75-current-server/full/20260802T074345660111Z-pid1071164/matched-raw-tail/alu32_pointer_cookie_001/attempt-1/work/prog.o\",\n      \"/sys/fs/bpf/bpfix_test_candidate_bpf_1071312\",\n      \"type\",\n      \"xdp\"\n    ],\n    \"returncode\": 255,\n    \"stderr\": \"libbpf: loading object from bpfix-bench/results/ablation-main75-current-server/full/20260802T074345660111Z-pid1071164/matched-raw-tail/alu32_pointer_cookie_001/attempt-1/work/prog.o\\nlibbpf: elf: section(3) xdp, size 184, link 0, flags 6, type=1\\nlibbpf: sec 'xdp': found program 'alu32_pointer_cookie' at insn offset 0 (0 bytes), code size 23 insns (184 bytes)\\nlibbpf: elf: section(4) license, size 4, link 0, flags 3, type=1\\nlibbpf: license of bpfix-bench/results/ablation-main75-current-server/full/20260802T074345660111Z-pid1071164/matched-raw-tail/alu32_pointer_cookie_001/attempt-1/work/prog.o is GPL\\nlibbpf: elf: section(14) .BTF, size 1722, link 0, flags 0, type=1\\nlibbpf: elf: section(16) .BTF.ext, size 396, link 0, flags 0, type=1\\nlibbpf: elf: section(24) .symtab, size 336, link 1, flags 0, type=2\\nlibbpf: looking for externs among 14 symbols...\\nlibbpf: collected 0 externs total\\nlibbpf: object 'prog': failed (-95) to create BPF token from '/sys/fs/bpf', skipping optional step...\\nlibbpf: loaded kernel BTF from '/sys/kernel/btf/vmlinux'\\nlibbpf: sec 'xdp': found 5 CO-RE relocations\\nlibbpf: CO-RE relocating [2] struct xdp_md: found target candidate [14922] struct xdp_md in [vmlinux]\\nlibbpf: prog 'alu32_pointer_cookie': relo #0: <byte_off> [2] struct xdp_md.data_end (0:1 @ offset 4)\\nlibbpf: prog 'alu32_pointer_cookie': relo #0: matching candidate #0 <byte_off> [14922] struct xdp_md.data_end (0:1 @ offset 4)\\nlibbpf: prog 'alu32_pointer_cookie': relo #0: patched insn #1 (LDX/ST/STX) off 4 -> 4\\nlibbpf: prog 'alu32_pointer_cookie': relo #1: <byte_off> [2] struct xdp_md.data (0:0 @ offset 0)\\nlibbpf: prog 'alu32_pointer_cookie': relo #1: matching candidate #0 <byte_off> [14922] struct xdp_md.data (0:0 @ offset 0)\\nlibbpf: prog 'alu32_pointer_cookie': relo #1: patched insn #2 (LDX/ST/STX) off 0 -> 0\\nlibbpf: CO-RE relocating [8] struct ethhdr: found target candidate [23410] struct ethhdr in [vmlinux]\\nlibbpf: prog 'alu32_pointer_cookie': relo #2: <byte_off> [8] struct ethhdr.h_proto (0:2 @ offset 12)\\nlibbpf: prog 'alu32_pointer_cookie': relo #2: matching candidate #0 <byte_off> [23410] struct ethhdr.h_proto (0:2 @ offset 12)\\nlibbpf: prog 'alu32_pointer_cookie': relo #2: patched insn #6 (LDX/ST/STX) off 12 -> 12\\nlibbpf: CO-RE relocating [15] struct iphdr: found target candidate [23765] struct iphdr in [vmlinux]\\nlibbpf: prog 'alu32_pointer_cookie': relo #3: <byte_off> [15] struct iphdr.protocol (0:7 @ offset 9)\\nlibbpf: prog 'alu32_pointer_cookie': relo #3: matching candidate #0 <byte_off> [23765] struct iphdr.protocol (0:7 @ offset 9)\\nlibbpf: prog 'alu32_pointer_cookie': relo #3: patched insn #10 (LDX/ST/STX) off 9 -> 9\\nlibbpf: CO-RE relocating [22] struct udphdr: found target candidate [23773] struct udphdr in [vmlinux]\\nlibbpf: prog 'alu32_pointer_cookie': relo #4: <byte_off> [22] struct udphdr.dest (0:1 @ offset 2)\\nlibbpf: prog 'alu32_pointer_cookie': relo #4: matching candidate #0 <byte_off> [23773] struct udphdr.dest (0:1 @ offset 2)\\nlibbpf: prog 'alu32_pointer_cookie': relo #4: patched insn #18 (LDX/ST/STX) off 2 -> 2\\nlibbpf: prog 'alu32_pointer_cookie': BPF program load failed: -EACCES\\nlibbpf: prog 'alu32_pointer_cookie': -- BEGIN PROG LOAD LOG --\\nfunc#0 @0\\nLive regs before insn:\\n  0: .1........ (b7) r0 = 2\\n  1: 01........ (61) r2 = *(u32 *)(r1 +4)\\n  2: 012....... (61) r3 = *(u32 *)(r1 +0)\\n  3: 0.23...... (bf) r1 = r3\\n  4: 0123...... (07) r1 += 14\\n  5: 0123...... (2d) if r1 > r2 goto pc+16\\n  6: 0123...... (69) r4 = *(u16 *)(r3 +12)\\n  7: 01234..... (55) if r4 != 0x8 goto pc+14\\n  8: 0123...... (07) r3 += 34\\n  9: 0123...... (2d) if r3 > r2 goto pc+12\\n 10: 012....... (71) r3 = *(u8 *)(r1 +9)\\n 11: 0123...... (55) if r3 != 0x11 goto pc+10\\n 12: 012....... (67) r1 <<= 32\\n 13: 012....... (77) r1 >>= 32\\n 14: 012....... (bf) r3 = r1\\n 15: 0123...... (07) r3 += 28\\n 16: 0123...... (2d) if r3 > r2 goto pc+5\\n 17: .1........ (07) r1 += 20\\n 18: .1........ (69) r1 = *(u16 *)(r1 +2)\\n 19: .1........ (b7) r0 = 1\\n 20: 01........ (15) if r1 == 0x3500 goto pc+1\\n 21: .......... (b7) r0 = 2\\n 22: 0......... (95) exit\\n0: R1=ctx() R10=fp0\\n; int alu32_pointer_cookie(struct xdp_md *ctx) @ candidate.bpf.c:23\\n0: (b7) r0 = 2                        ; R0_w=2\\n; void *data_end = (void *)(long)ctx->data_end; @ candidate.bpf.c:26\\n1: (61) r2 = *(u32 *)(r1 +4)          ; R1=ctx() R2_w=pkt_end()\\n; void *data = (void *)(long)ctx->data; @ candidate.bpf.c:25\\n2: (61) r3 = *(u32 *)(r1 +0)          ; R1=ctx() R3_w=pkt(r=0)\\n; if ((void *)(eth + 1) > data_end) @ candidate.bpf.c:30\\n3: (bf) r1 = r3                       ; R1_w=pkt(r=0) R3_w=pkt(r=0)\\n4: (07) r1 += 14                      ; R1_w=pkt(off=14,r=0)\\n5: (2d) if r1 > r2 goto pc+16         ; R1_w=pkt(off=14,r=14) R2_w=pkt_end()\\n; if (bpf_ntohs(eth->h_proto) != ETH_P_IP) @ candidate.bpf.c:32\\n6: (69) r4 = *(u16 *)(r3 +12)         ; R3_w=pkt(r=14) R4_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=0xffff,var_off=(0x0; 0xffff))\\n7: (55) if r4 != 0x8 goto pc+14       ; R4_w=8\\n8: (07) r3 += 34                      ; R3=pkt(off=34,r=14)\\n9: (2d) if r3 > r2 goto pc+12         ; R2=pkt_end() R3=pkt(off=34,r=34)\\n; if (iph->protocol != IPPROTO_UDP) @ candidate.bpf.c:38\\n10: (71) r3 = *(u8 *)(r1 +9)          ; R1=pkt(off=14,r=34) R3_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))\\n11: (55) if r3 != 0x11 goto pc+10     ; R3_w=17\\n; cookie = (cookie << 32) >> 32; @ candidate.bpf.c:42\\n12: (67) r1 <<= 32\\nR1 pointer arithmetic with <<= operator prohibited\\nverification time 67 usec\\nstack depth 0\\nprocessed 13 insns (limit 1000000) max_states_per_insn 0 total_states 1 peak_states 1 mark_read 1\\n-- END PROG LOAD LOG --\\nlibbpf: prog 'alu32_pointer_cookie': failed to load: -EACCES\\nlibbpf: failed to load object 'bpfix-bench/results/ablation-main75-current-server/full/20260802T074345660111Z-pid1071164/matched-raw-tail/alu32_pointer_cookie_001/attempt-1/work/prog.o'\\nError: failed to load object file\\n\",\n    \"stdout\": \"\"\n  },\n  \"map_setup\": [],\n  \"passed\": false,\n  \"source\": \"/home/yunwei37/workspace/bpfix/bpfix-bench/results/ablation-main75-current-server/full/20260802T074345660111Z-pid1071164/matched-raw-tail/alu32_pointer_cookie_001/attempt-1/candidate.bpf.c\",\n  \"source_semantics\": [],\n  \"success_log_checks\": []\n}\n",
+  "oracle_wall_time_seconds": 0.235027,
+  "prompt_build_wall_time_seconds": 0.57717,
+  "prompt_chars": 2150,
+  "prompt_sha256": "6fdda2e2e45ea0162280534264a8b6f46c79ed5b9b5c2be5ac48bcc3c1105470",
+  "prompt_token_match": {
+    "gap_tokens": 25,
+    "load_region_count": 1,
+    "matched_tokens": 782,
+    "region_chars": 2498,
+    "region_line_count": 52,
+    "region_sha256": "ab605784d3ed92376518ad1b11c700da35750d800d1b059820ec780375a4a63e",
+    "suffix_line_count": 10,
+    "suffix_start_line": 43,
+    "target_mode": "bpfix-no-help",
+    "target_tokens": 807
+  },
+  "reasoning_chars": null,
+  "response_chars": 1139,
+  "source_chars": 1176,
+  "status": "fail",
+  "token_usage": {
+    "cached_prompt_tokens": 21,
+    "completion_tokens": 401,
+    "prompt_tokens": 782,
+    "reasoning_tokens": null,
+    "total_tokens": 1183
+  }
+}

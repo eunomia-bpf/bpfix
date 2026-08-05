@@ -1,0 +1,43 @@
+{
+  "api_timings": {
+    "cache_n": 21,
+    "predicted_ms": 4218.582,
+    "predicted_n": 314,
+    "predicted_per_second": 74.43259370091656,
+    "predicted_per_token_ms": 13.434974522292995,
+    "prompt_ms": 274.311,
+    "prompt_n": 550,
+    "prompt_per_second": 2005.023495229867,
+    "prompt_per_token_ms": 0.4987472727272727
+  },
+  "api_usage": {
+    "completion_tokens": 314,
+    "prompt_tokens": 571,
+    "prompt_tokens_details": {
+      "cached_tokens": 21
+    },
+    "total_tokens": 885
+  },
+  "attempt": 1,
+  "attempt_wall_time_seconds": 4.760516,
+  "candidate": "bpfix-bench/results/ablation-main75-current-server/full/20260802T075855562289Z-pid1092324/bpfix-no-help/rs_xdp_tools_load_bytes_stack_len_001/attempt-1/candidate.bpf.c",
+  "failure_stage": "verifier_load",
+  "finish_reason": "stop",
+  "model_wall_time_seconds": 4.506499,
+  "oracle_returncode": 1,
+  "oracle_stderr": "",
+  "oracle_stdout": "{\n  \"compile\": {\n    \"argv\": [\n      \"clang\",\n      \"-target\",\n      \"bpf\",\n      \"-O2\",\n      \"-g\",\n      \"-I\",\n      \"/usr/include\",\n      \"-D__TARGET_ARCH_x86\",\n      \"-c\",\n      \"/home/yunwei37/workspace/bpfix/bpfix-bench/results/ablation-main75-current-server/full/20260802T075855562289Z-pid1092324/bpfix-no-help/rs_xdp_tools_load_bytes_stack_len_001/attempt-1/candidate.bpf.c\",\n      \"-o\",\n      \"bpfix-bench/results/ablation-main75-current-server/full/20260802T075855562289Z-pid1092324/bpfix-no-help/rs_xdp_tools_load_bytes_stack_len_001/attempt-1/work/prog.o\"\n    ],\n    \"returncode\": 0,\n    \"stderr\": \"\",\n    \"stdout\": \"\"\n  },\n  \"expect_reject\": false,\n  \"functional\": [],\n  \"load\": {\n    \"argv\": [\n      \"sudo\",\n      \"bpftool\",\n      \"-d\",\n      \"prog\",\n      \"load\",\n      \"bpfix-bench/results/ablation-main75-current-server/full/20260802T075855562289Z-pid1092324/bpfix-no-help/rs_xdp_tools_load_bytes_stack_len_001/attempt-1/work/prog.o\",\n      \"/sys/fs/bpf/bpfix_test_candidate_bpf_1111037\",\n      \"type\",\n      \"xdp\"\n    ],\n    \"returncode\": 255,\n    \"stderr\": \"libbpf: loading object from bpfix-bench/results/ablation-main75-current-server/full/20260802T075855562289Z-pid1092324/bpfix-no-help/rs_xdp_tools_load_bytes_stack_len_001/attempt-1/work/prog.o\\nlibbpf: elf: section(3) xdp, size 128, link 0, flags 6, type=1\\nlibbpf: sec 'xdp': found program 'rs_xdp_tools_load_bytes_stack_len' at insn offset 0 (0 bytes), code size 16 insns (128 bytes)\\nlibbpf: elf: section(4) license, size 4, link 0, flags 3, type=1\\nlibbpf: license of bpfix-bench/results/ablation-main75-current-server/full/20260802T075855562289Z-pid1092324/bpfix-no-help/rs_xdp_tools_load_bytes_stack_len_001/attempt-1/work/prog.o is GPL\\nlibbpf: elf: section(14) .BTF, size 860, link 0, flags 0, type=1\\nlibbpf: elf: section(16) .BTF.ext, size 160, link 0, flags 0, type=1\\nlibbpf: elf: section(24) .symtab, size 336, link 1, flags 0, type=2\\nlibbpf: looking for externs among 14 symbols...\\nlibbpf: collected 0 externs total\\nlibbpf: object 'prog': failed (-95) to create BPF token from '/sys/fs/bpf', skipping optional step...\\nlibbpf: prog 'rs_xdp_tools_load_bytes_stack_len': BPF program load failed: -EINVAL\\nlibbpf: prog 'rs_xdp_tools_load_bytes_stack_len': -- BEGIN PROG LOAD LOG --\\nfunc#0 @0\\nLive regs before insn:\\n  0: .1........ (b7) r2 = 0\\n  1: .12....... (63) *(u32 *)(r10 -8) = r2\\n  2: .12....... (7b) *(u64 *)(r10 -16) = r2\\n  3: .1........ (bf) r3 = r10\\n  4: .1.3...... (07) r3 += -16\\n  5: .1.3...... (b7) r2 = 2\\n  6: .123...... (b7) r4 = 18\\n  7: .1234..... (85) call bpf_xdp_load_bytes#189\\n  8: 0......... (bf) r1 = r0\\n  9: .1........ (67) r1 <<= 32\\n 10: .1........ (77) r1 >>= 32\\n 11: .1........ (b7) r0 = 1\\n 12: 01........ (15) if r1 == 0x0 goto pc+1\\n 13: .......... (b7) r0 = 0\\n 14: 0......... (67) r0 <<= 1\\n 15: 0......... (95) exit\\n0: R1=ctx() R10=fp0\\n; int rs_xdp_tools_load_bytes_stack_len(struct xdp_md *ctx) @ candidate.bpf.c:24\\n0: (b7) r2 = 0                        ; R2_w=0\\n; __builtin_memset(head, 0, sizeof(head)); @ candidate.bpf.c:31\\n1: (63) *(u32 *)(r10 -8) = r2         ; R2_w=0 R10=fp0 fp-8=????0\\n2: (7b) *(u64 *)(r10 -16) = r2        ; R2_w=0 R10=fp0 fp-16_w=0\\n3: (bf) r3 = r10                      ; R3_w=fp0 R10=fp0\\n;  @ candidate.bpf.c:0\\n4: (07) r3 += -16                     ; R3_w=fp-16\\n; err = bpf_xdp_load_bytes(ctx, WIRE_OFFSET, head, WIRE_BYTES); @ candidate.bpf.c:34\\n5: (b7) r2 = 2                        ; R2_w=2\\n6: (b7) r4 = 18                       ; R4_w=18\\n7: (85) call bpf_xdp_load_bytes#189\\ninvalid write to stack R3 off=-16 size=18\\nverification time 45 usec\\nstack depth 16\\nprocessed 8 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0 mark_read 0\\n-- END PROG LOAD LOG --\\nlibbpf: prog 'rs_xdp_tools_load_bytes_stack_len': failed to load: -EINVAL\\nlibbpf: failed to load object 'bpfix-bench/results/ablation-main75-current-server/full/20260802T075855562289Z-pid1092324/bpfix-no-help/rs_xdp_tools_load_bytes_stack_len_001/attempt-1/work/prog.o'\\nError: failed to load object file\\n\",\n    \"stdout\": \"\"\n  },\n  \"map_setup\": [],\n  \"passed\": false,\n  \"source\": \"/home/yunwei37/workspace/bpfix/bpfix-bench/results/ablation-main75-current-server/full/20260802T075855562289Z-pid1092324/bpfix-no-help/rs_xdp_tools_load_bytes_stack_len_001/attempt-1/candidate.bpf.c\",\n  \"source_semantics\": [],\n  \"success_log_checks\": []\n}\n",
+  "oracle_wall_time_seconds": 0.253218,
+  "prompt_chars": 1768,
+  "prompt_sha256": "5776ccda0c44e99e0ab00aa8a12f440f83227acf55dd3c5783c54f7e5c98621b",
+  "reasoning_chars": null,
+  "response_chars": 938,
+  "status": "fail",
+  "token_usage": {
+    "cached_prompt_tokens": 21,
+    "completion_tokens": 314,
+    "prompt_tokens": 571,
+    "reasoning_tokens": null,
+    "total_tokens": 885
+  }
+}

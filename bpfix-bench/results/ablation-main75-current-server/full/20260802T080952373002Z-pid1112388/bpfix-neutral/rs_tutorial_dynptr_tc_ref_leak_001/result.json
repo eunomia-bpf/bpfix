@@ -1,0 +1,61 @@
+{
+  "api_timings": null,
+  "api_usage": null,
+  "attempt": 1,
+  "attempt_wall_time_seconds": 1.648869,
+  "attempts": [
+    {
+      "api_timings": null,
+      "api_usage": null,
+      "attempt": 1,
+      "attempt_wall_time_seconds": 1.648869,
+      "error": "Remote end closed connection without response",
+      "failure_stage": "model_call",
+      "finish_reason": null,
+      "model_wall_time_seconds": 1.648789,
+      "oracle_wall_time_seconds": null,
+      "prompt_chars": 5073,
+      "prompt_sha256": "9c4b54bfa7033535f9066b35f14b69e2dddfc4b4f479b558b2446e59f7fd8b24",
+      "reasoning_chars": null,
+      "response_chars": null,
+      "status": "model_error",
+      "token_usage": null
+    }
+  ],
+  "case": "rs_tutorial_dynptr_tc_ref_leak_001",
+  "cost": {
+    "attempt_wall_time_seconds": 1.648869,
+    "cached_prompt_tokens": null,
+    "completion_tokens": null,
+    "model_calls": 1,
+    "model_wall_time_seconds": 1.648789,
+    "oracle_wall_time_seconds": 0,
+    "prompt_tokens": null,
+    "reasoning_tokens": null,
+    "token_usage_coverage": {
+      "cached_prompt_tokens": 0,
+      "completion_tokens": 0,
+      "prompt_tokens": 0,
+      "reasoning_tokens": 0,
+      "total_tokens": 0
+    },
+    "total_tokens": null
+  },
+  "diagnostic_chars": 1222,
+  "error": "Remote end closed connection without response",
+  "failure_stage": "model_call",
+  "finish_reason": null,
+  "mode": "bpfix-neutral",
+  "model": "Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M",
+  "model_wall_time_seconds": 1.648789,
+  "oracle_wall_time_seconds": null,
+  "prompt_build_wall_time_seconds": 0.000104,
+  "prompt_chars": 5073,
+  "prompt_sha256": "9c4b54bfa7033535f9066b35f14b69e2dddfc4b4f479b558b2446e59f7fd8b24",
+  "prompt_token_match": null,
+  "reasoning_chars": null,
+  "response_chars": null,
+  "source_chars": 3515,
+  "status": "model_error",
+  "token_usage": null
+}

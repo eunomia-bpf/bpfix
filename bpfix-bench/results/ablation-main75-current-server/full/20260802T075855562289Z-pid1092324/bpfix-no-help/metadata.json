@@ -1,0 +1,140 @@
+{
+  "case_selection": {
+    "case_overrides": [],
+    "split": {
+      "allow_empty": false,
+      "case_count": 75,
+      "expected_count": 75,
+      "path": "/home/yunwei37/workspace/bpfix/bpfix-bench/splits/main.txt",
+      "sha256": "fe1c7329c41c5a94d84ab6077539640082404d0cdef6bda0796440ec1e99d5a8"
+    }
+  },
+  "generated_at": "2026-08-02T07:58:55.562382+00:00",
+  "git": {
+    "commit": "89f54847097dbf5e205e06bbaeb4e3965df7871e",
+    "dirty": false
+  },
+  "llm": {
+    "api_key_env": "LLAMA_API_KEY",
+    "base_url": "http://127.0.0.1:18185/v1",
+    "extra_body": null,
+    "llama_cpp": {
+      "commit": "2d973636e292ee6f75fadcf08d29cb33511f509f",
+      "path": "/home/yunwei37/workspace/llama.cpp-latest"
+    },
+    "max_tokens": 8192,
+    "model": "Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M",
+    "model_file": {
+      "exists": true,
+      "path": "/home/yunwei37/.cache/huggingface/hub/models--DevQuasar--Qwen.Qwen3.6-27B-GGUF/blobs/f7da7eee0f1ffa280742a293f02052d1f58d3253c9e109c1be8fb0067eb1b3a9",
+      "sha256": "f7da7eee0f1ffa280742a293f02052d1f58d3253c9e109c1be8fb0067eb1b3a9",
+      "size_bytes": 16547398976
+    },
+    "server": {
+      "models": {
+        "data": [
+          {
+            "aliases": [
+              "/home/yunwei37/.cache/huggingface/hub/models--DevQuasar--Qwen.Qwen3.6-27B-GGUF/snapshots/b19fa7e8538a1a5f66452eb3b3167e026177be1d/Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M.gguf"
+            ],
+            "created": 1785657535,
+            "id": "/home/yunwei37/.cache/huggingface/hub/models--DevQuasar--Qwen.Qwen3.6-27B-GGUF/snapshots/b19fa7e8538a1a5f66452eb3b3167e026177be1d/Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M.gguf",
+            "meta": {
+              "ftype": "Q4_K - Medium",
+              "n_ctx": 32768,
+              "n_ctx_train": 262144,
+              "n_embd": 5120,
+              "n_params": 26895998464,
+              "n_vocab": 248320,
+              "size": 16536406016,
+              "vocab_type": 2
+            },
+            "object": "model",
+            "owned_by": "llamacpp",
+            "tags": []
+          }
+        ],
+        "models": [
+          {
+            "capabilities": [
+              "completion"
+            ],
+            "description": "",
+            "details": {
+              "families": [
+                ""
+              ],
+              "family": "",
+              "format": "gguf",
+              "parameter_size": "",
+              "parent_model": "",
+              "quantization_level": ""
+            },
+            "digest": "",
+            "model": "/home/yunwei37/.cache/huggingface/hub/models--DevQuasar--Qwen.Qwen3.6-27B-GGUF/snapshots/b19fa7e8538a1a5f66452eb3b3167e026177be1d/Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M.gguf",
+            "modified_at": "",
+            "name": "/home/yunwei37/.cache/huggingface/hub/models--DevQuasar--Qwen.Qwen3.6-27B-GGUF/snapshots/b19fa7e8538a1a5f66452eb3b3167e026177be1d/Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M.gguf",
+            "parameters": "",
+            "size": "",
+            "tags": [
+              ""
+            ],
+            "type": "model"
+          }
+        ],
+        "object": "list"
+      },
+      "reachable": true
+    },
+    "temperature": 0.0,
+    "timeout_sec": 900.0
+  },
+  "prompt_mode": {
+    "mode": "bpfix-no-help",
+    "skill_files": []
+  },
+  "repair_policy": {
+    "max_attempts": 1
+  },
+  "runner": {
+    "argv": [
+      "bpfix-bench/tools/run_suite.py",
+      "--split",
+      "bpfix-bench/splits/main.txt",
+      "--expected-count",
+      "75",
+      "--mode",
+      "bpfix-no-help",
+      "--repair-attempts",
+      "1",
+      "--results-dir",
+      "bpfix-bench/results/ablation-main75-current-server/full",
+      "--base-url",
+      "http://127.0.0.1:18185/v1",
+      "--model",
+      "Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M",
+      "--model-path",
+      "/home/yunwei37/.cache/huggingface/hub/models--DevQuasar--Qwen.Qwen3.6-27B-GGUF/snapshots/b19fa7e8538a1a5f66452eb3b3167e026177be1d/Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M.gguf",
+      "--model-sha256",
+      "f7da7eee0f1ffa280742a293f02052d1f58d3253c9e109c1be8fb0067eb1b3a9",
+      "--llama-cpp-dir",
+      "/home/yunwei37/workspace/llama.cpp-latest",
+      "--max-tokens",
+      "8192",
+      "--temperature",
+      "0",
+      "--timeout",
+      "900"
+    ]
+  },
+  "toolchain": {
+    "bpftool": [
+      "bpftool v7.7.0",
+      "using libbpf v1.7",
+      "features: llvm, skeletons"
+    ],
+    "clang": "Ubuntu clang version 18.1.3 (1ubuntu1)",
+    "kernel": "Linux lab 6.15.11-061511-generic #202508201748 SMP PREEMPT_DYNAMIC Wed Aug 20 20:23:19 UTC 2025 x86_64 x86_64 x86_64 GNU/Linux",
+    "llvm_objdump": "Ubuntu LLVM version 18.1.3"
+  }
+}

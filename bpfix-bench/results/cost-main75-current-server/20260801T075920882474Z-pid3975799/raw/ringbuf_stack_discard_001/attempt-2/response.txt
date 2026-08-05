@@ -1,0 +1,41 @@
+To fix the verifier failure, we must ensure that `bpf_ringbuf_discard` and `bpf_ringbuf_submit` are called with pointers returned by `bpf_ringbuf_reserve`. The previous attempt failed because it called `bpf_ringbuf_discard` on `audit` and then tried to call `bpf_ringbuf_submit` on the same `audit` pointer. The verifier tracks the state of ringbuf memory; once `bpf_ringbuf_discard` is called on a pointer, that pointer is no longer valid for `bpf_ringbuf_submit`.
+
+The original code attempted to discard a local stack variable `rec`, which is invalid because `bpf_ringbuf_discard` expects a pointer to ringbuf memory (returned by `reserve`). The correct fix is to simply remove the invalid `bpf_ringbuf_discard` call on the stack variable, or if the intent was to discard the reserved memory, we must not submit it afterwards. Given the code sets `audit->mark = 3` and then submits, the intent is clearly to submit the data. The `rec` variable and its associated discard call are erroneous and should be removed to satisfy the verifier's requirement that submitted memory must be valid reserved memory that hasn't been discarded.
+
+```c
+#ifndef __TARGET_ARCH_x86
+#define __TARGET_ARCH_x86 1
+#endif
+
+#include <vmlinux.h>
+#include <bpf/bpf_helpers.h>
+
+#ifndef XDP_PASS
+#define XDP_PASS 2
+#endif
+
+struct event {
+    __u32 mark;
+};
+
+struct {
+    __uint(type, BPF_MAP_TYPE_RINGBUF);
+    __uint(max_entries, 4096);
+} events SEC(".maps");
+
+SEC("xdp")
+int ringbuf_stack_discard(struct xdp_md *ctx)
+{
+    struct event *audit;
+
+    audit = bpf_ringbuf_reserve(&events, sizeof(*audit), 0);
+    if (!audit)
+        return XDP_PASS;
+    audit->mark = 3;
+
+    bpf_ringbuf_submit(audit, 0);
+    return XDP_PASS;
+}
+
+char _license[] SEC("license") = "GPL";
+```

@@ -1,0 +1,43 @@
+{
+  "api_timings": {
+    "cache_n": 21,
+    "predicted_ms": 3254.184,
+    "predicted_n": 241,
+    "predicted_per_second": 74.0585043746758,
+    "predicted_per_token_ms": 13.50283817427386,
+    "prompt_ms": 308.341,
+    "prompt_n": 575,
+    "prompt_per_second": 1864.8184964049542,
+    "prompt_per_token_ms": 0.5362452173913044
+  },
+  "api_usage": {
+    "completion_tokens": 241,
+    "prompt_tokens": 596,
+    "prompt_tokens_details": {
+      "cached_tokens": 21
+    },
+    "total_tokens": 837
+  },
+  "attempt": 1,
+  "attempt_wall_time_seconds": 3.882021,
+  "candidate": "bpfix-bench/results/cost-main75-current-server/20260801T082437160849Z-pid4040619/bpfix/ringbuf_stack_discard_001/attempt-1/candidate.bpf.c",
+  "failure_stage": "verifier_load",
+  "finish_reason": "stop",
+  "model_wall_time_seconds": 3.578492,
+  "oracle_returncode": 1,
+  "oracle_stderr": "",
+  "oracle_stdout": "{\n  \"compile\": {\n    \"argv\": [\n      \"clang\",\n      \"-target\",\n      \"bpf\",\n      \"-O2\",\n      \"-g\",\n      \"-I\",\n      \"/usr/include\",\n      \"-D__TARGET_ARCH_x86\",\n      \"-c\",\n      \"/home/yunwei37/workspace/bpfix/bpfix-bench/results/cost-main75-current-server/20260801T082437160849Z-pid4040619/bpfix/ringbuf_stack_discard_001/attempt-1/candidate.bpf.c\",\n      \"-o\",\n      \"bpfix-bench/results/cost-main75-current-server/20260801T082437160849Z-pid4040619/bpfix/ringbuf_stack_discard_001/attempt-1/work/prog.o\"\n    ],\n    \"returncode\": 0,\n    \"stderr\": \"\",\n    \"stdout\": \"\"\n  },\n  \"expect_reject\": false,\n  \"functional\": [],\n  \"load\": {\n    \"argv\": [\n      \"sudo\",\n      \"bpftool\",\n      \"-d\",\n      \"prog\",\n      \"load\",\n      \"bpfix-bench/results/cost-main75-current-server/20260801T082437160849Z-pid4040619/bpfix/ringbuf_stack_discard_001/attempt-1/work/prog.o\",\n      \"/sys/fs/bpf/bpfix_test_candidate_bpf_4055166\",\n      \"type\",\n      \"xdp\"\n    ],\n    \"returncode\": 255,\n    \"stderr\": \"libbpf: loading object from bpfix-bench/results/cost-main75-current-server/20260801T082437160849Z-pid4040619/bpfix/ringbuf_stack_discard_001/attempt-1/work/prog.o\\nlibbpf: elf: section(3) xdp, size 136, link 0, flags 6, type=1\\nlibbpf: sec 'xdp': found program 'ringbuf_stack_discard' at insn offset 0 (0 bytes), code size 17 insns (136 bytes)\\nlibbpf: elf: section(4) .relxdp, size 16, link 26, flags 40, type=9\\nlibbpf: elf: section(5) .maps, size 16, link 0, flags 3, type=1\\nlibbpf: elf: section(6) license, size 4, link 0, flags 3, type=1\\nlibbpf: license of bpfix-bench/results/cost-main75-current-server/20260801T082437160849Z-pid4040619/bpfix/ringbuf_stack_discard_001/attempt-1/work/prog.o is GPL\\nlibbpf: elf: section(16) .BTF, size 982, link 0, flags 0, type=1\\nlibbpf: elf: section(18) .BTF.ext, size 160, link 0, flags 0, type=1\\nlibbpf: elf: section(26) .symtab, size 360, link 1, flags 0, type=2\\nlibbpf: looking for externs among 15 symbols...\\nlibbpf: collected 0 externs total\\nlibbpf: map 'events': at sec_idx 5, offset 0.\\nlibbpf: map 'events': found type = 27.\\nlibbpf: map 'events': found max_entries = 4096.\\nlibbpf: sec '.relxdp': collecting relocation for section(3) 'xdp'\\nlibbpf: sec '.relxdp': relo #0: insn #0 against 'events'\\nlibbpf: prog 'ringbuf_stack_discard': found map 0 (events, sec 5, off 0) for insn #0\\nlibbpf: object 'prog': failed (-95) to create BPF token from '/sys/fs/bpf', skipping optional step...\\nlibbpf: map 'events': created successfully, fd=4\\nlibbpf: prog 'ringbuf_stack_discard': BPF program load failed: -EACCES\\nlibbpf: prog 'ringbuf_stack_discard': -- BEGIN PROG LOAD LOG --\\nfunc#0 @0\\nLive regs before insn:\\n  0: .......... (18) r1 = 0xffff8c07a58a5100\\n  2: .1........ (b7) r2 = 4\\n  3: .12....... (b7) r3 = 0\\n  4: .123...... (85) call bpf_ringbuf_reserve#131\\n  5: 0......... (bf) r6 = r0\\n  6: ......6... (15) if r6 == 0x0 goto pc+8\\n  7: ......6... (b7) r1 = 3\\n  8: .1....6... (63) *(u32 *)(r6 +0) = r1\\n  9: ......6... (bf) r1 = r6\\n 10: .1....6... (b7) r2 = 0\\n 11: .12...6... (85) call bpf_ringbuf_discard#133\\n 12: ......6... (bf) r1 = r6\\n 13: .1........ (b7) r2 = 0\\n 14: .12....... (85) call bpf_ringbuf_submit#132\\n 15: .......... (b7) r0 = 2\\n 16: 0......... (95) exit\\n0: R1=ctx() R10=fp0\\n; audit = bpf_ringbuf_reserve(&events, sizeof(*audit), 0); @ candidate.bpf.c:27\\n0: (18) r1 = 0xffff8c07a58a5100       ; R1_w=map_ptr(map=events,ks=0,vs=0)\\n2: (b7) r2 = 4                        ; R2_w=4\\n3: (b7) r3 = 0                        ; R3_w=0\\n4: (85) call bpf_ringbuf_reserve#131\\nmark_precise: frame0: last_idx 4 first_idx 0 subseq_idx -1 \\nmark_precise: frame0: regs=r2 stack= before 3: (b7) r3 = 0\\nmark_precise: frame0: regs=r2 stack= before 2: (b7) r2 = 4\\n5: R0_w=ringbuf_mem_or_null(id=2,ref_obj_id=2,sz=4) refs=2\\n5: (bf) r6 = r0                       ; R0_w=ringbuf_mem_or_null(id=2,ref_obj_id=2,sz=4) R6_w=ringbuf_mem_or_null(id=2,ref_obj_id=2,sz=4) refs=2\\n; if (!audit) @ candidate.bpf.c:28\\n6: (15) if r6 == 0x0 goto pc+8        ; R6_w=ringbuf_mem(ref_obj_id=2,sz=4) refs=2\\n7: (b7) r1 = 3                        ; R1_w=3 refs=2\\n; audit->mark = 3; @ candidate.bpf.c:30\\n8: (63) *(u32 *)(r6 +0) = r1          ; R1_w=3 R6_w=ringbuf_mem(ref_obj_id=2,sz=4) refs=2\\n; bpf_ringbuf_discard(audit, 0); @ candidate.bpf.c:33\\n9: (bf) r1 = r6                       ; R1_w=ringbuf_mem(ref_obj_id=2,sz=4) R6_w=ringbuf_mem(ref_obj_id=2,sz=4) refs=2\\n10: (b7) r2 = 0                       ; R2_w=0 refs=2\\n11: (85) call bpf_ringbuf_discard#133         ;\\n; bpf_ringbuf_submit(audit, 0); @ candidate.bpf.c:34\\n12: (bf) r1 = r6                      ; R1_w=scalar(id=3) R6=scalar(id=3)\\n13: (b7) r2 = 0                       ; R2_w=0\\n14: (85) call bpf_ringbuf_submit#132\\nR1 type=scalar expected=ringbuf_mem\\nverification time 81 usec\\nstack depth 0\\nprocessed 14 insns (limit 1000000) max_states_per_insn 0 total_states 1 peak_states 1 mark_read 1\\n-- END PROG LOAD LOG --\\nlibbpf: prog 'ringbuf_stack_discard': failed to load: -EACCES\\nlibbpf: failed to load object 'bpfix-bench/results/cost-main75-current-server/20260801T082437160849Z-pid4040619/bpfix/ringbuf_stack_discard_001/attempt-1/work/prog.o'\\nError: failed to load object file\\n\",\n    \"stdout\": \"\"\n  },\n  \"map_setup\": [],\n  \"passed\": false,\n  \"source\": \"/home/yunwei37/workspace/bpfix/bpfix-bench/results/cost-main75-current-server/20260801T082437160849Z-pid4040619/bpfix/ringbuf_stack_discard_001/attempt-1/candidate.bpf.c\",\n  \"source_semantics\": [],\n  \"success_log_checks\": []\n}\n",
+  "oracle_wall_time_seconds": 0.303173,
+  "prompt_chars": 1995,
+  "prompt_sha256": "8918a911b1693045ad4ecac9efab2bc4c16de6a2deb131b3669c38e4d16b5a68",
+  "reasoning_chars": null,
+  "response_chars": 692,
+  "status": "fail",
+  "token_usage": {
+    "cached_prompt_tokens": 21,
+    "completion_tokens": 241,
+    "prompt_tokens": 596,
+    "reasoning_tokens": null,
+    "total_tokens": 837
+  }
+}

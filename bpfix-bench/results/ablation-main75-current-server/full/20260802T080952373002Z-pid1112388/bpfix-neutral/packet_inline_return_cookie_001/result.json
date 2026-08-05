@@ -1,0 +1,113 @@
+{
+  "api_timings": {
+    "cache_n": 21,
+    "predicted_ms": 6674.315,
+    "predicted_n": 493,
+    "predicted_per_second": 73.86525808266467,
+    "predicted_per_token_ms": 13.538164300202839,
+    "prompt_ms": 384.749,
+    "prompt_n": 930,
+    "prompt_per_second": 2417.1602785192426,
+    "prompt_per_token_ms": 0.4137086021505377
+  },
+  "api_usage": {
+    "completion_tokens": 493,
+    "prompt_tokens": 951,
+    "prompt_tokens_details": {
+      "cached_tokens": 21
+    },
+    "total_tokens": 1444
+  },
+  "attempt": 1,
+  "attempt_wall_time_seconds": 7.318315,
+  "attempts": [
+    {
+      "api_timings": {
+        "cache_n": 21,
+        "predicted_ms": 6674.315,
+        "predicted_n": 493,
+        "predicted_per_second": 73.86525808266467,
+        "predicted_per_token_ms": 13.538164300202839,
+        "prompt_ms": 384.749,
+        "prompt_n": 930,
+        "prompt_per_second": 2417.1602785192426,
+        "prompt_per_token_ms": 0.4137086021505377
+      },
+      "api_usage": {
+        "completion_tokens": 493,
+        "prompt_tokens": 951,
+        "prompt_tokens_details": {
+          "cached_tokens": 21
+        },
+        "total_tokens": 1444
+      },
+      "attempt": 1,
+      "attempt_wall_time_seconds": 7.318315,
+      "candidate": "bpfix-bench/results/ablation-main75-current-server/full/20260802T080952373002Z-pid1112388/bpfix-neutral/packet_inline_return_cookie_001/attempt-1/candidate.bpf.c",
+      "failure_stage": "auxiliary_proof_predicate",
+      "finish_reason": "stop",
+      "model_wall_time_seconds": 7.071926,
+      "oracle_returncode": 1,
+      "oracle_stderr": "",
+      "oracle_stdout": "{\n  \"compile\": {\n    \"argv\": [\n      \"clang\",\n      \"-target\",\n      \"bpf\",\n      \"-O2\",\n      \"-g\",\n      \"-I\",\n      \"/usr/include\",\n      \"-D__TARGET_ARCH_x86\",\n      \"-c\",\n      \"/home/yunwei37/workspace/bpfix/bpfix-bench/results/ablation-main75-current-server/full/20260802T080952373002Z-pid1112388/bpfix-neutral/packet_inline_return_cookie_001/attempt-1/candidate.bpf.c\",\n      \"-o\",\n      \"bpfix-bench/results/ablation-main75-current-server/full/20260802T080952373002Z-pid1112388/bpfix-neutral/packet_inline_return_cookie_001/attempt-1/work/prog.o\"\n    ],\n    \"returncode\": 0,\n    \"stderr\": \"\",\n    \"stdout\": \"\"\n  },\n  \"expect_reject\": false,\n  \"functional\": [],\n  \"load\": {\n    \"argv\": [\n      \"sudo\",\n      \"bpftool\",\n      \"-d\",\n      \"prog\",\n      \"load\",\n      \"bpfix-bench/results/ablation-main75-current-server/full/20260802T080952373002Z-pid1112388/bpfix-neutral/packet_inline_return_cookie_001/attempt-1/work/prog.o\",\n      \"/sys/fs/bpf/bpfix_test_candidate_bpf_1114382\",\n      \"type\",\n      \"xdp\"\n    ],\n    \"returncode\": 0,\n    \"stderr\": \"libbpf: loading object from bpfix-bench/results/ablation-main75-current-server/full/20260802T080952373002Z-pid1112388/bpfix-neutral/packet_inline_return_cookie_001/attempt-1/work/prog.o\\nlibbpf: elf: section(3) xdp, size 160, link 0, flags 6, type=1\\nlibbpf: sec 'xdp': found program 'packet_inline_return_cookie' at insn offset 0 (0 bytes), code size 20 insns (160 bytes)\\nlibbpf: elf: section(4) license, size 4, link 0, flags 3, type=1\\nlibbpf: license of bpfix-bench/results/ablation-main75-current-server/full/20260802T080952373002Z-pid1112388/bpfix-neutral/packet_inline_return_cookie_001/attempt-1/work/prog.o is GPL\\nlibbpf: elf: section(14) .BTF, size 1710, link 0, flags 0, type=1\\nlibbpf: elf: section(16) .BTF.ext, size 364, link 0, flags 0, type=1\\nlibbpf: elf: section(24) .symtab, size 336, link 1, flags 0, type=2\\nlibbpf: looking for externs among 14 symbols...\\nlibbpf: collected 0 externs total\\nlibbpf: object 'prog': failed (-95) to create BPF token from '/sys/fs/bpf', skipping optional step...\\nlibbpf: loaded kernel BTF from '/sys/kernel/btf/vmlinux'\\nlibbpf: sec 'xdp': found 5 CO-RE relocations\\nlibbpf: CO-RE relocating [2] struct xdp_md: found target candidate [14922] struct xdp_md in [vmlinux]\\nlibbpf: prog 'packet_inline_return_cookie': relo #0: <byte_off> [2] struct xdp_md.data_end (0:1 @ offset 4)\\nlibbpf: prog 'packet_inline_return_cookie': relo #0: matching candidate #0 <byte_off> [14922] struct xdp_md.data_end (0:1 @ offset 4)\\nlibbpf: prog 'packet_inline_return_cookie': relo #0: patched insn #1 (LDX/ST/STX) off 4 -> 4\\nlibbpf: prog 'packet_inline_return_cookie': relo #1: <byte_off> [2] struct xdp_md.data (0:0 @ offset 0)\\nlibbpf: prog 'packet_inline_return_cookie': relo #1: matching candidate #0 <byte_off> [14922] struct xdp_md.data (0:0 @ offset 0)\\nlibbpf: prog 'packet_inline_return_cookie': relo #1: patched insn #2 (LDX/ST/STX) off 0 -> 0\\nlibbpf: CO-RE relocating [8] struct ethhdr: found target candidate [23410] struct ethhdr in [vmlinux]\\nlibbpf: prog 'packet_inline_return_cookie': relo #2: <byte_off> [8] struct ethhdr.h_proto (0:2 @ offset 12)\\nlibbpf: prog 'packet_inline_return_cookie': relo #2: matching candidate #0 <byte_off> [23410] struct ethhdr.h_proto (0:2 @ offset 12)\\nlibbpf: prog 'packet_inline_return_cookie': relo #2: patched insn #6 (LDX/ST/STX) off 12 -> 12\\nlibbpf: CO-RE relocating [15] struct iphdr: found target candidate [23765] struct iphdr in [vmlinux]\\nlibbpf: prog 'packet_inline_return_cookie': relo #3: <byte_off> [15] struct iphdr.protocol (0:7 @ offset 9)\\nlibbpf: prog 'packet_inline_return_cookie': relo #3: matching candidate #0 <byte_off> [23765] struct iphdr.protocol (0:7 @ offset 9)\\nlibbpf: prog 'packet_inline_return_cookie': relo #3: patched insn #11 (LDX/ST/STX) off 9 -> 9\\nlibbpf: CO-RE relocating [22] struct udphdr: found target candidate [23773] struct udphdr in [vmlinux]\\nlibbpf: prog 'packet_inline_return_cookie': relo #4: <byte_off> [22] struct udphdr.dest (0:1 @ offset 2)\\nlibbpf: prog 'packet_inline_return_cookie': relo #4: matching candidate #0 <byte_off> [23773] struct udphdr.dest (0:1 @ offset 2)\\nlibbpf: prog 'packet_inline_return_cookie': relo #4: patched insn #15 (LDX/ST/STX) off 2 -> 2\\nlibbpf: prog 'packet_inline_return_cookie': -- BEGIN PROG LOAD LOG --\\nfunc#0 @0\\nLive regs before insn:\\n  0: .1........ (b7) r0 = 2\\n  1: 01........ (61) r2 = *(u32 *)(r1 +4)\\n  2: 012....... (61) r1 = *(u32 *)(r1 +0)\\n  3: 012....... (bf) r4 = r1\\n  4: 012.4..... (07) r4 += 14\\n  5: 012.4..... (2d) if r4 > r2 goto pc+13\\n  6: 012.4..... (69) r3 = *(u16 *)(r1 +12)\\n  7: 01234..... (55) if r3 != 0x8 goto pc+11\\n  8: 012.4..... (bf) r3 = r1\\n  9: 01234..... (07) r3 += 34\\n 10: 01234..... (2d) if r3 > r2 goto pc+8\\n 11: 01234..... (71) r4 = *(u8 *)(r4 +9)\\n 12: 01234..... (55) if r4 != 0x11 goto pc+6\\n 13: 0123...... (07) r1 += 42\\n 14: 0123...... (2d) if r1 > r2 goto pc+4\\n 15: ...3...... (69) r1 = *(u16 *)(r3 +2)\\n 16: .1........ (b7) r0 = 1\\n 17: 01........ (15) if r1 == 0x3500 goto pc+1\\n 18: .......... (b7) r0 = 2\\n 19: 0......... (95) exit\\n0: R1=ctx() R10=fp0\\n; int packet_inline_return_cookie(struct xdp_md *ctx) @ candidate.bpf.c:44\\n0: (b7) r0 = 2                        ; R0_w=2\\n; void *data_end = (void *)(long)ctx->data_end; @ candidate.bpf.c:47\\n1: (61) r2 = *(u32 *)(r1 +4)          ; R1=ctx() R2_w=pkt_end()\\n; void *data = (void *)(long)ctx->data; @ candidate.bpf.c:46\\n2: (61) r1 = *(u32 *)(r1 +0)          ; R1_w=pkt(r=0)\\n; if ((void *)(eth + 1) > data_end) @ candidate.bpf.c:26\\n3: (bf) r4 = r1                       ; R1_w=pkt(r=0) R4_w=pkt(r=0)\\n4: (07) r4 += 14                      ; R4_w=pkt(off=14,r=0)\\n5: (2d) if r4 > r2 goto pc+13         ; R2_w=pkt_end() R4_w=pkt(off=14,r=14)\\n; if (bpf_ntohs(eth->h_proto) != ETH_P_IP) @ candidate.bpf.c:28\\n6: (69) r3 = *(u16 *)(r1 +12)         ; R1_w=pkt(r=14) R3_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=0xffff,var_off=(0x0; 0xffff))\\n7: (55) if r3 != 0x8 goto pc+11       ; R3_w=8\\n; if ((void *)(iph + 1) > data_end) @ candidate.bpf.c:32\\n8: (bf) r3 = r1                       ; R1_w=pkt(r=14) R3_w=pkt(r=14)\\n9: (07) r3 += 34                      ; R3=pkt(off=34,r=14)\\n10: (2d) if r3 > r2 goto pc+8         ; R2=pkt_end() R3=pkt(off=34,r=34)\\n; if (iph->protocol != IPPROTO_UDP) @ candidate.bpf.c:34\\n11: (71) r4 = *(u8 *)(r4 +9)          ; R4_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))\\n12: (55) if r4 != 0x11 goto pc+6      ; R4_w=17\\n13: (07) r1 += 42                     ; R1_w=pkt(off=42,r=34)\\n14: (2d) if r1 > r2 goto pc+4         ; R1_w=pkt(off=42,r=42) R2=pkt_end()\\n; return bpf_ntohs(safe_udp->dest) == 53 ? XDP_DROP : XDP_PASS; @ candidate.bpf.c:60\\n15: (69) r1 = *(u16 *)(r3 +2)         ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=0xffff,var_off=(0x0; 0xffff)) R3=pkt(off=34,r=42)\\n16: (b7) r0 = 1                       ; R0_w=1\\n17: (15) if r1 == 0x3500 goto pc+1    ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=0xffff,var_off=(0x0; 0xffff))\\n18: (b7) r0 = 2                       ; R0=2\\n; } @ candidate.bpf.c:61\\n19: (95) exit\\n\\nfrom 17 to 19: safe\\n\\nfrom 14 to 19: safe\\n\\nfrom 12 to 19: safe\\n\\nfrom 10 to 19: safe\\n\\nfrom 7 to 19: safe\\n\\nfrom 5 to 19: safe\\nverification time 83 usec\\nstack depth 0\\nprocessed 26 insns (limit 1000000) max_states_per_insn 0 total_states 2 peak_states 2 mark_read 2\\n-- END PROG LOAD LOG --\\n\",\n    \"stdout\": \"\"\n  },\n  \"map_setup\": [],\n  \"passed\": false,\n  \"source\": \"/home/yunwei37/workspace/bpfix/bpfix-bench/results/ablation-main75-current-server/full/20260802T080952373002Z-pid1112388/bpfix-neutral/packet_inline_return_cookie_001/attempt-1/candidate.bpf.c\",\n  \"source_semantics\": [\n    {\n      \"kind\": \"source_predicate\",\n      \"name\": \"case source invariant A\",\n      \"passed\": false\n    }\n  ],\n  \"success_log_checks\": []\n}\n",
+      "oracle_wall_time_seconds": 0.24561,
+      "prompt_chars": 3256,
+      "prompt_sha256": "6ef034eef0d1a2e00839854cc01bbf5c888aa2e8493651fbb76d5bd20e794f2f",
+      "reasoning_chars": null,
+      "response_chars": 1490,
+      "status": "fail",
+      "token_usage": {
+        "cached_prompt_tokens": 21,
+        "completion_tokens": 493,
+        "prompt_tokens": 951,
+        "reasoning_tokens": null,
+        "total_tokens": 1444
+      }
+    }
+  ],
+  "candidate": "bpfix-bench/results/ablation-main75-current-server/full/20260802T080952373002Z-pid1112388/bpfix-neutral/packet_inline_return_cookie_001/attempt-1/candidate.bpf.c",
+  "case": "packet_inline_return_cookie_001",
+  "cost": {
+    "attempt_wall_time_seconds": 7.318315,
+    "cached_prompt_tokens": 21,
+    "completion_tokens": 493,
+    "model_calls": 1,
+    "model_wall_time_seconds": 7.071926,
+    "oracle_wall_time_seconds": 0.24561,
+    "prompt_tokens": 951,
+    "reasoning_tokens": null,
+    "token_usage_coverage": {
+      "cached_prompt_tokens": 1,
+      "completion_tokens": 1,
+      "prompt_tokens": 1,
+      "reasoning_tokens": 0,
+      "total_tokens": 1
+    },
+    "total_tokens": 1444
+  },
+  "diagnostic_chars": 1574,
+  "failure_stage": "auxiliary_proof_predicate",
+  "finish_reason": "stop",
+  "mode": "bpfix-neutral",
+  "model": "Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M",
+  "model_wall_time_seconds": 7.071926,
+  "oracle_returncode": 1,
+  "oracle_stderr": "",
+  "oracle_stdout": "{\n  \"compile\": {\n    \"argv\": [\n      \"clang\",\n      \"-target\",\n      \"bpf\",\n      \"-O2\",\n      \"-g\",\n      \"-I\",\n      \"/usr/include\",\n      \"-D__TARGET_ARCH_x86\",\n      \"-c\",\n      \"/home/yunwei37/workspace/bpfix/bpfix-bench/results/ablation-main75-current-server/full/20260802T080952373002Z-pid1112388/bpfix-neutral/packet_inline_return_cookie_001/attempt-1/candidate.bpf.c\",\n      \"-o\",\n      \"bpfix-bench/results/ablation-main75-current-server/full/20260802T080952373002Z-pid1112388/bpfix-neutral/packet_inline_return_cookie_001/attempt-1/work/prog.o\"\n    ],\n    \"returncode\": 0,\n    \"stderr\": \"\",\n    \"stdout\": \"\"\n  },\n  \"expect_reject\": false,\n  \"functional\": [],\n  \"load\": {\n    \"argv\": [\n      \"sudo\",\n      \"bpftool\",\n      \"-d\",\n      \"prog\",\n      \"load\",\n      \"bpfix-bench/results/ablation-main75-current-server/full/20260802T080952373002Z-pid1112388/bpfix-neutral/packet_inline_return_cookie_001/attempt-1/work/prog.o\",\n      \"/sys/fs/bpf/bpfix_test_candidate_bpf_1114382\",\n      \"type\",\n      \"xdp\"\n    ],\n    \"returncode\": 0,\n    \"stderr\": \"libbpf: loading object from bpfix-bench/results/ablation-main75-current-server/full/20260802T080952373002Z-pid1112388/bpfix-neutral/packet_inline_return_cookie_001/attempt-1/work/prog.o\\nlibbpf: elf: section(3) xdp, size 160, link 0, flags 6, type=1\\nlibbpf: sec 'xdp': found program 'packet_inline_return_cookie' at insn offset 0 (0 bytes), code size 20 insns (160 bytes)\\nlibbpf: elf: section(4) license, size 4, link 0, flags 3, type=1\\nlibbpf: license of bpfix-bench/results/ablation-main75-current-server/full/20260802T080952373002Z-pid1112388/bpfix-neutral/packet_inline_return_cookie_001/attempt-1/work/prog.o is GPL\\nlibbpf: elf: section(14) .BTF, size 1710, link 0, flags 0, type=1\\nlibbpf: elf: section(16) .BTF.ext, size 364, link 0, flags 0, type=1\\nlibbpf: elf: section(24) .symtab, size 336, link 1, flags 0, type=2\\nlibbpf: looking for externs among 14 symbols...\\nlibbpf: collected 0 externs total\\nlibbpf: object 'prog': failed (-95) to create BPF token from '/sys/fs/bpf', skipping optional step...\\nlibbpf: loaded kernel BTF from '/sys/kernel/btf/vmlinux'\\nlibbpf: sec 'xdp': found 5 CO-RE relocations\\nlibbpf: CO-RE relocating [2] struct xdp_md: found target candidate [14922] struct xdp_md in [vmlinux]\\nlibbpf: prog 'packet_inline_return_cookie': relo #0: <byte_off> [2] struct xdp_md.data_end (0:1 @ offset 4)\\nlibbpf: prog 'packet_inline_return_cookie': relo #0: matching candidate #0 <byte_off> [14922] struct xdp_md.data_end (0:1 @ offset 4)\\nlibbpf: prog 'packet_inline_return_cookie': relo #0: patched insn #1 (LDX/ST/STX) off 4 -> 4\\nlibbpf: prog 'packet_inline_return_cookie': relo #1: <byte_off> [2] struct xdp_md.data (0:0 @ offset 0)\\nlibbpf: prog 'packet_inline_return_cookie': relo #1: matching candidate #0 <byte_off> [14922] struct xdp_md.data (0:0 @ offset 0)\\nlibbpf: prog 'packet_inline_return_cookie': relo #1: patched insn #2 (LDX/ST/STX) off 0 -> 0\\nlibbpf: CO-RE relocating [8] struct ethhdr: found target candidate [23410] struct ethhdr in [vmlinux]\\nlibbpf: prog 'packet_inline_return_cookie': relo #2: <byte_off> [8] struct ethhdr.h_proto (0:2 @ offset 12)\\nlibbpf: prog 'packet_inline_return_cookie': relo #2: matching candidate #0 <byte_off> [23410] struct ethhdr.h_proto (0:2 @ offset 12)\\nlibbpf: prog 'packet_inline_return_cookie': relo #2: patched insn #6 (LDX/ST/STX) off 12 -> 12\\nlibbpf: CO-RE relocating [15] struct iphdr: found target candidate [23765] struct iphdr in [vmlinux]\\nlibbpf: prog 'packet_inline_return_cookie': relo #3: <byte_off> [15] struct iphdr.protocol (0:7 @ offset 9)\\nlibbpf: prog 'packet_inline_return_cookie': relo #3: matching candidate #0 <byte_off> [23765] struct iphdr.protocol (0:7 @ offset 9)\\nlibbpf: prog 'packet_inline_return_cookie': relo #3: patched insn #11 (LDX/ST/STX) off 9 -> 9\\nlibbpf: CO-RE relocating [22] struct udphdr: found target candidate [23773] struct udphdr in [vmlinux]\\nlibbpf: prog 'packet_inline_return_cookie': relo #4: <byte_off> [22] struct udphdr.dest (0:1 @ offset 2)\\nlibbpf: prog 'packet_inline_return_cookie': relo #4: matching candidate #0 <byte_off> [23773] struct udphdr.dest (0:1 @ offset 2)\\nlibbpf: prog 'packet_inline_return_cookie': relo #4: patched insn #15 (LDX/ST/STX) off 2 -> 2\\nlibbpf: prog 'packet_inline_return_cookie': -- BEGIN PROG LOAD LOG --\\nfunc#0 @0\\nLive regs before insn:\\n  0: .1........ (b7) r0 = 2\\n  1: 01........ (61) r2 = *(u32 *)(r1 +4)\\n  2: 012....... (61) r1 = *(u32 *)(r1 +0)\\n  3: 012....... (bf) r4 = r1\\n  4: 012.4..... (07) r4 += 14\\n  5: 012.4..... (2d) if r4 > r2 goto pc+13\\n  6: 012.4..... (69) r3 = *(u16 *)(r1 +12)\\n  7: 01234..... (55) if r3 != 0x8 goto pc+11\\n  8: 012.4..... (bf) r3 = r1\\n  9: 01234..... (07) r3 += 34\\n 10: 01234..... (2d) if r3 > r2 goto pc+8\\n 11: 01234..... (71) r4 = *(u8 *)(r4 +9)\\n 12: 01234..... (55) if r4 != 0x11 goto pc+6\\n 13: 0123...... (07) r1 += 42\\n 14: 0123...... (2d) if r1 > r2 goto pc+4\\n 15: ...3...... (69) r1 = *(u16 *)(r3 +2)\\n 16: .1........ (b7) r0 = 1\\n 17: 01........ (15) if r1 == 0x3500 goto pc+1\\n 18: .......... (b7) r0 = 2\\n 19: 0......... (95) exit\\n0: R1=ctx() R10=fp0\\n; int packet_inline_return_cookie(struct xdp_md *ctx) @ candidate.bpf.c:44\\n0: (b7) r0 = 2                        ; R0_w=2\\n; void *data_end = (void *)(long)ctx->data_end; @ candidate.bpf.c:47\\n1: (61) r2 = *(u32 *)(r1 +4)          ; R1=ctx() R2_w=pkt_end()\\n; void *data = (void *)(long)ctx->data; @ candidate.bpf.c:46\\n2: (61) r1 = *(u32 *)(r1 +0)          ; R1_w=pkt(r=0)\\n; if ((void *)(eth + 1) > data_end) @ candidate.bpf.c:26\\n3: (bf) r4 = r1                       ; R1_w=pkt(r=0) R4_w=pkt(r=0)\\n4: (07) r4 += 14                      ; R4_w=pkt(off=14,r=0)\\n5: (2d) if r4 > r2 goto pc+13         ; R2_w=pkt_end() R4_w=pkt(off=14,r=14)\\n; if (bpf_ntohs(eth->h_proto) != ETH_P_IP) @ candidate.bpf.c:28\\n6: (69) r3 = *(u16 *)(r1 +12)         ; R1_w=pkt(r=14) R3_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=0xffff,var_off=(0x0; 0xffff))\\n7: (55) if r3 != 0x8 goto pc+11       ; R3_w=8\\n; if ((void *)(iph + 1) > data_end) @ candidate.bpf.c:32\\n8: (bf) r3 = r1                       ; R1_w=pkt(r=14) R3_w=pkt(r=14)\\n9: (07) r3 += 34                      ; R3=pkt(off=34,r=14)\\n10: (2d) if r3 > r2 goto pc+8         ; R2=pkt_end() R3=pkt(off=34,r=34)\\n; if (iph->protocol != IPPROTO_UDP) @ candidate.bpf.c:34\\n11: (71) r4 = *(u8 *)(r4 +9)          ; R4_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))\\n12: (55) if r4 != 0x11 goto pc+6      ; R4_w=17\\n13: (07) r1 += 42                     ; R1_w=pkt(off=42,r=34)\\n14: (2d) if r1 > r2 goto pc+4         ; R1_w=pkt(off=42,r=42) R2=pkt_end()\\n; return bpf_ntohs(safe_udp->dest) == 53 ? XDP_DROP : XDP_PASS; @ candidate.bpf.c:60\\n15: (69) r1 = *(u16 *)(r3 +2)         ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=0xffff,var_off=(0x0; 0xffff)) R3=pkt(off=34,r=42)\\n16: (b7) r0 = 1                       ; R0_w=1\\n17: (15) if r1 == 0x3500 goto pc+1    ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=0xffff,var_off=(0x0; 0xffff))\\n18: (b7) r0 = 2                       ; R0=2\\n; } @ candidate.bpf.c:61\\n19: (95) exit\\n\\nfrom 17 to 19: safe\\n\\nfrom 14 to 19: safe\\n\\nfrom 12 to 19: safe\\n\\nfrom 10 to 19: safe\\n\\nfrom 7 to 19: safe\\n\\nfrom 5 to 19: safe\\nverification time 83 usec\\nstack depth 0\\nprocessed 26 insns (limit 1000000) max_states_per_insn 0 total_states 2 peak_states 2 mark_read 2\\n-- END PROG LOAD LOG --\\n\",\n    \"stdout\": \"\"\n  },\n  \"map_setup\": [],\n  \"passed\": false,\n  \"source\": \"/home/yunwei37/workspace/bpfix/bpfix-bench/results/ablation-main75-current-server/full/20260802T080952373002Z-pid1112388/bpfix-neutral/packet_inline_return_cookie_001/attempt-1/candidate.bpf.c\",\n  \"source_semantics\": [\n    {\n      \"kind\": \"source_predicate\",\n      \"name\": \"case source invariant A\",\n      \"passed\": false\n    }\n  ],\n  \"success_log_checks\": []\n}\n",
+  "oracle_wall_time_seconds": 0.24561,
+  "prompt_build_wall_time_seconds": 0.000103,
+  "prompt_chars": 3256,
+  "prompt_sha256": "6ef034eef0d1a2e00839854cc01bbf5c888aa2e8493651fbb76d5bd20e794f2f",
+  "prompt_token_match": null,
+  "reasoning_chars": null,
+  "response_chars": 1490,
+  "source_chars": 1346,
+  "status": "fail",
+  "token_usage": {
+    "cached_prompt_tokens": 21,
+    "completion_tokens": 493,
+    "prompt_tokens": 951,
+    "reasoning_tokens": null,
+    "total_tokens": 1444
+  }
+}

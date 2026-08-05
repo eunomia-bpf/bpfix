@@ -1,0 +1,43 @@
+{
+  "api_timings": {
+    "cache_n": 21,
+    "predicted_ms": 6359.848,
+    "predicted_n": 469,
+    "predicted_per_second": 73.74390079762912,
+    "predicted_per_token_ms": 13.560443496801705,
+    "prompt_ms": 355.342,
+    "prompt_n": 752,
+    "prompt_per_second": 2116.271085320621,
+    "prompt_per_token_ms": 0.4725292553191489
+  },
+  "api_usage": {
+    "completion_tokens": 469,
+    "prompt_tokens": 773,
+    "prompt_tokens_details": {
+      "cached_tokens": 21
+    },
+    "total_tokens": 1242
+  },
+  "attempt": 1,
+  "attempt_wall_time_seconds": 6.780824,
+  "candidate": "bpfix-bench/results/cost-main75-current-server/20260801T082437160849Z-pid4040619/bpfix/ringbuf_double_submit_001/attempt-1/candidate.bpf.c",
+  "failure_stage": "auxiliary_proof_predicate",
+  "finish_reason": "stop",
+  "model_wall_time_seconds": 6.732066,
+  "oracle_returncode": 1,
+  "oracle_stderr": "",
+  "oracle_stdout": "{\n  \"expect_reject\": false,\n  \"passed\": false,\n  \"source\": \"/home/yunwei37/workspace/bpfix/bpfix-bench/results/cost-main75-current-server/20260801T082437160849Z-pid4040619/bpfix/ringbuf_double_submit_001/attempt-1/candidate.bpf.c\",\n  \"source_semantics\": [\n    {\n      \"name\": \"audit reserve failure keeps IPv4 drop semantics\",\n      \"passed\": false\n    }\n  ]\n}\n",
+  "oracle_wall_time_seconds": 0.048428,
+  "prompt_chars": 2394,
+  "prompt_sha256": "efd2ab90833af1893940195c4fcf65670c5fc59a848f499773f99821bdcf260d",
+  "reasoning_chars": null,
+  "response_chars": 1325,
+  "status": "fail",
+  "token_usage": {
+    "cached_prompt_tokens": 21,
+    "completion_tokens": 469,
+    "prompt_tokens": 773,
+    "reasoning_tokens": null,
+    "total_tokens": 1242
+  }
+}

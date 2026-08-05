@@ -1,0 +1,91 @@
+You are fixing one eBPF verifier rejection.
+
+Return only one complete replacement C source file in a fenced ```c block.
+Do not explain. Do not output a diff. Preserve the intended packet/helper
+semantics; do not remove the program, maps, SEC() section, or license.
+
+
+
+Source file:
+```c
+#ifndef __TARGET_ARCH_x86
+#define __TARGET_ARCH_x86 1
+#endif
+
+#include <vmlinux.h>
+#include <bpf/bpf_helpers.h>
+
+#ifndef XDP_ABORTED
+#define XDP_ABORTED 0
+#endif
+#ifndef XDP_DROP
+#define XDP_DROP 1
+#endif
+#ifndef XDP_PASS
+#define XDP_PASS 2
+#endif
+
+#define SLOT_COUNT 8
+#define LOOP_COUNT 16
+
+struct scan_ctx {
+    __u32 hits;
+    __u8 slots[SLOT_COUNT];
+};
+
+static long scan_slot_cb(__u32 idx, void *data)
+{
+    struct scan_ctx *ctx = data;
+    __u8 marker = ctx->slots[idx];
+
+    if (marker == 0xaa)
+        ctx->hits++;
+    return 0;
+}
+
+SEC("xdp")
+int rs_actplane_taint_loop_count_bound(struct xdp_md *ctx)
+{
+    void *data = (void *)(long)ctx->data;
+    void *data_end = (void *)(long)ctx->data_end;
+    __u8 *bytes = data;
+    struct scan_ctx scan = {};
+
+    if ((void *)(bytes + SLOT_COUNT) > data_end)
+        return XDP_PASS;
+
+    #pragma unroll
+    for (int i = 0; i < SLOT_COUNT; i++)
+        scan.slots[i] = bytes[i];
+
+    bpf_loop(LOOP_COUNT, scan_slot_cb, &scan, 0);
+    return scan.hits >= 2 ? XDP_DROP : XDP_PASS;
+}
+
+char _license[] SEC("license") = "GPL";
+
+```
+
+verifier diagnostic evidence:
+```text
+error[BPFIX-E005]: scalar range proof is missing
+  = class: source_bug
+  = confidence: medium
+  = diagnostic: supported, help: repair_hint, span: exact_pc
+  = next action: bounds
+  --> buggy.bpf.c:29
+   |
+29 | __u8 marker = ctx->slots[idx];
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ rejected here: verifier still sees R3 as scalar with unknown bounds
+42 | struct scan_ctx scan = {};
+   | -------------------------- verifier still sees R3 as scalar exact 0, so the required scalar or map-value bound is not available at the use
+   |
+   = verifier[127]: invalid unbounded variable-offset read from stack R3
+   = note: nearest BPF instruction pc 40
+   = note: parsed 40 verifier state snapshots
+   = required proof: prove R3 has a bounded non-negative scalar range before this pointer arithmetic or helper memory access; verifier sees scalar with unknown bounds
+help: Clamp the index or length with explicit upper and lower bounds.
+help: Keep the bounded scalar in the same SSA value used for pointer arithmetic or helper length.
+
+```
+

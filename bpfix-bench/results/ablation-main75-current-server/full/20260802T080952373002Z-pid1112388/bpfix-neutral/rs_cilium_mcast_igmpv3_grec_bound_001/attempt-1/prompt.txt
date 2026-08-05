@@ -1,0 +1,133 @@
+You are fixing one eBPF verifier rejection.
+
+Return only one complete replacement C source file in a fenced ```c block.
+Do not explain. Do not output a diff. Preserve the intended packet/helper
+semantics; do not remove the program, maps, SEC() section, or license.
+
+
+
+Source file:
+```c
+// SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
+#ifndef __TARGET_ARCH_x86
+#define __TARGET_ARCH_x86 1
+#endif
+
+#include <vmlinux.h>
+#include <bpf/bpf_helpers.h>
+#include <bpf/bpf_endian.h>
+
+#ifndef XDP_DROP
+#define XDP_DROP 1
+#endif
+#ifndef XDP_PASS
+#define XDP_PASS 2
+#endif
+#ifndef ETH_P_IP
+#define ETH_P_IP 0x0800
+#endif
+#ifndef IPPROTO_IGMP
+#define IPPROTO_IGMP 2
+#endif
+
+#define CILIUM_MCAST_MAX_GREC 4
+#define IGMPV3_CHANGE_TO_EXCLUDE 4
+#define CILIUM_MDNS_GROUP 0xe00000fbU
+
+struct cilium_igmpv3_report {
+    __u8 type;
+    __u8 resv1;
+    __be16 csum;
+    __be16 resv2;
+    __be16 ngrec;
+};
+
+struct cilium_igmpv3_grec {
+    __u8 grec_type;
+    __u8 grec_auxwords;
+    __be16 grec_nsrcs;
+    __be32 grec_mca;
+};
+
+static __always_inline bool cilium_mcast_ipv4_is_igmp(const struct iphdr *ip4)
+{
+    return ip4->protocol == IPPROTO_IGMP;
+}
+
+SEC("xdp")
+int cilium_mcast_igmpv3_grec_bound(struct xdp_md *ctx)
+{
+    void *data = (void *)(long)ctx->data;
+    void *data_end = (void *)(long)ctx->data_end;
+    struct ethhdr *eth = data;
+    struct iphdr *ip4;
+    const struct cilium_igmpv3_report *rep;
+    const struct cilium_igmpv3_grec *rec;
+    __u32 ip_len;
+    __u16 ngrec;
+    __u32 i;
+
+    if ((void *)(eth + 1) > data_end)
+        return XDP_PASS;
+    if (bpf_ntohs(eth->h_proto) != ETH_P_IP)
+        return XDP_PASS;
+
+    ip4 = (struct iphdr *)(eth + 1);
+    if ((void *)(ip4 + 1) > data_end)
+        return XDP_PASS;
+    if (!cilium_mcast_ipv4_is_igmp(ip4))
+        return XDP_PASS;
+
+    ip_len = (__u32)ip4->ihl << 2;
+    if (ip_len < sizeof(*ip4))
+        return XDP_PASS;
+    if ((void *)ip4 + ip_len + sizeof(*rep) > data_end)
+        return XDP_PASS;
+
+    rep = (const struct cilium_igmpv3_report *)((__u8 *)ip4 + ip_len);
+    ngrec = bpf_ntohs(rep->ngrec);
+    if (ngrec > CILIUM_MCAST_MAX_GREC)
+        return XDP_PASS;
+
+#pragma unroll
+    for (i = 0; i < CILIUM_MCAST_MAX_GREC; i++) {
+        if (i < ngrec) {
+            rec = (const struct cilium_igmpv3_grec *)((const __u8 *)(rep + 1) + i * sizeof(*rec));
+            if (rec->grec_type == IGMPV3_CHANGE_TO_EXCLUDE &&
+                rec->grec_mca == bpf_htonl(CILIUM_MDNS_GROUP))
+                return XDP_DROP;
+        }
+    }
+
+    return XDP_PASS;
+}
+
+char _license[] SEC("license") = "Dual BSD/GPL";
+
+```
+
+verifier diagnostic evidence:
+```text
+error[BPFIX-E001]: packet bounds check is narrower than the later packet access
+  = class: source_bug
+  = confidence: medium
+  = diagnostic: supported, help: repair_hint, span: exact_pc
+  = next action: bounds
+  --> buggy.bpf.c:86
+   |
+74 | if ((void *)ip4 + ip_len + sizeof(*rep) > data_end)
+   | --------------------------------------------------- verifier only proves packet range 0 bytes on this path, but the rejected access requires 23 bytes
+86 | if (rec->grec_type == IGMPV3_CHANGE_TO_EXCLUDE &&
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ rejected here: verifier needs R4 packet range >= 23, but only 22 bytes are proven
+   |
+   = verifier[108]: invalid access to packet, off=22 size=1, R4(id=1,off=22,r=22); R4 offset is outside of the packet
+   = note: nearest BPF instruction pc 26
+   = note: parsed 19 verifier state snapshots
+   = note[verifier-state]: source has a packet bounds check, but verifier state after that check proves only a shorter packet range than the rejected access needs
+   = required proof: prove R4 has packet range at least 23 bytes before this access; verifier currently has range 22
+help: Move the data_end check to the final pointer expression and include the access width, for example check pointer + size before dereferencing pointer.
+help: Add or move a packet bounds check immediately before the access or helper argument use.
+help: Preserve the byte-length record proof inside the unrolled loop: derive rec from the report base plus i * sizeof(*rec), then check (void *)rec + sizeof(*rec) > data_end before reading grec fields.
+
+```
+

@@ -1,0 +1,61 @@
+{
+  "api_timings": null,
+  "api_usage": null,
+  "attempt": 1,
+  "attempt_wall_time_seconds": 0.000553,
+  "attempts": [
+    {
+      "api_timings": null,
+      "api_usage": null,
+      "attempt": 1,
+      "attempt_wall_time_seconds": 0.000553,
+      "error": "<urlopen error [Errno 111] Connection refused>",
+      "failure_stage": "model_call",
+      "finish_reason": null,
+      "model_wall_time_seconds": 0.000483,
+      "oracle_wall_time_seconds": null,
+      "prompt_chars": 3364,
+      "prompt_sha256": "6f0f17e3cc61c9745ed42712b95f77f029a62bbddd80745a04f7480193a4e28f",
+      "reasoning_chars": null,
+      "response_chars": null,
+      "status": "model_error",
+      "token_usage": null
+    }
+  ],
+  "case": "rs_tutorial_memleak_free_info_merge_001",
+  "cost": {
+    "attempt_wall_time_seconds": 0.000553,
+    "cached_prompt_tokens": null,
+    "completion_tokens": null,
+    "model_calls": 1,
+    "model_wall_time_seconds": 0.000483,
+    "oracle_wall_time_seconds": 0,
+    "prompt_tokens": null,
+    "reasoning_tokens": null,
+    "token_usage_coverage": {
+      "cached_prompt_tokens": 0,
+      "completion_tokens": 0,
+      "prompt_tokens": 0,
+      "reasoning_tokens": 0,
+      "total_tokens": 0
+    },
+    "total_tokens": null
+  },
+  "diagnostic_chars": 1346,
+  "error": "<urlopen error [Errno 111] Connection refused>",
+  "failure_stage": "model_call",
+  "finish_reason": null,
+  "mode": "bpfix-neutral",
+  "model": "Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M",
+  "model_wall_time_seconds": 0.000483,
+  "oracle_wall_time_seconds": null,
+  "prompt_build_wall_time_seconds": 0.000489,
+  "prompt_chars": 3364,
+  "prompt_sha256": "6f0f17e3cc61c9745ed42712b95f77f029a62bbddd80745a04f7480193a4e28f",
+  "prompt_token_match": null,
+  "reasoning_chars": null,
+  "response_chars": null,
+  "source_chars": 1682,
+  "status": "model_error",
+  "token_usage": null
+}

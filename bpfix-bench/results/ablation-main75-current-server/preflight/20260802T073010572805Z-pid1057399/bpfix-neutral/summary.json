@@ -1,0 +1,303 @@
+{
+  "cost": {
+    "attempt_wall_time_seconds": 6.110168,
+    "cached_prompt_tokens": 21,
+    "completion_tokens": 415,
+    "model_calls": 1,
+    "model_wall_time_seconds": 5.86512,
+    "oracle_wall_time_seconds": 0.243731,
+    "prompt_tokens": 860,
+    "reasoning_tokens": null,
+    "token_usage_coverage": {
+      "cached_prompt_tokens": 1,
+      "completion_tokens": 1,
+      "prompt_tokens": 1,
+      "reasoning_tokens": 0,
+      "total_tokens": 1
+    },
+    "total_tokens": 1275
+  },
+  "mode": "bpfix-neutral",
+  "passed": 0,
+  "policy_checkpoints": [
+    {
+      "cost": {
+        "attempt_wall_time_seconds": 6.110168,
+        "cached_prompt_tokens": 21,
+        "completion_tokens": 415,
+        "model_calls": 1,
+        "model_wall_time_seconds": 5.86512,
+        "oracle_wall_time_seconds": 0.243731,
+        "prompt_tokens": 860,
+        "reasoning_tokens": null,
+        "token_usage_coverage": {
+          "cached_prompt_tokens": 1,
+          "completion_tokens": 1,
+          "prompt_tokens": 1,
+          "reasoning_tokens": 0,
+          "total_tokens": 1
+        },
+        "total_tokens": 1275
+      },
+      "max_attempts": 1,
+      "passed": 0,
+      "total": 1
+    }
+  ],
+  "results": [
+    {
+      "api_timings": {
+        "cache_n": 21,
+        "predicted_ms": 5510.565,
+        "predicted_n": 415,
+        "predicted_per_second": 75.30988201754266,
+        "predicted_per_token_ms": 13.278469879518072,
+        "prompt_ms": 339.76,
+        "prompt_n": 839,
+        "prompt_per_second": 2469.390157758418,
+        "prompt_per_token_ms": 0.4049582836710369
+      },
+      "api_usage": {
+        "completion_tokens": 415,
+        "prompt_tokens": 860,
+        "prompt_tokens_details": {
+          "cached_tokens": 21
+        },
+        "total_tokens": 1275
+      },
+      "attempt": 1,
+      "attempt_wall_time_seconds": 6.110168,
+      "attempts": [
+        {
+          "api_timings": {
+            "cache_n": 21,
+            "predicted_ms": 5510.565,
+            "predicted_n": 415,
+            "predicted_per_second": 75.30988201754266,
+            "predicted_per_token_ms": 13.278469879518072,
+            "prompt_ms": 339.76,
+            "prompt_n": 839,
+            "prompt_per_second": 2469.390157758418,
+            "prompt_per_token_ms": 0.4049582836710369
+          },
+          "api_usage": {
+            "completion_tokens": 415,
+            "prompt_tokens": 860,
+            "prompt_tokens_details": {
+              "cached_tokens": 21
+            },
+            "total_tokens": 1275
+          },
+          "attempt": 1,
+          "attempt_wall_time_seconds": 6.110168,
+          "candidate": "bpfix-bench/results/ablation-main75-current-server/preflight/20260802T073010572805Z-pid1057399/bpfix-neutral/alu32_pointer_cookie_001/attempt-1/candidate.bpf.c",
+          "failure_stage": "verifier_load",
+          "finish_reason": "stop",
+          "model_wall_time_seconds": 5.86512,
+          "oracle_returncode": 1,
+          "oracle_stderr": "",
+          "oracle_stdout": "{\n  \"compile\": {\n    \"argv\": [\n      \"clang\",\n      \"-target\",\n      \"bpf\",\n      \"-O2\",\n      \"-g\",\n      \"-I\",\n      \"/usr/include\",\n      \"-D__TARGET_ARCH_x86\",\n      \"-c\",\n      \"/home/yunwei37/workspace/bpfix/bpfix-bench/results/ablation-main75-current-server/preflight/20260802T073010572805Z-pid1057399/bpfix-neutral/alu32_pointer_cookie_001/attempt-1/candidate.bpf.c\",\n      \"-o\",\n      \"bpfix-bench/results/ablation-main75-current-server/preflight/20260802T073010572805Z-pid1057399/bpfix-neutral/alu32_pointer_cookie_001/attempt-1/work/prog.o\"\n    ],\n    \"returncode\": 0,\n    \"stderr\": \"\",\n    \"stdout\": \"\"\n  },\n  \"expect_reject\": false,\n  \"functional\": [],\n  \"load\": {\n    \"argv\": [\n      \"sudo\",\n      \"bpftool\",\n      \"-d\",\n      \"prog\",\n      \"load\",\n      \"bpfix-bench/results/ablation-main75-current-server/preflight/20260802T073010572805Z-pid1057399/bpfix-neutral/alu32_pointer_cookie_001/attempt-1/work/prog.o\",\n      \"/sys/fs/bpf/bpfix_test_candidate_bpf_1057473\",\n      \"type\",\n      \"xdp\"\n    ],\n    \"returncode\": 255,\n    \"stderr\": \"libbpf: loading object from bpfix-bench/results/ablation-main75-current-server/preflight/20260802T073010572805Z-pid1057399/bpfix-neutral/alu32_pointer_cookie_001/attempt-1/work/prog.o\\nlibbpf: elf: section(3) xdp, size 176, link 0, flags 6, type=1\\nlibbpf: sec 'xdp': found program 'alu32_pointer_cookie' at insn offset 0 (0 bytes), code size 22 insns (176 bytes)\\nlibbpf: elf: section(4) license, size 4, link 0, flags 3, type=1\\nlibbpf: license of bpfix-bench/results/ablation-main75-current-server/preflight/20260802T073010572805Z-pid1057399/bpfix-neutral/alu32_pointer_cookie_001/attempt-1/work/prog.o is GPL\\nlibbpf: elf: section(14) .BTF, size 1807, link 0, flags 0, type=1\\nlibbpf: elf: section(16) .BTF.ext, size 412, link 0, flags 0, type=1\\nlibbpf: elf: section(24) .symtab, size 336, link 1, flags 0, type=2\\nlibbpf: looking for externs among 14 symbols...\\nlibbpf: collected 0 externs total\\nlibbpf: object 'prog': failed (-95) to create BPF token from '/sys/fs/bpf', skipping optional step...\\nlibbpf: loaded kernel BTF from '/sys/kernel/btf/vmlinux'\\nlibbpf: sec 'xdp': found 5 CO-RE relocations\\nlibbpf: CO-RE relocating [2] struct xdp_md: found target candidate [14922] struct xdp_md in [vmlinux]\\nlibbpf: prog 'alu32_pointer_cookie': relo #0: <byte_off> [2] struct xdp_md.data_end (0:1 @ offset 4)\\nlibbpf: prog 'alu32_pointer_cookie': relo #0: matching candidate #0 <byte_off> [14922] struct xdp_md.data_end (0:1 @ offset 4)\\nlibbpf: prog 'alu32_pointer_cookie': relo #0: patched insn #1 (LDX/ST/STX) off 4 -> 4\\nlibbpf: prog 'alu32_pointer_cookie': relo #1: <byte_off> [2] struct xdp_md.data (0:0 @ offset 0)\\nlibbpf: prog 'alu32_pointer_cookie': relo #1: matching candidate #0 <byte_off> [14922] struct xdp_md.data (0:0 @ offset 0)\\nlibbpf: prog 'alu32_pointer_cookie': relo #1: patched insn #2 (LDX/ST/STX) off 0 -> 0\\nlibbpf: CO-RE relocating [8] struct ethhdr: found target candidate [23410] struct ethhdr in [vmlinux]\\nlibbpf: prog 'alu32_pointer_cookie': relo #2: <byte_off> [8] struct ethhdr.h_proto (0:2 @ offset 12)\\nlibbpf: prog 'alu32_pointer_cookie': relo #2: matching candidate #0 <byte_off> [23410] struct ethhdr.h_proto (0:2 @ offset 12)\\nlibbpf: prog 'alu32_pointer_cookie': relo #2: patched insn #6 (LDX/ST/STX) off 12 -> 12\\nlibbpf: CO-RE relocating [15] struct iphdr: found target candidate [23765] struct iphdr in [vmlinux]\\nlibbpf: prog 'alu32_pointer_cookie': relo #3: <byte_off> [15] struct iphdr.protocol (0:7 @ offset 9)\\nlibbpf: prog 'alu32_pointer_cookie': relo #3: matching candidate #0 <byte_off> [23765] struct iphdr.protocol (0:7 @ offset 9)\\nlibbpf: prog 'alu32_pointer_cookie': relo #3: patched insn #11 (LDX/ST/STX) off 9 -> 9\\nlibbpf: CO-RE relocating [22] struct udphdr: found target candidate [23773] struct udphdr in [vmlinux]\\nlibbpf: prog 'alu32_pointer_cookie': relo #4: <byte_off> [22] struct udphdr.dest (0:1 @ offset 2)\\nlibbpf: prog 'alu32_pointer_cookie': relo #4: matching candidate #0 <byte_off> [23773] struct udphdr.dest (0:1 @ offset 2)\\nlibbpf: prog 'alu32_pointer_cookie': relo #4: patched insn #17 (LDX/ST/STX) off 2 -> 2\\nlibbpf: prog 'alu32_pointer_cookie': BPF program load failed: -EACCES\\nlibbpf: prog 'alu32_pointer_cookie': -- BEGIN PROG LOAD LOG --\\nfunc#0 @0\\nLive regs before insn:\\n  0: .1........ (b7) r0 = 2\\n  1: 01........ (61) r2 = *(u32 *)(r1 +4)\\n  2: 012....... (61) r1 = *(u32 *)(r1 +0)\\n  3: 012....... (bf) r3 = r1\\n  4: 0123...... (07) r3 += 14\\n  5: 0123...... (2d) if r3 > r2 goto pc+15\\n  6: 0123...... (69) r4 = *(u16 *)(r1 +12)\\n  7: 01234..... (55) if r4 != 0x8 goto pc+13\\n  8: 0123...... (bf) r4 = r1\\n  9: 01234..... (07) r4 += 34\\n 10: 01234..... (2d) if r4 > r2 goto pc+10\\n 11: 01234..... (71) r5 = *(u8 *)(r3 +9)\\n 12: 012345.... (55) if r5 != 0x11 goto pc+8\\n 13: 01234..... (67) r3 <<= 32\\n 14: 01234..... (77) r3 >>= 32\\n 15: 012.4..... (07) r1 += 42\\n 16: 012.4..... (2d) if r1 > r2 goto pc+4\\n 17: ....4..... (69) r1 = *(u16 *)(r4 +2)\\n 18: .1........ (b7) r0 = 1\\n 19: 01........ (15) if r1 == 0x3500 goto pc+1\\n 20: .......... (b7) r0 = 2\\n 21: 0......... (95) exit\\n0: R1=ctx() R10=fp0\\n; int alu32_pointer_cookie(struct xdp_md *ctx) @ candidate.bpf.c:23\\n0: (b7) r0 = 2                        ; R0_w=2\\n; void *data_end = (void *)(long)ctx->data_end; @ candidate.bpf.c:26\\n1: (61) r2 = *(u32 *)(r1 +4)          ; R1=ctx() R2_w=pkt_end()\\n; void *data = (void *)(long)ctx->data; @ candidate.bpf.c:25\\n2: (61) r1 = *(u32 *)(r1 +0)          ; R1_w=pkt(r=0)\\n; if ((void *)(eth + 1) > data_end) @ candidate.bpf.c:30\\n3: (bf) r3 = r1                       ; R1_w=pkt(r=0) R3_w=pkt(r=0)\\n4: (07) r3 += 14                      ; R3_w=pkt(off=14,r=0)\\n5: (2d) if r3 > r2 goto pc+15         ; R2_w=pkt_end() R3_w=pkt(off=14,r=14)\\n; if (bpf_ntohs(eth->h_proto) != ETH_P_IP) @ candidate.bpf.c:32\\n6: (69) r4 = *(u16 *)(r1 +12)         ; R1_w=pkt(r=14) R4_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=0xffff,var_off=(0x0; 0xffff))\\n7: (55) if r4 != 0x8 goto pc+13       ; R4_w=8\\n; if ((void *)(iph + 1) > data_end) @ candidate.bpf.c:36\\n8: (bf) r4 = r1                       ; R1_w=pkt(r=14) R4_w=pkt(r=14)\\n9: (07) r4 += 34                      ; R4=pkt(off=34,r=14)\\n10: (2d) if r4 > r2 goto pc+10        ; R2=pkt_end() R4=pkt(off=34,r=34)\\n; if (iph->protocol != IPPROTO_UDP) @ candidate.bpf.c:38\\n11: (71) r5 = *(u8 *)(r3 +9)          ; R3=pkt(off=14,r=34) R5_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))\\n12: (55) if r5 != 0x11 goto pc+8      ; R5_w=17\\n; asm volatile(\\\"%[cookie] <<= 32; %[cookie] >>= 32\\\" : [cookie] \\\"+r\\\"(cookie)); @ candidate.bpf.c:42\\n13: (67) r3 <<= 32\\nR3 pointer arithmetic with <<= operator prohibited\\nverification time 67 usec\\nstack depth 0\\nprocessed 14 insns (limit 1000000) max_states_per_insn 0 total_states 1 peak_states 1 mark_read 1\\n-- END PROG LOAD LOG --\\nlibbpf: prog 'alu32_pointer_cookie': failed to load: -EACCES\\nlibbpf: failed to load object 'bpfix-bench/results/ablation-main75-current-server/preflight/20260802T073010572805Z-pid1057399/bpfix-neutral/alu32_pointer_cookie_001/attempt-1/work/prog.o'\\nError: failed to load object file\\n\",\n    \"stdout\": \"\"\n  },\n  \"map_setup\": [],\n  \"passed\": false,\n  \"source\": \"/home/yunwei37/workspace/bpfix/bpfix-bench/results/ablation-main75-current-server/preflight/20260802T073010572805Z-pid1057399/bpfix-neutral/alu32_pointer_cookie_001/attempt-1/candidate.bpf.c\",\n  \"source_semantics\": [],\n  \"success_log_checks\": []\n}\n",
+          "oracle_wall_time_seconds": 0.243731,
+          "prompt_chars": 2910,
+          "prompt_sha256": "db9e34bd91f2d9ea6a9e802f3bed78258761074caf45d86bafebbbfa7fb4d2a3",
+          "reasoning_chars": null,
+          "response_chars": 1182,
+          "status": "fail",
+          "token_usage": {
+            "cached_prompt_tokens": 21,
+            "completion_tokens": 415,
+            "prompt_tokens": 860,
+            "reasoning_tokens": null,
+            "total_tokens": 1275
+          }
+        }
+      ],
+      "candidate": "bpfix-bench/results/ablation-main75-current-server/preflight/20260802T073010572805Z-pid1057399/bpfix-neutral/alu32_pointer_cookie_001/attempt-1/candidate.bpf.c",
+      "case": "alu32_pointer_cookie_001",
+      "cost": {
+        "attempt_wall_time_seconds": 6.110168,
+        "cached_prompt_tokens": 21,
+        "completion_tokens": 415,
+        "model_calls": 1,
+        "model_wall_time_seconds": 5.86512,
+        "oracle_wall_time_seconds": 0.243731,
+        "prompt_tokens": 860,
+        "reasoning_tokens": null,
+        "token_usage_coverage": {
+          "cached_prompt_tokens": 1,
+          "completion_tokens": 1,
+          "prompt_tokens": 1,
+          "reasoning_tokens": 0,
+          "total_tokens": 1
+        },
+        "total_tokens": 1275
+      },
+      "diagnostic_chars": 1398,
+      "failure_stage": "verifier_load",
+      "finish_reason": "stop",
+      "mode": "bpfix-neutral",
+      "model": "Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M",
+      "model_wall_time_seconds": 5.86512,
+      "oracle_returncode": 1,
+      "oracle_stderr": "",
+      "oracle_stdout": "{\n  \"compile\": {\n    \"argv\": [\n      \"clang\",\n      \"-target\",\n      \"bpf\",\n      \"-O2\",\n      \"-g\",\n      \"-I\",\n      \"/usr/include\",\n      \"-D__TARGET_ARCH_x86\",\n      \"-c\",\n      \"/home/yunwei37/workspace/bpfix/bpfix-bench/results/ablation-main75-current-server/preflight/20260802T073010572805Z-pid1057399/bpfix-neutral/alu32_pointer_cookie_001/attempt-1/candidate.bpf.c\",\n      \"-o\",\n      \"bpfix-bench/results/ablation-main75-current-server/preflight/20260802T073010572805Z-pid1057399/bpfix-neutral/alu32_pointer_cookie_001/attempt-1/work/prog.o\"\n    ],\n    \"returncode\": 0,\n    \"stderr\": \"\",\n    \"stdout\": \"\"\n  },\n  \"expect_reject\": false,\n  \"functional\": [],\n  \"load\": {\n    \"argv\": [\n      \"sudo\",\n      \"bpftool\",\n      \"-d\",\n      \"prog\",\n      \"load\",\n      \"bpfix-bench/results/ablation-main75-current-server/preflight/20260802T073010572805Z-pid1057399/bpfix-neutral/alu32_pointer_cookie_001/attempt-1/work/prog.o\",\n      \"/sys/fs/bpf/bpfix_test_candidate_bpf_1057473\",\n      \"type\",\n      \"xdp\"\n    ],\n    \"returncode\": 255,\n    \"stderr\": \"libbpf: loading object from bpfix-bench/results/ablation-main75-current-server/preflight/20260802T073010572805Z-pid1057399/bpfix-neutral/alu32_pointer_cookie_001/attempt-1/work/prog.o\\nlibbpf: elf: section(3) xdp, size 176, link 0, flags 6, type=1\\nlibbpf: sec 'xdp': found program 'alu32_pointer_cookie' at insn offset 0 (0 bytes), code size 22 insns (176 bytes)\\nlibbpf: elf: section(4) license, size 4, link 0, flags 3, type=1\\nlibbpf: license of bpfix-bench/results/ablation-main75-current-server/preflight/20260802T073010572805Z-pid1057399/bpfix-neutral/alu32_pointer_cookie_001/attempt-1/work/prog.o is GPL\\nlibbpf: elf: section(14) .BTF, size 1807, link 0, flags 0, type=1\\nlibbpf: elf: section(16) .BTF.ext, size 412, link 0, flags 0, type=1\\nlibbpf: elf: section(24) .symtab, size 336, link 1, flags 0, type=2\\nlibbpf: looking for externs among 14 symbols...\\nlibbpf: collected 0 externs total\\nlibbpf: object 'prog': failed (-95) to create BPF token from '/sys/fs/bpf', skipping optional step...\\nlibbpf: loaded kernel BTF from '/sys/kernel/btf/vmlinux'\\nlibbpf: sec 'xdp': found 5 CO-RE relocations\\nlibbpf: CO-RE relocating [2] struct xdp_md: found target candidate [14922] struct xdp_md in [vmlinux]\\nlibbpf: prog 'alu32_pointer_cookie': relo #0: <byte_off> [2] struct xdp_md.data_end (0:1 @ offset 4)\\nlibbpf: prog 'alu32_pointer_cookie': relo #0: matching candidate #0 <byte_off> [14922] struct xdp_md.data_end (0:1 @ offset 4)\\nlibbpf: prog 'alu32_pointer_cookie': relo #0: patched insn #1 (LDX/ST/STX) off 4 -> 4\\nlibbpf: prog 'alu32_pointer_cookie': relo #1: <byte_off> [2] struct xdp_md.data (0:0 @ offset 0)\\nlibbpf: prog 'alu32_pointer_cookie': relo #1: matching candidate #0 <byte_off> [14922] struct xdp_md.data (0:0 @ offset 0)\\nlibbpf: prog 'alu32_pointer_cookie': relo #1: patched insn #2 (LDX/ST/STX) off 0 -> 0\\nlibbpf: CO-RE relocating [8] struct ethhdr: found target candidate [23410] struct ethhdr in [vmlinux]\\nlibbpf: prog 'alu32_pointer_cookie': relo #2: <byte_off> [8] struct ethhdr.h_proto (0:2 @ offset 12)\\nlibbpf: prog 'alu32_pointer_cookie': relo #2: matching candidate #0 <byte_off> [23410] struct ethhdr.h_proto (0:2 @ offset 12)\\nlibbpf: prog 'alu32_pointer_cookie': relo #2: patched insn #6 (LDX/ST/STX) off 12 -> 12\\nlibbpf: CO-RE relocating [15] struct iphdr: found target candidate [23765] struct iphdr in [vmlinux]\\nlibbpf: prog 'alu32_pointer_cookie': relo #3: <byte_off> [15] struct iphdr.protocol (0:7 @ offset 9)\\nlibbpf: prog 'alu32_pointer_cookie': relo #3: matching candidate #0 <byte_off> [23765] struct iphdr.protocol (0:7 @ offset 9)\\nlibbpf: prog 'alu32_pointer_cookie': relo #3: patched insn #11 (LDX/ST/STX) off 9 -> 9\\nlibbpf: CO-RE relocating [22] struct udphdr: found target candidate [23773] struct udphdr in [vmlinux]\\nlibbpf: prog 'alu32_pointer_cookie': relo #4: <byte_off> [22] struct udphdr.dest (0:1 @ offset 2)\\nlibbpf: prog 'alu32_pointer_cookie': relo #4: matching candidate #0 <byte_off> [23773] struct udphdr.dest (0:1 @ offset 2)\\nlibbpf: prog 'alu32_pointer_cookie': relo #4: patched insn #17 (LDX/ST/STX) off 2 -> 2\\nlibbpf: prog 'alu32_pointer_cookie': BPF program load failed: -EACCES\\nlibbpf: prog 'alu32_pointer_cookie': -- BEGIN PROG LOAD LOG --\\nfunc#0 @0\\nLive regs before insn:\\n  0: .1........ (b7) r0 = 2\\n  1: 01........ (61) r2 = *(u32 *)(r1 +4)\\n  2: 012....... (61) r1 = *(u32 *)(r1 +0)\\n  3: 012....... (bf) r3 = r1\\n  4: 0123...... (07) r3 += 14\\n  5: 0123...... (2d) if r3 > r2 goto pc+15\\n  6: 0123...... (69) r4 = *(u16 *)(r1 +12)\\n  7: 01234..... (55) if r4 != 0x8 goto pc+13\\n  8: 0123...... (bf) r4 = r1\\n  9: 01234..... (07) r4 += 34\\n 10: 01234..... (2d) if r4 > r2 goto pc+10\\n 11: 01234..... (71) r5 = *(u8 *)(r3 +9)\\n 12: 012345.... (55) if r5 != 0x11 goto pc+8\\n 13: 01234..... (67) r3 <<= 32\\n 14: 01234..... (77) r3 >>= 32\\n 15: 012.4..... (07) r1 += 42\\n 16: 012.4..... (2d) if r1 > r2 goto pc+4\\n 17: ....4..... (69) r1 = *(u16 *)(r4 +2)\\n 18: .1........ (b7) r0 = 1\\n 19: 01........ (15) if r1 == 0x3500 goto pc+1\\n 20: .......... (b7) r0 = 2\\n 21: 0......... (95) exit\\n0: R1=ctx() R10=fp0\\n; int alu32_pointer_cookie(struct xdp_md *ctx) @ candidate.bpf.c:23\\n0: (b7) r0 = 2                        ; R0_w=2\\n; void *data_end = (void *)(long)ctx->data_end; @ candidate.bpf.c:26\\n1: (61) r2 = *(u32 *)(r1 +4)          ; R1=ctx() R2_w=pkt_end()\\n; void *data = (void *)(long)ctx->data; @ candidate.bpf.c:25\\n2: (61) r1 = *(u32 *)(r1 +0)          ; R1_w=pkt(r=0)\\n; if ((void *)(eth + 1) > data_end) @ candidate.bpf.c:30\\n3: (bf) r3 = r1                       ; R1_w=pkt(r=0) R3_w=pkt(r=0)\\n4: (07) r3 += 14                      ; R3_w=pkt(off=14,r=0)\\n5: (2d) if r3 > r2 goto pc+15         ; R2_w=pkt_end() R3_w=pkt(off=14,r=14)\\n; if (bpf_ntohs(eth->h_proto) != ETH_P_IP) @ candidate.bpf.c:32\\n6: (69) r4 = *(u16 *)(r1 +12)         ; R1_w=pkt(r=14) R4_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=0xffff,var_off=(0x0; 0xffff))\\n7: (55) if r4 != 0x8 goto pc+13       ; R4_w=8\\n; if ((void *)(iph + 1) > data_end) @ candidate.bpf.c:36\\n8: (bf) r4 = r1                       ; R1_w=pkt(r=14) R4_w=pkt(r=14)\\n9: (07) r4 += 34                      ; R4=pkt(off=34,r=14)\\n10: (2d) if r4 > r2 goto pc+10        ; R2=pkt_end() R4=pkt(off=34,r=34)\\n; if (iph->protocol != IPPROTO_UDP) @ candidate.bpf.c:38\\n11: (71) r5 = *(u8 *)(r3 +9)          ; R3=pkt(off=14,r=34) R5_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=255,var_off=(0x0; 0xff))\\n12: (55) if r5 != 0x11 goto pc+8      ; R5_w=17\\n; asm volatile(\\\"%[cookie] <<= 32; %[cookie] >>= 32\\\" : [cookie] \\\"+r\\\"(cookie)); @ candidate.bpf.c:42\\n13: (67) r3 <<= 32\\nR3 pointer arithmetic with <<= operator prohibited\\nverification time 67 usec\\nstack depth 0\\nprocessed 14 insns (limit 1000000) max_states_per_insn 0 total_states 1 peak_states 1 mark_read 1\\n-- END PROG LOAD LOG --\\nlibbpf: prog 'alu32_pointer_cookie': failed to load: -EACCES\\nlibbpf: failed to load object 'bpfix-bench/results/ablation-main75-current-server/preflight/20260802T073010572805Z-pid1057399/bpfix-neutral/alu32_pointer_cookie_001/attempt-1/work/prog.o'\\nError: failed to load object file\\n\",\n    \"stdout\": \"\"\n  },\n  \"map_setup\": [],\n  \"passed\": false,\n  \"source\": \"/home/yunwei37/workspace/bpfix/bpfix-bench/results/ablation-main75-current-server/preflight/20260802T073010572805Z-pid1057399/bpfix-neutral/alu32_pointer_cookie_001/attempt-1/candidate.bpf.c\",\n  \"source_semantics\": [],\n  \"success_log_checks\": []\n}\n",
+      "oracle_wall_time_seconds": 0.243731,
+      "prompt_build_wall_time_seconds": 0.000117,
+      "prompt_chars": 2910,
+      "prompt_sha256": "db9e34bd91f2d9ea6a9e802f3bed78258761074caf45d86bafebbbfa7fb4d2a3",
+      "prompt_token_match": null,
+      "reasoning_chars": null,
+      "response_chars": 1182,
+      "source_chars": 1176,
+      "status": "fail",
+      "token_usage": {
+        "cached_prompt_tokens": 21,
+        "completion_tokens": 415,
+        "prompt_tokens": 860,
+        "reasoning_tokens": null,
+        "total_tokens": 1275
+      }
+    }
+  ],
+  "run_metadata": {
+    "case_selection": {
+      "case_overrides": [
+        "alu32_pointer_cookie_001"
+      ],
+      "split": {
+        "allow_empty": false,
+        "case_count": null,
+        "expected_count": null,
+        "path": null,
+        "sha256": null
+      }
+    },
+    "generated_at": "2026-08-02T07:30:10.572894+00:00",
+    "git": {
+      "commit": "89f54847097dbf5e205e06bbaeb4e3965df7871e",
+      "dirty": false
+    },
+    "llm": {
+      "api_key_env": "LLAMA_API_KEY",
+      "base_url": "http://127.0.0.1:18185/v1",
+      "extra_body": null,
+      "llama_cpp": {
+        "commit": "2d973636e292ee6f75fadcf08d29cb33511f509f",
+        "path": "/home/yunwei37/workspace/llama.cpp-latest"
+      },
+      "max_tokens": 8192,
+      "model": "Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M",
+      "model_file": {
+        "exists": true,
+        "path": "/home/yunwei37/.cache/huggingface/hub/models--DevQuasar--Qwen.Qwen3.6-27B-GGUF/blobs/f7da7eee0f1ffa280742a293f02052d1f58d3253c9e109c1be8fb0067eb1b3a9",
+        "sha256": "f7da7eee0f1ffa280742a293f02052d1f58d3253c9e109c1be8fb0067eb1b3a9",
+        "size_bytes": 16547398976
+      },
+      "server": {
+        "models": {
+          "data": [
+            {
+              "aliases": [
+                "/home/yunwei37/.cache/huggingface/hub/models--DevQuasar--Qwen.Qwen3.6-27B-GGUF/snapshots/b19fa7e8538a1a5f66452eb3b3167e026177be1d/Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M.gguf"
+              ],
+              "created": 1785655810,
+              "id": "/home/yunwei37/.cache/huggingface/hub/models--DevQuasar--Qwen.Qwen3.6-27B-GGUF/snapshots/b19fa7e8538a1a5f66452eb3b3167e026177be1d/Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M.gguf",
+              "meta": {
+                "ftype": "Q4_K - Medium",
+                "n_ctx": 32768,
+                "n_ctx_train": 262144,
+                "n_embd": 5120,
+                "n_params": 26895998464,
+                "n_vocab": 248320,
+                "size": 16536406016,
+                "vocab_type": 2
+              },
+              "object": "model",
+              "owned_by": "llamacpp",
+              "tags": []
+            }
+          ],
+          "models": [
+            {
+              "capabilities": [
+                "completion"
+              ],
+              "description": "",
+              "details": {
+                "families": [
+                  ""
+                ],
+                "family": "",
+                "format": "gguf",
+                "parameter_size": "",
+                "parent_model": "",
+                "quantization_level": ""
+              },
+              "digest": "",
+              "model": "/home/yunwei37/.cache/huggingface/hub/models--DevQuasar--Qwen.Qwen3.6-27B-GGUF/snapshots/b19fa7e8538a1a5f66452eb3b3167e026177be1d/Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M.gguf",
+              "modified_at": "",
+              "name": "/home/yunwei37/.cache/huggingface/hub/models--DevQuasar--Qwen.Qwen3.6-27B-GGUF/snapshots/b19fa7e8538a1a5f66452eb3b3167e026177be1d/Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M.gguf",
+              "parameters": "",
+              "size": "",
+              "tags": [
+                ""
+              ],
+              "type": "model"
+            }
+          ],
+          "object": "list"
+        },
+        "reachable": true
+      },
+      "temperature": 0.0,
+      "timeout_sec": 900.0
+    },
+    "prompt_mode": {
+      "mode": "bpfix-neutral",
+      "skill_files": []
+    },
+    "repair_policy": {
+      "max_attempts": 1
+    },
+    "runner": {
+      "argv": [
+        "bpfix-bench/tools/run_suite.py",
+        "--case",
+        "alu32_pointer_cookie_001",
+        "--mode",
+        "bpfix-neutral",
+        "--repair-attempts",
+        "1",
+        "--results-dir",
+        "bpfix-bench/results/ablation-main75-current-server/preflight",
+        "--base-url",
+        "http://127.0.0.1:18185/v1",
+        "--model",
+        "Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M",
+        "--model-path",
+        "/home/yunwei37/.cache/huggingface/hub/models--DevQuasar--Qwen.Qwen3.6-27B-GGUF/snapshots/b19fa7e8538a1a5f66452eb3b3167e026177be1d/Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M.gguf",
+        "--model-sha256",
+        "f7da7eee0f1ffa280742a293f02052d1f58d3253c9e109c1be8fb0067eb1b3a9",
+        "--llama-cpp-dir",
+        "/home/yunwei37/workspace/llama.cpp-latest",
+        "--max-tokens",
+        "8192",
+        "--temperature",
+        "0",
+        "--timeout",
+        "900"
+      ]
+    },
+    "toolchain": {
+      "bpftool": [
+        "bpftool v7.7.0",
+        "using libbpf v1.7",
+        "features: llvm, skeletons"
+      ],
+      "clang": "Ubuntu clang version 18.1.3 (1ubuntu1)",
+      "kernel": "Linux lab 6.15.11-061511-generic #202508201748 SMP PREEMPT_DYNAMIC Wed Aug 20 20:23:19 UTC 2025 x86_64 x86_64 x86_64 GNU/Linux",
+      "llvm_objdump": "Ubuntu LLVM version 18.1.3"
+    }
+  },
+  "total": 1
+}

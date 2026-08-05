@@ -1,0 +1,40 @@
+{
+  "api_timings": {
+    "cache_n": 21,
+    "predicted_ms": 112668.548,
+    "predicted_n": 8192,
+    "predicted_per_second": 72.70884506295404,
+    "predicted_per_token_ms": 13.75348486328125,
+    "prompt_ms": 286.632,
+    "prompt_n": 609,
+    "prompt_per_second": 2124.6755421585867,
+    "prompt_per_token_ms": 0.4706600985221675
+  },
+  "api_usage": {
+    "completion_tokens": 8192,
+    "prompt_tokens": 630,
+    "prompt_tokens_details": {
+      "cached_tokens": 21
+    },
+    "total_tokens": 8822
+  },
+  "attempt": 1,
+  "attempt_wall_time_seconds": 112.968253,
+  "error": "model response did not contain a complete C source block",
+  "failure_stage": "extract_source",
+  "finish_reason": "length",
+  "model_wall_time_seconds": 112.967844,
+  "oracle_wall_time_seconds": null,
+  "prompt_chars": 2073,
+  "prompt_sha256": "f3deead04b996b5be61f5b99cf83eff095e0e58fe4f64d66a3d44f61f85735b8",
+  "reasoning_chars": null,
+  "response_chars": 22878,
+  "status": "model_error",
+  "token_usage": {
+    "cached_prompt_tokens": 21,
+    "completion_tokens": 8192,
+    "prompt_tokens": 630,
+    "reasoning_tokens": null,
+    "total_tokens": 8822
+  }
+}

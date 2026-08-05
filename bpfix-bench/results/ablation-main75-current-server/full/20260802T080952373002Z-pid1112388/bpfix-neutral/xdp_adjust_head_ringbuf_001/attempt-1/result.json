@@ -1,0 +1,17 @@
+{
+  "api_timings": null,
+  "api_usage": null,
+  "attempt": 1,
+  "attempt_wall_time_seconds": 0.000103,
+  "error": "<urlopen error [Errno 111] Connection refused>",
+  "failure_stage": "model_call",
+  "finish_reason": null,
+  "model_wall_time_seconds": 7.7e-05,
+  "oracle_wall_time_seconds": null,
+  "prompt_chars": 3406,
+  "prompt_sha256": "eff37c8940ef671fcdee01b8938b834a090e227b49d87e4cdbd6bbb6cf548d52",
+  "reasoning_chars": null,
+  "response_chars": null,
+  "status": "model_error",
+  "token_usage": null
+}

@@ -1,0 +1,86 @@
+#ifndef __TARGET_ARCH_x86
+#define __TARGET_ARCH_x86 1
+#endif
+
+#include <vmlinux.h>
+#include <bpf/bpf_helpers.h>
+#include <bpf/bpf_endian.h>
+
+#ifndef XDP_PASS
+#define XDP_PASS 2
+#endif
+#ifndef XDP_DROP
+#define XDP_DROP 1
+#endif
+#ifndef ETH_P_IP
+#define ETH_P_IP 0x0800
+#endif
+#ifndef ETH_P_IPV6
+#define ETH_P_IPV6 0x86DD
+#endif
+#ifndef IPPROTO_UDP
+#define IPPROTO_UDP 17
+#endif
+
+SEC("xdp")
+int packet_eth_off_by_one(struct xdp_md *ctx)
+{
+    void *data = (void *)(long)ctx->data;
+    void *data_end = (void *)(long)ctx->data_end;
+    __u16 proto;
+    __u8 nexthdr;
+
+    // Check for minimum Ethernet header + IPv6 header + next header byte
+    // Ethernet header is 14 bytes.
+    // We need to read proto at offset 12 (size 2), so we need at least 14 bytes.
+    // If IPv6, we need to read nexthdr at offset 40 (14 + 26? No, IPv6 header is 40 bytes total from start of packet? No.
+    // Ethernet (14) + IPv6 Header (40 bytes) -> Next Header is at offset 14 + 6 = 20?
+    // Let's re-verify offsets.
+    // Ethernet: 14 bytes.
+    // IP Proto is at offset 12-13.
+    // If IPv6:
+    // IPv6 header starts at offset 14.
+    // IPv6 header length is 40 bytes.
+    // Next Header field is at offset 6 within IPv6 header.
+    // So absolute offset is 14 + 6 = 20.
+    // The previous attempt failed because it checked `data + 40 > data_end` but then accessed `data + 40`.
+    // Wait, the previous attempt changed the check to 40 and access to 40.
+    // The original code accessed `data + 20`.
+    // Let's look at the original error:
+    // `if (data + 13 > data_end)` -> check fails for offset 12+2=14.
+    // Access `data + 12` size 2.
+    // The verifier says: `invalid access to packet, off=12 size=2, R1(id=0,off=12,r=13)`
+    // `r=13` means the range of valid offsets known to the verifier for R1 is [0, 13).
+    // So offset 12 is valid, but 12+2=14 is not <= 13.
+    // So the check `data + 13 > data_end` is insufficient. It must be `data + 14 > data_end`.
+    
+    // Let's fix the first check to 14.
+    if (data + 14 > data_end)
+        return XDP_PASS;
+
+    proto = *(__u16 *)(data + 12);
+    if (bpf_ntohs(proto) == ETH_P_IP)
+        return XDP_DROP;
+    if (bpf_ntohs(proto) != ETH_P_IPV6)
+        return XDP_PASS;
+
+    // If IPv6, we need to access the Next Header field.
+    // IPv6 header starts at data + 14.
+    // Next Header is at offset 6 within IPv6 header.
+    // Absolute offset: 14 + 6 = 20.
+    // Size: 1 byte.
+    // So we need to check `data + 21 > data_end` or `data + 20 + 1 > data_end`.
+    // The original code checked `data + 20 > data_end` and accessed `data + 20`.
+    // This is likely the same off-by-one error.
+    // If we check `data + 20 > data_end`, the verifier knows R1 is valid up to 20.
+    // Accessing `data + 20` size 1 requires validity up to 21.
+    // So we must check `data + 21 > data_end`.
+    
+    if (data + 21 > data_end)
+        return XDP_PASS;
+        
+    nexthdr = *(__u8 *)(data + 20);
+    return nexthdr == IPPROTO_UDP ? XDP_DROP : XDP_PASS;
+}
+
+char _license[] SEC("license") = "GPL";

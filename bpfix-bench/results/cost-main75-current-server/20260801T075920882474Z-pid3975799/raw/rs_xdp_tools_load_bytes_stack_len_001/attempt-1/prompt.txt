@@ -1,0 +1,109 @@
+You are fixing one eBPF verifier rejection.
+
+Return only one complete replacement C source file in a fenced ```c block.
+Do not explain. Do not output a diff. Preserve the intended packet/helper
+semantics; do not remove the program, maps, SEC() section, or license.
+
+
+
+Source file:
+```c
+#ifndef __TARGET_ARCH_x86
+#define __TARGET_ARCH_x86 1
+#endif
+
+#include <vmlinux.h>
+#include <bpf/bpf_helpers.h>
+
+#ifndef XDP_ABORTED
+#define XDP_ABORTED 0
+#endif
+#ifndef XDP_DROP
+#define XDP_DROP 1
+#endif
+#ifndef XDP_PASS
+#define XDP_PASS 2
+#endif
+
+#define HEAD_BYTES 12
+#define TAIL_BYTES 6
+#define WIRE_OFFSET 2
+#define WIRE_BYTES (HEAD_BYTES + TAIL_BYTES)
+
+SEC("xdp")
+int rs_xdp_tools_load_bytes_stack_len(struct xdp_md *ctx)
+{
+    __u8 head[HEAD_BYTES];
+    __u8 tail[TAIL_BYTES];
+    int err;
+
+    err = bpf_xdp_load_bytes(ctx, WIRE_OFFSET, head, WIRE_BYTES);
+    if (err)
+        return XDP_ABORTED;
+
+    if (head[0] == 'B' && head[9] == 'X' && tail[1] == 'Z' && tail[5] == '!')
+        return XDP_DROP;
+    return XDP_PASS;
+}
+
+char _license[] SEC("license") = "GPL";
+
+```
+
+raw verifier log:
+```text
+libbpf: loading object from <work-dir>/prog.o
+libbpf: elf: section(3) xdp, size 152, link 0, flags 6, type=1
+libbpf: sec 'xdp': found program 'rs_xdp_tools_load_bytes_stack_len' at insn offset 0 (0 bytes), code size 19 insns (152 bytes)
+libbpf: elf: section(4) license, size 4, link 0, flags 3, type=1
+libbpf: license of <work-dir>/prog.o is GPL
+libbpf: elf: section(14) .BTF, size 775, link 0, flags 0, type=1
+libbpf: elf: section(16) .BTF.ext, size 224, link 0, flags 0, type=1
+libbpf: elf: section(24) .symtab, size 360, link 1, flags 0, type=2
+libbpf: looking for externs among 15 symbols...
+libbpf: collected 0 externs total
+libbpf: object 'prog': failed (-95) to create BPF token from '/sys/fs/bpf', skipping optional step...
+libbpf: prog 'rs_xdp_tools_load_bytes_stack_len': BPF program load failed: -EINVAL
+libbpf: prog 'rs_xdp_tools_load_bytes_stack_len': -- BEGIN PROG LOAD LOG --
+func#0 @0
+Live regs before insn:
+  0: .1........ (b7) r6 = 0
+  1: .1....6... (bf) r3 = r10
+  2: .1.3..6... (07) r3 += -10
+  3: .1.3..6... (b7) r2 = 0
+  4: .123..6... (b7) r4 = 14
+  5: .1234.6... (85) call bpf_xdp_load_bytes#189
+  6: 0.....6... (67) r0 <<= 32
+  7: 0.....6... (77) r0 >>= 32
+  8: 0.....6... (55) if r0 != 0x0 goto pc+8
+  9: .......... (71) r1 = *(u8 *)(r10 -10)
+ 10: .1........ (55) if r1 != 0x42 goto pc+5
+ 11: .......... (71) r1 = *(u8 *)(r10 -1)
+ 12: .1........ (55) if r1 != 0x58 goto pc+3
+ 13: .......... (b7) r6 = 1
+ 14: ......6... (71) r1 = *(u8 *)(r10 +3)
+ 15: .1....6... (15) if r1 == 0x5a goto pc+1
+ 16: .......... (b7) r6 = 2
+ 17: ......6... (bf) r0 = r6
+ 18: 0......... (95) exit
+0: R1=ctx() R10=fp0
+; int rs_xdp_tools_load_bytes_stack_len(struct xdp_md *ctx) @ buggy.bpf.c:22
+0: (b7) r6 = 0                        ; R6_w=0
+1: (bf) r3 = r10                      ; R3_w=fp0 R10=fp0
+;  @ buggy.bpf.c:0
+2: (07) r3 += -10                     ; R3_w=fp-10
+; err = bpf_xdp_load_bytes(ctx, 0, buf, WIRE_BYTES); @ buggy.bpf.c:27
+3: (b7) r2 = 0                        ; R2_w=0
+4: (b7) r4 = 14                       ; R4_w=14
+5: (85) call bpf_xdp_load_bytes#189
+invalid write to stack R3 off=-10 size=14
+verification time 0 usec
+stack depth 0
+processed 6 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_states 0 mark_read 0
+-- END PROG LOAD LOG --
+libbpf: prog 'rs_xdp_tools_load_bytes_stack_len': failed to load: -EINVAL
+libbpf: failed to load object '<work-dir>/prog.o'
+Error: failed to load object file
+
+```
+

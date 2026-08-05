@@ -1,0 +1,61 @@
+{
+  "api_timings": null,
+  "api_usage": null,
+  "attempt": 1,
+  "attempt_wall_time_seconds": 0.000105,
+  "attempts": [
+    {
+      "api_timings": null,
+      "api_usage": null,
+      "attempt": 1,
+      "attempt_wall_time_seconds": 0.000105,
+      "error": "<urlopen error [Errno 111] Connection refused>",
+      "failure_stage": "model_call",
+      "finish_reason": null,
+      "model_wall_time_seconds": 7.9e-05,
+      "oracle_wall_time_seconds": null,
+      "prompt_chars": 2939,
+      "prompt_sha256": "6bd5caea3f12f5e95f4d565ceaeb1f76944d2e56d922e37391f7912fd8d8238f",
+      "reasoning_chars": null,
+      "response_chars": null,
+      "status": "model_error",
+      "token_usage": null
+    }
+  ],
+  "case": "rs_tutorial_user_ringbuf_dynptr_merge_001",
+  "cost": {
+    "attempt_wall_time_seconds": 0.000105,
+    "cached_prompt_tokens": null,
+    "completion_tokens": null,
+    "model_calls": 1,
+    "model_wall_time_seconds": 7.9e-05,
+    "oracle_wall_time_seconds": 0,
+    "prompt_tokens": null,
+    "reasoning_tokens": null,
+    "token_usage_coverage": {
+      "cached_prompt_tokens": 0,
+      "completion_tokens": 0,
+      "prompt_tokens": 0,
+      "reasoning_tokens": 0,
+      "total_tokens": 0
+    },
+    "total_tokens": null
+  },
+  "diagnostic_chars": 1202,
+  "error": "<urlopen error [Errno 111] Connection refused>",
+  "failure_stage": "model_call",
+  "finish_reason": null,
+  "mode": "bpfix-neutral",
+  "model": "Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M",
+  "model_wall_time_seconds": 7.9e-05,
+  "oracle_wall_time_seconds": null,
+  "prompt_build_wall_time_seconds": 7.2e-05,
+  "prompt_chars": 2939,
+  "prompt_sha256": "6bd5caea3f12f5e95f4d565ceaeb1f76944d2e56d922e37391f7912fd8d8238f",
+  "prompt_token_match": null,
+  "reasoning_chars": null,
+  "response_chars": null,
+  "source_chars": 1401,
+  "status": "model_error",
+  "token_usage": null
+}

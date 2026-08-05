@@ -1,0 +1,43 @@
+{
+  "api_timings": {
+    "cache_n": 21,
+    "predicted_ms": 14226.771,
+    "predicted_n": 1050,
+    "predicted_per_second": 73.80451966226208,
+    "predicted_per_token_ms": 13.549305714285715,
+    "prompt_ms": 511.62,
+    "prompt_n": 1371,
+    "prompt_per_second": 2679.723232086314,
+    "prompt_per_token_ms": 0.37317286652078774
+  },
+  "api_usage": {
+    "completion_tokens": 1050,
+    "prompt_tokens": 1392,
+    "prompt_tokens_details": {
+      "cached_tokens": 21
+    },
+    "total_tokens": 2442
+  },
+  "attempt": 1,
+  "attempt_wall_time_seconds": 15.058101,
+  "candidate": "bpfix-bench/results/ablation-main75-current-server/full/20260802T074345660111Z-pid1071164/matched-raw-tail/rs_bpftime_sslsniff_perf_copy_len_001/attempt-1/candidate.bpf.c",
+  "failure_stage": "compile",
+  "finish_reason": "stop",
+  "model_wall_time_seconds": 14.751431,
+  "oracle_returncode": 1,
+  "oracle_stderr": "",
+  "oracle_stdout": "{\n  \"compile\": {\n    \"argv\": [\n      \"clang\",\n      \"-target\",\n      \"bpf\",\n      \"-O2\",\n      \"-g\",\n      \"-I\",\n      \"/usr/include\",\n      \"-D__TARGET_ARCH_x86\",\n      \"-c\",\n      \"/home/yunwei37/workspace/bpfix/bpfix-bench/results/ablation-main75-current-server/full/20260802T074345660111Z-pid1071164/matched-raw-tail/rs_bpftime_sslsniff_perf_copy_len_001/attempt-1/candidate.bpf.c\",\n      \"-o\",\n      \"bpfix-bench/results/ablation-main75-current-server/full/20260802T074345660111Z-pid1071164/matched-raw-tail/rs_bpftime_sslsniff_perf_copy_len_001/attempt-1/work/prog.o\"\n    ],\n    \"returncode\": 1,\n    \"stderr\": \"/home/yunwei37/workspace/bpfix/bpfix-bench/results/ablation-main75-current-server/full/20260802T074345660111Z-pid1071164/matched-raw-tail/rs_bpftime_sslsniff_perf_copy_len_001/attempt-1/candidate.bpf.c:110:9: error: A call to built-in function 'memcpy' is not supported.\\n  110 |         __builtin_memcpy(data->buf, stack_buf, copy_size);\\n      |         ^\\n1 error generated.\\n\",\n    \"stdout\": \"\"\n  },\n  \"expect_reject\": false,\n  \"load\": null,\n  \"load_log_semantics\": [],\n  \"passed\": false,\n  \"source\": \"/home/yunwei37/workspace/bpfix/bpfix-bench/results/ablation-main75-current-server/full/20260802T074345660111Z-pid1071164/matched-raw-tail/rs_bpftime_sslsniff_perf_copy_len_001/attempt-1/candidate.bpf.c\",\n  \"source_semantics\": []\n}\n",
+  "oracle_wall_time_seconds": 0.306122,
+  "prompt_chars": 3760,
+  "prompt_sha256": "f688a27eac4f4dd417d9e2b085427abf1a637ac19a0f91cec264df790fa33ff7",
+  "reasoning_chars": null,
+  "response_chars": 3063,
+  "status": "fail",
+  "token_usage": {
+    "cached_prompt_tokens": 21,
+    "completion_tokens": 1050,
+    "prompt_tokens": 1392,
+    "reasoning_tokens": null,
+    "total_tokens": 2442
+  }
+}

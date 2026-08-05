@@ -1,0 +1,113 @@
+{
+  "api_timings": {
+    "cache_n": 21,
+    "predicted_ms": 3669.124,
+    "predicted_n": 273,
+    "predicted_per_second": 74.40468079029218,
+    "predicted_per_token_ms": 13.440014652014652,
+    "prompt_ms": 321.915,
+    "prompt_n": 744,
+    "prompt_per_second": 2311.169097432552,
+    "prompt_per_token_ms": 0.4326814516129033
+  },
+  "api_usage": {
+    "completion_tokens": 273,
+    "prompt_tokens": 765,
+    "prompt_tokens_details": {
+      "cached_tokens": 21
+    },
+    "total_tokens": 1038
+  },
+  "attempt": 1,
+  "attempt_wall_time_seconds": 4.235906,
+  "attempts": [
+    {
+      "api_timings": {
+        "cache_n": 21,
+        "predicted_ms": 3669.124,
+        "predicted_n": 273,
+        "predicted_per_second": 74.40468079029218,
+        "predicted_per_token_ms": 13.440014652014652,
+        "prompt_ms": 321.915,
+        "prompt_n": 744,
+        "prompt_per_second": 2311.169097432552,
+        "prompt_per_token_ms": 0.4326814516129033
+      },
+      "api_usage": {
+        "completion_tokens": 273,
+        "prompt_tokens": 765,
+        "prompt_tokens_details": {
+          "cached_tokens": 21
+        },
+        "total_tokens": 1038
+      },
+      "attempt": 1,
+      "attempt_wall_time_seconds": 4.235906,
+      "candidate": "bpfix-bench/results/ablation-main75-current-server/full/20260802T082035959683Z-pid1127965/bpfix-neutral/packet_checked_wrong_base_001/attempt-1/candidate.bpf.c",
+      "failure_stage": "auxiliary_proof_predicate",
+      "finish_reason": "stop",
+      "model_wall_time_seconds": 4.00468,
+      "oracle_returncode": 1,
+      "oracle_stderr": "",
+      "oracle_stdout": "{\n  \"compile\": {\n    \"argv\": [\n      \"clang\",\n      \"-target\",\n      \"bpf\",\n      \"-O2\",\n      \"-g\",\n      \"-I\",\n      \"/usr/include\",\n      \"-D__TARGET_ARCH_x86\",\n      \"-c\",\n      \"/home/yunwei37/workspace/bpfix/bpfix-bench/results/ablation-main75-current-server/full/20260802T082035959683Z-pid1127965/bpfix-neutral/packet_checked_wrong_base_001/attempt-1/candidate.bpf.c\",\n      \"-o\",\n      \"bpfix-bench/results/ablation-main75-current-server/full/20260802T082035959683Z-pid1127965/bpfix-neutral/packet_checked_wrong_base_001/attempt-1/work/prog.o\"\n    ],\n    \"returncode\": 0,\n    \"stderr\": \"\",\n    \"stdout\": \"\"\n  },\n  \"expect_reject\": false,\n  \"functional\": [],\n  \"load\": {\n    \"argv\": [\n      \"sudo\",\n      \"bpftool\",\n      \"-d\",\n      \"prog\",\n      \"load\",\n      \"bpfix-bench/results/ablation-main75-current-server/full/20260802T082035959683Z-pid1127965/bpfix-neutral/packet_checked_wrong_base_001/attempt-1/work/prog.o\",\n      \"/sys/fs/bpf/bpfix_test_candidate_bpf_1130885\",\n      \"type\",\n      \"xdp\"\n    ],\n    \"returncode\": 0,\n    \"stderr\": \"libbpf: loading object from bpfix-bench/results/ablation-main75-current-server/full/20260802T082035959683Z-pid1127965/bpfix-neutral/packet_checked_wrong_base_001/attempt-1/work/prog.o\\nlibbpf: elf: section(3) xdp, size 112, link 0, flags 6, type=1\\nlibbpf: sec 'xdp': found program 'packet_checked_wrong_base' at insn offset 0 (0 bytes), code size 14 insns (112 bytes)\\nlibbpf: elf: section(4) license, size 4, link 0, flags 3, type=1\\nlibbpf: license of bpfix-bench/results/ablation-main75-current-server/full/20260802T082035959683Z-pid1127965/bpfix-neutral/packet_checked_wrong_base_001/attempt-1/work/prog.o is GPL\\nlibbpf: elf: section(14) .BTF, size 943, link 0, flags 0, type=1\\nlibbpf: elf: section(16) .BTF.ext, size 236, link 0, flags 0, type=1\\nlibbpf: elf: section(24) .symtab, size 336, link 1, flags 0, type=2\\nlibbpf: looking for externs among 14 symbols...\\nlibbpf: collected 0 externs total\\nlibbpf: object 'prog': failed (-95) to create BPF token from '/sys/fs/bpf', skipping optional step...\\nlibbpf: loaded kernel BTF from '/sys/kernel/btf/vmlinux'\\nlibbpf: sec 'xdp': found 2 CO-RE relocations\\nlibbpf: CO-RE relocating [2] struct xdp_md: found target candidate [14922] struct xdp_md in [vmlinux]\\nlibbpf: prog 'packet_checked_wrong_base': relo #0: <byte_off> [2] struct xdp_md.data (0:0 @ offset 0)\\nlibbpf: prog 'packet_checked_wrong_base': relo #0: matching candidate #0 <byte_off> [14922] struct xdp_md.data (0:0 @ offset 0)\\nlibbpf: prog 'packet_checked_wrong_base': relo #0: patched insn #1 (LDX/ST/STX) off 0 -> 0\\nlibbpf: prog 'packet_checked_wrong_base': relo #1: <byte_off> [2] struct xdp_md.data_end (0:1 @ offset 4)\\nlibbpf: prog 'packet_checked_wrong_base': relo #1: matching candidate #0 <byte_off> [14922] struct xdp_md.data_end (0:1 @ offset 4)\\nlibbpf: prog 'packet_checked_wrong_base': relo #1: patched insn #2 (LDX/ST/STX) off 4 -> 4\\nlibbpf: prog 'packet_checked_wrong_base': -- BEGIN PROG LOAD LOG --\\nfunc#0 @0\\nLive regs before insn:\\n  0: .1........ (b7) r0 = 2\\n  1: 01........ (61) r2 = *(u32 *)(r1 +0)\\n  2: 012....... (61) r1 = *(u32 *)(r1 +4)\\n  3: 012....... (bf) r3 = r2\\n  4: 0123...... (07) r3 += 14\\n  5: 0123...... (2d) if r3 > r1 goto pc+7\\n  6: 012....... (bf) r3 = r2\\n  7: 0123...... (07) r3 += 15\\n  8: 0123...... (2d) if r3 > r1 goto pc+4\\n  9: ..2....... (69) r1 = *(u16 *)(r2 +13)\\n 10: .1........ (b7) r0 = 1\\n 11: 01........ (15) if r1 == 0x8 goto pc+1\\n 12: .......... (b7) r0 = 2\\n 13: 0......... (95) exit\\n0: R1=ctx() R10=fp0\\n; int packet_checked_wrong_base(struct xdp_md *ctx) @ candidate.bpf.c:20\\n0: (b7) r0 = 2                        ; R0_w=2\\n; void *data = (void *)(long)ctx->data; @ candidate.bpf.c:22\\n1: (61) r2 = *(u32 *)(r1 +0)          ; R1=ctx() R2_w=pkt(r=0)\\n; void *data_end = (void *)(long)ctx->data_end; @ candidate.bpf.c:23\\n2: (61) r1 = *(u32 *)(r1 +4)          ; R1_w=pkt_end()\\n; if (data + 14 > data_end) @ candidate.bpf.c:27\\n3: (bf) r3 = r2                       ; R2_w=pkt(r=0) R3_w=pkt(r=0)\\n4: (07) r3 += 14                      ; R3_w=pkt(off=14,r=0)\\n5: (2d) if r3 > r1 goto pc+7          ; R1_w=pkt_end() R3_w=pkt(off=14,r=14)\\n6: (bf) r3 = r2                       ; R2_w=pkt(r=14) R3_w=pkt(r=14)\\n7: (07) r3 += 15                      ; R3_w=pkt(off=15,r=14)\\n8: (2d) if r3 > r1 goto pc+4          ; R1_w=pkt_end() R3_w=pkt(off=15,r=15)\\n; proto = *(__u16 *)(shifted + 12); @ candidate.bpf.c:34\\n9: (69) r1 = *(u16 *)(r2 +13)         ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=0xffff,var_off=(0x0; 0xffff)) R2_w=pkt(r=15)\\n10: (b7) r0 = 1                       ; R0=1\\n; return bpf_ntohs(proto) == ETH_P_IP ? XDP_DROP : XDP_PASS; @ candidate.bpf.c:35\\n11: (15) if r1 == 0x8 goto pc+1       ; R1=scalar(smin=smin32=0,smax=umax=smax32=umax32=0xffff,var_off=(0x0; 0xffff))\\n12: (b7) r0 = 2                       ; R0_w=2\\n; } @ candidate.bpf.c:36\\n13: (95) exit\\n\\nfrom 11 to 13: R0=1 R1=8 R2=pkt(r=15) R3=pkt(off=15,r=15) R10=fp0\\n13: R0=1 R1=8 R2=pkt(r=15) R3=pkt(off=15,r=15) R10=fp0\\n13: (95) exit\\n\\nfrom 8 to 13: R0_w=2 R1_w=pkt_end() R2_w=pkt(r=14) R3_w=pkt(off=15,r=0xfffffffffffffffe) R10=fp0\\n13: R0_w=2 R1_w=pkt_end() R2_w=pkt(r=14) R3_w=pkt(off=15,r=0xfffffffffffffffe) R10=fp0\\n13: (95) exit\\n\\nfrom 5 to 13: R0_w=2 R1_w=pkt_end() R2_w=pkt(r=0) R3_w=pkt(off=14,r=0xfffffffffffffffe) R10=fp0\\n13: R0_w=2 R1_w=pkt_end() R2_w=pkt(r=0) R3_w=pkt(off=14,r=0xfffffffffffffffe) R10=fp0\\n13: (95) exit\\nverification time 73 usec\\nstack depth 0\\nprocessed 17 insns (limit 1000000) max_states_per_insn 0 total_states 1 peak_states 1 mark_read 1\\n-- END PROG LOAD LOG --\\n\",\n    \"stdout\": \"\"\n  },\n  \"map_setup\": [],\n  \"passed\": false,\n  \"source\": \"/home/yunwei37/workspace/bpfix/bpfix-bench/results/ablation-main75-current-server/full/20260802T082035959683Z-pid1127965/bpfix-neutral/packet_checked_wrong_base_001/attempt-1/candidate.bpf.c\",\n  \"source_semantics\": [\n    {\n      \"kind\": \"source_predicate\",\n      \"name\": \"case source invariant A\",\n      \"passed\": false\n    }\n  ],\n  \"success_log_checks\": []\n}\n",
+      "oracle_wall_time_seconds": 0.23052,
+      "prompt_chars": 2578,
+      "prompt_sha256": "41519c7609ee626e67c4102fb2de43739162c1a98ecb78ef95bb7aa4115b9d40",
+      "reasoning_chars": null,
+      "response_chars": 760,
+      "status": "fail",
+      "token_usage": {
+        "cached_prompt_tokens": 21,
+        "completion_tokens": 273,
+        "prompt_tokens": 765,
+        "reasoning_tokens": null,
+        "total_tokens": 1038
+      }
+    }
+  ],
+  "candidate": "bpfix-bench/results/ablation-main75-current-server/full/20260802T082035959683Z-pid1127965/bpfix-neutral/packet_checked_wrong_base_001/attempt-1/candidate.bpf.c",
+  "case": "packet_checked_wrong_base_001",
+  "cost": {
+    "attempt_wall_time_seconds": 4.235906,
+    "cached_prompt_tokens": 21,
+    "completion_tokens": 273,
+    "model_calls": 1,
+    "model_wall_time_seconds": 4.00468,
+    "oracle_wall_time_seconds": 0.23052,
+    "prompt_tokens": 765,
+    "reasoning_tokens": null,
+    "token_usage_coverage": {
+      "cached_prompt_tokens": 1,
+      "completion_tokens": 1,
+      "prompt_tokens": 1,
+      "reasoning_tokens": 0,
+      "total_tokens": 1
+    },
+    "total_tokens": 1038
+  },
+  "diagnostic_chars": 1550,
+  "failure_stage": "auxiliary_proof_predicate",
+  "finish_reason": "stop",
+  "mode": "bpfix-neutral",
+  "model": "Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M",
+  "model_wall_time_seconds": 4.00468,
+  "oracle_returncode": 1,
+  "oracle_stderr": "",
+  "oracle_stdout": "{\n  \"compile\": {\n    \"argv\": [\n      \"clang\",\n      \"-target\",\n      \"bpf\",\n      \"-O2\",\n      \"-g\",\n      \"-I\",\n      \"/usr/include\",\n      \"-D__TARGET_ARCH_x86\",\n      \"-c\",\n      \"/home/yunwei37/workspace/bpfix/bpfix-bench/results/ablation-main75-current-server/full/20260802T082035959683Z-pid1127965/bpfix-neutral/packet_checked_wrong_base_001/attempt-1/candidate.bpf.c\",\n      \"-o\",\n      \"bpfix-bench/results/ablation-main75-current-server/full/20260802T082035959683Z-pid1127965/bpfix-neutral/packet_checked_wrong_base_001/attempt-1/work/prog.o\"\n    ],\n    \"returncode\": 0,\n    \"stderr\": \"\",\n    \"stdout\": \"\"\n  },\n  \"expect_reject\": false,\n  \"functional\": [],\n  \"load\": {\n    \"argv\": [\n      \"sudo\",\n      \"bpftool\",\n      \"-d\",\n      \"prog\",\n      \"load\",\n      \"bpfix-bench/results/ablation-main75-current-server/full/20260802T082035959683Z-pid1127965/bpfix-neutral/packet_checked_wrong_base_001/attempt-1/work/prog.o\",\n      \"/sys/fs/bpf/bpfix_test_candidate_bpf_1130885\",\n      \"type\",\n      \"xdp\"\n    ],\n    \"returncode\": 0,\n    \"stderr\": \"libbpf: loading object from bpfix-bench/results/ablation-main75-current-server/full/20260802T082035959683Z-pid1127965/bpfix-neutral/packet_checked_wrong_base_001/attempt-1/work/prog.o\\nlibbpf: elf: section(3) xdp, size 112, link 0, flags 6, type=1\\nlibbpf: sec 'xdp': found program 'packet_checked_wrong_base' at insn offset 0 (0 bytes), code size 14 insns (112 bytes)\\nlibbpf: elf: section(4) license, size 4, link 0, flags 3, type=1\\nlibbpf: license of bpfix-bench/results/ablation-main75-current-server/full/20260802T082035959683Z-pid1127965/bpfix-neutral/packet_checked_wrong_base_001/attempt-1/work/prog.o is GPL\\nlibbpf: elf: section(14) .BTF, size 943, link 0, flags 0, type=1\\nlibbpf: elf: section(16) .BTF.ext, size 236, link 0, flags 0, type=1\\nlibbpf: elf: section(24) .symtab, size 336, link 1, flags 0, type=2\\nlibbpf: looking for externs among 14 symbols...\\nlibbpf: collected 0 externs total\\nlibbpf: object 'prog': failed (-95) to create BPF token from '/sys/fs/bpf', skipping optional step...\\nlibbpf: loaded kernel BTF from '/sys/kernel/btf/vmlinux'\\nlibbpf: sec 'xdp': found 2 CO-RE relocations\\nlibbpf: CO-RE relocating [2] struct xdp_md: found target candidate [14922] struct xdp_md in [vmlinux]\\nlibbpf: prog 'packet_checked_wrong_base': relo #0: <byte_off> [2] struct xdp_md.data (0:0 @ offset 0)\\nlibbpf: prog 'packet_checked_wrong_base': relo #0: matching candidate #0 <byte_off> [14922] struct xdp_md.data (0:0 @ offset 0)\\nlibbpf: prog 'packet_checked_wrong_base': relo #0: patched insn #1 (LDX/ST/STX) off 0 -> 0\\nlibbpf: prog 'packet_checked_wrong_base': relo #1: <byte_off> [2] struct xdp_md.data_end (0:1 @ offset 4)\\nlibbpf: prog 'packet_checked_wrong_base': relo #1: matching candidate #0 <byte_off> [14922] struct xdp_md.data_end (0:1 @ offset 4)\\nlibbpf: prog 'packet_checked_wrong_base': relo #1: patched insn #2 (LDX/ST/STX) off 4 -> 4\\nlibbpf: prog 'packet_checked_wrong_base': -- BEGIN PROG LOAD LOG --\\nfunc#0 @0\\nLive regs before insn:\\n  0: .1........ (b7) r0 = 2\\n  1: 01........ (61) r2 = *(u32 *)(r1 +0)\\n  2: 012....... (61) r1 = *(u32 *)(r1 +4)\\n  3: 012....... (bf) r3 = r2\\n  4: 0123...... (07) r3 += 14\\n  5: 0123...... (2d) if r3 > r1 goto pc+7\\n  6: 012....... (bf) r3 = r2\\n  7: 0123...... (07) r3 += 15\\n  8: 0123...... (2d) if r3 > r1 goto pc+4\\n  9: ..2....... (69) r1 = *(u16 *)(r2 +13)\\n 10: .1........ (b7) r0 = 1\\n 11: 01........ (15) if r1 == 0x8 goto pc+1\\n 12: .......... (b7) r0 = 2\\n 13: 0......... (95) exit\\n0: R1=ctx() R10=fp0\\n; int packet_checked_wrong_base(struct xdp_md *ctx) @ candidate.bpf.c:20\\n0: (b7) r0 = 2                        ; R0_w=2\\n; void *data = (void *)(long)ctx->data; @ candidate.bpf.c:22\\n1: (61) r2 = *(u32 *)(r1 +0)          ; R1=ctx() R2_w=pkt(r=0)\\n; void *data_end = (void *)(long)ctx->data_end; @ candidate.bpf.c:23\\n2: (61) r1 = *(u32 *)(r1 +4)          ; R1_w=pkt_end()\\n; if (data + 14 > data_end) @ candidate.bpf.c:27\\n3: (bf) r3 = r2                       ; R2_w=pkt(r=0) R3_w=pkt(r=0)\\n4: (07) r3 += 14                      ; R3_w=pkt(off=14,r=0)\\n5: (2d) if r3 > r1 goto pc+7          ; R1_w=pkt_end() R3_w=pkt(off=14,r=14)\\n6: (bf) r3 = r2                       ; R2_w=pkt(r=14) R3_w=pkt(r=14)\\n7: (07) r3 += 15                      ; R3_w=pkt(off=15,r=14)\\n8: (2d) if r3 > r1 goto pc+4          ; R1_w=pkt_end() R3_w=pkt(off=15,r=15)\\n; proto = *(__u16 *)(shifted + 12); @ candidate.bpf.c:34\\n9: (69) r1 = *(u16 *)(r2 +13)         ; R1_w=scalar(smin=smin32=0,smax=umax=smax32=umax32=0xffff,var_off=(0x0; 0xffff)) R2_w=pkt(r=15)\\n10: (b7) r0 = 1                       ; R0=1\\n; return bpf_ntohs(proto) == ETH_P_IP ? XDP_DROP : XDP_PASS; @ candidate.bpf.c:35\\n11: (15) if r1 == 0x8 goto pc+1       ; R1=scalar(smin=smin32=0,smax=umax=smax32=umax32=0xffff,var_off=(0x0; 0xffff))\\n12: (b7) r0 = 2                       ; R0_w=2\\n; } @ candidate.bpf.c:36\\n13: (95) exit\\n\\nfrom 11 to 13: R0=1 R1=8 R2=pkt(r=15) R3=pkt(off=15,r=15) R10=fp0\\n13: R0=1 R1=8 R2=pkt(r=15) R3=pkt(off=15,r=15) R10=fp0\\n13: (95) exit\\n\\nfrom 8 to 13: R0_w=2 R1_w=pkt_end() R2_w=pkt(r=14) R3_w=pkt(off=15,r=0xfffffffffffffffe) R10=fp0\\n13: R0_w=2 R1_w=pkt_end() R2_w=pkt(r=14) R3_w=pkt(off=15,r=0xfffffffffffffffe) R10=fp0\\n13: (95) exit\\n\\nfrom 5 to 13: R0_w=2 R1_w=pkt_end() R2_w=pkt(r=0) R3_w=pkt(off=14,r=0xfffffffffffffffe) R10=fp0\\n13: R0_w=2 R1_w=pkt_end() R2_w=pkt(r=0) R3_w=pkt(off=14,r=0xfffffffffffffffe) R10=fp0\\n13: (95) exit\\nverification time 73 usec\\nstack depth 0\\nprocessed 17 insns (limit 1000000) max_states_per_insn 0 total_states 1 peak_states 1 mark_read 1\\n-- END PROG LOAD LOG --\\n\",\n    \"stdout\": \"\"\n  },\n  \"map_setup\": [],\n  \"passed\": false,\n  \"source\": \"/home/yunwei37/workspace/bpfix/bpfix-bench/results/ablation-main75-current-server/full/20260802T082035959683Z-pid1127965/bpfix-neutral/packet_checked_wrong_base_001/attempt-1/candidate.bpf.c\",\n  \"source_semantics\": [\n    {\n      \"kind\": \"source_predicate\",\n      \"name\": \"case source invariant A\",\n      \"passed\": false\n    }\n  ],\n  \"success_log_checks\": []\n}\n",
+  "oracle_wall_time_seconds": 0.23052,
+  "prompt_build_wall_time_seconds": 9.7e-05,
+  "prompt_chars": 2578,
+  "prompt_sha256": "41519c7609ee626e67c4102fb2de43739162c1a98ecb78ef95bb7aa4115b9d40",
+  "prompt_token_match": null,
+  "reasoning_chars": null,
+  "response_chars": 760,
+  "source_chars": 692,
+  "status": "fail",
+  "token_usage": {
+    "cached_prompt_tokens": 21,
+    "completion_tokens": 273,
+    "prompt_tokens": 765,
+    "reasoning_tokens": null,
+    "total_tokens": 1038
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "api_timings": {
+    "cache_n": 21,
+    "predicted_ms": 6521.571,
+    "predicted_n": 484,
+    "predicted_per_second": 74.21524660239074,
+    "predicted_per_token_ms": 13.474320247933884,
+    "prompt_ms": 336.879,
+    "prompt_n": 779,
+    "prompt_per_second": 2312.4029696122343,
+    "prompt_per_token_ms": 0.4324505776636714
+  },
+  "api_usage": {
+    "completion_tokens": 484,
+    "prompt_tokens": 800,
+    "prompt_tokens_details": {
+      "cached_tokens": 21
+    },
+    "total_tokens": 1284
+  },
+  "attempt": 1,
+  "attempt_wall_time_seconds": 7.102899,
+  "candidate": "bpfix-bench/results/ablation-main75-current-server/full/20260802T075855562289Z-pid1092324/bpfix-no-help/rs_bpftime_opensnoop_stack_wrong_prog_type_001/attempt-1/candidate.bpf.c",
+  "failure_stage": "compile",
+  "finish_reason": "stop",
+  "model_wall_time_seconds": 6.868755,
+  "oracle_returncode": 1,
+  "oracle_stderr": "",
+  "oracle_stdout": "{\n  \"compile\": {\n    \"argv\": [\n      \"clang\",\n      \"-target\",\n      \"bpf\",\n      \"-O2\",\n      \"-g\",\n      \"-I\",\n      \"/usr/include\",\n      \"-D__TARGET_ARCH_x86\",\n      \"-c\",\n      \"/home/yunwei37/workspace/bpfix/bpfix-bench/results/ablation-main75-current-server/full/20260802T075855562289Z-pid1092324/bpfix-no-help/rs_bpftime_opensnoop_stack_wrong_prog_type_001/attempt-1/candidate.bpf.c\",\n      \"-o\",\n      \"bpfix-bench/results/ablation-main75-current-server/full/20260802T075855562289Z-pid1092324/bpfix-no-help/rs_bpftime_opensnoop_stack_wrong_prog_type_001/attempt-1/work/prog.o\"\n    ],\n    \"returncode\": 1,\n    \"stderr\": \"/home/yunwei37/workspace/bpfix/bpfix-bench/results/ablation-main75-current-server/full/20260802T075855562289Z-pid1092324/bpfix-no-help/rs_bpftime_opensnoop_stack_wrong_prog_type_001/attempt-1/candidate.bpf.c:50:49: error: too many arguments to function call, expected 3, have 4\\n   50 |     bpf_get_stackid(ctx, &stack, sizeof(stack), BPF_F_USER_STACK);\\n      |     ~~~~~~~~~~~~~~~                             ^~~~~~~~~~~~~~~~\\n1 error generated.\\n\",\n    \"stdout\": \"\"\n  },\n  \"expect_reject\": false,\n  \"load\": null,\n  \"load_log_semantics\": [],\n  \"passed\": false,\n  \"source\": \"/home/yunwei37/workspace/bpfix/bpfix-bench/results/ablation-main75-current-server/full/20260802T075855562289Z-pid1092324/bpfix-no-help/rs_bpftime_opensnoop_stack_wrong_prog_type_001/attempt-1/candidate.bpf.c\",\n  \"source_semantics\": []\n}\n",
+  "oracle_wall_time_seconds": 0.233726,
+  "prompt_chars": 2489,
+  "prompt_sha256": "d8351b71ce777be044108e164e8fc1201c32b82b95cf5cd448710facfbc42943",
+  "reasoning_chars": null,
+  "response_chars": 1412,
+  "status": "fail",
+  "token_usage": {
+    "cached_prompt_tokens": 21,
+    "completion_tokens": 484,
+    "prompt_tokens": 800,
+    "reasoning_tokens": null,
+    "total_tokens": 1284
+  }
+}

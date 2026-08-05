@@ -1,0 +1,17 @@
+{
+  "api_timings": null,
+  "api_usage": null,
+  "attempt": 2,
+  "attempt_wall_time_seconds": 0.040813,
+  "error": "HTTP Error 400: Bad Request",
+  "failure_stage": "model_call",
+  "finish_reason": null,
+  "model_wall_time_seconds": 0.04068,
+  "oracle_wall_time_seconds": null,
+  "prompt_chars": 67407,
+  "prompt_sha256": "e7d1732ac54c6e24c8648bf5f4921e3b7c91b7408a8e10c64d4485be7a9d70e5",
+  "reasoning_chars": null,
+  "response_chars": null,
+  "status": "model_error",
+  "token_usage": null
+}

@@ -1,0 +1,113 @@
+{
+  "api_timings": {
+    "cache_n": 21,
+    "predicted_ms": 6315.445,
+    "predicted_n": 469,
+    "predicted_per_second": 74.26238372751249,
+    "predicted_per_token_ms": 13.465767590618336,
+    "prompt_ms": 320.237,
+    "prompt_n": 725,
+    "prompt_per_second": 2263.9482633174803,
+    "prompt_per_token_ms": 0.44170620689655177
+  },
+  "api_usage": {
+    "completion_tokens": 469,
+    "prompt_tokens": 746,
+    "prompt_tokens_details": {
+      "cached_tokens": 21
+    },
+    "total_tokens": 1215
+  },
+  "attempt": 1,
+  "attempt_wall_time_seconds": 6.684184,
+  "attempts": [
+    {
+      "api_timings": {
+        "cache_n": 21,
+        "predicted_ms": 6315.445,
+        "predicted_n": 469,
+        "predicted_per_second": 74.26238372751249,
+        "predicted_per_token_ms": 13.465767590618336,
+        "prompt_ms": 320.237,
+        "prompt_n": 725,
+        "prompt_per_second": 2263.9482633174803,
+        "prompt_per_token_ms": 0.44170620689655177
+      },
+      "api_usage": {
+        "completion_tokens": 469,
+        "prompt_tokens": 746,
+        "prompt_tokens_details": {
+          "cached_tokens": 21
+        },
+        "total_tokens": 1215
+      },
+      "attempt": 1,
+      "attempt_wall_time_seconds": 6.684184,
+      "candidate": "bpfix-bench/results/ablation-main75-current-server/full/20260802T075855562289Z-pid1092324/bpfix-no-help/ringbuf_double_submit_001/attempt-1/candidate.bpf.c",
+      "failure_stage": "auxiliary_proof_predicate",
+      "finish_reason": "stop",
+      "model_wall_time_seconds": 6.648017,
+      "oracle_returncode": 1,
+      "oracle_stderr": "",
+      "oracle_stdout": "{\n  \"expect_reject\": false,\n  \"passed\": false,\n  \"source\": \"/home/yunwei37/workspace/bpfix/bpfix-bench/results/ablation-main75-current-server/full/20260802T075855562289Z-pid1092324/bpfix-no-help/ringbuf_double_submit_001/attempt-1/candidate.bpf.c\",\n  \"source_semantics\": [\n    {\n      \"name\": \"audit reserve failure keeps IPv4 drop semantics\",\n      \"passed\": false\n    }\n  ]\n}\n",
+      "oracle_wall_time_seconds": 0.035443,
+      "prompt_chars": 2285,
+      "prompt_sha256": "4f86b1c014b87f7ed1db2af652f4db5eb11b41f0dee88de2dc18b5d88702d058",
+      "reasoning_chars": null,
+      "response_chars": 1325,
+      "status": "fail",
+      "token_usage": {
+        "cached_prompt_tokens": 21,
+        "completion_tokens": 469,
+        "prompt_tokens": 746,
+        "reasoning_tokens": null,
+        "total_tokens": 1215
+      }
+    }
+  ],
+  "candidate": "bpfix-bench/results/ablation-main75-current-server/full/20260802T075855562289Z-pid1092324/bpfix-no-help/ringbuf_double_submit_001/attempt-1/candidate.bpf.c",
+  "case": "ringbuf_double_submit_001",
+  "cost": {
+    "attempt_wall_time_seconds": 6.684184,
+    "cached_prompt_tokens": 21,
+    "completion_tokens": 469,
+    "model_calls": 1,
+    "model_wall_time_seconds": 6.648017,
+    "oracle_wall_time_seconds": 0.035443,
+    "prompt_tokens": 746,
+    "reasoning_tokens": null,
+    "token_usage_coverage": {
+      "cached_prompt_tokens": 1,
+      "completion_tokens": 1,
+      "prompt_tokens": 1,
+      "reasoning_tokens": 0,
+      "total_tokens": 1
+    },
+    "total_tokens": 1215
+  },
+  "diagnostic_chars": 773,
+  "failure_stage": "auxiliary_proof_predicate",
+  "finish_reason": "stop",
+  "mode": "bpfix-no-help",
+  "model": "Qwen.Qwen3.6-27B.f16.gguf.Q4_K_M",
+  "model_wall_time_seconds": 6.648017,
+  "oracle_returncode": 1,
+  "oracle_stderr": "",
+  "oracle_stdout": "{\n  \"expect_reject\": false,\n  \"passed\": false,\n  \"source\": \"/home/yunwei37/workspace/bpfix/bpfix-bench/results/ablation-main75-current-server/full/20260802T075855562289Z-pid1092324/bpfix-no-help/ringbuf_double_submit_001/attempt-1/candidate.bpf.c\",\n  \"source_semantics\": [\n    {\n      \"name\": \"audit reserve failure keeps IPv4 drop semantics\",\n      \"passed\": false\n    }\n  ]\n}\n",
+  "oracle_wall_time_seconds": 0.035443,
+  "prompt_build_wall_time_seconds": 0.000101,
+  "prompt_chars": 2285,
+  "prompt_sha256": "4f86b1c014b87f7ed1db2af652f4db5eb11b41f0dee88de2dc18b5d88702d058",
+  "prompt_token_match": null,
+  "reasoning_chars": null,
+  "response_chars": 1325,
+  "source_chars": 1176,
+  "status": "fail",
+  "token_usage": {
+    "cached_prompt_tokens": 21,
+    "completion_tokens": 469,
+    "prompt_tokens": 746,
+    "reasoning_tokens": null,
+    "total_tokens": 1215
+  }
+}
