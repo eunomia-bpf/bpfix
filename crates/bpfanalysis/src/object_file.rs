@@ -631,11 +631,9 @@ fn decode_bpf_insns(data: &[u8]) -> Result<Vec<BpfInsn>> {
         );
     }
     Ok(data
-        .chunks_exact(8)
-        .map(|chunk| {
-            let mut raw = [0u8; 8];
-            raw.copy_from_slice(chunk);
-            BpfInsn::from_raw_bytes(raw)
-        })
+        .as_chunks::<8>()
+        .0
+        .iter()
+        .map(|chunk| BpfInsn::from_raw_bytes(*chunk))
         .collect())
 }
