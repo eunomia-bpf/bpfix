@@ -38,10 +38,19 @@ pub(crate) fn collect_source_events(log: &str) -> Vec<SourceEvent> {
 pub(crate) fn parse_source_comment(line: &str) -> Option<SourceLocation> {
     let (source, tail) = line.rsplit_once(" @ ")?;
     let (path, line_no) = tail.trim().rsplit_once(':')?;
+    let line_no: usize = line_no.parse().ok()?;
+    // Clang emits an empty source comment with line 0 for a program with no
+    // source text at that instruction. Reporting it as a location makes
+    // consumers treat the diagnostic as having no span at all, so skip it and
+    // let the caller fall back to a real source event or the verifier line.
+    let text = source.trim().trim_start_matches(';').trim();
+    if line_no == 0 && text.is_empty() {
+        return None;
+    }
     Some(SourceLocation {
         path: path.to_string(),
-        line: line_no.parse().ok()?,
-        text: source.trim().trim_start_matches(';').trim().to_string(),
+        line: line_no,
+        text: text.to_string(),
     })
 }
 
@@ -126,4 +135,22 @@ pub(crate) fn looks_like_reference_release(text: &str) -> bool {
     text.contains("bpf_ringbuf_discard")
         || text.contains("bpf_ringbuf_submit")
         || text.contains("bpf_sk_release")
+}
+
+#[cfg(test)]
+mod source_comment_tests {
+    use super::parse_source_comment;
+
+    #[test]
+    fn empty_source_comment_with_line_zero_is_skipped() {
+        // Shape emitted by clang when an instruction has no source text.
+        assert_eq!(parse_source_comment(";  @ buggy.bpf.c:0"), None);
+    }
+
+    #[test]
+    fn source_comment_with_text_and_line_is_kept() {
+        let parsed = parse_source_comment("; return *entry; @ buggy.bpf.c:13").expect("parsed");
+        assert_eq!(parsed.line, 13);
+        assert_eq!(parsed.text, "return *entry;");
+    }
 }

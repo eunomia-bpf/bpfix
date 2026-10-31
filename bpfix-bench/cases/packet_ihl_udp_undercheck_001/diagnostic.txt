@@ -3,10 +3,14 @@ error[BPFIX-E001]: packet access reaches the use before the verifier has enough 
   = confidence: medium
   = diagnostic: supported, help: repair_hint, span: exact_pc
   = next action: bounds
-  --> buggy.bpf.c:0
+  --> buggy.bpf.c:72
    |
+63 | if (udp + 3 > data_end)
+   | ----------------------- nearby source context for packet bounds
 66 | dport = *(__u16 *)(udp + 2);
    | ---------------------------- verifier only proves packet range 21 bytes on this path, but the rejected access requires 23 bytes
+72 | if (bpf_ntohs(dport) != 53)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ packet range proof is too short for this access
    |
    = verifier[100]: invalid access to packet, off=22 size=1, R1(id=1,off=22,r=21); R1 offset is outside of the packet
    = note: nearest BPF instruction pc 28
