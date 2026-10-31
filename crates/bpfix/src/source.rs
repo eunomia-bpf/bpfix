@@ -93,16 +93,47 @@ pub(crate) fn looks_like_packet_bounds_check(text: &str) -> bool {
 
 pub(crate) fn looks_like_null_check(text: &str) -> bool {
     let lower = text.to_ascii_lowercase();
-    lower.starts_with("if ")
-        && (lower.contains("null")
-            || lower.contains("!tmp")
-            || lower.contains("!val")
-            || lower.contains("!ptr")
-            || lower.contains("!value")
-            || lower.contains("== 0")
-            || lower.contains("!= 0")
-            || lower.contains("== null")
-            || lower.contains("!= null"))
+    if !lower.starts_with("if ") {
+        return false;
+    }
+    if lower.contains("null")
+        || lower.contains("== 0")
+        || lower.contains("!= 0")
+        || lower.contains("== null")
+        || lower.contains("!= null")
+    {
+        return true;
+    }
+    // The negated-identifier names are matched as whole identifiers. A plain
+    // substring test made `!valid` match `!val` and `!value`, so a guard on an
+    // unrelated flag was reported as a null check on a pointer.
+    NULL_CHECK_IDENTIFIERS
+        .iter()
+        .any(|name| contains_negated_identifier(&lower, name))
+}
+
+const NULL_CHECK_IDENTIFIERS: [&str; 4] = ["tmp", "val", "ptr", "value"];
+
+fn contains_negated_identifier(text: &str, name: &str) -> bool {
+    let needle = format!("!{name}");
+    let mut from = 0;
+    while let Some(offset) = text[from..].find(&needle) {
+        let start = from + offset;
+        let end = start + needle.len();
+        let preceded = text[..start].chars().next_back();
+        let followed = text[end..].chars().next();
+        let left_ok = preceded.is_none_or(|c| !is_ident_char(c));
+        let right_ok = followed.is_none_or(|c| !is_ident_char(c));
+        if left_ok && right_ok {
+            return true;
+        }
+        from = start + 1;
+    }
+    false
+}
+
+fn is_ident_char(c: char) -> bool {
+    c.is_ascii_alphanumeric() || c == '_'
 }
 
 pub(crate) fn looks_like_nullable_return(text: &str) -> bool {
@@ -126,4 +157,25 @@ pub(crate) fn looks_like_reference_release(text: &str) -> bool {
     text.contains("bpf_ringbuf_discard")
         || text.contains("bpf_ringbuf_submit")
         || text.contains("bpf_sk_release")
+}
+
+#[cfg(test)]
+mod null_check_tests {
+    use super::looks_like_null_check;
+
+    #[test]
+    fn negated_identifier_must_match_whole_name() {
+        assert!(looks_like_null_check("if (!ptr)"));
+        assert!(looks_like_null_check("if (!tmp)"));
+        assert!(looks_like_null_check("if (!val)"));
+        assert!(looks_like_null_check("if (!value)"));
+        assert!(looks_like_null_check("if (ptr == null)"));
+        assert!(looks_like_null_check("if (len == 0)"));
+        // Prefixes of a listed name belong to a different identifier.
+        assert!(!looks_like_null_check("if (!valid)"));
+        assert!(!looks_like_null_check("if (!value_count)"));
+        assert!(!looks_like_null_check("if (!ptrs)"));
+        // Not a leading guard.
+        assert!(!looks_like_null_check("return !ptr;"));
+    }
 }
