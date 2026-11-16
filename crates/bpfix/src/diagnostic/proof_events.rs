@@ -205,7 +205,16 @@ fn latest_insufficient_packet_range(
     if reg_state.reg_type != "pkt" {
         return None;
     }
-    let range = reg_state.packet_range?;
+    // The terminal rejection carries the verifier's final packet range for
+    // the accessed register. A preceding state snapshot may predate a guard
+    // that refined an alias, so prefer the terminal value when it is present.
+    let marker = format!("R{reg}(");
+    let terminal_range = terminal_error
+        .split_once(&marker)
+        .and_then(|(_, tail)| tail.split_once(')'))
+        .and_then(|(fields, _)| bpfanalysis::verifier_log::parse_i64_after(fields, "r="))
+        .and_then(|value| u32::try_from(value).ok());
+    let range = terminal_range.or(reg_state.packet_range)?;
     (range < required).then_some((state.pc, range, required))
 }
 
@@ -656,4 +665,44 @@ pub(super) fn environment_capability_events(
         });
     }
     events
+}
+
+#[cfg(test)]
+mod packet_terminal_range_tests {
+    use super::latest_insufficient_packet_range;
+    use bpfanalysis::verifier_log::verifier_states_from_log;
+
+    #[test]
+    fn uses_terminal_packet_range_for_matching_accessed_register() {
+        let states = verifier_states_from_log(
+            "2: (61) r1 = *(u32 *)(r1 +0) ; R1_w=pkt(r=0)\n",
+        )
+        .expect("verifier state");
+
+        let terminal = "invalid access to packet, off=0 size=8, R1(id=0,off=0,r=1)";
+        assert_eq!(
+            latest_insufficient_packet_range(&states, Some(47), terminal, Some(1)),
+            Some((2, 1, 8))
+        );
+        // Without a terminal range, preserve the prior snapshot fallback.
+        assert_eq!(
+            latest_insufficient_packet_range(
+                &states,
+                Some(47),
+                "invalid access to packet, off=0 size=8, R1(id=0,off=0)",
+                Some(1)
+            ),
+            Some((2, 0, 8))
+        );
+        // A range attributed to another register must not be used for R1.
+        assert_eq!(
+            latest_insufficient_packet_range(
+                &states,
+                Some(47),
+                "invalid access to packet, off=0 size=8, R2(id=0,off=0,r=7)",
+                Some(1)
+            ),
+            Some((2, 0, 8))
+        );
+    }
 }
