@@ -1155,3 +1155,44 @@ Unreleased reference id=2 alloc_insn=5
 
     assert!(!analysis.signals.contains(&ProofSignal::ReferenceLiveAtExit));
 }
+
+#[test]
+fn packet_range_related_span_uses_the_terminal_error_range() {
+    // A guard on a copy of the packet pointer refines every register holding
+    // it, but the verifier log prints only the register the guard's own
+    // instruction names: R1's last printed range stays 0 while R3 gets 1.
+    // The related span must report the range the terminal error states for
+    // the accessed register, or it contradicts the primary label.
+    let log = "\
+2: (61) r1 = *(u32 *)(r1 +0)          ; R1_w=pkt(r=0)
+3: (bf) r3 = r1                       ; R1_w=pkt(r=0) R3_w=pkt(r=0)
+4: (07) r3 += 1                       ; R3_w=pkt(off=1,r=0)
+5: (2d) if r3 > r2 goto pc+1          ; R2_w=pkt_end() R3_w=pkt(off=1,r=1)
+6: (79) r0 = *(u64 *)(r1 +0)
+invalid access to packet, off=0 size=8, R1(id=0,off=0,r=1)
+";
+    let analysis = analyze_verifier_log(
+        log,
+        Some(6),
+        None,
+        "invalid access to packet, off=0 size=8, R1(id=0,off=0,r=1)",
+        None,
+        ProofObligation::PacketBounds,
+    )
+    .unwrap();
+
+    let lost = analysis
+        .events
+        .iter()
+        .find(|event| {
+            event.role == ProofEventRole::ProofLost
+                && event.evidence == ProofEventEvidence::VerifierState
+                && event.obligation == ProofObligation::PacketBounds
+        })
+        .expect("a related span for the lost packet range");
+    assert!(
+        lost.detail.contains("proves packet range 1 bytes"),
+        "detail: {}",
+        lost.detail
+    );
+}
