@@ -490,7 +490,7 @@ fn related_spans_from_proof_events(
 ) -> Vec<RelatedSpan> {
     let mut spans = events
         .iter()
-         .filter(|event| event.role != ProofEventRole::Rejected)
+        .filter(|event| event.role != ProofEventRole::Rejected)
         // A modified context pointer is still a verifier-tracked ctx pointer
         // at the rejected access. A previous pointer->scalar transition for
         // this register may precede its last redefinition (e.g. r2 = r6),
@@ -500,7 +500,9 @@ fn related_spans_from_proof_events(
                 && event.role == ProofEventRole::ProofLost
                 && event.evidence == ProofEventEvidence::VerifierState
                 && event.obligation == ProofObligation::PointerProvenance
-                && event.detail.contains("to scalar before the rejected access"))
+                && event
+                    .detail
+                    .contains("to scalar before the rejected access"))
         })
         .filter_map(|event| {
             let source = event.source.as_ref()?;
