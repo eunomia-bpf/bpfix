@@ -373,7 +373,7 @@ fn build_diagnostic(
             instruction_pc: terminal.pc,
             source_text: terminal.source_text.clone(),
         });
-    let related_spans = related_spans_from_proof_events(&proof_events);
+    let related_spans = related_spans_from_proof_events(&proof_events, proof_signal);
     let span_confidence = span_confidence(&source_span, &related_spans, &proof_events).to_string();
 
     let mut help = if proof_signal.is_some_and(ProofSignal::replaces_classifier_help) {
@@ -484,10 +484,24 @@ fn source_span_from_proof_event(event: &diagnostic::ProofEvent) -> Option<Source
     })
 }
 
-fn related_spans_from_proof_events(events: &[diagnostic::ProofEvent]) -> Vec<RelatedSpan> {
+fn related_spans_from_proof_events(
+    events: &[diagnostic::ProofEvent],
+    signal: Option<ProofSignal>,
+) -> Vec<RelatedSpan> {
     let mut spans = events
         .iter()
-        .filter(|event| event.role != ProofEventRole::Rejected)
+         .filter(|event| event.role != ProofEventRole::Rejected)
+        // A modified context pointer is still a verifier-tracked ctx pointer
+        // at the rejected access. A previous pointer->scalar transition for
+        // this register may precede its last redefinition (e.g. r2 = r6),
+        // and is not evidence about the value at the terminal instruction.
+        .filter(|event| {
+            !(signal == Some(ProofSignal::ModifiedContextPointer)
+                && event.role == ProofEventRole::ProofLost
+                && event.evidence == ProofEventEvidence::VerifierState
+                && event.obligation == ProofObligation::PointerProvenance
+                && event.detail.contains("to scalar before the rejected access"))
+        })
         .filter_map(|event| {
             let source = event.source.as_ref()?;
             Some((
@@ -607,6 +621,38 @@ mod tests {
         assert_eq!(
             active_object_sections(&programs),
             vec!["tracepoint/skb/consume_skb".to_string()]
+        );
+    }
+
+    #[test]
+    fn modified_ctx_does_not_attribute_old_scalar_transition_to_new_pointer() {
+        let old_value = diagnostic::ProofEvent {
+            role: ProofEventRole::ProofLost,
+            evidence: ProofEventEvidence::VerifierState,
+            obligation: ProofObligation::PointerProvenance,
+            pc: Some(13),
+            source: Some(source::SourceLocation {
+                path: "sample.c".to_string(),
+                line: 17,
+                text: "__builtin_memcpy(meta, data_meta, sizeof(*meta));".to_string(),
+            }),
+            register: Some(2),
+            detail: "verifier state changes from pkt to scalar before the rejected access"
+                .to_string(),
+        };
+        assert_eq!(
+            related_spans_from_proof_events(
+                &[old_value.clone()],
+                Some(ProofSignal::ModifiedContextPointer)
+            )
+            .len(),
+            0
+        );
+        // Unrelated verifier errors retain their genuine provenance spans.
+        assert_eq!(related_spans_from_proof_events(&[old_value], None).len(), 1);
+        assert_eq!(
+            ProofSignal::ModifiedContextPointer.primary_label_override(),
+            Some("context pointer was modified by a register add; context loads require a constant offset")
         );
     }
 
