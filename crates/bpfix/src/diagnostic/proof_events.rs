@@ -1,7 +1,6 @@
 use bpfanalysis::verifier_log::{
     latest_nullable_state, latest_pointer_to_scalar_transition, latest_reg_state_index_before,
-    latest_unsafe_scalar_state, parse_i64_after, scalar_range_has_any_bound,
-    scalar_ranges_match,
+    latest_unsafe_scalar_state, parse_i64_after, scalar_range_has_any_bound, scalar_ranges_match,
     verifier_value_summary, RegState, VerifierInsn,
 };
 
