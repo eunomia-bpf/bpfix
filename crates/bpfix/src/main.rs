@@ -644,7 +644,7 @@ mod tests {
         };
         assert_eq!(
             related_spans_from_proof_events(
-                &[old_value.clone()],
+                std::slice::from_ref(&old_value),
                 Some(ProofSignal::ModifiedContextPointer)
             )
             .len(),
