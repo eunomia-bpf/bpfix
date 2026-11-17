@@ -1,6 +1,6 @@
 use bpfanalysis::verifier_log::{
     latest_nullable_state, latest_pointer_to_scalar_transition, latest_reg_state_index_before,
-    latest_unsafe_scalar_state, scalar_range_has_any_bound, scalar_ranges_match,
+    latest_unsafe_scalar_state, parse_i64_after, scalar_range_has_any_bound, scalar_ranges_match,
     verifier_value_summary, RegState, VerifierInsn,
 };
 
@@ -205,8 +205,21 @@ fn latest_insufficient_packet_range(
     if reg_state.reg_type != "pkt" {
         return None;
     }
-    let range = reg_state.packet_range?;
+    // The terminal error prints the accessed register's range as the verifier
+    // saw it at the rejected instruction; the last state line for that
+    // register can be older. A guard on a copy of the packet pointer refines
+    // every register holding it, but the log prints only the register named
+    // by the guard's own instruction (here R3), so R1's last printed range
+    // stays 0 although the guard gave it 1. Prefer the terminal range, so
+    // the related span cannot contradict the primary label.
+    let range = terminal_packet_range(terminal_error).or(reg_state.packet_range)?;
     (range < required).then_some((state.pc, range, required))
+}
+
+/// The proven packet range printed in the terminal verifier error, which
+/// describes the rejected access rather than an earlier instruction.
+fn terminal_packet_range(terminal_error: &str) -> Option<u32> {
+    u32::try_from(parse_i64_after(terminal_error, "r=")?).ok()
 }
 
 fn packet_range_lost_before_access(
