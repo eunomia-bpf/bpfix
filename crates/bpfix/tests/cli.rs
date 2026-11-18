@@ -151,6 +151,7 @@ fn help_describes_plain_text_oriented_inputs() {
     assert!(!help.contains("--format"));
 }
 
+#[cfg(feature = "object-analysis")]
 const PRE_69_LOG: &str = r#"
 0: R1=ctx() R10=fp0
 ; int prog(struct xdp_md *ctx)
@@ -191,4 +192,28 @@ fn pre_69_log_uses_btf_lines_to_locate_the_source() {
         stdout(&unlocated).contains("<verifier-log>:"),
         "without --object there is no location to claim"
     );
+}
+
+#[cfg(feature = "object-analysis")]
+#[test]
+fn empty_log_with_object_returns_input_error_without_panicking() {
+    let object = workspace_root().join("bpfix-empirical/cases/stackoverflow-78591601/prog.o");
+    if !object.is_file() {
+        return;
+    }
+    let path = object.to_str().expect("object path is UTF-8");
+    let inputs = [
+        "",
+        "  \n",
+        "\r\n",
+        "0: R1=ctx() R10=fp0\n; if (data + 74 > data_end)\n",
+    ];
+    for input in inputs {
+        let output = run_stdin(input, &["-", "--object", path]);
+        assert!(output.status.success(), "{}", stderr(&output));
+        let diagnostic = stdout(&output);
+        assert!(diagnostic.contains("error[BPFIX-E000]"), "{diagnostic}");
+        assert!(diagnostic.contains("<verifier-log>:"), "{diagnostic}");
+        assert!(!diagnostic.contains("prog.c:29"), "{diagnostic}");
+    }
 }

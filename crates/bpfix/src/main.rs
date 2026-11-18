@@ -272,7 +272,9 @@ fn build_diagnostic(
         source_text: None,
     });
     let log_lines = log.lines().collect::<Vec<_>>();
-    input::resolve_unlocated_source(&log_lines, &mut terminal, btf_lines);
+    if class.error_id != "BPFIX-E000" {
+        input::resolve_unlocated_source(&log_lines, &mut terminal, btf_lines);
+    }
     let (trace_state_count, analysis_error, proof_events, proof_signals, required_proof) =
         if class.error_id == "BPFIX-E000" {
             (
@@ -688,5 +690,20 @@ mod tests {
             object_program("tracepoint/skb/x", 6),
         ];
         assert!(active_object_sections(&programs).is_empty());
+    }
+
+    #[test]
+    fn no_rejection_does_not_claim_a_btf_source_location() {
+        let log = "0: R1=ctx() R10=fp0\n; if (data + 74 > data_end)\n";
+        let records = [bpfanalysis::BtfLineRecord {
+            insn_off: 0,
+            file: "prog.c".to_string(),
+            line: 29,
+            text: "if (data + 74 > data_end)".to_string(),
+        }];
+        let diagnostic = build_diagnostic(log, log, Vec::new(), None, &records);
+        assert_eq!(diagnostic.error_id, "BPFIX-E000");
+        assert_eq!(diagnostic.source_span.path, "<verifier-log>");
+        assert_eq!(diagnostic.span_confidence, "terminal_line_only");
     }
 }

@@ -378,7 +378,7 @@ pub(crate) fn resolve_unlocated_source(
     terminal: &mut TerminalError,
     records: &[bpfanalysis::BtfLineRecord],
 ) {
-    if terminal.source_path.is_some() || records.is_empty() {
+    if terminal.source_path.is_some() || records.is_empty() || lines.is_empty() {
         return;
     }
     let Some(text) = nearest_source_text(lines, terminal.line.saturating_sub(1)) else {
@@ -491,5 +491,26 @@ processed 6 insns (limit 1000000) max_states_per_insn 0 total_states 0 peak_stat
         assert!(terminal
             .message
             .contains("non-sleepable BPF program context"));
+    }
+
+    #[test]
+    fn empty_verifier_log_does_not_index_btf_fallback() {
+        let mut terminal = super::TerminalError {
+            line: 1,
+            message: "no verifier rejection was found in this input".to_string(),
+            pc: None,
+            call_target: None,
+            source_path: None,
+            source_line: None,
+            source_text: None,
+        };
+        let records = [bpfanalysis::BtfLineRecord {
+            insn_off: 0,
+            file: "test.c".to_string(),
+            line: 7,
+            text: "return 0;".to_string(),
+        }];
+        super::resolve_unlocated_source(&[], &mut terminal, &records);
+        assert!(terminal.source_path.is_none());
     }
 }
