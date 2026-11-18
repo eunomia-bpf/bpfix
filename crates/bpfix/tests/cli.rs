@@ -23,12 +23,16 @@ fn run_stdin(input: &str, args: &[&str]) -> std::process::Output {
         .expect("bpfix should execute");
     {
         use std::io::Write;
-        child
+        // An invalid CLI option may terminate before it reads stdin.
+        // BrokenPipe is expected then; the caller checks the exit status.
+        if let Err(error) = child
             .stdin
             .as_mut()
             .expect("stdin should be piped")
             .write_all(input.as_bytes())
-            .expect("stdin write should succeed");
+        {
+            assert_eq!(error.kind(), std::io::ErrorKind::BrokenPipe, "{error}");
+        }
     }
     child.wait_with_output().expect("bpfix should finish")
 }
