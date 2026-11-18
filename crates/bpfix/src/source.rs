@@ -153,7 +153,10 @@ mod tests {
 
     #[test]
     fn a_text_at_two_source_lines_stays_unresolved() {
-        let records = vec![record("prog.c", 4, "return 0;"), record("prog.c", 9, "return 0;")];
+        let records = vec![
+            record("prog.c", 4, "return 0;"),
+            record("prog.c", 9, "return 0;"),
+        ];
         assert_eq!(source_location_from_btf(&records, "return 0;"), None);
     }
 

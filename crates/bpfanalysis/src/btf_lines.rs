@@ -55,7 +55,8 @@ pub fn load_btf_line_records(path: &Path) -> Result<Vec<BtfLineRecord>> {
         .with_context(|| format!("failed to read .BTF of {}", path.display()))?;
     let strings = btf_string_section(strings_section)
         .with_context(|| format!("failed to parse .BTF strings of {}", path.display()))?;
-    parse_btf_ext_lines(ext, strings).with_context(|| format!("failed to parse .BTF.ext of {}", path.display()))
+    parse_btf_ext_lines(ext, strings)
+        .with_context(|| format!("failed to parse .BTF.ext of {}", path.display()))
 }
 
 #[cfg(feature = "object-analysis")]
@@ -91,7 +92,9 @@ fn parse_btf_ext_lines(ext: &[u8], strings: &str) -> Result<Vec<BtfLineRecord>> 
     };
     let rec_size = u32::from_le_bytes(*rec_size);
     if rec_size < BTF_LINE_REC_BASE_SIZE {
-        anyhow::bail!(".BTF.ext line record size {rec_size} is smaller than the 16-byte base record");
+        anyhow::bail!(
+            ".BTF.ext line record size {rec_size} is smaller than the 16-byte base record"
+        );
     }
     let rec_size = rec_size as usize;
     let mut records = Vec::new();
@@ -211,9 +214,14 @@ mod tests {
         }
         let records = load_btf_line_records(&path).unwrap();
 
-        assert!(!records.is_empty(), "the corpus object carries .BTF.ext lines");
         assert!(
-            records.iter().any(|record| record.text.contains("data_end")),
+            !records.is_empty(),
+            "the corpus object carries .BTF.ext lines"
+        );
+        assert!(
+            records
+                .iter()
+                .any(|record| record.text.contains("data_end")),
             "source text comes from BTF, not the verifier log"
         );
         assert!(records.iter().all(|record| record.line >= 1));

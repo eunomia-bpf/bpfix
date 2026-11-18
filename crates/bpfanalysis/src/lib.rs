@@ -9,11 +9,11 @@
 
 #[cfg(feature = "analysis")]
 pub mod analysis;
+pub mod btf_lines;
 pub mod helper_abi;
 #[cfg(feature = "analysis")]
 pub mod insn;
 pub mod libbpf_log;
-pub mod btf_lines;
 #[cfg(feature = "object-analysis")]
 pub mod object_file;
 #[cfg(feature = "analysis")]
@@ -23,9 +23,9 @@ pub mod passes;
 
 pub mod verifier_log;
 
-pub use btf_lines::BtfLineRecord;
 #[cfg(feature = "object-analysis")]
 pub use btf_lines::load_btf_line_records;
+pub use btf_lines::BtfLineRecord;
 #[cfg(feature = "object-analysis")]
 pub use object_file::{load_object_cfg_summaries, ObjectProgramSummary};
 pub use verifier_log::{

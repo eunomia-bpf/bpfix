@@ -171,7 +171,11 @@ fn pre_69_log_uses_btf_lines_to_locate_the_source() {
 
     let located = run_stdin(
         PRE_69_LOG,
-        &["-", "--object", object.to_str().expect("object path is UTF-8")],
+        &[
+            "-",
+            "--object",
+            object.to_str().expect("object path is UTF-8"),
+        ],
     );
     assert!(located.status.success(), "{}", stderr(&located));
     let text = stdout(&located);
