@@ -150,3 +150,41 @@ fn help_describes_plain_text_oriented_inputs() {
     assert!(help.contains("--doctor"));
     assert!(!help.contains("--format"));
 }
+
+const PRE_69_LOG: &str = r#"
+0: R1=ctx() R10=fp0
+; int prog(struct xdp_md *ctx)
+; void *data_end = (void *)(long)ctx->data_end;
+; void *data = (void *)(long)ctx->data;
+; if (data + 74 > data_end)
+24: (0f) r2 += r1
+R2 pointer arithmetic on pkt_end prohibited
+"#;
+
+#[cfg(feature = "object-analysis")]
+#[test]
+fn pre_69_log_uses_btf_lines_to_locate_the_source() {
+    let object = workspace_root().join("bpfix-empirical/cases/stackoverflow-78591601/prog.o");
+    if !object.is_file() {
+        return;
+    }
+
+    let located = run_stdin(
+        PRE_69_LOG,
+        &["-", "--object", object.to_str().expect("object path is UTF-8")],
+    );
+    assert!(located.status.success(), "{}", stderr(&located));
+    let text = stdout(&located);
+    assert!(
+        text.contains("prog.c:29"),
+        "the unlocated log line must resolve through .BTF.ext:\n{text}"
+    );
+    assert!(text.contains("if (data + 74 > data_end)"), "{text}");
+
+    let unlocated = run_stdin(PRE_69_LOG, &["-"]);
+    assert!(unlocated.status.success(), "{}", stderr(&unlocated));
+    assert!(
+        stdout(&unlocated).contains("<verifier-log>:"),
+        "without --object there is no location to claim"
+    );
+}

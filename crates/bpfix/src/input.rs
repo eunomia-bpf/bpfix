@@ -352,6 +352,46 @@ fn nearest_call_target(lines: &[&str], mut idx: usize) -> Option<String> {
     }
 }
 
+/// The source text a verifier log quotes without a location, searched
+/// backwards from the terminal error to the same boundary the located search
+/// uses. Kernels before 6.9 only have this form.
+pub(crate) fn nearest_source_text(lines: &[&str], mut idx: usize) -> Option<String> {
+    loop {
+        if let Some(text) = crate::source::parse_source_text(lines[idx]) {
+            return Some(text.to_string());
+        }
+        if idx == 0 || is_backward_search_boundary(lines[idx - 1].trim()) {
+            return None;
+        }
+        idx -= 1;
+    }
+}
+
+/// Fill in a missing source location from the object's BTF line table.
+///
+/// Order, per the reporter's request: the ` @ path:line` suffix when the log
+/// has one (already handled by `nearest_source_span`), then a text that the
+/// BTF line table places exactly once, and otherwise nothing, which leaves the
+/// caller's `<verifier-log>:N` fallback in place.
+pub(crate) fn resolve_unlocated_source(
+    lines: &[&str],
+    terminal: &mut TerminalError,
+    records: &[bpfanalysis::BtfLineRecord],
+) {
+    if terminal.source_path.is_some() || records.is_empty() {
+        return;
+    }
+    let Some(text) = nearest_source_text(lines, terminal.line.saturating_sub(1)) else {
+        return;
+    };
+    let Some(location) = crate::source::source_location_from_btf(records, &text) else {
+        return;
+    };
+    terminal.source_path = Some(location.path);
+    terminal.source_line = Some(location.line);
+    terminal.source_text = Some(location.text);
+}
+
 fn nearest_source_span(
     lines: &[&str],
     mut idx: usize,
