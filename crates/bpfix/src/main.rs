@@ -50,11 +50,13 @@ fn main() -> Result<()> {
 
     let loaded = load_input(cli.input.as_deref())?;
     let (object_programs, object_analysis_error) = object_metadata(cli.object.as_deref(), &loaded);
+    let btf_lines = object_metadata_lines(cli.object.as_deref());
     let diagnostic = build_diagnostic(
         &loaded.log,
         &loaded.full_log,
         object_programs,
         object_analysis_error,
+        &btf_lines,
     );
 
     print!("{}", render_text(&diagnostic));
@@ -229,11 +231,30 @@ fn validate_object_path(path: &Path) -> Result<String> {
     Ok(path.display().to_string())
 }
 
+/// BTF line records of `--object`, when the build can read them.
+///
+/// The records turn a pre-6.9 verifier log's unlocated source text into a real
+/// `file:line`; without them the diagnostic falls back to `<verifier-log>:N`.
+fn object_metadata_lines(explicit_object: Option<&Path>) -> Vec<bpfanalysis::BtfLineRecord> {
+    #[cfg(feature = "object-analysis")]
+    {
+        if let Some(path) = explicit_object {
+            return bpfanalysis::load_btf_line_records(path).unwrap_or_default();
+        }
+    }
+    #[cfg(not(feature = "object-analysis"))]
+    {
+        let _ = explicit_object;
+    }
+    Vec::new()
+}
+
 fn build_diagnostic(
     log: &str,
     full_log: &str,
     object_programs: Vec<ObjectProgramMetadata>,
     object_analysis_error: Option<String>,
+    btf_lines: &[bpfanalysis::BtfLineRecord],
 ) -> Diagnostic {
     let object_sections = active_object_sections(&object_programs);
     let terminal = find_terminal_error(log);
@@ -241,7 +262,7 @@ fn build_diagnostic(
         .as_ref()
         .map(|terminal| classify_with_context(&terminal.message, terminal.call_target.as_deref()))
         .unwrap_or_else(no_verifier_rejection_classification);
-    let terminal = terminal.unwrap_or_else(|| TerminalError {
+    let mut terminal = terminal.unwrap_or_else(|| TerminalError {
         line: log.lines().count().max(1),
         message: "no verifier rejection was found in this input".to_string(),
         pc: None,
@@ -250,6 +271,10 @@ fn build_diagnostic(
         source_line: None,
         source_text: None,
     });
+    let log_lines = log.lines().collect::<Vec<_>>();
+    if class.error_id != "BPFIX-E000" {
+        input::resolve_unlocated_source(&log_lines, &mut terminal, btf_lines);
+    }
     let (trace_state_count, analysis_error, proof_events, proof_signals, required_proof) =
         if class.error_id == "BPFIX-E000" {
             (
@@ -665,5 +690,20 @@ mod tests {
             object_program("tracepoint/skb/x", 6),
         ];
         assert!(active_object_sections(&programs).is_empty());
+    }
+
+    #[test]
+    fn no_rejection_does_not_claim_a_btf_source_location() {
+        let log = "0: R1=ctx() R10=fp0\n; if (data + 74 > data_end)\n";
+        let records = [bpfanalysis::BtfLineRecord {
+            insn_off: 0,
+            file: "prog.c".to_string(),
+            line: 29,
+            text: "if (data + 74 > data_end)".to_string(),
+        }];
+        let diagnostic = build_diagnostic(log, log, Vec::new(), None, &records);
+        assert_eq!(diagnostic.error_id, "BPFIX-E000");
+        assert_eq!(diagnostic.source_span.path, "<verifier-log>");
+        assert_eq!(diagnostic.span_confidence, "terminal_line_only");
     }
 }

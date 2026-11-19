@@ -54,6 +54,49 @@ pub(crate) fn parse_source_comment(line: &str) -> Option<SourceLocation> {
     })
 }
 
+/// A source line the verifier log quotes without its location.
+///
+/// Kernels before 6.9 print `; <source text>` and omit ` @ file:line`, so this
+/// must not mistake a located line for an unlocated one.
+pub(crate) fn parse_source_text(line: &str) -> Option<&str> {
+    let text = line.trim();
+    let text = text.strip_prefix(';')?;
+    if line.contains(" @ ") {
+        return None;
+    }
+    let text = text.trim();
+    (!text.is_empty()).then_some(text)
+}
+
+/// Resolve a quoted source line against the object's BTF line table.
+///
+/// Only a text that appears exactly once is a location; a repeated line (a
+/// closing brace, a common `return 0;`) would otherwise point at an arbitrary
+/// occurrence, which is worse than admitting the log has no location.
+pub(crate) fn source_location_from_btf(
+    records: &[bpfanalysis::BtfLineRecord],
+    text: &str,
+) -> Option<SourceLocation> {
+    // One source line yields several records, one per instruction it produced
+    // (`if (data + 74 > data_end)` becomes a load and a compare). Uniqueness is
+    // about the source location, so collapse the records by `file:line` first.
+    let mut locations = records
+        .iter()
+        .filter(|record| record.text.trim() == text)
+        .map(|record| (&record.file, record.line))
+        .collect::<Vec<_>>();
+    locations.sort_unstable();
+    locations.dedup();
+    let [(path, line)] = locations.as_slice() else {
+        return None;
+    };
+    Some(SourceLocation {
+        path: (*path).clone(),
+        line: *line as usize,
+        text: text.to_string(),
+    })
+}
+
 pub(crate) fn terminal_source(
     source_events: &[SourceEvent],
     terminal_pc: Option<usize>,
@@ -84,6 +127,54 @@ pub(crate) fn latest_source_before<'a>(
         .filter(|event| event.source.line < rejected_source.line)
         .filter(|event| predicate(&event.source.text))
         .max_by_key(|event| event.source.line)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn record(file: &str, line: u32, text: &str) -> bpfanalysis::BtfLineRecord {
+        bpfanalysis::BtfLineRecord {
+            insn_off: 0,
+            file: file.to_string(),
+            line,
+            text: text.to_string(),
+        }
+    }
+
+    #[test]
+    fn unlocated_source_text_ignores_located_lines() {
+        assert_eq!(parse_source_text("; if (x)"), Some("if (x)"));
+        assert_eq!(parse_source_text("   ;  return 0;  "), Some("return 0;"));
+        assert_eq!(parse_source_text("; if (x) @ prog.c:4"), None);
+        assert_eq!(parse_source_text("24: (0f) r2 += r1"), None);
+        assert_eq!(parse_source_text(";"), None);
+    }
+
+    #[test]
+    fn a_text_at_two_source_lines_stays_unresolved() {
+        let records = vec![
+            record("prog.c", 4, "return 0;"),
+            record("prog.c", 9, "return 0;"),
+        ];
+        assert_eq!(source_location_from_btf(&records, "return 0;"), None);
+    }
+
+    #[test]
+    fn repeated_records_for_one_line_resolve() {
+        let records = vec![
+            record("prog.c", 29, "if (data + 74 > data_end)"),
+            record("prog.c", 29, "if (data + 74 > data_end)"),
+        ];
+        let location = source_location_from_btf(&records, "if (data + 74 > data_end)").unwrap();
+        assert_eq!((location.path.as_str(), location.line), ("prog.c", 29));
+    }
+
+    #[test]
+    fn missing_text_resolves_to_nothing() {
+        let records = vec![record("prog.c", 4, "return 0;")];
+        assert_eq!(source_location_from_btf(&records, "return 1;"), None);
+    }
 }
 
 pub(crate) fn looks_like_scalar_guard(text: &str) -> bool {

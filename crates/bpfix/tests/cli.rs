@@ -23,12 +23,16 @@ fn run_stdin(input: &str, args: &[&str]) -> std::process::Output {
         .expect("bpfix should execute");
     {
         use std::io::Write;
-        child
+        // An invalid CLI option may terminate before it reads stdin.
+        // BrokenPipe is expected then; the caller checks the exit status.
+        if let Err(error) = child
             .stdin
             .as_mut()
             .expect("stdin should be piped")
             .write_all(input.as_bytes())
-            .expect("stdin write should succeed");
+        {
+            assert_eq!(error.kind(), std::io::ErrorKind::BrokenPipe, "{error}");
+        }
     }
     child.wait_with_output().expect("bpfix should finish")
 }
@@ -149,4 +153,71 @@ fn help_describes_plain_text_oriented_inputs() {
     assert!(help.contains("Experimental compiled BPF object metadata"));
     assert!(help.contains("--doctor"));
     assert!(!help.contains("--format"));
+}
+
+#[cfg(feature = "object-analysis")]
+const PRE_69_LOG: &str = r#"
+0: R1=ctx() R10=fp0
+; int prog(struct xdp_md *ctx)
+; void *data_end = (void *)(long)ctx->data_end;
+; void *data = (void *)(long)ctx->data;
+; if (data + 74 > data_end)
+24: (0f) r2 += r1
+R2 pointer arithmetic on pkt_end prohibited
+"#;
+
+#[cfg(feature = "object-analysis")]
+#[test]
+fn pre_69_log_uses_btf_lines_to_locate_the_source() {
+    let object = workspace_root().join("bpfix-empirical/cases/stackoverflow-78591601/prog.o");
+    if !object.is_file() {
+        return;
+    }
+
+    let located = run_stdin(
+        PRE_69_LOG,
+        &[
+            "-",
+            "--object",
+            object.to_str().expect("object path is UTF-8"),
+        ],
+    );
+    assert!(located.status.success(), "{}", stderr(&located));
+    let text = stdout(&located);
+    assert!(
+        text.contains("prog.c:29"),
+        "the unlocated log line must resolve through .BTF.ext:\n{text}"
+    );
+    assert!(text.contains("if (data + 74 > data_end)"), "{text}");
+
+    let unlocated = run_stdin(PRE_69_LOG, &["-"]);
+    assert!(unlocated.status.success(), "{}", stderr(&unlocated));
+    assert!(
+        stdout(&unlocated).contains("<verifier-log>:"),
+        "without --object there is no location to claim"
+    );
+}
+
+#[cfg(feature = "object-analysis")]
+#[test]
+fn empty_log_with_object_returns_input_error_without_panicking() {
+    let object = workspace_root().join("bpfix-empirical/cases/stackoverflow-78591601/prog.o");
+    if !object.is_file() {
+        return;
+    }
+    let path = object.to_str().expect("object path is UTF-8");
+    let inputs = [
+        "",
+        "  \n",
+        "\r\n",
+        "0: R1=ctx() R10=fp0\n; if (data + 74 > data_end)\n",
+    ];
+    for input in inputs {
+        let output = run_stdin(input, &["-", "--object", path]);
+        assert!(output.status.success(), "{}", stderr(&output));
+        let diagnostic = stdout(&output);
+        assert!(diagnostic.contains("error[BPFIX-E000]"), "{diagnostic}");
+        assert!(diagnostic.contains("<verifier-log>:"), "{diagnostic}");
+        assert!(!diagnostic.contains("prog.c:29"), "{diagnostic}");
+    }
 }
